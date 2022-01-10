@@ -1,0 +1,52 @@
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.4;
+
+import "./interfaces/IRewardHook.sol";
+import "./interfaces/IChef.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+
+//Receive rewards from chef for distribution to a pool
+contract ChefRewardHook is IRewardHook {
+    using SafeERC20 for IERC20;
+    using SafeMath for uint256;
+
+    IERC20 public constant rewardToken = IERC20(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
+
+    address public constant chef = address(0x5F465e9fcfFc217c5849906216581a657cd60605);
+    address public distributor;
+    uint256 public pid;
+
+    bool public isInit;
+
+    constructor() public {}
+
+    function init(
+        address _distributor,
+        uint256 _pid,
+        IERC20 dummyToken
+    ) external {
+        require(!isInit, "already init");
+        isInit = true;
+        distributor = _distributor;
+        pid = _pid;
+
+        uint256 balance = dummyToken.balanceOf(msg.sender);
+        require(balance != 0, "Balance must exceed 0");
+        dummyToken.safeTransferFrom(msg.sender, address(this), balance);
+        dummyToken.approve(chef, balance);
+        IChef(chef).deposit(pid, balance);
+    }
+
+    function onRewardClaim() external override {
+        require(msg.sender == distributor, "!auth");
+
+        IChef(chef).claim(pid, address(this));
+
+        uint256 bal = rewardToken.balanceOf(address(this));
+        if (bal > 0) {
+            rewardToken.safeTransfer(distributor, bal);
+        }
+    }
+}

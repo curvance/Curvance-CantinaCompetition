@@ -1,0 +1,269 @@
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.4;
+pragma experimental ABIEncoderV2;
+
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+
+interface IExchange {
+    function swapExactTokensForTokens(
+        uint256,
+        uint256,
+        address[] calldata,
+        address,
+        uint256
+    ) external;
+}
+
+interface I3CurveFi {
+    function get_virtual_price() external view returns (uint256);
+
+    function add_liquidity(
+        // sBTC pool
+        uint256[3] calldata amounts,
+        uint256 min_mint_amount
+    ) external;
+}
+
+interface I2CurveFi {
+    function get_virtual_price() external view returns (uint256);
+
+    function add_liquidity(
+        // eurs pool
+        uint256[2] calldata amounts,
+        uint256 min_mint_amount
+    ) external;
+
+    function claimable_tokens(address) external view returns (uint256);
+
+    function claimable_rewards(address, address) external view returns (uint256);
+}
+
+interface ICurveAavePool {
+    function get_virtual_price() external view returns (uint256);
+
+    function add_liquidity(
+        // aave pool
+        uint256[3] calldata amounts,
+        uint256 min_mint_amount,
+        bool use_underlying
+    ) external;
+
+    function claimable_tokens(address) external view returns (uint256);
+
+    function claimable_rewards(address, address) external view returns (uint256);
+}
+
+interface ISPool {
+    function get_virtual_price() external view returns (uint256);
+
+    function add_liquidity(
+        // susd pool
+        uint256[4] calldata amounts,
+        uint256 min_mint_amount
+    ) external;
+
+    function claimable_tokens(address) external view returns (uint256);
+
+    function claimable_reward(address) external view returns (uint256);
+
+    function claim_rewards(address) external;
+}
+
+interface ICurveGaugeController {
+    function n_gauges() external view returns (uint256);
+
+    function gauges(uint256) external view returns (address);
+}
+
+interface ICurveGaugeDebug {
+    function claim_rewards(address) external;
+
+    function claimable_tokens(address) external view returns (uint256);
+
+    function claimable_reward(address, address) external view returns (uint256);
+
+    function rewards_receiver(address) external view returns (address);
+
+    function working_balances(address) external view returns (uint256);
+
+    function working_supply() external view returns (uint256);
+}
+
+interface IWalletCheckerDebug {
+    function approveWallet(address) external;
+
+    function check(address) external view returns (bool);
+}
+
+interface IVoteStarter {
+    function newVote(
+        bytes calldata,
+        string calldata,
+        bool,
+        bool
+    ) external returns (uint256);
+
+    function votesLength() external view returns (uint256);
+
+    function executeVote(uint256 _vid) external;
+}
+
+interface IBurner {
+    function withdraw_admin_fees(address) external;
+
+    function burn(address) external;
+
+    function execute() external;
+}
+
+interface IClaim {
+    function claim(address) external;
+}
+
+interface IEscro {
+    function locked__end(address) external view returns (uint256);
+
+    function smart_wallet_checker() external view returns (address);
+}
+
+interface ISnxRewards {
+    function notifyRewardAmount(uint256) external;
+}
+
+interface IUniswapV2Router01 {
+    function factory() external pure returns (address);
+
+    function WETH() external pure returns (address);
+
+    function addLiquidity(
+        address tokenA,
+        address tokenB,
+        uint256 amountADesired,
+        uint256 amountBDesired,
+        uint256 amountAMin,
+        uint256 amountBMin,
+        address to,
+        uint256 deadline
+    )
+        external
+        returns (
+            uint256 amountA,
+            uint256 amountB,
+            uint256 liquidity
+        );
+
+    function addLiquidityETH(
+        address token,
+        uint256 amountTokenDesired,
+        uint256 amountTokenMin,
+        uint256 amountETHMin,
+        address to,
+        uint256 deadline
+    )
+        external
+        payable
+        returns (
+            uint256 amountToken,
+            uint256 amountETH,
+            uint256 liquidity
+        );
+
+    function swapExactETHForTokens(
+        uint256 amountOutMin,
+        address[] calldata path,
+        address to,
+        uint256 deadline
+    ) external payable returns (uint256[] memory amounts);
+}
+
+interface IUniswapV2Factory {
+    function getPair(address tokenA, address tokenB) external view returns (address pair);
+}
+
+interface Multicaller {
+    struct Call {
+        address target;
+        bytes callData;
+    }
+
+    function aggregate(Call[] memory calls) external returns (uint256 blockNumber, bytes[] memory returnData);
+}
+
+interface MulticallerView {
+    struct Call {
+        address target;
+        bytes callData;
+    }
+
+    function aggregate(Call[] memory calls) external view returns (uint256 blockNumber, bytes[] memory returnData);
+}
+
+interface IBaseRewards {
+    function getReward(address, bool) external;
+}
+
+interface SushiChefV2 {
+    function deposit(
+        uint256 pid,
+        uint256 amount,
+        address to
+    ) external;
+
+    function withdraw(
+        uint256 pid,
+        uint256 amount,
+        address to
+    ) external;
+
+    function withdrawAndHarvest(
+        uint256 pid,
+        uint256 amount,
+        address to
+    ) external;
+
+    function add(
+        uint256 allocPoint,
+        address token,
+        address rewarder
+    ) external;
+
+    function set(
+        uint256 pid,
+        uint256 allocPoint,
+        address rewarder,
+        bool overwrite
+    ) external;
+
+    function harvest(uint256 pid, address to) external;
+
+    function harvestFromMasterChef() external;
+
+    function poolInfo(uint256 pid)
+        external
+        view
+        returns (
+            uint128,
+            uint64,
+            uint64
+        );
+
+    function rewarder(uint256 pid) external view returns (address);
+
+    function lpToken(uint256 pid) external view returns (address);
+
+    function userInfo(uint256 pid, address account) external view returns (uint256, uint256);
+
+    function pendingSushi(uint256 pid, address account) external view returns (uint256);
+
+    function batch(bytes[] calldata calls, bool revertOnFail)
+        external
+        returns (bool[] memory successes, bytes[] memory results);
+}
+
+interface SushiChefV1 {
+    function set(
+        uint256 pid,
+        uint256 allocPoint,
+        bool withUpdate
+    ) external;
+}
