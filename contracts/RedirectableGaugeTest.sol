@@ -11,11 +11,13 @@ contract RedirectableGauge {
 
     mapping(address => address) public redirectMap;
 
-    constructor() public {}
+    constructor() {}
 
     function deposit(uint256 _amount) external {}
 
-    function balanceOf(address _account) external view returns (uint256) {
+    function balanceOf(address _account) external pure returns (uint256) {
+        //dummy references
+        _account;
         return 0;
     }
 
@@ -23,7 +25,9 @@ contract RedirectableGauge {
 
     function claim_rewards() external {}
 
-    function reward_tokens(uint256 _token) external view returns (address) {
+    function reward_tokens(uint256 _token) external pure returns (address) {
+        //dummy references
+        _token;
         return address(0);
     }
 

@@ -14,7 +14,7 @@ contract VotingBalanceMax {
     uint256 public constant rewardsDuration = 86400 * 7;
     uint256 public constant lockDuration = rewardsDuration * 17;
 
-    constructor(address _eligiblelist) public {
+    constructor(address _eligiblelist) {
         eligiblelist = _eligiblelist;
     }
 

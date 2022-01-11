@@ -20,7 +20,7 @@ contract ConvexToken is ERC20 {
     uint256 public totalCliffs = 1000;
     uint256 public reductionPerCliff;
 
-    constructor(address _proxy) public ERC20("Convex Token", "CVX") {
+    constructor(address _proxy) ERC20("Convex Token", "CVX") {
         operator = msg.sender;
         vecrvProxy = _proxy;
         reductionPerCliff = maxSupply.div(totalCliffs);

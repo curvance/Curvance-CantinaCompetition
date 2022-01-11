@@ -10,15 +10,15 @@ contract VotingBalance is Ownable {
 
     address public constant locker = address(0xD18140b4B819b895A3dba5442F959fA44994AF50);
 
-    mapping(address => bool) blockList;
-    mapping(address => bool) allowedList;
+    mapping(address => bool) internal blockList;
+    mapping(address => bool) internal allowedList;
     bool public useBlock = true;
     bool public useAllow = false;
 
     event changeBlock(address indexed _account, bool _state);
     event changeAllow(address indexed _account, bool _state);
 
-    constructor() public {}
+    constructor() {}
 
     function setUseBlock(bool _b) external onlyOwner {
         useBlock = _b;

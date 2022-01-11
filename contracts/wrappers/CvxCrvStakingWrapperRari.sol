@@ -16,13 +16,14 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 //Tokenized cvxCrv staked position for Rari's Fuse platform
-//Based on Curve.fi's gauge wrapper implementations at https://github.com/curvefi/curve-dao-contracts/tree/master/contracts/gauges/wrappers
+//Based on Curve.fi's gauge wrapper implementations at
+//https://github.com/curvefi/curve-dao-contracts/tree/master/contracts/gauges/wrappers
 contract CvxCrvRari is CvxCrvStakingWrapper {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
 
-    constructor() public {}
+    constructor() {}
 
     function initialize(address _vault) external override {
         require(!isInit, "already init");

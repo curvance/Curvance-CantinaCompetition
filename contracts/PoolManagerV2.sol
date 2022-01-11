@@ -25,7 +25,7 @@ contract PoolManagerV2 {
     address public operator;
     address public pools;
 
-    constructor(address _pools) public {
+    constructor(address _pools) {
         operator = msg.sender;
         pools = _pools;
     }

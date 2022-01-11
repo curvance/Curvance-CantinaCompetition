@@ -3,44 +3,10 @@ pragma solidity 0.8.4;
 
 import "./interfaces/MathUtil.sol";
 import "./interfaces/ILockedCvx.sol";
+import "./interfaces/IClaimZap.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-
-interface IBasicRewards {
-    function getReward(address _account, bool _claimExtras) external;
-
-    function getReward(address _account) external;
-
-    function getReward(address _account, address _token) external;
-
-    function stakeFor(address, uint256) external;
-}
-
-interface ICvxRewards {
-    function getReward(
-        address _account,
-        bool _claimExtras,
-        bool _stake
-    ) external;
-}
-
-interface IChefRewards {
-    function claim(uint256 _pid, address _account) external;
-}
-
-interface ICvxCrvDeposit {
-    function deposit(uint256, bool) external;
-}
-
-interface ISwapExchange {
-    function exchange(
-        int128,
-        int128,
-        uint256,
-        uint256
-    ) external returns (uint256);
-}
 
 //Claim zap to bundle various reward claims
 //v2:
@@ -48,6 +14,7 @@ interface ISwapExchange {
 // - add getReward(address,token) type
 // - add option to lock cvx
 // - add option use all funds in wallet
+
 contract ClaimZap {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
@@ -65,6 +32,14 @@ contract ClaimZap {
 
     address public immutable owner;
 
+    struct ClaimRewardsParams {
+        uint256 depositCrvMaxAmount;
+        uint256 minAmountOut;
+        uint256 depositCvxMaxAmount;
+        uint256 spendCvxAmount;
+        uint256 options;
+    }
+
     enum Options {
         ClaimCvx, //1
         ClaimCvxAndStake, //2
@@ -76,7 +51,7 @@ contract ClaimZap {
         LockCvx //128
     }
 
-    constructor() public {
+    constructor() {
         owner = msg.sender;
     }
 
@@ -87,18 +62,18 @@ contract ClaimZap {
     function setApprovals() external {
         require(msg.sender == owner, "!auth");
         IERC20(crv).safeApprove(crvDeposit, 0);
-        IERC20(crv).safeApprove(crvDeposit, uint256(-1));
+        IERC20(crv).safeApprove(crvDeposit, type(uint128).max);
         IERC20(crv).safeApprove(exchange, 0);
-        IERC20(crv).safeApprove(exchange, uint256(-1));
+        IERC20(crv).safeApprove(exchange, type(uint128).max);
 
         IERC20(cvx).safeApprove(cvxRewards, 0);
-        IERC20(cvx).safeApprove(cvxRewards, uint256(-1));
+        IERC20(cvx).safeApprove(cvxRewards, type(uint128).max);
 
         IERC20(cvxCrv).safeApprove(cvxCrvRewards, 0);
-        IERC20(cvxCrv).safeApprove(cvxCrvRewards, uint256(-1));
+        IERC20(cvxCrv).safeApprove(cvxCrvRewards, type(uint128).max);
 
         IERC20(cvx).safeApprove(locker, 0);
-        IERC20(cvx).safeApprove(locker, uint256(-1));
+        IERC20(cvx).safeApprove(locker, type(uint128).max);
     }
 
     function CheckOption(uint256 _mask, uint256 _flag) internal pure returns (bool) {
@@ -110,11 +85,7 @@ contract ClaimZap {
         address[] calldata extraRewardContracts,
         address[] calldata tokenRewardContracts,
         address[] calldata tokenRewardTokens,
-        uint256 depositCrvMaxAmount,
-        uint256 minAmountOut,
-        uint256 depositCvxMaxAmount,
-        uint256 spendCvxAmount,
-        uint256 options
+        ClaimRewardsParams memory params
     ) external {
         uint256 crvBalance = IERC20(crv).balanceOf(msg.sender);
         uint256 cvxBalance = IERC20(cvx).balanceOf(msg.sender);
@@ -133,64 +104,52 @@ contract ClaimZap {
         }
 
         //claim others/deposit/lock/stake
-        _claimExtras(
-            depositCrvMaxAmount,
-            minAmountOut,
-            depositCvxMaxAmount,
-            spendCvxAmount,
-            crvBalance,
-            cvxBalance,
-            options
-        );
+        _claimExtras(crvBalance, cvxBalance, params);
     }
 
     function _claimExtras(
-        uint256 depositCrvMaxAmount,
-        uint256 minAmountOut,
-        uint256 depositCvxMaxAmount,
-        uint256 spendCvxAmount,
         uint256 removeCrvBalance,
         uint256 removeCvxBalance,
-        uint256 options
+        ClaimRewardsParams memory params
     ) internal {
         //claim (and stake) from cvx rewards
-        if (CheckOption(options, uint256(Options.ClaimCvxAndStake))) {
+        if (CheckOption(params.options, uint256(Options.ClaimCvxAndStake))) {
             ICvxRewards(cvxRewards).getReward(msg.sender, true, true);
-        } else if (CheckOption(options, uint256(Options.ClaimCvx))) {
+        } else if (CheckOption(params.options, uint256(Options.ClaimCvx))) {
             ICvxRewards(cvxRewards).getReward(msg.sender, true, false);
         }
 
         //claim from cvxCrv rewards
-        if (CheckOption(options, uint256(Options.ClaimCvxCrv))) {
+        if (CheckOption(params.options, uint256(Options.ClaimCvxCrv))) {
             IBasicRewards(cvxCrvRewards).getReward(msg.sender, true);
         }
 
         //claim from locker
-        if (CheckOption(options, uint256(Options.ClaimLockedCvx))) {
-            ILockedCvx(locker).getReward(msg.sender, CheckOption(options, uint256(Options.ClaimLockedCvxStake)));
+        if (CheckOption(params.options, uint256(Options.ClaimLockedCvx))) {
+            ILockedCvx(locker).getReward(msg.sender, CheckOption(params.options, uint256(Options.ClaimLockedCvxStake)));
         }
 
         //reset remove balances if we want to also stake/lock funds already in our wallet
-        if (CheckOption(options, uint256(Options.UseAllWalletFunds))) {
+        if (CheckOption(params.options, uint256(Options.UseAllWalletFunds))) {
             removeCrvBalance = 0;
             removeCvxBalance = 0;
         }
 
         //lock upto given amount of crv and stake
-        if (depositCrvMaxAmount > 0) {
+        if (params.depositCrvMaxAmount > 0) {
             uint256 crvBalance = IERC20(crv).balanceOf(msg.sender).sub(removeCrvBalance);
-            crvBalance = MathUtil.min(crvBalance, depositCrvMaxAmount);
+            crvBalance = MathUtil.min(crvBalance, params.depositCrvMaxAmount);
             if (crvBalance > 0) {
                 //pull crv
                 IERC20(crv).safeTransferFrom(msg.sender, address(this), crvBalance);
-                if (minAmountOut > 0) {
+                if (params.minAmountOut > 0) {
                     //swap
-                    ISwapExchange(exchange).exchange(0, 1, crvBalance, minAmountOut);
+                    ISwapExchange(exchange).exchange(0, 1, crvBalance, params.minAmountOut);
                 } else {
                     //deposit
                     ICvxCrvDeposit(crvDeposit).deposit(
                         crvBalance,
-                        CheckOption(options, uint256(Options.LockCrvDeposit))
+                        CheckOption(params.options, uint256(Options.LockCrvDeposit))
                     );
                 }
                 //get cvxcrv amount
@@ -201,14 +160,14 @@ contract ClaimZap {
         }
 
         //stake up to given amount of cvx
-        if (depositCvxMaxAmount > 0) {
+        if (params.depositCvxMaxAmount > 0) {
             uint256 cvxBalance = IERC20(cvx).balanceOf(msg.sender).sub(removeCvxBalance);
-            cvxBalance = MathUtil.min(cvxBalance, depositCvxMaxAmount);
+            cvxBalance = MathUtil.min(cvxBalance, params.depositCvxMaxAmount);
             if (cvxBalance > 0) {
                 //pull cvx
                 IERC20(cvx).safeTransferFrom(msg.sender, address(this), cvxBalance);
-                if (CheckOption(options, uint256(Options.LockCvx))) {
-                    ILockedCvx(locker).lock(msg.sender, cvxBalance, spendCvxAmount);
+                if (CheckOption(params.options, uint256(Options.LockCvx))) {
+                    ILockedCvx(locker).lock(msg.sender, cvxBalance, params.spendCvxAmount);
                 } else {
                     //stake for msg.sender
                     IBasicRewards(cvxRewards).stakeFor(msg.sender, cvxBalance);

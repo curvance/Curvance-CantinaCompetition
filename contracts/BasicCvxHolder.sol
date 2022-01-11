@@ -23,20 +23,20 @@ contract BasicCvxHolder {
     address public operator;
     ILockedCvx public immutable cvxlocker;
 
-    constructor(address _cvxlocker) public {
+    constructor(address _cvxlocker) {
         cvxlocker = ILockedCvx(_cvxlocker);
         operator = msg.sender;
     }
 
     function setApprovals() external {
         IERC20(cvxCrv).safeApprove(cvxcrvStaking, 0);
-        IERC20(cvxCrv).safeApprove(cvxcrvStaking, uint256(-1));
+        IERC20(cvxCrv).safeApprove(cvxcrvStaking, type(uint128).max);
 
         IERC20(cvx).safeApprove(address(cvxlocker), 0);
-        IERC20(cvx).safeApprove(address(cvxlocker), uint256(-1));
+        IERC20(cvx).safeApprove(address(cvxlocker), type(uint128).max);
 
         IERC20(crv).safeApprove(crvDeposit, 0);
-        IERC20(crv).safeApprove(crvDeposit, uint256(-1));
+        IERC20(crv).safeApprove(crvDeposit, type(uint128).max);
     }
 
     function setOperator(address _op) external {

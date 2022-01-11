@@ -13,7 +13,7 @@ contract TokenFactory {
 
     address public operator;
 
-    constructor(address _operator) public {
+    constructor(address _operator) {
         operator = _operator;
     }
 

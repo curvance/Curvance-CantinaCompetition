@@ -84,7 +84,7 @@ contract BaseRewardPool {
         address rewardToken_,
         address operator_,
         address rewardManager_
-    ) public {
+    ) {
         pid = pid_;
         stakingToken = IERC20(stakingToken_);
         rewardToken = IERC20(rewardToken_);
@@ -262,7 +262,7 @@ contract BaseRewardPool {
         return true;
     }
 
-    function donate(uint256 _amount) external returns (bool) {
+    function donate(uint256 _amount) external {
         IERC20(rewardToken).safeTransferFrom(msg.sender, address(this), _amount);
         queuedRewards = queuedRewards.add(_amount);
     }

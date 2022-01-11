@@ -8,14 +8,14 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
-contract cvxCrvToken is ERC20 {
+contract CvxCrvToken is ERC20 {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
 
     address public operator;
 
-    constructor() public ERC20("Convex CRV", "cvxCRV") {
+    constructor() ERC20("Convex CRV", "cvxCRV") {
         operator = msg.sender;
     }
 

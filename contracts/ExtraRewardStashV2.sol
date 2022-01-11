@@ -38,7 +38,7 @@ contract ExtraRewardStashV2 {
         address _staker,
         address _gauge,
         address _rFactory
-    ) public {
+    ) {
         pid = _pid;
         operator = _operator;
         staker = _staker;
@@ -98,11 +98,14 @@ contract ExtraRewardStashV2 {
                         //edge case around reward ending periods
                         if (newbalance > 0) {
                             // - recently active pool
-                            // - rewards claimed to staker contract via a deposit/withdraw(or someone manually calling on the gauge)
+                            // - rewards claimed to staker contract via a deposit/withdraw(or someone manually
+                            //   calling on the gauge)
                             // - rewards ended before the deposit, thus deposit took the last available tokens
-                            // - thus claimRewards doesnt see any new rewards, but there are rewards on the staker contract
-                            // - i think its safe to assume claim will be called within the timeframe, or else these rewards
-                            //     will be unretrievable until some pool starts rewards again
+                            // - thus claimRewards doesnt see any new rewards, but there are rewards on the
+                            //   staker contract
+                            // - i think its safe to assume claim will be called within the timeframe, or else
+                            //   these rewards
+                            //   will be unretrievable until some pool starts rewards again
 
                             //claim the tokens
                             IStaker(staker).withdraw(token);

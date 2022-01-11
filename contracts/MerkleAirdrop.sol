@@ -36,39 +36,39 @@ contract MerkleAirdrop {
     mapping(address => bool) public hasClaimed;
     event Claim(address addr, uint256 num);
 
-    constructor(address _owner) public {
+    constructor(address _owner) {
         owner = _owner;
     }
 
     function setOwner(address _owner) external {
-        require(msg.sender == owner);
+        require(msg.sender == owner, "!owner");
         owner = _owner;
     }
 
     function setRewardContract(address _rewardContract) external {
-        require(msg.sender == owner);
+        require(msg.sender == owner, "!owner");
         rewardContract = _rewardContract;
     }
 
     function setRewardToken(address _rewardToken) external {
-        require(msg.sender == owner);
+        require(msg.sender == owner, "!owner");
         rewardToken = _rewardToken;
     }
 
     function setMintToken(address _mintToken) external {
-        require(msg.sender == owner);
+        require(msg.sender == owner, "!owner");
         mintToken = _mintToken;
     }
 
     function setRoot(bytes32 _merkleRoot) external {
-        require(msg.sender == owner);
+        require(msg.sender == owner, "!owner");
         merkleRoot = _merkleRoot;
     }
 
     function addressToAsciiString(address x) internal pure returns (string memory) {
         bytes memory s = new bytes(40);
         for (uint256 i = 0; i < 20; i++) {
-            bytes1 b = bytes1(uint8(uint256(x) / (2**(8 * (19 - i)))));
+            bytes1 b = bytes1(uint8(uint256(uint160(x)) / (2**(8 * (19 - i)))));
             bytes1 hi = bytes1(uint8(b) / 16);
             bytes1 lo = bytes1(uint8(b) - 16 * uint8(hi));
             s[2 * i] = char(hi);
@@ -117,7 +117,7 @@ contract MerkleAirdrop {
         uint256 _amount
     ) public returns (bool) {
         require(hasClaimed[_who] != true, "already claimed");
-        require(_amount > 0);
+        require(_amount > 0, "_amount <= 0");
         require(checkProof(_proof, getLeaf(_who, _amount)), "failed proof check");
 
         hasClaimed[_who] = true;

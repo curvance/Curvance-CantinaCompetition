@@ -62,6 +62,7 @@ contract VirtualBalanceWrapper {
 }
 
 contract VirtualBalanceRewardPool is VirtualBalanceWrapper {
+    using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
     IERC20 public rewardToken;
@@ -89,7 +90,7 @@ contract VirtualBalanceRewardPool is VirtualBalanceWrapper {
         address deposit_,
         address reward_,
         address op_
-    ) public {
+    ) {
         deposits = IDeposit(deposit_);
         rewardToken = IERC20(reward_);
         operator = op_;
@@ -153,7 +154,7 @@ contract VirtualBalanceRewardPool is VirtualBalanceWrapper {
         getReward(msg.sender);
     }
 
-    function donate(uint256 _amount) external returns (bool) {
+    function donate(uint256 _amount) external {
         IERC20(rewardToken).safeTransferFrom(msg.sender, address(this), _amount);
         queuedRewards = queuedRewards.add(_amount);
     }

@@ -46,7 +46,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-contract cvxRewardPool {
+contract CvxRewardPool {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
@@ -89,7 +89,7 @@ contract cvxRewardPool {
         address cvxCrvToken_,
         address operator_,
         address rewardManager_
-    ) public {
+    ) {
         stakingToken = IERC20(stakingToken_);
         rewardToken = IERC20(rewardToken_);
         operator = operator_;
@@ -268,7 +268,7 @@ contract cvxRewardPool {
         getReward(msg.sender, true, _stake);
     }
 
-    function donate(uint256 _amount) external returns (bool) {
+    function donate(uint256 _amount) external {
         IERC20(rewardToken).safeTransferFrom(msg.sender, address(this), _amount);
         queuedRewards = queuedRewards.add(_amount);
     }

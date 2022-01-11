@@ -26,7 +26,7 @@ contract CrvDepositor {
     uint256 public incentiveCrv = 0;
     uint256 public unlockTime;
 
-    constructor(address _staker, address _minter) public {
+    constructor(address _staker, address _minter) {
         staker = _staker;
         minter = _minter;
         feeManager = msg.sender;

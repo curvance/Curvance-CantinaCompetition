@@ -1,18 +1,16 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.6 .12;
+pragma solidity 0.8.4;
 
 import "./interfaces/ICrvDepositor.sol";
-import '@openzeppelin/contracts/utils/Address.sol';
-import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
-import '@openzeppelin/contracts/token/ERC20/SafeERC20.sol';
-import '@openzeppelin/contracts/math/SafeMath.sol';
-
-
+import "@openzeppelin/contracts/utils/Address.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 interface IConvexRewards {
     function withdraw(uint256 _amount, bool _claim) external;
 
-    function balanceOf(address _account) external view returns(uint256);
+    function balanceOf(address _account) external view returns (uint256);
 
     function getReward(bool _stake) external;
 
@@ -23,7 +21,6 @@ interface ICvxLocker {
     function notifyRewardAmount(address _rewardsToken, uint256 reward) external;
 }
 
-
 // receive tokens to stake
 // get current staked balance
 // withdraw staked tokens
@@ -31,12 +28,9 @@ interface ICvxLocker {
 // register token types that can be distributed
 
 contract CvxStakingProxy {
-    using SafeERC20
-    for IERC20;
-    using Address
-    for address;
-    using SafeMath
-    for uint256;
+    using SafeERC20 for IERC20;
+    using Address for address;
+    using SafeMath for uint256;
 
     //tokens
     address public constant crv = address(0xD533a949740bb3306d119CC777fa900bA034cd52);
@@ -57,7 +51,7 @@ contract CvxStakingProxy {
 
     event RewardsDistributed(address indexed token, uint256 amount);
 
-    constructor(address _rewards) public {
+    constructor(address _rewards) {
         rewards = _rewards;
         owner = msg.sender;
     }
@@ -83,13 +77,13 @@ contract CvxStakingProxy {
 
     function setApprovals() external {
         IERC20(cvx).safeApprove(cvxStaking, 0);
-        IERC20(cvx).safeApprove(cvxStaking, uint256(-1));
+        IERC20(cvx).safeApprove(cvxStaking, type(uint128).max);
 
         IERC20(crv).safeApprove(crvDeposit, 0);
-        IERC20(crv).safeApprove(crvDeposit, uint256(-1));
+        IERC20(crv).safeApprove(crvDeposit, type(uint128).max);
 
         IERC20(cvxCrv).safeApprove(rewards, 0);
-        IERC20(cvxCrv).safeApprove(rewards, uint256(-1));
+        IERC20(cvxCrv).safeApprove(rewards, type(uint128).max);
     }
 
     function rescueToken(address _token, address _to) external {
@@ -100,7 +94,7 @@ contract CvxStakingProxy {
         IERC20(_token).safeTransfer(_to, bal);
     }
 
-    function getBalance() external view returns(uint256) {
+    function getBalance() external view returns (uint256) {
         return IConvexRewards(cvxStaking).balanceOf(address(this));
     }
 
@@ -113,7 +107,6 @@ contract CvxStakingProxy {
         //withdraw cvx
         IERC20(cvx).safeTransfer(msg.sender, _amount);
     }
-
 
     function stake() external {
         require(msg.sender == rewards, "!auth");
@@ -132,9 +125,9 @@ contract CvxStakingProxy {
         }
 
         //make sure nothing is in here
-        uint256 sCheck  = IConvexRewards(cvxCrvStaking).balanceOf(address(this));
-        if(sCheck > 0){
-            IConvexRewards(cvxCrvStaking).withdraw(sCheck,false);
+        uint256 sCheck = IConvexRewards(cvxCrvStaking).balanceOf(address(this));
+        if (sCheck > 0) {
+            IConvexRewards(cvxCrvStaking).withdraw(sCheck, false);
         }
 
         //distribute cvxcrv
@@ -143,9 +136,9 @@ contract CvxStakingProxy {
         if (cvxCrvBal > 0) {
             uint256 incentiveAmount = cvxCrvBal.mul(callIncentive).div(denominator);
             cvxCrvBal = cvxCrvBal.sub(incentiveAmount);
-            
+
             //send incentives
-            IERC20(cvxCrv).safeTransfer(msg.sender,incentiveAmount);
+            IERC20(cvxCrv).safeTransfer(msg.sender, incentiveAmount);
 
             //update rewards
             ICvxLocker(rewards).notifyRewardAmount(cvxCrv, cvxCrvBal);
@@ -156,20 +149,20 @@ contract CvxStakingProxy {
 
     //in case a new reward is ever added, allow generic distribution
     function distributeOther(IERC20 _token) external {
-        require( address(_token) != crv && address(_token) != cvxCrv, "not allowed");
+        require(address(_token) != crv && address(_token) != cvxCrv, "not allowed");
 
         uint256 bal = _token.balanceOf(address(this));
 
         if (bal > 0) {
             uint256 incentiveAmount = bal.mul(callIncentive).div(denominator);
             bal = bal.sub(incentiveAmount);
-            
+
             //send incentives
-            _token.safeTransfer(msg.sender,incentiveAmount);
+            _token.safeTransfer(msg.sender, incentiveAmount);
 
             //approve
             _token.safeApprove(rewards, 0);
-            _token.safeApprove(rewards, uint256(-1));
+            _token.safeApprove(rewards, type(uint128).max);
 
             //update rewards
             ICvxLocker(rewards).notifyRewardAmount(address(_token), bal);

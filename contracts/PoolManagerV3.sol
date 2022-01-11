@@ -25,7 +25,7 @@ contract PoolManagerV3 {
 
     address public operator;
 
-    constructor(address _pools) public {
+    constructor(address _pools) {
         //default to multisig
         operator = address(0xa3C5A1e09150B75ff251c1a7815A07182c3de2FB);
         pools = _pools;

@@ -27,7 +27,7 @@ contract StashFactoryV2 {
         address _operator,
         address _rewardFactory,
         address _proxyFactory
-    ) public {
+    ) {
         operator = _operator;
         rewardFactory = _rewardFactory;
         proxyFactory = _proxyFactory;

@@ -68,7 +68,7 @@ contract ConvexMasterChef is Ownable {
         uint256 _rewardPerBlock,
         uint256 _startBlock,
         uint256 _bonusEndBlock
-    ) public {
+    ) {
         cvx = _cvx;
         rewardPerBlock = _rewardPerBlock;
         bonusEndBlock = _bonusEndBlock;

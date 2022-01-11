@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 contract ChefToken is ERC20 {
     bool public isInit;
 
-    constructor() public ERC20("Chef Token", "cvxCT") {}
+    constructor() ERC20("Chef Token", "cvxCT") {}
 
     function create() external {
         require(!isInit, "init");

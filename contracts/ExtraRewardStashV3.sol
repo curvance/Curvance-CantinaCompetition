@@ -43,7 +43,7 @@ contract ExtraRewardStashV3 {
     //address to call for reward pulls
     address public rewardHook;
 
-    constructor() public {}
+    constructor() {}
 
     function initialize(
         uint256 _pid,

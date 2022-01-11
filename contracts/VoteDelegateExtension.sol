@@ -22,7 +22,7 @@ contract VoteDelegateExtension {
     address public daoOperator;
     address public gaugeOperator;
 
-    constructor() public {
+    constructor() {
         //default to multisig
         owner = address(0xa3C5A1e09150B75ff251c1a7815A07182c3de2FB);
         daoOperator = address(0xa3C5A1e09150B75ff251c1a7815A07182c3de2FB);

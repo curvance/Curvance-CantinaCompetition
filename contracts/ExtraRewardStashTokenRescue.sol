@@ -36,7 +36,7 @@ contract ExtraRewardStashTokenRescue {
         SendToTreasury
     }
 
-    constructor() public {}
+    constructor() {}
 
     function initialize(
         uint256 _pid,
@@ -108,7 +108,7 @@ contract ExtraRewardStashTokenRescue {
         activeTokens[_token] = _option;
         if (CheckOption(_option, uint256(Options.SendToRewards)) && rewardDeposit != address(0)) {
             IERC20(_token).safeApprove(rewardDeposit, 0);
-            IERC20(_token).safeApprove(rewardDeposit, uint256(-1));
+            IERC20(_token).safeApprove(rewardDeposit, type(uint128).max);
         }
         emit TokenSet(_token, _option);
     }

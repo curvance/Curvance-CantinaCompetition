@@ -15,7 +15,7 @@ contract ConvexStakingWrapperAbra is ConvexStakingWrapper {
 
     address[] public cauldrons;
 
-    constructor() public {}
+    constructor() {}
 
     function initialize(
         address _curveToken,

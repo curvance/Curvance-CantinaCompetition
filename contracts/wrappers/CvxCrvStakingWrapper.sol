@@ -53,7 +53,10 @@ contract CvxCrvStakingWrapper is ERC20, ReentrancyGuard {
     address public collateralVault;
 
     //rewards
-    RewardType[] public rewards;
+    //https://ethereum.stackexchange.com/a/97883
+    //See: https://docs.soliditylang.org/en/v0.7.0/types.html?highlight=struct#structs
+    uint256 internal numRewards = 0;
+    mapping(uint256 => RewardType) internal rewards;
 
     //management
     bool public isShutdown;
@@ -67,7 +70,7 @@ contract CvxCrvStakingWrapper is ERC20, ReentrancyGuard {
     event Withdrawn(address indexed _user, uint256 _amount, bool _unwrapped);
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
-    constructor() public ERC20("Staked CvxCrv", "stkCvxCrv") {}
+    constructor() ERC20("Staked CvxCrv", "stkCvxCrv") {}
 
     function initialize(address _vault) external virtual {
         require(!isInit, "already init");
@@ -93,7 +96,7 @@ contract CvxCrvStakingWrapper is ERC20, ReentrancyGuard {
         return _tokensymbol;
     }
 
-    function decimals() public view override returns (uint8) {
+    function decimals() public pure override returns (uint8) {
         return 18;
     }
 
@@ -119,35 +122,34 @@ contract CvxCrvStakingWrapper is ERC20, ReentrancyGuard {
 
     function setApprovals() public {
         IERC20(crv).safeApprove(crvDepositor, 0);
-        IERC20(crv).safeApprove(crvDepositor, uint256(-1));
+        IERC20(crv).safeApprove(crvDepositor, type(uint128).max);
         IERC20(cvxCrv).safeApprove(cvxCrvStaking, 0);
-        IERC20(cvxCrv).safeApprove(cvxCrvStaking, uint256(-1));
+        IERC20(cvxCrv).safeApprove(cvxCrvStaking, type(uint128).max);
     }
 
     function addRewards() public {
-        if (rewards.length == 0) {
-            rewards.push(
-                RewardType({ reward_token: crv, reward_pool: cvxCrvStaking, reward_integral: 0, reward_remaining: 0 })
-            );
+        if (numRewards == 0) {
+            RewardType storage r = rewards[numRewards++];
+            r.reward_token = crv;
+            r.reward_pool = cvxCrvStaking;
+            r.reward_integral = 0;
+            r.reward_remaining = 0;
         }
 
         uint256 extraCount = IRewardStaking(cvxCrvStaking).extraRewardsLength();
-        uint256 startIndex = rewards.length - 1;
+        uint256 startIndex = numRewards - 1;
         for (uint256 i = startIndex; i < extraCount; i++) {
             address extraPool = IRewardStaking(cvxCrvStaking).extraRewards(i);
-            rewards.push(
-                RewardType({
-                    reward_token: IRewardStaking(extraPool).rewardToken(),
-                    reward_pool: extraPool,
-                    reward_integral: 0,
-                    reward_remaining: 0
-                })
-            );
+            RewardType storage r = rewards[numRewards++];
+            r.reward_token = IRewardStaking(extraPool).rewardToken();
+            r.reward_pool = extraPool;
+            r.reward_integral = 0;
+            r.reward_remaining = 0;
         }
     }
 
     function rewardLength() external view returns (uint256) {
-        return rewards.length;
+        return numRewards;
     }
 
     function _getDepositedBalance(address _account) internal view virtual returns (uint256) {
@@ -272,7 +274,7 @@ contract CvxCrvStakingWrapper is ERC20, ReentrancyGuard {
 
         IRewardStaking(cvxCrvStaking).getReward(address(this), true);
 
-        uint256 rewardCount = rewards.length;
+        uint256 rewardCount = numRewards;
         for (uint256 i = 0; i < rewardCount; i++) {
             _calcRewardIntegral(i, _accounts, depositedBalance, supply, false);
         }
@@ -286,7 +288,7 @@ contract CvxCrvStakingWrapper is ERC20, ReentrancyGuard {
 
         IRewardStaking(cvxCrvStaking).getReward(address(this), true);
 
-        uint256 rewardCount = rewards.length;
+        uint256 rewardCount = numRewards;
         for (uint256 i = 0; i < rewardCount; i++) {
             _calcRewardIntegral(i, _accounts, depositedBalance, supply, true);
         }
@@ -305,7 +307,7 @@ contract CvxCrvStakingWrapper is ERC20, ReentrancyGuard {
     function earned(address _account) external view returns (EarnedData[] memory claimable) {
         uint256 supply = _getTotalSupply();
         // uint256 depositedBalance = _getDepositedBalance(_account);
-        uint256 rewardCount = rewards.length;
+        uint256 rewardCount = numRewards;
         claimable = new EarnedData[](rewardCount + 1);
 
         for (uint256 i = 0; i < rewardCount; i++) {
@@ -316,13 +318,13 @@ contract CvxCrvStakingWrapper is ERC20, ReentrancyGuard {
             uint256 d_reward = bal.sub(reward.reward_remaining);
             d_reward = d_reward.add(IRewardStaking(reward.reward_pool).earned(address(this)));
 
-            uint256 I = reward.reward_integral;
+            uint256 integral = reward.reward_integral;
             if (supply > 0) {
-                I = I + d_reward.mul(1e20).div(supply);
+                integral = integral + d_reward.mul(1e20).div(supply);
             }
 
             uint256 newlyClaimable = _getDepositedBalance(_account)
-                .mul(I.sub(reward.reward_integral_for[_account]))
+                .mul(integral.sub(reward.reward_integral_for[_account]))
                 .div(1e20);
             claimable[i].amount = reward.claimable_reward[_account].add(newlyClaimable);
             claimable[i].token = reward.reward_token;
@@ -391,6 +393,8 @@ contract CvxCrvStakingWrapper is ERC20, ReentrancyGuard {
         address _to,
         uint256 _amount
     ) internal override {
+        //dummy references
+        _amount;
         _checkpoint([_from, _to]);
     }
 }

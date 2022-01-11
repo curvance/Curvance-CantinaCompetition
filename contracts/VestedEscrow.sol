@@ -47,7 +47,7 @@ contract VestedEscrow is ReentrancyGuard {
         uint256 endtime_,
         address stakeContract_,
         address fundAdmin_
-    ) public {
+    ) {
         require(starttime_ >= block.timestamp, "start must be future");
         require(endtime_ > starttime_, "end must be greater");
 

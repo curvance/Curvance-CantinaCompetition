@@ -5,7 +5,7 @@ contract SimpleProxy {
     address public owner;
     address public pendingOwner;
 
-    constructor() public {
+    constructor() {
         owner = msg.sender;
     }
 

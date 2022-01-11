@@ -15,7 +15,7 @@ contract TreasuryFunds {
     address public operator;
     event WithdrawTo(address indexed user, uint256 amount);
 
-    constructor(address _operator) public {
+    constructor(address _operator) {
         operator = _operator;
     }
 

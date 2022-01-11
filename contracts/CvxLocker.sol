@@ -110,7 +110,7 @@ contract CvxLocker is ReentrancyGuard, Ownable {
 
     /* ========== CONSTRUCTOR ========== */
 
-    constructor() public Ownable() {
+    constructor() {
         _name = "Vote Locked Convex Token";
         _symbol = "vlCVX";
         _decimals = 18;
@@ -139,8 +139,8 @@ contract CvxLocker is ReentrancyGuard, Ownable {
         address _distributor,
         bool _useBoost
     ) public onlyOwner {
-        require(rewardData[_rewardsToken].lastUpdateTime == 0);
-        require(_rewardsToken != address(stakingToken));
+        require(rewardData[_rewardsToken].lastUpdateTime == 0, "lastUpdateTime != 0");
+        require(_rewardsToken != address(stakingToken), "Reward token is same as staking token");
         rewardTokens.push(_rewardsToken);
         rewardData[_rewardsToken].lastUpdateTime = uint40(block.timestamp);
         rewardData[_rewardsToken].periodFinish = uint40(block.timestamp);
@@ -154,7 +154,7 @@ contract CvxLocker is ReentrancyGuard, Ownable {
         address _distributor,
         bool _approved
     ) external onlyOwner {
-        require(rewardData[_rewardsToken].lastUpdateTime > 0);
+        require(rewardData[_rewardsToken].lastUpdateTime > 0, "lastUpdateTime <= 0");
         rewardDistributors[_rewardsToken][_distributor] = _approved;
     }
 
@@ -208,10 +208,11 @@ contract CvxLocker is ReentrancyGuard, Ownable {
     //set approvals for staking cvx and cvxcrv
     function setApprovals() external {
         IERC20(cvxCrv).safeApprove(cvxcrvStaking, 0);
-        IERC20(cvxCrv).safeApprove(cvxcrvStaking, uint256(-1));
+        //TODO: probably better to use SafeERC20.safeIncreaseAllowance in these instances
+        IERC20(cvxCrv).safeApprove(cvxcrvStaking, type(uint128).max);
 
         IERC20(stakingToken).safeApprove(stakingProxy, 0);
-        IERC20(stakingToken).safeApprove(stakingProxy, uint256(-1));
+        IERC20(stakingToken).safeApprove(stakingProxy, type(uint128).max);
     }
 
     /* ========== VIEWS ========== */
@@ -762,7 +763,7 @@ contract CvxLocker is ReentrancyGuard, Ownable {
     }
 
     function notifyRewardAmount(address _rewardsToken, uint256 _reward) external updateReward(address(0)) {
-        require(rewardDistributors[_rewardsToken][msg.sender]);
+        require(rewardDistributors[_rewardsToken][msg.sender], "Can't receive");
         require(_reward > 0, "No reward");
 
         _notifyReward(_rewardsToken, _reward);

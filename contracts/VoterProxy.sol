@@ -25,7 +25,7 @@ contract CurveVoterProxy {
     mapping(address => bool) private stashPool;
     mapping(address => bool) private protectedTokens;
 
-    constructor() public {
+    constructor() {
         owner = msg.sender;
     }
 

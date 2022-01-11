@@ -22,42 +22,42 @@ library BoringMath {
     }
 
     function to128(uint256 a) internal pure returns (uint128 c) {
-        require(a <= uint128(-1), "BoringMath: uint128 Overflow");
+        require(a <= type(uint128).max, "BoringMath: uint128 Overflow");
         c = uint128(a);
     }
 
     function to64(uint256 a) internal pure returns (uint64 c) {
-        require(a <= uint64(-1), "BoringMath: uint64 Overflow");
+        require(a <= type(uint64).max, "BoringMath: uint64 Overflow");
         c = uint64(a);
     }
 
     function to32(uint256 a) internal pure returns (uint32 c) {
-        require(a <= uint32(-1), "BoringMath: uint32 Overflow");
+        require(a <= type(uint32).max, "BoringMath: uint32 Overflow");
         c = uint32(a);
     }
 
     function to40(uint256 a) internal pure returns (uint40 c) {
-        require(a <= uint40(-1), "BoringMath: uint40 Overflow");
+        require(a <= type(uint40).max, "BoringMath: uint40 Overflow");
         c = uint40(a);
     }
 
     function to112(uint256 a) internal pure returns (uint112 c) {
-        require(a <= uint112(-1), "BoringMath: uint112 Overflow");
+        require(a <= type(uint112).max, "BoringMath: uint112 Overflow");
         c = uint112(a);
     }
 
     function to224(uint256 a) internal pure returns (uint224 c) {
-        require(a <= uint224(-1), "BoringMath: uint224 Overflow");
+        require(a <= type(uint224).max, "BoringMath: uint224 Overflow");
         c = uint224(a);
     }
 
     function to208(uint256 a) internal pure returns (uint208 c) {
-        require(a <= uint208(-1), "BoringMath: uint208 Overflow");
+        require(a <= type(uint208).max, "BoringMath: uint208 Overflow");
         c = uint208(a);
     }
 
     function to216(uint256 a) internal pure returns (uint216 c) {
-        require(a <= uint216(-1), "BoringMath: uint216 Overflow");
+        require(a <= type(uint216).max, "BoringMath: uint216 Overflow");
         c = uint216(a);
     }
 }

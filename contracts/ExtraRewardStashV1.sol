@@ -36,7 +36,7 @@ contract ExtraRewardStashV1 {
         address _staker,
         address _gauge,
         address _rFactory
-    ) public {
+    ) {
         pid = _pid;
         operator = _operator;
         staker = _staker;

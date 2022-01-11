@@ -11,7 +11,7 @@ contract LockerAdmin {
     ILockedCvx public constant locker = ILockedCvx(0xD18140b4B819b895A3dba5442F959fA44994AF50);
     address public operator;
 
-    constructor() public {
+    constructor() {
         operator = address(0xa3C5A1e09150B75ff251c1a7815A07182c3de2FB);
     }
 

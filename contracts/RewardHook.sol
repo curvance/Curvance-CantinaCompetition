@@ -17,7 +17,7 @@ contract RewardHook {
     address public immutable rewardToken;
     address public immutable stash;
 
-    constructor(address _stash, address _reward) public {
+    constructor(address _stash, address _reward) {
         stash = _stash;
         rewardToken = _reward;
     }

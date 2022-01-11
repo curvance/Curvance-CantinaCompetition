@@ -13,7 +13,7 @@ contract ChefExtraRewards {
     IERC20 public rewardToken;
     address public chef;
 
-    constructor(address chef_, address reward_) public {
+    constructor(address chef_, address reward_) {
         chef = chef_;
         rewardToken = IERC20(reward_);
     }
@@ -23,6 +23,10 @@ contract ChefExtraRewards {
         address _account,
         uint256 _sushiAmount
     ) external view returns (IERC20[] memory, uint256[] memory) {
+        //dummy references
+        _pid;
+        _account;
+
         IERC20[] memory tokens = new IERC20[](1);
         tokens[0] = rewardToken;
         uint256[] memory amounts = new uint256[](1);
@@ -38,6 +42,11 @@ contract ChefExtraRewards {
         uint256 _newLpAmount
     ) external {
         require(msg.sender == chef, "!auth");
+
+        //dummy references
+        _pid;
+        _account;
+        _newLpAmount;
 
         safeRewardTransfer(_recipient, _sushiAmount);
     }

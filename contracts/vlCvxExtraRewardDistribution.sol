@@ -9,14 +9,14 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 //Distribute various rewards to locked cvx holders
 // - Rewards added are assigned to the previous epoch (it was the previous epoch lockers who deserve today's rewards)
 // - As soon as claiming for a token at an epoch is eligibe, no more tokens should be allowed to be added
-// - To allow multiple txs to add to the same token, rewards added during the current epoch (and assigned to previous) will not
-//     be claimable until the beginning of the next epoch. The "reward assigning phase" must be complete first
+// - To allow multiple txs to add to the same token, rewards added during the current epoch (and assigned to previous)
+//   will not be claimable until the beginning of the next epoch. The "reward assigning phase" must be complete first
 //example:
 //Current epoch: 10
 //During this week all addReward() calls are assigned to users in epoch 9
 //Users who were locked in epoch 9 can claim once epoch 11 begins
 // -> epoch 10 is the assigning phase for epoch 9, thus we must wait until 10 is complete before claiming 9
-contract vlCvxExtraRewardDistribution {
+contract VlCvxExtraRewardDistribution {
     using SafeERC20 for IERC20;
     using BoringMath for uint256;
 
@@ -27,7 +27,7 @@ contract vlCvxExtraRewardDistribution {
     mapping(address => uint256[]) public rewardEpochs; // token -> epochList
     mapping(address => mapping(address => uint256)) public userClaims; //token -> account -> last claimed epoch index
 
-    constructor() public {}
+    constructor() {}
 
     function rewardEpochsCount(address _token) external view returns (uint256) {
         return rewardEpochs[_token].length;
@@ -50,8 +50,8 @@ contract vlCvxExtraRewardDistribution {
         //
         //conversely rewards can be piled up with addReward() because claiming is only available to completed epochs
         require(_epoch < cvxlocker.epochCount() - 2, "!prev epoch");
-        uint256 l = rewardEpochs[_token].length;
-        require(l == 0 || rewardEpochs[_token][l - 1] < _epoch, "old epoch");
+        uint256 length = rewardEpochs[_token].length;
+        require(length == 0 || rewardEpochs[_token][length - 1] < _epoch, "old epoch");
 
         _addReward(_token, _amount, _epoch);
     }
@@ -78,8 +78,8 @@ contract vlCvxExtraRewardDistribution {
         rewardData[_token][_epoch] = rewardData[_token][_epoch].add(rPerT);
 
         //add epoch to list
-        uint256 l = rewardEpochs[_token].length;
-        if (l == 0 || rewardEpochs[_token][l - 1] < _epoch) {
+        uint256 length = rewardEpochs[_token].length;
+        if (length == 0 || rewardEpochs[_token][length - 1] < _epoch) {
             rewardEpochs[_token].push(_epoch);
         }
 

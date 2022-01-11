@@ -20,7 +20,7 @@ contract ChefRewardHook is IRewardHook {
 
     bool public isInit;
 
-    constructor() public {}
+    constructor() {}
 
     function init(
         address _distributor,

@@ -20,7 +20,7 @@ contract StashFactory {
     address public operator;
     address public rewardFactory;
 
-    constructor(address _operator, address _rewardFactory) public {
+    constructor(address _operator, address _rewardFactory) {
         operator = _operator;
         rewardFactory = _rewardFactory;
     }
@@ -32,8 +32,14 @@ contract StashFactory {
         address _gauge,
         address _staker,
         uint256 _stashVersion
-    ) external returns (address) {
+    ) external view returns (address) {
         require(msg.sender == operator, "!authorized");
+
+        //dummy references
+        _pid;
+        _gauge;
+        _staker;
+        _stashVersion;
 
         // if(_stashVersion == uint256(3) && IsV3(_gauge)){
         //     //v3

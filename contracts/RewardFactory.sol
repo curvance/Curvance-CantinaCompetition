@@ -18,7 +18,7 @@ contract RewardFactory {
     mapping(address => bool) private rewardAccess;
     mapping(address => uint256[]) public rewardActiveList;
 
-    constructor(address _operator) public {
+    constructor(address _operator) {
         operator = _operator;
     }
 

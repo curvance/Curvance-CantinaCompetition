@@ -19,7 +19,7 @@ contract ArbitratorVault {
     address public operator;
     address public depositor;
 
-    constructor(address _depositor) public {
+    constructor(address _depositor) {
         operator = msg.sender;
         depositor = _depositor;
     }
