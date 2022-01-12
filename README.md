@@ -127,3 +127,26 @@ If you think something needs to be changed in the code please require changes. O
 
 Github will automatically assign 2 developers in round robin manner, counted against to how many pull request reviews
 they are allready assigned to.
+
+## Branching strategy
+
+For now we are using a simple `feature` -> `develop` -> `main` branching model.
+
+### Steps for working on a new feature
+
+- Branch feature branch off of `develop`
+  - Branch name should be `clickupIssueId-branch-name-based-on-task-title`
+- Once your branch is ready, open a pull request and set `develop` as target branch
+
+### Release
+
+For now, admins will merge `develop` with `main` to keep it up to date.
+
+```
+git checkout develop
+git merge main // we prevent conflicts on main, resolve conflicts on develop
+git checkout main
+git merge development
+```
+
+This process will probably change later on.
