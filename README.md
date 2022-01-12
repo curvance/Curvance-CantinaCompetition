@@ -1,6 +1,7 @@
-# Solidity Template
+<p style="text-align: center;width:100%"> <img src="https://pbs.twimg.com/profile_banners/1445781144125857796/1633536472/1500x500"/></p>
 
-My favorite setup for writing Solidity smart contracts.
+<h1> <img style="text-align: center; height: 18px" src="https://user-images.githubusercontent.com/77558763/148961492-99d86d51-41a3-45a8-9af6-bdc1a85c722b.png"/> curvance contracts</h1>
+Main dependencies:
 
 - [Hardhat](https://github.com/nomiclabs/hardhat): compile and run the smart contracts on a local development network
 - [TypeChain](https://github.com/ethereum-ts/TypeChain): generate TypeScript types for smart contracts
@@ -10,10 +11,7 @@ My favorite setup for writing Solidity smart contracts.
 - [Solcover](https://github.com/sc-forks/solidity-coverage): code coverage
 - [Prettier Plugin Solidity](https://github.com/prettier-solidity/prettier-plugin-solidity): code formatter
 
-This is a GitHub template, which means you can reuse it as many times as you want. You can do that by clicking the "Use this
-template" button at the top of the page.
-
-## Usage
+## Yarn scripts
 
 ### Pre Requisites
 
@@ -111,4 +109,21 @@ compiler version is to add the following fields to your VSCode user settings:
 }
 ```
 
-Where of course `v0.8.4+commit.c7e474f2` can be replaced with any other version.
+## Git Commits
+
+### Linting
+
+See: https://github.com/conventional-changelog/commitlint#what-is-commitlint
+
+## Code Reviews
+
+Reviews are a very imporant part of our development process. 2 approvals are required to merge a pull request.
+
+For certain topics that come up again and again during review discussions, this document is the source of truth if it covers the topic (e.g. best practices in Solidity).
+
+If you think something needs to be changed in the code please require changes. Often times reviewers just mention something they feel should maybe look different, but they approve anyways. Your input is important and it is not a negative thing to discuss it with the pull request author before merging.
+
+### Assignment
+
+Github will automatically assign 2 developers in round robin manner, counted against to how many pull request reviews
+they are allready assigned to.
