@@ -115,6 +115,16 @@ compiler version is to add the following fields to your VSCode user settings:
 
 See: https://github.com/conventional-changelog/commitlint#what-is-commitlint
 
+### Troubleshoot
+
+Error:
+
+`Error [ERR_UNSUPPORTED_ESM_URL_SCHEME]: Only file and data URLs are supported by the default ESM loader`
+
+Suggestion:
+
+Bump your `node` version to `16.0.0`.
+
 ## Code Reviews
 
 Reviews are a very imporant part of our development process. 2 approvals are required to merge a pull request.
