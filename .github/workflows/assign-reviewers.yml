@@ -1,0 +1,18 @@
+name: "Assign Reviewers"
+on:
+  pull_request:
+    types: [opened, ready_for_review]
+
+jobs:
+  assign-reviewers:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Assign Team"
+        uses: rowi1de/auto-assign-review-teams@v1.0.1
+        with:
+          repo-token: ${{ secrets.BUTLER_PAT }}
+          org: "curvance"
+          teams: "smart-contract-team" # only works for GitHub Organisation/Teams
+          include-draft: false # Draft PRs will be skipped (default: false)
+          skip-with-manual-reviewers: 2 # Skip this action, if the number of reviwers was already assigned (default: 0)
+          pick-one-from-persons-or-team: false # Will pick out one reviewer from persons and/or the first Github team (default: false)
