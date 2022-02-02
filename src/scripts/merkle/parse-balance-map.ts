@@ -32,7 +32,7 @@ export function parseBalanceMap(balances: OldFormat | NewFormat[]): MerkleDistri
     : Object.keys(balances).map(
         (account): NewFormat => ({
           address: account,
-          earnings: `0x${balances[account].toString(16)}`,
+          earnings: BigNumber.from(balances[account]).toHexString(),
           reasons: "",
         }),
       );
