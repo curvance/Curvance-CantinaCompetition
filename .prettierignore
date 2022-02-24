@@ -10,6 +10,7 @@
 **/dist
 **/node_modules
 **/types
+**/docs
 
 # files
 *.env
