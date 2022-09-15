@@ -1,26 +1,22 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.13;
+pragma solidity 0.8.16;
 
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeTransferLib } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { FeedRegistryInterface } from "@chainlink/contracts/src/v0.8/interfaces/FeedRegistryInterface.sol";
 import { AggregatorV2V3Interface } from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV2V3Interface.sol";
-import { IChainlinkAggregator } from "src/interfaces/external/IChainlinkAggregator.sol";
+import { IChainlinkAggregator } from "src/interfaces/IChainlinkAggregator.sol";
 import { Denominations } from "@chainlink/contracts/src/v0.8/Denominations.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { Math } from "src/utils/Math.sol";
 
 // Curve imports
-import { ICurvePool } from "src/interfaces/external/ICurvePool.sol";
-import { ICurveToken } from "src/interfaces/external/ICurveToken.sol";
+import { ICurvePool } from "src/interfaces/ICurvePool.sol";
+import { ICurveToken } from "src/interfaces/ICurveToken.sol";
 
 // Aave imports
-import { IAaveToken } from "src/interfaces/external/IAaveToken.sol";
-
-// Balancer imports
-import { IBalancerToken } from "src/interfaces/external/IBalancerToken.sol";
-import { IBalancerVault } from "src/interfaces/external/IBalancerVault.sol";
+import { IAaveToken } from "src/interfaces/IAaveToken.sol";
 
 import { console } from "@forge-std/Test.sol";
 
@@ -32,7 +28,7 @@ Curve would grab the minter contract, and maybe even the length of Coins, or get
 Aave could store the underlying token address so we do one less external call?
  */
 /**
- * @title Sommelier Price Router
+ * @title Curvance Price Router
  * @notice Provides a universal interface allowing Sommelier contracts to retrieve secure pricing
  *         data from Chainlink.
  * @author crispymangoes, Brian Le
@@ -48,8 +44,7 @@ contract PriceRouter is Ownable {
     enum PriceDerivative {
         CHAINLINK,
         CURVE,
-        AAVE,
-        BALANCER
+        AAVE
     }
 
     // =========================================== ASSETS CONFIG ===========================================
@@ -104,8 +99,6 @@ contract PriceRouter is Ownable {
             _settings = _setupPriceForChainlinkDerivative(asset, _settings);
         } else if (_priceDerivative == PriceDerivative.CURVE) {
             _settings = _setupPriceForCurveDerivative(asset, _settings);
-        } else if (_priceDerivative == PriceDerivative.BALANCER) {
-            _settings = _setupPriceForBalancerDerivative(asset, _settings);
         }
 
         getAssetConfig[asset] = AssetConfig({
@@ -278,8 +271,6 @@ contract PriceRouter is Ownable {
             price = _getPriceForCurveDerivative(asset, settings);
         } else if (config.priceDerivative == PriceDerivative.AAVE) {
             price = _getPriceForAaveDerivative(asset, settings);
-        } else if (config.priceDerivative == PriceDerivative.BALANCER) {
-            price = _getPriceForBalancerDerivative(asset, settings);
         }
     }
 
@@ -535,45 +526,5 @@ contract PriceRouter is Ownable {
     function _getPriceForAaveDerivative(address asset, bytes memory settings) internal view returns (uint256 price) {
         address underlying = abi.decode(settings, (address));
         price = getValueInUSD(underlying);
-    }
-
-    // =========================================== SUSHI PRICE DERIVATIVE ===========================================
-
-    function _setupPriceForSushiDerivative(address asset, bytes memory settings) internal view returns (bytes memory) {}
-
-    function _getPriceForSushiDerivative(address asset, bytes memory settings) internal view returns (uint256 price) {}
-
-    // =========================================== BALANCER PRICE DERIVATIVE ===========================================
-    //TODO pretty sure balancer pools CAN have tokens added and removed
-    IBalancerVault public constant balancerVault = IBalancerVault(0xBA12222222228d8Ba445958a75a0704d566BF2C8);
-
-    function _setupPriceForBalancerDerivative(address asset, bytes memory settings)
-        internal
-        view
-        returns (bytes memory)
-    {
-        bytes32 poolId = abi.decode(settings, (bytes32));
-
-        if (poolId != IBalancerToken(asset).getPoolId()) revert("Wrong pool");
-
-        return settings;
-    }
-
-    //TODO I think this needs some safet checks to make sure the pool values make sense.
-    //TODO Balancer does allow people to take flashloans out against the vault, but I don't think this updates the pool balances.
-    function _getPriceForBalancerDerivative(address asset, bytes memory settings)
-        internal
-        view
-        returns (uint256 price)
-    {
-        bytes32 poolId = abi.decode(settings, (bytes32));
-
-        (address[] memory tokens, uint256[] memory amounts, ) = balancerVault.getPoolTokens(poolId);
-        uint256 usdSumValue = 0;
-        for (uint256 i = 0; i < tokens.length; i++) {
-            usdSumValue += getValueInUSD(tokens[i]).mulDivDown(amounts[i], 10**ERC20(tokens[i]).decimals());
-        }
-
-        price = usdSumValue.mulDivDown(10**ERC20(asset).decimals(), IBalancerToken(asset).totalSupply());
     }
 }

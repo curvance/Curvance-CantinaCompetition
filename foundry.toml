@@ -18,7 +18,7 @@ force = false
 # The EVM version by hardfork name
 evm_version = 'london'
 # Override the Solidity version (this overrides `auto_detect_solc`)
-#solc_version = '0.8.13'
+#solc_version = '0.8.16'
 # Whether or not Forge should auto-detect the solc version to use
 auto_detect_solc = true
 # Disables downloading missing solc versions
