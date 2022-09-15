@@ -10,7 +10,7 @@ import { IChainlinkAggregator } from "src/interfaces/IChainlinkAggregator.sol";
 import { Denominations } from "@chainlink/contracts/src/v0.8/Denominations.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { Math } from "src/utils/Math.sol";
-import { CToken } from "@compound/CToken.sol";
+//import { CToken } from "@compound/CToken.sol";
 
 // Curve imports
 import { ICurvePool } from "src/interfaces/ICurvePool.sol";
@@ -119,84 +119,10 @@ contract PriceRouter is Ownable {
 
     // ======================================= PRICING OPERATIONS =======================================
 
-    function getUnderlyingPrice(CToken cToken) external view returns (uint){
-
-    }
-
-    /**
-     * @notice Get the value of an asset in terms of another asset.
-     * @param baseAsset address of the asset to get the price of in terms of the quote asset
-     * @param amount amount of the base asset to price
-     * @param quoteAsset address of the asset that the base asset is priced in terms of
-     * @return value value of the amount of base assets specified in terms of the quote asset
-     */
-    function getValue(
-        ERC20 baseAsset,
-        uint256 amount,
-        ERC20 quoteAsset
-    ) external view returns (uint256 value) {
-        value = amount.mulDivDown(getExchangeRate(baseAsset, quoteAsset), 10**baseAsset.decimals());
-    }
-
-    /**
-     * @notice Attempted an operation with arrays of unequal lengths that were expected to be equal length.
-     */
-    error PriceRouter__LengthMismatch();
-
-    /**
-     * @notice Get the total value of multiple assets in terms of another asset.
-     * @param baseAssets addresses of the assets to get the price of in terms of the quote asset
-     * @param amounts amounts of each base asset to price
-     * @param quoteAsset address of the assets that the base asset is priced in terms of
-     * @return value total value of the amounts of each base assets specified in terms of the quote asset
-     */
-    function getValues(
-        ERC20[] memory baseAssets,
-        uint256[] memory amounts,
-        ERC20 quoteAsset
-    ) external view returns (uint256 value) {
-        uint256 numOfAssets = baseAssets.length;
-        if (numOfAssets != amounts.length) revert PriceRouter__LengthMismatch();
-
-        uint8 quoteAssetDecimals = quoteAsset.decimals();
-
-        for (uint256 i; i < numOfAssets; i++) {
-            ERC20 baseAsset = baseAssets[i];
-
-            value += amounts[i].mulDivDown(
-                _getExchangeRate(address(baseAsset), address(quoteAsset), quoteAssetDecimals),
-                10**baseAsset.decimals()
-            );
-        }
-    }
-
-    /**
-     * @notice Get the exchange rate between two assets.
-     * @param baseAsset address of the asset to get the exchange rate of in terms of the quote asset
-     * @param quoteAsset address of the asset that the base asset is exchanged for
-     * @return exchangeRate rate of exchange between the base asset and the quote asset
-     */
-    function getExchangeRate(ERC20 baseAsset, ERC20 quoteAsset) public view returns (uint256 exchangeRate) {
-        exchangeRate = _getExchangeRate(address(baseAsset), address(quoteAsset), quoteAsset.decimals());
-    }
-
-    /**
-     * @notice Get the exchange rates between multiple assets and another asset.
-     * @param baseAssets addresses of the assets to get the exchange rates of in terms of the quote asset
-     * @param quoteAsset address of the asset that the base assets are exchanged for
-     * @return exchangeRates rate of exchange between the base assets and the quote asset
-     */
-    function getExchangeRates(ERC20[] memory baseAssets, ERC20 quoteAsset)
-        external
-        view
-        returns (uint256[] memory exchangeRates)
-    {
-        uint8 quoteAssetDecimals = quoteAsset.decimals();
-
-        uint256 numOfAssets = baseAssets.length;
-        exchangeRates = new uint256[](numOfAssets);
-        for (uint256 i; i < numOfAssets; i++)
-            exchangeRates[i] = _getExchangeRate(address(baseAssets[i]), address(quoteAsset), quoteAssetDecimals);
+    //TODO cToken should be a CToken type, not address
+    //TODO what does this need to report the price in? ETH?
+    function getUnderlyingPrice(address cToken) external view returns (uint256) {
+        return _getExchangeRate(cToken, WETH, 18);
     }
 
     // =========================================== HELPER FUNCTIONS ===========================================
@@ -275,7 +201,7 @@ contract PriceRouter is Ownable {
         }
     }
 
-    // =========================================== CHAINLINK PRICE DERIVATIVE ===========================================
+    // =========================================== CHAINLINK PRICE DERIVATIVE ==========================================
     /**
      * @notice Feed Registry contract used to get chainlink data feeds.
      */
@@ -528,4 +454,19 @@ contract PriceRouter is Ownable {
         address underlying = abi.decode(settings, (address));
         price = getValueInUSD(underlying);
     }
+
+    // =========================================== COMPOUND PRICE DERIVATIVE ===========================================
+
+    // Basically just needs to unwrap it.
+    function _setupPriceForCompoundDerivative(address asset, bytes memory settings)
+        internal
+        view
+        returns (bytes memory)
+    {}
+
+    function _getPriceForCompoundDerivative(address asset, bytes memory settings)
+        internal
+        view
+        returns (uint256 price)
+    {}
 }
