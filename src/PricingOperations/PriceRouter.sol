@@ -2,7 +2,7 @@
 pragma solidity 0.8.16;
 
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { SafeTransferLib } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { FeedRegistryInterface } from "@chainlink/contracts/src/v0.8/interfaces/FeedRegistryInterface.sol";
 import { AggregatorV2V3Interface } from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV2V3Interface.sol";
@@ -10,6 +10,7 @@ import { IChainlinkAggregator } from "src/interfaces/IChainlinkAggregator.sol";
 import { Denominations } from "@chainlink/contracts/src/v0.8/Denominations.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { Math } from "src/utils/Math.sol";
+import { CToken } from "@compound/CToken.sol";
 
 // Curve imports
 import { ICurvePool } from "src/interfaces/ICurvePool.sol";
@@ -20,21 +21,14 @@ import { IAaveToken } from "src/interfaces/IAaveToken.sol";
 
 import { console } from "@forge-std/Test.sol";
 
-//TODO Read me
-/**
-Thinking about removing the min/max price and heartbeat values and instead passing in a bytes abi encoded value that each price derivative knows how to interact with
-So Chainlink would grab the min/max prices and the heartbeat
-Curve would grab the minter contract, and maybe even the length of Coins, or get the array of coins? As long as there is no way to  add more  coins to the list or remove them
-Aave could store the underlying token address so we do one less external call?
- */
 /**
  * @title Curvance Price Router
  * @notice Provides a universal interface allowing Sommelier contracts to retrieve secure pricing
  *         data from Chainlink.
- * @author crispymangoes, Brian Le
+ * @author crispymangoes
  */
 contract PriceRouter is Ownable {
-    using SafeTransferLib for ERC20;
+    using SafeERC20 for ERC20;
     using SafeCast for int256;
     using Math for uint256;
 
@@ -46,6 +40,9 @@ contract PriceRouter is Ownable {
         CURVE,
         AAVE
     }
+
+    /// @notice Indicator that this is a PriceOracle contract (for inspection)
+    bool public constant isPriceOracle = true;
 
     // =========================================== ASSETS CONFIG ===========================================
 
@@ -121,6 +118,10 @@ contract PriceRouter is Ownable {
     }
 
     // ======================================= PRICING OPERATIONS =======================================
+
+    function getUnderlyingPrice(CToken cToken) external view returns (uint){
+
+    }
 
     /**
      * @notice Get the value of an asset in terms of another asset.
