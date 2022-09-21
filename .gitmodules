@@ -1,6 +1,3 @@
-[submodule "lib/compound-protocol"]
-	path = lib/compound-protocol
-	url = https://github.com/compound-finance/compound-protocol
 [submodule "lib/curve-dao-contracts"]
 	path = lib/curve-dao-contracts
 	url = https://github.com/curvefi/curve-dao-contracts
