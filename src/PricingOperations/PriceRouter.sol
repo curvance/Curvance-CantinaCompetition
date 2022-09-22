@@ -10,7 +10,8 @@ import { IChainlinkAggregator } from "src/interfaces/IChainlinkAggregator.sol";
 import { Denominations } from "@chainlink/contracts/src/v0.8/Denominations.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { Math } from "src/utils/Math.sol";
-//import { CToken } from "@compound/CToken.sol";
+import { CErc20Storage } from "@compound/CTokenInterfaces.sol";
+import { CToken } from "@compound/CToken.sol";
 
 // Curve imports
 import { ICurvePool } from "src/interfaces/ICurvePool.sol";
@@ -118,11 +119,18 @@ contract PriceRouter is Ownable {
     }
 
     // ======================================= PRICING OPERATIONS =======================================
-
-    //TODO cToken should be a CToken type, not address
-    //TODO what does this need to report the price in? ETH?
-    function getUnderlyingPrice(address cToken) external view returns (uint256) {
-        return _getExchangeRate(cToken, WETH, 18);
+    //TODO from compounds oracle
+    /**
+     * @notice Get the underlying price of a cToken, in the format expected by the Comptroller.
+     * @dev Implements the PriceOracle interface for Compound v2.
+     * @dev unlike compound oracle, this oracle does not assume stable coins are $1.
+     * @param cToken The cToken address for price retrieval
+     * @return price denominated in USD for the given cToken address, in the format expected by the Comptroller.
+     */
+    function getUnderlyingPrice(CToken cToken) external view returns (uint256 price) {
+        address underlying = CErc20Storage(address(cToken)).underlying();
+        // Comptroller wants price with 6 decimals of precision.
+        price = getValueInUSD(underlying).changeDecimals(8, 36 - ERC20(underlying).decimals());
     }
 
     // =========================================== HELPER FUNCTIONS ===========================================
