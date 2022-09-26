@@ -1,14 +1,18 @@
 [default]
 # The source directory
-src = 'src'
+src = 'contracts'
 # The test directory
-test = 'test'
+test = 'tests'
 # The artifact directory
-out = 'out'
+out = 'artifacts'
 # A list of paths to look for libraries in
-libs = ['lib']
+lib = ['tests/lib']
 # A list of remappings
-remappings = []
+remappings = [
+    '@openzeppelin/=node_modules/@openzeppelin/',
+    'hardhat/=node_modules/hardhat/',
+    'tests/=tests'
+]
 # A list of deployed libraries to link against
 libraries = []
 # Whether to cache builds or not
