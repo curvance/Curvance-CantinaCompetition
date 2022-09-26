@@ -70,7 +70,6 @@ contract CErc20 is CErc20Interface, CToken { //}, CErc20Interface {
      * @dev Accrues interest whether or not the operation succeeds, unless reverted
      * @param redeemTokens The number of cTokens to redeem into underlying
      */
-    /// TODO Should this be nonReentrant?
     function redeem(uint256 redeemTokens) external override {
         redeemInternal(redeemTokens);
     }

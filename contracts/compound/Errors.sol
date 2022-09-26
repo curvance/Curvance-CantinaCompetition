@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
-
-abstract contract CTokenErrors {
-        
-    ////////// ERRORS //////////
+abstract contract CommonErros {
     error AddressUnauthorized();
+}
+
+abstract contract CTokenErrors is CommonErros {
+    ////////// ERRORS //////////
     error FailedFreshnessCheck();
     error CannotEqualZero();
     error ExcessiveValue();
@@ -19,23 +20,15 @@ abstract contract CTokenErrors {
     /// TODO SEARCH FOR THESE FOR POTENTIAL CHANGES
     error ReduceReservesCashNotAvailable();
     error ReduceReservesCashValidation();
-
-
 }
 
 abstract contract CErc20Errors {
-
-
-    error AddressUnauthorized();
     error InvalidUnderlying();
     error TransferFailure();
     error ActionFailure();
-
 }
 
-abstract contract CErc20DelegationErrors {
-
-    error AddressUnauthorized();
+abstract contract CErc20DelegationErrors is CommonErros {
     error CannotSendValueToFallback();
     error MintFailure();
 }

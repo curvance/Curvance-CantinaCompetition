@@ -46,7 +46,7 @@ Pulled directly out of ComptrollerG7.sol
             updateCveBorrowIndex(address(cToken), cToken.borrowIndex());
         } else if (cveSpeed != 0) {
             // Add the COMP market
-            (bool isListed, bool isComped) = ComptrollerInterface(comptroller).getIsMarkets(address(cToken));
+            (bool isListed, ,) = ComptrollerInterface(comptroller).getIsMarkets(address(cToken));
             if (isListed != true) {
                 revert MarketNotListed();
             }
@@ -216,7 +216,7 @@ Pulled directly out of ComptrollerG7.sol
      * @param holder The address to claim COMP for
      */
     function claimCve(address holder) public {
-        return claimCve(holder, ComptrollerInterface(comptroller).getAllMarkets);
+        return claimCve(holder, ComptrollerInterface(comptroller).getAllMarkets());
     }
 
     /**
@@ -245,7 +245,8 @@ Pulled directly out of ComptrollerG7.sol
     ) public {
         for (uint i = 0; i < cTokens.length; i++) {
             CToken cToken = cTokens[i];
-            if (!comptroller.markets[address(cToken)].isListed) {
+            (bool isListed, , ) = ComptrollerInterface(comptroller).getIsMarkets(address(cToken));
+            if (!isListed) {
                 revert MarketNotListed();
             }
             if (borrowers == true) {
@@ -347,7 +348,7 @@ Pulled directly out of ComptrollerG7.sol
      * @return The list of market addresses
      */
     function getAllMarkets() public view returns (CToken[] memory) {
-        return comptroller.allMarkets;
+        return ComptrollerInterface(comptroller).getAllMarkets();
     }
 
     function getBlockNumber() public view returns (uint) {
@@ -366,7 +367,7 @@ Pulled directly out of ComptrollerG7.sol
      * @notice Checks caller is admin, or this contract is becoming the new implementation
      */
     function adminOrInitializing() internal view returns (bool) {
-        return msg.sender == admin || msg.sender == comptroller.comptrollerImplementation;
+        return msg.sender == admin || msg.sender == ComptrollerInterface(comptroller).comptrollerImplementation();
     }
 
 
