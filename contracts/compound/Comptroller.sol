@@ -149,7 +149,7 @@ contract Comptroller is ComptrollerInterface { //ComptrollerStorage,
             return 0;
         }
 
-        if (marketToJoin.accountMembership[borrower] != true) {
+        if (marketToJoin.accountMembership[borrower] == true) {
             // already joined
             return 0;
         }

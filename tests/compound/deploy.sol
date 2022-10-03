@@ -5,6 +5,8 @@ import "contracts/compound/Comptroller.sol";
 import "contracts/compound/Unitroller.sol";
 import "contracts/compound/CompRewards.sol";
 import "contracts/compound/JumpRateModel.sol";
+import "contracts/compound/PriceOracle.sol";
+import "contracts/compound/SimplePriceOracle.sol";
 
 import "contracts/compound/interfaces/InterestRateModel.sol";
 import "contracts/compound/interfaces/IRewards.sol";
@@ -16,6 +18,7 @@ contract DeployCompound is DSTestPlus {
     Comptroller public comptroller;
     Unitroller public unitroller;
     CompRewards public compRewards;
+    SimplePriceOracle public priceOracle;
     address public jumpRateModel;
 
     function makeCompound() public {
@@ -25,6 +28,8 @@ contract DeployCompound is DSTestPlus {
     }
 
     function makeUnitroller() public returns (address) {
+        priceOracle = new SimplePriceOracle();
+
         unitroller = new Unitroller();
         compRewards = new CompRewards(address(unitroller), address(admin));
         comptroller = new Comptroller(IReward(address(compRewards)));
@@ -33,6 +38,8 @@ contract DeployCompound is DSTestPlus {
         comptroller._become(unitroller);
 
         Comptroller(address(unitroller))._setRewardsContract(IReward(address(compRewards)));
+        Comptroller(address(unitroller))._setPriceOracle(PriceOracle(address(priceOracle)));
+        Comptroller(address(unitroller))._setCloseFactor(5e17);
 
         return address(unitroller);
     }
