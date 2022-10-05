@@ -323,6 +323,6 @@ contract TestCErc20Immutable is DSTestPlus {
         hevm.prank(liquidator);
         cDAI.liquidateBorrow(user, 12e18, CTokenInterface(cDAI));
 
-        assertEq(cDAI.balanceOf(liquidator), 100e18);
+        assertEq(cDAI.balanceOf(liquidator), 5832000000000000000);
     }
 }

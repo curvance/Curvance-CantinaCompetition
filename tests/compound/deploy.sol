@@ -40,6 +40,7 @@ contract DeployCompound is DSTestPlus {
         Comptroller(address(unitroller))._setRewardsContract(IReward(address(compRewards)));
         Comptroller(address(unitroller))._setPriceOracle(PriceOracle(address(priceOracle)));
         Comptroller(address(unitroller))._setCloseFactor(5e17);
+        Comptroller(address(unitroller))._setLiquidationIncentive(5e17);
 
         return address(unitroller);
     }
