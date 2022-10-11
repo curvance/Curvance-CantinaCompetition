@@ -24,10 +24,11 @@ import { console } from "@forge-std/Test.sol";
 
 /**
  * @title Curvance Price Router
- * @notice Provides a universal interface allowing Sommelier contracts to retrieve secure pricing
+ * @notice Provides a universal interface allowing Curvance contracts to retrieve secure pricing
  *         data from Chainlink.
  * @author crispymangoes
  */
+//TODO add uniV3 TWAP sanity
 contract PriceRouter is Ownable {
     using SafeERC20 for ERC20;
     using SafeCast for int256;
@@ -119,7 +120,6 @@ contract PriceRouter is Ownable {
     }
 
     // ======================================= PRICING OPERATIONS =======================================
-    //TODO from compounds oracle
     /**
      * @notice Get the underlying price of a cToken, in the format expected by the Comptroller.
      * @dev Implements the PriceOracle interface for Compound v2.
