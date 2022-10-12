@@ -950,7 +950,7 @@ contract Comptroller is ComptrollerInterface { //ComptrollerStorage,
 
     function _addMarketInternal(address cToken) internal {
         for (uint i = 0; i < allMarkets.length; i ++) {
-            if (allMarkets[i] != CToken(cToken)) {
+            if (allMarkets[i] == CToken(cToken)) {
                 revert MarketAlreadyListed();
             }
         }
