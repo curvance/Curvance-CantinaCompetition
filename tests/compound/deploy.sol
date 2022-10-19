@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
+import "contracts/compound/Governance/Cve.sol";
 import "contracts/compound/Comptroller.sol";
 import "contracts/compound/Unitroller.sol";
 import "contracts/compound/CompRewards.sol";
@@ -15,6 +16,7 @@ import "tests/lib/DSTestPlus.sol";
 
 contract DeployCompound is DSTestPlus {
     address public admin;
+    Cve public cve;
     Comptroller public comptroller;
     Unitroller public unitroller;
     CompRewards public compRewards;
@@ -31,7 +33,9 @@ contract DeployCompound is DSTestPlus {
         priceOracle = new SimplePriceOracle();
 
         unitroller = new Unitroller();
-        compRewards = new CompRewards(address(unitroller), address(admin));
+        cve = new Cve(admin);
+        compRewards = new CompRewards(address(unitroller), address(admin), address(cve));
+        cve.transfer(address(compRewards), 1000e18);
         comptroller = new Comptroller(IReward(address(compRewards)));
 
         unitroller._setPendingImplementation(address(comptroller));

@@ -16,36 +16,39 @@ import "./interfaces/IComptroller.sol";
  */
 contract CompRewards is MarketStorage, RewardsStorage, IReward {
 
+    address cveAddress;
+    
     error AddressUnauthorized();
     error MarketNotListed();
     error InMustContainZero();
 
-    constructor(address _comptroller, address _admin) {
+    constructor(address _comptroller, address _admin, address _cveAddress) {
         comptroller = _comptroller;
         admin = _admin;
+        cveAddress = _cveAddress;
     }
 
 /**
 Pulled directly out of ComptrollerG7.sol
  */
 
-    /*** Comp Distribution ***/
+    /*** Cve Distribution ***/
 
     /**
      * @notice Set CVE speed for a single market
-     * @param cToken The market whose COMP speed to update
+     * @param cToken The market whose Cve speed to update
      * @param cveSpeed New CVE speed for market
      */
     function setCveSpeedInternal(CToken cToken, uint cveSpeed) internal {
         uint currentCveSpeed = cveSpeeds[address(cToken)];
         if (currentCveSpeed != 0) {
-            // note that COMP speed could be set to 0 to halt liquidity rewards for a market
+            // note that Cve speed could be set to 0 to halt liquidity rewards for a market
             // Exp memory borrowIndex = Exp({mantissa: cToken.borrowIndex()});
             updateCveSupplyIndex(address(cToken));
             // updateCompBorrowIndex(address(cToken), borrowIndex);
             updateCveBorrowIndex(address(cToken), cToken.borrowIndex());
         } else if (cveSpeed != 0) {
-            // Add the COMP market
+            // Add the Cve market
             (bool isListed, ,) = ComptrollerInterface(comptroller).getIsMarkets(address(cToken));
             if (isListed != true) {
                 revert MarketNotListed();
@@ -80,7 +83,7 @@ Pulled directly out of ComptrollerG7.sol
     }
 
     /**
-     * @notice Accrue COMP to the market by updating the supply index
+     * @notice Accrue Cve to the market by updating the supply index
      * @param cToken The market whose supply index to update
      */
     function updateCveSupplyIndex(address cToken) internal {
@@ -90,9 +93,9 @@ Pulled directly out of ComptrollerG7.sol
         uint deltaBlocks = blockNumber - uint(supplyState.block);//sub_(blockNumber, uint(supplyState.block));
         if (deltaBlocks > 0 && supplySpeed > 0) {
             uint supplyTokens = CToken(cToken).totalSupply();
-            uint compAccrued = deltaBlocks * supplySpeed;//mul_(deltaBlocks, supplySpeed);
+            uint cveAccrued = deltaBlocks * supplySpeed;//mul_(deltaBlocks, supplySpeed);
             // Double memory ratio = supplyTokens > 0 ? fraction(compAccrued, supplyTokens) : Double({mantissa: 0});
-            uint ratioScaled = supplyTokens > 0 ? ((compAccrued * expScale) / supplyTokens) : (0 * expScale);
+            uint ratioScaled = supplyTokens > 0 ? ((cveAccrued * expScale) / supplyTokens) : 0;
             // Double memory index = add_(Double({mantissa: supplyState.index}), ratio);
             uint indexScaled = (supplyState.index + ratioScaled);
             cveSupplyState[cToken] = CveMarketState({
@@ -106,7 +109,7 @@ Pulled directly out of ComptrollerG7.sol
     }
 
     /**
-     * @notice Accrue COMP to the market by updating the borrow index
+     * @notice Accrue Cve to the market by updating the borrow index
      * @param cToken The market whose borrow index to update
      */
     function updateCveBorrowIndex(address cToken, uint marketBorrowIndex) internal {
@@ -115,11 +118,11 @@ Pulled directly out of ComptrollerG7.sol
         uint blockNumber = getBlockNumber();
         uint deltaBlocks = blockNumber - uint(borrowState.block);//sub_(blockNumber, uint(borrowState.block));
         if (deltaBlocks > 0 && borrowSpeed > 0) {
-            uint borrowAmount = CToken(cToken).totalBorrows() / marketBorrowIndex;//div_(CToken(cToken).totalBorrows(), marketBorrowIndex);
-            uint compAccrued = deltaBlocks * borrowSpeed;//mul_(deltaBlocks, borrowSpeed);
+            uint borrowAmount = CToken(cToken).totalBorrows() * expScale / marketBorrowIndex;//div_(CToken(cToken).totalBorrows(), marketBorrowIndex);
+            uint cveAccrued = deltaBlocks * borrowSpeed;//mul_(deltaBlocks, borrowSpeed);
             // Double memory ratio = borrowAmount > 0 ? fraction(compAccrued, borrowAmount) : Double({mantissa: 0});
             // Double memory index = add_(Double({mantissa: borrowState.index}), ratio);
-            uint ratioScaled = borrowAmount > 0 ? ((compAccrued * expScale) / borrowAmount) : (0 * expScale);
+            uint ratioScaled = borrowAmount > 0 ? ((cveAccrued * expScale) / borrowAmount) : (0);
             uint indexScaled = (borrowState.index + ratioScaled);
             cveBorrowState[cToken] = CveMarketState({
                 index: SafeMath.safe224(indexScaled),
@@ -138,9 +141,9 @@ Pulled directly out of ComptrollerG7.sol
     }
 
     /**
-     * @notice Calculate COMP accrued by a supplier and possibly transfer it to them
+     * @notice Calculate Cve accrued by a supplier and possibly transfer it to them
      * @param cToken The market in which the supplier is interacting
-     * @param supplier The address of the supplier to distribute COMP to
+     * @param supplier The address of the supplier to distribute Cve to
      */
     function distributeSupplierCve(address cToken, address supplier) internal {
         CveMarketState storage supplyState = cveSupplyState[cToken];
@@ -160,17 +163,17 @@ Pulled directly out of ComptrollerG7.sol
         // Double memory deltaIndex = sub_(supplyIndex, supplierIndex);
         uint deltaIndex = supplyIndex - supplierIndex;
         uint supplierTokens = CToken(cToken).balanceOf(supplier);
-        uint supplierDelta = supplierTokens * deltaIndex;//mul_(supplierTokens, deltaIndex);
+        uint supplierDelta = supplierTokens * deltaIndex / expScale;//mul_(supplierTokens, deltaIndex);
         uint supplierAccrued = cveAccrued[supplier] + supplierDelta;//add_(compAccrued[supplier], supplierDelta);
         cveAccrued[supplier] = supplierAccrued;
         emit DistributedSupplierCve(CToken(cToken), supplier, supplierDelta, supplyIndex);//.mantissa);
     }
 
     /**
-     * @notice Calculate COMP accrued by a borrower and possibly transfer it to them
+     * @notice Calculate Cve accrued by a borrower and possibly transfer it to them
      * @dev Borrowers will not begin to accrue until after the first interaction with the protocol.
      * @param cToken The market in which the borrower is interacting
-     * @param borrower The address of the borrower to distribute COMP to
+     * @param borrower The address of the borrower to distribute Cve to
      */
     function distributeBorrowerCve(address cToken, address borrower, uint marketBorrowIndex) internal {
         CveMarketState storage borrowState = cveBorrowState[cToken];
@@ -181,29 +184,30 @@ Pulled directly out of ComptrollerG7.sol
         uint borrowerIndex = cveBorrowerIndex[cToken][borrower];
         cveBorrowerIndex[cToken][borrower] = borrowIndex;
 
-        // if (borrowerIndex.mantissa > 0) {
-        if (borrowerIndex > 0) {
-            // Double memory deltaIndex = sub_(borrowIndex, borrowerIndex);
-            uint deltaIndex = borrowIndex - borrowIndex;
-            uint borrowerAmount = CToken(cToken).borrowBalanceStored(borrower) - marketBorrowIndex;//div_(CToken(cToken).borrowBalanceStored(borrower), marketBorrowIndex);
-            uint borrowerDelta = borrowerAmount * deltaIndex;//mul_(borrowerAmount, deltaIndex);
-            uint borrowerAccrued = cveAccrued[borrower] + borrowerDelta;//add_(compAccrued[borrower], borrowerDelta);
-            cveAccrued[borrower] = borrowerAccrued;
-
-            emit DistributedBorrowerCve(CToken(cToken), borrower, borrowerDelta, borrowIndex); //.mantissa);
+        if (borrowerIndex == 0 && borrowIndex > 0) {
+            borrowerIndex = cveInitialIndex;
         }
+
+        // Double memory deltaIndex = sub_(borrowIndex, borrowerIndex);
+        uint deltaIndex = borrowIndex - borrowerIndex;
+        uint borrowerAmount = CToken(cToken).borrowBalanceStored(borrower) * expScale / marketBorrowIndex;//div_(CToken(cToken).borrowBalanceStored(borrower), marketBorrowIndex);
+        uint borrowerDelta = borrowerAmount * deltaIndex / expScale;//mul_(borrowerAmount, deltaIndex);
+        uint borrowerAccrued = cveAccrued[borrower] + borrowerDelta;//add_(compAccrued[borrower], borrowerDelta);
+        cveAccrued[borrower] = borrowerAccrued;
+
+        emit DistributedBorrowerCve(CToken(cToken), borrower, borrowerDelta, borrowIndex); //.mantissa);
     }
 
     /**
-     * @notice Calculate additional accrued COMP for a contributor since last accrual
+     * @notice Calculate additional accrued Cve for a contributor since last accrual
      * @param contributor The address to calculate contributor rewards for
      */
     function updateContributorRewards(address contributor) public {
-        uint compSpeed = cveContributorSpeeds[contributor];
+        uint cveSpeed = cveContributorSpeeds[contributor];
         uint blockNumber = getBlockNumber();
         uint deltaBlocks = blockNumber - lastContributorBlock[contributor];//sub_(blockNumber, lastContributorBlock[contributor]);
-        if (deltaBlocks > 0 && compSpeed > 0) {
-            uint newAccrued = deltaBlocks * compSpeed;//mul_(deltaBlocks, compSpeed);
+        if (deltaBlocks > 0 && cveSpeed > 0) {
+            uint newAccrued = deltaBlocks * cveSpeed;//mul_(deltaBlocks, compSpeed);
             uint contributorAccrued = cveAccrued[contributor] + newAccrued;//add_(compAccrued[contributor], newAccrued);
 
             cveAccrued[contributor] = contributorAccrued;
@@ -212,17 +216,17 @@ Pulled directly out of ComptrollerG7.sol
     }
 
     /**
-     * @notice Claim all the comp accrued by holder in all markets
-     * @param holder The address to claim COMP for
+     * @notice Claim all the cve accrued by holder in all markets
+     * @param holder The address to claim Cve for
      */
     function claimCve(address holder) public {
         return claimCve(holder, ComptrollerInterface(comptroller).getAllMarkets());
     }
 
     /**
-     * @notice Claim all the comp accrued by holder in the specified markets
-     * @param holder The address to claim COMP for
-     * @param cTokens The list of markets to claim COMP in
+     * @notice Claim all the cve accrued by holder in the specified markets
+     * @param holder The address to claim Cve for
+     * @param cTokens The list of markets to claim Cve in
      */
     function claimCve(address holder, CToken[] memory cTokens) public {
         address[] memory holders = new address[](1);
@@ -231,11 +235,11 @@ Pulled directly out of ComptrollerG7.sol
     }
 
     /**
-     * @notice Claim all comp accrued by the holders
-     * @param holders The addresses to claim COMP for
-     * @param cTokens The list of markets to claim COMP in
-     * @param borrowers Whether or not to claim COMP earned by borrowing
-     * @param suppliers Whether or not to claim COMP earned by supplying
+     * @notice Claim all cve accrued by the holders
+     * @param holders The addresses to claim Cve for
+     * @param cTokens The list of markets to claim Cve in
+     * @param borrowers Whether or not to claim Cve earned by borrowing
+     * @param suppliers Whether or not to claim Cve earned by supplying
      */
     function claimCve(
         address[] memory holders,
@@ -269,30 +273,30 @@ Pulled directly out of ComptrollerG7.sol
     }
 
     /**
-     * @notice Transfer COMP to the user
-     * @dev Note: If there is not enough COMP, we do not perform the transfer all.
-     * @param user The address of the user to transfer COMP to
-     * @param amount The amount of COMP to (possibly) transfer
-     * @return The amount of COMP which was NOT transferred to the user
+     * @notice Transfer Cve to the user
+     * @dev Note: If there is not enough Cve, we do not perform the transfer all.
+     * @param user The address of the user to transfer Cve to
+     * @param amount The amount of Cve to (possibly) transfer
+     * @return The amount of Cve which was NOT transferred to the user
      */
     function grantCveInternal(address user, uint amount) internal returns (uint) {
         Cve cve = Cve(getCveAddress());
-        uint compRemaining = cve.balanceOf(address(this));
-        if (amount > 0 && amount <= compRemaining) {
+        uint cveRemaining = cve.balanceOf(address(this));
+        if (amount > 0 && amount <= cveRemaining) {
             cve.transfer(user, amount);
             return 0;
         }
         return amount;
     }
 
-    /*** Comp Distribution Admin ***/
+    /*** Cve Distribution Admin ***/
 /// TODO THIS IS FOR COMPENSATION TO CONTRIBUTORS TO THE COMPOUND PROTOCOL
 //      REQUIRES PASSING ON-CHAIN GOVERNANCE
     /**
-     * @notice Transfer COMP to the recipient
-     * @dev Note: If there is not enough COMP, we do not perform the transfer all.
-     * @param recipient The address of the recipient to transfer COMP to
-     * @param amount The amount of COMP to (possibly) transfer
+     * @notice Transfer Cve to the recipient
+     * @dev Note: If there is not enough Cve, we do not perform the transfer all.
+     * @param recipient The address of the recipient to transfer Cve to
+     * @param amount The amount of Cve to (possibly) transfer
      */
     function _grantCve(address recipient, uint amount) public {
         if (!adminOrInitializing()) {
@@ -308,9 +312,9 @@ Pulled directly out of ComptrollerG7.sol
     }
 
     /**
-     * @notice Set COMP speed for a single market
-     * @param cToken The market whose COMP speed to update
-     * @param cveSpeed New COMP speed for market
+     * @notice Set Cve speed for a single market
+     * @param cToken The market whose Cve speed to update
+     * @param cveSpeed New Cve speed for market
      */
     function _setCveSpeed(CToken cToken, uint cveSpeed) public {
         if (!adminOrInitializing()) {
@@ -321,7 +325,7 @@ Pulled directly out of ComptrollerG7.sol
 
     /**
      * @notice Set CVE speed for a single contributor
-     * @param contributor The contributor whose COMP speed to update
+     * @param contributor The contributor whose Cve speed to update
      * @param cveSpeed New CVE speed for contributor
      */
     function _setContributorCveSpeed(address contributor, uint cveSpeed) public {
@@ -329,7 +333,7 @@ Pulled directly out of ComptrollerG7.sol
             revert AddressUnauthorized();
         }
 
-        // note that COMP speed could be set to 0 to halt liquidity rewards for a contributor
+        // note that Cve speed could be set to 0 to halt liquidity rewards for a contributor
         updateContributorRewards(contributor);
         if (cveSpeed == 0) {
             // release storage
@@ -356,11 +360,11 @@ Pulled directly out of ComptrollerG7.sol
     }
 
     /**
-     * @notice Return the address of the COMP token
-     * @return The address of COMP
+     * @notice Return the address of the CVE token
+     * @return The address of CVE
      */
-    function getCveAddress() public pure returns (address) {
-        return 0xc00e94Cb662C3520282E6f5717214004A7f26888;
+    function getCveAddress() public view returns (address) {
+        return cveAddress;
     }
 
     /**
