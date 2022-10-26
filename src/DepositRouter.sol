@@ -14,6 +14,7 @@ import { CErc20Storage } from "@compound/CTokenInterfaces.sol";
 import { CToken } from "@compound/CToken.sol";
 import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import { Uint32Array } from "src/libraries/Uint32Array.sol";
+import { IYearnVault } from "src/interfaces/Yearn/IYearnVault.sol";
 
 // Curve imports
 import { ICurvePool } from "src/interfaces/ICurvePool.sol";
@@ -52,12 +53,13 @@ contract DepositRouter is Ownable {
     //TODO might need a harvest function, and harveest params, and maybe a harvest swap path?
     struct Position {
         uint128 totalSupply; // total amount of outstanding shares, used with `balance` to determine a share price.
-        uint128 totalBalance; // total balance of all operators in position.
+        uint128 totalBalance; // total balance of all operators in position. Think this needs to be totalBalance of all assets in the position.
+        //TODO ^^^^^^
         uint128 rewardRate; // Vested rewards distributed per second.
         uint64 lastAccrualTimestamp; // Last timestamp when vested tokens were claimed.
         uint64 endTimestamp; // The end time stamp for when all current rewards are vested.
         Platform platform;
-        AccrualType accrueType; // Tells the keeper how to harvest this position
+        bytes positionData; // Stores arbritrary data for the position.
         address asset; // The underlying asset in a position.
     }
     mapping(address => mapping(uint32 => uint128)) public operatorPositionShares;
@@ -65,35 +67,40 @@ contract DepositRouter is Ownable {
     mapping(uint32 => Position) public positions;
     ///@dev 0 position id is reserved for empty
 
+    uint32 public constant REWARD_PERIOD = 7 days;
+
     struct Operator {
         address owner; // What address can make changes to how this operator invests into positions.
         bool isOperator; // Bool indicating whether this operator has been set up.
-        uint128 sharesOutstanding;
         address underlying;
+        uint256 holdingBalance;
         uint256 openPositions; // Positions operator currently has funds in.
         uint256 positionRatios; // Desired ratio for funds in positions. Could maybe allow a position to be just this contract, where it allows for cheaper use deposit/withdraws, and keepers perform batched TXs.
+        //TODO if positionRatios do not add up to 100, then remainder is designated for holding position.
     }
 
     mapping(address => Operator) public operators;
+    uint32 public positionCount;
 
     function addPosition(
         address _asset,
         Platform _platform,
-        AccrualType _accrueType,
-        uint32 _positionId
+        bytes memory _positionData
     ) external onlyOwner {
-        if (activePositions.contains(_positionId)) revert("Position already present");
-        activePositions.push(_positionId);
-        positions[_positionId] = Position({
+        uint32 positionId = positionCount + 1;
+        if (activePositions.contains(positionId)) revert("Position already present");
+        activePositions.push(positionId);
+        positions[positionId] = Position({
             totalSupply: 0,
             totalBalance: 0,
             rewardRate: 0,
             lastAccrualTimestamp: uint64(block.timestamp),
             endTimestamp: type(uint64).max,
             platform: _platform,
-            accrueType: _accrueType,
+            positionData: _positionData,
             asset: _asset
         });
+        positionCount++;
     }
 
     ///@dev operators can only be in positions with the SAME ASSET.
@@ -107,13 +114,20 @@ contract DepositRouter is Ownable {
         require(!operators[_operator].isOperator, "Operator already added.");
         //Positions are assumed to be packed to the front, IE you can not have a zero position between two non zero positions.
         // There should at the very least be position id 1 in the positions value.
-        ///@dev position id 1 is the holding postion, where users funds are always deposited.
+        ///@dev position index 0 is the holding postion, where users funds are always deposited.
         require(_positions > 0, "0 is an invalid positions");
+        // Loop through _positions and make sure it is valid.
+        for (uint32 i = 0; i < 8; i++) {
+            uint32 positionId = uint32(_positions >> (32 * i));
+            if (positionId == 0) {
+                require(uint256(_positions >> (32 * i)) == 0, "Positions must be packed to the front.");
+            }
+        }
         operators[_operator] = Operator({
             owner: _owner,
             isOperator: true,
-            sharesOutstanding: 0,
             underlying: _underlying,
+            holdingBalance: 0,
             openPositions: _positions,
             positionRatios: _positionRatios
         });
@@ -137,43 +151,127 @@ contract DepositRouter is Ownable {
      * Takes underlying token and deposits it into the underlying protocol
      * returns the amount of shares
      */
-    function depositTo(uint256 amount) public returns (uint256 userShares) {
+    function deposit(uint256 amount) public returns (uint256) {
         address operator = msg.sender;
         require(operators[operator].isOperator, "Only Operators can deposit.");
         //TODO could coordinate with Zeus to have this transfer from user themselves, then users approve this contract. But this could get sketchy if an operator went rogue;
         ERC20(operators[operator].underlying).safeTransferFrom(operator, address(this), amount);
-        // Find shares owed to user.
-        userShares = (amount * _balanceOf(operator)) / operators[operator].sharesOutstanding;
 
         // Deposit assets into operator holding position.
-        uint32 holdingPosition = uint32(operators[operator].openPositions); //TODO need unchecked?
-        _depositToPosition(operator, holdingPosition);
+        operators[operator].holdingBalance += amount;
+
+        return amount;
     }
 
     /**
-     * Calculates vested reward tokens without writing to state.
-     * I think technically this function could be used in normal deposit functions? Like do we really need to update the balance, and the lastAccrualTimestamp every time someone deposits or withdraws?
-     * Well we do need to update the balance cuz funds are moving in and out
+     * Updates a positions totalBalance, lastAccrualTimestamp, and determines the new Reward Rate, and sets new end timestamp.
      */
-    function _rewardsDue(address position) internal view returns (uint256 rewards) {}
-
-    function _depositToPosition(address _operator, uint32 _positionId) internal returns (uint128 shares) {
-        Position memory p = positions[_positionId];
-
-        if (p.platform == Platform.CONVEX) _depositToConvex();
-        else if (p.platform == Platform.YEARN) _depositToYearn();
-
-        // Give operator credit
-        operatorPositionShares[_operator][_positionId] += shares;
+    function harvestPosition(uint32 _positionId) public {
+        Position storage p = positions[_positionId];
+        _updatePositionBalance(p); // Updates totalBalance and lastAccrualTimestamp
+        if (p.platform == Platform.YEARN) {
+            _harvestYearnPosition(p);
+        }
     }
 
-    function _depositToConvex() internal {
-        //I think these need to write to the pool position?
+    function depositToPosition(
+        address _operator,
+        uint32 _positionId,
+        uint128 _amount
+    ) public {
+        Position storage p = positions[_positionId];
+        _updatePositionBalance(p); // This will take pending rewards and add it to p.totalBalance
+        // So it needs to update totalBalance, and lastAccrualTimestamp
+
+        if (p.platform == Platform.YEARN) {
+            _depositToYearn(p, _amount);
+        }
+
+        // Now that pending rewards have been accounted for shares are more expensive.
+        // Find shares owed to operator.
+        uint128 operatorShares = p.totalBalance == 0 ? _amount : (_amount * p.totalSupply) / p.totalBalance;
+        operatorPositionShares[_operator][_positionId] += operatorShares;
+        p.totalSupply += operatorShares;
+        p.totalBalance += _amount;
     }
 
-    function _withdrawFromConvex() internal {}
+    function withdrawFromPosition(
+        address _operator,
+        uint32 _positionId,
+        uint128 _amount
+    ) external {
+        Position storage p = positions[_positionId];
+        _updatePositionBalance(p); // This will take pending rewards and add it to p.totalBalance
+        // So it needs to update totalBalance, and lastAccrualTimestamp
 
-    function _depositToYearn() internal {}
+        if (p.platform == Platform.YEARN) {
+            _withdrawFromYearn(p, _amount);
+        }
+
+        // Now that pending rewards have been accounted for shares are more expensive.
+        // Find shares owed to operator.
+        // console.log((uint256(_amount) * uint256(p.totalSupply)) / p.totalBalance);
+        // uint128 operatorShares = (_amount * p.totalSupply) / p.totalBalance;
+        // operatorPositionShares[_operator][_positionId] -= operatorShares;
+        // p.totalSupply -= operatorShares;
+        // p.totalBalance -= _amount;
+    }
+
+    function _updatePositionBalance(Position storage p) internal {
+        //This takes the
+        uint128 pendingRewards;
+        uint64 time = uint64(block.timestamp);
+        if (time > p.endTimestamp) {
+            pendingRewards = (p.endTimestamp - p.lastAccrualTimestamp) * p.rewardRate;
+        } else {
+            pendingRewards = (time - p.lastAccrualTimestamp) * p.rewardRate;
+        }
+        p.lastAccrualTimestamp = time;
+        p.totalBalance += pendingRewards;
+    }
+
+    function _depositToYearn(Position storage p, uint128 _amount) internal {
+        address vaultAddress = abi.decode(p.positionData, (address));
+        IYearnVault vault = IYearnVault(vaultAddress);
+        ERC20(p.asset).safeApprove(address(vault), _amount);
+        vault.deposit(_amount);
+    }
+
+    function _harvestYearnPosition(Position storage p) internal {
+        // Since yearn tokens accrue rewards in real time, this function is really just returning the difference in snapshotted balances.
+        // totalAssets = current stored balance + pending + realized reward balance.
+        address vaultAddress = abi.decode(p.positionData, (address));
+        IYearnVault vault = IYearnVault(vaultAddress);
+        uint128 currentPendingRewards = (p.endTimestamp - p.lastAccrualTimestamp) * p.rewardRate;
+        uint128 assetsAccountedFor = p.totalBalance + currentPendingRewards;
+        //TODO might need to use the vault decimals.
+        uint128 currentBalance = uint128((vault.balanceOf(address(this)) * vault.pricePerShare()) / 1e18);
+        if (assetsAccountedFor > currentBalance) return;
+        else {
+            uint128 yield = currentBalance - assetsAccountedFor; // yearn token balanceOf this address * the exchange rate to the underlying - totalAssets
+            p.rewardRate = (yield + currentPendingRewards) / REWARD_PERIOD;
+            p.endTimestamp = uint64(block.timestamp) + REWARD_PERIOD;
+            // lastAccrualTimestamp was already updated by _updatePositionBalance;
+        }
+    }
+
+    function _withdrawFromYearn(Position storage p, uint128 _amount) internal {
+        address vaultAddress = abi.decode(p.positionData, (address));
+        IYearnVault vault = IYearnVault(vaultAddress);
+        uint256 shares = (10**vault.decimals() * _amount) / vault.pricePerShare();
+        vault.withdraw(shares);
+    }
+
+    //TODO I think this needs to calculate earnings before
+    // function _depositToConvex(uint128 _amount) internal returns (uint256) {
+    //     //This only has the logic to put assets into Convex.
+    // }
+
+    // function _harvestConvexPosition(Position memory p) internal {}
+
+    // function _withdrawFromConvex(uint128 _amount) internal returns (uint256) {
+    //     // this only has the logic to remove assets from convex.
+    // }
 
     // CToken `getCashPrior` should call this.
     function balanceOf(address _operator) public view returns (uint256) {
@@ -189,6 +287,8 @@ contract DepositRouter is Ownable {
             if (positionId == 0) break;
             else balance += _calcOperatorBalance(_operator, positionId);
         }
+        // Add holding position balance.
+        balance += operators[_operator].holdingBalance;
         // Calculates balance + pending balance, does not facotr in pending rewards to be harvested.
     }
 
