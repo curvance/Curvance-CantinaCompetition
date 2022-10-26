@@ -52,8 +52,8 @@ contract DepositRouter is Ownable {
 
     //TODO might need a harvest function, and harveest params, and maybe a harvest swap path?
     struct Position {
-        uint128 totalSupply; // total amount of outstanding shares, used with `balance` to determine a share price.
-        uint128 totalBalance; // total balance of all operators in position. Think this needs to be totalBalance of all assets in the position.
+        uint256 totalSupply; // total amount of outstanding shares, used with `balance` to determine a share price.
+        uint256 totalBalance; // total balance of all operators in position. Think this needs to be totalBalance of all assets in the position.
         //TODO ^^^^^^
         uint128 rewardRate; // Vested rewards distributed per second.
         uint64 lastAccrualTimestamp; // Last timestamp when vested tokens were claimed.
@@ -62,7 +62,7 @@ contract DepositRouter is Ownable {
         bytes positionData; // Stores arbritrary data for the position.
         address asset; // The underlying asset in a position.
     }
-    mapping(address => mapping(uint32 => uint128)) public operatorPositionShares;
+    mapping(address => mapping(uint32 => uint256)) public operatorPositionShares;
     uint32[] public activePositions; // Array of all active positions.
     mapping(uint32 => Position) public positions;
     ///@dev 0 position id is reserved for empty
@@ -163,6 +163,21 @@ contract DepositRouter is Ownable {
         return amount;
     }
 
+    function withdraw(uint256 amount) public returns (uint256) {
+        address operator = msg.sender;
+        require(operators[operator].isOperator, "Only Operators can withdraw.");
+        //TODO could coordinate with Zeus to have this transfer from user themselves, then users approve this contract. But this could get sketchy if an operator went rogue;
+
+        // Withdraw assets from the holding positions.
+        //TODO this should withdraw from positions in order.
+        console.log("Balance", ERC20(operators[operator].underlying).balanceOf(address(this)));
+        operators[operator].holdingBalance -= amount;
+
+        ERC20(operators[operator].underlying).transfer(operator, 100e18 + 0);
+
+        return amount;
+    }
+
     /**
      * Updates a positions totalBalance, lastAccrualTimestamp, and determines the new Reward Rate, and sets new end timestamp.
      */
@@ -174,47 +189,69 @@ contract DepositRouter is Ownable {
         }
     }
 
-    function depositToPosition(
+    //TODO I think the deposit and withdraw functions need to confirm the amount was deposited and the amount was withdrawn!
+    function rebalance(
         address _operator,
-        uint32 _positionId,
-        uint128 _amount
+        uint32 _fromPosition,
+        uint32 _toPosition,
+        uint256 _amount
     ) public {
-        Position storage p = positions[_positionId];
-        _updatePositionBalance(p); // This will take pending rewards and add it to p.totalBalance
-        // So it needs to update totalBalance, and lastAccrualTimestamp
-
-        if (p.platform == Platform.YEARN) {
-            _depositToYearn(p, _amount);
-        }
-
-        // Now that pending rewards have been accounted for shares are more expensive.
-        // Find shares owed to operator.
-        uint128 operatorShares = p.totalBalance == 0 ? _amount : (_amount * p.totalSupply) / p.totalBalance;
-        operatorPositionShares[_operator][_positionId] += operatorShares;
-        p.totalSupply += operatorShares;
-        p.totalBalance += _amount;
+        _withdrawFromPosition(_operator, _fromPosition, _amount);
+        _depositToPosition(_operator, _toPosition, _amount);
     }
 
-    function withdrawFromPosition(
+    function _depositToPosition(
         address _operator,
         uint32 _positionId,
-        uint128 _amount
-    ) external {
-        Position storage p = positions[_positionId];
-        _updatePositionBalance(p); // This will take pending rewards and add it to p.totalBalance
-        // So it needs to update totalBalance, and lastAccrualTimestamp
+        uint256 _amount
+    ) internal {
+        if (_positionId == 0) {
+            // Depositing into holding position.
+            operators[_operator].holdingBalance += _amount;
+        } else {
+            Position storage p = positions[_positionId];
+            _updatePositionBalance(p); // This will take pending rewards and add it to p.totalBalance
+            // So it needs to update totalBalance, and lastAccrualTimestamp
 
-        if (p.platform == Platform.YEARN) {
-            _withdrawFromYearn(p, _amount);
+            if (p.platform == Platform.YEARN) {
+                _depositToYearn(p, _amount);
+            }
+
+            // Now that pending rewards have been accounted for shares are more expensive.
+            // Find shares owed to operator.
+            uint256 sharesPerAsset = p.totalBalance == 0 ? 1e18 : (1e18 * p.totalSupply) / p.totalBalance;
+            uint256 operatorShares = (_amount * sharesPerAsset) / 1e18;
+            operatorPositionShares[_operator][_positionId] += operatorShares;
+            p.totalSupply += operatorShares;
+            p.totalBalance += _amount;
         }
+    }
 
-        // Now that pending rewards have been accounted for shares are more expensive.
-        // Find shares owed to operator.
-        // console.log((uint256(_amount) * uint256(p.totalSupply)) / p.totalBalance);
-        // uint128 operatorShares = (_amount * p.totalSupply) / p.totalBalance;
-        // operatorPositionShares[_operator][_positionId] -= operatorShares;
-        // p.totalSupply -= operatorShares;
-        // p.totalBalance -= _amount;
+    function _withdrawFromPosition(
+        address _operator,
+        uint32 _positionId,
+        uint256 _amount
+    ) internal {
+        if (_positionId == 0) {
+            // Withdrawing from holding position.
+            operators[_operator].holdingBalance -= _amount;
+        } else {
+            Position storage p = positions[_positionId];
+            _updatePositionBalance(p); // This will take pending rewards and add it to p.totalBalance
+            // So it needs to update totalBalance, and lastAccrualTimestamp
+
+            if (p.platform == Platform.YEARN) {
+                _withdrawFromYearn(p, _amount);
+            }
+
+            // Now that pending rewards have been accounted for shares are more expensive.
+            // Find shares owed to operator.
+            uint256 assetsPerShare = (1e18 * p.totalBalance) / p.totalSupply;
+            uint256 operatorShares = ((1e18 * _amount) / assetsPerShare);
+            operatorPositionShares[_operator][_positionId] -= operatorShares;
+            p.totalSupply -= operatorShares;
+            p.totalBalance -= _amount;
+        }
     }
 
     function _updatePositionBalance(Position storage p) internal {
@@ -230,7 +267,7 @@ contract DepositRouter is Ownable {
         p.totalBalance += pendingRewards;
     }
 
-    function _depositToYearn(Position storage p, uint128 _amount) internal {
+    function _depositToYearn(Position storage p, uint256 _amount) internal {
         address vaultAddress = abi.decode(p.positionData, (address));
         IYearnVault vault = IYearnVault(vaultAddress);
         ERC20(p.asset).safeApprove(address(vault), _amount);
@@ -238,24 +275,31 @@ contract DepositRouter is Ownable {
     }
 
     function _harvestYearnPosition(Position storage p) internal {
-        // Since yearn tokens accrue rewards in real time, this function is really just returning the difference in snapshotted balances.
+        // Since yearn tokens accrue rewards in real time, this function is really just returning the difference in new yield to yield already accounted for.
         // totalAssets = current stored balance + pending + realized reward balance.
         address vaultAddress = abi.decode(p.positionData, (address));
         IYearnVault vault = IYearnVault(vaultAddress);
-        uint128 currentPendingRewards = (p.endTimestamp - p.lastAccrualTimestamp) * p.rewardRate;
-        uint128 assetsAccountedFor = p.totalBalance + currentPendingRewards;
+        uint128 currentPendingRewards;
+        if (p.rewardRate > 0) {
+            currentPendingRewards = (p.endTimestamp - p.lastAccrualTimestamp) * p.rewardRate;
+        }
+        uint256 assetsAccountedFor = p.totalBalance + currentPendingRewards;
         //TODO might need to use the vault decimals.
         uint128 currentBalance = uint128((vault.balanceOf(address(this)) * vault.pricePerShare()) / 1e18);
         if (assetsAccountedFor > currentBalance) return;
         else {
-            uint128 yield = currentBalance - assetsAccountedFor; // yearn token balanceOf this address * the exchange rate to the underlying - totalAssets
-            p.rewardRate = (yield + currentPendingRewards) / REWARD_PERIOD;
+            uint256 yield = currentBalance - assetsAccountedFor; // yearn token balanceOf this address * the exchange rate to the underlying - totalAssets
+            p.rewardRate = uint128((yield + currentPendingRewards) / REWARD_PERIOD);
             p.endTimestamp = uint64(block.timestamp) + REWARD_PERIOD;
             // lastAccrualTimestamp was already updated by _updatePositionBalance;
+            console.log("Information");
+            console.log(p.rewardRate);
+            console.log(p.lastAccrualTimestamp);
+            console.log(p.endTimestamp);
         }
     }
 
-    function _withdrawFromYearn(Position storage p, uint128 _amount) internal {
+    function _withdrawFromYearn(Position storage p, uint256 _amount) internal {
         address vaultAddress = abi.decode(p.positionData, (address));
         IYearnVault vault = IYearnVault(vaultAddress);
         uint256 shares = (10**vault.decimals() * _amount) / vault.pricePerShare();
@@ -293,13 +337,14 @@ contract DepositRouter is Ownable {
     }
 
     function _calcOperatorBalance(address _operator, uint32 _positionId) internal view returns (uint256) {
-        uint128 operatorShares = operatorPositionShares[_operator][_positionId];
+        uint256 operatorShares = operatorPositionShares[_operator][_positionId];
         Position memory p = positions[_positionId];
         uint64 currentTime = uint64(block.timestamp);
-        uint256 pendingBalance = currentTime > p.endTimestamp
-            ? (p.rewardRate * (p.endTimestamp - p.lastAccrualTimestamp)) / 1e18
-            : (p.rewardRate * (currentTime - p.lastAccrualTimestamp)) / 1e18;
-        return ((p.totalBalance + pendingBalance) * operatorShares) / p.totalSupply;
+        uint256 pendingBalance = currentTime < p.endTimestamp
+            ? (p.rewardRate * (currentTime - p.lastAccrualTimestamp))
+            : (p.rewardRate * (p.endTimestamp - p.lastAccrualTimestamp));
+        uint256 assetsPerShare = (1e18 * (p.totalBalance + pendingBalance)) / p.totalSupply;
+        return (operatorShares * assetsPerShare) / 1e18;
     }
 
     // returns the underlying asset

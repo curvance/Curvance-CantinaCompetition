@@ -13,4 +13,10 @@ interface IYearnVault {
     function decimals() external view returns (uint256);
 
     function balanceOf(address _owner) external view returns (uint256);
+
+    function totalSupply() external view returns (uint256);
+
+    function totalAssets() external view returns (uint256);
+
+    function totalDebt() external view returns (uint256);
 }

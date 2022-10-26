@@ -37,34 +37,57 @@ contract DepositRouterTest is Test {
         uint256 assets = 100e18;
         router.deposit(assets);
 
-        router.depositToPosition(address(this), 1, uint128(assets));
+        // router.depositToPosition(address(this), 1, uint128(assets));
+        router.rebalance(address(this), 0, 1, assets);
     }
 
     function testWithdraw() external {
         uint256 assets = 100e18;
         router.deposit(assets);
 
-        router.depositToPosition(address(this), 1, uint128(assets));
+        // router.depositToPosition(address(this), 1, uint128(assets));
+        router.rebalance(address(this), 0, 1, assets);
 
         uint256 assetsToWithdraw = (daiVault.balanceOf(address(router)) * daiVault.pricePerShare()) / 1e18;
         console.log(assetsToWithdraw);
-        router.withdrawFromPosition(address(this), 1, uint128(assetsToWithdraw));
+        router.rebalance(address(this), 1, 0, assets);
+        router.withdraw(assetsToWithdraw);
+        // router.withdrawFromPosition(address(this), 1, uint128(assetsToWithdraw));
     }
 
     function testHarvest() external {
         uint256 assets = 100e18;
         router.deposit(assets);
 
-        router.depositToPosition(address(this), 1, uint128(assets));
+        // router.depositToPosition(address(this), 1, uint128(assets));
+        router.rebalance(address(this), 0, 1, assets);
 
-        uint256 sharePrice = daiVault.pricePerShare();
-
-        stdstore.target(address(daiVault)).sig(daiVault.pricePerShare.selector).checked_write(
-            uint256(sharePrice + 100)
-        );
+        _simulateYearnYield(daiVault, 1_000_000e18);
 
         router.harvestPosition(1);
+
+        console.log("Operator Balance", router.balanceOf(address(this)));
+
+        console.log("Time", block.timestamp);
+        vm.warp(block.timestamp + 7 days);
+        console.log("Time", block.timestamp);
+
+        console.log("Operator Balance", router.balanceOf(address(this)));
+
+        uint256 assetsToWithdraw = 100.5e18;
+
+        console.log("DAI", DAI.balanceOf(address(router)));
+        router.rebalance(address(this), 1, 0, assetsToWithdraw);
+        console.log("DAI", DAI.balanceOf(address(router)));
+        router.withdraw(assetsToWithdraw);
+        // router.withdrawFromPosition(address(this), 1, uint128(assetsToWithdraw));
     }
 
     // ========================================= HELPER FUNCTIONS =========================================
+
+    function _simulateYearnYield(IYearnVault vault, uint256 yield) internal {
+        // Simulates yield earned by increasing totalDebt which increases totalAssets which increases the share price.
+        uint256 currentDebt = vault.totalDebt();
+        stdstore.target(address(vault)).sig(vault.totalDebt.selector).checked_write(uint256(currentDebt + yield));
+    }
 }
