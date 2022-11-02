@@ -5,11 +5,11 @@ import "contracts/compound/Governance/Cve.sol";
 import "contracts/compound/Comptroller.sol";
 import "contracts/compound/Unitroller.sol";
 import "contracts/compound/CompRewards.sol";
-import "contracts/compound/JumpRateModel.sol";
+import "contracts/compound/InterestRateModel/JumpRateModel.sol";
+import "contracts/compound/InterestRateModel/InterestRateModel.sol";
 import "contracts/compound/PriceOracle.sol";
 import "contracts/compound/SimplePriceOracle.sol";
 
-import "contracts/compound/interfaces/InterestRateModel.sol";
 import "contracts/compound/interfaces/IRewards.sol";
 
 import "tests/lib/DSTestPlus.sol";

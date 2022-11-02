@@ -7,9 +7,9 @@ contract JugLike {
     // --- Data ---
     struct Ilk {
         uint256 duty;
-        uint256  rho;
+        uint256 rho;
     }
 
-    mapping (bytes32 => Ilk) public ilks;
+    mapping(bytes32 => Ilk) public ilks;
     uint256 public base;
 }

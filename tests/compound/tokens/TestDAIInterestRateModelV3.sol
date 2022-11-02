@@ -7,11 +7,11 @@ import "contracts/compound/Comptroller.sol";
 import "contracts/compound/CErc20Immutable.sol";
 import "contracts/compound/Errors.sol";
 import "contracts/compound/SimplePriceOracle.sol";
-import "contracts/compound/DAIInterestRateModelV3.sol";
+import "contracts/compound/InterestRateModel/DAIInterestRateModelV3.sol";
+import "contracts/compound/InterestRateModel/InterestRateModel.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/compound/interfaces/IComptroller.sol";
-import "contracts/compound/interfaces/InterestRateModel.sol";
 
 import "tests/compound/deploy.sol";
 import "tests/lib/DSTestPlus.sol";

@@ -5,7 +5,7 @@ import "./interfaces/IComptroller.sol";
 import { CTokenInterface } from "./interfaces/ICToken.sol";
 //import { CErc20Interface } from "./interfaces/ICtoken.sol";
 import "./interfaces/IEip20.sol";
-import "./interfaces/InterestRateModel.sol";
+import "./InterestRateModel/InterestRateModel.sol";
 // import { CTokenStorage } from "./Storage.sol";
 import { ReentrancyGuard } from "./ReentrancyGuard.sol";
 //import { CTokenErrors } from "./Errors.sol";

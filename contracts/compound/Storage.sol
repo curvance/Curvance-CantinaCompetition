@@ -5,7 +5,7 @@ import "./CToken.sol";
 import "./PriceOracle.sol";
 import "./interfaces/IRewards.sol";
 import { ComptrollerInterface } from "./interfaces/IComptroller.sol";
-import "./interfaces/InterestRateModel.sol";
+import "./InterestRateModel/InterestRateModel.sol";
 import "./Errors.sol";
 
 contract UnitrollerStorage {
