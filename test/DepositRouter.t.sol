@@ -5,6 +5,7 @@ import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IYearnVault } from "src/interfaces/Yearn/IYearnVault.sol";
 import { DepositRouter } from "src/DepositRouter.sol";
+import { IBaseRewardPool } from "src/interfaces/Convex/IBaseRewardPool.sol";
 
 import { Test, stdStorage, console, StdStorage, stdError } from "@forge-std/Test.sol";
 import { Math } from "src/utils/Math.sol";
@@ -18,22 +19,66 @@ contract DepositRouterTest is Test {
 
     IYearnVault daiVault = IYearnVault(0xdA816459F1AB5631232FE5e97a05BBBb94970c95);
 
+    IYearnVault curve3CryptoVault = IYearnVault(0xE537B5cc158EB71037D4125BDD7538421981E6AA);
+
     ERC20 private DAI = ERC20(0x6B175474E89094C44Da98b954EedeAC495271d0F);
+    ERC20 private constant WETH = ERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
+
+    ERC20 private curve3Crypto = ERC20(0xc4AD29ba4B3c580e6D59105FFf484999997675Ff);
+    uint256 curve3PoolConvexPid = 38;
+    address private curve3CryptoPool = 0xD51a44d3FaE010294C616388b506AcdA1bfAAE46;
+    address private curve3PoolReward = 0x9D5C5E364D81DaB193b72db9E9BE9D8ee669B652;
+
+    address private constant crveth = 0x8301AE4fc9c624d1D396cbDAa1ed877821D7C511; // use curve's new CRV-ETH crypto pool to sell our CRV
+    address private constant cvxeth = 0xB576491F1E6e5E62f1d8F26062Ee822B40B0E0d4; // use curve's new CVX-ETH crypto pool to sell our CVX
 
     function setUp() external {
         router = new DepositRouter();
 
-        router.addPosition(address(DAI), DepositRouter.Platform.YEARN, abi.encode(address(daiVault)));
+        address[8] memory pools;
+        uint256 fromAndTos;
+        uint256 depositData;
+        router.addPosition(
+            curve3Crypto,
+            DepositRouter.Platform.YEARN,
+            abi.encode(address(curve3CryptoVault)),
+            pools,
+            fromAndTos,
+            depositData
+        );
 
-        router.addOperator(address(this), address(this), address(DAI), 1, 0);
+        pools[0] = crveth;
+        pools[1] = cvxeth;
+        fromAndTos |= 1;
+        fromAndTos |= 1 << 16;
 
-        deal(address(DAI), address(this), type(uint256).max);
-        DAI.safeApprove(address(router), type(uint256).max);
+        uint256 coinsLength = 3;
+        uint256 targetIndex = 2;
+        bool useUnderlying = false;
+
+        depositData |= uint256(uint160(address(WETH)));
+        depositData |= coinsLength << 160;
+        depositData |= targetIndex << 168;
+        depositData |= uint256(useUnderlying ? 1 : 0) << 176;
+        router.addPosition(
+            curve3Crypto,
+            DepositRouter.Platform.CONVEX,
+            abi.encode(curve3PoolConvexPid, curve3PoolReward, curve3CryptoPool),
+            pools,
+            fromAndTos,
+            depositData
+        );
+        uint256 positions = 2 << 32;
+        positions |= 1;
+        router.addOperator(address(this), address(this), curve3Crypto, positions, 0);
+
+        deal(address(curve3Crypto), address(this), type(uint128).max);
+        curve3Crypto.safeApprove(address(router), type(uint256).max);
 
         // stdstore.target(address(cellar)).sig(cellar.shareLockPeriod.selector).checked_write(uint256(0));
     }
 
-    function testDeposit() external {
+    function testYearnDeposit() external {
         uint256 assets = 100e18;
         router.deposit(assets);
 
@@ -41,46 +86,106 @@ contract DepositRouterTest is Test {
         router.rebalance(address(this), 0, 1, assets);
     }
 
-    function testWithdraw() external {
+    function testYearnWithdraw() external {
         uint256 assets = 100e18;
         router.deposit(assets);
 
         // router.depositToPosition(address(this), 1, uint128(assets));
         router.rebalance(address(this), 0, 1, assets);
 
-        uint256 assetsToWithdraw = (daiVault.balanceOf(address(router)) * daiVault.pricePerShare()) / 1e18;
+        uint256 assetsToWithdraw = router.balanceOf(address(this));
         console.log(assetsToWithdraw);
-        router.rebalance(address(this), 1, 0, assets);
+        router.rebalance(address(this), 1, 0, assetsToWithdraw);
         router.withdraw(assetsToWithdraw);
-        // router.withdrawFromPosition(address(this), 1, uint128(assetsToWithdraw));
     }
 
-    function testHarvest() external {
+    function testYearnHarvest() external {
         uint256 assets = 100e18;
         router.deposit(assets);
 
         // router.depositToPosition(address(this), 1, uint128(assets));
         router.rebalance(address(this), 0, 1, assets);
 
-        _simulateYearnYield(daiVault, 1_000_000e18);
+        _simulateYearnYield(curve3CryptoVault, 100e18);
 
         router.harvestPosition(1);
 
-        console.log("Operator Balance", router.balanceOf(address(this)));
+        uint256 operatorBalanceBefore = router.balanceOf(address(this));
+        assertLe(operatorBalanceBefore, assets, "No yield has vested yet.");
 
-        console.log("Time", block.timestamp);
         vm.warp(block.timestamp + 7 days);
-        console.log("Time", block.timestamp);
 
-        console.log("Operator Balance", router.balanceOf(address(this)));
+        uint256 operatorBalanceAfter = router.balanceOf(address(this));
 
-        uint256 assetsToWithdraw = 100.5e18;
+        assertGt(
+            operatorBalanceAfter,
+            operatorBalanceBefore,
+            "Operator balance should have increased from vested yield."
+        );
 
-        console.log("DAI", DAI.balanceOf(address(router)));
-        router.rebalance(address(this), 1, 0, assetsToWithdraw);
-        console.log("DAI", DAI.balanceOf(address(router)));
+        router.rebalance(address(this), 1, 0, operatorBalanceAfter);
+        assertGe(
+            router.balanceOf(address(this)),
+            operatorBalanceAfter,
+            "Balance should not decrease during a rebalance."
+        );
+        router.withdraw(operatorBalanceAfter);
+    }
+
+    function testConvexDeposit() external {
+        uint256 assets = 100e18;
+        router.deposit(assets);
+
+        // router.depositToPosition(address(this), 1, uint128(assets));
+        router.rebalance(address(this), 0, 2, assets);
+    }
+
+    function testConvexWithdraw() external {
+        uint256 assets = 100e18;
+        router.deposit(assets);
+
+        uint256 assetsToWithdraw = router.balanceOf(address(this));
+
+        // router.depositToPosition(address(this), 1, uint128(assets));
+        router.rebalance(address(this), 0, 2, assets);
+
+        assetsToWithdraw = router.balanceOf(address(this));
+        router.rebalance(address(this), 2, 0, assetsToWithdraw);
+
         router.withdraw(assetsToWithdraw);
-        // router.withdrawFromPosition(address(this), 1, uint128(assetsToWithdraw));
+    }
+
+    function testConvexHarvest() external {
+        uint256 assets = 10_000e18;
+        // uint256 gas = gasleft();
+        router.deposit(assets);
+        // console.log("Gas Used for Deposit", gas - gasleft());
+
+        // gas = gasleft();
+        router.rebalance(address(this), 0, 2, assets);
+        // console.log("Gas Used for Rebalance 0 -> 2", gas - gasleft());
+
+        IBaseRewardPool pool = IBaseRewardPool(curve3PoolReward);
+
+        // Advance time to earn CRV and CVX rewards
+        vm.warp(block.timestamp + 3 days);
+
+        // Harvest rewards.
+        // gas = gasleft();
+        router.harvestPosition(2);
+        // console.log("Gas Used for Harvest", gas - gasleft());
+
+        // Fully vest rewards
+        vm.warp(block.timestamp + 7 days);
+
+        uint256 assetsToWithdraw = router.balanceOf(address(this));
+        // gas = gasleft();
+        router.rebalance(address(this), 2, 0, assetsToWithdraw);
+        // console.log("Gas Used for Rebalance 0 -> 2", gas - gasleft());
+        deal(address(curve3Crypto), address(this), 0);
+        // gas = gasleft();
+        router.withdraw(assetsToWithdraw);
+        // console.log("Gas Used for Withdraw", gas - gasleft());
     }
 
     // ========================================= HELPER FUNCTIONS =========================================

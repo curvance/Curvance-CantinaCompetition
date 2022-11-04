@@ -4,24 +4,14 @@ pragma solidity 0.8.16;
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { FeedRegistryInterface } from "@chainlink/contracts/src/v0.8/interfaces/FeedRegistryInterface.sol";
-import { AggregatorV2V3Interface } from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV2V3Interface.sol";
-import { IChainlinkAggregator } from "src/interfaces/IChainlinkAggregator.sol";
-import { Denominations } from "@chainlink/contracts/src/v0.8/Denominations.sol";
-import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+
 import { Math } from "src/utils/Math.sol";
-import { CErc20Storage } from "@compound/CTokenInterfaces.sol";
-import { CToken } from "@compound/CToken.sol";
-import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import { Uint32Array } from "src/libraries/Uint32Array.sol";
+
 import { IYearnVault } from "src/interfaces/Yearn/IYearnVault.sol";
-
-// Curve imports
-import { ICurvePool } from "src/interfaces/ICurvePool.sol";
-import { ICurveToken } from "src/interfaces/ICurveToken.sol";
-
-// Aave imports
-import { IAaveToken } from "src/interfaces/IAaveToken.sol";
+import { IBooster } from "src/interfaces/Convex/IBooster.sol";
+import { IBaseRewardPool } from "src/interfaces/Convex/IBaseRewardPool.sol";
+import { ICurveFi } from "src/interfaces/Curve/ICurveFi.sol";
 
 import { console } from "@forge-std/Test.sol";
 
@@ -54,13 +44,15 @@ contract DepositRouter is Ownable {
     struct Position {
         uint256 totalSupply; // total amount of outstanding shares, used with `balance` to determine a share price.
         uint256 totalBalance; // total balance of all operators in position. Think this needs to be totalBalance of all assets in the position.
-        //TODO ^^^^^^
         uint128 rewardRate; // Vested rewards distributed per second.
         uint64 lastAccrualTimestamp; // Last timestamp when vested tokens were claimed.
         uint64 endTimestamp; // The end time stamp for when all current rewards are vested.
         Platform platform;
         bytes positionData; // Stores arbritrary data for the position.
-        address asset; // The underlying asset in a position.
+        ERC20 asset; // The underlying asset in a position.
+        address[8] swapPools;
+        uint256 fromAndTos; // to[7], from[7], .....to[1], from[1], to[0], from[0]
+        uint256 depositData; // bool(useUnderlying), uint8(targetIndex), uint8(coinsCount), address(asset to deposit)
     }
     mapping(address => mapping(uint32 => uint256)) public operatorPositionShares;
     uint32[] public activePositions; // Array of all active positions.
@@ -72,7 +64,7 @@ contract DepositRouter is Ownable {
     struct Operator {
         address owner; // What address can make changes to how this operator invests into positions.
         bool isOperator; // Bool indicating whether this operator has been set up.
-        address underlying;
+        ERC20 asset;
         uint256 holdingBalance;
         uint256 openPositions; // Positions operator currently has funds in.
         uint256 positionRatios; // Desired ratio for funds in positions. Could maybe allow a position to be just this contract, where it allows for cheaper use deposit/withdraws, and keepers perform batched TXs.
@@ -83,12 +75,16 @@ contract DepositRouter is Ownable {
     uint32 public positionCount;
 
     function addPosition(
-        address _asset,
+        ERC20 _asset,
         Platform _platform,
-        bytes memory _positionData
+        bytes memory _positionData,
+        address[8] memory _swapPools,
+        uint256 _fromAndTos,
+        uint256 _depositData
     ) external onlyOwner {
         uint32 positionId = positionCount + 1;
         if (activePositions.contains(positionId)) revert("Position already present");
+        //TODO do some sanity checks for fromAndTos, and depositData, and swapPools.
         activePositions.push(positionId);
         positions[positionId] = Position({
             totalSupply: 0,
@@ -98,7 +94,10 @@ contract DepositRouter is Ownable {
             endTimestamp: type(uint64).max,
             platform: _platform,
             positionData: _positionData,
-            asset: _asset
+            asset: _asset,
+            swapPools: _swapPools,
+            fromAndTos: _fromAndTos,
+            depositData: _depositData
         });
         positionCount++;
     }
@@ -107,7 +106,7 @@ contract DepositRouter is Ownable {
     function addOperator(
         address _operator,
         address _owner,
-        address _underlying,
+        ERC20 _asset,
         uint256 _positions,
         uint256 _positionRatios
     ) external onlyOwner {
@@ -126,27 +125,14 @@ contract DepositRouter is Ownable {
         operators[_operator] = Operator({
             owner: _owner,
             isOperator: true,
-            underlying: _underlying,
+            asset: _asset,
             holdingBalance: 0,
             openPositions: _positions,
             positionRatios: _positionRatios
         });
     }
 
-    /**
-     * Will add to positions rewardQueue based off either
-     * if Accrual Type == OVERTIME
-     *      Compare stored balance of this contract (in assets) to current balance, the difference is yield earned, send platform fees to a yield manager?
-     * else if Accrual Type == HARVEST
-     *      Harvset pending rewards convert them to underlying, the amount of underlying is the yield earned, send fees to a yield manager?
-     * This function will update the positions `rewardRate` `lastAccrualTimestamp` `endTimestamp`
-     * This function will send platform fees to the rewards contract
-     * This function will set aside a percent of yield to be saved for this contract to be converted into LINK to fund upkeeps.
-     */
-    function _checkPointRewards(address position) internal {
-        // I think this function would update the lastAccrualTimestamp, then basically make the current balance into the balance + pending
-    }
-
+    //============================================ Operator Functions ===========================================
     /**
      * Takes underlying token and deposits it into the underlying protocol
      * returns the amount of shares
@@ -155,7 +141,7 @@ contract DepositRouter is Ownable {
         address operator = msg.sender;
         require(operators[operator].isOperator, "Only Operators can deposit.");
         //TODO could coordinate with Zeus to have this transfer from user themselves, then users approve this contract. But this could get sketchy if an operator went rogue;
-        ERC20(operators[operator].underlying).safeTransferFrom(operator, address(this), amount);
+        operators[operator].asset.safeTransferFrom(operator, address(this), amount);
 
         // Deposit assets into operator holding position.
         operators[operator].holdingBalance += amount;
@@ -165,19 +151,18 @@ contract DepositRouter is Ownable {
 
     function withdraw(uint256 amount) public returns (uint256) {
         address operator = msg.sender;
-        require(operators[operator].isOperator, "Only Operators can withdraw.");
+        // require(operators[operator].isOperator, "Only Operators can withdraw.");
         //TODO could coordinate with Zeus to have this transfer from user themselves, then users approve this contract. But this could get sketchy if an operator went rogue;
 
         // Withdraw assets from the holding positions.
         //TODO this should withdraw from positions in order.
-        console.log("Balance", ERC20(operators[operator].underlying).balanceOf(address(this)));
         operators[operator].holdingBalance -= amount;
-
-        ERC20(operators[operator].underlying).transfer(operator, 100e18 + 0);
+        operators[operator].asset.safeTransfer(operator, amount);
 
         return amount;
     }
 
+    //============================================ Position Management Functions ===========================================
     /**
      * Updates a positions totalBalance, lastAccrualTimestamp, and determines the new Reward Rate, and sets new end timestamp.
      */
@@ -186,10 +171,15 @@ contract DepositRouter is Ownable {
         _updatePositionBalance(p); // Updates totalBalance and lastAccrualTimestamp
         if (p.platform == Platform.YEARN) {
             _harvestYearnPosition(p);
+        } else if (p.platform == Platform.CONVEX) {
+            _harvestConvexPosition(p);
         }
     }
 
-    //TODO I think the deposit and withdraw functions need to confirm the amount was deposited and the amount was withdrawn!
+    /**
+     * @notice So I think the plan is to have keepers call this, and harvest functions.
+     * Maybe have two different keepers, one dedicated to harvesting rewards, and another
+     */
     function rebalance(
         address _operator,
         uint32 _fromPosition,
@@ -214,7 +204,11 @@ contract DepositRouter is Ownable {
             // So it needs to update totalBalance, and lastAccrualTimestamp
 
             if (p.platform == Platform.YEARN) {
-                _depositToYearn(p, _amount);
+                // Set _amount to actual backing of tokens in protocol.
+                _amount = _depositToYearn(p, _amount);
+            } else if (p.platform == Platform.CONVEX) {
+                // Set _amount to actual backing of tokens in protocol.
+                _amount = _depositToConvex(p, _amount);
             }
 
             // Now that pending rewards have been accounted for shares are more expensive.
@@ -239,10 +233,15 @@ contract DepositRouter is Ownable {
             Position storage p = positions[_positionId];
             _updatePositionBalance(p); // This will take pending rewards and add it to p.totalBalance
             // So it needs to update totalBalance, and lastAccrualTimestamp
+            uint256 actualWithdraw;
 
             if (p.platform == Platform.YEARN) {
-                _withdrawFromYearn(p, _amount);
+                actualWithdraw = _withdrawFromYearn(p, _amount);
+            } else if (p.platform == Platform.CONVEX) {
+                actualWithdraw = _withdrawFromConvex(p, _amount);
             }
+
+            require(actualWithdraw >= _amount, "Incomplete Withdraw.");
 
             // Now that pending rewards have been accounted for shares are more expensive.
             // Find shares owed to operator.
@@ -251,6 +250,9 @@ contract DepositRouter is Ownable {
             operatorPositionShares[_operator][_positionId] -= operatorShares;
             p.totalSupply -= operatorShares;
             p.totalBalance -= _amount;
+
+            // If overwithdraw, credit operators holding position.
+            if (actualWithdraw > _amount) operators[_operator].holdingBalance += actualWithdraw - _amount;
         }
     }
 
@@ -267,55 +269,155 @@ contract DepositRouter is Ownable {
         p.totalBalance += pendingRewards;
     }
 
-    function _depositToYearn(Position storage p, uint256 _amount) internal {
+    //============================================ Yearn Integration Functions ===========================================
+    // Needs to return the actual backing of tokens in the protocol.
+    /**
+     * @notice Balances are based off of sharePrice * Shares.
+     * @dev Pricing inspired by Mai Finance yvOracle.
+     *      https://ftmscan.com/address/0x530cd67a5898a20501cfcf74a3c68e21831d744c#code
+     */
+    function _depositToYearn(Position storage p, uint256 _amount) internal returns (uint256 amountDeposited) {
         address vaultAddress = abi.decode(p.positionData, (address));
         IYearnVault vault = IYearnVault(vaultAddress);
-        ERC20(p.asset).safeApprove(address(vault), _amount);
-        vault.deposit(_amount);
+        p.asset.safeApprove(address(vault), _amount);
+        uint256 shares = vault.deposit(_amount);
+        amountDeposited = (shares * vault.pricePerShare()) / 10**vault.decimals();
     }
 
+    /**
+     * @notice Yearn compounds rewards to increase share price over time.
+     *         So in order to determine yield, we need to compare our
+     *         last stored balance + pending rewards to the current balance.
+     */
     function _harvestYearnPosition(Position storage p) internal {
-        // Since yearn tokens accrue rewards in real time, this function is really just returning the difference in new yield to yield already accounted for.
-        // totalAssets = current stored balance + pending + realized reward balance.
         address vaultAddress = abi.decode(p.positionData, (address));
         IYearnVault vault = IYearnVault(vaultAddress);
+
+        // Find current pending rewards that have not been distributed yet.
         uint128 currentPendingRewards;
         if (p.rewardRate > 0) {
             currentPendingRewards = (p.endTimestamp - p.lastAccrualTimestamp) * p.rewardRate;
         }
         uint256 assetsAccountedFor = p.totalBalance + currentPendingRewards;
-        //TODO might need to use the vault decimals.
-        uint128 currentBalance = uint128((vault.balanceOf(address(this)) * vault.pricePerShare()) / 1e18);
+
+        // Get this contracts current position worth based off share price.
+        uint256 currentBalance = (vault.balanceOf(address(this)) * vault.pricePerShare()) / 10**vault.decimals();
+
+        //This happens when
         if (assetsAccountedFor > currentBalance) return;
         else {
+            //TODO take platform fee
             uint256 yield = currentBalance - assetsAccountedFor; // yearn token balanceOf this address * the exchange rate to the underlying - totalAssets
             p.rewardRate = uint128((yield + currentPendingRewards) / REWARD_PERIOD);
             p.endTimestamp = uint64(block.timestamp) + REWARD_PERIOD;
             // lastAccrualTimestamp was already updated by _updatePositionBalance;
-            console.log("Information");
-            console.log(p.rewardRate);
-            console.log(p.lastAccrualTimestamp);
-            console.log(p.endTimestamp);
         }
     }
 
-    function _withdrawFromYearn(Position storage p, uint256 _amount) internal {
+    function _withdrawFromYearn(Position storage p, uint256 _amount) internal returns (uint256 amountWithdrawn) {
         address vaultAddress = abi.decode(p.positionData, (address));
         IYearnVault vault = IYearnVault(vaultAddress);
         uint256 shares = (10**vault.decimals() * _amount) / vault.pricePerShare();
+        uint256 balanceBefore = p.asset.balanceOf(address(this));
         vault.withdraw(shares);
+        amountWithdrawn = p.asset.balanceOf(address(this)) - balanceBefore;
     }
 
-    //TODO I think this needs to calculate earnings before
-    // function _depositToConvex(uint128 _amount) internal returns (uint256) {
-    //     //This only has the logic to put assets into Convex.
-    // }
+    //============================================ Convex Integration Functions ===========================================
+    IBooster private booster = IBooster(0xF403C135812408BFbE8713b5A23a04b3D48AAE31);
+    ERC20 private constant WETH = ERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
+    ERC20 private constant CVX = ERC20(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
+    ERC20 private constant CRV = ERC20(0xD533a949740bb3306d119CC777fa900bA034cd52);
 
-    // function _harvestConvexPosition(Position memory p) internal {}
+    /**
+     * @notice There is no share conversion with Convex, so what you put in is what you can take out.
+     */
+    function _depositToConvex(Position storage p, uint256 _amount) internal returns (uint256) {
+        uint256 pid = abi.decode(p.positionData, (uint256));
+        p.asset.safeApprove(address(booster), _amount);
+        booster.deposit(pid, _amount, true);
+        return _amount;
+    }
 
-    // function _withdrawFromConvex(uint128 _amount) internal returns (uint256) {
-    //     // this only has the logic to remove assets from convex.
-    // }
+    //TODO YEARN does ZERO checks for value in vs value out when handling rewards.
+    function _harvestConvexPosition(Position storage p) internal {
+        IBaseRewardPool rewardPool;
+        {
+            (, address rewardPoolAddress) = abi.decode(p.positionData, (uint256, address));
+            rewardPool = IBaseRewardPool(rewardPoolAddress);
+        }
+
+        // Calculate starting reward balances to find actual harvested amount.
+        // Gas intensive but safer considering this address could have positions that use the reward tokens.
+        uint256 rewardTokenCount = 2 + rewardPool.extraRewardsLength();
+        ERC20[] memory rewardTokens = new ERC20[](rewardTokenCount);
+        rewardTokens[0] = CRV;
+        rewardTokens[1] = CVX;
+        uint256[] memory rewardBalances = new uint256[](rewardTokenCount);
+        rewardBalances[0] = CRV.balanceOf(address(this));
+        rewardBalances[1] = CVX.balanceOf(address(this));
+        for (uint256 i = 2; i < rewardTokenCount; i++) {
+            rewardTokens[i] = ERC20(rewardPool.extraRewards(i - 2));
+            rewardBalances[i] = rewardTokens[i].balanceOf(address(this));
+        }
+        rewardPool.getReward(address(this), true);
+
+        for (uint256 i = 0; i < rewardTokenCount; i++) {
+            rewardBalances[i] = ERC20(rewardTokens[i]).balanceOf(address(this)) - rewardBalances[i];
+        }
+        // harvests rewards and immediately adds them back to the convex pool.
+        uint256 depositData = p.depositData;
+        ERC20 assetToDeposit = ERC20(address(uint160(depositData)));
+        uint256 depositBalance = assetToDeposit.balanceOf(address(this));
+        //TODO need to take platform fee.
+        uint256 fromAndTos = p.fromAndTos;
+        for (uint8 i = 0; i < 16; i = i + 2) {
+            address pool;
+            if ((pool = p.swapPools[i / 2]) == address(0)) break;
+            if (rewardBalances[i / 2] < 0.01e18) continue; // Don't swap dust.
+            uint8 from = uint8(fromAndTos >> (8 * i));
+            uint8 to = uint8(fromAndTos >> (8 * (i + 1)));
+            _sellOnCurve(pool, from, to, rewardBalances[i / 2], rewardTokens[i / 2]);
+        }
+
+        depositBalance = assetToDeposit.balanceOf(address(this)) - depositBalance;
+
+        // Add liquidity to pool.
+        if (depositBalance > 0) {
+            uint256 yield = p.asset.balanceOf(address(this));
+            (, , address curvePool) = abi.decode(p.positionData, (uint256, address, address));
+
+            _addLiquidityToCurve(
+                assetToDeposit,
+                uint8(depositData >> 160),
+                uint8(depositData >> 168),
+                (uint8(depositData >> 176) == 1),
+                depositBalance,
+                curvePool
+            );
+
+            yield = p.asset.balanceOf(address(this)) - yield;
+
+            _depositToConvex(p, yield);
+
+            // Use price router to get value in vs value out and make sure it is within slippage tolerance.
+
+            uint128 currentPendingRewards;
+            if (p.rewardRate > 0) {
+                currentPendingRewards = (p.endTimestamp - p.lastAccrualTimestamp) * p.rewardRate;
+            }
+            // The amount of LP tokens received.
+            p.rewardRate = uint128((yield + currentPendingRewards) / REWARD_PERIOD);
+            p.endTimestamp = uint64(block.timestamp) + REWARD_PERIOD;
+        }
+    }
+
+    function _withdrawFromConvex(Position storage p, uint256 _amount) internal returns (uint256 amountWithdrawn) {
+        (, address reward) = abi.decode(p.positionData, (uint256, address));
+        IBaseRewardPool rewardPool = IBaseRewardPool(reward);
+        rewardPool.withdrawAndUnwrap(_amount, false);
+        amountWithdrawn = _amount;
+    }
 
     // CToken `getCashPrior` should call this.
     function balanceOf(address _operator) public view returns (uint256) {
@@ -339,6 +441,7 @@ contract DepositRouter is Ownable {
     function _calcOperatorBalance(address _operator, uint32 _positionId) internal view returns (uint256) {
         uint256 operatorShares = operatorPositionShares[_operator][_positionId];
         Position memory p = positions[_positionId];
+        if (p.totalSupply == 0) return 0;
         uint64 currentTime = uint64(block.timestamp);
         uint256 pendingBalance = currentTime < p.endTimestamp
             ? (p.rewardRate * (currentTime - p.lastAccrualTimestamp))
@@ -351,4 +454,53 @@ contract DepositRouter is Ownable {
     // function underlying(uint256 pid) public view returns (address) {
     //     return positions[pid].underlying;
     // }
+
+    //============================================ Curve Integration Functions ===========================================
+    function _sellOnCurve(
+        address pool,
+        uint128 from,
+        uint128 to,
+        uint256 amount,
+        ERC20 sellAsset
+    ) internal {
+        sellAsset.approve(pool, amount);
+        ICurveFi(pool).exchange(from, to, amount, 0, false);
+    }
+
+    function _addLiquidityToCurve(
+        ERC20 assetToDeposit,
+        uint8 coinsLength,
+        uint8 targetIndex,
+        bool useUnderlying,
+        uint256 amount,
+        address pool
+    ) internal {
+        assetToDeposit.approve(pool, amount);
+        uint256[4] memory amounts;
+        if (coinsLength == 2) {
+            uint256[2] memory amounts;
+            amounts[targetIndex] = amount;
+            if (useUnderlying) {
+                ICurveFi(pool).add_liquidity(amounts, 0, true);
+            } else {
+                ICurveFi(pool).add_liquidity(amounts, 0);
+            }
+        } else if (coinsLength == 3) {
+            uint256[3] memory amounts;
+            amounts[targetIndex] = amount;
+            if (useUnderlying) {
+                ICurveFi(pool).add_liquidity(amounts, 0, true);
+            } else {
+                ICurveFi(pool).add_liquidity(amounts, 0);
+            }
+        } else if (coinsLength == 4) {
+            uint256[4] memory amounts;
+            amounts[targetIndex] = amount;
+            if (useUnderlying) {
+                ICurveFi(pool).add_liquidity(amounts, 0, true);
+            } else {
+                ICurveFi(pool).add_liquidity(amounts, 0);
+            }
+        } else revert("Unsupported deposit");
+    }
 }
