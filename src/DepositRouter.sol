@@ -1,17 +1,22 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.16;
 
-import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { ERC20 } from "@solmate/tokens/ERC20.sol";
+import { SafeTransferLib } from "@solmate/utils/SafeTransferLib.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
 import { Math } from "src/utils/Math.sol";
 import { Uint32Array } from "src/libraries/Uint32Array.sol";
 
+// External interfaces
 import { IYearnVault } from "src/interfaces/Yearn/IYearnVault.sol";
 import { IBooster } from "src/interfaces/Convex/IBooster.sol";
 import { IBaseRewardPool } from "src/interfaces/Convex/IBaseRewardPool.sol";
 import { ICurveFi } from "src/interfaces/Curve/ICurveFi.sol";
+
+// Chainlink interfaces
+import { KeeperCompatibleInterface } from "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
+import { AggregatorV2V3Interface } from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV2V3Interface.sol";
 
 import { console } from "@forge-std/Test.sol";
 
@@ -27,20 +32,17 @@ import { console } from "@forge-std/Test.sol";
 // Send some percent of rewards to CVE Rewarder, then keep the rest here to vest rewards
 //Keepers and data feeds to automate harvesting, self funding upkeeps
 //TODO so positions can be an underlying that accrues overtime, or one that needs to be harvested
-contract DepositRouter is Ownable {
+contract DepositRouter is Ownable, KeeperCompatibleInterface {
     using Uint32Array for uint32[];
-    using SafeERC20 for ERC20;
+    using SafeTransferLib for ERC20;
+    using Math for uint256;
+
     enum Platform {
         CONVEX, // you are not given an asset
         YEARN // you are given an asset
     }
-    enum AccrualType {
-        OVERTIME, // Share price increase
-        HARVEST, // Harvesting rewards
-        REBASE // Rebasing token like aTokens, would probs need to be treated like an overtime, and somehow internally store the share price?
-    }
 
-    //TODO might need a harvest function, and harveest params, and maybe a harvest swap path?
+    // Position Storage.
     struct Position {
         uint256 totalSupply; // total amount of outstanding shares, used with `balance` to determine a share price.
         uint256 totalBalance; // total balance of all operators in position. Think this needs to be totalBalance of all assets in the position.
@@ -54,13 +56,15 @@ contract DepositRouter is Ownable {
         uint256 fromAndTos; // to[7], from[7], .....to[1], from[1], to[0], from[0]
         uint256 depositData; // bool(useUnderlying), uint8(targetIndex), uint8(coinsCount), address(asset to deposit)
     }
-    mapping(address => mapping(uint32 => uint256)) public operatorPositionShares;
+
     uint32[] public activePositions; // Array of all active positions.
     mapping(uint32 => Position) public positions;
+    uint32 public positionCount;
     ///@dev 0 position id is reserved for empty
 
     uint32 public constant REWARD_PERIOD = 7 days;
 
+    // Operator Storage.
     struct Operator {
         address owner; // What address can make changes to how this operator invests into positions.
         bool isOperator; // Bool indicating whether this operator has been set up.
@@ -69,11 +73,15 @@ contract DepositRouter is Ownable {
         uint256 openPositions; // Positions operator currently has funds in.
         uint256 positionRatios; // Desired ratio for funds in positions. Could maybe allow a position to be just this contract, where it allows for cheaper use deposit/withdraws, and keepers perform batched TXs.
         //TODO if positionRatios do not add up to 100, then remainder is designated for holding position.
+        //TODO need a minimum imbalance to trigger performupkeep IE 20%
+        //TODO need a minimum change in imbalance to allow a performupkeep to be performed IE 10%
+        //TODO need a minimum imbalance where if imbalance falls below that, then liquidity movement function stops. IE 5%
     }
 
     mapping(address => Operator) public operators;
-    uint32 public positionCount;
+    mapping(address => mapping(uint32 => uint256)) public operatorPositionShares;
 
+    //============================================ onlyOwner Functions ===========================================
     function addPosition(
         ERC20 _asset,
         Platform _platform,
@@ -164,18 +172,9 @@ contract DepositRouter is Ownable {
 
     //============================================ Position Management Functions ===========================================
     /**
-     * Updates a positions totalBalance, lastAccrualTimestamp, and determines the new Reward Rate, and sets new end timestamp.
+     * @notice Operators will use a Chainlink Keeper to rebalance their positions
+     * @notice The protocol(Curvance) will provide a keeper to harvest positions.
      */
-    function harvestPosition(uint32 _positionId) public {
-        Position storage p = positions[_positionId];
-        _updatePositionBalance(p); // Updates totalBalance and lastAccrualTimestamp
-        if (p.platform == Platform.YEARN) {
-            _harvestYearnPosition(p);
-        } else if (p.platform == Platform.CONVEX) {
-            _harvestConvexPosition(p);
-        }
-    }
-
     /**
      * @notice So I think the plan is to have keepers call this, and harvest functions.
      * Maybe have two different keepers, one dedicated to harvesting rewards, and another
@@ -267,6 +266,137 @@ contract DepositRouter is Ownable {
         }
         p.lastAccrualTimestamp = time;
         p.totalBalance += pendingRewards;
+    }
+
+    //============================================ Public Functions ===========================================
+    /**
+     * Updates a positions totalBalance, lastAccrualTimestamp, and determines the new Reward Rate, and sets new end timestamp.
+     */
+    function harvestPosition(uint32 _positionId) public {
+        Position storage p = positions[_positionId];
+        _updatePositionBalance(p); // Updates totalBalance and lastAccrualTimestamp
+        if (p.platform == Platform.YEARN) {
+            _harvestYearnPosition(p);
+        } else if (p.platform == Platform.CONVEX) {
+            _harvestConvexPosition(p);
+        }
+    }
+
+    //============================================ Chainlink Automation Functions ===========================================
+    function checkUpkeep(bytes calldata checkData) external returns (bool upkeepNeeded, bytes memory performData) {
+        //Does all the heavy lifting to determine is a rebalance is needed, and where money should move.
+        // Also has an alternative mode for harvesting positions.
+    }
+
+    function performUpkeep(bytes calldata performData) external {
+        //TODO for position management this function should check the current imbalance, then perform all rebalance calls, and check imbalance again.
+        // If imbalance has decreased by some set amount call is gucci otherwise revert.
+    }
+
+    /**
+     * @notice Determines how "imbalanced" an operators positions are, using the operators position ratios and balances
+     */
+    uint8 private constant DECIMALS = 8;
+
+    // This check is performed in checkupkeep to see if perform upkeep should be called.
+    // Also performed before and after performUpkeep to make sure actions performed by keeper were valid.
+    function _findOperatorPositionImbalance(address _operator) internal view returns (uint256) {
+        Operator memory o = operators[_operator];
+        uint256 _positions = o.openPositions;
+        // Loop through all positions and query balance.
+        uint256 operatorBalance;
+        uint256[8] memory operatorPositionBalances;
+        uint8 positionLength;
+        for (uint256 i = 0; i < 8; i++) {
+            uint32 positionId = uint32(_positions >> (32 * i)); //might need to do unchecked
+            positionLength++;
+            if (positionId == 0) break;
+            else {
+                operatorPositionBalances[i] = _calcOperatorBalance(_operator, positionId);
+                operatorBalance += operatorPositionBalances[i];
+            }
+        }
+        // Add holding position balance.
+        operatorBalance += operators[_operator].holdingBalance;
+
+        // Array of balances indicating how much of the udnerlying asset each position wants to get(+), or to get rid of(-)
+        uint256 positionImbalance;
+        uint256 _positionRatios = o.positionRatios;
+        // Store ratio rotal, because 1eDECIMALS - total is the amount designated for the holding position.
+        uint256 ratioTotal;
+        for (uint256 i = 0; i < positionLength; i++) {
+            uint256 positionRatio = uint32(_positionRatios >> (32 * i)); //might need to do unchecked
+            ratioTotal += positionRatio;
+            // Want = target - actual.
+            uint256 actual = operatorPositionBalances[i].mulDivDown(10**DECIMALS, operatorBalance);
+            if (actual > positionRatio) positionImbalance = actual - positionRatio;
+        }
+
+        return positionImbalance;
+    }
+
+    // This is only used in perform upkeep.
+    /**
+     * @notice determines what positions want liquidity and which ones need to get rid of liquidity
+     */
+    function _findOptimalLiquidityImbalance(address _operator) internal view returns (int256[9] memory) {
+        Operator memory o = operators[_operator];
+        uint256 _positions = o.openPositions;
+        // Loop through all positions and query balance.
+        uint256 operatorBalance;
+        uint256[8] memory operatorPositionBalances;
+        uint8 positionLength;
+        for (uint256 i = 0; i < 8; i++) {
+            uint32 positionId = uint32(_positions >> (32 * i)); //might need to do unchecked
+            positionLength++;
+            if (positionId == 0) break;
+            else {
+                operatorPositionBalances[i] = _calcOperatorBalance(_operator, positionId);
+                operatorBalance += operatorPositionBalances[i];
+            }
+        }
+        // Add holding position balance.
+        operatorBalance += operators[_operator].holdingBalance;
+
+        // Array of balances indicating how much of the udnerlying asset each position wants to get(+), or to get rid of(-)
+        int256[9] memory positionWants;
+        uint256 _positionRatios = o.positionRatios;
+        // Store ratio rotal, because 1eDECIMALS - total is the amount designated for the holding position.
+        uint256 ratioTotal;
+        for (uint256 i = 0; i < positionLength; i++) {
+            uint256 positionRatio = uint32(_positionRatios >> (32 * i)); //might need to do unchecked
+            ratioTotal += positionRatio;
+            // Want = target - actual.
+            positionWants[i] = int256(
+                positionRatio.mulDivDown(operatorBalance, 10**o.asset.decimals()) - operatorPositionBalances[i]
+            );
+        }
+
+        return positionWants;
+    }
+
+    /**
+     * @notice given an array of liquidity imbalances, determine the optimal rebalance calls
+     * @dev will only perform 8 rebalances in a single performUpkeep
+     */
+    function _findOptimalLiquidityMovement(int256[9] memory liquidityImbalance, uint256 currentImbalance)
+        internal
+        view
+        returns (
+            uint32[8] memory from,
+            uint32[8] memory to,
+            uint256[8] memory amount
+        )
+    {
+        uint8 rebalanceIndex;
+
+        while (rebalanceIndex < 8 && true) {
+            // Where `true` will be the comparison of current imbalance(which is updated in the loops), and the oeprator set minimum.
+            // Find largest maker position(most negative balance)
+            // Find largest taker position(most positive balance)
+            // Set first rebalance
+            // Repeat until out of rebalances, or currentRebalance is below some operator set threshold?
+        }
     }
 
     //============================================ Yearn Integration Functions ===========================================
