@@ -68,14 +68,14 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
     struct Operator {
         address owner; // What address can make changes to how this operator invests into positions.
         bool isOperator; // Bool indicating whether this operator has been set up.
+        bool allowRebalancing;
         ERC20 asset;
-        uint256 holdingBalance;
-        uint256 openPositions; // Positions operator currently has funds in.
-        uint256 positionRatios; // Desired ratio for funds in positions. Could maybe allow a position to be just this contract, where it allows for cheaper use deposit/withdraws, and keepers perform batched TXs.
-        //TODO if positionRatios do not add up to 100, then remainder is designated for holding position.
-        //TODO need a minimum imbalance to trigger performupkeep IE 20%
-        //TODO need a minimum change in imbalance to allow a performupkeep to be performed IE 10%
-        //TODO need a minimum imbalance where if imbalance falls below that, then liquidity movement function stops. IE 5%
+        uint32[8] openPositions; // Positions operator currently has funds in. 0th postion is always the holding position.
+        uint32[8] positionRatios; // Desired ratio for funds in positions. Could maybe allow a position to be just this contract, where it allows for cheaper use deposit/withdraws, and keepers perform batched TXs.
+        uint64 minimumImbalanceDeltaForUpkeep; //minimum change in imbalance to allow a performupkeep to be performed IE 30%
+        uint64 minimumValueToRebalance; // The minimum dollar value of assets to rebalance.
+        //^^ if a rebalance operation is trying to move less than the minimum, then it is skipped.
+        uint64 lastRebalance; // Timestamp of the last time this operators positions were rebalanced.
     }
 
     mapping(address => Operator) public operators;
@@ -115,20 +115,21 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
         address _operator,
         address _owner,
         ERC20 _asset,
-        uint256 _positions,
-        uint256 _positionRatios
+        uint32[8] memory _positions,
+        uint32[8] memory _positionRatios
     ) external onlyOwner {
         require(!operators[_operator].isOperator, "Operator already added.");
         //Positions are assumed to be packed to the front, IE you can not have a zero position between two non zero positions.
         // There should at the very least be position id 1 in the positions value.
         ///@dev position index 0 is the holding postion, where users funds are always deposited.
-        require(_positions > 0, "0 is an invalid positions");
+        require(_positions.length > 0, "0 is an invalid positions");
         // Loop through _positions and make sure it is valid.
+        bool zeroPositionFound;
         for (uint32 i = 0; i < 8; i++) {
-            uint32 positionId = uint32(_positions >> (32 * i));
-            if (positionId == 0) {
-                require(uint256(_positions >> (32 * i)) == 0, "Positions must be packed to the front.");
-            }
+            uint32 positionId = _positions[i];
+            if (i == 0 && positionId != 0) revert("First Position must be the holding position");
+            if (zeroPositionFound && positionId != 0) revert("Invalid Position array");
+            if (positionId == 0) zeroPositionFound = true;
         }
         operators[_operator] = Operator({
             owner: _owner,
@@ -152,19 +153,29 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
         operators[operator].asset.safeTransferFrom(operator, address(this), amount);
 
         // Deposit assets into operator holding position.
-        operators[operator].holdingBalance += amount;
+        operatorPositionShares[operator][0] += amount;
 
         return amount;
     }
 
     function withdraw(uint256 amount) public returns (uint256) {
         address operator = msg.sender;
-        // require(operators[operator].isOperator, "Only Operators can withdraw.");
-        //TODO could coordinate with Zeus to have this transfer from user themselves, then users approve this contract. But this could get sketchy if an operator went rogue;
+        require(operators[operator].isOperator, "Only Operators can withdraw.");
 
-        // Withdraw assets from the holding positions.
-        //TODO this should withdraw from positions in order.
-        operators[operator].holdingBalance -= amount;
+        // Withdraw assets from positions in order.
+        uint256 freeCash = operatorPositionShares[operator][0];
+        for (uint256 i = 1; i < 8; i++) {
+            if (freeCash < amount) {
+                uint256 positionBalance = operatorPositionShares[operator][i];
+                // Need to withdraw from a position to the holding position.
+                uint256 amountToWithdraw = (freeCash + positionBalance) < amount ? positionBalance : amount - freeCash;
+                _withdrawFromPosition(operator, 0, amountToWithdraw);
+                freeCash += amountToWithdraw;
+            } else {
+                break;
+            }
+        }
+        operatorPositionShares[operator][0] -= amount;
         operators[operator].asset.safeTransfer(operator, amount);
 
         return amount;
@@ -185,6 +196,7 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
         uint32 _toPosition,
         uint256 _amount
     ) public {
+        if (_fromPosition == _toPosition) revert("Invalid Rebalance");
         _withdrawFromPosition(_operator, _fromPosition, _amount);
         _depositToPosition(_operator, _toPosition, _amount);
     }
@@ -196,7 +208,7 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
     ) internal {
         if (_positionId == 0) {
             // Depositing into holding position.
-            operators[_operator].holdingBalance += _amount;
+            operatorPositionShares[_operator][0] += _amount;
         } else {
             Position storage p = positions[_positionId];
             _updatePositionBalance(p); // This will take pending rewards and add it to p.totalBalance
@@ -227,7 +239,7 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
     ) internal {
         if (_positionId == 0) {
             // Withdrawing from holding position.
-            operators[_operator].holdingBalance -= _amount;
+            operatorPositionShares[_operator][0] -= _amount;
         } else {
             Position storage p = positions[_positionId];
             _updatePositionBalance(p); // This will take pending rewards and add it to p.totalBalance
@@ -251,7 +263,7 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
             p.totalBalance -= _amount;
 
             // If overwithdraw, credit operators holding position.
-            if (actualWithdraw > _amount) operators[_operator].holdingBalance += actualWithdraw - _amount;
+            if (actualWithdraw > _amount) operatorPositionShares[_operator][0] += actualWithdraw - _amount;
         }
     }
 
@@ -628,6 +640,7 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
 
     function _calcOperatorBalance(address _operator, uint32 _positionId) internal view returns (uint256) {
         uint256 operatorShares = operatorPositionShares[_operator][_positionId];
+        if (_positionId == 0) return operatorShares;
         Position memory p = positions[_positionId];
         if (p.totalSupply == 0) return 0;
         uint64 currentTime = uint64(block.timestamp);
@@ -664,7 +677,6 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
         address pool
     ) internal {
         assetToDeposit.approve(pool, amount);
-        uint256[4] memory amounts;
         if (coinsLength == 2) {
             uint256[2] memory amounts;
             amounts[targetIndex] = amount;
