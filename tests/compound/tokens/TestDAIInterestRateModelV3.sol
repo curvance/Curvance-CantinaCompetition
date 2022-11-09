@@ -4,7 +4,7 @@ pragma solidity ^0.8.13;
 import "contracts/compound/Governance/Cve.sol";
 import "contracts/compound/CompRewards.sol";
 import "contracts/compound/Comptroller.sol";
-import "contracts/compound/CErc20Immutable.sol";
+import "contracts/compound/Token/CErc20Immutable.sol";
 import "contracts/compound/Errors.sol";
 import "contracts/compound/SimplePriceOracle.sol";
 import "contracts/compound/InterestRateModel/DAIInterestRateModelV3.sol";

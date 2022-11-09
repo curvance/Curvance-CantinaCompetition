@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./CErc20Delegate.sol";
-import "./interfaces/IMaker.sol";
+import "../interfaces/IMaker.sol";
 
 /**
  * @title Compound's CDai Contract
@@ -10,6 +12,7 @@ import "./interfaces/IMaker.sol";
  * @author Compound
  */
 contract CDaiDelegate is CErc20Delegate {
+    using SafeERC20 for IERC20;
 
     error MustUseDai();
 
@@ -29,13 +32,13 @@ contract CDaiDelegate is CErc20Delegate {
     address public vatAddress;
 
     /*** Maker Internals ***/
-    uint256 constant RAY = 10 ** 27;
+    uint256 private constant RAY = 10**27;
 
     /**
      * @notice Delegate interface to become the implementation
      * @param data The encoded arguments for becoming
      */
-    function _becomeImplementation(bytes memory data) override public {
+    function _becomeImplementation(bytes memory data) public override {
         if (msg.sender != admin) {
             revert AddressUnauthorized();
         }
@@ -65,7 +68,7 @@ contract CDaiDelegate is CErc20Delegate {
         vatAddress = address(vat);
 
         // Approve moving our DAI into the vat through daiJoin
-        dai.approve(daiJoinAddress, type(uint).max);
+        dai.approve(daiJoinAddress, type(uint256).max);
 
         // Approve the pot to transfer our funds within the vat
         vat.hope(potAddress);
@@ -81,7 +84,7 @@ contract CDaiDelegate is CErc20Delegate {
     /**
      * @notice Delegate interface to resign the implementation
      */
-    function _resignImplementation() override public {
+    function _resignImplementation() public override {
         if (msg.sender != admin) {
             revert AddressUnauthorized();
         }
@@ -95,11 +98,11 @@ contract CDaiDelegate is CErc20Delegate {
         pot.drip();
 
         // Calculate the total amount in the pot, and move it out
-        uint pie = pot.pie(address(this));
+        uint256 pie = pot.pie(address(this));
         pot.exit(pie);
 
         // Checks the actual balance of DAI in the vat after the pot exit
-        uint bal = vat.dai(address(this));
+        uint256 bal = vat.dai(address(this));
 
         // Remove our whole balance
         daiJoin.exit(address(this), bal / RAY);
@@ -108,11 +111,11 @@ contract CDaiDelegate is CErc20Delegate {
     /*** CToken Overrides ***/
 
     /**
-      * @notice Accrues DSR then applies accrued interest to total borrows and reserves
-      * @dev This calculates interest accrued from the last checkpointed block
-      *      up to the current block and writes new checkpoint to storage.
-      */
-    function accrueInterest() override public { 
+     * @notice Accrues DSR then applies accrued interest to total borrows and reserves
+     * @dev This calculates interest accrued from the last checkpointed block
+     *      up to the current block and writes new checkpoint to storage.
+     */
+    function accrueInterest() public override {
         // Accumulate DSR interest
         PotLike(potAddress).drip();
 
@@ -127,10 +130,10 @@ contract CDaiDelegate is CErc20Delegate {
      * @dev This excludes the value of the current message, if any
      * @return The quantity of underlying tokens owned by this contract
      */
-    function getCashPrior() override internal view returns (uint) {
+    function getCashPrior() internal view override returns (uint256) {
         PotLike pot = PotLike(potAddress);
-        uint pie = pot.pie(address(this));
-        return ((pot.chi() * pie) / RAY);//mul(pot.chi(), pie) / RAY;
+        uint256 pie = pot.pie(address(this));
+        return ((pot.chi() * pie) / RAY);
     }
 
     /**
@@ -139,14 +142,13 @@ contract CDaiDelegate is CErc20Delegate {
      * @param amount Amount of underlying to transfer
      * @return The actual amount that is transferred
      */
-    function doTransferIn(address from, uint amount) override internal returns (uint) {
+    function doTransferIn(address from, uint256 amount) internal override returns (uint256) {
         // Read from storage once
         address underlying_ = underlying;
         // Perform the EIP-20 transfer in
-        EIP20Interface token = EIP20Interface(underlying_);
+        IERC20 token = IERC20(underlying_);
 
-        // require(token.transferFrom(from, address(this), amount), "unexpected EIP-20 transfer in return");
-        token.transferFrom(from, address(this), amount);
+        token.safeTransferFrom(from, address(this), amount);
 
         DaiJoinLike daiJoin = DaiJoinLike(daiJoinAddress);
         GemLike dai = GemLike(underlying_);
@@ -157,11 +159,11 @@ contract CDaiDelegate is CErc20Delegate {
         daiJoin.join(address(this), dai.balanceOf(address(this)));
 
         // Checks the actual balance of DAI in the vat after the join
-        uint bal = vat.dai(address(this));
+        uint256 bal = vat.dai(address(this));
 
         // Calculate the percentage increase to th pot for the entire vat, and move it in
         // Note: We may leave a tiny bit of DAI in the vat...but we do the whole thing every time
-        uint pie = bal / pot.chi();
+        uint256 pie = bal / pot.chi();
         pot.join(pie);
 
         return amount;
@@ -172,14 +174,13 @@ contract CDaiDelegate is CErc20Delegate {
      * @param to Address to transfer funds to
      * @param amount Amount of underlying to transfer
      */
-    function doTransferOut(address payable to, uint amount) override internal {
+    function doTransferOut(address payable to, uint256 amount) internal override {
         DaiJoinLike daiJoin = DaiJoinLike(daiJoinAddress);
         PotLike pot = PotLike(potAddress);
 
         // Calculate the percentage decrease from the pot, and move that much out
         // Note: Use a slightly larger pie size to ensure that we get at least amount in the vat
-        // uint pie = add(mul(amount, RAY) / pot.chi(), 1);
-        uint pie = ((amount * RAY) / pot.chi()) + 1;
+        uint256 pie = ((amount * RAY) / pot.chi()) + 1;
         pot.exit(pie);
 
         daiJoin.exit(to, amount);

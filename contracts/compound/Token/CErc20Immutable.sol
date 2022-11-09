@@ -24,7 +24,7 @@ contract CErc20Immutable is CErc20 {
         address underlying_,
         ComptrollerInterface comptroller_,
         InterestRateModel interestRateModel_,
-        uint initialExchangeRateMantissa_,
+        uint256 initialExchangeRateMantissa_,
         string memory name_,
         string memory symbol_,
         uint8 decimals_,
@@ -34,7 +34,15 @@ contract CErc20Immutable is CErc20 {
         admin = payable(msg.sender);
 
         // Initialize the market
-        initialize(underlying_, comptroller_, interestRateModel_, initialExchangeRateMantissa_, name_, symbol_, decimals_);
+        initialize(
+            underlying_,
+            comptroller_,
+            interestRateModel_,
+            initialExchangeRateMantissa_,
+            name_,
+            symbol_,
+            decimals_
+        );
 
         // Set the proper admin now that initialization is done
         admin = admin_;

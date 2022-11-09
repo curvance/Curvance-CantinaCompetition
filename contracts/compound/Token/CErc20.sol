@@ -1,19 +1,20 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./CToken.sol";
-import "./interfaces/ICveLike.sol";
-//import { CErc20Storage } from "./Storage.sol";
-import "./interfaces/IEip20NonStandard.sol";
-import { CErc20Interface } from "./interfaces/ICToken.sol";
-// import { CErc20Errors } from "./Errors.sol";
+import "../interfaces/ICveLike.sol";
+import "../interfaces/IEip20NonStandard.sol";
+import "../interfaces/ICToken.sol";
 
 /**
  * @title Compound's CErc20 Contract
  * @notice CTokens which wrap an EIP-20 underlying
  * @author Compound
  */
-contract CErc20 is CErc20Interface, CToken { //}, CErc20Interface {
+contract CErc20 is CErc20Interface, CToken {
+    using SafeERC20 for IERC20;
 
     /**
      * @notice Initialize the new money market
@@ -35,14 +36,7 @@ contract CErc20 is CErc20Interface, CToken { //}, CErc20Interface {
         uint8 decimals_
     ) public {
         // CToken initialize does the bulk of the work
-        super.initialize(
-            comptroller_,
-            interestRateModel_,
-            initialExchangeRateScaled_,
-            name_,
-            symbol_,
-            decimals_
-        );
+        super.initialize(comptroller_, interestRateModel_, initialExchangeRateScaled_, name_, symbol_, decimals_);
         // Set underlying and sanity check it
         underlying = underlying_;
         EIP20Interface(underlying).totalSupply();
@@ -57,10 +51,6 @@ contract CErc20 is CErc20Interface, CToken { //}, CErc20Interface {
      * @return bool true=success
      */
     function mint(uint256 mintAmount) external override returns (bool) {
-        // bool success = mintInternal(mintAmount);
-        // if (!success) {
-        //     revert ActionFailure();
-        // }
         mintInternal(mintAmount);
         return true;
     }
@@ -104,10 +94,7 @@ contract CErc20 is CErc20Interface, CToken { //}, CErc20Interface {
      * @param borrower the account with the debt being payed off
      * @param repayAmount The amount to repay, or -1 for the full outstanding amount
      */
-    function repayBorrowBehalf(address borrower, uint256 repayAmount)
-        external
-        override
-    {
+    function repayBorrowBehalf(address borrower, uint256 repayAmount) external override {
         repayBorrowBehalfInternal(borrower, repayAmount);
     }
 
@@ -119,15 +106,16 @@ contract CErc20 is CErc20Interface, CToken { //}, CErc20Interface {
      * @param cTokenCollateral The market in which to seize collateral from the borrower
      */
     function liquidateBorrow(
-        address borrower, 
-        uint repayAmount, 
+        address borrower,
+        uint256 repayAmount,
         CTokenInterface cTokenCollateral
     ) external override {
         liquidateBorrowInternal(borrower, repayAmount, cTokenCollateral);
     }
 
     /**
-     * @notice A public function to sweep accidental ERC-20 transfers to this contract. Tokens are sent to admin (timelock)
+     * @notice A public function to sweep accidental ERC-20 transfers to this contract.
+     *  Tokens are sent to admin (timelock)
      * @param token The address of the ERC-20 token to sweep
      */
     function sweepToken(EIP20NonStandardInterface token) external override {
@@ -168,23 +156,14 @@ contract CErc20 is CErc20Interface, CToken { //}, CErc20Interface {
      *      which may be less than `amount` if there is a fee attached to the transfer.
      *
      *      Note: This wrapper safely handles non-standard ERC-20 tokens that do not return a value.
-     *            See here: https://medium.com/coinmonks/missing-return-value-bug-at-least-130-tokens-affected-d67bf08521ca
+     *       See here: https://medium.com/coinmonks/missing-return-value-bug-at-least-130-tokens-affected-d67bf08521ca
      */
-    function doTransferIn(address from, uint256 amount)
-        internal
-        virtual
-        override
-        returns (uint256)
-    {
+    function doTransferIn(address from, uint256 amount) internal virtual override returns (uint256) {
         // Read from storage once
         address underlying_ = underlying;
-        EIP20NonStandardInterface token = EIP20NonStandardInterface(
-            underlying_
-        );
-        uint256 balanceBefore = EIP20Interface(underlying_).balanceOf(
-            address(this)
-        );
-        token.transferFrom(from, address(this), amount);
+        IERC20 token = IERC20(underlying_);
+        uint256 balanceBefore = IERC20(underlying_).balanceOf(address(this));
+        token.safeTransferFrom(from, address(this), amount);
 
         bool success;
         assembly {
@@ -209,26 +188,22 @@ contract CErc20 is CErc20Interface, CToken { //}, CErc20Interface {
         }
 
         // Calculate the amount that was *actually* transferred
-        uint256 balanceAfter = EIP20Interface(underlying_).balanceOf(
-            address(this)
-        );
+        uint256 balanceAfter = EIP20Interface(underlying_).balanceOf(address(this));
         return balanceAfter - balanceBefore; // underflow already checked above, just subtract
     }
 
     /**
      * @dev Similar to EIP20 transfer, except it handles a False success from `transfer` and returns an explanatory
-     *      error code rather than reverting. If caller has not called checked protocol's balance, this may revert due to
-     *      insufficient cash held in this contract. If caller has checked protocol's balance prior to this call, and verified
+     *         error code rather than reverting.
+     *      If caller has not called checked protocol's balance,
+     *         this may revert due to insufficient cash held in this contract.
+     *      If caller has checked protocol's balance prior to this call, and verified
      *      it is >= amount, this should not revert in normal conditions.
      *
      *      Note: This wrapper safely handles non-standard ERC-20 tokens that do not return a value.
-     *            See here: https://medium.com/coinmonks/missing-return-value-bug-at-least-130-tokens-affected-d67bf08521ca
+     *       See here: https://medium.com/coinmonks/missing-return-value-bug-at-least-130-tokens-affected-d67bf08521ca
      */
-    function doTransferOut(address payable to, uint256 amount)
-        internal
-        virtual
-        override
-    {
+    function doTransferOut(address payable to, uint256 amount) internal virtual override {
         EIP20NonStandardInterface token = EIP20NonStandardInterface(underlying);
         token.transfer(to, amount);
 

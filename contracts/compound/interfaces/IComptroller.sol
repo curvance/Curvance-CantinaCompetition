@@ -2,7 +2,7 @@
 pragma solidity ^0.8.13;
 
 import { ComptrollerStorage } from "../Storage.sol";
-import "../CToken.sol";
+import "../Token/CToken.sol";
 
 abstract contract ComptrollerInterface is ComptrollerStorage {
     /// @notice Indicator that this is a Comptroller contract (for inspection)

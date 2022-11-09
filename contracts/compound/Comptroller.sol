@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
-import "./CToken.sol";
+import "./Token/CToken.sol";
 import "./PriceOracle.sol";
 import "./interfaces/IComptroller.sol";
 import "./interfaces/IRewards.sol";

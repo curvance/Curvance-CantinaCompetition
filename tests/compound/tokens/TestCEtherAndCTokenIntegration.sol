@@ -2,8 +2,8 @@
 pragma solidity ^0.8.13;
 
 import "contracts/compound/Comptroller.sol";
-import "contracts/compound/CErc20Immutable.sol";
-import "contracts/compound/CEther.sol";
+import "contracts/compound/Token/CErc20Immutable.sol";
+import "contracts/compound/Token/CEther.sol";
 import "contracts/compound/Errors.sol";
 import "contracts/compound/SimplePriceOracle.sol";
 
