@@ -9,7 +9,7 @@ import "contracts/compound/Errors.sol";
 import "contracts/compound/SimplePriceOracle.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "contracts/compound/interfaces/IComptroller.sol";
+import "contracts/compound/ComptrollerInterface.sol";
 import "contracts/compound/InterestRateModel/InterestRateModel.sol";
 
 import "tests/compound/deploy.sol";

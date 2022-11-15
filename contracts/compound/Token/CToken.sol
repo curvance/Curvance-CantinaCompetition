@@ -3,7 +3,7 @@ pragma solidity ^0.8.13;
 
 import "../ReentrancyGuard.sol";
 import "../interfaces/ICToken.sol";
-import "../interfaces/IComptroller.sol";
+import "../ComptrollerInterface.sol";
 import "../interfaces/IEip20.sol";
 import "../InterestRateModel/InterestRateModel.sol";
 
@@ -460,7 +460,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
      * @dev Accrues interest whether or not the operation succeeds, unless reverted
      * @param redeemTokens The number of cTokens to redeem into underlying
      */
-    function redeemInternal(uint256 redeemTokens) internal nonReentrant {
+    function redeemInternal(uint256 redeemTokens) internal  {
         accrueInterest();
         // redeemFresh emits redeem-specific logs on errors, so we don't need to
         redeemFresh(payable(msg.sender), redeemTokens, 0);
@@ -471,14 +471,13 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
      * @dev Accrues interest whether or not the operation succeeds, unless reverted
      * @param redeemAmount The amount of underlying to receive from redeeming cTokens
      */
-    function redeemUnderlyingInternal(uint256 redeemAmount) internal nonReentrant {
+    function redeemUnderlyingInternal(uint256 redeemAmount) internal  {
         accrueInterest();
         // redeemFresh emits redeem-specific logs on errors, so we don't need to
         redeemFresh(payable(msg.sender), 0, redeemAmount);
     }
 
-    /** TODO Can we just make this NONREENTRANT to prevent reentrancy rather than relying upon order of changes?
-
+    /** 
      * @notice User redeems cTokens in exchange for the underlying asset
      * @dev Assumes interest has already been accrued up to the current block
      * @param redeemer The address of the account which is redeeming the tokens
@@ -491,7 +490,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         address payable redeemer,
         uint256 redeemTokensIn,
         uint256 redeemAmountIn
-    ) internal {
+    ) internal nonReentrant {
         if (redeemTokensIn != 0 && redeemAmountIn != 0) {
             revert CannotEqualZero();
         }
@@ -550,7 +549,6 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
          *  On success, the cToken has redeemAmount less of cash.
          *  doTransferOut reverts if anything goes wrong, since we can't be sure if side effects occurred.
          */
-        /// TODO Switch to standard SafeTransfer since no error code returns anymore
         doTransferOut(redeemer, redeemAmount);
 
         /* We emit a Transfer event, and a Redeem event */

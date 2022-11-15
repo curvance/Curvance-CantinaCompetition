@@ -7,7 +7,7 @@ pragma solidity ^0.8.13;
 // import "../interfaces/IEip20.sol";
 // import "../Governance/GovernorAlpha.sol";
 // import "../Governance/Comp.sol";
-// import "../interfaces/IComptroller.sol";
+// import "../ComptrollerInterface.sol";
 // import "../interfaces/IRewards.sol";
 
 // interface ComptrollerLensInterface {

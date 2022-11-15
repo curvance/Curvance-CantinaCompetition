@@ -3,7 +3,7 @@ pragma solidity ^0.8.13;
 
 import "./Token/CToken.sol";
 import "./PriceOracle.sol";
-import "./interfaces/IComptroller.sol";
+import "./ComptrollerInterface.sol";
 import "./interfaces/IRewards.sol";
 //import { ComptrollerStorage } from "./Storage.sol";
 import "./Unitroller.sol";

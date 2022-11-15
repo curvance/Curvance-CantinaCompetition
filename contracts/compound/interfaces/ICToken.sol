@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
-import "./IComptroller.sol";
+import "../ComptrollerInterface.sol";
 import "../InterestRateModel/InterestRateModel.sol";
 import "./IEip20NonStandard.sol";
 
 import "../Storage.sol";
-
 
 abstract contract CTokenInterface is CTokenStorage {
     

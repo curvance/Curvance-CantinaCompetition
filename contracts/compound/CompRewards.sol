@@ -1,36 +1,34 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
-// import "./CToken.sol";
 import "./PriceOracle.sol";
-import { MarketStorage, RewardsStorage } from "./Storage.sol";
+import "./Storage.sol";
 import "./Unitroller.sol";
 import "./Governance/Cve.sol";
 import "./utils/SafeMath.sol";
+import "./ComptrollerInterface.sol";
 import "./interfaces/IRewards.sol";
-import "./interfaces/IComptroller.sol";
 
 /**
  * @title CompRewards
  * @author Compound
  */
 contract CompRewards is MarketStorage, RewardsStorage, IReward {
+    address public cveAddress;
 
-    address cveAddress;
-    
     error AddressUnauthorized();
     error MarketNotListed();
-    error InMustContainZero();
+    error InsufficientCve();
 
-    constructor(address _comptroller, address _admin, address _cveAddress) {
+    constructor(
+        address _comptroller,
+        address _admin,
+        address _cveAddress
+    ) {
         comptroller = _comptroller;
         admin = _admin;
         cveAddress = _cveAddress;
     }
-
-/**
-Pulled directly out of ComptrollerG7.sol
- */
 
     /*** Cve Distribution ***/
 
@@ -39,8 +37,8 @@ Pulled directly out of ComptrollerG7.sol
      * @param cToken The market whose Cve speed to update
      * @param cveSpeed New CVE speed for market
      */
-    function setCveSpeedInternal(CToken cToken, uint cveSpeed) internal {
-        uint currentCveSpeed = cveSpeeds[address(cToken)];
+    function setCveSpeedInternal(CToken cToken, uint256 cveSpeed) internal {
+        uint256 currentCveSpeed = cveSpeeds[address(cToken)];
         if (currentCveSpeed != 0) {
             // note that Cve speed could be set to 0 to halt liquidity rewards for a market
             // Exp memory borrowIndex = Exp({mantissa: cToken.borrowIndex()});
@@ -49,7 +47,7 @@ Pulled directly out of ComptrollerG7.sol
             updateCveBorrowIndex(address(cToken), cToken.borrowIndex());
         } else if (cveSpeed != 0) {
             // Add the Cve market
-            (bool isListed, ,) = ComptrollerInterface(comptroller).getIsMarkets(address(cToken));
+            (bool isListed, , ) = ComptrollerInterface(comptroller).getIsMarkets(address(cToken));
             if (isListed != true) {
                 revert MarketNotListed();
             }
@@ -57,14 +55,14 @@ Pulled directly out of ComptrollerG7.sol
             if (cveSupplyState[address(cToken)].index == 0 && cveSupplyState[address(cToken)].block == 0) {
                 cveSupplyState[address(cToken)] = CveMarketState({
                     index: cveInitialIndex,
-                    block: SafeMath.safe32(getBlockNumber()) //, "block number exceeds 32 bits")
+                    block: SafeMath.safe32(getBlockNumber())
                 });
             }
 
             if (cveBorrowState[address(cToken)].index == 0 && cveBorrowState[address(cToken)].block == 0) {
                 cveBorrowState[address(cToken)] = CveMarketState({
                     index: cveInitialIndex,
-                    block: SafeMath.safe32(getBlockNumber()) //, "block number exceeds 32 bits")
+                    block: SafeMath.safe32(getBlockNumber())
                 });
             }
         }
@@ -76,7 +74,7 @@ Pulled directly out of ComptrollerG7.sol
     }
 
     function updateCveSupplyIndexExternal(address cTokenCollateral) external override {
-        if(msg.sender != comptroller) {
+        if (msg.sender != comptroller) {
             revert AddressUnauthorized();
         }
         updateCveSupplyIndex(cTokenCollateral);
@@ -88,18 +86,15 @@ Pulled directly out of ComptrollerG7.sol
      */
     function updateCveSupplyIndex(address cToken) internal {
         CveMarketState storage supplyState = cveSupplyState[cToken];
-        uint supplySpeed = cveSpeeds[cToken];
-        uint blockNumber = getBlockNumber();
-        uint deltaBlocks = blockNumber - uint(supplyState.block);//sub_(blockNumber, uint(supplyState.block));
+        uint256 supplySpeed = cveSpeeds[cToken];
+        uint256 blockNumber = getBlockNumber();
+        uint256 deltaBlocks = blockNumber - uint256(supplyState.block);
         if (deltaBlocks > 0 && supplySpeed > 0) {
-            uint supplyTokens = CToken(cToken).totalSupply();
-            uint cveAccrued = deltaBlocks * supplySpeed;//mul_(deltaBlocks, supplySpeed);
-            // Double memory ratio = supplyTokens > 0 ? fraction(compAccrued, supplyTokens) : Double({mantissa: 0});
-            uint ratioScaled = supplyTokens > 0 ? ((cveAccrued * expScale) / supplyTokens) : 0;
-            // Double memory index = add_(Double({mantissa: supplyState.index}), ratio);
-            uint indexScaled = (supplyState.index + ratioScaled);
+            uint256 supplyTokens = CToken(cToken).totalSupply();
+            uint256 cveAccrued = deltaBlocks * supplySpeed;
+            uint256 ratioScaled = supplyTokens > 0 ? ((cveAccrued * expScale) / supplyTokens) : 0;
+            uint256 indexScaled = (supplyState.index + ratioScaled);
             cveSupplyState[cToken] = CveMarketState({
-                // index: safe224(index.mantissa),
                 index: SafeMath.safe224(indexScaled),
                 block: SafeMath.safe32(blockNumber)
             });
@@ -112,18 +107,16 @@ Pulled directly out of ComptrollerG7.sol
      * @notice Accrue Cve to the market by updating the borrow index
      * @param cToken The market whose borrow index to update
      */
-    function updateCveBorrowIndex(address cToken, uint marketBorrowIndex) internal {
+    function updateCveBorrowIndex(address cToken, uint256 marketBorrowIndex) internal {
         CveMarketState storage borrowState = cveBorrowState[cToken];
-        uint borrowSpeed = cveSpeeds[cToken];
-        uint blockNumber = getBlockNumber();
-        uint deltaBlocks = blockNumber - uint(borrowState.block);//sub_(blockNumber, uint(borrowState.block));
+        uint256 borrowSpeed = cveSpeeds[cToken];
+        uint256 blockNumber = getBlockNumber();
+        uint256 deltaBlocks = blockNumber - uint256(borrowState.block);
         if (deltaBlocks > 0 && borrowSpeed > 0) {
-            uint borrowAmount = CToken(cToken).totalBorrows() * expScale / marketBorrowIndex;//div_(CToken(cToken).totalBorrows(), marketBorrowIndex);
-            uint cveAccrued = deltaBlocks * borrowSpeed;//mul_(deltaBlocks, borrowSpeed);
-            // Double memory ratio = borrowAmount > 0 ? fraction(compAccrued, borrowAmount) : Double({mantissa: 0});
-            // Double memory index = add_(Double({mantissa: borrowState.index}), ratio);
-            uint ratioScaled = borrowAmount > 0 ? ((cveAccrued * expScale) / borrowAmount) : (0);
-            uint indexScaled = (borrowState.index + ratioScaled);
+            uint256 borrowAmount = (CToken(cToken).totalBorrows() * expScale) / marketBorrowIndex;
+            uint256 cveAccrued = deltaBlocks * borrowSpeed;
+            uint256 ratioScaled = borrowAmount > 0 ? ((cveAccrued * expScale) / borrowAmount) : (0);
+            uint256 indexScaled = (borrowState.index + ratioScaled);
             cveBorrowState[cToken] = CveMarketState({
                 index: SafeMath.safe224(indexScaled),
                 block: SafeMath.safe32(blockNumber)
@@ -134,7 +127,7 @@ Pulled directly out of ComptrollerG7.sol
     }
 
     function distributeSupplierCveExternal(address cTokenCollateral, address claimer) external override {
-        if(msg.sender != comptroller) {
+        if (msg.sender != comptroller) {
             revert AddressUnauthorized();
         }
         distributeSupplierCve(cTokenCollateral, claimer);
@@ -147,26 +140,19 @@ Pulled directly out of ComptrollerG7.sol
      */
     function distributeSupplierCve(address cToken, address supplier) internal {
         CveMarketState storage supplyState = cveSupplyState[cToken];
-        // Double memory supplyIndex = Double({mantissa: supplyState.index});
-        // Double memory supplierIndex = Double({mantissa: compSupplierIndex[cToken][supplier]});
-        // compSupplierIndex[cToken][supplier] = supplyIndex.mantissa;
-        uint supplyIndex = supplyState.index;
-        uint supplierIndex = cveSupplierIndex[cToken][supplier];
+        uint256 supplyIndex = supplyState.index;
+        uint256 supplierIndex = cveSupplierIndex[cToken][supplier];
         cveSupplierIndex[cToken][supplier] = supplyIndex;
-        // if (supplierIndex.mantissa == 0 && supplyIndex.mantissa > 0) {
-        //     supplierIndex.mantissa = compInitialIndex;
-        // }
         if (supplierIndex == 0 && supplyIndex > 0) {
             supplierIndex = cveInitialIndex;
         }
 
-        // Double memory deltaIndex = sub_(supplyIndex, supplierIndex);
-        uint deltaIndex = supplyIndex - supplierIndex;
-        uint supplierTokens = CToken(cToken).balanceOf(supplier);
-        uint supplierDelta = supplierTokens * deltaIndex / expScale;//mul_(supplierTokens, deltaIndex);
-        uint supplierAccrued = cveAccrued[supplier] + supplierDelta;//add_(compAccrued[supplier], supplierDelta);
+        uint256 deltaIndex = supplyIndex - supplierIndex;
+        uint256 supplierTokens = CToken(cToken).balanceOf(supplier);
+        uint256 supplierDelta = (supplierTokens * deltaIndex) / expScale;
+        uint256 supplierAccrued = cveAccrued[supplier] + supplierDelta;
         cveAccrued[supplier] = supplierAccrued;
-        emit DistributedSupplierCve(CToken(cToken), supplier, supplierDelta, supplyIndex);//.mantissa);
+        emit DistributedSupplierCve(CToken(cToken), supplier, supplierDelta, supplyIndex);
     }
 
     /**
@@ -175,24 +161,24 @@ Pulled directly out of ComptrollerG7.sol
      * @param cToken The market in which the borrower is interacting
      * @param borrower The address of the borrower to distribute Cve to
      */
-    function distributeBorrowerCve(address cToken, address borrower, uint marketBorrowIndex) internal {
+    function distributeBorrowerCve(
+        address cToken,
+        address borrower,
+        uint256 marketBorrowIndex
+    ) internal {
         CveMarketState storage borrowState = cveBorrowState[cToken];
-        // Double memory borrowIndex = Double({mantissa: borrowState.index});
-        // Double memory borrowerIndex = Double({mantissa: compBorrowerIndex[cToken][borrower]});
-        // compBorrowerIndex[cToken][borrower] = borrowIndex.mantissa;
-        uint borrowIndex = borrowState.index;
-        uint borrowerIndex = cveBorrowerIndex[cToken][borrower];
+        uint256 borrowIndex = borrowState.index;
+        uint256 borrowerIndex = cveBorrowerIndex[cToken][borrower];
         cveBorrowerIndex[cToken][borrower] = borrowIndex;
 
         if (borrowerIndex == 0 && borrowIndex > 0) {
             borrowerIndex = cveInitialIndex;
         }
 
-        // Double memory deltaIndex = sub_(borrowIndex, borrowerIndex);
-        uint deltaIndex = borrowIndex - borrowerIndex;
-        uint borrowerAmount = CToken(cToken).borrowBalanceStored(borrower) * expScale / marketBorrowIndex;//div_(CToken(cToken).borrowBalanceStored(borrower), marketBorrowIndex);
-        uint borrowerDelta = borrowerAmount * deltaIndex / expScale;//mul_(borrowerAmount, deltaIndex);
-        uint borrowerAccrued = cveAccrued[borrower] + borrowerDelta;//add_(compAccrued[borrower], borrowerDelta);
+        uint256 deltaIndex = borrowIndex - borrowerIndex;
+        uint256 borrowerAmount = (CToken(cToken).borrowBalanceStored(borrower) * expScale) / marketBorrowIndex;
+        uint256 borrowerDelta = (borrowerAmount * deltaIndex) / expScale;
+        uint256 borrowerAccrued = cveAccrued[borrower] + borrowerDelta;
         cveAccrued[borrower] = borrowerAccrued;
 
         emit DistributedBorrowerCve(CToken(cToken), borrower, borrowerDelta, borrowIndex); //.mantissa);
@@ -203,12 +189,12 @@ Pulled directly out of ComptrollerG7.sol
      * @param contributor The address to calculate contributor rewards for
      */
     function updateContributorRewards(address contributor) public {
-        uint cveSpeed = cveContributorSpeeds[contributor];
-        uint blockNumber = getBlockNumber();
-        uint deltaBlocks = blockNumber - lastContributorBlock[contributor];//sub_(blockNumber, lastContributorBlock[contributor]);
+        uint256 cveSpeed = cveContributorSpeeds[contributor];
+        uint256 blockNumber = getBlockNumber();
+        uint256 deltaBlocks = blockNumber - lastContributorBlock[contributor];
         if (deltaBlocks > 0 && cveSpeed > 0) {
-            uint newAccrued = deltaBlocks * cveSpeed;//mul_(deltaBlocks, compSpeed);
-            uint contributorAccrued = cveAccrued[contributor] + newAccrued;//add_(compAccrued[contributor], newAccrued);
+            uint256 newAccrued = deltaBlocks * cveSpeed;
+            uint256 contributorAccrued = cveAccrued[contributor] + newAccrued;
 
             cveAccrued[contributor] = contributorAccrued;
             lastContributorBlock[contributor] = blockNumber;
@@ -247,24 +233,23 @@ Pulled directly out of ComptrollerG7.sol
         bool borrowers,
         bool suppliers
     ) public {
-        for (uint i = 0; i < cTokens.length; i++) {
+        for (uint256 i = 0; i < cTokens.length; i++) {
             CToken cToken = cTokens[i];
             (bool isListed, , ) = ComptrollerInterface(comptroller).getIsMarkets(address(cToken));
             if (!isListed) {
                 revert MarketNotListed();
             }
             if (borrowers == true) {
-                // Exp memory borrowIndex = Exp({mantissa: cToken.borrowIndex()});
-                uint borrowIndex = cToken.borrowIndex();
+                uint256 borrowIndex = cToken.borrowIndex();
                 updateCveBorrowIndex(address(cToken), borrowIndex);
-                for (uint j = 0; j < holders.length; j++) {
+                for (uint256 j = 0; j < holders.length; j++) {
                     distributeBorrowerCve(address(cToken), holders[j], borrowIndex);
                     cveAccrued[holders[j]] = grantCveInternal(holders[j], cveAccrued[holders[j]]);
                 }
             }
             if (suppliers == true) {
                 updateCveSupplyIndex(address(cToken));
-                for (uint j = 0; j < holders.length; j++) {
+                for (uint256 j = 0; j < holders.length; j++) {
                     distributeSupplierCve(address(cToken), holders[j]);
                     cveAccrued[holders[j]] = grantCveInternal(holders[j], cveAccrued[holders[j]]);
                 }
@@ -279,9 +264,9 @@ Pulled directly out of ComptrollerG7.sol
      * @param amount The amount of Cve to (possibly) transfer
      * @return The amount of Cve which was NOT transferred to the user
      */
-    function grantCveInternal(address user, uint amount) internal returns (uint) {
+    function grantCveInternal(address user, uint256 amount) internal returns (uint256) {
         Cve cve = Cve(getCveAddress());
-        uint cveRemaining = cve.balanceOf(address(this));
+        uint256 cveRemaining = cve.balanceOf(address(this));
         if (amount > 0 && amount <= cveRemaining) {
             cve.transfer(user, amount);
             return 0;
@@ -289,24 +274,19 @@ Pulled directly out of ComptrollerG7.sol
         return amount;
     }
 
-    /*** Cve Distribution Admin ***/
-/// TODO THIS IS FOR COMPENSATION TO CONTRIBUTORS TO THE COMPOUND PROTOCOL
-//      REQUIRES PASSING ON-CHAIN GOVERNANCE
     /**
      * @notice Transfer Cve to the recipient
      * @dev Note: If there is not enough Cve, we do not perform the transfer all.
      * @param recipient The address of the recipient to transfer Cve to
      * @param amount The amount of Cve to (possibly) transfer
      */
-    function _grantCve(address recipient, uint amount) public {
+    function _grantCve(address recipient, uint256 amount) public {
         if (!adminOrInitializing()) {
             revert AddressUnauthorized();
         }
-        uint amountLeft = grantCveInternal(recipient, amount);
-
-        /// TODO Is this correct? There should be 0 amountLeft???
+        uint256 amountLeft = grantCveInternal(recipient, amount);
         if (amountLeft != 0) {
-            revert InMustContainZero();
+            revert InsufficientCve();
         }
         emit CveGranted(recipient, amount);
     }
@@ -316,7 +296,7 @@ Pulled directly out of ComptrollerG7.sol
      * @param cToken The market whose Cve speed to update
      * @param cveSpeed New Cve speed for market
      */
-    function _setCveSpeed(CToken cToken, uint cveSpeed) public {
+    function _setCveSpeed(CToken cToken, uint256 cveSpeed) public {
         if (!adminOrInitializing()) {
             revert AddressUnauthorized();
         }
@@ -328,7 +308,7 @@ Pulled directly out of ComptrollerG7.sol
      * @param contributor The contributor whose Cve speed to update
      * @param cveSpeed New CVE speed for contributor
      */
-    function _setContributorCveSpeed(address contributor, uint cveSpeed) public {
+    function _setContributorCveSpeed(address contributor, uint256 cveSpeed) public {
         if (!adminOrInitializing()) {
             revert AddressUnauthorized();
         }
@@ -355,7 +335,7 @@ Pulled directly out of ComptrollerG7.sol
         return ComptrollerInterface(comptroller).getAllMarkets();
     }
 
-    function getBlockNumber() public view returns (uint) {
+    function getBlockNumber() public view returns (uint256) {
         return block.number;
     }
 
@@ -373,12 +353,4 @@ Pulled directly out of ComptrollerG7.sol
     function adminOrInitializing() internal view returns (bool) {
         return msg.sender == admin || msg.sender == ComptrollerInterface(comptroller).comptrollerImplementation();
     }
-
-
-
-    // function cveSupplySpeeds(address cToken) public view override returns(uint) {
-    //     return cveSupplySpeeds[cToken];
-    // }
-    // function cveBorrowSpeeds(address cToken) public virtual returns(uint);
-    // function cveSpeeds(address cToken) public virtual returns(uint);
 }
