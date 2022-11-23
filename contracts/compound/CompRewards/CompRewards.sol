@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
-import "./PriceOracle.sol";
-import "./Storage.sol";
-import "./Unitroller.sol";
-import "./Governance/Cve.sol";
-import "./utils/SafeMath.sol";
-import "./ComptrollerInterface.sol";
-import "./interfaces/IRewards.sol";
+import "../Comptroller/ComptrollerInterface.sol";
+import "../Unitroller/Unitroller.sol";
+import "../Governance/Cve.sol";
+import "../PriceOracle.sol";
+import "../utils/SafeMath.sol";
+import "./RewardsInterface.sol";
+import "./RewardsStorage.sol";
 
 /**
  * @title CompRewards
  * @author Compound
  */
-contract CompRewards is MarketStorage, RewardsStorage, IReward {
+contract CompRewards is MarketStorage, RewardsStorage, RewardsInterface {
     address public cveAddress;
 
     error AddressUnauthorized();

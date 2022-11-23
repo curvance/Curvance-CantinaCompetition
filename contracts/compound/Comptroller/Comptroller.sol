@@ -1,23 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
-import "./Token/CToken.sol";
-import "./PriceOracle.sol";
+import "../Token/CToken.sol";
+import "../PriceOracle.sol";
+import "../CompRewards/RewardsInterface.sol";
+import "../Unitroller/Unitroller.sol";
 import "./ComptrollerInterface.sol";
-import "./interfaces/IRewards.sol";
-//import { ComptrollerStorage } from "./Storage.sol";
-import "./Unitroller.sol";
-//import "./Governance/Comp.sol";
 
 /**
  * @title Curvance Comptroller
  * @author Curvance - Based on Compound Finance
  * @notice Manages risk within the lending & collateral markets
  */
-contract Comptroller is ComptrollerInterface { //ComptrollerStorage, 
-
+contract Comptroller is ComptrollerInterface {
     ////////// Errors //////////
-
     error MarketNotListed(address);
     error AddressAlreadyJoined();
     error NonZeroBorrowBalance(); /// Take a look here, could soften the landing
@@ -32,7 +28,6 @@ contract Comptroller is ComptrollerInterface { //ComptrollerStorage,
     error InvalidValue();
     error AddressUnauthorized();
 
-
     ////////// Events //////////
 
     /// @notice Emitted when an admin supports a market
@@ -45,13 +40,13 @@ contract Comptroller is ComptrollerInterface { //ComptrollerStorage,
     event MarketExited(CToken cToken, address account);
 
     /// @notice Emitted when close factor is changed by admin
-    event NewCloseFactor(uint oldCloseFactorScaled, uint newCloseFactorScaled);
+    event NewCloseFactor(uint256 oldCloseFactorScaled, uint256 newCloseFactorScaled);
 
     /// @notice Emitted when a collateral factor is changed by admin
-    event NewCollateralFactor(CToken cToken, uint oldCollateralFactorScaled, uint newCollateralFactorScaled);
+    event NewCollateralFactor(CToken cToken, uint256 oldCollateralFactorScaled, uint256 newCollateralFactorScaled);
 
     /// @notice Emitted when liquidation incentive is changed by admin
-    event NewLiquidationIncentive(uint oldLiquidationIncentiveScaled, uint newLiquidationIncentiveScaled);
+    event NewLiquidationIncentive(uint256 oldLiquidationIncentiveScaled, uint256 newLiquidationIncentiveScaled);
 
     /// @notice Emitted when price oracle is changed
     event NewPriceOracle(PriceOracle oldPriceOracle, PriceOracle newPriceOracle);
@@ -66,34 +61,33 @@ contract Comptroller is ComptrollerInterface { //ComptrollerStorage,
     event ActionPaused(CToken cToken, string action, bool pauseState);
 
     /// @notice Emitted when borrow cap for a cToken is changed
-    event NewBorrowCap(CToken indexed cToken, uint newBorrowCap);
+    event NewBorrowCap(CToken indexed cToken, uint256 newBorrowCap);
 
     /// @notice Emitted when borrow cap guardian is changed
     event NewBorrowCapGuardian(address oldBorrowCapGuardian, address newBorrowCapGuardian);
 
     /// @notice Emitted when rewards contract address is changed
-    event NewRewardContract(IReward oldRewarder, IReward newRewarder);
-
+    event NewRewardContract(RewardsInterface oldRewarder, RewardsInterface newRewarder);
 
     ////////// Constants //////////
 
     // closeFactorScaled must be strictly greater than this value
-    uint internal constant closeFactorMinScaled = 0.05e18; // 0.05
+    uint256 internal constant closeFactorMinScaled = 0.05e18; // 0.05
 
     // closeFactorScaled must not exceed this value
-    uint internal constant closeFactorMaxScaled = 0.9e18; // 0.9
+    uint256 internal constant closeFactorMaxScaled = 0.9e18; // 0.9
 
     // No collateralFactorScaled may exceed this value
-    uint internal constant collateralFactorMaxScaled = 0.9e18; // 0.9
+    uint256 internal constant collateralFactorMaxScaled = 0.9e18; // 0.9
 
     // Scaler for floating point math
-    uint constant expScale = 1e18;
+    uint256 internal constant expScale = 1e18;
 
-    constructor(IReward _rewarder) {
+    constructor(RewardsInterface _rewarder) {
         admin = msg.sender;
         rewarder = _rewarder;
     }
-    
+
     /*** Assets You Are In ***/
 
     /**
@@ -120,13 +114,13 @@ contract Comptroller is ComptrollerInterface { //ComptrollerStorage,
     /**
      * @notice Add assets to be included in account liquidity calculation
      * @param cTokens The list of addresses of the cToken markets to be enabled
-     * @return uint array: 0 = market not entered; 1 = market entered 
+     * @return uint array: 0 = market not entered; 1 = market entered
      */
-    function enterMarkets(address[] memory cTokens) override public returns (uint[] memory) {
-        uint len = cTokens.length;
+    function enterMarkets(address[] memory cTokens) public override returns (uint256[] memory) {
+        uint256 len = cTokens.length;
 
-        uint[] memory results = new uint[](len);
-        for (uint i = 0; i < len; i++) {
+        uint256[] memory results = new uint256[](len);
+        for (uint256 i = 0; i < len; i++) {
             CToken cToken = CToken(cTokens[i]);
             results[i] = addToMarketInternal(cToken, msg.sender);
         }
@@ -141,7 +135,7 @@ contract Comptroller is ComptrollerInterface { //ComptrollerStorage,
      * @param borrower The address of the account to modify
      * @return uint 0 = unable to enter market; 1 = market entered
      */
-    function addToMarketInternal(CToken cToken, address borrower) internal returns (uint) {
+    function addToMarketInternal(CToken cToken, address borrower) internal returns (uint256) {
         Market storage marketToJoin = markets[address(cToken)];
 
         if (!marketToJoin.isListed) {
@@ -163,7 +157,7 @@ contract Comptroller is ComptrollerInterface { //ComptrollerStorage,
         accountAssets[borrower].push(cToken);
 
         emit MarketEntered(cToken, borrower);
-        
+
         // Indicates that a market was successfully entered
         return 1;
     }
@@ -174,18 +168,17 @@ contract Comptroller is ComptrollerInterface { //ComptrollerStorage,
      *  or be providing necessary collateral for an outstanding borrow.
      * @param cTokenAddress The address of the asset to be removed
      */
-    function exitMarket(address cTokenAddress) override external {
-
+    function exitMarket(address cTokenAddress) external override {
         CToken cToken = CToken(cTokenAddress);
         /* Get sender tokensHeld and amountOwed underlying from the cToken */
-        (uint tokensHeld, uint amountOwed, ) = cToken.getAccountSnapshot(msg.sender); /// removed first value: uint oErr, 
+        (uint256 tokensHeld, uint256 amountOwed, ) = cToken.getAccountSnapshot(msg.sender); /// removed first value: uint oErr,
 
         /* Fail if the sender has a borrow balance */
         if (amountOwed != 0) {
             /// TODO Should the whole transaction revert? Could just calculate max safe withdrawal?
             // like:
             // userMaxSafeWithdrawal = maxborrow * 0.8 - outstandingDebt
-            revert NonZeroBorrowBalance(); 
+            revert NonZeroBorrowBalance();
         }
 
         /* Fail if the sender is not permitted to redeem all of their tokens */
@@ -204,9 +197,9 @@ contract Comptroller is ComptrollerInterface { //ComptrollerStorage,
         /* Delete cToken from the account’s list of assets */
         // load into memory for faster iteration
         CToken[] memory userAssetList = accountAssets[msg.sender];
-        uint len = userAssetList.length;
-        uint assetIndex = len;
-        for (uint i = 0; i < len; i++) {
+        uint256 len = userAssetList.length;
+        uint256 assetIndex = len;
+        for (uint256 i = 0; i < len; i++) {
             if (userAssetList[i] == cToken) {
                 assetIndex = i;
                 break;
@@ -231,7 +224,7 @@ contract Comptroller is ComptrollerInterface { //ComptrollerStorage,
      * @param cToken The market to verify the mint against
      * @param minter The account which would get the minted tokens
      */
-    function mintAllowed(address cToken, address minter) override external {
+    function mintAllowed(address cToken, address minter) external override {
         // Pausing is a very serious situation - we revert to sound the alarms
         if (mintGuardianPaused[cToken]) {
             revert Paused();
@@ -272,17 +265,24 @@ contract Comptroller is ComptrollerInterface { //ComptrollerStorage,
      * @param redeemer The account which would redeem the tokens
      * @param redeemTokens The number of cTokens to exchange for the underlying asset in the market
      */
-    function redeemAllowed(address cToken, address redeemer, uint redeemTokens) override external {
-
+    function redeemAllowed(
+        address cToken,
+        address redeemer,
+        uint256 redeemTokens
+    ) external override {
         redeemAllowedInternal(cToken, redeemer, redeemTokens);
 
-        // Keep the flywheel moving        
+        // Keep the flywheel moving
         /// TODO Should this be removed or should it call these functions on the CompRewards.sol?
         rewarder.updateCveSupplyIndexExternal(cToken);
         rewarder.distributeSupplierCveExternal(cToken, redeemer);
     }
 
-    function redeemAllowedInternal(address cToken, address redeemer, uint redeemTokens) internal view {
+    function redeemAllowedInternal(
+        address cToken,
+        address redeemer,
+        uint256 redeemTokens
+    ) internal view {
         if (!markets[cToken].isListed) {
             revert MarketNotListed(cToken);
         }
@@ -293,7 +293,7 @@ contract Comptroller is ComptrollerInterface { //ComptrollerStorage,
         }
 
         /* Otherwise, perform a hypothetical liquidity check to guard against shortfall */
-        (, uint shortfall) = getHypotheticalAccountLiquidityInternal(redeemer, CToken(cToken), redeemTokens, 0);
+        (, uint256 shortfall) = getHypotheticalAccountLiquidityInternal(redeemer, CToken(cToken), redeemTokens, 0);
 
         if (shortfall > 0) {
             revert InsufficientLiquidity();
@@ -321,10 +321,14 @@ contract Comptroller is ComptrollerInterface { //ComptrollerStorage,
      * @param borrower The account which would borrow the asset
      * @param borrowAmount The amount of underlying the account would borrow
      */
-    function borrowAllowed(address cToken, address borrower, uint borrowAmount) override external {
+    function borrowAllowed(
+        address cToken,
+        address borrower,
+        uint256 borrowAmount
+    ) external override {
         // Pausing is a very serious situation - we revert to sound the alarms
         if (borrowGuardianPaused[cToken]) {
-            revert Paused(); 
+            revert Paused();
         }
 
         if (!markets[cToken].isListed) {
@@ -333,8 +337,8 @@ contract Comptroller is ComptrollerInterface { //ComptrollerStorage,
 
         if (!markets[cToken].accountMembership[borrower]) {
             // only cTokens may call borrowAllowed if borrower not in market
-            if (msg.sender != cToken) { 
-                revert AddressUnauthorized(); 
+            if (msg.sender != cToken) {
+                revert AddressUnauthorized();
             }
 
             addToMarketInternal(CToken(msg.sender), borrower);
@@ -347,11 +351,11 @@ contract Comptroller is ComptrollerInterface { //ComptrollerStorage,
             revert PriceError();
         }
 
-        uint borrowCap = borrowCaps[cToken];
+        uint256 borrowCap = borrowCaps[cToken];
         // Borrow cap of 0 corresponds to unlimited borrowing
         if (borrowCap != 0) {
-            uint totalBorrows = CToken(cToken).totalBorrows();
-            uint nextTotalBorrows = totalBorrows + borrowAmount;
+            uint256 totalBorrows = CToken(cToken).totalBorrows();
+            uint256 nextTotalBorrows = totalBorrows + borrowAmount;
 
             if (nextTotalBorrows >= borrowCap) {
                 revert BorrowCapReached();
@@ -389,11 +393,7 @@ contract Comptroller is ComptrollerInterface { //ComptrollerStorage,
      * @param cToken The market to verify the repay against
      * @param borrower The account which would borrowed the asset
      */
-    function repayBorrowAllowed(
-        address cToken,
-        address borrower
-    ) override external {
-
+    function repayBorrowAllowed(address cToken, address borrower) external override {
         if (!markets[cToken].isListed) {
             revert MarketNotListed(cToken);
         }
@@ -441,9 +441,9 @@ contract Comptroller is ComptrollerInterface { //ComptrollerStorage,
         address cTokenBorrowed,
         address cTokenCollateral,
         address borrower,
-        uint repayAmount) override view external {
-
-        if (!markets[cTokenBorrowed].isListed) { 
+        uint256 repayAmount
+    ) external view override {
+        if (!markets[cTokenBorrowed].isListed) {
             revert MarketNotListed(cTokenBorrowed);
         }
         if (!markets[cTokenCollateral].isListed) {
@@ -451,14 +451,14 @@ contract Comptroller is ComptrollerInterface { //ComptrollerStorage,
         }
 
         /* The borrower must have shortfall in order to be liquidatable */
-        (, uint shortfall) = getAccountLiquidityInternal(borrower);
+        (, uint256 shortfall) = getAccountLiquidityInternal(borrower);
         if (shortfall == 0) {
             revert InsufficientShortfall();
         }
-        
+
         /* The liquidator may not repay more than what is allowed by the closeFactor */
-        uint borrowBalance = CToken(cTokenBorrowed).borrowBalanceStored(borrower);
-        uint maxClose = (closeFactorScaled * borrowBalance) / expScale;
+        uint256 borrowBalance = CToken(cTokenBorrowed).borrowBalanceStored(borrower);
+        uint256 maxClose = (closeFactorScaled * borrowBalance) / expScale;
 
         if (repayAmount > maxClose) {
             /// TODO Should this just reduce the repayAmount to the maxClose amount instead? Like this:
@@ -508,18 +508,17 @@ contract Comptroller is ComptrollerInterface { //ComptrollerStorage,
         address cTokenCollateral,
         address cTokenBorrowed,
         address liquidator,
-        address borrower//,
-        // uint seizeTokens
-    ) override external {
+        address borrower //, // uint seizeTokens
+    ) external override {
         // Pausing is a very serious situation - we revert to sound the alarms
-        if (seizeGuardianPaused) { 
+        if (seizeGuardianPaused) {
             revert Paused();
         }
 
         // Shh - currently unused
         // seizeTokens;
 
-        if (!markets[cTokenBorrowed].isListed) { 
+        if (!markets[cTokenBorrowed].isListed) {
             revert MarketNotListed(cTokenBorrowed);
         }
         if (!markets[cTokenCollateral].isListed) {
@@ -530,7 +529,7 @@ contract Comptroller is ComptrollerInterface { //ComptrollerStorage,
             revert ComptrollerMismatch();
         }
 
-        // Keep the flywheel moving        
+        // Keep the flywheel moving
         /// TODO Should this be removed or should it call these functions on the CompRewards.sol?
         rewarder.updateCveSupplyIndexExternal(cTokenCollateral);
         rewarder.distributeSupplierCveExternal(cTokenCollateral, borrower);
@@ -573,11 +572,11 @@ contract Comptroller is ComptrollerInterface { //ComptrollerStorage,
      * @param transferTokens The number of cTokens to transfer
      */
     function transferAllowed(
-        address cToken, 
-        address src, 
-        address dst, 
-        uint transferTokens
-    ) override external {
+        address cToken,
+        address src,
+        address dst,
+        uint256 transferTokens
+    ) external override {
         // Pausing is a very serious situation - we revert to sound the alarms
         if (transferGuardianPaused) {
             revert Paused();
@@ -643,9 +642,12 @@ contract Comptroller is ComptrollerInterface { //ComptrollerStorage,
      * @return liquidity of account in excess of collateral requirements
      * @return shortfall of account below collateral requirements
      */
-    function getAccountLiquidity(address account) public view returns (uint, uint) {
-        (uint liquidity, uint shortfall) = getHypotheticalAccountLiquidityInternal(
-            account, CToken(address(0)), 0, 0
+    function getAccountLiquidity(address account) public view returns (uint256, uint256) {
+        (uint256 liquidity, uint256 shortfall) = getHypotheticalAccountLiquidityInternal(
+            account,
+            CToken(address(0)),
+            0,
+            0
         );
 
         return (liquidity, shortfall);
@@ -656,7 +658,7 @@ contract Comptroller is ComptrollerInterface { //ComptrollerStorage,
      * @return liquidity of account in excess of collateral requirements
      * @return shortfall of account below collateral requirements
      */
-    function getAccountLiquidityInternal(address account) internal view returns (uint, uint) {
+    function getAccountLiquidityInternal(address account) internal view returns (uint256, uint256) {
         return getHypotheticalAccountLiquidityInternal(account, CToken(address(0)), 0, 0);
     }
 
@@ -672,13 +674,16 @@ contract Comptroller is ComptrollerInterface { //ComptrollerStorage,
     function getHypotheticalAccountLiquidity(
         address account,
         address cTokenModify,
-        uint redeemTokens,
-        uint borrowAmount) public view returns (uint, uint) {
-
-        (uint liquidity, uint shortfall) = getHypotheticalAccountLiquidityInternal(
-            account, CToken(cTokenModify), redeemTokens, borrowAmount
+        uint256 redeemTokens,
+        uint256 borrowAmount
+    ) public view returns (uint256, uint256) {
+        (uint256 liquidity, uint256 shortfall) = getHypotheticalAccountLiquidityInternal(
+            account,
+            CToken(cTokenModify),
+            redeemTokens,
+            borrowAmount
         );
-        
+
         return (liquidity, shortfall);
     }
 
@@ -696,32 +701,31 @@ contract Comptroller is ComptrollerInterface { //ComptrollerStorage,
     function getHypotheticalAccountLiquidityInternal(
         address account,
         CToken cTokenModify,
-        uint redeemTokens,
-        uint borrowAmount
-    ) internal view returns (uint, uint) {
-
+        uint256 redeemTokens,
+        uint256 borrowAmount
+    ) internal view returns (uint256, uint256) {
         // AccountLiquidityLocalVars memory vars; // Holds all our calculation results
-        uint sumCollateral;
-        uint sumBorrowPlusEffects;
+        uint256 sumCollateral;
+        uint256 sumBorrowPlusEffects;
 
         // For each asset the account is in
         CToken[] memory assets = accountAssets[account];
-        for (uint i = 0; i < assets.length; i++) {
+        for (uint256 i = 0; i < assets.length; i++) {
             CToken asset = assets[i];
 
             // uint oraclePrice = oracle.getUnderlyingPrice(asset);
             // Read the balances and exchange rate from the cToken
             // (
-            //     vars.cTokenBalance, 
-            //     vars.borrowBalance, 
+            //     vars.cTokenBalance,
+            //     vars.borrowBalance,
             //     vars.exchangeRateMantissa
             // ) = asset.getAccountSnapshot(account);
 
             (
-                //, 
-                uint cTokenBalance, 
-                uint borrowBalance, 
-                uint exchangeRateScaled
+                //,
+                uint256 cTokenBalance,
+                uint256 borrowBalance,
+                uint256 exchangeRateScaled
             ) = asset.getAccountSnapshot(account);
 
             /// TODO Check!
@@ -740,12 +744,12 @@ contract Comptroller is ComptrollerInterface { //ComptrollerStorage,
 
             // vars.oraclePrice = Exp({mantissa: vars.oraclePriceMantissa});
             // uint oraclePrice = oraclePriceMantissa * PRECISION; // not needed if calling here
-            uint oraclePrice = (oracle.getUnderlyingPrice(asset) * expScale);
+            uint256 oraclePrice = (oracle.getUnderlyingPrice(asset) * expScale);
             if (oraclePrice == 0) revert PriceError();
 
             // Pre-compute a conversion factor from tokens -> ether (normalized price value)
             // vars.tokensToDenom = mul_(mul_(vars.collateralFactor, vars.exchangeRate), vars.oraclePrice);
-            uint tokensToDenom = (markets[address(asset)].collateralFactorScaled * exchangeRateScaled) * oraclePrice;
+            uint256 tokensToDenom = (markets[address(asset)].collateralFactorScaled * exchangeRateScaled) * oraclePrice;
 
             // vars.sumCollateral = mul_ScalarTruncateAddUInt(vars.tokensToDenom, vars.cTokenBalance, vars.sumCollateral);
             /// TODO Should this really be added to here within the for loop? Or is it a once-off per loop?
@@ -787,13 +791,13 @@ contract Comptroller is ComptrollerInterface { //ComptrollerStorage,
      * @return uint The number of cTokenCollateral tokens to be seized in a liquidation
      */
     function liquidateCalculateSeizeTokens(
-        address cTokenBorrowed, 
-        address cTokenCollateral, 
-        uint actualRepayAmount
-    ) override external view returns (uint) {
+        address cTokenBorrowed,
+        address cTokenCollateral,
+        uint256 actualRepayAmount
+    ) external view override returns (uint256) {
         /* Read oracle prices for borrowed and collateral markets */
-        uint priceBorrowedScaled = oracle.getUnderlyingPrice(CToken(cTokenBorrowed));
-        uint priceCollateralScaled = oracle.getUnderlyingPrice(CToken(cTokenCollateral));
+        uint256 priceBorrowedScaled = oracle.getUnderlyingPrice(CToken(cTokenBorrowed));
+        uint256 priceCollateralScaled = oracle.getUnderlyingPrice(CToken(cTokenCollateral));
 
         if (priceBorrowedScaled == 0 || priceCollateralScaled == 0) {
             revert PriceError();
@@ -805,23 +809,23 @@ contract Comptroller is ComptrollerInterface { //ComptrollerStorage,
          *  seizeTokens = seizeAmount / exchangeRate
          *   = actualRepayAmount * (liquidationIncentive * priceBorrowed) / (priceCollateral * exchangeRate)
          */
-        uint exchangeRateScaled = CToken(cTokenCollateral).exchangeRateStored();
-        uint numerator = liquidationIncentiveScaled * priceBorrowedScaled; 
-        uint denominator = priceCollateralScaled * exchangeRateScaled;
-        uint ratio = numerator * expScale / denominator;
-        uint seizeTokens = (ratio * actualRepayAmount) / expScale;
+        uint256 exchangeRateScaled = CToken(cTokenCollateral).exchangeRateStored();
+        uint256 numerator = liquidationIncentiveScaled * priceBorrowedScaled;
+        uint256 denominator = priceCollateralScaled * exchangeRateScaled;
+        uint256 ratio = (numerator * expScale) / denominator;
+        uint256 seizeTokens = (ratio * actualRepayAmount) / expScale;
 
         return seizeTokens;
     }
 
     /*** Admin Functions ***/
 
-    function _setRewardsContract(IReward newRewarder) public {
+    function _setRewardsContract(RewardsInterface newRewarder) public {
         if (msg.sender != admin) {
             revert AddressUnauthorized();
         }
 
-        IReward oldRewarder = rewarder;
+        RewardsInterface oldRewarder = rewarder;
 
         rewarder = newRewarder;
 
@@ -829,9 +833,9 @@ contract Comptroller is ComptrollerInterface { //ComptrollerStorage,
     }
 
     /**
-      * @notice Sets a new price oracle for the comptroller
-      * @dev Admin function to set a new price oracle
-      */
+     * @notice Sets a new price oracle for the comptroller
+     * @dev Admin function to set a new price oracle
+     */
     function _setPriceOracle(PriceOracle newOracle) public {
         // Check caller is admin
         if (msg.sender != admin) {
@@ -849,28 +853,28 @@ contract Comptroller is ComptrollerInterface { //ComptrollerStorage,
     }
 
     /**
-      * @notice Sets the closeFactor used when liquidating borrows
-      * @dev Admin function to set closeFactor
-      * @param newCloseFactorScaled New close factor, scaled by 1e18
-      */
-    function _setCloseFactor(uint newCloseFactorScaled) external {
+     * @notice Sets the closeFactor used when liquidating borrows
+     * @dev Admin function to set closeFactor
+     * @param newCloseFactorScaled New close factor, scaled by 1e18
+     */
+    function _setCloseFactor(uint256 newCloseFactorScaled) external {
         // Check caller is admin}
         if (msg.sender != admin) {
             revert AddressUnauthorized();
         }
 
-        uint oldCloseFactorScaled = closeFactorScaled;
+        uint256 oldCloseFactorScaled = closeFactorScaled;
         closeFactorScaled = newCloseFactorScaled;
         emit NewCloseFactor(oldCloseFactorScaled, closeFactorScaled);
     }
 
     /**
-      * @notice Sets the collateralFactor for a market
-      * @dev Admin function to set per-market collateralFactor
-      * @param cToken The market to set the factor on
-      * @param newCollateralFactorScaled The new collateral factor, scaled by 1e18
-      */
-    function _setCollateralFactor(CToken cToken, uint newCollateralFactorScaled) external {
+     * @notice Sets the collateralFactor for a market
+     * @dev Admin function to set per-market collateralFactor
+     * @param cToken The market to set the factor on
+     * @param newCollateralFactorScaled The new collateral factor, scaled by 1e18
+     */
+    function _setCollateralFactor(CToken cToken, uint256 newCollateralFactorScaled) external {
         // Check caller is admin
         if (msg.sender != admin) {
             revert AddressUnauthorized();
@@ -893,7 +897,7 @@ contract Comptroller is ComptrollerInterface { //ComptrollerStorage,
         }
 
         // Set market's collateral factor to new collateral factor, remember old value
-        uint oldCollateralFactorScaled = market.collateralFactorScaled;
+        uint256 oldCollateralFactorScaled = market.collateralFactorScaled;
         market.collateralFactorScaled = newCollateralFactorScaled;
 
         // Emit event with asset, old collateral factor, and new collateral factor
@@ -901,18 +905,18 @@ contract Comptroller is ComptrollerInterface { //ComptrollerStorage,
     }
 
     /**
-      * @notice Sets liquidationIncentive
-      * @dev Admin function to set liquidationIncentive
-      * @param newLiquidationIncentiveScaled New liquidationIncentive scaled by 1e18
-      */
-    function _setLiquidationIncentive(uint newLiquidationIncentiveScaled) external {
+     * @notice Sets liquidationIncentive
+     * @dev Admin function to set liquidationIncentive
+     * @param newLiquidationIncentiveScaled New liquidationIncentive scaled by 1e18
+     */
+    function _setLiquidationIncentive(uint256 newLiquidationIncentiveScaled) external {
         // Check caller is admin
         if (msg.sender != admin) {
             revert AddressUnauthorized();
         }
 
         // Save current value for use in log
-        uint oldLiquidationIncentiveScaled = liquidationIncentiveScaled;
+        uint256 oldLiquidationIncentiveScaled = liquidationIncentiveScaled;
 
         // Set liquidation incentive to new incentive
         liquidationIncentiveScaled = newLiquidationIncentiveScaled;
@@ -922,10 +926,10 @@ contract Comptroller is ComptrollerInterface { //ComptrollerStorage,
     }
 
     /**
-      * @notice Add the market to the markets mapping and set it as listed
-      * @dev Admin function to set isListed and add support for the market
-      * @param cToken The address of the market (token) to list
-      */
+     * @notice Add the market to the markets mapping and set it as listed
+     * @dev Admin function to set isListed and add support for the market
+     * @param cToken The address of the market (token) to list
+     */
     function _supportMarket(CToken cToken) external {
         if (msg.sender != admin) {
             revert AddressUnauthorized();
@@ -949,7 +953,7 @@ contract Comptroller is ComptrollerInterface { //ComptrollerStorage,
     }
 
     function _addMarketInternal(address cToken) internal {
-        for (uint i = 0; i < allMarkets.length; i ++) {
+        for (uint256 i = 0; i < allMarkets.length; i++) {
             if (allMarkets[i] == CToken(cToken)) {
                 revert MarketAlreadyListed();
             }
@@ -957,25 +961,24 @@ contract Comptroller is ComptrollerInterface { //ComptrollerStorage,
         allMarkets.push(CToken(cToken));
     }
 
-
     /**
-      * @notice Set the given borrow caps for the given cToken markets. Borrowing that brings total borrows to or above borrow cap will revert.
-      * @dev Admin or borrowCapGuardian function to set the borrow caps. A borrow cap of 0 corresponds to unlimited borrowing.
-      * @param cTokens The addresses of the markets (tokens) to change the borrow caps for
-      * @param newBorrowCaps The new borrow cap values in underlying to be set. A value of 0 corresponds to unlimited borrowing.
-      */
-    function _setMarketBorrowCaps(CToken[] calldata cTokens, uint[] calldata newBorrowCaps) external {
+     * @notice Set the given borrow caps for the given cToken markets. Borrowing that brings total borrows to or above borrow cap will revert.
+     * @dev Admin or borrowCapGuardian function to set the borrow caps. A borrow cap of 0 corresponds to unlimited borrowing.
+     * @param cTokens The addresses of the markets (tokens) to change the borrow caps for
+     * @param newBorrowCaps The new borrow cap values in underlying to be set. A value of 0 corresponds to unlimited borrowing.
+     */
+    function _setMarketBorrowCaps(CToken[] calldata cTokens, uint256[] calldata newBorrowCaps) external {
         if (msg.sender != admin && msg.sender != borrowCapGuardian) {
             revert AddressUnauthorized();
         }
-        uint numMarkets = cTokens.length;
-        uint numBorrowCaps = newBorrowCaps.length;
+        uint256 numMarkets = cTokens.length;
+        uint256 numBorrowCaps = newBorrowCaps.length;
 
         if (numMarkets == 0 || numMarkets != numBorrowCaps) {
             revert InvalidValue();
         }
 
-        for(uint i = 0; i < numMarkets; i++) {
+        for (uint256 i = 0; i < numMarkets; i++) {
             borrowCaps[address(cTokens[i])] = newBorrowCaps[i];
             emit NewBorrowCap(cTokens[i], newBorrowCaps[i]);
         }
@@ -1059,7 +1062,6 @@ contract Comptroller is ComptrollerInterface { //ComptrollerStorage,
             revert AddressUnauthorized();
         }
 
-
         transferGuardianPaused = state;
         emit ActionPaused("Transfer", state);
         return state;
@@ -1072,7 +1074,6 @@ contract Comptroller is ComptrollerInterface { //ComptrollerStorage,
         if (msg.sender != admin && state != true) {
             revert AddressUnauthorized();
         }
-
 
         seizeGuardianPaused = state;
         emit ActionPaused("Seize", state);
@@ -1092,8 +1093,8 @@ contract Comptroller is ComptrollerInterface { //ComptrollerStorage,
     function adminOrInitializing() internal view returns (bool) {
         return msg.sender == admin || msg.sender == comptrollerImplementation;
     }
-    
-    function min(uint a, uint b) internal pure returns (uint) {
+
+    function min(uint256 a, uint256 b) internal pure returns (uint256) {
         if (a <= b) {
             return a;
         } else {
@@ -1101,17 +1102,21 @@ contract Comptroller is ComptrollerInterface { //ComptrollerStorage,
         }
     }
 
-
     /** GETTER FUNCTIONS */
-    function getIsMarkets(address cToken) external view override returns (bool, uint, bool) {
+    function getIsMarkets(address cToken)
+        external
+        view
+        override
+        returns (
+            bool,
+            uint256,
+            bool
+        )
+    {
         // bool listed = markets[cToken].isListed;
         // bool comped = markets[cToken].isComped;
         // return (listed, comped);
-        return (
-            markets[cToken].isListed,
-            markets[cToken].collateralFactorScaled,
-            markets[cToken].isComped
-        );
+        return (markets[cToken].isListed, markets[cToken].collateralFactorScaled, markets[cToken].isComped);
     }
 
     function getAccountMembership(address cToken, address user) external view override returns (bool) {
@@ -1125,6 +1130,4 @@ contract Comptroller is ComptrollerInterface { //ComptrollerStorage,
     function getAccountAssets(address user) external view override returns (CToken[] memory) {
         return accountAssets[user];
     }
-
-
 }

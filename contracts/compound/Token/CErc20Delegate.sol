@@ -2,7 +2,7 @@
 pragma solidity ^0.8.13;
 
 import "./CErc20.sol";
-import "../interfaces/ICToken.sol";
+import "./storage/CDelegateInterface.sol";
 
 /**
  * @title Compound's CErc20Delegate Contract

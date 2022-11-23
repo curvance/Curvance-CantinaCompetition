@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
-import "../interfaces/ICToken.sol";
-import "../Storage.sol";
+import "./storage/CTokenInterface.sol";
+import "./storage/CErc20Interface.sol";
+import "./storage/CDelegatorInterface.sol";
 
 /**
  * @title Compound's CErc20Delegator Contract
@@ -446,7 +447,7 @@ contract CErc20Delegator is CTokenInterface, CErc20Interface, CDelegatorInterfac
      * @notice A public function to sweep accidental ERC-20 transfers to this contract. Tokens are sent to admin (timelock)
      * @param token The address of the ERC-20 token to sweep
      */
-    function sweepToken(EIP20NonStandardInterface token) external override {
+    function sweepToken(IEIP20NonStandard token) external override {
         delegateToImplementation(abi.encodeWithSignature("sweepToken(address)", token));
     }
 

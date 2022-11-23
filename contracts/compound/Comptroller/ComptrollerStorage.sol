@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
-import "./PriceOracle.sol";
-import "./UnitrollerStorage.sol";
-import "./interfaces/IRewards.sol";
+import "../PriceOracle.sol";
+import "../Unitroller/UnitrollerStorage.sol";
+import "../CompRewards/RewardsInterface.sol";
 
 contract MarketStorage {
     struct Market {
@@ -49,7 +49,7 @@ contract ComptrollerStorage is UnitrollerStorage, MarketStorage {
     PriceOracle public oracle;
 
     /// @notice Allows connection to the Rewards Contract
-    IReward public rewarder;
+    RewardsInterface public rewarder;
 
     /// @notice Multiplier used to calculate the maximum repayAmount when liquidating a borrow
     uint256 public closeFactorScaled;

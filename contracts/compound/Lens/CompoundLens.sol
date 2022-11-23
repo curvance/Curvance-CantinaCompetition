@@ -4,11 +4,11 @@ pragma solidity ^0.8.13;
 // import "../CErc20.sol";
 // import "../CToken.sol";
 // import "../PriceOracle.sol";
-// import "../interfaces/IEip20.sol";
+// import "../interfaces/IEIP20.sol";
 // import "../Governance/GovernorAlpha.sol";
 // import "../Governance/Comp.sol";
 // import "../ComptrollerInterface.sol";
-// import "../interfaces/IRewards.sol";
+// import "../interfaces/RewardsInterface.sol";
 
 // interface ComptrollerLensInterface {
 //     function markets(address) external view returns (bool, uint);
@@ -124,7 +124,7 @@ pragma solidity ^0.8.13;
 //         } else {
 //             CErc20 cErc20 = CErc20(address(cToken));
 //             underlyingAssetAddress = cErc20.underlying();
-//             underlyingDecimals = EIP20Interface(cErc20.underlying()).decimals();
+//             underlyingDecimals = IEIP20(cErc20.underlying()).decimals();
 //         }
 
 //         (uint compSupplySpeed, uint compBorrowSpeed) = getCompSpeeds(comptroller, cToken);
@@ -192,7 +192,7 @@ pragma solidity ^0.8.13;
 //             tokenAllowance = account.balance;
 //         } else {
 //             CErc20 cErc20 = CErc20(address(cToken));
-//             EIP20Interface underlying = EIP20Interface(cErc20.underlying());
+//             IEIP20 underlying = IEIP20(cErc20.underlying());
 //             tokenBalance = underlying.balanceOf(account);
 //             tokenAllowance = underlying.allowance(account, address(cToken));
 //         }

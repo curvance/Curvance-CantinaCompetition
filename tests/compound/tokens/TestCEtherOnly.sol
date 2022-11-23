@@ -1,13 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import "contracts/compound/Comptroller.sol";
-import "contracts/compound/Token/CEther.sol";
-import "contracts/compound/Errors.sol";
-import "contracts/compound/SimplePriceOracle.sol";
-
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "contracts/compound/ComptrollerInterface.sol";
+import "contracts/compound/Comptroller/Comptroller.sol";
+import "contracts/compound/Comptroller/ComptrollerInterface.sol";
+import "contracts/compound/Token/CEther.sol";
+import "contracts/compound/SimplePriceOracle.sol";
 import "contracts/compound/InterestRateModel/InterestRateModel.sol";
 
 import "tests/compound/deploy.sol";

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
-import "./interfaces/IEip20.sol";
+import "./interfaces/IEIP20.sol";
 
 /**
  * @title Reservoir Contract
@@ -20,7 +20,7 @@ contract Reservoir {
   uint public dripRate;
 
   /// @notice Reference to token to drip (immutable)
-  EIP20Interface public token;
+  IEIP20 public token;
 
   /// @notice Target to receive dripped tokens (immutable)
   address public target;
@@ -34,7 +34,7 @@ contract Reservoir {
     * @param token_ The token to drip
     * @param target_ The recipient of dripped tokens
     */
-  constructor(uint dripRate_, EIP20Interface token_, address target_) {
+  constructor(uint dripRate_, IEIP20 token_, address target_) {
     dripStart = block.number;
     dripRate = dripRate_;
     token = token_;
@@ -49,7 +49,7 @@ contract Reservoir {
     */
   function drip() public returns (uint) {
     // First, read storage into memory
-    EIP20Interface token_ = token;
+    IEIP20 token_ = token;
     uint reservoirBalance_ = token_.balanceOf(address(this)); // TODO: Verify this is a static call
     uint dripRate_ = dripRate;
     uint dripStart_ = dripStart;

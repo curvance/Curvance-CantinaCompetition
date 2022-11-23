@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
+import "../interfaces/IMaker.sol";
 import "./JumpRateModelV2.sol";
 import "./JugLike.sol";
-
-import "../interfaces/IMaker.sol";
 
 /**
  * @title Compound's DAIInterestRateModel Contract (version 3)

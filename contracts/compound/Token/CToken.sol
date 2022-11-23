@@ -2,10 +2,10 @@
 pragma solidity ^0.8.13;
 
 import "../ReentrancyGuard.sol";
-import "../interfaces/ICToken.sol";
-import "../ComptrollerInterface.sol";
-import "../interfaces/IEip20.sol";
+import "../Comptroller/ComptrollerInterface.sol";
+import "../interfaces/IEIP20.sol";
 import "../InterestRateModel/InterestRateModel.sol";
+import "./storage/CTokenInterface.sol";
 
 /**
  * @title Compound's CToken Contract

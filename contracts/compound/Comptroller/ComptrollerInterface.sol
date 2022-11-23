@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
+import "../Token/CToken.sol";
 import "./ComptrollerStorage.sol";
-import "./Token/CToken.sol";
 
 abstract contract ComptrollerInterface is ComptrollerStorage {
     /// @notice Indicator that this is a Comptroller contract (for inspection)

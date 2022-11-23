@@ -3,10 +3,10 @@ pragma solidity ^0.8.13;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "./CToken.sol";
 import "../interfaces/ICveLike.sol";
-import "../interfaces/IEip20NonStandard.sol";
-import "../interfaces/ICToken.sol";
+import "../interfaces/IEIP20NonStandard.sol";
+import "./CToken.sol";
+import "./storage/CErc20Interface.sol";
 
 /**
  * @title Compound's CErc20 Contract
@@ -39,7 +39,7 @@ contract CErc20 is CErc20Interface, CToken {
         super.initialize(comptroller_, interestRateModel_, initialExchangeRateScaled_, name_, symbol_, decimals_);
         // Set underlying and sanity check it
         underlying = underlying_;
-        EIP20Interface(underlying).totalSupply();
+        IEIP20(underlying).totalSupply();
     }
 
     /*** User Interface ***/
@@ -118,7 +118,7 @@ contract CErc20 is CErc20Interface, CToken {
      *  Tokens are sent to admin (timelock)
      * @param token The address of the ERC-20 token to sweep
      */
-    function sweepToken(EIP20NonStandardInterface token) external override {
+    function sweepToken(IEIP20NonStandard token) external override {
         if (msg.sender != admin) {
             revert AddressUnauthorized();
         }
@@ -145,7 +145,7 @@ contract CErc20 is CErc20Interface, CToken {
      * @return uint The quantity of underlying tokens owned by this contract
      */
     function getCashPrior() internal view virtual override returns (uint256) {
-        EIP20Interface token = EIP20Interface(underlying);
+        IEIP20 token = IEIP20(underlying);
         return token.balanceOf(address(this));
     }
 
@@ -188,7 +188,7 @@ contract CErc20 is CErc20Interface, CToken {
         }
 
         // Calculate the amount that was *actually* transferred
-        uint256 balanceAfter = EIP20Interface(underlying_).balanceOf(address(this));
+        uint256 balanceAfter = IEIP20(underlying_).balanceOf(address(this));
         return balanceAfter - balanceBefore; // underflow already checked above, just subtract
     }
 
@@ -204,7 +204,7 @@ contract CErc20 is CErc20Interface, CToken {
      *       See here: https://medium.com/coinmonks/missing-return-value-bug-at-least-130-tokens-affected-d67bf08521ca
      */
     function doTransferOut(address payable to, uint256 amount) internal virtual override {
-        EIP20NonStandardInterface token = EIP20NonStandardInterface(underlying);
+        IEIP20NonStandard token = IEIP20NonStandard(underlying);
         token.transfer(to, amount);
 
         bool success;

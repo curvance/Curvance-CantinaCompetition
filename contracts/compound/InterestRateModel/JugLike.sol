@@ -2,7 +2,6 @@
 pragma solidity ^0.8.10;
 
 /// @notice Imported into DAIInterestRateModelV3.sol
-
 contract JugLike {
     // --- Data ---
     struct Ilk {
