@@ -180,6 +180,14 @@ contract DepositRouterTest is Test {
         // console.log("Gas Used for Withdraw", gas - gasleft());
     }
 
+    function testKeeperRebalance() external {
+        uint256 assets = 100e18;
+        router.deposit(assets);
+        (bool upkeepNeeded, bytes memory performData) = router.checkUpkeep(abi.encode(address(this)));
+        console.log("UpkeepNeeded", upkeepNeeded);
+        router.performUpkeep(performData);
+    }
+
     // ========================================= HELPER FUNCTIONS =========================================
 
     // function _simulateYearnYield(IYearnVault vault, uint256 yield) internal {

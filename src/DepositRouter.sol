@@ -280,6 +280,9 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
         for (uint8 i; i < 8; i++) {
             // Assume rebalances are front loaded, so finding a zero amount breaks out of the for loop.
             if (amount[i] == 0) break;
+            console.log("Rebalancing from", from[i]);
+            console.log("Rebalancing to", to[i]);
+            console.log("Rebalance Amount", amount[i]);
             rebalance(operator, from[i], to[i], amount[i]);
         }
     }
@@ -385,15 +388,19 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
             // Make sure enough time has passed.
             if (block.timestamp < (operator.lastRebalance + operator.minimumTimeBetweenUpkeeps))
                 return (false, abi.encode(0));
+
             uint256 imbalance = _findOperatorPositionImbalance(target);
+
             // Make sure Delta is enough to warrant an upkeep.
             if (imbalance < operator.minimumImbalanceDeltaForUpkeep) return (false, abi.encode(0));
 
             int256[8] memory positionWants = _findOptimalLiquidityImbalance(target);
+
             (uint32[8] memory from, uint32[8] memory to, uint256[8] memory amount) = _findOptimalLiquidityMovement(
                 target,
                 positionWants
             );
+            upkeepNeeded = true;
             performData = abi.encode(target, from, to, amount);
         }
         //Does all the heavy lifting to determine is a rebalance is needed, and where money should move.
@@ -456,7 +463,7 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
             uint256 actual = operatorPositionBalances[i].mulDivDown(10**DECIMALS, operatorBalance);
             if (actual > positionRatio) positionImbalance += actual - positionRatio;
         }
-
+        console.log("Imbalance", positionImbalance);
         return positionImbalance;
     }
 
@@ -485,9 +492,9 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
         for (uint256 i = 0; i < positionLength; i++) {
             uint256 positionRatio = _positionRatios[i]; //might need to do unchecked
             // Want = target - actual.
-            positionWants[i] = int256(
-                positionRatio.mulDivDown(operatorBalance, 10**DECIMALS) - operatorPositionBalances[i]
-            );
+            positionWants[i] =
+                int256(positionRatio.mulDivDown(operatorBalance, 10**DECIMALS)) -
+                int256(operatorPositionBalances[i]);
         }
 
         return positionWants;
