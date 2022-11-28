@@ -4,6 +4,7 @@ pragma solidity 0.8.16;
 import { ERC20 } from "@solmate/tokens/ERC20.sol";
 import { SafeTransferLib } from "@solmate/utils/SafeTransferLib.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { PriceRouter } from "src/PricingOperations/PriceRouter.sol";
 
 import { Math } from "src/utils/Math.sol";
 import { Uint32Array } from "src/libraries/Uint32Array.sol";
@@ -27,19 +28,22 @@ import { console } from "@forge-std/Test.sol";
  *         Yearn
  * @author crispymangoes
  */
-//TODO store positions in an OZ uint256 enumerable set?
-//TODO need to vest rewards overtime
 // Send some percent of rewards to CVE Rewarder, then keep the rest here to vest rewards
 //Keepers and data feeds to automate harvesting, self funding upkeeps
-//TODO so positions can be an underlying that accrues overtime, or one that needs to be harvested
 contract DepositRouter is Ownable, KeeperCompatibleInterface {
     using Uint32Array for uint32[];
     using SafeTransferLib for ERC20;
     using Math for uint256;
 
     enum Platform {
-        CONVEX, // you are not given an asset
-        YEARN // you are given an asset
+        CONVEX
+    }
+
+    struct DepositData {
+        address asset;
+        uint8 coinsCount;
+        uint8 targetIndex;
+        bool useUnderlying;
     }
 
     // Position Storage.
@@ -50,17 +54,20 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
         uint64 lastAccrualTimestamp; // Last timestamp when vested tokens were claimed.
         uint64 endTimestamp; // The end time stamp for when all current rewards are vested.
         Platform platform;
-        bytes positionData; // Stores arbritrary data for the position.
         ERC20 asset; // The underlying asset in a position.
+        bytes positionData; // Stores arbritrary data for the position.
         address[8] swapPools;
-        uint256 fromAndTos; // to[7], from[7], .....to[1], from[1], to[0], from[0]
-        uint256 depositData; // bool(useUnderlying), uint8(targetIndex), uint8(coinsCount), address(asset to deposit)
+        uint16[8] froms; // Store swapping information `from` asset
+        uint16[8] tos; // Store swapping information `to` asset
+        DepositData depositData;
     }
+
+    PriceRouter public priceRouter;
 
     uint32[] public activePositions; // Array of all active positions.
     mapping(uint32 => Position) public positions;
     uint32 public positionCount;
-    ///@dev 0 position id is reserved for empty
+    ///@dev 0 position id is reserved for holding
 
     uint32 public constant REWARD_PERIOD = 7 days;
 
@@ -72,13 +79,22 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
         ERC20 asset;
         uint32[8] openPositions; // Positions operator currently has funds in. 0th postion is always the holding position.
         uint32[8] positionRatios; // Desired ratio for funds in positions. Could maybe allow a position to be just this contract, where it allows for cheaper use deposit/withdraws, and keepers perform batched TXs.
-        uint64 minimumImbalanceDeltaForUpkeep; //minimum change in imbalance to allow a performupkeep to be performed IE 30%
-        uint64 minimumValueToRebalance; // The minimum dollar value of assets to rebalance.
+        //^^ 8 decimals
+        uint64 minimumImbalanceDeltaForUpkeep; //minimum change in imbalance to allow a performupkeep to be performed IE 30%, 8 decimals
+        uint64 minimumValueToRebalance; // The minimum dollar value of assets to rebalance. // 8 decimals
         //^^ if a rebalance operation is trying to move less than the minimum, then it is skipped.
         uint64 lastRebalance; // Timestamp of the last time this operators positions were rebalanced.
+        uint64 minimumTimeBetweenUpkeeps;
     }
 
+    /**
+     * @notice Map an address to its operator data.
+     */
     mapping(address => Operator) public operators;
+
+    /**
+     * @notice Keep track of an operators shares in each position.
+     */
     mapping(address => mapping(uint32 => uint256)) public operatorPositionShares;
 
     //============================================ onlyOwner Functions ===========================================
@@ -86,9 +102,10 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
         ERC20 _asset,
         Platform _platform,
         bytes memory _positionData,
-        address[8] memory _swapPools,
-        uint256 _fromAndTos,
-        uint256 _depositData
+        address[8] calldata _swapPools,
+        uint16[8] calldata _froms,
+        uint16[8] calldata _tos,
+        DepositData calldata _depositData
     ) external onlyOwner {
         uint32 positionId = positionCount + 1;
         if (activePositions.contains(positionId)) revert("Position already present");
@@ -104,7 +121,8 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
             positionData: _positionData,
             asset: _asset,
             swapPools: _swapPools,
-            fromAndTos: _fromAndTos,
+            froms: _froms,
+            tos: _tos,
             depositData: _depositData
         });
         positionCount++;
@@ -116,7 +134,10 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
         address _owner,
         ERC20 _asset,
         uint32[8] memory _positions,
-        uint32[8] memory _positionRatios
+        uint32[8] memory _positionRatios,
+        uint64 _minimumImbalanceDeltaForUpkeep,
+        uint64 _minimumValueToRebalance,
+        uint64 _minimumTimeBetweenUpkeeps
     ) external onlyOwner {
         require(!operators[_operator].isOperator, "Operator already added.");
         //Positions are assumed to be packed to the front, IE you can not have a zero position between two non zero positions.
@@ -124,21 +145,68 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
         ///@dev position index 0 is the holding postion, where users funds are always deposited.
         require(_positions.length > 0, "0 is an invalid positions");
         // Loop through _positions and make sure it is valid.
-        bool zeroPositionFound;
+        bool endPositionFound;
         for (uint32 i = 0; i < 8; i++) {
             uint32 positionId = _positions[i];
-            if (i == 0 && positionId != 0) revert("First Position must be the holding position");
-            if (zeroPositionFound && positionId != 0) revert("Invalid Position array");
-            if (positionId == 0) zeroPositionFound = true;
+            if (i == 0) {
+                // Make sure zero index is holding position.
+                if (positionId != 0) revert("First Position must be the holding position");
+            } else if (endPositionFound) {
+                // If the end position is found enforce that all subsequent positions are zero.
+                if (positionId != 0) revert("Invalid Position array!");
+            } else {
+                // Scan through the array until the end is found.
+                if (positionId == 0) endPositionFound = true;
+                else {
+                    // Make sure position is valid.
+                    if (positionId > positionCount) revert("Invalid Position array!!");
+                    // Make sure operator is adding a position with the correct asset.
+                    if (positions[positionId].asset != _asset) revert("Invalid Position array!!!");
+                }
+            }
         }
         operators[_operator] = Operator({
             owner: _owner,
             isOperator: true,
+            allowRebalancing: false,
             asset: _asset,
-            holdingBalance: 0,
             openPositions: _positions,
-            positionRatios: _positionRatios
+            positionRatios: _positionRatios,
+            minimumImbalanceDeltaForUpkeep: _minimumImbalanceDeltaForUpkeep,
+            minimumValueToRebalance: _minimumValueToRebalance,
+            lastRebalance: uint64(block.timestamp),
+            minimumTimeBetweenUpkeeps: _minimumTimeBetweenUpkeeps
         });
+    }
+
+    //========================================= Operator Owner Functions ========================================
+    function changePositions(
+        address _operator,
+        uint32[8] calldata _positions,
+        uint32[8] calldata _positionRatios
+    ) external {
+        require(operators[_operator].isOperator, "Only Operators can deposit.");
+        require(operators[_operator].owner == msg.sender, "Not the Operator Owner");
+        uint256 operatorBalanceBefore = _balanceOf(_operator);
+        operators[_operator].openPositions = _positions;
+        uint256 operatorBalanceAfter = _balanceOf(_operator);
+        if (operatorBalanceAfter != operatorBalanceBefore) revert("Unclean positions.");
+        //TODO this check might revert if moving from a position that does not perfectly track balances(YEARN) to positions that do(holding or CONVEX).
+        //TODO make sure ratios add up to 1e8, also that a non zero ratio corresponds to an actual position.
+    }
+
+    /**
+     * @notice Allows operator owner to make rebalances without enforcing rebalance checks.
+     */
+    function operatorOwnerRebalance(
+        address _operator,
+        uint32[8] calldata from,
+        uint32[8] calldata to,
+        uint256[8] calldata amount
+    ) external {
+        require(operators[_operator].isOperator, "Only Operators can deposit.");
+        require(operators[_operator].owner == msg.sender, "Not the Operator Owner");
+        performRebalances(_operator, from, to, amount);
     }
 
     //============================================ Operator Functions ===========================================
@@ -149,7 +217,6 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
     function deposit(uint256 amount) public returns (uint256) {
         address operator = msg.sender;
         require(operators[operator].isOperator, "Only Operators can deposit.");
-        //TODO could coordinate with Zeus to have this transfer from user themselves, then users approve this contract. But this could get sketchy if an operator went rogue;
         operators[operator].asset.safeTransferFrom(operator, address(this), amount);
 
         // Deposit assets into operator holding position.
@@ -164,7 +231,7 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
 
         // Withdraw assets from positions in order.
         uint256 freeCash = operatorPositionShares[operator][0];
-        for (uint256 i = 1; i < 8; i++) {
+        for (uint32 i = 1; i < 8; i++) {
             if (freeCash < amount) {
                 uint256 positionBalance = operatorPositionShares[operator][i];
                 // Need to withdraw from a position to the holding position.
@@ -182,6 +249,7 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
     }
 
     //============================================ Position Management Functions ===========================================
+
     /**
      * @notice Operators will use a Chainlink Keeper to rebalance their positions
      * @notice The protocol(Curvance) will provide a keeper to harvest positions.
@@ -190,6 +258,7 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
      * @notice So I think the plan is to have keepers call this, and harvest functions.
      * Maybe have two different keepers, one dedicated to harvesting rewards, and another
      */
+    //TODO make internal
     function rebalance(
         address _operator,
         uint32 _fromPosition,
@@ -199,6 +268,20 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
         if (_fromPosition == _toPosition) revert("Invalid Rebalance");
         _withdrawFromPosition(_operator, _fromPosition, _amount);
         _depositToPosition(_operator, _toPosition, _amount);
+    }
+
+    //TODO make internal
+    function performRebalances(
+        address operator,
+        uint32[8] memory from,
+        uint32[8] memory to,
+        uint256[8] memory amount
+    ) public {
+        for (uint8 i; i < 8; i++) {
+            // Assume rebalances are front loaded, so finding a zero amount breaks out of the for loop.
+            if (amount[i] == 0) break;
+            rebalance(operator, from[i], to[i], amount[i]);
+        }
     }
 
     function _depositToPosition(
@@ -214,10 +297,7 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
             _updatePositionBalance(p); // This will take pending rewards and add it to p.totalBalance
             // So it needs to update totalBalance, and lastAccrualTimestamp
 
-            if (p.platform == Platform.YEARN) {
-                // Set _amount to actual backing of tokens in protocol.
-                _amount = _depositToYearn(p, _amount);
-            } else if (p.platform == Platform.CONVEX) {
+            if (p.platform == Platform.CONVEX) {
                 // Set _amount to actual backing of tokens in protocol.
                 _amount = _depositToConvex(p, _amount);
             }
@@ -246,9 +326,7 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
             // So it needs to update totalBalance, and lastAccrualTimestamp
             uint256 actualWithdraw;
 
-            if (p.platform == Platform.YEARN) {
-                actualWithdraw = _withdrawFromYearn(p, _amount);
-            } else if (p.platform == Platform.CONVEX) {
+            if (p.platform == Platform.CONVEX) {
                 actualWithdraw = _withdrawFromConvex(p, _amount);
             }
 
@@ -287,22 +365,63 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
     function harvestPosition(uint32 _positionId) public {
         Position storage p = positions[_positionId];
         _updatePositionBalance(p); // Updates totalBalance and lastAccrualTimestamp
-        if (p.platform == Platform.YEARN) {
-            _harvestYearnPosition(p);
-        } else if (p.platform == Platform.CONVEX) {
+        if (p.platform == Platform.CONVEX) {
             _harvestConvexPosition(p);
         }
     }
 
     //============================================ Chainlink Automation Functions ===========================================
+    //TODO minimum value check on upkeep could screw with the minmum delta change enforcement
     function checkUpkeep(bytes calldata checkData) external returns (bool upkeepNeeded, bytes memory performData) {
+        address target = abi.decode(checkData, (address));
+        if (target == address(this) || target == address(0)) {
+            // Run harvest upkeep
+            //TODO I think the checkData would store a range of position ids to check?
+            // Check it against like a min harvestable dollar value?
+        } else {
+            // Run operator position management upkeep.
+            Operator memory operator = operators[target];
+            require(operator.isOperator, "Address is not an operator.");
+            // Make sure enough time has passed.
+            if (block.timestamp < (operator.lastRebalance + operator.minimumTimeBetweenUpkeeps))
+                return (false, abi.encode(0));
+            uint256 imbalance = _findOperatorPositionImbalance(target);
+            // Make sure Delta is enough to warrant an upkeep.
+            if (imbalance < operator.minimumImbalanceDeltaForUpkeep) return (false, abi.encode(0));
+
+            int256[8] memory positionWants = _findOptimalLiquidityImbalance(target);
+            (uint32[8] memory from, uint32[8] memory to, uint256[8] memory amount) = _findOptimalLiquidityMovement(
+                target,
+                positionWants
+            );
+            performData = abi.encode(target, from, to, amount);
+        }
         //Does all the heavy lifting to determine is a rebalance is needed, and where money should move.
         // Also has an alternative mode for harvesting positions.
     }
 
+    //TODO this function can be made so it is only callable by keepers
     function performUpkeep(bytes calldata performData) external {
-        //TODO for position management this function should check the current imbalance, then perform all rebalance calls, and check imbalance again.
-        // If imbalance has decreased by some set amount call is gucci otherwise revert.
+        address target = abi.decode(performData, (address));
+        if (target == address(this) || target == address(0)) {
+            // Run harvest upkeep
+        } else {
+            Operator memory operator = operators[target];
+            require(operator.isOperator, "Address is not an operator.");
+            if (block.timestamp < (operator.lastRebalance + operator.minimumTimeBetweenUpkeeps))
+                revert("Minimum time not met.");
+            (, uint32[8] memory from, uint32[8] memory to, uint256[8] memory amount) = abi.decode(
+                performData,
+                (address, uint32[8], uint32[8], uint256[8])
+            );
+            uint256 imbalanceBefore = _findOperatorPositionImbalance(target);
+            performRebalances(target, from, to, amount);
+            uint256 imbalanceAfter = _findOperatorPositionImbalance(target);
+            // Underflow is desired, if imbalance increases, this TX should revert from underflow.
+            if (imbalanceBefore - imbalanceAfter < operator.minimumImbalanceDeltaForUpkeep) revert("Delta too small.");
+            //TODO for position management this function should check the current imbalance, then perform all rebalance calls, and check imbalance again.
+            // If imbalance has decreased by some set amount call is gucci otherwise revert.
+        }
     }
 
     /**
@@ -314,34 +433,28 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
     // Also performed before and after performUpkeep to make sure actions performed by keeper were valid.
     function _findOperatorPositionImbalance(address _operator) internal view returns (uint256) {
         Operator memory o = operators[_operator];
-        uint256 _positions = o.openPositions;
+        uint32[8] memory _positions = o.openPositions;
         // Loop through all positions and query balance.
         uint256 operatorBalance;
         uint256[8] memory operatorPositionBalances;
         uint8 positionLength;
         for (uint256 i = 0; i < 8; i++) {
-            uint32 positionId = uint32(_positions >> (32 * i)); //might need to do unchecked
+            uint32 positionId = _positions[i];
+            // Check if we are at the end of the position array, by finding the first zero position not in index 0.
+            if (positionId == 0 && i != 0) break;
             positionLength++;
-            if (positionId == 0) break;
-            else {
-                operatorPositionBalances[i] = _calcOperatorBalance(_operator, positionId);
-                operatorBalance += operatorPositionBalances[i];
-            }
+            operatorPositionBalances[i] = _calcOperatorBalance(_operator, positionId);
+            operatorBalance += operatorPositionBalances[i];
         }
-        // Add holding position balance.
-        operatorBalance += operators[_operator].holdingBalance;
 
-        // Array of balances indicating how much of the udnerlying asset each position wants to get(+), or to get rid of(-)
+        // Array of balances indicating how much of the underlying asset each position wants to get(+), or to get rid of(-)
         uint256 positionImbalance;
-        uint256 _positionRatios = o.positionRatios;
-        // Store ratio rotal, because 1eDECIMALS - total is the amount designated for the holding position.
-        uint256 ratioTotal;
+        uint32[8] memory _positionRatios = o.positionRatios;
         for (uint256 i = 0; i < positionLength; i++) {
-            uint256 positionRatio = uint32(_positionRatios >> (32 * i)); //might need to do unchecked
-            ratioTotal += positionRatio;
+            uint256 positionRatio = _positionRatios[i];
             // Want = target - actual.
             uint256 actual = operatorPositionBalances[i].mulDivDown(10**DECIMALS, operatorBalance);
-            if (actual > positionRatio) positionImbalance = actual - positionRatio;
+            if (actual > positionRatio) positionImbalance += actual - positionRatio;
         }
 
         return positionImbalance;
@@ -351,46 +464,31 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
     /**
      * @notice determines what positions want liquidity and which ones need to get rid of liquidity
      */
-    function _findOptimalLiquidityImbalance(address _operator) internal view returns (int256[9] memory) {
+    function _findOptimalLiquidityImbalance(address _operator) internal view returns (int256[8] memory) {
         Operator memory o = operators[_operator];
-        uint256 _positions = o.openPositions;
+        uint32[8] memory _positions = o.openPositions;
         // Loop through all positions and query balance.
         uint256 operatorBalance;
         uint256[8] memory operatorPositionBalances;
         uint8 positionLength;
         for (uint256 i = 0; i < 8; i++) {
-            uint32 positionId = uint32(_positions >> (32 * i)); //might need to do unchecked
+            uint32 positionId = _positions[i];
+            if (positionId == 0 && i != 0) break;
             positionLength++;
-            if (positionId == 0) break;
-            else {
-                operatorPositionBalances[i] = _calcOperatorBalance(_operator, positionId);
-                operatorBalance += operatorPositionBalances[i];
-            }
+            operatorPositionBalances[i] = _calcOperatorBalance(_operator, positionId);
+            operatorBalance += operatorPositionBalances[i];
         }
-        // Add holding position balance.
-        uint256 holdingBalance = operators[_operator].holdingBalance;
-        operatorBalance += holdingBalance;
 
-        // Array of balances indicating how much of the udnerlying asset each position wants to get(+), or to get rid of(-)
-        int256[9] memory positionWants;
-        uint256 _positionRatios = o.positionRatios;
-        // Store ratio rotal, because 1eDECIMALS - total is the amount designated for the holding position.
-        uint256 ratioTotal;
-        // Increment position length by and start at i=1 to shift one right.
-        positionLength++;
-        for (uint256 i = 1; i < positionLength; i++) {
-            uint256 positionRatio = uint32(_positionRatios >> (32 * i)); //might need to do unchecked
-            ratioTotal += positionRatio;
+        // Array of balances indicating how much of the underlying asset each position wants to get(+), or to get rid of(-)
+        int256[8] memory positionWants;
+        uint32[8] memory _positionRatios = o.positionRatios;
+        for (uint256 i = 0; i < positionLength; i++) {
+            uint256 positionRatio = _positionRatios[i]; //might need to do unchecked
             // Want = target - actual.
             positionWants[i] = int256(
-                positionRatio.mulDivDown(operatorBalance, 10**o.asset.decimals()) - operatorPositionBalances[i]
+                positionRatio.mulDivDown(operatorBalance, 10**DECIMALS) - operatorPositionBalances[i]
             );
         }
-
-        // Add holding position want to index 0
-        positionWants[0] = int256(
-            (10**DECIMALS - ratioTotal).mulDivDown(operatorBalance, 10**o.asset.decimals()) - holdingBalance
-        );
 
         return positionWants;
     }
@@ -399,11 +497,7 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
      * @notice given an array of liquidity imbalances, determine the optimal rebalance calls
      * @dev will only perform 8 rebalances in a single performUpkeep
      */
-    function _findOptimalLiquidityMovement(
-        address _operator,
-        int256[9] memory liquidityImbalance,
-        uint256 currentImbalance
-    )
+    function _findOptimalLiquidityMovement(address _operator, int256[8] memory liquidityImbalance)
         internal
         view
         returns (
@@ -413,23 +507,28 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
         )
     {
         // Max of 8 rebalance calls in an operation
-        //TODO use price feed to determine minimum value that can be withdrawn from a position.
         Operator memory o = operators[_operator];
+        //TODO use price feed to determine minimum value that can be withdrawn from a position.
+        uint256 minimumAmountToRebalance;
+
         uint8 rebalanceIndex;
-        uint256 _positions = o.openPositions;
+        uint32[8] memory _positions = o.openPositions;
         uint256 freeCash;
-        for (uint8 i = 0; i < 9; i++) {
-            int256 imbalance = liquidityImbalance[i];
-            if (imbalance >= 0) continue;
-            uint256 amountToWithdraw = uint256(imbalance * -1);
+        // Loop through and check negative imbalances, positions that want to withdraw assets.
+        for (uint8 i = 0; i < 8; i++) {
+            if (liquidityImbalance[i] >= 0) continue;
+            uint256 amountToWithdraw = uint256(liquidityImbalance[i] * -1);
+            // Make sure we are moving a substantial amount of assets.
+            if (amountToWithdraw < minimumAmountToRebalance) continue;
+
             freeCash += amountToWithdraw;
-            // Make sure amountToWithdraw is greater than some operator set minimum, if not continue
+
             if (i == 0) {
                 // No rebalance needed
                 continue;
             }
             // Know we have a negative imabalnce so we need to withdraw from this position.
-            uint32 positionId = uint32(_positions >> (32 * (i - 1)));
+            uint32 positionId = _positions[i];
             from[rebalanceIndex] = positionId;
             to[rebalanceIndex] = 0;
             amount[rebalanceIndex] = amountToWithdraw;
@@ -437,20 +536,22 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
         }
 
         // Now low through again but this time to add deposit rebalances
-        for (uint8 i = 0; i < 9; i++) {
-            int256 imbalance = liquidityImbalance[i];
+        // Loop through and check positive imbalances, positions that want to deposit assets.
+        for (uint8 i = 0; i < 8; i++) {
             if (freeCash == 0) break;
-            if (imbalance <= 0) continue;
+            if (liquidityImbalance[i] <= 0) continue;
             // Know we have a negative imabalnce so we need to withdraw from this position.
 
-            uint256 amountToDeposit = uint256(imbalance);
+            uint256 amountToDeposit = uint256(liquidityImbalance[i]);
             amountToDeposit = freeCash > amountToDeposit ? amountToDeposit : freeCash;
+            // Make sure we are moving a substantial amount of assets.
+            if (amountToDeposit < minimumAmountToRebalance) continue;
             freeCash -= amountToDeposit;
             if (i == 0) {
                 // No rebalance needed
                 continue;
             }
-            uint32 positionId = uint32(_positions >> (32 * (i - 1)));
+            uint32 positionId = _positions[i];
             from[rebalanceIndex] = 0;
             to[rebalanceIndex] = positionId;
             amount[rebalanceIndex] = amountToDeposit;
@@ -459,63 +560,64 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
     }
 
     //============================================ Yearn Integration Functions ===========================================
+    ///@notice Yearn is not currently used.
     // Needs to return the actual backing of tokens in the protocol.
     /**
      * @notice Balances are based off of sharePrice * Shares.
      * @dev Pricing inspired by Mai Finance yvOracle.
      *      https://ftmscan.com/address/0x530cd67a5898a20501cfcf74a3c68e21831d744c#code
      */
-    function _depositToYearn(Position storage p, uint256 _amount) internal returns (uint256 amountDeposited) {
-        address vaultAddress = abi.decode(p.positionData, (address));
-        IYearnVault vault = IYearnVault(vaultAddress);
-        p.asset.safeApprove(address(vault), _amount);
-        uint256 shares = vault.deposit(_amount);
-        amountDeposited = (shares * vault.pricePerShare()) / 10**vault.decimals();
-    }
+    // function _depositToYearn(Position storage p, uint256 _amount) internal returns (uint256 amountDeposited) {
+    //     address vaultAddress = abi.decode(p.positionData, (address));
+    //     IYearnVault vault = IYearnVault(vaultAddress);
+    //     p.asset.safeApprove(address(vault), _amount);
+    //     uint256 shares = vault.deposit(_amount);
+    //     amountDeposited = (shares * vault.pricePerShare()) / 10**vault.decimals();
+    // }
 
     /**
      * @notice Yearn compounds rewards to increase share price over time.
      *         So in order to determine yield, we need to compare our
      *         last stored balance + pending rewards to the current balance.
      */
-    function _harvestYearnPosition(Position storage p) internal {
-        address vaultAddress = abi.decode(p.positionData, (address));
-        IYearnVault vault = IYearnVault(vaultAddress);
+    // function _harvestYearnPosition(Position storage p) internal {
+    //     address vaultAddress = abi.decode(p.positionData, (address));
+    //     IYearnVault vault = IYearnVault(vaultAddress);
 
-        // Find current pending rewards that have not been distributed yet.
-        uint128 currentPendingRewards;
-        if (p.rewardRate > 0) {
-            currentPendingRewards = (p.endTimestamp - p.lastAccrualTimestamp) * p.rewardRate;
-        }
-        uint256 assetsAccountedFor = p.totalBalance + currentPendingRewards;
+    //     // Find current pending rewards that have not been distributed yet.
+    //     uint128 currentPendingRewards;
+    //     if (p.rewardRate > 0) {
+    //         currentPendingRewards = (p.endTimestamp - p.lastAccrualTimestamp) * p.rewardRate;
+    //     }
+    //     uint256 assetsAccountedFor = p.totalBalance + currentPendingRewards;
 
-        // Get this contracts current position worth based off share price.
-        uint256 currentBalance = (vault.balanceOf(address(this)) * vault.pricePerShare()) / 10**vault.decimals();
+    //     // Get this contracts current position worth based off share price.
+    //     uint256 currentBalance = (vault.balanceOf(address(this)) * vault.pricePerShare()) / 10**vault.decimals();
 
-        //This happens when
-        if (assetsAccountedFor > currentBalance) return;
-        else {
-            //TODO take platform fee
-            uint256 yield = currentBalance - assetsAccountedFor; // yearn token balanceOf this address * the exchange rate to the underlying - totalAssets
-            p.rewardRate = uint128((yield + currentPendingRewards) / REWARD_PERIOD);
-            p.endTimestamp = uint64(block.timestamp) + REWARD_PERIOD;
-            // lastAccrualTimestamp was already updated by _updatePositionBalance;
-        }
-    }
+    //     //This happens when
+    //     if (assetsAccountedFor > currentBalance) return;
+    //     else {
+    //         //TODO take platform fee
+    //         uint256 yield = currentBalance - assetsAccountedFor; // yearn token balanceOf this address * the exchange rate to the underlying - totalAssets
+    //         p.rewardRate = uint128((yield + currentPendingRewards) / REWARD_PERIOD);
+    //         p.endTimestamp = uint64(block.timestamp) + REWARD_PERIOD;
+    //         // lastAccrualTimestamp was already updated by _updatePositionBalance;
+    //     }
+    // }
 
-    function _withdrawFromYearn(Position storage p, uint256 _amount) internal returns (uint256 amountWithdrawn) {
-        address vaultAddress = abi.decode(p.positionData, (address));
-        IYearnVault vault = IYearnVault(vaultAddress);
-        uint256 shares = (10**vault.decimals() * _amount) / vault.pricePerShare();
-        uint256 balanceBefore = p.asset.balanceOf(address(this));
-        vault.withdraw(shares);
-        amountWithdrawn = p.asset.balanceOf(address(this)) - balanceBefore;
-    }
+    // function _withdrawFromYearn(Position storage p, uint256 _amount) internal returns (uint256 amountWithdrawn) {
+    //     address vaultAddress = abi.decode(p.positionData, (address));
+    //     IYearnVault vault = IYearnVault(vaultAddress);
+    //     uint256 shares = (10**vault.decimals() * _amount) / vault.pricePerShare();
+    //     uint256 balanceBefore = p.asset.balanceOf(address(this));
+    //     vault.withdraw(shares);
+    //     amountWithdrawn = p.asset.balanceOf(address(this)) - balanceBefore;
+    // }
 
     /**
      * @notice Used by Keepers to determine pending yield from a yearn position in order to see if it is worth harvesting.
      */
-    function _pendingYearnYieldWorth(Position storage p) internal returns (uint256) {}
+    // function _pendingYearnYieldWorth(Position storage p) internal returns (uint256) {}
 
     //============================================ Convex Integration Functions ===========================================
     IBooster private booster = IBooster(0xF403C135812408BFbE8713b5A23a04b3D48AAE31);
@@ -560,18 +662,15 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
             rewardBalances[i] = ERC20(rewardTokens[i]).balanceOf(address(this)) - rewardBalances[i];
         }
         // harvests rewards and immediately adds them back to the convex pool.
-        uint256 depositData = p.depositData;
-        ERC20 assetToDeposit = ERC20(address(uint160(depositData)));
+        DepositData memory depositData = p.depositData;
+        ERC20 assetToDeposit = ERC20(depositData.asset);
         uint256 depositBalance = assetToDeposit.balanceOf(address(this));
         //TODO need to take platform fee.
-        uint256 fromAndTos = p.fromAndTos;
-        for (uint8 i = 0; i < 16; i = i + 2) {
+        for (uint8 i = 0; i < 8; i++) {
             address pool;
-            if ((pool = p.swapPools[i / 2]) == address(0)) break;
-            if (rewardBalances[i / 2] < 0.01e18) continue; // Don't swap dust.
-            uint8 from = uint8(fromAndTos >> (8 * i));
-            uint8 to = uint8(fromAndTos >> (8 * (i + 1)));
-            _sellOnCurve(pool, from, to, rewardBalances[i / 2], rewardTokens[i / 2]);
+            if ((pool = p.swapPools[i]) == address(0)) break;
+            if (rewardBalances[i] < 0.01e18) continue; // Don't swap dust.
+            _sellOnCurve(pool, p.froms[i], p.tos[i], rewardBalances[i], rewardTokens[i]);
         }
 
         depositBalance = assetToDeposit.balanceOf(address(this)) - depositBalance;
@@ -583,9 +682,9 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
 
             _addLiquidityToCurve(
                 assetToDeposit,
-                uint8(depositData >> 160),
-                uint8(depositData >> 168),
-                (uint8(depositData >> 176) == 1),
+                depositData.coinsCount,
+                depositData.targetIndex,
+                depositData.useUnderlying,
                 depositBalance,
                 curvePool
             );
@@ -626,15 +725,13 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
     }
 
     function _balanceOf(address _operator) internal view returns (uint256 balance) {
-        uint256 _positions = operators[_operator].openPositions;
+        uint32[8] memory _positions = operators[_operator].openPositions;
         // Loop through all positions and query balance.
         for (uint256 i = 0; i < 8; i++) {
-            uint32 positionId = uint32(_positions >> (32 * i)); //might need to do unchecked
-            if (positionId == 0) break;
-            else balance += _calcOperatorBalance(_operator, positionId);
+            uint32 positionId = _positions[i];
+            if (positionId == 0 && i != 0) break;
+            balance += _calcOperatorBalance(_operator, positionId);
         }
-        // Add holding position balance.
-        balance += operators[_operator].holdingBalance;
         // Calculates balance + pending balance, does not facotr in pending rewards to be harvested.
     }
 
