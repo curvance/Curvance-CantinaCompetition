@@ -3,7 +3,7 @@ pragma solidity ^0.8.13;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "../interfaces/ICveLike.sol";
+import "../interfaces/ICve.sol";
 import "../interfaces/IEIP20NonStandard.sol";
 import "./CToken.sol";
 import "./storage/CErc20Interface.sol";
@@ -240,6 +240,6 @@ contract CErc20 is CErc20Interface, CToken {
             revert AddressUnauthorized();
         }
 
-        CveLike(underlying).delegate(cveLikeDelegatee);
+        ICve(underlying).delegate(cveLikeDelegatee);
     }
 }

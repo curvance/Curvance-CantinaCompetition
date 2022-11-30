@@ -4,6 +4,11 @@ pragma solidity ^0.8.13;
 import "../Token/CToken.sol";
 
 abstract contract RewardsInterface {
+    ////////// ERRORS //////////
+    error AddressUnauthorized();
+    error MarketNotListed();
+    error InsufficientCve();
+
     ////////// EVENTS //////////
     /// @notice Emitted when a new COMP speed is calculated for a market
     event CveSpeedUpdated(CToken indexed cToken, uint256 newSpeed);

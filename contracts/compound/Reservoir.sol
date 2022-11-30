@@ -10,74 +10,74 @@ import "./interfaces/IEIP20.sol";
  * @author Compound
  */
 contract Reservoir {
+    error MathError();
 
-  error MathError();
+    /// @notice The block number when the Reservoir started (immutable)
+    uint256 public dripStart;
 
-  /// @notice The block number when the Reservoir started (immutable)
-  uint public dripStart;
+    /// @notice Tokens per block that to drip to target (immutable)
+    uint256 public dripRate;
 
-  /// @notice Tokens per block that to drip to target (immutable)
-  uint public dripRate;
+    /// @notice Reference to token to drip (immutable)
+    IEIP20 public token;
 
-  /// @notice Reference to token to drip (immutable)
-  IEIP20 public token;
+    /// @notice Target to receive dripped tokens (immutable)
+    address public target;
 
-  /// @notice Target to receive dripped tokens (immutable)
-  address public target;
+    /// @notice Amount that has already been dripped
+    uint256 public dripped;
 
-  /// @notice Amount that has already been dripped
-  uint public dripped;
-
-  /**
-    * @notice Constructs a Reservoir
-    * @param dripRate_ Numer of tokens per block to drip
-    * @param token_ The token to drip
-    * @param target_ The recipient of dripped tokens
-    */
-  constructor(uint dripRate_, IEIP20 token_, address target_) {
-    dripStart = block.number;
-    dripRate = dripRate_;
-    token = token_;
-    target = target_;
-    dripped = 0;
-  }
-
-  /**
-    * @notice Drips the maximum amount of tokens to match the drip rate since inception
-    * @dev Note: this will only drip up to the amount of tokens available.
-    * @return The amount of tokens dripped in this call
-    */
-  function drip() public returns (uint) {
-    // First, read storage into memory
-    IEIP20 token_ = token;
-    uint reservoirBalance_ = token_.balanceOf(address(this)); // TODO: Verify this is a static call
-    uint dripRate_ = dripRate;
-    uint dripStart_ = dripStart;
-    uint dripped_ = dripped;
-    address target_ = target;
-    uint blockNumber_ = block.number;
-
-    // Next, calculate intermediate values
-    // uint dripTotal_ = mul(dripRate_, blockNumber_ - dripStart_); // , "dripTotal overflow");
-    uint dripTotal_ = dripRate_ * (blockNumber_ - dripStart_);
-    // uint deltaDrip_ = sub(dripTotal_, dripped_); // , "deltaDrip underflow");
-    uint deltaDrip_ = dripTotal_ - dripped_;
-    uint toDrip_ = min(reservoirBalance_, deltaDrip_);
-    // uint drippedNext_ = add(dripped_, toDrip_); // , "tautological");
-    uint drippedNext_ = dripped_ + toDrip_;
-
-    // Finally, write new `dripped` value and transfer tokens to target
-    dripped = drippedNext_;
-    token_.transfer(target_, toDrip_);
-
-    return toDrip_;
-  }
-
-  function min(uint a, uint b) internal pure returns (uint) {
-    if (a <= b) {
-      return a;
-    } else {
-      return b;
+    /**
+     * @notice Constructs a Reservoir
+     * @param dripRate_ Numer of tokens per block to drip
+     * @param token_ The token to drip
+     * @param target_ The recipient of dripped tokens
+     */
+    constructor(
+        uint256 dripRate_,
+        IEIP20 token_,
+        address target_
+    ) {
+        dripStart = block.number;
+        dripRate = dripRate_;
+        token = token_;
+        target = target_;
+        dripped = 0;
     }
-  }
+
+    /**
+     * @notice Drips the maximum amount of tokens to match the drip rate since inception
+     * @dev Note: this will only drip up to the amount of tokens available.
+     * @return The amount of tokens dripped in this call
+     */
+    function drip() public returns (uint256) {
+        // First, read storage into memory
+        IEIP20 token_ = token;
+        uint256 reservoirBalance_ = token_.balanceOf(address(this));
+        uint256 dripRate_ = dripRate;
+        uint256 dripStart_ = dripStart;
+        uint256 dripped_ = dripped;
+        address target_ = target;
+        uint256 blockNumber_ = block.number;
+
+        // Next, calculate intermediate values
+        uint256 dripTotal_ = dripRate_ * (blockNumber_ - dripStart_);
+        uint256 deltaDrip_ = dripTotal_ - dripped_;
+        uint256 toDrip_ = min(reservoirBalance_, deltaDrip_);
+        uint256 drippedNext_ = dripped_ + toDrip_;
+
+        // Finally, write new `dripped` value and transfer tokens to target
+        dripped = drippedNext_;
+        token_.transfer(target_, toDrip_);
+
+        return toDrip_;
+    }
+
+    function min(uint256 a, uint256 b) internal pure returns (uint256) {
+        if (a <= b) {
+            return a;
+        } else {
+            return b;
+        }
+    }
 }

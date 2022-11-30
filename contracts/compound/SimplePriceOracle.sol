@@ -5,7 +5,7 @@ import "./PriceOracle.sol";
 import "./Token/CErc20.sol";
 
 contract SimplePriceOracle is PriceOracle {
-    mapping(address => uint) prices;
+    mapping(address => uint) public prices;
     event PricePosted(address asset, uint previousPriceMantissa, uint requestedPriceMantissa, uint newPriceMantissa);
 
     function _getUnderlyingAddress(CToken cToken) private view returns (address) {

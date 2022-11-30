@@ -460,7 +460,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
      * @dev Accrues interest whether or not the operation succeeds, unless reverted
      * @param redeemTokens The number of cTokens to redeem into underlying
      */
-    function redeemInternal(uint256 redeemTokens) internal  {
+    function redeemInternal(uint256 redeemTokens) internal {
         accrueInterest();
         // redeemFresh emits redeem-specific logs on errors, so we don't need to
         redeemFresh(payable(msg.sender), redeemTokens, 0);
@@ -471,13 +471,13 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
      * @dev Accrues interest whether or not the operation succeeds, unless reverted
      * @param redeemAmount The amount of underlying to receive from redeeming cTokens
      */
-    function redeemUnderlyingInternal(uint256 redeemAmount) internal  {
+    function redeemUnderlyingInternal(uint256 redeemAmount) internal {
         accrueInterest();
         // redeemFresh emits redeem-specific logs on errors, so we don't need to
         redeemFresh(payable(msg.sender), 0, redeemAmount);
     }
 
-    /** 
+    /**
      * @notice User redeems cTokens in exchange for the underlying asset
      * @dev Assumes interest has already been accrued up to the current block
      * @param redeemer The address of the account which is redeeming the tokens

@@ -17,7 +17,6 @@ abstract contract CTokenStorage is CommonError {
     error SelfLiquidiationNotAllowed();
     error ComptrollerMismatch();
     error ValidationFailed();
-    /// TODO SEARCH FOR THESE FOR POTENTIAL CHANGES
     error ReduceReservesCashNotAvailable();
     error ReduceReservesCashValidation();
 

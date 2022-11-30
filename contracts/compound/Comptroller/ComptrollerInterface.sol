@@ -5,6 +5,64 @@ import "../Token/CToken.sol";
 import "./ComptrollerStorage.sol";
 
 abstract contract ComptrollerInterface is ComptrollerStorage {
+    ////////// Errors //////////
+    error MarketNotListed(address);
+    error AddressAlreadyJoined();
+    error NonZeroBorrowBalance(); /// Take a look here, could soften the landing
+    error Paused();
+    error InsufficientLiquidity();
+    error PriceError();
+    error BorrowCapReached();
+    error InsufficientShortfall();
+    error TooMuchRepay();
+    error ComptrollerMismatch();
+    error MarketAlreadyListed();
+    error InvalidValue();
+    error AddressUnauthorized();
+
+    ////////// Events //////////
+
+    /// @notice Emitted when an admin supports a market
+    event MarketListed(CToken cToken);
+
+    /// @notice Emitted when an account enters a market
+    event MarketEntered(CToken cToken, address account);
+
+    /// @notice Emitted when an account exits a market
+    event MarketExited(CToken cToken, address account);
+
+    /// @notice Emitted when close factor is changed by admin
+    event NewCloseFactor(uint256 oldCloseFactorScaled, uint256 newCloseFactorScaled);
+
+    /// @notice Emitted when a collateral factor is changed by admin
+    event NewCollateralFactor(CToken cToken, uint256 oldCollateralFactorScaled, uint256 newCollateralFactorScaled);
+
+    /// @notice Emitted when liquidation incentive is changed by admin
+    event NewLiquidationIncentive(uint256 oldLiquidationIncentiveScaled, uint256 newLiquidationIncentiveScaled);
+
+    /// @notice Emitted when price oracle is changed
+    event NewPriceOracle(PriceOracle oldPriceOracle, PriceOracle newPriceOracle);
+
+    /// @notice Emitted when pause guardian is changed
+    event NewPauseGuardian(address oldPauseGuardian, address newPauseGuardian);
+
+    /// @notice Emitted when an action is paused globally
+    event ActionPaused(string action, bool pauseState);
+
+    /// @notice Emitted when an action is paused on a market
+    event ActionPaused(CToken cToken, string action, bool pauseState);
+
+    /// @notice Emitted when borrow cap for a cToken is changed
+    event NewBorrowCap(CToken indexed cToken, uint256 newBorrowCap);
+
+    /// @notice Emitted when borrow cap guardian is changed
+    event NewBorrowCapGuardian(address oldBorrowCapGuardian, address newBorrowCapGuardian);
+
+    /// @notice Emitted when rewards contract address is changed
+    event NewRewardContract(RewardsInterface oldRewarder, RewardsInterface newRewarder);
+
+    ////////// Constants //////////
+
     /// @notice Indicator that this is a Comptroller contract (for inspection)
     bool public constant isComptroller = true;
 

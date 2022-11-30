@@ -3,7 +3,7 @@ pragma solidity ^0.8.13;
 
 import "./CommonError.sol";
 
-abstract contract CDelegationStorage is CommonError{
+abstract contract CDelegationStorage is CommonError {
     error CannotSendValueToFallback();
     error MintFailure();
 

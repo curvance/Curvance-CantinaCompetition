@@ -16,10 +16,6 @@ import "./RewardsStorage.sol";
 contract CompRewards is MarketStorage, RewardsStorage, RewardsInterface {
     address public cveAddress;
 
-    error AddressUnauthorized();
-    error MarketNotListed();
-    error InsufficientCve();
-
     constructor(
         address _comptroller,
         address _admin,

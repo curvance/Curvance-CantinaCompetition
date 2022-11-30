@@ -47,12 +47,6 @@ abstract contract RewardsStorage {
     /// @notice The CVE borrow index for each market for each borrower as of the last time they accrued COMP
     mapping(address => mapping(address => uint256)) public cveBorrowerIndex;
 
-    /// Local Constants ///
-    /// The address for calling the comptroller to obtain state variables
-    /**
-     * @notice Contract which oversees inter-cToken operations
-     */
-    // ComptrollerInterface public comptroller;
     address public comptroller;
 
     address public admin;
