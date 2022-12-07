@@ -15,24 +15,22 @@ import "./ComptrollerInterface.sol";
 contract Comptroller is ComptrollerInterface {
     ////////// Constants //////////
 
-    // closeFactorScaled must be strictly greater than this value
+    /// @notice closeFactorScaled must be strictly greater than this value
     uint256 internal constant closeFactorMinScaled = 0.05e18; // 0.05
 
-    // closeFactorScaled must not exceed this value
+    /// @notice closeFactorScaled must not exceed this value
     uint256 internal constant closeFactorMaxScaled = 0.9e18; // 0.9
 
-    // No collateralFactorScaled may exceed this value
+    /// @notice No collateralFactorScaled may exceed this value
     uint256 internal constant collateralFactorMaxScaled = 0.9e18; // 0.9
 
-    // Scaler for floating point math
+    /// @notice Scaler for floating point math
     uint256 internal constant expScale = 1e18;
 
     constructor(RewardsInterface _rewarder) {
         admin = msg.sender;
         rewarder = _rewarder;
     }
-
-    /*** Assets You Are In ***/
 
     /**
      * @notice Returns the assets an account has entered
@@ -119,9 +117,6 @@ contract Comptroller is ComptrollerInterface {
 
         /* Fail if the sender has a borrow balance */
         if (amountOwed != 0) {
-            /// TODO Should the whole transaction revert? Could just calculate max safe withdrawal?
-            // like:
-            // userMaxSafeWithdrawal = maxborrow * 0.8 - outstandingDebt
             revert NonZeroBorrowBalance();
         }
 
@@ -183,26 +178,6 @@ contract Comptroller is ComptrollerInterface {
         rewarder.distributeSupplierCveExternal(cToken, minter);
     }
 
-    // /**
-    //  * @notice Validates mint and reverts on rejection. May emit logs.
-    //  * @param cToken Asset being minted
-    //  * @param minter The address minting the tokens
-    //  * @param actualMintAmount The amount of the underlying asset being minted
-    //  * @param mintTokens The number of tokens being minted
-    //  */
-    // function mintVerify(address cToken, address minter, uint actualMintAmount, uint mintTokens) override external {
-    //     // Shh - currently unused
-    //     cToken;
-    //     minter;
-    //     actualMintAmount;
-    //     mintTokens;
-
-    //     // Shh - we don't ever want this hook to be marked pure
-    //     if (false) {
-    //         maxAssets = maxAssets;
-    //     }
-    // }
-
     /**
      * @notice Checks if the account should be allowed to redeem tokens in the given market
      * @param cToken The market to verify the redeem against
@@ -217,7 +192,6 @@ contract Comptroller is ComptrollerInterface {
         redeemAllowedInternal(cToken, redeemer, redeemTokens);
 
         // Keep the flywheel moving
-        /// TODO Should this be removed or should it call these functions on the CompRewards.sol?
         rewarder.updateCveSupplyIndexExternal(cToken);
         rewarder.distributeSupplierCveExternal(cToken, redeemer);
     }
@@ -243,21 +217,6 @@ contract Comptroller is ComptrollerInterface {
             revert InsufficientLiquidity();
         }
     }
-
-    // /** @dev Is called by CToken.sol when redeeming as a final check hook
-    //  *      - migrated the logic to the CToken function to save gas
-    //  * @notice Validates redeem and reverts on rejection. May emit logs.
-    //  * param cToken Asset being redeemed
-    //  * param redeemer The address redeeming the tokens
-    //  * @param redeemAmount The amount of the underlying asset being redeemed
-    //  * @param redeemTokens The number of tokens being redeemed
-    //  */
-    // function redeemVerify(uint redeemAmount, uint redeemTokens) override pure external {
-    //     // Require tokens is zero or amount is also zero
-    //     if (redeemTokens == 0 && redeemAmount > 0) {
-    //         revert CannotEqualZero();
-    //     }
-    // }
 
     /**
      * @notice Checks if the account should be allowed to borrow the underlying asset of the given market
@@ -309,28 +268,9 @@ contract Comptroller is ComptrollerInterface {
         getHypotheticalAccountLiquidityInternal(borrower, CToken(cToken), 0, borrowAmount);
 
         // Keep the flywheel moving
-        // uint borrowIndex = CToken(cToken).borrowIndex(); - Unused input param, removed from the functions below
-        rewarder.updateCveSupplyIndexExternal(cToken); //, borrowIndex);
-        rewarder.distributeSupplierCveExternal(cToken, borrower); //, borrowIndex);
+        rewarder.updateCveSupplyIndexExternal(cToken);
+        rewarder.distributeSupplierCveExternal(cToken, borrower);
     }
-
-    // /**
-    //  * @notice Validates borrow and reverts on rejection. May emit logs.
-    //  * @param cToken Asset whose underlying is being borrowed
-    //  * @param borrower The address borrowing the underlying
-    //  * @param borrowAmount The amount of the underlying asset requested to borrow
-    //  */
-    // function borrowVerify(address cToken, address borrower, uint borrowAmount) override external {
-    //     // Shh - currently unused
-    //     cToken;
-    //     borrower;
-    //     borrowAmount;
-
-    //     // Shh - we don't ever want this hook to be marked pure
-    //     if (false) {
-    //         maxAssets = maxAssets;
-    //     }
-    // }
 
     /**
      * @notice Checks if the account should be allowed to repay a borrow in the given market
@@ -343,36 +283,9 @@ contract Comptroller is ComptrollerInterface {
         }
 
         // Keep the flywheel moving
-        // uint borrowIndex = CToken(cToken).borrowIndex();- removed from the functions below
-        rewarder.updateCveSupplyIndexExternal(cToken); // , borrowIndex);
-        rewarder.distributeSupplierCveExternal(cToken, borrower); //, borrowIndex);
+        rewarder.updateCveSupplyIndexExternal(cToken);
+        rewarder.distributeSupplierCveExternal(cToken, borrower);
     }
-
-    // /**
-    //  * @notice Validates repayBorrow and reverts on rejection. May emit logs.
-    //  * @param cToken Asset being repaid
-    //  * @param payer The address repaying the borrow
-    //  * @param borrower The address of the borrower
-    //  * @param actualRepayAmount The amount of underlying being repaid
-    //  */
-    // function repayBorrowVerify(
-    //     address cToken,
-    //     address payer,
-    //     address borrower,
-    //     uint actualRepayAmount,
-    //     uint borrowerIndex) override external {
-    //     // Shh - currently unused
-    //     cToken;
-    //     payer;
-    //     borrower;
-    //     actualRepayAmount;
-    //     borrowerIndex;
-
-    //     // Shh - we don't ever want this hook to be marked pure
-    //     if (false) {
-    //         maxAssets = maxAssets;
-    //     }
-    // }
 
     /**
      * @notice Checks if the liquidation should be allowed to occur
@@ -405,40 +318,9 @@ contract Comptroller is ComptrollerInterface {
         uint256 maxClose = (closeFactorScaled * borrowBalance) / expScale;
 
         if (repayAmount > maxClose) {
-            /// TODO Should this just reduce the repayAmount to the maxClose amount instead? Like this:
-            // repayAmount = maxClose;
             revert TooMuchRepay();
         }
     }
-
-    // /**
-    //  * @notice Validates liquidateBorrow and reverts on rejection. May emit logs.
-    //  * @param cTokenBorrowed Asset which was borrowed by the borrower
-    //  * @param cTokenCollateral Asset which was used as collateral and will be seized
-    //  * @param liquidator The address repaying the borrow and seizing the collateral
-    //  * @param borrower The address of the borrower
-    //  * @param actualRepayAmount The amount of underlying being repaid
-    //  */
-    // function liquidateBorrowVerify(
-    //     address cTokenBorrowed,
-    //     address cTokenCollateral,
-    //     address liquidator,
-    //     address borrower,
-    //     uint actualRepayAmount,
-    //     uint seizeTokens) override external {
-    //     // Shh - currently unused
-    //     cTokenBorrowed;
-    //     cTokenCollateral;
-    //     liquidator;
-    //     borrower;
-    //     actualRepayAmount;
-    //     seizeTokens;
-
-    //     // Shh - we don't ever want this hook to be marked pure
-    //     if (false) {
-    //         maxAssets = maxAssets;
-    //     }
-    // }
 
     /**
      * @notice Checks if the seizing of assets should be allowed to occur
@@ -446,21 +328,17 @@ contract Comptroller is ComptrollerInterface {
      * @param cTokenBorrowed Asset which was borrowed by the borrower
      * @param liquidator The address repaying the borrow and seizing the collateral
      * @param borrower The address of the borrower
-     * param seizeTokens The number of collateral tokens to seize
      */
     function seizeAllowed(
         address cTokenCollateral,
         address cTokenBorrowed,
         address liquidator,
-        address borrower //, // uint seizeTokens
+        address borrower
     ) external override {
         // Pausing is a very serious situation - we revert to sound the alarms
         if (seizeGuardianPaused) {
             revert Paused();
         }
-
-        // Shh - currently unused
-        // seizeTokens;
 
         if (!markets[cTokenBorrowed].isListed) {
             revert MarketNotListed(cTokenBorrowed);
@@ -474,39 +352,10 @@ contract Comptroller is ComptrollerInterface {
         }
 
         // Keep the flywheel moving
-        /// TODO Should this be removed or should it call these functions on the CompRewards.sol?
         rewarder.updateCveSupplyIndexExternal(cTokenCollateral);
         rewarder.distributeSupplierCveExternal(cTokenCollateral, borrower);
         rewarder.distributeSupplierCveExternal(cTokenCollateral, liquidator);
     }
-
-    // /**
-    //  * @notice Validates seize and reverts on rejection. May emit logs.
-    //  * @param cTokenCollateral Asset which was used as collateral and will be seized
-    //  * @param cTokenBorrowed Asset which was borrowed by the borrower
-    //  * @param liquidator The address repaying the borrow and seizing the collateral
-    //  * @param borrower The address of the borrower
-    //  * @param seizeTokens The number of collateral tokens to seize
-    //  */
-    // function seizeVerify(
-    //     address cTokenCollateral,
-    //     address cTokenBorrowed,
-    //     address liquidator,
-    //     address borrower,
-    //     uint seizeTokens
-    // ) override external {
-    //     // Shh - currently unused
-    //     cTokenCollateral;
-    //     cTokenBorrowed;
-    //     liquidator;
-    //     borrower;
-    //     seizeTokens;
-
-    //     // Shh - we don't ever want this hook to be marked pure
-    //     if (false) {
-    //         maxAssets = maxAssets;
-    //     }
-    // }
 
     /**
      * @notice Checks if the account should be allowed to transfer tokens in the given market
@@ -531,55 +380,12 @@ contract Comptroller is ComptrollerInterface {
         redeemAllowedInternal(cToken, src, transferTokens);
 
         // Keep the flywheel moving
-        /// TODO Should this be removed or should it call these functions on the CompRewards.sol?
         rewarder.updateCveSupplyIndexExternal(cToken);
         rewarder.distributeSupplierCveExternal(cToken, src);
         rewarder.distributeSupplierCveExternal(cToken, dst);
     }
 
-    // /**
-    //  * @notice Validates transfer and reverts on rejection. May emit logs.
-    //  * @param cToken Asset being transferred
-    //  * @param src The account which sources the tokens
-    //  * @param dst The account which receives the tokens
-    //  * @param transferTokens The number of cTokens to transfer
-    //  */
-    // function transferVerify(address cToken, address src, address dst, uint transferTokens) override external {
-    //     // Shh - currently unused
-    //     cToken;
-    //     src;
-    //     dst;
-    //     transferTokens;
-
-    //     // Shh - we don't ever want this hook to be marked pure
-    //     if (false) {
-    //         maxAssets = maxAssets;
-    //     }
-    // }
-
     /*** Liquidity/Liquidation Calculations ***/
-
-    /**
-     * @dev Local vars for avoiding stack-depth limits in calculating account liquidity.
-     *  Note that `cTokenBalance` is the number of cTokens the account owns in the market,
-     *  whereas `borrowBalance` is the amount of underlying that the account has borrowed.
-     */
-    // struct AccountLiquidityLocalVars {
-    //     uint sumCollateral;
-    //     uint sumBorrowPlusEffects;
-    //     uint cTokenBalance;
-    //     uint borrowBalance;
-    //     uint exchangeRateMantissa;
-    //     uint oraclePriceMantissa;
-    //     // Exp collateralFactor;
-    //     // Exp exchangeRate;
-    //     // Exp oraclePrice;
-    //     // Exp tokensToDenom;
-    //     uint collateralFactor;
-    //     uint exchangeRate;
-    //     uint oraclePrice;
-    //     uint tokensToDenom;
-    // }
 
     /**
      * @notice Determine the current account liquidity wrt collateral requirements
@@ -648,7 +454,6 @@ contract Comptroller is ComptrollerInterface {
         uint256 redeemTokens,
         uint256 borrowAmount
     ) internal view returns (uint256, uint256) {
-        // AccountLiquidityLocalVars memory vars; // Holds all our calculation results
         uint256 sumCollateral;
         uint256 sumBorrowPlusEffects;
 
@@ -657,71 +462,34 @@ contract Comptroller is ComptrollerInterface {
         for (uint256 i = 0; i < assets.length; i++) {
             CToken asset = assets[i];
 
-            // uint oraclePrice = oracle.getUnderlyingPrice(asset);
-            // Read the balances and exchange rate from the cToken
-            // (
-            //     vars.cTokenBalance,
-            //     vars.borrowBalance,
-            //     vars.exchangeRateMantissa
-            // ) = asset.getAccountSnapshot(account);
-
-            (
-                //,
-                uint256 cTokenBalance,
-                uint256 borrowBalance,
-                uint256 exchangeRateScaled
-            ) = asset.getAccountSnapshot(account);
-
-            /// TODO Check!
-            // vars.collateralFactor = Exp({mantissa: markets[address(asset)].collateralFactorMantissa});
-            // uint collateralFactor = markets[address(asset)].collateralFactorScaled; TODO had to remove due to stack full!
-
-            // vars.exchangeRate = Exp({mantissa: vars.exchangeRateMantissa});
-
-            // Get the normalized price of the asset
-            // vars.oraclePriceMantissa = oracle.getUnderlyingPrice(asset);
-            // uint oraclePriceMantissa = oracle.getUnderlyingPrice(asset); // not needed if checking the oracle price below
-            // if (vars.oraclePriceMantissa == 0) {
-            // if (oraclePriceMantissa == 0) { // not needed if checking the oracle price below
-            //     revert PriceError(); // not needed if checking the oracle price below
-            // } // not needed if checking the oracle price below
-
-            // vars.oraclePrice = Exp({mantissa: vars.oraclePriceMantissa});
-            // uint oraclePrice = oraclePriceMantissa * PRECISION; // not needed if calling here
-            uint256 oraclePrice = (oracle.getUnderlyingPrice(asset) * expScale);
+            (uint256 cTokenBalance, uint256 borrowBalance, uint256 exchangeRateScaled) = asset.getAccountSnapshot(
+                account
+            );
+            uint256 oraclePrice = oracle.getUnderlyingPrice(asset);
             if (oraclePrice == 0) revert PriceError();
 
             // Pre-compute a conversion factor from tokens -> ether (normalized price value)
-            // vars.tokensToDenom = mul_(mul_(vars.collateralFactor, vars.exchangeRate), vars.oraclePrice);
-            uint256 tokensToDenom = (markets[address(asset)].collateralFactorScaled * exchangeRateScaled) * oraclePrice;
+            uint256 tokensToDenom = (((markets[address(asset)].collateralFactorScaled * exchangeRateScaled) /
+                expScale) * oraclePrice) / expScale;
 
-            // vars.sumCollateral = mul_ScalarTruncateAddUInt(vars.tokensToDenom, vars.cTokenBalance, vars.sumCollateral);
-            /// TODO Should this really be added to here within the for loop? Or is it a once-off per loop?
             sumCollateral += ((tokensToDenom * cTokenBalance) / expScale);
 
-            // vars.sumBorrowPlusEffects = mul_ScalarTruncateAddUInt(vars.oraclePrice, vars.borrowBalance, vars.sumBorrowPlusEffects);
-            /// TODO Should this really be added to here within the for loop? Or is it a once-off per loop?
             sumBorrowPlusEffects += ((oraclePrice * borrowBalance) / expScale);
 
             // Calculate effects of interacting with cTokenModify
             if (asset == cTokenModify) {
                 // redeem effect
-                // vars.sumBorrowPlusEffects = mul_ScalarTruncateAddUInt(vars.tokensToDenom, redeemTokens, vars.sumBorrowPlusEffects);
                 sumBorrowPlusEffects += ((tokensToDenom * redeemTokens) / expScale);
 
                 // borrow effect
-                // vars.sumBorrowPlusEffects = mul_ScalarTruncateAddUInt(vars.oraclePrice, borrowAmount, vars.sumBorrowPlusEffects);
                 sumBorrowPlusEffects += ((oraclePrice * borrowAmount) / expScale);
             }
         }
 
         // These are safe, as the underflow condition is checked first
-        // if (vars.sumCollateral > vars.sumBorrowPlusEffects) {
-        //     return (vars.sumCollateral - vars.sumBorrowPlusEffects, 0);
         if (sumCollateral > sumBorrowPlusEffects) {
             return (sumCollateral - sumBorrowPlusEffects, 0);
         } else {
-            // return (0, vars.sumBorrowPlusEffects - vars.sumCollateral);
             return (0, sumBorrowPlusEffects - sumCollateral);
         }
     }
@@ -764,6 +532,9 @@ contract Comptroller is ComptrollerInterface {
 
     /*** Admin Functions ***/
 
+    /**
+     * @notice Sets a new rewarder contract address
+     */
     function _setRewardsContract(RewardsInterface newRewarder) public {
         if (msg.sender != admin) {
             revert AddressUnauthorized();
@@ -792,7 +563,6 @@ contract Comptroller is ComptrollerInterface {
         // Set comptroller's oracle to newOracle
         oracle = newOracle;
 
-        // Emit NewPriceOracle(oldOracle, newOracle)
         emit NewPriceOracle(oldOracle, newOracle);
     }
 
@@ -844,7 +614,6 @@ contract Comptroller is ComptrollerInterface {
         uint256 oldCollateralFactorScaled = market.collateralFactorScaled;
         market.collateralFactorScaled = newCollateralFactorScaled;
 
-        // Emit event with asset, old collateral factor, and new collateral factor
         emit NewCollateralFactor(cToken, oldCollateralFactorScaled, newCollateralFactorScaled);
     }
 
@@ -865,7 +634,6 @@ contract Comptroller is ComptrollerInterface {
         // Set liquidation incentive to new incentive
         liquidationIncentiveScaled = newLiquidationIncentiveScaled;
 
-        // Emit event with old incentive, new incentive
         emit NewLiquidationIncentive(oldLiquidationIncentiveScaled, newLiquidationIncentiveScaled);
     }
 
@@ -906,10 +674,13 @@ contract Comptroller is ComptrollerInterface {
     }
 
     /**
-     * @notice Set the given borrow caps for the given cToken markets. Borrowing that brings total borrows to or above borrow cap will revert.
-     * @dev Admin or borrowCapGuardian function to set the borrow caps. A borrow cap of 0 corresponds to unlimited borrowing.
+     * @notice Set the given borrow caps for the given cToken markets.
+     *   Borrowing that brings total borrows to or above borrow cap will revert.
+     * @dev Admin or borrowCapGuardian function to set the borrow caps.
+     *   A borrow cap of 0 corresponds to unlimited borrowing.
      * @param cTokens The addresses of the markets (tokens) to change the borrow caps for
-     * @param newBorrowCaps The new borrow cap values in underlying to be set. A value of 0 corresponds to unlimited borrowing.
+     * @param newBorrowCaps The new borrow cap values in underlying to be set.
+     *   A value of 0 corresponds to unlimited borrowing.
      */
     function _setMarketBorrowCaps(CToken[] calldata cTokens, uint256[] calldata newBorrowCaps) external {
         if (msg.sender != admin && msg.sender != borrowCapGuardian) {
@@ -943,7 +714,6 @@ contract Comptroller is ComptrollerInterface {
         // Store borrowCapGuardian with value newBorrowCapGuardian
         borrowCapGuardian = newBorrowCapGuardian;
 
-        // Emit NewBorrowCapGuardian(OldBorrowCapGuardian, NewBorrowCapGuardian)
         emit NewBorrowCapGuardian(oldBorrowCapGuardian, newBorrowCapGuardian);
     }
 
@@ -962,10 +732,14 @@ contract Comptroller is ComptrollerInterface {
         // Store pauseGuardian with value newPauseGuardian
         pauseGuardian = newPauseGuardian;
 
-        // Emit NewPauseGuardian(OldPauseGuardian, NewPauseGuardian)
         emit NewPauseGuardian(oldPauseGuardian, pauseGuardian);
     }
 
+    /**
+     * @notice Admin function to set market mint paused
+     * @param cToken market token address
+     * @param state pause or unpause
+     */
     function _setMintPaused(CToken cToken, bool state) public returns (bool) {
         if (!markets[address(cToken)].isListed) {
             revert MarketNotListed(address(cToken));
@@ -982,6 +756,11 @@ contract Comptroller is ComptrollerInterface {
         return state;
     }
 
+    /**
+     * @notice Admin function to set market borrow paused
+     * @param cToken market token address
+     * @param state pause or unpause
+     */
     function _setBorrowPaused(CToken cToken, bool state) public returns (bool) {
         if (!markets[address(cToken)].isListed) {
             revert MarketNotListed(address(cToken));
@@ -998,6 +777,10 @@ contract Comptroller is ComptrollerInterface {
         return state;
     }
 
+    /**
+     * @notice Admin function to set transfer paused
+     * @param state pause or unpause
+     */
     function _setTransferPaused(bool state) public returns (bool) {
         if (msg.sender != pauseGuardian && msg.sender != admin) {
             revert AddressUnauthorized();
@@ -1011,6 +794,10 @@ contract Comptroller is ComptrollerInterface {
         return state;
     }
 
+    /**
+     * @notice Admin function to set seize paused
+     * @param state pause or unpause
+     */
     function _setSeizePaused(bool state) public returns (bool) {
         if (msg.sender != pauseGuardian && msg.sender != admin) {
             revert AddressUnauthorized();
@@ -1024,6 +811,9 @@ contract Comptroller is ComptrollerInterface {
         return state;
     }
 
+    /**
+     * @notice Update implementation address
+     */
     function _become(Unitroller unitroller) public {
         if (msg.sender != unitroller.admin()) {
             revert AddressUnauthorized();
@@ -1038,6 +828,9 @@ contract Comptroller is ComptrollerInterface {
         return msg.sender == admin || msg.sender == comptrollerImplementation;
     }
 
+    /**
+     * @notice Returns minimum value of a and b
+     */
     function min(uint256 a, uint256 b) internal pure returns (uint256) {
         if (a <= b) {
             return a;
@@ -1046,7 +839,9 @@ contract Comptroller is ComptrollerInterface {
         }
     }
 
-    /** GETTER FUNCTIONS */
+    /**
+     * @notice Returns market status
+     */
     function getIsMarkets(address cToken)
         external
         view
@@ -1057,20 +852,26 @@ contract Comptroller is ComptrollerInterface {
             bool
         )
     {
-        // bool listed = markets[cToken].isListed;
-        // bool comped = markets[cToken].isComped;
-        // return (listed, comped);
         return (markets[cToken].isListed, markets[cToken].collateralFactorScaled, markets[cToken].isComped);
     }
 
+    /**
+     * @notice Returns if user joined market
+     */
     function getAccountMembership(address cToken, address user) external view override returns (bool) {
         return markets[cToken].accountMembership[user];
     }
 
+    /**
+     * @notice Returns all markets
+     */
     function getAllMarkets() external view override returns (CToken[] memory) {
         return allMarkets;
     }
 
+    /**
+     * @notice Returns all markets user joined
+     */
     function getAccountAssets(address user) external view override returns (CToken[] memory) {
         return accountAssets[user];
     }
