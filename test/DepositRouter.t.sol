@@ -6,6 +6,7 @@ import { SafeTransferLib } from "@solmate/utils/SafeTransferLib.sol";
 import { IYearnVault } from "src/interfaces/Yearn/IYearnVault.sol";
 import { DepositRouter } from "src/DepositRouter.sol";
 import { IBaseRewardPool } from "src/interfaces/Convex/IBaseRewardPool.sol";
+import { PriceRouter } from "src/PricingOperations/PriceRouter.sol";
 
 import { Test, stdStorage, console, StdStorage, stdError } from "@forge-std/Test.sol";
 import { Math } from "src/utils/Math.sol";
@@ -15,6 +16,7 @@ contract DepositRouterTest is Test {
     using Math for uint256;
     using stdStorage for StdStorage;
 
+    PriceRouter private priceRouter;
     DepositRouter private router;
 
     IYearnVault daiVault = IYearnVault(0xdA816459F1AB5631232FE5e97a05BBBb94970c95);
@@ -33,7 +35,9 @@ contract DepositRouterTest is Test {
     address private constant cvxeth = 0xB576491F1E6e5E62f1d8F26062Ee822B40B0E0d4; // use curve's new CVX-ETH crypto pool to sell our CVX
 
     function setUp() external {
-        router = new DepositRouter();
+        priceRouter = new PriceRouter();
+        //TODO add assets for pricing.
+        router = new DepositRouter(priceRouter);
 
         address[8] memory pools;
         uint16[8] memory froms;
@@ -62,7 +66,9 @@ contract DepositRouterTest is Test {
 
         uint32[8] memory positions = [uint32(0), 1, 0, 0, 0, 0, 0, 0];
         uint32[8] memory positionRatios = [uint32(0.2e8), 0.8e8, 0, 0, 0, 0, 0, 0];
-        router.addOperator(address(this), address(this), curve3Crypto, positions, positionRatios, 0.3e8, 0, 0);
+        router.addOperator(address(this), address(this), curve3Crypto, 100e9, positions, positionRatios, 0.3e8, 0, 0);
+
+        router.allowRebalancing(address(this), true);
 
         deal(address(curve3Crypto), address(this), type(uint128).max);
         curve3Crypto.safeApprove(address(router), type(uint256).max);
@@ -70,66 +76,17 @@ contract DepositRouterTest is Test {
         // stdstore.target(address(cellar)).sig(cellar.shareLockPeriod.selector).checked_write(uint256(0));
     }
 
-    // function testYearnDeposit() external {
-    //     uint256 assets = 100e18;
-    //     router.deposit(assets);
-
-    //     // router.depositToPosition(address(this), 1, uint128(assets));
-    //     router.rebalance(address(this), 0, 1, assets);
-    // }
-
-    // function testYearnWithdraw() external {
-    //     uint256 assets = 100e18;
-    //     router.deposit(assets);
-
-    //     // router.depositToPosition(address(this), 1, uint128(assets));
-    //     router.rebalance(address(this), 0, 1, assets);
-
-    //     uint256 assetsToWithdraw = router.balanceOf(address(this));
-    //     console.log(assetsToWithdraw);
-    //     router.rebalance(address(this), 1, 0, assetsToWithdraw);
-    //     router.withdraw(assetsToWithdraw);
-    // }
-
-    // function testYearnHarvest() external {
-    //     uint256 assets = 100e18;
-    //     router.deposit(assets);
-
-    //     // router.depositToPosition(address(this), 1, uint128(assets));
-    //     router.rebalance(address(this), 0, 1, assets);
-
-    //     _simulateYearnYield(curve3CryptoVault, 100e18);
-
-    //     router.harvestPosition(1);
-
-    //     uint256 operatorBalanceBefore = router.balanceOf(address(this));
-    //     assertLe(operatorBalanceBefore, assets, "No yield has vested yet.");
-
-    //     vm.warp(block.timestamp + 7 days);
-
-    //     uint256 operatorBalanceAfter = router.balanceOf(address(this));
-
-    //     assertGt(
-    //         operatorBalanceAfter,
-    //         operatorBalanceBefore,
-    //         "Operator balance should have increased from vested yield."
-    //     );
-
-    //     router.rebalance(address(this), 1, 0, operatorBalanceAfter);
-    //     assertGe(
-    //         router.balanceOf(address(this)),
-    //         operatorBalanceAfter,
-    //         "Balance should not decrease during a rebalance."
-    //     );
-    //     router.withdraw(operatorBalanceAfter);
-    // }
-
     function testConvexDeposit() external {
         uint256 assets = 100e18;
         router.deposit(assets);
 
         // router.depositToPosition(address(this), 1, uint128(assets));
-        router.rebalance(address(this), 0, 1, assets);
+        uint32[8] memory from = [uint32(0), 0, 0, 0, 0, 0, 0, 0];
+        uint32[8] memory to = [uint32(1), 0, 0, 0, 0, 0, 0, 0];
+        uint256[8] memory amount = [uint256(assets.mulDivDown(8, 10)), 0, 0, 0, 0, 0, 0, 0];
+        bytes memory upkeepData = abi.encode(address(this), from, to, amount);
+        router.performUpkeep(upkeepData);
+        // router.rebalance(address(this), 0, 1, assets);
     }
 
     function testConvexWithdraw() external {
@@ -138,11 +95,13 @@ contract DepositRouterTest is Test {
 
         uint256 assetsToWithdraw = router.balanceOf(address(this));
 
-        // router.depositToPosition(address(this), 1, uint128(assets));
-        router.rebalance(address(this), 0, 1, assets);
+        uint32[8] memory from = [uint32(0), 0, 0, 0, 0, 0, 0, 0];
+        uint32[8] memory to = [uint32(1), 0, 0, 0, 0, 0, 0, 0];
+        uint256[8] memory amount = [uint256(assets.mulDivDown(8, 10)), 0, 0, 0, 0, 0, 0, 0];
+        bytes memory upkeepData = abi.encode(address(this), from, to, amount);
+        router.performUpkeep(upkeepData);
 
         assetsToWithdraw = router.balanceOf(address(this));
-        router.rebalance(address(this), 1, 0, assetsToWithdraw);
 
         router.withdraw(assetsToWithdraw);
     }
@@ -154,7 +113,11 @@ contract DepositRouterTest is Test {
         // console.log("Gas Used for Deposit", gas - gasleft());
 
         // gas = gasleft();
-        router.rebalance(address(this), 0, 1, assets);
+        uint32[8] memory from = [uint32(0), 0, 0, 0, 0, 0, 0, 0];
+        uint32[8] memory to = [uint32(1), 0, 0, 0, 0, 0, 0, 0];
+        uint256[8] memory amount = [uint256(assets.mulDivDown(8, 10)), 0, 0, 0, 0, 0, 0, 0];
+        bytes memory upkeepData = abi.encode(address(this), from, to, amount);
+        router.performUpkeep(upkeepData);
         // console.log("Gas Used for Rebalance 0 -> 2", gas - gasleft());
 
         // IBaseRewardPool pool = IBaseRewardPool(curve3PoolReward);
@@ -164,7 +127,9 @@ contract DepositRouterTest is Test {
 
         // Harvest rewards.
         // gas = gasleft();
-        router.harvestPosition(1);
+        upkeepData = abi.encode(address(router), 1);
+        router.performUpkeep(upkeepData);
+        // router.harvestPosition(1);
         // console.log("Gas Used for Harvest", gas - gasleft());
 
         // Fully vest rewards
@@ -172,7 +137,7 @@ contract DepositRouterTest is Test {
 
         uint256 assetsToWithdraw = router.balanceOf(address(this));
         // gas = gasleft();
-        router.rebalance(address(this), 1, 0, assetsToWithdraw);
+        // router.rebalance(address(this), 1, 0, assetsToWithdraw);
         // console.log("Gas Used for Rebalance 0 -> 2", gas - gasleft());
         deal(address(curve3Crypto), address(this), 0);
         // gas = gasleft();
