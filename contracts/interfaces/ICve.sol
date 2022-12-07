@@ -2,8 +2,6 @@
 pragma solidity 0.8.4;
 
 interface ICve {
-    /// TODO Needs updating to our current functions
-
     /// @dev Get max token supply
     function maxSupply() external view returns (uint256);
 

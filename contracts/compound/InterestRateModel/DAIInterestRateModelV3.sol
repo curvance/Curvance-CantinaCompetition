@@ -28,8 +28,8 @@ contract DAIInterestRateModelV3 is JumpRateModelV2 {
      */
     uint256 public constant assumedOneMinusReserveFactorMantissa = 0.95e18;
 
-    PotLike pot;
-    JugLike jug;
+    PotLike internal pot;
+    JugLike internal jug;
 
     /**
      * @notice Construct an interest rate model
@@ -37,7 +37,8 @@ contract DAIInterestRateModelV3 is JumpRateModelV2 {
      * @param kink_ The utilization point at which the jump multiplier is applied
      * @param pot_ The address of the Dai pot (where DSR is earned)
      * @param jug_ The address of the Dai jug (where SF is kept)
-     * @param owner_ The address of the owner, i.e. the Timelock contract (which has the ability to update parameters directly)
+     * @param owner_ The address of the owner,
+     *   i.e. the Timelock contract (which has the ability to update parameters directly)
      */
     constructor(
         uint256 jumpMultiplierPerYear,
@@ -54,12 +55,12 @@ contract DAIInterestRateModelV3 is JumpRateModelV2 {
 
     /**
      * @notice External function to update the parameters of the interest rate model
-     * @param baseRatePerYear The approximate target base APR, as a mantissa (scaled by BASE). For DAI, this is calculated from DSR and SF. Input not used.
+     * @param baseRatePerYear The approximate target base APR, as a mantissa (scaled by BASE).
+     *   For DAI, this is calculated from DSR and SF. Input not used.
      * @param gapPerYear The Additional margin per year separating the base borrow rate from the roof. (scaled by BASE)
      * @param jumpMultiplierPerYear The jumpMultiplierPerYear after hitting a specified utilization point
      * @param kink_ The utilization point at which the jump multiplier is applied
      */
-    /// TODO Can we remove the unused input `baseRatePerYear`?
     function updateJumpRateModel(
         uint256 baseRatePerYear,
         uint256 gapPerYear,
@@ -84,7 +85,6 @@ contract DAIInterestRateModelV3 is JumpRateModelV2 {
      * @return The supply rate per block (as a percentage, and scaled by BASE)
      */
     function getSupplyRate(
-        /// TODO are the overriden contracts correct?
         uint256 cash,
         uint256 borrows,
         uint256 reserves,
@@ -106,7 +106,8 @@ contract DAIInterestRateModelV3 is JumpRateModelV2 {
      * @return The Dai savings rate per block (as a percentage, and scaled by BASE)
      */
     function dsrPerBlock() public view returns (uint256) {
-        return ((pot.dsr() - RAY_BASE) / RAY_TO_BASE_SCALE) * SECONDS_PER_BLOCK; // scaled RAY_BASE aka RAY, and includes an extra "ONE" before subtraction // descale to BASE // seconds per block
+        // scaled RAY_BASE aka RAY, and includes an extra "ONE" before subtraction // descale to BASE // seconds per block
+        return ((pot.dsr() - RAY_BASE) / RAY_TO_BASE_SCALE) * SECONDS_PER_BLOCK;
     }
 
     /**

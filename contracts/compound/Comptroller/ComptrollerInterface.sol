@@ -119,7 +119,7 @@ abstract contract ComptrollerInterface is ComptrollerStorage {
         uint256 repayAmount
     ) external view virtual returns (uint256);
 
-    /** State Variables */
+    /** Query functions */
     function getIsMarkets(address cToken)
         external
         view

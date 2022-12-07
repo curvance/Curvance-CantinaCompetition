@@ -26,8 +26,6 @@ contract CompRewards is MarketStorage, RewardsStorage, RewardsInterface {
         cveAddress = _cveAddress;
     }
 
-    /*** Cve Distribution ***/
-
     /**
      * @notice Set CVE speed for a single market
      * @param cToken The market whose Cve speed to update
@@ -37,9 +35,7 @@ contract CompRewards is MarketStorage, RewardsStorage, RewardsInterface {
         uint256 currentCveSpeed = cveSpeeds[address(cToken)];
         if (currentCveSpeed != 0) {
             // note that Cve speed could be set to 0 to halt liquidity rewards for a market
-            // Exp memory borrowIndex = Exp({mantissa: cToken.borrowIndex()});
             updateCveSupplyIndex(address(cToken));
-            // updateCompBorrowIndex(address(cToken), borrowIndex);
             updateCveBorrowIndex(address(cToken), cToken.borrowIndex());
         } else if (cveSpeed != 0) {
             // Add the Cve market
@@ -69,6 +65,11 @@ contract CompRewards is MarketStorage, RewardsStorage, RewardsInterface {
         }
     }
 
+    /**
+     * @notice Accrue Cve to the market by updating the supply index
+     * @dev externally called by comptroller
+     * @param cTokenCollateral The market whose Cve speed to update
+     */
     function updateCveSupplyIndexExternal(address cTokenCollateral) external override {
         if (msg.sender != comptroller) {
             revert AddressUnauthorized();
@@ -122,6 +123,12 @@ contract CompRewards is MarketStorage, RewardsStorage, RewardsInterface {
         }
     }
 
+    /**
+     * @notice Calculate Cve accrued by a supplier and possibly transfer it to them
+     * @dev externally called by comptroller
+     * @param cTokenCollateral The market in which the supplier is interacting
+     * @param claimer The address of the supplier to distribute Cve to
+     */
     function distributeSupplierCveExternal(address cTokenCollateral, address claimer) external override {
         if (msg.sender != comptroller) {
             revert AddressUnauthorized();
@@ -331,6 +338,10 @@ contract CompRewards is MarketStorage, RewardsStorage, RewardsInterface {
         return ComptrollerInterface(comptroller).getAllMarkets();
     }
 
+    /**
+     * @notice Return current block number
+     * @return The current block number
+     */
     function getBlockNumber() public view returns (uint256) {
         return block.number;
     }
