@@ -9,7 +9,7 @@ import "./ComptrollerInterface.sol";
 
 /**
  * @title Curvance Comptroller
- * @author Curvance - Based on Compound Finance
+ * @author Curvance - Based on Curvance Finance
  * @notice Manages risk within the lending & collateral markets
  */
 contract Comptroller is ComptrollerInterface {

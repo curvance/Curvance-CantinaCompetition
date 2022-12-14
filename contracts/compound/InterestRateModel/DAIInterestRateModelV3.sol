@@ -6,9 +6,9 @@ import "./JumpRateModelV2.sol";
 import "./JugLike.sol";
 
 /**
- * @title Compound's DAIInterestRateModel Contract (version 3)
- * @author Compound (modified by Dharma Labs)
- * @notice The parameterized model described in section 2.4 of the original Compound Protocol whitepaper.
+ * @title Curvance's DAIInterestRateModel Contract (version 3)
+ * @author Curvance (modified by Dharma Labs)
+ * @notice The parameterized model described in section 2.4 of the original Curvance Protocol whitepaper.
  * Version 3 modifies the interest rate model in Version 2 by increasing the initial "gap" or slope of
  * the model prior to the "kink" from 2% to 4%, and enabling updateable parameters.
  */

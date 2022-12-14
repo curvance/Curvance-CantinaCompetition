@@ -4,9 +4,9 @@ pragma solidity ^0.8.13;
 import "./InterestRateModel.sol";
 
 /**
- * @title Compound's WhitePaperInterestRateModel Contract
- * @author Compound
- * @notice The parameterized model described in section 2.4 of the original Compound Protocol whitepaper
+ * @title Curvance's WhitePaperInterestRateModel Contract
+ * @author Curvance
+ * @notice The parameterized model described in section 2.4 of the original Curvance Protocol whitepaper
  */
 contract WhitePaperInterestRateModel is InterestRateModel {
     event NewInterestParams(uint256 baseRatePerBlock, uint256 multiplierPerBlock);

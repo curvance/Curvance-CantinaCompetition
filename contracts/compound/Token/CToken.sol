@@ -8,9 +8,9 @@ import "../InterestRateModel/InterestRateModel.sol";
 import "./storage/CTokenInterface.sol";
 
 /**
- * @title Compound's CToken Contract
+ * @title Curvance's CToken Contract
  * @notice Abstract base for CTokens
- * @author Compound
+ * @author Curvance
  */
 abstract contract CToken is ReentrancyGuard, CTokenInterface {
     ////////// INITIALIZATION //////////

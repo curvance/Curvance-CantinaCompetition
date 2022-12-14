@@ -4,8 +4,8 @@ pragma solidity ^0.8.13;
 import "./InterestRateModel.sol";
 
 /**
- * @title Logic for Compound's JumpRateModel Contract V2.
- * @author Compound (modified by Dharma Labs, refactored by Arr00)
+ * @title Logic for Curvance's JumpRateModel Contract V2.
+ * @author Curvance (modified by Dharma Labs, refactored by Arr00)
  * @notice Version 2 modifies Version 1 by enabling updateable parameters.
  */
 abstract contract BaseJumpRateModelV2 is InterestRateModel {

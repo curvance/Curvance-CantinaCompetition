@@ -2,7 +2,7 @@
 pragma solidity ^0.8.13;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "contracts/compound/Governance/Cve.sol";
+import "contracts/compound/Cve.sol";
 import "contracts/compound/CompRewards/CompRewards.sol";
 import "contracts/compound/Comptroller/Comptroller.sol";
 import "contracts/compound/Comptroller/ComptrollerInterface.sol";

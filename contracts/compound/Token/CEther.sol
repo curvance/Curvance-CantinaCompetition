@@ -4,9 +4,9 @@ pragma solidity ^0.8.13;
 import "./CToken.sol";
 
 /**
- * @title Compound's CEther Contract
+ * @title Curvance's CEther Contract
  * @notice CToken which wraps Ether
- * @author Compound
+ * @author Curvance
  */
 contract CEther is CToken {
     error SenderMismatch();

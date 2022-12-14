@@ -4,8 +4,8 @@ pragma solidity ^0.8.13;
 import "./Token/CEther.sol";
 
 /**
- * @title Compound's Maximillion Contract
- * @author Compound
+ * @title Curvance's Maximillion Contract
+ * @author Curvance
  */
 contract Maximillion {
     /**

@@ -7,9 +7,9 @@ import "./CErc20Delegate.sol";
 import "../interfaces/IMaker.sol";
 
 /**
- * @title Compound's CDai Contract
+ * @title Curvance's CDai Contract
  * @notice CToken which wraps Multi-Collateral DAI
- * @author Compound
+ * @author Curvance
  */
 contract CDaiDelegate is CErc20Delegate {
     using SafeERC20 for IERC20;

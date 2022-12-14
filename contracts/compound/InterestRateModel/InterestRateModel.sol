@@ -2,8 +2,8 @@
 pragma solidity ^0.8.13;
 
 /**
- * @title Compound's InterestRateModel Interface
- * @author Compound
+ * @title Curvance's InterestRateModel Interface
+ * @author Curvance
  */
 abstract contract InterestRateModel {
     /// @notice Indicator that this is an InterestRateModel contract (for inspection)

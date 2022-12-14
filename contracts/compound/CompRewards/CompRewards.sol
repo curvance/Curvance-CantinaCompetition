@@ -3,7 +3,7 @@ pragma solidity ^0.8.13;
 
 import "../Comptroller/ComptrollerInterface.sol";
 import "../Unitroller/Unitroller.sol";
-import "../Governance/Cve.sol";
+import "../Cve.sol";
 import "../PriceOracle.sol";
 import "../utils/SafeMath.sol";
 import "./RewardsInterface.sol";
@@ -11,7 +11,7 @@ import "./RewardsStorage.sol";
 
 /**
  * @title CompRewards
- * @author Compound
+ * @author Curvance
  */
 contract CompRewards is MarketStorage, RewardsStorage, RewardsInterface {
     address public cveAddress;

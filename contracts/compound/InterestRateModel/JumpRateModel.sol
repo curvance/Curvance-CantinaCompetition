@@ -4,8 +4,8 @@ pragma solidity ^0.8.13;
 import "./InterestRateModel.sol";
 
 /**
- * @title Compound's JumpRateModel Contract
- * @author Compound
+ * @title Curvance's JumpRateModel Contract
+ * @author Curvance
  */
 contract JumpRateModel is InterestRateModel {
     event NewInterestParams(

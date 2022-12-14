@@ -4,25 +4,25 @@ pragma solidity ^0.8.13;
 abstract contract RewardsStorage {
     /** Storage For Rewards */
     struct CveMarketState {
-        // The market's last updated compBorrowIndex or compSupplyIndex
+        // The market's last updated cveBorrowIndex or cveSupplyIndex
         uint224 index;
         // The block number the index was last updated at
         uint32 block;
     }
 
-    /// @notice Accounting storage mapping account addresses to how much COMP they owe the protocol.
+    /// @notice Accounting storage mapping account addresses to how much CVE they owe the protocol.
     mapping(address => uint256) public cveReceivable;
 
-    // /// @notice The rate at which comp is distributed to the corresponding borrow market (per block)
+    // /// @notice The rate at which cve is distributed to the corresponding borrow market (per block)
     mapping(address => uint256) public cveBorrowSpeeds;
 
-    /// @notice The rate at which comp is distributed to the corresponding supply market (per block)
+    /// @notice The rate at which cve is distributed to the corresponding supply market (per block)
     mapping(address => uint256) public cveSupplySpeeds;
 
-    /// @notice The portion of COMP that each contributor receives per block
+    /// @notice The portion of CVE that each contributor receives per block
     mapping(address => uint256) public cveContributorSpeeds;
 
-    /// @notice Last block at which a contributor's COMP rewards have been allocated
+    /// @notice Last block at which a contributor's CVE rewards have been allocated
     mapping(address => uint256) public lastContributorBlock;
 
     /// @notice The rate at which the flywheel distributes CVE, per block
@@ -41,17 +41,17 @@ abstract contract RewardsStorage {
     /// user address to amount accrued
     mapping(address => uint256) public cveAccrued;
 
-    /// @notice The CVE borrow index for each market for each supplier as of the last time they accrued COMP
+    /// @notice The CVE borrow index for each market for each supplier as of the last time they accrued CVE
     mapping(address => mapping(address => uint256)) public cveSupplierIndex;
 
-    /// @notice The CVE borrow index for each market for each borrower as of the last time they accrued COMP
+    /// @notice The CVE borrow index for each market for each borrower as of the last time they accrued CVE
     mapping(address => mapping(address => uint256)) public cveBorrowerIndex;
 
     address public comptroller;
 
     address public admin;
 
-    /// @notice The initial COMP index for a market
+    /// @notice The initial CVE index for a market
     uint224 public constant cveInitialIndex = 1e36;
 
     uint256 public constant expScale = 1e18;

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import "contracts/compound/Governance/Cve.sol";
+import "contracts/compound/Cve.sol";
 import "contracts/compound/Comptroller/Comptroller.sol";
 import "contracts/compound/Unitroller/Unitroller.sol";
 import "contracts/compound/CompRewards/CompRewards.sol";

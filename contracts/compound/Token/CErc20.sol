@@ -9,9 +9,9 @@ import "./CToken.sol";
 import "./storage/CErc20Interface.sol";
 
 /**
- * @title Compound's CErc20 Contract
+ * @title Curvance's CErc20 Contract
  * @notice CTokens which wrap an EIP-20 underlying
- * @author Compound
+ * @author Curvance
  */
 contract CErc20 is CErc20Interface, CToken {
     using SafeERC20 for IERC20;
@@ -231,9 +231,9 @@ contract CErc20 is CErc20Interface, CToken {
     }
 
     /**
-     * @notice Admin call to delegate the votes of the COMP-like underlying
+     * @notice Admin call to delegate the votes of the CVE-like underlying
      * @param cveLikeDelegatee The address to delegate votes to
-     * @dev CTokens whose underlying are not CompLike should revert here
+     * @dev CTokens whose underlying are not CveLike should revert here
      */
     function _delegateCveLikeTo(address cveLikeDelegatee) external {
         if (msg.sender != admin) {
