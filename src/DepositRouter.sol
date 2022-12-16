@@ -10,7 +10,6 @@ import { Math } from "src/utils/Math.sol";
 import { Uint32Array } from "src/libraries/Uint32Array.sol";
 
 // External interfaces
-import { IYearnVault } from "src/interfaces/Yearn/IYearnVault.sol";
 import { IBooster } from "src/interfaces/Convex/IBooster.sol";
 import { IBaseRewardPool } from "src/interfaces/Convex/IBaseRewardPool.sol";
 import { ICurveFi } from "src/interfaces/Curve/ICurveFi.sol";
@@ -20,7 +19,7 @@ import { KeeperCompatibleInterface } from "@chainlink/contracts/src/v0.8/interfa
 import { AggregatorV2V3Interface } from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV2V3Interface.sol";
 import { IChainlinkAggregator } from "src/interfaces/IChainlinkAggregator.sol";
 
-import { console } from "@forge-std/Test.sol";
+import { console } from "@forge-std/Test.sol"; //TODO remove this
 
 /**
  * @title Curvance Deposit Router
@@ -28,14 +27,7 @@ import { console } from "@forge-std/Test.sol";
  *         Convex
  * @author crispymangoes
  */
-// Send some percent of rewards to CVE Rewarder, then keep the rest here to vest rewards
-//Keepers and data feeds to automate harvesting, self funding upkeeps
-//TODO add custom errors
 //TODO add events
-//TODO add in gas price limits for upkeeps
-// operators probs just need to specify some max gas they are willing to pay(which they can change)
-// harvest upkeeps can look at the yield harvestable and compare it to the gas cost and maybe some some percentage basis
-// IE if gas needs to be less than 10% of yield harvestable
 contract DepositRouter is Ownable, KeeperCompatibleInterface {
     using Uint32Array for uint32[];
     using SafeTransferLib for ERC20;
@@ -98,6 +90,10 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
      * @notice Array of all position ids.
      */
     uint32[] public activePositions;
+
+    function getActivePositions() external view returns (uint32[] memory) {
+        return activePositions;
+    }
 
     /**
      * @notice Maps a position id to its `Position` data
@@ -204,8 +200,6 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
         DepositData calldata _depositData
     ) external onlyOwner {
         uint32 positionId = positionCount + 1;
-        if (activePositions.contains(positionId)) revert("Position already present");
-        //TODO do some sanity checks for fromAndTos, and depositData, and swapPools.
         activePositions.push(positionId);
         positions[positionId] = Position({
             totalSupply: 0,
@@ -224,13 +218,23 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
         positionCount++;
     }
 
+    /**
+     * @notice Position array provided has errors in it.
+     */
+    error DepositRouter__InvalidPositionArray();
+
+    /**
+     * @notice Provided ratios do not sum to one.
+     */
+    error DepositRouter_RatiosDoNotSumToOne();
+
     function _validatePositionsAndRatios(
         uint32[8] memory _positions,
         uint32[8] memory _positionRatios,
         ERC20 _asset
     ) internal view {
         ///@dev position index 0 is the holding postion, where users funds are always deposited.
-        require(_positions.length > 0, "Invalid Position array!");
+        if (_positions.length == 0) revert DepositRouter__InvalidPositionArray();
         // Loop through _positions and make sure it is valid.
         bool endPositionFound;
         uint256 totalRatio;
@@ -239,24 +243,30 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
             totalRatio += _positionRatios[i];
             if (i == 0) {
                 // Make sure zero index is holding position.
-                if (positionId != 0) revert("First Position must be the holding position");
+                if (positionId != 0) revert DepositRouter__InvalidPositionArray();
             } else if (endPositionFound) {
                 // If the end position is found enforce that all subsequent positions are zero.
                 // Enforce that no liquidity will be moved to remaining positions.
-                if (positionId != 0 || _positionRatios[i] != 0) revert("Invalid Position array!");
+                if (positionId != 0 || _positionRatios[i] != 0) revert DepositRouter__InvalidPositionArray();
             } else {
                 // Scan through the array until the end is found.
                 if (positionId == 0) endPositionFound = true;
                 else {
                     // Make sure position is valid.
-                    if (positionId > positionCount) revert("Invalid Position array!!");
+                    if (positionId > positionCount) revert DepositRouter__InvalidPositionArray();
                     // Make sure operator is adding a position with the correct asset.
-                    if (positions[positionId].asset != _asset) revert("Invalid Position array!!!");
+                    if (positions[positionId].asset != _asset) revert DepositRouter__InvalidPositionArray();
                 }
             }
         }
-        require(totalRatio == 1e8, "Ratios do not sum to 1.");
+        if (totalRatio != 1e8) revert DepositRouter_RatiosDoNotSumToOne();
     }
+
+    /**
+     * @notice Attempted to add an operator that already existed.
+     * @param operator the address of the operator that exists
+     */
+    error DepositRouter__OperatorExists(address operator);
 
     /**
      * @notice Allows `owner` to add a new operator to this contract.
@@ -273,7 +283,7 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
         uint64 _minimumValueToRebalance,
         uint64 _minimumTimeBetweenUpkeeps
     ) external onlyOwner {
-        require(!operators[_operator].isOperator, "Operator already added.");
+        if (operators[_operator].isOperator) revert DepositRouter__OperatorExists(_operator);
         _validatePositionsAndRatios(_positions, _positionRatios, _asset);
         operators[_operator] = Operator({
             owner: _owner,
@@ -290,27 +300,65 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
         });
     }
 
+    /**
+     * @notice Allows owner to change the minimum dollar value needed to harvest a position.
+     * @param newYield the new minimum(in USD) needed for a keeper to harvest yield.
+     * @dev 8 decimals
+     */
     function adjustMinYieldForHarvest(uint64 newYield) external onlyOwner {
         minYieldForHarvest = newYield;
     }
 
+    /**
+     * @notice Allows owner to change the maximum gas keepers are willing to pay for harvest upkeeps.
+     * @param newPrice the new max gas price
+     * @dev Checked against Chainlinks ETH Fast Gas Feed.
+     */
     function adjustMaxGasPriceForHarvest(uint64 newPrice) external onlyOwner {
         maxGasPriceForHarvest = newPrice;
     }
 
+    /**
+     * @notice Allows owner to change the fee accumulator address.
+     */
+    function setFeeAccumulator(address accumulator) external onlyOwner {
+        feeAccumulator = accumulator;
+    }
+
     //========================================= Operator Owner Functions ========================================
+
+    /**
+     * @notice Attempted action used an operator that does not exist.
+     * @param operator the address of the operator that does not exist.
+     */
+    error DepositRouter__OperatorDoesNotExist(address operator);
+
+    /**
+     * @notice Attempted to perform an operator owner action when caller is not operator owner.
+     * @param operator the operator address
+     * @param caller the address of the caller
+     */
+    error DepositRouter__CallerDoesNotOperatorOwner(address operator, address caller);
+
+    /**
+     * @notice Position management lead to a change in operators balance.
+     */
+    error DepositRouter__UncleanPositions();
+
     function changePositions(
         address _operator,
         uint32[8] calldata _positions,
         uint32[8] calldata _positionRatios
     ) external {
-        require(operators[_operator].isOperator, "Only Operators can deposit.");
-        require(operators[_operator].owner == msg.sender, "Not the Operator Owner");
+        if (!operators[_operator].isOperator) revert DepositRouter__OperatorDoesNotExist(_operator);
+        if (operators[_operator].owner != msg.sender)
+            revert DepositRouter__CallerDoesNotOperatorOwner(_operator, msg.sender);
+
         _validatePositionsAndRatios(_positions, _positionRatios, operators[_operator].asset);
         uint256 operatorBalanceBefore = _balanceOf(_operator);
         operators[_operator].openPositions = _positions;
         uint256 operatorBalanceAfter = _balanceOf(_operator);
-        if (operatorBalanceAfter != operatorBalanceBefore) revert("Unclean positions.");
+        if (operatorBalanceAfter != operatorBalanceBefore) revert DepositRouter__UncleanPositions();
     }
 
     /**
@@ -322,18 +370,20 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
         uint32[8] calldata to,
         uint256[8] calldata amount
     ) external {
-        require(operators[_operator].isOperator, "Only Operators can deposit.");
-        require(operators[_operator].owner == msg.sender, "Not the Operator Owner");
+        if (!operators[_operator].isOperator) revert DepositRouter__OperatorDoesNotExist(_operator);
+        if (operators[_operator].owner != msg.sender)
+            revert DepositRouter__CallerDoesNotOperatorOwner(_operator, msg.sender);
         uint256 operatorBalanceBefore = _balanceOf(_operator);
         _performRebalances(_operator, from, to, amount);
         uint256 operatorBalanceAfter = _balanceOf(_operator);
         // Check that operator did not move funds to an untracked position.
-        if (operatorBalanceAfter != operatorBalanceBefore) revert("Unclean positions.");
+        if (operatorBalanceAfter != operatorBalanceBefore) revert DepositRouter__UncleanPositions();
     }
 
     function allowRebalancing(address _operator, bool _state) external {
-        require(operators[_operator].isOperator, "Only Operators can deposit.");
-        require(operators[_operator].owner == msg.sender, "Not the Operator Owner");
+        if (!operators[_operator].isOperator) revert DepositRouter__OperatorDoesNotExist(_operator);
+        if (operators[_operator].owner != msg.sender)
+            revert DepositRouter__CallerDoesNotOperatorOwner(_operator, msg.sender);
         operators[_operator].allowRebalancing = _state;
     }
 
@@ -344,7 +394,7 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
      */
     function deposit(uint256 amount) public returns (uint256) {
         address operator = msg.sender;
-        require(operators[operator].isOperator, "Only Operators can deposit.");
+        if (!operators[operator].isOperator) revert DepositRouter__OperatorDoesNotExist(operator);
         operators[operator].asset.safeTransferFrom(operator, address(this), amount);
 
         // Deposit assets into operator holding position.
@@ -355,16 +405,17 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
 
     function withdraw(uint256 amount) public returns (uint256) {
         address operator = msg.sender;
-        require(operators[operator].isOperator, "Only Operators can withdraw.");
-
+        if (!operators[operator].isOperator) revert DepositRouter__OperatorDoesNotExist(operator);
         // Withdraw assets from positions in order.
         uint256 freeCash = operatorPositionShares[operator][0];
         for (uint32 i = 1; i < 8; i++) {
+            uint32 position = operators[operator].openPositions[i];
+            if (position == 0) break;
             if (freeCash < amount) {
-                uint256 positionBalance = operatorPositionShares[operator][i];
+                uint256 positionBalance = _calcOperatorBalance(operator, position);
                 // Need to withdraw from a position to the holding position.
                 uint256 amountToWithdraw = (freeCash + positionBalance) < amount ? positionBalance : amount - freeCash;
-                _withdrawFromPosition(operator, 0, amountToWithdraw);
+                _withdrawFromPosition(operator, position, amountToWithdraw);
                 freeCash += amountToWithdraw;
             } else {
                 break;
@@ -377,6 +428,12 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
     }
 
     //============================================ Position Management Functions ===========================================
+
+    /**
+     * @notice Attempted rebalance is invalid.
+     */
+    error DepositRouter__InvalidRebalance();
+
     /**
      * @notice Operators will use a Chainlink Keeper to rebalance their positions
      * @notice The protocol(Curvance) will provide a keeper to harvest positions.
@@ -390,7 +447,7 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
         for (uint8 i; i < 8; i++) {
             // Assume rebalances are front loaded, so finding a zero amount breaks out of the for loop.
             if (_amount[i] == 0) break;
-            if (_from[i] == _to[i]) revert("Invalid Rebalance");
+            if (_from[i] == _to[i]) revert DepositRouter__InvalidRebalance();
             _withdrawFromPosition(_operator, _from[i], _amount[i]);
             _depositToPosition(_operator, _to[i], _amount[i]);
         }
@@ -401,60 +458,59 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
         uint32 _positionId,
         uint256 _amount
     ) internal {
-        if (_positionId == 0) {
-            // Depositing into holding position.
-            operatorPositionShares[_operator][0] += _amount;
-        } else {
-            Position storage p = positions[_positionId];
-            _updatePositionBalance(p); // This will take pending rewards and add it to p.totalBalance
-            // So it needs to update totalBalance, and lastAccrualTimestamp
+        // Taking funds from the holding position and depositing to _positionId
+        operatorPositionShares[_operator][0] -= _amount;
 
-            if (p.platform == Platform.CONVEX) {
-                // Set _amount to actual backing of tokens in protocol.
-                _amount = _depositToConvex(p, _amount);
-            }
+        Position storage p = positions[_positionId];
+        _updatePositionBalance(p); // This will take pending rewards and add it to p.totalBalance
+        // So it needs to update totalBalance, and lastAccrualTimestamp
 
-            // Now that pending rewards have been accounted for shares are more expensive.
-            // Find shares owed to operator.
-            uint256 sharesPerAsset = p.totalBalance == 0 ? 1e18 : (1e18 * p.totalSupply) / p.totalBalance;
-            uint256 operatorShares = (_amount * sharesPerAsset) / 1e18;
-            operatorPositionShares[_operator][_positionId] += operatorShares;
-            p.totalSupply += operatorShares;
-            p.totalBalance += _amount;
+        if (p.platform == Platform.CONVEX) {
+            // Set _amount to actual backing of tokens in protocol.
+            _amount = _depositToConvex(p, _amount);
         }
+
+        // Now that pending rewards have been accounted for shares are more expensive.
+        // Find shares owed to operator.
+        uint256 sharesPerAsset = p.totalBalance == 0 ? 1e18 : (1e18 * p.totalSupply) / p.totalBalance;
+        uint256 operatorShares = (_amount * sharesPerAsset) / 1e18;
+        operatorPositionShares[_operator][_positionId] += operatorShares;
+        p.totalSupply += operatorShares;
+        p.totalBalance += _amount;
     }
+
+    /**
+     * @notice Attempted withdraw was unable to withdraw enough assets to cover liability.
+     */
+    error DepositRouter__IncompleteWithdraw();
 
     function _withdrawFromPosition(
         address _operator,
         uint32 _positionId,
         uint256 _amount
     ) internal {
-        if (_positionId == 0) {
-            // Withdrawing from holding position.
-            operatorPositionShares[_operator][0] -= _amount;
-        } else {
-            Position storage p = positions[_positionId];
-            _updatePositionBalance(p); // This will take pending rewards and add it to p.totalBalance
-            // So it needs to update totalBalance, and lastAccrualTimestamp
-            uint256 actualWithdraw;
+        // Position zero is holding position so assets are already free.
+        if (_positionId == 0) return;
+        Position storage p = positions[_positionId];
+        _updatePositionBalance(p); // This will take pending rewards and add it to p.totalBalance
+        // So it needs to update totalBalance, and lastAccrualTimestamp
+        uint256 actualWithdraw;
 
-            if (p.platform == Platform.CONVEX) {
-                actualWithdraw = _withdrawFromConvex(p, _amount);
-            }
-
-            require(actualWithdraw >= _amount, "Incomplete Withdraw.");
-
-            // Now that pending rewards have been accounted for shares are more expensive.
-            // Find shares owed to operator.
-            uint256 assetsPerShare = (1e18 * p.totalBalance) / p.totalSupply;
-            uint256 operatorShares = ((1e18 * _amount) / assetsPerShare);
-            operatorPositionShares[_operator][_positionId] -= operatorShares;
-            p.totalSupply -= operatorShares;
-            p.totalBalance -= _amount;
-
-            // If overwithdraw, credit operators holding position.
-            if (actualWithdraw > _amount) operatorPositionShares[_operator][0] += actualWithdraw - _amount;
+        if (p.platform == Platform.CONVEX) {
+            actualWithdraw = _withdrawFromConvex(p, _amount);
         }
+        if (actualWithdraw != _amount) revert DepositRouter__IncompleteWithdraw();
+
+        // Now that pending rewards have been accounted for shares are more expensive.
+        // Find shares owed to operator.
+        uint256 assetsPerShare = (1e18 * p.totalBalance) / p.totalSupply;
+        uint256 operatorShares = ((1e18 * _amount) / assetsPerShare);
+        operatorPositionShares[_operator][_positionId] -= operatorShares;
+        p.totalSupply -= operatorShares;
+        p.totalBalance -= _amount;
+
+        // Credit operators holding position balance.
+        operatorPositionShares[_operator][0] += _amount;
     }
 
     /**
@@ -518,7 +574,7 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
         } else {
             // Run operator position management upkeep.
             Operator memory operator = operators[target];
-            require(operator.isOperator, "Address is not an operator.");
+            if (!operator.isOperator) revert DepositRouter__OperatorDoesNotExist(target);
             // Make sure enough time has passed.
             if (block.timestamp < (operator.lastRebalance + operator.minimumTimeBetweenUpkeeps))
                 return (false, abi.encode(0));
@@ -546,6 +602,23 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
         }
     }
 
+    /**
+     * @notice Attempted to rebalance positions of an operator that has turned off rebalancing.
+     * @param operator the address of the operator
+     */
+    error DepositRouter__OperatorDoesNotAllowRebalancing(address operator);
+
+    /**
+     * @notice Attempted to rebalance an operator too soon.
+     * @param timeToNextRebalance time in seconds until it is possible to rebalance
+     */
+    error DepositRouter__OperatorRebalanceRateLimit(uint64 timeToNextRebalance);
+
+    /**
+     * @notice Resulting rebalance was not significant enough.
+     */
+    error DepositRouter__ImbalanceDeltaTooSmall();
+
     //TODO this function can be made so it is only callable by keepers
     function performUpkeep(bytes calldata performData) external {
         address target = abi.decode(performData, (address));
@@ -555,10 +628,11 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
             _harvestPosition(id);
         } else {
             Operator memory operator = operators[target];
-            require(operator.isOperator, "Address is not an operator.");
-            require(operator.allowRebalancing, "Rebalancing is not allowed.");
-            if (block.timestamp < (operator.lastRebalance + operator.minimumTimeBetweenUpkeeps))
-                revert("Minimum time not met.");
+            if (!operator.isOperator) revert DepositRouter__OperatorDoesNotExist(target);
+            if (!operator.allowRebalancing) revert DepositRouter__OperatorDoesNotAllowRebalancing(target);
+            uint64 earliestRebalance = operator.lastRebalance + operator.minimumTimeBetweenUpkeeps;
+            if (block.timestamp < earliestRebalance)
+                revert DepositRouter__OperatorRebalanceRateLimit(earliestRebalance - uint64(block.timestamp));
             (, uint32[8] memory from, uint32[8] memory to, uint256[8] memory amount) = abi.decode(
                 performData,
                 (address, uint32[8], uint32[8], uint256[8])
@@ -567,7 +641,8 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
             _performRebalances(target, from, to, amount);
             uint256 imbalanceAfter = _findOperatorPositionImbalance(target);
             // Underflow is desired, if imbalance increases, this TX should revert from underflow.
-            if (imbalanceBefore - imbalanceAfter < operator.minimumImbalanceDeltaForUpkeep) revert("Delta too small.");
+            if (imbalanceBefore - imbalanceAfter < operator.minimumImbalanceDeltaForUpkeep)
+                revert DepositRouter__ImbalanceDeltaTooSmall();
         }
     }
 
@@ -603,7 +678,7 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
             uint256 actual = operatorPositionBalances[i].mulDivDown(10**DECIMALS, operatorBalance);
             if (actual > positionRatio) positionImbalance += actual - positionRatio;
         }
-        console.log("Imbalance", positionImbalance);
+
         return positionImbalance;
     }
 
@@ -724,7 +799,13 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
         return _amount;
     }
 
-    //TODO YEARN does ZERO checks for value in vs value out when handling rewards.
+    /**
+     * @notice Apply a 1% slippage to all harvest TXs.
+     */
+    uint256 public constant harvestSlippage = 0.01e18;
+
+    error DepositRouter__HarvestSlippageCheckFailed();
+
     function _harvestConvexPosition(Position storage p) internal returns (uint256 yield) {
         IBaseRewardPool rewardPool;
         {
@@ -768,6 +849,13 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
         }
 
         depositBalance = assetToDeposit.balanceOf(address(this)) - depositBalance;
+
+        // Compare value in to value out
+        {
+            uint256 valueIn = priceRouter.getValues(rewardTokens, rewardBalances, assetToDeposit);
+            if (depositBalance < valueIn.mulDivDown(1e18 - harvestSlippage, 1e18))
+                revert DepositRouter__HarvestSlippageCheckFailed();
+        }
 
         // Add liquidity to pool.
         if (depositBalance > 0) {
@@ -814,7 +902,7 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
     //============================================ Balance Of Functions ===========================================
     // CToken `getCashPrior` should call this.
     function balanceOf(address _operator) public view returns (uint256) {
-        require(operators[_operator].isOperator, "Address is not an operator.");
+        if (!operators[_operator].isOperator) revert DepositRouter__OperatorDoesNotExist(_operator);
         return _balanceOf(_operator);
     }
 
@@ -826,7 +914,7 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
             if (positionId == 0 && i != 0) break;
             balance += _calcOperatorBalance(_operator, positionId);
         }
-        // Calculates balance + pending balance, does not facotr in pending rewards to be harvested.
+        // Calculates balance + pending balance, does not factor in pending rewards to be harvested.
     }
 
     function _calcOperatorBalance(address _operator, uint32 _positionId) internal view returns (uint256) {
@@ -858,6 +946,11 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
         sellAsset.approve(pool, amount);
         ICurveFi(pool).exchange(from, to, amount, 0, false);
     }
+
+    /**
+     * @notice Attempted to deposit into an unsupported Curve Pool.
+     */
+    error DepositRouter__UnsupportedCurveDeposit();
 
     function _addLiquidityToCurve(
         ERC20 assetToDeposit,
@@ -892,6 +985,6 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
             } else {
                 ICurveFi(pool).add_liquidity(amounts, 0);
             }
-        } else revert("Unsupported deposit");
+        } else revert DepositRouter__UnsupportedCurveDeposit();
     }
 }
