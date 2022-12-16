@@ -472,8 +472,11 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
 
         // Now that pending rewards have been accounted for shares are more expensive.
         // Find shares owed to operator.
-        uint256 sharesPerAsset = p.totalBalance == 0 ? 1e18 : (1e18 * p.totalSupply) / p.totalBalance;
-        uint256 operatorShares = (_amount * sharesPerAsset) / 1e18;
+        // TODO what are the attack vectors since this initial share price is set at a constant.
+        uint256 sharesPerAsset = p.totalBalance == 0
+            ? 1e18 //_amount.changeDecimals(p.asset.decimals(), 18)
+            : p.totalSupply.mulDivDown(1e18, p.totalBalance);
+        uint256 operatorShares = _amount.mulDivDown(sharesPerAsset, 1e18);
         operatorPositionShares[_operator][_positionId] += operatorShares;
         p.totalSupply += operatorShares;
         p.totalBalance += _amount;
@@ -492,6 +495,7 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
         // Position zero is holding position so assets are already free.
         if (_positionId == 0) return;
         Position storage p = positions[_positionId];
+
         _updatePositionBalance(p); // This will take pending rewards and add it to p.totalBalance
         // So it needs to update totalBalance, and lastAccrualTimestamp
         uint256 actualWithdraw;
@@ -503,8 +507,9 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
 
         // Now that pending rewards have been accounted for shares are more expensive.
         // Find shares owed to operator.
-        uint256 assetsPerShare = (1e18 * p.totalBalance) / p.totalSupply;
-        uint256 operatorShares = ((1e18 * _amount) / assetsPerShare);
+        uint256 assetsPerShare = p.totalBalance.mulDivDown(1e18, p.totalSupply);
+        // Round up to favor protocol.
+        uint256 operatorShares = _amount.mulDivUp(1e18, assetsPerShare);
         operatorPositionShares[_operator][_positionId] -= operatorShares;
         p.totalSupply -= operatorShares;
         p.totalBalance -= _amount;
@@ -519,13 +524,16 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
     function _updatePositionBalance(Position storage p) internal {
         uint128 pendingRewards;
         uint64 time = uint64(block.timestamp);
-        if (time > p.endTimestamp) {
-            pendingRewards = (p.endTimestamp - p.lastAccrualTimestamp) * p.rewardRate;
-        } else {
-            pendingRewards = (time - p.lastAccrualTimestamp) * p.rewardRate;
+        if (p.lastAccrualTimestamp < p.endTimestamp) {
+            // There are pending rewards.
+            if (time > p.endTimestamp) {
+                pendingRewards = (p.endTimestamp - p.lastAccrualTimestamp) * p.rewardRate;
+            } else {
+                pendingRewards = (time - p.lastAccrualTimestamp) * p.rewardRate;
+            }
+            p.lastAccrualTimestamp = time;
+            p.totalBalance += pendingRewards;
         }
-        p.lastAccrualTimestamp = time;
-        p.totalBalance += pendingRewards;
     }
 
     /**
@@ -894,11 +902,6 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
         amountWithdrawn = _amount;
     }
 
-    /**
-     * @notice Used by Keepers to determine pending yield from a convex position in order to see if it is worth harvesting.
-     */
-    function _pendingConvexYieldWorth(Position storage p) internal returns (uint256) {}
-
     //============================================ Balance Of Functions ===========================================
     // CToken `getCashPrior` should call this.
     function balanceOf(address _operator) public view returns (uint256) {
@@ -923,11 +926,16 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
         Position memory p = positions[_positionId];
         if (p.totalSupply == 0) return 0;
         uint64 currentTime = uint64(block.timestamp);
-        uint256 pendingBalance = currentTime < p.endTimestamp
-            ? (p.rewardRate * (currentTime - p.lastAccrualTimestamp))
-            : (p.rewardRate * (p.endTimestamp - p.lastAccrualTimestamp));
-        uint256 assetsPerShare = (1e18 * (p.totalBalance + pendingBalance)) / p.totalSupply;
-        return (operatorShares * assetsPerShare) / 1e18;
+        uint256 pendingBalance;
+        if (p.lastAccrualTimestamp < p.endTimestamp) {
+            // There are pending rewards.
+            pendingBalance = currentTime < p.endTimestamp
+                ? (p.rewardRate * (currentTime - p.lastAccrualTimestamp))
+                : (p.rewardRate * (p.endTimestamp - p.lastAccrualTimestamp));
+        } // else there are no pending rewards.
+        uint256 assetsPerShare = (p.totalBalance + pendingBalance).mulDivDown(1e18, p.totalSupply); //(1e18 * (p.totalBalance + pendingBalance)) / p.totalSupply;
+        // console.log("End Timestamp", p.endTimestamp);
+        return operatorShares.mulDivDown(assetsPerShare, 1e18); //(operatorShares * assetsPerShare) / 1e18;
     }
 
     // returns the underlying asset
