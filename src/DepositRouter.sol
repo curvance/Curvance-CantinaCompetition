@@ -472,19 +472,11 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
 
         // Now that pending rewards have been accounted for shares are more expensive.
         // Find shares owed to operator.
-        uint256 operatorShares = _convertToShares(p, _amount);
+        uint256 operatorShares = _convertToSharesDown(p.asset, _amount, p.totalBalance, p.totalSupply);
 
         operatorPositionShares[_operator][_positionId] += operatorShares;
         p.totalSupply += operatorShares;
         p.totalBalance += _amount;
-    }
-
-    function _convertToShares(Position storage p, uint256 assets) internal view returns (uint256 shares) {
-        uint256 totalShares = p.totalSupply;
-
-        shares = totalShares == 0
-            ? assets.changeDecimals(p.asset.decimals(), 18)
-            : assets.mulDivDown(totalShares, p.totalBalance);
     }
 
     /**
@@ -512,24 +504,13 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
 
         // Now that pending rewards have been accounted for shares are more expensive.
         // Find shares owed by operator.
-        uint256 assetsPerShare = p.totalBalance.mulDivDown(1e18, p.totalSupply);
-        // Round up to favor protocol.
-        // uint256 operatorShares = _amount.mulDivUp(1e18, assetsPerShare);
-        uint256 operatorShares = _previewWithdraw(p, _amount);
+        uint256 operatorShares = _convertToSharesUp(p.asset, _amount, p.totalBalance, p.totalSupply);
         operatorPositionShares[_operator][_positionId] -= operatorShares;
         p.totalSupply -= operatorShares;
         p.totalBalance -= _amount;
 
         // Credit operators holding position balance.
         operatorPositionShares[_operator][0] += _amount;
-    }
-
-    function _previewWithdraw(Position storage p, uint256 assets) internal view returns (uint256 shares) {
-        uint256 totalShares = p.totalSupply;
-
-        shares = totalShares == 0
-            ? assets.changeDecimals(p.asset.decimals(), 18)
-            : assets.mulDivUp(totalShares, p.totalBalance);
     }
 
     /**
@@ -949,22 +930,48 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
                 ? (p.rewardRate * (currentTime - p.lastAccrualTimestamp))
                 : (p.rewardRate * (p.endTimestamp - p.lastAccrualTimestamp));
         } // else there are no pending rewards.
-        uint256 assetsPerShare = (p.totalBalance + pendingBalance).mulDivDown(1e18, p.totalSupply);
-        // console.log("End Timestamp", p.endTimestamp);
-        return _convertToAssets(operatorShares, (p.totalBalance + pendingBalance), p);
-        // return operatorShares.mulDivDown(assetsPerShare, 1e18); //(operatorShares * assetsPerShare) / 1e18;
+        return _convertToAssets(p.asset, operatorShares, (p.totalBalance + pendingBalance), p.totalSupply);
     }
 
+    //============================================ Accounting Functions ===========================================
+
     function _convertToAssets(
+        ERC20 _asset,
         uint256 shares,
         uint256 _totalAssets,
-        Position memory p
+        uint256 _totalSupply
     ) internal view returns (uint256 assets) {
-        uint256 totalShares = p.totalSupply;
+        assets = _totalSupply == 0
+            ? shares.changeDecimals(18, _asset.decimals())
+            : shares.mulDivDown(_totalAssets, _totalSupply);
+    }
 
-        assets = totalShares == 0
-            ? shares.changeDecimals(18, p.asset.decimals())
-            : shares.mulDivDown(_totalAssets, totalShares);
+    /**
+     @notice Converts Assets -> Shares, but rounds down.
+     */
+    function _convertToSharesDown(
+        ERC20 _asset,
+        uint256 assets,
+        uint256 _totalAssets,
+        uint256 _totalSupply
+    ) internal view returns (uint256 shares) {
+        shares = _totalSupply == 0
+            ? assets.changeDecimals(_asset.decimals(), 18)
+            : assets.mulDivDown(_totalSupply, _totalAssets);
+    }
+
+    /**
+     @notice Converts Assets -> Shares, but rounds up.
+     */
+    function _convertToSharesUp(
+        ERC20 _asset,
+        uint256 assets,
+        uint256 _totalAssets,
+        uint256 _totalSupply
+    ) internal view returns (uint256 shares) {
+        shares = _totalSupply == 0
+            ? assets.changeDecimals(_asset.decimals(), 18)
+            : assets.mulDivUp(_totalSupply, _totalAssets);
     }
 
     //============================================ Curve Integration Functions ===========================================
