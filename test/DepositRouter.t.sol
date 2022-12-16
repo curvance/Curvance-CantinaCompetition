@@ -273,7 +273,7 @@ contract DepositRouterTest is Test {
         assertApproxEqAbs(
             router.balanceOf(address(this)),
             assets,
-            1,
+            100000,
             "Operator balance should be constant through rebalance."
         );
         assertApproxEqAbs(
@@ -575,7 +575,7 @@ contract DepositRouterTest is Test {
         uint256 assetsToWithdrawAlpha = router.balanceOf(operatorAlpha);
         router.withdraw(assetsToWithdrawAlpha);
         vm.stopPrank();
-        assertApproxEqAbs(router.balanceOf(operatorAlpha), 0, 1, "Operator Alpha balance should be zero.");
+        assertApproxEqAbs(router.balanceOf(operatorAlpha), 0, 10, "Operator Alpha balance should be zero.");
         assertEq(
             CRV_3_CRYPTO.balanceOf(operatorAlpha),
             assetsToWithdrawAlpha,
@@ -587,7 +587,7 @@ contract DepositRouterTest is Test {
         uint256 assetsToWithdrawBeta = router.balanceOf(operatorBeta);
         router.withdraw(assetsToWithdrawBeta);
         vm.stopPrank();
-        assertApproxEqAbs(router.balanceOf(operatorBeta), 0, 1, "Operator Beta balance should be zero.");
+        assertApproxEqAbs(router.balanceOf(operatorBeta), 0, 10, "Operator Beta balance should be zero.");
         assertEq(
             CRV_3_CRYPTO.balanceOf(operatorBeta),
             assetsToWithdrawBeta,

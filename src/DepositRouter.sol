@@ -472,14 +472,19 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
 
         // Now that pending rewards have been accounted for shares are more expensive.
         // Find shares owed to operator.
-        // TODO what are the attack vectors since this initial share price is set at a constant.
-        uint256 sharesPerAsset = p.totalBalance == 0
-            ? 1e18 //_amount.changeDecimals(p.asset.decimals(), 18)
-            : p.totalSupply.mulDivDown(1e18, p.totalBalance);
-        uint256 operatorShares = _amount.mulDivDown(sharesPerAsset, 1e18);
+        uint256 operatorShares = _convertToShares(p, _amount);
+
         operatorPositionShares[_operator][_positionId] += operatorShares;
         p.totalSupply += operatorShares;
         p.totalBalance += _amount;
+    }
+
+    function _convertToShares(Position storage p, uint256 assets) internal view returns (uint256 shares) {
+        uint256 totalShares = p.totalSupply;
+
+        shares = totalShares == 0
+            ? assets.changeDecimals(p.asset.decimals(), 18)
+            : assets.mulDivDown(totalShares, p.totalBalance);
     }
 
     /**
@@ -506,16 +511,25 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
         if (actualWithdraw != _amount) revert DepositRouter__IncompleteWithdraw();
 
         // Now that pending rewards have been accounted for shares are more expensive.
-        // Find shares owed to operator.
+        // Find shares owed by operator.
         uint256 assetsPerShare = p.totalBalance.mulDivDown(1e18, p.totalSupply);
         // Round up to favor protocol.
-        uint256 operatorShares = _amount.mulDivUp(1e18, assetsPerShare);
+        // uint256 operatorShares = _amount.mulDivUp(1e18, assetsPerShare);
+        uint256 operatorShares = _previewWithdraw(p, _amount);
         operatorPositionShares[_operator][_positionId] -= operatorShares;
         p.totalSupply -= operatorShares;
         p.totalBalance -= _amount;
 
         // Credit operators holding position balance.
         operatorPositionShares[_operator][0] += _amount;
+    }
+
+    function _previewWithdraw(Position storage p, uint256 assets) internal view returns (uint256 shares) {
+        uint256 totalShares = p.totalSupply;
+
+        shares = totalShares == 0
+            ? assets.changeDecimals(p.asset.decimals(), 18)
+            : assets.mulDivUp(totalShares, p.totalBalance);
     }
 
     /**
@@ -528,6 +542,8 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
             // There are pending rewards.
             if (time > p.endTimestamp) {
                 pendingRewards = (p.endTimestamp - p.lastAccrualTimestamp) * p.rewardRate;
+                // All rewards have been vested and claimed.
+                p.rewardRate = 0;
             } else {
                 pendingRewards = (time - p.lastAccrualTimestamp) * p.rewardRate;
             }
@@ -927,21 +943,29 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
         if (p.totalSupply == 0) return 0;
         uint64 currentTime = uint64(block.timestamp);
         uint256 pendingBalance;
-        if (p.lastAccrualTimestamp < p.endTimestamp) {
+        if (p.rewardRate > 0 && p.lastAccrualTimestamp < p.endTimestamp) {
             // There are pending rewards.
             pendingBalance = currentTime < p.endTimestamp
                 ? (p.rewardRate * (currentTime - p.lastAccrualTimestamp))
                 : (p.rewardRate * (p.endTimestamp - p.lastAccrualTimestamp));
         } // else there are no pending rewards.
-        uint256 assetsPerShare = (p.totalBalance + pendingBalance).mulDivDown(1e18, p.totalSupply); //(1e18 * (p.totalBalance + pendingBalance)) / p.totalSupply;
+        uint256 assetsPerShare = (p.totalBalance + pendingBalance).mulDivDown(1e18, p.totalSupply);
         // console.log("End Timestamp", p.endTimestamp);
-        return operatorShares.mulDivDown(assetsPerShare, 1e18); //(operatorShares * assetsPerShare) / 1e18;
+        return _convertToAssets(operatorShares, (p.totalBalance + pendingBalance), p);
+        // return operatorShares.mulDivDown(assetsPerShare, 1e18); //(operatorShares * assetsPerShare) / 1e18;
     }
 
-    // returns the underlying asset
-    // function underlying(uint256 pid) public view returns (address) {
-    //     return positions[pid].underlying;
-    // }
+    function _convertToAssets(
+        uint256 shares,
+        uint256 _totalAssets,
+        Position memory p
+    ) internal view returns (uint256 assets) {
+        uint256 totalShares = p.totalSupply;
+
+        assets = totalShares == 0
+            ? shares.changeDecimals(18, p.asset.decimals())
+            : shares.mulDivDown(_totalAssets, totalShares);
+    }
 
     //============================================ Curve Integration Functions ===========================================
     function _sellOnCurve(
