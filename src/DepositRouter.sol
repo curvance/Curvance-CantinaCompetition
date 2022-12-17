@@ -387,6 +387,22 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
         operators[_operator].allowRebalancing = _state;
     }
 
+    function adjustRebalanceValues(
+        address _operator,
+        uint64 newMaxGas,
+        uint64 newMinImbalance,
+        uint64 newMinValue,
+        uint64 newMinTime
+    ) external {
+        if (!operators[_operator].isOperator) revert DepositRouter__OperatorDoesNotExist(_operator);
+        if (operators[_operator].owner != msg.sender)
+            revert DepositRouter__CallerDoesNotOperatorOwner(_operator, msg.sender);
+        operators[_operator].maxGasForRebalance = newMaxGas;
+        operators[_operator].minimumImbalanceDeltaForUpkeep = newMinImbalance;
+        operators[_operator].minimumValueToRebalance = newMinValue;
+        operators[_operator].minimumTimeBetweenUpkeeps = newMinTime;
+    }
+
     //============================================ Operator Functions ===========================================
     /**
      * Takes underlying token and deposits it into the underlying protocol
@@ -807,7 +823,11 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
     /**
      * @notice Apply a 1% slippage to all harvest TXs.
      */
-    uint256 public constant harvestSlippage = 0.01e18;
+    uint64 public harvestSlippage = 0.01e18;
+
+    function setHarvestSlippage(uint64 newSlippage) external onlyOwner {
+        harvestSlippage = newSlippage;
+    }
 
     error DepositRouter__HarvestSlippageCheckFailed();
 
@@ -849,7 +869,8 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
         for (uint8 i = 0; i < 8; i++) {
             address pool;
             if ((pool = p.swapPools[i]) == address(0)) break;
-            if (rewardBalances[i] < 0.01e18) continue; // Don't swap dust.
+            // TODO is this really needed? Since we simulate the TX
+            // if (rewardBalances[i] < 0.01e18) continue; // Don't swap dust.
             _sellOnCurve(pool, p.froms[i], p.tos[i], rewardBalances[i], rewardTokens[i]);
         }
 

@@ -8,6 +8,7 @@ import { IBaseRewardPool } from "src/interfaces/Convex/IBaseRewardPool.sol";
 import { PriceRouter } from "src/PricingOperations/PriceRouter.sol";
 import { IChainlinkAggregator } from "src/interfaces/IChainlinkAggregator.sol";
 import { ICurvePool } from "src/interfaces/Curve/ICurvePool.sol";
+// import { MockGasFeed } from "src/mocks/MockGasFeed.sol";
 
 import { Test, stdStorage, console, StdStorage, stdError } from "@forge-std/Test.sol";
 import { Math } from "src/utils/Math.sol";
@@ -19,6 +20,7 @@ contract DepositRouterTest is Test {
 
     PriceRouter private priceRouter;
     DepositRouter private router;
+    // MockGasFeed private gasFeed;
 
     address private operatorAlpha = vm.addr(111);
     address private ownerAlpha = vm.addr(1110);
@@ -52,15 +54,17 @@ contract DepositRouterTest is Test {
     address private WBTC_USD_FEED = 0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c;
     address private CVX_USD_FEED = 0xd962fC30A72A84cE50161031391756Bf2876Af5D;
     address private CRV_USD_FEED = 0xCd627aA160A6fA45Eb793D19Ef54f5062F20f33f;
+    address private ETH_FAST_GAS_FEED = 0x169E633A2D1E6c10dD91238Ba11c4A708dfEF37C;
 
     function setUp() external {
+        // gasFeed = new MockGasFeed();
         priceRouter = new PriceRouter();
         // USDT
         // Set heart beat to 5 days so we don't run into stale price reverts.
         PriceRouter.ChainlinkDerivativeStorage memory stor = PriceRouter.ChainlinkDerivativeStorage(
             0,
             0,
-            5 days,
+            50 days,
             false
         );
         PriceRouter.AssetSettings memory settings;
@@ -161,7 +165,7 @@ contract DepositRouterTest is Test {
 
         router.setFeeAccumulator(accumulator);
 
-        // stdstore.target(address(cellar)).sig(cellar.shareLockPeriod.selector).checked_write(uint256(0));
+        // stdstore.target(address(router)).sig(router.shareLockPeriod.selector).checked_write(uint256(0));
     }
 
     // ========================================= STATE TESTS =========================================
@@ -273,7 +277,7 @@ contract DepositRouterTest is Test {
         assertApproxEqAbs(
             router.balanceOf(address(this)),
             assets,
-            100000,
+            1,
             "Operator balance should be constant through rebalance."
         );
         assertApproxEqAbs(
@@ -401,8 +405,8 @@ contract DepositRouterTest is Test {
         uint32[8] memory to = [uint32(1), 0, 0, 0, 0, 0, 0, 0];
         uint256[8] memory amount = [uint256(assetsAlpha.mulDivDown(5, 10)), 0, 0, 0, 0, 0, 0, 0];
         bytes memory upkeepData = abi.encode(operatorAlpha, from, to, amount);
-        vm.prank(ownerAlpha);
         // Have owner allow rebalancing.
+        vm.prank(ownerAlpha);
         router.allowRebalancing(operatorAlpha, true);
         // Warp time forward so rate limit check is valid.
         vm.warp(block.timestamp + 1 days / 2);
@@ -412,8 +416,8 @@ contract DepositRouterTest is Test {
         to = [uint32(1), 0, 0, 0, 0, 0, 0, 0];
         amount = [uint256(assetsBeta.mulDivDown(4, 10)), 0, 0, 0, 0, 0, 0, 0];
         upkeepData = abi.encode(operatorBeta, from, to, amount);
-        vm.prank(ownerBeta);
         // Have owner allow rebalancing.
+        vm.prank(ownerBeta);
         router.allowRebalancing(operatorBeta, true);
         // No need to warp time because beta rate limit is 1/4 days.
         router.performUpkeep(upkeepData);
@@ -497,8 +501,7 @@ contract DepositRouterTest is Test {
     function testConvexHarvestWithMultipleOperators(uint256 assetsAlpha, uint256 assetsBeta) external {
         assetsAlpha = bound(assetsAlpha, 1e18, type(uint96).max);
         assetsBeta = bound(assetsBeta, 1e18, type(uint96).max);
-        // assetsAlpha = 1000000000000000000;
-        // assetsBeta = 35799006209555501558;
+
         deal(address(CRV_3_CRYPTO), operatorAlpha, assetsAlpha);
         deal(address(CRV_3_CRYPTO), operatorBeta, assetsBeta);
 
@@ -575,7 +578,7 @@ contract DepositRouterTest is Test {
         uint256 assetsToWithdrawAlpha = router.balanceOf(operatorAlpha);
         router.withdraw(assetsToWithdrawAlpha);
         vm.stopPrank();
-        assertApproxEqAbs(router.balanceOf(operatorAlpha), 0, 10, "Operator Alpha balance should be zero.");
+        assertEq(router.balanceOf(operatorAlpha), 0, "Operator Alpha balance should be zero.");
         assertEq(
             CRV_3_CRYPTO.balanceOf(operatorAlpha),
             assetsToWithdrawAlpha,
@@ -587,7 +590,7 @@ contract DepositRouterTest is Test {
         uint256 assetsToWithdrawBeta = router.balanceOf(operatorBeta);
         router.withdraw(assetsToWithdrawBeta);
         vm.stopPrank();
-        assertApproxEqAbs(router.balanceOf(operatorBeta), 0, 10, "Operator Beta balance should be zero.");
+        assertEq(router.balanceOf(operatorBeta), 0, "Operator Beta balance should be zero.");
         assertEq(
             CRV_3_CRYPTO.balanceOf(operatorBeta),
             assetsToWithdrawBeta,
@@ -601,11 +604,264 @@ contract DepositRouterTest is Test {
         );
     }
 
-    // TODO add test where one operator tries to withdraw too much to steal another operators assets.
+    // ========================================= LOGIC TESTS =========================================
+    function testDepositLogic(uint256 assets) external {
+        assets = bound(assets, 1e18, type(uint96).max);
+
+        // Make sure only operators can deposit.
+        address notAnOperator = vm.addr(8);
+        vm.startPrank(notAnOperator);
+        vm.expectRevert(
+            bytes(abi.encodeWithSelector(DepositRouter.DepositRouter__OperatorDoesNotExist.selector, notAnOperator))
+        );
+        router.deposit(assets);
+        vm.stopPrank();
+    }
+
+    function testWithdrawLogic(uint256 assetsAlpha, uint256 assetsBeta) external {
+        assetsAlpha = bound(assetsAlpha, 1e18, type(uint96).max);
+        assetsBeta = bound(assetsBeta, 1e18, type(uint96).max);
+
+        deal(address(CRV_3_CRYPTO), operatorAlpha, assetsAlpha);
+        deal(address(CRV_3_CRYPTO), operatorBeta, assetsBeta);
+
+        // Operator Alpha deposits.
+        vm.startPrank(operatorAlpha);
+        CRV_3_CRYPTO.safeApprove(address(router), assetsAlpha);
+        router.deposit(assetsAlpha);
+        vm.stopPrank();
+
+        // Operator Beta deposits.
+        vm.startPrank(operatorBeta);
+        CRV_3_CRYPTO.safeApprove(address(router), assetsBeta);
+        router.deposit(assetsBeta);
+        vm.stopPrank();
+
+        vm.startPrank(operatorAlpha);
+        uint256 assetsToWithdrawAlpha = router.balanceOf(operatorAlpha) + 1;
+        vm.expectRevert(stdError.arithmeticError);
+        // Operator Alpha tries to withdraw more than they deposited.
+        router.withdraw(assetsToWithdrawAlpha);
+        // Operator Alpha withdraws their full deposit.
+        router.withdraw(assetsToWithdrawAlpha - 1);
+        vm.stopPrank();
+
+        // Make sure only operators can withdraw.
+        address notAnOperator = vm.addr(8);
+        vm.startPrank(notAnOperator);
+        vm.expectRevert(
+            bytes(abi.encodeWithSelector(DepositRouter.DepositRouter__OperatorDoesNotExist.selector, notAnOperator))
+        );
+        router.withdraw(1);
+        vm.stopPrank();
+
+        // Perform rebalance Upkeep for beta operator.
+        uint32[8] memory from = [uint32(0), 0, 0, 0, 0, 0, 0, 0];
+        uint32[8] memory to = [uint32(1), 0, 0, 0, 0, 0, 0, 0];
+        uint256[8] memory amount = [uint256(assetsBeta.mulDivDown(4, 10)), 0, 0, 0, 0, 0, 0, 0];
+        bytes memory upkeepData = abi.encode(operatorBeta, from, to, amount);
+        vm.prank(ownerBeta);
+        // Have owner allow rebalancing.
+        router.allowRebalancing(operatorBeta, true);
+        // Warp time forward so rate limit check is valid.
+        vm.warp(block.timestamp + 1 days / 2);
+        router.performUpkeep(upkeepData);
+
+        // Make sure withdrawing from multiple positions works.
+        vm.startPrank(operatorBeta);
+        uint256 assetsToWithdrawBeta = router.balanceOf(operatorBeta);
+        router.withdraw(assetsToWithdrawBeta);
+        vm.stopPrank();
+    }
+
+    function testRebalanceUpkeepLogic(uint256 assets) external {
+        assets = bound(assets, 1e18, type(uint96).max);
+
+        deal(address(CRV_3_CRYPTO), operatorBeta, assets);
+
+        vm.startPrank(operatorBeta);
+        CRV_3_CRYPTO.safeApprove(address(router), assets);
+        router.deposit(assets);
+        vm.stopPrank();
+
+        // Check position rebalance checkUpkeep logic.
+        // Try checking an address that is not an operator.
+        address notAnOperator = vm.addr(8);
+        bytes memory checkData = abi.encode(notAnOperator);
+        vm.expectRevert(
+            bytes(abi.encodeWithSelector(DepositRouter.DepositRouter__OperatorDoesNotExist.selector, notAnOperator))
+        );
+        router.checkUpkeep(checkData);
+
+        // Check that checkUpkeep returns false if not enough time has passed.
+        checkData = abi.encode(operatorBeta);
+        (bool upkeepNeeded, bytes memory performData) = router.checkUpkeep(checkData);
+        assertTrue(!upkeepNeeded, "Operator Beta should not need an upkeep.");
+
+        // Advance time so that the rate limit check is passed.
+        vm.warp(block.timestamp + 1 days);
+        // Operator Beta should still not need an upkeep since they have not enabled upkeeps.
+        (upkeepNeeded, performData) = router.checkUpkeep(checkData);
+        assertTrue(!upkeepNeeded, "Operator Beta should not need an upkeep.");
+
+        // Beta owner allows rebalancing.
+        vm.prank(ownerBeta);
+        router.allowRebalancing(operatorBeta, true);
+
+        // Gas price spikes enough so that beta should not need an upkeep.
+        // Simulate this by having owner lower their max gas for rebalance.
+        vm.prank(ownerBeta);
+        router.adjustRebalanceValues(operatorBeta, 0, 0.2e8, 10e8, 1 days / 4);
+        (upkeepNeeded, performData) = router.checkUpkeep(checkData);
+        assertTrue(!upkeepNeeded, "Operator Beta should not need an upkeep.");
+
+        // Beta owner raises their max gas to 50 gwei.
+        vm.prank(ownerBeta);
+        router.adjustRebalanceValues(operatorBeta, 50e9, 0.2e8, 10e8, 1 days / 4);
+
+        // Upkeep should be needed.
+        (upkeepNeeded, performData) = router.checkUpkeep(checkData);
+        assertTrue(upkeepNeeded, "Operator Beta should need an upkeep.");
+
+        router.performUpkeep(performData);
+
+        assertApproxEqAbs(
+            CRV_3_CRYPTO.balanceOf(address(router)),
+            assets.mulDivDown(6, 10),
+            1,
+            "Deposit Router should have deposited 40% of assets into Convex."
+        );
+
+        // Advance time so that the rate limit check is passed.
+        vm.warp(block.timestamp + 1 days);
+
+        // Operator Beta deposits more assets, but not enough to create a significant imbalance.
+        deal(address(CRV_3_CRYPTO), operatorBeta, assets / 10);
+        vm.startPrank(operatorBeta);
+        CRV_3_CRYPTO.safeApprove(address(router), assets / 10);
+        router.deposit(assets / 10);
+        vm.stopPrank();
+
+        // Operator Beta should not need an upkeep since the imbalance delta is too small.
+        (upkeepNeeded, performData) = router.checkUpkeep(checkData);
+        assertTrue(!upkeepNeeded, "Operator Beta should not need an upkeep.");
+
+        // But if more deposits are made to increase the imbalance delta.
+        deal(address(CRV_3_CRYPTO), operatorBeta, assets);
+        vm.startPrank(operatorBeta);
+        CRV_3_CRYPTO.safeApprove(address(router), assets);
+        router.deposit(assets);
+        vm.stopPrank();
+
+        // Operator Beta should need an upkeep since the imbalance delta is sufficient.
+        (upkeepNeeded, performData) = router.checkUpkeep(checkData);
+        assertTrue(upkeepNeeded, "Operator Beta should need an upkeep.");
+
+        router.performUpkeep(performData);
+        uint256 expectedRouterBalance = (assets + (assets / 10) + assets).mulDivDown(6, 10);
+        assertApproxEqAbs(
+            CRV_3_CRYPTO.balanceOf(address(router)),
+            expectedRouterBalance,
+            1,
+            "Deposit Router should have deposited 40% of total assets into Convex."
+        );
+
+        // Have Operator Beta withdraw all assets.
+        uint256 assetsToWithdraw = router.balanceOf(operatorBeta);
+        vm.prank(operatorBeta);
+        router.withdraw(assetsToWithdraw);
+
+        assertEq(
+            CRV_3_CRYPTO.balanceOf(operatorBeta),
+            assetsToWithdraw,
+            "Operator Beta should have received `assetsToWithdraw`."
+        );
+        assertEq(CRV_3_CRYPTO.balanceOf(address(router)), 0, "Deposit Router should have no more assets.");
+    }
+
+    function testHarvestUpkeepLogic(uint256 assetsAlpha) external {
+        assetsAlpha = bound(assetsAlpha, 1e18, type(uint96).max);
+
+        deal(address(CRV_3_CRYPTO), operatorAlpha, assetsAlpha);
+
+        // Operator Alpha deposits.
+        vm.startPrank(operatorAlpha);
+        CRV_3_CRYPTO.safeApprove(address(router), assetsAlpha);
+        router.deposit(assetsAlpha);
+        vm.stopPrank();
+
+        // Perform rebalance Upkeep for each operator.
+        uint32[8] memory from = [uint32(0), 0, 0, 0, 0, 0, 0, 0];
+        uint32[8] memory to = [uint32(1), 0, 0, 0, 0, 0, 0, 0];
+        uint256[8] memory amount = [uint256(assetsAlpha.mulDivDown(5, 10)), 0, 0, 0, 0, 0, 0, 0];
+        bytes memory upkeepData = abi.encode(operatorAlpha, from, to, amount);
+        vm.prank(ownerAlpha);
+        // Have owner allow rebalancing.
+        router.allowRebalancing(operatorAlpha, true);
+        // Warp time forward so rate limit check is valid.
+        vm.warp(block.timestamp + 1 days / 2);
+        router.performUpkeep(upkeepData);
+
+        // Advance time to earn CRV and CVX rewards
+        vm.warp(block.timestamp + 1 days);
+
+        // Lower the max gas price for harvest so checkupkeep returns false.
+        router.adjustMaxGasPriceForHarvest(0);
+
+        bytes memory checkData = abi.encode(address(router), 0, 1);
+        (bool upkeepNeeded, bytes memory performData) = router.checkUpkeep(checkData);
+        assertTrue(!upkeepNeeded, "Harvest upkeep should be false.");
+
+        // Raise the max gas price for harvest so checkupkeep returns true.
+        router.adjustMaxGasPriceForHarvest(100e9);
+        router.adjustMinYieldForHarvest(0);
+
+        (upkeepNeeded, performData) = router.checkUpkeep(checkData);
+        assertTrue(upkeepNeeded, "Harvest upkeep should be true.");
+        (address target, uint32 targetId) = abi.decode(performData, (address, uint32));
+        assertEq(target, address(router), "Target should be Deposit Router.");
+        assertEq(targetId, 1, "Target id should be CRV Tri Crypto position.");
+
+        // Advance time to earn more CRV and CVX rewards
+        vm.warp(block.timestamp + 2 days);
+        // TODO so if you advance time too much then there are no rewards.....
+
+        // Harvest rewards.
+        upkeepData = abi.encode(address(router), 1);
+        router.performUpkeep(upkeepData);
+
+        // Fully vest rewards
+        vm.warp(block.timestamp + 8 days);
+
+        // Operator Alpha withdraws.
+        vm.startPrank(operatorAlpha);
+        uint256 assetsToWithdrawAlpha = router.balanceOf(operatorAlpha);
+        router.withdraw(assetsToWithdrawAlpha);
+        vm.stopPrank();
+        assertEq(router.balanceOf(operatorAlpha), 0, "Operator Alpha balance should be zero.");
+        assertEq(
+            CRV_3_CRYPTO.balanceOf(operatorAlpha),
+            assetsToWithdrawAlpha,
+            "Operator Alpha should have all assets back."
+        );
+
+        assertEq(
+            CRV_3_CRYPTO.balanceOf(address(router)),
+            0,
+            "Deposit Router should have sent all assets to operators."
+        );
+    }
+
+    function testHarvestLogic() external {
+        // Have multiple positions that have yield to harvest and make sure it harvests in the correct order.
+    }
+
+    function testBalanceOfLogic() external {}
 
     // ========================================= INTEGRATION TESTS =========================================
     function testMultipleOperators() external {}
     // TODO add test for multiple operators with different assets and like assets.
+    // TODO perform multiple harvests and make sure the rewards and reward rate are correct.
 
     // ========================================= HELPER FUNCTIONS =========================================
 }
