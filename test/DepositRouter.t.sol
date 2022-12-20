@@ -28,13 +28,15 @@ contract DepositRouterTest is Test {
     address private ownerBeta = vm.addr(2220);
 
     ERC20 private USDT = ERC20(0xdAC17F958D2ee523a2206206994597C13D831ec7);
+    ERC20 private USDC = ERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
+    ERC20 private DAI = ERC20(0x6B175474E89094C44Da98b954EedeAC495271d0F);
     ERC20 private constant WETH = ERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
     ERC20 private constant WBTC = ERC20(0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599);
     ERC20 private constant CVX = ERC20(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
     ERC20 private constant CRV = ERC20(0xD533a949740bb3306d119CC777fa900bA034cd52);
 
     ERC20 private CRV_3_CRYPTO = ERC20(0xc4AD29ba4B3c580e6D59105FFf484999997675Ff);
-    uint256 curve3PoolConvexPid = 38;
+    uint256 private curve3PoolConvexPid = 38;
     address private curve3CryptoPool = 0xD51a44d3FaE010294C616388b506AcdA1bfAAE46;
     address private curve3PoolReward = 0x9D5C5E364D81DaB193b72db9E9BE9D8ee669B652;
 
@@ -46,10 +48,13 @@ contract DepositRouterTest is Test {
     address private accumulator = vm.addr(555);
 
     uint8 private constant CHAINLINK_DERIVATIVE = 1;
+    uint8 private constant CURVE_DERIVATIVE = 2;
     uint8 private constant CURVEV2_DERIVATIVE = 3;
 
     // Datafeeds
     address private USDT_USD_FEED = 0x3E7d1eAB13ad0104d2750B8863b489D65364e32D;
+    address private USDC_USD_FEED = 0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6;
+    address private DAI_USD_FEED = 0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9;
     address private WETH_USD_FEED = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
     address private WBTC_USD_FEED = 0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c;
     address private CVX_USD_FEED = 0xd962fC30A72A84cE50161031391756Bf2876Af5D;
@@ -852,9 +857,163 @@ contract DepositRouterTest is Test {
         );
     }
 
-    function testHarvestLogic() external {
+    function testHarvestLogic(uint256 stableAssets, uint256 volatileAssets) external {
         // Have multiple positions that have yield to harvest and make sure it harvests in the correct order.
+        // Add required assets to price router.
+        ERC20 CRV_DAI_USDC_USDT = ERC20(0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490);
+        uint256 curve3CRVConvexPid = 9;
+        address curve3CrvPool = 0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7;
+        address curve3CrvReward = 0x689440f2Ff927E1f24c72F1087E1FAF471eCe1c8;
+        {
+            PriceRouter.ChainlinkDerivativeStorage memory stor = PriceRouter.ChainlinkDerivativeStorage(
+                0,
+                0,
+                50 days,
+                false
+            );
+            PriceRouter.AssetSettings memory settings;
+
+            // Add USDC.
+            uint256 price = uint256(IChainlinkAggregator(USDC_USD_FEED).latestAnswer());
+            settings = PriceRouter.AssetSettings(CHAINLINK_DERIVATIVE, USDC_USD_FEED);
+            priceRouter.addAsset(USDC, settings, abi.encode(stor), price);
+            // Add DAI.
+            price = uint256(IChainlinkAggregator(DAI_USD_FEED).latestAnswer());
+            settings = PriceRouter.AssetSettings(CHAINLINK_DERIVATIVE, DAI_USD_FEED);
+            priceRouter.addAsset(DAI, settings, abi.encode(stor), price);
+
+            // Add 3Pool
+            settings = PriceRouter.AssetSettings(CURVE_DERIVATIVE, curve3CrvPool);
+            uint256 vp = ICurvePool(curve3CrvPool).get_virtual_price().changeDecimals(18, 8);
+            PriceRouter.VirtualPriceBound memory vpBound = PriceRouter.VirtualPriceBound(
+                uint96(vp),
+                0,
+                uint32(1.01e8),
+                uint32(0.99e8),
+                0
+            );
+            priceRouter.addAsset(CRV_DAI_USDC_USDT, settings, abi.encode(vpBound), 1.02e8);
+        }
+
+        {
+            address[8] memory pools;
+            uint16[8] memory froms;
+            uint16[8] memory tos;
+            DepositRouter.DepositData memory depositData;
+
+            pools[0] = crveth; // To swap CRV for ETH.
+            pools[1] = cvxeth; // To swap CVX for ETH.
+            pools[2] = curve3CryptoPool; // To Swap ETH for USDT
+            froms = [uint16(1), 1, 2, 0, 0, 0, 0, 0];
+            tos = [uint16(0), 0, 0, 0, 0, 0, 0, 0];
+
+            uint8 coinsLength = 3;
+            uint8 targetIndex = 2;
+            bool useUnderlying = false;
+            depositData = DepositRouter.DepositData(address(USDT), coinsLength, targetIndex, useUnderlying);
+
+            router.addPosition(
+                CRV_DAI_USDC_USDT,
+                DepositRouter.Platform.CONVEX,
+                abi.encode(curve3CRVConvexPid, curve3CrvReward, curve3CrvPool),
+                pools,
+                froms,
+                tos,
+                depositData
+            );
+        }
+        address stableOperator = vm.addr(2121);
+        address volatileOperator = vm.addr(1111);
+        {
+            // Add stable operator.
+            uint32[8] memory positions = [uint32(0), 2, 0, 0, 0, 0, 0, 0];
+            uint32[8] memory positionRatios = [uint32(0.2e8), 0.8e8, 0, 0, 0, 0, 0, 0];
+            router.addOperator(
+                stableOperator,
+                address(this),
+                CRV_DAI_USDC_USDT,
+                100e9,
+                positions,
+                positionRatios,
+                0.3e8,
+                0,
+                0
+            );
+            // Add volatile operator.
+            positions = [uint32(0), 1, 0, 0, 0, 0, 0, 0];
+            router.addOperator(
+                volatileOperator,
+                address(this),
+                CRV_3_CRYPTO,
+                100e9,
+                positions,
+                positionRatios,
+                0.3e8,
+                0,
+                0
+            );
+        }
+        // Have operators allow rebalancing.
+        router.allowRebalancing(stableOperator, true);
+        router.allowRebalancing(volatileOperator, true);
+
+        // Have operators deposit.
+        stableAssets = bound(stableAssets, 1e18, type(uint96).max);
+        volatileAssets = bound(volatileAssets, 1e18, type(uint96).max);
+
+        deal(address(CRV_DAI_USDC_USDT), stableOperator, stableAssets);
+        vm.startPrank(stableOperator);
+        CRV_DAI_USDC_USDT.safeApprove(address(router), stableAssets);
+        router.deposit(stableAssets);
+        vm.stopPrank();
+        deal(address(CRV_3_CRYPTO), volatileOperator, volatileAssets);
+        vm.startPrank(volatileOperator);
+        CRV_3_CRYPTO.safeApprove(address(router), volatileAssets);
+        router.deposit(volatileAssets);
+        vm.stopPrank();
+
+        // Perform rebalance Upkeeps.
+
+        {
+            uint32[8] memory from = [uint32(0), 0, 0, 0, 0, 0, 0, 0];
+            uint32[8] memory to = [uint32(2), 0, 0, 0, 0, 0, 0, 0];
+            uint256[8] memory amount = [uint256(stableAssets.mulDivDown(8, 10)), 0, 0, 0, 0, 0, 0, 0];
+            bytes memory upkeepData = abi.encode(stableOperator, from, to, amount);
+            router.performUpkeep(upkeepData);
+            to = [uint32(1), 0, 0, 0, 0, 0, 0, 0];
+            amount = [uint256(volatileAssets.mulDivDown(8, 10)), 0, 0, 0, 0, 0, 0, 0];
+            upkeepData = abi.encode(volatileOperator, from, to, amount);
+            router.performUpkeep(upkeepData);
+        }
+
+        // Advance time to earn CRV and CVX rewards
+        vm.warp(block.timestamp + 3 days);
+
+        // Checkupkeep should return the position id that has the most yield to claim, which will be
+        // dependent on the fuzz asset amounts, so run checkUpkeep, save the performData, then compare balanceOf(operator)
+        // To the initial fuzz asset balance,then use price router to get the value of the difference.
+
+        // Set max gas to a large number to pass gas price check.
+        router.adjustMaxGasPriceForHarvest(1000e9);
+        bytes memory checkData = abi.encode(address(router), 1, 2);
+        (bool upkeepNeeded, bytes memory performData) = router.checkUpkeep(checkData);
+        assertTrue(upkeepNeeded, "Upkeep should be needed.");
+
+        // Advance time to fully vest rewards.
+        vm.warp(block.timestamp + 7 days);
+
+        // Get balance diff.
+        uint256 stableDiff = router.balanceOf(stableOperator) - stableAssets;
+        uint256 volatileDiff = router.balanceOf(volatileOperator) - volatileAssets;
+
+        uint256 stableYield = priceRouter.getValue(CRV_DAI_USDC_USDT, stableDiff, USDC);
+        console.log("Stable Yiled", stableYield);
+        uint256 volatileYield = priceRouter.getValue(CRV_3_CRYPTO, volatileDiff, USDC);
+        console.log("Volatile Yiled", volatileYield);
     }
+
+    // TODO add test where bad actor rebalances an operator into untracked position
+    // TODO add test where bad actor rebalances an operator into a tracked position, but with an unfavorable ratio.
 
     function testBalanceOfLogic() external {}
 

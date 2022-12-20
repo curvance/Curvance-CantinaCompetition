@@ -460,10 +460,18 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
         uint32[8] memory _to,
         uint256[8] memory _amount
     ) internal {
+        uint32[8] memory operatorPositions = operators[_operator].openPositions;
         for (uint8 i; i < 8; i++) {
             // Assume rebalances are front loaded, so finding a zero amount breaks out of the for loop.
             if (_amount[i] == 0) break;
             if (_from[i] == _to[i]) revert DepositRouter__InvalidRebalance();
+            // Check that _to[i] is a position this operator uses.
+            for (uint8 j; j < 8; j++) {
+                // If we find the position great break out of loop.
+                if (operatorPositions[j] == _to[i]) break;
+                // If we make it to the end without finding it revert.
+                if (j == 7) revert DepositRouter__InvalidRebalance();
+            }
             _withdrawFromPosition(_operator, _from[i], _amount[i]);
             _depositToPosition(_operator, _to[i], _amount[i]);
         }
@@ -590,8 +598,10 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
                 if (yieldValue > minYieldForHarvest) {
                     performData = abi.encode(target, targetId);
                     upkeepNeeded = true;
+                    return (upkeepNeeded, performData);
                 }
             }
+            return (false, abi.encode(0));
         } else {
             // Run operator position management upkeep.
             Operator memory operator = operators[target];
@@ -852,7 +862,6 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
             rewardBalances[i] = rewardTokens[i].balanceOf(address(this));
         }
         rewardPool.getReward(address(this), true);
-
         for (uint256 i = 0; i < rewardTokenCount; i++) {
             rewardBalances[i] = ERC20(rewardTokens[i]).balanceOf(address(this)) - rewardBalances[i];
         }
@@ -1003,6 +1012,9 @@ contract DepositRouter is Ownable, KeeperCompatibleInterface {
         uint256 amount,
         ERC20 sellAsset
     ) internal {
+        // console.log("from", from);
+        // console.log("to", to);
+        // console.log("pool", pool);
         sellAsset.approve(pool, amount);
         ICurveFi(pool).exchange(from, to, amount, 0, false);
     }
