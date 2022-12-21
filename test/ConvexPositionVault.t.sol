@@ -17,6 +17,7 @@ import { Math } from "src/utils/Math.sol";
 contract ConvexPositionVaultTest is Test {
     using Math for uint256;
     using stdStorage for StdStorage;
+    using SafeTransferLib for ERC20;
 
     PriceRouter private priceRouter;
     DepositRouter private router;
@@ -335,8 +336,113 @@ contract ConvexPositionVaultTest is Test {
         cvxPosition3Pool.withdraw(cvxPosition3Pool.totalAssets(), address(this), address(this));
     }
 
+    function testMultipleDepositors(uint256 assetsA, uint256 assetsB) external {
+        assetsA = bound(assetsA, 1e18, type(uint96).max);
+        assetsB = bound(assetsB, 1e18, type(uint96).max);
+
+        address userA = vm.addr(23);
+        address userB = vm.addr(24);
+
+        // Give users funds to deposit.
+        deal(address(CRV_3_CRYPTO), userA, assetsA);
+        deal(address(CRV_3_CRYPTO), userB, assetsB);
+
+        // Have users approve and deposit.
+        vm.startPrank(userA);
+        CRV_3_CRYPTO.safeApprove(address(cvxPositionTriCrypto), assetsA);
+        cvxPositionTriCrypto.deposit(assetsA, userA);
+        vm.stopPrank();
+
+        vm.startPrank(userB);
+        CRV_3_CRYPTO.safeApprove(address(cvxPositionTriCrypto), assetsB);
+        cvxPositionTriCrypto.deposit(assetsB, userB);
+        vm.stopPrank();
+
+        assertEq(cvxPositionTriCrypto.maxWithdraw(userA), assetsA, "User should be able to withdraw their deposit.");
+        assertEq(cvxPositionTriCrypto.maxWithdraw(userB), assetsB, "User should be able to withdraw their deposit.");
+
+        assertEq(
+            CRV_3_CRYPTO.balanceOf(address(cvxPositionTriCrypto)),
+            0,
+            "Assets should have been invested in Convex."
+        );
+
+        // Have position earn some yield.
+        // Advance time to earn CRV and CVX rewards
+        vm.warp(block.timestamp + 1 days);
+
+        // Mint some extra rewards for Vault.
+        deal(address(CRV), address(cvxPositionTriCrypto), 100e18);
+        deal(address(CVX), address(cvxPositionTriCrypto), 10e18);
+
+        uint256 yield = cvxPositionTriCrypto.harvest();
+
+        assertEq(cvxPositionTriCrypto.maxWithdraw(userA), assetsA, "User should be able to withdraw their deposit.");
+        assertEq(cvxPositionTriCrypto.maxWithdraw(userB), assetsB, "User should be able to withdraw their deposit.");
+
+        // Make sure yield is distributed linearly into totalAssets.
+        // Advance time to 1/4 way through the vesting period.
+        vm.warp(block.timestamp + 7 days / 4);
+
+        uint256 expectedTotalAssets = assetsA + assetsB + yield / 4;
+        assertApproxEqAbs(
+            cvxPositionTriCrypto.totalAssets(),
+            expectedTotalAssets,
+            1,
+            "Total assets should equal expected."
+        );
+
+        // Advance time to 2/4 way through the vesting period.
+        vm.warp(block.timestamp + 7 days / 4);
+
+        expectedTotalAssets = assetsA + assetsB + yield / 2;
+        assertApproxEqAbs(
+            cvxPositionTriCrypto.totalAssets(),
+            expectedTotalAssets,
+            1,
+            "Total assets should equal expected."
+        );
+
+        // Trying to harvest again while rewards are vesting should revert.
+        vm.expectRevert(bytes("Can not harvest now"));
+        cvxPositionTriCrypto.harvest();
+
+        // Advance time to 3/4 way through the vesting period.
+        vm.warp(block.timestamp + 7 days / 4);
+
+        expectedTotalAssets = assetsA + assetsB + ((3 * yield) / 4);
+        assertApproxEqAbs(
+            cvxPositionTriCrypto.totalAssets(),
+            expectedTotalAssets,
+            1,
+            "Total assets should equal expected."
+        );
+
+        // Advance time to 4/4 way through the vesting period.
+        vm.warp(block.timestamp + 7 days / 4);
+
+        expectedTotalAssets = assetsA + assetsB + yield;
+        assertApproxEqAbs(
+            cvxPositionTriCrypto.totalAssets(),
+            expectedTotalAssets,
+            1,
+            "Total assets should equal expected."
+        );
+
+        // Have both users withdraw all their assets.
+        vm.startPrank(userA);
+        uint256 userAWithdraw = cvxPositionTriCrypto.maxWithdraw(userA);
+        cvxPositionTriCrypto.withdraw(userAWithdraw, userA, userA);
+        vm.stopPrank();
+        assertEq(CRV_3_CRYPTO.balanceOf(userA), userAWithdraw, "User did not receive full withdraw.");
+
+        vm.startPrank(userB);
+        uint256 userBWithdraw = cvxPositionTriCrypto.maxWithdraw(userB);
+        cvxPositionTriCrypto.withdraw(userBWithdraw, userB, userB);
+        vm.stopPrank();
+        assertEq(CRV_3_CRYPTO.balanceOf(userB), userBWithdraw, "User did not receive full withdraw.");
+    }
+
     // TODO add test that confirms dust left in the contract will be picked up during the next harvest
     // can just mint the contract some dust reward tokens.
-
-    // TODO make sure we can't harvest a position while rewards are still vesting.
 }

@@ -66,8 +66,12 @@ contract DepositRouterV2 is Ownable {
      */
     address public feeAccumulator;
 
-    // TODO we either need to record share balances of msg.senders, OR restrict deposit/withdraws to only the proper market.
-    mapping(address => bool) public onlyOperator;
+    mapping(ERC4626 => address) public positionOperator;
+
+    modifier isOperator(ERC4626 _position) {
+        if (positionOperator[_position] != msg.sender) revert("Not the operator");
+        _;
+    }
 
     constructor() {}
 
@@ -76,8 +80,9 @@ contract DepositRouterV2 is Ownable {
      * @notice Allows `owner` to add new positions to this contract.
      * @dev see `Position` struct for description of inputs.
      */
-    function addPosition(ERC4626 _position) external onlyOwner {
+    function addPosition(ERC4626 _position, address _operator) external onlyOwner {
         if (isPositionUsed[_position]) revert("Position already used");
+        positionOperator[_position] = _operator;
         positions.push(_position);
     }
 
@@ -86,7 +91,7 @@ contract DepositRouterV2 is Ownable {
      * Takes underlying token and deposits it into the underlying protocol
      * returns the amount of shares
      */
-    function deposit(uint256 amount, ERC4626 _position) public returns (uint256) {
+    function deposit(uint256 amount, ERC4626 _position) public isOperator(_position) returns (uint256) {
         if (!isPositionUsed[_position]) revert("Position not used");
         // transfer asset in.
         _position.asset().safeTransferFrom(msg.sender, address(this), amount);
@@ -97,7 +102,7 @@ contract DepositRouterV2 is Ownable {
         return amount;
     }
 
-    function withdraw(uint256 amount, ERC4626 _position) public returns (uint256) {
+    function withdraw(uint256 amount, ERC4626 _position) public isOperator(_position) returns (uint256) {
         // TODO could send the assets here or direclty to caller.
         _position.withdraw(amount, msg.sender, address(this));
 
@@ -106,5 +111,8 @@ contract DepositRouterV2 is Ownable {
 
     //============================================ Balance Of Functions ===========================================
     // CToken `getCashPrior` should call this.
-    function balanceOf(address _user, uint32 _positionId) public view returns (uint256) {}
+    // Returns the balance in terms of `_position`s underlying.
+    function balanceOf(ERC4626 _position) public view returns (uint256) {
+        return _position.maxWithdraw(address(this));
+    }
 }

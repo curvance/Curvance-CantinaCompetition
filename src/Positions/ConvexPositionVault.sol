@@ -228,7 +228,7 @@ contract ConvexPositionVault is BasePositionVault {
             _deposit(yield);
 
             // Update Vesting info.
-            _rewardRate = uint128(yield / REWARD_PERIOD);
+            _rewardRate = uint128(yield.mulDivDown(REWARD_SCALER, REWARD_PERIOD));
             _vestingPeriodEnd = uint64(block.timestamp) + REWARD_PERIOD;
             _lastVestClaim = uint64(block.timestamp);
         } else revert("Can not harvest now");

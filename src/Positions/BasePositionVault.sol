@@ -11,11 +11,7 @@ import { AggregatorV2V3Interface } from "@chainlink/contracts/src/v0.8/interface
 import { IChainlinkAggregator } from "src/interfaces/IChainlinkAggregator.sol";
 import { IUniswapV3Router } from "src/interfaces/Uniswap/IUniswapV3Router.sol";
 
-// TODO make this into a base contract where _deposit, _withdraw, and _harvest are all left to be implemented
-// Then add an initialize function that takes arbitrary bytes data for all the position specifc values that are needed.
-// TODO add upkeep logic here
-// TODO what contract should act like the Registry in this ecosystem.
-// TODO what would happen to reward tokens that are added later, and dont have swap info? Ideally they just sit in here until we add the swap info.
+///@notice Vault Positions must have all assets ready for withdraw, IE assets can NOT be locked.
 abstract contract BasePositionVault is ERC4626, Initializable, KeeperCompatibleInterface {
     using SafeTransferLib for ERC20;
     using Math for uint256;
@@ -46,6 +42,8 @@ abstract contract BasePositionVault is ERC4626, Initializable, KeeperCompatibleI
     uint64 internal _vestingPeriodEnd;
     uint64 internal _lastVestClaim;
 
+    uint64 internal constant REWARD_SCALER = 1e18;
+
     /**
      * @notice Period newly harvested rewards are vested over.
      */
@@ -59,6 +57,7 @@ abstract contract BasePositionVault is ERC4626, Initializable, KeeperCompatibleI
             pendingRewards = currentTime < _vestingPeriodEnd
                 ? (_rewardRate * (currentTime - _lastVestClaim))
                 : (_rewardRate * (_vestingPeriodEnd - _lastVestClaim));
+            pendingRewards = pendingRewards / REWARD_SCALER;
         } // else there are no pending rewards.
     }
 
