@@ -35,8 +35,6 @@ library SafeMath {
      * - The divisor cannot be zero.
      */
     function mod(uint256 a, uint256 b) internal pure returns (uint256) {
-        /// removed param: , string memory errorMessage
-        // require(b != 0, errorMessage);
         if (b == 0) {
             revert ModuloByZero();
         }

@@ -100,9 +100,6 @@ contract CErc20Delegator is CTokenInterface, CErc20Interface, CDelegatorInterfac
         if (!abi.decode(data, (bool))) {
             revert MintFailure();
         }
-        // delegateToImplementation(
-        //     abi.encodeWithSignature("mint(uint256)", mintAmount)
-        // );
 
         return true;
     }
@@ -111,15 +108,8 @@ contract CErc20Delegator is CTokenInterface, CErc20Interface, CDelegatorInterfac
      * @notice Sender redeems cTokens in exchange for the underlying asset
      * @dev Accrues interest whether or not the operation succeeds, unless reverted
      * @param redeemTokens The number of cTokens to redeem into underlying
-     * return bool true=success
      */
     function redeem(uint256 redeemTokens) external override {
-        // returns (bool) {
-        // bytes memory data = delegateToImplementation(
-        //     abi.encodeWithSignature("redeem(uint256)", redeemTokens)
-        // );
-
-        // return abi.decode(data, (uint));
         delegateToImplementation(abi.encodeWithSignature("redeem(uint256)", redeemTokens));
     }
 
@@ -127,45 +117,24 @@ contract CErc20Delegator is CTokenInterface, CErc20Interface, CDelegatorInterfac
      * @notice Sender redeems cTokens in exchange for a specified amount of underlying asset
      * @dev Accrues interest whether or not the operation succeeds, unless reverted
      * @param redeemAmount The amount of underlying to redeem
-     * return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
      */
     function redeemUnderlying(uint256 redeemAmount) external override {
-        // returns (uint) {
-        // bytes memory data = delegateToImplementation(
-        //     abi.encodeWithSignature("redeemUnderlying(uint256)", redeemAmount)
-        // );
-
-        // return abi.decode(data, (uint));
         delegateToImplementation(abi.encodeWithSignature("redeemUnderlying(uint256)", redeemAmount));
     }
 
     /**
      * @notice Sender borrows assets from the protocol to their own address
      * @param borrowAmount The amount of the underlying asset to borrow
-     * return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
      */
     function borrow(uint256 borrowAmount) external override {
-        // returns (uint) {
-        // bytes memory data = delegateToImplementation(
-        //     abi.encodeWithSignature("borrow(uint256)", borrowAmount)
-        // );
-
-        // return abi.decode(data, (uint));
         delegateToImplementation(abi.encodeWithSignature("borrow(uint256)", borrowAmount));
     }
 
     /**
      * @notice Sender repays their own borrow
      * @param repayAmount The amount to repay, or -1 for the full outstanding amount
-     * return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
      */
     function repayBorrow(uint256 repayAmount) external override {
-        // returns (uint) {
-        // bytes memory data = delegateToImplementation(
-        //     abi.encodeWithSignature("repayBorrow(uint256)", repayAmount)
-        // );
-
-        // return abi.decode(data, (uint));
         delegateToImplementation(abi.encodeWithSignature("repayBorrow(uint256)", repayAmount));
     }
 
@@ -173,15 +142,8 @@ contract CErc20Delegator is CTokenInterface, CErc20Interface, CDelegatorInterfac
      * @notice Sender repays a borrow belonging to borrower
      * @param borrower the account with the debt being payed off
      * @param repayAmount The amount to repay, or -1 for the full outstanding amount
-     * return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
      */
     function repayBorrowBehalf(address borrower, uint256 repayAmount) external override {
-        // returns (uint) {
-        // bytes memory data = delegateToImplementation(
-        //     abi.encodeWithSignature("repayBorrowBehalf(address,uint256)", borrower, repayAmount)
-        // );
-
-        // return abi.decode(data, (uint));
         delegateToImplementation(abi.encodeWithSignature("repayBorrowBehalf(address,uint256)", borrower, repayAmount));
     }
 
@@ -191,21 +153,12 @@ contract CErc20Delegator is CTokenInterface, CErc20Interface, CDelegatorInterfac
      * @param borrower The borrower of this cToken to be liquidated
      * @param cTokenCollateral The market in which to seize collateral from the borrower
      * @param repayAmount The amount of the underlying borrowed asset to repay
-     * return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
      */
     function liquidateBorrow(
         address borrower,
         uint256 repayAmount,
         CTokenInterface cTokenCollateral
     ) external override {
-        // returns (uint) {
-        // bytes memory data = delegateToImplementation(
-        //     abi.encodeWithSignature(
-        //         "liquidateBorrow(address,uint256,address)", borrower, repayAmount, cTokenCollateral
-        //         )
-        //     );
-
-        // return abi.decode(data, (uint));
         delegateToImplementation(
             abi.encodeWithSignature("liquidateBorrow(address,uint256,address)", borrower, repayAmount, cTokenCollateral)
         );
@@ -311,12 +264,11 @@ contract CErc20Delegator is CTokenInterface, CErc20Interface, CDelegatorInterfac
             uint256
         )
     {
-        //, uint) {
         bytes memory data = delegateToViewImplementation(
             abi.encodeWithSignature("getAccountSnapshot(address)", account)
         );
 
-        return abi.decode(data, (uint256, uint256, uint256)); //, uint));
+        return abi.decode(data, (uint256, uint256, uint256));
     }
 
     /**
@@ -350,7 +302,8 @@ contract CErc20Delegator is CTokenInterface, CErc20Interface, CDelegatorInterfac
     }
 
     /**
-     * @notice Accrue interest to updated borrowIndex and then calculate account's borrow balance using the updated borrowIndex
+     * @notice Accrue interest to updated borrowIndex
+     *      and then calculate account's borrow balance using the updated borrowIndex
      * @param account The address whose balance should be calculated after updating borrowIndex
      * @return The calculated balance
      */
@@ -409,12 +362,6 @@ contract CErc20Delegator is CTokenInterface, CErc20Interface, CDelegatorInterfac
      *      up to the current block and writes new checkpoint to storage.
      */
     function accrueInterest() public override {
-        // returns (uint) {
-        // bytes memory data = delegateToImplementation(
-        //     abi.encodeWithSignature("accrueInterest()")
-        // );
-
-        // return abi.decode(data, (uint));
         delegateToImplementation(abi.encodeWithSignature("accrueInterest()"));
     }
 
@@ -425,26 +372,20 @@ contract CErc20Delegator is CTokenInterface, CErc20Interface, CDelegatorInterfac
      * @param liquidator The account receiving seized collateral
      * @param borrower The account having collateral seized
      * @param seizeTokens The number of cTokens to seize
-     * return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
      */
     function seize(
         address liquidator,
         address borrower,
         uint256 seizeTokens
     ) external override {
-        // returns (uint) {
-        // bytes memory data = delegateToImplementation(
-        //     abi.encodeWithSignature("seize(address,address,uint256)", liquidator, borrower, seizeTokens)
-        // );
-
-        // return abi.decode(data, (uint));
         delegateToImplementation(
             abi.encodeWithSignature("seize(address,address,uint256)", liquidator, borrower, seizeTokens)
         );
     }
 
     /**
-     * @notice A public function to sweep accidental ERC-20 transfers to this contract. Tokens are sent to admin (timelock)
+     * @notice A public function to sweep accidental ERC-20 transfers to this contract.
+     *      Tokens are sent to admin (timelock)
      * @param token The address of the ERC-20 token to sweep
      */
     function sweepToken(IEIP20NonStandard token) external override {
@@ -455,89 +396,51 @@ contract CErc20Delegator is CTokenInterface, CErc20Interface, CDelegatorInterfac
 
     /**
      * @notice Begins transfer of admin rights. The newPendingAdmin must call `_acceptAdmin` to finalize the transfer.
-     * @dev Admin function to begin change of admin. The newPendingAdmin must call `_acceptAdmin` to finalize the transfer.
+     * @dev Admin function to begin change of admin.
+     *      The newPendingAdmin must call `_acceptAdmin` to finalize the transfer.
      * @param newPendingAdmin New pending admin.
-     * return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
      */
     function _setPendingAdmin(address payable newPendingAdmin) external override {
-        // returns (uint) {
-        // bytes memory data = delegateToImplementation(
-        //     abi.encodeWithSignature("_setPendingAdmin(address)", newPendingAdmin)
-        // );
-
-        // return abi.decode(data, (uint));
         delegateToImplementation(abi.encodeWithSignature("_setPendingAdmin(address)", newPendingAdmin));
     }
 
     /**
      * @notice Sets a new comptroller for the market
      * @dev Admin function to set a new comptroller
-     * return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
      */
     function _setComptroller(ComptrollerInterface newComptroller) public override {
-        // returns (uint) {
-        // bytes memory data = delegateToImplementation(
-        //     abi.encodeWithSignature("_setComptroller(address)", newComptroller)
-        // );
-
-        // return abi.decode(data, (uint));
         delegateToImplementation(abi.encodeWithSignature("_setComptroller(address)", newComptroller));
     }
 
     /**
      * @notice accrues interest and sets a new reserve factor for the protocol using _setReserveFactorFresh
      * @dev Admin function to accrue interest and set a new reserve factor
-     * return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
      */
     function _setReserveFactor(uint256 newReserveFactorMantissa) external override {
-        // returns (uint) {
-        // bytes memory data = delegateToImplementation(
-        //     abi.encodeWithSignature("_setReserveFactor(uint256)", newReserveFactorMantissa)
-        // );
-
-        // return abi.decode(data, (uint));
         delegateToImplementation(abi.encodeWithSignature("_setReserveFactor(uint256)", newReserveFactorMantissa));
     }
 
     /**
      * @notice Accepts transfer of admin rights. msg.sender must be pendingAdmin
      * @dev Admin function for pending admin to accept role and update admin
-     * return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
      */
     function _acceptAdmin() external override {
-        // returns (uint) {
-        // bytes memory data = delegateToImplementation(abi.encodeWithSignature("_acceptAdmin()"));
-        // return abi.decode(data, (uint));
         delegateToImplementation(abi.encodeWithSignature("_acceptAdmin()"));
     }
 
     /**
      * @notice Accrues interest and adds reserves by transferring from admin
      * @param addAmount Amount of reserves to add
-     * return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
      */
     function _addReserves(uint256 addAmount) external override {
-        // returns (uint) {
-        // bytes memory data = delegateToImplementation(
-        //     abi.encodeWithSignature("_addReserves(uint256)", addAmount)
-        // );
-
-        // return abi.decode(data, (uint));
         delegateToImplementation(abi.encodeWithSignature("_addReserves(uint256)", addAmount));
     }
 
     /**
      * @notice Accrues interest and reduces reserves by transferring to admin
      * @param reduceAmount Amount of reduction to reserves
-     * return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
      */
     function _reduceReserves(uint256 reduceAmount) external override {
-        // returns (uint) {
-        // bytes memory data = delegateToImplementation(
-        //     abi.encodeWithSignature("_reduceReserves(uint256)", reduceAmount)
-        // );
-
-        // return abi.decode(data, (uint));
         delegateToImplementation(abi.encodeWithSignature("_reduceReserves(uint256)", reduceAmount));
     }
 
@@ -545,15 +448,8 @@ contract CErc20Delegator is CTokenInterface, CErc20Interface, CDelegatorInterfac
      * @notice Accrues interest and updates the interest rate model using _setInterestRateModelFresh
      * @dev Admin function to accrue interest and update the interest rate model
      * @param newInterestRateModel the new interest rate model to use
-     * return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
      */
     function _setInterestRateModel(InterestRateModel newInterestRateModel) public override {
-        // returns (uint) {
-        // bytes memory data = delegateToImplementation(
-        //     abi.encodeWithSignature("_setInterestRateModel(address)", newInterestRateModel)
-        // );
-
-        // return abi.decode(data, (uint));
         delegateToImplementation(abi.encodeWithSignature("_setInterestRateModel(address)", newInterestRateModel));
     }
 

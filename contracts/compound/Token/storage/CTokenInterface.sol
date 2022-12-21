@@ -158,7 +158,4 @@ abstract contract CTokenInterface is CTokenStorage {
     function _reduceReserves(uint256 reduceAmount) external virtual;
 
     function _setInterestRateModel(InterestRateModel newInterestRateModel) external virtual;
-
-    /*** Getter Functions ***/
-    // function getIsCToken() virtual external view returns (bool);
 }
