@@ -70,7 +70,7 @@ contract ConvexPositionVault is BasePositionVault {
     mapping(ERC20 => CurveSwapParams) public arbitraryToETH;
 
     // Stores swapping information to go from ETH to target token to supply liquidity on Curve
-    mapping(ERC20 => CurveSwapParams) public ethToTarget;
+    CurveSwapParams public ethToTarget;
 
     // Owner needs to be able to set swap paths, deposit data, fee, fee accumulator
     uint64 harvestSlippage = 0.1e18;
@@ -100,8 +100,7 @@ contract ConvexPositionVault is BasePositionVault {
             ICurveSwaps _curveSwaps,
             CurveSwapParams[] memory swapsToETH,
             ERC20[] memory assetsToETH,
-            CurveSwapParams[] memory swapsFromETH,
-            ERC20[] memory assetsFromETH
+            CurveSwapParams memory swapsFromETH
         ) = abi.decode(
                 _initializeData,
                 (
@@ -112,8 +111,7 @@ contract ConvexPositionVault is BasePositionVault {
                     ICurveSwaps,
                     CurveSwapParams[],
                     ERC20[],
-                    CurveSwapParams[],
-                    ERC20[]
+                    CurveSwapParams
                 )
             );
         pid = _pid;
@@ -126,10 +124,7 @@ contract ConvexPositionVault is BasePositionVault {
         for (uint256 i; i < swapsToETH.length; ++i) {
             arbitraryToETH[assetsToETH[i]] = swapsToETH[i];
         }
-
-        for (uint256 i; i < swapsFromETH.length; ++i) {
-            ethToTarget[assetsFromETH[i]] = swapsFromETH[i];
-        }
+        ethToTarget = swapsFromETH;
     }
 
     function _withdraw(uint256 assets) internal override {
@@ -181,8 +176,8 @@ contract ConvexPositionVault is BasePositionVault {
                     10**rewardTokens[i].decimals()
                 );
                 CurveSwapParams memory swapParams = arbitraryToETH[rewardTokens[i]];
-                // Check if value is enough to warrant a swap.
-                if (valueInUSD >= swapParams.minUSDValueToSwap) {
+                // Check if value is enough to warrant a swap. And that we have the swap params set up for it.
+                if (valueInUSD >= swapParams.minUSDValueToSwap && address(swapParams.assetIn) != address(0)) {
                     valueIn += valueInUSD;
                     // Perform Swap into ETH.
                     rewardTokens[i].safeApprove(address(curveRegistryExchange), rewardBalances[i]);
@@ -205,7 +200,7 @@ contract ConvexPositionVault is BasePositionVault {
             uint256 assetsOut;
             // Convert assets into targetAsset.
             if (depositParams.targetAsset != WETH) {
-                CurveSwapParams memory swapParams = ethToTarget[WETH];
+                CurveSwapParams memory swapParams = ethToTarget;
                 WETH.safeApprove(address(curveRegistryExchange), ethOut);
                 assetsOut = curveRegistryExchange.exchange_multiple(
                     swapParams.route,
@@ -238,6 +233,8 @@ contract ConvexPositionVault is BasePositionVault {
             _lastVestClaim = uint64(block.timestamp);
         } else revert("Can not harvest now");
     }
+
+    // TODO probs a good idea to have a function that takes in an ERC20 and uses the provided swap paths to swap it into the targetAsset.
 
     /**
      * @notice Allows caller to make swaps using the Curve Exchange.

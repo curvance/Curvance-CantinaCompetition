@@ -82,10 +82,21 @@ contract ConvexPositionVaultTest is Test {
             50 days,
             false
         );
+        // USDT
         PriceRouter.AssetSettings memory settings;
         uint256 price = uint256(IChainlinkAggregator(USDT_USD_FEED).latestAnswer());
         settings = PriceRouter.AssetSettings(CHAINLINK_DERIVATIVE, USDT_USD_FEED);
         priceRouter.addAsset(USDT, settings, abi.encode(stor), price);
+
+        // USDC
+        price = uint256(IChainlinkAggregator(USDC_USD_FEED).latestAnswer());
+        settings = PriceRouter.AssetSettings(CHAINLINK_DERIVATIVE, USDC_USD_FEED);
+        priceRouter.addAsset(USDC, settings, abi.encode(stor), price);
+
+        // DAI
+        price = uint256(IChainlinkAggregator(DAI_USD_FEED).latestAnswer());
+        settings = PriceRouter.AssetSettings(CHAINLINK_DERIVATIVE, DAI_USD_FEED);
+        priceRouter.addAsset(DAI, settings, abi.encode(stor), price);
 
         // WETH
         price = uint256(IChainlinkAggregator(WETH_USD_FEED).latestAnswer());
@@ -118,6 +129,12 @@ contract ConvexPositionVaultTest is Test {
             0
         );
         priceRouter.addAsset(CRV_3_CRYPTO, settings, abi.encode(vpBound), 862e8);
+
+        // Add 3Pool
+        settings = PriceRouter.AssetSettings(CURVE_DERIVATIVE, curve3CrvPool);
+        vp = ICurvePool(curve3CrvPool).get_virtual_price().changeDecimals(18, 8);
+        vpBound = PriceRouter.VirtualPriceBound(uint96(vp), 0, uint32(1.01e8), uint32(0.99e8), 0);
+        priceRouter.addAsset(CRV_DAI_USDC_USDT, settings, abi.encode(vpBound), 1.02e8);
 
         cvxPositionTriCrypto = new ConvexPositionVault(CRV_3_CRYPTO, "Tri Crypto Vault", "TCV", 18);
 
@@ -160,8 +177,7 @@ contract ConvexPositionVaultTest is Test {
             ERC20[] memory assetsToETH = new ERC20[](2);
             assetsToETH[0] = CRV;
             assetsToETH[1] = CVX;
-            ConvexPositionVault.CurveSwapParams[] memory emptySwaps;
-            ERC20[] memory emptyERC20;
+            ConvexPositionVault.CurveSwapParams memory emptySwaps;
             bytes memory initializeData = abi.encode(
                 curve3PoolConvexPid,
                 curve3PoolReward,
@@ -170,8 +186,7 @@ contract ConvexPositionVaultTest is Test {
                 curveRegistryExchange,
                 swapsToETH,
                 assetsToETH,
-                emptySwaps,
-                emptyERC20
+                emptySwaps
             );
             cvxPositionTriCrypto.initialize(
                 CRV_3_CRYPTO,
@@ -225,7 +240,7 @@ contract ConvexPositionVaultTest is Test {
             ERC20[] memory assetsToETH = new ERC20[](2);
             assetsToETH[0] = CRV;
             assetsToETH[1] = CVX;
-            ConvexPositionVault.CurveSwapParams[] memory swapsToTarget = new ConvexPositionVault.CurveSwapParams[](1);
+            ConvexPositionVault.CurveSwapParams memory swapsToTarget;
             address[9] memory route = [
                 address(WETH),
                 curve3CryptoPool,
@@ -239,9 +254,7 @@ contract ConvexPositionVaultTest is Test {
             ];
             uint256[3][4] memory swaps0;
             swaps0[0] = [uint256(2), 0, 3];
-            swapsToTarget[0] = ConvexPositionVault.CurveSwapParams(route, swaps0, WETH, 0);
-            ERC20[] memory assetsToTarget = new ERC20[](1);
-            assetsToTarget[0] = WETH;
+            swapsToTarget = ConvexPositionVault.CurveSwapParams(route, swaps0, WETH, 0);
             bytes memory initializeData = abi.encode(
                 curve3CRVConvexPid,
                 curve3CrvReward,
@@ -250,8 +263,7 @@ contract ConvexPositionVaultTest is Test {
                 curveRegistryExchange,
                 swapsToETH,
                 assetsToETH,
-                swapsToTarget,
-                assetsToTarget
+                swapsToTarget
             );
             cvxPosition3Pool.initialize(
                 CRV_DAI_USDC_USDT,
@@ -275,18 +287,32 @@ contract ConvexPositionVaultTest is Test {
 
         cvxPositionTriCrypto.deposit(assets, address(this));
 
+        assertEq(cvxPositionTriCrypto.totalAssets(), assets, "Total Assets should equal user deposit.");
+
         // Advance time to earn CRV and CVX rewards
         vm.warp(block.timestamp + 3 days);
 
+        // Mint some extra rewards for Vault.
+        deal(address(CRV), address(cvxPositionTriCrypto), 100e18);
+        deal(address(CVX), address(cvxPositionTriCrypto), 100e18);
+
         cvxPositionTriCrypto.harvest();
 
-        console.log(cvxPositionTriCrypto.totalAssets());
+        assertEq(cvxPositionTriCrypto.totalAssets(), assets, "Total Assets should equal user deposit.");
+
+        vm.warp(block.timestamp + 8 days);
+
+        console.log("Total assets", cvxPositionTriCrypto.totalAssets());
+        // Mint some extra rewards for Vault.
+        deal(address(CRV), address(cvxPositionTriCrypto), 100e18);
+        deal(address(CVX), address(cvxPositionTriCrypto), 100e18);
+        cvxPositionTriCrypto.harvest();
         vm.warp(block.timestamp + 7 days);
-        console.log(cvxPositionTriCrypto.totalAssets());
+        console.log("Total assets", cvxPositionTriCrypto.totalAssets());
+
+        assertGt(cvxPositionTriCrypto.totalAssets(), assets, "Total Assets should greater than original deposit.");
 
         cvxPositionTriCrypto.withdraw(cvxPositionTriCrypto.totalAssets(), address(this), address(this));
-
-        console.log("Assets", CRV_3_CRYPTO.balanceOf(address(this)));
     }
 
     function testConvexPositionVault3Pool() external {
@@ -301,12 +327,16 @@ contract ConvexPositionVaultTest is Test {
 
         cvxPosition3Pool.harvest();
 
-        console.log(cvxPosition3Pool.totalAssets());
         vm.warp(block.timestamp + 7 days);
-        console.log(cvxPosition3Pool.totalAssets());
+
+        cvxPosition3Pool.harvest();
+        // TODO could probs simulate yield by just minting contract some CRV and CVX.
 
         cvxPosition3Pool.withdraw(cvxPosition3Pool.totalAssets(), address(this), address(this));
-
-        console.log("Assets", CRV_DAI_USDC_USDT.balanceOf(address(this)));
     }
+
+    // TODO add test that confirms dust left in the contract will be picked up during the next harvest
+    // can just mint the contract some dust reward tokens.
+
+    // TODO make sure we can't harvest a position while rewards are still vesting.
 }

@@ -9,6 +9,7 @@ import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable
 import { KeeperCompatibleInterface } from "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
 import { AggregatorV2V3Interface } from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV2V3Interface.sol";
 import { IChainlinkAggregator } from "src/interfaces/IChainlinkAggregator.sol";
+import { IUniswapV3Router } from "src/interfaces/Uniswap/IUniswapV3Router.sol";
 
 // TODO make this into a base contract where _deposit, _withdraw, and _harvest are all left to be implemented
 // Then add an initialize function that takes arbitrary bytes data for all the position specifc values that are needed.
@@ -32,6 +33,8 @@ abstract contract BasePositionVault is ERC4626, Initializable, KeeperCompatibleI
     PriceRouter public priceRouter;
     address public positionWatchdog;
     uint64 public upkeepFee = 0.03e18;
+    IUniswapV3Router uniswapV3Router = IUniswapV3Router(0xE592427A0AEce92De3Edee1F18E0157C05861564);
+    uint64 minHarvestYieldInUSD = 1_000e8;
 
     /*//////////////////////////////////////////////////////////////
                         REWARD/HARVESTING LOGIC
@@ -246,15 +249,19 @@ abstract contract BasePositionVault is ERC4626, Initializable, KeeperCompatibleI
                     CHAINLINK AUTOMATION LOGIC
     //////////////////////////////////////////////////////////////*/
     ERC20 private constant WETH = ERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
+    ERC20 private constant LINK = ERC20(0x514910771AF9Ca656af840dff83E8264EcF986CA);
 
     function checkUpkeep(bytes calldata checkData) external returns (bool upkeepNeeded, bytes memory performData) {
         // Checks current gas price and if low enough continues
         // calls harvest function, simulating the harvest tx.
         uint256 yield = harvest();
 
-        // Checks dollar value of yield
+        uint256 wethBalance = WETH.balanceOf(address(this));
+        // If balance is greater than some minimum, set a bool in perform data to true.
 
-        // if high enough return true
+        // Checks dollar value of yield.
+        uint256 yieldInUSD = yield.mulDivDown(priceRouter.getPriceInUSD(asset), 10**asset.decimals());
+        // make sure yield is worth it.
 
         // Can also run WETH.balanceOf to see if WETH balance warrants a swap for LINK
     }
@@ -262,6 +269,33 @@ abstract contract BasePositionVault is ERC4626, Initializable, KeeperCompatibleI
     function performUpkeep(bytes calldata performData) external {
         harvest();
         // Perform data can be a bool indicating whether it should swap WETH for LINK and func the upkeep?
+        bool fundUpkeep = abi.decode(performData, (bool));
+        if (fundUpkeep) {
+            uint256 amount = _swapWETHForLINK();
+            // Top up upkeep with amount.
+        }
+    }
+
+    function _swapWETHForLINK() internal returns (uint256 amountOut) {
+        address[] memory path = new address[](2);
+        path[0] = address(WETH);
+        path[1] = address(LINK);
+        uint24[] memory poolFees = new uint24[](1);
+        poolFees[0] = 3000;
+        bytes memory encodePackedPath = abi.encodePacked(address(WETH));
+        for (uint256 i = 1; i < path.length; i++)
+            encodePackedPath = abi.encodePacked(encodePackedPath, poolFees[i - 1], path[i]);
+
+        // Execute the swap.
+        amountOut = uniswapV3Router.exactInput(
+            IUniswapV3Router.ExactInputParams({
+                path: encodePackedPath,
+                recipient: address(this),
+                deadline: block.timestamp + 60,
+                amountIn: WETH.balanceOf(address(this)),
+                amountOutMinimum: 0
+            })
+        );
     }
 
     /*//////////////////////////////////////////////////////////////
