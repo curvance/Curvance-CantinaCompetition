@@ -2,7 +2,7 @@
 pragma solidity ^0.8.13;
 
 import "../Token/CToken.sol";
-import "../PriceOracle.sol";
+import "../Oracle/PriceOracle.sol";
 import "../CompRewards/RewardsInterface.sol";
 import "../Unitroller/Unitroller.sol";
 import "./ComptrollerInterface.sol";

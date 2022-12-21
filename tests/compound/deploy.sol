@@ -7,8 +7,8 @@ import "contracts/compound/Unitroller/Unitroller.sol";
 import "contracts/compound/CompRewards/CompRewards.sol";
 import "contracts/compound/InterestRateModel/JumpRateModel.sol";
 import "contracts/compound/InterestRateModel/InterestRateModel.sol";
-import "contracts/compound/PriceOracle.sol";
-import "contracts/compound/SimplePriceOracle.sol";
+import "contracts/compound/Oracle/PriceOracle.sol";
+import "contracts/compound/Oracle/SimplePriceOracle.sol";
 
 import "tests/lib/DSTestPlus.sol";
 

@@ -7,7 +7,7 @@ import "contracts/compound/CompRewards/CompRewards.sol";
 import "contracts/compound/Comptroller/Comptroller.sol";
 import "contracts/compound/Comptroller/ComptrollerInterface.sol";
 import "contracts/compound/Token/CErc20Immutable.sol";
-import "contracts/compound/SimplePriceOracle.sol";
+import "contracts/compound/Oracle/SimplePriceOracle.sol";
 import "contracts/compound/InterestRateModel/DAIInterestRateModelV3.sol";
 import "contracts/compound/InterestRateModel/InterestRateModel.sol";
 
