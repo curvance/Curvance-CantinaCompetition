@@ -16,6 +16,10 @@ import { KeeperCompatibleInterface } from "@chainlink/contracts/src/v0.8/interfa
 import { AggregatorV2V3Interface } from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV2V3Interface.sol";
 import { IChainlinkAggregator } from "src/interfaces/IChainlinkAggregator.sol";
 
+// TODO make this into a base contract where _deposit, _withdraw, and _harvest are all left to be implemented
+// Then add an initialize function that takes arbitrary bytes data for all the position specifc values that are needed.
+// TODO add upkeep logic here
+// TODO what contract should act like the Registry in this ecosystem.
 contract PositionVault is ERC4626 {
     using SafeTransferLib for ERC20;
     using Math for uint256;
@@ -57,82 +61,6 @@ contract PositionVault is ERC4626 {
      */
     uint32 public constant REWARD_PERIOD = 7 days;
 
-    function _harvest() internal {
-        // TODO this might need the ability to vest rewards.
-        // Can only harvest is previous reward period is done.
-        if (_rewardRate > 0 && _lastVestClaim >= _vestingPeriodEnd) {
-            // Harvest convex position.
-            rewarder.getReward(address(this), true);
-
-            // Save token balances
-            uint256 rewardTokenCount = 2 + rewarder.extraRewardsLength();
-            ERC20[] memory rewardTokens = new ERC20[](rewardTokenCount);
-            rewardTokens[0] = CRV;
-            rewardTokens[1] = CVX;
-            uint256[] memory rewardBalances = new uint256[](rewardTokenCount);
-            rewardBalances[0] = CRV.balanceOf(address(this));
-            rewardBalances[1] = CVX.balanceOf(address(this));
-            for (uint256 i = 2; i < rewardTokenCount; i++) {
-                rewardTokens[i] = ERC20(rewarder.extraRewards(i - 2));
-                rewardBalances[i] = rewardTokens[i].balanceOf(address(this));
-            }
-
-            // Store USD value in.
-            uint256 valueIn;
-            uint256 ethOut;
-            address[4] memory pools;
-            for (uint256 i = 0; i < rewardTokenCount; i++) {
-                // Take platform fee
-                uint256 fee = rewardBalances[i].mulDivDown(platformFee, 1e18);
-                rewardBalances[i] -= fee;
-                rewardTokens[i].safeTransfer(feeAccumulator, fee);
-
-                uint256 valueInUSD = rewardBalances[i].mulDivDown(
-                    priceRouter.getPriceInUSD(rewardTokens[i]),
-                    10**rewardTokens[i].decimals()
-                );
-                CurveSwapParams memory swapParams = abitraryToETH[rewardTokens[i]];
-                if (valueInUSD >= swapParams.minUSDValueToSwap) {
-                    valueIn += valueInUSD;
-                    // Perform Swap into ETH.
-                    ethOut += curveRegistryExchange.exchange_multiple(
-                        swapParams.route,
-                        swapParams.swapParams,
-                        swapParams.assets,
-                        0,
-                        pools,
-                        address(this)
-                    );
-                }
-            }
-            // Take upkeep fee.
-
-            // Convert assets back into asset.
-            CurveSwapParams memory swapParams = abitraryToETH[WETH];
-            uint256 assetsOut = curveRegistryExchange.exchange_multiple(
-                swapParams.route,
-                swapParams.swapParams,
-                swapParams.assets,
-                0,
-                pools,
-                address(this)
-            );
-            // Deposit assets to Curve, using depositData?
-            _addLiquidityToCurve(assetsOut);
-
-            // Deposit Assets to Convex.
-            assetsOut = asset.balanceOf(address(this));
-            afterDeposit(assetsOut);
-
-            // Update _rewardRate
-            _rewardRate = uint128(assetsOut / REWARD_PERIOD);
-            // Update _vestingPeriodEnd
-            _vestingPeriodEnd = uint64(block.timestamp) + REWARD_PERIOD;
-            // Update _lastVestClaim
-            _lastVestClaim = uint64(block.timestamp);
-        } else revert("Can not harvest now");
-    }
-
     function _calculatePendingRewards() internal view returns (uint256 pendingRewards) {
         // Used by totalAssets
         uint64 currentTime = uint64(block.timestamp);
@@ -171,8 +99,12 @@ contract PositionVault is ERC4626 {
 
         emit Deposit(msg.sender, receiver, assets, shares);
 
+        // Add the users newly deposited assets.
+        ta = ta + assets;
         if (pending > 0) _vestRewards(ta);
-        afterDeposit(assets);
+        else _totalAssets = ta;
+
+        _deposit(assets);
     }
 
     function mint(uint256 shares, address receiver) public override returns (uint256 assets) {
@@ -189,8 +121,12 @@ contract PositionVault is ERC4626 {
 
         emit Deposit(msg.sender, receiver, assets, shares);
 
+        // Add the users newly deposited assets.
+        ta = ta + assets;
         if (pending > 0) _vestRewards(ta);
-        afterDeposit(assets);
+        else _totalAssets = ta;
+
+        _deposit(assets);
     }
 
     function withdraw(
@@ -210,8 +146,11 @@ contract PositionVault is ERC4626 {
             if (allowed != type(uint256).max) allowance[owner][msg.sender] = allowed - shares;
         }
 
+        // Remove the users withdrawn assets.
+        ta = ta - assets;
         if (pending > 0) _vestRewards(ta);
-        beforeWithdraw(assets);
+        else _totalAssets = ta;
+        _withdraw(assets);
 
         _burn(owner, shares);
 
@@ -238,8 +177,11 @@ contract PositionVault is ERC4626 {
         // Check for rounding error since we round down in previewRedeem.
         require((assets = _previewRedeem(shares, ta)) != 0, "ZERO_ASSETS");
 
+        // Remove the users withdrawn assets.
+        ta = ta - assets;
         if (pending > 0) _vestRewards(ta);
-        beforeWithdraw(assets);
+        else _totalAssets = ta;
+        _withdraw(assets);
 
         _burn(owner, shares);
 
@@ -314,7 +256,7 @@ contract PositionVault is ERC4626 {
     }
 
     /*//////////////////////////////////////////////////////////////
-                          INTERNAL HOOKS LOGIC
+                          INTERNAL POSITION LOGIC
     //////////////////////////////////////////////////////////////*/
 
     // Should be set during initialization of clone.
@@ -325,14 +267,92 @@ contract PositionVault is ERC4626 {
     ERC20 private constant CVX = ERC20(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
     ERC20 private constant CRV = ERC20(0xD533a949740bb3306d119CC777fa900bA034cd52);
 
-    function beforeWithdraw(uint256 assets) internal {
+    function _withdraw(uint256 assets) internal {
         IBaseRewardPool rewardPool = IBaseRewardPool(rewarder);
         rewardPool.withdrawAndUnwrap(assets, false);
     }
 
-    function afterDeposit(uint256 assets) internal {
+    function _deposit(uint256 assets) internal {
         asset.safeApprove(address(booster), assets);
         booster.deposit(pid, assets, true);
+    }
+
+    function _harvest() internal returns (uint256 yield) {
+        // TODO this might need the ability to vest rewards.
+        // Can only harvest is previous reward period is done.
+        if (_rewardRate > 0 && _lastVestClaim >= _vestingPeriodEnd) {
+            // Harvest convex position.
+            rewarder.getReward(address(this), true);
+
+            // Save token balances
+            uint256 rewardTokenCount = 2 + rewarder.extraRewardsLength();
+            ERC20[] memory rewardTokens = new ERC20[](rewardTokenCount);
+            rewardTokens[0] = CRV;
+            rewardTokens[1] = CVX;
+            uint256[] memory rewardBalances = new uint256[](rewardTokenCount);
+            rewardBalances[0] = CRV.balanceOf(address(this));
+            rewardBalances[1] = CVX.balanceOf(address(this));
+            for (uint256 i = 2; i < rewardTokenCount; i++) {
+                rewardTokens[i] = ERC20(rewarder.extraRewards(i - 2));
+                rewardBalances[i] = rewardTokens[i].balanceOf(address(this));
+            }
+
+            // Store USD value in.
+            uint256 valueIn;
+            uint256 ethOut;
+            address[4] memory pools;
+            for (uint256 i = 0; i < rewardTokenCount; i++) {
+                // Take platform fee
+                uint256 fee = rewardBalances[i].mulDivDown(platformFee, 1e18);
+                rewardBalances[i] -= fee;
+                rewardTokens[i].safeTransfer(feeAccumulator, fee);
+
+                uint256 valueInUSD = rewardBalances[i].mulDivDown(
+                    priceRouter.getPriceInUSD(rewardTokens[i]),
+                    10**rewardTokens[i].decimals()
+                );
+                CurveSwapParams memory swapParams = abitraryToETH[rewardTokens[i]];
+                if (valueInUSD >= swapParams.minUSDValueToSwap) {
+                    valueIn += valueInUSD;
+                    // Perform Swap into ETH.
+                    ethOut += curveRegistryExchange.exchange_multiple(
+                        swapParams.route,
+                        swapParams.swapParams,
+                        swapParams.assets,
+                        0,
+                        pools,
+                        address(this)
+                    );
+                }
+            }
+            // Take upkeep fee.
+
+            // Convert assets back into asset.
+            CurveSwapParams memory swapParams = abitraryToETH[WETH];
+            uint256 assetsOut = curveRegistryExchange.exchange_multiple(
+                swapParams.route,
+                swapParams.swapParams,
+                swapParams.assets,
+                0,
+                pools,
+                address(this)
+            );
+            // TODO compare value in vs value out minus the upkeep fee.
+            // Deposit assets to Curve, using depositData?
+            _addLiquidityToCurve(assetsOut);
+
+            // Deposit Assets to Convex.
+            assetsOut = asset.balanceOf(address(this));
+            _deposit(assetsOut);
+
+            // Update _rewardRate
+            _rewardRate = uint128(assetsOut / REWARD_PERIOD);
+            // Update _vestingPeriodEnd
+            _vestingPeriodEnd = uint64(block.timestamp) + REWARD_PERIOD;
+            // Update _lastVestClaim
+            _lastVestClaim = uint64(block.timestamp);
+            yield = assetsOut;
+        } else revert("Can not harvest now");
     }
 
     /**
