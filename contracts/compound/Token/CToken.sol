@@ -207,6 +207,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
     /**
      * @dev Function to simply retrieve block number
      *  This exists mainly for inheriting test contracts to stub this result.
+     * @return The current block number
      */
     function getBlockNumber() internal view virtual returns (uint256) {
         return block.number;
@@ -909,6 +910,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
     /**
      * @notice Sets a new comptroller for the market
      * @dev Admin function to set a new comptroller
+     * @param newComptroller New comptroller address.
      */
     function _setComptroller(ComptrollerInterface newComptroller) public override {
         // Check caller is admin
@@ -932,6 +934,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
     /**
      * @notice accrues interest and sets a new reserve factor for the protocol using _setReserveFactorFresh
      * @dev Admin function to accrue interest and set a new reserve factor
+     * @param newReserveFactorScaled New reserve factor
      */
     function _setReserveFactor(uint256 newReserveFactorScaled) external override nonReentrant {
         accrueInterest();
@@ -941,8 +944,8 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
 
     /**
      * @notice Sets a new reserve factor for the protocol (*requires fresh interest accrual)
-     * @param newReserveFactorScaled The new reserve factore * 1e18 (ie, 0.8 == 800000000000000000)
      * @dev Admin function to set a new reserve factor
+     * @param newReserveFactorScaled The new reserve factore * 1e18 (ie, 0.8 == 800000000000000000)
      */
     function _setReserveFactorFresh(uint256 newReserveFactorScaled) internal {
         // Check caller is admin

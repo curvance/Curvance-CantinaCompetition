@@ -196,6 +196,12 @@ contract Comptroller is ComptrollerInterface {
         rewarder.distributeSupplierCveExternal(cToken, redeemer);
     }
 
+    /**
+     * @notice Checks if the account should be allowed to redeem tokens in the given market
+     * @param cToken The market to verify the redeem against
+     * @param redeemer The account which would redeem the tokens
+     * @param redeemTokens The number of cTokens to exchange for the underlying asset in the market
+     */
     function redeemAllowedInternal(
         address cToken,
         address redeemer,
@@ -534,6 +540,8 @@ contract Comptroller is ComptrollerInterface {
 
     /**
      * @notice Sets a new rewarder contract address
+     * @dev Admin function to set a new rewarder contract
+     * @param newRewarder new rewarder contract address
      */
     function _setRewardsContract(RewardsInterface newRewarder) public {
         if (msg.sender != admin) {
@@ -550,6 +558,7 @@ contract Comptroller is ComptrollerInterface {
     /**
      * @notice Sets a new price oracle for the comptroller
      * @dev Admin function to set a new price oracle
+     * @param newOracle new price oracle address
      */
     function _setPriceOracle(PriceOracle newOracle) public {
         // Check caller is admin
@@ -664,6 +673,10 @@ contract Comptroller is ComptrollerInterface {
         emit MarketListed(cToken);
     }
 
+    /**
+     * @notice Add the market to the markets mapping and set it as listed
+     * @param cToken The address of the market (token) to list
+     */
     function _addMarketInternal(address cToken) internal {
         for (uint256 i = 0; i < allMarkets.length; i++) {
             if (allMarkets[i] == CToken(cToken)) {
@@ -813,6 +826,7 @@ contract Comptroller is ComptrollerInterface {
 
     /**
      * @notice Update implementation address
+     * @param unitroller unitroller address
      */
     function _become(Unitroller unitroller) public {
         if (msg.sender != unitroller.admin()) {
@@ -841,6 +855,7 @@ contract Comptroller is ComptrollerInterface {
 
     /**
      * @notice Returns market status
+     * @param cToken market token address
      */
     function getIsMarkets(address cToken)
         external
@@ -857,6 +872,8 @@ contract Comptroller is ComptrollerInterface {
 
     /**
      * @notice Returns if user joined market
+     * @param cToken market token address
+     * @param user user address
      */
     function getAccountMembership(address cToken, address user) external view override returns (bool) {
         return markets[cToken].accountMembership[user];
@@ -871,6 +888,7 @@ contract Comptroller is ComptrollerInterface {
 
     /**
      * @notice Returns all markets user joined
+     * @param user user address
      */
     function getAccountAssets(address user) external view override returns (CToken[] memory) {
         return accountAssets[user];
