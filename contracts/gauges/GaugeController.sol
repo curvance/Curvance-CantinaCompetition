@@ -7,25 +7,18 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./GaugeErrors.sol";
 
 contract GaugeController is Ownable {
-    // structs
-    struct PoolInfo {
-        uint256 allocPoint;
-        uint256 lastRewardTimestamp;
-        uint256 accRewardPerShare; // Accumulated Rewards per share, times 1e12. See below.
-    }
-
     // storage
     address public cve;
     uint256 public rewardPerSec;
     uint256 public totalAllocPoint;
-    mapping(address => PoolInfo) public poolInfo;
+    mapping(address => uint256) public poolAllocPoint; // token => alloc point
 
     constructor(address _cve) Ownable() {
         cve = _cve;
     }
 
     function isGaugeEnabled(address token) public view returns (bool) {
-        return poolInfo[token].allocPoint > 0;
+        return poolAllocPoint[token] > 0;
     }
 
     function updateRewardPerSec(uint256 _rewardPerSec) external onlyOwner {
@@ -40,8 +33,8 @@ contract GaugeController is Ownable {
         massUpdatePools(tokens);
 
         for (uint256 i = 0; i < tokens.length; ++i) {
-            totalAllocPoint = totalAllocPoint + allocPoints[i] - poolInfo[tokens[i]].allocPoint;
-            poolInfo[tokens[i]].allocPoint = allocPoints[i];
+            totalAllocPoint = totalAllocPoint + allocPoints[i] - poolAllocPoint[tokens[i]];
+            poolAllocPoint[tokens[i]] = allocPoints[i];
         }
     }
 
@@ -54,19 +47,5 @@ contract GaugeController is Ownable {
     }
 
     // Update reward variables of the given pool to be up-to-date.
-    function updatePool(address token) public {
-        PoolInfo storage pool = poolInfo[token];
-        if (block.timestamp <= pool.lastRewardTimestamp) {
-            return;
-        }
-        uint256 totalDeposited = IERC20(token).balanceOf(address(this));
-        if (totalDeposited == 0) {
-            pool.lastRewardTimestamp = block.timestamp;
-            return;
-        }
-        uint256 reward = ((block.timestamp - pool.lastRewardTimestamp) * rewardPerSec * pool.allocPoint) /
-            totalAllocPoint;
-        pool.accRewardPerShare = pool.accRewardPerShare + (reward * (1e12)) / totalDeposited;
-        pool.lastRewardTimestamp = block.timestamp;
-    }
+    function updatePool(address token) public virtual {}
 }

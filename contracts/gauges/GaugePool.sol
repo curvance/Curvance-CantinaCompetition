@@ -11,6 +11,10 @@ contract GuagePool is GaugeController, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     // structs
+    struct PoolInfo {
+        uint256 lastRewardTimestamp;
+        uint256 accRewardPerShare; // Accumulated Rewards per share, times 1e12. See below.
+    }
     struct UserInfo {
         uint256 amount;
         uint256 rewardDebt;
@@ -23,6 +27,7 @@ contract GuagePool is GaugeController, ReentrancyGuard {
     event Claim(address indexed user, address indexed token, uint256 amount);
 
     // storage
+    mapping(address => PoolInfo) public poolInfo; // token => pool info
     mapping(address => mapping(address => UserInfo)) public userInfo; // token => user => info
 
     constructor(address _cve) GaugeController(_cve) ReentrancyGuard() {}
@@ -33,7 +38,7 @@ contract GuagePool is GaugeController, ReentrancyGuard {
         uint256 accRewardPerShare = pool.accRewardPerShare;
         uint256 totalDeposited = IERC20(token).balanceOf(address(this));
         if (block.timestamp > pool.lastRewardTimestamp && totalDeposited != 0) {
-            uint256 reward = ((block.timestamp - pool.lastRewardTimestamp) * rewardPerSec * pool.allocPoint) /
+            uint256 reward = ((block.timestamp - pool.lastRewardTimestamp) * rewardPerSec * poolAllocPoint[token]) /
                 totalAllocPoint;
             accRewardPerShare = accRewardPerShare + (reward * (1e12)) / totalDeposited;
         }
@@ -113,5 +118,22 @@ contract GuagePool is GaugeController, ReentrancyGuard {
     function _calcDebt(address user, address token) internal {
         UserInfo storage info = userInfo[token][user];
         info.rewardDebt = (info.amount * poolInfo[token].accRewardPerShare) / (1e12);
+    }
+
+    // Update reward variables of the given pool to be up-to-date.
+    function updatePool(address token) public override {
+        PoolInfo storage pool = poolInfo[token];
+        if (block.timestamp <= pool.lastRewardTimestamp) {
+            return;
+        }
+        uint256 totalDeposited = IERC20(token).balanceOf(address(this));
+        if (totalDeposited == 0) {
+            pool.lastRewardTimestamp = block.timestamp;
+            return;
+        }
+        uint256 reward = ((block.timestamp - pool.lastRewardTimestamp) * rewardPerSec * poolAllocPoint[token]) /
+            totalAllocPoint;
+        pool.accRewardPerShare = pool.accRewardPerShare + (reward * (1e12)) / totalDeposited;
+        pool.lastRewardTimestamp = block.timestamp;
     }
 }
