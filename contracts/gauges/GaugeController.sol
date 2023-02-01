@@ -4,6 +4,8 @@ pragma solidity ^0.8.15;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import "./GaugeErrors.sol";
+
 contract GaugeController is Ownable {
     // structs
     struct PoolInfo {
@@ -16,6 +18,7 @@ contract GaugeController is Ownable {
     address public cve;
     uint256 public rewardPerBlock;
     uint256 public totalAllocPoint;
+    mapping(address => PoolInfo) public poolInfo;
 
     constructor(address _cve) Ownable() {
         cve = _cve;
@@ -26,6 +29,9 @@ contract GaugeController is Ownable {
     }
 
     function updateEmissionRates(address[] memory tokens, uint256[] memory allocPoints) external onlyOwner {
+        if (tokens.length != allocPoints.length) {
+            revert GaugeErrors.InvalidLength();
+        }
 
         massUpdatePools(tokens);
 

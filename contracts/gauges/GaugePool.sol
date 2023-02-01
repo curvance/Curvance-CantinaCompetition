@@ -40,6 +40,13 @@ contract GuagePool is GaugeController, ReentrancyGuard {
         uint256 amount,
         address onBehalf
     ) external nonReentrant {
+        if (!isGaugeEnabled(token)) {
+            revert GaugeErrors.InvalidToken();
+        }
+        if (amount == 0) {
+            revert GaugeErrors.InvalidAmount();
+        }
+
         updatePool(token);
         _calcPending(onBehalf, token);
 
@@ -54,8 +61,14 @@ contract GuagePool is GaugeController, ReentrancyGuard {
         uint256 amount,
         address recipient
     ) external nonReentrant {
+        if (!isGaugeEnabled(token)) {
+            revert GaugeErrors.InvalidToken();
+        }
 
         UserInfo storage info = userInfo[token][msg.sender];
+        if (amount == 0 || info.amount < amount) {
+            revert GaugeErrors.InvalidAmount();
+        }
 
         updatePool(token);
         _calcPending(msg.sender, token);
@@ -71,6 +84,9 @@ contract GuagePool is GaugeController, ReentrancyGuard {
         _calcPending(msg.sender, token);
 
         uint256 rewards = userInfo[token][msg.sender].rewardPending;
+        if (rewards == 0) {
+            revert GaugeErrors.NoRewards();
+        }
         IERC20(cve).safeTransfer(msg.sender, rewards);
 
         userInfo[token][msg.sender].rewardPending = 0;
