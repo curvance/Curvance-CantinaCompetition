@@ -10,13 +10,13 @@ contract GaugeController is Ownable {
     // structs
     struct PoolInfo {
         uint256 allocPoint;
-        uint256 lastRewardBlock;
+        uint256 lastRewardTimestamp;
         uint256 accRewardPerShare; // Accumulated Rewards per share, times 1e12. See below.
     }
 
     // storage
     address public cve;
-    uint256 public rewardPerBlock;
+    uint256 public rewardPerSec;
     uint256 public totalAllocPoint;
     mapping(address => PoolInfo) public poolInfo;
 
@@ -28,8 +28,8 @@ contract GaugeController is Ownable {
         return poolInfo[token].allocPoint > 0;
     }
 
-    function updateRewardPerBlock(uint256 _rewardPerBlock) external onlyOwner {
-        rewardPerBlock = _rewardPerBlock;
+    function updateRewardPerSec(uint256 _rewardPerSec) external onlyOwner {
+        rewardPerSec = _rewardPerSec;
     }
 
     function updateEmissionRates(address[] memory tokens, uint256[] memory allocPoints) external onlyOwner {
@@ -56,16 +56,17 @@ contract GaugeController is Ownable {
     // Update reward variables of the given pool to be up-to-date.
     function updatePool(address token) public {
         PoolInfo storage pool = poolInfo[token];
-        if (block.number <= pool.lastRewardBlock) {
+        if (block.timestamp <= pool.lastRewardTimestamp) {
             return;
         }
         uint256 totalDeposited = IERC20(token).balanceOf(address(this));
         if (totalDeposited == 0) {
-            pool.lastRewardBlock = block.number;
+            pool.lastRewardTimestamp = block.timestamp;
             return;
         }
-        uint256 reward = ((block.number - pool.lastRewardBlock) * rewardPerBlock * pool.allocPoint) / totalAllocPoint;
+        uint256 reward = ((block.timestamp - pool.lastRewardTimestamp) * rewardPerSec * pool.allocPoint) /
+            totalAllocPoint;
         pool.accRewardPerShare = pool.accRewardPerShare + (reward * (1e12)) / totalDeposited;
-        pool.lastRewardBlock = block.number;
+        pool.lastRewardTimestamp = block.timestamp;
     }
 }

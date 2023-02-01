@@ -27,8 +27,8 @@ contract GuagePool is GaugeController, ReentrancyGuard {
         UserInfo memory info = userInfo[token][user];
         uint256 accRewardPerShare = pool.accRewardPerShare;
         uint256 totalDeposited = IERC20(token).balanceOf(address(this));
-        if (block.number > pool.lastRewardBlock && totalDeposited != 0) {
-            uint256 reward = ((block.number - pool.lastRewardBlock) * rewardPerBlock * pool.allocPoint) /
+        if (block.timestamp > pool.lastRewardTimestamp && totalDeposited != 0) {
+            uint256 reward = ((block.timestamp - pool.lastRewardTimestamp) * rewardPerSec * pool.allocPoint) /
                 totalAllocPoint;
             accRewardPerShare = accRewardPerShare + (reward * (1e12)) / totalDeposited;
         }
