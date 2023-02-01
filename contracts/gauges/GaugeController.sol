@@ -28,6 +28,10 @@ contract GaugeController is Ownable {
         return poolInfo[token].allocPoint > 0;
     }
 
+    function updateRewardPerBlock(uint256 _rewardPerBlock) external onlyOwner {
+        rewardPerBlock = _rewardPerBlock;
+    }
+
     function updateEmissionRates(address[] memory tokens, uint256[] memory allocPoints) external onlyOwner {
         if (tokens.length != allocPoints.length) {
             revert GaugeErrors.InvalidLength();
