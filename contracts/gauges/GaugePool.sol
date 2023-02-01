@@ -17,6 +17,11 @@ contract GuagePool is GaugeController, ReentrancyGuard {
         uint256 rewardPending;
     }
 
+    // events
+    event Deposit(address indexed user, address indexed token, uint256 amount, address indexed onBehalf);
+    event Withdraw(address indexed user, address indexed token, uint256 amount, address indexed recipient);
+    event Claim(address indexed user, address indexed token, uint256 amount);
+
     // storage
     mapping(address => mapping(address => UserInfo)) public userInfo; // token => user => info
 
@@ -54,6 +59,8 @@ contract GuagePool is GaugeController, ReentrancyGuard {
         userInfo[token][onBehalf].amount += amount;
 
         _calcDebt(onBehalf, token);
+
+        emit Deposit(msg.sender, token, amount, onBehalf);
     }
 
     function withdraw(
@@ -77,6 +84,8 @@ contract GuagePool is GaugeController, ReentrancyGuard {
         IERC20(token).safeTransfer(recipient, amount);
 
         _calcDebt(msg.sender, token);
+
+        emit Withdraw(msg.sender, token, amount, recipient);
     }
 
     function claim(address token) external nonReentrant {
@@ -92,6 +101,8 @@ contract GuagePool is GaugeController, ReentrancyGuard {
         userInfo[token][msg.sender].rewardPending = 0;
 
         _calcDebt(msg.sender, token);
+
+        emit Claim(msg.sender, token, rewards);
     }
 
     function _calcPending(address user, address token) internal {
