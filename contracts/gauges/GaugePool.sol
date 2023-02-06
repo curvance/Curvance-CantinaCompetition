@@ -33,15 +33,39 @@ contract GuagePool is GaugeController, ReentrancyGuard {
     constructor(address _cve) GaugeController(_cve) ReentrancyGuard() {}
 
     function pendingRewards(address token, address user) external view returns (uint256) {
-        PoolInfo memory pool = poolInfo[token];
-        UserInfo memory info = userInfo[token][user];
-        uint256 accRewardPerShare = pool.accRewardPerShare;
+        uint256 accRewardPerShare = poolInfo[token].accRewardPerShare;
+        uint256 lastRewardTimestamp = poolInfo[token].lastRewardTimestamp;
         uint256 totalDeposited = IERC20(token).balanceOf(address(this));
-        if (block.timestamp > pool.lastRewardTimestamp && totalDeposited != 0) {
-            uint256 reward = ((block.timestamp - pool.lastRewardTimestamp) * rewardPerSec * poolAllocPoint[token]) /
-                totalAllocPoint;
+
+        if (block.timestamp > lastRewardTimestamp && totalDeposited != 0) {
+            uint256 lastEpoch = epochOfTimestamp(lastRewardTimestamp);
+            uint256 currentEpoch = currentEpoch();
+            uint256 reward;
+            while (lastEpoch < currentEpoch) {
+                uint256 endTimestamp = epochEndTime(lastEpoch);
+
+                // update rewards from lastRewardTimestamp to endTimestamp
+                reward =
+                    ((endTimestamp - lastRewardTimestamp) *
+                        epochInfo[lastEpoch].rewardPerSec *
+                        epochInfo[lastEpoch].poolAllocPoint[token]) /
+                    epochInfo[lastEpoch].totalAllocPoint;
+                accRewardPerShare = accRewardPerShare + (reward * (1e12)) / totalDeposited;
+
+                ++lastEpoch;
+                lastRewardTimestamp = endTimestamp;
+            }
+
+            // update rewards from lastRewardTimestamp to current timestamp
+            reward =
+                ((block.timestamp - lastRewardTimestamp) *
+                    epochInfo[lastEpoch].rewardPerSec *
+                    epochInfo[lastEpoch].poolAllocPoint[token]) /
+                epochInfo[lastEpoch].totalAllocPoint;
             accRewardPerShare = accRewardPerShare + (reward * (1e12)) / totalDeposited;
         }
+
+        UserInfo memory info = userInfo[token][user];
         return (info.amount * accRewardPerShare) / (1e12) - info.rewardDebt;
     }
 
@@ -122,18 +146,46 @@ contract GuagePool is GaugeController, ReentrancyGuard {
 
     // Update reward variables of the given pool to be up-to-date.
     function updatePool(address token) public override {
-        PoolInfo storage pool = poolInfo[token];
-        if (block.timestamp <= pool.lastRewardTimestamp) {
+        uint256 lastRewardTimestamp = poolInfo[token].lastRewardTimestamp;
+        if (block.timestamp <= lastRewardTimestamp) {
             return;
         }
+
         uint256 totalDeposited = IERC20(token).balanceOf(address(this));
         if (totalDeposited == 0) {
-            pool.lastRewardTimestamp = block.timestamp;
+            poolInfo[token].lastRewardTimestamp = block.timestamp;
             return;
         }
-        uint256 reward = ((block.timestamp - pool.lastRewardTimestamp) * rewardPerSec * poolAllocPoint[token]) /
-            totalAllocPoint;
-        pool.accRewardPerShare = pool.accRewardPerShare + (reward * (1e12)) / totalDeposited;
-        pool.lastRewardTimestamp = block.timestamp;
+
+        uint256 accRewardPerShare = poolInfo[token].accRewardPerShare;
+        uint256 lastEpoch = epochOfTimestamp(lastRewardTimestamp);
+        uint256 currentEpoch = currentEpoch();
+        uint256 reward;
+        while (lastEpoch < currentEpoch) {
+            uint256 endTimestamp = epochEndTime(lastEpoch);
+
+            // update rewards from lastRewardTimestamp to endTimestamp
+            reward =
+                ((endTimestamp - lastRewardTimestamp) *
+                    epochInfo[lastEpoch].rewardPerSec *
+                    epochInfo[lastEpoch].poolAllocPoint[token]) /
+                epochInfo[lastEpoch].totalAllocPoint;
+            accRewardPerShare = accRewardPerShare + (reward * (1e12)) / totalDeposited;
+
+            ++lastEpoch;
+            lastRewardTimestamp = endTimestamp;
+        }
+
+        // update rewards from lastRewardTimestamp to current timestamp
+        reward =
+            ((block.timestamp - lastRewardTimestamp) *
+                epochInfo[lastEpoch].rewardPerSec *
+                epochInfo[lastEpoch].poolAllocPoint[token]) /
+            epochInfo[lastEpoch].totalAllocPoint;
+        accRewardPerShare = accRewardPerShare + (reward * (1e12)) / totalDeposited;
+
+        // update pool storage
+        poolInfo[token].lastRewardTimestamp = lastRewardTimestamp;
+        poolInfo[token].accRewardPerShare = accRewardPerShare;
     }
 }
