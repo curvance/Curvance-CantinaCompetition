@@ -14,6 +14,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
     struct PoolInfo {
         uint256 lastRewardTimestamp;
         uint256 accRewardPerShare; // Accumulated Rewards per share, times 1e12. See below.
+        uint256 totalAmount;
     }
     struct UserInfo {
         uint256 amount;
@@ -27,7 +28,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
     event Claim(address indexed user, address indexed token, uint256 amount);
 
     // constants
-    uint256 public constant PRECISION = 1e12;
+    uint256 public constant PRECISION = 1e36;
 
     // storage
     mapping(address => PoolInfo) public poolInfo; // token => pool info
@@ -42,7 +43,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
 
         uint256 accRewardPerShare = poolInfo[token].accRewardPerShare;
         uint256 lastRewardTimestamp = poolInfo[token].lastRewardTimestamp;
-        uint256 totalDeposited = IERC20(token).balanceOf(address(this));
+        uint256 totalDeposited = poolInfo[token].totalAmount;
 
         if (block.timestamp > lastRewardTimestamp && totalDeposited != 0) {
             uint256 lastEpoch = epochOfTimestamp(lastRewardTimestamp);
@@ -93,6 +94,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
 
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         userInfo[token][onBehalf].amount += amount;
+        poolInfo[token].totalAmount += amount;
 
         _calcDebt(onBehalf, token);
 
@@ -117,6 +119,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         _calcPending(msg.sender, token);
 
         info.amount -= amount;
+        poolInfo[token].totalAmount -= amount;
         IERC20(token).safeTransfer(recipient, amount);
 
         _calcDebt(msg.sender, token);
@@ -162,7 +165,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
             return;
         }
 
-        uint256 totalDeposited = IERC20(token).balanceOf(address(this));
+        uint256 totalDeposited = poolInfo[token].totalAmount;
         if (totalDeposited == 0) {
             poolInfo[token].lastRewardTimestamp = block.timestamp;
             return;
@@ -196,7 +199,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         accRewardPerShare = accRewardPerShare + (reward * (PRECISION)) / totalDeposited;
 
         // update pool storage
-        poolInfo[token].lastRewardTimestamp = lastRewardTimestamp;
+        poolInfo[token].lastRewardTimestamp = block.timestamp;
         poolInfo[token].accRewardPerShare = accRewardPerShare;
     }
 }

@@ -23,14 +23,21 @@ contract TestGaugePool is DSTestPlus {
     function setUp() public {
         owner = address(this);
         for (uint256 i = 0; i < 10; i++) {
-            tokens[i] = address(new MockToken("Mock Token", "MT", 18));
             users[i] = address(new User());
+        }
+        for (uint256 i = 0; i < 10; i++) {
+            tokens[i] = address(new MockToken("Mock Token", "MT", 18));
+            for (uint256 j = 0; j < 10; j++) {
+                MockToken(tokens[i]).transfer(users[j], 1000000 ether);
+            }
 
             hevm.deal(users[i], 200000e18);
         }
 
         rewardToken = address(new MockToken("Reward Token", "RT", 18));
         gaugePool = new GaugePool(address(rewardToken));
+
+        MockToken(rewardToken).transfer(address(gaugePool), 1000 ether);
 
         hevm.warp(block.timestamp + 1000);
         hevm.roll(block.number + 1000);
@@ -85,5 +92,56 @@ contract TestGaugePool is DSTestPlus {
         (totalAllocation, poolAllocation) = gaugePool.gaugePoolAllocation(1, tokens[1]);
         assertEq(totalAllocation, 300);
         assertEq(poolAllocation, 200);
+    }
+
+    function testRewardRatioOfDifferentPools() public {
+        // set reward per sec
+        gaugePool.setRewardPerSecOfNextEpoch(0, 300);
+        // set gauge allocations
+        address[] memory tokensParam = new address[](2);
+        tokensParam[0] = tokens[0];
+        tokensParam[1] = tokens[1];
+        uint256[] memory allocPoints = new uint256[](2);
+        allocPoints[0] = 100;
+        allocPoints[1] = 200;
+        gaugePool.setEmissionRates(0, tokensParam, allocPoints);
+        // start epoch
+        gaugePool.start();
+
+        // user0 deposit 100 token0
+        hevm.prank(users[0]);
+        MockToken(tokens[0]).approve(address(gaugePool), 100 ether);
+        hevm.prank(users[0]);
+        gaugePool.deposit(tokens[0], 100 ether, users[0]);
+
+        // user2 deposit 100 token1
+        hevm.prank(users[2]);
+        MockToken(tokens[1]).approve(address(gaugePool), 100 ether);
+        hevm.prank(users[2]);
+        gaugePool.deposit(tokens[1], 100 ether, users[2]);
+
+        // check pending rewards after 100 seconds
+        hevm.warp(block.timestamp + 100);
+        assertEq(gaugePool.pendingRewards(tokens[0], users[0]), 10000);
+        assertEq(gaugePool.pendingRewards(tokens[1], users[2]), 20000);
+
+        // user1 deposit 400 token0
+        hevm.prank(users[1]);
+        MockToken(tokens[0]).approve(address(gaugePool), 400 ether);
+        hevm.prank(users[1]);
+        gaugePool.deposit(tokens[0], 400 ether, users[1]);
+
+        // user3 deposit 400 token1
+        hevm.prank(users[3]);
+        MockToken(tokens[1]).approve(address(gaugePool), 400 ether);
+        hevm.prank(users[3]);
+        gaugePool.deposit(tokens[1], 400 ether, users[3]);
+
+        // check pending rewards after 100 seconds
+        hevm.warp(block.timestamp + 100);
+        assertEq(gaugePool.pendingRewards(tokens[0], users[0]), 12000);
+        assertEq(gaugePool.pendingRewards(tokens[0], users[1]), 8000);
+        assertEq(gaugePool.pendingRewards(tokens[1], users[2]), 24000);
+        assertEq(gaugePool.pendingRewards(tokens[1], users[3]), 16000);
     }
 }
