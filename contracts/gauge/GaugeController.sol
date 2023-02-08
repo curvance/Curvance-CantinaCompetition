@@ -31,27 +31,35 @@ contract GaugeController is Ownable {
             revert GaugeErrors.AlreadyStarted();
         }
 
-        startTime = 0;
+        startTime = block.timestamp;
     }
 
     function currentEpoch() public view returns (uint256) {
+        assert(startTime != 0);
         return (block.timestamp - startTime) / EPOCH_WINDOW;
     }
 
-    function epochOfTimestamp(uint256 timestamp) public pure returns (uint256) {
-        return timestamp / EPOCH_WINDOW;
+    function epochOfTimestamp(uint256 timestamp) public view returns (uint256) {
+        assert(startTime != 0);
+        return (timestamp - startTime) / EPOCH_WINDOW;
     }
 
     function epochStartTime(uint256 epoch) public view returns (uint256) {
+        assert(startTime != 0);
         return startTime + epoch * EPOCH_WINDOW;
     }
 
     function epochEndTime(uint256 epoch) public view returns (uint256) {
+        assert(startTime != 0);
         return startTime + (epoch + 1) * EPOCH_WINDOW;
     }
 
-    function isGaugeEnabled(address token) public view returns (bool) {
-        return isGaugeEnabled(currentEpoch(), token);
+    function rewardPerSec(uint256 epoch) external view returns (uint256) {
+        return epochInfo[epoch].rewardPerSec;
+    }
+
+    function gaugePoolAllocation(uint256 epoch, address token) external view returns (uint256, uint256) {
+        return (epochInfo[epoch].totalAllocPoint, epochInfo[epoch].poolAllocPoint[token]);
     }
 
     function isGaugeEnabled(uint256 epoch, address token) public view returns (bool) {
@@ -59,19 +67,19 @@ contract GaugeController is Ownable {
     }
 
     function setRewardPerSecOfNextEpoch(uint256 epoch, uint256 _rewardPerSec) external onlyOwner {
-        if (epoch != currentEpoch() + 1) {
+        if (!(epoch == 0 && startTime == 0) && epoch != currentEpoch() + 1) {
             revert GaugeErrors.InvalidEpoch();
         }
 
         epochInfo[epoch].rewardPerSec = _rewardPerSec;
     }
 
-    function updateEmissionRates(
+    function setEmissionRates(
         uint256 epoch,
         address[] memory tokens,
         uint256[] memory allocPoints
     ) external onlyOwner {
-        if (epoch != currentEpoch() + 1) {
+        if (!(epoch == 0 && startTime == 0) && epoch != currentEpoch() + 1) {
             revert GaugeErrors.InvalidEpoch();
         }
 

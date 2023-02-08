@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-contract GuagePool is GaugeController, ReentrancyGuard {
+contract GaugePool is GaugeController, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     // structs
@@ -26,6 +26,9 @@ contract GuagePool is GaugeController, ReentrancyGuard {
     event Withdraw(address indexed user, address indexed token, uint256 amount, address indexed recipient);
     event Claim(address indexed user, address indexed token, uint256 amount);
 
+    // constants
+    uint256 public constant PRECISION = 1e12;
+
     // storage
     mapping(address => PoolInfo) public poolInfo; // token => pool info
     mapping(address => mapping(address => UserInfo)) public userInfo; // token => user => info
@@ -33,6 +36,10 @@ contract GuagePool is GaugeController, ReentrancyGuard {
     constructor(address _cve) GaugeController(_cve) ReentrancyGuard() {}
 
     function pendingRewards(address token, address user) external view returns (uint256) {
+        if (!isGaugeEnabled(currentEpoch(), token)) {
+            revert GaugeErrors.InvalidToken();
+        }
+
         uint256 accRewardPerShare = poolInfo[token].accRewardPerShare;
         uint256 lastRewardTimestamp = poolInfo[token].lastRewardTimestamp;
         uint256 totalDeposited = IERC20(token).balanceOf(address(this));
@@ -50,7 +57,7 @@ contract GuagePool is GaugeController, ReentrancyGuard {
                         epochInfo[lastEpoch].rewardPerSec *
                         epochInfo[lastEpoch].poolAllocPoint[token]) /
                     epochInfo[lastEpoch].totalAllocPoint;
-                accRewardPerShare = accRewardPerShare + (reward * (1e12)) / totalDeposited;
+                accRewardPerShare = accRewardPerShare + (reward * (PRECISION)) / totalDeposited;
 
                 ++lastEpoch;
                 lastRewardTimestamp = endTimestamp;
@@ -62,11 +69,11 @@ contract GuagePool is GaugeController, ReentrancyGuard {
                     epochInfo[lastEpoch].rewardPerSec *
                     epochInfo[lastEpoch].poolAllocPoint[token]) /
                 epochInfo[lastEpoch].totalAllocPoint;
-            accRewardPerShare = accRewardPerShare + (reward * (1e12)) / totalDeposited;
+            accRewardPerShare = accRewardPerShare + (reward * (PRECISION)) / totalDeposited;
         }
 
         UserInfo memory info = userInfo[token][user];
-        return (info.amount * accRewardPerShare) / (1e12) - info.rewardDebt;
+        return (info.amount * accRewardPerShare) / (PRECISION) - info.rewardDebt;
     }
 
     function deposit(
@@ -74,7 +81,7 @@ contract GuagePool is GaugeController, ReentrancyGuard {
         uint256 amount,
         address onBehalf
     ) external nonReentrant {
-        if (!isGaugeEnabled(token)) {
+        if (!isGaugeEnabled(currentEpoch(), token)) {
             revert GaugeErrors.InvalidToken();
         }
         if (amount == 0) {
@@ -97,7 +104,7 @@ contract GuagePool is GaugeController, ReentrancyGuard {
         uint256 amount,
         address recipient
     ) external nonReentrant {
-        if (!isGaugeEnabled(token)) {
+        if (!isGaugeEnabled(currentEpoch(), token)) {
             revert GaugeErrors.InvalidToken();
         }
 
@@ -118,6 +125,10 @@ contract GuagePool is GaugeController, ReentrancyGuard {
     }
 
     function claim(address token) external nonReentrant {
+        if (!isGaugeEnabled(currentEpoch(), token)) {
+            revert GaugeErrors.InvalidToken();
+        }
+
         updatePool(token);
         _calcPending(msg.sender, token);
 
@@ -136,12 +147,12 @@ contract GuagePool is GaugeController, ReentrancyGuard {
 
     function _calcPending(address user, address token) internal {
         UserInfo storage info = userInfo[token][user];
-        info.rewardPending += (info.amount * poolInfo[token].accRewardPerShare) / (1e12) - info.rewardDebt;
+        info.rewardPending += (info.amount * poolInfo[token].accRewardPerShare) / (PRECISION) - info.rewardDebt;
     }
 
     function _calcDebt(address user, address token) internal {
         UserInfo storage info = userInfo[token][user];
-        info.rewardDebt = (info.amount * poolInfo[token].accRewardPerShare) / (1e12);
+        info.rewardDebt = (info.amount * poolInfo[token].accRewardPerShare) / (PRECISION);
     }
 
     // Update reward variables of the given pool to be up-to-date.
@@ -170,7 +181,7 @@ contract GuagePool is GaugeController, ReentrancyGuard {
                     epochInfo[lastEpoch].rewardPerSec *
                     epochInfo[lastEpoch].poolAllocPoint[token]) /
                 epochInfo[lastEpoch].totalAllocPoint;
-            accRewardPerShare = accRewardPerShare + (reward * (1e12)) / totalDeposited;
+            accRewardPerShare = accRewardPerShare + (reward * (PRECISION)) / totalDeposited;
 
             ++lastEpoch;
             lastRewardTimestamp = endTimestamp;
@@ -182,7 +193,7 @@ contract GuagePool is GaugeController, ReentrancyGuard {
                 epochInfo[lastEpoch].rewardPerSec *
                 epochInfo[lastEpoch].poolAllocPoint[token]) /
             epochInfo[lastEpoch].totalAllocPoint;
-        accRewardPerShare = accRewardPerShare + (reward * (1e12)) / totalDeposited;
+        accRewardPerShare = accRewardPerShare + (reward * (PRECISION)) / totalDeposited;
 
         // update pool storage
         poolInfo[token].lastRewardTimestamp = lastRewardTimestamp;
