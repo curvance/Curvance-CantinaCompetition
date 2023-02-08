@@ -143,5 +143,58 @@ contract TestGaugePool is DSTestPlus {
         assertEq(gaugePool.pendingRewards(tokens[0], users[1]), 8000);
         assertEq(gaugePool.pendingRewards(tokens[1], users[2]), 24000);
         assertEq(gaugePool.pendingRewards(tokens[1], users[3]), 16000);
+
+        // user0, user3 claims
+        hevm.prank(users[0]);
+        gaugePool.claim(tokens[0]);
+        hevm.prank(users[3]);
+        gaugePool.claim(tokens[1]);
+        assertEq(MockToken(rewardToken).balanceOf(users[0]), 12000);
+        assertEq(MockToken(rewardToken).balanceOf(users[3]), 16000);
+
+        // check pending rewards after 100 seconds
+        hevm.warp(block.timestamp + 100);
+        assertEq(gaugePool.pendingRewards(tokens[0], users[0]), 2000);
+        assertEq(gaugePool.pendingRewards(tokens[0], users[1]), 16000);
+        assertEq(gaugePool.pendingRewards(tokens[1], users[2]), 28000);
+        assertEq(gaugePool.pendingRewards(tokens[1], users[3]), 16000);
+
+        // user0 withdraw half
+        hevm.prank(users[0]);
+        gaugePool.withdraw(tokens[0], 50 ether, users[0]);
+
+        // user2 deposit 2x
+        hevm.prank(users[2]);
+        MockToken(tokens[1]).approve(address(gaugePool), 100 ether);
+        hevm.prank(users[2]);
+        gaugePool.deposit(tokens[1], 100 ether, users[2]);
+
+        // check pending rewards after 100 seconds
+        hevm.warp(block.timestamp + 100);
+        assertEq(gaugePool.pendingRewards(tokens[0], users[0]), 3111);
+        assertEq(gaugePool.pendingRewards(tokens[0], users[1]), 24888);
+        assertEq(gaugePool.pendingRewards(tokens[1], users[2]), 34666);
+        assertEq(gaugePool.pendingRewards(tokens[1], users[3]), 29333);
+
+        // user0, user1, user2, user3 claims
+        hevm.prank(users[0]);
+        gaugePool.claim(tokens[0]);
+        hevm.prank(users[1]);
+        gaugePool.claim(tokens[0]);
+        hevm.prank(users[2]);
+        gaugePool.claim(tokens[1]);
+        hevm.prank(users[3]);
+        gaugePool.claim(tokens[1]);
+        assertEq(MockToken(rewardToken).balanceOf(users[0]), 15111);
+        assertEq(MockToken(rewardToken).balanceOf(users[1]), 24888);
+        assertEq(MockToken(rewardToken).balanceOf(users[2]), 34666);
+        assertEq(MockToken(rewardToken).balanceOf(users[3]), 45333);
+
+        // check pending rewards after 100 seconds
+        hevm.warp(block.timestamp + 100);
+        assertEq(gaugePool.pendingRewards(tokens[0], users[0]), 1111);
+        assertEq(gaugePool.pendingRewards(tokens[0], users[1]), 8889);
+        assertEq(gaugePool.pendingRewards(tokens[1], users[2]), 6667);
+        assertEq(gaugePool.pendingRewards(tokens[1], users[3]), 13333);
     }
 }

@@ -74,7 +74,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         }
 
         UserInfo memory info = userInfo[token][user];
-        return (info.amount * accRewardPerShare) / (PRECISION) - info.rewardDebt;
+        return info.rewardPending + (info.amount * accRewardPerShare) / (PRECISION) - info.rewardDebt;
     }
 
     function deposit(
