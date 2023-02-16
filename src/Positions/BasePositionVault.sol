@@ -13,6 +13,7 @@ import { IChainlinkAggregator } from "src/interfaces/IChainlinkAggregator.sol";
 
 ///@notice Vault Positions must have all assets ready for withdraw, IE assets can NOT be locked.
 // This way assets can be easily liquidated when loans default.
+// TODO add in logic to prevent flash loans.
 abstract contract BasePositionVault is ERC4626, Initializable, KeeperCompatibleInterface, Owned {
     using SafeTransferLib for ERC20;
     using Math for uint256;
@@ -44,6 +45,36 @@ abstract contract BasePositionVault is ERC4626, Initializable, KeeperCompatibleI
      * @notice Period newly harvested rewards are vested over.
      */
     uint32 public constant REWARD_PERIOD = 7 days;
+
+    /**
+     * @notice Maximum possible platform fee.
+     */
+    uint64 public constant MAX_PLATFORM_FEE = 0.3e18;
+
+    /**
+     * @notice Maximum possible upkeep fee.
+     */
+    uint64 public constant MAX_UPKEEP_FEE = 0.1e18;
+
+    /*//////////////////////////////////////////////////////////////
+                                 EVENTS
+    //////////////////////////////////////////////////////////////*/
+
+    event GasFeedChanged(address feed);
+    event WatchdogChanged(address watchdog);
+    event MinYieldForHarvestChanged(uint64 minYieldUSD);
+    event MaxGasForHarvestChanged(uint64 maxGas);
+    event PriceRouterChanged(address router);
+    event PlatformFeeChanged(uint64 fee);
+    event FeeAccumulatorChanged(address accumulator);
+    event UpkeepFeeChanged(uint64 fee);
+
+    /*//////////////////////////////////////////////////////////////
+                                 ERRORS
+    //////////////////////////////////////////////////////////////*/
+
+    error BasePositionVault__InvalidPlatformFee(uint64 invalidFee);
+    error BasePositionVault__InvalidUpkeepFee(uint64 invalidFee);
 
     /*//////////////////////////////////////////////////////////////
                           SETUP LOGIC
@@ -77,39 +108,47 @@ abstract contract BasePositionVault is ERC4626, Initializable, KeeperCompatibleI
      * @notice Allows owner to set a new gas feed.
      * @notice Can be set to zero address to skip gas check.
      */
-    //  TODO these need events emitted.
     function setGasFeed(address gasFeed) external onlyOwner {
         ETH_FAST_GAS_FEED = gasFeed;
+        emit GasFeedChanged(gasFeed);
     }
 
     function setWatchdog(address _watchdog) external onlyOwner {
         positionWatchdog = _watchdog;
+        emit WatchdogChanged(_watchdog);
     }
 
     function setMinHarvestYield(uint64 minYieldUSD) external onlyOwner {
         minHarvestYieldInUSD = minYieldUSD;
+        emit MinYieldForHarvestChanged(minYieldUSD);
     }
 
     function setMaxGasForHarvest(uint64 maxGas) external onlyOwner {
         maxGasPriceForHarvest = maxGas;
+        emit MaxGasForHarvestChanged(maxGas);
     }
 
     function setPriceRouter(PriceRouter _priceRouter) external onlyOwner {
         priceRouter = _priceRouter;
+        emit PriceRouterChanged(address(_priceRouter));
     }
 
-    // TODO needs a max value.
     function setPlatformFee(uint64 fee) external onlyOwner {
+        if (fee > MAX_PLATFORM_FEE) revert BasePositionVault__InvalidPlatformFee(fee);
         platformFee = fee;
+        emit PlatformFeeChanged(fee);
     }
 
     function setFeeAccumulator(address accumulator) external onlyOwner {
         feeAccumulator = accumulator;
+        emit FeeAccumulatorChanged(accumulator);
     }
 
-    // TODO needs a max value.
     function setUpkeepFee(uint64 fee) external onlyOwner {
+        if (fee > MAX_UPKEEP_FEE) revert BasePositionVault__InvalidUpkeepFee(fee);
+
         upkeepFee = fee;
+        emit UpkeepFeeChanged(fee);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -320,6 +359,7 @@ abstract contract BasePositionVault is ERC4626, Initializable, KeeperCompatibleI
 
     function checkUpkeep(bytes calldata) external returns (bool upkeepNeeded, bytes memory performData) {
         // Figure out how much yield is pending to be harvested.
+        // TODO this woould revert with the check making sure the last rewards are fully vested.
         uint256 yield = harvest();
 
         // Compare USD value of yield against owner set minimum.

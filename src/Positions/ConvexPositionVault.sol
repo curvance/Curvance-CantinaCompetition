@@ -93,10 +93,19 @@ contract ConvexPositionVault is BasePositionVault {
     uint64 public harvestSlippage = 0.01e18;
 
     /*//////////////////////////////////////////////////////////////
+                                 EVENTS
+    //////////////////////////////////////////////////////////////*/
+
+    event EthToTargetSwapParamsChanged(CurveSwapParams params);
+    event ArbitraryToEthSwapParamsChanged(address asset, CurveSwapParams params);
+    event HarvestSlippageChanged(uint64 slippage);
+    event CurveDepositParamsChanged(CurveDepositParams params);
+    event Harvest(uint256 yield);
+
+    /*//////////////////////////////////////////////////////////////
                                  ERRORS
     //////////////////////////////////////////////////////////////*/
 
-    error ConvexPositionVault__RewardsVestingCannotHarvestNow();
     error ConvexPositionVault__UnsupportedCurveDeposit();
     error ConvexPositionVault__BadSlippage();
     error ConvexPositionVault__WatchdogNotSet();
@@ -179,21 +188,24 @@ contract ConvexPositionVault is BasePositionVault {
                               OWNER LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    // TODO these need events emitted on change.
     function updateEthTotargetSwapPath(CurveSwapParams memory params) external onlyOwner {
         ethToTarget = params;
+        emit EthToTargetSwapParamsChanged(params);
     }
 
     function updateArbitraryToEthSwapPath(ERC20 assetIn, CurveSwapParams memory params) external onlyOwner {
         arbitraryToEth[assetIn] = params;
+        emit ArbitraryToEthSwapParamsChanged(address(assetIn), params);
     }
 
     function updateHarvestSlippage(uint64 _slippage) external onlyOwner {
         harvestSlippage = _slippage;
+        emit HarvestSlippageChanged(_slippage);
     }
 
     function updateCurveDepositParams(CurveDepositParams memory params) external onlyOwner {
         depositParams = params;
+        emit CurveDepositParamsChanged(params);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -296,7 +308,8 @@ contract ConvexPositionVault is BasePositionVault {
             _rewardRate = uint128(yield.mulDivDown(REWARD_SCALER, REWARD_PERIOD));
             _vestingPeriodEnd = uint64(block.timestamp) + REWARD_PERIOD;
             _lastVestClaim = uint64(block.timestamp);
-        } else revert ConvexPositionVault__RewardsVestingCannotHarvestNow();
+            emit Harvest(yield);
+        } // else yield is zero.
     }
 
     /*//////////////////////////////////////////////////////////////
