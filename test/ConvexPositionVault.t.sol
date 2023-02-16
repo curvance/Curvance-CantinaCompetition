@@ -137,7 +137,9 @@ contract ConvexPositionVaultTest is Test {
         vpBound = PriceRouter.VirtualPriceBound(uint96(vp), 0, uint32(1.01e8), uint32(0.99e8), 0);
         priceRouter.addAsset(CRV_DAI_USDC_USDT, settings, abi.encode(vpBound), 1.02e8);
 
-        cvxPositionTriCrypto = new ConvexPositionVault(CRV_3_CRYPTO, "Tri Crypto Vault", "TCV", 18);
+        cvxPositionTriCrypto = new ConvexPositionVault(CRV_3_CRYPTO, address(this), "Tri Crypto Vault", "TCV", 18);
+
+        cvxPositionTriCrypto.setWatchdog(address(this));
 
         // Need to initialize Vault.
         {
@@ -191,6 +193,7 @@ contract ConvexPositionVaultTest is Test {
             );
             cvxPositionTriCrypto.initialize(
                 CRV_3_CRYPTO,
+                address(this),
                 "Tri Crypto Vault",
                 "TCV",
                 18,
@@ -201,7 +204,10 @@ contract ConvexPositionVaultTest is Test {
             );
         }
 
-        cvxPosition3Pool = new ConvexPositionVault(CRV_DAI_USDC_USDT, "3 Pool Vault", "3PV", 18);
+        cvxPosition3Pool = new ConvexPositionVault(CRV_DAI_USDC_USDT, address(this), "3 Pool Vault", "3PV", 18);
+
+        cvxPosition3Pool.setWatchdog(address(this));
+
         {
             ConvexPositionVault.CurveDepositParams memory depositParams = ConvexPositionVault.CurveDepositParams(
                 USDT,
@@ -268,6 +274,7 @@ contract ConvexPositionVaultTest is Test {
             );
             cvxPosition3Pool.initialize(
                 CRV_DAI_USDC_USDT,
+                address(this),
                 "3 Pool Vault",
                 "3PV",
                 18,
@@ -404,7 +411,11 @@ contract ConvexPositionVaultTest is Test {
         );
 
         // Trying to harvest again while rewards are vesting should revert.
-        vm.expectRevert(bytes("Can not harvest now"));
+        vm.expectRevert(
+            bytes(
+                abi.encodeWithSelector(ConvexPositionVault.ConvexPositionVault__RewardsVestingCannotHarvestNow.selector)
+            )
+        );
         cvxPositionTriCrypto.harvest();
 
         // Advance time to 3/4 way through the vesting period.

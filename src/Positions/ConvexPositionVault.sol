@@ -16,35 +16,13 @@ import { IChainlinkAggregator } from "src/interfaces/IChainlinkAggregator.sol";
 
 import { console } from "@forge-std/Test.sol"; // TODO remove this
 
-// TODO what contract should act like the Registry in this ecosystem.
-// TODO what would happen to reward tokens that are added later, and dont have swap info? Ideally they just sit in here until we add the swap info.
 contract ConvexPositionVault is BasePositionVault {
     using SafeTransferLib for ERC20;
     using Math for uint256;
 
-    constructor(
-        ERC20 _asset,
-        string memory _name,
-        string memory _symbol,
-        uint8 _decimals
-    ) BasePositionVault(_asset, _name, _symbol, _decimals) {}
-
     /*//////////////////////////////////////////////////////////////
-                          INTERNAL POSITION LOGIC
+                             STRUCTS
     //////////////////////////////////////////////////////////////*/
-
-    // Should be set during initialization of clone.
-    /**
-     * @notice Curve registry exchange contract.
-     */
-    ICurveSwaps public curveRegistryExchange; // 0x81C46fECa27B31F3ADC2b91eE4be9717d1cd3DD7
-    uint256 public pid;
-    IBaseRewardPool public rewarder;
-    IBooster private booster = IBooster(0xF403C135812408BFbE8713b5A23a04b3D48AAE31);
-    ERC20 private constant WETH = ERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
-
-    ERC20 private constant CVX = ERC20(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
-    ERC20 private constant CRV = ERC20(0xD533a949740bb3306d119CC777fa900bA034cd52);
 
     struct CurveDepositParams {
         ERC20 targetAsset;
@@ -54,11 +32,6 @@ contract ConvexPositionVault is BasePositionVault {
         address pool;
     }
 
-    CurveDepositParams private depositParams;
-
-    // So we store the swap path from each reward token to ETH.
-    // Then store a swap path from ETH to the final token we need.
-
     struct CurveSwapParams {
         address[9] route;
         uint256[3][4] swapParams;
@@ -66,17 +39,91 @@ contract ConvexPositionVault is BasePositionVault {
         uint96 minUSDValueToSwap;
     }
 
-    // Stores swapping information to go from an arbitrary reward token to ETH.
-    mapping(ERC20 => CurveSwapParams) public arbitraryToETH;
+    /*//////////////////////////////////////////////////////////////
+                             GLOBAL STATE
+    //////////////////////////////////////////////////////////////*/
 
-    // Stores swapping information to go from ETH to target token to supply liquidity on Curve
+    /**
+     * @notice Curve registry exchange contract.
+     * @dev Mainnet Address 0x81C46fECa27B31F3ADC2b91eE4be9717d1cd3DD7
+     */
+    ICurveSwaps public curveRegistryExchange;
+
+    /**
+     * @notice Convex Pool Id.
+     */
+    uint256 public pid;
+
+    /**
+     * @notice Covnex Rewarder contract.
+     */
+    IBaseRewardPool public rewarder;
+
+    /**
+     * @notice Convex Booster contract.
+     */
+    IBooster private booster;
+
+    /**
+     * @notice Mainnet token contracts important for this vault.
+     */
+    ERC20 private constant WETH = ERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
+    ERC20 private constant CVX = ERC20(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
+    ERC20 private constant CRV = ERC20(0xD533a949740bb3306d119CC777fa900bA034cd52);
+
+    /**
+     * @notice Deposit parameters used by the vault to deposit into desired Curve Pool.
+     */
+    CurveDepositParams private depositParams;
+
+    /**
+     * @notice Stores swapping information to go from an arbitrary reward token to ETH.
+     */
+    mapping(ERC20 => CurveSwapParams) public arbitraryToEth;
+
+    /**
+     * @notice Stores swapping information to go from ETH to target token to supply liquidity on Curve.
+     */
     CurveSwapParams public ethToTarget;
 
     // Owner needs to be able to set swap paths, deposit data, fee, fee accumulator
-    uint64 harvestSlippage = 0.1e18;
+    /**
+     * @notice Value out from harvest swaps must be greater than value in * 1 - (harvestSlippage + upkeepFee);
+     */
+    uint64 public harvestSlippage = 0.01e18;
 
+    /*//////////////////////////////////////////////////////////////
+                                 ERRORS
+    //////////////////////////////////////////////////////////////*/
+
+    error ConvexPositionVault__RewardsVestingCannotHarvestNow();
+    error ConvexPositionVault__UnsupportedCurveDeposit();
+    error ConvexPositionVault__BadSlippage();
+    error ConvexPositionVault__WatchdogNotSet();
+    error ConvexPositionVault__LengthMismatch();
+
+    /*//////////////////////////////////////////////////////////////
+                              SETUP LOGIC
+    //////////////////////////////////////////////////////////////*/
+
+    /**
+     * @notice Vaults are designed to be deployed using Minimal Proxy Contracts, but they can be deployed normally,
+     *         but `initialize` must ALWAYS be called either way.
+     */
+    constructor(
+        ERC20 _asset,
+        address _owner,
+        string memory _name,
+        string memory _symbol,
+        uint8 _decimals
+    ) BasePositionVault(_asset, _name, _symbol, _decimals, _owner) {}
+
+    /**
+     * @notice Initialize function to fully setup this vault.
+     */
     function initialize(
         ERC20 _asset,
+        address _owner,
         string memory _name,
         string memory _symbol,
         uint8 _decimals,
@@ -86,6 +133,7 @@ contract ConvexPositionVault is BasePositionVault {
         bytes memory _initializeData
     ) external override initializer {
         asset = _asset;
+        owner = _owner;
         name = _name;
         symbol = _symbol;
         decimals = _decimals;
@@ -120,22 +168,37 @@ contract ConvexPositionVault is BasePositionVault {
         depositParams = _depositParams;
         curveRegistryExchange = _curveSwaps;
 
-        // TODO check for length mismatches.
+        if (swapsToETH.length != assetsToETH.length) revert ConvexPositionVault__LengthMismatch();
         for (uint256 i; i < swapsToETH.length; ++i) {
-            arbitraryToETH[assetsToETH[i]] = swapsToETH[i];
+            arbitraryToEth[assetsToETH[i]] = swapsToETH[i];
         }
         ethToTarget = swapsFromETH;
     }
 
-    function _withdraw(uint256 assets) internal override {
-        IBaseRewardPool rewardPool = IBaseRewardPool(rewarder);
-        rewardPool.withdrawAndUnwrap(assets, false);
+    /*//////////////////////////////////////////////////////////////
+                              OWNER LOGIC
+    //////////////////////////////////////////////////////////////*/
+
+    // TODO these need events emitted on change.
+    function updateEthTotargetSwapPath(CurveSwapParams memory params) external onlyOwner {
+        ethToTarget = params;
     }
 
-    function _deposit(uint256 assets) internal override {
-        asset.safeApprove(address(booster), assets);
-        booster.deposit(pid, assets, true);
+    function updateArbitraryToEthSwapPath(ERC20 assetIn, CurveSwapParams memory params) external onlyOwner {
+        arbitraryToEth[assetIn] = params;
     }
+
+    function updateHarvestSlippage(uint64 _slippage) external onlyOwner {
+        harvestSlippage = _slippage;
+    }
+
+    function updateCurveDepositParams(CurveDepositParams memory params) external onlyOwner {
+        depositParams = params;
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                          EXTERNAL POSITION LOGIC
+    //////////////////////////////////////////////////////////////*/
 
     function harvest() public override returns (uint256 yield) {
         uint256 pending = _calculatePendingRewards();
@@ -144,7 +207,7 @@ contract ConvexPositionVault is BasePositionVault {
             _vestRewards(_totalAssets + pending);
         }
 
-        // Can only harvest is previous reward period is done.
+        // Can only harvest once previous reward period is done.
         if (_lastVestClaim >= _vestingPeriodEnd) {
             // Harvest convex position.
             rewarder.getReward(address(this), true);
@@ -167,15 +230,15 @@ contract ConvexPositionVault is BasePositionVault {
             address[4] memory pools;
             for (uint256 i = 0; i < rewardTokenCount; i++) {
                 // Take platform fee
-                uint256 fee = rewardBalances[i].mulDivDown(platformFee, 1e18);
-                rewardBalances[i] -= fee;
-                rewardTokens[i].safeTransfer(feeAccumulator, fee);
+                uint256 protocolFee = rewardBalances[i].mulDivDown(platformFee, 1e18);
+                rewardBalances[i] -= protocolFee;
+                rewardTokens[i].safeTransfer(feeAccumulator, protocolFee);
                 // Get the reward token value in USD.
                 uint256 valueInUSD = rewardBalances[i].mulDivDown(
                     priceRouter.getPriceInUSD(rewardTokens[i]),
                     10**rewardTokens[i].decimals()
                 );
-                CurveSwapParams memory swapParams = arbitraryToETH[rewardTokens[i]];
+                CurveSwapParams memory swapParams = arbitraryToEth[rewardTokens[i]];
                 // Check if value is enough to warrant a swap. And that we have the swap params set up for it.
                 if (valueInUSD >= swapParams.minUSDValueToSwap && address(swapParams.assetIn) != address(0)) {
                     valueIn += valueInUSD;
@@ -192,10 +255,12 @@ contract ConvexPositionVault is BasePositionVault {
                 }
             }
             // Take upkeep fee.
-            uint256 fee = ethOut.mulDivDown(upkeepFee, 1e18);
+            uint256 feeForUpkeep = ethOut.mulDivDown(upkeepFee, 1e18);
             // If watchdog is set, transfer WETH to it otherwise, leave it here.
-            if (positionWatchdog != address(0)) WETH.safeTransfer(positionWatchdog, fee);
-            ethOut -= fee;
+            if (positionWatchdog == address(0)) revert ConvexPositionVault__WatchdogNotSet();
+            // Transfer WETH fee to watchdog
+            WETH.safeTransfer(positionWatchdog, feeForUpkeep);
+            ethOut -= feeForUpkeep;
 
             uint256 assetsOut;
             // Convert assets into targetAsset.
@@ -211,14 +276,14 @@ contract ConvexPositionVault is BasePositionVault {
                     address(this)
                 );
             } else assetsOut = ethOut;
-            // Compare value in vs value out.
             uint256 valueOut = assetsOut.mulDivDown(
                 priceRouter.getPriceInUSD(depositParams.targetAsset),
                 10**depositParams.targetAsset.decimals()
             );
-            // console.log("Value In", valueIn);
-            // console.log("Value Out", valueOut);
-            if (valueOut < valueIn.mulDivDown(1e18 - (upkeepFee + harvestSlippage), 1e18)) revert("Bad slippage");
+
+            // Compare value in vs value out.
+            if (valueOut < valueIn.mulDivDown(1e18 - (upkeepFee + harvestSlippage), 1e18))
+                revert ConvexPositionVault__BadSlippage();
 
             // Deposit assets to Curve.
             _addLiquidityToCurve(assetsOut);
@@ -231,50 +296,22 @@ contract ConvexPositionVault is BasePositionVault {
             _rewardRate = uint128(yield.mulDivDown(REWARD_SCALER, REWARD_PERIOD));
             _vestingPeriodEnd = uint64(block.timestamp) + REWARD_PERIOD;
             _lastVestClaim = uint64(block.timestamp);
-        } else revert("Can not harvest now");
+        } else revert ConvexPositionVault__RewardsVestingCannotHarvestNow();
     }
 
-    // TODO probs a good idea to have a function that takes in an ERC20 and uses the provided swap paths to swap it into the targetAsset.
+    /*//////////////////////////////////////////////////////////////
+                          INTERNAL POSITION LOGIC
+    //////////////////////////////////////////////////////////////*/
 
-    /**
-     * @notice Allows caller to make swaps using the Curve Exchange.
-     * @param swapData bytes variable storing the following swap information
-     *      address[9] route: array of [initial token, pool, token, pool, token, ...] that specifies the swap route on Curve.
-     *      uint256[3][4] swapParams: multidimensional array of [i, j, swap type]
-     *          where i and j are the correct values for the n'th pool in `_route` and swap type should be
-     *              1 for a stableswap `exchange`,
-     *              2 for stableswap `exchange_underlying`,
-     *              3 for a cryptoswap `exchange`,
-     *              4 for a cryptoswap `exchange_underlying`
-            ERC20 assetIn: the asset being swapped
-            uint256 assets: the amount of assetIn you want to swap with
-     *      uint256 assetsOutMin: the minimum amount of assetOut tokens you want from the swap
-     * @param receiver the address assetOut token should be sent to
-     * @return amountOut amount of tokens received from the swap
-     */
-    function swapWithCurve(bytes memory swapData, address receiver) public returns (uint256 amountOut) {
-        (
-            address[9] memory route,
-            uint256[3][4] memory swapParams,
-            ERC20 assetIn,
-            uint256 assets,
-            uint256 assetsOutMin
-        ) = abi.decode(swapData, (address[9], uint256[3][4], ERC20, uint256, uint256));
-
-        // Transfer assets to this contract to swap.
-        assetIn.safeTransferFrom(msg.sender, address(this), assets);
-
-        address[4] memory pools;
-
-        // Execute the stablecoin swap.
-        assetIn.safeApprove(address(curveRegistryExchange), assets);
-        amountOut = curveRegistryExchange.exchange_multiple(route, swapParams, assets, assetsOutMin, pools, receiver);
+    function _withdraw(uint256 assets) internal override {
+        IBaseRewardPool rewardPool = IBaseRewardPool(rewarder);
+        rewardPool.withdrawAndUnwrap(assets, false);
     }
 
-    /**
-     * @notice Attempted to deposit into an unsupported Curve Pool.
-     */
-    error DepositRouter__UnsupportedCurveDeposit();
+    function _deposit(uint256 assets) internal override {
+        asset.safeApprove(address(booster), assets);
+        booster.deposit(pid, assets, true);
+    }
 
     function _addLiquidityToCurve(uint256 amount) internal {
         depositParams.targetAsset.safeApprove(depositParams.pool, amount);
@@ -302,6 +339,6 @@ contract ConvexPositionVault is BasePositionVault {
             } else {
                 ICurveFi(depositParams.pool).add_liquidity(amounts, 0);
             }
-        } else revert DepositRouter__UnsupportedCurveDeposit();
+        } else revert ConvexPositionVault__UnsupportedCurveDeposit();
     }
 }

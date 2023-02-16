@@ -4,37 +4,33 @@ pragma solidity 0.8.16;
 import { ERC4626, SafeTransferLib, ERC20, Math } from "src/base/ERC4626.sol";
 import { PriceRouter } from "src/PricingOperations/PriceRouter.sol";
 import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import { Owned } from "@solmate/auth/Owned.sol";
 
 // Chainlink interfaces
 import { KeeperCompatibleInterface } from "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
 import { AggregatorV2V3Interface } from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV2V3Interface.sol";
 import { IChainlinkAggregator } from "src/interfaces/IChainlinkAggregator.sol";
-import { IUniswapV3Router } from "src/interfaces/Uniswap/IUniswapV3Router.sol";
 
 ///@notice Vault Positions must have all assets ready for withdraw, IE assets can NOT be locked.
-abstract contract BasePositionVault is ERC4626, Initializable, KeeperCompatibleInterface {
+// This way assets can be easily liquidated when loans default.
+abstract contract BasePositionVault is ERC4626, Initializable, KeeperCompatibleInterface, Owned {
     using SafeTransferLib for ERC20;
     using Math for uint256;
 
-    constructor(
-        ERC20 _asset,
-        string memory _name,
-        string memory _symbol,
-        uint8 _decimals
-    ) ERC4626(_asset, _name, _symbol, _decimals) {}
+    /*//////////////////////////////////////////////////////////////
+                             GLOBAL STATE
+    //////////////////////////////////////////////////////////////*/
 
-    // These values should be changeable by owner, and should also potentially be stored in a central registry contract.
-    uint64 public platformFee = 0.2e18;
+    uint64 public platformFee;
     address public feeAccumulator;
     PriceRouter public priceRouter;
-    address public positionWatchdog;
-    uint64 public upkeepFee = 0.03e18;
-    IUniswapV3Router uniswapV3Router = IUniswapV3Router(0xE592427A0AEce92De3Edee1F18E0157C05861564);
-    uint64 minHarvestYieldInUSD = 1_000e8;
-
-    /*//////////////////////////////////////////////////////////////
-                        REWARD/HARVESTING LOGIC
-    //////////////////////////////////////////////////////////////*/
+    address public positionWatchdog; // Can just be sent to an admin address/a bot that can fund upkeeps.
+    uint64 public upkeepFee = 0.03e18; //TODO should be set in initialize function?
+    uint64 public minHarvestYieldInUSD = 1_000e8;
+    uint64 public maxGasPriceForHarvest = 1_000e9;
+    address public ETH_FAST_GAS_FEED = 0x169E633A2D1E6c10dD91238Ba11c4A708dfEF37C;
+    ERC20 private constant WETH = ERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
+    ERC20 private constant LINK = ERC20(0x514910771AF9Ca656af840dff83E8264EcF986CA);
 
     // Internal stored total assets, not accounting for
     uint256 internal _totalAssets;
@@ -49,6 +45,80 @@ abstract contract BasePositionVault is ERC4626, Initializable, KeeperCompatibleI
      */
     uint32 public constant REWARD_PERIOD = 7 days;
 
+    /*//////////////////////////////////////////////////////////////
+                          SETUP LOGIC
+    //////////////////////////////////////////////////////////////*/
+
+    constructor(
+        ERC20 _asset,
+        string memory _name,
+        string memory _symbol,
+        uint8 _decimals,
+        address _owner
+    ) ERC4626(_asset, _name, _symbol, _decimals) Owned(_owner) {}
+
+    function initialize(
+        ERC20 _asset,
+        address _owner,
+        string memory _name,
+        string memory _symbol,
+        uint8 _decimals,
+        uint64 _platformFee,
+        address _feeAccumulator,
+        PriceRouter _priceRouter,
+        bytes memory _initializeData
+    ) external virtual;
+
+    /*//////////////////////////////////////////////////////////////
+                              OWNER LOGIC
+    //////////////////////////////////////////////////////////////*/
+
+    /**
+     * @notice Allows owner to set a new gas feed.
+     * @notice Can be set to zero address to skip gas check.
+     */
+    //  TODO these need events emitted.
+    function setGasFeed(address gasFeed) external onlyOwner {
+        ETH_FAST_GAS_FEED = gasFeed;
+    }
+
+    function setWatchdog(address _watchdog) external onlyOwner {
+        positionWatchdog = _watchdog;
+    }
+
+    function setMinHarvestYield(uint64 minYieldUSD) external onlyOwner {
+        minHarvestYieldInUSD = minYieldUSD;
+    }
+
+    function setMaxGasForHarvest(uint64 maxGas) external onlyOwner {
+        maxGasPriceForHarvest = maxGas;
+    }
+
+    function setPriceRouter(PriceRouter _priceRouter) external onlyOwner {
+        priceRouter = _priceRouter;
+    }
+
+    // TODO needs a max value.
+    function setPlatformFee(uint64 fee) external onlyOwner {
+        platformFee = fee;
+    }
+
+    function setFeeAccumulator(address accumulator) external onlyOwner {
+        feeAccumulator = accumulator;
+    }
+
+    // TODO needs a max value.
+    function setUpkeepFee(uint64 fee) external onlyOwner {
+        upkeepFee = fee;
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                        REWARD/HARVESTING LOGIC
+    //////////////////////////////////////////////////////////////*/
+
+    /**
+     * @notice Calculates pending rewards currently being vested, and vests them.
+     */
     function _calculatePendingRewards() internal view returns (uint256 pendingRewards) {
         // Used by totalAssets
         uint64 currentTime = uint64(block.timestamp);
@@ -247,54 +317,26 @@ abstract contract BasePositionVault is ERC4626, Initializable, KeeperCompatibleI
     /*//////////////////////////////////////////////////////////////
                     CHAINLINK AUTOMATION LOGIC
     //////////////////////////////////////////////////////////////*/
-    ERC20 private constant WETH = ERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
-    ERC20 private constant LINK = ERC20(0x514910771AF9Ca656af840dff83E8264EcF986CA);
 
-    function checkUpkeep(bytes calldata checkData) external returns (bool upkeepNeeded, bytes memory performData) {
-        // Checks current gas price and if low enough continues
-        // calls harvest function, simulating the harvest tx.
+    function checkUpkeep(bytes calldata) external returns (bool upkeepNeeded, bytes memory performData) {
+        // Figure out how much yield is pending to be harvested.
         uint256 yield = harvest();
 
-        uint256 wethBalance = WETH.balanceOf(address(this));
-        // If balance is greater than some minimum, set a bool in perform data to true.
-
-        // Checks dollar value of yield.
+        // Compare USD value of yield against owner set minimum.
         uint256 yieldInUSD = yield.mulDivDown(priceRouter.getPriceInUSD(asset), 10**asset.decimals());
-        // make sure yield is worth it.
+        if (yieldInUSD < minHarvestYieldInUSD) return (false, abi.encode(0));
 
-        // Can also run WETH.balanceOf to see if WETH balance warrants a swap for LINK
+        // Compare current gas price against owner set minimum.
+        uint256 currentGasPrice = uint256(IChainlinkAggregator(ETH_FAST_GAS_FEED).latestAnswer());
+        if (currentGasPrice > maxGasPriceForHarvest) return (false, abi.encode(0));
+
+        // If we have made it this far, then we know yield is sufficient, and gas price is low enough.
+        upkeepNeeded = true;
+        // performData is not used.
     }
 
-    function performUpkeep(bytes calldata performData) external {
+    function performUpkeep(bytes calldata) external {
         harvest();
-        // Perform data can be a bool indicating whether it should swap WETH for LINK and func the upkeep?
-        bool fundUpkeep = abi.decode(performData, (bool));
-        if (fundUpkeep) {
-            uint256 amount = _swapWETHForLINK();
-            // Top up upkeep with amount.
-        }
-    }
-
-    function _swapWETHForLINK() internal returns (uint256 amountOut) {
-        address[] memory path = new address[](2);
-        path[0] = address(WETH);
-        path[1] = address(LINK);
-        uint24[] memory poolFees = new uint24[](1);
-        poolFees[0] = 3000;
-        bytes memory encodePackedPath = abi.encodePacked(address(WETH));
-        for (uint256 i = 1; i < path.length; i++)
-            encodePackedPath = abi.encodePacked(encodePackedPath, poolFees[i - 1], path[i]);
-
-        // Execute the swap.
-        amountOut = uniswapV3Router.exactInput(
-            IUniswapV3Router.ExactInputParams({
-                path: encodePackedPath,
-                recipient: address(this),
-                deadline: block.timestamp + 60,
-                amountIn: WETH.balanceOf(address(this)),
-                amountOutMinimum: 0
-            })
-        );
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -305,16 +347,9 @@ abstract contract BasePositionVault is ERC4626, Initializable, KeeperCompatibleI
 
     function _deposit(uint256 assets) internal virtual;
 
-    function harvest() public virtual returns (uint256 yield);
+    /*//////////////////////////////////////////////////////////////
+                          EXTERNAL POSITION LOGIC
+    //////////////////////////////////////////////////////////////*/
 
-    function initialize(
-        ERC20 _asset,
-        string memory _name,
-        string memory _symbol,
-        uint8 _decimals,
-        uint64 _platformFee,
-        address _feeAccumulator,
-        PriceRouter _priceRouter,
-        bytes memory _initializeData
-    ) external virtual;
+    function harvest() public virtual returns (uint256 yield);
 }

@@ -27,15 +27,12 @@ import { console } from "@forge-std/Test.sol"; //TODO remove this
  * @author crispymangoes
  */
 //TODO add events
-// TODO I think it would be best to create a position watch dog, that basically allows ANYONE to harvest positions, but when it harvests positions, then
-// It is able to take a fee in ETH to self fund itself.
-// I think the position watch dog address would be stored here?
 contract DepositRouterV2 is Ownable {
     using Uint32Array for uint32[];
     using SafeTransferLib for ERC20;
     using Math for uint256;
 
-    // TODO should probs make a lib that helps with managin this array.
+    // TODO should probs make a lib that helps with managing this array.
     ERC4626[] public positions;
 
     function getPositions() external view returns (ERC4626[] memory) {
@@ -75,7 +72,10 @@ contract DepositRouterV2 is Ownable {
 
     constructor() {}
 
-    //============================================ onlyOwner Functions ===========================================
+    /*//////////////////////////////////////////////////////////////
+                              OWNER LOGIC
+    //////////////////////////////////////////////////////////////*/
+
     /**
      * @notice Allows `owner` to add new positions to this contract.
      * @dev see `Position` struct for description of inputs.
@@ -86,7 +86,10 @@ contract DepositRouterV2 is Ownable {
         positions.push(_position);
     }
 
-    //============================================ User Functions ===========================================
+    /*//////////////////////////////////////////////////////////////
+                              USER LOGIC
+    //////////////////////////////////////////////////////////////*/
+
     /**
      * Takes underlying token and deposits it into the underlying protocol
      * returns the amount of shares
@@ -109,7 +112,10 @@ contract DepositRouterV2 is Ownable {
         return amount;
     }
 
-    //============================================ Balance Of Functions ===========================================
+    /*//////////////////////////////////////////////////////////////
+                              BALANCE OF LOGIC
+    //////////////////////////////////////////////////////////////*/
+
     // CToken `getCashPrior` should call this.
     // Returns the balance in terms of `_position`s underlying.
     function balanceOf(ERC4626 _position) public view returns (uint256) {
