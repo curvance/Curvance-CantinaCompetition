@@ -136,19 +136,10 @@ contract ConvexPositionVault is BasePositionVault {
         string memory _name,
         string memory _symbol,
         uint8 _decimals,
-        uint64 _platformFee,
-        address _feeAccumulator,
-        PriceRouter _priceRouter,
+        BasePositionVault.PositionVaultMetaData calldata _metaData,
         bytes memory _initializeData
-    ) external override initializer {
-        asset = _asset;
-        owner = _owner;
-        name = _name;
-        symbol = _symbol;
-        decimals = _decimals;
-        platformFee = _platformFee;
-        feeAccumulator = _feeAccumulator;
-        priceRouter = _priceRouter;
+    ) public override initializer {
+        super.initialize(_asset, _owner, _name, _symbol, _decimals, _metaData, _initializeData);
         (
             uint256 _pid,
             IBaseRewardPool _rewarder,
@@ -212,7 +203,7 @@ contract ConvexPositionVault is BasePositionVault {
                           EXTERNAL POSITION LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function harvest() public override returns (uint256 yield) {
+    function harvest() public override whenNotShutdown nonReentrant returns (uint256 yield) {
         uint256 pending = _calculatePendingRewards();
         if (pending > 0) {
             // We need to claim vested rewards.
@@ -220,7 +211,7 @@ contract ConvexPositionVault is BasePositionVault {
         }
 
         // Can only harvest once previous reward period is done.
-        if (_lastVestClaim >= _vestingPeriodEnd) {
+        if (positionVaultAccounting._lastVestClaim >= positionVaultAccounting._vestingPeriodEnd) {
             // Harvest convex position.
             rewarder.getReward(address(this), true);
 
@@ -242,12 +233,12 @@ contract ConvexPositionVault is BasePositionVault {
             address[4] memory pools;
             for (uint256 i = 0; i < rewardTokenCount; i++) {
                 // Take platform fee
-                uint256 protocolFee = rewardBalances[i].mulDivDown(platformFee, 1e18);
+                uint256 protocolFee = rewardBalances[i].mulDivDown(positionVaultMetaData.platformFee, 1e18);
                 rewardBalances[i] -= protocolFee;
-                rewardTokens[i].safeTransfer(feeAccumulator, protocolFee);
+                rewardTokens[i].safeTransfer(positionVaultMetaData.feeAccumulator, protocolFee);
                 // Get the reward token value in USD.
                 uint256 valueInUSD = rewardBalances[i].mulDivDown(
-                    priceRouter.getPriceInUSD(rewardTokens[i]),
+                    positionVaultMetaData.priceRouter.getPriceInUSD(rewardTokens[i]),
                     10**rewardTokens[i].decimals()
                 );
                 CurveSwapParams memory swapParams = arbitraryToEth[rewardTokens[i]];
@@ -266,12 +257,15 @@ contract ConvexPositionVault is BasePositionVault {
                     );
                 }
             }
+
+            // Check if we even have any ETH from swaps, if not return 0;
+            if (ethOut == 0) return 0;
             // Take upkeep fee.
-            uint256 feeForUpkeep = ethOut.mulDivDown(upkeepFee, 1e18);
+            uint256 feeForUpkeep = ethOut.mulDivDown(positionVaultMetaData.upkeepFee, 1e18);
             // If watchdog is set, transfer WETH to it otherwise, leave it here.
-            if (positionWatchdog == address(0)) revert ConvexPositionVault__WatchdogNotSet();
+            if (positionVaultMetaData.positionWatchdog == address(0)) revert ConvexPositionVault__WatchdogNotSet();
             // Transfer WETH fee to watchdog
-            WETH.safeTransfer(positionWatchdog, feeForUpkeep);
+            WETH.safeTransfer(positionVaultMetaData.positionWatchdog, feeForUpkeep);
             ethOut -= feeForUpkeep;
 
             uint256 assetsOut;
@@ -289,12 +283,12 @@ contract ConvexPositionVault is BasePositionVault {
                 );
             } else assetsOut = ethOut;
             uint256 valueOut = assetsOut.mulDivDown(
-                priceRouter.getPriceInUSD(depositParams.targetAsset),
+                positionVaultMetaData.priceRouter.getPriceInUSD(depositParams.targetAsset),
                 10**depositParams.targetAsset.decimals()
             );
 
             // Compare value in vs value out.
-            if (valueOut < valueIn.mulDivDown(1e18 - (upkeepFee + harvestSlippage), 1e18))
+            if (valueOut < valueIn.mulDivDown(1e18 - (positionVaultMetaData.upkeepFee + harvestSlippage), 1e18))
                 revert ConvexPositionVault__BadSlippage();
 
             // Deposit assets to Curve.
@@ -305,9 +299,9 @@ contract ConvexPositionVault is BasePositionVault {
             _deposit(yield);
 
             // Update Vesting info.
-            _rewardRate = uint128(yield.mulDivDown(REWARD_SCALER, REWARD_PERIOD));
-            _vestingPeriodEnd = uint64(block.timestamp) + REWARD_PERIOD;
-            _lastVestClaim = uint64(block.timestamp);
+            positionVaultAccounting._rewardRate = uint128(yield.mulDivDown(REWARD_SCALER, REWARD_PERIOD));
+            positionVaultAccounting._vestingPeriodEnd = uint64(block.timestamp) + REWARD_PERIOD;
+            positionVaultAccounting._lastVestClaim = uint64(block.timestamp);
             emit Harvest(yield);
         } // else yield is zero.
     }
@@ -324,6 +318,11 @@ contract ConvexPositionVault is BasePositionVault {
     function _deposit(uint256 assets) internal override {
         asset.safeApprove(address(booster), assets);
         booster.deposit(pid, assets, true);
+    }
+
+    function _getRealPositionBalance() internal view override returns (uint256) {
+        IBaseRewardPool rewardPool = IBaseRewardPool(rewarder);
+        return rewardPool.balanceOf(address(this));
     }
 
     function _addLiquidityToCurve(uint256 amount) internal {

@@ -100,14 +100,16 @@ contract DepositRouterV2 is Ownable {
         _position.asset().safeTransferFrom(msg.sender, address(this), amount);
 
         // deposit it into ERC4626 vault.
-        _position.deposit(amount, address(this));
+        _position.deposit(amount, msg.sender);
 
         return amount;
     }
 
     function withdraw(uint256 amount, ERC4626 _position) public isOperator(_position) returns (uint256) {
+        // TODO transfer shares in?
+
         // TODO could send the assets here or direclty to caller.
-        _position.withdraw(amount, msg.sender, address(this));
+        _position.withdraw(amount, msg.sender, msg.sender);
 
         return amount;
     }

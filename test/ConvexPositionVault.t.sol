@@ -4,7 +4,7 @@ pragma solidity 0.8.16;
 import { ERC20 } from "src/base/ERC20.sol";
 import { SafeTransferLib } from "src/base/SafeTransferLib.sol";
 import { DepositRouterV2 as DepositRouter } from "src/DepositRouterV2.sol";
-import { ConvexPositionVault } from "src/positions/ConvexPositionVault.sol";
+import { ConvexPositionVault, BasePositionVault } from "src/positions/ConvexPositionVault.sol";
 import { IBaseRewardPool } from "src/interfaces/Convex/IBaseRewardPool.sol";
 import { PriceRouter } from "src/PricingOperations/PriceRouter.sol";
 import { IChainlinkAggregator } from "src/interfaces/IChainlinkAggregator.sol";
@@ -140,6 +140,18 @@ contract ConvexPositionVaultTest is Test {
         cvxPositionTriCrypto = new ConvexPositionVault(CRV_3_CRYPTO, address(this), "Tri Crypto Vault", "TCV", 18);
 
         cvxPositionTriCrypto.setWatchdog(address(this));
+        BasePositionVault.PositionVaultMetaData memory metaData = BasePositionVault.PositionVaultMetaData({
+            platformFee: 0.2e18,
+            upkeepFee: 0.03e18,
+            minHarvestYieldInUSD: 1_000e8,
+            maxGasPriceForHarvest: 1_000e9,
+            feeAccumulator: accumulator,
+            positionWatchdog: address(this),
+            ethFastGasFeed: 0x169E633A2D1E6c10dD91238Ba11c4A708dfEF37C,
+            priceRouter: priceRouter,
+            automationRegistry: address(this),
+            isShutdown: false
+        });
 
         // Need to initialize Vault.
         {
@@ -164,7 +176,7 @@ contract ConvexPositionVaultTest is Test {
             ];
             uint256[3][4] memory swaps;
             swaps[0] = [uint256(1), 0, 3];
-            swapsToETH[0] = ConvexPositionVault.CurveSwapParams(route0, swaps, CRV, 0);
+            swapsToETH[0] = ConvexPositionVault.CurveSwapParams(route0, swaps, CRV, 1e8);
             address[9] memory route1 = [
                 address(CVX),
                 cvxeth,
@@ -176,7 +188,7 @@ contract ConvexPositionVaultTest is Test {
                 address(0),
                 address(0)
             ];
-            swapsToETH[1] = ConvexPositionVault.CurveSwapParams(route1, swaps, CVX, 0);
+            swapsToETH[1] = ConvexPositionVault.CurveSwapParams(route1, swaps, CVX, 1e8);
             ERC20[] memory assetsToETH = new ERC20[](2);
             assetsToETH[0] = CRV;
             assetsToETH[1] = CVX;
@@ -197,9 +209,7 @@ contract ConvexPositionVaultTest is Test {
                 "Tri Crypto Vault",
                 "TCV",
                 18,
-                0.2e18,
-                accumulator,
-                priceRouter,
+                metaData,
                 initializeData
             );
         }
@@ -231,7 +241,7 @@ contract ConvexPositionVaultTest is Test {
             ];
             uint256[3][4] memory swaps;
             swaps[0] = [uint256(1), 0, 3];
-            swapsToETH[0] = ConvexPositionVault.CurveSwapParams(route0, swaps, CRV, 0);
+            swapsToETH[0] = ConvexPositionVault.CurveSwapParams(route0, swaps, CRV, 1e8);
             address[9] memory route1 = [
                 address(CVX),
                 cvxeth,
@@ -243,7 +253,7 @@ contract ConvexPositionVaultTest is Test {
                 address(0),
                 address(0)
             ];
-            swapsToETH[1] = ConvexPositionVault.CurveSwapParams(route1, swaps, CVX, 0);
+            swapsToETH[1] = ConvexPositionVault.CurveSwapParams(route1, swaps, CVX, 1e8);
             ERC20[] memory assetsToETH = new ERC20[](2);
             assetsToETH[0] = CRV;
             assetsToETH[1] = CVX;
@@ -278,9 +288,7 @@ contract ConvexPositionVaultTest is Test {
                 "3 Pool Vault",
                 "3PV",
                 18,
-                0.2e18,
-                accumulator,
-                priceRouter,
+                metaData,
                 initializeData
             );
         }
@@ -294,6 +302,8 @@ contract ConvexPositionVaultTest is Test {
         CRV_3_CRYPTO.approve(address(cvxPositionTriCrypto), assets);
 
         cvxPositionTriCrypto.deposit(assets, address(this));
+
+        uint256 vaultBalance = IBaseRewardPool(curve3PoolReward).balanceOf(address(cvxPositionTriCrypto));
 
         assertEq(cvxPositionTriCrypto.totalAssets(), assets, "Total Assets should equal user deposit.");
 
@@ -336,9 +346,7 @@ contract ConvexPositionVaultTest is Test {
         deal(address(CVX), address(cvxPositionTriCrypto), 100e18);
 
         uint256 shareValue = cvxPosition3Pool.previewRedeem(1e18);
-        uint256 gas = gasleft();
         cvxPosition3Pool.harvest();
-        console.log("Gas Used", gas - gasleft());
         assertEq(cvxPosition3Pool.previewRedeem(1e18), shareValue, "Share Price should be constant through harvest.");
 
         vm.warp(block.timestamp + 7 days);
@@ -422,7 +430,6 @@ contract ConvexPositionVaultTest is Test {
         );
 
         // Trying to harvest again while rewards are pending should return 0 for yield.
-        // TODO adding below check caused my two assetApproxEqAbs statements to fail, and be off by 2, instead of 1. It works now since they can be off by up to 2.
         uint256 zeroYield = cvxPositionTriCrypto.harvest();
         assertEq(zeroYield, 0, "Yield earned should be yield because previous rewards are vesting.");
 
@@ -460,5 +467,72 @@ contract ConvexPositionVaultTest is Test {
         cvxPositionTriCrypto.withdraw(userBWithdraw, userB, userB);
         vm.stopPrank();
         assertEq(CRV_3_CRYPTO.balanceOf(userB), userBWithdraw, "User did not receive full withdraw.");
+    }
+
+    function testAttackerGettingMoreOutThanTheyPutIn() external {
+        // Normal Users join the vault.
+        uint256 assets = 1_000_000e18;
+        deal(address(CRV_DAI_USDC_USDT), address(this), assets);
+        CRV_DAI_USDC_USDT.approve(address(cvxPosition3Pool), assets);
+
+        cvxPosition3Pool.deposit(assets, address(this));
+
+        // Attacker joins.
+        address attacker = vm.addr(10);
+        uint256 attackerAssets = 1_000e18;
+        deal(address(CRV_DAI_USDC_USDT), attacker, attackerAssets);
+        vm.startPrank(attacker);
+        CRV_DAI_USDC_USDT.approve(address(cvxPosition3Pool), attackerAssets);
+        cvxPosition3Pool.deposit(attackerAssets, attacker);
+        vm.stopPrank();
+
+        // All should be well and checkUpkeep should return false.
+        (bool upkeepNeeded, bytes memory performData) = cvxPosition3Pool.checkUpkeep(abi.encode(0));
+        assertEq(upkeepNeeded, false, "Upkeep should not be needed.");
+
+        // But if attacker was somehow able to mint more shares.
+        uint256 attackerNewBalance = cvxPosition3Pool.balanceOf(attacker) + 10**cvxPosition3Pool.decimals();
+        deal(address(cvxPosition3Pool), attacker, attackerNewBalance, true);
+
+        // Then withdrew their initial capital plus stolen.
+        vm.startPrank(attacker);
+        uint256 amountToWithdraw = cvxPosition3Pool.maxWithdraw(attacker);
+        cvxPosition3Pool.withdraw(amountToWithdraw, attacker, attacker);
+        vm.stopPrank();
+
+        (upkeepNeeded, performData) = cvxPosition3Pool.checkUpkeep(abi.encode(0));
+        assertEq(upkeepNeeded, true, "Upkeep should  be needed.");
+        bool circuitBreaker = abi.decode(performData, (bool));
+        assertEq(circuitBreaker, true, "Circuit Breaker should be true.");
+
+        cvxPosition3Pool.performUpkeep(performData);
+
+        assertEq(cvxPosition3Pool.isShutdown(), true, "Vault should be shutdown.");
+    }
+
+    function testStoredTotalAssetsGreaterThanRealTotalAssets() external {
+        // Normal Users join the vault.
+        uint256 assets = 1_000_000e18;
+        deal(address(CRV_DAI_USDC_USDT), address(this), assets);
+        CRV_DAI_USDC_USDT.approve(address(cvxPosition3Pool), assets);
+
+        cvxPosition3Pool.deposit(assets, address(this));
+
+        (bool upkeepNeeded, bytes memory performData) = cvxPosition3Pool.checkUpkeep(abi.encode(0));
+        assertEq(upkeepNeeded, false, "Upkeep should not be needed.");
+
+        vm.startPrank(address(cvxPosition3Pool));
+        IBaseRewardPool(curve3CrvReward).withdrawAndUnwrap(1, false);
+        vm.stopPrank();
+
+        (upkeepNeeded, performData) = cvxPosition3Pool.checkUpkeep(abi.encode(0));
+        assertEq(upkeepNeeded, true, "Upkeep should be needed.");
+
+        bool circuitBreaker = abi.decode(performData, (bool));
+        assertEq(circuitBreaker, true, "Circuit Breaker should be true.");
+
+        cvxPosition3Pool.performUpkeep(performData);
+
+        assertEq(cvxPosition3Pool.isShutdown(), true, "Vault should be shutdown.");
     }
 }
