@@ -10,8 +10,8 @@ contract GaugeController is Ownable {
     // structs
     struct Epoch {
         uint256 rewardPerSec;
-        uint256 totalAllocPoint;
-        mapping(address => uint256) poolAllocPoint; // token => alloc point
+        uint256 totalWeights;
+        mapping(address => uint256) poolWeights; // token => weight
     }
 
     uint256 public constant EPOCH_WINDOW = 4 weeks;
@@ -26,6 +26,10 @@ contract GaugeController is Ownable {
         cve = _cve;
     }
 
+    /**
+     * @notice Start gauge system
+     * @dev Only owner
+     */
     function start() external onlyOwner {
         if (startTime != 0) {
             revert GaugeErrors.AlreadyStarted();
@@ -34,67 +38,112 @@ contract GaugeController is Ownable {
         startTime = block.timestamp;
     }
 
+    /**
+     * @notice Returns current epoch number
+     */
     function currentEpoch() public view returns (uint256) {
         assert(startTime != 0);
         return (block.timestamp - startTime) / EPOCH_WINDOW;
     }
 
+    /**
+     * @notice Returns epoch number of given timestamp
+     * @param timestamp Timestamp in seconds
+     */
     function epochOfTimestamp(uint256 timestamp) public view returns (uint256) {
         assert(startTime != 0);
         return (timestamp - startTime) / EPOCH_WINDOW;
     }
 
+    /**
+     * @notice Returns start time of given epoch
+     * @param epoch Epoch number
+     */
     function epochStartTime(uint256 epoch) public view returns (uint256) {
         assert(startTime != 0);
         return startTime + epoch * EPOCH_WINDOW;
     }
 
+    /**
+     * @notice Returns end time of given epoch
+     * @param epoch Epoch number
+     */
     function epochEndTime(uint256 epoch) public view returns (uint256) {
         assert(startTime != 0);
         return startTime + (epoch + 1) * EPOCH_WINDOW;
     }
 
+    /**
+     * @notice Returns reward per second of given epoch
+     * @param epoch Epoch number
+     */
     function rewardPerSec(uint256 epoch) external view returns (uint256) {
         return epochInfo[epoch].rewardPerSec;
     }
 
-    function gaugePoolAllocation(uint256 epoch, address token) external view returns (uint256, uint256) {
-        return (epochInfo[epoch].totalAllocPoint, epochInfo[epoch].poolAllocPoint[token]);
+    /**
+     * @notice Returns gauge weight of given epoch and token
+     * @param epoch Epoch number
+     * @param token Gauge token address
+     */
+    function gaugeWeight(uint256 epoch, address token) external view returns (uint256, uint256) {
+        return (epochInfo[epoch].totalWeights, epochInfo[epoch].poolWeights[token]);
     }
 
+    /**
+     * @notice Returns if given gauge token is enabled in given epoch
+     * @param epoch Epoch number
+     * @param token Gauge token address
+     */
     function isGaugeEnabled(uint256 epoch, address token) public view returns (bool) {
-        return epochInfo[epoch].poolAllocPoint[token] > 0;
+        return epochInfo[epoch].poolWeights[token] > 0;
     }
 
-    function setRewardPerSecOfNextEpoch(uint256 epoch, uint256 _rewardPerSec) external onlyOwner {
+    /**
+     * @notice Set rewardPerSec of next epoch
+     * @dev Only owner
+     * @param epoch Next epoch number
+     * @param rewardPerSec Reward per second
+     */
+    function setRewardPerSecOfNextEpoch(uint256 epoch, uint256 rewardPerSec) external onlyOwner {
         if (!(epoch == 0 && startTime == 0) && epoch != currentEpoch() + 1) {
             revert GaugeErrors.InvalidEpoch();
         }
 
-        epochInfo[epoch].rewardPerSec = _rewardPerSec;
+        epochInfo[epoch].rewardPerSec = rewardPerSec;
     }
 
+    /**
+     * @notice Set emission rates of tokens of next epoch
+     * @dev Only owner
+     * @param epoch Next epoch number
+     * @param tokens Token address array
+     * @param poolWeights Gauge weights (or gauge weights)
+     */
     function setEmissionRates(
         uint256 epoch,
         address[] memory tokens,
-        uint256[] memory allocPoints
+        uint256[] memory poolWeights
     ) external onlyOwner {
         if (!(epoch == 0 && startTime == 0) && epoch != currentEpoch() + 1) {
             revert GaugeErrors.InvalidEpoch();
         }
 
-        if (tokens.length != allocPoints.length) {
+        if (tokens.length != poolWeights.length) {
             revert GaugeErrors.InvalidLength();
         }
 
         Epoch storage info = epochInfo[epoch];
         for (uint256 i = 0; i < tokens.length; ++i) {
-            info.totalAllocPoint = info.totalAllocPoint + allocPoints[i] - info.poolAllocPoint[tokens[i]];
-            info.poolAllocPoint[tokens[i]] = allocPoints[i];
+            info.totalWeights = info.totalWeights + poolWeights[i] - info.poolWeights[tokens[i]];
+            info.poolWeights[tokens[i]] = poolWeights[i];
         }
     }
 
-    // Update reward variables for all pools. Be careful of gas spending!
+    /**
+     * @notice Update reward variables for all pools
+     * @dev Be careful of gas spending!
+     */
     function massUpdatePools(address[] memory tokens) public {
         uint256 length = tokens.length;
         for (uint256 i = 0; i < length; ++i) {
@@ -102,6 +151,9 @@ contract GaugeController is Ownable {
         }
     }
 
-    // Update reward variables of the given pool to be up-to-date.
+    /**
+     * @notice Update reward variables of the given pool to be up-to-date
+     * @param token Pool token address
+     */
     function updatePool(address token) public virtual {}
 }

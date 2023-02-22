@@ -51,22 +51,22 @@ contract TestGaugePool is DSTestPlus {
 
         assertEq(gaugePool.rewardPerSec(0), 1000);
 
-        // set gauge allocations
+        // set gauge weights
         assertTrue(gaugePool.isGaugeEnabled(0, tokens[0]) == false);
-        (uint256 totalAllocation, uint256 poolAllocation) = gaugePool.gaugePoolAllocation(0, tokens[0]);
-        assertEq(totalAllocation, 0);
-        assertEq(poolAllocation, 0);
+        (uint256 totalWeights, uint256 poolWeight) = gaugePool.gaugeWeight(0, tokens[0]);
+        assertEq(totalWeights, 0);
+        assertEq(poolWeight, 0);
 
         address[] memory tokensParam = new address[](1);
         tokensParam[0] = tokens[0];
-        uint256[] memory allocPoints = new uint256[](1);
-        allocPoints[0] = 100;
-        gaugePool.setEmissionRates(0, tokensParam, allocPoints);
+        uint256[] memory poolWeights = new uint256[](1);
+        poolWeights[0] = 100;
+        gaugePool.setEmissionRates(0, tokensParam, poolWeights);
 
         assertTrue(gaugePool.isGaugeEnabled(0, tokens[0]) == true);
-        (totalAllocation, poolAllocation) = gaugePool.gaugePoolAllocation(0, tokens[0]);
-        assertEq(totalAllocation, 100);
-        assertEq(poolAllocation, 100);
+        (totalWeights, poolWeight) = gaugePool.gaugeWeight(0, tokens[0]);
+        assertEq(totalWeights, 100);
+        assertEq(poolWeight, 100);
 
         // start epoch
         gaugePool.start();
@@ -81,17 +81,17 @@ contract TestGaugePool is DSTestPlus {
         tokensParam = new address[](2);
         tokensParam[0] = tokens[0];
         tokensParam[1] = tokens[1];
-        allocPoints = new uint256[](2);
-        allocPoints[0] = 100;
-        allocPoints[1] = 200;
-        gaugePool.setEmissionRates(1, tokensParam, allocPoints);
+        poolWeights = new uint256[](2);
+        poolWeights[0] = 100;
+        poolWeights[1] = 200;
+        gaugePool.setEmissionRates(1, tokensParam, poolWeights);
 
-        (totalAllocation, poolAllocation) = gaugePool.gaugePoolAllocation(1, tokens[0]);
-        assertEq(totalAllocation, 300);
-        assertEq(poolAllocation, 100);
-        (totalAllocation, poolAllocation) = gaugePool.gaugePoolAllocation(1, tokens[1]);
-        assertEq(totalAllocation, 300);
-        assertEq(poolAllocation, 200);
+        (totalWeights, poolWeight) = gaugePool.gaugeWeight(1, tokens[0]);
+        assertEq(totalWeights, 300);
+        assertEq(poolWeight, 100);
+        (totalWeights, poolWeight) = gaugePool.gaugeWeight(1, tokens[1]);
+        assertEq(totalWeights, 300);
+        assertEq(poolWeight, 200);
     }
 
     function testCanOnlyUpdateEmissionRatesOfNextEpoch() public {
@@ -102,22 +102,22 @@ contract TestGaugePool is DSTestPlus {
 
         assertEq(gaugePool.rewardPerSec(0), 1000);
 
-        // set gauge allocations
+        // set gauge weights
         assertTrue(gaugePool.isGaugeEnabled(0, tokens[0]) == false);
-        (uint256 totalAllocation, uint256 poolAllocation) = gaugePool.gaugePoolAllocation(0, tokens[0]);
-        assertEq(totalAllocation, 0);
-        assertEq(poolAllocation, 0);
+        (uint256 totalWeights, uint256 poolWeight) = gaugePool.gaugeWeight(0, tokens[0]);
+        assertEq(totalWeights, 0);
+        assertEq(poolWeight, 0);
 
         address[] memory tokensParam = new address[](1);
         tokensParam[0] = tokens[0];
-        uint256[] memory allocPoints = new uint256[](1);
-        allocPoints[0] = 100;
-        gaugePool.setEmissionRates(0, tokensParam, allocPoints);
+        uint256[] memory poolWeights = new uint256[](1);
+        poolWeights[0] = 100;
+        gaugePool.setEmissionRates(0, tokensParam, poolWeights);
 
         assertTrue(gaugePool.isGaugeEnabled(0, tokens[0]) == true);
-        (totalAllocation, poolAllocation) = gaugePool.gaugePoolAllocation(0, tokens[0]);
-        assertEq(totalAllocation, 100);
-        assertEq(poolAllocation, 100);
+        (totalWeights, poolWeight) = gaugePool.gaugeWeight(0, tokens[0]);
+        assertEq(totalWeights, 100);
+        assertEq(poolWeight, 100);
 
         // start epoch
         gaugePool.start();
@@ -135,42 +135,42 @@ contract TestGaugePool is DSTestPlus {
 
         // set gauge settings of next epoch
         gaugePool.setRewardPerSecOfNextEpoch(1, 2000);
-        
+
         tokensParam = new address[](2);
         tokensParam[0] = tokens[0];
         tokensParam[1] = tokens[1];
-        allocPoints = new uint256[](2);
-        allocPoints[0] = 100;
-        allocPoints[1] = 200;
+        poolWeights = new uint256[](2);
+        poolWeights[0] = 100;
+        poolWeights[1] = 200;
 
         // check invalid epoch
         hevm.expectRevert(bytes4(keccak256("InvalidEpoch()")));
-        gaugePool.setEmissionRates(0, tokensParam, allocPoints);
+        gaugePool.setEmissionRates(0, tokensParam, poolWeights);
         hevm.expectRevert(bytes4(keccak256("InvalidEpoch()")));
-        gaugePool.setEmissionRates(2, tokensParam, allocPoints);
-        
-        // can update emission rate of next epoch
-        gaugePool.setEmissionRates(1, tokensParam, allocPoints);
+        gaugePool.setEmissionRates(2, tokensParam, poolWeights);
 
-        (totalAllocation, poolAllocation) = gaugePool.gaugePoolAllocation(1, tokens[0]);
-        assertEq(totalAllocation, 300);
-        assertEq(poolAllocation, 100);
-        (totalAllocation, poolAllocation) = gaugePool.gaugePoolAllocation(1, tokens[1]);
-        assertEq(totalAllocation, 300);
-        assertEq(poolAllocation, 200);
+        // can update emission rate of next epoch
+        gaugePool.setEmissionRates(1, tokensParam, poolWeights);
+
+        (totalWeights, poolWeight) = gaugePool.gaugeWeight(1, tokens[0]);
+        assertEq(totalWeights, 300);
+        assertEq(poolWeight, 100);
+        (totalWeights, poolWeight) = gaugePool.gaugeWeight(1, tokens[1]);
+        assertEq(totalWeights, 300);
+        assertEq(poolWeight, 200);
     }
 
     function testRewardRatioOfDifferentPools() public {
         // set reward per sec
         gaugePool.setRewardPerSecOfNextEpoch(0, 300);
-        // set gauge allocations
+        // set gauge weights
         address[] memory tokensParam = new address[](2);
         tokensParam[0] = tokens[0];
         tokensParam[1] = tokens[1];
-        uint256[] memory allocPoints = new uint256[](2);
-        allocPoints[0] = 100;
-        allocPoints[1] = 200;
-        gaugePool.setEmissionRates(0, tokensParam, allocPoints);
+        uint256[] memory poolWeights = new uint256[](2);
+        poolWeights[0] = 100;
+        poolWeights[1] = 200;
+        gaugePool.setEmissionRates(0, tokensParam, poolWeights);
         // start epoch
         gaugePool.start();
 
@@ -267,14 +267,14 @@ contract TestGaugePool is DSTestPlus {
     function testRewardCalculationWithDifferentEpoch() public {
         // set reward per sec
         gaugePool.setRewardPerSecOfNextEpoch(0, 300);
-        // set gauge allocations
+        // set gauge weights
         address[] memory tokensParam = new address[](2);
         tokensParam[0] = tokens[0];
         tokensParam[1] = tokens[1];
-        uint256[] memory allocPoints = new uint256[](2);
-        allocPoints[0] = 100;
-        allocPoints[1] = 200;
-        gaugePool.setEmissionRates(0, tokensParam, allocPoints);
+        uint256[] memory poolWeights = new uint256[](2);
+        poolWeights[0] = 100;
+        poolWeights[1] = 200;
+        gaugePool.setEmissionRates(0, tokensParam, poolWeights);
         // start epoch
         gaugePool.start();
 
@@ -295,14 +295,14 @@ contract TestGaugePool is DSTestPlus {
         assertEq(gaugePool.pendingRewards(tokens[0], users[0]), 10000);
         assertEq(gaugePool.pendingRewards(tokens[1], users[1]), 20000);
 
-        // set next epoch reward allocation
+        // set next epoch reward per second
         gaugePool.setRewardPerSecOfNextEpoch(1, 400);
-        // set gauge allocations
+        // set gauge weights
         tokensParam[0] = tokens[0];
         tokensParam[1] = tokens[1];
-        allocPoints[0] = 200;
-        allocPoints[1] = 200;
-        gaugePool.setEmissionRates(1, tokensParam, allocPoints);
+        poolWeights[0] = 200;
+        poolWeights[1] = 200;
+        gaugePool.setEmissionRates(1, tokensParam, poolWeights);
 
         // check pending rewards after 4 weeks
         hevm.warp(block.timestamp + 4 weeks);
@@ -324,14 +324,14 @@ contract TestGaugePool is DSTestPlus {
     function testUpdatePoolDoesNotMessUpTheRewardCalculation() public {
         // set reward per sec
         gaugePool.setRewardPerSecOfNextEpoch(0, 300);
-        // set gauge allocations
+        // set gauge weights
         address[] memory tokensParam = new address[](2);
         tokensParam[0] = tokens[0];
         tokensParam[1] = tokens[1];
-        uint256[] memory allocPoints = new uint256[](2);
-        allocPoints[0] = 100;
-        allocPoints[1] = 200;
-        gaugePool.setEmissionRates(0, tokensParam, allocPoints);
+        uint256[] memory poolWeights = new uint256[](2);
+        poolWeights[0] = 100;
+        poolWeights[1] = 200;
+        gaugePool.setEmissionRates(0, tokensParam, poolWeights);
         // start epoch
         gaugePool.start();
 

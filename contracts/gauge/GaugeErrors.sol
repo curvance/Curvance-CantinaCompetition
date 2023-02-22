@@ -7,5 +7,5 @@ interface GaugeErrors {
     error InvalidLength();
     error InvalidToken();
     error InvalidAmount();
-    error NoRewards();
+    error NoReward();
 }
