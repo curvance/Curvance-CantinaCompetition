@@ -1,0 +1,98 @@
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.15;
+
+import "contracts/zapper/ZapperOneInch.sol";
+import "contracts/mocks/MockCToken.sol";
+import "contracts/mocks/MockComptroller.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+import "tests/lib/DSTestPlus.sol";
+import "hardhat/console.sol";
+
+contract User {}
+
+contract testZapperOneInch is DSTestPlus {
+    address dai = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
+    address usdt = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
+    address wbtc = 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
+    address weth = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    address oneInchRouter = 0x1111111254EEB25477B68fb85Ed929f73A960582;
+
+    function testTriCryptoWithETH() public {
+        address user = address(0x0000000000000000000000000000000000000001);
+        hevm.startPrank(user);
+
+        // setup environment
+        IERC20 token = IERC20(0xc4AD29ba4B3c580e6D59105FFf484999997675Ff);
+        address minter = 0xD51a44d3FaE010294C616388b506AcdA1bfAAE46;
+        MockCToken cToken = new MockCToken(address(token), "CToken", "CToken", 18);
+        MockComptroller comptroller = new MockComptroller();
+        comptroller.setMarket(address(cToken), true);
+        ZapperOneInch zapper = new ZapperOneInch(address(comptroller), oneInchRouter, weth);
+
+        // try zap in
+        address[] memory tokens = new address[](3);
+        tokens[0] = usdt;
+        tokens[1] = wbtc;
+        tokens[2] = weth;
+        bytes[] memory tokenSwaps = new bytes[](3);
+        // 1 weth -> usdt
+        tokenSwaps[
+            0
+        ] = hex"e449022e0000000000000000000000000000000000000000000000000de0b6b3a7640000000000000000000000000000000000000000000000000000000000002ec8cf990000000000000000000000000000000000000000000000000000000000000060000000000000000000000000000000000000000000000000000000000000000100000000000000000000000011b815efb8f581194ae79006d24e0d814b7697f6cfee7c08";
+        // 1 weth -> wbtc
+        tokenSwaps[
+            1
+        ] = hex"e449022e0000000000000000000000000000000000000000000000000de0b6b3a76400000000000000000000000000000000000000000000000000000000000000355e05000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000018000000000000000000000004585fe77225b41b697c938b018e2ac67ac5a20c0cfee7c08";
+        zapper.curvanceIn{ value: 3 ether }(
+            address(cToken),
+            address(0),
+            3 ether,
+            minter,
+            address(token),
+            0,
+            tokens,
+            tokenSwaps
+        );
+
+        assertGt(cToken.balanceOf(user), 0);
+
+        hevm.stopPrank();
+    }
+
+    function testTriCryptoWithDAI() public {
+        address user = address(0x0000000000000000000000000000000000000001);
+        hevm.startPrank(user);
+
+        // setup environment
+        IERC20 token = IERC20(0xc4AD29ba4B3c580e6D59105FFf484999997675Ff);
+        address minter = 0xD51a44d3FaE010294C616388b506AcdA1bfAAE46;
+        MockCToken cToken = new MockCToken(address(token), "CToken", "CToken", 18);
+        MockComptroller comptroller = new MockComptroller();
+        comptroller.setMarket(address(cToken), true);
+        ZapperOneInch zapper = new ZapperOneInch(address(comptroller), oneInchRouter, weth);
+
+        // approve dai
+        IERC20(dai).approve(address(zapper), 3000 ether);
+
+        // try zap in
+        address[] memory tokens = new address[](3);
+        tokens[0] = usdt;
+        tokens[1] = wbtc;
+        tokens[2] = weth;
+        bytes[] memory tokenSwaps = new bytes[](3);
+        // 1000 dai -> usdt
+        tokenSwaps[
+            0
+        ] = hex"12aa3caf0000000000000000000000007122db0ebe4eb9b434a9f2ffe6760bc03bfbd0e00000000000000000000000006b175474e89094c44da98b954eedeac495271d0f000000000000000000000000dac17f958d2ee523a2206206994597c13d831ec70000000000000000000000007122db0ebe4eb9b434a9f2ffe6760bc03bfbd0e0000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000003635c9adc5dea00000000000000000000000000000000000000000000000000000000000001dcd05b50000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000014000000000000000000000000000000000000000000000000000000000000001600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000014e0000000000000000000000000000000000000000000000000000000001305126ea5b523263bea6a5574858528bd591a3c2bea0f66b175474e89094c44da98b954eedeac495271d0f000438ed17390000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001dcd05b500000000000000000000000000000000000000000000000000000000000000a00000000000000000000000001111111254eeb25477b68fb85ed929f73a96058200000000000000000000000000000000000000000000000000000000640ca54900000000000000000000000000000000000000000000000000000000000000020000000000000000000000006b175474e89094c44da98b954eedeac495271d0f000000000000000000000000dac17f958d2ee523a2206206994597c13d831ec7000000000000000000000000000000000000cfee7c08";
+        // 1000 dai -> wbtc
+        tokenSwaps[
+            1
+        ] = hex"e449022e00000000000000000000000000000000000000000000003635c9adc5dea00000000000000000000000000000000000000000000000000000000000000021d1ea00000000000000000000000000000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000000001800000000000000000000000391e8501b626c623d39474afca6f9e46c2686649cfee7c08";
+        zapper.curvanceIn(address(cToken), dai, 3000 ether, minter, address(token), 0, tokens, tokenSwaps);
+
+        assertGt(cToken.balanceOf(user), 0);
+
+        hevm.stopPrank();
+    }
+}

@@ -7,23 +7,24 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../compound/Comptroller/Comptroller.sol";
 import "../compound/Token/CErc20.sol";
 import "./ICurve.sol";
+import "./IWETH.sol";
 
 contract ZapperOneInch {
     using SafeERC20 for IERC20;
 
     address public immutable comptroller;
     address public immutable oneInchRouter;
-    address public immutable WETH;
+    address public immutable weth;
     address public constant ETH = address(0);
 
     constructor(
         address _comptroller,
         address _oneInchRouter,
-        address _WETH
+        address _weth
     ) {
         comptroller = _comptroller;
         oneInchRouter = _oneInchRouter;
-        WETH = _WETH;
+        weth = _weth;
     }
 
     function curvanceIn(
@@ -38,6 +39,8 @@ contract ZapperOneInch {
     ) external payable returns (uint256 cTokenOutAmount) {
         if (inputToken == ETH) {
             require(inputAmount == msg.value, "invalid amount");
+            inputToken = weth;
+            IWETH(weth).deposit{ value: inputAmount }(inputAmount);
         } else {
             IERC20(inputToken).safeTransferFrom(msg.sender, address(this), inputAmount);
         }
@@ -167,7 +170,7 @@ contract ZapperOneInch {
         _approveTokenIfNeeded(lpToken, cToken);
 
         // enter curvance
-        CErc20(cToken).mint(amount);
+        require(CErc20(cToken).mint(amount), "curvance");
 
         return _getBalance(cToken);
     }
