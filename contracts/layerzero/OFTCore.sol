@@ -16,7 +16,7 @@ abstract contract OFTCore is NonblockingLzApp, ERC165, IOFTCore {
 
     bool public useCustomAdapterParams;
 
-    constructor(address _lzEndpoint) NonblockingLzApp(_lzEndpoint) {}
+    constructor(address _lzEndpoint, ICentralRegistry _centralRegistry) NonblockingLzApp(_lzEndpoint, _centralRegistry) {}
 
     function supportsInterface(bytes4 interfaceId) public view virtual override(ERC165, IERC165) returns (bool) {
         return interfaceId == type(IOFTCore).interfaceId || super.supportsInterface(interfaceId);
@@ -32,7 +32,7 @@ abstract contract OFTCore is NonblockingLzApp, ERC165, IOFTCore {
         _send(_from, _dstChainId, _toAddress, _amount, _refundAddress, _zroPaymentAddress, _adapterParams);
     }
 
-    function setUseCustomAdapterParams(bool _useCustomAdapterParams) public virtual onlyOwner {
+    function setUseCustomAdapterParams(bool _useCustomAdapterParams) public virtual onlyDaoManager {
         useCustomAdapterParams = _useCustomAdapterParams;
         emit SetUseCustomAdapterParams(_useCustomAdapterParams);
     }

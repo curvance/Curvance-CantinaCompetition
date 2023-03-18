@@ -8,7 +8,8 @@ abstract contract cve is OFT {
 
     constructor(string memory _name, 
                 string memory _symbol, 
-                address _lzEndpoint) OFT(_name, _symbol, _lzEndpoint) {
+                address _lzEndpoint, 
+                ICentralRegistry _centralRegistry) OFT(_name, _symbol, _lzEndpoint, _centralRegistry) {
                     _mint(msg.sender, 420000069);
                 }
 

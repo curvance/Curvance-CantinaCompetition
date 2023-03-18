@@ -2,23 +2,24 @@
 
 pragma solidity ^0.8.0;
 
-import "../utils/Owned.sol";
 import "../../interfaces/ILayerZeroReceiver.sol";
 import "../../interfaces/ILayerZeroUserApplicationConfig.sol";
 import "../../interfaces/ILayerZeroEndpoint.sol";
+import "../../interfaces/ICentralRegistry.sol";
 import "../utils/BytesLib.sol";
 import "../utils/Context.sol";
 
 /*
  * a generic LzReceiver implementation
  */
-abstract contract LzApp is Owned, ILayerZeroReceiver, ILayerZeroUserApplicationConfig, Context {
+abstract contract LzApp is ICentralRegistry, ILayerZeroReceiver, ILayerZeroUserApplicationConfig, Context {
     using BytesLib for bytes;
 
     // ua can not send payload larger than this by default, but it can be changed by the ua owner
     uint constant public DEFAULT_PAYLOAD_SIZE_LIMIT = 10000;
 
     ILayerZeroEndpoint public immutable lzEndpoint;
+    ICentralRegistry public immutable centralRegistry;
     mapping(uint16 => bytes) public trustedRemoteLookup;
     mapping(uint16 => mapping(uint16 => uint)) public minDstGasLookup;
     mapping(uint16 => uint) public payloadSizeLimitLookup;
@@ -29,8 +30,14 @@ abstract contract LzApp is Owned, ILayerZeroReceiver, ILayerZeroUserApplicationC
     event SetTrustedRemoteAddress(uint16 _remoteChainId, bytes _remoteAddress);
     event SetMinDstGas(uint16 _dstChainId, uint16 _type, uint _minDstGas);
 
-    constructor(address _endpoint) {
+    constructor(address _endpoint, ICentralRegistry _centralRegistry) {
         lzEndpoint = ILayerZeroEndpoint(_endpoint);
+        centralRegistry = _centralRegistry;
+    }
+
+    modifier onlyDaoManager () {
+        require(msg.sender == centralRegistry.daoAddress(), "UNAUTHORIZED");
+        _;
     }
 
     function lzReceive(uint16 _srcChainId, bytes calldata _srcAddress, uint64 _nonce, bytes calldata _payload) public virtual override {
@@ -82,30 +89,30 @@ abstract contract LzApp is Owned, ILayerZeroReceiver, ILayerZeroUserApplicationC
     }
 
     // generic config for LayerZero user Application
-    function setConfig(uint16 _version, uint16 _chainId, uint _configType, bytes calldata _config) external override onlyOwner {
+    function setConfig(uint16 _version, uint16 _chainId, uint _configType, bytes calldata _config) external override onlyDaoManager {
         lzEndpoint.setConfig(_version, _chainId, _configType, _config);
     }
 
-    function setSendVersion(uint16 _version) external override onlyOwner {
+    function setSendVersion(uint16 _version) external override onlyDaoManager {
         lzEndpoint.setSendVersion(_version);
     }
 
-    function setReceiveVersion(uint16 _version) external override onlyOwner {
+    function setReceiveVersion(uint16 _version) external override onlyDaoManager {
         lzEndpoint.setReceiveVersion(_version);
     }
 
-    function forceResumeReceive(uint16 _srcChainId, bytes calldata _srcAddress) external override onlyOwner {
+    function forceResumeReceive(uint16 _srcChainId, bytes calldata _srcAddress) external override onlyDaoManager {
         lzEndpoint.forceResumeReceive(_srcChainId, _srcAddress);
     }
 
     // _path = abi.encodePacked(remoteAddress, localAddress)
     // this function set the trusted path for the cross-chain communication
-    function setTrustedRemote(uint16 _srcChainId, bytes calldata _path) external onlyOwner {
+    function setTrustedRemote(uint16 _srcChainId, bytes calldata _path) external onlyDaoManager {
         trustedRemoteLookup[_srcChainId] = _path;
         emit SetTrustedRemote(_srcChainId, _path);
     }
 
-    function setTrustedRemoteAddress(uint16 _remoteChainId, bytes calldata _remoteAddress) external onlyOwner {
+    function setTrustedRemoteAddress(uint16 _remoteChainId, bytes calldata _remoteAddress) external onlyDaoManager {
         trustedRemoteLookup[_remoteChainId] = abi.encodePacked(_remoteAddress, address(this));
         emit SetTrustedRemoteAddress(_remoteChainId, _remoteAddress);
     }
@@ -116,19 +123,19 @@ abstract contract LzApp is Owned, ILayerZeroReceiver, ILayerZeroUserApplicationC
         return path.slice(0, path.length - 20); // the last 20 bytes should be address(this)
     }
 
-    function setPrecrime(address _precrime) external onlyOwner {
+    function setPrecrime(address _precrime) external onlyDaoManager {
         precrime = _precrime;
         emit SetPrecrime(_precrime);
     }
 
-    function setMinDstGas(uint16 _dstChainId, uint16 _packetType, uint _minGas) external onlyOwner {
+    function setMinDstGas(uint16 _dstChainId, uint16 _packetType, uint _minGas) external onlyDaoManager {
         require(_minGas > 0, "LzApp: invalid minGas");
         minDstGasLookup[_dstChainId][_packetType] = _minGas;
         emit SetMinDstGas(_dstChainId, _packetType, _minGas);
     }
 
     // if the size is 0, it means default size limit
-    function setPayloadSizeLimit(uint16 _dstChainId, uint _size) external onlyOwner {
+    function setPayloadSizeLimit(uint16 _dstChainId, uint _size) external onlyDaoManager {
         payloadSizeLimitLookup[_dstChainId] = _size;
     }
 

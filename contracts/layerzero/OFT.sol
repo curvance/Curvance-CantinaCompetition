@@ -8,7 +8,10 @@ import "../token/ERC20.sol";
 
 // override decimal() function is needed
 abstract contract OFT is OFTCore, ERC20, IOFT {
-    constructor(string memory _name, string memory _symbol, address _lzEndpoint) ERC20(_name, _symbol) OFTCore(_lzEndpoint) {}
+    constructor(string memory _name, 
+                string memory _symbol, 
+                address _lzEndpoint, 
+                ICentralRegistry _centralRegistry) ERC20(_name, _symbol) OFTCore(_lzEndpoint, _centralRegistry) {}
 
     function supportsInterface(bytes4 interfaceId) public view virtual override(OFTCore, IERC165) returns (bool) {
         return interfaceId == type(IOFT).interfaceId || interfaceId == type(IERC20).interfaceId || super.supportsInterface(interfaceId);
