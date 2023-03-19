@@ -1,50 +1,48 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.15;
 
-import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "./utils/SafeERC20.sol";
+import "../interfaces/IERC20.sol";
+import "../interfaces/ICentralRegistry.sol";
 
-contract CVEAirdrop {
+contract CurvanceAirdrop {
     using SafeERC20 for IERC20;
 
-    event CVEAirdropClaimed(address indexed claimer, uint256 amount);
-    event RemainingCVEWithdrawn(uint256 amount);
+    event callOptionCVEAirdropClaimed(address indexed claimer, uint256 amount);
+    event RemainingCallOptionCVEWithdrawn(uint256 amount);
     event OwnerUpdated(address indexed user, address indexed newOwner);
 
-    IERC20  public immutable cveToken;
+    ICentralRegistry public immutable centralRegistry;
     uint256 public immutable maximumClaimAmount;
     uint256 public immutable endClaimTimestamp;
 
-    bytes32 public           airdropMerkleRoot;
-    address public           owner;
-    bool    public           isPaused = true;
-    uint256 private          locked = 1;
+    bytes32 public airdropMerkleRoot;
+    bool    public isPaused = true;
+    uint256 private locked = 1;
 
     mapping(address => bool) public airdropClaimed;
 
      /**
      * @notice Constructor
-     * @param _cve address of the CVE token
+     * @param _centralRegistry Contract Address of Curvance Central Registry
      * @param _endTimestamp end timestamp for airdrop claiming
      * @param _root Airdrop merkle root for claim validation
      * @param _maximumClaimAmount maximum amount to claim per address
      */
     constructor (
-        address _cve, 
+        ICentralRegistry _centralRegistry,
         uint256 _endTimestamp,
         uint256 _maximumClaimAmount,  
         bytes32 _root
     ) {
-        cveToken = IERC20(_cve);
+        centralRegistry = _centralRegistry;
         endClaimTimestamp = _endTimestamp;
         maximumClaimAmount = _maximumClaimAmount; 
         airdropMerkleRoot = _root;
-
-        owner = _msgSender();
-        emit OwnerUpdated(address(0), owner);
     }
 
-    modifier onlyOwner() {
-        require(_msgSender() == owner, "Not Owner");
+    modifier onlyDaoManager () {
+        require(msg.sender == centralRegistry.daoAddress(), "UNAUTHORIZED");
         _;
     }
 
@@ -65,7 +63,7 @@ contract CVEAirdrop {
     }
 
     /**
-     * @notice Claim CVE tokens for airdrop
+     * @notice Claim CVE Call Option tokens for airdrop
      * @param _amount Requested CVE amount to claim for the airdrop
      * @param _proof Bytes32 array containing the merkle proof
      */
@@ -89,9 +87,9 @@ contract CVEAirdrop {
         airdropClaimed[_msgSender()] = true;
 
         // Transfer CVE tokens
-        cveToken.safeTransfer(_msgSender(), _amount);
+        IERC20(centralRegistry.callOptionCVE()).safeTransfer(_msgSender(), _amount);
 
-        emit CVEAirdropClaimed(_msgSender(), _amount);
+        emit callOptionCVEAirdropClaimed(_msgSender(), _amount);
     }
 
     /**
@@ -139,7 +137,7 @@ contract CVEAirdrop {
     }
 
     /**
-     * @notice rescue any tokens sent by mistake
+     * @dev rescue any token sent by mistake
      * @param _token token to rescue
      * @param _recipient address to receive token
      */
@@ -147,7 +145,7 @@ contract CVEAirdrop {
         address _token,
         address _recipient,
         uint256 _amount
-    ) external onlyOwner {
+    ) external onlyDaoManager {
         require(_recipient != address(0), "rescueToken: Invalid recipient address");
         if (_token == address(0)) {
             require(address(this).balance >= _amount, "rescueToken: Insufficient balance");
@@ -162,37 +160,28 @@ contract CVEAirdrop {
     /**
      * @notice Withdraws unclaimed airdrop tokens to contract Owner after airdrop claim period has ended
      */
-    function withdrawRemainingAirdropTokens() external onlyOwner {
+    function withdrawRemainingAirdropTokens() external onlyDaoManager {
         require(block.timestamp > endClaimTimestamp, "withdrawRemainingAirdropTokens: Too early");
-        uint256 tokensToWithdraw = cveToken.balanceOf(address(this));
-        cveToken.safeTransfer(_msgSender(), tokensToWithdraw);
+        uint256 tokensToWithdraw = IERC20(centralRegistry.callOptionCVE()).balanceOf(address(this));
+        IERC20(centralRegistry.callOptionCVE()).safeTransfer(_msgSender(), tokensToWithdraw);
 
-        emit RemainingCVEWithdrawn(tokensToWithdraw);
+        emit RemainingCallOptionCVEWithdrawn(tokensToWithdraw);
     }
 
     /**
      * @notice Set airdropMerkleRoot for airdrop validation
      * @param _root new merkle root
      */
-    function setMerkleRoot(bytes32 _root) external onlyOwner {
+    function setMerkleRoot(bytes32 _root) external onlyDaoManager {
         require(_root != bytes32(0), "setMerkleRoot: Invalid Parameter");
         airdropMerkleRoot = _root;
-    }
-
-    /**
-     * @notice Set contract Owner
-     * @param _newOwner new contract Owner
-     */
-    function setOwner(address _newOwner) external onlyOwner {
-        owner = _newOwner;
-        emit OwnerUpdated(_msgSender(), _newOwner);
     }
 
     /**
      * @notice Set isPaused state
      * @param _state new pause state
      */
-    function setPauseState(bool _state) external onlyOwner {
+    function setPauseState(bool _state) external onlyDaoManager {
         isPaused = _state;
     }
 
