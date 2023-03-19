@@ -4,7 +4,7 @@ import "../layerzero/OFT.sol";
 
 error InvalidGas();
 
-abstract contract cve is OFT {
+contract cve is OFT {
 
     constructor(string memory _name, 
                 string memory _symbol, 

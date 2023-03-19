@@ -12,7 +12,7 @@ import "../utils/Context.sol";
 /*
  * a generic LzReceiver implementation
  */
-abstract contract LzApp is ICentralRegistry, ILayerZeroReceiver, ILayerZeroUserApplicationConfig, Context {
+abstract contract LzApp is ILayerZeroReceiver, ILayerZeroUserApplicationConfig, Context {
     using BytesLib for bytes;
 
     // ua can not send payload larger than this by default, but it can be changed by the ua owner
