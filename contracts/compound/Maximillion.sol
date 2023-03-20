@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
-import "./CEther.sol";
+import "./Token/CEther.sol";
 
 /**
- * @title Compound's Maximillion Contract
- * @author Compound
+ * @title Curvance's Maximillion Contract
+ * @author Curvance
  */
 contract Maximillion {
     /**
@@ -36,13 +36,13 @@ contract Maximillion {
      * @param cEther_ The address of the cEther contract to repay in
      */
     function repayBehalfExplicit(address borrower, CEther cEther_) public payable {
-        uint received = msg.value;
-        uint borrows = cEther_.borrowBalanceCurrent(borrower);
+        uint256 received = msg.value;
+        uint256 borrows = cEther_.borrowBalanceCurrent(borrower);
         if (received > borrows) {
-            cEther_.repayBorrowBehalf{value: borrows}(borrower);
+            cEther_.repayBorrowBehalf{ value: borrows }(borrower);
             payable(msg.sender).transfer(received - borrows);
         } else {
-            cEther_.repayBorrowBehalf{value: received}(borrower);
+            cEther_.repayBorrowBehalf{ value: received }(borrower);
         }
     }
 }
