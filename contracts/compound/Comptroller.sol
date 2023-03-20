@@ -149,7 +149,7 @@ contract Comptroller is ComptrollerInterface { //ComptrollerStorage,
             return 0;
         }
 
-        if (marketToJoin.accountMembership[borrower] != true) {
+        if (marketToJoin.accountMembership[borrower] == true) {
             // already joined
             return 0;
         }
@@ -807,8 +807,8 @@ contract Comptroller is ComptrollerInterface { //ComptrollerStorage,
          */
         uint exchangeRateScaled = CToken(cTokenCollateral).exchangeRateStored();
         uint numerator = liquidationIncentiveScaled * priceBorrowedScaled; 
-        uint denominator = priceCollateralScaled * exchangeRateScaled;  /// TODO Check that these scaled values are correctly factored out
-        uint ratio = numerator / denominator;                           /// TODO Scale-out should divide away here.
+        uint denominator = priceCollateralScaled * exchangeRateScaled;
+        uint ratio = numerator * expScale / denominator;
         uint seizeTokens = (ratio * actualRepayAmount) / expScale;
 
         return seizeTokens;
@@ -950,7 +950,7 @@ contract Comptroller is ComptrollerInterface { //ComptrollerStorage,
 
     function _addMarketInternal(address cToken) internal {
         for (uint i = 0; i < allMarkets.length; i ++) {
-            if (allMarkets[i] != CToken(cToken)) {
+            if (allMarkets[i] == CToken(cToken)) {
                 revert MarketAlreadyListed();
             }
         }

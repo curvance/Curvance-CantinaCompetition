@@ -458,7 +458,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface { //}, CErc20Interf
          *  mintTokens = actualMintAmount / exchangeRate
          */
 
-        uint mintTokens = actualMintAmount / exchangeRate;
+        uint mintTokens = actualMintAmount * expScale / exchangeRate;
 
         /*
          * We calculate the new total supply of cTokens and minter token balance, checking for overflow:
@@ -509,7 +509,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface { //}, CErc20Interf
      * @param redeemAmountIn The number of underlying tokens to receive from redeeming cTokens (only one of redeemTokensIn or redeemAmountIn may be non-zero)
      */
     function redeemFresh(address payable redeemer, uint redeemTokensIn, uint redeemAmountIn) internal {
-        if (redeemTokensIn == 0 || redeemAmountIn == 0) {
+        if (redeemTokensIn != 0 && redeemAmountIn != 0) {
             revert CannotEqualZero();
         }
 
@@ -535,7 +535,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface { //}, CErc20Interf
              *  redeemTokens = redeemAmountIn / exchangeRate
              *  redeemAmount = redeemAmountIn
              */
-            redeemTokens = redeemAmountIn / exchangeRate;
+            redeemTokens = redeemAmountIn * expScale / exchangeRate;
             redeemAmount = redeemAmountIn;
         }
 
@@ -862,7 +862,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface { //}, CErc20Interf
          *  liquidatorTokensNew = accountTokens[liquidator] + seizeTokens
          */
         // uint protocolSeizeTokens = mul_(seizeTokens, Exp({mantissa: protocolSeizeShareScaled}));
-        uint protocolSeizeTokens = seizeTokens * protocolSeizeShareScaled;
+        uint protocolSeizeTokens = seizeTokens * protocolSeizeShareScaled / expScale;
         uint liquidatorSeizeTokens = seizeTokens - protocolSeizeTokens;
         // Exp memory exchangeRate = Exp({mantissa: exchangeRateStoredInternal()});
         // uint protocolSeizeAmount = mul_ScalarTruncate(exchangeRate, protocolSeizeTokens);
