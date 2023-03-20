@@ -379,16 +379,51 @@ contract veCVE is ERC20 {
     ///////////////////////////////////////////
 
     function getVotes(address _user) public view returns (uint256) {
-        //Todo Mai
-    }
+        uint256 locks = userLocks[msg.sender].length;
+        if (locks == 0) return 0;
 
-    function getVotesForSingleLock(address _user, uint256 _lockIndex) public view returns (uint256) {
-        //Todo Mai
+        uint256 votes;
+        for(uint256 i; i < locks; ){
+            votes += getVotesForSingleLock(_user, i++);
+        
+        }
+
+        return votes;
     }
 
     function getVotesForEpoch(address _user, uint256 _epoch) public view returns (uint256) {
-        //Todo Mai
+        uint256 locks = userLocks[msg.sender].length;
+        if (locks == 0) return 0;
+        if (_epoch == 0) return 0;
+
+        uint256 timestamp = genesisEpoch + (EPOCH_DURATION * (_epoch - 1));
+        uint256 votes;
+        for(uint256 i; i < locks; ){
+            votes += getVotesForSingleLockForTime(_user, i++, timestamp);
+        }
+
+        return votes;
     }
+
+    function getVotesForSingleLock(address _user, uint256 _lockIndex) public view returns (uint256) {
+        Lock storage userLock = userLocks[_user][_lockIndex];
+        if (userLock.unlockTime == CONTINUOUS_LOCK_VALUE) return (userLock.amount * 11000)/DENOMINATOR;
+        if (userLock.unlockTime < block.timestamp) return 0;
+
+        uint256 epochsLeft = (userLock.unlockTime - block.timestamp)/EPOCH_DURATION;
+        return (userLock.amount * epochsLeft)/LOCK_DURATION_EPOCHS;
+    }
+
+    function getVotesForSingleLockForTime(address _user, uint256 _lockIndex, uint256 _time) public view returns (uint256) {
+        Lock storage userLock = userLocks[_user][_lockIndex];
+        if (userLock.unlockTime == CONTINUOUS_LOCK_VALUE) return (userLock.amount * 11000)/DENOMINATOR;
+        if (userLock.unlockTime < _time) return 0;
+
+        uint256 epochsLeft = (userLock.unlockTime - _time)/EPOCH_DURATION;
+        return (userLock.amount * epochsLeft)/LOCK_DURATION_EPOCHS;
+    }
+
+    
 
     ///////////////////////////////////////////
     //////// Transfer Locked Functions ////////
