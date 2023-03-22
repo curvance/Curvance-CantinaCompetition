@@ -3,10 +3,10 @@ pragma solidity ^0.8.12;
 
 import "./ERC20.sol";
 import "../utils/SafeERC20.sol";
-import "../../interfaces/IERC20.sol";
-import "../../interfaces/ICveLocker.sol";
-import "../../interfaces/IDelegateRegistry.sol";
-import "../../interfaces/ICentralRegistry.sol";
+import "../interfaces/IERC20.sol";
+import "../interfaces/ICveLocker.sol";
+import "../interfaces/IDelegateRegistry.sol";
+import "../interfaces/ICentralRegistry.sol";
 
 error nonTransferrable();
 error continuousLock();
@@ -18,20 +18,8 @@ contract veCVE is ERC20 {
     using SafeERC20 for IERC20;
 
     event Locked(address indexed _user, uint256 _amount);
-    event Withdrawn(address indexed _user, uint256 _amount, bool _relocked);
-    event Unwrap(address indexed _to, uint256 _amount);
-    event RewardPaid(address indexed _user, address indexed _rewardsToken, uint256 _amount);
-    event KickReward(address indexed _user, address indexed _kicked, uint256 _amount);
-    event FundedReward(address indexed _token, uint256 _amount);
-    event RewardAdded(address token, uint256 amount);
+    event Unlocked(address indexed _user, uint256 _amount);
     event TokenRecovered(address _token, address _to, uint256 _amount);
-
-    struct userTokenData {
-        uint256 lockedBalance;
-        uint256 delegatedVotes;
-        bool votesDelegated;
-        uint16 locks;
-    }
 
     struct Lock {
         uint216 amount;
@@ -55,7 +43,7 @@ contract veCVE is ERC20 {
     uint256 public constant DENOMINATOR = 10000;
     
     mapping(address => Lock[]) public userLocks;
-    mapping(address => Lock) public investorLocks;
+    mapping(address => bool) public isInvestor;
 
     //User => Epoch # => Tokens unlocked
     mapping(address => mapping(uint256 => uint256)) public userTokenUnlocksByEpoch;
@@ -70,7 +58,6 @@ contract veCVE is ERC20 {
     mapping(uint256 => uint256) public totalTokensLockedByEpoch;
     //Epoch # => Token unlocks on this chain
     mapping(uint256 => uint216) public totalUnlocksByEpoch;
-    uint256 public dv;
 
     constructor(uint40 _genesisEpoch, ICentralRegistry _centralRegistry) ERC20("Vote Escrowed CVE", "veCVE"){
         genesisEpoch = _genesisEpoch;
@@ -82,19 +69,38 @@ contract veCVE is ERC20 {
         _;
     }
 
+    /**
+     * @notice Returns the current epoch for the given time
+     * @param _time The timestamp for which to calculate the epoch
+     * @return The current epoch
+     */
     function currentEpoch(uint256 _time) public view returns (uint256){
         if (_time < genesisEpoch) return 0;
         return ((_time - genesisEpoch)/EPOCH_DURATION); 
     }
 
+    /**
+     * @notice Returns the epoch to lock until for a lock executed at this moment
+     * @return The epoch
+     */
     function freshLockEpoch() public view returns(uint256) {
         return currentEpoch(block.timestamp) + LOCK_DURATION_EPOCHS;
     }
 
+     /**
+     * @notice Returns the timestamp to lock until for a lock executed at this moment
+     * @return The timestamp
+     */
     function freshLockTimestamp() public view returns(uint40) {
         return uint40(genesisEpoch + (currentEpoch(block.timestamp) * EPOCH_DURATION) + LOCK_DURATION);
     }
 
+    /**
+     * @notice Locks the specified amount of CVE tokens for the recipient
+     * @param _recipient The address to lock tokens for
+     * @param _amount The amount of tokens to lock
+     * @param _continuousLock Whether the lock should be continuous or not
+     */
     function lock (address _recipient, uint216 _amount, bool _continuousLock) public {
         if (isShutdown) revert veCVEShutdown();
         if (_amount == 0) revert invalidLock();
@@ -104,6 +110,11 @@ contract veCVE is ERC20 {
         _lock(_recipient, _amount, _continuousLock);
     }
 
+    /**
+     * @notice Extends the lock for the specified lock index
+     * @param _lockIndex The index of the lock to extend
+     * @param _continuousLock Whether the lock should be continuous or not
+     */
     function extendLock(uint256 _lockIndex, bool _continuousLock) public {
         Lock[] storage _user = userLocks[msg.sender];
         uint40 unlockTimestamp = _user[_lockIndex].unlockTime;
@@ -133,6 +144,12 @@ contract veCVE is ERC20 {
         totalUnlocksByEpoch[unlockEpoch] -= tokenAmount;
     }
 
+    /**
+     * @notice Increases the locked amount and extends the lock for the specified lock index
+     * @param _amount The amount to increase the lock by
+     * @param _lockIndex The index of the lock to extend
+     * @param _continuousLock Whether the lock should be continuous or not
+     */
     function increaseAmountAndExtendLock(uint256 _amount, uint256 _lockIndex, bool _continuousLock) public {
         Lock[] storage _user = userLocks[msg.sender];
 
@@ -168,7 +185,10 @@ contract veCVE is ERC20 {
         _mint(msg.sender, _amount);
     }
 
-    
+    /**
+     * @notice Combines all locks into a single lock
+     * @param _continuousLock Whether the combined lock should be continuous or not
+     */
     function combineAllLocks(bool _continuousLock) public {
         Lock[] storage _user = userLocks[msg.sender];
         uint256 locks = _user.length;
@@ -200,6 +220,11 @@ contract veCVE is ERC20 {
 
     }
 
+    /**
+     * @notice Processes an expired lock for the specified lock index
+     * @param _recipient The address to send unlocked tokens to
+     * @param _lockIndex The index of the lock to process
+     */
     function processExpiredLock (address _recipient, uint256 _lockIndex) public {
         if (_lockIndex >= userLocks[msg.sender].length) revert invalidLock();// Length is index + 1 so has to be less than array length
 
@@ -214,9 +239,13 @@ contract veCVE is ERC20 {
 
         ICveLocker(cveLocker).withdrawFor(msg.sender, tokensToWithdraw);// Update deposit balance before sending funds in this call
         IERC20(centralRegistry.CVE()).safeTransfer(_recipient, tokensToWithdraw);
-
+        emit Unlocked(msg.sender, tokensToWithdraw);
     }
 
+    /**
+    * @notice Disables a continuous lock for the user at the specified lock index
+    * @param _lockIndex The index of the lock to be disabled
+    */
     function disableContinuousLock(uint256 _lockIndex) public {
         Lock[] storage _user = userLocks[msg.sender];
         if (_lockIndex >= _user.length) revert invalidLock();// Length is index + 1 so has to be less than array length
@@ -236,45 +265,27 @@ contract veCVE is ERC20 {
     ////////////// Investor Functions /////////
     ///////////////////////////////////////////
 
+    /**
+    * @notice Locks tokens for an investor
+    * @param _recipient The address to receive the token lock
+    * @param _amount The amount of tokens to be locked
+    */
     function investorLock(address _recipient, uint216 _amount) public onlyDaoManager {
         if (isShutdown) revert veCVEShutdown();
         if (_amount == 0) revert invalidLock();
-        if (investorLocks[_recipient].amount > 0) revert invalidLock(); 
+        if (isInvestor[_recipient]) revert invalidLock(); 
 
         IERC20(centralRegistry.CVE()).safeTransferFrom(msg.sender, address(this), _amount);
-
-        _investorLock(_recipient, _amount);
-    }
-
-    function processExpiredInvestorLock (address _recipient, bool rollover) public {
-        Lock storage _investor = investorLocks[msg.sender];
-        if (_investor.unlockTime == 0 || _investor.amount == 0) revert invalidLock();
-
-        uint256 tokensToWithdraw = _processInvestorExpiredLock(msg.sender);
-        _burn(msg.sender, tokensToWithdraw);
-        uint256 lockerRewards = ICveLocker(cveLocker).getRewards(msg.sender);
-
-        // send process incentive
-        if (lockerRewards > 0) {
-            ICveLocker(cveLocker).claimRewards(msg.sender);
-        }
-
-        if (rollover){
-            _lock(_recipient, uint216(tokensToWithdraw), true);
-        } else {
-
-            ICveLocker(cveLocker).withdrawFor(msg.sender, tokensToWithdraw);// Update deposit balance before sending funds in this call
-            IERC20(centralRegistry.CVE()).safeTransfer(_recipient, tokensToWithdraw);
-        }
- 
+        isInvestor[_recipient] = true;
+        _lock(_recipient, _amount, false);
     }
 
     /**
-     * @dev Recover token sent accidentally to contract or leftover rewards. Token shouldn't be staking token
-     * @param _token token to recover
-     * @param _to address to which recovered tokens are sent
-     * @param _amount amount of tokens to recover
-     */
+    * @notice Recover tokens sent accidentally to the contract or leftover rewards (excluding veCVE tokens)
+    * @param _token The address of the token to recover
+    * @param _to The address to receive the recovered tokens
+    * @param _amount The amount of tokens to recover
+    */
     function recoverToken(
         address _token,
         address _to,
@@ -290,8 +301,8 @@ contract veCVE is ERC20 {
     }
 
     /**
-     * @dev Shuts down the contract, unstakes all tokens, releases all locks
-     */
+    * @notice Shuts down the contract, unstakes all tokens, and releases all locks
+    */
     function shutdown() external onlyDaoManager {
         if (cveLocker != address(0)) {
             uint256 stakedBalance = ICveLocker(cveLocker).getBalance();
@@ -307,7 +318,10 @@ contract veCVE is ERC20 {
         IERC20(centralRegistry.CVE()).safeIncreaseAllowance(cveLocker, type(uint256).max);
     }
 
-    /// @notice Set the staking contract for the underlying CVE
+    /**
+    * @notice Sets the locker contract for the underlying CVE tokens
+    * @param _cveLocker The address of the locker contract to be set
+    */
     function setLockerContract(address _cveLocker) external onlyDaoManager {
         require(cveLocker == address(0), "already set");
         cveLocker = _cveLocker;
@@ -318,6 +332,12 @@ contract veCVE is ERC20 {
     ////////////// Internal Functions /////////
     ///////////////////////////////////////////
 
+    /**
+     * @notice Internal function to lock tokens for a user
+     * @param _recipient The address of the user receiving the lock
+     * @param _amount The amount of tokens to lock
+     * @param _continuousLock Whether the lock is continuous or not
+     */
     function _lock (address _recipient, uint216 _amount, bool _continuousLock) internal {
 
         if (_continuousLock){
@@ -332,16 +352,12 @@ contract veCVE is ERC20 {
         _mint(_recipient, _amount);
     }
 
-    function _investorLock (address _recipient, uint216 _amount) internal {
-
-        uint256 unlockEpoch = freshLockEpoch();
-        investorLocks[_recipient] = Lock({amount: _amount, unlockTime: freshLockTimestamp()});
-        totalUnlocksByEpoch[unlockEpoch] += _amount;
-        userTokenUnlocksByEpoch[_recipient][unlockEpoch] += _amount;
-        
-        _mint(_recipient, _amount);
-    }
-
+    /**
+    * @notice Processes the expired lock for a user and returns the number of tokens redeemed
+    * @param _account The address of the user whose lock is being processed
+    * @param _lockIndex The index of the lock to be processed
+    * @return tokensRedeemed The number of tokens redeemed from the expired lock
+    */
     function _processExpiredLock (address _account, uint256 _lockIndex) internal returns (uint256 tokensRedeemed){
         Lock[] storage _user = userLocks[_account];
         require(block.timestamp >= _user[_lockIndex].unlockTime || isShutdown, "Lock has not expired");
@@ -356,12 +372,12 @@ contract veCVE is ERC20 {
         _user.pop();
     }
 
-    function _processInvestorExpiredLock (address _account) internal returns (uint256 tokensRedeemed){
-        require(block.timestamp >= investorLocks[_account].unlockTime || isShutdown, "Lock has not expired");
-        tokensRedeemed = investorLocks[_account].amount;
-        delete investorLocks[_account];
-    }
-
+    /**
+    * @notice Reorganizes lock entries in the given lock array by swapping the lock at the specified index with the last lock
+    * @param _list The array of lock entries to be reorganized
+    * @param lockIndex The index of the lock to be swapped with the last lock in the array
+    * @return The reorganized lock array
+    */
     function _OrganizeLockEntries(Lock[] memory _list, uint256 lockIndex) internal pure returns (Lock[] memory) {
       uint256 lastArrayIndex = _list.length - 1;
 
@@ -378,8 +394,13 @@ contract veCVE is ERC20 {
     ////////////// View Functions /////////////
     ///////////////////////////////////////////
 
+    /**
+    * @notice Calculates the total votes for a user based on their current locks
+    * @param _user The address of the user to calculate votes for
+    * @return The total number of votes for the user
+    */
     function getVotes(address _user) public view returns (uint256) {
-        uint256 locks = userLocks[msg.sender].length;
+        uint256 locks = userLocks[_user].length;
         if (locks == 0) return 0;
 
         uint256 votes;
@@ -391,8 +412,14 @@ contract veCVE is ERC20 {
         return votes;
     }
 
+    /**
+    * @notice Calculates the total votes for a user based on their locks at a specific epoch
+    * @param _user The address of the user to calculate votes for
+    * @param _epoch The epoch for which the votes are calculated
+    * @return The total number of votes for the user at the specified epoch
+    */
     function getVotesForEpoch(address _user, uint256 _epoch) public view returns (uint256) {
-        uint256 locks = userLocks[msg.sender].length;
+        uint256 locks = userLocks[_user].length;
         if (locks == 0) return 0;
         if (_epoch == 0) return 0;
 
@@ -405,6 +432,12 @@ contract veCVE is ERC20 {
         return votes;
     }
 
+    /**
+    * @notice Calculates the votes for a single lock of a user based on the current timestamp
+    * @param _user The address of the user whose lock is being used for the calculation
+    * @param _lockIndex The index of the lock to calculate votes for
+    * @return The number of votes for the specified lock
+    */
     function getVotesForSingleLock(address _user, uint256 _lockIndex) public view returns (uint256) {
         Lock storage userLock = userLocks[_user][_lockIndex];
         if (userLock.unlockTime == CONTINUOUS_LOCK_VALUE) return (userLock.amount * 11000)/DENOMINATOR;
@@ -414,6 +447,13 @@ contract veCVE is ERC20 {
         return (userLock.amount * epochsLeft)/LOCK_DURATION_EPOCHS;
     }
 
+    /**
+    * @notice Calculates the votes for a single lock of a user based on a specific timestamp
+    * @param _user The address of the user whose lock is being used for the calculation
+    * @param _lockIndex The index of the lock to calculate votes for
+    * @param _time The timestamp to use for the calculation
+    * @return The number of votes for the specified lock at the given timestamp
+    */
     function getVotesForSingleLockForTime(address _user, uint256 _lockIndex, uint256 _time) public view returns (uint256) {
         Lock storage userLock = userLocks[_user][_lockIndex];
         if (userLock.unlockTime == CONTINUOUS_LOCK_VALUE) return (userLock.amount * 11000)/DENOMINATOR;
@@ -429,10 +469,20 @@ contract veCVE is ERC20 {
     //////// Transfer Locked Functions ////////
     ///////////////////////////////////////////
 
+    /**
+    * @notice Overridden transfer function to prevent token transfers
+    * @dev This function always reverts, as the token is non-transferrable
+    * @return This function always reverts and does not return a value
+    */
     function transfer(address, uint256) public pure override returns (bool) {
         revert nonTransferrable(); 
     }
 
+    /**
+    * @notice Overridden transferFrom function to prevent token transfers
+    * @dev This function always reverts, as the token is non-transferrable
+    * @return This function always reverts and does not return a value
+    */
     function transferFrom (address, address, uint256) public pure override returns (bool) {
         revert nonTransferrable();
     }
