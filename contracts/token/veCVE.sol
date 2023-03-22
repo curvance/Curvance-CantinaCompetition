@@ -18,20 +18,8 @@ contract veCVE is ERC20 {
     using SafeERC20 for IERC20;
 
     event Locked(address indexed _user, uint256 _amount);
-    event Withdrawn(address indexed _user, uint256 _amount, bool _relocked);
-    event Unwrap(address indexed _to, uint256 _amount);
-    event RewardPaid(address indexed _user, address indexed _rewardsToken, uint256 _amount);
-    event KickReward(address indexed _user, address indexed _kicked, uint256 _amount);
-    event FundedReward(address indexed _token, uint256 _amount);
-    event RewardAdded(address token, uint256 amount);
+    event Unlocked(address indexed _user, uint256 _amount);
     event TokenRecovered(address _token, address _to, uint256 _amount);
-
-    struct userTokenData {
-        uint256 lockedBalance;
-        uint256 delegatedVotes;
-        bool votesDelegated;
-        uint16 locks;
-    }
 
     struct Lock {
         uint216 amount;
@@ -55,7 +43,7 @@ contract veCVE is ERC20 {
     uint256 public constant DENOMINATOR = 10000;
     
     mapping(address => Lock[]) public userLocks;
-    mapping(address => Lock) public investorLocks;
+    mapping(address => bool) public isInvestor;
 
     //User => Epoch # => Tokens unlocked
     mapping(address => mapping(uint256 => uint256)) public userTokenUnlocksByEpoch;
@@ -70,7 +58,6 @@ contract veCVE is ERC20 {
     mapping(uint256 => uint256) public totalTokensLockedByEpoch;
     //Epoch # => Token unlocks on this chain
     mapping(uint256 => uint216) public totalUnlocksByEpoch;
-    uint256 public dv;
 
     constructor(uint40 _genesisEpoch, ICentralRegistry _centralRegistry) ERC20("Vote Escrowed CVE", "veCVE"){
         genesisEpoch = _genesisEpoch;
@@ -252,7 +239,7 @@ contract veCVE is ERC20 {
 
         ICveLocker(cveLocker).withdrawFor(msg.sender, tokensToWithdraw);// Update deposit balance before sending funds in this call
         IERC20(centralRegistry.CVE()).safeTransfer(_recipient, tokensToWithdraw);
-
+        emit Unlocked(msg.sender, tokensToWithdraw);
     }
 
     /**
@@ -286,39 +273,11 @@ contract veCVE is ERC20 {
     function investorLock(address _recipient, uint216 _amount) public onlyDaoManager {
         if (isShutdown) revert veCVEShutdown();
         if (_amount == 0) revert invalidLock();
-        if (investorLocks[_recipient].amount > 0) revert invalidLock(); 
+        if (isInvestor[_recipient]) revert invalidLock(); 
 
         IERC20(centralRegistry.CVE()).safeTransferFrom(msg.sender, address(this), _amount);
-
-        _investorLock(_recipient, _amount);
-    }
-
-    /**
-    * @notice Processes an expired investor lock and either rolls over or withdraws the tokens
-    * @param _recipient The address to receive the tokens
-    * @param rollover A boolean indicating whether to roll over the tokens or not
-    */
-    function processExpiredInvestorLock (address _recipient, bool rollover) public {
-        Lock storage _investor = investorLocks[msg.sender];
-        if (_investor.unlockTime == 0 || _investor.amount == 0) revert invalidLock();
-
-        uint256 tokensToWithdraw = _processInvestorExpiredLock(msg.sender);
-        _burn(msg.sender, tokensToWithdraw);
-        uint256 lockerRewards = ICveLocker(cveLocker).getRewards(msg.sender);
-
-        // send process incentive
-        if (lockerRewards > 0) {
-            ICveLocker(cveLocker).claimRewards(msg.sender);
-        }
-
-        if (rollover){
-            _lock(_recipient, uint216(tokensToWithdraw), true);
-        } else {
-
-            ICveLocker(cveLocker).withdrawFor(msg.sender, tokensToWithdraw);// Update deposit balance before sending funds in this call
-            IERC20(centralRegistry.CVE()).safeTransfer(_recipient, tokensToWithdraw);
-        }
- 
+        isInvestor[_recipient] = true;
+        _lock(_recipient, _amount, false);
     }
 
     /**
@@ -394,21 +353,6 @@ contract veCVE is ERC20 {
     }
 
     /**
-     * @notice Internal function to lock tokens for an investor
-     * @param _recipient The address of the investor receiving the lock
-     * @param _amount The amount of tokens to lock
-     */
-    function _investorLock (address _recipient, uint216 _amount) internal {
-
-        uint256 unlockEpoch = freshLockEpoch();
-        investorLocks[_recipient] = Lock({amount: _amount, unlockTime: freshLockTimestamp()});
-        totalUnlocksByEpoch[unlockEpoch] += _amount;
-        userTokenUnlocksByEpoch[_recipient][unlockEpoch] += _amount;
-        
-        _mint(_recipient, _amount);
-    }
-
-    /**
     * @notice Processes the expired lock for a user and returns the number of tokens redeemed
     * @param _account The address of the user whose lock is being processed
     * @param _lockIndex The index of the lock to be processed
@@ -426,17 +370,6 @@ contract veCVE is ERC20 {
       }
         tokensRedeemed = _user[lastLockIndex].amount;
         _user.pop();
-    }
-
-    /**
-    * @notice Processes the expired investor lock and returns the number of tokens redeemed
-    * @param _account The address of the investor whose lock is being processed
-    * @return tokensRedeemed The number of tokens redeemed from the expired investor lock
-    */
-    function _processInvestorExpiredLock (address _account) internal returns (uint256 tokensRedeemed){
-        require(block.timestamp >= investorLocks[_account].unlockTime || isShutdown, "Lock has not expired");
-        tokensRedeemed = investorLocks[_account].amount;
-        delete investorLocks[_account];
     }
 
     /**
