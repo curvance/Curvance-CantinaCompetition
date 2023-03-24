@@ -27,15 +27,18 @@ contract CurvanceVotingHub {
     uint256 public constant upperBound = 10010;
     uint256 public constant lowerBound = 9990;
     uint256 public constant DENOMINATOR = 10000;
+    uint256 public constant cveDecimalOffset = 1000000000000000000;
 
-    constructor(ICentralRegistry _centralRegistry) {
+    constructor(ICentralRegistry _centralRegistry, uint256 _targetEmissionsPerEpoch) {
         centralRegistry = _centralRegistry;
+        setEpochEmissions(_targetEmissionsPerEpoch);
     }
 
     modifier onlyDaoManager () {
         require(msg.sender == centralRegistry.daoAddress(), "UNAUTHORIZED");
         _;
     }
+
 
     function genesisEpoch() private view returns (uint256){
         return centralRegistry.genesisEpoch();
@@ -68,6 +71,8 @@ contract CurvanceVotingHub {
 
         uint256 tokensPreEmission = IERC20(centralRegistry.CVE()).balanceOf(address(this));
         //check that double array length is not greater than child chains.length in veCVE/centralRegistry/cveLocker
+        //calculate msg.value via estimate fees 
+        //approve gauge pool so that tokens can be taken
     
         for (uint256 i; i < _pools.length; ) {
 
@@ -97,9 +102,14 @@ contract CurvanceVotingHub {
 
         require(tokensPostEmission < tokensPreEmission, "Tokens not distributed successfully");
         require(validateEmissions(tokensPreEmission - tokensPostEmission), "Invalid Gauge Emission Inputs");
+        
+        ++lastEpochPaid;
         emit GaugeRewardsSet(_chainData, _pools, _poolEmissions);
 
     }
 
+    function setEpochEmissions(uint256 _targetEmissionsPerEpoch) public onlyDaoManager {
+        targetEmissionsPerEpoch = _targetEmissionsPerEpoch * cveDecimalOffset;
+    }
 
 }
