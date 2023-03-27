@@ -2,8 +2,8 @@
 pragma solidity ^0.8.15;
 
 import "./utils/SafeERC20.sol";
-import "../interfaces/IERC20.sol";
-import "../interfaces/ICentralRegistry.sol";
+import "./interfaces/IERC20.sol";
+import "./interfaces/ICentralRegistry.sol";
 
 contract CurvanceAirdrop {
     using SafeERC20 for IERC20;
