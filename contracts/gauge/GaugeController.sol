@@ -5,8 +5,9 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "./GaugeErrors.sol";
+import "../interfaces/IGaugePool.sol";
 
-contract GaugeController is Ownable {
+contract GaugeController is IGaugePool, Ownable {
     // structs
     struct Epoch {
         uint256 rewardPerSec;
@@ -105,12 +106,14 @@ contract GaugeController is Ownable {
      * @param epoch Next epoch number
      * @param rewardPerSec Reward per second
      */
-    function setRewardPerSecOfNextEpoch(uint256 epoch, uint256 rewardPerSec) external onlyOwner {
+    function setRewardPerSecOfNextEpoch(uint256 epoch, uint256 rewardPerSec) external override onlyOwner {
         if (!(epoch == 0 && startTime == 0) && epoch != currentEpoch() + 1) {
             revert GaugeErrors.InvalidEpoch();
         }
 
         epochInfo[epoch].rewardPerSec = rewardPerSec;
+
+        IERC20(cve).safeTransferFrom(msg.sender, EPOCH_WINDOW * rewardPerSec);
     }
 
     /**
@@ -124,7 +127,7 @@ contract GaugeController is Ownable {
         uint256 epoch,
         address[] memory tokens,
         uint256[] memory poolWeights
-    ) external onlyOwner {
+    ) external override onlyOwner {
         if (!(epoch == 0 && startTime == 0) && epoch != currentEpoch() + 1) {
             revert GaugeErrors.InvalidEpoch();
         }
