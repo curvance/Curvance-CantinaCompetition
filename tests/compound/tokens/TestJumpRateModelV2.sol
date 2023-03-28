@@ -10,6 +10,7 @@ import "contracts/compound/Token/CErc20Immutable.sol";
 import "contracts/compound/Oracle/SimplePriceOracle.sol";
 import "contracts/compound/InterestRateModel/JumpRateModelV2.sol";
 import "contracts/compound/InterestRateModel/InterestRateModel.sol";
+import { GaugePool } from "contracts/gauge/GaugePool.sol";
 
 import "tests/compound/deploy.sol";
 import "tests/lib/DSTestPlus.sol";
@@ -32,6 +33,7 @@ contract TestJumpRateModelV2 is DSTestPlus {
     address interestRateModel;
     address public pot = address(0x197E90f9FAD81970bA7976f33CbD77088E5D7cf7);
     address public jug = address(0x19c0976f590D67707E62397C87829d896Dc0f1F1);
+    address gauge;
 
     function setUp() public {
         deployments = new DeployCompound();
@@ -55,12 +57,15 @@ contract TestJumpRateModelV2 is DSTestPlus {
             keccak256(abi.encodePacked(uint256(uint160(liquidator)), uint256(2))),
             bytes32(uint256(200000e18))
         );
+
+        gauge = address(new GaugePool(address(0), unitroller));
     }
 
     function testSupplyIndex() public {
         cDAI = new CErc20Immutable(
             dai,
             ComptrollerInterface(unitroller),
+            gauge,
             InterestRateModel(interestRateModel),
             1e18,
             "cDAI",
@@ -102,6 +107,7 @@ contract TestJumpRateModelV2 is DSTestPlus {
         cDAI = new CErc20Immutable(
             dai,
             ComptrollerInterface(unitroller),
+            gauge,
             InterestRateModel(interestRateModel),
             1e18,
             "cDAI",

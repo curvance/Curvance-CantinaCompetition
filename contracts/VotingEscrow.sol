@@ -5,8 +5,13 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "./interfaces/ICveCVE.sol";
 import "./interfaces/IStakingProxy.sol";
+
+interface ICveCVE {
+    function mint(address user, uint256 amount) external;
+
+    function burn(address user, uint256 amount) external;
+}
 
 contract VotingEscrow is Ownable {
     using SafeERC20 for IERC20;
@@ -148,11 +153,7 @@ contract VotingEscrow is Ownable {
      * @param _distributor address to distribute rewards
      * @param _approved flag approved or not
      */
-    function approveRewardDistributor(
-        address _rewardsToken,
-        address _distributor,
-        bool _approved
-    ) external onlyOwner {
+    function approveRewardDistributor(address _rewardsToken, address _distributor, bool _approved) external onlyOwner {
         require(rewardData[_rewardsToken].lastUpdateTime > 0, "!exist");
         rewardDistributors[_rewardsToken][_distributor] = _approved;
     }
@@ -177,11 +178,7 @@ contract VotingEscrow is Ownable {
      * @param _to address to which recovered tokens are sent
      * @param _amount amount of tokens to recover
      */
-    function recoverToken(
-        address _token,
-        address _to,
-        uint256 _amount
-    ) external onlyOwner {
+    function recoverToken(address _token, address _to, uint256 _amount) external onlyOwner {
         require(_token != address(cve), "cannot withdraw staking token");
         require(rewardData[_token].lastUpdateTime == 0, "cannot withdraw reward token");
         if (_amount == 0) {
@@ -289,16 +286,9 @@ contract VotingEscrow is Ownable {
      * @notice Information on a user's locked balances
      * @param _user account for which to get information
      */
-    function lockedBalances(address _user)
-        external
-        view
-        returns (
-            uint256 total,
-            uint256 unlockable,
-            uint256 locked,
-            Lock[] memory lockData
-        )
-    {
+    function lockedBalances(
+        address _user
+    ) external view returns (uint256 total, uint256 unlockable, uint256 locked, Lock[] memory lockData) {
         Lock[] storage locks = userLocks[_user];
         Balance storage userBalance = userBalances[_user];
         uint256 nextUnlockIndex = userBalance.nextUnlockIndex;
@@ -565,11 +555,7 @@ contract VotingEscrow is Ownable {
      * @param _rewardsToken reward token
      * @param _balance balance to use in calculation
      */
-    function _earned(
-        address _user,
-        address _rewardsToken,
-        uint256 _balance
-    ) internal view returns (uint256) {
+    function _earned(address _user, address _rewardsToken, uint256 _balance) internal view returns (uint256) {
         return
             (_balance * (_rewardPerToken(_rewardsToken) - userRewardPerTokenPaid[_user][_rewardsToken])) /
             1e18 +
@@ -591,12 +577,7 @@ contract VotingEscrow is Ownable {
      * @param _isRelock whether or not this action is a fresh lock
      * @param _stake whether or not to stake cve directly
      */
-    function _lock(
-        address _account,
-        uint224 _amount,
-        bool _isRelock,
-        bool _stake
-    ) internal {
+    function _lock(address _account, uint224 _amount, bool _isRelock, bool _stake) internal {
         require(!isShutdown, "shutdown");
         require(_amount > 0, "invalid amount");
 
@@ -751,11 +732,7 @@ contract VotingEscrow is Ownable {
      * @param _account account to which funds are transferred
      * @param _amount amount of tokens to transfer
      */
-    function _transfer(
-        address _account,
-        uint256 _amount,
-        bool
-    ) internal {
+    function _transfer(address _account, uint256 _amount, bool) internal {
         _allocateCVEForWithdrawal(_amount);
 
         cve.safeTransfer(_account, _amount);

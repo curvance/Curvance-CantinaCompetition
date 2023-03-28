@@ -13,6 +13,7 @@ contract CErc20Immutable is CErc20 {
      * @notice Construct a new money market
      * @param underlying_ The address of the underlying asset
      * @param comptroller_ The address of the Comptroller
+     * @param gaugePool_ The address of the gauge pool
      * @param interestRateModel_ The address of the interest rate model
      * @param initialExchangeRateMantissa_ The initial exchange rate, scaled by 1e18
      * @param name_ ERC-20 name of this token
@@ -23,6 +24,7 @@ contract CErc20Immutable is CErc20 {
     constructor(
         address underlying_,
         ComptrollerInterface comptroller_,
+        address gaugePool_,
         InterestRateModel interestRateModel_,
         uint256 initialExchangeRateMantissa_,
         string memory name_,
@@ -37,6 +39,7 @@ contract CErc20Immutable is CErc20 {
         initialize(
             underlying_,
             comptroller_,
+            gaugePool_,
             interestRateModel_,
             initialExchangeRateMantissa_,
             name_,

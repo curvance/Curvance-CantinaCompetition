@@ -8,6 +8,7 @@ import "contracts/compound/Token/CErc20Immutable.sol";
 import "contracts/compound/Token/CEther.sol";
 import "contracts/compound/Oracle/SimplePriceOracle.sol";
 import "contracts/compound/InterestRateModel/InterestRateModel.sol";
+import { GaugePool } from "contracts/gauge/GaugePool.sol";
 
 import "tests/compound/deploy.sol";
 import "tests/lib/DSTestPlus.sol";
@@ -31,6 +32,7 @@ contract TestCTokenAndCEther is DSTestPlus {
     CErc20Immutable public cDAI;
     CEther public cETH;
     SimplePriceOracle public priceOracle;
+    address gauge;
 
     receive() external payable {}
 
@@ -61,12 +63,15 @@ contract TestCTokenAndCEther is DSTestPlus {
         hevm.deal(user1, 200000e18);
         hevm.deal(user2, 200000e18);
         hevm.deal(liquidator, 200000e18);
+
+        gauge = address(new GaugePool(address(0), unitroller));
     }
 
     function testInitialize() public {
         cDAI = new CErc20Immutable(
             dai,
             ComptrollerInterface(unitroller),
+            gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
             1e18,
             "cDAI",
@@ -76,6 +81,7 @@ contract TestCTokenAndCEther is DSTestPlus {
         );
         cETH = new CEther(
             ComptrollerInterface(unitroller),
+            gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
             1e18,
             "cETH",
@@ -141,6 +147,7 @@ contract TestCTokenAndCEther is DSTestPlus {
         cDAI = new CErc20Immutable(
             dai,
             ComptrollerInterface(unitroller),
+            gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
             1e18,
             "cDAI",
@@ -150,6 +157,7 @@ contract TestCTokenAndCEther is DSTestPlus {
         );
         cETH = new CEther(
             ComptrollerInterface(unitroller),
+            gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
             1e18,
             "cETH",
@@ -210,6 +218,7 @@ contract TestCTokenAndCEther is DSTestPlus {
         cDAI = new CErc20Immutable(
             dai,
             ComptrollerInterface(unitroller),
+            gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
             1e18,
             "cDAI",
@@ -219,6 +228,7 @@ contract TestCTokenAndCEther is DSTestPlus {
         );
         cETH = new CEther(
             ComptrollerInterface(unitroller),
+            gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
             1e18,
             "cETH",
@@ -279,6 +289,7 @@ contract TestCTokenAndCEther is DSTestPlus {
         cDAI = new CErc20Immutable(
             dai,
             ComptrollerInterface(unitroller),
+            gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
             1e18,
             "cDAI",
@@ -288,6 +299,7 @@ contract TestCTokenAndCEther is DSTestPlus {
         );
         cETH = new CEther(
             ComptrollerInterface(unitroller),
+            gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
             1e18,
             "cETH",
@@ -346,6 +358,7 @@ contract TestCTokenAndCEther is DSTestPlus {
         cDAI = new CErc20Immutable(
             dai,
             ComptrollerInterface(unitroller),
+            gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
             1e18,
             "cDAI",
@@ -355,6 +368,7 @@ contract TestCTokenAndCEther is DSTestPlus {
         );
         cETH = new CEther(
             ComptrollerInterface(unitroller),
+            gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
             1e18,
             "cETH",
@@ -411,6 +425,7 @@ contract TestCTokenAndCEther is DSTestPlus {
         cDAI = new CErc20Immutable(
             dai,
             ComptrollerInterface(unitroller),
+            gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
             1e18,
             "cDAI",
@@ -420,6 +435,7 @@ contract TestCTokenAndCEther is DSTestPlus {
         );
         cETH = new CEther(
             ComptrollerInterface(unitroller),
+            gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
             1e18,
             "cETH",
@@ -492,6 +508,7 @@ contract TestCTokenAndCEther is DSTestPlus {
         cDAI = new CErc20Immutable(
             dai,
             ComptrollerInterface(unitroller),
+            gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
             1e18,
             "cDAI",
@@ -501,6 +518,7 @@ contract TestCTokenAndCEther is DSTestPlus {
         );
         cETH = new CEther(
             ComptrollerInterface(unitroller),
+            gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
             1e18,
             "cETH",

@@ -7,6 +7,7 @@ import "contracts/compound/Comptroller/ComptrollerInterface.sol";
 import "contracts/compound/Token/CEther.sol";
 import "contracts/compound/Oracle/SimplePriceOracle.sol";
 import "contracts/compound/InterestRateModel/InterestRateModel.sol";
+import { GaugePool } from "contracts/gauge/GaugePool.sol";
 
 import "tests/compound/deploy.sol";
 import "tests/lib/DSTestPlus.sol";
@@ -22,6 +23,7 @@ contract TestCEther is DSTestPlus {
     address public unitroller;
     CEther public cETH;
     SimplePriceOracle public priceOracle;
+    address gauge;
 
     receive() external payable {}
 
@@ -41,11 +43,14 @@ contract TestCEther is DSTestPlus {
         // prepare 200K ETH
         hevm.deal(user, 200000e18);
         hevm.deal(liquidator, 200000e18);
+
+        gauge = address(new GaugePool(address(0), unitroller));
     }
 
     function testInitialize() public {
         cETH = new CEther(
             ComptrollerInterface(unitroller),
+            gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
             1e18,
             "cETH",
@@ -58,6 +63,7 @@ contract TestCEther is DSTestPlus {
     function testMint() public {
         cETH = new CEther(
             ComptrollerInterface(unitroller),
+            gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
             1e18,
             "cETH",
@@ -83,6 +89,7 @@ contract TestCEther is DSTestPlus {
     function testRedeem() public {
         cETH = new CEther(
             ComptrollerInterface(unitroller),
+            gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
             1e18,
             "cETH",
@@ -115,6 +122,7 @@ contract TestCEther is DSTestPlus {
     function testRedeemUnderlying() public {
         cETH = new CEther(
             ComptrollerInterface(unitroller),
+            gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
             1e18,
             "cETH",
@@ -147,6 +155,7 @@ contract TestCEther is DSTestPlus {
     function testBorrow() public {
         cETH = new CEther(
             ComptrollerInterface(unitroller),
+            gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
             1e18,
             "cETH",
@@ -178,6 +187,7 @@ contract TestCEther is DSTestPlus {
     function testRepayBorrow() public {
         cETH = new CEther(
             ComptrollerInterface(unitroller),
+            gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
             1e18,
             "cETH",
@@ -213,6 +223,7 @@ contract TestCEther is DSTestPlus {
     function testRepayBorrowBehalf() public {
         cETH = new CEther(
             ComptrollerInterface(unitroller),
+            gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
             1e18,
             "cETH",
@@ -248,6 +259,7 @@ contract TestCEther is DSTestPlus {
     function testLiquidateBorrow() public {
         cETH = new CEther(
             ComptrollerInterface(unitroller),
+            gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
             1e18,
             "cETH",

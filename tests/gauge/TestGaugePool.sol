@@ -1,15 +1,29 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.15;
 
-import "contracts/gauge/GaugePool.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "contracts/compound/Comptroller/Comptroller.sol";
+import "contracts/compound/Comptroller/ComptrollerInterface.sol";
+import "contracts/compound/Token/CErc20Immutable.sol";
+import "contracts/compound/Oracle/SimplePriceOracle.sol";
+import "contracts/compound/InterestRateModel/InterestRateModel.sol";
+import { GaugePool } from "contracts/gauge/GaugePool.sol";
 import "contracts/mocks/MockToken.sol";
 
+import "tests/compound/deploy.sol";
 import "tests/lib/DSTestPlus.sol";
 import "hardhat/console.sol";
 
 contract User {}
 
 contract TestGaugePool is DSTestPlus {
+    address public dai = address(0x6B175474E89094C44Da98b954EedeAC495271d0F);
+    address public admin;
+    DeployCompound public deployments;
+    address public unitroller;
+    CErc20Immutable public cDAI;
+    SimplePriceOracle public priceOracle;
+
     address public owner;
     address[10] public tokens;
     address public rewardToken;
@@ -21,23 +35,60 @@ contract TestGaugePool is DSTestPlus {
     fallback() external payable {}
 
     function setUp() public {
+        deployments = new DeployCompound();
+        deployments.makeCompound();
+        unitroller = address(deployments.unitroller());
+        priceOracle = SimplePriceOracle(deployments.priceOracle());
+        priceOracle.setDirectPrice(dai, 1e18);
+        admin = deployments.admin();
+
         owner = address(this);
+
+        rewardToken = address(new MockToken("Reward Token", "RT", 18));
+        gaugePool = new GaugePool(address(rewardToken), unitroller);
+
+        MockToken(rewardToken).approve(address(gaugePool), 1000 ether);
+
         for (uint256 i = 0; i < 10; i++) {
             users[i] = address(new User());
+            hevm.store(
+                dai,
+                keccak256(abi.encodePacked(uint256(uint160(users[i])), uint256(2))),
+                bytes32(uint256(200000e18))
+            );
         }
         for (uint256 i = 0; i < 10; i++) {
-            tokens[i] = address(new MockToken("Mock Token", "MT", 18));
+            tokens[i] = address(
+                new CErc20Immutable(
+                    dai,
+                    ComptrollerInterface(unitroller),
+                    address(gaugePool),
+                    InterestRateModel(address(deployments.jumpRateModel())),
+                    1e18,
+                    "cDAI",
+                    "cDAI",
+                    18,
+                    payable(admin)
+                )
+            );
+            // support market
+            hevm.prank(admin);
+            Comptroller(unitroller)._supportMarket(CToken(tokens[i]));
+
             for (uint256 j = 0; j < 10; j++) {
-                MockToken(tokens[i]).transfer(users[j], 1000000 ether);
+                address user = users[j];
+                hevm.prank(user);
+                address[] memory markets = new address[](1);
+                markets[0] = address(tokens[i]);
+                ComptrollerInterface(unitroller).enterMarkets(markets);
+
+                // approve
+                hevm.prank(user);
+                IERC20(dai).approve(address(tokens[i]), 200000e18);
             }
 
             hevm.deal(users[i], 200000e18);
         }
-
-        rewardToken = address(new MockToken("Reward Token", "RT", 18));
-        gaugePool = new GaugePool(address(rewardToken));
-
-        MockToken(rewardToken).transfer(address(gaugePool), 1000 ether);
 
         hevm.warp(block.timestamp + 1000);
         hevm.roll(block.number + 1000);
@@ -176,15 +227,11 @@ contract TestGaugePool is DSTestPlus {
 
         // user0 deposit 100 token0
         hevm.prank(users[0]);
-        MockToken(tokens[0]).approve(address(gaugePool), 100 ether);
-        hevm.prank(users[0]);
-        gaugePool.deposit(tokens[0], 100 ether, users[0]);
+        CErc20Immutable(tokens[0]).mint(100 ether);
 
         // user2 deposit 100 token1
         hevm.prank(users[2]);
-        MockToken(tokens[1]).approve(address(gaugePool), 100 ether);
-        hevm.prank(users[2]);
-        gaugePool.deposit(tokens[1], 100 ether, users[2]);
+        CErc20Immutable(tokens[1]).mint(100 ether);
 
         // check pending rewards after 100 seconds
         hevm.warp(block.timestamp + 100);
@@ -193,15 +240,11 @@ contract TestGaugePool is DSTestPlus {
 
         // user1 deposit 400 token0
         hevm.prank(users[1]);
-        MockToken(tokens[0]).approve(address(gaugePool), 400 ether);
-        hevm.prank(users[1]);
-        gaugePool.deposit(tokens[0], 400 ether, users[1]);
+        CErc20Immutable(tokens[0]).mint(400 ether);
 
         // user3 deposit 400 token1
         hevm.prank(users[3]);
-        MockToken(tokens[1]).approve(address(gaugePool), 400 ether);
-        hevm.prank(users[3]);
-        gaugePool.deposit(tokens[1], 400 ether, users[3]);
+        CErc20Immutable(tokens[1]).mint(400 ether);
 
         // check pending rewards after 100 seconds
         hevm.warp(block.timestamp + 100);
@@ -227,13 +270,11 @@ contract TestGaugePool is DSTestPlus {
 
         // user0 withdraw half
         hevm.prank(users[0]);
-        gaugePool.withdraw(tokens[0], 50 ether, users[0]);
+        CErc20Immutable(tokens[0]).redeem(50 ether);
 
         // user2 deposit 2x
         hevm.prank(users[2]);
-        MockToken(tokens[1]).approve(address(gaugePool), 100 ether);
-        hevm.prank(users[2]);
-        gaugePool.deposit(tokens[1], 100 ether, users[2]);
+        CErc20Immutable(tokens[1]).mint(100 ether);
 
         // check pending rewards after 100 seconds
         hevm.warp(block.timestamp + 100);
@@ -280,15 +321,11 @@ contract TestGaugePool is DSTestPlus {
 
         // user0 deposit 100 token0
         hevm.prank(users[0]);
-        MockToken(tokens[0]).approve(address(gaugePool), 100 ether);
-        hevm.prank(users[0]);
-        gaugePool.deposit(tokens[0], 100 ether, users[0]);
+        CErc20Immutable(tokens[0]).mint(100 ether);
 
         // user1 deposit 100 token1
         hevm.prank(users[1]);
-        MockToken(tokens[1]).approve(address(gaugePool), 100 ether);
-        hevm.prank(users[1]);
-        gaugePool.deposit(tokens[1], 100 ether, users[1]);
+        CErc20Immutable(tokens[1]).mint(100 ether);
 
         // check pending rewards after 100 seconds
         hevm.warp(block.timestamp + 100);
@@ -337,15 +374,11 @@ contract TestGaugePool is DSTestPlus {
 
         // user0 deposit 100 token0
         hevm.prank(users[0]);
-        MockToken(tokens[0]).approve(address(gaugePool), 100 ether);
-        hevm.prank(users[0]);
-        gaugePool.deposit(tokens[0], 100 ether, users[0]);
+        CErc20Immutable(tokens[0]).mint(100 ether);
 
         // user2 deposit 100 token1
         hevm.prank(users[2]);
-        MockToken(tokens[1]).approve(address(gaugePool), 100 ether);
-        hevm.prank(users[2]);
-        gaugePool.deposit(tokens[1], 100 ether, users[2]);
+        CErc20Immutable(tokens[1]).mint(100 ether);
 
         // check pending rewards after 100 seconds
         hevm.warp(block.timestamp + 100);
@@ -356,18 +389,14 @@ contract TestGaugePool is DSTestPlus {
 
         // user1 deposit 400 token0
         hevm.prank(users[1]);
-        MockToken(tokens[0]).approve(address(gaugePool), 400 ether);
-        hevm.prank(users[1]);
-        gaugePool.deposit(tokens[0], 400 ether, users[1]);
+        CErc20Immutable(tokens[0]).mint(400 ether);
 
         gaugePool.updatePool(tokens[0]);
         gaugePool.updatePool(tokens[1]);
 
         // user3 deposit 400 token1
         hevm.prank(users[3]);
-        MockToken(tokens[1]).approve(address(gaugePool), 400 ether);
-        hevm.prank(users[3]);
-        gaugePool.deposit(tokens[1], 400 ether, users[3]);
+        CErc20Immutable(tokens[1]).mint(400 ether);
 
         // check pending rewards after 100 seconds
         hevm.warp(block.timestamp + 100);
@@ -396,13 +425,11 @@ contract TestGaugePool is DSTestPlus {
 
         // user0 withdraw half
         hevm.prank(users[0]);
-        gaugePool.withdraw(tokens[0], 50 ether, users[0]);
+        CErc20Immutable(tokens[0]).redeem(50 ether);
 
         // user2 deposit 2x
         hevm.prank(users[2]);
-        MockToken(tokens[1]).approve(address(gaugePool), 100 ether);
-        hevm.prank(users[2]);
-        gaugePool.deposit(tokens[1], 100 ether, users[2]);
+        CErc20Immutable(tokens[1]).mint(100 ether);
 
         gaugePool.updatePool(tokens[0]);
         gaugePool.updatePool(tokens[1]);

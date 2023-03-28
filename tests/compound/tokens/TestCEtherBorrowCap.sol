@@ -7,6 +7,7 @@ import "contracts/compound/Comptroller/ComptrollerInterface.sol";
 import "contracts/compound/Token/CEther.sol";
 import "contracts/compound/Oracle/SimplePriceOracle.sol";
 import "contracts/compound/InterestRateModel/InterestRateModel.sol";
+import { GaugePool } from "contracts/gauge/GaugePool.sol";
 
 import "tests/compound/deploy.sol";
 import "tests/lib/DSTestPlus.sol";
@@ -22,6 +23,7 @@ contract TestCEtherBorrowCap is DSTestPlus {
     address public unitroller;
     CEther public cETH;
     SimplePriceOracle public priceOracle;
+    address gauge;
 
     receive() external payable {}
 
@@ -41,11 +43,14 @@ contract TestCEtherBorrowCap is DSTestPlus {
         // prepare 200K ETH
         hevm.deal(user, 200000e18);
         hevm.deal(liquidator, 200000e18);
+
+        gauge = address(new GaugePool(address(0), unitroller));
     }
 
     function testBorrowCap() public {
         cETH = new CEther(
             ComptrollerInterface(unitroller),
+            gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
             1e18,
             "cETH",

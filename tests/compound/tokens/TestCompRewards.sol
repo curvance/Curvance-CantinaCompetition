@@ -9,6 +9,7 @@ import "contracts/compound/Comptroller/ComptrollerInterface.sol";
 import "contracts/compound/Token/CErc20Immutable.sol";
 import "contracts/compound/Oracle/SimplePriceOracle.sol";
 import "contracts/compound/InterestRateModel/InterestRateModel.sol";
+import { GaugePool } from "contracts/gauge/GaugePool.sol";
 
 import "tests/compound/deploy.sol";
 import "tests/lib/DSTestPlus.sol";
@@ -28,6 +29,7 @@ contract TestCompRewards is DSTestPlus {
     Cve public cve;
     CErc20Immutable public cDAI;
     SimplePriceOracle public priceOracle;
+    address gauge;
 
     function setUp() public {
         deployments = new DeployCompound();
@@ -49,12 +51,15 @@ contract TestCompRewards is DSTestPlus {
             keccak256(abi.encodePacked(uint256(uint160(liquidator)), uint256(2))),
             bytes32(uint256(200000e18))
         );
+
+        gauge = address(new GaugePool(address(0), unitroller));
     }
 
     function testSupplyIndex() public {
         cDAI = new CErc20Immutable(
             dai,
             ComptrollerInterface(unitroller),
+            gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
             1e18,
             "cDAI",
@@ -96,6 +101,7 @@ contract TestCompRewards is DSTestPlus {
         cDAI = new CErc20Immutable(
             dai,
             ComptrollerInterface(unitroller),
+            gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
             1e18,
             "cDAI",

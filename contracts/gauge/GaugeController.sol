@@ -3,11 +3,14 @@ pragma solidity ^0.8.15;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "./GaugeErrors.sol";
 import "../interfaces/IGaugePool.sol";
 
 contract GaugeController is IGaugePool, Ownable {
+    using SafeERC20 for IERC20;
+
     // structs
     struct Epoch {
         uint256 rewardPerSec;
@@ -113,7 +116,7 @@ contract GaugeController is IGaugePool, Ownable {
 
         epochInfo[epoch].rewardPerSec = rewardPerSec;
 
-        IERC20(cve).safeTransferFrom(msg.sender, EPOCH_WINDOW * rewardPerSec);
+        IERC20(cve).safeTransferFrom(msg.sender, address(this), EPOCH_WINDOW * rewardPerSec);
     }
 
     /**

@@ -2,6 +2,7 @@
 pragma solidity ^0.8.15;
 
 import "./GaugeController.sol";
+import "../compound/Comptroller/ComptrollerInterface.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -23,18 +24,21 @@ contract GaugePool is GaugeController, ReentrancyGuard {
     }
 
     // events
-    event Deposit(address indexed user, address indexed token, uint256 amount, address indexed onBehalf);
-    event Withdraw(address indexed user, address indexed token, uint256 amount, address indexed recipient);
+    event Deposit(address indexed user, address indexed token, uint256 amount);
+    event Withdraw(address indexed user, address indexed token, uint256 amount);
     event Claim(address indexed user, address indexed token, uint256 amount);
 
     // constants
     uint256 public constant PRECISION = 1e36;
 
     // storage
+    address public comptroller;
     mapping(address => PoolInfo) public poolInfo; // token => pool info
     mapping(address => mapping(address => UserInfo)) public userInfo; // token => user => info
 
-    constructor(address _cve) GaugeController(_cve) ReentrancyGuard() {}
+    constructor(address _cve, address _comptroller) GaugeController(_cve) ReentrancyGuard() {
+        comptroller = _comptroller;
+    }
 
     /**
      * @notice Returns pending rewards of user
@@ -85,15 +89,12 @@ contract GaugePool is GaugeController, ReentrancyGuard {
     /**
      * @notice Deposit into gauge pool
      * @param token Pool token address
+     * @param user User address
      * @param amount Amounts to deposit
-     * @param onBehalf User address for behalf
      */
-    function deposit(
-        address token,
-        uint256 amount,
-        address onBehalf
-    ) external nonReentrant {
-        if (!isGaugeEnabled(currentEpoch(), token)) {
+    function deposit(address token, address user, uint256 amount) external nonReentrant {
+        (bool isListed, , ) = ComptrollerInterface(comptroller).getIsMarkets(token);
+        if (msg.sender != token || !isListed) {
             revert GaugeErrors.InvalidToken();
         }
         if (amount == 0) {
@@ -101,47 +102,42 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         }
 
         updatePool(token);
-        _calcPending(onBehalf, token);
+        _calcPending(user, token);
 
-        IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
-        userInfo[token][onBehalf].amount += amount;
+        userInfo[token][user].amount += amount;
         poolInfo[token].totalAmount += amount;
 
-        _calcDebt(onBehalf, token);
+        _calcDebt(user, token);
 
-        emit Deposit(msg.sender, token, amount, onBehalf);
+        emit Deposit(user, token, amount);
     }
 
     /**
      * @notice Withdraw from gauge pool
      * @param token Pool token address
+     * @param user The user address
      * @param amount Amounts to withdraw
-     * @param recipient The recipient address
      */
-    function withdraw(
-        address token,
-        uint256 amount,
-        address recipient
-    ) external nonReentrant {
-        if (!isGaugeEnabled(currentEpoch(), token)) {
+    function withdraw(address token, address user, uint256 amount) external nonReentrant {
+        (bool isListed, , ) = ComptrollerInterface(comptroller).getIsMarkets(token);
+        if (msg.sender != token || !isListed) {
             revert GaugeErrors.InvalidToken();
         }
 
-        UserInfo storage info = userInfo[token][msg.sender];
+        UserInfo storage info = userInfo[token][user];
         if (amount == 0 || info.amount < amount) {
             revert GaugeErrors.InvalidAmount();
         }
 
         updatePool(token);
-        _calcPending(msg.sender, token);
+        _calcPending(user, token);
 
         info.amount -= amount;
         poolInfo[token].totalAmount -= amount;
-        IERC20(token).safeTransfer(recipient, amount);
 
-        _calcDebt(msg.sender, token);
+        _calcDebt(user, token);
 
-        emit Withdraw(msg.sender, token, amount, recipient);
+        emit Withdraw(user, token, amount);
     }
 
     /**
@@ -149,10 +145,6 @@ contract GaugePool is GaugeController, ReentrancyGuard {
      * @param token Pool token address
      */
     function claim(address token) external nonReentrant {
-        if (!isGaugeEnabled(currentEpoch(), token)) {
-            revert GaugeErrors.InvalidToken();
-        }
-
         updatePool(token);
         _calcPending(msg.sender, token);
 

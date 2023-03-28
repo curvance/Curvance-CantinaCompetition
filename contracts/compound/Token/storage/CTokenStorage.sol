@@ -65,6 +65,11 @@ abstract contract CTokenStorage is CommonError {
     ComptrollerInterface public comptroller;
 
     /**
+     * @notice Gauge contract address
+     */
+    address public gaugePool;
+
+    /**
      * @notice Model which tells what the current interest rate should be
      */
     InterestRateModel public interestRateModel;

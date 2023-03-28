@@ -15,6 +15,7 @@ contract CErc20Delegator is CTokenInterface, CErc20Interface, CDelegatorInterfac
      * @notice Construct a new money market
      * @param underlying_ The address of the underlying asset
      * @param comptroller_ The address of the Comptroller
+     * @param gaugePool_ The address of the gauge pool
      * @param interestRateModel_ The address of the interest rate model
      * @param initialExchangeRateMantissa_ The initial exchange rate, scaled by 1e18
      * @param name_ ERC-20 name of this token
@@ -27,6 +28,7 @@ contract CErc20Delegator is CTokenInterface, CErc20Interface, CDelegatorInterfac
     constructor(
         address underlying_,
         ComptrollerInterface comptroller_,
+        address gaugePool_,
         InterestRateModel interestRateModel_,
         uint256 initialExchangeRateMantissa_,
         string memory name_,
@@ -43,9 +45,10 @@ contract CErc20Delegator is CTokenInterface, CErc20Interface, CDelegatorInterfac
         delegateTo(
             implementation_,
             abi.encodeWithSignature(
-                "initialize(address,address,address,uint256,string,string,uint8)",
+                "initialize(address,address,address,address,uint256,string,string,uint8)",
                 underlying_,
                 comptroller_,
+                gaugePool_,
                 interestRateModel_,
                 initialExchangeRateMantissa_,
                 name_,
@@ -183,11 +186,7 @@ contract CErc20Delegator is CTokenInterface, CErc20Interface, CDelegatorInterfac
      * @param amount The number of tokens to transfer
      * @return Whether or not the transfer succeeded
      */
-    function transferFrom(
-        address src,
-        address dst,
-        uint256 amount
-    ) external override returns (bool) {
+    function transferFrom(address src, address dst, uint256 amount) external override returns (bool) {
         bytes memory data = delegateToImplementation(
             abi.encodeWithSignature("transferFrom(address,address,uint256)", src, dst, amount)
         );
@@ -254,16 +253,7 @@ contract CErc20Delegator is CTokenInterface, CErc20Interface, CDelegatorInterfac
      * @param account Address of the account to snapshot
      * @return (token balance, borrow balance, exchange rate mantissa) /// removed first return: possible error,
      */
-    function getAccountSnapshot(address account)
-        external
-        view
-        override
-        returns (
-            uint256,
-            uint256,
-            uint256
-        )
-    {
+    function getAccountSnapshot(address account) external view override returns (uint256, uint256, uint256) {
         bytes memory data = delegateToViewImplementation(
             abi.encodeWithSignature("getAccountSnapshot(address)", account)
         );
@@ -373,11 +363,7 @@ contract CErc20Delegator is CTokenInterface, CErc20Interface, CDelegatorInterfac
      * @param borrower The account having collateral seized
      * @param seizeTokens The number of cTokens to seize
      */
-    function seize(
-        address liquidator,
-        address borrower,
-        uint256 seizeTokens
-    ) external override {
+    function seize(address liquidator, address borrower, uint256 seizeTokens) external override {
         delegateToImplementation(
             abi.encodeWithSignature("seize(address,address,uint256)", liquidator, borrower, seizeTokens)
         );

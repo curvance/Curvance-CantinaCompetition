@@ -6,6 +6,7 @@ import "../Comptroller/ComptrollerInterface.sol";
 import "../interfaces/IEIP20.sol";
 import "../InterestRateModel/InterestRateModel.sol";
 import "./storage/CTokenInterface.sol";
+import { GaugePool } from "../../gauge/GaugePool.sol";
 
 /**
  * @title Curvance's CToken Contract
@@ -25,6 +26,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
      */
     function initialize(
         ComptrollerInterface comptroller_,
+        address gaugePool_,
         InterestRateModel interestRateModel_,
         uint256 initialExchangeRateScaled_,
         string memory name_,
@@ -47,6 +49,8 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         // Set the comptroller
         _setComptroller(comptroller_);
 
+        gaugePool = gaugePool_;
+
         // Initialize block number and borrow index (block number mocks depend on comptroller being set)
         accrualBlockNumber = getBlockNumber();
         borrowIndex = expScale;
@@ -67,12 +71,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
      * @param dst The address of the destination account
      * @param tokens The number of tokens to transfer
      */
-    function transferTokens(
-        address spender,
-        address src,
-        address dst,
-        uint256 tokens
-    ) internal {
+    function transferTokens(address spender, address src, address dst, uint256 tokens) internal {
         /* Fails if transfer not allowed */
         comptroller.transferAllowed(address(this), src, dst, tokens);
 
@@ -101,6 +100,10 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         accountTokens[src] = srcTokensNew;
         accountTokens[dst] = dstTokensNew;
 
+        // emit events on gauge pool
+        GaugePool(gaugePool).withdraw(address(this), src, tokens);
+        GaugePool(gaugePool).deposit(address(this), dst, tokens);
+
         /* Eat some of the allowance (if necessary) */
         if (startingAllowance != type(uint256).max) {
             transferAllowances[src][spender] = allowanceNew;
@@ -128,11 +131,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
      * @param amount The number of tokens to transfer
      * @return bool true=success
      */
-    function transferFrom(
-        address src,
-        address dst,
-        uint256 amount
-    ) external override nonReentrant returns (bool) {
+    function transferFrom(address src, address dst, uint256 amount) external override nonReentrant returns (bool) {
         transferTokens(msg.sender, src, dst, amount);
         return true;
     }
@@ -191,16 +190,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
      * @return borrowBalance
      * @return exchangeRate scaled 1e18
      */
-    function getAccountSnapshot(address account)
-        external
-        view
-        override
-        returns (
-            uint256,
-            uint256,
-            uint256
-        )
-    {
+    function getAccountSnapshot(address account) external view override returns (uint256, uint256, uint256) {
         return (accountTokens[account], borrowBalanceStoredInternal(account), exchangeRateStoredInternal());
     }
 
@@ -356,7 +346,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
 
         /* Calculate the current borrow interest rate */
         uint256 borrowRateScaled = interestRateModel.getBorrowRate(cashPrior, borrowsPrior, reservesPrior);
-        if (borrowRateMaxScaled >= borrowRateScaled) {
+        if (borrowRateMaxScaled < borrowRateScaled) {
             revert ExcessiveValue();
         }
 
@@ -451,6 +441,9 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         totalSupply = totalSupply + mintTokens;
         accountTokens[minter] = accountTokens[minter] + mintTokens;
 
+        // emit events on gauge pool
+        GaugePool(gaugePool).deposit(address(this), minter, mintTokens);
+
         /* We emit a Mint event, and a Transfer event */
         emit Mint(minter, actualMintAmount, mintTokens);
         emit Transfer(address(this), minter, mintTokens);
@@ -543,6 +536,9 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
          */
         totalSupply = totalSupply - redeemTokens;
         accountTokens[redeemer] = accountTokens[redeemer] - redeemTokens;
+
+        // emit events on gauge pool
+        GaugePool(gaugePool).deposit(address(this), redeemer, redeemTokens);
 
         /*
          * We invoke doTransferOut for the redeemer and the redeemAmount.
@@ -651,11 +647,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
      * @param repayAmount the amount of underlying tokens being returned, or -1 for the full outstanding amount
      * @return (uint) the actual repayment amount.
      */
-    function repayBorrowFresh(
-        address payer,
-        address borrower,
-        uint256 repayAmount
-    ) internal returns (uint256) {
+    function repayBorrowFresh(address payer, address borrower, uint256 repayAmount) internal returns (uint256) {
         /* Fail if repayBorrow not allowed */
         comptroller.repayBorrowAllowed(address(this), borrower); //, payer, repayAmount);
 
@@ -803,11 +795,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
      * @param seizeTokens The number of cTokens to seize
      *
      */
-    function seize(
-        address liquidator,
-        address borrower,
-        uint256 seizeTokens
-    ) external override nonReentrant {
+    function seize(address liquidator, address borrower, uint256 seizeTokens) external override nonReentrant {
         seizeInternal(msg.sender, liquidator, borrower, seizeTokens);
     }
 
@@ -820,12 +808,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
      * @param borrower The account having collateral seized
      * @param seizeTokens The number of cTokens to seize
      */
-    function seizeInternal(
-        address seizerToken,
-        address liquidator,
-        address borrower,
-        uint256 seizeTokens
-    ) internal {
+    function seizeInternal(address seizerToken, address liquidator, address borrower, uint256 seizeTokens) internal {
         /* Fails if seize not allowed */
         comptroller.seizeAllowed(address(this), seizerToken, liquidator, borrower); //, seizeTokens);
 
@@ -853,6 +836,10 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         totalSupply = totalSupply - protocolSeizeTokens;
         accountTokens[borrower] = accountTokens[borrower] - seizeTokens;
         accountTokens[liquidator] = accountTokens[liquidator] + liquidatorSeizeTokens;
+
+        // emit events on gauge pool
+        GaugePool(gaugePool).withdraw(address(this), borrower, seizeTokens);
+        GaugePool(gaugePool).deposit(address(this), liquidator, liquidatorSeizeTokens);
 
         /* Emit a Transfer event */
         emit Transfer(borrower, liquidator, liquidatorSeizeTokens);
