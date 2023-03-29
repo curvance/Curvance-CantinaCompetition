@@ -114,9 +114,14 @@ contract GaugeController is IGaugePool, Ownable {
             revert GaugeErrors.InvalidEpoch();
         }
 
+        prevRewardPerSec = epochInfo[epoch].rewardPerSec;
         epochInfo[epoch].rewardPerSec = rewardPerSec;
 
-        IERC20(cve).safeTransferFrom(msg.sender, address(this), EPOCH_WINDOW * rewardPerSec);
+        if (prevRewardPerSec > rewardPerSec) {
+            IERC20(cve).safeTransfer(msg.sender, EPOCH_WINDOW * (prevRewardPerSec, rewardPerSec));
+        } else {
+            IERC20(cve).safeTransferFrom(msg.sender, address(this), EPOCH_WINDOW * (rewardPerSec - prevRewardPerSec));
+        }
     }
 
     /**
