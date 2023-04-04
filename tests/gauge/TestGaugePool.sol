@@ -74,6 +74,9 @@ contract TestGaugePool is DSTestPlus {
             // support market
             hevm.prank(admin);
             Comptroller(unitroller)._supportMarket(CToken(tokens[i]));
+            // set collateral factor
+            hevm.prank(admin);
+            Comptroller(unitroller)._setCollateralFactor(CToken(tokens[i]), 5e17);
 
             for (uint256 j = 0; j < 10; j++) {
                 address user = users[j];

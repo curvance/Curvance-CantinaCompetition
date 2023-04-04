@@ -107,20 +107,24 @@ contract GaugeController is IGaugePool, Ownable {
      * @notice Set rewardPerSec of next epoch
      * @dev Only owner
      * @param epoch Next epoch number
-     * @param rewardPerSec Reward per second
+     * @param newRewardPerSec Reward per second
      */
-    function setRewardPerSecOfNextEpoch(uint256 epoch, uint256 rewardPerSec) external override onlyOwner {
+    function setRewardPerSecOfNextEpoch(uint256 epoch, uint256 newRewardPerSec) external override onlyOwner {
         if (!(epoch == 0 && startTime == 0) && epoch != currentEpoch() + 1) {
             revert GaugeErrors.InvalidEpoch();
         }
 
-        prevRewardPerSec = epochInfo[epoch].rewardPerSec;
-        epochInfo[epoch].rewardPerSec = rewardPerSec;
+        uint256 prevRewardPerSec = epochInfo[epoch].rewardPerSec;
+        epochInfo[epoch].rewardPerSec = newRewardPerSec;
 
-        if (prevRewardPerSec > rewardPerSec) {
-            IERC20(cve).safeTransfer(msg.sender, EPOCH_WINDOW * (prevRewardPerSec, rewardPerSec));
+        if (prevRewardPerSec > newRewardPerSec) {
+            IERC20(cve).safeTransfer(msg.sender, EPOCH_WINDOW * (prevRewardPerSec - newRewardPerSec));
         } else {
-            IERC20(cve).safeTransferFrom(msg.sender, address(this), EPOCH_WINDOW * (rewardPerSec - prevRewardPerSec));
+            IERC20(cve).safeTransferFrom(
+                msg.sender,
+                address(this),
+                EPOCH_WINDOW * (newRewardPerSec - prevRewardPerSec)
+            );
         }
     }
 
