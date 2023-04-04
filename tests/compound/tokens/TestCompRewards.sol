@@ -71,6 +71,8 @@ contract TestCompRewards is DSTestPlus {
         hevm.prank(admin);
         Comptroller(unitroller)._supportMarket(CToken(address(cDAI)));
         hevm.prank(admin);
+        Comptroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 5e17);
+        hevm.prank(admin);
         compRewards._setCveSpeed(CToken(cDAI), 1e16); // 0.01 CVE per block
 
         // enter markets
@@ -112,6 +114,8 @@ contract TestCompRewards is DSTestPlus {
         // support market
         hevm.prank(admin);
         Comptroller(unitroller)._supportMarket(CToken(address(cDAI)));
+        hevm.prank(admin);
+        Comptroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 5e17);
         hevm.prank(admin);
         compRewards._setCveSpeed(CToken(cDAI), 1e16); // 0.01 CVE per block
 

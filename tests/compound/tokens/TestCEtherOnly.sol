@@ -74,6 +74,9 @@ contract TestCEther is DSTestPlus {
         // support market
         hevm.prank(admin);
         Comptroller(unitroller)._supportMarket(CToken(address(cETH)));
+        // set collateral factor
+        hevm.prank(admin);
+        Comptroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 5e17);
 
         // enter markets
         hevm.prank(user);
@@ -100,6 +103,8 @@ contract TestCEther is DSTestPlus {
         // support market
         hevm.prank(admin);
         Comptroller(unitroller)._supportMarket(CToken(address(cETH)));
+        hevm.prank(admin);
+        Comptroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 5e17);
 
         // enter markets
         hevm.prank(user);
@@ -133,6 +138,8 @@ contract TestCEther is DSTestPlus {
         // support market
         hevm.prank(admin);
         Comptroller(unitroller)._supportMarket(CToken(address(cETH)));
+        hevm.prank(admin);
+        Comptroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 5e17);
 
         // enter markets
         hevm.prank(user);
@@ -166,6 +173,8 @@ contract TestCEther is DSTestPlus {
         // support market
         hevm.prank(admin);
         Comptroller(unitroller)._supportMarket(CToken(address(cETH)));
+        hevm.prank(admin);
+        Comptroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 5e17);
 
         // enter markets
         hevm.prank(user);
@@ -198,6 +207,8 @@ contract TestCEther is DSTestPlus {
         // support market
         hevm.prank(admin);
         Comptroller(unitroller)._supportMarket(CToken(address(cETH)));
+        hevm.prank(admin);
+        Comptroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 5e17);
 
         // enter markets
         hevm.prank(user);
@@ -234,6 +245,8 @@ contract TestCEther is DSTestPlus {
         // support market
         hevm.prank(admin);
         Comptroller(unitroller)._supportMarket(CToken(address(cETH)));
+        hevm.prank(admin);
+        Comptroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 5e17);
 
         // enter markets
         hevm.prank(user);
@@ -270,6 +283,8 @@ contract TestCEther is DSTestPlus {
         // support market
         hevm.prank(admin);
         Comptroller(unitroller)._supportMarket(CToken(address(cETH)));
+        hevm.prank(admin);
+        Comptroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 5e17);
 
         // enter markets
         hevm.prank(user);

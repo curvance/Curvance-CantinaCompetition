@@ -76,6 +76,9 @@ contract TestJumpRateModelV2 is DSTestPlus {
         // support market
         hevm.prank(admin);
         Comptroller(unitroller)._supportMarket(CToken(address(cDAI)));
+        // set collateral factor
+        hevm.prank(admin);
+        Comptroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 5e17);
         hevm.prank(admin);
         compRewards._setCveSpeed(CToken(cDAI), 1e16); // 0.01 CVE per block
 
@@ -118,6 +121,9 @@ contract TestJumpRateModelV2 is DSTestPlus {
         // support market
         hevm.prank(admin);
         Comptroller(unitroller)._supportMarket(CToken(address(cDAI)));
+        // set collateral factor
+        hevm.prank(admin);
+        Comptroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 5e17);
         hevm.prank(admin);
         compRewards._setCveSpeed(CToken(cDAI), 1e16); // 0.01 CVE per block
 

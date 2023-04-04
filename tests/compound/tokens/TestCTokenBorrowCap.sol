@@ -64,6 +64,9 @@ contract TestCTokenBorrowCap is DSTestPlus {
         // support market
         hevm.prank(admin);
         Comptroller(unitroller)._supportMarket(CToken(address(cDAI)));
+        // set collateral factor
+        hevm.prank(admin);
+        Comptroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 5e17);
 
         // enter markets
         hevm.prank(user);
