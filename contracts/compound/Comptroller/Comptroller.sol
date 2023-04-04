@@ -184,11 +184,7 @@ contract Comptroller is ComptrollerInterface {
      * @param redeemer The account which would redeem the tokens
      * @param redeemTokens The number of cTokens to exchange for the underlying asset in the market
      */
-    function redeemAllowed(
-        address cToken,
-        address redeemer,
-        uint256 redeemTokens
-    ) external override {
+    function redeemAllowed(address cToken, address redeemer, uint256 redeemTokens) external override {
         redeemAllowedInternal(cToken, redeemer, redeemTokens);
 
         // Keep the flywheel moving
@@ -202,11 +198,7 @@ contract Comptroller is ComptrollerInterface {
      * @param redeemer The account which would redeem the tokens
      * @param redeemTokens The number of cTokens to exchange for the underlying asset in the market
      */
-    function redeemAllowedInternal(
-        address cToken,
-        address redeemer,
-        uint256 redeemTokens
-    ) internal view {
+    function redeemAllowedInternal(address cToken, address redeemer, uint256 redeemTokens) internal view {
         if (!markets[cToken].isListed) {
             revert MarketNotListed(cToken);
         }
@@ -230,11 +222,7 @@ contract Comptroller is ComptrollerInterface {
      * @param borrower The account which would borrow the asset
      * @param borrowAmount The amount of underlying the account would borrow
      */
-    function borrowAllowed(
-        address cToken,
-        address borrower,
-        uint256 borrowAmount
-    ) external override {
+    function borrowAllowed(address cToken, address borrower, uint256 borrowAmount) external override {
         // Pausing is a very serious situation - we revert to sound the alarms
         if (borrowGuardianPaused[cToken]) {
             revert Paused();
@@ -271,7 +259,11 @@ contract Comptroller is ComptrollerInterface {
             }
         }
 
-        getHypotheticalAccountLiquidityInternal(borrower, CToken(cToken), 0, borrowAmount);
+        (, uint256 shortfall) = getHypotheticalAccountLiquidityInternal(borrower, CToken(cToken), 0, borrowAmount);
+
+        if (shortfall > 0) {
+            revert InsufficientLiquidity();
+        }
 
         // Keep the flywheel moving
         rewarder.updateCveSupplyIndexExternal(cToken);
@@ -370,12 +362,7 @@ contract Comptroller is ComptrollerInterface {
      * @param dst The account which receives the tokens
      * @param transferTokens The number of cTokens to transfer
      */
-    function transferAllowed(
-        address cToken,
-        address src,
-        address dst,
-        uint256 transferTokens
-    ) external override {
+    function transferAllowed(address cToken, address src, address dst, uint256 transferTokens) external override {
         // Pausing is a very serious situation - we revert to sound the alarms
         if (transferGuardianPaused) {
             revert Paused();
@@ -464,9 +451,10 @@ contract Comptroller is ComptrollerInterface {
         uint256 sumBorrowPlusEffects;
 
         // For each asset the account is in
-        CToken[] memory assets = accountAssets[account];
-        for (uint256 i = 0; i < assets.length; i++) {
-            CToken asset = assets[i];
+        for (uint256 i = 0; i < accountAssets[account].length; i++) {
+            CToken asset = accountAssets[account][i];
+            bool collateralEnabled = marketDisableCollateral[asset] == false &&
+                userDisableCollateral[account][asset] == false;
 
             (uint256 cTokenBalance, uint256 borrowBalance, uint256 exchangeRateScaled) = asset.getAccountSnapshot(
                 account
@@ -478,14 +466,18 @@ contract Comptroller is ComptrollerInterface {
             uint256 tokensToDenom = (((markets[address(asset)].collateralFactorScaled * exchangeRateScaled) /
                 expScale) * oraclePrice) / expScale;
 
-            sumCollateral += ((tokensToDenom * cTokenBalance) / expScale);
+            if (collateralEnabled) {
+                sumCollateral += ((tokensToDenom * cTokenBalance) / expScale);
+            }
 
             sumBorrowPlusEffects += ((oraclePrice * borrowBalance) / expScale);
 
             // Calculate effects of interacting with cTokenModify
             if (asset == cTokenModify) {
-                // redeem effect
-                sumBorrowPlusEffects += ((tokensToDenom * redeemTokens) / expScale);
+                if (collateralEnabled) {
+                    // redeem effect
+                    sumBorrowPlusEffects += ((tokensToDenom * redeemTokens) / expScale);
+                }
 
                 // borrow effect
                 sumBorrowPlusEffects += ((oraclePrice * borrowAmount) / expScale);
@@ -534,6 +526,31 @@ contract Comptroller is ComptrollerInterface {
         uint256 seizeTokens = (ratio * actualRepayAmount) / expScale;
 
         return seizeTokens;
+    }
+
+    /*** User Custom Functions ***/
+
+    /**
+     * @notice User set collateral on/off option for market token
+     * @param cTokens The addresses of the markets (tokens) to change the collateral on/off option
+     * @param disableCollateral Disable cToken from collateral
+     */
+    function setUserDisableCollateral(CToken[] calldata cTokens, bool disableCollateral) external {
+        uint256 numMarkets = cTokens.length;
+        if (numMarkets == 0) {
+            revert InvalidValue();
+        }
+
+        for (uint256 i = 0; i < numMarkets; i++) {
+            userDisableCollateral[msg.sender][cTokens[i]] = disableCollateral;
+            emit SetUserDisableCollateral(msg.sender, cTokens[i], disableCollateral);
+        }
+
+        (, uint256 shortfall) = getHypotheticalAccountLiquidityInternal(msg.sender, CToken(address(0)), 0, 0);
+
+        if (shortfall > 0) {
+            revert InsufficientLiquidity();
+        }
     }
 
     /*** Admin Functions ***/
@@ -713,6 +730,28 @@ contract Comptroller is ComptrollerInterface {
     }
 
     /**
+     * @notice Set collateral on/off option for market token
+     * @dev Admin can set the collateral on or off
+     * @param cTokens The addresses of the markets (tokens) to change the collateral on/off option
+     * @param disableCollateral Disable cToken from collateral
+     */
+    function _setDisableCollateral(CToken[] calldata cTokens, bool disableCollateral) external {
+        if (msg.sender != admin) {
+            revert AddressUnauthorized();
+        }
+
+        uint256 numMarkets = cTokens.length;
+        if (numMarkets == 0) {
+            revert InvalidValue();
+        }
+
+        for (uint256 i = 0; i < numMarkets; i++) {
+            marketDisableCollateral[cTokens[i]] = disableCollateral;
+            emit SetDisableCollateral(cTokens[i], disableCollateral);
+        }
+    }
+
+    /**
      * @notice Admin function to change the Borrow Cap Guardian
      * @param newBorrowCapGuardian The address of the new Borrow Cap Guardian
      */
@@ -857,16 +896,7 @@ contract Comptroller is ComptrollerInterface {
      * @notice Returns market status
      * @param cToken market token address
      */
-    function getIsMarkets(address cToken)
-        external
-        view
-        override
-        returns (
-            bool,
-            uint256,
-            bool
-        )
-    {
+    function getIsMarkets(address cToken) external view override returns (bool, uint256, bool) {
         return (markets[cToken].isListed, markets[cToken].collateralFactorScaled, markets[cToken].isComped);
     }
 

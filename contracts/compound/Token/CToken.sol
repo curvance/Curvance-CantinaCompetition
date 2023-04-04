@@ -538,7 +538,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         accountTokens[redeemer] = accountTokens[redeemer] - redeemTokens;
 
         // emit events on gauge pool
-        GaugePool(gaugePool).deposit(address(this), redeemer, redeemTokens);
+        GaugePool(gaugePool).withdraw(address(this), redeemer, redeemTokens);
 
         /*
          * We invoke doTransferOut for the redeemer and the redeemAmount.

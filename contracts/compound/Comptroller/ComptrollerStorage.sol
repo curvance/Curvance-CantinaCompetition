@@ -87,4 +87,8 @@ contract ComptrollerStorage is UnitrollerStorage, MarketStorage {
 
     /// @notice Per-account mapping of "assets you are in", capped by maxAssets
     mapping(address => CToken[]) public accountAssets;
+
+    /// Whether market can be used for collateral or not
+    mapping(CToken => bool) public marketDisableCollateral;
+    mapping(address => mapping(CToken => bool)) public userDisableCollateral;
 }

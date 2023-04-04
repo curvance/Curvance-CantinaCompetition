@@ -55,6 +55,12 @@ abstract contract ComptrollerInterface is ComptrollerStorage {
     /// @notice Emitted when borrow cap for a cToken is changed
     event NewBorrowCap(CToken indexed cToken, uint256 newBorrowCap);
 
+    /// @notice Emitted when borrow cap for a cToken is changed
+    event SetDisableCollateral(CToken indexed cToken, bool disable);
+
+    /// @notice Emitted when borrow cap for a cToken is changed
+    event SetUserDisableCollateral(address indexed user, CToken indexed cToken, bool disable);
+
     /// @notice Emitted when borrow cap guardian is changed
     event NewBorrowCapGuardian(address oldBorrowCapGuardian, address newBorrowCapGuardian);
 
