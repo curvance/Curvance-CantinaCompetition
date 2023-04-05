@@ -511,6 +511,9 @@ contract ConvexPositionVaultTest is Test {
     }
 
     function testStoredTotalAssetsGreaterThanRealTotalAssets() external {
+        (bool upkeepNeeded, bytes memory performData) = cvxPosition3Pool.checkUpkeep(abi.encode(0));
+        assertEq(upkeepNeeded, false, "Upkeep should not be needed.");
+
         // Normal Users join the vault.
         uint256 assets = 1_000_000e18;
         deal(address(CRV_DAI_USDC_USDT), address(this), assets);
@@ -518,7 +521,7 @@ contract ConvexPositionVaultTest is Test {
 
         cvxPosition3Pool.deposit(assets, address(this));
 
-        (bool upkeepNeeded, bytes memory performData) = cvxPosition3Pool.checkUpkeep(abi.encode(0));
+        (upkeepNeeded, performData) = cvxPosition3Pool.checkUpkeep(abi.encode(0));
         assertEq(upkeepNeeded, false, "Upkeep should not be needed.");
 
         vm.startPrank(address(cvxPosition3Pool));
