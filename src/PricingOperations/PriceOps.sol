@@ -9,6 +9,7 @@ import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { Math } from "src/utils/Math.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { IExtension } from "./IExtension.sol";
+import { OracleLibrary } from "lib/v3-periphery/contracts/libraries/OracleLibrary.sol";
 
 /**
  * @title Curvance Pricing Operations
