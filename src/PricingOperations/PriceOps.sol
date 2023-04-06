@@ -10,6 +10,7 @@ import { Math } from "src/utils/Math.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { IExtension } from "./IExtension.sol";
 import { OracleLibrary } from "lib/v3-periphery/contracts/libraries/OracleLibrary.sol";
+import { UniswapV3Pool } from "src/interfaces/Uniswap/UniswapV3Pool.sol";
 
 /**
  * @title Curvance Pricing Operations
@@ -148,9 +149,7 @@ contract PriceOps is Ownable, AutomationCompatibleInterface {
         if (settings.descriptor == Descriptor.CHAINLINK) {
             (upper, lower) = _getPriceInBaseForChainlinkAsset(sourceId, settings.source);
         } else if (settings.descriptor == Descriptor.UNIV3_TWAP) {
-            // Call internal function to price TWAP
-            // Note internal function can use getPriceInBase
-            // (upper, lower) = _getPriceInBaseForTwapAsset(asset, source);
+            (upper, lower) = _getPriceInBaseForTwapAsset(sourceId, settings.source);
         } else if (settings.descriptor == Descriptor.EXTENSION) {
             (upper, lower) = IExtension(settings.source).getPriceInBase(sourceId);
         } else revert("Unkown");
@@ -172,8 +171,8 @@ contract PriceOps is Ownable, AutomationCompatibleInterface {
             _setupAssetForChainlinkSource(sourceId, source, sourceData);
             (upper, lower) = _getPriceInBaseForChainlinkAsset(sourceId, source);
         } else if (descriptor == Descriptor.UNIV3_TWAP) {
-            // _setupAssetForTwapSource(sourceId, source, sourceData);
-            // (upper, lower) = _getPriceInBaseForTwapAsset(sourceId, source);
+            _setupAssetForTwapSource(sourceId, source, sourceData);
+            (upper, lower) = _getPriceInBaseForTwapAsset(sourceId, source);
         } else if (descriptor == Descriptor.EXTENSION) {
             IExtension(source).setupSource(asset, sourceData);
             (upper, lower) = IExtension(source).getPriceInBase(sourceId);
@@ -424,26 +423,55 @@ contract PriceOps is Ownable, AutomationCompatibleInterface {
     }
 
     // =========================================== TWAP PRICE SOURCE ===========================================
+    struct TwapSourceStorage {
+        uint32 secondsAgo;
+        uint8 baseDecimals;
+        address baseToken;
+        address quoteToken;
+    }
+
     /**
      * @notice TWAP Source Storage
      */
-    mapping(uint64 => ERC20) public getTwapSourceStorage;
+    mapping(uint64 => TwapSourceStorage) public getTwapSourceStorage;
 
     /**
      * @notice Setup function for pricing TWAP source assets.
      * @dev _source The address of the aToken.
      * @dev _storage is not used.
      */
-    // function _setupAssetForTwapSource(address _asset, address _source, bytes memory) internal {
-    //     IAaveToken aToken = IAaveToken(_source);
-    //     getAaveDerivativeStorage[_asset] = ERC20(aToken.UNDERLYING_ASSET_ADDRESS());
-    // }
+    function _setupAssetForTwapSource(uint64 sourceId, address _source, bytes memory _storage) internal {
+        TwapSourceStorage memory parameters = abi.decode(_storage, (TwapSourceStorage));
 
-    // /**
-    //  * @notice Get the price of an Aave derivative in terms of USD.
-    //  */
-    // function _getPriceInBaseForTwapAsset(ERC20 asset, address source) internal view returns (uint256) {
-    //     asset = getAaveDerivativeStorage[asset];
-    //     return _getPriceInUSD(asset, getAssetSettings[asset], cache);
-    // }
+        UniswapV3Pool pool = UniswapV3Pool(_source);
+
+        pool.token0();
+
+        // Verify seconds ago is reasonable
+        // Also if I add in asset to this I could do a sanity check to make sure asset is token0 or token1
+
+        getTwapSourceStorage[sourceId] = parameters;
+    }
+
+    /**
+     * @notice Get the price of an Aave derivative in terms of USD.
+     */
+    function _getPriceInBaseForTwapAsset(
+        uint64 sourceId,
+        address source
+    ) internal view returns (uint256 upper, uint256 lower) {
+        TwapSourceStorage memory parameters = getTwapSourceStorage[sourceId];
+        (int24 arithmeticMeanTick, ) = OracleLibrary.consult(source, parameters.secondsAgo);
+        // Get the amount of quote token each base token is worth.
+        uint256 quoteAmount = OracleLibrary.getQuoteAtTick(
+            arithmeticMeanTick,
+            uint128(10 ** parameters.baseDecimals),
+            parameters.baseToken,
+            parameters.quoteToken
+        );
+
+        (uint256 _quoteToBaseUpper, uint256 _quoteToBaseLower) = getPriceInBase(parameters.quoteToken);
+        upper = quoteAmount.mulWadDown(_quoteToBaseUpper);
+        if (_quoteToBaseLower > 0) lower = quoteAmount.mulWadDown(_quoteToBaseLower);
+    }
 }
