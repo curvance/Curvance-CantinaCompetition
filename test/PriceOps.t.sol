@@ -10,6 +10,7 @@ import { PriceOps } from "src/PricingOperations/PriceOps.sol";
 import { IChainlinkAggregator } from "src/interfaces/IChainlinkAggregator.sol";
 import { ICurvePool } from "src/interfaces/Curve/ICurvePool.sol";
 import { UniswapV3Pool } from "src/interfaces/Uniswap/UniswapV3Pool.sol";
+import { CurveV1Extension } from "src/PricingOperations/Extensions/CurveV1Extension.sol";
 
 // import { MockGasFeed } from "src/mocks/MockGasFeed.sol";
 
@@ -22,9 +23,7 @@ contract PriceOpsTest is Test {
     using SafeTransferLib for ERC20;
 
     PriceOps private priceOps;
-    DepositRouter private router;
-    ConvexPositionVault private cvxPositionTriCrypto;
-    ConvexPositionVault private cvxPosition3Pool;
+    CurveV1Extension private curveV1Extension;
     // MockGasFeed private gasFeed;
 
     address private operatorAlpha = vm.addr(111);
@@ -35,23 +34,44 @@ contract PriceOpsTest is Test {
     address private WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address private STETH = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
     address private WBTC = 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
+    address private USDT = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
+    address private USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+    address private DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
 
     // Datafeeds
     address private WETH_USD_FEED = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
     address private STETH_USD_FEED = 0xCfE54B5cD566aB89272946F602D76Ea879CAb4a8;
     address private STETH_ETH_FEED = 0x86392dC19c0b719886221c78AB11eb8Cf5c52812;
+    address private USDT_USD_FEED = 0x3E7d1eAB13ad0104d2750B8863b489D65364e32D;
+    address private USDC_USD_FEED = 0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6;
+    address private USDC_ETH_FEED = 0x986b5E1e1755e3C2440e960477f25201B0a8bbD4;
+    address private DAI_USD_FEED = 0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9;
 
     // Uniswap V3 Pools
     address private WBTC_WETH_05_POOL = 0x4585FE77225b41b697C938B018E2Ac67Ac5a20c0;
 
+    // Curve Assets
+    address private CRV_DAI_USDC_USDT = 0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490;
+    address private curve3CrvPool = 0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7;
+
     function setUp() external {
         // gasFeed = new MockGasFeed();
         priceOps = new PriceOps();
+        curveV1Extension = new CurveV1Extension(priceOps);
         // Set heart beat to 5 days so we don't run into stale price reverts.
         PriceOps.ChainlinkSourceStorage memory stor;
 
         // WETH-USD
         uint64 ethUsdSource = priceOps.addSource(WETH, PriceOps.Descriptor.CHAINLINK, WETH_USD_FEED, abi.encode(stor));
+
+        // USDC-USD
+        uint64 usdcUsdSource = priceOps.addSource(USDC, PriceOps.Descriptor.CHAINLINK, USDC_USD_FEED, abi.encode(stor));
+
+        // DAI-USD
+        uint64 daiUsdSource = priceOps.addSource(DAI, PriceOps.Descriptor.CHAINLINK, DAI_USD_FEED, abi.encode(stor));
+
+        // USDT-USD
+        uint64 usdtUsdSource = priceOps.addSource(USDT, PriceOps.Descriptor.CHAINLINK, USDT_USD_FEED, abi.encode(stor));
 
         // STETH-USD
         uint64 stethUsdSource = priceOps.addSource(
@@ -70,10 +90,17 @@ contract PriceOpsTest is Test {
             abi.encode(stor)
         );
 
+        uint64 usdcEthSource = priceOps.addSource(USDC, PriceOps.Descriptor.CHAINLINK, USDC_ETH_FEED, abi.encode(stor));
+
         priceOps.addAsset(WETH, ethUsdSource, 0);
+        priceOps.addAsset(USDC, usdcUsdSource, usdcEthSource);
+        priceOps.addAsset(DAI, daiUsdSource, 0);
+        priceOps.addAsset(USDT, usdtUsdSource, 0);
         priceOps.addAsset(STETH, stethUsdSource, stethEthSource);
 
+        uint256 gas = gasleft();
         UniswapV3Pool(WBTC_WETH_05_POOL).increaseObservationCardinalityNext(3_600);
+        console.log("Gas used", gas - gasleft());
     }
 
     function testPriceOpsHappyPath() external {
@@ -108,6 +135,19 @@ contract PriceOpsTest is Test {
         priceOps.addAsset(WBTC, wbtcWethSource_600, wbtcWethSource_3_600);
 
         (upper, lower) = priceOps.getPriceInBase(WBTC);
+        console.log("Upper", upper);
+        console.log("Lower", lower);
+
+        uint64 crv3PoolSource = priceOps.addSource(
+            CRV_DAI_USDC_USDT,
+            PriceOps.Descriptor.EXTENSION,
+            address(curveV1Extension),
+            abi.encode(0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7)
+        );
+
+        priceOps.addAsset(CRV_DAI_USDC_USDT, crv3PoolSource, 0);
+
+        (upper, lower) = priceOps.getPriceInBase(CRV_DAI_USDC_USDT);
         console.log("Upper", upper);
         console.log("Lower", lower);
     }

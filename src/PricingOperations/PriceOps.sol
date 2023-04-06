@@ -174,7 +174,7 @@ contract PriceOps is Ownable, AutomationCompatibleInterface {
             _setupAssetForTwapSource(sourceId, source, sourceData);
             (upper, lower) = _getPriceInBaseForTwapAsset(sourceId, source);
         } else if (descriptor == Descriptor.EXTENSION) {
-            IExtension(source).setupSource(asset, sourceData);
+            IExtension(source).setupSource(asset, sourceId, sourceData);
             (upper, lower) = IExtension(source).getPriceInBase(sourceId);
         }
 
