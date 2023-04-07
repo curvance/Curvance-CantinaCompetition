@@ -94,6 +94,8 @@ contract PriceOps is Ownable, AutomationCompatibleInterface {
     // uint96 lower
     // TODO could add price cache in here
     // TODO this could revert if caller is not an extension or address this.
+    // TODO could moce this logic into an internal function that CL and TWAP pricing can call directly, then make a special external function that only EXTENSIONS can call
+
     function getPriceInBase(address asset) public view returns (uint256, uint256) {
         // If mode is anchor, then run an anchor check anchoring primary upper to secondary upper, and the same for lower
         AssetSettings memory settings = getAssetSettings[asset];

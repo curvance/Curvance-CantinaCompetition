@@ -72,16 +72,17 @@ contract CurveV1Extension is IExtension {
 
         ICurvePool pool = ICurvePool(stor.pool);
 
-        uint256 minUpper = type(uint256).max;
+        uint256 maxUpper = 0;
         uint256 minLower = type(uint256).max;
         for (uint256 i = 0; i < stor.coins.length; i++) {
             (uint256 nextUpper, uint256 nextLower) = priceOps.getPriceInBase(stor.coins[i]);
             if (nextUpper == 0) revert("Invalid Price");
+            if (nextUpper > maxUpper) maxUpper = nextUpper;
             if (nextLower > 0 && nextLower < minLower) minLower = nextLower;
-            if (nextUpper < minUpper) minUpper = nextUpper;
+            if (nextUpper < minLower) minLower = nextUpper;
         }
 
-        if (minUpper == type(uint256).max) revert("Min price not found.");
+        if (maxUpper == 0) revert("Min price not found.");
         if (minLower == type(uint256).max) minLower = 0;
 
         // Check that virtual price is within bounds.
@@ -95,13 +96,12 @@ contract CurveV1Extension is IExtension {
 
         // Virtual price is based off the Curve Token decimals.
         uint256 curveTokenDecimals = ERC20(stor.asset).decimals();
-        upper = minUpper.mulDivDown(virtualPrice, 10 ** curveTokenDecimals);
+        upper = maxUpper.mulDivDown(virtualPrice, 10 ** curveTokenDecimals);
         lower = minLower.mulDivDown(virtualPrice, 10 ** curveTokenDecimals);
 
         // It is possible that if not all sources provide a lower value, then lower can be greater than upper.
-        // TODO this is still kinda weird, I think this logic only works for correlated assets.
-        // TODO should the upper be the max upper, and the lower should be the min(lowers, and uppers)
-        if (lower > upper) (upper, lower) = (lower, upper);
+        // TODO pretty sure this is no longer needed.
+        // if (lower > upper) (upper, lower) = (lower, upper);
     }
 
     // ======================================== CURVE VIRTUAL PRICE BOUND ========================================

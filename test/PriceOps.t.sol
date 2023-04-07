@@ -11,6 +11,7 @@ import { IChainlinkAggregator } from "src/interfaces/IChainlinkAggregator.sol";
 import { ICurvePool } from "src/interfaces/Curve/ICurvePool.sol";
 import { UniswapV3Pool } from "src/interfaces/Uniswap/UniswapV3Pool.sol";
 import { CurveV1Extension } from "src/PricingOperations/Extensions/CurveV1Extension.sol";
+import { CurveV2Extension } from "src/PricingOperations/Extensions/CurveV2Extension.sol";
 
 // import { MockGasFeed } from "src/mocks/MockGasFeed.sol";
 
@@ -24,6 +25,7 @@ contract PriceOpsTest is Test {
 
     PriceOps private priceOps;
     CurveV1Extension private curveV1Extension;
+    CurveV2Extension private curveV2Extension;
     // MockGasFeed private gasFeed;
 
     address private operatorAlpha = vm.addr(111);
@@ -53,11 +55,14 @@ contract PriceOpsTest is Test {
     // Curve Assets
     address private CRV_DAI_USDC_USDT = 0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490;
     address private curve3CrvPool = 0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7;
+    address private CRV_3_CRYPTO = 0xc4AD29ba4B3c580e6D59105FFf484999997675Ff;
+    address private curve3CryptoPool = 0xD51a44d3FaE010294C616388b506AcdA1bfAAE46;
 
     function setUp() external {
         // gasFeed = new MockGasFeed();
         priceOps = new PriceOps();
         curveV1Extension = new CurveV1Extension(priceOps);
+        curveV2Extension = new CurveV2Extension(priceOps);
         // Set heart beat to 5 days so we don't run into stale price reverts.
         PriceOps.ChainlinkSourceStorage memory stor;
 
@@ -90,10 +95,10 @@ contract PriceOpsTest is Test {
             abi.encode(stor)
         );
 
-        uint64 usdcEthSource = priceOps.addSource(USDC, PriceOps.Descriptor.CHAINLINK, USDC_ETH_FEED, abi.encode(stor));
+        // uint64 usdcEthSource = priceOps.addSource(USDC, PriceOps.Descriptor.CHAINLINK, USDC_ETH_FEED, abi.encode(stor));
 
         priceOps.addAsset(WETH, ethUsdSource, 0);
-        priceOps.addAsset(USDC, usdcUsdSource, usdcEthSource);
+        priceOps.addAsset(USDC, usdcUsdSource, 0);
         priceOps.addAsset(DAI, daiUsdSource, 0);
         priceOps.addAsset(USDT, usdtUsdSource, 0);
         priceOps.addAsset(STETH, stethUsdSource, stethEthSource);
@@ -142,12 +147,25 @@ contract PriceOpsTest is Test {
             CRV_DAI_USDC_USDT,
             PriceOps.Descriptor.EXTENSION,
             address(curveV1Extension),
-            abi.encode(0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7)
+            abi.encode(curve3CrvPool)
         );
 
         priceOps.addAsset(CRV_DAI_USDC_USDT, crv3PoolSource, 0);
 
         (upper, lower) = priceOps.getPriceInBase(CRV_DAI_USDC_USDT);
+        console.log("Upper", upper);
+        console.log("Lower", lower);
+
+        uint64 crvTriCryptoSource = priceOps.addSource(
+            CRV_3_CRYPTO,
+            PriceOps.Descriptor.EXTENSION,
+            address(curveV2Extension),
+            abi.encode(curve3CryptoPool)
+        );
+
+        priceOps.addAsset(CRV_3_CRYPTO, crvTriCryptoSource, 0);
+
+        (upper, lower) = priceOps.getPriceInBase(CRV_3_CRYPTO);
         console.log("Upper", upper);
         console.log("Lower", lower);
     }
