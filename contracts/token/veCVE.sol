@@ -44,6 +44,7 @@ contract veCVE is ERC20 {
     
     mapping(address => Lock[]) public userLocks;
     mapping(address => bool) public isInvestor;
+    mapping(address => bool) public authorizedHelperContract;
 
     //User => Epoch # => Tokens unlocked
     mapping(address => mapping(uint256 => uint256)) public userTokenUnlocksByEpoch;
@@ -58,6 +59,7 @@ contract veCVE is ERC20 {
     mapping(uint256 => uint256) public totalTokensLockedByEpoch;
     //Epoch # => Token unlocks on this chain
     mapping(uint256 => uint216) public totalUnlocksByEpoch;
+    //update veCVE to pull genesisEpoch from CentralRegistry
 
     constructor(uint40 _genesisEpoch, ICentralRegistry _centralRegistry) ERC20("Vote Escrowed CVE", "veCVE"){
         genesisEpoch = _genesisEpoch;
@@ -104,6 +106,7 @@ contract veCVE is ERC20 {
     function lock (address _recipient, uint216 _amount, bool _continuousLock) public {
         if (isShutdown) revert veCVEShutdown();
         if (_amount == 0) revert invalidLock();
+        if (isInvestor[_recipient]) revert invalidLock();
 
         IERC20(centralRegistry.CVE()).safeTransferFrom(msg.sender, address(this), _amount);
 
@@ -156,6 +159,7 @@ contract veCVE is ERC20 {
         if (isShutdown) revert veCVEShutdown();
         if (_lockIndex >= _user.length) revert invalidLock();// Length is index + 1 so has to be less than array length
         if (_amount == 0) revert invalidLock();
+        if (isInvestor[msg.sender]) revert invalidLock();
 
         IERC20(centralRegistry.CVE()).safeTransferFrom(msg.sender, address(this), _amount);
 
@@ -183,6 +187,50 @@ contract veCVE is ERC20 {
 
         totalUnlocksByEpoch[unlockEpoch] -= tokenAmount;
         _mint(msg.sender, _amount);
+    }
+
+    /**
+     * @notice Increases the locked amount and extends the lock for the specified lock index
+     * @param _recipient The address to lock and extend tokens for
+     * @param _amount The amount to increase the lock by
+     * @param _lockIndex The index of the lock to extend
+     * @param _continuousLock Whether the lock should be continuous or not
+     */
+    function increaseAmountAndExtendLockFor(address _recipient, uint256 _amount, uint256 _lockIndex, bool _continuousLock) public {
+        Lock[] storage _user = userLocks[_recipient];
+
+        if (isShutdown) revert veCVEShutdown();
+        if (!authorizedHelperContract[msg.sender]) revert invalidLock();
+        if (_lockIndex >= _user.length) revert invalidLock();// Length is index + 1 so has to be less than array length
+        if (_amount == 0) revert invalidLock();
+        if (isInvestor[_recipient]) revert invalidLock();
+
+        IERC20(centralRegistry.CVE()).safeTransferFrom(msg.sender, address(this), _amount);
+
+        uint40 unlockTimestamp = _user[_lockIndex].unlockTime;
+        if (unlockTimestamp < genesisEpoch) revert invalidLock();
+        if (unlockTimestamp == CONTINUOUS_LOCK_VALUE) revert continuousLock();
+
+        uint216 tokenAmount = _user[_lockIndex].amount;
+        uint256 unlockEpoch = freshLockEpoch();
+        uint256 priorUnlockEpoch = currentEpoch(_user[_lockIndex].unlockTime);
+
+        //Remove prior unlock data
+        userTokenUnlocksByEpoch[_recipient][priorUnlockEpoch] -= tokenAmount;
+        totalUnlocksByEpoch[priorUnlockEpoch] -= tokenAmount;
+
+        if (_continuousLock){
+            _user[_lockIndex].unlockTime = CONTINUOUS_LOCK_VALUE; 
+        } else {
+            _user[_lockIndex].unlockTime = freshLockTimestamp();
+
+            //Add new unlock data if not continuous lock
+            userTokenUnlocksByEpoch[_recipient][unlockEpoch] += tokenAmount;
+            totalUnlocksByEpoch[unlockEpoch] += tokenAmount;
+        }
+
+        totalUnlocksByEpoch[unlockEpoch] -= tokenAmount;
+        _mint(_recipient, _amount);
     }
 
     /**
@@ -325,6 +373,26 @@ contract veCVE is ERC20 {
     function setLockerContract(address _cveLocker) external onlyDaoManager {
         require(cveLocker == address(0), "already set");
         cveLocker = _cveLocker;
+    }
+
+    /**
+    * @notice Adds an address as an authorized helper contract
+    * @param _helper The address of the locker contract to be set
+    */
+    function addAuthorizedHelper(address _helper) external onlyDaoManager {
+        require(_helper == address(0), "Invalid Helper Address");
+        require(!authorizedHelperContract[_helper], "Invalid Operation");
+        authorizedHelperContract[_helper] = true;
+    }
+
+    /**
+    * @notice Removes an address as an authorized helper contract
+    * @param _helper The address of the locker contract to be set
+    */
+    function removeAuthorizedHelper(address _helper) external onlyDaoManager {
+        require(_helper == address(0), "Invalid Helper Address");
+        require(authorizedHelperContract[_helper], "Invalid Operation");
+        delete authorizedHelperContract[_helper];
     }
 
     
