@@ -5,19 +5,26 @@ import { ICurvePool } from "src/interfaces/Curve/ICurvePool.sol";
 import { IExtension } from "src/PricingOperations/IExtension.sol";
 import { PriceOps } from "src/PricingOperations/PriceOps.sol";
 import { Math } from "src/utils/Math.sol";
+import { AutomationCompatibleInterface } from "@chainlink/contracts/src/v0.8/interfaces/AutomationCompatibleInterface.sol";
 import { ERC20, SafeTransferLib } from "src/base/ERC4626.sol";
 
+// TODO Add Chainlink Curve VP bound check
 import { console } from "@forge-std/Test.sol";
 
 contract CurveV1Extension is IExtension {
     using Math for uint256;
 
-    PriceOps public priceOps;
+    PriceOps public immutable priceOps;
 
     struct CurveDerivativeStorage {
         address[] coins;
         address pool;
         address asset;
+    }
+
+    modifier onlyPriceOps() {
+        if (msg.sender != address(priceOps)) revert("Only PriceOps");
+        _;
     }
 
     /**
@@ -30,7 +37,7 @@ contract CurveV1Extension is IExtension {
         priceOps = _priceOps;
     }
 
-    function setupSource(address asset, uint64 _sourceId, bytes memory data) external {
+    function setupSource(address asset, uint64 _sourceId, bytes memory data) external onlyPriceOps {
         address source = abi.decode(data, (address));
         ICurvePool pool = ICurvePool(source);
         uint8 coinsLength = 0;
@@ -67,7 +74,9 @@ contract CurveV1Extension is IExtension {
         // getVirtualPriceBound[address(_asset)] = vpBound;
     }
 
-    function getPriceInBase(uint64 sourceId) external view returns (uint256 upper, uint256 lower) {
+    function getPriceInBase(
+        uint64 sourceId
+    ) external view onlyPriceOps returns (uint256 upper, uint256 lower, uint8 errorCode) {
         CurveDerivativeStorage memory stor = getCurveDerivativeStorage[sourceId];
 
         ICurvePool pool = ICurvePool(stor.pool);
@@ -75,7 +84,7 @@ contract CurveV1Extension is IExtension {
         uint256 maxUpper = 0;
         uint256 minLower = type(uint256).max;
         for (uint256 i = 0; i < stor.coins.length; i++) {
-            (uint256 nextUpper, uint256 nextLower) = priceOps.getPriceInBase(stor.coins[i]);
+            (uint256 nextUpper, uint256 nextLower, uint8 _errorCode) = priceOps.getPriceInBase(stor.coins[i]);
             if (nextUpper == 0) revert("Invalid Price");
             if (nextUpper > maxUpper) maxUpper = nextUpper;
             if (nextLower > 0 && nextLower < minLower) minLower = nextLower;

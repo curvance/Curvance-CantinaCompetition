@@ -5,19 +5,27 @@ import { ICurvePool } from "src/interfaces/Curve/ICurvePool.sol";
 import { IExtension } from "src/PricingOperations/IExtension.sol";
 import { PriceOps } from "src/PricingOperations/PriceOps.sol";
 import { Math } from "src/utils/Math.sol";
+import { AutomationCompatibleInterface } from "@chainlink/contracts/src/v0.8/interfaces/AutomationCompatibleInterface.sol";
 import { ERC20, SafeTransferLib } from "src/base/ERC4626.sol";
 
 import { console } from "@forge-std/Test.sol";
 
+// TODO Add Chainlink Curve VP bound check
 contract CurveV2Extension is IExtension {
     using Math for uint256;
 
-    PriceOps public priceOps;
+    PriceOps public immutable priceOps;
 
+    // Technically I think curve pools will at most have 3 assets, or atleast the majority have 2-3 so we could replace this struct with 5 addresses.
     struct CurveDerivativeStorage {
         address[] coins;
         address pool;
         address asset;
+    }
+
+    modifier onlyPriceOps() {
+        if (msg.sender != address(priceOps)) revert("Only PriceOps");
+        _;
     }
 
     /**
@@ -36,7 +44,7 @@ contract CurveV2Extension is IExtension {
      * @dev _storage A VirtualPriceBound value for this asset.
      * @dev Assumes that curve pools never add or remove tokens.
      */
-    function setupSource(address asset, uint64 _sourceId, bytes memory data) external {
+    function setupSource(address asset, uint64 _sourceId, bytes memory data) external onlyPriceOps {
         address _source = abi.decode(data, (address));
         ICurvePool pool = ICurvePool(_source);
         uint8 coinsLength = 0;
@@ -94,7 +102,9 @@ contract CurveV2Extension is IExtension {
      * Inspired by https://etherscan.io/address/0xE8b2989276E2Ca8FDEA2268E3551b2b4B2418950#code
      * @notice Get the price of a CurveV1 derivative in terms of USD.
      */
-    function getPriceInBase(uint64 sourceId) external view returns (uint256 upper, uint256 lower) {
+    function getPriceInBase(
+        uint64 sourceId
+    ) external view onlyPriceOps returns (uint256 upper, uint256 lower, uint8 errorCode) {
         CurveDerivativeStorage memory stor = getCurveDerivativeStorage[sourceId];
 
         ICurvePool pool = ICurvePool(stor.pool);
@@ -107,9 +117,10 @@ contract CurveV2Extension is IExtension {
         // uint256 lower = uint256(vpBound.datum).mulDivDown(vpBound.negDelta, 1e8);
         // lower = lower.changeDecimals(8, 18);
         // _checkBounds(lower, upper, virtualPrice);
+        // TODO if VP check fails, then return an error code.
 
         if (stor.coins.length == 2) {
-            (uint256 token0Upper, uint256 token0Lower) = priceOps.getPriceInBase(stor.coins[0]);
+            (uint256 token0Upper, uint256 token0Lower, uint8 _errorCode) = priceOps.getPriceInBase(stor.coins[0]);
             uint256 poolLpPrice = pool.lp_price();
             upper = poolLpPrice.mulDivDown(token0Upper, 1e18);
             lower = poolLpPrice.mulDivDown(token0Lower, 1e18);
@@ -128,7 +139,7 @@ contract CurveV2Extension is IExtension {
 
                 maxPrice -= maxPrice.mulDivDown(discount, 1e18);
             }
-            (uint256 token0Upper, uint256 token0Lower) = priceOps.getPriceInBase(stor.coins[0]);
+            (uint256 token0Upper, uint256 token0Lower, uint8 _errorCode) = priceOps.getPriceInBase(stor.coins[0]);
             upper = maxPrice.mulDivDown(token0Upper, 1e18);
             lower = maxPrice.mulDivDown(token0Lower, 1e18);
         } else revert("Unsupported Pool");

@@ -5,5 +5,5 @@ interface IExtension {
     // Only callable by pricerouter.
     function setupSource(address asset, uint64 sourceId, bytes memory sourceData) external;
 
-    function getPriceInBase(uint64 sourceId) external view returns (uint256, uint256);
+    function getPriceInBase(uint64 sourceId) external view returns (uint256, uint256, uint8);
 }

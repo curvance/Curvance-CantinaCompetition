@@ -59,25 +59,20 @@ contract PriceOpsTest is Test {
     address private curve3CryptoPool = 0xD51a44d3FaE010294C616388b506AcdA1bfAAE46;
 
     function setUp() external {
-        // gasFeed = new MockGasFeed();
-        priceOps = new PriceOps();
+        PriceOps.ChainlinkSourceStorage memory stor;
+        stor.inUsd = true;
+        priceOps = new PriceOps(abi.encode(stor));
         curveV1Extension = new CurveV1Extension(priceOps);
         curveV2Extension = new CurveV2Extension(priceOps);
-        // Set heart beat to 5 days so we don't run into stale price reverts.
-        PriceOps.ChainlinkSourceStorage memory stor;
 
         // WETH-USD
-        uint64 ethUsdSource = priceOps.addSource(WETH, PriceOps.Descriptor.CHAINLINK, WETH_USD_FEED, abi.encode(stor));
-
+        // uint64 ethUsdSource = priceOps.addSource(WETH, PriceOps.Descriptor.CHAINLINK, WETH_USD_FEED, abi.encode(stor));
         // USDC-USD
         uint64 usdcUsdSource = priceOps.addSource(USDC, PriceOps.Descriptor.CHAINLINK, USDC_USD_FEED, abi.encode(stor));
-
         // DAI-USD
         uint64 daiUsdSource = priceOps.addSource(DAI, PriceOps.Descriptor.CHAINLINK, DAI_USD_FEED, abi.encode(stor));
-
         // USDT-USD
         uint64 usdtUsdSource = priceOps.addSource(USDT, PriceOps.Descriptor.CHAINLINK, USDT_USD_FEED, abi.encode(stor));
-
         // STETH-USD
         uint64 stethUsdSource = priceOps.addSource(
             STETH,
@@ -85,31 +80,25 @@ contract PriceOpsTest is Test {
             STETH_USD_FEED,
             abi.encode(stor)
         );
-
         // STETH-ETH
-        stor.inETH = true;
+        stor.inUsd = false;
         uint64 stethEthSource = priceOps.addSource(
             STETH,
             PriceOps.Descriptor.CHAINLINK,
             STETH_ETH_FEED,
             abi.encode(stor)
         );
-
         // uint64 usdcEthSource = priceOps.addSource(USDC, PriceOps.Descriptor.CHAINLINK, USDC_ETH_FEED, abi.encode(stor));
-
-        priceOps.addAsset(WETH, ethUsdSource, 0);
+        // priceOps.addAsset(WETH, ethUsdSource, 0);
         priceOps.addAsset(USDC, usdcUsdSource, 0);
         priceOps.addAsset(DAI, daiUsdSource, 0);
         priceOps.addAsset(USDT, usdtUsdSource, 0);
         priceOps.addAsset(STETH, stethUsdSource, stethEthSource);
-
-        uint256 gas = gasleft();
         UniswapV3Pool(WBTC_WETH_05_POOL).increaseObservationCardinalityNext(3_600);
-        console.log("Gas used", gas - gasleft());
     }
 
     function testPriceOpsHappyPath() external {
-        (uint256 upper, uint256 lower) = priceOps.getPriceInBase(STETH);
+        (uint256 upper, uint256 lower, ) = priceOps.getPriceInBaseEnforceNonZeroLower(STETH);
         console.log("Upper", upper);
         console.log("Lower", lower);
 
@@ -139,7 +128,7 @@ contract PriceOpsTest is Test {
         );
         priceOps.addAsset(WBTC, wbtcWethSource_600, wbtcWethSource_3_600);
 
-        (upper, lower) = priceOps.getPriceInBase(WBTC);
+        (upper, lower, ) = priceOps.getPriceInBaseEnforceNonZeroLower(WBTC);
         console.log("Upper", upper);
         console.log("Lower", lower);
 
@@ -152,7 +141,7 @@ contract PriceOpsTest is Test {
 
         priceOps.addAsset(CRV_DAI_USDC_USDT, crv3PoolSource, 0);
 
-        (upper, lower) = priceOps.getPriceInBase(CRV_DAI_USDC_USDT);
+        (upper, lower, ) = priceOps.getPriceInBaseEnforceNonZeroLower(CRV_DAI_USDC_USDT);
         console.log("Upper", upper);
         console.log("Lower", lower);
 
@@ -165,7 +154,7 @@ contract PriceOpsTest is Test {
 
         priceOps.addAsset(CRV_3_CRYPTO, crvTriCryptoSource, 0);
 
-        (upper, lower) = priceOps.getPriceInBase(CRV_3_CRYPTO);
+        (upper, lower, ) = priceOps.getPriceInBaseEnforceNonZeroLower(CRV_3_CRYPTO);
         console.log("Upper", upper);
         console.log("Lower", lower);
     }
