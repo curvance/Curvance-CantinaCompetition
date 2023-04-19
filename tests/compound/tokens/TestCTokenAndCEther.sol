@@ -602,9 +602,11 @@ contract TestCTokenAndCEther is DSTestPlus {
         assertEq(cDAI.balanceOf(user1), 100e18);
         assertEq(balanceBeforeBorrowUser1 + 25e18, user1.balance);
 
-        // price dump
-        priceOracle.setDirectPrice(dai, 6e17);
-        priceOracle.setDirectPrice(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE, 12e17);
+        // set collateral factor
+        hevm.prank(admin);
+        Comptroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 4e17);
+        hevm.prank(admin);
+        Comptroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 4e17);
 
         // liquidator approve
         hevm.prank(liquidator);

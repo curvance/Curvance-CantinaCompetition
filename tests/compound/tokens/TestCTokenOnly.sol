@@ -307,7 +307,7 @@ contract TestCToken is DSTestPlus {
         assertEq(balanceBeforeBorrow, IERC20(dai).balanceOf(user));
     }
 
-    function testLiquidateBorrow1() public {
+    function testLiquidateBorrow() public {
         cDAI = new CErc20Immutable(
             dai,
             ComptrollerInterface(unitroller),
@@ -324,7 +324,7 @@ contract TestCToken is DSTestPlus {
         Comptroller(unitroller)._supportMarket(CToken(address(cDAI)));
         // set collateral factor
         hevm.prank(admin);
-        Comptroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 5e17);
+        Comptroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 6e17);
 
         // enter markets
         hevm.prank(user);
@@ -340,11 +340,12 @@ contract TestCToken is DSTestPlus {
         assertEq(cDAI.balanceOf(user), 100e18);
 
         // borrow
-        cDAI.borrow(50e18);
+        cDAI.borrow(60e18);
         assertEq(cDAI.balanceOf(user), 100e18);
 
-        // price dump
-        priceOracle.setDirectPrice(dai, 6e17);
+        // set collateral factor
+        hevm.prank(admin);
+        Comptroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 5e17);
 
         // approve
         hevm.prank(liquidator);

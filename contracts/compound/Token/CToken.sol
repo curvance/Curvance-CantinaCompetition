@@ -7,6 +7,7 @@ import "../interfaces/IEIP20.sol";
 import "../InterestRateModel/InterestRateModel.sol";
 import "./storage/CTokenInterface.sol";
 import { GaugePool } from "../../gauge/GaugePool.sol";
+import { IPositionFolding } from "../../PositionFolding/IPositionFolding.sol";
 
 /**
  * @title Curvance's CToken Contract
@@ -387,19 +388,20 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
      * @dev Accrues interest whether or not the operation succeeds, unless reverted
      * @param mintAmount The amount of the underlying asset to supply
      */
-    function mintInternal(uint256 mintAmount) internal nonReentrant {
+    function mintInternal(uint256 mintAmount, address recipient) internal nonReentrant {
         accrueInterest();
         // mintFresh emits the actual Mint event if successful and logs on errors, so we don't need to
-        mintFresh(msg.sender, mintAmount);
+        mintFresh(msg.sender, mintAmount, recipient);
     }
 
     /**
      * @notice User supplies assets into the market and receives cTokens in exchange
      * @dev Assumes interest has already been accrued up to the current block
-     * @param minter The address of the account which is supplying the assets
+     * @param user The address of the account which is supplying the assets
      * @param mintAmount The amount of the underlying asset to supply
+     * @param minter The address of the account which will receive cToken
      */
-    function mintFresh(address minter, uint256 mintAmount) internal {
+    function mintFresh(address user, uint256 mintAmount, address minter) internal {
         /* Fail if mint not allowed */
         comptroller.mintAllowed(address(this), minter); //, mintAmount);
 
@@ -423,7 +425,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
          *  in case of a fee. On success, the cToken holds an additional `actualMintAmount`
          *  of cash.
          */
-        uint256 actualMintAmount = doTransferIn(minter, mintAmount);
+        uint256 actualMintAmount = doTransferIn(user, mintAmount);
 
         /*
          * We get the current exchange rate and calculate the number of cTokens to be minted:
@@ -445,7 +447,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         GaugePool(gaugePool).deposit(address(this), minter, mintTokens);
 
         /* We emit a Mint event, and a Transfer event */
-        emit Mint(minter, actualMintAmount, mintTokens);
+        emit Mint(user, actualMintAmount, mintTokens, minter);
         emit Transfer(address(this), minter, mintTokens);
     }
 
@@ -564,18 +566,37 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
      */
     function borrowInternal(uint256 borrowAmount) internal nonReentrant {
         accrueInterest();
-        // borrowFresh emits borrow-specific logs on errors, so we don't need to
-        borrowFresh(payable(msg.sender), borrowAmount);
+
+        /* Fail if borrow not allowed */
+        comptroller.borrowAllowed(address(this), msg.sender, borrowAmount);
+
+        borrowFresh(payable(msg.sender), borrowAmount, payable(msg.sender));
+    }
+
+    function borrowForPositionFoldingInternal(
+        address payable borrower,
+        uint256 borrowAmount,
+        bytes memory params
+    ) internal {
+        if (msg.sender != comptroller.positionFolding()) {
+            revert FailedNotFromPositionFolding();
+        }
+
+        accrueInterest();
+
+        borrowFresh(payable(borrower), borrowAmount, payable(msg.sender));
+
+        IPositionFolding(msg.sender).onBorrow(address(this), borrower, borrowAmount, params);
+
+        /* Fail if position is not allowed */
+        comptroller.borrowAllowed(address(this), borrower, 0);
     }
 
     /**
      * @notice Users borrow assets from the protocol to their own address
      * @param borrowAmount The amount of the underlying asset to borrow
      */
-    function borrowFresh(address payable borrower, uint256 borrowAmount) internal {
-        /* Fail if borrow not allowed */
-        comptroller.borrowAllowed(address(this), borrower, borrowAmount);
-
+    function borrowFresh(address borrower, uint256 borrowAmount, address payable recipient) internal {
         /* Verify market's block number equals current block number */
         if (accrualBlockNumber != getBlockNumber()) {
             revert FailedFreshnessCheck();
@@ -613,7 +634,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
          *  On success, the cToken borrowAmount less of cash.
          *  doTransferOut reverts if anything goes wrong, since we can't be sure if side effects occurred.
          */
-        doTransferOut(borrower, borrowAmount);
+        doTransferOut(recipient, borrowAmount);
 
         /* We emit a Borrow event */
         emit Borrow(borrower, borrowAmount, accountBorrowsNew, totalBorrowsNew);

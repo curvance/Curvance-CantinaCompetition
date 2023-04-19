@@ -57,7 +57,15 @@ contract CEther is CToken {
      * @dev Reverts upon any failure
      */
     function mint() external payable {
-        mintInternal(msg.value);
+        mintInternal(msg.value, msg.sender);
+    }
+
+    /**
+     * @notice Sender supplies assets into the market and receives cTokens in exchange
+     * @dev Reverts upon any failure
+     */
+    function mintFor(address recipient) external payable {
+        mintInternal(msg.value, recipient);
     }
 
     /**
@@ -84,6 +92,15 @@ contract CEther is CToken {
      */
     function borrow(uint256 borrowAmount) external {
         borrowInternal(borrowAmount);
+    }
+
+    /**
+     * @notice Position folding contract will call this function
+     * @param user The user address
+     * @param borrowAmount The amount of the underlying asset to borrow
+     */
+    function borrowForPositionFolding(address user, uint256 borrowAmount, bytes memory params) external {
+        borrowForPositionFoldingInternal(payable(user), borrowAmount, params);
     }
 
     /**
@@ -125,7 +142,7 @@ contract CEther is CToken {
      * @notice Send Ether to CEther to mint
      */
     receive() external payable {
-        mintInternal(msg.value);
+        mintInternal(msg.value, msg.sender);
     }
 
     /*** Safe Token ***/

@@ -398,6 +398,23 @@ contract Comptroller is ComptrollerInterface {
 
     /**
      * @notice Determine the current account liquidity wrt collateral requirements
+     * @return uint total collateral amount of user
+     * @return uint max borrow amount of user
+     * @return uint total borrow amount of user
+     */
+    function getAccountPosition(address account) public view returns (uint256, uint256, uint256) {
+        (uint256 sumCollateral, uint256 maxBorrow, uint256 sumBorrow) = getHypotheticalAccountPositionInternal(
+            account,
+            CToken(address(0)),
+            0,
+            0
+        );
+
+        return (sumCollateral, maxBorrow, sumBorrow);
+    }
+
+    /**
+     * @notice Determine the current account liquidity wrt collateral requirements
      * @return liquidity of account in excess of collateral requirements
      * @return shortfall of account below collateral requirements
      */
@@ -447,9 +464,39 @@ contract Comptroller is ComptrollerInterface {
         uint256 redeemTokens,
         uint256 borrowAmount
     ) internal view returns (uint256, uint256) {
-        uint256 sumCollateral;
-        uint256 sumBorrowPlusEffects;
+        (, uint256 maxBorrow, uint256 sumBorrowPlusEffects) = getHypotheticalAccountPositionInternal(
+            account,
+            cTokenModify,
+            redeemTokens,
+            borrowAmount
+        );
 
+        // These are safe, as the underflow condition is checked first
+        if (maxBorrow > sumBorrowPlusEffects) {
+            return (maxBorrow - sumBorrowPlusEffects, 0);
+        } else {
+            return (0, sumBorrowPlusEffects - maxBorrow);
+        }
+    }
+
+    /**
+     * @notice Determine what the account liquidity would be if the given amounts were redeemed/borrowed
+     * @param cTokenModify The market to hypothetically redeem/borrow in
+     * @param account The account to determine liquidity for
+     * @param redeemTokens The number of tokens to hypothetically redeem
+     * @param borrowAmount The amount of underlying to hypothetically borrow
+     * @dev Note that we calculate the exchangeRateStored for each collateral cToken using stored data,
+     *  without calculating accumulated interest.
+     * @return sumCollateral total collateral amount of user
+     * @return maxBorrow max borrow amount of user
+     * @return sumBorrowPlusEffects total borrow amount of user
+     */
+    function getHypotheticalAccountPositionInternal(
+        address account,
+        CToken cTokenModify,
+        uint256 redeemTokens,
+        uint256 borrowAmount
+    ) internal view returns (uint256 sumCollateral, uint256 maxBorrow, uint256 sumBorrowPlusEffects) {
         // For each asset the account is in
         for (uint256 i = 0; i < accountAssets[account].length; i++) {
             CToken asset = accountAssets[account][i];
@@ -466,8 +513,11 @@ contract Comptroller is ComptrollerInterface {
             uint256 tokensToDenom = (((markets[address(asset)].collateralFactorScaled * exchangeRateScaled) /
                 expScale) * oraclePrice) / expScale;
 
+            uint256 assetValue = (((cTokenBalance * exchangeRateScaled) / expScale) * oraclePrice) / expScale;
+
             if (collateralEnabled) {
-                sumCollateral += ((tokensToDenom * cTokenBalance) / expScale);
+                sumCollateral += assetValue;
+                maxBorrow += (assetValue * markets[address(asset)].collateralFactorScaled) / expScale;
             }
 
             sumBorrowPlusEffects += ((oraclePrice * borrowBalance) / expScale);
@@ -482,13 +532,6 @@ contract Comptroller is ComptrollerInterface {
                 // borrow effect
                 sumBorrowPlusEffects += ((oraclePrice * borrowAmount) / expScale);
             }
-        }
-
-        // These are safe, as the underflow condition is checked first
-        if (sumCollateral > sumBorrowPlusEffects) {
-            return (sumCollateral - sumBorrowPlusEffects, 0);
-        } else {
-            return (0, sumBorrowPlusEffects - sumCollateral);
         }
     }
 
@@ -861,6 +904,20 @@ contract Comptroller is ComptrollerInterface {
         seizeGuardianPaused = state;
         emit ActionPaused("Seize", state);
         return state;
+    }
+
+    /**
+     * @notice Admin function to set position folding contract address
+     * @param _newPositionFolding new position folding contract address
+     */
+    function _setPositionFolding(address _newPositionFolding) public {
+        if (msg.sender != admin) {
+            revert AddressUnauthorized();
+        }
+
+        emit NewPositionFoldingContract(positionFolding, _newPositionFolding);
+
+        positionFolding = _newPositionFolding;
     }
 
     /**

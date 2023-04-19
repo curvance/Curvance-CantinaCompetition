@@ -15,7 +15,7 @@ abstract contract CTokenInterface is CTokenStorage {
     /**
      * @notice Event emitted when tokens are minted
      */
-    event Mint(address minter, uint256 mintAmount, uint256 mintTokens);
+    event Mint(address user, uint256 mintAmount, uint256 mintTokens, address minter);
 
     /**
      * @notice Event emitted when tokens are redeemed

@@ -61,7 +61,19 @@ contract CErc20 is CErc20Interface, CToken {
      * @return bool true=success
      */
     function mint(uint256 mintAmount) external override returns (bool) {
-        mintInternal(mintAmount);
+        mintInternal(mintAmount, msg.sender);
+        return true;
+    }
+
+    /**
+     * @notice Sender supplies assets into the market and receives cTokens in exchange
+     * @dev Accrues interest whether or not the operation succeeds, unless reverted
+     * @param mintAmount The amount of the underlying asset to supply
+     * @param recipient The recipient address
+     * @return bool true=success
+     */
+    function mintFor(uint256 mintAmount, address recipient) external returns (bool) {
+        mintInternal(mintAmount, recipient);
         return true;
     }
 
@@ -89,6 +101,15 @@ contract CErc20 is CErc20Interface, CToken {
      */
     function borrow(uint256 borrowAmount) external override {
         borrowInternal(borrowAmount);
+    }
+
+    /**
+     * @notice Position folding contract will call this function
+     * @param user The user address
+     * @param borrowAmount The amount of the underlying asset to borrow
+     */
+    function borrowForPositionFolding(address user, uint256 borrowAmount, bytes memory params) external {
+        borrowForPositionFoldingInternal(payable(user), borrowAmount, params);
     }
 
     /**

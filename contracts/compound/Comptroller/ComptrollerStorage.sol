@@ -91,4 +91,7 @@ contract ComptrollerStorage is UnitrollerStorage, MarketStorage {
     /// Whether market can be used for collateral or not
     mapping(CToken => bool) public marketDisableCollateral;
     mapping(address => mapping(CToken => bool)) public userDisableCollateral;
+
+    // PositionFolding contract address
+    address public positionFolding;
 }

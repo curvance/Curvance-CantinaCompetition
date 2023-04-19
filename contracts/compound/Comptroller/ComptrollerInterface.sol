@@ -67,6 +67,9 @@ abstract contract ComptrollerInterface is ComptrollerStorage {
     /// @notice Emitted when rewards contract address is changed
     event NewRewardContract(RewardsInterface oldRewarder, RewardsInterface newRewarder);
 
+    /// @notice Emitted when position folding contract address is changed
+    event NewPositionFoldingContract(address indexed oldPositionFolding, address indexed newPositionFolding);
+
     ////////// Constants //////////
 
     /// @notice Indicator that this is a Comptroller contract (for inspection)
@@ -82,17 +85,9 @@ abstract contract ComptrollerInterface is ComptrollerStorage {
 
     function mintAllowed(address cToken, address minter) external virtual;
 
-    function redeemAllowed(
-        address cToken,
-        address redeemer,
-        uint256 redeemTokens
-    ) external virtual;
+    function redeemAllowed(address cToken, address redeemer, uint256 redeemTokens) external virtual;
 
-    function borrowAllowed(
-        address cToken,
-        address borrower,
-        uint256 borrowAmount
-    ) external virtual;
+    function borrowAllowed(address cToken, address borrower, uint256 borrowAmount) external virtual;
 
     function repayBorrowAllowed(address cToken, address borrower) external virtual;
 
@@ -110,12 +105,7 @@ abstract contract ComptrollerInterface is ComptrollerStorage {
         address borrower
     ) external virtual;
 
-    function transferAllowed(
-        address cToken,
-        address src,
-        address dst,
-        uint256 transferTokens
-    ) external virtual;
+    function transferAllowed(address cToken, address src, address dst, uint256 transferTokens) external virtual;
 
     /*** Liquidity/Liquidation Calculations ***/
 
@@ -126,15 +116,7 @@ abstract contract ComptrollerInterface is ComptrollerStorage {
     ) external view virtual returns (uint256);
 
     /** Query functions */
-    function getIsMarkets(address cToken)
-        external
-        view
-        virtual
-        returns (
-            bool,
-            uint256,
-            bool
-        );
+    function getIsMarkets(address cToken) external view virtual returns (bool, uint256, bool);
 
     function getAccountMembership(address cToken, address user) external view virtual returns (bool);
 

@@ -283,8 +283,9 @@ contract TestCEther is DSTestPlus {
         // support market
         hevm.prank(admin);
         Comptroller(unitroller)._supportMarket(CToken(address(cETH)));
+        // set collateral factor
         hevm.prank(admin);
-        Comptroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 5e17);
+        Comptroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 6e17);
 
         // enter markets
         hevm.prank(user);
@@ -297,11 +298,12 @@ contract TestCEther is DSTestPlus {
         assertEq(cETH.balanceOf(user), 100e18);
 
         // borrow
-        cETH.borrow(50e18);
+        cETH.borrow(60e18);
         assertEq(cETH.balanceOf(user), 100e18);
 
-        // price dump
-        priceOracle.setDirectPrice(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE, 6e17);
+        // set collateral factor
+        hevm.prank(admin);
+        Comptroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 5e17);
 
         // liquidateBorrow
         hevm.prank(liquidator);

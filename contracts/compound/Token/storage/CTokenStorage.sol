@@ -7,6 +7,7 @@ import "./CommonError.sol";
 
 abstract contract CTokenStorage is CommonError {
     ////////// ERRORS //////////
+    error FailedNotFromPositionFolding();
     error FailedFreshnessCheck();
     error CannotEqualZero();
     error ExcessiveValue();
