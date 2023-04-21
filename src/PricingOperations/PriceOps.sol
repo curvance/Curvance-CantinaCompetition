@@ -19,29 +19,24 @@ import { console } from "@forge-std/Test.sol";
  *         data based of Chainlink data feeds, and Uniswap V3 TWAPS.
  * @author crispymangoes
  */
-//  TODO so if the failure method is a slow failure like stale prices, or low liquidity in a TWAP, then it should return an error
-// TODO but if failure method is a fast one like VP manipualtion it should revert.
 contract PriceOps is Ownable {
     using SafeTransferLib for ERC20;
     using SafeCast for int256;
     using Math for uint256;
     using Address for address;
 
-    event AddAsset(address indexed asset);
-
-    // =========================================== ASSETS CONFIG ===========================================
-
-    enum Descriptor {
-        NONE,
-        CHAINLINK,
-        UNIV3_TWAP,
-        EXTENSION
-    }
+    /*//////////////////////////////////////////////////////////////
+                             STRUCTS
+    //////////////////////////////////////////////////////////////*/
 
     /**
-     * @notice Bare minimum settings all derivatives support.
+     * @notice Stores configuration data for a pricing source.
+     * @param asset address of the asset this source can price
      * @param descriptor the uint8 id used to describe this asset
-     * @param source the address used to price the asset
+     * @param source
+     *        - Chainlink Source use Data Feed address.
+     *        - TWAP Source use UniswapV3 pool address.
+     *        - Extension Source use extension address.
      */
     struct AssetSourceSettings {
         address asset;
@@ -49,14 +44,57 @@ contract PriceOps is Ownable {
         address source;
     }
 
-    uint64 public sourceCount;
-    mapping(uint64 => AssetSourceSettings) public getAssetSourceSettings;
-
-    // So this is what is used to query assets
+    /**
+     * @notice Stores configuration data for pricing a specific asset.
+     * @param allowedSourceDivergence The % envelope the sources can diverge from eachother
+     *        - given in basis points, IE 100 == 1%, 500 == 5%
+     */
     struct AssetSettings {
         uint64 primarySource;
         uint64 secondarySource;
+        uint16 allowedSourceDivergence;
     }
+
+    /**
+     * @notice Stores configuration data for Chainlink price sources.
+     * @param max the max valid price of the asset
+     *        - 0 defaults to use aggregators max price buffered by ~10%
+     * @param min the min valid price of the asset
+     *        - 0 defaults to use aggregators min price buffered by ~10%
+     * @param heartbeat the max amount of time between price updates
+     *        - 0 defaults to using DEFAULT_HEART_BEAT
+     * @param inUsd bool indicating whether the price feed is
+     *        denominated in USD(true) or ETH(false)
+     */
+    struct ChainlinkSourceStorage {
+        uint144 max;
+        uint80 min;
+        uint24 heartbeat;
+        bool inUsd;
+    }
+
+    /**
+     * @notice Stores configuration data for Uniswap V3 Twap price sources.
+     * @param secondsAgo period used for TWAP calculation
+     * @param baseDecimals the asset you want to price, decimals
+     * @param minLiquidity the minimum amount of liquidity during TWAP calculation
+     * @param baseToken the asset you want to price
+     * @param quoteToken the asset Twap calulation denominates in
+     */
+    struct TwapSourceStorage {
+        uint32 secondsAgo;
+        uint8 baseDecimals;
+        uint128 minLiquidity;
+        address baseToken;
+        address quoteToken;
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                             GLOBAL STATE
+    //////////////////////////////////////////////////////////////*/
+
+    uint64 public sourceCount;
+    mapping(uint64 => AssetSourceSettings) public getAssetSourceSettings;
 
     /**
      * @notice Mapping between an asset to price and its `AssetSettings`.
@@ -66,120 +104,80 @@ contract PriceOps is Ownable {
     mapping(address => bool) public isExtension;
 
     /**
-     * @notice Stores pricing information during calls.
-     * @param asset the address of the asset
-     * @param price the USD price of the asset
-     * @dev If the price does not fit into a uint96, the asset is NOT added to the cache.
+     * @notice Returns Chainlink Derivative Storage
      */
-    struct PriceCache {
-        uint64 sourceId;
-        uint96 upper;
-        uint96 lower;
-    }
+    mapping(uint64 => ChainlinkSourceStorage) public getChainlinkSourceStorage;
 
     /**
-     * @notice The size of the price cache. A larger cache can hold more values,
-     *         but incurs a larger gas cost overhead. A smaller cache has a
-     *         smaller gas overhead but caches less prices.
+     * @notice TWAP Source Storage
      */
-    uint8 private constant PRICE_CACHE_SIZE = 2;
+    mapping(uint64 => TwapSourceStorage) public getTwapSourceStorage;
 
-    // ======================================= NEW FUNCTIONS =======================================
     address public constant USD = address(840);
     address public constant ETH_USD_FEED = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
+    uint8 public constant NO_ERROR = 0;
+    uint8 public constant CAUTION = 1;
+    uint8 public constant BAD_SOURCE = 2;
+    uint16 public constant MAX_ALLOWED_SOURCE_DIVERGENCE = 0.2e4;
+    /**
+     * @notice The allowed deviation between the expected answer vs the actual answer.
+     */
+    uint256 public constant EXPECTED_ANSWER_DEVIATION = 0.02e18;
 
+    address public constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    /**
+     * @notice If zero is specified for a Chainlink asset heartbeat, this value is used instead.
+     */
+    uint24 public constant DEFAULT_HEART_BEAT = 1 days;
+
+    /*//////////////////////////////////////////////////////////////
+                                 EVENTS
+    //////////////////////////////////////////////////////////////*/
+
+    event AddAsset(address indexed asset);
+
+    /*//////////////////////////////////////////////////////////////
+                                 ERRORS
+    //////////////////////////////////////////////////////////////*/
+
+    error PriceRouter__InvalidMinPrice(uint256 minPrice, uint256 bufferedMinPrice);
+    error PriceRouter__InvalidMaxPrice(uint256 maxPrice, uint256 bufferedMaxPrice);
+    error PriceRouter__InvalidAsset(address asset);
+    error PriceRouter__BadAnswer(uint256 answer, uint256 expectedAnswer);
+    error PriceRouter__UnkownDerivative(uint8 unkownDerivative);
+    error PriceRouter__MinPriceGreaterThanMaxPrice(uint256 min, uint256 max);
+    error PriceRouter__AssetBelowMinPrice(uint64 sourceId, uint256 price, uint256 minPrice);
+    error PriceRouter__AssetAboveMaxPrice(uint64 sourceId, uint256 price, uint256 maxPrice);
+    error PriceRouter__StalePrice(uint64 sourceId, uint256 timeSinceLastUpdate, uint256 heartbeat);
+
+    /*//////////////////////////////////////////////////////////////
+                                 ENUMS
+    //////////////////////////////////////////////////////////////*/
+
+    enum Descriptor {
+        NONE,
+        CHAINLINK,
+        UNIV3_TWAP,
+        EXTENSION
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                          SETUP LOGIC
+    //////////////////////////////////////////////////////////////*/
+
+    /**
+     * @notice Constructor adds ETH-USD pricing source to that Chainlink
+     *         sources have access to a USD -> ETH conversion.
+     */
     constructor(bytes memory parameters) {
         // Save the USD-ETH price feed because it is a widely used pricing path.
         uint64 sourceId = _addSource(USD, Descriptor.CHAINLINK, ETH_USD_FEED, parameters);
-        _addAsset(USD, sourceId, 0);
+        _addAsset(USD, sourceId, 0, 0);
     }
 
-    // TODO so one of the sources failing is the same as price diverging.
-    function getPriceInBaseEnforceNonZeroLower(
-        address asset
-    ) external view returns (uint256 upper, uint256 lower, uint8 errorCode) {
-        (upper, lower, errorCode) = _getPriceInBase(asset);
-
-        if (lower == 0) lower = upper;
-    }
-
-    function getPriceInBase(address asset) external view returns (uint256, uint256, uint8) {
-        if (!isExtension[msg.sender]) revert("Caller is not an extension.");
-        return _getPriceInBase(asset);
-    }
-
-    uint8 public constant ANCHOR_OUT_OF_RANGE = 3;
-
-    function _getPriceInBase(address asset) internal view returns (uint256, uint256, uint8) {
-        // If mode is anchor, then run an anchor check anchoring primary upper to secondary upper, and the same for lower
-        AssetSettings memory settings = getAssetSettings[asset];
-
-        uint256 primarySourceUpper;
-        uint256 primarySourceLower;
-        uint256 secondarySourceUpper;
-        uint256 secondarySourceLower;
-        uint8 errorCode;
-        // TODO need to look at error code
-        // If primary has error use secondary
-        // if secondary is set and has error use primary, but set anchor OOR
-        // IF both return no errors, but values differ greatly set anchor OOR
-        //  - I guess we would do the same lower upper logic?
-
-        // TODO so if there is only 1
-
-        // Make sure primary is good, and returning non-zero. If either fail revert.
-        (primarySourceUpper, primarySourceLower, errorCode) = _getPriceFromSource(settings.primarySource);
-        // If primary source is returning a zero for price, then revert
-        if (primarySourceUpper == 0) revert("Bad primary");
-        if (settings.secondarySource == 0) {
-            // Secondary not set.
-            return (primarySourceUpper, primarySourceLower, errorCode);
-        }
-        (secondarySourceUpper, secondarySourceLower, errorCode) = _getPriceFromSource(settings.secondarySource);
-        // If secondary source is returning a zero for price, then revert
-        if (secondarySourceUpper == 0) revert("Bad secondary");
-
-        if (secondarySourceUpper > 0) {
-            // TODO Make sure primary and secondary do not differ greatly.
-        }
-
-        // First find upper.
-        uint256 upper = primarySourceUpper > secondarySourceUpper ? primarySourceUpper : secondarySourceUpper;
-        uint256 lower;
-
-        // Now find lower.
-        if (primarySourceLower == 0 && secondarySourceLower == 0) {
-            // Use the smaller upper value.
-            lower = primarySourceUpper < secondarySourceUpper ? primarySourceUpper : secondarySourceUpper;
-        } else {
-            if (primarySourceLower != 0 && secondarySourceLower != 0) {
-                // Use the smaller lower value.
-                lower = primarySourceLower < secondarySourceLower ? primarySourceLower : secondarySourceLower;
-            } else {
-                // Else compare non zero lower to smaller upper.
-                uint256 smallerUpper = primarySourceUpper.min(secondarySourceUpper);
-                if (primarySourceLower != 0)
-                    lower = primarySourceLower < smallerUpper ? primarySourceLower : smallerUpper;
-                else lower = secondarySourceLower < smallerUpper ? secondarySourceLower : smallerUpper;
-            }
-        }
-        return (upper, lower, errorCode);
-    }
-
-    function _getPriceFromSource(
-        uint64 sourceId
-    ) internal view returns (uint256 upper, uint256 lower, uint8 errorCode) {
-        AssetSourceSettings memory settings = getAssetSourceSettings[sourceId];
-        // Note sources CAN return an upper and lower, but a lot of them will only return an upper.
-        // Like if we had a TWAP for GEAR/USDC then when we price USDC, that could use CL USDC->USD and TWAP USDC->ETH then CL ETH->USD
-        if (settings.descriptor == Descriptor.CHAINLINK) {
-            (upper, lower, errorCode) = _getPriceInBaseForChainlinkAsset(sourceId, settings.source);
-        } else if (settings.descriptor == Descriptor.UNIV3_TWAP) {
-            (upper, lower, errorCode) = _getPriceInBaseForTwapAsset(sourceId, settings.source);
-        } else if (settings.descriptor == Descriptor.EXTENSION) {
-            (upper, lower, errorCode) = IExtension(settings.source).getPriceInBase(sourceId);
-        } else revert("Unkown");
-    }
+    /*//////////////////////////////////////////////////////////////
+                              OWNER LOGIC
+    //////////////////////////////////////////////////////////////*/
 
     function addSource(
         address asset,
@@ -189,6 +187,54 @@ contract PriceOps is Ownable {
     ) external onlyOwner returns (uint64 sourceId) {
         sourceId = _addSource(asset, descriptor, source, sourceData);
     }
+
+    function addAsset(
+        address asset,
+        uint64 primarySource,
+        uint64 secondarySource,
+        uint16 _allowedSourceDivergence
+    ) external onlyOwner {
+        _addAsset(asset, primarySource, secondarySource, _allowedSourceDivergence);
+    }
+
+    function editAsset() external onlyOwner {
+        // This needs to be a higher privelage function, so maybe timelock edits to it?
+        // TODO
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                        PRICING VIEW LOGIC
+    //////////////////////////////////////////////////////////////*/
+
+    /**
+     * @notice return bool indicating whether or not an asset has been set up.
+     * @dev Since `addAsset` enforces the derivative is non zero, checking if the stored setting
+     *      is nonzero is sufficient to see if the asset is set up.
+     */
+    function isSupported(address asset) external view returns (bool) {
+        return getAssetSettings[asset].primarySource > 0;
+    }
+
+    function getPriceInBaseEnforceNonZeroLower(
+        address asset
+    ) external view returns (uint256 upper, uint256 lower, uint8 errorCode) {
+        (upper, lower, errorCode) = _getPriceInBase(asset);
+
+        if (lower == 0) lower = upper;
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                        EXTENSION VIEW LOGIC
+    //////////////////////////////////////////////////////////////*/
+
+    function getPriceInBase(address asset) external view returns (uint256, uint256, uint8) {
+        if (!isExtension[msg.sender]) revert("Caller is not an extension.");
+        return _getPriceInBase(asset);
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                        INTERNAL PRICING LOGIC
+    //////////////////////////////////////////////////////////////*/
 
     function _addSource(
         address asset,
@@ -215,7 +261,7 @@ contract PriceOps is Ownable {
             (upper, lower, errorCode) = IExtension(source).getPriceInBase(sourceId);
         }
 
-        // TODO errorCode should be zero.
+        if (errorCode != 0) revert("Source errored");
 
         getAssetSourceSettings[sourceId] = AssetSourceSettings({
             asset: asset,
@@ -224,108 +270,147 @@ contract PriceOps is Ownable {
         });
     }
 
-    function addAsset(address asset, uint64 primarySource, uint64 secondarySource) external onlyOwner {
+    function _addAsset(
+        address asset,
+        uint64 primarySource,
+        uint64 secondarySource,
+        uint16 _allowedSourceDivergence
+    ) internal {
         // Check if asset is already setup.
-        // TODO primary source can not be 0
+        if (getAssetSettings[asset].primarySource != 0) revert("Asset already setup");
+        if (primarySource == 0) revert("Invalid primary");
 
         // make sure sources are valid, and for the right asset.
+        if (getAssetSourceSettings[primarySource].asset != asset) revert("Source Asset mismatch.");
+        // If secondary is set make sure asset matches.
+        if (secondarySource != 0) {
+            if (getAssetSourceSettings[secondarySource].asset != asset) revert("Source Asset mismatch.");
+            // Make sure source divergence is reasonable.
+            if (_allowedSourceDivergence > MAX_ALLOWED_SOURCE_DIVERGENCE) revert("Invalid source divergence");
+        }
 
-        _addAsset(asset, primarySource, secondarySource);
+        getAssetSettings[asset] = AssetSettings({
+            primarySource: primarySource,
+            secondarySource: secondarySource,
+            allowedSourceDivergence: _allowedSourceDivergence
+        });
     }
 
-    function _addAsset(address asset, uint64 primarySource, uint64 secondarySource) internal {
-        // Check if asset is already setup.
-        // TODO primary source can not be 0
+    function _getPriceInBase(address asset) internal view returns (uint256, uint256, uint8) {
+        // If mode is anchor, then run an anchor check anchoring primary upper to secondary upper, and the same for lower
+        AssetSettings memory settings = getAssetSettings[asset];
+        uint8 errorCode = NO_ERROR;
+        uint256 primarySourceUpper;
+        uint256 primarySourceLower;
+        uint8 primaryErrorCode;
 
-        // make sure sources are valid, and for the right asset.
+        // First figure out if we have a single or dual oracle.
+        if (settings.secondarySource == 0) {
+            // Single Oracle.
 
-        getAssetSettings[asset] = AssetSettings({ primarySource: primarySource, secondarySource: secondarySource });
+            // Query the primary source.
+            (primarySourceUpper, primarySourceLower, primaryErrorCode) = _getPriceFromSource(settings.primarySource);
+            // No need to look at error code, just return it.
+            return (primarySourceUpper, primarySourceLower, primaryErrorCode);
+        } else {
+            // Dual Oracle.
+            uint256 secondarySourceUpper;
+            uint256 secondarySourceLower;
+            uint8 secondaryErrorCode;
+
+            // Query the primary source.
+            (primarySourceUpper, primarySourceLower, primaryErrorCode) = _getPriceFromSource(settings.primarySource);
+
+            // Query the secondary source.
+            (secondarySourceUpper, secondarySourceLower, secondaryErrorCode) = _getPriceFromSource(
+                settings.secondarySource
+            );
+
+            // We are completely blind if this price is good or not because both sources are bad.
+            if (primaryErrorCode == BAD_SOURCE && secondaryErrorCode == BAD_SOURCE) {
+                return (0, 0, BAD_SOURCE);
+            } else {
+                // At best we can return a NO_ERROR but need to check if sources diverge, or if one of them has a non zero error code.
+                if (primaryErrorCode == NO_ERROR && secondaryErrorCode == NO_ERROR) {
+                    (uint256 upper, uint256 lower) = _findUpperAndLower(
+                        primarySourceUpper,
+                        primarySourceLower,
+                        secondarySourceUpper,
+                        secondarySourceLower
+                    );
+
+                    // Check for divergence
+                    uint256 minLower = upper.mulDivDown(1e4 - settings.allowedSourceDivergence, 1e4);
+                    if (lower < minLower) errorCode = CAUTION;
+
+                    return (upper, lower, errorCode);
+                } else {
+                    // One of our sources has some error, but we know the other one is usable with caution.
+                    errorCode = CAUTION;
+                    if (primaryErrorCode == BAD_SOURCE) {
+                        return (secondarySourceUpper, secondarySourceLower, errorCode);
+                    } else if (secondaryErrorCode == BAD_SOURCE) {
+                        return (primarySourceUpper, primarySourceLower, errorCode);
+                    } else {
+                        // Both sources are usable, but need to check for zero lower values.
+                        (uint256 upper, uint256 lower) = _findUpperAndLower(
+                            primarySourceUpper,
+                            primarySourceLower,
+                            secondarySourceUpper,
+                            secondarySourceLower
+                        );
+                        return (upper, lower, errorCode);
+                    }
+                }
+            }
+        }
     }
 
-    function editAsset() external onlyOwner {
-        // This needs to be a higher privelage function, so maybe timelock edits to it?
+    function _findUpperAndLower(
+        uint256 primarySourceUpper,
+        uint256 primarySourceLower,
+        uint256 secondarySourceUpper,
+        uint256 secondarySourceLower
+    ) internal pure returns (uint256 upper, uint256 lower) {
+        // First find upper.
+        upper = primarySourceUpper > secondarySourceUpper ? primarySourceUpper : secondarySourceUpper;
+
+        // Now find lower.
+        if (primarySourceLower == 0 && secondarySourceLower == 0) {
+            // Use the smaller upper value.
+            lower = primarySourceUpper < secondarySourceUpper ? primarySourceUpper : secondarySourceUpper;
+        } else {
+            if (primarySourceLower != 0 && secondarySourceLower != 0) {
+                // Use the smaller lower value.
+                lower = primarySourceLower < secondarySourceLower ? primarySourceLower : secondarySourceLower;
+            } else {
+                // Else compare non zero lower to smaller upper.
+                uint256 smallerUpper = primarySourceUpper.min(secondarySourceUpper);
+                if (primarySourceLower != 0)
+                    lower = primarySourceLower < smallerUpper ? primarySourceLower : smallerUpper;
+                else lower = secondarySourceLower < smallerUpper ? secondarySourceLower : smallerUpper;
+            }
+        }
     }
 
-    /**
-     * @notice return bool indicating whether or not an asset has been set up.
-     * @dev Since `addAsset` enforces the derivative is non zero, checking if the stored setting
-     *      is nonzero is sufficient to see if the asset is set up.
-     */
-    function isSupported(address asset) external view returns (bool) {
-        return getAssetSettings[asset].primarySource > 0;
+    function _getPriceFromSource(
+        uint64 sourceId
+    ) internal view returns (uint256 upper, uint256 lower, uint8 errorCode) {
+        AssetSourceSettings memory settings = getAssetSourceSettings[sourceId];
+        // Note sources CAN return an upper and lower, but a lot of them will only return an upper.
+        // Like if we had a TWAP for GEAR/USDC then when we price USDC, that could use CL USDC->USD and TWAP USDC->ETH then CL ETH->USD
+        if (settings.descriptor == Descriptor.CHAINLINK) {
+            (upper, lower, errorCode) = _getPriceInBaseForChainlinkAsset(sourceId, settings.source);
+        } else if (settings.descriptor == Descriptor.UNIV3_TWAP) {
+            (upper, lower, errorCode) = _getPriceInBaseForTwapAsset(sourceId, settings.source);
+        } else if (settings.descriptor == Descriptor.EXTENSION) {
+            (upper, lower, errorCode) = IExtension(settings.source).getPriceInBase(sourceId);
+        } else revert("Unkown");
     }
 
-    // ======================================= PRICING OPERATIONS =======================================
-
-    /**
-     * @notice Attempted to set a minimum price below the Chainlink minimum price (with buffer).
-     * @param minPrice minimum price attempted to set
-     * @param bufferedMinPrice minimum price that can be set including buffer
-     */
-    error PriceRouter__InvalidMinPrice(uint256 minPrice, uint256 bufferedMinPrice);
-
-    /**
-     * @notice Attempted to set a maximum price above the Chainlink maximum price (with buffer).
-     * @param maxPrice maximum price attempted to set
-     * @param bufferedMaxPrice maximum price that can be set including buffer
-     */
-    error PriceRouter__InvalidMaxPrice(uint256 maxPrice, uint256 bufferedMaxPrice);
-
-    /**
-     * @notice Attempted to add an invalid asset.
-     * @param asset address of the invalid asset
-     */
-    error PriceRouter__InvalidAsset(address asset);
-
-    /**
-     * @notice Attempted to add an asset, but actual answer was outside range of expectedAnswer.
-     */
-    error PriceRouter__BadAnswer(uint256 answer, uint256 expectedAnswer);
-
-    /**
-     * @notice Attempted to perform an operation using an unkown derivative.
-     */
-    error PriceRouter__UnkownDerivative(uint8 unkownDerivative);
-
-    /**
-     * @notice Attempted to add an asset with invalid min/max prices.
-     * @param min price
-     * @param max price
-     */
-    error PriceRouter__MinPriceGreaterThanMaxPrice(uint256 min, uint256 max);
-
-    /**
-     * @notice The allowed deviation between the expected answer vs the actual answer.
-     */
-    uint256 public constant EXPECTED_ANSWER_DEVIATION = 0.02e18;
-
-    // ======================================= PRICING OPERATIONS =======================================
-    address public constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
-
-    // =========================================== CHAINLINK PRICE SOURCE ===========================================\
-    /**
-     * @notice Stores data for Chainlink source assets.
-     * @param max the max valid price of the asset
-     * @param min the min valid price of the asset
-     * @param heartbeat the max amount of time between price updates
-     * @param inUsd bool indicating whether the price feed is
-     *        denominated in USD(true) or ETH(false)
-     */
-    struct ChainlinkSourceStorage {
-        uint144 max;
-        uint80 min;
-        uint24 heartbeat;
-        bool inUsd;
-    }
-    /**
-     * @notice Returns Chainlink Derivative Storage
-     */
-    mapping(uint64 => ChainlinkSourceStorage) public getChainlinkSourceStorage;
-
-    /**
-     * @notice If zero is specified for a Chainlink asset heartbeat, this value is used instead.
-     */
-    uint24 public constant DEFAULT_HEART_BEAT = 1 days;
+    /*//////////////////////////////////////////////////////////////
+                        CHAINLINK SOURCE LOGIC
+    //////////////////////////////////////////////////////////////*/
 
     /**
      * @notice Setup function for pricing Chainlink derivative assets.
@@ -393,40 +478,14 @@ contract PriceOps is Ownable {
                 (uint256 _baseToEthUpper, uint256 _baseToEthLower, uint8 _errorCode) = _getPriceInBase(USD);
                 upper = price.mulDivDown(_baseToEthUpper, 1e8);
                 if (_baseToEthLower > 0) lower = price.mulDivDown(_baseToEthLower, 1e8);
+                // Favor the worst error code.
+                if (_errorCode > errorCode) errorCode = _errorCode;
             } else {
                 upper = price;
                 // lower is not set.
             }
         }
     }
-
-    /**
-     * @notice Attempted an operation to price an asset that under its minimum valid price.
-     * @param sourceId address of the asset that is under its minimum valid price
-     * @param price price of the asset
-     * @param minPrice minimum valid price of the asset
-     */
-    error PriceRouter__AssetBelowMinPrice(uint64 sourceId, uint256 price, uint256 minPrice);
-
-    /**
-     * @notice Attempted an operation to price an asset that under its maximum valid price.
-     * @param sourceId address of the asset that is under its maximum valid price
-     * @param price price of the asset
-     * @param maxPrice maximum valid price of the asset
-     */
-    error PriceRouter__AssetAboveMaxPrice(uint64 sourceId, uint256 price, uint256 maxPrice);
-
-    /**
-     * @notice Attempted to fetch a price for an asset that has not been updated in too long.
-     * @param sourceId address of the asset thats price is stale
-     * @param timeSinceLastUpdate seconds since the last price update
-     * @param heartbeat maximum allowed time between price updates
-     */
-    error PriceRouter__StalePrice(uint64 sourceId, uint256 timeSinceLastUpdate, uint256 heartbeat);
-
-    uint8 public constant SOURCE_INVALID = 1;
-
-    uint8 public constant NO_ERROR = 0;
 
     /**
      * @notice helper function to validate a price feed is safe to use.
@@ -443,28 +502,19 @@ contract PriceOps is Ownable {
         uint88 min,
         uint24 heartbeat
     ) internal view returns (uint8) {
-        if (value < min) return SOURCE_INVALID;
+        if (value < min) return BAD_SOURCE;
 
-        if (value > max) return SOURCE_INVALID;
+        if (value > max) return BAD_SOURCE;
 
         uint256 timeSinceLastUpdate = block.timestamp - timestamp;
-        if (timeSinceLastUpdate > heartbeat) return SOURCE_INVALID;
+        if (timeSinceLastUpdate > heartbeat) return BAD_SOURCE;
 
         return NO_ERROR;
     }
 
-    // =========================================== TWAP PRICE SOURCE ===========================================
-    struct TwapSourceStorage {
-        uint32 secondsAgo;
-        uint8 baseDecimals;
-        address baseToken;
-        address quoteToken;
-    }
-
-    /**
-     * @notice TWAP Source Storage
-     */
-    mapping(uint64 => TwapSourceStorage) public getTwapSourceStorage;
+    /*//////////////////////////////////////////////////////////////
+                        UNIV3 TWAP SOURCE LOGIC
+    //////////////////////////////////////////////////////////////*/
 
     /**
      * @notice Setup function for pricing TWAP source assets.
@@ -515,7 +565,7 @@ contract PriceOps is Ownable {
             // Price is already given in base.
             upper = quoteAmount;
         }
-        // TODO run liquidity check, set error code if liquidity is bad
-        console.log("Harmonic Mean Liquidity", harmonicMeanLiquidity);
+        // Only check liquidity if the Error code does not already equal BAD_SOURCE.
+        if (errorCode != BAD_SOURCE && harmonicMeanLiquidity < parameters.minLiquidity) errorCode = BAD_SOURCE;
     }
 }
