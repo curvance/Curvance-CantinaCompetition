@@ -142,8 +142,8 @@ contract VelodromeStablePositionVault is BasePositionVault {
             );
         tokenA = _tokenA;
         tokenB = _tokenB;
-        decimalsA = ERC20(_tokenA).decimals();
-        decimalsB = ERC20(_tokenB).decimals();
+        decimalsA = 10 ** ERC20(_tokenA).decimals();
+        decimalsB = 10 ** ERC20(_tokenB).decimals();
         gauge = _gauge;
         router = _router;
         pairFactory = _pairFactory;
@@ -184,6 +184,7 @@ contract VelodromeStablePositionVault is BasePositionVault {
             for (uint256 i = 0; i < rewardTokenCount; i++) {
                 address reward = rewards[i];
                 uint256 amount = ERC20(reward).balanceOf(address(this));
+                if (amount == 0) continue;
 
                 // Take platform fee
                 uint256 protocolFee = amount.mulDivDown(positionVaultMetaData.platformFee, 1e18);
@@ -275,6 +276,7 @@ contract VelodromeStablePositionVault is BasePositionVault {
     ) internal pure returns (uint256) {
         uint256 num;
         uint256 den;
+
         {
             uint256 a = (_amountA * 1e18) / _decimalsA;
             uint256 x = (_reserveA * 1e18) / _decimalsA;

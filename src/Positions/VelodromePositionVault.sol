@@ -172,6 +172,7 @@ contract VelodromePositionVault is BasePositionVault {
             for (uint256 i = 0; i < rewardTokenCount; i++) {
                 address reward = rewards[i];
                 uint256 amount = ERC20(reward).balanceOf(address(this));
+                if (amount == 0) continue;
 
                 // Take platform fee
                 uint256 protocolFee = amount.mulDivDown(positionVaultMetaData.platformFee, 1e18);
