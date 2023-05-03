@@ -26,6 +26,7 @@ contract PriceOpsTest is Test {
 
     uint256 public ETH_PRICE_USD;
     uint256 public USDC_PRICE_USD;
+    uint256 public FRAX_PRICE_USD;
 
     PriceOps private priceOps;
     CurveV1Extension private curveV1Extension;
@@ -43,6 +44,7 @@ contract PriceOpsTest is Test {
     address private USDT = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
     address private USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address private DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
+    address private FRAX = 0x853d955aCEf822Db058eb8505911ED77F175b99e;
 
     // Data feeds
     address private WETH_USD_FEED = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
@@ -50,6 +52,7 @@ contract PriceOpsTest is Test {
     address private STETH_ETH_FEED = 0x86392dC19c0b719886221c78AB11eb8Cf5c52812;
     address private USDT_USD_FEED = 0x3E7d1eAB13ad0104d2750B8863b489D65364e32D;
     address private USDC_USD_FEED = 0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6;
+    address private FRAX_USD_FEED = 0xB9E1E3A9feFf48998E45Fa90847ed4D467E8BcfD;
     address private USDC_ETH_FEED = 0x986b5E1e1755e3C2440e960477f25201B0a8bbD4;
     address private DAI_USD_FEED = 0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9;
 
@@ -66,6 +69,7 @@ contract PriceOpsTest is Test {
 
     // Uniswap V3 Pools
     address private WBTC_WETH_05_POOL = 0x4585FE77225b41b697C938B018E2Ac67Ac5a20c0;
+    address private FRAX_USDC_05_POOL = 0xc63B0708E2F7e69CB8A1df0e1389A98C35A76D52;
 
     // Curve Assets
     address private CRV_DAI_USDC_USDT = 0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490;
@@ -78,6 +82,7 @@ contract PriceOpsTest is Test {
     function setUp() external {
         ETH_PRICE_USD = uint256(IChainlinkAggregator(WETH_USD_FEED).latestAnswer());
         USDC_PRICE_USD = uint256(IChainlinkAggregator(USDC_USD_FEED).latestAnswer());
+        FRAX_PRICE_USD = uint256(IChainlinkAggregator(FRAX_USD_FEED).latestAnswer());
 
         MOCK_WETH_USD_FEED = new MockDataFeed(WETH_USD_FEED);
         MOCK_STETH_USD_FEED = new MockDataFeed(STETH_USD_FEED);
@@ -139,7 +144,7 @@ contract PriceOpsTest is Test {
         priceOps.addAsset(DAI, daiUsdSource, 0, 0);
         priceOps.addAsset(USDT, usdtUsdSource, 0, 0);
         // priceOps.addAsset(STETH, stethUsdSource, stethEthSource);
-        // UniswapV3Pool(WBTC_WETH_05_POOL).increaseObservationCardinalityNext(3_600);
+        // UniswapV3Pool(USDC_WETH_05_POOL).increaseObservationCardinalityNext(900);
     }
 
     // function testPriceOpsHappyPath() external {
@@ -359,7 +364,101 @@ contract PriceOpsTest is Test {
         assertEq(errorCode, 2, "The errorCode should be BAD_SOURCE.");
     }
 
-    // Add test for 1 TWAP source
-    // TODO add test for 2 TWAP sources
-    // ^^ 1 of these will report price in some other asset that uses a chainlink datafeed price(<- make this price bad)
+    // Twaps reporting assets in ETH only return error codes of 0.
+    // But if the Twap reports assets in something else, then pricing the quote
+    // Can lead to both CAUTION and BAD_SOURCE error codes.
+    function testTwapSourceErrorCodes() external {
+        // USDC-WETH TWAP
+        PriceOps.TwapSourceStorage memory twapStor;
+        twapStor.secondsAgo = 600;
+        twapStor.baseToken = FRAX;
+        twapStor.quoteToken = USDC;
+        twapStor.baseDecimals = ERC20(FRAX).decimals();
+        twapStor.quoteDecimals = ERC20(USDC).decimals();
+        uint64 fraxUsdcSource_300 = priceOps.addSource(
+            FRAX,
+            PriceOps.Descriptor.UNIV3_TWAP,
+            FRAX_USDC_05_POOL,
+            abi.encode(twapStor)
+        );
+        priceOps.addAsset(FRAX, fraxUsdcSource_300, 0, 0);
+
+        // Edit USDC so that it uses 2 Chainlink sources.
+        // Update USDC feed to use 2 chainlink oracle feeds.
+        PriceOps.ChainlinkSourceStorage memory stor;
+
+        // Add Chainlink Source.
+        // USDC-ETH
+        uint64 usdcEthSource = priceOps.addSource(
+            USDC,
+            PriceOps.Descriptor.CHAINLINK,
+            address(MOCK_USDC_ETH_FEED),
+            abi.encode(stor)
+        );
+
+        // Edit the existing USDC sources.
+        uint16 sourceDivergence = 100;
+        priceOps.proposeEditAsset(USDC, usdcUsdSource, usdcEthSource, sourceDivergence);
+
+        // Advance time so we can edit the asset.
+        vm.warp(block.timestamp + priceOps.EDIT_ASSET_DELAY() + 1);
+
+        // Update Mock Feeds so that prices are not stale.
+        MOCK_WETH_USD_FEED.setMockUpdatedAt(block.timestamp);
+        MOCK_USDC_USD_FEED.setMockUpdatedAt(block.timestamp);
+        MOCK_USDC_ETH_FEED.setMockUpdatedAt(block.timestamp);
+
+        // Complete edit asset.
+        priceOps.editAsset(USDC, usdcUsdSource, usdcEthSource, sourceDivergence);
+
+        // Now make sure that if the USDC price source returns a CAUTION or BAD_SOURCE the error is bubbled up.
+        (uint256 upper, uint256 lower, uint8 errorCode) = priceOps.getPriceInBaseEnforceNonZeroLower(FRAX);
+        assertApproxEqRel(
+            upper,
+            uint256(1e18).mulDivDown(FRAX_PRICE_USD, ETH_PRICE_USD),
+            0.001e18,
+            "FRAX price should equal 1/ETH_PRICE_USD."
+        );
+        assertApproxEqRel(upper, lower, 0.01e18, "Upper and lower should be approx equal.");
+        assertGt(upper, lower, "Upper should be greater than the lower.");
+        assertEq(errorCode, 0, "There should be no error code.");
+
+        uint256 originalUpper = upper;
+        uint256 originalLower = lower;
+
+        // If primary source is bad, errorCode should be 1.
+        MOCK_USDC_USD_FEED.setMockUpdatedAt(block.timestamp - 2 days);
+        (upper, lower, errorCode) = priceOps.getPriceInBaseEnforceNonZeroLower(FRAX);
+        assertApproxEqRel(
+            upper,
+            uint256(1e18).mulDivDown(FRAX_PRICE_USD, ETH_PRICE_USD),
+            0.001e18,
+            "FRAX price should equal 1/ETH_PRICE_USD."
+        );
+        assertEq(upper, lower, "Upper and lower should be equal since primary is bad.");
+        assertTrue(upper == originalUpper || upper == originalLower, "Values reported should be 1 of the original.");
+        assertEq(errorCode, 1, "Error code should be 1.");
+
+        // Alter secondary source so that price is stale.
+        MOCK_USDC_ETH_FEED.setMockUpdatedAt(block.timestamp - 2 days);
+        (upper, lower, errorCode) = priceOps.getPriceInBaseEnforceNonZeroLower(FRAX);
+        assertTrue(upper == 0 && lower == 0, "Values reported should be 0.");
+        assertEq(errorCode, 2, "Error code should be 2.");
+
+        // Fixing the underlying feeds allows FRAX to be priced.
+        MOCK_USDC_USD_FEED.setMockUpdatedAt(block.timestamp);
+        MOCK_USDC_ETH_FEED.setMockUpdatedAt(block.timestamp);
+
+        // Now make sure that if the USDC price source returns a CAUTION or BAD_SOURCE the error is bubbled up.
+        (upper, lower, errorCode) = priceOps.getPriceInBaseEnforceNonZeroLower(FRAX);
+        assertApproxEqRel(
+            upper,
+            uint256(1e18).mulDivDown(FRAX_PRICE_USD, ETH_PRICE_USD),
+            0.001e18,
+            "FRAX price should equal 1/ETH_PRICE_USD."
+        );
+        assertApproxEqRel(upper, lower, 0.01e18, "Upper and lower should be approx equal.");
+        assertGt(upper, lower, "Upper should be greater than the lower.");
+        assertEq(errorCode, 0, "There should be no error code.");
+    }
 }

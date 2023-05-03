@@ -77,14 +77,14 @@ contract PriceOps is Ownable {
      * @notice Stores configuration data for Uniswap V3 Twap price sources.
      * @param secondsAgo period used for TWAP calculation
      * @param baseDecimals the asset you want to price, decimals
-     * @param minLiquidity the minimum amount of liquidity during TWAP calculation
+     * @param quoteDecimals the asset price is quoted in, decimals
      * @param baseToken the asset you want to price
      * @param quoteToken the asset Twap calulation denominates in
      */
     struct TwapSourceStorage {
         uint32 secondsAgo;
         uint8 baseDecimals;
-        uint128 minLiquidity;
+        uint8 quoteDecimals;
         address baseToken;
         address quoteToken;
     }
@@ -133,6 +133,11 @@ contract PriceOps is Ownable {
 
     mapping(bytes32 => uint64) public editAssetTimestamp;
 
+    /**
+     * @notice The smallest possible TWAP that can be used.
+     */
+    uint32 public constant MINIMUM_SECONDS_AGO = 300;
+
     /*//////////////////////////////////////////////////////////////
                                  EVENTS
     //////////////////////////////////////////////////////////////*/
@@ -152,6 +157,8 @@ contract PriceOps is Ownable {
     error PriceRouter__AssetBelowMinPrice(uint64 sourceId, uint256 price, uint256 minPrice);
     error PriceRouter__AssetAboveMaxPrice(uint64 sourceId, uint256 price, uint256 maxPrice);
     error PriceRouter__StalePrice(uint64 sourceId, uint256 timeSinceLastUpdate, uint256 heartbeat);
+    error PriceRouter__TwapAssetNotInPool();
+    error PriceRouter__SecondsAgoDoesNotMeetMinimum();
 
     /*//////////////////////////////////////////////////////////////
                                  ENUMS
@@ -297,10 +304,10 @@ contract PriceOps is Ownable {
         uint8 errorCode;
 
         if (descriptor == Descriptor.CHAINLINK) {
-            _setupAssetForChainlinkSource(sourceId, source, sourceData);
+            _setupAssetForChainlinkSource(asset, sourceId, source, sourceData);
             (upper, lower, errorCode) = _getPriceInBaseForChainlinkAsset(sourceId, source);
         } else if (descriptor == Descriptor.UNIV3_TWAP) {
-            _setupAssetForTwapSource(sourceId, source, sourceData);
+            _setupAssetForTwapSource(asset, sourceId, source, sourceData);
             (upper, lower, errorCode) = _getPriceInBaseForTwapAsset(sourceId, source);
         } else if (descriptor == Descriptor.EXTENSION) {
             if (!isExtension[source]) isExtension[source] = true;
@@ -473,7 +480,7 @@ contract PriceOps is Ownable {
      * @dev _source The address of the Chainlink Data feed.
      * @dev _storage A ChainlinkDerivativeStorage value defining valid prices.
      */
-    function _setupAssetForChainlinkSource(uint64 _sourceId, address _source, bytes memory _storage) internal {
+    function _setupAssetForChainlinkSource(address, uint64 _sourceId, address _source, bytes memory _storage) internal {
         ChainlinkSourceStorage memory parameters = abi.decode(_storage, (ChainlinkSourceStorage));
 
         // Use Chainlink to get the min and max of the asset.
@@ -578,15 +585,26 @@ contract PriceOps is Ownable {
 
     /**
      * @notice Setup function for pricing TWAP source assets.
-     * @dev _source The address of the aToken.
-     * @dev _storage is not used.
      */
-    function _setupAssetForTwapSource(uint64 sourceId, address _source, bytes memory _storage) internal {
+    function _setupAssetForTwapSource(address asset, uint64 sourceId, address _source, bytes memory _storage) internal {
         TwapSourceStorage memory parameters = abi.decode(_storage, (TwapSourceStorage));
+
+        // Verify seconds ago is reasonable.
+        if (parameters.secondsAgo < MINIMUM_SECONDS_AGO) revert PriceRouter__SecondsAgoDoesNotMeetMinimum();
 
         UniswapV3Pool pool = UniswapV3Pool(_source);
 
-        pool.token0();
+        address token0 = pool.token0();
+        address token1 = pool.token1();
+        if (token0 == asset) {
+            parameters.baseDecimals = ERC20(asset).decimals();
+            parameters.quoteDecimals = ERC20(token1).decimals();
+            parameters.quoteToken = token1;
+        } else if (token1 == asset) {
+            parameters.baseDecimals = ERC20(asset).decimals();
+            parameters.quoteDecimals = ERC20(token0).decimals();
+            parameters.quoteToken = token0;
+        } else revert PriceRouter__TwapAssetNotInPool();
 
         // Verify seconds ago is reasonable
         // Also if I add in asset to this I could do a sanity check to make sure asset is token0 or token1
@@ -595,17 +613,14 @@ contract PriceOps is Ownable {
     }
 
     /**
-     * @notice Get the price of an Aave derivative in terms of USD.
+     * @notice
      */
     function _getPriceInBaseForTwapAsset(
         uint64 sourceId,
         address source
     ) internal view returns (uint256 upper, uint256 lower, uint8 errorCode) {
         TwapSourceStorage memory parameters = getTwapSourceStorage[sourceId];
-        (int24 arithmeticMeanTick, uint128 harmonicMeanLiquidity) = OracleLibrary.consult(
-            source,
-            parameters.secondsAgo
-        );
+        (int24 arithmeticMeanTick, ) = OracleLibrary.consult(source, parameters.secondsAgo);
         // Get the amount of quote token each base token is worth.
         uint256 quoteAmount = OracleLibrary.getQuoteAtTick(
             arithmeticMeanTick,
@@ -618,14 +633,15 @@ contract PriceOps is Ownable {
             (uint256 _quoteToBaseUpper, uint256 _quoteToBaseLower, uint8 _errorCode) = _getPriceInBase(
                 parameters.quoteToken
             );
-            upper = quoteAmount.mulWadDown(_quoteToBaseUpper);
-            if (_quoteToBaseLower > 0) lower = quoteAmount.mulWadDown(_quoteToBaseLower);
+            // If underlying source is bad, we can not trust this source.
+            if (_errorCode == BAD_SOURCE) return (0, 0, _errorCode);
+            upper = quoteAmount.mulDivDown(_quoteToBaseUpper, 10 ** parameters.quoteDecimals);
+            if (_quoteToBaseLower > 0)
+                lower = quoteAmount.mulDivDown(_quoteToBaseLower, 10 ** parameters.quoteDecimals);
             if (_errorCode > 0) errorCode = _errorCode;
         } else {
             // Price is already given in base.
             upper = quoteAmount;
         }
-        // Only check liquidity if the Error code does not already equal BAD_SOURCE.
-        if (errorCode != BAD_SOURCE && harmonicMeanLiquidity < parameters.minLiquidity) errorCode = BAD_SOURCE;
     }
 }
