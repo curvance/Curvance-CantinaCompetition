@@ -74,8 +74,6 @@ contract CurveV1Extension is IExtension {
         // getVirtualPriceBound[address(_asset)] = vpBound;
     }
 
-    // TODO this needs to return 2 if an asset returns 2, or if VP check fails
-    // Returns 1 if an asset returns 1.
     function getPriceInBase(
         uint64 sourceId
     ) external view onlyPriceOps returns (uint256 upper, uint256 lower, uint8 errorCode) {
@@ -119,26 +117,6 @@ contract CurveV1Extension is IExtension {
         // It is possible that if not all sources provide a lower value, then lower can be greater than upper.
         // TODO pretty sure this is no longer needed.
         // if (lower > upper) (upper, lower) = (lower, upper);
-    }
-
-    function ensureNotInVaultContext(address curvePool) internal view {
-        // Perform the following operation to trigger the Vault's reentrancy guard.
-        // Use a static call so that it can be a view function (even though the
-        // function is non-view).
-        //
-        // IVault.UserBalanceOp[] memory noop = new IVault.UserBalanceOp[](0);
-        // _vault.manageUserBalance(noop);
-
-        // solhint-disable-next-line var-name-mixedcase
-        bytes32 REENTRANCY_ERROR_HASH = keccak256(bytes("lock"));
-
-        // read-only re-entrancy protection - this call is always unsuccessful but we need to make sure
-        // it didn't fail due to a re-entrancy attack
-        (, bytes memory revertData) = curvePool.staticcall(
-            abi.encodeWithSelector(ICurvePool.exchange.selector, 0, 0, 0, 0)
-        );
-
-        if (keccak256(revertData) == REENTRANCY_ERROR_HASH) revert("Reentrancy");
     }
 
     // ======================================== CURVE VIRTUAL PRICE BOUND ========================================

@@ -81,6 +81,8 @@ contract PriceOpsTest is Test {
 
     ICurvePool stEthEth = ICurvePool(payable(0xDC24316b9AE028F1497c275EB9192a3Ea0f67022));
 
+    // TODO add tests where we check revert cases for admin functions.
+
     function setUp() external {
         ETH_PRICE_USD = uint256(IChainlinkAggregator(WETH_USD_FEED).latestAnswer());
         WBTC_PRICE_ETH = uint256(IChainlinkAggregator(WBTC_ETH_FEED).latestAnswer());
