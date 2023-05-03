@@ -12,6 +12,7 @@ import { ICurvePool } from "src/interfaces/Curve/ICurvePool.sol";
 import { UniswapV3Pool } from "src/interfaces/Uniswap/UniswapV3Pool.sol";
 import { CurveV1Extension } from "src/PricingOperations/Extensions/CurveV1Extension.sol";
 import { CurveV2Extension } from "src/PricingOperations/Extensions/CurveV2Extension.sol";
+import { MockDataFeed } from "src/mocks/MockDataFeed.sol";
 
 // import { MockGasFeed } from "src/mocks/MockGasFeed.sol";
 
@@ -22,6 +23,9 @@ contract PriceOpsTest is Test {
     using Math for uint256;
     using stdStorage for StdStorage;
     using SafeTransferLib for ERC20;
+
+    uint256 public ETH_PRICE_USD;
+    uint256 public USDC_PRICE_USD;
 
     PriceOps private priceOps;
     CurveV1Extension private curveV1Extension;
@@ -40,7 +44,7 @@ contract PriceOpsTest is Test {
     address private USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address private DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
 
-    // Datafeeds
+    // Data feeds
     address private WETH_USD_FEED = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
     address private STETH_USD_FEED = 0xCfE54B5cD566aB89272946F602D76Ea879CAb4a8;
     address private STETH_ETH_FEED = 0x86392dC19c0b719886221c78AB11eb8Cf5c52812;
@@ -48,6 +52,17 @@ contract PriceOpsTest is Test {
     address private USDC_USD_FEED = 0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6;
     address private USDC_ETH_FEED = 0x986b5E1e1755e3C2440e960477f25201B0a8bbD4;
     address private DAI_USD_FEED = 0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9;
+
+    // Mock Data Feeds
+    MockDataFeed private MOCK_WETH_USD_FEED;
+    MockDataFeed private MOCK_STETH_USD_FEED;
+    MockDataFeed private MOCK_STETH_ETH_FEED;
+    MockDataFeed private MOCK_USDT_USD_FEED;
+    MockDataFeed private MOCK_USDC_USD_FEED;
+    MockDataFeed private MOCK_USDC_ETH_FEED;
+    MockDataFeed private MOCK_DAI_USD_FEED;
+
+    uint64 public usdcUsdSource;
 
     // Uniswap V3 Pools
     address private WBTC_WETH_05_POOL = 0x4585FE77225b41b697C938B018E2Ac67Ac5a20c0;
@@ -61,20 +76,49 @@ contract PriceOpsTest is Test {
     ICurvePool stEthEth = ICurvePool(payable(0xDC24316b9AE028F1497c275EB9192a3Ea0f67022));
 
     function setUp() external {
-        // PriceOps.ChainlinkSourceStorage memory stor;
-        // stor.inUsd = true;
-        // priceOps = new PriceOps(abi.encode(stor));
+        ETH_PRICE_USD = uint256(IChainlinkAggregator(WETH_USD_FEED).latestAnswer());
+        USDC_PRICE_USD = uint256(IChainlinkAggregator(USDC_USD_FEED).latestAnswer());
+
+        MOCK_WETH_USD_FEED = new MockDataFeed(WETH_USD_FEED);
+        MOCK_STETH_USD_FEED = new MockDataFeed(STETH_USD_FEED);
+        MOCK_STETH_ETH_FEED = new MockDataFeed(STETH_ETH_FEED);
+        MOCK_USDT_USD_FEED = new MockDataFeed(USDT_USD_FEED);
+        MOCK_USDC_USD_FEED = new MockDataFeed(USDC_USD_FEED);
+        MOCK_USDC_ETH_FEED = new MockDataFeed(USDC_ETH_FEED);
+        MOCK_DAI_USD_FEED = new MockDataFeed(DAI_USD_FEED);
+
+        PriceOps.ChainlinkSourceStorage memory stor;
+        stor.inUsd = true;
+
+        // Deploy PriceOps.
+        priceOps = new PriceOps(address(MOCK_WETH_USD_FEED), abi.encode(stor));
+
         // curveV1Extension = new CurveV1Extension(priceOps);
         // curveV2Extension = new CurveV2Extension(priceOps);
-        // // WETH-USD
-        // // uint64 ethUsdSource = priceOps.addSource(WETH, PriceOps.Descriptor.CHAINLINK, WETH_USD_FEED, abi.encode(stor));
-        // // USDC-USD
-        // uint64 usdcUsdSource = priceOps.addSource(USDC, PriceOps.Descriptor.CHAINLINK, USDC_USD_FEED, abi.encode(stor));
-        // // DAI-USD
-        // uint64 daiUsdSource = priceOps.addSource(DAI, PriceOps.Descriptor.CHAINLINK, DAI_USD_FEED, abi.encode(stor));
-        // // USDT-USD
-        // uint64 usdtUsdSource = priceOps.addSource(USDT, PriceOps.Descriptor.CHAINLINK, USDT_USD_FEED, abi.encode(stor));
-        // // STETH-USD
+
+        // Setup Chainlink Sources.
+        // USDC-USD
+        usdcUsdSource = priceOps.addSource(
+            USDC,
+            PriceOps.Descriptor.CHAINLINK,
+            address(MOCK_USDC_USD_FEED),
+            abi.encode(stor)
+        );
+        // DAI-USD
+        uint64 daiUsdSource = priceOps.addSource(
+            DAI,
+            PriceOps.Descriptor.CHAINLINK,
+            address(MOCK_DAI_USD_FEED),
+            abi.encode(stor)
+        );
+        // USDT-USD
+        uint64 usdtUsdSource = priceOps.addSource(
+            USDT,
+            PriceOps.Descriptor.CHAINLINK,
+            address(MOCK_USDT_USD_FEED),
+            abi.encode(stor)
+        );
+        // STETH-USD
         // uint64 stethUsdSource = priceOps.addSource(
         //     STETH,
         //     PriceOps.Descriptor.CHAINLINK,
@@ -91,9 +135,9 @@ contract PriceOpsTest is Test {
         // );
         // // uint64 usdcEthSource = priceOps.addSource(USDC, PriceOps.Descriptor.CHAINLINK, USDC_ETH_FEED, abi.encode(stor));
         // // priceOps.addAsset(WETH, ethUsdSource, 0);
-        // priceOps.addAsset(USDC, usdcUsdSource, 0);
-        // priceOps.addAsset(DAI, daiUsdSource, 0);
-        // priceOps.addAsset(USDT, usdtUsdSource, 0);
+        priceOps.addAsset(USDC, usdcUsdSource, 0, 0);
+        priceOps.addAsset(DAI, daiUsdSource, 0, 0);
+        priceOps.addAsset(USDT, usdtUsdSource, 0, 0);
         // priceOps.addAsset(STETH, stethUsdSource, stethEthSource);
         // UniswapV3Pool(WBTC_WETH_05_POOL).increaseObservationCardinalityNext(3_600);
     }
@@ -160,45 +204,162 @@ contract PriceOpsTest is Test {
     //     console.log("Lower", lower);
     // }
 
-    function testCurveReentrancy() external {
-        ERC20 STETH = ERC20(0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84);
-        STETH.approve(address(stEthEth), 10e18);
-        // Might need to add liquidity to the pool, then re-enter when I remove liquidity
-        stEthEth.exchange{ value: 10 ether }(0, 1, 10 ether, 0);
+    function testChainlinkSourceErrorCodes() external {
+        // USDC pricing is currently fine.
+        (uint256 upper, uint256 lower, uint8 errorCode) = priceOps.getPriceInBaseEnforceNonZeroLower(USDC);
+        assertApproxEqRel(
+            upper,
+            uint256(1e18).mulDivDown(USDC_PRICE_USD, ETH_PRICE_USD),
+            0.000001e18,
+            "USDC price should equal 1/ETH_PRICE_USD."
+        );
+        assertEq(upper, lower, "Upper and lower should be equal since USDC has a single source.");
+        assertEq(errorCode, 0, "There should be no error code.");
 
-        console.log("BalanceOf STETH", STETH.balanceOf(address(this)));
+        // Warp time so that answer is stale.
+        vm.warp(block.timestamp + 1 days);
 
-        stEthEth.exchange(1, 0, 1e18, 0);
-        // stEthEth.exchange{ value: 10 ether }(0, 1, 10 ether, 0);
+        // Subsequent USDC pricing calls should return an error code of 2.
+        (upper, lower, errorCode) = priceOps.getPriceInBaseEnforceNonZeroLower(USDC);
+        assertEq(upper, 0, "USDC price should be zero since the source is bad.");
+        assertEq(upper, lower, "Upper and lower should be equal since USDC has a single source.");
+        assertEq(errorCode, 2, "The errorCode should be BAD_SOURCE.");
+
+        // Alter mock feed so that answer is not stale, but reported answer is above the max.
+        MOCK_USDC_USD_FEED.setMockUpdatedAt(block.timestamp);
+        MOCK_USDC_USD_FEED.setMockAnswer(101e8);
+        (upper, lower, errorCode) = priceOps.getPriceInBaseEnforceNonZeroLower(USDC);
+        assertEq(upper, 0, "USDC price should be zero since the source is bad.");
+        assertEq(upper, lower, "Upper and lower should be equal since USDC has a single source.");
+        assertEq(errorCode, 2, "The errorCode should be BAD_SOURCE.");
+
+        // Alter mock feed so that answer is below the min.
+        MOCK_USDC_USD_FEED.setMockAnswer(0.009e8);
+        (upper, lower, errorCode) = priceOps.getPriceInBaseEnforceNonZeroLower(USDC);
+        assertEq(upper, 0, "USDC price should be zero since the source is bad.");
+        assertEq(upper, lower, "Upper and lower should be equal since USDC has a single source.");
+        assertEq(errorCode, 2, "The errorCode should be BAD_SOURCE.");
+
+        // Alter mock feed so that price USDC pricing is fine, but underlying Eth Usd feed is stale, so price still reverts.
+        MOCK_USDC_USD_FEED.setMockAnswer(0);
+        (upper, lower, errorCode) = priceOps.getPriceInBaseEnforceNonZeroLower(USDC);
+        assertEq(upper, 0, "USDC price should be zero since the source is bad.");
+        assertEq(upper, lower, "Upper and lower should be equal since USDC has a single source.");
+        assertEq(errorCode, 2, "The errorCode should be BAD_SOURCE.");
+
+        // Update Eth Usd feed so price is not stale.
+        MOCK_WETH_USD_FEED.setMockUpdatedAt(block.timestamp);
+        (upper, lower, errorCode) = priceOps.getPriceInBaseEnforceNonZeroLower(USDC);
+        assertApproxEqRel(
+            upper,
+            uint256(1e18).mulDivDown(USDC_PRICE_USD, ETH_PRICE_USD),
+            0.000001e18,
+            "USDC price should equal 1/ETH_PRICE_USD."
+        );
+        assertEq(upper, lower, "Upper and lower should be equal since USDC has a single source.");
+        assertEq(errorCode, 0, "There should be no error code.");
     }
 
-    receive() external payable {
-        console.log("Time for Reentrnacy");
-        // stEthEth.exchange{ value: 10 ether }(0, 1, 10 ether, 0);
-        ensureNotInVaultContext(address(stEthEth));
-    }
+    function testChainlinkSourcesErrorCodes() external {
+        // Update USDC feed to use 2 chainlink oracle feeds.
+        PriceOps.ChainlinkSourceStorage memory stor;
 
-    function ensureNotInVaultContext(address curvePool) internal {
-        // Perform the following operation to trigger the Vault's reentrancy guard.
-        // Use a static call so that it can be a view function (even though the
-        // function is non-view).
-        //
-        // IVault.UserBalanceOp[] memory noop = new IVault.UserBalanceOp[](0);
-        // _vault.manageUserBalance(noop);
-
-        // solhint-disable-next-line var-name-mixedcase
-        bytes32 REENTRANCY_ERROR_HASH = keccak256(bytes("lock"));
-
-        // read-only re-entrancy protection - this call is always unsuccessful but we need to make sure
-        // it didn't fail due to a re-entrancy attack
-        (, bytes memory revertData) = curvePool.staticcall(
-            abi.encodeWithSelector(ICurvePool.exchange.selector, 1, 0, 1e18, 0)
+        // Add Chainlink Source.
+        // USDC-ETH
+        uint64 usdcEthSource = priceOps.addSource(
+            USDC,
+            PriceOps.Descriptor.CHAINLINK,
+            address(MOCK_USDC_ETH_FEED),
+            abi.encode(stor)
         );
 
-        console.log("Revert Data Length", revertData.length);
+        // Edit the existing USDC sources.
+        uint16 sourceDivergence = 100;
+        priceOps.proposeEditAsset(USDC, usdcUsdSource, usdcEthSource, sourceDivergence);
 
-        stEthEth.exchange(1, 0, 1e18, 0);
+        // Advance time so we can edit the asset.
+        vm.warp(block.timestamp + priceOps.EDIT_ASSET_DELAY() + 1);
 
-        if (keccak256(revertData) == REENTRANCY_ERROR_HASH) revert("Reentrancy");
+        // Update Mock Feeds so that prices are not stale.
+        MOCK_WETH_USD_FEED.setMockUpdatedAt(block.timestamp);
+        MOCK_USDC_USD_FEED.setMockUpdatedAt(block.timestamp);
+        MOCK_USDC_ETH_FEED.setMockUpdatedAt(block.timestamp);
+
+        // Complete edit asset.
+        priceOps.editAsset(USDC, usdcUsdSource, usdcEthSource, sourceDivergence);
+
+        (uint256 upper, uint256 lower, uint8 errorCode) = priceOps.getPriceInBaseEnforceNonZeroLower(USDC);
+        assertApproxEqRel(
+            upper,
+            uint256(1e18).mulDivDown(USDC_PRICE_USD, ETH_PRICE_USD),
+            0.001e18,
+            "USDC price should equal 1/ETH_PRICE_USD."
+        );
+        assertApproxEqRel(upper, lower, 0.01e18, "Upper and lower should be approx equal.");
+        assertGt(upper, lower, "Upper should be greater than the lower.");
+        assertEq(errorCode, 0, "There should be no error code.");
+
+        uint256 originalUpper = upper;
+        uint256 originalLower = lower;
+
+        // If primary source is bad, errorCode should be 1.
+        MOCK_USDC_USD_FEED.setMockUpdatedAt(block.timestamp - 2 days);
+        (upper, lower, errorCode) = priceOps.getPriceInBaseEnforceNonZeroLower(USDC);
+        assertApproxEqRel(
+            upper,
+            uint256(1e18).mulDivDown(USDC_PRICE_USD, ETH_PRICE_USD),
+            0.001e18,
+            "USDC price should equal 1/ETH_PRICE_USD."
+        );
+        assertEq(upper, lower, "Upper and lower should be equal since primary is bad.");
+        assertTrue(upper == originalUpper || upper == originalLower, "Values reported should be 1 of the original.");
+        assertEq(errorCode, 1, "Error code should be 1.");
+
+        // Alter primary source so price is not stale.
+        MOCK_USDC_USD_FEED.setMockUpdatedAt(block.timestamp);
+        // Alter secondary source so that price is stale.
+        MOCK_USDC_ETH_FEED.setMockUpdatedAt(block.timestamp - 2 days);
+
+        // If secondary source is, bad errorCode should be 1.
+        (upper, lower, errorCode) = priceOps.getPriceInBaseEnforceNonZeroLower(USDC);
+        assertApproxEqRel(
+            upper,
+            uint256(1e18).mulDivDown(USDC_PRICE_USD, ETH_PRICE_USD),
+            0.001e18,
+            "USDC price should equal 1/ETH_PRICE_USD."
+        );
+        assertEq(upper, lower, "Upper and lower should be equal since primary is bad.");
+        assertTrue(upper == originalUpper || upper == originalLower, "Values reported should be 1 of the original.");
+        assertEq(errorCode, 1, "Error code should be 1.");
+
+        // At this point we already know the chainlink checks will return BAD_SOURCE for prices outside the min/max.
+        // So now check that if the sources diverge in value a 2 error code is returned.
+
+        // Alter secondary source so price is not stale.
+        MOCK_USDC_ETH_FEED.setMockUpdatedAt(block.timestamp);
+
+        // Set secondary price to be more than 1% away from the primary price.
+        // Current primary price in ETH is equal to upper.
+        uint256 divergedSecondaryPrice = upper.mulDivDown(1.05e4, 1e4);
+
+        MOCK_USDC_ETH_FEED.setMockAnswer(int256(divergedSecondaryPrice));
+
+        (upper, lower, errorCode) = priceOps.getPriceInBaseEnforceNonZeroLower(USDC);
+        assertGt(upper, 0, "USDC price upper should be nonzero since the source is bad.");
+        assertGt(lower, 0, "USDC price lower should be nonzero since the source is bad.");
+        assertTrue(upper != lower, "Upper and lower should not be equal since USDC prices have diverged.");
+        assertEq(errorCode, 1, "The errorCode should be CAUTION.");
+
+        // Finally if both sources are bad, a 2 error code should be returned.
+        MOCK_USDC_USD_FEED.setMockUpdatedAt(block.timestamp - 2 days);
+        MOCK_USDC_ETH_FEED.setMockUpdatedAt(block.timestamp - 2 days);
+        (upper, lower, errorCode) = priceOps.getPriceInBaseEnforceNonZeroLower(USDC);
+        assertEq(upper, 0, "USDC price should be zero since the source is bad.");
+        assertEq(lower, 0, "USDC price should be zero since the source is bad.");
+        assertEq(errorCode, 2, "The errorCode should be BAD_SOURCE.");
     }
+
+    // Add test for 1 TWAP source
+    // TODO add test for 2 TWAP sources
+    // ^^ 1 of these will report price in some other asset that uses a chainlink datafeed price(<- make this price bad)
 }

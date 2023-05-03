@@ -114,7 +114,6 @@ contract PriceOps is Ownable {
     mapping(uint64 => TwapSourceStorage) public getTwapSourceStorage;
 
     address public constant USD = address(840);
-    address public constant ETH_USD_FEED = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
     uint8 public constant NO_ERROR = 0;
     uint8 public constant CAUTION = 1;
     uint8 public constant BAD_SOURCE = 2;
@@ -129,6 +128,10 @@ contract PriceOps is Ownable {
      * @notice If zero is specified for a Chainlink asset heartbeat, this value is used instead.
      */
     uint24 public constant DEFAULT_HEART_BEAT = 1 days;
+
+    uint64 public constant EDIT_ASSET_DELAY = 7 days;
+
+    mapping(bytes32 => uint64) public editAssetTimestamp;
 
     /*//////////////////////////////////////////////////////////////
                                  EVENTS
@@ -169,7 +172,7 @@ contract PriceOps is Ownable {
      * @notice Constructor adds ETH-USD pricing source to that Chainlink
      *         sources have access to a USD -> ETH conversion.
      */
-    constructor(bytes memory parameters) {
+    constructor(address ETH_USD_FEED, bytes memory parameters) {
         // Save the USD-ETH price feed because it is a widely used pricing path.
         uint64 sourceId = _addSource(USD, Descriptor.CHAINLINK, ETH_USD_FEED, parameters);
         _addAsset(USD, sourceId, 0, 0);
@@ -197,9 +200,53 @@ contract PriceOps is Ownable {
         _addAsset(asset, primarySource, secondarySource, _allowedSourceDivergence);
     }
 
-    function editAsset() external onlyOwner {
-        // This needs to be a higher privelage function, so maybe timelock edits to it?
-        // TODO
+    function proposeEditAsset(
+        address asset,
+        uint64 primarySource,
+        uint64 secondarySource,
+        uint16 _allowedSourceDivergence
+    ) external onlyOwner {
+        if (getAssetSettings[asset].primarySource == 0) revert("Asset not added");
+        bytes32 editHash = keccak256(abi.encode(asset, primarySource, secondarySource, _allowedSourceDivergence));
+
+        uint64 editTimestamp = editAssetTimestamp[editHash];
+
+        if (editTimestamp != 0) revert("Edit already proposed.");
+
+        editAssetTimestamp[editHash] = uint64(block.timestamp + EDIT_ASSET_DELAY);
+
+        // TODO emit an event
+    }
+
+    function editAsset(
+        address asset,
+        uint64 primarySource,
+        uint64 secondarySource,
+        uint16 _allowedSourceDivergence
+    ) external onlyOwner {
+        bytes32 editHash = keccak256(abi.encode(asset, primarySource, secondarySource, _allowedSourceDivergence));
+
+        uint64 editTimestamp = editAssetTimestamp[editHash];
+
+        if (editTimestamp == 0 || block.timestamp < editTimestamp) revert("Edit not mature.");
+
+        _updateAsset(asset, primarySource, secondarySource, _allowedSourceDivergence);
+    }
+
+    function cancelEditAsset(
+        address asset,
+        uint64 primarySource,
+        uint64 secondarySource,
+        uint16 _allowedSourceDivergence
+    ) external onlyOwner {
+        if (getAssetSettings[asset].primarySource == 0) revert("Asset not added");
+        bytes32 editHash = keccak256(abi.encode(asset, primarySource, secondarySource, _allowedSourceDivergence));
+
+        uint64 editTimestamp = editAssetTimestamp[editHash];
+
+        if (editTimestamp == 0) revert("Edit not proposed.");
+
+        editAssetTimestamp[editHash] = 0;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -278,6 +325,15 @@ contract PriceOps is Ownable {
     ) internal {
         // Check if asset is already setup.
         if (getAssetSettings[asset].primarySource != 0) revert("Asset already setup");
+        _updateAsset(asset, primarySource, secondarySource, _allowedSourceDivergence);
+    }
+
+    function _updateAsset(
+        address asset,
+        uint64 primarySource,
+        uint64 secondarySource,
+        uint16 _allowedSourceDivergence
+    ) internal {
         if (primarySource == 0) revert("Invalid primary");
 
         // make sure sources are valid, and for the right asset.
@@ -469,6 +525,10 @@ contract PriceOps is Ownable {
         (, int256 _price, , uint256 updatedAt, ) = aggregator.latestRoundData();
         uint256 price = _price.toUint256();
         errorCode = _checkPriceFeed(price, updatedAt, parameters.max, parameters.min, parameters.heartbeat);
+
+        // If errorCode is BAD_SOURCE there is no point to conitnue;
+        if (errorCode == BAD_SOURCE) return (0, 0, errorCode);
+
         if (_sourceId == 1) {
             // Trying to price ETH to USD, but need to invert price.
             upper = uint256(1e18).mulDivDown(1e8, price);
