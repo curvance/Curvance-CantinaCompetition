@@ -25,6 +25,7 @@ contract PriceOpsTest is Test {
     using SafeTransferLib for ERC20;
 
     uint256 public ETH_PRICE_USD;
+    uint256 public WBTC_PRICE_ETH;
     uint256 public USDC_PRICE_USD;
     uint256 public FRAX_PRICE_USD;
 
@@ -50,6 +51,7 @@ contract PriceOpsTest is Test {
     address private WETH_USD_FEED = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
     address private STETH_USD_FEED = 0xCfE54B5cD566aB89272946F602D76Ea879CAb4a8;
     address private STETH_ETH_FEED = 0x86392dC19c0b719886221c78AB11eb8Cf5c52812;
+    address private WBTC_ETH_FEED = 0xdeb288F737066589598e9214E782fa5A8eD689e8;
     address private USDT_USD_FEED = 0x3E7d1eAB13ad0104d2750B8863b489D65364e32D;
     address private USDC_USD_FEED = 0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6;
     address private FRAX_USD_FEED = 0xB9E1E3A9feFf48998E45Fa90847ed4D467E8BcfD;
@@ -81,6 +83,7 @@ contract PriceOpsTest is Test {
 
     function setUp() external {
         ETH_PRICE_USD = uint256(IChainlinkAggregator(WETH_USD_FEED).latestAnswer());
+        WBTC_PRICE_ETH = uint256(IChainlinkAggregator(WBTC_ETH_FEED).latestAnswer());
         USDC_PRICE_USD = uint256(IChainlinkAggregator(USDC_USD_FEED).latestAnswer());
         FRAX_PRICE_USD = uint256(IChainlinkAggregator(FRAX_USD_FEED).latestAnswer());
 
@@ -147,6 +150,85 @@ contract PriceOpsTest is Test {
         // UniswapV3Pool(USDC_WETH_05_POOL).increaseObservationCardinalityNext(900);
     }
 
+    function testChainlinkEthSource() external {
+        PriceOps.ChainlinkSourceStorage memory stor;
+
+        // STETH-ETH
+        uint64 stethEthSource = priceOps.addSource(
+            STETH,
+            PriceOps.Descriptor.CHAINLINK,
+            STETH_ETH_FEED,
+            abi.encode(stor)
+        );
+
+        priceOps.addAsset(STETH, stethEthSource, 0, 0);
+
+        (uint256 answer, , uint8 errorCode) = priceOps.getPriceInBaseEnforceNonZeroLower(STETH);
+
+        assertApproxEqRel(answer, 1 ether, 0.02e18, "Answer should be approx equal to 1 ETH.");
+        assertEq(errorCode, 0, "There should be no error.");
+    }
+
+    function testChainlinkUsdSource() external {
+        (uint256 answer, , uint8 errorCode) = priceOps.getPriceInBaseEnforceNonZeroLower(USDC);
+
+        assertApproxEqRel(
+            answer,
+            uint256(1e18).mulDivDown(USDC_PRICE_USD, ETH_PRICE_USD),
+            0.001e18,
+            "Answer should be approx equal to 1/ETH_PRICE_USD."
+        );
+        assertEq(errorCode, 0, "There should be no error.");
+    }
+
+    function testTwapEthSource() external {
+        // WBTC-WETH TWAP
+        PriceOps.TwapSourceStorage memory twapStor;
+        twapStor.secondsAgo = 600;
+        twapStor.baseToken = WBTC;
+        twapStor.quoteToken = WETH;
+        twapStor.baseDecimals = ERC20(WBTC).decimals();
+        uint64 wbtcWethSource_600 = priceOps.addSource(
+            WBTC,
+            PriceOps.Descriptor.UNIV3_TWAP,
+            WBTC_WETH_05_POOL,
+            abi.encode(twapStor)
+        );
+        priceOps.addAsset(WBTC, wbtcWethSource_600, 0, 0);
+
+        (uint256 answer, , uint8 errorCode) = priceOps.getPriceInBaseEnforceNonZeroLower(WBTC);
+
+        assertApproxEqRel(answer, WBTC_PRICE_ETH, 0.01e18, "Answer should be approx equal to WBTC_PRICE_ETH.");
+        assertEq(errorCode, 0, "There should be no error.");
+    }
+
+    function testTwapNonEthSource() external {
+        // FRAX-USDC TWAP
+        PriceOps.TwapSourceStorage memory twapStor;
+        twapStor.secondsAgo = 600;
+        twapStor.baseToken = FRAX;
+        twapStor.quoteToken = USDC;
+        twapStor.baseDecimals = ERC20(FRAX).decimals();
+        twapStor.quoteDecimals = ERC20(USDC).decimals();
+        uint64 fraxUsdcSource_300 = priceOps.addSource(
+            FRAX,
+            PriceOps.Descriptor.UNIV3_TWAP,
+            FRAX_USDC_05_POOL,
+            abi.encode(twapStor)
+        );
+        priceOps.addAsset(FRAX, fraxUsdcSource_300, 0, 0);
+
+        (uint256 answer, , uint8 errorCode) = priceOps.getPriceInBaseEnforceNonZeroLower(FRAX);
+
+        assertApproxEqRel(
+            answer,
+            uint256(1e18).mulDivDown(FRAX_PRICE_USD, ETH_PRICE_USD),
+            0.001e18,
+            "Answer should be approx equal to 1/ETH_PRICE_USD."
+        );
+        assertEq(errorCode, 0, "There should be no error.");
+    }
+
     // function testPriceOpsHappyPath() external {
     //     (uint256 upper, uint256 lower, ) = priceOps.getPriceInBaseEnforceNonZeroLower(STETH);
     //     console.log("Upper", upper);
@@ -208,6 +290,10 @@ contract PriceOpsTest is Test {
     //     console.log("Upper", upper);
     //     console.log("Lower", lower);
     // }
+
+    /*//////////////////////////////////////////////////////////////
+                    CHAINLINK/TWAP SOURCE ERRORS 
+    //////////////////////////////////////////////////////////////*/
 
     function testChainlinkSourceErrorCodes() external {
         // USDC pricing is currently fine.
@@ -368,7 +454,7 @@ contract PriceOpsTest is Test {
     // But if the Twap reports assets in something else, then pricing the quote
     // Can lead to both CAUTION and BAD_SOURCE error codes.
     function testTwapSourceErrorCodes() external {
-        // USDC-WETH TWAP
+        // FRAX-USDC TWAP
         PriceOps.TwapSourceStorage memory twapStor;
         twapStor.secondsAgo = 600;
         twapStor.baseToken = FRAX;
