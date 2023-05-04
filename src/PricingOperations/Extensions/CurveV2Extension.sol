@@ -2,7 +2,7 @@
 pragma solidity 0.8.16;
 
 import { ICurvePool } from "src/interfaces/Curve/ICurvePool.sol";
-import { IExtension } from "src/PricingOperations/IExtension.sol";
+import { Extension } from "src/PricingOperations/Extension.sol";
 import { PriceOps } from "src/PricingOperations/PriceOps.sol";
 import { Math } from "src/utils/Math.sol";
 import { AutomationCompatibleInterface } from "@chainlink/contracts/src/v0.8/interfaces/AutomationCompatibleInterface.sol";
@@ -11,10 +11,8 @@ import { ERC20, SafeTransferLib } from "src/base/ERC4626.sol";
 import { console } from "@forge-std/Test.sol";
 
 // TODO Add Chainlink Curve VP bound check
-contract CurveV2Extension is IExtension {
+contract CurveV2Extension is Extension {
     using Math for uint256;
-
-    PriceOps public immutable priceOps;
 
     // Technically I think curve pools will at most have 3 assets, or atleast the majority have 2-3 so we could replace this struct with 5 addresses.
     struct CurveDerivativeStorage {
@@ -23,20 +21,13 @@ contract CurveV2Extension is IExtension {
         address asset;
     }
 
-    modifier onlyPriceOps() {
-        if (msg.sender != address(priceOps)) revert("Only PriceOps");
-        _;
-    }
-
     /**
      * @notice Curve Derivative Storage
      * @dev Stores an array of the underlying token addresses in the curve pool.
      */
     mapping(uint64 => CurveDerivativeStorage) public getCurveDerivativeStorage;
 
-    constructor(PriceOps _priceOps) {
-        priceOps = _priceOps;
-    }
+    constructor(PriceOps _priceOps) Extension(_priceOps) {}
 
     /**
      * @notice Setup function for pricing CurveV2 derivative assets.
@@ -44,7 +35,7 @@ contract CurveV2Extension is IExtension {
      * @dev _storage A VirtualPriceBound value for this asset.
      * @dev Assumes that curve pools never add or remove tokens.
      */
-    function setupSource(address asset, uint64 _sourceId, bytes memory data) external onlyPriceOps {
+    function setupSource(address asset, uint64 _sourceId, bytes memory data) external override onlyPriceOps {
         address _source = abi.decode(data, (address));
         ICurvePool pool = ICurvePool(_source);
         uint8 coinsLength = 0;
@@ -100,11 +91,11 @@ contract CurveV2Extension is IExtension {
 
     /**
      * Inspired by https://etherscan.io/address/0xE8b2989276E2Ca8FDEA2268E3551b2b4B2418950#code
-     * @notice Get the price of a CurveV1 derivative in terms of USD.
+     * @notice Get the price of a CurveV2 derivative in terms of Base.
      */
     function getPriceInBase(
         uint64 sourceId
-    ) external view onlyPriceOps returns (uint256 upper, uint256 lower, uint8 errorCode) {
+    ) external view override onlyPriceOps returns (uint256 upper, uint256 lower, uint8 errorCode) {
         CurveDerivativeStorage memory stor = getCurveDerivativeStorage[sourceId];
 
         ICurvePool pool = ICurvePool(stor.pool);
@@ -119,13 +110,16 @@ contract CurveV2Extension is IExtension {
         // _checkBounds(lower, upper, virtualPrice);
         // TODO if VP check fails, then return an error code.
 
+        uint256 token0Upper;
+        uint256 token0Lower;
+        (token0Upper, token0Lower, errorCode) = priceOps.getPriceInBase(stor.coins[0]);
+        if (errorCode == 2) return (0, 0, 2);
+
         if (stor.coins.length == 2) {
-            (uint256 token0Upper, uint256 token0Lower, uint8 _errorCode) = priceOps.getPriceInBase(stor.coins[0]);
             uint256 poolLpPrice = pool.lp_price();
             upper = poolLpPrice.mulDivDown(token0Upper, 1e18);
             lower = poolLpPrice.mulDivDown(token0Lower, 1e18);
         } else if (stor.coins.length == 3) {
-            // TODO so we could use the price ops here and do more stuff with the upper and lower
             uint256 t1Price = pool.price_oracle(0); //btc to usdt 18 dec
             uint256 t2Price = pool.price_oracle(1); // eth to usdt 18 dec
 
@@ -139,7 +133,6 @@ contract CurveV2Extension is IExtension {
 
                 maxPrice -= maxPrice.mulDivDown(discount, 1e18);
             }
-            (uint256 token0Upper, uint256 token0Lower, uint8 _errorCode) = priceOps.getPriceInBase(stor.coins[0]);
             upper = maxPrice.mulDivDown(token0Upper, 1e18);
             lower = maxPrice.mulDivDown(token0Lower, 1e18);
         } else revert("Unsupported Pool");

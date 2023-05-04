@@ -2,7 +2,7 @@
 pragma solidity 0.8.16;
 
 import { ICurvePool } from "src/interfaces/Curve/ICurvePool.sol";
-import { IExtension } from "src/PricingOperations/IExtension.sol";
+import { Extension } from "src/PricingOperations/Extension.sol";
 import { PriceOps } from "src/PricingOperations/PriceOps.sol";
 import { Math } from "src/utils/Math.sol";
 import { AutomationCompatibleInterface } from "@chainlink/contracts/src/v0.8/interfaces/AutomationCompatibleInterface.sol";
@@ -11,20 +11,13 @@ import { ERC20, SafeTransferLib } from "src/base/ERC4626.sol";
 // TODO Add Chainlink Curve VP bound check
 import { console } from "@forge-std/Test.sol";
 
-contract CurveV1Extension is IExtension {
+contract CurveV1Extension is Extension {
     using Math for uint256;
-
-    PriceOps public immutable priceOps;
 
     struct CurveDerivativeStorage {
         address[] coins;
         address pool;
         address asset;
-    }
-
-    modifier onlyPriceOps() {
-        if (msg.sender != address(priceOps)) revert("Only PriceOps");
-        _;
     }
 
     /**
@@ -33,11 +26,9 @@ contract CurveV1Extension is IExtension {
      */
     mapping(uint64 => CurveDerivativeStorage) public getCurveDerivativeStorage;
 
-    constructor(PriceOps _priceOps) {
-        priceOps = _priceOps;
-    }
+    constructor(PriceOps _priceOps) Extension(_priceOps) {}
 
-    function setupSource(address asset, uint64 _sourceId, bytes memory data) external onlyPriceOps {
+    function setupSource(address asset, uint64 _sourceId, bytes memory data) external override onlyPriceOps {
         address source = abi.decode(data, (address));
         ICurvePool pool = ICurvePool(source);
         uint8 coinsLength = 0;
@@ -76,7 +67,7 @@ contract CurveV1Extension is IExtension {
 
     function getPriceInBase(
         uint64 sourceId
-    ) external view onlyPriceOps returns (uint256 upper, uint256 lower, uint8 errorCode) {
+    ) external view override onlyPriceOps returns (uint256 upper, uint256 lower, uint8 errorCode) {
         CurveDerivativeStorage memory stor = getCurveDerivativeStorage[sourceId];
 
         ICurvePool pool = ICurvePool(stor.pool);

@@ -7,7 +7,7 @@ import { IChainlinkAggregator } from "src/interfaces/IChainlinkAggregator.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { Math } from "src/utils/Math.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
-import { IExtension } from "./IExtension.sol";
+import { Extension } from "./Extension.sol";
 import { OracleLibrary } from "lib/v3-periphery/contracts/libraries/OracleLibrary.sol";
 import { UniswapV3Pool } from "src/interfaces/Uniswap/UniswapV3Pool.sol";
 
@@ -311,8 +311,8 @@ contract PriceOps is Ownable {
             (upper, lower, errorCode) = _getPriceInBaseForTwapAsset(sourceId, source);
         } else if (descriptor == Descriptor.EXTENSION) {
             if (!isExtension[source]) isExtension[source] = true;
-            IExtension(source).setupSource(asset, sourceId, sourceData);
-            (upper, lower, errorCode) = IExtension(source).getPriceInBase(sourceId);
+            Extension(source).setupSource(asset, sourceId, sourceData);
+            (upper, lower, errorCode) = Extension(source).getPriceInBase(sourceId);
         }
 
         if (errorCode != 0) revert("Source errored");
@@ -360,7 +360,7 @@ contract PriceOps is Ownable {
     }
 
     function _getPriceInBase(address asset) internal view returns (uint256, uint256, uint8) {
-        // If mode is anchor, then run an anchor check anchoring primary upper to secondary upper, and the same for lower
+        if (asset == WETH) return (1 ether, 1 ether, NO_ERROR);
         AssetSettings memory settings = getAssetSettings[asset];
         uint8 errorCode = NO_ERROR;
         uint256 primarySourceUpper;
@@ -467,7 +467,7 @@ contract PriceOps is Ownable {
         } else if (settings.descriptor == Descriptor.UNIV3_TWAP) {
             (upper, lower, errorCode) = _getPriceInBaseForTwapAsset(sourceId, settings.source);
         } else if (settings.descriptor == Descriptor.EXTENSION) {
-            (upper, lower, errorCode) = IExtension(settings.source).getPriceInBase(sourceId);
+            (upper, lower, errorCode) = Extension(settings.source).getPriceInBase(sourceId);
         } else revert("Unkown");
     }
 
