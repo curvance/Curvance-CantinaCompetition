@@ -10,11 +10,7 @@ import { PriceOps } from "src/PricingOperations/PriceOps.sol";
 import { IChainlinkAggregator } from "src/interfaces/IChainlinkAggregator.sol";
 import { ICurvePool } from "src/interfaces/Curve/ICurvePool.sol";
 import { UniswapV3Pool } from "src/interfaces/Uniswap/UniswapV3Pool.sol";
-import { CurveV1Extension } from "src/PricingOperations/Extensions/CurveV1Extension.sol";
-import { CurveV2Extension } from "src/PricingOperations/Extensions/CurveV2Extension.sol";
 import { MockDataFeed } from "src/mocks/MockDataFeed.sol";
-
-// import { MockGasFeed } from "src/mocks/MockGasFeed.sol";
 
 import { Test, stdStorage, console, StdStorage, stdError } from "@forge-std/Test.sol";
 import { Math } from "src/utils/Math.sol";
@@ -30,14 +26,6 @@ contract PriceOpsTest is Test {
     uint256 public FRAX_PRICE_USD;
 
     PriceOps private priceOps;
-    CurveV1Extension private curveV1Extension;
-    CurveV2Extension private curveV2Extension;
-    // MockGasFeed private gasFeed;
-
-    address private operatorAlpha = vm.addr(111);
-    address private ownerAlpha = vm.addr(1110);
-    address private operatorBeta = vm.addr(222);
-    address private ownerBeta = vm.addr(2220);
 
     address private WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address private STETH = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
@@ -103,9 +91,6 @@ contract PriceOpsTest is Test {
         // Deploy PriceOps.
         priceOps = new PriceOps(address(MOCK_WETH_USD_FEED), abi.encode(stor));
 
-        // curveV1Extension = new CurveV1Extension(priceOps);
-        // curveV2Extension = new CurveV2Extension(priceOps);
-
         // Setup Chainlink Sources.
         // USDC-USD
         usdcUsdSource = priceOps.addSource(
@@ -151,6 +136,59 @@ contract PriceOpsTest is Test {
         // priceOps.addAsset(STETH, stethUsdSource, stethEthSource);
         // UniswapV3Pool(USDC_WETH_05_POOL).increaseObservationCardinalityNext(900);
     }
+
+    /*//////////////////////////////////////////////////////////////
+                            OWNER LOGIC 
+    //////////////////////////////////////////////////////////////*/
+
+    // TODO test the edit asset flow.
+    function testEditAssetFlow() external {
+        // Owner wants to edit USDC to use the USDC -> ETH Chainlink source.
+        PriceOps.ChainlinkSourceStorage memory stor;
+
+        uint64 usdcEthSource = priceOps.addSource(
+            USDC,
+            PriceOps.Descriptor.CHAINLINK,
+            address(MOCK_USDC_ETH_FEED),
+            abi.encode(stor)
+        );
+
+        // Owner tries calling addAsset again.
+        vm.expectRevert(bytes(abi.encodeWithSelector(PriceOps.PriceOps__AssetAlreadyExists.selector, USDC)));
+        priceOps.addAsset(USDC, usdcEthSource, 0, 0);
+
+        // Calling editAsset reverts.
+        vm.expectRevert(bytes(abi.encodeWithSelector(PriceOps.PriceOps__EditNotMature.selector)));
+        priceOps.editAsset(USDC, usdcEthSource, 0, 0);
+
+        // Owner proposes edit.
+        priceOps.proposeEditAsset(USDC, usdcEthSource, 0, 0);
+
+        // Calling editAsset reverts.
+        vm.expectRevert(bytes(abi.encodeWithSelector(PriceOps.PriceOps__EditNotMature.selector)));
+        priceOps.editAsset(USDC, usdcEthSource, 0, 0);
+
+        // Advance time so we can edit the asset.
+        vm.warp(block.timestamp + priceOps.EDIT_ASSET_DELAY() + 1);
+
+        // Complete edit asset.
+        priceOps.editAsset(USDC, usdcEthSource, 0, 0);
+
+        // Owner decides they want to change the source back to the USDC -> USD source.
+        priceOps.proposeEditAsset(USDC, usdcUsdSource, 0, 0);
+
+        vm.warp(block.timestamp + priceOps.EDIT_ASSET_DELAY() / 2);
+
+        // Some time passes but then the owner decides to cancel the edit.
+        priceOps.cancelEditAsset(USDC, usdcUsdSource, 0, 0);
+
+        vm.expectRevert(bytes(abi.encodeWithSelector(PriceOps.PriceOps__EditNotMature.selector)));
+        priceOps.editAsset(USDC, usdcEthSource, 0, 0);
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                    CHAINLINK/TWAP SOURCE PRICES 
+    //////////////////////////////////////////////////////////////*/
 
     function testChainlinkEthSource() external {
         PriceOps.ChainlinkSourceStorage memory stor;
@@ -230,68 +268,6 @@ contract PriceOpsTest is Test {
         );
         assertEq(errorCode, 0, "There should be no error.");
     }
-
-    // function testPriceOpsHappyPath() external {
-    //     (uint256 upper, uint256 lower, ) = priceOps.getPriceInBaseEnforceNonZeroLower(STETH);
-    //     console.log("Upper", upper);
-    //     console.log("Lower", lower);
-
-    //     // WBTC-WETH TWAP
-    //     PriceOps.TwapSourceStorage memory twapStor;
-    //     twapStor.secondsAgo = 600;
-    //     twapStor.baseToken = WBTC;
-    //     twapStor.quoteToken = WETH;
-    //     twapStor.baseDecimals = ERC20(WBTC).decimals();
-    //     uint64 wbtcWethSource_600 = priceOps.addSource(
-    //         WBTC,
-    //         PriceOps.Descriptor.UNIV3_TWAP,
-    //         WBTC_WETH_05_POOL,
-    //         abi.encode(twapStor)
-    //     );
-    //     priceOps.addAsset(WBTC, wbtcWethSource_600, 0);
-
-    //     twapStor.secondsAgo = 3_600;
-    //     twapStor.baseToken = WBTC;
-    //     twapStor.quoteToken = WETH;
-    //     twapStor.baseDecimals = ERC20(WBTC).decimals();
-    //     uint64 wbtcWethSource_3_600 = priceOps.addSource(
-    //         WBTC,
-    //         PriceOps.Descriptor.UNIV3_TWAP,
-    //         WBTC_WETH_05_POOL,
-    //         abi.encode(twapStor)
-    //     );
-    //     priceOps.addAsset(WBTC, wbtcWethSource_600, wbtcWethSource_3_600);
-
-    //     (upper, lower, ) = priceOps.getPriceInBaseEnforceNonZeroLower(WBTC);
-    //     console.log("Upper", upper);
-    //     console.log("Lower", lower);
-
-    //     uint64 crv3PoolSource = priceOps.addSource(
-    //         CRV_DAI_USDC_USDT,
-    //         PriceOps.Descriptor.EXTENSION,
-    //         address(curveV1Extension),
-    //         abi.encode(curve3CrvPool)
-    //     );
-
-    //     priceOps.addAsset(CRV_DAI_USDC_USDT, crv3PoolSource, 0);
-
-    //     (upper, lower, ) = priceOps.getPriceInBaseEnforceNonZeroLower(CRV_DAI_USDC_USDT);
-    //     console.log("Upper", upper);
-    //     console.log("Lower", lower);
-
-    //     uint64 crvTriCryptoSource = priceOps.addSource(
-    //         CRV_3_CRYPTO,
-    //         PriceOps.Descriptor.EXTENSION,
-    //         address(curveV2Extension),
-    //         abi.encode(curve3CryptoPool)
-    //     );
-
-    //     priceOps.addAsset(CRV_3_CRYPTO, crvTriCryptoSource, 0);
-
-    //     (upper, lower, ) = priceOps.getPriceInBaseEnforceNonZeroLower(CRV_3_CRYPTO);
-    //     console.log("Upper", upper);
-    //     console.log("Lower", lower);
-    // }
 
     /*//////////////////////////////////////////////////////////////
                     CHAINLINK/TWAP SOURCE ERRORS 

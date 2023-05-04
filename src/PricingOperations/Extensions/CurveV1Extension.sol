@@ -76,19 +76,19 @@ contract CurveV1Extension is Extension {
         uint256 minLower = type(uint256).max;
         for (uint256 i = 0; i < stor.coins.length; i++) {
             (uint256 nextUpper, uint256 nextLower, uint8 _errorCode) = priceOps.getPriceInBase(stor.coins[i]);
-            if (_errorCode == 2) {
-                // Completely blind as to what this price is return error code of 2.
-                return (0, 0, 2);
-            } else if (_errorCode == 1) {
-                // Update errorCode to be 1.
-                errorCode = 1;
+            if (_errorCode == BAD_SOURCE) {
+                // Completely blind as to what this price is return error code of BAD_SOURCE.
+                return (0, 0, BAD_SOURCE);
+            } else if (_errorCode == CAUTION) {
+                // Update errorCode to be CAUTION.
+                errorCode = CAUTION;
             }
             if (nextUpper > maxUpper) maxUpper = nextUpper;
             if (nextLower > 0 && nextLower < minLower) minLower = nextLower;
             if (nextUpper < minLower) minLower = nextUpper;
         }
 
-        if (maxUpper == 0) errorCode = 2;
+        if (maxUpper == 0) errorCode = BAD_SOURCE;
         if (minLower == type(uint256).max) minLower = 0;
 
         // Check that virtual price is within bounds.

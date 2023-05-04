@@ -14,6 +14,9 @@ import { console } from "@forge-std/Test.sol";
 contract CurveV2Extension is Extension {
     using Math for uint256;
 
+    error CurveV2Extension__UnsupportedPool();
+    error CurveV2Extension__DidNotConverge();
+
     // Technically I think curve pools will at most have 3 assets, or atleast the majority have 2-3 so we could replace this struct with 5 addresses.
     struct CurveDerivativeStorage {
         address[] coins;
@@ -47,6 +50,7 @@ contract CurveV2Extension is Extension {
                 break;
             }
         }
+        if (coinsLength != 2 && coinsLength != 3) revert CurveV2Extension__UnsupportedPool();
         address[] memory coins = new address[](coinsLength);
         for (uint256 i = 0; i < coinsLength; i++) {
             coins[i] = pool.coins(i);
@@ -86,7 +90,7 @@ contract CurveV2Extension is Extension {
             else diff = D_prev - D;
             if (diff <= 1 || diff * 10 ** 18 < D) return D;
         }
-        revert("Did not converge");
+        revert CurveV2Extension__DidNotConverge();
     }
 
     /**
@@ -113,7 +117,7 @@ contract CurveV2Extension is Extension {
         uint256 token0Upper;
         uint256 token0Lower;
         (token0Upper, token0Lower, errorCode) = priceOps.getPriceInBase(stor.coins[0]);
-        if (errorCode == 2) return (0, 0, 2);
+        if (errorCode == BAD_SOURCE) return (0, 0, BAD_SOURCE);
 
         if (stor.coins.length == 2) {
             uint256 poolLpPrice = pool.lp_price();
@@ -135,6 +139,6 @@ contract CurveV2Extension is Extension {
             }
             upper = maxPrice.mulDivDown(token0Upper, 1e18);
             lower = maxPrice.mulDivDown(token0Lower, 1e18);
-        } else revert("Unsupported Pool");
+        }
     }
 }

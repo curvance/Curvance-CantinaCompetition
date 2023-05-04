@@ -1,29 +1,24 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.16;
 
-import { ERC20, SafeTransferLib } from "src/base/ERC4626.sol";
+import { ERC20 } from "src/base/ERC4626.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IChainlinkAggregator } from "src/interfaces/IChainlinkAggregator.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { Math } from "src/utils/Math.sol";
-import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { Extension } from "./Extension.sol";
 import { OracleLibrary } from "lib/v3-periphery/contracts/libraries/OracleLibrary.sol";
 import { UniswapV3Pool } from "src/interfaces/Uniswap/UniswapV3Pool.sol";
 
-import { console } from "@forge-std/Test.sol";
-
 /**
  * @title Curvance Pricing Operations
  * @notice Provides a universal interface allowing Curvance contracts to retrieve secure pricing
- *         data based of Chainlink data feeds, and Uniswap V3 TWAPS.
+ *         data based of Chainlink data feeds, Uniswap V3 TWAPS, and custom Extensions.
  * @author crispymangoes
  */
 contract PriceOps is Ownable {
-    using SafeTransferLib for ERC20;
     using SafeCast for int256;
     using Math for uint256;
-    using Address for address;
 
     /*//////////////////////////////////////////////////////////////
                              STRUCTS
@@ -93,7 +88,14 @@ contract PriceOps is Ownable {
                              GLOBAL STATE
     //////////////////////////////////////////////////////////////*/
 
+    /**
+     * @notice The number of sources setup.
+     */
     uint64 public sourceCount;
+
+    /**
+     * @notice Maps a sourceId to its setttings.
+     */
     mapping(uint64 => AssetSourceSettings) public getAssetSourceSettings;
 
     /**
@@ -101,6 +103,9 @@ contract PriceOps is Ownable {
      */
     mapping(address => AssetSettings) public getAssetSettings;
 
+    /**
+     * @notice Mapping used to track whether or not an address is an Extension.
+     */
     mapping(address => bool) public isExtension;
 
     /**
@@ -113,24 +118,49 @@ contract PriceOps is Ownable {
      */
     mapping(uint64 => TwapSourceStorage) public getTwapSourceStorage;
 
-    address public constant USD = address(840);
-    uint8 public constant NO_ERROR = 0;
-    uint8 public constant CAUTION = 1;
-    uint8 public constant BAD_SOURCE = 2;
-    uint16 public constant MAX_ALLOWED_SOURCE_DIVERGENCE = 0.2e4;
     /**
-     * @notice The allowed deviation between the expected answer vs the actual answer.
+     * @notice USD denomination address.
      */
-    uint256 public constant EXPECTED_ANSWER_DEVIATION = 0.02e18;
+    address public constant USD = address(840);
 
+    /**
+     * @notice Error code for no error.
+     */
+    uint8 public constant NO_ERROR = 0;
+
+    /**
+     * @notice Error code for caution.
+     */
+    uint8 public constant CAUTION = 1;
+
+    /**
+     * @notice Error code for bad source.
+     */
+    uint8 public constant BAD_SOURCE = 2;
+
+    /**
+     * @notice Max possible configurable source divergence.
+     */
+    uint16 public constant MAX_ALLOWED_SOURCE_DIVERGENCE = 0.2e4;
+
+    /**
+     * @notice ETH Mainnet WETH address.
+     */
     address public constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+
     /**
      * @notice If zero is specified for a Chainlink asset heartbeat, this value is used instead.
      */
     uint24 public constant DEFAULT_HEART_BEAT = 1 days;
 
+    /**
+     * @notice The time that must pass between calling `proposeEditAsset` and `editAsset`.
+     */
     uint64 public constant EDIT_ASSET_DELAY = 7 days;
 
+    /**
+     * @notice Maps an editHash to the timestamp the asset is editable.
+     */
     mapping(bytes32 => uint64) public editAssetTimestamp;
 
     /**
@@ -143,22 +173,38 @@ contract PriceOps is Ownable {
     //////////////////////////////////////////////////////////////*/
 
     event AddAsset(address indexed asset);
+    event AddSource(uint64 id, address asset, address source, Descriptor descriptor);
+    event ProposeEditAsset(
+        address asset,
+        uint64 primarySource,
+        uint64 secondarySource,
+        uint16 _allowedSourceDivergence,
+        bytes32 editHash,
+        uint256 timeEditable
+    );
+    event EditAsset(address asset, bytes32 editHash);
+    event CancelEditAsset(address asset, bytes32 editHash);
 
     /*//////////////////////////////////////////////////////////////
                                  ERRORS
     //////////////////////////////////////////////////////////////*/
 
-    error PriceRouter__InvalidMinPrice(uint256 minPrice, uint256 bufferedMinPrice);
-    error PriceRouter__InvalidMaxPrice(uint256 maxPrice, uint256 bufferedMaxPrice);
-    error PriceRouter__InvalidAsset(address asset);
-    error PriceRouter__BadAnswer(uint256 answer, uint256 expectedAnswer);
-    error PriceRouter__UnkownDerivative(uint8 unkownDerivative);
-    error PriceRouter__MinPriceGreaterThanMaxPrice(uint256 min, uint256 max);
-    error PriceRouter__AssetBelowMinPrice(uint64 sourceId, uint256 price, uint256 minPrice);
-    error PriceRouter__AssetAboveMaxPrice(uint64 sourceId, uint256 price, uint256 maxPrice);
-    error PriceRouter__StalePrice(uint64 sourceId, uint256 timeSinceLastUpdate, uint256 heartbeat);
-    error PriceRouter__TwapAssetNotInPool();
-    error PriceRouter__SecondsAgoDoesNotMeetMinimum();
+    error PriceOps__InvalidMinPrice(uint256 minPrice, uint256 bufferedMinPrice);
+    error PriceOps__InvalidMaxPrice(uint256 maxPrice, uint256 bufferedMaxPrice);
+    error PriceOps__MinPriceGreaterThanMaxPrice(uint256 min, uint256 max);
+    error PriceOps__TwapAssetNotInPool();
+    error PriceOps__SecondsAgoDoesNotMeetMinimum();
+    error PriceOps__AssetNotAdded(address asset);
+    error PriceOps__EditNotProposed();
+    error PriceOps__EditNotMature();
+    error PriceOps__EditAlreadyProposed(address asset);
+    error PriceOps__CallerIsNotExtension();
+    error PriceOps__SourceErrorDuringAddSource(address asset, uint8 err);
+    error PriceOps__AssetAlreadyExists(address asset);
+    error PriceOps__InvalidPrimary();
+    error PriceOps__SourceAssetMismatch();
+    error PriceOps__InvalidSourceDivergence(uint16 supplied, uint16 max);
+    error PriceOps__BufferedMinOverflow();
 
     /*//////////////////////////////////////////////////////////////
                                  ENUMS
@@ -189,6 +235,13 @@ contract PriceOps is Ownable {
                               OWNER LOGIC
     //////////////////////////////////////////////////////////////*/
 
+    /**
+     * @notice Allows owner to add a new pricing source for `asset`.
+     * @param asset the address of the asset the new source prices
+     * @param descriptor the source Descriptor
+     * @param source the address of the source
+     * @param sourceData arbitrary source configuration data
+     */
     function addSource(
         address asset,
         Descriptor descriptor,
@@ -196,64 +249,103 @@ contract PriceOps is Ownable {
         bytes memory sourceData
     ) external onlyOwner returns (uint64 sourceId) {
         sourceId = _addSource(asset, descriptor, source, sourceData);
+        emit AddSource(sourceId, asset, source, descriptor);
     }
 
+    /**
+     * @notice Allows owner to add new assets to PriceOps.
+     * @param asset the address of the asset added
+     * @param primarySource the primary source id
+     * @param secondarySource the secondary source id
+     * @param allowedSourceDivergence number between 0 -> 1e4
+     *        - indicates how much the primary and secondary
+     *          can diverge without error
+     */
     function addAsset(
         address asset,
         uint64 primarySource,
         uint64 secondarySource,
-        uint16 _allowedSourceDivergence
+        uint16 allowedSourceDivergence
     ) external onlyOwner {
-        _addAsset(asset, primarySource, secondarySource, _allowedSourceDivergence);
+        _addAsset(asset, primarySource, secondarySource, allowedSourceDivergence);
+        emit AddAsset(asset);
     }
 
+    /**
+     * @notice Allows owner to propose a change to an existing asset.
+     * @dev These changes can not be made until `EDIT_ASSET_DELAY` time has passed.
+     * @dev See `addAsset` for param natspec.
+     */
     function proposeEditAsset(
         address asset,
         uint64 primarySource,
         uint64 secondarySource,
-        uint16 _allowedSourceDivergence
+        uint16 allowedSourceDivergence
     ) external onlyOwner {
-        if (getAssetSettings[asset].primarySource == 0) revert("Asset not added");
-        bytes32 editHash = keccak256(abi.encode(asset, primarySource, secondarySource, _allowedSourceDivergence));
+        if (getAssetSettings[asset].primarySource == 0) revert PriceOps__AssetNotAdded(asset);
+        bytes32 editHash = keccak256(abi.encode(asset, primarySource, secondarySource, allowedSourceDivergence));
 
         uint64 editTimestamp = editAssetTimestamp[editHash];
 
-        if (editTimestamp != 0) revert("Edit already proposed.");
+        if (editTimestamp != 0) revert PriceOps__EditAlreadyProposed(asset);
 
         editAssetTimestamp[editHash] = uint64(block.timestamp + EDIT_ASSET_DELAY);
 
-        // TODO emit an event
+        emit ProposeEditAsset(
+            asset,
+            primarySource,
+            secondarySource,
+            allowedSourceDivergence,
+            editHash,
+            uint64(block.timestamp + EDIT_ASSET_DELAY)
+        );
     }
 
+    /**
+     * @notice Allows owner to edit an existing asset.
+     * @dev `proposeEditAsset` must be called first.
+     * @dev See `addAsset` for param natspec.
+     */
     function editAsset(
         address asset,
         uint64 primarySource,
         uint64 secondarySource,
-        uint16 _allowedSourceDivergence
+        uint16 allowedSourceDivergence
     ) external onlyOwner {
-        bytes32 editHash = keccak256(abi.encode(asset, primarySource, secondarySource, _allowedSourceDivergence));
+        bytes32 editHash = keccak256(abi.encode(asset, primarySource, secondarySource, allowedSourceDivergence));
 
         uint64 editTimestamp = editAssetTimestamp[editHash];
 
-        if (editTimestamp == 0 || block.timestamp < editTimestamp) revert("Edit not mature.");
+        if (editTimestamp == 0 || block.timestamp < editTimestamp) revert PriceOps__EditNotMature();
 
-        _updateAsset(asset, primarySource, secondarySource, _allowedSourceDivergence);
+        editAssetTimestamp[editHash] = 0;
+
+        _updateAsset(asset, primarySource, secondarySource, allowedSourceDivergence);
+
+        emit EditAsset(asset, editHash);
     }
 
+    /**
+     * @notice Allows owner to cancel a pending asset edit.
+     * @dev `proposeEditAsset` must be called first.
+     * @dev See `addAsset` for param natspec.
+     */
     function cancelEditAsset(
         address asset,
         uint64 primarySource,
         uint64 secondarySource,
-        uint16 _allowedSourceDivergence
+        uint16 allowedSourceDivergence
     ) external onlyOwner {
-        if (getAssetSettings[asset].primarySource == 0) revert("Asset not added");
-        bytes32 editHash = keccak256(abi.encode(asset, primarySource, secondarySource, _allowedSourceDivergence));
+        if (getAssetSettings[asset].primarySource == 0) revert PriceOps__AssetNotAdded(asset);
+        bytes32 editHash = keccak256(abi.encode(asset, primarySource, secondarySource, allowedSourceDivergence));
 
         uint64 editTimestamp = editAssetTimestamp[editHash];
 
-        if (editTimestamp == 0) revert("Edit not proposed.");
+        if (editTimestamp == 0) revert PriceOps__EditNotProposed();
 
         editAssetTimestamp[editHash] = 0;
+
+        emit CancelEditAsset(asset, editHash);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -281,8 +373,11 @@ contract PriceOps is Ownable {
                         EXTENSION VIEW LOGIC
     //////////////////////////////////////////////////////////////*/
 
+    /**
+     * @notice Allows extensions to call getPriceInBase.
+     */
     function getPriceInBase(address asset) external view returns (uint256, uint256, uint8) {
-        if (!isExtension[msg.sender]) revert("Caller is not an extension.");
+        if (!isExtension[msg.sender]) revert PriceOps__CallerIsNotExtension();
         return _getPriceInBase(asset);
     }
 
@@ -290,6 +385,9 @@ contract PriceOps is Ownable {
                         INTERNAL PRICING LOGIC
     //////////////////////////////////////////////////////////////*/
 
+    /**
+     * @dev See `addSource`.
+     */
     function _addSource(
         address asset,
         Descriptor descriptor,
@@ -315,7 +413,7 @@ contract PriceOps is Ownable {
             (upper, lower, errorCode) = Extension(source).getPriceInBase(sourceId);
         }
 
-        if (errorCode != 0) revert("Source errored");
+        if (errorCode != 0) revert PriceOps__SourceErrorDuringAddSource(asset, errorCode);
 
         getAssetSourceSettings[sourceId] = AssetSourceSettings({
             asset: asset,
@@ -324,44 +422,71 @@ contract PriceOps is Ownable {
         });
     }
 
+    /**
+     * @dev See `addAsset`.
+     */
     function _addAsset(
         address asset,
         uint64 primarySource,
         uint64 secondarySource,
-        uint16 _allowedSourceDivergence
+        uint16 allowedSourceDivergence
     ) internal {
         // Check if asset is already setup.
-        if (getAssetSettings[asset].primarySource != 0) revert("Asset already setup");
-        _updateAsset(asset, primarySource, secondarySource, _allowedSourceDivergence);
+        if (getAssetSettings[asset].primarySource != 0) revert PriceOps__AssetAlreadyExists(asset);
+        _updateAsset(asset, primarySource, secondarySource, allowedSourceDivergence);
     }
 
+    /**
+     * @dev Internal helper function that enforces sanity checks on
+     *      `addAsset` and `editAsset` inputs.
+     */
     function _updateAsset(
         address asset,
         uint64 primarySource,
         uint64 secondarySource,
-        uint16 _allowedSourceDivergence
+        uint16 allowedSourceDivergence
     ) internal {
-        if (primarySource == 0) revert("Invalid primary");
+        if (primarySource == 0) revert PriceOps__InvalidPrimary();
 
         // make sure sources are valid, and for the right asset.
-        if (getAssetSourceSettings[primarySource].asset != asset) revert("Source Asset mismatch.");
+        if (getAssetSourceSettings[primarySource].asset != asset) revert PriceOps__SourceAssetMismatch();
         // If secondary is set make sure asset matches.
         if (secondarySource != 0) {
-            if (getAssetSourceSettings[secondarySource].asset != asset) revert("Source Asset mismatch.");
+            if (getAssetSourceSettings[secondarySource].asset != asset) revert PriceOps__SourceAssetMismatch();
             // Make sure source divergence is reasonable.
-            if (_allowedSourceDivergence > MAX_ALLOWED_SOURCE_DIVERGENCE) revert("Invalid source divergence");
+            if (allowedSourceDivergence > MAX_ALLOWED_SOURCE_DIVERGENCE)
+                revert PriceOps__InvalidSourceDivergence(allowedSourceDivergence, MAX_ALLOWED_SOURCE_DIVERGENCE);
         }
 
         getAssetSettings[asset] = AssetSettings({
             primarySource: primarySource,
             secondarySource: secondarySource,
-            allowedSourceDivergence: _allowedSourceDivergence
+            allowedSourceDivergence: allowedSourceDivergence
         });
     }
 
+    /**
+     * @notice Returns an upper and lower asset price in terms of BASE.
+     * @param asset the address of the asset to get the price for.
+     * @dev Also returns an error code which can be 1 of 3.
+     * @dev 0: NO_ERROR, there is no error
+     * @dev 1: CAUTION, an error ocurred during pricing but we still have an idea of a safe price.
+     *      Can happen when:
+     *      - Asset has 2 sources and 1 of the assets sources reports BAD_SOURCE.
+     *      - Asset has 2 sources and their answers diverge.
+     *      - Some underlying asset returns a CAUTION.
+     * @dev 2: BAD_SOURCE, upper and lower will be zeroed, we are blind to the safe price of `asset`
+     *      Can happen when:
+     *      - Asset has 1 source and it reports BAD_SOURCE.
+     *      - Asset has 2 sources and they both report BAD_SOURCE.
+     *      - Some underlying asset reports BAD_SOURCE.
+     */
     function _getPriceInBase(address asset) internal view returns (uint256, uint256, uint8) {
         if (asset == WETH) return (1 ether, 1 ether, NO_ERROR);
+
         AssetSettings memory settings = getAssetSettings[asset];
+        if (settings.primarySource == 0) revert PriceOps__AssetNotAdded(asset);
+
         uint8 errorCode = NO_ERROR;
         uint256 primarySourceUpper;
         uint256 primarySourceLower;
@@ -429,6 +554,9 @@ contract PriceOps is Ownable {
         }
     }
 
+    /**
+     * @dev Helper function to find the upper and lower value given up to 2 sources outputs.
+     */
     function _findUpperAndLower(
         uint256 primarySourceUpper,
         uint256 primarySourceLower,
@@ -456,6 +584,9 @@ contract PriceOps is Ownable {
         }
     }
 
+    /**
+     * @dev Helper function to query a source for its upper and lower.
+     */
     function _getPriceFromSource(
         uint64 sourceId
     ) internal view returns (uint256 upper, uint256 lower, uint8 errorCode) {
@@ -468,7 +599,7 @@ contract PriceOps is Ownable {
             (upper, lower, errorCode) = _getPriceInBaseForTwapAsset(sourceId, settings.source);
         } else if (settings.descriptor == Descriptor.EXTENSION) {
             (upper, lower, errorCode) = Extension(settings.source).getPriceInBase(sourceId);
-        } else revert("Unkown");
+        }
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -497,23 +628,21 @@ contract PriceOps is Ownable {
             // Revert if bufferedMinPrice overflows because uint80 is too small to hold the minimum price,
             // and lowering it to uint80 is not safe because the price feed can stop being updated before
             // it actually gets to that lower price.
-            if (bufferedMinPrice > type(uint80).max) revert("Buffered Min Overflow");
+            if (bufferedMinPrice > type(uint80).max) revert PriceOps__BufferedMinOverflow();
             parameters.min = uint80(bufferedMinPrice);
         } else {
-            if (parameters.min < bufferedMinPrice)
-                revert PriceRouter__InvalidMinPrice(parameters.min, bufferedMinPrice);
+            if (parameters.min < bufferedMinPrice) revert PriceOps__InvalidMinPrice(parameters.min, bufferedMinPrice);
         }
 
         if (parameters.max == 0) {
             //Do not revert even if bufferedMaxPrice is greater than uint144, because lowering it to uint144 max is more conservative.
             parameters.max = bufferedMaxPrice > type(uint144).max ? type(uint144).max : uint144(bufferedMaxPrice);
         } else {
-            if (parameters.max > bufferedMaxPrice)
-                revert PriceRouter__InvalidMaxPrice(parameters.max, bufferedMaxPrice);
+            if (parameters.max > bufferedMaxPrice) revert PriceOps__InvalidMaxPrice(parameters.max, bufferedMaxPrice);
         }
 
         if (parameters.min >= parameters.max)
-            revert PriceRouter__MinPriceGreaterThanMaxPrice(parameters.min, parameters.max);
+            revert PriceOps__MinPriceGreaterThanMaxPrice(parameters.min, parameters.max);
 
         parameters.heartbeat = parameters.heartbeat != 0 ? parameters.heartbeat : DEFAULT_HEART_BEAT;
 
@@ -521,7 +650,7 @@ contract PriceOps is Ownable {
     }
 
     /**
-     * @notice Get the price of a Chainlink derivative in terms of BASE.
+     * @notice Get the price of a Chainlink source in terms of BASE.
      */
     function _getPriceInBaseForChainlinkAsset(
         uint64 _sourceId,
@@ -590,7 +719,7 @@ contract PriceOps is Ownable {
         TwapSourceStorage memory parameters = abi.decode(_storage, (TwapSourceStorage));
 
         // Verify seconds ago is reasonable.
-        if (parameters.secondsAgo < MINIMUM_SECONDS_AGO) revert PriceRouter__SecondsAgoDoesNotMeetMinimum();
+        if (parameters.secondsAgo < MINIMUM_SECONDS_AGO) revert PriceOps__SecondsAgoDoesNotMeetMinimum();
 
         UniswapV3Pool pool = UniswapV3Pool(_source);
 
@@ -604,16 +733,13 @@ contract PriceOps is Ownable {
             parameters.baseDecimals = ERC20(asset).decimals();
             parameters.quoteDecimals = ERC20(token0).decimals();
             parameters.quoteToken = token0;
-        } else revert PriceRouter__TwapAssetNotInPool();
-
-        // Verify seconds ago is reasonable
-        // Also if I add in asset to this I could do a sanity check to make sure asset is token0 or token1
+        } else revert PriceOps__TwapAssetNotInPool();
 
         getTwapSourceStorage[sourceId] = parameters;
     }
 
     /**
-     * @notice
+     * @notice Get the price of a Twap source in terms of BASE.
      */
     function _getPriceInBaseForTwapAsset(
         uint64 sourceId,
