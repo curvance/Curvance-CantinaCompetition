@@ -56,7 +56,7 @@ contract TestCEtherAndCTokenIntegration is DSTestPlus {
         hevm.deal(user, 100e18);
         hevm.deal(liquidator, 100e18);
 
-        gauge = address(new GaugePool(address(0), unitroller));
+        gauge = address(new GaugePool(address(0), address(0), unitroller));
     }
 
     function testUserCollateralOffAndCannotBorrow() public {

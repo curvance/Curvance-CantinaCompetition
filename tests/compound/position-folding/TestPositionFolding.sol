@@ -60,7 +60,7 @@ contract TestPositionFolding is DSTestPlus {
         // prepare 200K ETH
         hevm.deal(user, 200000 ether);
 
-        gauge = address(new GaugePool(address(0), unitroller));
+        gauge = address(new GaugePool(address(0), address(0), unitroller));
 
         cDAI = new CErc20Immutable(
             dai,

@@ -52,7 +52,7 @@ contract TestCompRewards is DSTestPlus {
             bytes32(uint256(200000e18))
         );
 
-        gauge = address(new GaugePool(address(0), unitroller));
+        gauge = address(new GaugePool(address(0), address(0), unitroller));
     }
 
     function testSupplyIndex() public {

@@ -44,7 +44,7 @@ contract TestCEtherBorrowCap is DSTestPlus {
         hevm.deal(user, 200000e18);
         hevm.deal(liquidator, 200000e18);
 
-        gauge = address(new GaugePool(address(0), unitroller));
+        gauge = address(new GaugePool(address(0), address(0), unitroller));
     }
 
     function testBorrowCap() public {

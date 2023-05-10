@@ -45,7 +45,7 @@ contract TestGaugePool is DSTestPlus {
         owner = address(this);
 
         rewardToken = address(new MockToken("Reward Token", "RT", 18));
-        gaugePool = new GaugePool(address(rewardToken), unitroller);
+        gaugePool = new GaugePool(address(rewardToken), address(0), unitroller);
 
         MockToken(rewardToken).approve(address(gaugePool), 1000 ether);
 

@@ -5,8 +5,9 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import "./GaugeErrors.sol";
-import "../interfaces/IGaugePool.sol";
+import { veCVE } from "../token/veCVE.sol";
+import { GaugeErrors } from "./GaugeErrors.sol";
+import { IGaugePool } from "../interfaces/IGaugePool.sol";
 
 contract GaugeController is IGaugePool, Ownable {
     using SafeERC20 for IERC20;
@@ -22,12 +23,14 @@ contract GaugeController is IGaugePool, Ownable {
 
     // storage
     address public cve;
+    veCVE public ve;
 
     uint256 public startTime;
     mapping(uint256 => Epoch) internal epochInfo;
 
-    constructor(address _cve) Ownable() {
+    constructor(address _cve, address _ve) Ownable() {
         cve = _cve;
+        ve = veCVE(_ve);
     }
 
     /**

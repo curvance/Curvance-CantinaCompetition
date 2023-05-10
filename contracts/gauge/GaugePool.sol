@@ -36,7 +36,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
     mapping(address => PoolInfo) public poolInfo; // token => pool info
     mapping(address => mapping(address => UserInfo)) public userInfo; // token => user => info
 
-    constructor(address _cve, address _comptroller) GaugeController(_cve) ReentrancyGuard() {
+    constructor(address _cve, address _ve, address _comptroller) GaugeController(_cve, _ve) ReentrancyGuard() {
         comptroller = _comptroller;
     }
 
@@ -153,6 +153,52 @@ contract GaugePool is GaugeController, ReentrancyGuard {
             revert GaugeErrors.NoReward();
         }
         IERC20(cve).safeTransfer(msg.sender, rewards);
+
+        userInfo[token][msg.sender].rewardPending = 0;
+
+        _calcDebt(msg.sender, token);
+
+        emit Claim(msg.sender, token, rewards);
+    }
+
+    /**
+     * @notice Claim rewards from gauge pool
+     * @param token Pool token address
+     */
+    function claimAndExtendLock(address token, uint256 lockIndex, bool continuousLock) external nonReentrant {
+        updatePool(token);
+        _calcPending(msg.sender, token);
+
+        uint256 rewards = userInfo[token][msg.sender].rewardPending;
+        if (rewards == 0) {
+            revert GaugeErrors.NoReward();
+        }
+
+        IERC20(cve).safeApprove(address(ve), rewards);
+        ve.increaseAmountAndExtendLockFor(msg.sender, rewards, lockIndex, continuousLock);
+
+        userInfo[token][msg.sender].rewardPending = 0;
+
+        _calcDebt(msg.sender, token);
+
+        emit Claim(msg.sender, token, rewards);
+    }
+
+    /**
+     * @notice Claim rewards from gauge pool
+     * @param token Pool token address
+     */
+    function claimAndLock(address token, bool continuousLock) external nonReentrant {
+        updatePool(token);
+        _calcPending(msg.sender, token);
+
+        uint256 rewards = userInfo[token][msg.sender].rewardPending;
+        if (rewards == 0) {
+            revert GaugeErrors.NoReward();
+        }
+
+        IERC20(cve).safeApprove(address(ve), rewards);
+        ve.lock(msg.sender, uint216(rewards), continuousLock);
 
         userInfo[token][msg.sender].rewardPending = 0;
 
