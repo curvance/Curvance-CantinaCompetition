@@ -2,6 +2,7 @@
 pragma solidity ^0.8.15;
 
 import "./GaugeController.sol";
+import "./ChildGaugePool.sol";
 import "../compound/Comptroller/ComptrollerInterface.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -24,6 +25,8 @@ contract GaugePool is GaugeController, ReentrancyGuard {
     }
 
     // events
+    event AddChildGauge(address indexed childGauge);
+    event RemoveChildGauge(address indexed childGauge);
     event Deposit(address indexed user, address indexed token, uint256 amount);
     event Withdraw(address indexed user, address indexed token, uint256 amount);
     event Claim(address indexed user, address indexed token, uint256 amount);
@@ -33,11 +36,38 @@ contract GaugePool is GaugeController, ReentrancyGuard {
 
     // storage
     address public comptroller;
+    ChildGaugePool[] public childGauges;
     mapping(address => PoolInfo) public poolInfo; // token => pool info
     mapping(address => mapping(address => UserInfo)) public userInfo; // token => user => info
 
     constructor(address _cve, address _ve, address _comptroller) GaugeController(_cve, _ve) ReentrancyGuard() {
         comptroller = _comptroller;
+    }
+
+    function addChildGauge(address _childGauge) external onlyOwner {
+        if (_childGauge == address(0)) {
+            revert GaugeErrors.InvalidAddress();
+        }
+        childGauges.push(ChildGaugePool(_childGauge));
+
+        emit AddChildGauge(_childGauge);
+    }
+
+    function removeChildGauge(uint256 _index, address _childGauge) external onlyOwner {
+        if (_childGauge != address(childGauges[_index])) {
+            revert GaugeErrors.InvalidAddress();
+        }
+        childGauges[_index] = ChildGaugePool(address(0));
+
+        emit RemoveChildGauge(_childGauge);
+    }
+
+    function balanceOf(address token, address user) external view returns(uint256) {
+        return userInfo[token][user].amount;
+    }
+
+    function totalSupply(address token) external view returns(uint256) {
+        return poolInfo[token].totalAmount;
     }
 
     /**
@@ -109,6 +139,12 @@ contract GaugePool is GaugeController, ReentrancyGuard {
 
         _calcDebt(user, token);
 
+        for (uint256 i = 0; i < childGauges.length; ++i) {
+            if (address(childGauges[i]) != address(0)) {
+                childGauges[i].deposit(token, user, amount);
+            }
+        }
+
         emit Deposit(user, token, amount);
     }
 
@@ -136,6 +172,12 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         poolInfo[token].totalAmount -= amount;
 
         _calcDebt(user, token);
+
+        for (uint256 i = 0; i < childGauges.length; ++i) {
+            if (address(childGauges[i]) != address(0)) {
+                childGauges[i].withdraw(token, user, amount);
+            }
+        }
 
         emit Withdraw(user, token, amount);
     }

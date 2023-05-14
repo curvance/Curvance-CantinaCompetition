@@ -2,6 +2,8 @@
 pragma solidity ^0.8.15;
 
 interface GaugeErrors {
+    error InvalidAddress();
+    error Unauthorized();
     error AlreadyStarted();
     error InvalidEpoch();
     error InvalidLength();
