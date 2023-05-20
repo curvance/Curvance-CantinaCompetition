@@ -12,17 +12,13 @@ library Math {
     /**
      * @notice Used to change the decimals of precision used for an amount.
      */
-    function changeDecimals(
-        uint256 amount,
-        uint8 fromDecimals,
-        uint8 toDecimals
-    ) internal pure returns (uint256) {
+    function changeDecimals(uint256 amount, uint8 fromDecimals, uint8 toDecimals) internal pure returns (uint256) {
         if (fromDecimals == toDecimals) {
             return amount;
         } else if (fromDecimals < toDecimals) {
-            return amount * 10**(toDecimals - fromDecimals);
+            return amount * 10 ** (toDecimals - fromDecimals);
         } else {
-            return amount / 10**(fromDecimals - toDecimals);
+            return amount / 10 ** (fromDecimals - toDecimals);
         }
     }
 
@@ -40,11 +36,7 @@ library Math {
         return mulDivDown(x, y, WAD); // Equivalent to (x * y) / WAD rounded down.
     }
 
-    function mulDivDown(
-        uint256 x,
-        uint256 y,
-        uint256 denominator
-    ) internal pure returns (uint256 z) {
+    function mulDivDown(uint256 x, uint256 y, uint256 denominator) internal pure returns (uint256 z) {
         assembly {
             // Store x * y in z for now.
             z := mul(x, y)
@@ -59,11 +51,7 @@ library Math {
         }
     }
 
-    function mulDivUp(
-        uint256 x,
-        uint256 y,
-        uint256 denominator
-    ) internal pure returns (uint256 z) {
+    function mulDivUp(uint256 x, uint256 y, uint256 denominator) internal pure returns (uint256 z) {
         assembly {
             // Store x * y in z for now.
             z := mul(x, y)
@@ -77,6 +65,20 @@ library Math {
             // We allow z - 1 to underflow if z is 0, because we multiply the
             // end result by 0 if z is zero, ensuring we return 0 if z is zero.
             z := mul(iszero(iszero(z)), add(div(sub(z, 1), denominator), 1))
+        }
+    }
+
+    // babylonian method (https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Babylonian_method)
+    function sqrt(uint256 y) internal pure returns (uint256 z) {
+        if (y > 3) {
+            z = y;
+            uint256 x = y / 2 + 1;
+            while (x < z) {
+                z = x;
+                x = (y / x + x) / 2;
+            }
+        } else if (y != 0) {
+            z = 1;
         }
     }
 }
