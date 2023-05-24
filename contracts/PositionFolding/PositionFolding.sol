@@ -97,6 +97,61 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         }
     }
 
+    function deleverage(
+        CToken borrowToken,
+        CToken collateral,
+        uint256 collateralAmount,
+        Swap memory swapData
+    ) external {
+        bytes memory params = abi.encode(borrowToken, swapData);
+
+        if (address(borrowToken) == cether) {
+            CEther(payable(address(collateral))).redeemUnderlyingForPositionFolding(
+                msg.sender,
+                collateralAmount,
+                params
+            );
+        } else {
+            CErc20(address(collateral)).redeemUnderlyingForPositionFolding(msg.sender, collateralAmount, params);
+        }
+    }
+
+    function onRedeem(address collateral, address redeemer, uint256 amount, bytes memory params) external override {
+        (bool isListed, , ) = Comptroller(comptroller).getIsMarkets(collateral);
+        require(isListed && msg.sender == collateral, "unauthorized");
+
+        (CToken borrowToken, Swap memory swapData) = abi.decode(params, (CToken, Swap));
+
+        address borrowUnderlying;
+        if (borrowToken == cether) {
+            borrowUnderlying = ETH;
+            require(address(this).balance == amount, "invalid amount");
+        } else {
+            borrowUnderlying = CErc20(borrowToken).underlying();
+            require(IERC20(borrowUnderlying).balanceOf(address(this)) == amount, "invalid amount");
+        }
+
+        if (borrowToken != address(collateral)) {
+            if (borrowToken == cether) {
+                borrowUnderlying = weth;
+                IWETH(weth).deposit{ value: amount }(amount);
+            }
+
+            if (swapData.call.length > 0) {
+                _swap(borrowUnderlying, swapData);
+            }
+        }
+
+        if (address(collateral) == cether) {
+            CEther(payable(address(collateral))).mintFor{ value: address(this).balance }(borrower);
+        } else {
+            address collateralUnderlying = CErc20(borrowToken).underlying();
+            uint256 collateralAmount = IERC20(collateralUnderlying).balanceOf(address(this));
+            _approveTokenIfNeeded(collateralUnderlying, address(collateral));
+            CErc20(address(collateral)).mintFor(collateralAmount, borrower);
+        }
+    }
+
     /**
      * @dev Swap input token
      * @param _inputToken The input asset address

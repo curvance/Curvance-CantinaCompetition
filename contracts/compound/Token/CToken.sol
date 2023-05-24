@@ -458,8 +458,14 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
      */
     function redeemInternal(uint256 redeemTokens) internal {
         accrueInterest();
+
+        address payable redeemer = payable(msg.sender);
+
+        uint256 exchangeRate = exchangeRateStoredInternal();
+        uint256 redeemAmount = (exchangeRate * redeemTokens) / expScale;
+
         // redeemFresh emits redeem-specific logs on errors, so we don't need to
-        redeemFresh(payable(msg.sender), redeemTokens, 0);
+        redeemFresh(redeemer, redeemTokens, redeemAmount);
     }
 
     /**
@@ -469,55 +475,48 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
      */
     function redeemUnderlyingInternal(uint256 redeemAmount) internal {
         accrueInterest();
+
+        address payable redeemer = payable(msg.sender);
+
+        /* exchangeRate = invoke Exchange Rate Stored() */
+        uint256 exchangeRate = exchangeRateStoredInternal();
+        uint256 redeemTokens = (redeemAmount * expScale) / exchangeRate;
+
+        /* Fail if redeem not allowed */
+        comptroller.redeemAllowed(address(this), redeemer, redeemTokens);
+
         // redeemFresh emits redeem-specific logs on errors, so we don't need to
-        redeemFresh(payable(msg.sender), 0, redeemAmount);
+        redeemFresh(redeemer, redeemTokens, redeemAmount);
+    }
+
+    function redeemUnderlyingForPositionFoldingInternal(
+        address payable redeemer,
+        uint256 redeemAmount,
+        bytes memory params
+    ) internal {
+        accrueInterest();
+
+        /* exchangeRate = invoke Exchange Rate Stored() */
+        uint256 exchangeRate = exchangeRateStoredInternal();
+        uint256 redeemTokens = (redeemAmount * expScale) / exchangeRate;
+
+        // redeemFresh emits redeem-specific logs on errors, so we don't need to
+        redeemFresh(redeemer, redeemTokens, redeemAmount);
+
+        IPositionFolding(msg.sender).onRedeem(address(this), redeemer, redeemAmount, params);
+
+        /* Fail if redeem not allowed */
+        comptroller.redeemAllowed(address(this), redeemer, 0);
     }
 
     /**
      * @notice User redeems cTokens in exchange for the underlying asset
      * @dev Assumes interest has already been accrued up to the current block
      * @param redeemer The address of the account which is redeeming the tokens
-     * @param redeemTokensIn The number of cTokens to redeem into underlying
-     *  (only one of redeemTokensIn or redeemAmountIn may be non-zero)
-     * @param redeemAmountIn The number of underlying tokens to receive from redeeming cTokens
-     *  (only one of redeemTokensIn or redeemAmountIn may be non-zero)
+     * @param redeemTokens The number of cTokens to redeem into underlying
+     * @param redeemAmount The number of underlying tokens to receive from redeeming cTokens
      */
-    function redeemFresh(
-        address payable redeemer,
-        uint256 redeemTokensIn,
-        uint256 redeemAmountIn
-    ) internal nonReentrant {
-        if (redeemTokensIn != 0 && redeemAmountIn != 0) {
-            revert CannotEqualZero();
-        }
-
-        /* exchangeRate = invoke Exchange Rate Stored() */
-        uint256 exchangeRate = exchangeRateStoredInternal();
-        uint256 redeemTokens;
-        uint256 redeemAmount;
-
-        /* If redeemTokensIn > 0: */
-        if (redeemTokensIn > 0) {
-            /*
-             * We calculate the exchange rate and the amount of underlying to be redeemed:
-             *  redeemTokens = redeemTokensIn
-             *  redeemAmount = redeemTokensIn x exchangeRateCurrent
-             */
-            redeemTokens = redeemTokensIn;
-            redeemAmount = (exchangeRate * redeemTokensIn) / expScale;
-        } else {
-            /*
-             * We get the current exchange rate and calculate the amount to be redeemed:
-             *  redeemTokens = redeemAmountIn / exchangeRate
-             *  redeemAmount = redeemAmountIn
-             */
-            redeemTokens = (redeemAmountIn * expScale) / exchangeRate;
-            redeemAmount = redeemAmountIn;
-        }
-
-        /* Fail if redeem not allowed */
-        comptroller.redeemAllowed(address(this), redeemer, redeemTokens);
-
+    function redeemFresh(address payable redeemer, uint256 redeemTokens, uint256 redeemAmount) internal nonReentrant {
         /* Verify market's block number equals current block number */
         if (accrualBlockNumber != getBlockNumber()) {
             revert FailedFreshnessCheck();
