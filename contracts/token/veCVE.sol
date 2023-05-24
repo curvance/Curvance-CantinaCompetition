@@ -144,7 +144,7 @@ contract veCVE is ERC20 {
             totalUnlocksByEpoch[unlockEpoch] += tokenAmount;
         }
 
-        totalUnlocksByEpoch[unlockEpoch] -= tokenAmount;
+        //totalUnlocksByEpoch[unlockEpoch] -= tokenAmount;
     }
 
     /**
@@ -185,7 +185,7 @@ contract veCVE is ERC20 {
             totalUnlocksByEpoch[unlockEpoch] += tokenAmount;
         }
 
-        totalUnlocksByEpoch[unlockEpoch] -= tokenAmount;
+        //totalUnlocksByEpoch[unlockEpoch] -= tokenAmount;
         _mint(msg.sender, _amount);
     }
 
@@ -229,7 +229,7 @@ contract veCVE is ERC20 {
             totalUnlocksByEpoch[unlockEpoch] += tokenAmount;
         }
 
-        totalUnlocksByEpoch[unlockEpoch] -= tokenAmount;
+        //totalUnlocksByEpoch[unlockEpoch] -= tokenAmount;
         _mint(_recipient, _amount);
     }
 
@@ -380,7 +380,7 @@ contract veCVE is ERC20 {
     * @param _helper The address of the locker contract to be set
     */
     function addAuthorizedHelper(address _helper) external onlyDaoManager {
-        require(_helper == address(0), "Invalid Helper Address");
+        require(_helper != address(0), "Invalid Helper Address");
         require(!authorizedHelperContract[_helper], "Invalid Operation");
         authorizedHelperContract[_helper] = true;
     }
@@ -390,7 +390,7 @@ contract veCVE is ERC20 {
     * @param _helper The address of the locker contract to be set
     */
     function removeAuthorizedHelper(address _helper) external onlyDaoManager {
-        require(_helper == address(0), "Invalid Helper Address");
+        require(_helper != address(0), "Invalid Helper Address");
         require(authorizedHelperContract[_helper], "Invalid Operation");
         delete authorizedHelperContract[_helper];
     }
