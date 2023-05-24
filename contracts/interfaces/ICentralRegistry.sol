@@ -30,9 +30,9 @@ interface ICentralRegistry {
     // @notice Returns feeRouting Address
     function feeRouting() external view returns (address);
     // @notice Returns protocolYieldFee Address
-    function protocolYieldFee() external view returns (address);
+    function protocolYieldFee() external view returns (uint256);
     // @notice Returns protocolLiquidationFee Address
-    function protocolLiquidationFee() external view returns (address);
+    function protocolLiquidationFee() external view returns (uint256);
     // @notice Returns whether the inputted address is a Harvester
     function isHarvester(address _address) external view returns (bool);
     // @notice Returns whether the inputted address is a lending market

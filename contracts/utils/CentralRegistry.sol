@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.12;
 
+import "../interfaces/ICentralRegistry.sol";
+
 /// @notice Simple single central authorization mixin.
 /// @author Mai
-abstract contract CentralRegistry {
+abstract contract CentralRegistry is ICentralRegistry{
 
     event OwnershipTransferred(address indexed user, address indexed newOwner);
     event NewHarvester(address indexed harvester);
@@ -18,7 +20,7 @@ abstract contract CentralRegistry {
     uint256 public constant DENOMINATOR = 10000;
 
     uint256 public immutable genesisEpoch;
-    address public dao;
+    address public daoAddress;
     address public cveLocker;
 
     address public CVE;
@@ -44,7 +46,7 @@ abstract contract CentralRegistry {
     mapping (address => bool) private approvedEndpoint;
 
     modifier onlyDaoManager() {
-        require(msg.sender == dao, "UNAUTHORIZED");
+        require(msg.sender == daoAddress, "UNAUTHORIZED");
 
         _;
     }
@@ -57,9 +59,9 @@ abstract contract CentralRegistry {
         if (dao_ == address(0)){
             dao_ = msg.sender;
         }
-        dao = dao_;
+        daoAddress = dao_;
         genesisEpoch = genesisEpoch_;
-        emit OwnershipTransferred(address(0), dao);
+        emit OwnershipTransferred(address(0), daoAddress);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -136,7 +138,7 @@ abstract contract CentralRegistry {
     //////////////////////////////////////////////////////////////*/
 
     function transferOwnership(address newDaoAddress) public onlyDaoManager {
-        dao = newDaoAddress;
+        daoAddress = newDaoAddress;
         emit OwnershipTransferred(msg.sender, newDaoAddress);
     }
 
