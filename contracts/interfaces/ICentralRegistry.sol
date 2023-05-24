@@ -25,9 +25,21 @@ interface ICentralRegistry {
     function depositRouter() external view returns (address);
     // @notice Returns ZRO Payment Address
     function zroAddress() external view returns (address);
+    // @notice Returns feeHub Address
+    function feeHub() external view returns (address);
+    // @notice Returns feeRouting Address
+    function feeRouting() external view returns (address);
+    // @notice Returns protocolYieldFee Address
+    function protocolYieldFee() external view returns (address);
+    // @notice Returns protocolLiquidationFee Address
+    function protocolLiquidationFee() external view returns (address);
     // @notice Returns whether the inputted address is a Harvester
     function isHarvester(address _address) external view returns (bool);
     // @notice Returns whether the inputted address is a lending market
     function isLendingMarket(address _address) external view returns (bool);
+    // @notice Returns whether the inputted address is a fee manager
+    function isFeeManager(address _address) external view returns (bool);
+    // @notice Returns whether the inputted address is an approved endpoint
+    function isApprovedEndpoint(address _address) external view returns (bool);
     
 }
