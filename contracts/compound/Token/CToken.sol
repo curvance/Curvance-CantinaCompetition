@@ -465,7 +465,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         uint256 redeemAmount = (exchangeRate * redeemTokens) / expScale;
 
         // redeemFresh emits redeem-specific logs on errors, so we don't need to
-        redeemFresh(redeemer, redeemTokens, redeemAmount);
+        redeemFresh(redeemer, redeemTokens, redeemAmount, redeemer);
     }
 
     /**
@@ -486,7 +486,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         comptroller.redeemAllowed(address(this), redeemer, redeemTokens);
 
         // redeemFresh emits redeem-specific logs on errors, so we don't need to
-        redeemFresh(redeemer, redeemTokens, redeemAmount);
+        redeemFresh(redeemer, redeemTokens, redeemAmount, redeemer);
     }
 
     function redeemUnderlyingForPositionFoldingInternal(
@@ -494,6 +494,10 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         uint256 redeemAmount,
         bytes memory params
     ) internal {
+        if (msg.sender != comptroller.positionFolding()) {
+            revert FailedNotFromPositionFolding();
+        }
+
         accrueInterest();
 
         /* exchangeRate = invoke Exchange Rate Stored() */
@@ -501,7 +505,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         uint256 redeemTokens = (redeemAmount * expScale) / exchangeRate;
 
         // redeemFresh emits redeem-specific logs on errors, so we don't need to
-        redeemFresh(redeemer, redeemTokens, redeemAmount);
+        redeemFresh(redeemer, redeemTokens, redeemAmount, payable(msg.sender));
 
         IPositionFolding(msg.sender).onRedeem(address(this), redeemer, redeemAmount, params);
 
@@ -515,8 +519,14 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
      * @param redeemer The address of the account which is redeeming the tokens
      * @param redeemTokens The number of cTokens to redeem into underlying
      * @param redeemAmount The number of underlying tokens to receive from redeeming cTokens
+     * @param recipient The recipient address
      */
-    function redeemFresh(address payable redeemer, uint256 redeemTokens, uint256 redeemAmount) internal nonReentrant {
+    function redeemFresh(
+        address payable redeemer,
+        uint256 redeemTokens,
+        uint256 redeemAmount,
+        address payable recipient
+    ) internal nonReentrant {
         /* Verify market's block number equals current block number */
         if (accrualBlockNumber != getBlockNumber()) {
             revert FailedFreshnessCheck();
@@ -547,7 +557,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
          *  On success, the cToken has redeemAmount less of cash.
          *  doTransferOut reverts if anything goes wrong, since we can't be sure if side effects occurred.
          */
-        doTransferOut(redeemer, redeemAmount);
+        doTransferOut(recipient, redeemAmount);
 
         /* We emit a Transfer event, and a Redeem event */
         emit Transfer(redeemer, address(this), redeemTokens);
