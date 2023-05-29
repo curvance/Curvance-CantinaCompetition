@@ -70,10 +70,10 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         address borrowUnderlying;
         if (borrowToken == cether) {
             borrowUnderlying = ETH;
-            require(address(this).balance == amount, "invalid amount");
+            require(address(this).balance >= amount, "invalid amount");
         } else {
             borrowUnderlying = CErc20(borrowToken).underlying();
-            require(IERC20(borrowUnderlying).balanceOf(address(this)) == amount, "invalid amount");
+            require(IERC20(borrowUnderlying).balanceOf(address(this)) >= amount, "invalid amount");
         }
 
         if (borrowToken != address(collateral)) {
@@ -90,10 +90,82 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         if (address(collateral) == cether) {
             CEther(payable(address(collateral))).mintFor{ value: address(this).balance }(borrower);
         } else {
-            address collateralUnderlying = CErc20(borrowToken).underlying();
+            address collateralUnderlying = CErc20(address(collateral)).underlying();
             uint256 collateralAmount = IERC20(collateralUnderlying).balanceOf(address(this));
             _approveTokenIfNeeded(collateralUnderlying, address(collateral));
             CErc20(address(collateral)).mintFor(collateralAmount, borrower);
+        }
+    }
+
+    function deleverage(
+        CToken collateral,
+        uint256 collateralAmount,
+        CToken borrowToken,
+        uint256 repayAmount,
+        Swap memory swapData
+    ) external {
+        bytes memory params = abi.encode(borrowToken, repayAmount, swapData);
+
+        if (address(borrowToken) == cether) {
+            CEther(payable(address(collateral))).redeemUnderlyingForPositionFolding(
+                msg.sender,
+                collateralAmount,
+                params
+            );
+        } else {
+            CErc20(address(collateral)).redeemUnderlyingForPositionFolding(msg.sender, collateralAmount, params);
+        }
+    }
+
+    function onRedeem(address collateral, address redeemer, uint256 amount, bytes memory params) external override {
+        (bool isListed, , ) = Comptroller(comptroller).getIsMarkets(collateral);
+        require(isListed && msg.sender == collateral, "unauthorized");
+
+        (CToken borrowToken, uint256 repayAmount, Swap memory swapData) = abi.decode(params, (CToken, uint256, Swap));
+
+        // swap collateral token to borrow token
+        address collateralUnderlying;
+        if (collateral == cether) {
+            collateralUnderlying = ETH;
+            require(address(this).balance >= amount, "invalid amount");
+        } else {
+            collateralUnderlying = CErc20(collateral).underlying();
+            require(IERC20(collateralUnderlying).balanceOf(address(this)) >= amount, "invalid amount");
+        }
+
+        if (collateral != address(borrowToken)) {
+            if (collateral == cether) {
+                collateralUnderlying = weth;
+                IWETH(weth).deposit{ value: amount }(amount);
+            }
+
+            if (swapData.call.length > 0) {
+                _swap(collateralUnderlying, swapData);
+            }
+        }
+
+        // repay debt
+        address borrowUnderlying;
+        uint256 remaining;
+        if (address(borrowToken) == cether) {
+            borrowUnderlying = ETH;
+            remaining = address(this).balance - repayAmount;
+            CEther(payable(address(borrowToken))).repayBorrowBehalf{ value: repayAmount }(redeemer);
+        } else {
+            borrowUnderlying = CErc20(address(borrowToken)).underlying();
+            remaining = IERC20(borrowUnderlying).balanceOf(address(this)) - repayAmount;
+            _approveTokenIfNeeded(borrowUnderlying, address(borrowToken));
+            CErc20(address(borrowToken)).repayBorrowBehalf(redeemer, repayAmount);
+        }
+
+        // transfer any excess amount
+        if (remaining > 0) {
+            if (borrowUnderlying == ETH) {
+                (bool sent, ) = redeemer.call{ value: remaining }("");
+                require(sent, "failed to send ether");
+            } else {
+                IERC20(borrowUnderlying).safeTransfer(redeemer, remaining);
+            }
         }
     }
 

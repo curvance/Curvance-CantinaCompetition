@@ -87,6 +87,15 @@ contract CEther is CToken {
     }
 
     /**
+     * @notice Position folding contract will call this function
+     * @param user The user address
+     * @param redeemAmount The amount of the underlying asset to redeem
+     */
+    function redeemUnderlyingForPositionFolding(address user, uint256 redeemAmount, bytes memory params) external {
+        redeemUnderlyingForPositionFoldingInternal(payable(user), redeemAmount, params);
+    }
+
+    /**
      * @notice Sender borrows assets from the protocol to their own address
      * @param borrowAmount The amount of the underlying asset to borrow
      */
