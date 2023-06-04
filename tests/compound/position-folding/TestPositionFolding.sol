@@ -347,12 +347,15 @@ contract TestPositionFolding is DSTestPlus {
     }
 
     function testDeLeverageIntegration1() public {
-        // enter markets
         hevm.startPrank(user);
-        address[] memory markets = new address[](2);
-        markets[0] = address(cDAI);
-        markets[1] = address(cETH);
-        ComptrollerInterface(unitroller).enterMarkets(markets);
+
+        {
+            // enter markets
+            address[] memory markets = new address[](2);
+            markets[0] = address(cDAI);
+            markets[1] = address(cETH);
+            ComptrollerInterface(unitroller).enterMarkets(markets);
+        }
 
         // mint 2000 dai
         IERC20(dai).approve(address(cDAI), 2000 ether);
@@ -367,73 +370,85 @@ contract TestPositionFolding is DSTestPlus {
         // borrow 0.25 ether
         cETH.borrow(0.25 ether);
 
-        uint256 amountForLeverage = positionFolding.queryAmountToBorrowForLeverageMax(user, CToken(address(cDAI)));
-        assertEq(amountForLeverage, 5800 ether);
+        {
+            uint256 amountForLeverage = positionFolding.queryAmountToBorrowForLeverageMax(user, CToken(address(cDAI)));
+            assertEq(amountForLeverage, 5800 ether);
 
-        address[] memory path = new address[](2);
-        path[0] = dai;
-        path[1] = weth;
-        positionFolding.leverageMax(
-            CToken(address(cDAI)),
-            CToken(address(cETH)),
-            PositionFolding.Swap({
-                target: uniswapV2Router,
-                call: abi.encodeWithSignature(
-                    "swapExactTokensForETH(uint256,uint256,address[],address,uint256)",
-                    amountForLeverage,
-                    0,
-                    path,
-                    address(positionFolding),
-                    block.timestamp
-                )
-            })
-        );
+            address[] memory path = new address[](2);
+            path[0] = dai;
+            path[1] = weth;
 
-        (uint256 cDAIBalance, uint256 daiBorrowBalance, ) = cDAI.getAccountSnapshot(user);
-        (uint256 cETHBalance, uint256 ethBorrowBalance, ) = cETH.getAccountSnapshot(user);
-        assertEq(cDAIBalance, 2000 ether); // $2000
-        assertGt(cETHBalance, 3.7 ether); // $7400
-        assertEq(daiBorrowBalance, 6300 ether); // $6300
-        assertEq(ethBorrowBalance, 0.25 ether); // $500
+            positionFolding.leverageMax(
+                CToken(address(cDAI)),
+                CToken(address(cETH)),
+                PositionFolding.Swap({
+                    target: uniswapV2Router,
+                    call: abi.encodeWithSignature(
+                        "swapExactTokensForETH(uint256,uint256,address[],address,uint256)",
+                        amountForLeverage,
+                        0,
+                        path,
+                        address(positionFolding),
+                        block.timestamp
+                    )
+                })
+            );
+        }
 
-        (uint256 sumCollateral, uint256 maxBorrow, uint256 sumBorrow) = Comptroller(unitroller).getAccountPosition(
-            user
-        );
-        assertGt(sumCollateral, 9400 ether);
-        assertGt(maxBorrow, (9400 ether * 75) / 100);
-        assertEq(sumBorrow, 6800 ether);
+        {
+            (uint256 cDAIBalance, uint256 daiBorrowBalance, ) = cDAI.getAccountSnapshot(user);
+            (uint256 cETHBalance, uint256 ethBorrowBalance, ) = cETH.getAccountSnapshot(user);
+            assertEq(cDAIBalance, 2000 ether); // $2000
+            assertGt(cETHBalance, 3.7 ether); // $7400
+            assertEq(daiBorrowBalance, 6300 ether); // $6300
+            assertEq(ethBorrowBalance, 0.25 ether); // $500
 
-        path[0] = weth;
-        path[1] = dai;
-        positionFolding.deleverage(
-            CToken(address(cETH)),
-            3.7 ether,
-            CToken(address(cDAI)),
-            6300 ether,
-            PositionFolding.Swap({
-                target: uniswapV2Router,
-                call: abi.encodeWithSignature(
-                    "swapExactTokensForTokens(uint256,uint256,address[],address,uint256)",
-                    3.7 ether,
-                    0,
-                    path,
-                    address(positionFolding),
-                    block.timestamp
-                )
-            })
-        );
+            (uint256 sumCollateral, uint256 maxBorrow, uint256 sumBorrow) = Comptroller(unitroller).getAccountPosition(
+                user
+            );
+            assertGt(sumCollateral, 9400 ether);
+            assertGt(maxBorrow, (9400 ether * 75) / 100);
+            assertEq(sumBorrow, 6800 ether);
+        }
 
-        (cDAIBalance, daiBorrowBalance, ) = cDAI.getAccountSnapshot(user);
-        (cETHBalance, ethBorrowBalance, ) = cETH.getAccountSnapshot(user);
-        assertEq(cDAIBalance, 2000 ether); // $2000
-        assertGt(cETHBalance, 0 ether); // $7400
-        assertEq(daiBorrowBalance, 0 ether); // $6300
-        assertEq(ethBorrowBalance, 0.25 ether); // $500
+        {
+            address[] memory path = new address[](2);
+            path[0] = weth;
+            path[1] = dai;
+            positionFolding.deleverage(
+                CToken(address(cETH)),
+                3.7 ether,
+                CToken(address(cDAI)),
+                6300 ether,
+                PositionFolding.Swap({
+                    target: uniswapV2Router,
+                    call: abi.encodeWithSignature(
+                        "swapExactTokensForTokens(uint256,uint256,address[],address,uint256)",
+                        3.7 ether,
+                        0,
+                        path,
+                        address(positionFolding),
+                        block.timestamp
+                    )
+                })
+            );
+        }
 
-        (sumCollateral, maxBorrow, sumBorrow) = Comptroller(unitroller).getAccountPosition(user);
-        assertGt(sumCollateral, 2000 ether);
-        assertGt(maxBorrow, (2000 ether * 75) / 100);
-        assertEq(sumBorrow, 500 ether);
+        {
+            (uint256 cDAIBalance, uint256 daiBorrowBalance, ) = cDAI.getAccountSnapshot(user);
+            (uint256 cETHBalance, uint256 ethBorrowBalance, ) = cETH.getAccountSnapshot(user);
+            assertEq(cDAIBalance, 2000 ether); // $2000
+            assertGt(cETHBalance, 0 ether); // $7400
+            assertEq(daiBorrowBalance, 0 ether); // $6300
+            assertEq(ethBorrowBalance, 0.25 ether); // $500
+
+            (uint256 sumCollateral, uint256 maxBorrow, uint256 sumBorrow) = Comptroller(unitroller).getAccountPosition(
+                user
+            );
+            assertGt(sumCollateral, 2000 ether);
+            assertGt(maxBorrow, (2000 ether * 75) / 100);
+            assertEq(sumBorrow, 500 ether);
+        }
 
         hevm.stopPrank();
     }

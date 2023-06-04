@@ -50,6 +50,8 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         }
         childGauges.push(ChildGaugePool(_childGauge));
 
+        ChildGaugePool(_childGauge).activate();
+
         emit AddChildGauge(_childGauge);
     }
 
@@ -62,11 +64,11 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         emit RemoveChildGauge(_childGauge);
     }
 
-    function balanceOf(address token, address user) external view returns(uint256) {
+    function balanceOf(address token, address user) external view returns (uint256) {
         return userInfo[token][user].amount;
     }
 
-    function totalSupply(address token) external view returns(uint256) {
+    function totalSupply(address token) external view returns (uint256) {
         return poolInfo[token].totalAmount;
     }
 
