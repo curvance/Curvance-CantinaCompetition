@@ -1,39 +1,25 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >= 0.8.12;
-import "../layerzero/OFT.sol";
+import "../layerzero/OFTV2.sol";
 
 error InvalidGas();
 
-contract cve is OFT {
+contract CVE is OFTV2 {
+
+    uint256 public immutable TokenGenerationEventTimestamp;
 
     constructor(string memory _name, 
-                string memory _symbol, 
+                string memory _symbol,
+                uint8 _sharedDecimals, 
                 address _lzEndpoint, 
-                ICentralRegistry _centralRegistry) OFT(_name, _symbol, _lzEndpoint, _centralRegistry) {
-                    _mint(msg.sender, 420000069);
+                ICentralRegistry _centralRegistry) OFTV2(_name, _symbol, _sharedDecimals, _lzEndpoint, _centralRegistry) {
+                    TokenGenerationEventTimestamp = block.timestamp;
+                    //TODO: 
+                    // Add minting and token vesting functions
+                    // Configure up nonblockingmessages 
+                    
+                    //_mint(msg.sender, 420000069 ether);
                 }
 
-    
-    function sendFrom(address _from, uint16 _dstChainId, bytes calldata _toAddress, uint _amount, address payable _refundAddress, address _zroPaymentAddress, bytes calldata _adapterParams) public payable override (OFTCore, IOFTCore){
-
-        // Estimate the transaction fees
-        (uint256 messageFee, ) = estimateSendFee(_dstChainId, _toAddress, _amount, false, _adapterParams);
-
-        // Check if the provided gas is sufficient
-        if(msg.value < messageFee) revert InvalidGas();
-
-        super.sendFrom(_from, 
-              _dstChainId, 
-              _toAddress, 
-              _amount, 
-              _refundAddress, 
-              _zroPaymentAddress, 
-              _adapterParams);
-
-    }
-
-    function createAdapterParams(uint16 version, uint256 gasForTraverse) public pure returns (bytes memory) {
-        return abi.encodePacked(version, gasForTraverse);
-    }
 
 }
