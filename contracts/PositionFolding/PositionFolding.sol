@@ -39,6 +39,19 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         weth = _weth;
     }
 
+    modifier checkSlippage(address user, uint256 slippage) {
+        (uint256 sumCollateralBefore, , uint256 sumBorrowBefore) = comptroller.getAccountPosition(user);
+        uint256 userValueBefore = sumCollateralBefore - sumBorrowBefore;
+
+        _;
+
+        (uint256 sumCollateral, , uint256 sumBorrow) = comptroller.getAccountPosition(user);
+        uint256 userValue = sumCollateral - sumBorrow;
+
+        uint256 diff = userValue > userValueBefore ? userValue - userValueBefore : userValueBefore - userValue;
+        require(diff < (userValueBefore * slippage) / DENOMINATOR, "slippage");
+    }
+
     function queryAmountToBorrowForLeverageMax(address user, CToken borrowToken) public view returns (uint256) {
         (uint256 sumCollateral, uint256 maxBorrow, uint256 sumBorrow) = comptroller.getAccountPosition(user);
         uint256 maxLeverage = ((sumCollateral - sumBorrow) * MAX_LEVERAGE * sumCollateral) /
@@ -49,15 +62,54 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         return ((maxLeverage - sumBorrow) * 1e18) / oracle.getUnderlyingPrice(borrowToken);
     }
 
-    function leverageMax(CToken borrowToken, CToken collateral, Swap memory swapData) external {
+    function leverageMax(
+        CToken borrowToken,
+        CToken collateral,
+        Swap memory swapData,
+        uint256 slippage
+    ) external checkSlippage(msg.sender, slippage) nonReentrant {
         uint256 amountToBorrow = queryAmountToBorrowForLeverageMax(msg.sender, borrowToken);
+        _leverage(borrowToken, amountToBorrow, collateral, swapData);
+    }
 
+    function leverage(
+        CToken borrowToken,
+        uint256 borrowAmount,
+        CToken collateral,
+        Swap memory swapData,
+        uint256 slippage
+    ) external checkSlippage(msg.sender, slippage) nonReentrant {
+        uint256 maxBorrowAmount = queryAmountToBorrowForLeverageMax(msg.sender, borrowToken);
+        require(borrowAmount <= maxBorrowAmount, "exceeded maximum borrow amount");
+        _leverage(borrowToken, borrowAmount, collateral, swapData);
+    }
+
+    function batchLeverage(
+        CToken[] memory borrowTokens,
+        uint256[] memory borrowAmounts,
+        CToken[] memory collateralTokens,
+        Swap[] memory swapData,
+        uint256 slippage
+    ) external checkSlippage(msg.sender, slippage) {
+        uint256 length = borrowTokens.length;
+        require(
+            borrowAmounts.length == length && collateralTokens.length == length && swapData.length == length,
+            "invalid array length"
+        );
+        for (uint256 i = 0; i < length; ++i) {
+            uint256 maxBorrowAmount = queryAmountToBorrowForLeverageMax(msg.sender, borrowTokens[i]);
+            require(borrowAmounts[i] <= maxBorrowAmount, "exceeded maximum borrow amount");
+            _leverage(borrowTokens[i], borrowAmounts[i], collateralTokens[i], swapData[i]);
+        }
+    }
+
+    function _leverage(CToken borrowToken, uint256 borrowAmount, CToken collateral, Swap memory swapData) internal {
         bytes memory params = abi.encode(collateral, swapData);
 
         if (address(borrowToken) == cether) {
-            CEther(payable(address(borrowToken))).borrowForPositionFolding(msg.sender, amountToBorrow, params);
+            CEther(payable(address(borrowToken))).borrowForPositionFolding(msg.sender, borrowAmount, params);
         } else {
-            CErc20(address(borrowToken)).borrowForPositionFolding(msg.sender, amountToBorrow, params);
+            CErc20(address(borrowToken)).borrowForPositionFolding(msg.sender, borrowAmount, params);
         }
     }
 
@@ -102,8 +154,40 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         uint256 collateralAmount,
         CToken borrowToken,
         uint256 repayAmount,
+        Swap memory swapData,
+        uint256 slippage
+    ) external checkSlippage(msg.sender, slippage) nonReentrant {
+        _deleverage(collateral, collateralAmount, borrowToken, repayAmount, swapData);
+    }
+
+    function batchDeleverage(
+        CToken[] memory collateralTokens,
+        uint256[] memory collateralAmount,
+        CToken[] memory borrowTokens,
+        uint256[] memory repayAmounts,
+        Swap[] memory swapData,
+        uint256 slippage
+    ) external checkSlippage(msg.sender, slippage) {
+        uint256 length = collateralTokens.length;
+        require(
+            collateralAmount.length == length &&
+                borrowTokens.length == length &&
+                repayAmounts.length == length &&
+                swapData.length == length,
+            "invalid array length"
+        );
+        for (uint256 i = 0; i < length; ++i) {
+            _deleverage(collateralTokens[i], collateralAmount[i], borrowTokens[i], repayAmounts[i], swapData[i]);
+        }
+    }
+
+    function _deleverage(
+        CToken collateral,
+        uint256 collateralAmount,
+        CToken borrowToken,
+        uint256 repayAmount,
         Swap memory swapData
-    ) external {
+    ) internal {
         bytes memory params = abi.encode(borrowToken, repayAmount, swapData);
 
         if (address(borrowToken) == cether) {
@@ -151,20 +235,20 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
             borrowUnderlying = ETH;
             remaining = address(this).balance - repayAmount;
             CEther(payable(address(borrowToken))).repayBorrowBehalf{ value: repayAmount }(redeemer);
+
+            if (remaining > 0) {
+                // remaining balance back to collateral
+                CEther(payable(address(borrowToken))).mintFor{ value: remaining }(redeemer);
+            }
         } else {
             borrowUnderlying = CErc20(address(borrowToken)).underlying();
             remaining = IERC20(borrowUnderlying).balanceOf(address(this)) - repayAmount;
             _approveTokenIfNeeded(borrowUnderlying, address(borrowToken));
             CErc20(address(borrowToken)).repayBorrowBehalf(redeemer, repayAmount);
-        }
 
-        // transfer any excess amount
-        if (remaining > 0) {
-            if (borrowUnderlying == ETH) {
-                (bool sent, ) = redeemer.call{ value: remaining }("");
-                require(sent, "failed to send ether");
-            } else {
-                IERC20(borrowUnderlying).safeTransfer(redeemer, remaining);
+            if (remaining > 0) {
+                // remaining balance back to collateral
+                CErc20(address(borrowToken)).mintFor(remaining, redeemer);
             }
         }
     }

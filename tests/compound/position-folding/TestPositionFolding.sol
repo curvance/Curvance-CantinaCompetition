@@ -156,7 +156,8 @@ contract TestPositionFolding is DSTestPlus {
         positionFolding.leverageMax(
             CToken(address(cDAI)),
             CToken(address(cDAI)),
-            PositionFolding.Swap({ target: address(0), call: "0x" })
+            PositionFolding.Swap({ target: address(0), call: "0x" }),
+            3000
         );
 
         (uint256 cTokenBalance, uint256 borrowBalance, ) = cDAI.getAccountSnapshot(user);
@@ -190,7 +191,8 @@ contract TestPositionFolding is DSTestPlus {
         positionFolding.leverageMax(
             CToken(address(cDAI)),
             CToken(address(cDAI)),
-            PositionFolding.Swap({ target: address(0), call: "0x" })
+            PositionFolding.Swap({ target: address(0), call: "0x" }),
+            3000
         );
 
         (uint256 cTokenBalance, uint256 borrowBalance, ) = cDAI.getAccountSnapshot(user);
@@ -202,7 +204,8 @@ contract TestPositionFolding is DSTestPlus {
             170 ether,
             CToken(address(cDAI)),
             170 ether,
-            PositionFolding.Swap({ target: address(0), call: "0x" })
+            PositionFolding.Swap({ target: address(0), call: "0x" }),
+            3000
         );
 
         (cTokenBalance, borrowBalance, ) = cDAI.getAccountSnapshot(user);
@@ -233,7 +236,8 @@ contract TestPositionFolding is DSTestPlus {
         positionFolding.leverageMax(
             CToken(address(cETH)),
             CToken(address(cETH)),
-            PositionFolding.Swap({ target: address(0), call: "0x" })
+            PositionFolding.Swap({ target: address(0), call: "0x" }),
+            3000
         );
 
         (uint256 cTokenBalance, uint256 borrowBalance, ) = cETH.getAccountSnapshot(user);
@@ -264,7 +268,8 @@ contract TestPositionFolding is DSTestPlus {
         positionFolding.leverageMax(
             CToken(address(cETH)),
             CToken(address(cETH)),
-            PositionFolding.Swap({ target: address(0), call: "0x" })
+            PositionFolding.Swap({ target: address(0), call: "0x" }),
+            3000
         );
 
         (uint256 cTokenBalance, uint256 borrowBalance, ) = cETH.getAccountSnapshot(user);
@@ -276,7 +281,8 @@ contract TestPositionFolding is DSTestPlus {
             170 ether,
             CToken(address(cETH)),
             170 ether,
-            PositionFolding.Swap({ target: address(0), call: "0x" })
+            PositionFolding.Swap({ target: address(0), call: "0x" }),
+            3000
         );
 
         (cTokenBalance, borrowBalance, ) = cETH.getAccountSnapshot(user);
@@ -326,7 +332,8 @@ contract TestPositionFolding is DSTestPlus {
                     address(positionFolding),
                     block.timestamp
                 )
-            })
+            }),
+            3000
         );
 
         (uint256 cDAIBalance, uint256 daiBorrowBalance, ) = cDAI.getAccountSnapshot(user);
@@ -391,7 +398,8 @@ contract TestPositionFolding is DSTestPlus {
                         address(positionFolding),
                         block.timestamp
                     )
-                })
+                }),
+                3000
             );
         }
 
@@ -430,14 +438,15 @@ contract TestPositionFolding is DSTestPlus {
                         address(positionFolding),
                         block.timestamp
                     )
-                })
+                }),
+                3000
             );
         }
 
         {
             (uint256 cDAIBalance, uint256 daiBorrowBalance, ) = cDAI.getAccountSnapshot(user);
             (uint256 cETHBalance, uint256 ethBorrowBalance, ) = cETH.getAccountSnapshot(user);
-            assertEq(cDAIBalance, 2000 ether); // $2000
+            assertGt(cDAIBalance, 2000 ether); // $2000
             assertGt(cETHBalance, 0 ether); // $7400
             assertEq(daiBorrowBalance, 0 ether); // $6300
             assertEq(ethBorrowBalance, 0.25 ether); // $500
@@ -486,7 +495,8 @@ contract TestPositionFolding is DSTestPlus {
         positionFolding.leverageMax(
             CToken(address(cDAI)),
             CToken(address(cETH)),
-            PositionFolding.Swap({ target: address(0), call: "0x" })
+            PositionFolding.Swap({ target: address(0), call: "0x" }),
+            3000
         );
 
         hevm.stopPrank();
