@@ -5,7 +5,7 @@ import "../interfaces/ICentralRegistry.sol";
 
 /// @notice Simple single central authorization mixin.
 /// @author Mai
-abstract contract CentralRegistry is ICentralRegistry{
+abstract contract CentralRegistry is ICentralRegistry {
 
     event OwnershipTransferred(address indexed user, address indexed newOwner);
     event NewHarvester(address indexed harvester);
@@ -16,6 +16,7 @@ abstract contract CentralRegistry is ICentralRegistry{
     event FeeManagerRemoved(address indexed feeManager);
     event NewApprovedEndpoint(address indexed approvedEndpoint);
     event ApprovedEndpointRemoved(address indexed approvedEndpoint);
+    //Add timelock?
 
     uint256 public constant DENOMINATOR = 10000;
 
@@ -32,14 +33,14 @@ abstract contract CentralRegistry is ICentralRegistry{
     address public priceRouter;
     address public depositRouter;
     address public zroAddress;
-    address public feeHub;//Add setter
-    address public feeRouting;//Add setter
+    address public feeHub;
+    address public feeRouting;
 
-    uint256 public protocolYieldFee;//Add setter
-    uint256 public protocolLiquidationFee;//Add setter
+    uint256 public protocolYieldFee;
+    uint256 public protocolLiquidationFee;
+    uint256 public protocolLeverageFee;
     uint256 public lockBoostValue;
-    bool    public isBoostingActive;
-    
+
     mapping (address => bool) private harvester;
     mapping (address => bool) private lendingMarket;
     mapping (address => bool) private feeManager;
@@ -100,37 +101,56 @@ abstract contract CentralRegistry is ICentralRegistry{
         veCVE = veCVE_;
     }
 
-    function setCallOptionCVE(address callOptionCVE_) public onlyDaoManager {
-        callOptionCVE = callOptionCVE_;
+    function setCallOptionCVE(address _address) public onlyDaoManager {
+        callOptionCVE = _address;
     }
 
-    function setGaugeController(address gaugeController_) public onlyDaoManager {
-        gaugeController = gaugeController_;
+    function setGaugeController(address _address) public onlyDaoManager {
+        gaugeController = _address;
     }
 
-    function setVotingHub(address votingHub_) public onlyDaoManager {
-        votingHub = votingHub_;
+    function setVotingHub(address _address) public onlyDaoManager {
+        votingHub = _address;
     }
 
-    function setPriceRouter(address priceRouter_) public onlyDaoManager {
-        priceRouter = priceRouter_;
+    function setPriceRouter(address _address) public onlyDaoManager {
+        priceRouter = _address;
     }
 
-    function setDepositRouter(address depositRouter_) public onlyDaoManager {
-        depositRouter = depositRouter_;
+    function setDepositRouter(address _address) public onlyDaoManager {
+        depositRouter = _address;
     }
 
-    function setZroAddress(address zroAddress_) public onlyDaoManager {
-        zroAddress = zroAddress_;
+    function setZroAddress(address _address) public onlyDaoManager {
+        zroAddress = _address;
     }
 
-    function setBoostingStatus(bool isBoostingActive_) public onlyDaoManager {
-        isBoostingActive = isBoostingActive_;
+    function setFeeHub(address _address) public onlyDaoManager {
+        feeHub = _address;
     }
 
-    function setBoostingValue(uint256 lockBoostValue_) public onlyDaoManager {
-        require(lockBoostValue_ > DENOMINATOR, "Boosting value cannot be negative");
-        lockBoostValue = lockBoostValue_;
+    function setFeeRouting(address _address) public onlyDaoManager {
+        feeRouting = _address;
+    }
+
+    function setProtocolYieldFee(uint256 _value) public onlyDaoManager {
+        require(_value < 2000 || _value == 0, "centralRegistry: invalid parameter");
+        protocolLiquidationFee = _value;
+    }
+
+    function setProtocolLiquidationFee(uint256 _value) public onlyDaoManager {
+        require(_value < 500 || _value == 0, "centralRegistry: invalid parameter");
+        protocolLiquidationFee = _value;
+    }
+
+    function setProtocolLeverageFee(uint256 _value) public onlyDaoManager {
+        require(_value < 100 || _value == 0, "centralRegistry: invalid parameter");
+        protocolLeverageFee = _value;
+    }
+
+    function setLockBoostValue(uint256 _value) public onlyDaoManager {
+        require(_value > DENOMINATOR || _value == 0, "centralRegistry: invalid parameter");
+        lockBoostValue = _value;
     }
 
     /*//////////////////////////////////////////////////////////////

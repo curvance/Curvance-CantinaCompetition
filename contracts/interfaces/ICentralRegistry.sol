@@ -3,10 +3,10 @@
 pragma solidity >=0.8.12;
 
 interface ICentralRegistry {
-    // @notice Returns Protocol DAO Address
-    function daoAddress() external view returns (address);
     // @notice Returns Genesis Epoch Timestamp of Curvance
     function genesisEpoch() external view returns (uint256);
+    // @notice Returns Protocol DAO Address
+    function daoAddress() external view returns (address);
     // @notice Returns CVE Locker Address
     function cveLocker() external view returns (address);
     // @notice Returns CVE Address
@@ -33,6 +33,12 @@ interface ICentralRegistry {
     function protocolYieldFee() external view returns (uint256);
     // @notice Returns protocolLiquidationFee Address
     function protocolLiquidationFee() external view returns (uint256);
+    // @notice Returns protocolLiquidationFee Address
+    function protocolLeverageFee() external view returns (uint256);
+    // @notice Returns lockBoostValue Address
+    function lockBoostValue() external view returns (uint256);
+    // @notice Returns isBoostingActive Address
+    function isBoostingActive() external view returns (bool);
     // @notice Returns whether the inputted address is a Harvester
     function isHarvester(address _address) external view returns (bool);
     // @notice Returns whether the inputted address is a lending market
