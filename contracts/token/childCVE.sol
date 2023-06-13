@@ -2,7 +2,7 @@
 pragma solidity >= 0.8.12;
 import "../layerzero/OFTV2.sol";
 
-contract childCVE is OFTV2 {
+contract CVE is OFTV2 {
 
     uint256 public constant DENOMINATOR = 10000;
 
