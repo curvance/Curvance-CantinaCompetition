@@ -141,7 +141,6 @@ contract PriceOpsTest is Test {
                             OWNER LOGIC 
     //////////////////////////////////////////////////////////////*/
 
-    // TODO test the edit asset flow.
     function testEditAssetFlow() external {
         // Owner wants to edit USDC to use the USDC -> ETH Chainlink source.
         PriceOps.ChainlinkSourceStorage memory stor;
