@@ -1,16 +1,10 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.12;
 
-import "../utils/SafeERC20.sol";
-import "../interfaces/IERC20.sol";
-import "../interfaces/IVeCVE.sol";
-import "../interfaces/ICentralRegistry.sol";
-
-error epochRewardClaimed();
-error continuousLock();
-error notContinuousLock();
-error invalidLock();
-error veCVEShutdown();
+import "./utils/SafeERC20.sol";
+import "./interfaces/IERC20.sol";
+import "./interfaces/IVeCVE.sol";
+import "./interfaces/ICentralRegistry.sol";
 
 contract cveLocker {
     using SafeERC20 for IERC20;
@@ -29,6 +23,8 @@ contract cveLocker {
     //validate 1inch swap logic, have zeus write tests
     //Add epoch claim offset on users first lock
     //Figure out when fees should be active either current epoch or epoch + 1
+    //Add epoch rewards view for frontend?
+    //Add token points offset for continuous lock
 
     uint256 public immutable genesisEpoch;
     ICentralRegistry public immutable centralRegistry;
@@ -91,10 +87,24 @@ contract cveLocker {
         return ((_time - genesisEpoch)/EPOCH_DURATION); 
     }
 
-    function claimRewardsGenesisEpoch(uint256 _epoch) public returns (uint256) {
+    /**
+    * @notice Claim rewards for the genesis epoch
+    * @dev Allows a user to claim their rewards for the genesis epoch (epoch 0). Edge case handling is required for the genesis epoch.
+    */
+    function claimRewardsGenesisEpoch() public {
         //Need edge case for genesis epoch since epoch =  0
     }
 
+    /**
+    * @notice Claim rewards for multiple epochs
+    * @param epoches The number of epochs for which to claim rewards.
+    * @param desiredRewardToken The address of the token to receive as a reward.
+    * @param params Swap data for token swapping rewards to desiredRewardToken.
+    * @param lock A boolean to indicate if the desiredRewardToken need to be locked if its CVE.
+    * @param isFreshLock A boolean to indicate if it's a new lock.
+    * @param _lockIndex The index of the lock in the user's lock array.
+    * @param _continuousLock A boolean to indicate if the lock should be continuous.
+    */
     function claimRewardsMulti(uint256 epoches, address desiredRewardToken, bytes memory params, bool lock, bool isFreshLock, uint256 _lockIndex, bool _continuousLock) public {
         uint256 currentUserEpoch = userLastEpochClaimed[msg.sender];
         require(currentUserEpoch + epoches <= lastEpochFeesDelivered, "cveLocker: epoch fees not yet delivered");
@@ -114,8 +124,11 @@ contract cveLocker {
 
     }
 
-    //make sure users cant skip their rewards
-    //record first epoch they created a lock?
+    /**
+    * @notice Calculate the rewards for a given epoch
+    * @param _epoch The epoch for which to calculate the rewards.
+    * @return The calculated reward amount. This is calculated based on the user's token points for the given epoch.
+    */
     function calculateRewardsForEpoch(uint256 _epoch) internal returns (uint256) {
 
         if (userTokenUnlocksByEpoch[msg.sender][_epoch] != 0) {// If they have tokens unlocking this epoch we need to decriment their tokenPoints
@@ -166,10 +179,27 @@ contract cveLocker {
         }
     }
 
+    /**
+    * @notice Set the base reward token address
+    * @dev Allows the DAO manager to set the address of the base reward token. 
+    * @param _address The new address for the base reward token. 
+    */
     function setBaseRewardToken (address _address) external onlyDaoManager {
         baseRewardToken = _address;
     }
 
+    /**
+    * @notice Process user rewards
+    * @dev Process the rewards for the user, if any. If the user wishes to receive rewards in a token other than the base reward token, a swap is performed. 
+    * If the desired reward token is CVE and the user opts for lock, the rewards are locked as VeCVE.
+    * @param userRewards The amount of rewards to process for the user.
+    * @param desiredRewardToken The address of the token the user wishes to receive as rewards.
+    * @param params Additional parameters required for reward processing, which may include swap data.
+    * @param lock A boolean to indicate if the rewards need to be locked, only needed if desiredRewardToken is CVE.
+    * @param isFreshLock A boolean to indicate if it's a new veCVE lock.
+    * @param _lockIndex The index of the lock in the user's veCVE lock array.
+    * @param _continuousLock A boolean to indicate if the lock should be continuous.
+    */
     function processRewards(uint256 userRewards, address desiredRewardToken, bytes memory params, bool lock, bool isFreshLock, uint256 _lockIndex, bool _continuousLock) internal {
 
         if (userRewards > 0) {
@@ -200,6 +230,13 @@ contract cveLocker {
 
     }
 
+    /**
+    * @notice Lock fees as VeCVE
+    * @param desiredRewardToken The address of the token to be locked, this should be CVE.
+    * @param isFreshLock A boolean to indicate if it's a new lock.
+    * @param _lockIndex The index of the lock in the user's lock array. This parameter is only required if it is not a fresh lock.
+    * @param _continuousLock A boolean to indicate if the lock should be continuous.
+    */
     function lockFeesAsVeCVE(address desiredRewardToken, bool isFreshLock, uint256 _lockIndex, bool _continuousLock) internal {
 
         if (isFreshLock){
