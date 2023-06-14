@@ -7,20 +7,9 @@ import { PriceOps } from "src/PricingOperations/PriceOps.sol";
 import { Math } from "src/utils/Math.sol";
 import { AutomationCompatibleInterface } from "@chainlink/contracts/src/v0.8/interfaces/AutomationCompatibleInterface.sol";
 import { ERC20, SafeTransferLib } from "src/base/ERC4626.sol";
+import { PendlePtOracle } from "@pendle/oracles/PendlePtOracle.sol";
 
 import { console } from "@forge-std/Test.sol";
-
-interface IPendlePTOracle {
-    function getOracleState(
-        address market,
-        uint32 duration
-    )
-        external
-        view
-        returns (bool increaseCardinalityRequired, uint16 cardinalityRequired, bool oldestObservationSatisfied);
-
-    function getPtToAssetRate(address market, uint32 duration) external view returns (uint256 ptToAssetRate);
-}
 
 interface IPendleMarket {
     function increaseObservationsCardinalityNext(uint16 cardinalityNext) external;
@@ -30,7 +19,7 @@ contract PendalPrincipalTokenExtension is Extension {
     using Math for uint256;
 
     uint32 public constant MINIMUM_TWAP_DURATION = 3600;
-    IPendlePTOracle public immutable ptOracle;
+    PendlePtOracle public immutable ptOracle;
 
     struct PendalPrincipalExtensionStorage {
         address market;
