@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.16;
+pragma solidity 0.8.17;
 
 /**
  * @notice A library to extend the address array data type.
@@ -13,11 +13,7 @@ library Uint32Array {
      * @param index index to add the address at
      * @param value address to add to the array
      */
-    function add(
-        uint32[] storage array,
-        uint32 index,
-        uint32 value
-    ) internal {
+    function add(uint32[] storage array, uint32 index, uint32 value) internal {
         uint256 len = array.length;
 
         if (len > 0) {

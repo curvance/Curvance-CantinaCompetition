@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.16;
+pragma solidity 0.8.17;
 
 import { ICurvePool } from "src/interfaces/Curve/ICurvePool.sol";
 import { Extension } from "src/PricingOperations/Extension.sol";
@@ -7,19 +7,15 @@ import { PriceOps } from "src/PricingOperations/PriceOps.sol";
 import { Math } from "src/utils/Math.sol";
 import { AutomationCompatibleInterface } from "@chainlink/contracts/src/v0.8/interfaces/AutomationCompatibleInterface.sol";
 import { ERC20, SafeTransferLib } from "src/base/ERC4626.sol";
-import { PendlePtOracle } from "@pendle/oracles/PendlePtOracle.sol";
+import { IPPtOracle } from "@pendle/interfaces/IPPtOracle.sol";
 
 import { console } from "@forge-std/Test.sol";
-
-interface IPendleMarket {
-    function increaseObservationsCardinalityNext(uint16 cardinalityNext) external;
-}
 
 contract PendalPrincipalTokenExtension is Extension {
     using Math for uint256;
 
     uint32 public constant MINIMUM_TWAP_DURATION = 3600;
-    PendlePtOracle public immutable ptOracle;
+    IPPtOracle public immutable ptOracle;
 
     struct PendalPrincipalExtensionStorage {
         address market;
@@ -42,7 +38,7 @@ contract PendalPrincipalTokenExtension is Extension {
      */
     mapping(uint64 => PendalPrincipalExtensionStorage) public getPendalPrincipalExtensionStorage;
 
-    constructor(PriceOps _priceOps, IPendlePTOracle _ptOracle) Extension(_priceOps) {
+    constructor(PriceOps _priceOps, IPPtOracle _ptOracle) Extension(_priceOps) {
         ptOracle = _ptOracle;
     }
 

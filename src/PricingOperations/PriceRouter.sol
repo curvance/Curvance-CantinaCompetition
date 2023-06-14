@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.16;
+pragma solidity 0.8.17;
 
 import { ERC20 } from "src/base/ERC20.sol";
 import { SafeTransferLib } from "src/base/SafeTransferLib.sol";
@@ -209,12 +209,8 @@ contract PriceRouter is Ownable, AutomationCompatibleInterface {
      * @param quoteAsset address of the asset that the base asset is priced in terms of
      * @return value value of the amount of base assets specified in terms of the quote asset
      */
-    function getValue(
-        ERC20 baseAsset,
-        uint256 amount,
-        ERC20 quoteAsset
-    ) external view returns (uint256 value) {
-        value = amount.mulDivDown(getExchangeRate(baseAsset, quoteAsset), 10**baseAsset.decimals());
+    function getValue(ERC20 baseAsset, uint256 amount, ERC20 quoteAsset) external view returns (uint256 value) {
+        value = amount.mulDivDown(getExchangeRate(baseAsset, quoteAsset), 10 ** baseAsset.decimals());
     }
 
     /**
@@ -280,11 +276,10 @@ contract PriceRouter is Ownable, AutomationCompatibleInterface {
      * @param quoteAsset address of the asset that the base assets are exchanged for
      * @return exchangeRates rate of exchange between the base assets and the quote asset
      */
-    function getExchangeRates(ERC20[] memory baseAssets, ERC20 quoteAsset)
-        external
-        view
-        returns (uint256[] memory exchangeRates)
-    {
+    function getExchangeRates(
+        ERC20[] memory baseAssets,
+        ERC20 quoteAsset
+    ) external view returns (uint256[] memory exchangeRates) {
         uint8 quoteAssetDecimals = quoteAsset.decimals();
         AssetSettings memory quoteSettings = getAssetSettings[quoteAsset];
         if (quoteSettings.derivative == 0) revert PriceRouter__UnsupportedAsset(address(quoteAsset));
@@ -333,7 +328,7 @@ contract PriceRouter is Ownable, AutomationCompatibleInterface {
     ) internal view returns (uint256) {
         uint256 basePrice = _getPriceInUSD(baseAsset, baseSettings, cache);
         uint256 quotePrice = _getPriceInUSD(quoteAsset, quoteSettings, cache);
-        uint256 exchangeRate = basePrice.mulDivDown(10**quoteAssetDecimals, quotePrice);
+        uint256 exchangeRate = basePrice.mulDivDown(10 ** quoteAssetDecimals, quotePrice);
         return exchangeRate;
     }
 
@@ -424,8 +419,8 @@ contract PriceRouter is Ownable, AutomationCompatibleInterface {
                 AssetSettings memory baseSettings = getAssetSettings[baseAsset];
                 if (baseSettings.derivative == 0) revert PriceRouter__UnsupportedAsset(address(baseAsset));
                 price = _getPriceInUSD(baseAsset, baseSettings, cache);
-                uint256 valueInUSD = (amounts[i].mulDivDown(price, 10**baseAsset.decimals()));
-                valueInQuote += valueInUSD.mulDivDown(10**quoteDecimals, quotePrice);
+                uint256 valueInUSD = (amounts[i].mulDivDown(price, 10 ** baseAsset.decimals()));
+                valueInQuote += valueInUSD.mulDivDown(10 ** quoteDecimals, quotePrice);
             }
         }
         return valueInQuote;
@@ -461,11 +456,7 @@ contract PriceRouter is Ownable, AutomationCompatibleInterface {
      * @dev _source The address of the Chainlink Data feed.
      * @dev _storage A ChainlinkDerivativeStorage value defining valid prices.
      */
-    function _setupPriceForChainlinkDerivative(
-        ERC20 _asset,
-        address _source,
-        bytes memory _storage
-    ) internal {
+    function _setupPriceForChainlinkDerivative(ERC20 _asset, address _source, bytes memory _storage) internal {
         ChainlinkDerivativeStorage memory parameters = abi.decode(_storage, (ChainlinkDerivativeStorage));
 
         // Use Chainlink to get the min and max of the asset.
@@ -684,11 +675,9 @@ contract PriceRouter is Ownable, AutomationCompatibleInterface {
      *      Doing this makes end = curveAssets.length.
      * @dev `performData` is the target index in `curveAssets` that needs its bounds updated.
      */
-    function _checkVirtualPriceBound(bytes memory checkData)
-        internal
-        view
-        returns (bool upkeepNeeded, bytes memory performData)
-    {
+    function _checkVirtualPriceBound(
+        bytes memory checkData
+    ) internal view returns (bool upkeepNeeded, bytes memory performData) {
         // Decode checkData to get start and end index.
         (uint256 start, uint256 end) = abi.decode(checkData, (uint256, uint256));
         if (end == 0 || end > curveAssets.length) end = curveAssets.length;
@@ -734,7 +723,7 @@ contract PriceRouter is Ownable, AutomationCompatibleInterface {
                 performData = abi.encode(targetIndex);
             } else {
                 // Run a gas check to determine if it makes sense to update the target curve asset.
-                uint256 gasPriceLimit = gasConstant.mulDivDown(maxDelta**3, 1e54); // 54 comes from 18 * 3.
+                uint256 gasPriceLimit = gasConstant.mulDivDown(maxDelta ** 3, 1e54); // 54 comes from 18 * 3.
                 uint256 currentGasPrice = uint256(IChainlinkAggregator(ETH_FAST_GAS_FEED).latestAnswer());
                 if (currentGasPrice <= gasPriceLimit) {
                     upkeepNeeded = true;
@@ -835,11 +824,7 @@ contract PriceRouter is Ownable, AutomationCompatibleInterface {
     /**
      * @notice Enforces a logical price bound on Curve pool tokens.
      */
-    function _checkBounds(
-        uint256 lower,
-        uint256 upper,
-        uint256 current
-    ) internal pure {
+    function _checkBounds(uint256 lower, uint256 upper, uint256 current) internal pure {
         if (current < lower) revert PriceRouter__CurrentBelowLowerBound(current, lower);
         if (current > upper) revert PriceRouter__CurrentAboveUpperBound(current, upper);
     }
@@ -857,11 +842,7 @@ contract PriceRouter is Ownable, AutomationCompatibleInterface {
      * @dev _storage A VirtualPriceBound value for this asset.
      * @dev Assumes that curve pools never add or remove tokens.
      */
-    function _setupPriceForCurveDerivative(
-        ERC20 _asset,
-        address _source,
-        bytes memory _storage
-    ) internal {
+    function _setupPriceForCurveDerivative(ERC20 _asset, address _source, bytes memory _storage) internal {
         ICurvePool pool = ICurvePool(_source);
         uint8 coinsLength = 0;
         // Figure out how many tokens are in the curve pool.
@@ -927,7 +908,7 @@ contract PriceRouter is Ownable, AutomationCompatibleInterface {
 
         // Virtual price is based off the Curve Token decimals.
         uint256 curveTokenDecimals = ERC20(asset).decimals();
-        price = minPrice.mulDivDown(virtualPrice, 10**curveTokenDecimals);
+        price = minPrice.mulDivDown(virtualPrice, 10 ** curveTokenDecimals);
     }
 
     // =========================================== CURVEV2 PRICE DERIVATIVE ===========================================
@@ -943,11 +924,7 @@ contract PriceRouter is Ownable, AutomationCompatibleInterface {
      * @dev _storage A VirtualPriceBound value for this asset.
      * @dev Assumes that curve pools never add or remove tokens.
      */
-    function _setupPriceForCurveV2Derivative(
-        ERC20 _asset,
-        address _source,
-        bytes memory _storage
-    ) internal {
+    function _setupPriceForCurveV2Derivative(ERC20 _asset, address _source, bytes memory _storage) internal {
         ICurvePool pool = ICurvePool(_source);
         uint8 coinsLength = 0;
         // Figure out how many tokens are in the curve pool.
@@ -980,7 +957,7 @@ contract PriceRouter is Ownable, AutomationCompatibleInterface {
     }
 
     uint256 private constant GAMMA0 = 28000000000000;
-    uint256 private constant A0 = 2 * 3**3 * 10000;
+    uint256 private constant A0 = 2 * 3 ** 3 * 10000;
     uint256 private constant DISCOUNT0 = 1087460000000000;
 
     // x has 36 decimals
@@ -993,7 +970,7 @@ contract PriceRouter is Ownable, AutomationCompatibleInterface {
             D = (D * (2 * 1e18 + ((((x / D) * 1e18) / D) * 1e18) / D)) / (3 * 1e18);
             if (D > D_prev) diff = D - D_prev;
             else diff = D_prev - D;
-            if (diff <= 1 || diff * 10**18 < D) return D;
+            if (diff <= 1 || diff * 10 ** 18 < D) return D;
         }
         revert("Did not converge");
     }
@@ -1030,7 +1007,7 @@ contract PriceRouter is Ownable, AutomationCompatibleInterface {
             {
                 uint256 g = pool.gamma().mulDivDown(1e18, GAMMA0);
                 uint256 a = pool.A().mulDivDown(1e18, A0);
-                uint256 coefficient = (g**2 / 1e18) * a;
+                uint256 coefficient = (g ** 2 / 1e18) * a;
                 uint256 discount = coefficient > 1e34 ? coefficient : 1e34;
                 discount = _cubicRoot(discount).mulDivDown(DISCOUNT0, 1e18);
 
@@ -1051,11 +1028,7 @@ contract PriceRouter is Ownable, AutomationCompatibleInterface {
      * @dev _source The address of the aToken.
      * @dev _storage is not used.
      */
-    function _setupPriceForAaveDerivative(
-        ERC20 _asset,
-        address _source,
-        bytes memory
-    ) internal {
+    function _setupPriceForAaveDerivative(ERC20 _asset, address _source, bytes memory) internal {
         IAaveToken aToken = IAaveToken(_source);
         getAaveDerivativeStorage[_asset] = ERC20(aToken.UNDERLYING_ASSET_ADDRESS());
     }

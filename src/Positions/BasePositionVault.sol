@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.16;
+pragma solidity 0.8.17;
 
 import { ERC4626, SafeTransferLib, ERC20, Math } from "src/base/ERC4626.sol";
 import { PriceRouter } from "src/PricingOperations/PriceRouter.sol";
@@ -248,20 +248,17 @@ abstract contract BasePositionVault is ERC4626, Initializable, KeeperCompatibleI
         _totalAssets = _ta;
 
         // Update share price high watermark since rewards have been vested.
-        _sharePriceHighWatermark = _convertToAssets(10**decimals, _ta);
+        _sharePriceHighWatermark = _convertToAssets(10 ** decimals, _ta);
     }
 
     /*//////////////////////////////////////////////////////////////
                         DEPOSIT/WITHDRAWAL LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function deposit(uint256 assets, address receiver)
-        public
-        override
-        whenNotShutdown
-        nonReentrant
-        returns (uint256 shares)
-    {
+    function deposit(
+        uint256 assets,
+        address receiver
+    ) public override whenNotShutdown nonReentrant returns (uint256 shares) {
         // Save _totalAssets and pendingRewards to memory.
         uint256 pending = _calculatePendingRewards();
         uint256 ta = _totalAssets + pending;
@@ -285,13 +282,10 @@ abstract contract BasePositionVault is ERC4626, Initializable, KeeperCompatibleI
         _deposit(assets);
     }
 
-    function mint(uint256 shares, address receiver)
-        public
-        override
-        whenNotShutdown
-        nonReentrant
-        returns (uint256 assets)
-    {
+    function mint(
+        uint256 shares,
+        address receiver
+    ) public override whenNotShutdown nonReentrant returns (uint256 assets) {
         // Save _totalAssets and pendingRewards to memory.
         uint256 pending = _calculatePendingRewards();
         uint256 ta = _totalAssets + pending;
@@ -455,7 +449,7 @@ abstract contract BasePositionVault is ERC4626, Initializable, KeeperCompatibleI
         if (realTotalAssets < storedTotalAssets) return (true, abi.encode(true));
 
         // Compare current share price to high watermark and trigger circuit breaker if less than high watermark.
-        uint256 currentSharePrice = _convertToAssets(10**decimals, storedTotalAssets);
+        uint256 currentSharePrice = _convertToAssets(10 ** decimals, storedTotalAssets);
         if (currentSharePrice < _sharePriceHighWatermark) return (true, abi.encode(true));
 
         // Figure out how much yield is pending to be harvested.
@@ -463,7 +457,7 @@ abstract contract BasePositionVault is ERC4626, Initializable, KeeperCompatibleI
 
         // Compare USD value of yield against owner set minimum.
         uint256 yieldInUSD = yield > 0
-            ? yield.mulDivDown(positionVaultMetaData.priceRouter.getPriceInUSD(asset), 10**asset.decimals())
+            ? yield.mulDivDown(positionVaultMetaData.priceRouter.getPriceInUSD(asset), 10 ** asset.decimals())
             : 0;
         if (yieldInUSD < positionVaultMetaData.minHarvestYieldInUSD) return (false, abi.encode(0));
 

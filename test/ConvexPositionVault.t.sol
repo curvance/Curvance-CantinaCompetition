@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.16;
+pragma solidity 0.8.17;
 
 import { ERC20 } from "src/base/ERC20.sol";
 import { SafeTransferLib } from "src/base/SafeTransferLib.sol";
@@ -303,7 +303,7 @@ contract ConvexPositionVaultTest is Test {
 
         cvxPositionTriCrypto.deposit(assets, address(this));
 
-        uint256 vaultBalance = IBaseRewardPool(curve3PoolReward).balanceOf(address(cvxPositionTriCrypto));
+        // uint256 vaultBalance = IBaseRewardPool(curve3PoolReward).balanceOf(address(cvxPositionTriCrypto));
 
         assertEq(cvxPositionTriCrypto.totalAssets(), assets, "Total Assets should equal user deposit.");
 
@@ -491,7 +491,7 @@ contract ConvexPositionVaultTest is Test {
         assertEq(upkeepNeeded, false, "Upkeep should not be needed.");
 
         // But if attacker was somehow able to mint more shares.
-        uint256 attackerNewBalance = cvxPosition3Pool.balanceOf(attacker) + 10**cvxPosition3Pool.decimals();
+        uint256 attackerNewBalance = cvxPosition3Pool.balanceOf(attacker) + 10 ** cvxPosition3Pool.decimals();
         deal(address(cvxPosition3Pool), attacker, attackerNewBalance, true);
 
         // Then withdrew their initial capital plus stolen.

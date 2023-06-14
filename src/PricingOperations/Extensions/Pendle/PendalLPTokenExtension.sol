@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.16;
+pragma solidity 0.8.17;
 
 import { ICurvePool } from "src/interfaces/Curve/ICurvePool.sol";
 import { Extension } from "src/PricingOperations/Extension.sol";
@@ -7,6 +7,8 @@ import { PriceOps } from "src/PricingOperations/PriceOps.sol";
 import { Math } from "src/utils/Math.sol";
 import { AutomationCompatibleInterface } from "@chainlink/contracts/src/v0.8/interfaces/AutomationCompatibleInterface.sol";
 import { ERC20, SafeTransferLib } from "src/base/ERC4626.sol";
+import { PendleLpOracleLib } from "@pendle/oracles/PendleLpOracleLib.sol";
+import { IPMarket } from "@pendle/interfaces/IPMarket.sol";
 
 import { console } from "@forge-std/Test.sol";
 
@@ -30,6 +32,7 @@ interface IPendleMarket {
 
 contract PendalLPTokenExtension is Extension {
     using Math for uint256;
+    using PendleLpOracleLib for IPMarket;
 
     uint32 public constant MINIMUM_TWAP_DURATION = 3600;
     IPendlePTOracle public immutable ptOracle;
@@ -95,15 +98,15 @@ contract PendalLPTokenExtension is Extension {
         uint64 sourceId
     ) external view override onlyPriceOps returns (uint256 upper, uint256 lower, uint8 errorCode) {
         PendalPrincipalExtensionStorage memory stor = getPendalPrincipalExtensionStorage[sourceId];
-        uint256 ptRate = ptOracle.getPtToAssetRate(stor.pt, stor.twapDuration);
+        uint256 lpRate = IPMarket(stor.market).getLpToAssetRate(stor.twapDuration);
         (uint256 quoteUpper, uint256 quoteLower, uint8 _errorCode) = priceOps.getPriceInBase(stor.quoteAsset);
         if (errorCode == BAD_SOURCE || quoteUpper == 0) {
             // Completely blind as to what this price is return error code of BAD_SOURCE.
             return (0, 0, BAD_SOURCE);
         } else if (errorCode == CAUTION) errorCode = _errorCode;
-        // Multiply the quote asset price by the ptRate to get the Principal Token fair value.
-        quoteUpper = quoteUpper.mulDivDown(ptRate, 1e30);
-        if (quoteLower > 0) quoteLower = quoteLower.mulDivDown(ptRate, 1e30);
+        // Multiply the quote asset price by the lpRate to get the Principal Token fair value.
+        quoteUpper = quoteUpper.mulDivDown(lpRate, 1e30);
+        if (quoteLower > 0) quoteLower = quoteLower.mulDivDown(lpRate, 1e30);
         // TODO where does 1e30 come from?
     }
 }

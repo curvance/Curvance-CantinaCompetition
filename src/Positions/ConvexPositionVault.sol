@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.16;
+pragma solidity 0.8.17;
 
 import { BasePositionVault, ERC4626, SafeTransferLib, ERC20, Math, PriceRouter } from "src/Positions/BasePositionVault.sol";
 
@@ -239,7 +239,7 @@ contract ConvexPositionVault is BasePositionVault {
                 // Get the reward token value in USD.
                 uint256 valueInUSD = rewardBalances[i].mulDivDown(
                     positionVaultMetaData.priceRouter.getPriceInUSD(rewardTokens[i]),
-                    10**rewardTokens[i].decimals()
+                    10 ** rewardTokens[i].decimals()
                 );
                 CurveSwapParams memory swapParams = arbitraryToEth[rewardTokens[i]];
                 // Check if value is enough to warrant a swap. And that we have the swap params set up for it.
@@ -284,7 +284,7 @@ contract ConvexPositionVault is BasePositionVault {
             } else assetsOut = ethOut;
             uint256 valueOut = assetsOut.mulDivDown(
                 positionVaultMetaData.priceRouter.getPriceInUSD(depositParams.targetAsset),
-                10**depositParams.targetAsset.decimals()
+                10 ** depositParams.targetAsset.decimals()
             );
 
             // Compare value in vs value out.
