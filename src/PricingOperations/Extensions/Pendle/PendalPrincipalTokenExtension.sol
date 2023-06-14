@@ -8,11 +8,14 @@ import { Math } from "src/utils/Math.sol";
 import { AutomationCompatibleInterface } from "@chainlink/contracts/src/v0.8/interfaces/AutomationCompatibleInterface.sol";
 import { ERC20, SafeTransferLib } from "src/base/ERC4626.sol";
 import { IPPtOracle } from "@pendle/interfaces/IPPtOracle.sol";
+import { PendlePtOracleLib } from "@pendle/oracles/PendlePtOracleLib.sol";
+import { IPMarket } from "@pendle/interfaces/IPMarket.sol";
 
 import { console } from "@forge-std/Test.sol";
 
 contract PendalPrincipalTokenExtension is Extension {
     using Math for uint256;
+    using PendlePtOracleLib for IPMarket;
 
     uint32 public constant MINIMUM_TWAP_DURATION = 3600;
     IPPtOracle public immutable ptOracle;

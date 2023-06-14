@@ -37,56 +37,52 @@ contract PendalLPTokenExtension is Extension {
     uint32 public constant MINIMUM_TWAP_DURATION = 3600;
     IPendlePTOracle public immutable ptOracle;
 
-    struct PendalPrincipalExtensionStorage {
-        address market;
+    struct PendalLpExtensionStorage {
+        IPMarket market;
         address pt;
         uint32 twapDuration;
         address quoteAsset;
     }
 
-    error PendalPrincipalTokenExtension__MinimumTwapDurationNotMet();
-    error PendalPrincipalTokenExtension__OldestObservationNotSatisfied();
-    error PendalPrincipalTokenExtension__QuoteAssetNotSupported(address unsupportedQuote);
-    error PendalPrincipalTokenExtension__CallIncreaseObservationsCardinalityNext(
-        address market,
-        uint16 cardinalityNext
-    );
+    error PendalLPTokenExtension__MinimumTwapDurationNotMet();
+    error PendalLPTokenExtension__OldestObservationNotSatisfied();
+    error PendalLPTokenExtension__QuoteAssetNotSupported(address unsupportedQuote);
+    error PendalLPTokenExtension__CallIncreaseObservationsCardinalityNext(address market, uint16 cardinalityNext);
 
     /**
      * @notice Curve Derivative Storage
      * @dev Stores an array of the underlying token addresses in the curve pool.
      */
-    mapping(uint64 => PendalPrincipalExtensionStorage) public getPendalPrincipalExtensionStorage;
+    mapping(uint64 => PendalLpExtensionStorage) public getPendalLpExtensionStorage;
 
     constructor(PriceOps _priceOps, IPendlePTOracle _ptOracle) Extension(_priceOps) {
         ptOracle = _ptOracle;
     }
 
     function setupSource(address asset, uint64 _sourceId, bytes memory data) external override onlyPriceOps {
-        PendalPrincipalExtensionStorage memory extensionConfiguration = abi.decode(
-            data,
-            (PendalPrincipalExtensionStorage)
-        );
-
+        PendalLpExtensionStorage memory extensionConfiguration = abi.decode(data, (PendalLpExtensionStorage));
+        // TODO so now asset is the PMarket, and pt is the value that needs to be passed in struct
         // TODO check that market is the right one for the PT token.
 
+        // TODO could probs move a lot of this code to a shared pendle contract.
+
         if (extensionConfiguration.twapDuration < MINIMUM_TWAP_DURATION)
-            revert PendalPrincipalTokenExtension__MinimumTwapDurationNotMet();
+            revert PendalLPTokenExtension__MinimumTwapDurationNotMet();
 
         (bool increaseCardinalityRequired, uint16 cardinalityRequired, bool oldestObservationSatisfied) = ptOracle
-            .getOracleState(extensionConfiguration.market, extensionConfiguration.twapDuration);
+            .getOracleState(address(extensionConfiguration.market), extensionConfiguration.twapDuration);
 
         if (increaseCardinalityRequired)
-            revert PendalPrincipalTokenExtension__CallIncreaseObservationsCardinalityNext(asset, cardinalityRequired);
+            revert PendalLPTokenExtension__CallIncreaseObservationsCardinalityNext(asset, cardinalityRequired);
 
-        if (oldestObservationSatisfied) revert PendalPrincipalTokenExtension__OldestObservationNotSatisfied();
+        if (oldestObservationSatisfied) revert PendalLPTokenExtension__OldestObservationNotSatisfied();
 
         // Check that `quoteAsset` is supported by PriceOps.
         if (!priceOps.isSupported(extensionConfiguration.quoteAsset))
-            revert PendalPrincipalTokenExtension__QuoteAssetNotSupported(extensionConfiguration.quoteAsset);
+            revert PendalLPTokenExtension__QuoteAssetNotSupported(extensionConfiguration.quoteAsset);
 
         // Write to extension storage.
-        getPendalPrincipalExtensionStorage[_sourceId] = PendalPrincipalExtensionStorage({
+        getPendalLpExtensionStorage[_sourceId] = PendalLpExtensionStorage({
             market: extensionConfiguration.market,
             pt: asset,
             twapDuration: extensionConfiguration.twapDuration,
@@ -97,14 +93,14 @@ contract PendalLPTokenExtension is Extension {
     function getPriceInBase(
         uint64 sourceId
     ) external view override onlyPriceOps returns (uint256 upper, uint256 lower, uint8 errorCode) {
-        PendalPrincipalExtensionStorage memory stor = getPendalPrincipalExtensionStorage[sourceId];
-        uint256 lpRate = IPMarket(stor.market).getLpToAssetRate(stor.twapDuration);
+        PendalLpExtensionStorage memory stor = getPendalLpExtensionStorage[sourceId];
+        uint256 lpRate = stor.market.getLpToAssetRate(stor.twapDuration);
         (uint256 quoteUpper, uint256 quoteLower, uint8 _errorCode) = priceOps.getPriceInBase(stor.quoteAsset);
         if (errorCode == BAD_SOURCE || quoteUpper == 0) {
             // Completely blind as to what this price is return error code of BAD_SOURCE.
             return (0, 0, BAD_SOURCE);
         } else if (errorCode == CAUTION) errorCode = _errorCode;
-        // Multiply the quote asset price by the lpRate to get the Principal Token fair value.
+        // Multiply the quote asset price by the lpRate to get the Lp Token fair value.
         quoteUpper = quoteUpper.mulDivDown(lpRate, 1e30);
         if (quoteLower > 0) quoteLower = quoteLower.mulDivDown(lpRate, 1e30);
         // TODO where does 1e30 come from?
