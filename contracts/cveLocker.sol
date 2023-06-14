@@ -25,6 +25,11 @@ contract cveLocker {
     //Figure out when fees should be active either current epoch or epoch + 1
     //Add epoch rewards view for frontend?
     //Add token points offset for continuous lock
+    //Claim all rewards and reset their initial claim offset flag for when they lock again?
+    //Add slippage checks
+    //Add minimum epoch claim
+    //Add fee withdrawal on timelock for upgrade to cveETH?
+    //Add chain token update data on lock/unlock
 
     uint256 public immutable genesisEpoch;
     ICentralRegistry public immutable centralRegistry;
@@ -33,18 +38,22 @@ contract cveLocker {
     address public baseRewardToken;
     uint256 public constant EPOCH_DURATION = 2 weeks;
     uint256 public constant DENOMINATOR = 10000;
+    uint256 public constant ethPerCVEOffset = 1 ether;
 
     bool public genesisEpochFeesDelivered;
     uint256 public lastEpochFeesDelivered;
 
-    mapping(address => uint256) public userLastEpochClaimed;
+    //User => Reward Claim Index
+    mapping(address => uint256) public userClaimIndex;
+    //User => Genesis Epoch Claimed
     mapping(address => bool) public userGenesisEpochClaimed;
+    //User => Token Points 
+    mapping(address => uint256) public userTokenPoints;
     
     //MoveHelpers to Central Registry
     mapping(address => bool) public authorizedHelperContract;
 
-    //User => Token Points 
-    mapping(address => uint256) public userTokenPoints;
+    
     //User => Epoch # => Tokens unlocked
     mapping(address => mapping(uint256 => uint256)) public userTokenUnlocksByEpoch;
 
@@ -64,7 +73,7 @@ contract cveLocker {
     //Epoch # => Ether rewards per CVE multiplier by offset
     mapping(uint256 => uint256) public ethPerCVE;
 
-    uint256 public constant ethPerCVEOffset = 1 ether;
+    
 
     constructor(ICentralRegistry _centralRegistry) {
        
@@ -73,7 +82,12 @@ contract cveLocker {
     }
 
     modifier onlyDaoManager () {
-        require(msg.sender == centralRegistry.daoAddress(), "UNAUTHORIZED");
+        require(msg.sender == centralRegistry.daoAddress(), "cveLocker: UNAUTHORIZED");
+        _;
+    }
+
+    modifier onlyVeCVE () {
+        require(msg.sender == centralRegistry.veCVE(), "cveLocker: UNAUTHORIZED");
         _;
     }
 
@@ -87,12 +101,33 @@ contract cveLocker {
         return ((_time - genesisEpoch)/EPOCH_DURATION); 
     }
 
+    function incrementUserTokenPoints(address _user, uint256 _points) public onlyVeCVE {
+        userTokenPoints[_user] += _points;
+    }
+
+    function reduceUserTokenPoints(address _user, uint256 _points) public onlyVeCVE {
+        userTokenPoints[_user] -= _points;
+    }
+
+    function updateUserClaimIndex(address _user, uint256 _index) public onlyVeCVE {
+        userClaimIndex[_user] = _index;
+    }
+
+    function resetUserClaimIndex(address _user) public onlyVeCVE {
+        delete userClaimIndex[_user];
+    }
+
     /**
     * @notice Claim rewards for the genesis epoch
     * @dev Allows a user to claim their rewards for the genesis epoch (epoch 0). Edge case handling is required for the genesis epoch.
     */
-    function claimRewardsGenesisEpoch() public {
-        //Need edge case for genesis epoch since epoch =  0
+    function claimRewardsGenesisEpoch(address desiredRewardToken, bytes memory params, bool lock, bool isFreshLock, uint256 _lockIndex, bool _continuousLock) public {
+        require(genesisEpochFeesDelivered, "cveLocker: Genesis epoch fees not yet delivered");
+        require(!userGenesisEpochClaimed[msg.sender] && userClaimIndex[msg.sender] == 0 && userTokenPoints[msg.sender] > 0, "cveLocker: ");
+        
+        userGenesisEpochClaimed[msg.sender] = true;
+        processRewards((userTokenPoints[msg.sender] * ethPerCVE[0])/ethPerCVEOffset, desiredRewardToken, params, lock, isFreshLock, _lockIndex, _continuousLock);
+
     }
 
     /**
@@ -106,7 +141,7 @@ contract cveLocker {
     * @param _continuousLock A boolean to indicate if the lock should be continuous.
     */
     function claimRewardsMulti(uint256 epoches, address desiredRewardToken, bytes memory params, bool lock, bool isFreshLock, uint256 _lockIndex, bool _continuousLock) public {
-        uint256 currentUserEpoch = userLastEpochClaimed[msg.sender];
+        uint256 currentUserEpoch = userClaimIndex[msg.sender];
         require(currentUserEpoch + epoches <= lastEpochFeesDelivered, "cveLocker: epoch fees not yet delivered");
 
         uint256 userRewards;
@@ -119,7 +154,7 @@ contract cveLocker {
             
         }
 
-        userLastEpochClaimed[msg.sender] += epoches;
+        userClaimIndex[msg.sender] += epoches;
         processRewards(userRewards, desiredRewardToken, params, lock, isFreshLock, _lockIndex, _continuousLock);
 
     }
@@ -150,7 +185,7 @@ contract cveLocker {
 
         propagateError(success, retData, "swap");
 
-        require(success == true, "calling swap got an error");
+        require(success == true, "cveLocker: calling swap returned an error");
     }
 
     /**
@@ -221,7 +256,7 @@ contract cveLocker {
                     IERC20(baseRewardToken).safeTransfer(msg.sender, userRewards);
                 } else {
                     (bool success, ) = payable(msg.sender).call{ value: userRewards}("");
-                    require(success, "cve: error sending ETH rewards");
+                    require(success, "cveLocker: error sending ETH rewards");
                 }
 
             }
@@ -259,7 +294,7 @@ contract cveLocker {
         address _to,
         uint256 _amount
     ) external onlyDaoManager {
-        require(_token != address(this), "cannot withdraw veCVE token");
+        require(_token != address(this), "cveLocker: cannot withdraw veCVE token");
         if (_amount == 0) {
             _amount = IERC20(_token).balanceOf(address(this));
         }
