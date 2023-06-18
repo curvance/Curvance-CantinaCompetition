@@ -27,8 +27,8 @@ interface ICentralRegistry {
     function zroAddress() external view returns (address);
     // @notice Returns feeHub Address
     function feeHub() external view returns (address);
-    // @notice Returns feeRouting Address
-    function feeRouting() external view returns (address);
+    // @notice Returns feeRouter Address
+    function feeRouter() external view returns (address);
     // @notice Returns protocolYieldFee Address
     function protocolYieldFee() external view returns (uint256);
     // @notice Returns protocolLiquidationFee Address
@@ -47,5 +47,7 @@ interface ICentralRegistry {
     function isFeeManager(address _address) external view returns (bool);
     // @notice Returns whether the inputted address is an approved endpoint
     function isApprovedEndpoint(address _address) external view returns (bool);
+    // @notice Returns whether the current chain is the protocol hub chain
+    function isHubChain() external view returns (bool);
     
 }

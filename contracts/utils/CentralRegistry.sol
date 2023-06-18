@@ -22,19 +22,22 @@ abstract contract CentralRegistry is ICentralRegistry {
 
     uint256 public immutable genesisEpoch;
     address public daoAddress;
-    address public cveLocker;
+    address public timelock;
 
     address public CVE;
     address public veCVE;
     address public callOptionCVE;
 
+    uint256 public hubChain;// Separate into fee hub vs voting hub since cveETH would be on eth mainnet whereas voting hub probably shouldnt be on eth
+
+    address public cveLocker;
     address public gaugeController;
     address public votingHub;
     address public priceRouter;
     address public depositRouter;
     address public zroAddress;
     address public feeHub;
-    address public feeRouting;
+    address public feeRouter;
 
     uint256 public protocolYieldFee;
     uint256 public protocolLiquidationFee;
@@ -48,7 +51,6 @@ abstract contract CentralRegistry is ICentralRegistry {
 
     modifier onlyDaoManager() {
         require(msg.sender == daoAddress, "UNAUTHORIZED");
-
         _;
     }
 
@@ -56,12 +58,13 @@ abstract contract CentralRegistry is ICentralRegistry {
                                CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
 
-    constructor(address dao_, uint256 genesisEpoch_) {
+    constructor(address dao_, uint256 genesisEpoch_, uint256 hubChain_) {
         if (dao_ == address(0)){
             dao_ = msg.sender;
         }
         daoAddress = dao_;
         genesisEpoch = genesisEpoch_;
+        hubChain = hubChain_;
         emit OwnershipTransferred(address(0), daoAddress);
     }
 
@@ -85,13 +88,13 @@ abstract contract CentralRegistry is ICentralRegistry {
         return approvedEndpoint[_address];
     }
 
+    function isHubChain() public view returns (bool){
+        return hubChain == block.chainid;
+    }
+
     /*//////////////////////////////////////////////////////////////
                              SETTER FUNCTIONS
     //////////////////////////////////////////////////////////////*/
-
-    function setCVELocker(address cveLocker_) public onlyDaoManager {
-        cveLocker = cveLocker_;
-    }
 
     function setCVE(address CVE_) public onlyDaoManager {
         CVE = CVE_;
@@ -103,6 +106,17 @@ abstract contract CentralRegistry is ICentralRegistry {
 
     function setCallOptionCVE(address _address) public onlyDaoManager {
         callOptionCVE = _address;
+    }
+
+    function setHubChain(address _address) public onlyDaoManager {
+        //TODO
+        //check for layerzero endpoint and what chain its from and message caller being authorized
+        //
+    }
+
+
+    function setCVELocker(address _address) public onlyDaoManager {
+        cveLocker = _address;
     }
 
     function setGaugeController(address _address) public onlyDaoManager {
@@ -129,8 +143,8 @@ abstract contract CentralRegistry is ICentralRegistry {
         feeHub = _address;
     }
 
-    function setFeeRouting(address _address) public onlyDaoManager {
-        feeRouting = _address;
+    function setFeeRouter(address _address) public onlyDaoManager {
+        feeRouter = _address;
     }
 
     function setProtocolYieldFee(uint256 _value) public onlyDaoManager {

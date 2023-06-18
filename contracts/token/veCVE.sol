@@ -26,7 +26,7 @@ contract veCVE is ERC20 {
         uint40 unlockTime;
     }
 
-    uint40 public immutable genesisEpoch;
+    uint256 public immutable genesisEpoch;
     ICentralRegistry public immutable centralRegistry;
 
     address public cveLocker;
@@ -43,7 +43,7 @@ contract veCVE is ERC20 {
     uint256 public constant DENOMINATOR = 10000;
     
     mapping(address => Lock[]) public userLocks;
-    mapping(address => bool) public isInvestor;
+        //MoveHelpers to Central Registry
     mapping(address => bool) public authorizedHelperContract;
 
     //User => Epoch # => Tokens unlocked
@@ -58,12 +58,11 @@ contract veCVE is ERC20 {
     //Epoch # => Total Tokens Locked across all chains
     mapping(uint256 => uint256) public totalTokensLockedByEpoch;
     //Epoch # => Token unlocks on this chain
-    mapping(uint256 => uint216) public totalUnlocksByEpoch;
-    //update veCVE to pull genesisEpoch from CentralRegistry
+    mapping(uint256 => uint256) public totalUnlocksByEpoch;
 
-    constructor(uint40 _genesisEpoch, ICentralRegistry _centralRegistry) ERC20("Vote Escrowed CVE", "veCVE"){
-        genesisEpoch = _genesisEpoch;
+    constructor(ICentralRegistry _centralRegistry) ERC20("Vote Escrowed CVE", "veCVE"){
         centralRegistry = _centralRegistry;
+        genesisEpoch = centralRegistry.genesisEpoch();
     }
 
     modifier onlyDaoManager () {
@@ -99,14 +98,28 @@ contract veCVE is ERC20 {
 
     /**
      * @notice Locks the specified amount of CVE tokens for the recipient
+     * @param _amount The amount of tokens to lock
+     * @param _continuousLock Whether the lock should be continuous or not
+     */
+    function lock (uint216 _amount, bool _continuousLock) public {
+        if (isShutdown) revert veCVEShutdown();
+        if (_amount == 0) revert invalidLock();
+
+        IERC20(centralRegistry.CVE()).safeTransferFrom(msg.sender, address(this), _amount);
+
+        _lock(msg.sender, _amount, _continuousLock);
+    }
+
+    /**
+     * @notice Locks the specified amount of CVE tokens for the recipient
      * @param _recipient The address to lock tokens for
      * @param _amount The amount of tokens to lock
      * @param _continuousLock Whether the lock should be continuous or not
      */
-    function lock (address _recipient, uint216 _amount, bool _continuousLock) public {
+    function lockFor (address _recipient, uint256 _amount, bool _continuousLock) public {
         if (isShutdown) revert veCVEShutdown();
+        if (!authorizedHelperContract[msg.sender]) revert invalidLock();
         if (_amount == 0) revert invalidLock();
-        if (isInvestor[_recipient]) revert invalidLock();
 
         IERC20(centralRegistry.CVE()).safeTransferFrom(msg.sender, address(this), _amount);
 
@@ -159,7 +172,6 @@ contract veCVE is ERC20 {
         if (isShutdown) revert veCVEShutdown();
         if (_lockIndex >= _user.length) revert invalidLock();// Length is index + 1 so has to be less than array length
         if (_amount == 0) revert invalidLock();
-        if (isInvestor[msg.sender]) revert invalidLock();
 
         IERC20(centralRegistry.CVE()).safeTransferFrom(msg.sender, address(this), _amount);
 
@@ -203,7 +215,6 @@ contract veCVE is ERC20 {
         if (!authorizedHelperContract[msg.sender]) revert invalidLock();
         if (_lockIndex >= _user.length) revert invalidLock();// Length is index + 1 so has to be less than array length
         if (_amount == 0) revert invalidLock();
-        if (isInvestor[_recipient]) revert invalidLock();
 
         IERC20(centralRegistry.CVE()).safeTransferFrom(msg.sender, address(this), _amount);
 
@@ -309,25 +320,6 @@ contract veCVE is ERC20 {
 
     }
 
-    ///////////////////////////////////////////
-    ////////////// Investor Functions /////////
-    ///////////////////////////////////////////
-
-    /**
-    * @notice Locks tokens for an investor
-    * @param _recipient The address to receive the token lock
-    * @param _amount The amount of tokens to be locked
-    */
-    function investorLock(address _recipient, uint216 _amount) public onlyDaoManager {
-        if (isShutdown) revert veCVEShutdown();
-        if (_amount == 0) revert invalidLock();
-        if (isInvestor[_recipient]) revert invalidLock(); 
-
-        IERC20(centralRegistry.CVE()).safeTransferFrom(msg.sender, address(this), _amount);
-        isInvestor[_recipient] = true;
-        _lock(_recipient, _amount, false);
-    }
-
     /**
     * @notice Recover tokens sent accidentally to the contract or leftover rewards (excluding veCVE tokens)
     * @param _token The address of the token to recover
@@ -339,7 +331,7 @@ contract veCVE is ERC20 {
         address _to,
         uint256 _amount
     ) external onlyDaoManager {
-        require(_token != address(this), "cannot withdraw veCVE token");
+        require(_token != centralRegistry.CVE(), "cannot withdraw veCVE token");
         if (_amount == 0) {
             _amount = IERC20(_token).balanceOf(address(this));
         }
@@ -406,13 +398,13 @@ contract veCVE is ERC20 {
      * @param _amount The amount of tokens to lock
      * @param _continuousLock Whether the lock is continuous or not
      */
-    function _lock (address _recipient, uint216 _amount, bool _continuousLock) internal {
+    function _lock (address _recipient, uint256 _amount, bool _continuousLock) internal {
 
         if (_continuousLock){
-            userLocks[_recipient].push(Lock({amount: _amount, unlockTime: CONTINUOUS_LOCK_VALUE}));
+            userLocks[_recipient].push(Lock({amount: uint216(_amount), unlockTime: CONTINUOUS_LOCK_VALUE}));
         } else {
             uint256 unlockEpoch = freshLockEpoch();
-            userLocks[_recipient].push(Lock({amount: _amount, unlockTime: freshLockTimestamp()}));
+            userLocks[_recipient].push(Lock({amount: uint216(_amount), unlockTime: freshLockTimestamp()}));
             totalUnlocksByEpoch[unlockEpoch] += _amount;
             userTokenUnlocksByEpoch[_recipient][unlockEpoch] += _amount;
         }
