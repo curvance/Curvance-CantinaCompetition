@@ -148,18 +148,18 @@ contract PriceOpsTest is TestBase {
         );
 
         // Owner tries calling addAsset again.
-        vm.expectRevert(bytes(abi.encodeWithSelector(PriceOps.PriceOps__AssetAlreadyExists.selector, USDC)));
+        vm.expectRevert(abi.encodeWithSelector(PriceOps.PriceOps__AssetAlreadyExists.selector, USDC));
         priceOps.addAsset(USDC, usdcEthSource, 0, 0);
 
         // Calling editAsset reverts.
-        vm.expectRevert(bytes(abi.encodeWithSelector(PriceOps.PriceOps__EditNotMature.selector)));
+        vm.expectRevert(PriceOps.PriceOps__EditNotMature.selector);
         priceOps.editAsset(USDC, usdcEthSource, 0, 0);
 
         // Owner proposes edit.
         priceOps.proposeEditAsset(USDC, usdcEthSource, 0, 0);
 
         // Calling editAsset reverts.
-        vm.expectRevert(bytes(abi.encodeWithSelector(PriceOps.PriceOps__EditNotMature.selector)));
+        vm.expectRevert(PriceOps.PriceOps__EditNotMature.selector);
         priceOps.editAsset(USDC, usdcEthSource, 0, 0);
 
         // Advance time so we can edit the asset.
@@ -176,7 +176,7 @@ contract PriceOpsTest is TestBase {
         // Some time passes but then the owner decides to cancel the edit.
         priceOps.cancelEditAsset(USDC, usdcUsdSource, 0, 0);
 
-        vm.expectRevert(bytes(abi.encodeWithSelector(PriceOps.PriceOps__EditNotMature.selector)));
+        vm.expectRevert(PriceOps.PriceOps__EditNotMature.selector);
         priceOps.editAsset(USDC, usdcEthSource, 0, 0);
     }
 

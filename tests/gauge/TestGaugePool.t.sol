@@ -8,6 +8,7 @@ import "contracts/compound/Token/CErc20Immutable.sol";
 import "contracts/compound/Oracle/SimplePriceOracle.sol";
 import "contracts/compound/InterestRateModel/InterestRateModel.sol";
 import { GaugePool } from "contracts/gauge/GaugePool.sol";
+import "contracts/gauge/GaugeErrors.sol";
 import "contracts/mocks/MockToken.sol";
 
 import "tests/compound/deploy.sol";
@@ -182,9 +183,9 @@ contract TestGaugePool is TestBase {
         assertEq(gaugePool.epochEndTime(1), block.timestamp + 8 weeks);
 
         // check invalid epoch
-        vm.expectRevert(bytes4(keccak256("InvalidEpoch()")));
+        vm.expectRevert(GaugeErrors.InvalidEpoch.selector);
         gaugePool.setRewardPerSecOfNextEpoch(0, 1000);
-        vm.expectRevert(bytes4(keccak256("InvalidEpoch()")));
+        vm.expectRevert(GaugeErrors.InvalidEpoch.selector);
         gaugePool.setRewardPerSecOfNextEpoch(2, 1000);
 
         // set gauge settings of next epoch
@@ -198,9 +199,9 @@ contract TestGaugePool is TestBase {
         poolWeights[1] = 200;
 
         // check invalid epoch
-        vm.expectRevert(bytes4(keccak256("InvalidEpoch()")));
+        vm.expectRevert(GaugeErrors.InvalidEpoch.selector);
         gaugePool.setEmissionRates(0, tokensParam, poolWeights);
-        vm.expectRevert(bytes4(keccak256("InvalidEpoch()")));
+        vm.expectRevert(GaugeErrors.InvalidEpoch.selector);
         gaugePool.setEmissionRates(2, tokensParam, poolWeights);
 
         // can update emission rate of next epoch

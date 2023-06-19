@@ -92,7 +92,7 @@ contract TestCTokenBorrowCap is TestBase {
         assertEq(cDAI.balanceOf(user), 100e18);
 
         // can't borrow 50
-        vm.expectRevert(bytes4(keccak256("BorrowCapReached()"))); // Update: we now revert
+        vm.expectRevert(ComptrollerInterface.BorrowCapReached.selector); // Update: we now revert
         cDAI.borrow(50e18);
 
         // increase borrow cap to 51

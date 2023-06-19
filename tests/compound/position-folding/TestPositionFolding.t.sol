@@ -491,7 +491,7 @@ contract TestPositionFolding is TestBase {
         path[1] = weth;
 
         vm.deal(address(positionFolding), 0.01 ether);
-        vm.expectRevert(bytes4(keccak256("InsufficientLiquidity()")));
+        vm.expectRevert(ComptrollerInterface.InsufficientLiquidity.selector);
         positionFolding.leverageMax(
             CToken(address(cDAI)),
             CToken(address(cETH)),

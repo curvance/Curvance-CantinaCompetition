@@ -112,7 +112,7 @@ contract TestCEtherAndCTokenIntegration is TestBase {
         vm.prank(user);
         Comptroller(unitroller).setUserDisableCollateral(cTokens, true);
 
-        vm.expectRevert(bytes4(keccak256("InsufficientLiquidity()")));
+        vm.expectRevert(ComptrollerInterface.InsufficientLiquidity.selector);
         cDAI.borrow(50e18);
     }
 
@@ -169,7 +169,7 @@ contract TestCEtherAndCTokenIntegration is TestBase {
         vm.prank(admin);
         Comptroller(unitroller)._setDisableCollateral(cTokens, true);
 
-        vm.expectRevert(bytes4(keccak256("InsufficientLiquidity()")));
+        vm.expectRevert(ComptrollerInterface.InsufficientLiquidity.selector);
         cDAI.borrow(50e18);
     }
 
@@ -227,7 +227,7 @@ contract TestCEtherAndCTokenIntegration is TestBase {
         cTokens[0] = cDAI;
         cTokens[1] = cETH;
         vm.prank(user);
-        vm.expectRevert(bytes4(keccak256("InsufficientLiquidity()")));
+        vm.expectRevert(ComptrollerInterface.InsufficientLiquidity.selector);
         Comptroller(unitroller).setUserDisableCollateral(cTokens, true);
     }
 }
