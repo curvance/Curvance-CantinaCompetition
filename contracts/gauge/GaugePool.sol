@@ -242,7 +242,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         }
 
         IERC20(cve).safeApprove(address(ve), rewards);
-        ve.lock(msg.sender, uint216(rewards), continuousLock);
+        ve.lockFor(msg.sender, uint216(rewards), continuousLock);
 
         userInfo[token][msg.sender].rewardPending = 0;
 
