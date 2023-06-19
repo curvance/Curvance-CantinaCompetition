@@ -12,7 +12,7 @@ import { GaugePool } from "contracts/gauge/GaugePool.sol";
 
 import "tests/compound/deploy.sol";
 import "tests/lib/DSTestPlus.sol";
-import "hardhat/console.sol";
+import "forge-std/console.sol";
 
 contract User {
     receive() external payable {}

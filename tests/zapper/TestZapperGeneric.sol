@@ -7,7 +7,7 @@ import "contracts/mocks/MockComptroller.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "tests/lib/DSTestPlus.sol";
-import "hardhat/console.sol";
+import "forge-std/console.sol";
 
 contract User {}
 
