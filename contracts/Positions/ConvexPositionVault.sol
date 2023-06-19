@@ -14,8 +14,6 @@ import { KeeperCompatibleInterface } from "@chainlink/contracts/src/v0.8/interfa
 import { AggregatorV2V3Interface } from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV2V3Interface.sol";
 import { IChainlinkAggregator } from "contracts/interfaces/IChainlinkAggregator.sol";
 
-import { console } from "@forge-std/Test.sol"; // TODO remove this
-
 contract ConvexPositionVault is BasePositionVault {
     using SafeTransferLib for ERC20;
     using Math for uint256;

@@ -10,8 +10,6 @@ import { ERC20, SafeTransferLib } from "contracts/base/ERC4626.sol";
 import { PendleLpOracleLib } from "@pendle/oracles/PendleLpOracleLib.sol";
 import { IPMarket } from "@pendle/interfaces/IPMarket.sol";
 
-import { console } from "@forge-std/Test.sol";
-
 interface IPendlePTOracle {
     function getOracleState(
         address market,

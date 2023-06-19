@@ -9,7 +9,6 @@ import { AutomationCompatibleInterface } from "@chainlink/contracts/src/v0.8/int
 import { ERC20, SafeTransferLib } from "contracts/base/ERC4626.sol";
 
 // TODO Add Chainlink Curve VP bound check
-import { console } from "@forge-std/Test.sol";
 
 contract CurveV1Extension is Extension {
     using Math for uint256;

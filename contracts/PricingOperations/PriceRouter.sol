@@ -15,7 +15,6 @@ import { ICurvePool } from "contracts/interfaces/Curve/ICurvePool.sol";
 import { IAaveToken } from "contracts/interfaces/Aave/IAaveToken.sol";
 
 import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import { console } from "@forge-std/Test.sol";
 
 /**
  * @title Curvance Price Router

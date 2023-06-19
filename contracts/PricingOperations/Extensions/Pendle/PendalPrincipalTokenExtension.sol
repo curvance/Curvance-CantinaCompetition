@@ -11,8 +11,6 @@ import { IPPtOracle } from "@pendle/interfaces/IPPtOracle.sol";
 import { PendlePtOracleLib } from "@pendle/oracles/PendlePtOracleLib.sol";
 import { IPMarket } from "@pendle/interfaces/IPMarket.sol";
 
-import { console } from "@forge-std/Test.sol";
-
 contract PendalPrincipalTokenExtension is Extension {
     using Math for uint256;
     using PendlePtOracleLib for IPMarket;

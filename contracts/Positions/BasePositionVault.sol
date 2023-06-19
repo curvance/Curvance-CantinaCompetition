@@ -12,8 +12,6 @@ import { KeeperCompatibleInterface } from "@chainlink/contracts/src/v0.8/interfa
 import { AggregatorV2V3Interface } from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV2V3Interface.sol";
 import { IChainlinkAggregator } from "contracts/interfaces/IChainlinkAggregator.sol";
 
-import { console } from "@forge-std/Test.sol"; // TODO remove this
-
 ///@notice Vault Positions must have all assets ready for withdraw, IE assets can NOT be locked.
 // This way assets can be easily liquidated when loans default.
 ///@dev The position vaults run must be a LOSSLESS position, since totalAssets is not actually using the balances stored in the position, rather it only uses an internal balance.

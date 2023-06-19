@@ -18,8 +18,6 @@ import { KeeperCompatibleInterface } from "@chainlink/contracts/src/v0.8/interfa
 import { AggregatorV2V3Interface } from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV2V3Interface.sol";
 import { IChainlinkAggregator } from "contracts/interfaces/IChainlinkAggregator.sol";
 
-import { console } from "@forge-std/Test.sol"; //TODO remove this
-
 /**
  * @title Curvance Deposit Router
  * @notice Provides a universal interface allowing Curvance contracts to deposit and withdraw assets from:
