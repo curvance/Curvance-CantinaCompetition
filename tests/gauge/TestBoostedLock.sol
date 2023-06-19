@@ -49,7 +49,7 @@ contract TestBoostedLock is DSTestPlus {
 
         owner = address(this);
 
-        centralRegistry = new MockCentralRegistry(address(this), 1 weeks);
+        centralRegistry = new MockCentralRegistry(address(this), 1 weeks, block.chainid);
         cve = address(new MockToken("Reward Token", "RT", 18));
         centralRegistry.setCVE(cve);
         ve = new veCVE(12 weeks, ICentralRegistry(address(centralRegistry)));
