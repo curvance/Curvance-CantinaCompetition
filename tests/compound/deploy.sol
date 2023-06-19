@@ -10,9 +10,9 @@ import "contracts/compound/InterestRateModel/InterestRateModel.sol";
 import "contracts/compound/Oracle/PriceOracle.sol";
 import "contracts/compound/Oracle/SimplePriceOracle.sol";
 
-import "tests/lib/DSTestPlus.sol";
+import "tests/utils/TestBase.sol";
 
-contract DeployCompound is DSTestPlus {
+contract DeployCompound is TestBase {
     address public admin;
     Cve public cve;
     Comptroller public comptroller;

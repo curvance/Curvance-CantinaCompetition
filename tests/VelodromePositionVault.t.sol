@@ -5,18 +5,13 @@ import { ERC20 } from "contracts/base/ERC20.sol";
 import { SafeTransferLib } from "contracts/base/SafeTransferLib.sol";
 import { DepositRouterV2 as DepositRouter } from "contracts/DepositRouterV2.sol";
 import { VelodromePositionVault, BasePositionVault, IVeloGauge, IVeloRouter, IVeloPairFactory } from "contracts/positions/VelodromePositionVault.sol";
-import { IBaseRewardPool } from "contracts/interfaces/Convex/IBaseRewardPool.sol";
 import { PriceRouter } from "contracts/PricingOperations/PriceRouter.sol";
 import { IChainlinkAggregator } from "contracts/interfaces/IChainlinkAggregator.sol";
-import { ICurvePool } from "contracts/interfaces/Curve/ICurvePool.sol";
-// import { MockGasFeed } from "contracts/mocks/MockGasFeed.sol";
-
-import { Test, stdStorage, console, StdStorage, stdError } from "@forge-std/Test.sol";
 import { Math } from "contracts/utils/Math.sol";
+import "tests/utils/TestBase.sol";
 
-contract VelodromePositionVaultTest is Test {
+contract VelodromePositionVaultTest is TestBase {
     using Math for uint256;
-    using stdStorage for StdStorage;
     using SafeTransferLib for ERC20;
 
     PriceRouter private priceRouter;
@@ -136,7 +131,7 @@ contract VelodromePositionVaultTest is Test {
         vm.warp(block.timestamp + 3 days);
 
         // Mint some extra rewards for Vault.
-        deal(address(WETH), address(positionVault), 1e18);
+        deal(address(WETH), address(positionVault), _ONE);
         deal(address(USDC), address(positionVault), 100e6);
         deal(address(VELO), address(positionVault), 100e18);
 
@@ -147,7 +142,7 @@ contract VelodromePositionVaultTest is Test {
         vm.warp(block.timestamp + 8 days);
 
         // Mint some extra rewards for Vault.
-        deal(address(WETH), address(positionVault), 1e18);
+        deal(address(WETH), address(positionVault), _ONE);
         deal(address(USDC), address(positionVault), 100e6);
         deal(address(VELO), address(positionVault), 100e18);
 

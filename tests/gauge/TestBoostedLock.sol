@@ -14,12 +14,12 @@ import { veCVE } from "contracts/token/veCVE.sol";
 import "contracts/interfaces/ICentralRegistry.sol";
 
 import "tests/compound/deploy.sol";
-import "tests/lib/DSTestPlus.sol";
+import "tests/utils/TestBase.sol";
 import "forge-std/console.sol";
 
 contract User {}
 
-contract TestBoostedLock is DSTestPlus {
+contract TestBoostedLock is TestBase {
     address public dai = address(0x6B175474E89094C44Da98b954EedeAC495271d0F);
     address public admin;
     DeployCompound public deployments;
@@ -44,7 +44,7 @@ contract TestBoostedLock is DSTestPlus {
         deployments.makeCompound();
         unitroller = address(deployments.unitroller());
         priceOracle = SimplePriceOracle(deployments.priceOracle());
-        priceOracle.setDirectPrice(dai, 1e18);
+        priceOracle.setDirectPrice(dai, _ONE);
         admin = deployments.admin();
 
         owner = address(this);
@@ -60,7 +60,7 @@ contract TestBoostedLock is DSTestPlus {
 
         for (uint256 i = 0; i < 10; i++) {
             users[i] = address(new User());
-            hevm.store(
+            vm.store(
                 dai,
                 keccak256(abi.encodePacked(uint256(uint160(users[i])), uint256(2))),
                 bytes32(uint256(200000e18))
@@ -74,7 +74,7 @@ contract TestBoostedLock is DSTestPlus {
                     ComptrollerInterface(unitroller),
                     address(gaugePool),
                     InterestRateModel(address(deployments.jumpRateModel())),
-                    1e18,
+                    _ONE,
                     "cDAI",
                     "cDAI",
                     18,
@@ -82,29 +82,29 @@ contract TestBoostedLock is DSTestPlus {
                 )
             );
             // support market
-            hevm.prank(admin);
+            vm.prank(admin);
             Comptroller(unitroller)._supportMarket(CToken(tokens[i]));
             // set collateral factor
-            hevm.prank(admin);
+            vm.prank(admin);
             Comptroller(unitroller)._setCollateralFactor(CToken(tokens[i]), 5e17);
 
             for (uint256 j = 0; j < 10; j++) {
                 address user = users[j];
-                hevm.prank(user);
+                vm.prank(user);
                 address[] memory markets = new address[](1);
                 markets[0] = address(tokens[i]);
                 ComptrollerInterface(unitroller).enterMarkets(markets);
 
                 // approve
-                hevm.prank(user);
+                vm.prank(user);
                 IERC20(dai).approve(address(tokens[i]), 200000e18);
             }
 
-            hevm.deal(users[i], 200000e18);
+            vm.deal(users[i], 200000e18);
         }
 
-        hevm.warp(block.timestamp + 1000);
-        hevm.roll(block.number + 1000);
+        vm.warp(block.timestamp + 1000);
+        vm.roll(block.number + 1000);
     }
 
     function testBoostedLockFromClaim() public {
@@ -122,56 +122,56 @@ contract TestBoostedLock is DSTestPlus {
         gaugePool.start();
 
         // user0 deposit 100 token0
-        hevm.prank(users[0]);
+        vm.prank(users[0]);
         CErc20Immutable(tokens[0]).mint(100 ether);
 
         // user2 deposit 100 token1
-        hevm.prank(users[2]);
+        vm.prank(users[2]);
         CErc20Immutable(tokens[1]).mint(100 ether);
 
         // check pending rewards after 100 seconds
-        hevm.warp(block.timestamp + 100);
+        vm.warp(block.timestamp + 100);
         assertEq(gaugePool.pendingRewards(tokens[0], users[0]), 10000);
         assertEq(gaugePool.pendingRewards(tokens[1], users[2]), 20000);
 
         // user1 deposit 400 token0
-        hevm.prank(users[1]);
+        vm.prank(users[1]);
         CErc20Immutable(tokens[0]).mint(400 ether);
 
         // user3 deposit 400 token1
-        hevm.prank(users[3]);
+        vm.prank(users[3]);
         CErc20Immutable(tokens[1]).mint(400 ether);
 
         // check pending rewards after 100 seconds
-        hevm.warp(block.timestamp + 100);
+        vm.warp(block.timestamp + 100);
         assertEq(gaugePool.pendingRewards(tokens[0], users[0]), 12000);
         assertEq(gaugePool.pendingRewards(tokens[0], users[1]), 8000);
         assertEq(gaugePool.pendingRewards(tokens[1], users[2]), 24000);
         assertEq(gaugePool.pendingRewards(tokens[1], users[3]), 16000);
 
         // user0, user3 claims
-        hevm.prank(users[0]);
+        vm.prank(users[0]);
         gaugePool.claimAndLock(tokens[0], false);
-        hevm.prank(users[3]);
+        vm.prank(users[3]);
         gaugePool.claimAndLock(tokens[1], false);
         assertEq(ve.balanceOf(users[0]), 12000);
         assertEq(ve.balanceOf(users[3]), 16000);
         assertEq(ve.getVotes(users[0]), 11538);
         assertEq(ve.getVotes(users[3]), 15384);
 
-        hevm.warp(block.timestamp + 2 weeks);
+        vm.warp(block.timestamp + 2 weeks);
 
         // user0, user3 claims
-        hevm.prank(users[0]);
+        vm.prank(users[0]);
         gaugePool.claimAndExtendLock(tokens[0], 0, true);
-        hevm.prank(users[3]);
+        vm.prank(users[3]);
         gaugePool.claimAndExtendLock(tokens[1], 0, false);
         assertEq(ve.balanceOf(users[0]), 24204000);
         assertEq(ve.balanceOf(users[3]), 193552000);
         assertEq(ve.getVotes(users[0]), 13200);
         assertEq(ve.getVotes(users[3]), 15384);
 
-        hevm.warp(block.timestamp + 2 weeks);
+        vm.warp(block.timestamp + 2 weeks);
         assertEq(ve.balanceOf(users[0]), 24204000);
         assertEq(ve.balanceOf(users[3]), 193552000);
         assertEq(ve.getVotes(users[0]), 13200);

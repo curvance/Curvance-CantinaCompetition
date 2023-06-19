@@ -10,12 +10,12 @@ import "contracts/compound/InterestRateModel/InterestRateModel.sol";
 import { GaugePool } from "contracts/gauge/GaugePool.sol";
 
 import "tests/compound/deploy.sol";
-import "tests/lib/DSTestPlus.sol";
+import "tests/utils/TestBase.sol";
 import "forge-std/console.sol";
 
 contract User {}
 
-contract TestCEther is DSTestPlus {
+contract TestCEther is TestBase {
     address public admin;
     address public user;
     address public liquidator;
@@ -34,15 +34,15 @@ contract TestCEther is DSTestPlus {
         deployments.makeCompound();
         unitroller = address(deployments.unitroller());
         priceOracle = SimplePriceOracle(deployments.priceOracle());
-        priceOracle.setDirectPrice(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE, 1e18);
+        priceOracle.setDirectPrice(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE, _ONE);
 
         admin = deployments.admin();
         user = address(this);
         liquidator = address(new User());
 
         // prepare 200K ETH
-        hevm.deal(user, 200000e18);
-        hevm.deal(liquidator, 200000e18);
+        vm.deal(user, 200000e18);
+        vm.deal(liquidator, 200000e18);
 
         gauge = address(new GaugePool(address(0), address(0), unitroller));
     }
@@ -52,7 +52,7 @@ contract TestCEther is DSTestPlus {
             ComptrollerInterface(unitroller),
             gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
-            1e18,
+            _ONE,
             "cETH",
             "cETH",
             18,
@@ -65,21 +65,21 @@ contract TestCEther is DSTestPlus {
             ComptrollerInterface(unitroller),
             gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
-            1e18,
+            _ONE,
             "cETH",
             "cETH",
             18,
             payable(admin)
         );
         // support market
-        hevm.prank(admin);
+        vm.prank(admin);
         Comptroller(unitroller)._supportMarket(CToken(address(cETH)));
         // set collateral factor
-        hevm.prank(admin);
+        vm.prank(admin);
         Comptroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 5e17);
 
         // enter markets
-        hevm.prank(user);
+        vm.prank(user);
         address[] memory markets = new address[](1);
         markets[0] = address(cETH);
         ComptrollerInterface(unitroller).enterMarkets(markets);
@@ -94,20 +94,20 @@ contract TestCEther is DSTestPlus {
             ComptrollerInterface(unitroller),
             gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
-            1e18,
+            _ONE,
             "cETH",
             "cETH",
             18,
             payable(admin)
         );
         // support market
-        hevm.prank(admin);
+        vm.prank(admin);
         Comptroller(unitroller)._supportMarket(CToken(address(cETH)));
-        hevm.prank(admin);
+        vm.prank(admin);
         Comptroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 5e17);
 
         // enter markets
-        hevm.prank(user);
+        vm.prank(user);
         address[] memory markets = new address[](1);
         markets[0] = address(cETH);
         ComptrollerInterface(unitroller).enterMarkets(markets);
@@ -129,20 +129,20 @@ contract TestCEther is DSTestPlus {
             ComptrollerInterface(unitroller),
             gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
-            1e18,
+            _ONE,
             "cETH",
             "cETH",
             18,
             payable(admin)
         );
         // support market
-        hevm.prank(admin);
+        vm.prank(admin);
         Comptroller(unitroller)._supportMarket(CToken(address(cETH)));
-        hevm.prank(admin);
+        vm.prank(admin);
         Comptroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 5e17);
 
         // enter markets
-        hevm.prank(user);
+        vm.prank(user);
         address[] memory markets = new address[](1);
         markets[0] = address(cETH);
         ComptrollerInterface(unitroller).enterMarkets(markets);
@@ -164,20 +164,20 @@ contract TestCEther is DSTestPlus {
             ComptrollerInterface(unitroller),
             gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
-            1e18,
+            _ONE,
             "cETH",
             "cETH",
             18,
             payable(admin)
         );
         // support market
-        hevm.prank(admin);
+        vm.prank(admin);
         Comptroller(unitroller)._supportMarket(CToken(address(cETH)));
-        hevm.prank(admin);
+        vm.prank(admin);
         Comptroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 5e17);
 
         // enter markets
-        hevm.prank(user);
+        vm.prank(user);
         address[] memory markets = new address[](1);
         markets[0] = address(cETH);
         ComptrollerInterface(unitroller).enterMarkets(markets);
@@ -198,20 +198,20 @@ contract TestCEther is DSTestPlus {
             ComptrollerInterface(unitroller),
             gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
-            1e18,
+            _ONE,
             "cETH",
             "cETH",
             18,
             payable(admin)
         );
         // support market
-        hevm.prank(admin);
+        vm.prank(admin);
         Comptroller(unitroller)._supportMarket(CToken(address(cETH)));
-        hevm.prank(admin);
+        vm.prank(admin);
         Comptroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 5e17);
 
         // enter markets
-        hevm.prank(user);
+        vm.prank(user);
         address[] memory markets = new address[](1);
         markets[0] = address(cETH);
         ComptrollerInterface(unitroller).enterMarkets(markets);
@@ -236,20 +236,20 @@ contract TestCEther is DSTestPlus {
             ComptrollerInterface(unitroller),
             gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
-            1e18,
+            _ONE,
             "cETH",
             "cETH",
             18,
             payable(admin)
         );
         // support market
-        hevm.prank(admin);
+        vm.prank(admin);
         Comptroller(unitroller)._supportMarket(CToken(address(cETH)));
-        hevm.prank(admin);
+        vm.prank(admin);
         Comptroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 5e17);
 
         // enter markets
-        hevm.prank(user);
+        vm.prank(user);
         address[] memory markets = new address[](1);
         markets[0] = address(cETH);
         ComptrollerInterface(unitroller).enterMarkets(markets);
@@ -274,21 +274,21 @@ contract TestCEther is DSTestPlus {
             ComptrollerInterface(unitroller),
             gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
-            1e18,
+            _ONE,
             "cETH",
             "cETH",
             18,
             payable(admin)
         );
         // support market
-        hevm.prank(admin);
+        vm.prank(admin);
         Comptroller(unitroller)._supportMarket(CToken(address(cETH)));
         // set collateral factor
-        hevm.prank(admin);
+        vm.prank(admin);
         Comptroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 6e17);
 
         // enter markets
-        hevm.prank(user);
+        vm.prank(user);
         address[] memory markets = new address[](1);
         markets[0] = address(cETH);
         ComptrollerInterface(unitroller).enterMarkets(markets);
@@ -302,11 +302,11 @@ contract TestCEther is DSTestPlus {
         assertEq(cETH.balanceOf(user), 100e18);
 
         // set collateral factor
-        hevm.prank(admin);
+        vm.prank(admin);
         Comptroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 5e17);
 
         // liquidateBorrow
-        hevm.prank(liquidator);
+        vm.prank(liquidator);
         cETH.liquidateBorrow{ value: 12e18 }(user, CToken(cETH));
 
         assertEq(cETH.balanceOf(liquidator), 5832000000000000000);

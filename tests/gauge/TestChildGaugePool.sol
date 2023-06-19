@@ -12,12 +12,12 @@ import { ChildGaugePool } from "contracts/gauge/ChildGaugePool.sol";
 import "contracts/mocks/MockToken.sol";
 
 import "tests/compound/deploy.sol";
-import "tests/lib/DSTestPlus.sol";
+import "tests/utils/TestBase.sol";
 import "forge-std/console.sol";
 
 contract User {}
 
-contract TestChildGaugePool is DSTestPlus {
+contract TestChildGaugePool is TestBase {
     uint256 constant CHILD_GAUGE_COUNT = 5;
 
     address public dai = address(0x6B175474E89094C44Da98b954EedeAC495271d0F);
@@ -44,7 +44,7 @@ contract TestChildGaugePool is DSTestPlus {
         deployments.makeCompound();
         unitroller = address(deployments.unitroller());
         priceOracle = SimplePriceOracle(deployments.priceOracle());
-        priceOracle.setDirectPrice(dai, 1e18);
+        priceOracle.setDirectPrice(dai, _ONE);
         admin = deployments.admin();
 
         owner = address(this);
@@ -63,7 +63,7 @@ contract TestChildGaugePool is DSTestPlus {
 
         for (uint256 i = 0; i < 10; i++) {
             users[i] = address(new User());
-            hevm.store(
+            vm.store(
                 dai,
                 keccak256(abi.encodePacked(uint256(uint160(users[i])), uint256(2))),
                 bytes32(uint256(200000e18))
@@ -76,7 +76,7 @@ contract TestChildGaugePool is DSTestPlus {
                     ComptrollerInterface(unitroller),
                     address(gaugePool),
                     InterestRateModel(address(deployments.jumpRateModel())),
-                    1e18,
+                    _ONE,
                     "cDAI",
                     "cDAI",
                     18,
@@ -84,29 +84,29 @@ contract TestChildGaugePool is DSTestPlus {
                 )
             );
             // support market
-            hevm.prank(admin);
+            vm.prank(admin);
             Comptroller(unitroller)._supportMarket(CToken(tokens[i]));
             // set collateral factor
-            hevm.prank(admin);
+            vm.prank(admin);
             Comptroller(unitroller)._setCollateralFactor(CToken(tokens[i]), 5e17);
 
             for (uint256 j = 0; j < 10; j++) {
                 address user = users[j];
-                hevm.prank(user);
+                vm.prank(user);
                 address[] memory markets = new address[](1);
                 markets[0] = address(tokens[i]);
                 ComptrollerInterface(unitroller).enterMarkets(markets);
 
                 // approve
-                hevm.prank(user);
+                vm.prank(user);
                 IERC20(dai).approve(address(tokens[i]), 200000e18);
             }
 
-            hevm.deal(users[i], 200000e18);
+            vm.deal(users[i], 200000e18);
         }
 
-        hevm.warp(block.timestamp + 1000);
-        hevm.roll(block.number + 1000);
+        vm.warp(block.timestamp + 1000);
+        vm.roll(block.number + 1000);
     }
 
     function testChildGaugesRewardRatioOfDifferentPools() public {
@@ -128,15 +128,15 @@ contract TestChildGaugePool is DSTestPlus {
         gaugePool.start();
 
         // user0 deposit 100 token0
-        hevm.prank(users[0]);
+        vm.prank(users[0]);
         CErc20Immutable(tokens[0]).mint(100 ether);
 
         // user2 deposit 100 token1
-        hevm.prank(users[2]);
+        vm.prank(users[2]);
         CErc20Immutable(tokens[1]).mint(100 ether);
 
         // check pending rewards after 100 seconds
-        hevm.warp(block.timestamp + 100);
+        vm.warp(block.timestamp + 100);
         assertEq(gaugePool.pendingRewards(tokens[0], users[0]), 10000);
         assertEq(gaugePool.pendingRewards(tokens[1], users[2]), 20000);
         for (uint256 i = 0; i < CHILD_GAUGE_COUNT; i++) {
@@ -145,15 +145,15 @@ contract TestChildGaugePool is DSTestPlus {
         }
 
         // user1 deposit 400 token0
-        hevm.prank(users[1]);
+        vm.prank(users[1]);
         CErc20Immutable(tokens[0]).mint(400 ether);
 
         // user3 deposit 400 token1
-        hevm.prank(users[3]);
+        vm.prank(users[3]);
         CErc20Immutable(tokens[1]).mint(400 ether);
 
         // check pending rewards after 100 seconds
-        hevm.warp(block.timestamp + 100);
+        vm.warp(block.timestamp + 100);
         assertEq(gaugePool.pendingRewards(tokens[0], users[0]), 12000);
         assertEq(gaugePool.pendingRewards(tokens[0], users[1]), 8000);
         assertEq(gaugePool.pendingRewards(tokens[1], users[2]), 24000);
@@ -166,14 +166,14 @@ contract TestChildGaugePool is DSTestPlus {
         }
 
         // user0, user3 claims
-        hevm.prank(users[0]);
+        vm.prank(users[0]);
         gaugePool.claim(tokens[0]);
-        hevm.prank(users[3]);
+        vm.prank(users[3]);
         gaugePool.claim(tokens[1]);
         for (uint256 i = 0; i < CHILD_GAUGE_COUNT; i++) {
-            hevm.prank(users[0]);
+            vm.prank(users[0]);
             childGauges[i].claim(tokens[0]);
-            hevm.prank(users[3]);
+            vm.prank(users[3]);
             childGauges[i].claim(tokens[1]);
         }
         assertEq(MockToken(rewardToken).balanceOf(users[0]), 12000);
@@ -184,7 +184,7 @@ contract TestChildGaugePool is DSTestPlus {
         }
 
         // check pending rewards after 100 seconds
-        hevm.warp(block.timestamp + 100);
+        vm.warp(block.timestamp + 100);
         assertEq(gaugePool.pendingRewards(tokens[0], users[0]), 2000);
         assertEq(gaugePool.pendingRewards(tokens[0], users[1]), 16000);
         assertEq(gaugePool.pendingRewards(tokens[1], users[2]), 28000);
@@ -197,15 +197,15 @@ contract TestChildGaugePool is DSTestPlus {
         }
 
         // user0 withdraw half
-        hevm.prank(users[0]);
+        vm.prank(users[0]);
         CErc20Immutable(tokens[0]).redeem(50 ether);
 
         // user2 deposit 2x
-        hevm.prank(users[2]);
+        vm.prank(users[2]);
         CErc20Immutable(tokens[1]).mint(100 ether);
 
         // check pending rewards after 100 seconds
-        hevm.warp(block.timestamp + 100);
+        vm.warp(block.timestamp + 100);
         assertEq(gaugePool.pendingRewards(tokens[0], users[0]), 3111);
         assertEq(gaugePool.pendingRewards(tokens[0], users[1]), 24888);
         assertEq(gaugePool.pendingRewards(tokens[1], users[2]), 34666);
@@ -218,22 +218,22 @@ contract TestChildGaugePool is DSTestPlus {
         }
 
         // user0, user1, user2, user3 claims
-        hevm.prank(users[0]);
+        vm.prank(users[0]);
         gaugePool.claim(tokens[0]);
-        hevm.prank(users[1]);
+        vm.prank(users[1]);
         gaugePool.claim(tokens[0]);
-        hevm.prank(users[2]);
+        vm.prank(users[2]);
         gaugePool.claim(tokens[1]);
-        hevm.prank(users[3]);
+        vm.prank(users[3]);
         gaugePool.claim(tokens[1]);
         for (uint256 i = 0; i < CHILD_GAUGE_COUNT; i++) {
-            hevm.prank(users[0]);
+            vm.prank(users[0]);
             childGauges[i].claim(tokens[0]);
-            hevm.prank(users[1]);
+            vm.prank(users[1]);
             childGauges[i].claim(tokens[0]);
-            hevm.prank(users[2]);
+            vm.prank(users[2]);
             childGauges[i].claim(tokens[1]);
-            hevm.prank(users[3]);
+            vm.prank(users[3]);
             childGauges[i].claim(tokens[1]);
         }
         assertEq(MockToken(rewardToken).balanceOf(users[0]), 15111);
@@ -248,7 +248,7 @@ contract TestChildGaugePool is DSTestPlus {
         }
 
         // check pending rewards after 100 seconds
-        hevm.warp(block.timestamp + 100);
+        vm.warp(block.timestamp + 100);
         assertEq(gaugePool.pendingRewards(tokens[0], users[0]), 1111);
         assertEq(gaugePool.pendingRewards(tokens[0], users[1]), 8889);
         assertEq(gaugePool.pendingRewards(tokens[1], users[2]), 6667);
@@ -280,15 +280,15 @@ contract TestChildGaugePool is DSTestPlus {
         gaugePool.start();
 
         // user0 deposit 100 token0
-        hevm.prank(users[0]);
+        vm.prank(users[0]);
         CErc20Immutable(tokens[0]).mint(100 ether);
 
         // user1 deposit 100 token1
-        hevm.prank(users[1]);
+        vm.prank(users[1]);
         CErc20Immutable(tokens[1]).mint(100 ether);
 
         // check pending rewards after 100 seconds
-        hevm.warp(block.timestamp + 100);
+        vm.warp(block.timestamp + 100);
         assertEq(gaugePool.pendingRewards(tokens[0], users[0]), 10000);
         assertEq(gaugePool.pendingRewards(tokens[1], users[1]), 20000);
         for (uint256 i = 0; i < CHILD_GAUGE_COUNT; i++) {
@@ -310,7 +310,7 @@ contract TestChildGaugePool is DSTestPlus {
         gaugePool.setEmissionRates(1, tokensParam, poolWeights);
 
         // check pending rewards after 4 weeks
-        hevm.warp(block.timestamp + 4 weeks);
+        vm.warp(block.timestamp + 4 weeks);
         assertEq(gaugePool.pendingRewards(tokens[0], users[0]), 4 weeks * 100 + 100 * 200);
         assertEq(gaugePool.pendingRewards(tokens[1], users[1]), 4 weeks * 200 + 100 * 200);
         for (uint256 i = 0; i < CHILD_GAUGE_COUNT; i++) {
@@ -319,14 +319,14 @@ contract TestChildGaugePool is DSTestPlus {
         }
 
         // user0, user1 claim rewards
-        hevm.prank(users[0]);
+        vm.prank(users[0]);
         gaugePool.claim(tokens[0]);
-        hevm.prank(users[1]);
+        vm.prank(users[1]);
         gaugePool.claim(tokens[1]);
         for (uint256 i = 0; i < CHILD_GAUGE_COUNT; i++) {
-            hevm.prank(users[0]);
+            vm.prank(users[0]);
             childGauges[i].claim(tokens[0]);
-            hevm.prank(users[1]);
+            vm.prank(users[1]);
             childGauges[i].claim(tokens[1]);
         }
 

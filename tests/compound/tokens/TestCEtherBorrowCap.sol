@@ -10,12 +10,12 @@ import "contracts/compound/InterestRateModel/InterestRateModel.sol";
 import { GaugePool } from "contracts/gauge/GaugePool.sol";
 
 import "tests/compound/deploy.sol";
-import "tests/lib/DSTestPlus.sol";
+import "tests/utils/TestBase.sol";
 import "forge-std/console.sol";
 
 contract User {}
 
-contract TestCEtherBorrowCap is DSTestPlus {
+contract TestCEtherBorrowCap is TestBase {
     address public admin;
     address public user;
     address public liquidator;
@@ -34,15 +34,15 @@ contract TestCEtherBorrowCap is DSTestPlus {
         deployments.makeCompound();
         unitroller = address(deployments.unitroller());
         priceOracle = SimplePriceOracle(deployments.priceOracle());
-        priceOracle.setDirectPrice(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE, 1e18);
+        priceOracle.setDirectPrice(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE, _ONE);
 
         admin = deployments.admin();
         user = address(this);
         liquidator = address(new User());
 
         // prepare 200K ETH
-        hevm.deal(user, 200000e18);
-        hevm.deal(liquidator, 200000e18);
+        vm.deal(user, 200000e18);
+        vm.deal(liquidator, 200000e18);
 
         gauge = address(new GaugePool(address(0), address(0), unitroller));
     }
@@ -52,29 +52,29 @@ contract TestCEtherBorrowCap is DSTestPlus {
             ComptrollerInterface(unitroller),
             gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
-            1e18,
+            _ONE,
             "cETH",
             "cETH",
             18,
             payable(admin)
         );
         // support market
-        hevm.prank(admin);
+        vm.prank(admin);
         Comptroller(unitroller)._supportMarket(CToken(address(cETH)));
         // set collateral factor
-        hevm.prank(admin);
+        vm.prank(admin);
         Comptroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 5e17);
 
         // enter markets
-        hevm.prank(user);
+        vm.prank(user);
         address[] memory markets = new address[](1);
         markets[0] = address(cETH);
         ComptrollerInterface(unitroller).enterMarkets(markets);
 
         // set borrow cap to 49
-        hevm.prank(admin);
+        vm.prank(admin);
         Comptroller(unitroller)._setBorrowCapGuardian(admin);
-        hevm.prank(admin);
+        vm.prank(admin);
         CToken[] memory cTokens = new CToken[](1);
         cTokens[0] = CToken(address(cETH));
         uint256[] memory borrowCapAmounts = new uint256[](1);
@@ -86,11 +86,11 @@ contract TestCEtherBorrowCap is DSTestPlus {
         assertEq(cETH.balanceOf(user), 100e18);
 
         // can't borrow 50
-        hevm.expectRevert(bytes4(keccak256("BorrowCapReached()"))); // Update: we now revert
+        vm.expectRevert(bytes4(keccak256("BorrowCapReached()"))); // Update: we now revert
         cETH.borrow(50e18);
 
         // increase borrow cap to 51
-        hevm.prank(admin);
+        vm.prank(admin);
         borrowCapAmounts[0] = 51e18;
         Comptroller(unitroller)._setMarketBorrowCaps(cTokens, borrowCapAmounts);
 

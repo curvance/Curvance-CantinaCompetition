@@ -11,7 +11,7 @@ import "contracts/compound/InterestRateModel/InterestRateModel.sol";
 import { GaugePool } from "contracts/gauge/GaugePool.sol";
 
 import "tests/compound/deploy.sol";
-import "tests/lib/DSTestPlus.sol";
+import "tests/utils/TestBase.sol";
 import "forge-std/console.sol";
 
 contract User {
@@ -20,7 +20,7 @@ contract User {
     fallback() external payable {}
 }
 
-contract TestCTokenAndCEther is DSTestPlus {
+contract TestCTokenAndCEther is TestBase {
     address public dai = address(0x6B175474E89094C44Da98b954EedeAC495271d0F);
 
     address public admin;
@@ -43,7 +43,7 @@ contract TestCTokenAndCEther is DSTestPlus {
         deployments.makeCompound();
         unitroller = address(deployments.unitroller());
         priceOracle = SimplePriceOracle(deployments.priceOracle());
-        priceOracle.setDirectPrice(dai, 1e18);
+        priceOracle.setDirectPrice(dai, _ONE);
         priceOracle.setDirectPrice(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE, 2e18);
 
         admin = deployments.admin();
@@ -52,17 +52,17 @@ contract TestCTokenAndCEther is DSTestPlus {
         liquidator = address(new User());
 
         // prepare 200K DAI
-        hevm.store(dai, keccak256(abi.encodePacked(uint256(uint160(user1)), uint256(2))), bytes32(uint256(200000e18)));
-        hevm.store(dai, keccak256(abi.encodePacked(uint256(uint160(user2)), uint256(2))), bytes32(uint256(200000e18)));
-        hevm.store(
+        vm.store(dai, keccak256(abi.encodePacked(uint256(uint160(user1)), uint256(2))), bytes32(uint256(200000e18)));
+        vm.store(dai, keccak256(abi.encodePacked(uint256(uint160(user2)), uint256(2))), bytes32(uint256(200000e18)));
+        vm.store(
             dai,
             keccak256(abi.encodePacked(uint256(uint160(liquidator)), uint256(2))),
             bytes32(uint256(200000e18))
         );
         // prepare 200K ETH
-        hevm.deal(user1, 200000e18);
-        hevm.deal(user2, 200000e18);
-        hevm.deal(liquidator, 200000e18);
+        vm.deal(user1, 200000e18);
+        vm.deal(user2, 200000e18);
+        vm.deal(liquidator, 200000e18);
 
         gauge = address(new GaugePool(address(0), address(0), unitroller));
     }
@@ -73,7 +73,7 @@ contract TestCTokenAndCEther is DSTestPlus {
             ComptrollerInterface(unitroller),
             gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
-            1e18,
+            _ONE,
             "cDAI",
             "cDAI",
             18,
@@ -83,7 +83,7 @@ contract TestCTokenAndCEther is DSTestPlus {
             ComptrollerInterface(unitroller),
             gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
-            1e18,
+            _ONE,
             "cETH",
             "cETH",
             18,
@@ -96,7 +96,7 @@ contract TestCTokenAndCEther is DSTestPlus {
     //         dai,
     //         ComptrollerInterface(unitroller),
     //         InterestRateModel(address(deployments.jumpRateModel())),
-    //         1e18,
+    //         _ONE,
     //         "cDAI",
     //         "cDAI",
     //         18,
@@ -105,40 +105,40 @@ contract TestCTokenAndCEther is DSTestPlus {
     //     cETH = new CEther(
     //         ComptrollerInterface(unitroller),
     //         InterestRateModel(address(deployments.jumpRateModel())),
-    //         1e18,
+    //         _ONE,
     //         "cETH",
     //         "cETH",
     //         18,
     //         payable(admin)
     //     );
     //     // support market
-    //     hevm.prank(admin);
+    //     vm.prank(admin);
     //     Comptroller(unitroller)._supportMarket(CToken(address(cDAI)));
-    //     hevm.prank(admin);
+    //     vm.prank(admin);
     //     Comptroller(unitroller)._supportMarket(CToken(address(cETH)));
 
     //     // user1 enter markets
-    //     hevm.prank(user1);
+    //     vm.prank(user1);
     //     address[] memory markets = new address[](2);
     //     markets[0] = address(cDAI);
     //     markets[1] = address(cETH);
     //     ComptrollerInterface(unitroller).enterMarkets(markets);
 
     //     // user1 approve
-    //     hevm.prank(user1);
+    //     vm.prank(user1);
     //     IERC20(dai).approve(address(cDAI), 100e18);
 
     //     // user1 mint
-    //     hevm.prank(user1);
+    //     vm.prank(user1);
     //     assertTrue(cDAI.mint(100e18));
     //     assertGt(cDAI.balanceOf(user1), 0);
 
     //     // user2 enter market
-    //     hevm.prank(user2);
+    //     vm.prank(user2);
     //     ComptrollerInterface(unitroller).enterMarkets(markets);
 
     //     // user2 mint
-    //     hevm.prank(user2);
+    //     vm.prank(user2);
     //     cETH.mint{ value: 100e18 }();
     //     assertGt(cETH.balanceOf(user2), 0);
     // }
@@ -149,7 +149,7 @@ contract TestCTokenAndCEther is DSTestPlus {
             ComptrollerInterface(unitroller),
             gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
-            1e18,
+            _ONE,
             "cDAI",
             "cDAI",
             18,
@@ -159,7 +159,7 @@ contract TestCTokenAndCEther is DSTestPlus {
             ComptrollerInterface(unitroller),
             gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
-            1e18,
+            _ONE,
             "cETH",
             "cETH",
             18,
@@ -167,53 +167,53 @@ contract TestCTokenAndCEther is DSTestPlus {
         );
 
         // support market
-        hevm.prank(admin);
+        vm.prank(admin);
         Comptroller(unitroller)._supportMarket(CToken(address(cDAI)));
-        hevm.prank(admin);
+        vm.prank(admin);
         Comptroller(unitroller)._supportMarket(CToken(address(cETH)));
         // set collateral factor
-        hevm.prank(admin);
+        vm.prank(admin);
         Comptroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 5e17);
-        hevm.prank(admin);
+        vm.prank(admin);
         Comptroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 5e17);
 
         // user1 enter markets
-        hevm.prank(user1);
+        vm.prank(user1);
         address[] memory markets = new address[](2);
         markets[0] = address(cDAI);
         markets[1] = address(cETH);
         ComptrollerInterface(unitroller).enterMarkets(markets);
 
         // auser1 pprove
-        hevm.prank(user1);
+        vm.prank(user1);
         IERC20(dai).approve(address(cDAI), 100e18);
 
         uint256 balanceBeforeMint = IERC20(dai).balanceOf(user1);
         // user1 mint
-        hevm.prank(user1);
+        vm.prank(user1);
         assertTrue(cDAI.mint(100e18));
         assertEq(cDAI.balanceOf(user1), 100e18);
         assertGt(balanceBeforeMint, IERC20(dai).balanceOf(user1));
 
         // user1 redeem
-        hevm.prank(user1);
+        vm.prank(user1);
         cDAI.redeem(100e18);
         assertEq(cDAI.balanceOf(user1), 0);
         assertEq(balanceBeforeMint, IERC20(dai).balanceOf(user1));
 
         // user2 enter markets
-        hevm.prank(user2);
+        vm.prank(user2);
         ComptrollerInterface(unitroller).enterMarkets(markets);
 
         balanceBeforeMint = user2.balance;
         // user2 mint
-        hevm.prank(user2);
+        vm.prank(user2);
         cETH.mint{ value: 100e18 }();
         assertEq(cETH.balanceOf(user2), 100e18);
         assertGt(balanceBeforeMint, user2.balance);
 
         // user2 redeem
-        hevm.prank(user2);
+        vm.prank(user2);
         cETH.redeem(100e18);
         assertEq(cETH.balanceOf(user2), 0);
         assertEq(balanceBeforeMint, user2.balance);
@@ -225,7 +225,7 @@ contract TestCTokenAndCEther is DSTestPlus {
             ComptrollerInterface(unitroller),
             gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
-            1e18,
+            _ONE,
             "cDAI",
             "cDAI",
             18,
@@ -235,7 +235,7 @@ contract TestCTokenAndCEther is DSTestPlus {
             ComptrollerInterface(unitroller),
             gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
-            1e18,
+            _ONE,
             "cETH",
             "cETH",
             18,
@@ -243,53 +243,53 @@ contract TestCTokenAndCEther is DSTestPlus {
         );
 
         // support market
-        hevm.prank(admin);
+        vm.prank(admin);
         Comptroller(unitroller)._supportMarket(CToken(address(cDAI)));
-        hevm.prank(admin);
+        vm.prank(admin);
         Comptroller(unitroller)._supportMarket(CToken(address(cETH)));
         // set collateral factor
-        hevm.prank(admin);
+        vm.prank(admin);
         Comptroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 5e17);
-        hevm.prank(admin);
+        vm.prank(admin);
         Comptroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 5e17);
 
         // user1 enter markets
-        hevm.prank(user1);
+        vm.prank(user1);
         address[] memory markets = new address[](2);
         markets[0] = address(cDAI);
         markets[1] = address(cETH);
         ComptrollerInterface(unitroller).enterMarkets(markets);
 
         // user1 approve
-        hevm.prank(user1);
+        vm.prank(user1);
         IERC20(dai).approve(address(cDAI), 100e18);
 
         uint256 balanceBeforeMint = IERC20(dai).balanceOf(user1);
         // user1 mint
-        hevm.prank(user1);
+        vm.prank(user1);
         assertTrue(cDAI.mint(100e18));
         assertEq(cDAI.balanceOf(user1), 100e18);
         assertGt(balanceBeforeMint, IERC20(dai).balanceOf(user1));
 
         // redeem
-        hevm.prank(user1);
+        vm.prank(user1);
         cDAI.redeemUnderlying(100e18);
         assertEq(cDAI.balanceOf(user1), 0);
         assertEq(balanceBeforeMint, IERC20(dai).balanceOf(user1));
 
         // user2 enter markets
-        hevm.prank(user2);
+        vm.prank(user2);
         ComptrollerInterface(unitroller).enterMarkets(markets);
 
         balanceBeforeMint = user2.balance;
         // user2 mint
-        hevm.prank(user2);
+        vm.prank(user2);
         cETH.mint{ value: 100e18 }();
         assertEq(cETH.balanceOf(user2), 100e18);
         assertGt(balanceBeforeMint, user2.balance);
 
         // user2 redeem
-        hevm.prank(user2);
+        vm.prank(user2);
         cETH.redeemUnderlying(100e18);
         assertEq(cETH.balanceOf(user2), 0);
         assertEq(balanceBeforeMint, user2.balance);
@@ -301,7 +301,7 @@ contract TestCTokenAndCEther is DSTestPlus {
             ComptrollerInterface(unitroller),
             gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
-            1e18,
+            _ONE,
             "cDAI",
             "cDAI",
             18,
@@ -311,7 +311,7 @@ contract TestCTokenAndCEther is DSTestPlus {
             ComptrollerInterface(unitroller),
             gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
-            1e18,
+            _ONE,
             "cETH",
             "cETH",
             18,
@@ -319,51 +319,51 @@ contract TestCTokenAndCEther is DSTestPlus {
         );
 
         // support market
-        hevm.prank(admin);
+        vm.prank(admin);
         Comptroller(unitroller)._supportMarket(CToken(address(cDAI)));
-        hevm.prank(admin);
+        vm.prank(admin);
         Comptroller(unitroller)._supportMarket(CToken(address(cETH)));
         // set collateral factor
-        hevm.prank(admin);
+        vm.prank(admin);
         Comptroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 5e17);
-        hevm.prank(admin);
+        vm.prank(admin);
         Comptroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 5e17);
 
         // user1 enter markets
-        hevm.prank(user1);
+        vm.prank(user1);
         address[] memory markets = new address[](2);
         markets[0] = address(cDAI);
         markets[1] = address(cETH);
         ComptrollerInterface(unitroller).enterMarkets(markets);
 
         // user1 approve
-        hevm.prank(user1);
+        vm.prank(user1);
         IERC20(dai).approve(address(cDAI), 100e18);
 
         // user1 mint
-        hevm.prank(user1);
+        vm.prank(user1);
         assertTrue(cDAI.mint(100e18));
         assertEq(cDAI.balanceOf(user1), 100e18);
 
         // user2 enter markets
-        hevm.prank(user2);
+        vm.prank(user2);
         ComptrollerInterface(unitroller).enterMarkets(markets);
 
         // user2 mint
-        hevm.prank(user2);
+        vm.prank(user2);
         cETH.mint{ value: 100e18 }();
         assertEq(cETH.balanceOf(user2), 100e18);
 
         // user2 borrow
         uint256 balanceBeforeBorrow = IERC20(dai).balanceOf(user2);
-        hevm.prank(user2);
+        vm.prank(user2);
         cDAI.borrow(100e18);
         assertEq(cETH.balanceOf(user2), 100e18);
         assertEq(balanceBeforeBorrow + 100e18, IERC20(dai).balanceOf(user2));
 
         // user1 borrow
         balanceBeforeBorrow = user1.balance;
-        hevm.prank(user1);
+        vm.prank(user1);
         cETH.borrow(25e18);
         assertEq(cDAI.balanceOf(user1), 100e18);
         assertEq(balanceBeforeBorrow + 25e18, user1.balance);
@@ -375,7 +375,7 @@ contract TestCTokenAndCEther is DSTestPlus {
             ComptrollerInterface(unitroller),
             gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
-            1e18,
+            _ONE,
             "cDAI",
             "cDAI",
             18,
@@ -385,7 +385,7 @@ contract TestCTokenAndCEther is DSTestPlus {
             ComptrollerInterface(unitroller),
             gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
-            1e18,
+            _ONE,
             "cETH",
             "cETH",
             18,
@@ -393,18 +393,18 @@ contract TestCTokenAndCEther is DSTestPlus {
         );
 
         // support market
-        hevm.prank(admin);
+        vm.prank(admin);
         Comptroller(unitroller)._supportMarket(CToken(address(cDAI)));
-        hevm.prank(admin);
+        vm.prank(admin);
         Comptroller(unitroller)._supportMarket(CToken(address(cETH)));
         // set collateral factor
-        hevm.prank(admin);
+        vm.prank(admin);
         Comptroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 5e17);
-        hevm.prank(admin);
+        vm.prank(admin);
         Comptroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 5e17);
 
         // user1 enter markets
-        hevm.prank(user1);
+        vm.prank(user1);
         address[] memory markets = new address[](2);
         markets[0] = address(cDAI);
         markets[1] = address(cETH);
@@ -414,7 +414,7 @@ contract TestCTokenAndCEther is DSTestPlus {
         IERC20(dai).approve(address(cDAI), 100e18);
 
         // user1 mint
-        hevm.prank(user1);
+        vm.prank(user1);
         assertTrue(cDAI.mint(100e18));
         assertEq(cDAI.balanceOf(user1), 100e18);
 
@@ -422,20 +422,20 @@ contract TestCTokenAndCEther is DSTestPlus {
         ComptrollerInterface(unitroller).enterMarkets(markets);
 
         // user1 mint
-        hevm.prank(user1);
+        vm.prank(user1);
         cETH.mint{ value: 100e18 }();
         assertEq(cETH.balanceOf(user1), 100e18);
 
         // user1 borrow
         uint256 balanceBeforeBorrow = IERC20(dai).balanceOf(user1);
-        hevm.prank(user1);
+        vm.prank(user1);
         cDAI.borrow(100e18);
         assertEq(cETH.balanceOf(user1), 100e18);
         assertEq(balanceBeforeBorrow + 100e18, IERC20(dai).balanceOf(user1));
 
         // user1 borrow
         balanceBeforeBorrow = user1.balance;
-        hevm.prank(user1);
+        vm.prank(user1);
         cETH.borrow(25e18);
         assertEq(cDAI.balanceOf(user1), 100e18);
         assertEq(balanceBeforeBorrow + 25e18, user1.balance);
@@ -447,7 +447,7 @@ contract TestCTokenAndCEther is DSTestPlus {
             ComptrollerInterface(unitroller),
             gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
-            1e18,
+            _ONE,
             "cDAI",
             "cDAI",
             18,
@@ -457,7 +457,7 @@ contract TestCTokenAndCEther is DSTestPlus {
             ComptrollerInterface(unitroller),
             gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
-            1e18,
+            _ONE,
             "cETH",
             "cETH",
             18,
@@ -465,66 +465,66 @@ contract TestCTokenAndCEther is DSTestPlus {
         );
 
         // support market
-        hevm.prank(admin);
+        vm.prank(admin);
         Comptroller(unitroller)._supportMarket(CToken(address(cDAI)));
-        hevm.prank(admin);
+        vm.prank(admin);
         Comptroller(unitroller)._supportMarket(CToken(address(cETH)));
         // set collateral factor
-        hevm.prank(admin);
+        vm.prank(admin);
         Comptroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 5e17);
-        hevm.prank(admin);
+        vm.prank(admin);
         Comptroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 5e17);
 
         // user1 enter markets
-        hevm.prank(user1);
+        vm.prank(user1);
         address[] memory markets = new address[](2);
         markets[0] = address(cDAI);
         markets[1] = address(cETH);
         ComptrollerInterface(unitroller).enterMarkets(markets);
 
         // user1 approve
-        hevm.prank(user1);
+        vm.prank(user1);
         IERC20(dai).approve(address(cDAI), 100e18);
 
         // user1 mint
-        hevm.prank(user1);
+        vm.prank(user1);
         assertTrue(cDAI.mint(100e18));
         assertEq(cDAI.balanceOf(user1), 100e18);
 
         // user2 enter markets
-        hevm.prank(user2);
+        vm.prank(user2);
         ComptrollerInterface(unitroller).enterMarkets(markets);
 
         // user2 mint
-        hevm.prank(user2);
+        vm.prank(user2);
         cETH.mint{ value: 100e18 }();
         assertEq(cETH.balanceOf(user2), 100e18);
 
         // user2 borrow
         uint256 balanceBeforeBorrowUser2 = IERC20(dai).balanceOf(user2);
-        hevm.prank(user2);
+        vm.prank(user2);
         cDAI.borrow(100e18);
         assertEq(cETH.balanceOf(user2), 100e18);
         assertEq(balanceBeforeBorrowUser2 + 100e18, IERC20(dai).balanceOf(user2));
 
         // user1 borrow
         uint256 balanceBeforeBorrowUser1 = user1.balance;
-        hevm.prank(user1);
+        vm.prank(user1);
         cETH.borrow(25e18);
         assertEq(cDAI.balanceOf(user1), 100e18);
         assertEq(balanceBeforeBorrowUser1 + 25e18, user1.balance);
 
         // user2 approve
-        hevm.prank(user2);
+        vm.prank(user2);
         IERC20(dai).approve(address(cDAI), 100e18);
 
         // user2 repay
-        hevm.prank(user2);
+        vm.prank(user2);
         cDAI.repayBorrowBehalf(user2, 100e18);
         assertEq(balanceBeforeBorrowUser2, IERC20(dai).balanceOf(user2));
 
         // user1 repay
-        hevm.prank(user1);
+        vm.prank(user1);
         cETH.repayBorrowBehalf{ value: 25e18 }(user1);
         assertEq(balanceBeforeBorrowUser1, user1.balance);
     }
@@ -535,7 +535,7 @@ contract TestCTokenAndCEther is DSTestPlus {
             ComptrollerInterface(unitroller),
             gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
-            1e18,
+            _ONE,
             "cDAI",
             "cDAI",
             18,
@@ -545,7 +545,7 @@ contract TestCTokenAndCEther is DSTestPlus {
             ComptrollerInterface(unitroller),
             gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
-            1e18,
+            _ONE,
             "cETH",
             "cETH",
             18,
@@ -553,73 +553,73 @@ contract TestCTokenAndCEther is DSTestPlus {
         );
 
         // support market
-        hevm.prank(admin);
+        vm.prank(admin);
         Comptroller(unitroller)._supportMarket(CToken(address(cDAI)));
-        hevm.prank(admin);
+        vm.prank(admin);
         Comptroller(unitroller)._supportMarket(CToken(address(cETH)));
         // set collateral factor
-        hevm.prank(admin);
+        vm.prank(admin);
         Comptroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 5e17);
-        hevm.prank(admin);
+        vm.prank(admin);
         Comptroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 5e17);
 
         // user1 enter markets
-        hevm.prank(user1);
+        vm.prank(user1);
         address[] memory markets = new address[](2);
         markets[0] = address(cDAI);
         markets[1] = address(cETH);
         ComptrollerInterface(unitroller).enterMarkets(markets);
 
         // user1 approve
-        hevm.prank(user1);
+        vm.prank(user1);
         IERC20(dai).approve(address(cDAI), 100e18);
 
         // user1 mint
-        hevm.prank(user1);
+        vm.prank(user1);
         assertTrue(cDAI.mint(100e18));
         assertEq(cDAI.balanceOf(user1), 100e18);
 
         // user2 enter markets
-        hevm.prank(user2);
+        vm.prank(user2);
         ComptrollerInterface(unitroller).enterMarkets(markets);
 
         // user2 mint
-        hevm.prank(user2);
+        vm.prank(user2);
         cETH.mint{ value: 100e18 }();
         assertEq(cETH.balanceOf(user2), 100e18);
 
         // user2 borrow
         uint256 balanceBeforeBorrowUser2 = IERC20(dai).balanceOf(user2);
-        hevm.prank(user2);
+        vm.prank(user2);
         cDAI.borrow(100e18);
         assertEq(cETH.balanceOf(user2), 100e18);
         assertEq(balanceBeforeBorrowUser2 + 100e18, IERC20(dai).balanceOf(user2));
 
         // user1 borrow
         uint256 balanceBeforeBorrowUser1 = user1.balance;
-        hevm.prank(user1);
+        vm.prank(user1);
         cETH.borrow(25e18);
         assertEq(cDAI.balanceOf(user1), 100e18);
         assertEq(balanceBeforeBorrowUser1 + 25e18, user1.balance);
 
         // set collateral factor
-        hevm.prank(admin);
+        vm.prank(admin);
         Comptroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 4e17);
-        hevm.prank(admin);
+        vm.prank(admin);
         Comptroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 4e17);
 
         // liquidator approve
-        hevm.prank(liquidator);
+        vm.prank(liquidator);
         IERC20(dai).approve(address(cDAI), 100e18);
 
         // liquidator liquidateBorrow user2
-        hevm.prank(liquidator);
+        vm.prank(liquidator);
         cDAI.liquidateBorrow(user2, 24e18, CTokenInterface(cETH));
 
         assertEq(cETH.balanceOf(liquidator), 5832000000000000000);
 
         // liquidator liquidateBorrow user1
-        hevm.prank(liquidator);
+        vm.prank(liquidator);
         cETH.liquidateBorrow{ value: 6e18 }(user1, CToken(cDAI));
 
         assertEq(cDAI.balanceOf(liquidator), 5832000000000000000);

@@ -8,13 +8,11 @@ import { ICurvePool } from "contracts/interfaces/Curve/ICurvePool.sol";
 import { ICurveFi } from "contracts/interfaces/Curve/ICurveFi.sol";
 import { CurveV1Extension } from "contracts/PricingOperations/Extensions/CurveV1Extension.sol";
 import { MockDataFeed } from "contracts/mocks/MockDataFeed.sol";
-
-import { Test, stdStorage, console, StdStorage, stdError } from "@forge-std/Test.sol";
 import { Math } from "contracts/utils/Math.sol";
+import "tests/utils/TestBase.sol";
 
-contract CurveV1ExtensionTest is Test {
+contract CurveV1ExtensionTest is TestBase {
     using Math for uint256;
-    using stdStorage for StdStorage;
 
     uint256 public ETH_PRICE_USD;
     uint256 public USDC_PRICE_USD;
@@ -123,7 +121,7 @@ contract CurveV1ExtensionTest is Test {
         (uint256 upper, uint256 lower, uint8 errorCode) = priceOps.getPriceInBaseEnforceNonZeroLower(CRV_DAI_USDC_USDT);
         assertApproxEqRel(
             upper,
-            uint256(1e18).mulDivDown(USDC_PRICE_USD.mulDivDown(pool.get_virtual_price(), 1e18), ETH_PRICE_USD),
+            uint256(_ONE).mulDivDown(USDC_PRICE_USD.mulDivDown(pool.get_virtual_price(), _ONE), ETH_PRICE_USD),
             0.01e18,
             "upper should be approx equal to 1/ETH_PRICE_USD."
         );
@@ -166,7 +164,7 @@ contract CurveV1ExtensionTest is Test {
         (uint256 upper, uint256 lower, uint8 errorCode) = priceOps.getPriceInBaseEnforceNonZeroLower(CRV_DAI_USDC_USDT);
         assertApproxEqRel(
             upper,
-            uint256(1e18).mulDivDown(USDC_PRICE_USD.mulDivDown(pool.get_virtual_price(), 1e18), ETH_PRICE_USD),
+            uint256(_ONE).mulDivDown(USDC_PRICE_USD.mulDivDown(pool.get_virtual_price(), _ONE), ETH_PRICE_USD),
             0.01e18,
             "upper should be approx equal to 1/ETH_PRICE_USD."
         );
@@ -187,7 +185,7 @@ contract CurveV1ExtensionTest is Test {
         (upper, lower, errorCode) = priceOps.getPriceInBaseEnforceNonZeroLower(CRV_DAI_USDC_USDT);
         assertApproxEqRel(
             upper,
-            uint256(1e18).mulDivDown(USDC_PRICE_USD.mulDivDown(pool.get_virtual_price(), 1e18), ETH_PRICE_USD),
+            uint256(_ONE).mulDivDown(USDC_PRICE_USD.mulDivDown(pool.get_virtual_price(), _ONE), ETH_PRICE_USD),
             0.01e18,
             "upper should be approx equal to 1/ETH_PRICE_USD."
         );
@@ -198,11 +196,11 @@ contract CurveV1ExtensionTest is Test {
         // Make USDC source good, but have USDC sources diverge.
         MOCK_USDC_USD_FEED.setMockUpdatedAt(block.timestamp);
         uint256 usdcDivergence = 0.03e18;
-        MOCK_USDC_USD_FEED.setMockAnswer(int256(uint256(1e8).mulDivDown(1e18 + usdcDivergence, 1e18)));
+        MOCK_USDC_USD_FEED.setMockAnswer(int256(uint256(1e8).mulDivDown(_ONE + usdcDivergence, _ONE)));
         (upper, lower, errorCode) = priceOps.getPriceInBaseEnforceNonZeroLower(CRV_DAI_USDC_USDT);
         assertApproxEqRel(
             upper,
-            uint256(1e18).mulDivDown(USDC_PRICE_USD.mulDivDown(pool.get_virtual_price(), 1e18), ETH_PRICE_USD),
+            uint256(_ONE).mulDivDown(USDC_PRICE_USD.mulDivDown(pool.get_virtual_price(), _ONE), ETH_PRICE_USD),
             2 * usdcDivergence,
             "upper should be approx equal to 1/ETH_PRICE_USD."
         );
@@ -218,7 +216,7 @@ contract CurveV1ExtensionTest is Test {
         (upper, lower, errorCode) = priceOps.getPriceInBaseEnforceNonZeroLower(CRV_DAI_USDC_USDT);
         assertApproxEqRel(
             upper,
-            uint256(1e18).mulDivDown(USDC_PRICE_USD.mulDivDown(pool.get_virtual_price(), 1e18), ETH_PRICE_USD),
+            uint256(_ONE).mulDivDown(USDC_PRICE_USD.mulDivDown(pool.get_virtual_price(), _ONE), ETH_PRICE_USD),
             0.01e18,
             "upper should be approx equal to 1/ETH_PRICE_USD."
         );
@@ -233,7 +231,7 @@ contract CurveV1ExtensionTest is Test {
         (upper, lower, errorCode) = priceOps.getPriceInBaseEnforceNonZeroLower(CRV_DAI_USDC_USDT);
         assertApproxEqRel(
             upper,
-            uint256(1e18).mulDivDown(USDC_PRICE_USD.mulDivDown(pool.get_virtual_price(), 1e18), ETH_PRICE_USD),
+            uint256(_ONE).mulDivDown(USDC_PRICE_USD.mulDivDown(pool.get_virtual_price(), _ONE), ETH_PRICE_USD),
             0.01e18,
             "upper should be approx equal to 1/ETH_PRICE_USD."
         );

@@ -12,7 +12,7 @@ import { PositionFolding } from "contracts/PositionFolding/PositionFolding.sol";
 import { GaugePool } from "contracts/gauge/GaugePool.sol";
 
 import "tests/compound/deploy.sol";
-import "tests/lib/DSTestPlus.sol";
+import "tests/utils/TestBase.sol";
 import "forge-std/console.sol";
 
 contract User {
@@ -21,7 +21,7 @@ contract User {
     fallback() external payable {}
 }
 
-contract TestPositionFolding is DSTestPlus {
+contract TestPositionFolding is TestBase {
     address public uniswapV2Router = address(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
     address public weth = address(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
     address public dai = address(0x6B175474E89094C44Da98b954EedeAC495271d0F);
@@ -52,13 +52,13 @@ contract TestPositionFolding is DSTestPlus {
         user = address(this);
 
         // prepare 200K DAI
-        hevm.store(
+        vm.store(
             dai,
             keccak256(abi.encodePacked(uint256(uint160(user)), uint256(2))),
             bytes32(uint256(200000 ether))
         );
         // prepare 200K ETH
-        hevm.deal(user, 200000 ether);
+        vm.deal(user, 200000 ether);
 
         gauge = address(new GaugePool(address(0), address(0), unitroller));
 
@@ -74,10 +74,10 @@ contract TestPositionFolding is DSTestPlus {
             payable(admin)
         );
         // support market
-        hevm.prank(admin);
+        vm.prank(admin);
         Comptroller(unitroller)._supportMarket(CToken(address(cDAI)));
         // set collateral factor
-        hevm.prank(admin);
+        vm.prank(admin);
         Comptroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 75e16);
 
         cETH = new CEther(
@@ -91,15 +91,15 @@ contract TestPositionFolding is DSTestPlus {
             payable(admin)
         );
         // support market
-        hevm.prank(admin);
+        vm.prank(admin);
         Comptroller(unitroller)._supportMarket(CToken(address(cETH)));
         // set collateral factor
-        hevm.prank(admin);
+        vm.prank(admin);
         Comptroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 75e16);
 
         positionFolding = new PositionFolding(unitroller, address(priceOracle), address(cETH), weth);
         // set position folding
-        hevm.prank(admin);
+        vm.prank(admin);
         Comptroller(unitroller)._setPositionFolding(address(positionFolding));
 
         // provide enough liquidity for leverage
@@ -108,15 +108,15 @@ contract TestPositionFolding is DSTestPlus {
 
     function provideEnoughLiquidityForLeverage() internal {
         address liquidityProvider = address(new User());
-        hevm.startPrank(liquidityProvider);
+        vm.startPrank(liquidityProvider);
         // prepare 200K DAI
-        hevm.store(
+        vm.store(
             dai,
             keccak256(abi.encodePacked(uint256(uint160(liquidityProvider)), uint256(2))),
             bytes32(uint256(200000 ether))
         );
         // prepare 200K ETH
-        hevm.deal(liquidityProvider, 200000 ether);
+        vm.deal(liquidityProvider, 200000 ether);
         address[] memory markets = new address[](2);
         markets[0] = address(cDAI);
         markets[1] = address(cETH);
@@ -129,12 +129,12 @@ contract TestPositionFolding is DSTestPlus {
         // mint cETH
         cETH.mint{ value: 200000 ether }();
 
-        hevm.stopPrank();
+        vm.stopPrank();
     }
 
     function testLeverageMaxWithOnlyCToken() public {
         // enter markets
-        hevm.startPrank(user);
+        vm.startPrank(user);
         address[] memory markets = new address[](1);
         markets[0] = address(cDAI);
         ComptrollerInterface(unitroller).enterMarkets(markets);
@@ -164,12 +164,12 @@ contract TestPositionFolding is DSTestPlus {
         assertEq(cTokenBalance, 245 ether);
         assertEq(borrowBalance, 170 ether);
 
-        hevm.stopPrank();
+        vm.stopPrank();
     }
 
     function testDeLeverageWithOnlyCToken() public {
         // enter markets
-        hevm.startPrank(user);
+        vm.startPrank(user);
         address[] memory markets = new address[](1);
         markets[0] = address(cDAI);
         ComptrollerInterface(unitroller).enterMarkets(markets);
@@ -212,12 +212,12 @@ contract TestPositionFolding is DSTestPlus {
         assertEq(cTokenBalance, 75 ether);
         assertEq(borrowBalance, 0 ether);
 
-        hevm.stopPrank();
+        vm.stopPrank();
     }
 
     function testLeverageMaxWithOnlyCEther() public {
         // enter markets
-        hevm.startPrank(user);
+        vm.startPrank(user);
         address[] memory markets = new address[](1);
         markets[0] = address(cETH);
         ComptrollerInterface(unitroller).enterMarkets(markets);
@@ -244,12 +244,12 @@ contract TestPositionFolding is DSTestPlus {
         assertEq(cTokenBalance, 245 ether);
         assertEq(borrowBalance, 170 ether);
 
-        hevm.stopPrank();
+        vm.stopPrank();
     }
 
     function testDeLeverageWithOnlyCEther() public {
         // enter markets
-        hevm.startPrank(user);
+        vm.startPrank(user);
         address[] memory markets = new address[](1);
         markets[0] = address(cETH);
         ComptrollerInterface(unitroller).enterMarkets(markets);
@@ -289,12 +289,12 @@ contract TestPositionFolding is DSTestPlus {
         assertEq(cTokenBalance, 75 ether);
         assertEq(borrowBalance, 0 ether);
 
-        hevm.stopPrank();
+        vm.stopPrank();
     }
 
     function testLeverageMaxIntegration1() public {
         // enter markets
-        hevm.startPrank(user);
+        vm.startPrank(user);
         address[] memory markets = new address[](2);
         markets[0] = address(cDAI);
         markets[1] = address(cETH);
@@ -350,11 +350,11 @@ contract TestPositionFolding is DSTestPlus {
         assertGt(maxBorrow, (9400 ether * 75) / 100);
         assertEq(sumBorrow, 6800 ether);
 
-        hevm.stopPrank();
+        vm.stopPrank();
     }
 
     function testDeLeverageIntegration1() public {
-        hevm.startPrank(user);
+        vm.startPrank(user);
 
         {
             // enter markets
@@ -459,12 +459,12 @@ contract TestPositionFolding is DSTestPlus {
             assertEq(sumBorrow, 500 ether);
         }
 
-        hevm.stopPrank();
+        vm.stopPrank();
     }
 
     function testLeverageMaxCheckAccountHealthy() public {
         // enter markets
-        hevm.startPrank(user);
+        vm.startPrank(user);
         address[] memory markets = new address[](2);
         markets[0] = address(cDAI);
         markets[1] = address(cETH);
@@ -490,8 +490,8 @@ contract TestPositionFolding is DSTestPlus {
         path[0] = dai;
         path[1] = weth;
 
-        hevm.deal(address(positionFolding), 0.01 ether);
-        hevm.expectRevert(bytes4(keccak256("InsufficientLiquidity()")));
+        vm.deal(address(positionFolding), 0.01 ether);
+        vm.expectRevert(bytes4(keccak256("InsufficientLiquidity()")));
         positionFolding.leverageMax(
             CToken(address(cDAI)),
             CToken(address(cETH)),
@@ -499,6 +499,6 @@ contract TestPositionFolding is DSTestPlus {
             3000
         );
 
-        hevm.stopPrank();
+        vm.stopPrank();
     }
 }

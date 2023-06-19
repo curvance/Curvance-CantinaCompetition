@@ -3,21 +3,16 @@ pragma solidity 0.8.17;
 
 import { ERC20 } from "contracts/base/ERC20.sol";
 import { SafeTransferLib } from "contracts/base/SafeTransferLib.sol";
-import { DepositRouterV2 as DepositRouter } from "contracts/DepositRouterV2.sol";
-import { ConvexPositionVault, BasePositionVault } from "contracts/positions/ConvexPositionVault.sol";
-import { IBaseRewardPool } from "contracts/interfaces/Convex/IBaseRewardPool.sol";
 import { PriceOps } from "contracts/PricingOperations/PriceOps.sol";
 import { IChainlinkAggregator } from "contracts/interfaces/IChainlinkAggregator.sol";
 import { ICurvePool } from "contracts/interfaces/Curve/ICurvePool.sol";
 import { UniswapV3Pool } from "contracts/interfaces/Uniswap/UniswapV3Pool.sol";
 import { MockDataFeed } from "contracts/mocks/MockDataFeed.sol";
-
-import { Test, stdStorage, console, StdStorage, stdError } from "@forge-std/Test.sol";
 import { Math } from "contracts/utils/Math.sol";
+import "tests/utils/TestBase.sol";
 
-contract PriceOpsTest is Test {
+contract PriceOpsTest is TestBase {
     using Math for uint256;
-    using stdStorage for StdStorage;
     using SafeTransferLib for ERC20;
 
     uint256 public ETH_PRICE_USD;
@@ -213,7 +208,7 @@ contract PriceOpsTest is Test {
 
         assertApproxEqRel(
             answer,
-            uint256(1e18).mulDivDown(USDC_PRICE_USD, ETH_PRICE_USD),
+            uint256(_ONE).mulDivDown(USDC_PRICE_USD, ETH_PRICE_USD),
             0.001e18,
             "Answer should be approx equal to 1/ETH_PRICE_USD."
         );
@@ -261,7 +256,7 @@ contract PriceOpsTest is Test {
 
         assertApproxEqRel(
             answer,
-            uint256(1e18).mulDivDown(FRAX_PRICE_USD, ETH_PRICE_USD),
+            uint256(_ONE).mulDivDown(FRAX_PRICE_USD, ETH_PRICE_USD),
             0.001e18,
             "Answer should be approx equal to 1/ETH_PRICE_USD."
         );
@@ -277,7 +272,7 @@ contract PriceOpsTest is Test {
         (uint256 upper, uint256 lower, uint8 errorCode) = priceOps.getPriceInBaseEnforceNonZeroLower(USDC);
         assertApproxEqRel(
             upper,
-            uint256(1e18).mulDivDown(USDC_PRICE_USD, ETH_PRICE_USD),
+            uint256(_ONE).mulDivDown(USDC_PRICE_USD, ETH_PRICE_USD),
             0.000001e18,
             "USDC price should equal 1/ETH_PRICE_USD."
         );
@@ -320,7 +315,7 @@ contract PriceOpsTest is Test {
         (upper, lower, errorCode) = priceOps.getPriceInBaseEnforceNonZeroLower(USDC);
         assertApproxEqRel(
             upper,
-            uint256(1e18).mulDivDown(USDC_PRICE_USD, ETH_PRICE_USD),
+            uint256(_ONE).mulDivDown(USDC_PRICE_USD, ETH_PRICE_USD),
             0.000001e18,
             "USDC price should equal 1/ETH_PRICE_USD."
         );
@@ -359,7 +354,7 @@ contract PriceOpsTest is Test {
         (uint256 upper, uint256 lower, uint8 errorCode) = priceOps.getPriceInBaseEnforceNonZeroLower(USDC);
         assertApproxEqRel(
             upper,
-            uint256(1e18).mulDivDown(USDC_PRICE_USD, ETH_PRICE_USD),
+            uint256(_ONE).mulDivDown(USDC_PRICE_USD, ETH_PRICE_USD),
             0.001e18,
             "USDC price should equal 1/ETH_PRICE_USD."
         );
@@ -375,7 +370,7 @@ contract PriceOpsTest is Test {
         (upper, lower, errorCode) = priceOps.getPriceInBaseEnforceNonZeroLower(USDC);
         assertApproxEqRel(
             upper,
-            uint256(1e18).mulDivDown(USDC_PRICE_USD, ETH_PRICE_USD),
+            uint256(_ONE).mulDivDown(USDC_PRICE_USD, ETH_PRICE_USD),
             0.001e18,
             "USDC price should equal 1/ETH_PRICE_USD."
         );
@@ -392,7 +387,7 @@ contract PriceOpsTest is Test {
         (upper, lower, errorCode) = priceOps.getPriceInBaseEnforceNonZeroLower(USDC);
         assertApproxEqRel(
             upper,
-            uint256(1e18).mulDivDown(USDC_PRICE_USD, ETH_PRICE_USD),
+            uint256(_ONE).mulDivDown(USDC_PRICE_USD, ETH_PRICE_USD),
             0.001e18,
             "USDC price should equal 1/ETH_PRICE_USD."
         );
@@ -478,7 +473,7 @@ contract PriceOpsTest is Test {
         (uint256 upper, uint256 lower, uint8 errorCode) = priceOps.getPriceInBaseEnforceNonZeroLower(FRAX);
         assertApproxEqRel(
             upper,
-            uint256(1e18).mulDivDown(FRAX_PRICE_USD, ETH_PRICE_USD),
+            uint256(_ONE).mulDivDown(FRAX_PRICE_USD, ETH_PRICE_USD),
             0.001e18,
             "FRAX price should equal 1/ETH_PRICE_USD."
         );
@@ -494,7 +489,7 @@ contract PriceOpsTest is Test {
         (upper, lower, errorCode) = priceOps.getPriceInBaseEnforceNonZeroLower(FRAX);
         assertApproxEqRel(
             upper,
-            uint256(1e18).mulDivDown(FRAX_PRICE_USD, ETH_PRICE_USD),
+            uint256(_ONE).mulDivDown(FRAX_PRICE_USD, ETH_PRICE_USD),
             0.001e18,
             "FRAX price should equal 1/ETH_PRICE_USD."
         );
@@ -516,7 +511,7 @@ contract PriceOpsTest is Test {
         (upper, lower, errorCode) = priceOps.getPriceInBaseEnforceNonZeroLower(FRAX);
         assertApproxEqRel(
             upper,
-            uint256(1e18).mulDivDown(FRAX_PRICE_USD, ETH_PRICE_USD),
+            uint256(_ONE).mulDivDown(FRAX_PRICE_USD, ETH_PRICE_USD),
             0.001e18,
             "FRAX price should equal 1/ETH_PRICE_USD."
         );

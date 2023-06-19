@@ -6,16 +6,13 @@ import { SafeTransferLib } from "contracts/base/SafeTransferLib.sol";
 import { PriceOps } from "contracts/PricingOperations/PriceOps.sol";
 import { IChainlinkAggregator } from "contracts/interfaces/IChainlinkAggregator.sol";
 import { ICurveFi } from "contracts/interfaces/Curve/ICurveFi.sol";
-import { ICurvePool } from "contracts/interfaces/Curve/ICurvePool.sol";
 import { CurveV2Extension } from "contracts/PricingOperations/Extensions/CurveV2Extension.sol";
 import { MockDataFeed } from "contracts/mocks/MockDataFeed.sol";
-
-import { Test, stdStorage, console, StdStorage, stdError } from "@forge-std/Test.sol";
 import { Math } from "contracts/utils/Math.sol";
+import "tests/utils/TestBase.sol";
 
-contract CurveV2ExtensionTest is Test {
+contract CurveV2ExtensionTest is TestBase {
     using Math for uint256;
-    using stdStorage for StdStorage;
     using SafeTransferLib for ERC20;
 
     uint256 public USDT_PRICE_ETH;

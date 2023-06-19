@@ -5,18 +5,13 @@ import { ERC20 } from "contracts/base/ERC20.sol";
 import { SafeTransferLib } from "contracts/base/SafeTransferLib.sol";
 import { DepositRouterV2 as DepositRouter } from "contracts/DepositRouterV2.sol";
 import { VelodromeStablePositionVault, BasePositionVault, IVeloGauge, IVeloRouter, IVeloPairFactory } from "contracts/positions/VelodromeStablePositionVault.sol";
-import { IBaseRewardPool } from "contracts/interfaces/Convex/IBaseRewardPool.sol";
 import { PriceRouter } from "contracts/PricingOperations/PriceRouter.sol";
 import { IChainlinkAggregator } from "contracts/interfaces/IChainlinkAggregator.sol";
-import { ICurvePool } from "contracts/interfaces/Curve/ICurvePool.sol";
-// import { MockGasFeed } from "contracts/mocks/MockGasFeed.sol";
-
-import { Test, stdStorage, console, StdStorage, stdError } from "@forge-std/Test.sol";
 import { Math } from "contracts/utils/Math.sol";
+import "tests/utils/TestBase.sol";
 
-contract VelodromeStablePositionVaultTest is Test {
+contract VelodromeStablePositionVaultTest is TestBase {
     using Math for uint256;
-    using stdStorage for StdStorage;
     using SafeTransferLib for ERC20;
 
     PriceRouter private priceRouter;
@@ -130,7 +125,7 @@ contract VelodromeStablePositionVaultTest is Test {
     function testVelodromeStablePositionVaultWETHUSDC() external {
         positionVault.updateHarvestSlippage(0.9e18); // 90% slippage for testing
 
-        uint256 assets = 1e18;
+        uint256 assets = _ONE;
         deal(address(USDC_DAI), address(this), assets);
         USDC_DAI.approve(address(positionVault), assets);
 

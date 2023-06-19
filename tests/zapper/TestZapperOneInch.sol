@@ -6,12 +6,12 @@ import "contracts/mocks/MockCToken.sol";
 import "contracts/mocks/MockComptroller.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import "tests/lib/DSTestPlus.sol";
+import "tests/utils/TestBase.sol";
 import "forge-std/console.sol";
 
 contract User {}
 
-contract testZapperOneInch is DSTestPlus {
+contract testZapperOneInch is TestBase {
     address dai = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
     address usdt = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
     address usdc = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
@@ -22,7 +22,7 @@ contract testZapperOneInch is DSTestPlus {
 
     function testTriCryptoWithETH() public {
         address user = address(0x0000000000000000000000000000000000000001);
-        hevm.startPrank(user);
+        vm.startPrank(user);
 
         // setup environment
         IERC20 token = IERC20(0xc4AD29ba4B3c580e6D59105FFf484999997675Ff);
@@ -51,12 +51,12 @@ contract testZapperOneInch is DSTestPlus {
 
         assertGt(cToken.balanceOf(user), 0);
 
-        hevm.stopPrank();
+        vm.stopPrank();
     }
 
     function testTriCryptoWithDAI() public {
         address user = address(0x0000000000000000000000000000000000000001);
-        hevm.startPrank(user);
+        vm.startPrank(user);
 
         // setup environment
         IERC20 token = IERC20(0xc4AD29ba4B3c580e6D59105FFf484999997675Ff);
@@ -87,12 +87,12 @@ contract testZapperOneInch is DSTestPlus {
 
         assertGt(cToken.balanceOf(user), 0);
 
-        hevm.stopPrank();
+        vm.stopPrank();
     }
 
     function testFraxUSDCWithETH() public {
         address user = address(0x0000000000000000000000000000000000000001);
-        hevm.startPrank(user);
+        vm.startPrank(user);
 
         // setup environment
         IERC20 token = IERC20(0x3175Df0976dFA876431C2E9eE6Bc45b65d3473CC);
@@ -128,6 +128,6 @@ contract testZapperOneInch is DSTestPlus {
 
         assertGt(cToken.balanceOf(user), 0);
 
-        hevm.stopPrank();
+        vm.stopPrank();
     }
 }

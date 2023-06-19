@@ -9,14 +9,11 @@ import { IBaseRewardPool } from "contracts/interfaces/Convex/IBaseRewardPool.sol
 import { PriceRouter } from "contracts/PricingOperations/PriceRouter.sol";
 import { IChainlinkAggregator } from "contracts/interfaces/IChainlinkAggregator.sol";
 import { ICurvePool } from "contracts/interfaces/Curve/ICurvePool.sol";
-// import { MockGasFeed } from "contracts/mocks/MockGasFeed.sol";
-
-import { Test, stdStorage, console, StdStorage, stdError } from "@forge-std/Test.sol";
 import { Math } from "contracts/utils/Math.sol";
+import "tests/utils/TestBase.sol";
 
-contract ConvexPositionVaultTest is Test {
+contract ConvexPositionVaultTest is TestBase {
     using Math for uint256;
-    using stdStorage for StdStorage;
     using SafeTransferLib for ERC20;
 
     PriceRouter private priceRouter;
@@ -345,14 +342,14 @@ contract ConvexPositionVaultTest is Test {
         deal(address(CRV), address(cvxPosition3Pool), 100e18);
         deal(address(CVX), address(cvxPositionTriCrypto), 100e18);
 
-        uint256 shareValue = cvxPosition3Pool.previewRedeem(1e18);
+        uint256 shareValue = cvxPosition3Pool.previewRedeem(_ONE);
         cvxPosition3Pool.harvest();
-        assertEq(cvxPosition3Pool.previewRedeem(1e18), shareValue, "Share Price should be constant through harvest.");
+        assertEq(cvxPosition3Pool.previewRedeem(_ONE), shareValue, "Share Price should be constant through harvest.");
 
         vm.warp(block.timestamp + 7 days);
 
         assertGt(
-            cvxPosition3Pool.previewRedeem(1e18),
+            cvxPosition3Pool.previewRedeem(_ONE),
             shareValue,
             "Share Price should have increased as rewards vest."
         );
@@ -363,8 +360,8 @@ contract ConvexPositionVaultTest is Test {
     }
 
     function testMultipleDepositors(uint256 assetsA, uint256 assetsB) external {
-        assetsA = bound(assetsA, 1e18, type(uint96).max);
-        assetsB = bound(assetsB, 1e18, type(uint96).max);
+        assetsA = bound(assetsA, _ONE, type(uint96).max);
+        assetsB = bound(assetsB, _ONE, type(uint96).max);
 
         address userA = vm.addr(23);
         address userB = vm.addr(24);

@@ -13,12 +13,12 @@ import "contracts/compound/InterestRateModel/InterestRateModel.sol";
 import { GaugePool } from "contracts/gauge/GaugePool.sol";
 
 import "tests/compound/deploy.sol";
-import "tests/lib/DSTestPlus.sol";
+import "tests/utils/TestBase.sol";
 import "forge-std/console.sol";
 
 contract User {}
 
-contract TestWhitePaperInterestRateModel is DSTestPlus {
+contract TestWhitePaperInterestRateModel is TestBase {
     address public dai = address(0x6B175474E89094C44Da98b954EedeAC495271d0F);
 
     address public admin;
@@ -42,7 +42,7 @@ contract TestWhitePaperInterestRateModel is DSTestPlus {
         compRewards = deployments.compRewards();
         cve = deployments.cve();
         priceOracle = SimplePriceOracle(deployments.priceOracle());
-        priceOracle.setDirectPrice(dai, 1e18);
+        priceOracle.setDirectPrice(dai, _ONE);
 
         admin = deployments.admin();
         user = address(this);
@@ -51,8 +51,8 @@ contract TestWhitePaperInterestRateModel is DSTestPlus {
         interestRateModel = address(new WhitePaperInterestRateModel(1e17, 1e17));
 
         // prepare 200K DAI
-        hevm.store(dai, keccak256(abi.encodePacked(uint256(uint160(user)), uint256(2))), bytes32(uint256(200000e18)));
-        hevm.store(
+        vm.store(dai, keccak256(abi.encodePacked(uint256(uint160(user)), uint256(2))), bytes32(uint256(200000e18)));
+        vm.store(
             dai,
             keccak256(abi.encodePacked(uint256(uint160(liquidator)), uint256(2))),
             bytes32(uint256(200000e18))
@@ -67,23 +67,23 @@ contract TestWhitePaperInterestRateModel is DSTestPlus {
             ComptrollerInterface(unitroller),
             gauge,
             InterestRateModel(interestRateModel),
-            1e18,
+            _ONE,
             "cDAI",
             "cDAI",
             18,
             payable(admin)
         );
         // support market
-        hevm.prank(admin);
+        vm.prank(admin);
         Comptroller(unitroller)._supportMarket(CToken(address(cDAI)));
         // set collateral factor
-        hevm.prank(admin);
+        vm.prank(admin);
         Comptroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 5e17);
-        hevm.prank(admin);
+        vm.prank(admin);
         compRewards._setCveSpeed(CToken(cDAI), 1e16); // 0.01 CVE per block
 
         // enter markets
-        hevm.prank(user);
+        vm.prank(user);
         address[] memory markets = new address[](1);
         markets[0] = address(cDAI);
         ComptrollerInterface(unitroller).enterMarkets(markets);
@@ -100,7 +100,7 @@ contract TestWhitePaperInterestRateModel is DSTestPlus {
         CToken[] memory cTokens = new CToken[](1);
         cTokens[0] = CToken(cDAI);
 
-        hevm.roll(block.number + 1000);
+        vm.roll(block.number + 1000);
         compRewards.claimCve(holders, cTokens, false, true);
         uint256 cveBalance = cve.balanceOf(user);
         assertEq(cveBalance, 1e16 * 1000);
@@ -112,23 +112,23 @@ contract TestWhitePaperInterestRateModel is DSTestPlus {
             ComptrollerInterface(unitroller),
             gauge,
             InterestRateModel(interestRateModel),
-            1e18,
+            _ONE,
             "cDAI",
             "cDAI",
             18,
             payable(admin)
         );
         // support market
-        hevm.prank(admin);
+        vm.prank(admin);
         Comptroller(unitroller)._supportMarket(CToken(address(cDAI)));
         // set collateral factor
-        hevm.prank(admin);
+        vm.prank(admin);
         Comptroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 5e17);
-        hevm.prank(admin);
+        vm.prank(admin);
         compRewards._setCveSpeed(CToken(cDAI), 1e16); // 0.01 CVE per block
 
         // enter markets
-        hevm.prank(user);
+        vm.prank(user);
         address[] memory markets = new address[](1);
         markets[0] = address(cDAI);
         ComptrollerInterface(unitroller).enterMarkets(markets);
@@ -151,7 +151,7 @@ contract TestWhitePaperInterestRateModel is DSTestPlus {
         CToken[] memory cTokens = new CToken[](1);
         cTokens[0] = CToken(cDAI);
 
-        hevm.roll(block.number + 1000);
+        vm.roll(block.number + 1000);
         compRewards.claimCve(holders, cTokens, true, false);
         uint256 cveBalance = cve.balanceOf(user);
         assertEq(cveBalance, 1e16 * 1000);
