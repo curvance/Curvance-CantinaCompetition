@@ -4,7 +4,7 @@ pragma solidity ^0.8.15;
 import "contracts/zapper/ZapperOneInch.sol";
 import "contracts/mocks/MockCToken.sol";
 import "contracts/mocks/MockComptroller.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/interfaces/IERC20.sol";
 
 import "tests/utils/TestBase.sol";
 import "forge-std/console.sol";

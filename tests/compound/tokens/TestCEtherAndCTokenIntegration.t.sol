@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/interfaces/IERC20.sol";
 import "contracts/compound/Comptroller/Comptroller.sol";
 import "contracts/compound/Comptroller/ComptrollerInterface.sol";
 import "contracts/compound/Token/CErc20Immutable.sol";
