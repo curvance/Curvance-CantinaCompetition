@@ -37,8 +37,6 @@ interface ICentralRegistry {
     function protocolLeverageFee() external view returns (uint256);
     // @notice Returns lockBoostValue Address
     function lockBoostValue() external view returns (uint256);
-    // @notice Returns isBoostingActive Address
-    function isBoostingActive() external view returns (bool);
     // @notice Returns whether the inputted address is a Harvester
     function isHarvester(address _address) external view returns (bool);
     // @notice Returns whether the inputted address is a lending market
