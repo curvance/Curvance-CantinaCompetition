@@ -7,7 +7,7 @@ import "../interfaces/ILayerZeroUserApplicationConfig.sol";
 import "../interfaces/ILayerZeroEndpoint.sol";
 import "../interfaces/ICentralRegistry.sol";
 import "../utils/BytesLib.sol";
-import "../utils/Context.sol";
+import "@openzeppelin/contracts/utils/Context.sol";
 
 /*
  * a generic LzReceiver implementation
