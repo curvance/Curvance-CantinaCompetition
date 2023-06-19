@@ -1,6 +1,30 @@
-[submodule "lib/compound-protocol"]
-	path = lib/compound-protocol
-	url = https://github.com/curvance/compound-protocol
 [submodule "lib/curve-dao-contracts"]
 	path = lib/curve-dao-contracts
 	url = https://github.com/curvefi/curve-dao-contracts
+[submodule "lib/chainlink"]
+	path = lib/chainlink
+	url = https://github.com/smartcontractkit/chainlink
+[submodule "lib/forge-std"]
+	path = lib/forge-std
+	url = https://github.com/foundry-rs/forge-std
+[submodule "lib/compound-protocol"]
+	path = lib/compound-protocol
+	url = https://github.com/compound-finance/compound-protocol
+[submodule "lib/solmate"]
+	path = lib/solmate
+	url = https://github.com/transmissions11/solmate
+[submodule "lib/v3-periphery"]
+	path = lib/v3-periphery
+	url = https://github.com/crispymangoes/v3-periphery
+[submodule "lib/v3-core"]
+	path = lib/v3-core
+	url = https://github.com/Uniswap/v3-core
+[submodule "lib/openzeppelin-contracts"]
+	path = lib/openzeppelin-contracts
+	url = https://github.com/openzeppelin/openzeppelin-contracts
+[submodule "lib/pendle-core-v2-public"]
+	path = lib/pendle-core-v2-public
+	url = https://github.com/pendle-finance/pendle-core-v2-public
+[submodule "lib/openzeppelin-contracts-upgradeable"]
+	path = lib/openzeppelin-contracts-upgradeable
+	url = https://github.com/openzeppelin/openzeppelin-contracts-upgradeable
