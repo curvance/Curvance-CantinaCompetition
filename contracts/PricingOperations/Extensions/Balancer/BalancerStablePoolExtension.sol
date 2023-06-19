@@ -4,6 +4,7 @@ pragma solidity 0.8.17;
 import { IBalancerPool } from "contracts/interfaces/external/IBalancerPool.sol";
 import { IRateProvider } from "contracts/interfaces/external/IRateProvider.sol";
 import { BalancerPoolExtension, ERC20, Math, IVault, IERC20 } from "./BalancerPoolExtension.sol";
+import { PriceOps } from "contracts/PricingOperations/Extension.sol";
 import { PriceRouter } from "contracts/PricingOperations/PriceRouter.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
@@ -15,6 +16,8 @@ import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 contract BalancerStablePoolExtension is BalancerPoolExtension {
     using Math for uint256;
     using Address for address;
+
+    PriceRouter public priceRouter;
 
     /**
      * @notice Atleast one of the pools underlying tokens is not supported by the Price Router.
@@ -36,7 +39,19 @@ contract BalancerStablePoolExtension is BalancerPoolExtension {
      */
     error BalancerStablePoolExtension__RateProviderDecimalsNotProvided();
 
-    constructor(PriceRouter _priceRouter, IVault _balancerVault) BalancerPoolExtension(_priceRouter, _balancerVault) {}
+    error BalancerStablePoolExtension__OnlyPriceRouter();
+
+    // Only callable by price router.
+    modifier onlyPriceRouter() {
+        if (msg.sender != address(priceRouter)) {
+            revert BalancerStablePoolExtension__OnlyPriceRouter();
+        }
+        _;
+    }
+
+    constructor(PriceRouter _priceRouter, PriceOps _priceOps, IVault _balancerVault) BalancerPoolExtension(_priceOps, _balancerVault) {
+        priceRouter = _priceRouter;
+    }
 
     /**
      * @notice Extension storage
@@ -69,7 +84,8 @@ contract BalancerStablePoolExtension is BalancerPoolExtension {
      *      rateProviderDecimals, rateProviders, and underlyingOrConstituent
      *      MUST be correct, providing wrong values will result in inaccurate pricing.
      */
-    function setupSource(ERC20 asset, bytes memory _storage) external override onlyPriceRouter {
+    // Removed override keyword since it doesn't override anything.
+    function setupSource(ERC20 asset, bytes memory _storage) external onlyPriceRouter {
         IBalancerPool pool = IBalancerPool(address(asset));
         ExtensionStorage memory stor = abi.decode(_storage, (ExtensionStorage));
 
@@ -97,11 +113,15 @@ contract BalancerStablePoolExtension is BalancerPoolExtension {
         extensionStorage[asset] = stor;
     }
 
+    // Added empty function since it should override parent.
+    function setupSource(address asset, uint64 sourceId, bytes memory sourceData) external override {}
+
     /**
      * @notice Called during pricing operations.
      * @param asset the BPT token
      */
-    function getPriceInUSD(ERC20 asset) external view override returns (uint256) {
+    // Removed override keyword since it doesn't override anything.
+    function getPriceInUSD(ERC20 asset) external view returns (uint256) {
         _ensureNotInVaultContext(balancerVault);
         IBalancerPool pool = IBalancerPool(address(asset));
 
@@ -126,4 +146,7 @@ contract BalancerStablePoolExtension is BalancerPoolExtension {
         uint256 priceBpt = minPrice.mulDivDown(pool.getRate(), 10 ** stor.poolDecimals);
         return priceBpt;
     }
+
+    // Added empty function since it should override parent.
+    function getPriceInBase(uint64 sourceId) external view override returns (uint256, uint256, uint8) {}
 }
