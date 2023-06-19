@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.17;
 
-import { ERC20 } from "src/base/ERC20.sol";
-import { PriceOps } from "src/PricingOperations/PriceOps.sol";
-import { IChainlinkAggregator } from "src/interfaces/IChainlinkAggregator.sol";
-import { ICurvePool } from "src/interfaces/Curve/ICurvePool.sol";
-import { ICurveFi } from "src/interfaces/Curve/ICurveFi.sol";
-import { CurveV1Extension } from "src/PricingOperations/Extensions/CurveV1Extension.sol";
-import { MockDataFeed } from "src/mocks/MockDataFeed.sol";
+import { ERC20 } from "contracts/base/ERC20.sol";
+import { PriceOps } from "contracts/PricingOperations/PriceOps.sol";
+import { IChainlinkAggregator } from "contracts/interfaces/IChainlinkAggregator.sol";
+import { ICurvePool } from "contracts/interfaces/Curve/ICurvePool.sol";
+import { ICurveFi } from "contracts/interfaces/Curve/ICurveFi.sol";
+import { CurveV1Extension } from "contracts/PricingOperations/Extensions/CurveV1Extension.sol";
+import { MockDataFeed } from "contracts/mocks/MockDataFeed.sol";
 
 import { Test, stdStorage, console, StdStorage, stdError } from "@forge-std/Test.sol";
-import { Math } from "src/utils/Math.sol";
+import { Math } from "contracts/utils/Math.sol";
 
 contract CurveV1ExtensionTest is Test {
     using Math for uint256;

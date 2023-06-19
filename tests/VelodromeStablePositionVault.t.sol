@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.17;
 
-import { ERC20 } from "src/base/ERC20.sol";
-import { SafeTransferLib } from "src/base/SafeTransferLib.sol";
-import { DepositRouterV2 as DepositRouter } from "src/DepositRouterV2.sol";
-import { VelodromeStablePositionVault, BasePositionVault, IVeloGauge, IVeloRouter, IVeloPairFactory } from "src/positions/VelodromeStablePositionVault.sol";
-import { IBaseRewardPool } from "src/interfaces/Convex/IBaseRewardPool.sol";
-import { PriceRouter } from "src/PricingOperations/PriceRouter.sol";
-import { IChainlinkAggregator } from "src/interfaces/IChainlinkAggregator.sol";
-import { ICurvePool } from "src/interfaces/Curve/ICurvePool.sol";
-// import { MockGasFeed } from "src/mocks/MockGasFeed.sol";
+import { ERC20 } from "contracts/base/ERC20.sol";
+import { SafeTransferLib } from "contracts/base/SafeTransferLib.sol";
+import { DepositRouterV2 as DepositRouter } from "contracts/DepositRouterV2.sol";
+import { VelodromeStablePositionVault, BasePositionVault, IVeloGauge, IVeloRouter, IVeloPairFactory } from "contracts/positions/VelodromeStablePositionVault.sol";
+import { IBaseRewardPool } from "contracts/interfaces/Convex/IBaseRewardPool.sol";
+import { PriceRouter } from "contracts/PricingOperations/PriceRouter.sol";
+import { IChainlinkAggregator } from "contracts/interfaces/IChainlinkAggregator.sol";
+import { ICurvePool } from "contracts/interfaces/Curve/ICurvePool.sol";
+// import { MockGasFeed } from "contracts/mocks/MockGasFeed.sol";
 
 import { Test, stdStorage, console, StdStorage, stdError } from "@forge-std/Test.sol";
-import { Math } from "src/utils/Math.sol";
+import { Math } from "contracts/utils/Math.sol";
 
 contract VelodromeStablePositionVaultTest is Test {
     using Math for uint256;
