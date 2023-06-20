@@ -17,6 +17,10 @@ contract TestZapperOneInch is TestBase {
     address oneInchRouter = 0x1111111254EEB25477B68fb85Ed929f73A960582;
     address frax = 0x853d955aCEf822Db058eb8505911ED77F175b99e;
 
+    function setUp() public {
+        _fork();
+    }
+
     function testTriCryptoWithETH() public {
         address user = address(0x0000000000000000000000000000000000000001);
         vm.startPrank(user);

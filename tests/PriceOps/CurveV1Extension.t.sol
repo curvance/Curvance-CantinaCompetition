@@ -44,7 +44,9 @@ contract CurveV1ExtensionTest is TestBase {
     address private CRV_DAI_USDC_USDT = 0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490;
     address private curve3CrvPool = 0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7;
 
-    function setUp() external {
+    function setUp() public {
+        _fork();
+
         ETH_PRICE_USD = uint256(IChainlinkAggregator(WETH_USD_FEED).latestAnswer());
         USDC_PRICE_USD = uint256(IChainlinkAggregator(USDC_USD_FEED).latestAnswer());
         USDC_PRICE_ETH = uint256(IChainlinkAggregator(USDC_ETH_FEED).latestAnswer());
@@ -106,7 +108,7 @@ contract CurveV1ExtensionTest is TestBase {
                         CURVE V1 SOURCE PRICING 
     //////////////////////////////////////////////////////////////*/
 
-    function testCurveV1Source3Pool(uint256 usdcIn) external {
+    function testCurveV1Source3Pool(uint256 usdcIn) public {
         usdcIn = bound(usdcIn, 1e6, 100_000_000e6);
         ICurvePool pool = ICurvePool(curve3CrvPool);
         uint64 crv3PoolSource = priceOps.addSource(
@@ -150,7 +152,7 @@ contract CurveV1ExtensionTest is TestBase {
                     CURVE V1 SOURCE ERRORS 
     //////////////////////////////////////////////////////////////*/
 
-    function testCurveV1SourceErrorCodes() external {
+    function testCurveV1SourceErrorCodes() public {
         ICurvePool pool = ICurvePool(curve3CrvPool);
         uint64 crv3PoolSource = priceOps.addSource(
             CRV_DAI_USDC_USDT,

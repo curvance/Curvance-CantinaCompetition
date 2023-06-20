@@ -12,7 +12,6 @@ import { GaugePool } from "contracts/gauge/GaugePool.sol";
 
 import "tests/compound/deploy.sol";
 import "tests/utils/TestBase.sol";
-import "forge-std/console.sol";
 
 contract User {
     receive() external payable {}
@@ -39,6 +38,8 @@ contract TestCTokenAndCEther is TestBase {
     fallback() external payable {}
 
     function setUp() public {
+        _fork();
+
         deployments = new DeployCompound();
         deployments.makeCompound();
         unitroller = address(deployments.unitroller());

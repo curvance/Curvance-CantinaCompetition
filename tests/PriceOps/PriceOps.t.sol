@@ -66,7 +66,9 @@ contract PriceOpsTest is TestBase {
 
     // TODO add tests where we check revert cases for admin functions.
 
-    function setUp() external {
+    function setUp() public {
+        _fork();
+
         ETH_PRICE_USD = uint256(IChainlinkAggregator(WETH_USD_FEED).latestAnswer());
         WBTC_PRICE_ETH = uint256(IChainlinkAggregator(WBTC_ETH_FEED).latestAnswer());
         USDC_PRICE_USD = uint256(IChainlinkAggregator(USDC_USD_FEED).latestAnswer());
@@ -136,7 +138,7 @@ contract PriceOpsTest is TestBase {
                             OWNER LOGIC 
     //////////////////////////////////////////////////////////////*/
 
-    function testEditAssetFlow() external {
+    function testEditAssetFlow() public {
         // Owner wants to edit USDC to use the USDC -> ETH Chainlink source.
         PriceOps.ChainlinkSourceStorage memory stor;
 
@@ -184,7 +186,7 @@ contract PriceOpsTest is TestBase {
                     CHAINLINK/TWAP SOURCE PRICES 
     //////////////////////////////////////////////////////////////*/
 
-    function testChainlinkEthSource() external {
+    function testChainlinkEthSource() public {
         PriceOps.ChainlinkSourceStorage memory stor;
 
         // STETH-ETH
@@ -203,7 +205,7 @@ contract PriceOpsTest is TestBase {
         assertEq(errorCode, 0, "There should be no error.");
     }
 
-    function testChainlinkUsdSource() external {
+    function testChainlinkUsdSource() public {
         (uint256 answer, , uint8 errorCode) = priceOps.getPriceInBaseEnforceNonZeroLower(USDC);
 
         assertApproxEqRel(
@@ -215,7 +217,7 @@ contract PriceOpsTest is TestBase {
         assertEq(errorCode, 0, "There should be no error.");
     }
 
-    function testTwapEthSource() external {
+    function testTwapEthSource() public {
         // WBTC-WETH TWAP
         PriceOps.TwapSourceStorage memory twapStor;
         twapStor.secondsAgo = 600;
@@ -236,7 +238,7 @@ contract PriceOpsTest is TestBase {
         assertEq(errorCode, 0, "There should be no error.");
     }
 
-    function testTwapNonEthSource() external {
+    function testTwapNonEthSource() public {
         // FRAX-USDC TWAP
         PriceOps.TwapSourceStorage memory twapStor;
         twapStor.secondsAgo = 600;
@@ -267,7 +269,7 @@ contract PriceOpsTest is TestBase {
                     CHAINLINK/TWAP SOURCE ERRORS 
     //////////////////////////////////////////////////////////////*/
 
-    function testChainlinkSourceErrorCodes() external {
+    function testChainlinkSourceErrorCodes() public {
         // USDC pricing is currently fine.
         (uint256 upper, uint256 lower, uint8 errorCode) = priceOps.getPriceInBaseEnforceNonZeroLower(USDC);
         assertApproxEqRel(
@@ -323,7 +325,7 @@ contract PriceOpsTest is TestBase {
         assertEq(errorCode, 0, "There should be no error code.");
     }
 
-    function testChainlinkSourcesErrorCodes() external {
+    function testChainlinkSourcesErrorCodes() public {
         // Update USDC feed to use 2 chainlink oracle feeds.
         PriceOps.ChainlinkSourceStorage memory stor;
 
@@ -425,7 +427,7 @@ contract PriceOpsTest is TestBase {
     // Twaps reporting assets in ETH only return error codes of 0.
     // But if the Twap reports assets in something else, then pricing the quote
     // Can lead to both CAUTION and BAD_SOURCE error codes.
-    function testTwapSourceErrorCodes() external {
+    function testTwapSourceErrorCodes() public {
         // FRAX-USDC TWAP
         PriceOps.TwapSourceStorage memory twapStor;
         twapStor.secondsAgo = 600;

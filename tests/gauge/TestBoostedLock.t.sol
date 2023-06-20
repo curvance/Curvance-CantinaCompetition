@@ -15,7 +15,6 @@ import "contracts/interfaces/ICentralRegistry.sol";
 
 import "tests/compound/deploy.sol";
 import "tests/utils/TestBase.sol";
-import "forge-std/console.sol";
 
 contract User {}
 
@@ -40,6 +39,8 @@ contract TestBoostedLock is TestBase {
     fallback() external payable {}
 
     function setUp() public {
+        _fork();
+
         deployments = new DeployCompound();
         deployments.makeCompound();
         unitroller = address(deployments.unitroller());

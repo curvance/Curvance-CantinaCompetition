@@ -45,7 +45,9 @@ contract VelodromeStablePositionVaultTest is TestBase {
     address private USDC_USD_FEED = 0x16a9FA2FDa030272Ce99B29CF780dFA30361E0f3;
     address private DAI_USD_FEED = 0x8dBa75e83DA73cc766A7e5a0ee71F656BAb470d6;
 
-    function setUp() external {
+    function setUp() public {
+        _fork("ETH_NODE_URI_OPTIMISM");
+
         // gasFeed = new MockGasFeed();
         priceRouter = new PriceRouter();
         // USDT
@@ -122,7 +124,7 @@ contract VelodromeStablePositionVaultTest is TestBase {
         }
     }
 
-    function testVelodromeStablePositionVaultWETHUSDC() external {
+    function testVelodromeStablePositionVaultWETHUSDC() public {
         positionVault.updateHarvestSlippage(0.9e18); // 90% slippage for testing
 
         uint256 assets = _ONE;

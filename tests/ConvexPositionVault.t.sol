@@ -69,7 +69,9 @@ contract ConvexPositionVaultTest is TestBase {
     address private CRV_USD_FEED = 0xCd627aA160A6fA45Eb793D19Ef54f5062F20f33f;
     address private ETH_FAST_GAS_FEED = 0x169E633A2D1E6c10dD91238Ba11c4A708dfEF37C;
 
-    function setUp() external {
+    function setUp() public {
+        _fork();
+
         // gasFeed = new MockGasFeed();
         priceRouter = new PriceRouter();
         // USDT
@@ -293,7 +295,7 @@ contract ConvexPositionVaultTest is TestBase {
         // stdstore.target(address(router)).sig(router.shareLockPeriod.selector).checked_write(uint256(0));
     }
 
-    function testConvexPositionVaultTriCrypto() external {
+    function testConvexPositionVaultTriCrypto() public {
         uint256 assets = 100e18;
         deal(address(CRV_3_CRYPTO), address(this), assets);
         CRV_3_CRYPTO.approve(address(cvxPositionTriCrypto), assets);
@@ -328,7 +330,7 @@ contract ConvexPositionVaultTest is TestBase {
         cvxPositionTriCrypto.withdraw(cvxPositionTriCrypto.totalAssets(), address(this), address(this));
     }
 
-    function testConvexPositionVault3Pool() external {
+    function testConvexPositionVault3Pool() public {
         uint256 assets = 1_000_000e18;
         deal(address(CRV_DAI_USDC_USDT), address(this), assets);
         CRV_DAI_USDC_USDT.approve(address(cvxPosition3Pool), assets);
@@ -359,7 +361,7 @@ contract ConvexPositionVaultTest is TestBase {
         cvxPosition3Pool.withdraw(cvxPosition3Pool.totalAssets(), address(this), address(this));
     }
 
-    function testMultipleDepositors(uint256 assetsA, uint256 assetsB) external {
+    function testMultipleDepositors(uint256 assetsA, uint256 assetsB) public {
         assetsA = bound(assetsA, _ONE, type(uint96).max);
         assetsB = bound(assetsB, _ONE, type(uint96).max);
 
@@ -466,7 +468,7 @@ contract ConvexPositionVaultTest is TestBase {
         assertEq(CRV_3_CRYPTO.balanceOf(userB), userBWithdraw, "User did not receive full withdraw.");
     }
 
-    function testAttackerGettingMoreOutThanTheyPutIn() external {
+    function testAttackerGettingMoreOutThanTheyPutIn() public {
         // Normal Users join the vault.
         uint256 assets = 1_000_000e18;
         deal(address(CRV_DAI_USDC_USDT), address(this), assets);
@@ -507,7 +509,7 @@ contract ConvexPositionVaultTest is TestBase {
         assertEq(cvxPosition3Pool.isShutdown(), true, "Vault should be shutdown.");
     }
 
-    function testStoredTotalAssetsGreaterThanRealTotalAssets() external {
+    function testStoredTotalAssetsGreaterThanRealTotalAssets() public {
         (bool upkeepNeeded, bytes memory performData) = cvxPosition3Pool.checkUpkeep(abi.encode(0));
         assertEq(upkeepNeeded, false, "Upkeep should not be needed.");
 

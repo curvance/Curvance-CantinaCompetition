@@ -40,7 +40,9 @@ contract CurveV2ExtensionTest is TestBase {
     address private CBETH_WETH = 0x5b6C539b224014A09B3388e51CaAA8e354c959C8;
     address private CBETH_WETH_POOL = 0x5FAE7E604FC3e24fd43A72867ceBaC94c65b404A;
 
-    function setUp() external {
+    function setUp() public {
+        _fork();
+
         USDT_PRICE_ETH = uint256(IChainlinkAggregator(USDT_ETH_FEED).latestAnswer());
 
         MOCK_WETH_USD_FEED = new MockDataFeed(WETH_USD_FEED);
@@ -82,7 +84,7 @@ contract CurveV2ExtensionTest is TestBase {
                         CURVE V2 SOURCE PRICING 
     //////////////////////////////////////////////////////////////*/
 
-    function testCurveV2SourceTriCrypto(uint256 usdtIn) external {
+    function testCurveV2SourceTriCrypto(uint256 usdtIn) public {
         usdtIn = bound(usdtIn, 1e6, 1_000_000e6);
         uint64 triCryptoSource = priceOps.addSource(
             TRI_CRYPTO,
@@ -114,7 +116,7 @@ contract CurveV2ExtensionTest is TestBase {
         assertApproxEqRel(valueIn, valueOut, 0.01e18, "Value in should approximately equal value out.");
     }
 
-    function testCurveV2SourceCbEth_Eth(uint256 ethIn) external {
+    function testCurveV2SourceCbEth_Eth(uint256 ethIn) public {
         ethIn = bound(ethIn, 0.1 ether, 1_000 ether);
         uint64 cbEthWethSource = priceOps.addSource(
             CBETH_WETH,
@@ -151,7 +153,7 @@ contract CurveV2ExtensionTest is TestBase {
                     CURVE V2 SOURCE ERRORS 
     //////////////////////////////////////////////////////////////*/
 
-    function testCurveV2SourceErrorCodes() external {
+    function testCurveV2SourceErrorCodes() public {
         uint64 triCryptoSource = priceOps.addSource(
             TRI_CRYPTO,
             PriceOps.Descriptor.EXTENSION,
