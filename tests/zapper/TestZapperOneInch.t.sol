@@ -7,9 +7,6 @@ import "contracts/mocks/MockComptroller.sol";
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
 
 import "tests/utils/TestBase.sol";
-import "forge-std/console.sol";
-
-contract User {}
 
 contract testZapperOneInch is TestBase {
     address dai = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
