@@ -4,7 +4,7 @@ pragma solidity 0.8.17;
 import { ERC20 } from "contracts/base/ERC20.sol";
 import { SafeTransferLib } from "contracts/base/SafeTransferLib.sol";
 import { DepositRouterV2 as DepositRouter } from "contracts/DepositRouterV2.sol";
-import { VelodromeStablePositionVault, BasePositionVault, IVeloGauge, IVeloRouter, IVeloPairFactory } from "contracts/positions/VelodromeStablePositionVault.sol";
+import { VelodromeStablePositionVault, BasePositionVault, IVeloGauge, IVeloRouter, IVeloPairFactory } from "contracts/Positions/VelodromeStablePositionVault.sol";
 import { PriceRouter } from "contracts/PricingOperations/PriceRouter.sol";
 import { IChainlinkAggregator } from "contracts/interfaces/IChainlinkAggregator.sol";
 import { Math } from "contracts/utils/Math.sol";
