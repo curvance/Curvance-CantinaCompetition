@@ -41,7 +41,9 @@ contract CurveV2ExtensionTest is TestBase {
     address private CBETH_WETH_POOL = 0x5FAE7E604FC3e24fd43A72867ceBaC94c65b404A;
 
     function setUp() public {
-        _fork();
+        // Should figure out
+        // Tests often fail when it forks at latest block.
+        _fork(17500000);
 
         USDT_PRICE_ETH = uint256(IChainlinkAggregator(USDT_ETH_FEED).latestAnswer());
 
