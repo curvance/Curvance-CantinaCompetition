@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: MIT
-pragma solidity ^0.8.15;
+pragma solidity ^0.8.17;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
@@ -19,7 +19,7 @@ contract GaugeController is IGaugePool, Ownable {
         mapping(address => uint256) poolWeights; // token => weight
     }
 
-    uint256 public constant EPOCH_WINDOW = 4 weeks;
+    uint256 public constant EPOCH_WINDOW = 2 weeks;
 
     // storage
     address public cve;

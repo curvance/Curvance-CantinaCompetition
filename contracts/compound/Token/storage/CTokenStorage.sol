@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.17;
 
 import "../../InterestRateModel/InterestRateModel.sol";
 import "../../Comptroller/ComptrollerInterface.sol";
@@ -15,7 +15,7 @@ abstract contract CTokenStorage is CommonError {
     error PreviouslyInitialized();
     error RedeemTransferOutNotPossible();
     error BorrowCashNotAvailable();
-    error SelfLiquidiationNotAllowed();
+    error SelfLiquidationNotAllowed();
     error ComptrollerMismatch();
     error ValidationFailed();
     error ReduceReservesCashNotAvailable();

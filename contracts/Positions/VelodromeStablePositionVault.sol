@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.17;
+pragma solidity ^0.8.17;
 
 import { BasePositionVault, ERC4626, SafeTransferLib, ERC20, Math, PriceRouter } from "contracts/Positions/BasePositionVault.sol";
 
@@ -16,7 +16,7 @@ import { KeeperCompatibleInterface } from "@chainlink/contracts/src/v0.8/interfa
 import { AggregatorV2V3Interface } from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV2V3Interface.sol";
 import { IChainlinkAggregator } from "contracts/interfaces/IChainlinkAggregator.sol";
 
-contract VelodromeStablePositionVault is BasePositionVault {
+contract VelodromePositionVault is BasePositionVault {
     using SafeTransferLib for ERC20;
     using Math for uint256;
 
@@ -64,16 +64,6 @@ contract VelodromeStablePositionVault is BasePositionVault {
     address private tokenB;
 
     /**
-     * @notice tokenA decimals
-     */
-    uint256 private decimalsA;
-
-    /**
-     * @notice tokenB decimals
-     */
-    uint256 private decimalsB;
-
-    /**
      * @notice Mainnet token contracts important for this vault.
      */
     ERC20 private constant WETH = ERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
@@ -96,8 +86,8 @@ contract VelodromeStablePositionVault is BasePositionVault {
                                  ERRORS
     //////////////////////////////////////////////////////////////*/
 
-    error ConvexPositionVault__BadSlippage();
-    error ConvexPositionVault__WatchdogNotSet();
+    error VelodromePositionVault__BadSlippage();
+    error VelodromePositionVault__WatchdogNotSet();
 
     /*//////////////////////////////////////////////////////////////
                               SETUP LOGIC
@@ -142,8 +132,6 @@ contract VelodromeStablePositionVault is BasePositionVault {
             );
         tokenA = _tokenA;
         tokenB = _tokenB;
-        decimalsA = 10 ** ERC20(_tokenA).decimals();
-        decimalsB = 10 ** ERC20(_tokenB).decimals();
         gauge = _gauge;
         router = _router;
         pairFactory = _pairFactory;
@@ -205,18 +193,16 @@ contract VelodromeStablePositionVault is BasePositionVault {
 
             // 3. Convert tokenA to LP Token underlyings
             uint256 totalAmountA = ERC20(tokenA).balanceOf(address(this));
-            if (totalAmountA == 0) revert ConvexPositionVault__BadSlippage();
+            if (totalAmountA == 0) revert VelodromePositionVault__BadSlippage();
 
-            if (totalAmountA > 0) {
-                uint256 feeForUpkeep = totalAmountA.mulDivDown(positionVaultMetaData.upkeepFee, 1e18);
-                if (positionVaultMetaData.positionWatchdog == address(0)) revert ConvexPositionVault__WatchdogNotSet();
-                ERC20(tokenA).safeTransfer(positionVaultMetaData.positionWatchdog, feeForUpkeep);
-                totalAmountA -= feeForUpkeep;
-            }
+            uint256 feeForUpkeep = totalAmountA.mulDivDown(positionVaultMetaData.upkeepFee, 1e18);
+            if (positionVaultMetaData.positionWatchdog == address(0)) revert VelodromePositionVault__WatchdogNotSet();
+            ERC20(tokenA).safeTransfer(positionVaultMetaData.positionWatchdog, feeForUpkeep);
+            totalAmountA -= feeForUpkeep;
 
             (uint256 r0, uint256 r1, ) = IVeloPair(address(asset)).getReserves();
-            (uint256 reserveA, uint256 reserveB) = tokenA == IVeloPair(address(asset)).token0() ? (r0, r1) : (r1, r0);
-            uint256 swapAmount = _optimalDeposit(totalAmountA, reserveA, reserveB, decimalsA, decimalsB);
+            uint256 reserveA = tokenA == IVeloPair(address(asset)).token0() ? r0 : r1;
+            uint256 swapAmount = _optimalDepositA(totalAmountA, reserveA);
             swapExactTokensForTokens(tokenA, tokenB, swapAmount);
 
             totalAmountA -= swapAmount;
@@ -234,7 +220,7 @@ contract VelodromeStablePositionVault is BasePositionVault {
 
             // Compare value in vs value out.
             if (valueOut < valueIn.mulDivDown(1e18 - (positionVaultMetaData.upkeepFee + harvestSlippage), 1e18))
-                revert ConvexPositionVault__BadSlippage();
+                revert VelodromePositionVault__BadSlippage();
 
             // 5. Deposit into Velodrome
             yield = addLiquidity(tokenA, tokenB, totalAmountA, totalAmountB);
@@ -267,28 +253,14 @@ contract VelodromeStablePositionVault is BasePositionVault {
         return gauge.balanceOf(address(this));
     }
 
-    function _optimalDeposit(
-        uint256 _amountA,
-        uint256 _reserveA,
-        uint256 _reserveB,
-        uint256 _decimalsA,
-        uint256 _decimalsB
-    ) internal pure returns (uint256) {
-        uint256 num;
-        uint256 den;
-
-        {
-            uint256 a = (_amountA * 1e18) / _decimalsA;
-            uint256 x = (_reserveA * 1e18) / _decimalsA;
-            uint256 y = (_reserveB * 1e18) / _decimalsB;
-            uint256 x2 = (x * x) / 1e18;
-            uint256 y2 = (y * y) / 1e18;
-            uint256 p = (y * (((x2 * 3 + y2) * 1e18) / (y2 * 3 + x2))) / x;
-            num = a * y;
-            den = ((a + x) * p) / 1e18 + y;
-        }
-
-        return ((num / den) * _decimalsA) / 1e18;
+    function _optimalDepositA(uint256 _amountA, uint256 _reserveA) internal view returns (uint256) {
+        uint256 swapFee = IVeloPairFactory(pairFactory).getFee(false);
+        uint256 swapFeeFactor = 10000 - swapFee;
+        uint256 a = (10000 + swapFeeFactor) * _reserveA;
+        uint256 b = _amountA * 10000 * _reserveA * 4 * swapFeeFactor;
+        uint256 c = Math.sqrt(a * a + b);
+        uint256 d = swapFeeFactor * 2;
+        return (c - a) / d;
     }
 
     function approveRouter(address token, uint256 amount) internal {
@@ -303,7 +275,7 @@ contract VelodromeStablePositionVault is BasePositionVault {
             0,
             tokenIn,
             tokenOut,
-            true,
+            false,
             address(this),
             block.timestamp
         );
@@ -320,7 +292,7 @@ contract VelodromeStablePositionVault is BasePositionVault {
         (, , liquidity) = IVeloRouter(router).addLiquidity(
             _tokenA,
             _tokenB,
-            true,
+            false,
             _amountA,
             _amountB,
             0,

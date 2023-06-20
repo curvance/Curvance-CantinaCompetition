@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.17;
+pragma solidity ^0.8.17;
 
 import { ICurvePool } from "contracts/interfaces/Curve/ICurvePool.sol";
 import { Extension } from "contracts/PricingOperations/Extension.sol";

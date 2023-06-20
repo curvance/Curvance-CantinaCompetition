@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.17;
+pragma solidity ^0.8.17;
 
 import { ERC4626, SafeTransferLib, ERC20, Math } from "contracts/base/ERC4626.sol";
 import { PriceRouter } from "contracts/PricingOperations/PriceRouter.sol";
 import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
-import { Owned } from "@solmate/auth/Owned.sol";
-import { ReentrancyGuard } from "@solmate/utils/ReentrancyGuard.sol";
+import { Owned } from "https://github.com/transmissions11/solmate/blob/main/src/auth/Owned.sol";
+import { ReentrancyGuard } from "https://github.com/transmissions11/solmate/blob/main/src/utils/ReentrancyGuard.sol";
 
 // Chainlink interfaces
 import { KeeperCompatibleInterface } from "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";

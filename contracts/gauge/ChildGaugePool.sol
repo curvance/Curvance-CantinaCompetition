@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: MIT
-pragma solidity ^0.8.15;
+pragma solidity ^0.8.17;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
@@ -31,7 +31,7 @@ contract ChildGaugePool is ReentrancyGuard, Ownable {
     // events
 
     // constants
-    uint256 public constant EPOCH_WINDOW = 4 weeks;
+    uint256 public constant EPOCH_WINDOW = 2 weeks;
     uint256 public constant PRECISION = 1e36;
 
     // storage

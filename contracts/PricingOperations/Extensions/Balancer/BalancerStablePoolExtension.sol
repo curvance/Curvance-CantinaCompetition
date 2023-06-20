@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.17;
+pragma solidity ^0.8.17;
 
 import { IBalancerPool } from "contracts/interfaces/external/IBalancerPool.sol";
 import { IRateProvider } from "contracts/interfaces/external/IRateProvider.sol";
@@ -9,7 +9,7 @@ import { PriceRouter } from "contracts/PricingOperations/PriceRouter.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
 /**
- * @title Sommelier Price Router Balancer Stable Pool Extension
+ * @title Curvance Price Router Balancer Stable Pool Extension
  * @notice Allows the Price Router to price Balancer Stable pool BPTs.
  * @author crispymangoes
  */

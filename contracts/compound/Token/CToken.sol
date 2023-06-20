@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.17;
 
 import "../ReentrancyGuard.sol";
 import "../Comptroller/ComptrollerInterface.sol";
@@ -773,7 +773,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
 
         /* Fail if borrower = liquidator */
         if (borrower == liquidator) {
-            revert SelfLiquidiationNotAllowed();
+            revert SelfLiquidationNotAllowed();
         }
 
         /* Fail if repayAmount = 0 */
@@ -844,7 +844,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
 
         /* Fails if borrower = liquidator */
         if (borrower == liquidator) {
-            revert SelfLiquidiationNotAllowed();
+            revert SelfLiquidationNotAllowed();
         }
 
         /*

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.17;
 
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -21,7 +21,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         bytes call;
     }
 
-    uint256 public constant MAX_LEVERAGE = 9000; // 0.9
+    uint256 public constant MAX_LEVERAGE = 9900; // 0.99
     uint256 public constant DENOMINATOR = 10000;
     address public constant ETH = address(0);
 
@@ -49,7 +49,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         uint256 userValue = sumCollateral - sumBorrow;
 
         uint256 diff = userValue > userValueBefore ? userValue - userValueBefore : userValueBefore - userValue;
-        require(diff < (userValueBefore * slippage) / DENOMINATOR, "slippage");
+        require(diff < (userValueBefore * slippage) / DENOMINATOR, "PositionFolding: slippage");
     }
 
     function queryAmountToBorrowForLeverageMax(address user, CToken borrowToken) public view returns (uint256) {
@@ -80,7 +80,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         uint256 slippage
     ) external checkSlippage(msg.sender, slippage) nonReentrant {
         uint256 maxBorrowAmount = queryAmountToBorrowForLeverageMax(msg.sender, borrowToken);
-        require(borrowAmount <= maxBorrowAmount, "exceeded maximum borrow amount");
+        require(borrowAmount <= maxBorrowAmount, "PositionFolding: exceeded maximum borrow amount");
         _leverage(borrowToken, borrowAmount, collateral, swapData);
     }
 
@@ -94,11 +94,11 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         uint256 length = borrowTokens.length;
         require(
             borrowAmounts.length == length && collateralTokens.length == length && swapData.length == length,
-            "invalid array length"
+            "PositionFolding: invalid array length"
         );
         for (uint256 i = 0; i < length; ++i) {
             uint256 maxBorrowAmount = queryAmountToBorrowForLeverageMax(msg.sender, borrowTokens[i]);
-            require(borrowAmounts[i] <= maxBorrowAmount, "exceeded maximum borrow amount");
+            require(borrowAmounts[i] <= maxBorrowAmount, "PositionFolding: exceeded maximum borrow amount");
             _leverage(borrowTokens[i], borrowAmounts[i], collateralTokens[i], swapData[i]);
         }
     }
@@ -115,17 +115,17 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
 
     function onBorrow(address borrowToken, address borrower, uint256 amount, bytes memory params) external override {
         (bool isListed, , ) = Comptroller(comptroller).getIsMarkets(borrowToken);
-        require(isListed && msg.sender == borrowToken, "unauthorized");
+        require(isListed && msg.sender == borrowToken, "PositionFolding: UNAUTHORIZED");
 
         (CToken collateral, Swap memory swapData) = abi.decode(params, (CToken, Swap));
 
         address borrowUnderlying;
         if (borrowToken == cether) {
             borrowUnderlying = ETH;
-            require(address(this).balance >= amount, "invalid amount");
+            require(address(this).balance >= amount, "PositionFolding: invalid amount");
         } else {
             borrowUnderlying = CErc20(borrowToken).underlying();
-            require(IERC20(borrowUnderlying).balanceOf(address(this)) >= amount, "invalid amount");
+            require(IERC20(borrowUnderlying).balanceOf(address(this)) >= amount, "PositionFolding: invalid amount");
         }
 
         if (borrowToken != address(collateral)) {
@@ -174,7 +174,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
                 borrowTokens.length == length &&
                 repayAmounts.length == length &&
                 swapData.length == length,
-            "invalid array length"
+            "PositionFolding: invalid array length"
         );
         for (uint256 i = 0; i < length; ++i) {
             _deleverage(collateralTokens[i], collateralAmount[i], borrowTokens[i], repayAmounts[i], swapData[i]);
@@ -203,7 +203,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
 
     function onRedeem(address collateral, address redeemer, uint256 amount, bytes memory params) external override {
         (bool isListed, , ) = Comptroller(comptroller).getIsMarkets(collateral);
-        require(isListed && msg.sender == collateral, "unauthorized");
+        require(isListed && msg.sender == collateral, "PositionFolding: UNAUTHORIZED");
 
         (CToken borrowToken, uint256 repayAmount, Swap memory swapData) = abi.decode(params, (CToken, uint256, Swap));
 
@@ -211,10 +211,10 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         address collateralUnderlying;
         if (collateral == cether) {
             collateralUnderlying = ETH;
-            require(address(this).balance >= amount, "invalid amount");
+            require(address(this).balance >= amount, "PositionFolding: invalid amount");
         } else {
             collateralUnderlying = CErc20(collateral).underlying();
-            require(IERC20(collateralUnderlying).balanceOf(address(this)) >= amount, "invalid amount");
+            require(IERC20(collateralUnderlying).balanceOf(address(this)) >= amount, "PositionFolding: invalid amount");
         }
 
         if (collateral != address(borrowToken)) {
