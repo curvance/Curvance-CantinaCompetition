@@ -70,7 +70,9 @@ contract ConvexPositionVaultTest is TestBase {
     address private ETH_FAST_GAS_FEED = 0x169E633A2D1E6c10dD91238Ba11c4A708dfEF37C;
 
     function setUp() public {
-        _fork();
+        // Should figure out
+        // Setup fails when it forks current block instead of 15_000_000.
+        _fork(15000000);
 
         // gasFeed = new MockGasFeed();
         priceRouter = new PriceRouter();

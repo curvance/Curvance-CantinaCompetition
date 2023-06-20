@@ -18,7 +18,7 @@ contract TestZapperGeneric is TestBase {
     address frax = 0x853d955aCEf822Db058eb8505911ED77F175b99e;
 
     function setUp() public {
-        _fork();
+        _fork(16840000);
     }
 
     function testTriCryptoWithETH() public {

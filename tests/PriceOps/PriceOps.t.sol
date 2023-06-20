@@ -67,7 +67,9 @@ contract PriceOpsTest is TestBase {
     // TODO add tests where we check revert cases for admin functions.
 
     function setUp() public {
-        _fork();
+        // Should figure out
+        // Tests pass only when it forks at around 16_100_000 block.
+        _fork(16100000);
 
         ETH_PRICE_USD = uint256(IChainlinkAggregator(WETH_USD_FEED).latestAnswer());
         WBTC_PRICE_ETH = uint256(IChainlinkAggregator(WBTC_ETH_FEED).latestAnswer());
