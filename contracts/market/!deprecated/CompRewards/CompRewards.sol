@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
+import "../../token/CVE.sol";
 import "../Comptroller/ComptrollerInterface.sol";
 import "../Unitroller/Unitroller.sol";
-import "../Cve.sol";
 import "../Oracle/PriceOracle.sol";
 import "../utils/SafeMath.sol";
 import "./RewardsInterface.sol";
@@ -28,17 +28,17 @@ contract CompRewards is MarketStorage, RewardsStorage, RewardsInterface {
 
     /**
      * @notice Set CVE speed for a single market
-     * @param cToken The market whose Cve speed to update
+     * @param cToken The market whose CVE speed to update
      * @param cveSpeed New CVE speed for market
      */
     function setCveSpeedInternal(CToken cToken, uint256 cveSpeed) internal {
         uint256 currentCveSpeed = cveSpeeds[address(cToken)];
         if (currentCveSpeed != 0) {
-            // note that Cve speed could be set to 0 to halt liquidity rewards for a market
+            // note that CVE speed could be set to 0 to halt liquidity rewards for a market
             updateCveSupplyIndex(address(cToken));
             updateCveBorrowIndex(address(cToken), cToken.borrowIndex());
         } else if (cveSpeed != 0) {
-            // Add the Cve market
+            // Add the CVE market
             (bool isListed, , ) = ComptrollerInterface(comptroller).getIsMarkets(address(cToken));
             if (isListed != true) {
                 revert MarketNotListed();
@@ -66,9 +66,9 @@ contract CompRewards is MarketStorage, RewardsStorage, RewardsInterface {
     }
 
     /**
-     * @notice Accrue Cve to the market by updating the supply index
+     * @notice Accrue CVE to the market by updating the supply index
      * @dev externally called by comptroller
-     * @param cTokenCollateral The market whose Cve speed to update
+     * @param cTokenCollateral The market whose CVE speed to update
      */
     function updateCveSupplyIndexExternal(address cTokenCollateral) external override {
         if (msg.sender != comptroller) {
@@ -78,7 +78,7 @@ contract CompRewards is MarketStorage, RewardsStorage, RewardsInterface {
     }
 
     /**
-     * @notice Accrue Cve to the market by updating the supply index
+     * @notice Accrue CVE to the market by updating the supply index
      * @param cToken The market whose supply index to update
      */
     function updateCveSupplyIndex(address cToken) internal {
@@ -101,7 +101,7 @@ contract CompRewards is MarketStorage, RewardsStorage, RewardsInterface {
     }
 
     /**
-     * @notice Accrue Cve to the market by updating the borrow index
+     * @notice Accrue CVE to the market by updating the borrow index
      * @param cToken The market whose borrow index to update
      */
     function updateCveBorrowIndex(address cToken, uint256 marketBorrowIndex) internal {
@@ -124,10 +124,10 @@ contract CompRewards is MarketStorage, RewardsStorage, RewardsInterface {
     }
 
     /**
-     * @notice Calculate Cve accrued by a supplier and possibly transfer it to them
+     * @notice Calculate CVE accrued by a supplier and possibly transfer it to them
      * @dev externally called by comptroller
      * @param cTokenCollateral The market in which the supplier is interacting
-     * @param claimer The address of the supplier to distribute Cve to
+     * @param claimer The address of the supplier to distribute CVE to
      */
     function distributeSupplierCveExternal(address cTokenCollateral, address claimer) external override {
         if (msg.sender != comptroller) {
@@ -137,9 +137,9 @@ contract CompRewards is MarketStorage, RewardsStorage, RewardsInterface {
     }
 
     /**
-     * @notice Calculate Cve accrued by a supplier and possibly transfer it to them
+     * @notice Calculate CVE accrued by a supplier and possibly transfer it to them
      * @param cToken The market in which the supplier is interacting
-     * @param supplier The address of the supplier to distribute Cve to
+     * @param supplier The address of the supplier to distribute CVE to
      */
     function distributeSupplierCve(address cToken, address supplier) internal {
         CveMarketState storage supplyState = cveSupplyState[cToken];
@@ -159,10 +159,10 @@ contract CompRewards is MarketStorage, RewardsStorage, RewardsInterface {
     }
 
     /**
-     * @notice Calculate Cve accrued by a borrower and possibly transfer it to them
+     * @notice Calculate CVE accrued by a borrower and possibly transfer it to them
      * @dev Borrowers will not begin to accrue until after the first interaction with the protocol.
      * @param cToken The market in which the borrower is interacting
-     * @param borrower The address of the borrower to distribute Cve to
+     * @param borrower The address of the borrower to distribute CVE to
      */
     function distributeBorrowerCve(
         address cToken,
@@ -188,7 +188,7 @@ contract CompRewards is MarketStorage, RewardsStorage, RewardsInterface {
     }
 
     /**
-     * @notice Calculate additional accrued Cve for a contributor since last accrual
+     * @notice Calculate additional accrued CVE for a contributor since last accrual
      * @param contributor The address to calculate contributor rewards for
      */
     function updateContributorRewards(address contributor) public {
@@ -206,7 +206,7 @@ contract CompRewards is MarketStorage, RewardsStorage, RewardsInterface {
 
     /**
      * @notice Claim all the cve accrued by holder in all markets
-     * @param holder The address to claim Cve for
+     * @param holder The address to claim CVE for
      */
     function claimCve(address holder) public {
         return claimCve(holder, ComptrollerInterface(comptroller).getAllMarkets());
@@ -214,8 +214,8 @@ contract CompRewards is MarketStorage, RewardsStorage, RewardsInterface {
 
     /**
      * @notice Claim all the cve accrued by holder in the specified markets
-     * @param holder The address to claim Cve for
-     * @param cTokens The list of markets to claim Cve in
+     * @param holder The address to claim CVE for
+     * @param cTokens The list of markets to claim CVE in
      */
     function claimCve(address holder, CToken[] memory cTokens) public {
         address[] memory holders = new address[](1);
@@ -225,10 +225,10 @@ contract CompRewards is MarketStorage, RewardsStorage, RewardsInterface {
 
     /**
      * @notice Claim all cve accrued by the holders
-     * @param holders The addresses to claim Cve for
-     * @param cTokens The list of markets to claim Cve in
-     * @param borrowers Whether or not to claim Cve earned by borrowing
-     * @param suppliers Whether or not to claim Cve earned by supplying
+     * @param holders The addresses to claim CVE for
+     * @param cTokens The list of markets to claim CVE in
+     * @param borrowers Whether or not to claim CVE earned by borrowing
+     * @param suppliers Whether or not to claim CVE earned by supplying
      */
     function claimCve(
         address[] memory holders,
@@ -261,14 +261,14 @@ contract CompRewards is MarketStorage, RewardsStorage, RewardsInterface {
     }
 
     /**
-     * @notice Transfer Cve to the user
-     * @dev Note: If there is not enough Cve, we do not perform the transfer all.
-     * @param user The address of the user to transfer Cve to
-     * @param amount The amount of Cve to (possibly) transfer
-     * @return The amount of Cve which was NOT transferred to the user
+     * @notice Transfer CVE to the user
+     * @dev Note: If there is not enough CVE, we do not perform the transfer all.
+     * @param user The address of the user to transfer CVE to
+     * @param amount The amount of CVE to (possibly) transfer
+     * @return The amount of CVE which was NOT transferred to the user
      */
     function grantCveInternal(address user, uint256 amount) internal returns (uint256) {
-        Cve cve = Cve(getCveAddress());
+        CVE cve = CVE(getCveAddress());
         uint256 cveRemaining = cve.balanceOf(address(this));
         if (amount > 0 && amount <= cveRemaining) {
             cve.transfer(user, amount);
@@ -278,10 +278,10 @@ contract CompRewards is MarketStorage, RewardsStorage, RewardsInterface {
     }
 
     /**
-     * @notice Transfer Cve to the recipient
-     * @dev Note: If there is not enough Cve, we do not perform the transfer all.
-     * @param recipient The address of the recipient to transfer Cve to
-     * @param amount The amount of Cve to (possibly) transfer
+     * @notice Transfer CVE to the recipient
+     * @dev Note: If there is not enough CVE, we do not perform the transfer all.
+     * @param recipient The address of the recipient to transfer CVE to
+     * @param amount The amount of CVE to (possibly) transfer
      */
     function _grantCve(address recipient, uint256 amount) public {
         if (!adminOrInitializing()) {
@@ -295,9 +295,9 @@ contract CompRewards is MarketStorage, RewardsStorage, RewardsInterface {
     }
 
     /**
-     * @notice Set Cve speed for a single market
-     * @param cToken The market whose Cve speed to update
-     * @param cveSpeed New Cve speed for market
+     * @notice Set CVE speed for a single market
+     * @param cToken The market whose CVE speed to update
+     * @param cveSpeed New CVE speed for market
      */
     function _setCveSpeed(CToken cToken, uint256 cveSpeed) public {
         if (!adminOrInitializing()) {
@@ -308,7 +308,7 @@ contract CompRewards is MarketStorage, RewardsStorage, RewardsInterface {
 
     /**
      * @notice Set CVE speed for a single contributor
-     * @param contributor The contributor whose Cve speed to update
+     * @param contributor The contributor whose CVE speed to update
      * @param cveSpeed New CVE speed for contributor
      */
     function _setContributorCveSpeed(address contributor, uint256 cveSpeed) public {
@@ -316,7 +316,7 @@ contract CompRewards is MarketStorage, RewardsStorage, RewardsInterface {
             revert AddressUnauthorized();
         }
 
-        // note that Cve speed could be set to 0 to halt liquidity rewards for a contributor
+        // note that CVE speed could be set to 0 to halt liquidity rewards for a contributor
         updateContributorRewards(contributor);
         if (cveSpeed == 0) {
             // release storage

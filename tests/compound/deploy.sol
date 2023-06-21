@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import "contracts/compound/Cve.sol";
 import "contracts/compound/Comptroller/Comptroller.sol";
 import "contracts/compound/Unitroller/Unitroller.sol";
 import "contracts/compound/CompRewards/CompRewards.sol";
@@ -14,7 +13,7 @@ import "tests/utils/TestBase.sol";
 
 contract DeployCompound is TestBase {
     address public admin;
-    Cve public cve;
+    CVE public cve;
     Comptroller public comptroller;
     Unitroller public unitroller;
     CompRewards public compRewards;
@@ -31,7 +30,7 @@ contract DeployCompound is TestBase {
         priceOracle = new SimplePriceOracle();
 
         unitroller = new Unitroller();
-        cve = new Cve(admin);
+        cve = new CVE(admin);
         compRewards = new CompRewards(address(unitroller), address(admin), address(cve));
         cve.transfer(address(compRewards), 1000e18);
         comptroller = new Comptroller(RewardsInterface(address(compRewards)));

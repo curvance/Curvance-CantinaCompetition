@@ -2,7 +2,7 @@
 pragma solidity ^0.8.13;
 
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
-import "contracts/compound/Cve.sol";
+import "contracts/token/CVE.sol";
 import "contracts/compound/CompRewards/CompRewards.sol";
 import "contracts/compound/Comptroller/Comptroller.sol";
 import "contracts/compound/Comptroller/ComptrollerInterface.sol";
@@ -26,7 +26,7 @@ contract TestJumpRateModel is TestBase {
     DeployCompound public deployments;
     address public unitroller;
     CompRewards public compRewards;
-    Cve public cve;
+    CVE public cve;
     CErc20Immutable public cDAI;
     SimplePriceOracle public priceOracle;
     address interestRateModel;

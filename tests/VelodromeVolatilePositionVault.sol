@@ -4,19 +4,19 @@ pragma solidity 0.8.17;
 import { ERC20 } from "contracts/base/ERC20.sol";
 import { SafeTransferLib } from "contracts/base/SafeTransferLib.sol";
 import { DepositRouterV2 as DepositRouter } from "contracts/DepositRouterV2.sol";
-import { VelodromePositionVault, BasePositionVault, IVeloGauge, IVeloRouter, IVeloPairFactory } from "contracts/Positions/VelodromePositionVault.sol";
+import { VelodromeVolatilePositionVault, BasePositionVault, IVeloGauge, IVeloRouter, IVeloPairFactory } from "contracts/Positions/VelodromeVolatilePositionVault.sol";
 import { PriceRouter } from "contracts/PricingOperations/PriceRouter.sol";
 import { IChainlinkAggregator } from "contracts/interfaces/IChainlinkAggregator.sol";
 import { Math } from "contracts/utils/Math.sol";
 import "tests/utils/TestBase.sol";
 
-contract VelodromePositionVaultTest is TestBase {
+contract VelodromeVolatilePositionVaultTest is TestBase {
     using Math for uint256;
     using SafeTransferLib for ERC20;
 
     PriceRouter private priceRouter;
     DepositRouter private router;
-    VelodromePositionVault private positionVault;
+    VelodromeVolatilePositionVault private positionVault;
     // MockGasFeed private gasFeed;
 
     address private operatorAlpha = vm.addr(111);
@@ -74,7 +74,7 @@ contract VelodromePositionVaultTest is TestBase {
         settings = PriceRouter.AssetSettings(CHAINLINK_DERIVATIVE, USDC_USD_FEED); // TODO no chainlink oracle for Velo, use USDC for testing
         priceRouter.addAsset(VELO, settings, abi.encode(stor), price);
 
-        positionVault = new VelodromePositionVault(WETH_USDC, address(this), "WETH/USDC Vault", "WETH/USDC Vault", 18);
+        positionVault = new VelodromeVolatilePositionVault(WETH_USDC, address(this), "WETH/USDC Vault", "WETH/USDC Vault", 18);
 
         positionVault.setWatchdog(address(this));
         BasePositionVault.PositionVaultMetaData memory metaData = BasePositionVault.PositionVaultMetaData({
