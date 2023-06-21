@@ -14,7 +14,7 @@ contract CEther is CToken {
 
     /**
      * @notice Construct a new CEther money market
-     * @param comptroller_ The address of the Comptroller
+     * @param lendtroller_ The address of the Lendtroller
      * @param gaugePool_ The address of the gauge pool
      * @param interestRateModel_ The address of the interest rate model
      * @param initialExchangeRateMantissa_ The initial exchange rate, scaled by 1e18
@@ -24,7 +24,7 @@ contract CEther is CToken {
      * @param admin_ Address of the administrator of this token
      */
     constructor(
-        ComptrollerInterface comptroller_,
+        LendtrollerInterface lendtroller_,
         address gaugePool_,
         InterestRateModel interestRateModel_,
         uint256 initialExchangeRateMantissa_,
@@ -37,7 +37,7 @@ contract CEther is CToken {
         admin = payable(msg.sender);
 
         initialize(
-            comptroller_,
+            lendtroller_,
             gaugePool_,
             interestRateModel_,
             initialExchangeRateMantissa_,

@@ -3,16 +3,16 @@ pragma solidity ^0.8.17;
 
 import "../Token/CToken.sol";
 import "../Oracle/PriceOracle.sol";
-import "../CompRewards/RewardsInterface.sol";
+//import "../LendRewards/RewardsInterface.sol";
 import "../Unitroller/Unitroller.sol";
-import "./ComptrollerInterface.sol";
+import "./LendtrollerInterface.sol";
 
 /**
- * @title Curvance Comptroller
+ * @title Curvance Lendtroller
  * @author Curvance - Based on Curvance Finance
  * @notice Manages risk within the lending & collateral markets
  */
-contract Comptroller is ComptrollerInterface {
+contract Lendtroller is LendtrollerInterface {
     ////////// Constants //////////
 
     /// @notice closeFactorScaled must be strictly greater than this value
@@ -27,7 +27,7 @@ contract Comptroller is ComptrollerInterface {
     /// @notice Scaler for floating point math
     uint256 internal constant expScale = 1e18;
 
-    constructor(RewardsInterface _rewarder) {
+    constructor(RewardsInterface _rewarder) {//TODO change to gauge controller
         admin = msg.sender;
         rewarder = _rewarder;
     }
@@ -345,8 +345,8 @@ contract Comptroller is ComptrollerInterface {
             revert MarketNotListed(cTokenCollateral);
         }
 
-        if (CToken(cTokenCollateral).comptroller() != CToken(cTokenBorrowed).comptroller()) {
-            revert ComptrollerMismatch();
+        if (CToken(cTokenCollateral).lendtroller() != CToken(cTokenBorrowed).lendtroller()) {
+            revert LendtrollerMismatch();
         }
 
         // Keep the flywheel moving
@@ -616,7 +616,7 @@ contract Comptroller is ComptrollerInterface {
     }
 
     /**
-     * @notice Sets a new price oracle for the comptroller
+     * @notice Sets a new price oracle for the lendtroller
      * @dev Admin function to set a new price oracle
      * @param newOracle new price oracle address
      */
@@ -626,10 +626,10 @@ contract Comptroller is ComptrollerInterface {
             revert AddressUnauthorized();
         }
 
-        // Track the old oracle for the comptroller
+        // Track the old oracle for the lendtroller
         PriceOracle oldOracle = oracle;
 
-        // Set comptroller's oracle to newOracle
+        // Set lendtroller's oracle to newOracle
         oracle = newOracle;
 
         emit NewPriceOracle(oldOracle, newOracle);
@@ -935,7 +935,7 @@ contract Comptroller is ComptrollerInterface {
      * @notice Checks caller is admin, or this contract is becoming the new implementation
      */
     function adminOrInitializing() internal view returns (bool) {
-        return msg.sender == admin || msg.sender == comptrollerImplementation;
+        return msg.sender == admin || msg.sender == lendtrollerImplementation;
     }
 
     /**

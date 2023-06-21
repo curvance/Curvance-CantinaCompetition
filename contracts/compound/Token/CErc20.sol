@@ -3,6 +3,7 @@ pragma solidity ^0.8.17;
 
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+
 import "../interfaces/IDelegateToken.sol";
 import "../interfaces/IEIP20NonStandard.sol";
 import "./CToken.sol";
@@ -19,7 +20,7 @@ contract CErc20 is CErc20Interface, CToken {
     /**
      * @notice Initialize the new money market
      * @param underlying_ The address of the underlying asset
-     * @param comptroller_ The address of the Comptroller
+     * @param lendtroller_ The address of the Lendtroller
      * @param gaugePool_ The address of the gauge pool
      * @param interestRateModel_ The address of the interest rate model
      * @param initialExchangeRateScaled_ The initial exchange rate, scaled by 1e18
@@ -29,7 +30,7 @@ contract CErc20 is CErc20Interface, CToken {
      */
     function initialize(
         address underlying_,
-        ComptrollerInterface comptroller_,
+        LendtrollerInterface lendtroller_,
         address gaugePool_,
         InterestRateModel interestRateModel_,
         uint256 initialExchangeRateScaled_,
@@ -39,7 +40,7 @@ contract CErc20 is CErc20Interface, CToken {
     ) public {
         // CToken initialize does the bulk of the work
         super.initialize(
-            comptroller_,
+            lendtroller_,
             gaugePool_,
             interestRateModel_,
             initialExchangeRateScaled_,

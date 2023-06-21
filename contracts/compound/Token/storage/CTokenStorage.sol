@@ -2,7 +2,7 @@
 pragma solidity ^0.8.17;
 
 import "../../InterestRateModel/InterestRateModel.sol";
-import "../../Comptroller/ComptrollerInterface.sol";
+import "../../lendtroller/LendtrollerInterface.sol";
 import "./CommonError.sol";
 
 abstract contract CTokenStorage is CommonError {
@@ -16,7 +16,7 @@ abstract contract CTokenStorage is CommonError {
     error RedeemTransferOutNotPossible();
     error BorrowCashNotAvailable();
     error SelfLiquidationNotAllowed();
-    error ComptrollerMismatch();
+    error LendtrollerMismatch();
     error ValidationFailed();
     error ReduceReservesCashNotAvailable();
     error ReduceReservesCashValidation();
@@ -63,7 +63,7 @@ abstract contract CTokenStorage is CommonError {
     /**
      * @notice Contract which oversees inter-cToken operations
      */
-    ComptrollerInterface public comptroller;
+    LendtrollerInterface public lendtroller;
 
     /**
      * @notice Gauge contract address

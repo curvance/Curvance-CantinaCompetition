@@ -3,7 +3,7 @@ pragma solidity ^0.8.17;
 
 import "../Oracle/PriceOracle.sol";
 import "../Unitroller/UnitrollerStorage.sol";
-import "../CompRewards/RewardsInterface.sol";
+//import "../CompRewards/RewardsInterface.sol";
 
 contract MarketStorage {
     struct Market {
@@ -20,7 +20,7 @@ contract MarketStorage {
     }
 }
 
-contract ComptrollerStorage is UnitrollerStorage, MarketStorage {
+contract LendtrollerStorage is UnitrollerStorage, MarketStorage {
     /**
      * @notice The Pause Guardian can pause certain actions as a safety mechanism.
      *  Actions which allow users to remove their own assets cannot be paused.
@@ -46,7 +46,7 @@ contract ComptrollerStorage is UnitrollerStorage, MarketStorage {
     PriceOracle public oracle;
 
     /// @notice Allows connection to the Rewards Contract
-    RewardsInterface public rewarder;
+    //RewardsInterface public rewarder;
 
     /// @notice Multiplier used to calculate the maximum repayAmount when liquidating a borrow
     uint256 public closeFactorScaled;

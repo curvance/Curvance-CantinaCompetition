@@ -1,13 +1,13 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import "./GaugeController.sol";
-import "./ChildGaugePool.sol";
-import "../compound/Comptroller/ComptrollerInterface.sol";
-
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+
+import "./GaugeController.sol";
+import "./ChildGaugePool.sol";
+import "../lendingMarket/lendtroller/LendtrollerInterface.sol";
 
 contract GaugePool is GaugeController, ReentrancyGuard {
     using SafeERC20 for IERC20;
@@ -35,13 +35,13 @@ contract GaugePool is GaugeController, ReentrancyGuard {
     uint256 public constant PRECISION = 1e36;
 
     // storage
-    address public comptroller;
+    address public lendtroller;
     ChildGaugePool[] public childGauges;
     mapping(address => PoolInfo) public poolInfo; // token => pool info
     mapping(address => mapping(address => UserInfo)) public userInfo; // token => user => info
 
-    constructor(address _cve, address _ve, address _comptroller) GaugeController(_cve, _ve) ReentrancyGuard() {
-        comptroller = _comptroller;
+    constructor(address _cve, address _ve, address _lendtroller) GaugeController(_cve, _ve) ReentrancyGuard() {
+        lendtroller = _lendtroller;
     }
 
     function addChildGauge(address _childGauge) external onlyOwner {
@@ -125,7 +125,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
      * @param amount Amounts to deposit
      */
     function deposit(address token, address user, uint256 amount) external nonReentrant {
-        (bool isListed, , ) = ComptrollerInterface(comptroller).getIsMarkets(token);
+        (bool isListed, , ) = LendtrollerInterface(lendtroller).getIsMarkets(token);
         if (msg.sender != token || !isListed) {
             revert GaugeErrors.InvalidToken();
         }
@@ -157,7 +157,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
      * @param amount Amounts to withdraw
      */
     function withdraw(address token, address user, uint256 amount) external nonReentrant {
-        (bool isListed, , ) = ComptrollerInterface(comptroller).getIsMarkets(token);
+        (bool isListed, , ) = LendtrollerInterface(lendtroller).getIsMarkets(token);
         if (msg.sender != token || !isListed) {
             revert GaugeErrors.InvalidToken();
         }

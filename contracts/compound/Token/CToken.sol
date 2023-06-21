@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import "../ReentrancyGuard.sol";
-import "../Comptroller/ComptrollerInterface.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+
+import "../lendtroller/LendtrollerInterface.sol";
 import "../interfaces/IEIP20.sol";
 import "../InterestRateModel/InterestRateModel.sol";
 import "./storage/CTokenInterface.sol";
@@ -18,7 +19,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
     ////////// INITIALIZATION //////////
     /**
      * @notice Initialize the money market
-     * @param comptroller_ The address of the Comptroller
+     * @param lendtroller_ The address of the Lendtroller
      * @param interestRateModel_ The address of the interest rate model
      * @param initialExchangeRateScaled_ The initial exchange rate, scaled by 1e18
      * @param name_ EIP-20 name of this token
@@ -26,7 +27,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
      * @param decimals_ EIP-20 decimal precision of this token
      */
     function initialize(
-        ComptrollerInterface comptroller_,
+        LendtrollerInterface lendtroller_,
         address gaugePool_,
         InterestRateModel interestRateModel_,
         uint256 initialExchangeRateScaled_,
@@ -47,12 +48,12 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
             revert CannotEqualZero();
         }
 
-        // Set the comptroller
-        _setComptroller(comptroller_);
+        // Set the lendtroller
+        _setLendtroller(lendtroller_);
 
         gaugePool = gaugePool_;
 
-        // Initialize block number and borrow index (block number mocks depend on comptroller being set)
+        // Initialize block number and borrow index (block number mocks depend on lendtroller being set)
         accrualBlockNumber = getBlockNumber();
         borrowIndex = expScale;
 
@@ -74,7 +75,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
      */
     function transferTokens(address spender, address src, address dst, uint256 tokens) internal {
         /* Fails if transfer not allowed */
-        comptroller.transferAllowed(address(this), src, dst, tokens);
+        lendtroller.transferAllowed(address(this), src, dst, tokens);
 
         /* Do not allow self-transfers */
         if (src == dst) {
@@ -185,7 +186,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
 
     /**
      * @notice Get a snapshot of the account's balances, and the cached exchange rate
-     * @dev This is used by comptroller to more efficiently perform liquidity checks.
+     * @dev This is used by lendtroller to more efficiently perform liquidity checks.
      * @param account Address of the account to snapshot
      * @return tokenBalance
      * @return borrowBalance
@@ -403,7 +404,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
      */
     function mintFresh(address user, uint256 mintAmount, address minter) internal {
         /* Fail if mint not allowed */
-        comptroller.mintAllowed(address(this), minter); //, mintAmount);
+        lendtroller.mintAllowed(address(this), minter); //, mintAmount);
 
         /* Verify market's block number equals current block number */
         if (accrualBlockNumber != getBlockNumber()) {
@@ -483,7 +484,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         uint256 redeemTokens = (redeemAmount * expScale) / exchangeRate;
 
         /* Fail if redeem not allowed */
-        comptroller.redeemAllowed(address(this), redeemer, redeemTokens);
+        lendtroller.redeemAllowed(address(this), redeemer, redeemTokens);
 
         // redeemFresh emits redeem-specific logs on errors, so we don't need to
         redeemFresh(redeemer, redeemTokens, redeemAmount, redeemer);
@@ -494,7 +495,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         uint256 redeemAmount,
         bytes memory params
     ) internal {
-        if (msg.sender != comptroller.positionFolding()) {
+        if (msg.sender != lendtroller.positionFolding()) {
             revert FailedNotFromPositionFolding();
         }
 
@@ -510,7 +511,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         IPositionFolding(msg.sender).onRedeem(address(this), redeemer, redeemAmount, params);
 
         /* Fail if redeem not allowed */
-        comptroller.redeemAllowed(address(this), redeemer, 0);
+        lendtroller.redeemAllowed(address(this), redeemer, 0);
     }
 
     /**
@@ -577,7 +578,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         accrueInterest();
 
         /* Fail if borrow not allowed */
-        comptroller.borrowAllowed(address(this), msg.sender, borrowAmount);
+        lendtroller.borrowAllowed(address(this), msg.sender, borrowAmount);
 
         borrowFresh(payable(msg.sender), borrowAmount, payable(msg.sender));
     }
@@ -587,7 +588,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         uint256 borrowAmount,
         bytes memory params
     ) internal {
-        if (msg.sender != comptroller.positionFolding()) {
+        if (msg.sender != lendtroller.positionFolding()) {
             revert FailedNotFromPositionFolding();
         }
 
@@ -598,7 +599,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         IPositionFolding(msg.sender).onBorrow(address(this), borrower, borrowAmount, params);
 
         /* Fail if position is not allowed */
-        comptroller.borrowAllowed(address(this), borrower, 0);
+        lendtroller.borrowAllowed(address(this), borrower, 0);
     }
 
     /**
@@ -679,7 +680,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
      */
     function repayBorrowFresh(address payer, address borrower, uint256 repayAmount) internal returns (uint256) {
         /* Fail if repayBorrow not allowed */
-        comptroller.repayBorrowAllowed(address(this), borrower); //, payer, repayAmount);
+        lendtroller.repayBorrowAllowed(address(this), borrower); //, payer, repayAmount);
 
         /* Verify market's block number equals current block number */
         if (accrualBlockNumber != getBlockNumber()) {
@@ -759,7 +760,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         CTokenInterface cTokenCollateral
     ) internal {
         /* Fail if liquidate not allowed */
-        comptroller.liquidateBorrowAllowed(address(this), address(cTokenCollateral), borrower, repayAmount);
+        lendtroller.liquidateBorrowAllowed(address(this), address(cTokenCollateral), borrower, repayAmount);
 
         /* Verify market's block number equals current block number */
         if (accrualBlockNumber != getBlockNumber()) {
@@ -794,7 +795,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         // (No safe failures beyond this point)
 
         /* We calculate the number of collateral tokens that will be seized */
-        uint256 seizeTokens = comptroller.liquidateCalculateSeizeTokens(
+        uint256 seizeTokens = lendtroller.liquidateCalculateSeizeTokens(
             address(this),
             address(cTokenCollateral),
             actualRepayAmount
@@ -840,7 +841,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
      */
     function seizeInternal(address seizerToken, address liquidator, address borrower, uint256 seizeTokens) internal {
         /* Fails if seize not allowed */
-        comptroller.seizeAllowed(address(this), seizerToken, liquidator, borrower); //, seizeTokens);
+        lendtroller.seizeAllowed(address(this), seizerToken, liquidator, borrower); //, seizeTokens);
 
         /* Fails if borrower = liquidator */
         if (borrower == liquidator) {
@@ -925,27 +926,27 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
     }
 
     /**
-     * @notice Sets a new comptroller for the market
-     * @dev Admin function to set a new comptroller
-     * @param newComptroller New comptroller address.
+     * @notice Sets a new lendtroller for the market
+     * @dev Admin function to set a new lendtroller
+     * @param newLendtroller New lendtroller address.
      */
-    function _setComptroller(ComptrollerInterface newComptroller) public override {
+    function _setLendtroller(LendtrollerInterface newLendtroller) public override {
         // Check caller is admin
         if (msg.sender != admin) {
             revert AddressUnauthorized();
         }
 
-        ComptrollerInterface oldComptroller = comptroller;
-        // Ensure invoke comptroller.isComptroller() returns true
-        if (!newComptroller.isComptroller()) {
-            revert ComptrollerMismatch();
+        LendtrollerInterface oldLendtroller = lendtroller;
+        // Ensure invoke lendtroller.isLendtroller() returns true
+        if (!newLendtroller.isLendtroller()) {
+            revert LendtrollerMismatch();
         }
 
-        // Set market's comptroller to newComptroller
-        comptroller = newComptroller;
+        // Set market's lendtroller to newLendtroller
+        lendtroller = newLendtroller;
 
-        // Emit NewComptroller(oldComptroller, newComptroller)
-        emit NewComptroller(oldComptroller, newComptroller);
+        // Emit NewLendtroller(oldLendtroller, newLendtroller)
+        emit NewLendtroller(oldLendtroller, newLendtroller);
     }
 
     /**

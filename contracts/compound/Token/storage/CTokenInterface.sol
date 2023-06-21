@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import "../../Comptroller/ComptrollerInterface.sol";
+import "../../lendtroller/LendtrollerInterface.sol";
 import "../../InterestRateModel/InterestRateModel.sol";
 import "./CTokenStorage.sol";
 
@@ -61,9 +61,9 @@ abstract contract CTokenInterface is CTokenStorage {
     event NewAdmin(address oldAdmin, address newAdmin);
 
     /**
-     * @notice Event emitted when comptroller is changed
+     * @notice Event emitted when lendtroller is changed
      */
-    event NewComptroller(ComptrollerInterface oldComptroller, ComptrollerInterface newComptroller);
+    event NewLendtroller(LendtrollerInterface oldLendtroller, LendtrollerInterface newLendtroller);
 
     /**
      * @notice Event emitted when interestRateModel is changed
@@ -151,7 +151,7 @@ abstract contract CTokenInterface is CTokenStorage {
 
     function _acceptAdmin() external virtual;
 
-    function _setComptroller(ComptrollerInterface newComptroller) public virtual;
+    function _setLendtroller(LendtrollerInterface newLendtroller) public virtual;
 
     function _setReserveFactor(uint256 newReserveFactorMantissa) external virtual;
 

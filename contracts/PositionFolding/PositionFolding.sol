@@ -6,11 +6,11 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 import { IPositionFolding } from "./IPositionFolding.sol";
-import { Comptroller } from "../compound/Comptroller/Comptroller.sol";
-import { PriceOracle } from "../compound/Oracle/PriceOracle.sol";
-import { CToken } from "../compound/Token/CToken.sol";
-import { CEther } from "../compound/Token/CEther.sol";
-import { CErc20 } from "../compound/Token/CErc20.sol";
+import { Lendtroller } from "../lendingMarket/Lendtroller/Lendtroller.sol";
+import { PriceOracle } from "../lendingMarket/Oracle/PriceOracle.sol";
+import { CToken } from "../lendingMarket/Token/CToken.sol";
+import { CEther } from "../lendingMarket/Token/CEther.sol";
+import { CErc20 } from "../lendingMarket/Token/CErc20.sol";
 import { IWETH } from "../zapper/IWETH.sol";
 
 contract PositionFolding is ReentrancyGuard, IPositionFolding {
@@ -25,27 +25,27 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
     uint256 public constant DENOMINATOR = 10000;
     address public constant ETH = address(0);
 
-    Comptroller public comptroller;
+    Lendtroller public lendtroller;
     PriceOracle public oracle;
     address public cether;
     address public weth;
 
     receive() external payable {}
 
-    constructor(address _comptroller, address _oracle, address _cether, address _weth) ReentrancyGuard() {
-        comptroller = Comptroller(_comptroller);
+    constructor(address _lendtroller, address _oracle, address _cether, address _weth) ReentrancyGuard() {
+        lendtroller = Lendtroller(_lendtroller);
         oracle = PriceOracle(_oracle);
         cether = _cether;
         weth = _weth;
     }
 
     modifier checkSlippage(address user, uint256 slippage) {
-        (uint256 sumCollateralBefore, , uint256 sumBorrowBefore) = comptroller.getAccountPosition(user);
+        (uint256 sumCollateralBefore, , uint256 sumBorrowBefore) = lendtroller.getAccountPosition(user);
         uint256 userValueBefore = sumCollateralBefore - sumBorrowBefore;
 
         _;
 
-        (uint256 sumCollateral, , uint256 sumBorrow) = comptroller.getAccountPosition(user);
+        (uint256 sumCollateral, , uint256 sumBorrow) = lendtroller.getAccountPosition(user);
         uint256 userValue = sumCollateral - sumBorrow;
 
         uint256 diff = userValue > userValueBefore ? userValue - userValueBefore : userValueBefore - userValue;
@@ -53,7 +53,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
     }
 
     function queryAmountToBorrowForLeverageMax(address user, CToken borrowToken) public view returns (uint256) {
-        (uint256 sumCollateral, uint256 maxBorrow, uint256 sumBorrow) = comptroller.getAccountPosition(user);
+        (uint256 sumCollateral, uint256 maxBorrow, uint256 sumBorrow) = lendtroller.getAccountPosition(user);
         uint256 maxLeverage = ((sumCollateral - sumBorrow) * MAX_LEVERAGE * sumCollateral) /
             (sumCollateral - maxBorrow) /
             DENOMINATOR -
@@ -114,7 +114,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
     }
 
     function onBorrow(address borrowToken, address borrower, uint256 amount, bytes memory params) external override {
-        (bool isListed, , ) = Comptroller(comptroller).getIsMarkets(borrowToken);
+        (bool isListed, , ) = Lendtroller(lendtroller).getIsMarkets(borrowToken);
         require(isListed && msg.sender == borrowToken, "PositionFolding: UNAUTHORIZED");
 
         (CToken collateral, Swap memory swapData) = abi.decode(params, (CToken, Swap));
@@ -202,7 +202,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
     }
 
     function onRedeem(address collateral, address redeemer, uint256 amount, bytes memory params) external override {
-        (bool isListed, , ) = Comptroller(comptroller).getIsMarkets(collateral);
+        (bool isListed, , ) = Lendtroller(lendtroller).getIsMarkets(collateral);
         require(isListed && msg.sender == collateral, "PositionFolding: UNAUTHORIZED");
 
         (CToken borrowToken, uint256 repayAmount, Swap memory swapData) = abi.decode(params, (CToken, uint256, Swap));

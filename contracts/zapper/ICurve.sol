@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: MIT
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.17;
 
 interface ICurveSwap {
     function coins(int128 arg0) external view returns (address);

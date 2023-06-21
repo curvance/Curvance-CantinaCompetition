@@ -1,24 +1,24 @@
 //SPDX-License-Identifier: MIT
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.17;
 
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import "../compound/Comptroller/Comptroller.sol";
-import "../compound/Token/CErc20.sol";
+import "../lendingMarket/lendtroller/Lendtroller.sol";
+import "../lendingMarket/Token/CErc20.sol";
 import "./ICurve.sol";
 import "./IWETH.sol";
 
 contract ZapperOneInch {
     using SafeERC20 for IERC20;
 
-    address public immutable comptroller;
+    address public immutable lendtroller;
     address public immutable oneInchRouter;
     address public immutable weth;
     address public constant ETH = address(0);
 
-    constructor(address _comptroller, address _oneInchRouter, address _weth) {
-        comptroller = _comptroller;
+    constructor(address _lendtroller, address _oneInchRouter, address _weth) {
+        lendtroller = _lendtroller;
         oneInchRouter = _oneInchRouter;
         weth = _weth;
     }
@@ -54,7 +54,7 @@ contract ZapperOneInch {
         }
 
         // check valid cToken
-        (bool isListed, , ) = Comptroller(comptroller).getIsMarkets(cToken);
+        (bool isListed, , ) = Lendtroller(lendtroller).getIsMarkets(cToken);
         require(isListed, "invalid cToken address");
         // check cToken underlying
         require(CErc20(cToken).underlying() == lpToken, "invalid lp address");

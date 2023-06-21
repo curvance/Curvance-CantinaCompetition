@@ -4,21 +4,21 @@ pragma solidity ^0.8.13;
 import "./UnitrollerStorage.sol";
 
 /**
- * @title ComptrollerCore
- * @dev Storage for the comptroller is at this address, while execution is delegated to the `comptrollerImplementation`.
- * CTokens should reference this contract as their comptroller.
+ * @title LendtrollerCore
+ * @dev Storage for the lendtroller is at this address, while execution is delegated to the `lendtrollerImplementation`.
+ * CTokens should reference this contract as their lendtroller.
  */
 contract Unitroller is UnitrollerStorage {
     error AddressUnauthorized();
 
     /**
-     * @notice Emitted when pendingComptrollerImplementation is changed
+     * @notice Emitted when pendingLendtrollerImplementation is changed
      */
     event NewPendingImplementation(address oldPendingImplementation, address newPendingImplementation);
 
     /**
-     * @notice Emitted when pendingComptrollerImplementation is accepted,
-     *          which means comptroller implementation is updated
+     * @notice Emitted when pendingLendtrollerImplementation is accepted,
+     *          which means lendtroller implementation is updated
      */
     event NewImplementation(address oldImplementation, address newImplementation);
 
@@ -43,33 +43,33 @@ contract Unitroller is UnitrollerStorage {
             revert AddressUnauthorized();
         }
 
-        address oldPendingImplementation = pendingComptrollerImplementation;
+        address oldPendingImplementation = pendingLendtrollerImplementation;
 
-        pendingComptrollerImplementation = newPendingImplementation;
+        pendingLendtrollerImplementation = newPendingImplementation;
 
-        emit NewPendingImplementation(oldPendingImplementation, pendingComptrollerImplementation);
+        emit NewPendingImplementation(oldPendingImplementation, pendingLendtrollerImplementation);
     }
 
     /**
-     * @notice Accepts new implementation of comptroller. msg.sender must be pendingImplementation
+     * @notice Accepts new implementation of lendtroller. msg.sender must be pendingImplementation
      * @dev Admin function for new implementation to accept it's role as implementation
      */
     function _acceptImplementation() public {
         // Check caller is pendingImplementation and pendingImplementation ≠ address(0)
-        if (msg.sender != pendingComptrollerImplementation || pendingComptrollerImplementation == address(0)) {
+        if (msg.sender != pendingLendtrollerImplementation || pendingLendtrollerImplementation == address(0)) {
             revert AddressUnauthorized();
         }
 
         // Save current values for inclusion in log
-        address oldImplementation = comptrollerImplementation;
-        address oldPendingImplementation = pendingComptrollerImplementation;
+        address oldImplementation = lendtrollerImplementation;
+        address oldPendingImplementation = pendingLendtrollerImplementation;
 
-        comptrollerImplementation = pendingComptrollerImplementation;
+        lendtrollerImplementation = pendingLendtrollerImplementation;
 
-        pendingComptrollerImplementation = address(0);
+        pendingLendtrollerImplementation = address(0);
 
-        emit NewImplementation(oldImplementation, comptrollerImplementation);
-        emit NewPendingImplementation(oldPendingImplementation, pendingComptrollerImplementation);
+        emit NewImplementation(oldImplementation, lendtrollerImplementation);
+        emit NewPendingImplementation(oldPendingImplementation, pendingLendtrollerImplementation);
     }
 
     /**
@@ -124,7 +124,7 @@ contract Unitroller is UnitrollerStorage {
      */
     fallback() external payable {
         // delegate all other functions to current implementation
-        (bool success, ) = comptrollerImplementation.delegatecall(msg.data);
+        (bool success, ) = lendtrollerImplementation.delegatecall(msg.data);
 
         assembly {
             let free_mem_ptr := mload(0x40)

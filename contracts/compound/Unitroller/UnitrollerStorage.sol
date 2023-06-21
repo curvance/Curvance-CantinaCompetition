@@ -15,10 +15,10 @@ contract UnitrollerStorage {
     /**
      * @notice Active brains of Unitroller
      */
-    address public comptrollerImplementation;
+    address public lendtrollerImplementation;
 
     /**
      * @notice Pending brains of Unitroller
      */
-    address public pendingComptrollerImplementation;
+    address public pendingLendtrollerImplementation;
 }

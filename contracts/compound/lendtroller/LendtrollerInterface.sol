@@ -2,9 +2,9 @@
 pragma solidity ^0.8.17;
 
 import "../Token/CToken.sol";
-import "./ComptrollerStorage.sol";
+import "./LendtrollerStorage.sol";
 
-abstract contract ComptrollerInterface is ComptrollerStorage {
+abstract contract LendtrollerInterface is LendtrollerStorage {
     ////////// Errors //////////
     error MarketNotListed(address);
     error AddressAlreadyJoined();
@@ -15,7 +15,7 @@ abstract contract ComptrollerInterface is ComptrollerStorage {
     error BorrowCapReached();
     error InsufficientShortfall();
     error TooMuchRepay();
-    error ComptrollerMismatch();
+    error LendtrollerMismatch();
     error MarketAlreadyListed();
     error InvalidValue();
     error AddressUnauthorized();
@@ -65,15 +65,15 @@ abstract contract ComptrollerInterface is ComptrollerStorage {
     event NewBorrowCapGuardian(address oldBorrowCapGuardian, address newBorrowCapGuardian);
 
     /// @notice Emitted when rewards contract address is changed
-    event NewRewardContract(RewardsInterface oldRewarder, RewardsInterface newRewarder);
+    //event NewRewardContract(RewardsInterface oldRewarder, RewardsInterface newRewarder);
 
     /// @notice Emitted when position folding contract address is changed
     event NewPositionFoldingContract(address indexed oldPositionFolding, address indexed newPositionFolding);
 
     ////////// Constants //////////
 
-    /// @notice Indicator that this is a Comptroller contract (for inspection)
-    bool public constant isComptroller = true;
+    /// @notice Indicator that this is a Lendtroller contract (for inspection)
+    bool public constant isLendtroller = true;
 
     /*** Assets You Are In ***/
 
