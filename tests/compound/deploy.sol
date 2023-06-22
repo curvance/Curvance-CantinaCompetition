@@ -30,7 +30,20 @@ contract DeployCompound is TestBase {
         priceOracle = new SimplePriceOracle();
 
         unitroller = new Unitroller();
-        cve = new CVE(admin);
+        // Some parameters are set zero address/values
+        // which are not related to tests currently.
+        cve = new CVE(
+            "Curvance",
+            "CVE",
+            18,
+            address(0),
+            ICentralRegistry(address(0)),
+            address(0),
+            0,
+            0,
+            0,
+            10000000e18
+        );
         compRewards = new CompRewards(address(unitroller), address(admin), address(cve));
         cve.transfer(address(compRewards), 1000e18);
         comptroller = new Comptroller(RewardsInterface(address(compRewards)));
