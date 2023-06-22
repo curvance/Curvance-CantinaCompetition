@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 import "./GaugeController.sol";
 import "./ChildGaugePool.sol";
-import "../lendingMarket/lendtroller/LendtrollerInterface.sol";
+import "../market/lendtroller/LendtrollerInterface.sol";
 
 contract GaugePool is GaugeController, ReentrancyGuard {
     using SafeERC20 for IERC20;
