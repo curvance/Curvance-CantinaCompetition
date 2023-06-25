@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
+import "../lendtroller/Lendtroller.sol";
 import "./storage/CTokenInterface.sol";
 import "./storage/CErc20Interface.sol";
 import "./storage/CDelegatorInterface.sol";
@@ -14,7 +15,7 @@ contract CErc20Delegator is CTokenInterface, CErc20Interface, CDelegatorInterfac
     /**
      * @notice Construct a new money market
      * @param underlying_ The address of the underlying asset
-     * @param comptroller_ The address of the Comptroller
+     * @param lendtroller_ The address of the Lendtroller
      * @param gaugePool_ The address of the gauge pool
      * @param interestRateModel_ The address of the interest rate model
      * @param initialExchangeRateMantissa_ The initial exchange rate, scaled by 1e18
@@ -27,7 +28,7 @@ contract CErc20Delegator is CTokenInterface, CErc20Interface, CDelegatorInterfac
      */
     constructor(
         address underlying_,
-        ComptrollerInterface comptroller_,
+        Lendtroller lendtroller_,
         address gaugePool_,
         InterestRateModel interestRateModel_,
         uint256 initialExchangeRateMantissa_,
@@ -47,7 +48,7 @@ contract CErc20Delegator is CTokenInterface, CErc20Interface, CDelegatorInterfac
             abi.encodeWithSignature(
                 "initialize(address,address,address,address,uint256,string,string,uint8)",
                 underlying_,
-                comptroller_,
+                lendtroller_,
                 gaugePool_,
                 interestRateModel_,
                 initialExchangeRateMantissa_,
@@ -249,7 +250,7 @@ contract CErc20Delegator is CTokenInterface, CErc20Interface, CDelegatorInterfac
 
     /**
      * @notice Get a snapshot of the account's balances, and the cached exchange rate
-     * @dev This is used by comptroller to more efficiently perform liquidity checks.
+     * @dev This is used by lendtroller to more efficiently perform liquidity checks.
      * @param account Address of the account to snapshot
      * @return (token balance, borrow balance, exchange rate mantissa) /// removed first return: possible error,
      */
@@ -391,11 +392,11 @@ contract CErc20Delegator is CTokenInterface, CErc20Interface, CDelegatorInterfac
     }
 
     /**
-     * @notice Sets a new comptroller for the market
-     * @dev Admin function to set a new comptroller
+     * @notice Sets a new lendtroller for the market
+     * @dev Admin function to set a new lendtroller
      */
-    function _setComptroller(ComptrollerInterface newComptroller) public override {
-        delegateToImplementation(abi.encodeWithSignature("_setComptroller(address)", newComptroller));
+    function _setLendtroller(LendtrollerInterface newLendtroller) public override {
+        delegateToImplementation(abi.encodeWithSignature("_setLendtroller(address)", newLendtroller));
     }
 
     /**

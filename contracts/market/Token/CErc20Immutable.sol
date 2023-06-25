@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
+import "../lendtroller/Lendtroller.sol";
 import "./CErc20.sol";
 
 /**
@@ -12,7 +13,7 @@ contract CErc20Immutable is CErc20 {
     /**
      * @notice Construct a new money market
      * @param underlying_ The address of the underlying asset
-     * @param comptroller_ The address of the Comptroller
+     * @param lendtroller_ The address of the Lendtroller
      * @param gaugePool_ The address of the gauge pool
      * @param interestRateModel_ The address of the interest rate model
      * @param initialExchangeRateMantissa_ The initial exchange rate, scaled by 1e18
@@ -23,7 +24,7 @@ contract CErc20Immutable is CErc20 {
      */
     constructor(
         address underlying_,
-        ComptrollerInterface comptroller_,
+        LendtrollerInterface lendtroller_,
         address gaugePool_,
         InterestRateModel interestRateModel_,
         uint256 initialExchangeRateMantissa_,
@@ -38,7 +39,7 @@ contract CErc20Immutable is CErc20 {
         // Initialize the market
         initialize(
             underlying_,
-            comptroller_,
+            lendtroller_,
             gaugePool_,
             interestRateModel_,
             initialExchangeRateMantissa_,
