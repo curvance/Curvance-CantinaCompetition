@@ -3,7 +3,7 @@ pragma solidity ^0.8.17;
 
 import "../Token/CToken.sol";
 import "../Oracle/PriceOracle.sol";
-//import "../LendRewards/RewardsInterface.sol";
+import "../../gauge/GaugeController.sol";
 import "../Unitroller/Unitroller.sol";
 import "./LendtrollerInterface.sol";
 
@@ -27,7 +27,9 @@ contract Lendtroller is LendtrollerInterface {
     /// @notice Scaler for floating point math
     uint256 internal constant expScale = 1e18;
 
-    constructor(RewardsInterface _rewarder) {//TODO change to gauge controller
+    GaugeController rewarder;
+
+    constructor(GaugeController _rewarder) {//TODO change to gauge controller
         admin = msg.sender;
         rewarder = _rewarder;
     }
@@ -174,8 +176,8 @@ contract Lendtroller is LendtrollerInterface {
         }
 
         // Keep the flywheel moving
-        rewarder.updateCveSupplyIndexExternal(cToken);
-        rewarder.distributeSupplierCveExternal(cToken, minter);
+        // rewarder.updateCveSupplyIndexExternal(cToken);
+        // rewarder.distributeSupplierCveExternal(cToken, minter);
     }
 
     /**
@@ -188,8 +190,8 @@ contract Lendtroller is LendtrollerInterface {
         redeemAllowedInternal(cToken, redeemer, redeemTokens);
 
         // Keep the flywheel moving
-        rewarder.updateCveSupplyIndexExternal(cToken);
-        rewarder.distributeSupplierCveExternal(cToken, redeemer);
+        // rewarder.updateCveSupplyIndexExternal(cToken);
+        // rewarder.distributeSupplierCveExternal(cToken, redeemer);
     }
 
     /**
@@ -266,8 +268,8 @@ contract Lendtroller is LendtrollerInterface {
         }
 
         // Keep the flywheel moving
-        rewarder.updateCveSupplyIndexExternal(cToken);
-        rewarder.distributeSupplierCveExternal(cToken, borrower);
+        // rewarder.updateCveSupplyIndexExternal(cToken);
+        // rewarder.distributeSupplierCveExternal(cToken, borrower);
     }
 
     /**
@@ -281,8 +283,8 @@ contract Lendtroller is LendtrollerInterface {
         }
 
         // Keep the flywheel moving
-        rewarder.updateCveSupplyIndexExternal(cToken);
-        rewarder.distributeSupplierCveExternal(cToken, borrower);
+        // rewarder.updateCveSupplyIndexExternal(cToken);
+        // rewarder.distributeSupplierCveExternal(cToken, borrower);
     }
 
     /**
@@ -350,9 +352,9 @@ contract Lendtroller is LendtrollerInterface {
         }
 
         // Keep the flywheel moving
-        rewarder.updateCveSupplyIndexExternal(cTokenCollateral);
-        rewarder.distributeSupplierCveExternal(cTokenCollateral, borrower);
-        rewarder.distributeSupplierCveExternal(cTokenCollateral, liquidator);
+        // rewarder.updateCveSupplyIndexExternal(cTokenCollateral);
+        // rewarder.distributeSupplierCveExternal(cTokenCollateral, borrower);
+        // rewarder.distributeSupplierCveExternal(cTokenCollateral, liquidator);
     }
 
     /**
@@ -373,9 +375,9 @@ contract Lendtroller is LendtrollerInterface {
         redeemAllowedInternal(cToken, src, transferTokens);
 
         // Keep the flywheel moving
-        rewarder.updateCveSupplyIndexExternal(cToken);
-        rewarder.distributeSupplierCveExternal(cToken, src);
-        rewarder.distributeSupplierCveExternal(cToken, dst);
+        // rewarder.updateCveSupplyIndexExternal(cToken);
+        // rewarder.distributeSupplierCveExternal(cToken, src);
+        // rewarder.distributeSupplierCveExternal(cToken, dst);
     }
 
     /*** Liquidity/Liquidation Calculations ***/
@@ -603,16 +605,16 @@ contract Lendtroller is LendtrollerInterface {
      * @dev Admin function to set a new rewarder contract
      * @param newRewarder new rewarder contract address
      */
-    function _setRewardsContract(RewardsInterface newRewarder) public {
+    function _setRewardsContract(GaugeController newRewarder) public {
         if (msg.sender != admin) {
             revert AddressUnauthorized();
         }
 
-        RewardsInterface oldRewarder = rewarder;
+        GaugeController oldRewarder = rewarder;
 
         rewarder = newRewarder;
 
-        emit NewRewardContract(oldRewarder, newRewarder);
+        // emit NewRewardContract(oldRewarder, newRewarder);
     }
 
     /**
