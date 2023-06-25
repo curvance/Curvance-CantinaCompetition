@@ -3,13 +3,13 @@ pragma solidity ^0.8.13;
 
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
 import "contracts/token/CVE.sol";
-import "contracts/compound/CompRewards/CompRewards.sol";
-import "contracts/compound/Comptroller/Comptroller.sol";
-import "contracts/compound/Comptroller/ComptrollerInterface.sol";
-import "contracts/compound/Token/CErc20Immutable.sol";
-import "contracts/compound/Oracle/SimplePriceOracle.sol";
-import "contracts/compound/InterestRateModel/WhitePaperInterestRateModel.sol";
-import "contracts/compound/InterestRateModel/InterestRateModel.sol";
+import "contracts/market/CompRewards/CompRewards.sol";
+import "contracts/market/lendtroller/Lendtroller.sol";
+import "contracts/market/lendtroller/LendtrollerInterface.sol";
+import "contracts/market/Token/CErc20Immutable.sol";
+import "contracts/market/Oracle/SimplePriceOracle.sol";
+import "contracts/market/InterestRateModel/WhitePaperInterestRateModel.sol";
+import "contracts/market/InterestRateModel/InterestRateModel.sol";
 import { GaugePool } from "contracts/gauge/GaugePool.sol";
 
 import "tests/compound/deploy.sol";
