@@ -166,7 +166,7 @@ contract VelodromeStablePositionVault is BasePositionVault {
                           EXTERNAL POSITION LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function harvest() public override whenNotShutdown nonReentrant returns (uint256 yield) {
+    function harvest(bytes memory) public override whenNotShutdown nonReentrant returns (uint256 yield) {
         uint256 pending = _calculatePendingRewards();
         if (pending > 0) {
             // We need to claim vested rewards.
@@ -209,7 +209,8 @@ contract VelodromeStablePositionVault is BasePositionVault {
 
             if (totalAmountA > 0) {
                 uint256 feeForUpkeep = totalAmountA.mulDivDown(positionVaultMetaData.upkeepFee, 1e18);
-                if (positionVaultMetaData.positionWatchdog == address(0)) revert VelodromePositionVault__WatchdogNotSet();
+                if (positionVaultMetaData.positionWatchdog == address(0))
+                    revert VelodromePositionVault__WatchdogNotSet();
                 ERC20(tokenA).safeTransfer(positionVaultMetaData.positionWatchdog, feeForUpkeep);
                 totalAmountA -= feeForUpkeep;
             }

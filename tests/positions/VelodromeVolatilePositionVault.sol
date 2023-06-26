@@ -74,7 +74,13 @@ contract VelodromeVolatilePositionVaultTest is TestBase {
         settings = PriceRouter.AssetSettings(CHAINLINK_DERIVATIVE, USDC_USD_FEED); // TODO no chainlink oracle for Velo, use USDC for testing
         priceRouter.addAsset(VELO, settings, abi.encode(stor), price);
 
-        positionVault = new VelodromeVolatilePositionVault(WETH_USDC, address(this), "WETH/USDC Vault", "WETH/USDC Vault", 18);
+        positionVault = new VelodromeVolatilePositionVault(
+            WETH_USDC,
+            address(this),
+            "WETH/USDC Vault",
+            "WETH/USDC Vault",
+            18
+        );
 
         positionVault.setWatchdog(address(this));
         BasePositionVault.PositionVaultMetaData memory metaData = BasePositionVault.PositionVaultMetaData({
@@ -137,7 +143,7 @@ contract VelodromeVolatilePositionVaultTest is TestBase {
         deal(address(USDC), address(positionVault), 100e6);
         deal(address(VELO), address(positionVault), 100e18);
 
-        positionVault.harvest();
+        positionVault.harvest("0x");
 
         assertEq(positionVault.totalAssets(), assets, "Total Assets should equal user deposit.");
 
@@ -148,7 +154,7 @@ contract VelodromeVolatilePositionVaultTest is TestBase {
         deal(address(USDC), address(positionVault), 100e6);
         deal(address(VELO), address(positionVault), 100e18);
 
-        positionVault.harvest();
+        positionVault.harvest("0x");
 
         vm.warp(block.timestamp + 7 days);
 

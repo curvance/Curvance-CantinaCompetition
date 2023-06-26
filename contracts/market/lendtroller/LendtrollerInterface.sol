@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import {CToken} from "../Token/CToken.sol";
+import { CToken } from "../Token/CToken.sol";
 import "./LendtrollerStorage.sol";
 
 abstract contract LendtrollerInterface is LendtrollerStorage {

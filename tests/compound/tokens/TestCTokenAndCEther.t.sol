@@ -71,7 +71,7 @@ contract TestCTokenAndCEther is TestBase {
     function testInitialize() public {
         cDAI = new CErc20Immutable(
             dai,
-            ComptrollerInterface(unitroller),
+            LendtrollerInterface(unitroller),
             gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
             _ONE,
@@ -81,7 +81,7 @@ contract TestCTokenAndCEther is TestBase {
             payable(admin)
         );
         cETH = new CEther(
-            ComptrollerInterface(unitroller),
+            LendtrollerInterface(unitroller),
             gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
             _ONE,
@@ -95,7 +95,7 @@ contract TestCTokenAndCEther is TestBase {
     // function testMint() public {
     //     cDAI = new CErc20Immutable(
     //         dai,
-    //         ComptrollerInterface(unitroller),
+    //         LendtrollerInterface(unitroller),
     //         InterestRateModel(address(deployments.jumpRateModel())),
     //         _ONE,
     //         "cDAI",
@@ -104,7 +104,7 @@ contract TestCTokenAndCEther is TestBase {
     //         payable(admin)
     //     );
     //     cETH = new CEther(
-    //         ComptrollerInterface(unitroller),
+    //         LendtrollerInterface(unitroller),
     //         InterestRateModel(address(deployments.jumpRateModel())),
     //         _ONE,
     //         "cETH",
@@ -114,16 +114,16 @@ contract TestCTokenAndCEther is TestBase {
     //     );
     //     // support market
     //     vm.prank(admin);
-    //     Comptroller(unitroller)._supportMarket(CToken(address(cDAI)));
+    //     Lendtroller(unitroller)._supportMarket(CToken(address(cDAI)));
     //     vm.prank(admin);
-    //     Comptroller(unitroller)._supportMarket(CToken(address(cETH)));
+    //     Lendtroller(unitroller)._supportMarket(CToken(address(cETH)));
 
     //     // user1 enter markets
     //     vm.prank(user1);
     //     address[] memory markets = new address[](2);
     //     markets[0] = address(cDAI);
     //     markets[1] = address(cETH);
-    //     ComptrollerInterface(unitroller).enterMarkets(markets);
+    //     LendtrollerInterface(unitroller).enterMarkets(markets);
 
     //     // user1 approve
     //     vm.prank(user1);
@@ -136,7 +136,7 @@ contract TestCTokenAndCEther is TestBase {
 
     //     // user2 enter market
     //     vm.prank(user2);
-    //     ComptrollerInterface(unitroller).enterMarkets(markets);
+    //     LendtrollerInterface(unitroller).enterMarkets(markets);
 
     //     // user2 mint
     //     vm.prank(user2);
@@ -147,7 +147,7 @@ contract TestCTokenAndCEther is TestBase {
     function testRedeem() public {
         cDAI = new CErc20Immutable(
             dai,
-            ComptrollerInterface(unitroller),
+            LendtrollerInterface(unitroller),
             gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
             _ONE,
@@ -157,7 +157,7 @@ contract TestCTokenAndCEther is TestBase {
             payable(admin)
         );
         cETH = new CEther(
-            ComptrollerInterface(unitroller),
+            LendtrollerInterface(unitroller),
             gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
             _ONE,
@@ -169,21 +169,21 @@ contract TestCTokenAndCEther is TestBase {
 
         // support market
         vm.prank(admin);
-        Comptroller(unitroller)._supportMarket(CToken(address(cDAI)));
+        Lendtroller(unitroller)._supportMarket(CToken(address(cDAI)));
         vm.prank(admin);
-        Comptroller(unitroller)._supportMarket(CToken(address(cETH)));
+        Lendtroller(unitroller)._supportMarket(CToken(address(cETH)));
         // set collateral factor
         vm.prank(admin);
-        Comptroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 5e17);
+        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 5e17);
         vm.prank(admin);
-        Comptroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 5e17);
+        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 5e17);
 
         // user1 enter markets
         vm.prank(user1);
         address[] memory markets = new address[](2);
         markets[0] = address(cDAI);
         markets[1] = address(cETH);
-        ComptrollerInterface(unitroller).enterMarkets(markets);
+        LendtrollerInterface(unitroller).enterMarkets(markets);
 
         // auser1 pprove
         vm.prank(user1);
@@ -204,7 +204,7 @@ contract TestCTokenAndCEther is TestBase {
 
         // user2 enter markets
         vm.prank(user2);
-        ComptrollerInterface(unitroller).enterMarkets(markets);
+        LendtrollerInterface(unitroller).enterMarkets(markets);
 
         balanceBeforeMint = user2.balance;
         // user2 mint
@@ -223,7 +223,7 @@ contract TestCTokenAndCEther is TestBase {
     function testRedeemUnderlying() public {
         cDAI = new CErc20Immutable(
             dai,
-            ComptrollerInterface(unitroller),
+            LendtrollerInterface(unitroller),
             gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
             _ONE,
@@ -233,7 +233,7 @@ contract TestCTokenAndCEther is TestBase {
             payable(admin)
         );
         cETH = new CEther(
-            ComptrollerInterface(unitroller),
+            LendtrollerInterface(unitroller),
             gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
             _ONE,
@@ -245,21 +245,21 @@ contract TestCTokenAndCEther is TestBase {
 
         // support market
         vm.prank(admin);
-        Comptroller(unitroller)._supportMarket(CToken(address(cDAI)));
+        Lendtroller(unitroller)._supportMarket(CToken(address(cDAI)));
         vm.prank(admin);
-        Comptroller(unitroller)._supportMarket(CToken(address(cETH)));
+        Lendtroller(unitroller)._supportMarket(CToken(address(cETH)));
         // set collateral factor
         vm.prank(admin);
-        Comptroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 5e17);
+        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 5e17);
         vm.prank(admin);
-        Comptroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 5e17);
+        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 5e17);
 
         // user1 enter markets
         vm.prank(user1);
         address[] memory markets = new address[](2);
         markets[0] = address(cDAI);
         markets[1] = address(cETH);
-        ComptrollerInterface(unitroller).enterMarkets(markets);
+        LendtrollerInterface(unitroller).enterMarkets(markets);
 
         // user1 approve
         vm.prank(user1);
@@ -280,7 +280,7 @@ contract TestCTokenAndCEther is TestBase {
 
         // user2 enter markets
         vm.prank(user2);
-        ComptrollerInterface(unitroller).enterMarkets(markets);
+        LendtrollerInterface(unitroller).enterMarkets(markets);
 
         balanceBeforeMint = user2.balance;
         // user2 mint
@@ -299,7 +299,7 @@ contract TestCTokenAndCEther is TestBase {
     function testBorrow() public {
         cDAI = new CErc20Immutable(
             dai,
-            ComptrollerInterface(unitroller),
+            LendtrollerInterface(unitroller),
             gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
             _ONE,
@@ -309,7 +309,7 @@ contract TestCTokenAndCEther is TestBase {
             payable(admin)
         );
         cETH = new CEther(
-            ComptrollerInterface(unitroller),
+            LendtrollerInterface(unitroller),
             gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
             _ONE,
@@ -321,21 +321,21 @@ contract TestCTokenAndCEther is TestBase {
 
         // support market
         vm.prank(admin);
-        Comptroller(unitroller)._supportMarket(CToken(address(cDAI)));
+        Lendtroller(unitroller)._supportMarket(CToken(address(cDAI)));
         vm.prank(admin);
-        Comptroller(unitroller)._supportMarket(CToken(address(cETH)));
+        Lendtroller(unitroller)._supportMarket(CToken(address(cETH)));
         // set collateral factor
         vm.prank(admin);
-        Comptroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 5e17);
+        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 5e17);
         vm.prank(admin);
-        Comptroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 5e17);
+        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 5e17);
 
         // user1 enter markets
         vm.prank(user1);
         address[] memory markets = new address[](2);
         markets[0] = address(cDAI);
         markets[1] = address(cETH);
-        ComptrollerInterface(unitroller).enterMarkets(markets);
+        LendtrollerInterface(unitroller).enterMarkets(markets);
 
         // user1 approve
         vm.prank(user1);
@@ -348,7 +348,7 @@ contract TestCTokenAndCEther is TestBase {
 
         // user2 enter markets
         vm.prank(user2);
-        ComptrollerInterface(unitroller).enterMarkets(markets);
+        LendtrollerInterface(unitroller).enterMarkets(markets);
 
         // user2 mint
         vm.prank(user2);
@@ -373,7 +373,7 @@ contract TestCTokenAndCEther is TestBase {
     function testBorrow2() public {
         cDAI = new CErc20Immutable(
             dai,
-            ComptrollerInterface(unitroller),
+            LendtrollerInterface(unitroller),
             gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
             _ONE,
@@ -383,7 +383,7 @@ contract TestCTokenAndCEther is TestBase {
             payable(admin)
         );
         cETH = new CEther(
-            ComptrollerInterface(unitroller),
+            LendtrollerInterface(unitroller),
             gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
             _ONE,
@@ -395,21 +395,21 @@ contract TestCTokenAndCEther is TestBase {
 
         // support market
         vm.prank(admin);
-        Comptroller(unitroller)._supportMarket(CToken(address(cDAI)));
+        Lendtroller(unitroller)._supportMarket(CToken(address(cDAI)));
         vm.prank(admin);
-        Comptroller(unitroller)._supportMarket(CToken(address(cETH)));
+        Lendtroller(unitroller)._supportMarket(CToken(address(cETH)));
         // set collateral factor
         vm.prank(admin);
-        Comptroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 5e17);
+        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 5e17);
         vm.prank(admin);
-        Comptroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 5e17);
+        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 5e17);
 
         // user1 enter markets
         vm.prank(user1);
         address[] memory markets = new address[](2);
         markets[0] = address(cDAI);
         markets[1] = address(cETH);
-        ComptrollerInterface(unitroller).enterMarkets(markets);
+        LendtrollerInterface(unitroller).enterMarkets(markets);
 
         // user1 approve
         IERC20(dai).approve(address(cDAI), 100e18);
@@ -420,7 +420,7 @@ contract TestCTokenAndCEther is TestBase {
         assertEq(cDAI.balanceOf(user1), 100e18);
 
         // user1 enter markets
-        ComptrollerInterface(unitroller).enterMarkets(markets);
+        LendtrollerInterface(unitroller).enterMarkets(markets);
 
         // user1 mint
         vm.prank(user1);
@@ -445,7 +445,7 @@ contract TestCTokenAndCEther is TestBase {
     function testRepayBorrowBehalf() public {
         cDAI = new CErc20Immutable(
             dai,
-            ComptrollerInterface(unitroller),
+            LendtrollerInterface(unitroller),
             gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
             _ONE,
@@ -455,7 +455,7 @@ contract TestCTokenAndCEther is TestBase {
             payable(admin)
         );
         cETH = new CEther(
-            ComptrollerInterface(unitroller),
+            LendtrollerInterface(unitroller),
             gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
             _ONE,
@@ -467,21 +467,21 @@ contract TestCTokenAndCEther is TestBase {
 
         // support market
         vm.prank(admin);
-        Comptroller(unitroller)._supportMarket(CToken(address(cDAI)));
+        Lendtroller(unitroller)._supportMarket(CToken(address(cDAI)));
         vm.prank(admin);
-        Comptroller(unitroller)._supportMarket(CToken(address(cETH)));
+        Lendtroller(unitroller)._supportMarket(CToken(address(cETH)));
         // set collateral factor
         vm.prank(admin);
-        Comptroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 5e17);
+        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 5e17);
         vm.prank(admin);
-        Comptroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 5e17);
+        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 5e17);
 
         // user1 enter markets
         vm.prank(user1);
         address[] memory markets = new address[](2);
         markets[0] = address(cDAI);
         markets[1] = address(cETH);
-        ComptrollerInterface(unitroller).enterMarkets(markets);
+        LendtrollerInterface(unitroller).enterMarkets(markets);
 
         // user1 approve
         vm.prank(user1);
@@ -494,7 +494,7 @@ contract TestCTokenAndCEther is TestBase {
 
         // user2 enter markets
         vm.prank(user2);
-        ComptrollerInterface(unitroller).enterMarkets(markets);
+        LendtrollerInterface(unitroller).enterMarkets(markets);
 
         // user2 mint
         vm.prank(user2);
@@ -533,7 +533,7 @@ contract TestCTokenAndCEther is TestBase {
     function testLiquidateBorrow() public {
         cDAI = new CErc20Immutable(
             dai,
-            ComptrollerInterface(unitroller),
+            LendtrollerInterface(unitroller),
             gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
             _ONE,
@@ -543,7 +543,7 @@ contract TestCTokenAndCEther is TestBase {
             payable(admin)
         );
         cETH = new CEther(
-            ComptrollerInterface(unitroller),
+            LendtrollerInterface(unitroller),
             gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
             _ONE,
@@ -555,21 +555,21 @@ contract TestCTokenAndCEther is TestBase {
 
         // support market
         vm.prank(admin);
-        Comptroller(unitroller)._supportMarket(CToken(address(cDAI)));
+        Lendtroller(unitroller)._supportMarket(CToken(address(cDAI)));
         vm.prank(admin);
-        Comptroller(unitroller)._supportMarket(CToken(address(cETH)));
+        Lendtroller(unitroller)._supportMarket(CToken(address(cETH)));
         // set collateral factor
         vm.prank(admin);
-        Comptroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 5e17);
+        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 5e17);
         vm.prank(admin);
-        Comptroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 5e17);
+        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 5e17);
 
         // user1 enter markets
         vm.prank(user1);
         address[] memory markets = new address[](2);
         markets[0] = address(cDAI);
         markets[1] = address(cETH);
-        ComptrollerInterface(unitroller).enterMarkets(markets);
+        LendtrollerInterface(unitroller).enterMarkets(markets);
 
         // user1 approve
         vm.prank(user1);
@@ -582,7 +582,7 @@ contract TestCTokenAndCEther is TestBase {
 
         // user2 enter markets
         vm.prank(user2);
-        ComptrollerInterface(unitroller).enterMarkets(markets);
+        LendtrollerInterface(unitroller).enterMarkets(markets);
 
         // user2 mint
         vm.prank(user2);
@@ -605,9 +605,9 @@ contract TestCTokenAndCEther is TestBase {
 
         // set collateral factor
         vm.prank(admin);
-        Comptroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 4e17);
+        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 4e17);
         vm.prank(admin);
-        Comptroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 4e17);
+        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 4e17);
 
         // liquidator approve
         vm.prank(liquidator);

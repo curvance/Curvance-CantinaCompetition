@@ -438,7 +438,7 @@ abstract contract BasePositionVault is ERC4626, Initializable, KeeperCompatibleI
                     CHAINLINK AUTOMATION LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function checkUpkeep(bytes calldata) external returns (bool upkeepNeeded, bytes memory performData) {
+    function checkUpkeep(bytes calldata data) external returns (bool upkeepNeeded, bytes memory performData) {
         if (positionVaultMetaData.isShutdown) return (false, abi.encode(0));
 
         // Compare real total assets to stored, and trigger circuit breaker if real is less than stored.
@@ -451,7 +451,7 @@ abstract contract BasePositionVault is ERC4626, Initializable, KeeperCompatibleI
         if (currentSharePrice < _sharePriceHighWatermark) return (true, abi.encode(true));
 
         // Figure out how much yield is pending to be harvested.
-        uint256 yield = harvest();
+        uint256 yield = harvest(data);
 
         // Compare USD value of yield against owner set minimum.
         uint256 yieldInUSD = yield > 0
@@ -470,12 +470,12 @@ abstract contract BasePositionVault is ERC4626, Initializable, KeeperCompatibleI
 
     function performUpkeep(bytes calldata performData) external {
         if (msg.sender != positionVaultMetaData.automationRegistry) revert("Not a Keeper.");
-        bool circuitBreaker = abi.decode(performData, (bool));
+        (bool circuitBreaker, bytes memory data) = abi.decode(performData, (bool, bytes));
         // If checkupkeep triggered circuit breaker, shutdown vault.
         if (circuitBreaker) {
             positionVaultMetaData.isShutdown = true;
             emit ShutdownChanged(true);
-        } else harvest();
+        } else harvest(data);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -492,5 +492,5 @@ abstract contract BasePositionVault is ERC4626, Initializable, KeeperCompatibleI
                           EXTERNAL POSITION LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function harvest() public virtual returns (uint256 yield);
+    function harvest(bytes memory) public virtual returns (uint256 yield);
 }
