@@ -61,7 +61,7 @@ contract TestPositionFolding is TestBase {
 
         cDAI = new CErc20Immutable(
             dai,
-            ComptrollerInterface(unitroller),
+            LendtrollerInterface(unitroller),
             gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
             1 ether,
@@ -72,13 +72,13 @@ contract TestPositionFolding is TestBase {
         );
         // support market
         vm.prank(admin);
-        Comptroller(unitroller)._supportMarket(CToken(address(cDAI)));
+        Lendtroller(unitroller)._supportMarket(CToken(address(cDAI)));
         // set collateral factor
         vm.prank(admin);
-        Comptroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 75e16);
+        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 75e16);
 
         cETH = new CEther(
-            ComptrollerInterface(unitroller),
+            LendtrollerInterface(unitroller),
             gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
             1 ether,
@@ -89,15 +89,15 @@ contract TestPositionFolding is TestBase {
         );
         // support market
         vm.prank(admin);
-        Comptroller(unitroller)._supportMarket(CToken(address(cETH)));
+        Lendtroller(unitroller)._supportMarket(CToken(address(cETH)));
         // set collateral factor
         vm.prank(admin);
-        Comptroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 75e16);
+        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 75e16);
 
         positionFolding = new PositionFolding(unitroller, address(priceOracle), address(cETH), weth);
         // set position folding
         vm.prank(admin);
-        Comptroller(unitroller)._setPositionFolding(address(positionFolding));
+        Lendtroller(unitroller)._setPositionFolding(address(positionFolding));
 
         // provide enough liquidity for leverage
         provideEnoughLiquidityForLeverage();
@@ -117,7 +117,7 @@ contract TestPositionFolding is TestBase {
         address[] memory markets = new address[](2);
         markets[0] = address(cDAI);
         markets[1] = address(cETH);
-        ComptrollerInterface(unitroller).enterMarkets(markets);
+        LendtrollerInterface(unitroller).enterMarkets(markets);
 
         // mint cDAI
         IERC20(dai).approve(address(cDAI), 200000 ether);
@@ -134,7 +134,7 @@ contract TestPositionFolding is TestBase {
         vm.startPrank(user);
         address[] memory markets = new address[](1);
         markets[0] = address(cDAI);
-        ComptrollerInterface(unitroller).enterMarkets(markets);
+        LendtrollerInterface(unitroller).enterMarkets(markets);
 
         // approve
         IERC20(dai).approve(address(cDAI), 100 ether);
@@ -169,7 +169,7 @@ contract TestPositionFolding is TestBase {
         vm.startPrank(user);
         address[] memory markets = new address[](1);
         markets[0] = address(cDAI);
-        ComptrollerInterface(unitroller).enterMarkets(markets);
+        LendtrollerInterface(unitroller).enterMarkets(markets);
 
         // approve
         IERC20(dai).approve(address(cDAI), 100 ether);
@@ -217,7 +217,7 @@ contract TestPositionFolding is TestBase {
         vm.startPrank(user);
         address[] memory markets = new address[](1);
         markets[0] = address(cETH);
-        ComptrollerInterface(unitroller).enterMarkets(markets);
+        LendtrollerInterface(unitroller).enterMarkets(markets);
 
         // mint
         cETH.mint{ value: 100 ether }();
@@ -249,7 +249,7 @@ contract TestPositionFolding is TestBase {
         vm.startPrank(user);
         address[] memory markets = new address[](1);
         markets[0] = address(cETH);
-        ComptrollerInterface(unitroller).enterMarkets(markets);
+        LendtrollerInterface(unitroller).enterMarkets(markets);
 
         // mint
         cETH.mint{ value: 100 ether }();
@@ -295,7 +295,7 @@ contract TestPositionFolding is TestBase {
         address[] memory markets = new address[](2);
         markets[0] = address(cDAI);
         markets[1] = address(cETH);
-        ComptrollerInterface(unitroller).enterMarkets(markets);
+        LendtrollerInterface(unitroller).enterMarkets(markets);
 
         // mint 2000 dai
         IERC20(dai).approve(address(cDAI), 2000 ether);
@@ -340,7 +340,7 @@ contract TestPositionFolding is TestBase {
         assertEq(daiBorrowBalance, 7380 ether); // $7380
         assertEq(ethBorrowBalance, 0.25 ether); // $500
 
-        (uint256 sumCollateral, uint256 maxBorrow, uint256 sumBorrow) = Comptroller(unitroller).getAccountPosition(
+        (uint256 sumCollateral, uint256 maxBorrow, uint256 sumBorrow) = Lendtroller(unitroller).getAccountPosition(
             user
         );
         assertGt(sumCollateral, 9400 ether);
@@ -358,7 +358,7 @@ contract TestPositionFolding is TestBase {
             address[] memory markets = new address[](2);
             markets[0] = address(cDAI);
             markets[1] = address(cETH);
-            ComptrollerInterface(unitroller).enterMarkets(markets);
+            LendtrollerInterface(unitroller).enterMarkets(markets);
         }
 
         // mint 2000 dai
@@ -408,7 +408,7 @@ contract TestPositionFolding is TestBase {
             assertEq(daiBorrowBalance, 7380 ether); // $7380
             assertEq(ethBorrowBalance, 0.25 ether); // $500
 
-            (uint256 sumCollateral, uint256 maxBorrow, uint256 sumBorrow) = Comptroller(unitroller).getAccountPosition(
+            (uint256 sumCollateral, uint256 maxBorrow, uint256 sumBorrow) = Lendtroller(unitroller).getAccountPosition(
                 user
             );
             assertGt(sumCollateral, 9400 ether);
@@ -448,7 +448,7 @@ contract TestPositionFolding is TestBase {
             assertEq(daiBorrowBalance, 1080 ether);
             assertEq(ethBorrowBalance, 0.25 ether); // $500
 
-            (uint256 sumCollateral, uint256 maxBorrow, uint256 sumBorrow) = Comptroller(unitroller).getAccountPosition(
+            (uint256 sumCollateral, uint256 maxBorrow, uint256 sumBorrow) = Lendtroller(unitroller).getAccountPosition(
                 user
             );
             assertGt(sumCollateral, 2000 ether);
@@ -465,7 +465,7 @@ contract TestPositionFolding is TestBase {
         address[] memory markets = new address[](2);
         markets[0] = address(cDAI);
         markets[1] = address(cETH);
-        ComptrollerInterface(unitroller).enterMarkets(markets);
+        LendtrollerInterface(unitroller).enterMarkets(markets);
 
         // mint 2000 dai
         IERC20(dai).approve(address(cDAI), 2000 ether);
@@ -488,7 +488,7 @@ contract TestPositionFolding is TestBase {
         path[1] = weth;
 
         vm.deal(address(positionFolding), 0.01 ether);
-        vm.expectRevert(ComptrollerInterface.InsufficientLiquidity.selector);
+        vm.expectRevert(LendtrollerInterface.InsufficientLiquidity.selector);
         positionFolding.leverageMax(
             CToken(address(cDAI)),
             CToken(address(cETH)),

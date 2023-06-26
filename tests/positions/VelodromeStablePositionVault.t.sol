@@ -143,7 +143,7 @@ contract VelodromeStablePositionVaultTest is TestBase {
         deal(address(DAI), address(positionVault), 100e18);
         deal(address(VELO), address(positionVault), 100e18);
 
-        positionVault.harvest();
+        positionVault.harvest("0x");
 
         assertEq(positionVault.totalAssets(), assets, "Total Assets should equal user deposit.");
 
@@ -154,7 +154,7 @@ contract VelodromeStablePositionVaultTest is TestBase {
         deal(address(DAI), address(positionVault), 100e18);
         deal(address(VELO), address(positionVault), 100e18);
 
-        positionVault.harvest();
+        positionVault.harvest("0x");
 
         vm.warp(block.timestamp + 7 days);
 

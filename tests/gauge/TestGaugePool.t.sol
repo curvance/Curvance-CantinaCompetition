@@ -11,7 +11,7 @@ import { GaugePool } from "contracts/gauge/GaugePool.sol";
 import "contracts/gauge/GaugeErrors.sol";
 import "contracts/mocks/MockToken.sol";
 
-import {DeployCompound} from "tests/compound/deploy.sol";
+import { DeployCompound } from "tests/compound/deploy.sol";
 import "tests/utils/TestBase.sol";
 
 contract User {}
@@ -63,7 +63,7 @@ contract TestGaugePool is TestBase {
             tokens[i] = address(
                 new CErc20Immutable(
                     dai,
-                    ComptrollerInterface(unitroller),
+                    LendtrollerInterface(unitroller),
                     address(gaugePool),
                     InterestRateModel(address(deployments.jumpRateModel())),
                     _ONE,
@@ -75,17 +75,17 @@ contract TestGaugePool is TestBase {
             );
             // support market
             vm.prank(admin);
-            Comptroller(unitroller)._supportMarket(CToken(tokens[i]));
+            Lendtroller(unitroller)._supportMarket(CToken(tokens[i]));
             // set collateral factor
             vm.prank(admin);
-            Comptroller(unitroller)._setCollateralFactor(CToken(tokens[i]), 5e17);
+            Lendtroller(unitroller)._setCollateralFactor(CToken(tokens[i]), 5e17);
 
             for (uint256 j = 0; j < 10; j++) {
                 address user = users[j];
                 vm.prank(user);
                 address[] memory markets = new address[](1);
                 markets[0] = address(tokens[i]);
-                ComptrollerInterface(unitroller).enterMarkets(markets);
+                LendtrollerInterface(unitroller).enterMarkets(markets);
 
                 // approve
                 vm.prank(user);

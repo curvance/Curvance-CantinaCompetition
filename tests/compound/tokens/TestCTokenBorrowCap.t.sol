@@ -53,7 +53,7 @@ contract TestCTokenBorrowCap is TestBase {
     function testBorrowCap() public {
         cDAI = new CErc20Immutable(
             dai,
-            ComptrollerInterface(unitroller),
+            LendtrollerInterface(unitroller),
             gauge,
             InterestRateModel(address(deployments.jumpRateModel())),
             _ONE,
@@ -64,26 +64,26 @@ contract TestCTokenBorrowCap is TestBase {
         );
         // support market
         vm.prank(admin);
-        Comptroller(unitroller)._supportMarket(CToken(address(cDAI)));
+        Lendtroller(unitroller)._supportMarket(CToken(address(cDAI)));
         // set collateral factor
         vm.prank(admin);
-        Comptroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 5e17);
+        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 5e17);
 
         // enter markets
         vm.prank(user);
         address[] memory markets = new address[](1);
         markets[0] = address(cDAI);
-        ComptrollerInterface(unitroller).enterMarkets(markets);
+        LendtrollerInterface(unitroller).enterMarkets(markets);
 
         // set borrow cap to 49
         vm.prank(admin);
-        Comptroller(unitroller)._setBorrowCapGuardian(admin);
+        Lendtroller(unitroller)._setBorrowCapGuardian(admin);
         vm.prank(admin);
         CToken[] memory cTokens = new CToken[](1);
         cTokens[0] = cDAI;
         uint256[] memory borrowCapAmounts = new uint256[](1);
         borrowCapAmounts[0] = 49e18;
-        Comptroller(unitroller)._setMarketBorrowCaps(cTokens, borrowCapAmounts);
+        Lendtroller(unitroller)._setMarketBorrowCaps(cTokens, borrowCapAmounts);
 
         // approve
         IERC20(dai).approve(address(cDAI), 100e18);
@@ -93,13 +93,13 @@ contract TestCTokenBorrowCap is TestBase {
         assertEq(cDAI.balanceOf(user), 100e18);
 
         // can't borrow 50
-        vm.expectRevert(ComptrollerInterface.BorrowCapReached.selector); // Update: we now revert
+        vm.expectRevert(LendtrollerInterface.BorrowCapReached.selector); // Update: we now revert
         cDAI.borrow(50e18);
 
         // increase borrow cap to 51
         vm.prank(admin);
         borrowCapAmounts[0] = 51e18;
-        Comptroller(unitroller)._setMarketBorrowCaps(cTokens, borrowCapAmounts);
+        Lendtroller(unitroller)._setMarketBorrowCaps(cTokens, borrowCapAmounts);
 
         uint256 balanceBeforeBorrow = IERC20(dai).balanceOf(user);
         // can borrow 50

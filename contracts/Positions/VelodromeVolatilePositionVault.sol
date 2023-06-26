@@ -154,7 +154,7 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
                           EXTERNAL POSITION LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function harvest() public override whenNotShutdown nonReentrant returns (uint256 yield) {
+    function harvest(bytes memory) public override whenNotShutdown nonReentrant returns (uint256 yield) {
         uint256 pending = _calculatePendingRewards();
         if (pending > 0) {
             // We need to claim vested rewards.

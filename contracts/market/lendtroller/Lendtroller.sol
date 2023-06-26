@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import "../Token/CToken.sol";
-import "../Oracle/PriceOracle.sol";
-import "../../gauge/GaugeController.sol";
-import "../Unitroller/Unitroller.sol";
-import "./LendtrollerInterface.sol";
+import { CToken } from "../Token/CToken.sol";
+import { PriceOracle } from "../Oracle/PriceOracle.sol";
+import { GaugeController } from "../../gauge/GaugeController.sol";
+import { Unitroller } from "../Unitroller/Unitroller.sol";
+import { LendtrollerInterface } from "./LendtrollerInterface.sol";
 
 /**
  * @title Curvance Lendtroller
@@ -29,7 +29,8 @@ contract Lendtroller is LendtrollerInterface {
 
     GaugeController rewarder;
 
-    constructor(GaugeController _rewarder) {//TODO change to gauge controller
+    constructor(GaugeController _rewarder) {
+        //TODO change to gauge controller
         admin = msg.sender;
         rewarder = _rewarder;
     }

@@ -315,7 +315,7 @@ contract ConvexPositionVaultTest is TestBase {
         deal(address(CRV), address(cvxPositionTriCrypto), 100e18);
         deal(address(CVX), address(cvxPositionTriCrypto), 100e18);
 
-        cvxPositionTriCrypto.harvest();
+        cvxPositionTriCrypto.harvest("0x");
 
         assertEq(cvxPositionTriCrypto.totalAssets(), assets, "Total Assets should equal user deposit.");
 
@@ -324,7 +324,7 @@ contract ConvexPositionVaultTest is TestBase {
         // Mint some extra rewards for Vault.
         deal(address(CRV), address(cvxPositionTriCrypto), 100e18);
         deal(address(CVX), address(cvxPositionTriCrypto), 100e18);
-        cvxPositionTriCrypto.harvest();
+        cvxPositionTriCrypto.harvest("0x");
         vm.warp(block.timestamp + 7 days);
 
         assertGt(cvxPositionTriCrypto.totalAssets(), assets, "Total Assets should greater than original deposit.");
@@ -347,7 +347,7 @@ contract ConvexPositionVaultTest is TestBase {
         deal(address(CVX), address(cvxPositionTriCrypto), 100e18);
 
         uint256 shareValue = cvxPosition3Pool.previewRedeem(_ONE);
-        cvxPosition3Pool.harvest();
+        cvxPosition3Pool.harvest("0x");
         assertEq(cvxPosition3Pool.previewRedeem(_ONE), shareValue, "Share Price should be constant through harvest.");
 
         vm.warp(block.timestamp + 7 days);
@@ -358,7 +358,7 @@ contract ConvexPositionVaultTest is TestBase {
             "Share Price should have increased as rewards vest."
         );
 
-        cvxPosition3Pool.harvest();
+        cvxPosition3Pool.harvest("0x");
 
         cvxPosition3Pool.withdraw(cvxPosition3Pool.totalAssets(), address(this), address(this));
     }
@@ -402,7 +402,7 @@ contract ConvexPositionVaultTest is TestBase {
         deal(address(CRV), address(cvxPositionTriCrypto), 100e18);
         deal(address(CVX), address(cvxPositionTriCrypto), 10e18);
 
-        uint256 yield = cvxPositionTriCrypto.harvest();
+        uint256 yield = cvxPositionTriCrypto.harvest("0x");
 
         assertEq(cvxPositionTriCrypto.maxWithdraw(userA), assetsA, "User should be able to withdraw their deposit.");
         assertEq(cvxPositionTriCrypto.maxWithdraw(userB), assetsB, "User should be able to withdraw their deposit.");
@@ -431,7 +431,7 @@ contract ConvexPositionVaultTest is TestBase {
         );
 
         // Trying to harvest again while rewards are pending should return 0 for yield.
-        uint256 zeroYield = cvxPositionTriCrypto.harvest();
+        uint256 zeroYield = cvxPositionTriCrypto.harvest("0x");
         assertEq(zeroYield, 0, "Yield earned should be yield because previous rewards are vesting.");
 
         // Advance time to 3/4 way through the vesting period.

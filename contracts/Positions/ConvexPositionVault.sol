@@ -6,6 +6,7 @@ import { BasePositionVault, ERC4626, SafeTransferLib, ERC20, Math, PriceRouter }
 // External interfaces
 import { IBooster } from "contracts/interfaces/Convex/IBooster.sol";
 import { IBaseRewardPool } from "contracts/interfaces/Convex/IBaseRewardPool.sol";
+import { IRewards } from "contracts/interfaces/Convex/IRewards.sol";
 import { ICurveFi } from "contracts/interfaces/Curve/ICurveFi.sol";
 import { ICurveSwaps } from "contracts/interfaces/Curve/ICurveSwaps.sol";
 
@@ -201,7 +202,7 @@ contract ConvexPositionVault is BasePositionVault {
                           EXTERNAL POSITION LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function harvest() public override whenNotShutdown nonReentrant returns (uint256 yield) {
+    function harvest(bytes memory) public override whenNotShutdown nonReentrant returns (uint256 yield) {
         uint256 pending = _calculatePendingRewards();
         if (pending > 0) {
             // We need to claim vested rewards.
@@ -222,7 +223,10 @@ contract ConvexPositionVault is BasePositionVault {
             rewardBalances[0] = CRV.balanceOf(address(this));
             rewardBalances[1] = CVX.balanceOf(address(this));
             for (uint256 i = 2; i < rewardTokenCount; i++) {
-                rewardTokens[i] = ERC20(rewarder.extraRewards(i - 2));
+                // harvest extra rewards
+                IRewards extraReward = IRewards(rewarder.extraRewards(i - 2));
+                extraReward.getReward();
+                rewardTokens[i] = ERC20(extraReward.rewardToken());
                 rewardBalances[i] = rewardTokens[i].balanceOf(address(this));
             }
 
