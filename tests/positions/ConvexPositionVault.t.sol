@@ -198,6 +198,7 @@ contract ConvexPositionVaultTest is TestBase {
                 curve3PoolConvexPid,
                 curve3PoolReward,
                 booster,
+                assetsToETH,
                 depositParams,
                 curveRegistryExchange,
                 swapsToETH,
@@ -277,6 +278,7 @@ contract ConvexPositionVaultTest is TestBase {
                 curve3CRVConvexPid,
                 curve3CrvReward,
                 booster,
+                assetsToETH,
                 depositParams,
                 curveRegistryExchange,
                 swapsToETH,
@@ -501,7 +503,7 @@ contract ConvexPositionVaultTest is TestBase {
         cvxPosition3Pool.withdraw(amountToWithdraw, attacker, attacker);
         vm.stopPrank();
 
-        (upkeepNeeded, performData) = cvxPosition3Pool.checkUpkeep(abi.encode(0));
+        (upkeepNeeded, performData) = cvxPosition3Pool.checkUpkeep(abi.encode(0, "0x"));
         assertEq(upkeepNeeded, true, "Upkeep should  be needed.");
         bool circuitBreaker = abi.decode(performData, (bool));
         assertEq(circuitBreaker, true, "Circuit Breaker should be true.");
@@ -529,7 +531,7 @@ contract ConvexPositionVaultTest is TestBase {
         IBaseRewardPool(curve3CrvReward).withdrawAndUnwrap(1, false);
         vm.stopPrank();
 
-        (upkeepNeeded, performData) = cvxPosition3Pool.checkUpkeep(abi.encode(0));
+        (upkeepNeeded, performData) = cvxPosition3Pool.checkUpkeep(abi.encode(0, "0x"));
         assertEq(upkeepNeeded, true, "Upkeep should be needed.");
 
         bool circuitBreaker = abi.decode(performData, (bool));

@@ -444,11 +444,11 @@ abstract contract BasePositionVault is ERC4626, Initializable, KeeperCompatibleI
         // Compare real total assets to stored, and trigger circuit breaker if real is less than stored.
         uint256 realTotalAssets = _getRealPositionBalance();
         uint256 storedTotalAssets = totalAssets();
-        if (realTotalAssets < storedTotalAssets) return (true, abi.encode(true));
+        if (realTotalAssets < storedTotalAssets) return (true, abi.encode(true, data));
 
         // Compare current share price to high watermark and trigger circuit breaker if less than high watermark.
         uint256 currentSharePrice = _convertToAssets(10 ** decimals, storedTotalAssets);
-        if (currentSharePrice < _sharePriceHighWatermark) return (true, abi.encode(true));
+        if (currentSharePrice < _sharePriceHighWatermark) return (true, abi.encode(true, data));
 
         // Figure out how much yield is pending to be harvested.
         uint256 yield = harvest(data);
@@ -465,7 +465,7 @@ abstract contract BasePositionVault is ERC4626, Initializable, KeeperCompatibleI
 
         // If we have made it this far, then we know yield is sufficient, and gas price is low enough.
         upkeepNeeded = true;
-        performData = abi.encode(false);
+        performData = abi.encode(false, data);
     }
 
     function performUpkeep(bytes calldata performData) external {

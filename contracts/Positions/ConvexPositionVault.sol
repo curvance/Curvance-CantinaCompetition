@@ -64,6 +64,11 @@ contract ConvexPositionVault is BasePositionVault {
     IBooster private booster;
 
     /**
+     * @notice Convex reward assets
+     */
+    ERC20[] public rewardTokens;
+
+    /**
      * @notice Mainnet token contracts important for this vault.
      */
     ERC20 private constant WETH = ERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
@@ -143,6 +148,7 @@ contract ConvexPositionVault is BasePositionVault {
             uint256 _pid,
             IBaseRewardPool _rewarder,
             IBooster _booster,
+            ERC20[] memory _rewardTokens,
             CurveDepositParams memory _depositParams,
             ICurveSwaps _curveSwaps,
             CurveSwapParams[] memory swapsToETH,
@@ -154,6 +160,7 @@ contract ConvexPositionVault is BasePositionVault {
                     uint256,
                     IBaseRewardPool,
                     IBooster,
+                    ERC20[],
                     CurveDepositParams,
                     ICurveSwaps,
                     CurveSwapParams[],
@@ -164,6 +171,7 @@ contract ConvexPositionVault is BasePositionVault {
         pid = _pid;
         rewarder = _rewarder;
         booster = _booster;
+        rewardTokens = _rewardTokens;
         depositParams = _depositParams;
         curveRegistryExchange = _curveSwaps;
 
@@ -198,6 +206,10 @@ contract ConvexPositionVault is BasePositionVault {
         emit CurveDepositParamsChanged(params);
     }
 
+    function setRewardTokens(ERC20[] memory _rewardTokens) external onlyOwner {
+        rewardTokens = _rewardTokens;
+    }
+
     /*//////////////////////////////////////////////////////////////
                           EXTERNAL POSITION LOGIC
     //////////////////////////////////////////////////////////////*/
@@ -214,45 +226,39 @@ contract ConvexPositionVault is BasePositionVault {
             // Harvest convex position.
             rewarder.getReward(address(this), true);
 
-            // Save token balances
-            uint256 rewardTokenCount = 2 + rewarder.extraRewardsLength();
-            ERC20[] memory rewardTokens = new ERC20[](rewardTokenCount);
-            rewardTokens[0] = CRV;
-            rewardTokens[1] = CVX;
-            uint256[] memory rewardBalances = new uint256[](rewardTokenCount);
-            rewardBalances[0] = CRV.balanceOf(address(this));
-            rewardBalances[1] = CVX.balanceOf(address(this));
-            for (uint256 i = 2; i < rewardTokenCount; i++) {
-                // harvest extra rewards
-                IRewards extraReward = IRewards(rewarder.extraRewards(i - 2));
+            // Claim extra rewards
+            uint256 extraRewardsLength = rewarder.extraRewardsLength();
+            for (uint256 i = 0; i < extraRewardsLength; i++) {
+                IRewards extraReward = IRewards(rewarder.extraRewards(i));
                 extraReward.getReward();
-                rewardTokens[i] = ERC20(extraReward.rewardToken());
-                rewardBalances[i] = rewardTokens[i].balanceOf(address(this));
             }
 
             uint256 valueIn;
             uint256 ethOut;
             address[4] memory pools;
+            uint256 rewardTokenCount = rewardTokens.length;
             for (uint256 i = 0; i < rewardTokenCount; i++) {
+                ERC20 rewardToken = rewardTokens[i];
+                uint256 rewardBalance = rewardToken.balanceOf(address(this));
                 // Take platform fee
-                uint256 protocolFee = rewardBalances[i].mulDivDown(positionVaultMetaData.platformFee, 1e18);
-                rewardBalances[i] -= protocolFee;
-                rewardTokens[i].safeTransfer(positionVaultMetaData.feeAccumulator, protocolFee);
+                uint256 protocolFee = rewardBalance.mulDivDown(positionVaultMetaData.platformFee, 1e18);
+                rewardBalance -= protocolFee;
+                rewardToken.safeTransfer(positionVaultMetaData.feeAccumulator, protocolFee);
                 // Get the reward token value in USD.
-                uint256 valueInUSD = rewardBalances[i].mulDivDown(
-                    positionVaultMetaData.priceRouter.getPriceInUSD(rewardTokens[i]),
-                    10 ** rewardTokens[i].decimals()
+                uint256 valueInUSD = rewardBalance.mulDivDown(
+                    positionVaultMetaData.priceRouter.getPriceInUSD(rewardToken),
+                    10 ** rewardToken.decimals()
                 );
-                CurveSwapParams memory swapParams = arbitraryToEth[rewardTokens[i]];
+                CurveSwapParams memory swapParams = arbitraryToEth[rewardToken];
                 // Check if value is enough to warrant a swap. And that we have the swap params set up for it.
                 if (valueInUSD >= swapParams.minUSDValueToSwap && address(swapParams.assetIn) != address(0)) {
                     valueIn += valueInUSD;
                     // Perform Swap into ETH.
-                    rewardTokens[i].safeApprove(address(curveRegistryExchange), rewardBalances[i]);
+                    rewardToken.safeApprove(address(curveRegistryExchange), rewardBalance);
                     ethOut += curveRegistryExchange.exchange_multiple(
                         swapParams.route,
                         swapParams.swapParams,
-                        rewardBalances[i],
+                        rewardBalance,
                         0,
                         pools,
                         address(this)

@@ -53,9 +53,13 @@ contract AuraPositionVault is BasePositionVault {
     IBooster public booster;
 
     /**
-     * @notice Balancer LP underlying assets.
+     * @notice Aura reward assets.
      */
     address[] public rewardTokens;
+
+    /**
+     * @notice Balancer LP underlying assets.
+     */
     address[] public underlyingTokens;
     mapping(address => bool) public isUnderlyingToken;
 
@@ -157,6 +161,10 @@ contract AuraPositionVault is BasePositionVault {
         isApprovedTarget[_target] = _isApproved;
     }
 
+    function setRewardTokens(address[] memory _rewardTokens) external onlyOwner {
+        rewardTokens = _rewardTokens;
+    }
+
     /*//////////////////////////////////////////////////////////////
                           EXTERNAL POSITION LOGIC
     //////////////////////////////////////////////////////////////*/
@@ -175,10 +183,9 @@ contract AuraPositionVault is BasePositionVault {
             // Harvest aura position.
             rewarder.getReward(address(this), true);
 
-            // Save token balances
+            // Claim extra rewards
             uint256 rewardTokenCount = 2 + rewarder.extraRewardsLength();
             for (uint256 i = 2; i < rewardTokenCount; ++i) {
-                // harvest extra rewards
                 IRewards extraReward = IRewards(rewarder.extraRewards(i - 2));
                 extraReward.getReward();
             }
