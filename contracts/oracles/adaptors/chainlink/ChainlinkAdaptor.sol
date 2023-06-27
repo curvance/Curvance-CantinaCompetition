@@ -5,13 +5,13 @@ import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/interfaces/
 import { IStaticOracle } from "@mean-finance/uniswap-v3-oracle/solidity/interfaces/IStaticOracle.sol";
 
 import "../../../interfaces/ICentralRegistry.sol";
-import "../../../interfaces/IOracleExtension.sol";
-import { Extension } from "../ExtensionV2.sol";
+import "../../../interfaces/IOracleAdaptor.sol";
+import { BaseOracleAdaptor } from "../BaseOracleAdaptor.sol";
 
-contract ChainlinkExtension is Extension {
+contract ChainlinkAdaptor is BaseOracleAdaptor {
 
 
-    constructor(ICentralRegistry _centralRegistry) Extension(_centralRegistry) {}
+    constructor(ICentralRegistry _centralRegistry) BaseOracleAdaptor(_centralRegistry) {}
 
      /**
      * @notice Called by PriceRouter to price an asset.
@@ -22,14 +22,14 @@ contract ChainlinkExtension is Extension {
     }
 
     /**
-     * @notice Adds a new supported asset to the extension, can also configure sub assets that the parent asset contain.
+     * @notice Adds a new supported asset to the adaptor, can also configure sub assets that the parent asset contain.
      */
     function addAsset(address _asset) external override {
 
     }
 
     /**
-     * @notice Removes a supported asset from the extension.
+     * @notice Removes a supported asset from the adaptor.
      */
     function removeAsset(address _asset) external override {
 
