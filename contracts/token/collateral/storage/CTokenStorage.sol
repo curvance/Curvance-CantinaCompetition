@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import "../../InterestRateModel/InterestRateModel.sol";
-import "../../lendtroller/LendtrollerInterface.sol";
+import "contracts/market/lendtroller/LendtrollerInterface.sol";
+import "contracts/market/interestRates/InterestRateModel.sol";
 import "./CommonError.sol";
 
 abstract contract CTokenStorage is CommonError {

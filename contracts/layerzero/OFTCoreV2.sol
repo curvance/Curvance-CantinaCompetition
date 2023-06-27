@@ -2,8 +2,8 @@
 
 pragma solidity ^0.8.0;
 
+import "../libraries/ExcessivelySafeCall.sol";
 import "./NonblockingLzApp.sol";
-import "../utils/ExcessivelySafeCall.sol";
 import "./ICommonOFT.sol";
 import "./IOFTReceiverV2.sol";
 

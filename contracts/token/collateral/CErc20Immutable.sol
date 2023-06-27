@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import "../lendtroller/Lendtroller.sol";
+import "contracts/market/lendtroller/Lendtroller.sol";
 import "./CErc20.sol";
 
 /**

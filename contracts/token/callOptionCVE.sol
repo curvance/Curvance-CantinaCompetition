@@ -3,7 +3,7 @@ pragma solidity ^0.8.17;
 
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "./ERC20.sol";
+import "contracts/libraries/ERC20.sol";
 import "../interfaces/ICentralRegistry.sol";
 
 error InvalidExercise();
@@ -11,6 +11,9 @@ error InvalidExercise();
 contract callOptionCVE is ERC20 {
     event RemainingCVEWithdrawn(uint256 amount);
     event callOptionCVEExercised(address indexed exerciser, uint256 amount);
+
+    string private _name;
+    string private _symbol;
 
     ICentralRegistry public immutable centralRegistry;
     IERC20 public immutable paymentToken;
@@ -23,19 +26,21 @@ contract callOptionCVE is ERC20 {
     uint256 public constant denominatorOffset = 10000000000000000;
 
     /**
-     * @param _name The name of the token.
-     * @param _symbol The symbol of the token.
+     * @param name_ The name of the token.
+     * @param symbol_ The symbol of the token.
      * @param _paymentToken The token used for payment when exercising options.
      * @param _paymentTokenPricePerCVE The price of the payment token per CVE.
      * @param _centralRegistry The Central Registry contract address.
      */
     constructor(
-        string memory _name,
-        string memory _symbol,
+        string memory name_,
+        string memory symbol_,
         IERC20 _paymentToken,
         uint256 _paymentTokenPricePerCVE,
         ICentralRegistry _centralRegistry
-    ) ERC20(_name, _symbol) {
+    ){
+        _name = name_;
+        _symbol = symbol_;
         paymentToken = _paymentToken;
         paymentTokenPricePerCVE = _paymentTokenPricePerCVE;
         centralRegistry = _centralRegistry;
@@ -45,6 +50,16 @@ contract callOptionCVE is ERC20 {
     modifier onlyDaoManager() {
         require(msg.sender == centralRegistry.daoAddress(), "UNAUTHORIZED");
         _;
+    }
+
+    /// @dev Returns the name of the token.
+    function name() public view override returns (string memory) {
+        return _name;
+    }
+
+    /// @dev Returns the symbol of the token.
+    function symbol() public view override returns (string memory) {
+        return _symbol;
     }
 
     /**
@@ -124,7 +139,7 @@ contract callOptionCVE is ERC20 {
             .balanceOf(address(this));
         SafeERC20.safeTransfer(
             IERC20(centralRegistry.CVE()),
-            _msgSender(),
+            msg.sender,
             tokensToWithdraw
         );
         emit RemainingCVEWithdrawn(tokensToWithdraw);

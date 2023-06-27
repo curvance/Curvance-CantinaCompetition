@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import "../../interfaces/IEIP20NonStandard.sol";
+import "../../../interfaces/market/IEIP20NonStandard.sol";
 import "./CErc20Storage.sol";
 import "./CTokenInterface.sol";
 

@@ -3,20 +3,20 @@ pragma solidity ^0.8.17;
 
 import { ERC4626, SafeTransferLib, ERC20 } from "@solmate/mixins/ERC4626.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { PriceRouter } from "contracts/PricingOperations/PriceRouterV2.sol";
+import { PriceRouter } from "contracts/oracles/PriceRouterV2.sol";
 
-import { Math } from "contracts/utils/Math.sol";
+import { Math } from "contracts/libraries/Math.sol";
 import { Uint32Array } from "contracts/libraries/Uint32Array.sol";
 
 // External interfaces
-import { IBooster } from "contracts/interfaces/Convex/IBooster.sol";
-import { IBaseRewardPool } from "contracts/interfaces/Convex/IBaseRewardPool.sol";
-import { ICurveFi } from "contracts/interfaces/Curve/ICurveFi.sol";
+import { IBooster } from "contracts/interfaces/external/convex/IBooster.sol";
+import { IBaseRewardPool } from "contracts/interfaces/external/convex/IBaseRewardPool.sol";
+import { ICurveFi } from "contracts/interfaces/external/curve/ICurveFi.sol";
 
 // Chainlink interfaces
 import { KeeperCompatibleInterface } from "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
 import { AggregatorV2V3Interface } from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV2V3Interface.sol";
-import { IChainlinkAggregator } from "contracts/interfaces/IChainlinkAggregator.sol";
+import { IChainlinkAggregator } from "contracts/interfaces/external/chainlink/IChainlinkAggregator.sol";
 
 /**
  * @title Curvance Deposit Router

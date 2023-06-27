@@ -2,12 +2,13 @@
 
 pragma solidity ^0.8.0;
 
-import "../interfaces/ILayerZeroReceiver.sol";
-import "../interfaces/ILayerZeroUserApplicationConfig.sol";
-import "../interfaces/ILayerZeroEndpoint.sol";
-import "../interfaces/ICentralRegistry.sol";
-import "../utils/BytesLib.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
+
+import "../interfaces/layerzero/ILayerZeroReceiver.sol";
+import "../interfaces/layerzero/ILayerZeroUserApplicationConfig.sol";
+import "../interfaces/layerzero/ILayerZeroEndpoint.sol";
+import "../interfaces/ICentralRegistry.sol";
+import "../libraries/BytesLib.sol";
 
 /*
  * a generic LzReceiver implementation

@@ -3,12 +3,12 @@ pragma solidity ^0.8.17;
 
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-import "../lendtroller/LendtrollerInterface.sol";
-import "../interfaces/IEIP20.sol";
-import "../InterestRateModel/InterestRateModel.sol";
+import "contracts/market/lendtroller/LendtrollerInterface.sol";
+import "contracts/market/interestRates/InterestRateModel.sol";
+import "../../interfaces/market/IEIP20.sol";
 import "./storage/CTokenInterface.sol";
 import { GaugePool } from "../../gauge/GaugePool.sol";
-import { IPositionFolding } from "../../PositionFolding/IPositionFolding.sol";
+import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.sol";
 
 /**
  * @title Curvance's CToken Contract

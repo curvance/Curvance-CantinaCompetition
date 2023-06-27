@@ -4,25 +4,26 @@ pragma solidity ^0.8.17;
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import "../market/lendtroller/Lendtroller.sol";
-import "../market/Token/CErc20.sol";
-import "./ICurve.sol";
-import "./IWETH.sol";
+import "../lendtroller/Lendtroller.sol";
+import "contracts/token/collateral/CErc20.sol";
+import "contracts/interfaces/external/curve/ICurve.sol";
+import "contracts/interfaces/IWETH.sol";
 
-contract ZapperGeneric {
+contract ZapperOneInch {
     using SafeERC20 for IERC20;
 
-    struct Swap {
-        address target;
-        bytes call;
-    }
-
     address public immutable lendtroller;
+    address public immutable oneInchRouter;
     address public immutable weth;
     address public constant ETH = address(0);
 
-    constructor(address _lendtroller, address _weth) {
+    constructor(
+        address _lendtroller,
+        address _oneInchRouter,
+        address _weth
+    ) {
         lendtroller = _lendtroller;
+        oneInchRouter = _oneInchRouter;
         weth = _weth;
     }
 
@@ -35,7 +36,7 @@ contract ZapperGeneric {
      * @param lpToken The Curve LP token address
      * @param lpMinOutAmount The minimum output amount
      * @param tokens The underlying coins of curve LP token
-     * @param tokenSwaps The swap aggregation data
+     * @param tokenSwaps The swap aggregation data for OneInch
      * @return cTokenOutAmount The output amount
      */
     function curvanceIn(
@@ -46,7 +47,7 @@ contract ZapperGeneric {
         address lpToken,
         uint256 lpMinOutAmount,
         address[] memory tokens,
-        Swap[] memory tokenSwaps
+        bytes[] memory tokenSwaps
     ) external payable returns (uint256 cTokenOutAmount) {
         if (inputToken == ETH) {
             require(inputAmount == msg.value, "invalid amount");
@@ -67,9 +68,11 @@ contract ZapperGeneric {
         require(CErc20(cToken).underlying() == lpToken, "invalid lp address");
 
         // prepare tokens to mint LP
-        for (uint256 i = 0; i < tokenSwaps.length; i++) {
+        for (uint256 i = 0; i < tokens.length; i++) {
             // swap input token to underlying token
-            _swap(inputToken, tokenSwaps[i]);
+            if (tokens[i] != inputToken && tokenSwaps[i].length > 0) {
+                _swapViaOneInch(inputToken, tokenSwaps[i]);
+            }
         }
 
         // enter curve
@@ -88,20 +91,20 @@ contract ZapperGeneric {
     }
 
     /**
-     * @dev Swap input token
-     * @param _inputToken The input asset address
-     * @param _swapData The swap aggregation data
+     * @dev Swap input token via OneInch
+     * @param _inputToken The input token address
+     * @param _callData The swap aggregation data for OneInch
      */
-    function _swap(address _inputToken, Swap memory _swapData) private {
-        _approveTokenIfNeeded(_inputToken, address(_swapData.target));
+    function _swapViaOneInch(address _inputToken, bytes memory _callData)
+        private
+    {
+        _approveTokenIfNeeded(_inputToken, address(oneInchRouter));
 
-        (bool success, bytes memory retData) = _swapData.target.call(
-            _swapData.call
-        );
+        (bool success, bytes memory retData) = oneInchRouter.call(_callData);
 
-        propagateError(success, retData, "swap");
+        propagateError(success, retData, "1inch");
 
-        require(success == true, "calling swap got an error");
+        require(success == true, "calling 1inch got an error");
     }
 
     /**

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.17;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "./ERC20.sol";
+import "contracts/libraries/ERC20.sol";
 import "../interfaces/ICveLocker.sol";
 import "../interfaces/IDelegateRegistry.sol";
 import "../interfaces/ICentralRegistry.sol";
@@ -24,6 +24,9 @@ contract veCVE is ERC20 {
         uint216 amount;
         uint40 unlockTime;
     }
+
+    string private _name;
+    string private _symbol;
 
     uint256 public immutable genesisEpoch;
     ICentralRegistry public immutable centralRegistry;
@@ -61,8 +64,9 @@ contract veCVE is ERC20 {
     mapping(uint256 => uint256) public totalUnlocksByEpoch;
 
     constructor(ICentralRegistry _centralRegistry)
-        ERC20("Vote Escrowed CVE", "veCVE")
     {
+         _name = "Vote Escrowed CVE";
+        _symbol = "veCVE";
         centralRegistry = _centralRegistry;
         genesisEpoch = centralRegistry.genesisEpoch();
     }
@@ -70,6 +74,16 @@ contract veCVE is ERC20 {
     modifier onlyDaoManager() {
         require(msg.sender == centralRegistry.daoAddress(), "UNAUTHORIZED");
         _;
+    }
+
+    /// @dev Returns the name of the token.
+    function name() public view override returns (string memory) {
+        return _name;
+    }
+
+    /// @dev Returns the symbol of the token.
+    function symbol() public view override returns (string memory) {
+        return _symbol;
     }
 
     /**

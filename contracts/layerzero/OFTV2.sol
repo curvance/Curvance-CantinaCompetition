@@ -2,28 +2,43 @@
 
 pragma solidity ^0.8.12;
 
-import "../token/ERC20.sol";
+import "../libraries/ERC20.sol";
 import "./BaseOFTV2.sol";
 
 abstract contract OFTV2 is BaseOFTV2, ERC20 {
     uint256 internal immutable ld2sdRate;
 
+    string private _name;
+
+    string private _symbol;
+
     constructor(
-        string memory _name,
-        string memory _symbol,
+        string memory name_,
+        string memory symbol_,
         uint8 _sharedDecimals,
         address _lzEndpoint,
         ICentralRegistry _centralRegistry
     )
-        ERC20(_name, _symbol)
         BaseOFTV2(_sharedDecimals, _lzEndpoint, _centralRegistry)
     {
+        _name = name_;
+        _symbol = symbol_;
         uint8 decimals = decimals();
         require(
             _sharedDecimals <= decimals,
             "OFT: sharedDecimals must be <= decimals"
         );
         ld2sdRate = 10**(decimals - _sharedDecimals);
+    }
+
+    /// @dev Returns the name of the token.
+    function name() public view override returns (string memory) {
+        return _name;
+    }
+
+    /// @dev Returns the symbol of the token.
+    function symbol() public view override returns (string memory) {
+        return _symbol;
     }
 
     /************************************************************************
