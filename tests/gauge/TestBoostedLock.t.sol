@@ -160,22 +160,22 @@ contract TestBoostedLock is TestBase {
         assertEq(ve.getVotes(users[0]), 11538);
         assertEq(ve.getVotes(users[3]), 15384);
 
-        vm.warp(block.timestamp + 2 weeks);
+        vm.warp(block.timestamp + 1 weeks);
 
         // user0, user3 claims
         vm.prank(users[0]);
         gaugePool.claimAndExtendLock(tokens[0], 0, true);
         vm.prank(users[3]);
         gaugePool.claimAndExtendLock(tokens[1], 0, false);
-        assertEq(ve.balanceOf(users[0]), 24204000);
-        assertEq(ve.balanceOf(users[3]), 193552000);
+        assertEq(ve.balanceOf(users[0]), 12108000);
+        assertEq(ve.balanceOf(users[3]), 96784000);
         assertEq(ve.getVotes(users[0]), 13200);
         assertEq(ve.getVotes(users[3]), 15384);
 
-        vm.warp(block.timestamp + 2 weeks);
-        assertEq(ve.balanceOf(users[0]), 24204000);
-        assertEq(ve.balanceOf(users[3]), 193552000);
+        vm.warp(block.timestamp + 1 weeks);
+        assertEq(ve.balanceOf(users[0]), 12108000);
+        assertEq(ve.balanceOf(users[3]), 96784000);
         assertEq(ve.getVotes(users[0]), 13200);
-        assertEq(ve.getVotes(users[3]), 14769);
+        assertEq(ve.getVotes(users[3]), 15384);
     }
 }

@@ -310,13 +310,13 @@ contract TestChildGaugePool is TestBase {
         poolWeights[1] = 200;
         gaugePool.setEmissionRates(1, tokensParam, poolWeights);
 
-        // check pending rewards after 4 weeks
-        vm.warp(block.timestamp + 4 weeks);
-        assertEq(gaugePool.pendingRewards(tokens[0], users[0]), 4 weeks * 100 + 100 * 200);
-        assertEq(gaugePool.pendingRewards(tokens[1], users[1]), 4 weeks * 200 + 100 * 200);
+        // check pending rewards after 2 weeks
+        vm.warp(block.timestamp + 2 weeks);
+        assertEq(gaugePool.pendingRewards(tokens[0], users[0]), 2 weeks * 100 + 100 * 200);
+        assertEq(gaugePool.pendingRewards(tokens[1], users[1]), 2 weeks * 200 + 100 * 200);
         for (uint256 i = 0; i < CHILD_GAUGE_COUNT; i++) {
-            assertEq(childGauges[i].pendingRewards(tokens[0], users[0]), 4 weeks * 100 + 100 * 200);
-            assertEq(childGauges[i].pendingRewards(tokens[1], users[1]), 4 weeks * 200 + 100 * 200);
+            assertEq(childGauges[i].pendingRewards(tokens[0], users[0]), 2 weeks * 100 + 100 * 200);
+            assertEq(childGauges[i].pendingRewards(tokens[1], users[1]), 2 weeks * 200 + 100 * 200);
         }
 
         // user0, user1 claim rewards
@@ -331,13 +331,13 @@ contract TestChildGaugePool is TestBase {
             childGauges[i].claim(tokens[1]);
         }
 
-        assertEq(MockToken(rewardToken).balanceOf(users[0]), 4 weeks * 100 + 100 * 200);
-        assertEq(MockToken(rewardToken).balanceOf(users[1]), 4 weeks * 200 + 100 * 200);
+        assertEq(MockToken(rewardToken).balanceOf(users[0]), 2 weeks * 100 + 100 * 200);
+        assertEq(MockToken(rewardToken).balanceOf(users[1]), 2 weeks * 200 + 100 * 200);
         assertEq(gaugePool.pendingRewards(tokens[0], users[0]), 0);
         assertEq(gaugePool.pendingRewards(tokens[1], users[1]), 0);
         for (uint256 i = 0; i < CHILD_GAUGE_COUNT; i++) {
-            assertEq(MockToken(childRewardTokens[i]).balanceOf(users[0]), 4 weeks * 100 + 100 * 200);
-            assertEq(MockToken(childRewardTokens[i]).balanceOf(users[1]), 4 weeks * 200 + 100 * 200);
+            assertEq(MockToken(childRewardTokens[i]).balanceOf(users[0]), 2 weeks * 100 + 100 * 200);
+            assertEq(MockToken(childRewardTokens[i]).balanceOf(users[1]), 2 weeks * 200 + 100 * 200);
             assertEq(childGauges[i].pendingRewards(tokens[0], users[0]), 0);
             assertEq(childGauges[i].pendingRewards(tokens[1], users[1]), 0);
         }

@@ -128,9 +128,9 @@ contract TestGaugePool is TestBase {
         gaugePool.start();
 
         assertEq(gaugePool.currentEpoch(), 0);
-        assertEq(gaugePool.epochOfTimestamp(block.timestamp + 5 weeks), 1);
-        assertEq(gaugePool.epochStartTime(1), block.timestamp + 4 weeks);
-        assertEq(gaugePool.epochEndTime(1), block.timestamp + 8 weeks);
+        assertEq(gaugePool.epochOfTimestamp(block.timestamp + 3 weeks), 1);
+        assertEq(gaugePool.epochStartTime(1), block.timestamp + 2 weeks);
+        assertEq(gaugePool.epochEndTime(1), block.timestamp + 4 weeks);
 
         // set gauge settings of next epoch
         gaugePool.setRewardPerSecOfNextEpoch(1, 2000);
@@ -179,9 +179,9 @@ contract TestGaugePool is TestBase {
         gaugePool.start();
 
         assertEq(gaugePool.currentEpoch(), 0);
-        assertEq(gaugePool.epochOfTimestamp(block.timestamp + 5 weeks), 1);
-        assertEq(gaugePool.epochStartTime(1), block.timestamp + 4 weeks);
-        assertEq(gaugePool.epochEndTime(1), block.timestamp + 8 weeks);
+        assertEq(gaugePool.epochOfTimestamp(block.timestamp + 3 weeks), 1);
+        assertEq(gaugePool.epochStartTime(1), block.timestamp + 2 weeks);
+        assertEq(gaugePool.epochEndTime(1), block.timestamp + 4 weeks);
 
         // check invalid epoch
         vm.expectRevert(GaugeErrors.InvalidEpoch.selector);
@@ -346,10 +346,10 @@ contract TestGaugePool is TestBase {
         poolWeights[1] = 200;
         gaugePool.setEmissionRates(1, tokensParam, poolWeights);
 
-        // check pending rewards after 4 weeks
-        vm.warp(block.timestamp + 4 weeks);
-        assertEq(gaugePool.pendingRewards(tokens[0], users[0]), 4 weeks * 100 + 100 * 200);
-        assertEq(gaugePool.pendingRewards(tokens[1], users[1]), 4 weeks * 200 + 100 * 200);
+        // check pending rewards after 2 weeks
+        vm.warp(block.timestamp + 2 weeks);
+        assertEq(gaugePool.pendingRewards(tokens[0], users[0]), 2 weeks * 100 + 100 * 200);
+        assertEq(gaugePool.pendingRewards(tokens[1], users[1]), 2 weeks * 200 + 100 * 200);
 
         // user0, user1 claim rewards
         vm.prank(users[0]);
@@ -357,8 +357,8 @@ contract TestGaugePool is TestBase {
         vm.prank(users[1]);
         gaugePool.claim(tokens[1]);
 
-        assertEq(MockToken(rewardToken).balanceOf(users[0]), 4 weeks * 100 + 100 * 200);
-        assertEq(MockToken(rewardToken).balanceOf(users[1]), 4 weeks * 200 + 100 * 200);
+        assertEq(MockToken(rewardToken).balanceOf(users[0]), 2 weeks * 100 + 100 * 200);
+        assertEq(MockToken(rewardToken).balanceOf(users[1]), 2 weeks * 200 + 100 * 200);
         assertEq(gaugePool.pendingRewards(tokens[0], users[0]), 0);
         assertEq(gaugePool.pendingRewards(tokens[1], users[1]), 0);
     }
