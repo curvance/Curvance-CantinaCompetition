@@ -12,7 +12,12 @@ contract MockCToken is ERC20 {
 
     address public underlying;
 
-    constructor(address _underlying, string memory name, string memory symbol, uint8 _decimals) ERC20(name, symbol) {
+    constructor(
+        address _underlying,
+        string memory name,
+        string memory symbol,
+        uint8 _decimals
+    ) ERC20(name, symbol) {
         underlying = _underlying;
         __decimals = _decimals;
     }
@@ -29,5 +34,9 @@ contract MockCToken is ERC20 {
         return true;
     }
 
-    function _afterTokenTransfer(address from, address to, uint256 amount) internal override {}
+    function _afterTokenTransfer(
+        address from,
+        address to,
+        uint256 amount
+    ) internal override {}
 }

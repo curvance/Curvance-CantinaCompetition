@@ -47,7 +47,11 @@ contract TestGaugePool is TestBase {
         owner = address(this);
 
         rewardToken = address(new MockToken("Reward Token", "RT", 18));
-        gaugePool = new GaugePool(address(rewardToken), address(0), unitroller);
+        gaugePool = new GaugePool(
+            address(rewardToken),
+            address(0),
+            unitroller
+        );
 
         MockToken(rewardToken).approve(address(gaugePool), 1000 ether);
 
@@ -55,7 +59,9 @@ contract TestGaugePool is TestBase {
             users[i] = address(new User());
             vm.store(
                 dai,
-                keccak256(abi.encodePacked(uint256(uint160(users[i])), uint256(2))),
+                keccak256(
+                    abi.encodePacked(uint256(uint160(users[i])), uint256(2))
+                ),
                 bytes32(uint256(200000e18))
             );
         }
@@ -78,7 +84,10 @@ contract TestGaugePool is TestBase {
             Lendtroller(unitroller)._supportMarket(CToken(tokens[i]));
             // set collateral factor
             vm.prank(admin);
-            Lendtroller(unitroller)._setCollateralFactor(CToken(tokens[i]), 5e17);
+            Lendtroller(unitroller)._setCollateralFactor(
+                CToken(tokens[i]),
+                5e17
+            );
 
             for (uint256 j = 0; j < 10; j++) {
                 address user = users[j];
@@ -109,7 +118,10 @@ contract TestGaugePool is TestBase {
 
         // set gauge weights
         assertTrue(gaugePool.isGaugeEnabled(0, tokens[0]) == false);
-        (uint256 totalWeights, uint256 poolWeight) = gaugePool.gaugeWeight(0, tokens[0]);
+        (uint256 totalWeights, uint256 poolWeight) = gaugePool.gaugeWeight(
+            0,
+            tokens[0]
+        );
         assertEq(totalWeights, 0);
         assertEq(poolWeight, 0);
 
@@ -160,7 +172,10 @@ contract TestGaugePool is TestBase {
 
         // set gauge weights
         assertTrue(gaugePool.isGaugeEnabled(0, tokens[0]) == false);
-        (uint256 totalWeights, uint256 poolWeight) = gaugePool.gaugeWeight(0, tokens[0]);
+        (uint256 totalWeights, uint256 poolWeight) = gaugePool.gaugeWeight(
+            0,
+            tokens[0]
+        );
         assertEq(totalWeights, 0);
         assertEq(poolWeight, 0);
 
@@ -348,8 +363,14 @@ contract TestGaugePool is TestBase {
 
         // check pending rewards after 2 weeks
         vm.warp(block.timestamp + 2 weeks);
-        assertEq(gaugePool.pendingRewards(tokens[0], users[0]), 2 weeks * 100 + 100 * 200);
-        assertEq(gaugePool.pendingRewards(tokens[1], users[1]), 2 weeks * 200 + 100 * 200);
+        assertEq(
+            gaugePool.pendingRewards(tokens[0], users[0]),
+            2 weeks * 100 + 100 * 200
+        );
+        assertEq(
+            gaugePool.pendingRewards(tokens[1], users[1]),
+            2 weeks * 200 + 100 * 200
+        );
 
         // user0, user1 claim rewards
         vm.prank(users[0]);
@@ -357,8 +378,14 @@ contract TestGaugePool is TestBase {
         vm.prank(users[1]);
         gaugePool.claim(tokens[1]);
 
-        assertEq(MockToken(rewardToken).balanceOf(users[0]), 2 weeks * 100 + 100 * 200);
-        assertEq(MockToken(rewardToken).balanceOf(users[1]), 2 weeks * 200 + 100 * 200);
+        assertEq(
+            MockToken(rewardToken).balanceOf(users[0]),
+            2 weeks * 100 + 100 * 200
+        );
+        assertEq(
+            MockToken(rewardToken).balanceOf(users[1]),
+            2 weeks * 200 + 100 * 200
+        );
         assertEq(gaugePool.pendingRewards(tokens[0], users[0]), 0);
         assertEq(gaugePool.pendingRewards(tokens[1], users[1]), 0);
     }

@@ -38,10 +38,22 @@ abstract contract Extension {
     /**
      * @notice Called by PriceOps to setup the source.
      */
-    function setupSource(address asset, uint64 sourceId, bytes memory sourceData) external virtual;
+    function setupSource(
+        address asset,
+        uint64 sourceId,
+        bytes memory sourceData
+    ) external virtual;
 
     /**
      * @notice Called by PriceOps to price an asset using the source.
      */
-    function getPriceInBase(uint64 sourceId) external view virtual returns (uint256, uint256, uint8);
+    function getPriceInBase(uint64 sourceId)
+        external
+        view
+        virtual
+        returns (
+            uint256,
+            uint256,
+            uint8
+        );
 }

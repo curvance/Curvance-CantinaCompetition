@@ -50,11 +50,19 @@ interface ICurveFi {
         uint256 min_mint_amount
     ) external payable;
 
-    function remove_liquidity_imbalance(uint256[2] calldata amounts, uint256 max_burn_amount) external;
+    function remove_liquidity_imbalance(
+        uint256[2] calldata amounts,
+        uint256 max_burn_amount
+    ) external;
 
-    function remove_liquidity(uint256 _amount, uint256[2] calldata amounts) external;
+    function remove_liquidity(uint256 _amount, uint256[2] calldata amounts)
+        external;
 
-    function remove_liquidity_one_coin(uint256 _token_amount, int128 i, uint256 min_amount) external;
+    function remove_liquidity_one_coin(
+        uint256 _token_amount,
+        int128 i,
+        uint256 min_amount
+    ) external;
 
     function exchange(
         // CRV-ETH and CVX-ETH
@@ -77,10 +85,17 @@ interface ICurveFi {
 
     function price_oracle() external view returns (uint256);
 
-    function get_dy(int128 from, int128 to, uint256 _from_amount) external view returns (uint256);
+    function get_dy(
+        int128 from,
+        int128 to,
+        uint256 _from_amount
+    ) external view returns (uint256);
 
     // EURt
-    function calc_token_amount(uint256[2] calldata _amounts, bool _is_deposit) external view returns (uint256);
+    function calc_token_amount(uint256[2] calldata _amounts, bool _is_deposit)
+        external
+        view
+        returns (uint256);
 
     // 3Crv Metapools
     function calc_token_amount(
@@ -90,10 +105,19 @@ interface ICurveFi {
     ) external view returns (uint256);
 
     // sUSD, Y pool, etc
-    function calc_token_amount(uint256[4] calldata _amounts, bool _is_deposit) external view returns (uint256);
+    function calc_token_amount(uint256[4] calldata _amounts, bool _is_deposit)
+        external
+        view
+        returns (uint256);
 
     // 3pool, Iron Bank, etc
-    function calc_token_amount(uint256[3] calldata _amounts, bool _is_deposit) external view returns (uint256);
+    function calc_token_amount(uint256[3] calldata _amounts, bool _is_deposit)
+        external
+        view
+        returns (uint256);
 
-    function calc_withdraw_one_coin(uint256 amount, int128 i) external view returns (uint256);
+    function calc_withdraw_one_coin(uint256 amount, int128 i)
+        external
+        view
+        returns (uint256);
 }

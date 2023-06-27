@@ -135,14 +135,14 @@ pragma solidity ^0.8.13;
 
 //     /// @notice An event emitted when a new proposal is created
 //     event ProposalCreated(
-//         uint id, 
-//         address proposer, 
-//         address[] targets, 
-//         uint[] values, 
-//         string[] signatures, 
-//         bytes[] calldatas, 
-//         uint startBlock, 
-//         uint endBlock, 
+//         uint id,
+//         address proposer,
+//         address[] targets,
+//         uint[] values,
+//         string[] signatures,
+//         bytes[] calldatas,
+//         uint startBlock,
+//         uint endBlock,
 //         string description
 //     );
 

@@ -73,7 +73,10 @@ contract CErc20 is CErc20Interface, CToken {
      * @param recipient The recipient address
      * @return bool true=success
      */
-    function mintFor(uint256 mintAmount, address recipient) external returns (bool) {
+    function mintFor(uint256 mintAmount, address recipient)
+        external
+        returns (bool)
+    {
         mintInternal(mintAmount, recipient);
         return true;
     }
@@ -101,8 +104,16 @@ contract CErc20 is CErc20Interface, CToken {
      * @param user The user address
      * @param redeemAmount The amount of the underlying asset to redeem
      */
-    function redeemUnderlyingForPositionFolding(address user, uint256 redeemAmount, bytes memory params) external {
-        redeemUnderlyingForPositionFoldingInternal(payable(user), redeemAmount, params);
+    function redeemUnderlyingForPositionFolding(
+        address user,
+        uint256 redeemAmount,
+        bytes memory params
+    ) external {
+        redeemUnderlyingForPositionFoldingInternal(
+            payable(user),
+            redeemAmount,
+            params
+        );
     }
 
     /**
@@ -118,7 +129,11 @@ contract CErc20 is CErc20Interface, CToken {
      * @param user The user address
      * @param borrowAmount The amount of the underlying asset to borrow
      */
-    function borrowForPositionFolding(address user, uint256 borrowAmount, bytes memory params) external {
+    function borrowForPositionFolding(
+        address user,
+        uint256 borrowAmount,
+        bytes memory params
+    ) external {
         borrowForPositionFoldingInternal(payable(user), borrowAmount, params);
     }
 
@@ -135,7 +150,10 @@ contract CErc20 is CErc20Interface, CToken {
      * @param borrower the account with the debt being payed off
      * @param repayAmount The amount to repay, or -1 for the full outstanding amount
      */
-    function repayBorrowBehalf(address borrower, uint256 repayAmount) external override {
+    function repayBorrowBehalf(address borrower, uint256 repayAmount)
+        external
+        override
+    {
         repayBorrowBehalfInternal(borrower, repayAmount);
     }
 
@@ -199,7 +217,12 @@ contract CErc20 is CErc20Interface, CToken {
      *      Note: This wrapper safely handles non-standard ERC-20 tokens that do not return a value.
      *       See here: https://medium.com/coinmonks/missing-return-value-bug-at-least-130-tokens-affected-d67bf08521ca
      */
-    function doTransferIn(address from, uint256 amount) internal virtual override returns (uint256) {
+    function doTransferIn(address from, uint256 amount)
+        internal
+        virtual
+        override
+        returns (uint256)
+    {
         // Read from storage once
         address underlying_ = underlying;
         IERC20 token = IERC20(underlying_);
@@ -244,7 +267,11 @@ contract CErc20 is CErc20Interface, CToken {
      *      Note: This wrapper safely handles non-standard ERC-20 tokens that do not return a value.
      *       See here: https://medium.com/coinmonks/missing-return-value-bug-at-least-130-tokens-affected-d67bf08521ca
      */
-    function doTransferOut(address payable to, uint256 amount) internal virtual override {
+    function doTransferOut(address payable to, uint256 amount)
+        internal
+        virtual
+        override
+    {
         IEIP20NonStandard token = IEIP20NonStandard(underlying);
         token.transfer(to, amount);
 

@@ -21,7 +21,8 @@ contract User {
 }
 
 contract TestPositionFolding is TestBase {
-    address public uniswapV2Router = address(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
+    address public uniswapV2Router =
+        address(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
     address public weth = address(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
     address public dai = address(0x6B175474E89094C44Da98b954EedeAC495271d0F);
 
@@ -47,13 +48,20 @@ contract TestPositionFolding is TestBase {
         unitroller = address(deployments.unitroller());
         priceOracle = SimplePriceOracle(deployments.priceOracle());
         priceOracle.setDirectPrice(dai, 1 ether);
-        priceOracle.setDirectPrice(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE, 2000 ether);
+        priceOracle.setDirectPrice(
+            0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE,
+            2000 ether
+        );
 
         admin = deployments.admin();
         user = address(this);
 
         // prepare 200K DAI
-        vm.store(dai, keccak256(abi.encodePacked(uint256(uint160(user)), uint256(2))), bytes32(uint256(200000 ether)));
+        vm.store(
+            dai,
+            keccak256(abi.encodePacked(uint256(uint160(user)), uint256(2))),
+            bytes32(uint256(200000 ether))
+        );
         // prepare 200K ETH
         vm.deal(user, 200000 ether);
 
@@ -75,7 +83,10 @@ contract TestPositionFolding is TestBase {
         Lendtroller(unitroller)._supportMarket(CToken(address(cDAI)));
         // set collateral factor
         vm.prank(admin);
-        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 75e16);
+        Lendtroller(unitroller)._setCollateralFactor(
+            CToken(address(cDAI)),
+            75e16
+        );
 
         cETH = new CEther(
             LendtrollerInterface(unitroller),
@@ -92,9 +103,17 @@ contract TestPositionFolding is TestBase {
         Lendtroller(unitroller)._supportMarket(CToken(address(cETH)));
         // set collateral factor
         vm.prank(admin);
-        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 75e16);
+        Lendtroller(unitroller)._setCollateralFactor(
+            CToken(address(cETH)),
+            75e16
+        );
 
-        positionFolding = new PositionFolding(unitroller, address(priceOracle), address(cETH), weth);
+        positionFolding = new PositionFolding(
+            unitroller,
+            address(priceOracle),
+            address(cETH),
+            weth
+        );
         // set position folding
         vm.prank(admin);
         Lendtroller(unitroller)._setPositionFolding(address(positionFolding));
@@ -109,7 +128,12 @@ contract TestPositionFolding is TestBase {
         // prepare 200K DAI
         vm.store(
             dai,
-            keccak256(abi.encodePacked(uint256(uint160(liquidityProvider)), uint256(2))),
+            keccak256(
+                abi.encodePacked(
+                    uint256(uint160(liquidityProvider)),
+                    uint256(2)
+                )
+            ),
             bytes32(uint256(200000 ether))
         );
         // prepare 200K ETH
@@ -149,7 +173,13 @@ contract TestPositionFolding is TestBase {
         assertEq(cDAI.balanceOf(user), 100 ether);
         assertEq(balanceBeforeBorrow + 25 ether, IERC20(dai).balanceOf(user));
 
-        assertEq(positionFolding.queryAmountToBorrowForLeverageMax(user, CToken(address(cDAI))), 172 ether);
+        assertEq(
+            positionFolding.queryAmountToBorrowForLeverageMax(
+                user,
+                CToken(address(cDAI))
+            ),
+            172 ether
+        );
         positionFolding.leverageMax(
             CToken(address(cDAI)),
             CToken(address(cDAI)),
@@ -157,7 +187,8 @@ contract TestPositionFolding is TestBase {
             3000
         );
 
-        (uint256 cTokenBalance, uint256 borrowBalance, ) = cDAI.getAccountSnapshot(user);
+        (uint256 cTokenBalance, uint256 borrowBalance, ) = cDAI
+            .getAccountSnapshot(user);
         assertEq(cTokenBalance, 272 ether);
         assertEq(borrowBalance, 197 ether);
 
@@ -184,7 +215,13 @@ contract TestPositionFolding is TestBase {
         assertEq(cDAI.balanceOf(user), 100 ether);
         assertEq(balanceBeforeBorrow + 25 ether, IERC20(dai).balanceOf(user));
 
-        assertEq(positionFolding.queryAmountToBorrowForLeverageMax(user, CToken(address(cDAI))), 172 ether);
+        assertEq(
+            positionFolding.queryAmountToBorrowForLeverageMax(
+                user,
+                CToken(address(cDAI))
+            ),
+            172 ether
+        );
         positionFolding.leverageMax(
             CToken(address(cDAI)),
             CToken(address(cDAI)),
@@ -192,7 +229,8 @@ contract TestPositionFolding is TestBase {
             3000
         );
 
-        (uint256 cTokenBalance, uint256 borrowBalance, ) = cDAI.getAccountSnapshot(user);
+        (uint256 cTokenBalance, uint256 borrowBalance, ) = cDAI
+            .getAccountSnapshot(user);
         assertEq(cTokenBalance, 272 ether);
         assertEq(borrowBalance, 197 ether);
 
@@ -229,7 +267,13 @@ contract TestPositionFolding is TestBase {
         assertEq(cETH.balanceOf(user), 100 ether);
         assertEq(balanceBeforeBorrow + 25 ether, user.balance);
 
-        assertEq(positionFolding.queryAmountToBorrowForLeverageMax(user, CToken(address(cETH))), 172 ether);
+        assertEq(
+            positionFolding.queryAmountToBorrowForLeverageMax(
+                user,
+                CToken(address(cETH))
+            ),
+            172 ether
+        );
         positionFolding.leverageMax(
             CToken(address(cETH)),
             CToken(address(cETH)),
@@ -237,7 +281,8 @@ contract TestPositionFolding is TestBase {
             3000
         );
 
-        (uint256 cTokenBalance, uint256 borrowBalance, ) = cETH.getAccountSnapshot(user);
+        (uint256 cTokenBalance, uint256 borrowBalance, ) = cETH
+            .getAccountSnapshot(user);
         assertEq(cTokenBalance, 272 ether);
         assertEq(borrowBalance, 197 ether);
 
@@ -261,7 +306,13 @@ contract TestPositionFolding is TestBase {
         assertEq(cETH.balanceOf(user), 100 ether);
         assertEq(balanceBeforeBorrow + 25 ether, user.balance);
 
-        assertEq(positionFolding.queryAmountToBorrowForLeverageMax(user, CToken(address(cETH))), 172 ether);
+        assertEq(
+            positionFolding.queryAmountToBorrowForLeverageMax(
+                user,
+                CToken(address(cETH))
+            ),
+            172 ether
+        );
         positionFolding.leverageMax(
             CToken(address(cETH)),
             CToken(address(cETH)),
@@ -269,7 +320,8 @@ contract TestPositionFolding is TestBase {
             3000
         );
 
-        (uint256 cTokenBalance, uint256 borrowBalance, ) = cETH.getAccountSnapshot(user);
+        (uint256 cTokenBalance, uint256 borrowBalance, ) = cETH
+            .getAccountSnapshot(user);
         assertEq(cTokenBalance, 272 ether);
         assertEq(borrowBalance, 197 ether);
 
@@ -310,7 +362,8 @@ contract TestPositionFolding is TestBase {
         // borrow 0.25 ether
         cETH.borrow(0.25 ether);
 
-        uint256 amountForLeverage = positionFolding.queryAmountToBorrowForLeverageMax(user, CToken(address(cDAI)));
+        uint256 amountForLeverage = positionFolding
+            .queryAmountToBorrowForLeverageMax(user, CToken(address(cDAI)));
         assertEq(amountForLeverage, 6880 ether);
 
         address[] memory path = new address[](2);
@@ -333,16 +386,20 @@ contract TestPositionFolding is TestBase {
             3000
         );
 
-        (uint256 cDAIBalance, uint256 daiBorrowBalance, ) = cDAI.getAccountSnapshot(user);
-        (uint256 cETHBalance, uint256 ethBorrowBalance, ) = cETH.getAccountSnapshot(user);
+        (uint256 cDAIBalance, uint256 daiBorrowBalance, ) = cDAI
+            .getAccountSnapshot(user);
+        (uint256 cETHBalance, uint256 ethBorrowBalance, ) = cETH
+            .getAccountSnapshot(user);
         assertEq(cDAIBalance, 2000 ether); // $2000
         assertGt(cETHBalance, 3.7 ether); // $7400
         assertEq(daiBorrowBalance, 7380 ether); // $7380
         assertEq(ethBorrowBalance, 0.25 ether); // $500
 
-        (uint256 sumCollateral, uint256 maxBorrow, uint256 sumBorrow) = Lendtroller(unitroller).getAccountPosition(
-            user
-        );
+        (
+            uint256 sumCollateral,
+            uint256 maxBorrow,
+            uint256 sumBorrow
+        ) = Lendtroller(unitroller).getAccountPosition(user);
         assertGt(sumCollateral, 9400 ether);
         assertGt(maxBorrow, (9400 ether * 75) / 100);
         assertEq(sumBorrow, 7880 ether);
@@ -375,7 +432,11 @@ contract TestPositionFolding is TestBase {
         cETH.borrow(0.25 ether);
 
         {
-            uint256 amountForLeverage = positionFolding.queryAmountToBorrowForLeverageMax(user, CToken(address(cDAI)));
+            uint256 amountForLeverage = positionFolding
+                .queryAmountToBorrowForLeverageMax(
+                    user,
+                    CToken(address(cDAI))
+                );
             assertEq(amountForLeverage, 6880 ether);
 
             address[] memory path = new address[](2);
@@ -401,16 +462,20 @@ contract TestPositionFolding is TestBase {
         }
 
         {
-            (uint256 cDAIBalance, uint256 daiBorrowBalance, ) = cDAI.getAccountSnapshot(user);
-            (uint256 cETHBalance, uint256 ethBorrowBalance, ) = cETH.getAccountSnapshot(user);
+            (uint256 cDAIBalance, uint256 daiBorrowBalance, ) = cDAI
+                .getAccountSnapshot(user);
+            (uint256 cETHBalance, uint256 ethBorrowBalance, ) = cETH
+                .getAccountSnapshot(user);
             assertEq(cDAIBalance, 2000 ether); // $2000
             assertGt(cETHBalance, 3.7 ether); // $7400
             assertEq(daiBorrowBalance, 7380 ether); // $7380
             assertEq(ethBorrowBalance, 0.25 ether); // $500
 
-            (uint256 sumCollateral, uint256 maxBorrow, uint256 sumBorrow) = Lendtroller(unitroller).getAccountPosition(
-                user
-            );
+            (
+                uint256 sumCollateral,
+                uint256 maxBorrow,
+                uint256 sumBorrow
+            ) = Lendtroller(unitroller).getAccountPosition(user);
             assertGt(sumCollateral, 9400 ether);
             assertGt(maxBorrow, (9400 ether * 75) / 100);
             assertEq(sumBorrow, 7880 ether);
@@ -441,16 +506,20 @@ contract TestPositionFolding is TestBase {
         }
 
         {
-            (uint256 cDAIBalance, uint256 daiBorrowBalance, ) = cDAI.getAccountSnapshot(user);
-            (uint256 cETHBalance, uint256 ethBorrowBalance, ) = cETH.getAccountSnapshot(user);
+            (uint256 cDAIBalance, uint256 daiBorrowBalance, ) = cDAI
+                .getAccountSnapshot(user);
+            (uint256 cETHBalance, uint256 ethBorrowBalance, ) = cETH
+                .getAccountSnapshot(user);
             assertGt(cDAIBalance, 2000 ether); // $2000
             assertGt(cETHBalance, 0 ether); // $7400
             assertEq(daiBorrowBalance, 1080 ether);
             assertEq(ethBorrowBalance, 0.25 ether); // $500
 
-            (uint256 sumCollateral, uint256 maxBorrow, uint256 sumBorrow) = Lendtroller(unitroller).getAccountPosition(
-                user
-            );
+            (
+                uint256 sumCollateral,
+                uint256 maxBorrow,
+                uint256 sumBorrow
+            ) = Lendtroller(unitroller).getAccountPosition(user);
             assertGt(sumCollateral, 2000 ether);
             assertGt(maxBorrow, (2000 ether * 75) / 100);
             assertEq(sumBorrow, 1580 ether);
@@ -480,7 +549,8 @@ contract TestPositionFolding is TestBase {
         // borrow 0.25 ether
         cETH.borrow(0.25 ether);
 
-        uint256 amountForLeverage = positionFolding.queryAmountToBorrowForLeverageMax(user, CToken(address(cDAI)));
+        uint256 amountForLeverage = positionFolding
+            .queryAmountToBorrowForLeverageMax(user, CToken(address(cDAI)));
         assertEq(amountForLeverage, 6880 ether);
 
         address[] memory path = new address[](2);

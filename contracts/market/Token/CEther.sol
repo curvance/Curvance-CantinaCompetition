@@ -91,8 +91,16 @@ contract CEther is CToken {
      * @param user The user address
      * @param redeemAmount The amount of the underlying asset to redeem
      */
-    function redeemUnderlyingForPositionFolding(address user, uint256 redeemAmount, bytes memory params) external {
-        redeemUnderlyingForPositionFoldingInternal(payable(user), redeemAmount, params);
+    function redeemUnderlyingForPositionFolding(
+        address user,
+        uint256 redeemAmount,
+        bytes memory params
+    ) external {
+        redeemUnderlyingForPositionFoldingInternal(
+            payable(user),
+            redeemAmount,
+            params
+        );
     }
 
     /**
@@ -108,7 +116,11 @@ contract CEther is CToken {
      * @param user The user address
      * @param borrowAmount The amount of the underlying asset to borrow
      */
-    function borrowForPositionFolding(address user, uint256 borrowAmount, bytes memory params) external {
+    function borrowForPositionFolding(
+        address user,
+        uint256 borrowAmount,
+        bytes memory params
+    ) external {
         borrowForPositionFoldingInternal(payable(user), borrowAmount, params);
     }
 
@@ -136,7 +148,10 @@ contract CEther is CToken {
      * @param borrower The borrower of this cToken to be liquidated
      * @param cTokenCollateral The market in which to seize collateral from the borrower
      */
-    function liquidateBorrow(address borrower, CToken cTokenCollateral) external payable {
+    function liquidateBorrow(address borrower, CToken cTokenCollateral)
+        external
+        payable
+    {
         liquidateBorrowInternal(borrower, msg.value, cTokenCollateral);
     }
 
@@ -171,7 +186,11 @@ contract CEther is CToken {
      * @param amount Amount of Ether being sent
      * @return The actual amount of Ether transferred
      */
-    function doTransferIn(address from, uint256 amount) internal override returns (uint256) {
+    function doTransferIn(address from, uint256 amount)
+        internal
+        override
+        returns (uint256)
+    {
         // Sanity checks
         if (msg.sender != from) {
             revert SenderMismatch();
@@ -182,7 +201,11 @@ contract CEther is CToken {
         return amount;
     }
 
-    function doTransferOut(address payable to, uint256 amount) internal virtual override {
+    function doTransferOut(address payable to, uint256 amount)
+        internal
+        virtual
+        override
+    {
         /* Send the Ether, with minimal gas and revert on failure */
         to.transfer(amount);
     }

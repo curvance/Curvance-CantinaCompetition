@@ -4,15 +4,24 @@ pragma solidity 0.8.17;
 interface IOptiSwap {
     function weth() external view returns (address);
 
-    function bridgeFromTokens(uint256 index) external view returns (address token);
+    function bridgeFromTokens(uint256 index)
+        external
+        view
+        returns (address token);
 
     function bridgeFromTokensLength() external view returns (uint256);
 
-    function getBridgeToken(address _token) external view returns (address bridgeToken);
+    function getBridgeToken(address _token)
+        external
+        view
+        returns (address bridgeToken);
 
     function addBridgeToken(address _token, address _bridgeToken) external;
 
-    function getDexInfo(uint256 index) external view returns (address dex, address handler);
+    function getDexInfo(uint256 index)
+        external
+        view
+        returns (address dex, address handler);
 
     function dexListLength() external view returns (uint256);
 

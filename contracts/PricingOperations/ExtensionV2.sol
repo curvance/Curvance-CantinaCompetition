@@ -6,7 +6,6 @@ import "../interfaces/IOracleExtension.sol";
 import "../interfaces/IPriceRouter.sol";
 
 abstract contract Extension {
-
     /**
      * @notice Error code for no error.
      */
@@ -46,13 +45,19 @@ abstract contract Extension {
 
     // Only callable by Price Router.
     modifier onlyPriceRouter() {
-        require(msg.sender == centralRegistry.priceRouter(), "extension: UNAUTHORIZED");
+        require(
+            msg.sender == centralRegistry.priceRouter(),
+            "extension: UNAUTHORIZED"
+        );
         _;
     }
 
     /**
      * @notice Called by PriceRouter to price an asset.
      */
-    function getPrice(address _asset) external view virtual returns (priceReturnData calldata);
-
+    function getPrice(address _asset)
+        external
+        view
+        virtual
+        returns (priceReturnData calldata);
 }

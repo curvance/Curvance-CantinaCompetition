@@ -36,16 +36,20 @@ contract CurveV2ExtensionTest is TestBase {
 
     // Curve Assets
     address private TRI_CRYPTO = 0xc4AD29ba4B3c580e6D59105FFf484999997675Ff;
-    address private curve3CryptoPool = 0xD51a44d3FaE010294C616388b506AcdA1bfAAE46;
+    address private curve3CryptoPool =
+        0xD51a44d3FaE010294C616388b506AcdA1bfAAE46;
     address private CBETH_WETH = 0x5b6C539b224014A09B3388e51CaAA8e354c959C8;
-    address private CBETH_WETH_POOL = 0x5FAE7E604FC3e24fd43A72867ceBaC94c65b404A;
+    address private CBETH_WETH_POOL =
+        0x5FAE7E604FC3e24fd43A72867ceBaC94c65b404A;
 
     function setUp() public {
         // Should figure out
         // Tests often fail when it forks at latest block.
         _fork(17500000);
 
-        USDT_PRICE_ETH = uint256(IChainlinkAggregator(USDT_ETH_FEED).latestAnswer());
+        USDT_PRICE_ETH = uint256(
+            IChainlinkAggregator(USDT_ETH_FEED).latestAnswer()
+        );
 
         MOCK_WETH_USD_FEED = new MockDataFeed(WETH_USD_FEED);
         MOCK_USDT_USD_FEED = new MockDataFeed(USDT_USD_FEED);
@@ -97,9 +101,15 @@ contract CurveV2ExtensionTest is TestBase {
         priceOps.addAsset(TRI_CRYPTO, triCryptoSource, 0, 0);
 
         // Query price.
-        (uint256 upper, uint256 lower, uint8 errorCode) = priceOps.getPriceInBaseEnforceNonZeroLower(TRI_CRYPTO);
+        (uint256 upper, uint256 lower, uint8 errorCode) = priceOps
+            .getPriceInBaseEnforceNonZeroLower(TRI_CRYPTO);
         assertGt(upper, lower, "Upper should be greater than lower.");
-        assertApproxEqRel(upper, lower, 0.01e18, "Upper and lower should approximately by equal.");
+        assertApproxEqRel(
+            upper,
+            lower,
+            0.01e18,
+            "Upper and lower should approximately by equal."
+        );
         assertEq(errorCode, 0, "There should be no error.");
 
         // Add liquidity to TriCrypto.
@@ -112,10 +122,21 @@ contract CurveV2ExtensionTest is TestBase {
 
         uint256 lpReceived = ERC20(TRI_CRYPTO).balanceOf(address(this));
 
-        uint256 valueIn = usdtIn.mulDivDown(USDT_PRICE_ETH, 10 ** ERC20(USDT).decimals());
-        uint256 valueOut = lpReceived.mulDivDown(upper, 10 ** ERC20(TRI_CRYPTO).decimals());
+        uint256 valueIn = usdtIn.mulDivDown(
+            USDT_PRICE_ETH,
+            10**ERC20(USDT).decimals()
+        );
+        uint256 valueOut = lpReceived.mulDivDown(
+            upper,
+            10**ERC20(TRI_CRYPTO).decimals()
+        );
 
-        assertApproxEqRel(valueIn, valueOut, 0.01e18, "Value in should approximately equal value out.");
+        assertApproxEqRel(
+            valueIn,
+            valueOut,
+            0.01e18,
+            "Value in should approximately equal value out."
+        );
     }
 
     function testCurveV2SourceCbEth_Eth(uint256 ethIn) public {
@@ -129,10 +150,16 @@ contract CurveV2ExtensionTest is TestBase {
         priceOps.addAsset(CBETH_WETH, cbEthWethSource, 0, 0);
 
         // Query price.
-        (uint256 upper, uint256 lower, uint8 errorCode) = priceOps.getPriceInBaseEnforceNonZeroLower(CBETH_WETH);
+        (uint256 upper, uint256 lower, uint8 errorCode) = priceOps
+            .getPriceInBaseEnforceNonZeroLower(CBETH_WETH);
         if (upper != lower) {
             assertGt(upper, lower, "Upper should be greater than lower.");
-            assertApproxEqRel(upper, lower, 0.01e18, "Upper and lower should approximately by equal.");
+            assertApproxEqRel(
+                upper,
+                lower,
+                0.01e18,
+                "Upper and lower should approximately by equal."
+            );
         }
         assertEq(errorCode, 0, "There should be no error.");
 
@@ -144,9 +171,17 @@ contract CurveV2ExtensionTest is TestBase {
         uint256 lpReceived = ERC20(CBETH_WETH).balanceOf(address(this));
 
         uint256 valueIn = ethIn;
-        uint256 valueOut = lpReceived.mulDivDown(upper, 10 ** ERC20(CBETH_WETH).decimals());
+        uint256 valueOut = lpReceived.mulDivDown(
+            upper,
+            10**ERC20(CBETH_WETH).decimals()
+        );
 
-        assertApproxEqRel(valueIn, valueOut, 0.02e18, "Value in should approximately equal value out.");
+        assertApproxEqRel(
+            valueIn,
+            valueOut,
+            0.02e18,
+            "Value in should approximately equal value out."
+        );
     }
 
     // TODO add any other curve V2 pools we want to use.
@@ -165,20 +200,34 @@ contract CurveV2ExtensionTest is TestBase {
         priceOps.addAsset(TRI_CRYPTO, triCryptoSource, 0, 0);
 
         // Price should be okay.
-        (uint256 upper, uint256 lower, uint8 errorCode) = priceOps.getPriceInBaseEnforceNonZeroLower(TRI_CRYPTO);
+        (uint256 upper, uint256 lower, uint8 errorCode) = priceOps
+            .getPriceInBaseEnforceNonZeroLower(TRI_CRYPTO);
         assertGt(upper, lower, "Upper should be greater than lower.");
-        assertApproxEqRel(upper, lower, 0.01e18, "Upper and lower should approximately by equal.");
+        assertApproxEqRel(
+            upper,
+            lower,
+            0.01e18,
+            "Upper and lower should approximately by equal."
+        );
         assertEq(errorCode, 0, "There should be no error.");
 
         // make one USDT source go bad.
         MOCK_USDT_USD_FEED.setMockUpdatedAt(block.timestamp - 2 days);
-        (upper, lower, errorCode) = priceOps.getPriceInBaseEnforceNonZeroLower(TRI_CRYPTO);
-        assertEq(upper, lower, "Upper and lower should be equal since 1 USDT source is bad.");
+        (upper, lower, errorCode) = priceOps.getPriceInBaseEnforceNonZeroLower(
+            TRI_CRYPTO
+        );
+        assertEq(
+            upper,
+            lower,
+            "Upper and lower should be equal since 1 USDT source is bad."
+        );
         assertEq(errorCode, 1, "There should be a CAUTION error.");
 
         // have both sources go bad
         MOCK_USDT_ETH_FEED.setMockUpdatedAt(block.timestamp - 2 days);
-        (upper, lower, errorCode) = priceOps.getPriceInBaseEnforceNonZeroLower(TRI_CRYPTO);
+        (upper, lower, errorCode) = priceOps.getPriceInBaseEnforceNonZeroLower(
+            TRI_CRYPTO
+        );
         assertEq(errorCode, 2, "There should be a BAD_SOURCE error.");
         assertEq(upper, 0, "Upper should be zero.");
         assertEq(lower, 0, "Lower should be zero.");
@@ -188,8 +237,12 @@ contract CurveV2ExtensionTest is TestBase {
         MOCK_USDT_USD_FEED.setMockUpdatedAt(0);
 
         // But have sources diverge.
-        MOCK_USDT_ETH_FEED.setMockAnswer(int256(USDT_PRICE_ETH.mulDivDown(1.02e4, 1e4)));
-        (upper, lower, errorCode) = priceOps.getPriceInBaseEnforceNonZeroLower(TRI_CRYPTO);
+        MOCK_USDT_ETH_FEED.setMockAnswer(
+            int256(USDT_PRICE_ETH.mulDivDown(1.02e4, 1e4))
+        );
+        (upper, lower, errorCode) = priceOps.getPriceInBaseEnforceNonZeroLower(
+            TRI_CRYPTO
+        );
         assertGt(upper, lower, "Upper should be greater than the lower.");
         assertEq(errorCode, 1, "There should be a CAUTION error.");
     }

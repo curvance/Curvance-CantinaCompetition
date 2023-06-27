@@ -5,15 +5,24 @@ import "./PriceOracle.sol";
 import "../Token/CErc20.sol";
 
 contract SimplePriceOracle is PriceOracle {
-    mapping(address => uint) public prices;
-    event PricePosted(address asset, uint previousPriceMantissa, uint requestedPriceMantissa, uint newPriceMantissa);
+    mapping(address => uint256) public prices;
+    event PricePosted(
+        address asset,
+        uint256 previousPriceMantissa,
+        uint256 requestedPriceMantissa,
+        uint256 newPriceMantissa
+    );
 
     /**
      * @notice returns underlying asset address of given market token
      * @param cToken market token address
      * @return The underlying asset address
      */
-    function _getUnderlyingAddress(CToken cToken) private view returns (address) {
+    function _getUnderlyingAddress(CToken cToken)
+        private
+        view
+        returns (address)
+    {
         address asset;
         if (compareStrings(cToken.symbol(), "cETH")) {
             asset = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
@@ -28,7 +37,12 @@ contract SimplePriceOracle is PriceOracle {
      * @param cToken market token address
      * @return The underlying asset price
      */
-    function getUnderlyingPrice(CToken cToken) public override view returns (uint) {
+    function getUnderlyingPrice(CToken cToken)
+        public
+        view
+        override
+        returns (uint256)
+    {
         return prices[_getUnderlyingAddress(cToken)];
     }
 
@@ -37,9 +51,16 @@ contract SimplePriceOracle is PriceOracle {
      * @param cToken market token address
      * @param underlyingPriceMantissa underlying asset price
      */
-    function setUnderlyingPrice(CToken cToken, uint underlyingPriceMantissa) public {
+    function setUnderlyingPrice(CToken cToken, uint256 underlyingPriceMantissa)
+        public
+    {
         address asset = _getUnderlyingAddress(cToken);
-        emit PricePosted(asset, prices[asset], underlyingPriceMantissa, underlyingPriceMantissa);
+        emit PricePosted(
+            asset,
+            prices[asset],
+            underlyingPriceMantissa,
+            underlyingPriceMantissa
+        );
         prices[asset] = underlyingPriceMantissa;
     }
 
@@ -48,7 +69,7 @@ contract SimplePriceOracle is PriceOracle {
      * @param asset asset address
      * @param price asset price
      */
-    function setDirectPrice(address asset, uint price) public {
+    function setDirectPrice(address asset, uint256 price) public {
         emit PricePosted(asset, prices[asset], price, price);
         prices[asset] = price;
     }
@@ -58,7 +79,7 @@ contract SimplePriceOracle is PriceOracle {
      * @param asset asset address
      * @return The asset price
      */
-    function assetPrices(address asset) external view returns (uint) {
+    function assetPrices(address asset) external view returns (uint256) {
         return prices[asset];
     }
 
@@ -68,7 +89,12 @@ contract SimplePriceOracle is PriceOracle {
      * @param b second string
      * @return true if two strings match or not
      */
-    function compareStrings(string memory a, string memory b) internal pure returns (bool) {
-        return (keccak256(abi.encodePacked((a))) == keccak256(abi.encodePacked((b))));
+    function compareStrings(string memory a, string memory b)
+        internal
+        pure
+        returns (bool)
+    {
+        return (keccak256(abi.encodePacked((a))) ==
+            keccak256(abi.encodePacked((b))));
     }
 }

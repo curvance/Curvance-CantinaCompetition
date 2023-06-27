@@ -194,16 +194,16 @@ pragma solidity ^0.8.13;
 //             // Whitelisted proposers can't be canceled for falling below proposal threshold
 //             if(isWhitelisted(proposal.proposer)) {
 //                 // require((comp.getPriorVotes(proposal.proposer, sub256(block.number, 1)) < proposalThreshold) && msg.sender == whitelistGuardian, "GovernorBravo::cancel: whitelisted proposer");
-//                  // *** TODO > OR >= ? *** 
+//                  // *** TODO > OR >= ? ***
 //                 if ((comp.getPriorVotes(proposal.proposer, sub256(block.number, 1)) > proposalThreshold) && msg.sender != whitelistGuardian) { revert AddressUnauthorized(); }
 //             }
 //             else {
 //                 // require((comp.getPriorVotes(proposal.proposer, sub256(block.number, 1)) < proposalThreshold), "GovernorBravo::cancel: proposer above threshold");
-//                  // *** TODO > OR >= ? *** 
+//                  // *** TODO > OR >= ? ***
 //                 if (comp.getPriorVotes(proposal.proposer, sub256(block.number, 1)) > proposalThreshold) { revert ProposerAboveThreshold(); }
 //             }
 //         }
-        
+
 //         proposal.canceled = true;
 //         for (uint i = 0; i < proposal.targets.length; i++) {
 //             timelock.cancelTransaction(proposal.targets[i], proposal.values[i], proposal.signatures[i], proposal.calldatas[i], proposal.eta);
@@ -366,7 +366,7 @@ pragma solidity ^0.8.13;
 //         // require(newVotingPeriod >= MIN_VOTING_PERIOD && newVotingPeriod <= MAX_VOTING_PERIOD, "GovernorBravo::_setVotingPeriod: invalid voting period");
 //         if (msg.sender != admin) { revert AddressUnauthorized(); }
 //         if (newVotingPeriod < MIN_VOTING_PERIOD && newVotingPeriod > MAX_VOTING_PERIOD) { revert InvalidVotingPeriod(); }
-   
+
 //         uint oldVotingPeriod = votingPeriod;
 //         votingPeriod = newVotingPeriod;
 
@@ -411,7 +411,7 @@ pragma solidity ^0.8.13;
 //      function _setWhitelistGuardian(address account) external {
 //         // require(msg.sender == admin, "GovernorBravo::_setWhitelistGuardian: admin only");
 //         if (msg.sender != admin) { revert AddressUnauthorized(); }
-        
+
 //         address oldGuardian = whitelistGuardian;
 //         whitelistGuardian = account;
 

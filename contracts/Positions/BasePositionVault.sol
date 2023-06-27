@@ -15,7 +15,13 @@ import { IChainlinkAggregator } from "contracts/interfaces/IChainlinkAggregator.
 ///@notice Vault Positions must have all assets ready for withdraw, IE assets can NOT be locked.
 // This way assets can be easily liquidated when loans default.
 ///@dev The position vaults run must be a LOSSLESS position, since totalAssets is not actually using the balances stored in the position, rather it only uses an internal balance.
-abstract contract BasePositionVault is ERC4626, Initializable, KeeperCompatibleInterface, Owned, ReentrancyGuard {
+abstract contract BasePositionVault is
+    ERC4626,
+    Initializable,
+    KeeperCompatibleInterface,
+    Owned,
+    ReentrancyGuard
+{
     using SafeTransferLib for ERC20;
     using Math for uint256;
 
@@ -55,8 +61,10 @@ abstract contract BasePositionVault is ERC4626, Initializable, KeeperCompatibleI
 
     uint64 internal constant REWARD_SCALER = 1e18;
 
-    ERC20 private constant WETH = ERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
-    ERC20 private constant LINK = ERC20(0x514910771AF9Ca656af840dff83E8264EcF986CA);
+    ERC20 private constant WETH =
+        ERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
+    ERC20 private constant LINK =
+        ERC20(0x514910771AF9Ca656af840dff83E8264EcF986CA);
 
     /**
      * @notice Period newly harvested rewards are vested over.
@@ -81,7 +89,8 @@ abstract contract BasePositionVault is ERC4626, Initializable, KeeperCompatibleI
      * @notice Prevent a function from being called during a shutdown.
      */
     modifier whenNotShutdown() {
-        if (positionVaultMetaData.isShutdown) revert BasePositionVault__ContractShutdown();
+        if (positionVaultMetaData.isShutdown)
+            revert BasePositionVault__ContractShutdown();
 
         _;
     }
@@ -136,8 +145,11 @@ abstract contract BasePositionVault is ERC4626, Initializable, KeeperCompatibleI
         symbol = _symbol;
         decimals = _decimals;
         if (_metaData.platformFee > MAX_PLATFORM_FEE)
-            revert BasePositionVault__InvalidPlatformFee(_metaData.platformFee);
-        if (_metaData.upkeepFee > MAX_UPKEEP_FEE) revert BasePositionVault__InvalidUpkeepFee(_metaData.upkeepFee);
+            revert BasePositionVault__InvalidPlatformFee(
+                _metaData.platformFee
+            );
+        if (_metaData.upkeepFee > MAX_UPKEEP_FEE)
+            revert BasePositionVault__InvalidUpkeepFee(_metaData.upkeepFee);
         positionVaultMetaData = _metaData;
     }
 
@@ -175,7 +187,8 @@ abstract contract BasePositionVault is ERC4626, Initializable, KeeperCompatibleI
     }
 
     function setPlatformFee(uint64 fee) external onlyOwner {
-        if (fee > MAX_PLATFORM_FEE) revert BasePositionVault__InvalidPlatformFee(fee);
+        if (fee > MAX_PLATFORM_FEE)
+            revert BasePositionVault__InvalidPlatformFee(fee);
         positionVaultMetaData.platformFee = fee;
         emit PlatformFeeChanged(fee);
     }
@@ -186,7 +199,8 @@ abstract contract BasePositionVault is ERC4626, Initializable, KeeperCompatibleI
     }
 
     function setUpkeepFee(uint64 fee) external onlyOwner {
-        if (fee > MAX_UPKEEP_FEE) revert BasePositionVault__InvalidUpkeepFee(fee);
+        if (fee > MAX_UPKEEP_FEE)
+            revert BasePositionVault__InvalidUpkeepFee(fee);
         positionVaultMetaData.upkeepFee = fee;
         emit UpkeepFeeChanged(fee);
     }
@@ -205,7 +219,8 @@ abstract contract BasePositionVault is ERC4626, Initializable, KeeperCompatibleI
      * @notice Restart the vault.
      */
     function liftShutdown() external onlyOwner {
-        if (!positionVaultMetaData.isShutdown) revert BasePositionVault__ContractNotShutdown();
+        if (!positionVaultMetaData.isShutdown)
+            revert BasePositionVault__ContractNotShutdown();
         positionVaultMetaData.isShutdown = false;
 
         emit ShutdownChanged(false);
@@ -222,18 +237,26 @@ abstract contract BasePositionVault is ERC4626, Initializable, KeeperCompatibleI
     /**
      * @notice Calculates pending rewards currently being vested, and vests them.
      */
-    function _calculatePendingRewards() internal view returns (uint256 pendingRewards) {
+    function _calculatePendingRewards()
+        internal
+        view
+        returns (uint256 pendingRewards)
+    {
         // Used by totalAssets
         uint64 currentTime = uint64(block.timestamp);
         if (
             positionVaultAccounting._rewardRate > 0 &&
-            positionVaultAccounting._lastVestClaim < positionVaultAccounting._vestingPeriodEnd
+            positionVaultAccounting._lastVestClaim <
+            positionVaultAccounting._vestingPeriodEnd
         ) {
             // There are pending rewards.
-            pendingRewards = currentTime < positionVaultAccounting._vestingPeriodEnd
-                ? (positionVaultAccounting._rewardRate * (currentTime - positionVaultAccounting._lastVestClaim))
+            pendingRewards = currentTime <
+                positionVaultAccounting._vestingPeriodEnd
+                ? (positionVaultAccounting._rewardRate *
+                    (currentTime - positionVaultAccounting._lastVestClaim))
                 : (positionVaultAccounting._rewardRate *
-                    (positionVaultAccounting._vestingPeriodEnd - positionVaultAccounting._lastVestClaim));
+                    (positionVaultAccounting._vestingPeriodEnd -
+                        positionVaultAccounting._lastVestClaim));
             pendingRewards = pendingRewards / REWARD_SCALER;
         } // else there are no pending rewards.
     }
@@ -246,17 +269,20 @@ abstract contract BasePositionVault is ERC4626, Initializable, KeeperCompatibleI
         _totalAssets = _ta;
 
         // Update share price high watermark since rewards have been vested.
-        _sharePriceHighWatermark = _convertToAssets(10 ** decimals, _ta);
+        _sharePriceHighWatermark = _convertToAssets(10**decimals, _ta);
     }
 
     /*//////////////////////////////////////////////////////////////
                         DEPOSIT/WITHDRAWAL LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function deposit(
-        uint256 assets,
-        address receiver
-    ) public override whenNotShutdown nonReentrant returns (uint256 shares) {
+    function deposit(uint256 assets, address receiver)
+        public
+        override
+        whenNotShutdown
+        nonReentrant
+        returns (uint256 shares)
+    {
         // Save _totalAssets and pendingRewards to memory.
         uint256 pending = _calculatePendingRewards();
         uint256 ta = _totalAssets + pending;
@@ -280,10 +306,13 @@ abstract contract BasePositionVault is ERC4626, Initializable, KeeperCompatibleI
         _deposit(assets);
     }
 
-    function mint(
-        uint256 shares,
-        address receiver
-    ) public override whenNotShutdown nonReentrant returns (uint256 assets) {
+    function mint(uint256 shares, address receiver)
+        public
+        override
+        whenNotShutdown
+        nonReentrant
+        returns (uint256 assets)
+    {
         // Save _totalAssets and pendingRewards to memory.
         uint256 pending = _calculatePendingRewards();
         uint256 ta = _totalAssets + pending;
@@ -320,7 +349,8 @@ abstract contract BasePositionVault is ERC4626, Initializable, KeeperCompatibleI
         if (msg.sender != owner) {
             uint256 allowed = allowance[owner][msg.sender]; // Saves gas for limited approvals.
 
-            if (allowed != type(uint256).max) allowance[owner][msg.sender] = allowed - shares;
+            if (allowed != type(uint256).max)
+                allowance[owner][msg.sender] = allowed - shares;
         }
 
         // Remove the users withdrawn assets.
@@ -349,7 +379,8 @@ abstract contract BasePositionVault is ERC4626, Initializable, KeeperCompatibleI
         if (msg.sender != owner) {
             uint256 allowed = allowance[owner][msg.sender]; // Saves gas for limited approvals.
 
-            if (allowed != type(uint256).max) allowance[owner][msg.sender] = allowed - shares;
+            if (allowed != type(uint256).max)
+                allowance[owner][msg.sender] = allowed - shares;
         }
 
         // Check for rounding error since we round down in previewRedeem.
@@ -378,59 +409,121 @@ abstract contract BasePositionVault is ERC4626, Initializable, KeeperCompatibleI
         return _totalAssets + _calculatePendingRewards();
     }
 
-    function convertToShares(uint256 assets) public view override returns (uint256) {
+    function convertToShares(uint256 assets)
+        public
+        view
+        override
+        returns (uint256)
+    {
         return _convertToShares(assets, totalSupply);
     }
 
-    function convertToAssets(uint256 shares) public view override returns (uint256) {
+    function convertToAssets(uint256 shares)
+        public
+        view
+        override
+        returns (uint256)
+    {
         return _convertToAssets(shares, totalAssets());
     }
 
-    function previewDeposit(uint256 assets) public view override returns (uint256) {
+    function previewDeposit(uint256 assets)
+        public
+        view
+        override
+        returns (uint256)
+    {
         return convertToShares(assets);
     }
 
-    function previewMint(uint256 shares) public view override returns (uint256) {
+    function previewMint(uint256 shares)
+        public
+        view
+        override
+        returns (uint256)
+    {
         return _previewMint(shares, totalAssets());
     }
 
-    function previewWithdraw(uint256 assets) public view override returns (uint256) {
+    function previewWithdraw(uint256 assets)
+        public
+        view
+        override
+        returns (uint256)
+    {
         return _previewWithdraw(assets, totalAssets());
     }
 
-    function previewRedeem(uint256 shares) public view override returns (uint256) {
+    function previewRedeem(uint256 shares)
+        public
+        view
+        override
+        returns (uint256)
+    {
         return convertToAssets(shares);
     }
 
-    function _convertToShares(uint256 assets, uint256 _ta) internal view returns (uint256 shares) {
+    function _convertToShares(uint256 assets, uint256 _ta)
+        internal
+        view
+        returns (uint256 shares)
+    {
         uint256 totalShares = totalSupply;
 
-        shares = totalShares == 0 ? assets.changeDecimals(asset.decimals(), 18) : assets.mulDivDown(totalShares, _ta);
+        shares = totalShares == 0
+            ? assets.changeDecimals(asset.decimals(), 18)
+            : assets.mulDivDown(totalShares, _ta);
     }
 
-    function _convertToAssets(uint256 shares, uint256 _ta) internal view returns (uint256 assets) {
+    function _convertToAssets(uint256 shares, uint256 _ta)
+        internal
+        view
+        returns (uint256 assets)
+    {
         uint256 totalShares = totalSupply;
 
-        assets = totalShares == 0 ? shares.changeDecimals(18, asset.decimals()) : shares.mulDivDown(_ta, totalShares);
+        assets = totalShares == 0
+            ? shares.changeDecimals(18, asset.decimals())
+            : shares.mulDivDown(_ta, totalShares);
     }
 
-    function _previewDeposit(uint256 assets, uint256 _ta) internal view returns (uint256) {
+    function _previewDeposit(uint256 assets, uint256 _ta)
+        internal
+        view
+        returns (uint256)
+    {
         return _convertToShares(assets, _ta);
     }
 
-    function _previewMint(uint256 shares, uint256 _ta) internal view returns (uint256 assets) {
+    function _previewMint(uint256 shares, uint256 _ta)
+        internal
+        view
+        returns (uint256 assets)
+    {
         uint256 totalShares = totalSupply;
 
-        assets = totalShares == 0 ? shares.changeDecimals(18, asset.decimals()) : shares.mulDivUp(_ta, totalShares);
+        assets = totalShares == 0
+            ? shares.changeDecimals(18, asset.decimals())
+            : shares.mulDivUp(_ta, totalShares);
     }
 
-    function _previewWithdraw(uint256 assets, uint256 _ta) internal view returns (uint256 shares) {
+    function _previewWithdraw(uint256 assets, uint256 _ta)
+        internal
+        view
+        returns (uint256 shares)
+    {
         uint256 totalShares = totalSupply;
 
-        shares = totalShares == 0 ? assets.changeDecimals(asset.decimals(), 18) : assets.mulDivUp(totalShares, _ta);
+        shares = totalShares == 0
+            ? assets.changeDecimals(asset.decimals(), 18)
+            : assets.mulDivUp(totalShares, _ta);
     }
 
-    function _previewRedeem(uint256 shares, uint256 _ta) internal view returns (uint256) {
+    function _previewRedeem(uint256 shares, uint256 _ta)
+        internal
+        view
+        returns (uint256)
+    {
         return _convertToAssets(shares, _ta);
     }
 
@@ -438,30 +531,46 @@ abstract contract BasePositionVault is ERC4626, Initializable, KeeperCompatibleI
                     CHAINLINK AUTOMATION LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function checkUpkeep(bytes calldata data) external returns (bool upkeepNeeded, bytes memory performData) {
+    function checkUpkeep(bytes calldata data)
+        external
+        returns (bool upkeepNeeded, bytes memory performData)
+    {
         if (positionVaultMetaData.isShutdown) return (false, abi.encode(0));
 
         // Compare real total assets to stored, and trigger circuit breaker if real is less than stored.
         uint256 realTotalAssets = _getRealPositionBalance();
         uint256 storedTotalAssets = totalAssets();
-        if (realTotalAssets < storedTotalAssets) return (true, abi.encode(true, data));
+        if (realTotalAssets < storedTotalAssets)
+            return (true, abi.encode(true, data));
 
         // Compare current share price to high watermark and trigger circuit breaker if less than high watermark.
-        uint256 currentSharePrice = _convertToAssets(10 ** decimals, storedTotalAssets);
-        if (currentSharePrice < _sharePriceHighWatermark) return (true, abi.encode(true, data));
+        uint256 currentSharePrice = _convertToAssets(
+            10**decimals,
+            storedTotalAssets
+        );
+        if (currentSharePrice < _sharePriceHighWatermark)
+            return (true, abi.encode(true, data));
 
         // Figure out how much yield is pending to be harvested.
         uint256 yield = harvest(data);
 
         // Compare USD value of yield against owner set minimum.
         uint256 yieldInUSD = yield > 0
-            ? yield.mulDivDown(positionVaultMetaData.priceRouter.getPriceInUSD(asset), 10 ** asset.decimals())
+            ? yield.mulDivDown(
+                positionVaultMetaData.priceRouter.getPriceInUSD(asset),
+                10**asset.decimals()
+            )
             : 0;
-        if (yieldInUSD < positionVaultMetaData.minHarvestYieldInUSD) return (false, abi.encode(0));
+        if (yieldInUSD < positionVaultMetaData.minHarvestYieldInUSD)
+            return (false, abi.encode(0));
 
         // Compare current gas price against owner set minimum.
-        uint256 currentGasPrice = uint256(IChainlinkAggregator(positionVaultMetaData.ethFastGasFeed).latestAnswer());
-        if (currentGasPrice > positionVaultMetaData.maxGasPriceForHarvest) return (false, abi.encode(0));
+        uint256 currentGasPrice = uint256(
+            IChainlinkAggregator(positionVaultMetaData.ethFastGasFeed)
+                .latestAnswer()
+        );
+        if (currentGasPrice > positionVaultMetaData.maxGasPriceForHarvest)
+            return (false, abi.encode(0));
 
         // If we have made it this far, then we know yield is sufficient, and gas price is low enough.
         upkeepNeeded = true;
@@ -469,8 +578,12 @@ abstract contract BasePositionVault is ERC4626, Initializable, KeeperCompatibleI
     }
 
     function performUpkeep(bytes calldata performData) external {
-        if (msg.sender != positionVaultMetaData.automationRegistry) revert("Not a Keeper.");
-        (bool circuitBreaker, bytes memory data) = abi.decode(performData, (bool, bytes));
+        if (msg.sender != positionVaultMetaData.automationRegistry)
+            revert("Not a Keeper.");
+        (bool circuitBreaker, bytes memory data) = abi.decode(
+            performData,
+            (bool, bytes)
+        );
         // If checkupkeep triggered circuit breaker, shutdown vault.
         if (circuitBreaker) {
             positionVaultMetaData.isShutdown = true;

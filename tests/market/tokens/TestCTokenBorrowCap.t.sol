@@ -16,7 +16,9 @@ contract TestCTokenBorrowCap is TestBaseMarket {
         );
         vm.store(
             DAI_ADDRESS,
-            keccak256(abi.encodePacked(uint256(uint160(liquidator)), uint256(2))),
+            keccak256(
+                abi.encodePacked(uint256(uint160(liquidator)), uint256(2))
+            ),
             bytes32(uint256(200000e18))
         );
     }
@@ -36,7 +38,10 @@ contract TestCTokenBorrowCap is TestBaseMarket {
         cTokens[0] = cDAI;
         uint256[] memory borrowCapAmounts = new uint256[](1);
         borrowCapAmounts[0] = 49e18;
-        Lendtroller(unitroller)._setMarketBorrowCaps(cTokens, borrowCapAmounts);
+        Lendtroller(unitroller)._setMarketBorrowCaps(
+            cTokens,
+            borrowCapAmounts
+        );
 
         // approve
         dai.approve(address(cDAI), 100e18);
@@ -52,7 +57,10 @@ contract TestCTokenBorrowCap is TestBaseMarket {
         // increase borrow cap to 51
         vm.prank(admin);
         borrowCapAmounts[0] = 51e18;
-        Lendtroller(unitroller)._setMarketBorrowCaps(cTokens, borrowCapAmounts);
+        Lendtroller(unitroller)._setMarketBorrowCaps(
+            cTokens,
+            borrowCapAmounts
+        );
 
         uint256 balanceBeforeBorrow = dai.balanceOf(user);
         // can borrow 50

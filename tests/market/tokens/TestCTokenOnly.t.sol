@@ -16,7 +16,9 @@ contract TestCToken is TestBaseMarket {
         );
         vm.store(
             DAI_ADDRESS,
-            keccak256(abi.encodePacked(uint256(uint160(liquidator)), uint256(2))),
+            keccak256(
+                abi.encodePacked(uint256(uint160(liquidator)), uint256(2))
+            ),
             bytes32(uint256(200000e18))
         );
     }
@@ -169,7 +171,10 @@ contract TestCToken is TestBaseMarket {
         Lendtroller(unitroller)._supportMarket(CToken(address(cDAI)));
         // set collateral factor
         vm.prank(admin);
-        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 6e17);
+        Lendtroller(unitroller)._setCollateralFactor(
+            CToken(address(cDAI)),
+            6e17
+        );
 
         // enter markets
         vm.prank(user);
@@ -190,7 +195,10 @@ contract TestCToken is TestBaseMarket {
 
         // set collateral factor
         vm.prank(admin);
-        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 5e17);
+        Lendtroller(unitroller)._setCollateralFactor(
+            CToken(address(cDAI)),
+            5e17
+        );
 
         // approve
         vm.prank(liquidator);

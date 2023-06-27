@@ -13,7 +13,10 @@ abstract contract RewardsInterface {
     /// @notice Emitted when a new CVE speed is calculated for a market
     event CveSpeedUpdated(CToken indexed cToken, uint256 newSpeed);
     /// @notice Emitted when a new CVE speed is set for a contributor
-    event ContributorCveSpeedUpdated(address indexed contributor, uint256 newSpeed);
+    event ContributorCveSpeedUpdated(
+        address indexed contributor,
+        uint256 newSpeed
+    );
     /// @notice Emitted when CVE is distributed to a supplier
     event DistributedSupplierCve(
         CToken indexed cToken,
@@ -31,7 +34,12 @@ abstract contract RewardsInterface {
     /// @notice Emitted when CVE is granted by admin
     event CveGranted(address recipient, uint256 amount);
 
-    function updateCveSupplyIndexExternal(address cTokenCollateral) external virtual;
+    function updateCveSupplyIndexExternal(address cTokenCollateral)
+        external
+        virtual;
 
-    function distributeSupplierCveExternal(address cTokenCollateral, address claimer) external virtual;
+    function distributeSupplierCveExternal(
+        address cTokenCollateral,
+        address claimer
+    ) external virtual;
 }

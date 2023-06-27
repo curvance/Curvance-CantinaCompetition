@@ -60,7 +60,12 @@ contract JumpRateModel is InterestRateModel {
         jumpMultiplierPerBlock = jumpMultiplierPerYear / blocksPerYear;
         kink = kink_;
 
-        emit NewInterestParams(baseRatePerBlock, multiplierPerBlock, jumpMultiplierPerBlock, kink);
+        emit NewInterestParams(
+            baseRatePerBlock,
+            multiplierPerBlock,
+            jumpMultiplierPerBlock,
+            kink
+        );
     }
 
     /**
@@ -100,7 +105,8 @@ contract JumpRateModel is InterestRateModel {
         if (util <= kink) {
             return ((util * multiplierPerBlock) / BASE) + baseRatePerBlock;
         } else {
-            uint256 normalRate = ((kink * multiplierPerBlock) / BASE) + baseRatePerBlock;
+            uint256 normalRate = ((kink * multiplierPerBlock) / BASE) +
+                baseRatePerBlock;
             uint256 excessUtil = util - kink;
             return ((excessUtil * jumpMultiplierPerBlock) / BASE) + normalRate;
         }

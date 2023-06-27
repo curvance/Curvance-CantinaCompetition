@@ -33,7 +33,7 @@ contract CDaiDelegate is CErc20Delegate {
     address public vatAddress;
 
     /*** Maker Internals ***/
-    uint256 private constant RAY = 10 ** 27;
+    uint256 private constant RAY = 10**27;
 
     /**
      * @notice Delegate interface to become the implementation
@@ -44,7 +44,10 @@ contract CDaiDelegate is CErc20Delegate {
             revert AddressUnauthorized();
         }
 
-        (address daiJoinAddress_, address potAddress_) = abi.decode(data, (address, address));
+        (address daiJoinAddress_, address potAddress_) = abi.decode(
+            data,
+            (address, address)
+        );
         return _becomeImplementation(daiJoinAddress_, potAddress_);
     }
 
@@ -53,7 +56,10 @@ contract CDaiDelegate is CErc20Delegate {
      * @param daiJoinAddress_ DAI adapter address
      * @param potAddress_ DAI Savings Rate (DSR) pot address
      */
-    function _becomeImplementation(address daiJoinAddress_, address potAddress_) internal {
+    function _becomeImplementation(
+        address daiJoinAddress_,
+        address potAddress_
+    ) internal {
         // Get dai and vat and sanity check the underlying
         DaiJoinLike daiJoin = DaiJoinLike(daiJoinAddress_);
         PotLike pot = PotLike(potAddress_);
@@ -143,7 +149,11 @@ contract CDaiDelegate is CErc20Delegate {
      * @param amount Amount of underlying to transfer
      * @return The actual amount that is transferred
      */
-    function doTransferIn(address from, uint256 amount) internal override returns (uint256) {
+    function doTransferIn(address from, uint256 amount)
+        internal
+        override
+        returns (uint256)
+    {
         // Read from storage once
         address underlying_ = underlying;
         // Perform the EIP-20 transfer in
@@ -175,7 +185,10 @@ contract CDaiDelegate is CErc20Delegate {
      * @param to Address to transfer funds to
      * @param amount Amount of underlying to transfer
      */
-    function doTransferOut(address payable to, uint256 amount) internal override {
+    function doTransferOut(address payable to, uint256 amount)
+        internal
+        override
+    {
         DaiJoinLike daiJoin = DaiJoinLike(daiJoinAddress);
         PotLike pot = PotLike(potAddress);
 

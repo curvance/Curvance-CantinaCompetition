@@ -2,9 +2,9 @@
 pragma solidity >=0.8.12;
 
 struct lzTxObj {
-        uint256 dstGasForCall;
-        uint256 dstNativeAmount;
-        bytes dstNativeAddr;
+    uint256 dstGasForCall;
+    uint256 dstNativeAmount;
+    bytes dstNativeAddr;
 }
 
 interface swapRouter {
@@ -19,6 +19,7 @@ interface swapRouter {
         bytes calldata _to,
         bytes calldata _payload
     ) external payable;
+
     function quoteLayerZeroFee(
         uint16 _dstChainId,
         uint8 _functionType,

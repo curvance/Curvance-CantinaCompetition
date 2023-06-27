@@ -27,7 +27,12 @@ library SafeTransferLib {
                             ERC20 OPERATIONS
     //////////////////////////////////////////////////////////////*/
 
-    function safeTransferFrom(ERC20 token, address from, address to, uint256 amount) internal {
+    function safeTransferFrom(
+        ERC20 token,
+        address from,
+        address to,
+        uint256 amount
+    ) internal {
         bool success;
 
         assembly {
@@ -35,7 +40,10 @@ library SafeTransferLib {
             let freeMemoryPointer := mload(0x40)
 
             // Write the abi-encoded calldata into memory, beginning with the function selector.
-            mstore(freeMemoryPointer, 0x23b872dd00000000000000000000000000000000000000000000000000000000)
+            mstore(
+                freeMemoryPointer,
+                0x23b872dd00000000000000000000000000000000000000000000000000000000
+            )
             mstore(add(freeMemoryPointer, 4), from) // Append the "from" argument.
             mstore(add(freeMemoryPointer, 36), to) // Append the "to" argument.
             mstore(add(freeMemoryPointer, 68), amount) // Append the "amount" argument.
@@ -43,7 +51,10 @@ library SafeTransferLib {
             success := and(
                 // Set success to whether the call reverted, if not we check it either
                 // returned exactly 1 (can't just be non-zero data), or had no return data.
-                or(and(eq(mload(0), 1), gt(returndatasize(), 31)), iszero(returndatasize())),
+                or(
+                    and(eq(mload(0), 1), gt(returndatasize(), 31)),
+                    iszero(returndatasize())
+                ),
                 // We use 100 because the length of our calldata totals up like so: 4 + 32 * 3.
                 // We use 0 and 32 to copy up to 32 bytes of return data into the scratch space.
                 // Counterintuitively, this call must be positioned second to the or() call in the
@@ -55,7 +66,11 @@ library SafeTransferLib {
         require(success, "TRANSFER_FROM_FAILED");
     }
 
-    function safeTransfer(ERC20 token, address to, uint256 amount) internal {
+    function safeTransfer(
+        ERC20 token,
+        address to,
+        uint256 amount
+    ) internal {
         bool success;
 
         assembly {
@@ -63,14 +78,20 @@ library SafeTransferLib {
             let freeMemoryPointer := mload(0x40)
 
             // Write the abi-encoded calldata into memory, beginning with the function selector.
-            mstore(freeMemoryPointer, 0xa9059cbb00000000000000000000000000000000000000000000000000000000)
+            mstore(
+                freeMemoryPointer,
+                0xa9059cbb00000000000000000000000000000000000000000000000000000000
+            )
             mstore(add(freeMemoryPointer, 4), to) // Append the "to" argument.
             mstore(add(freeMemoryPointer, 36), amount) // Append the "amount" argument.
 
             success := and(
                 // Set success to whether the call reverted, if not we check it either
                 // returned exactly 1 (can't just be non-zero data), or had no return data.
-                or(and(eq(mload(0), 1), gt(returndatasize(), 31)), iszero(returndatasize())),
+                or(
+                    and(eq(mload(0), 1), gt(returndatasize(), 31)),
+                    iszero(returndatasize())
+                ),
                 // We use 68 because the length of our calldata totals up like so: 4 + 32 * 2.
                 // We use 0 and 32 to copy up to 32 bytes of return data into the scratch space.
                 // Counterintuitively, this call must be positioned second to the or() call in the
@@ -82,7 +103,11 @@ library SafeTransferLib {
         require(success, "TRANSFER_FAILED");
     }
 
-    function safeApprove(ERC20 token, address to, uint256 amount) internal {
+    function safeApprove(
+        ERC20 token,
+        address to,
+        uint256 amount
+    ) internal {
         bool success;
 
         assembly {
@@ -90,14 +115,20 @@ library SafeTransferLib {
             let freeMemoryPointer := mload(0x40)
 
             // Write the abi-encoded calldata into memory, beginning with the function selector.
-            mstore(freeMemoryPointer, 0x095ea7b300000000000000000000000000000000000000000000000000000000)
+            mstore(
+                freeMemoryPointer,
+                0x095ea7b300000000000000000000000000000000000000000000000000000000
+            )
             mstore(add(freeMemoryPointer, 4), to) // Append the "to" argument.
             mstore(add(freeMemoryPointer, 36), amount) // Append the "amount" argument.
 
             success := and(
                 // Set success to whether the call reverted, if not we check it either
                 // returned exactly 1 (can't just be non-zero data), or had no return data.
-                or(and(eq(mload(0), 1), gt(returndatasize(), 31)), iszero(returndatasize())),
+                or(
+                    and(eq(mload(0), 1), gt(returndatasize(), 31)),
+                    iszero(returndatasize())
+                ),
                 // We use 68 because the length of our calldata totals up like so: 4 + 32 * 2.
                 // We use 0 and 32 to copy up to 32 bytes of return data into the scratch space.
                 // Counterintuitively, this call must be positioned second to the or() call in the

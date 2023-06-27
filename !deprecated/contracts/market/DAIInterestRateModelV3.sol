@@ -89,8 +89,18 @@ contract DAIInterestRateModelV3 is JumpRateModelV2 {
         uint256 borrows,
         uint256 reserves,
         uint256 reserveFactorMantissa
-    ) public view override(BaseJumpRateModelV2, InterestRateModel) returns (uint256) {
-        uint256 protocolRate = super.getSupplyRate(cash, borrows, reserves, reserveFactorMantissa);
+    )
+        public
+        view
+        override(BaseJumpRateModelV2, InterestRateModel)
+        returns (uint256)
+    {
+        uint256 protocolRate = super.getSupplyRate(
+            cash,
+            borrows,
+            reserves,
+            reserveFactorMantissa
+        );
 
         uint256 underlying = cash + borrows - reserves;
         if (underlying == 0) {
@@ -107,7 +117,8 @@ contract DAIInterestRateModelV3 is JumpRateModelV2 {
      */
     function dsrPerBlock() public view returns (uint256) {
         // scaled RAY_BASE aka RAY, and includes an extra "ONE" before subtraction // descale to BASE // seconds per block
-        return ((pot.dsr() - RAY_BASE) / RAY_TO_BASE_SCALE) * SECONDS_PER_BLOCK;
+        return
+            ((pot.dsr() - RAY_BASE) / RAY_TO_BASE_SCALE) * SECONDS_PER_BLOCK;
     }
 
     /**
@@ -115,18 +126,29 @@ contract DAIInterestRateModelV3 is JumpRateModelV2 {
      */
     function poke() public {
         (uint256 duty, ) = jug.ilks("ETH-A");
-        uint256 stabilityFeePerBlock = ((duty + jug.base() - RAY_BASE) / RAY_TO_BASE_SCALE) * SECONDS_PER_BLOCK;
+        uint256 stabilityFeePerBlock = ((duty + jug.base() - RAY_BASE) /
+            RAY_TO_BASE_SCALE) * SECONDS_PER_BLOCK;
 
         // We ensure the minimum borrow rate >= DSR / (1 - reserve factor)
-        baseRatePerBlock = (dsrPerBlock() * BASE) / assumedOneMinusReserveFactorMantissa;
+        baseRatePerBlock =
+            (dsrPerBlock() * BASE) /
+            assumedOneMinusReserveFactorMantissa;
 
         // The roof borrow rate is max(base rate, stability fee) + gap, from which we derive the slope
         if (baseRatePerBlock < stabilityFeePerBlock) {
-            multiplierPerBlock = ((stabilityFeePerBlock - baseRatePerBlock + gapPerBlock) * BASE) / kink;
+            multiplierPerBlock =
+                ((stabilityFeePerBlock - baseRatePerBlock + gapPerBlock) *
+                    BASE) /
+                kink;
         } else {
             multiplierPerBlock = (gapPerBlock * BASE) / kink;
         }
 
-        emit NewInterestParams(baseRatePerBlock, multiplierPerBlock, jumpMultiplierPerBlock, kink);
+        emit NewInterestParams(
+            baseRatePerBlock,
+            multiplierPerBlock,
+            jumpMultiplierPerBlock,
+            kink
+        );
     }
 }

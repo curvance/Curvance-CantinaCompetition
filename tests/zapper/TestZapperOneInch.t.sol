@@ -28,10 +28,19 @@ contract TestZapperOneInch is TestBase {
         // setup environment
         IERC20 token = IERC20(0xc4AD29ba4B3c580e6D59105FFf484999997675Ff);
         address minter = 0xD51a44d3FaE010294C616388b506AcdA1bfAAE46;
-        MockCToken cToken = new MockCToken(address(token), "CToken", "CToken", 18);
+        MockCToken cToken = new MockCToken(
+            address(token),
+            "CToken",
+            "CToken",
+            18
+        );
         MockLendtroller lendtroller = new MockLendtroller();
         lendtroller.setMarket(address(cToken), true);
-        ZapperOneInch zapper = new ZapperOneInch(address(lendtroller), oneInchRouter, weth);
+        ZapperOneInch zapper = new ZapperOneInch(
+            address(lendtroller),
+            oneInchRouter,
+            weth
+        );
 
         // try zap in
         address[] memory tokens = new address[](3);
@@ -62,10 +71,19 @@ contract TestZapperOneInch is TestBase {
         // setup environment
         IERC20 token = IERC20(0xc4AD29ba4B3c580e6D59105FFf484999997675Ff);
         address minter = 0xD51a44d3FaE010294C616388b506AcdA1bfAAE46;
-        MockCToken cToken = new MockCToken(address(token), "CToken", "CToken", 18);
+        MockCToken cToken = new MockCToken(
+            address(token),
+            "CToken",
+            "CToken",
+            18
+        );
         MockLendtroller lendtroller = new MockLendtroller();
         lendtroller.setMarket(address(cToken), true);
-        ZapperOneInch zapper = new ZapperOneInch(address(lendtroller), oneInchRouter, weth);
+        ZapperOneInch zapper = new ZapperOneInch(
+            address(lendtroller),
+            oneInchRouter,
+            weth
+        );
 
         // approve dai
         IERC20(dai).approve(address(zapper), 3000 ether);
@@ -84,7 +102,16 @@ contract TestZapperOneInch is TestBase {
         tokenSwaps[
             1
         ] = hex"e449022e00000000000000000000000000000000000000000000003635c9adc5dea0000000000000000000000000000000000000000000000000000000000000001d344a00000000000000000000000000000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000000001800000000000000000000000391e8501b626c623d39474afca6f9e46c2686649cfee7c08";
-        zapper.curvanceIn(address(cToken), dai, 3000 ether, minter, address(token), 0, tokens, tokenSwaps);
+        zapper.curvanceIn(
+            address(cToken),
+            dai,
+            3000 ether,
+            minter,
+            address(token),
+            0,
+            tokens,
+            tokenSwaps
+        );
 
         assertGt(cToken.balanceOf(user), 0);
 
@@ -98,10 +125,19 @@ contract TestZapperOneInch is TestBase {
         // setup environment
         IERC20 token = IERC20(0x3175Df0976dFA876431C2E9eE6Bc45b65d3473CC);
         address minter = 0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2;
-        MockCToken cToken = new MockCToken(address(token), "CToken", "CToken", 18);
+        MockCToken cToken = new MockCToken(
+            address(token),
+            "CToken",
+            "CToken",
+            18
+        );
         MockLendtroller lendtroller = new MockLendtroller();
         lendtroller.setMarket(address(cToken), true);
-        ZapperOneInch zapper = new ZapperOneInch(address(lendtroller), oneInchRouter, weth);
+        ZapperOneInch zapper = new ZapperOneInch(
+            address(lendtroller),
+            oneInchRouter,
+            weth
+        );
 
         // try zap in
         address[] memory tokens = new address[](2);

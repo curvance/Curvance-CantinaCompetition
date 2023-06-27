@@ -14,13 +14,19 @@ contract Unitroller is UnitrollerStorage {
     /**
      * @notice Emitted when pendingLendtrollerImplementation is changed
      */
-    event NewPendingImplementation(address oldPendingImplementation, address newPendingImplementation);
+    event NewPendingImplementation(
+        address oldPendingImplementation,
+        address newPendingImplementation
+    );
 
     /**
      * @notice Emitted when pendingLendtrollerImplementation is accepted,
      *          which means lendtroller implementation is updated
      */
-    event NewImplementation(address oldImplementation, address newImplementation);
+    event NewImplementation(
+        address oldImplementation,
+        address newImplementation
+    );
 
     /**
      * @notice Emitted when pendingAdmin is changed
@@ -38,7 +44,9 @@ contract Unitroller is UnitrollerStorage {
     }
 
     /*** Admin Functions ***/
-    function _setPendingImplementation(address newPendingImplementation) public {
+    function _setPendingImplementation(address newPendingImplementation)
+        public
+    {
         if (msg.sender != admin) {
             revert AddressUnauthorized();
         }
@@ -47,7 +55,10 @@ contract Unitroller is UnitrollerStorage {
 
         pendingLendtrollerImplementation = newPendingImplementation;
 
-        emit NewPendingImplementation(oldPendingImplementation, pendingLendtrollerImplementation);
+        emit NewPendingImplementation(
+            oldPendingImplementation,
+            pendingLendtrollerImplementation
+        );
     }
 
     /**
@@ -56,7 +67,10 @@ contract Unitroller is UnitrollerStorage {
      */
     function _acceptImplementation() public {
         // Check caller is pendingImplementation and pendingImplementation ≠ address(0)
-        if (msg.sender != pendingLendtrollerImplementation || pendingLendtrollerImplementation == address(0)) {
+        if (
+            msg.sender != pendingLendtrollerImplementation ||
+            pendingLendtrollerImplementation == address(0)
+        ) {
             revert AddressUnauthorized();
         }
 
@@ -69,7 +83,10 @@ contract Unitroller is UnitrollerStorage {
         pendingLendtrollerImplementation = address(0);
 
         emit NewImplementation(oldImplementation, lendtrollerImplementation);
-        emit NewPendingImplementation(oldPendingImplementation, pendingLendtrollerImplementation);
+        emit NewPendingImplementation(
+            oldPendingImplementation,
+            pendingLendtrollerImplementation
+        );
     }
 
     /**

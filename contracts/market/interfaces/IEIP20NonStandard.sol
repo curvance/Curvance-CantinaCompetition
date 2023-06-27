@@ -59,7 +59,9 @@ interface IEIP20NonStandard {
      * @param amount The number of tokens that are approved
      * @return success Whether or not the approval succeeded
      */
-    function approve(address spender, uint256 amount) external returns (bool success);
+    function approve(address spender, uint256 amount)
+        external
+        returns (bool success);
 
     /**
      * @notice Get the current allowance from `owner` for `spender`
@@ -67,8 +69,15 @@ interface IEIP20NonStandard {
      * @param spender The address of the account which may transfer tokens
      * @return remaining The number of tokens allowed to be spent
      */
-    function allowance(address owner, address spender) external view returns (uint256 remaining);
+    function allowance(address owner, address spender)
+        external
+        view
+        returns (uint256 remaining);
 
     event Transfer(address indexed from, address indexed to, uint256 amount);
-    event Approval(address indexed owner, address indexed spender, uint256 amount);
+    event Approval(
+        address indexed owner,
+        address indexed spender,
+        uint256 amount
+    );
 }

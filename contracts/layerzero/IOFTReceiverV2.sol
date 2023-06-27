@@ -12,5 +12,12 @@ interface IOFTReceiverV2 {
      * @param _amount The amount of tokens to transfer.
      * @param _payload Additional data with no specified format.
      */
-    function onOFTReceived(uint16 _srcChainId, bytes calldata _srcAddress, uint64 _nonce, bytes32 _from, uint _amount, bytes calldata _payload) external;
+    function onOFTReceived(
+        uint16 _srcChainId,
+        bytes calldata _srcAddress,
+        uint64 _nonce,
+        bytes32 _from,
+        uint256 _amount,
+        bytes calldata _payload
+    ) external;
 }

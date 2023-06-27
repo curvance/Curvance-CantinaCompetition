@@ -39,19 +39,26 @@ contract CompRewards is MarketStorage, RewardsStorage, RewardsInterface {
             updateCveBorrowIndex(address(cToken), cToken.borrowIndex());
         } else if (cveSpeed != 0) {
             // Add the CVE market
-            (bool isListed, , ) = ComptrollerInterface(comptroller).getIsMarkets(address(cToken));
+            (bool isListed, , ) = ComptrollerInterface(comptroller)
+                .getIsMarkets(address(cToken));
             if (isListed != true) {
                 revert MarketNotListed();
             }
 
-            if (cveSupplyState[address(cToken)].index == 0 && cveSupplyState[address(cToken)].block == 0) {
+            if (
+                cveSupplyState[address(cToken)].index == 0 &&
+                cveSupplyState[address(cToken)].block == 0
+            ) {
                 cveSupplyState[address(cToken)] = CveMarketState({
                     index: cveInitialIndex,
                     block: SafeMath.safe32(getBlockNumber())
                 });
             }
 
-            if (cveBorrowState[address(cToken)].index == 0 && cveBorrowState[address(cToken)].block == 0) {
+            if (
+                cveBorrowState[address(cToken)].index == 0 &&
+                cveBorrowState[address(cToken)].block == 0
+            ) {
                 cveBorrowState[address(cToken)] = CveMarketState({
                     index: cveInitialIndex,
                     block: SafeMath.safe32(getBlockNumber())
@@ -70,7 +77,10 @@ contract CompRewards is MarketStorage, RewardsStorage, RewardsInterface {
      * @dev externally called by comptroller
      * @param cTokenCollateral The market whose CVE speed to update
      */
-    function updateCveSupplyIndexExternal(address cTokenCollateral) external override {
+    function updateCveSupplyIndexExternal(address cTokenCollateral)
+        external
+        override
+    {
         if (msg.sender != comptroller) {
             revert AddressUnauthorized();
         }
@@ -89,7 +99,9 @@ contract CompRewards is MarketStorage, RewardsStorage, RewardsInterface {
         if (deltaBlocks > 0 && supplySpeed > 0) {
             uint256 supplyTokens = CToken(cToken).totalSupply();
             uint256 cveAccrued = deltaBlocks * supplySpeed;
-            uint256 ratioScaled = supplyTokens > 0 ? ((cveAccrued * expScale) / supplyTokens) : 0;
+            uint256 ratioScaled = supplyTokens > 0
+                ? ((cveAccrued * expScale) / supplyTokens)
+                : 0;
             uint256 indexScaled = (supplyState.index + ratioScaled);
             cveSupplyState[cToken] = CveMarketState({
                 index: SafeMath.safe224(indexScaled),
@@ -104,15 +116,20 @@ contract CompRewards is MarketStorage, RewardsStorage, RewardsInterface {
      * @notice Accrue CVE to the market by updating the borrow index
      * @param cToken The market whose borrow index to update
      */
-    function updateCveBorrowIndex(address cToken, uint256 marketBorrowIndex) internal {
+    function updateCveBorrowIndex(address cToken, uint256 marketBorrowIndex)
+        internal
+    {
         CveMarketState storage borrowState = cveBorrowState[cToken];
         uint256 borrowSpeed = cveSpeeds[cToken];
         uint256 blockNumber = getBlockNumber();
         uint256 deltaBlocks = blockNumber - uint256(borrowState.block);
         if (deltaBlocks > 0 && borrowSpeed > 0) {
-            uint256 borrowAmount = (CToken(cToken).totalBorrows() * expScale) / marketBorrowIndex;
+            uint256 borrowAmount = (CToken(cToken).totalBorrows() * expScale) /
+                marketBorrowIndex;
             uint256 cveAccrued = deltaBlocks * borrowSpeed;
-            uint256 ratioScaled = borrowAmount > 0 ? ((cveAccrued * expScale) / borrowAmount) : (0);
+            uint256 ratioScaled = borrowAmount > 0
+                ? ((cveAccrued * expScale) / borrowAmount)
+                : (0);
             uint256 indexScaled = (borrowState.index + ratioScaled);
             cveBorrowState[cToken] = CveMarketState({
                 index: SafeMath.safe224(indexScaled),
@@ -129,7 +146,10 @@ contract CompRewards is MarketStorage, RewardsStorage, RewardsInterface {
      * @param cTokenCollateral The market in which the supplier is interacting
      * @param claimer The address of the supplier to distribute CVE to
      */
-    function distributeSupplierCveExternal(address cTokenCollateral, address claimer) external override {
+    function distributeSupplierCveExternal(
+        address cTokenCollateral,
+        address claimer
+    ) external override {
         if (msg.sender != comptroller) {
             revert AddressUnauthorized();
         }
@@ -155,7 +175,12 @@ contract CompRewards is MarketStorage, RewardsStorage, RewardsInterface {
         uint256 supplierDelta = (supplierTokens * deltaIndex) / expScale;
         uint256 supplierAccrued = cveAccrued[supplier] + supplierDelta;
         cveAccrued[supplier] = supplierAccrued;
-        emit DistributedSupplierCve(CToken(cToken), supplier, supplierDelta, supplyIndex);
+        emit DistributedSupplierCve(
+            CToken(cToken),
+            supplier,
+            supplierDelta,
+            supplyIndex
+        );
     }
 
     /**
@@ -179,12 +204,19 @@ contract CompRewards is MarketStorage, RewardsStorage, RewardsInterface {
         }
 
         uint256 deltaIndex = borrowIndex - borrowerIndex;
-        uint256 borrowerAmount = (CToken(cToken).borrowBalanceStored(borrower) * expScale) / marketBorrowIndex;
+        uint256 borrowerAmount = (CToken(cToken).borrowBalanceStored(
+            borrower
+        ) * expScale) / marketBorrowIndex;
         uint256 borrowerDelta = (borrowerAmount * deltaIndex) / expScale;
         uint256 borrowerAccrued = cveAccrued[borrower] + borrowerDelta;
         cveAccrued[borrower] = borrowerAccrued;
 
-        emit DistributedBorrowerCve(CToken(cToken), borrower, borrowerDelta, borrowIndex); //.mantissa);
+        emit DistributedBorrowerCve(
+            CToken(cToken),
+            borrower,
+            borrowerDelta,
+            borrowIndex
+        ); //.mantissa);
     }
 
     /**
@@ -209,7 +241,11 @@ contract CompRewards is MarketStorage, RewardsStorage, RewardsInterface {
      * @param holder The address to claim CVE for
      */
     function claimCve(address holder) public {
-        return claimCve(holder, ComptrollerInterface(comptroller).getAllMarkets());
+        return
+            claimCve(
+                holder,
+                ComptrollerInterface(comptroller).getAllMarkets()
+            );
     }
 
     /**
@@ -238,7 +274,8 @@ contract CompRewards is MarketStorage, RewardsStorage, RewardsInterface {
     ) public {
         for (uint256 i = 0; i < cTokens.length; i++) {
             CToken cToken = cTokens[i];
-            (bool isListed, , ) = ComptrollerInterface(comptroller).getIsMarkets(address(cToken));
+            (bool isListed, , ) = ComptrollerInterface(comptroller)
+                .getIsMarkets(address(cToken));
             if (!isListed) {
                 revert MarketNotListed();
             }
@@ -246,15 +283,25 @@ contract CompRewards is MarketStorage, RewardsStorage, RewardsInterface {
                 uint256 borrowIndex = cToken.borrowIndex();
                 updateCveBorrowIndex(address(cToken), borrowIndex);
                 for (uint256 j = 0; j < holders.length; j++) {
-                    distributeBorrowerCve(address(cToken), holders[j], borrowIndex);
-                    cveAccrued[holders[j]] = grantCveInternal(holders[j], cveAccrued[holders[j]]);
+                    distributeBorrowerCve(
+                        address(cToken),
+                        holders[j],
+                        borrowIndex
+                    );
+                    cveAccrued[holders[j]] = grantCveInternal(
+                        holders[j],
+                        cveAccrued[holders[j]]
+                    );
                 }
             }
             if (suppliers == true) {
                 updateCveSupplyIndex(address(cToken));
                 for (uint256 j = 0; j < holders.length; j++) {
                     distributeSupplierCve(address(cToken), holders[j]);
-                    cveAccrued[holders[j]] = grantCveInternal(holders[j], cveAccrued[holders[j]]);
+                    cveAccrued[holders[j]] = grantCveInternal(
+                        holders[j],
+                        cveAccrued[holders[j]]
+                    );
                 }
             }
         }
@@ -267,7 +314,10 @@ contract CompRewards is MarketStorage, RewardsStorage, RewardsInterface {
      * @param amount The amount of CVE to (possibly) transfer
      * @return The amount of CVE which was NOT transferred to the user
      */
-    function grantCveInternal(address user, uint256 amount) internal returns (uint256) {
+    function grantCveInternal(address user, uint256 amount)
+        internal
+        returns (uint256)
+    {
         CVE cve = CVE(getCveAddress());
         uint256 cveRemaining = cve.balanceOf(address(this));
         if (amount > 0 && amount <= cveRemaining) {
@@ -311,7 +361,9 @@ contract CompRewards is MarketStorage, RewardsStorage, RewardsInterface {
      * @param contributor The contributor whose CVE speed to update
      * @param cveSpeed New CVE speed for contributor
      */
-    function _setContributorCveSpeed(address contributor, uint256 cveSpeed) public {
+    function _setContributorCveSpeed(address contributor, uint256 cveSpeed)
+        public
+    {
         if (!adminOrInitializing()) {
             revert AddressUnauthorized();
         }
@@ -358,6 +410,9 @@ contract CompRewards is MarketStorage, RewardsStorage, RewardsInterface {
      * @notice Checks caller is admin, or this contract is becoming the new implementation
      */
     function adminOrInitializing() internal view returns (bool) {
-        return msg.sender == admin || msg.sender == ComptrollerInterface(comptroller).comptrollerImplementation();
+        return
+            msg.sender == admin ||
+            msg.sender ==
+            ComptrollerInterface(comptroller).comptrollerImplementation();
     }
 }

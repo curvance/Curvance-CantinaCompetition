@@ -20,9 +20,16 @@ contract MockDataFeed {
     function latestRoundData()
         external
         view
-        returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)
+        returns (
+            uint80 roundId,
+            int256 answer,
+            uint256 startedAt,
+            uint256 updatedAt,
+            uint80 answeredInRound
+        )
     {
-        (roundId, answer, startedAt, updatedAt, answeredInRound) = realFeed.latestRoundData();
+        (roundId, answer, startedAt, updatedAt, answeredInRound) = realFeed
+            .latestRoundData();
         if (mockAnswer != 0) answer = mockAnswer;
         if (mockUpdatedAt != 0) updatedAt = mockUpdatedAt;
     }

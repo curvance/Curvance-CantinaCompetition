@@ -36,7 +36,11 @@ contract CurveV2Extension is Extension {
      * @dev _storage A VirtualPriceBound value for this asset.
      * @dev Assumes that curve pools never add or remove tokens.
      */
-    function setupSource(address asset, uint64 _sourceId, bytes memory data) external override onlyPriceOps {
+    function setupSource(
+        address asset,
+        uint64 _sourceId,
+        bytes memory data
+    ) external override onlyPriceOps {
         address _source = abi.decode(data, (address));
         ICurvePool pool = ICurvePool(_source);
         uint8 coinsLength = 0;
@@ -48,7 +52,8 @@ contract CurveV2Extension is Extension {
                 break;
             }
         }
-        if (coinsLength != 2 && coinsLength != 3) revert CurveV2Extension__UnsupportedPool();
+        if (coinsLength != 2 && coinsLength != 3)
+            revert CurveV2Extension__UnsupportedPool();
         address[] memory coins = new address[](coinsLength);
         for (uint256 i = 0; i < coinsLength; i++) {
             coins[i] = pool.coins(i);
@@ -73,7 +78,7 @@ contract CurveV2Extension is Extension {
     }
 
     uint256 private constant GAMMA0 = 28000000000000;
-    uint256 private constant A0 = 2 * 3 ** 3 * 10000;
+    uint256 private constant A0 = 2 * 3**3 * 10000;
     uint256 private constant DISCOUNT0 = 1087460000000000;
 
     // x has 36 decimals
@@ -83,10 +88,12 @@ contract CurveV2Extension is Extension {
         for (uint8 i; i < 256; i++) {
             uint256 diff;
             uint256 D_prev = D;
-            D = (D * (2 * 1e18 + ((((x / D) * 1e18) / D) * 1e18) / D)) / (3 * 1e18);
+            D =
+                (D * (2 * 1e18 + ((((x / D) * 1e18) / D) * 1e18) / D)) /
+                (3 * 1e18);
             if (D > D_prev) diff = D - D_prev;
             else diff = D_prev - D;
-            if (diff <= 1 || diff * 10 ** 18 < D) return D;
+            if (diff <= 1 || diff * 10**18 < D) return D;
         }
         revert CurveV2Extension__DidNotConverge();
     }
@@ -95,10 +102,20 @@ contract CurveV2Extension is Extension {
      * Inspired by https://etherscan.io/address/0xE8b2989276E2Ca8FDEA2268E3551b2b4B2418950#code
      * @notice Get the price of a CurveV2 derivative in terms of Base.
      */
-    function getPriceInBase(
-        uint64 sourceId
-    ) external view override onlyPriceOps returns (uint256 upper, uint256 lower, uint8 errorCode) {
-        CurveDerivativeStorage memory stor = getCurveDerivativeStorage[sourceId];
+    function getPriceInBase(uint64 sourceId)
+        external
+        view
+        override
+        onlyPriceOps
+        returns (
+            uint256 upper,
+            uint256 lower,
+            uint8 errorCode
+        )
+    {
+        CurveDerivativeStorage memory stor = getCurveDerivativeStorage[
+            sourceId
+        ];
 
         ICurvePool pool = ICurvePool(stor.pool);
 
@@ -114,7 +131,9 @@ contract CurveV2Extension is Extension {
 
         uint256 token0Upper;
         uint256 token0Lower;
-        (token0Upper, token0Lower, errorCode) = priceOps.getPriceInBase(stor.coins[0]);
+        (token0Upper, token0Lower, errorCode) = priceOps.getPriceInBase(
+            stor.coins[0]
+        );
         if (errorCode == BAD_SOURCE) return (0, 0, BAD_SOURCE);
 
         if (stor.coins.length == 2) {
@@ -125,11 +144,13 @@ contract CurveV2Extension is Extension {
             uint256 t1Price = pool.price_oracle(0); //btc to usdt 18 dec
             uint256 t2Price = pool.price_oracle(1); // eth to usdt 18 dec
 
-            uint256 maxPrice = (3 * virtualPrice * _cubicRoot(t1Price * t2Price)) / 1e18;
+            uint256 maxPrice = (3 *
+                virtualPrice *
+                _cubicRoot(t1Price * t2Price)) / 1e18;
             {
                 uint256 g = pool.gamma().mulDivDown(1e18, GAMMA0);
                 uint256 a = pool.A().mulDivDown(1e18, A0);
-                uint256 coefficient = (g ** 2 / 1e18) * a;
+                uint256 coefficient = (g**2 / 1e18) * a;
                 uint256 discount = coefficient > 1e34 ? coefficient : 1e34;
                 discount = _cubicRoot(discount).mulDivDown(DISCOUNT0, 1e18);
 

@@ -66,8 +66,10 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
     /**
      * @notice Mainnet token contracts important for this vault.
      */
-    ERC20 private constant WETH = ERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
-    ERC20 private constant VELO = ERC20(0x3c8B650257cFb5f272f799F5e2b4e65093a11a05);
+    ERC20 private constant WETH =
+        ERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
+    ERC20 private constant VELO =
+        ERC20(0x3c8B650257cFb5f272f799F5e2b4e65093a11a05);
 
     // Owner needs to be able to set swap paths, deposit data, fee, fee accumulator
     /**
@@ -117,7 +119,15 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
         BasePositionVault.PositionVaultMetaData calldata _metaData,
         bytes memory _initializeData
     ) public override initializer {
-        super.initialize(_asset, _owner, _name, _symbol, _decimals, _metaData, _initializeData);
+        super.initialize(
+            _asset,
+            _owner,
+            _name,
+            _symbol,
+            _decimals,
+            _metaData,
+            _initializeData
+        );
         (
             address _tokenA,
             address _tokenB,
@@ -128,7 +138,15 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
             address _optiSwap
         ) = abi.decode(
                 _initializeData,
-                (address, address, address[], IVeloGauge, IVeloRouter, IVeloPairFactory, address)
+                (
+                    address,
+                    address,
+                    address[],
+                    IVeloGauge,
+                    IVeloRouter,
+                    IVeloPairFactory,
+                    address
+                )
             );
         tokenA = _tokenA;
         tokenB = _tokenB;
@@ -154,7 +172,13 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
                           EXTERNAL POSITION LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function harvest(bytes memory) public override whenNotShutdown nonReentrant returns (uint256 yield) {
+    function harvest(bytes memory)
+        public
+        override
+        whenNotShutdown
+        nonReentrant
+        returns (uint256 yield)
+    {
         uint256 pending = _calculatePendingRewards();
         if (pending > 0) {
             // We need to claim vested rewards.
@@ -162,7 +186,10 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
         }
 
         // Can only harvest once previous reward period is done.
-        if (positionVaultAccounting._lastVestClaim >= positionVaultAccounting._vestingPeriodEnd) {
+        if (
+            positionVaultAccounting._lastVestClaim >=
+            positionVaultAccounting._vestingPeriodEnd
+        ) {
             // 1. Withdraw all the rewards.
             gauge.getReward(address(this), rewards);
 
@@ -175,13 +202,21 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
                 if (amount == 0) continue;
 
                 // Take platform fee
-                uint256 protocolFee = amount.mulDivDown(positionVaultMetaData.platformFee, 1e18);
+                uint256 protocolFee = amount.mulDivDown(
+                    positionVaultMetaData.platformFee,
+                    1e18
+                );
                 amount -= protocolFee;
-                ERC20(reward).safeTransfer(positionVaultMetaData.feeAccumulator, protocolFee);
+                ERC20(reward).safeTransfer(
+                    positionVaultMetaData.feeAccumulator,
+                    protocolFee
+                );
 
                 uint256 valueInUSD = amount.mulDivDown(
-                    positionVaultMetaData.priceRouter.getPriceInUSD(ERC20(reward)),
-                    10 ** ERC20(reward).decimals()
+                    positionVaultMetaData.priceRouter.getPriceInUSD(
+                        ERC20(reward)
+                    ),
+                    10**ERC20(reward).decimals()
                 );
 
                 valueIn += valueInUSD;
@@ -193,15 +228,26 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
 
             // 3. Convert tokenA to LP Token underlyings
             uint256 totalAmountA = ERC20(tokenA).balanceOf(address(this));
-            if (totalAmountA == 0) revert VelodromePositionVault__BadSlippage();
+            if (totalAmountA == 0)
+                revert VelodromePositionVault__BadSlippage();
 
-            uint256 feeForUpkeep = totalAmountA.mulDivDown(positionVaultMetaData.upkeepFee, 1e18);
-            if (positionVaultMetaData.positionWatchdog == address(0)) revert VelodromePositionVault__WatchdogNotSet();
-            ERC20(tokenA).safeTransfer(positionVaultMetaData.positionWatchdog, feeForUpkeep);
+            uint256 feeForUpkeep = totalAmountA.mulDivDown(
+                positionVaultMetaData.upkeepFee,
+                1e18
+            );
+            if (positionVaultMetaData.positionWatchdog == address(0))
+                revert VelodromePositionVault__WatchdogNotSet();
+            ERC20(tokenA).safeTransfer(
+                positionVaultMetaData.positionWatchdog,
+                feeForUpkeep
+            );
             totalAmountA -= feeForUpkeep;
 
-            (uint256 r0, uint256 r1, ) = IVeloPair(address(asset)).getReserves();
-            uint256 reserveA = tokenA == IVeloPair(address(asset)).token0() ? r0 : r1;
+            (uint256 r0, uint256 r1, ) = IVeloPair(address(asset))
+                .getReserves();
+            uint256 reserveA = tokenA == IVeloPair(address(asset)).token0()
+                ? r0
+                : r1;
             uint256 swapAmount = _optimalDepositA(totalAmountA, reserveA);
             swapExactTokensForTokens(tokenA, tokenB, swapAmount);
 
@@ -211,16 +257,23 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
             // 4. Check USD value slippage
             uint256 valueOut = totalAmountA.mulDivDown(
                 positionVaultMetaData.priceRouter.getPriceInUSD(ERC20(tokenA)),
-                10 ** ERC20(tokenA).decimals()
+                10**ERC20(tokenA).decimals()
             ) +
                 totalAmountB.mulDivDown(
-                    positionVaultMetaData.priceRouter.getPriceInUSD(ERC20(tokenB)),
-                    10 ** ERC20(tokenB).decimals()
+                    positionVaultMetaData.priceRouter.getPriceInUSD(
+                        ERC20(tokenB)
+                    ),
+                    10**ERC20(tokenB).decimals()
                 );
 
             // Compare value in vs value out.
-            if (valueOut < valueIn.mulDivDown(1e18 - (positionVaultMetaData.upkeepFee + harvestSlippage), 1e18))
-                revert VelodromePositionVault__BadSlippage();
+            if (
+                valueOut <
+                valueIn.mulDivDown(
+                    1e18 - (positionVaultMetaData.upkeepFee + harvestSlippage),
+                    1e18
+                )
+            ) revert VelodromePositionVault__BadSlippage();
 
             // 5. Deposit into Velodrome
             yield = addLiquidity(tokenA, tokenB, totalAmountA, totalAmountB);
@@ -229,8 +282,12 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
             _deposit(yield);
 
             // Update Vesting info.
-            positionVaultAccounting._rewardRate = uint128(yield.mulDivDown(REWARD_SCALER, REWARD_PERIOD));
-            positionVaultAccounting._vestingPeriodEnd = uint64(block.timestamp) + REWARD_PERIOD;
+            positionVaultAccounting._rewardRate = uint128(
+                yield.mulDivDown(REWARD_SCALER, REWARD_PERIOD)
+            );
+            positionVaultAccounting._vestingPeriodEnd =
+                uint64(block.timestamp) +
+                REWARD_PERIOD;
             positionVaultAccounting._lastVestClaim = uint64(block.timestamp);
             emit Harvest(yield);
         } // else yield is zero.
@@ -249,11 +306,20 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
         gauge.deposit(assets, 0);
     }
 
-    function _getRealPositionBalance() internal view override returns (uint256) {
+    function _getRealPositionBalance()
+        internal
+        view
+        override
+        returns (uint256)
+    {
         return gauge.balanceOf(address(this));
     }
 
-    function _optimalDepositA(uint256 _amountA, uint256 _reserveA) internal view returns (uint256) {
+    function _optimalDepositA(uint256 _amountA, uint256 _reserveA)
+        internal
+        view
+        returns (uint256)
+    {
         uint256 swapFee = IVeloPairFactory(pairFactory).getFee(false);
         uint256 swapFeeFactor = 10000 - swapFee;
         uint256 a = (10000 + swapFeeFactor) * _reserveA;
@@ -264,11 +330,16 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
     }
 
     function approveRouter(address token, uint256 amount) internal {
-        if (ERC20(token).allowance(address(this), address(router)) >= amount) return;
+        if (ERC20(token).allowance(address(this), address(router)) >= amount)
+            return;
         ERC20(token).safeApprove(address(router), type(uint256).max);
     }
 
-    function swapExactTokensForTokens(address tokenIn, address tokenOut, uint256 amount) internal {
+    function swapExactTokensForTokens(
+        address tokenIn,
+        address tokenOut,
+        uint256 amount
+    ) internal {
         approveRouter(tokenIn, amount);
         IVeloRouter(router).swapExactTokensForTokensSimple(
             amount,
@@ -312,13 +383,27 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
             return amountIn;
         }
         address pair;
-        (pair, amountOut) = _optiSwap.getBestAmountOut(amountIn, tokenIn, tokenOut);
+        (pair, amountOut) = _optiSwap.getBestAmountOut(
+            amountIn,
+            tokenIn,
+            tokenOut
+        );
         require(pair != address(0), "NO_PAIR");
         ERC20(tokenIn).safeTransfer(pair, amountIn);
         if (tokenIn < tokenOut) {
-            IOptiSwapPair(pair).swap(0, amountOut, address(this), new bytes(0));
+            IOptiSwapPair(pair).swap(
+                0,
+                amountOut,
+                address(this),
+                new bytes(0)
+            );
         } else {
-            IOptiSwapPair(pair).swap(amountOut, 0, address(this), new bytes(0));
+            IOptiSwapPair(pair).swap(
+                amountOut,
+                0,
+                address(this),
+                new bytes(0)
+            );
         }
     }
 
@@ -333,25 +418,59 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
         IOptiSwap _optiSwap = IOptiSwap(optiSwap);
         address nextHop = _optiSwap.getBridgeToken(tokenIn);
         if (nextHop == tokenOut) {
-            return swapTokensForBestAmountOut(_optiSwap, tokenIn, tokenOut, amountIn);
+            return
+                swapTokensForBestAmountOut(
+                    _optiSwap,
+                    tokenIn,
+                    tokenOut,
+                    amountIn
+                );
         }
         address waypoint = _optiSwap.getBridgeToken(tokenOut);
         if (tokenIn == waypoint) {
-            return swapTokensForBestAmountOut(_optiSwap, tokenIn, tokenOut, amountIn);
+            return
+                swapTokensForBestAmountOut(
+                    _optiSwap,
+                    tokenIn,
+                    tokenOut,
+                    amountIn
+                );
         }
         uint256 hopAmountOut;
         if (nextHop != tokenIn) {
-            hopAmountOut = swapTokensForBestAmountOut(_optiSwap, tokenIn, nextHop, amountIn);
+            hopAmountOut = swapTokensForBestAmountOut(
+                _optiSwap,
+                tokenIn,
+                nextHop,
+                amountIn
+            );
         } else {
             hopAmountOut = amountIn;
         }
         if (nextHop == waypoint) {
-            return swapTokensForBestAmountOut(_optiSwap, nextHop, tokenOut, hopAmountOut);
+            return
+                swapTokensForBestAmountOut(
+                    _optiSwap,
+                    nextHop,
+                    tokenOut,
+                    hopAmountOut
+                );
         } else if (waypoint == tokenOut) {
-            return optiSwapExactTokensForTokens(nextHop, tokenOut, hopAmountOut);
+            return
+                optiSwapExactTokensForTokens(nextHop, tokenOut, hopAmountOut);
         } else {
-            uint256 waypointAmountOut = optiSwapExactTokensForTokens(nextHop, waypoint, hopAmountOut);
-            return swapTokensForBestAmountOut(_optiSwap, waypoint, tokenOut, waypointAmountOut);
+            uint256 waypointAmountOut = optiSwapExactTokensForTokens(
+                nextHop,
+                waypoint,
+                hopAmountOut
+            );
+            return
+                swapTokensForBestAmountOut(
+                    _optiSwap,
+                    waypoint,
+                    tokenOut,
+                    waypointAmountOut
+                );
         }
     }
 }

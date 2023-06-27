@@ -32,7 +32,10 @@ contract TestCEtherBorrowCap is TestBaseMarket {
         cTokens[0] = CToken(address(cETH));
         uint256[] memory borrowCapAmounts = new uint256[](1);
         borrowCapAmounts[0] = 49e18;
-        Lendtroller(unitroller)._setMarketBorrowCaps(cTokens, borrowCapAmounts);
+        Lendtroller(unitroller)._setMarketBorrowCaps(
+            cTokens,
+            borrowCapAmounts
+        );
 
         // mint
         cETH.mint{ value: 100e18 }();
@@ -45,7 +48,10 @@ contract TestCEtherBorrowCap is TestBaseMarket {
         // increase borrow cap to 51
         vm.prank(admin);
         borrowCapAmounts[0] = 51e18;
-        Lendtroller(unitroller)._setMarketBorrowCaps(cTokens, borrowCapAmounts);
+        Lendtroller(unitroller)._setMarketBorrowCaps(
+            cTokens,
+            borrowCapAmounts
+        );
 
         uint256 balanceBeforeBorrow = user.balance;
         // borrow

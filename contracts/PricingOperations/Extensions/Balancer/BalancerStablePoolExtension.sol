@@ -22,7 +22,9 @@ contract BalancerStablePoolExtension is BalancerPoolExtension {
     /**
      * @notice Atleast one of the pools underlying tokens is not supported by the Price Router.
      */
-    error BalancerStablePoolExtension__PoolTokensMustBeSupported(address unsupportedAsset);
+    error BalancerStablePoolExtension__PoolTokensMustBeSupported(
+        address unsupportedAsset
+    );
 
     /**
      * @notice Failed to find a minimum price for the pool tokens.
@@ -49,7 +51,11 @@ contract BalancerStablePoolExtension is BalancerPoolExtension {
         _;
     }
 
-    constructor(PriceRouter _priceRouter, PriceOps _priceOps, IVault _balancerVault) BalancerPoolExtension(_priceOps, _balancerVault) {
+    constructor(
+        PriceRouter _priceRouter,
+        PriceOps _priceOps,
+        IVault _balancerVault
+    ) BalancerPoolExtension(_priceOps, _balancerVault) {
         priceRouter = _priceRouter;
     }
 
@@ -85,9 +91,15 @@ contract BalancerStablePoolExtension is BalancerPoolExtension {
      *      MUST be correct, providing wrong values will result in inaccurate pricing.
      */
     // Removed override keyword since it doesn't override anything.
-    function setupSource(ERC20 asset, bytes memory _storage) external onlyPriceRouter {
+    function setupSource(ERC20 asset, bytes memory _storage)
+        external
+        onlyPriceRouter
+    {
         IBalancerPool pool = IBalancerPool(address(asset));
-        ExtensionStorage memory stor = abi.decode(_storage, (ExtensionStorage));
+        ExtensionStorage memory stor = abi.decode(
+            _storage,
+            (ExtensionStorage)
+        );
 
         // Grab the poolId and decimals.
         stor.poolId = pool.getPoolId();
@@ -98,14 +110,17 @@ contract BalancerStablePoolExtension is BalancerPoolExtension {
             // Break when a zero address is found.
             if (address(stor.underlyingOrConstituent[i]) == address(0)) break;
             if (!priceRouter.isSupported(stor.underlyingOrConstituent[i]))
-                revert BalancerStablePoolExtension__PoolTokensMustBeSupported(address(stor.underlyingOrConstituent[i]));
+                revert BalancerStablePoolExtension__PoolTokensMustBeSupported(
+                    address(stor.underlyingOrConstituent[i])
+                );
             if (stor.rateProviders[i] != address(0)) {
                 // Make sure decimals were provided.
                 if (stor.rateProviderDecimals[i] == 0)
                     revert BalancerStablePoolExtension__RateProviderDecimalsNotProvided();
                 // Make sure we can call it and get a non zero value.
                 uint256 rate = IRateProvider(stor.rateProviders[i]).getRate();
-                if (rate == 0) revert BalancerStablePoolExtension__RateProviderCallFailed();
+                if (rate == 0)
+                    revert BalancerStablePoolExtension__RateProviderCallFailed();
             }
         }
 
@@ -114,7 +129,11 @@ contract BalancerStablePoolExtension is BalancerPoolExtension {
     }
 
     // Added empty function since it should override parent.
-    function setupSource(address asset, uint64 sourceId, bytes memory sourceData) external override {}
+    function setupSource(
+        address asset,
+        uint64 sourceId,
+        bytes memory sourceData
+    ) external override {}
 
     /**
      * @notice Called during pricing operations.
@@ -133,20 +152,38 @@ contract BalancerStablePoolExtension is BalancerPoolExtension {
         for (uint256 i; i < stor.underlyingOrConstituent.length; ++i) {
             // Break when a zero address is found.
             if (address(stor.underlyingOrConstituent[i]) == address(0)) break;
-            uint256 price = priceRouter.getPriceInUSD(stor.underlyingOrConstituent[i]);
+            uint256 price = priceRouter.getPriceInUSD(
+                stor.underlyingOrConstituent[i]
+            );
             if (stor.rateProviders[i] != address(0)) {
                 uint256 rate = IRateProvider(stor.rateProviders[i]).getRate();
-                price = price.mulDivDown(10 ** stor.rateProviderDecimals[i], rate);
+                price = price.mulDivDown(
+                    10**stor.rateProviderDecimals[i],
+                    rate
+                );
             }
             if (price < minPrice) minPrice = price;
         }
 
-        if (minPrice == type(uint256).max) revert BalancerStablePoolExtension__MinimumPriceNotFound();
+        if (minPrice == type(uint256).max)
+            revert BalancerStablePoolExtension__MinimumPriceNotFound();
 
-        uint256 priceBpt = minPrice.mulDivDown(pool.getRate(), 10 ** stor.poolDecimals);
+        uint256 priceBpt = minPrice.mulDivDown(
+            pool.getRate(),
+            10**stor.poolDecimals
+        );
         return priceBpt;
     }
 
     // Added empty function since it should override parent.
-    function getPriceInBase(uint64 sourceId) external view override returns (uint256, uint256, uint8) {}
+    function getPriceInBase(uint64 sourceId)
+        external
+        view
+        override
+        returns (
+            uint256,
+            uint256,
+            uint8
+        )
+    {}
 }

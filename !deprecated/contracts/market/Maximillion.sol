@@ -35,7 +35,10 @@ contract Maximillion {
      * @param borrower The address of the borrower account to repay on behalf of
      * @param cEther_ The address of the cEther contract to repay in
      */
-    function repayBehalfExplicit(address borrower, CEther cEther_) public payable {
+    function repayBehalfExplicit(address borrower, CEther cEther_)
+        public
+        payable
+    {
         uint256 received = msg.value;
         uint256 borrows = cEther_.borrowBalanceCurrent(borrower);
         if (received > borrows) {

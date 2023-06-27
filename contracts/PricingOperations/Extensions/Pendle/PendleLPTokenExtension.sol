@@ -11,21 +11,29 @@ import { PendleLpOracleLib } from "@pendle/oracles/PendleLpOracleLib.sol";
 import { IPMarket } from "@pendle/interfaces/IPMarket.sol";
 
 interface IPendlePTOracle {
-    function getOracleState(
-        address market,
-        uint32 duration
-    )
+    function getOracleState(address market, uint32 duration)
         external
         view
-        returns (bool increaseCardinalityRequired, uint16 cardinalityRequired, bool oldestObservationSatisfied);
+        returns (
+            bool increaseCardinalityRequired,
+            uint16 cardinalityRequired,
+            bool oldestObservationSatisfied
+        );
 
-    function getPtToAssetRate(address market, uint32 duration) external view returns (uint256 ptToAssetRate);
+    function getPtToAssetRate(address market, uint32 duration)
+        external
+        view
+        returns (uint256 ptToAssetRate);
 
-    function getLpToAssetRate(address market, uint32 duration) external view returns (uint256 ptToAssetRate);
+    function getLpToAssetRate(address market, uint32 duration)
+        external
+        view
+        returns (uint256 ptToAssetRate);
 }
 
 interface IPendleMarket {
-    function increaseObservationsCardinalityNext(uint16 cardinalityNext) external;
+    function increaseObservationsCardinalityNext(uint16 cardinalityNext)
+        external;
 }
 
 contract PendleLPTokenExtension is Extension {
@@ -44,21 +52,36 @@ contract PendleLPTokenExtension is Extension {
 
     error PendleLPTokenExtension__MinimumTwapDurationNotMet();
     error PendleLPTokenExtension__OldestObservationNotSatisfied();
-    error PendleLPTokenExtension__QuoteAssetNotSupported(address unsupportedQuote);
-    error PendleLPTokenExtension__CallIncreaseObservationsCardinalityNext(address market, uint16 cardinalityNext);
+    error PendleLPTokenExtension__QuoteAssetNotSupported(
+        address unsupportedQuote
+    );
+    error PendleLPTokenExtension__CallIncreaseObservationsCardinalityNext(
+        address market,
+        uint16 cardinalityNext
+    );
 
     /**
      * @notice Curve Derivative Storage
      * @dev Stores an array of the underlying token addresses in the curve pool.
      */
-    mapping(uint64 => PendleLpExtensionStorage) public getPendleLpExtensionStorage;
+    mapping(uint64 => PendleLpExtensionStorage)
+        public getPendleLpExtensionStorage;
 
-    constructor(PriceOps _priceOps, IPendlePTOracle _ptOracle) Extension(_priceOps) {
+    constructor(PriceOps _priceOps, IPendlePTOracle _ptOracle)
+        Extension(_priceOps)
+    {
         ptOracle = _ptOracle;
     }
 
-    function setupSource(address asset, uint64 _sourceId, bytes memory data) external override onlyPriceOps {
-        PendleLpExtensionStorage memory extensionConfiguration = abi.decode(data, (PendleLpExtensionStorage));
+    function setupSource(
+        address asset,
+        uint64 _sourceId,
+        bytes memory data
+    ) external override onlyPriceOps {
+        PendleLpExtensionStorage memory extensionConfiguration = abi.decode(
+            data,
+            (PendleLpExtensionStorage)
+        );
         // TODO so now asset is the PMarket, and pt is the value that needs to be passed in struct
         // TODO check that market is the right one for the PT token.
 
@@ -67,17 +90,29 @@ contract PendleLPTokenExtension is Extension {
         if (extensionConfiguration.twapDuration < MINIMUM_TWAP_DURATION)
             revert PendleLPTokenExtension__MinimumTwapDurationNotMet();
 
-        (bool increaseCardinalityRequired, uint16 cardinalityRequired, bool oldestObservationSatisfied) = ptOracle
-            .getOracleState(address(extensionConfiguration.market), extensionConfiguration.twapDuration);
+        (
+            bool increaseCardinalityRequired,
+            uint16 cardinalityRequired,
+            bool oldestObservationSatisfied
+        ) = ptOracle.getOracleState(
+                address(extensionConfiguration.market),
+                extensionConfiguration.twapDuration
+            );
 
         if (increaseCardinalityRequired)
-            revert PendleLPTokenExtension__CallIncreaseObservationsCardinalityNext(asset, cardinalityRequired);
+            revert PendleLPTokenExtension__CallIncreaseObservationsCardinalityNext(
+                asset,
+                cardinalityRequired
+            );
 
-        if (oldestObservationSatisfied) revert PendleLPTokenExtension__OldestObservationNotSatisfied();
+        if (oldestObservationSatisfied)
+            revert PendleLPTokenExtension__OldestObservationNotSatisfied();
 
         // Check that `quoteAsset` is supported by PriceOps.
         if (!priceOps.isSupported(extensionConfiguration.quoteAsset))
-            revert PendleLPTokenExtension__QuoteAssetNotSupported(extensionConfiguration.quoteAsset);
+            revert PendleLPTokenExtension__QuoteAssetNotSupported(
+                extensionConfiguration.quoteAsset
+            );
 
         // Write to extension storage.
         getPendleLpExtensionStorage[_sourceId] = PendleLpExtensionStorage({
@@ -88,12 +123,23 @@ contract PendleLPTokenExtension is Extension {
         });
     }
 
-    function getPriceInBase(
-        uint64 sourceId
-    ) external view override onlyPriceOps returns (uint256 upper, uint256 lower, uint8 errorCode) {
-        PendleLpExtensionStorage memory stor = getPendleLpExtensionStorage[sourceId];
+    function getPriceInBase(uint64 sourceId)
+        external
+        view
+        override
+        onlyPriceOps
+        returns (
+            uint256 upper,
+            uint256 lower,
+            uint8 errorCode
+        )
+    {
+        PendleLpExtensionStorage memory stor = getPendleLpExtensionStorage[
+            sourceId
+        ];
         uint256 lpRate = stor.market.getLpToAssetRate(stor.twapDuration);
-        (uint256 quoteUpper, uint256 quoteLower, uint8 _errorCode) = priceOps.getPriceInBase(stor.quoteAsset);
+        (uint256 quoteUpper, uint256 quoteLower, uint8 _errorCode) = priceOps
+            .getPriceInBase(stor.quoteAsset);
         if (errorCode == BAD_SOURCE || quoteUpper == 0) {
             // Completely blind as to what this price is return error code of BAD_SOURCE.
             return (0, 0, BAD_SOURCE);

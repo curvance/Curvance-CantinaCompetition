@@ -13,7 +13,11 @@ library Uint32Array {
      * @param index index to add the address at
      * @param value address to add to the array
      */
-    function add(uint32[] storage array, uint32 index, uint32 value) internal {
+    function add(
+        uint32[] storage array,
+        uint32 index,
+        uint32 value
+    ) internal {
         uint256 len = array.length;
 
         if (len > 0) {
@@ -47,8 +51,13 @@ library Uint32Array {
      * @param array uint32 array to check
      * @param value uint32 to check for
      */
-    function contains(uint32[] storage array, uint32 value) internal view returns (bool) {
-        for (uint256 i; i < array.length; i++) if (value == array[i]) return true;
+    function contains(uint32[] storage array, uint32 value)
+        internal
+        view
+        returns (bool)
+    {
+        for (uint256 i; i < array.length; i++)
+            if (value == array[i]) return true;
 
         return false;
     }

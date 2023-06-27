@@ -32,7 +32,6 @@ pragma solidity ^0.8.13;
 // 		admin = admin_;
 // 	}
 
-
 // 	/**
 //      * @notice Called by the admin to update the implementation of the delegator
 //      * @param implementation_ The address of the new implementation for delegation
@@ -42,7 +41,7 @@ pragma solidity ^0.8.13;
 //         // require(implementation_ != address(0), "GovernorBravoDelegator::_setImplementation: invalid implementation address");
 //         if (msg.sender != admin) { revert AddressUnauthorized(); }
 //         if (implementation_ != address(0)) { revert InvalidAddress(); }
-        
+
 //         address oldImplementation = implementation;
 //         implementation = implementation_;
 

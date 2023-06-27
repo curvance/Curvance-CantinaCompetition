@@ -68,7 +68,12 @@ abstract contract BaseJumpRateModelV2 is InterestRateModel {
     ) {
         owner = owner_;
 
-        updateJumpRateModelInternal(baseRatePerYear, multiplierPerYear, jumpMultiplierPerYear, kink_);
+        updateJumpRateModelInternal(
+            baseRatePerYear,
+            multiplierPerYear,
+            jumpMultiplierPerYear,
+            kink_
+        );
     }
 
     /**
@@ -88,7 +93,12 @@ abstract contract BaseJumpRateModelV2 is InterestRateModel {
             revert AddressUnauthorized();
         }
 
-        updateJumpRateModelInternal(baseRatePerYear, multiplierPerYear, jumpMultiplierPerYear, kink_);
+        updateJumpRateModelInternal(
+            baseRatePerYear,
+            multiplierPerYear,
+            jumpMultiplierPerYear,
+            kink_
+        );
     }
 
     /**
@@ -128,7 +138,8 @@ abstract contract BaseJumpRateModelV2 is InterestRateModel {
         if (util <= kink) {
             return ((util * multiplierPerBlock) / BASE) + baseRatePerBlock;
         } else {
-            uint256 normalRate = ((kink * multiplierPerBlock) / BASE) + baseRatePerBlock;
+            uint256 normalRate = ((kink * multiplierPerBlock) / BASE) +
+                baseRatePerBlock;
             uint256 excessUtil = util - kink;
             return ((excessUtil * jumpMultiplierPerBlock) / BASE) + normalRate;
         }
@@ -168,10 +179,17 @@ abstract contract BaseJumpRateModelV2 is InterestRateModel {
         uint256 kink_
     ) internal {
         baseRatePerBlock = baseRatePerYear / blocksPerYear;
-        multiplierPerBlock = (multiplierPerYear * BASE) / (blocksPerYear * kink_);
+        multiplierPerBlock =
+            (multiplierPerYear * BASE) /
+            (blocksPerYear * kink_);
         jumpMultiplierPerBlock = jumpMultiplierPerYear / blocksPerYear;
         kink = kink_;
 
-        emit NewInterestParams(baseRatePerBlock, multiplierPerBlock, jumpMultiplierPerBlock, kink);
+        emit NewInterestParams(
+            baseRatePerBlock,
+            multiplierPerBlock,
+            jumpMultiplierPerBlock,
+            kink
+        );
     }
 }

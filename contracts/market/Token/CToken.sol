@@ -73,7 +73,12 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
      * @param dst The address of the destination account
      * @param tokens The number of tokens to transfer
      */
-    function transferTokens(address spender, address src, address dst, uint256 tokens) internal {
+    function transferTokens(
+        address spender,
+        address src,
+        address dst,
+        uint256 tokens
+    ) internal {
         /* Fails if transfer not allowed */
         lendtroller.transferAllowed(address(this), src, dst, tokens);
 
@@ -121,7 +126,12 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
      * @param amount The number of tokens to transfer
      * @return Whether or not the transfer succeeded
      */
-    function transfer(address dst, uint256 amount) external override nonReentrant returns (bool) {
+    function transfer(address dst, uint256 amount)
+        external
+        override
+        nonReentrant
+        returns (bool)
+    {
         transferTokens(msg.sender, msg.sender, dst, amount);
         return true;
     }
@@ -133,7 +143,11 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
      * @param amount The number of tokens to transfer
      * @return bool true=success
      */
-    function transferFrom(address src, address dst, uint256 amount) external override nonReentrant returns (bool) {
+    function transferFrom(
+        address src,
+        address dst,
+        uint256 amount
+    ) external override nonReentrant returns (bool) {
         transferTokens(msg.sender, src, dst, amount);
         return true;
     }
@@ -146,7 +160,11 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
      * @param amount The number of tokens that are approved (uint256.max means infinite)
      * @return bool true=success
      */
-    function approve(address spender, uint256 amount) external override returns (bool) {
+    function approve(address spender, uint256 amount)
+        external
+        override
+        returns (bool)
+    {
         address src = msg.sender;
         transferAllowances[src][spender] = amount;
 
@@ -161,7 +179,12 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
      * @param spender The address of the account which may transfer tokens
      * @return uint The number of tokens allowed to be spent (-1 means infinite)
      */
-    function allowance(address owner, address spender) external view override returns (uint256) {
+    function allowance(address owner, address spender)
+        external
+        view
+        override
+        returns (uint256)
+    {
         return transferAllowances[owner][spender];
     }
 
@@ -170,7 +193,12 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
      * @param owner The address of the account to query
      * @return uint The number of tokens owned by `owner`
      */
-    function balanceOf(address owner) external view override returns (uint256) {
+    function balanceOf(address owner)
+        external
+        view
+        override
+        returns (uint256)
+    {
         return accountTokens[owner];
     }
 
@@ -180,7 +208,11 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
      * @param owner The address of the account to query
      * @return The amount of underlying owned by `owner`
      */
-    function balanceOfUnderlying(address owner) external override returns (uint256) {
+    function balanceOfUnderlying(address owner)
+        external
+        override
+        returns (uint256)
+    {
         return ((exchangeRateCurrent() * accountTokens[owner]) / expScale);
     }
 
@@ -192,8 +224,21 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
      * @return borrowBalance
      * @return exchangeRate scaled 1e18
      */
-    function getAccountSnapshot(address account) external view override returns (uint256, uint256, uint256) {
-        return (accountTokens[account], borrowBalanceStoredInternal(account), exchangeRateStoredInternal());
+    function getAccountSnapshot(address account)
+        external
+        view
+        override
+        returns (
+            uint256,
+            uint256,
+            uint256
+        )
+    {
+        return (
+            accountTokens[account],
+            borrowBalanceStoredInternal(account),
+            exchangeRateStoredInternal()
+        );
     }
 
     /**
@@ -210,7 +255,12 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
      * @return The borrow interest rate per block, scaled by 1e18
      */
     function borrowRatePerBlock() external view override returns (uint256) {
-        return interestRateModel.getBorrowRate(getCashPrior(), totalBorrows, totalReserves);
+        return
+            interestRateModel.getBorrowRate(
+                getCashPrior(),
+                totalBorrows,
+                totalReserves
+            );
     }
 
     /**
@@ -218,14 +268,25 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
      * @return The supply interest rate per block, scaled by 1e18
      */
     function supplyRatePerBlock() external view override returns (uint256) {
-        return interestRateModel.getSupplyRate(getCashPrior(), totalBorrows, totalReserves, reserveFactorScaled);
+        return
+            interestRateModel.getSupplyRate(
+                getCashPrior(),
+                totalBorrows,
+                totalReserves,
+                reserveFactorScaled
+            );
     }
 
     /**
      * @notice Returns the current total borrows plus accrued interest
      * @return The total borrows with interest
      */
-    function totalBorrowsCurrent() external override nonReentrant returns (uint256) {
+    function totalBorrowsCurrent()
+        external
+        override
+        nonReentrant
+        returns (uint256)
+    {
         accrueInterest();
         return totalBorrows;
     }
@@ -236,7 +297,12 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
      * @param account The address whose balance should be calculated after updating borrowIndex
      * @return The calculated balance
      */
-    function borrowBalanceCurrent(address account) external override nonReentrant returns (uint256) {
+    function borrowBalanceCurrent(address account)
+        external
+        override
+        nonReentrant
+        returns (uint256)
+    {
         accrueInterest();
         return borrowBalanceStored(account);
     }
@@ -246,7 +312,12 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
      * @param account The address whose balance should be calculated
      * @return The calculated balance
      */
-    function borrowBalanceStored(address account) public view override returns (uint256) {
+    function borrowBalanceStored(address account)
+        public
+        view
+        override
+        returns (uint256)
+    {
         return borrowBalanceStoredInternal(account);
     }
 
@@ -255,7 +326,11 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
      * @param account The address whose balance should be calculated
      * @return the calculated balance or 0 if no borrow balances exist
      */
-    function borrowBalanceStoredInternal(address account) internal view returns (uint256) {
+    function borrowBalanceStoredInternal(address account)
+        internal
+        view
+        returns (uint256)
+    {
         /* Get borrowBalance and borrowIndex */
         BorrowSnapshot storage borrowSnapshot = accountBorrows[account];
 
@@ -277,7 +352,12 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
      * @notice Accrue interest then return the up-to-date exchange rate
      * @return Calculated exchange rate scaled by 1e18
      */
-    function exchangeRateCurrent() public override nonReentrant returns (uint256) {
+    function exchangeRateCurrent()
+        public
+        override
+        nonReentrant
+        returns (uint256)
+    {
         accrueInterest();
         return exchangeRateStored();
     }
@@ -296,7 +376,12 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
      * @dev This function does not accrue interest before calculating the exchange rate
      * @return exchangeRate The calculated exchange rate scaled by 1e18
      */
-    function exchangeRateStoredInternal() internal view virtual returns (uint256) {
+    function exchangeRateStoredInternal()
+        internal
+        view
+        virtual
+        returns (uint256)
+    {
         uint256 _totalSupply = totalSupply;
         if (_totalSupply == 0) {
             /*
@@ -310,8 +395,11 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
              *  exchangeRate = (totalCash + totalBorrows - totalReserves) / totalSupply
              */
             uint256 totalCash = getCashPrior();
-            uint256 cashPlusBorrowsMinusReserves = totalCash + totalBorrows - totalReserves;
-            uint256 exchangeRate = (cashPlusBorrowsMinusReserves * expScale) / _totalSupply;
+            uint256 cashPlusBorrowsMinusReserves = totalCash +
+                totalBorrows -
+                totalReserves;
+            uint256 exchangeRate = (cashPlusBorrowsMinusReserves * expScale) /
+                _totalSupply;
 
             return exchangeRate;
         }
@@ -347,7 +435,11 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         uint256 borrowIndexPrior = borrowIndex;
 
         /* Calculate the current borrow interest rate */
-        uint256 borrowRateScaled = interestRateModel.getBorrowRate(cashPrior, borrowsPrior, reservesPrior);
+        uint256 borrowRateScaled = interestRateModel.getBorrowRate(
+            cashPrior,
+            borrowsPrior,
+            reservesPrior
+        );
         if (borrowRateMaxScaled < borrowRateScaled) {
             revert ExcessiveValue();
         }
@@ -365,10 +457,13 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
          */
 
         uint256 simpleInterestFactor = borrowRateScaled * blockDelta;
-        uint256 interestAccumulated = (simpleInterestFactor * borrowsPrior) / expScale;
+        uint256 interestAccumulated = (simpleInterestFactor * borrowsPrior) /
+            expScale;
         uint256 totalBorrowsNew = interestAccumulated + borrowsPrior;
-        uint256 totalReservesNew = ((reserveFactorScaled * interestAccumulated) / expScale) + reservesPrior;
-        uint256 borrowIndexNew = ((simpleInterestFactor * borrowIndexPrior) / expScale) + borrowIndexPrior;
+        uint256 totalReservesNew = ((reserveFactorScaled *
+            interestAccumulated) / expScale) + reservesPrior;
+        uint256 borrowIndexNew = ((simpleInterestFactor * borrowIndexPrior) /
+            expScale) + borrowIndexPrior;
 
         /////////////////////////
         // EFFECTS & INTERACTIONS
@@ -381,7 +476,12 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         totalReserves = totalReservesNew;
 
         /* We emit an AccrueInterest event */
-        emit AccrueInterest(cashPrior, interestAccumulated, borrowIndexNew, totalBorrowsNew);
+        emit AccrueInterest(
+            cashPrior,
+            interestAccumulated,
+            borrowIndexNew,
+            totalBorrowsNew
+        );
     }
 
     /**
@@ -389,7 +489,10 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
      * @dev Accrues interest whether or not the operation succeeds, unless reverted
      * @param mintAmount The amount of the underlying asset to supply
      */
-    function mintInternal(uint256 mintAmount, address recipient) internal nonReentrant {
+    function mintInternal(uint256 mintAmount, address recipient)
+        internal
+        nonReentrant
+    {
         accrueInterest();
         // mintFresh emits the actual Mint event if successful and logs on errors, so we don't need to
         mintFresh(msg.sender, mintAmount, recipient);
@@ -402,7 +505,11 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
      * @param mintAmount The amount of the underlying asset to supply
      * @param minter The address of the account which will receive cToken
      */
-    function mintFresh(address user, uint256 mintAmount, address minter) internal {
+    function mintFresh(
+        address user,
+        uint256 mintAmount,
+        address minter
+    ) internal {
         /* Fail if mint not allowed */
         lendtroller.mintAllowed(address(this), minter); //, mintAmount);
 
@@ -508,7 +615,12 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         // redeemFresh emits redeem-specific logs on errors, so we don't need to
         redeemFresh(redeemer, redeemTokens, redeemAmount, payable(msg.sender));
 
-        IPositionFolding(msg.sender).onRedeem(address(this), redeemer, redeemAmount, params);
+        IPositionFolding(msg.sender).onRedeem(
+            address(this),
+            redeemer,
+            redeemAmount,
+            params
+        );
 
         /* Fail if redeem not allowed */
         lendtroller.redeemAllowed(address(this), redeemer, 0);
@@ -596,7 +708,12 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
 
         borrowFresh(payable(borrower), borrowAmount, payable(msg.sender));
 
-        IPositionFolding(msg.sender).onBorrow(address(this), borrower, borrowAmount, params);
+        IPositionFolding(msg.sender).onBorrow(
+            address(this),
+            borrower,
+            borrowAmount,
+            params
+        );
 
         /* Fail if position is not allowed */
         lendtroller.borrowAllowed(address(this), borrower, 0);
@@ -606,7 +723,11 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
      * @notice Users borrow assets from the protocol to their own address
      * @param borrowAmount The amount of the underlying asset to borrow
      */
-    function borrowFresh(address borrower, uint256 borrowAmount, address payable recipient) internal {
+    function borrowFresh(
+        address borrower,
+        uint256 borrowAmount,
+        address payable recipient
+    ) internal {
         /* Verify market's block number equals current block number */
         if (accrualBlockNumber != getBlockNumber()) {
             revert FailedFreshnessCheck();
@@ -647,7 +768,12 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         doTransferOut(recipient, borrowAmount);
 
         /* We emit a Borrow event */
-        emit Borrow(borrower, borrowAmount, accountBorrowsNew, totalBorrowsNew);
+        emit Borrow(
+            borrower,
+            borrowAmount,
+            accountBorrowsNew,
+            totalBorrowsNew
+        );
     }
 
     /**
@@ -665,7 +791,10 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
      * @param borrower the account with the debt being payed off
      * @param repayAmount The amount to repay, or -1 for the full outstanding amount
      */
-    function repayBorrowBehalfInternal(address borrower, uint256 repayAmount) internal nonReentrant {
+    function repayBorrowBehalfInternal(address borrower, uint256 repayAmount)
+        internal
+        nonReentrant
+    {
         accrueInterest();
         // repayBorrowFresh emits repay-borrow-specific logs on errors, so we don't need to
         repayBorrowFresh(msg.sender, borrower, repayAmount);
@@ -678,7 +807,11 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
      * @param repayAmount the amount of underlying tokens being returned, or -1 for the full outstanding amount
      * @return (uint) the actual repayment amount.
      */
-    function repayBorrowFresh(address payer, address borrower, uint256 repayAmount) internal returns (uint256) {
+    function repayBorrowFresh(
+        address payer,
+        address borrower,
+        uint256 repayAmount
+    ) internal returns (uint256) {
         /* Fail if repayBorrow not allowed */
         lendtroller.repayBorrowAllowed(address(this), borrower); //, payer, repayAmount);
 
@@ -691,7 +824,9 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         uint256 accountBorrowsPrev = borrowBalanceStoredInternal(borrower);
 
         /* If repayAmount == -1, repayAmount = accountBorrows */
-        uint256 repayAmountFinal = repayAmount == type(uint256).max ? accountBorrowsPrev : repayAmount;
+        uint256 repayAmountFinal = repayAmount == type(uint256).max
+            ? accountBorrowsPrev
+            : repayAmount;
 
         /////////////////////////
         // EFFECTS & INTERACTIONS
@@ -720,7 +855,13 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         totalBorrows = totalBorrowsNew;
 
         /* We emit a RepayBorrow event */
-        emit RepayBorrow(payer, borrower, actualRepayAmount, accountBorrowsNew, totalBorrowsNew);
+        emit RepayBorrow(
+            payer,
+            borrower,
+            actualRepayAmount,
+            accountBorrowsNew,
+            totalBorrowsNew
+        );
 
         return actualRepayAmount;
     }
@@ -742,7 +883,12 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
 
         cTokenCollateral.accrueInterest();
 
-        liquidateBorrowFresh(msg.sender, borrower, repayAmount, cTokenCollateral);
+        liquidateBorrowFresh(
+            msg.sender,
+            borrower,
+            repayAmount,
+            cTokenCollateral
+        );
     }
 
     /**
@@ -760,7 +906,12 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         CTokenInterface cTokenCollateral
     ) internal {
         /* Fail if liquidate not allowed */
-        lendtroller.liquidateBorrowAllowed(address(this), address(cTokenCollateral), borrower, repayAmount);
+        lendtroller.liquidateBorrowAllowed(
+            address(this),
+            address(cTokenCollateral),
+            borrower,
+            repayAmount
+        );
 
         /* Verify market's block number equals current block number */
         if (accrualBlockNumber != getBlockNumber()) {
@@ -788,7 +939,11 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         }
 
         /* Fail if repayBorrow fails */
-        uint256 actualRepayAmount = repayBorrowFresh(liquidator, borrower, repayAmount);
+        uint256 actualRepayAmount = repayBorrowFresh(
+            liquidator,
+            borrower,
+            repayAmount
+        );
 
         /////////////////////////
         // EFFECTS & INTERACTIONS
@@ -814,7 +969,13 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         }
 
         /* We emit a LiquidateBorrow event */
-        emit LiquidateBorrow(liquidator, borrower, actualRepayAmount, address(cTokenCollateral), seizeTokens);
+        emit LiquidateBorrow(
+            liquidator,
+            borrower,
+            actualRepayAmount,
+            address(cTokenCollateral),
+            seizeTokens
+        );
     }
 
     /**
@@ -826,7 +987,11 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
      * @param seizeTokens The number of cTokens to seize
      *
      */
-    function seize(address liquidator, address borrower, uint256 seizeTokens) external override nonReentrant {
+    function seize(
+        address liquidator,
+        address borrower,
+        uint256 seizeTokens
+    ) external override nonReentrant {
         seizeInternal(msg.sender, liquidator, borrower, seizeTokens);
     }
 
@@ -839,9 +1004,19 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
      * @param borrower The account having collateral seized
      * @param seizeTokens The number of cTokens to seize
      */
-    function seizeInternal(address seizerToken, address liquidator, address borrower, uint256 seizeTokens) internal {
+    function seizeInternal(
+        address seizerToken,
+        address liquidator,
+        address borrower,
+        uint256 seizeTokens
+    ) internal {
         /* Fails if seize not allowed */
-        lendtroller.seizeAllowed(address(this), seizerToken, liquidator, borrower); //, seizeTokens);
+        lendtroller.seizeAllowed(
+            address(this),
+            seizerToken,
+            liquidator,
+            borrower
+        ); //, seizeTokens);
 
         /* Fails if borrower = liquidator */
         if (borrower == liquidator) {
@@ -853,9 +1028,11 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
          *  borrowerTokensNew = accountTokens[borrower] - seizeTokens
          *  liquidatorTokensNew = accountTokens[liquidator] + seizeTokens
          */
-        uint256 protocolSeizeTokens = (seizeTokens * protocolSeizeShareScaled) / expScale;
+        uint256 protocolSeizeTokens = (seizeTokens *
+            protocolSeizeShareScaled) / expScale;
         uint256 liquidatorSeizeTokens = seizeTokens - protocolSeizeTokens;
-        uint256 protocolSeizeAmount = (exchangeRateStoredInternal() * protocolSeizeTokens) / expScale;
+        uint256 protocolSeizeAmount = (exchangeRateStoredInternal() *
+            protocolSeizeTokens) / expScale;
         uint256 totalReservesNew = totalReserves + protocolSeizeAmount;
 
         /////////////////////////
@@ -866,16 +1043,26 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         totalReserves = totalReservesNew;
         totalSupply = totalSupply - protocolSeizeTokens;
         accountTokens[borrower] = accountTokens[borrower] - seizeTokens;
-        accountTokens[liquidator] = accountTokens[liquidator] + liquidatorSeizeTokens;
+        accountTokens[liquidator] =
+            accountTokens[liquidator] +
+            liquidatorSeizeTokens;
 
         // emit events on gauge pool
         GaugePool(gaugePool).withdraw(address(this), borrower, seizeTokens);
-        GaugePool(gaugePool).deposit(address(this), liquidator, liquidatorSeizeTokens);
+        GaugePool(gaugePool).deposit(
+            address(this),
+            liquidator,
+            liquidatorSeizeTokens
+        );
 
         /* Emit a Transfer event */
         emit Transfer(borrower, liquidator, liquidatorSeizeTokens);
         emit Transfer(borrower, address(this), protocolSeizeTokens);
-        emit ReservesAdded(address(this), protocolSeizeAmount, totalReservesNew);
+        emit ReservesAdded(
+            address(this),
+            protocolSeizeAmount,
+            totalReservesNew
+        );
     }
 
     /*** Admin Functions ***/
@@ -886,7 +1073,10 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
      *  The newPendingAdmin must call `_acceptAdmin` to finalize the transfer.
      * @param newPendingAdmin New pending admin.
      */
-    function _setPendingAdmin(address payable newPendingAdmin) external override {
+    function _setPendingAdmin(address payable newPendingAdmin)
+        external
+        override
+    {
         // Check caller = admin
         if (msg.sender != admin) {
             revert AddressUnauthorized();
@@ -930,7 +1120,10 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
      * @dev Admin function to set a new lendtroller
      * @param newLendtroller New lendtroller address.
      */
-    function _setLendtroller(LendtrollerInterface newLendtroller) public override {
+    function _setLendtroller(LendtrollerInterface newLendtroller)
+        public
+        override
+    {
         // Check caller is admin
         if (msg.sender != admin) {
             revert AddressUnauthorized();
@@ -954,7 +1147,11 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
      * @dev Admin function to accrue interest and set a new reserve factor
      * @param newReserveFactorScaled New reserve factor
      */
-    function _setReserveFactor(uint256 newReserveFactorScaled) external override nonReentrant {
+    function _setReserveFactor(uint256 newReserveFactorScaled)
+        external
+        override
+        nonReentrant
+    {
         accrueInterest();
         // _setReserveFactorFresh emits reserve-factor-specific logs & reverts, so we don't need to.
         _setReserveFactorFresh(newReserveFactorScaled);
@@ -1032,7 +1229,11 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
      * @notice Accrues interest and reduces reserves by transferring to admin
      * @param reduceAmount Amount of reduction to reserves
      */
-    function _reduceReserves(uint256 reduceAmount) external override nonReentrant {
+    function _reduceReserves(uint256 reduceAmount)
+        external
+        override
+        nonReentrant
+    {
         accrueInterest();
         // _reduceReservesFresh emits reserve-reduction-specific logs on errors, so we don't need to.
         _reduceReservesFresh(reduceAmount);
@@ -1086,7 +1287,10 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
      * @dev Admin function to accrue interest and update the interest rate model
      * @param newInterestRateModel the new interest rate model to use
      */
-    function _setInterestRateModel(InterestRateModel newInterestRateModel) public override {
+    function _setInterestRateModel(InterestRateModel newInterestRateModel)
+        public
+        override
+    {
         accrueInterest();
         // _setInterestRateModelFresh emits interest-rate-model-update-specific logs & reverts, so we don't need to.
         _setInterestRateModelFresh(newInterestRateModel);
@@ -1097,7 +1301,9 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
      * @dev Admin function to update the interest rate model
      * @param newInterestRateModel the new interest rate model to use
      */
-    function _setInterestRateModelFresh(InterestRateModel newInterestRateModel) internal {
+    function _setInterestRateModelFresh(InterestRateModel newInterestRateModel)
+        internal
+    {
         // Check caller is admin
         if (msg.sender != admin) {
             revert AddressUnauthorized();
@@ -1120,7 +1326,10 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         interestRateModel = newInterestRateModel;
 
         // Emit NewMarketInterestRateModel(oldInterestRateModel, newInterestRateModel)
-        emit NewMarketInterestRateModel(oldInterestRateModel, newInterestRateModel);
+        emit NewMarketInterestRateModel(
+            oldInterestRateModel,
+            newInterestRateModel
+        );
     }
 
     /*** Safe Token ***/
@@ -1136,7 +1345,10 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
      *  Returns the amount actually transferred to the protocol, in case of a fee.
      *  This may revert due to insufficient balance or insufficient allowance.
      */
-    function doTransferIn(address from, uint256 amount) internal virtual returns (uint256);
+    function doTransferIn(address from, uint256 amount)
+        internal
+        virtual
+        returns (uint256);
 
     /**
      * @dev Performs a transfer out, ideally returning an explanatory error code upon failure rather than reverting.
@@ -1144,5 +1356,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
      *  If caller has checked protocol's balance, and verified it is >= amount,
      *      this should not revert in normal conditions.
      */
-    function doTransferOut(address payable to, uint256 amount) internal virtual;
+    function doTransferOut(address payable to, uint256 amount)
+        internal
+        virtual;
 }

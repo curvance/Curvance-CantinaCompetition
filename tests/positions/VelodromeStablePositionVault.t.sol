@@ -24,8 +24,10 @@ contract VelodromeStablePositionVaultTest is TestBase {
     address private operatorBeta = vm.addr(222);
     address private ownerBeta = vm.addr(2220);
 
-    IVeloPairFactory private veloPairFactory = IVeloPairFactory(0x25CbdDb98b35ab1FF77413456B31EC81A6B6B746);
-    IVeloRouter private veloRouter = IVeloRouter(0x9c12939390052919aF3155f41Bf4160Fd3666A6f);
+    IVeloPairFactory private veloPairFactory =
+        IVeloPairFactory(0x25CbdDb98b35ab1FF77413456B31EC81A6B6B746);
+    IVeloRouter private veloRouter =
+        IVeloRouter(0x9c12939390052919aF3155f41Bf4160Fd3666A6f);
     address private optiSwap = 0x6108FeAA628155b073150F408D0b390eC3121834;
 
     ERC20 private USDC = ERC20(0x7F5c764cBc14f9669B88837ca1490cCa17c31607);
@@ -33,7 +35,8 @@ contract VelodromeStablePositionVaultTest is TestBase {
     ERC20 private VELO = ERC20(0x3c8B650257cFb5f272f799F5e2b4e65093a11a05);
 
     ERC20 private USDC_DAI = ERC20(0x4F7ebc19844259386DBdDB7b2eB759eeFc6F8353);
-    IVeloGauge private gauge = IVeloGauge(0xc4fF55A961bC04b880e60219CCBBDD139c6451A4);
+    IVeloGauge private gauge =
+        IVeloGauge(0xc4fF55A961bC04b880e60219CCBBDD139c6451A4);
 
     address private accumulator = vm.addr(555);
 
@@ -52,26 +55,33 @@ contract VelodromeStablePositionVaultTest is TestBase {
         priceRouter = new PriceRouter();
         // USDT
         // Set heart beat to 5 days so we don't run into stale price reverts.
-        PriceRouter.ChainlinkDerivativeStorage memory stor = PriceRouter.ChainlinkDerivativeStorage(
-            0,
-            0,
-            150 days,
-            false
-        );
+        PriceRouter.ChainlinkDerivativeStorage memory stor = PriceRouter
+            .ChainlinkDerivativeStorage(0, 0, 150 days, false);
         // USDT
         PriceRouter.AssetSettings memory settings;
-        uint256 price = uint256(IChainlinkAggregator(USDC_USD_FEED).latestAnswer());
-        settings = PriceRouter.AssetSettings(CHAINLINK_DERIVATIVE, USDC_USD_FEED);
+        uint256 price = uint256(
+            IChainlinkAggregator(USDC_USD_FEED).latestAnswer()
+        );
+        settings = PriceRouter.AssetSettings(
+            CHAINLINK_DERIVATIVE,
+            USDC_USD_FEED
+        );
         priceRouter.addAsset(USDC, settings, abi.encode(stor), price);
 
         // WETH
         price = uint256(IChainlinkAggregator(DAI_USD_FEED).latestAnswer());
-        settings = PriceRouter.AssetSettings(CHAINLINK_DERIVATIVE, DAI_USD_FEED);
+        settings = PriceRouter.AssetSettings(
+            CHAINLINK_DERIVATIVE,
+            DAI_USD_FEED
+        );
         priceRouter.addAsset(DAI, settings, abi.encode(stor), price);
 
         // VELO
         price = uint256(IChainlinkAggregator(USDC_USD_FEED).latestAnswer());
-        settings = PriceRouter.AssetSettings(CHAINLINK_DERIVATIVE, USDC_USD_FEED); // TODO no chainlink oracle for Velo, use USDC for testing
+        settings = PriceRouter.AssetSettings(
+            CHAINLINK_DERIVATIVE,
+            USDC_USD_FEED
+        ); // TODO no chainlink oracle for Velo, use USDC for testing
         priceRouter.addAsset(VELO, settings, abi.encode(stor), price);
 
         positionVault = new VelodromeStablePositionVault(
@@ -83,18 +93,19 @@ contract VelodromeStablePositionVaultTest is TestBase {
         );
 
         positionVault.setWatchdog(address(this));
-        BasePositionVault.PositionVaultMetaData memory metaData = BasePositionVault.PositionVaultMetaData({
-            platformFee: 0.2e18,
-            upkeepFee: 0.03e18,
-            minHarvestYieldInUSD: 1_000e8,
-            maxGasPriceForHarvest: 1_000e9,
-            feeAccumulator: accumulator,
-            positionWatchdog: address(this),
-            ethFastGasFeed: 0x169E633A2D1E6c10dD91238Ba11c4A708dfEF37C,
-            priceRouter: priceRouter,
-            automationRegistry: address(this),
-            isShutdown: false
-        });
+        BasePositionVault.PositionVaultMetaData
+            memory metaData = BasePositionVault.PositionVaultMetaData({
+                platformFee: 0.2e18,
+                upkeepFee: 0.03e18,
+                minHarvestYieldInUSD: 1_000e8,
+                maxGasPriceForHarvest: 1_000e9,
+                feeAccumulator: accumulator,
+                positionWatchdog: address(this),
+                ethFastGasFeed: 0x169E633A2D1E6c10dD91238Ba11c4A708dfEF37C,
+                priceRouter: priceRouter,
+                automationRegistry: address(this),
+                isShutdown: false
+            });
 
         // Need to initialize Vault.
         {
@@ -133,7 +144,11 @@ contract VelodromeStablePositionVaultTest is TestBase {
 
         positionVault.deposit(assets, address(this));
 
-        assertEq(positionVault.totalAssets(), assets, "Total Assets should equal user deposit.");
+        assertEq(
+            positionVault.totalAssets(),
+            assets,
+            "Total Assets should equal user deposit."
+        );
 
         // Advance time to earn CRV and CVX rewards
         vm.warp(block.timestamp + 3 days);
@@ -145,7 +160,11 @@ contract VelodromeStablePositionVaultTest is TestBase {
 
         positionVault.harvest("0x");
 
-        assertEq(positionVault.totalAssets(), assets, "Total Assets should equal user deposit.");
+        assertEq(
+            positionVault.totalAssets(),
+            assets,
+            "Total Assets should equal user deposit."
+        );
 
         vm.warp(block.timestamp + 8 days);
 
@@ -158,8 +177,16 @@ contract VelodromeStablePositionVaultTest is TestBase {
 
         vm.warp(block.timestamp + 7 days);
 
-        assertGt(positionVault.totalAssets(), assets, "Total Assets should greater than original deposit.");
+        assertGt(
+            positionVault.totalAssets(),
+            assets,
+            "Total Assets should greater than original deposit."
+        );
 
-        positionVault.withdraw(positionVault.totalAssets(), address(this), address(this));
+        positionVault.withdraw(
+            positionVault.totalAssets(),
+            address(this),
+            address(this)
+        );
     }
 }

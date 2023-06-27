@@ -15,7 +15,12 @@ abstract contract ERC4626 is ERC20 {
                                  EVENTS
     //////////////////////////////////////////////////////////////*/
 
-    event Deposit(address indexed caller, address indexed owner, uint256 assets, uint256 shares);
+    event Deposit(
+        address indexed caller,
+        address indexed owner,
+        uint256 assets,
+        uint256 shares
+    );
 
     event Withdraw(
         address indexed caller,
@@ -44,7 +49,11 @@ abstract contract ERC4626 is ERC20 {
                         DEPOSIT/WITHDRAWAL LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function deposit(uint256 assets, address receiver) public virtual returns (uint256 shares) {
+    function deposit(uint256 assets, address receiver)
+        public
+        virtual
+        returns (uint256 shares)
+    {
         // Check for rounding error since we round down in previewDeposit.
         require((shares = previewDeposit(assets)) != 0, "ZERO_SHARES");
 
@@ -60,7 +69,11 @@ abstract contract ERC4626 is ERC20 {
         afterDeposit(assets, shares, receiver);
     }
 
-    function mint(uint256 shares, address receiver) public virtual returns (uint256 assets) {
+    function mint(uint256 shares, address receiver)
+        public
+        virtual
+        returns (uint256 assets)
+    {
         assets = previewMint(shares); // No need to check for rounding error, previewMint rounds up.
 
         beforeDeposit(assets, shares, receiver);
@@ -75,13 +88,18 @@ abstract contract ERC4626 is ERC20 {
         afterDeposit(assets, shares, receiver);
     }
 
-    function withdraw(uint256 assets, address receiver, address owner) public virtual returns (uint256 shares) {
+    function withdraw(
+        uint256 assets,
+        address receiver,
+        address owner
+    ) public virtual returns (uint256 shares) {
         shares = previewWithdraw(assets); // No need to check for rounding error, previewWithdraw rounds up.
 
         if (msg.sender != owner) {
             uint256 allowed = allowance[owner][msg.sender]; // Saves gas for limited approvals.
 
-            if (allowed != type(uint256).max) allowance[owner][msg.sender] = allowed - shares;
+            if (allowed != type(uint256).max)
+                allowance[owner][msg.sender] = allowed - shares;
         }
 
         beforeWithdraw(assets, shares, receiver, owner);
@@ -95,11 +113,16 @@ abstract contract ERC4626 is ERC20 {
         afterWithdraw(assets, shares, receiver, owner);
     }
 
-    function redeem(uint256 shares, address receiver, address owner) public virtual returns (uint256 assets) {
+    function redeem(
+        uint256 shares,
+        address receiver,
+        address owner
+    ) public virtual returns (uint256 assets) {
         if (msg.sender != owner) {
             uint256 allowed = allowance[owner][msg.sender]; // Saves gas for limited approvals.
 
-            if (allowed != type(uint256).max) allowance[owner][msg.sender] = allowed - shares;
+            if (allowed != type(uint256).max)
+                allowance[owner][msg.sender] = allowed - shares;
         }
 
         // Check for rounding error since we round down in previewRedeem.
@@ -122,35 +145,65 @@ abstract contract ERC4626 is ERC20 {
 
     function totalAssets() public view virtual returns (uint256);
 
-    function convertToShares(uint256 assets) public view virtual returns (uint256) {
+    function convertToShares(uint256 assets)
+        public
+        view
+        virtual
+        returns (uint256)
+    {
         uint256 supply = totalSupply; // Saves an extra SLOAD if totalSupply is non-zero.
 
         return supply == 0 ? assets : assets.mulDivDown(supply, totalAssets());
     }
 
-    function convertToAssets(uint256 shares) public view virtual returns (uint256) {
+    function convertToAssets(uint256 shares)
+        public
+        view
+        virtual
+        returns (uint256)
+    {
         uint256 supply = totalSupply; // Saves an extra SLOAD if totalSupply is non-zero.
 
         return supply == 0 ? shares : shares.mulDivDown(totalAssets(), supply);
     }
 
-    function previewDeposit(uint256 assets) public view virtual returns (uint256) {
+    function previewDeposit(uint256 assets)
+        public
+        view
+        virtual
+        returns (uint256)
+    {
         return convertToShares(assets);
     }
 
-    function previewMint(uint256 shares) public view virtual returns (uint256) {
+    function previewMint(uint256 shares)
+        public
+        view
+        virtual
+        returns (uint256)
+    {
         uint256 supply = totalSupply; // Saves an extra SLOAD if totalSupply is non-zero.
 
         return supply == 0 ? shares : shares.mulDivUp(totalAssets(), supply);
     }
 
-    function previewWithdraw(uint256 assets) public view virtual returns (uint256) {
+    function previewWithdraw(uint256 assets)
+        public
+        view
+        virtual
+        returns (uint256)
+    {
         uint256 supply = totalSupply; // Saves an extra SLOAD if totalSupply is non-zero.
 
         return supply == 0 ? assets : assets.mulDivUp(supply, totalAssets());
     }
 
-    function previewRedeem(uint256 shares) public view virtual returns (uint256) {
+    function previewRedeem(uint256 shares)
+        public
+        view
+        virtual
+        returns (uint256)
+    {
         return convertToAssets(shares);
     }
 
@@ -178,11 +231,29 @@ abstract contract ERC4626 is ERC20 {
                           INTERNAL HOOKS LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function beforeDeposit(uint256 assets, uint256 shares, address receiver) internal virtual {}
+    function beforeDeposit(
+        uint256 assets,
+        uint256 shares,
+        address receiver
+    ) internal virtual {}
 
-    function afterDeposit(uint256 assets, uint256 shares, address receiver) internal virtual {}
+    function afterDeposit(
+        uint256 assets,
+        uint256 shares,
+        address receiver
+    ) internal virtual {}
 
-    function beforeWithdraw(uint256 assets, uint256 shares, address receiver, address owner) internal virtual {}
+    function beforeWithdraw(
+        uint256 assets,
+        uint256 shares,
+        address receiver,
+        address owner
+    ) internal virtual {}
 
-    function afterWithdraw(uint256 assets, uint256 shares, address receiver, address owner) internal virtual {}
+    function afterWithdraw(
+        uint256 assets,
+        uint256 shares,
+        address receiver,
+        address owner
+    ) internal virtual {}
 }

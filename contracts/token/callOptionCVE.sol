@@ -8,9 +8,7 @@ import "../interfaces/ICentralRegistry.sol";
 
 error InvalidExercise();
 
-
 contract callOptionCVE is ERC20 {
-
     event RemainingCVEWithdrawn(uint256 amount);
     event callOptionCVEExercised(address indexed exerciser, uint256 amount);
 
@@ -23,7 +21,7 @@ contract callOptionCVE is ERC20 {
 
     // USDC is 6 decimals and CVE is 18 decimals so we need to offset by 10e12 + report number in basis points
     uint256 public constant denominatorOffset = 10000000000000000;
-    
+
     /**
      * @param _name The name of the token.
      * @param _symbol The symbol of the token.
@@ -31,18 +29,20 @@ contract callOptionCVE is ERC20 {
      * @param _paymentTokenPricePerCVE The price of the payment token per CVE.
      * @param _centralRegistry The Central Registry contract address.
      */
-    constructor(string memory _name, 
-                string memory _symbol,
-                IERC20 _paymentToken,
-                uint256 _paymentTokenPricePerCVE, 
-                ICentralRegistry _centralRegistry) ERC20(_name, _symbol) {
-                    paymentToken = _paymentToken;
-                    paymentTokenPricePerCVE = _paymentTokenPricePerCVE;
-                    centralRegistry = _centralRegistry;
-                    _mint(msg.sender, 7560001.242 ether);
-                }
+    constructor(
+        string memory _name,
+        string memory _symbol,
+        IERC20 _paymentToken,
+        uint256 _paymentTokenPricePerCVE,
+        ICentralRegistry _centralRegistry
+    ) ERC20(_name, _symbol) {
+        paymentToken = _paymentToken;
+        paymentTokenPricePerCVE = _paymentTokenPricePerCVE;
+        centralRegistry = _centralRegistry;
+        _mint(msg.sender, 7560001.242 ether);
+    }
 
-    modifier onlyDaoManager () {
+    modifier onlyDaoManager() {
         require(msg.sender == centralRegistry.daoAddress(), "UNAUTHORIZED");
         _;
     }
@@ -51,21 +51,33 @@ contract callOptionCVE is ERC20 {
      * @notice Check if options are exercisable.
      * @return True if options are exercisable, false otherwise.
      */
-    function optionsExercisable () public view returns (bool){
-        return (optionsStartTimestamp > 0 && block.timestamp >= optionsStartTimestamp && block.timestamp < optionsEndTimestamp);
+    function optionsExercisable() public view returns (bool) {
+        return (optionsStartTimestamp > 0 &&
+            block.timestamp >= optionsStartTimestamp &&
+            block.timestamp < optionsEndTimestamp);
     }
 
     /**
      * @notice Exercise CVE call options.
      * @param _amount The amount of options to exercise.
      */
-    function exerciseOption (uint256 _amount) public {
+    function exerciseOption(uint256 _amount) public {
         require(optionsExercisable(), "Options not exercisable yet");
-        if (IERC20(centralRegistry.CVE()).balanceOf(address(this)) <= _amount) revert InvalidExercise();
+        if (IERC20(centralRegistry.CVE()).balanceOf(address(this)) <= _amount)
+            revert InvalidExercise();
         if (_amount == 0) revert InvalidExercise();
 
-        SafeERC20.safeTransferFrom(paymentToken, msg.sender, address(this), (_amount * paymentTokenPricePerCVE)/denominatorOffset);
-        SafeERC20.safeTransfer(IERC20(centralRegistry.CVE()), msg.sender, _amount);
+        SafeERC20.safeTransferFrom(
+            paymentToken,
+            msg.sender,
+            address(this),
+            (_amount * paymentTokenPricePerCVE) / denominatorOffset
+        );
+        SafeERC20.safeTransfer(
+            IERC20(centralRegistry.CVE()),
+            msg.sender,
+            _amount
+        );
         emit callOptionCVEExercised(msg.sender, _amount);
     }
 
@@ -80,13 +92,22 @@ contract callOptionCVE is ERC20 {
         address _recipient,
         uint256 _amount
     ) external onlyDaoManager {
-        require(_recipient != address(0), "rescueToken: Invalid recipient address");
+        require(
+            _recipient != address(0),
+            "rescueToken: Invalid recipient address"
+        );
         if (_token == address(0)) {
-            require(address(this).balance >= _amount, "rescueToken: Insufficient balance");
+            require(
+                address(this).balance >= _amount,
+                "rescueToken: Insufficient balance"
+            );
             (bool success, ) = payable(_recipient).call{ value: _amount }("");
             require(success, "rescueToken: !successful");
         } else {
-            require(IERC20(_token).balanceOf(address(this)) >= _amount, "rescueToken: Insufficient balance");
+            require(
+                IERC20(_token).balanceOf(address(this)) >= _amount,
+                "rescueToken: Insufficient balance"
+            );
             SafeERC20.safeTransfer(IERC20(_token), _recipient, _amount);
         }
     }
@@ -95,9 +116,17 @@ contract callOptionCVE is ERC20 {
      * @notice Withdraws CVE from unexercised CVE call options to contract Owner after exercising period has ended
      */
     function withdrawRemainingAirdropTokens() external onlyDaoManager {
-        require(block.timestamp > optionsEndTimestamp, "withdrawRemainingAirdropTokens: Too early");
-        uint256 tokensToWithdraw = IERC20(centralRegistry.callOptionCVE()).balanceOf(address(this));
-        SafeERC20.safeTransfer(IERC20(centralRegistry.CVE()), _msgSender(), tokensToWithdraw);
+        require(
+            block.timestamp > optionsEndTimestamp,
+            "withdrawRemainingAirdropTokens: Too early"
+        );
+        uint256 tokensToWithdraw = IERC20(centralRegistry.callOptionCVE())
+            .balanceOf(address(this));
+        SafeERC20.safeTransfer(
+            IERC20(centralRegistry.CVE()),
+            _msgSender(),
+            tokensToWithdraw
+        );
         emit RemainingCVEWithdrawn(tokensToWithdraw);
     }
 
@@ -105,11 +134,17 @@ contract callOptionCVE is ERC20 {
      * @notice Set the options expiry timestamp.
      * @param _timestampStart The start timestamp for options exercising.
      */
-    function setOptionsExpiry(uint256 _timestampStart) external onlyDaoManager {
-        require(paymentTokenPricePerCVE != 0 && paymentToken != IERC20(address(0)) && optionsStartTimestamp != 0, "Cannot Configure Options");
+    function setOptionsExpiry(uint256 _timestampStart)
+        external
+        onlyDaoManager
+    {
+        require(
+            paymentTokenPricePerCVE != 0 &&
+                paymentToken != IERC20(address(0)) &&
+                optionsStartTimestamp != 0,
+            "Cannot Configure Options"
+        );
         optionsStartTimestamp = _timestampStart;
         optionsEndTimestamp = optionsStartTimestamp + (4 weeks);
     }
-
-
 }

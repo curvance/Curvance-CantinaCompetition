@@ -9,7 +9,10 @@ import "./InterestRateModel.sol";
  * @notice The parameterized model described in section 2.4 of the original Curvance Protocol whitepaper
  */
 contract WhitePaperInterestRateModel is InterestRateModel {
-    event NewInterestParams(uint256 baseRatePerBlock, uint256 multiplierPerBlock);
+    event NewInterestParams(
+        uint256 baseRatePerBlock,
+        uint256 multiplierPerBlock
+    );
 
     uint256 private constant BASE = 1e18;
 

@@ -173,7 +173,12 @@ contract PriceOps is Ownable {
     //////////////////////////////////////////////////////////////*/
 
     event AddAsset(address indexed asset);
-    event AddSource(uint64 id, address asset, address source, Descriptor descriptor);
+    event AddSource(
+        uint64 id,
+        address asset,
+        address source,
+        Descriptor descriptor
+    );
     event ProposeEditAsset(
         address asset,
         uint64 primarySource,
@@ -189,8 +194,14 @@ contract PriceOps is Ownable {
                                  ERRORS
     //////////////////////////////////////////////////////////////*/
 
-    error PriceOps__InvalidMinPrice(uint256 minPrice, uint256 bufferedMinPrice);
-    error PriceOps__InvalidMaxPrice(uint256 maxPrice, uint256 bufferedMaxPrice);
+    error PriceOps__InvalidMinPrice(
+        uint256 minPrice,
+        uint256 bufferedMinPrice
+    );
+    error PriceOps__InvalidMaxPrice(
+        uint256 maxPrice,
+        uint256 bufferedMaxPrice
+    );
     error PriceOps__MinPriceGreaterThanMaxPrice(uint256 min, uint256 max);
     error PriceOps__TwapAssetNotInPool();
     error PriceOps__SecondsAgoDoesNotMeetMinimum();
@@ -227,7 +238,12 @@ contract PriceOps is Ownable {
      */
     constructor(address ETH_USD_FEED, bytes memory parameters) {
         // Save the USD-ETH price feed because it is a widely used pricing path.
-        uint64 sourceId = _addSource(USD, Descriptor.CHAINLINK, ETH_USD_FEED, parameters);
+        uint64 sourceId = _addSource(
+            USD,
+            Descriptor.CHAINLINK,
+            ETH_USD_FEED,
+            parameters
+        );
         _addAsset(USD, sourceId, 0, 0);
     }
 
@@ -267,7 +283,12 @@ contract PriceOps is Ownable {
         uint64 secondarySource,
         uint16 allowedSourceDivergence
     ) external onlyOwner {
-        _addAsset(asset, primarySource, secondarySource, allowedSourceDivergence);
+        _addAsset(
+            asset,
+            primarySource,
+            secondarySource,
+            allowedSourceDivergence
+        );
         emit AddAsset(asset);
     }
 
@@ -282,14 +303,24 @@ contract PriceOps is Ownable {
         uint64 secondarySource,
         uint16 allowedSourceDivergence
     ) external onlyOwner {
-        if (getAssetSettings[asset].primarySource == 0) revert PriceOps__AssetNotAdded(asset);
-        bytes32 editHash = keccak256(abi.encode(asset, primarySource, secondarySource, allowedSourceDivergence));
+        if (getAssetSettings[asset].primarySource == 0)
+            revert PriceOps__AssetNotAdded(asset);
+        bytes32 editHash = keccak256(
+            abi.encode(
+                asset,
+                primarySource,
+                secondarySource,
+                allowedSourceDivergence
+            )
+        );
 
         uint64 editTimestamp = editAssetTimestamp[editHash];
 
         if (editTimestamp != 0) revert PriceOps__EditAlreadyProposed(asset);
 
-        editAssetTimestamp[editHash] = uint64(block.timestamp + EDIT_ASSET_DELAY);
+        editAssetTimestamp[editHash] = uint64(
+            block.timestamp + EDIT_ASSET_DELAY
+        );
 
         emit ProposeEditAsset(
             asset,
@@ -312,15 +343,28 @@ contract PriceOps is Ownable {
         uint64 secondarySource,
         uint16 allowedSourceDivergence
     ) external onlyOwner {
-        bytes32 editHash = keccak256(abi.encode(asset, primarySource, secondarySource, allowedSourceDivergence));
+        bytes32 editHash = keccak256(
+            abi.encode(
+                asset,
+                primarySource,
+                secondarySource,
+                allowedSourceDivergence
+            )
+        );
 
         uint64 editTimestamp = editAssetTimestamp[editHash];
 
-        if (editTimestamp == 0 || block.timestamp < editTimestamp) revert PriceOps__EditNotMature();
+        if (editTimestamp == 0 || block.timestamp < editTimestamp)
+            revert PriceOps__EditNotMature();
 
         editAssetTimestamp[editHash] = 0;
 
-        _updateAsset(asset, primarySource, secondarySource, allowedSourceDivergence);
+        _updateAsset(
+            asset,
+            primarySource,
+            secondarySource,
+            allowedSourceDivergence
+        );
 
         emit EditAsset(asset, editHash);
     }
@@ -336,8 +380,16 @@ contract PriceOps is Ownable {
         uint64 secondarySource,
         uint16 allowedSourceDivergence
     ) external onlyOwner {
-        if (getAssetSettings[asset].primarySource == 0) revert PriceOps__AssetNotAdded(asset);
-        bytes32 editHash = keccak256(abi.encode(asset, primarySource, secondarySource, allowedSourceDivergence));
+        if (getAssetSettings[asset].primarySource == 0)
+            revert PriceOps__AssetNotAdded(asset);
+        bytes32 editHash = keccak256(
+            abi.encode(
+                asset,
+                primarySource,
+                secondarySource,
+                allowedSourceDivergence
+            )
+        );
 
         uint64 editTimestamp = editAssetTimestamp[editHash];
 
@@ -361,9 +413,15 @@ contract PriceOps is Ownable {
         return getAssetSettings[asset].primarySource > 0;
     }
 
-    function getPriceInBaseEnforceNonZeroLower(
-        address asset
-    ) external view returns (uint256 upper, uint256 lower, uint8 errorCode) {
+    function getPriceInBaseEnforceNonZeroLower(address asset)
+        external
+        view
+        returns (
+            uint256 upper,
+            uint256 lower,
+            uint8 errorCode
+        )
+    {
         (upper, lower, errorCode) = _getPriceInBase(asset);
 
         if (lower == 0) lower = upper;
@@ -376,7 +434,15 @@ contract PriceOps is Ownable {
     /**
      * @notice Allows extensions to call getPriceInBase.
      */
-    function getPriceInBase(address asset) external view returns (uint256, uint256, uint8) {
+    function getPriceInBase(address asset)
+        external
+        view
+        returns (
+            uint256,
+            uint256,
+            uint8
+        )
+    {
         if (!isExtension[msg.sender]) revert PriceOps__CallerIsNotExtension();
         return _getPriceInBase(asset);
     }
@@ -403,17 +469,26 @@ contract PriceOps is Ownable {
 
         if (descriptor == Descriptor.CHAINLINK) {
             _setupAssetForChainlinkSource(asset, sourceId, source, sourceData);
-            (upper, lower, errorCode) = _getPriceInBaseForChainlinkAsset(sourceId, source);
+            (upper, lower, errorCode) = _getPriceInBaseForChainlinkAsset(
+                sourceId,
+                source
+            );
         } else if (descriptor == Descriptor.UNIV3_TWAP) {
             _setupAssetForTwapSource(asset, sourceId, source, sourceData);
-            (upper, lower, errorCode) = _getPriceInBaseForTwapAsset(sourceId, source);
+            (upper, lower, errorCode) = _getPriceInBaseForTwapAsset(
+                sourceId,
+                source
+            );
         } else if (descriptor == Descriptor.EXTENSION) {
             if (!isExtension[source]) isExtension[source] = true;
             Extension(source).setupSource(asset, sourceId, sourceData);
-            (upper, lower, errorCode) = Extension(source).getPriceInBase(sourceId);
+            (upper, lower, errorCode) = Extension(source).getPriceInBase(
+                sourceId
+            );
         }
 
-        if (errorCode != 0) revert PriceOps__SourceErrorDuringAddSource(asset, errorCode);
+        if (errorCode != 0)
+            revert PriceOps__SourceErrorDuringAddSource(asset, errorCode);
 
         getAssetSourceSettings[sourceId] = AssetSourceSettings({
             asset: asset,
@@ -432,8 +507,14 @@ contract PriceOps is Ownable {
         uint16 allowedSourceDivergence
     ) internal {
         // Check if asset is already setup.
-        if (getAssetSettings[asset].primarySource != 0) revert PriceOps__AssetAlreadyExists(asset);
-        _updateAsset(asset, primarySource, secondarySource, allowedSourceDivergence);
+        if (getAssetSettings[asset].primarySource != 0)
+            revert PriceOps__AssetAlreadyExists(asset);
+        _updateAsset(
+            asset,
+            primarySource,
+            secondarySource,
+            allowedSourceDivergence
+        );
     }
 
     /**
@@ -449,13 +530,18 @@ contract PriceOps is Ownable {
         if (primarySource == 0) revert PriceOps__InvalidPrimary();
 
         // make sure sources are valid, and for the right asset.
-        if (getAssetSourceSettings[primarySource].asset != asset) revert PriceOps__SourceAssetMismatch();
+        if (getAssetSourceSettings[primarySource].asset != asset)
+            revert PriceOps__SourceAssetMismatch();
         // If secondary is set make sure asset matches.
         if (secondarySource != 0) {
-            if (getAssetSourceSettings[secondarySource].asset != asset) revert PriceOps__SourceAssetMismatch();
+            if (getAssetSourceSettings[secondarySource].asset != asset)
+                revert PriceOps__SourceAssetMismatch();
             // Make sure source divergence is reasonable.
             if (allowedSourceDivergence > MAX_ALLOWED_SOURCE_DIVERGENCE)
-                revert PriceOps__InvalidSourceDivergence(allowedSourceDivergence, MAX_ALLOWED_SOURCE_DIVERGENCE);
+                revert PriceOps__InvalidSourceDivergence(
+                    allowedSourceDivergence,
+                    MAX_ALLOWED_SOURCE_DIVERGENCE
+                );
         }
 
         getAssetSettings[asset] = AssetSettings({
@@ -481,7 +567,15 @@ contract PriceOps is Ownable {
      *      - Asset has 2 sources and they both report BAD_SOURCE.
      *      - Some underlying asset reports BAD_SOURCE.
      */
-    function _getPriceInBase(address asset) internal view returns (uint256, uint256, uint8) {
+    function _getPriceInBase(address asset)
+        internal
+        view
+        returns (
+            uint256,
+            uint256,
+            uint8
+        )
+    {
         if (asset == WETH) return (1 ether, 1 ether, NO_ERROR);
 
         AssetSettings memory settings = getAssetSettings[asset];
@@ -497,7 +591,11 @@ contract PriceOps is Ownable {
             // Single Oracle.
 
             // Query the primary source.
-            (primarySourceUpper, primarySourceLower, primaryErrorCode) = _getPriceFromSource(settings.primarySource);
+            (
+                primarySourceUpper,
+                primarySourceLower,
+                primaryErrorCode
+            ) = _getPriceFromSource(settings.primarySource);
             // No need to look at error code, just return it.
             return (primarySourceUpper, primarySourceLower, primaryErrorCode);
         } else {
@@ -507,19 +605,31 @@ contract PriceOps is Ownable {
             uint8 secondaryErrorCode;
 
             // Query the primary source.
-            (primarySourceUpper, primarySourceLower, primaryErrorCode) = _getPriceFromSource(settings.primarySource);
+            (
+                primarySourceUpper,
+                primarySourceLower,
+                primaryErrorCode
+            ) = _getPriceFromSource(settings.primarySource);
 
             // Query the secondary source.
-            (secondarySourceUpper, secondarySourceLower, secondaryErrorCode) = _getPriceFromSource(
-                settings.secondarySource
-            );
+            (
+                secondarySourceUpper,
+                secondarySourceLower,
+                secondaryErrorCode
+            ) = _getPriceFromSource(settings.secondarySource);
 
             // We are completely blind if this price is good or not because both sources are bad.
-            if (primaryErrorCode == BAD_SOURCE && secondaryErrorCode == BAD_SOURCE) {
+            if (
+                primaryErrorCode == BAD_SOURCE &&
+                secondaryErrorCode == BAD_SOURCE
+            ) {
                 return (0, 0, BAD_SOURCE);
             } else {
                 // At best we can return a NO_ERROR but need to check if sources diverge, or if one of them has a non zero error code.
-                if (primaryErrorCode == NO_ERROR && secondaryErrorCode == NO_ERROR) {
+                if (
+                    primaryErrorCode == NO_ERROR &&
+                    secondaryErrorCode == NO_ERROR
+                ) {
                     (uint256 upper, uint256 lower) = _findUpperAndLower(
                         primarySourceUpper,
                         primarySourceLower,
@@ -528,7 +638,10 @@ contract PriceOps is Ownable {
                     );
 
                     // Check for divergence
-                    uint256 minLower = upper.mulDivDown(1e4 - settings.allowedSourceDivergence, 1e4);
+                    uint256 minLower = upper.mulDivDown(
+                        1e4 - settings.allowedSourceDivergence,
+                        1e4
+                    );
                     if (lower < minLower) errorCode = CAUTION;
 
                     return (upper, lower, errorCode);
@@ -536,9 +649,17 @@ contract PriceOps is Ownable {
                     // One of our sources has some error, but we know the other one is usable with caution.
                     errorCode = CAUTION;
                     if (primaryErrorCode == BAD_SOURCE) {
-                        return (secondarySourceUpper, secondarySourceLower, errorCode);
+                        return (
+                            secondarySourceUpper,
+                            secondarySourceLower,
+                            errorCode
+                        );
                     } else if (secondaryErrorCode == BAD_SOURCE) {
-                        return (primarySourceUpper, primarySourceLower, errorCode);
+                        return (
+                            primarySourceUpper,
+                            primarySourceLower,
+                            errorCode
+                        );
                     } else {
                         // Both sources are usable, but need to check for zero lower values.
                         (uint256 upper, uint256 lower) = _findUpperAndLower(
@@ -564,22 +685,35 @@ contract PriceOps is Ownable {
         uint256 secondarySourceLower
     ) internal pure returns (uint256 upper, uint256 lower) {
         // First find upper.
-        upper = primarySourceUpper > secondarySourceUpper ? primarySourceUpper : secondarySourceUpper;
+        upper = primarySourceUpper > secondarySourceUpper
+            ? primarySourceUpper
+            : secondarySourceUpper;
 
         // Now find lower.
         if (primarySourceLower == 0 && secondarySourceLower == 0) {
             // Use the smaller upper value.
-            lower = primarySourceUpper < secondarySourceUpper ? primarySourceUpper : secondarySourceUpper;
+            lower = primarySourceUpper < secondarySourceUpper
+                ? primarySourceUpper
+                : secondarySourceUpper;
         } else {
             if (primarySourceLower != 0 && secondarySourceLower != 0) {
                 // Use the smaller lower value.
-                lower = primarySourceLower < secondarySourceLower ? primarySourceLower : secondarySourceLower;
+                lower = primarySourceLower < secondarySourceLower
+                    ? primarySourceLower
+                    : secondarySourceLower;
             } else {
                 // Else compare non zero lower to smaller upper.
-                uint256 smallerUpper = primarySourceUpper.min(secondarySourceUpper);
+                uint256 smallerUpper = primarySourceUpper.min(
+                    secondarySourceUpper
+                );
                 if (primarySourceLower != 0)
-                    lower = primarySourceLower < smallerUpper ? primarySourceLower : smallerUpper;
-                else lower = secondarySourceLower < smallerUpper ? secondarySourceLower : smallerUpper;
+                    lower = primarySourceLower < smallerUpper
+                        ? primarySourceLower
+                        : smallerUpper;
+                else
+                    lower = secondarySourceLower < smallerUpper
+                        ? secondarySourceLower
+                        : smallerUpper;
             }
         }
     }
@@ -587,18 +721,31 @@ contract PriceOps is Ownable {
     /**
      * @dev Helper function to query a source for its upper and lower.
      */
-    function _getPriceFromSource(
-        uint64 sourceId
-    ) internal view returns (uint256 upper, uint256 lower, uint8 errorCode) {
+    function _getPriceFromSource(uint64 sourceId)
+        internal
+        view
+        returns (
+            uint256 upper,
+            uint256 lower,
+            uint8 errorCode
+        )
+    {
         AssetSourceSettings memory settings = getAssetSourceSettings[sourceId];
         // Note sources CAN return an upper and lower, but a lot of them will only return an upper.
         // Like if we had a TWAP for GEAR/USDC then when we price USDC, that could use CL USDC->USD and TWAP USDC->ETH then CL ETH->USD
         if (settings.descriptor == Descriptor.CHAINLINK) {
-            (upper, lower, errorCode) = _getPriceInBaseForChainlinkAsset(sourceId, settings.source);
+            (upper, lower, errorCode) = _getPriceInBaseForChainlinkAsset(
+                sourceId,
+                settings.source
+            );
         } else if (settings.descriptor == Descriptor.UNIV3_TWAP) {
-            (upper, lower, errorCode) = _getPriceInBaseForTwapAsset(sourceId, settings.source);
+            (upper, lower, errorCode) = _getPriceInBaseForTwapAsset(
+                sourceId,
+                settings.source
+            );
         } else if (settings.descriptor == Descriptor.EXTENSION) {
-            (upper, lower, errorCode) = Extension(settings.source).getPriceInBase(sourceId);
+            (upper, lower, errorCode) = Extension(settings.source)
+                .getPriceInBase(sourceId);
         }
     }
 
@@ -611,11 +758,21 @@ contract PriceOps is Ownable {
      * @dev _source The address of the Chainlink Data feed.
      * @dev _storage A ChainlinkDerivativeStorage value defining valid prices.
      */
-    function _setupAssetForChainlinkSource(address, uint64 _sourceId, address _source, bytes memory _storage) internal {
-        ChainlinkSourceStorage memory parameters = abi.decode(_storage, (ChainlinkSourceStorage));
+    function _setupAssetForChainlinkSource(
+        address,
+        uint64 _sourceId,
+        address _source,
+        bytes memory _storage
+    ) internal {
+        ChainlinkSourceStorage memory parameters = abi.decode(
+            _storage,
+            (ChainlinkSourceStorage)
+        );
 
         // Use Chainlink to get the min and max of the asset.
-        IChainlinkAggregator aggregator = IChainlinkAggregator(IChainlinkAggregator(_source).aggregator());
+        IChainlinkAggregator aggregator = IChainlinkAggregator(
+            IChainlinkAggregator(_source).aggregator()
+        );
         uint256 minFromChainklink = uint256(uint192(aggregator.minAnswer()));
         uint256 maxFromChainlink = uint256(uint192(aggregator.maxAnswer()));
 
@@ -628,23 +785,39 @@ contract PriceOps is Ownable {
             // Revert if bufferedMinPrice overflows because uint80 is too small to hold the minimum price,
             // and lowering it to uint80 is not safe because the price feed can stop being updated before
             // it actually gets to that lower price.
-            if (bufferedMinPrice > type(uint80).max) revert PriceOps__BufferedMinOverflow();
+            if (bufferedMinPrice > type(uint80).max)
+                revert PriceOps__BufferedMinOverflow();
             parameters.min = uint80(bufferedMinPrice);
         } else {
-            if (parameters.min < bufferedMinPrice) revert PriceOps__InvalidMinPrice(parameters.min, bufferedMinPrice);
+            if (parameters.min < bufferedMinPrice)
+                revert PriceOps__InvalidMinPrice(
+                    parameters.min,
+                    bufferedMinPrice
+                );
         }
 
         if (parameters.max == 0) {
             //Do not revert even if bufferedMaxPrice is greater than uint144, because lowering it to uint144 max is more conservative.
-            parameters.max = bufferedMaxPrice > type(uint144).max ? type(uint144).max : uint144(bufferedMaxPrice);
+            parameters.max = bufferedMaxPrice > type(uint144).max
+                ? type(uint144).max
+                : uint144(bufferedMaxPrice);
         } else {
-            if (parameters.max > bufferedMaxPrice) revert PriceOps__InvalidMaxPrice(parameters.max, bufferedMaxPrice);
+            if (parameters.max > bufferedMaxPrice)
+                revert PriceOps__InvalidMaxPrice(
+                    parameters.max,
+                    bufferedMaxPrice
+                );
         }
 
         if (parameters.min >= parameters.max)
-            revert PriceOps__MinPriceGreaterThanMaxPrice(parameters.min, parameters.max);
+            revert PriceOps__MinPriceGreaterThanMaxPrice(
+                parameters.min,
+                parameters.max
+            );
 
-        parameters.heartbeat = parameters.heartbeat != 0 ? parameters.heartbeat : DEFAULT_HEART_BEAT;
+        parameters.heartbeat = parameters.heartbeat != 0
+            ? parameters.heartbeat
+            : DEFAULT_HEART_BEAT;
 
         getChainlinkSourceStorage[_sourceId] = parameters;
     }
@@ -655,12 +828,29 @@ contract PriceOps is Ownable {
     function _getPriceInBaseForChainlinkAsset(
         uint64 _sourceId,
         address _source
-    ) internal view returns (uint256 upper, uint256 lower, uint8 errorCode) {
-        ChainlinkSourceStorage memory parameters = getChainlinkSourceStorage[_sourceId];
+    )
+        internal
+        view
+        returns (
+            uint256 upper,
+            uint256 lower,
+            uint8 errorCode
+        )
+    {
+        ChainlinkSourceStorage memory parameters = getChainlinkSourceStorage[
+            _sourceId
+        ];
         IChainlinkAggregator aggregator = IChainlinkAggregator(_source);
-        (, int256 _price, , uint256 updatedAt, ) = aggregator.latestRoundData();
+        (, int256 _price, , uint256 updatedAt, ) = aggregator
+            .latestRoundData();
         uint256 price = _price.toUint256();
-        errorCode = _checkPriceFeed(price, updatedAt, parameters.max, parameters.min, parameters.heartbeat);
+        errorCode = _checkPriceFeed(
+            price,
+            updatedAt,
+            parameters.max,
+            parameters.min,
+            parameters.heartbeat
+        );
 
         // If errorCode is BAD_SOURCE there is no point to conitnue;
         if (errorCode == BAD_SOURCE) return (0, 0, errorCode);
@@ -671,9 +861,14 @@ contract PriceOps is Ownable {
         } else {
             // If price is in Usd, convert to ETH.
             if (parameters.inUsd) {
-                (uint256 _baseToEthUpper, uint256 _baseToEthLower, uint8 _errorCode) = _getPriceInBase(USD);
+                (
+                    uint256 _baseToEthUpper,
+                    uint256 _baseToEthLower,
+                    uint8 _errorCode
+                ) = _getPriceInBase(USD);
                 upper = price.mulDivDown(_baseToEthUpper, 1e8);
-                if (_baseToEthLower > 0) lower = price.mulDivDown(_baseToEthLower, 1e8);
+                if (_baseToEthLower > 0)
+                    lower = price.mulDivDown(_baseToEthLower, 1e8);
                 // Favor the worst error code.
                 if (_errorCode > errorCode) errorCode = _errorCode;
             } else {
@@ -715,11 +910,20 @@ contract PriceOps is Ownable {
     /**
      * @notice Setup function for pricing TWAP source assets.
      */
-    function _setupAssetForTwapSource(address asset, uint64 sourceId, address _source, bytes memory _storage) internal {
-        TwapSourceStorage memory parameters = abi.decode(_storage, (TwapSourceStorage));
+    function _setupAssetForTwapSource(
+        address asset,
+        uint64 sourceId,
+        address _source,
+        bytes memory _storage
+    ) internal {
+        TwapSourceStorage memory parameters = abi.decode(
+            _storage,
+            (TwapSourceStorage)
+        );
 
         // Verify seconds ago is reasonable.
-        if (parameters.secondsAgo < MINIMUM_SECONDS_AGO) revert PriceOps__SecondsAgoDoesNotMeetMinimum();
+        if (parameters.secondsAgo < MINIMUM_SECONDS_AGO)
+            revert PriceOps__SecondsAgoDoesNotMeetMinimum();
 
         UniswapV3Pool pool = UniswapV3Pool(_source);
 
@@ -741,29 +945,45 @@ contract PriceOps is Ownable {
     /**
      * @notice Get the price of a Twap source in terms of BASE.
      */
-    function _getPriceInBaseForTwapAsset(
-        uint64 sourceId,
-        address source
-    ) internal view returns (uint256 upper, uint256 lower, uint8 errorCode) {
+    function _getPriceInBaseForTwapAsset(uint64 sourceId, address source)
+        internal
+        view
+        returns (
+            uint256 upper,
+            uint256 lower,
+            uint8 errorCode
+        )
+    {
         TwapSourceStorage memory parameters = getTwapSourceStorage[sourceId];
-        (int24 arithmeticMeanTick, ) = OracleLibrary.consult(source, parameters.secondsAgo);
+        (int24 arithmeticMeanTick, ) = OracleLibrary.consult(
+            source,
+            parameters.secondsAgo
+        );
         // Get the amount of quote token each base token is worth.
         uint256 quoteAmount = OracleLibrary.getQuoteAtTick(
             arithmeticMeanTick,
-            uint128(10 ** parameters.baseDecimals),
+            uint128(10**parameters.baseDecimals),
             parameters.baseToken,
             parameters.quoteToken
         );
 
         if (parameters.quoteToken != WETH) {
-            (uint256 _quoteToBaseUpper, uint256 _quoteToBaseLower, uint8 _errorCode) = _getPriceInBase(
-                parameters.quoteToken
-            );
+            (
+                uint256 _quoteToBaseUpper,
+                uint256 _quoteToBaseLower,
+                uint8 _errorCode
+            ) = _getPriceInBase(parameters.quoteToken);
             // If underlying source is bad, we can not trust this source.
             if (_errorCode == BAD_SOURCE) return (0, 0, _errorCode);
-            upper = quoteAmount.mulDivDown(_quoteToBaseUpper, 10 ** parameters.quoteDecimals);
+            upper = quoteAmount.mulDivDown(
+                _quoteToBaseUpper,
+                10**parameters.quoteDecimals
+            );
             if (_quoteToBaseLower > 0)
-                lower = quoteAmount.mulDivDown(_quoteToBaseLower, 10 ** parameters.quoteDecimals);
+                lower = quoteAmount.mulDivDown(
+                    _quoteToBaseLower,
+                    10**parameters.quoteDecimals
+                );
             if (_errorCode > 0) errorCode = _errorCode;
         } else {
             // Price is already given in base.

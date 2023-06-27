@@ -18,31 +18,31 @@ contract CVEAirdrop {
     uint256 public immutable endClaimTimestamp;
 
     bytes32 public airdropMerkleRoot;
-    bool    public isPaused = true;
+    bool public isPaused = true;
     uint256 private locked = 1;
 
     mapping(address => bool) public airdropClaimed;
 
-     /**
+    /**
      * @notice Constructor
      * @param _centralRegistry Contract Address of Curvance Central Registry
      * @param _endTimestamp end timestamp for airdrop claiming
      * @param _root Airdrop merkle root for claim validation
      * @param _maximumClaimAmount maximum amount to claim per address
      */
-    constructor (
+    constructor(
         ICentralRegistry _centralRegistry,
         uint256 _endTimestamp,
-        uint256 _maximumClaimAmount,  
+        uint256 _maximumClaimAmount,
         bytes32 _root
     ) {
         centralRegistry = _centralRegistry;
         endClaimTimestamp = _endTimestamp;
-        maximumClaimAmount = _maximumClaimAmount; 
+        maximumClaimAmount = _maximumClaimAmount;
         airdropMerkleRoot = _root;
     }
 
-    modifier onlyDaoManager () {
+    modifier onlyDaoManager() {
         require(msg.sender == centralRegistry.daoAddress(), "UNAUTHORIZED");
         _;
     }
@@ -68,27 +68,53 @@ contract CVEAirdrop {
      * @param _amount Requested CVE amount to claim for the airdrop
      * @param _proof Bytes32 array containing the merkle proof
      */
-    function claimAirdrop(uint256 _amount, bytes32[] calldata _proof) external notPaused nonReentrant {
+    function claimAirdrop(uint256 _amount, bytes32[] calldata _proof)
+        external
+        notPaused
+        nonReentrant
+    {
         // Verify that the airdrop Merkle Root has been set
-        require(airdropMerkleRoot != bytes32(0), "claimAirdrop: Airdrop Merkle Root not set");
+        require(
+            airdropMerkleRoot != bytes32(0),
+            "claimAirdrop: Airdrop Merkle Root not set"
+        );
 
         // Verify CVE amount request is not above the maximum claim amount
-        require(_amount <= maximumClaimAmount, "claimAirdrop: Amount too high");
+        require(
+            _amount <= maximumClaimAmount,
+            "claimAirdrop: Amount too high"
+        );
 
         // Verify Claim window has not passed
-        require(block.timestamp < endClaimTimestamp, "claimAirdrop: Too late to claim");
+        require(
+            block.timestamp < endClaimTimestamp,
+            "claimAirdrop: Too late to claim"
+        );
 
         // Verify the user has not claimed their airdrop already
-        require(!airdropClaimed[_msgSender()], "claimAirdrop: Already claimed");
+        require(
+            !airdropClaimed[_msgSender()],
+            "claimAirdrop: Already claimed"
+        );
 
         // Compute the merkle leaf and verify the merkle proof
-        require(verifyProof(_proof, airdropMerkleRoot, keccak256(abi.encodePacked(_msgSender(), _amount))), "claimAirdrop: Invalid proof provided");
+        require(
+            verifyProof(
+                _proof,
+                airdropMerkleRoot,
+                keccak256(abi.encodePacked(_msgSender(), _amount))
+            ),
+            "claimAirdrop: Invalid proof provided"
+        );
 
         // Document that airdrop has been claimed
         airdropClaimed[_msgSender()] = true;
 
         // Transfer CVE tokens
-        IERC20(centralRegistry.callOptionCVE()).safeTransfer(_msgSender(), _amount);
+        IERC20(centralRegistry.callOptionCVE()).safeTransfer(
+            _msgSender(),
+            _amount
+        );
 
         emit callOptionCVEAirdropClaimed(_msgSender(), _amount);
     }
@@ -97,24 +123,31 @@ contract CVEAirdrop {
      * @notice Gas efficient merkle proof verification implementation to validate CVE token claim
      * @param _proof Requested CVE amount to claim for the airdrop
      * @param _root Merkle root to check computed hash against
-     * @param _leaf Merkle leaf containing hashed inputs to compare proof element against 
+     * @param _leaf Merkle leaf containing hashed inputs to compare proof element against
      */
-    function verifyProof(bytes32[] memory _proof, bytes32 _root, bytes32 _leaf) internal pure returns (bool) {
-            bytes32 computedHash = _leaf;
-            uint256 iterations = _proof.length;
-            bytes32 proofElement;
+    function verifyProof(
+        bytes32[] memory _proof,
+        bytes32 _root,
+        bytes32 _leaf
+    ) internal pure returns (bool) {
+        bytes32 computedHash = _leaf;
+        uint256 iterations = _proof.length;
+        bytes32 proofElement;
 
-            for (uint256 i; i < iterations; ) {
-                proofElement = _proof[i++];
+        for (uint256 i; i < iterations; ) {
+            proofElement = _proof[i++];
 
-                if (computedHash <= proofElement) {
-                    computedHash = keccak256(abi.encodePacked(computedHash, proofElement));
-                } else {
-                    computedHash = keccak256(abi.encodePacked(proofElement, computedHash));
-                }
-
+            if (computedHash <= proofElement) {
+                computedHash = keccak256(
+                    abi.encodePacked(computedHash, proofElement)
+                );
+            } else {
+                computedHash = keccak256(
+                    abi.encodePacked(proofElement, computedHash)
+                );
             }
-            return computedHash == _root;
+        }
+        return computedHash == _root;
     }
 
     /**
@@ -128,10 +161,15 @@ contract CVEAirdrop {
         uint256 _amount,
         bytes32[] calldata _proof
     ) external view returns (bool) {
-        if (!airdropClaimed[_address]){
+        if (!airdropClaimed[_address]) {
             if (block.timestamp < endClaimTimestamp) {
                 // Compute the leaf and verify the merkle proof
-                return verifyProof(_proof, airdropMerkleRoot, keccak256(abi.encodePacked(_address, _amount)));
+                return
+                    verifyProof(
+                        _proof,
+                        airdropMerkleRoot,
+                        keccak256(abi.encodePacked(_address, _amount))
+                    );
             }
         }
         return false;
@@ -147,13 +185,22 @@ contract CVEAirdrop {
         address _recipient,
         uint256 _amount
     ) external onlyDaoManager {
-        require(_recipient != address(0), "rescueToken: Invalid recipient address");
+        require(
+            _recipient != address(0),
+            "rescueToken: Invalid recipient address"
+        );
         if (_token == address(0)) {
-            require(address(this).balance >= _amount, "rescueToken: Insufficient balance");
+            require(
+                address(this).balance >= _amount,
+                "rescueToken: Insufficient balance"
+            );
             (bool success, ) = payable(_recipient).call{ value: _amount }("");
             require(success, "rescueToken: !successful");
         } else {
-            require(IERC20(_token).balanceOf(address(this)) >= _amount, "rescueToken: Insufficient balance");
+            require(
+                IERC20(_token).balanceOf(address(this)) >= _amount,
+                "rescueToken: Insufficient balance"
+            );
             SafeERC20.safeTransfer(IERC20(_token), _recipient, _amount);
         }
     }
@@ -162,9 +209,16 @@ contract CVEAirdrop {
      * @notice Withdraws unclaimed airdrop tokens to contract Owner after airdrop claim period has ended
      */
     function withdrawRemainingAirdropTokens() external onlyDaoManager {
-        require(block.timestamp > endClaimTimestamp, "withdrawRemainingAirdropTokens: Too early");
-        uint256 tokensToWithdraw = IERC20(centralRegistry.callOptionCVE()).balanceOf(address(this));
-        IERC20(centralRegistry.callOptionCVE()).safeTransfer(_msgSender(), tokensToWithdraw);
+        require(
+            block.timestamp > endClaimTimestamp,
+            "withdrawRemainingAirdropTokens: Too early"
+        );
+        uint256 tokensToWithdraw = IERC20(centralRegistry.callOptionCVE())
+            .balanceOf(address(this));
+        IERC20(centralRegistry.callOptionCVE()).safeTransfer(
+            _msgSender(),
+            tokensToWithdraw
+        );
 
         emit RemainingCallOptionCVEWithdrawn(tokensToWithdraw);
     }
@@ -185,5 +239,4 @@ contract CVEAirdrop {
     function setPauseState(bool _state) external onlyDaoManager {
         isPaused = _state;
     }
-
 }

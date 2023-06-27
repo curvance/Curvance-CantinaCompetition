@@ -58,7 +58,10 @@ contract ChildGaugePool is ReentrancyGuard, Ownable {
         activationTime = block.timestamp;
     }
 
-    function setRewardPerSec(uint256 epoch, uint256 newRewardPerSec) external onlyOwner {
+    function setRewardPerSec(uint256 epoch, uint256 newRewardPerSec)
+        external
+        onlyOwner
+    {
         if (!(epoch == 0 && startTime() == 0) && epoch != currentEpoch() + 1) {
             revert GaugeErrors.InvalidEpoch();
         }
@@ -67,7 +70,10 @@ contract ChildGaugePool is ReentrancyGuard, Ownable {
         epochRewardPerSec[epoch] = newRewardPerSec;
 
         if (prevRewardPerSec > newRewardPerSec) {
-            IERC20(rewardToken).safeTransfer(msg.sender, EPOCH_WINDOW * (prevRewardPerSec - newRewardPerSec));
+            IERC20(rewardToken).safeTransfer(
+                msg.sender,
+                EPOCH_WINDOW * (prevRewardPerSec - newRewardPerSec)
+            );
         } else {
             IERC20(rewardToken).safeTransferFrom(
                 msg.sender,
@@ -90,8 +96,17 @@ contract ChildGaugePool is ReentrancyGuard, Ownable {
      * @param token Pool token address
      * @param user User address
      */
-    function pendingRewards(address token, address user) external view returns (uint256) {
-        if (!gaugeController.isGaugeEnabled(gaugeController.currentEpoch(), token)) {
+    function pendingRewards(address token, address user)
+        external
+        view
+        returns (uint256)
+    {
+        if (
+            !gaugeController.isGaugeEnabled(
+                gaugeController.currentEpoch(),
+                token
+            )
+        ) {
             revert GaugeErrors.InvalidToken();
         }
 
@@ -104,32 +119,45 @@ contract ChildGaugePool is ReentrancyGuard, Ownable {
         }
 
         if (block.timestamp > lastRewardTimestamp && totalDeposited != 0) {
-            uint256 lastEpoch = gaugeController.epochOfTimestamp(lastRewardTimestamp);
+            uint256 lastEpoch = gaugeController.epochOfTimestamp(
+                lastRewardTimestamp
+            );
             uint256 curEpoch = gaugeController.currentEpoch();
             uint256 reward;
             while (lastEpoch < curEpoch) {
                 uint256 endTimestamp = gaugeController.epochEndTime(lastEpoch);
 
-                (uint256 totalWeights, uint256 poolWeights) = gaugeController.gaugeWeight(lastEpoch, token);
+                (uint256 totalWeights, uint256 poolWeights) = gaugeController
+                    .gaugeWeight(lastEpoch, token);
                 // update rewards from lastRewardTimestamp to endTimestamp
                 reward =
-                    ((endTimestamp - lastRewardTimestamp) * epochRewardPerSec[lastEpoch] * poolWeights) /
+                    ((endTimestamp - lastRewardTimestamp) *
+                        epochRewardPerSec[lastEpoch] *
+                        poolWeights) /
                     totalWeights;
-                accRewardPerShare = accRewardPerShare + (reward * (PRECISION)) / totalDeposited;
+                accRewardPerShare =
+                    accRewardPerShare +
+                    (reward * (PRECISION)) /
+                    totalDeposited;
 
                 ++lastEpoch;
                 lastRewardTimestamp = endTimestamp;
             }
 
-            (uint256 totalWeightsOfCurrentEpoch, uint256 poolWeightsOfCurrentEpoch) = gaugeController.gaugeWeight(
-                lastEpoch,
-                token
-            );
+            (
+                uint256 totalWeightsOfCurrentEpoch,
+                uint256 poolWeightsOfCurrentEpoch
+            ) = gaugeController.gaugeWeight(lastEpoch, token);
             // update rewards from lastRewardTimestamp to current timestamp
             reward =
-                ((block.timestamp - lastRewardTimestamp) * epochRewardPerSec[lastEpoch] * poolWeightsOfCurrentEpoch) /
+                ((block.timestamp - lastRewardTimestamp) *
+                    epochRewardPerSec[lastEpoch] *
+                    poolWeightsOfCurrentEpoch) /
                 totalWeightsOfCurrentEpoch;
-            accRewardPerShare = accRewardPerShare + (reward * (PRECISION)) / totalDeposited;
+            accRewardPerShare =
+                accRewardPerShare +
+                (reward * (PRECISION)) /
+                totalDeposited;
         }
 
         UserInfo memory info = userInfo[token][user];
@@ -140,7 +168,11 @@ contract ChildGaugePool is ReentrancyGuard, Ownable {
             info.rewardDebt;
     }
 
-    function deposit(address token, address user, uint256 amount) external nonReentrant onlyGaugeController {
+    function deposit(
+        address token,
+        address user,
+        uint256 amount
+    ) external nonReentrant onlyGaugeController {
         _updatePool(token, UserAction.DEPOSIT, amount);
 
         _calcPending(user, token, UserAction.DEPOSIT, amount);
@@ -148,7 +180,11 @@ contract ChildGaugePool is ReentrancyGuard, Ownable {
         _calcDebt(user, token);
     }
 
-    function withdraw(address token, address user, uint256 amount) external nonReentrant onlyGaugeController {
+    function withdraw(
+        address token,
+        address user,
+        uint256 amount
+    ) external nonReentrant onlyGaugeController {
         _updatePool(token, UserAction.WITHDRAW, amount);
 
         _calcPending(user, token, UserAction.WITHDRAW, amount);
@@ -175,7 +211,12 @@ contract ChildGaugePool is ReentrancyGuard, Ownable {
     /**
      * @notice Calculate user's pending rewards
      */
-    function _calcPending(address user, address token, UserAction action, uint256 amount) internal {
+    function _calcPending(
+        address user,
+        address token,
+        UserAction action,
+        uint256 amount
+    ) internal {
         uint256 userAmount = gaugeController.balanceOf(token, user);
         if (action == UserAction.DEPOSIT) {
             userAmount -= amount;
@@ -184,7 +225,10 @@ contract ChildGaugePool is ReentrancyGuard, Ownable {
         }
 
         UserInfo storage info = userInfo[token][user];
-        info.rewardPending += (userAmount * poolInfo[token].accRewardPerShare) / (PRECISION) - info.rewardDebt;
+        info.rewardPending +=
+            (userAmount * poolInfo[token].accRewardPerShare) /
+            (PRECISION) -
+            info.rewardDebt;
     }
 
     /**
@@ -192,14 +236,21 @@ contract ChildGaugePool is ReentrancyGuard, Ownable {
      */
     function _calcDebt(address user, address token) internal {
         UserInfo storage info = userInfo[token][user];
-        info.rewardDebt = (gaugeController.balanceOf(token, user) * poolInfo[token].accRewardPerShare) / (PRECISION);
+        info.rewardDebt =
+            (gaugeController.balanceOf(token, user) *
+                poolInfo[token].accRewardPerShare) /
+            (PRECISION);
     }
 
     /**
      * @notice Update reward variables of the given pool to be up-to-date
      * @param token Pool token address
      */
-    function _updatePool(address token, UserAction action, uint256 amount) internal {
+    function _updatePool(
+        address token,
+        UserAction action,
+        uint256 amount
+    ) internal {
         uint256 lastRewardTimestamp = poolInfo[token].lastRewardTimestamp;
         if (lastRewardTimestamp == 0) {
             poolInfo[token].lastRewardTimestamp = activationTime;
@@ -223,31 +274,46 @@ contract ChildGaugePool is ReentrancyGuard, Ownable {
         }
 
         uint256 accRewardPerShare = poolInfo[token].accRewardPerShare;
-        uint256 lastEpoch = gaugeController.epochOfTimestamp(lastRewardTimestamp);
+        uint256 lastEpoch = gaugeController.epochOfTimestamp(
+            lastRewardTimestamp
+        );
         uint256 curEpoch = gaugeController.currentEpoch();
         uint256 reward;
         while (lastEpoch < curEpoch) {
             uint256 endTimestamp = gaugeController.epochEndTime(lastEpoch);
 
-            (uint256 totalWeights, uint256 poolWeights) = gaugeController.gaugeWeight(lastEpoch, token);
+            (uint256 totalWeights, uint256 poolWeights) = gaugeController
+                .gaugeWeight(lastEpoch, token);
 
             // update rewards from lastRewardTimestamp to endTimestamp
-            reward = ((endTimestamp - lastRewardTimestamp) * epochRewardPerSec[lastEpoch] * poolWeights) / totalWeights;
-            accRewardPerShare = accRewardPerShare + (reward * (PRECISION)) / totalDeposited;
+            reward =
+                ((endTimestamp - lastRewardTimestamp) *
+                    epochRewardPerSec[lastEpoch] *
+                    poolWeights) /
+                totalWeights;
+            accRewardPerShare =
+                accRewardPerShare +
+                (reward * (PRECISION)) /
+                totalDeposited;
 
             ++lastEpoch;
             lastRewardTimestamp = endTimestamp;
         }
 
-        (uint256 totalWeightsOfCurrentEpoch, uint256 poolWeightsOfCurrentEpoch) = gaugeController.gaugeWeight(
-            lastEpoch,
-            token
-        );
+        (
+            uint256 totalWeightsOfCurrentEpoch,
+            uint256 poolWeightsOfCurrentEpoch
+        ) = gaugeController.gaugeWeight(lastEpoch, token);
         // update rewards from lastRewardTimestamp to current timestamp
         reward =
-            ((block.timestamp - lastRewardTimestamp) * epochRewardPerSec[lastEpoch] * poolWeightsOfCurrentEpoch) /
+            ((block.timestamp - lastRewardTimestamp) *
+                epochRewardPerSec[lastEpoch] *
+                poolWeightsOfCurrentEpoch) /
             totalWeightsOfCurrentEpoch;
-        accRewardPerShare = accRewardPerShare + (reward * (PRECISION)) / totalDeposited;
+        accRewardPerShare =
+            accRewardPerShare +
+            (reward * (PRECISION)) /
+            totalDeposited;
 
         // update pool storage
         poolInfo[token].lastRewardTimestamp = block.timestamp;

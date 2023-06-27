@@ -17,7 +17,11 @@ contract ZapperOneInch {
     address public immutable weth;
     address public constant ETH = address(0);
 
-    constructor(address _lendtroller, address _oneInchRouter, address _weth) {
+    constructor(
+        address _lendtroller,
+        address _oneInchRouter,
+        address _weth
+    ) {
         lendtroller = _lendtroller;
         oneInchRouter = _oneInchRouter;
         weth = _weth;
@@ -50,7 +54,11 @@ contract ZapperOneInch {
             inputToken = weth;
             IWETH(weth).deposit{ value: inputAmount }(inputAmount);
         } else {
-            IERC20(inputToken).safeTransferFrom(msg.sender, address(this), inputAmount);
+            IERC20(inputToken).safeTransferFrom(
+                msg.sender,
+                address(this),
+                inputAmount
+            );
         }
 
         // check valid cToken
@@ -68,7 +76,12 @@ contract ZapperOneInch {
         }
 
         // enter curve
-        uint256 lpOutAmount = _enterCurve(lpMinter, lpToken, tokens, lpMinOutAmount);
+        uint256 lpOutAmount = _enterCurve(
+            lpMinter,
+            lpToken,
+            tokens,
+            lpMinOutAmount
+        );
 
         // enter curvance
         cTokenOutAmount = _enterCurvance(cToken, lpToken, lpOutAmount);
@@ -82,7 +95,9 @@ contract ZapperOneInch {
      * @param _inputToken The input token address
      * @param _callData The swap aggregation data for OneInch
      */
-    function _swapViaOneInch(address _inputToken, bytes memory _callData) private {
+    function _swapViaOneInch(address _inputToken, bytes memory _callData)
+        private
+    {
         _approveTokenIfNeeded(_inputToken, address(oneInchRouter));
 
         (bool success, bytes memory retData) = oneInchRouter.call(_callData);
@@ -109,7 +124,11 @@ contract ZapperOneInch {
      * @param data The transaction result data
      * @param errorMessage The custom error message
      */
-    function propagateError(bool success, bytes memory data, string memory errorMessage) public pure {
+    function propagateError(
+        bool success,
+        bytes memory data,
+        string memory errorMessage
+    ) public pure {
         if (!success) {
             if (data.length == 0) revert(errorMessage);
             assembly {
@@ -149,7 +168,10 @@ contract ZapperOneInch {
             amounts[2] = _getBalance(tokens[2]);
             amounts[3] = _getBalance(tokens[3]);
             if (hasETH) {
-                ICurveSwap(lpMinter).add_liquidity{ value: _getBalance(ETH) }(amounts, 0);
+                ICurveSwap(lpMinter).add_liquidity{ value: _getBalance(ETH) }(
+                    amounts,
+                    0
+                );
             } else {
                 ICurveSwap(lpMinter).add_liquidity(amounts, 0);
             }
@@ -159,7 +181,10 @@ contract ZapperOneInch {
             amounts[1] = _getBalance(tokens[1]);
             amounts[2] = _getBalance(tokens[2]);
             if (hasETH) {
-                ICurveSwap(lpMinter).add_liquidity{ value: _getBalance(ETH) }(amounts, 0);
+                ICurveSwap(lpMinter).add_liquidity{ value: _getBalance(ETH) }(
+                    amounts,
+                    0
+                );
             } else {
                 ICurveSwap(lpMinter).add_liquidity(amounts, 0);
             }
@@ -169,7 +194,10 @@ contract ZapperOneInch {
             amounts[1] = _getBalance(tokens[1]);
 
             if (hasETH) {
-                ICurveSwap(lpMinter).add_liquidity{ value: _getBalance(ETH) }(amounts, 0);
+                ICurveSwap(lpMinter).add_liquidity{ value: _getBalance(ETH) }(
+                    amounts,
+                    0
+                );
             } else {
                 ICurveSwap(lpMinter).add_liquidity(amounts, 0);
             }
@@ -177,7 +205,10 @@ contract ZapperOneInch {
 
         // check min out amount
         lpOutAmount = IERC20(lpToken).balanceOf(address(this));
-        require(lpOutAmount >= lpMinOutAmount, "Received less than lpMinOutAmount");
+        require(
+            lpOutAmount >= lpMinOutAmount,
+            "Received less than lpMinOutAmount"
+        );
     }
 
     /**
@@ -199,7 +230,11 @@ contract ZapperOneInch {
      * @param amount The amount to deposit
      * @return out The output amount
      */
-    function _enterCurvance(address cToken, address lpToken, uint256 amount) private returns (uint256 out) {
+    function _enterCurvance(
+        address cToken,
+        address lpToken,
+        uint256 amount
+    ) private returns (uint256 out) {
         // approve lp token
         _approveTokenIfNeeded(lpToken, cToken);
 

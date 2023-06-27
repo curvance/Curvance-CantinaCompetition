@@ -24,13 +24,18 @@ contract AuraPositionVaultTest is TestBase {
     address private operatorBeta = vm.addr(222);
     address private ownerBeta = vm.addr(2220);
 
-    address public uniswapV2Router = address(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
+    address public uniswapV2Router =
+        address(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
 
-    ERC20 private constant AURA = ERC20(0xC0c293ce456fF0ED870ADd98a0828Dd4d2903DBF);
-    ERC20 private constant BAL = ERC20(0xba100000625a3754423978a60c9317c58a424e3D);
-    ERC20 private constant WETH = ERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
+    ERC20 private constant AURA =
+        ERC20(0xC0c293ce456fF0ED870ADd98a0828Dd4d2903DBF);
+    ERC20 private constant BAL =
+        ERC20(0xba100000625a3754423978a60c9317c58a424e3D);
+    ERC20 private constant WETH =
+        ERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
 
-    ERC20 private BALANCER_LP_WETH_AURA = ERC20(0xCfCA23cA9CA720B6E98E3Eb9B6aa0fFC4a5C08B9);
+    ERC20 private BALANCER_LP_WETH_AURA =
+        ERC20(0xCfCA23cA9CA720B6E98E3Eb9B6aa0fFC4a5C08B9);
 
     address private accumulator = vm.addr(555);
 
@@ -48,25 +53,32 @@ contract AuraPositionVaultTest is TestBase {
         priceRouter = new PriceRouter();
         // USDT
         // Set heart beat to 5 days so we don't run into stale price reverts.
-        PriceRouter.ChainlinkDerivativeStorage memory stor = PriceRouter.ChainlinkDerivativeStorage(
-            0,
-            0,
-            150 days,
-            false
-        );
+        PriceRouter.ChainlinkDerivativeStorage memory stor = PriceRouter
+            .ChainlinkDerivativeStorage(0, 0, 150 days, false);
 
         // WETH
         PriceRouter.AssetSettings memory settings;
-        uint256 price = uint256(IChainlinkAggregator(WETH_USD_FEED).latestAnswer());
-        settings = PriceRouter.AssetSettings(CHAINLINK_DERIVATIVE, WETH_USD_FEED);
+        uint256 price = uint256(
+            IChainlinkAggregator(WETH_USD_FEED).latestAnswer()
+        );
+        settings = PriceRouter.AssetSettings(
+            CHAINLINK_DERIVATIVE,
+            WETH_USD_FEED
+        );
         priceRouter.addAsset(WETH, settings, abi.encode(stor), price);
         // BAL
         price = uint256(IChainlinkAggregator(BAL_USD_FEED).latestAnswer());
-        settings = PriceRouter.AssetSettings(CHAINLINK_DERIVATIVE, BAL_USD_FEED);
+        settings = PriceRouter.AssetSettings(
+            CHAINLINK_DERIVATIVE,
+            BAL_USD_FEED
+        );
         priceRouter.addAsset(BAL, settings, abi.encode(stor), price);
         // AURA -> use DAI price as for testing
         price = uint256(IChainlinkAggregator(DAI_USD_FEED).latestAnswer());
-        settings = PriceRouter.AssetSettings(CHAINLINK_DERIVATIVE, DAI_USD_FEED);
+        settings = PriceRouter.AssetSettings(
+            CHAINLINK_DERIVATIVE,
+            DAI_USD_FEED
+        );
         priceRouter.addAsset(AURA, settings, abi.encode(stor), price);
 
         positionVault = new AuraPositionVault(
@@ -78,18 +90,19 @@ contract AuraPositionVaultTest is TestBase {
         );
 
         positionVault.setWatchdog(address(this));
-        BasePositionVault.PositionVaultMetaData memory metaData = BasePositionVault.PositionVaultMetaData({
-            platformFee: 0.2e18,
-            upkeepFee: 0.03e18,
-            minHarvestYieldInUSD: 1_000e8,
-            maxGasPriceForHarvest: 1_000e9,
-            feeAccumulator: accumulator,
-            positionWatchdog: address(this),
-            ethFastGasFeed: 0x169E633A2D1E6c10dD91238Ba11c4A708dfEF37C,
-            priceRouter: priceRouter,
-            automationRegistry: address(this),
-            isShutdown: false
-        });
+        BasePositionVault.PositionVaultMetaData
+            memory metaData = BasePositionVault.PositionVaultMetaData({
+                platformFee: 0.2e18,
+                upkeepFee: 0.03e18,
+                minHarvestYieldInUSD: 1_000e8,
+                maxGasPriceForHarvest: 1_000e9,
+                feeAccumulator: accumulator,
+                positionWatchdog: address(this),
+                ethFastGasFeed: 0x169E633A2D1E6c10dD91238Ba11c4A708dfEF37C,
+                priceRouter: priceRouter,
+                automationRegistry: address(this),
+                isShutdown: false
+            });
 
         // Need to initialize Vault.
         {
@@ -129,7 +142,11 @@ contract AuraPositionVaultTest is TestBase {
         deal(address(BALANCER_LP_WETH_AURA), address(this), assets);
         BALANCER_LP_WETH_AURA.approve(address(positionVault), assets);
         positionVault.deposit(assets, address(this));
-        assertEq(positionVault.totalAssets(), assets, "Total Assets should equal user deposit.");
+        assertEq(
+            positionVault.totalAssets(),
+            assets,
+            "Total Assets should equal user deposit."
+        );
         // Advance time to earn CRV and CVX rewards
         vm.warp(block.timestamp + 3 days);
         // Mint some extra rewards for Vault.
@@ -137,7 +154,8 @@ contract AuraPositionVaultTest is TestBase {
         deal(address(AURA), address(positionVault), 100e18);
         deal(address(WETH), address(positionVault), 1e18);
 
-        AuraPositionVault.Swap[] memory swapDataArray = new AuraPositionVault.Swap[](2);
+        AuraPositionVault.Swap[]
+            memory swapDataArray = new AuraPositionVault.Swap[](2);
         swapDataArray[0].target = uniswapV2Router;
         address[] memory path = new address[](2);
         path[0] = address(BAL);
@@ -152,7 +170,11 @@ contract AuraPositionVaultTest is TestBase {
         );
 
         positionVault.harvest(abi.encode(swapDataArray));
-        assertEq(positionVault.totalAssets(), assets, "Total Assets should equal user deposit.");
+        assertEq(
+            positionVault.totalAssets(),
+            assets,
+            "Total Assets should equal user deposit."
+        );
         vm.warp(block.timestamp + 8 days);
 
         // Mint some extra rewards for Vault.
@@ -169,8 +191,16 @@ contract AuraPositionVaultTest is TestBase {
             block.timestamp
         );
         positionVault.harvest(abi.encode(swapDataArray));
-        assertGt(positionVault.totalAssets(), assets, "Total Assets should greater than original deposit.");
+        assertGt(
+            positionVault.totalAssets(),
+            assets,
+            "Total Assets should greater than original deposit."
+        );
 
-        positionVault.withdraw(positionVault.totalAssets(), address(this), address(this));
+        positionVault.withdraw(
+            positionVault.totalAssets(),
+            address(this),
+            address(this)
+        );
     }
 }

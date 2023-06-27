@@ -15,5 +15,8 @@ abstract contract CDelegationStorage is CommonError {
     /**
      * @notice Emitted when implementation is changed
      */
-    event NewImplementation(address oldImplementation, address newImplementation);
+    event NewImplementation(
+        address oldImplementation,
+        address newImplementation
+    );
 }

@@ -71,9 +71,12 @@ contract AuraPositionVault is BasePositionVault {
     /**
      * @notice Mainnet token contracts important for this vault.
      */
-    ERC20 private constant WETH = ERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
-    ERC20 private constant BAL = ERC20(0xba100000625a3754423978a60c9317c58a424e3D);
-    ERC20 private constant AURA = ERC20(0xC0c293ce456fF0ED870ADd98a0828Dd4d2903DBF);
+    ERC20 private constant WETH =
+        ERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
+    ERC20 private constant BAL =
+        ERC20(0xba100000625a3754423978a60c9317c58a424e3D);
+    ERC20 private constant AURA =
+        ERC20(0xC0c293ce456fF0ED870ADd98a0828Dd4d2903DBF);
 
     // Owner needs to be able to set swap paths, deposit data, fee, fee accumulator
     /**
@@ -126,7 +129,15 @@ contract AuraPositionVault is BasePositionVault {
         BasePositionVault.PositionVaultMetaData calldata _metaData,
         bytes memory _initializeData
     ) public override initializer {
-        super.initialize(_asset, _owner, _name, _symbol, _decimals, _metaData, _initializeData);
+        super.initialize(
+            _asset,
+            _owner,
+            _name,
+            _symbol,
+            _decimals,
+            _metaData,
+            _initializeData
+        );
         (
             address _balancerVault,
             bytes32 _balancerPoolId,
@@ -135,7 +146,18 @@ contract AuraPositionVault is BasePositionVault {
             address _rewarder,
             address _booster,
             address[] memory _rewardTokens
-        ) = abi.decode(_initializeData, (address, bytes32, address[], uint256, address, address, address[]));
+        ) = abi.decode(
+                _initializeData,
+                (
+                    address,
+                    bytes32,
+                    address[],
+                    uint256,
+                    address,
+                    address,
+                    address[]
+                )
+            );
         balancerVault = IBalancerVault(_balancerVault);
         balancerPoolId = _balancerPoolId;
         underlyingTokens = _underlyingTokens;
@@ -157,11 +179,17 @@ contract AuraPositionVault is BasePositionVault {
         emit HarvestSlippageChanged(_slippage);
     }
 
-    function setIsApprovedTarget(address _target, bool _isApproved) external onlyOwner {
+    function setIsApprovedTarget(address _target, bool _isApproved)
+        external
+        onlyOwner
+    {
         isApprovedTarget[_target] = _isApproved;
     }
 
-    function setRewardTokens(address[] memory _rewardTokens) external onlyOwner {
+    function setRewardTokens(address[] memory _rewardTokens)
+        external
+        onlyOwner
+    {
         rewardTokens = _rewardTokens;
     }
 
@@ -169,7 +197,13 @@ contract AuraPositionVault is BasePositionVault {
                           EXTERNAL POSITION LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function harvest(bytes memory data) public override whenNotShutdown nonReentrant returns (uint256 yield) {
+    function harvest(bytes memory data)
+        public
+        override
+        whenNotShutdown
+        nonReentrant
+        returns (uint256 yield)
+    {
         Swap[] memory swapDataArray = abi.decode(data, (Swap[]));
 
         uint256 pending = _calculatePendingRewards();
@@ -179,7 +213,10 @@ contract AuraPositionVault is BasePositionVault {
         }
 
         // Can only harvest once previous reward period is done.
-        if (positionVaultAccounting._lastVestClaim >= positionVaultAccounting._vestingPeriodEnd) {
+        if (
+            positionVaultAccounting._lastVestClaim >=
+            positionVaultAccounting._vestingPeriodEnd
+        ) {
             // Harvest aura position.
             rewarder.getReward(address(this), true);
 
@@ -198,13 +235,19 @@ contract AuraPositionVault is BasePositionVault {
                 if (amount == 0) continue;
 
                 // Take platform fee
-                uint256 protocolFee = amount.mulDivDown(positionVaultMetaData.platformFee, 1e18);
+                uint256 protocolFee = amount.mulDivDown(
+                    positionVaultMetaData.platformFee,
+                    1e18
+                );
                 amount -= protocolFee;
-                reward.safeTransfer(positionVaultMetaData.feeAccumulator, protocolFee);
+                reward.safeTransfer(
+                    positionVaultMetaData.feeAccumulator,
+                    protocolFee
+                );
 
                 uint256 valueInUSD = amount.mulDivDown(
                     positionVaultMetaData.priceRouter.getPriceInUSD(reward),
-                    10 ** reward.decimals()
+                    10**reward.decimals()
                 );
 
                 valueIn += valueInUSD;
@@ -225,14 +268,21 @@ contract AuraPositionVault is BasePositionVault {
                 _approveTokenIfNeeded(assets[i], address(balancerVault));
 
                 valueOut += maxAmountsIn[i].mulDivDown(
-                    positionVaultMetaData.priceRouter.getPriceInUSD(ERC20(assets[i])),
-                    10 ** ERC20(assets[i]).decimals()
+                    positionVaultMetaData.priceRouter.getPriceInUSD(
+                        ERC20(assets[i])
+                    ),
+                    10**ERC20(assets[i]).decimals()
                 );
             }
 
             // Compare value in vs value out.
-            if (valueOut < valueIn.mulDivDown(1e18 - (positionVaultMetaData.upkeepFee + harvestSlippage), 1e18))
-                revert AuraPositionVault__BadSlippage();
+            if (
+                valueOut <
+                valueIn.mulDivDown(
+                    1e18 - (positionVaultMetaData.upkeepFee + harvestSlippage),
+                    1e18
+                )
+            ) revert AuraPositionVault__BadSlippage();
 
             balancerVault.joinPool(
                 balancerPoolId,
@@ -241,7 +291,11 @@ contract AuraPositionVault is BasePositionVault {
                 IBalancerVault.JoinPoolRequest(
                     assets,
                     maxAmountsIn,
-                    abi.encode(IBalancerVault.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT, maxAmountsIn, 1),
+                    abi.encode(
+                        IBalancerVault.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT,
+                        maxAmountsIn,
+                        1
+                    ),
                     false // Don't use internal balances
                 )
             );
@@ -251,8 +305,12 @@ contract AuraPositionVault is BasePositionVault {
             _deposit(yield);
 
             // update Vesting info.
-            positionVaultAccounting._rewardRate = uint128(yield.mulDivDown(REWARD_SCALER, REWARD_PERIOD));
-            positionVaultAccounting._vestingPeriodEnd = uint64(block.timestamp) + REWARD_PERIOD;
+            positionVaultAccounting._rewardRate = uint128(
+                yield.mulDivDown(REWARD_SCALER, REWARD_PERIOD)
+            );
+            positionVaultAccounting._vestingPeriodEnd =
+                uint64(block.timestamp) +
+                REWARD_PERIOD;
             positionVaultAccounting._lastVestClaim = uint64(block.timestamp);
             emit Harvest(yield);
         } // else yield is zero.
@@ -272,7 +330,12 @@ contract AuraPositionVault is BasePositionVault {
         booster.deposit(pid, assets, true);
     }
 
-    function _getRealPositionBalance() internal view override returns (uint256) {
+    function _getRealPositionBalance()
+        internal
+        view
+        override
+        returns (uint256)
+    {
         IBaseRewardPool rewardPool = IBaseRewardPool(rewarder);
         return rewardPool.balanceOf(address(this));
     }
@@ -287,7 +350,9 @@ contract AuraPositionVault is BasePositionVault {
 
         _approveTokenIfNeeded(_inputToken, address(_swapData.target));
 
-        (bool success, bytes memory retData) = _swapData.target.call(_swapData.call);
+        (bool success, bytes memory retData) = _swapData.target.call(
+            _swapData.call
+        );
 
         propagateError(success, retData, "swap");
 
@@ -311,7 +376,11 @@ contract AuraPositionVault is BasePositionVault {
      * @param data The transaction result data
      * @param errorMessage The custom error message
      */
-    function propagateError(bool success, bytes memory data, string memory errorMessage) public pure {
+    function propagateError(
+        bool success,
+        bytes memory data,
+        string memory errorMessage
+    ) public pure {
         if (!success) {
             if (data.length == 0) revert(errorMessage);
             assembly {

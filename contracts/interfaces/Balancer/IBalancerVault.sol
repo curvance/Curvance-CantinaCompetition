@@ -59,11 +59,19 @@ interface IBalancerVault {
         bool fromInternalBalance;
     }
 
-    function getPool(bytes32 poolId) external view returns (address, PoolSpecialization);
+    function getPool(bytes32 poolId)
+        external
+        view
+        returns (address, PoolSpecialization);
 
-    function getPoolTokens(
-        bytes32 poolId
-    ) external view returns (address[] memory tokens, uint256[] memory balances, uint256 lastChangeBlock);
+    function getPoolTokens(bytes32 poolId)
+        external
+        view
+        returns (
+            address[] memory tokens,
+            uint256[] memory balances,
+            uint256 lastChangeBlock
+        );
 
     function joinPool(
         bytes32 poolId,
@@ -86,7 +94,10 @@ interface IBalancerVault {
         ExitPoolRequest memory request
     ) external;
 
-    function getInternalBalance(address user, address[] memory tokens) external view returns (uint256[] memory);
+    function getInternalBalance(address user, address[] memory tokens)
+        external
+        view
+        returns (uint256[] memory);
 
     function queryBatchSwap(
         SwapKind kind,

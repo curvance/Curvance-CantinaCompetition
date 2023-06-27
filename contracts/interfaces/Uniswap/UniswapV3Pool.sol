@@ -17,7 +17,12 @@ interface UniswapV3Pool {
         uint128 amount0,
         uint128 amount1
     );
-    event CollectProtocol(address indexed sender, address indexed recipient, uint128 amount0, uint128 amount1);
+    event CollectProtocol(
+        address indexed sender,
+        address indexed recipient,
+        uint128 amount0,
+        uint128 amount1
+    );
     event Flash(
         address indexed sender,
         address indexed recipient,
@@ -40,7 +45,12 @@ interface UniswapV3Pool {
         uint256 amount0,
         uint256 amount1
     );
-    event SetFeeProtocol(uint8 feeProtocol0Old, uint8 feeProtocol1Old, uint8 feeProtocol0New, uint8 feeProtocol1New);
+    event SetFeeProtocol(
+        uint8 feeProtocol0Old,
+        uint8 feeProtocol1Old,
+        uint8 feeProtocol0New,
+        uint8 feeProtocol1New
+    );
     event Swap(
         address indexed sender,
         address indexed recipient,
@@ -51,7 +61,11 @@ interface UniswapV3Pool {
         int24 tick
     );
 
-    function burn(int24 tickLower, int24 tickUpper, uint128 amount) external returns (uint256 amount0, uint256 amount1);
+    function burn(
+        int24 tickLower,
+        int24 tickUpper,
+        uint128 amount
+    ) external returns (uint256 amount0, uint256 amount1);
 
     function collect(
         address recipient,
@@ -75,9 +89,16 @@ interface UniswapV3Pool {
 
     function feeGrowthGlobal1X128() external view returns (uint256);
 
-    function flash(address recipient, uint256 amount0, uint256 amount1, bytes memory data) external;
+    function flash(
+        address recipient,
+        uint256 amount0,
+        uint256 amount1,
+        bytes memory data
+    ) external;
 
-    function increaseObservationCardinalityNext(uint16 observationCardinalityNext) external;
+    function increaseObservationCardinalityNext(
+        uint16 observationCardinalityNext
+    ) external;
 
     function initialize(uint160 sqrtPriceX96) external;
 
@@ -93,9 +114,7 @@ interface UniswapV3Pool {
         bytes memory data
     ) external returns (uint256 amount0, uint256 amount1);
 
-    function observations(
-        uint256
-    )
+    function observations(uint256)
         external
         view
         returns (
@@ -105,13 +124,15 @@ interface UniswapV3Pool {
             bool initialized
         );
 
-    function observe(
-        uint32[] memory secondsAgos
-    ) external view returns (int56[] memory tickCumulatives, uint160[] memory secondsPerLiquidityCumulativeX128s);
+    function observe(uint32[] memory secondsAgos)
+        external
+        view
+        returns (
+            int56[] memory tickCumulatives,
+            uint160[] memory secondsPerLiquidityCumulativeX128s
+        );
 
-    function positions(
-        bytes32
-    )
+    function positions(bytes32)
         external
         view
         returns (
@@ -122,7 +143,10 @@ interface UniswapV3Pool {
             uint128 tokensOwed1
         );
 
-    function protocolFees() external view returns (uint128 token0, uint128 token1);
+    function protocolFees()
+        external
+        view
+        returns (uint128 token0, uint128 token1);
 
     function setFeeProtocol(uint8 feeProtocol0, uint8 feeProtocol1) external;
 
@@ -139,10 +163,14 @@ interface UniswapV3Pool {
             bool unlocked
         );
 
-    function snapshotCumulativesInside(
-        int24 tickLower,
-        int24 tickUpper
-    ) external view returns (int56 tickCumulativeInside, uint160 secondsPerLiquidityInsideX128, uint32 secondsInside);
+    function snapshotCumulativesInside(int24 tickLower, int24 tickUpper)
+        external
+        view
+        returns (
+            int56 tickCumulativeInside,
+            uint160 secondsPerLiquidityInsideX128,
+            uint32 secondsInside
+        );
 
     function swap(
         address recipient,
@@ -156,9 +184,7 @@ interface UniswapV3Pool {
 
     function tickSpacing() external view returns (int24);
 
-    function ticks(
-        int24
-    )
+    function ticks(int24)
         external
         view
         returns (

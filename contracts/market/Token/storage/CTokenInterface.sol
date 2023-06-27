@@ -10,12 +10,22 @@ abstract contract CTokenInterface is CTokenStorage {
     /**
      * @notice Event emitted when interest is accrued
      */
-    event AccrueInterest(uint256 cashPrior, uint256 interestAccumulated, uint256 borrowIndex, uint256 totalBorrows);
+    event AccrueInterest(
+        uint256 cashPrior,
+        uint256 interestAccumulated,
+        uint256 borrowIndex,
+        uint256 totalBorrows
+    );
 
     /**
      * @notice Event emitted when tokens are minted
      */
-    event Mint(address user, uint256 mintAmount, uint256 mintTokens, address minter);
+    event Mint(
+        address user,
+        uint256 mintAmount,
+        uint256 mintTokens,
+        address minter
+    );
 
     /**
      * @notice Event emitted when tokens are redeemed
@@ -25,7 +35,12 @@ abstract contract CTokenInterface is CTokenStorage {
     /**
      * @notice Event emitted when underlying is borrowed
      */
-    event Borrow(address borrower, uint256 borrowAmount, uint256 accountBorrows, uint256 totalBorrows);
+    event Borrow(
+        address borrower,
+        uint256 borrowAmount,
+        uint256 accountBorrows,
+        uint256 totalBorrows
+    );
 
     /**
      * @notice Event emitted when a borrow is repaid
@@ -63,27 +78,44 @@ abstract contract CTokenInterface is CTokenStorage {
     /**
      * @notice Event emitted when lendtroller is changed
      */
-    event NewLendtroller(LendtrollerInterface oldLendtroller, LendtrollerInterface newLendtroller);
+    event NewLendtroller(
+        LendtrollerInterface oldLendtroller,
+        LendtrollerInterface newLendtroller
+    );
 
     /**
      * @notice Event emitted when interestRateModel is changed
      */
-    event NewMarketInterestRateModel(InterestRateModel oldInterestRateModel, InterestRateModel newInterestRateModel);
+    event NewMarketInterestRateModel(
+        InterestRateModel oldInterestRateModel,
+        InterestRateModel newInterestRateModel
+    );
 
     /**
      * @notice Event emitted when the reserve factor is changed
      */
-    event NewReserveFactor(uint256 oldReserveFactorScaled, uint256 newReserveFactorScaled);
+    event NewReserveFactor(
+        uint256 oldReserveFactorScaled,
+        uint256 newReserveFactorScaled
+    );
 
     /**
      * @notice Event emitted when the reserves are added
      */
-    event ReservesAdded(address benefactor, uint256 addAmount, uint256 newTotalReserves);
+    event ReservesAdded(
+        address benefactor,
+        uint256 addAmount,
+        uint256 newTotalReserves
+    );
 
     /**
      * @notice Event emitted when the reserves are reduced
      */
-    event ReservesReduced(address admin, uint256 reduceAmount, uint256 newTotalReserves);
+    event ReservesReduced(
+        address admin,
+        uint256 reduceAmount,
+        uint256 newTotalReserves
+    );
 
     /**
      * @notice EIP20 Transfer event
@@ -93,10 +125,17 @@ abstract contract CTokenInterface is CTokenStorage {
     /**
      * @notice EIP20 Approval event
      */
-    event Approval(address indexed owner, address indexed spender, uint256 amount);
+    event Approval(
+        address indexed owner,
+        address indexed spender,
+        uint256 amount
+    );
 
     /*** User Interface ***/
-    function transfer(address dst, uint256 amount) external virtual returns (bool);
+    function transfer(address dst, uint256 amount)
+        external
+        virtual
+        returns (bool);
 
     function transferFrom(
         address src,
@@ -104,13 +143,23 @@ abstract contract CTokenInterface is CTokenStorage {
         uint256 amount
     ) external virtual returns (bool);
 
-    function approve(address spender, uint256 amount) external virtual returns (bool);
+    function approve(address spender, uint256 amount)
+        external
+        virtual
+        returns (bool);
 
-    function allowance(address owner, address spender) external view virtual returns (uint256);
+    function allowance(address owner, address spender)
+        external
+        view
+        virtual
+        returns (uint256);
 
     function balanceOf(address owner) external view virtual returns (uint256);
 
-    function balanceOfUnderlying(address owner) external virtual returns (uint256);
+    function balanceOfUnderlying(address owner)
+        external
+        virtual
+        returns (uint256);
 
     function getAccountSnapshot(address account)
         external
@@ -128,9 +177,16 @@ abstract contract CTokenInterface is CTokenStorage {
 
     function totalBorrowsCurrent() external virtual returns (uint256);
 
-    function borrowBalanceCurrent(address account) external virtual returns (uint256);
+    function borrowBalanceCurrent(address account)
+        external
+        virtual
+        returns (uint256);
 
-    function borrowBalanceStored(address account) external view virtual returns (uint256);
+    function borrowBalanceStored(address account)
+        external
+        view
+        virtual
+        returns (uint256);
 
     function exchangeRateCurrent() public virtual returns (uint256);
 
@@ -147,15 +203,23 @@ abstract contract CTokenInterface is CTokenStorage {
     ) external virtual;
 
     /*** Admin Functions ***/
-    function _setPendingAdmin(address payable newPendingAdmin) external virtual;
+    function _setPendingAdmin(address payable newPendingAdmin)
+        external
+        virtual;
 
     function _acceptAdmin() external virtual;
 
-    function _setLendtroller(LendtrollerInterface newLendtroller) public virtual;
+    function _setLendtroller(LendtrollerInterface newLendtroller)
+        public
+        virtual;
 
-    function _setReserveFactor(uint256 newReserveFactorMantissa) external virtual;
+    function _setReserveFactor(uint256 newReserveFactorMantissa)
+        external
+        virtual;
 
     function _reduceReserves(uint256 reduceAmount) external virtual;
 
-    function _setInterestRateModel(InterestRateModel newInterestRateModel) external virtual;
+    function _setInterestRateModel(InterestRateModel newInterestRateModel)
+        external
+        virtual;
 }

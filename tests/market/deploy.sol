@@ -35,7 +35,9 @@ contract DeployCompound is TestBase {
         unitroller._setPendingImplementation(address(lendtroller));
         lendtroller._become(unitroller);
 
-        Lendtroller(address(unitroller))._setPriceOracle(PriceOracle(address(priceOracle)));
+        Lendtroller(address(unitroller))._setPriceOracle(
+            PriceOracle(address(priceOracle))
+        );
         Lendtroller(address(unitroller))._setCloseFactor(5e17);
         Lendtroller(address(unitroller))._setLiquidationIncentive(5e17);
 
@@ -43,7 +45,9 @@ contract DeployCompound is TestBase {
     }
 
     function makeJumpRateModel() public returns (address) {
-        jumpRateModel = address(new JumpRateModelV2(1e17, 1e17, 1e17, 5e17, address(this)));
+        jumpRateModel = address(
+            new JumpRateModelV2(1e17, 1e17, 1e17, 5e17, address(this))
+        );
         return jumpRateModel;
     }
 }

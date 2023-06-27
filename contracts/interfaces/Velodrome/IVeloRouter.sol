@@ -14,7 +14,13 @@ interface IVeloRouter {
         uint256 amountBMin,
         address to,
         uint256 deadline
-    ) external returns (uint amountA, uint amountB, uint liquidity);
+    )
+        external
+        returns (
+            uint256 amountA,
+            uint256 amountB,
+            uint256 liquidity
+        );
 
     function swapExactTokensForTokensSimple(
         uint256 amountIn,
@@ -24,5 +30,5 @@ interface IVeloRouter {
         bool stable,
         address to,
         uint256 deadline
-    ) external returns (uint[] memory amounts);
+    ) external returns (uint256[] memory amounts);
 }

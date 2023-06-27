@@ -20,7 +20,9 @@ contract TestCEtherAndCTokenIntegration is TestBaseMarket {
         );
         vm.store(
             DAI_ADDRESS,
-            keccak256(abi.encodePacked(uint256(uint160(liquidator)), uint256(2))),
+            keccak256(
+                abi.encodePacked(uint256(uint160(liquidator)), uint256(2))
+            ),
             bytes32(uint256(200000e18))
         );
 
@@ -247,9 +249,15 @@ contract TestCEtherAndCTokenIntegration is TestBaseMarket {
 
         // set collateral factor
         vm.prank(admin);
-        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 4e17);
+        Lendtroller(unitroller)._setCollateralFactor(
+            CToken(address(cDAI)),
+            4e17
+        );
         vm.prank(admin);
-        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 4e17);
+        Lendtroller(unitroller)._setCollateralFactor(
+            CToken(address(cETH)),
+            4e17
+        );
 
         // liquidateBorrow DAI
         vm.prank(liquidator);

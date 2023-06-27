@@ -32,16 +32,29 @@ abstract contract LendtrollerInterface is LendtrollerStorage {
     event MarketExited(CToken cToken, address account);
 
     /// @notice Emitted when close factor is changed by admin
-    event NewCloseFactor(uint256 oldCloseFactorScaled, uint256 newCloseFactorScaled);
+    event NewCloseFactor(
+        uint256 oldCloseFactorScaled,
+        uint256 newCloseFactorScaled
+    );
 
     /// @notice Emitted when a collateral factor is changed by admin
-    event NewCollateralFactor(CToken cToken, uint256 oldCollateralFactorScaled, uint256 newCollateralFactorScaled);
+    event NewCollateralFactor(
+        CToken cToken,
+        uint256 oldCollateralFactorScaled,
+        uint256 newCollateralFactorScaled
+    );
 
     /// @notice Emitted when liquidation incentive is changed by admin
-    event NewLiquidationIncentive(uint256 oldLiquidationIncentiveScaled, uint256 newLiquidationIncentiveScaled);
+    event NewLiquidationIncentive(
+        uint256 oldLiquidationIncentiveScaled,
+        uint256 newLiquidationIncentiveScaled
+    );
 
     /// @notice Emitted when price oracle is changed
-    event NewPriceOracle(PriceOracle oldPriceOracle, PriceOracle newPriceOracle);
+    event NewPriceOracle(
+        PriceOracle oldPriceOracle,
+        PriceOracle newPriceOracle
+    );
 
     /// @notice Emitted when pause guardian is changed
     event NewPauseGuardian(address oldPauseGuardian, address newPauseGuardian);
@@ -59,16 +72,26 @@ abstract contract LendtrollerInterface is LendtrollerStorage {
     event SetDisableCollateral(CToken indexed cToken, bool disable);
 
     /// @notice Emitted when borrow cap for a cToken is changed
-    event SetUserDisableCollateral(address indexed user, CToken indexed cToken, bool disable);
+    event SetUserDisableCollateral(
+        address indexed user,
+        CToken indexed cToken,
+        bool disable
+    );
 
     /// @notice Emitted when borrow cap guardian is changed
-    event NewBorrowCapGuardian(address oldBorrowCapGuardian, address newBorrowCapGuardian);
+    event NewBorrowCapGuardian(
+        address oldBorrowCapGuardian,
+        address newBorrowCapGuardian
+    );
 
     /// @notice Emitted when rewards contract address is changed
     //event NewRewardContract(RewardsInterface oldRewarder, RewardsInterface newRewarder);
 
     /// @notice Emitted when position folding contract address is changed
-    event NewPositionFoldingContract(address indexed oldPositionFolding, address indexed newPositionFolding);
+    event NewPositionFoldingContract(
+        address indexed oldPositionFolding,
+        address indexed newPositionFolding
+    );
 
     ////////// Constants //////////
 
@@ -77,7 +100,10 @@ abstract contract LendtrollerInterface is LendtrollerStorage {
 
     /*** Assets You Are In ***/
 
-    function enterMarkets(address[] calldata cTokens) external virtual returns (uint256[] memory);
+    function enterMarkets(address[] calldata cTokens)
+        external
+        virtual
+        returns (uint256[] memory);
 
     function exitMarket(address cToken) external virtual;
 
@@ -85,11 +111,21 @@ abstract contract LendtrollerInterface is LendtrollerStorage {
 
     function mintAllowed(address cToken, address minter) external virtual;
 
-    function redeemAllowed(address cToken, address redeemer, uint256 redeemTokens) external virtual;
+    function redeemAllowed(
+        address cToken,
+        address redeemer,
+        uint256 redeemTokens
+    ) external virtual;
 
-    function borrowAllowed(address cToken, address borrower, uint256 borrowAmount) external virtual;
+    function borrowAllowed(
+        address cToken,
+        address borrower,
+        uint256 borrowAmount
+    ) external virtual;
 
-    function repayBorrowAllowed(address cToken, address borrower) external virtual;
+    function repayBorrowAllowed(address cToken, address borrower)
+        external
+        virtual;
 
     function liquidateBorrowAllowed(
         address cTokenBorrowed,
@@ -105,7 +141,12 @@ abstract contract LendtrollerInterface is LendtrollerStorage {
         address borrower
     ) external virtual;
 
-    function transferAllowed(address cToken, address src, address dst, uint256 transferTokens) external virtual;
+    function transferAllowed(
+        address cToken,
+        address src,
+        address dst,
+        uint256 transferTokens
+    ) external virtual;
 
     /*** Liquidity/Liquidation Calculations ***/
 
@@ -116,11 +157,27 @@ abstract contract LendtrollerInterface is LendtrollerStorage {
     ) external view virtual returns (uint256);
 
     /** Query functions */
-    function getIsMarkets(address cToken) external view virtual returns (bool, uint256, bool);
+    function getIsMarkets(address cToken)
+        external
+        view
+        virtual
+        returns (
+            bool,
+            uint256,
+            bool
+        );
 
-    function getAccountMembership(address cToken, address user) external view virtual returns (bool);
+    function getAccountMembership(address cToken, address user)
+        external
+        view
+        virtual
+        returns (bool);
 
     function getAllMarkets() external view virtual returns (CToken[] memory);
 
-    function getAccountAssets(address cToken) external view virtual returns (CToken[] memory);
+    function getAccountAssets(address cToken)
+        external
+        view
+        virtual
+        returns (CToken[] memory);
 }

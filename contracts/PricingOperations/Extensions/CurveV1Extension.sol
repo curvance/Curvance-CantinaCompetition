@@ -27,7 +27,11 @@ contract CurveV1Extension is Extension {
 
     constructor(PriceOps _priceOps) Extension(_priceOps) {}
 
-    function setupSource(address asset, uint64 _sourceId, bytes memory data) external override onlyPriceOps {
+    function setupSource(
+        address asset,
+        uint64 _sourceId,
+        bytes memory data
+    ) external override onlyPriceOps {
         address source = abi.decode(data, (address));
         ICurvePool pool = ICurvePool(source);
         uint8 coinsLength = 0;
@@ -64,17 +68,28 @@ contract CurveV1Extension is Extension {
         // getVirtualPriceBound[address(_asset)] = vpBound;
     }
 
-    function getPriceInBase(
-        uint64 sourceId
-    ) external view override onlyPriceOps returns (uint256 upper, uint256 lower, uint8 errorCode) {
-        CurveDerivativeStorage memory stor = getCurveDerivativeStorage[sourceId];
+    function getPriceInBase(uint64 sourceId)
+        external
+        view
+        override
+        onlyPriceOps
+        returns (
+            uint256 upper,
+            uint256 lower,
+            uint8 errorCode
+        )
+    {
+        CurveDerivativeStorage memory stor = getCurveDerivativeStorage[
+            sourceId
+        ];
 
         ICurvePool pool = ICurvePool(stor.pool);
 
         uint256 maxUpper = 0;
         uint256 minLower = type(uint256).max;
         for (uint256 i = 0; i < stor.coins.length; i++) {
-            (uint256 nextUpper, uint256 nextLower, uint8 _errorCode) = priceOps.getPriceInBase(stor.coins[i]);
+            (uint256 nextUpper, uint256 nextLower, uint8 _errorCode) = priceOps
+                .getPriceInBase(stor.coins[i]);
             if (_errorCode == BAD_SOURCE) {
                 // Completely blind as to what this price is return error code of BAD_SOURCE.
                 return (0, 0, BAD_SOURCE);
@@ -101,8 +116,8 @@ contract CurveV1Extension is Extension {
 
         // Virtual price is based off the Curve Token decimals.
         uint256 curveTokenDecimals = ERC20(stor.asset).decimals();
-        upper = maxUpper.mulDivDown(virtualPrice, 10 ** curveTokenDecimals);
-        lower = minLower.mulDivDown(virtualPrice, 10 ** curveTokenDecimals);
+        upper = maxUpper.mulDivDown(virtualPrice, 10**curveTokenDecimals);
+        lower = minLower.mulDivDown(virtualPrice, 10**curveTokenDecimals);
 
         // It is possible that if not all sources provide a lower value, then lower can be greater than upper.
         // TODO pretty sure this is no longer needed.

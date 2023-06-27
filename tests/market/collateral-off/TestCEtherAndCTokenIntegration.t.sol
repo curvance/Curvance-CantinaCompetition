@@ -40,17 +40,26 @@ contract TestCEtherAndCTokenIntegration is TestBase {
         unitroller = address(deployments.unitroller());
         priceOracle = SimplePriceOracle(deployments.priceOracle());
         priceOracle.setDirectPrice(dai, _ONE);
-        priceOracle.setDirectPrice(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE, 1000e18);
+        priceOracle.setDirectPrice(
+            0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE,
+            1000e18
+        );
 
         admin = deployments.admin();
         user = address(this);
         liquidator = address(new User());
 
         // prepare 200K DAI
-        vm.store(dai, keccak256(abi.encodePacked(uint256(uint160(user)), uint256(2))), bytes32(uint256(200000e18)));
         vm.store(
             dai,
-            keccak256(abi.encodePacked(uint256(uint160(liquidator)), uint256(2))),
+            keccak256(abi.encodePacked(uint256(uint160(user)), uint256(2))),
+            bytes32(uint256(200000e18))
+        );
+        vm.store(
+            dai,
+            keccak256(
+                abi.encodePacked(uint256(uint160(liquidator)), uint256(2))
+            ),
             bytes32(uint256(200000e18))
         );
         // prepare 100 ETH
@@ -89,9 +98,15 @@ contract TestCEtherAndCTokenIntegration is TestBase {
         Lendtroller(unitroller)._supportMarket(CToken(address(cETH)));
         // set collateral factor
         vm.prank(admin);
-        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 5e17);
+        Lendtroller(unitroller)._setCollateralFactor(
+            CToken(address(cDAI)),
+            5e17
+        );
         vm.prank(admin);
-        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 5e17);
+        Lendtroller(unitroller)._setCollateralFactor(
+            CToken(address(cETH)),
+            5e17
+        );
 
         // enter markets
         vm.prank(user);
@@ -146,9 +161,15 @@ contract TestCEtherAndCTokenIntegration is TestBase {
         Lendtroller(unitroller)._supportMarket(CToken(address(cETH)));
         // set collateral factor
         vm.prank(admin);
-        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 5e17);
+        Lendtroller(unitroller)._setCollateralFactor(
+            CToken(address(cDAI)),
+            5e17
+        );
         vm.prank(admin);
-        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 5e17);
+        Lendtroller(unitroller)._setCollateralFactor(
+            CToken(address(cETH)),
+            5e17
+        );
 
         // enter markets
         vm.prank(user);
@@ -203,9 +224,15 @@ contract TestCEtherAndCTokenIntegration is TestBase {
         Lendtroller(unitroller)._supportMarket(CToken(address(cETH)));
         // set collateral factor
         vm.prank(admin);
-        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 5e17);
+        Lendtroller(unitroller)._setCollateralFactor(
+            CToken(address(cDAI)),
+            5e17
+        );
         vm.prank(admin);
-        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 5e17);
+        Lendtroller(unitroller)._setCollateralFactor(
+            CToken(address(cETH)),
+            5e17
+        );
 
         // enter markets
         vm.prank(user);

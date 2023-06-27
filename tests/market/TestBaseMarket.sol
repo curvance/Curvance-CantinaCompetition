@@ -87,14 +87,20 @@ contract TestBaseMarket is TestBase {
     function _setupCEtherMarket() internal {
         vm.startPrank(admin);
         Lendtroller(unitroller)._supportMarket(CToken(address(cETH)));
-        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 5e17);
+        Lendtroller(unitroller)._setCollateralFactor(
+            CToken(address(cETH)),
+            5e17
+        );
         vm.stopPrank();
     }
 
     function _setupCDAIMarket() internal {
         vm.startPrank(admin);
         Lendtroller(unitroller)._supportMarket(CToken(address(cDAI)));
-        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 5e17);
+        Lendtroller(unitroller)._setCollateralFactor(
+            CToken(address(cDAI)),
+            5e17
+        );
         vm.stopPrank();
     }
 

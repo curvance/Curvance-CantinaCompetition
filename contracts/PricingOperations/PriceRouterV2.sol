@@ -12,12 +12,11 @@ import "../interfaces/IOracleExtension.sol";
  *         data based on various price feeds.
  */
 contract PriceRouter {
-
     /**
-    * @notice Return data from oracle extension
-    * @param price the price of the asset in some asset, either ETH or USD
-    * @param hadError the message return data, whether the extension ran into trouble pricing the asset
-    */
+     * @notice Return data from oracle extension
+     * @param price the price of the asset in some asset, either ETH or USD
+     * @param hadError the message return data, whether the extension ran into trouble pricing the asset
+     */
     struct feedData {
         uint240 price;
         bool hadError;
@@ -62,16 +61,17 @@ contract PriceRouter {
     uint256 public constant BAD_SOURCE = 2;
 
     constructor(ICentralRegistry _centralRegistry, address ETH_USD_FEED) {
-        
-        centralRegistry = _centralRegistry;  
+        centralRegistry = _centralRegistry;
         // Save the USD-ETH price feed because it is a widely used pricing path.
-        CHAINLINK_ETH_USD = ETH_USD_FEED;//0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419 on mainnet
-
+        CHAINLINK_ETH_USD = ETH_USD_FEED; //0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419 on mainnet
     }
 
     // Only callable by DAO
-    modifier onlyDaoManager () {
-        require(msg.sender == centralRegistry.daoAddress(), "priceRouter: UNAUTHORIZED");
+    modifier onlyDaoManager() {
+        require(
+            msg.sender == centralRegistry.daoAddress(),
+            "priceRouter: UNAUTHORIZED"
+        );
         _;
     }
 
@@ -88,33 +88,35 @@ contract PriceRouter {
     /// @return A tuple containing the asset's price and an error flag (if any).
     function getPrice(address _asset) public view returns (uint256, uint256) {
         uint256 oracles = assetPriceFeeds[_asset].length;
-        require(oracles > 0,"priceRouter: no feeds available");
+        require(oracles > 0, "priceRouter: no feeds available");
 
         if (oracles < 2) {
             return getPriceSingleFeed(_asset);
         }
 
         return getPriceDualFeed(_asset);
-
     }
 
     /// @notice Retrieves the prices of multiple specified assets.
     /// @dev Loops through the array of assets and retrieves the price for each using the getPrice function.
     /// @param _asset An array of asset addresses to retrieve the prices for.
     /// @return Two arrays. The first one contains prices for each asset, and the second one contains corresponding error flags (if any).
-    function getPriceMulti(address[] calldata _asset) public view returns (uint256[] memory, uint256[] memory) {
+    function getPriceMulti(address[] calldata _asset)
+        public
+        view
+        returns (uint256[] memory, uint256[] memory)
+    {
         uint256 assets = _asset.length;
-        require(assets > 0,"priceRouter: no assets to price");
+        require(assets > 0, "priceRouter: no assets to price");
         uint256[] memory prices = new uint256[](assets);
         uint256[] memory hadError = new uint256[](assets);
 
-        for (uint256 i; i < assets;) {
+        for (uint256 i; i < assets; ) {
             (prices[i], hadError[i]) = getPrice(_asset[i]);
 
             unchecked {
                 ++i;
             }
-
         }
 
         return (prices, hadError);
@@ -128,17 +130,20 @@ contract PriceRouter {
     /// If both price feeds return an error, it returns (0, BAD_SOURCE).
     /// If one of the price feeds return an error, it returns the price from the working feed along with a CAUTION flag.
     /// Otherwise, it returns (price, NO_ERROR).
-    function getPriceDualFeed(address _asset) internal view returns (uint256, uint256) {
+    function getPriceDualFeed(address _asset)
+        internal
+        view
+        returns (uint256, uint256)
+    {
         feedData memory feed0 = getPriceFromFeed(_asset, 0);
         feedData memory feed1 = getPriceFromFeed(_asset, 1);
 
         if (feed0.hadError && feed1.hadError) return (0, BAD_SOURCE);
-        if (feed0.hadError || feed1.hadError){
+        if (feed0.hadError || feed1.hadError) {
             return (getWorkingPrice(feed0, feed1), CAUTION);
         }
 
         return processPriceFeedData(feed0.price, feed1.price);
-
     }
 
     /// @notice Retrieves the price of a specified asset from a single oracle.
@@ -147,17 +152,22 @@ contract PriceRouter {
     /// @return A tuple containing the asset's price and an error flag (if any).
     /// If the price feed returns an error, it returns (0, BAD_SOURCE).
     /// Otherwise, it returns (price, NO_ERROR).
-    function getPriceSingleFeed(address _asset) internal view returns (uint256, uint256) {
-        priceReturnData memory data = IOracleExtension(assetPriceFeeds[_asset][0]).getPrice(_asset);
+    function getPriceSingleFeed(address _asset)
+        internal
+        view
+        returns (uint256, uint256)
+    {
+        priceReturnData memory data = IOracleExtension(
+            assetPriceFeeds[_asset][0]
+        ).getPrice(_asset);
         if (data.hadError) return (0, BAD_SOURCE);
 
         if (!data.inUSD) {
             (data.price, data.hadError) = priceToUSD(data.price);
-            if (data.hadError) return (0, BAD_SOURCE); 
+            if (data.hadError) return (0, BAD_SOURCE);
         }
 
         return (data.price, NO_ERROR);
-
     }
 
     /// @notice Retrieves the price of a specified asset from a specific price feed.
@@ -167,16 +177,21 @@ contract PriceRouter {
     /// @param _feedNumber The index number of the feed to use.
     /// @return An instance of feedData containing the asset's price and an error flag (if any).
     /// If the price feed returns an error, it returns feedData with price 0 and hadError set to true.
-    function getPriceFromFeed(address _asset, uint256 _feedNumber) internal view returns (feedData memory) {
-        priceReturnData memory data = IOracleExtension(assetPriceFeeds[_asset][_feedNumber]).getPrice(_asset);
-        if (data.hadError) return (feedData({price: 0, hadError: true}));
-        
+    function getPriceFromFeed(address _asset, uint256 _feedNumber)
+        internal
+        view
+        returns (feedData memory)
+    {
+        priceReturnData memory data = IOracleExtension(
+            assetPriceFeeds[_asset][_feedNumber]
+        ).getPrice(_asset);
+        if (data.hadError) return (feedData({ price: 0, hadError: true }));
+
         if (!data.inUSD) {
             (data.price, data.hadError) = priceToUSD(data.price);
         }
 
-        return (feedData({price: data.price, hadError: data.hadError}));
-
+        return (feedData({ price: data.price, hadError: data.hadError }));
     }
 
     /// @notice Converts the price from ETH to USD using Chainlink's ETH/USD feed.
@@ -185,14 +200,26 @@ contract PriceRouter {
     /// @return A tuple containing the price in USD and an error flag.
     /// If the Chainlink data is stale or negative, it returns (_priceInETH, true).
     /// Where true corresponded to hasError = true.
-    function priceToUSD(uint256 _priceInETH) internal view returns (uint240, bool) {
-        (, int256 _answer, , uint256 _updatedAt, ) = AggregatorV3Interface(CHAINLINK_ETH_USD).latestRoundData();
+    function priceToUSD(uint256 _priceInETH)
+        internal
+        view
+        returns (uint240, bool)
+    {
+        (, int256 _answer, , uint256 _updatedAt, ) = AggregatorV3Interface(
+            CHAINLINK_ETH_USD
+        ).latestRoundData();
 
-            // If data is stale or negative we have a problem to relay back
-            if (_answer <= 0 || (block.timestamp - _updatedAt > CHAINLINK_MAX_DELAY)) {
-                return (uint240(_priceInETH), true);
-            }
-            return (uint240((_priceInETH * uint256(_answer))/CHAINLINK_DIVISOR), false);
+        // If data is stale or negative we have a problem to relay back
+        if (
+            _answer <= 0 ||
+            (block.timestamp - _updatedAt > CHAINLINK_MAX_DELAY)
+        ) {
+            return (uint240(_priceInETH), true);
+        }
+        return (
+            uint240((_priceInETH * uint256(_answer)) / CHAINLINK_DIVISOR),
+            false
+        );
     }
 
     /// @notice Processes the price data from two different feeds.
@@ -202,18 +229,22 @@ contract PriceRouter {
     /// @param b The price from the second feed.
     /// @return A tuple containing the minimum of two prices and an error flag (if any).
     /// If the prices are within acceptable range, it returns (min(a,b), NO_ERROR).
-    function processPriceFeedData(uint256 a, uint256 b) internal view returns (uint256, uint256) {
+    function processPriceFeedData(uint256 a, uint256 b)
+        internal
+        view
+        returns (uint256, uint256)
+    {
         if (a <= b) {
-            if ( ((a * PRICEFEED_MAXIMUM_DIVERGENCE)/DENOMINATOR) < b){
+            if (((a * PRICEFEED_MAXIMUM_DIVERGENCE) / DENOMINATOR) < b) {
                 return (0, CAUTION);
             }
-            return(a, NO_ERROR);
+            return (a, NO_ERROR);
         }
 
-        if ( ((b * PRICEFEED_MAXIMUM_DIVERGENCE)/DENOMINATOR) < a){
-                return (0, CAUTION);
-            }
-        return(b, NO_ERROR);
+        if (((b * PRICEFEED_MAXIMUM_DIVERGENCE) / DENOMINATOR) < a) {
+            return (0, CAUTION);
+        }
+        return (b, NO_ERROR);
     }
 
     /// @notice Returns the price from the working feed between two feeds.
@@ -222,7 +253,11 @@ contract PriceRouter {
     /// @param feed0 The first feed's data.
     /// @param feed1 The second feed's data.
     /// @return The price from the working feed.
-    function getWorkingPrice(feedData memory feed0, feedData memory feed1) internal pure returns (uint256) {
+    function getWorkingPrice(feedData memory feed0, feedData memory feed1)
+        internal
+        pure
+        returns (uint256)
+    {
         if (feed0.hadError) return feed0.price;
         return feed1.price;
     }
@@ -231,28 +266,43 @@ contract PriceRouter {
     /// @dev Requires that the feed address is an approved extension and that the asset doesn't already have two feeds.
     /// @param _asset The address of the asset.
     /// @param _feed The address of the new feed.
-    function addAssetPriceFeed(address _asset, address _feed) external onlyDaoManager {
+    function addAssetPriceFeed(address _asset, address _feed)
+        external
+        onlyDaoManager
+    {
         require(isApprovedExtensions[_feed], "priceRouter: unapproved feed");
-        require(assetPriceFeeds[_asset].length < 2,"priceRouter: dual feed already configured");
+        require(
+            assetPriceFeeds[_asset].length < 2,
+            "priceRouter: dual feed already configured"
+        );
         assetPriceFeeds[_asset].push(_feed);
     }
 
     /// @notice Removes a price feed for a specific asset.
-    /// @dev Requires that the feed exists for the asset. 
+    /// @dev Requires that the feed exists for the asset.
     /// @param _asset The address of the asset.
     /// @param _feed The address of the feed to be removed.
-    function removeAssetPriceFeed(address _asset, address _feed) external onlyDaoManager {
+    function removeAssetPriceFeed(address _asset, address _feed)
+        external
+        onlyDaoManager
+    {
         uint256 oracles = assetPriceFeeds[_asset].length;
-        require(oracles > 0,"priceRouter: no feeds available");
+        require(oracles > 0, "priceRouter: no feeds available");
 
         if (oracles > 1) {
-            require(assetPriceFeeds[_asset][0] == _feed || assetPriceFeeds[_asset][1] == _feed, "priceRouter: feed does not exist");
+            require(
+                assetPriceFeeds[_asset][0] == _feed ||
+                    assetPriceFeeds[_asset][1] == _feed,
+                "priceRouter: feed does not exist"
+            );
             if (assetPriceFeeds[_asset][0] == _feed) {
                 assetPriceFeeds[_asset][0] = assetPriceFeeds[_asset][1];
             } // we want to remove the first feed of two, so move the second feed to slot one
-
         } else {
-            require(assetPriceFeeds[_asset][0] == _feed, "priceRouter: feed does not exist");
+            require(
+                assetPriceFeeds[_asset][0] == _feed,
+                "priceRouter: feed does not exist"
+            );
         } // we know the feed exists, cant use isApprovedExtensions as we could have removed it as an approved extension prior
 
         assetPriceFeeds[_asset].pop();
@@ -262,23 +312,38 @@ contract PriceRouter {
     /// @dev Requires that the extension isn't already approved.
     /// @param _extension The address of the extension to approve.
     function addApprovedExtension(address _extension) external onlyDaoManager {
-        require(!isApprovedExtensions[_extension], "priceRouter: extension already approved");
+        require(
+            !isApprovedExtensions[_extension],
+            "priceRouter: extension already approved"
+        );
         isApprovedExtensions[_extension] = true;
     }
 
     /// @notice Removes an approved extension.
     /// @dev Requires that the extension is currently approved.
     /// @param _extension The address of the extension to remove.
-    function removeApprovedExtension(address _extension) external onlyDaoManager {
-        require(isApprovedExtensions[_extension], "priceRouter: extension does not exist");
+    function removeApprovedExtension(address _extension)
+        external
+        onlyDaoManager
+    {
+        require(
+            isApprovedExtensions[_extension],
+            "priceRouter: extension does not exist"
+        );
         delete isApprovedExtensions[_extension];
     }
 
     /// @notice Sets a new maximum divergence for price feeds.
     /// @dev Requires that the new divergence is greater than 10500 aka 5%.
     /// @param _maxDivergence The new maximum divergence.
-    function setPriceFeedMaxDivergence(uint256 _maxDivergence) external onlyDaoManager {
-        require( _maxDivergence > 10500, "priceRouter: divergence is too small");
+    function setPriceFeedMaxDivergence(uint256 _maxDivergence)
+        external
+        onlyDaoManager
+    {
+        require(
+            _maxDivergence > 10500,
+            "priceRouter: divergence is too small"
+        );
         PRICEFEED_MAXIMUM_DIVERGENCE = _maxDivergence;
     }
 
@@ -289,7 +354,4 @@ contract PriceRouter {
         require(_delay < 1 days, "priceRouter: delay is too large");
         CHAINLINK_MAX_DELAY = _delay;
     }
-
-    
-
 }

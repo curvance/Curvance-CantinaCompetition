@@ -50,7 +50,11 @@ contract TestBoostedLock is TestBase {
 
         owner = address(this);
 
-        centralRegistry = new MockCentralRegistry(address(this), 1 weeks, block.chainid);
+        centralRegistry = new MockCentralRegistry(
+            address(this),
+            1 weeks,
+            block.chainid
+        );
         cve = address(new MockToken("Reward Token", "RT", 18));
         centralRegistry.setCVE(cve);
         ve = new veCVE(ICentralRegistry(address(centralRegistry)));
@@ -63,7 +67,9 @@ contract TestBoostedLock is TestBase {
             users[i] = address(new User());
             vm.store(
                 dai,
-                keccak256(abi.encodePacked(uint256(uint160(users[i])), uint256(2))),
+                keccak256(
+                    abi.encodePacked(uint256(uint160(users[i])), uint256(2))
+                ),
                 bytes32(uint256(200000e18))
             );
         }
@@ -87,7 +93,10 @@ contract TestBoostedLock is TestBase {
             Lendtroller(unitroller)._supportMarket(CToken(tokens[i]));
             // set collateral factor
             vm.prank(admin);
-            Lendtroller(unitroller)._setCollateralFactor(CToken(tokens[i]), 5e17);
+            Lendtroller(unitroller)._setCollateralFactor(
+                CToken(tokens[i]),
+                5e17
+            );
 
             for (uint256 j = 0; j < 10; j++) {
                 address user = users[j];

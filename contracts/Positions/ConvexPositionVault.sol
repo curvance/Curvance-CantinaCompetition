@@ -71,9 +71,12 @@ contract ConvexPositionVault is BasePositionVault {
     /**
      * @notice Mainnet token contracts important for this vault.
      */
-    ERC20 private constant WETH = ERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
-    ERC20 private constant CVX = ERC20(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
-    ERC20 private constant CRV = ERC20(0xD533a949740bb3306d119CC777fa900bA034cd52);
+    ERC20 private constant WETH =
+        ERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
+    ERC20 private constant CVX =
+        ERC20(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
+    ERC20 private constant CRV =
+        ERC20(0xD533a949740bb3306d119CC777fa900bA034cd52);
 
     /**
      * @notice Deposit parameters used by the vault to deposit into desired Curve Pool.
@@ -101,7 +104,10 @@ contract ConvexPositionVault is BasePositionVault {
     //////////////////////////////////////////////////////////////*/
 
     event EthToTargetSwapParamsChanged(CurveSwapParams params);
-    event ArbitraryToEthSwapParamsChanged(address asset, CurveSwapParams params);
+    event ArbitraryToEthSwapParamsChanged(
+        address asset,
+        CurveSwapParams params
+    );
     event HarvestSlippageChanged(uint64 slippage);
     event CurveDepositParamsChanged(CurveDepositParams params);
     event Harvest(uint256 yield);
@@ -143,7 +149,15 @@ contract ConvexPositionVault is BasePositionVault {
         BasePositionVault.PositionVaultMetaData calldata _metaData,
         bytes memory _initializeData
     ) public override initializer {
-        super.initialize(_asset, _owner, _name, _symbol, _decimals, _metaData, _initializeData);
+        super.initialize(
+            _asset,
+            _owner,
+            _name,
+            _symbol,
+            _decimals,
+            _metaData,
+            _initializeData
+        );
         (
             uint256 _pid,
             IBaseRewardPool _rewarder,
@@ -175,7 +189,8 @@ contract ConvexPositionVault is BasePositionVault {
         depositParams = _depositParams;
         curveRegistryExchange = _curveSwaps;
 
-        if (swapsToETH.length != assetsToETH.length) revert ConvexPositionVault__LengthMismatch();
+        if (swapsToETH.length != assetsToETH.length)
+            revert ConvexPositionVault__LengthMismatch();
         for (uint256 i; i < swapsToETH.length; ++i) {
             arbitraryToEth[assetsToETH[i]] = swapsToETH[i];
         }
@@ -186,12 +201,18 @@ contract ConvexPositionVault is BasePositionVault {
                               OWNER LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function updateEthTotargetSwapPath(CurveSwapParams memory params) external onlyOwner {
+    function updateEthTotargetSwapPath(CurveSwapParams memory params)
+        external
+        onlyOwner
+    {
         ethToTarget = params;
         emit EthToTargetSwapParamsChanged(params);
     }
 
-    function updateArbitraryToEthSwapPath(ERC20 assetIn, CurveSwapParams memory params) external onlyOwner {
+    function updateArbitraryToEthSwapPath(
+        ERC20 assetIn,
+        CurveSwapParams memory params
+    ) external onlyOwner {
         arbitraryToEth[assetIn] = params;
         emit ArbitraryToEthSwapParamsChanged(address(assetIn), params);
     }
@@ -201,7 +222,10 @@ contract ConvexPositionVault is BasePositionVault {
         emit HarvestSlippageChanged(_slippage);
     }
 
-    function updateCurveDepositParams(CurveDepositParams memory params) external onlyOwner {
+    function updateCurveDepositParams(CurveDepositParams memory params)
+        external
+        onlyOwner
+    {
         depositParams = params;
         emit CurveDepositParamsChanged(params);
     }
@@ -214,7 +238,13 @@ contract ConvexPositionVault is BasePositionVault {
                           EXTERNAL POSITION LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function harvest(bytes memory) public override whenNotShutdown nonReentrant returns (uint256 yield) {
+    function harvest(bytes memory)
+        public
+        override
+        whenNotShutdown
+        nonReentrant
+        returns (uint256 yield)
+    {
         uint256 pending = _calculatePendingRewards();
         if (pending > 0) {
             // We need to claim vested rewards.
@@ -222,7 +252,10 @@ contract ConvexPositionVault is BasePositionVault {
         }
 
         // Can only harvest once previous reward period is done.
-        if (positionVaultAccounting._lastVestClaim >= positionVaultAccounting._vestingPeriodEnd) {
+        if (
+            positionVaultAccounting._lastVestClaim >=
+            positionVaultAccounting._vestingPeriodEnd
+        ) {
             // Harvest convex position.
             rewarder.getReward(address(this), true);
 
@@ -241,20 +274,36 @@ contract ConvexPositionVault is BasePositionVault {
                 ERC20 rewardToken = rewardTokens[i];
                 uint256 rewardBalance = rewardToken.balanceOf(address(this));
                 // Take platform fee
-                uint256 protocolFee = rewardBalance.mulDivDown(positionVaultMetaData.platformFee, 1e18);
+                uint256 protocolFee = rewardBalance.mulDivDown(
+                    positionVaultMetaData.platformFee,
+                    1e18
+                );
                 rewardBalance -= protocolFee;
-                rewardToken.safeTransfer(positionVaultMetaData.feeAccumulator, protocolFee);
+                rewardToken.safeTransfer(
+                    positionVaultMetaData.feeAccumulator,
+                    protocolFee
+                );
                 // Get the reward token value in USD.
                 uint256 valueInUSD = rewardBalance.mulDivDown(
-                    positionVaultMetaData.priceRouter.getPriceInUSD(rewardToken),
-                    10 ** rewardToken.decimals()
+                    positionVaultMetaData.priceRouter.getPriceInUSD(
+                        rewardToken
+                    ),
+                    10**rewardToken.decimals()
                 );
-                CurveSwapParams memory swapParams = arbitraryToEth[rewardToken];
+                CurveSwapParams memory swapParams = arbitraryToEth[
+                    rewardToken
+                ];
                 // Check if value is enough to warrant a swap. And that we have the swap params set up for it.
-                if (valueInUSD >= swapParams.minUSDValueToSwap && address(swapParams.assetIn) != address(0)) {
+                if (
+                    valueInUSD >= swapParams.minUSDValueToSwap &&
+                    address(swapParams.assetIn) != address(0)
+                ) {
                     valueIn += valueInUSD;
                     // Perform Swap into ETH.
-                    rewardToken.safeApprove(address(curveRegistryExchange), rewardBalance);
+                    rewardToken.safeApprove(
+                        address(curveRegistryExchange),
+                        rewardBalance
+                    );
                     ethOut += curveRegistryExchange.exchange_multiple(
                         swapParams.route,
                         swapParams.swapParams,
@@ -269,11 +318,18 @@ contract ConvexPositionVault is BasePositionVault {
             // Check if we even have any ETH from swaps, if not return 0;
             if (ethOut == 0) return 0;
             // Take upkeep fee.
-            uint256 feeForUpkeep = ethOut.mulDivDown(positionVaultMetaData.upkeepFee, 1e18);
+            uint256 feeForUpkeep = ethOut.mulDivDown(
+                positionVaultMetaData.upkeepFee,
+                1e18
+            );
             // If watchdog is set, transfer WETH to it otherwise, leave it here.
-            if (positionVaultMetaData.positionWatchdog == address(0)) revert ConvexPositionVault__WatchdogNotSet();
+            if (positionVaultMetaData.positionWatchdog == address(0))
+                revert ConvexPositionVault__WatchdogNotSet();
             // Transfer WETH fee to watchdog
-            WETH.safeTransfer(positionVaultMetaData.positionWatchdog, feeForUpkeep);
+            WETH.safeTransfer(
+                positionVaultMetaData.positionWatchdog,
+                feeForUpkeep
+            );
             ethOut -= feeForUpkeep;
 
             uint256 assetsOut;
@@ -291,13 +347,20 @@ contract ConvexPositionVault is BasePositionVault {
                 );
             } else assetsOut = ethOut;
             uint256 valueOut = assetsOut.mulDivDown(
-                positionVaultMetaData.priceRouter.getPriceInUSD(depositParams.targetAsset),
-                10 ** depositParams.targetAsset.decimals()
+                positionVaultMetaData.priceRouter.getPriceInUSD(
+                    depositParams.targetAsset
+                ),
+                10**depositParams.targetAsset.decimals()
             );
 
             // Compare value in vs value out.
-            if (valueOut < valueIn.mulDivDown(1e18 - (positionVaultMetaData.upkeepFee + harvestSlippage), 1e18))
-                revert ConvexPositionVault__BadSlippage();
+            if (
+                valueOut <
+                valueIn.mulDivDown(
+                    1e18 - (positionVaultMetaData.upkeepFee + harvestSlippage),
+                    1e18
+                )
+            ) revert ConvexPositionVault__BadSlippage();
 
             // Deposit assets to Curve.
             _addLiquidityToCurve(assetsOut);
@@ -307,8 +370,12 @@ contract ConvexPositionVault is BasePositionVault {
             _deposit(yield);
 
             // Update Vesting info.
-            positionVaultAccounting._rewardRate = uint128(yield.mulDivDown(REWARD_SCALER, REWARD_PERIOD));
-            positionVaultAccounting._vestingPeriodEnd = uint64(block.timestamp) + REWARD_PERIOD;
+            positionVaultAccounting._rewardRate = uint128(
+                yield.mulDivDown(REWARD_SCALER, REWARD_PERIOD)
+            );
+            positionVaultAccounting._vestingPeriodEnd =
+                uint64(block.timestamp) +
+                REWARD_PERIOD;
             positionVaultAccounting._lastVestClaim = uint64(block.timestamp);
             emit Harvest(yield);
         } // else yield is zero.
@@ -328,7 +395,12 @@ contract ConvexPositionVault is BasePositionVault {
         booster.deposit(pid, assets, true);
     }
 
-    function _getRealPositionBalance() internal view override returns (uint256) {
+    function _getRealPositionBalance()
+        internal
+        view
+        override
+        returns (uint256)
+    {
         IBaseRewardPool rewardPool = IBaseRewardPool(rewarder);
         return rewardPool.balanceOf(address(this));
     }

@@ -27,7 +27,9 @@ contract PendlePrincipalTokenExtension is Extension {
 
     error PendlePrincipalTokenExtension__MinimumTwapDurationNotMet();
     error PendlePrincipalTokenExtension__OldestObservationNotSatisfied();
-    error PendlePrincipalTokenExtension__QuoteAssetNotSupported(address unsupportedQuote);
+    error PendlePrincipalTokenExtension__QuoteAssetNotSupported(
+        address unsupportedQuote
+    );
     error PendlePrincipalTokenExtension__CallIncreaseObservationsCardinalityNext(
         address market,
         uint16 cardinalityNext
@@ -37,37 +39,56 @@ contract PendlePrincipalTokenExtension is Extension {
      * @notice Curve Derivative Storage
      * @dev Stores an array of the underlying token addresses in the curve pool.
      */
-    mapping(uint64 => PendlePrincipalExtensionStorage) public getPendlePrincipalExtensionStorage;
+    mapping(uint64 => PendlePrincipalExtensionStorage)
+        public getPendlePrincipalExtensionStorage;
 
-    constructor(PriceOps _priceOps, IPPtOracle _ptOracle) Extension(_priceOps) {
+    constructor(PriceOps _priceOps, IPPtOracle _ptOracle)
+        Extension(_priceOps)
+    {
         ptOracle = _ptOracle;
     }
 
-    function setupSource(address asset, uint64 _sourceId, bytes memory data) external override onlyPriceOps {
-        PendlePrincipalExtensionStorage memory extensionConfiguration = abi.decode(
-            data,
-            (PendlePrincipalExtensionStorage)
-        );
+    function setupSource(
+        address asset,
+        uint64 _sourceId,
+        bytes memory data
+    ) external override onlyPriceOps {
+        PendlePrincipalExtensionStorage memory extensionConfiguration = abi
+            .decode(data, (PendlePrincipalExtensionStorage));
 
         // TODO check that market is the right one for the PT token.
 
         if (extensionConfiguration.twapDuration < MINIMUM_TWAP_DURATION)
             revert PendlePrincipalTokenExtension__MinimumTwapDurationNotMet();
 
-        (bool increaseCardinalityRequired, uint16 cardinalityRequired, bool oldestObservationSatisfied) = ptOracle
-            .getOracleState(extensionConfiguration.market, extensionConfiguration.twapDuration);
+        (
+            bool increaseCardinalityRequired,
+            uint16 cardinalityRequired,
+            bool oldestObservationSatisfied
+        ) = ptOracle.getOracleState(
+                extensionConfiguration.market,
+                extensionConfiguration.twapDuration
+            );
 
         if (increaseCardinalityRequired)
-            revert PendlePrincipalTokenExtension__CallIncreaseObservationsCardinalityNext(asset, cardinalityRequired);
+            revert PendlePrincipalTokenExtension__CallIncreaseObservationsCardinalityNext(
+                asset,
+                cardinalityRequired
+            );
 
-        if (oldestObservationSatisfied) revert PendlePrincipalTokenExtension__OldestObservationNotSatisfied();
+        if (oldestObservationSatisfied)
+            revert PendlePrincipalTokenExtension__OldestObservationNotSatisfied();
 
         // Check that `quoteAsset` is supported by PriceOps.
         if (!priceOps.isSupported(extensionConfiguration.quoteAsset))
-            revert PendlePrincipalTokenExtension__QuoteAssetNotSupported(extensionConfiguration.quoteAsset);
+            revert PendlePrincipalTokenExtension__QuoteAssetNotSupported(
+                extensionConfiguration.quoteAsset
+            );
 
         // Write to extension storage.
-        getPendlePrincipalExtensionStorage[_sourceId] = PendlePrincipalExtensionStorage({
+        getPendlePrincipalExtensionStorage[
+            _sourceId
+        ] = PendlePrincipalExtensionStorage({
             market: extensionConfiguration.market,
             pt: asset,
             twapDuration: extensionConfiguration.twapDuration,
@@ -75,12 +96,22 @@ contract PendlePrincipalTokenExtension is Extension {
         });
     }
 
-    function getPriceInBase(
-        uint64 sourceId
-    ) external view override onlyPriceOps returns (uint256 upper, uint256 lower, uint8 errorCode) {
-        PendlePrincipalExtensionStorage memory stor = getPendlePrincipalExtensionStorage[sourceId];
+    function getPriceInBase(uint64 sourceId)
+        external
+        view
+        override
+        onlyPriceOps
+        returns (
+            uint256 upper,
+            uint256 lower,
+            uint8 errorCode
+        )
+    {
+        PendlePrincipalExtensionStorage
+            memory stor = getPendlePrincipalExtensionStorage[sourceId];
         uint256 ptRate = ptOracle.getPtToAssetRate(stor.pt, stor.twapDuration);
-        (uint256 quoteUpper, uint256 quoteLower, uint8 _errorCode) = priceOps.getPriceInBase(stor.quoteAsset);
+        (uint256 quoteUpper, uint256 quoteLower, uint8 _errorCode) = priceOps
+            .getPriceInBase(stor.quoteAsset);
         if (errorCode == BAD_SOURCE || quoteUpper == 0) {
             // Completely blind as to what this price is return error code of BAD_SOURCE.
             return (0, 0, BAD_SOURCE);

@@ -112,7 +112,8 @@ abstract contract CTokenStorage is CommonError {
     mapping(address => uint256) internal accountTokens;
 
     // Approved token transfer amounts on behalf of others
-    mapping(address => mapping(address => uint256)) internal transferAllowances;
+    mapping(address => mapping(address => uint256))
+        internal transferAllowances;
 
     /**
      * @notice Container for borrow balance information

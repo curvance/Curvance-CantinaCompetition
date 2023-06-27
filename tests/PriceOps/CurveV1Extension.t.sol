@@ -41,15 +41,22 @@ contract CurveV1ExtensionTest is TestBase {
     MockDataFeed private MOCK_DAI_ETH_FEED;
 
     // Curve Assets
-    address private CRV_DAI_USDC_USDT = 0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490;
+    address private CRV_DAI_USDC_USDT =
+        0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490;
     address private curve3CrvPool = 0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7;
 
     function setUp() public {
         _fork();
 
-        ETH_PRICE_USD = uint256(IChainlinkAggregator(WETH_USD_FEED).latestAnswer());
-        USDC_PRICE_USD = uint256(IChainlinkAggregator(USDC_USD_FEED).latestAnswer());
-        USDC_PRICE_ETH = uint256(IChainlinkAggregator(USDC_ETH_FEED).latestAnswer());
+        ETH_PRICE_USD = uint256(
+            IChainlinkAggregator(WETH_USD_FEED).latestAnswer()
+        );
+        USDC_PRICE_USD = uint256(
+            IChainlinkAggregator(USDC_USD_FEED).latestAnswer()
+        );
+        USDC_PRICE_ETH = uint256(
+            IChainlinkAggregator(USDC_ETH_FEED).latestAnswer()
+        );
 
         MOCK_WETH_USD_FEED = new MockDataFeed(WETH_USD_FEED);
         MOCK_USDC_USD_FEED = new MockDataFeed(USDC_USD_FEED);
@@ -120,15 +127,24 @@ contract CurveV1ExtensionTest is TestBase {
         priceOps.addAsset(CRV_DAI_USDC_USDT, crv3PoolSource, 0, 0);
 
         // Query price.
-        (uint256 upper, uint256 lower, uint8 errorCode) = priceOps.getPriceInBaseEnforceNonZeroLower(CRV_DAI_USDC_USDT);
+        (uint256 upper, uint256 lower, uint8 errorCode) = priceOps
+            .getPriceInBaseEnforceNonZeroLower(CRV_DAI_USDC_USDT);
         assertApproxEqRel(
             upper,
-            uint256(_ONE).mulDivDown(USDC_PRICE_USD.mulDivDown(pool.get_virtual_price(), _ONE), ETH_PRICE_USD),
+            uint256(_ONE).mulDivDown(
+                USDC_PRICE_USD.mulDivDown(pool.get_virtual_price(), _ONE),
+                ETH_PRICE_USD
+            ),
             0.01e18,
             "upper should be approx equal to 1/ETH_PRICE_USD."
         );
         assertGt(upper, lower, "Upper should be greater than lower.");
-        assertApproxEqRel(upper, lower, 0.01e18, "Upper and lower should approximately by equal.");
+        assertApproxEqRel(
+            upper,
+            lower,
+            0.01e18,
+            "Upper and lower should approximately by equal."
+        );
         assertEq(errorCode, 0, "There should be no error.");
 
         ICurveFi threePool = ICurveFi(curve3CrvPool);
@@ -140,10 +156,21 @@ contract CurveV1ExtensionTest is TestBase {
 
         uint256 lpReceived = ERC20(CRV_DAI_USDC_USDT).balanceOf(address(this));
 
-        uint256 valueIn = usdcIn.mulDivDown(USDC_PRICE_ETH, 10 ** ERC20(USDC).decimals());
-        uint256 valueOut = lpReceived.mulDivDown(upper, 10 ** ERC20(CRV_DAI_USDC_USDT).decimals());
+        uint256 valueIn = usdcIn.mulDivDown(
+            USDC_PRICE_ETH,
+            10**ERC20(USDC).decimals()
+        );
+        uint256 valueOut = lpReceived.mulDivDown(
+            upper,
+            10**ERC20(CRV_DAI_USDC_USDT).decimals()
+        );
 
-        assertApproxEqRel(valueIn, valueOut, 0.01e18, "Value in should approximately equal value out.");
+        assertApproxEqRel(
+            valueIn,
+            valueOut,
+            0.01e18,
+            "Value in should approximately equal value out."
+        );
     }
 
     // TODO add any other curve V1 pools we want to use.
@@ -163,51 +190,88 @@ contract CurveV1ExtensionTest is TestBase {
         priceOps.addAsset(CRV_DAI_USDC_USDT, crv3PoolSource, 0, 0);
 
         // Should be no error codes.
-        (uint256 upper, uint256 lower, uint8 errorCode) = priceOps.getPriceInBaseEnforceNonZeroLower(CRV_DAI_USDC_USDT);
+        (uint256 upper, uint256 lower, uint8 errorCode) = priceOps
+            .getPriceInBaseEnforceNonZeroLower(CRV_DAI_USDC_USDT);
         assertApproxEqRel(
             upper,
-            uint256(_ONE).mulDivDown(USDC_PRICE_USD.mulDivDown(pool.get_virtual_price(), _ONE), ETH_PRICE_USD),
+            uint256(_ONE).mulDivDown(
+                USDC_PRICE_USD.mulDivDown(pool.get_virtual_price(), _ONE),
+                ETH_PRICE_USD
+            ),
             0.01e18,
             "upper should be approx equal to 1/ETH_PRICE_USD."
         );
         assertGt(upper, lower, "Upper should be greater than lower.");
-        assertApproxEqRel(upper, lower, 0.01e18, "Upper and lower should approximately by equal.");
+        assertApproxEqRel(
+            upper,
+            lower,
+            0.01e18,
+            "Upper and lower should approximately by equal."
+        );
         assertEq(errorCode, 0, "There should be no error.");
 
         // Make DAI source bad.
         MOCK_DAI_ETH_FEED.setMockUpdatedAt(block.timestamp - 2 days);
-        (upper, lower, errorCode) = priceOps.getPriceInBaseEnforceNonZeroLower(CRV_DAI_USDC_USDT);
-        assertEq(upper, 0, "Extension is blind to DAIs price so return BAD_SOURCE and zeroes.");
+        (upper, lower, errorCode) = priceOps.getPriceInBaseEnforceNonZeroLower(
+            CRV_DAI_USDC_USDT
+        );
+        assertEq(
+            upper,
+            0,
+            "Extension is blind to DAIs price so return BAD_SOURCE and zeroes."
+        );
         assertEq(upper, lower, "Upper should equal lower.");
         assertEq(errorCode, 2, "There should be a BAD_SOURCE error.");
 
         // Make DAI source good, but 1 USDC source bad.
         MOCK_DAI_ETH_FEED.setMockUpdatedAt(block.timestamp);
         MOCK_USDC_USD_FEED.setMockUpdatedAt(block.timestamp - 2 days);
-        (upper, lower, errorCode) = priceOps.getPriceInBaseEnforceNonZeroLower(CRV_DAI_USDC_USDT);
+        (upper, lower, errorCode) = priceOps.getPriceInBaseEnforceNonZeroLower(
+            CRV_DAI_USDC_USDT
+        );
         assertApproxEqRel(
             upper,
-            uint256(_ONE).mulDivDown(USDC_PRICE_USD.mulDivDown(pool.get_virtual_price(), _ONE), ETH_PRICE_USD),
+            uint256(_ONE).mulDivDown(
+                USDC_PRICE_USD.mulDivDown(pool.get_virtual_price(), _ONE),
+                ETH_PRICE_USD
+            ),
             0.01e18,
             "upper should be approx equal to 1/ETH_PRICE_USD."
         );
         assertGt(upper, lower, "Upper should be greater than lower.");
-        assertApproxEqRel(upper, lower, 0.01e18, "Upper and lower should approximately by equal.");
+        assertApproxEqRel(
+            upper,
+            lower,
+            0.01e18,
+            "Upper and lower should approximately by equal."
+        );
         assertEq(errorCode, 1, "Error should be CAUTION.");
 
         // Make USDC source good, but have USDC sources diverge.
         MOCK_USDC_USD_FEED.setMockUpdatedAt(block.timestamp);
         uint256 usdcDivergence = 0.03e18;
-        MOCK_USDC_USD_FEED.setMockAnswer(int256(uint256(1e8).mulDivDown(_ONE + usdcDivergence, _ONE)));
-        (upper, lower, errorCode) = priceOps.getPriceInBaseEnforceNonZeroLower(CRV_DAI_USDC_USDT);
+        MOCK_USDC_USD_FEED.setMockAnswer(
+            int256(uint256(1e8).mulDivDown(_ONE + usdcDivergence, _ONE))
+        );
+        (upper, lower, errorCode) = priceOps.getPriceInBaseEnforceNonZeroLower(
+            CRV_DAI_USDC_USDT
+        );
         assertApproxEqRel(
             upper,
-            uint256(_ONE).mulDivDown(USDC_PRICE_USD.mulDivDown(pool.get_virtual_price(), _ONE), ETH_PRICE_USD),
+            uint256(_ONE).mulDivDown(
+                USDC_PRICE_USD.mulDivDown(pool.get_virtual_price(), _ONE),
+                ETH_PRICE_USD
+            ),
             2 * usdcDivergence,
             "upper should be approx equal to 1/ETH_PRICE_USD."
         );
         assertGt(upper, lower, "Upper should be greater than lower.");
-        assertApproxEqRel(upper, lower, 2 * usdcDivergence, "Upper and lower should approximately by equal.");
+        assertApproxEqRel(
+            upper,
+            lower,
+            2 * usdcDivergence,
+            "Upper and lower should approximately by equal."
+        );
         assertEq(errorCode, 1, "Error should be CAUTION.");
 
         // Reset bad USDC source.
@@ -215,30 +279,50 @@ contract CurveV1ExtensionTest is TestBase {
 
         // Make the Eth -> Usd source bad so that one USDC source is bad.
         MOCK_WETH_USD_FEED.setMockUpdatedAt(block.timestamp - 2 days);
-        (upper, lower, errorCode) = priceOps.getPriceInBaseEnforceNonZeroLower(CRV_DAI_USDC_USDT);
+        (upper, lower, errorCode) = priceOps.getPriceInBaseEnforceNonZeroLower(
+            CRV_DAI_USDC_USDT
+        );
         assertApproxEqRel(
             upper,
-            uint256(_ONE).mulDivDown(USDC_PRICE_USD.mulDivDown(pool.get_virtual_price(), _ONE), ETH_PRICE_USD),
+            uint256(_ONE).mulDivDown(
+                USDC_PRICE_USD.mulDivDown(pool.get_virtual_price(), _ONE),
+                ETH_PRICE_USD
+            ),
             0.01e18,
             "upper should be approx equal to 1/ETH_PRICE_USD."
         );
         assertGt(upper, lower, "Upper should be greater than lower.");
-        assertApproxEqRel(upper, lower, 0.01e18, "Upper and lower should approximately by equal.");
+        assertApproxEqRel(
+            upper,
+            lower,
+            0.01e18,
+            "Upper and lower should approximately by equal."
+        );
         assertEq(errorCode, 1, "Error should be CAUTION.");
 
         // Reset Eth->Usd timestamp.
         MOCK_WETH_USD_FEED.setMockUpdatedAt(block.timestamp);
 
         // Should be error free.
-        (upper, lower, errorCode) = priceOps.getPriceInBaseEnforceNonZeroLower(CRV_DAI_USDC_USDT);
+        (upper, lower, errorCode) = priceOps.getPriceInBaseEnforceNonZeroLower(
+            CRV_DAI_USDC_USDT
+        );
         assertApproxEqRel(
             upper,
-            uint256(_ONE).mulDivDown(USDC_PRICE_USD.mulDivDown(pool.get_virtual_price(), _ONE), ETH_PRICE_USD),
+            uint256(_ONE).mulDivDown(
+                USDC_PRICE_USD.mulDivDown(pool.get_virtual_price(), _ONE),
+                ETH_PRICE_USD
+            ),
             0.01e18,
             "upper should be approx equal to 1/ETH_PRICE_USD."
         );
         assertGt(upper, lower, "Upper should be greater than lower.");
-        assertApproxEqRel(upper, lower, 0.01e18, "Upper and lower should approximately by equal.");
+        assertApproxEqRel(
+            upper,
+            lower,
+            0.01e18,
+            "Upper and lower should approximately by equal."
+        );
         assertEq(errorCode, 0, "There should be no error.");
 
         // TODO if need be add case where virtual price exceedes bound and make sure 2 error is returned.
