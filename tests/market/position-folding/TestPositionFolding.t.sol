@@ -1,39 +1,13 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import "@openzeppelin/contracts/interfaces/IERC20.sol";
-import "contracts/market/lendtroller/Lendtroller.sol";
-import "contracts/market/lendtroller/LendtrollerInterface.sol";
-import "contracts/market/Token/CErc20Immutable.sol";
-import "contracts/market/Token/CEther.sol";
-import "contracts/market/Oracle/SimplePriceOracle.sol";
-import "contracts/market/InterestRateModel/InterestRateModel.sol";
-import { PositionFolding } from "contracts/PositionFolding/PositionFolding.sol";
-import { GaugePool } from "contracts/gauge/GaugePool.sol";
+import "tests/market/TestBaseMarket.sol";
 
-import "tests/market/deploy.sol";
-import "tests/utils/TestBase.sol";
+contract TestPositionFolding is TestBaseMarket {
+    address public UNISWAP_V2_ROUTER =
+        0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
+    address public WETH_ADDRESS = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
-contract User {
-    receive() external payable {}
-
-    fallback() external payable {}
-}
-
-contract TestPositionFolding is TestBase {
-    address public uniswapV2Router =
-        address(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
-    address public weth = address(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
-    address public dai = address(0x6B175474E89094C44Da98b954EedeAC495271d0F);
-
-    address public admin;
-    address public user;
-    DeployCompound public deployments;
-    address public unitroller;
-    CErc20Immutable public cDAI;
-    CEther public cETH;
-    SimplePriceOracle public priceOracle;
-    address public gauge;
     PositionFolding public positionFolding;
 
     receive() external payable {}
@@ -41,43 +15,24 @@ contract TestPositionFolding is TestBase {
     fallback() external payable {}
 
     function setUp() public {
-        _fork();
+        super.setUp();
 
-        deployments = new DeployCompound();
-        deployments.makeCompound();
-        unitroller = address(deployments.unitroller());
-        priceOracle = SimplePriceOracle(deployments.priceOracle());
-        priceOracle.setDirectPrice(dai, 1 ether);
         priceOracle.setDirectPrice(
             0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE,
             2000 ether
         );
 
-        admin = deployments.admin();
-        user = address(this);
-
         // prepare 200K DAI
         vm.store(
-            dai,
+            DAI_ADDRESS,
             keccak256(abi.encodePacked(uint256(uint160(user)), uint256(2))),
             bytes32(uint256(200000 ether))
         );
         // prepare 200K ETH
         vm.deal(user, 200000 ether);
 
-        gauge = address(new GaugePool(address(0), address(0), unitroller));
+        _deployCDAI();
 
-        cDAI = new CErc20Immutable(
-            dai,
-            LendtrollerInterface(unitroller),
-            gauge,
-            InterestRateModel(address(deployments.jumpRateModel())),
-            1 ether,
-            "cDAI",
-            "cDAI",
-            18,
-            payable(admin)
-        );
         // support market
         vm.prank(admin);
         Lendtroller(unitroller)._supportMarket(CToken(address(cDAI)));
@@ -88,16 +43,8 @@ contract TestPositionFolding is TestBase {
             75e16
         );
 
-        cETH = new CEther(
-            LendtrollerInterface(unitroller),
-            gauge,
-            InterestRateModel(address(deployments.jumpRateModel())),
-            1 ether,
-            "cETH",
-            "cETH",
-            18,
-            payable(admin)
-        );
+        _deployCEther();
+
         // support market
         vm.prank(admin);
         Lendtroller(unitroller)._supportMarket(CToken(address(cETH)));
@@ -112,7 +59,7 @@ contract TestPositionFolding is TestBase {
             unitroller,
             address(priceOracle),
             address(cETH),
-            weth
+            WETH_ADDRESS
         );
         // set position folding
         vm.prank(admin);
@@ -127,7 +74,7 @@ contract TestPositionFolding is TestBase {
         vm.startPrank(liquidityProvider);
         // prepare 200K DAI
         vm.store(
-            dai,
+            DAI_ADDRESS,
             keccak256(
                 abi.encodePacked(
                     uint256(uint160(liquidityProvider)),
@@ -138,13 +85,11 @@ contract TestPositionFolding is TestBase {
         );
         // prepare 200K ETH
         vm.deal(liquidityProvider, 200000 ether);
-        address[] memory markets = new address[](2);
-        markets[0] = address(cDAI);
-        markets[1] = address(cETH);
-        LendtrollerInterface(unitroller).enterMarkets(markets);
+
+        _enterMarkets(liquidityProvider);
 
         // mint cDAI
-        IERC20(dai).approve(address(cDAI), 200000 ether);
+        dai.approve(address(cDAI), 200000 ether);
         cDAI.mint(200000 ether);
 
         // mint cETH
@@ -154,24 +99,23 @@ contract TestPositionFolding is TestBase {
     }
 
     function testLeverageMaxWithOnlyCToken() public {
-        // enter markets
         vm.startPrank(user);
-        address[] memory markets = new address[](1);
-        markets[0] = address(cDAI);
-        LendtrollerInterface(unitroller).enterMarkets(markets);
+
+        // enter markets
+        _enterCDAIMarket(user);
 
         // approve
-        IERC20(dai).approve(address(cDAI), 100 ether);
+        dai.approve(address(cDAI), 100 ether);
 
         // mint
         assertTrue(cDAI.mint(100 ether));
         assertEq(cDAI.balanceOf(user), 100 ether);
 
-        uint256 balanceBeforeBorrow = IERC20(dai).balanceOf(user);
+        uint256 balanceBeforeBorrow = dai.balanceOf(user);
         // borrow
         cDAI.borrow(25 ether);
         assertEq(cDAI.balanceOf(user), 100 ether);
-        assertEq(balanceBeforeBorrow + 25 ether, IERC20(dai).balanceOf(user));
+        assertEq(balanceBeforeBorrow + 25 ether, dai.balanceOf(user));
 
         assertEq(
             positionFolding.queryAmountToBorrowForLeverageMax(
@@ -196,24 +140,23 @@ contract TestPositionFolding is TestBase {
     }
 
     function testDeLeverageWithOnlyCToken() public {
-        // enter markets
         vm.startPrank(user);
-        address[] memory markets = new address[](1);
-        markets[0] = address(cDAI);
-        LendtrollerInterface(unitroller).enterMarkets(markets);
+
+        // enter markets
+        _enterCDAIMarket(user);
 
         // approve
-        IERC20(dai).approve(address(cDAI), 100 ether);
+        dai.approve(address(cDAI), 100 ether);
 
         // mint
         assertTrue(cDAI.mint(100 ether));
         assertEq(cDAI.balanceOf(user), 100 ether);
 
-        uint256 balanceBeforeBorrow = IERC20(dai).balanceOf(user);
+        uint256 balanceBeforeBorrow = dai.balanceOf(user);
         // borrow
         cDAI.borrow(25 ether);
         assertEq(cDAI.balanceOf(user), 100 ether);
-        assertEq(balanceBeforeBorrow + 25 ether, IERC20(dai).balanceOf(user));
+        assertEq(balanceBeforeBorrow + 25 ether, dai.balanceOf(user));
 
         assertEq(
             positionFolding.queryAmountToBorrowForLeverageMax(
@@ -251,11 +194,10 @@ contract TestPositionFolding is TestBase {
     }
 
     function testLeverageMaxWithOnlyCEther() public {
-        // enter markets
         vm.startPrank(user);
-        address[] memory markets = new address[](1);
-        markets[0] = address(cETH);
-        LendtrollerInterface(unitroller).enterMarkets(markets);
+
+        // enter markets
+        _enterCEtherMarket(user);
 
         // mint
         cETH.mint{ value: 100 ether }();
@@ -290,11 +232,10 @@ contract TestPositionFolding is TestBase {
     }
 
     function testDeLeverageWithOnlyCEther() public {
-        // enter markets
         vm.startPrank(user);
-        address[] memory markets = new address[](1);
-        markets[0] = address(cETH);
-        LendtrollerInterface(unitroller).enterMarkets(markets);
+
+        // enter markets
+        _enterCEtherMarket(user);
 
         // mint
         cETH.mint{ value: 100 ether }();
@@ -342,21 +283,19 @@ contract TestPositionFolding is TestBase {
     }
 
     function testLeverageMaxIntegration1() public {
-        // enter markets
         vm.startPrank(user);
-        address[] memory markets = new address[](2);
-        markets[0] = address(cDAI);
-        markets[1] = address(cETH);
-        LendtrollerInterface(unitroller).enterMarkets(markets);
 
-        // mint 2000 dai
-        IERC20(dai).approve(address(cDAI), 2000 ether);
+        // enter markets
+        _enterMarkets(user);
+
+        // mint 2000 DAI_ADDRESS
+        dai.approve(address(cDAI), 2000 ether);
         cDAI.mint(2000 ether);
 
-        // mint 1 ether
-        cETH.mint{ value: 1 ether }();
+        // mint _ONE
+        cETH.mint{ value: _ONE }();
 
-        // borrow 500 dai
+        // borrow 500 DAI_ADDRESS
         cDAI.borrow(500 ether);
 
         // borrow 0.25 ether
@@ -367,13 +306,13 @@ contract TestPositionFolding is TestBase {
         assertEq(amountForLeverage, 6880 ether);
 
         address[] memory path = new address[](2);
-        path[0] = dai;
-        path[1] = weth;
+        path[0] = DAI_ADDRESS;
+        path[1] = WETH_ADDRESS;
         positionFolding.leverageMax(
             CToken(address(cDAI)),
             CToken(address(cETH)),
             PositionFolding.Swap({
-                target: uniswapV2Router,
+                target: UNISWAP_V2_ROUTER,
                 call: abi.encodeWithSignature(
                     "swapExactTokensForETH(uint256,uint256,address[],address,uint256)",
                     amountForLeverage,
@@ -410,22 +349,16 @@ contract TestPositionFolding is TestBase {
     function testDeLeverageIntegration1() public {
         vm.startPrank(user);
 
-        {
-            // enter markets
-            address[] memory markets = new address[](2);
-            markets[0] = address(cDAI);
-            markets[1] = address(cETH);
-            LendtrollerInterface(unitroller).enterMarkets(markets);
-        }
+        _enterMarkets(user);
 
-        // mint 2000 dai
-        IERC20(dai).approve(address(cDAI), 2000 ether);
+        // mint 2000 DAI_ADDRESS
+        dai.approve(address(cDAI), 2000 ether);
         cDAI.mint(2000 ether);
 
-        // mint 1 ether
-        cETH.mint{ value: 1 ether }();
+        // mint _ONE
+        cETH.mint{ value: _ONE }();
 
-        // borrow 500 dai
+        // borrow 500 DAI_ADDRESS
         cDAI.borrow(500 ether);
 
         // borrow 0.25 ether
@@ -440,14 +373,14 @@ contract TestPositionFolding is TestBase {
             assertEq(amountForLeverage, 6880 ether);
 
             address[] memory path = new address[](2);
-            path[0] = dai;
-            path[1] = weth;
+            path[0] = DAI_ADDRESS;
+            path[1] = WETH_ADDRESS;
 
             positionFolding.leverageMax(
                 CToken(address(cDAI)),
                 CToken(address(cETH)),
                 PositionFolding.Swap({
-                    target: uniswapV2Router,
+                    target: UNISWAP_V2_ROUTER,
                     call: abi.encodeWithSignature(
                         "swapExactTokensForETH(uint256,uint256,address[],address,uint256)",
                         amountForLeverage,
@@ -483,15 +416,15 @@ contract TestPositionFolding is TestBase {
 
         {
             address[] memory path = new address[](2);
-            path[0] = weth;
-            path[1] = dai;
+            path[0] = WETH_ADDRESS;
+            path[1] = DAI_ADDRESS;
             positionFolding.deleverage(
                 CToken(address(cETH)),
                 3.7 ether,
                 CToken(address(cDAI)),
                 6300 ether,
                 PositionFolding.Swap({
-                    target: uniswapV2Router,
+                    target: UNISWAP_V2_ROUTER,
                     call: abi.encodeWithSignature(
                         "swapExactTokensForTokens(uint256,uint256,address[],address,uint256)",
                         3.7 ether,
@@ -529,21 +462,19 @@ contract TestPositionFolding is TestBase {
     }
 
     function testLeverageMaxCheckAccountHealthy() public {
-        // enter markets
         vm.startPrank(user);
-        address[] memory markets = new address[](2);
-        markets[0] = address(cDAI);
-        markets[1] = address(cETH);
-        LendtrollerInterface(unitroller).enterMarkets(markets);
 
-        // mint 2000 dai
-        IERC20(dai).approve(address(cDAI), 2000 ether);
+        // enter markets
+        _enterMarkets(user);
+
+        // mint 2000 DAI_ADDRESS
+        dai.approve(address(cDAI), 2000 ether);
         cDAI.mint(2000 ether);
 
-        // mint 1 ether
-        cETH.mint{ value: 1 ether }();
+        // mint _ONE
+        cETH.mint{ value: _ONE }();
 
-        // borrow 500 dai
+        // borrow 500 DAI_ADDRESS
         cDAI.borrow(500 ether);
 
         // borrow 0.25 ether
@@ -554,8 +485,8 @@ contract TestPositionFolding is TestBase {
         assertEq(amountForLeverage, 6880 ether);
 
         address[] memory path = new address[](2);
-        path[0] = dai;
-        path[1] = weth;
+        path[0] = DAI_ADDRESS;
+        path[1] = WETH_ADDRESS;
 
         vm.deal(address(positionFolding), 0.01 ether);
         vm.expectRevert(LendtrollerInterface.InsufficientLiquidity.selector);
