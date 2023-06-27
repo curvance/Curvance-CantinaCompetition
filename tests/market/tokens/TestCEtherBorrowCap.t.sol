@@ -2,63 +2,24 @@
 pragma solidity ^0.8.13;
 
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
-import "contracts/market/lendtroller/Lendtroller.sol";
-import "contracts/market/lendtroller/LendtrollerInterface.sol";
-import "contracts/market/Token/CEther.sol";
-import "contracts/market/Oracle/SimplePriceOracle.sol";
-import "contracts/market/InterestRateModel/InterestRateModel.sol";
-import { GaugePool } from "contracts/gauge/GaugePool.sol";
+import "tests/market/TestBaseMarket.sol";
 
-import "tests/market/deploy.sol";
-import "tests/utils/TestBase.sol";
-
-contract User {}
-
-contract TestCEtherBorrowCap is TestBase {
-    address public admin;
-    address public user;
-    address public liquidator;
-    DeployCompound public deployments;
-    address public unitroller;
-    CEther public cETH;
-    SimplePriceOracle public priceOracle;
-    address gauge;
-
+contract TestCEtherBorrowCap is TestBaseMarket {
     receive() external payable {}
 
     fallback() external payable {}
 
-    function setUp() public {
-        _fork();
-
-        deployments = new DeployCompound();
-        deployments.makeCompound();
-        unitroller = address(deployments.unitroller());
-        priceOracle = SimplePriceOracle(deployments.priceOracle());
-        priceOracle.setDirectPrice(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE, _ONE);
-
-        admin = deployments.admin();
-        user = address(this);
-        liquidator = address(new User());
+    function setUp() public override {
+        super.setUp();
 
         // prepare 200K ETH
         vm.deal(user, 200000e18);
         vm.deal(liquidator, 200000e18);
-
-        gauge = address(new GaugePool(address(0), address(0), unitroller));
     }
 
     function testBorrowCap() public {
-        cETH = new CEther(
-            LendtrollerInterface(unitroller),
-            gauge,
-            InterestRateModel(address(deployments.jumpRateModel())),
-            _ONE,
-            "cETH",
-            "cETH",
-            18,
-            payable(admin)
-        );
+        _deployCEther();
+
         // support market
         vm.prank(admin);
         Lendtroller(unitroller)._supportMarket(CToken(address(cETH)));

@@ -2,99 +2,54 @@
 pragma solidity ^0.8.13;
 
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
-import "contracts/market/lendtroller/Lendtroller.sol";
-import "contracts/market/lendtroller/LendtrollerInterface.sol";
-import "contracts/market/Token/CErc20Immutable.sol";
-import "contracts/market/Token/CEther.sol";
-import "contracts/market/Oracle/SimplePriceOracle.sol";
-import "contracts/market/InterestRateModel/InterestRateModel.sol";
-import { GaugePool } from "contracts/gauge/GaugePool.sol";
+import "tests/market/TestBaseMarket.sol";
 
-import "tests/market/deploy.sol";
-import "tests/utils/TestBase.sol";
-
-contract User {
-    receive() external payable {}
-
-    fallback() external payable {}
-}
-
-contract TestCTokenAndCEther is TestBase {
-    address public dai = address(0x6B175474E89094C44Da98b954EedeAC495271d0F);
-
-    address public admin;
+contract TestCTokenAndCEther is TestBaseMarket {
     address public user1;
     address public user2;
-    address public liquidator;
-    DeployCompound public deployments;
-    address public unitroller;
-    CErc20Immutable public cDAI;
-    CEther public cETH;
-    SimplePriceOracle public priceOracle;
-    address gauge;
 
     receive() external payable {}
 
     fallback() external payable {}
 
-    function setUp() public {
+    function setUp() public override {
+        super.setUp();
         _fork();
 
-        deployments = new DeployCompound();
-        deployments.makeCompound();
-        unitroller = address(deployments.unitroller());
-        priceOracle = SimplePriceOracle(deployments.priceOracle());
-        priceOracle.setDirectPrice(dai, _ONE);
-        priceOracle.setDirectPrice(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE, 2e18);
-
-        admin = deployments.admin();
         user1 = address(this);
         user2 = address(new User());
-        liquidator = address(new User());
 
         // prepare 200K DAI
-        vm.store(dai, keccak256(abi.encodePacked(uint256(uint160(user1)), uint256(2))), bytes32(uint256(200000e18)));
-        vm.store(dai, keccak256(abi.encodePacked(uint256(uint160(user2)), uint256(2))), bytes32(uint256(200000e18)));
         vm.store(
-            dai,
+            DAI_ADDRESS,
+            keccak256(abi.encodePacked(uint256(uint160(user1)), uint256(2))),
+            bytes32(uint256(200000e18))
+        );
+        vm.store(
+            DAI_ADDRESS,
+            keccak256(abi.encodePacked(uint256(uint160(user2)), uint256(2))),
+            bytes32(uint256(200000e18))
+        );
+        vm.store(
+            DAI_ADDRESS,
             keccak256(abi.encodePacked(uint256(uint160(liquidator)), uint256(2))),
             bytes32(uint256(200000e18))
         );
+
         // prepare 200K ETH
         vm.deal(user1, 200000e18);
         vm.deal(user2, 200000e18);
         vm.deal(liquidator, 200000e18);
-
-        gauge = address(new GaugePool(address(0), address(0), unitroller));
     }
 
     function testInitialize() public {
-        cDAI = new CErc20Immutable(
-            dai,
-            LendtrollerInterface(unitroller),
-            gauge,
-            InterestRateModel(address(deployments.jumpRateModel())),
-            _ONE,
-            "cDAI",
-            "cDAI",
-            18,
-            payable(admin)
-        );
-        cETH = new CEther(
-            LendtrollerInterface(unitroller),
-            gauge,
-            InterestRateModel(address(deployments.jumpRateModel())),
-            _ONE,
-            "cETH",
-            "cETH",
-            18,
-            payable(admin)
-        );
+        _deployCDAI();
+        _deployCEther();
     }
 
     // function testMint() public {
     //     cDAI = new CErc20Immutable(
-    //         dai,
+    //         DAI_ADDRESS,
     //         LendtrollerInterface(unitroller),
     //         InterestRateModel(address(deployments.jumpRateModel())),
     //         _ONE,
@@ -127,7 +82,7 @@ contract TestCTokenAndCEther is TestBase {
 
     //     // user1 approve
     //     vm.prank(user1);
-    //     IERC20(dai).approve(address(cDAI), 100e18);
+    //     dai.approve(address(cDAI), 100e18);
 
     //     // user1 mint
     //     vm.prank(user1);
@@ -145,27 +100,8 @@ contract TestCTokenAndCEther is TestBase {
     // }
 
     function testRedeem() public {
-        cDAI = new CErc20Immutable(
-            dai,
-            LendtrollerInterface(unitroller),
-            gauge,
-            InterestRateModel(address(deployments.jumpRateModel())),
-            _ONE,
-            "cDAI",
-            "cDAI",
-            18,
-            payable(admin)
-        );
-        cETH = new CEther(
-            LendtrollerInterface(unitroller),
-            gauge,
-            InterestRateModel(address(deployments.jumpRateModel())),
-            _ONE,
-            "cETH",
-            "cETH",
-            18,
-            payable(admin)
-        );
+        _deployCDAI();
+        _deployCEther();
 
         // support market
         vm.prank(admin);
@@ -187,20 +123,20 @@ contract TestCTokenAndCEther is TestBase {
 
         // auser1 pprove
         vm.prank(user1);
-        IERC20(dai).approve(address(cDAI), 100e18);
+        dai.approve(address(cDAI), 100e18);
 
-        uint256 balanceBeforeMint = IERC20(dai).balanceOf(user1);
+        uint256 balanceBeforeMint = dai.balanceOf(user1);
         // user1 mint
         vm.prank(user1);
         assertTrue(cDAI.mint(100e18));
         assertEq(cDAI.balanceOf(user1), 100e18);
-        assertGt(balanceBeforeMint, IERC20(dai).balanceOf(user1));
+        assertGt(balanceBeforeMint, dai.balanceOf(user1));
 
         // user1 redeem
         vm.prank(user1);
         cDAI.redeem(100e18);
         assertEq(cDAI.balanceOf(user1), 0);
-        assertEq(balanceBeforeMint, IERC20(dai).balanceOf(user1));
+        assertEq(balanceBeforeMint, dai.balanceOf(user1));
 
         // user2 enter markets
         vm.prank(user2);
@@ -221,27 +157,8 @@ contract TestCTokenAndCEther is TestBase {
     }
 
     function testRedeemUnderlying() public {
-        cDAI = new CErc20Immutable(
-            dai,
-            LendtrollerInterface(unitroller),
-            gauge,
-            InterestRateModel(address(deployments.jumpRateModel())),
-            _ONE,
-            "cDAI",
-            "cDAI",
-            18,
-            payable(admin)
-        );
-        cETH = new CEther(
-            LendtrollerInterface(unitroller),
-            gauge,
-            InterestRateModel(address(deployments.jumpRateModel())),
-            _ONE,
-            "cETH",
-            "cETH",
-            18,
-            payable(admin)
-        );
+        _deployCDAI();
+        _deployCEther();
 
         // support market
         vm.prank(admin);
@@ -263,20 +180,20 @@ contract TestCTokenAndCEther is TestBase {
 
         // user1 approve
         vm.prank(user1);
-        IERC20(dai).approve(address(cDAI), 100e18);
+        dai.approve(address(cDAI), 100e18);
 
-        uint256 balanceBeforeMint = IERC20(dai).balanceOf(user1);
+        uint256 balanceBeforeMint = dai.balanceOf(user1);
         // user1 mint
         vm.prank(user1);
         assertTrue(cDAI.mint(100e18));
         assertEq(cDAI.balanceOf(user1), 100e18);
-        assertGt(balanceBeforeMint, IERC20(dai).balanceOf(user1));
+        assertGt(balanceBeforeMint, dai.balanceOf(user1));
 
         // redeem
         vm.prank(user1);
         cDAI.redeemUnderlying(100e18);
         assertEq(cDAI.balanceOf(user1), 0);
-        assertEq(balanceBeforeMint, IERC20(dai).balanceOf(user1));
+        assertEq(balanceBeforeMint, dai.balanceOf(user1));
 
         // user2 enter markets
         vm.prank(user2);
@@ -297,27 +214,8 @@ contract TestCTokenAndCEther is TestBase {
     }
 
     function testBorrow() public {
-        cDAI = new CErc20Immutable(
-            dai,
-            LendtrollerInterface(unitroller),
-            gauge,
-            InterestRateModel(address(deployments.jumpRateModel())),
-            _ONE,
-            "cDAI",
-            "cDAI",
-            18,
-            payable(admin)
-        );
-        cETH = new CEther(
-            LendtrollerInterface(unitroller),
-            gauge,
-            InterestRateModel(address(deployments.jumpRateModel())),
-            _ONE,
-            "cETH",
-            "cETH",
-            18,
-            payable(admin)
-        );
+        _deployCDAI();
+        _deployCEther();
 
         // support market
         vm.prank(admin);
@@ -339,7 +237,7 @@ contract TestCTokenAndCEther is TestBase {
 
         // user1 approve
         vm.prank(user1);
-        IERC20(dai).approve(address(cDAI), 100e18);
+        dai.approve(address(cDAI), 100e18);
 
         // user1 mint
         vm.prank(user1);
@@ -356,11 +254,11 @@ contract TestCTokenAndCEther is TestBase {
         assertEq(cETH.balanceOf(user2), 100e18);
 
         // user2 borrow
-        uint256 balanceBeforeBorrow = IERC20(dai).balanceOf(user2);
+        uint256 balanceBeforeBorrow = dai.balanceOf(user2);
         vm.prank(user2);
         cDAI.borrow(100e18);
         assertEq(cETH.balanceOf(user2), 100e18);
-        assertEq(balanceBeforeBorrow + 100e18, IERC20(dai).balanceOf(user2));
+        assertEq(balanceBeforeBorrow + 100e18, dai.balanceOf(user2));
 
         // user1 borrow
         balanceBeforeBorrow = user1.balance;
@@ -371,27 +269,8 @@ contract TestCTokenAndCEther is TestBase {
     }
 
     function testBorrow2() public {
-        cDAI = new CErc20Immutable(
-            dai,
-            LendtrollerInterface(unitroller),
-            gauge,
-            InterestRateModel(address(deployments.jumpRateModel())),
-            _ONE,
-            "cDAI",
-            "cDAI",
-            18,
-            payable(admin)
-        );
-        cETH = new CEther(
-            LendtrollerInterface(unitroller),
-            gauge,
-            InterestRateModel(address(deployments.jumpRateModel())),
-            _ONE,
-            "cETH",
-            "cETH",
-            18,
-            payable(admin)
-        );
+        _deployCDAI();
+        _deployCEther();
 
         // support market
         vm.prank(admin);
@@ -412,7 +291,7 @@ contract TestCTokenAndCEther is TestBase {
         LendtrollerInterface(unitroller).enterMarkets(markets);
 
         // user1 approve
-        IERC20(dai).approve(address(cDAI), 100e18);
+        dai.approve(address(cDAI), 100e18);
 
         // user1 mint
         vm.prank(user1);
@@ -428,11 +307,11 @@ contract TestCTokenAndCEther is TestBase {
         assertEq(cETH.balanceOf(user1), 100e18);
 
         // user1 borrow
-        uint256 balanceBeforeBorrow = IERC20(dai).balanceOf(user1);
+        uint256 balanceBeforeBorrow = dai.balanceOf(user1);
         vm.prank(user1);
         cDAI.borrow(100e18);
         assertEq(cETH.balanceOf(user1), 100e18);
-        assertEq(balanceBeforeBorrow + 100e18, IERC20(dai).balanceOf(user1));
+        assertEq(balanceBeforeBorrow + 100e18, dai.balanceOf(user1));
 
         // user1 borrow
         balanceBeforeBorrow = user1.balance;
@@ -443,27 +322,8 @@ contract TestCTokenAndCEther is TestBase {
     }
 
     function testRepayBorrowBehalf() public {
-        cDAI = new CErc20Immutable(
-            dai,
-            LendtrollerInterface(unitroller),
-            gauge,
-            InterestRateModel(address(deployments.jumpRateModel())),
-            _ONE,
-            "cDAI",
-            "cDAI",
-            18,
-            payable(admin)
-        );
-        cETH = new CEther(
-            LendtrollerInterface(unitroller),
-            gauge,
-            InterestRateModel(address(deployments.jumpRateModel())),
-            _ONE,
-            "cETH",
-            "cETH",
-            18,
-            payable(admin)
-        );
+        _deployCDAI();
+        _deployCEther();
 
         // support market
         vm.prank(admin);
@@ -485,7 +345,7 @@ contract TestCTokenAndCEther is TestBase {
 
         // user1 approve
         vm.prank(user1);
-        IERC20(dai).approve(address(cDAI), 100e18);
+        dai.approve(address(cDAI), 100e18);
 
         // user1 mint
         vm.prank(user1);
@@ -502,11 +362,11 @@ contract TestCTokenAndCEther is TestBase {
         assertEq(cETH.balanceOf(user2), 100e18);
 
         // user2 borrow
-        uint256 balanceBeforeBorrowUser2 = IERC20(dai).balanceOf(user2);
+        uint256 balanceBeforeBorrowUser2 = dai.balanceOf(user2);
         vm.prank(user2);
         cDAI.borrow(100e18);
         assertEq(cETH.balanceOf(user2), 100e18);
-        assertEq(balanceBeforeBorrowUser2 + 100e18, IERC20(dai).balanceOf(user2));
+        assertEq(balanceBeforeBorrowUser2 + 100e18, dai.balanceOf(user2));
 
         // user1 borrow
         uint256 balanceBeforeBorrowUser1 = user1.balance;
@@ -517,12 +377,12 @@ contract TestCTokenAndCEther is TestBase {
 
         // user2 approve
         vm.prank(user2);
-        IERC20(dai).approve(address(cDAI), 100e18);
+        dai.approve(address(cDAI), 100e18);
 
         // user2 repay
         vm.prank(user2);
         cDAI.repayBorrowBehalf(user2, 100e18);
-        assertEq(balanceBeforeBorrowUser2, IERC20(dai).balanceOf(user2));
+        assertEq(balanceBeforeBorrowUser2, dai.balanceOf(user2));
 
         // user1 repay
         vm.prank(user1);
@@ -531,27 +391,8 @@ contract TestCTokenAndCEther is TestBase {
     }
 
     function testLiquidateBorrow() public {
-        cDAI = new CErc20Immutable(
-            dai,
-            LendtrollerInterface(unitroller),
-            gauge,
-            InterestRateModel(address(deployments.jumpRateModel())),
-            _ONE,
-            "cDAI",
-            "cDAI",
-            18,
-            payable(admin)
-        );
-        cETH = new CEther(
-            LendtrollerInterface(unitroller),
-            gauge,
-            InterestRateModel(address(deployments.jumpRateModel())),
-            _ONE,
-            "cETH",
-            "cETH",
-            18,
-            payable(admin)
-        );
+        _deployCDAI();
+        _deployCEther();
 
         // support market
         vm.prank(admin);
@@ -573,7 +414,7 @@ contract TestCTokenAndCEther is TestBase {
 
         // user1 approve
         vm.prank(user1);
-        IERC20(dai).approve(address(cDAI), 100e18);
+        dai.approve(address(cDAI), 100e18);
 
         // user1 mint
         vm.prank(user1);
@@ -590,11 +431,11 @@ contract TestCTokenAndCEther is TestBase {
         assertEq(cETH.balanceOf(user2), 100e18);
 
         // user2 borrow
-        uint256 balanceBeforeBorrowUser2 = IERC20(dai).balanceOf(user2);
+        uint256 balanceBeforeBorrowUser2 = dai.balanceOf(user2);
         vm.prank(user2);
         cDAI.borrow(100e18);
         assertEq(cETH.balanceOf(user2), 100e18);
-        assertEq(balanceBeforeBorrowUser2 + 100e18, IERC20(dai).balanceOf(user2));
+        assertEq(balanceBeforeBorrowUser2 + 100e18, dai.balanceOf(user2));
 
         // user1 borrow
         uint256 balanceBeforeBorrowUser1 = user1.balance;
@@ -611,7 +452,7 @@ contract TestCTokenAndCEther is TestBase {
 
         // liquidator approve
         vm.prank(liquidator);
-        IERC20(dai).approve(address(cDAI), 100e18);
+        dai.approve(address(cDAI), 100e18);
 
         // liquidator liquidateBorrow user2
         vm.prank(liquidator);
