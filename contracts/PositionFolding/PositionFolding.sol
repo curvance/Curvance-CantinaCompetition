@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 import { IPositionFolding } from "./IPositionFolding.sol";
-import { Lendtroller } from "../market/Lendtroller/Lendtroller.sol";
+import { Lendtroller } from "../market/lendtroller/Lendtroller.sol";
 import { PriceOracle } from "../market/Oracle/PriceOracle.sol";
 import { CToken } from "../market/Token/CToken.sol";
 import { CEther } from "../market/Token/CEther.sol";
