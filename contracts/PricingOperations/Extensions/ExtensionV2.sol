@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.17;
 
-import "../interfaces/ICentralRegistry.sol";
-import "../interfaces/IOracleExtension.sol";
+import "../../interfaces/ICentralRegistry.sol";
+import "../../interfaces/IOracleExtension.sol";
 
 abstract contract Extension {
 

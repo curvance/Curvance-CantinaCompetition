@@ -6,7 +6,7 @@ import { PriceOps } from "contracts/PricingOperations/PriceOps.sol";
 import { IChainlinkAggregator } from "contracts/interfaces/IChainlinkAggregator.sol";
 import { ICurvePool } from "contracts/interfaces/Curve/ICurvePool.sol";
 import { ICurveFi } from "contracts/interfaces/Curve/ICurveFi.sol";
-import { CurveV1Extension } from "contracts/PricingOperations/Extensions/CurveV1Extension.sol";
+import { CurveV1Extension } from "contracts/PricingOperations/Extensions/Curve/CurveV1Extension.sol";
 import { MockDataFeed } from "contracts/mocks/MockDataFeed.sol";
 import { Math } from "contracts/utils/Math.sol";
 import "tests/utils/TestBase.sol";

@@ -5,7 +5,7 @@ import { ERC20 } from "contracts/base/ERC20.sol";
 import { SafeTransferLib } from "contracts/base/SafeTransferLib.sol";
 import { DepositRouterV2 as DepositRouter } from "contracts/DepositRouterV2.sol";
 import { AuraPositionVault, BasePositionVault } from "contracts/Positions/AuraPositionVault.sol";
-import { PriceRouter } from "contracts/PricingOperations/PriceRouter.sol";
+import { PriceRouter } from "contracts/PricingOperations/PriceRouterV2.sol";
 import { IChainlinkAggregator } from "contracts/interfaces/IChainlinkAggregator.sol";
 import { Math } from "contracts/utils/Math.sol";
 import "tests/utils/TestBase.sol";

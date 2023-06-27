@@ -3,7 +3,7 @@ pragma solidity ^0.8.17;
 
 import { ERC4626, SafeTransferLib, ERC20 } from "@solmate/mixins/ERC4626.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { PriceRouter } from "contracts/PricingOperations/PriceRouter.sol";
+import { PriceRouter } from "contracts/PricingOperations/PriceRouterV2.sol";
 
 import { Math } from "contracts/utils/Math.sol";
 import { Uint32Array } from "contracts/libraries/Uint32Array.sol";

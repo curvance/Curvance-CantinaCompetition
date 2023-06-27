@@ -2,7 +2,7 @@
 pragma solidity ^0.8.17;
 
 import { ICurvePool } from "contracts/interfaces/Curve/ICurvePool.sol";
-import { Extension } from "contracts/PricingOperations/Extension.sol";
+import { Extension } from "contracts/PricingOperations/Extensions/Extension.sol";
 import { PriceOps } from "contracts/PricingOperations/PriceOps.sol";
 import { Math } from "contracts/utils/Math.sol";
 import { AutomationCompatibleInterface } from "@chainlink/contracts/src/v0.8/interfaces/AutomationCompatibleInterface.sol";

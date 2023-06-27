@@ -4,8 +4,8 @@ pragma solidity ^0.8.17;
 import { IBalancerPool } from "contracts/interfaces/external/IBalancerPool.sol";
 import { IRateProvider } from "contracts/interfaces/external/IRateProvider.sol";
 import { BalancerPoolExtension, ERC20, Math, IVault, IERC20 } from "./BalancerPoolExtension.sol";
-import { PriceOps } from "contracts/PricingOperations/Extension.sol";
-import { PriceRouter } from "contracts/PricingOperations/PriceRouter.sol";
+import { PriceOps } from "contracts/PricingOperations/Extensions/Extension.sol";
+import { PriceRouter } from "contracts/PricingOperations/PriceRouterV2.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
 /**

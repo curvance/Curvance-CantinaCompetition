@@ -6,7 +6,7 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IChainlinkAggregator } from "contracts/interfaces/IChainlinkAggregator.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { Math } from "contracts/utils/Math.sol";
-import { Extension } from "./Extension.sol";
+import { Extension } from "./Extensions/Extension.sol";
 import { OracleLibrary } from "lib/v3-periphery/contracts/libraries/OracleLibrary.sol";
 import { UniswapV3Pool } from "contracts/interfaces/Uniswap/UniswapV3Pool.sol";
 

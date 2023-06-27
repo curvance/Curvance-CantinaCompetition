@@ -2,7 +2,7 @@
 pragma solidity ^0.8.17;
 
 import { ERC4626, SafeTransferLib, ERC20, Math } from "contracts/base/ERC4626.sol";
-import { PriceRouter } from "contracts/PricingOperations/PriceRouter.sol";
+import { PriceRouter } from "contracts/PricingOperations/PriceRouterV2.sol";
 import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import { Owned } from "@solmate/auth/Owned.sol";
 import { ReentrancyGuard } from "@solmate/utils/ReentrancyGuard.sol";

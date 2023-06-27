@@ -2,7 +2,7 @@
 pragma solidity ^0.8.17;
 
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
-import { Extension, PriceOps, ERC20, Math } from "contracts/PricingOperations/Extension.sol";
+import { Extension, PriceOps, ERC20, Math } from "contracts/PricingOperations/Extensions/Extension.sol";
 import { IVault } from "contracts/interfaces/external/IVault.sol";
 
 /**

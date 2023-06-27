@@ -6,7 +6,7 @@ import { SafeTransferLib } from "contracts/base/SafeTransferLib.sol";
 import { DepositRouterV2 as DepositRouter } from "contracts/DepositRouterV2.sol";
 import { ConvexPositionVault, BasePositionVault } from "contracts/Positions/ConvexPositionVault.sol";
 import { IBaseRewardPool } from "contracts/interfaces/Convex/IBaseRewardPool.sol";
-import { PriceRouter } from "contracts/PricingOperations/PriceRouter.sol";
+import { PriceRouter } from "contracts/PricingOperations/PriceRouterV2.sol";
 import { IChainlinkAggregator } from "contracts/interfaces/IChainlinkAggregator.sol";
 import { ICurvePool } from "contracts/interfaces/Curve/ICurvePool.sol";
 import { Math } from "contracts/utils/Math.sol";
