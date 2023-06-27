@@ -3,7 +3,6 @@ pragma solidity ^0.8.17;
 
 import "../interfaces/ICentralRegistry.sol";
 import "../interfaces/IOracleExtension.sol";
-import "../interfaces/IPriceRouter.sol";
 
 abstract contract Extension {
     /**
@@ -32,12 +31,6 @@ abstract contract Extension {
      * @notice Mapping used to track whether an asset is composed of sub assets, such as LP tokens.
      */
     mapping(address => address[]) public hasSubAssets;
-
-    /**
-     * @notice Mapping used to track whether or not an asset has a better price feed elsewhere.
-     */
-    //might not need this so will comment out for now
-    //mapping(address => address) public betterPriceSource;
 
     constructor(ICentralRegistry _centralRegistry) {
         centralRegistry = _centralRegistry;
