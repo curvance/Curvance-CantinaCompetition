@@ -11,7 +11,7 @@ import { GaugePool } from "contracts/gauge/GaugePool.sol";
 import "contracts/gauge/GaugeErrors.sol";
 import "contracts/mocks/MockToken.sol";
 
-import { DeployCompound } from "tests/compound/deploy.sol";
+import { DeployCompound } from "tests/market/deploy.sol";
 import "tests/utils/TestBase.sol";
 
 contract User {}

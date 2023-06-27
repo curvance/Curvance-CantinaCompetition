@@ -3,7 +3,7 @@ pragma solidity ^0.8.15;
 
 import "contracts/zapper/ZapperOneInch.sol";
 import "contracts/mocks/MockCToken.sol";
-import "contracts/mocks/MockComptroller.sol";
+import "contracts/mocks/MockLendtroller.sol";
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
 
 import "tests/utils/TestBase.sol";
@@ -29,9 +29,9 @@ contract TestZapperOneInch is TestBase {
         IERC20 token = IERC20(0xc4AD29ba4B3c580e6D59105FFf484999997675Ff);
         address minter = 0xD51a44d3FaE010294C616388b506AcdA1bfAAE46;
         MockCToken cToken = new MockCToken(address(token), "CToken", "CToken", 18);
-        MockComptroller comptroller = new MockComptroller();
-        comptroller.setMarket(address(cToken), true);
-        ZapperOneInch zapper = new ZapperOneInch(address(comptroller), oneInchRouter, weth);
+        MockLendtroller lendtroller = new MockLendtroller();
+        lendtroller.setMarket(address(cToken), true);
+        ZapperOneInch zapper = new ZapperOneInch(address(lendtroller), oneInchRouter, weth);
 
         // try zap in
         address[] memory tokens = new address[](3);
@@ -63,9 +63,9 @@ contract TestZapperOneInch is TestBase {
         IERC20 token = IERC20(0xc4AD29ba4B3c580e6D59105FFf484999997675Ff);
         address minter = 0xD51a44d3FaE010294C616388b506AcdA1bfAAE46;
         MockCToken cToken = new MockCToken(address(token), "CToken", "CToken", 18);
-        MockComptroller comptroller = new MockComptroller();
-        comptroller.setMarket(address(cToken), true);
-        ZapperOneInch zapper = new ZapperOneInch(address(comptroller), oneInchRouter, weth);
+        MockLendtroller lendtroller = new MockLendtroller();
+        lendtroller.setMarket(address(cToken), true);
+        ZapperOneInch zapper = new ZapperOneInch(address(lendtroller), oneInchRouter, weth);
 
         // approve dai
         IERC20(dai).approve(address(zapper), 3000 ether);
@@ -99,9 +99,9 @@ contract TestZapperOneInch is TestBase {
         IERC20 token = IERC20(0x3175Df0976dFA876431C2E9eE6Bc45b65d3473CC);
         address minter = 0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2;
         MockCToken cToken = new MockCToken(address(token), "CToken", "CToken", 18);
-        MockComptroller comptroller = new MockComptroller();
-        comptroller.setMarket(address(cToken), true);
-        ZapperOneInch zapper = new ZapperOneInch(address(comptroller), oneInchRouter, weth);
+        MockLendtroller lendtroller = new MockLendtroller();
+        lendtroller.setMarket(address(cToken), true);
+        ZapperOneInch zapper = new ZapperOneInch(address(lendtroller), oneInchRouter, weth);
 
         // try zap in
         address[] memory tokens = new address[](2);

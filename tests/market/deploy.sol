@@ -13,7 +13,7 @@ import "tests/utils/TestBase.sol";
 
 contract DeployCompound is TestBase {
     address public admin;
-    Lendtroller public comptroller;
+    Lendtroller public lendtroller;
     Unitroller public unitroller;
     SimplePriceOracle public priceOracle;
     address public jumpRateModel;
@@ -30,10 +30,10 @@ contract DeployCompound is TestBase {
         unitroller = new Unitroller();
         // Some parameters are set zero address/values
         // which are not related to tests currently.
-        comptroller = new Lendtroller(GaugeController(address(0)));
+        lendtroller = new Lendtroller(GaugeController(address(0)));
 
-        unitroller._setPendingImplementation(address(comptroller));
-        comptroller._become(unitroller);
+        unitroller._setPendingImplementation(address(lendtroller));
+        lendtroller._become(unitroller);
 
         Lendtroller(address(unitroller))._setPriceOracle(PriceOracle(address(priceOracle)));
         Lendtroller(address(unitroller))._setCloseFactor(5e17);

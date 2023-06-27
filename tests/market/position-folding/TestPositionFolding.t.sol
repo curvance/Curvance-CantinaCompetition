@@ -11,7 +11,7 @@ import "contracts/market/InterestRateModel/InterestRateModel.sol";
 import { PositionFolding } from "contracts/PositionFolding/PositionFolding.sol";
 import { GaugePool } from "contracts/gauge/GaugePool.sol";
 
-import "tests/compound/deploy.sol";
+import "tests/market/deploy.sol";
 import "tests/utils/TestBase.sol";
 
 contract User {

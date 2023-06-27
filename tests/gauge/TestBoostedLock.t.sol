@@ -13,7 +13,7 @@ import "contracts/mocks/MockCentralRegistry.sol";
 import { veCVE } from "contracts/token/veCVE.sol";
 import "contracts/interfaces/ICentralRegistry.sol";
 
-import { DeployCompound } from "tests/compound/deploy.sol";
+import { DeployCompound } from "tests/market/deploy.sol";
 import "tests/utils/TestBase.sol";
 
 contract User {}

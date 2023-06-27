@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.15;
 
-contract MockComptroller {
+contract MockLendtroller {
     mapping(address => bool) private marketListed;
 
     function setMarket(address market, bool listed) external {
