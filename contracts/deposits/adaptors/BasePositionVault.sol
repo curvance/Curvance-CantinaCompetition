@@ -10,7 +10,7 @@ import { ReentrancyGuard } from "@solmate/utils/ReentrancyGuard.sol";
 // Chainlink interfaces
 import { KeeperCompatibleInterface } from "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
 import { AggregatorV2V3Interface } from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV2V3Interface.sol";
-import { IChainlinkAggregator } from "contracts/interfaces/IChainlinkAggregator.sol";
+import { IChainlinkAggregator } from "contracts/interfaces/external/chainlink/IChainlinkAggregator.sol";
 
 ///@notice Vault Positions must have all assets ready for withdraw, IE assets can NOT be locked.
 // This way assets can be easily liquidated when loans default.

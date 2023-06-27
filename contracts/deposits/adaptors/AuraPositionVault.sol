@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.17;
 
-import { BasePositionVault, ERC4626, SafeTransferLib, ERC20, Math, PriceRouter } from "contracts/Positions/BasePositionVault.sol";
+import { BasePositionVault, ERC4626, SafeTransferLib, ERC20, Math, PriceRouter } from "./BasePositionVault.sol";
 
 // External interfaces
-import { IBooster } from "contracts/interfaces/Convex/IBooster.sol";
-import { IBaseRewardPool } from "contracts/interfaces/Convex/IBaseRewardPool.sol";
-import { IRewards } from "contracts/interfaces/Convex/IRewards.sol";
-import { IBalancerVault } from "contracts/interfaces/Balancer/IBalancerVault.sol";
+import { IBooster } from "contracts/interfaces/external/convex/IBooster.sol";
+import { IBaseRewardPool } from "contracts/interfaces/external/convex/IBaseRewardPool.sol";
+import { IRewards } from "contracts/interfaces/external/convex/IRewards.sol";
+import { IBalancerVault } from "contracts/interfaces/external/balancer/IBalancerVault.sol";
 
 // Chainlink interfaces
 import { KeeperCompatibleInterface } from "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
 import { AggregatorV2V3Interface } from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV2V3Interface.sol";
-import { IChainlinkAggregator } from "contracts/interfaces/IChainlinkAggregator.sol";
+import { IChainlinkAggregator } from "contracts/interfaces/external/chainlink/IChainlinkAggregator.sol";
 
 contract AuraPositionVault is BasePositionVault {
     using SafeTransferLib for ERC20;

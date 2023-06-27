@@ -1,20 +1,20 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.17;
 
-import { BasePositionVault, ERC4626, SafeTransferLib, ERC20, Math, PriceRouter } from "contracts/Positions/BasePositionVault.sol";
+import { BasePositionVault, ERC4626, SafeTransferLib, ERC20, Math, PriceRouter } from "./BasePositionVault.sol";
 
 // External interfaces
-import { IVeloGauge } from "contracts/interfaces/Velodrome/IVeloGauge.sol";
-import { IVeloRouter } from "contracts/interfaces/Velodrome/IVeloRouter.sol";
-import { IVeloPair } from "contracts/interfaces/Velodrome/IVeloPair.sol";
-import { IVeloPairFactory } from "contracts/interfaces/Velodrome/IVeloPairFactory.sol";
-import { IOptiSwap } from "contracts/interfaces/Velodrome/IOptiSwap.sol";
-import { IOptiSwapPair } from "contracts/interfaces/Velodrome/IOptiSwapPair.sol";
+import { IVeloGauge } from "contracts/interfaces/external/velodrome/IVeloGauge.sol";
+import { IVeloRouter } from "contracts/interfaces/external/velodrome/IVeloRouter.sol";
+import { IVeloPair } from "contracts/interfaces/external/velodrome/IVeloPair.sol";
+import { IVeloPairFactory } from "contracts/interfaces/external/velodrome/IVeloPairFactory.sol";
+import { IOptiSwap } from "contracts/interfaces/external/velodrome/IOptiSwap.sol";
+import { IOptiSwapPair } from "contracts/interfaces/external/velodrome/IOptiSwapPair.sol";
 
 // Chainlink interfaces
 import { KeeperCompatibleInterface } from "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
 import { AggregatorV2V3Interface } from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV2V3Interface.sol";
-import { IChainlinkAggregator } from "contracts/interfaces/IChainlinkAggregator.sol";
+import { IChainlinkAggregator } from "contracts/interfaces/external/chainlink/IChainlinkAggregator.sol";
 
 contract VelodromeStablePositionVault is BasePositionVault {
     using SafeTransferLib for ERC20;
