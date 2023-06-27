@@ -22,10 +22,8 @@ contract PriceRouter {
         bool hadError;
     }
     //TODO:
-    // Natspec/documentation
     // Decide on which permissioned functions need timelock vs no timelock
     // Check if mappings for assetPriceFeeds is better than 2 slot array
-    // Write grabbing multiple prices from extensions to save on checks
     // Potentially move ETHUSD call to chainlink extension?
 
     /**
@@ -37,12 +35,34 @@ contract PriceRouter {
      */
     mapping(address => address[]) public assetPriceFeeds;
 
+    /**
+     * @notice Mapping used to track whether or not an asset is supported by the extension.
+     */
     ICentralRegistry public immutable centralRegistry;
+
+    /**
+     * @notice Address for chainlink feed to convert from eth -> usd or usd -> eth.
+     */
     address public immutable CHAINLINK_ETH_USD;
+
+    /**
+     * @notice Offset for 8 decimal chainlink feeds.
+     */
     uint256 public constant CHAINLINK_DIVISOR = 1e8;
+
+    /**
+     * @notice Offset for basis points precision for divergence value.
+     */
     uint256 public constant DENOMINATOR = 10000;
 
+    /**
+     * @notice How wide a divergence between price feeds warrants pausing borrowing.
+     */
     uint256 public PRICEFEED_MAXIMUM_DIVERGENCE = 11000;
+
+    /**
+     * @notice Maximum time that a chainlink feed can be stale before we do not trust the value.
+     */
     uint256 public CHAINLINK_MAX_DELAY = 1 days;
 
     /**

@@ -5,6 +5,7 @@ import "../interfaces/ICentralRegistry.sol";
 import "../interfaces/IOracleExtension.sol";
 
 abstract contract Extension {
+
     /**
      * @notice Error code for no error.
      */
@@ -20,9 +21,6 @@ abstract contract Extension {
      */
     uint8 public constant BAD_SOURCE = 2;
 
-    /**
-     * @notice Address of Curvance DAO Central Registry.
-     */
     ICentralRegistry public immutable centralRegistry;
 
     /**
@@ -41,19 +39,23 @@ abstract contract Extension {
 
     // Only callable by Price Router.
     modifier onlyPriceRouter() {
-        require(
-            msg.sender == centralRegistry.priceRouter(),
-            "extension: UNAUTHORIZED"
-        );
+        require(msg.sender == centralRegistry.priceRouter(), "extension: UNAUTHORIZED");
         _;
     }
 
     /**
      * @notice Called by PriceRouter to price an asset.
      */
-    function getPrice(address _asset)
-        external
-        view
-        virtual
-        returns (priceReturnData calldata);
+    function getPrice(address _asset) external view virtual returns (priceReturnData calldata);
+
+    /**
+     * @notice Adds a new supported asset to the extension, can also configure sub assets that the parent asset contain.
+     */
+    function addAsset(address _asset, address[] calldata _subAssets) external virtual;
+
+    /**
+     * @notice Removes a supported asset from the extension.
+     */
+    function removeAsset(address _asset) external virtual;
+
 }
