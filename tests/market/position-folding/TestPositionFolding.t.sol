@@ -292,7 +292,7 @@ contract TestPositionFolding is TestBaseMarket {
         dai.approve(address(cDAI), 2000 ether);
         cDAI.mint(2000 ether);
 
-        // mint _ONE
+        // mint 1 ether
         cETH.mint{ value: _ONE }();
 
         // borrow 500 DAI_ADDRESS
@@ -355,7 +355,7 @@ contract TestPositionFolding is TestBaseMarket {
         dai.approve(address(cDAI), 2000 ether);
         cDAI.mint(2000 ether);
 
-        // mint _ONE
+        // mint 1 ether
         cETH.mint{ value: _ONE }();
 
         // borrow 500 DAI_ADDRESS
@@ -471,7 +471,7 @@ contract TestPositionFolding is TestBaseMarket {
         dai.approve(address(cDAI), 2000 ether);
         cDAI.mint(2000 ether);
 
-        // mint _ONE
+        // mint 1 ether
         cETH.mint{ value: _ONE }();
 
         // borrow 500 DAI_ADDRESS
