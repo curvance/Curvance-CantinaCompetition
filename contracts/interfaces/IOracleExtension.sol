@@ -18,5 +18,5 @@ interface IOracleExtension {
     function getPrice(address _asset)
         external
         view
-        returns (priceReturnData calldata);
+        returns (priceReturnData memory);
 }

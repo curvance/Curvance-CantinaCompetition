@@ -27,6 +27,9 @@ abstract contract Extension {
      */
     uint8 public constant BAD_SOURCE = 2;
 
+    /**
+     * @notice Address for Curvance DAO registry contract for ownership and location data.
+     */
     ICentralRegistry public immutable centralRegistry;
 
     /**
@@ -49,7 +52,7 @@ abstract contract Extension {
     /**
      * @notice Called by PriceRouter to price an asset.
      */
-    function getPrice(address _asset) external view virtual returns (priceReturnData calldata);
+    function getPrice(address _asset) external view virtual returns (priceReturnData memory);
 
     /**
      * @notice Adds a new supported asset to the extension, can also configure sub assets that the parent asset contain.

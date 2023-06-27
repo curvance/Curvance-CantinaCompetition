@@ -36,7 +36,7 @@ contract PriceRouter {
     mapping(address => address[]) public assetPriceFeeds;
 
     /**
-     * @notice Mapping used to track whether or not an asset is supported by the extension.
+     * @notice Address for Curvance DAO registry contract for ownership and location data.
      */
     ICentralRegistry public immutable centralRegistry;
 

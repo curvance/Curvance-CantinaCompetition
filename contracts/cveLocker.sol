@@ -3,6 +3,7 @@ pragma solidity ^0.8.17;
 
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+
 import "./interfaces/IVeCVE.sol";
 import "./interfaces/ICvxLocker.sol";
 import "./interfaces/ICentralRegistry.sol";
@@ -41,6 +42,10 @@ contract cveLocker {
     //Add support for routing asset back into Curvance i.e. cvxCRV/cveETH?
 
     uint256 public immutable genesisEpoch;
+
+    /**
+     * @notice Address for Curvance DAO registry contract for ownership and location data.
+     */
     ICentralRegistry public immutable centralRegistry;
 
     bool public isShutdown;
