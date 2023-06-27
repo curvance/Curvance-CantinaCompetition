@@ -6,6 +6,12 @@ import "../interfaces/IOracleExtension.sol";
 
 abstract contract Extension {
 
+    struct assetData {
+        address[] subAssets;
+        address pool;
+        address asset;
+    }
+
     /**
      * @notice Error code for no error.
      */
@@ -24,14 +30,11 @@ abstract contract Extension {
     ICentralRegistry public immutable centralRegistry;
 
     /**
-     * @notice Mapping used to track whether or not an asset is supported by the extension.
+     * @notice Mapping used to track whether or not an asset is supported by the extension and pricing information.
      */
-    mapping(address => bool) public isSupportedAsset;
+    mapping(address => assetData) public assets;
 
-    /**
-     * @notice Mapping used to track whether an asset is composed of sub assets, such as LP tokens.
-     */
-    mapping(address => address[]) public hasSubAssets;
+    //0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE this is for pricing eth in Curve
 
     constructor(ICentralRegistry _centralRegistry) {
         centralRegistry = _centralRegistry;
@@ -51,7 +54,7 @@ abstract contract Extension {
     /**
      * @notice Adds a new supported asset to the extension, can also configure sub assets that the parent asset contain.
      */
-    function addAsset(address _asset, address[] calldata _subAssets) external virtual;
+    function addAsset(address _asset) external virtual;
 
     /**
      * @notice Removes a supported asset from the extension.
