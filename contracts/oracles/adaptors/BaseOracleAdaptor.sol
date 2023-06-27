@@ -2,9 +2,9 @@
 pragma solidity ^0.8.17;
 
 import "../../interfaces/ICentralRegistry.sol";
-import "../../interfaces/IOracleExtension.sol";
+import "../../interfaces/IOracleAdaptor.sol";
 
-abstract contract Extension {
+abstract contract BaseOracleAdaptor {
 
     struct assetData {
         address[] subAssets;
@@ -33,7 +33,7 @@ abstract contract Extension {
     ICentralRegistry public immutable centralRegistry;
 
     /**
-     * @notice Mapping used to track whether or not an asset is supported by the extension and pricing information.
+     * @notice Mapping used to track whether or not an asset is supported by the adaptor and pricing information.
      */
     mapping(address => assetData) public assets;
 
@@ -45,7 +45,7 @@ abstract contract Extension {
 
     // Only callable by Price Router.
     modifier onlyPriceRouter() {
-        require(msg.sender == centralRegistry.priceRouter(), "extension: UNAUTHORIZED");
+        require(msg.sender == centralRegistry.priceRouter(), "adaptor: UNAUTHORIZED");
         _;
     }
 
@@ -55,12 +55,12 @@ abstract contract Extension {
     function getPrice(address _asset) external view virtual returns (priceReturnData memory);
 
     /**
-     * @notice Adds a new supported asset to the extension, can also configure sub assets that the parent asset contain.
+     * @notice Adds a new supported asset to the adaptor, can also configure sub assets that the parent asset contain.
      */
     function addAsset(address _asset) external virtual;
 
     /**
-     * @notice Removes a supported asset from the extension.
+     * @notice Removes a supported asset from the adaptor.
      */
     function removeAsset(address _asset) external virtual;
 

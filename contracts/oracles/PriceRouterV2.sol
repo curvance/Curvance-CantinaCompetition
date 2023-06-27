@@ -4,7 +4,7 @@ pragma solidity ^0.8.17;
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 import "../interfaces/ICentralRegistry.sol";
-import "../interfaces/IOracleExtension.sol";
+import "../interfaces/IOracleAdaptor.sol";
 
 /**
  * @title Curvance Dual Oracle Price Router
@@ -13,9 +13,9 @@ import "../interfaces/IOracleExtension.sol";
  */
 contract PriceRouter {
     /**
-     * @notice Return data from oracle extension
+     * @notice Return data from oracle adaptor
      * @param price the price of the asset in some asset, either ETH or USD
-     * @param hadError the message return data, whether the extension ran into trouble pricing the asset
+     * @param hadError the message return data, whether the adaptor ran into trouble pricing the asset
      */
     struct feedData {
         uint240 price;
@@ -24,12 +24,12 @@ contract PriceRouter {
     //TODO:
     // Decide on which permissioned functions need timelock vs no timelock
     // Check if mappings for assetPriceFeeds is better than 2 slot array
-    // Potentially move ETHUSD call to chainlink extension?
+    // Potentially move ETHUSD call to chainlink adaptor?
 
     /**
-     * @notice Mapping used to track whether or not an address is an Extension.
+     * @notice Mapping used to track whether or not an address is an Adaptor.
      */
-    mapping(address => bool) public isApprovedExtensions;
+    mapping(address => bool) public isApprovedAdaptor;
     /**
      * @notice Mapping used to track an assets configured price feeds.
      */
@@ -95,9 +95,9 @@ contract PriceRouter {
         _;
     }
 
-    // Only callable by Extensions
-    modifier onlyExtension(address _extension) {
-        require(isApprovedExtensions[_extension], "priceRouter: UNAUTHORIZED");
+    // Only callable by Adaptor
+    modifier onlyAdaptor(address _adaptor) {
+        require(isApprovedAdaptor[_adaptor], "priceRouter: UNAUTHORIZED");
         _;
     }
 
@@ -177,7 +177,7 @@ contract PriceRouter {
         view
         returns (uint256, uint256)
     {
-        priceReturnData memory data = IOracleExtension(
+        priceReturnData memory data = IOracleAdaptor(
             assetPriceFeeds[_asset][0]
         ).getPrice(_asset);
         if (data.hadError) return (0, BAD_SOURCE);
@@ -202,7 +202,7 @@ contract PriceRouter {
         view
         returns (feedData memory)
     {
-        priceReturnData memory data = IOracleExtension(
+        priceReturnData memory data = IOracleAdaptor(
             assetPriceFeeds[_asset][_feedNumber]
         ).getPrice(_asset);
         if (data.hadError) return (feedData({ price: 0, hadError: true }));
@@ -283,14 +283,14 @@ contract PriceRouter {
     }
 
     /// @notice Adds a new price feed for a specific asset.
-    /// @dev Requires that the feed address is an approved extension and that the asset doesn't already have two feeds.
+    /// @dev Requires that the feed address is an approved adaptor and that the asset doesn't already have two feeds.
     /// @param _asset The address of the asset.
     /// @param _feed The address of the new feed.
     function addAssetPriceFeed(address _asset, address _feed)
         external
         onlyDaoManager
     {
-        require(isApprovedExtensions[_feed], "priceRouter: unapproved feed");
+        require(isApprovedAdaptor[_feed], "priceRouter: unapproved feed");
         require(
             assetPriceFeeds[_asset].length < 2,
             "priceRouter: dual feed already configured"
@@ -323,34 +323,34 @@ contract PriceRouter {
                 assetPriceFeeds[_asset][0] == _feed,
                 "priceRouter: feed does not exist"
             );
-        } // we know the feed exists, cant use isApprovedExtensions as we could have removed it as an approved extension prior
+        } // we know the feed exists, cant use isApprovedAdaptor as we could have removed it as an approved adaptor prior
 
         assetPriceFeeds[_asset].pop();
     }
 
-    /// @notice Adds a new approved extension.
-    /// @dev Requires that the extension isn't already approved.
-    /// @param _extension The address of the extension to approve.
-    function addApprovedExtension(address _extension) external onlyDaoManager {
+    /// @notice Adds a new approved adaptor.
+    /// @dev Requires that the adaptor isn't already approved.
+    /// @param _adaptor The address of the adaptor to approve.
+    function addApprovedAdaptor(address _adaptor) external onlyDaoManager {
         require(
-            !isApprovedExtensions[_extension],
-            "priceRouter: extension already approved"
+            !isApprovedAdaptor[_adaptor],
+            "priceRouter: adaptor already approved"
         );
-        isApprovedExtensions[_extension] = true;
+        isApprovedAdaptor[_adaptor] = true;
     }
 
-    /// @notice Removes an approved extension.
-    /// @dev Requires that the extension is currently approved.
-    /// @param _extension The address of the extension to remove.
-    function removeApprovedExtension(address _extension)
+    /// @notice Removes an approved adaptor.
+    /// @dev Requires that the adaptor is currently approved.
+    /// @param _adaptor The address of the adaptor to remove.
+    function removeApprovedAdaptor(address _adaptor)
         external
         onlyDaoManager
     {
         require(
-            isApprovedExtensions[_extension],
-            "priceRouter: extension does not exist"
+            isApprovedAdaptor[_adaptor],
+            "priceRouter: adaptor does not exist"
         );
-        delete isApprovedExtensions[_extension];
+        delete isApprovedAdaptor[_adaptor];
     }
 
     /// @notice Sets a new maximum divergence for price feeds.
