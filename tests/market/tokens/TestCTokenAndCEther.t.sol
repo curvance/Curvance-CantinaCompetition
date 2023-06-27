@@ -14,10 +14,11 @@ contract TestCTokenAndCEther is TestBaseMarket {
 
     function setUp() public override {
         super.setUp();
-        _fork();
 
         user1 = address(this);
         user2 = address(new User());
+
+        priceOracle.setDirectPrice(E_ADDRESS, 2e18);
 
         // prepare 200K DAI
         vm.store(
@@ -103,23 +104,10 @@ contract TestCTokenAndCEther is TestBaseMarket {
         _deployCDAI();
         _deployCEther();
 
-        // support market
-        vm.prank(admin);
-        Lendtroller(unitroller)._supportMarket(CToken(address(cDAI)));
-        vm.prank(admin);
-        Lendtroller(unitroller)._supportMarket(CToken(address(cETH)));
-        // set collateral factor
-        vm.prank(admin);
-        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 5e17);
-        vm.prank(admin);
-        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 5e17);
+        _setupCDAIMarket();
+        _setupCEtherMarket();
 
-        // user1 enter markets
-        vm.prank(user1);
-        address[] memory markets = new address[](2);
-        markets[0] = address(cDAI);
-        markets[1] = address(cETH);
-        LendtrollerInterface(unitroller).enterMarkets(markets);
+        _enterMarkets(user1);
 
         // auser1 pprove
         vm.prank(user1);
@@ -139,8 +127,7 @@ contract TestCTokenAndCEther is TestBaseMarket {
         assertEq(balanceBeforeMint, dai.balanceOf(user1));
 
         // user2 enter markets
-        vm.prank(user2);
-        LendtrollerInterface(unitroller).enterMarkets(markets);
+        _enterMarkets(user2);
 
         balanceBeforeMint = user2.balance;
         // user2 mint
@@ -160,23 +147,10 @@ contract TestCTokenAndCEther is TestBaseMarket {
         _deployCDAI();
         _deployCEther();
 
-        // support market
-        vm.prank(admin);
-        Lendtroller(unitroller)._supportMarket(CToken(address(cDAI)));
-        vm.prank(admin);
-        Lendtroller(unitroller)._supportMarket(CToken(address(cETH)));
-        // set collateral factor
-        vm.prank(admin);
-        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 5e17);
-        vm.prank(admin);
-        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 5e17);
+        _setupCDAIMarket();
+        _setupCEtherMarket();
 
-        // user1 enter markets
-        vm.prank(user1);
-        address[] memory markets = new address[](2);
-        markets[0] = address(cDAI);
-        markets[1] = address(cETH);
-        LendtrollerInterface(unitroller).enterMarkets(markets);
+        _enterMarkets(user1);
 
         // user1 approve
         vm.prank(user1);
@@ -196,8 +170,7 @@ contract TestCTokenAndCEther is TestBaseMarket {
         assertEq(balanceBeforeMint, dai.balanceOf(user1));
 
         // user2 enter markets
-        vm.prank(user2);
-        LendtrollerInterface(unitroller).enterMarkets(markets);
+        _enterMarkets(user2);
 
         balanceBeforeMint = user2.balance;
         // user2 mint
@@ -217,23 +190,10 @@ contract TestCTokenAndCEther is TestBaseMarket {
         _deployCDAI();
         _deployCEther();
 
-        // support market
-        vm.prank(admin);
-        Lendtroller(unitroller)._supportMarket(CToken(address(cDAI)));
-        vm.prank(admin);
-        Lendtroller(unitroller)._supportMarket(CToken(address(cETH)));
-        // set collateral factor
-        vm.prank(admin);
-        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 5e17);
-        vm.prank(admin);
-        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 5e17);
+        _setupCDAIMarket();
+        _setupCEtherMarket();
 
-        // user1 enter markets
-        vm.prank(user1);
-        address[] memory markets = new address[](2);
-        markets[0] = address(cDAI);
-        markets[1] = address(cETH);
-        LendtrollerInterface(unitroller).enterMarkets(markets);
+        _enterMarkets(user1);
 
         // user1 approve
         vm.prank(user1);
@@ -245,8 +205,7 @@ contract TestCTokenAndCEther is TestBaseMarket {
         assertEq(cDAI.balanceOf(user1), 100e18);
 
         // user2 enter markets
-        vm.prank(user2);
-        LendtrollerInterface(unitroller).enterMarkets(markets);
+        _enterMarkets(user2);
 
         // user2 mint
         vm.prank(user2);
@@ -272,23 +231,10 @@ contract TestCTokenAndCEther is TestBaseMarket {
         _deployCDAI();
         _deployCEther();
 
-        // support market
-        vm.prank(admin);
-        Lendtroller(unitroller)._supportMarket(CToken(address(cDAI)));
-        vm.prank(admin);
-        Lendtroller(unitroller)._supportMarket(CToken(address(cETH)));
-        // set collateral factor
-        vm.prank(admin);
-        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 5e17);
-        vm.prank(admin);
-        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 5e17);
+        _setupCDAIMarket();
+        _setupCEtherMarket();
 
-        // user1 enter markets
-        vm.prank(user1);
-        address[] memory markets = new address[](2);
-        markets[0] = address(cDAI);
-        markets[1] = address(cETH);
-        LendtrollerInterface(unitroller).enterMarkets(markets);
+        _enterMarkets(user1);
 
         // user1 approve
         dai.approve(address(cDAI), 100e18);
@@ -299,7 +245,7 @@ contract TestCTokenAndCEther is TestBaseMarket {
         assertEq(cDAI.balanceOf(user1), 100e18);
 
         // user1 enter markets
-        LendtrollerInterface(unitroller).enterMarkets(markets);
+        _enterMarkets(user1);
 
         // user1 mint
         vm.prank(user1);
@@ -325,23 +271,10 @@ contract TestCTokenAndCEther is TestBaseMarket {
         _deployCDAI();
         _deployCEther();
 
-        // support market
-        vm.prank(admin);
-        Lendtroller(unitroller)._supportMarket(CToken(address(cDAI)));
-        vm.prank(admin);
-        Lendtroller(unitroller)._supportMarket(CToken(address(cETH)));
-        // set collateral factor
-        vm.prank(admin);
-        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 5e17);
-        vm.prank(admin);
-        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 5e17);
+        _setupCDAIMarket();
+        _setupCEtherMarket();
 
-        // user1 enter markets
-        vm.prank(user1);
-        address[] memory markets = new address[](2);
-        markets[0] = address(cDAI);
-        markets[1] = address(cETH);
-        LendtrollerInterface(unitroller).enterMarkets(markets);
+        _enterMarkets(user1);
 
         // user1 approve
         vm.prank(user1);
@@ -353,8 +286,7 @@ contract TestCTokenAndCEther is TestBaseMarket {
         assertEq(cDAI.balanceOf(user1), 100e18);
 
         // user2 enter markets
-        vm.prank(user2);
-        LendtrollerInterface(unitroller).enterMarkets(markets);
+        _enterMarkets(user2);
 
         // user2 mint
         vm.prank(user2);
@@ -394,23 +326,10 @@ contract TestCTokenAndCEther is TestBaseMarket {
         _deployCDAI();
         _deployCEther();
 
-        // support market
-        vm.prank(admin);
-        Lendtroller(unitroller)._supportMarket(CToken(address(cDAI)));
-        vm.prank(admin);
-        Lendtroller(unitroller)._supportMarket(CToken(address(cETH)));
-        // set collateral factor
-        vm.prank(admin);
-        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 5e17);
-        vm.prank(admin);
-        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 5e17);
+        _setupCDAIMarket();
+        _setupCEtherMarket();
 
-        // user1 enter markets
-        vm.prank(user1);
-        address[] memory markets = new address[](2);
-        markets[0] = address(cDAI);
-        markets[1] = address(cETH);
-        LendtrollerInterface(unitroller).enterMarkets(markets);
+        _enterMarkets(user1);
 
         // user1 approve
         vm.prank(user1);
@@ -422,8 +341,7 @@ contract TestCTokenAndCEther is TestBaseMarket {
         assertEq(cDAI.balanceOf(user1), 100e18);
 
         // user2 enter markets
-        vm.prank(user2);
-        LendtrollerInterface(unitroller).enterMarkets(markets);
+        _enterMarkets(user2);
 
         // user2 mint
         vm.prank(user2);

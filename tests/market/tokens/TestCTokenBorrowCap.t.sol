@@ -24,18 +24,9 @@ contract TestCTokenBorrowCap is TestBaseMarket {
     function testBorrowCap() public {
         _deployCDAI();
 
-        // support market
-        vm.prank(admin);
-        Lendtroller(unitroller)._supportMarket(CToken(address(cDAI)));
-        // set collateral factor
-        vm.prank(admin);
-        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 5e17);
+        _setupCDAIMarket();
 
-        // enter markets
-        vm.prank(user);
-        address[] memory markets = new address[](1);
-        markets[0] = address(cDAI);
-        LendtrollerInterface(unitroller).enterMarkets(markets);
+        _enterCDAIMarket(user);
 
         // set borrow cap to 49
         vm.prank(admin);

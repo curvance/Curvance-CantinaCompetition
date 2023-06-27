@@ -28,18 +28,9 @@ contract TestCToken is TestBaseMarket {
     function testMint() public {
         _deployCDAI();
 
-        // support market
-        vm.prank(admin);
-        Lendtroller(unitroller)._supportMarket(CToken(address(cDAI)));
-        // set collateral factor
-        vm.prank(admin);
-        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 5e17);
+        _setupCDAIMarket();
 
-        // enter markets
-        vm.prank(user);
-        address[] memory markets = new address[](1);
-        markets[0] = address(cDAI);
-        LendtrollerInterface(unitroller).enterMarkets(markets);
+        _enterCDAIMarket(user);
 
         // approve
         dai.approve(address(cDAI), 100e18);
@@ -52,18 +43,9 @@ contract TestCToken is TestBaseMarket {
     function testRedeem() public {
         _deployCDAI();
 
-        // support market
-        vm.prank(admin);
-        Lendtroller(unitroller)._supportMarket(CToken(address(cDAI)));
-        // set collateral factor
-        vm.prank(admin);
-        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 5e17);
+        _setupCDAIMarket();
 
-        // enter markets
-        vm.prank(user);
-        address[] memory markets = new address[](1);
-        markets[0] = address(cDAI);
-        LendtrollerInterface(unitroller).enterMarkets(markets);
+        _enterCDAIMarket(user);
 
         // approve
         dai.approve(address(cDAI), 100e18);
@@ -83,18 +65,9 @@ contract TestCToken is TestBaseMarket {
     function testRedeemUnderlying() public {
         _deployCDAI();
 
-        // support market
-        vm.prank(admin);
-        Lendtroller(unitroller)._supportMarket(CToken(address(cDAI)));
-        // set collateral factor
-        vm.prank(admin);
-        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 5e17);
+        _setupCDAIMarket();
 
-        // enter markets
-        vm.prank(user);
-        address[] memory markets = new address[](1);
-        markets[0] = address(cDAI);
-        LendtrollerInterface(unitroller).enterMarkets(markets);
+        _enterCDAIMarket(user);
 
         // approve
         dai.approve(address(cDAI), 100e18);
@@ -114,18 +87,9 @@ contract TestCToken is TestBaseMarket {
     function testBorrow() public {
         _deployCDAI();
 
-        // support market
-        vm.prank(admin);
-        Lendtroller(unitroller)._supportMarket(CToken(address(cDAI)));
-        // set collateral factor
-        vm.prank(admin);
-        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 5e17);
+        _setupCDAIMarket();
 
-        // enter markets
-        vm.prank(user);
-        address[] memory markets = new address[](1);
-        markets[0] = address(cDAI);
-        LendtrollerInterface(unitroller).enterMarkets(markets);
+        _enterCDAIMarket(user);
 
         // approve
         dai.approve(address(cDAI), 100e18);
@@ -144,18 +108,9 @@ contract TestCToken is TestBaseMarket {
     function testRepayBorrow() public {
         _deployCDAI();
 
-        // support market
-        vm.prank(admin);
-        Lendtroller(unitroller)._supportMarket(CToken(address(cDAI)));
-        // set collateral factor
-        vm.prank(admin);
-        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 5e17);
+        _setupCDAIMarket();
 
-        // enter markets
-        vm.prank(user);
-        address[] memory markets = new address[](1);
-        markets[0] = address(cDAI);
-        LendtrollerInterface(unitroller).enterMarkets(markets);
+        _enterCDAIMarket(user);
 
         // approve
         dai.approve(address(cDAI), 100e18);
@@ -181,18 +136,9 @@ contract TestCToken is TestBaseMarket {
     function testRepayBorrowBehalf() public {
         _deployCDAI();
 
-        // support market
-        vm.prank(admin);
-        Lendtroller(unitroller)._supportMarket(CToken(address(cDAI)));
-        // set collateral factor
-        vm.prank(admin);
-        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 5e17);
+        _setupCDAIMarket();
 
-        // enter markets
-        vm.prank(user);
-        address[] memory markets = new address[](1);
-        markets[0] = address(cDAI);
-        LendtrollerInterface(unitroller).enterMarkets(markets);
+        _enterCDAIMarket(user);
 
         // approve
         dai.approve(address(cDAI), 100e18);

@@ -83,4 +83,43 @@ contract TestBaseMarket is TestBase {
             payable(admin)
         );
     }
+
+    function _setupCEtherMarket() internal {
+        vm.startPrank(admin);
+        Lendtroller(unitroller)._supportMarket(CToken(address(cETH)));
+        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 5e17);
+        vm.stopPrank();
+    }
+
+    function _setupCDAIMarket() internal {
+        vm.startPrank(admin);
+        Lendtroller(unitroller)._supportMarket(CToken(address(cDAI)));
+        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 5e17);
+        vm.stopPrank();
+    }
+
+    function _enterCEtherMarket(address user_) internal {
+        address[] memory markets = new address[](1);
+        markets[0] = address(cETH);
+
+        vm.prank(user_);
+        LendtrollerInterface(unitroller).enterMarkets(markets);
+    }
+
+    function _enterCDAIMarket(address user_) internal {
+        address[] memory markets = new address[](1);
+        markets[0] = address(cDAI);
+
+        vm.prank(user_);
+        LendtrollerInterface(unitroller).enterMarkets(markets);
+    }
+
+    function _enterMarkets(address user_) internal {
+        address[] memory markets = new address[](2);
+        markets[0] = address(cDAI);
+        markets[1] = address(cETH);
+
+        vm.prank(user_);
+        LendtrollerInterface(unitroller).enterMarkets(markets);
+    }
 }

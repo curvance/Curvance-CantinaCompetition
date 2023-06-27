@@ -38,23 +38,10 @@ contract TestCEtherAndCTokenIntegration is TestBaseMarket {
         _deployCDAI();
         _deployCEther();
 
-        // support market
-        vm.prank(admin);
-        Lendtroller(unitroller)._supportMarket(CToken(address(cDAI)));
-        vm.prank(admin);
-        Lendtroller(unitroller)._supportMarket(CToken(address(cETH)));
-        // set collateral factor
-        vm.prank(admin);
-        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 5e17);
-        vm.prank(admin);
-        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 5e17);
+        _setupCDAIMarket();
+        _setupCEtherMarket();
 
-        // enter markets
-        vm.prank(user);
-        address[] memory markets = new address[](2);
-        markets[0] = address(cDAI);
-        markets[1] = address(cETH);
-        LendtrollerInterface(unitroller).enterMarkets(markets);
+        _enterMarkets(user);
 
         // mint cDAI
         dai.approve(address(cDAI), 100e18);
@@ -70,23 +57,10 @@ contract TestCEtherAndCTokenIntegration is TestBaseMarket {
         _deployCDAI();
         _deployCEther();
 
-        // support market
-        vm.prank(admin);
-        Lendtroller(unitroller)._supportMarket(CToken(address(cDAI)));
-        vm.prank(admin);
-        Lendtroller(unitroller)._supportMarket(CToken(address(cETH)));
-        // set collateral factor
-        vm.prank(admin);
-        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 5e17);
-        vm.prank(admin);
-        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 5e17);
+        _setupCDAIMarket();
+        _setupCEtherMarket();
 
-        // enter markets
-        vm.prank(user);
-        address[] memory markets = new address[](2);
-        markets[0] = address(cDAI);
-        markets[1] = address(cETH);
-        LendtrollerInterface(unitroller).enterMarkets(markets);
+        _enterMarkets(user);
 
         uint256 daiBalanceBeforeMint = dai.balanceOf(user);
         uint256 ethBalanceBeforeMint = user.balance;
@@ -113,23 +87,10 @@ contract TestCEtherAndCTokenIntegration is TestBaseMarket {
         _deployCDAI();
         _deployCEther();
 
-        // support market
-        vm.prank(admin);
-        Lendtroller(unitroller)._supportMarket(CToken(address(cDAI)));
-        vm.prank(admin);
-        Lendtroller(unitroller)._supportMarket(CToken(address(cETH)));
-        // set collateral factor
-        vm.prank(admin);
-        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 5e17);
-        vm.prank(admin);
-        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 5e17);
+        _setupCDAIMarket();
+        _setupCEtherMarket();
 
-        // enter markets
-        vm.prank(user);
-        address[] memory markets = new address[](2);
-        markets[0] = address(cDAI);
-        markets[1] = address(cETH);
-        LendtrollerInterface(unitroller).enterMarkets(markets);
+        _enterMarkets(user);
 
         uint256 daiBalanceBeforeMint = dai.balanceOf(user);
         uint256 ethBalanceBeforeMint = user.balance;
@@ -156,23 +117,10 @@ contract TestCEtherAndCTokenIntegration is TestBaseMarket {
         _deployCDAI();
         _deployCEther();
 
-        // support market
-        vm.prank(admin);
-        Lendtroller(unitroller)._supportMarket(CToken(address(cDAI)));
-        vm.prank(admin);
-        Lendtroller(unitroller)._supportMarket(CToken(address(cETH)));
-        // set collateral factor
-        vm.prank(admin);
-        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 5e17);
-        vm.prank(admin);
-        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 5e17);
+        _setupCDAIMarket();
+        _setupCEtherMarket();
 
-        // enter markets
-        vm.prank(user);
-        address[] memory markets = new address[](2);
-        markets[0] = address(cDAI);
-        markets[1] = address(cETH);
-        LendtrollerInterface(unitroller).enterMarkets(markets);
+        _enterMarkets(user);
 
         // mint cDAI
         dai.approve(address(cDAI), 100e18);
@@ -199,23 +147,10 @@ contract TestCEtherAndCTokenIntegration is TestBaseMarket {
         _deployCDAI();
         _deployCEther();
 
-        // support market
-        vm.prank(admin);
-        Lendtroller(unitroller)._supportMarket(CToken(address(cDAI)));
-        vm.prank(admin);
-        Lendtroller(unitroller)._supportMarket(CToken(address(cETH)));
-        // set collateral factor
-        vm.prank(admin);
-        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 5e17);
-        vm.prank(admin);
-        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 5e17);
+        _setupCDAIMarket();
+        _setupCEtherMarket();
 
-        // enter markets
-        vm.prank(user);
-        address[] memory markets = new address[](2);
-        markets[0] = address(cDAI);
-        markets[1] = address(cETH);
-        LendtrollerInterface(unitroller).enterMarkets(markets);
+        _enterMarkets(user);
 
         // mint cDAI
         dai.approve(address(cDAI), 100e18);
@@ -251,23 +186,10 @@ contract TestCEtherAndCTokenIntegration is TestBaseMarket {
         _deployCDAI();
         _deployCEther();
 
-        // support market
-        vm.prank(admin);
-        Lendtroller(unitroller)._supportMarket(CToken(address(cDAI)));
-        vm.prank(admin);
-        Lendtroller(unitroller)._supportMarket(CToken(address(cETH)));
-        // set collateral factor
-        vm.prank(admin);
-        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 5e17);
-        vm.prank(admin);
-        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 5e17);
+        _setupCDAIMarket();
+        _setupCEtherMarket();
 
-        // enter markets
-        vm.prank(user);
-        address[] memory markets = new address[](2);
-        markets[0] = address(cDAI);
-        markets[1] = address(cETH);
-        LendtrollerInterface(unitroller).enterMarkets(markets);
+        _enterMarkets(user);
 
         // mint cDAI
         dai.approve(address(cDAI), 100e18);
@@ -303,23 +225,10 @@ contract TestCEtherAndCTokenIntegration is TestBaseMarket {
         _deployCDAI();
         _deployCEther();
 
-        // support market
-        vm.prank(admin);
-        Lendtroller(unitroller)._supportMarket(CToken(address(cDAI)));
-        vm.prank(admin);
-        Lendtroller(unitroller)._supportMarket(CToken(address(cETH)));
-        // set collateral factor
-        vm.prank(admin);
-        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cDAI)), 5e17);
-        vm.prank(admin);
-        Lendtroller(unitroller)._setCollateralFactor(CToken(address(cETH)), 5e17);
+        _setupCDAIMarket();
+        _setupCEtherMarket();
 
-        // enter markets
-        vm.prank(user);
-        address[] memory markets = new address[](2);
-        markets[0] = address(cDAI);
-        markets[1] = address(cETH);
-        LendtrollerInterface(unitroller).enterMarkets(markets);
+        _enterMarkets(user);
 
         // mint cDAI
         dai.approve(address(cDAI), 100e18);
