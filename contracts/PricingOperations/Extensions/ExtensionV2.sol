@@ -20,6 +20,9 @@ abstract contract Extension {
      */
     uint8 public constant BAD_SOURCE = 2;
 
+    /**
+     * @notice Address of Curvance DAO Central Registry.
+     */
     ICentralRegistry public immutable centralRegistry;
 
     /**
