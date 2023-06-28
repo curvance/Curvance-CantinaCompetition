@@ -15,13 +15,10 @@ contract TestPositionFolding is TestBaseMarket {
 
     fallback() external payable {}
 
-    function setUp() public {
+    function setUp() public override {
         super.setUp();
 
-        priceOracle.setDirectPrice(
-            0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE,
-            2000 ether
-        );
+        priceOracle.setDirectPrice(E_ADDRESS, 2000 ether);
 
         // prepare 200K DAI
         vm.store(
