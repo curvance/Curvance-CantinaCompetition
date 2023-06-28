@@ -18,9 +18,7 @@ abstract contract OFTV2 is BaseOFTV2, ERC20 {
         uint8 _sharedDecimals,
         address _lzEndpoint,
         ICentralRegistry _centralRegistry
-    )
-        BaseOFTV2(_sharedDecimals, _lzEndpoint, _centralRegistry)
-    {
+    ) BaseOFTV2(_sharedDecimals, _lzEndpoint, _centralRegistry) {
         _name = name_;
         _symbol = symbol_;
         uint8 decimals = decimals();
