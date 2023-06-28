@@ -4,8 +4,9 @@ pragma solidity ^0.8.17;
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import "../../interfaces/market/IDelegateToken.sol";
-import "../../interfaces/market/IEIP20NonStandard.sol";
+import "contracts/interfaces/market/IDelegateToken.sol";
+import "contracts/interfaces/market/IEIP20NonStandard.sol";
+import "contracts/market/lendtroller/LendtrollerInterface.sol";
 import "./CToken.sol";
 import "./storage/CErc20Interface.sol";
 

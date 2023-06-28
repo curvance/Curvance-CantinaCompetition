@@ -3,6 +3,7 @@ pragma solidity ^0.8.17;
 
 import { CToken } from "contracts/token/collateral/CToken.sol";
 import { LendtrollerStorage } from "./LendtrollerStorage.sol";
+import { PriceOracle } from "../Oracle/PriceOracle.sol";
 
 abstract contract LendtrollerInterface is LendtrollerStorage {
     ////////// Errors //////////
