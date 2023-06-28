@@ -4,9 +4,10 @@ pragma solidity ^0.8.17;
 import { CToken } from "contracts/token/collateral/CToken.sol";
 
 interface ILendtroller {
-    function enterMarkets(
-        address[] calldata cTokens
-    ) external virtual returns (uint256[] memory);
+    function enterMarkets(address[] calldata cTokens)
+        external
+        virtual
+        returns (uint256[] memory);
 
     function exitMarket(address cToken) external virtual;
 
@@ -24,10 +25,9 @@ interface ILendtroller {
         uint256 borrowAmount
     ) external virtual;
 
-    function repayBorrowAllowed(
-        address cToken,
-        address borrower
-    ) external virtual;
+    function repayBorrowAllowed(address cToken, address borrower)
+        external
+        virtual;
 
     function liquidateBorrowAllowed(
         address cTokenBorrowed,
@@ -59,18 +59,27 @@ interface ILendtroller {
     ) external view virtual returns (uint256);
 
     /** Query functions */
-    function getIsMarkets(
-        address cToken
-    ) external view virtual returns (bool, uint256, bool);
+    function getIsMarkets(address cToken)
+        external
+        view
+        virtual
+        returns (
+            bool,
+            uint256,
+            bool
+        );
 
-    function getAccountMembership(
-        address cToken,
-        address user
-    ) external view virtual returns (bool);
+    function getAccountMembership(address cToken, address user)
+        external
+        view
+        virtual
+        returns (bool);
 
     function getAllMarkets() external view virtual returns (CToken[] memory);
 
-    function getAccountAssets(
-        address cToken
-    ) external view virtual returns (CToken[] memory);
+    function getAccountAssets(address cToken)
+        external
+        view
+        virtual
+        returns (CToken[] memory);
 }

@@ -7,7 +7,6 @@ import { IStaticOracle } from "contracts/interfaces/external/uniswap/IStaticOrac
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IOracleAdaptor, priceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
 
-
 contract UniswapV3Adaptor is BaseOracleAdaptor {
     constructor(ICentralRegistry _centralRegistry)
         BaseOracleAdaptor(_centralRegistry)

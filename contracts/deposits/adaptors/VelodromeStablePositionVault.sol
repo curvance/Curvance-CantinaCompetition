@@ -219,7 +219,8 @@ contract VelodromeStablePositionVault is BasePositionVault {
                     1e18
                 );
                 amount -= protocolFee;
-                SafeTransferLib.safeTransfer(reward,
+                SafeTransferLib.safeTransfer(
+                    reward,
                     positionVaultMetaData.feeAccumulator,
                     protocolFee
                 );
@@ -247,15 +248,15 @@ contract VelodromeStablePositionVault is BasePositionVault {
                 );
                 if (positionVaultMetaData.positionWatchdog == address(0))
                     revert VelodromePositionVault__WatchdogNotSet();
-                SafeTransferLib.safeTransfer(tokenA,
+                SafeTransferLib.safeTransfer(
+                    tokenA,
                     positionVaultMetaData.positionWatchdog,
                     feeForUpkeep
                 );
                 totalAmountA -= feeForUpkeep;
             }
 
-            (uint256 r0, uint256 r1, ) = IVeloPair(asset())
-                .getReserves();
+            (uint256 r0, uint256 r1, ) = IVeloPair(asset()).getReserves();
             (uint256 reserveA, uint256 reserveB) = tokenA ==
                 IVeloPair(asset()).token0()
                 ? (r0, r1)
@@ -273,7 +274,7 @@ contract VelodromeStablePositionVault is BasePositionVault {
             uint256 totalAmountB = ERC20(tokenB).balanceOf(address(this));
 
             // 4. Check USD value slippage
-            
+
             uint256 valueOut = totalAmountA.mulDivDown(
                 positionVaultMetaData.priceRouter.getPriceUSD(tokenA),
                 10**ERC20(tokenA).decimals()

@@ -19,7 +19,9 @@ contract BalancerStablePoolExtension is BalancerPoolExtension {
     /**
      * @notice Atleast one of the pools underlying tokens is not supported by the Price Router.
      */
-    error BalancerStablePoolExtension__PoolTokensMustBeSupported(address unsupportedAsset);
+    error BalancerStablePoolExtension__PoolTokensMustBeSupported(
+        address unsupportedAsset
+    );
 
     /**
      * @notice Failed to find a minimum price for the pool tokens.
@@ -36,7 +38,9 @@ contract BalancerStablePoolExtension is BalancerPoolExtension {
      */
     error BalancerStablePoolExtension__RateProviderDecimalsNotProvided();
 
-    constructor(ICentralRegistry _centralRegistry, IVault _balancerVault) BalancerPoolExtension(_centralRegistry, _balancerVault) {}
+    constructor(ICentralRegistry _centralRegistry, IVault _balancerVault)
+        BalancerPoolExtension(_centralRegistry, _balancerVault)
+    {}
 
     /**
      * @notice Extension storage
@@ -70,8 +74,15 @@ contract BalancerStablePoolExtension is BalancerPoolExtension {
      *      rateProviderDecimals, rateProviders, and underlyingOrConstituent
      *      MUST be correct, providing wrong values will result in inaccurate pricing.
      */
-    function setupSource(address, uint64 _sourceId, bytes memory _storage) external onlyPriceRouter {
-        ExtensionStorage memory stor = abi.decode(_storage, (ExtensionStorage));
+    function setupSource(
+        address,
+        uint64 _sourceId,
+        bytes memory _storage
+    ) external onlyPriceRouter {
+        ExtensionStorage memory stor = abi.decode(
+            _storage,
+            (ExtensionStorage)
+        );
         IBalancerPool pool = IBalancerPool(stor.asset);
 
         // Grab the poolId and decimals.
@@ -82,16 +93,24 @@ contract BalancerStablePoolExtension is BalancerPoolExtension {
         for (uint256 i; i < stor.underlyingOrConstituent.length; ++i) {
             // Break when a zero address is found.
             if (address(stor.underlyingOrConstituent[i]) == address(0)) break;
-            if (!centralRegistry.priceRouter().isSupported(stor.underlyingOrConstituent[i]))
-            //    revert BalancerStablePoolExtension__PoolTokensMustBeSupported(stor.underlyingOrConstituent[i]);
-            if (stor.rateProviders[i] != address(0)) {
-                // Make sure decimals were provided.
-                if (stor.rateProviderDecimals[i] == 0)
-                    revert BalancerStablePoolExtension__RateProviderDecimalsNotProvided();
-                // Make sure we can call it and get a non zero value.
-                uint256 rate = IRateProvider(stor.rateProviders[i]).getRate();
-                if (rate == 0) revert BalancerStablePoolExtension__RateProviderCallFailed();
-            }
+            if (
+                !centralRegistry.priceRouter().isSupported(
+                    stor.underlyingOrConstituent[i]
+                )
+            )
+                if (
+                    stor.rateProviders[i] != address(0)
+                ) //    revert BalancerStablePoolExtension__PoolTokensMustBeSupported(stor.underlyingOrConstituent[i]);
+                {
+                    // Make sure decimals were provided.
+                    if (stor.rateProviderDecimals[i] == 0)
+                        revert BalancerStablePoolExtension__RateProviderDecimalsNotProvided();
+                    // Make sure we can call it and get a non zero value.
+                    uint256 rate = IRateProvider(stor.rateProviders[i])
+                        .getRate();
+                    if (rate == 0)
+                        revert BalancerStablePoolExtension__RateProviderCallFailed();
+                }
         }
 
         // Save values in extension storage.
@@ -101,9 +120,15 @@ contract BalancerStablePoolExtension is BalancerPoolExtension {
     /**
      * @notice Called during pricing operations.
      */
-    function getPriceInBase(
-        uint64 sourceId
-    ) external view returns (uint256 upper, uint256 lower, uint8 errorCode) {
+    function getPriceInBase(uint64 sourceId)
+        external
+        view
+        returns (
+            uint256 upper,
+            uint256 lower,
+            uint8 errorCode
+        )
+    {
         _ensureNotInVaultContext(balancerVault);
         // Read extension storage and grab pool tokens
         ExtensionStorage memory stor = extensionStorage[sourceId];
@@ -118,7 +143,9 @@ contract BalancerStablePoolExtension is BalancerPoolExtension {
         for (uint256 i; i < stor.underlyingOrConstituent.length; ++i) {
             // Break when a zero address is found.
             if (address(stor.underlyingOrConstituent[i]) == address(0)) break;
-            (_upper, _lower, _errorCode) = centralRegistry.priceRouter().getPriceInBase(stor.underlyingOrConstituent[i]);
+            (_upper, _lower, _errorCode) = centralRegistry
+                .priceRouter()
+                .getPriceInBase(stor.underlyingOrConstituent[i]);
             if (_errorCode == BAD_SOURCE) {
                 // Extension is blind to real `underlyingOrConstituentPrice`, so return an error code of BAS_SOURCE.
                 return (0, 0, BAD_SOURCE);
@@ -128,8 +155,14 @@ contract BalancerStablePoolExtension is BalancerPoolExtension {
             }
             if (stor.rateProviders[i] != address(0)) {
                 uint256 rate = IRateProvider(stor.rateProviders[i]).getRate();
-                _upper = _upper.mulDivDown(10 ** stor.rateProviderDecimals[i], rate);
-                _lower = _lower.mulDivDown(10 ** stor.rateProviderDecimals[i], rate);
+                _upper = _upper.mulDivDown(
+                    10**stor.rateProviderDecimals[i],
+                    rate
+                );
+                _lower = _lower.mulDivDown(
+                    10**stor.rateProviderDecimals[i],
+                    rate
+                );
             }
             if (_upper < minUpperPrice) minUpperPrice = _upper;
             if (_lower > 0 && _lower < minLowerPrice) minLowerPrice = _lower;
@@ -139,15 +172,24 @@ contract BalancerStablePoolExtension is BalancerPoolExtension {
         if (minUpperPrice == type(uint256).max) return (0, 0, BAD_SOURCE);
 
         uint256 poolRate = pool.getRate();
-        upper = minUpperPrice.mulDivDown(poolRate, 10 ** stor.poolDecimals);
-        lower = minLowerPrice.mulDivDown(poolRate, 10 ** stor.poolDecimals);
+        upper = minUpperPrice.mulDivDown(poolRate, 10**stor.poolDecimals);
+        lower = minLowerPrice.mulDivDown(poolRate, 10**stor.poolDecimals);
     }
 
     /**
      * @notice Called by PriceRouter to price an asset.
      */
-    function getPrice(address _asset) external view override returns (priceReturnData memory) {
-        priceReturnData memory data = priceReturnData({price:0, hadError:false, inUSD:false});
+    function getPrice(address _asset)
+        external
+        view
+        override
+        returns (priceReturnData memory)
+    {
+        priceReturnData memory data = priceReturnData({
+            price: 0,
+            hadError: false,
+            inUSD: false
+        });
         return data;
     }
 

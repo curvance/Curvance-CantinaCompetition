@@ -207,15 +207,14 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
                     1e18
                 );
                 amount -= protocolFee;
-                SafeTransferLib.safeTransfer(reward,
+                SafeTransferLib.safeTransfer(
+                    reward,
                     positionVaultMetaData.feeAccumulator,
                     protocolFee
                 );
 
                 uint256 valueInUSD = amount.mulDivDown(
-                    positionVaultMetaData.priceRouter.getPriceUSD(
-                        reward
-                    ),
+                    positionVaultMetaData.priceRouter.getPriceUSD(reward),
                     10**ERC20(reward).decimals()
                 );
 
@@ -237,17 +236,15 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
             );
             if (positionVaultMetaData.positionWatchdog == address(0))
                 revert VelodromePositionVault__WatchdogNotSet();
-            SafeTransferLib.safeTransfer(tokenA,
+            SafeTransferLib.safeTransfer(
+                tokenA,
                 positionVaultMetaData.positionWatchdog,
                 feeForUpkeep
             );
             totalAmountA -= feeForUpkeep;
 
-            (uint256 r0, uint256 r1, ) = IVeloPair(asset())
-                .getReserves();
-            uint256 reserveA = tokenA == IVeloPair(asset()).token0()
-                ? r0
-                : r1;
+            (uint256 r0, uint256 r1, ) = IVeloPair(asset()).getReserves();
+            uint256 reserveA = tokenA == IVeloPair(asset()).token0() ? r0 : r1;
             uint256 swapAmount = _optimalDepositA(totalAmountA, reserveA);
             swapExactTokensForTokens(tokenA, tokenB, swapAmount);
 
@@ -260,9 +257,7 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
                 10**ERC20(tokenA).decimals()
             ) +
                 totalAmountB.mulDivDown(
-                    positionVaultMetaData.priceRouter.getPriceUSD(
-                        tokenB
-                    ),
+                    positionVaultMetaData.priceRouter.getPriceUSD(tokenB),
                     10**ERC20(tokenB).decimals()
                 );
 

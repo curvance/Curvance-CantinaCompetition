@@ -240,13 +240,16 @@ contract AuraPositionVault is BasePositionVault {
                     1e18
                 );
                 amount -= protocolFee;
-                SafeTransferLib.safeTransfer(address(reward),
+                SafeTransferLib.safeTransfer(
+                    address(reward),
                     positionVaultMetaData.feeAccumulator,
                     protocolFee
                 );
 
                 uint256 valueInUSD = amount.mulDivDown(
-                    positionVaultMetaData.priceRouter.getPriceUSD(address(reward)),
+                    positionVaultMetaData.priceRouter.getPriceUSD(
+                        address(reward)
+                    ),
                     10**reward.decimals()
                 );
 
@@ -268,9 +271,7 @@ contract AuraPositionVault is BasePositionVault {
                 _approveTokenIfNeeded(assets[i], address(balancerVault));
 
                 valueOut += maxAmountsIn[i].mulDivDown(
-                    positionVaultMetaData.priceRouter.getPriceUSD(
-                        assets[i]
-                    ),
+                    positionVaultMetaData.priceRouter.getPriceUSD(assets[i]),
                     10**ERC20(assets[i]).decimals()
                 );
             }

@@ -14,7 +14,10 @@ interface IBalancerPool {
 
     function getFinalTokens() external view returns (address[] memory);
 
-    function getNormalizedWeight(address token) external view returns (uint256);
+    function getNormalizedWeight(address token)
+        external
+        view
+        returns (uint256);
 
     function getNormalizedWeights() external view returns (uint256[] memory);
 
@@ -33,5 +36,6 @@ interface IBalancerPool {
     /// For reaper single-strat vaults, the decimals are fixed to 18.
     function decimals() external view returns (uint8);
 
-    function joinPool(uint256 poolAmountOut, uint256[] calldata maxAmountsIn) external;
+    function joinPool(uint256 poolAmountOut, uint256[] calldata maxAmountsIn)
+        external;
 }

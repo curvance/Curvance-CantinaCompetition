@@ -230,7 +230,10 @@ contract ConvexPositionVault is BasePositionVault {
         emit CurveDepositParamsChanged(params);
     }
 
-    function setRewardTokens(ERC20[] memory _rewardTokens) external onlyDaoManager {
+    function setRewardTokens(ERC20[] memory _rewardTokens)
+        external
+        onlyDaoManager
+    {
         rewardTokens = _rewardTokens;
     }
 
@@ -279,7 +282,8 @@ contract ConvexPositionVault is BasePositionVault {
                     1e18
                 );
                 rewardBalance -= protocolFee;
-                SafeTransferLib.safeTransfer(address(rewardToken),
+                SafeTransferLib.safeTransfer(
+                    address(rewardToken),
                     positionVaultMetaData.feeAccumulator,
                     protocolFee
                 );
@@ -300,7 +304,8 @@ contract ConvexPositionVault is BasePositionVault {
                 ) {
                     valueIn += valueInUSD;
                     // Perform Swap into ETH.
-                    SafeTransferLib.safeApprove(address(rewardToken),
+                    SafeTransferLib.safeApprove(
+                        address(rewardToken),
                         address(curveRegistryExchange),
                         rewardBalance
                     );
@@ -326,7 +331,8 @@ contract ConvexPositionVault is BasePositionVault {
             if (positionVaultMetaData.positionWatchdog == address(0))
                 revert ConvexPositionVault__WatchdogNotSet();
             // Transfer WETH fee to watchdog
-            SafeTransferLib.safeTransfer(address(WETH), 
+            SafeTransferLib.safeTransfer(
+                address(WETH),
                 positionVaultMetaData.positionWatchdog,
                 feeForUpkeep
             );
@@ -336,8 +342,11 @@ contract ConvexPositionVault is BasePositionVault {
             // Convert assets into targetAsset.
             if (depositParams.targetAsset != WETH) {
                 CurveSwapParams memory swapParams = ethToTarget;
-                SafeTransferLib.safeApprove(address(WETH),
-                address(curveRegistryExchange), ethOut);
+                SafeTransferLib.safeApprove(
+                    address(WETH),
+                    address(curveRegistryExchange),
+                    ethOut
+                );
                 assetsOut = curveRegistryExchange.exchange_multiple(
                     swapParams.route,
                     swapParams.swapParams,
@@ -407,7 +416,11 @@ contract ConvexPositionVault is BasePositionVault {
     }
 
     function _addLiquidityToCurve(uint256 amount) internal {
-        SafeTransferLib.safeApprove(address(depositParams.targetAsset), depositParams.pool, amount);
+        SafeTransferLib.safeApprove(
+            address(depositParams.targetAsset),
+            depositParams.pool,
+            amount
+        );
         if (depositParams.coinsLength == 2) {
             uint256[2] memory amounts;
             amounts[depositParams.targetIndex] = amount;
