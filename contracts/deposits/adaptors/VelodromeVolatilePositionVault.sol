@@ -243,9 +243,9 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
             );
             totalAmountA -= feeForUpkeep;
 
-            (uint256 r0, uint256 r1, ) = IVeloPair(address(_asset))
+            (uint256 r0, uint256 r1, ) = IVeloPair(asset())
                 .getReserves();
-            uint256 reserveA = tokenA == IVeloPair(address(_asset)).token0()
+            uint256 reserveA = tokenA == IVeloPair(asset()).token0()
                 ? r0
                 : r1;
             uint256 swapAmount = _optimalDepositA(totalAmountA, reserveA);

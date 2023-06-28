@@ -367,7 +367,7 @@ contract ConvexPositionVault is BasePositionVault {
             _addLiquidityToCurve(assetsOut);
 
             // Deposit Assets to Convex.
-            yield = _asset.balanceOf(address(this));
+            yield = ERC20(asset()).balanceOf(address(this));
             _deposit(yield);
 
             // Update Vesting info.

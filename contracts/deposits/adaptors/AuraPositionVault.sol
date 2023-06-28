@@ -301,7 +301,7 @@ contract AuraPositionVault is BasePositionVault {
             );
 
             // deposit Assets to Aura.
-            yield = _asset.balanceOf(address(this));
+            yield = ERC20(asset()).balanceOf(address(this));
             _deposit(yield);
 
             // update Vesting info.

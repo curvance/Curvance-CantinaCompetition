@@ -57,7 +57,7 @@ abstract contract BasePositionVault is
      */
     ICentralRegistry public centralRegistry;
 
-    ERC20 public _asset;
+    ERC20 private _asset;
     string private _name;
     string private _symbol;
     uint8 private _decimals;
@@ -425,11 +425,11 @@ abstract contract BasePositionVault is
 
         if (msg.sender != owner) {
             uint256 allowed = allowance(owner, msg.sender);
-            //uint256 allowed = allowance[owner][msg.sender]; // Saves gas for limited approvals.
+            //uint256 allowed = allowance[owner][msg.sender]; // modified 4626 implementation
 
             if (allowed != type(uint256).max)
                 decreaseAllowance(owner, allowed - shares);
-                //allowance[owner][msg.sender] = allowed - shares;
+                //allowance[owner][msg.sender] = allowed - shares; // modified 4626 implementation
         }
 
         // Check for rounding error since we round down in previewRedeem.
