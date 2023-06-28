@@ -8,7 +8,7 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IOracleAdaptor, priceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
 
 
-contract ChainlinkAdaptor is BaseOracleAdaptor {
+contract UniswapV3Adaptor is BaseOracleAdaptor {
     constructor(ICentralRegistry _centralRegistry)
         BaseOracleAdaptor(_centralRegistry)
     {}
