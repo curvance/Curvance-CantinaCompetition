@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.17;
 
-import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
-
 import { BaseOracleAdaptor } from "../BaseOracleAdaptor.sol";
 
+import { IStaticOracle } from "contracts/interfaces/external/uniswap/IStaticOracle.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IOracleAdaptor, priceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
+
 
 contract ChainlinkAdaptor is BaseOracleAdaptor {
     constructor(ICentralRegistry _centralRegistry)

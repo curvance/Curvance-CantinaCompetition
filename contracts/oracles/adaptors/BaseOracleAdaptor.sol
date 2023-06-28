@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.17;
 
-import "contracts/interfaces/ICentralRegistry.sol";
+import "../../interfaces/ICentralRegistry.sol";
 import "../../interfaces/IOracleAdaptor.sol";
 
 abstract contract BaseOracleAdaptor {
+
     struct assetData {
         address[] subAssets;
         address pool;
@@ -44,21 +45,14 @@ abstract contract BaseOracleAdaptor {
 
     // Only callable by Price Router.
     modifier onlyPriceRouter() {
-        require(
-            msg.sender == centralRegistry.priceRouter(),
-            "adaptor: UNAUTHORIZED"
-        );
+        require(msg.sender == centralRegistry.priceRouter(), "adaptor: UNAUTHORIZED");
         _;
     }
 
     /**
      * @notice Called by PriceRouter to price an asset.
      */
-    function getPrice(address _asset)
-        external
-        view
-        virtual
-        returns (priceReturnData memory);
+    function getPrice(address _asset) external view virtual returns (priceReturnData memory);
 
     /**
      * @notice Adds a new supported asset to the adaptor, can also configure sub assets that the parent asset contain.
@@ -69,4 +63,5 @@ abstract contract BaseOracleAdaptor {
      * @notice Removes a supported asset from the adaptor.
      */
     function removeAsset(address _asset) external virtual;
+
 }
