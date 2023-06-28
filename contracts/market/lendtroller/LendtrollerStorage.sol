@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import "../Oracle/PriceOracle.sol";
-import "../Unitroller/UnitrollerStorage.sol";
-
-//import "../CompRewards/RewardsInterface.sol";
+import { PriceOracle } from "../Oracle/PriceOracle.sol";
+import { UnitrollerStorage } from "../Unitroller/UnitrollerStorage.sol";
+import { GaugePool } from "../../gauge/GaugePool.sol";
+import { CToken } from "../../token/collateral/CToken.sol";
 
 contract MarketStorage {
     struct Market {
@@ -45,9 +45,6 @@ contract LendtrollerStorage is UnitrollerStorage, MarketStorage {
 
     /// @notice Oracle which gives the price of any given asset
     PriceOracle public oracle;
-
-    /// @notice Allows connection to the Rewards Contract
-    //RewardsInterface public rewarder;
 
     /// @notice Multiplier used to calculate the maximum repayAmount when liquidating a borrow
     uint256 public closeFactorScaled;
@@ -95,4 +92,7 @@ contract LendtrollerStorage is UnitrollerStorage, MarketStorage {
 
     // PositionFolding contract address
     address public positionFolding;
+
+    // GaugePool contract address
+    GaugePool public gaugePool;
 }

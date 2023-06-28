@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import "contracts/market/lendtroller/LendtrollerInterface.sol";
+import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
 import "contracts/market/interestRates/InterestRateModel.sol";
 import "./CTokenStorage.sol";
 
@@ -79,8 +79,8 @@ abstract contract CTokenInterface is CTokenStorage {
      * @notice Event emitted when lendtroller is changed
      */
     event NewLendtroller(
-        LendtrollerInterface oldLendtroller,
-        LendtrollerInterface newLendtroller
+        Lendtroller oldLendtroller,
+        Lendtroller newLendtroller
     );
 
     /**
@@ -132,10 +132,10 @@ abstract contract CTokenInterface is CTokenStorage {
     );
 
     /*** User Interface ***/
-    function transfer(address dst, uint256 amount)
-        external
-        virtual
-        returns (bool);
+    function transfer(
+        address dst,
+        uint256 amount
+    ) external virtual returns (bool);
 
     function transferFrom(
         address src,
@@ -143,33 +143,25 @@ abstract contract CTokenInterface is CTokenStorage {
         uint256 amount
     ) external virtual returns (bool);
 
-    function approve(address spender, uint256 amount)
-        external
-        virtual
-        returns (bool);
+    function approve(
+        address spender,
+        uint256 amount
+    ) external virtual returns (bool);
 
-    function allowance(address owner, address spender)
-        external
-        view
-        virtual
-        returns (uint256);
+    function allowance(
+        address owner,
+        address spender
+    ) external view virtual returns (uint256);
 
     function balanceOf(address owner) external view virtual returns (uint256);
 
-    function balanceOfUnderlying(address owner)
-        external
-        virtual
-        returns (uint256);
+    function balanceOfUnderlying(
+        address owner
+    ) external virtual returns (uint256);
 
-    function getAccountSnapshot(address account)
-        external
-        view
-        virtual
-        returns (
-            uint256,
-            uint256,
-            uint256
-        );
+    function getAccountSnapshot(
+        address account
+    ) external view virtual returns (uint256, uint256, uint256);
 
     function borrowRatePerBlock() external view virtual returns (uint256);
 
@@ -177,16 +169,13 @@ abstract contract CTokenInterface is CTokenStorage {
 
     function totalBorrowsCurrent() external virtual returns (uint256);
 
-    function borrowBalanceCurrent(address account)
-        external
-        virtual
-        returns (uint256);
+    function borrowBalanceCurrent(
+        address account
+    ) external virtual returns (uint256);
 
-    function borrowBalanceStored(address account)
-        external
-        view
-        virtual
-        returns (uint256);
+    function borrowBalanceStored(
+        address account
+    ) external view virtual returns (uint256);
 
     function exchangeRateCurrent() public virtual returns (uint256);
 
@@ -203,23 +192,21 @@ abstract contract CTokenInterface is CTokenStorage {
     ) external virtual;
 
     /*** Admin Functions ***/
-    function _setPendingAdmin(address payable newPendingAdmin)
-        external
-        virtual;
+    function _setPendingAdmin(
+        address payable newPendingAdmin
+    ) external virtual;
 
     function _acceptAdmin() external virtual;
 
-    function _setLendtroller(LendtrollerInterface newLendtroller)
-        public
-        virtual;
+    function _setLendtroller(Lendtroller newLendtroller) public virtual;
 
-    function _setReserveFactor(uint256 newReserveFactorMantissa)
-        external
-        virtual;
+    function _setReserveFactor(
+        uint256 newReserveFactorMantissa
+    ) external virtual;
 
     function _reduceReserves(uint256 reduceAmount) external virtual;
 
-    function _setInterestRateModel(InterestRateModel newInterestRateModel)
-        external
-        virtual;
+    function _setInterestRateModel(
+        InterestRateModel newInterestRateModel
+    ) external virtual;
 }

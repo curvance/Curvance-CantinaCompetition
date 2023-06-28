@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import "contracts/market/lendtroller/LendtrollerInterface.sol";
+import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
 import "contracts/market/interestRates/InterestRateModel.sol";
 import "./CommonError.sol";
 
@@ -63,12 +63,7 @@ abstract contract CTokenStorage is CommonError {
     /**
      * @notice Contract which oversees inter-cToken operations
      */
-    LendtrollerInterface public lendtroller;
-
-    /**
-     * @notice Gauge contract address
-     */
-    address public gaugePool;
+    Lendtroller public lendtroller;
 
     /**
      * @notice Model which tells what the current interest rate should be

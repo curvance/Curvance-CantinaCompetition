@@ -6,8 +6,6 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { ERC4626, SafeTransferLib, ERC20 } from "contracts/libraries/ERC4626.sol";
 import { Math } from "contracts/libraries/Math.sol";
 
-import { console } from "@forge-std/Test.sol"; //TODO remove this
-
 /**
  * @title Curvance Deposit Router
  * @notice Provides a universal interface allowing Curvance contracts to deposit and withdraw assets from:
@@ -30,7 +28,8 @@ contract DepositRouterV2 is Ownable {
     mapping(ERC4626 => address) public positionOperator;
 
     modifier isOperator(ERC4626 _position) {
-        if (positionOperator[_position] != msg.sender) revert("Not the operator");
+        if (positionOperator[_position] != msg.sender)
+            revert("Not the operator");
         _;
     }
 
@@ -44,7 +43,10 @@ contract DepositRouterV2 is Ownable {
      * @notice Allows `owner` to add new positions to this contract.
      * @dev see `Position` struct for description of inputs.
      */
-    function addPosition(ERC4626 _position, address _operator) external onlyOwner {
+    function addPosition(
+        ERC4626 _position,
+        address _operator
+    ) external onlyOwner {
         if (isPositionUsed[_position]) revert("Position already used");
         positionOperator[_position] = _operator;
         positions.push(_position);
@@ -58,10 +60,18 @@ contract DepositRouterV2 is Ownable {
      * Takes underlying token and deposits it into the underlying protocol
      * returns the amount of shares
      */
-    function deposit(uint256 amount, ERC4626 _position) public isOperator(_position) returns (uint256) {
+    function deposit(
+        uint256 amount,
+        ERC4626 _position
+    ) public isOperator(_position) returns (uint256) {
         if (!isPositionUsed[_position]) revert("Position not used");
         // transfer asset in.
-        SafeTransferLib.safeTransferFrom(_position.asset(), msg.sender, address(this), amount);
+        SafeTransferLib.safeTransferFrom(
+            _position.asset(),
+            msg.sender,
+            address(this),
+            amount
+        );
 
         // deposit it into ERC4626 vault.
         _position.deposit(amount, msg.sender);
@@ -69,7 +79,10 @@ contract DepositRouterV2 is Ownable {
         return amount;
     }
 
-    function withdraw(uint256 amount, ERC4626 _position) public isOperator(_position) returns (uint256) {
+    function withdraw(
+        uint256 amount,
+        ERC4626 _position
+    ) public isOperator(_position) returns (uint256) {
         // TODO transfer shares in?
 
         // TODO could send the assets here or direclty to caller.

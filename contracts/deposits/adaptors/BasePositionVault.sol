@@ -2,11 +2,11 @@
 pragma solidity ^0.8.17;
 
 import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-import { ERC4626, SafeTransferLib, ERC20} from "contracts/libraries/ERC4626.sol";
+import { ERC4626, SafeTransferLib, ERC20 } from "contracts/libraries/ERC4626.sol";
 import { Math } from "contracts/libraries/Math.sol";
 import { PriceRouter } from "contracts/oracles/PriceRouterV2.sol";
-import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 // Chainlink interfaces
@@ -314,20 +314,17 @@ abstract contract BasePositionVault is
         _totalAssets = _ta;
 
         // Update share price high watermark since rewards have been vested.
-        _sharePriceHighWatermark = _convertToAssets(10**_decimals, _ta);
+        _sharePriceHighWatermark = _convertToAssets(10 ** _decimals, _ta);
     }
 
     /*//////////////////////////////////////////////////////////////
                         DEPOSIT/WITHDRAWAL LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function deposit(uint256 assets, address receiver)
-        public
-        override
-        whenNotShutdown
-        nonReentrant
-        returns (uint256 shares)
-    {
+    function deposit(
+        uint256 assets,
+        address receiver
+    ) public override whenNotShutdown nonReentrant returns (uint256 shares) {
         // Save _totalAssets and pendingRewards to memory.
         uint256 pending = _calculatePendingRewards();
         uint256 ta = _totalAssets + pending;
@@ -336,7 +333,12 @@ abstract contract BasePositionVault is
         require((shares = _previewDeposit(assets, ta)) != 0, "ZERO_SHARES");
 
         // Need to transfer before minting or ERC777s could reenter.
-        SafeTransferLib.safeTransferFrom(asset(), msg.sender, address(this), assets);
+        SafeTransferLib.safeTransferFrom(
+            asset(),
+            msg.sender,
+            address(this),
+            assets
+        );
 
         _mint(receiver, shares);
 
@@ -351,13 +353,10 @@ abstract contract BasePositionVault is
         _deposit(assets);
     }
 
-    function mint(uint256 shares, address receiver)
-        public
-        override
-        whenNotShutdown
-        nonReentrant
-        returns (uint256 assets)
-    {
+    function mint(
+        uint256 shares,
+        address receiver
+    ) public override whenNotShutdown nonReentrant returns (uint256 assets) {
         // Save _totalAssets and pendingRewards to memory.
         uint256 pending = _calculatePendingRewards();
         uint256 ta = _totalAssets + pending;
@@ -365,7 +364,12 @@ abstract contract BasePositionVault is
         assets = _previewMint(shares, ta); // No need to check for rounding error, previewMint rounds up.
 
         // Need to transfer before minting or ERC777s could reenter.
-        SafeTransferLib.safeTransferFrom(asset(), msg.sender, address(this), assets);
+        SafeTransferLib.safeTransferFrom(
+            asset(),
+            msg.sender,
+            address(this),
+            assets
+        );
 
         _mint(receiver, shares);
 
@@ -397,7 +401,7 @@ abstract contract BasePositionVault is
 
             if (allowed != type(uint256).max)
                 decreaseAllowance(owner, allowed - shares);
-                //allowance[owner][msg.sender] = allowed - shares;
+            //allowance[owner][msg.sender] = allowed - shares;
         }
 
         // Remove the users withdrawn assets.
@@ -429,7 +433,7 @@ abstract contract BasePositionVault is
 
             if (allowed != type(uint256).max)
                 decreaseAllowance(owner, allowed - shares);
-                //allowance[owner][msg.sender] = allowed - shares; // modified 4626 implementation
+            //allowance[owner][msg.sender] = allowed - shares; // modified 4626 implementation
         }
 
         // Check for rounding error since we round down in previewRedeem.
@@ -458,65 +462,46 @@ abstract contract BasePositionVault is
         return _totalAssets + _calculatePendingRewards();
     }
 
-    function convertToShares(uint256 assets)
-        public
-        view
-        override
-        returns (uint256)
-    {
+    function convertToShares(
+        uint256 assets
+    ) public view override returns (uint256) {
         return _convertToShares(assets, totalSupply());
     }
 
-    function convertToAssets(uint256 shares)
-        public
-        view
-        override
-        returns (uint256)
-    {
+    function convertToAssets(
+        uint256 shares
+    ) public view override returns (uint256) {
         return _convertToAssets(shares, totalAssets());
     }
 
-    function previewDeposit(uint256 assets)
-        public
-        view
-        override
-        returns (uint256)
-    {
+    function previewDeposit(
+        uint256 assets
+    ) public view override returns (uint256) {
         return convertToShares(assets);
     }
 
-    function previewMint(uint256 shares)
-        public
-        view
-        override
-        returns (uint256)
-    {
+    function previewMint(
+        uint256 shares
+    ) public view override returns (uint256) {
         return _previewMint(shares, totalAssets());
     }
 
-    function previewWithdraw(uint256 assets)
-        public
-        view
-        override
-        returns (uint256)
-    {
+    function previewWithdraw(
+        uint256 assets
+    ) public view override returns (uint256) {
         return _previewWithdraw(assets, totalAssets());
     }
 
-    function previewRedeem(uint256 shares)
-        public
-        view
-        override
-        returns (uint256)
-    {
+    function previewRedeem(
+        uint256 shares
+    ) public view override returns (uint256) {
         return convertToAssets(shares);
     }
 
-    function _convertToShares(uint256 assets, uint256 _ta)
-        internal
-        view
-        returns (uint256 shares)
-    {
+    function _convertToShares(
+        uint256 assets,
+        uint256 _ta
+    ) internal view returns (uint256 shares) {
         uint256 totalShares = totalSupply();
 
         shares = totalShares == 0
@@ -524,11 +509,10 @@ abstract contract BasePositionVault is
             : assets.mulDivDown(totalShares, _ta);
     }
 
-    function _convertToAssets(uint256 shares, uint256 _ta)
-        internal
-        view
-        returns (uint256 assets)
-    {
+    function _convertToAssets(
+        uint256 shares,
+        uint256 _ta
+    ) internal view returns (uint256 assets) {
         uint256 totalShares = totalSupply();
 
         assets = totalShares == 0
@@ -536,19 +520,17 @@ abstract contract BasePositionVault is
             : shares.mulDivDown(_ta, totalShares);
     }
 
-    function _previewDeposit(uint256 assets, uint256 _ta)
-        internal
-        view
-        returns (uint256)
-    {
+    function _previewDeposit(
+        uint256 assets,
+        uint256 _ta
+    ) internal view returns (uint256) {
         return _convertToShares(assets, _ta);
     }
 
-    function _previewMint(uint256 shares, uint256 _ta)
-        internal
-        view
-        returns (uint256 assets)
-    {
+    function _previewMint(
+        uint256 shares,
+        uint256 _ta
+    ) internal view returns (uint256 assets) {
         uint256 totalShares = totalSupply();
 
         assets = totalShares == 0
@@ -556,11 +538,10 @@ abstract contract BasePositionVault is
             : shares.mulDivUp(_ta, totalShares);
     }
 
-    function _previewWithdraw(uint256 assets, uint256 _ta)
-        internal
-        view
-        returns (uint256 shares)
-    {
+    function _previewWithdraw(
+        uint256 assets,
+        uint256 _ta
+    ) internal view returns (uint256 shares) {
         uint256 totalShares = totalSupply();
 
         shares = totalShares == 0
@@ -568,11 +549,10 @@ abstract contract BasePositionVault is
             : assets.mulDivUp(totalShares, _ta);
     }
 
-    function _previewRedeem(uint256 shares, uint256 _ta)
-        internal
-        view
-        returns (uint256)
-    {
+    function _previewRedeem(
+        uint256 shares,
+        uint256 _ta
+    ) internal view returns (uint256) {
         return _convertToAssets(shares, _ta);
     }
 
@@ -580,10 +560,9 @@ abstract contract BasePositionVault is
                     CHAINLINK AUTOMATION LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function checkUpkeep(bytes calldata data)
-        external
-        returns (bool upkeepNeeded, bytes memory performData)
-    {
+    function checkUpkeep(
+        bytes calldata data
+    ) external returns (bool upkeepNeeded, bytes memory performData) {
         if (positionVaultMetaData.isShutdown) return (false, abi.encode(0));
 
         // Compare real total assets to stored, and trigger circuit breaker if real is less than stored.
@@ -594,7 +573,7 @@ abstract contract BasePositionVault is
 
         // Compare current share price to high watermark and trigger circuit breaker if less than high watermark.
         uint256 currentSharePrice = _convertToAssets(
-            10**_decimals,
+            10 ** _decimals,
             storedTotalAssets
         );
         if (currentSharePrice < _sharePriceHighWatermark)
@@ -607,7 +586,7 @@ abstract contract BasePositionVault is
         uint256 yieldInUSD = yield > 0
             ? yield.mulDivDown(
                 positionVaultMetaData.priceRouter.getPriceUSD(asset()),
-                10**_asset.decimals()
+                10 ** _asset.decimals()
             )
             : 0;
         if (yieldInUSD < positionVaultMetaData.minHarvestYieldInUSD)
