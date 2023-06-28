@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 import "./GaugeController.sol";
 import "./ChildGaugePool.sol";
-import "../market/lendtroller/LendtrollerInterface.sol";
+import "contracts/interfaces/market/ILendtroller.sol";
 
 contract GaugePool is GaugeController, ReentrancyGuard {
     using SafeERC20 for IERC20;
@@ -158,9 +158,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         address user,
         uint256 amount
     ) external nonReentrant {
-        (bool isListed, , ) = LendtrollerInterface(lendtroller).getIsMarkets(
-            token
-        );
+        (bool isListed, , ) = ILendtroller(lendtroller).getIsMarkets(token);
         if (msg.sender != token || !isListed) {
             revert GaugeErrors.InvalidToken();
         }
@@ -196,9 +194,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         address user,
         uint256 amount
     ) external nonReentrant {
-        (bool isListed, , ) = LendtrollerInterface(lendtroller).getIsMarkets(
-            token
-        );
+        (bool isListed, , ) = ILendtroller(lendtroller).getIsMarkets(token);
         if (msg.sender != token || !isListed) {
             revert GaugeErrors.InvalidToken();
         }
