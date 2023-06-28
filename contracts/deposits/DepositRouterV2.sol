@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.17;
 
-import { ERC4626, SafeTransferLib, ERC20 } from "@solmate/mixins/ERC4626.sol";
+import { ERC4626, SafeTransferLib, ERC20 } from "contracts/libraries/ERC4626.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { PriceRouter } from "contracts/oracles/PriceRouterV2.sol";
 
@@ -27,7 +27,6 @@ import { IChainlinkAggregator } from "contracts/interfaces/external/chainlink/IC
 //TODO add events
 contract DepositRouterV2 is Ownable {
     using Uint32Array for uint32[];
-    using SafeTransferLib for ERC20;
     using Math for uint256;
 
     // TODO should probs make a lib that helps with managing this array.
@@ -103,7 +102,7 @@ contract DepositRouterV2 is Ownable {
     {
         if (!isPositionUsed[_position]) revert("Position not used");
         // transfer asset in.
-        _position.asset().safeTransferFrom(msg.sender, address(this), amount);
+        SafeTransferLib.safeTransferFrom(_position.asset(), msg.sender, address(this), amount);
 
         // deposit it into ERC4626 vault.
         _position.deposit(amount, msg.sender);

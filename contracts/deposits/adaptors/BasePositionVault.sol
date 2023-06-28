@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.17;
 
-import { ERC4626, SafeTransferLib, ERC20 } from "contracts/libraries/ERC4626.sol";
+import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+
+import { ERC4626, SafeTransferLib, ERC20} from "contracts/libraries/ERC4626.sol";
 import { Math } from "contracts/libraries/Math.sol";
 import { PriceRouter } from "contracts/oracles/PriceRouterV2.sol";
-import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
-import { Owned } from "@solmate/auth/Owned.sol";
-import { ReentrancyGuard } from "@solmate/utils/ReentrancyGuard.sol";
+import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
+import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 // Chainlink interfaces
 import { KeeperCompatibleInterface } from "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
@@ -20,10 +21,8 @@ abstract contract BasePositionVault is
     ERC4626,
     Initializable,
     KeeperCompatibleInterface,
-    Owned,
     ReentrancyGuard
 {
-    using SafeTransferLib for ERC20;
     using Math for uint256;
 
     /*//////////////////////////////////////////////////////////////
@@ -52,6 +51,16 @@ abstract contract BasePositionVault is
     /*//////////////////////////////////////////////////////////////
                              GLOBAL STATE
     //////////////////////////////////////////////////////////////*/
+
+    /**
+     * @notice Address for Curvance DAO registry contract for ownership and location data.
+     */
+    ICentralRegistry public centralRegistry;
+
+    ERC20 public _asset;
+    string private _name;
+    string private _symbol;
+    uint8 private _decimals;
 
     PositionVaultMetaData public positionVaultMetaData;
     PositionVaultAccounting public positionVaultAccounting;
@@ -124,27 +133,33 @@ abstract contract BasePositionVault is
     //////////////////////////////////////////////////////////////*/
 
     constructor(
-        ERC20 _asset,
-        string memory _name,
-        string memory _symbol,
-        uint8 _decimals,
-        address _owner
-    ) ERC4626(_asset, _name, _symbol, _decimals) Owned(_owner) {}
+        ERC20 asset_,
+        string memory name_,
+        string memory symbol_,
+        uint8 decimals_,
+        ICentralRegistry _centralRegistry
+    ) {
+        _asset = asset_;
+        _name = name_;
+        _symbol = symbol_;
+        _decimals = decimals_;
+        centralRegistry = _centralRegistry;
+    }
 
     function initialize(
-        ERC20 _asset,
-        address _owner,
-        string memory _name,
-        string memory _symbol,
-        uint8 _decimals,
+        ERC20 asset_,
+        ICentralRegistry _centralRegistry,
+        string memory name_,
+        string memory symbol_,
+        uint8 decimals_,
         PositionVaultMetaData calldata _metaData,
         bytes memory
     ) public virtual {
-        asset = _asset;
-        owner = _owner;
-        name = _name;
-        symbol = _symbol;
-        decimals = _decimals;
+        _asset = asset_;
+        _name = name_;
+        _symbol = symbol_;
+        _decimals = decimals_;
+        centralRegistry = _centralRegistry;
         if (_metaData.platformFee > MAX_PLATFORM_FEE)
             revert BasePositionVault__InvalidPlatformFee(
                 _metaData.platformFee
@@ -152,6 +167,35 @@ abstract contract BasePositionVault is
         if (_metaData.upkeepFee > MAX_UPKEEP_FEE)
             revert BasePositionVault__InvalidUpkeepFee(_metaData.upkeepFee);
         positionVaultMetaData = _metaData;
+    }
+
+    // Only callable by DAO
+    modifier onlyDaoManager() {
+        require(
+            msg.sender == centralRegistry.daoAddress(),
+            "priceRouter: UNAUTHORIZED"
+        );
+        _;
+    }
+
+    /// @dev Returns the name of the token.
+    function name() public view override returns (string memory) {
+        return _name;
+    }
+
+    /// @dev Returns the symbol of the token.
+    function symbol() public view override returns (string memory) {
+        return _symbol;
+    }
+
+    /// @dev Returns the address of the underlying asset.
+    function asset() public view override returns (address) {
+        return address(_asset);
+    }
+
+    /// @dev Returns the decimals of the underlying asset.
+    function _underlyingDecimals() internal view override returns (uint8) {
+        return _decimals;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -162,44 +206,44 @@ abstract contract BasePositionVault is
      * @notice Allows owner to set a new gas feed.
      * @notice Can be set to zero address to skip gas check.
      */
-    function setGasFeed(address gasFeed) external onlyOwner {
+    function setGasFeed(address gasFeed) external onlyDaoManager {
         positionVaultMetaData.ethFastGasFeed = gasFeed;
         emit GasFeedChanged(gasFeed);
     }
 
-    function setWatchdog(address _watchdog) external onlyOwner {
+    function setWatchdog(address _watchdog) external onlyDaoManager {
         positionVaultMetaData.positionWatchdog = _watchdog;
         emit WatchdogChanged(_watchdog);
     }
 
-    function setMinHarvestYield(uint64 minYieldUSD) external onlyOwner {
+    function setMinHarvestYield(uint64 minYieldUSD) external onlyDaoManager {
         positionVaultMetaData.minHarvestYieldInUSD = minYieldUSD;
         emit MinYieldForHarvestChanged(minYieldUSD);
     }
 
-    function setMaxGasForHarvest(uint64 maxGas) external onlyOwner {
+    function setMaxGasForHarvest(uint64 maxGas) external onlyDaoManager {
         positionVaultMetaData.maxGasPriceForHarvest = maxGas;
         emit MaxGasForHarvestChanged(maxGas);
     }
 
-    function setPriceRouter(PriceRouter _priceRouter) external onlyOwner {
+    function setPriceRouter(PriceRouter _priceRouter) external onlyDaoManager {
         positionVaultMetaData.priceRouter = _priceRouter;
         emit PriceRouterChanged(address(_priceRouter));
     }
 
-    function setPlatformFee(uint64 fee) external onlyOwner {
+    function setPlatformFee(uint64 fee) external onlyDaoManager {
         if (fee > MAX_PLATFORM_FEE)
             revert BasePositionVault__InvalidPlatformFee(fee);
         positionVaultMetaData.platformFee = fee;
         emit PlatformFeeChanged(fee);
     }
 
-    function setFeeAccumulator(address accumulator) external onlyOwner {
+    function setFeeAccumulator(address accumulator) external onlyDaoManager {
         positionVaultMetaData.feeAccumulator = accumulator;
         emit FeeAccumulatorChanged(accumulator);
     }
 
-    function setUpkeepFee(uint64 fee) external onlyOwner {
+    function setUpkeepFee(uint64 fee) external onlyDaoManager {
         if (fee > MAX_UPKEEP_FEE)
             revert BasePositionVault__InvalidUpkeepFee(fee);
         positionVaultMetaData.upkeepFee = fee;
@@ -210,7 +254,7 @@ abstract contract BasePositionVault is
      * @notice Shutdown the vault. Used in an emergency or if the vault has been deprecated.
      * @dev In the case where
      */
-    function initiateShutdown() external whenNotShutdown onlyOwner {
+    function initiateShutdown() external whenNotShutdown onlyDaoManager {
         positionVaultMetaData.isShutdown = true;
 
         emit ShutdownChanged(true);
@@ -219,7 +263,7 @@ abstract contract BasePositionVault is
     /**
      * @notice Restart the vault.
      */
-    function liftShutdown() external onlyOwner {
+    function liftShutdown() external onlyDaoManager {
         if (!positionVaultMetaData.isShutdown)
             revert BasePositionVault__ContractNotShutdown();
         positionVaultMetaData.isShutdown = false;
@@ -270,7 +314,7 @@ abstract contract BasePositionVault is
         _totalAssets = _ta;
 
         // Update share price high watermark since rewards have been vested.
-        _sharePriceHighWatermark = _convertToAssets(10**decimals, _ta);
+        _sharePriceHighWatermark = _convertToAssets(10**_decimals, _ta);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -292,7 +336,7 @@ abstract contract BasePositionVault is
         require((shares = _previewDeposit(assets, ta)) != 0, "ZERO_SHARES");
 
         // Need to transfer before minting or ERC777s could reenter.
-        asset.safeTransferFrom(msg.sender, address(this), assets);
+        SafeTransferLib.safeTransferFrom(asset(), msg.sender, address(this), assets);
 
         _mint(receiver, shares);
 
@@ -321,7 +365,7 @@ abstract contract BasePositionVault is
         assets = _previewMint(shares, ta); // No need to check for rounding error, previewMint rounds up.
 
         // Need to transfer before minting or ERC777s could reenter.
-        asset.safeTransferFrom(msg.sender, address(this), assets);
+        SafeTransferLib.safeTransferFrom(asset(), msg.sender, address(this), assets);
 
         _mint(receiver, shares);
 
@@ -348,10 +392,12 @@ abstract contract BasePositionVault is
         shares = _previewWithdraw(assets, ta); // No need to check for rounding error, previewWithdraw rounds up.
 
         if (msg.sender != owner) {
-            uint256 allowed = allowance[owner][msg.sender]; // Saves gas for limited approvals.
+            uint256 allowed = allowance(owner, msg.sender);
+            //uint256 allowed = allowance[owner][msg.sender]; // Saves gas for limited approvals.
 
             if (allowed != type(uint256).max)
-                allowance[owner][msg.sender] = allowed - shares;
+                decreaseAllowance(owner, allowed - shares);
+                //allowance[owner][msg.sender] = allowed - shares;
         }
 
         // Remove the users withdrawn assets.
@@ -365,7 +411,7 @@ abstract contract BasePositionVault is
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
 
-        asset.safeTransfer(receiver, assets);
+        SafeTransferLib.safeTransfer(asset(), receiver, assets);
     }
 
     function redeem(
@@ -378,10 +424,12 @@ abstract contract BasePositionVault is
         uint256 ta = _totalAssets + pending;
 
         if (msg.sender != owner) {
-            uint256 allowed = allowance[owner][msg.sender]; // Saves gas for limited approvals.
+            uint256 allowed = allowance(owner, msg.sender);
+            //uint256 allowed = allowance[owner][msg.sender]; // Saves gas for limited approvals.
 
             if (allowed != type(uint256).max)
-                allowance[owner][msg.sender] = allowed - shares;
+                decreaseAllowance(owner, allowed - shares);
+                //allowance[owner][msg.sender] = allowed - shares;
         }
 
         // Check for rounding error since we round down in previewRedeem.
@@ -398,7 +446,7 @@ abstract contract BasePositionVault is
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
 
-        asset.safeTransfer(receiver, assets);
+        SafeTransferLib.safeTransfer(asset(), receiver, assets);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -416,7 +464,7 @@ abstract contract BasePositionVault is
         override
         returns (uint256)
     {
-        return _convertToShares(assets, totalSupply);
+        return _convertToShares(assets, totalSupply());
     }
 
     function convertToAssets(uint256 shares)
@@ -469,10 +517,10 @@ abstract contract BasePositionVault is
         view
         returns (uint256 shares)
     {
-        uint256 totalShares = totalSupply;
+        uint256 totalShares = totalSupply();
 
         shares = totalShares == 0
-            ? assets.changeDecimals(asset.decimals(), 18)
+            ? assets.changeDecimals(_asset.decimals(), 18)
             : assets.mulDivDown(totalShares, _ta);
     }
 
@@ -481,10 +529,10 @@ abstract contract BasePositionVault is
         view
         returns (uint256 assets)
     {
-        uint256 totalShares = totalSupply;
+        uint256 totalShares = totalSupply();
 
         assets = totalShares == 0
-            ? shares.changeDecimals(18, asset.decimals())
+            ? shares.changeDecimals(18, _asset.decimals())
             : shares.mulDivDown(_ta, totalShares);
     }
 
@@ -501,10 +549,10 @@ abstract contract BasePositionVault is
         view
         returns (uint256 assets)
     {
-        uint256 totalShares = totalSupply;
+        uint256 totalShares = totalSupply();
 
         assets = totalShares == 0
-            ? shares.changeDecimals(18, asset.decimals())
+            ? shares.changeDecimals(18, _asset.decimals())
             : shares.mulDivUp(_ta, totalShares);
     }
 
@@ -513,10 +561,10 @@ abstract contract BasePositionVault is
         view
         returns (uint256 shares)
     {
-        uint256 totalShares = totalSupply;
+        uint256 totalShares = totalSupply();
 
         shares = totalShares == 0
-            ? assets.changeDecimals(asset.decimals(), 18)
+            ? assets.changeDecimals(_asset.decimals(), 18)
             : assets.mulDivUp(totalShares, _ta);
     }
 
@@ -546,7 +594,7 @@ abstract contract BasePositionVault is
 
         // Compare current share price to high watermark and trigger circuit breaker if less than high watermark.
         uint256 currentSharePrice = _convertToAssets(
-            10**decimals,
+            10**_decimals,
             storedTotalAssets
         );
         if (currentSharePrice < _sharePriceHighWatermark)
@@ -558,8 +606,8 @@ abstract contract BasePositionVault is
         // Compare USD value of yield against owner set minimum.
         uint256 yieldInUSD = yield > 0
             ? yield.mulDivDown(
-                positionVaultMetaData.priceRouter.getPriceInUSD(asset),
-                10**asset.decimals()
+                positionVaultMetaData.priceRouter.getPriceUSD(asset()),
+                10**_asset.decimals()
             )
             : 0;
         if (yieldInUSD < positionVaultMetaData.minHarvestYieldInUSD)

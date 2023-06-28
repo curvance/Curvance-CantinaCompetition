@@ -2,6 +2,7 @@
 pragma solidity ^0.8.17;
 
 import { BasePositionVault, ERC4626, SafeTransferLib, ERC20, Math, PriceRouter } from "./BasePositionVault.sol";
+import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 // External interfaces
 import { IVeloGauge } from "contracts/interfaces/external/velodrome/IVeloGauge.sol";
@@ -17,7 +18,6 @@ import { AggregatorV2V3Interface } from "@chainlink/contracts/src/v0.8/interface
 import { IChainlinkAggregator } from "contracts/interfaces/external/chainlink/IChainlinkAggregator.sol";
 
 contract VelodromeStablePositionVault is BasePositionVault {
-    using SafeTransferLib for ERC20;
     using Math for uint256;
 
     /*//////////////////////////////////////////////////////////////
@@ -111,18 +111,18 @@ contract VelodromeStablePositionVault is BasePositionVault {
      */
     constructor(
         ERC20 _asset,
-        address _owner,
         string memory _name,
         string memory _symbol,
-        uint8 _decimals
-    ) BasePositionVault(_asset, _name, _symbol, _decimals, _owner) {}
+        uint8 _decimals,
+        ICentralRegistry _centralRegistry
+    ) BasePositionVault(_asset, _name, _symbol, _decimals, _centralRegistry) {}
 
     /**
      * @notice Initialize function to fully setup this vault.
      */
     function initialize(
         ERC20 _asset,
-        address _owner,
+        ICentralRegistry _centralRegistry,
         string memory _name,
         string memory _symbol,
         uint8 _decimals,
@@ -131,7 +131,7 @@ contract VelodromeStablePositionVault is BasePositionVault {
     ) public override initializer {
         super.initialize(
             _asset,
-            _owner,
+            _centralRegistry,
             _name,
             _symbol,
             _decimals,
@@ -175,7 +175,7 @@ contract VelodromeStablePositionVault is BasePositionVault {
                               OWNER LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function updateHarvestSlippage(uint64 _slippage) external onlyOwner {
+    function updateHarvestSlippage(uint64 _slippage) external onlyDaoManager {
         harvestSlippage = _slippage;
         emit HarvestSlippageChanged(_slippage);
     }
@@ -219,15 +219,12 @@ contract VelodromeStablePositionVault is BasePositionVault {
                     1e18
                 );
                 amount -= protocolFee;
-                ERC20(reward).safeTransfer(
+                SafeTransferLib.safeTransfer(reward,
                     positionVaultMetaData.feeAccumulator,
                     protocolFee
                 );
-
                 uint256 valueInUSD = amount.mulDivDown(
-                    positionVaultMetaData.priceRouter.getPriceInUSD(
-                        ERC20(reward)
-                    ),
+                    positionVaultMetaData.priceRouter.getPriceUSD(reward),
                     10**ERC20(reward).decimals()
                 );
 
@@ -250,17 +247,17 @@ contract VelodromeStablePositionVault is BasePositionVault {
                 );
                 if (positionVaultMetaData.positionWatchdog == address(0))
                     revert VelodromePositionVault__WatchdogNotSet();
-                ERC20(tokenA).safeTransfer(
+                SafeTransferLib.safeTransfer(tokenA,
                     positionVaultMetaData.positionWatchdog,
                     feeForUpkeep
                 );
                 totalAmountA -= feeForUpkeep;
             }
 
-            (uint256 r0, uint256 r1, ) = IVeloPair(address(asset))
+            (uint256 r0, uint256 r1, ) = IVeloPair(asset())
                 .getReserves();
             (uint256 reserveA, uint256 reserveB) = tokenA ==
-                IVeloPair(address(asset)).token0()
+                IVeloPair(asset()).token0()
                 ? (r0, r1)
                 : (r1, r0);
             uint256 swapAmount = _optimalDeposit(
@@ -276,17 +273,15 @@ contract VelodromeStablePositionVault is BasePositionVault {
             uint256 totalAmountB = ERC20(tokenB).balanceOf(address(this));
 
             // 4. Check USD value slippage
+            
             uint256 valueOut = totalAmountA.mulDivDown(
-                positionVaultMetaData.priceRouter.getPriceInUSD(ERC20(tokenA)),
+                positionVaultMetaData.priceRouter.getPriceUSD(tokenA),
                 10**ERC20(tokenA).decimals()
             ) +
                 totalAmountB.mulDivDown(
-                    positionVaultMetaData.priceRouter.getPriceInUSD(
-                        ERC20(tokenB)
-                    ),
+                    positionVaultMetaData.priceRouter.getPriceUSD(tokenB),
                     10**ERC20(tokenB).decimals()
                 );
-
             // Compare value in vs value out.
             if (
                 valueOut <
@@ -323,7 +318,7 @@ contract VelodromeStablePositionVault is BasePositionVault {
     }
 
     function _deposit(uint256 assets) internal override {
-        asset.safeApprove(address(gauge), assets);
+        SafeTransferLib.safeApprove(asset(), address(gauge), assets);
         gauge.deposit(assets, 0);
     }
 
@@ -363,7 +358,7 @@ contract VelodromeStablePositionVault is BasePositionVault {
     function approveRouter(address token, uint256 amount) internal {
         if (ERC20(token).allowance(address(this), address(router)) >= amount)
             return;
-        ERC20(token).safeApprove(address(router), type(uint256).max);
+        SafeTransferLib.safeApprove(token, address(router), type(uint256).max);
     }
 
     function swapExactTokensForTokens(
@@ -420,7 +415,7 @@ contract VelodromeStablePositionVault is BasePositionVault {
             tokenOut
         );
         require(pair != address(0), "NO_PAIR");
-        ERC20(tokenIn).safeTransfer(pair, amountIn);
+        SafeTransferLib.safeTransfer(tokenIn, pair, amountIn);
         if (tokenIn < tokenOut) {
             IOptiSwapPair(pair).swap(
                 0,

@@ -2,6 +2,7 @@
 pragma solidity 0.8.17;
 
 import { BasePositionVault, ERC4626, SafeTransferLib, ERC20, Math, PriceRouter } from "./BasePositionVault.sol";
+import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 // External interfaces
 import { IBooster } from "contracts/interfaces/external/convex/IBooster.sol";
@@ -15,7 +16,6 @@ import { AggregatorV2V3Interface } from "@chainlink/contracts/src/v0.8/interface
 import { IChainlinkAggregator } from "contracts/interfaces/external/chainlink/IChainlinkAggregator.sol";
 
 contract AuraPositionVault is BasePositionVault {
-    using SafeTransferLib for ERC20;
     using Math for uint256;
 
     /*//////////////////////////////////////////////////////////////
@@ -111,18 +111,18 @@ contract AuraPositionVault is BasePositionVault {
      */
     constructor(
         ERC20 _asset,
-        address _owner,
         string memory _name,
         string memory _symbol,
-        uint8 _decimals
-    ) BasePositionVault(_asset, _name, _symbol, _decimals, _owner) {}
+        uint8 _decimals,
+        ICentralRegistry _centralRegistry
+    ) BasePositionVault(_asset, _name, _symbol, _decimals, _centralRegistry) {}
 
     /**
      * @notice Initialize function to fully setup this vault.
      */
     function initialize(
         ERC20 _asset,
-        address _owner,
+        ICentralRegistry _centralRegistry,
         string memory _name,
         string memory _symbol,
         uint8 _decimals,
@@ -131,7 +131,7 @@ contract AuraPositionVault is BasePositionVault {
     ) public override initializer {
         super.initialize(
             _asset,
-            _owner,
+            _centralRegistry,
             _name,
             _symbol,
             _decimals,
@@ -174,21 +174,21 @@ contract AuraPositionVault is BasePositionVault {
                               OWNER LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function updateHarvestSlippage(uint64 _slippage) external onlyOwner {
+    function updateHarvestSlippage(uint64 _slippage) external onlyDaoManager {
         harvestSlippage = _slippage;
         emit HarvestSlippageChanged(_slippage);
     }
 
     function setIsApprovedTarget(address _target, bool _isApproved)
         external
-        onlyOwner
+        onlyDaoManager
     {
         isApprovedTarget[_target] = _isApproved;
     }
 
     function setRewardTokens(address[] memory _rewardTokens)
         external
-        onlyOwner
+        onlyDaoManager
     {
         rewardTokens = _rewardTokens;
     }
@@ -240,13 +240,13 @@ contract AuraPositionVault is BasePositionVault {
                     1e18
                 );
                 amount -= protocolFee;
-                reward.safeTransfer(
+                SafeTransferLib.safeTransfer(address(reward),
                     positionVaultMetaData.feeAccumulator,
                     protocolFee
                 );
 
                 uint256 valueInUSD = amount.mulDivDown(
-                    positionVaultMetaData.priceRouter.getPriceInUSD(reward),
+                    positionVaultMetaData.priceRouter.getPriceUSD(address(reward)),
                     10**reward.decimals()
                 );
 
@@ -268,8 +268,8 @@ contract AuraPositionVault is BasePositionVault {
                 _approveTokenIfNeeded(assets[i], address(balancerVault));
 
                 valueOut += maxAmountsIn[i].mulDivDown(
-                    positionVaultMetaData.priceRouter.getPriceInUSD(
-                        ERC20(assets[i])
+                    positionVaultMetaData.priceRouter.getPriceUSD(
+                        assets[i]
                     ),
                     10**ERC20(assets[i]).decimals()
                 );
@@ -301,7 +301,7 @@ contract AuraPositionVault is BasePositionVault {
             );
 
             // deposit Assets to Aura.
-            yield = asset.balanceOf(address(this));
+            yield = _asset.balanceOf(address(this));
             _deposit(yield);
 
             // update Vesting info.
@@ -326,7 +326,7 @@ contract AuraPositionVault is BasePositionVault {
     }
 
     function _deposit(uint256 assets) internal override {
-        asset.safeApprove(address(booster), assets);
+        SafeTransferLib.safeApprove(asset(), address(booster), assets);
         booster.deposit(pid, assets, true);
     }
 
@@ -366,7 +366,7 @@ contract AuraPositionVault is BasePositionVault {
      */
     function _approveTokenIfNeeded(address _token, address _spender) private {
         if (ERC20(_token).allowance(address(this), _spender) == 0) {
-            ERC20(_token).safeApprove(_spender, type(uint256).max);
+            SafeTransferLib.safeApprove(_token, _spender, type(uint256).max);
         }
     }
 

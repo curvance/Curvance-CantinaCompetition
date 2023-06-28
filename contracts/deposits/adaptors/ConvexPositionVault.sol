@@ -2,6 +2,7 @@
 pragma solidity ^0.8.17;
 
 import { BasePositionVault, ERC4626, SafeTransferLib, ERC20, Math, PriceRouter } from "./BasePositionVault.sol";
+import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 // External interfaces
 import { IBooster } from "contracts/interfaces/external/convex/IBooster.sol";
@@ -16,7 +17,6 @@ import { AggregatorV2V3Interface } from "@chainlink/contracts/src/v0.8/interface
 import { IChainlinkAggregator } from "contracts/interfaces/external/chainlink/IChainlinkAggregator.sol";
 
 contract ConvexPositionVault is BasePositionVault {
-    using SafeTransferLib for ERC20;
     using Math for uint256;
 
     /*//////////////////////////////////////////////////////////////
@@ -131,18 +131,18 @@ contract ConvexPositionVault is BasePositionVault {
      */
     constructor(
         ERC20 _asset,
-        address _owner,
         string memory _name,
         string memory _symbol,
-        uint8 _decimals
-    ) BasePositionVault(_asset, _name, _symbol, _decimals, _owner) {}
+        uint8 _decimals,
+        ICentralRegistry _centralRegistry
+    ) BasePositionVault(_asset, _name, _symbol, _decimals, _centralRegistry) {}
 
     /**
      * @notice Initialize function to fully setup this vault.
      */
     function initialize(
         ERC20 _asset,
-        address _owner,
+        ICentralRegistry _centralRegistry,
         string memory _name,
         string memory _symbol,
         uint8 _decimals,
@@ -151,7 +151,7 @@ contract ConvexPositionVault is BasePositionVault {
     ) public override initializer {
         super.initialize(
             _asset,
-            _owner,
+            _centralRegistry,
             _name,
             _symbol,
             _decimals,
@@ -203,7 +203,7 @@ contract ConvexPositionVault is BasePositionVault {
 
     function updateEthTotargetSwapPath(CurveSwapParams memory params)
         external
-        onlyOwner
+        onlyDaoManager
     {
         ethToTarget = params;
         emit EthToTargetSwapParamsChanged(params);
@@ -212,25 +212,25 @@ contract ConvexPositionVault is BasePositionVault {
     function updateArbitraryToEthSwapPath(
         ERC20 assetIn,
         CurveSwapParams memory params
-    ) external onlyOwner {
+    ) external onlyDaoManager {
         arbitraryToEth[assetIn] = params;
         emit ArbitraryToEthSwapParamsChanged(address(assetIn), params);
     }
 
-    function updateHarvestSlippage(uint64 _slippage) external onlyOwner {
+    function updateHarvestSlippage(uint64 _slippage) external onlyDaoManager {
         harvestSlippage = _slippage;
         emit HarvestSlippageChanged(_slippage);
     }
 
     function updateCurveDepositParams(CurveDepositParams memory params)
         external
-        onlyOwner
+        onlyDaoManager
     {
         depositParams = params;
         emit CurveDepositParamsChanged(params);
     }
 
-    function setRewardTokens(ERC20[] memory _rewardTokens) external onlyOwner {
+    function setRewardTokens(ERC20[] memory _rewardTokens) external onlyDaoManager {
         rewardTokens = _rewardTokens;
     }
 
@@ -279,14 +279,14 @@ contract ConvexPositionVault is BasePositionVault {
                     1e18
                 );
                 rewardBalance -= protocolFee;
-                rewardToken.safeTransfer(
+                SafeTransferLib.safeTransfer(address(rewardToken),
                     positionVaultMetaData.feeAccumulator,
                     protocolFee
                 );
                 // Get the reward token value in USD.
                 uint256 valueInUSD = rewardBalance.mulDivDown(
-                    positionVaultMetaData.priceRouter.getPriceInUSD(
-                        rewardToken
+                    positionVaultMetaData.priceRouter.getPriceUSD(
+                        address(rewardToken)
                     ),
                     10**rewardToken.decimals()
                 );
@@ -300,7 +300,7 @@ contract ConvexPositionVault is BasePositionVault {
                 ) {
                     valueIn += valueInUSD;
                     // Perform Swap into ETH.
-                    rewardToken.safeApprove(
+                    SafeTransferLib.safeApprove(address(rewardToken),
                         address(curveRegistryExchange),
                         rewardBalance
                     );
@@ -326,7 +326,7 @@ contract ConvexPositionVault is BasePositionVault {
             if (positionVaultMetaData.positionWatchdog == address(0))
                 revert ConvexPositionVault__WatchdogNotSet();
             // Transfer WETH fee to watchdog
-            WETH.safeTransfer(
+            SafeTransferLib.safeTransfer(address(WETH), 
                 positionVaultMetaData.positionWatchdog,
                 feeForUpkeep
             );
@@ -336,7 +336,8 @@ contract ConvexPositionVault is BasePositionVault {
             // Convert assets into targetAsset.
             if (depositParams.targetAsset != WETH) {
                 CurveSwapParams memory swapParams = ethToTarget;
-                WETH.safeApprove(address(curveRegistryExchange), ethOut);
+                SafeTransferLib.safeApprove(address(WETH),
+                address(curveRegistryExchange), ethOut);
                 assetsOut = curveRegistryExchange.exchange_multiple(
                     swapParams.route,
                     swapParams.swapParams,
@@ -347,8 +348,8 @@ contract ConvexPositionVault is BasePositionVault {
                 );
             } else assetsOut = ethOut;
             uint256 valueOut = assetsOut.mulDivDown(
-                positionVaultMetaData.priceRouter.getPriceInUSD(
-                    depositParams.targetAsset
+                positionVaultMetaData.priceRouter.getPriceUSD(
+                    address(depositParams.targetAsset)
                 ),
                 10**depositParams.targetAsset.decimals()
             );
@@ -366,7 +367,7 @@ contract ConvexPositionVault is BasePositionVault {
             _addLiquidityToCurve(assetsOut);
 
             // Deposit Assets to Convex.
-            yield = asset.balanceOf(address(this));
+            yield = _asset.balanceOf(address(this));
             _deposit(yield);
 
             // Update Vesting info.
@@ -391,7 +392,7 @@ contract ConvexPositionVault is BasePositionVault {
     }
 
     function _deposit(uint256 assets) internal override {
-        asset.safeApprove(address(booster), assets);
+        SafeTransferLib.safeApprove(asset(), address(booster), assets);
         booster.deposit(pid, assets, true);
     }
 
@@ -406,7 +407,7 @@ contract ConvexPositionVault is BasePositionVault {
     }
 
     function _addLiquidityToCurve(uint256 amount) internal {
-        depositParams.targetAsset.safeApprove(depositParams.pool, amount);
+        SafeTransferLib.safeApprove(address(depositParams.targetAsset), depositParams.pool, amount);
         if (depositParams.coinsLength == 2) {
             uint256[2] memory amounts;
             amounts[depositParams.targetIndex] = amount;
