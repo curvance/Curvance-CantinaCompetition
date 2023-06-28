@@ -3,12 +3,12 @@ pragma solidity ^0.8.13;
 
 import "contracts/market/lendtroller/Lendtroller.sol";
 import "contracts/market/Unitroller/Unitroller.sol";
-import "contracts/market/InterestRateModel/JumpRateModelV2.sol";
-import "contracts/market/InterestRateModel/InterestRateModel.sol";
+import "contracts/market/interestRates/JumpRateModelV2.sol";
+import "contracts/market/interestRates/InterestRateModel.sol";
 import "contracts/market/Oracle/PriceOracle.sol";
 import "contracts/market/Oracle/SimplePriceOracle.sol";
-import "contracts/market/Token/CErc20Immutable.sol";
-import "contracts/market/Token/CEther.sol";
+import "contracts/token/collateral/CErc20Immutable.sol";
+import "contracts/token/collateral/CEther.sol";
 import "contracts/gauge/GaugeController.sol";
 
 import "tests/market/deploy.sol";

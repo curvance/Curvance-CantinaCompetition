@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.17;
 
-import { ERC20 } from "contracts/base/ERC20.sol";
-import { SafeTransferLib } from "contracts/base/SafeTransferLib.sol";
-import { DepositRouterV2 as DepositRouter } from "contracts/DepositRouterV2.sol";
-import { AuraPositionVault, BasePositionVault } from "contracts/Positions/AuraPositionVault.sol";
-import { PriceRouter } from "contracts/PricingOperations/PriceRouterV2.sol";
-import { IChainlinkAggregator } from "contracts/interfaces/IChainlinkAggregator.sol";
-import { Math } from "contracts/utils/Math.sol";
+import { ERC20 } from "contracts/libraries/ERC20.sol";
+import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
+import { DepositRouterV2 as DepositRouter } from "contracts/deposits/DepositRouterV2.sol";
+import { AuraPositionVault, BasePositionVault } from "contracts/deposits/adaptors/AuraPositionVault.sol";
+import { PriceRouter } from "contracts/oracles/PriceRouterV2.sol";
+import { IChainlinkAggregator } from "contracts/interfaces/external/chainlink/IChainlinkAggregator.sol";
+import { Math } from "contracts/libraries/Math.sol";
 import "tests/utils/TestBase.sol";
 
 contract AuraPositionVaultTest is TestBase {

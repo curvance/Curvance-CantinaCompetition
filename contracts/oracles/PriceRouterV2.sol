@@ -3,7 +3,7 @@ pragma solidity ^0.8.17;
 
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
-import "../interfaces/ICentralRegistry.sol";
+import "contracts/interfaces/ICentralRegistry.sol";
 import "../interfaces/IOracleAdaptor.sol";
 
 /**
@@ -342,10 +342,7 @@ contract PriceRouter {
     /// @notice Removes an approved adaptor.
     /// @dev Requires that the adaptor is currently approved.
     /// @param _adaptor The address of the adaptor to remove.
-    function removeApprovedAdaptor(address _adaptor)
-        external
-        onlyDaoManager
-    {
+    function removeApprovedAdaptor(address _adaptor) external onlyDaoManager {
         require(
             isApprovedAdaptor[_adaptor],
             "priceRouter: adaptor does not exist"

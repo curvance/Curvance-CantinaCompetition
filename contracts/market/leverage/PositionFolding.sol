@@ -5,13 +5,13 @@ import "@openzeppelin/contracts/interfaces/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-import { IPositionFolding } from "./IPositionFolding.sol";
-import { Lendtroller } from "../market/lendtroller/Lendtroller.sol";
-import { PriceOracle } from "../market/Oracle/PriceOracle.sol";
-import { CToken } from "../market/Token/CToken.sol";
-import { CEther } from "../market/Token/CEther.sol";
-import { CErc20 } from "../market/Token/CErc20.sol";
-import { IWETH } from "../zapper/IWETH.sol";
+import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.sol";
+import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
+import { PriceOracle } from "contracts/market/Oracle/PriceOracle.sol";
+import { CToken } from "contracts/token/collateral/CToken.sol";
+import { CEther } from "contracts/token/collateral/CEther.sol";
+import { CErc20 } from "contracts/token/collateral/CErc20.sol";
+import { IWETH } from "contracts/interfaces/IWETH.sol";
 
 contract PositionFolding is ReentrancyGuard, IPositionFolding {
     using SafeERC20 for IERC20;

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.15;
 
-import "../utils/CentralRegistry.sol";
+import "contracts/architecture/CentralRegistry.sol";
 
 contract MockCentralRegistry is CentralRegistry {
     constructor(

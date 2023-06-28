@@ -3,8 +3,8 @@ pragma solidity ^0.8.13;
 
 import "contracts/market/lendtroller/Lendtroller.sol";
 import "contracts/market/Unitroller/Unitroller.sol";
-import "contracts/market/InterestRateModel/JumpRateModelV2.sol";
-import "contracts/market/InterestRateModel/InterestRateModel.sol";
+import "contracts/market/interestRates/JumpRateModelV2.sol";
+import "contracts/market/interestRates/InterestRateModel.sol";
 import "contracts/market/Oracle/PriceOracle.sol";
 import "contracts/market/Oracle/SimplePriceOracle.sol";
 import "contracts/gauge/GaugeController.sol";

@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.17;
 
-import { ERC20 } from "contracts/base/ERC20.sol";
-import { SafeTransferLib } from "contracts/base/SafeTransferLib.sol";
+import { ERC20 } from "contracts/libraries/ERC20.sol";
+import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { AggregatorV2V3Interface } from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV2V3Interface.sol";
 import { AutomationCompatibleInterface } from "@chainlink/contracts/src/v0.8/interfaces/AutomationCompatibleInterface.sol";
-import { IChainlinkAggregator } from "contracts/interfaces/IChainlinkAggregator.sol";
+import { IChainlinkAggregator } from "contracts/interfaces/external/chainlink/IChainlinkAggregator.sol";
 import { Denominations } from "@chainlink/contracts/src/v0.8/Denominations.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import { Math } from "contracts/utils/Math.sol";
+import { Math } from "contracts/libraries/Math.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
-import { ICurvePool } from "contracts/interfaces/Curve/ICurvePool.sol";
+import { ICurvePool } from "contracts/interfaces/external/curve/ICurvePool.sol";
 import { IAaveToken } from "contracts/interfaces/Aave/IAaveToken.sol";
 
 import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";

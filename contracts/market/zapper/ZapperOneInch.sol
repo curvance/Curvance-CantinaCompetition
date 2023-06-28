@@ -4,10 +4,10 @@ pragma solidity ^0.8.17;
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import "../market/lendtroller/Lendtroller.sol";
-import "../market/Token/CErc20.sol";
-import "./ICurve.sol";
-import "./IWETH.sol";
+import "contracts/market/lendtroller/Lendtroller.sol";
+import "contracts/token/collateral/CErc20.sol";
+import "contracts/interfaces/external/curve/ICurve.sol";
+import "contracts/interfaces/IWETH.sol";
 
 contract ZapperOneInch {
     using SafeERC20 for IERC20;

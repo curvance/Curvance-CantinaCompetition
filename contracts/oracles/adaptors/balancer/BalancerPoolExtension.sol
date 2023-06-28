@@ -2,8 +2,8 @@
 pragma solidity ^0.8.17;
 
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
-import { Extension, PriceOps, ERC20, Math } from "contracts/PricingOperations/Extensions/Extension.sol";
-import { IVault } from "contracts/interfaces/external/IVault.sol";
+import { Extension, PriceOps, ERC20, Math } from "contracts/oracles/adaptors/Extension.sol";
+import { IVault } from "contracts/interfaces/external/balancer/IVault.sol";
 
 /**
  * @title Sommelier Price Router Balancer Pool Extension

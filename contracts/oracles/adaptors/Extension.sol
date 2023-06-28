@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.17;
 
-import { ERC20 } from "contracts/base/ERC20.sol";
-import { PriceOps } from "contracts/PricingOperations/PriceOps.sol";
-import { Math } from "contracts/utils/Math.sol";
+import { ERC20 } from "contracts/libraries/ERC20.sol";
+import { PriceOps } from "contracts/oracles/PriceOps.sol";
+import { Math } from "contracts/libraries/Math.sol";
 
 abstract contract Extension {
     error Extension__OnlyPriceOps();

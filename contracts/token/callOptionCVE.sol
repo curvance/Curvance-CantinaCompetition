@@ -4,7 +4,7 @@ pragma solidity ^0.8.17;
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "contracts/libraries/ERC20.sol";
-import "../interfaces/ICentralRegistry.sol";
+import "contracts/interfaces/ICentralRegistry.sol";
 
 error InvalidExercise();
 
@@ -38,7 +38,7 @@ contract callOptionCVE is ERC20 {
         IERC20 _paymentToken,
         uint256 _paymentTokenPricePerCVE,
         ICentralRegistry _centralRegistry
-    ){
+    ) {
         _name = name_;
         _symbol = symbol_;
         paymentToken = _paymentToken;

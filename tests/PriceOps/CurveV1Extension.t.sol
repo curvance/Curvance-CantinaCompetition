@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.17;
 
-import { ERC20 } from "contracts/base/ERC20.sol";
-import { PriceOps } from "contracts/PricingOperations/PriceOps.sol";
-import { IChainlinkAggregator } from "contracts/interfaces/IChainlinkAggregator.sol";
-import { ICurvePool } from "contracts/interfaces/Curve/ICurvePool.sol";
-import { ICurveFi } from "contracts/interfaces/Curve/ICurveFi.sol";
-import { CurveV1Extension } from "contracts/PricingOperations/Extensions/Curve/CurveV1Extension.sol";
+import { ERC20 } from "contracts/libraries/ERC20.sol";
+import { PriceOps } from "contracts/oracles/PriceOps.sol";
+import { IChainlinkAggregator } from "contracts/interfaces/external/chainlink/IChainlinkAggregator.sol";
+import { ICurvePool } from "contracts/interfaces/external/curve/ICurvePool.sol";
+import { ICurveFi } from "contracts/interfaces/external/curve/ICurveFi.sol";
+import { CurveV1Extension } from "contracts/oracles/adaptors/curve/CurveV1Extension.sol";
 import { MockDataFeed } from "contracts/mocks/MockDataFeed.sol";
-import { Math } from "contracts/utils/Math.sol";
+import { Math } from "contracts/libraries/Math.sol";
 import "tests/utils/TestBase.sol";
 
 contract CurveV1ExtensionTest is TestBase {

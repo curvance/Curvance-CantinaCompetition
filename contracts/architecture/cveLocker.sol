@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "../interfaces/IVeCVE.sol";
 import "../interfaces/ICvxLocker.sol";
-import "../interfaces/ICentralRegistry.sol";
+import "contracts/interfaces/ICentralRegistry.sol";
 
 contract cveLocker {
     using SafeERC20 for IERC20;

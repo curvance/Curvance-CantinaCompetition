@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.17;
 
-import { ERC20 } from "contracts/base/ERC20.sol";
-import { SafeTransferLib } from "contracts/base/SafeTransferLib.sol";
-import { PriceOps } from "contracts/PricingOperations/PriceOps.sol";
-import { IChainlinkAggregator } from "contracts/interfaces/IChainlinkAggregator.sol";
-import { ICurvePool } from "contracts/interfaces/Curve/ICurvePool.sol";
-import { UniswapV3Pool } from "contracts/interfaces/Uniswap/UniswapV3Pool.sol";
+import { ERC20 } from "contracts/libraries/ERC20.sol";
+import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
+import { PriceOps } from "contracts/oracles/PriceOps.sol";
+import { IChainlinkAggregator } from "contracts/interfaces/external/chainlink/IChainlinkAggregator.sol";
+import { ICurvePool } from "contracts/interfaces/external/curve/ICurvePool.sol";
+import { UniswapV3Pool } from "contracts/interfaces/external/uniswap/UniswapV3Pool.sol";
 import { MockDataFeed } from "contracts/mocks/MockDataFeed.sol";
-import { Math } from "contracts/utils/Math.sol";
+import { Math } from "contracts/libraries/Math.sol";
 import "tests/utils/TestBase.sol";
 
 contract PriceOpsTest is TestBase {

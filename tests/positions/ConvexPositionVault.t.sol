@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.17;
 
-import { ERC20 } from "contracts/base/ERC20.sol";
-import { SafeTransferLib } from "contracts/base/SafeTransferLib.sol";
-import { DepositRouterV2 as DepositRouter } from "contracts/DepositRouterV2.sol";
-import { ConvexPositionVault, BasePositionVault } from "contracts/Positions/ConvexPositionVault.sol";
-import { IBaseRewardPool } from "contracts/interfaces/Convex/IBaseRewardPool.sol";
-import { PriceRouter } from "contracts/PricingOperations/PriceRouterV2.sol";
-import { IChainlinkAggregator } from "contracts/interfaces/IChainlinkAggregator.sol";
-import { ICurvePool } from "contracts/interfaces/Curve/ICurvePool.sol";
-import { Math } from "contracts/utils/Math.sol";
+import { ERC20 } from "contracts/libraries/ERC20.sol";
+import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
+import { DepositRouterV2 as DepositRouter } from "contracts/deposits/DepositRouterV2.sol";
+import { ConvexPositionVault, BasePositionVault } from "contracts/deposits/adaptors/ConvexPositionVault.sol";
+import { IBaseRewardPool } from "contracts/interfaces/external/convex/IBaseRewardPool.sol";
+import { PriceRouter } from "contracts/oracles/PriceRouterV2.sol";
+import { IChainlinkAggregator } from "contracts/interfaces/external/chainlink/IChainlinkAggregator.sol";
+import { ICurvePool } from "contracts/interfaces/external/curve/ICurvePool.sol";
+import { Math } from "contracts/libraries/Math.sol";
 import "tests/utils/TestBase.sol";
 
 contract ConvexPositionVaultTest is TestBase {

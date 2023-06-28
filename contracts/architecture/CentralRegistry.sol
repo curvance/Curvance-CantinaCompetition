@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import "../interfaces/ICentralRegistry.sol";
+import "contracts/interfaces/ICentralRegistry.sol";
 
 /// @notice Simple single central authorization mixin.
 /// @author Mai

@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.17;
 
-import { ICurvePool } from "contracts/interfaces/Curve/ICurvePool.sol";
-import { Extension } from "contracts/PricingOperations/Extensions/Extension.sol";
-import { PriceOps } from "contracts/PricingOperations/PriceOps.sol";
-import { Math } from "contracts/utils/Math.sol";
+import { ICurvePool } from "contracts/interfaces/external/curve/ICurvePool.sol";
+import { Extension } from "contracts/oracles/adaptors/Extension.sol";
+import { PriceOps } from "contracts/oracles/PriceOps.sol";
+import { Math } from "contracts/libraries/Math.sol";
 import { AutomationCompatibleInterface } from "@chainlink/contracts/src/v0.8/interfaces/AutomationCompatibleInterface.sol";
-import { ERC20, SafeTransferLib } from "contracts/base/ERC4626.sol";
+import { ERC20, SafeTransferLib } from "contracts/libraries/ERC4626.sol";
 import { IPPtOracle } from "@pendle/interfaces/IPPtOracle.sol";
 import { PendlePtOracleLib } from "@pendle/oracles/PendlePtOracleLib.sol";
 import { IPMarket } from "@pendle/interfaces/IPMarket.sol";

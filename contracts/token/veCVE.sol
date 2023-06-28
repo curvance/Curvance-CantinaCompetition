@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "contracts/libraries/ERC20.sol";
 import "../interfaces/ICveLocker.sol";
 import "../interfaces/IDelegateRegistry.sol";
-import "../interfaces/ICentralRegistry.sol";
+import "contracts/interfaces/ICentralRegistry.sol";
 
 error nonTransferrable();
 error continuousLock();
@@ -63,9 +63,8 @@ contract veCVE is ERC20 {
     //Epoch # => Token unlocks on this chain
     mapping(uint256 => uint256) public totalUnlocksByEpoch;
 
-    constructor(ICentralRegistry _centralRegistry)
-    {
-         _name = "Vote Escrowed CVE";
+    constructor(ICentralRegistry _centralRegistry) {
+        _name = "Vote Escrowed CVE";
         _symbol = "veCVE";
         centralRegistry = _centralRegistry;
         genesisEpoch = centralRegistry.genesisEpoch();

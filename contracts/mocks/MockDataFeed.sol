@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.17;
 
-import { IChainlinkAggregator } from "contracts/interfaces/IChainlinkAggregator.sol";
+import { IChainlinkAggregator } from "contracts/interfaces/external/chainlink/IChainlinkAggregator.sol";
 
 contract MockDataFeed {
     int256 public mockAnswer;

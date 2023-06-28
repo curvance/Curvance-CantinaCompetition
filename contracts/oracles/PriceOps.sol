@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.17;
 
-import { ERC20 } from "contracts/base/ERC4626.sol";
+import { ERC20 } from "contracts/libraries/ERC4626.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { IChainlinkAggregator } from "contracts/interfaces/IChainlinkAggregator.sol";
+import { IChainlinkAggregator } from "contracts/interfaces/external/chainlink/IChainlinkAggregator.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import { Math } from "contracts/utils/Math.sol";
-import { Extension } from "./Extensions/Extension.sol";
+import { Math } from "contracts/libraries/Math.sol";
+import { Extension } from "./adaptors/Extension.sol";
 import { OracleLibrary } from "lib/v3-periphery/contracts/libraries/OracleLibrary.sol";
-import { UniswapV3Pool } from "contracts/interfaces/Uniswap/UniswapV3Pool.sol";
+import { UniswapV3Pool } from "contracts/interfaces/external/uniswap/UniswapV3Pool.sol";
 
 /**
  * @title Curvance Pricing Operations
