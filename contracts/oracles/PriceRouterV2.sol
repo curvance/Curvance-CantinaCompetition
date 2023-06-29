@@ -105,23 +105,25 @@ contract PriceRouter {
     /// @dev If the asset has one oracle, it fetches the price from a single feed.
     /// If it has two or more oracles, it fetches the price from both feeds.
     /// @param _asset The address of the asset to retrieve the price for.
+    /// @param _inUSD Whether the price should be returned in USD or ETH.
+    /// @param -getLower Whether the lower or higher price should be returned if two feeds are available.
     /// @return A tuple containing the asset's price and an error flag (if any).
-    function getPrice(address _asset) public view returns (uint256, uint256) {
+    function getPrice(address _asset, bool _inUSD, bool _getLower) public view returns (uint256, uint256) {
         uint256 oracles = assetPriceFeeds[_asset].length;
         require(oracles > 0, "priceRouter: no feeds available");
 
         if (oracles < 2) {
-            return getPriceSingleFeed(_asset);
+            return getPriceSingleFeed(_asset, _inUSD);
         }
 
-        return getPriceDualFeed(_asset);
+        return getPriceDualFeed(_asset, _inUSD);
     }
 
     /// @notice Retrieves the prices of multiple specified assets.
     /// @dev Loops through the array of assets and retrieves the price for each using the getPrice function.
     /// @param _asset An array of asset addresses to retrieve the prices for.
     /// @return Two arrays. The first one contains prices for each asset, and the second one contains corresponding error flags (if any).
-    function getPriceMulti(address[] calldata _asset)
+    function getPriceMulti(address[] calldata _asset, bool[] calldata _inUSD, bool[] calldata _getLower)
         public
         view
         returns (uint256[] memory, uint256[] memory)
@@ -132,7 +134,7 @@ contract PriceRouter {
         uint256[] memory hadError = new uint256[](assets);
 
         for (uint256 i; i < assets; ) {
-            (prices[i], hadError[i]) = getPrice(_asset[i]);
+            (prices[i], hadError[i]) = getPrice(_asset[i], _inUSD[i], _getLower[i]);
 
             unchecked {
                 ++i;
@@ -150,13 +152,13 @@ contract PriceRouter {
     /// If both price feeds return an error, it returns (0, BAD_SOURCE).
     /// If one of the price feeds return an error, it returns the price from the working feed along with a CAUTION flag.
     /// Otherwise, it returns (price, NO_ERROR).
-    function getPriceDualFeed(address _asset)
+    function getPriceDualFeed(address _asset, bool _inUSD)
         internal
         view
         returns (uint256, uint256)
     {
-        feedData memory feed0 = getPriceFromFeed(_asset, 0);
-        feedData memory feed1 = getPriceFromFeed(_asset, 1);
+        feedData memory feed0 = getPriceFromFeed(_asset, 0, _inUSD);
+        feedData memory feed1 = getPriceFromFeed(_asset, 1, _inUSD);
 
         if (feed0.hadError && feed1.hadError) return (0, BAD_SOURCE);
         if (feed0.hadError || feed1.hadError) {
@@ -169,10 +171,11 @@ contract PriceRouter {
     /// @notice Retrieves the price of a specified asset from a single oracle.
     /// @dev Fetches the price from the first available price feed for the asset.
     /// @param _asset The address of the asset to retrieve the price for.
+    /// @param _inUSD Whether the price should be returned in USD or ETH.
     /// @return A tuple containing the asset's price and an error flag (if any).
     /// If the price feed returns an error, it returns (0, BAD_SOURCE).
     /// Otherwise, it returns (price, NO_ERROR).
-    function getPriceSingleFeed(address _asset)
+    function getPriceSingleFeed(address _asset, bool _inUSD)
         internal
         view
         returns (uint256, uint256)
@@ -182,9 +185,12 @@ contract PriceRouter {
         ).getPrice(_asset);
         if (data.hadError) return (0, BAD_SOURCE);
 
-        if (!data.inUSD) {
-            (data.price, data.hadError) = priceToUSD(data.price);
+        if (data.inUSD != _inUSD) {
+            uint256 conversionPrice;
+            (conversionPrice, data.hadError) = getETHUSD();
             if (data.hadError) return (0, BAD_SOURCE);
+
+            data.price = uint240(convertPriceETHUSD(data.price, conversionPrice, data.inUSD));
         }
 
         return (data.price, NO_ERROR);
@@ -195,9 +201,10 @@ contract PriceRouter {
     /// Converts the price to USD if necessary.
     /// @param _asset The address of the asset to retrieve the price for.
     /// @param _feedNumber The index number of the feed to use.
+    /// @param _inUSD Whether the price should be returned in USD or ETH.
     /// @return An instance of feedData containing the asset's price and an error flag (if any).
     /// If the price feed returns an error, it returns feedData with price 0 and hadError set to true.
-    function getPriceFromFeed(address _asset, uint256 _feedNumber)
+    function getPriceFromFeed(address _asset, uint256 _feedNumber, bool _inUSD)
         internal
         view
         returns (feedData memory)
@@ -207,23 +214,24 @@ contract PriceRouter {
         ).getPrice(_asset);
         if (data.hadError) return (feedData({ price: 0, hadError: true }));
 
-        if (!data.inUSD) {
-            (data.price, data.hadError) = priceToUSD(data.price);
+        if (data.inUSD != _inUSD) {
+            uint256 conversionPrice;
+            (conversionPrice, data.hadError) = getETHUSD();
+            data.price = uint240(convertPriceETHUSD(data.price, conversionPrice, data.inUSD));
         }
 
         return (feedData({ price: data.price, hadError: data.hadError }));
     }
 
-    /// @notice Converts the price from ETH to USD using Chainlink's ETH/USD feed.
+    /// @notice Queries the current price of ETH in USD using Chainlink's ETH/USD feed.
     /// @dev The price is deemed valid if the data from Chainlink is fresh and positive.
-    /// @param _priceInETH The price value in ETH to be converted to USD.
-    /// @return A tuple containing the price in USD and an error flag.
-    /// If the Chainlink data is stale or negative, it returns (_priceInETH, true).
+    /// @return A tuple containing the price of ETH in USD and an error flag.
+    /// If the Chainlink data is stale or negative, it returns (_answer, true).
     /// Where true corresponded to hasError = true.
-    function priceToUSD(uint256 _priceInETH)
+    function getETHUSD()
         internal
         view
-        returns (uint240, bool)
+        returns (uint256, bool)
     {
         (, int256 _answer, , uint256 _updatedAt, ) = AggregatorV3Interface(
             CHAINLINK_ETH_USD
@@ -234,13 +242,32 @@ contract PriceRouter {
             _answer <= 0 ||
             (block.timestamp - _updatedAt > CHAINLINK_MAX_DELAY)
         ) {
-            return (uint240(_priceInETH), true);
+            return (uint256(_answer), true);
         }
-        return (
-            uint240((_priceInETH * uint256(_answer)) / CHAINLINK_DIVISOR),
-            false
-        );
+        return (uint256(_answer), false);
     }
+
+    /// @notice Converts a given price between ETH and USD formats.
+    /// @dev Depending on the _currentFormatinUSD parameter, this function either converts the price from ETH to USD (if true)
+    /// or from USD to ETH (if false) using the provided conversion rate.
+    /// @param _currentPrice The price to convert.
+    /// @param _conversionRate The rate to use for the conversion.
+    /// @param _currentFormatinUSD Specifies whether the current format of the price is in USD.
+    /// If true, it will convert the price from USD to ETH.
+    /// If false, it will convert the price from ETH to USD.
+    /// @return The converted price.
+    function convertPriceETHUSD(uint240 _currentPrice, uint256 _conversionRate, bool _currentFormatinUSD)
+        internal
+        pure
+        returns (uint256)
+    {
+        if (!_currentFormatinUSD){//current format is in ETH and we want USD
+            return(_currentPrice * _conversionRate);
+        }
+
+        return(_currentPrice / _conversionRate);
+    }
+
 
     /// @notice Processes the price data from two different feeds.
     /// @dev Checks for divergence between two prices. If the divergence is more than allowed,
