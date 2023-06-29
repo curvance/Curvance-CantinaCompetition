@@ -116,7 +116,7 @@ contract PriceRouter {
             return getPriceSingleFeed(_asset, _inUSD);
         }
 
-        return getPriceDualFeed(_asset, _inUSD);
+        return getPriceDualFeed(_asset, _inUSD, _getLower);
     }
 
     /// @notice Retrieves the prices of multiple specified assets.
@@ -152,7 +152,7 @@ contract PriceRouter {
     /// If both price feeds return an error, it returns (0, BAD_SOURCE).
     /// If one of the price feeds return an error, it returns the price from the working feed along with a CAUTION flag.
     /// Otherwise, it returns (price, NO_ERROR).
-    function getPriceDualFeed(address _asset, bool _inUSD)
+    function getPriceDualFeed(address _asset, bool _inUSD, bool _getLower)
         internal
         view
         returns (uint256, uint256)
@@ -164,8 +164,9 @@ contract PriceRouter {
         if (feed0.hadError || feed1.hadError) {
             return (getWorkingPrice(feed0, feed1), CAUTION);
         }
+        if (_getLower) return calculateLowerPriceFeed(feed0.price, feed1.price);
 
-        return processPriceFeedData(feed0.price, feed1.price);
+        return calculateHigherPriceFeed(feed0.price, feed1.price);
     }
 
     /// @notice Retrieves the price of a specified asset from a single oracle.
@@ -274,14 +275,39 @@ contract PriceRouter {
     /// it returns (0, CAUTION).
     /// @param a The price from the first feed.
     /// @param b The price from the second feed.
-    /// @return A tuple containing the minimum of two prices and an error flag (if any).
+    /// @return A tuple containing the lower of two prices and an error flag (if any).
     /// If the prices are within acceptable range, it returns (min(a,b), NO_ERROR).
-    function processPriceFeedData(uint256 a, uint256 b)
+    function calculateLowerPriceFeed(uint256 a, uint256 b)
         internal
         view
         returns (uint256, uint256)
     {
         if (a <= b) {
+            if (((a * PRICEFEED_MAXIMUM_DIVERGENCE) / DENOMINATOR) < b) {
+                return (0, CAUTION);
+            }
+            return (a, NO_ERROR);
+        }
+
+        if (((b * PRICEFEED_MAXIMUM_DIVERGENCE) / DENOMINATOR) < a) {
+            return (0, CAUTION);
+        }
+        return (b, NO_ERROR);
+    }
+
+    /// @notice Processes the price data from two different feeds.
+    /// @dev Checks for divergence between two prices. If the divergence is more than allowed,
+    /// it returns (0, CAUTION).
+    /// @param a The price from the first feed.
+    /// @param b The price from the second feed.
+    /// @return A tuple containing the higher of two prices and an error flag (if any).
+    /// If the prices are within acceptable range, it returns (max(a,b), NO_ERROR).
+    function calculateHigherPriceFeed(uint256 a, uint256 b)
+        internal
+        view
+        returns (uint256, uint256)
+    {
+        if (a >= b) {
             if (((a * PRICEFEED_MAXIMUM_DIVERGENCE) / DENOMINATOR) < b) {
                 return (0, CAUTION);
             }
@@ -305,8 +331,8 @@ contract PriceRouter {
         pure
         returns (uint256)
     {
-        if (feed0.hadError) return feed0.price;
-        return feed1.price;
+        if (feed0.hadError) return feed1.price;
+        return feed0.price;
     }
 
     /// @notice Adds a new price feed for a specific asset.
@@ -392,7 +418,7 @@ contract PriceRouter {
     }
 
     /// @notice Sets a new maximum delay for Chainlink price feed.
-    /// @dev Requires that the new delay is less than 1 day. Only callable by the DaoManager.
+    /// @dev Requires that the new delay is less than 2 day. Only callable by the DaoManager.
     /// @param _delay The new maximum delay in seconds.
     function setChainlinkDelay(uint256 _delay) external onlyDaoManager {
         require(_delay < 1 days, "priceRouter: delay is too large");
