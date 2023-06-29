@@ -106,7 +106,7 @@ contract PriceRouter {
     /// If it has two or more oracles, it fetches the price from both feeds.
     /// @param _asset The address of the asset to retrieve the price for.
     /// @param _inUSD Whether the price should be returned in USD or ETH.
-    /// @param -getLower Whether the lower or higher price should be returned if two feeds are available.
+    /// @param _getLower Whether the lower or higher price should be returned if two feeds are available.
     /// @return A tuple containing the asset's price and an error flag (if any).
     function getPrice(address _asset, bool _inUSD, bool _getLower) public view returns (uint256, uint256) {
         uint256 oracles = assetPriceFeeds[_asset].length;
@@ -122,6 +122,8 @@ contract PriceRouter {
     /// @notice Retrieves the prices of multiple specified assets.
     /// @dev Loops through the array of assets and retrieves the price for each using the getPrice function.
     /// @param _asset An array of asset addresses to retrieve the prices for.
+    /// @param _inUSD An array of bools indicating whether the price should be returned in USD or ETH.
+    /// @param _getLower An array of bools indiciating whether the lower or higher price should be returned if two feeds are available.
     /// @return Two arrays. The first one contains prices for each asset, and the second one contains corresponding error flags (if any).
     function getPriceMulti(address[] calldata _asset, bool[] calldata _inUSD, bool[] calldata _getLower)
         public
@@ -335,6 +337,41 @@ contract PriceRouter {
         return feed0.price;
     }
 
+    /// @notice Retrieves the price feed data for a given asset.
+    /// @dev Fetches the price for the provided asset from all available price feeds and returns them in an array.
+    /// Each feedData in the array corresponds to a price feed. If less than two feeds are available, only the available feeds are returned.
+    /// @param _asset The address of the asset.
+    /// @param _inUSD Specifies whether the price format should be in USD or ETH.
+    /// @return An array of feedData objects for the asset, each corresponding to a price feed.
+    function getPricesForAsset(address _asset, bool _inUSD)
+        external
+        view
+        returns (feedData[] memory)
+    {
+        uint256 oracles = assetPriceFeeds[_asset].length;
+        require(oracles > 0, "priceRouter: no feeds available");
+        feedData[] memory data = new feedData[](oracles);
+
+        if (oracles < 2) {
+            data[0] = getPriceFromFeed(_asset, 0, _inUSD);
+            return data;
+        }
+
+        data[0] = getPriceFromFeed(_asset, 0, _inUSD);
+        data[1] = getPriceFromFeed(_asset, 1, _inUSD);
+
+        return data;
+
+    }
+
+    /// @notice Checks if a given asset is supported by the price router.
+    /// @dev An asset is considered supported if it has one or more associated price feeds.
+    /// @param _asset The address of the asset to check.
+    /// @return True if the asset is supported, false otherwise.
+    function isSupportedAsset(address _asset) external view returns (bool) {
+        return assetPriceFeeds[_asset].length > 0;
+    } 
+
     /// @notice Adds a new price feed for a specific asset.
     /// @dev Requires that the feed address is an approved adaptor and that the asset doesn't already have two feeds.
     /// @param _asset The address of the asset.
@@ -348,7 +385,7 @@ contract PriceRouter {
             assetPriceFeeds[_asset].length < 2,
             "priceRouter: dual feed already configured"
         );
-        assetPriceFeeds[_asset].push(_feed);
+        assetPriceFeeds[_asset].push(_feed);//TODO add check that feed is supported in desired adaptor
     }
 
     /// @notice Removes a price feed for a specific asset.
