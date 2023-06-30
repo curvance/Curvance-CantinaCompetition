@@ -21,10 +21,13 @@ abstract contract BalancerPoolExtension is BaseOracleAdaptor {
      */
     IVault public immutable balancerVault;
 
-    constructor(ICentralRegistry _centralRegistry, IVault _balancerVault)
-        BaseOracleAdaptor(_centralRegistry)
-    {
+    constructor(
+        ICentralRegistry _centralRegistry,
+        IVault _balancerVault,
+        bool _isUsd
+    ) BaseOracleAdaptor(_centralRegistry) {
         balancerVault = _balancerVault;
+        isUsd = _isUsd;
     }
 
     /**

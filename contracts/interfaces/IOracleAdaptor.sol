@@ -15,8 +15,9 @@ struct priceReturnData {
 
 interface IOracleAdaptor {
     // @notice queries price from an oracle adaptor
-    function getPrice(address _asset)
-        external
-        view
-        returns (priceReturnData memory);
+    function getPrice(
+        address _asset
+    ) external view returns (priceReturnData memory);
+
+    function isSupportedAsset(address _asset) external view returns (bool);
 }
