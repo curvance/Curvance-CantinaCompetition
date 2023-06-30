@@ -96,8 +96,8 @@ contract PriceRouter {
     }
 
     // Only callable by Adaptor
-    modifier onlyAdaptor(address _adaptor) {
-        require(isApprovedAdaptor[_adaptor], "priceRouter: UNAUTHORIZED");
+    modifier onlyAdaptor() {
+        require(isApprovedAdaptor[msg.sender], "priceRouter: UNAUTHORIZED");
         _;
     }
 
@@ -393,7 +393,7 @@ contract PriceRouter {
     /// @param _asset The address of the asset.
     /// @param _feed The address of the feed to be removed.
     function removeAssetPriceFeed(address _asset, address _feed)
-        external
+        public
         onlyDaoManager
     {
         uint256 oracles = assetPriceFeeds[_asset].length;
@@ -416,6 +416,10 @@ contract PriceRouter {
         } // we know the feed exists, cant use isApprovedAdaptor as we could have removed it as an approved adaptor prior
 
         assetPriceFeeds[_asset].pop();
+    }
+
+    function notifyAssetPriceFeedRemoval(address _asset) external onlyAdaptor {
+        removeAssetPriceFeed(_asset, msg.sender);
     }
 
     /// @notice Adds a new approved adaptor.
