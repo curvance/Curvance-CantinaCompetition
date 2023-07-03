@@ -4,7 +4,7 @@ pragma solidity ^0.8.15;
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
 import "contracts/market/lendtroller/Lendtroller.sol";
 import "contracts/market/lendtroller/LendtrollerInterface.sol";
-import "contracts/token/collateral/CErc20Immutable.sol";
+import "contracts/token/collateral/CErc20.sol";
 import "contracts/market/Oracle/SimplePriceOracle.sol";
 import "contracts/market/interestRates/InterestRateModel.sol";
 import { GaugePool } from "contracts/gauge/GaugePool.sol";
@@ -21,7 +21,7 @@ contract TestGaugePool is TestBase {
     address public admin;
     DeployCompound public deployments;
     address public unitroller;
-    CErc20Immutable public cDAI;
+    CErc20 public cDAI;
     SimplePriceOracle public priceOracle;
 
     address public owner;
@@ -67,7 +67,7 @@ contract TestGaugePool is TestBase {
         }
         for (uint256 i = 0; i < 10; i++) {
             tokens[i] = address(
-                new CErc20Immutable(
+                new CErc20(
                     dai,
                     LendtrollerInterface(unitroller),
                     address(gaugePool),
@@ -247,11 +247,11 @@ contract TestGaugePool is TestBase {
 
         // user0 deposit 100 token0
         vm.prank(users[0]);
-        CErc20Immutable(tokens[0]).mint(100 ether);
+        CErc20(tokens[0]).mint(100 ether);
 
         // user2 deposit 100 token1
         vm.prank(users[2]);
-        CErc20Immutable(tokens[1]).mint(100 ether);
+        CErc20(tokens[1]).mint(100 ether);
 
         // check pending rewards after 100 seconds
         vm.warp(block.timestamp + 100);
@@ -260,11 +260,11 @@ contract TestGaugePool is TestBase {
 
         // user1 deposit 400 token0
         vm.prank(users[1]);
-        CErc20Immutable(tokens[0]).mint(400 ether);
+        CErc20(tokens[0]).mint(400 ether);
 
         // user3 deposit 400 token1
         vm.prank(users[3]);
-        CErc20Immutable(tokens[1]).mint(400 ether);
+        CErc20(tokens[1]).mint(400 ether);
 
         // check pending rewards after 100 seconds
         vm.warp(block.timestamp + 100);
@@ -290,11 +290,11 @@ contract TestGaugePool is TestBase {
 
         // user0 withdraw half
         vm.prank(users[0]);
-        CErc20Immutable(tokens[0]).redeem(50 ether);
+        CErc20(tokens[0]).redeem(50 ether);
 
         // user2 deposit 2x
         vm.prank(users[2]);
-        CErc20Immutable(tokens[1]).mint(100 ether);
+        CErc20(tokens[1]).mint(100 ether);
 
         // check pending rewards after 100 seconds
         vm.warp(block.timestamp + 100);
@@ -341,11 +341,11 @@ contract TestGaugePool is TestBase {
 
         // user0 deposit 100 token0
         vm.prank(users[0]);
-        CErc20Immutable(tokens[0]).mint(100 ether);
+        CErc20(tokens[0]).mint(100 ether);
 
         // user1 deposit 100 token1
         vm.prank(users[1]);
-        CErc20Immutable(tokens[1]).mint(100 ether);
+        CErc20(tokens[1]).mint(100 ether);
 
         // check pending rewards after 100 seconds
         vm.warp(block.timestamp + 100);
@@ -406,11 +406,11 @@ contract TestGaugePool is TestBase {
 
         // user0 deposit 100 token0
         vm.prank(users[0]);
-        CErc20Immutable(tokens[0]).mint(100 ether);
+        CErc20(tokens[0]).mint(100 ether);
 
         // user2 deposit 100 token1
         vm.prank(users[2]);
-        CErc20Immutable(tokens[1]).mint(100 ether);
+        CErc20(tokens[1]).mint(100 ether);
 
         // check pending rewards after 100 seconds
         vm.warp(block.timestamp + 100);
@@ -421,14 +421,14 @@ contract TestGaugePool is TestBase {
 
         // user1 deposit 400 token0
         vm.prank(users[1]);
-        CErc20Immutable(tokens[0]).mint(400 ether);
+        CErc20(tokens[0]).mint(400 ether);
 
         gaugePool.updatePool(tokens[0]);
         gaugePool.updatePool(tokens[1]);
 
         // user3 deposit 400 token1
         vm.prank(users[3]);
-        CErc20Immutable(tokens[1]).mint(400 ether);
+        CErc20(tokens[1]).mint(400 ether);
 
         // check pending rewards after 100 seconds
         vm.warp(block.timestamp + 100);
@@ -457,11 +457,11 @@ contract TestGaugePool is TestBase {
 
         // user0 withdraw half
         vm.prank(users[0]);
-        CErc20Immutable(tokens[0]).redeem(50 ether);
+        CErc20(tokens[0]).redeem(50 ether);
 
         // user2 deposit 2x
         vm.prank(users[2]);
-        CErc20Immutable(tokens[1]).mint(100 ether);
+        CErc20(tokens[1]).mint(100 ether);
 
         gaugePool.updatePool(tokens[0]);
         gaugePool.updatePool(tokens[1]);

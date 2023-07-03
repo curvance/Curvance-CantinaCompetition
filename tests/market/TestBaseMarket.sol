@@ -7,7 +7,7 @@ import "contracts/market/interestRates/JumpRateModelV2.sol";
 import "contracts/market/interestRates/InterestRateModel.sol";
 import "contracts/market/Oracle/PriceOracle.sol";
 import "contracts/market/Oracle/SimplePriceOracle.sol";
-import "contracts/token/collateral/CErc20Immutable.sol";
+import "contracts/token/collateral/CErc20.sol";
 import "contracts/token/collateral/CEther.sol";
 import "contracts/gauge/GaugeController.sol";
 
@@ -34,7 +34,7 @@ contract TestBaseMarket is TestBase {
 
     IERC20 dai;
     CEther public cETH;
-    CErc20Immutable public cDAI;
+    CErc20 public cDAI;
 
     SimplePriceOracle public priceOracle;
 
@@ -71,7 +71,7 @@ contract TestBaseMarket is TestBase {
     }
 
     function _deployCDAI() internal {
-        cDAI = new CErc20Immutable(
+        cDAI = new CErc20(
             DAI_ADDRESS,
             LendtrollerInterface(unitroller),
             gauge,

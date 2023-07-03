@@ -50,7 +50,7 @@ contract TestCTokenAndCEther is TestBaseMarket {
     }
 
     // function testMint() public {
-    //     cDAI = new CErc20Immutable(
+    //     cDAI = new CErc20(
     //         DAI_ADDRESS,
     //         LendtrollerInterface(unitroller),
     //         InterestRateModel(address(deployments.jumpRateModel())),

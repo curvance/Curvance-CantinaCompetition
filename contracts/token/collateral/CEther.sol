@@ -149,10 +149,10 @@ contract CEther is CToken {
      * @param borrower The borrower of this cToken to be liquidated
      * @param cTokenCollateral The market in which to seize collateral from the borrower
      */
-    function liquidateBorrow(address borrower, CToken cTokenCollateral)
-        external
-        payable
-    {
+    function liquidateBorrow(
+        address borrower,
+        CToken cTokenCollateral
+    ) external payable {
         liquidateBorrowInternal(borrower, msg.value, cTokenCollateral);
     }
 
@@ -187,11 +187,10 @@ contract CEther is CToken {
      * @param amount Amount of Ether being sent
      * @return The actual amount of Ether transferred
      */
-    function doTransferIn(address from, uint256 amount)
-        internal
-        override
-        returns (uint256)
-    {
+    function doTransferIn(
+        address from,
+        uint256 amount
+    ) internal override returns (uint256) {
         // Sanity checks
         if (msg.sender != from) {
             revert SenderMismatch();
@@ -202,11 +201,10 @@ contract CEther is CToken {
         return amount;
     }
 
-    function doTransferOut(address payable to, uint256 amount)
-        internal
-        virtual
-        override
-    {
+    function doTransferOut(
+        address payable to,
+        uint256 amount
+    ) internal virtual override {
         /* Send the Ether, with minimal gas and revert on failure */
         to.transfer(amount);
     }

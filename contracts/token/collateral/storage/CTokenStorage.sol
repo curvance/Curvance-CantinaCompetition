@@ -2,11 +2,11 @@
 pragma solidity ^0.8.17;
 
 import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
-import "contracts/market/interestRates/InterestRateModel.sol";
-import "./CommonError.sol";
+import { InterestRateModel } from "contracts/market/interestRates/InterestRateModel.sol";
 
-abstract contract CTokenStorage is CommonError {
+abstract contract CTokenStorage {
     ////////// ERRORS //////////
+    error AddressUnauthorized();
     error FailedNotFromPositionFolding();
     error FailedFreshnessCheck();
     error CannotEqualZero();
