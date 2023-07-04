@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import "contracts/market/lendtroller/LendtrollerInterface.sol";
 import "./CToken.sol";
 
 /**
@@ -16,7 +15,6 @@ contract CEther is CToken {
     /**
      * @notice Construct a new CEther money market
      * @param lendtroller_ The address of the Lendtroller
-     * @param gaugePool_ The address of the gauge pool
      * @param interestRateModel_ The address of the interest rate model
      * @param initialExchangeRateMantissa_ The initial exchange rate, scaled by 1e18
      * @param name_ ERC-20 name of this token
@@ -25,8 +23,7 @@ contract CEther is CToken {
      * @param admin_ Address of the administrator of this token
      */
     constructor(
-        LendtrollerInterface lendtroller_,
-        address gaugePool_,
+        address lendtroller_,
         InterestRateModel interestRateModel_,
         uint256 initialExchangeRateMantissa_,
         string memory name_,
@@ -39,7 +36,6 @@ contract CEther is CToken {
 
         initialize(
             lendtroller_,
-            gaugePool_,
             interestRateModel_,
             initialExchangeRateMantissa_,
             name_,

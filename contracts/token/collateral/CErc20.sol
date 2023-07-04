@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "contracts/interfaces/market/IDelegateToken.sol";
 import "contracts/interfaces/market/IEIP20NonStandard.sol";
-import "contracts/market/lendtroller/LendtrollerInterface.sol";
 import "./CToken.sol";
 import "./storage/CErc20Interface.sol";
 
@@ -22,7 +21,6 @@ contract CErc20 is CErc20Interface, CToken {
      * @notice Initialize the new money market
      * @param underlying_ The address of the underlying asset
      * @param lendtroller_ The address of the Lendtroller
-     * @param gaugePool_ The address of the gauge pool
      * @param interestRateModel_ The address of the interest rate model
      * @param initialExchangeRateScaled_ The initial exchange rate, scaled by 1e18
      * @param name_ ERC-20 name of this token
@@ -31,22 +29,20 @@ contract CErc20 is CErc20Interface, CToken {
      */
     constructor(
         address underlying_,
-        LendtrollerInterface lendtroller_,
-        address gaugePool_,
+        address lendtroller_,
         InterestRateModel interestRateModel_,
         uint256 initialExchangeRateScaled_,
         string memory name_,
         string memory symbol_,
         uint8 decimals_,
         address payable admin_
-    ) public {
+    ) {
         // Creator of the contract is admin during initialization
         admin = payable(msg.sender);
 
         // CToken initialize does the bulk of the work
         initialize(
             lendtroller_,
-            gaugePool_,
             interestRateModel_,
             initialExchangeRateScaled_,
             name_,

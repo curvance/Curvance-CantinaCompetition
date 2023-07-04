@@ -191,7 +191,7 @@ contract PriceRouter {
         address _asset,
         bool _inUSD
     ) internal view returns (uint256, uint256) {
-        priceReturnData memory data = IOracleAdaptor(
+        PriceReturnData memory data = IOracleAdaptor(
             assetPriceFeeds[_asset][0]
         ).getPrice(_asset);
         if (data.hadError) return (0, BAD_SOURCE);
@@ -222,7 +222,7 @@ contract PriceRouter {
         uint256 _feedNumber,
         bool _inUSD
     ) internal view returns (feedData memory) {
-        priceReturnData memory data = IOracleAdaptor(
+        PriceReturnData memory data = IOracleAdaptor(
             assetPriceFeeds[_asset][_feedNumber]
         ).getPrice(_asset);
         if (data.hadError) return (feedData({ price: 0, hadError: true }));

@@ -5,7 +5,7 @@ import { BaseOracleAdaptor, BalancerPoolExtension, IVault, IERC20 } from "./Bala
 import { Math } from "contracts/libraries/Math.sol";
 import { IBalancerPool } from "contracts/interfaces/external/balancer/IBalancerPool.sol";
 import { IRateProvider } from "contracts/interfaces/external/balancer/IRateProvider.sol";
-import { IOracleAdaptor, priceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
+import { IOracleAdaptor, PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { PriceRouter } from "contracts/oracles/PriceRouterV2.sol";
 
@@ -80,9 +80,8 @@ contract BalancerStablePoolAdaptor is BalancerPoolExtension {
      * @notice Called during pricing operations.
      */
     function getPrice(
-        address _asset,
-        bool _isUsd
-    ) external view override returns (priceReturnData memory pData) {
+        address _asset
+    ) external view override returns (PriceReturnData memory pData) {
         _ensureNotInVaultContext(balancerVault);
         // Read extension storage and grab pool tokens
         AdaptorData memory data = adaptorData[_asset];
@@ -102,7 +101,8 @@ contract BalancerStablePoolAdaptor is BalancerPoolExtension {
             // TODO so adaptors need to know if they are supposed to be working with the upper or the lower price.
             (price, errorCode) = priceRouter.getPrice(
                 data.underlyingOrConstituent[i],
-                isUsd
+                true,
+                true
             );
             if (errorCode > 0) {
                 pData.hadError = true;

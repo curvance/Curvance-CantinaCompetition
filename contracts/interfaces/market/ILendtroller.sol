@@ -4,51 +4,48 @@ pragma solidity ^0.8.17;
 import { CToken } from "contracts/token/collateral/CToken.sol";
 
 interface ILendtroller {
-    function enterMarkets(address[] calldata cTokens)
-        external
-        virtual
-        returns (uint256[] memory);
+    function enterMarkets(
+        address[] calldata cTokens
+    ) external returns (uint256[] memory);
 
-    function exitMarket(address cToken) external virtual;
+    function exitMarket(address cToken) external;
 
-    function mintAllowed(address cToken, address minter) external virtual;
+    function mintAllowed(address cToken, address minter) external;
 
     function redeemAllowed(
         address cToken,
         address redeemer,
         uint256 redeemTokens
-    ) external virtual;
+    ) external;
 
     function borrowAllowed(
         address cToken,
         address borrower,
         uint256 borrowAmount
-    ) external virtual;
+    ) external;
 
-    function repayBorrowAllowed(address cToken, address borrower)
-        external
-        virtual;
+    function repayBorrowAllowed(address cToken, address borrower) external;
 
     function liquidateBorrowAllowed(
         address cTokenBorrowed,
         address cTokenCollateral,
         address borrower,
         uint256 repayAmount
-    ) external virtual;
+    ) external;
 
     function seizeAllowed(
         address cTokenCollateral,
         address cTokenBorrowed,
         address liquidator,
         address borrower
-    ) external virtual;
+    ) external;
 
     function transferAllowed(
         address cToken,
         address src,
         address dst,
         uint256 transferTokens
-    ) external virtual;
+    ) external;
 
     /*** Liquidity/Liquidation Calculations ***/
 
@@ -56,30 +53,21 @@ interface ILendtroller {
         address cTokenBorrowed,
         address cTokenCollateral,
         uint256 repayAmount
-    ) external view virtual returns (uint256);
+    ) external view returns (uint256);
 
     /** Query functions */
-    function getIsMarkets(address cToken)
-        external
-        view
-        virtual
-        returns (
-            bool,
-            uint256,
-            bool
-        );
+    function getIsMarkets(
+        address cToken
+    ) external view returns (bool, uint256, bool);
 
-    function getAccountMembership(address cToken, address user)
-        external
-        view
-        virtual
-        returns (bool);
+    function getAccountMembership(
+        address cToken,
+        address user
+    ) external view returns (bool);
 
-    function getAllMarkets() external view virtual returns (CToken[] memory);
+    function getAllMarkets() external view returns (CToken[] memory);
 
-    function getAccountAssets(address cToken)
-        external
-        view
-        virtual
-        returns (CToken[] memory);
+    function getAccountAssets(
+        address cToken
+    ) external view returns (CToken[] memory);
 }

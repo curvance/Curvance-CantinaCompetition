@@ -4,7 +4,6 @@ pragma solidity ^0.8.17;
 import { CToken } from "contracts/token/collateral/CToken.sol";
 import { PriceOracle } from "../Oracle/PriceOracle.sol";
 import { GaugePool } from "../../gauge/GaugePool.sol";
-import { Unitroller } from "../Unitroller/Unitroller.sol";
 import { LendtrollerInterface } from "./LendtrollerInterface.sol";
 
 /**
@@ -37,11 +36,9 @@ contract Lendtroller is LendtrollerInterface {
      * @param account The address of the account to pull assets for
      * @return A dynamic list with the assets the account has entered
      */
-    function getAssetsIn(address account)
-        external
-        view
-        returns (CToken[] memory)
-    {
+    function getAssetsIn(
+        address account
+    ) external view returns (CToken[] memory) {
         CToken[] memory assetsIn = accountAssets[account];
 
         return assetsIn;
@@ -53,11 +50,10 @@ contract Lendtroller is LendtrollerInterface {
      * @param cToken The cToken to check
      * @return True if the account is in the asset, otherwise false.
      */
-    function checkMembership(address account, CToken cToken)
-        external
-        view
-        returns (bool)
-    {
+    function checkMembership(
+        address account,
+        CToken cToken
+    ) external view returns (bool) {
         return markets[address(cToken)].accountMembership[account];
     }
 
@@ -66,11 +62,9 @@ contract Lendtroller is LendtrollerInterface {
      * @param cTokens The list of addresses of the cToken markets to be enabled
      * @return uint array: 0 = market not entered; 1 = market entered
      */
-    function enterMarkets(address[] memory cTokens)
-        public
-        override
-        returns (uint256[] memory)
-    {
+    function enterMarkets(
+        address[] memory cTokens
+    ) public override returns (uint256[] memory) {
         uint256 len = cTokens.length;
 
         uint256[] memory results = new uint256[](len);
@@ -89,10 +83,10 @@ contract Lendtroller is LendtrollerInterface {
      * @param borrower The address of the account to modify
      * @return uint 0 = unable to enter market; 1 = market entered
      */
-    function addToMarketInternal(CToken cToken, address borrower)
-        internal
-        returns (uint256)
-    {
+    function addToMarketInternal(
+        CToken cToken,
+        address borrower
+    ) internal returns (uint256) {
         Market storage marketToJoin = markets[address(cToken)];
 
         if (!marketToJoin.isListed) {
@@ -302,10 +296,10 @@ contract Lendtroller is LendtrollerInterface {
      * @param cToken The market to verify the repay against
      * @param borrower The account which would borrowed the asset
      */
-    function repayBorrowAllowed(address cToken, address borrower)
-        external
-        override
-    {
+    function repayBorrowAllowed(
+        address cToken,
+        address borrower
+    ) external override {
         if (!markets[cToken].isListed) {
             revert MarketNotListed(cToken);
         }
@@ -411,11 +405,9 @@ contract Lendtroller is LendtrollerInterface {
      * @return liquidity of account in excess of collateral requirements
      * @return shortfall of account below collateral requirements
      */
-    function getAccountLiquidity(address account)
-        public
-        view
-        returns (uint256, uint256)
-    {
+    function getAccountLiquidity(
+        address account
+    ) public view returns (uint256, uint256) {
         (
             uint256 liquidity,
             uint256 shortfall
@@ -435,15 +427,9 @@ contract Lendtroller is LendtrollerInterface {
      * @return uint max borrow amount of user
      * @return uint total borrow amount of user
      */
-    function getAccountPosition(address account)
-        public
-        view
-        returns (
-            uint256,
-            uint256,
-            uint256
-        )
-    {
+    function getAccountPosition(
+        address account
+    ) public view returns (uint256, uint256, uint256) {
         (
             uint256 sumCollateral,
             uint256 maxBorrow,
@@ -463,11 +449,9 @@ contract Lendtroller is LendtrollerInterface {
      * @return liquidity of account in excess of collateral requirements
      * @return shortfall of account below collateral requirements
      */
-    function getAccountLiquidityInternal(address account)
-        internal
-        view
-        returns (uint256, uint256)
-    {
+    function getAccountLiquidityInternal(
+        address account
+    ) internal view returns (uint256, uint256) {
         return
             getHypotheticalAccountLiquidityInternal(
                 account,
@@ -780,9 +764,9 @@ contract Lendtroller is LendtrollerInterface {
      * @dev Admin function to set liquidationIncentive
      * @param newLiquidationIncentiveScaled New liquidationIncentive scaled by 1e18
      */
-    function _setLiquidationIncentive(uint256 newLiquidationIncentiveScaled)
-        external
-    {
+    function _setLiquidationIncentive(
+        uint256 newLiquidationIncentiveScaled
+    ) external {
         // Check caller is admin
         if (msg.sender != admin) {
             revert AddressUnauthorized();
@@ -956,10 +940,10 @@ contract Lendtroller is LendtrollerInterface {
      * @param cToken market token address
      * @param state pause or unpause
      */
-    function _setBorrowPaused(CToken cToken, bool state)
-        public
-        returns (bool)
-    {
+    function _setBorrowPaused(
+        CToken cToken,
+        bool state
+    ) public returns (bool) {
         if (!markets[address(cToken)].isListed) {
             revert MarketNotListed(address(cToken));
         }
@@ -1024,24 +1008,6 @@ contract Lendtroller is LendtrollerInterface {
     }
 
     /**
-     * @notice Update implementation address
-     * @param unitroller unitroller address
-     */
-    function _become(Unitroller unitroller) public {
-        if (msg.sender != unitroller.admin()) {
-            revert AddressUnauthorized();
-        }
-        unitroller._acceptImplementation();
-    }
-
-    /**
-     * @notice Checks caller is admin, or this contract is becoming the new implementation
-     */
-    function adminOrInitializing() internal view returns (bool) {
-        return msg.sender == admin || msg.sender == lendtrollerImplementation;
-    }
-
-    /**
      * @notice Returns minimum value of a and b
      */
     function min(uint256 a, uint256 b) internal pure returns (uint256) {
@@ -1056,16 +1022,9 @@ contract Lendtroller is LendtrollerInterface {
      * @notice Returns market status
      * @param cToken market token address
      */
-    function getIsMarkets(address cToken)
-        external
-        view
-        override
-        returns (
-            bool,
-            uint256,
-            bool
-        )
-    {
+    function getIsMarkets(
+        address cToken
+    ) external view override returns (bool, uint256, bool) {
         return (
             markets[cToken].isListed,
             markets[cToken].collateralFactorScaled,
@@ -1078,12 +1037,10 @@ contract Lendtroller is LendtrollerInterface {
      * @param cToken market token address
      * @param user user address
      */
-    function getAccountMembership(address cToken, address user)
-        external
-        view
-        override
-        returns (bool)
-    {
+    function getAccountMembership(
+        address cToken,
+        address user
+    ) external view override returns (bool) {
         return markets[cToken].accountMembership[user];
     }
 
@@ -1098,12 +1055,9 @@ contract Lendtroller is LendtrollerInterface {
      * @notice Returns all markets user joined
      * @param user user address
      */
-    function getAccountAssets(address user)
-        external
-        view
-        override
-        returns (CToken[] memory)
-    {
+    function getAccountAssets(
+        address user
+    ) external view override returns (CToken[] memory) {
         return accountAssets[user];
     }
 }

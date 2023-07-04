@@ -27,7 +27,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
      * @param decimals_ EIP-20 decimal precision of this token
      */
     function initialize(
-        Lendtroller lendtroller_,
+        address lendtroller_,
         InterestRateModel interestRateModel_,
         uint256 initialExchangeRateScaled_,
         string memory name_,
@@ -48,7 +48,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         }
 
         // Set the lendtroller
-        _setLendtroller(lendtroller_);
+        _setLendtroller(Lendtroller(lendtroller_));
 
         // Initialize block number and borrow index (block number mocks depend on lendtroller being set)
         accrualBlockNumber = getBlockNumber();
@@ -67,7 +67,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
      * @return gaugePool the gauge controller contract address
      */
     function gaugePool() public view returns (address) {
-        return lendtroller.gaugePool();
+        return address(lendtroller.gaugePool());
     }
 
     /**

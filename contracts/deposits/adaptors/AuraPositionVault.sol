@@ -179,17 +179,16 @@ contract AuraPositionVault is BasePositionVault {
         emit HarvestSlippageChanged(_slippage);
     }
 
-    function setIsApprovedTarget(address _target, bool _isApproved)
-        external
-        onlyDaoManager
-    {
+    function setIsApprovedTarget(
+        address _target,
+        bool _isApproved
+    ) external onlyDaoManager {
         isApprovedTarget[_target] = _isApproved;
     }
 
-    function setRewardTokens(address[] memory _rewardTokens)
-        external
-        onlyDaoManager
-    {
+    function setRewardTokens(
+        address[] memory _rewardTokens
+    ) external onlyDaoManager {
         rewardTokens = _rewardTokens;
     }
 
@@ -197,13 +196,9 @@ contract AuraPositionVault is BasePositionVault {
                           EXTERNAL POSITION LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function harvest(bytes memory data)
-        public
-        override
-        whenNotShutdown
-        nonReentrant
-        returns (uint256 yield)
-    {
+    function harvest(
+        bytes memory data
+    ) public override whenNotShutdown nonReentrant returns (uint256 yield) {
         Swap[] memory swapDataArray = abi.decode(data, (Swap[]));
 
         uint256 pending = _calculatePendingRewards();
@@ -246,11 +241,13 @@ contract AuraPositionVault is BasePositionVault {
                     protocolFee
                 );
 
+                (uint256 rewardPrice, ) = positionVaultMetaData
+                    .priceRouter
+                    .getPrice(address(reward), true, true);
+
                 uint256 valueInUSD = amount.mulDivDown(
-                    positionVaultMetaData.priceRouter.getPriceUSD(
-                        address(reward)
-                    ),
-                    10**reward.decimals()
+                    rewardPrice,
+                    10 ** reward.decimals()
                 );
 
                 valueIn += valueInUSD;
@@ -270,9 +267,13 @@ contract AuraPositionVault is BasePositionVault {
                 maxAmountsIn[i] = ERC20(assets[i]).balanceOf(address(this));
                 _approveTokenIfNeeded(assets[i], address(balancerVault));
 
+                (uint256 assetPrice, ) = positionVaultMetaData
+                    .priceRouter
+                    .getPrice(assets[i], true, true);
+
                 valueOut += maxAmountsIn[i].mulDivDown(
-                    positionVaultMetaData.priceRouter.getPriceUSD(assets[i]),
-                    10**ERC20(assets[i]).decimals()
+                    assetPrice,
+                    10 ** ERC20(assets[i]).decimals()
                 );
             }
 

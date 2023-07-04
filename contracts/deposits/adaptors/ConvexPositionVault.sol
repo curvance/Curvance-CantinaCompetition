@@ -201,10 +201,9 @@ contract ConvexPositionVault is BasePositionVault {
                               OWNER LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function updateEthTotargetSwapPath(CurveSwapParams memory params)
-        external
-        onlyDaoManager
-    {
+    function updateEthTotargetSwapPath(
+        CurveSwapParams memory params
+    ) external onlyDaoManager {
         ethToTarget = params;
         emit EthToTargetSwapParamsChanged(params);
     }
@@ -222,18 +221,16 @@ contract ConvexPositionVault is BasePositionVault {
         emit HarvestSlippageChanged(_slippage);
     }
 
-    function updateCurveDepositParams(CurveDepositParams memory params)
-        external
-        onlyDaoManager
-    {
+    function updateCurveDepositParams(
+        CurveDepositParams memory params
+    ) external onlyDaoManager {
         depositParams = params;
         emit CurveDepositParamsChanged(params);
     }
 
-    function setRewardTokens(ERC20[] memory _rewardTokens)
-        external
-        onlyDaoManager
-    {
+    function setRewardTokens(
+        ERC20[] memory _rewardTokens
+    ) external onlyDaoManager {
         rewardTokens = _rewardTokens;
     }
 
@@ -241,13 +238,9 @@ contract ConvexPositionVault is BasePositionVault {
                           EXTERNAL POSITION LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function harvest(bytes memory)
-        public
-        override
-        whenNotShutdown
-        nonReentrant
-        returns (uint256 yield)
-    {
+    function harvest(
+        bytes memory
+    ) public override whenNotShutdown nonReentrant returns (uint256 yield) {
         uint256 pending = _calculatePendingRewards();
         if (pending > 0) {
             // We need to claim vested rewards.
@@ -287,12 +280,15 @@ contract ConvexPositionVault is BasePositionVault {
                     positionVaultMetaData.feeAccumulator,
                     protocolFee
                 );
+
+                (uint256 rewardPrice, ) = positionVaultMetaData
+                    .priceRouter
+                    .getPrice(address(rewardToken), true, true);
+
                 // Get the reward token value in USD.
                 uint256 valueInUSD = rewardBalance.mulDivDown(
-                    positionVaultMetaData.priceRouter.getPriceUSD(
-                        address(rewardToken)
-                    ),
-                    10**rewardToken.decimals()
+                    rewardPrice,
+                    10 ** rewardToken.decimals()
                 );
                 CurveSwapParams memory swapParams = arbitraryToEth[
                     rewardToken
@@ -356,11 +352,14 @@ contract ConvexPositionVault is BasePositionVault {
                     address(this)
                 );
             } else assetsOut = ethOut;
+
+            (uint256 assetPrice, ) = positionVaultMetaData
+                .priceRouter
+                .getPrice(address(depositParams.targetAsset), true, true);
+
             uint256 valueOut = assetsOut.mulDivDown(
-                positionVaultMetaData.priceRouter.getPriceUSD(
-                    address(depositParams.targetAsset)
-                ),
-                10**depositParams.targetAsset.decimals()
+                assetPrice,
+                10 ** depositParams.targetAsset.decimals()
             );
 
             // Compare value in vs value out.

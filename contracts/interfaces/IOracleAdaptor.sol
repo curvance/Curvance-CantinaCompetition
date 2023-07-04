@@ -7,7 +7,7 @@ pragma solidity >=0.8.17;
  * @param hadError the message return data, whether the adaptor ran into trouble pricing the asset
  * @param inUsd bool indicating whether the price feed is denominated in USD(true) or ETH(false)
  */
-struct priceReturnData {
+struct PriceReturnData {
     uint240 price;
     bool hadError;
     bool inUSD;
@@ -17,7 +17,7 @@ interface IOracleAdaptor {
     // @notice queries price from an oracle adaptor
     function getPrice(
         address _asset
-    ) external view returns (priceReturnData memory);
+    ) external view returns (PriceReturnData memory);
 
     function isSupportedAsset(address _asset) external view returns (bool);
 }

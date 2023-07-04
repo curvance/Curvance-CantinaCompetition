@@ -2,7 +2,6 @@
 pragma solidity ^0.8.17;
 
 import { PriceOracle } from "../Oracle/PriceOracle.sol";
-import { UnitrollerStorage } from "../Unitroller/UnitrollerStorage.sol";
 import { GaugePool } from "../../gauge/GaugePool.sol";
 import { CToken } from "../../token/collateral/CToken.sol";
 
@@ -21,12 +20,13 @@ contract MarketStorage {
     }
 }
 
-contract LendtrollerStorage is UnitrollerStorage, MarketStorage {
+contract LendtrollerStorage is MarketStorage {
     /**
      * @notice The Pause Guardian can pause certain actions as a safety mechanism.
      *  Actions which allow users to remove their own assets cannot be paused.
      *  Liquidation / seizing / transfer can only be paused globally, not by market.
      */
+    address public admin;
     address public pauseGuardian;
     bool public _mintGuardianPaused;
     bool public _borrowGuardianPaused;

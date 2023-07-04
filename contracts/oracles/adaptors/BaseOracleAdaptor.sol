@@ -1,19 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.17;
 
-import "../../interfaces/ICentralRegistry.sol";
-import "../../interfaces/IOracleAdaptor.sol";
+import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+import { IOracleAdaptor, PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
 
-abstract contract BaseOracleAdaptor {
-    // TODO replace with struct specific for each adaptor
-    struct assetData {
-        address[] subAssets;
-        address pool;
-        address asset;
-    }
-
+abstract contract BaseOracleAdaptor is IOracleAdaptor {
     /// @notice Determines whether the adaptor reports asset prices in USD(true) or ETH(false).
-    bool public immutable isUsd;
+    bool public isUsd;
 
     /**
      * @notice Address for Curvance DAO registry contract for ownership and location data.
@@ -23,12 +16,13 @@ abstract contract BaseOracleAdaptor {
     /**
      * @notice Mapping used to track whether or not an asset is supported by the adaptor and pricing information.
      */
-    mapping(address => bool) public isSupportedAsset;
+    mapping(address => bool) public override isSupportedAsset;
 
     //0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE this is for pricing eth in Curve
 
     constructor(ICentralRegistry _centralRegistry) {
         centralRegistry = _centralRegistry;
+        isUsd = true;
     }
 
     // Only callable by Price Router.
@@ -53,9 +47,13 @@ abstract contract BaseOracleAdaptor {
      * @notice Called by PriceRouter to price an asset.
      */
     function getPrice(
-        address _asset,
-        bool _isUsd
-    ) external view virtual returns (priceReturnData memory);
+        address _asset
+    ) external view virtual override returns (PriceReturnData memory);
+
+    /**
+     * @notice Adds a new supported asset to the adaptor, can also configure sub assets that the parent asset contain.
+     */
+    function addAsset(address _asset) external virtual {}
 
     /**
      * @notice Removes a supported asset from the adaptor.

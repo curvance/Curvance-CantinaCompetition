@@ -172,13 +172,9 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
                           EXTERNAL POSITION LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function harvest(bytes memory)
-        public
-        override
-        whenNotShutdown
-        nonReentrant
-        returns (uint256 yield)
-    {
+    function harvest(
+        bytes memory
+    ) public override whenNotShutdown nonReentrant returns (uint256 yield) {
         uint256 pending = _calculatePendingRewards();
         if (pending > 0) {
             // We need to claim vested rewards.
@@ -190,91 +186,125 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
             positionVaultAccounting._lastVestClaim >=
             positionVaultAccounting._vestingPeriodEnd
         ) {
-            // 1. Withdraw all the rewards.
-            gauge.getReward(address(this), rewards);
-
-            // 2. Convert rewards to ETH
-            uint256 valueIn;
-            uint256 rewardTokenCount = rewards.length;
-            for (uint256 i = 0; i < rewardTokenCount; i++) {
-                address reward = rewards[i];
-                uint256 amount = ERC20(reward).balanceOf(address(this));
-                if (amount == 0) continue;
-
-                // Take platform fee
-                uint256 protocolFee = amount.mulDivDown(
-                    positionVaultMetaData.platformFee,
-                    1e18
-                );
-                amount -= protocolFee;
-                SafeTransferLib.safeTransfer(
-                    reward,
-                    positionVaultMetaData.feeAccumulator,
-                    protocolFee
-                );
-
-                uint256 valueInUSD = amount.mulDivDown(
-                    positionVaultMetaData.priceRouter.getPriceUSD(reward),
-                    10**ERC20(reward).decimals()
-                );
-
-                valueIn += valueInUSD;
-
-                if (reward == tokenA) continue;
-
-                optiSwapExactTokensForTokens(reward, tokenA, amount);
+            {
+                // 1. Withdraw all the rewards.
+                gauge.getReward(address(this), rewards);
             }
 
-            // 3. Convert tokenA to LP Token underlyings
-            uint256 totalAmountA = ERC20(tokenA).balanceOf(address(this));
-            if (totalAmountA == 0)
-                revert VelodromePositionVault__BadSlippage();
+            uint256 valueIn;
+            {
+                // 2. Convert rewards to ETH
+                uint256 rewardTokenCount = rewards.length;
+                for (uint256 i = 0; i < rewardTokenCount; i++) {
+                    address reward = rewards[i];
+                    uint256 amount = ERC20(reward).balanceOf(address(this));
+                    if (amount == 0) continue;
 
-            uint256 feeForUpkeep = totalAmountA.mulDivDown(
-                positionVaultMetaData.upkeepFee,
-                1e18
-            );
-            if (positionVaultMetaData.positionWatchdog == address(0))
-                revert VelodromePositionVault__WatchdogNotSet();
-            SafeTransferLib.safeTransfer(
-                tokenA,
-                positionVaultMetaData.positionWatchdog,
-                feeForUpkeep
-            );
-            totalAmountA -= feeForUpkeep;
+                    // Take platform fee
+                    uint256 protocolFee = amount.mulDivDown(
+                        positionVaultMetaData.platformFee,
+                        1e18
+                    );
+                    amount -= protocolFee;
+                    SafeTransferLib.safeTransfer(
+                        reward,
+                        positionVaultMetaData.feeAccumulator,
+                        protocolFee
+                    );
 
-            (uint256 r0, uint256 r1, ) = IVeloPair(asset()).getReserves();
-            uint256 reserveA = tokenA == IVeloPair(asset()).token0() ? r0 : r1;
-            uint256 swapAmount = _optimalDepositA(totalAmountA, reserveA);
-            swapExactTokensForTokens(tokenA, tokenB, swapAmount);
+                    (uint256 rewardPrice, ) = positionVaultMetaData
+                        .priceRouter
+                        .getPrice(reward, true, true);
+                    uint256 valueInUSD = amount.mulDivDown(
+                        rewardPrice,
+                        10 ** ERC20(reward).decimals()
+                    );
 
-            totalAmountA -= swapAmount;
-            uint256 totalAmountB = ERC20(tokenB).balanceOf(address(this));
+                    valueIn += valueInUSD;
 
-            // 4. Check USD value slippage
-            uint256 valueOut = totalAmountA.mulDivDown(
-                positionVaultMetaData.priceRouter.getPriceUSD(tokenA),
-                10**ERC20(tokenA).decimals()
-            ) +
-                totalAmountB.mulDivDown(
-                    positionVaultMetaData.priceRouter.getPriceUSD(tokenB),
-                    10**ERC20(tokenB).decimals()
-                );
+                    if (reward == tokenA) continue;
 
-            // Compare value in vs value out.
-            if (
-                valueOut <
-                valueIn.mulDivDown(
-                    1e18 - (positionVaultMetaData.upkeepFee + harvestSlippage),
+                    optiSwapExactTokensForTokens(reward, tokenA, amount);
+                }
+            }
+
+            uint256 totalAmountA;
+            uint256 totalAmountB;
+            {
+                // 3. Convert tokenA to LP Token underlyings
+                totalAmountA = ERC20(tokenA).balanceOf(address(this));
+                if (totalAmountA == 0)
+                    revert VelodromePositionVault__BadSlippage();
+
+                uint256 feeForUpkeep = totalAmountA.mulDivDown(
+                    positionVaultMetaData.upkeepFee,
                     1e18
-                )
-            ) revert VelodromePositionVault__BadSlippage();
+                );
+                if (positionVaultMetaData.positionWatchdog == address(0))
+                    revert VelodromePositionVault__WatchdogNotSet();
+                SafeTransferLib.safeTransfer(
+                    tokenA,
+                    positionVaultMetaData.positionWatchdog,
+                    feeForUpkeep
+                );
+                totalAmountA -= feeForUpkeep;
 
-            // 5. Deposit into Velodrome
-            yield = addLiquidity(tokenA, tokenB, totalAmountA, totalAmountB);
+                (uint256 r0, uint256 r1, ) = IVeloPair(asset()).getReserves();
+                uint256 reserveA = tokenA == IVeloPair(asset()).token0()
+                    ? r0
+                    : r1;
+                uint256 swapAmount = _optimalDepositA(totalAmountA, reserveA);
+                swapExactTokensForTokens(tokenA, tokenB, swapAmount);
 
-            // 6. Deposit into Gauge
-            _deposit(yield);
+                totalAmountA -= swapAmount;
+                totalAmountB = ERC20(tokenB).balanceOf(address(this));
+            }
+
+            uint256 valueOut;
+            {
+                // 4. Check USD value slippage
+                (uint256 tokenAPrice, ) = positionVaultMetaData
+                    .priceRouter
+                    .getPrice(tokenA, true, true);
+                (uint256 tokenBPrice, ) = positionVaultMetaData
+                    .priceRouter
+                    .getPrice(tokenB, true, true);
+                valueOut =
+                    totalAmountA.mulDivDown(
+                        tokenAPrice,
+                        10 ** ERC20(tokenA).decimals()
+                    ) +
+                    totalAmountB.mulDivDown(
+                        tokenBPrice,
+                        10 ** ERC20(tokenB).decimals()
+                    );
+
+                // Compare value in vs value out.
+                if (
+                    valueOut <
+                    valueIn.mulDivDown(
+                        1e18 -
+                            (positionVaultMetaData.upkeepFee +
+                                harvestSlippage),
+                        1e18
+                    )
+                ) revert VelodromePositionVault__BadSlippage();
+            }
+
+            {
+                // 5. Deposit into Velodrome
+                yield = addLiquidity(
+                    tokenA,
+                    tokenB,
+                    totalAmountA,
+                    totalAmountB
+                );
+            }
+
+            {
+                // 6. Deposit into Gauge
+                _deposit(yield);
+            }
 
             // Update Vesting info.
             positionVaultAccounting._rewardRate = uint128(
@@ -310,11 +340,10 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
         return gauge.balanceOf(address(this));
     }
 
-    function _optimalDepositA(uint256 _amountA, uint256 _reserveA)
-        internal
-        view
-        returns (uint256)
-    {
+    function _optimalDepositA(
+        uint256 _amountA,
+        uint256 _reserveA
+    ) internal view returns (uint256) {
         uint256 swapFee = IVeloPairFactory(pairFactory).getFee(false);
         uint256 swapFeeFactor = 10000 - swapFee;
         uint256 a = (10000 + swapFeeFactor) * _reserveA;
