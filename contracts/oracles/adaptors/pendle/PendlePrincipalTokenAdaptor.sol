@@ -5,13 +5,13 @@ import { ICurvePool } from "contracts/interfaces/external/curve/ICurvePool.sol";
 import { Extension } from "contracts/oracles/adaptors/Extension.sol";
 import { PriceOps } from "contracts/oracles/PriceOps.sol";
 import { Math } from "contracts/libraries/Math.sol";
-import { AutomationCompatibleInterface } from "@chainlink/contracts/src/v0.8/interfaces/AutomationCompatibleInterface.sol";
 import { ERC20, SafeTransferLib } from "contracts/libraries/ERC4626.sol";
+
 import { IPPtOracle } from "@pendle/interfaces/IPPtOracle.sol";
 import { PendlePtOracleLib } from "@pendle/oracles/PendlePtOracleLib.sol";
 import { IPMarket } from "@pendle/interfaces/IPMarket.sol";
 
-contract PendlePrincipalTokenExtension is Extension {
+contract PendlePrincipalTokenExtension is BaseOracleAdaptor {
     using Math for uint256;
     using PendlePtOracleLib for IPMarket;
 

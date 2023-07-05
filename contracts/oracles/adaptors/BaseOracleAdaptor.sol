@@ -51,7 +51,7 @@ abstract contract BaseOracleAdaptor {
         address _asset,
         bool _isUsd,
         bool _getLower
-    ) external view virtual returns (priceReturnData memory);
+    ) external view virtual returns (PriceReturnData memory);
 
     /**
      * @notice Removes a supported asset from the adaptor.
