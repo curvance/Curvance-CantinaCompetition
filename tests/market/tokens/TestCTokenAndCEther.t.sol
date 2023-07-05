@@ -52,7 +52,7 @@ contract TestCTokenAndCEther is TestBaseMarket {
     // function testMint() public {
     //     cDAI = new CErc20(
     //         DAI_ADDRESS,
-    //         LendtrollerInterface(unitroller),
+    //         LendtrollerInterface(lendtroller),
     //         InterestRateModel(address(deployments.jumpRateModel())),
     //         _ONE,
     //         "cDAI",
@@ -61,7 +61,7 @@ contract TestCTokenAndCEther is TestBaseMarket {
     //         payable(admin)
     //     );
     //     cETH = new CEther(
-    //         LendtrollerInterface(unitroller),
+    //         LendtrollerInterface(lendtroller),
     //         InterestRateModel(address(deployments.jumpRateModel())),
     //         _ONE,
     //         "cETH",
@@ -71,16 +71,16 @@ contract TestCTokenAndCEther is TestBaseMarket {
     //     );
     //     // support market
     //     vm.prank(admin);
-    //     Lendtroller(unitroller)._supportMarket(CToken(address(cDAI)));
+    //     Lendtroller(lendtroller)._supportMarket(CToken(address(cDAI)));
     //     vm.prank(admin);
-    //     Lendtroller(unitroller)._supportMarket(CToken(address(cETH)));
+    //     Lendtroller(lendtroller)._supportMarket(CToken(address(cETH)));
 
     //     // user1 enter markets
     //     vm.prank(user1);
     //     address[] memory markets = new address[](2);
     //     markets[0] = address(cDAI);
     //     markets[1] = address(cETH);
-    //     LendtrollerInterface(unitroller).enterMarkets(markets);
+    //     LendtrollerInterface(lendtroller).enterMarkets(markets);
 
     //     // user1 approve
     //     vm.prank(user1);
@@ -93,7 +93,7 @@ contract TestCTokenAndCEther is TestBaseMarket {
 
     //     // user2 enter market
     //     vm.prank(user2);
-    //     LendtrollerInterface(unitroller).enterMarkets(markets);
+    //     LendtrollerInterface(lendtroller).enterMarkets(markets);
 
     //     // user2 mint
     //     vm.prank(user2);
@@ -365,12 +365,12 @@ contract TestCTokenAndCEther is TestBaseMarket {
 
         // set collateral factor
         vm.prank(admin);
-        Lendtroller(unitroller)._setCollateralFactor(
+        Lendtroller(lendtroller)._setCollateralFactor(
             CToken(address(cDAI)),
             4e17
         );
         vm.prank(admin);
-        Lendtroller(unitroller)._setCollateralFactor(
+        Lendtroller(lendtroller)._setCollateralFactor(
             CToken(address(cETH)),
             4e17
         );

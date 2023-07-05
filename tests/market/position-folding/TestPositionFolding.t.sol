@@ -33,10 +33,10 @@ contract TestPositionFolding is TestBaseMarket {
 
         // support market
         vm.prank(admin);
-        Lendtroller(unitroller)._supportMarket(CToken(address(cDAI)));
+        Lendtroller(lendtroller)._supportMarket(CToken(address(cDAI)));
         // set collateral factor
         vm.prank(admin);
-        Lendtroller(unitroller)._setCollateralFactor(
+        Lendtroller(lendtroller)._setCollateralFactor(
             CToken(address(cDAI)),
             75e16
         );
@@ -45,23 +45,23 @@ contract TestPositionFolding is TestBaseMarket {
 
         // support market
         vm.prank(admin);
-        Lendtroller(unitroller)._supportMarket(CToken(address(cETH)));
+        Lendtroller(lendtroller)._supportMarket(CToken(address(cETH)));
         // set collateral factor
         vm.prank(admin);
-        Lendtroller(unitroller)._setCollateralFactor(
+        Lendtroller(lendtroller)._setCollateralFactor(
             CToken(address(cETH)),
             75e16
         );
 
         positionFolding = new PositionFolding(
-            unitroller,
+            lendtroller,
             address(priceOracle),
             address(cETH),
             WETH_ADDRESS
         );
         // set position folding
         vm.prank(admin);
-        Lendtroller(unitroller)._setPositionFolding(address(positionFolding));
+        Lendtroller(lendtroller)._setPositionFolding(address(positionFolding));
 
         // provide enough liquidity for leverage
         provideEnoughLiquidityForLeverage();
@@ -336,7 +336,7 @@ contract TestPositionFolding is TestBaseMarket {
             uint256 sumCollateral,
             uint256 maxBorrow,
             uint256 sumBorrow
-        ) = Lendtroller(unitroller).getAccountPosition(user);
+        ) = Lendtroller(lendtroller).getAccountPosition(user);
         assertGt(sumCollateral, 9400 ether);
         assertGt(maxBorrow, (9400 ether * 75) / 100);
         assertEq(sumBorrow, 7880 ether);
@@ -406,7 +406,7 @@ contract TestPositionFolding is TestBaseMarket {
                 uint256 sumCollateral,
                 uint256 maxBorrow,
                 uint256 sumBorrow
-            ) = Lendtroller(unitroller).getAccountPosition(user);
+            ) = Lendtroller(lendtroller).getAccountPosition(user);
             assertGt(sumCollateral, 9400 ether);
             assertGt(maxBorrow, (9400 ether * 75) / 100);
             assertEq(sumBorrow, 7880 ether);
@@ -450,7 +450,7 @@ contract TestPositionFolding is TestBaseMarket {
                 uint256 sumCollateral,
                 uint256 maxBorrow,
                 uint256 sumBorrow
-            ) = Lendtroller(unitroller).getAccountPosition(user);
+            ) = Lendtroller(lendtroller).getAccountPosition(user);
             assertGt(sumCollateral, 2000 ether);
             assertGt(maxBorrow, (2000 ether * 75) / 100);
             assertEq(sumBorrow, 1580 ether);

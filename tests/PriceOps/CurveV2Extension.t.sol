@@ -116,7 +116,7 @@ contract CurveV2ExtensionTest is TestBase {
         ICurveFi triPool = ICurveFi(curve3CryptoPool);
 
         deal(USDT, address(this), usdtIn);
-        ERC20(USDT).safeApprove(curve3CryptoPool, usdtIn);
+        ERC20(USDT).approve(curve3CryptoPool, usdtIn);
         uint256[3] memory amounts = [usdtIn, 0, 0];
         triPool.add_liquidity(amounts, 0);
 
@@ -124,11 +124,11 @@ contract CurveV2ExtensionTest is TestBase {
 
         uint256 valueIn = usdtIn.mulDivDown(
             USDT_PRICE_ETH,
-            10**ERC20(USDT).decimals()
+            10 ** ERC20(USDT).decimals()
         );
         uint256 valueOut = lpReceived.mulDivDown(
             upper,
-            10**ERC20(TRI_CRYPTO).decimals()
+            10 ** ERC20(TRI_CRYPTO).decimals()
         );
 
         assertApproxEqRel(
@@ -173,7 +173,7 @@ contract CurveV2ExtensionTest is TestBase {
         uint256 valueIn = ethIn;
         uint256 valueOut = lpReceived.mulDivDown(
             upper,
-            10**ERC20(CBETH_WETH).decimals()
+            10 ** ERC20(CBETH_WETH).decimals()
         );
 
         assertApproxEqRel(

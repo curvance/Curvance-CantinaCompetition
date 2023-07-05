@@ -22,7 +22,7 @@ contract TestChildGaugePool is TestBase {
     address public dai = address(0x6B175474E89094C44Da98b954EedeAC495271d0F);
     address public admin;
     DeployCompound public deployments;
-    address public unitroller;
+    address public lendtroller;
     CErc20 public cDAI;
     SimplePriceOracle public priceOracle;
 
@@ -43,7 +43,7 @@ contract TestChildGaugePool is TestBase {
 
         deployments = new DeployCompound();
         deployments.makeCompound();
-        unitroller = address(deployments.unitroller());
+        lendtroller = address(deployments.lendtroller());
         priceOracle = SimplePriceOracle(deployments.priceOracle());
         priceOracle.setDirectPrice(dai, _ONE);
         admin = deployments.admin();
@@ -54,7 +54,7 @@ contract TestChildGaugePool is TestBase {
         gaugePool = new GaugePool(
             address(rewardToken),
             address(0),
-            unitroller
+            lendtroller
         );
         MockToken(rewardToken).approve(address(gaugePool), 1000 ether);
 
@@ -88,8 +88,7 @@ contract TestChildGaugePool is TestBase {
             tokens[i] = address(
                 new CErc20(
                     dai,
-                    LendtrollerInterface(unitroller),
-                    address(gaugePool),
+                    lendtroller,
                     InterestRateModel(address(deployments.jumpRateModel())),
                     _ONE,
                     "cDAI",
@@ -100,10 +99,10 @@ contract TestChildGaugePool is TestBase {
             );
             // support market
             vm.prank(admin);
-            Lendtroller(unitroller)._supportMarket(CToken(tokens[i]));
+            Lendtroller(lendtroller)._supportMarket(CToken(tokens[i]));
             // set collateral factor
             vm.prank(admin);
-            Lendtroller(unitroller)._setCollateralFactor(
+            Lendtroller(lendtroller)._setCollateralFactor(
                 CToken(tokens[i]),
                 5e17
             );
@@ -113,7 +112,7 @@ contract TestChildGaugePool is TestBase {
                 vm.prank(user);
                 address[] memory markets = new address[](1);
                 markets[0] = address(tokens[i]);
-                LendtrollerInterface(unitroller).enterMarkets(markets);
+                LendtrollerInterface(lendtroller).enterMarkets(markets);
 
                 // approve
                 vm.prank(user);

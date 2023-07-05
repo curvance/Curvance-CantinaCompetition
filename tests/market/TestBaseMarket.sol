@@ -2,7 +2,6 @@
 pragma solidity ^0.8.13;
 
 import "contracts/market/lendtroller/Lendtroller.sol";
-import "contracts/market/Unitroller/Unitroller.sol";
 import "contracts/market/interestRates/JumpRateModelV2.sol";
 import "contracts/market/interestRates/InterestRateModel.sol";
 import "contracts/market/Oracle/PriceOracle.sol";
@@ -29,7 +28,7 @@ contract TestBaseMarket is TestBase {
     address public admin;
     address public user;
     address public liquidator;
-    address public unitroller;
+    address public lendtroller;
     address public gauge;
 
     IERC20 dai;
@@ -43,7 +42,7 @@ contract TestBaseMarket is TestBase {
 
         deployments = new DeployCompound();
         deployments.makeCompound();
-        unitroller = address(deployments.unitroller());
+        lendtroller = address(deployments.lendtroller());
         priceOracle = SimplePriceOracle(deployments.priceOracle());
         priceOracle.setDirectPrice(DAI_ADDRESS, _ONE);
         priceOracle.setDirectPrice(E_ADDRESS, _ONE);
@@ -52,15 +51,14 @@ contract TestBaseMarket is TestBase {
         user = address(this);
         liquidator = address(new User());
 
-        gauge = address(new GaugePool(address(0), address(0), unitroller));
+        gauge = address(new GaugePool(address(0), address(0), lendtroller));
 
         dai = IERC20(DAI_ADDRESS);
     }
 
     function _deployCEther() internal {
         cETH = new CEther(
-            LendtrollerInterface(unitroller),
-            gauge,
+            lendtroller,
             InterestRateModel(address(deployments.jumpRateModel())),
             _ONE,
             "cETH",
@@ -73,8 +71,7 @@ contract TestBaseMarket is TestBase {
     function _deployCDAI() internal {
         cDAI = new CErc20(
             DAI_ADDRESS,
-            LendtrollerInterface(unitroller),
-            gauge,
+            lendtroller,
             InterestRateModel(address(deployments.jumpRateModel())),
             _ONE,
             "cDAI",
@@ -86,8 +83,8 @@ contract TestBaseMarket is TestBase {
 
     function _setupCEtherMarket() internal {
         vm.startPrank(admin);
-        Lendtroller(unitroller)._supportMarket(CToken(address(cETH)));
-        Lendtroller(unitroller)._setCollateralFactor(
+        Lendtroller(lendtroller)._supportMarket(CToken(address(cETH)));
+        Lendtroller(lendtroller)._setCollateralFactor(
             CToken(address(cETH)),
             5e17
         );
@@ -96,8 +93,8 @@ contract TestBaseMarket is TestBase {
 
     function _setupCDAIMarket() internal {
         vm.startPrank(admin);
-        Lendtroller(unitroller)._supportMarket(CToken(address(cDAI)));
-        Lendtroller(unitroller)._setCollateralFactor(
+        Lendtroller(lendtroller)._supportMarket(CToken(address(cDAI)));
+        Lendtroller(lendtroller)._setCollateralFactor(
             CToken(address(cDAI)),
             5e17
         );
@@ -109,7 +106,7 @@ contract TestBaseMarket is TestBase {
         markets[0] = address(cETH);
 
         vm.prank(user_);
-        LendtrollerInterface(unitroller).enterMarkets(markets);
+        LendtrollerInterface(lendtroller).enterMarkets(markets);
     }
 
     function _enterCDAIMarket(address user_) internal {
@@ -117,7 +114,7 @@ contract TestBaseMarket is TestBase {
         markets[0] = address(cDAI);
 
         vm.prank(user_);
-        LendtrollerInterface(unitroller).enterMarkets(markets);
+        LendtrollerInterface(lendtroller).enterMarkets(markets);
     }
 
     function _enterMarkets(address user_) internal {
@@ -126,6 +123,6 @@ contract TestBaseMarket is TestBase {
         markets[1] = address(cETH);
 
         vm.prank(user_);
-        LendtrollerInterface(unitroller).enterMarkets(markets);
+        LendtrollerInterface(lendtroller).enterMarkets(markets);
     }
 }

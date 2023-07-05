@@ -51,7 +51,7 @@ contract TestCEtherAndCTokenIntegration is TestBaseMarket {
         cTokens[0] = cDAI;
         cTokens[1] = cETH;
         vm.prank(user);
-        Lendtroller(unitroller).setUserDisableCollateral(cTokens, true);
+        Lendtroller(lendtroller).setUserDisableCollateral(cTokens, true);
 
         vm.expectRevert(LendtrollerInterface.InsufficientLiquidity.selector);
         cDAI.borrow(50e18);
@@ -77,7 +77,7 @@ contract TestCEtherAndCTokenIntegration is TestBaseMarket {
         cTokens[0] = cDAI;
         cTokens[1] = cETH;
         vm.prank(admin);
-        Lendtroller(unitroller)._setDisableCollateral(cTokens, true);
+        Lendtroller(lendtroller)._setDisableCollateral(cTokens, true);
 
         vm.expectRevert(LendtrollerInterface.InsufficientLiquidity.selector);
         cDAI.borrow(50e18);
@@ -107,6 +107,6 @@ contract TestCEtherAndCTokenIntegration is TestBaseMarket {
         cTokens[1] = cETH;
         vm.prank(user);
         vm.expectRevert(LendtrollerInterface.InsufficientLiquidity.selector);
-        Lendtroller(unitroller).setUserDisableCollateral(cTokens, true);
+        Lendtroller(lendtroller).setUserDisableCollateral(cTokens, true);
     }
 }

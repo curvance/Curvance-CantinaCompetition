@@ -31,13 +31,13 @@ contract TestCTokenBorrowCap is TestBaseMarket {
 
         // set borrow cap to 49
         vm.prank(admin);
-        Lendtroller(unitroller)._setBorrowCapGuardian(admin);
+        Lendtroller(lendtroller)._setBorrowCapGuardian(admin);
         vm.prank(admin);
         CToken[] memory cTokens = new CToken[](1);
         cTokens[0] = cDAI;
         uint256[] memory borrowCapAmounts = new uint256[](1);
         borrowCapAmounts[0] = 49e18;
-        Lendtroller(unitroller)._setMarketBorrowCaps(
+        Lendtroller(lendtroller)._setMarketBorrowCaps(
             cTokens,
             borrowCapAmounts
         );
@@ -56,7 +56,7 @@ contract TestCTokenBorrowCap is TestBaseMarket {
         // increase borrow cap to 51
         vm.prank(admin);
         borrowCapAmounts[0] = 51e18;
-        Lendtroller(unitroller)._setMarketBorrowCaps(
+        Lendtroller(lendtroller)._setMarketBorrowCaps(
             cTokens,
             borrowCapAmounts
         );

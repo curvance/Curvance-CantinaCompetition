@@ -248,12 +248,12 @@ contract TestCEtherAndCTokenIntegration is TestBaseMarket {
 
         // set collateral factor
         vm.prank(admin);
-        Lendtroller(unitroller)._setCollateralFactor(
+        Lendtroller(lendtroller)._setCollateralFactor(
             CToken(address(cDAI)),
             4e17
         );
         vm.prank(admin);
-        Lendtroller(unitroller)._setCollateralFactor(
+        Lendtroller(lendtroller)._setCollateralFactor(
             CToken(address(cETH)),
             4e17
         );

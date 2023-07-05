@@ -167,10 +167,10 @@ contract TestCToken is TestBaseMarket {
 
         // support market
         vm.prank(admin);
-        Lendtroller(unitroller)._supportMarket(CToken(address(cDAI)));
+        Lendtroller(lendtroller)._supportMarket(CToken(address(cDAI)));
         // set collateral factor
         vm.prank(admin);
-        Lendtroller(unitroller)._setCollateralFactor(
+        Lendtroller(lendtroller)._setCollateralFactor(
             CToken(address(cDAI)),
             6e17
         );
@@ -179,7 +179,7 @@ contract TestCToken is TestBaseMarket {
         vm.prank(user);
         address[] memory markets = new address[](1);
         markets[0] = address(cDAI);
-        LendtrollerInterface(unitroller).enterMarkets(markets);
+        LendtrollerInterface(lendtroller).enterMarkets(markets);
 
         // approve
         dai.approve(address(cDAI), 100e18);
@@ -194,7 +194,7 @@ contract TestCToken is TestBaseMarket {
 
         // set collateral factor
         vm.prank(admin);
-        Lendtroller(unitroller)._setCollateralFactor(
+        Lendtroller(lendtroller)._setCollateralFactor(
             CToken(address(cDAI)),
             5e17
         );
