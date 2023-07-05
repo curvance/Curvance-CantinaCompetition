@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.17;
 
-import { BaseOracleAdaptor, BalancerPoolExtension, IVault, IERC20 } from "./BalancerPoolExtension.sol";
+import { BaseOracleAdaptor, BalancerPoolAdaptor, IVault, IERC20 } from "./BalancerPoolAdaptor.sol";
 import { Math } from "contracts/libraries/Math.sol";
 import { IBalancerPool } from "contracts/interfaces/external/balancer/IBalancerPool.sol";
 import { IRateProvider } from "contracts/interfaces/external/balancer/IRateProvider.sol";
@@ -9,15 +9,15 @@ import { IOracleAdaptor, PriceReturnData } from "contracts/interfaces/IOracleAda
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { PriceRouter } from "contracts/oracles/PriceRouterV2.sol";
 
-contract BalancerStablePoolAdaptor is BalancerPoolExtension {
+contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
     constructor(
         ICentralRegistry _centralRegistry,
         IVault _balancerVault,
         bool _isUsd
-    ) BalancerPoolExtension(_centralRegistry, _balancerVault, _isUsd) {}
+    ) BalancerPoolAdaptor(_centralRegistry, _balancerVault, _isUsd) {}
 
     /**
-     * @notice Extension storage
+     * @notice Adaptor storage
      * @param poolId the pool id of the BPT being priced
      * @param poolDecimals the decimals of the BPT being priced
      * @param rateProviders array of rate providers for each constituent
@@ -35,7 +35,7 @@ contract BalancerStablePoolAdaptor is BalancerPoolExtension {
     }
 
     /**
-     * @notice Balancer Stable Pool Extension Storage
+     * @notice Balancer Stable Pool Adaptor Storage
      */
     mapping(address => AdaptorData) public adaptorData;
 
@@ -71,7 +71,7 @@ contract BalancerStablePoolAdaptor is BalancerPoolExtension {
             }
         }
 
-        // Save values in extension storage.
+        // Save values in Adaptor storage.
         adaptorData[_asset] = _data;
         isSupportedAsset[_asset] = true;
     }
@@ -83,7 +83,7 @@ contract BalancerStablePoolAdaptor is BalancerPoolExtension {
         address _asset
     ) external view override returns (PriceReturnData memory pData) {
         _ensureNotInVaultContext(balancerVault);
-        // Read extension storage and grab pool tokens
+        // Read Adaptor storage and grab pool tokens
         AdaptorData memory data = adaptorData[_asset];
         IBalancerPool pool = IBalancerPool(_asset);
 

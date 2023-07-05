@@ -2,7 +2,7 @@
 pragma solidity ^0.8.17;
 
 import { ICurvePool } from "contracts/interfaces/external/curve/ICurvePool.sol";
-import { Extension } from "contracts/oracles/adaptors/Extension.sol";
+import { Adaptor } from "contracts/oracles/adaptors/Adaptor.sol";
 import { PriceOps } from "contracts/oracles/PriceOps.sol";
 import { Math } from "contracts/libraries/Math.sol";
 import { AutomationCompatibleInterface } from "@chainlink/contracts/src/v0.8/interfaces/AutomationCompatibleInterface.sol";
@@ -36,26 +36,26 @@ interface IPendleMarket {
         external;
 }
 
-contract PendleLPTokenExtension is Extension {
+contract PendleLPTokenAdaptor is Adaptor {
     using Math for uint256;
     using PendleLpOracleLib for IPMarket;
 
     uint32 public constant MINIMUM_TWAP_DURATION = 3600;
     IPendlePTOracle public immutable ptOracle;
 
-    struct PendleLpExtensionStorage {
+    struct PendleLpAdaptorStorage {
         IPMarket market;
         address pt;
         uint32 twapDuration;
         address quoteAsset;
     }
 
-    error PendleLPTokenExtension__MinimumTwapDurationNotMet();
-    error PendleLPTokenExtension__OldestObservationNotSatisfied();
-    error PendleLPTokenExtension__QuoteAssetNotSupported(
+    error PendleLPTokenAdaptor__MinimumTwapDurationNotMet();
+    error PendleLPTokenAdaptor__OldestObservationNotSatisfied();
+    error PendleLPTokenAdaptor__QuoteAssetNotSupported(
         address unsupportedQuote
     );
-    error PendleLPTokenExtension__CallIncreaseObservationsCardinalityNext(
+    error PendleLPTokenAdaptor__CallIncreaseObservationsCardinalityNext(
         address market,
         uint16 cardinalityNext
     );
@@ -64,11 +64,11 @@ contract PendleLPTokenExtension is Extension {
      * @notice Curve Derivative Storage
      * @dev Stores an array of the underlying token addresses in the curve pool.
      */
-    mapping(uint64 => PendleLpExtensionStorage)
-        public getPendleLpExtensionStorage;
+    mapping(uint64 => PendleLpAdaptorStorage)
+        public getPendleLpAdaptorStorage;
 
     constructor(PriceOps _priceOps, IPendlePTOracle _ptOracle)
-        Extension(_priceOps)
+        Adaptor(_priceOps)
     {
         ptOracle = _ptOracle;
     }
@@ -78,48 +78,48 @@ contract PendleLPTokenExtension is Extension {
         uint64 _sourceId,
         bytes memory data
     ) external override onlyPriceOps {
-        PendleLpExtensionStorage memory extensionConfiguration = abi.decode(
+        PendleLpAdaptorStorage memory adaptorConfiguration = abi.decode(
             data,
-            (PendleLpExtensionStorage)
+            (PendleLpAdaptorStorage)
         );
         // TODO so now asset is the PMarket, and pt is the value that needs to be passed in struct
         // TODO check that market is the right one for the PT token.
 
         // TODO could probs move a lot of this code to a shared pendle contract.
 
-        if (extensionConfiguration.twapDuration < MINIMUM_TWAP_DURATION)
-            revert PendleLPTokenExtension__MinimumTwapDurationNotMet();
+        if (adaptorConfiguration.twapDuration < MINIMUM_TWAP_DURATION)
+            revert PendleLPTokenAdaptor__MinimumTwapDurationNotMet();
 
         (
             bool increaseCardinalityRequired,
             uint16 cardinalityRequired,
             bool oldestObservationSatisfied
         ) = ptOracle.getOracleState(
-                address(extensionConfiguration.market),
-                extensionConfiguration.twapDuration
+                address(adaptorConfiguration.market),
+                adaptorConfiguration.twapDuration
             );
 
         if (increaseCardinalityRequired)
-            revert PendleLPTokenExtension__CallIncreaseObservationsCardinalityNext(
+            revert PendleLPTokenAdaptor__CallIncreaseObservationsCardinalityNext(
                 asset,
                 cardinalityRequired
             );
 
         if (oldestObservationSatisfied)
-            revert PendleLPTokenExtension__OldestObservationNotSatisfied();
+            revert PendleLPTokenAdaptor__OldestObservationNotSatisfied();
 
         // Check that `quoteAsset` is supported by PriceOps.
-        if (!priceOps.isSupported(extensionConfiguration.quoteAsset))
-            revert PendleLPTokenExtension__QuoteAssetNotSupported(
-                extensionConfiguration.quoteAsset
+        if (!priceOps.isSupported(adaptorConfiguration.quoteAsset))
+            revert PendleLPTokenAdaptor__QuoteAssetNotSupported(
+                adaptorConfiguration.quoteAsset
             );
 
-        // Write to extension storage.
-        getPendleLpExtensionStorage[_sourceId] = PendleLpExtensionStorage({
-            market: extensionConfiguration.market,
+        // Write to adaptor storage.
+        getPendleLpAdaptorStorage[_sourceId] = PendleLpAdaptorStorage({
+            market: adaptorConfiguration.market,
             pt: asset,
-            twapDuration: extensionConfiguration.twapDuration,
-            quoteAsset: extensionConfiguration.quoteAsset
+            twapDuration: adaptorConfiguration.twapDuration,
+            quoteAsset: adaptorConfiguration.quoteAsset
         });
     }
 
@@ -134,7 +134,7 @@ contract PendleLPTokenExtension is Extension {
             uint8 errorCode
         )
     {
-        PendleLpExtensionStorage memory stor = getPendleLpExtensionStorage[
+        PendleLpAdaptorStorage memory stor = getPendleLpAdaptorStorage[
             sourceId
         ];
         uint256 lpRate = stor.market.getLpToAssetRate(stor.twapDuration);

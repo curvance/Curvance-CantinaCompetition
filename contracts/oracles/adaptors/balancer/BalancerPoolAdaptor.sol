@@ -6,15 +6,15 @@ import { IVault } from "contracts/interfaces/external/balancer/IVault.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 
 /**
- * @title Sommelier Price Router Balancer Pool Extension
- * @notice Provides shared logic between Balancer Extensions.
+ * @title Sommelier Price Router Balancer Pool Adaptor
+ * @notice Provides shared logic between Balancer Adaptors.
  * @author crispymangoes
  */
-abstract contract BalancerPoolExtension is BaseOracleAdaptor {
+abstract contract BalancerPoolAdaptor is BaseOracleAdaptor {
     /**
      * @notice Attempted to price BPTs while in the Balancer Vault.
      */
-    error BalancerPoolExtension__Reentrancy();
+    error BalancerPoolAdaptor__Reentrancy();
 
     /**
      * @notice The Balancer Vault
@@ -70,6 +70,6 @@ abstract contract BalancerPoolExtension is BaseOracleAdaptor {
         );
 
         if (keccak256(revertData) == REENTRANCY_ERROR_HASH)
-            revert BalancerPoolExtension__Reentrancy();
+            revert BalancerPoolAdaptor__Reentrancy();
     }
 }

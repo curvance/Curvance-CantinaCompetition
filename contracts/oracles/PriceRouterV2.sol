@@ -117,7 +117,7 @@ contract PriceRouter {
         require(oracles > 0, "priceRouter: no feeds available");
 
         if (oracles < 2) {
-            return getPriceSingleFeed(_asset, _inUSD);
+            return getPriceSingleFeed(_asset, _inUSD, _getLower);
         }
 
         return getPriceDualFeed(_asset, _inUSD, _getLower);
@@ -158,6 +158,8 @@ contract PriceRouter {
     /// @dev This function is internal and not meant to be accessed directly.
     /// It fetches the price from up to two feeds available for the asset.
     /// @param _asset The address of the asset to retrieve the price for.
+    /// @param _inUSD Whether the price should be returned in USD or ETH.
+    /// @param _getLower Whether the lower or higher price should be returned if two feeds are available.
     /// @return A tuple containing the asset's price and an error flag (if any).
     /// If both price feeds return an error, it returns (0, BAD_SOURCE).
     /// If one of the price feeds return an error, it returns the price from the working feed along with a CAUTION flag.
@@ -167,8 +169,8 @@ contract PriceRouter {
         bool _inUSD,
         bool _getLower
     ) internal view returns (uint256, uint256) {
-        feedData memory feed0 = getPriceFromFeed(_asset, 0, _inUSD);
-        feedData memory feed1 = getPriceFromFeed(_asset, 1, _inUSD);
+        feedData memory feed0 = getPriceFromFeed(_asset, 0, _inUSD, _getLower);
+        feedData memory feed1 = getPriceFromFeed(_asset, 1, _inUSD, _getLower);
 
         if (feed0.hadError && feed1.hadError) return (0, BAD_SOURCE);
         if (feed0.hadError || feed1.hadError) {
@@ -184,16 +186,18 @@ contract PriceRouter {
     /// @dev Fetches the price from the first available price feed for the asset.
     /// @param _asset The address of the asset to retrieve the price for.
     /// @param _inUSD Whether the price should be returned in USD or ETH.
+    /// @param _getLower Whether the lower or higher price should be returned if two feeds are available.
     /// @return A tuple containing the asset's price and an error flag (if any).
     /// If the price feed returns an error, it returns (0, BAD_SOURCE).
     /// Otherwise, it returns (price, NO_ERROR).
     function getPriceSingleFeed(
         address _asset,
-        bool _inUSD
+        bool _inUSD,
+        bool _getLower
     ) internal view returns (uint256, uint256) {
         PriceReturnData memory data = IOracleAdaptor(
             assetPriceFeeds[_asset][0]
-        ).getPrice(_asset);
+        ).getPrice(_asset, _inUSD, _getLower);
         if (data.hadError) return (0, BAD_SOURCE);
 
         if (data.inUSD != _inUSD) {
@@ -215,16 +219,18 @@ contract PriceRouter {
     /// @param _asset The address of the asset to retrieve the price for.
     /// @param _feedNumber The index number of the feed to use.
     /// @param _inUSD Whether the price should be returned in USD or ETH.
+    /// @param _getLower Whether the lower or higher price should be returned if two feeds are available.
     /// @return An instance of feedData containing the asset's price and an error flag (if any).
     /// If the price feed returns an error, it returns feedData with price 0 and hadError set to true.
     function getPriceFromFeed(
         address _asset,
         uint256 _feedNumber,
-        bool _inUSD
+        bool _inUSD,
+        bool _getLower
     ) internal view returns (feedData memory) {
         PriceReturnData memory data = IOracleAdaptor(
             assetPriceFeeds[_asset][_feedNumber]
-        ).getPrice(_asset);
+        ).getPrice(_asset, _inUSD, _getLower);
         if (data.hadError) return (feedData({ price: 0, hadError: true }));
 
         if (data.inUSD != _inUSD) {
@@ -354,15 +360,18 @@ contract PriceRouter {
     ) external view returns (feedData[] memory) {
         uint256 oracles = assetPriceFeeds[_asset].length;
         require(oracles > 0, "priceRouter: no feeds available");
-        feedData[] memory data = new feedData[](oracles);
+        feedData[] memory data = new feedData[](oracles * 2);
 
         if (oracles < 2) {
-            data[0] = getPriceFromFeed(_asset, 0, _inUSD);
+            data[0] = getPriceFromFeed(_asset, 0, _inUSD, true);
+            data[1] = getPriceFromFeed(_asset, 0, _inUSD, false);
             return data;
         }
 
-        data[0] = getPriceFromFeed(_asset, 0, _inUSD);
-        data[1] = getPriceFromFeed(_asset, 1, _inUSD);
+        data[0] = getPriceFromFeed(_asset, 0, _inUSD, true);
+        data[1] = getPriceFromFeed(_asset, 0, _inUSD, false);
+        data[2] = getPriceFromFeed(_asset, 1, _inUSD, true);
+        data[3] = getPriceFromFeed(_asset, 1, _inUSD, false);
 
         return data;
     }
@@ -485,7 +494,7 @@ contract PriceRouter {
     }
 
     /// @notice Sets a new maximum delay for Chainlink price feed.
-    /// @dev Requires that the new delay is less than 2 day. Only callable by the DaoManager.
+    /// @dev Requires that the new delay is less than 1 day. Only callable by the DaoManager.
     /// @param _delay The new maximum delay in seconds.
     function setChainlinkDelay(uint256 _delay) external onlyDaoManager {
         require(_delay < 1 days, "priceRouter: delay is too large");
