@@ -91,7 +91,7 @@ contract CEther is CToken {
     function redeemUnderlyingForPositionFolding(
         address user,
         uint256 redeemAmount,
-        bytes memory params
+        bytes calldata params
     ) external {
         redeemUnderlyingForPositionFoldingInternal(
             payable(user),
@@ -116,7 +116,7 @@ contract CEther is CToken {
     function borrowForPositionFolding(
         address user,
         uint256 borrowAmount,
-        bytes memory params
+        bytes calldata params
     ) external {
         borrowForPositionFoldingInternal(payable(user), borrowAmount, params);
     }

@@ -262,7 +262,7 @@ contract PriceOps is Ownable {
         address asset,
         Descriptor descriptor,
         address source,
-        bytes memory sourceData
+        bytes calldata sourceData
     ) external onlyOwner returns (uint64 sourceId) {
         sourceId = _addSource(asset, descriptor, source, sourceData);
         emit AddSource(sourceId, asset, source, descriptor);

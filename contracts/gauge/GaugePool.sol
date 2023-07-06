@@ -174,7 +174,9 @@ contract GaugePool is GaugeController, ReentrancyGuard {
 
         _calcDebt(user, token);
 
-        for (uint256 i = 0; i < childGauges.length; ++i) {
+        uint256 numChildGauges = childGauges.length;
+
+        for (uint256 i = 0; i < numChildGauges; ++i) {
             if (address(childGauges[i]) != address(0)) {
                 childGauges[i].deposit(token, user, amount);
             }
@@ -212,7 +214,9 @@ contract GaugePool is GaugeController, ReentrancyGuard {
 
         _calcDebt(user, token);
 
-        for (uint256 i = 0; i < childGauges.length; ++i) {
+        uint256 numChildGauges = childGauges.length;
+
+        for (uint256 i = 0; i < numChildGauges; ++i) {
             if (address(childGauges[i]) != address(0)) {
                 childGauges[i].withdraw(token, user, amount);
             }

@@ -30,7 +30,7 @@ contract CurveV1Extension is Extension {
     function setupSource(
         address asset,
         uint64 _sourceId,
-        bytes memory data
+        bytes calldata data
     ) external override onlyPriceOps {
         address source = abi.decode(data, (address));
         ICurvePool pool = ICurvePool(source);
@@ -46,7 +46,7 @@ contract CurveV1Extension is Extension {
 
         // Save the pools tokens to reduce gas for pricing calls.
         address[] memory coins = new address[](coinsLength);
-        for (uint256 i = 0; i < coinsLength; i++) {
+        for (uint256 i = 0; i < coinsLength; ++i) {
             coins[i] = pool.coins(i);
         }
 
@@ -85,9 +85,10 @@ contract CurveV1Extension is Extension {
 
         ICurvePool pool = ICurvePool(stor.pool);
 
+        uint256 numStorCoins = stor.coins.length;
         uint256 maxUpper = 0;
         uint256 minLower = type(uint256).max;
-        for (uint256 i = 0; i < stor.coins.length; i++) {
+        for (uint256 i = 0; i < numStorCoins; ++i) {
             (uint256 nextUpper, uint256 nextLower, uint8 _errorCode) = priceOps
                 .getPriceInBase(stor.coins[i]);
             if (_errorCode == BAD_SOURCE) {
@@ -242,7 +243,7 @@ contract CurveV1Extension is Extension {
     //     // Loop through all curve assets, and find the asset with the largest delta(the one that needs to be updated the most).
     //     uint256 maxDelta;
     //     uint256 targetIndex;
-    //     for (uint256 i = start; i < end; i++) {
+    //     for (uint256 i = start; i < end; ++i) {
     //         address asset = curveAssets[i];
     //         VirtualPriceBound memory vpBound = getVirtualPriceBound[asset];
 
@@ -408,7 +409,7 @@ contract CurveV1Extension is Extension {
 
     //     // Save the pools tokens to reduce gas for pricing calls.
     //     address[] memory coins = new address[](coinsLength);
-    //     for (uint256 i = 0; i < coinsLength; i++) {
+    //     for (uint256 i = 0; i < coinsLength; ++i) {
     //         coins[i] = pool.coins(i);
     //     }
 
@@ -441,7 +442,7 @@ contract CurveV1Extension is Extension {
     //     address[] memory coins = getCurveDerivativeStorage[asset];
 
     //     uint256 minPrice = type(uint256).max;
-    //     for (uint256 i = 0; i < coins.length; i++) {
+    //     for (uint256 i = 0; i < coins.length; ++i) {
     //         ERC20 poolAsset = ERC20(coins[i]);
     //         uint256 tokenPrice = _getPriceInUSD(poolAsset, getAssetSettings[poolAsset], cache);
     //         if (tokenPrice < minPrice) minPrice = tokenPrice;

@@ -88,7 +88,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
     function leverageMax(
         CToken borrowToken,
         CToken collateral,
-        Swap memory swapData,
+        Swap calldata swapData,
         uint256 slippage
     ) external checkSlippage(msg.sender, slippage) nonReentrant {
         uint256 amountToBorrow = queryAmountToBorrowForLeverageMax(
@@ -102,7 +102,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         CToken borrowToken,
         uint256 borrowAmount,
         CToken collateral,
-        Swap memory swapData,
+        Swap calldata swapData,
         uint256 slippage
     ) external checkSlippage(msg.sender, slippage) nonReentrant {
         uint256 maxBorrowAmount = queryAmountToBorrowForLeverageMax(
@@ -236,7 +236,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         uint256 collateralAmount,
         CToken borrowToken,
         uint256 repayAmount,
-        Swap memory swapData,
+        Swap calldata swapData,
         uint256 slippage
     ) external checkSlippage(msg.sender, slippage) nonReentrant {
         _deleverage(
@@ -304,7 +304,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         address collateral,
         address redeemer,
         uint256 amount,
-        bytes memory params
+        bytes calldata params
     ) external override {
         (bool isListed, , ) = Lendtroller(lendtroller).getIsMarkets(
             collateral

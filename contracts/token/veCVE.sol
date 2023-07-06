@@ -304,13 +304,17 @@ contract veCVE is ERC20 {
 
         uint216 lockAmount;
         uint256 priorUnlockEpoch;
+        Lock storage userLock;
+
         for (uint256 i; i < locks; ) {
-            if (_user[i].unlockTime != CONTINUOUS_LOCK_VALUE) {
-                priorUnlockEpoch = currentEpoch(_user[i].unlockTime);
-                userTokenUnlocksByEpoch[msg.sender][priorUnlockEpoch] -= _user[
-                    i
-                ].amount;
-                totalUnlocksByEpoch[priorUnlockEpoch] -= _user[i].amount;
+            userLock = _user[i];
+
+            if (userLock.unlockTime != CONTINUOUS_LOCK_VALUE) {
+                priorUnlockEpoch = currentEpoch(userLock.unlockTime);
+                userTokenUnlocksByEpoch[msg.sender][
+                    priorUnlockEpoch
+                ] -= userLock.amount;
+                totalUnlocksByEpoch[priorUnlockEpoch] -= userLock.amount;
             }
             unchecked {
                 //Should never overflow as the total amount of tokens a user could ever lock is equal to the entire token supply
@@ -338,9 +342,10 @@ contract veCVE is ERC20 {
      * @param _recipient The address to send unlocked tokens to
      * @param _lockIndex The index of the lock to process
      */
-    function processExpiredLock(address _recipient, uint256 _lockIndex)
-        public
-    {
+    function processExpiredLock(
+        address _recipient,
+        uint256 _lockIndex
+    ) public {
         if (_lockIndex >= userLocks[msg.sender].length) revert invalidLock(); // Length is index + 1 so has to be less than array length
 
         uint256 tokensToWithdraw = _processExpiredLock(msg.sender, _lockIndex);
@@ -495,10 +500,10 @@ contract veCVE is ERC20 {
      * @param _lockIndex The index of the lock to be processed
      * @return tokensRedeemed The number of tokens redeemed from the expired lock
      */
-    function _processExpiredLock(address _account, uint256 _lockIndex)
-        internal
-        returns (uint256 tokensRedeemed)
-    {
+    function _processExpiredLock(
+        address _account,
+        uint256 _lockIndex
+    ) internal returns (uint256 tokensRedeemed) {
         Lock[] storage _user = userLocks[_account];
         require(
             block.timestamp >= _user[_lockIndex].unlockTime || isShutdown,
@@ -521,11 +526,10 @@ contract veCVE is ERC20 {
      * @param lockIndex The index of the lock to be swapped with the last lock in the array
      * @return The reorganized lock array
      */
-    function _OrganizeLockEntries(Lock[] memory _list, uint256 lockIndex)
-        internal
-        pure
-        returns (Lock[] memory)
-    {
+    function _OrganizeLockEntries(
+        Lock[] memory _list,
+        uint256 lockIndex
+    ) internal pure returns (Lock[] memory) {
         uint256 lastArrayIndex = _list.length - 1;
 
         if (lockIndex != lastArrayIndex) {
@@ -564,11 +568,10 @@ contract veCVE is ERC20 {
      * @param _epoch The epoch for which the votes are calculated
      * @return The total number of votes for the user at the specified epoch
      */
-    function getVotesForEpoch(address _user, uint256 _epoch)
-        public
-        view
-        returns (uint256)
-    {
+    function getVotesForEpoch(
+        address _user,
+        uint256 _epoch
+    ) public view returns (uint256) {
         uint256 locks = userLocks[_user].length;
         if (locks == 0) return 0;
         if (_epoch == 0) return 0;
@@ -588,11 +591,10 @@ contract veCVE is ERC20 {
      * @param _lockIndex The index of the lock to calculate votes for
      * @return The number of votes for the specified lock
      */
-    function getVotesForSingleLock(address _user, uint256 _lockIndex)
-        public
-        view
-        returns (uint256)
-    {
+    function getVotesForSingleLock(
+        address _user,
+        uint256 _lockIndex
+    ) public view returns (uint256) {
         Lock storage userLock = userLocks[_user][_lockIndex];
         if (userLock.unlockTime == CONTINUOUS_LOCK_VALUE)
             return (userLock.amount * 11000) / DENOMINATOR;

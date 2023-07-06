@@ -39,7 +39,7 @@ contract CurveV2Extension is Extension {
     function setupSource(
         address asset,
         uint64 _sourceId,
-        bytes memory data
+        bytes calldata data
     ) external override onlyPriceOps {
         address _source = abi.decode(data, (address));
         ICurvePool pool = ICurvePool(_source);
@@ -47,7 +47,7 @@ contract CurveV2Extension is Extension {
         // Figure out how many tokens are in the curve pool.
         while (true) {
             try pool.coins(coinsLength) {
-                coinsLength++;
+                ++coinsLength;
             } catch {
                 break;
             }
@@ -55,7 +55,7 @@ contract CurveV2Extension is Extension {
         if (coinsLength != 2 && coinsLength != 3)
             revert CurveV2Extension__UnsupportedPool();
         address[] memory coins = new address[](coinsLength);
-        for (uint256 i = 0; i < coinsLength; i++) {
+        for (uint256 i = 0; i < coinsLength; ++i) {
             coins[i] = pool.coins(i);
         }
 
@@ -85,7 +85,7 @@ contract CurveV2Extension is Extension {
     // result has 18 decimals.
     function _cubicRoot(uint256 x) internal pure returns (uint256) {
         uint256 D = x / 1e18;
-        for (uint8 i; i < 256; i++) {
+        for (uint8 i; i < 256; ++i) {
             uint256 diff;
             uint256 D_prev = D;
             D =

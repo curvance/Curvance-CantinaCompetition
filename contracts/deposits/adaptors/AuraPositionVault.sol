@@ -138,6 +138,7 @@ contract AuraPositionVault is BasePositionVault {
             _metaData,
             _initializeData
         );
+
         (
             address _balancerVault,
             bytes32 _balancerPoolId,
@@ -158,12 +159,16 @@ contract AuraPositionVault is BasePositionVault {
                     address[]
                 )
             );
+
+        uint256 numUnderlyingTokens = _underlyingTokens.length;
+
+        for (uint256 i = 0; i < numUnderlyingTokens; ++i) {
+            isUnderlyingToken[_underlyingTokens[i]] = true;
+        }
+
         balancerVault = IBalancerVault(_balancerVault);
         balancerPoolId = _balancerPoolId;
         underlyingTokens = _underlyingTokens;
-        for (uint256 i = 0; i < _underlyingTokens.length; i++) {
-            isUnderlyingToken[_underlyingTokens[i]] = true;
-        }
         pid = _pid;
         rewarder = IBaseRewardPool(_rewarder);
         booster = IBooster(_booster);
@@ -187,7 +192,7 @@ contract AuraPositionVault is BasePositionVault {
     }
 
     function setRewardTokens(
-        address[] memory _rewardTokens
+        address[] calldata _rewardTokens
     ) external onlyDaoManager {
         rewardTokens = _rewardTokens;
     }
@@ -199,8 +204,6 @@ contract AuraPositionVault is BasePositionVault {
     function harvest(
         bytes memory data
     ) public override whenNotShutdown nonReentrant returns (uint256 yield) {
-        Swap[] memory swapDataArray = abi.decode(data, (Swap[]));
-
         uint256 pending = _calculatePendingRewards();
         if (pending > 0) {
             // We need to claim vested rewards.
@@ -222,38 +225,47 @@ contract AuraPositionVault is BasePositionVault {
                 extraReward.getReward();
             }
 
-            // swap assets to one of pool token
             uint256 valueIn;
-            for (uint256 i = 0; i < rewardTokens.length; ++i) {
-                ERC20 reward = ERC20(rewardTokens[i]);
-                uint256 amount = reward.balanceOf(address(this));
-                if (amount == 0) continue;
 
-                // Take platform fee
-                uint256 protocolFee = amount.mulDivDown(
-                    positionVaultMetaData.platformFee,
-                    1e18
-                );
-                amount -= protocolFee;
-                SafeTransferLib.safeTransfer(
-                    address(reward),
-                    positionVaultMetaData.feeAccumulator,
-                    protocolFee
-                );
+            {
+                Swap[] memory swapDataArray = abi.decode(data, (Swap[]));
 
-                (uint256 rewardPrice, ) = positionVaultMetaData
-                    .priceRouter
-                    .getPrice(address(reward), true, true);
+                // swap assets to one of pool token
+                uint256 numRewardTokens = rewardTokens.length;
+                address reward;
+                uint256 amount;
+                uint256 protocolFee;
+                uint256 rewardPrice;
 
-                uint256 valueInUSD = amount.mulDivDown(
-                    rewardPrice,
-                    10 ** reward.decimals()
-                );
+                for (uint256 i = 0; i < numRewardTokens; ++i) {
+                    reward = rewardTokens[i];
+                    amount = ERC20(reward).balanceOf(address(this));
+                    if (amount == 0) continue;
 
-                valueIn += valueInUSD;
+                    // Take platform fee
+                    protocolFee = amount.mulDivDown(
+                        positionVaultMetaData.platformFee,
+                        1e18
+                    );
+                    amount -= protocolFee;
+                    SafeTransferLib.safeTransfer(
+                        reward,
+                        positionVaultMetaData.feeAccumulator,
+                        protocolFee
+                    );
 
-                if (!isUnderlyingToken[address(reward)]) {
-                    _swap(address(reward), swapDataArray[i]);
+                    (rewardPrice, ) = positionVaultMetaData
+                        .priceRouter
+                        .getPrice(reward, true, true);
+
+                    valueIn += amount.mulDivDown(
+                        rewardPrice,
+                        10 ** ERC20(reward).decimals()
+                    );
+
+                    if (!isUnderlyingToken[reward]) {
+                        _swap(reward, swapDataArray[i]);
+                    }
                 }
             }
 
@@ -262,18 +274,26 @@ contract AuraPositionVault is BasePositionVault {
             uint256 length = underlyingTokens.length;
             address[] memory assets = new address[](length);
             uint256[] memory maxAmountsIn = new uint256[](length);
-            for (uint256 i = 0; i < length; ++i) {
-                assets[i] = underlyingTokens[i];
-                maxAmountsIn[i] = ERC20(assets[i]).balanceOf(address(this));
-                _approveTokenIfNeeded(assets[i], address(balancerVault));
+            address underlyingToken;
+            uint256 assetPrice;
 
-                (uint256 assetPrice, ) = positionVaultMetaData
-                    .priceRouter
-                    .getPrice(assets[i], true, true);
+            for (uint256 i = 0; i < length; ++i) {
+                underlyingToken = underlyingTokens[i];
+                assets[i] = underlyingToken;
+                maxAmountsIn[i] = ERC20(underlyingToken).balanceOf(
+                    address(this)
+                );
+                _approveTokenIfNeeded(underlyingToken, address(balancerVault));
+
+                (assetPrice, ) = positionVaultMetaData.priceRouter.getPrice(
+                    underlyingToken,
+                    true,
+                    true
+                );
 
                 valueOut += maxAmountsIn[i].mulDivDown(
                     assetPrice,
-                    10 ** ERC20(assets[i]).decimals()
+                    10 ** ERC20(underlyingToken).decimals()
                 );
             }
 

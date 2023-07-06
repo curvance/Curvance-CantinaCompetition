@@ -162,19 +162,21 @@ contract GaugeController is IGaugePool, Ownable {
      */
     function setEmissionRates(
         uint256 epoch,
-        address[] memory tokens,
-        uint256[] memory poolWeights
+        address[] calldata tokens,
+        uint256[] calldata poolWeights
     ) external override onlyOwner {
         if (!(epoch == 0 && startTime == 0) && epoch != currentEpoch() + 1) {
             revert GaugeErrors.InvalidEpoch();
         }
 
-        if (tokens.length != poolWeights.length) {
+        uint256 numTokens = tokens.length;
+
+        if (numTokens != poolWeights.length) {
             revert GaugeErrors.InvalidLength();
         }
 
         Epoch storage info = epochInfo[epoch];
-        for (uint256 i = 0; i < tokens.length; ++i) {
+        for (uint256 i = 0; i < numTokens; ++i) {
             info.totalWeights =
                 info.totalWeights +
                 poolWeights[i] -

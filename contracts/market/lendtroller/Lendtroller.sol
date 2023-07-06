@@ -68,9 +68,8 @@ contract Lendtroller is LendtrollerInterface {
         uint256 len = cTokens.length;
 
         uint256[] memory results = new uint256[](len);
-        for (uint256 i = 0; i < len; i++) {
-            CToken cToken = CToken(cTokens[i]);
-            results[i] = addToMarketInternal(cToken, msg.sender);
+        for (uint256 i = 0; i < len; ++i) {
+            results[i] = addToMarketInternal(CToken(cTokens[i]), msg.sender);
         }
 
         // Return a list of markets joined & not joined (1 = joined, 0 = not joined)
@@ -149,7 +148,7 @@ contract Lendtroller is LendtrollerInterface {
         CToken[] memory userAssetList = accountAssets[msg.sender];
         uint256 len = userAssetList.length;
         uint256 assetIndex = len;
-        for (uint256 i = 0; i < len; i++) {
+        for (uint256 i = 0; i < len; ++i) {
             if (userAssetList[i] == cToken) {
                 assetIndex = i;
                 break;
@@ -551,10 +550,15 @@ contract Lendtroller is LendtrollerInterface {
             uint256 sumBorrowPlusEffects
         )
     {
+        uint256 numAccountAssets = accountAssets[account].length;
+        CToken asset;
+        bool collateralEnabled;
+
         // For each asset the account is in
-        for (uint256 i = 0; i < accountAssets[account].length; i++) {
-            CToken asset = accountAssets[account][i];
-            bool collateralEnabled = marketDisableCollateral[asset] == false &&
+        for (uint256 i = 0; i < numAccountAssets; ++i) {
+            asset = accountAssets[account][i];
+            collateralEnabled =
+                marketDisableCollateral[asset] == false &&
                 userDisableCollateral[account][asset] == false;
 
             (
@@ -564,11 +568,6 @@ contract Lendtroller is LendtrollerInterface {
             ) = asset.getAccountSnapshot(account);
             uint256 oraclePrice = oracle.getUnderlyingPrice(asset);
             if (oraclePrice == 0) revert PriceError();
-
-            // Pre-compute a conversion factor from tokens -> ether (normalized price value)
-            uint256 tokensToDenom = (((markets[address(asset)]
-                .collateralFactorScaled * exchangeRateScaled) / expScale) *
-                oraclePrice) / expScale;
 
             uint256 assetValue = (((cTokenBalance * exchangeRateScaled) /
                 expScale) * oraclePrice) / expScale;
@@ -586,6 +585,11 @@ contract Lendtroller is LendtrollerInterface {
             // Calculate effects of interacting with cTokenModify
             if (asset == cTokenModify) {
                 if (collateralEnabled) {
+                    // Pre-compute a conversion factor from tokens -> ether (normalized price value)
+                    uint256 tokensToDenom = (((markets[address(asset)]
+                        .collateralFactorScaled * exchangeRateScaled) /
+                        expScale) * oraclePrice) / expScale;
+
                     // redeem effect
                     sumBorrowPlusEffects += ((tokensToDenom * redeemTokens) /
                         expScale);
@@ -655,7 +659,7 @@ contract Lendtroller is LendtrollerInterface {
             revert InvalidValue();
         }
 
-        for (uint256 i = 0; i < numMarkets; i++) {
+        for (uint256 i = 0; i < numMarkets; ++i) {
             userDisableCollateral[msg.sender][cTokens[i]] = disableCollateral;
             emit SetUserDisableCollateral(
                 msg.sender,
@@ -816,7 +820,9 @@ contract Lendtroller is LendtrollerInterface {
      * @param cToken The address of the market (token) to list
      */
     function _addMarketInternal(address cToken) internal {
-        for (uint256 i = 0; i < allMarkets.length; i++) {
+        uint256 numMarkets = allMarkets.length;
+
+        for (uint256 i = 0; i < numMarkets; ++i) {
             if (allMarkets[i] == CToken(cToken)) {
                 revert MarketAlreadyListed();
             }
@@ -841,13 +847,12 @@ contract Lendtroller is LendtrollerInterface {
             revert AddressUnauthorized();
         }
         uint256 numMarkets = cTokens.length;
-        uint256 numBorrowCaps = newBorrowCaps.length;
 
-        if (numMarkets == 0 || numMarkets != numBorrowCaps) {
+        if (numMarkets == 0 || numMarkets != newBorrowCaps.length) {
             revert InvalidValue();
         }
 
-        for (uint256 i = 0; i < numMarkets; i++) {
+        for (uint256 i = 0; i < numMarkets; ++i) {
             borrowCaps[address(cTokens[i])] = newBorrowCaps[i];
             emit NewBorrowCap(cTokens[i], newBorrowCaps[i]);
         }
@@ -872,7 +877,7 @@ contract Lendtroller is LendtrollerInterface {
             revert InvalidValue();
         }
 
-        for (uint256 i = 0; i < numMarkets; i++) {
+        for (uint256 i = 0; i < numMarkets; ++i) {
             marketDisableCollateral[cTokens[i]] = disableCollateral;
             emit SetDisableCollateral(cTokens[i], disableCollateral);
         }

@@ -51,8 +51,10 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
 
         PriceRouter priceRouter = PriceRouter(centralRegistry.priceRouter());
 
+        uint256 numUnderlyingOrConstituent = _data.underlyingOrConstituent.length;
+
         // Make sure we can price all underlying tokens.
-        for (uint256 i; i < _data.underlyingOrConstituent.length; ++i) {
+        for (uint256 i; i < numUnderlyingOrConstituent; ++i) {
             // Break when a zero address is found.
             if (address(_data.underlyingOrConstituent[i]) == address(0)) break;
             require(
@@ -92,10 +94,11 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
         uint256 BAD_SOURCE = priceRouter.BAD_SOURCE();
 
         // Find the minimum price of all the pool tokens.
+        uint256 numUnderlyingOrConstituent = data.underlyingOrConstituent.length;
         uint256 minPrice = type(uint256).max;
         uint256 price;
         uint256 errorCode;
-        for (uint256 i; i < data.underlyingOrConstituent.length; ++i) {
+        for (uint256 i; i < numUnderlyingOrConstituent; ++i) {
             // Break when a zero address is found.
             if (address(data.underlyingOrConstituent[i]) == address(0)) break;
             // TODO so adaptors need to know if they are supposed to be working with the upper or the lower price.

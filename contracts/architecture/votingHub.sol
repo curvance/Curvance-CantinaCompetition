@@ -13,12 +13,12 @@ contract CurvanceVotingHub {
     using SafeERC20 for IERC20;
 
     event GaugeRewardsSet(
-        chainData[] chainData,
+        ChainData[] chainData,
         address[][] pools,
         uint256[][] rewards
     );
 
-    struct chainData {
+    struct ChainData {
         uint256 chainid;
         address destinationHub;
         uint256 emissionAmount;
@@ -70,14 +70,16 @@ contract CurvanceVotingHub {
     }
 
     function executeMatchingEngine(
-        address[][] calldata _pools,
-        uint256[][] calldata _poolEmissions,
-        chainData[] calldata _chainData
+        address[][] calldata pools,
+        uint256[][] calldata poolEmissions,
+        ChainData[] calldata chainData
     ) public onlyDaoManager {
         uint256 currentEpochDistribution = currentEpoch(block.timestamp);
+
+        uint256 numPools = pools.length;
+
         require(
-            _poolEmissions.length == _pools.length &&
-                _pools.length == _chainData.length,
+            poolEmissions.length == numPools && numPools == chainData.length,
             "Invalid Parameters"
         );
         require(
@@ -88,32 +90,23 @@ contract CurvanceVotingHub {
         IGaugePool gp = IGaugePool(centralRegistry.gaugeController());
         ICVE cve = ICVE(centralRegistry.CVE());
 
-        uint256 tokensPreEmission = IERC20(centralRegistry.CVE()).balanceOf(
+        uint256 tokensPreEmission = IERC20(address(cve)).balanceOf(
             address(this)
         );
+
         //check that double array length is not greater than child chains.length in veCVE/centralRegistry/cveLocker
         //calculate msg.value via estimate fees
         //approve gauge pool so that tokens can be taken
 
-        for (uint256 i; i < _pools.length; ) {
-            if (_chainData[i].chainid == block.chainid) {
+        for (uint256 i; i < numPools; ) {
+            if (chainData[i].chainid == block.chainid) {
                 gp.setEmissionRates(
                     currentEpochDistribution,
-                    _pools[i],
-                    _poolEmissions[i]
+                    pools[i],
+                    poolEmissions[i]
                 );
             } else {
-                cve.sendEmissions(
-                    address(this),
-                    uint16(_chainData[i].chainid),
-                    _chainData[i].destinationHub,
-                    _pools[i],
-                    _poolEmissions[i],
-                    _chainData[i].emissionAmount,
-                    payable(msg.sender),
-                    centralRegistry.zroAddress(),
-                    ""
-                );
+                _sendEmissions(cve, chainData[i], pools[i], poolEmissions[i]);
             }
 
             unchecked {
@@ -121,7 +114,7 @@ contract CurvanceVotingHub {
             }
         }
 
-        uint256 tokensPostEmission = IERC20(centralRegistry.CVE()).balanceOf(
+        uint256 tokensPostEmission = IERC20(address(cve)).balanceOf(
             address(this)
         );
 
@@ -135,13 +128,31 @@ contract CurvanceVotingHub {
         );
 
         ++lastEpochPaid;
-        emit GaugeRewardsSet(_chainData, _pools, _poolEmissions);
+        emit GaugeRewardsSet(chainData, pools, poolEmissions);
     }
 
-    function setEpochEmissions(uint256 _targetEmissionsPerEpoch)
-        public
-        onlyDaoManager
-    {
+    function setEpochEmissions(
+        uint256 _targetEmissionsPerEpoch
+    ) public onlyDaoManager {
         targetEmissionsPerEpoch = _targetEmissionsPerEpoch * cveDecimalOffset;
+    }
+
+    function _sendEmissions(
+        ICVE cve,
+        ChainData calldata chainData,
+        address[] calldata pools,
+        uint256[] calldata poolEmissions
+    ) internal {
+        cve.sendEmissions(
+            address(this),
+            uint16(chainData.chainid),
+            chainData.destinationHub,
+            pools,
+            poolEmissions,
+            chainData.emissionAmount,
+            payable(msg.sender),
+            centralRegistry.zroAddress(),
+            ""
+        );
     }
 }

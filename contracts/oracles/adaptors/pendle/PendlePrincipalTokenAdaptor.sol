@@ -51,7 +51,7 @@ contract PendlePrincipalTokenExtension is BaseOracleAdaptor {
     function setupSource(
         address asset,
         uint64 _sourceId,
-        bytes memory data
+        bytes calldata data
     ) external override onlyPriceOps {
         PendlePrincipalExtensionStorage memory extensionConfiguration = abi
             .decode(data, (PendlePrincipalExtensionStorage));

@@ -189,9 +189,11 @@ contract ConvexPositionVault is BasePositionVault {
         depositParams = _depositParams;
         curveRegistryExchange = _curveSwaps;
 
-        if (swapsToETH.length != assetsToETH.length)
+        uint256 numSwapsToETH = swapsToETH.length;
+
+        if (numSwapsToETH != assetsToETH.length)
             revert ConvexPositionVault__LengthMismatch();
-        for (uint256 i; i < swapsToETH.length; ++i) {
+        for (uint256 i; i < numSwapsToETH; ++i) {
             arbitraryToEth[assetsToETH[i]] = swapsToETH[i];
         }
         ethToTarget = swapsFromETH;
@@ -202,7 +204,7 @@ contract ConvexPositionVault is BasePositionVault {
     //////////////////////////////////////////////////////////////*/
 
     function updateEthTotargetSwapPath(
-        CurveSwapParams memory params
+        CurveSwapParams calldata params
     ) external onlyDaoManager {
         ethToTarget = params;
         emit EthToTargetSwapParamsChanged(params);
@@ -210,7 +212,7 @@ contract ConvexPositionVault is BasePositionVault {
 
     function updateArbitraryToEthSwapPath(
         ERC20 assetIn,
-        CurveSwapParams memory params
+        CurveSwapParams calldata params
     ) external onlyDaoManager {
         arbitraryToEth[assetIn] = params;
         emit ArbitraryToEthSwapParamsChanged(address(assetIn), params);
@@ -222,14 +224,14 @@ contract ConvexPositionVault is BasePositionVault {
     }
 
     function updateCurveDepositParams(
-        CurveDepositParams memory params
+        CurveDepositParams calldata params
     ) external onlyDaoManager {
         depositParams = params;
         emit CurveDepositParamsChanged(params);
     }
 
     function setRewardTokens(
-        ERC20[] memory _rewardTokens
+        ERC20[] calldata _rewardTokens
     ) external onlyDaoManager {
         rewardTokens = _rewardTokens;
     }
@@ -257,62 +259,71 @@ contract ConvexPositionVault is BasePositionVault {
 
             // Claim extra rewards
             uint256 extraRewardsLength = rewarder.extraRewardsLength();
-            for (uint256 i = 0; i < extraRewardsLength; i++) {
+            for (uint256 i = 0; i < extraRewardsLength; ++i) {
                 IRewards extraReward = IRewards(rewarder.extraRewards(i));
                 extraReward.getReward();
             }
 
             uint256 valueIn;
             uint256 ethOut;
-            address[4] memory pools;
             uint256 rewardTokenCount = rewardTokens.length;
-            for (uint256 i = 0; i < rewardTokenCount; i++) {
-                ERC20 rewardToken = rewardTokens[i];
-                uint256 rewardBalance = rewardToken.balanceOf(address(this));
-                // Take platform fee
-                uint256 protocolFee = rewardBalance.mulDivDown(
-                    positionVaultMetaData.platformFee,
-                    1e18
-                );
-                rewardBalance -= protocolFee;
-                SafeTransferLib.safeTransfer(
-                    address(rewardToken),
-                    positionVaultMetaData.feeAccumulator,
-                    protocolFee
-                );
+            address[4] memory pools;
 
-                (uint256 rewardPrice, ) = positionVaultMetaData
-                    .priceRouter
-                    .getPrice(address(rewardToken), true, true);
+            {
+                ERC20 rewardToken;
+                uint256 rewardBalance;
+                uint256 protocolFee;
+                uint256 rewardPrice;
+                uint256 valueInUSD;
 
-                // Get the reward token value in USD.
-                uint256 valueInUSD = rewardBalance.mulDivDown(
-                    rewardPrice,
-                    10 ** rewardToken.decimals()
-                );
-                CurveSwapParams memory swapParams = arbitraryToEth[
-                    rewardToken
-                ];
-                // Check if value is enough to warrant a swap. And that we have the swap params set up for it.
-                if (
-                    valueInUSD >= swapParams.minUSDValueToSwap &&
-                    address(swapParams.assetIn) != address(0)
-                ) {
-                    valueIn += valueInUSD;
-                    // Perform Swap into ETH.
-                    SafeTransferLib.safeApprove(
+                for (uint256 i = 0; i < rewardTokenCount; ++i) {
+                    rewardToken = rewardTokens[i];
+                    rewardBalance = rewardToken.balanceOf(address(this));
+                    // Take platform fee
+                    protocolFee = rewardBalance.mulDivDown(
+                        positionVaultMetaData.platformFee,
+                        1e18
+                    );
+                    rewardBalance -= protocolFee;
+                    SafeTransferLib.safeTransfer(
                         address(rewardToken),
-                        address(curveRegistryExchange),
-                        rewardBalance
+                        positionVaultMetaData.feeAccumulator,
+                        protocolFee
                     );
-                    ethOut += curveRegistryExchange.exchange_multiple(
-                        swapParams.route,
-                        swapParams.swapParams,
-                        rewardBalance,
-                        0,
-                        pools,
-                        address(this)
+
+                    (rewardPrice, ) = positionVaultMetaData
+                        .priceRouter
+                        .getPrice(address(rewardToken), true, true);
+
+                    // Get the reward token value in USD.
+                    valueInUSD = rewardBalance.mulDivDown(
+                        rewardPrice,
+                        10 ** rewardToken.decimals()
                     );
+                    CurveSwapParams memory swapParams = arbitraryToEth[
+                        rewardToken
+                    ];
+                    // Check if value is enough to warrant a swap. And that we have the swap params set up for it.
+                    if (
+                        valueInUSD >= swapParams.minUSDValueToSwap &&
+                        address(swapParams.assetIn) != address(0)
+                    ) {
+                        valueIn += valueInUSD;
+                        // Perform Swap into ETH.
+                        SafeTransferLib.safeApprove(
+                            address(rewardToken),
+                            address(curveRegistryExchange),
+                            rewardBalance
+                        );
+                        ethOut += curveRegistryExchange.exchange_multiple(
+                            swapParams.route,
+                            swapParams.swapParams,
+                            rewardBalance,
+                            0,
+                            pools,
+                            address(this)
+                        );
+                    }
                 }
             }
 

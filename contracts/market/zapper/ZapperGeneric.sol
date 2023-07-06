@@ -45,7 +45,7 @@ contract ZapperGeneric {
         address lpMinter,
         address lpToken,
         uint256 lpMinOutAmount,
-        address[] memory tokens,
+        address[] calldata tokens,
         Swap[] memory tokenSwaps
     ) external payable returns (uint256 cTokenOutAmount) {
         if (inputToken == ETH) {
@@ -66,8 +66,10 @@ contract ZapperGeneric {
         // check cToken underlying
         require(CErc20(cToken).underlying() == lpToken, "invalid lp address");
 
+        uint256 numTokenSwaps = tokenSwaps.length;
+
         // prepare tokens to mint LP
-        for (uint256 i = 0; i < tokenSwaps.length; i++) {
+        for (uint256 i = 0; i < numTokenSwaps; ++i) {
             // swap input token to underlying token
             _swap(inputToken, tokenSwaps[i]);
         }
@@ -148,8 +150,11 @@ contract ZapperGeneric {
         uint256 lpMinOutAmount
     ) private returns (uint256 lpOutAmount) {
         bool hasETH = false;
+
+        uint256 numTokens = tokens.length;
+
         // approve tokens
-        for (uint256 i = 0; i < tokens.length; i++) {
+        for (uint256 i = 0; i < numTokens; ++i) {
             _approveTokenIfNeeded(tokens[i], lpMinter);
             if (tokens[i] == ETH) {
                 hasETH = true;
@@ -157,7 +162,6 @@ contract ZapperGeneric {
         }
 
         // enter curve lp minter
-        uint256 numTokens = tokens.length;
         if (numTokens == 4) {
             uint256[4] memory amounts;
             amounts[0] = _getBalance(tokens[0]);

@@ -166,7 +166,10 @@ contract VelodromeStablePositionVault is BasePositionVault {
         router = _router;
         pairFactory = _pairFactory;
         optiSwap = _optiSwap;
-        for (uint256 i = 0; i < _rewards.length; i++) {
+
+        uint256 numRewards = _rewards.length;
+
+        for (uint256 i = 0; i < numRewards; ++i) {
             rewards.push(_rewards[i]);
         }
     }
@@ -207,13 +210,18 @@ contract VelodromeStablePositionVault is BasePositionVault {
             {
                 // 2. Convert rewards to ETH
                 uint256 rewardTokenCount = rewards.length;
-                for (uint256 i = 0; i < rewardTokenCount; i++) {
-                    address reward = rewards[i];
-                    uint256 amount = ERC20(reward).balanceOf(address(this));
+                address reward;
+                uint256 amount;
+                uint256 protocolFee;
+                uint256 rewardPrice;
+
+                for (uint256 i = 0; i < rewardTokenCount; ++i) {
+                    reward = rewards[i];
+                    amount = ERC20(reward).balanceOf(address(this));
                     if (amount == 0) continue;
 
                     // Take platform fee
-                    uint256 protocolFee = amount.mulDivDown(
+                    protocolFee = amount.mulDivDown(
                         positionVaultMetaData.platformFee,
                         1e18
                     );
@@ -223,15 +231,14 @@ contract VelodromeStablePositionVault is BasePositionVault {
                         positionVaultMetaData.feeAccumulator,
                         protocolFee
                     );
-                    (uint256 rewardPrice, ) = positionVaultMetaData
+                    (rewardPrice, ) = positionVaultMetaData
                         .priceRouter
                         .getPrice(reward, true, true);
-                    uint256 valueInUSD = amount.mulDivDown(
+
+                    valueIn += amount.mulDivDown(
                         rewardPrice,
                         10 ** ERC20(reward).decimals()
                     );
-
-                    valueIn += valueInUSD;
 
                     if (reward == tokenA) continue;
 
