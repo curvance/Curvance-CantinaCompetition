@@ -42,9 +42,10 @@ contract PendlePrincipalTokenExtension is BaseOracleAdaptor {
     mapping(uint64 => PendlePrincipalExtensionStorage)
         public getPendlePrincipalExtensionStorage;
 
-    constructor(PriceOps _priceOps, IPPtOracle _ptOracle)
-        Extension(_priceOps)
-    {
+    constructor(
+        PriceOps _priceOps,
+        IPPtOracle _ptOracle
+    ) Extension(_priceOps) {
         ptOracle = _ptOracle;
     }
 
@@ -96,16 +97,14 @@ contract PendlePrincipalTokenExtension is BaseOracleAdaptor {
         });
     }
 
-    function getPriceInBase(uint64 sourceId)
+    function getPriceInBase(
+        uint64 sourceId
+    )
         external
         view
         override
         onlyPriceOps
-        returns (
-            uint256 upper,
-            uint256 lower,
-            uint8 errorCode
-        )
+        returns (uint256 upper, uint256 lower, uint8 errorCode)
     {
         PendlePrincipalExtensionStorage
             memory stor = getPendlePrincipalExtensionStorage[sourceId];

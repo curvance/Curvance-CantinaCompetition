@@ -11,7 +11,10 @@ import { PendleLpOracleLib } from "@pendle/oracles/PendleLpOracleLib.sol";
 import { IPMarket } from "@pendle/interfaces/IPMarket.sol";
 
 interface IPendlePTOracle {
-    function getOracleState(address market, uint32 duration)
+    function getOracleState(
+        address market,
+        uint32 duration
+    )
         external
         view
         returns (
@@ -20,20 +23,21 @@ interface IPendlePTOracle {
             bool oldestObservationSatisfied
         );
 
-    function getPtToAssetRate(address market, uint32 duration)
-        external
-        view
-        returns (uint256 ptToAssetRate);
+    function getPtToAssetRate(
+        address market,
+        uint32 duration
+    ) external view returns (uint256 ptToAssetRate);
 
-    function getLpToAssetRate(address market, uint32 duration)
-        external
-        view
-        returns (uint256 ptToAssetRate);
+    function getLpToAssetRate(
+        address market,
+        uint32 duration
+    ) external view returns (uint256 ptToAssetRate);
 }
 
 interface IPendleMarket {
-    function increaseObservationsCardinalityNext(uint16 cardinalityNext)
-        external;
+    function increaseObservationsCardinalityNext(
+        uint16 cardinalityNext
+    ) external;
 }
 
 contract PendleLPTokenAdaptor is Adaptor {
@@ -64,12 +68,12 @@ contract PendleLPTokenAdaptor is Adaptor {
      * @notice Curve Derivative Storage
      * @dev Stores an array of the underlying token addresses in the curve pool.
      */
-    mapping(uint64 => PendleLpAdaptorStorage)
-        public getPendleLpAdaptorStorage;
+    mapping(uint64 => PendleLpAdaptorStorage) public getPendleLpAdaptorStorage;
 
-    constructor(PriceOps _priceOps, IPendlePTOracle _ptOracle)
-        Adaptor(_priceOps)
-    {
+    constructor(
+        PriceOps _priceOps,
+        IPendlePTOracle _ptOracle
+    ) Adaptor(_priceOps) {
         ptOracle = _ptOracle;
     }
 
@@ -123,16 +127,14 @@ contract PendleLPTokenAdaptor is Adaptor {
         });
     }
 
-    function getPriceInBase(uint64 sourceId)
+    function getPriceInBase(
+        uint64 sourceId
+    )
         external
         view
         override
         onlyPriceOps
-        returns (
-            uint256 upper,
-            uint256 lower,
-            uint8 errorCode
-        )
+        returns (uint256 upper, uint256 lower, uint8 errorCode)
     {
         PendleLpAdaptorStorage memory stor = getPendleLpAdaptorStorage[
             sourceId

@@ -68,16 +68,14 @@ contract CurveV1Extension is Extension {
         // getVirtualPriceBound[address(_asset)] = vpBound;
     }
 
-    function getPriceInBase(uint64 sourceId)
+    function getPriceInBase(
+        uint64 sourceId
+    )
         external
         view
         override
         onlyPriceOps
-        returns (
-            uint256 upper,
-            uint256 lower,
-            uint8 errorCode
-        )
+        returns (uint256 upper, uint256 lower, uint8 errorCode)
     {
         CurveDerivativeStorage memory stor = getCurveDerivativeStorage[
             sourceId
@@ -117,8 +115,8 @@ contract CurveV1Extension is Extension {
 
         // Virtual price is based off the Curve Token decimals.
         uint256 curveTokenDecimals = ERC20(stor.asset).decimals();
-        upper = maxUpper.mulDivDown(virtualPrice, 10**curveTokenDecimals);
-        lower = minLower.mulDivDown(virtualPrice, 10**curveTokenDecimals);
+        upper = maxUpper.mulDivDown(virtualPrice, 10 ** curveTokenDecimals);
+        lower = minLower.mulDivDown(virtualPrice, 10 ** curveTokenDecimals);
 
         // It is possible that if not all sources provide a lower value, then lower can be greater than upper.
         // TODO pretty sure this is no longer needed.

@@ -149,10 +149,9 @@ contract callOptionCVE is ERC20 {
      * @notice Set the options expiry timestamp.
      * @param _timestampStart The start timestamp for options exercising.
      */
-    function setOptionsExpiry(uint256 _timestampStart)
-        external
-        onlyDaoManager
-    {
+    function setOptionsExpiry(
+        uint256 _timestampStart
+    ) external onlyDaoManager {
         require(
             paymentTokenPricePerCVE != 0 &&
                 paymentToken != IERC20(address(0)) &&

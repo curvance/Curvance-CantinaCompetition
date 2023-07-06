@@ -36,10 +36,9 @@ contract CVE is OFTV2 {
      * Emission amount is multiplied by the lock boost value from the central registry.
      * Resulting tokens are minted to the voting hub contract.
      */
-    function mintGaugeEmissions(uint256 _gaugeEmissions)
-        external
-        onlyVotingHub
-    {
+    function mintGaugeEmissions(
+        uint256 _gaugeEmissions
+    ) external onlyVotingHub {
         _mint(
             msg.sender,
             (_gaugeEmissions * centralRegistry.lockBoostValue()) / DENOMINATOR

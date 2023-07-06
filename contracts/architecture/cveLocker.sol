@@ -154,14 +154,14 @@ contract cveLocker {
      * @param _user The address of the user.
      * @param _points The number of points to add.
      */
-    function incrementTokenPoints(address _user, uint256 _points)
-        public
-        onlyVeCVE
-    {
+    function incrementTokenPoints(
+        address _user,
+        uint256 _points
+    ) public onlyVeCVE {
         unchecked {
             chainTokenPoints += _points;
             userTokenPoints[_user] += _points;
-        }//only modified on locking/unlocking veCVE and we know theres never more than 420m so this should never over/underflow
+        } //only modified on locking/unlocking veCVE and we know theres never more than 420m so this should never over/underflow
     }
 
     /**
@@ -170,14 +170,14 @@ contract cveLocker {
      * @param _user The address of the user.
      * @param _points The number of points to reduce.
      */
-    function reduceTokenPoints(address _user, uint256 _points)
-        public
-        onlyVeCVE
-    {
+    function reduceTokenPoints(
+        address _user,
+        uint256 _points
+    ) public onlyVeCVE {
         unchecked {
             chainTokenPoints -= _points;
             userTokenPoints[_user] -= _points;
-        }//only modified on locking/unlocking veCVE and we know theres never more than 420m so this should never over/underflow
+        } //only modified on locking/unlocking veCVE and we know theres never more than 420m so this should never over/underflow
     }
 
     /**
@@ -191,11 +191,12 @@ contract cveLocker {
         address _user,
         uint256 _epoch,
         uint256 _points
-    ) public onlyVeCVE {//might not need token unlock functions
+    ) public onlyVeCVE {
+        //might not need token unlock functions
         unchecked {
             chainUnlocksByEpoch[_epoch] += _points;
             userTokenUnlocksByEpoch[_user][_epoch] += _points;
-        }//only modified on locking/unlocking veCVE and we know theres never more than 420m so this should never over/underflow
+        } //only modified on locking/unlocking veCVE and we know theres never more than 420m so this should never over/underflow
     }
 
     /**
@@ -213,7 +214,7 @@ contract cveLocker {
         unchecked {
             chainUnlocksByEpoch[_epoch] -= _points;
             userTokenUnlocksByEpoch[_user][_epoch] -= _points;
-        }//only modified on locking/unlocking veCVE and we know theres never more than 420m so this should never over/underflow
+        } //only modified on locking/unlocking veCVE and we know theres never more than 420m so this should never over/underflow
     }
 
     /**
@@ -251,7 +252,7 @@ contract cveLocker {
             chainUnlocksByEpoch[_epoch] -= _tokenUnlocks;
             userTokenPoints[_user] += _tokenPoints;
             userTokenUnlocksByEpoch[_user][_epoch] -= _tokenUnlocks;
-        }//Add the bonus fee boost from continuous on and previous token unlock schedule
+        } //Add the bonus fee boost from continuous on and previous token unlock schedule
     }
 
     /**
@@ -273,7 +274,7 @@ contract cveLocker {
             chainUnlocksByEpoch[_epoch] -= _tokenUnlocks;
             userTokenPoints[_user] -= _tokenPoints;
             userTokenUnlocksByEpoch[_user][_epoch] -= _tokenUnlocks;
-        }//Remove the bonus fee boost from continuous on and add new token unlock schedule
+        } //Remove the bonus fee boost from continuous on and add new token unlock schedule
     }
 
     /**
@@ -282,10 +283,10 @@ contract cveLocker {
      * @param _user The address of the user.
      * @param _index The new claim index.
      */
-    function updateUserClaimIndex(address _user, uint256 _index)
-        public
-        onlyVeCVE
-    {
+    function updateUserClaimIndex(
+        address _user,
+        uint256 _index
+    ) public onlyVeCVE {
         userClaimIndex[_user] = _index;
     }
 
@@ -308,10 +309,10 @@ contract cveLocker {
      * @param _epoch The epoch for which to add the unlocks.
      * @param _points The number of points to add.
      */
-    function incrementChainTokenUnlocks(uint256 _epoch, uint256 _points)
-        public
-        onlyVeCVE
-    {
+    function incrementChainTokenUnlocks(
+        uint256 _epoch,
+        uint256 _points
+    ) public onlyVeCVE {
         chainUnlocksByEpoch[_epoch] += _points;
     }
 
@@ -321,10 +322,10 @@ contract cveLocker {
      * @param _epoch The epoch for which to reduce the unlocks.
      * @param _points The number of points to reduce.
      */
-    function reduceChainTokenUnlocks(uint256 _epoch, uint256 _points)
-        public
-        onlyVeCVE
-    {
+    function reduceChainTokenUnlocks(
+        uint256 _epoch,
+        uint256 _points
+    ) public onlyVeCVE {
         chainUnlocksByEpoch[_epoch] -= _points;
     }
 
@@ -352,10 +353,10 @@ contract cveLocker {
      * @param _epoch The epoch for which to add the data.
      * @param _points The number of points to add.
      */
-    function incrementChainTokenData(uint256 _epoch, uint256 _points)
-        public
-        onlyVeCVE
-    {
+    function incrementChainTokenData(
+        uint256 _epoch,
+        uint256 _points
+    ) public onlyVeCVE {
         chainTokenPoints += _points;
         chainUnlocksByEpoch[_epoch] += _points;
     }
@@ -481,7 +482,12 @@ contract cveLocker {
             _aux
         );
 
-        emit RewardPaid(msg.sender, _recipient, desiredRewardToken, rewardAmount);
+        emit RewardPaid(
+            msg.sender,
+            _recipient,
+            desiredRewardToken,
+            rewardAmount
+        );
     }
 
     /**
@@ -489,10 +495,9 @@ contract cveLocker {
      * @param _epoch The epoch for which to calculate the rewards.
      * @return The calculated reward amount. This is calculated based on the user's token points for the given epoch.
      */
-    function calculateRewardsForEpoch(uint256 _epoch)
-        internal
-        returns (uint256)
-    {
+    function calculateRewardsForEpoch(
+        uint256 _epoch
+    ) internal returns (uint256) {
         if (userTokenUnlocksByEpoch[msg.sender][_epoch] != 0) {
             // If they have tokens unlocking this epoch we need to decriment their tokenPoints
             userTokenPoints[msg.sender] -= userTokenUnlocksByEpoch[msg.sender][
@@ -672,10 +677,10 @@ contract cveLocker {
         return reward;
     }
 
-    function distributeRewardsAsETH(address recipient, uint256 reward)
-        internal
-        returns (uint256)
-    {
+    function distributeRewardsAsETH(
+        address recipient,
+        uint256 reward
+    ) internal returns (uint256) {
         (bool success, ) = payable(recipient).call{ value: reward }("");
         require(success, "cveLocker: error sending ETH rewards");
         return reward;
@@ -710,10 +715,9 @@ contract cveLocker {
         authorizedRewardToken[_token] = true;
     }
 
-    function removeAuthorizedRewardToken(address _token)
-        external
-        onlyDaoManager
-    {
+    function removeAuthorizedRewardToken(
+        address _token
+    ) external onlyDaoManager {
         require(_token != address(0), "Invalid Token Address");
         require(authorizedRewardToken[_token], "Invalid Operation");
         delete authorizedRewardToken[_token];

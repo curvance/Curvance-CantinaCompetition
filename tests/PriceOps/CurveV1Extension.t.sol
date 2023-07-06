@@ -158,11 +158,11 @@ contract CurveV1ExtensionTest is TestBase {
 
         uint256 valueIn = usdcIn.mulDivDown(
             USDC_PRICE_ETH,
-            10**ERC20(USDC).decimals()
+            10 ** ERC20(USDC).decimals()
         );
         uint256 valueOut = lpReceived.mulDivDown(
             upper,
-            10**ERC20(CRV_DAI_USDC_USDT).decimals()
+            10 ** ERC20(CRV_DAI_USDC_USDT).decimals()
         );
 
         assertApproxEqRel(

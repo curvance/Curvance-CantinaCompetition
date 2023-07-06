@@ -78,7 +78,7 @@ contract CurveV2Extension is Extension {
     }
 
     uint256 private constant GAMMA0 = 28000000000000;
-    uint256 private constant A0 = 2 * 3**3 * 10000;
+    uint256 private constant A0 = 2 * 3 ** 3 * 10000;
     uint256 private constant DISCOUNT0 = 1087460000000000;
 
     // x has 36 decimals
@@ -93,7 +93,7 @@ contract CurveV2Extension is Extension {
                 (3 * 1e18);
             if (D > D_prev) diff = D - D_prev;
             else diff = D_prev - D;
-            if (diff <= 1 || diff * 10**18 < D) return D;
+            if (diff <= 1 || diff * 10 ** 18 < D) return D;
         }
         revert CurveV2Extension__DidNotConverge();
     }
@@ -102,16 +102,14 @@ contract CurveV2Extension is Extension {
      * Inspired by https://etherscan.io/address/0xE8b2989276E2Ca8FDEA2268E3551b2b4B2418950#code
      * @notice Get the price of a CurveV2 derivative in terms of Base.
      */
-    function getPriceInBase(uint64 sourceId)
+    function getPriceInBase(
+        uint64 sourceId
+    )
         external
         view
         override
         onlyPriceOps
-        returns (
-            uint256 upper,
-            uint256 lower,
-            uint8 errorCode
-        )
+        returns (uint256 upper, uint256 lower, uint8 errorCode)
     {
         CurveDerivativeStorage memory stor = getCurveDerivativeStorage[
             sourceId
@@ -150,7 +148,7 @@ contract CurveV2Extension is Extension {
             {
                 uint256 g = pool.gamma().mulDivDown(1e18, GAMMA0);
                 uint256 a = pool.A().mulDivDown(1e18, A0);
-                uint256 coefficient = (g**2 / 1e18) * a;
+                uint256 coefficient = (g ** 2 / 1e18) * a;
                 uint256 discount = coefficient > 1e34 ? coefficient : 1e34;
                 discount = _cubicRoot(discount).mulDivDown(DISCOUNT0, 1e18);
 

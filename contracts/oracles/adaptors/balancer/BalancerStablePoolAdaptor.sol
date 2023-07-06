@@ -51,7 +51,9 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
 
         PriceRouter priceRouter = PriceRouter(centralRegistry.priceRouter());
 
-        uint256 numUnderlyingOrConstituent = _data.underlyingOrConstituent.length;
+        uint256 numUnderlyingOrConstituent = _data
+            .underlyingOrConstituent
+            .length;
 
         // Make sure we can price all underlying tokens.
         for (uint256 i; i < numUnderlyingOrConstituent; ++i) {
@@ -94,7 +96,9 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
         uint256 BAD_SOURCE = priceRouter.BAD_SOURCE();
 
         // Find the minimum price of all the pool tokens.
-        uint256 numUnderlyingOrConstituent = data.underlyingOrConstituent.length;
+        uint256 numUnderlyingOrConstituent = data
+            .underlyingOrConstituent
+            .length;
         uint256 minPrice = type(uint256).max;
         uint256 price;
         uint256 errorCode;

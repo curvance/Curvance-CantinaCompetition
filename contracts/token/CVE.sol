@@ -81,10 +81,9 @@ contract CVE is OFTV2 {
      * Emission amount is multiplied by the lock boost value from the central registry.
      * Resulting tokens are minted to the voting hub contract.
      */
-    function mintGaugeEmissions(uint256 _gaugeEmissions)
-        external
-        onlyVotingHub
-    {
+    function mintGaugeEmissions(
+        uint256 _gaugeEmissions
+    ) external onlyVotingHub {
         _mint(
             msg.sender,
             (_gaugeEmissions * centralRegistry.lockBoostValue()) / DENOMINATOR
@@ -96,10 +95,9 @@ contract CVE is OFTV2 {
      * @param _tokensToMint The amount of treasury tokens to be minted.
      * The number of tokens to mint cannot not exceed the available treasury allocation.
      */
-    function mintTreasuryTokens(uint256 _tokensToMint)
-        external
-        onlyDaoManager
-    {
+    function mintTreasuryTokens(
+        uint256 _tokensToMint
+    ) external onlyDaoManager {
         require(
             DAOTreasuryAllocation >= DAOTreasuryTokensMinted + _tokensToMint,
             "CVE: insufficient token allocation"
@@ -114,10 +112,9 @@ contract CVE is OFTV2 {
      * @param _tokensToMint The amount of call option tokens to be minted.
      * The number of tokens to mint cannot not exceed the available call option allocation.
      */
-    function mintCallOptionTokens(uint256 _tokensToMint)
-        external
-        onlyDaoManager
-    {
+    function mintCallOptionTokens(
+        uint256 _tokensToMint
+    ) external onlyDaoManager {
         require(
             callOptionAllocation >= callOptionTokensMinted + _tokensToMint,
             "CVE: insufficient token allocation"

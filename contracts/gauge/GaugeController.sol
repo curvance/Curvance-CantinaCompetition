@@ -57,11 +57,9 @@ contract GaugeController is IGaugePool, Ownable {
      * @notice Returns epoch number of given timestamp
      * @param timestamp Timestamp in seconds
      */
-    function epochOfTimestamp(uint256 timestamp)
-        public
-        view
-        returns (uint256)
-    {
+    function epochOfTimestamp(
+        uint256 timestamp
+    ) public view returns (uint256) {
         assert(startTime != 0);
         return (timestamp - startTime) / EPOCH_WINDOW;
     }
@@ -97,11 +95,10 @@ contract GaugeController is IGaugePool, Ownable {
      * @param epoch Epoch number
      * @param token Gauge token address
      */
-    function gaugeWeight(uint256 epoch, address token)
-        external
-        view
-        returns (uint256, uint256)
-    {
+    function gaugeWeight(
+        uint256 epoch,
+        address token
+    ) external view returns (uint256, uint256) {
         return (
             epochInfo[epoch].totalWeights,
             epochInfo[epoch].poolWeights[token]
@@ -113,11 +110,10 @@ contract GaugeController is IGaugePool, Ownable {
      * @param epoch Epoch number
      * @param token Gauge token address
      */
-    function isGaugeEnabled(uint256 epoch, address token)
-        public
-        view
-        returns (bool)
-    {
+    function isGaugeEnabled(
+        uint256 epoch,
+        address token
+    ) public view returns (bool) {
         return epochInfo[epoch].poolWeights[token] > 0;
     }
 
@@ -127,11 +123,10 @@ contract GaugeController is IGaugePool, Ownable {
      * @param epoch Next epoch number
      * @param newRewardPerSec Reward per second
      */
-    function setRewardPerSecOfNextEpoch(uint256 epoch, uint256 newRewardPerSec)
-        external
-        override
-        onlyOwner
-    {
+    function setRewardPerSecOfNextEpoch(
+        uint256 epoch,
+        uint256 newRewardPerSec
+    ) external override onlyOwner {
         if (!(epoch == 0 && startTime == 0) && epoch != currentEpoch() + 1) {
             revert GaugeErrors.InvalidEpoch();
         }

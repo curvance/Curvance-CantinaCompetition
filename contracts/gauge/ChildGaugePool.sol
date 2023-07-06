@@ -58,10 +58,10 @@ contract ChildGaugePool is ReentrancyGuard, Ownable {
         activationTime = block.timestamp;
     }
 
-    function setRewardPerSec(uint256 epoch, uint256 newRewardPerSec)
-        external
-        onlyOwner
-    {
+    function setRewardPerSec(
+        uint256 epoch,
+        uint256 newRewardPerSec
+    ) external onlyOwner {
         if (!(epoch == 0 && startTime() == 0) && epoch != currentEpoch() + 1) {
             revert GaugeErrors.InvalidEpoch();
         }
@@ -96,11 +96,10 @@ contract ChildGaugePool is ReentrancyGuard, Ownable {
      * @param token Pool token address
      * @param user User address
      */
-    function pendingRewards(address token, address user)
-        external
-        view
-        returns (uint256)
-    {
+    function pendingRewards(
+        address token,
+        address user
+    ) external view returns (uint256) {
         if (
             !gaugeController.isGaugeEnabled(
                 gaugeController.currentEpoch(),

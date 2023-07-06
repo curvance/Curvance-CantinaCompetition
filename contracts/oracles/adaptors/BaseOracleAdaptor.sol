@@ -5,7 +5,6 @@ import "../../interfaces/ICentralRegistry.sol";
 import "../../interfaces/IOracleAdaptor.sol";
 
 abstract contract BaseOracleAdaptor {
-
     /// @notice Determines whether the adaptor reports asset prices in USD(true) or ETH(false).
     bool public immutable pricesInUSD;
 

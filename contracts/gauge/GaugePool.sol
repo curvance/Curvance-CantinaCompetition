@@ -63,10 +63,10 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         emit AddChildGauge(_childGauge);
     }
 
-    function removeChildGauge(uint256 _index, address _childGauge)
-        external
-        onlyOwner
-    {
+    function removeChildGauge(
+        uint256 _index,
+        address _childGauge
+    ) external onlyOwner {
         if (_childGauge != address(childGauges[_index])) {
             revert GaugeErrors.InvalidAddress();
         }
@@ -75,11 +75,10 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         emit RemoveChildGauge(_childGauge);
     }
 
-    function balanceOf(address token, address user)
-        external
-        view
-        returns (uint256)
-    {
+    function balanceOf(
+        address token,
+        address user
+    ) external view returns (uint256) {
         return userInfo[token][user].amount;
     }
 
@@ -92,11 +91,10 @@ contract GaugePool is GaugeController, ReentrancyGuard {
      * @param token Pool token address
      * @param user User address
      */
-    function pendingRewards(address token, address user)
-        external
-        view
-        returns (uint256)
-    {
+    function pendingRewards(
+        address token,
+        address user
+    ) external view returns (uint256) {
         if (!isGaugeEnabled(currentEpoch(), token)) {
             revert GaugeErrors.InvalidToken();
         }
@@ -282,10 +280,10 @@ contract GaugePool is GaugeController, ReentrancyGuard {
      * @notice Claim rewards from gauge pool
      * @param token Pool token address
      */
-    function claimAndLock(address token, bool continuousLock)
-        external
-        nonReentrant
-    {
+    function claimAndLock(
+        address token,
+        bool continuousLock
+    ) external nonReentrant {
         updatePool(token);
         _calcPending(msg.sender, token);
 

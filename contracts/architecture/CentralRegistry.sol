@@ -57,11 +57,7 @@ abstract contract CentralRegistry is ICentralRegistry {
                                CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
 
-    constructor(
-        address dao_,
-        uint256 genesisEpoch_,
-        uint256 hubChain_
-    ) {
+    constructor(address dao_, uint256 genesisEpoch_, uint256 hubChain_) {
         if (dao_ == address(0)) {
             dao_ = msg.sender;
         }
@@ -211,10 +207,9 @@ abstract contract CentralRegistry is ICentralRegistry {
         emit NewLendingMarket(newLendingMarket);
     }
 
-    function removeLendingMarket(address currentLendingMarket)
-        public
-        onlyDaoManager
-    {
+    function removeLendingMarket(
+        address currentLendingMarket
+    ) public onlyDaoManager {
         require(lendingMarket[currentLendingMarket], "Not a Lending Market");
 
         delete lendingMarket[currentLendingMarket];
@@ -228,30 +223,27 @@ abstract contract CentralRegistry is ICentralRegistry {
         emit NewFeeManager(newFeeManager);
     }
 
-    function removeFeeManager(address currentFeeManager)
-        public
-        onlyDaoManager
-    {
+    function removeFeeManager(
+        address currentFeeManager
+    ) public onlyDaoManager {
         require(feeManager[currentFeeManager], "Not a Fee Manager");
 
         delete feeManager[currentFeeManager];
         emit FeeManagerRemoved(currentFeeManager);
     }
 
-    function addApprovedEndpoint(address newApprovedEndpoint)
-        public
-        onlyDaoManager
-    {
+    function addApprovedEndpoint(
+        address newApprovedEndpoint
+    ) public onlyDaoManager {
         require(!approvedEndpoint[newApprovedEndpoint], "Already an Endpoint");
 
         approvedEndpoint[newApprovedEndpoint] = true;
         emit NewApprovedEndpoint(newApprovedEndpoint);
     }
 
-    function removeApprovedEndpoint(address currentApprovedEndpoint)
-        public
-        onlyDaoManager
-    {
+    function removeApprovedEndpoint(
+        address currentApprovedEndpoint
+    ) public onlyDaoManager {
         require(approvedEndpoint[currentApprovedEndpoint], "Not an Endpoint");
 
         delete approvedEndpoint[currentApprovedEndpoint];

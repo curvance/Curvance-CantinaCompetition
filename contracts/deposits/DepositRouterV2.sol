@@ -43,10 +43,10 @@ contract DepositRouterV2 is Ownable {
      * @notice Allows `owner` to add new positions to this contract.
      * @dev see `Position` struct for description of inputs.
      */
-    function addPosition(ERC4626 _position, address _operator)
-        external
-        onlyOwner
-    {
+    function addPosition(
+        ERC4626 _position,
+        address _operator
+    ) external onlyOwner {
         if (isPositionUsed[_position]) revert("Position already used");
         positionOperator[_position] = _operator;
         positions.push(_position);
@@ -60,11 +60,10 @@ contract DepositRouterV2 is Ownable {
      * Takes underlying token and deposits it into the underlying protocol
      * returns the amount of shares
      */
-    function deposit(uint256 amount, ERC4626 _position)
-        public
-        isOperator(_position)
-        returns (uint256)
-    {
+    function deposit(
+        uint256 amount,
+        ERC4626 _position
+    ) public isOperator(_position) returns (uint256) {
         if (!isPositionUsed[_position]) revert("Position not used");
         // transfer asset in.
         SafeTransferLib.safeTransferFrom(
@@ -80,11 +79,10 @@ contract DepositRouterV2 is Ownable {
         return amount;
     }
 
-    function withdraw(uint256 amount, ERC4626 _position)
-        public
-        isOperator(_position)
-        returns (uint256)
-    {
+    function withdraw(
+        uint256 amount,
+        ERC4626 _position
+    ) public isOperator(_position) returns (uint256) {
         // TODO transfer shares in?
 
         // TODO could send the assets here or direclty to caller.
