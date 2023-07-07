@@ -7,46 +7,56 @@ import "contracts/interfaces/ICentralRegistry.sol";
 /// @author Mai
 abstract contract CentralRegistry is ICentralRegistry {
     event OwnershipTransferred(address indexed user, address indexed newOwner);
+
+    event NewGaugeController(address indexed gaugeController);
+    event GaugeControllerRemoved(address indexed gaugeController);
+
     event NewHarvester(address indexed harvester);
     event HarvesterRemoved(address indexed harvester);
+
     event NewLendingMarket(address indexed lendingMarket);
     event LendingMarketRemoved(address indexed lendingMarket);
+
     event NewFeeManager(address indexed feeManager);
     event FeeManagerRemoved(address indexed feeManager);
+
     event NewApprovedEndpoint(address indexed approvedEndpoint);
     event ApprovedEndpointRemoved(address indexed approvedEndpoint);
+
     //Add timelock?
 
     uint256 public constant DENOMINATOR = 10000;
 
     uint256 public immutable genesisEpoch;
+
+    // DAO governance operators
     address public daoAddress;
     address public timelock;
+    address public emergencyCouncil;
 
     address public CVE;
     address public veCVE;
     address public callOptionCVE;
 
-    uint256 public hubChain; // Separate into fee hub vs voting hub since cveETH would be on eth mainnet whereas voting hub probably shouldnt be on eth
-
     address public cveLocker;
-    address public gaugeController;
-    address public votingHub;
+    
+    address public protocolMessagingHub;
     address public priceRouter;
     address public depositRouter;
     address public zroAddress;
     address public feeHub;
-    address public feeRouter;
 
     uint256 public protocolYieldFee;
     uint256 public protocolLiquidationFee;
     uint256 public protocolLeverageFee;
+    uint256 public voteBoostValue;
     uint256 public lockBoostValue;
 
-    mapping(address => bool) private harvester;
-    mapping(address => bool) private lendingMarket;
-    mapping(address => bool) private feeManager;
-    mapping(address => bool) private approvedEndpoint;
+    mapping(address => bool) public gaugeController;
+    mapping(address => bool) public harvester;
+    mapping(address => bool) public lendingMarket;
+    mapping(address => bool) public feeManager;
+    mapping(address => bool) public approvedEndpoint;
 
     modifier onlyDaoManager() {
         require(msg.sender == daoAddress, "UNAUTHORIZED");
@@ -57,38 +67,13 @@ abstract contract CentralRegistry is ICentralRegistry {
                                CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
 
-    constructor(address dao_, uint256 genesisEpoch_, uint256 hubChain_) {
+    constructor(address dao_, uint256 genesisEpoch_) {
         if (dao_ == address(0)) {
             dao_ = msg.sender;
         }
         daoAddress = dao_;
         genesisEpoch = genesisEpoch_;
-        hubChain = hubChain_;
         emit OwnershipTransferred(address(0), daoAddress);
-    }
-
-    /*//////////////////////////////////////////////////////////////
-                             VIEW FUNCTIONS
-    //////////////////////////////////////////////////////////////*/
-
-    function isHarvester(address _address) public view returns (bool) {
-        return harvester[_address];
-    }
-
-    function isLendingMarket(address _address) public view returns (bool) {
-        return lendingMarket[_address];
-    }
-
-    function isFeeManager(address _address) public view returns (bool) {
-        return feeManager[_address];
-    }
-
-    function isApprovedEndpoint(address _address) public view returns (bool) {
-        return approvedEndpoint[_address];
-    }
-
-    function isHubChain() public view returns (bool) {
-        return hubChain == block.chainid;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -117,14 +102,6 @@ abstract contract CentralRegistry is ICentralRegistry {
         cveLocker = _address;
     }
 
-    function setGaugeController(address _address) public onlyDaoManager {
-        gaugeController = _address;
-    }
-
-    function setVotingHub(address _address) public onlyDaoManager {
-        votingHub = _address;
-    }
-
     function setPriceRouter(address _address) public onlyDaoManager {
         priceRouter = _address;
     }
@@ -139,10 +116,6 @@ abstract contract CentralRegistry is ICentralRegistry {
 
     function setFeeHub(address _address) public onlyDaoManager {
         feeHub = _address;
-    }
-
-    function setFeeRouter(address _address) public onlyDaoManager {
-        feeRouter = _address;
     }
 
     function setProtocolYieldFee(uint256 _value) public onlyDaoManager {
@@ -169,6 +142,14 @@ abstract contract CentralRegistry is ICentralRegistry {
         protocolLeverageFee = _value;
     }
 
+    function setVoteBoostValue(uint256 _value) public onlyDaoManager {
+        require(
+            _value > DENOMINATOR || _value == 0,
+            "centralRegistry: invalid parameter"
+        );
+        voteBoostValue = _value;
+    }
+
     function setLockBoostValue(uint256 _value) public onlyDaoManager {
         require(
             _value > DENOMINATOR || _value == 0,
@@ -184,6 +165,20 @@ abstract contract CentralRegistry is ICentralRegistry {
     function transferOwnership(address newDaoAddress) public onlyDaoManager {
         daoAddress = newDaoAddress;
         emit OwnershipTransferred(msg.sender, newDaoAddress);
+    }
+
+    function addGaugeController(address newGaugeController) public onlyDaoManager {
+        require(!gaugeController[newGaugeController], "Already Harvester");
+
+        gaugeController[newGaugeController] = true;
+        emit NewGaugeController(newGaugeController);
+    }
+
+    function removeGaugeController(address currentGaugeController) public onlyDaoManager {
+        require(gaugeController[currentGaugeController], "Already Harvester");
+
+        delete gaugeController[currentGaugeController];
+        emit GaugeControllerRemoved(currentGaugeController);
     }
 
     function addHarvester(address newHarvester) public onlyDaoManager {
@@ -249,4 +244,5 @@ abstract contract CentralRegistry is ICentralRegistry {
         delete approvedEndpoint[currentApprovedEndpoint];
         emit ApprovedEndpointRemoved(currentApprovedEndpoint);
     }
+
 }
