@@ -51,7 +51,10 @@ interface ICentralRegistry {
     // @notice Returns protocolLiquidationFee Address
     function protocolLeverageFee() external view returns (uint256);
 
-    // @notice Returns lockBoostValue Address
+    // @notice Returns voteBoostValue value in basis point form
+    function voteBoostValue() external view returns (uint256);
+
+    // @notice Returns lockBoostValue value in basis point form
     function lockBoostValue() external view returns (uint256);
 
     // @notice Returns whether the inputted address is a Harvester

@@ -234,6 +234,28 @@ contract cveLocker {
     }
 
     /**
+     * @notice Update token unlock data from an extended lock that is not continuous
+     * @dev Updates the token points and token unlocks for the chain and user from a continuous lock for a given epoch. Can only be called by the VeCVE contract.
+     * @param _user The address of the user.
+     * @param _previousEpoch The previous unlock epoch.
+     * @param _epoch The new unlock epoch.
+     * @param _points The token points to shift for new unlock time.
+     */
+    function updateTokenDataFromExtendedLock(
+        address _user,
+        uint256 _previousEpoch,
+        uint256 _epoch,
+        uint256 _points
+    ) public onlyVeCVE {
+        unchecked {
+            chainUnlocksByEpoch[_previousEpoch] -= _points;
+            userTokenUnlocksByEpoch[_user][_previousEpoch] -= _points;
+            chainUnlocksByEpoch[_epoch] += _points;
+            userTokenUnlocksByEpoch[_user][_epoch] += _points;
+        } //Add the bonus fee boost from continuous on and previous token unlock schedule
+    }
+
+    /**
      * @notice Update token data from continuous lock on
      * @dev Updates the token points and token unlocks for the chain and user from a continuous lock for a given epoch. Can only be called by the VeCVE contract.
      * @param _user The address of the user.
@@ -434,16 +456,6 @@ contract cveLocker {
         );
     }
 
-    /**
-     * @notice Claim rewards for multiple epochs
-     * @param epoches The number of epochs for which to claim rewards.
-     * @param desiredRewardToken The address of the token to receive as a reward.
-     * @param params Swap data for token swapping rewards to desiredRewardToken.
-     * @param lock A boolean to indicate if the desiredRewardToken need to be locked if its CVE.
-     * @param isFreshLock A boolean to indicate if it's a new lock.
-     * @param _continuousLock A boolean to indicate if the lock should be continuous.
-     * @param _aux Auxiliary data for wrapped assets such as vlCVX and veCVE.
-     */
     function claimRewardsMulti(
         address _recipient,
         uint256 epoches,
@@ -454,7 +466,47 @@ contract cveLocker {
         bool _continuousLock,
         uint256 _aux
     ) public {
-        uint256 currentUserEpoch = userClaimIndex[msg.sender];
+        _claimRewardsMulti(msg.sender, _recipient, epoches, desiredRewardToken, params, lock, isFreshLock, _continuousLock, _aux);
+    }
+
+    function claimRewardsMultiFor(
+        address _user, 
+        address _recipient,
+        uint256 epoches,
+        address desiredRewardToken,
+        bytes memory params,
+        bool lock,
+        bool isFreshLock,
+        bool _continuousLock,
+        uint256 _aux
+    ) public onlyVeCVE {
+        _claimRewardsMulti(_user, _recipient, epoches, desiredRewardToken, params, lock, isFreshLock, _continuousLock, _aux);
+    }
+
+    /**
+     * @notice Claim rewards for multiple epochs
+     * @param _user The user who rewards should be claimed on behalf of
+     * @param _recipient The address who should receive the rewards of _user
+     * @param epoches The number of epochs for which to claim rewards.
+     * @param desiredRewardToken The address of the token to receive as a reward.
+     * @param params Swap data for token swapping rewards to desiredRewardToken.
+     * @param lock A boolean to indicate if the desiredRewardToken need to be locked if its CVE.
+     * @param isFreshLock A boolean to indicate if it's a new lock.
+     * @param _continuousLock A boolean to indicate if the lock should be continuous.
+     * @param _aux Auxiliary data for wrapped assets such as vlCVX and veCVE.
+     */
+    function _claimRewardsMulti(
+        address _user,
+        address _recipient,
+        uint256 epoches,
+        address desiredRewardToken,
+        bytes memory params,
+        bool lock,
+        bool isFreshLock,
+        bool _continuousLock,
+        uint256 _aux
+    ) public {
+        uint256 currentUserEpoch = userClaimIndex[_user];
         require(
             currentUserEpoch + epoches <= lastEpochFeesDelivered,
             "cveLocker: epoch fees not yet delivered"
@@ -470,7 +522,7 @@ contract cveLocker {
             }
         }
 
-        userClaimIndex[msg.sender] += epoches;
+        userClaimIndex[_user] += epoches;
         uint256 rewardAmount = processRewards(
             _recipient,
             userRewards,
@@ -483,7 +535,7 @@ contract cveLocker {
         );
 
         emit RewardPaid(
-            msg.sender,
+            _user,
             _recipient,
             desiredRewardToken,
             rewardAmount
