@@ -35,7 +35,6 @@ contract veCVE is ERC20 {
     IDelegateRegistry public constant snapshot =
         IDelegateRegistry(0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446);
     bool public isShutdown;
-    uint256 public CONTINUOUS_LOCK_BONUS = 11000;
 
     //Constants
     uint40 public constant CONTINUOUS_LOCK_VALUE = type(uint40).max;
@@ -47,21 +46,6 @@ contract veCVE is ERC20 {
     mapping(address => Lock[]) public userLocks;
     //MoveHelpers to Central Registry
     mapping(address => bool) public authorizedHelperContract;
-
-    //User => Epoch # => Tokens unlocked
-    mapping(address => mapping(uint256 => uint256))
-        public userTokenUnlocksByEpoch;
-
-    //What other chains are supported
-    uint256[] public childChains;
-    //Epoch # => ChainID => Tokens Locked in Epoch
-    mapping(uint256 => mapping(uint256 => uint256)) public tokensLockedByChain;
-    //Epoch # => Child Chains updated
-    mapping(uint256 => uint256) public childChainsUpdatedByEpoch;
-    //Epoch # => Total Tokens Locked across all chains
-    mapping(uint256 => uint256) public totalTokensLockedByEpoch;
-    //Epoch # => Token unlocks on this chain
-    mapping(uint256 => uint256) public totalUnlocksByEpoch;
 
     constructor(ICentralRegistry _centralRegistry) {
         _name = "Vote Escrowed CVE";
@@ -175,18 +159,14 @@ contract veCVE is ERC20 {
         uint256 unlockEpoch = freshLockEpoch();
         uint256 priorUnlockEpoch = currentEpoch(_user[_lockIndex].unlockTime);
 
-        //Remove prior unlock data
-        userTokenUnlocksByEpoch[msg.sender][priorUnlockEpoch] -= tokenAmount;
-        totalUnlocksByEpoch[priorUnlockEpoch] -= tokenAmount;
-
         if (_continuousLock) {
             _user[_lockIndex].unlockTime = CONTINUOUS_LOCK_VALUE;
+            ICveLocker(centralRegistry.cveLocker()).updateTokenDataFromContinuousOn(msg.sender, priorUnlockEpoch, _getContinuousPointValue(tokenAmount), tokenAmount);
+
         } else {
             _user[_lockIndex].unlockTime = freshLockTimestamp();
-
-            //Add new unlock data
-            userTokenUnlocksByEpoch[msg.sender][unlockEpoch] += tokenAmount;
-            totalUnlocksByEpoch[unlockEpoch] += tokenAmount;
+            // Updates unlock data for chain and user for new unlock time
+            ICveLocker(centralRegistry.cveLocker()).updateTokenUnlockDataFromExtendedLock(msg.sender, priorUnlockEpoch, unlockEpoch, tokenAmount, tokenAmount);
         }
 
         //totalUnlocksByEpoch[unlockEpoch] -= tokenAmount;
@@ -203,10 +183,8 @@ contract veCVE is ERC20 {
         uint256 _lockIndex,
         bool _continuousLock
     ) public {
-        Lock[] storage _user = userLocks[msg.sender];
 
         if (isShutdown) revert veCVEShutdown();
-        if (_lockIndex >= _user.length) revert invalidLock(); // Length is index + 1 so has to be less than array length
         if (_amount == 0) revert invalidLock();
 
         IERC20(centralRegistry.CVE()).safeTransferFrom(
@@ -215,30 +193,8 @@ contract veCVE is ERC20 {
             _amount
         );
 
-        uint40 unlockTimestamp = _user[_lockIndex].unlockTime;
-        if (unlockTimestamp < genesisEpoch) revert invalidLock();
-        if (unlockTimestamp == CONTINUOUS_LOCK_VALUE) revert continuousLock();
+        _increaseAmountAndExtendLockFor(msg.sender, _amount, _lockIndex, _continuousLock);
 
-        uint216 tokenAmount = _user[_lockIndex].amount;
-        uint256 unlockEpoch = freshLockEpoch();
-        uint256 priorUnlockEpoch = currentEpoch(_user[_lockIndex].unlockTime);
-
-        //Remove prior unlock data
-        userTokenUnlocksByEpoch[msg.sender][priorUnlockEpoch] -= tokenAmount;
-        totalUnlocksByEpoch[priorUnlockEpoch] -= tokenAmount;
-
-        if (_continuousLock) {
-            _user[_lockIndex].unlockTime = CONTINUOUS_LOCK_VALUE;
-        } else {
-            _user[_lockIndex].unlockTime = freshLockTimestamp();
-
-            //Add new unlock data if not continuous lock
-            userTokenUnlocksByEpoch[msg.sender][unlockEpoch] += tokenAmount;
-            totalUnlocksByEpoch[unlockEpoch] += tokenAmount;
-        }
-
-        //totalUnlocksByEpoch[unlockEpoch] -= tokenAmount;
-        _mint(msg.sender, _amount);
     }
 
     /**
@@ -254,11 +210,8 @@ contract veCVE is ERC20 {
         uint256 _lockIndex,
         bool _continuousLock
     ) public {
-        Lock[] storage _user = userLocks[_recipient];
-
         if (isShutdown) revert veCVEShutdown();
         if (!authorizedHelperContract[msg.sender]) revert invalidLock();
-        if (_lockIndex >= _user.length) revert invalidLock(); // Length is index + 1 so has to be less than array length
         if (_amount == 0) revert invalidLock();
 
         IERC20(centralRegistry.CVE()).safeTransferFrom(
@@ -267,30 +220,52 @@ contract veCVE is ERC20 {
             _amount
         );
 
+        _increaseAmountAndExtendLockFor(_recipient, _amount, _lockIndex, _continuousLock);
+
+    }
+
+    /**
+     * @notice Internal function to handle whenever a user needs an increase to a locked amount and extended lock
+     * @param _recipient The address to lock and extend tokens for
+     * @param _amount The amount to increase the lock by
+     * @param _lockIndex The index of the lock to extend
+     * @param _continuousLock Whether the lock should be continuous or not
+     */
+    function _increaseAmountAndExtendLockFor(
+        address _recipient,
+        uint256 _amount,
+        uint256 _lockIndex,
+        bool _continuousLock
+    ) internal {
+
+        Lock[] storage _user = userLocks[_recipient];
+        if (_lockIndex >= _user.length) revert invalidLock(); // Length is index + 1 so has to be less than array length
+
         uint40 unlockTimestamp = _user[_lockIndex].unlockTime;
         if (unlockTimestamp < genesisEpoch) revert invalidLock();
         if (unlockTimestamp == CONTINUOUS_LOCK_VALUE) revert continuousLock();
 
-        uint216 tokenAmount = _user[_lockIndex].amount;
-        uint256 unlockEpoch = freshLockEpoch();
+        uint256 previousTokenAmount = _user[_lockIndex].amount;
+        uint256 newTokenAmount = previousTokenAmount + _amount;
         uint256 priorUnlockEpoch = currentEpoch(_user[_lockIndex].unlockTime);
-
-        //Remove prior unlock data
-        userTokenUnlocksByEpoch[_recipient][priorUnlockEpoch] -= tokenAmount;
-        totalUnlocksByEpoch[priorUnlockEpoch] -= tokenAmount;
+        uint256 unlockEpoch = freshLockEpoch();
 
         if (_continuousLock) {
             _user[_lockIndex].unlockTime = CONTINUOUS_LOCK_VALUE;
+            ICveLocker(centralRegistry.cveLocker()).updateTokenDataFromContinuousOn(_recipient, 
+            priorUnlockEpoch, _getContinuousPointValue(newTokenAmount) - previousTokenAmount, previousTokenAmount);
         } else {
             _user[_lockIndex].unlockTime = freshLockTimestamp();
+            // Update unlock data removing the old lock amount from old epoch and add the new lock amount to the new epoch
+            ICveLocker(centralRegistry.cveLocker()).updateTokenUnlockDataFromExtendedLock(_recipient, priorUnlockEpoch, unlockEpoch, previousTokenAmount, newTokenAmount);
+            
+            // Increment the chain and user token point balance 
+            ICveLocker(centralRegistry.cveLocker()).incrementTokenPoints(_recipient, _amount);
 
-            //Add new unlock data if not continuous lock
-            userTokenUnlocksByEpoch[_recipient][unlockEpoch] += tokenAmount;
-            totalUnlocksByEpoch[unlockEpoch] += tokenAmount;
         }
 
-        //totalUnlocksByEpoch[unlockEpoch] -= tokenAmount;
-        _mint(_recipient, _amount);
+         _user[_lockIndex].amount = uint216(newTokenAmount);
+        _mint(msg.sender, _amount);
     }
 
     /**
@@ -302,7 +277,8 @@ contract veCVE is ERC20 {
         uint256 locks = _user.length;
         if (locks < 2) revert invalidLock();
 
-        uint216 lockAmount;
+        uint256 excessPoints;
+        uint256 lockAmount;
         uint256 priorUnlockEpoch;
         Lock storage userLock;
 
@@ -311,10 +287,12 @@ contract veCVE is ERC20 {
 
             if (userLock.unlockTime != CONTINUOUS_LOCK_VALUE) {
                 priorUnlockEpoch = currentEpoch(userLock.unlockTime);
-                userTokenUnlocksByEpoch[msg.sender][
-                    priorUnlockEpoch
-                ] -= userLock.amount;
-                totalUnlocksByEpoch[priorUnlockEpoch] -= userLock.amount;
+                // Remove unlock data if there is any
+                ICveLocker(centralRegistry.cveLocker()).reduceTokenUnlocks(msg.sender, priorUnlockEpoch, userLock.amount);
+            } else {
+                unchecked {
+                    excessPoints += _getContinuousPointValue(userLock.amount) - userLock.amount;
+                } // calculate and sum how many additional points they got from their continuous lock 
             }
             unchecked {
                 //Should never overflow as the total amount of tokens a user could ever lock is equal to the entire token supply
@@ -322,18 +300,26 @@ contract veCVE is ERC20 {
             }
         }
 
+        // Remove the users excess points from their continuous locks, if any
+        if (excessPoints > 0) ICveLocker(centralRegistry.cveLocker()).reduceTokenPoints(msg.sender, excessPoints);
+        // Remove the users locks
         delete userLocks[msg.sender];
+
         if (_continuousLock) {
             userLocks[msg.sender].push(
-                Lock({ amount: lockAmount, unlockTime: CONTINUOUS_LOCK_VALUE })
+                Lock({ amount: uint216(lockAmount), unlockTime: CONTINUOUS_LOCK_VALUE })
             );
+            // Give the user extra token points from continuous lock being enabled
+            ICveLocker(centralRegistry.cveLocker()).incrementTokenPoints(msg.sender, _getContinuousPointValue(lockAmount) - lockAmount);
+            
         } else {
             userLocks[msg.sender].push(
-                Lock({ amount: lockAmount, unlockTime: freshLockTimestamp() })
+                Lock({ amount: uint216(lockAmount), unlockTime: freshLockTimestamp() })
             );
+            // Record the new unlock data
             uint256 unlockEpoch = freshLockEpoch();
-            userTokenUnlocksByEpoch[msg.sender][unlockEpoch] += lockAmount;
-            totalUnlocksByEpoch[unlockEpoch] += lockAmount;
+            ICveLocker(centralRegistry.cveLocker()).incrementTokenUnlocks(msg.sender, unlockEpoch, lockAmount);
+            
         }
     }
 
@@ -350,18 +336,18 @@ contract veCVE is ERC20 {
 
         uint256 tokensToWithdraw = _processExpiredLock(msg.sender, _lockIndex);
         _burn(msg.sender, tokensToWithdraw);
-        uint256 lockerRewards = ICveLocker(cveLocker).getRewards(msg.sender);
+        //uint256 lockerRewards = ICveLocker(cveLocker).getRewards(msg.sender);
 
         // send process incentive
-        if (lockerRewards > 0) {
-            ICveLocker(cveLocker).claimRewards(msg.sender);
-        }
+        // if (lockerRewards > 0) {
+        //     ICveLocker(cveLocker).claimRewards(msg.sender);
+        // }
 
-        ICveLocker(cveLocker).withdrawFor(msg.sender, tokensToWithdraw); // Update deposit balance before sending funds in this call
-        IERC20(centralRegistry.CVE()).safeTransfer(
-            _recipient,
-            tokensToWithdraw
-        );
+        // ICveLocker(cveLocker).withdrawFor(msg.sender, tokensToWithdraw); // Update deposit balance before sending funds in this call
+        // IERC20(centralRegistry.CVE()).safeTransfer(
+        //     _recipient,
+        //     tokensToWithdraw
+        // );
         emit Unlocked(msg.sender, tokensToWithdraw);
     }
 
@@ -379,9 +365,9 @@ contract veCVE is ERC20 {
         uint256 unlockEpoch = freshLockEpoch();
         _user[_lockIndex].unlockTime = freshLockTimestamp();
 
-        //Add new unlock data
-        userTokenUnlocksByEpoch[msg.sender][unlockEpoch] += tokenAmount;
-        totalUnlocksByEpoch[unlockEpoch] += tokenAmount;
+        ICveLocker(centralRegistry.cveLocker()).reduceTokenData(
+            msg.sender, unlockEpoch,  _getContinuousPointValue(tokenAmount) - tokenAmount, tokenAmount);
+
     }
 
     /**
@@ -412,8 +398,8 @@ contract veCVE is ERC20 {
      */
     function shutdown() external onlyDaoManager {
         if (cveLocker != address(0)) {
-            uint256 stakedBalance = ICveLocker(cveLocker).getBalance();
-            ICveLocker(cveLocker).withdrawOnShutdown(stakedBalance);
+            //uint256 stakedBalance = ICveLocker(cveLocker).getBalance();
+            //ICveLocker(cveLocker).withdrawOnShutdown(stakedBalance);
         }
         isShutdown = true;
     }
@@ -479,6 +465,7 @@ contract veCVE is ERC20 {
                     unlockTime: CONTINUOUS_LOCK_VALUE
                 })
             );
+            ICveLocker(centralRegistry.cveLocker()).incrementTokenPoints(_recipient, _getContinuousPointValue(_amount));
         } else {
             uint256 unlockEpoch = freshLockEpoch();
             userLocks[_recipient].push(
@@ -487,8 +474,8 @@ contract veCVE is ERC20 {
                     unlockTime: freshLockTimestamp()
                 })
             );
-            totalUnlocksByEpoch[unlockEpoch] += _amount;
-            userTokenUnlocksByEpoch[_recipient][unlockEpoch] += _amount;
+            ICveLocker(centralRegistry.cveLocker()).incrementTokenData(_recipient, unlockEpoch, _amount);
+
         }
 
         _mint(_recipient, _amount);
@@ -539,6 +526,18 @@ contract veCVE is ERC20 {
         }
 
         return _list;
+    }
+
+    function _getContinuousPointValue(uint256 _basePoints) internal view returns (uint256) {
+        unchecked {
+            return ((_basePoints * centralRegistry.lockBoostValue()) / DENOMINATOR);
+        } 
+    }
+
+    function _getContinuousVoteValue(uint256 _basePoints) internal view returns (uint256) {
+        unchecked {
+            return ((_basePoints * centralRegistry.voteBoostValue()) / DENOMINATOR);
+        } 
     }
 
     ///////////////////////////////////////////
@@ -597,7 +596,7 @@ contract veCVE is ERC20 {
     ) public view returns (uint256) {
         Lock storage userLock = userLocks[_user][_lockIndex];
         if (userLock.unlockTime == CONTINUOUS_LOCK_VALUE)
-            return (userLock.amount * 11000) / DENOMINATOR;
+            return _getContinuousVoteValue(userLock.amount);
         if (userLock.unlockTime < block.timestamp) return 0;
 
         uint256 epochsLeft = (userLock.unlockTime - block.timestamp) /
