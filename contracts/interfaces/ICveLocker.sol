@@ -20,4 +20,7 @@ interface ICveLocker {
         uint256 _aux
     ) external;
 
+    // Checks if a user has any CVE locker rewards to claim and returns how many epochs a user has rewards for.
+    function hasRewardsToClaim(address _user) external view returns (bool, uint256);
+
 }

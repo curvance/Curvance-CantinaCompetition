@@ -32,7 +32,7 @@ contract veCVE is ERC20 {
     uint256 public immutable genesisEpoch;
     uint256 public immutable continuousLockPointMultiplier;
 
-    address public cveLocker;
+    ICveLocker public cveLocker;
     IDelegateRegistry public constant snapshot =
         IDelegateRegistry(0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446);
     bool public isShutdown;
@@ -64,6 +64,7 @@ contract veCVE is ERC20 {
         _symbol = "veCVE";
         centralRegistry = _centralRegistry;
         genesisEpoch = centralRegistry.genesisEpoch();
+        cveLocker = ICveLocker(centralRegistry.cveLocker());
         continuousLockPointMultiplier = _continuousLockPointMultiplier;
     }
 
@@ -424,16 +425,28 @@ contract veCVE is ERC20 {
      * @notice Shuts down the contract, unstakes all tokens, and releases all locks
      */
     function shutdown() external onlyDaoManager {
-        if (cveLocker != address(0)) {
-            //uint256 stakedBalance = ICveLocker(cveLocker).getBalance();
-            //ICveLocker(cveLocker).withdrawOnShutdown(stakedBalance);
-        }
         isShutdown = true;
+        //notify cveLocker of shutdown
     }
 
     ///////////////////////////////////////////
     ////////////// Internal Functions /////////
     ///////////////////////////////////////////
+
+    function _claimRewards(
+        address _user, 
+        address _recipient,
+        address _desiredRewardToken,
+        bytes memory _params,
+        bool _shouldLock,
+        bool _isFreshLock,
+        bool _continuousLock,
+        uint256 _aux) internal {
+            (bool hasRewards, uint256 epoches) = cveLocker.hasRewardsToClaim(_user);
+            if (hasRewards) {
+                cveLocker.claimRewardsFor(_user, _recipient, epoches, _desiredRewardToken, _params, _shouldLock, _isFreshLock, _continuousLock, _aux);
+            }
+        }
 
     /**
      * @notice Internal function to lock tokens for a user

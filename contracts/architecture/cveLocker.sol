@@ -122,8 +122,29 @@ contract cveLocker {
         return ((_time - genesisEpoch) / EPOCH_DURATION);
     }
 
+    /**
+    * @notice Retrieves the last epoch for which rewards were distributed.
+    * @return The last epoch for which CVE locker rewards were distributed.
+    */
     function lastEpochRewardsDistributed() public view returns (uint256) {
         return nextEpochToDeliver - 1;// Cannot do unchecked here incase no epochs have rewards as we'd have 0 - 1 and underflow
+    }
+
+    /**
+    * @notice Checks if a user has any CVE locker rewards to claim.
+    * @dev Even if a users lock is expiring the next lock resulting in 0 points,
+    *      we want their data updated so data is properly adjusted on unlock
+    * @param _user The address of the user to check for reward claims.
+    * @return A boolean value indicating if the user has any rewards to claim.
+    */
+    function hasRewardsToClaim(address _user) public view returns (bool, uint256) {
+        if (nextEpochToDeliver == 0) return (false, 0);
+        if (nextEpochToDeliver > userNextClaimIndex[_user] && veCVE.userTokenPoints(_user) > 0){
+             unchecked {
+                 return (true, nextEpochToDeliver - userNextClaimIndex[_user] - 1);
+             } 
+        }
+        return (false, 0);
     }
 
     ///////////////////////////////////////////
@@ -237,9 +258,10 @@ contract cveLocker {
 
         unchecked {
             userNextClaimIndex[_user] += epoches;
+            userRewards  = userRewards / ethPerCVEOffset;//Removes the 1e18 offset for proper reward value
         }
         
-        uint256 rewardAmount = processRewards(
+        uint256 rewardAmount = _processRewards(
             _recipient,
             userRewards,
             desiredRewardToken,
@@ -250,6 +272,7 @@ contract cveLocker {
             _aux
         );
 
+        if (rewardAmount > 0) // Only emit an event if they actually had rewards, do not wanna revert to maintain composability
         emit RewardPaid(
             _user,
             _recipient,
@@ -266,14 +289,12 @@ contract cveLocker {
     function calculateRewardsForEpoch(
         uint256 _epoch
     ) internal returns (uint256) {
-        if (veCVE.userTokenUnlocksByEpoch(msg.sender, _epoch) != 0) {
+        if (veCVE.userTokenUnlocksByEpoch(msg.sender, _epoch) > 0) {
             // If they have tokens unlocking this epoch we need to decriment their tokenPoints
             veCVE.updateUserPoints(msg.sender, _epoch);
         }
 
-        return
-            (veCVE.userTokenPoints(msg.sender) * ethPerCVE[_epoch]) /
-            ethPerCVEOffset;
+        return (veCVE.userTokenPoints(msg.sender) * ethPerCVE[_epoch]);
     }
 
     /**
@@ -335,7 +356,7 @@ contract cveLocker {
      * @param _continuousLock A boolean to indicate if the lock should be continuous.
      * @param _aux Auxiliary data for wrapped assets such as vlCVX and veCVE.
      */
-    function processRewards(
+    function _processRewards(
         address recipient,
         uint256 userRewards,
         address desiredRewardToken,
@@ -345,7 +366,7 @@ contract cveLocker {
         bool _continuousLock,
         uint256 _aux
     ) internal returns (uint256) {
-        require (userRewards > 0, "cveLocker: no rewards accumulated");
+        if (userRewards == 0) return 0;
 
         if (desiredRewardToken != baseRewardToken) {
 
@@ -364,12 +385,12 @@ contract cveLocker {
 
             if (desiredRewardToken == cvx && lock) {
                 return
-                    lockFeesAsVlCVX(recipient, desiredRewardToken, _aux);
+                    _lockFeesAsVlCVX(recipient, desiredRewardToken, _aux);
             }
 
             if (desiredRewardToken == cve && lock) {
                 return
-                    lockFeesAsVeCVE(
+                    _lockFeesAsVeCVE(
                         desiredRewardToken,
                         isFreshLock,
                         _continuousLock,
@@ -384,7 +405,7 @@ contract cveLocker {
             return reward;
         }
 
-        return distributeRewardsAsETH(recipient, userRewards);
+        return _distributeRewardsAsETH(recipient, userRewards);
 
     }
 
@@ -395,7 +416,7 @@ contract cveLocker {
      * @param _lockIndex The index of the lock in the user's lock array. This parameter is only required if it is not a fresh lock.
      * @param _continuousLock A boolean to indicate if the lock should be continuous.
      */
-    function lockFeesAsVeCVE(
+    function _lockFeesAsVeCVE(
         address desiredRewardToken,
         bool isFreshLock,
         bool _continuousLock,
@@ -421,7 +442,7 @@ contract cveLocker {
         return reward;
     }
 
-    function lockFeesAsVlCVX(
+    function _lockFeesAsVlCVX(
         address _recipient,
         address desiredRewardToken,
         uint256 _spendRatio
@@ -431,7 +452,7 @@ contract cveLocker {
         return reward;
     }
 
-    function distributeRewardsAsETH(
+    function _distributeRewardsAsETH(
         address recipient,
         uint256 reward
     ) internal returns (uint256) {
