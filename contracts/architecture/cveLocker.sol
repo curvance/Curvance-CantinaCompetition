@@ -35,11 +35,9 @@ contract cveLocker {
     //Claim all rewards and reset their initial claim offset flag for when they lock again?
     //Add slippage checks
     //Add minimum epoch claim
-    //Add fee withdrawal on timelock for upgrade to cveETH?
-    //Add chain token update data on lock/unlock
     //Add Whitelisted swappers
-    //Make sure that when you change baseRewardToken the decimals and value format are identical -> check exchange ratio on assignment
-    //Add support for routing asset back into Curvance i.e. cvxCRV/cveETH?
+    //Add support for routing asset back into Curvance i.e. cvxCRV?
+    //Change lastEpochFeesDelivered to next Epoch to deliver fees for?
 
     uint256 public immutable genesisEpoch;
 
@@ -50,11 +48,10 @@ contract cveLocker {
 
     bool public isShutdown;
 
-    address public baseRewardToken;
+    address public baseRewardToken;// Rewrite so baseRewardToken is always just eth, if we wanna change in the future will do new cveLocker
 
     address public immutable cvx;
     ICVXLocker public cvxLocker;
-    address public cveETH;
 
     uint256 public constant EPOCH_DURATION = 2 weeks;
     uint256 public constant DENOMINATOR = 10000;
@@ -67,6 +64,12 @@ contract cveLocker {
     mapping(address => uint256) public userClaimIndex;
     //User => Genesis Epoch Claimed
     mapping(address => bool) public userGenesisEpochClaimed;
+
+    // TODO
+    // Remove user data from cveLocker and use IVeCVE
+    //
+    //
+     
     //User => Token Points
     mapping(address => uint256) public userTokenPoints;
 
@@ -122,9 +125,9 @@ contract cveLocker {
         _;
     }
 
-    modifier onlyFeeRouter() {
+    modifier onlyMessagingHub() {
         require(
-            msg.sender == centralRegistry.feeRouter(),
+            msg.sender == centralRegistry.protocolMessagingHub(),
             "cveLocker: UNAUTHORIZED"
         );
         _;
@@ -144,160 +147,6 @@ contract cveLocker {
     ////////// Fee Router Functions ///////////
     ///////////////////////////////////////////
 
-    ///////////////////////////////////////////
-    /////////// User Data Functions ///////////
-    ///////////////////////////////////////////
-
-    /**
-     * @notice Increment token points
-     * @dev Increments the token points of the chain and user. Can only be called by the VeCVE contract.
-     * @param _user The address of the user.
-     * @param _points The number of points to add.
-     */
-    function incrementTokenPoints(
-        address _user,
-        uint256 _points
-    ) public onlyVeCVE {
-        unchecked {
-            chainTokenPoints += _points;
-            userTokenPoints[_user] += _points;
-        } //only modified on locking/unlocking veCVE and we know theres never more than 420m so this should never over/underflow
-    }
-
-    /**
-     * @notice Reduce token points
-     * @dev Reduces the token points of the chain and user. Can only be called by the VeCVE contract.
-     * @param _user The address of the user.
-     * @param _points The number of points to reduce.
-     */
-    function reduceTokenPoints(
-        address _user,
-        uint256 _points
-    ) public onlyVeCVE {
-        unchecked {
-            chainTokenPoints -= _points;
-            userTokenPoints[_user] -= _points;
-        } //only modified on locking/unlocking veCVE and we know theres never more than 420m so this should never over/underflow
-    }
-
-    /**
-     * @notice Increment token unlocks
-     * @dev Increments the token unlocks of the chain and user for a given epoch. Can only be called by the VeCVE contract.
-     * @param _user The address of the user.
-     * @param _epoch The epoch to add the unlocks.
-     * @param _points The number of points to add.
-     */
-    function incrementTokenUnlocks(
-        address _user,
-        uint256 _epoch,
-        uint256 _points
-    ) public onlyVeCVE {
-        //might not need token unlock functions
-        unchecked {
-            chainUnlocksByEpoch[_epoch] += _points;
-            userTokenUnlocksByEpoch[_user][_epoch] += _points;
-        } //only modified on locking/unlocking veCVE and we know theres never more than 420m so this should never over/underflow
-    }
-
-    /**
-     * @notice Reduce token unlocks
-     * @dev Reduces the token unlocks of the chain and user for a given epoch. Can only be called by the VeCVE contract.
-     * @param _user The address of the user.
-     * @param _epoch The epoch to reduce the unlocks.
-     * @param _points The number of points to reduce.
-     */
-    function reduceTokenUnlocks(
-        address _user,
-        uint256 _epoch,
-        uint256 _points
-    ) public onlyVeCVE {
-        unchecked {
-            chainUnlocksByEpoch[_epoch] -= _points;
-            userTokenUnlocksByEpoch[_user][_epoch] -= _points;
-        } //only modified on locking/unlocking veCVE and we know theres never more than 420m so this should never over/underflow
-    }
-
-    /**
-     * @notice Increment user token data
-     * @dev Increments both the token points and token unlocks of a user for a given epoch. Can only be called by the VeCVE contract.
-     * @param _user The address of the user.
-     * @param _epoch The epoch to add the data.
-     * @param _points The number of points to add.
-     */
-    function incrementUserTokenData(
-        address _user,
-        uint256 _epoch,
-        uint256 _points
-    ) public onlyVeCVE {
-        userTokenPoints[_user] += _points;
-        userTokenUnlocksByEpoch[_user][_epoch] += _points;
-    }
-
-    /**
-     * @notice Update token unlock data from an extended lock that is not continuous
-     * @dev Updates the token points and token unlocks for the chain and user from a continuous lock for a given epoch. Can only be called by the VeCVE contract.
-     * @param _user The address of the user.
-     * @param _previousEpoch The previous unlock epoch.
-     * @param _epoch The new unlock epoch.
-     * @param _points The token points to shift for new unlock time.
-     */
-    function updateTokenDataFromExtendedLock(
-        address _user,
-        uint256 _previousEpoch,
-        uint256 _epoch,
-        uint256 _points
-    ) public onlyVeCVE {
-        unchecked {
-            chainUnlocksByEpoch[_previousEpoch] -= _points;
-            userTokenUnlocksByEpoch[_user][_previousEpoch] -= _points;
-            chainUnlocksByEpoch[_epoch] += _points;
-            userTokenUnlocksByEpoch[_user][_epoch] += _points;
-        } //Add the bonus fee boost from continuous on and previous token unlock schedule
-    }
-
-    /**
-     * @notice Update token data from continuous lock on
-     * @dev Updates the token points and token unlocks for the chain and user from a continuous lock for a given epoch. Can only be called by the VeCVE contract.
-     * @param _user The address of the user.
-     * @param _epoch The epoch to update the data.
-     * @param _tokenPoints The token points to add.
-     * @param _tokenUnlocks The token unlocks to reduce.
-     */
-    function updateTokenDataFromContinuousOn(
-        address _user,
-        uint256 _epoch,
-        uint256 _tokenPoints,
-        uint256 _tokenUnlocks
-    ) public onlyVeCVE {
-        unchecked {
-            chainTokenPoints += _tokenPoints;
-            chainUnlocksByEpoch[_epoch] -= _tokenUnlocks;
-            userTokenPoints[_user] += _tokenPoints;
-            userTokenUnlocksByEpoch[_user][_epoch] -= _tokenUnlocks;
-        } //Add the bonus fee boost from continuous on and previous token unlock schedule
-    }
-
-    /**
-     * @notice Reduce token data
-     * @dev Reduces both the token points and token unlocks for the chain and user for a given epoch. Can only be called by the VeCVE contract.
-     * @param _user The address of the user.
-     * @param _epoch The epoch to reduce the data.
-     * @param _tokenPoints The token points to reduce.
-     * @param _tokenUnlocks The token unlocks to reduce.
-     */
-    function reduceTokenData(
-        address _user,
-        uint256 _epoch,
-        uint256 _tokenPoints,
-        uint256 _tokenUnlocks
-    ) public onlyVeCVE {
-        unchecked {
-            chainTokenPoints -= _tokenPoints;
-            chainUnlocksByEpoch[_epoch] -= _tokenUnlocks;
-            userTokenPoints[_user] -= _tokenPoints;
-            userTokenUnlocksByEpoch[_user][_epoch] -= _tokenUnlocks;
-        } //Remove the bonus fee boost from continuous on and add new token unlock schedule
-    }
 
     /**
      * @notice Update user claim index
@@ -319,100 +168,6 @@ contract cveLocker {
      */
     function resetUserClaimIndex(address _user) public onlyVeCVE {
         delete userClaimIndex[_user];
-    }
-
-    ///////////////////////////////////////////
-    /////////// Chain Data Functions //////////
-    ///////////////////////////////////////////
-
-    /**
-     * @notice Increment chain token unlocks for a specific epoch
-     * @dev Increments the chain token unlocks for a given epoch. Can only be called by the VeCVE contract.
-     * @param _epoch The epoch for which to add the unlocks.
-     * @param _points The number of points to add.
-     */
-    function incrementChainTokenUnlocks(
-        uint256 _epoch,
-        uint256 _points
-    ) public onlyVeCVE {
-        chainUnlocksByEpoch[_epoch] += _points;
-    }
-
-    /**
-     * @notice Reduce chain token unlocks for a specific epoch
-     * @dev Reduces the chain token unlocks for a given epoch. Can only be called by the VeCVE contract.
-     * @param _epoch The epoch for which to reduce the unlocks.
-     * @param _points The number of points to reduce.
-     */
-    function reduceChainTokenUnlocks(
-        uint256 _epoch,
-        uint256 _points
-    ) public onlyVeCVE {
-        chainUnlocksByEpoch[_epoch] -= _points;
-    }
-
-    /**
-     * @notice Increment chain token points
-     * @dev Increments the total chain token points. Can only be called by the VeCVE contract.
-     * @param _points The number of points to add.
-     */
-    function incrementChainTokenPoints(uint256 _points) public onlyVeCVE {
-        chainTokenPoints += _points;
-    }
-
-    /**
-     * @notice Reduce chain token points
-     * @dev Reduces the total chain token points. Can only be called by the VeCVE contract.
-     * @param _points The number of points to reduce.
-     */
-    function reduceChainTokenPoints(uint256 _points) public onlyVeCVE {
-        chainTokenPoints -= _points;
-    }
-
-    /**
-     * @notice Increment chain token data
-     * @dev Increments both the chain token points and chain token unlocks for a given epoch. Can only be called by the VeCVE contract.
-     * @param _epoch The epoch for which to add the data.
-     * @param _points The number of points to add.
-     */
-    function incrementChainTokenData(
-        uint256 _epoch,
-        uint256 _points
-    ) public onlyVeCVE {
-        chainTokenPoints += _points;
-        chainUnlocksByEpoch[_epoch] += _points;
-    }
-
-    /**
-     * @notice Update chain token data from continuous lock on
-     * @dev Updates the chain token points and chain token unlocks from a continuous lock for a given epoch. Can only be called by the VeCVE contract.
-     * @param _epoch The epoch for which to update the data.
-     * @param _tokenPoints The token points to add.
-     * @param _tokenUnlocks The token unlocks to reduce.
-     */
-    function updateChainTokenDataFromContinuousOn(
-        uint256 _epoch,
-        uint256 _tokenPoints,
-        uint256 _tokenUnlocks
-    ) public onlyVeCVE {
-        chainTokenPoints += _tokenPoints;
-        chainUnlocksByEpoch[_epoch] -= _tokenUnlocks;
-    }
-
-    /**
-     * @notice Reduce chain token data
-     * @dev Reduces both the chain token points and chain token unlocks for a given epoch. Can only be called by the VeCVE contract.
-     * @param _epoch The epoch for which to reduce the data.
-     * @param _tokenPoints The token points to reduce.
-     * @param _tokenUnlocks The token unlocks to reduce.
-     */
-    function reduceChainTokenData(
-        uint256 _epoch,
-        uint256 _tokenPoints,
-        uint256 _tokenUnlocks
-    ) public onlyVeCVE {
-        chainTokenPoints -= _tokenPoints;
-        chainUnlocksByEpoch[_epoch] -= _tokenUnlocks;
     }
 
     ///////////////////////////////////////////
@@ -456,7 +211,18 @@ contract cveLocker {
         );
     }
 
-    function claimRewardsMulti(
+    /**
+     * @notice Claim rewards for multiple epochs
+     * @param _recipient The address who should receive the rewards of _user
+     * @param epoches The number of epochs for which to claim rewards.
+     * @param desiredRewardToken The address of the token to receive as a reward.
+     * @param params Swap data for token swapping rewards to desiredRewardToken.
+     * @param lock A boolean to indicate if the desiredRewardToken need to be locked if its CVE.
+     * @param isFreshLock A boolean to indicate if it's a new lock.
+     * @param _continuousLock A boolean to indicate if the lock should be continuous.
+     * @param _aux Auxiliary data for wrapped assets such as vlCVX and veCVE.
+     */
+    function claimRewards(
         address _recipient,
         uint256 epoches,
         address desiredRewardToken,
@@ -466,21 +232,7 @@ contract cveLocker {
         bool _continuousLock,
         uint256 _aux
     ) public {
-        _claimRewardsMulti(msg.sender, _recipient, epoches, desiredRewardToken, params, lock, isFreshLock, _continuousLock, _aux);
-    }
-
-    function claimRewardsMultiFor(
-        address _user, 
-        address _recipient,
-        uint256 epoches,
-        address desiredRewardToken,
-        bytes memory params,
-        bool lock,
-        bool isFreshLock,
-        bool _continuousLock,
-        uint256 _aux
-    ) public onlyVeCVE {
-        _claimRewardsMulti(_user, _recipient, epoches, desiredRewardToken, params, lock, isFreshLock, _continuousLock, _aux);
+        _claimRewards(msg.sender, _recipient, epoches, desiredRewardToken, params, lock, isFreshLock, _continuousLock, _aux);
     }
 
     /**
@@ -495,7 +247,22 @@ contract cveLocker {
      * @param _continuousLock A boolean to indicate if the lock should be continuous.
      * @param _aux Auxiliary data for wrapped assets such as vlCVX and veCVE.
      */
-    function _claimRewardsMulti(
+    function claimRewardsFor(
+        address _user, 
+        address _recipient,
+        uint256 epoches,
+        address desiredRewardToken,
+        bytes memory params,
+        bool lock,
+        bool isFreshLock,
+        bool _continuousLock,
+        uint256 _aux
+    ) public onlyVeCVE {
+        _claimRewards(_user, _recipient, epoches, desiredRewardToken, params, lock, isFreshLock, _continuousLock, _aux);
+    }
+
+    // See claimRewardFor above
+    function _claimRewards(
         address _user,
         address _recipient,
         uint256 epoches,
@@ -608,13 +375,6 @@ contract cveLocker {
             }
         }
     }
-
-    // function migrateRewardsToCVEETH() external onlyDaoManager {
-    //    address cveETH = centralRegistry.cveETH();
-    //    require(cveETH != address(0), "cveETH not set");
-    //    baseRewardToken = cveETH;
-    //    IcveETH.migrateFees(address(this), address(this).balance);
-    // }
 
     /**
      * @notice Process user rewards
@@ -773,26 +533,6 @@ contract cveLocker {
         require(_token != address(0), "Invalid Token Address");
         require(authorizedRewardToken[_token], "Invalid Operation");
         delete authorizedRewardToken[_token];
-    }
-
-    /**
-     * @notice Adds an address as an authorized helper contract
-     * @param _helper The address of the locker contract to be set
-     */
-    function addAuthorizedHelper(address _helper) external onlyDaoManager {
-        require(_helper != address(0), "Invalid Helper Address");
-        require(!authorizedHelperContract[_helper], "Invalid Operation");
-        authorizedHelperContract[_helper] = true;
-    }
-
-    /**
-     * @notice Removes an address as an authorized helper contract
-     * @param _helper The address of the locker contract to be set
-     */
-    function removeAuthorizedHelper(address _helper) external onlyDaoManager {
-        require(_helper != address(0), "Invalid Helper Address");
-        require(authorizedHelperContract[_helper], "Invalid Operation");
-        delete authorizedHelperContract[_helper];
     }
 
     /// @param _chainId The remote chainId sending the tokens

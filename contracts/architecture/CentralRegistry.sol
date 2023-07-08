@@ -3,10 +3,12 @@ pragma solidity ^0.8.17;
 
 import "contracts/interfaces/ICentralRegistry.sol";
 
-/// @notice Simple single central authorization mixin.
-/// @author Mai
+
 abstract contract CentralRegistry is ICentralRegistry {
     event OwnershipTransferred(address indexed user, address indexed newOwner);
+
+    event NewVeCVELocker(address indexed veCVELocker);
+    event VeCVELockerRemoved(address indexed veCVELocker);
 
     event NewGaugeController(address indexed gaugeController);
     event GaugeControllerRemoved(address indexed gaugeController);
@@ -34,6 +36,7 @@ abstract contract CentralRegistry is ICentralRegistry {
     address public timelock;
     address public emergencyCouncil;
 
+    // Token Contracts
     address public CVE;
     address public veCVE;
     address public callOptionCVE;
@@ -46,12 +49,14 @@ abstract contract CentralRegistry is ICentralRegistry {
     address public zroAddress;
     address public feeHub;
 
+    // Protocol Values
     uint256 public protocolYieldFee;
     uint256 public protocolLiquidationFee;
     uint256 public protocolLeverageFee;
     uint256 public voteBoostValue;
     uint256 public lockBoostValue;
 
+    mapping(address => bool) public approvedVeCVELocker;
     mapping(address => bool) public gaugeController;
     mapping(address => bool) public harvester;
     mapping(address => bool) public lendingMarket;
@@ -92,12 +97,6 @@ abstract contract CentralRegistry is ICentralRegistry {
         callOptionCVE = _address;
     }
 
-    function setHubChain(address _address) public onlyDaoManager {
-        //TODO
-        //check for layerzero endpoint and what chain its from and message caller being authorized
-        //
-    }
-
     function setCVELocker(address _address) public onlyDaoManager {
         cveLocker = _address;
     }
@@ -123,7 +122,7 @@ abstract contract CentralRegistry is ICentralRegistry {
             _value < 2000 || _value == 0,
             "centralRegistry: invalid parameter"
         );
-        protocolLiquidationFee = _value;
+        protocolYieldFee = _value;
     }
 
     function setProtocolLiquidationFee(uint256 _value) public onlyDaoManager {
@@ -165,6 +164,20 @@ abstract contract CentralRegistry is ICentralRegistry {
     function transferOwnership(address newDaoAddress) public onlyDaoManager {
         daoAddress = newDaoAddress;
         emit OwnershipTransferred(msg.sender, newDaoAddress);
+    }
+
+    function addVeCVELocker(address newVeCVELocker) public onlyDaoManager {
+        require(!approvedVeCVELocker[newVeCVELocker], "Already Harvester");
+
+        approvedVeCVELocker[newVeCVELocker] = true;
+        emit NewVeCVELocker(newVeCVELocker);
+    }
+
+    function removeVeCVELocker(address currentVeCVELocker) public onlyDaoManager {
+        require(approvedVeCVELocker[currentVeCVELocker], "Already Harvester");
+
+        delete approvedVeCVELocker[currentVeCVELocker];
+        emit VeCVELockerRemoved(currentVeCVELocker);
     }
 
     function addGaugeController(address newGaugeController) public onlyDaoManager {

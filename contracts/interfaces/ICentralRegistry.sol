@@ -51,6 +51,9 @@ interface ICentralRegistry {
     // @notice Returns lockBoostValue value in basis point form
     function lockBoostValue() external view returns (uint256);
 
+    // @notice Returns whether the inputted address is an approved veCVELocker
+    function approvedVeCVELocker(address _address) external view returns (bool);
+
     // @notice Returns whether the inputted address is a Gauge Controller
     function gaugeController(address _address) external view returns (bool);
 
