@@ -2,13 +2,14 @@
 pragma solidity ^0.8.17;
 
 import { ICurvePool } from "contracts/interfaces/external/curve/ICurvePool.sol";
-import { Adaptor } from "contracts/oracles/adaptors/Adaptor.sol";
-import { PriceOps } from "contracts/oracles/PriceOps.sol";
 import { Math } from "contracts/libraries/Math.sol";
 import { AutomationCompatibleInterface } from "@chainlink/contracts/src/v0.8/interfaces/AutomationCompatibleInterface.sol";
 import { ERC20, SafeTransferLib } from "contracts/libraries/ERC4626.sol";
 import { PendleLpOracleLib } from "@pendle/oracles/PendleLpOracleLib.sol";
 import { IPMarket } from "@pendle/interfaces/IPMarket.sol";
+import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+import { PriceRouter } from "contracts/oracles/PriceRouterV2.sol";
+import "contracts/oracles/adaptors/BaseOracleAdaptor.sol";
 
 interface IPendlePTOracle {
     function getOracleState(
@@ -40,14 +41,21 @@ interface IPendleMarket {
     ) external;
 }
 
-contract PendleLPTokenAdaptor is Adaptor {
+contract PendleLPTokenAdaptor is BaseOracleAdaptor {
     using Math for uint256;
     using PendleLpOracleLib for IPMarket;
+
+    constructor(
+        ICentralRegistry _centralRegistry,
+        IPendlePTOracle _ptOracle
+    ) BaseOracleAdaptor(_centralRegistry) {
+        ptOracle = _ptOracle;
+    }
 
     uint32 public constant MINIMUM_TWAP_DURATION = 3600;
     IPendlePTOracle public immutable ptOracle;
 
-    struct PendleLpAdaptorStorage {
+    struct AdaptorData {
         IPMarket market;
         address pt;
         uint32 twapDuration;
@@ -77,8 +85,8 @@ contract PendleLPTokenAdaptor is Adaptor {
         ptOracle = _ptOracle;
     }
 
-    function setupSource(
-        address asset,
+    function addAsset(
+        address _asset,
         uint64 _sourceId,
         bytes memory data
     ) external override onlyPriceOps {

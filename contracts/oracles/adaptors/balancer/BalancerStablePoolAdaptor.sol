@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.17;
 
-import { BaseOracleAdaptor, BalancerPoolAdaptor, IVault, IERC20 } from "./BalancerPoolAdaptor.sol";
-import { Math } from "contracts/libraries/Math.sol";
+import { BalancerPoolAdaptor, IVault } from "./BalancerPoolAdaptor.sol";
 import { IBalancerPool } from "contracts/interfaces/external/balancer/IBalancerPool.sol";
 import { IRateProvider } from "contracts/interfaces/external/balancer/IRateProvider.sol";
 import { IOracleAdaptor, PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
@@ -39,10 +38,20 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
      */
     mapping(address => AdaptorData) public adaptorData;
 
+    /**
+     * @notice Add a Balancer Stable Pool Bpt as an asset.
+     * @dev Should be called before `PriceRotuer:addAssetPriceFeed` is called.
+     * @param _asset the address of the bpt to add
+     * @param _data AdaptorData needed to add `_asset`
+     */
     function addAsset(
         address _asset,
         AdaptorData memory _data
     ) external onlyDaoManager {
+        require(
+            !isSupportedAsset[_asset],
+            "BalancerStablePoolAdaptor: asset already supported"
+        );
         IBalancerPool pool = IBalancerPool(_asset);
 
         // Grab the poolId and decimals.
@@ -82,10 +91,21 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
 
     /**
      * @notice Called during pricing operations.
+     * @param _asset the bpt being priced
+     * @param _isUsd indicates whether we want the price in USD or ETH
+     * @param _getLower Since this adaptor calls back into the price router
+     *                  it needs to know if it should be working with the upper
+     *                  or lower prices of assets
      */
     function getPrice(
-        address _asset
+        address _asset,
+        bool _isUsd,
+        bool _getLower
     ) external view override returns (PriceReturnData memory pData) {
+        require(
+            isSupportedAsset[_asset],
+            "BalancerStablePoolAdaptor: asset not supported"
+        );
         _ensureNotInVaultContext(balancerVault);
         // Read Adaptor storage and grab pool tokens
         AdaptorData memory data = adaptorData[_asset];
@@ -105,11 +125,10 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
         for (uint256 i; i < numUnderlyingOrConstituent; ++i) {
             // Break when a zero address is found.
             if (address(data.underlyingOrConstituent[i]) == address(0)) break;
-            // TODO so adaptors need to know if they are supposed to be working with the upper or the lower price.
             (price, errorCode) = priceRouter.getPrice(
                 data.underlyingOrConstituent[i],
-                true,
-                true
+                _isUsd,
+                _getLower
             );
             if (errorCode > 0) {
                 pData.hadError = true;
@@ -133,11 +152,15 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
 
     /**
      * @notice Removes a supported asset from the adaptor.
+     * @dev Calls back into price router to notify it of its removal
      */
     function removeAsset(address _asset) external override onlyDaoManager {
+        require(
+            isSupportedAsset[_asset],
+            "BalancerStablePoolAdaptor: asset not supported"
+        );
         PriceRouter priceRouter = PriceRouter(centralRegistry.priceRouter());
         isSupportedAsset[_asset] = false;
-        // TODO I think our main concern here is deleting storage to get gas refunds, since when adding an asset this struct is completely overwritten.
         delete adaptorData[_asset];
         priceRouter.notifyAssetPriceFeedRemoval(_asset);
     }
