@@ -28,8 +28,9 @@ contract veCVE is ERC20 {
     string private _name;
     string private _symbol;
 
-    uint256 public immutable genesisEpoch;
     ICentralRegistry public immutable centralRegistry;
+    uint256 public immutable genesisEpoch;
+    uint256 public immutable continuousLockPointMultiplier;
 
     address public cveLocker;
     IDelegateRegistry public constant snapshot =
@@ -58,11 +59,12 @@ contract veCVE is ERC20 {
     //Epoch # => Token unlocks on this chain
     mapping(uint256 => uint256) public chainUnlocksByEpoch;
 
-    constructor(ICentralRegistry _centralRegistry) {
+    constructor(ICentralRegistry _centralRegistry, uint256 _continuousLockPointMultiplier) {
         _name = "Vote Escrowed CVE";
         _symbol = "veCVE";
         centralRegistry = _centralRegistry;
         genesisEpoch = centralRegistry.genesisEpoch();
+        continuousLockPointMultiplier = _continuousLockPointMultiplier;
     }
 
     modifier onlyDaoManager() {
@@ -382,6 +384,20 @@ contract veCVE is ERC20 {
     }
 
     /**
+    * @notice Updates user points by reducing the amount that gets unlocked in a specific epoch.
+    * @param _user The address of the user whose points are to be updated.
+    * @param _epoch The epoch from which the unlock amount will be reduced.
+    * @dev This function is only called when userTokenUnlocksByEpoch[_user][_epoch] > 0 so do not need to check here
+    */
+    function updateUserPoints(address _user, uint256 _epoch) public {
+        require(centralRegistry.cveLocker() == msg.sender, "veCVE: only CVE Locker can update user points");
+
+        unchecked {
+            userTokenPoints[_user] -= userTokenUnlocksByEpoch[_user][_epoch];
+        } 
+    }
+
+    /**
      * @notice Recover tokens sent accidentally to the contract or leftover rewards (excluding veCVE tokens)
      * @param _token The address of the token to recover
      * @param _to The address to receive the recovered tokens
@@ -643,7 +659,7 @@ contract veCVE is ERC20 {
     */
     function _getContinuousPointValue(uint256 _basePoints) internal view returns (uint256) {
         unchecked {
-            return ((_basePoints * centralRegistry.lockBoostValue()) / DENOMINATOR);
+            return ((_basePoints * continuousLockPointMultiplier) / DENOMINATOR);
         } 
     }
 

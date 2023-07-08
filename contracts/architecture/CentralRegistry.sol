@@ -4,7 +4,7 @@ pragma solidity ^0.8.17;
 import "contracts/interfaces/ICentralRegistry.sol";
 
 
-abstract contract CentralRegistry is ICentralRegistry {
+contract CentralRegistry is ICentralRegistry {
     event OwnershipTransferred(address indexed user, address indexed newOwner);
 
     event NewVeCVELocker(address indexed veCVELocker);

@@ -2,12 +2,12 @@
 pragma solidity ^0.8.17;
 
 interface ICveLocker {
-    // @notice Update user claim index
+    // notice Update user claim index
     function updateUserClaimIndex(address _user, uint256 _index) external;
-    // @notice Reset user claim index
+    // notice Reset user claim index
     function resetUserClaimIndex(address _user) external;
     
-    // @notice Claims a users veCVE rewards, only callable by veCVE contract
+    // Claims a users veCVE rewards, only callable by veCVE contract
     function claimRewardsFor(
         address _user, 
         address _recipient,
