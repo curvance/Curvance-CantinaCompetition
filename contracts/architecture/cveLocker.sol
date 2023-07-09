@@ -73,6 +73,7 @@ contract cveLocker {
 
     // Epoch # => ChainID => Tokens Locked in Epoch
     mapping(uint256 => mapping(uint256 => uint256)) public tokensLockedByChain;
+
     // Epoch # => Child Chains updated
     mapping(uint256 => uint256) public childChainsUpdatedByEpoch;
 
@@ -157,7 +158,8 @@ contract cveLocker {
     ///////////////////////////////////////////
 
     /// @notice Update user claim index
-    /// @dev Updates the claim index of a user. Can only be called by the VeCVE contract.
+    /// @dev Updates the claim index of a user.
+    ///      Can only be called by the VeCVE contract.
     /// @param _user The address of the user.
     /// @param _index The new claim index.
     function updateUserClaimIndex(
@@ -168,7 +170,8 @@ contract cveLocker {
     }
 
     /// @notice Reset user claim index
-    /// @dev Deletes the claim index of a user. Can only be called by the VeCVE contract.
+    /// @dev Deletes the claim index of a user.
+    ///      Can only be called by the VeCVE contract.
     /// @param _user The address of the user.
     function resetUserClaimIndex(address _user) public onlyVeCVE {
         delete userNextClaimIndex[_user];
@@ -300,7 +303,8 @@ contract cveLocker {
 
     /// @notice Calculate the rewards for a given epoch
     /// @param _epoch The epoch for which to calculate the rewards.
-    /// @return The calculated reward amount. This is calculated based on the user's token points for the given epoch.
+    /// @return The calculated reward amount.
+    ///         This is calculated based on the user's token points for the given epoch.
     function calculateRewardsForEpoch(
         uint256 _epoch
     ) internal returns (uint256) {
@@ -355,8 +359,8 @@ contract cveLocker {
 
     /// @notice Process user rewards
     /// @dev Process the rewards for the user, if any.
-    ///      If the user wishes to receive rewards in a token other than the base reward token,
-    ///      a swap is performed.
+    ///      If the user wishes to receive rewards in a token other than
+    ///      the base reward token, a swap is performed.
     ///      If the desired reward token is CVE and the user opts for lock,
     ///      the rewards are locked as VeCVE.
     /// @param userRewards The amount of rewards to process for the user.
@@ -421,7 +425,8 @@ contract cveLocker {
     /// @notice Lock fees as VeCVE
     /// @param desiredRewardToken The address of the token to be locked, this should be CVE.
     /// @param isFreshLock A boolean to indicate if it's a new lock.
-    /// @param _lockIndex The index of the lock in the user's lock array. This parameter is only required if it is not a fresh lock.
+    /// @param _lockIndex The index of the lock in the user's lock array.
+    ///                   This parameter is only required if it is not a fresh lock.
     /// @param _continuousLock A boolean to indicate if the lock should be continuous.
     function _lockFeesAsVeCVE(
         address desiredRewardToken,
@@ -464,7 +469,8 @@ contract cveLocker {
         return reward;
     }
 
-    /// @notice Recover tokens sent accidentally to the contract or leftover rewards (excluding veCVE tokens)
+    /// @notice Recover tokens sent accidentally to the contract or
+    ///         leftover rewards (excluding veCVE tokens)
     /// @param _token The address of the token to recover
     /// @param _to The address to receive the recovered tokens
     /// @param _amount The amount of tokens to recover

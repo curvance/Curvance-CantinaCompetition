@@ -2,7 +2,7 @@
 pragma solidity >=0.8.17;
 
 interface ICVE {
-    // @notice Sends CVE to a desired destination chain
+    /// @notice Sends CVE to a desired destination chain
     function sendFrom(
         address _from,
         uint16 _dstChainId,
@@ -14,7 +14,7 @@ interface ICVE {
         bytes calldata _payload
     ) external;
 
-    // @notice Sends CVE Gauge Emissions to a desired destination chain
+    /// @notice Sends CVE Gauge Emissions to a desired destination chain
     function sendEmissions(
         address _from,
         uint16 _dstChainId,

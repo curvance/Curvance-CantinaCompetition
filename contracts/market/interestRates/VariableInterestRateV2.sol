@@ -86,11 +86,13 @@ contract VariableInterestRate {
         return (borrows * BASE) / (cash + borrows - reserves);
     }
 
-    /// @notice The ```getFullUtilizationInterest``` function calculate the new maximum interest rate, i.e. rate when utilization is 100%
+    /// @notice The ```getFullUtilizationInterest``` function calculate
+    ///         the new maximum interest rate, i.e. rate when utilization is 100%
     /// @dev Given in interest per second
     /// @param _deltaTime The elapsed time since last update given in seconds
     /// @param _utilization The utilization %, given with 5 decimals of precision
-    /// @param _fullUtilizationInterest The interest value when utilization is 100%, given with 18 decimals of precision
+    /// @param _fullUtilizationInterest The interest value when utilization is 100%,
+    ///                                 given with 18 decimals of precision
     /// @return _newFullUtilizationInterest The new maximum interest rate
     function getFullUtilizationInterest(
         uint256 _deltaTime,
@@ -134,7 +136,8 @@ contract VariableInterestRate {
     /// @notice The ```getNewRate``` function calculates interest rates using two linear functions f(utilization)
     /// @param _deltaTime The elapsed time since last update, given in seconds
     /// @param _utilization The utilization %, given with 5 decimals of precision
-    /// @param _oldFullUtilizationInterest The interest value when utilization is 100%, given with 18 decimals of precision
+    /// @param _oldFullUtilizationInterest The interest value when utilization is 100%,
+    ///                                    given with 18 decimals of precision
     /// @return _newRatePerSec The new interest rate, 18 decimals of precision
     /// @return _newFullUtilizationInterest The new max interest rate, 18 decimals of precision
     function getNewRate(

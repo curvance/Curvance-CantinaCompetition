@@ -56,7 +56,8 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
         ERC20(0x3c8B650257cFb5f272f799F5e2b4e65093a11a05);
 
     // Owner needs to be able to set swap paths, deposit data, fee, fee accumulator
-    /// @notice Value out from harvest swaps must be greater than value in * 1 - (harvestSlippage + upkeepFee);
+    /// @notice Value out from harvest swaps must be greater than
+    ///         value in * 1 - (harvestSlippage + upkeepFee);
     uint64 public harvestSlippage = 0.01e18;
 
     /*//////////////////////////////////////////////////////////////
@@ -77,7 +78,8 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
                               SETUP LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    /// @notice Vaults are designed to be deployed using Minimal Proxy Contracts, but they can be deployed normally,
+    /// @notice Vaults are designed to be deployed using Minimal Proxy Contracts,
+    ///         but they can be deployed normally,
     ///         but `initialize` must ALWAYS be called either way.
     constructor(
         ERC20 _asset,

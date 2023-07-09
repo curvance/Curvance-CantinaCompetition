@@ -539,7 +539,8 @@ contract veCVE is ERC20 {
     }
 
     /// @notice Increment token data
-    /// @dev Increments both the token points and token unlocks for the chain and user. Can only be called by the VeCVE contract.
+    /// @dev Increments both the token points and token unlocks for the chain and user.
+    ///      Can only be called by the VeCVE contract.
     /// @param _user The address of the user.
     /// @param _points The number of points to add.
     function _incrementTokenData(
@@ -556,7 +557,9 @@ contract veCVE is ERC20 {
     }
 
     /// @notice Reduce token data
-    /// @dev Reduces both the token points and token unlocks for the chain and user for a given epoch. Can only be called by the VeCVE contract.
+    /// @dev Reduces both the token points and token unlocks for the chain
+    ///      and user for a given epoch.
+    ///      Can only be called by the VeCVE contract.
     /// @param _user The address of the user.
     /// @param _epoch The epoch to reduce the data.
     /// @param _tokenPoints The token points to reduce.
@@ -576,7 +579,8 @@ contract veCVE is ERC20 {
     }
 
     /// @notice Increment token points
-    /// @dev Increments the token points of the chain and user. Can only be called by the VeCVE contract.
+    /// @dev Increments the token points of the chain and user.
+    ///      Can only be called by the VeCVE contract.
     /// @param _user The address of the user.
     /// @param _points The number of points to add.
     function _incrementTokenPoints(address _user, uint256 _points) internal {
@@ -587,7 +591,8 @@ contract veCVE is ERC20 {
     }
 
     /// @notice Reduce token points
-    /// @dev Reduces the token points of the chain and user. Can only be called by the VeCVE contract.
+    /// @dev Reduces the token points of the chain and user.
+    ///      Can only be called by the VeCVE contract.
     /// @param _user The address of the user.
     /// @param _points The number of points to reduce.
     function _reduceTokenPoints(address _user, uint256 _points) internal {
@@ -598,7 +603,8 @@ contract veCVE is ERC20 {
     }
 
     /// @notice Increment token unlocks
-    /// @dev Increments the token unlocks of the chain and user for a given epoch. Can only be called by the VeCVE contract.
+    /// @dev Increments the token unlocks of the chain and user for a given epoch.
+    ///      Can only be called by the VeCVE contract.
     /// @param _user The address of the user.
     /// @param _epoch The epoch to add the unlocks.
     /// @param _points The number of points to add.
@@ -615,7 +621,8 @@ contract veCVE is ERC20 {
     }
 
     /// @notice Reduce token unlocks
-    /// @dev Reduces the token unlocks of the chain and user for a given epoch. Can only be called by the VeCVE contract.
+    /// @dev Reduces the token unlocks of the chain and user for a given epoch.
+    ///      Can only be called by the VeCVE contract.
     /// @param _user The address of the user.
     /// @param _epoch The epoch to reduce the unlocks.
     /// @param _points The number of points to reduce.
@@ -631,7 +638,9 @@ contract veCVE is ERC20 {
     }
 
     /// @notice Update token unlock data from an extended lock that is not continuous
-    /// @dev Updates the token points and token unlocks for the chain and user from a continuous lock for a given epoch. Can only be called by the VeCVE contract.
+    /// @dev Updates the token points and token unlocks for the chain
+    ///      and user from a continuous lock for a given epoch.
+    ///      Can only be called by the VeCVE contract.
     /// @param _user The address of the user.
     /// @param _previousEpoch The previous unlock epoch.
     /// @param _epoch The new unlock epoch.
@@ -653,7 +662,9 @@ contract veCVE is ERC20 {
     }
 
     /// @notice Update token data from continuous lock on
-    /// @dev Updates the token points and token unlocks for the chain and user from a continuous lock for a given epoch. Can only be called by the VeCVE contract.
+    /// @dev Updates the token points and token unlocks for the chain
+    ///      and user from a continuous lock for a given epoch.
+    ///      Can only be called by the VeCVE contract.
     /// @param _user The address of the user.
     /// @param _epoch The epoch to update the data.
     /// @param _tokenPoints The token points to add.
@@ -684,7 +695,8 @@ contract veCVE is ERC20 {
         }
     }
 
-    /// @notice Calculates the continuous lock gauge voting power value for _basePoints.
+    /// @notice Calculates the continuous lock gauge voting power value
+    ///         for _basePoints.
     /// @param _basePoints The token points to be used in the calculation.
     /// @return The calculated continuous lock gauge voting power value.
     function _getContinuousVoteValue(

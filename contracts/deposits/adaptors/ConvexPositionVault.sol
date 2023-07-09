@@ -66,17 +66,21 @@ contract ConvexPositionVault is BasePositionVault {
     ERC20 private constant CRV =
         ERC20(0xD533a949740bb3306d119CC777fa900bA034cd52);
 
-    /// @notice Deposit parameters used by the vault to deposit into desired Curve Pool.
+    /// @notice Deposit parameters used by the vault to deposit into
+    ///         desired Curve Pool.
     CurveDepositParams private depositParams;
 
-    /// @notice Stores swapping information to go from an arbitrary reward token to ETH.
+    /// @notice Stores swapping information to go from an arbitrary
+    ///         reward token to ETH.
     mapping(ERC20 => CurveSwapParams) public arbitraryToEth;
 
-    /// @notice Stores swapping information to go from ETH to target token to supply liquidity on Curve.
+    /// @notice Stores swapping information to go from ETH to target token
+    ///         to supply liquidity on Curve.
     CurveSwapParams public ethToTarget;
 
     // Owner needs to be able to set swap paths, deposit data, fee, fee accumulator
-    /// @notice Value out from harvest swaps must be greater than value in * 1 - (harvestSlippage + upkeepFee);
+    /// @notice Value out from harvest swaps must be greater than
+    ///         value in * 1 - (harvestSlippage + upkeepFee);
     uint64 public harvestSlippage = 0.01e18;
 
     /*//////////////////////////////////////////////////////////////
@@ -105,7 +109,8 @@ contract ConvexPositionVault is BasePositionVault {
                               SETUP LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    /// @notice Vaults are designed to be deployed using Minimal Proxy Contracts, but they can be deployed normally,
+    /// @notice Vaults are designed to be deployed using Minimal Proxy Contracts,
+    ///         but they can be deployed normally,
     ///         but `initialize` must ALWAYS be called either way.
     constructor(
         ERC20 _asset,

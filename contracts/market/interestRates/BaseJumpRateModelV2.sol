@@ -18,22 +18,26 @@ abstract contract BaseJumpRateModelV2 is InterestRateModel {
 
     uint256 private constant BASE = 1e18;
 
-    /// @notice The address of the owner, i.e. the Timelock contract, which can update parameters directly
+    /// @notice The address of the owner, i.e. the Timelock contract,
+    ///         which can update parameters directly.
     address public owner;
 
-    /// @notice The approximate number of blocks per year that is assumed by the interest rate model
+    /// @notice The approximate number of blocks per year that is assumed
+    ///         by the interest rate model.
     uint256 public constant blocksPerYear = 2102400;
 
-    /// @notice The multiplier of utilization rate that gives the slope of the interest rate
+    /// @notice The multiplier of utilization rate that gives the slope
+    ///         of the interest rate.
     uint256 public multiplierPerBlock;
 
-    /// @notice The base interest rate which is the y-intercept when utilization rate is 0
+    /// @notice The base interest rate which is the y-intercept
+    ///         when utilization rate is 0.
     uint256 public baseRatePerBlock;
 
-    /// @notice The multiplierPerBlock after hitting a specified utilization point
+    /// @notice The multiplierPerBlock after hitting a specified utilization point.
     uint256 public jumpMultiplierPerBlock;
 
-    /// @notice The utilization point at which the jump multiplier is applied
+    /// @notice The utilization point at which the jump multiplier is applied.
     uint256 public kink;
 
     /// @notice Construct an interest rate model
@@ -101,7 +105,8 @@ abstract contract BaseJumpRateModelV2 is InterestRateModel {
         return (borrows * BASE) / (cash + borrows - reserves);
     }
 
-    /// @notice Calculates the current borrow rate per block, with the error code expected by the market
+    /// @notice Calculates the current borrow rate per block,
+    ///         with the error code expected by the market
     /// @param cash The amount of cash in the market
     /// @param borrows The amount of borrows in the market
     /// @param reserves The amount of reserves in the market

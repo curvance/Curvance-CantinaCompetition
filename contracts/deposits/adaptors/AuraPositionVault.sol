@@ -61,7 +61,8 @@ contract AuraPositionVault is BasePositionVault {
         ERC20(0xC0c293ce456fF0ED870ADd98a0828Dd4d2903DBF);
 
     // Owner needs to be able to set swap paths, deposit data, fee, fee accumulator
-    /// @notice Value out from harvest swaps must be greater than value in * 1 - (harvestSlippage + upkeepFee);
+    /// @notice Value out from harvest swaps must be greater than
+    ///         value in * 1 - (harvestSlippage + upkeepFee);
     uint64 public harvestSlippage = 0.01e18;
 
     /*//////////////////////////////////////////////////////////////
@@ -85,7 +86,8 @@ contract AuraPositionVault is BasePositionVault {
                               SETUP LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    /// @notice Vaults are designed to be deployed using Minimal Proxy Contracts, but they can be deployed normally,
+    /// @notice Vaults are designed to be deployed using Minimal Proxy Contracts,
+    ///         but they can be deployed normally,
     ///         but `initialize` must ALWAYS be called either way.
     constructor(
         ERC20 _asset,

@@ -55,7 +55,8 @@ abstract contract BasePositionVault is
                              GLOBAL STATE
     //////////////////////////////////////////////////////////////*/
 
-    /// @notice Address for Curvance DAO registry contract for ownership and location data.
+    /// @notice Address for Curvance DAO registry contract for ownership
+    ///         and location data.
     ICentralRegistry public centralRegistry;
 
     ERC20 private _asset;
@@ -241,7 +242,8 @@ abstract contract BasePositionVault is
         emit UpkeepFeeChanged(fee);
     }
 
-    /// @notice Shutdown the vault. Used in an emergency or if the vault has been deprecated.
+    /// @notice Shutdown the vault. Used in an emergency or
+    ///         if the vault has been deprecated.
     /// @dev In the case where
     function initiateShutdown() external whenNotShutdown onlyDaoManager {
         positionVaultMetaData.isShutdown = true;
@@ -266,7 +268,8 @@ abstract contract BasePositionVault is
                         REWARD/HARVESTING LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    /// @notice Calculates pending rewards currently being vested, and vests them.
+    /// @notice Calculates pending rewards currently being vested,
+    ///         and vests them.
     function _calculatePendingRewards()
         internal
         view

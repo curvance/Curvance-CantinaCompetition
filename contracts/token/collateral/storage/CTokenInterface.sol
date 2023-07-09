@@ -58,7 +58,8 @@ abstract contract CTokenInterface is CTokenStorage {
     /// @notice Event emitted when pendingAdmin is changed
     event NewPendingAdmin(address oldPendingAdmin, address newPendingAdmin);
 
-    /// @notice Event emitted when pendingAdmin is accepted, which means admin is updated
+    /// @notice Event emitted when pendingAdmin is accepted,
+    ///         which means admin is updated
     event NewAdmin(address oldAdmin, address newAdmin);
 
     /// @notice Event emitted when lendtroller is changed

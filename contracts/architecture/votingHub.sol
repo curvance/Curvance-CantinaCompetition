@@ -92,7 +92,8 @@ contract CurvanceVotingHub {
             address(this)
         );
 
-        // check that double array length is not greater than child chains.length in veCVE/centralRegistry/cveLocker
+        // check that double array length is not greater than
+        // child chains.length in veCVE/centralRegistry/cveLocker
         // calculate msg.value via estimate fees
         // approve gauge pool so that tokens can be taken
 
