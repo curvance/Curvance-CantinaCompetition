@@ -4,7 +4,9 @@ pragma solidity ^0.8.17;
 import "contracts/interfaces/ICentralRegistry.sol";
 
 contract CentralRegistry is ICentralRegistry {
-    event OwnershipTransferred(address indexed user, address indexed newOwner);
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+    event newTimelockConfiguration(address indexed previousTimelock, address indexed newTimelock);
+    event EmergencyCouncilTransferred(address indexed previousEmergencyCouncil, address indexed newEmergencyCouncil);
 
     event NewVeCVELocker(address indexed veCVELocker);
     event VeCVELockerRemoved(address indexed veCVELocker);
@@ -63,7 +65,22 @@ contract CentralRegistry is ICentralRegistry {
     mapping(address => bool) public approvedEndpoint;
 
     modifier onlyDaoManager() {
-        require(msg.sender == daoAddress, "UNAUTHORIZED");
+        require(msg.sender == daoAddress, "centralRegistry: UNAUTHORIZED");
+        _;
+    }
+
+    modifier onlyTimelock() {
+        require(msg.sender == timelock, "centralRegistry: UNAUTHORIZED");
+        _;
+    }
+
+    modifier onlyEmergencyCouncil() {
+        require(msg.sender == emergencyCouncil, "centralRegistry: UNAUTHORIZED");
+        _;
+    }
+
+    modifier onlyElevatedPermissions() {
+        require(msg.sender == timelock || msg.sender == emergencyCouncil, "centralRegistry: UNAUTHORIZED");
         _;
     }
 
@@ -167,9 +184,22 @@ contract CentralRegistry is ICentralRegistry {
 
     /// OWNERSHIP LOGIC
 
-    function transferOwnership(address newDaoAddress) public onlyDaoManager {
+    function transferDaoOwnership(address newDaoAddress) public onlyElevatedPermissions {
+        address previousDaoAddress = daoAddress;
         daoAddress = newDaoAddress;
-        emit OwnershipTransferred(msg.sender, newDaoAddress);
+        emit OwnershipTransferred(previousDaoAddress, newDaoAddress);
+    }
+
+    function migrateTimelockConfiguration(address newTimelock) public onlyEmergencyCouncil {
+        address previousTimelock = timelock;
+        timelock = newTimelock;
+        emit newTimelockConfiguration(previousTimelock, newTimelock);
+    }
+
+    function transferEmergencyCouncil(address newEmergencyCouncil) public onlyEmergencyCouncil {
+        address previousEmergencyCouncil = emergencyCouncil;
+        emergencyCouncil = newEmergencyCouncil;
+        emit EmergencyCouncilTransferred(previousEmergencyCouncil, newEmergencyCouncil);
     }
 
     function addVeCVELocker(address newVeCVELocker) public onlyDaoManager {
