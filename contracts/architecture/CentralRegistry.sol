@@ -69,87 +69,87 @@ contract CentralRegistry is ICentralRegistry {
 
     /// CONSTRUCTOR
 
-    constructor(address dao_, uint256 genesisEpoch_) {
-        if (dao_ == address(0)) {
-            dao_ = msg.sender;
+    constructor(address daoAddress_, uint256 genesisEpoch_) {
+        if (daoAddress_ == address(0)) {
+            daoAddress_ = msg.sender;
         }
-        daoAddress = dao_;
+        daoAddress = daoAddress_;
         genesisEpoch = genesisEpoch_;
         emit OwnershipTransferred(address(0), daoAddress);
     }
 
     /// SETTER FUNCTIONS
 
-    function setCVE(address CVE_) public onlyDaoManager {
-        CVE = CVE_;
+    function setCVE(address newCVE) public onlyDaoManager {
+        CVE = newCVE;
     }
 
-    function setVeCVE(address veCVE_) public onlyDaoManager {
-        veCVE = veCVE_;
+    function setVeCVE(address newVeCVE) public onlyDaoManager {
+        veCVE = newVeCVE;
     }
 
-    function setCallOptionCVE(address _address) public onlyDaoManager {
-        callOptionCVE = _address;
+    function setCallOptionCVE(address newCallOptionCVE) public onlyDaoManager {
+        callOptionCVE = newCallOptionCVE;
     }
 
-    function setCVELocker(address _address) public onlyDaoManager {
-        cveLocker = _address;
+    function setCVELocker(address newCVELocker) public onlyDaoManager {
+        cveLocker = newCVELocker;
     }
 
-    function setPriceRouter(address _address) public onlyDaoManager {
-        priceRouter = _address;
+    function setPriceRouter(address newPriceRouter) public onlyDaoManager {
+        priceRouter = newPriceRouter;
     }
 
-    function setDepositRouter(address _address) public onlyDaoManager {
-        depositRouter = _address;
+    function setDepositRouter(address newDepositRouter) public onlyDaoManager {
+        depositRouter = newDepositRouter;
     }
 
-    function setZroAddress(address _address) public onlyDaoManager {
-        zroAddress = _address;
+    function setZroAddress(address newZroAddress) public onlyDaoManager {
+        zroAddress = newZroAddress;
     }
 
-    function setFeeHub(address _address) public onlyDaoManager {
-        feeHub = _address;
+    function setFeeHub(address newFeeHub) public onlyDaoManager {
+        feeHub = newFeeHub;
     }
 
-    function setProtocolYieldFee(uint256 _value) public onlyDaoManager {
+    function setProtocolYieldFee(uint256 value) public onlyDaoManager {
         require(
-            _value < 2000 || _value == 0,
+            value < 2000 || value == 0,
             "centralRegistry: invalid parameter"
         );
-        protocolYieldFee = _value;
+        protocolYieldFee = value;
     }
 
-    function setProtocolLiquidationFee(uint256 _value) public onlyDaoManager {
+    function setProtocolLiquidationFee(uint256 value) public onlyDaoManager {
         require(
-            _value < 500 || _value == 0,
+            value < 500 || value == 0,
             "centralRegistry: invalid parameter"
         );
-        protocolLiquidationFee = _value;
+        protocolLiquidationFee = value;
     }
 
-    function setProtocolLeverageFee(uint256 _value) public onlyDaoManager {
+    function setProtocolLeverageFee(uint256 value) public onlyDaoManager {
         require(
-            _value < 100 || _value == 0,
+            value < 100 || value == 0,
             "centralRegistry: invalid parameter"
         );
-        protocolLeverageFee = _value;
+        protocolLeverageFee = value;
     }
 
-    function setVoteBoostValue(uint256 _value) public onlyDaoManager {
+    function setVoteBoostValue(uint256 value) public onlyDaoManager {
         require(
-            _value > DENOMINATOR || _value == 0,
+            value > DENOMINATOR || value == 0,
             "centralRegistry: invalid parameter"
         );
-        voteBoostValue = _value;
+        voteBoostValue = value;
     }
 
-    function setLockBoostValue(uint256 _value) public onlyDaoManager {
+    function setLockBoostValue(uint256 value) public onlyDaoManager {
         require(
-            _value > DENOMINATOR || _value == 0,
+            value > DENOMINATOR || value == 0,
             "centralRegistry: invalid parameter"
         );
-        lockBoostValue = _value;
+        lockBoostValue = value;
     }
 
     /// OWNERSHIP LOGIC
