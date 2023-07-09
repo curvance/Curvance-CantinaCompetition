@@ -18,13 +18,13 @@ contract CVE is OFTV2 {
     uint256 public TeamAllocationTokensMinted;
     uint256 public callOptionTokensMinted;
 
-    //import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
+    // import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
 
-    //contract Cve is ERC20Votes {
+    // contract Cve is ERC20Votes {
     //    constructor(address owner) ERC20Permit("Curvance") ERC20("Curvance", "CVE") {
     //        _mint(owner, 10000000e18);
     //    }
-    //}
+    // }
 
     constructor(
         string memory _name,
@@ -48,11 +48,11 @@ contract CVE is OFTV2 {
         DAOTreasuryAllocation = _DAOTreasuryAllocation;
         callOptionAllocation = _callOptionAllocation;
         TeamAllocation = _TeamAllocation;
-        TeamAllocationPerMonth = _TeamAllocation / (48 * month); //Team Vesting is for 4 years and unlocked monthly
+        TeamAllocationPerMonth = _TeamAllocation / (48 * month); // Team Vesting is for 4 years and unlocked monthly
 
         _mint(msg.sender, initialTokenMint);
 
-        //TODO:
+        // TODO:
         // Permission sendAndCall?
         // Write sendEmissions in votingHub
         // Write moving cve gauge emissions to new hub chain

@@ -14,7 +14,7 @@ abstract contract BaseOracleAdaptor {
     /// @notice Mapping used to track whether or not an asset is supported by the adaptor and pricing information.
     mapping(address => bool) public isSupportedAsset;
 
-    //0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE this is for pricing eth in Curve
+    // 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE this is for pricing eth in Curve
 
     constructor(ICentralRegistry _centralRegistry, bool _pricesInUSD) {
         centralRegistry = _centralRegistry;

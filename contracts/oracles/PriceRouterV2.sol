@@ -17,7 +17,7 @@ contract PriceRouter {
         uint240 price;
         bool hadError;
     }
-    //TODO:
+    // TODO:
     // Decide on which permissioned functions need timelock vs no timelock
     // Check if mappings for assetPriceFeeds is better than 2 slot array
     // Potentially move ETHUSD call to chainlink adaptor?
@@ -57,7 +57,7 @@ contract PriceRouter {
     constructor(ICentralRegistry _centralRegistry, address ETH_USD_FEED) {
         centralRegistry = _centralRegistry;
         // Save the USD-ETH price feed because it is a widely used pricing path.
-        CHAINLINK_ETH_USD = ETH_USD_FEED; //0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419 on mainnet
+        CHAINLINK_ETH_USD = ETH_USD_FEED; // 0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419 on mainnet
     }
 
     // Only callable by DAO
@@ -253,7 +253,7 @@ contract PriceRouter {
         bool _currentFormatinUSD
     ) internal pure returns (uint256) {
         if (!_currentFormatinUSD) {
-            //current format is in ETH and we want USD
+            // current format is in ETH and we want USD
             return (_currentPrice * _conversionRate);
         }
 

@@ -145,7 +145,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
 
     /// @notice Approve `spender` to transfer up to `amount` from `src`
     /// @dev This will overwrite the approval amount for `spender`
-    ///  and is subject to issues noted [here](https://eips.ethereum.org/EIPS/eip-20#approve)
+    ///  and is subject to issues noted [here](https:// eips.ethereum.org/EIPS/eip-20#approve)
     /// @param spender The address of the account which may transfer tokens
     /// @param amount The number of tokens that are approved (uint256.max means infinite)
     /// @return bool true=success

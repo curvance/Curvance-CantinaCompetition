@@ -24,7 +24,7 @@ contract CentralRegistry is ICentralRegistry {
     event NewApprovedEndpoint(address indexed approvedEndpoint);
     event ApprovedEndpointRemoved(address indexed approvedEndpoint);
 
-    //Add timelock?
+    // Add timelock?
 
     uint256 public constant DENOMINATOR = 10000;
 

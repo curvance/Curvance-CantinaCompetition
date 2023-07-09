@@ -94,7 +94,7 @@ contract CurveV2Extension is Extension {
         revert CurveV2Extension__DidNotConverge();
     }
 
-    /// Inspired by https://etherscan.io/address/0xE8b2989276E2Ca8FDEA2268E3551b2b4B2418950#code
+    /// Inspired by https:// etherscan.io/address/0xE8b2989276E2Ca8FDEA2268E3551b2b4B2418950#code
     /// @notice Get the price of a CurveV2 derivative in terms of Base.
     function getPriceInBase(
         uint64 sourceId
@@ -133,7 +133,7 @@ contract CurveV2Extension is Extension {
             upper = poolLpPrice.mulDivDown(token0Upper, 1e18);
             lower = poolLpPrice.mulDivDown(token0Lower, 1e18);
         } else if (stor.coins.length == 3) {
-            uint256 t1Price = pool.price_oracle(0); //btc to usdt 18 dec
+            uint256 t1Price = pool.price_oracle(0); // btc to usdt 18 dec
             uint256 t2Price = pool.price_oracle(1); // eth to usdt 18 dec
 
             uint256 maxPrice = (3 *

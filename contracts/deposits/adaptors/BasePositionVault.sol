@@ -14,9 +14,12 @@ import { KeeperCompatibleInterface } from "@chainlink/contracts/src/v0.8/interfa
 import { AggregatorV2V3Interface } from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV2V3Interface.sol";
 import { IChainlinkAggregator } from "contracts/interfaces/external/chainlink/IChainlinkAggregator.sol";
 
-///@notice Vault Positions must have all assets ready for withdraw, IE assets can NOT be locked.
-// This way assets can be easily liquidated when loans default.
-///@dev The position vaults run must be a LOSSLESS position, since totalAssets is not actually using the balances stored in the position, rather it only uses an internal balance.
+/// @notice Vault Positions must have all assets ready for withdraw,
+///         IE assets can NOT be locked.
+///         This way assets can be easily liquidated when loans default.
+/// @dev The position vaults run must be a LOSSLESS position, since totalAssets
+///      is not actually using the balances stored in the position,
+///      rather it only uses an internal balance.
 abstract contract BasePositionVault is
     ERC4626,
     Initializable,
@@ -379,11 +382,11 @@ abstract contract BasePositionVault is
 
         if (msg.sender != owner) {
             uint256 allowed = allowance(owner, msg.sender);
-            //uint256 allowed = allowance[owner][msg.sender]; // Saves gas for limited approvals.
+            // uint256 allowed = allowance[owner][msg.sender]; // Saves gas for limited approvals.
 
             if (allowed != type(uint256).max)
                 decreaseAllowance(owner, allowed - shares);
-            //allowance[owner][msg.sender] = allowed - shares;
+            // allowance[owner][msg.sender] = allowed - shares;
         }
 
         // Remove the users withdrawn assets.
@@ -411,11 +414,11 @@ abstract contract BasePositionVault is
 
         if (msg.sender != owner) {
             uint256 allowed = allowance(owner, msg.sender);
-            //uint256 allowed = allowance[owner][msg.sender]; // modified 4626 implementation
+            // uint256 allowed = allowance[owner][msg.sender]; // modified 4626 implementation
 
             if (allowed != type(uint256).max)
                 decreaseAllowance(owner, allowed - shares);
-            //allowance[owner][msg.sender] = allowed - shares; // modified 4626 implementation
+            // allowance[owner][msg.sender] = allowed - shares; // modified 4626 implementation
         }
 
         // Check for rounding error since we round down in previewRedeem.

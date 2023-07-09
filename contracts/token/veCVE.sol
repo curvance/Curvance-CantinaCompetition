@@ -1,4 +1,4 @@
-//SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -37,26 +37,26 @@ contract veCVE is ERC20 {
         IDelegateRegistry(0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446);
     bool public isShutdown;
 
-    //Constants
+    // Constants
     uint40 public constant CONTINUOUS_LOCK_VALUE = type(uint40).max;
     uint256 public constant EPOCH_DURATION = 2 weeks;
     uint256 public constant LOCK_DURATION_EPOCHS = 26; // in epochs
     uint256 public constant LOCK_DURATION = 52 weeks; // in seconds
     uint256 public constant DENOMINATOR = 10000;
 
-    //User => Array of veCVE locks
+    // User => Array of veCVE locks
     mapping(address => Lock[]) public userLocks;
 
-    //User => Token Points
+    // User => Token Points
     mapping(address => uint256) public userTokenPoints;
 
-    //User => Epoch # => Tokens unlocked
+    // User => Epoch # => Tokens unlocked
     mapping(address => mapping(uint256 => uint256))
         public userTokenUnlocksByEpoch;
 
-    //Token Points on this chain
+    // Token Points on this chain
     uint256 chainTokenPoints;
-    //Epoch # => Token unlocks on this chain
+    // Epoch # => Token unlocks on this chain
     mapping(uint256 => uint256) public chainUnlocksByEpoch;
 
     constructor(
@@ -185,7 +185,7 @@ contract veCVE is ERC20 {
             );
         }
 
-        //totalUnlocksByEpoch[unlockEpoch] -= tokenAmount;
+        // totalUnlocksByEpoch[unlockEpoch] -= tokenAmount;
     }
 
     /// @notice Increases the locked amount and extends the lock for the specified lock index
@@ -325,7 +325,7 @@ contract veCVE is ERC20 {
                 } // calculate and sum how many additional points they got from their continuous lock
             }
             unchecked {
-                //Should never overflow as the total amount of tokens a user could ever lock is equal to the entire token supply
+                // Should never overflow as the total amount of tokens a user could ever lock is equal to the entire token supply
                 lockAmount += _user[i++].amount;
             }
         }
@@ -371,7 +371,7 @@ contract veCVE is ERC20 {
 
         uint256 tokensToWithdraw = _processExpiredLock(msg.sender, _lockIndex);
         _burn(msg.sender, tokensToWithdraw);
-        //uint256 lockerRewards = ICveLocker(cveLocker).getRewards(msg.sender);
+        // uint256 lockerRewards = ICveLocker(cveLocker).getRewards(msg.sender);
 
         // send process incentive
         // if (lockerRewards > 0) {
@@ -552,7 +552,7 @@ contract veCVE is ERC20 {
             chainUnlocksByEpoch[_epoch] += _points;
             userTokenPoints[_user] += _points;
             userTokenUnlocksByEpoch[_user][_epoch] += _points;
-        } //only modified on locking/unlocking veCVE and we know theres never more than 420m so this should never over/underflow
+        } // only modified on locking/unlocking veCVE and we know theres never more than 420m so this should never over/underflow
     }
 
     /// @notice Reduce token data
@@ -572,7 +572,7 @@ contract veCVE is ERC20 {
             chainUnlocksByEpoch[_epoch] -= _tokenUnlocks;
             userTokenPoints[_user] -= _tokenPoints;
             userTokenUnlocksByEpoch[_user][_epoch] -= _tokenUnlocks;
-        } //only modified on locking/unlocking veCVE and we know theres never more than 420m so this should never over/underflow
+        } // only modified on locking/unlocking veCVE and we know theres never more than 420m so this should never over/underflow
     }
 
     /// @notice Increment token points
@@ -607,7 +607,7 @@ contract veCVE is ERC20 {
         uint256 _epoch,
         uint256 _points
     ) internal {
-        //might not need token unlock functions
+        // might not need token unlock functions
         unchecked {
             chainUnlocksByEpoch[_epoch] += _points;
             userTokenUnlocksByEpoch[_user][_epoch] += _points;

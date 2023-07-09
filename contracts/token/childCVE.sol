@@ -13,7 +13,7 @@ contract CVE is OFTV2 {
         address _lzEndpoint,
         ICentralRegistry _centralRegistry
     ) OFTV2(_name, _symbol, _sharedDecimals, _lzEndpoint, _centralRegistry) {
-        //TODO:
+        // TODO:
         // Permission sendAndCall?
         // Write sendEmissions in votingHub
         // Write moving cve gauge emissions to new hub chain

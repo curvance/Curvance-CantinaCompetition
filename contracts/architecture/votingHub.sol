@@ -1,4 +1,4 @@
-//SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
@@ -92,9 +92,9 @@ contract CurvanceVotingHub {
             address(this)
         );
 
-        //check that double array length is not greater than child chains.length in veCVE/centralRegistry/cveLocker
-        //calculate msg.value via estimate fees
-        //approve gauge pool so that tokens can be taken
+        // check that double array length is not greater than child chains.length in veCVE/centralRegistry/cveLocker
+        // calculate msg.value via estimate fees
+        // approve gauge pool so that tokens can be taken
 
         for (uint256 i; i < numPools; ) {
             if (chainData[i].chainid == block.chainid) {

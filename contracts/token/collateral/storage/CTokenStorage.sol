@@ -94,5 +94,5 @@ abstract contract CTokenStorage {
     mapping(address => BorrowSnapshot) internal accountBorrows;
 
     /// @notice Share of seized collateral that is added to reserves
-    uint256 public constant protocolSeizeShareScaled = 2.8e16; //2.8%
+    uint256 public constant protocolSeizeShareScaled = 2.8e16; // 2.8%
 }
