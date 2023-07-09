@@ -1,54 +1,22 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.17;
 
-import { ICurvePool } from "contracts/interfaces/external/curve/ICurvePool.sol";
-import { Math } from "contracts/libraries/Math.sol";
-import { AutomationCompatibleInterface } from "@chainlink/contracts/src/v0.8/interfaces/AutomationCompatibleInterface.sol";
-import { ERC20, SafeTransferLib } from "contracts/libraries/ERC4626.sol";
-import { PendleLpOracleLib } from "@pendle/oracles/PendleLpOracleLib.sol";
-import { IPMarket } from "@pendle/interfaces/IPMarket.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { PriceRouter } from "contracts/oracles/PriceRouterV2.sol";
 import "contracts/oracles/adaptors/BaseOracleAdaptor.sol";
-
-interface IPendlePTOracle {
-    function getOracleState(
-        address market,
-        uint32 duration
-    )
-        external
-        view
-        returns (
-            bool increaseCardinalityRequired,
-            uint16 cardinalityRequired,
-            bool oldestObservationSatisfied
-        );
-
-    function getPtToAssetRate(
-        address market,
-        uint32 duration
-    ) external view returns (uint256 ptToAssetRate);
-
-    function getLpToAssetRate(
-        address market,
-        uint32 duration
-    ) external view returns (uint256 ptToAssetRate);
-}
-
-interface IPendleMarket {
-    function increaseObservationsCardinalityNext(
-        uint16 cardinalityNext
-    ) external;
-}
+import { PendleLpOracleLib } from "lib/pendle-core-v2-public/contracts/oracles/PendleLpOracleLib.sol";
+import { IPendlePTOracle } from "contracts/interfaces/external/pendle/IPendlePtOracle.sol";
+import { IPendleMarket } from "contracts/interfaces/external/pendle/IPendleMarket.sol";
+import { IPMarket } from "lib/pendle-core-v2-public/contracts/interfaces/IPMarket.sol";
 
 contract PendleLPTokenAdaptor is BaseOracleAdaptor {
-    using Math for uint256;
     using PendleLpOracleLib for IPMarket;
 
     constructor(
         ICentralRegistry _centralRegistry,
-        IPendlePTOracle _ptOracle
-    ) BaseOracleAdaptor(_centralRegistry) {
+        IPendlePTOracle _ptOracle,
+        bool _pricesInUsd
+    ) BaseOracleAdaptor(_centralRegistry, _pricesInUsd) {
         ptOracle = _ptOracle;
     }
 
@@ -57,106 +25,90 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
 
     struct AdaptorData {
         IPMarket market;
-        address pt;
         uint32 twapDuration;
         address quoteAsset;
     }
 
-    error PendleLPTokenAdaptor__MinimumTwapDurationNotMet();
-    error PendleLPTokenAdaptor__OldestObservationNotSatisfied();
-    error PendleLPTokenAdaptor__QuoteAssetNotSupported(
-        address unsupportedQuote
-    );
-    error PendleLPTokenAdaptor__CallIncreaseObservationsCardinalityNext(
-        address market,
-        uint16 cardinalityNext
-    );
+    mapping(address => AdaptorData) public adaptorData;
 
     /**
-     * @notice Curve Derivative Storage
-     * @dev Stores an array of the underlying token addresses in the curve pool.
+     * @param _asset the address of the Pendle market
+     * @param _data the adaptor data needed to add `_asset`
      */
-    mapping(uint64 => PendleLpAdaptorStorage) public getPendleLpAdaptorStorage;
-
-    constructor(
-        PriceOps _priceOps,
-        IPendlePTOracle _ptOracle
-    ) Adaptor(_priceOps) {
-        ptOracle = _ptOracle;
-    }
-
     function addAsset(
         address _asset,
-        uint64 _sourceId,
-        bytes memory data
-    ) external override onlyPriceOps {
-        PendleLpAdaptorStorage memory adaptorConfiguration = abi.decode(
-            data,
-            (PendleLpAdaptorStorage)
-        );
-        // TODO so now asset is the PMarket, and pt is the value that needs to be passed in struct
+        AdaptorData memory _data
+    ) external override onlyDaoManager {
         // TODO check that market is the right one for the PT token.
 
-        // TODO could probs move a lot of this code to a shared pendle contract.
-
-        if (adaptorConfiguration.twapDuration < MINIMUM_TWAP_DURATION)
-            revert PendleLPTokenAdaptor__MinimumTwapDurationNotMet();
+        require(
+            _data.twapDuration >= MINIMUM_TWAP_DURATION,
+            "PendleLPTokenAdaptor: minimum twap duration not met"
+        );
 
         (
             bool increaseCardinalityRequired,
-            uint16 cardinalityRequired,
+            ,
             bool oldestObservationSatisfied
-        ) = ptOracle.getOracleState(
-                address(adaptorConfiguration.market),
-                adaptorConfiguration.twapDuration
-            );
+        ) = ptOracle.getOracleState(address(_data.market), _data.twapDuration);
 
-        if (increaseCardinalityRequired)
-            revert PendleLPTokenAdaptor__CallIncreaseObservationsCardinalityNext(
-                asset,
-                cardinalityRequired
-            );
-
-        if (oldestObservationSatisfied)
-            revert PendleLPTokenAdaptor__OldestObservationNotSatisfied();
-
-        // Check that `quoteAsset` is supported by PriceOps.
-        if (!priceOps.isSupported(adaptorConfiguration.quoteAsset))
-            revert PendleLPTokenAdaptor__QuoteAssetNotSupported(
-                adaptorConfiguration.quoteAsset
-            );
+        require(
+            !increaseCardinalityRequired,
+            "PendleLPTokenAdaptor: call increase observations cardinality"
+        );
+        require(
+            oldestObservationSatisfied,
+            "PendleLPTokenAdaptor: oldest observation not satisfied"
+        );
+        require(
+            priceRouter.isSupported(_data.quoteAsset),
+            "PendleLPTokenAdaptor: quote asset not supported"
+        );
 
         // Write to adaptor storage.
-        getPendleLpAdaptorStorage[_sourceId] = PendleLpAdaptorStorage({
-            market: adaptorConfiguration.market,
-            pt: asset,
-            twapDuration: adaptorConfiguration.twapDuration,
-            quoteAsset: adaptorConfiguration.quoteAsset
+        adaptorData[_asset] = AdaptorData({
+            market: _data.market,
+            twapDuration: _data.twapDuration,
+            quoteAsset: _data.quoteAsset
         });
     }
 
-    function getPriceInBase(
-        uint64 sourceId
-    )
-        external
-        view
-        override
-        onlyPriceOps
-        returns (uint256 upper, uint256 lower, uint8 errorCode)
-    {
-        PendleLpAdaptorStorage memory stor = getPendleLpAdaptorStorage[
-            sourceId
-        ];
-        uint256 lpRate = stor.market.getLpToAssetRate(stor.twapDuration);
-        (uint256 quoteUpper, uint256 quoteLower, uint8 _errorCode) = priceOps
-            .getPriceInBase(stor.quoteAsset);
-        if (errorCode == BAD_SOURCE || quoteUpper == 0) {
-            // Completely blind as to what this price is return error code of BAD_SOURCE.
-            return (0, 0, BAD_SOURCE);
-        } else if (errorCode == CAUTION) errorCode = _errorCode;
+    function getPrice(
+        address _asset,
+        bool _isUsd,
+        bool _getLower
+    ) external view override returns (PriceReturnData memory pData) {
+        AdaptorData memory data = adaptorData[_asset];
+        uint256 lpRate = data.market.getLpToAssetRate(data.twapDuration);
+        pData.inUSD = _isUsd;
+        (uint256 price, uint256 errorCode) = priceRouter.getPrice(
+            data.quoteAsset,
+            _isUsd,
+            _getLower
+        );
+        if (errorCode > 0) {
+            pData.hadError = true;
+            // If error code is BAD_SOURCE we can't use this price at all so return.
+            if (errorCode == BAD_SOURCE) return pData;
+        }
+
         // Multiply the quote asset price by the lpRate to get the Lp Token fair value.
-        quoteUpper = quoteUpper.mulDivDown(lpRate, 1e30);
-        if (quoteLower > 0) quoteLower = quoteLower.mulDivDown(lpRate, 1e30);
+        pData.price = (price * lpRate) / 1e30;
         // TODO where does 1e30 come from?
+    }
+
+    /**
+     * @notice Removes a supported asset from the adaptor.
+     * @dev Calls back into price router to notify it of its removal
+     */
+    function removeAsset(address _asset) external override onlyDaoManager {
+        require(
+            isSupportedAsset[_asset],
+            "PendleLPTokenAdaptor: asset not supported"
+        );
+        PriceRouter priceRouter = PriceRouter(centralRegistry.priceRouter());
+        isSupportedAsset[_asset] = false;
+        delete adaptorData[_asset];
+        priceRouter.notifyAssetPriceFeedRemoval(_asset);
     }
 }

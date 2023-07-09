@@ -27,7 +27,7 @@ abstract contract BalancerPoolAdaptor is BaseOracleAdaptor {
         bool _isUsd
     ) BaseOracleAdaptor(_centralRegistry) {
         balancerVault = _balancerVault;
-        isUsd = _isUsd;
+        pricesInUSD = _isUsd;
     }
 
     /**

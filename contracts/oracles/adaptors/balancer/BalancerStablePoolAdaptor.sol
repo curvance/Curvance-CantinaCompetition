@@ -111,7 +111,7 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
         AdaptorData memory data = adaptorData[_asset];
         IBalancerPool pool = IBalancerPool(_asset);
 
-        pData.inUSD = isUsd;
+        pData.inUSD = _isUsd;
         PriceRouter priceRouter = PriceRouter(centralRegistry.priceRouter());
         uint256 BAD_SOURCE = priceRouter.BAD_SOURCE();
 
