@@ -69,11 +69,24 @@ contract CentralRegistry is ICentralRegistry {
 
     /// CONSTRUCTOR
 
-    constructor(address daoAddress_, uint256 genesisEpoch_) {
+    constructor(address daoAddress_, address timelock_, address emergencyCouncil_, uint256 genesisEpoch_) {
+        
         if (daoAddress_ == address(0)) {
             daoAddress_ = msg.sender;
         }
+
+        if (timelock_ == address(0)) {
+            timelock_ = msg.sender;
+        }
+
+        if (emergencyCouncil_ == address(0)) {
+            emergencyCouncil_ = msg.sender;
+        }
+
         daoAddress = daoAddress_;
+        timelock = timelock_;
+        emergencyCouncil = emergencyCouncil_;
+        
         genesisEpoch = genesisEpoch_;
         emit OwnershipTransferred(address(0), daoAddress);
     }
@@ -160,7 +173,7 @@ contract CentralRegistry is ICentralRegistry {
     }
 
     function addVeCVELocker(address newVeCVELocker) public onlyDaoManager {
-        require(!approvedVeCVELocker[newVeCVELocker], "Already Harvester");
+        require(!approvedVeCVELocker[newVeCVELocker], "centralRegistry: already veCVELocker");
 
         approvedVeCVELocker[newVeCVELocker] = true;
         emit NewVeCVELocker(newVeCVELocker);
@@ -169,7 +182,7 @@ contract CentralRegistry is ICentralRegistry {
     function removeVeCVELocker(
         address currentVeCVELocker
     ) public onlyDaoManager {
-        require(approvedVeCVELocker[currentVeCVELocker], "Already Harvester");
+        require(approvedVeCVELocker[currentVeCVELocker], "centralRegistry: already not a veCVELocker");
 
         delete approvedVeCVELocker[currentVeCVELocker];
         emit VeCVELockerRemoved(currentVeCVELocker);
@@ -178,7 +191,7 @@ contract CentralRegistry is ICentralRegistry {
     function addGaugeController(
         address newGaugeController
     ) public onlyDaoManager {
-        require(!gaugeController[newGaugeController], "Already Harvester");
+        require(!gaugeController[newGaugeController], "centralRegistry: already Gauge Controller");
 
         gaugeController[newGaugeController] = true;
         emit NewGaugeController(newGaugeController);
@@ -187,28 +200,28 @@ contract CentralRegistry is ICentralRegistry {
     function removeGaugeController(
         address currentGaugeController
     ) public onlyDaoManager {
-        require(gaugeController[currentGaugeController], "Already Harvester");
+        require(gaugeController[currentGaugeController], "centralRegistry: not a Gauge Controller");
 
         delete gaugeController[currentGaugeController];
         emit GaugeControllerRemoved(currentGaugeController);
     }
 
     function addHarvester(address newHarvester) public onlyDaoManager {
-        require(!harvester[newHarvester], "Already Harvester");
+        require(!harvester[newHarvester], "centralRegistry: already a Harvester");
 
         harvester[newHarvester] = true;
         emit NewHarvester(newHarvester);
     }
 
     function removeHarvester(address currentHarvester) public onlyDaoManager {
-        require(harvester[currentHarvester], "Not a Harvester");
+        require(harvester[currentHarvester], "centralRegistry: not a Harvester");
 
         delete harvester[currentHarvester];
         emit HarvesterRemoved(currentHarvester);
     }
 
     function addLendingMarket(address newLendingMarket) public onlyDaoManager {
-        require(!lendingMarket[newLendingMarket], "Already Lending Market");
+        require(!lendingMarket[newLendingMarket], "centralRegistry: already Lending Market");
 
         lendingMarket[newLendingMarket] = true;
         emit NewLendingMarket(newLendingMarket);
@@ -217,14 +230,14 @@ contract CentralRegistry is ICentralRegistry {
     function removeLendingMarket(
         address currentLendingMarket
     ) public onlyDaoManager {
-        require(lendingMarket[currentLendingMarket], "Not a Lending Market");
+        require(lendingMarket[currentLendingMarket], "centralRegistry: not a Lending Market");
 
         delete lendingMarket[currentLendingMarket];
         emit LendingMarketRemoved(currentLendingMarket);
     }
 
     function addFeeManager(address newFeeManager) public onlyDaoManager {
-        require(!feeManager[newFeeManager], "Already a Fee Manager");
+        require(!feeManager[newFeeManager], "centralRegistry: already a Fee Manager");
 
         feeManager[newFeeManager] = true;
         emit NewFeeManager(newFeeManager);
@@ -233,7 +246,7 @@ contract CentralRegistry is ICentralRegistry {
     function removeFeeManager(
         address currentFeeManager
     ) public onlyDaoManager {
-        require(feeManager[currentFeeManager], "Not a Fee Manager");
+        require(feeManager[currentFeeManager], "centralRegistry: not a Fee Manager");
 
         delete feeManager[currentFeeManager];
         emit FeeManagerRemoved(currentFeeManager);
@@ -242,7 +255,7 @@ contract CentralRegistry is ICentralRegistry {
     function addApprovedEndpoint(
         address newApprovedEndpoint
     ) public onlyDaoManager {
-        require(!approvedEndpoint[newApprovedEndpoint], "Already an Endpoint");
+        require(!approvedEndpoint[newApprovedEndpoint], "centralRegistry: already an Endpoint");
 
         approvedEndpoint[newApprovedEndpoint] = true;
         emit NewApprovedEndpoint(newApprovedEndpoint);
@@ -251,7 +264,7 @@ contract CentralRegistry is ICentralRegistry {
     function removeApprovedEndpoint(
         address currentApprovedEndpoint
     ) public onlyDaoManager {
-        require(approvedEndpoint[currentApprovedEndpoint], "Not an Endpoint");
+        require(approvedEndpoint[currentApprovedEndpoint], "centralRegistry: not an Endpoint");
 
         delete approvedEndpoint[currentApprovedEndpoint];
         emit ApprovedEndpointRemoved(currentApprovedEndpoint);
