@@ -25,13 +25,11 @@ contract callOptionCVE is ERC20 {
     // USDC is 6 decimals and CVE is 18 decimals so we need to offset by 10e12 + report number in basis points
     uint256 public constant denominatorOffset = 10000000000000000;
 
-    /**
-     * @param name_ The name of the token.
-     * @param symbol_ The symbol of the token.
-     * @param _paymentToken The token used for payment when exercising options.
-     * @param _paymentTokenPricePerCVE The price of the payment token per CVE.
-     * @param _centralRegistry The Central Registry contract address.
-     */
+    /// @param name_ The name of the token.
+    /// @param symbol_ The symbol of the token.
+    /// @param _paymentToken The token used for payment when exercising options.
+    /// @param _paymentTokenPricePerCVE The price of the payment token per CVE.
+    /// @param _centralRegistry The Central Registry contract address.
     constructor(
         string memory name_,
         string memory symbol_,
@@ -62,20 +60,16 @@ contract callOptionCVE is ERC20 {
         return _symbol;
     }
 
-    /**
-     * @notice Check if options are exercisable.
-     * @return True if options are exercisable, false otherwise.
-     */
+    /// @notice Check if options are exercisable.
+    /// @return True if options are exercisable, false otherwise.
     function optionsExercisable() public view returns (bool) {
         return (optionsStartTimestamp > 0 &&
             block.timestamp >= optionsStartTimestamp &&
             block.timestamp < optionsEndTimestamp);
     }
 
-    /**
-     * @notice Exercise CVE call options.
-     * @param _amount The amount of options to exercise.
-     */
+    /// @notice Exercise CVE call options.
+    /// @param _amount The amount of options to exercise.
     function exerciseOption(uint256 _amount) public {
         require(optionsExercisable(), "Options not exercisable yet");
         if (IERC20(centralRegistry.CVE()).balanceOf(address(this)) <= _amount)
@@ -96,12 +90,10 @@ contract callOptionCVE is ERC20 {
         emit callOptionCVEExercised(msg.sender, _amount);
     }
 
-    /**
-     * @notice Rescue any token sent by mistake.
-     * @param _token The token to rescue.
-     * @param _recipient The address to receive the rescued token.
-     * @param _amount The amount of tokens to rescue.
-     */
+    /// @notice Rescue any token sent by mistake.
+    /// @param _token The token to rescue.
+    /// @param _recipient The address to receive the rescued token.
+    /// @param _amount The amount of tokens to rescue.
     function rescueToken(
         address _token,
         address _recipient,
@@ -127,9 +119,7 @@ contract callOptionCVE is ERC20 {
         }
     }
 
-    /**
-     * @notice Withdraws CVE from unexercised CVE call options to contract Owner after exercising period has ended
-     */
+    /// @notice Withdraws CVE from unexercised CVE call options to contract Owner after exercising period has ended
     function withdrawRemainingAirdropTokens() external onlyDaoManager {
         require(
             block.timestamp > optionsEndTimestamp,
@@ -145,10 +135,8 @@ contract callOptionCVE is ERC20 {
         emit RemainingCVEWithdrawn(tokensToWithdraw);
     }
 
-    /**
-     * @notice Set the options expiry timestamp.
-     * @param _timestampStart The start timestamp for options exercising.
-     */
+    /// @notice Set the options expiry timestamp.
+    /// @param _timestampStart The start timestamp for options exercising.
     function setOptionsExpiry(
         uint256 _timestampStart
     ) external onlyDaoManager {

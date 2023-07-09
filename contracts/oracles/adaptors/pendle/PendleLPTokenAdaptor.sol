@@ -31,10 +31,8 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
 
     mapping(address => AdaptorData) public adaptorData;
 
-    /**
-     * @param _asset the address of the Pendle market
-     * @param _data the adaptor data needed to add `_asset`
-     */
+    /// @param _asset the address of the Pendle market
+    /// @param _data the adaptor data needed to add `_asset`
     function addAsset(
         address _asset,
         AdaptorData memory _data

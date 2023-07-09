@@ -51,11 +51,9 @@ contract CurvanceVotingHub {
         return centralRegistry.genesisEpoch();
     }
 
-    /**
-     * @notice Returns the current epoch for the given time
-     * @param _time The timestamp for which to calculate the epoch
-     * @return The current epoch
-     */
+    /// @notice Returns the current epoch for the given time
+    /// @param _time The timestamp for which to calculate the epoch
+    /// @return The current epoch
     function currentEpoch(uint256 _time) public view returns (uint256) {
         if (_time < genesisEpoch()) return 0;
         return ((_time - genesisEpoch()) / EPOCH_DURATION);

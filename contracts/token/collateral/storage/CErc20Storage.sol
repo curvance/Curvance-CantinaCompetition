@@ -6,8 +6,6 @@ abstract contract CErc20Storage {
     error TransferFailure();
     error ActionFailure();
 
-    /**
-     * @notice Underlying asset for this CToken
-     */
+    /// @notice Underlying asset for this CToken
     address public underlying;
 }

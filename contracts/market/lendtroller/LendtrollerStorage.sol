@@ -21,11 +21,9 @@ contract MarketStorage {
 }
 
 contract LendtrollerStorage is MarketStorage {
-    /**
-     * @notice The Pause Guardian can pause certain actions as a safety mechanism.
-     *  Actions which allow users to remove their own assets cannot be paused.
-     *  Liquidation / seizing / transfer can only be paused globally, not by market.
-     */
+    /// @notice The Pause Guardian can pause certain actions as a safety mechanism.
+    ///  Actions which allow users to remove their own assets cannot be paused.
+    ///  Liquidation / seizing / transfer can only be paused globally, not by market.
     address public admin;
     address public pauseGuardian;
     bool public _mintGuardianPaused;
@@ -55,10 +53,8 @@ contract LendtrollerStorage is MarketStorage {
     /// @notice Max number of assets a single account can participate in (borrow or use as collateral)
     uint256 public maxAssets;
 
-    /**
-     * @notice Official mapping of cTokens -> Market metadata
-     * @dev Used e.g. to determine if a market is supported
-     */
+    /// @notice Official mapping of cTokens -> Market metadata
+    /// @dev Used e.g. to determine if a market is supported
     mapping(address => Market) public markets;
 
     /// @notice A list of all markets

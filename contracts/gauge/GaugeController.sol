@@ -33,10 +33,8 @@ contract GaugeController is IGaugePool, Ownable {
         ve = veCVE(_ve);
     }
 
-    /**
-     * @notice Start gauge system
-     * @dev Only owner
-     */
+    /// @notice Start gauge system
+    /// @dev Only owner
     function start() external onlyOwner {
         if (startTime != 0) {
             revert GaugeErrors.AlreadyStarted();
@@ -45,18 +43,14 @@ contract GaugeController is IGaugePool, Ownable {
         startTime = block.timestamp;
     }
 
-    /**
-     * @notice Returns current epoch number
-     */
+    /// @notice Returns current epoch number
     function currentEpoch() public view returns (uint256) {
         assert(startTime != 0);
         return (block.timestamp - startTime) / EPOCH_WINDOW;
     }
 
-    /**
-     * @notice Returns epoch number of given timestamp
-     * @param timestamp Timestamp in seconds
-     */
+    /// @notice Returns epoch number of given timestamp
+    /// @param timestamp Timestamp in seconds
     function epochOfTimestamp(
         uint256 timestamp
     ) public view returns (uint256) {
@@ -64,37 +58,29 @@ contract GaugeController is IGaugePool, Ownable {
         return (timestamp - startTime) / EPOCH_WINDOW;
     }
 
-    /**
-     * @notice Returns start time of given epoch
-     * @param epoch Epoch number
-     */
+    /// @notice Returns start time of given epoch
+    /// @param epoch Epoch number
     function epochStartTime(uint256 epoch) public view returns (uint256) {
         assert(startTime != 0);
         return startTime + epoch * EPOCH_WINDOW;
     }
 
-    /**
-     * @notice Returns end time of given epoch
-     * @param epoch Epoch number
-     */
+    /// @notice Returns end time of given epoch
+    /// @param epoch Epoch number
     function epochEndTime(uint256 epoch) public view returns (uint256) {
         assert(startTime != 0);
         return startTime + (epoch + 1) * EPOCH_WINDOW;
     }
 
-    /**
-     * @notice Returns reward per second of given epoch
-     * @param epoch Epoch number
-     */
+    /// @notice Returns reward per second of given epoch
+    /// @param epoch Epoch number
     function rewardPerSec(uint256 epoch) external view returns (uint256) {
         return epochInfo[epoch].rewardPerSec;
     }
 
-    /**
-     * @notice Returns gauge weight of given epoch and token
-     * @param epoch Epoch number
-     * @param token Gauge token address
-     */
+    /// @notice Returns gauge weight of given epoch and token
+    /// @param epoch Epoch number
+    /// @param token Gauge token address
     function gaugeWeight(
         uint256 epoch,
         address token
@@ -105,11 +91,9 @@ contract GaugeController is IGaugePool, Ownable {
         );
     }
 
-    /**
-     * @notice Returns if given gauge token is enabled in given epoch
-     * @param epoch Epoch number
-     * @param token Gauge token address
-     */
+    /// @notice Returns if given gauge token is enabled in given epoch
+    /// @param epoch Epoch number
+    /// @param token Gauge token address
     function isGaugeEnabled(
         uint256 epoch,
         address token
@@ -117,12 +101,10 @@ contract GaugeController is IGaugePool, Ownable {
         return epochInfo[epoch].poolWeights[token] > 0;
     }
 
-    /**
-     * @notice Set rewardPerSec of next epoch
-     * @dev Only owner
-     * @param epoch Next epoch number
-     * @param newRewardPerSec Reward per second
-     */
+    /// @notice Set rewardPerSec of next epoch
+    /// @dev Only owner
+    /// @param epoch Next epoch number
+    /// @param newRewardPerSec Reward per second
     function setRewardPerSecOfNextEpoch(
         uint256 epoch,
         uint256 newRewardPerSec
@@ -148,13 +130,11 @@ contract GaugeController is IGaugePool, Ownable {
         }
     }
 
-    /**
-     * @notice Set emission rates of tokens of next epoch
-     * @dev Only owner
-     * @param epoch Next epoch number
-     * @param tokens Token address array
-     * @param poolWeights Gauge weights (or gauge weights)
-     */
+    /// @notice Set emission rates of tokens of next epoch
+    /// @dev Only owner
+    /// @param epoch Next epoch number
+    /// @param tokens Token address array
+    /// @param poolWeights Gauge weights (or gauge weights)
     function setEmissionRates(
         uint256 epoch,
         address[] calldata tokens,
@@ -180,10 +160,8 @@ contract GaugeController is IGaugePool, Ownable {
         }
     }
 
-    /**
-     * @notice Update reward variables for all pools
-     * @dev Be careful of gas spending!
-     */
+    /// @notice Update reward variables for all pools
+    /// @dev Be careful of gas spending!
     function massUpdatePools(address[] memory tokens) public {
         uint256 numTokens = tokens.length;
         for (uint256 i = 0; i < numTokens; ++i) {
@@ -191,9 +169,7 @@ contract GaugeController is IGaugePool, Ownable {
         }
     }
 
-    /**
-     * @notice Update reward variables of the given pool to be up-to-date
-     * @param token Pool token address
-     */
+    /// @notice Update reward variables of the given pool to be up-to-date
+    /// @param token Pool token address
     function updatePool(address token) public virtual {}
 }

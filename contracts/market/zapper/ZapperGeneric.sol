@@ -26,18 +26,16 @@ contract ZapperGeneric {
         weth = _weth;
     }
 
-    /**
-     * @dev Deposit inputToken and enter curvance
-     * @param cToken The curvance deposit token address
-     * @param inputToken The input token address
-     * @param inputAmount The amount to deposit
-     * @param lpMinter The minter address of Curve LP
-     * @param lpToken The Curve LP token address
-     * @param lpMinOutAmount The minimum output amount
-     * @param tokens The underlying coins of curve LP token
-     * @param tokenSwaps The swap aggregation data
-     * @return cTokenOutAmount The output amount
-     */
+    /// @dev Deposit inputToken and enter curvance
+    /// @param cToken The curvance deposit token address
+    /// @param inputToken The input token address
+    /// @param inputAmount The amount to deposit
+    /// @param lpMinter The minter address of Curve LP
+    /// @param lpToken The Curve LP token address
+    /// @param lpMinOutAmount The minimum output amount
+    /// @param tokens The underlying coins of curve LP token
+    /// @param tokenSwaps The swap aggregation data
+    /// @return cTokenOutAmount The output amount
     function curvanceIn(
         address cToken,
         address inputToken,
@@ -89,11 +87,9 @@ contract ZapperGeneric {
         IERC20(cToken).safeTransfer(msg.sender, cTokenOutAmount);
     }
 
-    /**
-     * @dev Swap input token
-     * @param _inputToken The input asset address
-     * @param _swapData The swap aggregation data
-     */
+    /// @dev Swap input token
+    /// @param _inputToken The input asset address
+    /// @param _swapData The swap aggregation data
     function _swap(address _inputToken, Swap memory _swapData) private {
         _approveTokenIfNeeded(_inputToken, address(_swapData.target));
 
@@ -106,23 +102,19 @@ contract ZapperGeneric {
         require(success == true, "calling swap got an error");
     }
 
-    /**
-     * @dev Approve token if needed
-     * @param _token The token address
-     * @param _spender The spender address
-     */
+    /// @dev Approve token if needed
+    /// @param _token The token address
+    /// @param _spender The spender address
     function _approveTokenIfNeeded(address _token, address _spender) private {
         if (IERC20(_token).allowance(address(this), _spender) == 0) {
             IERC20(_token).safeApprove(_spender, type(uint256).max);
         }
     }
 
-    /**
-     * @dev Propagate error message
-     * @param success If transaction is successful
-     * @param data The transaction result data
-     * @param errorMessage The custom error message
-     */
+    /// @dev Propagate error message
+    /// @param success If transaction is successful
+    /// @param data The transaction result data
+    /// @param errorMessage The custom error message
     function propagateError(
         bool success,
         bytes memory data,
@@ -136,13 +128,11 @@ contract ZapperGeneric {
         }
     }
 
-    /**
-     * @dev Enter curvance
-     * @param lpMinter The minter address of Curve LP
-     * @param lpToken The Curve LP token address
-     * @param tokens The underlying coin addresses of Curve LP
-     * @param lpMinOutAmount The minimum output amount
-     */
+    /// @dev Enter curvance
+    /// @param lpMinter The minter address of Curve LP
+    /// @param lpToken The Curve LP token address
+    /// @param tokens The underlying coin addresses of Curve LP
+    /// @param lpMinOutAmount The minimum output amount
     function _enterCurve(
         address lpMinter,
         address lpToken,
@@ -212,10 +202,8 @@ contract ZapperGeneric {
         );
     }
 
-    /**
-     * @dev Get token balance of this contract
-     * @param token The token address
-     */
+    /// @dev Get token balance of this contract
+    /// @param token The token address
     function _getBalance(address token) private view returns (uint256) {
         if (token == ETH) {
             return address(this).balance;
@@ -224,13 +212,11 @@ contract ZapperGeneric {
         }
     }
 
-    /**
-     * @dev Enter curvance
-     * @param cToken The curvance deposit token address
-     * @param lpToken The Curve LP token address
-     * @param amount The amount to deposit
-     * @return out The output amount
-     */
+    /// @dev Enter curvance
+    /// @param cToken The curvance deposit token address
+    /// @param lpToken The Curve LP token address
+    /// @param amount The amount to deposit
+    /// @return out The output amount
     function _enterCurvance(
         address cToken,
         address lpToken,

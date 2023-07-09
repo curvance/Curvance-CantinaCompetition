@@ -8,14 +8,10 @@ abstract contract BaseOracleAdaptor {
     /// @notice Determines whether the adaptor reports asset prices in USD(true) or ETH(false).
     bool public immutable pricesInUSD;
 
-    /**
-     * @notice Address for Curvance DAO registry contract for ownership and location data.
-     */
+    /// @notice Address for Curvance DAO registry contract for ownership and location data.
     ICentralRegistry public immutable centralRegistry;
 
-    /**
-     * @notice Mapping used to track whether or not an asset is supported by the adaptor and pricing information.
-     */
+    /// @notice Mapping used to track whether or not an asset is supported by the adaptor and pricing information.
     mapping(address => bool) public isSupportedAsset;
 
     //0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE this is for pricing eth in Curve
@@ -43,17 +39,13 @@ abstract contract BaseOracleAdaptor {
         _;
     }
 
-    /**
-     * @notice Called by PriceRouter to price an asset.
-     */
+    /// @notice Called by PriceRouter to price an asset.
     function getPrice(
         address _asset,
         bool _isUsd,
         bool _getLower
     ) external view virtual returns (PriceReturnData memory);
 
-    /**
-     * @notice Removes a supported asset from the adaptor.
-     */
+    /// @notice Removes a supported asset from the adaptor.
     function removeAsset(address _asset) external virtual;
 }

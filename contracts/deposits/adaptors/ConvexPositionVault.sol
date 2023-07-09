@@ -42,35 +42,23 @@ contract ConvexPositionVault is BasePositionVault {
                              GLOBAL STATE
     //////////////////////////////////////////////////////////////*/
 
-    /**
-     * @notice Curve registry exchange contract.
-     * @dev Mainnet Address 0x81C46fECa27B31F3ADC2b91eE4be9717d1cd3DD7
-     */
+    /// @notice Curve registry exchange contract.
+    /// @dev Mainnet Address 0x81C46fECa27B31F3ADC2b91eE4be9717d1cd3DD7
     ICurveSwaps public curveRegistryExchange;
 
-    /**
-     * @notice Convex Pool Id.
-     */
+    /// @notice Convex Pool Id.
     uint256 public pid;
 
-    /**
-     * @notice Covnex Rewarder contract.
-     */
+    /// @notice Covnex Rewarder contract.
     IBaseRewardPool public rewarder;
 
-    /**
-     * @notice Convex Booster contract.
-     */
+    /// @notice Convex Booster contract.
     IBooster private booster;
 
-    /**
-     * @notice Convex reward assets
-     */
+    /// @notice Convex reward assets
     ERC20[] public rewardTokens;
 
-    /**
-     * @notice Mainnet token contracts important for this vault.
-     */
+    /// @notice Mainnet token contracts important for this vault.
     ERC20 private constant WETH =
         ERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
     ERC20 private constant CVX =
@@ -78,25 +66,17 @@ contract ConvexPositionVault is BasePositionVault {
     ERC20 private constant CRV =
         ERC20(0xD533a949740bb3306d119CC777fa900bA034cd52);
 
-    /**
-     * @notice Deposit parameters used by the vault to deposit into desired Curve Pool.
-     */
+    /// @notice Deposit parameters used by the vault to deposit into desired Curve Pool.
     CurveDepositParams private depositParams;
 
-    /**
-     * @notice Stores swapping information to go from an arbitrary reward token to ETH.
-     */
+    /// @notice Stores swapping information to go from an arbitrary reward token to ETH.
     mapping(ERC20 => CurveSwapParams) public arbitraryToEth;
 
-    /**
-     * @notice Stores swapping information to go from ETH to target token to supply liquidity on Curve.
-     */
+    /// @notice Stores swapping information to go from ETH to target token to supply liquidity on Curve.
     CurveSwapParams public ethToTarget;
 
     // Owner needs to be able to set swap paths, deposit data, fee, fee accumulator
-    /**
-     * @notice Value out from harvest swaps must be greater than value in * 1 - (harvestSlippage + upkeepFee);
-     */
+    /// @notice Value out from harvest swaps must be greater than value in * 1 - (harvestSlippage + upkeepFee);
     uint64 public harvestSlippage = 0.01e18;
 
     /*//////////////////////////////////////////////////////////////
@@ -125,10 +105,8 @@ contract ConvexPositionVault is BasePositionVault {
                               SETUP LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    /**
-     * @notice Vaults are designed to be deployed using Minimal Proxy Contracts, but they can be deployed normally,
-     *         but `initialize` must ALWAYS be called either way.
-     */
+    /// @notice Vaults are designed to be deployed using Minimal Proxy Contracts, but they can be deployed normally,
+    ///         but `initialize` must ALWAYS be called either way.
     constructor(
         ERC20 _asset,
         string memory _name,
@@ -137,9 +115,7 @@ contract ConvexPositionVault is BasePositionVault {
         ICentralRegistry _centralRegistry
     ) BasePositionVault(_asset, _name, _symbol, _decimals, _centralRegistry) {}
 
-    /**
-     * @notice Initialize function to fully setup this vault.
-     */
+    /// @notice Initialize function to fully setup this vault.
     function initialize(
         ERC20 _asset,
         ICentralRegistry _centralRegistry,

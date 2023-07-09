@@ -86,28 +86,22 @@ contract veCVE is ERC20 {
         return _symbol;
     }
 
-    /**
-     * @notice Returns the current epoch for the given time
-     * @param _time The timestamp for which to calculate the epoch
-     * @return The current epoch
-     */
+    /// @notice Returns the current epoch for the given time
+    /// @param _time The timestamp for which to calculate the epoch
+    /// @return The current epoch
     function currentEpoch(uint256 _time) public view returns (uint256) {
         if (_time < genesisEpoch) return 0;
         return ((_time - genesisEpoch) / EPOCH_DURATION);
     }
 
-    /**
-     * @notice Returns the epoch to lock until for a lock executed at this moment
-     * @return The epoch
-     */
+    /// @notice Returns the epoch to lock until for a lock executed at this moment
+    /// @return The epoch
     function freshLockEpoch() public view returns (uint256) {
         return currentEpoch(block.timestamp) + LOCK_DURATION_EPOCHS;
     }
 
-    /**
-     * @notice Returns the timestamp to lock until for a lock executed at this moment
-     * @return The timestamp
-     */
+    /// @notice Returns the timestamp to lock until for a lock executed at this moment
+    /// @return The timestamp
     function freshLockTimestamp() public view returns (uint40) {
         return
             uint40(
@@ -117,11 +111,9 @@ contract veCVE is ERC20 {
             );
     }
 
-    /**
-     * @notice Locks the specified amount of CVE tokens for the recipient
-     * @param _amount The amount of tokens to lock
-     * @param _continuousLock Whether the lock should be continuous or not
-     */
+    /// @notice Locks the specified amount of CVE tokens for the recipient
+    /// @param _amount The amount of tokens to lock
+    /// @param _continuousLock Whether the lock should be continuous or not
     function lock(uint216 _amount, bool _continuousLock) public {
         if (isShutdown) revert veCVEShutdown();
         if (_amount == 0) revert invalidLock();
@@ -135,12 +127,10 @@ contract veCVE is ERC20 {
         _lock(msg.sender, _amount, _continuousLock);
     }
 
-    /**
-     * @notice Locks the specified amount of CVE tokens for the recipient
-     * @param _recipient The address to lock tokens for
-     * @param _amount The amount of tokens to lock
-     * @param _continuousLock Whether the lock should be continuous or not
-     */
+    /// @notice Locks the specified amount of CVE tokens for the recipient
+    /// @param _recipient The address to lock tokens for
+    /// @param _amount The amount of tokens to lock
+    /// @param _continuousLock Whether the lock should be continuous or not
     function lockFor(
         address _recipient,
         uint256 _amount,
@@ -160,11 +150,9 @@ contract veCVE is ERC20 {
         _lock(_recipient, _amount, _continuousLock);
     }
 
-    /**
-     * @notice Extends the lock for the specified lock index
-     * @param _lockIndex The index of the lock to extend
-     * @param _continuousLock Whether the lock should be continuous or not
-     */
+    /// @notice Extends the lock for the specified lock index
+    /// @param _lockIndex The index of the lock to extend
+    /// @param _continuousLock Whether the lock should be continuous or not
     function extendLock(uint256 _lockIndex, bool _continuousLock) public {
         Lock[] storage _user = userLocks[msg.sender];
         uint40 unlockTimestamp = _user[_lockIndex].unlockTime;
@@ -200,12 +188,10 @@ contract veCVE is ERC20 {
         //totalUnlocksByEpoch[unlockEpoch] -= tokenAmount;
     }
 
-    /**
-     * @notice Increases the locked amount and extends the lock for the specified lock index
-     * @param _amount The amount to increase the lock by
-     * @param _lockIndex The index of the lock to extend
-     * @param _continuousLock Whether the lock should be continuous or not
-     */
+    /// @notice Increases the locked amount and extends the lock for the specified lock index
+    /// @param _amount The amount to increase the lock by
+    /// @param _lockIndex The index of the lock to extend
+    /// @param _continuousLock Whether the lock should be continuous or not
     function increaseAmountAndExtendLock(
         uint256 _amount,
         uint256 _lockIndex,
@@ -228,13 +214,11 @@ contract veCVE is ERC20 {
         );
     }
 
-    /**
-     * @notice Increases the locked amount and extends the lock for the specified lock index
-     * @param _recipient The address to lock and extend tokens for
-     * @param _amount The amount to increase the lock by
-     * @param _lockIndex The index of the lock to extend
-     * @param _continuousLock Whether the lock should be continuous or not
-     */
+    /// @notice Increases the locked amount and extends the lock for the specified lock index
+    /// @param _recipient The address to lock and extend tokens for
+    /// @param _amount The amount to increase the lock by
+    /// @param _lockIndex The index of the lock to extend
+    /// @param _continuousLock Whether the lock should be continuous or not
     function increaseAmountAndExtendLockFor(
         address _recipient,
         uint256 _amount,
@@ -260,13 +244,11 @@ contract veCVE is ERC20 {
         );
     }
 
-    /**
-     * @notice Internal function to handle whenever a user needs an increase to a locked amount and extended lock
-     * @param _recipient The address to lock and extend tokens for
-     * @param _amount The amount to increase the lock by
-     * @param _lockIndex The index of the lock to extend
-     * @param _continuousLock Whether the lock should be continuous or not
-     */
+    /// @notice Internal function to handle whenever a user needs an increase to a locked amount and extended lock
+    /// @param _recipient The address to lock and extend tokens for
+    /// @param _amount The amount to increase the lock by
+    /// @param _lockIndex The index of the lock to extend
+    /// @param _continuousLock Whether the lock should be continuous or not
     function _increaseAmountAndExtendLockFor(
         address _recipient,
         uint256 _amount,
@@ -312,10 +294,8 @@ contract veCVE is ERC20 {
         _mint(msg.sender, _amount);
     }
 
-    /**
-     * @notice Combines all locks into a single lock
-     * @param _continuousLock Whether the combined lock should be continuous or not
-     */
+    /// @notice Combines all locks into a single lock
+    /// @param _continuousLock Whether the combined lock should be continuous or not
     function combineAllLocks(bool _continuousLock) public {
         Lock[] storage _user = userLocks[msg.sender];
         uint256 numLocks = _user.length;
@@ -380,11 +360,9 @@ contract veCVE is ERC20 {
         }
     }
 
-    /**
-     * @notice Processes an expired lock for the specified lock index
-     * @param _recipient The address to send unlocked tokens to
-     * @param _lockIndex The index of the lock to process
-     */
+    /// @notice Processes an expired lock for the specified lock index
+    /// @param _recipient The address to send unlocked tokens to
+    /// @param _lockIndex The index of the lock to process
     function processExpiredLock(
         address _recipient,
         uint256 _lockIndex
@@ -408,10 +386,8 @@ contract veCVE is ERC20 {
         emit Unlocked(msg.sender, tokensToWithdraw);
     }
 
-    /**
-     * @notice Disables a continuous lock for the user at the specified lock index
-     * @param _lockIndex The index of the lock to be disabled
-     */
+    /// @notice Disables a continuous lock for the user at the specified lock index
+    /// @param _lockIndex The index of the lock to be disabled
     function disableContinuousLock(uint256 _lockIndex) public {
         Lock[] storage _user = userLocks[msg.sender];
         if (_lockIndex >= _user.length) revert invalidLock(); // Length is index + 1 so has to be less than array length
@@ -430,12 +406,10 @@ contract veCVE is ERC20 {
         );
     }
 
-    /**
-     * @notice Updates user points by reducing the amount that gets unlocked in a specific epoch.
-     * @param _user The address of the user whose points are to be updated.
-     * @param _epoch The epoch from which the unlock amount will be reduced.
-     * @dev This function is only called when userTokenUnlocksByEpoch[_user][_epoch] > 0 so do not need to check here
-     */
+    /// @notice Updates user points by reducing the amount that gets unlocked in a specific epoch.
+    /// @param _user The address of the user whose points are to be updated.
+    /// @param _epoch The epoch from which the unlock amount will be reduced.
+    /// @dev This function is only called when userTokenUnlocksByEpoch[_user][_epoch] > 0 so do not need to check here
     function updateUserPoints(address _user, uint256 _epoch) public {
         require(
             centralRegistry.cveLocker() == msg.sender,
@@ -447,12 +421,10 @@ contract veCVE is ERC20 {
         }
     }
 
-    /**
-     * @notice Recover tokens sent accidentally to the contract or leftover rewards (excluding veCVE tokens)
-     * @param _token The address of the token to recover
-     * @param _to The address to receive the recovered tokens
-     * @param _amount The amount of tokens to recover
-     */
+    /// @notice Recover tokens sent accidentally to the contract or leftover rewards (excluding veCVE tokens)
+    /// @param _token The address of the token to recover
+    /// @param _to The address to receive the recovered tokens
+    /// @param _amount The amount of tokens to recover
     function recoverToken(
         address _token,
         address _to,
@@ -470,9 +442,7 @@ contract veCVE is ERC20 {
         emit TokenRecovered(_token, _to, _amount);
     }
 
-    /**
-     * @notice Shuts down the contract, unstakes all tokens, and releases all locks
-     */
+    /// @notice Shuts down the contract, unstakes all tokens, and releases all locks
     function shutdown() external onlyDaoManager {
         isShutdown = true;
         //notify cveLocker of shutdown
@@ -510,12 +480,10 @@ contract veCVE is ERC20 {
         }
     }
 
-    /**
-     * @notice Internal function to lock tokens for a user
-     * @param _recipient The address of the user receiving the lock
-     * @param _amount The amount of tokens to lock
-     * @param _continuousLock Whether the lock is continuous or not
-     */
+    /// @notice Internal function to lock tokens for a user
+    /// @param _recipient The address of the user receiving the lock
+    /// @param _amount The amount of tokens to lock
+    /// @param _continuousLock Whether the lock is continuous or not
     function _lock(
         address _recipient,
         uint256 _amount,
@@ -546,12 +514,10 @@ contract veCVE is ERC20 {
         _mint(_recipient, _amount);
     }
 
-    /**
-     * @notice Processes the expired lock for a user and returns the number of tokens redeemed
-     * @param _account The address of the user whose lock is being processed
-     * @param _lockIndex The index of the lock to be processed
-     * @return tokensRedeemed The number of tokens redeemed from the expired lock
-     */
+    /// @notice Processes the expired lock for a user and returns the number of tokens redeemed
+    /// @param _account The address of the user whose lock is being processed
+    /// @param _lockIndex The index of the lock to be processed
+    /// @return tokensRedeemed The number of tokens redeemed from the expired lock
     function _processExpiredLock(
         address _account,
         uint256 _lockIndex
@@ -572,12 +538,10 @@ contract veCVE is ERC20 {
         _user.pop();
     }
 
-    /**
-     * @notice Increment token data
-     * @dev Increments both the token points and token unlocks for the chain and user. Can only be called by the VeCVE contract.
-     * @param _user The address of the user.
-     * @param _points The number of points to add.
-     */
+    /// @notice Increment token data
+    /// @dev Increments both the token points and token unlocks for the chain and user. Can only be called by the VeCVE contract.
+    /// @param _user The address of the user.
+    /// @param _points The number of points to add.
     function _incrementTokenData(
         address _user,
         uint256 _epoch,
@@ -591,14 +555,12 @@ contract veCVE is ERC20 {
         } //only modified on locking/unlocking veCVE and we know theres never more than 420m so this should never over/underflow
     }
 
-    /**
-     * @notice Reduce token data
-     * @dev Reduces both the token points and token unlocks for the chain and user for a given epoch. Can only be called by the VeCVE contract.
-     * @param _user The address of the user.
-     * @param _epoch The epoch to reduce the data.
-     * @param _tokenPoints The token points to reduce.
-     * @param _tokenUnlocks The token unlocks to reduce.
-     */
+    /// @notice Reduce token data
+    /// @dev Reduces both the token points and token unlocks for the chain and user for a given epoch. Can only be called by the VeCVE contract.
+    /// @param _user The address of the user.
+    /// @param _epoch The epoch to reduce the data.
+    /// @param _tokenPoints The token points to reduce.
+    /// @param _tokenUnlocks The token unlocks to reduce.
     function _reduceTokenData(
         address _user,
         uint256 _epoch,
@@ -613,12 +575,10 @@ contract veCVE is ERC20 {
         } //only modified on locking/unlocking veCVE and we know theres never more than 420m so this should never over/underflow
     }
 
-    /**
-     * @notice Increment token points
-     * @dev Increments the token points of the chain and user. Can only be called by the VeCVE contract.
-     * @param _user The address of the user.
-     * @param _points The number of points to add.
-     */
+    /// @notice Increment token points
+    /// @dev Increments the token points of the chain and user. Can only be called by the VeCVE contract.
+    /// @param _user The address of the user.
+    /// @param _points The number of points to add.
     function _incrementTokenPoints(address _user, uint256 _points) internal {
         unchecked {
             chainTokenPoints += _points;
@@ -626,12 +586,10 @@ contract veCVE is ERC20 {
         } // We know theres never more than 420m so this should never over/underflow
     }
 
-    /**
-     * @notice Reduce token points
-     * @dev Reduces the token points of the chain and user. Can only be called by the VeCVE contract.
-     * @param _user The address of the user.
-     * @param _points The number of points to reduce.
-     */
+    /// @notice Reduce token points
+    /// @dev Reduces the token points of the chain and user. Can only be called by the VeCVE contract.
+    /// @param _user The address of the user.
+    /// @param _points The number of points to reduce.
     function _reduceTokenPoints(address _user, uint256 _points) internal {
         unchecked {
             chainTokenPoints -= _points;
@@ -639,13 +597,11 @@ contract veCVE is ERC20 {
         } // We know theres never more than 420m so this should never over/underflow
     }
 
-    /**
-     * @notice Increment token unlocks
-     * @dev Increments the token unlocks of the chain and user for a given epoch. Can only be called by the VeCVE contract.
-     * @param _user The address of the user.
-     * @param _epoch The epoch to add the unlocks.
-     * @param _points The number of points to add.
-     */
+    /// @notice Increment token unlocks
+    /// @dev Increments the token unlocks of the chain and user for a given epoch. Can only be called by the VeCVE contract.
+    /// @param _user The address of the user.
+    /// @param _epoch The epoch to add the unlocks.
+    /// @param _points The number of points to add.
     function _incrementTokenUnlocks(
         address _user,
         uint256 _epoch,
@@ -658,13 +614,11 @@ contract veCVE is ERC20 {
         } // We know theres never more than 420m so this should never over/underflow
     }
 
-    /**
-     * @notice Reduce token unlocks
-     * @dev Reduces the token unlocks of the chain and user for a given epoch. Can only be called by the VeCVE contract.
-     * @param _user The address of the user.
-     * @param _epoch The epoch to reduce the unlocks.
-     * @param _points The number of points to reduce.
-     */
+    /// @notice Reduce token unlocks
+    /// @dev Reduces the token unlocks of the chain and user for a given epoch. Can only be called by the VeCVE contract.
+    /// @param _user The address of the user.
+    /// @param _epoch The epoch to reduce the unlocks.
+    /// @param _points The number of points to reduce.
     function _reduceTokenUnlocks(
         address _user,
         uint256 _epoch,
@@ -676,15 +630,13 @@ contract veCVE is ERC20 {
         } // We know theres never more than 420m so this should never over/underflow
     }
 
-    /**
-     * @notice Update token unlock data from an extended lock that is not continuous
-     * @dev Updates the token points and token unlocks for the chain and user from a continuous lock for a given epoch. Can only be called by the VeCVE contract.
-     * @param _user The address of the user.
-     * @param _previousEpoch The previous unlock epoch.
-     * @param _epoch The new unlock epoch.
-     * @param _previousPoints The previous points to remove from the old unlock time.
-     * @param _points The new token points to add for the new unlock time.
-     */
+    /// @notice Update token unlock data from an extended lock that is not continuous
+    /// @dev Updates the token points and token unlocks for the chain and user from a continuous lock for a given epoch. Can only be called by the VeCVE contract.
+    /// @param _user The address of the user.
+    /// @param _previousEpoch The previous unlock epoch.
+    /// @param _epoch The new unlock epoch.
+    /// @param _previousPoints The previous points to remove from the old unlock time.
+    /// @param _points The new token points to add for the new unlock time.
     function _updateTokenUnlockDataFromExtendedLock(
         address _user,
         uint256 _previousEpoch,
@@ -700,14 +652,12 @@ contract veCVE is ERC20 {
         } // We know theres never more than 420m so this should never over/underflow
     }
 
-    /**
-     * @notice Update token data from continuous lock on
-     * @dev Updates the token points and token unlocks for the chain and user from a continuous lock for a given epoch. Can only be called by the VeCVE contract.
-     * @param _user The address of the user.
-     * @param _epoch The epoch to update the data.
-     * @param _tokenPoints The token points to add.
-     * @param _tokenUnlocks The token unlocks to reduce.
-     */
+    /// @notice Update token data from continuous lock on
+    /// @dev Updates the token points and token unlocks for the chain and user from a continuous lock for a given epoch. Can only be called by the VeCVE contract.
+    /// @param _user The address of the user.
+    /// @param _epoch The epoch to update the data.
+    /// @param _tokenPoints The token points to add.
+    /// @param _tokenUnlocks The token unlocks to reduce.
     function _updateTokenDataFromContinuousOn(
         address _user,
         uint256 _epoch,
@@ -722,11 +672,9 @@ contract veCVE is ERC20 {
         } // We know theres never more than 420m so this should never over/underflow
     }
 
-    /**
-     * @notice Calculates the continuous lock token point value for _basePoints.
-     * @param _basePoints The token points to be used in the calculation.
-     * @return The calculated continuous lock token point value.
-     */
+    /// @notice Calculates the continuous lock token point value for _basePoints.
+    /// @param _basePoints The token points to be used in the calculation.
+    /// @return The calculated continuous lock token point value.
     function _getContinuousPointValue(
         uint256 _basePoints
     ) internal view returns (uint256) {
@@ -736,11 +684,9 @@ contract veCVE is ERC20 {
         }
     }
 
-    /**
-     * @notice Calculates the continuous lock gauge voting power value for _basePoints.
-     * @param _basePoints The token points to be used in the calculation.
-     * @return The calculated continuous lock gauge voting power value.
-     */
+    /// @notice Calculates the continuous lock gauge voting power value for _basePoints.
+    /// @param _basePoints The token points to be used in the calculation.
+    /// @return The calculated continuous lock gauge voting power value.
     function _getContinuousVoteValue(
         uint256 _basePoints
     ) internal view returns (uint256) {
@@ -754,11 +700,9 @@ contract veCVE is ERC20 {
     ////////////// View Functions /////////////
     ///////////////////////////////////////////
 
-    /**
-     * @notice Calculates the total votes for a user based on their current locks
-     * @param _user The address of the user to calculate votes for
-     * @return The total number of votes for the user
-     */
+    /// @notice Calculates the total votes for a user based on their current locks
+    /// @param _user The address of the user to calculate votes for
+    /// @return The total number of votes for the user
     function getVotes(address _user) public view returns (uint256) {
         uint256 numLocks = userLocks[_user].length;
         if (numLocks == 0) return 0;
@@ -777,12 +721,10 @@ contract veCVE is ERC20 {
         return votes;
     }
 
-    /**
-     * @notice Calculates the total votes for a user based on their locks at a specific epoch
-     * @param _user The address of the user to calculate votes for
-     * @param _epoch The epoch for which the votes are calculated
-     * @return The total number of votes for the user at the specified epoch
-     */
+    /// @notice Calculates the total votes for a user based on their locks at a specific epoch
+    /// @param _user The address of the user to calculate votes for
+    /// @param _epoch The epoch for which the votes are calculated
+    /// @return The total number of votes for the user at the specified epoch
     function getVotesForEpoch(
         address _user,
         uint256 _epoch
@@ -802,13 +744,11 @@ contract veCVE is ERC20 {
         return votes;
     }
 
-    /**
-     * @notice Calculates the votes for a single lock of a user based on a specific timestamp
-     * @param _user The address of the user whose lock is being used for the calculation
-     * @param _lockIndex The index of the lock to calculate votes for
-     * @param _time The timestamp to use for the calculation
-     * @return The number of votes for the specified lock at the given timestamp
-     */
+    /// @notice Calculates the votes for a single lock of a user based on a specific timestamp
+    /// @param _user The address of the user whose lock is being used for the calculation
+    /// @param _lockIndex The index of the lock to calculate votes for
+    /// @param _time The timestamp to use for the calculation
+    /// @return The number of votes for the specified lock at the given timestamp
     function getVotesForSingleLockForTime(
         address _user,
         uint256 _lockIndex,
@@ -831,20 +771,16 @@ contract veCVE is ERC20 {
     //////// Transfer Locked Functions ////////
     ///////////////////////////////////////////
 
-    /**
-     * @notice Overridden transfer function to prevent token transfers
-     * @dev This function always reverts, as the token is non-transferrable
-     * @return This function always reverts and does not return a value
-     */
+    /// @notice Overridden transfer function to prevent token transfers
+    /// @dev This function always reverts, as the token is non-transferrable
+    /// @return This function always reverts and does not return a value
     function transfer(address, uint256) public pure override returns (bool) {
         revert nonTransferrable();
     }
 
-    /**
-     * @notice Overridden transferFrom function to prevent token transfers
-     * @dev This function always reverts, as the token is non-transferrable
-     * @return This function always reverts and does not return a value
-     */
+    /// @notice Overridden transferFrom function to prevent token transfers
+    /// @dev This function always reverts, as the token is non-transferrable
+    /// @return This function always reverts and does not return a value
     function transferFrom(
         address,
         address,

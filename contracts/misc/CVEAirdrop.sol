@@ -23,13 +23,11 @@ contract CVEAirdrop {
 
     mapping(address => bool) public airdropClaimed;
 
-    /**
-     * @notice Constructor
-     * @param _centralRegistry Contract Address of Curvance Central Registry
-     * @param _endTimestamp end timestamp for airdrop claiming
-     * @param _root Airdrop merkle root for claim validation
-     * @param _maximumClaimAmount maximum amount to claim per address
-     */
+    /// @notice Constructor
+    /// @param _centralRegistry Contract Address of Curvance Central Registry
+    /// @param _endTimestamp end timestamp for airdrop claiming
+    /// @param _root Airdrop merkle root for claim validation
+    /// @param _maximumClaimAmount maximum amount to claim per address
     constructor(
         ICentralRegistry _centralRegistry,
         uint256 _endTimestamp,
@@ -63,11 +61,9 @@ contract CVEAirdrop {
         return msg.sender;
     }
 
-    /**
-     * @notice Claim CVE Call Option tokens for airdrop
-     * @param _amount Requested CVE amount to claim for the airdrop
-     * @param _proof Bytes32 array containing the merkle proof
-     */
+    /// @notice Claim CVE Call Option tokens for airdrop
+    /// @param _amount Requested CVE amount to claim for the airdrop
+    /// @param _proof Bytes32 array containing the merkle proof
     function claimAirdrop(
         uint256 _amount,
         bytes32[] calldata _proof
@@ -118,12 +114,10 @@ contract CVEAirdrop {
         emit callOptionCVEAirdropClaimed(_msgSender(), _amount);
     }
 
-    /**
-     * @notice Gas efficient merkle proof verification implementation to validate CVE token claim
-     * @param _proof Requested CVE amount to claim for the airdrop
-     * @param _root Merkle root to check computed hash against
-     * @param _leaf Merkle leaf containing hashed inputs to compare proof element against
-     */
+    /// @notice Gas efficient merkle proof verification implementation to validate CVE token claim
+    /// @param _proof Requested CVE amount to claim for the airdrop
+    /// @param _root Merkle root to check computed hash against
+    /// @param _leaf Merkle leaf containing hashed inputs to compare proof element against
     function verifyProof(
         bytes32[] memory _proof,
         bytes32 _root,
@@ -149,12 +143,10 @@ contract CVEAirdrop {
         return computedHash == _root;
     }
 
-    /**
-     * @notice Check whether a user has CVE tokens to claim
-     * @param _address address of the user to check
-     * @param _amount amount to claim
-     * @param _proof array containing the merkle proof
-     */
+    /// @notice Check whether a user has CVE tokens to claim
+    /// @param _address address of the user to check
+    /// @param _amount amount to claim
+    /// @param _proof array containing the merkle proof
     function canClaimAirdrop(
         address _address,
         uint256 _amount,
@@ -174,11 +166,9 @@ contract CVEAirdrop {
         return false;
     }
 
-    /**
-     * @dev rescue any token sent by mistake
-     * @param _token token to rescue
-     * @param _recipient address to receive token
-     */
+    /// @dev rescue any token sent by mistake
+    /// @param _token token to rescue
+    /// @param _recipient address to receive token
     function rescueToken(
         address _token,
         address _recipient,
@@ -204,9 +194,7 @@ contract CVEAirdrop {
         }
     }
 
-    /**
-     * @notice Withdraws unclaimed airdrop tokens to contract Owner after airdrop claim period has ended
-     */
+    /// @notice Withdraws unclaimed airdrop tokens to contract Owner after airdrop claim period has ended
     function withdrawRemainingAirdropTokens() external onlyDaoManager {
         require(
             block.timestamp > endClaimTimestamp,
@@ -222,19 +210,15 @@ contract CVEAirdrop {
         emit RemainingCallOptionCVEWithdrawn(tokensToWithdraw);
     }
 
-    /**
-     * @notice Set airdropMerkleRoot for airdrop validation
-     * @param _root new merkle root
-     */
+    /// @notice Set airdropMerkleRoot for airdrop validation
+    /// @param _root new merkle root
     function setMerkleRoot(bytes32 _root) external onlyDaoManager {
         require(_root != bytes32(0), "setMerkleRoot: Invalid Parameter");
         airdropMerkleRoot = _root;
     }
 
-    /**
-     * @notice Set isPaused state
-     * @param _state new pause state
-     */
+    /// @notice Set isPaused state
+    /// @param _state new pause state
     function setPauseState(bool _state) external onlyDaoManager {
         isPaused = _state;
     }

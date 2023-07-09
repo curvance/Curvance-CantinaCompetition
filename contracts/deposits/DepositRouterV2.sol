@@ -6,12 +6,10 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { ERC4626, SafeTransferLib, ERC20 } from "contracts/libraries/ERC4626.sol";
 import { Math } from "contracts/libraries/Math.sol";
 
-/**
- * @title Curvance Deposit Router
- * @notice Provides a universal interface allowing Curvance contracts to deposit and withdraw assets from:
- *         Convex
- * @author crispymangoes
- */
+/// @title Curvance Deposit Router
+/// @notice Provides a universal interface allowing Curvance contracts
+///         to deposit and withdraw assets from Convex
+/// @author crispymangoes
 //TODO add events
 contract DepositRouterV2 is Ownable {
     using Math for uint256;
@@ -39,10 +37,8 @@ contract DepositRouterV2 is Ownable {
                               OWNER LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    /**
-     * @notice Allows `owner` to add new positions to this contract.
-     * @dev see `Position` struct for description of inputs.
-     */
+    /// @notice Allows `owner` to add new positions to this contract.
+    /// @dev see `Position` struct for description of inputs.
     function addPosition(
         ERC4626 _position,
         address _operator
@@ -56,10 +52,8 @@ contract DepositRouterV2 is Ownable {
                               USER LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    /**
-     * Takes underlying token and deposits it into the underlying protocol
-     * returns the amount of shares
-     */
+    /// Takes underlying token and deposits it into the underlying protocol
+    /// returns the amount of shares
     function deposit(
         uint256 amount,
         ERC4626 _position

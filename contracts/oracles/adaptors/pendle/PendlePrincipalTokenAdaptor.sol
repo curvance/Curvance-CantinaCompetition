@@ -17,10 +17,8 @@ contract PendlePrincipalTokenExtension is BaseOracleAdaptor {
         address quoteAsset;
     }
 
-    /**
-     * @notice Curve Derivative Storage
-     * @dev Stores an array of the underlying token addresses in the curve pool.
-     */
+    /// @notice Curve Derivative Storage
+    /// @dev Stores an array of the underlying token addresses in the curve pool.
     mapping(address => AdaptorData) public adaptorData;
 
     constructor(

@@ -6,11 +6,9 @@ import { PriceOracle } from "../Oracle/PriceOracle.sol";
 import { GaugePool } from "../../gauge/GaugePool.sol";
 import { LendtrollerInterface } from "./LendtrollerInterface.sol";
 
-/**
- * @title Curvance Lendtroller
- * @author Curvance - Based on Curvance Finance
- * @notice Manages risk within the lending & collateral markets
- */
+/// @title Curvance Lendtroller
+/// @author Curvance - Based on Curvance Finance
+/// @notice Manages risk within the lending & collateral markets
 contract Lendtroller is LendtrollerInterface {
     ////////// Constants //////////
 
@@ -31,11 +29,9 @@ contract Lendtroller is LendtrollerInterface {
         gaugePool = _gaugePool;
     }
 
-    /**
-     * @notice Returns the assets an account has entered
-     * @param account The address of the account to pull assets for
-     * @return A dynamic list with the assets the account has entered
-     */
+    /// @notice Returns the assets an account has entered
+    /// @param account The address of the account to pull assets for
+    /// @return A dynamic list with the assets the account has entered
     function getAssetsIn(
         address account
     ) external view returns (CToken[] memory) {
@@ -44,12 +40,10 @@ contract Lendtroller is LendtrollerInterface {
         return assetsIn;
     }
 
-    /**
-     * @notice Returns whether the given account is entered in the given asset
-     * @param account The address of the account to check
-     * @param cToken The cToken to check
-     * @return True if the account is in the asset, otherwise false.
-     */
+    /// @notice Returns whether the given account is entered in the given asset
+    /// @param account The address of the account to check
+    /// @param cToken The cToken to check
+    /// @return True if the account is in the asset, otherwise false.
     function checkMembership(
         address account,
         CToken cToken
@@ -57,11 +51,9 @@ contract Lendtroller is LendtrollerInterface {
         return markets[address(cToken)].accountMembership[account];
     }
 
-    /**
-     * @notice Add assets to be included in account liquidity calculation
-     * @param cTokens The list of addresses of the cToken markets to be enabled
-     * @return uint array: 0 = market not entered; 1 = market entered
-     */
+    /// @notice Add assets to be included in account liquidity calculation
+    /// @param cTokens The list of addresses of the cToken markets to be enabled
+    /// @return uint array: 0 = market not entered; 1 = market entered
     function enterMarkets(
         address[] memory cTokens
     ) public override returns (uint256[] memory) {
@@ -76,12 +68,10 @@ contract Lendtroller is LendtrollerInterface {
         return results;
     }
 
-    /**
-     * @notice Add the market to the borrower's "assets in" for liquidity calculations
-     * @param cToken The market to enter
-     * @param borrower The address of the account to modify
-     * @return uint 0 = unable to enter market; 1 = market entered
-     */
+    /// @notice Add the market to the borrower's "assets in" for liquidity calculations
+    /// @param cToken The market to enter
+    /// @param borrower The address of the account to modify
+    /// @return uint 0 = unable to enter market; 1 = market entered
     function addToMarketInternal(
         CToken cToken,
         address borrower
@@ -112,12 +102,10 @@ contract Lendtroller is LendtrollerInterface {
         return 1;
     }
 
-    /**
-     * @notice Removes asset from sender's account liquidity calculation
-     * @dev Sender must not have an outstanding borrow balance in the asset,
-     *  or be providing necessary collateral for an outstanding borrow.
-     * @param cTokenAddress The address of the asset to be removed
-     */
+    /// @notice Removes asset from sender's account liquidity calculation
+    /// @dev Sender must not have an outstanding borrow balance in the asset,
+    ///  or be providing necessary collateral for an outstanding borrow.
+    /// @param cTokenAddress The address of the asset to be removed
     function exitMarket(address cTokenAddress) external override {
         CToken cToken = CToken(cTokenAddress);
         /* Get sender tokensHeld and amountOwed underlying from the cToken */
@@ -166,13 +154,11 @@ contract Lendtroller is LendtrollerInterface {
         emit MarketExited(cToken, msg.sender);
     }
 
-    /*** Policy Hooks ***/
+    /// Policy Hooks
 
-    /**
-     * @notice Checks if the account should be allowed to mint tokens in the given market
-     * @param cToken The market to verify the mint against
-     * @param minter The account which would get the minted tokens
-     */
+    /// @notice Checks if the account should be allowed to mint tokens in the given market
+    /// @param cToken The market to verify the mint against
+    /// @param minter The account which would get the minted tokens
     function mintAllowed(address cToken, address minter) external override {
         // Pausing is a very serious situation - we revert to sound the alarms
         if (mintGuardianPaused[cToken]) {
@@ -184,12 +170,10 @@ contract Lendtroller is LendtrollerInterface {
         }
     }
 
-    /**
-     * @notice Checks if the account should be allowed to redeem tokens in the given market
-     * @param cToken The market to verify the redeem against
-     * @param redeemer The account which would redeem the tokens
-     * @param redeemTokens The number of cTokens to exchange for the underlying asset in the market
-     */
+    /// @notice Checks if the account should be allowed to redeem tokens in the given market
+    /// @param cToken The market to verify the redeem against
+    /// @param redeemer The account which would redeem the tokens
+    /// @param redeemTokens The number of cTokens to exchange for the underlying asset in the market
     function redeemAllowed(
         address cToken,
         address redeemer,
@@ -198,12 +182,10 @@ contract Lendtroller is LendtrollerInterface {
         redeemAllowedInternal(cToken, redeemer, redeemTokens);
     }
 
-    /**
-     * @notice Checks if the account should be allowed to redeem tokens in the given market
-     * @param cToken The market to verify the redeem against
-     * @param redeemer The account which would redeem the tokens
-     * @param redeemTokens The number of cTokens to exchange for the underlying asset in the market
-     */
+    /// @notice Checks if the account should be allowed to redeem tokens in the given market
+    /// @param cToken The market to verify the redeem against
+    /// @param redeemer The account which would redeem the tokens
+    /// @param redeemTokens The number of cTokens to exchange for the underlying asset in the market
     function redeemAllowedInternal(
         address cToken,
         address redeemer,
@@ -231,12 +213,10 @@ contract Lendtroller is LendtrollerInterface {
         }
     }
 
-    /**
-     * @notice Checks if the account should be allowed to borrow the underlying asset of the given market
-     * @param cToken The market to verify the borrow against
-     * @param borrower The account which would borrow the asset
-     * @param borrowAmount The amount of underlying the account would borrow
-     */
+    /// @notice Checks if the account should be allowed to borrow the underlying asset of the given market
+    /// @param cToken The market to verify the borrow against
+    /// @param borrower The account which would borrow the asset
+    /// @param borrowAmount The amount of underlying the account would borrow
     function borrowAllowed(
         address cToken,
         address borrower,
@@ -290,11 +270,9 @@ contract Lendtroller is LendtrollerInterface {
         }
     }
 
-    /**
-     * @notice Checks if the account should be allowed to repay a borrow in the given market
-     * @param cToken The market to verify the repay against
-     * @param borrower The account which would borrowed the asset
-     */
+    /// @notice Checks if the account should be allowed to repay a borrow in the given market
+    /// @param cToken The market to verify the repay against
+    /// @param borrower The account which would borrowed the asset
     function repayBorrowAllowed(
         address cToken,
         address borrower
@@ -304,13 +282,11 @@ contract Lendtroller is LendtrollerInterface {
         }
     }
 
-    /**
-     * @notice Checks if the liquidation should be allowed to occur
-     * @param cTokenBorrowed Asset which was borrowed by the borrower
-     * @param cTokenCollateral Asset which was used as collateral and will be seized
-     * @param borrower The address of the borrower
-     * @param repayAmount The amount of underlying being repaid
-     */
+    /// @notice Checks if the liquidation should be allowed to occur
+    /// @param cTokenBorrowed Asset which was borrowed by the borrower
+    /// @param cTokenCollateral Asset which was used as collateral and will be seized
+    /// @param borrower The address of the borrower
+    /// @param repayAmount The amount of underlying being repaid
     function liquidateBorrowAllowed(
         address cTokenBorrowed,
         address cTokenCollateral,
@@ -341,13 +317,11 @@ contract Lendtroller is LendtrollerInterface {
         }
     }
 
-    /**
-     * @notice Checks if the seizing of assets should be allowed to occur
-     * @param cTokenCollateral Asset which was used as collateral and will be seized
-     * @param cTokenBorrowed Asset which was borrowed by the borrower
-     * @param liquidator The address repaying the borrow and seizing the collateral
-     * @param borrower The address of the borrower
-     */
+    /// @notice Checks if the seizing of assets should be allowed to occur
+    /// @param cTokenCollateral Asset which was used as collateral and will be seized
+    /// @param cTokenBorrowed Asset which was borrowed by the borrower
+    /// @param liquidator The address repaying the borrow and seizing the collateral
+    /// @param borrower The address of the borrower
     function seizeAllowed(
         address cTokenCollateral,
         address cTokenBorrowed,
@@ -374,13 +348,11 @@ contract Lendtroller is LendtrollerInterface {
         }
     }
 
-    /**
-     * @notice Checks if the account should be allowed to transfer tokens in the given market
-     * @param cToken The market to verify the transfer against
-     * @param src The account which sources the tokens
-     * @param dst The account which receives the tokens
-     * @param transferTokens The number of cTokens to transfer
-     */
+    /// @notice Checks if the account should be allowed to transfer tokens in the given market
+    /// @param cToken The market to verify the transfer against
+    /// @param src The account which sources the tokens
+    /// @param dst The account which receives the tokens
+    /// @param transferTokens The number of cTokens to transfer
     function transferAllowed(
         address cToken,
         address src,
@@ -397,13 +369,11 @@ contract Lendtroller is LendtrollerInterface {
         redeemAllowedInternal(cToken, src, transferTokens);
     }
 
-    /*** Liquidity/Liquidation Calculations ***/
+    /// Liquidity/Liquidation Calculations
 
-    /**
-     * @notice Determine the current account liquidity wrt collateral requirements
-     * @return liquidity of account in excess of collateral requirements
-     * @return shortfall of account below collateral requirements
-     */
+    /// @notice Determine the current account liquidity wrt collateral requirements
+    /// @return liquidity of account in excess of collateral requirements
+    /// @return shortfall of account below collateral requirements
     function getAccountLiquidity(
         address account
     ) public view returns (uint256, uint256) {
@@ -420,12 +390,10 @@ contract Lendtroller is LendtrollerInterface {
         return (liquidity, shortfall);
     }
 
-    /**
-     * @notice Determine the current account liquidity wrt collateral requirements
-     * @return uint total collateral amount of user
-     * @return uint max borrow amount of user
-     * @return uint total borrow amount of user
-     */
+    /// @notice Determine the current account liquidity wrt collateral requirements
+    /// @return uint total collateral amount of user
+    /// @return uint max borrow amount of user
+    /// @return uint total borrow amount of user
     function getAccountPosition(
         address account
     ) public view returns (uint256, uint256, uint256) {
@@ -443,11 +411,9 @@ contract Lendtroller is LendtrollerInterface {
         return (sumCollateral, maxBorrow, sumBorrow);
     }
 
-    /**
-     * @notice Determine the current account liquidity wrt collateral requirements
-     * @return liquidity of account in excess of collateral requirements
-     * @return shortfall of account below collateral requirements
-     */
+    /// @notice Determine the current account liquidity wrt collateral requirements
+    /// @return liquidity of account in excess of collateral requirements
+    /// @return shortfall of account below collateral requirements
     function getAccountLiquidityInternal(
         address account
     ) internal view returns (uint256, uint256) {
@@ -460,15 +426,13 @@ contract Lendtroller is LendtrollerInterface {
             );
     }
 
-    /**
-     * @notice Determine what the account liquidity would be if the given amounts were redeemed/borrowed
-     * @param cTokenModify The market to hypothetically redeem/borrow in
-     * @param account The account to determine liquidity for
-     * @param redeemTokens The number of tokens to hypothetically redeem
-     * @param borrowAmount The amount of underlying to hypothetically borrow
-     * @return uint hypothetical account liquidity in excess of collateral requirements,
-     * @return uint hypothetical account shortfall below collateral requirements)
-     */
+    /// @notice Determine what the account liquidity would be if the given amounts were redeemed/borrowed
+    /// @param cTokenModify The market to hypothetically redeem/borrow in
+    /// @param account The account to determine liquidity for
+    /// @param redeemTokens The number of tokens to hypothetically redeem
+    /// @param borrowAmount The amount of underlying to hypothetically borrow
+    /// @return uint hypothetical account liquidity in excess of collateral requirements,
+    /// @return uint hypothetical account shortfall below collateral requirements)
     function getHypotheticalAccountLiquidity(
         address account,
         address cTokenModify,
@@ -488,17 +452,15 @@ contract Lendtroller is LendtrollerInterface {
         return (liquidity, shortfall);
     }
 
-    /**
-     * @notice Determine what the account liquidity would be if the given amounts were redeemed/borrowed
-     * @param cTokenModify The market to hypothetically redeem/borrow in
-     * @param account The account to determine liquidity for
-     * @param redeemTokens The number of tokens to hypothetically redeem
-     * @param borrowAmount The amount of underlying to hypothetically borrow
-     * @dev Note that we calculate the exchangeRateStored for each collateral cToken using stored data,
-     *  without calculating accumulated interest.
-     * @return uint hypothetical account liquidity in excess of collateral requirements,
-     * @return uint hypothetical account shortfall below collateral requirements)
-     */
+    /// @notice Determine what the account liquidity would be if the given amounts were redeemed/borrowed
+    /// @param cTokenModify The market to hypothetically redeem/borrow in
+    /// @param account The account to determine liquidity for
+    /// @param redeemTokens The number of tokens to hypothetically redeem
+    /// @param borrowAmount The amount of underlying to hypothetically borrow
+    /// @dev Note that we calculate the exchangeRateStored for each collateral cToken using stored data,
+    ///  without calculating accumulated interest.
+    /// @return uint hypothetical account liquidity in excess of collateral requirements,
+    /// @return uint hypothetical account shortfall below collateral requirements)
     function getHypotheticalAccountLiquidityInternal(
         address account,
         CToken cTokenModify,
@@ -524,18 +486,16 @@ contract Lendtroller is LendtrollerInterface {
         }
     }
 
-    /**
-     * @notice Determine what the account liquidity would be if the given amounts were redeemed/borrowed
-     * @param cTokenModify The market to hypothetically redeem/borrow in
-     * @param account The account to determine liquidity for
-     * @param redeemTokens The number of tokens to hypothetically redeem
-     * @param borrowAmount The amount of underlying to hypothetically borrow
-     * @dev Note that we calculate the exchangeRateStored for each collateral cToken using stored data,
-     *  without calculating accumulated interest.
-     * @return sumCollateral total collateral amount of user
-     * @return maxBorrow max borrow amount of user
-     * @return sumBorrowPlusEffects total borrow amount of user
-     */
+    /// @notice Determine what the account liquidity would be if the given amounts were redeemed/borrowed
+    /// @param cTokenModify The market to hypothetically redeem/borrow in
+    /// @param account The account to determine liquidity for
+    /// @param redeemTokens The number of tokens to hypothetically redeem
+    /// @param borrowAmount The amount of underlying to hypothetically borrow
+    /// @dev Note that we calculate the exchangeRateStored for each collateral cToken using stored data,
+    ///  without calculating accumulated interest.
+    /// @return sumCollateral total collateral amount of user
+    /// @return maxBorrow max borrow amount of user
+    /// @return sumBorrowPlusEffects total borrow amount of user
     function getHypotheticalAccountPositionInternal(
         address account,
         CToken cTokenModify,
@@ -602,14 +562,12 @@ contract Lendtroller is LendtrollerInterface {
         }
     }
 
-    /**
-     * @notice Calculate number of tokens of collateral asset to seize given an underlying amount
-     * @dev Used in liquidation (called in cToken.liquidateBorrowFresh)
-     * @param cTokenBorrowed The address of the borrowed cToken
-     * @param cTokenCollateral The address of the collateral cToken
-     * @param actualRepayAmount The amount of cTokenBorrowed underlying to convert into cTokenCollateral tokens
-     * @return uint The number of cTokenCollateral tokens to be seized in a liquidation
-     */
+    /// @notice Calculate number of tokens of collateral asset to seize given an underlying amount
+    /// @dev Used in liquidation (called in cToken.liquidateBorrowFresh)
+    /// @param cTokenBorrowed The address of the borrowed cToken
+    /// @param cTokenCollateral The address of the collateral cToken
+    /// @param actualRepayAmount The amount of cTokenBorrowed underlying to convert into cTokenCollateral tokens
+    /// @return uint The number of cTokenCollateral tokens to be seized in a liquidation
     function liquidateCalculateSeizeTokens(
         address cTokenBorrowed,
         address cTokenCollateral,
@@ -627,12 +585,10 @@ contract Lendtroller is LendtrollerInterface {
             revert PriceError();
         }
 
-        /*
-         * Get the exchange rate and calculate the number of collateral tokens to seize:
-         *  seizeAmount = actualRepayAmount * liquidationIncentive * priceBorrowed / priceCollateral
-         *  seizeTokens = seizeAmount / exchangeRate
-         *   = actualRepayAmount * (liquidationIncentive * priceBorrowed) / (priceCollateral * exchangeRate)
-         */
+        // Get the exchange rate and calculate the number of collateral tokens to seize:
+        //  seizeAmount = actualRepayAmount * liquidationIncentive * priceBorrowed / priceCollateral
+        //  seizeTokens = seizeAmount / exchangeRate
+        //   = actualRepayAmount * (liquidationIncentive * priceBorrowed) / (priceCollateral * exchangeRate)
         uint256 exchangeRateScaled = CToken(cTokenCollateral)
             .exchangeRateStored();
         uint256 numerator = liquidationIncentiveScaled * priceBorrowedScaled;
@@ -643,13 +599,11 @@ contract Lendtroller is LendtrollerInterface {
         return seizeTokens;
     }
 
-    /*** User Custom Functions ***/
+    /// User Custom Functions
 
-    /**
-     * @notice User set collateral on/off option for market token
-     * @param cTokens The addresses of the markets (tokens) to change the collateral on/off option
-     * @param disableCollateral Disable cToken from collateral
-     */
+    /// @notice User set collateral on/off option for market token
+    /// @param cTokens The addresses of the markets (tokens) to change the collateral on/off option
+    /// @param disableCollateral Disable cToken from collateral
     function setUserDisableCollateral(
         CToken[] calldata cTokens,
         bool disableCollateral
@@ -680,13 +634,11 @@ contract Lendtroller is LendtrollerInterface {
         }
     }
 
-    /*** Admin Functions ***/
+    /// Admin Functions
 
-    /**
-     * @notice Sets a new price oracle for the lendtroller
-     * @dev Admin function to set a new price oracle
-     * @param newOracle new price oracle address
-     */
+    /// @notice Sets a new price oracle for the lendtroller
+    /// @dev Admin function to set a new price oracle
+    /// @param newOracle new price oracle address
     function _setPriceOracle(PriceOracle newOracle) public {
         // Check caller is admin
         if (msg.sender != admin) {
@@ -702,11 +654,9 @@ contract Lendtroller is LendtrollerInterface {
         emit NewPriceOracle(oldOracle, newOracle);
     }
 
-    /**
-     * @notice Sets the closeFactor used when liquidating borrows
-     * @dev Admin function to set closeFactor
-     * @param newCloseFactorScaled New close factor, scaled by 1e18
-     */
+    /// @notice Sets the closeFactor used when liquidating borrows
+    /// @dev Admin function to set closeFactor
+    /// @param newCloseFactorScaled New close factor, scaled by 1e18
     function _setCloseFactor(uint256 newCloseFactorScaled) external {
         // Check caller is admin}
         if (msg.sender != admin) {
@@ -718,12 +668,10 @@ contract Lendtroller is LendtrollerInterface {
         emit NewCloseFactor(oldCloseFactorScaled, closeFactorScaled);
     }
 
-    /**
-     * @notice Sets the collateralFactor for a market
-     * @dev Admin function to set per-market collateralFactor
-     * @param cToken The market to set the factor on
-     * @param newCollateralFactorScaled The new collateral factor, scaled by 1e18
-     */
+    /// @notice Sets the collateralFactor for a market
+    /// @dev Admin function to set per-market collateralFactor
+    /// @param cToken The market to set the factor on
+    /// @param newCollateralFactorScaled The new collateral factor, scaled by 1e18
     function _setCollateralFactor(
         CToken cToken,
         uint256 newCollateralFactorScaled
@@ -763,11 +711,9 @@ contract Lendtroller is LendtrollerInterface {
         );
     }
 
-    /**
-     * @notice Sets liquidationIncentive
-     * @dev Admin function to set liquidationIncentive
-     * @param newLiquidationIncentiveScaled New liquidationIncentive scaled by 1e18
-     */
+    /// @notice Sets liquidationIncentive
+    /// @dev Admin function to set liquidationIncentive
+    /// @param newLiquidationIncentiveScaled New liquidationIncentive scaled by 1e18
     function _setLiquidationIncentive(
         uint256 newLiquidationIncentiveScaled
     ) external {
@@ -788,11 +734,9 @@ contract Lendtroller is LendtrollerInterface {
         );
     }
 
-    /**
-     * @notice Add the market to the markets mapping and set it as listed
-     * @dev Admin function to set isListed and add support for the market
-     * @param cToken The address of the market (token) to list
-     */
+    /// @notice Add the market to the markets mapping and set it as listed
+    /// @dev Admin function to set isListed and add support for the market
+    /// @param cToken The address of the market (token) to list
     function _supportMarket(CToken cToken) external {
         if (msg.sender != admin) {
             revert AddressUnauthorized();
@@ -815,10 +759,8 @@ contract Lendtroller is LendtrollerInterface {
         emit MarketListed(cToken);
     }
 
-    /**
-     * @notice Add the market to the markets mapping and set it as listed
-     * @param cToken The address of the market (token) to list
-     */
+    /// @notice Add the market to the markets mapping and set it as listed
+    /// @param cToken The address of the market (token) to list
     function _addMarketInternal(address cToken) internal {
         uint256 numMarkets = allMarkets.length;
 
@@ -830,15 +772,13 @@ contract Lendtroller is LendtrollerInterface {
         allMarkets.push(CToken(cToken));
     }
 
-    /**
-     * @notice Set the given borrow caps for the given cToken markets.
-     *   Borrowing that brings total borrows to or above borrow cap will revert.
-     * @dev Admin or borrowCapGuardian function to set the borrow caps.
-     *   A borrow cap of 0 corresponds to unlimited borrowing.
-     * @param cTokens The addresses of the markets (tokens) to change the borrow caps for
-     * @param newBorrowCaps The new borrow cap values in underlying to be set.
-     *   A value of 0 corresponds to unlimited borrowing.
-     */
+    /// @notice Set the given borrow caps for the given cToken markets.
+    ///   Borrowing that brings total borrows to or above borrow cap will revert.
+    /// @dev Admin or borrowCapGuardian function to set the borrow caps.
+    ///   A borrow cap of 0 corresponds to unlimited borrowing.
+    /// @param cTokens The addresses of the markets (tokens) to change the borrow caps for
+    /// @param newBorrowCaps The new borrow cap values in underlying to be set.
+    ///   A value of 0 corresponds to unlimited borrowing.
     function _setMarketBorrowCaps(
         CToken[] calldata cTokens,
         uint256[] calldata newBorrowCaps
@@ -858,12 +798,10 @@ contract Lendtroller is LendtrollerInterface {
         }
     }
 
-    /**
-     * @notice Set collateral on/off option for market token
-     * @dev Admin can set the collateral on or off
-     * @param cTokens The addresses of the markets (tokens) to change the collateral on/off option
-     * @param disableCollateral Disable cToken from collateral
-     */
+    /// @notice Set collateral on/off option for market token
+    /// @dev Admin can set the collateral on or off
+    /// @param cTokens The addresses of the markets (tokens) to change the collateral on/off option
+    /// @param disableCollateral Disable cToken from collateral
     function _setDisableCollateral(
         CToken[] calldata cTokens,
         bool disableCollateral
@@ -883,10 +821,8 @@ contract Lendtroller is LendtrollerInterface {
         }
     }
 
-    /**
-     * @notice Admin function to change the Borrow Cap Guardian
-     * @param newBorrowCapGuardian The address of the new Borrow Cap Guardian
-     */
+    /// @notice Admin function to change the Borrow Cap Guardian
+    /// @param newBorrowCapGuardian The address of the new Borrow Cap Guardian
     function _setBorrowCapGuardian(address newBorrowCapGuardian) external {
         if (msg.sender != admin) {
             revert AddressUnauthorized();
@@ -901,10 +837,8 @@ contract Lendtroller is LendtrollerInterface {
         emit NewBorrowCapGuardian(oldBorrowCapGuardian, newBorrowCapGuardian);
     }
 
-    /**
-     * @notice Admin function to change the Pause Guardian
-     * @param newPauseGuardian The address of the new Pause Guardian
-     */
+    /// @notice Admin function to change the Pause Guardian
+    /// @param newPauseGuardian The address of the new Pause Guardian
     function _setPauseGuardian(address newPauseGuardian) public {
         if (msg.sender != admin) {
             revert AddressUnauthorized();
@@ -919,11 +853,9 @@ contract Lendtroller is LendtrollerInterface {
         emit NewPauseGuardian(oldPauseGuardian, pauseGuardian);
     }
 
-    /**
-     * @notice Admin function to set market mint paused
-     * @param cToken market token address
-     * @param state pause or unpause
-     */
+    /// @notice Admin function to set market mint paused
+    /// @param cToken market token address
+    /// @param state pause or unpause
     function _setMintPaused(CToken cToken, bool state) public returns (bool) {
         if (!markets[address(cToken)].isListed) {
             revert MarketNotListed(address(cToken));
@@ -940,11 +872,9 @@ contract Lendtroller is LendtrollerInterface {
         return state;
     }
 
-    /**
-     * @notice Admin function to set market borrow paused
-     * @param cToken market token address
-     * @param state pause or unpause
-     */
+    /// @notice Admin function to set market borrow paused
+    /// @param cToken market token address
+    /// @param state pause or unpause
     function _setBorrowPaused(
         CToken cToken,
         bool state
@@ -964,10 +894,8 @@ contract Lendtroller is LendtrollerInterface {
         return state;
     }
 
-    /**
-     * @notice Admin function to set transfer paused
-     * @param state pause or unpause
-     */
+    /// @notice Admin function to set transfer paused
+    /// @param state pause or unpause
     function _setTransferPaused(bool state) public returns (bool) {
         if (msg.sender != pauseGuardian && msg.sender != admin) {
             revert AddressUnauthorized();
@@ -981,10 +909,8 @@ contract Lendtroller is LendtrollerInterface {
         return state;
     }
 
-    /**
-     * @notice Admin function to set seize paused
-     * @param state pause or unpause
-     */
+    /// @notice Admin function to set seize paused
+    /// @param state pause or unpause
     function _setSeizePaused(bool state) public returns (bool) {
         if (msg.sender != pauseGuardian && msg.sender != admin) {
             revert AddressUnauthorized();
@@ -998,10 +924,8 @@ contract Lendtroller is LendtrollerInterface {
         return state;
     }
 
-    /**
-     * @notice Admin function to set position folding contract address
-     * @param _newPositionFolding new position folding contract address
-     */
+    /// @notice Admin function to set position folding contract address
+    /// @param _newPositionFolding new position folding contract address
     function _setPositionFolding(address _newPositionFolding) public {
         if (msg.sender != admin) {
             revert AddressUnauthorized();
@@ -1012,9 +936,7 @@ contract Lendtroller is LendtrollerInterface {
         positionFolding = _newPositionFolding;
     }
 
-    /**
-     * @notice Returns minimum value of a and b
-     */
+    /// @notice Returns minimum value of a and b
     function min(uint256 a, uint256 b) internal pure returns (uint256) {
         if (a <= b) {
             return a;
@@ -1023,10 +945,8 @@ contract Lendtroller is LendtrollerInterface {
         }
     }
 
-    /**
-     * @notice Returns market status
-     * @param cToken market token address
-     */
+    /// @notice Returns market status
+    /// @param cToken market token address
     function getIsMarkets(
         address cToken
     ) external view override returns (bool, uint256, bool) {
@@ -1037,11 +957,9 @@ contract Lendtroller is LendtrollerInterface {
         );
     }
 
-    /**
-     * @notice Returns if user joined market
-     * @param cToken market token address
-     * @param user user address
-     */
+    /// @notice Returns if user joined market
+    /// @param cToken market token address
+    /// @param user user address
     function getAccountMembership(
         address cToken,
         address user
@@ -1049,17 +967,13 @@ contract Lendtroller is LendtrollerInterface {
         return markets[cToken].accountMembership[user];
     }
 
-    /**
-     * @notice Returns all markets
-     */
+    /// @notice Returns all markets
     function getAllMarkets() external view override returns (CToken[] memory) {
         return allMarkets;
     }
 
-    /**
-     * @notice Returns all markets user joined
-     * @param user user address
-     */
+    /// @notice Returns all markets user joined
+    /// @param user user address
     function getAccountAssets(
         address user
     ) external view override returns (CToken[] memory) {

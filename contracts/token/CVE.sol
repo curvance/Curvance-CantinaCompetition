@@ -74,13 +74,11 @@ contract CVE is OFTV2 {
         _;
     }
 
-    /**
-     * @notice Mint new gauge emissions
-     * @dev Allows the VotingHub to mint new gauge emissions.
-     * @param _gaugeEmissions The amount of gauge emissions to be minted.
-     * Emission amount is multiplied by the lock boost value from the central registry.
-     * Resulting tokens are minted to the voting hub contract.
-     */
+    /// @notice Mint new gauge emissions
+    /// @dev Allows the VotingHub to mint new gauge emissions.
+    /// @param _gaugeEmissions The amount of gauge emissions to be minted.
+    /// Emission amount is multiplied by the lock boost value from the central registry.
+    /// Resulting tokens are minted to the voting hub contract.
     function mintGaugeEmissions(
         uint256 _gaugeEmissions
     ) external onlyVotingHub {
@@ -90,11 +88,9 @@ contract CVE is OFTV2 {
         );
     }
 
-    /**
-     * @notice Mint CVE for the DAO treasury
-     * @param _tokensToMint The amount of treasury tokens to be minted.
-     * The number of tokens to mint cannot not exceed the available treasury allocation.
-     */
+    /// @notice Mint CVE for the DAO treasury
+    /// @param _tokensToMint The amount of treasury tokens to be minted.
+    /// The number of tokens to mint cannot not exceed the available treasury allocation.
     function mintTreasuryTokens(
         uint256 _tokensToMint
     ) external onlyDaoManager {
@@ -107,11 +103,9 @@ contract CVE is OFTV2 {
         _mint(msg.sender, _tokensToMint);
     }
 
-    /**
-     * @notice Mint CVE for deposit into callOptionCVE contract
-     * @param _tokensToMint The amount of call option tokens to be minted.
-     * The number of tokens to mint cannot not exceed the available call option allocation.
-     */
+    /// @notice Mint CVE for deposit into callOptionCVE contract
+    /// @param _tokensToMint The amount of call option tokens to be minted.
+    /// The number of tokens to mint cannot not exceed the available call option allocation.
     function mintCallOptionTokens(
         uint256 _tokensToMint
     ) external onlyDaoManager {
@@ -124,12 +118,10 @@ contract CVE is OFTV2 {
         _mint(msg.sender, _tokensToMint);
     }
 
-    /**
-     * @notice Mint CVE from team allocation
-     * @dev Allows the DAO Manager to mint new tokens for the team allocation.
-     * @dev The amount of tokens minted is calculated based on the time passed since the Token Generation Event.
-     * @dev The number of tokens minted is capped by the total team allocation.
-     */
+    /// @notice Mint CVE from team allocation
+    /// @dev Allows the DAO Manager to mint new tokens for the team allocation.
+    /// @dev The amount of tokens minted is calculated based on the time passed since the Token Generation Event.
+    /// @dev The number of tokens minted is capped by the total team allocation.
     function mintTeamTokens() external onlyTeam {
         uint256 timeSinceTGE = block.timestamp - TokenGenerationEventTimestamp;
         uint256 monthsSinceTGE = timeSinceTGE / month;
@@ -147,11 +139,9 @@ contract CVE is OFTV2 {
         _mint(msg.sender, _tokensToMint);
     }
 
-    /**
-     * @notice Set the team address
-     * @dev Allows the team to change the team's address.
-     * @param _address The new address for the team.
-     */
+    /// @notice Set the team address
+    /// @dev Allows the team to change the team's address.
+    /// @param _address The new address for the team.
     function setTeamAddress(address _address) external onlyTeam {
         require(_address != address(0), "CVE: invalid parameter");
         teamAddress = _address;

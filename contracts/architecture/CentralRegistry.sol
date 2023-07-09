@@ -3,7 +3,6 @@ pragma solidity ^0.8.17;
 
 import "contracts/interfaces/ICentralRegistry.sol";
 
-
 contract CentralRegistry is ICentralRegistry {
     event OwnershipTransferred(address indexed user, address indexed newOwner);
 
@@ -42,7 +41,7 @@ contract CentralRegistry is ICentralRegistry {
     address public callOptionCVE;
 
     address public cveLocker;
-    
+
     address public protocolMessagingHub;
     address public priceRouter;
     address public depositRouter;
@@ -68,9 +67,7 @@ contract CentralRegistry is ICentralRegistry {
         _;
     }
 
-    /*//////////////////////////////////////////////////////////////
-                               CONSTRUCTOR
-    //////////////////////////////////////////////////////////////*/
+    /// CONSTRUCTOR
 
     constructor(address dao_, uint256 genesisEpoch_) {
         if (dao_ == address(0)) {
@@ -81,9 +78,7 @@ contract CentralRegistry is ICentralRegistry {
         emit OwnershipTransferred(address(0), daoAddress);
     }
 
-    /*//////////////////////////////////////////////////////////////
-                             SETTER FUNCTIONS
-    //////////////////////////////////////////////////////////////*/
+    /// SETTER FUNCTIONS
 
     function setCVE(address CVE_) public onlyDaoManager {
         CVE = CVE_;
@@ -157,9 +152,7 @@ contract CentralRegistry is ICentralRegistry {
         lockBoostValue = _value;
     }
 
-    /*//////////////////////////////////////////////////////////////
-                             OWNERSHIP LOGIC
-    //////////////////////////////////////////////////////////////*/
+    /// OWNERSHIP LOGIC
 
     function transferOwnership(address newDaoAddress) public onlyDaoManager {
         daoAddress = newDaoAddress;
@@ -173,21 +166,27 @@ contract CentralRegistry is ICentralRegistry {
         emit NewVeCVELocker(newVeCVELocker);
     }
 
-    function removeVeCVELocker(address currentVeCVELocker) public onlyDaoManager {
+    function removeVeCVELocker(
+        address currentVeCVELocker
+    ) public onlyDaoManager {
         require(approvedVeCVELocker[currentVeCVELocker], "Already Harvester");
 
         delete approvedVeCVELocker[currentVeCVELocker];
         emit VeCVELockerRemoved(currentVeCVELocker);
     }
 
-    function addGaugeController(address newGaugeController) public onlyDaoManager {
+    function addGaugeController(
+        address newGaugeController
+    ) public onlyDaoManager {
         require(!gaugeController[newGaugeController], "Already Harvester");
 
         gaugeController[newGaugeController] = true;
         emit NewGaugeController(newGaugeController);
     }
 
-    function removeGaugeController(address currentGaugeController) public onlyDaoManager {
+    function removeGaugeController(
+        address currentGaugeController
+    ) public onlyDaoManager {
         require(gaugeController[currentGaugeController], "Already Harvester");
 
         delete gaugeController[currentGaugeController];
@@ -257,5 +256,4 @@ contract CentralRegistry is ICentralRegistry {
         delete approvedEndpoint[currentApprovedEndpoint];
         emit ApprovedEndpointRemoved(currentApprovedEndpoint);
     }
-
 }

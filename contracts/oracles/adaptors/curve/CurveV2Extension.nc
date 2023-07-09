@@ -22,20 +22,16 @@ contract CurveV2Extension is Extension {
         address asset;
     }
 
-    /**
-     * @notice Curve Derivative Storage
-     * @dev Stores an array of the underlying token addresses in the curve pool.
-     */
+    /// @notice Curve Derivative Storage
+    /// @dev Stores an array of the underlying token addresses in the curve pool.
     mapping(uint64 => CurveDerivativeStorage) public getCurveDerivativeStorage;
 
     constructor(PriceOps _priceOps) Extension(_priceOps) {}
 
-    /**
-     * @notice Setup function for pricing CurveV2 derivative assets.
-     * @dev _source The address of the CurveV2 Pool.
-     * @dev _storage A VirtualPriceBound value for this asset.
-     * @dev Assumes that curve pools never add or remove tokens.
-     */
+    /// @notice Setup function for pricing CurveV2 derivative assets.
+    /// @dev _source The address of the CurveV2 Pool.
+    /// @dev _storage A VirtualPriceBound value for this asset.
+    /// @dev Assumes that curve pools never add or remove tokens.
     function setupSource(
         address asset,
         uint64 _sourceId,
@@ -98,10 +94,8 @@ contract CurveV2Extension is Extension {
         revert CurveV2Extension__DidNotConverge();
     }
 
-    /**
-     * Inspired by https://etherscan.io/address/0xE8b2989276E2Ca8FDEA2268E3551b2b4B2418950#code
-     * @notice Get the price of a CurveV2 derivative in terms of Base.
-     */
+    /// Inspired by https://etherscan.io/address/0xE8b2989276E2Ca8FDEA2268E3551b2b4B2418950#code
+    /// @notice Get the price of a CurveV2 derivative in terms of Base.
     function getPriceInBase(
         uint64 sourceId
     )

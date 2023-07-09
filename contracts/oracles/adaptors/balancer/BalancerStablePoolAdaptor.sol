@@ -15,16 +15,14 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
         bool _isUsd
     ) BalancerPoolAdaptor(_centralRegistry, _balancerVault, _isUsd) {}
 
-    /**
-     * @notice Adaptor storage
-     * @param poolId the pool id of the BPT being priced
-     * @param poolDecimals the decimals of the BPT being priced
-     * @param rateProviders array of rate providers for each constituent
-     *        a zero address rate provider means we are using an underlying correlated to the
-     *        pools virtual base.
-     * @param underlyingOrConstituent the ERC20 underlying asset or the constituent in the pool
-     * @dev Only use the underlying asset, if the underlying is correlated to the pools virtual base.
-     */
+    /// @notice Adaptor storage
+    /// @param poolId the pool id of the BPT being priced
+    /// @param poolDecimals the decimals of the BPT being priced
+    /// @param rateProviders array of rate providers for each constituent
+    ///        a zero address rate provider means we are using an underlying correlated to the
+    ///        pools virtual base.
+    /// @param underlyingOrConstituent the ERC20 underlying asset or the constituent in the pool
+    /// @dev Only use the underlying asset, if the underlying is correlated to the pools virtual base.
     struct AdaptorData {
         bytes32 poolId;
         uint8 poolDecimals;
@@ -33,9 +31,7 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
         address[8] underlyingOrConstituent;
     }
 
-    /**
-     * @notice Balancer Stable Pool Adaptor Storage
-     */
+    /// @notice Balancer Stable Pool Adaptor Storage
     mapping(address => AdaptorData) public adaptorData;
 
     /**
@@ -89,14 +85,12 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
         isSupportedAsset[_asset] = true;
     }
 
-    /**
-     * @notice Called during pricing operations.
-     * @param _asset the bpt being priced
-     * @param _isUsd indicates whether we want the price in USD or ETH
-     * @param _getLower Since this adaptor calls back into the price router
-     *                  it needs to know if it should be working with the upper
-     *                  or lower prices of assets
-     */
+    /// @notice Called during pricing operations.
+    /// @param _asset the bpt being priced
+    /// @param _isUsd indicates whether we want the price in USD or ETH
+    /// @param _getLower Since this adaptor calls back into the price router
+    ///                  it needs to know if it should be working with the upper
+    ///                  or lower prices of assets
     function getPrice(
         address _asset,
         bool _isUsd,
@@ -150,10 +144,8 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
         }
     }
 
-    /**
-     * @notice Removes a supported asset from the adaptor.
-     * @dev Calls back into price router to notify it of its removal
-     */
+    /// @notice Removes a supported asset from the adaptor.
+    /// @dev Calls back into price router to notify it of its removal
     function removeAsset(address _asset) external override onlyDaoManager {
         require(
             isSupportedAsset[_asset],

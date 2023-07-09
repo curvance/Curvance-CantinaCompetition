@@ -7,9 +7,8 @@ import "./CTokenStorage.sol";
 
 abstract contract CTokenInterface is CTokenStorage {
     ////////// MARKET EVENTS //////////
-    /**
-     * @notice Event emitted when interest is accrued
-     */
+
+    /// @notice Event emitted when interest is accrued
     event AccrueInterest(
         uint256 cashPrior,
         uint256 interestAccumulated,
@@ -17,9 +16,7 @@ abstract contract CTokenInterface is CTokenStorage {
         uint256 totalBorrows
     );
 
-    /**
-     * @notice Event emitted when tokens are minted
-     */
+    /// @notice Event emitted when tokens are minted
     event Mint(
         address user,
         uint256 mintAmount,
@@ -27,14 +24,10 @@ abstract contract CTokenInterface is CTokenStorage {
         address minter
     );
 
-    /**
-     * @notice Event emitted when tokens are redeemed
-     */
+    /// @notice Event emitted when tokens are redeemed
     event Redeem(address redeemer, uint256 redeemAmount, uint256 redeemTokens);
 
-    /**
-     * @notice Event emitted when underlying is borrowed
-     */
+    /// @notice Event emitted when underlying is borrowed
     event Borrow(
         address borrower,
         uint256 borrowAmount,
@@ -42,9 +35,7 @@ abstract contract CTokenInterface is CTokenStorage {
         uint256 totalBorrows
     );
 
-    /**
-     * @notice Event emitted when a borrow is repaid
-     */
+    /// @notice Event emitted when a borrow is repaid
     event RepayBorrow(
         address payer,
         address borrower,
@@ -53,9 +44,7 @@ abstract contract CTokenInterface is CTokenStorage {
         uint256 totalBorrows
     );
 
-    /**
-     * @notice Event emitted when a borrow is liquidated
-     */
+    /// @notice Event emitted when a borrow is liquidated
     event LiquidateBorrow(
         address liquidator,
         address borrower,
@@ -65,73 +54,57 @@ abstract contract CTokenInterface is CTokenStorage {
     );
 
     ////////// ADMIN EVENTS //////////
-    /**
-     * @notice Event emitted when pendingAdmin is changed
-     */
+
+    /// @notice Event emitted when pendingAdmin is changed
     event NewPendingAdmin(address oldPendingAdmin, address newPendingAdmin);
 
-    /**
-     * @notice Event emitted when pendingAdmin is accepted, which means admin is updated
-     */
+    /// @notice Event emitted when pendingAdmin is accepted, which means admin is updated
     event NewAdmin(address oldAdmin, address newAdmin);
 
-    /**
-     * @notice Event emitted when lendtroller is changed
-     */
+    /// @notice Event emitted when lendtroller is changed
     event NewLendtroller(
         Lendtroller oldLendtroller,
         Lendtroller newLendtroller
     );
 
-    /**
-     * @notice Event emitted when interestRateModel is changed
-     */
+    /// @notice Event emitted when interestRateModel is changed
     event NewMarketInterestRateModel(
         InterestRateModel oldInterestRateModel,
         InterestRateModel newInterestRateModel
     );
 
-    /**
-     * @notice Event emitted when the reserve factor is changed
-     */
+    /// @notice Event emitted when the reserve factor is changed
     event NewReserveFactor(
         uint256 oldReserveFactorScaled,
         uint256 newReserveFactorScaled
     );
 
-    /**
-     * @notice Event emitted when the reserves are added
-     */
+    /// @notice Event emitted when the reserves are added
     event ReservesAdded(
         address benefactor,
         uint256 addAmount,
         uint256 newTotalReserves
     );
 
-    /**
-     * @notice Event emitted when the reserves are reduced
-     */
+    /// @notice Event emitted when the reserves are reduced
     event ReservesReduced(
         address admin,
         uint256 reduceAmount,
         uint256 newTotalReserves
     );
 
-    /**
-     * @notice EIP20 Transfer event
-     */
+    /// @notice EIP20 Transfer event
     event Transfer(address indexed from, address indexed to, uint256 amount);
 
-    /**
-     * @notice EIP20 Approval event
-     */
+    /// @notice EIP20 Approval event
     event Approval(
         address indexed owner,
         address indexed spender,
         uint256 amount
     );
 
-    /*** User Interface ***/
+    /// User Interface
+
     function transfer(
         address dst,
         uint256 amount
@@ -191,7 +164,8 @@ abstract contract CTokenInterface is CTokenStorage {
         uint256 seizeTokens
     ) external virtual;
 
-    /*** Admin Functions ***/
+    /// Admin Functions
+
     function _setPendingAdmin(
         address payable newPendingAdmin
     ) external virtual;

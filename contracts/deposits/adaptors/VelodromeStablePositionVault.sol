@@ -28,63 +28,41 @@ contract VelodromeStablePositionVault is BasePositionVault {
                              GLOBAL STATE
     //////////////////////////////////////////////////////////////*/
 
-    /**
-     * @notice Velodrome Gauge contract.
-     */
+    /// @notice Velodrome Gauge contract.
     IVeloGauge private gauge;
 
-    /**
-     * @notice Velodrome Router contract.
-     */
+    /// @notice Velodrome Router contract.
     IVeloPairFactory private pairFactory;
 
-    /**
-     * @notice Velodrome Router contract.
-     */
+    /// @notice Velodrome Router contract.
     IVeloRouter private router;
 
-    /**
-     * @notice Velodrome Router contract.
-     */
+    /// @notice Velodrome Router contract.
     address private optiSwap;
 
-    /**
-     * @notice Reward token addresses.
-     */
+    /// @notice Reward token addresses.
     address[] private rewards;
 
-    /**
-     * @notice tokenA address
-     */
+    /// @notice tokenA address
     address private tokenA;
 
-    /**
-     * @notice tokenB address
-     */
+    /// @notice tokenB address
     address private tokenB;
 
-    /**
-     * @notice tokenA decimals
-     */
+    /// @notice tokenA decimals
     uint256 private decimalsA;
 
-    /**
-     * @notice tokenB decimals
-     */
+    /// @notice tokenB decimals
     uint256 private decimalsB;
 
-    /**
-     * @notice Mainnet token contracts important for this vault.
-     */
+    /// @notice Mainnet token contracts important for this vault.
     ERC20 private constant WETH =
         ERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
     ERC20 private constant VELO =
         ERC20(0x3c8B650257cFb5f272f799F5e2b4e65093a11a05);
 
     // Owner needs to be able to set swap paths, deposit data, fee, fee accumulator
-    /**
-     * @notice Value out from harvest swaps must be greater than value in * 1 - (harvestSlippage + upkeepFee);
-     */
+    /// @notice Value out from harvest swaps must be greater than value in * 1 - (harvestSlippage + upkeepFee);
     uint64 public harvestSlippage = 0.01e18;
 
     /*//////////////////////////////////////////////////////////////
@@ -105,10 +83,8 @@ contract VelodromeStablePositionVault is BasePositionVault {
                               SETUP LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    /**
-     * @notice Vaults are designed to be deployed using Minimal Proxy Contracts, but they can be deployed normally,
-     *         but `initialize` must ALWAYS be called either way.
-     */
+    /// @notice Vaults are designed to be deployed using Minimal Proxy Contracts, but they can be deployed normally,
+    ///         but `initialize` must ALWAYS be called either way.
     constructor(
         ERC20 _asset,
         string memory _name,
@@ -117,9 +93,7 @@ contract VelodromeStablePositionVault is BasePositionVault {
         ICentralRegistry _centralRegistry
     ) BasePositionVault(_asset, _name, _symbol, _decimals, _centralRegistry) {}
 
-    /**
-     * @notice Initialize function to fully setup this vault.
-     */
+    /// @notice Initialize function to fully setup this vault.
     function initialize(
         ERC20 _asset,
         ICentralRegistry _centralRegistry,

@@ -19,10 +19,8 @@ contract CurveV1Extension is Extension {
         address asset;
     }
 
-    /**
-     * @notice Curve Derivative Storage
-     * @dev Stores an array of the underlying token addresses in the curve pool.
-     */
+    /// @notice Curve Derivative Storage
+    /// @dev Stores an array of the underlying token addresses in the curve pool.
     mapping(uint64 => CurveDerivativeStorage) public getCurveDerivativeStorage;
 
     constructor(PriceOps _priceOps) Extension(_priceOps) {}

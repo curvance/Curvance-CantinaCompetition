@@ -91,11 +91,9 @@ contract ChildGaugePool is ReentrancyGuard, Ownable {
         return gaugeController.currentEpoch();
     }
 
-    /**
-     * @notice Returns pending rewards of user
-     * @param token Pool token address
-     * @param user User address
-     */
+    /// @notice Returns pending rewards of user
+    /// @param token Pool token address
+    /// @param user User address
     function pendingRewards(
         address token,
         address user
@@ -207,9 +205,7 @@ contract ChildGaugePool is ReentrancyGuard, Ownable {
         _calcDebt(msg.sender, token);
     }
 
-    /**
-     * @notice Calculate user's pending rewards
-     */
+    /// @notice Calculate user's pending rewards
     function _calcPending(
         address user,
         address token,
@@ -230,9 +226,7 @@ contract ChildGaugePool is ReentrancyGuard, Ownable {
             info.rewardDebt;
     }
 
-    /**
-     * @notice Calculate user's debt amount for reward calculation
-     */
+    /// @notice Calculate user's debt amount for reward calculation
     function _calcDebt(address user, address token) internal {
         UserInfo storage info = userInfo[token][user];
         info.rewardDebt =
@@ -241,10 +235,8 @@ contract ChildGaugePool is ReentrancyGuard, Ownable {
             (PRECISION);
     }
 
-    /**
-     * @notice Update reward variables of the given pool to be up-to-date
-     * @param token Pool token address
-     */
+    /// @notice Update reward variables of the given pool to be up-to-date
+    /// @param token Pool token address
     function _updatePool(
         address token,
         UserAction action,

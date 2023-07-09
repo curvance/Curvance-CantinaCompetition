@@ -68,13 +68,11 @@ contract VariableInterestRate {
         VERTEX_RATE_PERCENT = _vertexRatePercentOfDelta;
     }
 
-    /**
-     * @notice Calculates the utilization rate of the market: `borrows / (cash + borrows - reserves)`
-     * @param cash The amount of cash in the market
-     * @param borrows The amount of borrows in the market
-     * @param reserves The amount of reserves in the market (currently unused)
-     * @return The utilization rate as a mantissa between [0, BASE]
-     */
+    /// @notice Calculates the utilization rate of the market: `borrows / (cash + borrows - reserves)`
+    /// @param cash The amount of cash in the market
+    /// @param borrows The amount of borrows in the market
+    /// @param reserves The amount of reserves in the market (currently unused)
+    /// @return The utilization rate as a mantissa between [0, BASE]
     function utilizationRate(
         uint256 cash,
         uint256 borrows,

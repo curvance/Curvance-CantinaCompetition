@@ -6,7 +6,8 @@ import "./CErc20Storage.sol";
 import "./CTokenInterface.sol";
 
 abstract contract CErc20Interface is CErc20Storage {
-    /*** User Interface ***/
+    /// User Interface
+
     function mint(uint256 mintAmount) external virtual returns (bool);
 
     function redeem(uint256 redeemTokens) external virtual;
@@ -30,6 +31,7 @@ abstract contract CErc20Interface is CErc20Storage {
 
     function sweepToken(IEIP20NonStandard token) external virtual;
 
-    /*** Admin Functions ***/
+    /// Admin Functions
+
     function _addReserves(uint256 addAmount) external virtual;
 }

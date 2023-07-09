@@ -29,13 +29,11 @@ contract CVE is OFTV2 {
         _;
     }
 
-    /**
-     * @notice Mint new gauge emissions
-     * @dev Allows the VotingHub to mint new gauge emissions.
-     * @param _gaugeEmissions The amount of gauge emissions to be minted.
-     * Emission amount is multiplied by the lock boost value from the central registry.
-     * Resulting tokens are minted to the voting hub contract.
-     */
+    /// @notice Mint new gauge emissions
+    /// @dev Allows the VotingHub to mint new gauge emissions.
+    /// @param _gaugeEmissions The amount of gauge emissions to be minted.
+    /// Emission amount is multiplied by the lock boost value from the central registry.
+    /// Resulting tokens are minted to the voting hub contract.
     function mintGaugeEmissions(
         uint256 _gaugeEmissions
     ) external onlyVotingHub {

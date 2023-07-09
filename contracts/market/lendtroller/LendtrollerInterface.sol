@@ -7,6 +7,7 @@ import { PriceOracle } from "../Oracle/PriceOracle.sol";
 
 abstract contract LendtrollerInterface is LendtrollerStorage {
     ////////// Errors //////////
+
     error MarketNotListed(address);
     error AddressAlreadyJoined();
     error NonZeroBorrowBalance(); /// Take a look here, could soften the landing
@@ -86,7 +87,7 @@ abstract contract LendtrollerInterface is LendtrollerStorage {
     );
 
     /// @notice Emitted when rewards contract address is changed
-    //event NewRewardContract(RewardsInterface oldRewarder, RewardsInterface newRewarder);
+    // event NewRewardContract(RewardsInterface oldRewarder, RewardsInterface newRewarder);
 
     /// @notice Emitted when position folding contract address is changed
     event NewPositionFoldingContract(
@@ -99,7 +100,7 @@ abstract contract LendtrollerInterface is LendtrollerStorage {
     /// @notice Indicator that this is a Lendtroller contract (for inspection)
     bool public constant isLendtroller = true;
 
-    /*** Assets You Are In ***/
+    /// Assets You Are In
 
     function enterMarkets(
         address[] calldata cTokens
@@ -107,7 +108,7 @@ abstract contract LendtrollerInterface is LendtrollerStorage {
 
     function exitMarket(address cToken) external virtual;
 
-    /*** Policy Hooks ***/
+    /// Policy Hooks
 
     function mintAllowed(address cToken, address minter) external virtual;
 
@@ -149,7 +150,7 @@ abstract contract LendtrollerInterface is LendtrollerStorage {
         uint256 transferTokens
     ) external virtual;
 
-    /*** Liquidity/Liquidation Calculations ***/
+    /// Liquidity/Liquidation Calculations
 
     function liquidateCalculateSeizeTokens(
         address cTokenBorrowed,
@@ -157,7 +158,8 @@ abstract contract LendtrollerInterface is LendtrollerStorage {
         uint256 repayAmount
     ) external view virtual returns (uint256);
 
-    /** Query functions */
+    /// Query functions
+
     function getIsMarkets(
         address cToken
     ) external view virtual returns (bool, uint256, bool);

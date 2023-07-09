@@ -12,9 +12,7 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
         ICentralRegistry _centralRegistry
     ) BaseOracleAdaptor(_centralRegistry) {}
 
-    /**
-     * @notice Called by PriceRouter to price an asset.
-     */
+    /// @notice Called by PriceRouter to price an asset.
     function getPrice(
         address _asset
     ) external view override returns (PriceReturnData memory) {
@@ -26,13 +24,9 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
         return data;
     }
 
-    /**
-     * @notice Adds a new supported asset to the adaptor, can also configure sub assets that the parent asset contain.
-     */
+    /// @notice Adds a new supported asset to the adaptor, can also configure sub assets that the parent asset contain.
     function addAsset(address _asset) external override {}
 
-    /**
-     * @notice Removes a supported asset from the adaptor.
-     */
+    /// @notice Removes a supported asset from the adaptor.
     function removeAsset(address _asset) external override {}
 }

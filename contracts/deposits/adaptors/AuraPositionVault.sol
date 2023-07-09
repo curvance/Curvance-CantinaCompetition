@@ -27,50 +27,32 @@ contract AuraPositionVault is BasePositionVault {
         bytes call;
     }
 
-    /**
-     * @notice Balancer vault contract.
-     */
+    /// @notice Balancer vault contract.
     IBalancerVault public balancerVault;
 
-    /**
-     * @notice Balancer Pool Id.
-     */
+    /// @notice Balancer Pool Id.
     bytes32 public balancerPoolId;
 
-    /**
-     * @notice Aura Pool Id.
-     */
+    /// @notice Aura Pool Id.
     uint256 public pid;
 
-    /**
-     * @notice Aura Rewarder contract.
-     */
+    /// @notice Aura Rewarder contract.
     IBaseRewardPool public rewarder;
 
-    /**
-     * @notice Aura Booster contract.
-     */
+    /// @notice Aura Booster contract.
     IBooster public booster;
 
-    /**
-     * @notice Aura reward assets.
-     */
+    /// @notice Aura reward assets.
     address[] public rewardTokens;
 
-    /**
-     * @notice Balancer LP underlying assets.
-     */
+    /// @notice Balancer LP underlying assets.
     address[] public underlyingTokens;
     mapping(address => bool) public isUnderlyingToken;
 
-    /**
-     * @notice Is approved target for swap.
-     */
+    /// @notice Is approved target for swap.
     mapping(address => bool) public isApprovedTarget;
 
-    /**
-     * @notice Mainnet token contracts important for this vault.
-     */
+    /// @notice Mainnet token contracts important for this vault.
     ERC20 private constant WETH =
         ERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
     ERC20 private constant BAL =
@@ -79,9 +61,7 @@ contract AuraPositionVault is BasePositionVault {
         ERC20(0xC0c293ce456fF0ED870ADd98a0828Dd4d2903DBF);
 
     // Owner needs to be able to set swap paths, deposit data, fee, fee accumulator
-    /**
-     * @notice Value out from harvest swaps must be greater than value in * 1 - (harvestSlippage + upkeepFee);
-     */
+    /// @notice Value out from harvest swaps must be greater than value in * 1 - (harvestSlippage + upkeepFee);
     uint64 public harvestSlippage = 0.01e18;
 
     /*//////////////////////////////////////////////////////////////
@@ -105,10 +85,8 @@ contract AuraPositionVault is BasePositionVault {
                               SETUP LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    /**
-     * @notice Vaults are designed to be deployed using Minimal Proxy Contracts, but they can be deployed normally,
-     *         but `initialize` must ALWAYS be called either way.
-     */
+    /// @notice Vaults are designed to be deployed using Minimal Proxy Contracts, but they can be deployed normally,
+    ///         but `initialize` must ALWAYS be called either way.
     constructor(
         ERC20 _asset,
         string memory _name,
@@ -117,9 +95,7 @@ contract AuraPositionVault is BasePositionVault {
         ICentralRegistry _centralRegistry
     ) BasePositionVault(_asset, _name, _symbol, _decimals, _centralRegistry) {}
 
-    /**
-     * @notice Initialize function to fully setup this vault.
-     */
+    /// @notice Initialize function to fully setup this vault.
     function initialize(
         ERC20 _asset,
         ICentralRegistry _centralRegistry,
@@ -362,11 +338,9 @@ contract AuraPositionVault is BasePositionVault {
         return rewardPool.balanceOf(address(this));
     }
 
-    /**
-     * @dev Swap input token
-     * @param _inputToken The input asset address
-     * @param _swapData The swap aggregation data
-     */
+    /// @dev Swap input token
+    /// @param _inputToken The input asset address
+    /// @param _swapData The swap aggregation data
     function _swap(address _inputToken, Swap memory _swapData) private {
         require(isApprovedTarget[_swapData.target], "invalid swap target");
 
@@ -381,23 +355,19 @@ contract AuraPositionVault is BasePositionVault {
         require(success == true, "calling swap got an error");
     }
 
-    /**
-     * @dev Approve token if needed
-     * @param _token The token address
-     * @param _spender The spender address
-     */
+    /// @dev Approve token if needed
+    /// @param _token The token address
+    /// @param _spender The spender address
     function _approveTokenIfNeeded(address _token, address _spender) private {
         if (ERC20(_token).allowance(address(this), _spender) == 0) {
             SafeTransferLib.safeApprove(_token, _spender, type(uint256).max);
         }
     }
 
-    /**
-     * @dev Propagate error message
-     * @param success If transaction is successful
-     * @param data The transaction result data
-     * @param errorMessage The custom error message
-     */
+    /// @dev Propagate error message
+    /// @param success If transaction is successful
+    /// @param data The transaction result data
+    /// @param errorMessage The custom error message
     function propagateError(
         bool success,
         bytes memory data,

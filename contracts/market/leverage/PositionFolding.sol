@@ -379,11 +379,9 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         }
     }
 
-    /**
-     * @dev Swap input token
-     * @param _inputToken The input asset address
-     * @param _swapData The swap aggregation data
-     */
+    /// @dev Swap input token
+    /// @param _inputToken The input asset address
+    /// @param _swapData The swap aggregation data
     function _swap(address _inputToken, Swap memory _swapData) private {
         _approveTokenIfNeeded(_inputToken, address(_swapData.target));
 
@@ -396,23 +394,19 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         require(success == true, "calling swap got an error");
     }
 
-    /**
-     * @dev Approve token if needed
-     * @param _token The token address
-     * @param _spender The spender address
-     */
+    /// @dev Approve token if needed
+    /// @param _token The token address
+    /// @param _spender The spender address
     function _approveTokenIfNeeded(address _token, address _spender) private {
         if (IERC20(_token).allowance(address(this), _spender) == 0) {
             IERC20(_token).safeApprove(_spender, type(uint256).max);
         }
     }
 
-    /**
-     * @dev Propagate error message
-     * @param success If transaction is successful
-     * @param data The transaction result data
-     * @param errorMessage The custom error message
-     */
+    /// @dev Propagate error message
+    /// @param success If transaction is successful
+    /// @param data The transaction result data
+    /// @param errorMessage The custom error message
     function propagateError(
         bool success,
         bytes memory data,

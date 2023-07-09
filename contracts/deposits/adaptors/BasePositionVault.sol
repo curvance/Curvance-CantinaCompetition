@@ -52,9 +52,7 @@ abstract contract BasePositionVault is
                              GLOBAL STATE
     //////////////////////////////////////////////////////////////*/
 
-    /**
-     * @notice Address for Curvance DAO registry contract for ownership and location data.
-     */
+    /// @notice Address for Curvance DAO registry contract for ownership and location data.
     ICentralRegistry public centralRegistry;
 
     ERC20 private _asset;
@@ -76,28 +74,20 @@ abstract contract BasePositionVault is
     ERC20 private constant LINK =
         ERC20(0x514910771AF9Ca656af840dff83E8264EcF986CA);
 
-    /**
-     * @notice Period newly harvested rewards are vested over.
-     */
+    /// @notice Period newly harvested rewards are vested over.
     uint32 public constant REWARD_PERIOD = 7 days;
 
-    /**
-     * @notice Maximum possible platform fee.
-     */
+    /// @notice Maximum possible platform fee.
     uint64 public constant MAX_PLATFORM_FEE = 0.3e18;
 
-    /**
-     * @notice Maximum possible upkeep fee.
-     */
+    /// @notice Maximum possible upkeep fee.
     uint64 public constant MAX_UPKEEP_FEE = 0.1e18;
 
     /*//////////////////////////////////////////////////////////////
                                  MODIFIERS
     //////////////////////////////////////////////////////////////*/
 
-    /**
-     * @notice Prevent a function from being called during a shutdown.
-     */
+    /// @notice Prevent a function from being called during a shutdown.
     modifier whenNotShutdown() {
         if (positionVaultMetaData.isShutdown)
             revert BasePositionVault__ContractShutdown();
@@ -202,10 +192,8 @@ abstract contract BasePositionVault is
                               OWNER LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    /**
-     * @notice Allows owner to set a new gas feed.
-     * @notice Can be set to zero address to skip gas check.
-     */
+    /// @notice Allows owner to set a new gas feed.
+    /// @notice Can be set to zero address to skip gas check.
     function setGasFeed(address gasFeed) external onlyDaoManager {
         positionVaultMetaData.ethFastGasFeed = gasFeed;
         emit GasFeedChanged(gasFeed);
@@ -250,19 +238,15 @@ abstract contract BasePositionVault is
         emit UpkeepFeeChanged(fee);
     }
 
-    /**
-     * @notice Shutdown the vault. Used in an emergency or if the vault has been deprecated.
-     * @dev In the case where
-     */
+    /// @notice Shutdown the vault. Used in an emergency or if the vault has been deprecated.
+    /// @dev In the case where
     function initiateShutdown() external whenNotShutdown onlyDaoManager {
         positionVaultMetaData.isShutdown = true;
 
         emit ShutdownChanged(true);
     }
 
-    /**
-     * @notice Restart the vault.
-     */
+    /// @notice Restart the vault.
     function liftShutdown() external onlyDaoManager {
         if (!positionVaultMetaData.isShutdown)
             revert BasePositionVault__ContractNotShutdown();
@@ -279,9 +263,7 @@ abstract contract BasePositionVault is
                         REWARD/HARVESTING LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    /**
-     * @notice Calculates pending rewards currently being vested, and vests them.
-     */
+    /// @notice Calculates pending rewards currently being vested, and vests them.
     function _calculatePendingRewards()
         internal
         view

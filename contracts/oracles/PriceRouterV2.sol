@@ -6,17 +6,13 @@ import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/interfaces/
 import "contracts/interfaces/ICentralRegistry.sol";
 import "../interfaces/IOracleAdaptor.sol";
 
-/**
- * @title Curvance Dual Oracle Price Router
- * @notice Provides a universal interface allowing Curvance contracts to retrieve secure pricing
- *         data based on various price feeds.
- */
+/// @title Curvance Dual Oracle Price Router
+/// @notice Provides a universal interface allowing Curvance contracts
+///         to retrieve secure pricing data based on various price feeds.
 contract PriceRouter {
-    /**
-     * @notice Return data from oracle adaptor
-     * @param price the price of the asset in some asset, either ETH or USD
-     * @param hadError the message return data, whether the adaptor ran into trouble pricing the asset
-     */
+    /// @notice Return data from oracle adaptor
+    /// @param price the price of the asset in some asset, either ETH or USD
+    /// @param hadError the message return data, whether the adaptor ran into trouble pricing the asset
     struct feedData {
         uint240 price;
         bool hadError;
@@ -26,58 +22,36 @@ contract PriceRouter {
     // Check if mappings for assetPriceFeeds is better than 2 slot array
     // Potentially move ETHUSD call to chainlink adaptor?
 
-    /**
-     * @notice Mapping used to track whether or not an address is an Adaptor.
-     */
+    /// @notice Mapping used to track whether or not an address is an Adaptor.
     mapping(address => bool) public isApprovedAdaptor;
-    /**
-     * @notice Mapping used to track an assets configured price feeds.
-     */
+    /// @notice Mapping used to track an assets configured price feeds.
     mapping(address => address[]) public assetPriceFeeds;
 
-    /**
-     * @notice Address for Curvance DAO registry contract for ownership and location data.
-     */
+    /// @notice Address for Curvance DAO registry contract for ownership and location data.
     ICentralRegistry public immutable centralRegistry;
 
-    /**
-     * @notice Address for chainlink feed to convert from eth -> usd or usd -> eth.
-     */
+    /// @notice Address for chainlink feed to convert from eth -> usd or usd -> eth.
     address public immutable CHAINLINK_ETH_USD;
 
-    /**
-     * @notice Offset for 8 decimal chainlink feeds.
-     */
+    /// @notice Offset for 8 decimal chainlink feeds.
     uint256 public constant CHAINLINK_DIVISOR = 1e8;
 
-    /**
-     * @notice Offset for basis points precision for divergence value.
-     */
+    /// @notice Offset for basis points precision for divergence value.
     uint256 public constant DENOMINATOR = 10000;
 
-    /**
-     * @notice How wide a divergence between price feeds warrants pausing borrowing.
-     */
+    /// @notice How wide a divergence between price feeds warrants pausing borrowing.
     uint256 public PRICEFEED_MAXIMUM_DIVERGENCE = 11000;
 
-    /**
-     * @notice Maximum time that a chainlink feed can be stale before we do not trust the value.
-     */
+    /// @notice Maximum time that a chainlink feed can be stale before we do not trust the value.
     uint256 public CHAINLINK_MAX_DELAY = 1 days;
 
-    /**
-     * @notice Error code for no error.
-     */
+    /// @notice Error code for no error.
     uint256 public constant NO_ERROR = 0;
 
-    /**
-     * @notice Error code for caution.
-     */
+    /// @notice Error code for caution.
     uint256 public constant CAUTION = 1;
 
-    /**
-     * @notice Error code for bad source.
-     */
+    /// @notice Error code for bad source.
     uint256 public constant BAD_SOURCE = 2;
 
     constructor(ICentralRegistry _centralRegistry, address ETH_USD_FEED) {

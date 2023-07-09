@@ -86,11 +86,9 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         return poolInfo[token].totalAmount;
     }
 
-    /**
-     * @notice Returns pending rewards of user
-     * @param token Pool token address
-     * @param user User address
-     */
+    /// @notice Returns pending rewards of user
+    /// @param token Pool token address
+    /// @param user User address
     function pendingRewards(
         address token,
         address user
@@ -145,12 +143,10 @@ contract GaugePool is GaugeController, ReentrancyGuard {
             info.rewardDebt;
     }
 
-    /**
-     * @notice Deposit into gauge pool
-     * @param token Pool token address
-     * @param user User address
-     * @param amount Amounts to deposit
-     */
+    /// @notice Deposit into gauge pool
+    /// @param token Pool token address
+    /// @param user User address
+    /// @param amount Amounts to deposit
     function deposit(
         address token,
         address user,
@@ -183,12 +179,10 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         emit Deposit(user, token, amount);
     }
 
-    /**
-     * @notice Withdraw from gauge pool
-     * @param token Pool token address
-     * @param user The user address
-     * @param amount Amounts to withdraw
-     */
+    /// @notice Withdraw from gauge pool
+    /// @param token Pool token address
+    /// @param user The user address
+    /// @param amount Amounts to withdraw
     function withdraw(
         address token,
         address user,
@@ -223,10 +217,8 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         emit Withdraw(user, token, amount);
     }
 
-    /**
-     * @notice Claim rewards from gauge pool
-     * @param token Pool token address
-     */
+    /// @notice Claim rewards from gauge pool
+    /// @param token Pool token address
     function claim(address token) external nonReentrant {
         updatePool(token);
         _calcPending(msg.sender, token);
@@ -244,10 +236,8 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         emit Claim(msg.sender, token, rewards);
     }
 
-    /**
-     * @notice Claim rewards from gauge pool
-     * @param token Pool token address
-     */
+    /// @notice Claim rewards from gauge pool
+    /// @param token Pool token address
     function claimAndExtendLock(
         address token,
         uint256 lockIndex,
@@ -276,10 +266,8 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         emit Claim(msg.sender, token, rewards);
     }
 
-    /**
-     * @notice Claim rewards from gauge pool
-     * @param token Pool token address
-     */
+    /// @notice Claim rewards from gauge pool
+    /// @param token Pool token address
     function claimAndLock(
         address token,
         bool continuousLock
@@ -302,9 +290,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         emit Claim(msg.sender, token, rewards);
     }
 
-    /**
-     * @notice Calculate user's pending rewards
-     */
+    /// @notice Calculate user's pending rewards
     function _calcPending(address user, address token) internal {
         UserInfo storage info = userInfo[token][user];
         info.rewardPending +=
@@ -313,9 +299,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
             info.rewardDebt;
     }
 
-    /**
-     * @notice Calculate user's debt amount for reward calculation
-     */
+    /// @notice Calculate user's debt amount for reward calculation
     function _calcDebt(address user, address token) internal {
         UserInfo storage info = userInfo[token][user];
         info.rewardDebt =
@@ -323,10 +307,8 @@ contract GaugePool is GaugeController, ReentrancyGuard {
             (PRECISION);
     }
 
-    /**
-     * @notice Update reward variables of the given pool to be up-to-date
-     * @param token Pool token address
-     */
+    /// @notice Update reward variables of the given pool to be up-to-date
+    /// @param token Pool token address
     function updatePool(address token) public override {
         uint256 lastRewardTimestamp = poolInfo[token].lastRewardTimestamp;
         if (block.timestamp <= lastRewardTimestamp) {
