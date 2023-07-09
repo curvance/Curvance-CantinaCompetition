@@ -113,10 +113,10 @@ contract PriceRouter {
         bool _inUSD,
         bool _getLower
     ) public view returns (uint256, uint256) {
-        uint256 oracles = assetPriceFeeds[_asset].length;
-        require(oracles > 0, "priceRouter: no feeds available");
+        uint256 numAssetPriceFeeds = assetPriceFeeds[_asset].length;
+        require(numAssetPriceFeeds > 0, "priceRouter: no feeds available");
 
-        if (oracles < 2) {
+        if (numAssetPriceFeeds < 2) {
             return getPriceSingleFeed(_asset, _inUSD, _getLower);
         }
 
@@ -134,12 +134,12 @@ contract PriceRouter {
         bool[] calldata _inUSD,
         bool[] calldata _getLower
     ) public view returns (uint256[] memory, uint256[] memory) {
-        uint256 assets = _asset.length;
-        require(assets > 0, "priceRouter: no assets to price");
-        uint256[] memory prices = new uint256[](assets);
-        uint256[] memory hadError = new uint256[](assets);
+        uint256 numAssets = _asset.length;
+        require(numAssets > 0, "priceRouter: no assets to price");
+        uint256[] memory prices = new uint256[](numAssets);
+        uint256[] memory hadError = new uint256[](numAssets);
 
-        for (uint256 i; i < assets; ) {
+        for (uint256 i; i < numAssets; ) {
             (prices[i], hadError[i]) = getPrice(
                 _asset[i],
                 _inUSD[i],
@@ -358,11 +358,11 @@ contract PriceRouter {
         address _asset,
         bool _inUSD
     ) external view returns (feedData[] memory) {
-        uint256 oracles = assetPriceFeeds[_asset].length;
-        require(oracles > 0, "priceRouter: no feeds available");
-        feedData[] memory data = new feedData[](oracles * 2);
+        uint256 numAssetPriceFeeds = assetPriceFeeds[_asset].length;
+        require(numAssetPriceFeeds > 0, "priceRouter: no feeds available");
+        feedData[] memory data = new feedData[](numAssetPriceFeeds * 2);
 
-        if (oracles < 2) {
+        if (numAssetPriceFeeds < 2) {
             data[0] = getPriceFromFeed(_asset, 0, _inUSD, true);
             data[1] = getPriceFromFeed(_asset, 0, _inUSD, false);
             return data;
@@ -412,10 +412,10 @@ contract PriceRouter {
         address _asset,
         address _feed
     ) public onlyDaoManager {
-        uint256 oracles = assetPriceFeeds[_asset].length;
-        require(oracles > 0, "priceRouter: no feeds available");
+        uint256 numAssetPriceFeeds = assetPriceFeeds[_asset].length;
+        require(numAssetPriceFeeds > 0, "priceRouter: no feeds available");
 
-        if (oracles > 1) {
+        if (numAssetPriceFeeds > 1) {
             require(
                 assetPriceFeeds[_asset][0] == _feed ||
                     assetPriceFeeds[_asset][1] == _feed,
@@ -436,10 +436,10 @@ contract PriceRouter {
 
     function notifyAssetPriceFeedRemoval(address _asset) external onlyAdaptor {
         address _feed = msg.sender;
-        uint256 oracles = assetPriceFeeds[_asset].length;
-        require(oracles > 0, "priceRouter: no feeds available");
+        uint256 numAssetPriceFeeds = assetPriceFeeds[_asset].length;
+        require(numAssetPriceFeeds > 0, "priceRouter: no feeds available");
 
-        if (oracles > 1) {
+        if (numAssetPriceFeeds > 1) {
             require(
                 assetPriceFeeds[_asset][0] == _feed ||
                     assetPriceFeeds[_asset][1] == _feed,

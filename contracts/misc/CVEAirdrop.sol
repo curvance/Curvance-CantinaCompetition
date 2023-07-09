@@ -68,11 +68,10 @@ contract CVEAirdrop {
      * @param _amount Requested CVE amount to claim for the airdrop
      * @param _proof Bytes32 array containing the merkle proof
      */
-    function claimAirdrop(uint256 _amount, bytes32[] calldata _proof)
-        external
-        notPaused
-        nonReentrant
-    {
+    function claimAirdrop(
+        uint256 _amount,
+        bytes32[] calldata _proof
+    ) external notPaused nonReentrant {
         // Verify that the airdrop Merkle Root has been set
         require(
             airdropMerkleRoot != bytes32(0),
@@ -131,10 +130,10 @@ contract CVEAirdrop {
         bytes32 _leaf
     ) internal pure returns (bool) {
         bytes32 computedHash = _leaf;
-        uint256 iterations = _proof.length;
+        uint256 numProof = _proof.length;
         bytes32 proofElement;
 
-        for (uint256 i; i < iterations; ) {
+        for (uint256 i; i < numProof; ) {
             proofElement = _proof[i++];
 
             if (computedHash <= proofElement) {

@@ -65,10 +65,10 @@ contract Lendtroller is LendtrollerInterface {
     function enterMarkets(
         address[] memory cTokens
     ) public override returns (uint256[] memory) {
-        uint256 len = cTokens.length;
+        uint256 numCTokens = cTokens.length;
 
-        uint256[] memory results = new uint256[](len);
-        for (uint256 i = 0; i < len; ++i) {
+        uint256[] memory results = new uint256[](numCTokens);
+        for (uint256 i = 0; i < numCTokens; ++i) {
             results[i] = addToMarketInternal(CToken(cTokens[i]), msg.sender);
         }
 
@@ -146,9 +146,9 @@ contract Lendtroller is LendtrollerInterface {
         /* Delete cToken from the account’s list of assets */
         // load into memory for faster iteration
         CToken[] memory userAssetList = accountAssets[msg.sender];
-        uint256 len = userAssetList.length;
-        uint256 assetIndex = len;
-        for (uint256 i = 0; i < len; ++i) {
+        uint256 numUserAssets = userAssetList.length;
+        uint256 assetIndex = numUserAssets;
+        for (uint256 i = 0; i < numUserAssets; ++i) {
             if (userAssetList[i] == cToken) {
                 assetIndex = i;
                 break;
@@ -156,7 +156,7 @@ contract Lendtroller is LendtrollerInterface {
         }
 
         // We *must* have found the asset in the list or our redundant data structure is broken
-        assert(assetIndex < len);
+        assert(assetIndex < numUserAssets);
 
         // copy last item in list to location of item to be removed, reduce length by 1
         CToken[] storage storedList = accountAssets[msg.sender];

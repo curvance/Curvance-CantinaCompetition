@@ -123,14 +123,14 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         Swap[] memory swapData,
         uint256 slippage
     ) external checkSlippage(msg.sender, slippage) {
-        uint256 length = borrowTokens.length;
+        uint256 numBorrowTokens = borrowTokens.length;
         require(
-            borrowAmounts.length == length &&
-                collateralTokens.length == length &&
-                swapData.length == length,
+            borrowAmounts.length == numBorrowTokens &&
+                collateralTokens.length == numBorrowTokens &&
+                swapData.length == numBorrowTokens,
             "PositionFolding: invalid array length"
         );
-        for (uint256 i = 0; i < length; ++i) {
+        for (uint256 i = 0; i < numBorrowTokens; ++i) {
             uint256 maxBorrowAmount = queryAmountToBorrowForLeverageMax(
                 msg.sender,
                 borrowTokens[i]
@@ -256,15 +256,15 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         Swap[] memory swapData,
         uint256 slippage
     ) external checkSlippage(msg.sender, slippage) {
-        uint256 length = collateralTokens.length;
+        uint256 numCollateralTokens = collateralTokens.length;
         require(
-            collateralAmount.length == length &&
-                borrowTokens.length == length &&
-                repayAmounts.length == length &&
-                swapData.length == length,
+            collateralAmount.length == numCollateralTokens &&
+                borrowTokens.length == numCollateralTokens &&
+                repayAmounts.length == numCollateralTokens &&
+                swapData.length == numCollateralTokens,
             "PositionFolding: invalid array length"
         );
-        for (uint256 i = 0; i < length; ++i) {
+        for (uint256 i = 0; i < numCollateralTokens; ++i) {
             _deleverage(
                 collateralTokens[i],
                 collateralAmount[i],

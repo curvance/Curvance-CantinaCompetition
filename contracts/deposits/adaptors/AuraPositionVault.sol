@@ -271,13 +271,13 @@ contract AuraPositionVault is BasePositionVault {
 
             // add liquidity to balancer
             uint256 valueOut;
-            uint256 length = underlyingTokens.length;
-            address[] memory assets = new address[](length);
-            uint256[] memory maxAmountsIn = new uint256[](length);
+            uint256 numUnderlyingTokens = underlyingTokens.length;
+            address[] memory assets = new address[](numUnderlyingTokens);
+            uint256[] memory maxAmountsIn = new uint256[](numUnderlyingTokens);
             address underlyingToken;
             uint256 assetPrice;
 
-            for (uint256 i = 0; i < length; ++i) {
+            for (uint256 i = 0; i < numUnderlyingTokens; ++i) {
                 underlyingToken = underlyingTokens[i];
                 assets[i] = underlyingToken;
                 maxAmountsIn[i] = ERC20(underlyingToken).balanceOf(

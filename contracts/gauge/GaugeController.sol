@@ -185,8 +185,8 @@ contract GaugeController is IGaugePool, Ownable {
      * @dev Be careful of gas spending!
      */
     function massUpdatePools(address[] memory tokens) public {
-        uint256 length = tokens.length;
-        for (uint256 i = 0; i < length; ++i) {
+        uint256 numTokens = tokens.length;
+        for (uint256 i = 0; i < numTokens; ++i) {
             updatePool(tokens[i]);
         }
     }
