@@ -1,6 +1,20 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
+/**
+ * @notice Rewards data for CVE rewards locker
+ * @param _desiredRewardToken The token to receive as rewards.
+ * @param _shouldLock Indicator of whether rewards should be locked, if applicable.
+ * @param _isFreshLock Indicator of whether it's a fresh lock, if applicable.
+ * @param _isFreshLockContinuous Indicator of whether the fresh lock should be continuous.
+ */
+struct rewardsData {
+    address desiredRewardToken;
+    bool shouldLock;
+    bool isFreshLock;
+    bool isFreshLockContinuous;
+}
+
 interface ICveLocker {
     // notice Update user claim index
     function updateUserClaimIndex(address _user, uint256 _index) external;
@@ -12,11 +26,8 @@ interface ICveLocker {
         address _user, 
         address _recipient,
         uint256 epoches,
-        address desiredRewardToken,
+        rewardsData memory _rewardsData,
         bytes memory params,
-        bool lock,
-        bool isFreshLock,
-        bool _continuousLock,
         uint256 _aux
     ) external;
 
