@@ -38,6 +38,7 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
         AdaptorData memory _data
     ) external override onlyDaoManager {
         // TODO check that market is the right one for the PT token.
+        PriceRouter priceRouter = PriceRouter(centralRegistry.daoAddress());
 
         require(
             _data.twapDuration >= MINIMUM_TWAP_DURATION,
@@ -59,7 +60,7 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
             "PendleLPTokenAdaptor: oldest observation not satisfied"
         );
         require(
-            priceRouter.isSupported(_data.quoteAsset),
+            priceRouter.isSupportedAsset(_data.quoteAsset),
             "PendleLPTokenAdaptor: quote asset not supported"
         );
 
@@ -77,6 +78,8 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
         bool _getLower
     ) external view override returns (PriceReturnData memory pData) {
         AdaptorData memory data = adaptorData[_asset];
+        PriceRouter priceRouter = PriceRouter(centralRegistry.daoAddress());
+        uint256 BAD_SOURCE = priceRouter.BAD_SOURCE();
         uint256 lpRate = data.market.getLpToAssetRate(data.twapDuration);
         pData.inUSD = _isUsd;
         (uint256 price, uint256 errorCode) = priceRouter.getPrice(
@@ -91,7 +94,7 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
         }
 
         // Multiply the quote asset price by the lpRate to get the Lp Token fair value.
-        pData.price = (price * lpRate) / 1e30;
+        pData.price = uint240((price * lpRate) / 1e30);
         // TODO where does 1e30 come from?
     }
 

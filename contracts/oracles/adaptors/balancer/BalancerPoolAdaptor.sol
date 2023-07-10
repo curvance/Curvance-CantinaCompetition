@@ -19,9 +19,8 @@ abstract contract BalancerPoolAdaptor is BaseOracleAdaptor {
         ICentralRegistry _centralRegistry,
         IVault _balancerVault,
         bool _isUsd
-    ) BaseOracleAdaptor(_centralRegistry) {
+    ) BaseOracleAdaptor(_centralRegistry, _isUsd) {
         balancerVault = _balancerVault;
-        pricesInUSD = _isUsd;
     }
 
     /// @dev Ensure we are not in a Vault context when this function is called, by attempting a no-op internal

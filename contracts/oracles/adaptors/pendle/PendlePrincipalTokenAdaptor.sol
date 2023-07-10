@@ -4,12 +4,15 @@ pragma solidity ^0.8.17;
 import { IPPtOracle } from "lib/pendle-core-v2-public/contracts/interfaces/IPPtOracle.sol";
 import { PendlePtOracleLib } from "lib/pendle-core-v2-public/contracts/oracles/PendlePtOracleLib.sol";
 import { IPMarket } from "lib/pendle-core-v2-public/contracts/interfaces/IPMarket.sol";
+import "contracts/oracles/adaptors/BaseOracleAdaptor.sol";
+import { IPendlePTOracle } from "contracts/interfaces/external/pendle/IPendlePtOracle.sol";
+import { PriceRouter } from "contracts/oracles/PriceRouterV2.sol";
 
 contract PendlePrincipalTokenExtension is BaseOracleAdaptor {
     using PendlePtOracleLib for IPMarket;
 
     uint32 public constant MINIMUM_TWAP_DURATION = 3600;
-    IPPtOracle public immutable ptOracle;
+    IPendlePTOracle public immutable ptOracle;
 
     struct AdaptorData {
         IPMarket market;
@@ -34,6 +37,7 @@ contract PendlePrincipalTokenExtension is BaseOracleAdaptor {
         AdaptorData memory _data
     ) external override onlyDaoManager {
         // TODO check that market is the right one for the PT token.
+        PriceRouter priceRouter = PriceRouter(centralRegistry.daoAddress());
 
         require(
             _data.twapDuration >= MINIMUM_TWAP_DURATION,
@@ -55,12 +59,12 @@ contract PendlePrincipalTokenExtension is BaseOracleAdaptor {
             "PendleLPTokenAdaptor: oldest observation not satisfied"
         );
         require(
-            priceRouter.isSupported(_data.quoteAsset),
+            priceRouter.isSupportedAsset(_data.quoteAsset),
             "PendleLPTokenAdaptor: quote asset not supported"
         );
 
         // Write to extension storage.
-        adaptorData[_asset] = PendlePrincipalExtensionStorage({
+        adaptorData[_asset] = AdaptorData({
             market: _data.market,
             twapDuration: _data.twapDuration,
             quoteAsset: _data.quoteAsset
@@ -75,6 +79,9 @@ contract PendlePrincipalTokenExtension is BaseOracleAdaptor {
         AdaptorData memory data = adaptorData[_asset];
         pData.inUSD = _isUsd;
         uint256 ptRate = data.market.getPtToAssetRate(data.twapDuration);
+        PriceRouter priceRouter = PriceRouter(centralRegistry.daoAddress());
+        uint256 BAD_SOURCE = priceRouter.BAD_SOURCE();
+
         (uint256 price, uint256 errorCode) = priceRouter.getPrice(
             data.quoteAsset,
             _isUsd,
@@ -86,7 +93,7 @@ contract PendlePrincipalTokenExtension is BaseOracleAdaptor {
             if (errorCode == BAD_SOURCE) return pData;
         }
         // Multiply the quote asset price by the ptRate to get the Principal Token fair value.
-        pData.price = price.mulDivDown(ptRate, 1e30);
+        pData.price = uint240((price * ptRate) / 1e30);
         // TODO where does 1e30 come from?
     }
 
