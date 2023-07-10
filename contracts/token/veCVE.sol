@@ -586,6 +586,9 @@ contract veCVE is ERC20 {
             );
             
             emit Unlocked(msg.sender, lockAmount);
+
+            /// Might be better gas to check if first user locker .amount == 0
+            if (userLocks[msg.sender].length == 0) cveLocker.resetUserClaimIndex(_recipient);
         }
 
     }
@@ -632,7 +635,7 @@ contract veCVE is ERC20 {
      */
     function shutdown() external onlyDaoManager {
         isShutdown = true;
-        // notify cveLocker of shutdown
+        cveLocker.notifyLockerShutdown();
     }
 
     ///////////////////////////////////////////
@@ -663,6 +666,9 @@ contract veCVE is ERC20 {
         uint256 _amount,
         bool _continuousLock
     ) internal {
+        /// Might be better gas to check if first user locker .amount == 0
+        if (userLocks[_recipient].length == 0) cveLocker.updateUserClaimIndex(_recipient, currentEpoch(block.timestamp));
+
         if (_continuousLock) {
             userLocks[_recipient].push(
                 Lock({

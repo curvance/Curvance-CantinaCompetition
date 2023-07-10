@@ -28,7 +28,6 @@ contract cveLocker {
     // TO-DO:
     // Process fee per cve reporting by chain in fee routing/here (permissioned functions for feerouting)
     // validate 1inch swap logic, have zeus write tests
-    // Add epoch claim offset on users first lock
     // Figure out when fees should be active either current epoch or epoch + 1
     // Add epoch rewards view for frontend?
     // Add slippage checks
@@ -456,6 +455,11 @@ contract cveLocker {
         require(_token != address(0), "Invalid Token Address");
         require(authorizedRewardToken[_token], "Invalid Operation");
         delete authorizedRewardToken[_token];
+    }
+
+    function notifyLockerShutdown() external {
+        require (msg.sender == address(veCVE) || msg.sender == centralRegistry.daoAddress(), "cveLocker: UNAUTHORIZED");
+        isShutdown = true;
     }
 
     /// @param _chainId The remote chainId sending the tokens
