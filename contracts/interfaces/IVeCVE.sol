@@ -1,12 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.12;
 
+import "contracts/interfaces/ICveLocker.sol";
+
 interface IVeCVE {
     // @notice Sends CVE to a desired destination chain
     function lockFor(
         address _recipient,
         uint256 _amount,
-        bool _continuousLock
+        bool _continuousLock,
+        address _rewardRecipient,
+        rewardsData memory _rewardsData,
+        bytes memory _params,
+        uint256 _aux
     ) external;
 
     // @notice Sends CVE Gauge Emissions to a desired destination chain
@@ -14,7 +20,11 @@ interface IVeCVE {
         address _recipient,
         uint256 _amount,
         uint256 _lockIndex,
-        bool _continuousLock
+        bool _continuousLock,
+        address _rewardRecipient,
+        rewardsData memory _rewardsData,
+        bytes memory _params,
+        uint256 _aux
     ) external;
 
     // @notice Returns a user's current token points for 

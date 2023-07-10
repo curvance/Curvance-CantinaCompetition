@@ -167,55 +167,52 @@ contract cveLocker {
 
     /// @notice Claim rewards for multiple epochs
     /// @param _recipient The address who should receive the rewards of _user
-    /// @param epoches The number of epochs for which to claim rewards.
     /// @param _rewardsData Rewards data for CVE rewards locker
     /// @param params Swap data for token swapping rewards to desiredRewardToken.
     /// @param _aux Auxiliary data for wrapped assets such as vlCVX and veCVE.
     function claimRewards(
         address _recipient,
-        uint256 epoches,
         rewardsData memory _rewardsData,
         bytes memory params,
         uint256 _aux
     ) public {
-        _claimRewards(msg.sender, _recipient, epoches, _rewardsData, params, _aux);
+        uint256 epochs = epochsToClaim(msg.sender);
+        require (epochs > 0, "cveLocker: no epochs to claim");
+        _claimRewards(msg.sender, _recipient, epochs, _rewardsData, params, _aux);
     }
 
     /// @notice Claim rewards for multiple epochs
     /// @param _recipient The address who should receive the rewards of _user
-    /// @param epoches The number of epochs for which to claim rewards.
+    /// @param epochs The number of epochs for which to claim rewards.
     /// @param _rewardsData Rewards data for CVE rewards locker
     /// @param params Swap data for token swapping rewards to desiredRewardToken.
     /// @param _aux Auxiliary data for wrapped assets such as vlCVX and veCVE.
     function claimRewardsFor(
         address _user, 
         address _recipient,
-        uint256 epoches,
+        uint256 epochs,
         rewardsData memory _rewardsData,
         bytes memory params,
         uint256 _aux
     ) public onlyVeCVE {
-        _claimRewards(_user, _recipient, epoches, _rewardsData, params, _aux);
+        /// We check whether there are epochs to claim in veCVE so we do not need to check here like in claimRewards
+        _claimRewards(_user, _recipient, epochs, _rewardsData, params, _aux);
     }
 
     // See claimRewardFor above
     function _claimRewards(
         address _user,
         address _recipient,
-        uint256 epoches,
+        uint256 epochs,
         rewardsData memory _rewardsData,
         bytes memory params,
         uint256 _aux
     ) public {
-        uint256 nextUserRewardEpoch = userNextClaimIndex[_user];
-        require(
-            nextUserRewardEpoch + epoches < nextEpochToDeliver,
-            "cveLocker: epoch fees not yet delivered"
-        );
 
+        uint256 nextUserRewardEpoch = userNextClaimIndex[_user];
         uint256 userRewards;
 
-        for (uint256 i; i < epoches; ) {
+        for (uint256 i; i < epochs; ) {
             unchecked {
                 userRewards += calculateRewardsForEpoch(
                     nextUserRewardEpoch + i++
@@ -224,7 +221,7 @@ contract cveLocker {
         }
 
         unchecked {
-            userNextClaimIndex[_user] += epoches;
+            userNextClaimIndex[_user] += epochs;
             userRewards  = userRewards / ethPerCVEOffset;//Removes the 1e18 offset for proper reward value
         }
         
@@ -361,30 +358,52 @@ contract cveLocker {
     /// @notice Lock fees as veCVE
     /// @param desiredRewardToken The address of the token to be locked, this should be CVE.
     /// @param isFreshLock A boolean to indicate if it's a new lock.
-    /// @param _lockIndex The index of the lock in the user's lock array. This parameter is only required if it is not a fresh lock.
-    /// @param _continuousLock A boolean to indicate if the lock should be continuous.
+    /// @param continuousLock A boolean to indicate if the lock should be continuous.
+    /// @param lockIndex The index of the lock in the user's lock array. This parameter is only required if it is not a fresh lock.
     function _lockFeesAsVeCVE(
         address desiredRewardToken,
         bool isFreshLock,
-        bool _continuousLock,
-        uint256 _lockIndex
+        bool continuousLock,
+        uint256 lockIndex
     ) internal returns (uint256) {
         uint256 reward = IERC20(desiredRewardToken).balanceOf(address(this));
 
+        /// Because this call is nested within call to claim all rewards there will never be any rewards to process,
+        /// and thus no potential secondary lock so we can just pass empty reward data to the veCVE calls
         if (isFreshLock) {
             veCVE.lockFor(
                 msg.sender,
                 reward,
-                _continuousLock
+                continuousLock,
+                msg.sender,
+                rewardsData({
+                    desiredRewardToken: desiredRewardToken,
+                    shouldLock: false,
+                    isFreshLock: false,
+                    isFreshLockContinuous: false
+                }),
+                "",
+                0
             );
             return reward;
         }
 
+        /// Because this call is nested within call to claim all rewards there will never be any rewards to process,
+        /// and thus no potential secondary lock so we can just pass empty reward data to the veCVE calls
         veCVE.increaseAmountAndExtendLockFor(
             msg.sender,
             reward,
-            _lockIndex,
-            _continuousLock
+            lockIndex,
+            continuousLock,
+            msg.sender,
+            rewardsData({
+                desiredRewardToken: desiredRewardToken,
+                shouldLock: false,
+                isFreshLock: false,
+                isFreshLockContinuous: false
+            }),
+            "",
+            0
         );
         return reward;
     }

@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 import "./GaugeController.sol";
 import "./ChildGaugePool.sol";
+import "contracts/interfaces/ICveLocker.sol";
 import "contracts/interfaces/market/ILendtroller.sol";
 
 contract GaugePool is GaugeController, ReentrancyGuard {
@@ -241,7 +242,10 @@ contract GaugePool is GaugeController, ReentrancyGuard {
     function claimAndExtendLock(
         address token,
         uint256 lockIndex,
-        bool continuousLock
+        bool continuousLock,
+        rewardsData memory _rewardsData,
+        bytes memory params,
+        uint256 aux
     ) external nonReentrant {
         updatePool(token);
         _calcPending(msg.sender, token);
@@ -256,7 +260,11 @@ contract GaugePool is GaugeController, ReentrancyGuard {
             msg.sender,
             rewards,
             lockIndex,
-            continuousLock
+            continuousLock,
+            msg.sender,
+            _rewardsData,
+            params,
+            aux
         );
 
         userInfo[token][msg.sender].rewardPending = 0;
@@ -270,7 +278,10 @@ contract GaugePool is GaugeController, ReentrancyGuard {
     /// @param token Pool token address
     function claimAndLock(
         address token,
-        bool continuousLock
+        bool continuousLock,
+        rewardsData memory _rewardsData,
+        bytes memory params,
+        uint256 aux
     ) external nonReentrant {
         updatePool(token);
         _calcPending(msg.sender, token);
@@ -281,7 +292,15 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         }
 
         IERC20(cve).safeApprove(address(ve), rewards);
-        ve.lockFor(msg.sender, uint216(rewards), continuousLock);
+        ve.lockFor(
+            msg.sender,
+            rewards,
+            continuousLock,
+            msg.sender,
+            _rewardsData,
+            params,
+            aux
+        );
 
         userInfo[token][msg.sender].rewardPending = 0;
 
