@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.17;
 
-import "../interfaces/IPMarket.sol";
-import "../core/libraries/math/Math.sol";
+import "contracts/interfaces/external/pendle/IPMarket.sol";
+import "./Math.sol";
 
 library PendlePtOracleLib {
     using Math for uint256;

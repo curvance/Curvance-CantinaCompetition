@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.17;
 
-import "../libraries/math/Math.sol";
-import "../libraries/math/LogExpMath.sol";
-
-import "../StandardizedYield/PYIndex.sol";
-import "../libraries/MiniHelpers.sol";
-import "../libraries/Errors.sol";
+import "./PYIndex.sol";
+import "./Math.sol";
+import "./LogExpMath.sol";
+import "./MiniHelpers.sol";
+import "./Errors.sol";
 
 struct MarketState {
     int256 totalPt;

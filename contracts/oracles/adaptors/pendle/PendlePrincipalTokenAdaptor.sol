@@ -4,8 +4,8 @@ pragma solidity ^0.8.17;
 import "contracts/oracles/adaptors/BaseOracleAdaptor.sol";
 import { PriceRouter } from "contracts/oracles/PriceRouterV2.sol";
 
+import { PendlePtOracleLib } from "contracts/libraries/pendle/PendlePtOracleLib.sol";
 import { IPPtOracle } from "contracts/interfaces/external/pendle/IPPtOracle.sol";
-import { PendlePtOracleLib } from "contracts/interfaces/external/pendle/PendlePtOracleLib.sol";
 import { IPMarket } from "contracts/interfaces/external/pendle/IPMarket.sol";
 import { IPendlePTOracle } from "contracts/interfaces/external/pendle/IPendlePtOracle.sol";
 
@@ -36,7 +36,7 @@ contract PendlePrincipalTokenAdaptor is BaseOracleAdaptor {
     function addAsset(
         address _asset,
         AdaptorData memory _data
-    ) external override onlyDaoManager {
+    ) external onlyDaoManager {
         // TODO check that market is the right one for the PT token.
         PriceRouter priceRouter = PriceRouter(centralRegistry.daoAddress());
 

@@ -5,7 +5,7 @@ import "contracts/oracles/adaptors/BaseOracleAdaptor.sol";
 import { PriceRouter } from "contracts/oracles/PriceRouterV2.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
-import { PendleLpOracleLib } from "contracts/interfaces/external/pendle/PendleLpOracleLib.sol";
+import { PendleLpOracleLib } from "contracts/libraries/pendle/PendleLpOracleLib.sol";
 import { IPendlePTOracle } from "contracts/interfaces/external/pendle/IPendlePtOracle.sol";
 import { IPendleMarket } from "contracts/interfaces/external/pendle/IPendleMarket.sol";
 import { IPMarket } from "contracts/interfaces/external/pendle/IPMarket.sol";
@@ -37,7 +37,7 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
     function addAsset(
         address _asset,
         AdaptorData memory _data
-    ) external override onlyDaoManager {
+    ) external onlyDaoManager {
         // TODO check that market is the right one for the PT token.
         PriceRouter priceRouter = PriceRouter(centralRegistry.daoAddress());
 
