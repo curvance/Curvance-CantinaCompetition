@@ -5,8 +5,6 @@ import "../../interfaces/ICentralRegistry.sol";
 import "../../interfaces/IOracleAdaptor.sol";
 
 abstract contract BaseOracleAdaptor {
-    /// @notice Determines whether the adaptor reports asset prices in USD(true) or ETH(false).
-    bool public immutable pricesInUSD;
 
     /// @notice Address for Curvance DAO registry contract for ownership and location data.
     ICentralRegistry public immutable centralRegistry;
@@ -16,9 +14,8 @@ abstract contract BaseOracleAdaptor {
 
     // 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE this is for pricing eth in Curve
 
-    constructor(ICentralRegistry _centralRegistry, bool _pricesInUSD) {
+    constructor(ICentralRegistry _centralRegistry) {
         centralRegistry = _centralRegistry;
-        pricesInUSD = _pricesInUSD;
     }
 
     // Only callable by Price Router.

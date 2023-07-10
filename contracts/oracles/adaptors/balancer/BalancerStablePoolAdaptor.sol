@@ -9,11 +9,11 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { PriceRouter } from "contracts/oracles/PriceRouterV2.sol";
 
 contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
+    
     constructor(
         ICentralRegistry _centralRegistry,
-        IVault _balancerVault,
-        bool _isUsd
-    ) BalancerPoolAdaptor(_centralRegistry, _balancerVault, _isUsd) {}
+        IVault _balancerVault
+    ) BalancerPoolAdaptor(_centralRegistry, _balancerVault) {}
 
     /// @notice Adaptor storage
     /// @param poolId the pool id of the BPT being priced

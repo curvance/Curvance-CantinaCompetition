@@ -17,9 +17,8 @@ abstract contract BalancerPoolAdaptor is BaseOracleAdaptor {
 
     constructor(
         ICentralRegistry _centralRegistry,
-        IVault _balancerVault,
-        bool _isUsd
-    ) BaseOracleAdaptor(_centralRegistry, _isUsd) {
+        IVault _balancerVault
+    ) BaseOracleAdaptor(_centralRegistry) {
         balancerVault = _balancerVault;
     }
 

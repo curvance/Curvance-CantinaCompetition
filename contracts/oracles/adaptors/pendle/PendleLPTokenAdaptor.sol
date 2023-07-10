@@ -15,9 +15,8 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
 
     constructor(
         ICentralRegistry _centralRegistry,
-        IPendlePTOracle _ptOracle,
-        bool _pricesInUsd
-    ) BaseOracleAdaptor(_centralRegistry, _pricesInUsd) {
+        IPendlePTOracle _ptOracle
+    ) BaseOracleAdaptor(_centralRegistry) {
         ptOracle = _ptOracle;
     }
 
