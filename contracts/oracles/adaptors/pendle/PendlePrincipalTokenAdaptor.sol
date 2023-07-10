@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.17;
 
-import { IPPtOracle } from "lib/pendle-core-v2-public/contracts/interfaces/IPPtOracle.sol";
-import { PendlePtOracleLib } from "lib/pendle-core-v2-public/contracts/oracles/PendlePtOracleLib.sol";
-import { IPMarket } from "lib/pendle-core-v2-public/contracts/interfaces/IPMarket.sol";
 import "contracts/oracles/adaptors/BaseOracleAdaptor.sol";
-import { IPendlePTOracle } from "contracts/interfaces/external/pendle/IPendlePtOracle.sol";
 import { PriceRouter } from "contracts/oracles/PriceRouterV2.sol";
 
-contract PendlePrincipalTokenExtension is BaseOracleAdaptor {
+import { IPPtOracle } from "contracts/interfaces/external/pendle/IPPtOracle.sol";
+import { PendlePtOracleLib } from "contracts/interfaces/external/pendle/PendlePtOracleLib.sol";
+import { IPMarket } from "contracts/interfaces/external/pendle/IPMarket.sol";
+import { IPendlePTOracle } from "contracts/interfaces/external/pendle/IPendlePtOracle.sol";
+
+contract PendlePrincipalTokenAdaptor is BaseOracleAdaptor {
     using PendlePtOracleLib for IPMarket;
 
     uint32 public constant MINIMUM_TWAP_DURATION = 3600;

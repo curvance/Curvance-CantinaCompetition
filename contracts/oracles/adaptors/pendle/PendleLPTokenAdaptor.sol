@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.17;
 
-import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { PriceRouter } from "contracts/oracles/PriceRouterV2.sol";
 import "contracts/oracles/adaptors/BaseOracleAdaptor.sol";
-import { PendleLpOracleLib } from "lib/pendle-core-v2-public/contracts/oracles/PendleLpOracleLib.sol";
+import { PriceRouter } from "contracts/oracles/PriceRouterV2.sol";
+import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+
+import { PendleLpOracleLib } from "contracts/interfaces/external/pendle/PendleLpOracleLib.sol";
 import { IPendlePTOracle } from "contracts/interfaces/external/pendle/IPendlePtOracle.sol";
 import { IPendleMarket } from "contracts/interfaces/external/pendle/IPendleMarket.sol";
-import { IPMarket } from "lib/pendle-core-v2-public/contracts/interfaces/IPMarket.sol";
+import { IPMarket } from "contracts/interfaces/external/pendle/IPMarket.sol";
 
 contract PendleLPTokenAdaptor is BaseOracleAdaptor {
     using PendleLpOracleLib for IPMarket;
