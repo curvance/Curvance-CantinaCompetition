@@ -85,7 +85,7 @@ contract CurvanceVotingHub {
                 currentEpochDistribution == 0,
             "Epoch Rewards already configured"
         );
-        IGaugePool gp = IGaugePool(centralRegistry.gaugeController());
+        // IGaugePool gp = IGaugePool(centralRegistry.gaugeController());
         ICVE cve = ICVE(centralRegistry.CVE());
 
         uint256 tokensPreEmission = IERC20(address(cve)).balanceOf(
@@ -99,11 +99,11 @@ contract CurvanceVotingHub {
 
         for (uint256 i; i < numPools; ) {
             if (chainData[i].chainid == block.chainid) {
-                gp.setEmissionRates(
-                    currentEpochDistribution,
-                    pools[i],
-                    poolEmissions[i]
-                );
+                // gp.setEmissionRates(
+                //     currentEpochDistribution,
+                //     pools[i],
+                //     poolEmissions[i]
+                // );
             } else {
                 _sendEmissions(cve, chainData[i], pools[i], poolEmissions[i]);
             }

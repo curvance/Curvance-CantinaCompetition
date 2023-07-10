@@ -15,7 +15,9 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
 
     /// @notice Called by PriceRouter to price an asset.
     function getPrice(
-        address _asset
+        address _asset,
+        bool _isUsd,
+        bool _getLower
     ) external view override returns (PriceReturnData memory) {
         PriceReturnData memory data = PriceReturnData({
             price: 0,
@@ -24,9 +26,6 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
         });
         return data;
     }
-
-    /// @notice Adds a new supported asset to the adaptor, can also configure sub assets that the parent asset contain.
-    function addAsset(address _asset) external override {}
 
     /// @notice Removes a supported asset from the adaptor.
     function removeAsset(address _asset) external override {}
