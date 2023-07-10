@@ -76,15 +76,15 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         address dst,
         uint256 tokens
     ) internal {
-        /* Fails if transfer not allowed */
+        // Fails if transfer not allowed
         lendtroller.transferAllowed(address(this), src, dst, tokens);
 
-        /* Do not allow self-transfers */
+        // Do not allow self-transfers
         if (src == dst) {
             revert TransferNotAllowed();
         }
 
-        /* Get the allowance, infinite for the account owner */
+        // Get the allowance, infinite for the account owner
         uint256 startingAllowance = 0;
         if (spender == src) {
             startingAllowance = type(uint256).max;
@@ -92,7 +92,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
             startingAllowance = transferAllowances[src][spender];
         }
 
-        /* Do the calculations, checking for {under,over}flow */
+        // Do the calculations, checking for {under,over}flow
         uint256 allowanceNew = startingAllowance - tokens;
         uint256 srcTokensNew = accountTokens[src] - tokens;
         uint256 dstTokensNew = accountTokens[dst] + tokens;
@@ -108,12 +108,12 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         GaugePool(gaugePool()).withdraw(address(this), src, tokens);
         GaugePool(gaugePool()).deposit(address(this), dst, tokens);
 
-        /* Eat some of the allowance (if necessary) */
+        // Eat some of the allowance (if necessary)
         if (startingAllowance != type(uint256).max) {
             transferAllowances[src][spender] = allowanceNew;
         }
 
-        /* We emit a Transfer event */
+        // We emit a Transfer event
         emit Transfer(src, dst, tokens);
     }
 
@@ -145,7 +145,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
 
     /// @notice Approve `spender` to transfer up to `amount` from `src`
     /// @dev This will overwrite the approval amount for `spender`
-    ///  and is subject to issues noted [here](https:// eips.ethereum.org/EIPS/eip-20#approve)
+    ///  and is subject to issues noted [here](https://eips.ethereum.org/EIPS/eip-20#approve)
     /// @param spender The address of the account which may transfer tokens
     /// @param amount The number of tokens that are approved (uint256.max means infinite)
     /// @return bool true=success
@@ -275,18 +275,18 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
     function borrowBalanceStoredInternal(
         address account
     ) internal view returns (uint256) {
-        /* Get borrowBalance and borrowIndex */
+        // Get borrowBalance and borrowIndex
         BorrowSnapshot storage borrowSnapshot = accountBorrows[account];
 
-        /* If borrowBalance = 0 then borrowIndex is likely also 0.
-        /// Rather than failing the calculation with a division by 0, we immediately return 0 in this case.
-            if (borrowSnapshot.principal == 0) {
+        // If borrowBalance = 0 then borrowIndex is likely also 0.
+        // Rather than failing the calculation with a division by 0, we immediately return 0 in this case.
+        if (borrowSnapshot.principal == 0) {
             return 0;
         }
 
-        /* Calculate new borrow balance using the interest index:
-        ///  recentBorrowBalance = borrower.borrowBalance * market.borrowIndex / borrower.borrowIndex
-            uint256 principalTimesIndex = borrowSnapshot.principal * borrowIndex;
+        // Calculate new borrow balance using the interest index:
+        // recentBorrowBalance = borrower.borrowBalance * market.borrowIndex / borrower.borrowIndex
+        uint256 principalTimesIndex = borrowSnapshot.principal * borrowIndex;
         return principalTimesIndex / borrowSnapshot.interestIndex;
     }
 
@@ -320,15 +320,13 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
     {
         uint256 _totalSupply = totalSupply;
         if (_totalSupply == 0) {
-            /*
-            /// If there are no tokens minted:
-            ///  exchangeRate = initialExchangeRate
-                    return initialExchangeRateScaled;
+            // If there are no tokens minted:
+            //  exchangeRate = initialExchangeRate
+            return initialExchangeRateScaled;
         } else {
-            /*
-            /// Otherwise:
-            ///  exchangeRate = (totalCash + totalBorrows - totalReserves) / totalSupply
-                    uint256 totalCash = getCashPrior();
+            // Otherwise:
+            // exchangeRate = (totalCash + totalBorrows - totalReserves) / totalSupply
+            uint256 totalCash = getCashPrior();
             uint256 cashPlusBorrowsMinusReserves = totalCash +
                 totalBorrows -
                 totalReserves;
@@ -349,22 +347,22 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
     /// @dev This calculates interest accrued from the last checkpointed block
     ///   up to the current block and writes new checkpoint to storage.
     function accrueInterest() public virtual override {
-        /* Remember the initial block number */
+        // Remember the initial block number
         uint256 currentBlockNumber = getBlockNumber();
         uint256 accrualBlockNumberPrior = accrualBlockNumber;
 
-        /* Short-circuit accumulating 0 interest */
+        // Short-circuit accumulating 0 interest
         if (accrualBlockNumberPrior == currentBlockNumber) {
             return;
         }
 
-        /* Read the previous values out of storage */
+        // Read the previous values out of storage
         uint256 cashPrior = getCashPrior();
         uint256 borrowsPrior = totalBorrows;
         uint256 reservesPrior = totalReserves;
         uint256 borrowIndexPrior = borrowIndex;
 
-        /* Calculate the current borrow interest rate */
+        // Calculate the current borrow interest rate
         uint256 borrowRateScaled = interestRateModel.getBorrowRate(
             cashPrior,
             borrowsPrior,
@@ -374,17 +372,16 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
             revert ExcessiveValue();
         }
 
-        /* Calculate the number of blocks elapsed since the last accrual */
+        // Calculate the number of blocks elapsed since the last accrual
         uint256 blockDelta = currentBlockNumber - accrualBlockNumberPrior;
 
-        /*
-        /// Calculate the interest accumulated into borrows and reserves and the new index:
-        ///  simpleInterestFactor = borrowRate * blockDelta
-        ///  interestAccumulated = simpleInterestFactor * totalBorrows
-        ///  totalBorrowsNew = interestAccumulated + totalBorrows
-        ///  totalReservesNew = interestAccumulated * reserveFactor + totalReserves
-        ///  borrowIndexNew = simpleInterestFactor * borrowIndex + borrowIndex
-    
+        // Calculate the interest accumulated into borrows and reserves and the new index:
+        // simpleInterestFactor = borrowRate * blockDelta
+        // interestAccumulated = simpleInterestFactor * totalBorrows
+        // totalBorrowsNew = interestAccumulated + totalBorrows
+        // totalReservesNew = interestAccumulated * reserveFactor + totalReserves
+        // borrowIndexNew = simpleInterestFactor * borrowIndex + borrowIndex
+
         uint256 simpleInterestFactor = borrowRateScaled * blockDelta;
         uint256 interestAccumulated = (simpleInterestFactor * borrowsPrior) /
             expScale;
@@ -398,13 +395,13 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         // EFFECTS & INTERACTIONS
         // (No safe failures beyond this point)
 
-        /* We write the previously calculated values into storage */
+        // We write the previously calculated values into storage
         accrualBlockNumber = currentBlockNumber;
         borrowIndex = borrowIndexNew;
         totalBorrows = totalBorrowsNew;
         totalReserves = totalReservesNew;
 
-        /* We emit an AccrueInterest event */
+        // We emit an AccrueInterest event
         emit AccrueInterest(
             cashPrior,
             interestAccumulated,
@@ -435,10 +432,10 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         uint256 mintAmount,
         address minter
     ) internal {
-        /* Fail if mint not allowed */
+        // Fail if mint not allowed
         lendtroller.mintAllowed(address(this), minter); //, mintAmount);
 
-        /* Verify market's block number equals current block number */
+        // Verify market's block number equals current block number
         if (accrualBlockNumber != getBlockNumber()) {
             revert FailedFreshnessCheck();
         }
@@ -450,33 +447,30 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         // EFFECTS & INTERACTIONS
         // (No safe failures beyond this point)
 
-        /*
-        ///  We call `doTransferIn` for the minter and the mintAmount.
-        ///  Note: The cToken must handle variations between ERC-20 and ETH underlying.
-        ///  `doTransferIn` reverts if anything goes wrong, since we can't be sure if
-        ///  side-effects occurred. The function returns the amount actually transferred,
-        ///  in case of a fee. On success, the cToken holds an additional `actualMintAmount`
-        ///  of cash.
-            uint256 actualMintAmount = doTransferIn(user, mintAmount);
+        // We call `doTransferIn` for the minter and the mintAmount.
+        // Note: The cToken must handle variations between ERC-20 and ETH underlying.
+        // `doTransferIn` reverts if anything goes wrong, since we can't be sure if
+        // side-effects occurred. The function returns the amount actually transferred,
+        // in case of a fee. On success, the cToken holds an additional `actualMintAmount`
+        // of cash.
+        uint256 actualMintAmount = doTransferIn(user, mintAmount);
 
-        /*
-        /// We get the current exchange rate and calculate the number of cTokens to be minted:
-        ///  mintTokens = actualMintAmount / exchangeRate
-    
+        // We get the current exchange rate and calculate the number of cTokens to be minted:
+        //  mintTokens = actualMintAmount / exchangeRate
+
         uint256 mintTokens = (actualMintAmount * expScale) / exchangeRate;
 
-        /*
-        /// We calculate the new total supply of cTokens and minter token balance, checking for overflow:
-        ///  totalSupplyNew = totalSupply + mintTokens
-        ///  accountTokensNew = accountTokens[minter] + mintTokens
-        /// And write them into storage
-            totalSupply = totalSupply + mintTokens;
+        // We calculate the new total supply of cTokens and minter token balance, checking for overflow:
+        //  totalSupplyNew = totalSupply + mintTokens
+        //  accountTokensNew = accountTokens[minter] + mintTokens
+        // And write them into storage
+        totalSupply = totalSupply + mintTokens;
         accountTokens[minter] = accountTokens[minter] + mintTokens;
 
         // emit events on gauge pool
         GaugePool(gaugePool()).deposit(address(this), minter, mintTokens);
 
-        /* We emit a Mint event, and a Transfer event */
+        // We emit a Mint event, and a Transfer event
         emit Mint(user, actualMintAmount, mintTokens, minter);
         emit Transfer(address(this), minter, mintTokens);
     }
@@ -504,11 +498,11 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
 
         address payable redeemer = payable(msg.sender);
 
-        /* exchangeRate = invoke Exchange Rate Stored() */
+        // exchangeRate = invoke Exchange Rate Stored()
         uint256 exchangeRate = exchangeRateStoredInternal();
         uint256 redeemTokens = (redeemAmount * expScale) / exchangeRate;
 
-        /* Fail if redeem not allowed */
+        // Fail if redeem not allowed
         lendtroller.redeemAllowed(address(this), redeemer, redeemTokens);
 
         // redeemFresh emits redeem-specific logs on errors, so we don't need to
@@ -526,7 +520,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
 
         accrueInterest();
 
-        /* exchangeRate = invoke Exchange Rate Stored() */
+        // exchangeRate = invoke Exchange Rate Stored()
         uint256 exchangeRate = exchangeRateStoredInternal();
         uint256 redeemTokens = (redeemAmount * expScale) / exchangeRate;
 
@@ -540,7 +534,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
             params
         );
 
-        /* Fail if redeem not allowed */
+        // Fail if redeem not allowed
         lendtroller.redeemAllowed(address(this), redeemer, 0);
     }
 
@@ -556,12 +550,12 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         uint256 redeemAmount,
         address payable recipient
     ) internal nonReentrant {
-        /* Verify market's block number equals current block number */
+        // Verify market's block number equals current block number
         if (accrualBlockNumber != getBlockNumber()) {
             revert FailedFreshnessCheck();
         }
 
-        /* Fail gracefully if protocol has insufficient cash */
+        // Fail gracefully if protocol has insufficient cash
         if (getCashPrior() < redeemAmount) {
             revert RedeemTransferOutNotPossible();
         }
@@ -570,27 +564,25 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         // EFFECTS & INTERACTIONS
         // (No safe failures beyond this point)
 
-        /*
-        /// We write the previously calculated values into storage.
-        ///  Note: Avoid token reentrancy attacks by writing reduced supply before external transfer.
-            totalSupply = totalSupply - redeemTokens;
+        // We write the previously calculated values into storage.
+        // Note: Avoid token reentrancy attacks by writing reduced supply before external transfer.
+        totalSupply = totalSupply - redeemTokens;
         accountTokens[redeemer] = accountTokens[redeemer] - redeemTokens;
 
         // emit events on gauge pool
         GaugePool(gaugePool()).withdraw(address(this), redeemer, redeemTokens);
 
-        /*
-        /// We invoke doTransferOut for the redeemer and the redeemAmount.
-        ///  Note: The cToken must handle variations between ERC-20 and ETH underlying.
-        ///  On success, the cToken has redeemAmount less of cash.
-        ///  doTransferOut reverts if anything goes wrong, since we can't be sure if side effects occurred.
-            doTransferOut(recipient, redeemAmount);
+        // We invoke doTransferOut for the redeemer and the redeemAmount.
+        // Note: The cToken must handle variations between ERC-20 and ETH underlying.
+        // On success, the cToken has redeemAmount less of cash.
+        // doTransferOut reverts if anything goes wrong, since we can't be sure if side effects occurred.
+        doTransferOut(recipient, redeemAmount);
 
-        /* We emit a Transfer event, and a Redeem event */
+        // We emit a Transfer event, and a Redeem event
         emit Transfer(redeemer, address(this), redeemTokens);
         emit Redeem(redeemer, redeemAmount, redeemTokens);
 
-        /* We call the defense hook */
+        // We call the defense hook
         if (redeemTokens == 0 && redeemAmount > 0) {
             revert CannotEqualZero();
         }
@@ -601,7 +593,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
     function borrowInternal(uint256 borrowAmount) internal nonReentrant {
         accrueInterest();
 
-        /* Fail if borrow not allowed */
+        // Fail if borrow not allowed
         lendtroller.borrowAllowed(address(this), msg.sender, borrowAmount);
 
         borrowFresh(payable(msg.sender), borrowAmount, payable(msg.sender));
@@ -627,7 +619,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
             params
         );
 
-        /* Fail if position is not allowed */
+        // Fail if position is not allowed
         lendtroller.borrowAllowed(address(this), borrower, 0);
     }
 
@@ -638,21 +630,20 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         uint256 borrowAmount,
         address payable recipient
     ) internal {
-        /* Verify market's block number equals current block number */
+        // Verify market's block number equals current block number
         if (accrualBlockNumber != getBlockNumber()) {
             revert FailedFreshnessCheck();
         }
 
-        /* Fail gracefully if protocol has insufficient underlying cash */
+        // Fail gracefully if protocol has insufficient underlying cash
         if (getCashPrior() < borrowAmount) {
             revert BorrowCashNotAvailable();
         }
 
-        /*
-        /// We calculate the new borrower and total borrow balances, failing on overflow:
-        ///  accountBorrowNew = accountBorrow + borrowAmount
-        ///  totalBorrowsNew = totalBorrows + borrowAmount
-            uint256 accountBorrowsPrev = borrowBalanceStoredInternal(borrower);
+        // We calculate the new borrower and total borrow balances, failing on overflow:
+        // accountBorrowNew = accountBorrow + borrowAmount
+        // totalBorrowsNew = totalBorrows + borrowAmount
+        uint256 accountBorrowsPrev = borrowBalanceStoredInternal(borrower);
         uint256 accountBorrowsNew = accountBorrowsPrev + borrowAmount;
         uint256 totalBorrowsNew = totalBorrows + borrowAmount;
 
@@ -660,22 +651,19 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         // EFFECTS & INTERACTIONS
         // (No safe failures beyond this point)
 
-        /*
-        /// We write the previously calculated values into storage.
-        ///  Note: Avoid token reentrancy attacks by writing increased borrow before external transfer.
-        `*/
+        // We write the previously calculated values into storage.
+        // Note: Avoid token reentrancy attacks by writing increased borrow before external transfer.
         accountBorrows[borrower].principal = accountBorrowsNew;
         accountBorrows[borrower].interestIndex = borrowIndex;
         totalBorrows = totalBorrowsNew;
 
-        /*
-        /// We invoke doTransferOut for the borrower and the borrowAmount.
-        ///  Note: The cToken must handle variations between ERC-20 and ETH underlying.
-        ///  On success, the cToken borrowAmount less of cash.
-        ///  doTransferOut reverts if anything goes wrong, since we can't be sure if side effects occurred.
-            doTransferOut(recipient, borrowAmount);
+        // We invoke doTransferOut for the borrower and the borrowAmount.
+        // Note: The cToken must handle variations between ERC-20 and ETH underlying.
+        // On success, the cToken borrowAmount less of cash.
+        // doTransferOut reverts if anything goes wrong, since we can't be sure if side effects occurred.
+        doTransferOut(recipient, borrowAmount);
 
-        /* We emit a Borrow event */
+        // We emit a Borrow event
         emit Borrow(
             borrower,
             borrowAmount,
@@ -714,18 +702,18 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         address borrower,
         uint256 repayAmount
     ) internal returns (uint256) {
-        /* Fail if repayBorrow not allowed */
+        // Fail if repayBorrow not allowed
         lendtroller.repayBorrowAllowed(address(this), borrower); //, payer, repayAmount);
 
-        /* Verify market's block number equals current block number */
+        // Verify market's block number equals current block number
         if (accrualBlockNumber != getBlockNumber()) {
             revert FailedFreshnessCheck();
         }
 
-        /* We fetch the amount the borrower owes, with accumulated interest */
+        // We fetch the amount the borrower owes, with accumulated interest
         uint256 accountBorrowsPrev = borrowBalanceStoredInternal(borrower);
 
-        /* If repayAmount == -1, repayAmount = accountBorrows */
+        // If repayAmount == -1, repayAmount = accountBorrows
         uint256 repayAmountFinal = repayAmount == type(uint256).max
             ? accountBorrowsPrev
             : repayAmount;
@@ -734,27 +722,25 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         // EFFECTS & INTERACTIONS
         // (No safe failures beyond this point)
 
-        /*
-        /// We call doTransferIn for the payer and the repayAmount
-        ///  Note: The cToken must handle variations between ERC-20 and ETH underlying.
-        ///  On success, the cToken holds an additional repayAmount of cash.
-        ///  doTransferIn reverts if anything goes wrong, since we can't be sure if side effects occurred.
-        ///   it returns the amount actually transferred, in case of a fee.
-            uint256 actualRepayAmount = doTransferIn(payer, repayAmountFinal);
+        // We call doTransferIn for the payer and the repayAmount
+        // Note: The cToken must handle variations between ERC-20 and ETH underlying.
+        // On success, the cToken holds an additional repayAmount of cash.
+        // doTransferIn reverts if anything goes wrong, since we can't be sure if side effects occurred.
+        //  it returns the amount actually transferred, in case of a fee.
+        uint256 actualRepayAmount = doTransferIn(payer, repayAmountFinal);
 
-        /*
-        /// We calculate the new borrower and total borrow balances, failing on underflow:
-        ///  accountBorrowsNew = accountBorrows - actualRepayAmount
-        ///  totalBorrowsNew = totalBorrows - actualRepayAmount
-            uint256 accountBorrowsNew = accountBorrowsPrev - actualRepayAmount;
+        // We calculate the new borrower and total borrow balances, failing on underflow:
+        // accountBorrowsNew = accountBorrows - actualRepayAmount
+        // totalBorrowsNew = totalBorrows - actualRepayAmount
+        uint256 accountBorrowsNew = accountBorrowsPrev - actualRepayAmount;
         uint256 totalBorrowsNew = totalBorrows - actualRepayAmount;
 
-        /* We write the previously calculated values into storage */
+        // We write the previously calculated values into storage
         accountBorrows[borrower].principal = accountBorrowsNew;
         accountBorrows[borrower].interestIndex = borrowIndex;
         totalBorrows = totalBorrowsNew;
 
-        /* We emit a RepayBorrow event */
+        // We emit a RepayBorrow event
         emit RepayBorrow(
             payer,
             borrower,
@@ -801,7 +787,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         uint256 repayAmount,
         CTokenInterface cTokenCollateral
     ) internal {
-        /* Fail if liquidate not allowed */
+        // Fail if liquidate not allowed
         lendtroller.liquidateBorrowAllowed(
             address(this),
             address(cTokenCollateral),
@@ -809,32 +795,32 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
             repayAmount
         );
 
-        /* Verify market's block number equals current block number */
+        // Verify market's block number equals current block number
         if (accrualBlockNumber != getBlockNumber()) {
             revert FailedFreshnessCheck();
         }
 
-        /* Verify cTokenCollateral market's block number equals current block number */
+        // Verify cTokenCollateral market's block number equals current block number
         if (cTokenCollateral.accrualBlockNumber() != getBlockNumber()) {
             revert FailedFreshnessCheck();
         }
 
-        /* Fail if borrower = liquidator */
+        // Fail if borrower = liquidator
         if (borrower == liquidator) {
             revert SelfLiquidationNotAllowed();
         }
 
-        /* Fail if repayAmount = 0 */
+        // Fail if repayAmount = 0
         if (repayAmount == 0) {
             revert CannotEqualZero();
         }
 
-        /* Fail if repayAmount = -1 */
+        // Fail if repayAmount = -1
         if (repayAmount == type(uint256).max) {
             revert ExcessiveValue();
         }
 
-        /* Fail if repayBorrow fails */
+        // Fail if repayBorrow fails
         uint256 actualRepayAmount = repayBorrowFresh(
             liquidator,
             borrower,
@@ -845,14 +831,14 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         // EFFECTS & INTERACTIONS
         // (No safe failures beyond this point)
 
-        /* We calculate the number of collateral tokens that will be seized */
+        // We calculate the number of collateral tokens that will be seized
         uint256 seizeTokens = lendtroller.liquidateCalculateSeizeTokens(
             address(this),
             address(cTokenCollateral),
             actualRepayAmount
         );
 
-        /* Revert if borrower collateral token balance < seizeTokens */
+        // Revert if borrower collateral token balance < seizeTokens
         if (cTokenCollateral.balanceOf(borrower) < seizeTokens) {
             revert ExcessiveValue();
         }
@@ -864,7 +850,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
             cTokenCollateral.seize(liquidator, borrower, seizeTokens);
         }
 
-        /* We emit a LiquidateBorrow event */
+        // We emit a LiquidateBorrow event
         emit LiquidateBorrow(
             liquidator,
             borrower,
@@ -901,7 +887,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         address borrower,
         uint256 seizeTokens
     ) internal {
-        /* Fails if seize not allowed */
+        // Fails if seize not allowed
         lendtroller.seizeAllowed(
             address(this),
             seizerToken,
@@ -909,16 +895,15 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
             borrower
         ); //, seizeTokens);
 
-        /* Fails if borrower = liquidator */
+        // Fails if borrower = liquidator
         if (borrower == liquidator) {
             revert SelfLiquidationNotAllowed();
         }
 
-        /*
-        /// We calculate the new borrower and liquidator token balances, failing on underflow/overflow:
-        ///  borrowerTokensNew = accountTokens[borrower] - seizeTokens
-        ///  liquidatorTokensNew = accountTokens[liquidator] + seizeTokens
-            uint256 protocolSeizeTokens = (seizeTokens *
+        // We calculate the new borrower and liquidator token balances, failing on underflow/overflow:
+        // borrowerTokensNew = accountTokens[borrower] - seizeTokens
+        // liquidatorTokensNew = accountTokens[liquidator] + seizeTokens
+        uint256 protocolSeizeTokens = (seizeTokens *
             protocolSeizeShareScaled) / expScale;
         uint256 liquidatorSeizeTokens = seizeTokens - protocolSeizeTokens;
         uint256 protocolSeizeAmount = (exchangeRateStoredInternal() *
@@ -929,7 +914,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         // EFFECTS & INTERACTIONS
         // (No safe failures beyond this point)
 
-        /* We write the calculated values into storage */
+        // We write the calculated values into storage
         totalReserves = totalReservesNew;
         totalSupply = totalSupply - protocolSeizeTokens;
         accountTokens[borrower] = accountTokens[borrower] - seizeTokens;
@@ -945,7 +930,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
             liquidatorSeizeTokens
         );
 
-        /* Emit a Transfer event */
+        // Emit a Transfer event
         emit Transfer(borrower, liquidator, liquidatorSeizeTokens);
         emit Transfer(borrower, address(this), protocolSeizeTokens);
         emit ReservesAdded(
@@ -1081,15 +1066,14 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         // EFFECTS & INTERACTIONS
         // (No safe failures beyond this point)
 
-        /*
-        /// We call doTransferIn for the caller and the addAmount
-        ///  Note: The cToken must handle variations between ERC-20 and ETH underlying.
-        ///  On success, the cToken holds an additional addAmount of cash.
-        ///  doTransferIn reverts if anything goes wrong, since we can't be sure if side effects occurred.
-        ///  it returns the amount actually transferred, in case of a fee.
-            totalReserves += doTransferIn(msg.sender, addAmount);
+        // We call doTransferIn for the caller and the addAmount
+        // Note: The cToken must handle variations between ERC-20 and ETH underlying.
+        // On success, the cToken holds an additional addAmount of cash.
+        // doTransferIn reverts if anything goes wrong, since we can't be sure if side effects occurred.
+        // it returns the amount actually transferred, in case of a fee.
+        totalReserves += doTransferIn(msg.sender, addAmount);
 
-        /* Emit NewReserves(admin, actualAddAmount, reserves[n+1]) */
+        // Emit NewReserves(admin, actualAddAmount, reserves[n+1])
         // emit ReservesAdded(msg.sender, actualAddAmount, totalReserves); /// changed to emit correct variable
         emit ReservesAdded(msg.sender, addAmount, totalReserves);
     }
