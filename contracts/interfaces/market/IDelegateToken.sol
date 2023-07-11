@@ -2,7 +2,7 @@
 pragma solidity ^0.8.13;
 
 interface IDelegateToken {
-    function getPastVotes(address account, uint256 blockNumber)
+    function getPastVotes(address account, uint256 blockTimestamp)
         external
         view
         returns (uint256);

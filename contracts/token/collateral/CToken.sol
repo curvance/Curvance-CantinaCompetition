@@ -33,7 +33,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         if (msg.sender != admin) {
             revert AddressUnauthorized();
         }
-        if (accrualBlockNumber != 0 && borrowIndex != 0) {
+        if (accrualBlockTimestamp != 0 && borrowIndex != 0) {
             revert PreviouslyInitialized();
         }
 
@@ -47,7 +47,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         _setLendtroller(Lendtroller(lendtroller_));
 
         // Initialize block number and borrow index (block number mocks depend on lendtroller being set)
-        accrualBlockNumber = getBlockNumber();
+        accrualBlockTimestamp = getBlockTimestamp();
         borrowIndex = expScale;
 
         // Set the interest rate model (depends on block number / borrow index)
@@ -210,8 +210,8 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
     /// @dev Function to simply retrieve block number
     ///  This exists mainly for inheriting test contracts to stub this result.
     /// @return The current block number
-    function getBlockNumber() internal view virtual returns (uint256) {
-        return block.number;
+    function getBlockTimestamp() internal view virtual returns (uint256) {
+        return block.timestamp;
     }
 
     /// @notice Returns the current per-block borrow interest rate for this cToken
@@ -348,11 +348,11 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
     ///   up to the current block and writes new checkpoint to storage.
     function accrueInterest() public virtual override {
         // Remember the initial block number
-        uint256 currentBlockNumber = getBlockNumber();
-        uint256 accrualBlockNumberPrior = accrualBlockNumber;
+        uint256 currentBlockTimestamp = getBlockTimestamp();
+        uint256 accrualBlockTimestampPrior = accrualBlockTimestamp;
 
         // Short-circuit accumulating 0 interest
-        if (accrualBlockNumberPrior == currentBlockNumber) {
+        if (accrualBlockTimestampPrior == currentBlockTimestamp) {
             return;
         }
 
@@ -373,7 +373,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         }
 
         // Calculate the number of blocks elapsed since the last accrual
-        uint256 blockDelta = currentBlockNumber - accrualBlockNumberPrior;
+        uint256 blockDelta = currentBlockTimestamp - accrualBlockTimestampPrior;
 
         // Calculate the interest accumulated into borrows and reserves and the new index:
         // simpleInterestFactor = borrowRate * blockDelta
@@ -396,7 +396,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         // (No safe failures beyond this point)
 
         // We write the previously calculated values into storage
-        accrualBlockNumber = currentBlockNumber;
+        accrualBlockTimestamp = currentBlockTimestamp;
         borrowIndex = borrowIndexNew;
         totalBorrows = totalBorrowsNew;
         totalReserves = totalReservesNew;
@@ -436,7 +436,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         lendtroller.mintAllowed(address(this), minter); //, mintAmount);
 
         // Verify market's block number equals current block number
-        if (accrualBlockNumber != getBlockNumber()) {
+        if (accrualBlockTimestamp != getBlockTimestamp()) {
             revert FailedFreshnessCheck();
         }
 
@@ -551,7 +551,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         address payable recipient
     ) internal nonReentrant {
         // Verify market's block number equals current block number
-        if (accrualBlockNumber != getBlockNumber()) {
+        if (accrualBlockTimestamp != getBlockTimestamp()) {
             revert FailedFreshnessCheck();
         }
 
@@ -631,7 +631,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         address payable recipient
     ) internal {
         // Verify market's block number equals current block number
-        if (accrualBlockNumber != getBlockNumber()) {
+        if (accrualBlockTimestamp != getBlockTimestamp()) {
             revert FailedFreshnessCheck();
         }
 
@@ -706,7 +706,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         lendtroller.repayBorrowAllowed(address(this), borrower); //, payer, repayAmount);
 
         // Verify market's block number equals current block number
-        if (accrualBlockNumber != getBlockNumber()) {
+        if (accrualBlockTimestamp != getBlockTimestamp()) {
             revert FailedFreshnessCheck();
         }
 
@@ -796,12 +796,12 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         );
 
         // Verify market's block number equals current block number
-        if (accrualBlockNumber != getBlockNumber()) {
+        if (accrualBlockTimestamp != getBlockTimestamp()) {
             revert FailedFreshnessCheck();
         }
 
         // Verify cTokenCollateral market's block number equals current block number
-        if (cTokenCollateral.accrualBlockNumber() != getBlockNumber()) {
+        if (cTokenCollateral.accrualBlockTimestamp() != getBlockTimestamp()) {
             revert FailedFreshnessCheck();
         }
 
@@ -1028,7 +1028,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         }
 
         // Verify market's block number equals current block number
-        if (accrualBlockNumber != getBlockNumber()) {
+        if (accrualBlockTimestamp != getBlockTimestamp()) {
             revert FailedFreshnessCheck();
         }
 
@@ -1058,7 +1058,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
     /// return uint the actual amount added, net token fees
     function _addReservesFresh(uint256 addAmount) internal {
         // We fail gracefully unless market's block number equals current block number
-        if (accrualBlockNumber != getBlockNumber()) {
+        if (accrualBlockTimestamp != getBlockTimestamp()) {
             revert FailedFreshnessCheck();
         }
 
@@ -1101,7 +1101,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         }
 
         // We fail gracefully unless market's block number equals current block number
-        if (accrualBlockNumber != getBlockNumber()) {
+        if (accrualBlockTimestamp != getBlockTimestamp()) {
             revert FailedFreshnessCheck();
         }
 
@@ -1152,7 +1152,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         }
 
         // We fail gracefully unless market's block number equals current block number
-        if (accrualBlockNumber != getBlockNumber()) {
+        if (accrualBlockTimestamp != getBlockTimestamp()) {
             revert FailedFreshnessCheck();
         }
 

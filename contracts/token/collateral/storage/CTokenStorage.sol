@@ -61,7 +61,7 @@ abstract contract CTokenStorage {
     uint256 public reserveFactorScaled;
 
     /// @notice Block number that interest was last accrued at
-    uint256 public accrualBlockNumber;
+    uint256 public accrualBlockTimestamp;
 
     /// @notice Accumulator of the total earned interest rate since the opening of the market
     uint256 public borrowIndex;
