@@ -3,11 +3,11 @@ pragma solidity ^0.8.17;
 
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-import "contracts/market/interestRates/InterestRateModel.sol";
-import "../../interfaces/market/IEIP20.sol";
-import { ICToken } from "../../interfaces/market/ICToken.sol";
-import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
-import { GaugePool } from "../../gauge/GaugePool.sol";
+import { GaugePool } from "contracts/gauge/GaugePool.sol";
+import { InterestRateModel } from "contracts/market/interestRates/InterestRateModel.sol";
+import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
+import { IEIP20 } from "contracts/interfaces/market/IEIP20.sol";
+import { ICToken } from "contracts/interfaces/market/ICToken.sol";
 import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.sol";
 
 /// @title Curvance's CToken Contract
@@ -74,8 +74,8 @@ abstract contract CToken is ReentrancyGuard, ICToken {
 
     /// @notice Event emitted when lendtroller is changed
     event NewLendtroller(
-        Lendtroller oldLendtroller,
-        Lendtroller newLendtroller
+        ILendtroller oldLendtroller,
+        ILendtroller newLendtroller
     );
 
     /// @notice Event emitted when interestRateModel is changed
@@ -137,13 +137,13 @@ abstract contract CToken is ReentrancyGuard, ICToken {
     uint256 internal constant expScale = 1e18;
 
     /// @notice Indicator that this is a CToken contract (for inspection)
-    bool public constant isCToken = true;
+    bool public constant override isCToken = true;
 
     /// @notice EIP-20 token name for this token
     string public name;
 
     /// @notice EIP-20 token symbol for this token
-    string public symbol;
+    string public override symbol;
 
     /// @notice EIP-20 token decimals for this token
     uint8 public decimals;
@@ -161,7 +161,7 @@ abstract contract CToken is ReentrancyGuard, ICToken {
     address payable public pendingAdmin;
 
     /// @notice Contract which oversees inter-cToken operations
-    Lendtroller public lendtroller;
+    ILendtroller public override lendtroller;
 
     /// @notice Model which tells what the current interest rate should be
     InterestRateModel public interestRateModel;
@@ -179,7 +179,7 @@ abstract contract CToken is ReentrancyGuard, ICToken {
     uint256 public borrowIndex;
 
     /// @notice Total amount of outstanding borrows of the underlying in this market
-    uint256 public totalBorrows;
+    uint256 public override totalBorrows;
 
     /// @notice Total amount of reserves of the underlying held in this market
     uint256 public totalReserves;
@@ -238,7 +238,7 @@ abstract contract CToken is ReentrancyGuard, ICToken {
         }
 
         // Set the lendtroller
-        _setLendtroller(Lendtroller(lendtroller_));
+        _setLendtroller(ILendtroller(lendtroller_));
 
         // Initialize block number and borrow index (block number mocks depend on lendtroller being set)
         accrualBlockTimestamp = getBlockTimestamp();
@@ -255,7 +255,7 @@ abstract contract CToken is ReentrancyGuard, ICToken {
     /// @notice Returns gauge pool contract address
     /// @return gaugePool the gauge controller contract address
     function gaugePool() public view returns (address) {
-        return address(lendtroller.gaugePool());
+        return lendtroller.gaugePool();
     }
 
     /// @notice Transfer `tokens` tokens from `src` to `dst` by `spender` internally
@@ -1183,13 +1183,13 @@ abstract contract CToken is ReentrancyGuard, ICToken {
     /// @notice Sets a new lendtroller for the market
     /// @dev Admin function to set a new lendtroller
     /// @param newLendtroller New lendtroller address.
-    function _setLendtroller(Lendtroller newLendtroller) public override {
+    function _setLendtroller(ILendtroller newLendtroller) public override {
         // Check caller is admin
         if (msg.sender != admin) {
             revert AddressUnauthorized();
         }
 
-        Lendtroller oldLendtroller = lendtroller;
+        ILendtroller oldLendtroller = lendtroller;
         // Ensure invoke lendtroller.isLendtroller() returns true
         if (!newLendtroller.isLendtroller()) {
             revert LendtrollerMismatch();

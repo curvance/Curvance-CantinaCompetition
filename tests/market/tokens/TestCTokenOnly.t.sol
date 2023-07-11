@@ -179,7 +179,7 @@ contract TestCToken is TestBaseMarket {
         vm.prank(user);
         address[] memory markets = new address[](1);
         markets[0] = address(cDAI);
-        LendtrollerInterface(lendtroller).enterMarkets(markets);
+        ILendtroller(lendtroller).enterMarkets(markets);
 
         // approve
         dai.approve(address(cDAI), 100e18);

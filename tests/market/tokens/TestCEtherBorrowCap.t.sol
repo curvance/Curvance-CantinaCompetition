@@ -41,7 +41,7 @@ contract TestCEtherBorrowCap is TestBaseMarket {
         assertEq(cETH.balanceOf(user), 100e18);
 
         // can't borrow 50
-        vm.expectRevert(LendtrollerInterface.BorrowCapReached.selector); // Update: we now revert
+        vm.expectRevert(ILendtroller.BorrowCapReached.selector); // Update: we now revert
         cETH.borrow(50e18);
 
         // increase borrow cap to 51

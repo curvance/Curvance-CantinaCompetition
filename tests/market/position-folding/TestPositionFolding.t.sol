@@ -487,7 +487,7 @@ contract TestPositionFolding is TestBaseMarket {
         path[1] = WETH_ADDRESS;
 
         vm.deal(address(positionFolding), 0.01 ether);
-        vm.expectRevert(LendtrollerInterface.InsufficientLiquidity.selector);
+        vm.expectRevert(ILendtroller.InsufficientLiquidity.selector);
         positionFolding.leverageMax(
             CToken(address(cDAI)),
             CToken(address(cETH)),

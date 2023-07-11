@@ -3,7 +3,7 @@ pragma solidity ^0.8.15;
 
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
 import "contracts/market/lendtroller/Lendtroller.sol";
-import "contracts/market/lendtroller/LendtrollerInterface.sol";
+import "contracts/interfaces/market/ILendtroller.sol";
 import "contracts/market/collateral/CErc20.sol";
 import "contracts/market/Oracle/SimplePriceOracle.sol";
 import "contracts/market/interestRates/InterestRateModel.sol";
@@ -93,7 +93,7 @@ contract TestGaugePool is TestBase {
                 vm.prank(user);
                 address[] memory markets = new address[](1);
                 markets[0] = address(tokens[i]);
-                LendtrollerInterface(lendtroller).enterMarkets(markets);
+                ILendtroller(lendtroller).enterMarkets(markets);
 
                 // approve
                 vm.prank(user);

@@ -4,33 +4,30 @@ pragma solidity ^0.8.17;
 import "./IEIP20NonStandard.sol";
 import "./ICToken.sol";
 
-abstract contract ICErc20 {
+interface ICErc20 {
     /// User Interface
 
-    function mint(uint256 mintAmount) external virtual returns (bool);
+    function mint(uint256 mintAmount) external returns (bool);
 
-    function redeem(uint256 redeemTokens) external virtual;
+    function redeem(uint256 redeemTokens) external;
 
-    function redeemUnderlying(uint256 redeemAmount) external virtual;
+    function redeemUnderlying(uint256 redeemAmount) external;
 
-    function borrow(uint256 borrowAmount) external virtual;
+    function borrow(uint256 borrowAmount) external;
 
-    function repayBorrow(uint256 repayAmount) external virtual;
+    function repayBorrow(uint256 repayAmount) external;
 
-    function repayBorrowBehalf(
-        address borrower,
-        uint256 repayAmount
-    ) external virtual;
+    function repayBorrowBehalf(address borrower, uint256 repayAmount) external;
 
     function liquidateBorrow(
         address borrower,
         uint256 repayAmount,
         ICToken cTokenCollateral
-    ) external virtual;
+    ) external;
 
-    function sweepToken(IEIP20NonStandard token) external virtual;
+    function sweepToken(IEIP20NonStandard token) external;
 
     /// Admin Functions
 
-    function _addReserves(uint256 addAmount) external virtual;
+    function _addReserves(uint256 addAmount) external;
 }

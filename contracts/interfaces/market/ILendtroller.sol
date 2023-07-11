@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { CToken } from "contracts/market/collateral/CToken.sol";
+import { ICToken } from "contracts/interfaces/market/ICToken.sol";
 
 interface ILendtroller {
     function enterMarkets(
@@ -65,9 +65,15 @@ interface ILendtroller {
         address user
     ) external view returns (bool);
 
-    function getAllMarkets() external view returns (CToken[] memory);
+    function getAllMarkets() external view returns (ICToken[] memory);
 
     function getAccountAssets(
         address cToken
-    ) external view returns (CToken[] memory);
+    ) external view returns (ICToken[] memory);
+
+    function positionFolding() external view returns (address);
+
+    function gaugePool() external view returns (address);
+
+    function isLendtroller() external view returns (bool);
 }

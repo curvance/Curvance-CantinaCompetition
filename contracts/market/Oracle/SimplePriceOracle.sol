@@ -17,7 +17,7 @@ contract SimplePriceOracle is PriceOracle {
     /// @param cToken market token address
     /// @return The underlying asset address
     function _getUnderlyingAddress(
-        CToken cToken
+        ICToken cToken
     ) private view returns (address) {
         address asset;
         if (compareStrings(cToken.symbol(), "cETH")) {
@@ -32,7 +32,7 @@ contract SimplePriceOracle is PriceOracle {
     /// @param cToken market token address
     /// @return The underlying asset price
     function getUnderlyingPrice(
-        CToken cToken
+        ICToken cToken
     ) public view override returns (uint256) {
         return prices[_getUnderlyingAddress(cToken)];
     }
@@ -41,7 +41,7 @@ contract SimplePriceOracle is PriceOracle {
     /// @param cToken market token address
     /// @param underlyingPriceMantissa underlying asset price
     function setUnderlyingPrice(
-        CToken cToken,
+        ICToken cToken,
         uint256 underlyingPriceMantissa
     ) public {
         address asset = _getUnderlyingAddress(cToken);

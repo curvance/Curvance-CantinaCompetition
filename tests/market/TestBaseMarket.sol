@@ -106,7 +106,7 @@ contract TestBaseMarket is TestBase {
         markets[0] = address(cETH);
 
         vm.prank(user_);
-        LendtrollerInterface(lendtroller).enterMarkets(markets);
+        ILendtroller(lendtroller).enterMarkets(markets);
     }
 
     function _enterCDAIMarket(address user_) internal {
@@ -114,7 +114,7 @@ contract TestBaseMarket is TestBase {
         markets[0] = address(cDAI);
 
         vm.prank(user_);
-        LendtrollerInterface(lendtroller).enterMarkets(markets);
+        ILendtroller(lendtroller).enterMarkets(markets);
     }
 
     function _enterMarkets(address user_) internal {
@@ -123,6 +123,6 @@ contract TestBaseMarket is TestBase {
         markets[1] = address(cETH);
 
         vm.prank(user_);
-        LendtrollerInterface(lendtroller).enterMarkets(markets);
+        ILendtroller(lendtroller).enterMarkets(markets);
     }
 }

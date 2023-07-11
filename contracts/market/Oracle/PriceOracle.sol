@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import "contracts/market/collateral/CToken.sol";
+import { ICToken } from "contracts/interfaces/market/ICToken.sol";
 
 abstract contract PriceOracle {
     /// @notice Indicator that this is a PriceOracle contract (for inspection)
@@ -12,6 +12,6 @@ abstract contract PriceOracle {
     /// @return The underlying asset price mantissa (scaled by 1e18).
     ///  Zero means the price is unavailable.
     function getUnderlyingPrice(
-        CToken cToken
+        ICToken cToken
     ) external view virtual returns (uint256);
 }

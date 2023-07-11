@@ -37,7 +37,7 @@ contract TestCEther is TestBaseMarket {
         vm.prank(user);
         address[] memory markets = new address[](1);
         markets[0] = address(cETH);
-        LendtrollerInterface(lendtroller).enterMarkets(markets);
+        ILendtroller(lendtroller).enterMarkets(markets);
 
         // mint
         cETH.mint{ value: 100e18 }();
@@ -161,7 +161,7 @@ contract TestCEther is TestBaseMarket {
         vm.prank(user);
         address[] memory markets = new address[](1);
         markets[0] = address(cETH);
-        LendtrollerInterface(lendtroller).enterMarkets(markets);
+        ILendtroller(lendtroller).enterMarkets(markets);
 
         // mint
         cETH.mint{ value: 100e18 }();

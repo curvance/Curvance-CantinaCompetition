@@ -52,7 +52,7 @@ contract TestCTokenAndCEther is TestBaseMarket {
     // function testMint() public {
     //     cDAI = new CErc20(
     //         DAI_ADDRESS,
-    //         LendtrollerInterface(lendtroller),
+    //         ILendtroller(lendtroller),
     //         InterestRateModel(address(deployments.jumpRateModel())),
     //         _ONE,
     //         "cDAI",
@@ -61,7 +61,7 @@ contract TestCTokenAndCEther is TestBaseMarket {
     //         payable(admin)
     //     );
     //     cETH = new CEther(
-    //         LendtrollerInterface(lendtroller),
+    //         ILendtroller(lendtroller),
     //         InterestRateModel(address(deployments.jumpRateModel())),
     //         _ONE,
     //         "cETH",
@@ -80,7 +80,7 @@ contract TestCTokenAndCEther is TestBaseMarket {
     //     address[] memory markets = new address[](2);
     //     markets[0] = address(cDAI);
     //     markets[1] = address(cETH);
-    //     LendtrollerInterface(lendtroller).enterMarkets(markets);
+    //     ILendtroller(lendtroller).enterMarkets(markets);
 
     //     // user1 approve
     //     vm.prank(user1);
@@ -93,7 +93,7 @@ contract TestCTokenAndCEther is TestBaseMarket {
 
     //     // user2 enter market
     //     vm.prank(user2);
-    //     LendtrollerInterface(lendtroller).enterMarkets(markets);
+    //     ILendtroller(lendtroller).enterMarkets(markets);
 
     //     // user2 mint
     //     vm.prank(user2);
