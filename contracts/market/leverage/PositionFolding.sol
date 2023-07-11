@@ -8,9 +8,9 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.sol";
 import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
 import { PriceOracle } from "contracts/market/Oracle/PriceOracle.sol";
-import { CToken } from "contracts/token/collateral/CToken.sol";
-import { CEther } from "contracts/token/collateral/CEther.sol";
-import { CErc20 } from "contracts/token/collateral/CErc20.sol";
+import { CToken } from "contracts/market/collateral/CToken.sol";
+import { CEther } from "contracts/market/collateral/CEther.sol";
+import { CErc20 } from "contracts/market/collateral/CErc20.sol";
 import { IWETH } from "contracts/interfaces/IWETH.sol";
 
 contract PositionFolding is ReentrancyGuard, IPositionFolding {

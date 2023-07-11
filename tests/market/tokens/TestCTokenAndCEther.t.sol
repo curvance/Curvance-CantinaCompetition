@@ -381,7 +381,7 @@ contract TestCTokenAndCEther is TestBaseMarket {
 
         // liquidator liquidateBorrow user2
         vm.prank(liquidator);
-        cDAI.liquidateBorrow(user2, 24e18, CTokenInterface(cETH));
+        cDAI.liquidateBorrow(user2, 24e18, ICToken(cETH));
 
         assertEq(cETH.balanceOf(liquidator), 5832000000000000000);
 

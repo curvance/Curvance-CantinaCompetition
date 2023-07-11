@@ -205,7 +205,7 @@ contract TestCToken is TestBaseMarket {
 
         // liquidateBorrow
         vm.prank(liquidator);
-        cDAI.liquidateBorrow(user, 12e18, CTokenInterface(cDAI));
+        cDAI.liquidateBorrow(user, 12e18, ICToken(cDAI));
 
         assertEq(cDAI.balanceOf(liquidator), 5832000000000000000);
     }

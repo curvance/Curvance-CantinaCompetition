@@ -7,13 +7,24 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "contracts/interfaces/market/IDelegateToken.sol";
 import "contracts/interfaces/market/IEIP20NonStandard.sol";
 import "./CToken.sol";
-import "./storage/CErc20Interface.sol";
+import "../../interfaces/market/ICErc20.sol";
 
 /// @title Curvance's CErc20 Contract
 /// @notice CTokens which wrap an EIP-20 underlying
 /// @author Curvance
-contract CErc20 is CErc20Interface, CToken {
+contract CErc20 is ICErc20, CToken {
     using SafeERC20 for IERC20;
+
+    ////////// Errors //////////
+
+    error InvalidUnderlying();
+    error TransferFailure();
+    error ActionFailure();
+
+    ////////// States //////////
+
+    /// @notice Underlying asset for this CToken
+    address public underlying;
 
     /// @notice Initialize the new money market
     /// @param underlying_ The address of the underlying asset
@@ -147,7 +158,7 @@ contract CErc20 is CErc20Interface, CToken {
     function liquidateBorrow(
         address borrower,
         uint256 repayAmount,
-        CTokenInterface cTokenCollateral
+        ICToken cTokenCollateral
     ) external override {
         liquidateBorrowInternal(borrower, repayAmount, cTokenCollateral);
     }

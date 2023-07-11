@@ -4,7 +4,7 @@ pragma solidity ^0.8.15;
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
 import "contracts/market/lendtroller/Lendtroller.sol";
 import "contracts/market/lendtroller/LendtrollerInterface.sol";
-import "contracts/token/collateral/CErc20.sol";
+import "contracts/market/collateral/CErc20.sol";
 import "contracts/market/Oracle/SimplePriceOracle.sol";
 import "contracts/market/interestRates/InterestRateModel.sol";
 import { GaugePool } from "contracts/gauge/GaugePool.sol";

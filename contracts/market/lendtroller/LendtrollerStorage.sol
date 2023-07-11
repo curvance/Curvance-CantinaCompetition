@@ -3,7 +3,7 @@ pragma solidity ^0.8.17;
 
 import { PriceOracle } from "../Oracle/PriceOracle.sol";
 import { GaugePool } from "../../gauge/GaugePool.sol";
-import { CToken } from "../../token/collateral/CToken.sol";
+import { CToken } from "../../market/collateral/CToken.sol";
 
 contract MarketStorage {
     struct Market {

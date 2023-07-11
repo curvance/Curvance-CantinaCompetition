@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 import "contracts/market/interestRates/InterestRateModel.sol";
 import "../../interfaces/market/IEIP20.sol";
-import { CTokenInterface } from "./storage/CTokenInterface.sol";
+import { ICToken } from "../../interfaces/market/ICToken.sol";
 import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
 import { GaugePool } from "../../gauge/GaugePool.sol";
 import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.sol";
@@ -13,7 +13,201 @@ import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.s
 /// @title Curvance's CToken Contract
 /// @notice Abstract base for CTokens
 /// @author Curvance
-abstract contract CToken is ReentrancyGuard, CTokenInterface {
+abstract contract CToken is ReentrancyGuard, ICToken {
+    ////////// Events //////////
+
+    ////////// MARKET EVENTS //////////
+
+    /// @notice Event emitted when interest is accrued
+    event AccrueInterest(
+        uint256 cashPrior,
+        uint256 interestAccumulated,
+        uint256 borrowIndex,
+        uint256 totalBorrows
+    );
+
+    /// @notice Event emitted when tokens are minted
+    event Mint(
+        address user,
+        uint256 mintAmount,
+        uint256 mintTokens,
+        address minter
+    );
+
+    /// @notice Event emitted when tokens are redeemed
+    event Redeem(address redeemer, uint256 redeemAmount, uint256 redeemTokens);
+
+    /// @notice Event emitted when underlying is borrowed
+    event Borrow(
+        address borrower,
+        uint256 borrowAmount,
+        uint256 accountBorrows,
+        uint256 totalBorrows
+    );
+
+    /// @notice Event emitted when a borrow is repaid
+    event RepayBorrow(
+        address payer,
+        address borrower,
+        uint256 repayAmount,
+        uint256 accountBorrows,
+        uint256 totalBorrows
+    );
+
+    /// @notice Event emitted when a borrow is liquidated
+    event LiquidateBorrow(
+        address liquidator,
+        address borrower,
+        uint256 repayAmount,
+        address cTokenCollateral,
+        uint256 seizeTokens
+    );
+
+    ////////// ADMIN EVENTS //////////
+
+    /// @notice Event emitted when pendingAdmin is changed
+    event NewPendingAdmin(address oldPendingAdmin, address newPendingAdmin);
+
+    /// @notice Event emitted when pendingAdmin is accepted,
+    ///         which means admin is updated
+    event NewAdmin(address oldAdmin, address newAdmin);
+
+    /// @notice Event emitted when lendtroller is changed
+    event NewLendtroller(
+        Lendtroller oldLendtroller,
+        Lendtroller newLendtroller
+    );
+
+    /// @notice Event emitted when interestRateModel is changed
+    event NewMarketInterestRateModel(
+        InterestRateModel oldInterestRateModel,
+        InterestRateModel newInterestRateModel
+    );
+
+    /// @notice Event emitted when the reserve factor is changed
+    event NewReserveFactor(
+        uint256 oldReserveFactorScaled,
+        uint256 newReserveFactorScaled
+    );
+
+    /// @notice Event emitted when the reserves are added
+    event ReservesAdded(
+        address benefactor,
+        uint256 addAmount,
+        uint256 newTotalReserves
+    );
+
+    /// @notice Event emitted when the reserves are reduced
+    event ReservesReduced(
+        address admin,
+        uint256 reduceAmount,
+        uint256 newTotalReserves
+    );
+
+    /// @notice EIP20 Transfer event
+    event Transfer(address indexed from, address indexed to, uint256 amount);
+
+    /// @notice EIP20 Approval event
+    event Approval(
+        address indexed owner,
+        address indexed spender,
+        uint256 amount
+    );
+
+    ////////// ERRORS //////////
+
+    error AddressUnauthorized();
+    error FailedNotFromPositionFolding();
+    error FailedFreshnessCheck();
+    error CannotEqualZero();
+    error ExcessiveValue();
+    error TransferNotAllowed();
+    error PreviouslyInitialized();
+    error RedeemTransferOutNotPossible();
+    error BorrowCashNotAvailable();
+    error SelfLiquidationNotAllowed();
+    error LendtrollerMismatch();
+    error ValidationFailed();
+    error ReduceReservesCashNotAvailable();
+    error ReduceReservesCashValidation();
+
+    ////////// States //////////
+
+    // Scaler for preserving floating point math precision
+    uint256 internal constant expScale = 1e18;
+
+    /// @notice Indicator that this is a CToken contract (for inspection)
+    bool public constant isCToken = true;
+
+    /// @notice EIP-20 token name for this token
+    string public name;
+
+    /// @notice EIP-20 token symbol for this token
+    string public symbol;
+
+    /// @notice EIP-20 token decimals for this token
+    uint8 public decimals;
+
+    // Maximum borrow rate that can ever be applied (.0005% / block)
+    uint256 internal constant borrowRateMaxScaled = 0.0005e16;
+
+    // Maximum fraction of interest that can be set aside for reserves
+    uint256 internal constant reserveFactorMaxScaled = 1e18;
+
+    /// @notice Administrator for this contract
+    address payable public admin;
+
+    /// @notice Pending administrator for this contract
+    address payable public pendingAdmin;
+
+    /// @notice Contract which oversees inter-cToken operations
+    Lendtroller public lendtroller;
+
+    /// @notice Model which tells what the current interest rate should be
+    InterestRateModel public interestRateModel;
+
+    // Initial exchange rate used when minting the first CTokens (used when totalSupply = 0)
+    uint256 internal initialExchangeRateScaled;
+
+    /// @notice Fraction of interest currently set aside for reserves
+    uint256 public reserveFactorScaled;
+
+    /// @notice Block number that interest was last accrued at
+    uint256 public override accrualBlockTimestamp;
+
+    /// @notice Accumulator of the total earned interest rate since the opening of the market
+    uint256 public borrowIndex;
+
+    /// @notice Total amount of outstanding borrows of the underlying in this market
+    uint256 public totalBorrows;
+
+    /// @notice Total amount of reserves of the underlying held in this market
+    uint256 public totalReserves;
+
+    /// @notice Total number of tokens in circulation
+    uint256 public totalSupply;
+
+    // Official record of token balances for each account
+    mapping(address => uint256) internal accountTokens;
+
+    // Approved token transfer amounts on behalf of others
+    mapping(address => mapping(address => uint256))
+        internal transferAllowances;
+
+    /// @notice Container for borrow balance information
+    /// @member principal Total balance (with accrued interest), after applying the most recent balance-changing action
+    /// @member interestIndex Global borrowIndex as of the most recent balance-changing action
+    struct BorrowSnapshot {
+        uint256 principal;
+        uint256 interestIndex;
+    }
+
+    // Mapping of account addresses to outstanding borrow balances
+    mapping(address => BorrowSnapshot) internal accountBorrows;
+
+    /// @notice Share of seized collateral that is added to reserves
+    uint256 public constant protocolSeizeShareScaled = 2.8e16; // 2.8%
+
     ////////// INITIALIZATION //////////
     /// @notice Initialize the money market
     /// @param lendtroller_ The address of the Lendtroller
@@ -373,7 +567,8 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         }
 
         // Calculate the number of blocks elapsed since the last accrual
-        uint256 blockDelta = currentBlockTimestamp - accrualBlockTimestampPrior;
+        uint256 blockDelta = currentBlockTimestamp -
+            accrualBlockTimestampPrior;
 
         // Calculate the interest accumulated into borrows and reserves and the new index:
         // simpleInterestFactor = borrowRate * blockDelta
@@ -760,7 +955,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
     function liquidateBorrowInternal(
         address borrower,
         uint256 repayAmount,
-        CTokenInterface cTokenCollateral
+        ICToken cTokenCollateral
     ) internal nonReentrant {
         // Accrue interest in both locations
         accrueInterest();
@@ -785,7 +980,7 @@ abstract contract CToken is ReentrancyGuard, CTokenInterface {
         address liquidator,
         address borrower,
         uint256 repayAmount,
-        CTokenInterface cTokenCollateral
+        ICToken cTokenCollateral
     ) internal {
         // Fail if liquidate not allowed
         lendtroller.liquidateBorrowAllowed(

@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import "../../../interfaces/market/IEIP20NonStandard.sol";
-import "./CErc20Storage.sol";
-import "./CTokenInterface.sol";
+import "./IEIP20NonStandard.sol";
+import "./ICToken.sol";
 
-abstract contract CErc20Interface is CErc20Storage {
+abstract contract ICErc20 {
     /// User Interface
 
     function mint(uint256 mintAmount) external virtual returns (bool);
@@ -26,7 +25,7 @@ abstract contract CErc20Interface is CErc20Storage {
     function liquidateBorrow(
         address borrower,
         uint256 repayAmount,
-        CTokenInterface cTokenCollateral
+        ICToken cTokenCollateral
     ) external virtual;
 
     function sweepToken(IEIP20NonStandard token) external virtual;

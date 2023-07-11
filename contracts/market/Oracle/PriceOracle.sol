@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import "contracts/token/collateral/CToken.sol";
+import "contracts/market/collateral/CToken.sol";
 
 abstract contract PriceOracle {
     /// @notice Indicator that this is a PriceOracle contract (for inspection)

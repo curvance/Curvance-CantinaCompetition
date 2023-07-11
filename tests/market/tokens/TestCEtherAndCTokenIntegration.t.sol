@@ -262,7 +262,7 @@ contract TestCEtherAndCTokenIntegration is TestBaseMarket {
         vm.prank(liquidator);
         dai.approve(address(cDAI), 100e18);
         vm.prank(liquidator);
-        cDAI.liquidateBorrow(user, 12e18, CTokenInterface(cDAI));
+        cDAI.liquidateBorrow(user, 12e18, ICToken(cDAI));
         assertEq(cDAI.balanceOf(liquidator), 5832000000000000000);
 
         // liquidateBorrow ETH

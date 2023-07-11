@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import "contracts/token/collateral/CToken.sol";
+import "contracts/market/collateral/CToken.sol";
 
 abstract contract RewardsInterface {
     ////////// ERRORS //////////
@@ -34,9 +34,9 @@ abstract contract RewardsInterface {
     /// @notice Emitted when CVE is granted by admin
     event CveGranted(address recipient, uint256 amount);
 
-    function updateCveSupplyIndexExternal(address cTokenCollateral)
-        external
-        virtual;
+    function updateCveSupplyIndexExternal(
+        address cTokenCollateral
+    ) external virtual;
 
     function distributeSupplierCveExternal(
         address cTokenCollateral,

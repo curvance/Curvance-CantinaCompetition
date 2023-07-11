@@ -6,8 +6,8 @@ import "contracts/market/interestRates/JumpRateModelV2.sol";
 import "contracts/market/interestRates/InterestRateModel.sol";
 import "contracts/market/Oracle/PriceOracle.sol";
 import "contracts/market/Oracle/SimplePriceOracle.sol";
-import "contracts/token/collateral/CErc20.sol";
-import "contracts/token/collateral/CEther.sol";
+import "contracts/market/collateral/CErc20.sol";
+import "contracts/market/collateral/CEther.sol";
 import "contracts/gauge/GaugeController.sol";
 
 import "tests/market/deploy.sol";
