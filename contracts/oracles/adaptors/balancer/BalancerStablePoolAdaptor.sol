@@ -6,14 +6,9 @@ import { IBalancerPool } from "contracts/interfaces/external/balancer/IBalancerP
 import { IRateProvider } from "contracts/interfaces/external/balancer/IRateProvider.sol";
 import { IOracleAdaptor, PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { PriceRouter } from "contracts/oracles/PriceRouterV2.sol";
+import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 
 contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
-    
-    constructor(
-        ICentralRegistry _centralRegistry,
-        IVault _balancerVault
-    ) BalancerPoolAdaptor(_centralRegistry, _balancerVault) {}
 
     /// @notice Adaptor storage
     /// @param poolId the pool id of the BPT being priced
@@ -34,56 +29,10 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
     /// @notice Balancer Stable Pool Adaptor Storage
     mapping(address => AdaptorData) public adaptorData;
 
-    /**
-     * @notice Add a Balancer Stable Pool Bpt as an asset.
-     * @dev Should be called before `PriceRotuer:addAssetPriceFeed` is called.
-     * @param _asset the address of the bpt to add
-     * @param _data AdaptorData needed to add `_asset`
-     */
-    function addAsset(
-        address _asset,
-        AdaptorData memory _data
-    ) external onlyDaoManager {
-        require(
-            !isSupportedAsset[_asset],
-            "BalancerStablePoolAdaptor: asset already supported"
-        );
-        IBalancerPool pool = IBalancerPool(_asset);
+    /// @notice Error code for bad source.
+    uint256 public constant BAD_SOURCE = 2;
 
-        // Grab the poolId and decimals.
-        _data.poolId = pool.getPoolId();
-        _data.poolDecimals = pool.decimals();
-
-        PriceRouter priceRouter = PriceRouter(centralRegistry.priceRouter());
-
-        uint256 numUnderlyingOrConstituent = _data
-            .underlyingOrConstituent
-            .length;
-
-        // Make sure we can price all underlying tokens.
-        for (uint256 i; i < numUnderlyingOrConstituent; ++i) {
-            // Break when a zero address is found.
-            if (address(_data.underlyingOrConstituent[i]) == address(0)) break;
-            require(
-                priceRouter.isSupportedAsset(_data.underlyingOrConstituent[i]),
-                "BalancerStablePoolAdaptor: unsupported dependent"
-            );
-            if (_data.rateProviders[i] != address(0)) {
-                // Make sure decimals were provided.
-                require(
-                    _data.rateProviderDecimals[i] > 0,
-                    "BalancerStablePoolAdaptor: rate decimals zero"
-                );
-                // Make sure we can call it and get a non zero value.
-                uint256 rate = IRateProvider(_data.rateProviders[i]).getRate();
-                require(rate > 0, "BalancerStablePoolAdaptor: zero rate");
-            }
-        }
-
-        // Save values in Adaptor storage.
-        adaptorData[_asset] = _data;
-        isSupportedAsset[_asset] = true;
-    }
+    constructor(ICentralRegistry _centralRegistry, IVault _balancerVault) BalancerPoolAdaptor(_centralRegistry, _balancerVault) {}
 
     /// @notice Called during pricing operations.
     /// @param _asset the bpt being priced
@@ -106,8 +55,7 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
         IBalancerPool pool = IBalancerPool(_asset);
 
         pData.inUSD = _isUsd;
-        PriceRouter priceRouter = PriceRouter(centralRegistry.priceRouter());
-        uint256 BAD_SOURCE = priceRouter.BAD_SOURCE();
+        IPriceRouter priceRouter = IPriceRouter(centralRegistry.priceRouter());
 
         // Find the minimum price of all the pool tokens.
         uint256 numUnderlyingOrConstituent = data
@@ -144,6 +92,55 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
         }
     }
 
+    /**
+     * @notice Add a Balancer Stable Pool Bpt as an asset.
+     * @dev Should be called before `PriceRotuer:addAssetPriceFeed` is called.
+     * @param _asset the address of the bpt to add
+     * @param _data AdaptorData needed to add `_asset`
+     */
+    function addAsset(
+        address _asset,
+        AdaptorData memory _data
+    ) external onlyDaoManager {
+        require(
+            !isSupportedAsset[_asset],
+            "BalancerStablePoolAdaptor: asset already supported"
+        );
+        IBalancerPool pool = IBalancerPool(_asset);
+
+        // Grab the poolId and decimals.
+        _data.poolId = pool.getPoolId();
+        _data.poolDecimals = pool.decimals();
+
+        uint256 numUnderlyingOrConstituent = _data
+            .underlyingOrConstituent
+            .length;
+
+        // Make sure we can price all underlying tokens.
+        for (uint256 i; i < numUnderlyingOrConstituent; ++i) {
+            // Break when a zero address is found.
+            if (address(_data.underlyingOrConstituent[i]) == address(0)) break;
+            require(
+                IPriceRouter(centralRegistry.priceRouter()).isSupportedAsset(_data.underlyingOrConstituent[i]),
+                "BalancerStablePoolAdaptor: unsupported dependent"
+            );
+            if (_data.rateProviders[i] != address(0)) {
+                // Make sure decimals were provided.
+                require(
+                    _data.rateProviderDecimals[i] > 0,
+                    "BalancerStablePoolAdaptor: rate decimals zero"
+                );
+                // Make sure we can call it and get a non zero value.
+                uint256 rate = IRateProvider(_data.rateProviders[i]).getRate();
+                require(rate > 0, "BalancerStablePoolAdaptor: zero rate");
+            }
+        }
+
+        // Save values in Adaptor storage.
+        adaptorData[_asset] = _data;
+        isSupportedAsset[_asset] = true;
+    }
+
     /// @notice Removes a supported asset from the adaptor.
     /// @dev Calls back into price router to notify it of its removal
     function removeAsset(address _asset) external override onlyDaoManager {
@@ -151,9 +148,13 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
             isSupportedAsset[_asset],
             "BalancerStablePoolAdaptor: asset not supported"
         );
-        PriceRouter priceRouter = PriceRouter(centralRegistry.priceRouter());
-        isSupportedAsset[_asset] = false;
+
+        /// Notify the adaptor to stop supporting the asset 
+        delete isSupportedAsset[_asset];
+        /// Wipe config mapping entries for a gas refund
         delete adaptorData[_asset];
-        priceRouter.notifyAssetPriceFeedRemoval(_asset);
+
+        /// Notify the price router that we are going to stop supporting the asset 
+        IPriceRouter(centralRegistry.priceRouter()).notifyAssetPriceFeedRemoval(_asset);
     }
 }
