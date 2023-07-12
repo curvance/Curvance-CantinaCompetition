@@ -146,7 +146,10 @@ contract PriceRouter {
         feedData memory feed0 = getPriceFromFeed(_asset, 0, _inUSD, _getLower);
         feedData memory feed1 = getPriceFromFeed(_asset, 1, _inUSD, _getLower);
 
+        /// Check if we had any working price feeds, if not we need to block any market operations
         if (feed0.hadError && feed1.hadError) return (0, BAD_SOURCE);
+
+        /// Check if we had an error in either price that should limit borrowing
         if (feed0.hadError || feed1.hadError) {
             return (getWorkingPrice(feed0, feed1), CAUTION);
         }
@@ -272,12 +275,14 @@ contract PriceRouter {
         uint256 b
     ) internal view returns (uint256, uint256) {
         if (a <= b) {
+            /// Check if both feeds are within PRICEFEED_MAXIMUM_DIVERGENCE of each other
             if (((a * PRICEFEED_MAXIMUM_DIVERGENCE) / DENOMINATOR) < b) {
                 return (0, CAUTION);
             }
             return (a, NO_ERROR);
         }
 
+        /// Check if both feeds are within PRICEFEED_MAXIMUM_DIVERGENCE of each other
         if (((b * PRICEFEED_MAXIMUM_DIVERGENCE) / DENOMINATOR) < a) {
             return (0, CAUTION);
         }
@@ -296,13 +301,15 @@ contract PriceRouter {
         uint256 b
     ) internal view returns (uint256, uint256) {
         if (a >= b) {
-            if (((a * PRICEFEED_MAXIMUM_DIVERGENCE) / DENOMINATOR) < b) {
+            /// Check if both feeds are within PRICEFEED_MAXIMUM_DIVERGENCE of each other
+            if (((b * PRICEFEED_MAXIMUM_DIVERGENCE) / DENOMINATOR) < a) {
                 return (0, CAUTION);
             }
             return (a, NO_ERROR);
         }
 
-        if (((b * PRICEFEED_MAXIMUM_DIVERGENCE) / DENOMINATOR) < a) {
+        /// Check if both feeds are within PRICEFEED_MAXIMUM_DIVERGENCE of each other
+        if (((a * PRICEFEED_MAXIMUM_DIVERGENCE) / DENOMINATOR) < b) {
             return (0, CAUTION);
         }
         return (b, NO_ERROR);
@@ -310,7 +317,6 @@ contract PriceRouter {
 
     /// @notice Returns the price from the working feed between two feeds.
     /// @dev If the first feed had an error, it returns the price from the second feed.
-    /// We know based on context of when this function is called that one but not both feeds have an error.
     /// @param feed0 The first feed's data.
     /// @param feed1 The second feed's data.
     /// @return The price from the working feed.
@@ -318,6 +324,8 @@ contract PriceRouter {
         feedData memory feed0,
         feedData memory feed1
     ) internal pure returns (uint256) {
+        /// We know based on context of when this function is called that one but not both feeds have an error.
+        /// So if feed0 had the error, feed1 is okay, and vice versa
         if (feed0.hadError) return feed1.price;
         return feed0.price;
     }
@@ -336,12 +344,14 @@ contract PriceRouter {
         require(numAssetPriceFeeds > 0, "priceRouter: no feeds available");
         feedData[] memory data = new feedData[](numAssetPriceFeeds * 2);
 
+        /// If the asset only has one price feed, we know itll be in feed slot 0 so get both prices and return
         if (numAssetPriceFeeds < 2) {
             data[0] = getPriceFromFeed(_asset, 0, _inUSD, true);
             data[1] = getPriceFromFeed(_asset, 0, _inUSD, false);
             return data;
         }
 
+        /// We know the asset has two price feeds, so get pricing from both feeds and return
         data[0] = getPriceFromFeed(_asset, 0, _inUSD, true);
         data[1] = getPriceFromFeed(_asset, 0, _inUSD, false);
         data[2] = getPriceFromFeed(_asset, 1, _inUSD, true);
@@ -455,14 +465,14 @@ contract PriceRouter {
     }
 
     /// @notice Sets a new maximum divergence for price feeds.
-    /// @dev Requires that the new divergence is greater than 10500 aka 5%.
+    /// @dev Requires that the new divergence is greater than or equal to 10200 aka 2%.
     /// @param _maxDivergence The new maximum divergence.
     function setPriceFeedMaxDivergence(
         uint256 _maxDivergence
     ) external onlyDaoManager {
         require(
-            _maxDivergence > 10500,
-            "priceRouter: divergence is too small"
+            _maxDivergence >= 10200,
+            "priceRouter: divergence check is too small"
         );
         PRICEFEED_MAXIMUM_DIVERGENCE = _maxDivergence;
     }
