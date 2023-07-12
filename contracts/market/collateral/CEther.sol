@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import "./CToken.sol";
+import { CToken } from "contracts/market/collateral/CToken.sol";
+import { InterestRateModel } from "contracts/market/interestRates/InterestRateModel.sol";
 
 /// @title Curvance's CEther Contract
 /// @notice CToken which wraps Ether

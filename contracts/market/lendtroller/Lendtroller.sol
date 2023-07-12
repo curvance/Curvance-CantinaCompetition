@@ -9,124 +9,6 @@ import { PriceOracle } from "../Oracle/PriceOracle.sol";
 /// @author Curvance - Based on Curvance Finance
 /// @notice Manages risk within the lending & collateral markets
 contract Lendtroller is ILendtroller {
-    ////////// Errors //////////
-
-    error MarketNotListed(address);
-    error AddressAlreadyJoined();
-    error NonZeroBorrowBalance(); /// Take a look here, could soften the landing
-    error Paused();
-    error InsufficientLiquidity();
-    error PriceError();
-    error BorrowCapReached();
-    error InsufficientShortfall();
-    error TooMuchRepay();
-    error LendtrollerMismatch();
-    error MarketAlreadyListed();
-    error InvalidValue();
-    error AddressUnauthorized();
-
-    ////////// Structs //////////
-
-    struct Market {
-        // Whether or not this market is listed
-        bool isListed;
-        //  Multiplier representing the most one can borrow against their collateral in this market.
-        //  For instance, 0.9 to allow borrowing 90% of collateral value.
-        //  Must be between 0 and 1, and stored as a mantissa.
-        uint256 collateralFactorScaled;
-        // Per-market mapping of "accounts in this asset"
-        mapping(address => bool) accountMembership;
-        // Whether or not this market receives CVE
-        bool isComped;
-    }
-
-    struct Reward {
-        bool isReward;
-        uint256 amount;
-    }
-
-    struct User {
-        /// All markets a user is in
-        mapping(ICToken => uint256) userFunds;
-        /// Reward Token to accrued balance
-        mapping(address => uint256) userBaseRewards;
-        /// market to userIsBoosted
-        mapping(ICToken => bool) userIsBoosted;
-    }
-
-    ////////// Events //////////
-
-    /// @notice Emitted when an admin supports a market
-    event MarketListed(ICToken cToken);
-
-    /// @notice Emitted when an account enters a market
-    event MarketEntered(ICToken cToken, address account);
-
-    /// @notice Emitted when an account exits a market
-    event MarketExited(ICToken cToken, address account);
-
-    /// @notice Emitted when close factor is changed by admin
-    event NewCloseFactor(
-        uint256 oldCloseFactorScaled,
-        uint256 newCloseFactorScaled
-    );
-
-    /// @notice Emitted when a collateral factor is changed by admin
-    event NewCollateralFactor(
-        ICToken cToken,
-        uint256 oldCollateralFactorScaled,
-        uint256 newCollateralFactorScaled
-    );
-
-    /// @notice Emitted when liquidation incentive is changed by admin
-    event NewLiquidationIncentive(
-        uint256 oldLiquidationIncentiveScaled,
-        uint256 newLiquidationIncentiveScaled
-    );
-
-    /// @notice Emitted when price oracle is changed
-    event NewPriceOracle(
-        PriceOracle oldPriceOracle,
-        PriceOracle newPriceOracle
-    );
-
-    /// @notice Emitted when pause guardian is changed
-    event NewPauseGuardian(address oldPauseGuardian, address newPauseGuardian);
-
-    /// @notice Emitted when an action is paused globally
-    event ActionPaused(string action, bool pauseState);
-
-    /// @notice Emitted when an action is paused on a market
-    event ActionPaused(ICToken cToken, string action, bool pauseState);
-
-    /// @notice Emitted when borrow cap for a cToken is changed
-    event NewBorrowCap(ICToken indexed cToken, uint256 newBorrowCap);
-
-    /// @notice Emitted when borrow cap for a cToken is changed
-    event SetDisableCollateral(ICToken indexed cToken, bool disable);
-
-    /// @notice Emitted when borrow cap for a cToken is changed
-    event SetUserDisableCollateral(
-        address indexed user,
-        ICToken indexed cToken,
-        bool disable
-    );
-
-    /// @notice Emitted when borrow cap guardian is changed
-    event NewBorrowCapGuardian(
-        address oldBorrowCapGuardian,
-        address newBorrowCapGuardian
-    );
-
-    /// @notice Emitted when rewards contract address is changed
-    // event NewRewardContract(RewardsInterface oldRewarder, RewardsInterface newRewarder);
-
-    /// @notice Emitted when position folding contract address is changed
-    event NewPositionFoldingContract(
-        address indexed oldPositionFolding,
-        address indexed newPositionFolding
-    );
-
     ////////// Constants //////////
 
     /// @notice Indicator that this is a Lendtroller contract (for inspection)
@@ -180,7 +62,7 @@ contract Lendtroller is ILendtroller {
 
     /// @notice Official mapping of cTokens -> Market metadata
     /// @dev Used e.g. to determine if a market is supported
-    mapping(address => Market) public markets;
+    mapping(address => ILendtroller.Market) public markets;
 
     /// @notice A list of all markets
     ICToken[] public allMarkets;
@@ -250,7 +132,7 @@ contract Lendtroller is ILendtroller {
         ICToken cToken,
         address borrower
     ) internal returns (uint256) {
-        Market storage marketToJoin = markets[address(cToken)];
+        ILendtroller.Market storage marketToJoin = markets[address(cToken)];
 
         if (!marketToJoin.isListed) {
             // market is not listed, cannot join
@@ -295,7 +177,7 @@ contract Lendtroller is ILendtroller {
         /* Fail if the sender is not permitted to redeem all of their tokens */
         redeemAllowedInternal(cTokenAddress, msg.sender, tokensHeld);
 
-        Market storage marketToExit = markets[address(cToken)];
+        ILendtroller.Market storage marketToExit = markets[address(cToken)];
 
         /* Return true if the sender is not already ‘in’ the market */
         if (!marketToExit.accountMembership[msg.sender]) {
@@ -825,7 +707,7 @@ contract Lendtroller is ILendtroller {
         // Set lendtroller's oracle to newOracle
         oracle = newOracle;
 
-        emit NewPriceOracle(oldOracle, newOracle);
+        emit NewPriceOracle(address(oldOracle), address(newOracle));
     }
 
     /// @notice Sets the closeFactor used when liquidating borrows
@@ -856,7 +738,7 @@ contract Lendtroller is ILendtroller {
         }
 
         // Verify market is listed
-        Market storage market = markets[address(cToken)];
+        ILendtroller.Market storage market = markets[address(cToken)];
         if (!market.isListed) {
             revert MarketNotListed(address(cToken));
         }
@@ -923,7 +805,7 @@ contract Lendtroller is ILendtroller {
         cToken.isCToken(); // Sanity check to make sure its really a ICToken
 
         // Note that isComped is not in active use anymore
-        Market storage market = markets[address(cToken)];
+        ILendtroller.Market storage market = markets[address(cToken)];
         market.isListed = true;
         market.isComped = false;
         market.collateralFactorScaled = 0;

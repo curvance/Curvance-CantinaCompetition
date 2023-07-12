@@ -4,22 +4,19 @@ pragma solidity ^0.8.17;
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import "contracts/interfaces/market/IDelegateToken.sol";
-import "contracts/interfaces/market/IEIP20NonStandard.sol";
-import "./CToken.sol";
-import "../../interfaces/market/ICErc20.sol";
+import { ICErc20 } from "contracts/interfaces/market/ICErc20.sol";
+import { ICToken } from "contracts/interfaces/market/ICToken.sol";
+import { IDelegateToken } from "contracts/interfaces/market/IDelegateToken.sol";
+import { IEIP20 } from "contracts/interfaces/market/IEIP20.sol";
+import { IEIP20NonStandard } from "contracts/interfaces/market/IEIP20NonStandard.sol";
+import { CToken } from "contracts/market/collateral/CToken.sol";
+import { InterestRateModel } from "contracts/market/interestRates/InterestRateModel.sol";
 
 /// @title Curvance's CErc20 Contract
 /// @notice CTokens which wrap an EIP-20 underlying
 /// @author Curvance
 contract CErc20 is ICErc20, CToken {
     using SafeERC20 for IERC20;
-
-    ////////// Errors //////////
-
-    error InvalidUnderlying();
-    error TransferFailure();
-    error ActionFailure();
 
     ////////// States //////////
 

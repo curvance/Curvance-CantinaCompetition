@@ -5,6 +5,12 @@ import "./IEIP20NonStandard.sol";
 import "./ICToken.sol";
 
 interface ICErc20 {
+    ////////// Errors //////////
+
+    error InvalidUnderlying();
+    error TransferFailure();
+    error ActionFailure();
+
     /// User Interface
 
     function mint(uint256 mintAmount) external returns (bool);
