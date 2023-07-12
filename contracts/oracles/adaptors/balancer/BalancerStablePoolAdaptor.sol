@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.17;
+pragma solidity ^0.8.17;
 
 import { BalancerPoolAdaptor, IVault } from "./BalancerPoolAdaptor.sol";
 import { IBalancerPool } from "contracts/interfaces/external/balancer/IBalancerPool.sol";
@@ -9,7 +9,6 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 
 contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
-
     /// @notice Adaptor storage
     /// @param poolId the pool id of the BPT being priced
     /// @param poolDecimals the decimals of the BPT being priced
@@ -32,7 +31,10 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
     /// @notice Error code for bad source.
     uint256 public constant BAD_SOURCE = 2;
 
-    constructor(ICentralRegistry _centralRegistry, IVault _balancerVault) BalancerPoolAdaptor(_centralRegistry, _balancerVault) {}
+    constructor(
+        ICentralRegistry _centralRegistry,
+        IVault _balancerVault
+    ) BalancerPoolAdaptor(_centralRegistry, _balancerVault) {}
 
     /// @notice Called during pricing operations.
     /// @param _asset the bpt being priced
@@ -92,12 +94,10 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
         }
     }
 
-    /**
-     * @notice Add a Balancer Stable Pool Bpt as an asset.
-     * @dev Should be called before `PriceRotuer:addAssetPriceFeed` is called.
-     * @param _asset the address of the bpt to add
-     * @param _data AdaptorData needed to add `_asset`
-     */
+    /// @notice Add a Balancer Stable Pool Bpt as an asset.
+    /// @dev Should be called before `PriceRotuer:addAssetPriceFeed` is called.
+    /// @param _asset the address of the bpt to add
+    /// @param _data AdaptorData needed to add `_asset`
     function addAsset(
         address _asset,
         AdaptorData memory _data
@@ -121,7 +121,9 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
             // Break when a zero address is found.
             if (address(_data.underlyingOrConstituent[i]) == address(0)) break;
             require(
-                IPriceRouter(centralRegistry.priceRouter()).isSupportedAsset(_data.underlyingOrConstituent[i]),
+                IPriceRouter(centralRegistry.priceRouter()).isSupportedAsset(
+                    _data.underlyingOrConstituent[i]
+                ),
                 "BalancerStablePoolAdaptor: unsupported dependent"
             );
             if (_data.rateProviders[i] != address(0)) {
@@ -149,12 +151,13 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
             "BalancerStablePoolAdaptor: asset not supported"
         );
 
-        /// Notify the adaptor to stop supporting the asset 
+        /// Notify the adaptor to stop supporting the asset
         delete isSupportedAsset[_asset];
         /// Wipe config mapping entries for a gas refund
         delete adaptorData[_asset];
 
-        /// Notify the price router that we are going to stop supporting the asset 
-        IPriceRouter(centralRegistry.priceRouter()).notifyAssetPriceFeedRemoval(_asset);
+        /// Notify the price router that we are going to stop supporting the asset
+        IPriceRouter(centralRegistry.priceRouter())
+            .notifyAssetPriceFeedRemoval(_asset);
     }
 }
