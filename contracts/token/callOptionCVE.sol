@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import "@openzeppelin/contracts/interfaces/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "contracts/libraries/ERC20.sol";
-import "contracts/interfaces/ICentralRegistry.sol";
+import { SafeTransferLib } from "../libraries/SafeTransferLib.sol";
+import { ERC20 } from "../libraries/ERC20.sol";
 
-error InvalidExercise();
+import { IERC20 } from "../interfaces/IERC20.sol";
+import { IPriceRouter } from "../interfaces/IPriceRouter.sol";
+import { ICentralRegistry } from "../interfaces/ICentralRegistry.sol";
 
 contract callOptionCVE is ERC20 {
     event RemainingCVEWithdrawn(uint256 amount);
@@ -16,33 +16,33 @@ contract callOptionCVE is ERC20 {
     string private _symbol;
 
     ICentralRegistry public immutable centralRegistry;
-    IERC20 public immutable paymentToken;
-    uint256 public immutable paymentTokenPricePerCVE;
+    address public immutable cve;
+    address public immutable paymentToken;
+    uint256 public paymentTokenPerCVE;
 
     uint256 optionsStartTimestamp;
     uint256 optionsEndTimestamp;
 
-    // USDC is 6 decimals and CVE is 18 decimals so we need to offset by 10e12 + report number in basis points
-    uint256 public constant denominatorOffset = 10000000000000000;
+    // Will need to offset to match differential in decimals between strike price vs oracle pricing
+    uint256 public constant denominatorOffset = 1e18;
 
     /// @param name_ The name of the token.
     /// @param symbol_ The symbol of the token.
     /// @param _paymentToken The token used for payment when exercising options.
-    /// @param _paymentTokenPricePerCVE The price of the payment token per CVE.
     /// @param _centralRegistry The Central Registry contract address.
     constructor(
         string memory name_,
         string memory symbol_,
-        IERC20 _paymentToken,
-        uint256 _paymentTokenPricePerCVE,
-        ICentralRegistry _centralRegistry
+        ICentralRegistry _centralRegistry,
+        address _paymentToken
     ) {
         _name = name_;
         _symbol = symbol_;
-        paymentToken = _paymentToken;
-        paymentTokenPricePerCVE = _paymentTokenPricePerCVE;
         centralRegistry = _centralRegistry;
-        _mint(msg.sender, 7560001.242 ether);
+        paymentToken = _paymentToken;
+        cve = centralRegistry.CVE();
+
+        _mint(msg.sender, 7560001.242 ether);// total call option allocation for airdrops
     }
 
     modifier onlyDaoManager() {
@@ -70,23 +70,30 @@ contract callOptionCVE is ERC20 {
 
     /// @notice Exercise CVE call options.
     /// @param _amount The amount of options to exercise.
-    function exerciseOption(uint256 _amount) public {
-        require(optionsExercisable(), "Options not exercisable yet");
-        if (IERC20(centralRegistry.CVE()).balanceOf(address(this)) <= _amount)
-            revert InvalidExercise();
-        if (_amount == 0) revert InvalidExercise();
+    function exerciseOption(uint256 _amount) public payable {
+        require(optionsExercisable(), "callOptionCVE: Options not exercisable yet");
+        require(IERC20(cve).balanceOf(address(this)) >= _amount, "callOptionCVE: not enough CVE remaining");
+        require(_amount > 0, "callOptionCVE: invalid amount");
 
-        SafeERC20.safeTransferFrom(
-            paymentToken,
-            msg.sender,
-            address(this),
-            (_amount * paymentTokenPricePerCVE) / denominatorOffset
-        );
-        SafeERC20.safeTransfer(
-            IERC20(centralRegistry.CVE()),
+        uint256 optionExerciseCost = (_amount * paymentTokenPerCVE) / denominatorOffset;
+
+        if (paymentToken == address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE)) {
+            require(msg.value >= optionExerciseCost, "callOptionCVE: invalid msg value");
+        } else {
+            SafeTransferLib.safeTransferFrom(
+                paymentToken,
+                msg.sender,
+                address(this),
+                optionExerciseCost
+            );
+        }
+        
+        SafeTransferLib.safeTransfer(
+            cve,
             msg.sender,
             _amount
         );
+
         emit callOptionCVEExercised(msg.sender, _amount);
     }
 
@@ -101,21 +108,21 @@ contract callOptionCVE is ERC20 {
     ) external onlyDaoManager {
         require(
             _recipient != address(0),
-            "rescueToken: Invalid recipient address"
+            "callOptionCVE: Invalid recipient address"
         );
         if (_token == address(0)) {
             require(
                 address(this).balance >= _amount,
-                "rescueToken: Insufficient balance"
+                "callOptionCVE: Insufficient balance"
             );
             (bool success, ) = payable(_recipient).call{ value: _amount }("");
-            require(success, "rescueToken: !successful");
+            require(success, "callOptionCVE: !successful");
         } else {
             require(
                 IERC20(_token).balanceOf(address(this)) >= _amount,
-                "rescueToken: Insufficient balance"
+                "callOptionCVE: Insufficient balance"
             );
-            SafeERC20.safeTransfer(IERC20(_token), _recipient, _amount);
+            SafeTransferLib.safeTransfer(_token, _recipient, _amount);
         }
     }
 
@@ -123,12 +130,12 @@ contract callOptionCVE is ERC20 {
     function withdrawRemainingAirdropTokens() external onlyDaoManager {
         require(
             block.timestamp > optionsEndTimestamp,
-            "withdrawRemainingAirdropTokens: Too early"
+            "callOptionCVE: Too early"
         );
         uint256 tokensToWithdraw = IERC20(centralRegistry.callOptionCVE())
             .balanceOf(address(this));
-        SafeERC20.safeTransfer(
-            IERC20(centralRegistry.CVE()),
+        SafeTransferLib.safeTransfer(
+            cve,
             msg.sender,
             tokensToWithdraw
         );
@@ -137,16 +144,38 @@ contract callOptionCVE is ERC20 {
 
     /// @notice Set the options expiry timestamp.
     /// @param _timestampStart The start timestamp for options exercising.
-    function setOptionsExpiry(
-        uint256 _timestampStart
+    /// @param _strikePrice The price in USD of CVE in 1e36 format.
+    function setOptionsTerms(
+        uint256 _timestampStart,
+        uint256 _strikePrice
     ) external onlyDaoManager {
         require(
-            paymentTokenPricePerCVE != 0 &&
-                paymentToken != IERC20(address(0)) &&
-                optionsStartTimestamp != 0,
-            "Cannot Configure Options"
+            _strikePrice != 0 &&
+                paymentToken != address(0) &&
+                _timestampStart != 0,
+            "callOptionCVE: Cannot Configure Options"
         );
+
+        if (optionsStartTimestamp > 0) {
+            require(optionsStartTimestamp > block.timestamp, "callOptionCVE: Options exercising already active");
+        }
+
         optionsStartTimestamp = _timestampStart;
+
+        /// Give them 4 weeks to exercise their options before they expire
         optionsEndTimestamp = optionsStartTimestamp + (4 weeks);
+
+        /// Get the current price of the payment token from the price router in USD and multiply it by the Strike Price to see how much per CVE they must pay
+        (uint256 paymentTokenCurrentPrice, uint256 error) = IPriceRouter(centralRegistry.priceRouter()).getPrice(paymentToken, true, true);
+
+        /// Make sure that we didnt have a catastrophic error when pricing the payment token 
+        require(error < 2, "callOptionCVE: error pulling paymentToken price");
+
+        /// The strike price should always be greater than the strike price since it will be in 1e36 format offset,
+        /// whereas paymentTokenCurrentPrice will be 1e18 so the price should always be larger 
+        require(_strikePrice > paymentTokenCurrentPrice, "callOptionCVE: invalid strike price configuration");
+
+        paymentTokenPerCVE = _strikePrice / paymentTokenCurrentPrice;
+
     }
 }
