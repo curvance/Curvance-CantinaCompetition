@@ -76,7 +76,7 @@ contract callOptionCVE is ERC20 {
         require(_amount > 0, "callOptionCVE: invalid amount");
         require(balanceOf(msg.sender) >= _amount, "callOptionCVE: not enough call options to exercise");
 
-        uint256 optionExerciseCost = (_amount * paymentTokenPerCVE) / denominatorOffset;
+        uint256 optionExerciseCost = _amount * paymentTokenPerCVE;
 
         /// Take their strike price payment
         if (paymentToken == address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE)) {
@@ -103,7 +103,7 @@ contract callOptionCVE is ERC20 {
         emit callOptionCVEExercised(msg.sender, _amount);
     }
 
-    /// @notice Rescue any token sent by mistake.
+    /// @notice Rescue any token sent by mistake, also used for removing .
     /// @param _token The token to rescue.
     /// @param _recipient The address to receive the rescued token.
     /// @param _amount The amount of tokens to rescue.
@@ -114,32 +114,33 @@ contract callOptionCVE is ERC20 {
     ) external onlyDaoManager {
         require(
             _recipient != address(0),
-            "callOptionCVE: Invalid recipient address"
+            "callOptionCVE: invalid recipient address"
         );
+        
         if (_token == address(0)) {
             require(
                 address(this).balance >= _amount,
-                "callOptionCVE: Insufficient balance"
+                "callOptionCVE: insufficient balance"
             );
             (bool success, ) = payable(_recipient).call{ value: _amount }("");
             require(success, "callOptionCVE: !successful");
         } else {
+            require(_token != cve, "callOptionCVE: cannot withdraw CVE");
             require(
                 IERC20(_token).balanceOf(address(this)) >= _amount,
-                "callOptionCVE: Insufficient balance"
+                "callOptionCVE: insufficient balance"
             );
             SafeTransferLib.safeTransfer(_token, _recipient, _amount);
         }
     }
 
-    /// @notice Withdraws CVE from unexercised CVE call options to contract Owner after exercising period has ended
+    /// @notice Withdraws CVE from unexercised CVE call options to DAO after exercising period has ended
     function withdrawRemainingAirdropTokens() external onlyDaoManager {
         require(
             block.timestamp > optionsEndTimestamp,
             "callOptionCVE: Too early"
         );
-        uint256 tokensToWithdraw = IERC20(centralRegistry.callOptionCVE())
-            .balanceOf(address(this));
+        uint256 tokensToWithdraw = IERC20(cve).balanceOf(address(this));
         SafeTransferLib.safeTransfer(
             cve,
             msg.sender,
@@ -181,7 +182,7 @@ contract callOptionCVE is ERC20 {
         /// whereas paymentTokenCurrentPrice will be 1e18 so the price should always be larger 
         require(_strikePrice > paymentTokenCurrentPrice, "callOptionCVE: invalid strike price configuration");
 
-        paymentTokenPerCVE = _strikePrice / paymentTokenCurrentPrice;
+        paymentTokenPerCVE = (_strikePrice / paymentTokenCurrentPrice) / denominatorOffset;
 
     }
 }
