@@ -123,11 +123,11 @@ abstract contract CToken is ReentrancyGuard, ICToken {
         // Set the lendtroller
         _setLendtroller(ILendtroller(lendtroller_));
 
-        // Initialize block number and borrow index (block number mocks depend on lendtroller being set)
+        // Initialize timestamp and borrow index (timestamp mocks depend on lendtroller being set)
         accrualBlockTimestamp = getBlockTimestamp();
         borrowIndex = expScale;
 
-        // Set the interest rate model (depends on block number / borrow index)
+        // Set the interest rate model (depends on timestamp / borrow index)
         _setInterestRateModelFresh(interestRateModel_);
 
         name = name_;
@@ -284,9 +284,9 @@ abstract contract CToken is ReentrancyGuard, ICToken {
         );
     }
 
-    /// @dev Function to simply retrieve block number
+    /// @dev Function to simply retrieve timestamp
     ///  This exists mainly for inheriting test contracts to stub this result.
-    /// @return The current block number
+    /// @return The current timestamp
     function getBlockTimestamp() internal view virtual returns (uint256) {
         return block.timestamp;
     }
@@ -424,7 +424,7 @@ abstract contract CToken is ReentrancyGuard, ICToken {
     /// @dev This calculates interest accrued from the last checkpointed block
     ///   up to the current block and writes new checkpoint to storage.
     function accrueInterest() public virtual override {
-        // Remember the initial block number
+        // Remember the initial timestamp
         uint256 currentBlockTimestamp = getBlockTimestamp();
         uint256 accrualBlockTimestampPrior = accrualBlockTimestamp;
 
@@ -513,7 +513,7 @@ abstract contract CToken is ReentrancyGuard, ICToken {
         // Fail if mint not allowed
         lendtroller.mintAllowed(address(this), minter); //, mintAmount);
 
-        // Verify market's block number equals current block number
+        // Verify market's timestamp equals current timestamp
         if (accrualBlockTimestamp != getBlockTimestamp()) {
             revert FailedFreshnessCheck();
         }
@@ -628,7 +628,7 @@ abstract contract CToken is ReentrancyGuard, ICToken {
         uint256 redeemAmount,
         address payable recipient
     ) internal nonReentrant {
-        // Verify market's block number equals current block number
+        // Verify market's timestamp equals current timestamp
         if (accrualBlockTimestamp != getBlockTimestamp()) {
             revert FailedFreshnessCheck();
         }
@@ -708,7 +708,7 @@ abstract contract CToken is ReentrancyGuard, ICToken {
         uint256 borrowAmount,
         address payable recipient
     ) internal {
-        // Verify market's block number equals current block number
+        // Verify market's timestamp equals current timestamp
         if (accrualBlockTimestamp != getBlockTimestamp()) {
             revert FailedFreshnessCheck();
         }
@@ -783,7 +783,7 @@ abstract contract CToken is ReentrancyGuard, ICToken {
         // Fail if repayBorrow not allowed
         lendtroller.repayBorrowAllowed(address(this), borrower); //, payer, repayAmount);
 
-        // Verify market's block number equals current block number
+        // Verify market's timestamp equals current timestamp
         if (accrualBlockTimestamp != getBlockTimestamp()) {
             revert FailedFreshnessCheck();
         }
@@ -873,12 +873,12 @@ abstract contract CToken is ReentrancyGuard, ICToken {
             repayAmount
         );
 
-        // Verify market's block number equals current block number
+        // Verify market's timestamp equals current timestamp
         if (accrualBlockTimestamp != getBlockTimestamp()) {
             revert FailedFreshnessCheck();
         }
 
-        // Verify cTokenCollateral market's block number equals current block number
+        // Verify cTokenCollateral market's timestamp equals current timestamp
         if (cTokenCollateral.accrualBlockTimestamp() != getBlockTimestamp()) {
             revert FailedFreshnessCheck();
         }
@@ -1105,7 +1105,7 @@ abstract contract CToken is ReentrancyGuard, ICToken {
             revert AddressUnauthorized();
         }
 
-        // Verify market's block number equals current block number
+        // Verify market's timestamp equals current timestamp
         if (accrualBlockTimestamp != getBlockTimestamp()) {
             revert FailedFreshnessCheck();
         }
@@ -1135,7 +1135,7 @@ abstract contract CToken is ReentrancyGuard, ICToken {
     /// @param addAmount Amount of addition to reserves
     /// return uint the actual amount added, net token fees
     function _addReservesFresh(uint256 addAmount) internal {
-        // We fail gracefully unless market's block number equals current block number
+        // We fail gracefully unless market's timestamp equals current timestamp
         if (accrualBlockTimestamp != getBlockTimestamp()) {
             revert FailedFreshnessCheck();
         }
@@ -1178,7 +1178,7 @@ abstract contract CToken is ReentrancyGuard, ICToken {
             revert AddressUnauthorized();
         }
 
-        // We fail gracefully unless market's block number equals current block number
+        // We fail gracefully unless market's timestamp equals current timestamp
         if (accrualBlockTimestamp != getBlockTimestamp()) {
             revert FailedFreshnessCheck();
         }
@@ -1229,7 +1229,7 @@ abstract contract CToken is ReentrancyGuard, ICToken {
             revert AddressUnauthorized();
         }
 
-        // We fail gracefully unless market's block number equals current block number
+        // We fail gracefully unless market's timestamp equals current timestamp
         if (accrualBlockTimestamp != getBlockTimestamp()) {
             revert FailedFreshnessCheck();
         }
