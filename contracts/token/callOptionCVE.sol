@@ -74,9 +74,11 @@ contract callOptionCVE is ERC20 {
         require(optionsExercisable(), "callOptionCVE: Options not exercisable yet");
         require(IERC20(cve).balanceOf(address(this)) >= _amount, "callOptionCVE: not enough CVE remaining");
         require(_amount > 0, "callOptionCVE: invalid amount");
+        require(balanceOf(msg.sender) >= _amount, "callOptionCVE: not enough call options to exercise");
 
         uint256 optionExerciseCost = (_amount * paymentTokenPerCVE) / denominatorOffset;
 
+        /// Take their strike price payment
         if (paymentToken == address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE)) {
             require(msg.value >= optionExerciseCost, "callOptionCVE: invalid msg value");
         } else {
@@ -87,7 +89,11 @@ contract callOptionCVE is ERC20 {
                 optionExerciseCost
             );
         }
+
+        /// Burn the call options
+        _burn(msg.sender, _amount);
         
+        /// Transfer them corresponding CVE 
         SafeTransferLib.safeTransfer(
             cve,
             msg.sender,
