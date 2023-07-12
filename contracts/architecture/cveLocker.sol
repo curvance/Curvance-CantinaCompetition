@@ -1,16 +1,15 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import "@openzeppelin/contracts/interfaces/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { SafeTransferLib } from "../libraries/SafeTransferLib.sol";
 
+import "../interfaces/IERC20.sol";
 import "../interfaces/IVeCVE.sol";
 import "../interfaces/ICveLocker.sol";
 import "../interfaces/ICvxLocker.sol";
-import "contracts/interfaces/ICentralRegistry.sol";
+import "../interfaces/ICentralRegistry.sol";
 
 contract cveLocker {
-    using SafeERC20 for IERC20;
 
     event TokenRecovered(address _token, address _to, uint256 _amount);
     event RewardPaid(
@@ -277,7 +276,7 @@ contract cveLocker {
     /// @param _spender The spender address
     function _approveTokenIfNeeded(address _token, address _spender) private {
         if (IERC20(_token).allowance(address(this), _spender) == 0) {
-            IERC20(_token).safeApprove(_spender, type(uint256).max);
+            SafeTransferLib.safeApprove(_token, _spender, type(uint256).max);
         }
     }
 
@@ -347,7 +346,7 @@ contract cveLocker {
             uint256 reward = IERC20(_rewardsData.desiredRewardToken).balanceOf(
                 address(this)
             );
-            IERC20(baseRewardToken).safeTransfer(recipient, reward);
+            SafeTransferLib.safeTransfer(baseRewardToken, recipient, reward);
             return reward;
         }
 
@@ -453,7 +452,7 @@ contract cveLocker {
         if (_amount == 0) {
             _amount = IERC20(_token).balanceOf(address(this));
         }
-        IERC20(_token).safeTransfer(_to, _amount);
+        SafeTransferLib.safeTransfer(_token, _to, _amount);
 
         emit TokenRecovered(_token, _to, _amount);
     }
