@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "contracts/libraries/ERC20.sol";
+import { SafeTransferLib } from "../libraries/SafeTransferLib.sol";
+import {ERC20} from "../libraries/ERC20.sol";
+
+import "../interfaces/IERC20.sol";
 import "../interfaces/ICveLocker.sol";
 import "../interfaces/IDelegateRegistry.sol";
-import "contracts/interfaces/ICentralRegistry.sol";
+import "../interfaces/ICentralRegistry.sol";
 
 error nonTransferrable();
 error continuousLock();
@@ -14,7 +16,6 @@ error invalidLock();
 error veCVEShutdown();
 
 contract veCVE is ERC20 {
-    using SafeERC20 for IERC20;
 
     event Locked(address indexed _user, uint256 _amount);
     event Unlocked(address indexed _user, uint256 _amount);
@@ -30,7 +31,7 @@ contract veCVE is ERC20 {
 
     ICentralRegistry public immutable centralRegistry;
 
-    IERC20 public immutable cve;
+    address public immutable cve;
     ICveLocker public immutable cveLocker;
     uint256 public immutable genesisEpoch;
     uint256 public immutable continuousLockPointMultiplier;
@@ -68,7 +69,7 @@ contract veCVE is ERC20 {
         _symbol = "veCVE";
         centralRegistry = _centralRegistry;
         genesisEpoch = centralRegistry.genesisEpoch();
-        cve = IERC20(centralRegistry.CVE());
+        cve = centralRegistry.CVE();
         cveLocker = ICveLocker(centralRegistry.cveLocker());
         continuousLockPointMultiplier = _continuousLockPointMultiplier;
     }
@@ -138,7 +139,7 @@ contract veCVE is ERC20 {
         if (isShutdown) revert veCVEShutdown();
         if (_amount == 0) revert invalidLock();
 
-        cve.safeTransferFrom(
+        SafeTransferLib.safeTransferFrom(cve,
             msg.sender,
             address(this),
             _amount
@@ -175,7 +176,7 @@ contract veCVE is ERC20 {
         if (_amount == 0) revert invalidLock();
         if (!centralRegistry.approvedVeCVELocker(msg.sender)) revert invalidLock();
 
-        cve.safeTransferFrom(
+        SafeTransferLib.safeTransferFrom(cve,
             msg.sender,
             address(this),
             _amount
@@ -258,7 +259,7 @@ contract veCVE is ERC20 {
         if (isShutdown) revert veCVEShutdown();
         if (_amount == 0) revert invalidLock();
 
-        cve.safeTransferFrom(
+        SafeTransferLib.safeTransferFrom(cve,
             msg.sender,
             address(this),
             _amount
@@ -298,7 +299,7 @@ contract veCVE is ERC20 {
         if (_amount == 0) revert invalidLock();
         if (!centralRegistry.approvedVeCVELocker(msg.sender)) revert invalidLock();
 
-        cve.safeTransferFrom(
+        SafeTransferLib.safeTransferFrom(cve,
             msg.sender,
             address(this),
             _amount
@@ -579,7 +580,7 @@ contract veCVE is ERC20 {
             _burn(msg.sender, lockAmount);
             _processExpiredLock(_user, _lockIndex);
 
-            cve.safeTransferFrom(
+            SafeTransferLib.safeTransferFrom(cve,
                 address(this),
                 msg.sender,
                 lockAmount
@@ -625,7 +626,7 @@ contract veCVE is ERC20 {
         if (_amount == 0) {
             _amount = IERC20(_token).balanceOf(address(this));
         }
-        IERC20(_token).safeTransfer(_to, _amount);
+        SafeTransferLib.safeTransfer(_token, _to, _amount);
 
         emit TokenRecovered(_token, _to, _amount);
     }
