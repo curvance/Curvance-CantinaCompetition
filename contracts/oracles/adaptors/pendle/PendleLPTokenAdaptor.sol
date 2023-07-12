@@ -54,10 +54,10 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
         bool _getLower
     ) external view override returns (PriceReturnData memory pData) {
         AdaptorData memory data = adaptorData[_asset];
-        IPriceRouter priceRouter = IPriceRouter(centralRegistry.priceRouter());
         uint256 lpRate = IPMarket(_asset).getLpToAssetRate(data.twapDuration);
         pData.inUSD = _isUsd;
-        (uint256 price, uint256 errorCode) = priceRouter.getPrice(
+        
+        (uint256 price, uint256 errorCode) = IPriceRouter(centralRegistry.priceRouter()).getPrice(
             data.quoteAsset,
             _isUsd,
             _getLower
@@ -92,8 +92,6 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
             "PendleLPTokenAdaptor: wrong quote"
         );
 
-        IPriceRouter priceRouter = IPriceRouter(centralRegistry.priceRouter());
-
         require(
             _data.twapDuration >= MINIMUM_TWAP_DURATION,
             "PendleLPTokenAdaptor: minimum twap duration not met"
@@ -115,7 +113,7 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
             "PendleLPTokenAdaptor: oldest observation not satisfied"
         );
         require(
-            priceRouter.isSupportedAsset(_data.quoteAsset),
+            IPriceRouter(centralRegistry.priceRouter()).isSupportedAsset(_data.quoteAsset),
             "PendleLPTokenAdaptor: quote asset not supported"
         );
 
@@ -134,9 +132,13 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
             isSupportedAsset[_asset],
             "PendleLPTokenAdaptor: asset not supported"
         );
-        IPriceRouter priceRouter = IPriceRouter(centralRegistry.priceRouter());
-        isSupportedAsset[_asset] = false;
+        /// Notify the adaptor to stop supporting the asset 
+        delete isSupportedAsset[_asset];
+
+        /// Wipe config mapping entries for a gas refund
         delete adaptorData[_asset];
-        priceRouter.notifyAssetPriceFeedRemoval(_asset);
+
+        /// Notify the price router that we are going to stop supporting the asset 
+        IPriceRouter(centralRegistry.priceRouter()).notifyAssetPriceFeedRemoval(_asset);
     }
 }
