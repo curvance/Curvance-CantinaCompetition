@@ -31,27 +31,31 @@ contract TestPositionFolding is TestBaseMarket {
 
         _deployCDAI();
 
+        vm.startPrank(admin);
+
         // support market
-        vm.prank(admin);
         Lendtroller(lendtroller)._supportMarket(CToken(address(cDAI)));
         // set collateral factor
-        vm.prank(admin);
         Lendtroller(lendtroller)._setCollateralFactor(
             CToken(address(cDAI)),
             75e16
         );
 
+        vm.stopPrank();
+
         _deployCEther();
 
+        vm.startPrank(admin);
+
         // support market
-        vm.prank(admin);
         Lendtroller(lendtroller)._supportMarket(CToken(address(cETH)));
         // set collateral factor
-        vm.prank(admin);
         Lendtroller(lendtroller)._setCollateralFactor(
             CToken(address(cETH)),
             75e16
         );
+
+        vm.stopPrank();
 
         positionFolding = new PositionFolding(
             lendtroller,
@@ -59,6 +63,7 @@ contract TestPositionFolding is TestBaseMarket {
             address(cETH),
             WETH_ADDRESS
         );
+
         // set position folding
         vm.prank(admin);
         Lendtroller(lendtroller)._setPositionFolding(address(positionFolding));
@@ -69,7 +74,6 @@ contract TestPositionFolding is TestBaseMarket {
 
     function provideEnoughLiquidityForLeverage() internal {
         address liquidityProvider = address(new User());
-        vm.startPrank(liquidityProvider);
         // prepare 200K DAI
         vm.store(
             DAI_ADDRESS,
@@ -85,6 +89,8 @@ contract TestPositionFolding is TestBaseMarket {
         vm.deal(liquidityProvider, 200000 ether);
 
         _enterMarkets(liquidityProvider);
+
+        vm.startPrank(liquidityProvider);
 
         // mint cDAI
         dai.approve(address(cDAI), 200000 ether);
