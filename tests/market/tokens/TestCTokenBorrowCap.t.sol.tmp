@@ -3,7 +3,7 @@ pragma solidity ^0.8.13;
 
 import "tests/market/TestBaseMarket.sol";
 
-contract TestCTokenBorrowCap is TestBaseMarket {
+abstract contract TestCTokenBorrowCap is TestBaseMarket {
     function setUp() public override {
         super.setUp();
 
