@@ -8,7 +8,6 @@ import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
  * @dev Interface of the IOFT core standard
  */
 interface ICommonOFT is IERC165 {
-
     struct LzCallParams {
         address payable refundAddress;
         address zroPaymentAddress;
@@ -23,14 +22,28 @@ interface ICommonOFT is IERC165 {
      * _useZro - indicates to use zro to pay L0 fees
      * _adapterParam - flexible bytes array to indicate messaging adapter services in L0
      */
-    function estimateSendFee(uint16 _dstChainId, bytes32 _toAddress, uint _amount, bool _useZro, bytes calldata _adapterParams) external view returns (uint nativeFee, uint zroFee);
+    function estimateSendFee(
+        uint16 _dstChainId,
+        bytes32 _toAddress,
+        uint256 _amount,
+        bool _useZro,
+        bytes calldata _adapterParams
+    ) external view returns (uint256 nativeFee, uint256 zroFee);
 
-    function estimateSendAndCallFee(uint16 _dstChainId, bytes32 _toAddress, uint _amount, bytes calldata _payload, uint64 _dstGasForCall, bool _useZro, bytes calldata _adapterParams) external view returns (uint nativeFee, uint zroFee);
+    function estimateSendAndCallFee(
+        uint16 _dstChainId,
+        bytes32 _toAddress,
+        uint256 _amount,
+        bytes calldata _payload,
+        uint64 _dstGasForCall,
+        bool _useZro,
+        bytes calldata _adapterParams
+    ) external view returns (uint256 nativeFee, uint256 zroFee);
 
     /**
      * @dev returns the circulating amount of tokens on current chain
      */
-    function circulatingSupply() external view returns (uint);
+    function circulatingSupply() external view returns (uint256);
 
     /**
      * @dev returns the address of the ERC20 token

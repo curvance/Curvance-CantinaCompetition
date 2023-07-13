@@ -1,5 +1,6 @@
 # directories
 .yarn/
+.github
 **/.coverage_artifacts
 **/.coverage_cache
 **/.coverage_contracts
@@ -11,6 +12,8 @@
 **/node_modules
 **/types
 **/docs
+**/lib
+**/out
 
 # files
 *.env

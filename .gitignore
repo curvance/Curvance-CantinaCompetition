@@ -14,6 +14,7 @@
 **/.coverage_contracts
 **/dist
 **/node_modules
+**/out
 
 # files
 **/.DS_Store
@@ -34,3 +35,8 @@ src/types/*
 !src/types/factories
 src/types/factories/*
 !src/types/factories/Greeter__factory.ts
+
+# Foundry
+cache/
+out/
+broadcast/

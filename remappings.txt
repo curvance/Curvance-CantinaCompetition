@@ -1,0 +1,7 @@
+@solmate/=lib/solmate/src/
+@openzeppelin/=lib/openzeppelin-contracts/
+@uniswap/v3-periphery/=lib/v3-periphery/
+@uniswap/v3-core/=lib/v3-core/
+@chainlink/=lib/chainlink/
+@compound/=lib/compound-protocol/contracts/
+@pendle=lib/pendle-core-v2-public/contracts/
