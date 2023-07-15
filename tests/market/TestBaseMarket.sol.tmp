@@ -9,6 +9,7 @@ import "contracts/market/Oracle/SimplePriceOracle.sol";
 import "contracts/market/collateral/CErc20.sol";
 import "contracts/market/collateral/CEther.sol";
 import "contracts/gauge/GaugeController.sol";
+import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 import "tests/market/deploy.sol";
 import "tests/utils/TestBase.sol";
@@ -51,20 +52,20 @@ contract TestBaseMarket is TestBase {
         user = address(this);
         liquidator = address(new User());
 
-        gauge = address(new GaugePool(address(0), address(0), lendtroller));
+        gauge = address(new GaugePool(ICentralRegistry(0), lendtroller));
 
         dai = IERC20(DAI_ADDRESS);
     }
 
     function _deployCEther() internal {
         cETH = new CEther(
+            ICentralRegistry(0),
             lendtroller,
             InterestRateModel(address(deployments.jumpRateModel())),
             _ONE,
             "cETH",
             "cETH",
-            18,
-            payable(admin)
+            18
         );
     }
 
