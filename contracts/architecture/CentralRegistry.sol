@@ -154,7 +154,7 @@ contract CentralRegistry is ICentralRegistry {
 
     function setProtocolYieldFee(uint256 value) public onlyElevatedPermissions {
         require(
-            value < 2000 || value == 0,
+            value <= 2000 || value == 0,
             "centralRegistry: invalid parameter"
         );
         protocolYieldFee = value;
@@ -162,15 +162,17 @@ contract CentralRegistry is ICentralRegistry {
 
     function setProtocolLiquidationFee(uint256 value) public onlyElevatedPermissions {
         require(
-            value < 500 || value == 0,
+            value <= 500 || value == 0,
             "centralRegistry: invalid parameter"
         );
-        protocolLiquidationFee = value;
+        /// Liquidation fee is represented as 1e16 format 
+        /// So we need to multiply by 1e15 to format properly from basis points to %
+        protocolLiquidationFee = value * 1e15;
     }
 
     function setProtocolLeverageFee(uint256 value) public onlyElevatedPermissions {
         require(
-            value < 100 || value == 0,
+            value <= 100 || value == 0,
             "centralRegistry: invalid parameter"
         );
         protocolLeverageFee = value;

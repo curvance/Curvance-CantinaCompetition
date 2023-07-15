@@ -3,11 +3,11 @@ pragma solidity ^0.8.17;
 
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 
-import "contracts/interfaces/IERC20.sol";
-import "contracts/interfaces/IVeCVE.sol";
-import "contracts/interfaces/ICveLocker.sol";
-import "contracts/interfaces/ICvxLocker.sol";
-import "contracts/interfaces/ICentralRegistry.sol";
+import { IERC20 } from "contracts/interfaces/IERC20.sol";
+import { IVeCVE } from "contracts/interfaces/IVeCVE.sol";
+import { rewardsData } from "contracts/interfaces/ICveLocker.sol";
+import { ICVXLocker } from "contracts/interfaces/ICvxLocker.sol";
+import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 contract cveLocker {
 
