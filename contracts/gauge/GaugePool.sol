@@ -152,7 +152,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         address user,
         uint256 amount
     ) external nonReentrant {
-        (bool isListed, , ) = ILendtroller(lendtroller).getIsMarkets(token);
+        (bool isListed, ) = ILendtroller(lendtroller).getIsMarkets(token);
         if (msg.sender != token || !isListed) {
             revert GaugeErrors.InvalidToken();
         }
@@ -188,7 +188,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         address user,
         uint256 amount
     ) external nonReentrant {
-        (bool isListed, , ) = ILendtroller(lendtroller).getIsMarkets(token);
+        (bool isListed, ) = ILendtroller(lendtroller).getIsMarkets(token);
         if (msg.sender != token || !isListed) {
             revert GaugeErrors.InvalidToken();
         }
