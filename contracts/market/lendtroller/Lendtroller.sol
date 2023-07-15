@@ -78,6 +78,7 @@ contract Lendtroller is ILendtroller {
 
     constructor(ICentralRegistry _centralRegistry, address _gaugePool) {
         centralRegistry = _centralRegistry;
+        oracle = PriceOracle(centralRegistry.priceRouter());
         gaugePool = _gaugePool;
     }
 
@@ -198,7 +199,7 @@ contract Lendtroller is ILendtroller {
         ICToken[] memory userAssetList = accountAssets[msg.sender];
         uint256 numUserAssets = userAssetList.length;
         uint256 assetIndex = numUserAssets;
-        
+
         for (uint256 i; i < numUserAssets; ++i) {
             if (userAssetList[i] == cToken) {
                 assetIndex = i;

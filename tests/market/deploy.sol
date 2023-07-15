@@ -10,13 +10,13 @@ import "contracts/gauge/GaugePool.sol";
 
 import "tests/utils/TestBase.sol";
 
-contract DeployCompound is TestBase {
+contract DeployCurvanceMarket is TestBase {
     address public admin;
     Lendtroller public lendtroller;
     SimplePriceOracle public priceOracle;
     address public jumpRateModel;
 
-    function makeCompound() public {
+    function makeCurvanceMarket() public {
         admin = address(this);
         makeLendtroller();
         makeJumpRateModel();
@@ -27,9 +27,9 @@ contract DeployCompound is TestBase {
 
         // Some parameters are set zero address/values
         // which are not related to tests currently.
-        lendtroller = new Lendtroller(address(0));
+        lendtroller = new Lendtroller(address(0), address(0));
 
-        lendtroller._setPriceOracle(PriceOracle(address(priceOracle)));
+        //lendtroller._setPriceOracle(PriceOracle(address(priceOracle)));
         lendtroller._setCloseFactor(5e17);
         lendtroller._setLiquidationIncentive(5e17);
 
