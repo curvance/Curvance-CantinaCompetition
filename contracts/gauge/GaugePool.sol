@@ -13,7 +13,7 @@ import "contracts/interfaces/market/ILendtroller.sol";
 contract GaugePool is GaugeController, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
-    // structs
+    /// structs
     struct PoolInfo {
         uint256 lastRewardTimestamp;
         uint256 accRewardPerShare; // Accumulated Rewards per share, times 1e12. See below.
@@ -25,7 +25,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         uint256 rewardPending;
     }
 
-    // events
+    /// events
     event AddChildGauge(address indexed childGauge);
     event RemoveChildGauge(address indexed childGauge);
     event Deposit(address indexed user, address indexed token, uint256 amount);
@@ -36,24 +36,23 @@ contract GaugePool is GaugeController, ReentrancyGuard {
     );
     event Claim(address indexed user, address indexed token, uint256 amount);
 
-    // constants
+    /// constants
     uint256 public constant PRECISION = 1e36;
 
-    // storage
+    /// storage
     address public lendtroller;
     ChildGaugePool[] public childGauges;
     mapping(address => PoolInfo) public poolInfo; // token => pool info
     mapping(address => mapping(address => UserInfo)) public userInfo; // token => user => info
 
     constructor(
-        address _cve,
-        address _ve,
+        ICentralRegistry _centralRegistry,
         address _lendtroller
-    ) GaugeController(_cve, _ve) ReentrancyGuard() {
+    ) GaugeController(_centralRegistry) ReentrancyGuard() {
         lendtroller = _lendtroller;
     }
 
-    function addChildGauge(address _childGauge) external onlyOwner {
+    function addChildGauge(address _childGauge) external onlyDaoPermissions {
         if (_childGauge == address(0)) {
             revert GaugeErrors.InvalidAddress();
         }
@@ -67,7 +66,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
     function removeChildGauge(
         uint256 _index,
         address _childGauge
-    ) external onlyOwner {
+    ) external onlyDaoPermissions {
         if (_childGauge != address(childGauges[_index])) {
             revert GaugeErrors.InvalidAddress();
         }
@@ -255,8 +254,8 @@ contract GaugePool is GaugeController, ReentrancyGuard {
             revert GaugeErrors.NoReward();
         }
 
-        IERC20(cve).safeApprove(address(ve), rewards);
-        ve.increaseAmountAndExtendLockFor(
+        IERC20(cve).safeApprove(address(veCVE), rewards);
+        veCVE.increaseAmountAndExtendLockFor(
             msg.sender,
             rewards,
             lockIndex,
@@ -291,8 +290,8 @@ contract GaugePool is GaugeController, ReentrancyGuard {
             revert GaugeErrors.NoReward();
         }
 
-        IERC20(cve).safeApprove(address(ve), rewards);
-        ve.lockFor(
+        IERC20(cve).safeApprove(address(veCVE), rewards);
+        veCVE.lockFor(
             msg.sender,
             rewards,
             continuousLock,
