@@ -7,6 +7,7 @@ import "contracts/market/interestRates/InterestRateModel.sol";
 import "contracts/market/Oracle/PriceOracle.sol";
 import "contracts/market/Oracle/SimplePriceOracle.sol";
 import "contracts/gauge/GaugePool.sol";
+import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 import "tests/utils/TestBase.sol";
 
@@ -27,7 +28,7 @@ contract DeployCurvanceMarket is TestBase {
 
         // Some parameters are set zero address/values
         // which are not related to tests currently.
-        lendtroller = new Lendtroller(address(0), address(0));
+        lendtroller = new Lendtroller(ICentralRegistry(0), address(0));
 
         //lendtroller._setPriceOracle(PriceOracle(address(priceOracle)));
         lendtroller._setCloseFactor(5e17);
