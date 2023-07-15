@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import "@openzeppelin/contracts/interfaces/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+import { IGaugePool } from "contracts/interfaces/IGaugePool.sol";
+import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { IVeCVE } from "contracts/interfaces/IVeCVE.sol";
+
 import { GaugeErrors } from "./GaugeErrors.sol";
-import { IGaugePool } from "../interfaces/IGaugePool.sol";
 
 contract GaugeController is IGaugePool {
-    using SafeERC20 for IERC20;
 
     /// structs
     struct Epoch {
@@ -132,12 +132,12 @@ contract GaugeController is IGaugePool {
         epochInfo[epoch].rewardPerSec = newRewardPerSec;
 
         if (prevRewardPerSec > newRewardPerSec) {
-            IERC20(cve).safeTransfer(
+            SafeTransferLib.safeTransfer(cve,
                 msg.sender,
                 EPOCH_WINDOW * (prevRewardPerSec - newRewardPerSec)
             );
         } else {
-            IERC20(cve).safeTransferFrom(
+            SafeTransferLib.safeTransferFrom(cve,
                 msg.sender,
                 address(this),
                 EPOCH_WINDOW * (newRewardPerSec - prevRewardPerSec)

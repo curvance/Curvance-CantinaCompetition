@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import "@openzeppelin/contracts/interfaces/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
+import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
+
+import { IERC20 } from "contracts/interfaces/IERC20.sol";
+import { ICveLocker, rewardsData } from "contracts/interfaces/ICveLocker.sol";
+import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 
 import "./GaugeController.sol";
 import "./ChildGaugePool.sol";
-import "contracts/interfaces/ICveLocker.sol";
-import "contracts/interfaces/market/ILendtroller.sol";
 
 contract GaugePool is GaugeController, ReentrancyGuard {
-    using SafeERC20 for IERC20;
 
     /// structs
     struct PoolInfo {
@@ -227,7 +227,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         if (rewards == 0) {
             revert GaugeErrors.NoReward();
         }
-        IERC20(cve).safeTransfer(msg.sender, rewards);
+        SafeTransferLib.safeTransfer(cve, msg.sender, rewards);
 
         userInfo[token][msg.sender].rewardPending = 0;
 
@@ -254,7 +254,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
             revert GaugeErrors.NoReward();
         }
 
-        IERC20(cve).safeApprove(address(veCVE), rewards);
+        SafeTransferLib.safeApprove(cve, address(veCVE), rewards);
         veCVE.increaseAmountAndExtendLockFor(
             msg.sender,
             rewards,
@@ -290,7 +290,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
             revert GaugeErrors.NoReward();
         }
 
-        IERC20(cve).safeApprove(address(veCVE), rewards);
+        SafeTransferLib.safeApprove(cve, address(veCVE), rewards);
         veCVE.lockFor(
             msg.sender,
             rewards,

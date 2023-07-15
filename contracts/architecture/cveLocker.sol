@@ -1,13 +1,13 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { SafeTransferLib } from "../libraries/SafeTransferLib.sol";
+import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 
-import "../interfaces/IERC20.sol";
-import "../interfaces/IVeCVE.sol";
-import "../interfaces/ICveLocker.sol";
-import "../interfaces/ICvxLocker.sol";
-import "../interfaces/ICentralRegistry.sol";
+import "contracts/interfaces/IERC20.sol";
+import "contracts/interfaces/IVeCVE.sol";
+import "contracts/interfaces/ICveLocker.sol";
+import "contracts/interfaces/ICvxLocker.sol";
+import "contracts/interfaces/ICentralRegistry.sol";
 
 contract cveLocker {
 
