@@ -26,9 +26,9 @@ contract cveLocker {
 
     // TO-DO:
     // Process fee per cve reporting by chain in fee routing/here (permissioned functions for feerouting)
-    // validate 1inch swap logic, have zeus write tests
     // Figure out when fees should be active either current epoch or epoch + 1
     // Add epoch rewards view for frontend?
+
     // Add slippage checks
     // Add Whitelisted swappers
 
@@ -82,11 +82,13 @@ contract cveLocker {
         veCVE = IVeCVE(centralRegistry.veCVE());
     }
 
-    modifier onlyDaoManager() {
-        require(
-            msg.sender == centralRegistry.daoAddress(),
-            "cveLocker: UNAUTHORIZED"
-        );
+    modifier onlyDaoPermissions() {
+        require(centralRegistry.hasDaoPermissions(msg.sender), "centralRegistry: UNAUTHORIZED");
+        _;
+    }
+
+    modifier onlyElevatedPermissions() {
+        require(centralRegistry.hasElevatedPermissions(msg.sender), "centralRegistry: UNAUTHORIZED");
         _;
     }
 
@@ -444,7 +446,7 @@ contract cveLocker {
         address _token,
         address _to,
         uint256 _amount
-    ) external onlyDaoManager {
+    ) external onlyDaoPermissions {
         require(
             _token != baseRewardToken,
             "cveLocker: cannot withdraw reward token"
@@ -459,7 +461,7 @@ contract cveLocker {
 
     /// @dev Authorizes a new reward token. Can only be called by the DAO manager.
     /// @param _token The address of the token to authorize.
-    function addAuthorizedRewardToken(address _token) external onlyDaoManager {
+    function addAuthorizedRewardToken(address _token) external onlyElevatedPermissions {
         require(_token != address(0), "Invalid Token Address");
         require(!authorizedRewardToken[_token], "Invalid Operation");
         authorizedRewardToken[_token] = true;
@@ -469,14 +471,14 @@ contract cveLocker {
     /// @param _token The address of the token to deauthorize.    
     function removeAuthorizedRewardToken(
         address _token
-    ) external onlyDaoManager {
+    ) external onlyDaoPermissions {
         require(_token != address(0), "Invalid Token Address");
         require(authorizedRewardToken[_token], "Invalid Operation");
         delete authorizedRewardToken[_token];
     }
 
     function notifyLockerShutdown() external {
-        require (msg.sender == address(veCVE) || msg.sender == centralRegistry.daoAddress(), "cveLocker: UNAUTHORIZED");
+        require (msg.sender == address(veCVE) || centralRegistry.hasElevatedPermissions(msg.sender), "cveLocker: UNAUTHORIZED");
         isShutdown = true;
     }
 
