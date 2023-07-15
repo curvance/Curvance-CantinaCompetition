@@ -4,11 +4,11 @@ pragma solidity ^0.8.4;
 
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
-import "./RedstoneConstants.sol";
-import "./RedstoneDefaultsLib.sol";
-import "./CalldataExtractor.sol";
-import "../libs/BitmapLib.sol";
-import "../libs/SignatureLib.sol";
+import "contracts/libraries/redstone/RedstoneConstants.sol";
+import "contracts/libraries/redstone/RedstoneDefaultsLib.sol";
+import "contracts/libraries/redstone/CalldataExtractor.sol";
+import "contracts/libraries/redstone/BitmapLib.sol";
+import "contracts/libraries/redstone/SignatureLib.sol";
 
 /**
  * @title The base contract with the main Redstone logic
