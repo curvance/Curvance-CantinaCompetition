@@ -122,7 +122,7 @@ contract Lendtroller is ILendtroller {
         uint256 numCTokens = cTokens.length;
 
         uint256[] memory results = new uint256[](numCTokens);
-        for (uint256 i = 0; i < numCTokens; ++i) {
+        for (uint256 i; i < numCTokens; ++i) {
             results[i] = addToMarketInternal(ICToken(cTokens[i]), msg.sender);
         }
 
@@ -198,7 +198,8 @@ contract Lendtroller is ILendtroller {
         ICToken[] memory userAssetList = accountAssets[msg.sender];
         uint256 numUserAssets = userAssetList.length;
         uint256 assetIndex = numUserAssets;
-        for (uint256 i = 0; i < numUserAssets; ++i) {
+        
+        for (uint256 i; i < numUserAssets; ++i) {
             if (userAssetList[i] == cToken) {
                 assetIndex = i;
                 break;
@@ -577,7 +578,7 @@ contract Lendtroller is ILendtroller {
         bool collateralEnabled;
 
         // For each asset the account is in
-        for (uint256 i = 0; i < numAccountAssets; ++i) {
+        for (uint256 i; i < numAccountAssets; ++i) {
             asset = accountAssets[account][i];
             collateralEnabled =
                 marketDisableCollateral[asset] == false &&
@@ -675,7 +676,7 @@ contract Lendtroller is ILendtroller {
             revert InvalidValue();
         }
 
-        for (uint256 i = 0; i < numMarkets; ++i) {
+        for (uint256 i; i < numMarkets; ++i) {
             userDisableCollateral[msg.sender][cTokens[i]] = disableCollateral;
             emit SetUserDisableCollateral(
                 msg.sender,
@@ -791,7 +792,7 @@ contract Lendtroller is ILendtroller {
     function _addMarketInternal(address cToken) internal {
         uint256 numMarkets = allMarkets.length;
 
-        for (uint256 i = 0; i < numMarkets; ++i) {
+        for (uint256 i; i < numMarkets; ++i) {
             if (allMarkets[i] == ICToken(cToken)) {
                 revert MarketAlreadyListed();
             }
@@ -819,7 +820,7 @@ contract Lendtroller is ILendtroller {
             revert InvalidValue();
         }
 
-        for (uint256 i = 0; i < numMarkets; ++i) {
+        for (uint256 i; i < numMarkets; ++i) {
             borrowCaps[address(cTokens[i])] = newBorrowCaps[i];
             emit NewBorrowCap(cTokens[i], newBorrowCaps[i]);
         }
@@ -839,7 +840,7 @@ contract Lendtroller is ILendtroller {
             revert InvalidValue();
         }
 
-        for (uint256 i = 0; i < numMarkets; ++i) {
+        for (uint256 i; i < numMarkets; ++i) {
             marketDisableCollateral[cTokens[i]] = disableCollateral;
             emit SetDisableCollateral(cTokens[i], disableCollateral);
         }

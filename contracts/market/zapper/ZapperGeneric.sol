@@ -65,7 +65,7 @@ contract ZapperGeneric {
         uint256 numTokenSwaps = tokenSwaps.length;
 
         // prepare tokens to mint LP
-        for (uint256 i = 0; i < numTokenSwaps; ++i) {
+        for (uint256 i; i < numTokenSwaps; ++i) {
             // swap input token to underlying token
             _swap(inputToken, tokenSwaps[i]);
         }
@@ -142,7 +142,7 @@ contract ZapperGeneric {
         uint256 numTokens = tokens.length;
 
         // approve tokens
-        for (uint256 i = 0; i < numTokens; ++i) {
+        for (uint256 i; i < numTokens; ++i) {
             _approveTokenIfNeeded(tokens[i], lpMinter);
             if (tokens[i] == ETH) {
                 hasETH = true;

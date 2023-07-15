@@ -36,4 +36,7 @@ interface IVeCVE {
     // @notice Updates user points by reducing the amount that gets unlocked in a specific epoch.
     function updateUserPoints(address _user, uint256 _epoch) external;
 
+    // @notice Returns the timestamp of when the next epoch begins
+    function nextEpochStartTime() external view returns (uint256);
+
 }

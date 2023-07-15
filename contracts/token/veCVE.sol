@@ -9,6 +9,9 @@ import "contracts/interfaces/ICveLocker.sol";
 import "contracts/interfaces/IDelegateRegistry.sol";
 
 contract veCVE is ERC20 {
+
+    /// STRUCTS ///
+
     struct Lock {
         uint216 amount;
         uint40 unlockTime;
@@ -121,6 +124,13 @@ contract veCVE is ERC20 {
         }
 
         return ((time - genesisEpoch) / EPOCH_DURATION);
+    }
+
+    /// @notice Returns the current epoch for the given time
+    /// @return The current epoch
+    function nextEpochStartTime() public view returns (uint256) {
+        uint256 timestampOffset = (currentEpoch(block.timestamp) + 1) * EPOCH_DURATION;
+        return (genesisEpoch + timestampOffset);
     }
 
     /// @notice Returns the epoch to lock until for a lock executed

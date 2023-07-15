@@ -54,8 +54,7 @@ contract GaugeController is IGaugePool {
         if (startTime != 0) {
             revert GaugeErrors.AlreadyStarted();
         }
-
-        startTime = block.timestamp;
+        startTime = veCVE.nextEpochStartTime();
     }
 
     /// @notice Returns current epoch number
@@ -166,12 +165,16 @@ contract GaugeController is IGaugePool {
         }
 
         Epoch storage info = epochInfo[epoch];
-        for (uint256 i = 0; i < numTokens; ++i) {
+        for (uint256 i; i < numTokens; ) {
             info.totalWeights =
                 info.totalWeights +
                 poolWeights[i] -
                 info.poolWeights[tokens[i]];
             info.poolWeights[tokens[i]] = poolWeights[i];
+
+            unchecked {
+                ++i;
+            }
         }
     }
 
@@ -179,8 +182,10 @@ contract GaugeController is IGaugePool {
     /// @dev Be careful of gas spending!
     function massUpdatePools(address[] memory tokens) public {
         uint256 numTokens = tokens.length;
-        for (uint256 i = 0; i < numTokens; ++i) {
-            updatePool(tokens[i]);
+        for (uint256 i; i < numTokens; ) {
+            unchecked {
+                updatePool(tokens[i++]);
+            }
         }
     }
 

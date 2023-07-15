@@ -130,7 +130,8 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
                 swapData.length == numBorrowTokens,
             "PositionFolding: invalid array length"
         );
-        for (uint256 i = 0; i < numBorrowTokens; ++i) {
+        
+        for (uint256 i; i < numBorrowTokens; ++i) {
             uint256 maxBorrowAmount = queryAmountToBorrowForLeverageMax(
                 msg.sender,
                 borrowTokens[i]
@@ -264,7 +265,8 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
                 swapData.length == numCollateralTokens,
             "PositionFolding: invalid array length"
         );
-        for (uint256 i = 0; i < numCollateralTokens; ++i) {
+
+        for (uint256 i; i < numCollateralTokens; ++i) {
             _deleverage(
                 collateralTokens[i],
                 collateralAmount[i],
