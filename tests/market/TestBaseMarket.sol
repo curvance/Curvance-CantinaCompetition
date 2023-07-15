@@ -23,7 +23,7 @@ contract TestBaseMarket is TestBase {
     address public DAI_ADDRESS = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
     address public E_ADDRESS = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
 
-    DeployCompound public deployments;
+    DeployCurvanceMarket public deployments;
 
     address public admin;
     address public user;
