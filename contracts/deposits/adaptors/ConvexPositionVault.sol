@@ -12,8 +12,6 @@ import { ICurveFi } from "contracts/interfaces/external/curve/ICurveFi.sol";
 import { ICurveSwaps } from "contracts/interfaces/external/curve/ICurveSwaps.sol";
 
 // Chainlink interfaces
-import { KeeperCompatibleInterface } from "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
-import { AggregatorV2V3Interface } from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV2V3Interface.sol";
 import { IChainlinkAggregator } from "contracts/interfaces/external/chainlink/IChainlinkAggregator.sol";
 
 contract ConvexPositionVault is BasePositionVault {
@@ -186,7 +184,7 @@ contract ConvexPositionVault is BasePositionVault {
 
     function updateEthTotargetSwapPath(
         CurveSwapParams calldata params
-    ) external onlyDaoManager {
+    ) external onlyDaoPermissions {
         ethToTarget = params;
         emit EthToTargetSwapParamsChanged(params);
     }
@@ -194,26 +192,26 @@ contract ConvexPositionVault is BasePositionVault {
     function updateArbitraryToEthSwapPath(
         ERC20 assetIn,
         CurveSwapParams calldata params
-    ) external onlyDaoManager {
+    ) external onlyDaoPermissions {
         arbitraryToEth[assetIn] = params;
         emit ArbitraryToEthSwapParamsChanged(address(assetIn), params);
     }
 
-    function updateHarvestSlippage(uint64 _slippage) external onlyDaoManager {
+    function updateHarvestSlippage(uint64 _slippage) external onlyDaoPermissions {
         harvestSlippage = _slippage;
         emit HarvestSlippageChanged(_slippage);
     }
 
     function updateCurveDepositParams(
         CurveDepositParams calldata params
-    ) external onlyDaoManager {
+    ) external onlyDaoPermissions {
         depositParams = params;
         emit CurveDepositParamsChanged(params);
     }
 
     function setRewardTokens(
         ERC20[] calldata _rewardTokens
-    ) external onlyDaoManager {
+    ) external onlyDaoPermissions {
         rewardTokens = _rewardTokens;
     }
 
