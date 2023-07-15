@@ -40,8 +40,8 @@ contract CVEAirdrop {
         airdropMerkleRoot = _root;
     }
 
-    modifier onlyDaoManager() {
-        require(msg.sender == centralRegistry.daoAddress(), "UNAUTHORIZED");
+    modifier onlyDaoPermissions() {
+        require(centralRegistry.hasDaoPermissions(msg.sender), "centralRegistry: UNAUTHORIZED");
         _;
     }
 
@@ -173,7 +173,7 @@ contract CVEAirdrop {
         address _token,
         address _recipient,
         uint256 _amount
-    ) external onlyDaoManager {
+    ) external onlyDaoPermissions {
         require(
             _recipient != address(0),
             "rescueToken: Invalid recipient address"
@@ -195,7 +195,7 @@ contract CVEAirdrop {
     }
 
     /// @notice Withdraws unclaimed airdrop tokens to contract Owner after airdrop claim period has ended
-    function withdrawRemainingAirdropTokens() external onlyDaoManager {
+    function withdrawRemainingAirdropTokens() external onlyDaoPermissions {
         require(
             block.timestamp > endClaimTimestamp,
             "withdrawRemainingAirdropTokens: Too early"
@@ -212,14 +212,14 @@ contract CVEAirdrop {
 
     /// @notice Set airdropMerkleRoot for airdrop validation
     /// @param _root new merkle root
-    function setMerkleRoot(bytes32 _root) external onlyDaoManager {
+    function setMerkleRoot(bytes32 _root) external onlyDaoPermissions {
         require(_root != bytes32(0), "setMerkleRoot: Invalid Parameter");
         airdropMerkleRoot = _root;
     }
 
     /// @notice Set isPaused state
     /// @param _state new pause state
-    function setPauseState(bool _state) external onlyDaoManager {
+    function setPauseState(bool _state) external onlyDaoPermissions {
         isPaused = _state;
     }
 }

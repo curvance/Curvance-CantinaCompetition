@@ -40,9 +40,14 @@ abstract contract LzApp is
         centralRegistry = _centralRegistry;
     }
 
-    modifier onlyDaoManager() {
-        require(msg.sender == centralRegistry.daoAddress(), "UNAUTHORIZED");
+    modifier onlyDaoPermissions() {
+        require(centralRegistry.hasDaoPermissions(msg.sender), "centralRegistry: UNAUTHORIZED");
         _;
+    }
+
+    modifier onlyElevatedPermissions() {
+            require(centralRegistry.hasElevatedPermissions(msg.sender), "centralRegistry: UNAUTHORIZED");
+            _;
     }
 
     function lzReceive(
@@ -166,18 +171,18 @@ abstract contract LzApp is
         uint16 _chainId,
         uint256 _configType,
         bytes calldata _config
-    ) external override onlyDaoManager {
+    ) external override onlyDaoPermissions {
         lzEndpoint.setConfig(_version, _chainId, _configType, _config);
     }
 
-    function setSendVersion(uint16 _version) external override onlyDaoManager {
+    function setSendVersion(uint16 _version) external override onlyDaoPermissions {
         lzEndpoint.setSendVersion(_version);
     }
 
     function setReceiveVersion(uint16 _version)
         external
         override
-        onlyDaoManager
+        onlyDaoPermissions
     {
         lzEndpoint.setReceiveVersion(_version);
     }
@@ -185,7 +190,7 @@ abstract contract LzApp is
     function forceResumeReceive(uint16 _srcChainId, bytes calldata _srcAddress)
         external
         override
-        onlyDaoManager
+        onlyDaoPermissions
     {
         lzEndpoint.forceResumeReceive(_srcChainId, _srcAddress);
     }
@@ -194,7 +199,7 @@ abstract contract LzApp is
     // this function set the trusted path for the cross-chain communication
     function setTrustedRemote(uint16 _srcChainId, bytes calldata _path)
         external
-        onlyDaoManager
+        onlyDaoPermissions
     {
         trustedRemoteLookup[_srcChainId] = _path;
         emit SetTrustedRemote(_srcChainId, _path);
@@ -203,7 +208,7 @@ abstract contract LzApp is
     function setTrustedRemoteAddress(
         uint16 _remoteChainId,
         bytes calldata _remoteAddress
-    ) external onlyDaoManager {
+    ) external onlyDaoPermissions {
         trustedRemoteLookup[_remoteChainId] = abi.encodePacked(
             _remoteAddress,
             address(this)
@@ -221,7 +226,7 @@ abstract contract LzApp is
         return path.slice(0, path.length - 20); // the last 20 bytes should be address(this)
     }
 
-    function setPrecrime(address _precrime) external onlyDaoManager {
+    function setPrecrime(address _precrime) external onlyDaoPermissions {
         precrime = _precrime;
         emit SetPrecrime(_precrime);
     }
@@ -230,7 +235,7 @@ abstract contract LzApp is
         uint16 _dstChainId,
         uint16 _packetType,
         uint256 _minGas
-    ) external onlyDaoManager {
+    ) external onlyDaoPermissions {
         require(_minGas > 0, "LzApp: invalid minGas");
         minDstGasLookup[_dstChainId][_packetType] = _minGas;
         emit SetMinDstGas(_dstChainId, _packetType, _minGas);
@@ -239,7 +244,7 @@ abstract contract LzApp is
     // if the size is 0, it means default size limit
     function setPayloadSizeLimit(uint16 _dstChainId, uint256 _size)
         external
-        onlyDaoManager
+        onlyDaoPermissions
     {
         payloadSizeLimitLookup[_dstChainId] = _size;
     }
