@@ -3,10 +3,9 @@ pragma solidity ^0.8.17;
 
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 
-import { CToken } from "contracts/market/collateral/CToken.sol";
+import { CToken, ICentralRegistry } from "contracts/market/collateral/CToken.sol";
 import { InterestRateModel } from "contracts/market/interestRates/InterestRateModel.sol";
 
-import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { ICErc20 } from "contracts/interfaces/market/ICErc20.sol";
 import { ICToken } from "contracts/interfaces/market/ICToken.sol";
@@ -21,9 +20,10 @@ contract CErc20 is ICErc20, CToken {
     ////////// States //////////
 
     /// @notice Underlying asset for this CToken
-    address public underlying;
+    address public immutable underlying;
 
     /// @notice Initialize the new money market
+    /// @param _centralRegistry The address of Curvances Central Registry
     /// @param underlying_ The address of the underlying asset
     /// @param lendtroller_ The address of the Lendtroller
     /// @param interestRateModel_ The address of the interest rate model

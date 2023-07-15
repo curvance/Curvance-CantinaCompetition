@@ -32,6 +32,8 @@ abstract contract CToken is ReentrancyGuard, ICToken {
     uint256 internal constant borrowRateMaxScaled = 0.0005e16;
     // Maximum fraction of interest that can be set aside for reserves
     uint256 internal constant reserveFactorMaxScaled = 1e18;
+    /// @notice Indicator that this is a CToken contract (for inspection)
+    bool public constant override isCToken = true;
 
     /// STORAGE ///
     string public name;
@@ -60,9 +62,6 @@ abstract contract CToken is ReentrancyGuard, ICToken {
     // Approved token transfer amounts on behalf of others
     mapping(address => mapping(address => uint256))
         internal transferAllowances;
-
-    /// @notice Indicator that this is a CToken contract (for inspection)
-    bool public constant override isCToken = true;
 
     // Mapping of account addresses to outstanding borrow balances
     mapping(address => BorrowSnapshot) internal accountBorrows;

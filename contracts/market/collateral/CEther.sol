@@ -165,8 +165,10 @@ contract CEther is CToken {
     function doTransferOut(
         address payable to,
         uint256 amount
-    ) internal virtual override {
-        /* Send the Ether, with minimal gas and revert on failure */
-        to.transfer(amount);
+    ) internal override {
+        /// Transfer the Ether, reverts on failure
+        /// Had to add NonReentrant to all doTransferOut calls to prevent .call reentry
+        (bool success, ) = to.call{ value: amount }("");
+        require(success, "CEther: error sending ether");
     }
 }
