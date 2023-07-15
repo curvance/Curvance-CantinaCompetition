@@ -40,8 +40,8 @@ contract TestBaseMarket is TestBase {
     function setUp() public virtual {
         _fork();
 
-        deployments = new DeployCompound();
-        deployments.makeCompound();
+        deployments = new DeployCurvanceMarket();
+        deployments.makeCurvanceMarket();
         lendtroller = address(deployments.lendtroller());
         priceOracle = SimplePriceOracle(deployments.priceOracle());
         priceOracle.setDirectPrice(DAI_ADDRESS, _ONE);
