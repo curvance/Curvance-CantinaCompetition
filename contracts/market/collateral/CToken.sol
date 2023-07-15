@@ -142,8 +142,8 @@ abstract contract CToken is ReentrancyGuard, ICToken {
     }
 
     modifier onlyElevatedPermissions() {
-            require(centralRegistry.hasElevatedPermissions(msg.sender), "centralRegistry: UNAUTHORIZED");
-            _;
+        require(centralRegistry.hasElevatedPermissions(msg.sender), "centralRegistry: UNAUTHORIZED");
+        _;
     }
 
     /// @notice Returns gauge pool contract address
@@ -718,7 +718,7 @@ abstract contract CToken is ReentrancyGuard, ICToken {
         address borrower,
         uint256 borrowAmount,
         address payable recipient
-    ) internal {
+    ) internal nonReentrant {
         // Verify market's timestamp equals current timestamp
         if (accrualBlockTimestamp != getBlockTimestamp()) {
             revert FailedFreshnessCheck();
