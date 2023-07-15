@@ -54,7 +54,7 @@ contract ZapperOneInch {
         }
 
         // check valid cToken
-        (bool isListed, , ) = lendtroller.getIsMarkets(cToken);
+        (bool isListed, ) = lendtroller.getIsMarkets(cToken);
         require(isListed, "invalid cToken address");
         // check cToken underlying
         require(CErc20(cToken).underlying() == lpToken, "invalid lp address");

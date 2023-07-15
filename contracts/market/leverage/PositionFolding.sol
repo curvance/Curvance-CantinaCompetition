@@ -1,20 +1,20 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import "@openzeppelin/contracts/interfaces/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.sol";
-import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
+import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
+import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 import { PriceOracle } from "contracts/market/Oracle/PriceOracle.sol";
 import { CToken } from "contracts/market/collateral/CToken.sol";
 import { CEther } from "contracts/market/collateral/CEther.sol";
 import { CErc20 } from "contracts/market/collateral/CErc20.sol";
+
+import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.sol";
+import { IERC20 } from "contracts/interfaces/IERC20.sol";
+import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { IWETH } from "contracts/interfaces/IWETH.sol";
 
 contract PositionFolding is ReentrancyGuard, IPositionFolding {
-    using SafeERC20 for IERC20;
 
     struct Swap {
         address target;
@@ -25,7 +25,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
     uint256 public constant DENOMINATOR = 10000;
     address public constant ETH = address(0);
 
-    Lendtroller public lendtroller;
+    ILendtroller public lendtroller;
     PriceOracle public oracle;
     address public cether;
     address public weth;
@@ -37,8 +37,8 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         address _oracle,
         address _cether,
         address _weth
-    ) ReentrancyGuard() {
-        lendtroller = Lendtroller(_lendtroller);
+    ) {
+        lendtroller = ILendtroller(_lendtroller);
         oracle = PriceOracle(_oracle);
         cether = _cether;
         weth = _weth;
@@ -177,7 +177,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         uint256 amount,
         bytes memory params
     ) external override {
-        (bool isListed, , ) = Lendtroller(lendtroller).getIsMarkets(
+        (bool isListed, ) = lendtroller.getIsMarkets(
             borrowToken
         );
         require(
@@ -306,7 +306,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         uint256 amount,
         bytes calldata params
     ) external override {
-        (bool isListed, , ) = Lendtroller(lendtroller).getIsMarkets(
+        (bool isListed, ) = lendtroller.getIsMarkets(
             collateral
         );
         require(
@@ -399,7 +399,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
     /// @param _spender The spender address
     function _approveTokenIfNeeded(address _token, address _spender) private {
         if (IERC20(_token).allowance(address(this), _spender) == 0) {
-            IERC20(_token).safeApprove(_spender, type(uint256).max);
+            SafeTransferLib.safeApprove(_token, _spender, type(uint256).max);
         }
     }
 

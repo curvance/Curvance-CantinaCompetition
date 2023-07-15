@@ -48,7 +48,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
     constructor(
         ICentralRegistry _centralRegistry,
         address _lendtroller
-    ) GaugeController(_centralRegistry) ReentrancyGuard() {
+    ) GaugeController(_centralRegistry) {
         lendtroller = _lendtroller;
     }
 

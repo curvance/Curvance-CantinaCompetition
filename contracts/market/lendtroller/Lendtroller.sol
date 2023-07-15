@@ -458,7 +458,7 @@ contract Lendtroller is ILendtroller {
     /// @return uint total borrow amount of user
     function getAccountPosition(
         address account
-    ) public view returns (uint256, uint256, uint256) {
+    ) public view override returns (uint256, uint256, uint256) {
         (
             uint256 sumCollateral,
             uint256 maxBorrow,

@@ -172,4 +172,8 @@ interface ILendtroller {
     function gaugePool() external view returns (address);
 
     function isLendtroller() external view returns (bool);
+
+    function getAccountPosition(
+        address account
+    ) external view returns (uint256, uint256, uint256);
 }
