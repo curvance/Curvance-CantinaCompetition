@@ -5,41 +5,39 @@ import "@openzeppelin/contracts/interfaces/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
+import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.sol";
 import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
-import { PriceOracle } from "contracts/market/Oracle/PriceOracle.sol";
 import { CToken } from "contracts/market/collateral/CToken.sol";
 import { CEther } from "contracts/market/collateral/CEther.sol";
 import { CErc20 } from "contracts/market/collateral/CErc20.sol";
+import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
+import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IWETH } from "contracts/interfaces/IWETH.sol";
 
 contract PositionFolding is ReentrancyGuard, IPositionFolding {
     using SafeERC20 for IERC20;
 
-    struct Swap {
-        address target;
-        bytes call;
-    }
-
     uint256 public constant MAX_LEVERAGE = 9900; // 0.99
     uint256 public constant DENOMINATOR = 10000;
+    uint256 public constant SLIPPAGE = 500;
     address public constant ETH = address(0);
 
+    address public centralRegistry;
     Lendtroller public lendtroller;
-    PriceOracle public oracle;
     address public cether;
     address public weth;
 
     receive() external payable {}
 
     constructor(
+        address _centralRegistry,
         address _lendtroller,
-        address _oracle,
         address _cether,
         address _weth
     ) ReentrancyGuard() {
+        centralRegistry = _centralRegistry;
         lendtroller = Lendtroller(_lendtroller);
-        oracle = PriceOracle(_oracle);
         cether = _cether;
         weth = _weth;
     }
@@ -66,7 +64,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
 
     function queryAmountToBorrowForLeverageMax(
         address user,
-        CToken borrowToken
+        address borrowToken
     ) public view returns (uint256) {
         (
             uint256 sumCollateral,
@@ -80,34 +78,25 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
             DENOMINATOR -
             sumCollateral;
 
-        return
-            ((maxLeverage - sumBorrow) * 1e18) /
-            oracle.getUnderlyingPrice(borrowToken);
-    }
+        (uint256 price, uint256 errorCode) = IPriceRouter(
+            ICentralRegistry(centralRegistry).priceRouter()
+        ).getPrice(address(borrowToken), true, false);
+        require(errorCode != 2, "input token price bad source");
+        require(errorCode != 1, "input token price caution");
 
-    function leverageMax(
-        CToken borrowToken,
-        CToken collateral,
-        Swap calldata swapData,
-        uint256 slippage
-    ) external checkSlippage(msg.sender, slippage) nonReentrant {
-        uint256 amountToBorrow = queryAmountToBorrowForLeverageMax(
-            msg.sender,
-            borrowToken
-        );
-        _leverage(borrowToken, amountToBorrow, collateral, swapData);
+        return ((maxLeverage - sumBorrow) * 1e18) / price;
     }
 
     function leverage(
         CToken borrowToken,
         uint256 borrowAmount,
         CToken collateral,
-        Swap calldata swapData,
+        SwapperLib.Swap calldata swapData,
         uint256 slippage
     ) external checkSlippage(msg.sender, slippage) nonReentrant {
         uint256 maxBorrowAmount = queryAmountToBorrowForLeverageMax(
             msg.sender,
-            borrowToken
+            address(borrowToken)
         );
         require(
             borrowAmount <= maxBorrowAmount,
@@ -120,7 +109,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         CToken[] memory borrowTokens,
         uint256[] memory borrowAmounts,
         CToken[] memory collateralTokens,
-        Swap[] memory swapData,
+        SwapperLib.Swap[] memory swapData,
         uint256 slippage
     ) external checkSlippage(msg.sender, slippage) {
         uint256 numBorrowTokens = borrowTokens.length;
@@ -133,7 +122,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         for (uint256 i = 0; i < numBorrowTokens; ++i) {
             uint256 maxBorrowAmount = queryAmountToBorrowForLeverageMax(
                 msg.sender,
-                borrowTokens[i]
+                address(borrowTokens[i])
             );
             require(
                 borrowAmounts[i] <= maxBorrowAmount,
@@ -152,7 +141,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         CToken borrowToken,
         uint256 borrowAmount,
         CToken collateral,
-        Swap memory swapData
+        SwapperLib.Swap memory swapData
     ) internal {
         bytes memory params = abi.encode(collateral, swapData);
 
@@ -185,9 +174,9 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
             "PositionFolding: UNAUTHORIZED"
         );
 
-        (CToken collateral, Swap memory swapData) = abi.decode(
+        (CToken collateral, SwapperLib.Swap memory swapData) = abi.decode(
             params,
-            (CToken, Swap)
+            (CToken, SwapperLib.Swap)
         );
 
         address borrowUnderlying;
@@ -212,7 +201,11 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
             }
 
             if (swapData.call.length > 0) {
-                _swap(borrowUnderlying, swapData);
+                SwapperLib.swap(
+                    swapData,
+                    ICentralRegistry(centralRegistry).priceRouter(),
+                    SLIPPAGE
+                );
             }
         }
 
@@ -226,7 +219,10 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
             uint256 collateralAmount = IERC20(collateralUnderlying).balanceOf(
                 address(this)
             );
-            _approveTokenIfNeeded(collateralUnderlying, address(collateral));
+            SwapperLib.approveTokenIfNeeded(
+                collateralUnderlying,
+                address(collateral)
+            );
             CErc20(address(collateral)).mintFor(collateralAmount, borrower);
         }
     }
@@ -236,7 +232,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         uint256 collateralAmount,
         CToken borrowToken,
         uint256 repayAmount,
-        Swap calldata swapData,
+        SwapperLib.Swap calldata swapData,
         uint256 slippage
     ) external checkSlippage(msg.sender, slippage) nonReentrant {
         _deleverage(
@@ -253,7 +249,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         uint256[] memory collateralAmount,
         CToken[] memory borrowTokens,
         uint256[] memory repayAmounts,
-        Swap[] memory swapData,
+        SwapperLib.Swap[] memory swapData,
         uint256 slippage
     ) external checkSlippage(msg.sender, slippage) {
         uint256 numCollateralTokens = collateralTokens.length;
@@ -280,7 +276,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         uint256 collateralAmount,
         CToken borrowToken,
         uint256 repayAmount,
-        Swap memory swapData
+        SwapperLib.Swap memory swapData
     ) internal {
         bytes memory params = abi.encode(borrowToken, repayAmount, swapData);
 
@@ -314,8 +310,11 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
             "PositionFolding: UNAUTHORIZED"
         );
 
-        (CToken borrowToken, uint256 repayAmount, Swap memory swapData) = abi
-            .decode(params, (CToken, uint256, Swap));
+        (
+            CToken borrowToken,
+            uint256 repayAmount,
+            SwapperLib.Swap memory swapData
+        ) = abi.decode(params, (CToken, uint256, SwapperLib.Swap));
 
         // swap collateral token to borrow token
         address collateralUnderlying;
@@ -341,7 +340,11 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
             }
 
             if (swapData.call.length > 0) {
-                _swap(collateralUnderlying, swapData);
+                SwapperLib.swap(
+                    swapData,
+                    ICentralRegistry(centralRegistry).priceRouter(),
+                    SLIPPAGE
+                );
             }
         }
 
@@ -366,7 +369,10 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
             remaining =
                 IERC20(borrowUnderlying).balanceOf(address(this)) -
                 repayAmount;
-            _approveTokenIfNeeded(borrowUnderlying, address(borrowToken));
+            SwapperLib.approveTokenIfNeeded(
+                borrowUnderlying,
+                address(borrowToken)
+            );
             CErc20(address(borrowToken)).repayBorrowBehalf(
                 redeemer,
                 repayAmount
@@ -375,47 +381,6 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
             if (remaining > 0) {
                 // remaining balance back to collateral
                 CErc20(address(borrowToken)).mintFor(remaining, redeemer);
-            }
-        }
-    }
-
-    /// @dev Swap input token
-    /// @param _inputToken The input asset address
-    /// @param _swapData The swap aggregation data
-    function _swap(address _inputToken, Swap memory _swapData) private {
-        _approveTokenIfNeeded(_inputToken, address(_swapData.target));
-
-        (bool success, bytes memory retData) = _swapData.target.call(
-            _swapData.call
-        );
-
-        propagateError(success, retData, "swap");
-
-        require(success == true, "calling swap got an error");
-    }
-
-    /// @dev Approve token if needed
-    /// @param _token The token address
-    /// @param _spender The spender address
-    function _approveTokenIfNeeded(address _token, address _spender) private {
-        if (IERC20(_token).allowance(address(this), _spender) == 0) {
-            IERC20(_token).safeApprove(_spender, type(uint256).max);
-        }
-    }
-
-    /// @dev Propagate error message
-    /// @param success If transaction is successful
-    /// @param data The transaction result data
-    /// @param errorMessage The custom error message
-    function propagateError(
-        bool success,
-        bytes memory data,
-        string memory errorMessage
-    ) public pure {
-        if (!success) {
-            if (data.length == 0) revert(errorMessage);
-            assembly {
-                revert(add(32, data), mload(data))
             }
         }
     }
