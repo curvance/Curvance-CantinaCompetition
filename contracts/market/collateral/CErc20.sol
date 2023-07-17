@@ -268,11 +268,4 @@ contract CErc20 is ICErc20, CToken {
         }
     }
 
-    /// @notice Admin call to delegate the votes of the CVE-like underlying
-    /// @param cveLikeDelegatee The address to delegate votes to
-    /// @dev CTokens whose underlying are not CveLike should revert here
-    function _delegateCveLikeTo(address cveLikeDelegatee) external onlyDaoPermissions {
-
-        IDelegateToken(underlying).delegate(cveLikeDelegatee);
-    }
 }
