@@ -13,8 +13,6 @@ import { IOptiSwap } from "contracts/interfaces/external/velodrome/IOptiSwap.sol
 import { IOptiSwapPair } from "contracts/interfaces/external/velodrome/IOptiSwapPair.sol";
 
 // Chainlink interfaces
-import { KeeperCompatibleInterface } from "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
-import { AggregatorV2V3Interface } from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV2V3Interface.sol";
 import { IChainlinkAggregator } from "contracts/interfaces/external/chainlink/IChainlinkAggregator.sol";
 
 contract VelodromeVolatilePositionVault is BasePositionVault {
@@ -146,7 +144,7 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
                               OWNER LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function updateHarvestSlippage(uint64 _slippage) external onlyDaoManager {
+    function updateHarvestSlippage(uint64 _slippage) external onlyDaoPermissions {
         harvestSlippage = _slippage;
         emit HarvestSlippageChanged(_slippage);
     }

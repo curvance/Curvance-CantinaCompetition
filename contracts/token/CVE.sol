@@ -4,6 +4,7 @@ pragma solidity ^0.8.17;
 import "../layerzero/OFTV2.sol";
 
 contract CVE is OFTV2 {
+
     uint256 public immutable TokenGenerationEventTimestamp;
     uint256 public constant DENOMINATOR = 10000;
     uint256 public constant month = 2_629_746;
@@ -17,14 +18,6 @@ contract CVE is OFTV2 {
     uint256 public DAOTreasuryTokensMinted;
     uint256 public TeamAllocationTokensMinted;
     uint256 public callOptionTokensMinted;
-
-    // import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
-
-    // contract Cve is ERC20Votes {
-    //    constructor(address owner) ERC20Permit("Curvance") ERC20("Curvance", "CVE") {
-    //        _mint(owner, 10000000e18);
-    //    }
-    // }
 
     constructor(
         string memory _name,
@@ -93,7 +86,7 @@ contract CVE is OFTV2 {
     /// The number of tokens to mint cannot not exceed the available treasury allocation.
     function mintTreasuryTokens(
         uint256 _tokensToMint
-    ) external onlyDaoManager {
+    ) external onlyElevatedPermissions {
         require(
             DAOTreasuryAllocation >= DAOTreasuryTokensMinted + _tokensToMint,
             "CVE: insufficient token allocation"
@@ -108,7 +101,7 @@ contract CVE is OFTV2 {
     /// The number of tokens to mint cannot not exceed the available call option allocation.
     function mintCallOptionTokens(
         uint256 _tokensToMint
-    ) external onlyDaoManager {
+    ) external onlyDaoPermissions {
         require(
             callOptionAllocation >= callOptionTokensMinted + _tokensToMint,
             "CVE: insufficient token allocation"

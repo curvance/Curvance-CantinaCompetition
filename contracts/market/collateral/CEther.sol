@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { CToken } from "contracts/market/collateral/CToken.sol";
+import { CToken, ICentralRegistry } from "contracts/market/collateral/CToken.sol";
 import { InterestRateModel } from "contracts/market/interestRates/InterestRateModel.sol";
 
 /// @title Curvance's CEther Contract
@@ -12,24 +12,22 @@ contract CEther is CToken {
     error ValueMismatch();
 
     /// @notice Construct a new CEther money market
+    /// @param _centralRegistry The address of Curvances Central Registry
     /// @param lendtroller_ The address of the Lendtroller
     /// @param interestRateModel_ The address of the interest rate model
     /// @param initialExchangeRateMantissa_ The initial exchange rate, scaled by 1e18
     /// @param name_ ERC-20 name of this token
     /// @param symbol_ ERC-20 symbol of this token
     /// @param decimals_ ERC-20 decimal precision of this token
-    /// @param admin_ Address of the administrator of this token
     constructor(
+        ICentralRegistry _centralRegistry,
         address lendtroller_,
         InterestRateModel interestRateModel_,
         uint256 initialExchangeRateMantissa_,
         string memory name_,
         string memory symbol_,
-        uint8 decimals_,
-        address payable admin_
-    ) {
-        // Creator of the contract is admin during initialization
-        admin = payable(msg.sender);
+        uint8 decimals_
+    ) CToken(_centralRegistry) {
 
         initialize(
             lendtroller_,
@@ -40,8 +38,6 @@ contract CEther is CToken {
             decimals_
         );
 
-        // Set the proper admin now that initialization is done
-        admin = admin_;
     }
 
     /// User Interface
@@ -169,8 +165,10 @@ contract CEther is CToken {
     function doTransferOut(
         address payable to,
         uint256 amount
-    ) internal virtual override {
-        /* Send the Ether, with minimal gas and revert on failure */
-        to.transfer(amount);
+    ) internal override {
+        /// Transfer the Ether, reverts on failure
+        /// Had to add NonReentrant to all doTransferOut calls to prevent .call reentry
+        (bool success, ) = to.call{ value: amount }("");
+        require(success, "CEther: error sending ether");
     }
 }

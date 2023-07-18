@@ -1,30 +1,28 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import "@openzeppelin/contracts/interfaces/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
-import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.sol";
-import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
+import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
+import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 import { CToken } from "contracts/market/collateral/CToken.sol";
 import { CEther } from "contracts/market/collateral/CEther.sol";
 import { CErc20 } from "contracts/market/collateral/CErc20.sol";
-import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
-import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+
+import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.sol";
+import { IERC20 } from "contracts/interfaces/IERC20.sol";
+import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { IWETH } from "contracts/interfaces/IWETH.sol";
+import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 
 contract PositionFolding is ReentrancyGuard, IPositionFolding {
-    using SafeERC20 for IERC20;
-
     uint256 public constant MAX_LEVERAGE = 9900; // 0.99
     uint256 public constant DENOMINATOR = 10000;
     uint256 public constant SLIPPAGE = 500;
     address public constant ETH = address(0);
 
     address public centralRegistry;
-    Lendtroller public lendtroller;
+    ILendtroller public lendtroller;
     address public cether;
     address public weth;
 
@@ -35,9 +33,9 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         address _lendtroller,
         address _cether,
         address _weth
-    ) ReentrancyGuard() {
+    ) {
         centralRegistry = _centralRegistry;
-        lendtroller = Lendtroller(_lendtroller);
+        lendtroller = ILendtroller(_lendtroller);
         cether = _cether;
         weth = _weth;
     }
@@ -119,7 +117,8 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
                 swapData.length == numBorrowTokens,
             "PositionFolding: invalid array length"
         );
-        for (uint256 i = 0; i < numBorrowTokens; ++i) {
+
+        for (uint256 i; i < numBorrowTokens; ++i) {
             uint256 maxBorrowAmount = queryAmountToBorrowForLeverageMax(
                 msg.sender,
                 address(borrowTokens[i])
@@ -166,9 +165,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         uint256 amount,
         bytes memory params
     ) external override {
-        (bool isListed, , ) = Lendtroller(lendtroller).getIsMarkets(
-            borrowToken
-        );
+        (bool isListed, ) = lendtroller.getIsMarkets(borrowToken);
         require(
             isListed && msg.sender == borrowToken,
             "PositionFolding: UNAUTHORIZED"
@@ -260,7 +257,8 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
                 swapData.length == numCollateralTokens,
             "PositionFolding: invalid array length"
         );
-        for (uint256 i = 0; i < numCollateralTokens; ++i) {
+
+        for (uint256 i; i < numCollateralTokens; ++i) {
             _deleverage(
                 collateralTokens[i],
                 collateralAmount[i],
@@ -302,9 +300,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         uint256 amount,
         bytes calldata params
     ) external override {
-        (bool isListed, , ) = Lendtroller(lendtroller).getIsMarkets(
-            collateral
-        );
+        (bool isListed, ) = lendtroller.getIsMarkets(collateral);
         require(
             isListed && msg.sender == collateral,
             "PositionFolding: UNAUTHORIZED"

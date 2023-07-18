@@ -60,12 +60,13 @@ contract PriceRouter {
         CHAINLINK_ETH_USD = ETH_USD_FEED; // 0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419 on mainnet
     }
 
-    // Only callable by DAO
-    modifier onlyDaoManager() {
-        require(
-            msg.sender == centralRegistry.daoAddress(),
-            "priceRouter: UNAUTHORIZED"
-        );
+    modifier onlyDaoPermissions() {
+        require(centralRegistry.hasDaoPermissions(msg.sender), "centralRegistry: UNAUTHORIZED");
+        _;
+    }
+
+    modifier onlyElevatedPermissions() {
+        require(centralRegistry.hasElevatedPermissions(msg.sender), "centralRegistry: UNAUTHORIZED");
         _;
     }
 
@@ -375,7 +376,7 @@ contract PriceRouter {
     function addAssetPriceFeed(
         address _asset,
         address _feed
-    ) external onlyDaoManager {
+    ) external onlyElevatedPermissions {
         require(isApprovedAdaptor[_feed], "priceRouter: unapproved feed");
         require(
             assetPriceFeeds[_asset].length < 2,
@@ -395,7 +396,7 @@ contract PriceRouter {
     function removeAssetPriceFeed(
         address _asset,
         address _feed
-    ) public onlyDaoManager {
+    ) public onlyDaoPermissions {
         uint256 numAssetPriceFeeds = assetPriceFeeds[_asset].length;
         require(numAssetPriceFeeds > 0, "priceRouter: no feeds available");
 
@@ -445,7 +446,7 @@ contract PriceRouter {
     /// @notice Adds a new approved adaptor.
     /// @dev Requires that the adaptor isn't already approved.
     /// @param _adaptor The address of the adaptor to approve.
-    function addApprovedAdaptor(address _adaptor) external onlyDaoManager {
+    function addApprovedAdaptor(address _adaptor) external onlyElevatedPermissions {
         require(
             !isApprovedAdaptor[_adaptor],
             "priceRouter: adaptor already approved"
@@ -456,7 +457,7 @@ contract PriceRouter {
     /// @notice Removes an approved adaptor.
     /// @dev Requires that the adaptor is currently approved.
     /// @param _adaptor The address of the adaptor to remove.
-    function removeApprovedAdaptor(address _adaptor) external onlyDaoManager {
+    function removeApprovedAdaptor(address _adaptor) external onlyDaoPermissions {
         require(
             isApprovedAdaptor[_adaptor],
             "priceRouter: adaptor does not exist"
@@ -469,7 +470,7 @@ contract PriceRouter {
     /// @param _maxDivergence The new maximum divergence.
     function setPriceFeedMaxDivergence(
         uint256 _maxDivergence
-    ) external onlyDaoManager {
+    ) external onlyElevatedPermissions {
         require(
             _maxDivergence >= 10200,
             "priceRouter: divergence check is too small"
@@ -480,7 +481,7 @@ contract PriceRouter {
     /// @notice Sets a new maximum delay for Chainlink price feed.
     /// @dev Requires that the new delay is less than 1 day. Only callable by the DaoManager.
     /// @param _delay The new maximum delay in seconds.
-    function setChainlinkDelay(uint256 _delay) external onlyDaoManager {
+    function setChainlinkDelay(uint256 _delay) external onlyElevatedPermissions {
         require(_delay < 1 days, "priceRouter: delay is too large");
         CHAINLINK_MAX_DELAY = _delay;
     }

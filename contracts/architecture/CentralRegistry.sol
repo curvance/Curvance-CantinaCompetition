@@ -4,6 +4,7 @@ pragma solidity ^0.8.17;
 import "contracts/interfaces/ICentralRegistry.sol";
 
 contract CentralRegistry is ICentralRegistry {
+
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
     event newTimelockConfiguration(address indexed previousTimelock, address indexed newTimelock);
     event EmergencyCouncilTransferred(address indexed previousEmergencyCouncil, address indexed newEmergencyCouncil);
@@ -26,18 +27,20 @@ contract CentralRegistry is ICentralRegistry {
     event NewApprovedEndpoint(address indexed approvedEndpoint);
     event ApprovedEndpointRemoved(address indexed approvedEndpoint);
 
-    // Add timelock?
-
     uint256 public constant DENOMINATOR = 10000;
 
     uint256 public immutable genesisEpoch;
 
-    // DAO governance operators
+    /// DAO governance operators
+
+    /// DAO multisig, for day to day operations
     address public daoAddress;
+    /// DAO multisig, on a time delay for dangerous permissions
     address public timelock;
+    /// Multi-protocol multisig, only to be used during protocol threatening emergencies
     address public emergencyCouncil;
 
-    // Token Contracts
+    /// Token Contracts
     address public CVE;
     address public veCVE;
     address public callOptionCVE;
@@ -50,13 +53,15 @@ contract CentralRegistry is ICentralRegistry {
     address public zroAddress;
     address public feeHub;
 
-    // Protocol Values
+    /// Protocol Values
     uint256 public protocolYieldFee;
     uint256 public protocolLiquidationFee;
     uint256 public protocolLeverageFee;
     uint256 public voteBoostValue;
     uint256 public lockBoostValue;
 
+    mapping(address => bool) public hasDaoPermissions;
+    mapping(address => bool) public hasElevatedPermissions;
     mapping(address => bool) public approvedVeCVELocker;
     mapping(address => bool) public gaugeController;
     mapping(address => bool) public harvester;
@@ -79,8 +84,13 @@ contract CentralRegistry is ICentralRegistry {
         _;
     }
 
+    modifier onlyDaoPermissions() {
+        require(hasDaoPermissions[msg.sender], "centralRegistry: UNAUTHORIZED");
+        _;
+    }
+
     modifier onlyElevatedPermissions() {
-        require(msg.sender == timelock || msg.sender == emergencyCouncil, "centralRegistry: UNAUTHORIZED");
+        require(hasElevatedPermissions[msg.sender], "centralRegistry: UNAUTHORIZED");
         _;
     }
 
@@ -110,11 +120,11 @@ contract CentralRegistry is ICentralRegistry {
 
     /// SETTER FUNCTIONS
 
-    function setCVE(address newCVE) public onlyDaoManager {
+    function setCVE(address newCVE) public onlyElevatedPermissions {
         CVE = newCVE;
     }
 
-    function setVeCVE(address newVeCVE) public onlyDaoManager {
+    function setVeCVE(address newVeCVE) public onlyElevatedPermissions {
         veCVE = newVeCVE;
     }
 
@@ -122,51 +132,53 @@ contract CentralRegistry is ICentralRegistry {
         callOptionCVE = newCallOptionCVE;
     }
 
-    function setCVELocker(address newCVELocker) public onlyDaoManager {
+    function setCVELocker(address newCVELocker) public onlyElevatedPermissions {
         cveLocker = newCVELocker;
     }
 
-    function setPriceRouter(address newPriceRouter) public onlyDaoManager {
+    function setPriceRouter(address newPriceRouter) public onlyElevatedPermissions {
         priceRouter = newPriceRouter;
     }
 
-    function setDepositRouter(address newDepositRouter) public onlyDaoManager {
+    function setDepositRouter(address newDepositRouter) public onlyElevatedPermissions {
         depositRouter = newDepositRouter;
     }
 
-    function setZroAddress(address newZroAddress) public onlyDaoManager {
+    function setZroAddress(address newZroAddress) public onlyElevatedPermissions {
         zroAddress = newZroAddress;
     }
 
-    function setFeeHub(address newFeeHub) public onlyDaoManager {
+    function setFeeHub(address newFeeHub) public onlyElevatedPermissions {
         feeHub = newFeeHub;
     }
 
-    function setProtocolYieldFee(uint256 value) public onlyDaoManager {
+    function setProtocolYieldFee(uint256 value) public onlyElevatedPermissions {
         require(
-            value < 2000 || value == 0,
+            value <= 2000 || value == 0,
             "centralRegistry: invalid parameter"
         );
         protocolYieldFee = value;
     }
 
-    function setProtocolLiquidationFee(uint256 value) public onlyDaoManager {
+    function setProtocolLiquidationFee(uint256 value) public onlyElevatedPermissions {
         require(
-            value < 500 || value == 0,
+            value <= 500 || value == 0,
             "centralRegistry: invalid parameter"
         );
-        protocolLiquidationFee = value;
+        /// Liquidation fee is represented as 1e16 format 
+        /// So we need to multiply by 1e15 to format properly from basis points to %
+        protocolLiquidationFee = value * 1e15;
     }
 
-    function setProtocolLeverageFee(uint256 value) public onlyDaoManager {
+    function setProtocolLeverageFee(uint256 value) public onlyElevatedPermissions {
         require(
-            value < 100 || value == 0,
+            value <= 100 || value == 0,
             "centralRegistry: invalid parameter"
         );
         protocolLeverageFee = value;
     }
 
-    function setVoteBoostValue(uint256 value) public onlyDaoManager {
+    function setVoteBoostValue(uint256 value) public onlyElevatedPermissions {
         require(
             value > DENOMINATOR || value == 0,
             "centralRegistry: invalid parameter"
@@ -174,7 +186,7 @@ contract CentralRegistry is ICentralRegistry {
         voteBoostValue = value;
     }
 
-    function setLockBoostValue(uint256 value) public onlyDaoManager {
+    function setLockBoostValue(uint256 value) public onlyElevatedPermissions {
         require(
             value > DENOMINATOR || value == 0,
             "centralRegistry: invalid parameter"
@@ -187,22 +199,43 @@ contract CentralRegistry is ICentralRegistry {
     function transferDaoOwnership(address newDaoAddress) public onlyElevatedPermissions {
         address previousDaoAddress = daoAddress;
         daoAddress = newDaoAddress;
+        delete hasDaoPermissions[previousDaoAddress];
+        hasDaoPermissions[newDaoAddress] = true;
+
         emit OwnershipTransferred(previousDaoAddress, newDaoAddress);
     }
 
     function migrateTimelockConfiguration(address newTimelock) public onlyEmergencyCouncil {
         address previousTimelock = timelock;
         timelock = newTimelock;
+
+        /// Delete permission data
+        delete hasDaoPermissions[previousTimelock];
+        delete hasElevatedPermissions[previousTimelock];
+
+        /// Add new permission data
+        hasDaoPermissions[newTimelock] = true;
+        hasElevatedPermissions[newTimelock] = true;
+
         emit newTimelockConfiguration(previousTimelock, newTimelock);
     }
 
     function transferEmergencyCouncil(address newEmergencyCouncil) public onlyEmergencyCouncil {
         address previousEmergencyCouncil = emergencyCouncil;
         emergencyCouncil = newEmergencyCouncil;
+
+        /// Delete permission data
+        delete hasDaoPermissions[previousEmergencyCouncil];
+        delete hasElevatedPermissions[previousEmergencyCouncil];
+
+        /// Add new permission data
+        hasDaoPermissions[newEmergencyCouncil] = true;
+        hasElevatedPermissions[newEmergencyCouncil] = true;
+
         emit EmergencyCouncilTransferred(previousEmergencyCouncil, newEmergencyCouncil);
     }
 
-    function addVeCVELocker(address newVeCVELocker) public onlyDaoManager {
+    function addVeCVELocker(address newVeCVELocker) public onlyElevatedPermissions {
         require(!approvedVeCVELocker[newVeCVELocker], "centralRegistry: already veCVELocker");
 
         approvedVeCVELocker[newVeCVELocker] = true;
@@ -211,7 +244,7 @@ contract CentralRegistry is ICentralRegistry {
 
     function removeVeCVELocker(
         address currentVeCVELocker
-    ) public onlyDaoManager {
+    ) public onlyElevatedPermissions {
         require(approvedVeCVELocker[currentVeCVELocker], "centralRegistry: already not a veCVELocker");
 
         delete approvedVeCVELocker[currentVeCVELocker];
@@ -220,7 +253,7 @@ contract CentralRegistry is ICentralRegistry {
 
     function addGaugeController(
         address newGaugeController
-    ) public onlyDaoManager {
+    ) public onlyElevatedPermissions {
         require(!gaugeController[newGaugeController], "centralRegistry: already Gauge Controller");
 
         gaugeController[newGaugeController] = true;
@@ -229,28 +262,28 @@ contract CentralRegistry is ICentralRegistry {
 
     function removeGaugeController(
         address currentGaugeController
-    ) public onlyDaoManager {
+    ) public onlyElevatedPermissions {
         require(gaugeController[currentGaugeController], "centralRegistry: not a Gauge Controller");
 
         delete gaugeController[currentGaugeController];
         emit GaugeControllerRemoved(currentGaugeController);
     }
 
-    function addHarvester(address newHarvester) public onlyDaoManager {
+    function addHarvester(address newHarvester) public onlyElevatedPermissions {
         require(!harvester[newHarvester], "centralRegistry: already a Harvester");
 
         harvester[newHarvester] = true;
         emit NewHarvester(newHarvester);
     }
 
-    function removeHarvester(address currentHarvester) public onlyDaoManager {
+    function removeHarvester(address currentHarvester) public onlyElevatedPermissions {
         require(harvester[currentHarvester], "centralRegistry: not a Harvester");
 
         delete harvester[currentHarvester];
         emit HarvesterRemoved(currentHarvester);
     }
 
-    function addLendingMarket(address newLendingMarket) public onlyDaoManager {
+    function addLendingMarket(address newLendingMarket) public onlyElevatedPermissions {
         require(!lendingMarket[newLendingMarket], "centralRegistry: already Lending Market");
 
         lendingMarket[newLendingMarket] = true;
@@ -259,14 +292,14 @@ contract CentralRegistry is ICentralRegistry {
 
     function removeLendingMarket(
         address currentLendingMarket
-    ) public onlyDaoManager {
+    ) public onlyElevatedPermissions {
         require(lendingMarket[currentLendingMarket], "centralRegistry: not a Lending Market");
 
         delete lendingMarket[currentLendingMarket];
         emit LendingMarketRemoved(currentLendingMarket);
     }
 
-    function addFeeManager(address newFeeManager) public onlyDaoManager {
+    function addFeeManager(address newFeeManager) public onlyElevatedPermissions {
         require(!feeManager[newFeeManager], "centralRegistry: already a Fee Manager");
 
         feeManager[newFeeManager] = true;
@@ -275,7 +308,7 @@ contract CentralRegistry is ICentralRegistry {
 
     function removeFeeManager(
         address currentFeeManager
-    ) public onlyDaoManager {
+    ) public onlyElevatedPermissions {
         require(feeManager[currentFeeManager], "centralRegistry: not a Fee Manager");
 
         delete feeManager[currentFeeManager];
@@ -284,7 +317,7 @@ contract CentralRegistry is ICentralRegistry {
 
     function addApprovedEndpoint(
         address newApprovedEndpoint
-    ) public onlyDaoManager {
+    ) public onlyElevatedPermissions {
         require(!approvedEndpoint[newApprovedEndpoint], "centralRegistry: already an Endpoint");
 
         approvedEndpoint[newApprovedEndpoint] = true;
@@ -293,7 +326,7 @@ contract CentralRegistry is ICentralRegistry {
 
     function removeApprovedEndpoint(
         address currentApprovedEndpoint
-    ) public onlyDaoManager {
+    ) public onlyElevatedPermissions {
         require(approvedEndpoint[currentApprovedEndpoint], "centralRegistry: not an Endpoint");
 
         delete approvedEndpoint[currentApprovedEndpoint];

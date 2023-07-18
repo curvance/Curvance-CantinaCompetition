@@ -9,6 +9,9 @@ import "contracts/interfaces/ICveLocker.sol";
 import "contracts/interfaces/IDelegateRegistry.sol";
 
 contract veCVE is ERC20 {
+
+    /// STRUCTS ///
+
     struct Lock {
         uint216 amount;
         uint40 unlockTime;
@@ -77,9 +80,14 @@ contract veCVE is ERC20 {
 
     /// MODIFIERS ///
 
-    modifier onlyDaoManager() {
-        require(msg.sender == centralRegistry.daoAddress(), "UNAUTHORIZED");
+    modifier onlyDaoPermissions() {
+        require(centralRegistry.hasDaoPermissions(msg.sender), "centralRegistry: UNAUTHORIZED");
         _;
+    }
+
+    modifier onlyElevatedPermissions() {
+            require(centralRegistry.hasElevatedPermissions(msg.sender), "centralRegistry: UNAUTHORIZED");
+            _;
     }
 
     /// FUNCTIONS ///
@@ -116,6 +124,13 @@ contract veCVE is ERC20 {
         }
 
         return ((time - genesisEpoch) / EPOCH_DURATION);
+    }
+
+    /// @notice Returns the current epoch for the given time
+    /// @return The current epoch
+    function nextEpochStartTime() public view returns (uint256) {
+        uint256 timestampOffset = (currentEpoch(block.timestamp) + 1) * EPOCH_DURATION;
+        return (genesisEpoch + timestampOffset);
     }
 
     /// @notice Returns the epoch to lock until for a lock executed
@@ -735,7 +750,7 @@ contract veCVE is ERC20 {
         address token,
         address to,
         uint256 amount
-    ) external onlyDaoManager {
+    ) external onlyDaoPermissions {
         require(token != address(cve), "cannot withdraw cve token");
 
         if (amount == 0) {
@@ -749,7 +764,7 @@ contract veCVE is ERC20 {
 
     /// @notice Shuts down the contract, unstakes all tokens,
     ///         and releases all locks
-    function shutdown() external onlyDaoManager {
+    function shutdown() external onlyElevatedPermissions {
         isShutdown = true;
         cveLocker.notifyLockerShutdown();
     }
@@ -1120,6 +1135,7 @@ contract veCVE is ERC20 {
         uint256 epoch,
         uint256 points
     ) internal {
+        
         // We know theres never more than 420m
         // so this should never over/underflow
         unchecked {

@@ -101,7 +101,7 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
     function addAsset(
         address _asset,
         AdaptorData memory _data
-    ) external onlyDaoManager {
+    ) external onlyElevatedPermissions {
         require(
             !isSupportedAsset[_asset],
             "BalancerStablePoolAdaptor: asset already supported"
@@ -145,7 +145,7 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
 
     /// @notice Removes a supported asset from the adaptor.
     /// @dev Calls back into price router to notify it of its removal
-    function removeAsset(address _asset) external override onlyDaoManager {
+    function removeAsset(address _asset) external override onlyDaoPermissions {
         require(
             isSupportedAsset[_asset],
             "BalancerStablePoolAdaptor: asset not supported"

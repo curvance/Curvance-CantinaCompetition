@@ -154,7 +154,7 @@ contract AuraPositionVault is BasePositionVault {
                               OWNER LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function updateHarvestSlippage(uint64 _slippage) external onlyDaoManager {
+    function updateHarvestSlippage(uint64 _slippage) external onlyDaoPermissions {
         harvestSlippage = _slippage;
         emit HarvestSlippageChanged(_slippage);
     }
@@ -162,13 +162,13 @@ contract AuraPositionVault is BasePositionVault {
     function setIsApprovedTarget(
         address _target,
         bool _isApproved
-    ) external onlyDaoManager {
+    ) external onlyDaoPermissions {
         isApprovedTarget[_target] = _isApproved;
     }
 
     function setRewardTokens(
         address[] calldata _rewardTokens
-    ) external onlyDaoManager {
+    ) external onlyDaoPermissions {
         rewardTokens = _rewardTokens;
     }
 
