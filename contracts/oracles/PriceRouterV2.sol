@@ -94,7 +94,7 @@ contract PriceRouter {
         uint256 numAssetPriceFeeds = assetPriceFeeds[_asset].length;
         require(numAssetPriceFeeds > 0, "priceRouter: no feeds available");
 
-        if(cTokenAssets[_asset].isCtoken){
+        if(cTokenAssets[_asset].isCToken){
             _asset = cTokenAssets[_asset].underlying;
         }
 
@@ -373,7 +373,7 @@ contract PriceRouter {
     /// @param _asset The address of the asset to check.
     /// @return True if the asset is supported, false otherwise.
     function isSupportedAsset(address _asset) external view returns (bool) {
-        if(cTokenAssets[_asset].isCtoken){
+        if(cTokenAssets[_asset].isCToken){
            return assetPriceFeeds[cTokenAssets[_asset].underlying].length > 0;
         }
 
