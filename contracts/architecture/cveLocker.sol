@@ -2,6 +2,7 @@
 pragma solidity ^0.8.17;
 
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
+import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { IVeCVE } from "contracts/interfaces/IVeCVE.sol";
@@ -10,7 +11,6 @@ import { ICVXLocker } from "contracts/interfaces/ICvxLocker.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 contract cveLocker {
-
     event TokenRecovered(address _token, address _to, uint256 _amount);
     event RewardPaid(
         address _user,
@@ -18,11 +18,6 @@ contract cveLocker {
         address _rewardToken,
         uint256 _amount
     );
-
-    struct Swap {
-        address target;
-        bytes call;
-    }
 
     // TO-DO:
     // Process fee per cve reporting by chain in fee routing/here (permissioned functions for feerouting)
@@ -46,10 +41,12 @@ contract cveLocker {
 
     ICVXLocker public cvxLocker;
 
-    address public constant baseRewardToken = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+    address public constant baseRewardToken =
+        0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
     uint256 public constant EPOCH_DURATION = 2 weeks;
     uint256 public constant DENOMINATOR = 10000;
     uint256 public constant ethPerCVEOffset = 1 ether;
+    uint256 public constant SLIPPAGE = 500; // 5%
 
     uint256 public nextEpochToDeliver;
 
@@ -83,20 +80,23 @@ contract cveLocker {
     }
 
     modifier onlyDaoPermissions() {
-        require(centralRegistry.hasDaoPermissions(msg.sender), "centralRegistry: UNAUTHORIZED");
+        require(
+            centralRegistry.hasDaoPermissions(msg.sender),
+            "centralRegistry: UNAUTHORIZED"
+        );
         _;
     }
 
     modifier onlyElevatedPermissions() {
-        require(centralRegistry.hasElevatedPermissions(msg.sender), "centralRegistry: UNAUTHORIZED");
+        require(
+            centralRegistry.hasElevatedPermissions(msg.sender),
+            "centralRegistry: UNAUTHORIZED"
+        );
         _;
     }
 
     modifier onlyVeCVE() {
-        require(
-            msg.sender == address(veCVE),
-            "cveLocker: UNAUTHORIZED"
-        );
+        require(msg.sender == address(veCVE), "cveLocker: UNAUTHORIZED");
         _;
     }
 
@@ -122,7 +122,10 @@ contract cveLocker {
     /// @param _user The address of the user to check for reward claims.
     /// @return A boolean value indicating if the user has any rewards to claim.
     function hasRewardsToClaim(address _user) public view returns (bool) {
-        if (nextEpochToDeliver > userNextClaimIndex[_user] && veCVE.userTokenPoints(_user) > 0) return true;
+        if (
+            nextEpochToDeliver > userNextClaimIndex[_user] &&
+            veCVE.userTokenPoints(_user) > 0
+        ) return true;
         return false;
     }
 
@@ -132,10 +135,13 @@ contract cveLocker {
     /// @param _user The address of the user to check for reward claims.
     /// @return A boolean value indicating if the user has any rewards to claim.
     function epochsToClaim(address _user) public view returns (uint256) {
-        if (nextEpochToDeliver > userNextClaimIndex[_user] && veCVE.userTokenPoints(_user) > 0){
-             unchecked {
-                 return nextEpochToDeliver - userNextClaimIndex[_user] - 1;
-             } 
+        if (
+            nextEpochToDeliver > userNextClaimIndex[_user] &&
+            veCVE.userTokenPoints(_user) > 0
+        ) {
+            unchecked {
+                return nextEpochToDeliver - userNextClaimIndex[_user] - 1;
+            }
         }
         return 0;
     }
@@ -178,8 +184,15 @@ contract cveLocker {
         uint256 _aux
     ) public {
         uint256 epochs = epochsToClaim(msg.sender);
-        require (epochs > 0, "cveLocker: no epochs to claim");
-        _claimRewards(msg.sender, _recipient, epochs, _rewardsData, params, _aux);
+        require(epochs > 0, "cveLocker: no epochs to claim");
+        _claimRewards(
+            msg.sender,
+            _recipient,
+            epochs,
+            _rewardsData,
+            params,
+            _aux
+        );
     }
 
     /// @notice Claim rewards for multiple epochs
@@ -189,7 +202,7 @@ contract cveLocker {
     /// @param params Swap data for token swapping rewards to desiredRewardToken.
     /// @param _aux Auxiliary data for wrapped assets such as vlCVX and veCVE.
     function claimRewardsFor(
-        address _user, 
+        address _user,
         address _recipient,
         uint256 epochs,
         rewardsData memory _rewardsData,
@@ -209,7 +222,6 @@ contract cveLocker {
         bytes memory params,
         uint256 _aux
     ) public {
-
         uint256 nextUserRewardEpoch = userNextClaimIndex[_user];
         uint256 userRewards;
 
@@ -223,9 +235,9 @@ contract cveLocker {
 
         unchecked {
             userNextClaimIndex[_user] += epochs;
-            userRewards  = userRewards / ethPerCVEOffset;//Removes the 1e18 offset for proper reward value
+            userRewards = userRewards / ethPerCVEOffset; //Removes the 1e18 offset for proper reward value
         }
-        
+
         uint256 rewardAmount = _processRewards(
             _recipient,
             userRewards,
@@ -234,14 +246,14 @@ contract cveLocker {
             _aux
         );
 
-        if (rewardAmount > 0) 
-        // Only emit an event if they actually had rewards, do not wanna revert to maintain composability
-        emit RewardPaid(
-            _user,
-            _recipient,
-            _rewardsData.desiredRewardToken,
-            rewardAmount
-        );
+        if (rewardAmount > 0)
+            // Only emit an event if they actually had rewards, do not wanna revert to maintain composability
+            emit RewardPaid(
+                _user,
+                _recipient,
+                _rewardsData.desiredRewardToken,
+                rewardAmount
+            );
     }
 
     /// @notice Calculate the rewards for a given epoch
@@ -258,47 +270,6 @@ contract cveLocker {
         return (veCVE.userTokenPoints(msg.sender) * ethPerCVE[_epoch]);
     }
 
-    /// @dev Swap input token
-    /// @param _inputToken The input asset address
-    /// @param _swapData The swap aggregation data
-    function _swap(address _inputToken, Swap memory _swapData) private {
-        _approveTokenIfNeeded(_inputToken, address(_swapData.target));
-
-        (bool success, bytes memory retData) = _swapData.target.call(
-            _swapData.call
-        );
-
-        propagateError(success, retData, "swap");
-
-        require(success == true, "cveLocker: calling swap returned an error");
-    }
-
-    /// @dev Approve token if needed
-    /// @param _token The token address
-    /// @param _spender The spender address
-    function _approveTokenIfNeeded(address _token, address _spender) private {
-        if (IERC20(_token).allowance(address(this), _spender) == 0) {
-            SafeTransferLib.safeApprove(_token, _spender, type(uint256).max);
-        }
-    }
-
-    /// @dev Propagate error message
-    /// @param success If transaction is successful
-    /// @param data The transaction result data
-    /// @param errorMessage The custom error message
-    function propagateError(
-        bool success,
-        bytes memory data,
-        string memory errorMessage
-    ) public pure {
-        if (!success) {
-            if (data.length == 0) revert(errorMessage);
-            assembly {
-                revert(add(32, data), mload(data))
-            }
-        }
-    }
-
     /// @notice Process user rewards
     /// @dev Process the rewards for the user, if any. If the user wishes to receive rewards in a token other than the base reward token, a swap is performed.
     /// If the desired reward token is CVE and the user opts for lock, the rewards are locked as VeCVE.
@@ -309,33 +280,49 @@ contract cveLocker {
     function _processRewards(
         address recipient,
         uint256 userRewards,
-        rewardsData memory _rewardsData, 
+        rewardsData memory _rewardsData,
         bytes memory params,
         uint256 _aux
     ) internal returns (uint256) {
         if (userRewards == 0) return 0;
 
         if (_rewardsData.desiredRewardToken != baseRewardToken) {
-
             require(
                 authorizedRewardToken[_rewardsData.desiredRewardToken],
                 "cveLocker: unsupported reward token"
             );
 
-            Swap memory swapData = abi.decode(params, (Swap));
+            SwapperLib.Swap memory swapData = abi.decode(
+                params,
+                (SwapperLib.Swap)
+            );
 
             if (swapData.call.length > 0) {
-                _swap(_rewardsData.desiredRewardToken, swapData);
+                SwapperLib.swap(
+                    swapData,
+                    ICentralRegistry(centralRegistry).priceRouter(),
+                    SLIPPAGE
+                );
             } else {
                 revert("cveLocker: swapData misconfigured");
             }
 
-            if (_rewardsData.desiredRewardToken == cvx && _rewardsData.shouldLock) {
+            if (
+                _rewardsData.desiredRewardToken == cvx &&
+                _rewardsData.shouldLock
+            ) {
                 return
-                    _lockFeesAsVlCVX(recipient, _rewardsData.desiredRewardToken, _aux);
+                    _lockFeesAsVlCVX(
+                        recipient,
+                        _rewardsData.desiredRewardToken,
+                        _aux
+                    );
             }
 
-            if (_rewardsData.desiredRewardToken == cve && _rewardsData.shouldLock) {
+            if (
+                _rewardsData.desiredRewardToken == cve &&
+                _rewardsData.shouldLock
+            ) {
                 return
                     _lockFeesAsVeCVE(
                         _rewardsData.desiredRewardToken,
@@ -353,7 +340,6 @@ contract cveLocker {
         }
 
         return _distributeRewardsAsETH(recipient, userRewards);
-
     }
 
     /// @notice Lock fees as veCVE
@@ -409,7 +395,6 @@ contract cveLocker {
         return reward;
     }
 
-    
     /// @dev Lock fees as vlCVX
     /// @param _recipient The address to receive the locked vlCVX tokens.
     /// @param desiredRewardToken The address of the token to be locked, this should be CVX.
@@ -461,14 +446,16 @@ contract cveLocker {
 
     /// @dev Authorizes a new reward token. Can only be called by the DAO manager.
     /// @param _token The address of the token to authorize.
-    function addAuthorizedRewardToken(address _token) external onlyElevatedPermissions {
+    function addAuthorizedRewardToken(
+        address _token
+    ) external onlyElevatedPermissions {
         require(_token != address(0), "Invalid Token Address");
         require(!authorizedRewardToken[_token], "Invalid Operation");
         authorizedRewardToken[_token] = true;
     }
 
     /// @dev Removes an authorized reward token. Can only be called by the DAO manager.
-    /// @param _token The address of the token to deauthorize.    
+    /// @param _token The address of the token to deauthorize.
     function removeAuthorizedRewardToken(
         address _token
     ) external onlyDaoPermissions {
@@ -478,7 +465,11 @@ contract cveLocker {
     }
 
     function notifyLockerShutdown() external {
-        require (msg.sender == address(veCVE) || centralRegistry.hasElevatedPermissions(msg.sender), "cveLocker: UNAUTHORIZED");
+        require(
+            msg.sender == address(veCVE) ||
+                centralRegistry.hasElevatedPermissions(msg.sender),
+            "cveLocker: UNAUTHORIZED"
+        );
         isShutdown = true;
     }
 

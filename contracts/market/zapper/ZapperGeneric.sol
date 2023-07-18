@@ -9,7 +9,6 @@ import { ICurveSwap } from "contracts/interfaces/external/curve/ICurve.sol";
 import { IWETH } from "contracts/interfaces/IWETH.sol";
 
 contract ZapperGeneric {
-
     struct Swap {
         address target;
         bytes call;
@@ -49,7 +48,8 @@ contract ZapperGeneric {
             inputToken = weth;
             IWETH(weth).deposit{ value: inputAmount }(inputAmount);
         } else {
-            SafeTransferLib.safeTransferFrom(inputToken,
+            SafeTransferLib.safeTransferFrom(
+                inputToken,
                 msg.sender,
                 address(this),
                 inputAmount

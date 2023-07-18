@@ -15,17 +15,14 @@ import { KeeperCompatibleInterface } from "@chainlink/contracts/src/v0.8/interfa
 import { AggregatorV2V3Interface } from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV2V3Interface.sol";
 import { IChainlinkAggregator } from "contracts/interfaces/external/chainlink/IChainlinkAggregator.sol";
 
+import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
+
 contract AuraPositionVault is BasePositionVault {
     using Math for uint256;
 
     /*//////////////////////////////////////////////////////////////
                              STRUCTS
     //////////////////////////////////////////////////////////////*/
-
-    struct Swap {
-        address target;
-        bytes call;
-    }
 
     /// @notice Balancer vault contract.
     IBalancerVault public balancerVault;
@@ -157,7 +154,9 @@ contract AuraPositionVault is BasePositionVault {
                               OWNER LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function updateHarvestSlippage(uint64 _slippage) external onlyDaoPermissions {
+    function updateHarvestSlippage(
+        uint64 _slippage
+    ) external onlyDaoPermissions {
         harvestSlippage = _slippage;
         emit HarvestSlippageChanged(_slippage);
     }
@@ -206,7 +205,10 @@ contract AuraPositionVault is BasePositionVault {
             uint256 valueIn;
 
             {
-                Swap[] memory swapDataArray = abi.decode(data, (Swap[]));
+                SwapperLib.Swap[] memory swapDataArray = abi.decode(
+                    data,
+                    (SwapperLib.Swap[])
+                );
 
                 // swap assets to one of pool token
                 uint256 numRewardTokens = rewardTokens.length;
@@ -242,7 +244,11 @@ contract AuraPositionVault is BasePositionVault {
                     );
 
                     if (!isUnderlyingToken[reward]) {
-                        _swap(reward, swapDataArray[i]);
+                        SwapperLib.swap(
+                            swapDataArray[i],
+                            address(positionVaultMetaData.priceRouter),
+                            10000 // swap for 100% slippage, we have slippage check later for global level
+                        );
                     }
                 }
             }
@@ -261,7 +267,11 @@ contract AuraPositionVault is BasePositionVault {
                 maxAmountsIn[i] = ERC20(underlyingToken).balanceOf(
                     address(this)
                 );
-                _approveTokenIfNeeded(underlyingToken, address(balancerVault));
+                SwapperLib.approveTokenIfNeeded(
+                    underlyingToken,
+                    address(balancerVault),
+                    maxAmountsIn[i]
+                );
 
                 (assetPrice, ) = positionVaultMetaData.priceRouter.getPrice(
                     underlyingToken,
@@ -338,48 +348,5 @@ contract AuraPositionVault is BasePositionVault {
     {
         IBaseRewardPool rewardPool = IBaseRewardPool(rewarder);
         return rewardPool.balanceOf(address(this));
-    }
-
-    /// @dev Swap input token
-    /// @param _inputToken The input asset address
-    /// @param _swapData The swap aggregation data
-    function _swap(address _inputToken, Swap memory _swapData) private {
-        require(isApprovedTarget[_swapData.target], "invalid swap target");
-
-        _approveTokenIfNeeded(_inputToken, address(_swapData.target));
-
-        (bool success, bytes memory retData) = _swapData.target.call(
-            _swapData.call
-        );
-
-        propagateError(success, retData, "swap");
-
-        require(success == true, "calling swap got an error");
-    }
-
-    /// @dev Approve token if needed
-    /// @param _token The token address
-    /// @param _spender The spender address
-    function _approveTokenIfNeeded(address _token, address _spender) private {
-        if (ERC20(_token).allowance(address(this), _spender) == 0) {
-            SafeTransferLib.safeApprove(_token, _spender, type(uint256).max);
-        }
-    }
-
-    /// @dev Propagate error message
-    /// @param success If transaction is successful
-    /// @param data The transaction result data
-    /// @param errorMessage The custom error message
-    function propagateError(
-        bool success,
-        bytes memory data,
-        string memory errorMessage
-    ) public pure {
-        if (!success) {
-            if (data.length == 0) revert(errorMessage);
-            assembly {
-                revert(add(32, data), mload(data))
-            }
-        }
     }
 }
