@@ -154,7 +154,9 @@ contract AuraPositionVault is BasePositionVault {
                               OWNER LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function updateHarvestSlippage(uint64 _slippage) external onlyDaoPermissions {
+    function updateHarvestSlippage(
+        uint64 _slippage
+    ) external onlyDaoPermissions {
         harvestSlippage = _slippage;
         emit HarvestSlippageChanged(_slippage);
     }
@@ -267,7 +269,8 @@ contract AuraPositionVault is BasePositionVault {
                 );
                 SwapperLib.approveTokenIfNeeded(
                     underlyingToken,
-                    address(balancerVault)
+                    address(balancerVault),
+                    maxAmountsIn[i]
                 );
 
                 (assetPrice, ) = positionVaultMetaData.priceRouter.getPrice(

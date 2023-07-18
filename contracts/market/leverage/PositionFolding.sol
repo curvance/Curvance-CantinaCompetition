@@ -2,7 +2,6 @@
 pragma solidity ^0.8.17;
 
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
-import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 import { CToken } from "contracts/market/collateral/CToken.sol";
 import { CEther } from "contracts/market/collateral/CEther.sol";
@@ -118,8 +117,9 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
             "PositionFolding: invalid array length"
         );
 
+        uint256 maxBorrowAmount;
         for (uint256 i; i < numBorrowTokens; ++i) {
-            uint256 maxBorrowAmount = queryAmountToBorrowForLeverageMax(
+            maxBorrowAmount = queryAmountToBorrowForLeverageMax(
                 msg.sender,
                 address(borrowTokens[i])
             );
@@ -218,7 +218,8 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
             );
             SwapperLib.approveTokenIfNeeded(
                 collateralUnderlying,
-                address(collateral)
+                address(collateral),
+                collateralAmount
             );
             CErc20(address(collateral)).mintFor(collateralAmount, borrower);
         }
@@ -367,7 +368,8 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
                 repayAmount;
             SwapperLib.approveTokenIfNeeded(
                 borrowUnderlying,
-                address(borrowToken)
+                address(borrowToken),
+                repayAmount + remaining
             );
             CErc20(address(borrowToken)).repayBorrowBehalf(
                 redeemer,

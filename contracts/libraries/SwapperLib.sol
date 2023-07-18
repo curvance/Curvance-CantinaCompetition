@@ -46,7 +46,11 @@ library SwapperLib {
         uint256 usdInput = (price * swapData.inputAmount) /
             (10 ** ERC20(swapData.inputToken).decimals());
 
-        approveTokenIfNeeded(swapData.inputToken, swapData.target);
+        approveTokenIfNeeded(
+            swapData.inputToken,
+            swapData.target,
+            swapData.inputAmount
+        );
 
         uint256 outputAmountBefore = IERC20(swapData.outputToken).balanceOf(
             address(this)
@@ -79,9 +83,14 @@ library SwapperLib {
     /// @dev Approve token if needed
     /// @param _token The token address
     /// @param _spender The spender address
-    function approveTokenIfNeeded(address _token, address _spender) internal {
-        if (IERC20(_token).allowance(address(this), _spender) == 0) {
-            SafeTransferLib.safeApprove(_token, _spender, type(uint256).max);
+    /// @param _amount The approve amount
+    function approveTokenIfNeeded(
+        address _token,
+        address _spender,
+        uint256 _amount
+    ) internal {
+        if (IERC20(_token).allowance(address(this), _spender) < _amount) {
+            SafeTransferLib.safeApprove(_token, _spender, _amount);
         }
     }
 
