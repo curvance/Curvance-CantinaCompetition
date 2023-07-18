@@ -1,136 +1,230 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.17;
 
-import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
-import { IChainlinkAggregator } from "contracts/interfaces/external/chainlink/IChainlinkAggregator.sol";
-
-import { BaseOracleAdaptor } from "../BaseOracleAdaptor.sol";
+import { BaseOracleAdaptor } from "contracts/oracles/adaptors/BaseOracleAdaptor.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 import { IOracleAdaptor, PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
+import { IChainlinkAggregator } from "contracts/interfaces/external/chainlink/IChainlinkAggregator.sol";
 
 contract ChainlinkAdaptor is BaseOracleAdaptor {
-
-    /**
-     * @notice Stores configuration data for Chainlink price sources.
-     * @param max the max valid price of the asset
-     *        - 0 defaults to use aggregators max price buffered by ~10%
-     * @param min the min valid price of the asset
-     *        - 0 defaults to use aggregators min price buffered by ~10%
-     * @param heartbeat the max amount of time between price updates
-     *        - 0 defaults to using DEFAULT_HEART_BEAT
-     * @param inUsd bool indicating whether the price feed is
-     *        denominated in USD(true) or ETH(false)
-     */
-    struct feedData {
+    /// @notice Stores configuration data for Chainlink price sources.
+    /// @param max the max valid price of the asset
+    ///        - 0 defaults to use aggregators max price buffered by ~10%
+    /// @param min the min valid price of the asset
+    ///        - 0 defaults to use aggregators min price buffered by ~10%
+    /// @param heartbeat the max amount of time between price updates
+    ///        - 0 defaults to using DEFAULT_HEART_BEAT
+    /// @param inUsd bool indicating whether the price feed is
+    ///        denominated in USD(true) or ETH(false)
+    struct FeedData {
         IChainlinkAggregator aggregator;
-        bool isConfigured;//heartbeat will never be 64 bits so we can use some space for a bool to check instead of against aggregator != address(0)
-        uint64 heartbeat;
+        bool isConfigured;
+        uint256 heartbeat;
         uint256 max;
         uint256 min;
     }
 
-    /**
-     * @notice If zero is specified for a Chainlink asset heartbeat, this value is used instead.
-     */
+    /// @notice If zero is specified for a Chainlink asset heartbeat, this value is used instead.
     uint24 public constant DEFAULT_HEART_BEAT = 1 days;
 
-    /// @notice Chainlink Stable Pool Adaptor Storage
-    mapping(address => feedData) public adaptorDataNonUSD;
+    /// @notice Chainlink Adaptor Data for pricing in ETH
+    mapping(address => FeedData) public adaptorDataNonUSD;
 
-    /// @notice Chainlink Stable Pool Adaptor Storage
-    mapping(address => feedData) public adaptorDataUSD;
+    /// @notice Chainlink Adaptor Data for pricing in USD
+    mapping(address => FeedData) public adaptorDataUSD;
 
-        constructor(ICentralRegistry _centralRegistry) BaseOracleAdaptor(_centralRegistry) {}
+    constructor(
+        ICentralRegistry _centralRegistry
+    ) BaseOracleAdaptor(_centralRegistry) {}
 
-
-    /// @notice Called by PriceRouter to price an asset.
+    /// @notice Retrieves the price of a given asset.
+    /// @dev Uses Chainlink oracles to fetch the price data. Price is returned in USD or ETH depending on 'isUsd' parameter.
+    /// @param asset The address of the asset for which the price is needed.
+    /// @param isUsd A boolean to determine if the price should be returned in USD or not.
+    /// @return PriceReturnData A structure containing the price, error status, and the quote format of the price.
     function getPrice(
-        address _asset,
-        bool _isUsd,
-        bool _getLower
+        address asset,
+        bool isUsd,
+        bool
     ) external view override returns (PriceReturnData memory) {
-        PriceReturnData memory data = PriceReturnData({
-            price: 0,
-            hadError: false,
-            inUSD: false
-        });
-        return data;
+        require(
+            isSupportedAsset[asset],
+            "ChainlinkAdaptor: asset not supported"
+        );
+
+        if (isUsd) {
+            return _getPriceinUSD(asset);
+        }
+
+        return _getPriceinETH(asset);
     }
 
-    /**
-     * @notice Add a Chainlink Price Feed as an asset.
-     * @dev Should be called before `PriceRouter:addAssetPriceFeed` is called.
-     * @param _asset The address of the token to add pricing for
-     * @param _aggregator Chainlink aggregator to use for pricing `_asset`
-     * @param _inUSD Whether the price feed is in USD (_inUSD = true) or ETH (_inUSD = false)
-     */
-    function addAsset(
-        address _asset,
-        address _aggregator,
-        bool _inUSD
-    ) external onlyDaoManager {
+    /// @notice Retrieves the price of a given asset in USD.
+    /// @param asset The address of the asset for which the price is needed.
+    /// @return A structure containing the price, error status, and the quote format of the price (USD).
+    function _getPriceinUSD(
+        address asset
+    ) internal view returns (PriceReturnData memory) {
+        if (adaptorDataUSD[asset].isConfigured) {
+            return _parseFeedData(adaptorDataUSD[asset], true);
+        }
 
-        // Use Chainlink to get the min and max of the asset.
-        IChainlinkAggregator aggregator = IChainlinkAggregator(
-            IChainlinkAggregator(_aggregator).aggregator()
+        return _parseFeedData(adaptorDataNonUSD[asset], false);
+    }
+
+    /// @notice Retrieves the price of a given asset in ETH.
+    /// @param asset The address of the asset for which the price is needed.
+    /// @return A structure containing the price, error status, and the quote format of the price (ETH).
+    function _getPriceinETH(
+        address asset
+    ) internal view returns (PriceReturnData memory) {
+        if (adaptorDataNonUSD[asset].isConfigured) {
+            return _parseFeedData(adaptorDataNonUSD[asset], false);
+        }
+
+        return _parseFeedData(adaptorDataUSD[asset], true);
+    }
+
+    /// @notice Parses the chainlink feed data for pricing of an asset.
+    /// @dev Calls latestRoundData() from Chainlink to get the latest data for pricing and staleness.
+    /// @param chainlinkFeed Chainlink feed details.
+    /// @param inUSD A boolean to denote if the price is in USD.
+    /// @return A structure containing the price, error status, and the currency of the price.
+    function _parseFeedData(
+        FeedData memory chainlinkFeed,
+        bool inUSD
+    ) internal view returns (PriceReturnData memory) {
+        (, int256 feedPrice, , uint256 updatedAt, ) = IChainlinkAggregator(
+            chainlinkFeed.aggregator
+        ).latestRoundData();
+        uint256 convertedPrice = uint256(feedPrice);
+
+        return (
+            PriceReturnData({
+                price: uint240(convertedPrice),
+                hadError: _validateFeedData(
+                    convertedPrice,
+                    updatedAt,
+                    chainlinkFeed.max,
+                    chainlinkFeed.min,
+                    chainlinkFeed.heartbeat
+                ),
+                inUSD: inUSD
+            })
         );
-        uint256 maxFromChainlink = uint256(uint192(aggregator.maxAnswer()));
-        uint256 minFromChainklink = uint256(uint192(aggregator.minAnswer()));
-        
+    }
+
+    /// @notice Validates the feed data based on various constraints.
+    /// @dev Checks if the value is within a specific range and if the data is not outdated.
+    /// @param value The value that is retrieved from the feed data.
+    /// @param timestamp The time at which the value was last updated.
+    /// @param max The maximum limit of the value.
+    /// @param min The minimum limit of the value.
+    /// @param heartbeat The maximum allowed time difference between current time and 'timestamp'.
+    /// @return A boolean indicating whether the feed data had an error (true = error, false = no error).
+    function _validateFeedData(
+        uint256 value,
+        uint256 timestamp,
+        uint256 max,
+        uint256 min,
+        uint256 heartbeat
+    ) internal view returns (bool) {
+        if (value < min) {
+            return true;
+        }
+
+        if (value > max) {
+            return true;
+        }
+
+        if (block.timestamp - timestamp > heartbeat) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /// @notice Add a Chainlink Price Feed as an asset.
+    /// @dev Should be called before `PriceRouter:addAssetPriceFeed` is called.
+    /// @param asset The address of the token to add pricing for
+    /// @param aggregator Chainlink aggregator to use for pricing `asset`
+    /// @param inUSD Whether the price feed is in USD (inUSD = true) or ETH (inUSD = false)
+    function addAsset(
+        address asset,
+        address aggregator,
+        bool inUSD
+    ) external onlyElevatedPermissions {
+        // Use Chainlink to get the min and max of the asset.
+        IChainlinkAggregator feedAggregator = IChainlinkAggregator(
+            IChainlinkAggregator(aggregator).aggregator()
+        );
+        uint256 maxFromChainlink = uint256(
+            uint192(feedAggregator.maxAnswer())
+        );
+        uint256 minFromChainklink = uint256(
+            uint192(feedAggregator.minAnswer())
+        );
+
         // Add a ~10% buffer to minimum and maximum price from Chainlink because Chainlink can stop updating
         // its price before/above the min/max price.
         uint256 bufferedMaxPrice = (maxFromChainlink * 0.9e18) / 1e18;
         uint256 bufferedMinPrice = (minFromChainklink * 1.1e18) / 1e18;
-        
 
-        feedData storage _feedData;
+        FeedData storage feedData;
 
-        if (_inUSD) {
-            _feedData = adaptorDataUSD[_asset];
+        if (inUSD) {
+            feedData = adaptorDataUSD[asset];
         } else {
-            _feedData = adaptorDataNonUSD[_asset];
+            feedData = adaptorDataNonUSD[asset];
         }
 
-        if (_feedData.min == 0) {
-        } else {
-            require(_feedData.min >= bufferedMinPrice, "ChainlinkAdaptor: invalid min price");
+        if (feedData.min == 0) {} else {
+            require(
+                feedData.min >= bufferedMinPrice,
+                "ChainlinkAdaptor: invalid min price"
+            );
         }
 
-        if (_feedData.max == 0) {
-        } else {
-            require(_feedData.max <= bufferedMaxPrice, "ChainlinkAdaptor: invalid max price");
+        if (feedData.max == 0) {} else {
+            require(
+                feedData.max <= bufferedMaxPrice,
+                "ChainlinkAdaptor: invalid max price"
+            );
         }
 
-        require(_feedData.min < _feedData.max, "ChainlinkAdaptor: invalid min/max config");
+        require(
+            feedData.min < feedData.max,
+            "ChainlinkAdaptor: invalid min/max config"
+        );
 
-        _feedData.heartbeat = _feedData.heartbeat != 0
-            ? _feedData.heartbeat
+        feedData.heartbeat = feedData.heartbeat != 0
+            ? feedData.heartbeat
             : DEFAULT_HEART_BEAT;
 
-        _feedData.aggregator = IChainlinkAggregator(_aggregator);
-        _feedData.isConfigured = true;
-        isSupportedAsset[_asset] = true;
-
+        feedData.aggregator = IChainlinkAggregator(aggregator);
+        feedData.isConfigured = true;
+        isSupportedAsset[asset] = true;
     }
 
     /// @notice Removes a supported asset from the adaptor.
     /// @dev Calls back into price router to notify it of its removal
-    function removeAsset(address _asset) external override onlyDaoManager {
+    function removeAsset(address asset) external override onlyDaoPermissions {
         require(
-            isSupportedAsset[_asset],
+            isSupportedAsset[asset],
             "ChainlinkAdaptor: asset not supported"
         );
 
-        /// Notify the adaptor to stop supporting the asset 
-        delete isSupportedAsset[_asset];
+        /// Notify the adaptor to stop supporting the asset
+        delete isSupportedAsset[asset];
 
         /// Wipe config mapping entries for a gas refund
-        delete adaptorDataUSD[_asset];
-        delete adaptorDataNonUSD[_asset];
+        delete adaptorDataUSD[asset];
+        delete adaptorDataNonUSD[asset];
 
-        /// Notify the price router that we are going to stop supporting the asset 
-        IPriceRouter(centralRegistry.priceRouter()).notifyAssetPriceFeedRemoval(_asset);
+        /// Notify the price router that we are going to stop supporting the asset
+        IPriceRouter(centralRegistry.priceRouter())
+            .notifyAssetPriceFeedRemoval(asset);
     }
 }

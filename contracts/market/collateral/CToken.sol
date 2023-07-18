@@ -1,72 +1,58 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-
+import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 import { GaugePool } from "contracts/gauge/GaugePool.sol";
 import { InterestRateModel } from "contracts/market/interestRates/InterestRateModel.sol";
+
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
+import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IEIP20 } from "contracts/interfaces/market/IEIP20.sol";
 import { ICToken } from "contracts/interfaces/market/ICToken.sol";
 import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.sol";
 
 /// @title Curvance's CToken Contract
 /// @notice Abstract base for CTokens
-/// @author Curvance
 abstract contract CToken is ReentrancyGuard, ICToken {
-    ////////// States //////////
 
-    // Scaler for preserving floating point math precision
+    /// STRUCTS ///
+
+    /// @notice Container for borrow balance information
+    /// @member principal Total balance (with accrued interest), after applying the most recent balance-changing action
+    /// @member interestIndex Global borrowIndex as of the most recent balance-changing action
+    struct BorrowSnapshot {
+        uint256 principal;
+        uint256 interestIndex;
+    }
+
+    /// CONSTANTS ///
+    ICentralRegistry public immutable centralRegistry;
     uint256 internal constant expScale = 1e18;
-
+    // Maximum borrow rate that can ever be applied (.0005% / second)
+    uint256 internal constant borrowRateMaxScaled = 0.0005e16;
+    // Maximum fraction of interest that can be set aside for reserves
+    uint256 internal constant reserveFactorMaxScaled = 1e18;
     /// @notice Indicator that this is a CToken contract (for inspection)
     bool public constant override isCToken = true;
 
-    /// @notice EIP-20 token name for this token
+    /// STORAGE ///
     string public name;
-
-    /// @notice EIP-20 token symbol for this token
     string public override symbol;
-
-    /// @notice EIP-20 token decimals for this token
     uint8 public decimals;
-
-    // Maximum borrow rate that can ever be applied (.0005% / block)
-    uint256 internal constant borrowRateMaxScaled = 0.0005e16;
-
-    // Maximum fraction of interest that can be set aside for reserves
-    uint256 internal constant reserveFactorMaxScaled = 1e18;
-
-    /// @notice Administrator for this contract
-    address payable public admin;
-
-    /// @notice Pending administrator for this contract
-    address payable public pendingAdmin;
-
-    /// @notice Contract which oversees inter-cToken operations
     ILendtroller public override lendtroller;
-
-    /// @notice Model which tells what the current interest rate should be
     InterestRateModel public interestRateModel;
-
-    // Initial exchange rate used when minting the first CTokens (used when totalSupply = 0)
+    /// Initial exchange rate used when minting the first CTokens (used when totalSupply = 0)
     uint256 internal initialExchangeRateScaled;
-
     /// @notice Fraction of interest currently set aside for reserves
     uint256 public reserveFactorScaled;
-
     /// @notice Block number that interest was last accrued at
     uint256 public override accrualBlockTimestamp;
-
     /// @notice Accumulator of the total earned interest rate since the opening of the market
     uint256 public borrowIndex;
-
     /// @notice Total amount of outstanding borrows of the underlying in this market
     uint256 public override totalBorrows;
-
     /// @notice Total amount of reserves of the underlying held in this market
     uint256 public totalReserves;
-
     /// @notice Total number of tokens in circulation
     uint256 public totalSupply;
 
@@ -77,19 +63,12 @@ abstract contract CToken is ReentrancyGuard, ICToken {
     mapping(address => mapping(address => uint256))
         internal transferAllowances;
 
-    /// @notice Container for borrow balance information
-    /// @member principal Total balance (with accrued interest), after applying the most recent balance-changing action
-    /// @member interestIndex Global borrowIndex as of the most recent balance-changing action
-    struct BorrowSnapshot {
-        uint256 principal;
-        uint256 interestIndex;
-    }
-
     // Mapping of account addresses to outstanding borrow balances
     mapping(address => BorrowSnapshot) internal accountBorrows;
 
-    /// @notice Share of seized collateral that is added to reserves
-    uint256 public constant protocolSeizeShareScaled = 2.8e16; // 2.8%
+    constructor(ICentralRegistry _centralRegistry) {
+        centralRegistry = _centralRegistry;
+    }
 
     ////////// INITIALIZATION //////////
     /// @notice Initialize the money market
@@ -106,10 +85,9 @@ abstract contract CToken is ReentrancyGuard, ICToken {
         string memory name_,
         string memory symbol_,
         uint8 decimals_
-    ) public {
-        if (msg.sender != admin) {
-            revert AddressUnauthorized();
-        }
+    ) public onlyDaoPermissions {
+
+        // Validate that initialize has not been called prior
         if (accrualBlockTimestamp != 0 && borrowIndex != 0) {
             revert PreviouslyInitialized();
         }
@@ -120,19 +98,52 @@ abstract contract CToken is ReentrancyGuard, ICToken {
             revert CannotEqualZero();
         }
 
-        // Set the lendtroller
-        _setLendtroller(ILendtroller(lendtroller_));
+        ILendtroller initializedLendtroller = ILendtroller(lendtroller_);
+
+        /// Set the lendtroller ///
+        // Ensure invoke lendtroller.isLendtroller() returns true
+        if (!initializedLendtroller.isLendtroller()) {
+            revert LendtrollerMismatch();
+        }
+
+        // Set market's lendtroller to newLendtroller
+        lendtroller = initializedLendtroller;
+
+        // Emit NewLendtroller(address(0), newLendtroller)
+        emit NewLendtroller(ILendtroller(address(0)), initializedLendtroller);
 
         // Initialize timestamp and borrow index (timestamp mocks depend on lendtroller being set)
         accrualBlockTimestamp = getBlockTimestamp();
         borrowIndex = expScale;
 
-        // Set the interest rate model (depends on timestamp / borrow index)
-        _setInterestRateModelFresh(interestRateModel_);
+        /// Set Interest Rate Model ///
+        // Ensure invoke newInterestRateModel.isInterestRateModel() returns true
+        if (!interestRateModel_.isInterestRateModel()) {
+            revert ValidationFailed();
+        }
+
+        // Configure initial interest rate model
+        interestRateModel = interestRateModel_;
+
+        // Emit NewMarketInterestRateModel(address(0), newInterestRateModel)
+        emit NewMarketInterestRateModel(
+            InterestRateModel(address(0)),
+            interestRateModel_
+        );
 
         name = name_;
         symbol = symbol_;
         decimals = decimals_;
+    }
+
+    modifier onlyDaoPermissions() {
+        require(centralRegistry.hasDaoPermissions(msg.sender), "centralRegistry: UNAUTHORIZED");
+        _;
+    }
+
+    modifier onlyElevatedPermissions() {
+        require(centralRegistry.hasElevatedPermissions(msg.sender), "centralRegistry: UNAUTHORIZED");
+        _;
     }
 
     /// @notice Returns gauge pool contract address
@@ -707,7 +718,7 @@ abstract contract CToken is ReentrancyGuard, ICToken {
         address borrower,
         uint256 borrowAmount,
         address payable recipient
-    ) internal {
+    ) internal nonReentrant {
         // Verify market's timestamp equals current timestamp
         if (accrualBlockTimestamp != getBlockTimestamp()) {
             revert FailedFreshnessCheck();
@@ -982,7 +993,7 @@ abstract contract CToken is ReentrancyGuard, ICToken {
         // borrowerTokensNew = accountTokens[borrower] - seizeTokens
         // liquidatorTokensNew = accountTokens[liquidator] + seizeTokens
         uint256 protocolSeizeTokens = (seizeTokens *
-            protocolSeizeShareScaled) / expScale;
+            centralRegistry.protocolLiquidationFee()) / expScale;
         uint256 liquidatorSeizeTokens = seizeTokens - protocolSeizeTokens;
         uint256 protocolSeizeAmount = (exchangeRateStoredInternal() *
             protocolSeizeTokens) / expScale;
@@ -1020,57 +1031,10 @@ abstract contract CToken is ReentrancyGuard, ICToken {
 
     /// Admin Functions
 
-    /// @notice Begins transfer of admin rights. The newPendingAdmin must call `_acceptAdmin` to finalize the transfer.
-    /// @dev Admin function to begin change of admin.
-    ///  The newPendingAdmin must call `_acceptAdmin` to finalize the transfer.
-    /// @param newPendingAdmin New pending admin.
-    function _setPendingAdmin(
-        address payable newPendingAdmin
-    ) external override {
-        // Check caller = admin
-        if (msg.sender != admin) {
-            revert AddressUnauthorized();
-        }
-
-        // Save current value, if any, for inclusion in log
-        address oldPendingAdmin = pendingAdmin;
-
-        // Store pendingAdmin with value newPendingAdmin
-        pendingAdmin = newPendingAdmin;
-
-        emit NewPendingAdmin(oldPendingAdmin, newPendingAdmin);
-    }
-
-    /// @notice Accepts transfer of admin rights. msg.sender must be pendingAdmin
-    /// @dev Admin function for pending admin to accept role and update admin
-    function _acceptAdmin() external override {
-        // Check caller is pendingAdmin and pendingAdmin ≠ address(0)
-        if (msg.sender != pendingAdmin || msg.sender == address(0)) {
-            revert AddressUnauthorized();
-        }
-
-        // Save current values for inclusion in log
-        address oldAdmin = admin;
-        address oldPendingAdmin = pendingAdmin;
-
-        // Store admin with value pendingAdmin
-        admin = pendingAdmin;
-
-        // Clear the pending value
-        pendingAdmin = payable(address(0));
-
-        emit NewAdmin(oldAdmin, admin);
-        emit NewPendingAdmin(oldPendingAdmin, pendingAdmin);
-    }
-
     /// @notice Sets a new lendtroller for the market
     /// @dev Admin function to set a new lendtroller
     /// @param newLendtroller New lendtroller address.
-    function _setLendtroller(ILendtroller newLendtroller) public override {
-        // Check caller is admin
-        if (msg.sender != admin) {
-            revert AddressUnauthorized();
-        }
+    function _setLendtroller(ILendtroller newLendtroller) public override onlyElevatedPermissions {
 
         ILendtroller oldLendtroller = lendtroller;
         // Ensure invoke lendtroller.isLendtroller() returns true
@@ -1099,11 +1063,7 @@ abstract contract CToken is ReentrancyGuard, ICToken {
     /// @notice Sets a new reserve factor for the protocol (*requires fresh interest accrual)
     /// @dev Admin function to set a new reserve factor
     /// @param newReserveFactorScaled The new reserve factore * 1e18 (ie, 0.8 == 800000000000000000)
-    function _setReserveFactorFresh(uint256 newReserveFactorScaled) internal {
-        // Check caller is admin
-        if (msg.sender != admin) {
-            revert AddressUnauthorized();
-        }
+    function _setReserveFactorFresh(uint256 newReserveFactorScaled) internal onlyElevatedPermissions {
 
         // Verify market's timestamp equals current timestamp
         if (accrualBlockTimestamp != getBlockTimestamp()) {
@@ -1169,14 +1129,9 @@ abstract contract CToken is ReentrancyGuard, ICToken {
     /// @notice Reduces reserves by transferring to admin
     /// @dev Requires fresh interest accrual
     /// @param reduceAmount Amount of reduction to reserves
-    function _reduceReservesFresh(uint256 reduceAmount) internal {
+    function _reduceReservesFresh(uint256 reduceAmount) internal onlyElevatedPermissions {
         // totalReserves - reduceAmount
         uint256 totalReservesNew;
-
-        // Check caller is admin
-        if (msg.sender != admin) {
-            revert AddressUnauthorized();
-        }
 
         // We fail gracefully unless market's timestamp equals current timestamp
         if (accrualBlockTimestamp != getBlockTimestamp()) {
@@ -1201,10 +1156,11 @@ abstract contract CToken is ReentrancyGuard, ICToken {
         // Store reserves[n+1] = reserves[n] - reduceAmount
         totalReserves = totalReservesNew;
 
+        address payable daoAddress = payable(centralRegistry.daoAddress());
         // doTransferOut reverts if anything goes wrong, since we can't be sure if side effects occurred.
-        doTransferOut(admin, reduceAmount);
+        doTransferOut(daoAddress, reduceAmount);
 
-        emit ReservesReduced(admin, reduceAmount, totalReservesNew);
+        emit ReservesReduced(daoAddress, reduceAmount, totalReservesNew);
     }
 
     /// @notice accrues interest and updates the interest rate model using _setInterestRateModelFresh
@@ -1223,11 +1179,7 @@ abstract contract CToken is ReentrancyGuard, ICToken {
     /// @param newInterestRateModel the new interest rate model to use
     function _setInterestRateModelFresh(
         InterestRateModel newInterestRateModel
-    ) internal {
-        // Check caller is admin
-        if (msg.sender != admin) {
-            revert AddressUnauthorized();
-        }
+    ) internal onlyDaoPermissions {
 
         // We fail gracefully unless market's timestamp equals current timestamp
         if (accrualBlockTimestamp != getBlockTimestamp()) {

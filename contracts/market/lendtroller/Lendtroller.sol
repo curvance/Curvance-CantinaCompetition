@@ -1,37 +1,33 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { ICToken } from "contracts/interfaces/market/ICToken.sol";
-import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { PriceOracle } from "../Oracle/PriceOracle.sol";
 
+import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+import { ICToken } from "contracts/interfaces/market/ICToken.sol";
+import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
+
 /// @title Curvance Lendtroller
-/// @author Curvance - Based on Curvance Finance
 /// @notice Manages risk within the lending & collateral markets
 contract Lendtroller is ILendtroller {
-    ////////// Constants //////////
 
+    /// CONSTANTS ///
+    ICentralRegistry public immutable centralRegistry;
     /// @notice Indicator that this is a Lendtroller contract (for inspection)
     bool public constant override isLendtroller = true;
-
     /// @notice closeFactorScaled must be strictly greater than this value
     uint256 internal constant closeFactorMinScaled = 0.05e18; // 0.05
-
     /// @notice closeFactorScaled must not exceed this value
     uint256 internal constant closeFactorMaxScaled = 0.9e18; // 0.9
-
     /// @notice No collateralFactorScaled may exceed this value
     uint256 internal constant collateralFactorMaxScaled = 0.9e18; // 0.9
-
     /// @notice Scaler for floating point math
     uint256 internal constant expScale = 1e18;
 
-    ////////// States //////////
-
+    /// STORAGE ///
     /// @notice The Pause Guardian can pause certain actions as a safety mechanism.
     ///  Actions which allow users to remove their own assets cannot be paused.
     ///  Liquidation / seizing / transfer can only be paused globally, not by market.
-    address public admin;
     address public pauseGuardian;
     bool public _mintGuardianPaused;
     bool public _borrowGuardianPaused;
@@ -78,11 +74,22 @@ contract Lendtroller is ILendtroller {
     address public override positionFolding;
 
     // GaugePool contract address
-    address public override gaugePool;
+    address public immutable override gaugePool;
 
-    constructor(address _gaugePool) {
-        admin = msg.sender;
+    constructor(ICentralRegistry _centralRegistry, address _gaugePool) {
+        centralRegistry = _centralRegistry;
+        oracle = PriceOracle(centralRegistry.priceRouter());
         gaugePool = _gaugePool;
+    }
+
+    modifier onlyDaoPermissions() {
+        require(centralRegistry.hasDaoPermissions(msg.sender), "centralRegistry: UNAUTHORIZED");
+        _;
+    }
+
+    modifier onlyElevatedPermissions() {
+        require(centralRegistry.hasElevatedPermissions(msg.sender), "centralRegistry: UNAUTHORIZED");
+        _;
     }
 
     /// @notice Returns the assets an account has entered
@@ -116,7 +123,7 @@ contract Lendtroller is ILendtroller {
         uint256 numCTokens = cTokens.length;
 
         uint256[] memory results = new uint256[](numCTokens);
-        for (uint256 i = 0; i < numCTokens; ++i) {
+        for (uint256 i; i < numCTokens; ++i) {
             results[i] = addToMarketInternal(ICToken(cTokens[i]), msg.sender);
         }
 
@@ -192,7 +199,8 @@ contract Lendtroller is ILendtroller {
         ICToken[] memory userAssetList = accountAssets[msg.sender];
         uint256 numUserAssets = userAssetList.length;
         uint256 assetIndex = numUserAssets;
-        for (uint256 i = 0; i < numUserAssets; ++i) {
+
+        for (uint256 i; i < numUserAssets; ++i) {
             if (userAssetList[i] == cToken) {
                 assetIndex = i;
                 break;
@@ -452,7 +460,7 @@ contract Lendtroller is ILendtroller {
     /// @return uint total borrow amount of user
     function getAccountPosition(
         address account
-    ) public view returns (uint256, uint256, uint256) {
+    ) public view override returns (uint256, uint256, uint256) {
         (
             uint256 sumCollateral,
             uint256 maxBorrow,
@@ -571,7 +579,7 @@ contract Lendtroller is ILendtroller {
         bool collateralEnabled;
 
         // For each asset the account is in
-        for (uint256 i = 0; i < numAccountAssets; ++i) {
+        for (uint256 i; i < numAccountAssets; ++i) {
             asset = accountAssets[account][i];
             collateralEnabled =
                 marketDisableCollateral[asset] == false &&
@@ -669,7 +677,7 @@ contract Lendtroller is ILendtroller {
             revert InvalidValue();
         }
 
-        for (uint256 i = 0; i < numMarkets; ++i) {
+        for (uint256 i; i < numMarkets; ++i) {
             userDisableCollateral[msg.sender][cTokens[i]] = disableCollateral;
             emit SetUserDisableCollateral(
                 msg.sender,
@@ -692,32 +700,10 @@ contract Lendtroller is ILendtroller {
 
     /// Admin Functions
 
-    /// @notice Sets a new price oracle for the lendtroller
-    /// @dev Admin function to set a new price oracle
-    /// @param newOracle new price oracle address
-    function _setPriceOracle(PriceOracle newOracle) public {
-        // Check caller is admin
-        if (msg.sender != admin) {
-            revert AddressUnauthorized();
-        }
-
-        // Track the old oracle for the lendtroller
-        PriceOracle oldOracle = oracle;
-
-        // Set lendtroller's oracle to newOracle
-        oracle = newOracle;
-
-        emit NewPriceOracle(address(oldOracle), address(newOracle));
-    }
-
     /// @notice Sets the closeFactor used when liquidating borrows
     /// @dev Admin function to set closeFactor
     /// @param newCloseFactorScaled New close factor, scaled by 1e18
-    function _setCloseFactor(uint256 newCloseFactorScaled) external {
-        // Check caller is admin}
-        if (msg.sender != admin) {
-            revert AddressUnauthorized();
-        }
+    function _setCloseFactor(uint256 newCloseFactorScaled) external onlyElevatedPermissions {
 
         uint256 oldCloseFactorScaled = closeFactorScaled;
         closeFactorScaled = newCloseFactorScaled;
@@ -731,11 +717,7 @@ contract Lendtroller is ILendtroller {
     function _setCollateralFactor(
         ICToken cToken,
         uint256 newCollateralFactorScaled
-    ) external {
-        // Check caller is admin
-        if (msg.sender != admin) {
-            revert AddressUnauthorized();
-        }
+    ) external onlyElevatedPermissions {
 
         // Verify market is listed
         ILendtroller.Market storage market = markets[address(cToken)];
@@ -772,11 +754,7 @@ contract Lendtroller is ILendtroller {
     /// @param newLiquidationIncentiveScaled New liquidationIncentive scaled by 1e18
     function _setLiquidationIncentive(
         uint256 newLiquidationIncentiveScaled
-    ) external {
-        // Check caller is admin
-        if (msg.sender != admin) {
-            revert AddressUnauthorized();
-        }
+    ) external onlyElevatedPermissions {
 
         // Save current value for use in log
         uint256 oldLiquidationIncentiveScaled = liquidationIncentiveScaled;
@@ -793,10 +771,7 @@ contract Lendtroller is ILendtroller {
     /// @notice Add the market to the markets mapping and set it as listed
     /// @dev Admin function to set isListed and add support for the market
     /// @param cToken The address of the market (token) to list
-    function _supportMarket(ICToken cToken) external {
-        if (msg.sender != admin) {
-            revert AddressUnauthorized();
-        }
+    function _supportMarket(ICToken cToken) external onlyElevatedPermissions {
 
         if (markets[address(cToken)].isListed) {
             revert MarketAlreadyListed();
@@ -804,10 +779,8 @@ contract Lendtroller is ILendtroller {
 
         cToken.isCToken(); // Sanity check to make sure its really a ICToken
 
-        // Note that isComped is not in active use anymore
         ILendtroller.Market storage market = markets[address(cToken)];
         market.isListed = true;
-        market.isComped = false;
         market.collateralFactorScaled = 0;
 
         _addMarketInternal(address(cToken));
@@ -820,7 +793,7 @@ contract Lendtroller is ILendtroller {
     function _addMarketInternal(address cToken) internal {
         uint256 numMarkets = allMarkets.length;
 
-        for (uint256 i = 0; i < numMarkets; ++i) {
+        for (uint256 i; i < numMarkets; ++i) {
             if (allMarkets[i] == ICToken(cToken)) {
                 revert MarketAlreadyListed();
             }
@@ -839,7 +812,7 @@ contract Lendtroller is ILendtroller {
         ICToken[] calldata cTokens,
         uint256[] calldata newBorrowCaps
     ) external {
-        if (msg.sender != admin && msg.sender != borrowCapGuardian) {
+        if (!centralRegistry.hasElevatedPermissions(msg.sender) && msg.sender != borrowCapGuardian) {
             revert AddressUnauthorized();
         }
         uint256 numMarkets = cTokens.length;
@@ -848,7 +821,7 @@ contract Lendtroller is ILendtroller {
             revert InvalidValue();
         }
 
-        for (uint256 i = 0; i < numMarkets; ++i) {
+        for (uint256 i; i < numMarkets; ++i) {
             borrowCaps[address(cTokens[i])] = newBorrowCaps[i];
             emit NewBorrowCap(cTokens[i], newBorrowCaps[i]);
         }
@@ -861,17 +834,14 @@ contract Lendtroller is ILendtroller {
     function _setDisableCollateral(
         ICToken[] calldata cTokens,
         bool disableCollateral
-    ) external {
-        if (msg.sender != admin) {
-            revert AddressUnauthorized();
-        }
+    ) external onlyElevatedPermissions {
 
         uint256 numMarkets = cTokens.length;
         if (numMarkets == 0) {
             revert InvalidValue();
         }
 
-        for (uint256 i = 0; i < numMarkets; ++i) {
+        for (uint256 i; i < numMarkets; ++i) {
             marketDisableCollateral[cTokens[i]] = disableCollateral;
             emit SetDisableCollateral(cTokens[i], disableCollateral);
         }
@@ -879,10 +849,7 @@ contract Lendtroller is ILendtroller {
 
     /// @notice Admin function to change the Borrow Cap Guardian
     /// @param newBorrowCapGuardian The address of the new Borrow Cap Guardian
-    function _setBorrowCapGuardian(address newBorrowCapGuardian) external {
-        if (msg.sender != admin) {
-            revert AddressUnauthorized();
-        }
+    function _setBorrowCapGuardian(address newBorrowCapGuardian) external onlyElevatedPermissions {
 
         // Save current value for inclusion in log
         address oldBorrowCapGuardian = borrowCapGuardian;
@@ -895,10 +862,7 @@ contract Lendtroller is ILendtroller {
 
     /// @notice Admin function to change the Pause Guardian
     /// @param newPauseGuardian The address of the new Pause Guardian
-    function _setPauseGuardian(address newPauseGuardian) public {
-        if (msg.sender != admin) {
-            revert AddressUnauthorized();
-        }
+    function _setPauseGuardian(address newPauseGuardian) public onlyElevatedPermissions {
 
         // Save current value for inclusion in log
         address oldPauseGuardian = pauseGuardian;
@@ -916,10 +880,13 @@ contract Lendtroller is ILendtroller {
         if (!markets[address(cToken)].isListed) {
             revert MarketNotListed(address(cToken));
         }
-        if (msg.sender != pauseGuardian && msg.sender != admin) {
+
+        bool hasDaoPerms = centralRegistry.hasElevatedPermissions(msg.sender);
+
+        if (msg.sender != pauseGuardian && !hasDaoPerms) {
             revert AddressUnauthorized();
         }
-        if (msg.sender != admin && state != true) {
+        if (!hasDaoPerms && state != true) {
             revert AddressUnauthorized();
         }
 
@@ -938,10 +905,13 @@ contract Lendtroller is ILendtroller {
         if (!markets[address(cToken)].isListed) {
             revert MarketNotListed(address(cToken));
         }
-        if (msg.sender != pauseGuardian && msg.sender != admin) {
+
+        bool hasDaoPerms = centralRegistry.hasElevatedPermissions(msg.sender);
+
+        if (msg.sender != pauseGuardian && !hasDaoPerms) {
             revert AddressUnauthorized();
         }
-        if (msg.sender != admin && state != true) {
+        if (!hasDaoPerms && state != true) {
             revert AddressUnauthorized();
         }
 
@@ -953,10 +923,12 @@ contract Lendtroller is ILendtroller {
     /// @notice Admin function to set transfer paused
     /// @param state pause or unpause
     function _setTransferPaused(bool state) public returns (bool) {
-        if (msg.sender != pauseGuardian && msg.sender != admin) {
+        bool hasDaoPerms = centralRegistry.hasElevatedPermissions(msg.sender);
+
+        if (msg.sender != pauseGuardian && !hasDaoPerms) {
             revert AddressUnauthorized();
         }
-        if (msg.sender != admin && state != true) {
+        if (!hasDaoPerms && state != true) {
             revert AddressUnauthorized();
         }
 
@@ -968,10 +940,12 @@ contract Lendtroller is ILendtroller {
     /// @notice Admin function to set seize paused
     /// @param state pause or unpause
     function _setSeizePaused(bool state) public returns (bool) {
-        if (msg.sender != pauseGuardian && msg.sender != admin) {
+        bool hasDaoPerms = centralRegistry.hasElevatedPermissions(msg.sender);
+
+        if (msg.sender != pauseGuardian && !hasDaoPerms) {
             revert AddressUnauthorized();
         }
-        if (msg.sender != admin && state != true) {
+        if (!hasDaoPerms && state != true) {
             revert AddressUnauthorized();
         }
 
@@ -982,10 +956,7 @@ contract Lendtroller is ILendtroller {
 
     /// @notice Admin function to set position folding contract address
     /// @param _newPositionFolding new position folding contract address
-    function _setPositionFolding(address _newPositionFolding) public {
-        if (msg.sender != admin) {
-            revert AddressUnauthorized();
-        }
+    function _setPositionFolding(address _newPositionFolding) public onlyElevatedPermissions {
 
         emit NewPositionFoldingContract(positionFolding, _newPositionFolding);
 
@@ -1005,11 +976,10 @@ contract Lendtroller is ILendtroller {
     /// @param cToken market token address
     function getIsMarkets(
         address cToken
-    ) external view override returns (bool, uint256, bool) {
+    ) external view override returns (bool, uint256) {
         return (
             markets[cToken].isListed,
-            markets[cToken].collateralFactorScaled,
-            markets[cToken].isComped
+            markets[cToken].collateralFactorScaled
         );
     }
 

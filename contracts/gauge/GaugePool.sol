@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import "@openzeppelin/contracts/interfaces/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
+import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
+
+import { IERC20 } from "contracts/interfaces/IERC20.sol";
+import { ICveLocker, rewardsData } from "contracts/interfaces/ICveLocker.sol";
+import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 
 import "./GaugeController.sol";
 import "./ChildGaugePool.sol";
-import "contracts/interfaces/ICveLocker.sol";
-import "contracts/interfaces/market/ILendtroller.sol";
 
 contract GaugePool is GaugeController, ReentrancyGuard {
-    using SafeERC20 for IERC20;
 
-    // structs
+    /// structs
     struct PoolInfo {
         uint256 lastRewardTimestamp;
         uint256 accRewardPerShare; // Accumulated Rewards per share, times 1e12. See below.
@@ -25,7 +25,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         uint256 rewardPending;
     }
 
-    // events
+    /// events
     event AddChildGauge(address indexed childGauge);
     event RemoveChildGauge(address indexed childGauge);
     event Deposit(address indexed user, address indexed token, uint256 amount);
@@ -36,24 +36,23 @@ contract GaugePool is GaugeController, ReentrancyGuard {
     );
     event Claim(address indexed user, address indexed token, uint256 amount);
 
-    // constants
+    /// constants
     uint256 public constant PRECISION = 1e36;
 
-    // storage
+    /// storage
     address public lendtroller;
     ChildGaugePool[] public childGauges;
     mapping(address => PoolInfo) public poolInfo; // token => pool info
     mapping(address => mapping(address => UserInfo)) public userInfo; // token => user => info
 
     constructor(
-        address _cve,
-        address _ve,
+        ICentralRegistry _centralRegistry,
         address _lendtroller
-    ) GaugeController(_cve, _ve) ReentrancyGuard() {
+    ) GaugeController(_centralRegistry) {
         lendtroller = _lendtroller;
     }
 
-    function addChildGauge(address _childGauge) external onlyOwner {
+    function addChildGauge(address _childGauge) external onlyDaoPermissions {
         if (_childGauge == address(0)) {
             revert GaugeErrors.InvalidAddress();
         }
@@ -67,7 +66,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
     function removeChildGauge(
         uint256 _index,
         address _childGauge
-    ) external onlyOwner {
+    ) external onlyDaoPermissions {
         if (_childGauge != address(childGauges[_index])) {
             revert GaugeErrors.InvalidAddress();
         }
@@ -153,7 +152,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         address user,
         uint256 amount
     ) external nonReentrant {
-        (bool isListed, , ) = ILendtroller(lendtroller).getIsMarkets(token);
+        (bool isListed, ) = ILendtroller(lendtroller).getIsMarkets(token);
         if (msg.sender != token || !isListed) {
             revert GaugeErrors.InvalidToken();
         }
@@ -171,9 +170,13 @@ contract GaugePool is GaugeController, ReentrancyGuard {
 
         uint256 numChildGauges = childGauges.length;
 
-        for (uint256 i = 0; i < numChildGauges; ++i) {
+        for (uint256 i; i < numChildGauges; ) {
             if (address(childGauges[i]) != address(0)) {
                 childGauges[i].deposit(token, user, amount);
+            }
+
+            unchecked {
+                ++i;
             }
         }
 
@@ -189,7 +192,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         address user,
         uint256 amount
     ) external nonReentrant {
-        (bool isListed, , ) = ILendtroller(lendtroller).getIsMarkets(token);
+        (bool isListed, ) = ILendtroller(lendtroller).getIsMarkets(token);
         if (msg.sender != token || !isListed) {
             revert GaugeErrors.InvalidToken();
         }
@@ -209,9 +212,13 @@ contract GaugePool is GaugeController, ReentrancyGuard {
 
         uint256 numChildGauges = childGauges.length;
 
-        for (uint256 i = 0; i < numChildGauges; ++i) {
+        for (uint256 i; i < numChildGauges; ) {
             if (address(childGauges[i]) != address(0)) {
                 childGauges[i].withdraw(token, user, amount);
+            }
+            
+            unchecked {
+                ++i;
             }
         }
 
@@ -228,7 +235,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         if (rewards == 0) {
             revert GaugeErrors.NoReward();
         }
-        IERC20(cve).safeTransfer(msg.sender, rewards);
+        SafeTransferLib.safeTransfer(cve, msg.sender, rewards);
 
         userInfo[token][msg.sender].rewardPending = 0;
 
@@ -255,8 +262,8 @@ contract GaugePool is GaugeController, ReentrancyGuard {
             revert GaugeErrors.NoReward();
         }
 
-        IERC20(cve).safeApprove(address(ve), rewards);
-        ve.increaseAmountAndExtendLockFor(
+        SafeTransferLib.safeApprove(cve, address(veCVE), rewards);
+        veCVE.increaseAmountAndExtendLockFor(
             msg.sender,
             rewards,
             lockIndex,
@@ -291,8 +298,8 @@ contract GaugePool is GaugeController, ReentrancyGuard {
             revert GaugeErrors.NoReward();
         }
 
-        IERC20(cve).safeApprove(address(ve), rewards);
-        ve.lockFor(
+        SafeTransferLib.safeApprove(cve, address(veCVE), rewards);
+        veCVE.lockFor(
             msg.sender,
             rewards,
             continuousLock,

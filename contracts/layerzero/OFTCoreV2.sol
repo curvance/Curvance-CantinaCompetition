@@ -100,7 +100,7 @@ abstract contract OFTCoreV2 is NonblockingLzApp {
     function setUseCustomAdapterParams(bool _useCustomAdapterParams)
         public
         virtual
-        onlyDaoManager
+        onlyDaoPermissions
     {
         useCustomAdapterParams = _useCustomAdapterParams;
         emit SetUseCustomAdapterParams(_useCustomAdapterParams);
