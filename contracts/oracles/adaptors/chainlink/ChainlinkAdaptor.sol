@@ -179,18 +179,24 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
             feedData = adaptorDataNonUSD[asset];
         }
 
-        if (feedData.min == 0) {} else {
+        if (feedData.min == 0) {
+            feedData.min = bufferedMinPrice;
+        } else {
             require(
                 feedData.min >= bufferedMinPrice,
                 "ChainlinkAdaptor: invalid min price"
             );
+            feedData.min = bufferedMinPrice;
         }
 
-        if (feedData.max == 0) {} else {
+        if (feedData.max == 0) {
+            feedData.max = bufferedMaxPrice;
+        } else {
             require(
                 feedData.max <= bufferedMaxPrice,
                 "ChainlinkAdaptor: invalid max price"
             );
+            feedData.max = bufferedMaxPrice;
         }
 
         require(
