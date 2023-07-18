@@ -1,29 +1,29 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import "@openzeppelin/contracts/interfaces/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 
+import { CToken, ICentralRegistry } from "contracts/market/collateral/CToken.sol";
+import { InterestRateModel } from "contracts/market/interestRates/InterestRateModel.sol";
+
+import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { ICErc20 } from "contracts/interfaces/market/ICErc20.sol";
 import { ICToken } from "contracts/interfaces/market/ICToken.sol";
 import { IDelegateToken } from "contracts/interfaces/market/IDelegateToken.sol";
 import { IEIP20 } from "contracts/interfaces/market/IEIP20.sol";
 import { IEIP20NonStandard } from "contracts/interfaces/market/IEIP20NonStandard.sol";
-import { CToken } from "contracts/market/collateral/CToken.sol";
-import { InterestRateModel } from "contracts/market/interestRates/InterestRateModel.sol";
 
 /// @title Curvance's CErc20 Contract
 /// @notice CTokens which wrap an EIP-20 underlying
-/// @author Curvance
 contract CErc20 is ICErc20, CToken {
-    using SafeERC20 for IERC20;
 
     ////////// States //////////
 
     /// @notice Underlying asset for this CToken
-    address public underlying;
+    address public immutable underlying;
 
     /// @notice Initialize the new money market
+    /// @param _centralRegistry The address of Curvances Central Registry
     /// @param underlying_ The address of the underlying asset
     /// @param lendtroller_ The address of the Lendtroller
     /// @param interestRateModel_ The address of the interest rate model
@@ -32,17 +32,15 @@ contract CErc20 is ICErc20, CToken {
     /// @param symbol_ ERC-20 symbol of this token
     /// @param decimals_ ERC-20 decimal precision of this token
     constructor(
+        ICentralRegistry _centralRegistry,
         address underlying_,
         address lendtroller_,
         InterestRateModel interestRateModel_,
         uint256 initialExchangeRateScaled_,
         string memory name_,
         string memory symbol_,
-        uint8 decimals_,
-        address payable admin_
-    ) {
-        // Creator of the contract is admin during initialization
-        admin = payable(msg.sender);
+        uint8 decimals_
+    ) CToken(_centralRegistry) {
 
         // CToken initialize does the bulk of the work
         initialize(
@@ -57,8 +55,6 @@ contract CErc20 is ICErc20, CToken {
         underlying = underlying_;
         IEIP20(underlying).totalSupply();
 
-        // Set admin address
-        admin = admin_;
     }
 
     /// User Interface
@@ -163,15 +159,13 @@ contract CErc20 is ICErc20, CToken {
     /// @notice A public function to sweep accidental ERC-20 transfers to this contract.
     ///  Tokens are sent to admin (timelock)
     /// @param token The address of the ERC-20 token to sweep
-    function sweepToken(IEIP20NonStandard token) external override {
-        if (msg.sender != admin) {
-            revert AddressUnauthorized();
-        }
+    function sweepToken(IEIP20NonStandard token) external override onlyDaoPermissions {
+
         if (address(token) == underlying) {
             revert InvalidUnderlying();
         }
         uint256 balance = token.balanceOf(address(this));
-        token.transfer(admin, balance);
+        token.transfer(centralRegistry.daoAddress(), balance);
     }
 
     /// @notice The sender adds to reserves.
@@ -201,11 +195,12 @@ contract CErc20 is ICErc20, CToken {
         address from,
         uint256 amount
     ) internal virtual override returns (uint256) {
-        // Read from storage once
+        // Cache value storage
         address underlying_ = underlying;
+
         IERC20 token = IERC20(underlying_);
-        uint256 balanceBefore = IERC20(underlying_).balanceOf(address(this));
-        token.safeTransferFrom(from, address(this), amount);
+        uint256 balanceBefore = token.balanceOf(address(this));
+        SafeTransferLib.safeTransferFrom(underlying_, from, address(this), amount);
 
         bool success;
         assembly {
@@ -273,14 +268,4 @@ contract CErc20 is ICErc20, CToken {
         }
     }
 
-    /// @notice Admin call to delegate the votes of the CVE-like underlying
-    /// @param cveLikeDelegatee The address to delegate votes to
-    /// @dev CTokens whose underlying are not CveLike should revert here
-    function _delegateCveLikeTo(address cveLikeDelegatee) external {
-        if (msg.sender != admin) {
-            revert AddressUnauthorized();
-        }
-
-        IDelegateToken(underlying).delegate(cveLikeDelegatee);
-    }
 }

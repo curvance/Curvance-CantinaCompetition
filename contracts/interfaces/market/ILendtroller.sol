@@ -98,8 +98,6 @@ interface ILendtroller {
         uint256 collateralFactorScaled;
         // Per-market mapping of "accounts in this asset"
         mapping(address => bool) accountMembership;
-        // Whether or not this market receives CVE
-        bool isComped;
     }
 
     function enterMarkets(
@@ -156,7 +154,7 @@ interface ILendtroller {
     /** Query functions */
     function getIsMarkets(
         address cToken
-    ) external view returns (bool, uint256, bool);
+    ) external view returns (bool, uint256);
 
     function getAccountMembership(
         address cToken,
@@ -174,4 +172,8 @@ interface ILendtroller {
     function gaugePool() external view returns (address);
 
     function isLendtroller() external view returns (bool);
+
+    function getAccountPosition(
+        address account
+    ) external view returns (uint256, uint256, uint256);
 }

@@ -1,46 +1,60 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/interfaces/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 
-import { veCVE } from "../token/veCVE.sol";
+import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+import { IGaugePool } from "contracts/interfaces/IGaugePool.sol";
+import { IERC20 } from "contracts/interfaces/IERC20.sol";
+import { IVeCVE } from "contracts/interfaces/IVeCVE.sol";
+
 import { GaugeErrors } from "./GaugeErrors.sol";
-import { IGaugePool } from "../interfaces/IGaugePool.sol";
 
-contract GaugeController is IGaugePool, Ownable {
-    using SafeERC20 for IERC20;
+contract GaugeController is IGaugePool {
 
-    // structs
+    /// structs
     struct Epoch {
         uint256 rewardPerSec;
         uint256 totalWeights;
         mapping(address => uint256) poolWeights; // token => weight
     }
 
+    /// constants
     uint256 public constant EPOCH_WINDOW = 2 weeks;
+    ICentralRegistry public immutable centralRegistry;
+    address public immutable cve;
+    IVeCVE public immutable veCVE;
 
-    // storage
-    address public cve;
-    veCVE public ve;
-
+    /// storage
     uint256 public startTime;
     mapping(uint256 => Epoch) internal epochInfo;
 
-    constructor(address _cve, address _ve) Ownable() {
-        cve = _cve;
-        ve = veCVE(_ve);
+    constructor(ICentralRegistry _centralRegistry){
+        centralRegistry = _centralRegistry;
+        cve = centralRegistry.CVE();
+        veCVE = IVeCVE(centralRegistry.veCVE());
+    }
+
+    modifier onlyDaoPermissions() {
+        require(centralRegistry.hasDaoPermissions(msg.sender), "centralRegistry: UNAUTHORIZED");
+        _;
+    }
+
+    modifier onlyMessagingHub() {
+        require(
+            msg.sender == centralRegistry.protocolMessagingHub(),
+            "cveLocker: UNAUTHORIZED"
+        );
+        _;
     }
 
     /// @notice Start gauge system
     /// @dev Only owner
-    function start() external onlyOwner {
+    function start() external onlyDaoPermissions {
         if (startTime != 0) {
             revert GaugeErrors.AlreadyStarted();
         }
-
-        startTime = block.timestamp;
+        startTime = veCVE.nextEpochStartTime();
     }
 
     /// @notice Returns current epoch number
@@ -108,7 +122,7 @@ contract GaugeController is IGaugePool, Ownable {
     function setRewardPerSecOfNextEpoch(
         uint256 epoch,
         uint256 newRewardPerSec
-    ) external override onlyOwner {
+    ) external override onlyMessagingHub {
         if (!(epoch == 0 && startTime == 0) && epoch != currentEpoch() + 1) {
             revert GaugeErrors.InvalidEpoch();
         }
@@ -117,12 +131,12 @@ contract GaugeController is IGaugePool, Ownable {
         epochInfo[epoch].rewardPerSec = newRewardPerSec;
 
         if (prevRewardPerSec > newRewardPerSec) {
-            IERC20(cve).safeTransfer(
+            SafeTransferLib.safeTransfer(cve,
                 msg.sender,
                 EPOCH_WINDOW * (prevRewardPerSec - newRewardPerSec)
             );
         } else {
-            IERC20(cve).safeTransferFrom(
+            SafeTransferLib.safeTransferFrom(cve,
                 msg.sender,
                 address(this),
                 EPOCH_WINDOW * (newRewardPerSec - prevRewardPerSec)
@@ -131,7 +145,7 @@ contract GaugeController is IGaugePool, Ownable {
     }
 
     /// @notice Set emission rates of tokens of next epoch
-    /// @dev Only owner
+    /// @dev Only the protocol messaging hub can call this
     /// @param epoch Next epoch number
     /// @param tokens Token address array
     /// @param poolWeights Gauge weights (or gauge weights)
@@ -139,7 +153,7 @@ contract GaugeController is IGaugePool, Ownable {
         uint256 epoch,
         address[] calldata tokens,
         uint256[] calldata poolWeights
-    ) external override onlyOwner {
+    ) external override onlyMessagingHub {
         if (!(epoch == 0 && startTime == 0) && epoch != currentEpoch() + 1) {
             revert GaugeErrors.InvalidEpoch();
         }
@@ -151,12 +165,16 @@ contract GaugeController is IGaugePool, Ownable {
         }
 
         Epoch storage info = epochInfo[epoch];
-        for (uint256 i = 0; i < numTokens; ++i) {
+        for (uint256 i; i < numTokens; ) {
             info.totalWeights =
                 info.totalWeights +
                 poolWeights[i] -
                 info.poolWeights[tokens[i]];
             info.poolWeights[tokens[i]] = poolWeights[i];
+
+            unchecked {
+                ++i;
+            }
         }
     }
 
@@ -164,8 +182,10 @@ contract GaugeController is IGaugePool, Ownable {
     /// @dev Be careful of gas spending!
     function massUpdatePools(address[] memory tokens) public {
         uint256 numTokens = tokens.length;
-        for (uint256 i = 0; i < numTokens; ++i) {
-            updatePool(tokens[i]);
+        for (uint256 i; i < numTokens; ) {
+            unchecked {
+                updatePool(tokens[i++]);
+            }
         }
     }
 

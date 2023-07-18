@@ -27,22 +27,23 @@ abstract contract BaseOracleAdaptor {
         _;
     }
 
-    // Only callable by DAO
-    modifier onlyDaoManager() {
-        require(
-            msg.sender == centralRegistry.daoAddress(),
-            "priceRouter: UNAUTHORIZED"
-        );
+    modifier onlyDaoPermissions() {
+        require(centralRegistry.hasDaoPermissions(msg.sender), "centralRegistry: UNAUTHORIZED");
         _;
+    }
+
+    modifier onlyElevatedPermissions() {
+            require(centralRegistry.hasElevatedPermissions(msg.sender), "centralRegistry: UNAUTHORIZED");
+            _;
     }
 
     /// @notice Called by PriceRouter to price an asset.
     function getPrice(
-        address _asset,
-        bool _isUsd,
-        bool _getLower
+        address asset,
+        bool isUsd,
+        bool getLower
     ) external view virtual returns (PriceReturnData memory);
 
     /// @notice Removes a supported asset from the adaptor.
-    function removeAsset(address _asset) external virtual;
+    function removeAsset(address asset) external virtual;
 }

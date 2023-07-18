@@ -1,28 +1,26 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import "@openzeppelin/contracts/interfaces/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
+import { CErc20, IERC20 } from "contracts/market/collateral/CErc20.sol";
 
-import "contracts/market/lendtroller/Lendtroller.sol";
-import "contracts/market/collateral/CErc20.sol";
-import "contracts/interfaces/external/curve/ICurve.sol";
-import "contracts/interfaces/IWETH.sol";
+import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
+import { ICurveSwap } from "contracts/interfaces/external/curve/ICurve.sol";
+import { IWETH } from "contracts/interfaces/IWETH.sol";
 
 contract ZapperGeneric {
-    using SafeERC20 for IERC20;
 
     struct Swap {
         address target;
         bytes call;
     }
 
-    address public immutable lendtroller;
+    ILendtroller public immutable lendtroller;
     address public immutable weth;
     address public constant ETH = address(0);
 
     constructor(address _lendtroller, address _weth) {
-        lendtroller = _lendtroller;
+        lendtroller = ILendtroller(_lendtroller);
         weth = _weth;
     }
 
@@ -51,7 +49,7 @@ contract ZapperGeneric {
             inputToken = weth;
             IWETH(weth).deposit{ value: inputAmount }(inputAmount);
         } else {
-            IERC20(inputToken).safeTransferFrom(
+            SafeTransferLib.safeTransferFrom(inputToken,
                 msg.sender,
                 address(this),
                 inputAmount
@@ -59,7 +57,7 @@ contract ZapperGeneric {
         }
 
         // check valid cToken
-        (bool isListed, , ) = Lendtroller(lendtroller).getIsMarkets(cToken);
+        (bool isListed, ) = lendtroller.getIsMarkets(cToken);
         require(isListed, "invalid cToken address");
         // check cToken underlying
         require(CErc20(cToken).underlying() == lpToken, "invalid lp address");
@@ -67,7 +65,7 @@ contract ZapperGeneric {
         uint256 numTokenSwaps = tokenSwaps.length;
 
         // prepare tokens to mint LP
-        for (uint256 i = 0; i < numTokenSwaps; ++i) {
+        for (uint256 i; i < numTokenSwaps; ++i) {
             // swap input token to underlying token
             _swap(inputToken, tokenSwaps[i]);
         }
@@ -84,7 +82,7 @@ contract ZapperGeneric {
         cTokenOutAmount = _enterCurvance(cToken, lpToken, lpOutAmount);
 
         // transfer cToken back to user
-        IERC20(cToken).safeTransfer(msg.sender, cTokenOutAmount);
+        SafeTransferLib.safeTransfer(cToken, msg.sender, cTokenOutAmount);
     }
 
     /// @dev Swap input token
@@ -107,7 +105,7 @@ contract ZapperGeneric {
     /// @param _spender The spender address
     function _approveTokenIfNeeded(address _token, address _spender) private {
         if (IERC20(_token).allowance(address(this), _spender) == 0) {
-            IERC20(_token).safeApprove(_spender, type(uint256).max);
+            SafeTransferLib.safeApprove(_token, _spender, type(uint256).max);
         }
     }
 
@@ -144,7 +142,7 @@ contract ZapperGeneric {
         uint256 numTokens = tokens.length;
 
         // approve tokens
-        for (uint256 i = 0; i < numTokens; ++i) {
+        for (uint256 i; i < numTokens; ++i) {
             _approveTokenIfNeeded(tokens[i], lpMinter);
             if (tokens[i] == ETH) {
                 hasETH = true;

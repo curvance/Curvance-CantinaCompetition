@@ -10,8 +10,6 @@ import { PriceRouter } from "contracts/oracles/PriceRouterV2.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 // Chainlink interfaces
-import { KeeperCompatibleInterface } from "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
-import { AggregatorV2V3Interface } from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV2V3Interface.sol";
 import { IChainlinkAggregator } from "contracts/interfaces/external/chainlink/IChainlinkAggregator.sol";
 
 /// @notice Vault Positions must have all assets ready for withdraw,
@@ -23,7 +21,6 @@ import { IChainlinkAggregator } from "contracts/interfaces/external/chainlink/IC
 abstract contract BasePositionVault is
     ERC4626,
     Initializable,
-    KeeperCompatibleInterface,
     ReentrancyGuard
 {
     using Math for uint256;
@@ -164,11 +161,8 @@ abstract contract BasePositionVault is
     }
 
     // Only callable by DAO
-    modifier onlyDaoManager() {
-        require(
-            msg.sender == centralRegistry.daoAddress(),
-            "priceRouter: UNAUTHORIZED"
-        );
+    modifier onlyDaoPermissions() {
+        require(centralRegistry.hasDaoPermissions(msg.sender), "centralRegistry: UNAUTHORIZED");
         _;
     }
 
@@ -198,44 +192,44 @@ abstract contract BasePositionVault is
 
     /// @notice Allows owner to set a new gas feed.
     /// @notice Can be set to zero address to skip gas check.
-    function setGasFeed(address gasFeed) external onlyDaoManager {
+    function setGasFeed(address gasFeed) external onlyDaoPermissions {
         positionVaultMetaData.ethFastGasFeed = gasFeed;
         emit GasFeedChanged(gasFeed);
     }
 
-    function setWatchdog(address _watchdog) external onlyDaoManager {
+    function setWatchdog(address _watchdog) external onlyDaoPermissions {
         positionVaultMetaData.positionWatchdog = _watchdog;
         emit WatchdogChanged(_watchdog);
     }
 
-    function setMinHarvestYield(uint64 minYieldUSD) external onlyDaoManager {
+    function setMinHarvestYield(uint64 minYieldUSD) external onlyDaoPermissions {
         positionVaultMetaData.minHarvestYieldInUSD = minYieldUSD;
         emit MinYieldForHarvestChanged(minYieldUSD);
     }
 
-    function setMaxGasForHarvest(uint64 maxGas) external onlyDaoManager {
+    function setMaxGasForHarvest(uint64 maxGas) external onlyDaoPermissions {
         positionVaultMetaData.maxGasPriceForHarvest = maxGas;
         emit MaxGasForHarvestChanged(maxGas);
     }
 
-    function setPriceRouter(PriceRouter _priceRouter) external onlyDaoManager {
+    function setPriceRouter(PriceRouter _priceRouter) external onlyDaoPermissions {
         positionVaultMetaData.priceRouter = _priceRouter;
         emit PriceRouterChanged(address(_priceRouter));
     }
 
-    function setPlatformFee(uint64 fee) external onlyDaoManager {
+    function setPlatformFee(uint64 fee) external onlyDaoPermissions {
         if (fee > MAX_PLATFORM_FEE)
             revert BasePositionVault__InvalidPlatformFee(fee);
         positionVaultMetaData.platformFee = fee;
         emit PlatformFeeChanged(fee);
     }
 
-    function setFeeAccumulator(address accumulator) external onlyDaoManager {
+    function setFeeAccumulator(address accumulator) external onlyDaoPermissions {
         positionVaultMetaData.feeAccumulator = accumulator;
         emit FeeAccumulatorChanged(accumulator);
     }
 
-    function setUpkeepFee(uint64 fee) external onlyDaoManager {
+    function setUpkeepFee(uint64 fee) external onlyDaoPermissions {
         if (fee > MAX_UPKEEP_FEE)
             revert BasePositionVault__InvalidUpkeepFee(fee);
         positionVaultMetaData.upkeepFee = fee;
@@ -245,14 +239,14 @@ abstract contract BasePositionVault is
     /// @notice Shutdown the vault. Used in an emergency or
     ///         if the vault has been deprecated.
     /// @dev In the case where
-    function initiateShutdown() external whenNotShutdown onlyDaoManager {
+    function initiateShutdown() external whenNotShutdown onlyDaoPermissions {
         positionVaultMetaData.isShutdown = true;
 
         emit ShutdownChanged(true);
     }
 
     /// @notice Restart the vault.
-    function liftShutdown() external onlyDaoManager {
+    function liftShutdown() external onlyDaoPermissions {
         if (!positionVaultMetaData.isShutdown)
             revert BasePositionVault__ContractNotShutdown();
         positionVaultMetaData.isShutdown = false;
@@ -542,72 +536,6 @@ abstract contract BasePositionVault is
         uint256 _ta
     ) internal view returns (uint256) {
         return _convertToAssets(shares, _ta);
-    }
-
-    /*//////////////////////////////////////////////////////////////
-                    CHAINLINK AUTOMATION LOGIC
-    //////////////////////////////////////////////////////////////*/
-
-    function checkUpkeep(
-        bytes calldata data
-    ) external returns (bool upkeepNeeded, bytes memory performData) {
-        if (positionVaultMetaData.isShutdown) return (false, abi.encode(0));
-
-        // Compare real total assets to stored, and trigger circuit breaker if real is less than stored.
-        uint256 realTotalAssets = _getRealPositionBalance();
-        uint256 storedTotalAssets = totalAssets();
-        if (realTotalAssets < storedTotalAssets)
-            return (true, abi.encode(true, data));
-
-        // Compare current share price to high watermark and trigger circuit breaker if less than high watermark.
-        uint256 currentSharePrice = _convertToAssets(
-            10 ** _decimals,
-            storedTotalAssets
-        );
-        if (currentSharePrice < _sharePriceHighWatermark)
-            return (true, abi.encode(true, data));
-
-        // Figure out how much yield is pending to be harvested.
-        uint256 yield = harvest(data);
-
-        (uint256 assetPrice, ) = positionVaultMetaData.priceRouter.getPrice(
-            asset(),
-            true,
-            true
-        );
-
-        // Compare USD value of yield against owner set minimum.
-        uint256 yieldInUSD = yield > 0
-            ? yield.mulDivDown(assetPrice, 10 ** _asset.decimals())
-            : 0;
-        if (yieldInUSD < positionVaultMetaData.minHarvestYieldInUSD)
-            return (false, abi.encode(0));
-
-        // Compare current gas price against owner set minimum.
-        uint256 currentGasPrice = uint256(
-            IChainlinkAggregator(positionVaultMetaData.ethFastGasFeed)
-                .latestAnswer()
-        );
-        if (currentGasPrice > positionVaultMetaData.maxGasPriceForHarvest)
-            return (false, abi.encode(0));
-
-        // If we have made it this far, then we know yield is sufficient, and gas price is low enough.
-        upkeepNeeded = true;
-        performData = abi.encode(false, data);
-    }
-
-    function performUpkeep(bytes calldata performData) external {
-        if (msg.sender != positionVaultMetaData.automationRegistry)
-            revert("Not a Keeper.");
-        (bool circuitBreaker, bytes memory data) = abi.decode(
-            performData,
-            (bool, bytes)
-        );
-        // If checkupkeep triggered circuit breaker, shutdown vault.
-        if (circuitBreaker) {
-            positionVaultMetaData.isShutdown = true;
-            emit ShutdownChanged(true);
-        } else harvest(data);
     }
 
     /*//////////////////////////////////////////////////////////////

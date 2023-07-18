@@ -1,18 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/interfaces/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
+import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
+import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+import { IERC20 } from "contracts/interfaces/IERC20.sol";
 
 import { GaugeErrors } from "./GaugeErrors.sol";
 import { GaugePool } from "./GaugePool.sol";
 
-contract ChildGaugePool is ReentrancyGuard, Ownable {
-    using SafeERC20 for IERC20;
+contract ChildGaugePool is ReentrancyGuard {
 
-    // structs
+    /// structs
     struct PoolInfo {
         uint256 lastRewardTimestamp;
         uint256 accRewardPerShare; // Accumulated Rewards per share, times 1e12. See below.
@@ -28,13 +27,14 @@ contract ChildGaugePool is ReentrancyGuard, Ownable {
         CLAIM
     }
 
-    // events
+    /// events
 
-    // constants
+    /// constants
     uint256 public constant EPOCH_WINDOW = 2 weeks;
     uint256 public constant PRECISION = 1e36;
+    ICentralRegistry public immutable centralRegistry;
 
-    // storage
+    /// storage
     uint256 public activationTime;
     GaugePool public gaugeController;
     address public rewardToken;
@@ -49,9 +49,15 @@ contract ChildGaugePool is ReentrancyGuard, Ownable {
         _;
     }
 
-    constructor(address _gaugeController, address _rewardToken) Ownable() {
+    modifier onlyDaoPermissions() {
+        require(centralRegistry.hasDaoPermissions(msg.sender), "centralRegistry: UNAUTHORIZED");
+        _;
+    }
+
+    constructor(address _gaugeController, address _rewardToken, ICentralRegistry _centralRegistry) {
         gaugeController = GaugePool(_gaugeController);
         rewardToken = _rewardToken;
+        centralRegistry = _centralRegistry;
     }
 
     function activate() external onlyGaugeController {
@@ -61,7 +67,7 @@ contract ChildGaugePool is ReentrancyGuard, Ownable {
     function setRewardPerSec(
         uint256 epoch,
         uint256 newRewardPerSec
-    ) external onlyOwner {
+    ) external onlyDaoPermissions {
         if (!(epoch == 0 && startTime() == 0) && epoch != currentEpoch() + 1) {
             revert GaugeErrors.InvalidEpoch();
         }
@@ -70,12 +76,12 @@ contract ChildGaugePool is ReentrancyGuard, Ownable {
         epochRewardPerSec[epoch] = newRewardPerSec;
 
         if (prevRewardPerSec > newRewardPerSec) {
-            IERC20(rewardToken).safeTransfer(
+            SafeTransferLib.safeTransfer(rewardToken,
                 msg.sender,
                 EPOCH_WINDOW * (prevRewardPerSec - newRewardPerSec)
             );
         } else {
-            IERC20(rewardToken).safeTransferFrom(
+            SafeTransferLib.safeTransferFrom(rewardToken,
                 msg.sender,
                 address(this),
                 EPOCH_WINDOW * (newRewardPerSec - prevRewardPerSec)
@@ -198,7 +204,7 @@ contract ChildGaugePool is ReentrancyGuard, Ownable {
         if (rewards == 0) {
             revert GaugeErrors.NoReward();
         }
-        IERC20(rewardToken).safeTransfer(msg.sender, rewards);
+        SafeTransferLib.safeTransfer(rewardToken, msg.sender, rewards);
 
         userInfo[token][msg.sender].rewardPending = 0;
 

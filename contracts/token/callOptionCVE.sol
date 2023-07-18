@@ -45,8 +45,8 @@ contract callOptionCVE is ERC20 {
         _mint(msg.sender, 7560001.242 ether);// total call option allocation for airdrops
     }
 
-    modifier onlyDaoManager() {
-        require(msg.sender == centralRegistry.daoAddress(), "UNAUTHORIZED");
+    modifier onlyDaoPermissions() {
+        require(centralRegistry.hasDaoPermissions(msg.sender), "centralRegistry: UNAUTHORIZED");
         _;
     }
 
@@ -111,7 +111,7 @@ contract callOptionCVE is ERC20 {
         address _token,
         address _recipient,
         uint256 _amount
-    ) external onlyDaoManager {
+    ) external onlyDaoPermissions {
         require(
             _recipient != address(0),
             "callOptionCVE: invalid recipient address"
@@ -135,7 +135,7 @@ contract callOptionCVE is ERC20 {
     }
 
     /// @notice Withdraws CVE from unexercised CVE call options to DAO after exercising period has ended
-    function withdrawRemainingAirdropTokens() external onlyDaoManager {
+    function withdrawRemainingAirdropTokens() external onlyDaoPermissions {
         require(
             block.timestamp > optionsEndTimestamp,
             "callOptionCVE: Too early"
@@ -155,7 +155,7 @@ contract callOptionCVE is ERC20 {
     function setOptionsTerms(
         uint256 _timestampStart,
         uint256 _strikePrice
-    ) external onlyDaoManager {
+    ) external onlyDaoPermissions {
         require(
             _strikePrice != 0 &&
                 paymentToken != address(0) &&

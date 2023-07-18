@@ -71,13 +71,6 @@ interface ICToken {
 
     ////////// ADMIN EVENTS //////////
 
-    /// @notice Event emitted when pendingAdmin is changed
-    event NewPendingAdmin(address oldPendingAdmin, address newPendingAdmin);
-
-    /// @notice Event emitted when pendingAdmin is accepted,
-    ///         which means admin is updated
-    event NewAdmin(address oldAdmin, address newAdmin);
-
     /// @notice Event emitted when lendtroller is changed
     event NewLendtroller(
         ILendtroller oldLendtroller,
@@ -178,10 +171,6 @@ interface ICToken {
     ) external;
 
     /// Admin Functions
-
-    function _setPendingAdmin(address payable newPendingAdmin) external;
-
-    function _acceptAdmin() external;
 
     function _setLendtroller(ILendtroller newLendtroller) external;
 

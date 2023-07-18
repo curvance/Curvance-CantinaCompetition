@@ -43,24 +43,24 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
     }
 
     /// @notice Called during pricing operations.
-    /// @param _asset the pendle market token being priced
-    /// @param _isUsd indicates whether we want the price in USD or ETH
-    /// @param _getLower Since this adaptor calls back into the price router
+    /// @param asset the pendle market token being priced
+    /// @param isUsd indicates whether we want the price in USD or ETH
+    /// @param getLower Since this adaptor calls back into the price router
     ///                  it needs to know if it should be working with the upper
     ///                  or lower prices of assets
     function getPrice(
-        address _asset,
-        bool _isUsd,
-        bool _getLower
+        address asset,
+        bool isUsd,
+        bool getLower
     ) external view override returns (PriceReturnData memory pData) {
-        AdaptorData memory data = adaptorData[_asset];
-        uint256 lpRate = IPMarket(_asset).getLpToAssetRate(data.twapDuration);
-        pData.inUSD = _isUsd;
+        AdaptorData memory data = adaptorData[asset];
+        uint256 lpRate = IPMarket(asset).getLpToAssetRate(data.twapDuration);
+        pData.inUSD = isUsd;
         
         (uint256 price, uint256 errorCode) = IPriceRouter(centralRegistry.priceRouter()).getPrice(
             data.quoteAsset,
-            _isUsd,
-            _getLower
+            isUsd,
+            getLower
         );
         if (errorCode > 0) {
             pData.hadError = true;
@@ -75,25 +75,25 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
 
     /// @notice Add a Pendle Market as an asset.
     /// @dev Should be called before `PriceRotuer:addAssetPriceFeed` is called.
-    /// @param _asset the address of the Pendle Market
-    /// @param _data the adaptor data needed to add `_asset`
+    /// @param asset the address of the Pendle Market
+    /// @param data the adaptor data needed to add `_asset`
     function addAsset(
-        address _asset,
-        AdaptorData memory _data
-    ) external onlyDaoManager {
+        address asset,
+        AdaptorData memory data
+    ) external onlyElevatedPermissions {
         // Make sure pt and market match.
-        (IStandardizedYield sy, IPPrincipalToken pt, ) = IPMarket(_asset)
+        (IStandardizedYield sy, IPPrincipalToken pt, ) = IPMarket(asset)
             .readTokens();
-        require(address(pt) == _data.pt, "PendleLPTokenAdaptor: wrong market");
+        require(address(pt) == data.pt, "PendleLPTokenAdaptor: wrong market");
         // Make sure quote asset is the same as SY `assetInfo.assetAddress`
         (, address assetAddress, ) = sy.assetInfo();
         require(
-            assetAddress == _data.quoteAsset,
+            assetAddress == data.quoteAsset,
             "PendleLPTokenAdaptor: wrong quote"
         );
 
         require(
-            _data.twapDuration >= MINIMUM_TWAP_DURATION,
+            data.twapDuration >= MINIMUM_TWAP_DURATION,
             "PendleLPTokenAdaptor: minimum twap duration not met"
         );
 
@@ -102,7 +102,7 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
             bool increaseCardinalityRequired,
             ,
             bool oldestObservationSatisfied
-        ) = ptOracle.getOracleState(address(_data.pt), _data.twapDuration);
+        ) = ptOracle.getOracleState(address(data.pt), data.twapDuration);
 
         require(
             !increaseCardinalityRequired,
@@ -113,32 +113,33 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
             "PendleLPTokenAdaptor: oldest observation not satisfied"
         );
         require(
-            IPriceRouter(centralRegistry.priceRouter()).isSupportedAsset(_data.quoteAsset),
+            IPriceRouter(centralRegistry.priceRouter()).isSupportedAsset(data.quoteAsset),
             "PendleLPTokenAdaptor: quote asset not supported"
         );
 
         // Write to adaptor storage.
-        adaptorData[_asset] = AdaptorData({
-            twapDuration: _data.twapDuration,
-            quoteAsset: _data.quoteAsset,
-            pt: _data.pt
+        adaptorData[asset] = AdaptorData({
+            twapDuration: data.twapDuration,
+            quoteAsset: data.quoteAsset,
+            pt: data.pt
         });
     }
 
     /// @notice Removes a supported asset from the adaptor.
     /// @dev Calls back into price router to notify it of its removal
-    function removeAsset(address _asset) external override onlyDaoManager {
+    /// @param asset The address of the asset to be removed.
+    function removeAsset(address asset) external override onlyDaoPermissions {
         require(
-            isSupportedAsset[_asset],
+            isSupportedAsset[asset],
             "PendleLPTokenAdaptor: asset not supported"
         );
         /// Notify the adaptor to stop supporting the asset 
-        delete isSupportedAsset[_asset];
+        delete isSupportedAsset[asset];
 
         /// Wipe config mapping entries for a gas refund
-        delete adaptorData[_asset];
+        delete adaptorData[asset];
 
         /// Notify the price router that we are going to stop supporting the asset 
-        IPriceRouter(centralRegistry.priceRouter()).notifyAssetPriceFeedRemoval(_asset);
+        IPriceRouter(centralRegistry.priceRouter()).notifyAssetPriceFeedRemoval(asset);
     }
 }
