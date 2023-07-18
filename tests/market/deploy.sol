@@ -27,9 +27,8 @@ contract DeployCompound is TestBase {
 
         // Some parameters are set zero address/values
         // which are not related to tests currently.
-        lendtroller = new Lendtroller(address(0));
+        lendtroller = new Lendtroller(address(0), address(0));
 
-        lendtroller._setPriceOracle(PriceOracle(address(priceOracle)));
         lendtroller._setCloseFactor(5e17);
         lendtroller._setLiquidationIncentive(5e17);
 

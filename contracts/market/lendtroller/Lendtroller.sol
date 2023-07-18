@@ -3,7 +3,8 @@ pragma solidity ^0.8.17;
 
 import { ICToken } from "contracts/interfaces/market/ICToken.sol";
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
-import { PriceOracle } from "../Oracle/PriceOracle.sol";
+import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 
 /// @title Curvance Lendtroller
 /// @author Curvance - Based on Curvance Finance
@@ -48,9 +49,6 @@ contract Lendtroller is ILendtroller {
     /// Defaults to zero which corresponds to unlimited borrowing.
     mapping(address => uint256) public borrowCaps;
 
-    /// @notice Oracle which gives the price of any given asset
-    PriceOracle public oracle;
-
     /// @notice Multiplier used to calculate the maximum repayAmount when liquidating a borrow
     uint256 public closeFactorScaled;
 
@@ -80,9 +78,17 @@ contract Lendtroller is ILendtroller {
     // GaugePool contract address
     address public override gaugePool;
 
-    constructor(address _gaugePool) {
+    // Central Registry address
+    address public centralRegistry;
+
+    constructor(address _centralRegistry, address _gaugePool) {
         admin = msg.sender;
+        centralRegistry = _centralRegistry;
         gaugePool = _gaugePool;
+    }
+
+    function getPriceRouter() public view returns (IPriceRouter) {
+        return IPriceRouter(ICentralRegistry(centralRegistry).priceRouter());
     }
 
     /// @notice Returns the assets an account has entered
@@ -299,7 +305,12 @@ contract Lendtroller is ILendtroller {
             assert(markets[cToken].accountMembership[borrower]);
         }
 
-        if (oracle.getUnderlyingPrice(ICToken(cToken)) == 0) {
+        (uint256 price, uint256 errorCode) = getPriceRouter().getPrice(
+            cToken,
+            true,
+            false
+        );
+        if (errorCode != 0 || price == 0) {
             revert PriceError();
         }
 
@@ -582,13 +593,20 @@ contract Lendtroller is ILendtroller {
                 uint256 borrowBalance,
                 uint256 exchangeRateScaled
             ) = asset.getAccountSnapshot(account);
-            uint256 oraclePrice = oracle.getUnderlyingPrice(asset);
-            if (oraclePrice == 0) revert PriceError();
 
-            uint256 assetValue = (((cTokenBalance * exchangeRateScaled) /
-                expScale) * oraclePrice) / expScale;
+            (uint256 price, uint256 errorCode) = getPriceRouter().getPrice(
+                address(asset),
+                true,
+                true
+            );
+            if (errorCode == 2) {
+                revert PriceError();
+            }
 
             if (collateralEnabled) {
+                uint256 assetValue = (((cTokenBalance * exchangeRateScaled) /
+                    expScale) * price) / expScale;
+
                 sumCollateral += assetValue;
                 maxBorrow +=
                     (assetValue *
@@ -596,7 +614,19 @@ contract Lendtroller is ILendtroller {
                     expScale;
             }
 
-            sumBorrowPlusEffects += ((oraclePrice * borrowBalance) / expScale);
+            (price, errorCode) = getPriceRouter().getPrice(
+                address(asset),
+                true,
+                true
+            );
+            if (errorCode == 2) {
+                revert PriceError();
+            }
+            if (errorCode == 1) {
+                price = 0;
+            }
+
+            sumBorrowPlusEffects += ((price * borrowBalance) / expScale);
 
             // Calculate effects of interacting with cTokenModify
             if (asset == cTokenModify) {
@@ -604,7 +634,7 @@ contract Lendtroller is ILendtroller {
                     // Pre-compute a conversion factor from tokens -> ether (normalized price value)
                     uint256 tokensToDenom = (((markets[address(asset)]
                         .collateralFactorScaled * exchangeRateScaled) /
-                        expScale) * oraclePrice) / expScale;
+                        expScale) * price) / expScale;
 
                     // redeem effect
                     sumBorrowPlusEffects += ((tokensToDenom * redeemTokens) /
@@ -612,8 +642,7 @@ contract Lendtroller is ILendtroller {
                 }
 
                 // borrow effect
-                sumBorrowPlusEffects += ((oraclePrice * borrowAmount) /
-                    expScale);
+                sumBorrowPlusEffects += ((price * borrowAmount) / expScale);
             }
         }
     }
@@ -630,12 +659,25 @@ contract Lendtroller is ILendtroller {
         uint256 actualRepayAmount
     ) external view override returns (uint256) {
         /* Read oracle prices for borrowed and collateral markets */
-        uint256 priceBorrowedScaled = oracle.getUnderlyingPrice(
-            ICToken(cTokenBorrowed)
+        (uint256 highPrice, uint256 highPriceError) = getPriceRouter()
+            .getPrice(cTokenBorrowed, true, false);
+        if (highPriceError == 2) {
+            revert PriceError();
+        }
+        if (highPriceError == 1) {
+            highPrice = 0;
+        }
+        uint256 priceBorrowedScaled = highPrice;
+
+        (uint256 lowPrice, uint256 lowPriceError) = getPriceRouter().getPrice(
+            cTokenCollateral,
+            true,
+            true
         );
-        uint256 priceCollateralScaled = oracle.getUnderlyingPrice(
-            ICToken(cTokenCollateral)
-        );
+        if (lowPriceError == 2) {
+            revert PriceError();
+        }
+        uint256 priceCollateralScaled = lowPrice;
 
         if (priceBorrowedScaled == 0 || priceCollateralScaled == 0) {
             revert PriceError();
@@ -692,22 +734,16 @@ contract Lendtroller is ILendtroller {
 
     /// Admin Functions
 
-    /// @notice Sets a new price oracle for the lendtroller
-    /// @dev Admin function to set a new price oracle
-    /// @param newOracle new price oracle address
-    function _setPriceOracle(PriceOracle newOracle) public {
+    /// @notice Sets a new central registry
+    /// @dev Admin function to set a new central registry
+    /// @param _centralRegistry new central registry address
+    function _setCentralRegistry(address _centralRegistry) public {
         // Check caller is admin
         if (msg.sender != admin) {
             revert AddressUnauthorized();
         }
 
-        // Track the old oracle for the lendtroller
-        PriceOracle oldOracle = oracle;
-
-        // Set lendtroller's oracle to newOracle
-        oracle = newOracle;
-
-        emit NewPriceOracle(address(oldOracle), address(newOracle));
+        centralRegistry = _centralRegistry;
     }
 
     /// @notice Sets the closeFactor used when liquidating borrows
@@ -748,10 +784,15 @@ contract Lendtroller is ILendtroller {
             revert InvalidValue();
         }
 
+        (uint256 lowPrice, uint256 lowPriceError) = getPriceRouter().getPrice(
+            address(cToken),
+            true,
+            true
+        );
         // If collateral factor != 0, fail if price == 0
         if (
-            newCollateralFactorScaled != 0 &&
-            oracle.getUnderlyingPrice(cToken) == 0
+            lowPriceError == 2 ||
+            (newCollateralFactorScaled != 0 && lowPrice == 0)
         ) {
             revert PriceError();
         }
