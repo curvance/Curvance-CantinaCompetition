@@ -17,15 +17,18 @@ contract PriceRouter {
         uint240 price;
         bool hadError;
     }
-    // TODO:
-    // Decide on which permissioned functions need timelock vs no timelock
-    // Check if mappings for assetPriceFeeds is better than 2 slot array
-    // Potentially move ETHUSD call to chainlink adaptor?
+
+    struct cTokenData {
+        bool isCToken;
+        address underlying;
+    }
 
     /// @notice Mapping used to track whether or not an address is an Adaptor.
     mapping(address => bool) public isApprovedAdaptor;
     /// @notice Mapping used to track an assets configured price feeds.
     mapping(address => address[]) public assetPriceFeeds;
+    /// @notice Mapping used to link a collateral token to its underlying asset.
+    mapping(address => cTokenData) public cTokenAssets;
 
     /// @notice Address for Curvance DAO registry contract for ownership and location data.
     ICentralRegistry public immutable centralRegistry;
@@ -90,6 +93,10 @@ contract PriceRouter {
     ) public view returns (uint256, uint256) {
         uint256 numAssetPriceFeeds = assetPriceFeeds[_asset].length;
         require(numAssetPriceFeeds > 0, "priceRouter: no feeds available");
+
+        if(cTokenAssets[_asset].isCToken){
+            _asset = cTokenAssets[_asset].underlying;
+        }
 
         if (numAssetPriceFeeds < 2) {
             return getPriceSingleFeed(_asset, _inUSD, _getLower);
@@ -366,6 +373,10 @@ contract PriceRouter {
     /// @param _asset The address of the asset to check.
     /// @return True if the asset is supported, false otherwise.
     function isSupportedAsset(address _asset) external view returns (bool) {
+        if(cTokenAssets[_asset].isCToken){
+           return assetPriceFeeds[cTokenAssets[_asset].underlying].length > 0;
+        }
+
         return assetPriceFeeds[_asset].length > 0;
     }
 
@@ -417,6 +428,24 @@ contract PriceRouter {
         } // we know the feed exists, cant use isApprovedAdaptor as we could have removed it as an approved adaptor prior
 
         assetPriceFeeds[_asset].pop();
+    }
+
+    function addCTokenSupport(address cToken, address underlying) external onlyElevatedPermissions {
+        require(
+            !cTokenAssets[cToken].isCToken,
+            "priceRouter: CToken already configured"
+        );
+        cTokenAssets[cToken].isCToken = true;
+        cTokenAssets[cToken].underlying = underlying;
+    }
+
+
+    function removeCTokenSupport(address cToken) external onlyDaoPermissions {
+        require(
+            cTokenAssets[cToken].isCToken,
+            "priceRouter: adaptor does not exist"
+        );
+        delete cTokenAssets[cToken];
     }
 
     function notifyAssetPriceFeedRemoval(address _asset) external onlyAdaptor {
