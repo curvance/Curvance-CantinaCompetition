@@ -4,10 +4,18 @@ pragma solidity ^0.8.17;
 import "contracts/interfaces/ICentralRegistry.sol";
 
 contract CentralRegistry is ICentralRegistry {
-
-    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
-    event newTimelockConfiguration(address indexed previousTimelock, address indexed newTimelock);
-    event EmergencyCouncilTransferred(address indexed previousEmergencyCouncil, address indexed newEmergencyCouncil);
+    event OwnershipTransferred(
+        address indexed previousOwner,
+        address indexed newOwner
+    );
+    event newTimelockConfiguration(
+        address indexed previousTimelock,
+        address indexed newTimelock
+    );
+    event EmergencyCouncilTransferred(
+        address indexed previousEmergencyCouncil,
+        address indexed newEmergencyCouncil
+    );
 
     event NewVeCVELocker(address indexed veCVELocker);
     event VeCVELockerRemoved(address indexed veCVELocker);
@@ -80,24 +88,37 @@ contract CentralRegistry is ICentralRegistry {
     }
 
     modifier onlyEmergencyCouncil() {
-        require(msg.sender == emergencyCouncil, "centralRegistry: UNAUTHORIZED");
+        require(
+            msg.sender == emergencyCouncil,
+            "centralRegistry: UNAUTHORIZED"
+        );
         _;
     }
 
     modifier onlyDaoPermissions() {
-        require(hasDaoPermissions[msg.sender], "centralRegistry: UNAUTHORIZED");
+        require(
+            hasDaoPermissions[msg.sender],
+            "centralRegistry: UNAUTHORIZED"
+        );
         _;
     }
 
     modifier onlyElevatedPermissions() {
-        require(hasElevatedPermissions[msg.sender], "centralRegistry: UNAUTHORIZED");
+        require(
+            hasElevatedPermissions[msg.sender],
+            "centralRegistry: UNAUTHORIZED"
+        );
         _;
     }
 
     /// CONSTRUCTOR
 
-    constructor(address daoAddress_, address timelock_, address emergencyCouncil_, uint256 genesisEpoch_) {
-        
+    constructor(
+        address daoAddress_,
+        address timelock_,
+        address emergencyCouncil_,
+        uint256 genesisEpoch_
+    ) {
         if (daoAddress_ == address(0)) {
             daoAddress_ = msg.sender;
         }
@@ -113,7 +134,7 @@ contract CentralRegistry is ICentralRegistry {
         daoAddress = daoAddress_;
         timelock = timelock_;
         emergencyCouncil = emergencyCouncil_;
-        
+
         genesisEpoch = genesisEpoch_;
         emit OwnershipTransferred(address(0), daoAddress);
     }
@@ -132,19 +153,27 @@ contract CentralRegistry is ICentralRegistry {
         callOptionCVE = newCallOptionCVE;
     }
 
-    function setCVELocker(address newCVELocker) public onlyElevatedPermissions {
+    function setCVELocker(
+        address newCVELocker
+    ) public onlyElevatedPermissions {
         cveLocker = newCVELocker;
     }
 
-    function setPriceRouter(address newPriceRouter) public onlyElevatedPermissions {
+    function setPriceRouter(
+        address newPriceRouter
+    ) public onlyElevatedPermissions {
         priceRouter = newPriceRouter;
     }
 
-    function setDepositRouter(address newDepositRouter) public onlyElevatedPermissions {
+    function setDepositRouter(
+        address newDepositRouter
+    ) public onlyElevatedPermissions {
         depositRouter = newDepositRouter;
     }
 
-    function setZroAddress(address newZroAddress) public onlyElevatedPermissions {
+    function setZroAddress(
+        address newZroAddress
+    ) public onlyElevatedPermissions {
         zroAddress = newZroAddress;
     }
 
@@ -152,7 +181,9 @@ contract CentralRegistry is ICentralRegistry {
         feeHub = newFeeHub;
     }
 
-    function setProtocolYieldFee(uint256 value) public onlyElevatedPermissions {
+    function setProtocolYieldFee(
+        uint256 value
+    ) public onlyElevatedPermissions {
         require(
             value <= 2000 || value == 0,
             "centralRegistry: invalid parameter"
@@ -160,17 +191,21 @@ contract CentralRegistry is ICentralRegistry {
         protocolYieldFee = value;
     }
 
-    function setProtocolLiquidationFee(uint256 value) public onlyElevatedPermissions {
+    function setProtocolLiquidationFee(
+        uint256 value
+    ) public onlyElevatedPermissions {
         require(
             value <= 500 || value == 0,
             "centralRegistry: invalid parameter"
         );
-        /// Liquidation fee is represented as 1e16 format 
+        /// Liquidation fee is represented as 1e16 format
         /// So we need to multiply by 1e15 to format properly from basis points to %
         protocolLiquidationFee = value * 1e15;
     }
 
-    function setProtocolLeverageFee(uint256 value) public onlyElevatedPermissions {
+    function setProtocolLeverageFee(
+        uint256 value
+    ) public onlyElevatedPermissions {
         require(
             value <= 100 || value == 0,
             "centralRegistry: invalid parameter"
@@ -196,7 +231,9 @@ contract CentralRegistry is ICentralRegistry {
 
     /// OWNERSHIP LOGIC
 
-    function transferDaoOwnership(address newDaoAddress) public onlyElevatedPermissions {
+    function transferDaoOwnership(
+        address newDaoAddress
+    ) public onlyElevatedPermissions {
         address previousDaoAddress = daoAddress;
         daoAddress = newDaoAddress;
         delete hasDaoPermissions[previousDaoAddress];
@@ -205,7 +242,9 @@ contract CentralRegistry is ICentralRegistry {
         emit OwnershipTransferred(previousDaoAddress, newDaoAddress);
     }
 
-    function migrateTimelockConfiguration(address newTimelock) public onlyEmergencyCouncil {
+    function migrateTimelockConfiguration(
+        address newTimelock
+    ) public onlyEmergencyCouncil {
         address previousTimelock = timelock;
         timelock = newTimelock;
 
@@ -220,7 +259,9 @@ contract CentralRegistry is ICentralRegistry {
         emit newTimelockConfiguration(previousTimelock, newTimelock);
     }
 
-    function transferEmergencyCouncil(address newEmergencyCouncil) public onlyEmergencyCouncil {
+    function transferEmergencyCouncil(
+        address newEmergencyCouncil
+    ) public onlyEmergencyCouncil {
         address previousEmergencyCouncil = emergencyCouncil;
         emergencyCouncil = newEmergencyCouncil;
 
@@ -232,11 +273,19 @@ contract CentralRegistry is ICentralRegistry {
         hasDaoPermissions[newEmergencyCouncil] = true;
         hasElevatedPermissions[newEmergencyCouncil] = true;
 
-        emit EmergencyCouncilTransferred(previousEmergencyCouncil, newEmergencyCouncil);
+        emit EmergencyCouncilTransferred(
+            previousEmergencyCouncil,
+            newEmergencyCouncil
+        );
     }
 
-    function addVeCVELocker(address newVeCVELocker) public onlyElevatedPermissions {
-        require(!approvedVeCVELocker[newVeCVELocker], "centralRegistry: already veCVELocker");
+    function addVeCVELocker(
+        address newVeCVELocker
+    ) public onlyElevatedPermissions {
+        require(
+            !approvedVeCVELocker[newVeCVELocker],
+            "centralRegistry: already veCVELocker"
+        );
 
         approvedVeCVELocker[newVeCVELocker] = true;
         emit NewVeCVELocker(newVeCVELocker);
@@ -245,7 +294,10 @@ contract CentralRegistry is ICentralRegistry {
     function removeVeCVELocker(
         address currentVeCVELocker
     ) public onlyElevatedPermissions {
-        require(approvedVeCVELocker[currentVeCVELocker], "centralRegistry: already not a veCVELocker");
+        require(
+            approvedVeCVELocker[currentVeCVELocker],
+            "centralRegistry: already not a veCVELocker"
+        );
 
         delete approvedVeCVELocker[currentVeCVELocker];
         emit VeCVELockerRemoved(currentVeCVELocker);
@@ -254,7 +306,10 @@ contract CentralRegistry is ICentralRegistry {
     function addGaugeController(
         address newGaugeController
     ) public onlyElevatedPermissions {
-        require(!gaugeController[newGaugeController], "centralRegistry: already Gauge Controller");
+        require(
+            !gaugeController[newGaugeController],
+            "centralRegistry: already Gauge Controller"
+        );
 
         gaugeController[newGaugeController] = true;
         emit NewGaugeController(newGaugeController);
@@ -263,28 +318,46 @@ contract CentralRegistry is ICentralRegistry {
     function removeGaugeController(
         address currentGaugeController
     ) public onlyElevatedPermissions {
-        require(gaugeController[currentGaugeController], "centralRegistry: not a Gauge Controller");
+        require(
+            gaugeController[currentGaugeController],
+            "centralRegistry: not a Gauge Controller"
+        );
 
         delete gaugeController[currentGaugeController];
         emit GaugeControllerRemoved(currentGaugeController);
     }
 
-    function addHarvester(address newHarvester) public onlyElevatedPermissions {
-        require(!harvester[newHarvester], "centralRegistry: already a Harvester");
+    function addHarvester(
+        address newHarvester
+    ) public onlyElevatedPermissions {
+        require(
+            !harvester[newHarvester],
+            "centralRegistry: already a Harvester"
+        );
 
         harvester[newHarvester] = true;
         emit NewHarvester(newHarvester);
     }
 
-    function removeHarvester(address currentHarvester) public onlyElevatedPermissions {
-        require(harvester[currentHarvester], "centralRegistry: not a Harvester");
+    function removeHarvester(
+        address currentHarvester
+    ) public onlyElevatedPermissions {
+        require(
+            harvester[currentHarvester],
+            "centralRegistry: not a Harvester"
+        );
 
         delete harvester[currentHarvester];
         emit HarvesterRemoved(currentHarvester);
     }
 
-    function addLendingMarket(address newLendingMarket) public onlyElevatedPermissions {
-        require(!lendingMarket[newLendingMarket], "centralRegistry: already Lending Market");
+    function addLendingMarket(
+        address newLendingMarket
+    ) public onlyElevatedPermissions {
+        require(
+            !lendingMarket[newLendingMarket],
+            "centralRegistry: already Lending Market"
+        );
 
         lendingMarket[newLendingMarket] = true;
         emit NewLendingMarket(newLendingMarket);
@@ -293,14 +366,22 @@ contract CentralRegistry is ICentralRegistry {
     function removeLendingMarket(
         address currentLendingMarket
     ) public onlyElevatedPermissions {
-        require(lendingMarket[currentLendingMarket], "centralRegistry: not a Lending Market");
+        require(
+            lendingMarket[currentLendingMarket],
+            "centralRegistry: not a Lending Market"
+        );
 
         delete lendingMarket[currentLendingMarket];
         emit LendingMarketRemoved(currentLendingMarket);
     }
 
-    function addFeeManager(address newFeeManager) public onlyElevatedPermissions {
-        require(!feeManager[newFeeManager], "centralRegistry: already a Fee Manager");
+    function addFeeManager(
+        address newFeeManager
+    ) public onlyElevatedPermissions {
+        require(
+            !feeManager[newFeeManager],
+            "centralRegistry: already a Fee Manager"
+        );
 
         feeManager[newFeeManager] = true;
         emit NewFeeManager(newFeeManager);
@@ -309,7 +390,10 @@ contract CentralRegistry is ICentralRegistry {
     function removeFeeManager(
         address currentFeeManager
     ) public onlyElevatedPermissions {
-        require(feeManager[currentFeeManager], "centralRegistry: not a Fee Manager");
+        require(
+            feeManager[currentFeeManager],
+            "centralRegistry: not a Fee Manager"
+        );
 
         delete feeManager[currentFeeManager];
         emit FeeManagerRemoved(currentFeeManager);
@@ -318,7 +402,10 @@ contract CentralRegistry is ICentralRegistry {
     function addApprovedEndpoint(
         address newApprovedEndpoint
     ) public onlyElevatedPermissions {
-        require(!approvedEndpoint[newApprovedEndpoint], "centralRegistry: already an Endpoint");
+        require(
+            !approvedEndpoint[newApprovedEndpoint],
+            "centralRegistry: already an Endpoint"
+        );
 
         approvedEndpoint[newApprovedEndpoint] = true;
         emit NewApprovedEndpoint(newApprovedEndpoint);
@@ -327,7 +414,10 @@ contract CentralRegistry is ICentralRegistry {
     function removeApprovedEndpoint(
         address currentApprovedEndpoint
     ) public onlyElevatedPermissions {
-        require(approvedEndpoint[currentApprovedEndpoint], "centralRegistry: not an Endpoint");
+        require(
+            approvedEndpoint[currentApprovedEndpoint],
+            "centralRegistry: not an Endpoint"
+        );
 
         delete approvedEndpoint[currentApprovedEndpoint];
         emit ApprovedEndpointRemoved(currentApprovedEndpoint);
