@@ -290,7 +290,9 @@ contract PriceRouter {
     /// @param inUSD Whether the price should be returned in USD or ETH.
     /// @param getLower Whether the lower or higher price should be returned
     ///                 if two feeds are available.
-    /// @return A tuple containing the asset's price and an error flag (if any).
+    /// @return price The price of the asset.
+    /// @return errorCode An error code related to fetching the price. '1' indicates that price should be taken with caution.
+    ///                   '2' indicates a complete failure in receiving a price.
     function getPrice(
         address asset,
         bool inUSD,
