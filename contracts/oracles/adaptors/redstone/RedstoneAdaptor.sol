@@ -10,16 +10,13 @@ import { IOracleAdaptor, PriceReturnData } from "contracts/interfaces/IOracleAda
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 contract RedstoneAdaptor is RedstoneConsumerNumericBase, BaseOracleAdaptor {
-
     /// @notice Stores configuration data for Redstone price sources.
+    /// @param heartbeat the max amount of time between price updates
+    ///        - 0 defaults to using DEFAULT_HEART_BEAT
     /// @param max the max valid price of the asset
     ///        - 0 defaults to use aggregators max price buffered by ~10%
     /// @param min the min valid price of the asset
     ///        - 0 defaults to use aggregators min price buffered by ~10%
-    /// @param heartbeat the max amount of time between price updates
-    ///        - 0 defaults to using DEFAULT_HEART_BEAT
-    /// @param inUsd bool indicating whether the price feed is
-    ///        denominated in USD(true) or ETH(false)
     struct FeedData {
         bool isConfigured;
         uint256 heartbeat;
@@ -31,10 +28,8 @@ contract RedstoneAdaptor is RedstoneConsumerNumericBase, BaseOracleAdaptor {
     mapping(address => FeedData) public adaptorData;
 
     constructor(
-            ICentralRegistry _centralRegistry
-        ) BaseOracleAdaptor(_centralRegistry) {}
-
-
+        ICentralRegistry _centralRegistry
+    ) BaseOracleAdaptor(_centralRegistry) {}
 
     /// @notice Retrieves the price of a given asset.
     /// @dev Uses Redstone oracles to fetch the price data. Price is returned in USD or ETH depending on 'isUsd' parameter.
@@ -50,11 +45,15 @@ contract RedstoneAdaptor is RedstoneConsumerNumericBase, BaseOracleAdaptor {
             isSupportedAsset[asset],
             "RedstoneAdaptor: asset not supported"
         );
-
     }
 
-
-    function getDataServiceId() public view virtual override returns (string memory) {
+    function getDataServiceId()
+        public
+        view
+        virtual
+        override
+        returns (string memory)
+    {
         return "redstone-main-demo";
     }
 
@@ -62,21 +61,15 @@ contract RedstoneAdaptor is RedstoneConsumerNumericBase, BaseOracleAdaptor {
         return 3;
     }
 
-    function getAuthorisedSignerIndex(address signerAddress)
-        public
-        view
-        virtual
-        override
-        returns (uint8)
-    {
+    function getAuthorisedSignerIndex(
+        address signerAddress
+    ) public view virtual override returns (uint8) {
         if (signerAddress == 0x0C39486f770B26F5527BBBf942726537986Cd7eb) {
-        return 0;
+            return 0;
         } else {
-        revert SignerNotAuthorised(signerAddress);
+            revert SignerNotAuthorised(signerAddress);
         }
     }
-
-
 
     /// @notice Add a Redstone Price Feed as an asset.
     /// @dev Should be called before `PriceRouter:addAssetPriceFeed` is called.
@@ -88,7 +81,6 @@ contract RedstoneAdaptor is RedstoneConsumerNumericBase, BaseOracleAdaptor {
         address aggregator,
         bool inUSD
     ) external onlyDaoPermissions {
-        
         isSupportedAsset[asset] = true;
     }
 
@@ -110,6 +102,4 @@ contract RedstoneAdaptor is RedstoneConsumerNumericBase, BaseOracleAdaptor {
         IPriceRouter(centralRegistry.priceRouter())
             .notifyAssetPriceFeedRemoval(asset);
     }
-
-
 }
