@@ -14,12 +14,12 @@ contract PriceRouter {
     /// @notice Return data from oracle adaptor
     /// @param price the price of the asset in some asset, either ETH or USD
     /// @param hadError the message return data, whether the adaptor ran into trouble pricing the asset
-    struct feedData {
+    struct FeedData {
         uint240 price;
         bool hadError;
     }
 
-    struct cTokenData {
+    struct CTokenData {
         bool isCToken;
         address underlying;
     }
@@ -29,7 +29,7 @@ contract PriceRouter {
     /// @notice Mapping used to track an assets configured price feeds.
     mapping(address => address[]) public assetPriceFeeds;
     /// @notice Mapping used to link a collateral token to its underlying asset.
-    mapping(address => cTokenData) public cTokenAssets;
+    mapping(address => CTokenData) public cTokenAssets;
 
     /// @notice Address for Curvance DAO registry contract for ownership and location data.
     ICentralRegistry public immutable centralRegistry;
@@ -170,8 +170,8 @@ contract PriceRouter {
         bool _inUSD,
         bool _getLower
     ) internal view returns (uint256, uint256) {
-        feedData memory feed0 = getPriceFromFeed(_asset, 0, _inUSD, _getLower);
-        feedData memory feed1 = getPriceFromFeed(_asset, 1, _inUSD, _getLower);
+        FeedData memory feed0 = getPriceFromFeed(_asset, 0, _inUSD, _getLower);
+        FeedData memory feed1 = getPriceFromFeed(_asset, 1, _inUSD, _getLower);
 
         /// Check if we had any working price feeds, if not we need to block any market operations
         if (feed0.hadError && feed1.hadError) return (0, BAD_SOURCE);
@@ -224,18 +224,18 @@ contract PriceRouter {
     /// @param _feedNumber The index number of the feed to use.
     /// @param _inUSD Whether the price should be returned in USD or ETH.
     /// @param _getLower Whether the lower or higher price should be returned if two feeds are available.
-    /// @return An instance of feedData containing the asset's price and an error flag (if any).
+    /// @return An instance of FeedData containing the asset's price and an error flag (if any).
     /// If the price feed returns an error, it returns feedData with price 0 and hadError set to true.
     function getPriceFromFeed(
         address _asset,
         uint256 _feedNumber,
         bool _inUSD,
         bool _getLower
-    ) internal view returns (feedData memory) {
+    ) internal view returns (FeedData memory) {
         PriceReturnData memory data = IOracleAdaptor(
             assetPriceFeeds[_asset][_feedNumber]
         ).getPrice(_asset, _inUSD, _getLower);
-        if (data.hadError) return (feedData({ price: 0, hadError: true }));
+        if (data.hadError) return (FeedData({ price: 0, hadError: true }));
 
         if (data.inUSD != _inUSD) {
             uint256 conversionPrice;
@@ -245,7 +245,7 @@ contract PriceRouter {
             );
         }
 
-        return (feedData({ price: data.price, hadError: data.hadError }));
+        return (FeedData({ price: data.price, hadError: data.hadError }));
     }
 
     /// @notice Queries the current price of ETH in USD using Chainlink's ETH/USD feed.
@@ -348,8 +348,8 @@ contract PriceRouter {
     /// @param feed1 The second feed's data.
     /// @return The price from the working feed.
     function getWorkingPrice(
-        feedData memory feed0,
-        feedData memory feed1
+        FeedData memory feed0,
+        FeedData memory feed1
     ) internal pure returns (uint256) {
         /// We know based on context of when this function is called that one but not both feeds have an error.
         /// So if feed0 had the error, feed1 is okay, and vice versa
@@ -359,17 +359,17 @@ contract PriceRouter {
 
     /// @notice Retrieves the price feed data for a given asset.
     /// @dev Fetches the price for the provided asset from all available price feeds and returns them in an array.
-    /// Each feedData in the array corresponds to a price feed. If less than two feeds are available, only the available feeds are returned.
+    /// Each FeedData in the array corresponds to a price feed. If less than two feeds are available, only the available feeds are returned.
     /// @param _asset The address of the asset.
     /// @param _inUSD Specifies whether the price format should be in USD or ETH.
-    /// @return An array of feedData objects for the asset, each corresponding to a price feed.
+    /// @return An array of FeedData objects for the asset, each corresponding to a price feed.
     function getPricesForAsset(
         address _asset,
         bool _inUSD
-    ) external view returns (feedData[] memory) {
+    ) external view returns (FeedData[] memory) {
         uint256 numAssetPriceFeeds = assetPriceFeeds[_asset].length;
         require(numAssetPriceFeeds > 0, "priceRouter: no feeds available");
-        feedData[] memory data = new feedData[](numAssetPriceFeeds * 2);
+        FeedData[] memory data = new FeedData[](numAssetPriceFeeds * 2);
 
         /// If the asset only has one price feed, we know itll be in feed slot 0 so get both prices and return
         if (numAssetPriceFeeds < 2) {
@@ -477,7 +477,7 @@ contract PriceRouter {
     function removeCTokenSupport(address cToken) external onlyDaoPermissions {
         require(
             cTokenAssets[cToken].isCToken,
-            "priceRouter: adaptor does not exist"
+            "priceRouter: CToken is not configured"
         );
         delete cTokenAssets[cToken];
     }
