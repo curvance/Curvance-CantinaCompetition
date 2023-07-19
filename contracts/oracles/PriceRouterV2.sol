@@ -313,7 +313,7 @@ contract PriceRouter {
     /// @notice Retrieves the prices of multiple specified assets.
     /// @dev Loops through the array of assets and retrieves the price
     ///      for each using the getPrice function.
-    /// @param asset An array of asset addresses to retrieve the prices for.
+    /// @param assets An array of asset addresses to retrieve the prices for.
     /// @param inUSD An array of bools indicating whether the price should be
     ///              returned in USD or ETH.
     /// @param getLower An array of bools indiciating whether the lower
@@ -321,18 +321,20 @@ contract PriceRouter {
     /// @return Two arrays. The first one contains prices for each asset,
     ///         and the second one contains corresponding error flags (if any).
     function getPriceMulti(
-        address[] calldata asset,
+        address[] calldata assets,
         bool[] calldata inUSD,
         bool[] calldata getLower
     ) public view returns (uint256[] memory, uint256[] memory) {
-        uint256 numAssets = asset.length;
+        uint256 numAssets = assets.length;
+
         require(numAssets > 0, "priceRouter: no assets to price");
+
         uint256[] memory prices = new uint256[](numAssets);
         uint256[] memory hadError = new uint256[](numAssets);
 
         for (uint256 i; i < numAssets; ) {
             (prices[i], hadError[i]) = getPrice(
-                asset[i],
+                assets[i],
                 inUSD[i],
                 getLower[i]
             );
