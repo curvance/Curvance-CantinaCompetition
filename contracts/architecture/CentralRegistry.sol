@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
+import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import "contracts/interfaces/ICentralRegistry.sol";
 
-contract CentralRegistry is ICentralRegistry {
+contract CentralRegistry is ICentralRegistry, ERC165 {
     event OwnershipTransferred(
         address indexed previousOwner,
         address indexed newOwner
@@ -421,5 +422,14 @@ contract CentralRegistry is ICentralRegistry {
 
         delete approvedEndpoint[currentApprovedEndpoint];
         emit ApprovedEndpointRemoved(currentApprovedEndpoint);
+    }
+
+    /// @inheritdoc IERC165
+    function supportsInterface(
+        bytes4 interfaceId
+    ) public view override returns (bool) {
+        return
+            interfaceId == type(ICentralRegistry).interfaceId ||
+            super.supportsInterface(interfaceId);
     }
 }
