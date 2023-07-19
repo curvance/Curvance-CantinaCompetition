@@ -103,7 +103,7 @@ contract PriceRouter {
         address _asset,
         bool _inUSD,
         bool _getLower
-    ) public view returns (uint256, uint256) {
+    ) public view returns (uint256 price, uint256 errorCode) {
         uint256 numAssetPriceFeeds = assetPriceFeeds[_asset].length;
         require(numAssetPriceFeeds > 0, "priceRouter: no feeds available");
 
@@ -112,10 +112,16 @@ contract PriceRouter {
         }
 
         if (numAssetPriceFeeds < 2) {
-            return getPriceSingleFeed(_asset, _inUSD, _getLower);
+           (price, errorCode) = getPriceSingleFeed(_asset, _inUSD, _getLower);
+        } else {
+           (price, errorCode) = getPriceDualFeed(_asset, _inUSD, _getLower);
         }
 
-        return getPriceDualFeed(_asset, _inUSD, _getLower);
+        /// If somehow a feed returns a price of 0 make sure we trigger the BAD_SOURCE flag
+        if (price == 0 && errorCode < BAD_SOURCE) {
+            errorCode = BAD_SOURCE;
+        }
+
     }
 
     /// @notice Retrieves the prices of multiple specified assets.
@@ -242,48 +248,6 @@ contract PriceRouter {
         return (feedData({ price: data.price, hadError: data.hadError }));
     }
 
-    /// @notice Queries the current price of ETH in USD using Chainlink's ETH/USD feed.
-    /// @dev The price is deemed valid if the data from Chainlink is fresh and positive.
-    /// @return A tuple containing the price of ETH in USD and an error flag.
-    /// If the Chainlink data is stale or negative, it returns (_answer, true).
-    /// Where true corresponded to hasError = true.
-    function getETHUSD() internal view returns (uint256, bool) {
-        (, int256 _answer, , uint256 _updatedAt, ) = AggregatorV3Interface(
-            CHAINLINK_ETH_USD
-        ).latestRoundData();
-
-        // If data is stale or negative we have a problem to relay back
-        if (
-            _answer <= 0 ||
-            (block.timestamp - _updatedAt > CHAINLINK_MAX_DELAY)
-        ) {
-            return (uint256(_answer), true);
-        }
-        return (uint256(_answer), false);
-    }
-
-    /// @notice Converts a given price between ETH and USD formats.
-    /// @dev Depending on the _currentFormatinUSD parameter, this function either converts the price from ETH to USD (if true)
-    /// or from USD to ETH (if false) using the provided conversion rate.
-    /// @param _currentPrice The price to convert.
-    /// @param _conversionRate The rate to use for the conversion.
-    /// @param _currentFormatinUSD Specifies whether the current format of the price is in USD.
-    /// If true, it will convert the price from USD to ETH.
-    /// If false, it will convert the price from ETH to USD.
-    /// @return The converted price.
-    function convertPriceETHUSD(
-        uint240 _currentPrice,
-        uint256 _conversionRate,
-        bool _currentFormatinUSD
-    ) internal pure returns (uint256) {
-        if (!_currentFormatinUSD) {
-            // current format is in ETH and we want USD
-            return (_currentPrice * _conversionRate);
-        }
-
-        return (_currentPrice / _conversionRate);
-    }
-
     /// @notice Processes the price data from two different feeds.
     /// @dev Checks for divergence between two prices. If the divergence is more than allowed,
     /// it returns (0, CAUTION).
@@ -298,14 +262,18 @@ contract PriceRouter {
         if (a <= b) {
             /// Check if both feeds are within PRICEFEED_MAXIMUM_DIVERGENCE of each other
             if (((a * PRICEFEED_MAXIMUM_DIVERGENCE) / DENOMINATOR) < b) {
-                return (0, CAUTION);
+                /// Return the price but notify that the price should be taken with caution
+                /// because we are outside the accepted range of divergence
+                return (a, CAUTION);
             }
             return (a, NO_ERROR);
         }
 
         /// Check if both feeds are within PRICEFEED_MAXIMUM_DIVERGENCE of each other
         if (((b * PRICEFEED_MAXIMUM_DIVERGENCE) / DENOMINATOR) < a) {
-            return (0, CAUTION);
+            /// Return the price but notify that the price should be taken with caution
+            /// because we are outside the accepted range of divergence
+            return (b, CAUTION);
         }
         return (b, NO_ERROR);
     }
@@ -324,14 +292,18 @@ contract PriceRouter {
         if (a >= b) {
             /// Check if both feeds are within PRICEFEED_MAXIMUM_DIVERGENCE of each other
             if (((b * PRICEFEED_MAXIMUM_DIVERGENCE) / DENOMINATOR) < a) {
-                return (0, CAUTION);
+                /// Return the price but notify that the price should be taken with caution
+                /// because we are outside the accepted range of divergence
+                return (a, CAUTION);
             }
             return (a, NO_ERROR);
         }
 
         /// Check if both feeds are within PRICEFEED_MAXIMUM_DIVERGENCE of each other
         if (((a * PRICEFEED_MAXIMUM_DIVERGENCE) / DENOMINATOR) < b) {
-            return (0, CAUTION);
+            /// Return the price but notify that the price should be taken with caution
+            /// because we are outside the accepted range of divergence
+            return (b, CAUTION);
         }
         return (b, NO_ERROR);
     }
@@ -381,6 +353,48 @@ contract PriceRouter {
         return data;
     }
 
+    /// @notice Queries the current price of ETH in USD using Chainlink's ETH/USD feed.
+    /// @dev The price is deemed valid if the data from Chainlink is fresh and positive.
+    /// @return A tuple containing the price of ETH in USD and an error flag.
+    /// If the Chainlink data is stale or negative, it returns (_answer, true).
+    /// Where true corresponded to hasError = true.
+    function getETHUSD() internal view returns (uint256, bool) {
+        (, int256 _answer, , uint256 _updatedAt, ) = AggregatorV3Interface(
+            CHAINLINK_ETH_USD
+        ).latestRoundData();
+
+        // If data is stale or negative we have a problem to relay back
+        if (
+            _answer <= 0 ||
+            (block.timestamp - _updatedAt > CHAINLINK_MAX_DELAY)
+        ) {
+            return (uint256(_answer), true);
+        }
+        return (uint256(_answer), false);
+    }
+
+    /// @notice Converts a given price between ETH and USD formats.
+    /// @dev Depending on the _currentFormatinUSD parameter, this function either converts the price from ETH to USD (if true)
+    /// or from USD to ETH (if false) using the provided conversion rate.
+    /// @param _currentPrice The price to convert.
+    /// @param _conversionRate The rate to use for the conversion.
+    /// @param _currentFormatinUSD Specifies whether the current format of the price is in USD.
+    /// If true, it will convert the price from USD to ETH.
+    /// If false, it will convert the price from ETH to USD.
+    /// @return The converted price.
+    function convertPriceETHUSD(
+        uint240 _currentPrice,
+        uint256 _conversionRate,
+        bool _currentFormatinUSD
+    ) internal pure returns (uint256) {
+        if (!_currentFormatinUSD) {
+            // current format is in ETH and we want USD
+            return (_currentPrice * _conversionRate);
+        }
+
+        return (_currentPrice / _conversionRate);
+    }
+
     /// @notice Checks if a given asset is supported by the price router.
     /// @dev An asset is considered supported if it has one or more associated price feeds.
     /// @param _asset The address of the asset to check.
@@ -391,6 +405,15 @@ contract PriceRouter {
         }
 
         return assetPriceFeeds[_asset].length > 0;
+    }
+
+    function validateFinalPrice(uint256 price, uint256 error) internal pure returns (uint256, uint256) {
+        /// If somehow a feed returns a price of 0 make sure we trigger the BAD_SOURCE flag
+        if (price == 0) {
+            return (0, BAD_SOURCE);
+        }
+
+        return (price, error);
     }
 
     /// @notice Adds a new price feed for a specific asset.
