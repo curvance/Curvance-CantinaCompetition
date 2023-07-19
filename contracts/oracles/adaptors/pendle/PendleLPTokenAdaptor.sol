@@ -20,6 +20,7 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
         uint32 twapDuration;
         address quoteAsset;
         address pt;
+        uint8 quoteAssetDecimals;
     }
 
     /// @notice Pendle LP adaptor storage
@@ -71,8 +72,9 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
         }
 
         // Multiply the quote asset price by the lpRate to get the Lp Token fair value.
-        pData.price = uint240((price * lpRate) / 1e30);
-        // TODO where does 1e30 come from?
+        pData.price = uint240(
+            (price * lpRate) / 10 ** data.quoteAssetDecimals
+        );
     }
 
     /// @notice Add a Pendle Market as an asset.
@@ -125,7 +127,8 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
         adaptorData[asset] = AdaptorData({
             twapDuration: data.twapDuration,
             quoteAsset: data.quoteAsset,
-            pt: data.pt
+            pt: data.pt,
+            quoteAssetDecimals: data.quoteAssetDecimals
         });
     }
 

@@ -20,6 +20,7 @@ contract PendlePrincipalTokenAdaptor is BaseOracleAdaptor {
         IPMarket market;
         uint32 twapDuration;
         address quoteAsset;
+        uint8 quoteAssetDecimals;
     }
 
     /// @notice Pendle PT adaptor storage
@@ -70,8 +71,9 @@ contract PendlePrincipalTokenAdaptor is BaseOracleAdaptor {
             if (errorCode == BAD_SOURCE) return pData;
         }
         // Multiply the quote asset price by the ptRate to get the Principal Token fair value.
-        pData.price = uint240((price * ptRate) / 1e30);
-        // TODO where does 1e30 come from?
+        pData.price = uint240(
+            (price * ptRate) / 10 ** data.quoteAssetDecimals
+        );
     }
 
     /// @notice Add a Pendle Principal Token as an asset.
@@ -127,7 +129,8 @@ contract PendlePrincipalTokenAdaptor is BaseOracleAdaptor {
         adaptorData[asset] = AdaptorData({
             market: data.market,
             twapDuration: data.twapDuration,
-            quoteAsset: data.quoteAsset
+            quoteAsset: data.quoteAsset,
+            quoteAssetDecimals: data.quoteAssetDecimals
         });
     }
 
