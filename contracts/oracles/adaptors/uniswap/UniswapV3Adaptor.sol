@@ -81,6 +81,7 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
                     )
                 )
             );
+
         if (success) {
             twapPrice = abi.decode(returnData, (uint256));
         } else {
