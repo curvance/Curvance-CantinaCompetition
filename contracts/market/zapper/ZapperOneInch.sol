@@ -62,7 +62,7 @@ contract ZapperOneInch {
         uint256 numTokens = tokens.length;
 
         // prepare tokens to mint LP
-        for (uint256 i; i < numTokens; i++) {
+        for (uint256 i; i < numTokens; ++i) {
             // swap input token to underlying token
             if (tokens[i] != inputToken && tokenSwaps[i].length > 0) {
                 _swapViaOneInch(inputToken, tokenSwaps[i]);
@@ -137,12 +137,12 @@ contract ZapperOneInch {
         address[] memory tokens,
         uint256 lpMinOutAmount
     ) private returns (uint256 lpOutAmount) {
-        bool hasETH = false;
+        bool hasETH;
 
         uint256 numTokens = tokens.length;
 
         // approve tokens
-        for (uint256 i; i < numTokens; i++) {
+        for (uint256 i; i < numTokens; ++i) {
             _approveTokenIfNeeded(tokens[i], lpMinter);
             if (tokens[i] == ETH) {
                 hasETH = true;
