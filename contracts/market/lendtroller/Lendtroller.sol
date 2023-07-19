@@ -660,22 +660,17 @@ contract Lendtroller is ILendtroller {
         /* Read oracle prices for borrowed and collateral markets */
         (uint256 highPrice, uint256 highPriceError) = getPriceRouter()
             .getPrice(cTokenBorrowed, true, false);
-        if (highPriceError == 2) {
-            revert PriceError();
-        }
-        uint256 priceBorrowedScaled = highPrice;
-
         (uint256 lowPrice, uint256 lowPriceError) = getPriceRouter().getPrice(
             cTokenCollateral,
             true,
             true
         );
-        if (lowPriceError == 2) {
-            revert PriceError();
-        }
-        uint256 priceCollateralScaled = lowPrice;
-
-        if (priceBorrowedScaled == 0 || priceCollateralScaled == 0) {
+        if (
+            highPriceError == 2 ||
+            lowPriceError == 2 ||
+            highPrice == 0 ||
+            lowPrice == 0
+        ) {
             revert PriceError();
         }
 
@@ -685,8 +680,8 @@ contract Lendtroller is ILendtroller {
         //   = actualRepayAmount * (liquidationIncentive * priceBorrowed) / (priceCollateral * exchangeRate)
         uint256 exchangeRateScaled = ICToken(cTokenCollateral)
             .exchangeRateStored();
-        uint256 numerator = liquidationIncentiveScaled * priceBorrowedScaled;
-        uint256 denominator = priceCollateralScaled * exchangeRateScaled;
+        uint256 numerator = liquidationIncentiveScaled * highPrice;
+        uint256 denominator = lowPrice * exchangeRateScaled;
         uint256 ratio = (numerator * expScale) / denominator;
         uint256 seizeTokens = (ratio * actualRepayAmount) / expScale;
 
