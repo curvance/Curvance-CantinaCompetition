@@ -24,30 +24,13 @@ contract PriceRouter {
         address underlying;
     }
 
-    /// @notice Mapping used to track whether or not an address is an Adaptor.
-    mapping(address => bool) public isApprovedAdaptor;
-    /// @notice Mapping used to track an assets configured price feeds.
-    mapping(address => address[]) public assetPriceFeeds;
-    /// @notice Mapping used to link a collateral token to its underlying asset.
-    mapping(address => CTokenData) public cTokenAssets;
-
-    /// @notice Address for Curvance DAO registry contract for ownership and location data.
-    ICentralRegistry public immutable centralRegistry;
-
-    /// @notice Address for chainlink feed to convert from eth -> usd or usd -> eth.
-    address public immutable CHAINLINK_ETH_USD;
+    /// CONSTANTS ///
 
     /// @notice Offset for 8 decimal chainlink feeds.
     uint256 public constant CHAINLINK_DIVISOR = 1e8;
 
     /// @notice Offset for basis points precision for divergence value.
     uint256 public constant DENOMINATOR = 10000;
-
-    /// @notice How wide a divergence between price feeds warrants pausing borrowing.
-    uint256 public PRICEFEED_MAXIMUM_DIVERGENCE = 11000;
-
-    /// @notice Maximum time that a chainlink feed can be stale before we do not trust the value.
-    uint256 public CHAINLINK_MAX_DELAY = 1 days;
 
     /// @notice Error code for no error.
     uint256 public constant NO_ERROR = 0;
@@ -58,23 +41,30 @@ contract PriceRouter {
     /// @notice Error code for bad source.
     uint256 public constant BAD_SOURCE = 2;
 
-    constructor(ICentralRegistry _centralRegistry, address ETH_USD_FEED) {
-        require(
-            ERC165Checker.supportsInterface(
-                address(_centralRegistry),
-                type(ICentralRegistry).interfaceId
-            ),
-            "priceRouter: Central Registry is invalid"
-        );
-        require(
-            ETH_USD_FEED != address(0),
-            "priceRouter: ETH-USD Feed is invalid"
-        );
+    /// @notice Address for Curvance DAO registry contract for ownership and location data.
+    ICentralRegistry public immutable centralRegistry;
 
-        centralRegistry = _centralRegistry;
-        // Save the USD-ETH price feed because it is a widely used pricing path.
-        CHAINLINK_ETH_USD = ETH_USD_FEED; // 0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419 on mainnet
-    }
+    /// @notice Address for chainlink feed to convert from eth -> usd or usd -> eth.
+    address public immutable CHAINLINK_ETH_USD;
+
+    /// STORAGE ///
+
+    /// @notice How wide a divergence between price feeds warrants pausing borrowing.
+    uint256 public PRICEFEED_MAXIMUM_DIVERGENCE = 11000;
+
+    /// @notice Maximum time that a chainlink feed can be stale before we do not trust the value.
+    uint256 public CHAINLINK_MAX_DELAY = 1 days;
+
+    /// @notice Mapping used to track whether or not an address is an Adaptor.
+    mapping(address => bool) public isApprovedAdaptor;
+
+    /// @notice Mapping used to track an assets configured price feeds.
+    mapping(address => address[]) public assetPriceFeeds;
+
+    /// @notice Mapping used to link a collateral token to its underlying asset.
+    mapping(address => CTokenData) public cTokenAssets;
+
+    /// MODIFIERS ///
 
     modifier onlyDaoPermissions() {
         require(
@@ -96,6 +86,224 @@ contract PriceRouter {
     modifier onlyAdaptor() {
         require(isApprovedAdaptor[msg.sender], "priceRouter: UNAUTHORIZED");
         _;
+    }
+
+    constructor(ICentralRegistry _centralRegistry, address ETH_USD_FEED) {
+        require(
+            ERC165Checker.supportsInterface(
+                address(_centralRegistry),
+                type(ICentralRegistry).interfaceId
+            ),
+            "priceRouter: Central Registry is invalid"
+        );
+        require(
+            ETH_USD_FEED != address(0),
+            "priceRouter: ETH-USD Feed is invalid"
+        );
+
+        centralRegistry = _centralRegistry;
+        // Save the USD-ETH price feed because it is a widely used pricing path.
+        CHAINLINK_ETH_USD = ETH_USD_FEED; // 0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419 on mainnet
+    }
+
+    /// FUNCTIONS ///
+
+    /// @notice Adds a new price feed for a specific asset.
+    /// @dev Requires that the feed address is an approved adaptor and that the asset doesn't already have two feeds.
+    /// @param _asset The address of the asset.
+    /// @param _feed The address of the new feed.
+    function addAssetPriceFeed(
+        address _asset,
+        address _feed
+    ) external onlyElevatedPermissions {
+        require(isApprovedAdaptor[_feed], "priceRouter: unapproved feed");
+
+        require(
+            IOracleAdaptor(_feed).isSupportedAsset(_asset),
+            "priceRouter: not supported"
+        );
+
+        uint256 numPriceFeeds = assetPriceFeeds[_asset].length;
+
+        require(
+            numPriceFeeds < 2,
+            "priceRouter: dual feed already configured"
+        );
+        require(
+            numPriceFeeds == 0 || assetPriceFeeds[_asset][0] != _feed,
+            "priceRouter: feed already added"
+        );
+
+        assetPriceFeeds[_asset].push(_feed);
+    }
+
+    /// @notice Removes a price feed for a specific asset.
+    /// @dev Requires that the feed exists for the asset.
+    /// @param _asset The address of the asset.
+    /// @param _feed The address of the feed to be removed.
+    function removeAssetPriceFeed(
+        address _asset,
+        address _feed
+    ) external onlyDaoPermissions {
+        uint256 numAssetPriceFeeds = assetPriceFeeds[_asset].length;
+        require(numAssetPriceFeeds > 0, "priceRouter: no feeds available");
+
+        if (numAssetPriceFeeds > 1) {
+            require(
+                assetPriceFeeds[_asset][0] == _feed ||
+                    assetPriceFeeds[_asset][1] == _feed,
+                "priceRouter: feed does not exist"
+            );
+            if (assetPriceFeeds[_asset][0] == _feed) {
+                assetPriceFeeds[_asset][0] = assetPriceFeeds[_asset][1];
+            } // we want to remove the first feed of two, so move the second feed to slot one
+        } else {
+            require(
+                assetPriceFeeds[_asset][0] == _feed,
+                "priceRouter: feed does not exist"
+            );
+        } // we know the feed exists, cant use isApprovedAdaptor as we could have removed it as an approved adaptor prior
+
+        assetPriceFeeds[_asset].pop();
+    }
+
+    function addCTokenSupport(
+        address cToken
+    ) external onlyElevatedPermissions {
+        require(
+            !cTokenAssets[cToken].isCToken,
+            "priceRouter: CToken already configured"
+        );
+        require(
+            ERC165Checker.supportsInterface(cToken, type(ICToken).interfaceId),
+            "priceRouter: CToken is invalid"
+        );
+
+        cTokenAssets[cToken].isCToken = true;
+        cTokenAssets[cToken].underlying = ICToken(cToken).underlying();
+    }
+
+    function removeCTokenSupport(address cToken) external onlyDaoPermissions {
+        require(
+            cTokenAssets[cToken].isCToken,
+            "priceRouter: CToken is not configured"
+        );
+        delete cTokenAssets[cToken];
+    }
+
+    function notifyAssetPriceFeedRemoval(address _asset) external onlyAdaptor {
+        address _feed = msg.sender;
+        uint256 numAssetPriceFeeds = assetPriceFeeds[_asset].length;
+        require(numAssetPriceFeeds > 0, "priceRouter: no feeds available");
+
+        if (numAssetPriceFeeds > 1) {
+            require(
+                assetPriceFeeds[_asset][0] == _feed ||
+                    assetPriceFeeds[_asset][1] == _feed,
+                "priceRouter: feed does not exist"
+            );
+            if (assetPriceFeeds[_asset][0] == _feed) {
+                assetPriceFeeds[_asset][0] = assetPriceFeeds[_asset][1];
+            } // we want to remove the first feed of two, so move the second feed to slot one
+        } else {
+            require(
+                assetPriceFeeds[_asset][0] == _feed,
+                "priceRouter: feed does not exist"
+            );
+        } // we know the feed exists, cant use isApprovedAdaptor as we could have removed it as an approved adaptor prior
+
+        assetPriceFeeds[_asset].pop();
+    }
+
+    /// @notice Adds a new approved adaptor.
+    /// @dev Requires that the adaptor isn't already approved.
+    /// @param _adaptor The address of the adaptor to approve.
+    function addApprovedAdaptor(
+        address _adaptor
+    ) external onlyElevatedPermissions {
+        require(
+            !isApprovedAdaptor[_adaptor],
+            "priceRouter: adaptor already approved"
+        );
+        isApprovedAdaptor[_adaptor] = true;
+    }
+
+    /// @notice Removes an approved adaptor.
+    /// @dev Requires that the adaptor is currently approved.
+    /// @param _adaptor The address of the adaptor to remove.
+    function removeApprovedAdaptor(
+        address _adaptor
+    ) external onlyDaoPermissions {
+        require(
+            isApprovedAdaptor[_adaptor],
+            "priceRouter: adaptor does not exist"
+        );
+        delete isApprovedAdaptor[_adaptor];
+    }
+
+    /// @notice Sets a new maximum divergence for price feeds.
+    /// @dev Requires that the new divergence is greater than or equal to 10200 aka 2%.
+    /// @param _maxDivergence The new maximum divergence.
+    function setPriceFeedMaxDivergence(
+        uint256 _maxDivergence
+    ) external onlyElevatedPermissions {
+        require(
+            _maxDivergence >= 10200,
+            "priceRouter: divergence check is too small"
+        );
+        PRICEFEED_MAXIMUM_DIVERGENCE = _maxDivergence;
+    }
+
+    /// @notice Sets a new maximum delay for Chainlink price feed.
+    /// @dev Requires that the new delay is less than 1 day. Only callable by the DaoManager.
+    /// @param _delay The new maximum delay in seconds.
+    function setChainlinkDelay(
+        uint256 _delay
+    ) external onlyElevatedPermissions {
+        require(_delay < 1 days, "priceRouter: delay is too large");
+        CHAINLINK_MAX_DELAY = _delay;
+    }
+
+    /// @notice Retrieves the price feed data for a given asset.
+    /// @dev Fetches the price for the provided asset from all available price feeds and returns them in an array.
+    /// Each FeedData in the array corresponds to a price feed. If less than two feeds are available, only the available feeds are returned.
+    /// @param _asset The address of the asset.
+    /// @param _inUSD Specifies whether the price format should be in USD or ETH.
+    /// @return An array of FeedData objects for the asset, each corresponding to a price feed.
+    function getPricesForAsset(
+        address _asset,
+        bool _inUSD
+    ) external view returns (FeedData[] memory) {
+        uint256 numAssetPriceFeeds = assetPriceFeeds[_asset].length;
+        require(numAssetPriceFeeds > 0, "priceRouter: no feeds available");
+        FeedData[] memory data = new FeedData[](numAssetPriceFeeds * 2);
+
+        /// If the asset only has one price feed, we know itll be in feed slot 0 so get both prices and return
+        if (numAssetPriceFeeds < 2) {
+            data[0] = getPriceFromFeed(_asset, 0, _inUSD, true);
+            data[1] = getPriceFromFeed(_asset, 0, _inUSD, false);
+            return data;
+        }
+
+        /// We know the asset has two price feeds, so get pricing from both feeds and return
+        data[0] = getPriceFromFeed(_asset, 0, _inUSD, true);
+        data[1] = getPriceFromFeed(_asset, 0, _inUSD, false);
+        data[2] = getPriceFromFeed(_asset, 1, _inUSD, true);
+        data[3] = getPriceFromFeed(_asset, 1, _inUSD, false);
+
+        return data;
+    }
+
+    /// @notice Checks if a given asset is supported by the price router.
+    /// @dev An asset is considered supported if it has one or more associated price feeds.
+    /// @param _asset The address of the asset to check.
+    /// @return True if the asset is supported, false otherwise.
+    function isSupportedAsset(address _asset) external view returns (bool) {
+        if (cTokenAssets[_asset].isCToken) {
+            return assetPriceFeeds[cTokenAssets[_asset].underlying].length > 0;
+        }
+
+        return assetPriceFeeds[_asset].length > 0;
     }
 
     /// @notice Retrieves the price of a specified asset from either single or dual oracles.
@@ -154,6 +362,8 @@ contract PriceRouter {
 
         return (prices, hadError);
     }
+
+    /// INTERNAL FUNCTIONS ///
 
     /// @notice Retrieves the price of a specified asset from two specific price feeds.
     /// @dev This function is internal and not meant to be accessed directly.
@@ -355,203 +565,5 @@ contract PriceRouter {
         /// So if feed0 had the error, feed1 is okay, and vice versa
         if (feed0.hadError) return feed1.price;
         return feed0.price;
-    }
-
-    /// @notice Retrieves the price feed data for a given asset.
-    /// @dev Fetches the price for the provided asset from all available price feeds and returns them in an array.
-    /// Each FeedData in the array corresponds to a price feed. If less than two feeds are available, only the available feeds are returned.
-    /// @param _asset The address of the asset.
-    /// @param _inUSD Specifies whether the price format should be in USD or ETH.
-    /// @return An array of FeedData objects for the asset, each corresponding to a price feed.
-    function getPricesForAsset(
-        address _asset,
-        bool _inUSD
-    ) external view returns (FeedData[] memory) {
-        uint256 numAssetPriceFeeds = assetPriceFeeds[_asset].length;
-        require(numAssetPriceFeeds > 0, "priceRouter: no feeds available");
-        FeedData[] memory data = new FeedData[](numAssetPriceFeeds * 2);
-
-        /// If the asset only has one price feed, we know itll be in feed slot 0 so get both prices and return
-        if (numAssetPriceFeeds < 2) {
-            data[0] = getPriceFromFeed(_asset, 0, _inUSD, true);
-            data[1] = getPriceFromFeed(_asset, 0, _inUSD, false);
-            return data;
-        }
-
-        /// We know the asset has two price feeds, so get pricing from both feeds and return
-        data[0] = getPriceFromFeed(_asset, 0, _inUSD, true);
-        data[1] = getPriceFromFeed(_asset, 0, _inUSD, false);
-        data[2] = getPriceFromFeed(_asset, 1, _inUSD, true);
-        data[3] = getPriceFromFeed(_asset, 1, _inUSD, false);
-
-        return data;
-    }
-
-    /// @notice Checks if a given asset is supported by the price router.
-    /// @dev An asset is considered supported if it has one or more associated price feeds.
-    /// @param _asset The address of the asset to check.
-    /// @return True if the asset is supported, false otherwise.
-    function isSupportedAsset(address _asset) external view returns (bool) {
-        if (cTokenAssets[_asset].isCToken) {
-            return assetPriceFeeds[cTokenAssets[_asset].underlying].length > 0;
-        }
-
-        return assetPriceFeeds[_asset].length > 0;
-    }
-
-    /// @notice Adds a new price feed for a specific asset.
-    /// @dev Requires that the feed address is an approved adaptor and that the asset doesn't already have two feeds.
-    /// @param _asset The address of the asset.
-    /// @param _feed The address of the new feed.
-    function addAssetPriceFeed(
-        address _asset,
-        address _feed
-    ) external onlyElevatedPermissions {
-        require(isApprovedAdaptor[_feed], "priceRouter: unapproved feed");
-
-        require(
-            IOracleAdaptor(_feed).isSupportedAsset(_asset),
-            "priceRouter: not supported"
-        );
-
-        uint256 numPriceFeeds = assetPriceFeeds[_asset].length;
-
-        require(
-            numPriceFeeds < 2,
-            "priceRouter: dual feed already configured"
-        );
-        require(
-            numPriceFeeds == 0 || assetPriceFeeds[_asset][0] != _feed,
-            "priceRouter: feed already added"
-        );
-
-        assetPriceFeeds[_asset].push(_feed);
-    }
-
-    /// @notice Removes a price feed for a specific asset.
-    /// @dev Requires that the feed exists for the asset.
-    /// @param _asset The address of the asset.
-    /// @param _feed The address of the feed to be removed.
-    function removeAssetPriceFeed(
-        address _asset,
-        address _feed
-    ) public onlyDaoPermissions {
-        uint256 numAssetPriceFeeds = assetPriceFeeds[_asset].length;
-        require(numAssetPriceFeeds > 0, "priceRouter: no feeds available");
-
-        if (numAssetPriceFeeds > 1) {
-            require(
-                assetPriceFeeds[_asset][0] == _feed ||
-                    assetPriceFeeds[_asset][1] == _feed,
-                "priceRouter: feed does not exist"
-            );
-            if (assetPriceFeeds[_asset][0] == _feed) {
-                assetPriceFeeds[_asset][0] = assetPriceFeeds[_asset][1];
-            } // we want to remove the first feed of two, so move the second feed to slot one
-        } else {
-            require(
-                assetPriceFeeds[_asset][0] == _feed,
-                "priceRouter: feed does not exist"
-            );
-        } // we know the feed exists, cant use isApprovedAdaptor as we could have removed it as an approved adaptor prior
-
-        assetPriceFeeds[_asset].pop();
-    }
-
-    function addCTokenSupport(
-        address cToken
-    ) external onlyElevatedPermissions {
-        require(
-            !cTokenAssets[cToken].isCToken,
-            "priceRouter: CToken already configured"
-        );
-        require(
-            ERC165Checker.supportsInterface(cToken, type(ICToken).interfaceId),
-            "priceRouter: CToken is invalid"
-        );
-
-        cTokenAssets[cToken].isCToken = true;
-        cTokenAssets[cToken].underlying = ICToken(cToken).underlying();
-    }
-
-    function removeCTokenSupport(address cToken) external onlyDaoPermissions {
-        require(
-            cTokenAssets[cToken].isCToken,
-            "priceRouter: CToken is not configured"
-        );
-        delete cTokenAssets[cToken];
-    }
-
-    function notifyAssetPriceFeedRemoval(address _asset) external onlyAdaptor {
-        address _feed = msg.sender;
-        uint256 numAssetPriceFeeds = assetPriceFeeds[_asset].length;
-        require(numAssetPriceFeeds > 0, "priceRouter: no feeds available");
-
-        if (numAssetPriceFeeds > 1) {
-            require(
-                assetPriceFeeds[_asset][0] == _feed ||
-                    assetPriceFeeds[_asset][1] == _feed,
-                "priceRouter: feed does not exist"
-            );
-            if (assetPriceFeeds[_asset][0] == _feed) {
-                assetPriceFeeds[_asset][0] = assetPriceFeeds[_asset][1];
-            } // we want to remove the first feed of two, so move the second feed to slot one
-        } else {
-            require(
-                assetPriceFeeds[_asset][0] == _feed,
-                "priceRouter: feed does not exist"
-            );
-        } // we know the feed exists, cant use isApprovedAdaptor as we could have removed it as an approved adaptor prior
-
-        assetPriceFeeds[_asset].pop();
-    }
-
-    /// @notice Adds a new approved adaptor.
-    /// @dev Requires that the adaptor isn't already approved.
-    /// @param _adaptor The address of the adaptor to approve.
-    function addApprovedAdaptor(
-        address _adaptor
-    ) external onlyElevatedPermissions {
-        require(
-            !isApprovedAdaptor[_adaptor],
-            "priceRouter: adaptor already approved"
-        );
-        isApprovedAdaptor[_adaptor] = true;
-    }
-
-    /// @notice Removes an approved adaptor.
-    /// @dev Requires that the adaptor is currently approved.
-    /// @param _adaptor The address of the adaptor to remove.
-    function removeApprovedAdaptor(
-        address _adaptor
-    ) external onlyDaoPermissions {
-        require(
-            isApprovedAdaptor[_adaptor],
-            "priceRouter: adaptor does not exist"
-        );
-        delete isApprovedAdaptor[_adaptor];
-    }
-
-    /// @notice Sets a new maximum divergence for price feeds.
-    /// @dev Requires that the new divergence is greater than or equal to 10200 aka 2%.
-    /// @param _maxDivergence The new maximum divergence.
-    function setPriceFeedMaxDivergence(
-        uint256 _maxDivergence
-    ) external onlyElevatedPermissions {
-        require(
-            _maxDivergence >= 10200,
-            "priceRouter: divergence check is too small"
-        );
-        PRICEFEED_MAXIMUM_DIVERGENCE = _maxDivergence;
-    }
-
-    /// @notice Sets a new maximum delay for Chainlink price feed.
-    /// @dev Requires that the new delay is less than 1 day. Only callable by the DaoManager.
-    /// @param _delay The new maximum delay in seconds.
-    function setChainlinkDelay(
-        uint256 _delay
-    ) external onlyElevatedPermissions {
-        require(_delay < 1 days, "priceRouter: delay is too large");
-        CHAINLINK_MAX_DELAY = _delay;
     }
 }
