@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
+import "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 import "contracts/interfaces/ICentralRegistry.sol";
@@ -58,6 +59,18 @@ contract PriceRouter {
     uint256 public constant BAD_SOURCE = 2;
 
     constructor(ICentralRegistry _centralRegistry, address ETH_USD_FEED) {
+        require(
+            ERC165Checker.supportsInterface(
+                address(_centralRegistry),
+                type(ICentralRegistry).interfaceId
+            ),
+            "priceRouter: Central Registry is invalid"
+        );
+        require(
+            ETH_USD_FEED != address(0),
+            "priceRouter: ETH-USD Feed is invalid"
+        );
+
         centralRegistry = _centralRegistry;
         // Save the USD-ETH price feed because it is a widely used pricing path.
         CHAINLINK_ETH_USD = ETH_USD_FEED; // 0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419 on mainnet

@@ -50,7 +50,12 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
         WETH = WETH_;
     }
 
-    /// @notice Called by PriceRouter to price an asset.
+    /// @notice Gets the price of a given asset.
+    /// @dev This function uses the Uniswap V3 oracle to calculate the price.
+    /// @param asset The address of the asset for which the price is needed.
+    /// @param isUsd A boolean to determine if the price should be returned in USD or ETH.
+    /// @param getLower A boolean to determine if lower of two oracle prices should be retrieved.
+    /// @return PriceReturnData A structure containing the price, error status, and the quote format of the price.
     function getPrice(
         address asset,
         bool isUsd,
@@ -81,6 +86,7 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
                     )
                 )
             );
+
         if (success) {
             twapPrice = abi.decode(returnData, (uint256));
         } else {
@@ -165,7 +171,10 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
             });
     }
 
-    function addAsset(address asset, AdaptorData memory parameters) external onlyElevatedPermissions {
+    function addAsset(
+        address asset,
+        AdaptorData memory parameters
+    ) external onlyElevatedPermissions {
         /// Verify seconds ago is reasonable.
         require(
             parameters.secondsAgo >= MINIMUM_SECONDS_AGO,
@@ -193,20 +202,21 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
 
     /// @notice Removes a supported asset from the adaptor.
     /// @dev Calls back into price router to notify it of its removal
-    function removeAsset(address _asset) external override onlyDaoPermissions {
+    /// @param asset The address of the asset to be removed.
+    function removeAsset(address asset) external override onlyDaoPermissions {
         require(
-            isSupportedAsset[_asset],
+            isSupportedAsset[asset],
             "UniswapV3Adaptor: asset not supported"
         );
 
         /// Notify the adaptor to stop supporting the asset
-        delete isSupportedAsset[_asset];
+        delete isSupportedAsset[asset];
 
         /// Wipe config mapping entries for a gas refund
-        delete adaptorData[_asset];
+        delete adaptorData[asset];
 
         /// Notify the price router that we are going to stop supporting the asset
         IPriceRouter(centralRegistry.priceRouter())
-            .notifyAssetPriceFeedRemoval(_asset);
+            .notifyAssetPriceFeedRemoval(asset);
     }
 }
