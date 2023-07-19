@@ -151,31 +151,7 @@ contract PriceRouter {
         address asset,
         address feed
     ) external onlyDaoPermissions {
-        uint256 numAssetPriceFeeds = assetPriceFeeds[asset].length;
-        require(numAssetPriceFeeds > 0, "priceRouter: no feeds available");
-
-        if (numAssetPriceFeeds > 1) {
-            require(
-                assetPriceFeeds[asset][0] == feed ||
-                    assetPriceFeeds[asset][1] == feed,
-                "priceRouter: feed does not exist"
-            );
-
-            // we want to remove the first feed of two,
-            // so move the second feed to slot one
-            if (assetPriceFeeds[asset][0] == feed) {
-                assetPriceFeeds[asset][0] = assetPriceFeeds[asset][1];
-            }
-        } else {
-            require(
-                assetPriceFeeds[asset][0] == feed,
-                "priceRouter: feed does not exist"
-            );
-        }
-        // we know the feed exists, cant use isApprovedAdaptor as
-        // we could have removed it as an approved adaptor prior
-
-        assetPriceFeeds[asset].pop();
+        _removeAssetPriceFeed(asset, feed);
     }
 
     function addCTokenSupport(
@@ -203,32 +179,7 @@ contract PriceRouter {
     }
 
     function notifyAssetPriceFeedRemoval(address asset) external onlyAdaptor {
-        address feed = msg.sender;
-        uint256 numAssetPriceFeeds = assetPriceFeeds[asset].length;
-        require(numAssetPriceFeeds > 0, "priceRouter: no feeds available");
-
-        if (numAssetPriceFeeds > 1) {
-            require(
-                assetPriceFeeds[asset][0] == feed ||
-                    assetPriceFeeds[asset][1] == feed,
-                "priceRouter: feed does not exist"
-            );
-
-            // we want to remove the first feed of two,
-            // so move the second feed to slot one
-            if (assetPriceFeeds[asset][0] == feed) {
-                assetPriceFeeds[asset][0] = assetPriceFeeds[asset][1];
-            }
-        } else {
-            require(
-                assetPriceFeeds[asset][0] == feed,
-                "priceRouter: feed does not exist"
-            );
-        }
-        // we know the feed exists, cant use isApprovedAdaptor
-        // as we could have removed it as an approved adaptor prior
-
-        assetPriceFeeds[asset].pop();
+        _removeAssetPriceFeed(asset, msg.sender);
     }
 
     /// @notice Adds a new approved adaptor.
@@ -395,6 +346,38 @@ contract PriceRouter {
     }
 
     /// INTERNAL FUNCTIONS ///
+
+    /// @notice Removes a price feed for a specific asset.
+    /// @dev Requires that the feed exists for the asset.
+    /// @param asset The address of the asset.
+    /// @param feed The address of the feed to be removed.
+    function _removeAssetPriceFeed(address asset, address feed) internal {
+        uint256 numAssetPriceFeeds = assetPriceFeeds[asset].length;
+        require(numAssetPriceFeeds > 0, "priceRouter: no feeds available");
+
+        if (numAssetPriceFeeds > 1) {
+            require(
+                assetPriceFeeds[asset][0] == feed ||
+                    assetPriceFeeds[asset][1] == feed,
+                "priceRouter: feed does not exist"
+            );
+
+            // we want to remove the first feed of two,
+            // so move the second feed to slot one
+            if (assetPriceFeeds[asset][0] == feed) {
+                assetPriceFeeds[asset][0] = assetPriceFeeds[asset][1];
+            }
+        } else {
+            require(
+                assetPriceFeeds[asset][0] == feed,
+                "priceRouter: feed does not exist"
+            );
+        }
+        // we know the feed exists, cant use isApprovedAdaptor as
+        // we could have removed it as an approved adaptor prior
+
+        assetPriceFeeds[asset].pop();
+    }
 
     /// @notice Retrieves the price of a specified asset from two specific price feeds.
     /// @dev This function is internal and not meant to be accessed directly.
