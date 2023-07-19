@@ -626,13 +626,10 @@ contract Lendtroller is ILendtroller {
             (price, errorCode) = getPriceRouter().getPrice(
                 address(asset),
                 true,
-                true
+                false
             );
             if (errorCode == 2) {
                 revert PriceError();
-            }
-            if (errorCode == 1) {
-                price = 0;
             }
 
             sumBorrowPlusEffects += ((price * borrowBalance) / expScale);
@@ -672,9 +669,6 @@ contract Lendtroller is ILendtroller {
             .getPrice(cTokenBorrowed, true, false);
         if (highPriceError == 2) {
             revert PriceError();
-        }
-        if (highPriceError == 1) {
-            highPrice = 0;
         }
         uint256 priceBorrowedScaled = highPrice;
 
