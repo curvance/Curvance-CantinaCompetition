@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
+import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 import { GaugePool } from "contracts/gauge/GaugePool.sol";
 import { InterestRateModel } from "contracts/market/interestRates/InterestRateModel.sol";
-
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IEIP20 } from "contracts/interfaces/market/IEIP20.sol";
@@ -13,8 +13,7 @@ import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.s
 
 /// @title Curvance's CToken Contract
 /// @notice Abstract base for CTokens
-abstract contract CToken is ReentrancyGuard, ICToken {
-
+abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
     /// STRUCTS ///
 
     /// @notice Container for borrow balance information
@@ -26,14 +25,22 @@ abstract contract CToken is ReentrancyGuard, ICToken {
     }
 
     /// CONSTANTS ///
-    ICentralRegistry public immutable centralRegistry;
+
     uint256 internal constant expScale = 1e18;
+
     // Maximum borrow rate that can ever be applied (.0005% / second)
     uint256 internal constant borrowRateMaxScaled = 0.0005e16;
+
     // Maximum fraction of interest that can be set aside for reserves
     uint256 internal constant reserveFactorMaxScaled = 1e18;
+
     /// @notice Indicator that this is a CToken contract (for inspection)
     bool public constant override isCToken = true;
+
+    /// @notice Underlying asset for this CToken
+    address public immutable underlying;
+
+    ICentralRegistry public immutable centralRegistry;
 
     /// STORAGE ///
     string public name;
@@ -82,11 +89,11 @@ abstract contract CToken is ReentrancyGuard, ICToken {
         address lendtroller_,
         InterestRateModel interestRateModel_,
         uint256 initialExchangeRateScaled_,
+        address underlying_,
         string memory name_,
         string memory symbol_,
         uint8 decimals_
     ) public onlyDaoPermissions {
-
         // Validate that initialize has not been called prior
         if (accrualBlockTimestamp != 0 && borrowIndex != 0) {
             revert PreviouslyInitialized();
@@ -131,18 +138,25 @@ abstract contract CToken is ReentrancyGuard, ICToken {
             interestRateModel_
         );
 
+        underlying = underlying_;
         name = name_;
         symbol = symbol_;
         decimals = decimals_;
     }
 
     modifier onlyDaoPermissions() {
-        require(centralRegistry.hasDaoPermissions(msg.sender), "centralRegistry: UNAUTHORIZED");
+        require(
+            centralRegistry.hasDaoPermissions(msg.sender),
+            "centralRegistry: UNAUTHORIZED"
+        );
         _;
     }
 
     modifier onlyElevatedPermissions() {
-        require(centralRegistry.hasElevatedPermissions(msg.sender), "centralRegistry: UNAUTHORIZED");
+        require(
+            centralRegistry.hasElevatedPermissions(msg.sender),
+            "centralRegistry: UNAUTHORIZED"
+        );
         _;
     }
 
@@ -1034,8 +1048,9 @@ abstract contract CToken is ReentrancyGuard, ICToken {
     /// @notice Sets a new lendtroller for the market
     /// @dev Admin function to set a new lendtroller
     /// @param newLendtroller New lendtroller address.
-    function _setLendtroller(ILendtroller newLendtroller) public override onlyElevatedPermissions {
-
+    function _setLendtroller(
+        ILendtroller newLendtroller
+    ) public override onlyElevatedPermissions {
         ILendtroller oldLendtroller = lendtroller;
         // Ensure invoke lendtroller.isLendtroller() returns true
         if (!newLendtroller.isLendtroller()) {
@@ -1063,8 +1078,9 @@ abstract contract CToken is ReentrancyGuard, ICToken {
     /// @notice Sets a new reserve factor for the protocol (*requires fresh interest accrual)
     /// @dev Admin function to set a new reserve factor
     /// @param newReserveFactorScaled The new reserve factore * 1e18 (ie, 0.8 == 800000000000000000)
-    function _setReserveFactorFresh(uint256 newReserveFactorScaled) internal onlyElevatedPermissions {
-
+    function _setReserveFactorFresh(
+        uint256 newReserveFactorScaled
+    ) internal onlyElevatedPermissions {
         // Verify market's timestamp equals current timestamp
         if (accrualBlockTimestamp != getBlockTimestamp()) {
             revert FailedFreshnessCheck();
@@ -1129,7 +1145,9 @@ abstract contract CToken is ReentrancyGuard, ICToken {
     /// @notice Reduces reserves by transferring to admin
     /// @dev Requires fresh interest accrual
     /// @param reduceAmount Amount of reduction to reserves
-    function _reduceReservesFresh(uint256 reduceAmount) internal onlyElevatedPermissions {
+    function _reduceReservesFresh(
+        uint256 reduceAmount
+    ) internal onlyElevatedPermissions {
         // totalReserves - reduceAmount
         uint256 totalReservesNew;
 
@@ -1180,7 +1198,6 @@ abstract contract CToken is ReentrancyGuard, ICToken {
     function _setInterestRateModelFresh(
         InterestRateModel newInterestRateModel
     ) internal onlyDaoPermissions {
-
         // We fail gracefully unless market's timestamp equals current timestamp
         if (accrualBlockTimestamp != getBlockTimestamp()) {
             revert FailedFreshnessCheck();
@@ -1227,4 +1244,13 @@ abstract contract CToken is ReentrancyGuard, ICToken {
         address payable to,
         uint256 amount
     ) internal virtual;
+
+    /// @inheritdoc IERC165
+    function supportsInterface(
+        bytes4 interfaceId
+    ) public view override returns (bool) {
+        return
+            interfaceId == type(ICToken).interfaceId ||
+            super.supportsInterface(interfaceId);
+    }
 }

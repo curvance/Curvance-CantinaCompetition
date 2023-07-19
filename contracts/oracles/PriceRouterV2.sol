@@ -3,8 +3,8 @@ pragma solidity ^0.8.17;
 
 import "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
-
-import "contracts/interfaces/ICentralRegistry.sol";
+import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+import { ICToken } from "contracts/interfaces/market/ICToken.sol";
 import "../interfaces/IOracleAdaptor.sol";
 
 /// @title Curvance Dual Oracle Price Router
@@ -459,15 +459,19 @@ contract PriceRouter {
     }
 
     function addCTokenSupport(
-        address cToken,
-        address underlying
+        address cToken
     ) external onlyElevatedPermissions {
         require(
             !cTokenAssets[cToken].isCToken,
             "priceRouter: CToken already configured"
         );
+        require(
+            ERC165Checker.supportsInterface(cToken, type(ICToken).interfaceId),
+            "priceRouter: CToken is invalid"
+        );
+
         cTokenAssets[cToken].isCToken = true;
-        cTokenAssets[cToken].underlying = underlying;
+        cTokenAssets[cToken].underlying = ICToken(cToken).underlying();
     }
 
     function removeCTokenSupport(address cToken) external onlyDaoPermissions {

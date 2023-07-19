@@ -28,16 +28,15 @@ contract CEther is CToken {
         string memory symbol_,
         uint8 decimals_
     ) CToken(_centralRegistry) {
-
         initialize(
             lendtroller_,
             interestRateModel_,
             initialExchangeRateMantissa_,
+            0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE,
             name_,
             symbol_,
             decimals_
         );
-
     }
 
     /// User Interface
