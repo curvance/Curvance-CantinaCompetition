@@ -229,8 +229,7 @@ contract Lendtroller is ILendtroller {
 
     /// @notice Checks if the account should be allowed to mint tokens in the given market
     /// @param cToken The market to verify the mint against
-    /// @param minter The account which would get the minted tokens
-    function mintAllowed(address cToken, address minter) external override {
+    function mintAllowed(address cToken, address) external view override {
         // Pausing is a very serious situation - we revert to sound the alarms
         if (mintGuardianPaused[cToken]) {
             revert Paused();
@@ -249,7 +248,7 @@ contract Lendtroller is ILendtroller {
         address cToken,
         address redeemer,
         uint256 redeemTokens
-    ) external override {
+    ) external view override {
         redeemAllowedInternal(cToken, redeemer, redeemTokens);
     }
 
@@ -348,11 +347,10 @@ contract Lendtroller is ILendtroller {
 
     /// @notice Checks if the account should be allowed to repay a borrow in the given market
     /// @param cToken The market to verify the repay against
-    /// @param borrower The account which would borrowed the asset
     function repayBorrowAllowed(
         address cToken,
-        address borrower
-    ) external override {
+        address
+    ) external view override {
         if (!markets[cToken].isListed) {
             revert MarketNotListed(cToken);
         }
@@ -396,14 +394,12 @@ contract Lendtroller is ILendtroller {
     /// @notice Checks if the seizing of assets should be allowed to occur
     /// @param cTokenCollateral Asset which was used as collateral and will be seized
     /// @param cTokenBorrowed Asset which was borrowed by the borrower
-    /// @param liquidator The address repaying the borrow and seizing the collateral
-    /// @param borrower The address of the borrower
     function seizeAllowed(
         address cTokenCollateral,
         address cTokenBorrowed,
-        address liquidator,
-        address borrower
-    ) external override {
+        address,
+        address
+    ) external view override {
         // Pausing is a very serious situation - we revert to sound the alarms
         if (seizeGuardianPaused) {
             revert Paused();
@@ -427,14 +423,13 @@ contract Lendtroller is ILendtroller {
     /// @notice Checks if the account should be allowed to transfer tokens in the given market
     /// @param cToken The market to verify the transfer against
     /// @param src The account which sources the tokens
-    /// @param dst The account which receives the tokens
     /// @param transferTokens The number of cTokens to transfer
     function transferAllowed(
         address cToken,
         address src,
-        address dst,
+        address,
         uint256 transferTokens
-    ) external override {
+    ) external view override {
         // Pausing is a very serious situation - we revert to sound the alarms
         if (transferGuardianPaused) {
             revert Paused();
@@ -603,18 +598,15 @@ contract Lendtroller is ILendtroller {
                 uint256 exchangeRateScaled
             ) = asset.getAccountSnapshot(account);
 
-            (uint256 price, uint256 errorCode) = getPriceRouter().getPrice(
-                address(asset),
-                true,
-                true
-            );
-            if (errorCode == 2) {
-                revert PriceError();
-            }
-
             if (collateralEnabled) {
+                (uint256 lowerPrice, uint256 errorCode) = getPriceRouter()
+                    .getPrice(address(asset), true, true);
+                if (errorCode == 2) {
+                    revert PriceError();
+                }
+
                 uint256 assetValue = (((cTokenBalance * exchangeRateScaled) /
-                    expScale) * price) / expScale;
+                    expScale) * lowerPrice) / expScale;
 
                 sumCollateral += assetValue;
                 maxBorrow +=
@@ -623,32 +615,33 @@ contract Lendtroller is ILendtroller {
                     expScale;
             }
 
-            (price, errorCode) = getPriceRouter().getPrice(
-                address(asset),
-                true,
-                false
-            );
-            if (errorCode == 2) {
-                revert PriceError();
-            }
-
-            sumBorrowPlusEffects += ((price * borrowBalance) / expScale);
-
-            // Calculate effects of interacting with cTokenModify
-            if (asset == cTokenModify) {
-                if (collateralEnabled) {
-                    // Pre-compute a conversion factor from tokens -> ether (normalized price value)
-                    uint256 tokensToDenom = (((markets[address(asset)]
-                        .collateralFactorScaled * exchangeRateScaled) /
-                        expScale) * price) / expScale;
-
-                    // redeem effect
-                    sumBorrowPlusEffects += ((tokensToDenom * redeemTokens) /
-                        expScale);
+            {
+                (uint256 higherPrice, uint256 errorCode) = getPriceRouter()
+                    .getPrice(address(asset), true, false);
+                if (errorCode == 2) {
+                    revert PriceError();
                 }
 
-                // borrow effect
-                sumBorrowPlusEffects += ((price * borrowAmount) / expScale);
+                sumBorrowPlusEffects += ((higherPrice * borrowBalance) /
+                    expScale);
+
+                // Calculate effects of interacting with cTokenModify
+                if (asset == cTokenModify) {
+                    if (collateralEnabled) {
+                        // Pre-compute a conversion factor from tokens -> ether (normalized price value)
+                        uint256 tokensToDenom = (((markets[address(asset)]
+                            .collateralFactorScaled * exchangeRateScaled) /
+                            expScale) * higherPrice) / expScale;
+
+                        // redeem effect
+                        sumBorrowPlusEffects += ((tokensToDenom *
+                            redeemTokens) / expScale);
+                    }
+
+                    // borrow effect
+                    sumBorrowPlusEffects += ((higherPrice * borrowAmount) /
+                        expScale);
+                }
             }
         }
     }
