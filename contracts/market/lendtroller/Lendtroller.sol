@@ -312,7 +312,7 @@ contract Lendtroller is ILendtroller {
             true,
             false
         );
-        if (errorCode != 0 || price == 0) {
+        if (errorCode > 0) {
             revert PriceError();
         }
 
@@ -663,9 +663,7 @@ contract Lendtroller is ILendtroller {
         /// Validate that we were able to securely query prices from the dual oracle
         if (
             highPriceError == 2 ||
-            lowPriceError == 2 ||
-            highPrice == 0 ||
-            lowPrice == 0
+            lowPriceError == 2
         ) {
             revert PriceError();
         }
@@ -761,7 +759,7 @@ contract Lendtroller is ILendtroller {
         // Validate that we got a price and that collateral factor != 0
         if (
             lowPriceError == 2 ||
-            (newCollateralFactorScaled != 0 && lowPrice == 0)
+            newCollateralFactorScaled != 0
         ) {
             revert PriceError();
         }
