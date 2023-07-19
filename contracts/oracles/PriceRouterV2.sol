@@ -77,12 +77,18 @@ contract PriceRouter {
     }
 
     modifier onlyDaoPermissions() {
-        require(centralRegistry.hasDaoPermissions(msg.sender), "centralRegistry: UNAUTHORIZED");
+        require(
+            centralRegistry.hasDaoPermissions(msg.sender),
+            "centralRegistry: UNAUTHORIZED"
+        );
         _;
     }
 
     modifier onlyElevatedPermissions() {
-        require(centralRegistry.hasElevatedPermissions(msg.sender), "centralRegistry: UNAUTHORIZED");
+        require(
+            centralRegistry.hasElevatedPermissions(msg.sender),
+            "centralRegistry: UNAUTHORIZED"
+        );
         _;
     }
 
@@ -107,7 +113,7 @@ contract PriceRouter {
         uint256 numAssetPriceFeeds = assetPriceFeeds[_asset].length;
         require(numAssetPriceFeeds > 0, "priceRouter: no feeds available");
 
-        if(cTokenAssets[_asset].isCToken){
+        if (cTokenAssets[_asset].isCToken) {
             _asset = cTokenAssets[_asset].underlying;
         }
 
@@ -386,8 +392,8 @@ contract PriceRouter {
     /// @param _asset The address of the asset to check.
     /// @return True if the asset is supported, false otherwise.
     function isSupportedAsset(address _asset) external view returns (bool) {
-        if(cTokenAssets[_asset].isCToken){
-           return assetPriceFeeds[cTokenAssets[_asset].underlying].length > 0;
+        if (cTokenAssets[_asset].isCToken) {
+            return assetPriceFeeds[cTokenAssets[_asset].underlying].length > 0;
         }
 
         return assetPriceFeeds[_asset].length > 0;
@@ -402,14 +408,23 @@ contract PriceRouter {
         address _feed
     ) external onlyElevatedPermissions {
         require(isApprovedAdaptor[_feed], "priceRouter: unapproved feed");
-        require(
-            assetPriceFeeds[_asset].length < 2,
-            "priceRouter: dual feed already configured"
-        );
+
         require(
             IOracleAdaptor(_feed).isSupportedAsset(_asset),
             "priceRouter: not supported"
         );
+
+        uint256 numPriceFeeds = assetPriceFeeds[_asset].length;
+
+        require(
+            numPriceFeeds < 2,
+            "priceRouter: dual feed already configured"
+        );
+        require(
+            numPriceFeeds == 0 || assetPriceFeeds[_asset][0] != _feed,
+            "priceRouter: feed already added"
+        );
+
         assetPriceFeeds[_asset].push(_feed);
     }
 
@@ -443,7 +458,10 @@ contract PriceRouter {
         assetPriceFeeds[_asset].pop();
     }
 
-    function addCTokenSupport(address cToken, address underlying) external onlyElevatedPermissions {
+    function addCTokenSupport(
+        address cToken,
+        address underlying
+    ) external onlyElevatedPermissions {
         require(
             !cTokenAssets[cToken].isCToken,
             "priceRouter: CToken already configured"
@@ -451,7 +469,6 @@ contract PriceRouter {
         cTokenAssets[cToken].isCToken = true;
         cTokenAssets[cToken].underlying = underlying;
     }
-
 
     function removeCTokenSupport(address cToken) external onlyDaoPermissions {
         require(
@@ -488,7 +505,9 @@ contract PriceRouter {
     /// @notice Adds a new approved adaptor.
     /// @dev Requires that the adaptor isn't already approved.
     /// @param _adaptor The address of the adaptor to approve.
-    function addApprovedAdaptor(address _adaptor) external onlyElevatedPermissions {
+    function addApprovedAdaptor(
+        address _adaptor
+    ) external onlyElevatedPermissions {
         require(
             !isApprovedAdaptor[_adaptor],
             "priceRouter: adaptor already approved"
@@ -499,7 +518,9 @@ contract PriceRouter {
     /// @notice Removes an approved adaptor.
     /// @dev Requires that the adaptor is currently approved.
     /// @param _adaptor The address of the adaptor to remove.
-    function removeApprovedAdaptor(address _adaptor) external onlyDaoPermissions {
+    function removeApprovedAdaptor(
+        address _adaptor
+    ) external onlyDaoPermissions {
         require(
             isApprovedAdaptor[_adaptor],
             "priceRouter: adaptor does not exist"
@@ -523,7 +544,9 @@ contract PriceRouter {
     /// @notice Sets a new maximum delay for Chainlink price feed.
     /// @dev Requires that the new delay is less than 1 day. Only callable by the DaoManager.
     /// @param _delay The new maximum delay in seconds.
-    function setChainlinkDelay(uint256 _delay) external onlyElevatedPermissions {
+    function setChainlinkDelay(
+        uint256 _delay
+    ) external onlyElevatedPermissions {
         require(_delay < 1 days, "priceRouter: delay is too large");
         CHAINLINK_MAX_DELAY = _delay;
     }
