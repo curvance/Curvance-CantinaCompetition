@@ -19,7 +19,7 @@ contract CErc20 is ICErc20, CToken {
     ////////// States //////////
 
     /// @notice Initialize the new money market
-    /// @param _centralRegistry The address of Curvances Central Registry
+    /// @param centralRegistry_ The address of Curvances Central Registry
     /// @param underlying_ The address of the underlying asset
     /// @param lendtroller_ The address of the Lendtroller
     /// @param interestRateModel_ The address of the interest rate model
@@ -28,7 +28,7 @@ contract CErc20 is ICErc20, CToken {
     /// @param symbol_ ERC-20 symbol of this token
     /// @param decimals_ ERC-20 decimal precision of this token
     constructor(
-        ICentralRegistry _centralRegistry,
+        ICentralRegistry centralRegistry_,
         address underlying_,
         address lendtroller_,
         InterestRateModel interestRateModel_,
@@ -36,9 +36,9 @@ contract CErc20 is ICErc20, CToken {
         string memory name_,
         string memory symbol_,
         uint8 decimals_
-    ) CToken(_centralRegistry) {
-        // CToken initialize does the bulk of the work
-        initialize(
+    )
+        CToken(
+            centralRegistry_,
             lendtroller_,
             interestRateModel_,
             initialExchangeRateScaled_,
@@ -46,8 +46,8 @@ contract CErc20 is ICErc20, CToken {
             name_,
             symbol_,
             decimals_
-        );
-
+        )
+    {
         // Set underlying and sanity check it
         IEIP20(underlying).totalSupply();
     }

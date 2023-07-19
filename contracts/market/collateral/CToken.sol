@@ -73,19 +73,34 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
     // Mapping of account addresses to outstanding borrow balances
     mapping(address => BorrowSnapshot) internal accountBorrows;
 
-    constructor(ICentralRegistry _centralRegistry) {
-        centralRegistry = _centralRegistry;
+    /// MODIFIERS ///
+
+    modifier onlyDaoPermissions() {
+        require(
+            centralRegistry.hasDaoPermissions(msg.sender),
+            "centralRegistry: UNAUTHORIZED"
+        );
+        _;
     }
 
-    ////////// INITIALIZATION //////////
-    /// @notice Initialize the money market
+    modifier onlyElevatedPermissions() {
+        require(
+            centralRegistry.hasElevatedPermissions(msg.sender),
+            "centralRegistry: UNAUTHORIZED"
+        );
+        _;
+    }
+
+    /// @param centralRegistry_ The address of Curvances Central Registry
     /// @param lendtroller_ The address of the Lendtroller
     /// @param interestRateModel_ The address of the interest rate model
     /// @param initialExchangeRateScaled_ The initial exchange rate, scaled by 1e18
+    /// @param underlying_ The address of the underlying asset
     /// @param name_ EIP-20 name of this token
     /// @param symbol_ EIP-20 symbol of this token
     /// @param decimals_ EIP-20 decimal precision of this token
-    function initialize(
+    constructor(
+        ICentralRegistry centralRegistry_,
         address lendtroller_,
         InterestRateModel interestRateModel_,
         uint256 initialExchangeRateScaled_,
@@ -93,7 +108,7 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
         string memory name_,
         string memory symbol_,
         uint8 decimals_
-    ) public onlyDaoPermissions {
+    ) {
         // Validate that initialize has not been called prior
         if (accrualBlockTimestamp != 0 && borrowIndex != 0) {
             revert PreviouslyInitialized();
@@ -138,26 +153,11 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
             interestRateModel_
         );
 
+        centralRegistry = centralRegistry_;
         underlying = underlying_;
         name = name_;
         symbol = symbol_;
         decimals = decimals_;
-    }
-
-    modifier onlyDaoPermissions() {
-        require(
-            centralRegistry.hasDaoPermissions(msg.sender),
-            "centralRegistry: UNAUTHORIZED"
-        );
-        _;
-    }
-
-    modifier onlyElevatedPermissions() {
-        require(
-            centralRegistry.hasElevatedPermissions(msg.sender),
-            "centralRegistry: UNAUTHORIZED"
-        );
-        _;
     }
 
     /// @notice Returns gauge pool contract address
