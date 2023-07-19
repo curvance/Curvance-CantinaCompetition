@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { PriceOracle } from "../Oracle/PriceOracle.sol";
-
+import { ICToken } from "contracts/interfaces/market/ICToken.sol";
+import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
+import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { ICToken } from "contracts/interfaces/market/ICToken.sol";
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
@@ -10,7 +12,6 @@ import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 /// @title Curvance Lendtroller
 /// @notice Manages risk within the lending & collateral markets
 contract Lendtroller is ILendtroller {
-
     /// CONSTANTS ///
     ICentralRegistry public immutable centralRegistry;
     /// @notice Indicator that this is a Lendtroller contract (for inspection)
@@ -44,9 +45,6 @@ contract Lendtroller is ILendtroller {
     /// Defaults to zero which corresponds to unlimited borrowing.
     mapping(address => uint256) public borrowCaps;
 
-    /// @notice Oracle which gives the price of any given asset
-    PriceOracle public oracle;
-
     /// @notice Multiplier used to calculate the maximum repayAmount when liquidating a borrow
     uint256 public closeFactorScaled;
 
@@ -78,18 +76,27 @@ contract Lendtroller is ILendtroller {
 
     constructor(ICentralRegistry _centralRegistry, address _gaugePool) {
         centralRegistry = _centralRegistry;
-        oracle = PriceOracle(centralRegistry.priceRouter());
         gaugePool = _gaugePool;
     }
 
     modifier onlyDaoPermissions() {
-        require(centralRegistry.hasDaoPermissions(msg.sender), "centralRegistry: UNAUTHORIZED");
+        require(
+            centralRegistry.hasDaoPermissions(msg.sender),
+            "centralRegistry: UNAUTHORIZED"
+        );
         _;
     }
 
     modifier onlyElevatedPermissions() {
-        require(centralRegistry.hasElevatedPermissions(msg.sender), "centralRegistry: UNAUTHORIZED");
+        require(
+            centralRegistry.hasElevatedPermissions(msg.sender),
+            "centralRegistry: UNAUTHORIZED"
+        );
         _;
+    }
+
+    function getPriceRouter() public view returns (IPriceRouter) {
+        return IPriceRouter(ICentralRegistry(centralRegistry).priceRouter());
     }
 
     /// @notice Returns the assets an account has entered
@@ -307,7 +314,12 @@ contract Lendtroller is ILendtroller {
             assert(markets[cToken].accountMembership[borrower]);
         }
 
-        if (oracle.getUnderlyingPrice(ICToken(cToken)) == 0) {
+        (uint256 price, uint256 errorCode) = getPriceRouter().getPrice(
+            cToken,
+            true,
+            false
+        );
+        if (errorCode != 0 || price == 0) {
             revert PriceError();
         }
 
@@ -590,13 +602,20 @@ contract Lendtroller is ILendtroller {
                 uint256 borrowBalance,
                 uint256 exchangeRateScaled
             ) = asset.getAccountSnapshot(account);
-            uint256 oraclePrice = oracle.getUnderlyingPrice(asset);
-            if (oraclePrice == 0) revert PriceError();
 
-            uint256 assetValue = (((cTokenBalance * exchangeRateScaled) /
-                expScale) * oraclePrice) / expScale;
+            (uint256 price, uint256 errorCode) = getPriceRouter().getPrice(
+                address(asset),
+                true,
+                true
+            );
+            if (errorCode == 2) {
+                revert PriceError();
+            }
 
             if (collateralEnabled) {
+                uint256 assetValue = (((cTokenBalance * exchangeRateScaled) /
+                    expScale) * price) / expScale;
+
                 sumCollateral += assetValue;
                 maxBorrow +=
                     (assetValue *
@@ -604,7 +623,16 @@ contract Lendtroller is ILendtroller {
                     expScale;
             }
 
-            sumBorrowPlusEffects += ((oraclePrice * borrowBalance) / expScale);
+            (price, errorCode) = getPriceRouter().getPrice(
+                address(asset),
+                true,
+                false
+            );
+            if (errorCode == 2) {
+                revert PriceError();
+            }
+
+            sumBorrowPlusEffects += ((price * borrowBalance) / expScale);
 
             // Calculate effects of interacting with cTokenModify
             if (asset == cTokenModify) {
@@ -612,7 +640,7 @@ contract Lendtroller is ILendtroller {
                     // Pre-compute a conversion factor from tokens -> ether (normalized price value)
                     uint256 tokensToDenom = (((markets[address(asset)]
                         .collateralFactorScaled * exchangeRateScaled) /
-                        expScale) * oraclePrice) / expScale;
+                        expScale) * price) / expScale;
 
                     // redeem effect
                     sumBorrowPlusEffects += ((tokensToDenom * redeemTokens) /
@@ -620,8 +648,7 @@ contract Lendtroller is ILendtroller {
                 }
 
                 // borrow effect
-                sumBorrowPlusEffects += ((oraclePrice * borrowAmount) /
-                    expScale);
+                sumBorrowPlusEffects += ((price * borrowAmount) / expScale);
             }
         }
     }
@@ -638,12 +665,22 @@ contract Lendtroller is ILendtroller {
         uint256 actualRepayAmount
     ) external view override returns (uint256) {
         /* Read oracle prices for borrowed and collateral markets */
-        uint256 priceBorrowedScaled = oracle.getUnderlyingPrice(
-            ICToken(cTokenBorrowed)
+        (uint256 highPrice, uint256 highPriceError) = getPriceRouter()
+            .getPrice(cTokenBorrowed, true, false);
+        if (highPriceError == 2) {
+            revert PriceError();
+        }
+        uint256 priceBorrowedScaled = highPrice;
+
+        (uint256 lowPrice, uint256 lowPriceError) = getPriceRouter().getPrice(
+            cTokenCollateral,
+            true,
+            true
         );
-        uint256 priceCollateralScaled = oracle.getUnderlyingPrice(
-            ICToken(cTokenCollateral)
-        );
+        if (lowPriceError == 2) {
+            revert PriceError();
+        }
+        uint256 priceCollateralScaled = lowPrice;
 
         if (priceBorrowedScaled == 0 || priceCollateralScaled == 0) {
             revert PriceError();
@@ -703,8 +740,9 @@ contract Lendtroller is ILendtroller {
     /// @notice Sets the closeFactor used when liquidating borrows
     /// @dev Admin function to set closeFactor
     /// @param newCloseFactorScaled New close factor, scaled by 1e18
-    function _setCloseFactor(uint256 newCloseFactorScaled) external onlyElevatedPermissions {
-
+    function _setCloseFactor(
+        uint256 newCloseFactorScaled
+    ) external onlyElevatedPermissions {
         uint256 oldCloseFactorScaled = closeFactorScaled;
         closeFactorScaled = newCloseFactorScaled;
         emit NewCloseFactor(oldCloseFactorScaled, closeFactorScaled);
@@ -718,7 +756,6 @@ contract Lendtroller is ILendtroller {
         ICToken cToken,
         uint256 newCollateralFactorScaled
     ) external onlyElevatedPermissions {
-
         // Verify market is listed
         ILendtroller.Market storage market = markets[address(cToken)];
         if (!market.isListed) {
@@ -730,10 +767,15 @@ contract Lendtroller is ILendtroller {
             revert InvalidValue();
         }
 
+        (uint256 lowPrice, uint256 lowPriceError) = getPriceRouter().getPrice(
+            address(cToken),
+            true,
+            true
+        );
         // If collateral factor != 0, fail if price == 0
         if (
-            newCollateralFactorScaled != 0 &&
-            oracle.getUnderlyingPrice(cToken) == 0
+            lowPriceError == 2 ||
+            (newCollateralFactorScaled != 0 && lowPrice == 0)
         ) {
             revert PriceError();
         }
@@ -755,7 +797,6 @@ contract Lendtroller is ILendtroller {
     function _setLiquidationIncentive(
         uint256 newLiquidationIncentiveScaled
     ) external onlyElevatedPermissions {
-
         // Save current value for use in log
         uint256 oldLiquidationIncentiveScaled = liquidationIncentiveScaled;
 
@@ -772,7 +813,6 @@ contract Lendtroller is ILendtroller {
     /// @dev Admin function to set isListed and add support for the market
     /// @param cToken The address of the market (token) to list
     function _supportMarket(ICToken cToken) external onlyElevatedPermissions {
-
         if (markets[address(cToken)].isListed) {
             revert MarketAlreadyListed();
         }
@@ -812,7 +852,10 @@ contract Lendtroller is ILendtroller {
         ICToken[] calldata cTokens,
         uint256[] calldata newBorrowCaps
     ) external {
-        if (!centralRegistry.hasElevatedPermissions(msg.sender) && msg.sender != borrowCapGuardian) {
+        if (
+            !centralRegistry.hasElevatedPermissions(msg.sender) &&
+            msg.sender != borrowCapGuardian
+        ) {
             revert AddressUnauthorized();
         }
         uint256 numMarkets = cTokens.length;
@@ -835,7 +878,6 @@ contract Lendtroller is ILendtroller {
         ICToken[] calldata cTokens,
         bool disableCollateral
     ) external onlyElevatedPermissions {
-
         uint256 numMarkets = cTokens.length;
         if (numMarkets == 0) {
             revert InvalidValue();
@@ -849,8 +891,9 @@ contract Lendtroller is ILendtroller {
 
     /// @notice Admin function to change the Borrow Cap Guardian
     /// @param newBorrowCapGuardian The address of the new Borrow Cap Guardian
-    function _setBorrowCapGuardian(address newBorrowCapGuardian) external onlyElevatedPermissions {
-
+    function _setBorrowCapGuardian(
+        address newBorrowCapGuardian
+    ) external onlyElevatedPermissions {
         // Save current value for inclusion in log
         address oldBorrowCapGuardian = borrowCapGuardian;
 
@@ -862,8 +905,9 @@ contract Lendtroller is ILendtroller {
 
     /// @notice Admin function to change the Pause Guardian
     /// @param newPauseGuardian The address of the new Pause Guardian
-    function _setPauseGuardian(address newPauseGuardian) public onlyElevatedPermissions {
-
+    function _setPauseGuardian(
+        address newPauseGuardian
+    ) public onlyElevatedPermissions {
         // Save current value for inclusion in log
         address oldPauseGuardian = pauseGuardian;
 
@@ -956,8 +1000,9 @@ contract Lendtroller is ILendtroller {
 
     /// @notice Admin function to set position folding contract address
     /// @param _newPositionFolding new position folding contract address
-    function _setPositionFolding(address _newPositionFolding) public onlyElevatedPermissions {
-
+    function _setPositionFolding(
+        address _newPositionFolding
+    ) public onlyElevatedPermissions {
         emit NewPositionFoldingContract(positionFolding, _newPositionFolding);
 
         positionFolding = _newPositionFolding;
