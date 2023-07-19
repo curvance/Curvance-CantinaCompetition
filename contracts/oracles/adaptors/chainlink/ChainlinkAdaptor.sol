@@ -10,14 +10,12 @@ import { IChainlinkAggregator } from "contracts/interfaces/external/chainlink/IC
 
 contract ChainlinkAdaptor is BaseOracleAdaptor {
     /// @notice Stores configuration data for Chainlink price sources.
+    /// @param heartbeat the max amount of time between price updates
+    ///        - 0 defaults to using DEFAULT_HEART_BEAT
     /// @param max the max valid price of the asset
     ///        - 0 defaults to use aggregators max price buffered by ~10%
     /// @param min the min valid price of the asset
     ///        - 0 defaults to use aggregators min price buffered by ~10%
-    /// @param heartbeat the max amount of time between price updates
-    ///        - 0 defaults to using DEFAULT_HEART_BEAT
-    /// @param inUsd bool indicating whether the price feed is
-    ///        denominated in USD(true) or ETH(false)
     struct FeedData {
         IChainlinkAggregator aggregator;
         bool isConfigured;
@@ -47,7 +45,7 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
     function getPrice(
         address asset,
         bool isUsd,
-        bool
+        bool getLower
     ) external view override returns (PriceReturnData memory) {
         require(
             isSupportedAsset[asset],
@@ -167,8 +165,9 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
             uint192(feedAggregator.minAnswer())
         );
 
-        // Add a ~10% buffer to minimum and maximum price from Chainlink because Chainlink can stop updating
-        // its price before/above the min/max price.
+        // Add a ~10% buffer to minimum and maximum price from Chainlink
+        // because Chainlink can stop updating its price before/above
+        // the min/max price.
         uint256 bufferedMaxPrice = (maxFromChainlink * 0.9e18) / 1e18;
         uint256 bufferedMinPrice = (minFromChainklink * 1.1e18) / 1e18;
 
