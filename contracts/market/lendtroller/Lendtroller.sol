@@ -154,15 +154,10 @@ contract Lendtroller is ILendtroller {
         }
 
         if (marketToJoin.accountMembership[borrower] == true) {
-            // already joined
+            // market already joined
             return 0;
         }
 
-        // survived the gauntlet, add to list
-        // NOTE: we store these somewhat redundantly as a significant optimization
-        //  this avoids having to iterate through the list for the most common use cases
-        //  that is, only when we need to perform liquidity checks
-        //  and not whenever we want to check if an account is in a particular market
         marketToJoin.accountMembership[borrower] = true;
         accountAssets[borrower].push(cToken);
 
@@ -183,17 +178,17 @@ contract Lendtroller is ILendtroller {
             msg.sender
         );
 
-        /* Fail if the sender has a borrow balance */
+        // Do not let them leave if they owe a balance
         if (amountOwed != 0) {
             revert NonZeroBorrowBalance();
         }
 
-        /* Fail if the sender is not permitted to redeem all of their tokens */
+        // Fail if the sender is not permitted to redeem all of their tokens
         redeemAllowedInternal(cTokenAddress, msg.sender, tokensHeld);
 
         ILendtroller.Market storage marketToExit = markets[address(cToken)];
 
-        /* Return true if the sender is not already ‘in’ the market */
+        // Return true if the sender is not already ‘in’ the market
         if (!marketToExit.accountMembership[msg.sender]) {
             return;
         }
@@ -201,9 +196,10 @@ contract Lendtroller is ILendtroller {
         /* Set cToken account membership to false */
         delete marketToExit.accountMembership[msg.sender];
 
-        /* Delete cToken from the account’s list of assets */
-        // load into memory for faster iteration
+        // Delete cToken from the account’s list of assets
         ICToken[] memory userAssetList = accountAssets[msg.sender];
+
+        // Cache asset list
         uint256 numUserAssets = userAssetList.length;
         uint256 assetIndex = numUserAssets;
 
@@ -230,7 +226,6 @@ contract Lendtroller is ILendtroller {
     /// @notice Checks if the account should be allowed to mint tokens in the given market
     /// @param cToken The market to verify the mint against
     function mintAllowed(address cToken, address) external view override {
-        // Pausing is a very serious situation - we revert to sound the alarms
         if (mintGuardianPaused[cToken]) {
             revert Paused();
         }
@@ -265,12 +260,12 @@ contract Lendtroller is ILendtroller {
             revert MarketNotListed(cToken);
         }
 
-        /* If the redeemer is not 'in' the market, then we can bypass the liquidity check */
+        // If the redeemer is not 'in' the market, then we can bypass the liquidity check
         if (!markets[cToken].accountMembership[redeemer]) {
             return;
         }
 
-        /* Otherwise, perform a hypothetical liquidity check to guard against shortfall */
+        // Otherwise, perform a hypothetical liquidity check to guard against shortfall
         (, uint256 shortfall) = getHypotheticalAccountLiquidityInternal(
             redeemer,
             ICToken(cToken),
@@ -292,7 +287,6 @@ contract Lendtroller is ILendtroller {
         address borrower,
         uint256 borrowAmount
     ) external override {
-        // Pausing is a very serious situation - we revert to sound the alarms
         if (borrowGuardianPaused[cToken]) {
             revert Paused();
         }
@@ -374,13 +368,13 @@ contract Lendtroller is ILendtroller {
             revert MarketNotListed(cTokenCollateral);
         }
 
-        /* The borrower must have shortfall in order to be liquidatable */
+        // The borrower must have shortfall in order to be liquidatable
         (, uint256 shortfall) = getAccountLiquidityInternal(borrower);
         if (shortfall == 0) {
             revert InsufficientShortfall();
         }
 
-        /* The liquidator may not repay more than what is allowed by the closeFactor */
+        // The liquidator may not close out more collateral than what is allowed by the closeFactor
         uint256 borrowBalance = ICToken(cTokenBorrowed).borrowBalanceStored(
             borrower
         );
@@ -400,7 +394,6 @@ contract Lendtroller is ILendtroller {
         address,
         address
     ) external view override {
-        // Pausing is a very serious situation - we revert to sound the alarms
         if (seizeGuardianPaused) {
             revert Paused();
         }
@@ -430,13 +423,10 @@ contract Lendtroller is ILendtroller {
         address,
         uint256 transferTokens
     ) external view override {
-        // Pausing is a very serious situation - we revert to sound the alarms
         if (transferGuardianPaused) {
             revert Paused();
         }
 
-        // Currently the only consideration is whether or not
-        //  the src is allowed to redeem this many tokens
         redeemAllowedInternal(cToken, src, transferTokens);
     }
 
@@ -549,11 +539,15 @@ contract Lendtroller is ILendtroller {
                 borrowAmount
             );
 
-        // These are safe, as the underflow condition is checked first
+        // These will not underflow from unchecked as the underflow condition is checked prior
         if (maxBorrow > sumBorrowPlusEffects) {
-            return (maxBorrow - sumBorrowPlusEffects, 0);
+            unchecked {
+                return (maxBorrow - sumBorrowPlusEffects, 0);
+            }
         } else {
-            return (0, sumBorrowPlusEffects - maxBorrow);
+            unchecked {
+                return (0, sumBorrowPlusEffects - maxBorrow);
+            }
         }
     }
 
@@ -657,7 +651,7 @@ contract Lendtroller is ILendtroller {
         address cTokenCollateral,
         uint256 actualRepayAmount
     ) external view override returns (uint256) {
-        /* Read oracle prices for borrowed and collateral markets */
+        /// Read oracle prices for borrowed and collateral markets
         (uint256 highPrice, uint256 highPriceError) = getPriceRouter()
             .getPrice(cTokenBorrowed, true, false);
         (uint256 lowPrice, uint256 lowPriceError) = getPriceRouter().getPrice(
@@ -665,6 +659,8 @@ contract Lendtroller is ILendtroller {
             true,
             true
         );
+
+        /// Validate that we were able to securely query prices from the dual oracle
         if (
             highPriceError == 2 ||
             lowPriceError == 2 ||
@@ -744,13 +740,14 @@ contract Lendtroller is ILendtroller {
         ICToken cToken,
         uint256 newCollateralFactorScaled
     ) external onlyElevatedPermissions {
+
         // Verify market is listed
         ILendtroller.Market storage market = markets[address(cToken)];
         if (!market.isListed) {
             revert MarketNotListed(address(cToken));
         }
 
-        // Check collateral factor <= 0.9
+        // Check collateral factor is not above maximum allowed
         if (collateralFactorMaxScaled < newCollateralFactorScaled) {
             revert InvalidValue();
         }
@@ -760,7 +757,8 @@ contract Lendtroller is ILendtroller {
             true,
             true
         );
-        // If collateral factor != 0, fail if price == 0
+        
+        // Validate that we got a price and that collateral factor != 0
         if (
             lowPriceError == 2 ||
             (newCollateralFactorScaled != 0 && lowPrice == 0)
@@ -768,8 +766,10 @@ contract Lendtroller is ILendtroller {
             revert PriceError();
         }
 
-        // Set market's collateral factor to new collateral factor, remember old value
+        // Cache the current value for event log
         uint256 oldCollateralFactorScaled = market.collateralFactorScaled;
+
+        // Assign new collateral factor
         market.collateralFactorScaled = newCollateralFactorScaled;
 
         emit NewCollateralFactor(
@@ -785,10 +785,10 @@ contract Lendtroller is ILendtroller {
     function _setLiquidationIncentive(
         uint256 newLiquidationIncentiveScaled
     ) external onlyElevatedPermissions {
-        // Save current value for use in log
+        // Cache the current value for event log
         uint256 oldLiquidationIncentiveScaled = liquidationIncentiveScaled;
 
-        // Set liquidation incentive to new incentive
+        // Assign new liquidation incentive
         liquidationIncentiveScaled = newLiquidationIncentiveScaled;
 
         emit NewLiquidationIncentive(
@@ -805,7 +805,7 @@ contract Lendtroller is ILendtroller {
             revert MarketAlreadyListed();
         }
 
-        cToken.isCToken(); // Sanity check to make sure its really a ICToken
+        cToken.isCToken(); // Sanity check to make sure its really a cToken
 
         ILendtroller.Market storage market = markets[address(cToken)];
         market.isListed = true;
@@ -882,10 +882,10 @@ contract Lendtroller is ILendtroller {
     function _setBorrowCapGuardian(
         address newBorrowCapGuardian
     ) external onlyElevatedPermissions {
-        // Save current value for inclusion in log
+        // Cache the current value for event log
         address oldBorrowCapGuardian = borrowCapGuardian;
 
-        // Store borrowCapGuardian with value newBorrowCapGuardian
+        // Assign new guardian
         borrowCapGuardian = newBorrowCapGuardian;
 
         emit NewBorrowCapGuardian(oldBorrowCapGuardian, newBorrowCapGuardian);
@@ -896,10 +896,10 @@ contract Lendtroller is ILendtroller {
     function _setPauseGuardian(
         address newPauseGuardian
     ) public onlyElevatedPermissions {
-        // Save current value for inclusion in log
+        // Cache the current value for event log
         address oldPauseGuardian = pauseGuardian;
 
-        // Store pauseGuardian with value newPauseGuardian
+        // Assign new guardian
         pauseGuardian = newPauseGuardian;
 
         emit NewPauseGuardian(oldPauseGuardian, pauseGuardian);
@@ -991,18 +991,13 @@ contract Lendtroller is ILendtroller {
     function _setPositionFolding(
         address _newPositionFolding
     ) public onlyElevatedPermissions {
-        emit NewPositionFoldingContract(positionFolding, _newPositionFolding);
+        // Cache the current value for event log
+        address oldPositionFolding = positionFolding;
 
+        // Assign new position folding contract
         positionFolding = _newPositionFolding;
-    }
 
-    /// @notice Returns minimum value of a and b
-    function min(uint256 a, uint256 b) internal pure returns (uint256) {
-        if (a <= b) {
-            return a;
-        } else {
-            return b;
-        }
+        emit NewPositionFoldingContract(oldPositionFolding, positionFolding);  
     }
 
     /// @notice Returns market status
