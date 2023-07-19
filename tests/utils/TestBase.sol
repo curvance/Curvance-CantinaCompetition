@@ -6,6 +6,7 @@ import "forge-std/console.sol";
 
 contract TestBase is Test {
     uint256 internal constant _ONE = 1e18;
+    address internal constant _ZERO_ADDRESS = address(0);
 
     function _fork() internal {
         vm.createSelectFork(vm.envString("ETH_NODE_URI_MAINNET"));

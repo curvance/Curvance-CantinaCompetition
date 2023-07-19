@@ -115,6 +115,8 @@ interface ICToken {
 
     function isCToken() external view returns (bool);
 
+    function underlying() external view returns (address);
+
     function symbol() external view returns (string memory);
 
     function totalBorrows() external view returns (uint256);

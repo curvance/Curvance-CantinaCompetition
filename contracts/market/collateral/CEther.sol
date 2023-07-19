@@ -12,7 +12,7 @@ contract CEther is CToken {
     error ValueMismatch();
 
     /// @notice Construct a new CEther money market
-    /// @param _centralRegistry The address of Curvances Central Registry
+    /// @param centralRegistry_ The address of Curvances Central Registry
     /// @param lendtroller_ The address of the Lendtroller
     /// @param interestRateModel_ The address of the interest rate model
     /// @param initialExchangeRateMantissa_ The initial exchange rate, scaled by 1e18
@@ -20,25 +20,25 @@ contract CEther is CToken {
     /// @param symbol_ ERC-20 symbol of this token
     /// @param decimals_ ERC-20 decimal precision of this token
     constructor(
-        ICentralRegistry _centralRegistry,
+        ICentralRegistry centralRegistry_,
         address lendtroller_,
         InterestRateModel interestRateModel_,
         uint256 initialExchangeRateMantissa_,
         string memory name_,
         string memory symbol_,
         uint8 decimals_
-    ) CToken(_centralRegistry) {
-
-        initialize(
+    )
+        CToken(
+            centralRegistry_,
             lendtroller_,
             interestRateModel_,
             initialExchangeRateMantissa_,
+            0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE,
             name_,
             symbol_,
             decimals_
-        );
-
-    }
+        )
+    {}
 
     /// User Interface
 

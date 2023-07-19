@@ -16,14 +16,10 @@ import { IEIP20NonStandard } from "contracts/interfaces/market/IEIP20NonStandard
 /// @title Curvance's CErc20 Contract
 /// @notice CTokens which wrap an EIP-20 underlying
 contract CErc20 is ICErc20, CToken {
-
     ////////// States //////////
 
-    /// @notice Underlying asset for this CToken
-    address public immutable underlying;
-
     /// @notice Initialize the new money market
-    /// @param _centralRegistry The address of Curvances Central Registry
+    /// @param centralRegistry_ The address of Curvances Central Registry
     /// @param underlying_ The address of the underlying asset
     /// @param lendtroller_ The address of the Lendtroller
     /// @param interestRateModel_ The address of the interest rate model
@@ -32,7 +28,7 @@ contract CErc20 is ICErc20, CToken {
     /// @param symbol_ ERC-20 symbol of this token
     /// @param decimals_ ERC-20 decimal precision of this token
     constructor(
-        ICentralRegistry _centralRegistry,
+        ICentralRegistry centralRegistry_,
         address underlying_,
         address lendtroller_,
         InterestRateModel interestRateModel_,
@@ -40,21 +36,20 @@ contract CErc20 is ICErc20, CToken {
         string memory name_,
         string memory symbol_,
         uint8 decimals_
-    ) CToken(_centralRegistry) {
-
-        // CToken initialize does the bulk of the work
-        initialize(
+    )
+        CToken(
+            centralRegistry_,
             lendtroller_,
             interestRateModel_,
             initialExchangeRateScaled_,
+            underlying_,
             name_,
             symbol_,
             decimals_
-        );
+        )
+    {
         // Set underlying and sanity check it
-        underlying = underlying_;
         IEIP20(underlying).totalSupply();
-
     }
 
     /// User Interface
@@ -159,8 +154,9 @@ contract CErc20 is ICErc20, CToken {
     /// @notice A public function to sweep accidental ERC-20 transfers to this contract.
     ///  Tokens are sent to admin (timelock)
     /// @param token The address of the ERC-20 token to sweep
-    function sweepToken(IEIP20NonStandard token) external override onlyDaoPermissions {
-
+    function sweepToken(
+        IEIP20NonStandard token
+    ) external override onlyDaoPermissions {
         if (address(token) == underlying) {
             revert InvalidUnderlying();
         }
@@ -200,7 +196,12 @@ contract CErc20 is ICErc20, CToken {
 
         IERC20 token = IERC20(underlying_);
         uint256 balanceBefore = token.balanceOf(address(this));
-        SafeTransferLib.safeTransferFrom(underlying_, from, address(this), amount);
+        SafeTransferLib.safeTransferFrom(
+            underlying_,
+            from,
+            address(this),
+            amount
+        );
 
         bool success;
         assembly {
@@ -267,5 +268,4 @@ contract CErc20 is ICErc20, CToken {
             revert TransferFailure();
         }
     }
-
 }
