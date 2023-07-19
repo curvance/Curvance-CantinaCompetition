@@ -295,7 +295,7 @@ contract PriceRouter {
         address asset,
         bool inUSD,
         bool getLower
-    ) public view returns (uint256, uint256) {
+    ) public view returns (uint256 price, uint256 errorCode) {
         uint256 numAssetPriceFeeds = assetPriceFeeds[asset].length;
         require(numAssetPriceFeeds > 0, "priceRouter: no feeds available");
 
@@ -304,10 +304,16 @@ contract PriceRouter {
         }
 
         if (numAssetPriceFeeds < 2) {
-            return getPriceSingleFeed(asset, inUSD, getLower);
+           (price, errorCode) = getPriceSingleFeed(asset, inUSD, getLower);
+        } else {
+           (price, errorCode) = getPriceDualFeed(asset, inUSD, getLower);
         }
 
-        return getPriceDualFeed(asset, inUSD, getLower);
+        /// If somehow a feed returns a price of 0 make sure we trigger the BAD_SOURCE flag
+        if (price == 0 && errorCode < BAD_SOURCE) {
+            errorCode = BAD_SOURCE;
+        }
+
     }
 
     /// @notice Retrieves the prices of multiple specified assets.
@@ -540,7 +546,9 @@ contract PriceRouter {
             // Check if both feeds are within PRICEFEED_MAXIMUM_DIVERGENCE
             // of each other
             if (((a * PRICEFEED_MAXIMUM_DIVERGENCE) / DENOMINATOR) < b) {
-                return (0, CAUTION);
+                /// Return the price but notify that the price should be taken with caution
+                /// because we are outside the accepted range of divergence
+                return (a, CAUTION);
             }
             return (a, NO_ERROR);
         }
@@ -548,7 +556,9 @@ contract PriceRouter {
         // Check if both feeds are within PRICEFEED_MAXIMUM_DIVERGENCE
         // of each other
         if (((b * PRICEFEED_MAXIMUM_DIVERGENCE) / DENOMINATOR) < a) {
-            return (0, CAUTION);
+            /// Return the price but notify that the price should be taken with caution
+            /// because we are outside the accepted range of divergence
+            return (b, CAUTION);
         }
         return (b, NO_ERROR);
     }
@@ -569,7 +579,9 @@ contract PriceRouter {
             // Check if both feeds are within PRICEFEED_MAXIMUM_DIVERGENCE
             // of each other
             if (((b * PRICEFEED_MAXIMUM_DIVERGENCE) / DENOMINATOR) < a) {
-                return (0, CAUTION);
+                /// Return the price but notify that the price should be taken with caution
+                /// because we are outside the accepted range of divergence
+                return (a, CAUTION);
             }
             return (a, NO_ERROR);
         }
@@ -577,7 +589,9 @@ contract PriceRouter {
         // Check if both feeds are within PRICEFEED_MAXIMUM_DIVERGENCE
         // of each other
         if (((a * PRICEFEED_MAXIMUM_DIVERGENCE) / DENOMINATOR) < b) {
-            return (0, CAUTION);
+            /// Return the price but notify that the price should be taken with caution
+            /// because we are outside the accepted range of divergence
+            return (b, CAUTION);
         }
         return (b, NO_ERROR);
     }
