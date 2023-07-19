@@ -78,8 +78,8 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         (uint256 price, uint256 errorCode) = IPriceRouter(
             ICentralRegistry(centralRegistry).priceRouter()
         ).getPrice(address(borrowToken), true, false);
-        require(errorCode == 0, "invalid token price");
-
+        require(errorCode == 0, "PositionFolding: invalid token price");
+        
         return ((maxLeverage - sumBorrow) * 1e18) / price;
     }
 

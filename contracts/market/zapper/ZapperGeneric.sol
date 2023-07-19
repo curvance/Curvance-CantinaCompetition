@@ -137,7 +137,7 @@ contract ZapperGeneric {
         address[] memory tokens,
         uint256 lpMinOutAmount
     ) private returns (uint256 lpOutAmount) {
-        bool hasETH = false;
+        bool hasETH;
 
         uint256 numTokens = tokens.length;
 
