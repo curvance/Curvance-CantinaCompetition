@@ -53,6 +53,10 @@ contract PendlePrincipalTokenAdaptor is BaseOracleAdaptor {
         bool isUsd,
         bool getLower
     ) external view override returns (PriceReturnData memory pData) {
+        require(
+            isSupportedAsset[asset],
+            "PendlePrincipalTokenAdaptor: asset not supported"
+        );
         AdaptorData memory data = adaptorData[asset];
         pData.inUSD = isUsd;
         uint256 ptRate = data.market.getPtToAssetRate(data.twapDuration);
