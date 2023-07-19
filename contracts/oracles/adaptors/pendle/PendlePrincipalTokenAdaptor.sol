@@ -57,11 +57,9 @@ contract PendlePrincipalTokenAdaptor is BaseOracleAdaptor {
         pData.inUSD = isUsd;
         uint256 ptRate = data.market.getPtToAssetRate(data.twapDuration);
 
-        (uint256 price, uint256 errorCode) = IPriceRouter(centralRegistry.priceRouter()).getPrice(
-            data.quoteAsset,
-            isUsd,
-            getLower
-        );
+        (uint256 price, uint256 errorCode) = IPriceRouter(
+            centralRegistry.priceRouter()
+        ).getPrice(data.quoteAsset, isUsd, getLower);
         if (errorCode > 0) {
             pData.hadError = true;
             // If error code is BAD_SOURCE we can't use this price at all so return.
@@ -115,7 +113,9 @@ contract PendlePrincipalTokenAdaptor is BaseOracleAdaptor {
             "PendlePrincipalTokenAdaptor: oldest observation not satisfied"
         );
         require(
-            IPriceRouter(centralRegistry.priceRouter()).isSupportedAsset(data.quoteAsset),
+            IPriceRouter(centralRegistry.priceRouter()).isSupportedAsset(
+                data.quoteAsset
+            ),
             "PendlePrincipalTokenAdaptor: quote asset not supported"
         );
 
@@ -135,14 +135,15 @@ contract PendlePrincipalTokenAdaptor is BaseOracleAdaptor {
             isSupportedAsset[asset],
             "PendlePrincipalTokenAdaptor: asset not supported"
         );
-        
-        /// Notify the adaptor to stop supporting the asset 
+
+        /// Notify the adaptor to stop supporting the asset
         delete isSupportedAsset[asset];
 
         /// Wipe config mapping entries for a gas refund
         delete adaptorData[asset];
 
-        /// Notify the price router that we are going to stop supporting the asset 
-        IPriceRouter(centralRegistry.priceRouter()).notifyAssetPriceFeedRemoval(asset);
+        /// Notify the price router that we are going to stop supporting the asset
+        IPriceRouter(centralRegistry.priceRouter())
+            .notifyAssetPriceFeedRemoval(asset);
     }
 }
