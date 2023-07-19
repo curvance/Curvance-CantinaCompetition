@@ -44,7 +44,7 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
     function getPrice(
         address asset,
         bool isUsd,
-        bool getLower
+        bool
     ) external view override returns (PriceReturnData memory) {
         require(
             isSupportedAsset[asset],
