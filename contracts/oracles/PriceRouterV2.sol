@@ -500,21 +500,21 @@ contract PriceRouter {
     }
 
     /// @notice Converts a given price between ETH and USD formats.
-    /// @dev Depending on the currentFormatinUSD parameter,
+    /// @dev Depending on the currentFormatInUSD parameter,
     ///      this function either converts the price from ETH to USD (if true)
     /// or from USD to ETH (if false) using the provided conversion rate.
     /// @param currentPrice The price to convert.
     /// @param conversionRate The rate to use for the conversion.
-    /// @param currentFormatinUSD Specifies whether the current format of the price is in USD.
+    /// @param currentFormatInUSD Specifies whether the current format of the price is in USD.
     ///                           If true, it will convert the price from USD to ETH.
     ///                           If false, it will convert the price from ETH to USD.
     /// @return The converted price.
     function convertPriceETHUSD(
         uint240 currentPrice,
         uint256 conversionRate,
-        bool currentFormatinUSD
+        bool currentFormatInUSD
     ) internal pure returns (uint256) {
-        if (!currentFormatinUSD) {
+        if (!currentFormatInUSD) {
             // current format is in ETH and we want USD
             return (currentPrice * conversionRate);
         }
