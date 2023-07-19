@@ -13,7 +13,8 @@ import "../interfaces/IOracleAdaptor.sol";
 contract PriceRouter {
     /// @notice Return data from oracle adaptor
     /// @param price the price of the asset in some asset, either ETH or USD
-    /// @param hadError the message return data, whether the adaptor ran into trouble pricing the asset
+    /// @param hadError the message return data, whether the adaptor ran into
+    ///                 trouble pricing the asset
     struct FeedData {
         uint240 price;
         bool hadError;
@@ -41,18 +42,22 @@ contract PriceRouter {
     /// @notice Error code for bad source.
     uint256 public constant BAD_SOURCE = 2;
 
-    /// @notice Address for Curvance DAO registry contract for ownership and location data.
+    /// @notice Address for Curvance DAO registry contract for ownership
+    ///         and location data.
     ICentralRegistry public immutable centralRegistry;
 
-    /// @notice Address for chainlink feed to convert from eth -> usd or usd -> eth.
+    /// @notice Address for chainlink feed to convert from eth -> usd
+    ///         or usd -> eth.
     address public immutable CHAINLINK_ETH_USD;
 
     /// STORAGE ///
 
-    /// @notice How wide a divergence between price feeds warrants pausing borrowing.
+    /// @notice How wide a divergence between price feeds warrants
+    ///         pausing borrowing.
     uint256 public PRICEFEED_MAXIMUM_DIVERGENCE = 11000;
 
-    /// @notice Maximum time that a chainlink feed can be stale before we do not trust the value.
+    /// @notice Maximum time that a chainlink feed can be stale before
+    ///         we do not trust the value.
     uint256 public CHAINLINK_MAX_DELAY = 1 days;
 
     /// @notice Mapping used to track whether or not an address is an Adaptor.
@@ -109,7 +114,8 @@ contract PriceRouter {
     /// FUNCTIONS ///
 
     /// @notice Adds a new price feed for a specific asset.
-    /// @dev Requires that the feed address is an approved adaptor and that the asset doesn't already have two feeds.
+    /// @dev Requires that the feed address is an approved adaptor
+    ///      and that the asset doesn't already have two feeds.
     /// @param asset The address of the asset.
     /// @param feed The address of the new feed.
     function addAssetPriceFeed(
@@ -154,15 +160,20 @@ contract PriceRouter {
                     assetPriceFeeds[asset][1] == feed,
                 "priceRouter: feed does not exist"
             );
+
+            // we want to remove the first feed of two,
+            // so move the second feed to slot one
             if (assetPriceFeeds[asset][0] == feed) {
                 assetPriceFeeds[asset][0] = assetPriceFeeds[asset][1];
-            } // we want to remove the first feed of two, so move the second feed to slot one
+            }
         } else {
             require(
                 assetPriceFeeds[asset][0] == feed,
                 "priceRouter: feed does not exist"
             );
-        } // we know the feed exists, cant use isApprovedAdaptor as we could have removed it as an approved adaptor prior
+        }
+        // we know the feed exists, cant use isApprovedAdaptor as
+        // we could have removed it as an approved adaptor prior
 
         assetPriceFeeds[asset].pop();
     }
@@ -202,15 +213,20 @@ contract PriceRouter {
                     assetPriceFeeds[asset][1] == feed,
                 "priceRouter: feed does not exist"
             );
+
+            // we want to remove the first feed of two,
+            // so move the second feed to slot one
             if (assetPriceFeeds[asset][0] == feed) {
                 assetPriceFeeds[asset][0] = assetPriceFeeds[asset][1];
-            } // we want to remove the first feed of two, so move the second feed to slot one
+            }
         } else {
             require(
                 assetPriceFeeds[asset][0] == feed,
                 "priceRouter: feed does not exist"
             );
-        } // we know the feed exists, cant use isApprovedAdaptor as we could have removed it as an approved adaptor prior
+        }
+        // we know the feed exists, cant use isApprovedAdaptor
+        // as we could have removed it as an approved adaptor prior
 
         assetPriceFeeds[asset].pop();
     }
@@ -242,7 +258,8 @@ contract PriceRouter {
     }
 
     /// @notice Sets a new maximum divergence for price feeds.
-    /// @dev Requires that the new divergence is greater than or equal to 10200 aka 2%.
+    /// @dev Requires that the new divergence is greater than
+    ///      or equal to 10200 aka 2%.
     /// @param maxDivergence The new maximum divergence.
     function setPriceFeedMaxDivergence(
         uint256 maxDivergence
@@ -255,21 +272,26 @@ contract PriceRouter {
     }
 
     /// @notice Sets a new maximum delay for Chainlink price feed.
-    /// @dev Requires that the new delay is less than 1 day. Only callable by the DaoManager.
-    /// @param _delay The new maximum delay in seconds.
+    /// @dev Requires that the new delay is less than 1 day.
+    ///      Only callable by the DaoManager.
+    /// @param delay The new maximum delay in seconds.
     function setChainlinkDelay(
-        uint256 _delay
+        uint256 delay
     ) external onlyElevatedPermissions {
-        require(_delay < 1 days, "priceRouter: delay is too large");
-        CHAINLINK_MAX_DELAY = _delay;
+        require(delay < 1 days, "priceRouter: delay is too large");
+        CHAINLINK_MAX_DELAY = delay;
     }
 
     /// @notice Retrieves the price feed data for a given asset.
-    /// @dev Fetches the price for the provided asset from all available price feeds and returns them in an array.
-    /// Each FeedData in the array corresponds to a price feed. If less than two feeds are available, only the available feeds are returned.
+    /// @dev Fetches the price for the provided asset from all available
+    ///      price feeds and returns them in an array.
+    ///      Each FeedData in the array corresponds to a price feed.
+    ///      If less than two feeds are available, only the available feeds
+    ///      are returned.
     /// @param asset The address of the asset.
     /// @param inUSD Specifies whether the price format should be in USD or ETH.
-    /// @return An array of FeedData objects for the asset, each corresponding to a price feed.
+    /// @return An array of FeedData objects for the asset, each corresponding
+    ///         to a price feed.
     function getPricesForAsset(
         address asset,
         bool inUSD
@@ -278,14 +300,16 @@ contract PriceRouter {
         require(numAssetPriceFeeds > 0, "priceRouter: no feeds available");
         FeedData[] memory data = new FeedData[](numAssetPriceFeeds * 2);
 
-        /// If the asset only has one price feed, we know itll be in feed slot 0 so get both prices and return
+        /// If the asset only has one price feed, we know itll be in
+        /// feed slot 0 so get both prices and return
         if (numAssetPriceFeeds < 2) {
             data[0] = getPriceFromFeed(asset, 0, inUSD, true);
             data[1] = getPriceFromFeed(asset, 0, inUSD, false);
             return data;
         }
 
-        /// We know the asset has two price feeds, so get pricing from both feeds and return
+        /// We know the asset has two price feeds, so get pricing from
+        /// both feeds and return
         data[0] = getPriceFromFeed(asset, 0, inUSD, true);
         data[1] = getPriceFromFeed(asset, 0, inUSD, false);
         data[2] = getPriceFromFeed(asset, 1, inUSD, true);
@@ -295,7 +319,8 @@ contract PriceRouter {
     }
 
     /// @notice Checks if a given asset is supported by the price router.
-    /// @dev An asset is considered supported if it has one or more associated price feeds.
+    /// @dev An asset is considered supported if it has one
+    ///      or more associated price feeds.
     /// @param asset The address of the asset to check.
     /// @return True if the asset is supported, false otherwise.
     function isSupportedAsset(address asset) external view returns (bool) {
@@ -306,12 +331,14 @@ contract PriceRouter {
         return assetPriceFeeds[asset].length > 0;
     }
 
-    /// @notice Retrieves the price of a specified asset from either single or dual oracles.
+    /// @notice Retrieves the price of a specified asset from either single
+    ///         or dual oracles.
     /// @dev If the asset has one oracle, it fetches the price from a single feed.
-    /// If it has two or more oracles, it fetches the price from both feeds.
+    ///      If it has two or more oracles, it fetches the price from both feeds.
     /// @param asset The address of the asset to retrieve the price for.
     /// @param inUSD Whether the price should be returned in USD or ETH.
-    /// @param getLower Whether the lower or higher price should be returned if two feeds are available.
+    /// @param getLower Whether the lower or higher price should be returned
+    ///                 if two feeds are available.
     /// @return A tuple containing the asset's price and an error flag (if any).
     function getPrice(
         address asset,
@@ -333,11 +360,15 @@ contract PriceRouter {
     }
 
     /// @notice Retrieves the prices of multiple specified assets.
-    /// @dev Loops through the array of assets and retrieves the price for each using the getPrice function.
+    /// @dev Loops through the array of assets and retrieves the price
+    ///      for each using the getPrice function.
     /// @param asset An array of asset addresses to retrieve the prices for.
-    /// @param inUSD An array of bools indicating whether the price should be returned in USD or ETH.
-    /// @param getLower An array of bools indiciating whether the lower or higher price should be returned if two feeds are available.
-    /// @return Two arrays. The first one contains prices for each asset, and the second one contains corresponding error flags (if any).
+    /// @param inUSD An array of bools indicating whether the price should be
+    ///              returned in USD or ETH.
+    /// @param getLower An array of bools indiciating whether the lower
+    ///                 or higher price should be returned if two feeds are available.
+    /// @return Two arrays. The first one contains prices for each asset,
+    ///         and the second one contains corresponding error flags (if any).
     function getPriceMulti(
         address[] calldata asset,
         bool[] calldata inUSD,
@@ -367,14 +398,16 @@ contract PriceRouter {
 
     /// @notice Retrieves the price of a specified asset from two specific price feeds.
     /// @dev This function is internal and not meant to be accessed directly.
-    /// It fetches the price from up to two feeds available for the asset.
+    ///      It fetches the price from up to two feeds available for the asset.
     /// @param asset The address of the asset to retrieve the price for.
     /// @param inUSD Whether the price should be returned in USD or ETH.
-    /// @param getLower Whether the lower or higher price should be returned if two feeds are available.
+    /// @param getLower Whether the lower or higher price should be returned
+    ///                 if two feeds are available.
     /// @return A tuple containing the asset's price and an error flag (if any).
-    /// If both price feeds return an error, it returns (0, BAD_SOURCE).
-    /// If one of the price feeds return an error, it returns the price from the working feed along with a CAUTION flag.
-    /// Otherwise, it returns (price, NO_ERROR).
+    ///         If both price feeds return an error, it returns (0, BAD_SOURCE).
+    ///         If one of the price feeds return an error, it returns the price
+    ///         from the working feed along with a CAUTION flag.
+    ///         Otherwise, it returns (price, NO_ERROR).
     function getPriceDualFeed(
         address asset,
         bool inUSD,
@@ -383,10 +416,11 @@ contract PriceRouter {
         FeedData memory feed0 = getPriceFromFeed(asset, 0, inUSD, getLower);
         FeedData memory feed1 = getPriceFromFeed(asset, 1, inUSD, getLower);
 
-        /// Check if we had any working price feeds, if not we need to block any market operations
+        // Check if we had any working price feeds,
+        // if not we need to block any market operations
         if (feed0.hadError && feed1.hadError) return (0, BAD_SOURCE);
 
-        /// Check if we had an error in either price that should limit borrowing
+        // Check if we had an error in either price that should limit borrowing
         if (feed0.hadError || feed1.hadError) {
             return (getWorkingPrice(feed0, feed1), CAUTION);
         }
@@ -399,10 +433,11 @@ contract PriceRouter {
     /// @dev Fetches the price from the first available price feed for the asset.
     /// @param asset The address of the asset to retrieve the price for.
     /// @param inUSD Whether the price should be returned in USD or ETH.
-    /// @param getLower Whether the lower or higher price should be returned if two feeds are available.
+    /// @param getLower Whether the lower or higher price should be returned
+    ///                 if two feeds are available.
     /// @return A tuple containing the asset's price and an error flag (if any).
-    /// If the price feed returns an error, it returns (0, BAD_SOURCE).
-    /// Otherwise, it returns (price, NO_ERROR).
+    ///         If the price feed returns an error, it returns (0, BAD_SOURCE).
+    ///         Otherwise, it returns (price, NO_ERROR).
     function getPriceSingleFeed(
         address asset,
         bool inUSD,
@@ -426,14 +461,18 @@ contract PriceRouter {
     }
 
     /// @notice Retrieves the price of a specified asset from a specific price feed.
-    /// @dev Fetches the price from the nth price feed for the asset, where n is feedNumber.
-    /// Converts the price to USD if necessary.
+    /// @dev Fetches the price from the nth price feed for the asset,
+    ///      where n is feedNumber.
+    ///      Converts the price to USD if necessary.
     /// @param asset The address of the asset to retrieve the price for.
     /// @param feedNumber The index number of the feed to use.
     /// @param inUSD Whether the price should be returned in USD or ETH.
-    /// @param getLower Whether the lower or higher price should be returned if two feeds are available.
-    /// @return An instance of FeedData containing the asset's price and an error flag (if any).
-    /// If the price feed returns an error, it returns feedData with price 0 and hadError set to true.
+    /// @param getLower Whether the lower or higher price should be returned
+    ///                 if two feeds are available.
+    /// @return An instance of FeedData containing the asset's price
+    ///         and an error flag (if any).
+    ///         If the price feed returns an error, it returns feedData
+    ///         with price 0 and hadError set to true.
     function getPriceFromFeed(
         address asset,
         uint256 feedNumber,
@@ -457,10 +496,12 @@ contract PriceRouter {
     }
 
     /// @notice Queries the current price of ETH in USD using Chainlink's ETH/USD feed.
-    /// @dev The price is deemed valid if the data from Chainlink is fresh and positive.
+    /// @dev The price is deemed valid if the data from Chainlink is fresh
+    ///      and positive.
     /// @return A tuple containing the price of ETH in USD and an error flag.
-    /// If the Chainlink data is stale or negative, it returns (answer, true).
-    /// Where true corresponded to hasError = true.
+    ///         If the Chainlink data is stale or negative,
+    ///         it returns (answer, true).
+    ///         Where true corresponded to hasError = true.
     function getETHUSD() internal view returns (uint256, bool) {
         (, int256 answer, , uint256 updatedAt, ) = AggregatorV3Interface(
             CHAINLINK_ETH_USD
@@ -476,13 +517,14 @@ contract PriceRouter {
     }
 
     /// @notice Converts a given price between ETH and USD formats.
-    /// @dev Depending on the currentFormatinUSD parameter, this function either converts the price from ETH to USD (if true)
+    /// @dev Depending on the currentFormatinUSD parameter,
+    ///      this function either converts the price from ETH to USD (if true)
     /// or from USD to ETH (if false) using the provided conversion rate.
     /// @param currentPrice The price to convert.
     /// @param conversionRate The rate to use for the conversion.
     /// @param currentFormatinUSD Specifies whether the current format of the price is in USD.
-    /// If true, it will convert the price from USD to ETH.
-    /// If false, it will convert the price from ETH to USD.
+    ///                           If true, it will convert the price from USD to ETH.
+    ///                           If false, it will convert the price from ETH to USD.
     /// @return The converted price.
     function convertPriceETHUSD(
         uint240 currentPrice,
@@ -498,25 +540,28 @@ contract PriceRouter {
     }
 
     /// @notice Processes the price data from two different feeds.
-    /// @dev Checks for divergence between two prices. If the divergence is more than allowed,
-    /// it returns (0, CAUTION).
+    /// @dev Checks for divergence between two prices.
+    ///      If the divergence is more than allowed, it returns (0, CAUTION).
     /// @param a The price from the first feed.
     /// @param b The price from the second feed.
     /// @return A tuple containing the lower of two prices and an error flag (if any).
-    /// If the prices are within acceptable range, it returns (min(a,b), NO_ERROR).
+    ///         If the prices are within acceptable range,
+    ///         it returns (min(a,b), NO_ERROR).
     function calculateLowerPriceFeed(
         uint256 a,
         uint256 b
     ) internal view returns (uint256, uint256) {
         if (a <= b) {
-            /// Check if both feeds are within PRICEFEED_MAXIMUM_DIVERGENCE of each other
+            // Check if both feeds are within PRICEFEED_MAXIMUM_DIVERGENCE
+            // of each other
             if (((a * PRICEFEED_MAXIMUM_DIVERGENCE) / DENOMINATOR) < b) {
                 return (0, CAUTION);
             }
             return (a, NO_ERROR);
         }
 
-        /// Check if both feeds are within PRICEFEED_MAXIMUM_DIVERGENCE of each other
+        // Check if both feeds are within PRICEFEED_MAXIMUM_DIVERGENCE
+        // of each other
         if (((b * PRICEFEED_MAXIMUM_DIVERGENCE) / DENOMINATOR) < a) {
             return (0, CAUTION);
         }
@@ -524,25 +569,28 @@ contract PriceRouter {
     }
 
     /// @notice Processes the price data from two different feeds.
-    /// @dev Checks for divergence between two prices. If the divergence is more than allowed,
-    /// it returns (0, CAUTION).
+    /// @dev Checks for divergence between two prices.
+    ///      If the divergence is more than allowed, it returns (0, CAUTION).
     /// @param a The price from the first feed.
     /// @param b The price from the second feed.
     /// @return A tuple containing the higher of two prices and an error flag (if any).
-    /// If the prices are within acceptable range, it returns (max(a,b), NO_ERROR).
+    ///         If the prices are within acceptable range,
+    ///         it returns (max(a,b), NO_ERROR).
     function calculateHigherPriceFeed(
         uint256 a,
         uint256 b
     ) internal view returns (uint256, uint256) {
         if (a >= b) {
-            /// Check if both feeds are within PRICEFEED_MAXIMUM_DIVERGENCE of each other
+            // Check if both feeds are within PRICEFEED_MAXIMUM_DIVERGENCE
+            // of each other
             if (((b * PRICEFEED_MAXIMUM_DIVERGENCE) / DENOMINATOR) < a) {
                 return (0, CAUTION);
             }
             return (a, NO_ERROR);
         }
 
-        /// Check if both feeds are within PRICEFEED_MAXIMUM_DIVERGENCE of each other
+        // Check if both feeds are within PRICEFEED_MAXIMUM_DIVERGENCE
+        // of each other
         if (((a * PRICEFEED_MAXIMUM_DIVERGENCE) / DENOMINATOR) < b) {
             return (0, CAUTION);
         }
@@ -550,7 +598,8 @@ contract PriceRouter {
     }
 
     /// @notice Returns the price from the working feed between two feeds.
-    /// @dev If the first feed had an error, it returns the price from the second feed.
+    /// @dev If the first feed had an error, it returns the price from
+    ///      the second feed.
     /// @param feed0 The first feed's data.
     /// @param feed1 The second feed's data.
     /// @return The price from the working feed.
@@ -558,8 +607,9 @@ contract PriceRouter {
         FeedData memory feed0,
         FeedData memory feed1
     ) internal pure returns (uint256) {
-        /// We know based on context of when this function is called that one but not both feeds have an error.
-        /// So if feed0 had the error, feed1 is okay, and vice versa
+        // We know based on context of when this function is called that one
+        // but not both feeds have an error.
+        // So if feed0 had the error, feed1 is okay, and vice versa
         if (feed0.hadError) return feed1.price;
         return feed0.price;
     }
