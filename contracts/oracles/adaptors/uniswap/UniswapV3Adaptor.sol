@@ -165,7 +165,10 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
             });
     }
 
-    function addAsset(address asset, AdaptorData memory parameters) external onlyElevatedPermissions {
+    function addAsset(
+        address asset,
+        AdaptorData memory parameters
+    ) external onlyElevatedPermissions {
         /// Verify seconds ago is reasonable.
         require(
             parameters.secondsAgo >= MINIMUM_SECONDS_AGO,
