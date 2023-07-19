@@ -66,11 +66,6 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
             "UniswapV3Adaptor: asset not supported"
         );
 
-        require(
-            isSupportedAsset[asset],
-            "UniswapV3Adaptor: asset not supported"
-        );
-
         AdaptorData memory uniswapFeed = adaptorData[asset];
         address[] memory pools = new address[](1);
         pools[0] = uniswapFeed.priceSource;
