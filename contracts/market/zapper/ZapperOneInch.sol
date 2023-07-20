@@ -9,7 +9,6 @@ import { ICurveSwap } from "contracts/interfaces/external/curve/ICurve.sol";
 import { IWETH } from "contracts/interfaces/IWETH.sol";
 
 contract ZapperOneInch {
-
     ILendtroller public immutable lendtroller;
     address public immutable oneInchRouter;
     address public immutable weth;
@@ -39,14 +38,16 @@ contract ZapperOneInch {
         address lpToken,
         uint256 lpMinOutAmount,
         address[] calldata tokens,
-        bytes[] memory tokenSwaps
+        bytes[] memory tokenSwaps,
+        address recipient
     ) external payable returns (uint256 cTokenOutAmount) {
         if (inputToken == ETH) {
             require(inputAmount == msg.value, "invalid amount");
             inputToken = weth;
             IWETH(weth).deposit{ value: inputAmount }(inputAmount);
         } else {
-            SafeTransferLib.safeTransferFrom(inputToken,
+            SafeTransferLib.safeTransferFrom(
+                inputToken,
                 msg.sender,
                 address(this),
                 inputAmount
@@ -81,7 +82,72 @@ contract ZapperOneInch {
         cTokenOutAmount = _enterCurvance(cToken, lpToken, lpOutAmount);
 
         // transfer cToken back to user
-        SafeTransferLib.safeTransfer(cToken, msg.sender, cTokenOutAmount);
+        SafeTransferLib.safeTransfer(cToken, recipient, cTokenOutAmount);
+    }
+
+    /// @dev Deposit inputToken and enter curvance
+    /// @param cToken The curvance deposit token address
+    /// @param inputToken The input token address
+    /// @param inputAmount The amount to deposit
+    /// @param lpMinter The minter address of Curve LP
+    /// @param lpToken The Curve LP token address
+    /// @param lpMinOutAmount The minimum output amount
+    /// @param tokens The underlying coins of curve LP token
+    /// @param tokenSwaps The swap aggregation data for OneInch
+    /// @return lpOutAmount The output amount
+    function curveIn(
+        address cToken,
+        address inputToken,
+        uint256 inputAmount,
+        address lpMinter,
+        address lpToken,
+        uint256 lpMinOutAmount,
+        address[] calldata tokens,
+        bytes[] memory tokenSwaps,
+        address recipient
+    ) external payable returns (uint256 lpOutAmount) {
+        if (inputToken == ETH) {
+            require(inputAmount == msg.value, "invalid amount");
+            inputToken = weth;
+            IWETH(weth).deposit{ value: inputAmount }(inputAmount);
+        } else {
+            SafeTransferLib.safeTransferFrom(
+                inputToken,
+                msg.sender,
+                address(this),
+                inputAmount
+            );
+        }
+
+        // check valid cToken
+        (bool isListed, ) = lendtroller.getIsMarkets(cToken);
+        require(isListed, "invalid cToken address");
+        // check cToken underlying
+        require(CErc20(cToken).underlying() == lpToken, "invalid lp address");
+
+        uint256 numTokens = tokens.length;
+
+        // prepare tokens to mint LP
+        for (uint256 i; i < numTokens; ++i) {
+            // swap input token to underlying token
+            if (tokens[i] != inputToken && tokenSwaps[i].length > 0) {
+                _swapViaOneInch(inputToken, tokenSwaps[i]);
+            }
+        }
+
+        // enter curve
+        uint256 lpOutAmount = _enterCurve(
+            lpMinter,
+            lpToken,
+            tokens,
+            lpMinOutAmount
+        );
+
+        // enter curvance
+        lpOutAmount = _enterCurvance(cToken, lpToken, lpOutAmount);
+
+        // transfer lp to user
+        SafeTransferLib.safeTransfer(lpToken, recipient, lpOutAmount);
     }
 
     /// @dev Swap input token via OneInch

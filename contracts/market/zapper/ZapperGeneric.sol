@@ -41,7 +41,8 @@ contract ZapperGeneric {
         address lpToken,
         uint256 lpMinOutAmount,
         address[] calldata tokens,
-        Swap[] memory tokenSwaps
+        Swap[] memory tokenSwaps,
+        address recipient
     ) external payable returns (uint256 cTokenOutAmount) {
         if (inputToken == ETH) {
             require(inputAmount == msg.value, "invalid amount");
@@ -82,7 +83,70 @@ contract ZapperGeneric {
         cTokenOutAmount = _enterCurvance(cToken, lpToken, lpOutAmount);
 
         // transfer cToken back to user
-        SafeTransferLib.safeTransfer(cToken, msg.sender, cTokenOutAmount);
+        SafeTransferLib.safeTransfer(cToken, recipient, cTokenOutAmount);
+    }
+
+    /// @dev Deposit inputToken and enter curvance
+    /// @param cToken The curvance deposit token address
+    /// @param inputToken The input token address
+    /// @param inputAmount The amount to deposit
+    /// @param lpMinter The minter address of Curve LP
+    /// @param lpToken The Curve LP token address
+    /// @param lpMinOutAmount The minimum output amount
+    /// @param tokens The underlying coins of curve LP token
+    /// @param tokenSwaps The swap aggregation data
+    /// @return lpOutAmount The output amount
+    function curveIn(
+        address cToken,
+        address inputToken,
+        uint256 inputAmount,
+        address lpMinter,
+        address lpToken,
+        uint256 lpMinOutAmount,
+        address[] calldata tokens,
+        Swap[] memory tokenSwaps,
+        address recipient
+    ) external payable returns (uint256 lpOutAmount) {
+        if (inputToken == ETH) {
+            require(inputAmount == msg.value, "invalid amount");
+            inputToken = weth;
+            IWETH(weth).deposit{ value: inputAmount }(inputAmount);
+        } else {
+            SafeTransferLib.safeTransferFrom(
+                inputToken,
+                msg.sender,
+                address(this),
+                inputAmount
+            );
+        }
+
+        // check valid cToken
+        (bool isListed, ) = lendtroller.getIsMarkets(cToken);
+        require(isListed, "invalid cToken address");
+        // check cToken underlying
+        require(CErc20(cToken).underlying() == lpToken, "invalid lp address");
+
+        uint256 numTokenSwaps = tokenSwaps.length;
+
+        // prepare tokens to mint LP
+        for (uint256 i; i < numTokenSwaps; ++i) {
+            // swap input token to underlying token
+            _swap(inputToken, tokenSwaps[i]);
+        }
+
+        // enter curve
+        uint256 lpOutAmount = _enterCurve(
+            lpMinter,
+            lpToken,
+            tokens,
+            lpMinOutAmount
+        );
+
+        // enter curvance
+        lpOutAmount = _enterCurvance(cToken, lpToken, lpOutAmount);
+
+        // transfer lp to user
+        SafeTransferLib.safeTransfer(lpToken, recipient, lpOutAmount);
     }
 
     /// @dev Swap input token
