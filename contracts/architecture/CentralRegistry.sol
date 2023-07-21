@@ -137,12 +137,23 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
             emergencyCouncil_ = msg.sender;
         }
 
+        /// Configure DAO permission data
         daoAddress = daoAddress_;
         timelock = timelock_;
         emergencyCouncil = emergencyCouncil_;
 
-        genesisEpoch = genesisEpoch_;
+        hasDaoPermissions[daoAddress] = true;
+        hasDaoPermissions[timelock] = true;
+        hasDaoPermissions[emergencyCouncil] = true;
+
+        hasElevatedPermissions[timelock] = true;
+        hasElevatedPermissions[emergencyCouncil] = true;
+
         emit OwnershipTransferred(address(0), daoAddress);
+        emit newTimelockConfiguration(address(0), timelock);
+        emit EmergencyCouncilTransferred(address(0), emergencyCouncil);
+
+        genesisEpoch = genesisEpoch_;
     }
 
     /// SETTER FUNCTIONS
@@ -155,7 +166,7 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
         veCVE = newVeCVE;
     }
 
-    function setCallOptionCVE(address newCallOptionCVE) public onlyDaoManager {
+    function setCallOptionCVE(address newCallOptionCVE) public onlyDaoPermissions {
         callOptionCVE = newCallOptionCVE;
     }
 
