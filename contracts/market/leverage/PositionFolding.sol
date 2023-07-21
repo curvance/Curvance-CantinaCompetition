@@ -16,11 +16,6 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 
 contract PositionFolding is ReentrancyGuard, IPositionFolding {
-    struct ZapperCall {
-        address target;
-        bytes call;
-    }
-
     uint256 public constant MAX_LEVERAGE = 9900; // 0.99
     uint256 public constant DENOMINATOR = 10000;
     uint256 public constant SLIPPAGE = 500;
@@ -30,6 +25,9 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
     ILendtroller public lendtroller;
     address public cether;
     address public weth;
+
+    mapping(address => bool) public isApprovedZapper;
+    mapping(address => bool) public isApprovedSwapper;
 
     receive() external payable {}
 
@@ -43,6 +41,34 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         lendtroller = ILendtroller(_lendtroller);
         cether = _cether;
         weth = _weth;
+    }
+
+    modifier onlyDaoPermissions() {
+        require(
+            ICentralRegistry(centralRegistry).hasDaoPermissions(msg.sender),
+            "centralRegistry: UNAUTHORIZED"
+        );
+        _;
+    }
+
+    function setApprovedZappers(
+        address[] memory zappers,
+        bool isApproved
+    ) external onlyDaoPermissions {
+        uint256 length = zappers.length;
+        for (uint256 i = 0; i < length; ++i) {
+            isApprovedZapper[zappers[i]] = isApproved;
+        }
+    }
+
+    function setApprovedSwappers(
+        address[] memory swappers,
+        bool isApproved
+    ) external onlyDaoPermissions {
+        uint256 length = swappers.length;
+        for (uint256 i = 0; i < length; ++i) {
+            isApprovedSwapper[swappers[i]] = isApproved;
+        }
     }
 
     modifier checkSlippage(address user, uint256 slippage) {
@@ -89,14 +115,36 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         return ((maxLeverage - sumBorrow) * 1e18) / price;
     }
 
+    struct LeverageStruct {
+        CToken borrowToken;
+        uint256 borrowAmount;
+        CToken collateralToken;
+        // borrow underlying -> zapper input token
+        SwapperLib.Swap swapData;
+        // zapper input token -> enter curvance
+        SwapperLib.ZapperCall zapperCall;
+    }
+
     function leverage(
-        CToken borrowToken,
-        uint256 borrowAmount,
-        SwapperLib.Swap calldata swapData,
-        address collateralUnderlying,
-        ZapperCall calldata zapperCall,
+        LeverageStruct memory leverageData,
         uint256 slippage
     ) external checkSlippage(msg.sender, slippage) nonReentrant {
+        _leverage(leverageData);
+    }
+
+    function batchLeverage(
+        LeverageStruct[] memory leverageData,
+        uint256 slippage
+    ) external checkSlippage(msg.sender, slippage) {
+        uint256 length = leverageData.length;
+        for (uint256 i; i < length; ++i) {
+            _leverage(leverageData[i]);
+        }
+    }
+
+    function _leverage(LeverageStruct memory leverageData) internal {
+        CToken borrowToken = leverageData.borrowToken;
+        uint256 borrowAmount = leverageData.borrowAmount;
         uint256 maxBorrowAmount = queryAmountToBorrowForLeverageMax(
             msg.sender,
             address(borrowToken)
@@ -105,65 +153,8 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
             borrowAmount <= maxBorrowAmount,
             "PositionFolding: exceeded maximum borrow amount"
         );
-        _leverage(
-            borrowToken,
-            borrowAmount,
-            swapData,
-            collateralUnderlying,
-            zapperCall
-        );
-    }
 
-    function batchLeverage(
-        CToken[] memory borrowTokens,
-        uint256[] memory borrowAmounts,
-        SwapperLib.Swap[] memory swapData,
-        address[] memory collateralUnderlyings,
-        ZapperCall[] memory zapperCalls,
-        uint256 slippage
-    ) external checkSlippage(msg.sender, slippage) {
-        uint256 numBorrowTokens = borrowTokens.length;
-        require(
-            borrowAmounts.length == numBorrowTokens &&
-                collateralUnderlyings.length == numBorrowTokens &&
-                swapData.length == numBorrowTokens &&
-                zapperCalls.length == numBorrowTokens,
-            "PositionFolding: invalid array length"
-        );
-
-        uint256 maxBorrowAmount;
-        for (uint256 i; i < numBorrowTokens; ++i) {
-            maxBorrowAmount = queryAmountToBorrowForLeverageMax(
-                msg.sender,
-                address(borrowTokens[i])
-            );
-            require(
-                borrowAmounts[i] <= maxBorrowAmount,
-                "PositionFolding: exceeded maximum borrow amount"
-            );
-            _leverage(
-                borrowTokens[i],
-                borrowAmounts[i],
-                swapData[i],
-                collateralUnderlyings[i],
-                zapperCalls[i]
-            );
-        }
-    }
-
-    function _leverage(
-        CToken borrowToken,
-        uint256 borrowAmount,
-        SwapperLib.Swap memory swapData,
-        address collateralUnderlying,
-        ZapperCall memory zapperCall // this should be enter curvance
-    ) internal {
-        bytes memory params = abi.encode(
-            swapData,
-            collateralUnderlying,
-            zapperCall
-        );
-
+        bytes memory params = abi.encode(leverageData);
         if (address(borrowToken) == cether) {
             CEther(payable(address(borrowToken))).borrowForPositionFolding(
                 msg.sender,
@@ -182,7 +173,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
     function onBorrow(
         address borrowToken,
         address borrower,
-        uint256 amount,
+        uint256 borrowAmount,
         bytes memory params
     ) external override {
         (bool isListed, ) = lendtroller.getIsMarkets(borrowToken);
@@ -191,201 +182,214 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
             "PositionFolding: UNAUTHORIZED"
         );
 
-        (
-            SwapperLib.Swap memory swapData,
-            address collateralUnderlying,
-            ZapperCall memory zapperCall
-        ) = abi.decode(params, (SwapperLib.Swap, address, ZapperCall));
+        LeverageStruct memory leverageData = abi.decode(
+            params,
+            (LeverageStruct)
+        );
+        require(
+            borrowToken == address(leverageData.borrowToken) &&
+                borrowAmount == leverageData.borrowAmount,
+            "PositionFolding: invalid params"
+        );
 
+        address borrowUnderlying;
         if (borrowToken == cether) {
             require(
-                address(this).balance >= amount,
+                address(this).balance == borrowAmount,
                 "PositionFolding: invalid amount"
             );
-            IWETH(weth).deposit{ value: amount }(amount);
+            IWETH(weth).deposit{ value: borrowAmount }(borrowAmount);
+            borrowUnderlying = weth;
         } else {
-            address borrowUnderlying = CErc20(borrowToken).underlying();
+            borrowUnderlying = CErc20(borrowToken).underlying();
             require(
-                IERC20(borrowUnderlying).balanceOf(address(this)) >= amount,
+                IERC20(borrowUnderlying).balanceOf(address(this)) ==
+                    borrowAmount,
                 "PositionFolding: invalid amount"
             );
         }
 
-        if (swapData.call.length > 0) {
+        if (leverageData.swapData.call.length > 0) {
+            // swap borrow underlying to zapper input token
+            require(
+                isApprovedSwapper[leverageData.swapData.target],
+                "PositionFolding: invalid swapper"
+            );
             SwapperLib.swap(
-                swapData,
+                leverageData.swapData,
                 ICentralRegistry(centralRegistry).priceRouter(),
                 SLIPPAGE
             );
         }
 
-        uint256 collateralAmount = IERC20(collateralUnderlying).balanceOf(
+        // enter curvance
+        SwapperLib.ZapperCall memory zapperCall = leverageData.zapperCall;
+        if (zapperCall.call.length > 0) {
+            require(
+                isApprovedZapper[leverageData.zapperCall.target],
+                "PositionFolding: invalid zapper"
+            );
+            SwapperLib.zap(zapperCall);
+        }
+
+        // transfer remaining zapper input token back to the user
+        uint256 remaining = IERC20(zapperCall.inputToken).balanceOf(
             address(this)
         );
-        SwapperLib.approveTokenIfNeeded(
-            collateralUnderlying,
-            zapperCall.target,
-            collateralAmount
-        );
+        if (remaining > 0) {
+            SafeTransferLib.safeTransfer(
+                zapperCall.inputToken,
+                borrower,
+                remaining
+            );
+        }
 
-        (bool success, bytes memory retData) = zapperCall.target.call(
-            zapperCall.call
-        );
-
-        SwapperLib.propagateError(success, retData, "zapper");
-
-        // check remaining collateral amount
-        collateralAmount = IERC20(collateralUnderlying).balanceOf(
-            address(this)
-        );
-        // transfer remaining back to the user
-        SafeTransferLib.safeTransfer(
-            collateralUnderlying,
-            borrower,
-            collateralAmount
-        );
-    }
-
-    function deleverage(
-        CToken collateral,
-        uint256 collateralAmount,
-        SwapperLib.Swap calldata swapData,
-        address borrowUnderlying,
-        ZapperCall calldata zapperCall,
-        CToken borrowToken,
-        uint256 repayAmount,
-        uint256 slippage
-    ) external checkSlippage(msg.sender, slippage) nonReentrant {
-        _deleverage(
-            collateral,
-            collateralAmount,
-            borrowToken,
-            repayAmount,
-            swapData
-        );
-    }
-
-    function batchDeleverage(
-        CToken[] memory collateralTokens,
-        uint256[] memory collateralAmount,
-        CToken[] memory borrowTokens,
-        uint256[] memory repayAmounts,
-        SwapperLib.Swap[] memory swapData,
-        uint256 slippage
-    ) external checkSlippage(msg.sender, slippage) {
-        uint256 numCollateralTokens = collateralTokens.length;
-        require(
-            collateralAmount.length == numCollateralTokens &&
-                borrowTokens.length == numCollateralTokens &&
-                repayAmounts.length == numCollateralTokens &&
-                swapData.length == numCollateralTokens,
-            "PositionFolding: invalid array length"
-        );
-
-        for (uint256 i; i < numCollateralTokens; ++i) {
-            _deleverage(
-                collateralTokens[i],
-                collateralAmount[i],
-                borrowTokens[i],
-                repayAmounts[i],
-                swapData[i]
+        // transfer remaining borrow underlying back to the user
+        remaining = IERC20(borrowUnderlying).balanceOf(address(this));
+        if (remaining > 0) {
+            SafeTransferLib.safeTransfer(
+                borrowUnderlying,
+                borrower,
+                remaining
             );
         }
     }
 
-    function _deleverage(
-        CToken collateral,
-        uint256 collateralAmount,
-        CToken borrowToken,
-        uint256 repayAmount,
-        SwapperLib.Swap memory swapData
-    ) internal {
-        bytes memory params = abi.encode(borrowToken, repayAmount, swapData);
+    struct DeleverageStruct {
+        CToken collateralToken;
+        uint256 collateralAmount;
+        CToken borrowToken;
+        // collateral underlying to a single token (can be borrow underlying)
+        SwapperLib.ZapperCall zapperCall;
+        // (optional) zapper outout to borrow underlying
+        SwapperLib.Swap swapData;
+        uint256 repayAmount;
+    }
 
-        if (address(borrowToken) == cether) {
-            CEther(payable(address(collateral)))
+    function deleverage(
+        DeleverageStruct memory deleverageData,
+        uint256 slippage
+    ) external checkSlippage(msg.sender, slippage) nonReentrant {
+        _deleverage(deleverageData);
+    }
+
+    function batchDeleverage(
+        DeleverageStruct[] memory deleverageData,
+        uint256 slippage
+    ) external checkSlippage(msg.sender, slippage) {
+        uint256 length = deleverageData.length;
+        for (uint256 i; i < length; ++i) {
+            _deleverage(deleverageData[i]);
+        }
+    }
+
+    function _deleverage(DeleverageStruct memory deleverageData) internal {
+        bytes memory params = abi.encode(deleverageData);
+
+        CToken collateralToken = deleverageData.collateralToken;
+        uint256 collateralAmount = deleverageData.collateralAmount;
+        if (address(collateralToken) == cether) {
+            CEther(payable(address(collateralToken)))
                 .redeemUnderlyingForPositionFolding(
                     msg.sender,
                     collateralAmount,
                     params
                 );
         } else {
-            CErc20(address(collateral)).redeemUnderlyingForPositionFolding(
-                msg.sender,
-                collateralAmount,
-                params
-            );
+            CErc20(address(collateralToken))
+                .redeemUnderlyingForPositionFolding(
+                    msg.sender,
+                    collateralAmount,
+                    params
+                );
         }
     }
 
     function onRedeem(
-        address collateral,
+        address collateralToken,
         address redeemer,
-        uint256 amount,
+        uint256 collateralAmount,
         bytes calldata params
     ) external override {
-        (bool isListed, ) = lendtroller.getIsMarkets(collateral);
+        (bool isListed, ) = lendtroller.getIsMarkets(collateralToken);
         require(
-            isListed && msg.sender == collateral,
+            isListed && msg.sender == collateralToken,
             "PositionFolding: UNAUTHORIZED"
         );
 
-        (
-            CToken borrowToken,
-            uint256 repayAmount,
-            SwapperLib.Swap memory swapData
-        ) = abi.decode(params, (CToken, uint256, SwapperLib.Swap));
+        DeleverageStruct memory deleverageData = abi.decode(
+            params,
+            (DeleverageStruct)
+        );
+        require(
+            collateralToken == address(deleverageData.collateralToken) &&
+                collateralAmount == deleverageData.collateralAmount,
+            "PositionFolding: invalid params"
+        );
 
         // swap collateral token to borrow token
         address collateralUnderlying;
-        if (collateral == cether) {
-            collateralUnderlying = ETH;
+        if (collateralToken == cether) {
             require(
-                address(this).balance >= amount,
+                address(this).balance == collateralAmount,
                 "PositionFolding: invalid amount"
             );
+            collateralUnderlying = weth;
+            IWETH(weth).deposit{ value: collateralAmount }(collateralAmount);
         } else {
-            collateralUnderlying = CErc20(collateral).underlying();
+            collateralUnderlying = CErc20(collateralToken).underlying();
             require(
-                IERC20(collateralUnderlying).balanceOf(address(this)) >=
-                    amount,
+                IERC20(collateralUnderlying).balanceOf(address(this)) ==
+                    collateralAmount,
                 "PositionFolding: invalid amount"
             );
         }
 
-        if (collateral != address(borrowToken)) {
-            if (collateral == cether) {
-                collateralUnderlying = weth;
-                IWETH(weth).deposit{ value: amount }(amount);
-            }
-
-            if (swapData.call.length > 0) {
-                SwapperLib.swap(
-                    swapData,
-                    ICentralRegistry(centralRegistry).priceRouter(),
-                    SLIPPAGE
-                );
-            }
+        SwapperLib.ZapperCall memory zapperCall = deleverageData.zapperCall;
+        if (zapperCall.call.length > 0) {
+            require(
+                collateralUnderlying == zapperCall.inputToken,
+                "PositionFolding: invalid zapper param"
+            );
+            require(
+                isApprovedZapper[deleverageData.zapperCall.target],
+                "PositionFolding: invalid zapper"
+            );
+            SwapperLib.zap(zapperCall);
         }
+
+        if (deleverageData.swapData.call.length > 0) {
+            // swap for borrow underlying
+            require(
+                isApprovedSwapper[deleverageData.swapData.target],
+                "PositionFolding: invalid swapper"
+            );
+            SwapperLib.swap(
+                deleverageData.swapData,
+                ICentralRegistry(centralRegistry).priceRouter(),
+                SLIPPAGE
+            );
+        }
+
+        uint256 remaining;
 
         // repay debt
-        address borrowUnderlying;
-        uint256 remaining;
+        uint256 repayAmount = deleverageData.repayAmount;
+        CToken borrowToken = deleverageData.borrowToken;
         if (address(borrowToken) == cether) {
-            borrowUnderlying = ETH;
             remaining = address(this).balance - repayAmount;
             CEther(payable(address(borrowToken))).repayBorrowBehalf{
                 value: repayAmount
             }(redeemer);
 
             if (remaining > 0) {
-                // remaining balance back to collateral
-                CEther(payable(address(borrowToken))).mintFor{
-                    value: remaining
-                }(redeemer);
+                // remaining borrow underlying back to user
+                (bool sent, ) = redeemer.call{ value: remaining }("");
+                require(sent, "failed to send ether");
             }
         } else {
-            borrowUnderlying = CErc20(address(borrowToken)).underlying();
+            address borrowUnderlying = CErc20(address(borrowToken))
+                .underlying();
             remaining =
                 IERC20(borrowUnderlying).balanceOf(address(this)) -
                 repayAmount;
@@ -400,9 +404,23 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
             );
 
             if (remaining > 0) {
-                // remaining balance back to collateral
-                CErc20(address(borrowToken)).mintFor(remaining, redeemer);
+                // remaining borrow underlying back to user
+                SafeTransferLib.safeTransfer(
+                    borrowUnderlying,
+                    redeemer,
+                    remaining
+                );
             }
+        }
+
+        // transfer remaining collateral underlying back to the user
+        remaining = IERC20(collateralUnderlying).balanceOf(address(this));
+        if (remaining > 0) {
+            SafeTransferLib.safeTransfer(
+                collateralUnderlying,
+                redeemer,
+                remaining
+            );
         }
     }
 }

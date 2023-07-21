@@ -20,6 +20,21 @@ interface ICurveSwap {
         uint256[2] calldata amounts,
         uint256 min_mint_amount
     ) external payable;
+
+    function remove_liquidity(
+        uint256 amount,
+        uint256[2] calldata min_amounts
+    ) external;
+
+    function remove_liquidity(
+        uint256 amount,
+        uint256[3] calldata min_amounts
+    ) external;
+
+    function remove_liquidity(
+        uint256 amount,
+        uint256[4] calldata min_amounts
+    ) external;
 }
 
 interface ICurveEthSwap {

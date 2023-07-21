@@ -80,6 +80,25 @@ library SwapperLib {
         checkSlippage(usdInput, usdOutput, slippage);
     }
 
+    struct ZapperCall {
+        address inputToken;
+        uint256 inputAmount;
+        address target;
+        bytes call;
+    }
+
+    function zap(ZapperCall memory zapperCall) internal {
+        SwapperLib.approveTokenIfNeeded(
+            zapperCall.inputToken,
+            zapperCall.target,
+            zapperCall.inputAmount
+        );
+        (bool success, bytes memory retData) = zapperCall.target.call(
+            zapperCall.call
+        );
+        SwapperLib.propagateError(success, retData, "zapper");
+    }
+
     /// @dev Approve token if needed
     /// @param _token The token address
     /// @param _spender The spender address
