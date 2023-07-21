@@ -28,6 +28,11 @@ contract ZapperGeneric {
         weth = _weth;
     }
 
+    function isETH (address token) internal pure returns (bool) {
+        /// We need to check against both null address and 0xEee because each protocol uses different implementations
+        return token == address(0) || token == address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
+    }
+
     /// @dev Deposit inputToken and enter curvance
     /// @param cToken The curvance deposit token address
     /// @param inputToken The input token address
@@ -49,7 +54,7 @@ contract ZapperGeneric {
         SwapperLib.Swap[] memory tokenSwaps,
         address recipient
     ) external payable returns (uint256 cTokenOutAmount) {
-        if (inputToken == ETH) {
+        if (isETH(inputToken)) {
             require(inputAmount == msg.value, "invalid amount");
             inputToken = weth;
             IWETH(weth).deposit{ value: inputAmount }(inputAmount);
@@ -149,7 +154,7 @@ contract ZapperGeneric {
         for (uint256 i; i < numTokens; ++i) {
             balances[i] = _getBalance(tokens[i]);
             SwapperLib.approveTokenIfNeeded(tokens[i], lpMinter, balances[i]);
-            if (tokens[i] == ETH) {
+            if (isETH(tokens[i])) {
                 hasETH = true;
             }
         }
@@ -236,7 +241,7 @@ contract ZapperGeneric {
     /// @dev Get token balance of this contract
     /// @param token The token address
     function _getBalance(address token) private view returns (uint256) {
-        if (token == ETH) {
+        if (isETH(token)) {
             return address(this).balance;
         } else {
             return IERC20(token).balanceOf(address(this));
