@@ -7,6 +7,8 @@ import { IERC20 } from "../interfaces/IERC20.sol";
 import { IPriceRouter } from "../interfaces/IPriceRouter.sol";
 
 library SwapperLib {
+
+    /// STRUCTS ///
     struct Swap {
         address inputToken;
         uint256 inputAmount;
@@ -15,6 +17,14 @@ library SwapperLib {
         bytes call;
     }
 
+    struct ZapperCall {
+        address inputToken;
+        uint256 inputAmount;
+        address target;
+        bytes call;
+    }
+
+    /// CONSTANTS ///
     uint256 public constant SLIPPAGE_DENOMINATOR = 10000;
 
     function checkSlippage(
@@ -80,12 +90,7 @@ library SwapperLib {
         checkSlippage(usdInput, usdOutput, slippage);
     }
 
-    struct ZapperCall {
-        address inputToken;
-        uint256 inputAmount;
-        address target;
-        bytes call;
-    }
+    
 
     function zap(ZapperCall memory zapperCall) internal {
         SwapperLib.approveTokenIfNeeded(
