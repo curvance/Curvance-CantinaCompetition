@@ -336,6 +336,7 @@ contract PriceRouter {
         uint256 numAssets = assets.length;
 
         require(numAssets > 0, "priceRouter: no assets to price");
+        require(numAssets == inUSD.length && numAssets == getLower.length, "priceRouter: incorrect param lengths");
 
         uint256[] memory prices = new uint256[](numAssets);
         uint256[] memory hadError = new uint256[](numAssets);
