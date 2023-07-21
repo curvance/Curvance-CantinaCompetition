@@ -187,14 +187,13 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
         }
 
         // Get the allowance, infinite for the account owner
-        uint256 startingAllowance = 0;
+        uint256 startingAllowance;
         if (spender == src) {
             startingAllowance = type(uint256).max;
         } else {
             startingAllowance = transferAllowances[src][spender];
         }
 
-        // Do the calculations, checking for {under,over}flow
         uint256 allowanceNew = startingAllowance - tokens;
         uint256 srcTokensNew = accountTokens[src] - tokens;
         uint256 dstTokensNew = accountTokens[dst] + tokens;
@@ -210,7 +209,7 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
         GaugePool(gaugePool()).withdraw(address(this), src, tokens);
         GaugePool(gaugePool()).deposit(address(this), dst, tokens);
 
-        // Eat some of the allowance (if necessary)
+        // Reduce allowance if necessary
         if (startingAllowance != type(uint256).max) {
             transferAllowances[src][spender] = allowanceNew;
         }
@@ -816,7 +815,7 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
         // We fetch the amount the borrower owes, with accumulated interest
         uint256 accountBorrowsPrev = borrowBalanceStoredInternal(borrower);
 
-        // If repayAmount == -1, repayAmount = accountBorrows
+        // If repayAmount == uint max, repayAmount = accountBorrows
         uint256 repayAmountFinal = repayAmount == type(uint256).max
             ? accountBorrowsPrev
             : repayAmount;
@@ -918,7 +917,7 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
             revert CannotEqualZero();
         }
 
-        // Fail if repayAmount = -1
+        // Fail if repayAmount = uint max
         if (repayAmount == type(uint256).max) {
             revert ExcessiveValue();
         }
