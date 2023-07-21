@@ -37,7 +37,7 @@ library SwapperLib {
                 (usdInput * (SLIPPAGE_DENOMINATOR - slippage)) / slippage &&
                 usdOutput <=
                 (usdInput * (SLIPPAGE_DENOMINATOR + slippage)) / slippage,
-            "exceed slippage"
+            "SwapperLib: exceed slippage"
         );
     }
 
@@ -52,7 +52,7 @@ library SwapperLib {
     ) internal {
         (uint256 price, uint256 errorCode) = IPriceRouter(priceRouter)
             .getPrice(swapData.inputToken, true, true);
-        require(errorCode != 2, "input token price bad source");
+        require(errorCode != 2, "SwapperLib: input token price bad source");
         uint256 usdInput = (price * swapData.inputAmount) /
             (10 ** ERC20(swapData.inputToken).decimals());
 
@@ -70,9 +70,9 @@ library SwapperLib {
             swapData.call
         );
 
-        propagateError(success, retData, "swap");
+        propagateError(success, retData, "SwapperLib: swap");
 
-        require(success == true, "swap returned an error");
+        require(success == true, "SwapperLib: swap error");
 
         uint256 outputAmount = IERC20(swapData.outputToken).balanceOf(
             address(this)
@@ -83,7 +83,7 @@ library SwapperLib {
             true,
             true
         );
-        require(errorCode != 2, "output token price bad source");
+        require(errorCode != 2, "SwapperLib: OT price bad source");
         uint256 usdOutput = (price * outputAmount) /
             (10 ** ERC20(swapData.outputToken).decimals());
 
@@ -101,7 +101,7 @@ library SwapperLib {
         (bool success, bytes memory retData) = zapperCall.target.call(
             zapperCall.call
         );
-        SwapperLib.propagateError(success, retData, "zapper");
+        SwapperLib.propagateError(success, retData, "SwapperLib: zapper");
     }
 
     /// @dev Approve token if needed
