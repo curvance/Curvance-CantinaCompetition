@@ -105,16 +105,16 @@ library SwapperLib {
     }
 
     /// @dev Approve token if needed
-    /// @param _token The token address
-    /// @param _spender The spender address
-    /// @param _amount The approve amount
+    /// @param token The token address
+    /// @param spender The spender address
+    /// @param amount The approve amount
     function approveTokenIfNeeded(
-        address _token,
-        address _spender,
-        uint256 _amount
+        address token,
+        address spender,
+        uint256 amount
     ) internal {
-        if (IERC20(_token).allowance(address(this), _spender) < _amount) {
-            SafeTransferLib.safeApprove(_token, _spender, _amount);
+        if (IERC20(token).allowance(address(this), spender) < amount) {
+            SafeTransferLib.safeApprove(token, spender, amount);
         }
     }
 
