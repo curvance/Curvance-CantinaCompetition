@@ -32,7 +32,6 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
     uint256 public constant MAX_LEVERAGE = 9900; // 0.99
     uint256 public constant DENOMINATOR = 10000;
     uint256 public constant SLIPPAGE = 500;
-    address public constant ETH = address(0);
 
     ICentralRegistry public immutable centralRegistry;
     ILendtroller public immutable lendtroller;
