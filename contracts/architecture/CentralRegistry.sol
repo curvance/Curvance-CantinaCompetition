@@ -20,6 +20,12 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
         address indexed newEmergencyCouncil
     );
 
+    event NewApprovedZapper(address indexed zapper);
+    event approvedZapperRemoved(address indexed zapper);
+
+    event NewApprovedSwapper(address indexed swapper);
+    event approvedSwapperRemoved(address indexed swapper);
+
     event NewVeCVELocker(address indexed veCVELocker);
     event VeCVELockerRemoved(address indexed veCVELocker);
 
@@ -76,6 +82,8 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     mapping(address => bool) public hasElevatedPermissions;
 
     /// DAO CONTRACT MAPPINGS ///
+    mapping(address => bool) public approvedZapper;
+    mapping(address => bool) public approvedSwapper;
     mapping(address => bool) public approvedVeCVELocker;
     mapping(address => bool) public gaugeController;
     mapping(address => bool) public harvester;
@@ -296,6 +304,56 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
         );
     }
 
+    /// CONTRACT MAPPING LOGIC
+
+    function addApprovedZapper(
+        address newApprovedZapper
+    ) public onlyElevatedPermissions {
+        require(
+            !approvedZapper[newApprovedZapper],
+            "centralRegistry: already approved zapper"
+        );
+
+        approvedZapper[newApprovedZapper] = true;
+        emit NewApprovedZapper(newApprovedZapper);
+    }
+
+    function removeApprovedZapper(
+        address currentApprovedZapper
+    ) public onlyElevatedPermissions {
+        require(
+            approvedZapper[currentApprovedZapper],
+            "centralRegistry: not approved zapper"
+        );
+
+        delete approvedZapper[currentApprovedZapper];
+        emit approvedZapperRemoved(currentApprovedZapper);
+    }
+
+    function addApprovedSwapper(
+        address newApprovedSwapper
+    ) public onlyElevatedPermissions {
+        require(
+            !approvedSwapper[newApprovedSwapper],
+            "centralRegistry: already approved swapper"
+        );
+
+        approvedSwapper[newApprovedSwapper] = true;
+        emit NewApprovedSwapper(newApprovedSwapper);
+    }
+
+    function removeApprovedSwapper(
+        address currentApprovedSwapper
+    ) public onlyElevatedPermissions {
+        require(
+            approvedSwapper[currentApprovedSwapper],
+            "centralRegistry: not approved swapper"
+        );
+
+        delete approvedSwapper[currentApprovedSwapper];
+        emit approvedSwapperRemoved(currentApprovedSwapper);
+    }
+
     function addVeCVELocker(
         address newVeCVELocker
     ) public onlyElevatedPermissions {
@@ -313,7 +371,7 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     ) public onlyElevatedPermissions {
         require(
             approvedVeCVELocker[currentVeCVELocker],
-            "centralRegistry: already not a veCVELocker"
+            "centralRegistry: not veCVELocker"
         );
 
         delete approvedVeCVELocker[currentVeCVELocker];
@@ -325,7 +383,7 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     ) public onlyElevatedPermissions {
         require(
             !gaugeController[newGaugeController],
-            "centralRegistry: already Gauge Controller"
+            "centralRegistry: already gauge controller"
         );
 
         gaugeController[newGaugeController] = true;
@@ -337,7 +395,7 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     ) public onlyElevatedPermissions {
         require(
             gaugeController[currentGaugeController],
-            "centralRegistry: not a Gauge Controller"
+            "centralRegistry: not gauge controller"
         );
 
         delete gaugeController[currentGaugeController];
@@ -349,7 +407,7 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     ) public onlyElevatedPermissions {
         require(
             !harvester[newHarvester],
-            "centralRegistry: already a Harvester"
+            "centralRegistry: already harvester"
         );
 
         harvester[newHarvester] = true;
@@ -361,7 +419,7 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     ) public onlyElevatedPermissions {
         require(
             harvester[currentHarvester],
-            "centralRegistry: not a Harvester"
+            "centralRegistry: not harvester"
         );
 
         delete harvester[currentHarvester];
@@ -373,7 +431,7 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     ) public onlyElevatedPermissions {
         require(
             !lendingMarket[newLendingMarket],
-            "centralRegistry: already Lending Market"
+            "centralRegistry: already lending market"
         );
 
         lendingMarket[newLendingMarket] = true;
@@ -385,7 +443,7 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     ) public onlyElevatedPermissions {
         require(
             lendingMarket[currentLendingMarket],
-            "centralRegistry: not a Lending Market"
+            "centralRegistry: not lending market"
         );
 
         delete lendingMarket[currentLendingMarket];
@@ -397,7 +455,7 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     ) public onlyElevatedPermissions {
         require(
             !feeManager[newFeeManager],
-            "centralRegistry: already a Fee Manager"
+            "centralRegistry: already fee manager"
         );
 
         feeManager[newFeeManager] = true;
@@ -409,7 +467,7 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     ) public onlyElevatedPermissions {
         require(
             feeManager[currentFeeManager],
-            "centralRegistry: not a Fee Manager"
+            "centralRegistry: not fee manager"
         );
 
         delete feeManager[currentFeeManager];
@@ -421,7 +479,7 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     ) public onlyElevatedPermissions {
         require(
             !approvedEndpoint[newApprovedEndpoint],
-            "centralRegistry: already an Endpoint"
+            "centralRegistry: already endpoint"
         );
 
         approvedEndpoint[newApprovedEndpoint] = true;
@@ -433,7 +491,7 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     ) public onlyElevatedPermissions {
         require(
             approvedEndpoint[currentApprovedEndpoint],
-            "centralRegistry: not an Endpoint"
+            "centralRegistry: not endpoint"
         );
 
         delete approvedEndpoint[currentApprovedEndpoint];
