@@ -5,6 +5,8 @@ import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import "contracts/interfaces/ICentralRegistry.sol";
 
 contract CentralRegistry is ICentralRegistry, ERC165 {
+
+    /// PROTOCOL EVENTS ///
     event OwnershipTransferred(
         address indexed previousOwner,
         address indexed newOwner
@@ -36,11 +38,11 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     event NewApprovedEndpoint(address indexed approvedEndpoint);
     event ApprovedEndpointRemoved(address indexed approvedEndpoint);
 
+    /// CONSTANTS ///
     uint256 public constant DENOMINATOR = 10000;
-
     uint256 public immutable genesisEpoch;
 
-    /// DAO governance operators
+    /// DAO GOVERNANCE OPERATORS ///
 
     /// DAO multisig, for day to day operations
     address public daoAddress;
@@ -49,28 +51,31 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     /// Multi-protocol multisig, only to be used during protocol threatening emergencies
     address public emergencyCouncil;
 
-    /// Token Contracts
+    /// CURVANCE TOKEN CONTRACTS ///
     address public CVE;
     address public veCVE;
     address public callOptionCVE;
 
+    /// DAO CONTRACTS DATA ///
     address public cveLocker;
-
     address public protocolMessagingHub;
     address public priceRouter;
     address public depositRouter;
     address public zroAddress;
     address public feeHub;
 
-    /// Protocol Values
+    /// PROTOCOL VALUES ///
     uint256 public protocolYieldFee;
     uint256 public protocolLiquidationFee;
     uint256 public protocolLeverageFee;
     uint256 public voteBoostValue;
     uint256 public lockBoostValue;
 
+    /// DAO PERMISSION DATA ///
     mapping(address => bool) public hasDaoPermissions;
     mapping(address => bool) public hasElevatedPermissions;
+
+    /// DAO CONTRACT MAPPINGS ///
     mapping(address => bool) public approvedVeCVELocker;
     mapping(address => bool) public gaugeController;
     mapping(address => bool) public harvester;
