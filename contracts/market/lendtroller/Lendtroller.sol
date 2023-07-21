@@ -161,7 +161,7 @@ contract Lendtroller is ILendtroller {
             return 0;
         }
 
-        if (marketToJoin.accountMembership[borrower] == true) {
+        if (marketToJoin.accountMembership[borrower]) {
             // market already joined
             return 0;
         }
