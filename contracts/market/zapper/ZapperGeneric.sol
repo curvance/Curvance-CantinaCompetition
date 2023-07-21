@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
+import "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { CErc20, IERC20 } from "contracts/market/collateral/CErc20.sol";
@@ -12,18 +13,32 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 
 contract ZapperGeneric {
-    address public centralRegistry;
+
+    /// CONSTANTS ///
+    ICentralRegistry public immutable centralRegistry;
     uint256 public constant SLIPPAGE = 500;
     address public constant ETH = address(0);
     ILendtroller public immutable lendtroller;
     address public immutable weth;
 
     constructor(
-        address _centralRegistry,
+        ICentralRegistry _centralRegistry,
         address _lendtroller,
         address _weth
     ) {
+        
+        require(
+            ERC165Checker.supportsInterface(
+                address(_centralRegistry),
+                type(ICentralRegistry).interfaceId
+            ),
+            "PositionFolding: Central Registry is invalid"
+        );
+
         centralRegistry = _centralRegistry;
+
+        require(centralRegistry.lendingMarket(_lendtroller), "PositionFolding: lendtroller is invalid");
+
         lendtroller = ILendtroller(_lendtroller);
         weth = _weth;
     }
