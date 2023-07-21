@@ -2,7 +2,7 @@
 pragma solidity ^0.8.17;
 
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
-import "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
+import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 import { GaugePool } from "contracts/gauge/GaugePool.sol";
 import { InterestRateModel } from "contracts/market/interestRates/InterestRateModel.sol";

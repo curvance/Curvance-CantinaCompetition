@@ -1,6 +1,7 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
+import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 

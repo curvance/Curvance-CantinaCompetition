@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
+import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { CErc20, IERC20 } from "contracts/market/collateral/CErc20.sol";
