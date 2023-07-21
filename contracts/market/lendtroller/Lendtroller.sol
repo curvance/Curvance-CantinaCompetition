@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
+import "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 import { ICToken } from "contracts/interfaces/market/ICToken.sol";
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
@@ -14,7 +15,7 @@ import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 contract Lendtroller is ILendtroller {
     /// CONSTANTS ///
     ICentralRegistry public immutable centralRegistry;
-    /// @notice Indicator that this is a Lendtroller contract (for inspection)
+    /// @notice Indicator that this is a Lendtroller contract (for introspection)
     bool public constant override isLendtroller = true;
     /// @notice closeFactorScaled must be strictly greater than this value
     uint256 internal constant closeFactorMinScaled = 0.05e18; // 0.05
@@ -75,6 +76,13 @@ contract Lendtroller is ILendtroller {
     address public immutable override gaugePool;
 
     constructor(ICentralRegistry _centralRegistry, address _gaugePool) {
+        require(
+            ERC165Checker.supportsInterface(
+                address(_centralRegistry),
+                type(ICentralRegistry).interfaceId
+            ),
+            "lendtroller: invalid central registry"
+        );
         centralRegistry = _centralRegistry;
         gaugePool = _gaugePool;
     }
@@ -82,7 +90,7 @@ contract Lendtroller is ILendtroller {
     modifier onlyDaoPermissions() {
         require(
             centralRegistry.hasDaoPermissions(msg.sender),
-            "centralRegistry: UNAUTHORIZED"
+            "lendtroller: UNAUTHORIZED"
         );
         _;
     }
@@ -90,13 +98,13 @@ contract Lendtroller is ILendtroller {
     modifier onlyElevatedPermissions() {
         require(
             centralRegistry.hasElevatedPermissions(msg.sender),
-            "centralRegistry: UNAUTHORIZED"
+            "lendtroller: UNAUTHORIZED"
         );
         _;
     }
 
     function getPriceRouter() public view returns (IPriceRouter) {
-        return IPriceRouter(ICentralRegistry(centralRegistry).priceRouter());
+        return IPriceRouter(centralRegistry.priceRouter());
     }
 
     /// @notice Returns the assets an account has entered
@@ -307,7 +315,7 @@ contract Lendtroller is ILendtroller {
             assert(markets[cToken].accountMembership[borrower]);
         }
 
-        (uint256 price, uint256 errorCode) = getPriceRouter().getPrice(
+        (, uint256 errorCode) = getPriceRouter().getPrice(
             cToken,
             true,
             false
@@ -750,7 +758,7 @@ contract Lendtroller is ILendtroller {
             revert InvalidValue();
         }
 
-        (uint256 lowPrice, uint256 lowPriceError) = getPriceRouter().getPrice(
+        (, uint256 lowPriceError) = getPriceRouter().getPrice(
             address(cToken),
             true,
             true
