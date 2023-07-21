@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
+import "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
@@ -16,28 +17,48 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 
 contract PositionFolding is ReentrancyGuard, IPositionFolding {
+
+    struct LeverageStruct {
+        CToken borrowToken;
+        uint256 borrowAmount;
+        CToken collateralToken;
+        // borrow underlying -> zapper input token
+        SwapperLib.Swap swapData;
+        // zapper input token -> enter curvance
+        SwapperLib.ZapperCall zapperCall;
+    }
+
+    /// CONSTANTS ///
     uint256 public constant MAX_LEVERAGE = 9900; // 0.99
     uint256 public constant DENOMINATOR = 10000;
     uint256 public constant SLIPPAGE = 500;
     address public constant ETH = address(0);
 
-    address public centralRegistry;
-    ILendtroller public lendtroller;
-    address public cether;
-    address public weth;
-
-    mapping(address => bool) public isApprovedZapper;
-    mapping(address => bool) public isApprovedSwapper;
+    ICentralRegistry public immutable centralRegistry;
+    ILendtroller public immutable lendtroller;
+    address public immutable cether;
+    address public immutable weth;
 
     receive() external payable {}
 
     constructor(
-        address _centralRegistry,
+        ICentralRegistry _centralRegistry,
         address _lendtroller,
         address _cether,
         address _weth
     ) {
+        require(
+            ERC165Checker.supportsInterface(
+                address(_centralRegistry),
+                type(ICentralRegistry).interfaceId
+            ),
+            "PositionFolding: Central Registry is invalid"
+        );
+ 
         centralRegistry = _centralRegistry;
+
+        require(centralRegistry.lendingMarket(_lendtroller), "PositionFolding: lendtroller is invalid");
+
         lendtroller = ILendtroller(_lendtroller);
         cether = _cether;
         weth = _weth;
@@ -45,30 +66,10 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
 
     modifier onlyDaoPermissions() {
         require(
-            ICentralRegistry(centralRegistry).hasDaoPermissions(msg.sender),
-            "centralRegistry: UNAUTHORIZED"
+            centralRegistry.hasDaoPermissions(msg.sender),
+            "PositionFolding: UNAUTHORIZED"
         );
         _;
-    }
-
-    function setApprovedZappers(
-        address[] memory zappers,
-        bool isApproved
-    ) external onlyDaoPermissions {
-        uint256 length = zappers.length;
-        for (uint256 i = 0; i < length; ++i) {
-            isApprovedZapper[zappers[i]] = isApproved;
-        }
-    }
-
-    function setApprovedSwappers(
-        address[] memory swappers,
-        bool isApproved
-    ) external onlyDaoPermissions {
-        uint256 length = swappers.length;
-        for (uint256 i = 0; i < length; ++i) {
-            isApprovedSwapper[swappers[i]] = isApproved;
-        }
     }
 
     modifier checkSlippage(address user, uint256 slippage) {
@@ -113,16 +114,6 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         require(errorCode == 0, "PositionFolding: invalid token price");
 
         return ((maxLeverage - sumBorrow) * 1e18) / price;
-    }
-
-    struct LeverageStruct {
-        CToken borrowToken;
-        uint256 borrowAmount;
-        CToken collateralToken;
-        // borrow underlying -> zapper input token
-        SwapperLib.Swap swapData;
-        // zapper input token -> enter curvance
-        SwapperLib.ZapperCall zapperCall;
     }
 
     function leverage(
@@ -212,7 +203,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         if (leverageData.swapData.call.length > 0) {
             // swap borrow underlying to zapper input token
             require(
-                isApprovedSwapper[leverageData.swapData.target],
+                centralRegistry.approvedSwapper(leverageData.swapData.target),
                 "PositionFolding: invalid swapper"
             );
             SwapperLib.swap(
@@ -226,7 +217,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         SwapperLib.ZapperCall memory zapperCall = leverageData.zapperCall;
         if (zapperCall.call.length > 0) {
             require(
-                isApprovedZapper[leverageData.zapperCall.target],
+                centralRegistry.approvedZapper(leverageData.zapperCall.target),
                 "PositionFolding: invalid zapper"
             );
             SwapperLib.zap(zapperCall);
@@ -352,7 +343,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
                 "PositionFolding: invalid zapper param"
             );
             require(
-                isApprovedZapper[deleverageData.zapperCall.target],
+                centralRegistry.approvedZapper(deleverageData.zapperCall.target),
                 "PositionFolding: invalid zapper"
             );
             SwapperLib.zap(zapperCall);
@@ -361,7 +352,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         if (deleverageData.swapData.call.length > 0) {
             // swap for borrow underlying
             require(
-                isApprovedSwapper[deleverageData.swapData.target],
+                centralRegistry.approvedSwapper(deleverageData.swapData.target),
                 "PositionFolding: invalid swapper"
             );
             SwapperLib.swap(
