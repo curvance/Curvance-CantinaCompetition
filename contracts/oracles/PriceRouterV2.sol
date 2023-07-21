@@ -99,7 +99,7 @@ contract PriceRouter {
                 address(_centralRegistry),
                 type(ICentralRegistry).interfaceId
             ),
-            "priceRouter: Central Registry is invalid"
+            "priceRouter: invalid central registry"
         );
         require(
             ETH_USDFEED != address(0),

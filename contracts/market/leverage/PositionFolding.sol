@@ -51,7 +51,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
                 address(_centralRegistry),
                 type(ICentralRegistry).interfaceId
             ),
-            "PositionFolding: Central Registry is invalid"
+            "PositionFolding: invalid central registry"
         );
  
         centralRegistry = _centralRegistry;
