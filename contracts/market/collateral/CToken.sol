@@ -52,7 +52,7 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
     uint256 internal initialExchangeRateScaled;
     /// @notice Fraction of interest currently set aside for reserves
     uint256 public reserveFactorScaled;
-    /// @notice Block number that interest was last accrued at
+    /// @notice Timestamp that interest was last accrued at
     uint256 public override accrualBlockTimestamp;
     /// @notice Accumulator of the total earned interest rate since the opening of the market
     uint256 public borrowIndex;
@@ -316,9 +316,9 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
         return block.timestamp;
     }
 
-    /// @notice Returns the current per-block borrow interest rate for this cToken
-    /// @return The borrow interest rate per block, scaled by 1e18
-    function borrowRatePerBlock() external view override returns (uint256) {
+    /// @notice Returns the current per-second borrow interest rate for this cToken
+    /// @return The borrow interest rate per second, scaled by 1e18
+    function borrowRatePerSecond() external view override returns (uint256) {
         return
             interestRateModel.getBorrowRate(
                 getCashPrior(),
@@ -327,9 +327,9 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
             );
     }
 
-    /// @notice Returns the current per-block supply interest rate for this cToken
-    /// @return The supply interest rate per block, scaled by 1e18
-    function supplyRatePerBlock() external view override returns (uint256) {
+    /// @notice Returns the current per-second supply interest rate for this cToken
+    /// @return The supply interest rate per second, scaled by 1e18
+    function supplyRatePerSecond() external view override returns (uint256) {
         return
             interestRateModel.getSupplyRate(
                 getCashPrior(),
@@ -446,8 +446,8 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
     }
 
     /// @notice Applies accrued interest to total borrows and reserves
-    /// @dev This calculates interest accrued from the last checkpointed block
-    ///   up to the current block and writes new checkpoint to storage.
+    /// @dev This calculates interest accrued from the last checkpointed second
+    ///   up to the current second and writes new checkpoint to storage.
     function accrueInterest() public virtual override {
         // Remember the initial timestamp
         uint256 currentBlockTimestamp = getBlockTimestamp();
@@ -474,18 +474,18 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
             revert ExcessiveValue();
         }
 
-        // Calculate the number of blocks elapsed since the last accrual
-        uint256 blockDelta = currentBlockTimestamp -
+        // Calculate the number of seconds elapsed since the last accrual
+        uint256 timeDelta = currentBlockTimestamp -
             accrualBlockTimestampPrior;
 
         // Calculate the interest accumulated into borrows and reserves and the new index:
-        // simpleInterestFactor = borrowRate * blockDelta
+        // simpleInterestFactor = borrowRate * timeDelta
         // interestAccumulated = simpleInterestFactor * totalBorrows
         // totalBorrowsNew = interestAccumulated + totalBorrows
         // totalReservesNew = interestAccumulated * reserveFactor + totalReserves
         // borrowIndexNew = simpleInterestFactor * borrowIndex + borrowIndex
 
-        uint256 simpleInterestFactor = borrowRateScaled * blockDelta;
+        uint256 simpleInterestFactor = borrowRateScaled * timeDelta;
         uint256 interestAccumulated = (simpleInterestFactor * borrowsPrior) /
             expScale;
         uint256 totalBorrowsNew = interestAccumulated + borrowsPrior;
@@ -526,7 +526,7 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
     }
 
     /// @notice User supplies assets into the market and receives cTokens in exchange
-    /// @dev Assumes interest has already been accrued up to the current block
+    /// @dev Assumes interest has already been accrued up to the current timestamp
     /// @param user The address of the account which is supplying the assets
     /// @param mintAmount The amount of the underlying asset to supply
     /// @param minter The address of the account which will receive cToken
@@ -642,7 +642,7 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
     }
 
     /// @notice User redeems cTokens in exchange for the underlying asset
-    /// @dev Assumes interest has already been accrued up to the current block
+    /// @dev Assumes interest has already been accrued up to the current timestamp
     /// @param redeemer The address of the account which is redeeming the tokens
     /// @param redeemTokens The number of cTokens to redeem into underlying
     /// @param redeemAmount The number of underlying tokens to receive from redeeming cTokens
