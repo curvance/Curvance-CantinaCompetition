@@ -2,6 +2,7 @@
 pragma solidity ^0.8.17;
 
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
+import "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 import { GaugePool } from "contracts/gauge/GaugePool.sol";
 import { InterestRateModel } from "contracts/market/interestRates/InterestRateModel.sol";
@@ -151,6 +152,14 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
         emit NewMarketInterestRateModel(
             InterestRateModel(address(0)),
             interestRateModel_
+        );
+
+        require(
+            ERC165Checker.supportsInterface(
+                address(centralRegistry_),
+                type(ICentralRegistry).interfaceId
+            ),
+            "lendtroller: invalid central registry"
         );
 
         centralRegistry = centralRegistry_;
