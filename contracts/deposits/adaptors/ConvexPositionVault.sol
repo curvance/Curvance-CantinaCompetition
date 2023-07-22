@@ -13,49 +13,34 @@ import { ICurveSwaps } from "contracts/interfaces/external/curve/ICurveSwaps.sol
 contract ConvexPositionVault is BasePositionVault {
     using Math for uint256;
 
+    /// ERRORS /// 
+    error ConvexPositionVault__UnsupportedCurveDeposit();
+
     /// EVENTS ///
-    event EthToTargetSwapParamsChanged(CurveSwapParams params);
-    event ArbitraryToEthSwapParamsChanged(
-        address asset,
-        CurveSwapParams params
-    );
-    event HarvestSlippageChanged(uint64 slippage);
-    event CurveDepositParamsChanged(CurveDepositParams params);
     event Harvest(uint256 yield);
 
-    /// STRUCTS ///
-    struct CurveDepositParams {
-        ERC20 targetAsset;
-        uint8 coinsLength;
-        uint8 targetIndex;
-        bool useUnderlying;
-        address pool;
-    }
-
-    struct CurveSwapParams {
-        address[9] route;
-        uint256[3][4] swapParams;
-        ERC20 assetIn;
-        uint96 minUSDValueToSwap;
+    struct StrategyData {
+        /// @notice Curve Pool Address.
+        ICurveFi curvePool;
+        /// @notice Convex Pool Id.
+        uint256 pid;
+        /// @notice Convex Rewarder contract.
+        IBaseRewardPool rewarder;
+        /// @notice Convex Booster contract.
+        IBooster booster;
+        /// @notice Convex reward assets.
+        address[] rewardTokens;
+        /// @notice Curve LP underlying assets.
+        address[] underlyingTokens;
     }
 
     /// STORAGE ///
 
-    /// @notice Curve registry exchange contract.
-    /// @dev Mainnet Address 0x81C46fECa27B31F3ADC2b91eE4be9717d1cd3DD7
-    ICurveSwaps public curveRegistryExchange;
+    /// Vault Strategy Data
+    StrategyData public strategyData;
 
-    /// @notice Convex Pool Id.
-    uint256 public pid;
-
-    /// @notice Covnex Rewarder contract.
-    IBaseRewardPool public rewarder;
-
-    /// @notice Convex Booster contract.
-    IBooster private booster;
-
-    /// @notice Convex reward assets
-    ERC20[] public rewardTokens;
+    /// @notice Curve LP underlying assets.
+    mapping(address => bool) public isUnderlyingToken;
 
     /// @notice Mainnet token contracts important for this vault.
     ERC20 private constant WETH =
@@ -65,97 +50,46 @@ contract ConvexPositionVault is BasePositionVault {
     ERC20 private constant CRV =
         ERC20(0xD533a949740bb3306d119CC777fa900bA034cd52);
 
-    /// @notice Deposit parameters used by the vault to deposit into
-    ///         desired Curve Pool.
-    CurveDepositParams private depositParams;
-
-    /// @notice Stores swapping information to go from an arbitrary
-    ///         reward token to ETH.
-    mapping(ERC20 => CurveSwapParams) public arbitraryToEth;
-
-    /// @notice Stores swapping information to go from ETH to target token
-    ///         to supply liquidity on Curve.
-    CurveSwapParams public ethToTarget;
-
-    /*//////////////////////////////////////////////////////////////
-                                 ERRORS
-    //////////////////////////////////////////////////////////////*/
-
-    error ConvexPositionVault__UnsupportedCurveDeposit();
-    error ConvexPositionVault__BadSlippage();
-    error ConvexPositionVault__WatchdogNotSet();
-    error ConvexPositionVault__LengthMismatch();
-
-    /*//////////////////////////////////////////////////////////////
-                              SETUP LOGIC
-    //////////////////////////////////////////////////////////////*/
-
-    /// @notice Vaults are designed to be deployed using Minimal Proxy Contracts,
-    ///         but they can be deployed normally,
-    ///         but `initialize` must ALWAYS be called either way.
     constructor(
         ERC20 asset_,
         ICentralRegistry centralRegistry_,
+        ICurveFi curvePool_,
         uint256 pid_,
-        IBaseRewardPool rewarder_,
-        IBooster booster_,
-        ERC20[] memory rewardTokens_,
-        CurveDepositParams memory depositParams_,
-        ICurveSwaps curveSwaps_,
-        CurveSwapParams[] memory swapsToETH,
-        ERC20[] memory assetsToETH,
-        CurveSwapParams memory swapsFromETH
+        address rewarder_,
+        address booster_,
+        address[] memory rewardTokens_,
+        address[] memory underlyingTokens_
     ) BasePositionVault(asset_, centralRegistry_) {
 
-        pid = pid_;
-        rewarder = rewarder_;
-        booster = booster_;
-        rewardTokens = rewardTokens_;
-        depositParams = depositParams_;
-        curveRegistryExchange = curveSwaps_;
+        require(pid_ > 176, "ConvexPositionVault: Only support ng pools");
 
-        uint256 numSwapsToETH = swapsToETH.length;
+        uint256 numUnderlyingTokens = underlyingTokens_.length;
 
-        if (numSwapsToETH != assetsToETH.length)
-            revert ConvexPositionVault__LengthMismatch();
-        for (uint256 i; i < numSwapsToETH; ++i) {
-            arbitraryToEth[assetsToETH[i]] = swapsToETH[i];
+        for (uint256 i; i < numUnderlyingTokens; ) {
+            unchecked {
+                isUnderlyingToken[underlyingTokens_[i++]] = true;
+            }
         }
-        ethToTarget = swapsFromETH;
+
+        strategyData.curvePool = curvePool_;
+        strategyData.pid = pid_;
+        strategyData.rewarder = IBaseRewardPool(rewarder_);
+        strategyData.booster = IBooster(booster_);
+        strategyData.rewardTokens = rewardTokens_;
+        strategyData.underlyingTokens = underlyingTokens_;
+
     }
 
     /// PERMISSIONED FUNCTIONS ///
-    function updateEthTotargetSwapPath(
-        CurveSwapParams calldata params
-    ) external onlyDaoPermissions {
-        ethToTarget = params;
-        emit EthToTargetSwapParamsChanged(params);
-    }
-
-    function updateArbitraryToEthSwapPath(
-        ERC20 assetIn,
-        CurveSwapParams calldata params
-    ) external onlyDaoPermissions {
-        arbitraryToEth[assetIn] = params;
-        emit ArbitraryToEthSwapParamsChanged(address(assetIn), params);
-    }
-
-    function updateCurveDepositParams(
-        CurveDepositParams calldata params
-    ) external onlyDaoPermissions {
-        depositParams = params;
-        emit CurveDepositParamsChanged(params);
-    }
-
     function setRewardTokens(
-        ERC20[] calldata _rewardTokens
+        address[] calldata rewardTokens
     ) external onlyDaoPermissions {
-        rewardTokens = _rewardTokens;
+        strategyData.rewardTokens = rewardTokens;
     }
 
     /// REWARD AND HARVESTING LOGIC ///
     function harvest(
-        bytes memory,
+        bytes memory data,
         uint256 maxSlippage
     ) public override onlyHarvestor vaultActive nonReentrant returns (uint256 yield) {
         uint256 pending = _calculatePendingRewards();
@@ -169,37 +103,48 @@ contract ConvexPositionVault is BasePositionVault {
             vaultData.lastVestClaim >=
             vaultData.vestingPeriodEnd
         ) {
+
+            // Cache strategy data
+            StrategyData memory sd = strategyData;
+
             // Harvest convex position.
-            rewarder.getReward(address(this), true);
+            sd.rewarder.getReward(address(this), true);
 
             // Claim extra rewards
-            uint256 extraRewardsLength = rewarder.extraRewardsLength();
+            uint256 extraRewardsLength = sd.rewarder.extraRewardsLength();
             for (uint256 i; i < extraRewardsLength; ++i) {
-                IRewards extraReward = IRewards(rewarder.extraRewards(i));
+                IRewards extraReward = IRewards(sd.rewarder.extraRewards(i));
                 extraReward.getReward();
             }
 
             uint256 valueIn;
-            uint256 ethOut;
-            uint256 rewardTokenCount = rewardTokens.length;
-            address[4] memory pools;
-
+            
             {
-                ERC20 rewardToken;
-                uint256 rewardBalance;
+
+                SwapperLib.Swap[] memory swapDataArray = abi.decode(
+                    data,
+                    (SwapperLib.Swap[])
+                );
+                uint256 numRewardTokens = sd.rewardTokens.length;
+                address rewardToken;
+                uint256 rewardAmount;
                 uint256 protocolFee;
                 uint256 rewardPrice;
-                uint256 valueInUSD;
+                
+                for (uint256 j; j < numRewardTokens; ++j) {
+                    rewardToken = sd.rewardTokens[j];
+                    rewardAmount = ERC20(rewardToken).balanceOf(address(this));
 
-                for (uint256 j; j < rewardTokenCount; ++j) {
-                    rewardToken = rewardTokens[j];
-                    rewardBalance = rewardToken.balanceOf(address(this));
+                    if (rewardAmount == 0) {
+                        continue;
+                    }
+
                     // Take platform fee
-                    protocolFee = rewardBalance.mulDivDown(
+                    protocolFee = rewardAmount.mulDivDown(
                         vaultHarvestFee(),
                         1e18
                     );
-                    rewardBalance -= protocolFee;
+                    rewardAmount -= protocolFee;
                     SafeTransferLib.safeTransfer(
                         address(rewardToken),
                         centralRegistry.feeAccumulator(),
@@ -209,99 +154,50 @@ contract ConvexPositionVault is BasePositionVault {
                     (rewardPrice, ) = getPriceRouter().getPrice(address(rewardToken), true, true);
 
                     // Get the reward token value in USD.
-                    valueInUSD = rewardBalance.mulDivDown(
+                    valueIn = rewardAmount.mulDivDown(
                         rewardPrice,
-                        10 ** rewardToken.decimals()
+                        10 ** ERC20(rewardToken).decimals()
                     );
-                    CurveSwapParams memory swapParams = arbitraryToEth[
-                        rewardToken
-                    ];
-                    // Check if value is enough to warrant a swap. And that we have the swap params set up for it.
-                    if (
-                        valueInUSD >= swapParams.minUSDValueToSwap &&
-                        address(swapParams.assetIn) != address(0)
-                    ) {
-                        valueIn += valueInUSD;
-                        // Perform Swap into ETH.
-                        SafeTransferLib.safeApprove(
-                            address(rewardToken),
-                            address(curveRegistryExchange),
-                            rewardBalance
-                        );
-                        ethOut += curveRegistryExchange.exchange_multiple(
-                            swapParams.route,
-                            swapParams.swapParams,
-                            rewardBalance,
-                            0,
-                            pools,
-                            address(this)
+
+                    if (!isUnderlyingToken[rewardToken]) {
+                        SwapperLib.swap(
+                            swapDataArray[j],
+                            centralRegistry.priceRouter(),
+                            10000 // swap for 100% slippage, we have slippage check later for global level
                         );
                     }
+
                 }
             }
 
-            // Check if we even have any ETH from swaps, if not return 0;
-            if (ethOut == 0) return 0;
-            
-            uint256 assetsOut;
-            // Convert assets into targetAsset.
-            if (depositParams.targetAsset != WETH) {
-                CurveSwapParams memory swapParams = ethToTarget;
-                SafeTransferLib.safeApprove(
-                    address(WETH),
-                    address(curveRegistryExchange),
-                    ethOut
-                );
-                assetsOut = curveRegistryExchange.exchange_multiple(
-                    swapParams.route,
-                    swapParams.swapParams,
-                    ethOut,
-                    0,
-                    pools,
-                    address(this)
-                );
-            } else assetsOut = ethOut;
-
-            (uint256 assetPrice, ) = getPriceRouter().getPrice(address(depositParams.targetAsset), true, true);
-
-            uint256 valueOut = assetsOut.mulDivDown(
-                assetPrice,
-                10 ** depositParams.targetAsset.decimals()
-            );
-
-            // Compare value in vs value out.
-            require(valueOut >
+            // add liquidity to curve and check for slippage
+            require(_addLiquidityToCurve(sd.underlyingTokens.length) >
                 valueIn.mulDivDown(1e18 - maxSlippage, 1e18), "ConvexPositionVault: bad slippage");
             
-            // Deposit assets to Curve.
-            _addLiquidityToCurve(assetsOut);
-
-            // Deposit Assets to Convex.
+            // Deposit assets into convex
             yield = ERC20(asset()).balanceOf(address(this));
             _deposit(yield);
 
-            // Update Vesting info.
+            // Update vesting info
             vaultData.rewardRate = uint128(
                 yield.mulDivDown(rewardOffset, vestPeriod)
             );
-            vaultData.vestingPeriodEnd =
-                uint64(block.timestamp +
-                vestPeriod);
+            vaultData.vestingPeriodEnd = uint64(block.timestamp + vestPeriod);
             vaultData.lastVestClaim = uint64(block.timestamp);
             emit Harvest(yield);
         } 
-        // else yield is zero.
+        // else yield is zero
     }
 
     /// INTERNAL POSITION LOGIC ///
     function _withdraw(uint256 assets) internal override {
-        IBaseRewardPool rewardPool = IBaseRewardPool(rewarder);
+        IBaseRewardPool rewardPool = strategyData.rewarder;
         rewardPool.withdrawAndUnwrap(assets, false);
     }
 
     function _deposit(uint256 assets) internal override {
-        SafeTransferLib.safeApprove(asset(), address(booster), assets);
-        booster.deposit(pid, assets, true);
+        SafeTransferLib.safeApprove(asset(), address(strategyData.booster), assets);
+        strategyData.booster.deposit(strategyData.pid, assets, true);
     }
 
     function _getRealPositionBalance()
@@ -310,40 +206,117 @@ contract ConvexPositionVault is BasePositionVault {
         override
         returns (uint256)
     {
-        IBaseRewardPool rewardPool = IBaseRewardPool(rewarder);
+        IBaseRewardPool rewardPool = strategyData.rewarder;
         return rewardPool.balanceOf(address(this));
     }
 
-    function _addLiquidityToCurve(uint256 amount) internal {
-        SafeTransferLib.safeApprove(
-            address(depositParams.targetAsset),
-            depositParams.pool,
-            amount
-        );
-        if (depositParams.coinsLength == 2) {
+    function _addLiquidityToCurve(uint256 numUnderlyingTokens) internal returns (uint256 valueOut) {
+        if (numUnderlyingTokens == 2) {
             uint256[2] memory amounts;
-            amounts[depositParams.targetIndex] = amount;
-            if (depositParams.useUnderlying) {
-                ICurveFi(depositParams.pool).add_liquidity(amounts, 0, true);
-            } else {
-                ICurveFi(depositParams.pool).add_liquidity(amounts, 0);
-            }
-        } else if (depositParams.coinsLength == 3) {
+            valueOut = _add2pool(amounts, numUnderlyingTokens); 
+        } else if (numUnderlyingTokens == 3) {
             uint256[3] memory amounts;
-            amounts[depositParams.targetIndex] = amount;
-            if (depositParams.useUnderlying) {
-                ICurveFi(depositParams.pool).add_liquidity(amounts, 0, true);
-            } else {
-                ICurveFi(depositParams.pool).add_liquidity(amounts, 0);
-            }
-        } else if (depositParams.coinsLength == 4) {
+            valueOut = _add3pool(amounts, numUnderlyingTokens);
+        } else if (numUnderlyingTokens == 4) {
             uint256[4] memory amounts;
-            amounts[depositParams.targetIndex] = amount;
-            if (depositParams.useUnderlying) {
-                ICurveFi(depositParams.pool).add_liquidity(amounts, 0, true);
-            } else {
-                ICurveFi(depositParams.pool).add_liquidity(amounts, 0);
-            }
-        } else revert ConvexPositionVault__UnsupportedCurveDeposit();
+            valueOut = _add4pool(amounts, numUnderlyingTokens);
+        } else {
+            revert ConvexPositionVault__UnsupportedCurveDeposit();
+        }
     }
+
+    function _add2pool (uint256[2] memory amounts, uint256 numUnderlyingTokens) internal returns (uint256 valueOut) {
+        address underlyingToken;
+        uint256 assetPrice;
+
+        for (uint256 k; k < numUnderlyingTokens; ++k) {
+            underlyingToken = strategyData.underlyingTokens[k];
+            amounts[k] = ERC20(underlyingToken).balanceOf(
+                address(this)
+            );
+            SwapperLib.approveTokenIfNeeded(
+                underlyingToken,
+                address(strategyData.curvePool),
+                amounts[k]
+            );
+
+            (assetPrice, ) = getPriceRouter().getPrice(
+                underlyingToken,
+                true,
+                true
+            );
+
+            valueOut += amounts[k].mulDivDown(
+                assetPrice,
+                10 ** ERC20(underlyingToken).decimals()
+            );
+        
+        }
+
+        strategyData.curvePool.add_liquidity(amounts, 0, true); 
+    }
+
+    function _add3pool (uint256[3] memory amounts, uint256 numUnderlyingTokens) internal returns (uint256 valueOut) {
+        address underlyingToken;
+        uint256 assetPrice;
+
+        for (uint256 k; k < numUnderlyingTokens; ++k) {
+            underlyingToken = strategyData.underlyingTokens[k];
+            amounts[k] = ERC20(underlyingToken).balanceOf(
+                address(this)
+            );
+            SwapperLib.approveTokenIfNeeded(
+                underlyingToken,
+                address(strategyData.curvePool),
+                amounts[k]
+            );
+
+            (assetPrice, ) = getPriceRouter().getPrice(
+                underlyingToken,
+                true,
+                true
+            );
+
+            valueOut += amounts[k].mulDivDown(
+                assetPrice,
+                10 ** ERC20(underlyingToken).decimals()
+            );
+        
+        } 
+
+        strategyData.curvePool.add_liquidity(amounts, 0, true);
+    }
+
+    function _add4pool (uint256[4] memory amounts, uint256 numUnderlyingTokens) internal returns (uint256 valueOut) {
+        address underlyingToken;
+        uint256 assetPrice;
+
+        for (uint256 k; k < numUnderlyingTokens; ++k) {
+            underlyingToken = strategyData.underlyingTokens[k];
+            amounts[k] = ERC20(underlyingToken).balanceOf(
+                address(this)
+            );
+            SwapperLib.approveTokenIfNeeded(
+                underlyingToken,
+                address(strategyData.curvePool),
+                amounts[k]
+            );
+
+            (assetPrice, ) = getPriceRouter().getPrice(
+                underlyingToken,
+                true,
+                true
+            );
+
+            valueOut += amounts[k].mulDivDown(
+                assetPrice,
+                10 ** ERC20(underlyingToken).decimals()
+            );
+        
+        }
+
+        strategyData.curvePool.add_liquidity(amounts, 0, true); 
+    }
+
+
 }
