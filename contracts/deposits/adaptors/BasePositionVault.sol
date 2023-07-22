@@ -21,20 +21,12 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     /// EVENTS ///
     event vaultStatusChanged(bool isShutdown);
 
-
-    /// ERRORS ///
-    error BasePositionVault__InvalidPlatformFee(uint64 invalidFee);
-    error BasePositionVault__InvalidUpkeepFee(uint64 invalidFee);
-    error BasePositionVault__ContractShutdown();
-    error BasePositionVault__ContractNotShutdown();
-
     /// STRUCTS ///
     struct VaultData {
         uint128 rewardRate;
         uint64 vestingPeriodEnd;
         uint64 lastVestClaim;
     }
-
 
     /// CONSTANTS ///
     ICentralRegistry public immutable centralRegistry;
@@ -80,19 +72,23 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
 
     /// MODIFIERS ///
 
+    modifier onlyHarvestor() {
+        require(centralRegistry.harvester(msg.sender), "BasePositionVault: UNAUTHORIZED");
+        _;
+    }
+
     modifier onlyDaoPermissions() {
         require(centralRegistry.hasDaoPermissions(msg.sender), "BasePositionVault: UNAUTHORIZED");
         _;
     }
 
     modifier onlyElevatedPermissions() {
-            require(centralRegistry.hasElevatedPermissions(msg.sender), "BasePositionVault: UNAUTHORIZED");
-            _;
+        require(centralRegistry.hasElevatedPermissions(msg.sender), "BasePositionVault: UNAUTHORIZED");
+        _;
     }
 
     modifier vaultActive() {
-        if (isShutdown)
-            revert BasePositionVault__ContractShutdown();
+        require (!isShutdown, "BasePositionVault: vault not active");
         _;
     }
 
@@ -152,8 +148,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
 
     /// @notice Reactivate the vault.
     function liftShutdown() external onlyElevatedPermissions {
-        if (!isShutdown)
-            revert BasePositionVault__ContractNotShutdown();
+        require(isShutdown, "BasePositionVault: vault not active");
         delete isShutdown;
 
         emit vaultStatusChanged(false);
@@ -459,5 +454,5 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     function _getRealPositionBalance() internal view virtual returns (uint256);
 
     /// EXTERNAL POSITION LOGIC ///
-    function harvest(bytes memory) public virtual returns (uint256 yield);
+    function harvest(bytes memory, uint256 maxSlippage) public virtual returns (uint256 yield);
 }

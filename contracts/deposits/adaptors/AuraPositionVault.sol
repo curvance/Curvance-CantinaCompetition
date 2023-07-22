@@ -1,30 +1,20 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-import { BasePositionVault, ERC4626, SafeTransferLib, ERC20, Math, PriceRouter } from "contracts/deposits/adaptors/BasePositionVault.sol";
+import { BasePositionVault, ERC4626, SafeTransferLib, ERC20, Math, IPriceRouter, ICentralRegistry } from "contracts/deposits/adaptors/BasePositionVault.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 
-import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IBooster } from "contracts/interfaces/external/convex/IBooster.sol";
 import { IBaseRewardPool } from "contracts/interfaces/external/convex/IBaseRewardPool.sol";
 import { IRewards } from "contracts/interfaces/external/convex/IRewards.sol";
 import { IBalancerVault } from "contracts/interfaces/external/balancer/IBalancerVault.sol";
-
-
 
 contract AuraPositionVault is BasePositionVault {
     using Math for uint256;
 
     /// EVENTS ///
     event SetApprovedTarget(address target, bool isApproved);
-    event HarvestSlippageChanged(uint64 slippage);
     event Harvest(uint256 yield);
-
-    /// ERRORS ///
-    error ConvexPositionVault__UnsupportedCurveDeposit();
-    error AuraPositionVault__BadSlippage();
-    error ConvexPositionVault__WatchdogNotSet();
-    error ConvexPositionVault__LengthMismatch();
 
     /// STORAGE ///
 
@@ -76,8 +66,10 @@ contract AuraPositionVault is BasePositionVault {
 
         uint256 numUnderlyingTokens = underlyingTokens_.length;
 
-        for (uint256 i; i < numUnderlyingTokens; ++i) {
-            isUnderlyingToken[underlyingTokens_[i]] = true;
+        for (uint256 i; i < numUnderlyingTokens; ) {
+            unchecked {
+                isUnderlyingToken[underlyingTokens_[i++]] = true;
+            }
         }
 
         balancerVault = IBalancerVault(balancerVault_);
@@ -106,7 +98,8 @@ contract AuraPositionVault is BasePositionVault {
 
     /// REWARD AND HARVESTING LOGIC ///
     function harvest(
-        bytes memory data
+        bytes memory data,
+        uint256 maxSlippage
     ) public override vaultActive nonReentrant returns (uint256 yield) {
 
         uint256 pending = _calculatePendingRewards();
@@ -145,8 +138,8 @@ contract AuraPositionVault is BasePositionVault {
                 uint256 protocolFee;
                 uint256 rewardPrice;
 
-                for (uint256 i = 0; i < numRewardTokens; ++i) {
-                    reward = rewardTokens[i];
+                for (uint256 j; j < numRewardTokens; ++j) {
+                    reward = rewardTokens[j];
                     amount = ERC20(reward).balanceOf(address(this));
                     if (amount == 0) {
                         continue;
@@ -154,19 +147,17 @@ contract AuraPositionVault is BasePositionVault {
 
                     // Take platform fee
                     protocolFee = amount.mulDivDown(
-                        positionVaultMetaData.platformFee,
+                        vaultHarvestFee(),
                         1e18
                     );
                     amount -= protocolFee;
                     SafeTransferLib.safeTransfer(
                         reward,
-                        positionVaultMetaData.feeAccumulator,
+                        centralRegistry.feeAccumulator(),
                         protocolFee
                     );
 
-                    (rewardPrice, ) = positionVaultMetaData
-                        .priceRouter
-                        .getPrice(reward, true, true);
+                    (rewardPrice, ) = getPriceRouter().getPrice(reward, true, true);
 
                     valueIn += amount.mulDivDown(
                         rewardPrice,
@@ -175,7 +166,7 @@ contract AuraPositionVault is BasePositionVault {
 
                     if (!isUnderlyingToken[reward]) {
                         SwapperLib.swap(
-                            swapDataArray[i],
+                            swapDataArray[j],
                             centralRegistry.priceRouter(),
                             10000 // swap for 100% slippage, we have slippage check later for global level
                         );
@@ -191,38 +182,33 @@ contract AuraPositionVault is BasePositionVault {
             address underlyingToken;
             uint256 assetPrice;
 
-            for (uint256 i = 0; i < numUnderlyingTokens; ++i) {
-                underlyingToken = underlyingTokens[i];
-                assets[i] = underlyingToken;
-                maxAmountsIn[i] = ERC20(underlyingToken).balanceOf(
+            for (uint256 k; k < numUnderlyingTokens; ++k) {
+                underlyingToken = underlyingTokens[k];
+                assets[k] = underlyingToken;
+                maxAmountsIn[k] = ERC20(underlyingToken).balanceOf(
                     address(this)
                 );
                 SwapperLib.approveTokenIfNeeded(
                     underlyingToken,
                     address(balancerVault),
-                    maxAmountsIn[i]
+                    maxAmountsIn[k]
                 );
 
-                (assetPrice, ) = positionVaultMetaData.priceRouter.getPrice(
+                (assetPrice, ) = getPriceRouter().getPrice(
                     underlyingToken,
                     true,
                     true
                 );
 
-                valueOut += maxAmountsIn[i].mulDivDown(
+                valueOut += maxAmountsIn[k].mulDivDown(
                     assetPrice,
                     10 ** ERC20(underlyingToken).decimals()
                 );
             }
 
             // Compare value in vs value out.
-            if (
-                valueOut <
-                valueIn.mulDivDown(
-                    1e18 - (positionVaultMetaData.upkeepFee + harvestSlippage),
-                    1e18
-                )
-            ) revert AuraPositionVault__BadSlippage();
+            require(valueOut >
+                valueIn.mulDivDown(1e18 - maxSlippage, 1e18), "AuraPositionVault: bad slippage");
 
             balancerVault.joinPool(
                 balancerPoolId,
@@ -255,10 +241,7 @@ contract AuraPositionVault is BasePositionVault {
         // else yield is zero.
     }
 
-    /*//////////////////////////////////////////////////////////////
-                          INTERNAL POSITION LOGIC
-    //////////////////////////////////////////////////////////////*/
-
+    /// INTERNAL POSITION LOGIC ///
     function _withdraw(uint256 assets) internal override {
         IBaseRewardPool rewardPool = IBaseRewardPool(rewarder);
         rewardPool.withdrawAndUnwrap(assets, false);
