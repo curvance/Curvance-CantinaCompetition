@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
-import "contracts/interfaces/ICentralRegistry.sol";
+import { ERC165 } from "contracts/libraries/ERC165.sol";
+import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 contract CentralRegistry is ICentralRegistry, ERC165 {
 
@@ -524,7 +524,7 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
         emit ApprovedEndpointRemoved(currentApprovedEndpoint);
     }
 
-    /// @inheritdoc IERC165
+    /// @dev Interface to validate proper central registry configuration on contract deployment
     function supportsInterface(
         bytes4 interfaceId
     ) public view override returns (bool) {
@@ -532,4 +532,5 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
             interfaceId == type(ICentralRegistry).interfaceId ||
             super.supportsInterface(interfaceId);
     }
+
 }

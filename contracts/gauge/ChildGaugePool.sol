@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
+import { GaugePool, GaugeErrors } from "contracts/gauge/GaugePool.sol";
+
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
-
-import { GaugeErrors } from "./GaugeErrors.sol";
-import { GaugePool } from "./GaugePool.sol";
 
 contract ChildGaugePool is ReentrancyGuard {
 

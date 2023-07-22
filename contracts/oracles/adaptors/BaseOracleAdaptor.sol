@@ -3,14 +3,16 @@ pragma solidity ^0.8.17;
 
 import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 
-import "contracts/interfaces/ICentralRegistry.sol";
-import "contracts/interfaces/IOracleAdaptor.sol";
+import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+import { IOracleAdaptor, PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
 
 abstract contract BaseOracleAdaptor {
 
+    /// CONSTANTS ///
     /// @notice Address for Curvance DAO registry contract for ownership and location data.
     ICentralRegistry public immutable centralRegistry;
 
+    /// STORAGE ///
     /// @notice Mapping used to track whether or not an asset is supported by the adaptor and pricing information.
     mapping(address => bool) public isSupportedAsset;
 
