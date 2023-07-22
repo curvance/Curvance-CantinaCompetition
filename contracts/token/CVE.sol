@@ -48,8 +48,6 @@ contract CVE is OFTV2 {
         // TODO:
         // Permission sendAndCall?
         // Write sendEmissions in votingHub
-        // Write moving cve gauge emissions to new hub chain
-        // Write updating hub chain for emission purposes
     }
 
     modifier onlyProtocolMessagingHub() {

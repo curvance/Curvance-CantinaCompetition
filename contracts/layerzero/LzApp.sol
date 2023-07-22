@@ -3,6 +3,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/Context.sol";
+import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 
 import "../interfaces/layerzero/ILayerZeroReceiver.sol";
 import "../interfaces/layerzero/ILayerZeroUserApplicationConfig.sol";
@@ -10,9 +11,7 @@ import "../interfaces/layerzero/ILayerZeroEndpoint.sol";
 import "contracts/interfaces/ICentralRegistry.sol";
 import "../libraries/BytesLib.sol";
 
-/*
- * a generic LzReceiver implementation
- */
+/// a generic LzReceiver implementation
 abstract contract LzApp is
     ILayerZeroReceiver,
     ILayerZeroUserApplicationConfig,
@@ -37,6 +36,15 @@ abstract contract LzApp is
 
     constructor(address _endpoint, ICentralRegistry _centralRegistry) {
         lzEndpoint = ILayerZeroEndpoint(_endpoint);
+
+        require(
+            ERC165Checker.supportsInterface(
+                address(centralRegistry_),
+                type(ICentralRegistry).interfaceId
+            ),
+            "lzApp: invalid central registry"
+        );
+
         centralRegistry = _centralRegistry;
     }
 

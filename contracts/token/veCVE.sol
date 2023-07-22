@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
+import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { ERC20 } from "contracts/libraries/ERC20.sol";
-import "contracts/interfaces/IERC20.sol";
-import "contracts/interfaces/ICentralRegistry.sol";
-import "contracts/interfaces/ICveLocker.sol";
-import "contracts/interfaces/IDelegateRegistry.sol";
+import { IERC20 } from "contracts/interfaces/IERC20.sol";
+import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+import { ICveLocker, rewardsData } from "contracts/interfaces/ICveLocker.sol";
+import { IDelegateRegistry } from "contracts/interfaces/IDelegateRegistry.sol";
 
 contract veCVE is ERC20 {
 
@@ -98,6 +99,15 @@ contract veCVE is ERC20 {
     ) {
         _name = "Vote Escrowed CVE";
         _symbol = "veCVE";
+
+        require(
+            ERC165Checker.supportsInterface(
+                address(centralRegistry_),
+                type(ICentralRegistry).interfaceId
+            ),
+            "veCVE: invalid central registry"
+        );
+
         centralRegistry = centralRegistry_;
         genesisEpoch = centralRegistry.genesisEpoch();
         cve = centralRegistry.CVE();

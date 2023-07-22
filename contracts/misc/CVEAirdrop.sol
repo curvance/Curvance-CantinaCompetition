@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import "@openzeppelin/contracts/interfaces/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
+import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
+import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 
-import "contracts/interfaces/ICentralRegistry.sol";
+import { IERC20 } from "contracts/interfaces/IERC20.sol";
+import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
-contract CVEAirdrop {
-    using SafeERC20 for IERC20;
+contract CVEAirdrop is ReentrancyGuard {
 
     event callOptionCVEAirdropClaimed(address indexed claimer, uint256 amount);
     event RemainingCallOptionCVEWithdrawn(uint256 amount);
@@ -19,7 +20,6 @@ contract CVEAirdrop {
 
     bytes32 public airdropMerkleRoot;
     bool public isPaused = true;
-    uint256 private locked = 1;
 
     mapping(address => bool) public airdropClaimed;
 
@@ -34,6 +34,15 @@ contract CVEAirdrop {
         uint256 _maximumClaimAmount,
         bytes32 _root
     ) {
+
+        require(
+            ERC165Checker.supportsInterface(
+                address(_centralRegistry),
+                type(ICentralRegistry).interfaceId
+            ),
+            "CVEAirdrop: invalid central registry"
+        );
+
         centralRegistry = _centralRegistry;
         endClaimTimestamp = _endTimestamp;
         maximumClaimAmount = _maximumClaimAmount;
@@ -48,17 +57,6 @@ contract CVEAirdrop {
     modifier notPaused() {
         require(!isPaused, "Airdrop Paused");
         _;
-    }
-
-    modifier nonReentrant() {
-        require(locked == 1, "Reentry Attempt");
-        locked = 2;
-        _;
-        locked = 1;
-    }
-
-    function _msgSender() internal view returns (address) {
-        return msg.sender;
     }
 
     /// @notice Claim CVE Call Option tokens for airdrop
@@ -88,7 +86,7 @@ contract CVEAirdrop {
 
         // Verify the user has not claimed their airdrop already
         require(
-            !airdropClaimed[_msgSender()],
+            !airdropClaimed[msg.sender],
             "claimAirdrop: Already claimed"
         );
 
@@ -97,21 +95,21 @@ contract CVEAirdrop {
             verifyProof(
                 _proof,
                 airdropMerkleRoot,
-                keccak256(abi.encodePacked(_msgSender(), _amount))
+                keccak256(abi.encodePacked(msg.sender, _amount))
             ),
             "claimAirdrop: Invalid proof provided"
         );
 
         // Document that airdrop has been claimed
-        airdropClaimed[_msgSender()] = true;
+        airdropClaimed[msg.sender] = true;
 
         // Transfer CVE tokens
-        IERC20(centralRegistry.callOptionCVE()).safeTransfer(
-            _msgSender(),
+        SafeTransferLib.safeTransfer(centralRegistry.callOptionCVE(),
+            msg.sender,
             _amount
         );
 
-        emit callOptionCVEAirdropClaimed(_msgSender(), _amount);
+        emit callOptionCVEAirdropClaimed(msg.sender, _amount);
     }
 
     /// @notice Gas efficient merkle proof verification implementation to validate CVE token claim
@@ -190,7 +188,7 @@ contract CVEAirdrop {
                 IERC20(_token).balanceOf(address(this)) >= _amount,
                 "rescueToken: Insufficient balance"
             );
-            SafeERC20.safeTransfer(IERC20(_token), _recipient, _amount);
+            SafeTransferLib.safeTransfer(_token, _recipient, _amount);
         }
     }
 
@@ -202,8 +200,8 @@ contract CVEAirdrop {
         );
         uint256 tokensToWithdraw = IERC20(centralRegistry.callOptionCVE())
             .balanceOf(address(this));
-        IERC20(centralRegistry.callOptionCVE()).safeTransfer(
-            _msgSender(),
+        SafeTransferLib.safeTransfer(centralRegistry.callOptionCVE(),
+            msg.sender,
             tokensToWithdraw
         );
 

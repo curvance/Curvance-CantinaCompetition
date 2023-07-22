@@ -73,6 +73,15 @@ contract cveLocker {
     mapping(uint256 => uint256) public ethPerCVE;
 
     constructor(ICentralRegistry _centralRegistry, address _cvx) {
+
+        require(
+            ERC165Checker.supportsInterface(
+                address(centralRegistry_),
+                type(ICentralRegistry).interfaceId
+            ),
+            "cveLocker: invalid central registry"
+        );
+
         centralRegistry = _centralRegistry;
         genesisEpoch = centralRegistry.genesisEpoch();
         cvx = _cvx;
@@ -83,7 +92,7 @@ contract cveLocker {
     modifier onlyDaoPermissions() {
         require(
             centralRegistry.hasDaoPermissions(msg.sender),
-            "centralRegistry: UNAUTHORIZED"
+            "cveLocker: UNAUTHORIZED"
         );
         _;
     }
@@ -91,7 +100,7 @@ contract cveLocker {
     modifier onlyElevatedPermissions() {
         require(
             centralRegistry.hasElevatedPermissions(msg.sender),
-            "centralRegistry: UNAUTHORIZED"
+            "cveLocker: UNAUTHORIZED"
         );
         _;
     }
