@@ -56,7 +56,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     uint256 internal _sharePriceHighWatermark;
 
     /// @notice Period newly harvested rewards are vested over.
-    uint256 public constant REWARD_PERIOD = 1 days;
+    uint256 public constant vestPeriod = 1 days;
 
     constructor(
         ERC20 asset_,
@@ -96,6 +96,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         _;
     }
 
+    /// VAULT DATA QUERY FUNCTIONS ///
 
     /// @dev Returns the name of the token.
     function name() public view override returns (string memory) {
@@ -115,6 +116,18 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     /// @dev Returns the decimals of the underlying asset.
     function _underlyingDecimals() internal view override returns (uint8) {
         return _decimals;
+    }
+
+    /// @notice Vault compound fee is in basis point form
+    /// @dev Returns the vaults current amount of yield used for compounding rewards
+    function vaultCompoundFee() public view returns (uint256) {
+        return centralRegistry.protocolCompoundFee();
+    }
+
+    /// @notice Vault yield fee is in basis point form
+    /// @dev Returns the vaults current protocol fee for compounding rewards
+    function vaultYieldFee() public view returns (uint256) {
+        return centralRegistry.protocolYieldFee();
     }
 
     /// PERMISSIONED FUNCTIONS ///
