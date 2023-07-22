@@ -56,7 +56,7 @@ contract callOptionCVE is ERC20 {
     }
 
     modifier onlyDaoPermissions() {
-        require(centralRegistry.hasDaoPermissions(msg.sender), "centralRegistry: UNAUTHORIZED");
+        require(centralRegistry.hasDaoPermissions(msg.sender), "callOptionCVE: UNAUTHORIZED");
         _;
     }
 

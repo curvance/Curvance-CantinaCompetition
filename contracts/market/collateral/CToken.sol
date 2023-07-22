@@ -79,7 +79,7 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
     modifier onlyDaoPermissions() {
         require(
             centralRegistry.hasDaoPermissions(msg.sender),
-            "centralRegistry: UNAUTHORIZED"
+            "CToken: UNAUTHORIZED"
         );
         _;
     }
@@ -87,7 +87,7 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
     modifier onlyElevatedPermissions() {
         require(
             centralRegistry.hasElevatedPermissions(msg.sender),
-            "centralRegistry: UNAUTHORIZED"
+            "CToken: UNAUTHORIZED"
         );
         _;
     }

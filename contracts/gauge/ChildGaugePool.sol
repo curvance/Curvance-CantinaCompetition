@@ -50,7 +50,7 @@ contract ChildGaugePool is ReentrancyGuard {
     }
 
     modifier onlyDaoPermissions() {
-        require(centralRegistry.hasDaoPermissions(msg.sender), "centralRegistry: UNAUTHORIZED");
+        require(centralRegistry.hasDaoPermissions(msg.sender), "childGaugePool: UNAUTHORIZED");
         _;
     }
 

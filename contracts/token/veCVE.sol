@@ -82,12 +82,12 @@ contract veCVE is ERC20 {
     /// MODIFIERS ///
 
     modifier onlyDaoPermissions() {
-        require(centralRegistry.hasDaoPermissions(msg.sender), "centralRegistry: UNAUTHORIZED");
+        require(centralRegistry.hasDaoPermissions(msg.sender), "veCVE: UNAUTHORIZED");
         _;
     }
 
     modifier onlyElevatedPermissions() {
-            require(centralRegistry.hasElevatedPermissions(msg.sender), "centralRegistry: UNAUTHORIZED");
+            require(centralRegistry.hasElevatedPermissions(msg.sender), "veCVE: UNAUTHORIZED");
             _;
     }
 
