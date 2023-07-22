@@ -29,7 +29,6 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     error BasePositionVault__ContractNotShutdown();
 
     /// STRUCTS ///
-
     struct VaultData {
         uint128 rewardRate;
         uint64 vestingPeriodEnd;
@@ -137,7 +136,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     }
 
 
-    /// REWARD/HARVESTING LOGIC ///
+    /// REWARD AND HARVESTING LOGIC ///
 
     /// @notice Calculates the pending rewards.
     /// @dev If there are no pending rewards or the vesting period has ended, it returns 0. 
