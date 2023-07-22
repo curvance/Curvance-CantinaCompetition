@@ -139,38 +139,38 @@ contract AuraPositionVault is BasePositionVault {
 
                 // swap assets to one of pool token
                 uint256 numRewardTokens = sd.rewardTokens.length;
-                address reward;
-                uint256 amount;
+                address rewardToken;
+                uint256 rewardAmount;
                 uint256 protocolFee;
                 uint256 rewardPrice;
 
                 for (uint256 j; j < numRewardTokens; ++j) {
-                    reward = sd.rewardTokens[j];
-                    amount = ERC20(reward).balanceOf(address(this));
-                    if (amount == 0) {
+                    rewardToken = sd.rewardTokens[j];
+                    rewardAmount = ERC20(rewardToken).balanceOf(address(this));
+                    if (rewardAmount == 0) {
                         continue;
                     } 
 
                     // Take platform fee
-                    protocolFee = amount.mulDivDown(
+                    protocolFee = rewardAmount.mulDivDown(
                         vaultHarvestFee(),
                         1e18
                     );
-                    amount -= protocolFee;
+                    rewardAmount -= protocolFee;
                     SafeTransferLib.safeTransfer(
-                        reward,
+                        rewardToken,
                         centralRegistry.feeAccumulator(),
                         protocolFee
                     );
 
-                    (rewardPrice, ) = getPriceRouter().getPrice(reward, true, true);
+                    (rewardPrice, ) = getPriceRouter().getPrice(rewardToken, true, true);
 
-                    valueIn += amount.mulDivDown(
+                    valueIn += rewardAmount.mulDivDown(
                         rewardPrice,
-                        10 ** ERC20(reward).decimals()
+                        10 ** ERC20(rewardToken).decimals()
                     );
 
-                    if (!isUnderlyingToken[reward]) {
+                    if (!isUnderlyingToken[rewardToken]) {
                         SwapperLib.swap(
                             swapDataArray[j],
                             centralRegistry.priceRouter(),
