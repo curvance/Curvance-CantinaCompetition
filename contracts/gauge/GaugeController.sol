@@ -29,8 +29,8 @@ contract GaugeController is IGaugePool {
     uint256 public startTime;
     mapping(uint256 => Epoch) internal epochInfo;
 
-    constructor(ICentralRegistry _centralRegistry){
-        centralRegistry = _centralRegistry;
+    constructor(ICentralRegistry centralRegistry_){
+        centralRegistry = centralRegistry_;
         cve = centralRegistry.CVE();
         veCVE = IVeCVE(centralRegistry.veCVE());
     }

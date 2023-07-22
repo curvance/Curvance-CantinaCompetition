@@ -30,11 +30,11 @@ contract callOptionCVE is ERC20 {
     /// @param name_ The name of the token.
     /// @param symbol_ The symbol of the token.
     /// @param _paymentToken The token used for payment when exercising options.
-    /// @param _centralRegistry The Central Registry contract address.
+    /// @param centralRegistry_ The Central Registry contract address.
     constructor(
         string memory name_,
         string memory symbol_,
-        ICentralRegistry _centralRegistry,
+        ICentralRegistry centralRegistry_,
         address _paymentToken
     ) {
         _name = name_;
@@ -48,7 +48,7 @@ contract callOptionCVE is ERC20 {
             "callOptionCVE: invalid central registry"
         );
 
-        centralRegistry = _centralRegistry;
+        centralRegistry = centralRegistry_;
         paymentToken = _paymentToken;
         cve = centralRegistry.CVE();
 

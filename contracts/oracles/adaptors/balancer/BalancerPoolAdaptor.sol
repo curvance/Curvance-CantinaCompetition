@@ -16,10 +16,10 @@ abstract contract BalancerPoolAdaptor is BaseOracleAdaptor {
     IVault public immutable balancerVault;
 
     constructor(
-        ICentralRegistry _centralRegistry,
-        IVault _balancerVault
-    ) BaseOracleAdaptor(_centralRegistry) {
-        balancerVault = _balancerVault;
+        ICentralRegistry centralRegistry_,
+        IVault balancerVault_
+    ) BaseOracleAdaptor(centralRegistry_) {
+        balancerVault = balancerVault_;
     }
 
     /// @dev Ensure we are not in a Vault context when this function is called, by attempting a no-op internal

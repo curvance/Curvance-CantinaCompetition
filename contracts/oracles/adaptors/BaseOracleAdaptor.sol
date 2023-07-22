@@ -1,8 +1,10 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import "../../interfaces/ICentralRegistry.sol";
-import "../../interfaces/IOracleAdaptor.sol";
+import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
+
+import "contracts/interfaces/ICentralRegistry.sol";
+import "contracts/interfaces/IOracleAdaptor.sol";
 
 abstract contract BaseOracleAdaptor {
 
@@ -12,10 +14,17 @@ abstract contract BaseOracleAdaptor {
     /// @notice Mapping used to track whether or not an asset is supported by the adaptor and pricing information.
     mapping(address => bool) public isSupportedAsset;
 
-    // 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE this is for pricing eth in Curve
+    constructor(ICentralRegistry centralRegistry_) {
 
-    constructor(ICentralRegistry _centralRegistry) {
-        centralRegistry = _centralRegistry;
+        require(
+            ERC165Checker.supportsInterface(
+                address(centralRegistry_),
+                type(ICentralRegistry).interfaceId
+            ),
+            "priceRouter: Central Registry is invalid"
+        );
+
+        centralRegistry = centralRegistry_;
     }
 
     // Only callable by Price Router.

@@ -72,7 +72,7 @@ contract cveLocker {
     // Epoch # => Ether rewards per CVE multiplier by offset
     mapping(uint256 => uint256) public ethPerCVE;
 
-    constructor(ICentralRegistry centralRegistry_, address _cvx) {
+    constructor(ICentralRegistry centralRegistry_, address cvx_) {
 
         require(
             ERC165Checker.supportsInterface(
@@ -84,7 +84,7 @@ contract cveLocker {
 
         centralRegistry = centralRegistry_;
         genesisEpoch = centralRegistry.genesisEpoch();
-        cvx = _cvx;
+        cvx = cvx_;
         cve = centralRegistry.CVE();
         veCVE = IVeCVE(centralRegistry.veCVE());
     }

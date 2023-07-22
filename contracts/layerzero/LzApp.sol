@@ -34,8 +34,8 @@ abstract contract LzApp is
     event SetTrustedRemoteAddress(uint16 _remoteChainId, bytes _remoteAddress);
     event SetMinDstGas(uint16 _dstChainId, uint16 _type, uint256 _minDstGas);
 
-    constructor(address _endpoint, ICentralRegistry _centralRegistry) {
-        lzEndpoint = ILayerZeroEndpoint(_endpoint);
+    constructor(address endpoint_, ICentralRegistry centralRegistry_) {
+        lzEndpoint = ILayerZeroEndpoint(endpoint_);
 
         require(
             ERC165Checker.supportsInterface(
@@ -45,7 +45,7 @@ abstract contract LzApp is
             "lzApp: invalid central registry"
         );
 
-        centralRegistry = _centralRegistry;
+        centralRegistry = centralRegistry_;
     }
 
     modifier onlyDaoPermissions() {

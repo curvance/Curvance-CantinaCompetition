@@ -37,10 +37,10 @@ contract PendlePrincipalTokenAdaptor is BaseOracleAdaptor {
     uint256 public constant BAD_SOURCE = 2;
 
     constructor(
-        ICentralRegistry _centralRegistry,
-        IPendlePTOracle _ptOracle
-    ) BaseOracleAdaptor(_centralRegistry) {
-        ptOracle = _ptOracle;
+        ICentralRegistry centralRegistry_,
+        IPendlePTOracle ptOracle_
+    ) BaseOracleAdaptor(centralRegistry_) {
+        ptOracle = ptOracle_;
     }
 
     /// @notice Called during pricing operations.

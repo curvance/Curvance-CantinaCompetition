@@ -33,8 +33,8 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
     mapping(address => FeedData) public adaptorDataUSD;
 
     constructor(
-        ICentralRegistry _centralRegistry
-    ) BaseOracleAdaptor(_centralRegistry) {}
+        ICentralRegistry centralRegistry_
+    ) BaseOracleAdaptor(centralRegistry_) {}
 
     /// @notice Retrieves the price of a given asset.
     /// @dev Uses Chainlink oracles to fetch the price data. Price is returned in USD or ETH depending on 'isUsd' parameter.

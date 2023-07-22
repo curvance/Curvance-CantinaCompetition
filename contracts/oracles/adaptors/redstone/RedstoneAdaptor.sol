@@ -28,8 +28,8 @@ contract RedstoneAdaptor is RedstoneConsumerNumericBase, BaseOracleAdaptor {
     mapping(address => FeedData) public adaptorData;
 
     constructor(
-        ICentralRegistry _centralRegistry
-    ) BaseOracleAdaptor(_centralRegistry) {}
+        ICentralRegistry centralRegistry_
+    ) BaseOracleAdaptor(centralRegistry_) {}
 
     /// @notice Retrieves the price of a given asset.
     /// @dev Uses Redstone oracles to fetch the price data. Price is returned in USD or ETH depending on 'isUsd' parameter.

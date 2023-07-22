@@ -54,10 +54,10 @@ contract ChildGaugePool is ReentrancyGuard {
         _;
     }
 
-    constructor(address _gaugeController, address _rewardToken, ICentralRegistry _centralRegistry) {
-        gaugeController = GaugePool(_gaugeController);
-        rewardToken = _rewardToken;
-        centralRegistry = _centralRegistry;
+    constructor(address gaugeController_, address rewardToken_, ICentralRegistry centralRegistry_) {
+        gaugeController = GaugePool(gaugeController_);
+        rewardToken = rewardToken_;
+        centralRegistry = centralRegistry_;
     }
 
     function activate() external onlyGaugeController {

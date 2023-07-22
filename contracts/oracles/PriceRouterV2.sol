@@ -94,10 +94,10 @@ contract PriceRouter {
         _;
     }
 
-    constructor(ICentralRegistry _centralRegistry, address ETH_USDFEED) {
+    constructor(ICentralRegistry centralRegistry_, address ETH_USDFEED) {
         require(
             ERC165Checker.supportsInterface(
-                address(_centralRegistry),
+                address(centralRegistry_),
                 type(ICentralRegistry).interfaceId
             ),
             "priceRouter: invalid central registry"
@@ -107,7 +107,7 @@ contract PriceRouter {
             "priceRouter: ETH-USD Feed is invalid"
         );
 
-        centralRegistry = _centralRegistry;
+        centralRegistry = centralRegistry_;
         // Save the USD-ETH price feed because it is a widely used pricing path.
         CHAINLINK_ETH_USD = ETH_USDFEED; // 0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419 on mainnet
     }

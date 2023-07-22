@@ -46,10 +46,10 @@ contract GaugePool is GaugeController, ReentrancyGuard {
     mapping(address => mapping(address => UserInfo)) public userInfo; // token => user => info
 
     constructor(
-        ICentralRegistry _centralRegistry,
-        address _lendtroller
-    ) GaugeController(_centralRegistry) {
-        lendtroller = _lendtroller;
+        ICentralRegistry centralRegistry_,
+        address lendtroller_
+    ) GaugeController(centralRegistry_) {
+        lendtroller = lendtroller_;
     }
 
     function addChildGauge(address _childGauge) external onlyDaoPermissions {
