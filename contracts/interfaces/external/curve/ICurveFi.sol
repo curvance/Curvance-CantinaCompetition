@@ -83,6 +83,8 @@ interface ICurveFi {
 
     function balances(uint256) external view returns (uint256);
 
+    function coins(uint256 i) external view returns (address);
+
     function price_oracle() external view returns (uint256);
 
     function get_dy(

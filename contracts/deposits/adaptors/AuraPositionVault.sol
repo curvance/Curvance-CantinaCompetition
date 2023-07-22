@@ -13,7 +13,6 @@ contract AuraPositionVault is BasePositionVault {
     using Math for uint256;
 
     /// EVENTS ///
-    event SetApprovedTarget(address target, bool isApproved);
     event Harvest(uint256 yield);
 
     /// STRUCTS ///
@@ -41,18 +40,6 @@ contract AuraPositionVault is BasePositionVault {
     StrategyData public strategyData;
     /// @notice Is an underlying token of the BPT
     mapping(address => bool) public isUnderlyingToken;
-
-    /// @notice Is approved target for swap.
-    mapping(address => bool) public isApprovedTarget;
-
-    /// @notice Mainnet token contracts important for this vault.
-    ERC20 private constant WETH =
-        ERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
-    ERC20 private constant BAL =
-        ERC20(0xba100000625a3754423978a60c9317c58a424e3D);
-    ERC20 private constant AURA =
-        ERC20(0xC0c293ce456fF0ED870ADd98a0828Dd4d2903DBF);
-
 
     constructor(
         ERC20 asset_,
@@ -85,17 +72,10 @@ contract AuraPositionVault is BasePositionVault {
     }
 
     /// PERMISSIONED FUNCTIONS ///
-    function setIsApprovedTarget(
-        address _target,
-        bool _isApproved
-    ) external onlyDaoPermissions {
-        isApprovedTarget[_target] = _isApproved;
-    }
-
     function setRewardTokens(
-        address[] calldata _rewardTokens
+        address[] calldata rewardTokens
     ) external onlyDaoPermissions {
-        strategyData.rewardTokens = _rewardTokens;
+        strategyData.rewardTokens = rewardTokens;
     }
 
     /// REWARD AND HARVESTING LOGIC ///
@@ -180,7 +160,7 @@ contract AuraPositionVault is BasePositionVault {
                 }
             }
 
-            // add liquidity to balancer
+            // prep adding liquidity to balancer
             uint256 valueOut;
             uint256 numUnderlyingTokens = sd.underlyingTokens.length;
             address[] memory assets = new address[](numUnderlyingTokens);
@@ -212,10 +192,11 @@ contract AuraPositionVault is BasePositionVault {
                 );
             }
 
-            // Compare value in vs value out.
+            // Compare value in vs value out
             require(valueOut >
                 valueIn.mulDivDown(1e18 - maxSlippage, 1e18), "AuraPositionVault: bad slippage");
 
+            // Deposit assets into balancer
             sd.balancerVault.joinPool(
                 sd.balancerPoolId,
                 address(this),
@@ -232,19 +213,17 @@ contract AuraPositionVault is BasePositionVault {
                 )
             );
 
-            // deposit Assets to Aura.
+            // deposit assets into aura
             yield = ERC20(asset()).balanceOf(address(this));
             _deposit(yield);
 
-            // update Vesting info.
-            vaultData.rewardRate = uint128(
-                yield.mulDivDown(rewardOffset, vestPeriod)
-            );
+            // update vesting info
+            vaultData.rewardRate = uint128(yield.mulDivDown(rewardOffset, vestPeriod));
             vaultData.vestingPeriodEnd = uint64(block.timestamp + vestPeriod);
             vaultData.lastVestClaim = uint64(block.timestamp);
             emit Harvest(yield);
         } 
-        // else yield is zero.
+        // else yield is zero
     }
 
     /// INTERNAL POSITION LOGIC ///
