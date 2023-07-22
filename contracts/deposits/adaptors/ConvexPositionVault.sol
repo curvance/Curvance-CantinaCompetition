@@ -1,26 +1,29 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { BasePositionVault, ERC4626, SafeTransferLib, ERC20, Math, PriceRouter } from "./BasePositionVault.sol";
-import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+import { BasePositionVault, ERC4626, SafeTransferLib, ERC20, Math, IPriceRouter, ICentralRegistry } from "contracts/deposits/adaptors/BasePositionVault.sol";
+import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 
-// External interfaces
 import { IBooster } from "contracts/interfaces/external/convex/IBooster.sol";
 import { IBaseRewardPool } from "contracts/interfaces/external/convex/IBaseRewardPool.sol";
 import { IRewards } from "contracts/interfaces/external/convex/IRewards.sol";
 import { ICurveFi } from "contracts/interfaces/external/curve/ICurveFi.sol";
 import { ICurveSwaps } from "contracts/interfaces/external/curve/ICurveSwaps.sol";
 
-// Chainlink interfaces
-import { IChainlinkAggregator } from "contracts/interfaces/external/chainlink/IChainlinkAggregator.sol";
-
 contract ConvexPositionVault is BasePositionVault {
     using Math for uint256;
 
-    /*//////////////////////////////////////////////////////////////
-                             STRUCTS
-    //////////////////////////////////////////////////////////////*/
+    /// EVENTS ///
+    event EthToTargetSwapParamsChanged(CurveSwapParams params);
+    event ArbitraryToEthSwapParamsChanged(
+        address asset,
+        CurveSwapParams params
+    );
+    event HarvestSlippageChanged(uint64 slippage);
+    event CurveDepositParamsChanged(CurveDepositParams params);
+    event Harvest(uint256 yield);
 
+    /// STRUCTS ///
     struct CurveDepositParams {
         ERC20 targetAsset;
         uint8 coinsLength;
@@ -36,9 +39,7 @@ contract ConvexPositionVault is BasePositionVault {
         uint96 minUSDValueToSwap;
     }
 
-    /*//////////////////////////////////////////////////////////////
-                             GLOBAL STATE
-    //////////////////////////////////////////////////////////////*/
+    /// STORAGE ///
 
     /// @notice Curve registry exchange contract.
     /// @dev Mainnet Address 0x81C46fECa27B31F3ADC2b91eE4be9717d1cd3DD7
@@ -76,24 +77,6 @@ contract ConvexPositionVault is BasePositionVault {
     ///         to supply liquidity on Curve.
     CurveSwapParams public ethToTarget;
 
-    // Owner needs to be able to set swap paths, deposit data, fee, fee accumulator
-    /// @notice Value out from harvest swaps must be greater than
-    ///         value in * 1 - (harvestSlippage + upkeepFee);
-    uint64 public harvestSlippage = 0.01e18;
-
-    /*//////////////////////////////////////////////////////////////
-                                 EVENTS
-    //////////////////////////////////////////////////////////////*/
-
-    event EthToTargetSwapParamsChanged(CurveSwapParams params);
-    event ArbitraryToEthSwapParamsChanged(
-        address asset,
-        CurveSwapParams params
-    );
-    event HarvestSlippageChanged(uint64 slippage);
-    event CurveDepositParamsChanged(CurveDepositParams params);
-    event Harvest(uint256 yield);
-
     /*//////////////////////////////////////////////////////////////
                                  ERRORS
     //////////////////////////////////////////////////////////////*/
@@ -111,62 +94,25 @@ contract ConvexPositionVault is BasePositionVault {
     ///         but they can be deployed normally,
     ///         but `initialize` must ALWAYS be called either way.
     constructor(
-        ERC20 _asset,
-        string memory _name,
-        string memory _symbol,
-        uint8 _decimals,
-        ICentralRegistry _centralRegistry
-    ) BasePositionVault(_asset, _name, _symbol, _decimals, _centralRegistry) {}
+        ERC20 asset_,
+        ICentralRegistry centralRegistry_,
+        uint256 pid_,
+        IBaseRewardPool rewarder_,
+        IBooster booster_,
+        ERC20[] memory rewardTokens_,
+        CurveDepositParams memory depositParams_,
+        ICurveSwaps curveSwaps_,
+        CurveSwapParams[] memory swapsToETH,
+        ERC20[] memory assetsToETH,
+        CurveSwapParams memory swapsFromETH
+    ) BasePositionVault(asset_, centralRegistry_) {
 
-    /// @notice Initialize function to fully setup this vault.
-    function initialize(
-        ERC20 _asset,
-        ICentralRegistry _centralRegistry,
-        string memory _name,
-        string memory _symbol,
-        uint8 _decimals,
-        BasePositionVault.PositionVaultMetaData calldata _metaData,
-        bytes memory _initializeData
-    ) public override initializer {
-        super.initialize(
-            _asset,
-            _centralRegistry,
-            _name,
-            _symbol,
-            _decimals,
-            _metaData,
-            _initializeData
-        );
-        (
-            uint256 _pid,
-            IBaseRewardPool _rewarder,
-            IBooster _booster,
-            ERC20[] memory _rewardTokens,
-            CurveDepositParams memory _depositParams,
-            ICurveSwaps _curveSwaps,
-            CurveSwapParams[] memory swapsToETH,
-            ERC20[] memory assetsToETH,
-            CurveSwapParams memory swapsFromETH
-        ) = abi.decode(
-                _initializeData,
-                (
-                    uint256,
-                    IBaseRewardPool,
-                    IBooster,
-                    ERC20[],
-                    CurveDepositParams,
-                    ICurveSwaps,
-                    CurveSwapParams[],
-                    ERC20[],
-                    CurveSwapParams
-                )
-            );
-        pid = _pid;
-        rewarder = _rewarder;
-        booster = _booster;
-        rewardTokens = _rewardTokens;
-        depositParams = _depositParams;
-        curveRegistryExchange = _curveSwaps;
+        pid = pid_;
+        rewarder = rewarder_;
+        booster = booster_;
+        rewardTokens = rewardTokens_;
+        depositParams = depositParams_;
+        curveRegistryExchange = curveSwaps_;
 
         uint256 numSwapsToETH = swapsToETH.length;
 
@@ -178,10 +124,7 @@ contract ConvexPositionVault is BasePositionVault {
         ethToTarget = swapsFromETH;
     }
 
-    /*//////////////////////////////////////////////////////////////
-                              OWNER LOGIC
-    //////////////////////////////////////////////////////////////*/
-
+    /// PERMISSIONED FUNCTIONS ///
     function updateEthTotargetSwapPath(
         CurveSwapParams calldata params
     ) external onlyDaoPermissions {
@@ -197,11 +140,6 @@ contract ConvexPositionVault is BasePositionVault {
         emit ArbitraryToEthSwapParamsChanged(address(assetIn), params);
     }
 
-    function updateHarvestSlippage(uint64 _slippage) external onlyDaoPermissions {
-        harvestSlippage = _slippage;
-        emit HarvestSlippageChanged(_slippage);
-    }
-
     function updateCurveDepositParams(
         CurveDepositParams calldata params
     ) external onlyDaoPermissions {
@@ -215,13 +153,11 @@ contract ConvexPositionVault is BasePositionVault {
         rewardTokens = _rewardTokens;
     }
 
-    /*//////////////////////////////////////////////////////////////
-                          EXTERNAL POSITION LOGIC
-    //////////////////////////////////////////////////////////////*/
-
+    /// REWARD AND HARVESTING LOGIC ///
     function harvest(
-        bytes memory
-    ) public override whenNotShutdown nonReentrant returns (uint256 yield) {
+        bytes memory,
+        uint256 maxSlippage
+    ) public override onlyHarvestor vaultActive nonReentrant returns (uint256 yield) {
         uint256 pending = _calculatePendingRewards();
         if (pending > 0) {
             // We need to claim vested rewards.
@@ -230,15 +166,15 @@ contract ConvexPositionVault is BasePositionVault {
 
         // Can only harvest once previous reward period is done.
         if (
-            positionVaultAccounting._lastVestClaim >=
-            positionVaultAccounting._vestingPeriodEnd
+            vaultData.lastVestClaim >=
+            vaultData.vestingPeriodEnd
         ) {
             // Harvest convex position.
             rewarder.getReward(address(this), true);
 
             // Claim extra rewards
             uint256 extraRewardsLength = rewarder.extraRewardsLength();
-            for (uint256 i = 0; i < extraRewardsLength; ++i) {
+            for (uint256 i; i < extraRewardsLength; ++i) {
                 IRewards extraReward = IRewards(rewarder.extraRewards(i));
                 extraReward.getReward();
             }
@@ -255,24 +191,22 @@ contract ConvexPositionVault is BasePositionVault {
                 uint256 rewardPrice;
                 uint256 valueInUSD;
 
-                for (uint256 i = 0; i < rewardTokenCount; ++i) {
-                    rewardToken = rewardTokens[i];
+                for (uint256 j; j < rewardTokenCount; ++j) {
+                    rewardToken = rewardTokens[j];
                     rewardBalance = rewardToken.balanceOf(address(this));
                     // Take platform fee
                     protocolFee = rewardBalance.mulDivDown(
-                        positionVaultMetaData.platformFee,
+                        vaultHarvestFee(),
                         1e18
                     );
                     rewardBalance -= protocolFee;
                     SafeTransferLib.safeTransfer(
                         address(rewardToken),
-                        positionVaultMetaData.feeAccumulator,
+                        centralRegistry.feeAccumulator(),
                         protocolFee
                     );
 
-                    (rewardPrice, ) = positionVaultMetaData
-                        .priceRouter
-                        .getPrice(address(rewardToken), true, true);
+                    (rewardPrice, ) = getPriceRouter().getPrice(address(rewardToken), true, true);
 
                     // Get the reward token value in USD.
                     valueInUSD = rewardBalance.mulDivDown(
@@ -308,22 +242,7 @@ contract ConvexPositionVault is BasePositionVault {
 
             // Check if we even have any ETH from swaps, if not return 0;
             if (ethOut == 0) return 0;
-            // Take upkeep fee.
-            uint256 feeForUpkeep = ethOut.mulDivDown(
-                positionVaultMetaData.upkeepFee,
-                1e18
-            );
-            // If watchdog is set, transfer WETH to it otherwise, leave it here.
-            if (positionVaultMetaData.positionWatchdog == address(0))
-                revert ConvexPositionVault__WatchdogNotSet();
-            // Transfer WETH fee to watchdog
-            SafeTransferLib.safeTransfer(
-                address(WETH),
-                positionVaultMetaData.positionWatchdog,
-                feeForUpkeep
-            );
-            ethOut -= feeForUpkeep;
-
+            
             uint256 assetsOut;
             // Convert assets into targetAsset.
             if (depositParams.targetAsset != WETH) {
@@ -343,9 +262,7 @@ contract ConvexPositionVault is BasePositionVault {
                 );
             } else assetsOut = ethOut;
 
-            (uint256 assetPrice, ) = positionVaultMetaData
-                .priceRouter
-                .getPrice(address(depositParams.targetAsset), true, true);
+            (uint256 assetPrice, ) = getPriceRouter().getPrice(address(depositParams.targetAsset), true, true);
 
             uint256 valueOut = assetsOut.mulDivDown(
                 assetPrice,
@@ -353,14 +270,9 @@ contract ConvexPositionVault is BasePositionVault {
             );
 
             // Compare value in vs value out.
-            if (
-                valueOut <
-                valueIn.mulDivDown(
-                    1e18 - (positionVaultMetaData.upkeepFee + harvestSlippage),
-                    1e18
-                )
-            ) revert ConvexPositionVault__BadSlippage();
-
+            require(valueOut >
+                valueIn.mulDivDown(1e18 - maxSlippage, 1e18), "ConvexPositionVault: bad slippage");
+            
             // Deposit assets to Curve.
             _addLiquidityToCurve(assetsOut);
 
@@ -369,21 +281,19 @@ contract ConvexPositionVault is BasePositionVault {
             _deposit(yield);
 
             // Update Vesting info.
-            positionVaultAccounting._rewardRate = uint128(
-                yield.mulDivDown(REWARD_SCALER, REWARD_PERIOD)
+            vaultData.rewardRate = uint128(
+                yield.mulDivDown(rewardOffset, vestPeriod)
             );
-            positionVaultAccounting._vestingPeriodEnd =
-                uint64(block.timestamp) +
-                REWARD_PERIOD;
-            positionVaultAccounting._lastVestClaim = uint64(block.timestamp);
+            vaultData.vestingPeriodEnd =
+                uint64(block.timestamp +
+                vestPeriod);
+            vaultData.lastVestClaim = uint64(block.timestamp);
             emit Harvest(yield);
-        } // else yield is zero.
+        } 
+        // else yield is zero.
     }
 
-    /*//////////////////////////////////////////////////////////////
-                          INTERNAL POSITION LOGIC
-    //////////////////////////////////////////////////////////////*/
-
+    /// INTERNAL POSITION LOGIC ///
     function _withdraw(uint256 assets) internal override {
         IBaseRewardPool rewardPool = IBaseRewardPool(rewarder);
         rewardPool.withdrawAndUnwrap(assets, false);

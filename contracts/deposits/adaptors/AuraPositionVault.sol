@@ -100,7 +100,7 @@ contract AuraPositionVault is BasePositionVault {
     function harvest(
         bytes memory data,
         uint256 maxSlippage
-    ) public override vaultActive nonReentrant returns (uint256 yield) {
+    ) public override onlyHarvestor vaultActive nonReentrant returns (uint256 yield) {
 
         uint256 pending = _calculatePendingRewards();
         if (pending > 0) {
