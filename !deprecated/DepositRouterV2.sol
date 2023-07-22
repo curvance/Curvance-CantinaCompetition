@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
@@ -6,11 +6,6 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { ERC4626, SafeTransferLib, ERC20 } from "contracts/libraries/ERC4626.sol";
 import { Math } from "contracts/libraries/Math.sol";
 
-/// @title Curvance Deposit Router
-/// @notice Provides a universal interface allowing Curvance contracts
-///         to deposit and withdraw assets from Convex
-/// @author crispymangoes
-// TODO add events
 contract DepositRouterV2 is Ownable {
     using Math for uint256;
 
