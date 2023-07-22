@@ -524,7 +524,7 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
         emit ApprovedEndpointRemoved(currentApprovedEndpoint);
     }
 
-    /// @dev Interface to validate proper central registry configuration on contract deployment
+    /// @inheritdoc ERC165
     function supportsInterface(
         bytes4 interfaceId
     ) public view override returns (bool) {

@@ -6,6 +6,7 @@ import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 import { GaugePool } from "contracts/gauge/GaugePool.sol";
 import { InterestRateModel } from "contracts/market/interestRates/InterestRateModel.sol";
+
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IEIP20 } from "contracts/interfaces/market/IEIP20.sol";
@@ -1253,7 +1254,7 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
         uint256 amount
     ) internal virtual;
 
-    /// @inheritdoc IERC165
+    /// @inheritdoc ERC165
     function supportsInterface(
         bytes4 interfaceId
     ) public view override returns (bool) {
