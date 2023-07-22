@@ -5,8 +5,8 @@ import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 import { ERC4626, SafeTransferLib, ERC20 } from "contracts/libraries/ERC4626.sol";
 import { Math } from "contracts/libraries/Math.sol";
-import { PriceRouter } from "contracts/oracles/PriceRouterV2.sol";
 
+import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 /// @notice Vault Positions must have all assets ready for withdraw,
@@ -128,6 +128,17 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     /// @dev Returns the vaults current protocol fee for compounding rewards
     function vaultYieldFee() public view returns (uint256) {
         return centralRegistry.protocolYieldFee();
+    }
+
+    /// @notice Vault harvest fee is in basis point form
+    /// @dev Returns the vaults current harvest fee for compounding rewards that pays for yield and compound fees
+    function vaultHarvestFee() public view returns (uint256) {
+        return centralRegistry.protocolHarvestFee();
+    }
+
+    /// @dev Returns the protocol price router
+    function getPriceRouter() public view returns (IPriceRouter) {
+        return IPriceRouter(centralRegistry.priceRouter());
     }
 
     /// PERMISSIONED FUNCTIONS ///

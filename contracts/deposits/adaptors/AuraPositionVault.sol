@@ -1,28 +1,32 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-import { BasePositionVault, ERC4626, SafeTransferLib, ERC20, Math, PriceRouter } from "./BasePositionVault.sol";
-import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+import { BasePositionVault, ERC4626, SafeTransferLib, ERC20, Math, PriceRouter } from "contracts/deposits/adaptors/BasePositionVault.sol";
+import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 
-// External interfaces
+import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IBooster } from "contracts/interfaces/external/convex/IBooster.sol";
 import { IBaseRewardPool } from "contracts/interfaces/external/convex/IBaseRewardPool.sol";
 import { IRewards } from "contracts/interfaces/external/convex/IRewards.sol";
 import { IBalancerVault } from "contracts/interfaces/external/balancer/IBalancerVault.sol";
 
-// Chainlink interfaces
-import { KeeperCompatibleInterface } from "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
-import { AggregatorV2V3Interface } from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV2V3Interface.sol";
-import { IChainlinkAggregator } from "contracts/interfaces/external/chainlink/IChainlinkAggregator.sol";
 
-import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 
 contract AuraPositionVault is BasePositionVault {
     using Math for uint256;
 
-    /*//////////////////////////////////////////////////////////////
-                             STRUCTS
-    //////////////////////////////////////////////////////////////*/
+    /// EVENTS ///
+    event SetApprovedTarget(address target, bool isApproved);
+    event HarvestSlippageChanged(uint64 slippage);
+    event Harvest(uint256 yield);
+
+    /// ERRORS ///
+    error ConvexPositionVault__UnsupportedCurveDeposit();
+    error AuraPositionVault__BadSlippage();
+    error ConvexPositionVault__WatchdogNotSet();
+    error ConvexPositionVault__LengthMismatch();
+
+    /// STORAGE ///
 
     /// @notice Balancer vault contract.
     IBalancerVault public balancerVault;
@@ -57,110 +61,36 @@ contract AuraPositionVault is BasePositionVault {
     ERC20 private constant AURA =
         ERC20(0xC0c293ce456fF0ED870ADd98a0828Dd4d2903DBF);
 
-    // Owner needs to be able to set swap paths, deposit data, fee, fee accumulator
-    /// @notice Value out from harvest swaps must be greater than
-    ///         value in * 1 - (harvestSlippage + upkeepFee);
-    uint64 public harvestSlippage = 0.01e18;
 
-    /*//////////////////////////////////////////////////////////////
-                                 EVENTS
-    //////////////////////////////////////////////////////////////*/
-
-    event SetApprovedTarget(address target, bool isApproved);
-    event HarvestSlippageChanged(uint64 slippage);
-    event Harvest(uint256 yield);
-
-    /*//////////////////////////////////////////////////////////////
-                                 ERRORS
-    //////////////////////////////////////////////////////////////*/
-
-    error ConvexPositionVault__UnsupportedCurveDeposit();
-    error AuraPositionVault__BadSlippage();
-    error ConvexPositionVault__WatchdogNotSet();
-    error ConvexPositionVault__LengthMismatch();
-
-    /*//////////////////////////////////////////////////////////////
-                              SETUP LOGIC
-    //////////////////////////////////////////////////////////////*/
-
-    /// @notice Vaults are designed to be deployed using Minimal Proxy Contracts,
-    ///         but they can be deployed normally,
-    ///         but `initialize` must ALWAYS be called either way.
     constructor(
-        ERC20 _asset,
-        string memory _name,
-        string memory _symbol,
-        uint8 _decimals,
-        ICentralRegistry _centralRegistry
-    ) BasePositionVault(_asset, _name, _symbol, _decimals, _centralRegistry) {}
+        ERC20 asset_,
+        ICentralRegistry centralRegistry_,
+        address balancerVault_,
+        bytes32 balancerPoolId_,
+        address[] memory underlyingTokens_,
+        uint256 pid_,
+        address rewarder_,
+        address booster_,
+        address[] memory rewardTokens_
+    ) BasePositionVault(asset_, centralRegistry_) {
 
-    /// @notice Initialize function to fully setup this vault.
-    function initialize(
-        ERC20 _asset,
-        ICentralRegistry _centralRegistry,
-        string memory _name,
-        string memory _symbol,
-        uint8 _decimals,
-        BasePositionVault.PositionVaultMetaData calldata _metaData,
-        bytes memory _initializeData
-    ) public override initializer {
-        super.initialize(
-            _asset,
-            _centralRegistry,
-            _name,
-            _symbol,
-            _decimals,
-            _metaData,
-            _initializeData
-        );
+        uint256 numUnderlyingTokens = underlyingTokens_.length;
 
-        (
-            address _balancerVault,
-            bytes32 _balancerPoolId,
-            address[] memory _underlyingTokens,
-            uint256 _pid,
-            address _rewarder,
-            address _booster,
-            address[] memory _rewardTokens
-        ) = abi.decode(
-                _initializeData,
-                (
-                    address,
-                    bytes32,
-                    address[],
-                    uint256,
-                    address,
-                    address,
-                    address[]
-                )
-            );
-
-        uint256 numUnderlyingTokens = _underlyingTokens.length;
-
-        for (uint256 i = 0; i < numUnderlyingTokens; ++i) {
-            isUnderlyingToken[_underlyingTokens[i]] = true;
+        for (uint256 i; i < numUnderlyingTokens; ++i) {
+            isUnderlyingToken[underlyingTokens_[i]] = true;
         }
 
-        balancerVault = IBalancerVault(_balancerVault);
-        balancerPoolId = _balancerPoolId;
-        underlyingTokens = _underlyingTokens;
-        pid = _pid;
-        rewarder = IBaseRewardPool(_rewarder);
-        booster = IBooster(_booster);
-        rewardTokens = _rewardTokens;
+        balancerVault = IBalancerVault(balancerVault_);
+        balancerPoolId = balancerPoolId_;
+        underlyingTokens = underlyingTokens_;
+        pid = pid_;
+        rewarder = IBaseRewardPool(rewarder_);
+        booster = IBooster(booster_);
+        rewardTokens = rewardTokens_;
+
     }
 
-    /*//////////////////////////////////////////////////////////////
-                              OWNER LOGIC
-    //////////////////////////////////////////////////////////////*/
-
-    function updateHarvestSlippage(
-        uint64 _slippage
-    ) external onlyDaoPermissions {
-        harvestSlippage = _slippage;
-        emit HarvestSlippageChanged(_slippage);
-    }
-
+    /// PERMISSIONED FUNCTIONS ///
     function setIsApprovedTarget(
         address _target,
         bool _isApproved
@@ -174,13 +104,11 @@ contract AuraPositionVault is BasePositionVault {
         rewardTokens = _rewardTokens;
     }
 
-    /*//////////////////////////////////////////////////////////////
-                          EXTERNAL POSITION LOGIC
-    //////////////////////////////////////////////////////////////*/
-
+    /// REWARD AND HARVESTING LOGIC ///
     function harvest(
         bytes memory data
-    ) public override whenNotShutdown nonReentrant returns (uint256 yield) {
+    ) public override vaultActive nonReentrant returns (uint256 yield) {
+
         uint256 pending = _calculatePendingRewards();
         if (pending > 0) {
             // We need to claim vested rewards.
@@ -189,8 +117,8 @@ contract AuraPositionVault is BasePositionVault {
 
         // Can only harvest once previous reward period is done.
         if (
-            positionVaultAccounting._lastVestClaim >=
-            positionVaultAccounting._vestingPeriodEnd
+            vaultData.lastVestClaim >=
+            vaultData.vestingPeriodEnd
         ) {
             // Harvest aura position.
             rewarder.getReward(address(this), true);
@@ -220,7 +148,9 @@ contract AuraPositionVault is BasePositionVault {
                 for (uint256 i = 0; i < numRewardTokens; ++i) {
                     reward = rewardTokens[i];
                     amount = ERC20(reward).balanceOf(address(this));
-                    if (amount == 0) continue;
+                    if (amount == 0) {
+                        continue;
+                    } 
 
                     // Take platform fee
                     protocolFee = amount.mulDivDown(
@@ -246,7 +176,7 @@ contract AuraPositionVault is BasePositionVault {
                     if (!isUnderlyingToken[reward]) {
                         SwapperLib.swap(
                             swapDataArray[i],
-                            address(positionVaultMetaData.priceRouter),
+                            centralRegistry.priceRouter(),
                             10000 // swap for 100% slippage, we have slippage check later for global level
                         );
                     }
@@ -315,15 +245,14 @@ contract AuraPositionVault is BasePositionVault {
             _deposit(yield);
 
             // update Vesting info.
-            positionVaultAccounting._rewardRate = uint128(
-                yield.mulDivDown(REWARD_SCALER, REWARD_PERIOD)
+            vaultData.rewardRate = uint128(
+                yield.mulDivDown(rewardOffset, vestPeriod)
             );
-            positionVaultAccounting._vestingPeriodEnd =
-                uint64(block.timestamp) +
-                REWARD_PERIOD;
-            positionVaultAccounting._lastVestClaim = uint64(block.timestamp);
+            vaultData.vestingPeriodEnd = uint64(block.timestamp + vestPeriod);
+            vaultData.lastVestClaim = uint64(block.timestamp);
             emit Harvest(yield);
-        } // else yield is zero.
+        } 
+        // else yield is zero.
     }
 
     /*//////////////////////////////////////////////////////////////

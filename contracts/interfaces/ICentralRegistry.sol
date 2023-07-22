@@ -48,6 +48,9 @@ interface ICentralRegistry {
     /// @notice Returns protocolYieldFee Address
     function protocolYieldFee() external view returns (uint256);
 
+    /// @notice Returns protocolHarvestFee Address
+    function protocolHarvestFee() external view returns (uint256);
+
     /// @notice Returns protocolLiquidationFee Address
     function protocolLiquidationFee() external view returns (uint256);
 
