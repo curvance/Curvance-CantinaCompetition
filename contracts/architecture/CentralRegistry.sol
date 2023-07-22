@@ -68,6 +68,7 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     address public priceRouter;
     address public depositRouter;
     address public zroAddress;
+    address public feeAccumulator;
     address public feeHub;
 
     /// PROTOCOL VALUES ///
@@ -222,6 +223,12 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     /// @dev only callable on a 7 day delay or by the Emergency Council
     function setFeeHub(address newFeeHub) public onlyElevatedPermissions {
         feeHub = newFeeHub;
+    }
+
+    /// @notice sets a new fee hub contract address
+    /// @dev only callable on a 7 day delay or by the Emergency Council
+    function setFeeAccumulator(address newFeeAccumulator) public onlyElevatedPermissions {
+        feeAccumulator = newFeeAccumulator;
     }
 
     /// @notice sets the fee from yield by Curvance DAO to use as gas to compound rewards for users

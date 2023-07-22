@@ -42,6 +42,9 @@ interface ICentralRegistry {
     /// @notice Returns feeHub Address
     function feeHub() external view returns (address);
 
+    /// @notice Returns feeAccumulator Address
+    function feeAccumulator() external view returns (address);
+
     /// @notice Returns protocolCompoundFee Address
     function protocolCompoundFee() external view returns (uint256);
 
