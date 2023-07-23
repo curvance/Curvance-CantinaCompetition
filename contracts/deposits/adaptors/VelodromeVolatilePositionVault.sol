@@ -44,25 +44,25 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
     mapping(address => bool) public isUnderlyingToken;
 
     constructor(
-        ERC20 _asset,
-        ICentralRegistry _centralRegistry,
-        IVeloGauge gauge_,
-        IVeloPairFactory pairFactory_,
-        IVeloRouter router_,
-        address tokenA_,
-        address tokenB_,
-        address[] memory rewardTokens_
-    ) BasePositionVault(_asset, _centralRegistry) {
+        ERC20 asset_,
+        ICentralRegistry centralRegistry_,
+        IVeloGauge gauge,
+        IVeloPairFactory pairFactory,
+        IVeloRouter router,
+        address tokenA,
+        address tokenB,
+        address[] memory rewardTokens
+    ) BasePositionVault(asset_, centralRegistry_) {
 
-        strategyData.tokenA = tokenA_;
-        strategyData.tokenB = tokenB_;
-        strategyData.gauge = gauge_;
-        strategyData.router = router_;
-        strategyData.pairFactory = pairFactory_;
-        strategyData.rewardTokens = rewardTokens_;
+        strategyData.tokenA = tokenA;
+        strategyData.tokenB = tokenB;
+        strategyData.gauge = gauge;
+        strategyData.router = router;
+        strategyData.pairFactory = pairFactory;
+        strategyData.rewardTokens = rewardTokens;
 
-        isUnderlyingToken[tokenA_] = true;
-        isUnderlyingToken[tokenB_] = true;
+        isUnderlyingToken[tokenA] = true;
+        isUnderlyingToken[tokenB] = true;
 
     }
 
@@ -182,7 +182,7 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
             valueIn.mulDivDown(1e18 - maxSlippage, 1e18), "VelodromeVolatilePositionVault: bad slippage");
 
             // add liquidity to velodrome lp
-            yield = addLiquidity(
+            yield = _addLiquidity(
                 sd.tokenA,
                 sd.tokenB,
                 totalAmountA,
@@ -221,19 +221,19 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
     }
 
     function _optimalDeposit(
-        uint256 _amountA,
-        uint256 _reserveA
+        uint256 amountA,
+        uint256 reserveA
     ) internal view returns (uint256) {
         uint256 swapFee = strategyData.pairFactory.getFee(false);
         uint256 swapFeeFactor = 10000 - swapFee;
-        uint256 a = (10000 + swapFeeFactor) * _reserveA;
-        uint256 b = _amountA * 10000 * _reserveA * 4 * swapFeeFactor;
+        uint256 a = (10000 + swapFeeFactor) * reserveA;
+        uint256 b = amountA * 10000 * reserveA * 4 * swapFeeFactor;
         uint256 c = Math.sqrt(a * a + b);
         uint256 d = swapFeeFactor * 2;
         return (c - a) / d;
     }
 
-    function approveRouter(address token, uint256 amount) internal {
+    function _approveRouter(address token, uint256 amount) internal {
         if (ERC20(token).allowance(address(this), address(strategyData.router)) >= amount) {
             return;
         }
@@ -246,7 +246,7 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
         address tokenOut,
         uint256 amount
     ) internal {
-        approveRouter(tokenIn, amount);
+        _approveRouter(tokenIn, amount);
         strategyData.router.swapExactTokensForTokensSimple(
             amount,
             0,
@@ -258,20 +258,20 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
         );
     }
 
-    function addLiquidity(
-        address _tokenA,
-        address _tokenB,
-        uint256 _amountA,
-        uint256 _amountB
+    function _addLiquidity(
+        address tokenA,
+        address tokenB,
+        uint256 amountA,
+        uint256 amountB
     ) internal returns (uint256 liquidity) {
-        approveRouter(_tokenA, _amountA);
-        approveRouter(_tokenB, _amountB);
+        _approveRouter(tokenA, amountA);
+        _approveRouter(tokenB, amountB);
         (, , liquidity) = strategyData.router.addLiquidity(
-            _tokenA,
-            _tokenB,
+            tokenA,
+            tokenB,
             false,
-            _amountA,
-            _amountB,
+            amountA,
+            amountB,
             0,
             0,
             address(this),

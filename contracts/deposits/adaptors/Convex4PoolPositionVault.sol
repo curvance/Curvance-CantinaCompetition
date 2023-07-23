@@ -69,7 +69,7 @@ contract ConvexPositionVault is BasePositionVault {
             }
         }
 
-        require (coinsLength == 4, "ConvexPositionVault: vault configured for 3Pool");
+        require (coinsLength == 4, "ConvexPositionVault: vault configured for 4Pool");
 
         strategyData.underlyingTokens = new address[](coinsLength);
         for (uint256 i; i < coinsLength; ) {
@@ -185,7 +185,7 @@ contract ConvexPositionVault is BasePositionVault {
             vaultData.rewardRate = uint128(yield.mulDivDown(rewardOffset, vestPeriod));
             vaultData.vestingPeriodEnd = uint64(block.timestamp + vestPeriod);
             vaultData.lastVestClaim = uint64(block.timestamp);
-            
+
             emit Harvest(yield);
         } 
         // else yield is zero

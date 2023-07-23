@@ -50,25 +50,25 @@ contract VelodromeStablePositionVault is BasePositionVault {
     constructor(
         ERC20 asset_,
         ICentralRegistry centralRegistry_,
-        IVeloGauge gauge_,
-        IVeloPairFactory pairFactory_,
-        IVeloRouter router_,
-        address tokenA_,
-        address tokenB_,
-        address[] memory rewardTokens_
+        IVeloGauge gauge,
+        IVeloPairFactory pairFactory,
+        IVeloRouter router,
+        address tokenA,
+        address tokenB,
+        address[] memory rewardTokens
     ) BasePositionVault(asset_, centralRegistry_) {
 
-        strategyData.tokenA = tokenA_;
-        strategyData.tokenB = tokenB_;
-        strategyData.decimalsA = 10 ** ERC20(tokenA_).decimals();
-        strategyData.decimalsB = 10 ** ERC20(tokenB_).decimals();
-        strategyData.gauge = gauge_;
-        strategyData.router = router_;
-        strategyData.pairFactory = pairFactory_;
-        strategyData.rewardTokens = rewardTokens_;
+        strategyData.tokenA = tokenA;
+        strategyData.tokenB = tokenB;
+        strategyData.decimalsA = 10 ** ERC20(tokenA).decimals();
+        strategyData.decimalsB = 10 ** ERC20(tokenB).decimals();
+        strategyData.gauge = gauge;
+        strategyData.router = router;
+        strategyData.pairFactory = pairFactory;
+        strategyData.rewardTokens = rewardTokens;
 
-        isUnderlyingToken[tokenA_] = true;
-        isUnderlyingToken[tokenB_] = true;
+        isUnderlyingToken[tokenA] = true;
+        isUnderlyingToken[tokenB] = true;
 
     }
 
@@ -194,7 +194,7 @@ contract VelodromeStablePositionVault is BasePositionVault {
             valueIn.mulDivDown(1e18 - maxSlippage, 1e18), "VelodromeStablePositionVault: bad slippage");
 
             // add liquidity to velodrome lp
-            yield = addLiquidity(
+            yield = _addLiquidity(
                 sd.tokenA,
                 sd.tokenB,
                 totalAmountA,
@@ -234,30 +234,28 @@ contract VelodromeStablePositionVault is BasePositionVault {
     }
 
     function _optimalDeposit(
-        uint256 _amountA,
-        uint256 _reserveA,
-        uint256 _reserveB,
-        uint256 _decimalsA,
-        uint256 _decimalsB
+        uint256 amountA,
+        uint256 reserveA,
+        uint256 reserveB,
+        uint256 decimalsA,
+        uint256 decimalsB
     ) internal pure returns (uint256) {
         uint256 num;
         uint256 den;
 
-        {
-            uint256 a = (_amountA * 1e18) / _decimalsA;
-            uint256 x = (_reserveA * 1e18) / _decimalsA;
-            uint256 y = (_reserveB * 1e18) / _decimalsB;
-            uint256 x2 = (x * x) / 1e18;
-            uint256 y2 = (y * y) / 1e18;
-            uint256 p = (y * (((x2 * 3 + y2) * 1e18) / (y2 * 3 + x2))) / x;
-            num = a * y;
-            den = ((a + x) * p) / 1e18 + y;
-        }
-
-        return ((num / den) * _decimalsA) / 1e18;
+        uint256 a = (amountA * 1e18) / decimalsA;
+        uint256 x = (reserveA * 1e18) / decimalsA;
+        uint256 y = (reserveB * 1e18) / decimalsB;
+        uint256 x2 = (x * x) / 1e18;
+        uint256 y2 = (y * y) / 1e18;
+        uint256 p = (y * (((x2 * 3 + y2) * 1e18) / (y2 * 3 + x2))) / x;
+        num = a * y;
+        den = ((a + x) * p) / 1e18 + y;
+        
+        return ((num / den) * decimalsA) / 1e18;
     }
 
-    function approveRouter(address token, uint256 amount) internal {
+    function _approveRouter(address token, uint256 amount) internal {
         if (ERC20(token).allowance(address(this), address(strategyData.router)) >= amount) {
             return;
         }
@@ -270,7 +268,7 @@ contract VelodromeStablePositionVault is BasePositionVault {
         address tokenOut,
         uint256 amount
     ) internal {
-        approveRouter(tokenIn, amount);
+        _approveRouter(tokenIn, amount);
         strategyData.router.swapExactTokensForTokensSimple(
             amount,
             0,
@@ -282,20 +280,20 @@ contract VelodromeStablePositionVault is BasePositionVault {
         );
     }
 
-    function addLiquidity(
-        address _tokenA,
-        address _tokenB,
-        uint256 _amountA,
-        uint256 _amountB
+    function _addLiquidity(
+        address tokenA,
+        address tokenB,
+        uint256 amountA,
+        uint256 amountB
     ) internal returns (uint256 liquidity) {
-        approveRouter(_tokenA, _amountA);
-        approveRouter(_tokenB, _amountB);
+        _approveRouter(tokenA, amountA);
+        _approveRouter(tokenB, amountB);
         (, , liquidity) = strategyData.router.addLiquidity(
-            _tokenA,
-            _tokenB,
+            tokenA,
+            tokenB,
             true,
-            _amountA,
-            _amountB,
+            amountA,
+            amountB,
             0,
             0,
             address(this),
