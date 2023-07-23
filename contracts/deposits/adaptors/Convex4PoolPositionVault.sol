@@ -98,23 +98,23 @@ contract ConvexPositionVault is BasePositionVault {
     ) public override onlyHarvestor vaultActive nonReentrant returns (uint256 yield) {
         uint256 pending = _calculatePendingRewards();
         if (pending > 0) {
-            // We need to claim vested rewards
+            // claim vested rewards
             _vestRewards(_totalAssets + pending);
         }
 
-        // Can only harvest once previous reward period is done
+        // can only harvest once previous reward period is done
         if (
             vaultData.lastVestClaim >=
             vaultData.vestingPeriodEnd
         ) {
 
-            // Cache strategy data
+            // cache strategy data
             StrategyData memory sd = strategyData;
 
-            // Claim base convex rewards
+            // claim base convex rewards
             sd.rewarder.getReward(address(this), true);
 
-            // Claim extra rewards
+            // claim extra rewards
             uint256 extraRewardsLength = sd.rewarder.extraRewardsLength();
             for (uint256 i; i < extraRewardsLength; ++i) {
                 IRewards extraReward = IRewards(sd.rewarder.extraRewards(i));

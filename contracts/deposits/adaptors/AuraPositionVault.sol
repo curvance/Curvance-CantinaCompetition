@@ -86,23 +86,23 @@ contract AuraPositionVault is BasePositionVault {
 
         uint256 pending = _calculatePendingRewards();
         if (pending > 0) {
-            // We need to claim vested rewards
+            // claim vested rewards
             _vestRewards(_totalAssets + pending);
         }
 
-        // Can only harvest once previous reward period is done
+        // can only harvest once previous reward period is done
         if (
             vaultData.lastVestClaim >=
             vaultData.vestingPeriodEnd
         ) {
             
-            // Cache strategy data
+            // cache strategy data
             StrategyData memory sd = strategyData;
 
-            // Claim base aura rewards
+            // claim base aura rewards
             sd.rewarder.getReward(address(this), true);
 
-            // Claim extra rewards
+            // claim extra rewards
             uint256 rewardTokenCount = 2 + sd.rewarder.extraRewardsLength();
             for (uint256 i = 2; i < rewardTokenCount; ++i) {
                 IRewards extraReward = IRewards(sd.rewarder.extraRewards(i - 2));
