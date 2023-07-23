@@ -4,7 +4,6 @@ pragma solidity ^0.8.17;
 import { BasePositionVault, ERC4626, SafeTransferLib, ERC20, Math, IPriceRouter, ICentralRegistry } from "contracts/deposits/adaptors/BasePositionVault.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 
-// External interfaces
 import { IVeloGauge } from "contracts/interfaces/external/velodrome/IVeloGauge.sol";
 import { IVeloRouter } from "contracts/interfaces/external/velodrome/IVeloRouter.sol";
 import { IVeloPair } from "contracts/interfaces/external/velodrome/IVeloPair.sol";
@@ -19,7 +18,6 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
     event Harvest(uint256 yield);
 
     /// STRUCTS ///
-
     struct StrategyData {
         /// @notice Velodrome Gauge contract
         IVeloGauge gauge;
@@ -67,6 +65,11 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
     }
 
     /// REWARD AND HARVESTING LOGIC ///
+    /// @notice Harvests and compounds outstanding vault rewards and vests pending rewards.
+    /// @dev Only callable by Gelato Network bot
+    /// @param data Bytes array for aggregator swap data.
+    /// @param maxSlippage Maximum allowable slippage on swapping.
+    /// @return yield The amount of new assets acquired from compounding vault yield.
     function harvest(
         bytes memory data,
         uint256 maxSlippage

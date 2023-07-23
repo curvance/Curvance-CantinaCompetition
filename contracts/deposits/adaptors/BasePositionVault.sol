@@ -446,13 +446,13 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         return _convertToAssets(shares, _ta);
     }
 
-    /// INTERNAL POSITION LOGIC ///
+    /// INTERNAL POSITION LOGIC TO OVERRIDE ///
     function _withdraw(uint256 assets) internal virtual;
 
     function _deposit(uint256 assets) internal virtual;
 
     function _getRealPositionBalance() internal view virtual returns (uint256);
 
-    /// EXTERNAL POSITION LOGIC ///
+    /// EXTERNAL POSITION LOGIC TO OVERRIDE///
     function harvest(bytes memory, uint256 maxSlippage) public virtual returns (uint256 yield);
 }
