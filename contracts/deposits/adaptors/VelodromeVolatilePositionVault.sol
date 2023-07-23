@@ -54,7 +54,7 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
     ) BasePositionVault(asset_, centralRegistry_) {
 
         /// Validate that we have the proper gauge linked with the proper LP and pair factory
-        require(gauge.stakingToken() == asset() && address(pairFactory) == router.factory(), "VelodromeStablePositionVault: improper velodrome vault config");
+        require(gauge.stakingToken() == asset() && address(pairFactory) == router.factory(), "VelodromeVolatilePositionVault: improper velodrome vault config");
 
         // Query underlying token data from the pool
         strategyData.token0 = IVeloPool(asset()).token0();

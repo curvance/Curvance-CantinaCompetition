@@ -8,6 +8,8 @@ import { IBooster } from "contracts/interfaces/external/convex/IBooster.sol";
 import { IBaseRewardPool } from "contracts/interfaces/external/convex/IBaseRewardPool.sol";
 import { IRewards } from "contracts/interfaces/external/convex/IRewards.sol";
 import { IBalancerVault } from "contracts/interfaces/external/balancer/IBalancerVault.sol";
+import { IBalancerPool } from "contracts/interfaces/external/balancer/IBalancerPool.sol";
+import { IStashWrapper } from "contracts/interfaces/external/aura/IStashWrapper.sol";
 
 contract AuraPositionVault is BasePositionVault {
     using Math for uint256;
@@ -33,6 +35,9 @@ contract AuraPositionVault is BasePositionVault {
         address[] underlyingTokens;
     }
 
+    /// CONSTANTS ///
+    address private constant BAL = 0xba100000625a3754423978a60c9317c58a424e3D;
+
     /// STORAGE ///
 
     /// Vault Strategy Data
@@ -43,31 +48,43 @@ contract AuraPositionVault is BasePositionVault {
     constructor(
         ERC20 asset_,
         ICentralRegistry centralRegistry_,
-        address balancerVault_,
-        bytes32 balancerPoolId_,
         uint256 pid_,
         address rewarder_,
-        address booster_,
-        address[] memory rewardTokens_,
-        address[] memory underlyingTokens_
+        address booster_
     ) BasePositionVault(asset_, centralRegistry_) {
 
-        uint256 numUnderlyingTokens = underlyingTokens_.length;
 
-        for (uint256 i; i < numUnderlyingTokens; ) {
-            unchecked {
-                isUnderlyingToken[underlyingTokens_[i++]] = true;
-            }
+        strategyData.pid = pid_;
+        strategyData.booster = IBooster(booster_);
+
+        /// query actual convex pool configuration data
+        (address pidToken, , , address balRewards, , bool shutdown) = strategyData.booster.poolInfo(strategyData.pid);
+
+        /// validate that the pool is still active and that the lp token and rewarder in aura matches what we are configuring for
+        require (pidToken == asset() && !shutdown && balRewards == rewarder_, "AuraPositionVault: improper aura vault config");
+
+        strategyData.rewarder = IBaseRewardPool(rewarder_);
+        strategyData.balancerVault = IBalancerVault(IBalancerPool(pidToken).getVault());
+        strategyData.balancerPoolId = IBalancerPool(pidToken).getPoolId();
+
+        /// add BAL as a reward token, then let aura tell you what rewards the vault will receive
+        strategyData.rewardTokens.push() = BAL;
+        uint256 extraRewardsLength = strategyData.rewarder.extraRewardsLength();
+        for (uint256 i; i < extraRewardsLength; ++i) {
+            strategyData.rewardTokens.push() = IStashWrapper(IRewards(strategyData.rewarder.extraRewards(i)).rewardToken()).baseToken();
         }
 
-        strategyData.balancerVault = IBalancerVault(balancerVault_);
-        strategyData.balancerPoolId = balancerPoolId_;
-        strategyData.pid = pid_;
-        strategyData.rewarder = IBaseRewardPool(rewarder_);
-        strategyData.booster = IBooster(booster_);
-        strategyData.rewardTokens = rewardTokens_;
-        strategyData.underlyingTokens = underlyingTokens_;
-
+        /// query liquidity pools underlying tokens from the balancer vault
+        (address[] memory underlyingTokens, ,) = strategyData.balancerVault.getPoolTokens(strategyData.balancerPoolId);
+        strategyData.underlyingTokens = underlyingTokens;
+        
+        uint256 numUnderlyingTokens = strategyData.underlyingTokens.length;
+        for (uint256 i; i < numUnderlyingTokens; ) {
+            unchecked {
+                isUnderlyingToken[strategyData.underlyingTokens[i++]] = true;
+            }
+        }
+        
     }
 
     /// PERMISSIONED FUNCTIONS ///
@@ -107,10 +124,11 @@ contract AuraPositionVault is BasePositionVault {
             sd.rewarder.getReward(address(this), true);
 
             // claim extra rewards
-            uint256 rewardTokenCount = 2 + sd.rewarder.extraRewardsLength();
-            for (uint256 i = 2; i < rewardTokenCount; ++i) {
-                IRewards extraReward = IRewards(sd.rewarder.extraRewards(i - 2));
-                extraReward.getReward();
+            uint256 extraRewardsLength = sd.rewarder.extraRewardsLength();
+            if (extraRewardsLength > 1) {
+                for (uint256 i = 1; i < extraRewardsLength; ++i) {
+                    IRewards(sd.rewarder.extraRewards(i)).getReward();
+                }
             }
 
             uint256 valueIn;
