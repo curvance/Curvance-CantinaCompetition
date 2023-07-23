@@ -10,43 +10,41 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 contract CVEAirdrop is ReentrancyGuard {
 
+    /// EVENTS ///
     event callOptionCVEAirdropClaimed(address indexed claimer, uint256 amount);
     event RemainingCallOptionCVEWithdrawn(uint256 amount);
     event OwnerUpdated(address indexed user, address indexed newOwner);
 
+    /// CONSTANTS ///
     ICentralRegistry public immutable centralRegistry;
     uint256 public immutable maximumClaimAmount;
     uint256 public immutable endClaimTimestamp;
 
+    /// STORAGE ///
     bytes32 public airdropMerkleRoot;
     bool public isPaused = true;
 
     mapping(address => bool) public airdropClaimed;
 
-    /// @notice Constructor
-    /// @param _centralRegistry Contract Address of Curvance Central Registry
-    /// @param _endTimestamp end timestamp for airdrop claiming
-    /// @param _root Airdrop merkle root for claim validation
-    /// @param _maximumClaimAmount maximum amount to claim per address
     constructor(
-        ICentralRegistry _centralRegistry,
-        uint256 _endTimestamp,
-        uint256 _maximumClaimAmount,
-        bytes32 _root
+        ICentralRegistry centralRegistry_,
+        uint256 endTimestamp_,
+        uint256 maximumClaimAmount_,
+        bytes32 root_
     ) {
 
         require(
             ERC165Checker.supportsInterface(
-                address(_centralRegistry),
+                address(centralRegistry_),
                 type(ICentralRegistry).interfaceId
             ),
             "CVEAirdrop: invalid central registry"
         );
 
-        centralRegistry = _centralRegistry;
-        endClaimTimestamp = _endTimestamp;
-        maximumClaimAmount = _maximumClaimAmount;
-        airdropMerkleRoot = _root;
+        centralRegistry = centralRegistry_;
+        endClaimTimestamp = endTimestamp_;
+        maximumClaimAmount = maximumClaimAmount_;
+        airdropMerkleRoot = root_;
     }
 
     modifier onlyDaoPermissions() {
@@ -60,11 +58,11 @@ contract CVEAirdrop is ReentrancyGuard {
     }
 
     /// @notice Claim CVE Call Option tokens for airdrop
-    /// @param _amount Requested CVE amount to claim for the airdrop
-    /// @param _proof Bytes32 array containing the merkle proof
+    /// @param amount Requested CVE amount to claim for the airdrop
+    /// @param proof Bytes32 array containing the merkle proof
     function claimAirdrop(
-        uint256 _amount,
-        bytes32[] calldata _proof
+        uint256 amount,
+        bytes32[] calldata proof
     ) external notPaused nonReentrant {
         // Verify that the airdrop Merkle Root has been set
         require(
@@ -74,7 +72,7 @@ contract CVEAirdrop is ReentrancyGuard {
 
         // Verify CVE amount request is not above the maximum claim amount
         require(
-            _amount <= maximumClaimAmount,
+            amount <= maximumClaimAmount,
             "CVEAirdrop: Amount too high"
         );
 
@@ -92,10 +90,10 @@ contract CVEAirdrop is ReentrancyGuard {
 
         // Compute the merkle leaf and verify the merkle proof
         require(
-            verifyProof(
-                _proof,
+            verify(
+                proof,
                 airdropMerkleRoot,
-                keccak256(abi.encodePacked(msg.sender, _amount))
+                keccak256(abi.encodePacked(msg.sender, amount))
             ),
             "CVEAirdrop: Invalid proof provided"
         );
@@ -106,58 +104,61 @@ contract CVEAirdrop is ReentrancyGuard {
         // Transfer CVE tokens
         SafeTransferLib.safeTransfer(centralRegistry.callOptionCVE(),
             msg.sender,
-            _amount
+            amount
         );
 
-        emit callOptionCVEAirdropClaimed(msg.sender, _amount);
+        emit callOptionCVEAirdropClaimed(msg.sender, amount);
     }
 
-    /// @notice Gas efficient merkle proof verification implementation to validate CVE token claim
-    /// @param _proof Requested CVE amount to claim for the airdrop
-    /// @param _root Merkle root to check computed hash against
-    /// @param _leaf Merkle leaf containing hashed inputs to compare proof element against
-    function verifyProof(
-        bytes32[] memory _proof,
-        bytes32 _root,
-        bytes32 _leaf
-    ) internal pure returns (bool) {
-        bytes32 computedHash = _leaf;
-        uint256 numProof = _proof.length;
-        bytes32 proofElement;
-
-        for (uint256 i; i < numProof; ) {
-            proofElement = _proof[i++];
-
-            if (computedHash <= proofElement) {
-                computedHash = keccak256(
-                    abi.encodePacked(computedHash, proofElement)
-                );
-            } else {
-                computedHash = keccak256(
-                    abi.encodePacked(proofElement, computedHash)
-                );
+    /// @dev Returns whether `leaf` exists in the Merkle tree with `root`, given `proof`.
+    function verify(bytes32[] memory proof, bytes32 root, bytes32 leaf)
+        internal
+        pure
+        returns (bool isValid)
+    {
+        /// @solidity memory-safe-assembly
+        assembly {
+            if mload(proof) {
+                // Initialize `offset` to the offset of `proof` elements in memory.
+                let offset := add(proof, 0x20)
+                // Left shift by 5 is equivalent to multiplying by 0x20.
+                let end := add(offset, shl(5, mload(proof)))
+                // Iterate over proof elements to compute root hash.
+                for {} 1 {} {
+                    // Slot of `leaf` in scratch space.
+                    // If the condition is true: 0x20, otherwise: 0x00.
+                    let scratch := shl(5, gt(leaf, mload(offset)))
+                    // Store elements to hash contiguously in scratch space.
+                    // Scratch space is 64 bytes (0x00 - 0x3f) and both elements are 32 bytes.
+                    mstore(scratch, leaf)
+                    mstore(xor(scratch, 0x20), mload(offset))
+                    // Reuse `leaf` to store the hash to reduce stack operations.
+                    leaf := keccak256(0x00, 0x40)
+                    offset := add(offset, 0x20)
+                    if iszero(lt(offset, end)) { break }
+                }
             }
+            isValid := eq(leaf, root)
         }
-        return computedHash == _root;
     }
 
     /// @notice Check whether a user has CVE tokens to claim
-    /// @param _address address of the user to check
-    /// @param _amount amount to claim
-    /// @param _proof array containing the merkle proof
+    /// @param user address of the user to check
+    /// @param amount amount to claim
+    /// @param proof array containing the merkle proof
     function canClaimAirdrop(
-        address _address,
-        uint256 _amount,
-        bytes32[] calldata _proof
+        address user,
+        uint256 amount,
+        bytes32[] calldata proof
     ) external view returns (bool) {
-        if (!airdropClaimed[_address]) {
+        if (!airdropClaimed[user]) {
             if (block.timestamp < endClaimTimestamp) {
                 // Compute the leaf and verify the merkle proof
                 return
-                    verifyProof(
-                        _proof,
+                    verify(
+                        proof,
                         airdropMerkleRoot,
-                        keccak256(abi.encodePacked(_address, _amount))
+                        keccak256(abi.encodePacked(user, amount))
                     );
             }
         }
@@ -165,30 +166,31 @@ contract CVEAirdrop is ReentrancyGuard {
     }
 
     /// @dev rescue any token sent by mistake
-    /// @param _token token to rescue
-    /// @param _recipient address to receive token
+    /// @param token token to rescue
+    /// @param recipient address to receive token
+    /// @param amount amount of `token` to rescue, 0 indicates to rescue all
     function rescueToken(
-        address _token,
-        address _recipient,
-        uint256 _amount
+        address token,
+        address recipient,
+        uint256 amount
     ) external onlyDaoPermissions {
         require(
-            _recipient != address(0),
+            recipient != address(0),
             "CVEAirdrop: Invalid recipient address"
         );
-        if (_token == address(0)) {
+        if (token == address(0)) {
             require(
-                address(this).balance >= _amount,
+                address(this).balance >= amount,
                 "CVEAirdrop: Insufficient balance"
             );
-            (bool success, ) = payable(_recipient).call{ value: _amount }("");
+            (bool success, ) = payable(recipient).call{ value: amount }("");
             require(success, "CVEAirdrop: !successful");
         } else {
             require(
-                IERC20(_token).balanceOf(address(this)) >= _amount,
+                IERC20(token).balanceOf(address(this)) >= amount,
                 "CVEAirdrop: Insufficient balance"
             );
-            SafeTransferLib.safeTransfer(_token, _recipient, _amount);
+            SafeTransferLib.safeTransfer(token, recipient, amount);
         }
     }
 
@@ -209,15 +211,15 @@ contract CVEAirdrop is ReentrancyGuard {
     }
 
     /// @notice Set airdropMerkleRoot for airdrop validation
-    /// @param _root new merkle root
-    function setMerkleRoot(bytes32 _root) external onlyDaoPermissions {
-        require(_root != bytes32(0), "CVEAirdrop: Invalid Parameter");
-        airdropMerkleRoot = _root;
+    /// @param newRoot new merkle root
+    function setMerkleRoot(bytes32 newRoot) external onlyDaoPermissions {
+        require(newRoot != bytes32(0), "CVEAirdrop: Invalid Parameter");
+        airdropMerkleRoot = newRoot;
     }
 
     /// @notice Set isPaused state
-    /// @param _state new pause state
-    function setPauseState(bool _state) external onlyDaoPermissions {
-        isPaused = _state;
+    /// @param state new pause state
+    function setPauseState(bool state) external onlyDaoPermissions {
+        isPaused = state;
     }
 }
