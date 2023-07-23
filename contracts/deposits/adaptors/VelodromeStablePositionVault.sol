@@ -8,6 +8,7 @@ import { IVeloGauge } from "contracts/interfaces/external/velodrome/IVeloGauge.s
 import { IVeloRouter } from "contracts/interfaces/external/velodrome/IVeloRouter.sol";
 import { IVeloPair } from "contracts/interfaces/external/velodrome/IVeloPair.sol";
 import { IVeloPairFactory } from "contracts/interfaces/external/velodrome/IVeloPairFactory.sol";
+import { IVeloPool } from "contracts/interfaces/external/velodrome/IVeloPool.sol";
 
 contract VelodromeStablePositionVault is BasePositionVault {
     using Math for uint256;
@@ -94,7 +95,7 @@ contract VelodromeStablePositionVault is BasePositionVault {
             StrategyData memory sd = strategyData;
 
             // claim velodrome rewards
-            sd.gauge.getReward(address(this), sd.rewardTokens);
+            sd.gauge.getReward(address(this));
 
             uint256 valueIn;
 
@@ -221,7 +222,7 @@ contract VelodromeStablePositionVault is BasePositionVault {
     /// @param assets The amount of assets to deposit
     function _deposit(uint256 assets) internal override {
         SafeTransferLib.safeApprove(asset(), address(strategyData.gauge), assets);
-        strategyData.gauge.deposit(assets, 0);
+        strategyData.gauge.deposit(assets);
     }
 
     /// @notice Withdraws specified amount of assets from velodrome gauge pool
@@ -291,15 +292,13 @@ contract VelodromeStablePositionVault is BasePositionVault {
         uint256 amount
     ) internal {
         _approveRouter(tokenIn, amount);
-        strategyData.router.swapExactTokensForTokensSimple(
-            amount,
-            0,
-            tokenIn,
-            tokenOut,
-            true,
-            address(this),
-            block.timestamp
-        );
+        IVeloRouter.Route[] memory routes = new IVeloRouter.Route[](1);
+        routes[0].from = tokenIn;
+        routes[0].to = tokenOut;
+        routes[0].stable = true;
+        routes[0].factory = IVeloPool(asset()).factory();
+
+        strategyData.router.swapExactTokensForTokens(amount, 0, routes, address(this), block.timestamp);
     }
 
     /// @notice Adds `tokenA` and `tokenB` into a velodrome LP
