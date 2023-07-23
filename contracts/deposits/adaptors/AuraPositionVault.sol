@@ -221,6 +221,7 @@ contract AuraPositionVault is BasePositionVault {
             vaultData.rewardRate = uint128(yield.mulDivDown(rewardOffset, vestPeriod));
             vaultData.vestingPeriodEnd = uint64(block.timestamp + vestPeriod);
             vaultData.lastVestClaim = uint64(block.timestamp);
+            
             emit Harvest(yield);
         } 
         // else yield is zero

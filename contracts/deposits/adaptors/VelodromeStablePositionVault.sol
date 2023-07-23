@@ -83,7 +83,7 @@ contract VelodromeStablePositionVault is BasePositionVault {
             _vestRewards(_totalAssets + pending);
         }
 
-        // can only harvest once previous reward period is done.
+        // can only harvest once previous reward period is done
         if (
             vaultData.lastVestClaim >=
             vaultData.vestingPeriodEnd
@@ -208,6 +208,8 @@ contract VelodromeStablePositionVault is BasePositionVault {
             vaultData.rewardRate = uint128(yield.mulDivDown(rewardOffset, vestPeriod));
             vaultData.vestingPeriodEnd = uint64(block.timestamp + vestPeriod);
             vaultData.lastVestClaim = uint64(block.timestamp);
+
+            emit Harvest(yield);
         } 
         // else yield is zero.
     }
@@ -256,8 +258,10 @@ contract VelodromeStablePositionVault is BasePositionVault {
     }
 
     function approveRouter(address token, uint256 amount) internal {
-        if (ERC20(token).allowance(address(this), address(strategyData.router)) >= amount)
+        if (ERC20(token).allowance(address(this), address(strategyData.router)) >= amount) {
             return;
+        }
+            
         SafeTransferLib.safeApprove(token, address(strategyData.router), type(uint256).max);
     }
 
@@ -297,40 +301,6 @@ contract VelodromeStablePositionVault is BasePositionVault {
             address(this),
             block.timestamp
         );
-    }
-
-    function swapTokensForBestAmountOut(
-        IOptiSwap _optiSwap,
-        address tokenIn,
-        address tokenOut,
-        uint256 amountIn
-    ) internal returns (uint256 amountOut) {
-        if (tokenIn == tokenOut) {
-            return amountIn;
-        }
-        address pair;
-        (pair, amountOut) = _optiSwap.getBestAmountOut(
-            amountIn,
-            tokenIn,
-            tokenOut
-        );
-        require(pair != address(0), "VelodromeStablePositionVault: NO_PAIR");
-        SafeTransferLib.safeTransfer(tokenIn, pair, amountIn);
-        if (tokenIn < tokenOut) {
-            IOptiSwapPair(pair).swap(
-                0,
-                amountOut,
-                address(this),
-                new bytes(0)
-            );
-        } else {
-            IOptiSwapPair(pair).swap(
-                amountOut,
-                0,
-                address(this),
-                new bytes(0)
-            );
-        }
     }
 
 }
