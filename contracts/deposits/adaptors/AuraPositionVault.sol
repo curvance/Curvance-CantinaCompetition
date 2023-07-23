@@ -37,6 +37,7 @@ contract AuraPositionVault is BasePositionVault {
 
     /// CONSTANTS ///
     address private constant BAL = 0xba100000625a3754423978a60c9317c58a424e3D;
+    address private constant AURA = 0xC0c293ce456fF0ED870ADd98a0828Dd4d2903DBF;
 
     /// STORAGE ///
 
@@ -68,9 +69,15 @@ contract AuraPositionVault is BasePositionVault {
 
         /// add BAL as a reward token, then let aura tell you what rewards the vault will receive
         strategyData.rewardTokens.push() = BAL;
+        /// add AURA as a reward token, since some vaults do not list AURA as a reward token
+        strategyData.rewardTokens.push() = AURA;
+        
         uint256 extraRewardsLength = strategyData.rewarder.extraRewardsLength();
         for (uint256 i; i < extraRewardsLength; ++i) {
-            strategyData.rewardTokens.push() = IStashWrapper(IRewards(strategyData.rewarder.extraRewards(i)).rewardToken()).baseToken();
+            address rewardToken = IStashWrapper(IRewards(strategyData.rewarder.extraRewards(i)).rewardToken()).baseToken();
+            if (rewardToken != AURA) {
+                strategyData.rewardTokens.push() = rewardToken;
+            }
         }
 
         /// query liquidity pools underlying tokens from the balancer vault
@@ -92,9 +99,15 @@ contract AuraPositionVault is BasePositionVault {
 
         /// add BAL as a reward token, then let aura tell you what rewards the vault will receive
         strategyData.rewardTokens.push() = BAL;
+        /// add AURA as a reward token, since some vaults do not list AURA as a reward token
+        strategyData.rewardTokens.push() = AURA;
+
         uint256 extraRewardsLength = strategyData.rewarder.extraRewardsLength();
         for (uint256 i; i < extraRewardsLength; ++i) {
-            strategyData.rewardTokens.push() = IStashWrapper(IRewards(strategyData.rewarder.extraRewards(i)).rewardToken()).baseToken();
+            address rewardToken = IStashWrapper(IRewards(strategyData.rewarder.extraRewards(i)).rewardToken()).baseToken();
+            if (rewardToken != AURA) {
+                strategyData.rewardTokens.push() = rewardToken;
+            }
         }
     }
 
@@ -124,16 +137,8 @@ contract AuraPositionVault is BasePositionVault {
             // cache strategy data
             StrategyData memory sd = strategyData;
 
-            // claim base aura rewards
+            // claim aura rewards
             sd.rewarder.getReward(address(this), true);
-
-            // claim extra rewards
-            uint256 extraRewardsLength = sd.rewarder.extraRewardsLength();
-            if (extraRewardsLength > 1) {
-                for (uint256 i = 1; i < extraRewardsLength; ++i) {
-                    IRewards(sd.rewarder.extraRewards(i)).getReward();
-                }
-            }
 
             uint256 valueIn;
 

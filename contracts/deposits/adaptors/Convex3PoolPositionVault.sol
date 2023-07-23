@@ -139,14 +139,8 @@ contract ConvexPositionVault is BasePositionVault {
             // cache strategy data
             StrategyData memory sd = strategyData;
 
-            // claim base convex rewards
+            // claim convex rewards
             sd.rewarder.getReward(address(this), true);
-
-            // claim extra rewards
-            uint256 extraRewardsLength = sd.rewarder.extraRewardsLength();
-            for (uint256 i; i < extraRewardsLength; ++i) {
-                IRewards(sd.rewarder.extraRewards(i)).getReward();
-            }
 
             uint256 valueIn;
             
