@@ -8,7 +8,6 @@ import { IBooster } from "contracts/interfaces/external/convex/IBooster.sol";
 import { IBaseRewardPool } from "contracts/interfaces/external/convex/IBaseRewardPool.sol";
 import { IRewards } from "contracts/interfaces/external/convex/IRewards.sol";
 import { ICurveFi } from "contracts/interfaces/external/curve/ICurveFi.sol";
-import { ICurveSwaps } from "contracts/interfaces/external/curve/ICurveSwaps.sol";
 
 contract ConvexPositionVault is BasePositionVault {
     using Math for uint256;
@@ -18,17 +17,17 @@ contract ConvexPositionVault is BasePositionVault {
 
     /// STRUCTS ///
     struct StrategyData {
-        /// @notice Curve Pool Address.
+        /// @notice Curve Pool Address
         ICurveFi curvePool;
-        /// @notice Convex Pool Id.
+        /// @notice Convex Pool Id
         uint256 pid;
-        /// @notice Convex Rewarder contract.
+        /// @notice Convex Rewarder contract
         IBaseRewardPool rewarder;
-        /// @notice Convex Booster contract.
+        /// @notice Convex Booster contract
         IBooster booster;
-        /// @notice Convex reward assets.
+        /// @notice Convex reward assets
         address[] rewardTokens;
-        /// @notice Curve LP underlying assets.
+        /// @notice Curve LP underlying assets
         address[] underlyingTokens;
     }
 
@@ -50,7 +49,7 @@ contract ConvexPositionVault is BasePositionVault {
         address[] memory rewardTokens_
     ) BasePositionVault(asset_, centralRegistry_) {
 
-        // We will only support Curves new ng pools with read only reentry protection
+        // we will only support Curves new ng pools with read only reentry protection
         require(pid_ > 176, "ConvexPositionVault: unsafe pools");
 
         strategyData.curvePool = curvePool_;
@@ -61,7 +60,7 @@ contract ConvexPositionVault is BasePositionVault {
 
         uint256 coinsLength;
         address token;
-        // Figure out how many tokens are in the curve pool.
+        // figure out how many tokens are in the curve pool.
         while (true) {
             try strategyData.curvePool.coins(coinsLength) {
                 ++coinsLength;
@@ -93,38 +92,37 @@ contract ConvexPositionVault is BasePositionVault {
     }
 
     /// REWARD AND HARVESTING LOGIC ///
-    /// @notice Harvests and compounds outstanding vault rewards and vests pending rewards.
+    /// @notice Harvests and compounds outstanding vault rewards and vests pending rewards
     /// @dev Only callable by Gelato Network bot
-    /// @param data Bytes array for aggregator swap data.
-    /// @param maxSlippage Maximum allowable slippage on swapping.
-    /// @return yield The amount of new assets acquired from compounding vault yield.
+    /// @param data Bytes array for aggregator swap data
+    /// @param maxSlippage Maximum allowable slippage on swapping
+    /// @return yield The amount of new assets acquired from compounding vault yield
     function harvest(
         bytes memory data,
         uint256 maxSlippage
     ) public override onlyHarvestor vaultActive nonReentrant returns (uint256 yield) {
         uint256 pending = _calculatePendingRewards();
         if (pending > 0) {
-            // We need to claim vested rewards.
+            // claim vested rewards
             _vestRewards(_totalAssets + pending);
         }
 
-        // Can only harvest once previous reward period is done.
+        // can only harvest once previous reward period is done.
         if (
             vaultData.lastVestClaim >=
             vaultData.vestingPeriodEnd
         ) {
 
-            // Cache strategy data
+            // cache strategy data
             StrategyData memory sd = strategyData;
 
-            // Harvest convex position.
+            // claim base convex rewards
             sd.rewarder.getReward(address(this), true);
 
             // Claim extra rewards
             uint256 extraRewardsLength = sd.rewarder.extraRewardsLength();
             for (uint256 i; i < extraRewardsLength; ++i) {
-                IRewards extraReward = IRewards(sd.rewarder.extraRewards(i));
-                extraReward.getReward();
+                IRewards(sd.rewarder.extraRewards(i)).getReward();
             }
 
             uint256 valueIn;
@@ -149,7 +147,7 @@ contract ConvexPositionVault is BasePositionVault {
                         continue;
                     }
 
-                    // Take platform fee
+                    // take protocol fee
                     protocolFee = rewardAmount.mulDivDown(
                         vaultHarvestFee(),
                         1e18
@@ -163,7 +161,6 @@ contract ConvexPositionVault is BasePositionVault {
 
                     (rewardPrice, ) = getPriceRouter().getPrice(address(rewardToken), true, true);
 
-                    // Get the reward token value in USD.
                     valueIn = rewardAmount.mulDivDown(
                         rewardPrice,
                         10 ** ERC20(rewardToken).decimals()
@@ -176,7 +173,6 @@ contract ConvexPositionVault is BasePositionVault {
                             10000 // swap for 100% slippage, we have slippage check later for global level
                         );
                     }
-
                 }
             }
 
@@ -184,11 +180,11 @@ contract ConvexPositionVault is BasePositionVault {
             require(_addLiquidityToCurve() >
                 valueIn.mulDivDown(1e18 - maxSlippage, 1e18), "ConvexPositionVault: bad slippage");
             
-            // Deposit assets into convex
+            // deposit assets into convex
             yield = ERC20(asset()).balanceOf(address(this));
             _deposit(yield);
 
-            // Update vesting info
+            // update vesting info
             vaultData.rewardRate = uint128(yield.mulDivDown(rewardOffset, vestPeriod));
             vaultData.vestingPeriodEnd = uint64(block.timestamp + vestPeriod);
             vaultData.lastVestClaim = uint64(block.timestamp);
@@ -199,17 +195,17 @@ contract ConvexPositionVault is BasePositionVault {
     }
 
     /// INTERNAL POSITION LOGIC ///
-    /// @notice Withdraws specified amount of assets from Convex reward pool
-    /// @param assets The amount of assets to withdraw
-    function _withdraw(uint256 assets) internal override {
-        strategyData.rewarder.withdrawAndUnwrap(assets, false);
-    }
-
     /// @notice Deposits specified amount of assets into Convex booster contract
     /// @param assets The amount of assets to deposit
     function _deposit(uint256 assets) internal override {
         SafeTransferLib.safeApprove(asset(), address(strategyData.booster), assets);
         strategyData.booster.deposit(strategyData.pid, assets, true);
+    }
+
+    /// @notice Withdraws specified amount of assets from Convex reward pool
+    /// @param assets The amount of assets to withdraw
+    function _withdraw(uint256 assets) internal override {
+        strategyData.rewarder.withdrawAndUnwrap(assets, false);
     }
 
     /// @notice Gets the balance of assets inside Convex reward pool

@@ -8,8 +8,6 @@ import { IVeloGauge } from "contracts/interfaces/external/velodrome/IVeloGauge.s
 import { IVeloRouter } from "contracts/interfaces/external/velodrome/IVeloRouter.sol";
 import { IVeloPair } from "contracts/interfaces/external/velodrome/IVeloPair.sol";
 import { IVeloPairFactory } from "contracts/interfaces/external/velodrome/IVeloPairFactory.sol";
-import { IOptiSwap } from "contracts/interfaces/external/velodrome/IOptiSwap.sol";
-import { IOptiSwapPair } from "contracts/interfaces/external/velodrome/IOptiSwapPair.sol";
 
 contract VelodromeStablePositionVault is BasePositionVault {
     using Math for uint256;
@@ -71,11 +69,11 @@ contract VelodromeStablePositionVault is BasePositionVault {
     }
 
     /// REWARD AND HARVESTING LOGIC ///
-    /// @notice Harvests and compounds outstanding vault rewards and vests pending rewards.
+    /// @notice Harvests and compounds outstanding vault rewards and vests pending rewards
     /// @dev Only callable by Gelato Network bot
-    /// @param data Bytes array for aggregator swap data.
-    /// @param maxSlippage Maximum allowable slippage on swapping.
-    /// @return yield The amount of new assets acquired from compounding vault yield.
+    /// @param data Bytes array for aggregator swap data
+    /// @param maxSlippage Maximum allowable slippage on swapping
+    /// @return yield The amount of new assets acquired from compounding vault yield
     function harvest(
         bytes memory data,
         uint256 maxSlippage
@@ -218,15 +216,21 @@ contract VelodromeStablePositionVault is BasePositionVault {
     }
 
     /// INTERNAL POSITION LOGIC ///
-    function _withdraw(uint256 assets) internal override {
-        strategyData.gauge.withdraw(assets);
-    }
-
+    /// @notice Deposits specified amount of assets into velodrome gauge pool
+    /// @param assets The amount of assets to deposit
     function _deposit(uint256 assets) internal override {
         SafeTransferLib.safeApprove(asset(), address(strategyData.gauge), assets);
         strategyData.gauge.deposit(assets, 0);
     }
 
+    /// @notice Withdraws specified amount of assets from velodrome gauge pool
+    /// @param assets The amount of assets to withdraw
+    function _withdraw(uint256 assets) internal override {
+        strategyData.gauge.withdraw(assets);
+    }
+
+    /// @notice Gets the balance of assets inside velodrome gauge pool
+    /// @return The current balance of assets
     function _getRealPositionBalance()
         internal
         view
@@ -236,6 +240,13 @@ contract VelodromeStablePositionVault is BasePositionVault {
         return strategyData.gauge.balanceOf(address(this));
     }
 
+    /// @notice Calculates the optimal amount of TokenA to swap to TokenB for a perfect LP deposit for a stable pair
+    /// @param amountA The amount of `tokenA` this vault has currently
+    /// @param reserveA The amount of `tokenA` the LP has in reserve
+    /// @param reserveB The amount of `tokenB` the LP has in reserve
+    /// @param decimalsA The decimals of `tokenA`
+    /// @param decimalsB The decimals of `tokenB`
+    /// @return The optimal amount of TokenA to swap
     function _optimalDeposit(
         uint256 amountA,
         uint256 reserveA,
@@ -258,6 +269,9 @@ contract VelodromeStablePositionVault is BasePositionVault {
         return ((num / den) * decimalsA) / 1e18;
     }
 
+    /// @notice Approves the velodrome router to spend a token if it needs more approved
+    /// @param token The token the router will use
+    /// @param amount The amount that needs to be approved
     function _approveRouter(address token, uint256 amount) internal {
         if (ERC20(token).allowance(address(this), address(strategyData.router)) >= amount) {
             return;
@@ -266,6 +280,10 @@ contract VelodromeStablePositionVault is BasePositionVault {
         SafeTransferLib.safeApprove(token, address(strategyData.router), type(uint256).max);
     }
 
+    /// @notice Swaps an exact amount of `tokenIn` for `tokenOut`
+    /// @param tokenIn The token to be swapped from
+    /// @param tokenOut The token to be swapped into
+    /// @param amount The amount of `tokenIn` to be swapped
     function _swapExactTokensForTokens(
         address tokenIn,
         address tokenOut,
@@ -283,6 +301,12 @@ contract VelodromeStablePositionVault is BasePositionVault {
         );
     }
 
+    /// @notice Adds `tokenA` and `tokenB` into a velodrome LP
+    /// @param tokenA The first token of the pair
+    /// @param tokenB The second token of the pair
+    /// @param amountA The amount of the `tokenA`
+    /// @param amountB The amount of the `tokenB`
+    /// @return liquidity The amount of LP tokens received
     function _addLiquidity(
         address tokenA,
         address tokenB,

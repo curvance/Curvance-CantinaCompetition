@@ -17,19 +17,19 @@ contract AuraPositionVault is BasePositionVault {
 
     /// STRUCTS ///
     struct StrategyData {
-        /// @notice Balancer vault contract.
+        /// @notice Balancer vault contract
         IBalancerVault balancerVault;
-        /// @notice Balancer Pool Id.
+        /// @notice Balancer Pool Id
         bytes32 balancerPoolId;
-        /// @notice Aura Pool Id.
+        /// @notice Aura Pool Id
         uint256 pid;
-        /// @notice Aura Rewarder contract.
+        /// @notice Aura Rewarder contract
         IBaseRewardPool rewarder;
-        /// @notice Aura Booster contract.
+        /// @notice Aura Booster contract
         IBooster booster;
-        /// @notice Aura reward assets.
+        /// @notice Aura reward assets
         address[] rewardTokens;
-        /// @notice Balancer LP underlying assets.
+        /// @notice Balancer LP underlying assets
         address[] underlyingTokens;
     }
 
@@ -78,11 +78,11 @@ contract AuraPositionVault is BasePositionVault {
     }
 
     /// REWARD AND HARVESTING LOGIC ///
-    /// @notice Harvests and compounds outstanding vault rewards and vests pending rewards.
+    /// @notice Harvests and compounds outstanding vault rewards and vests pending rewards
     /// @dev Only callable by Gelato Network bot
-    /// @param data Bytes array for aggregator swap data.
-    /// @param maxSlippage Maximum allowable slippage on swapping.
-    /// @return yield The amount of new assets acquired from compounding vault yield.
+    /// @param data Bytes array for aggregator swap data
+    /// @param maxSlippage Maximum allowable slippage on swapping
+    /// @return yield The amount of new assets acquired from compounding vault yield
     function harvest(
         bytes memory data,
         uint256 maxSlippage
@@ -94,7 +94,7 @@ contract AuraPositionVault is BasePositionVault {
             _vestRewards(_totalAssets + pending);
         }
 
-        // can only harvest once previous reward period is done.
+        // can only harvest once previous reward period is done
         if (
             vaultData.lastVestClaim >=
             vaultData.vestingPeriodEnd
@@ -103,7 +103,7 @@ contract AuraPositionVault is BasePositionVault {
             // cache strategy data
             StrategyData memory sd = strategyData;
 
-            // harvest aura position
+            // claim base aura rewards
             sd.rewarder.getReward(address(this), true);
 
             // claim extra rewards
@@ -135,7 +135,7 @@ contract AuraPositionVault is BasePositionVault {
                         continue;
                     } 
 
-                    // Take platform fee
+                    // take protocol fee
                     protocolFee = rewardAmount.mulDivDown(
                         vaultHarvestFee(),
                         1e18
@@ -196,11 +196,11 @@ contract AuraPositionVault is BasePositionVault {
                 );
             }
 
-            // Compare value in vs value out
+            // check for slippage
             require(valueOut >
                 valueIn.mulDivDown(1e18 - maxSlippage, 1e18), "AuraPositionVault: bad slippage");
 
-            // Deposit assets into balancer
+            // deposit assets into balancer
             sd.balancerVault.joinPool(
                 sd.balancerPoolId,
                 address(this),
@@ -213,7 +213,7 @@ contract AuraPositionVault is BasePositionVault {
                         maxAmountsIn,
                         1
                     ),
-                    false // Don't use internal balances
+                    false // do not use internal balances
                 )
             );
 
@@ -231,17 +231,17 @@ contract AuraPositionVault is BasePositionVault {
     }
 
     /// INTERNAL POSITION LOGIC ///
-    /// @notice Withdraws specified amount of assets from Aura reward pool
-    /// @param assets The amount of assets to withdraw
-    function _withdraw(uint256 assets) internal override {
-        strategyData.rewarder.withdrawAndUnwrap(assets, false);
-    }
-
     /// @notice Deposits specified amount of assets into Aura booster contract
     /// @param assets The amount of assets to deposit
     function _deposit(uint256 assets) internal override {
         SafeTransferLib.safeApprove(asset(), address(strategyData.booster), assets);
         strategyData.booster.deposit(strategyData.pid, assets, true);
+    }
+
+    /// @notice Withdraws specified amount of assets from Aura reward pool
+    /// @param assets The amount of assets to withdraw
+    function _withdraw(uint256 assets) internal override {
+        strategyData.rewarder.withdrawAndUnwrap(assets, false);
     }
 
     /// @notice Gets the balance of assets inside Aura reward pool

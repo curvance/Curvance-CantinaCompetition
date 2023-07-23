@@ -447,9 +447,9 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     }
 
     /// INTERNAL POSITION LOGIC TO OVERRIDE ///
-    function _withdraw(uint256 assets) internal virtual;
-
     function _deposit(uint256 assets) internal virtual;
+
+    function _withdraw(uint256 assets) internal virtual;
 
     function _getRealPositionBalance() internal view virtual returns (uint256);
 
