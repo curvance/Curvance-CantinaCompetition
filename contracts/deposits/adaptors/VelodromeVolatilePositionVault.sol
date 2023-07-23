@@ -46,19 +46,19 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
     mapping(address => bool) public isUnderlyingToken;
 
     constructor(
-        address asset_,
+        ERC20 asset_,
         ICentralRegistry centralRegistry_,
         IVeloGauge gauge,
         IVeloPairFactory pairFactory,
         IVeloRouter router
-    ) BasePositionVault(ERC20(asset_), centralRegistry_) {
+    ) BasePositionVault(asset_, centralRegistry_) {
 
         /// Validate that we have the proper gauge linked with the proper LP and pair factory
-        require(gauge.stakingToken() == asset_ && address(pairFactory) == router.factory(), "VelodromeStablePositionVault: improper velodrome vault config");
+        require(gauge.stakingToken() == asset() && address(pairFactory) == router.factory(), "VelodromeStablePositionVault: improper velodrome vault config");
 
         // Query underlying token data from the pool
-        strategyData.token0 = IVeloPool(asset_).token0();
-        strategyData.token1 = IVeloPool(asset_).token1();
+        strategyData.token0 = IVeloPool(asset()).token0();
+        strategyData.token1 = IVeloPool(asset()).token1();
         strategyData.gauge = gauge;
         strategyData.router = router;
         strategyData.pairFactory = pairFactory;
