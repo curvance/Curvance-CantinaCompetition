@@ -31,6 +31,9 @@ contract ConvexPositionVault is BasePositionVault {
         address[] underlyingTokens;
     }
 
+    /// CONSTANTS ///
+    address private constant CRV = 0xD533a949740bb3306d119CC777fa900bA034cd52;
+
     /// STORAGE ///
 
     /// Vault Strategy Data
@@ -42,25 +45,27 @@ contract ConvexPositionVault is BasePositionVault {
     constructor(
         ERC20 asset_,
         ICentralRegistry centralRegistry_,
-        ICurveFi curvePool_,
         uint256 pid_,
         address rewarder_,
-        address booster_,
-        address[] memory rewardTokens_
+        address booster_
     ) BasePositionVault(asset_, centralRegistry_) {
 
         // we will only support Curves new ng pools with read only reentry protection
         require(pid_ > 176, "ConvexPositionVault: unsafe pools");
 
-        strategyData.curvePool = curvePool_;
         strategyData.pid = pid_;
-        strategyData.rewarder = IBaseRewardPool(rewarder_);
         strategyData.booster = IBooster(booster_);
-        strategyData.rewardTokens = rewardTokens_;
 
+        /// query actual convex pool configuration data
+        (address pidToken, , , address crvRewards, , bool shutdown) = strategyData.booster.poolInfo(strategyData.pid);
+
+        /// validate that the pool is still active and that the lp token and rewarder in convex matches what we are configuring for
+        require (pidToken == address(asset()) && !shutdown && crvRewards == rewarder_, "ConvexPositionVault: improper convex vault config");
+        strategyData.curvePool = ICurveFi(pidToken);
+        
         uint256 coinsLength;
         address token;
-        // figure out how many tokens are in the curve pool
+        /// figure out how many tokens are in the curve pool
         while (true) {
             try strategyData.curvePool.coins(coinsLength) {
                 ++coinsLength;
@@ -69,8 +74,19 @@ contract ConvexPositionVault is BasePositionVault {
             }
         }
 
+        /// validate that the liquidity pool is actually a 3Pool
         require (coinsLength == 3, "ConvexPositionVault: vault configured for 3Pool");
 
+        strategyData.rewarder = IBaseRewardPool(rewarder_);
+
+        /// add CRV as a reward token, then let convex tell you what rewards the vault will receive
+        strategyData.rewardTokens.push() = CRV;
+        uint256 extraRewardsLength = strategyData.rewarder.extraRewardsLength();
+        for (uint256 i; i < extraRewardsLength; ++i) {
+            strategyData.rewardTokens.push() = IRewards(strategyData.rewarder.extraRewards(i)).rewardToken();
+        }
+
+        /// let curve lp tell you what its underlying tokens are 
         strategyData.underlyingTokens = new address[](coinsLength);
         for (uint256 i; i < coinsLength; ) {
             token = strategyData.curvePool.coins(i);
@@ -85,10 +101,17 @@ contract ConvexPositionVault is BasePositionVault {
     }
 
     /// PERMISSIONED FUNCTIONS ///
-    function setRewardTokens(
-        address[] calldata rewardTokens
-    ) external onlyDaoPermissions {
-        strategyData.rewardTokens = rewardTokens;
+    function reQueryRewardTokens() external onlyDaoPermissions {
+        delete strategyData.rewardTokens;
+        
+        /// add CRV as a reward token, then let convex tell you what rewards the vault will receive
+        strategyData.rewardTokens.push() = CRV;
+
+        uint256 extraRewardsLength = strategyData.rewarder.extraRewardsLength();
+        for (uint256 i; i < extraRewardsLength; ++i) {
+            strategyData.rewardTokens.push() = IRewards(strategyData.rewarder.extraRewards(i)).rewardToken();
+        }
+
     }
 
     /// REWARD AND HARVESTING LOGIC ///
@@ -251,7 +274,7 @@ contract ConvexPositionVault is BasePositionVault {
         
         } 
 
-        strategyData.curvePool.add_liquidity(amounts, 0, true);
+        strategyData.curvePool.add_liquidity(amounts, 0);
 
     }
 
