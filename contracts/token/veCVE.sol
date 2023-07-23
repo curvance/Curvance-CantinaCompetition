@@ -107,12 +107,12 @@ contract veCVE is ERC20 {
         _;
     }
 
-    /// @dev Returns the name of the token.
+    /// @dev Returns the name of the token
     function name() public view override returns (string memory) {
         return _name;
     }
 
-    /// @dev Returns the symbol of the token.
+    /// @dev Returns the symbol of the token
     function symbol() public view override returns (string memory) {
         return _symbol;
     }
@@ -258,9 +258,10 @@ contract veCVE is ERC20 {
         Lock[] storage locks = userLocks[msg.sender];
         uint40 unlockTimestamp = locks[lockIndex].unlockTime;
 
+        // Length is index + 1 so has to be less than array length
         if (lockIndex >= locks.length) {
             revert InvalidLock();
-        } // Length is index + 1 so has to be less than array length
+        }
         if (unlockTimestamp < block.timestamp) {
             revert InvalidLock();
         }
@@ -465,6 +466,7 @@ contract veCVE is ERC20 {
         uint256 previousLockIndex;
         uint256 excessPoints;
 
+        // Go backwards through the locks and validate that they are entered from smallest to largest index
         for (uint256 i = locksToCombineIndex; i > 0; ) {
             if (i != locksToCombineIndex) {
                 // If this is the first iteration we do not need to check
@@ -555,7 +557,7 @@ contract veCVE is ERC20 {
         } else {
             require(
                 userLock.unlockTime != CONTINUOUS_LOCK_VALUE,
-                "veCVE: Disable combined lock continuous mode first"
+                "veCVE: disable combined lock continuous mode first"
             );
             // Remove the previous unlock data
             _reduceTokenUnlocks(
@@ -664,7 +666,8 @@ contract veCVE is ERC20 {
         }
     }
 
-    /// @notice Processes an expired lock for the specified lock index
+    /// @notice Processes an expired lock for the specified lock index,
+    ///         and processes any pending locker rewards
     /// @param recipient The address to send unlocked tokens to
     /// @param lockIndex The index of the lock to process
     /// @param relock Whether the expired lock should be relocked in a fresh lock
@@ -693,7 +696,7 @@ contract veCVE is ERC20 {
 
         require(
             block.timestamp >= locks[lockIndex].unlockTime || isShutdown,
-            "veCVE: Lock has not expired"
+            "veCVE: lock has not expired"
         );
 
         // Claim pending locker rewards
@@ -719,14 +722,15 @@ contract veCVE is ERC20 {
 
             emit Unlocked(msg.sender, lockAmount);
 
-            /// Might be better gas to check if first user locker .amount == 0
+            /// Might be better gas to check if first user lock has amount == 0
             if (locks.length == 0) {
                 cveLocker.resetUserClaimIndex(recipient);
             }
         }
     }
 
-    /// @notice Processes an active lock as if its expired, for a penalty
+    /// @notice Processes an active lock as if its expired, for a penalty,
+    ///         and processes any pending locker rewards
     /// @param recipient The address to receive the unlocked CVE
     /// @param lockIndex The index of the lock to process
     /// @param rewardRecipient Address to receive the reward tokens
@@ -750,7 +754,7 @@ contract veCVE is ERC20 {
 
         uint256 penaltyValue = centralRegistry.earlyUnlockPenaltyValue();
 
-        require(penaltyValue > 0, "veCVE: Early unlocks disabled");
+        require(penaltyValue > 0, "veCVE: early unlocks disabled");
 
         // Claim pending locker rewards
         _claimRewards(recipient, rewardRecipient, rewardsData_, params, aux);
@@ -780,7 +784,7 @@ contract veCVE is ERC20 {
 
         emit UnlockedWithPenalty(msg.sender, lockAmount, penaltyAmount);
 
-        /// Might be better gas to check if first user locker .amount == 0
+        /// Might be better gas to check if first user lock has amount == 0
         if (locks.length == 0) {
             cveLocker.resetUserClaimIndex(recipient);
         }
