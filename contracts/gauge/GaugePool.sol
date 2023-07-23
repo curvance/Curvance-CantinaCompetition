@@ -8,7 +8,7 @@ import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
-import { ICveLocker, rewardsData } from "contracts/interfaces/ICveLocker.sol";
+import { ICveLocker, RewardsData } from "contracts/interfaces/ICveLocker.sol";
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
@@ -251,7 +251,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         address token,
         uint256 lockIndex,
         bool continuousLock,
-        rewardsData memory _rewardsData,
+        RewardsData memory rewardsData,
         bytes memory params,
         uint256 aux
     ) external nonReentrant {
@@ -270,7 +270,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
             lockIndex,
             continuousLock,
             msg.sender,
-            _rewardsData,
+            rewardsData,
             params,
             aux
         );
@@ -287,7 +287,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
     function claimAndLock(
         address token,
         bool continuousLock,
-        rewardsData memory _rewardsData,
+        RewardsData memory rewardsData,
         bytes memory params,
         uint256 aux
     ) external nonReentrant {
@@ -305,7 +305,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
             rewards,
             continuousLock,
             msg.sender,
-            _rewardsData,
+            rewardsData,
             params,
             aux
         );
