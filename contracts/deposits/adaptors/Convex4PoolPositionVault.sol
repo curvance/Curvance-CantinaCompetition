@@ -50,7 +50,7 @@ contract ConvexPositionVault is BasePositionVault {
         address booster_
     ) BasePositionVault(asset_, centralRegistry_) {
 
-        // we will only support Curves new ng pools with read only reentry protection
+        // we only support Curves new ng pools with read only reentry protection
         require(pid_ > 176, "ConvexPositionVault: unsafe pools");
 
         strategyData.pid = pid_;
@@ -60,7 +60,7 @@ contract ConvexPositionVault is BasePositionVault {
         (address pidToken, , , address crvRewards, , bool shutdown) = strategyData.booster.poolInfo(strategyData.pid);
 
         /// validate that the pool is still active and that the lp token and rewarder in convex matches what we are configuring for
-        require (pidToken == address(asset()) && !shutdown && crvRewards == rewarder_, "ConvexPositionVault: improper convex vault config");
+        require (pidToken == address(asset_) && !shutdown && crvRewards == rewarder_, "ConvexPositionVault: improper convex vault config");
         strategyData.curvePool = ICurveFi(pidToken);
         
         uint256 coinsLength;

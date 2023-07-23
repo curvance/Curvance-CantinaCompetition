@@ -2,12 +2,15 @@
 pragma solidity 0.8.17;
 
 interface IVeloRouter {
+    
     struct Route {
         address from;
         address to;
         bool stable;
         address factory;
     }
+
+    function factory() external view returns (address);
 
     function weth() external view returns (address);
 

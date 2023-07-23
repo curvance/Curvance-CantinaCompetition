@@ -5,47 +5,19 @@ interface ICurveFi {
     function get_virtual_price() external view returns (uint256);
 
     function add_liquidity(
-        // EURt
+        // 2Pool
         uint256[2] calldata amounts,
         uint256 min_mint_amount
     ) external payable;
 
     function add_liquidity(
-        // Compound, sAave
-        uint256[2] calldata amounts,
-        uint256 min_mint_amount,
-        bool _use_underlying
-    ) external payable returns (uint256);
-
-    function add_liquidity(
-        // Iron Bank, Aave
-        uint256[3] calldata amounts,
-        uint256 min_mint_amount,
-        bool _use_underlying
-    ) external payable returns (uint256);
-
-    function add_liquidity(
-        // 3Crv Metapools
-        address pool,
-        uint256[4] calldata amounts,
-        uint256 min_mint_amount
-    ) external;
-
-    function add_liquidity(
-        // Y and yBUSD
-        uint256[4] calldata amounts,
-        uint256 min_mint_amount,
-        bool _use_underlying
-    ) external payable returns (uint256);
-
-    function add_liquidity(
-        // 3pool
+        // 3Pool
         uint256[3] calldata amounts,
         uint256 min_mint_amount
     ) external payable;
 
     function add_liquidity(
-        // sUSD
+        // 4Pool
         uint256[4] calldata amounts,
         uint256 min_mint_amount
     ) external payable;
