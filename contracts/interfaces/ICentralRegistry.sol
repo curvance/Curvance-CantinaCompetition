@@ -66,6 +66,9 @@ interface ICentralRegistry {
     /// @notice Returns lockBoostValue value in basis point form
     function lockBoostValue() external view returns (uint256);
 
+    /// @notice Returns earlyUnlockPenaltyValue value in basis point form
+    function earlyUnlockPenaltyValue() external view returns (uint256);
+
     /// @notice Returns whether the inputted address is an approved zapper
     function approvedZapper(address _address) external view returns (bool);
 

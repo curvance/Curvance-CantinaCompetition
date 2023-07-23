@@ -79,6 +79,7 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     uint256 public protocolLeverageFee;
     uint256 public voteBoostValue;
     uint256 public lockBoostValue;
+    uint256 public earlyUnlockPenaltyValue;
 
     /// DAO PERMISSION DATA ///
     mapping(address => bool) public hasDaoPermissions;
@@ -309,6 +310,16 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
             "centralRegistry: invalid parameter"
         );
         lockBoostValue = value;
+    }
+
+    /// @notice sets the early unlock penalty value for when users want to unlock their veCVE early
+    /// @dev only callable on a 7 day delay or by the Emergency Council
+    function setEarlyUnlockPenaltyValue(uint256 value) public onlyElevatedPermissions {
+        require(
+            (value >= 3000 && value <= 9000) || value == 0,
+            "centralRegistry: invalid parameter"
+        );
+        earlyUnlockPenaltyValue = value;
     }
 
     /// OWNERSHIP LOGIC
