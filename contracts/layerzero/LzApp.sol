@@ -54,8 +54,8 @@ abstract contract LzApp is
     }
 
     modifier onlyElevatedPermissions() {
-            require(centralRegistry.hasElevatedPermissions(msg.sender), "centralRegistry: UNAUTHORIZED");
-            _;
+        require(centralRegistry.hasElevatedPermissions(msg.sender), "centralRegistry: UNAUTHORIZED");
+        _;
     }
 
     function lzReceive(
