@@ -13,24 +13,21 @@ import { ICurveSwaps } from "contracts/interfaces/external/curve/ICurveSwaps.sol
 contract ConvexPositionVault is BasePositionVault {
     using Math for uint256;
 
-    /// ERRORS /// 
-    error ConvexPositionVault__UnsupportedCurveDeposit();
-
     /// EVENTS ///
     event Harvest(uint256 yield);
 
     struct StrategyData {
-        /// @notice Curve Pool Address.
+        /// @notice Curve Pool Address
         ICurveFi curvePool;
-        /// @notice Convex Pool Id.
+        /// @notice Convex Pool Id
         uint256 pid;
-        /// @notice Convex Rewarder contract.
+        /// @notice Convex Rewarder contract
         IBaseRewardPool rewarder;
-        /// @notice Convex Booster contract.
+        /// @notice Convex Booster contract
         IBooster booster;
-        /// @notice Convex reward assets.
+        /// @notice Convex reward assets
         address[] rewardTokens;
-        /// @notice Curve LP underlying assets.
+        /// @notice Curve LP underlying assets
         address[] underlyingTokens;
     }
 
@@ -39,7 +36,7 @@ contract ConvexPositionVault is BasePositionVault {
     /// Vault Strategy Data
     StrategyData public strategyData;
 
-    /// @notice Curve LP underlying assets.
+    /// @notice Curve LP underlying assets
     mapping(address => bool) public isUnderlyingToken;
 
     constructor(
@@ -63,7 +60,7 @@ contract ConvexPositionVault is BasePositionVault {
 
         uint256 coinsLength;
         address token;
-        // Figure out how many tokens are in the curve pool.
+        // Figure out how many tokens are in the curve pool
         while (true) {
             try strategyData.curvePool.coins(coinsLength) {
                 ++coinsLength;
@@ -105,7 +102,7 @@ contract ConvexPositionVault is BasePositionVault {
             _vestRewards(_totalAssets + pending);
         }
 
-        // Can only harvest once previous reward period is done.
+        // Can only harvest once previous reward period is done
         if (
             vaultData.lastVestClaim >=
             vaultData.vestingPeriodEnd
@@ -114,7 +111,7 @@ contract ConvexPositionVault is BasePositionVault {
             // Cache strategy data
             StrategyData memory sd = strategyData;
 
-            // Harvest convex position.
+            // Claim base convex rewards
             sd.rewarder.getReward(address(this), true);
 
             // Claim extra rewards
@@ -146,7 +143,7 @@ contract ConvexPositionVault is BasePositionVault {
                         continue;
                     }
 
-                    // Take platform fee
+                    // take protocol fee
                     protocolFee = rewardAmount.mulDivDown(
                         vaultHarvestFee(),
                         1e18
@@ -160,7 +157,6 @@ contract ConvexPositionVault is BasePositionVault {
 
                     (rewardPrice, ) = getPriceRouter().getPrice(address(rewardToken), true, true);
 
-                    // Get the reward token value in USD.
                     valueIn = rewardAmount.mulDivDown(
                         rewardPrice,
                         10 ** ERC20(rewardToken).decimals()
@@ -181,11 +177,11 @@ contract ConvexPositionVault is BasePositionVault {
             require(_addLiquidityToCurve() >
                 valueIn.mulDivDown(1e18 - maxSlippage, 1e18), "ConvexPositionVault: bad slippage");
             
-            // Deposit assets into convex
+            // deposit assets into convex
             yield = ERC20(asset()).balanceOf(address(this));
             _deposit(yield);
 
-            // Update vesting info
+            // update vesting info
             vaultData.rewardRate = uint128(yield.mulDivDown(rewardOffset, vestPeriod));
             vaultData.vestingPeriodEnd = uint64(block.timestamp + vestPeriod);
             vaultData.lastVestClaim = uint64(block.timestamp);

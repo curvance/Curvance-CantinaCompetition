@@ -18,19 +18,19 @@ contract AuraPositionVault is BasePositionVault {
     /// STRUCTS ///
 
     struct StrategyData {
-        /// @notice Balancer vault contract.
+        /// @notice Balancer vault contract
         IBalancerVault balancerVault;
-        /// @notice Balancer Pool Id.
+        /// @notice Balancer Pool Id
         bytes32 balancerPoolId;
-        /// @notice Aura Pool Id.
+        /// @notice Aura Pool Id
         uint256 pid;
-        /// @notice Aura Rewarder contract.
+        /// @notice Aura Rewarder contract
         IBaseRewardPool rewarder;
-        /// @notice Aura Booster contract.
+        /// @notice Aura Booster contract
         IBooster booster;
-        /// @notice Aura reward assets.
+        /// @notice Aura reward assets
         address[] rewardTokens;
-        /// @notice Balancer LP underlying assets.
+        /// @notice Balancer LP underlying assets
         address[] underlyingTokens;
     }
 
@@ -86,11 +86,11 @@ contract AuraPositionVault is BasePositionVault {
 
         uint256 pending = _calculatePendingRewards();
         if (pending > 0) {
-            // We need to claim vested rewards.
+            // We need to claim vested rewards
             _vestRewards(_totalAssets + pending);
         }
 
-        // Can only harvest once previous reward period is done.
+        // Can only harvest once previous reward period is done
         if (
             vaultData.lastVestClaim >=
             vaultData.vestingPeriodEnd
@@ -99,7 +99,7 @@ contract AuraPositionVault is BasePositionVault {
             // Cache strategy data
             StrategyData memory sd = strategyData;
 
-            // Harvest aura position.
+            // Claim base aura rewards
             sd.rewarder.getReward(address(this), true);
 
             // Claim extra rewards
@@ -131,7 +131,7 @@ contract AuraPositionVault is BasePositionVault {
                         continue;
                     } 
 
-                    // Take platform fee
+                    // take protocol fee
                     protocolFee = rewardAmount.mulDivDown(
                         vaultHarvestFee(),
                         1e18
@@ -192,11 +192,11 @@ contract AuraPositionVault is BasePositionVault {
                 );
             }
 
-            // Compare value in vs value out
+            // check for slippage
             require(valueOut >
                 valueIn.mulDivDown(1e18 - maxSlippage, 1e18), "AuraPositionVault: bad slippage");
 
-            // Deposit assets into balancer
+            // deposit assets into balancer
             sd.balancerVault.joinPool(
                 sd.balancerPoolId,
                 address(this),
