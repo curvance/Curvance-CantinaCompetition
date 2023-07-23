@@ -36,7 +36,7 @@ contract ConvexPositionVault is BasePositionVault {
     /// Vault Strategy Data
     StrategyData public strategyData;
 
-    /// @notice Curve LP underlying assets.
+    /// @notice Curve 4Pool LP underlying assets
     mapping(address => bool) public isUnderlyingToken;
 
     constructor(
@@ -166,6 +166,7 @@ contract ConvexPositionVault is BasePositionVault {
                         10 ** ERC20(rewardToken).decimals()
                     );
 
+                    /// swap from rewardToken to underlying LP token if necessary
                     if (!isUnderlyingToken[rewardToken]) {
                         SwapperLib.swap(
                             swapDataArray[j],

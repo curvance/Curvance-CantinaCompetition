@@ -154,6 +154,7 @@ contract AuraPositionVault is BasePositionVault {
                         10 ** ERC20(rewardToken).decimals()
                     );
 
+                    /// swap from rewardToken to underlying LP token if necessary
                     if (!isUnderlyingToken[rewardToken]) {
                         SwapperLib.swap(
                             swapDataArray[j],

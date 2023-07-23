@@ -40,7 +40,7 @@ contract VelodromeStablePositionVault is BasePositionVault {
     /// Vault Strategy Data
     StrategyData public strategyData;
 
-    /// @notice Is an underlying token of the vAMM LP
+    /// @notice Is an underlying token of the sAMM LP
     mapping(address => bool) public isUnderlyingToken;
 
     constructor(
@@ -137,6 +137,7 @@ contract VelodromeStablePositionVault is BasePositionVault {
                         10 ** ERC20(rewardToken).decimals()
                     );
 
+                    /// swap from rewardToken to underlying LP token if necessary
                     if (!isUnderlyingToken[rewardToken]) {
                         SwapperLib.swap(
                             swapDataArray[i],
@@ -212,7 +213,7 @@ contract VelodromeStablePositionVault is BasePositionVault {
 
             emit Harvest(yield);
         } 
-        // else yield is zero.
+        // else yield is zero
     }
 
     /// INTERNAL POSITION LOGIC ///

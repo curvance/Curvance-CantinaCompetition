@@ -131,6 +131,7 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
                         10 ** ERC20(rewardToken).decimals()
                     );
 
+                    /// swap from rewardToken to underlying LP token if necessary
                     if (!isUnderlyingToken[rewardToken]) {
                         SwapperLib.swap(
                             swapDataArray[i],
@@ -199,7 +200,7 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
             vaultData.lastVestClaim = uint64(block.timestamp);
 
             emit Harvest(yield);
-        } // else yield is zero.
+        } // else yield is zero
     }
 
     /// INTERNAL POSITION LOGIC ///
