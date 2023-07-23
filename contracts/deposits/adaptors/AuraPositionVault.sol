@@ -53,11 +53,10 @@ contract AuraPositionVault is BasePositionVault {
         address booster_
     ) BasePositionVault(asset_, centralRegistry_) {
 
-
         strategyData.pid = pid_;
         strategyData.booster = IBooster(booster_);
 
-        /// query actual convex pool configuration data
+        /// query actual aura pool configuration data
         (address pidToken, , , address balRewards, , bool shutdown) = strategyData.booster.poolInfo(strategyData.pid);
 
         /// validate that the pool is still active and that the lp token and rewarder in aura matches what we are configuring for
@@ -88,10 +87,15 @@ contract AuraPositionVault is BasePositionVault {
     }
 
     /// PERMISSIONED FUNCTIONS ///
-    function setRewardTokens(
-        address[] calldata rewardTokens
-    ) external onlyDaoPermissions {
-        strategyData.rewardTokens = rewardTokens;
+    function reQueryRewardTokens() external onlyDaoPermissions {
+        delete strategyData.rewardTokens;
+
+        /// add BAL as a reward token, then let aura tell you what rewards the vault will receive
+        strategyData.rewardTokens.push() = BAL;
+        uint256 extraRewardsLength = strategyData.rewarder.extraRewardsLength();
+        for (uint256 i; i < extraRewardsLength; ++i) {
+            strategyData.rewardTokens.push() = IStashWrapper(IRewards(strategyData.rewarder.extraRewards(i)).rewardToken()).baseToken();
+        }
     }
 
     /// REWARD AND HARVESTING LOGIC ///
