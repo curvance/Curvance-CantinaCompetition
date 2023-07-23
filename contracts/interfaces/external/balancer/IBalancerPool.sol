@@ -32,6 +32,9 @@ interface IBalancerPool {
     /// @dev Returns this Pool's ID, used when interacting with the Vault (to e.g. join the Pool or swap with it).
     function getPoolId() external view returns (bytes32);
 
+    /// @dev Returns the balancer vault address
+    function getVault() external view returns (address);
+
     /// @dev returns the number of decimals for this vault token.
     /// For reaper single-strat vaults, the decimals are fixed to 18.
     function decimals() external view returns (uint8);
