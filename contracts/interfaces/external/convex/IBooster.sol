@@ -9,4 +9,7 @@ interface IBooster {
     ) external;
 
     function withdraw(uint256 _poolId, uint256 _amount) external;
+    
+    function poolInfo(uint256 pid) external view returns (address, address, address, address, address, bool);
+
 }
