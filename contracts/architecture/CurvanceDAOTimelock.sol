@@ -7,12 +7,14 @@ import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 contract Timelock is TimelockController {
-
     /// CONSTANTS ///
+
     uint256 public constant MINIMUM_DELAY = 7 days;
     ICentralRegistry public immutable centralRegistry;
 
-    constructor(ICentralRegistry centralRegistry_)
+    constructor(
+        ICentralRegistry centralRegistry_
+    )
         TimelockController(
             MINIMUM_DELAY,
             new address[](0),
