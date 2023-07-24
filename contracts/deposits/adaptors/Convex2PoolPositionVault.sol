@@ -142,58 +142,54 @@ contract ConvexPositionVault is BasePositionVault {
             // claim convex rewards
             sd.rewarder.getReward(address(this), true);
 
+            SwapperLib.Swap[] memory swapDataArray = abi.decode(
+                data,
+                (SwapperLib.Swap[])
+            );
+            uint256 numRewardTokens = sd.rewardTokens.length;
             uint256 valueIn;
+            address rewardToken;
+            uint256 rewardAmount;
+            uint256 protocolFee;
+            uint256 rewardPrice;
             
-            {
+            for (uint256 j; j < numRewardTokens; ++j) {
+                rewardToken = sd.rewardTokens[j];
+                rewardAmount = ERC20(rewardToken).balanceOf(address(this));
 
-                SwapperLib.Swap[] memory swapDataArray = abi.decode(
-                    data,
-                    (SwapperLib.Swap[])
+                if (rewardAmount == 0) {
+                    continue;
+                }
+
+                // take protocol fee
+                protocolFee = rewardAmount.mulDivDown(
+                    vaultHarvestFee(),
+                    1e18
                 );
-                uint256 numRewardTokens = sd.rewardTokens.length;
-                address rewardToken;
-                uint256 rewardAmount;
-                uint256 protocolFee;
-                uint256 rewardPrice;
-                
-                for (uint256 j; j < numRewardTokens; ++j) {
-                    rewardToken = sd.rewardTokens[j];
-                    rewardAmount = ERC20(rewardToken).balanceOf(address(this));
+                rewardAmount -= protocolFee;
+                SafeTransferLib.safeTransfer(
+                    address(rewardToken),
+                    centralRegistry.feeAccumulator(),
+                    protocolFee
+                );
 
-                    if (rewardAmount == 0) {
-                        continue;
-                    }
+                (rewardPrice, ) = getPriceRouter().getPrice(address(rewardToken), true, true);
 
-                    // take protocol fee
-                    protocolFee = rewardAmount.mulDivDown(
-                        vaultHarvestFee(),
-                        1e18
+                valueIn = rewardAmount.mulDivDown(
+                    rewardPrice,
+                    10 ** ERC20(rewardToken).decimals()
+                );
+
+                /// swap from rewardToken to underlying LP token if necessary
+                if (!isUnderlyingToken[rewardToken]) {
+                    SwapperLib.swap(
+                        swapDataArray[j],
+                        centralRegistry.priceRouter(),
+                        10000 // swap for 100% slippage, we have slippage check later for global level
                     );
-                    rewardAmount -= protocolFee;
-                    SafeTransferLib.safeTransfer(
-                        address(rewardToken),
-                        centralRegistry.feeAccumulator(),
-                        protocolFee
-                    );
-
-                    (rewardPrice, ) = getPriceRouter().getPrice(address(rewardToken), true, true);
-
-                    valueIn = rewardAmount.mulDivDown(
-                        rewardPrice,
-                        10 ** ERC20(rewardToken).decimals()
-                    );
-
-                    /// swap from rewardToken to underlying LP token if necessary
-                    if (!isUnderlyingToken[rewardToken]) {
-                        SwapperLib.swap(
-                            swapDataArray[j],
-                            centralRegistry.priceRouter(),
-                            10000 // swap for 100% slippage, we have slippage check later for global level
-                        );
-                    }
                 }
             }
-
+            
             // add liquidity to curve and check for slippage
             require(_addLiquidityToCurve() >
                 valueIn.mulDivDown(1e18 - maxSlippage, 1e18), "ConvexPositionVault: bad slippage");
