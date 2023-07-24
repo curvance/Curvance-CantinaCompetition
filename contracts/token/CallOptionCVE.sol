@@ -9,9 +9,9 @@ import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
-contract callOptionCVE is ERC20 {
+contract CallOptionCVE is ERC20 {
     event RemainingCVEWithdrawn(uint256 amount);
-    event callOptionCVEExercised(address indexed exerciser, uint256 amount);
+    event CallOptionCVEExercised(address indexed exerciser, uint256 amount);
 
     string private _name;
     string private _symbol;
@@ -52,11 +52,14 @@ contract callOptionCVE is ERC20 {
         paymentToken = _paymentToken;
         cve = centralRegistry.CVE();
 
-        _mint(msg.sender, 7560001.242 ether);// total call option allocation for airdrops
+        _mint(msg.sender, 7560001.242 ether); // total call option allocation for airdrops
     }
 
     modifier onlyDaoPermissions() {
-        require(centralRegistry.hasDaoPermissions(msg.sender), "callOptionCVE: UNAUTHORIZED");
+        require(
+            centralRegistry.hasDaoPermissions(msg.sender),
+            "callOptionCVE: UNAUTHORIZED"
+        );
         _;
     }
 
@@ -81,16 +84,30 @@ contract callOptionCVE is ERC20 {
     /// @notice Exercise CVE call options.
     /// @param _amount The amount of options to exercise.
     function exerciseOption(uint256 _amount) public payable {
-        require(optionsExercisable(), "callOptionCVE: Options not exercisable yet");
-        require(IERC20(cve).balanceOf(address(this)) >= _amount, "callOptionCVE: not enough CVE remaining");
+        require(
+            optionsExercisable(),
+            "callOptionCVE: Options not exercisable yet"
+        );
+        require(
+            IERC20(cve).balanceOf(address(this)) >= _amount,
+            "callOptionCVE: not enough CVE remaining"
+        );
         require(_amount > 0, "callOptionCVE: invalid amount");
-        require(balanceOf(msg.sender) >= _amount, "callOptionCVE: not enough call options to exercise");
+        require(
+            balanceOf(msg.sender) >= _amount,
+            "callOptionCVE: not enough call options to exercise"
+        );
 
         uint256 optionExerciseCost = _amount * paymentTokenPerCVE;
 
         /// Take their strike price payment
-        if (paymentToken == address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE)) {
-            require(msg.value >= optionExerciseCost, "callOptionCVE: invalid msg value");
+        if (
+            paymentToken == address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE)
+        ) {
+            require(
+                msg.value >= optionExerciseCost,
+                "callOptionCVE: invalid msg value"
+            );
         } else {
             SafeTransferLib.safeTransferFrom(
                 paymentToken,
@@ -102,15 +119,11 @@ contract callOptionCVE is ERC20 {
 
         /// Burn the call options
         _burn(msg.sender, _amount);
-        
-        /// Transfer them corresponding CVE 
-        SafeTransferLib.safeTransfer(
-            cve,
-            msg.sender,
-            _amount
-        );
 
-        emit callOptionCVEExercised(msg.sender, _amount);
+        /// Transfer them corresponding CVE
+        SafeTransferLib.safeTransfer(cve, msg.sender, _amount);
+
+        emit CallOptionCVEExercised(msg.sender, _amount);
     }
 
     /// @notice Rescue any token sent by mistake, also used for removing .
@@ -126,7 +139,7 @@ contract callOptionCVE is ERC20 {
             _recipient != address(0),
             "callOptionCVE: invalid recipient address"
         );
-        
+
         if (_token == address(0)) {
             require(
                 address(this).balance >= _amount,
@@ -151,11 +164,7 @@ contract callOptionCVE is ERC20 {
             "callOptionCVE: Too early"
         );
         uint256 tokensToWithdraw = IERC20(cve).balanceOf(address(this));
-        SafeTransferLib.safeTransfer(
-            cve,
-            msg.sender,
-            tokensToWithdraw
-        );
+        SafeTransferLib.safeTransfer(cve, msg.sender, tokensToWithdraw);
         emit RemainingCVEWithdrawn(tokensToWithdraw);
     }
 
@@ -174,7 +183,10 @@ contract callOptionCVE is ERC20 {
         );
 
         if (optionsStartTimestamp > 0) {
-            require(optionsStartTimestamp > block.timestamp, "callOptionCVE: Options exercising already active");
+            require(
+                optionsStartTimestamp > block.timestamp,
+                "callOptionCVE: Options exercising already active"
+            );
         }
 
         optionsStartTimestamp = _timestampStart;
@@ -183,16 +195,22 @@ contract callOptionCVE is ERC20 {
         optionsEndTimestamp = optionsStartTimestamp + (4 weeks);
 
         /// Get the current price of the payment token from the price router in USD and multiply it by the Strike Price to see how much per CVE they must pay
-        (uint256 paymentTokenCurrentPrice, uint256 error) = IPriceRouter(centralRegistry.priceRouter()).getPrice(paymentToken, true, true);
+        (uint256 paymentTokenCurrentPrice, uint256 error) = IPriceRouter(
+            centralRegistry.priceRouter()
+        ).getPrice(paymentToken, true, true);
 
-        /// Make sure that we didnt have a catastrophic error when pricing the payment token 
+        /// Make sure that we didnt have a catastrophic error when pricing the payment token
         require(error < 2, "callOptionCVE: error pulling paymentToken price");
 
         /// The strike price should always be greater than the strike price since it will be in 1e36 format offset,
-        /// whereas paymentTokenCurrentPrice will be 1e18 so the price should always be larger 
-        require(_strikePrice > paymentTokenCurrentPrice, "callOptionCVE: invalid strike price configuration");
+        /// whereas paymentTokenCurrentPrice will be 1e18 so the price should always be larger
+        require(
+            _strikePrice > paymentTokenCurrentPrice,
+            "callOptionCVE: invalid strike price configuration"
+        );
 
-        paymentTokenPerCVE = (_strikePrice / paymentTokenCurrentPrice) / denominatorOffset;
-
+        paymentTokenPerCVE =
+            (_strikePrice / paymentTokenCurrentPrice) /
+            denominatorOffset;
     }
 }
