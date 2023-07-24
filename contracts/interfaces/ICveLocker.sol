@@ -15,7 +15,7 @@ struct RewardsData {
     bool isFreshLockContinuous;
 }
 
-interface ICveLocker {
+interface ICVELocker {
     /// notice Update user claim index
     function updateUserClaimIndex(address user, uint256 index) external;
 

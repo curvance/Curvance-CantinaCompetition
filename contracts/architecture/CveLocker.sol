@@ -11,7 +11,7 @@ import { RewardsData } from "contracts/interfaces/ICveLocker.sol";
 import { ICVXLocker } from "contracts/interfaces/ICVXLocker.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
-contract CveLocker {
+contract CVELocker {
     // TO-DO:
     // Process fee per cve reporting by chain in fee routing/here (permissioned functions for feerouting)
     // Add epoch rewards view for frontend?
@@ -78,7 +78,7 @@ contract CveLocker {
     modifier onlyDaoPermissions() {
         require(
             centralRegistry.hasDaoPermissions(msg.sender),
-            "CveLocker: UNAUTHORIZED"
+            "CVELocker: UNAUTHORIZED"
         );
         _;
     }
@@ -86,20 +86,20 @@ contract CveLocker {
     modifier onlyElevatedPermissions() {
         require(
             centralRegistry.hasElevatedPermissions(msg.sender),
-            "CveLocker: UNAUTHORIZED"
+            "CVELocker: UNAUTHORIZED"
         );
         _;
     }
 
     modifier onlyVeCVE() {
-        require(msg.sender == address(veCVE), "CveLocker: UNAUTHORIZED");
+        require(msg.sender == address(veCVE), "CVELocker: UNAUTHORIZED");
         _;
     }
 
     modifier onlyMessagingHub() {
         require(
             msg.sender == centralRegistry.protocolMessagingHub(),
-            "CveLocker: UNAUTHORIZED"
+            "CVELocker: UNAUTHORIZED"
         );
         _;
     }
@@ -112,7 +112,7 @@ contract CveLocker {
                 address(centralRegistry_),
                 type(ICentralRegistry).interfaceId
             ),
-            "CveLocker: invalid central registry"
+            "CVELocker: invalid central registry"
         );
 
         centralRegistry = centralRegistry_;
@@ -138,7 +138,7 @@ contract CveLocker {
     ) external onlyDaoPermissions {
         require(
             token != baseRewardToken,
-            "CveLocker: cannot withdraw reward token"
+            "CVELocker: cannot withdraw reward token"
         );
 
         if (amount == 0) {
@@ -156,8 +156,8 @@ contract CveLocker {
     function addAuthorizedRewardToken(
         address token
     ) external onlyElevatedPermissions {
-        require(token != address(0), "CveLocker: Invalid Token Address");
-        require(!authorizedRewardToken[token], "CveLocker: Invalid Operation");
+        require(token != address(0), "CVELocker: Invalid Token Address");
+        require(!authorizedRewardToken[token], "CVELocker: Invalid Operation");
         authorizedRewardToken[token] = true;
     }
 
@@ -167,8 +167,8 @@ contract CveLocker {
     function removeAuthorizedRewardToken(
         address token
     ) external onlyDaoPermissions {
-        require(token != address(0), "CveLocker: Invalid Token Address");
-        require(authorizedRewardToken[token], "CveLocker: Invalid Operation");
+        require(token != address(0), "CVELocker: Invalid Token Address");
+        require(authorizedRewardToken[token], "CVELocker: Invalid Operation");
         delete authorizedRewardToken[token];
     }
 
@@ -176,7 +176,7 @@ contract CveLocker {
         require(
             msg.sender == address(veCVE) ||
                 centralRegistry.hasElevatedPermissions(msg.sender),
-            "CveLocker: UNAUTHORIZED"
+            "CVELocker: UNAUTHORIZED"
         );
         isShutdown = true;
     }
@@ -263,7 +263,7 @@ contract CveLocker {
     ) external {
         uint256 epochs = epochsToClaim(msg.sender);
 
-        require(epochs > 0, "CveLocker: no epochs to claim");
+        require(epochs > 0, "CVELocker: no epochs to claim");
 
         _claimRewards(msg.sender, recipient, epochs, rewardsData, params, aux);
     }
@@ -398,7 +398,7 @@ contract CveLocker {
         if (rewardsData.desiredRewardToken != baseRewardToken) {
             require(
                 authorizedRewardToken[rewardsData.desiredRewardToken],
-                "CveLocker: unsupported reward token"
+                "CVELocker: unsupported reward token"
             );
 
             SwapperLib.Swap memory swapData = abi.decode(
@@ -413,7 +413,7 @@ contract CveLocker {
                     SLIPPAGE
                 );
             } else {
-                revert("CveLocker: swapData misconfigured");
+                revert("CVELocker: swapData misconfigured");
             }
 
             if (
@@ -540,7 +540,7 @@ contract CveLocker {
     ) internal returns (uint256) {
         (bool success, ) = payable(recipient).call{ value: reward }("");
 
-        require(success, "CveLocker: error sending ETH rewards");
+        require(success, "CVELocker: error sending ETH rewards");
 
         return reward;
     }

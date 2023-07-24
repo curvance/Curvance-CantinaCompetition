@@ -8,7 +8,7 @@ import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
-import { ICveLocker, RewardsData } from "contracts/interfaces/ICveLocker.sol";
+import { ICVELocker, RewardsData } from "contracts/interfaces/ICveLocker.sol";
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 

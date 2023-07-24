@@ -6,11 +6,11 @@ import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { ERC20 } from "contracts/libraries/ERC20.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { ICveLocker, RewardsData } from "contracts/interfaces/ICveLocker.sol";
+import { ICVELocker, RewardsData } from "contracts/interfaces/ICveLocker.sol";
 import { IDelegateRegistry } from "contracts/interfaces/IDelegateRegistry.sol";
 
 contract VeCVE is ERC20 {
-    /// STRUCTS ///
+    /// TYPES ///
 
     struct Lock {
         uint216 amount;
@@ -34,7 +34,7 @@ contract VeCVE is ERC20 {
 
     address public immutable cve;
 
-    ICveLocker public immutable cveLocker;
+    ICVELocker public immutable cveLocker;
 
     uint256 public immutable genesisEpoch;
 
@@ -116,7 +116,7 @@ contract VeCVE is ERC20 {
         centralRegistry = centralRegistry_;
         genesisEpoch = centralRegistry.genesisEpoch();
         cve = centralRegistry.CVE();
-        cveLocker = ICveLocker(centralRegistry.cveLocker());
+        cveLocker = ICVELocker(centralRegistry.cveLocker());
         continuousLockPointMultiplier = continuousLockPointMultiplier_;
     }
 

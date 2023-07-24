@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { ICVE } from "contracts/interfaces/ICVE.sol";
-import { ICveLocker } from "contracts/interfaces/ICveLocker.sol";
+import { ICVELocker } from "contracts/interfaces/ICveLocker.sol";
 import { IGaugePool } from "contracts/interfaces/IGaugePool.sol";
 
 contract VotingHub {
