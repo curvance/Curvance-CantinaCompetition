@@ -14,11 +14,7 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 contract CveLocker {
     // TO-DO:
     // Process fee per cve reporting by chain in fee routing/here (permissioned functions for feerouting)
-    // Figure out when fees should be active either current epoch or epoch + 1
     // Add epoch rewards view for frontend?
-
-    // Add slippage checks
-    // Add Whitelisted swappers
 
     /// CONSTANTS ///
 
@@ -53,7 +49,7 @@ contract CveLocker {
     // User => Reward Next Claim Index
     mapping(address => uint256) public userNextClaimIndex;
 
-    // Move Reward Tokens to Central Registry
+    // RewardToken => Authorized
     mapping(address => bool) public authorizedRewardToken;
 
     // Epoch # => ChainID => Tokens Locked in Epoch
@@ -160,8 +156,8 @@ contract CveLocker {
     function addAuthorizedRewardToken(
         address token
     ) external onlyElevatedPermissions {
-        require(token != address(0), "Invalid Token Address");
-        require(!authorizedRewardToken[token], "Invalid Operation");
+        require(token != address(0), "CveLocker: Invalid Token Address");
+        require(!authorizedRewardToken[token], "CveLocker: Invalid Operation");
         authorizedRewardToken[token] = true;
     }
 
@@ -171,8 +167,8 @@ contract CveLocker {
     function removeAuthorizedRewardToken(
         address token
     ) external onlyDaoPermissions {
-        require(token != address(0), "Invalid Token Address");
-        require(authorizedRewardToken[token], "Invalid Operation");
+        require(token != address(0), "CveLocker: Invalid Token Address");
+        require(authorizedRewardToken[token], "CveLocker: Invalid Operation");
         delete authorizedRewardToken[token];
     }
 
