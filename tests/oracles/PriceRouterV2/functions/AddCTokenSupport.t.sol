@@ -16,12 +16,12 @@ contract AddCTokenSupportTest is TestBasePriceRouterV2 {
     {
         priceRouter.addCTokenSupport(address(cUSDC));
 
-        vm.expectRevert("priceRouter: CToken already configured");
+        vm.expectRevert("PriceRouter: CToken already configured");
         priceRouter.addCTokenSupport(address(cUSDC));
     }
 
     function test_addCTokenSupport_fail_whenCTokenIsInvalid() public {
-        vm.expectRevert("priceRouter: CToken is invalid");
+        vm.expectRevert("PriceRouter: CToken is invalid");
         priceRouter.addCTokenSupport(address(1));
     }
 

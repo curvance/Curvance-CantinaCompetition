@@ -15,7 +15,7 @@ contract AddAssetPriceFeedTest is TestBasePriceRouterV2 {
     }
 
     function test_addAssetPriceFeed_fail_whenAdaptorIsNotApproved() public {
-        vm.expectRevert("priceRouter: unapproved feed");
+        vm.expectRevert("PriceRouter: unapproved feed");
         priceRouter.addAssetPriceFeed(
             _USDC_ADDRESS,
             address(chainlinkAdaptor)
@@ -27,7 +27,7 @@ contract AddAssetPriceFeedTest is TestBasePriceRouterV2 {
     {
         _addDualPriceFeed();
 
-        vm.expectRevert("priceRouter: dual feed already configured");
+        vm.expectRevert("PriceRouter: dual feed already configured");
         priceRouter.addAssetPriceFeed(
             _USDC_ADDRESS,
             address(dualChainlinkAdaptor)
@@ -37,7 +37,7 @@ contract AddAssetPriceFeedTest is TestBasePriceRouterV2 {
     function test_addAssetPriceFeed_fail_whenFeedAlreadyAdded() public {
         _addSinglePriceFeed();
 
-        vm.expectRevert("priceRouter: feed already added");
+        vm.expectRevert("PriceRouter: feed already added");
         priceRouter.addAssetPriceFeed(
             _USDC_ADDRESS,
             address(chainlinkAdaptor)
@@ -49,7 +49,7 @@ contract AddAssetPriceFeedTest is TestBasePriceRouterV2 {
 
         chainlinkAdaptor.removeAsset(_USDC_ADDRESS);
 
-        vm.expectRevert("priceRouter: not supported");
+        vm.expectRevert("PriceRouter: not supported");
         priceRouter.addAssetPriceFeed(
             _USDC_ADDRESS,
             address(chainlinkAdaptor)

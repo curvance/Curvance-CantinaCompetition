@@ -12,7 +12,7 @@ contract RemoveCTokenSupportTest is TestBasePriceRouterV2 {
     }
 
     function test_removeCTokenSupport_fail_whenCTokenIsNotConfigured() public {
-        vm.expectRevert("priceRouter: CToken is not configured");
+        vm.expectRevert("PriceRouter: CToken is not configured");
         priceRouter.removeCTokenSupport(address(cUSDC));
     }
 

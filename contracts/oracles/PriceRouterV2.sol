@@ -90,7 +90,7 @@ contract PriceRouter {
 
     // Only callable by Adaptor
     modifier onlyAdaptor() {
-        require(isApprovedAdaptor[msg.sender], "priceRouter: UNAUTHORIZED");
+        require(isApprovedAdaptor[msg.sender], "PriceRouter: UNAUTHORIZED");
         _;
     }
 
@@ -100,11 +100,11 @@ contract PriceRouter {
                 address(centralRegistry_),
                 type(ICentralRegistry).interfaceId
             ),
-            "priceRouter: invalid central registry"
+            "PriceRouter: invalid central registry"
         );
         require(
             ETH_USDFEED != address(0),
-            "priceRouter: ETH-USD Feed is invalid"
+            "PriceRouter: ETH-USD Feed is invalid"
         );
 
         centralRegistry = centralRegistry_;
@@ -123,22 +123,22 @@ contract PriceRouter {
         address asset,
         address feed
     ) external onlyElevatedPermissions {
-        require(isApprovedAdaptor[feed], "priceRouter: unapproved feed");
+        require(isApprovedAdaptor[feed], "PriceRouter: unapproved feed");
 
         require(
             IOracleAdaptor(feed).isSupportedAsset(asset),
-            "priceRouter: not supported"
+            "PriceRouter: not supported"
         );
 
         uint256 numPriceFeeds = assetPriceFeeds[asset].length;
 
         require(
             numPriceFeeds < 2,
-            "priceRouter: dual feed already configured"
+            "PriceRouter: dual feed already configured"
         );
         require(
             numPriceFeeds == 0 || assetPriceFeeds[asset][0] != feed,
-            "priceRouter: feed already added"
+            "PriceRouter: feed already added"
         );
 
         assetPriceFeeds[asset].push(feed);
@@ -160,11 +160,11 @@ contract PriceRouter {
     ) external onlyElevatedPermissions {
         require(
             !cTokenAssets[cToken].isCToken,
-            "priceRouter: CToken already configured"
+            "PriceRouter: CToken already configured"
         );
         require(
             ERC165Checker.supportsInterface(cToken, type(ICToken).interfaceId),
-            "priceRouter: CToken is invalid"
+            "PriceRouter: CToken is invalid"
         );
 
         cTokenAssets[cToken].isCToken = true;
@@ -174,7 +174,7 @@ contract PriceRouter {
     function removeCTokenSupport(address cToken) external onlyDaoPermissions {
         require(
             cTokenAssets[cToken].isCToken,
-            "priceRouter: CToken is not configured"
+            "PriceRouter: CToken is not configured"
         );
         delete cTokenAssets[cToken];
     }
@@ -191,7 +191,7 @@ contract PriceRouter {
     ) external onlyElevatedPermissions {
         require(
             !isApprovedAdaptor[_adaptor],
-            "priceRouter: adaptor already approved"
+            "PriceRouter: adaptor already approved"
         );
         isApprovedAdaptor[_adaptor] = true;
     }
@@ -204,7 +204,7 @@ contract PriceRouter {
     ) external onlyDaoPermissions {
         require(
             isApprovedAdaptor[_adaptor],
-            "priceRouter: adaptor does not exist"
+            "PriceRouter: adaptor does not exist"
         );
         delete isApprovedAdaptor[_adaptor];
     }
@@ -218,7 +218,7 @@ contract PriceRouter {
     ) external onlyElevatedPermissions {
         require(
             maxDivergence >= 10200,
-            "priceRouter: divergence check is too small"
+            "PriceRouter: divergence check is too small"
         );
         PRICEFEED_MAXIMUM_DIVERGENCE = maxDivergence;
     }
@@ -230,7 +230,7 @@ contract PriceRouter {
     function setChainlinkDelay(
         uint256 delay
     ) external onlyElevatedPermissions {
-        require(delay < 1 days, "priceRouter: delay is too large");
+        require(delay < 1 days, "PriceRouter: delay is too large");
         CHAINLINK_MAX_DELAY = delay;
     }
 
@@ -249,7 +249,7 @@ contract PriceRouter {
         bool inUSD
     ) external view returns (FeedData[] memory) {
         uint256 numAssetPriceFeeds = assetPriceFeeds[asset].length;
-        require(numAssetPriceFeeds > 0, "priceRouter: no feeds available");
+        require(numAssetPriceFeeds > 0, "PriceRouter: no feeds available");
         FeedData[] memory data = new FeedData[](numAssetPriceFeeds * 2);
 
         /// If the asset only has one price feed, we know itll be in
@@ -300,23 +300,22 @@ contract PriceRouter {
         bool getLower
     ) public view returns (uint256 price, uint256 errorCode) {
         uint256 numAssetPriceFeeds = assetPriceFeeds[asset].length;
-        require(numAssetPriceFeeds > 0, "priceRouter: no feeds available");
+        require(numAssetPriceFeeds > 0, "PriceRouter: no feeds available");
 
         if (cTokenAssets[asset].isCToken) {
             asset = cTokenAssets[asset].underlying;
         }
 
         if (numAssetPriceFeeds < 2) {
-           (price, errorCode) = getPriceSingleFeed(asset, inUSD, getLower);
+            (price, errorCode) = getPriceSingleFeed(asset, inUSD, getLower);
         } else {
-           (price, errorCode) = getPriceDualFeed(asset, inUSD, getLower);
+            (price, errorCode) = getPriceDualFeed(asset, inUSD, getLower);
         }
 
         /// If somehow a feed returns a price of 0 make sure we trigger the BAD_SOURCE flag
         if (price == 0 && errorCode < BAD_SOURCE) {
             errorCode = BAD_SOURCE;
         }
-
     }
 
     /// @notice Retrieves the prices of multiple specified assets.
@@ -336,8 +335,11 @@ contract PriceRouter {
     ) public view returns (uint256[] memory, uint256[] memory) {
         uint256 numAssets = assets.length;
 
-        require(numAssets > 0, "priceRouter: no assets to price");
-        require(numAssets == inUSD.length && numAssets == getLower.length, "priceRouter: incorrect param lengths");
+        require(numAssets > 0, "PriceRouter: no assets to price");
+        require(
+            numAssets == inUSD.length && numAssets == getLower.length,
+            "PriceRouter: incorrect param lengths"
+        );
 
         uint256[] memory prices = new uint256[](numAssets);
         uint256[] memory hadError = new uint256[](numAssets);
@@ -365,13 +367,13 @@ contract PriceRouter {
     /// @param feed The address of the feed to be removed.
     function _removeAssetPriceFeed(address asset, address feed) internal {
         uint256 numAssetPriceFeeds = assetPriceFeeds[asset].length;
-        require(numAssetPriceFeeds > 0, "priceRouter: no feeds available");
+        require(numAssetPriceFeeds > 0, "PriceRouter: no feeds available");
 
         if (numAssetPriceFeeds > 1) {
             require(
                 assetPriceFeeds[asset][0] == feed ||
                     assetPriceFeeds[asset][1] == feed,
-                "priceRouter: feed does not exist"
+                "PriceRouter: feed does not exist"
             );
 
             // we want to remove the first feed of two,
@@ -382,7 +384,7 @@ contract PriceRouter {
         } else {
             require(
                 assetPriceFeeds[asset][0] == feed,
-                "priceRouter: feed does not exist"
+                "PriceRouter: feed does not exist"
             );
         }
         // we know the feed exists, cant use isApprovedAdaptor as

@@ -17,7 +17,7 @@ contract RemoveAssetPriceFeedTest is TestBasePriceRouterV2 {
     }
 
     function test_removeAssetPriceFeed_fail_whenNoFeedsAvailable() public {
-        vm.expectRevert("priceRouter: no feeds available");
+        vm.expectRevert("PriceRouter: no feeds available");
         priceRouter.removeAssetPriceFeed(
             _USDC_ADDRESS,
             address(chainlinkAdaptor)
@@ -29,14 +29,14 @@ contract RemoveAssetPriceFeedTest is TestBasePriceRouterV2 {
     {
         _addSinglePriceFeed();
 
-        vm.expectRevert("priceRouter: feed does not exist");
+        vm.expectRevert("PriceRouter: feed does not exist");
         priceRouter.removeAssetPriceFeed(_USDC_ADDRESS, address(1));
     }
 
     function test_removeAssetPriceFeed_fail_whenDualFeedDoesNotExist() public {
         _addDualPriceFeed();
 
-        vm.expectRevert("priceRouter: feed does not exist");
+        vm.expectRevert("PriceRouter: feed does not exist");
         priceRouter.removeAssetPriceFeed(_USDC_ADDRESS, address(1));
     }
 

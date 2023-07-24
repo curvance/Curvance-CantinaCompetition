@@ -16,7 +16,7 @@ contract AddApprovedAdaptorTest is TestBasePriceRouterV2 {
     {
         priceRouter.addApprovedAdaptor(address(chainlinkAdaptor));
 
-        vm.expectRevert("priceRouter: adaptor already approved");
+        vm.expectRevert("PriceRouter: adaptor already approved");
         priceRouter.addApprovedAdaptor(address(chainlinkAdaptor));
     }
 

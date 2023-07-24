@@ -9,14 +9,14 @@ contract PriceRouterDeploymentTest is TestBasePriceRouterV2 {
     function test_priceRouterDeployment_fail_whenCentralRegistryIsInvalid()
         public
     {
-        vm.expectRevert("priceRouter: invalid central registry");
+        vm.expectRevert("PriceRouter: invalid central registry");
         new PriceRouter(ICentralRegistry(address(1)), _CHAINLINK_ETH_USD);
     }
 
     function test_priceRouterDeployment_fail_whenEthUsdFeedIsZeroAddress()
         public
     {
-        vm.expectRevert("priceRouter: ETH-USD Feed is invalid");
+        vm.expectRevert("PriceRouter: ETH-USD Feed is invalid");
         new PriceRouter(
             ICentralRegistry(address(centralRegistry)),
             address(0)

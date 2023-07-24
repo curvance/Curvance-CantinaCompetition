@@ -7,7 +7,7 @@ contract NotifyAssetPriceFeedRemovalTest is TestBasePriceRouterV2 {
     function test_notifyAssetPriceFeedRemoval_fail_whenCallerIsNotApprovedAdaptor()
         public
     {
-        vm.expectRevert("priceRouter: UNAUTHORIZED");
+        vm.expectRevert("PriceRouter: UNAUTHORIZED");
         priceRouter.notifyAssetPriceFeedRemoval(_USDC_ADDRESS);
     }
 
@@ -18,7 +18,7 @@ contract NotifyAssetPriceFeedRemovalTest is TestBasePriceRouterV2 {
 
         vm.prank(address(chainlinkAdaptor));
 
-        vm.expectRevert("priceRouter: no feeds available");
+        vm.expectRevert("PriceRouter: no feeds available");
         priceRouter.notifyAssetPriceFeedRemoval(_USDC_ADDRESS);
     }
 
@@ -31,7 +31,7 @@ contract NotifyAssetPriceFeedRemovalTest is TestBasePriceRouterV2 {
 
         vm.prank(address(dualChainlinkAdaptor));
 
-        vm.expectRevert("priceRouter: feed does not exist");
+        vm.expectRevert("PriceRouter: feed does not exist");
         priceRouter.notifyAssetPriceFeedRemoval(_USDC_ADDRESS);
     }
 
@@ -44,7 +44,7 @@ contract NotifyAssetPriceFeedRemovalTest is TestBasePriceRouterV2 {
 
         vm.prank(address(1));
 
-        vm.expectRevert("priceRouter: feed does not exist");
+        vm.expectRevert("PriceRouter: feed does not exist");
         priceRouter.notifyAssetPriceFeedRemoval(_USDC_ADDRESS);
     }
 
