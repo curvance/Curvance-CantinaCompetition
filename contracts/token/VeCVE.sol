@@ -6,7 +6,7 @@ import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { ERC20 } from "contracts/libraries/ERC20.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { ICVELocker, RewardsData } from "contracts/interfaces/ICveLocker.sol";
+import { ICVELocker, RewardsData } from "contracts/interfaces/ICVELocker.sol";
 import { IDelegateRegistry } from "contracts/interfaces/IDelegateRegistry.sol";
 
 contract VeCVE is ERC20 {
