@@ -21,10 +21,10 @@ interface ICveLocker {
 
     /// notice Reset user claim index
     function resetUserClaimIndex(address user) external;
-    
-    /// Claims a users veCVE rewards, only callable by veCVE contract
+
+    /// Claims a users VeCVE rewards, only callable by VeCVE contract
     function claimRewardsFor(
-        address user, 
+        address user,
         address recipient,
         uint256 epoches,
         RewardsData memory rewardsData,
@@ -38,7 +38,6 @@ interface ICveLocker {
     /// Checks how many epoches of CVE locker rewards a user has.
     function epochsToClaim(address user) external view returns (uint256);
 
-    /// Allows veCVE to shut down cve locker to prepare for a new veCVE locker
+    /// Allows VeCVE to shut down cve locker to prepare for a new VeCVE locker
     function notifyLockerShutdown() external;
-
 }

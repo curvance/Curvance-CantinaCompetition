@@ -13,7 +13,6 @@ import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 contract GaugePool is GaugeController, ReentrancyGuard {
-
     /// structs
     struct PoolInfo {
         uint256 lastRewardTimestamp;
@@ -217,7 +216,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
             if (address(childGauges[i]) != address(0)) {
                 childGauges[i].withdraw(token, user, amount);
             }
-            
+
             unchecked {
                 ++i;
             }

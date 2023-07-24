@@ -9,7 +9,7 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { ICveLocker, RewardsData } from "contracts/interfaces/ICveLocker.sol";
 import { IDelegateRegistry } from "contracts/interfaces/IDelegateRegistry.sol";
 
-contract veCVE is ERC20 {
+contract VeCVE is ERC20 {
     /// STRUCTS ///
 
     struct Lock {
@@ -45,7 +45,7 @@ contract veCVE is ERC20 {
     string private _symbol;
     bool public isShutdown;
 
-    // User => Array of veCVE locks
+    // User => Array of VeCVE locks
     mapping(address => Lock[]) public userLocks;
 
     // User => Token Points
@@ -85,7 +85,7 @@ contract veCVE is ERC20 {
     modifier onlyDaoPermissions() {
         require(
             centralRegistry.hasDaoPermissions(msg.sender),
-            "veCVE: UNAUTHORIZED"
+            "VeCVE: UNAUTHORIZED"
         );
         _;
     }
@@ -93,7 +93,7 @@ contract veCVE is ERC20 {
     modifier onlyElevatedPermissions() {
         require(
             centralRegistry.hasElevatedPermissions(msg.sender),
-            "veCVE: UNAUTHORIZED"
+            "VeCVE: UNAUTHORIZED"
         );
         _;
     }
@@ -103,14 +103,14 @@ contract veCVE is ERC20 {
         uint256 continuousLockPointMultiplier_
     ) {
         _name = "Vote Escrowed CVE";
-        _symbol = "veCVE";
+        _symbol = "VeCVE";
 
         require(
             ERC165Checker.supportsInterface(
                 address(centralRegistry_),
                 type(ICentralRegistry).interfaceId
             ),
-            "veCVE: invalid central registry"
+            "VeCVE: invalid central registry"
         );
 
         centralRegistry = centralRegistry_;
@@ -487,7 +487,7 @@ contract veCVE is ERC20 {
                 // for sorted lockIndexes
                 require(
                     lockIndexes[i] < previousLockIndex,
-                    "veCVE: lockIndexes misconfigured"
+                    "VeCVE: lockIndexes misconfigured"
                 );
             }
 
@@ -571,7 +571,7 @@ contract veCVE is ERC20 {
         } else {
             require(
                 userLock.unlockTime != CONTINUOUS_LOCK_VALUE,
-                "veCVE: disable combined lock continuous mode first"
+                "VeCVE: disable combined lock continuous mode first"
             );
             // Remove the previous unlock data
             _reduceTokenUnlocks(
@@ -710,7 +710,7 @@ contract veCVE is ERC20 {
 
         require(
             block.timestamp >= locks[lockIndex].unlockTime || isShutdown,
-            "veCVE: lock has not expired"
+            "VeCVE: lock has not expired"
         );
 
         // Claim pending locker rewards
@@ -768,12 +768,12 @@ contract veCVE is ERC20 {
 
         uint256 penaltyValue = centralRegistry.earlyUnlockPenaltyValue();
 
-        require(penaltyValue > 0, "veCVE: early unlocks disabled");
+        require(penaltyValue > 0, "VeCVE: early unlocks disabled");
 
         // Claim pending locker rewards
         _claimRewards(recipient, rewardRecipient, rewardsData, params, aux);
 
-        // Burn their veCVE and remove their lock
+        // Burn their VeCVE and remove their lock
         uint256 lockAmount = locks[lockIndex].amount;
         _burn(msg.sender, lockAmount);
         _removeLock(locks, lockIndex);
@@ -814,7 +814,7 @@ contract veCVE is ERC20 {
     function updateUserPoints(address user, uint256 epoch) public {
         require(
             address(cveLocker) == msg.sender,
-            "veCVE: only CVE Locker can update user points"
+            "VeCVE: only CVE Locker can update user points"
         );
 
         unchecked {
@@ -823,7 +823,7 @@ contract veCVE is ERC20 {
     }
 
     /// @notice Recover tokens sent accidentally to the contract
-    ///         or leftover rewards (excluding veCVE tokens)
+    ///         or leftover rewards (excluding VeCVE tokens)
     /// @param token The address of the token to recover
     /// @param to The address to receive the recovered tokens
     /// @param amount The amount of tokens to recover
@@ -1117,7 +1117,7 @@ contract veCVE is ERC20 {
         uint256 epoch,
         uint256 points
     ) internal {
-        // only modified on locking/unlocking veCVE and we know theres never
+        // only modified on locking/unlocking VeCVE and we know theres never
         // more than 420m so this should never over/underflow
         unchecked {
             chainTokenPoints += points;
@@ -1140,7 +1140,7 @@ contract veCVE is ERC20 {
         uint256 tokenPoints,
         uint256 tokenUnlocks
     ) internal {
-        // only modified on locking/unlocking veCVE and we know theres never
+        // only modified on locking/unlocking VeCVE and we know theres never
         // more than 420m so this should never over/underflow
         unchecked {
             chainTokenPoints -= tokenPoints;
