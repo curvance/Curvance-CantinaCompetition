@@ -8,7 +8,7 @@ import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { IVeCVE } from "contracts/interfaces/IVeCVE.sol";
 import { RewardsData } from "contracts/interfaces/ICveLocker.sol";
-import { ICVXLocker } from "contracts/interfaces/ICvxLocker.sol";
+import { ICVXLocker } from "contracts/interfaces/ICVXLocker.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 contract CveLocker {

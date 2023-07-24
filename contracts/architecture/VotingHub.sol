@@ -4,19 +4,15 @@ pragma solidity ^0.8.17;
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import "../interfaces/ICveLocker.sol";
-import "contracts/interfaces/ICentralRegistry.sol";
-import "../interfaces/IGaugePool.sol";
-import "../interfaces/ICVE.sol";
+import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+import { ICVE } from "contracts/interfaces/ICVE.sol";
+import { ICveLocker } from "contracts/interfaces/ICveLocker.sol";
+import { IGaugePool } from "contracts/interfaces/IGaugePool.sol";
 
-contract CurvanceVotingHub {
+contract VotingHub {
     using SafeERC20 for IERC20;
 
-    event GaugeRewardsSet(
-        ChainData[] chainData,
-        address[][] pools,
-        uint256[][] rewards
-    );
+    /// TYPES ///
 
     struct ChainData {
         uint256 chainid;
@@ -24,47 +20,64 @@ contract CurvanceVotingHub {
         uint256 emissionAmount;
     }
 
-    uint256 public lastEpochPaid;
-    uint256 public targetEmissionsPerEpoch;
-    ICentralRegistry public immutable centralRegistry;
-
+    /// CONSTANTS ///
     uint256 public constant EPOCH_DURATION = 2 weeks;
     uint256 public constant upperBound = 10010;
     uint256 public constant lowerBound = 9990;
     uint256 public constant DENOMINATOR = 10000;
     uint256 public constant cveDecimalOffset = 1000000000000000000;
 
-    constructor(
-        ICentralRegistry _centralRegistry,
-        uint256 _targetEmissionsPerEpoch
-    ) {
-        centralRegistry = _centralRegistry;
-        setEpochEmissions(_targetEmissionsPerEpoch);
-    }
+    ICentralRegistry public immutable centralRegistry;
+
+    /// STORAGE ///
+
+    uint256 public lastEpochPaid;
+    uint256 public targetEmissionsPerEpoch;
+
+    /// EVENTS ///
+
+    event GaugeRewardsSet(
+        ChainData[] chainData,
+        address[][] pools,
+        uint256[][] rewards
+    );
+
+    /// MODIFIERS ///
 
     modifier onlyDaoManager() {
         require(msg.sender == centralRegistry.daoAddress(), "UNAUTHORIZED");
         _;
     }
 
+    /// CONSTRUCTOR ///
+
+    constructor(
+        ICentralRegistry centralRegistry_,
+        uint256 targetEmissionsPerEpoch_
+    ) {
+        centralRegistry = centralRegistry_;
+        setEpochEmissions(targetEmissionsPerEpoch_);
+    }
+
+    /// PUBLIC FUNCTIONS ///
+
     function genesisEpoch() private view returns (uint256) {
         return centralRegistry.genesisEpoch();
     }
 
     /// @notice Returns the current epoch for the given time
-    /// @param _time The timestamp for which to calculate the epoch
+    /// @param time The timestamp for which to calculate the epoch
     /// @return The current epoch
-    function currentEpoch(uint256 _time) public view returns (uint256) {
-        if (_time < genesisEpoch()) return 0;
-        return ((_time - genesisEpoch()) / EPOCH_DURATION);
+    function currentEpoch(uint256 time) public view returns (uint256) {
+        if (time < genesisEpoch()) return 0;
+        return ((time - genesisEpoch()) / EPOCH_DURATION);
     }
 
-    function validateEmissions(uint256 _emissions) public view returns (bool) {
+    function validateEmissions(uint256 emissions) public view returns (bool) {
         return
             (targetEmissionsPerEpoch <
-                (_emissions * upperBound) / DENOMINATOR) &&
-            (targetEmissionsPerEpoch >
-                (_emissions * lowerBound) / DENOMINATOR);
+                (emissions * upperBound) / DENOMINATOR) &&
+            (targetEmissionsPerEpoch > (emissions * lowerBound) / DENOMINATOR);
     }
 
     function executeMatchingEngine(
@@ -131,10 +144,12 @@ contract CurvanceVotingHub {
     }
 
     function setEpochEmissions(
-        uint256 _targetEmissionsPerEpoch
+        uint256 targetEmissionsPerEpoch_
     ) public onlyDaoManager {
-        targetEmissionsPerEpoch = _targetEmissionsPerEpoch * cveDecimalOffset;
+        targetEmissionsPerEpoch = targetEmissionsPerEpoch_ * cveDecimalOffset;
     }
+
+    /// INTERNAL FUNCTIONS ///
 
     function _sendEmissions(
         ICVE cve,
