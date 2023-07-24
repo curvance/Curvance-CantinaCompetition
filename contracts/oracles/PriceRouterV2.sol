@@ -94,6 +94,8 @@ contract PriceRouter {
         _;
     }
 
+    /// CONSTRUCTOR ///
+
     constructor(ICentralRegistry centralRegistry_, address ETH_USDFEED) {
         require(
             ERC165Checker.supportsInterface(

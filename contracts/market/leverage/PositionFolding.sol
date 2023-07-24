@@ -83,6 +83,8 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
 
     receive() external payable {}
 
+    /// CONSTRUCTOR ///
+
     constructor(
         ICentralRegistry centralRegistry_,
         address lendtroller_,
