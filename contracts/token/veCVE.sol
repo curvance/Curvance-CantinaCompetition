@@ -4,34 +4,21 @@ pragma solidity ^0.8.17;
 import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { ERC20 } from "contracts/libraries/ERC20.sol";
-
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { ICveLocker, RewardsData } from "contracts/interfaces/ICveLocker.sol";
 import { IDelegateRegistry } from "contracts/interfaces/IDelegateRegistry.sol";
 
 contract veCVE is ERC20 {
-
-    /// EVENTS ///
-    event Locked(address indexed user, uint256 amount);
-    event Unlocked(address indexed user, uint256 amount);
-    event UnlockedWithPenalty(address indexed user, uint256 amount, uint256 penaltyAmount);
-    event TokenRecovered(address token, address to, uint256 amount);
-
-    /// ERRORS ///
-    error NonTransferrable();
-    error ContinuousLock();
-    error NotContinuousLock();
-    error InvalidLock();
-    error VeCVEShutdown();
-
     /// STRUCTS ///
+
     struct Lock {
         uint216 amount;
         uint40 unlockTime;
     }
 
     /// CONSTANTS ///
+
     IDelegateRegistry public constant snapshot =
         IDelegateRegistry(0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446);
 
@@ -74,6 +61,43 @@ contract veCVE is ERC20 {
     // Epoch # => Token unlocks on this chain
     mapping(uint256 => uint256) public chainUnlocksByEpoch;
 
+    /// EVENTS ///
+
+    event Locked(address indexed user, uint256 amount);
+    event Unlocked(address indexed user, uint256 amount);
+    event UnlockedWithPenalty(
+        address indexed user,
+        uint256 amount,
+        uint256 penaltyAmount
+    );
+    event TokenRecovered(address token, address to, uint256 amount);
+
+    /// ERRORS ///
+
+    error VeCVE_NonTransferrable();
+    error VeCVE_ContinuousLock();
+    error VeCVE_NotContinuousLock();
+    error VeCVE_InvalidLock();
+    error VeCVE_VeCVEShutdown();
+
+    /// MODIFIERS ///
+
+    modifier onlyDaoPermissions() {
+        require(
+            centralRegistry.hasDaoPermissions(msg.sender),
+            "veCVE: UNAUTHORIZED"
+        );
+        _;
+    }
+
+    modifier onlyElevatedPermissions() {
+        require(
+            centralRegistry.hasElevatedPermissions(msg.sender),
+            "veCVE: UNAUTHORIZED"
+        );
+        _;
+    }
+
     constructor(
         ICentralRegistry centralRegistry_,
         uint256 continuousLockPointMultiplier_
@@ -94,17 +118,6 @@ contract veCVE is ERC20 {
         cve = centralRegistry.CVE();
         cveLocker = ICveLocker(centralRegistry.cveLocker());
         continuousLockPointMultiplier = continuousLockPointMultiplier_;
-    }
-
-    /// MODIFIERS ///
-    modifier onlyDaoPermissions() {
-        require(centralRegistry.hasDaoPermissions(msg.sender), "veCVE: UNAUTHORIZED");
-        _;
-    }
-
-    modifier onlyElevatedPermissions() {
-        require(centralRegistry.hasElevatedPermissions(msg.sender), "veCVE: UNAUTHORIZED");
-        _;
     }
 
     /// @dev Returns the name of the token
@@ -131,7 +144,8 @@ contract veCVE is ERC20 {
     /// @notice Returns the current epoch for the given time
     /// @return The current epoch
     function nextEpochStartTime() public view returns (uint256) {
-        uint256 timestampOffset = (currentEpoch(block.timestamp) + 1) * EPOCH_DURATION;
+        uint256 timestampOffset = (currentEpoch(block.timestamp) + 1) *
+            EPOCH_DURATION;
         return (genesisEpoch + timestampOffset);
     }
 
@@ -171,10 +185,10 @@ contract veCVE is ERC20 {
         uint256 aux
     ) public {
         if (isShutdown) {
-            revert VeCVEShutdown();
+            revert VeCVE_VeCVEShutdown();
         }
         if (amount == 0) {
-            revert InvalidLock();
+            revert VeCVE_InvalidLock();
         }
 
         SafeTransferLib.safeTransferFrom(
@@ -211,13 +225,13 @@ contract veCVE is ERC20 {
         uint256 aux
     ) public {
         if (isShutdown) {
-            revert VeCVEShutdown();
+            revert VeCVE_VeCVEShutdown();
         }
         if (amount == 0) {
-            revert InvalidLock();
+            revert VeCVE_InvalidLock();
         }
         if (!centralRegistry.approvedVeCVELocker(msg.sender)) {
-            revert InvalidLock();
+            revert VeCVE_InvalidLock();
         }
 
         SafeTransferLib.safeTransferFrom(
@@ -252,7 +266,7 @@ contract veCVE is ERC20 {
         uint256 aux
     ) public {
         if (isShutdown) {
-            revert VeCVEShutdown();
+            revert VeCVE_VeCVEShutdown();
         }
 
         Lock[] storage locks = userLocks[msg.sender];
@@ -260,13 +274,13 @@ contract veCVE is ERC20 {
 
         // Length is index + 1 so has to be less than array length
         if (lockIndex >= locks.length) {
-            revert InvalidLock();
+            revert VeCVE_InvalidLock();
         }
         if (unlockTimestamp < block.timestamp) {
-            revert InvalidLock();
+            revert VeCVE_InvalidLock();
         }
         if (unlockTimestamp == CONTINUOUS_LOCK_VALUE) {
-            revert ContinuousLock();
+            revert VeCVE_ContinuousLock();
         }
 
         // Claim pending locker rewards
@@ -317,10 +331,10 @@ contract veCVE is ERC20 {
         uint256 aux
     ) public {
         if (isShutdown) {
-            revert VeCVEShutdown();
+            revert VeCVE_VeCVEShutdown();
         }
         if (amount == 0) {
-            revert InvalidLock();
+            revert VeCVE_InvalidLock();
         }
 
         SafeTransferLib.safeTransferFrom(
@@ -363,13 +377,13 @@ contract veCVE is ERC20 {
         uint256 aux
     ) public {
         if (isShutdown) {
-            revert VeCVEShutdown();
+            revert VeCVE_VeCVEShutdown();
         }
         if (amount == 0) {
-            revert InvalidLock();
+            revert VeCVE_InvalidLock();
         }
         if (!centralRegistry.approvedVeCVELocker(msg.sender)) {
-            revert InvalidLock();
+            revert VeCVE_InvalidLock();
         }
 
         SafeTransferLib.safeTransferFrom(
@@ -408,10 +422,10 @@ contract veCVE is ERC20 {
 
         // Length is index + 1 so has to be less than array length
         if (lockIndex >= locks.length) {
-            revert InvalidLock();
+            revert VeCVE_InvalidLock();
         }
         if (locks[lockIndex].unlockTime != CONTINUOUS_LOCK_VALUE) {
-            revert NotContinuousLock();
+            revert VeCVE_NotContinuousLock();
         }
 
         // Claim pending locker rewards
@@ -458,7 +472,7 @@ contract veCVE is ERC20 {
         // then decrement 1 so we can use it to go through the lockIndexes
         // array backwards.
         if (locksToCombineIndex > 0 && locksToCombineIndex <= lastLockIndex) {
-            revert InvalidLock();
+            revert VeCVE_InvalidLock();
         }
 
         uint256 lockAmount;
@@ -601,7 +615,7 @@ contract veCVE is ERC20 {
         uint256 numLocks = locks.length;
 
         if (numLocks < 2) {
-            revert InvalidLock();
+            revert VeCVE_InvalidLock();
         }
 
         uint256 excessPoints;
@@ -688,10 +702,10 @@ contract veCVE is ERC20 {
         uint256 aux
     ) public {
         Lock[] storage locks = userLocks[msg.sender];
-        
+
         // Length is index + 1 so has to be less than array length
         if (lockIndex >= locks.length) {
-            revert InvalidLock();
+            revert VeCVE_InvalidLock();
         }
 
         require(
@@ -749,7 +763,7 @@ contract veCVE is ERC20 {
 
         // Length is index + 1 so has to be less than array length
         if (lockIndex >= locks.length) {
-            revert InvalidLock();
+            revert VeCVE_InvalidLock();
         }
 
         uint256 penaltyValue = centralRegistry.earlyUnlockPenaltyValue();
@@ -788,7 +802,6 @@ contract veCVE is ERC20 {
         if (locks.length == 0) {
             cveLocker.resetUserClaimIndex(recipient);
         }
-    
     }
 
     /// @notice Updates user points by reducing the amount that gets unlocked
@@ -879,7 +892,7 @@ contract veCVE is ERC20 {
         if (numLocks == 0) {
             return 0;
         }
-        
+
         uint256 timestamp = genesisEpoch + (EPOCH_DURATION * epoch);
         uint256 votes;
 
@@ -928,7 +941,7 @@ contract veCVE is ERC20 {
     /// @dev This function always reverts, as the token is non-transferrable
     /// @return This function always reverts and does not return a value
     function transfer(address, uint256) public pure override returns (bool) {
-        revert NonTransferrable();
+        revert VeCVE_NonTransferrable();
     }
 
     /// @notice Overridden transferFrom function to prevent token transfers
@@ -939,7 +952,7 @@ contract veCVE is ERC20 {
         address,
         uint256
     ) public pure override returns (bool) {
-        revert NonTransferrable();
+        revert VeCVE_NonTransferrable();
     }
 
     /// INTERNAL FUNCTIONS ///
@@ -1020,7 +1033,7 @@ contract veCVE is ERC20 {
 
         // Length is index + 1 so has to be less than array length
         if (lockIndex >= user.length) {
-            revert InvalidLock();
+            revert VeCVE_InvalidLock();
         }
 
         uint40 unlockTimestamp = user[lockIndex].unlockTime;
@@ -1034,7 +1047,7 @@ contract veCVE is ERC20 {
             // User was not continuous locked prior so we will need
             // to clean up their unlock data
             if (unlockTimestamp < block.timestamp) {
-                revert InvalidLock();
+                revert VeCVE_InvalidLock();
             }
 
             uint256 previousTokenAmount = user[lockIndex].amount;
@@ -1082,10 +1095,7 @@ contract veCVE is ERC20 {
     /// @notice Removes a lock from `user`
     /// @param user An array of locks for `user`
     /// @param lockIndex The index of the lock to be removed
-    function _removeLock(
-        Lock[] storage user,
-        uint256 lockIndex
-    ) internal {
+    function _removeLock(Lock[] storage user, uint256 lockIndex) internal {
         uint256 lastLockIndex = user.length - 1;
 
         if (lockIndex != lastLockIndex) {
@@ -1168,7 +1178,7 @@ contract veCVE is ERC20 {
         }
     }
 
-    /// @notice Increment token unlocks 
+    /// @notice Increment token unlocks
     /// @dev Increments the token unlocks of the chain and user
     ///      for a given epoch. Can only be called by the VeCVE contract
     /// @param user The address of the user
@@ -1199,7 +1209,6 @@ contract veCVE is ERC20 {
         uint256 epoch,
         uint256 points
     ) internal {
-        
         // We know theres never more than 420m
         // so this should never over/underflow
         unchecked {
