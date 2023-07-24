@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
+import { GaugeErrors } from "contracts/gauge/GaugeErrors.sol";
+
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IGaugePool } from "contracts/interfaces/IGaugePool.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { IVeCVE } from "contracts/interfaces/IVeCVE.sol";
-
-import { GaugeErrors } from "./GaugeErrors.sol";
 
 contract GaugeController is IGaugePool {
 
@@ -29,8 +29,8 @@ contract GaugeController is IGaugePool {
     uint256 public startTime;
     mapping(uint256 => Epoch) internal epochInfo;
 
-    constructor(ICentralRegistry _centralRegistry){
-        centralRegistry = _centralRegistry;
+    constructor(ICentralRegistry centralRegistry_){
+        centralRegistry = centralRegistry_;
         cve = centralRegistry.CVE();
         veCVE = IVeCVE(centralRegistry.veCVE());
     }

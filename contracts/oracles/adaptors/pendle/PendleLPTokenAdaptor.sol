@@ -1,10 +1,11 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
 import { BaseOracleAdaptor } from "contracts/oracles/adaptors/BaseOracleAdaptor.sol";
+import { PendleLpOracleLib } from "contracts/libraries/pendle/PendleLpOracleLib.sol";
+
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { PendleLpOracleLib } from "contracts/libraries/pendle/PendleLpOracleLib.sol";
 import { IPendlePTOracle } from "contracts/interfaces/external/pendle/IPendlePtOracle.sol";
 import { IPMarket, IPPrincipalToken, IStandardizedYield } from "contracts/interfaces/external/pendle/IPMarket.sol";
 import { IOracleAdaptor, PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
@@ -37,10 +38,10 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
     uint256 public constant BAD_SOURCE = 2;
 
     constructor(
-        ICentralRegistry _centralRegistry,
-        IPendlePTOracle _ptOracle
-    ) BaseOracleAdaptor(_centralRegistry) {
-        ptOracle = _ptOracle;
+        ICentralRegistry centralRegistry_,
+        IPendlePTOracle ptOracle_
+    ) BaseOracleAdaptor(centralRegistry_) {
+        ptOracle = ptOracle_;
     }
 
     /// @notice Called during pricing operations.

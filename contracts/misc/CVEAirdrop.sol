@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import "@openzeppelin/contracts/interfaces/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
+import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
+import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 
-import "contracts/interfaces/ICentralRegistry.sol";
+import { IERC20 } from "contracts/interfaces/IERC20.sol";
+import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
-contract CVEAirdrop {
-    using SafeERC20 for IERC20;
+contract CVEAirdrop is ReentrancyGuard {
 
     event callOptionCVEAirdropClaimed(address indexed claimer, uint256 amount);
     event RemainingCallOptionCVEWithdrawn(uint256 amount);
@@ -19,7 +20,6 @@ contract CVEAirdrop {
 
     bytes32 public airdropMerkleRoot;
     bool public isPaused = true;
-    uint256 private locked = 1;
 
     mapping(address => bool) public airdropClaimed;
 
@@ -34,6 +34,15 @@ contract CVEAirdrop {
         uint256 _maximumClaimAmount,
         bytes32 _root
     ) {
+
+        require(
+            ERC165Checker.supportsInterface(
+                address(_centralRegistry),
+                type(ICentralRegistry).interfaceId
+            ),
+            "CVEAirdrop: invalid central registry"
+        );
+
         centralRegistry = _centralRegistry;
         endClaimTimestamp = _endTimestamp;
         maximumClaimAmount = _maximumClaimAmount;
@@ -41,24 +50,13 @@ contract CVEAirdrop {
     }
 
     modifier onlyDaoPermissions() {
-        require(centralRegistry.hasDaoPermissions(msg.sender), "centralRegistry: UNAUTHORIZED");
+        require(centralRegistry.hasDaoPermissions(msg.sender), "CVEAirdrop: UNAUTHORIZED");
         _;
     }
 
     modifier notPaused() {
-        require(!isPaused, "Airdrop Paused");
+        require(!isPaused, "CVEAirdrop: Airdrop Paused");
         _;
-    }
-
-    modifier nonReentrant() {
-        require(locked == 1, "Reentry Attempt");
-        locked = 2;
-        _;
-        locked = 1;
-    }
-
-    function _msgSender() internal view returns (address) {
-        return msg.sender;
     }
 
     /// @notice Claim CVE Call Option tokens for airdrop
@@ -71,25 +69,25 @@ contract CVEAirdrop {
         // Verify that the airdrop Merkle Root has been set
         require(
             airdropMerkleRoot != bytes32(0),
-            "claimAirdrop: Airdrop Merkle Root not set"
+            "CVEAirdrop: Airdrop Merkle Root not set"
         );
 
         // Verify CVE amount request is not above the maximum claim amount
         require(
             _amount <= maximumClaimAmount,
-            "claimAirdrop: Amount too high"
+            "CVEAirdrop: Amount too high"
         );
 
         // Verify Claim window has not passed
         require(
             block.timestamp < endClaimTimestamp,
-            "claimAirdrop: Too late to claim"
+            "CVEAirdrop: Too late to claim"
         );
 
         // Verify the user has not claimed their airdrop already
         require(
-            !airdropClaimed[_msgSender()],
-            "claimAirdrop: Already claimed"
+            !airdropClaimed[msg.sender],
+            "CVEAirdrop: Already claimed"
         );
 
         // Compute the merkle leaf and verify the merkle proof
@@ -97,21 +95,21 @@ contract CVEAirdrop {
             verifyProof(
                 _proof,
                 airdropMerkleRoot,
-                keccak256(abi.encodePacked(_msgSender(), _amount))
+                keccak256(abi.encodePacked(msg.sender, _amount))
             ),
-            "claimAirdrop: Invalid proof provided"
+            "CVEAirdrop: Invalid proof provided"
         );
 
         // Document that airdrop has been claimed
-        airdropClaimed[_msgSender()] = true;
+        airdropClaimed[msg.sender] = true;
 
         // Transfer CVE tokens
-        IERC20(centralRegistry.callOptionCVE()).safeTransfer(
-            _msgSender(),
+        SafeTransferLib.safeTransfer(centralRegistry.callOptionCVE(),
+            msg.sender,
             _amount
         );
 
-        emit callOptionCVEAirdropClaimed(_msgSender(), _amount);
+        emit callOptionCVEAirdropClaimed(msg.sender, _amount);
     }
 
     /// @notice Gas efficient merkle proof verification implementation to validate CVE token claim
@@ -176,21 +174,21 @@ contract CVEAirdrop {
     ) external onlyDaoPermissions {
         require(
             _recipient != address(0),
-            "rescueToken: Invalid recipient address"
+            "CVEAirdrop: Invalid recipient address"
         );
         if (_token == address(0)) {
             require(
                 address(this).balance >= _amount,
-                "rescueToken: Insufficient balance"
+                "CVEAirdrop: Insufficient balance"
             );
             (bool success, ) = payable(_recipient).call{ value: _amount }("");
-            require(success, "rescueToken: !successful");
+            require(success, "CVEAirdrop: !successful");
         } else {
             require(
                 IERC20(_token).balanceOf(address(this)) >= _amount,
-                "rescueToken: Insufficient balance"
+                "CVEAirdrop: Insufficient balance"
             );
-            SafeERC20.safeTransfer(IERC20(_token), _recipient, _amount);
+            SafeTransferLib.safeTransfer(_token, _recipient, _amount);
         }
     }
 
@@ -198,12 +196,12 @@ contract CVEAirdrop {
     function withdrawRemainingAirdropTokens() external onlyDaoPermissions {
         require(
             block.timestamp > endClaimTimestamp,
-            "withdrawRemainingAirdropTokens: Too early"
+            "CVEAirdrop: Too early"
         );
         uint256 tokensToWithdraw = IERC20(centralRegistry.callOptionCVE())
             .balanceOf(address(this));
-        IERC20(centralRegistry.callOptionCVE()).safeTransfer(
-            _msgSender(),
+        SafeTransferLib.safeTransfer(centralRegistry.callOptionCVE(),
+            msg.sender,
             tokensToWithdraw
         );
 
@@ -213,7 +211,7 @@ contract CVEAirdrop {
     /// @notice Set airdropMerkleRoot for airdrop validation
     /// @param _root new merkle root
     function setMerkleRoot(bytes32 _root) external onlyDaoPermissions {
-        require(_root != bytes32(0), "setMerkleRoot: Invalid Parameter");
+        require(_root != bytes32(0), "CVEAirdrop: Invalid Parameter");
         airdropMerkleRoot = _root;
     }
 

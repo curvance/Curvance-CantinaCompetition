@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
-import "contracts/interfaces/ICentralRegistry.sol";
+import { ERC165 } from "contracts/libraries/ERC165.sol";
+import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 contract CentralRegistry is ICentralRegistry, ERC165 {
+
+    /// PROTOCOL EVENTS ///
     event OwnershipTransferred(
         address indexed previousOwner,
         address indexed newOwner
@@ -17,6 +19,12 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
         address indexed previousEmergencyCouncil,
         address indexed newEmergencyCouncil
     );
+
+    event NewApprovedZapper(address indexed zapper);
+    event approvedZapperRemoved(address indexed zapper);
+
+    event NewApprovedSwapper(address indexed swapper);
+    event approvedSwapperRemoved(address indexed swapper);
 
     event NewVeCVELocker(address indexed veCVELocker);
     event VeCVELockerRemoved(address indexed veCVELocker);
@@ -36,11 +44,11 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     event NewApprovedEndpoint(address indexed approvedEndpoint);
     event ApprovedEndpointRemoved(address indexed approvedEndpoint);
 
+    /// CONSTANTS ///
     uint256 public constant DENOMINATOR = 10000;
-
     uint256 public immutable genesisEpoch;
 
-    /// DAO governance operators
+    /// DAO GOVERNANCE OPERATORS ///
 
     /// DAO multisig, for day to day operations
     address public daoAddress;
@@ -49,28 +57,33 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     /// Multi-protocol multisig, only to be used during protocol threatening emergencies
     address public emergencyCouncil;
 
-    /// Token Contracts
+    /// CURVANCE TOKEN CONTRACTS ///
     address public CVE;
     address public veCVE;
     address public callOptionCVE;
 
+    /// DAO CONTRACTS DATA ///
     address public cveLocker;
-
     address public protocolMessagingHub;
     address public priceRouter;
     address public depositRouter;
     address public zroAddress;
     address public feeHub;
 
-    /// Protocol Values
+    /// PROTOCOL VALUES ///
     uint256 public protocolYieldFee;
     uint256 public protocolLiquidationFee;
     uint256 public protocolLeverageFee;
     uint256 public voteBoostValue;
     uint256 public lockBoostValue;
 
+    /// DAO PERMISSION DATA ///
     mapping(address => bool) public hasDaoPermissions;
     mapping(address => bool) public hasElevatedPermissions;
+
+    /// DAO CONTRACT MAPPINGS ///
+    mapping(address => bool) public approvedZapper;
+    mapping(address => bool) public approvedSwapper;
     mapping(address => bool) public approvedVeCVELocker;
     mapping(address => bool) public gaugeController;
     mapping(address => bool) public harvester;
@@ -132,71 +145,102 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
             emergencyCouncil_ = msg.sender;
         }
 
+        /// Configure DAO permission data
         daoAddress = daoAddress_;
         timelock = timelock_;
         emergencyCouncil = emergencyCouncil_;
 
-        genesisEpoch = genesisEpoch_;
+        hasDaoPermissions[daoAddress] = true;
+        hasDaoPermissions[timelock] = true;
+        hasDaoPermissions[emergencyCouncil] = true;
+
+        hasElevatedPermissions[timelock] = true;
+        hasElevatedPermissions[emergencyCouncil] = true;
+
         emit OwnershipTransferred(address(0), daoAddress);
+        emit newTimelockConfiguration(address(0), timelock);
+        emit EmergencyCouncilTransferred(address(0), emergencyCouncil);
+
+        genesisEpoch = genesisEpoch_;
     }
 
     /// SETTER FUNCTIONS
 
+    /// @notice sets a new CVE contract address
+    /// @dev only callable on a 7 day delay or by the Emergency Council
     function setCVE(address newCVE) public onlyElevatedPermissions {
         CVE = newCVE;
     }
 
+    /// @notice sets a new veCVE contract address
+    /// @dev only callable on a 7 day delay or by the Emergency Council
     function setVeCVE(address newVeCVE) public onlyElevatedPermissions {
         veCVE = newVeCVE;
     }
 
-    function setCallOptionCVE(address newCallOptionCVE) public onlyDaoManager {
+    /// @notice sets a new CVE contract address
+    /// @dev only callable by the DAO
+    function setCallOptionCVE(address newCallOptionCVE) public onlyDaoPermissions {
         callOptionCVE = newCallOptionCVE;
     }
 
+    /// @notice sets a new CVE locker contract address
+    /// @dev only callable on a 7 day delay or by the Emergency Council
     function setCVELocker(
         address newCVELocker
     ) public onlyElevatedPermissions {
         cveLocker = newCVELocker;
     }
 
+    /// @notice sets a new price router contract address
+    /// @dev only callable on a 7 day delay or by the Emergency Council
     function setPriceRouter(
         address newPriceRouter
     ) public onlyElevatedPermissions {
         priceRouter = newPriceRouter;
     }
 
+    /// @notice sets a new deposit router contract address
+    /// @dev only callable on a 7 day delay or by the Emergency Council
     function setDepositRouter(
         address newDepositRouter
     ) public onlyElevatedPermissions {
         depositRouter = newDepositRouter;
     }
 
+    /// @notice sets a new ZRO contract address
+    /// @dev only callable on a 7 day delay or by the Emergency Council
     function setZroAddress(
         address newZroAddress
     ) public onlyElevatedPermissions {
         zroAddress = newZroAddress;
     }
 
+    /// @notice sets a new fee hub contract address
+    /// @dev only callable on a 7 day delay or by the Emergency Council
     function setFeeHub(address newFeeHub) public onlyElevatedPermissions {
         feeHub = newFeeHub;
     }
 
+    /// @notice sets the fee taken by Curvance DAO on all generated by the protocol
+    /// @dev only callable on a 7 day delay or by the Emergency Council
     function setProtocolYieldFee(
         uint256 value
     ) public onlyElevatedPermissions {
         require(
-            value <= 2000 || value == 0,
+            value <= 2000,
             "centralRegistry: invalid parameter"
         );
         protocolYieldFee = value;
     }
 
+    /// @notice sets the fee taken by Curvance DAO on liquidation of collateral assets
+    /// @dev only callable on a 7 day delay or by the Emergency Council
     function setProtocolLiquidationFee(
         uint256 value
     ) public onlyElevatedPermissions {
         require(
-            value <= 500 || value == 0,
+            value <= 500,
             "centralRegistry: invalid parameter"
         );
         /// Liquidation fee is represented as 1e16 format
@@ -204,16 +248,20 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
         protocolLiquidationFee = value * 1e15;
     }
 
+    /// @notice sets the fee taken by Curvance DAO on leverage/deleverage via position folding
+    /// @dev only callable on a 7 day delay or by the Emergency Council
     function setProtocolLeverageFee(
         uint256 value
     ) public onlyElevatedPermissions {
         require(
-            value <= 100 || value == 0,
+            value <= 100,
             "centralRegistry: invalid parameter"
         );
         protocolLeverageFee = value;
     }
 
+    /// @notice sets the voting power boost received by locks using Continuous Lock mode
+    /// @dev only callable on a 7 day delay or by the Emergency Council
     function setVoteBoostValue(uint256 value) public onlyElevatedPermissions {
         require(
             value > DENOMINATOR || value == 0,
@@ -222,6 +270,8 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
         voteBoostValue = value;
     }
 
+    /// @notice sets the emissions boost received by choosing to lock emissions at veCVE
+    /// @dev only callable on a 7 day delay or by the Emergency Council
     function setLockBoostValue(uint256 value) public onlyElevatedPermissions {
         require(
             value > DENOMINATOR || value == 0,
@@ -280,6 +330,56 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
         );
     }
 
+    /// CONTRACT MAPPING LOGIC
+
+    function addApprovedZapper(
+        address newApprovedZapper
+    ) public onlyElevatedPermissions {
+        require(
+            !approvedZapper[newApprovedZapper],
+            "centralRegistry: already approved zapper"
+        );
+
+        approvedZapper[newApprovedZapper] = true;
+        emit NewApprovedZapper(newApprovedZapper);
+    }
+
+    function removeApprovedZapper(
+        address currentApprovedZapper
+    ) public onlyElevatedPermissions {
+        require(
+            approvedZapper[currentApprovedZapper],
+            "centralRegistry: not approved zapper"
+        );
+
+        delete approvedZapper[currentApprovedZapper];
+        emit approvedZapperRemoved(currentApprovedZapper);
+    }
+
+    function addApprovedSwapper(
+        address newApprovedSwapper
+    ) public onlyElevatedPermissions {
+        require(
+            !approvedSwapper[newApprovedSwapper],
+            "centralRegistry: already approved swapper"
+        );
+
+        approvedSwapper[newApprovedSwapper] = true;
+        emit NewApprovedSwapper(newApprovedSwapper);
+    }
+
+    function removeApprovedSwapper(
+        address currentApprovedSwapper
+    ) public onlyElevatedPermissions {
+        require(
+            approvedSwapper[currentApprovedSwapper],
+            "centralRegistry: not approved swapper"
+        );
+
+        delete approvedSwapper[currentApprovedSwapper];
+        emit approvedSwapperRemoved(currentApprovedSwapper);
+    }
+
     function addVeCVELocker(
         address newVeCVELocker
     ) public onlyElevatedPermissions {
@@ -297,7 +397,7 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     ) public onlyElevatedPermissions {
         require(
             approvedVeCVELocker[currentVeCVELocker],
-            "centralRegistry: already not a veCVELocker"
+            "centralRegistry: not veCVELocker"
         );
 
         delete approvedVeCVELocker[currentVeCVELocker];
@@ -309,7 +409,7 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     ) public onlyElevatedPermissions {
         require(
             !gaugeController[newGaugeController],
-            "centralRegistry: already Gauge Controller"
+            "centralRegistry: already gauge controller"
         );
 
         gaugeController[newGaugeController] = true;
@@ -321,7 +421,7 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     ) public onlyElevatedPermissions {
         require(
             gaugeController[currentGaugeController],
-            "centralRegistry: not a Gauge Controller"
+            "centralRegistry: not gauge controller"
         );
 
         delete gaugeController[currentGaugeController];
@@ -333,7 +433,7 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     ) public onlyElevatedPermissions {
         require(
             !harvester[newHarvester],
-            "centralRegistry: already a Harvester"
+            "centralRegistry: already harvester"
         );
 
         harvester[newHarvester] = true;
@@ -345,7 +445,7 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     ) public onlyElevatedPermissions {
         require(
             harvester[currentHarvester],
-            "centralRegistry: not a Harvester"
+            "centralRegistry: not harvester"
         );
 
         delete harvester[currentHarvester];
@@ -357,7 +457,7 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     ) public onlyElevatedPermissions {
         require(
             !lendingMarket[newLendingMarket],
-            "centralRegistry: already Lending Market"
+            "centralRegistry: already lending market"
         );
 
         lendingMarket[newLendingMarket] = true;
@@ -369,7 +469,7 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     ) public onlyElevatedPermissions {
         require(
             lendingMarket[currentLendingMarket],
-            "centralRegistry: not a Lending Market"
+            "centralRegistry: not lending market"
         );
 
         delete lendingMarket[currentLendingMarket];
@@ -381,7 +481,7 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     ) public onlyElevatedPermissions {
         require(
             !feeManager[newFeeManager],
-            "centralRegistry: already a Fee Manager"
+            "centralRegistry: already fee manager"
         );
 
         feeManager[newFeeManager] = true;
@@ -393,7 +493,7 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     ) public onlyElevatedPermissions {
         require(
             feeManager[currentFeeManager],
-            "centralRegistry: not a Fee Manager"
+            "centralRegistry: not fee manager"
         );
 
         delete feeManager[currentFeeManager];
@@ -405,7 +505,7 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     ) public onlyElevatedPermissions {
         require(
             !approvedEndpoint[newApprovedEndpoint],
-            "centralRegistry: already an Endpoint"
+            "centralRegistry: already endpoint"
         );
 
         approvedEndpoint[newApprovedEndpoint] = true;
@@ -417,14 +517,14 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     ) public onlyElevatedPermissions {
         require(
             approvedEndpoint[currentApprovedEndpoint],
-            "centralRegistry: not an Endpoint"
+            "centralRegistry: not endpoint"
         );
 
         delete approvedEndpoint[currentApprovedEndpoint];
         emit ApprovedEndpointRemoved(currentApprovedEndpoint);
     }
 
-    /// @inheritdoc IERC165
+    /// @inheritdoc ERC165
     function supportsInterface(
         bytes4 interfaceId
     ) public view override returns (bool) {
@@ -432,4 +532,5 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
             interfaceId == type(ICentralRegistry).interfaceId ||
             super.supportsInterface(interfaceId);
     }
+
 }

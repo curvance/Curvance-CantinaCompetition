@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
+import { GaugeController, GaugeErrors } from "contracts/gauge/GaugeController.sol";
+import { ChildGaugePool } from "contracts/gauge/ChildGaugePool.sol";
+
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { ICveLocker, rewardsData } from "contracts/interfaces/ICveLocker.sol";
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
-
-import "./GaugeController.sol";
-import "./ChildGaugePool.sol";
+import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 contract GaugePool is GaugeController, ReentrancyGuard {
 
@@ -46,10 +47,10 @@ contract GaugePool is GaugeController, ReentrancyGuard {
     mapping(address => mapping(address => UserInfo)) public userInfo; // token => user => info
 
     constructor(
-        ICentralRegistry _centralRegistry,
-        address _lendtroller
-    ) GaugeController(_centralRegistry) {
-        lendtroller = _lendtroller;
+        ICentralRegistry centralRegistry_,
+        address lendtroller_
+    ) GaugeController(centralRegistry_) {
+        lendtroller = lendtroller_;
     }
 
     function addChildGauge(address _childGauge) external onlyDaoPermissions {

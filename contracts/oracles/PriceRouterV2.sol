@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
+import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { ICToken } from "contracts/interfaces/market/ICToken.sol";
-import "../interfaces/IOracleAdaptor.sol";
+import { IOracleAdaptor, PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
 
 /// @title Curvance Dual Oracle Price Router
 /// @notice Provides a universal interface allowing Curvance contracts
@@ -93,20 +94,20 @@ contract PriceRouter {
         _;
     }
 
-    constructor(ICentralRegistry _centralRegistry, address ETH_USDFEED) {
+    constructor(ICentralRegistry centralRegistry_, address ETH_USDFEED) {
         require(
             ERC165Checker.supportsInterface(
-                address(_centralRegistry),
+                address(centralRegistry_),
                 type(ICentralRegistry).interfaceId
             ),
-            "priceRouter: Central Registry is invalid"
+            "priceRouter: invalid central registry"
         );
         require(
             ETH_USDFEED != address(0),
             "priceRouter: ETH-USD Feed is invalid"
         );
 
-        centralRegistry = _centralRegistry;
+        centralRegistry = centralRegistry_;
         // Save the USD-ETH price feed because it is a widely used pricing path.
         CHAINLINK_ETH_USD = ETH_USDFEED; // 0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419 on mainnet
     }
@@ -336,6 +337,7 @@ contract PriceRouter {
         uint256 numAssets = assets.length;
 
         require(numAssets > 0, "priceRouter: no assets to price");
+        require(numAssets == inUSD.length && numAssets == getLower.length, "priceRouter: incorrect param lengths");
 
         uint256[] memory prices = new uint256[](numAssets);
         uint256[] memory hadError = new uint256[](numAssets);

@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
 import { BalancerPoolAdaptor, IVault } from "./BalancerPoolAdaptor.sol";
+
 import { IBalancerPool } from "contracts/interfaces/external/balancer/IBalancerPool.sol";
 import { IRateProvider } from "contracts/interfaces/external/balancer/IRateProvider.sol";
 import { IOracleAdaptor, PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
@@ -32,9 +33,9 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
     uint256 public constant BAD_SOURCE = 2;
 
     constructor(
-        ICentralRegistry _centralRegistry,
-        IVault _balancerVault
-    ) BalancerPoolAdaptor(_centralRegistry, _balancerVault) {}
+        ICentralRegistry centralRegistry_,
+        IVault balancerVault_
+    ) BalancerPoolAdaptor(centralRegistry_, balancerVault_) {}
 
     /// @notice Called during pricing operations.
     /// @param _asset the bpt being priced

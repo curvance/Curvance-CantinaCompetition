@@ -20,36 +20,34 @@ contract CVE is OFTV2 {
     uint256 public callOptionTokensMinted;
 
     constructor(
-        string memory _name,
-        string memory _symbol,
-        uint8 _sharedDecimals,
-        address _lzEndpoint,
-        ICentralRegistry _centralRegistry,
-        address _team,
-        uint256 _DAOTreasuryAllocation,
-        uint256 _callOptionAllocation,
-        uint256 _TeamAllocation,
-        uint256 initialTokenMint
-    ) OFTV2(_name, _symbol, _sharedDecimals, _lzEndpoint, _centralRegistry) {
+        string memory name_,
+        string memory symbol_,
+        uint8 sharedDecimals_,
+        address lzEndpoint_,
+        ICentralRegistry centralRegistry_,
+        address team_,
+        uint256 DAOTreasuryAllocation_,
+        uint256 callOptionAllocation_,
+        uint256 TeamAllocation_,
+        uint256 initialTokenMint_
+    ) OFTV2(name_, symbol_, sharedDecimals_, lzEndpoint_, centralRegistry_) {
         TokenGenerationEventTimestamp = block.timestamp;
 
-        if (_team == address(0)) {
-            _team = msg.sender;
+        if (team_ == address(0)) {
+            team_ = msg.sender;
         }
 
-        teamAddress = _team;
-        DAOTreasuryAllocation = _DAOTreasuryAllocation;
-        callOptionAllocation = _callOptionAllocation;
-        TeamAllocation = _TeamAllocation;
-        TeamAllocationPerMonth = _TeamAllocation / (48 * month); // Team Vesting is for 4 years and unlocked monthly
+        teamAddress = team_;
+        DAOTreasuryAllocation = DAOTreasuryAllocation_;
+        callOptionAllocation = callOptionAllocation_;
+        TeamAllocation = TeamAllocation_;
+        TeamAllocationPerMonth = TeamAllocation_ / (48 * month); // Team Vesting is for 4 years and unlocked monthly
 
-        _mint(msg.sender, initialTokenMint);
+        _mint(msg.sender, initialTokenMint_);
 
         // TODO:
         // Permission sendAndCall?
         // Write sendEmissions in votingHub
-        // Write moving cve gauge emissions to new hub chain
-        // Write updating hub chain for emission purposes
     }
 
     modifier onlyProtocolMessagingHub() {

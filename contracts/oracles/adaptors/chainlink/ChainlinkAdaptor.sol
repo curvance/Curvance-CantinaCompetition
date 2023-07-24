@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
 import { BaseOracleAdaptor } from "contracts/oracles/adaptors/BaseOracleAdaptor.sol";
+
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 import { IOracleAdaptor, PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
@@ -33,8 +34,8 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
     mapping(address => FeedData) public adaptorDataUSD;
 
     constructor(
-        ICentralRegistry _centralRegistry
-    ) BaseOracleAdaptor(_centralRegistry) {}
+        ICentralRegistry centralRegistry_
+    ) BaseOracleAdaptor(centralRegistry_) {}
 
     /// @notice Retrieves the price of a given asset.
     /// @dev Uses Chainlink oracles to fetch the price data. Price is returned in USD or ETH depending on 'isUsd' parameter.

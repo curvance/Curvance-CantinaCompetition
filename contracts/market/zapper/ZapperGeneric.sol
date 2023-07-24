@@ -1,26 +1,51 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
+import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
+import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { CErc20, IERC20 } from "contracts/market/collateral/CErc20.sol";
 
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { ICurveSwap } from "contracts/interfaces/external/curve/ICurve.sol";
 import { IWETH } from "contracts/interfaces/IWETH.sol";
+import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 
 contract ZapperGeneric {
-    struct Swap {
-        address target;
-        bytes call;
-    }
 
+    /// CONSTANTS ///
+    ICentralRegistry public immutable centralRegistry;
+    uint256 public constant SLIPPAGE = 500;
+    address public constant ETH = address(0);
     ILendtroller public immutable lendtroller;
     address public immutable weth;
-    address public constant ETH = address(0);
 
-    constructor(address _lendtroller, address _weth) {
+    constructor(
+        ICentralRegistry _centralRegistry,
+        address _lendtroller,
+        address _weth
+    ) {
+        
+        require(
+            ERC165Checker.supportsInterface(
+                address(_centralRegistry),
+                type(ICentralRegistry).interfaceId
+            ),
+            "PositionFolding: invalid central registry"
+        );
+
+        centralRegistry = _centralRegistry;
+
+        require(centralRegistry.lendingMarket(_lendtroller), "PositionFolding: lendtroller is invalid");
+
         lendtroller = ILendtroller(_lendtroller);
         weth = _weth;
+    }
+
+    function isETH (address token) internal pure returns (bool) {
+        /// We need to check against both null address and 0xEee because each protocol uses different implementations
+        return token == address(0) || token == address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
     }
 
     /// @dev Deposit inputToken and enter curvance
@@ -41,9 +66,10 @@ contract ZapperGeneric {
         address lpToken,
         uint256 lpMinOutAmount,
         address[] calldata tokens,
-        Swap[] memory tokenSwaps
+        SwapperLib.Swap[] memory tokenSwaps,
+        address recipient
     ) external payable returns (uint256 cTokenOutAmount) {
-        if (inputToken == ETH) {
+        if (isETH(inputToken)) {
             require(inputAmount == msg.value, "invalid amount");
             inputToken = weth;
             IWETH(weth).deposit{ value: inputAmount }(inputAmount);
@@ -66,8 +92,11 @@ contract ZapperGeneric {
 
         // prepare tokens to mint LP
         for (uint256 i; i < numTokenSwaps; ++i) {
-            // swap input token to underlying token
-            _swap(inputToken, tokenSwaps[i]);
+            SwapperLib.swap(
+                tokenSwaps[i],
+                ICentralRegistry(centralRegistry).priceRouter(),
+                SLIPPAGE
+            );
         }
 
         // enter curve
@@ -82,48 +111,42 @@ contract ZapperGeneric {
         cTokenOutAmount = _enterCurvance(cToken, lpToken, lpOutAmount);
 
         // transfer cToken back to user
-        SafeTransferLib.safeTransfer(cToken, msg.sender, cTokenOutAmount);
+        SafeTransferLib.safeTransfer(cToken, recipient, cTokenOutAmount);
     }
 
-    /// @dev Swap input token
-    /// @param _inputToken The input asset address
-    /// @param _swapData The swap aggregation data
-    function _swap(address _inputToken, Swap memory _swapData) private {
-        _approveTokenIfNeeded(_inputToken, address(_swapData.target));
-
-        (bool success, bytes memory retData) = _swapData.target.call(
-            _swapData.call
+    function curveOut(
+        address lpMinter,
+        address lpToken,
+        uint256 lpAmount,
+        address[] calldata tokens,
+        SwapperLib.Swap[] memory tokenSwaps,
+        address outputToken,
+        uint256 minoutAmount,
+        address recipient
+    ) external returns (uint256 outAmount) {
+        SafeTransferLib.safeTransferFrom(
+            lpToken,
+            msg.sender,
+            address(this),
+            lpAmount
         );
+        _exitCurve(lpMinter, lpToken, tokens, lpAmount);
 
-        propagateError(success, retData, "swap");
-
-        require(success == true, "calling swap got an error");
-    }
-
-    /// @dev Approve token if needed
-    /// @param _token The token address
-    /// @param _spender The spender address
-    function _approveTokenIfNeeded(address _token, address _spender) private {
-        if (IERC20(_token).allowance(address(this), _spender) == 0) {
-            SafeTransferLib.safeApprove(_token, _spender, type(uint256).max);
+        uint256 numTokenSwaps = tokenSwaps.length;
+        // prepare tokens to mint LP
+        for (uint256 i; i < numTokenSwaps; ++i) {
+            SwapperLib.swap(
+                tokenSwaps[i],
+                ICentralRegistry(centralRegistry).priceRouter(),
+                SLIPPAGE
+            );
         }
-    }
 
-    /// @dev Propagate error message
-    /// @param success If transaction is successful
-    /// @param data The transaction result data
-    /// @param errorMessage The custom error message
-    function propagateError(
-        bool success,
-        bytes memory data,
-        string memory errorMessage
-    ) public pure {
-        if (!success) {
-            if (data.length == 0) revert(errorMessage);
-            assembly {
-                revert(add(32, data), mload(data))
-            }
-        }
+        outAmount = IERC20(outputToken).balanceOf(address(this));
+        require(outAmount >= minoutAmount, "Received less than minOutAmount");
+
+        // transfer token back to user
+        SafeTransferLib.safeTransfer(outputToken, recipient, outAmount);
     }
 
     /// @dev Enter curvance
@@ -141,10 +164,12 @@ contract ZapperGeneric {
 
         uint256 numTokens = tokens.length;
 
+        uint256[] memory balances = new uint256[](numTokens);
         // approve tokens
         for (uint256 i; i < numTokens; ++i) {
-            _approveTokenIfNeeded(tokens[i], lpMinter);
-            if (tokens[i] == ETH) {
+            balances[i] = _getBalance(tokens[i]);
+            SwapperLib.approveTokenIfNeeded(tokens[i], lpMinter, balances[i]);
+            if (isETH(tokens[i])) {
                 hasETH = true;
             }
         }
@@ -152,10 +177,10 @@ contract ZapperGeneric {
         // enter curve lp minter
         if (numTokens == 4) {
             uint256[4] memory amounts;
-            amounts[0] = _getBalance(tokens[0]);
-            amounts[1] = _getBalance(tokens[1]);
-            amounts[2] = _getBalance(tokens[2]);
-            amounts[3] = _getBalance(tokens[3]);
+            amounts[0] = balances[0];
+            amounts[1] = balances[1];
+            amounts[2] = balances[2];
+            amounts[3] = balances[3];
             if (hasETH) {
                 ICurveSwap(lpMinter).add_liquidity{ value: _getBalance(ETH) }(
                     amounts,
@@ -166,9 +191,9 @@ contract ZapperGeneric {
             }
         } else if (numTokens == 3) {
             uint256[3] memory amounts;
-            amounts[0] = _getBalance(tokens[0]);
-            amounts[1] = _getBalance(tokens[1]);
-            amounts[2] = _getBalance(tokens[2]);
+            amounts[0] = balances[0];
+            amounts[1] = balances[1];
+            amounts[2] = balances[2];
             if (hasETH) {
                 ICurveSwap(lpMinter).add_liquidity{ value: _getBalance(ETH) }(
                     amounts,
@@ -179,8 +204,8 @@ contract ZapperGeneric {
             }
         } else {
             uint256[2] memory amounts;
-            amounts[0] = _getBalance(tokens[0]);
-            amounts[1] = _getBalance(tokens[1]);
+            amounts[0] = balances[0];
+            amounts[1] = balances[1];
 
             if (hasETH) {
                 ICurveSwap(lpMinter).add_liquidity{ value: _getBalance(ETH) }(
@@ -200,10 +225,38 @@ contract ZapperGeneric {
         );
     }
 
+    /// @dev Exit curvance
+    /// @param lpMinter The minter address of Curve LP
+    /// @param lpToken The Curve LP token address
+    /// @param tokens The underlying coin addresses of Curve LP
+    /// @param lpAmount The LP amount to exit
+    function _exitCurve(
+        address lpMinter,
+        address lpToken,
+        address[] memory tokens,
+        uint256 lpAmount
+    ) private {
+        // approve lp token
+        SwapperLib.approveTokenIfNeeded(lpToken, lpMinter, lpAmount);
+
+        uint256 numTokens = tokens.length;
+        // enter curve lp minter
+        if (numTokens == 4) {
+            uint256[4] memory amounts;
+            ICurveSwap(lpMinter).remove_liquidity(lpAmount, amounts);
+        } else if (numTokens == 3) {
+            uint256[3] memory amounts;
+            ICurveSwap(lpMinter).remove_liquidity(lpAmount, amounts);
+        } else {
+            uint256[2] memory amounts;
+            ICurveSwap(lpMinter).remove_liquidity(lpAmount, amounts);
+        }
+    }
+
     /// @dev Get token balance of this contract
     /// @param token The token address
     function _getBalance(address token) private view returns (uint256) {
-        if (token == ETH) {
+        if (isETH(token)) {
             return address(this).balance;
         } else {
             return IERC20(token).balanceOf(address(this));
@@ -221,7 +274,7 @@ contract ZapperGeneric {
         uint256 amount
     ) private returns (uint256 out) {
         // approve lp token
-        _approveTokenIfNeeded(lpToken, cToken);
+        SwapperLib.approveTokenIfNeeded(lpToken, cToken, amount);
 
         // enter curvance
         require(CErc20(cToken).mint(amount), "curvance");

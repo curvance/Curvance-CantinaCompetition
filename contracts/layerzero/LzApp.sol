@@ -3,6 +3,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/Context.sol";
+import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 
 import "../interfaces/layerzero/ILayerZeroReceiver.sol";
 import "../interfaces/layerzero/ILayerZeroUserApplicationConfig.sol";
@@ -10,9 +11,7 @@ import "../interfaces/layerzero/ILayerZeroEndpoint.sol";
 import "contracts/interfaces/ICentralRegistry.sol";
 import "../libraries/BytesLib.sol";
 
-/*
- * a generic LzReceiver implementation
- */
+/// a generic LzReceiver implementation
 abstract contract LzApp is
     ILayerZeroReceiver,
     ILayerZeroUserApplicationConfig,
@@ -35,9 +34,18 @@ abstract contract LzApp is
     event SetTrustedRemoteAddress(uint16 _remoteChainId, bytes _remoteAddress);
     event SetMinDstGas(uint16 _dstChainId, uint16 _type, uint256 _minDstGas);
 
-    constructor(address _endpoint, ICentralRegistry _centralRegistry) {
-        lzEndpoint = ILayerZeroEndpoint(_endpoint);
-        centralRegistry = _centralRegistry;
+    constructor(address endpoint_, ICentralRegistry centralRegistry_) {
+        lzEndpoint = ILayerZeroEndpoint(endpoint_);
+
+        require(
+            ERC165Checker.supportsInterface(
+                address(centralRegistry_),
+                type(ICentralRegistry).interfaceId
+            ),
+            "lzApp: invalid central registry"
+        );
+
+        centralRegistry = centralRegistry_;
     }
 
     modifier onlyDaoPermissions() {

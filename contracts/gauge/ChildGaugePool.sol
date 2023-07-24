@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
+import { GaugePool, GaugeErrors } from "contracts/gauge/GaugePool.sol";
+
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
-
-import { GaugeErrors } from "./GaugeErrors.sol";
-import { GaugePool } from "./GaugePool.sol";
 
 contract ChildGaugePool is ReentrancyGuard {
 
@@ -50,14 +49,14 @@ contract ChildGaugePool is ReentrancyGuard {
     }
 
     modifier onlyDaoPermissions() {
-        require(centralRegistry.hasDaoPermissions(msg.sender), "centralRegistry: UNAUTHORIZED");
+        require(centralRegistry.hasDaoPermissions(msg.sender), "childGaugePool: UNAUTHORIZED");
         _;
     }
 
-    constructor(address _gaugeController, address _rewardToken, ICentralRegistry _centralRegistry) {
-        gaugeController = GaugePool(_gaugeController);
-        rewardToken = _rewardToken;
-        centralRegistry = _centralRegistry;
+    constructor(address gaugeController_, address rewardToken_, ICentralRegistry centralRegistry_) {
+        gaugeController = GaugePool(gaugeController_);
+        rewardToken = rewardToken_;
+        centralRegistry = centralRegistry_;
     }
 
     function activate() external onlyGaugeController {

@@ -1,13 +1,12 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-import "contracts/oracles/adaptors/BaseOracleAdaptor.sol";
+import { BaseOracleAdaptor } from "contracts/oracles/adaptors/BaseOracleAdaptor.sol";
+
 import { IVault } from "contracts/interfaces/external/balancer/IVault.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
+import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
-/// @title Sommelier Price Router Balancer Pool Adaptor
-/// @notice Provides shared logic between Balancer Adaptors.
-/// @author crispymangoes
 abstract contract BalancerPoolAdaptor is BaseOracleAdaptor {
     /// @notice Attempted to price BPTs while in the Balancer Vault.
     error BalancerPoolAdaptor__Reentrancy();
@@ -16,10 +15,10 @@ abstract contract BalancerPoolAdaptor is BaseOracleAdaptor {
     IVault public immutable balancerVault;
 
     constructor(
-        ICentralRegistry _centralRegistry,
-        IVault _balancerVault
-    ) BaseOracleAdaptor(_centralRegistry) {
-        balancerVault = _balancerVault;
+        ICentralRegistry centralRegistry_,
+        IVault balancerVault_
+    ) BaseOracleAdaptor(centralRegistry_) {
+        balancerVault = balancerVault_;
     }
 
     /// @dev Ensure we are not in a Vault context when this function is called, by attempting a no-op internal

@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { SafeTransferLib } from "../libraries/SafeTransferLib.sol";
-import { ERC20 } from "../libraries/ERC20.sol";
+import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
+import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
+import { ERC20 } from "contracts/libraries/ERC20.sol";
 
-import { IERC20 } from "../interfaces/IERC20.sol";
-import { IPriceRouter } from "../interfaces/IPriceRouter.sol";
-import { ICentralRegistry } from "../interfaces/ICentralRegistry.sol";
+import { IERC20 } from "contracts/interfaces/IERC20.sol";
+import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
+import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 contract callOptionCVE is ERC20 {
     event RemainingCVEWithdrawn(uint256 amount);
@@ -29,16 +30,25 @@ contract callOptionCVE is ERC20 {
     /// @param name_ The name of the token.
     /// @param symbol_ The symbol of the token.
     /// @param _paymentToken The token used for payment when exercising options.
-    /// @param _centralRegistry The Central Registry contract address.
+    /// @param centralRegistry_ The Central Registry contract address.
     constructor(
         string memory name_,
         string memory symbol_,
-        ICentralRegistry _centralRegistry,
+        ICentralRegistry centralRegistry_,
         address _paymentToken
     ) {
         _name = name_;
         _symbol = symbol_;
-        centralRegistry = _centralRegistry;
+
+        require(
+            ERC165Checker.supportsInterface(
+                address(centralRegistry_),
+                type(ICentralRegistry).interfaceId
+            ),
+            "callOptionCVE: invalid central registry"
+        );
+
+        centralRegistry = centralRegistry_;
         paymentToken = _paymentToken;
         cve = centralRegistry.CVE();
 
@@ -46,7 +56,7 @@ contract callOptionCVE is ERC20 {
     }
 
     modifier onlyDaoPermissions() {
-        require(centralRegistry.hasDaoPermissions(msg.sender), "centralRegistry: UNAUTHORIZED");
+        require(centralRegistry.hasDaoPermissions(msg.sender), "callOptionCVE: UNAUTHORIZED");
         _;
     }
 

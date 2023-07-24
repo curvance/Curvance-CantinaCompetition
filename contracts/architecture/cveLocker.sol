@@ -1,6 +1,7 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
+import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 
@@ -71,10 +72,19 @@ contract cveLocker {
     // Epoch # => Ether rewards per CVE multiplier by offset
     mapping(uint256 => uint256) public ethPerCVE;
 
-    constructor(ICentralRegistry _centralRegistry, address _cvx) {
-        centralRegistry = _centralRegistry;
+    constructor(ICentralRegistry centralRegistry_, address cvx_) {
+
+        require(
+            ERC165Checker.supportsInterface(
+                address(centralRegistry_),
+                type(ICentralRegistry).interfaceId
+            ),
+            "cveLocker: invalid central registry"
+        );
+
+        centralRegistry = centralRegistry_;
         genesisEpoch = centralRegistry.genesisEpoch();
-        cvx = _cvx;
+        cvx = cvx_;
         cve = centralRegistry.CVE();
         veCVE = IVeCVE(centralRegistry.veCVE());
     }
@@ -82,7 +92,7 @@ contract cveLocker {
     modifier onlyDaoPermissions() {
         require(
             centralRegistry.hasDaoPermissions(msg.sender),
-            "centralRegistry: UNAUTHORIZED"
+            "cveLocker: UNAUTHORIZED"
         );
         _;
     }
@@ -90,7 +100,7 @@ contract cveLocker {
     modifier onlyElevatedPermissions() {
         require(
             centralRegistry.hasElevatedPermissions(msg.sender),
-            "centralRegistry: UNAUTHORIZED"
+            "cveLocker: UNAUTHORIZED"
         );
         _;
     }
