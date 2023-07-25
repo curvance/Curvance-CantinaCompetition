@@ -17,7 +17,7 @@ interface IOracleAdaptor {
     /// @notice queries price from an oracle adaptor
     function getPrice(
         address asset,
-        bool isUSD,
+        bool inUSD,
         bool getLower
     ) external view returns (PriceReturnData memory);
 

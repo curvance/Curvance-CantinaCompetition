@@ -55,7 +55,7 @@ abstract contract BaseOracleAdaptor {
     /// @notice Called by PriceRouter to price an asset.
     function getPrice(
         address asset,
-        bool isUsd,
+        bool inUSD,
         bool getLower
     ) external view virtual returns (PriceReturnData memory);
 

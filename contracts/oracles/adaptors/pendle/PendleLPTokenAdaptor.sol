@@ -46,13 +46,13 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
 
     /// @notice Called during pricing operations.
     /// @param asset the pendle market token being priced
-    /// @param isUsd indicates whether we want the price in USD or ETH
+    /// @param inUSD indicates whether we want the price in USD or ETH
     /// @param getLower Since this adaptor calls back into the price router
     ///                  it needs to know if it should be working with the upper
     ///                  or lower prices of assets
     function getPrice(
         address asset,
-        bool isUsd,
+        bool inUSD,
         bool getLower
     ) external view override returns (PriceReturnData memory pData) {
         require(
@@ -61,11 +61,11 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
         );
         AdaptorData memory data = adaptorData[asset];
         uint256 lpRate = IPMarket(asset).getLpToAssetRate(data.twapDuration);
-        pData.inUSD = isUsd;
+        pData.inUSD = inUSD;
 
         (uint256 price, uint256 errorCode) = IPriceRouter(
             centralRegistry.priceRouter()
-        ).getPrice(data.quoteAsset, isUsd, getLower);
+        ).getPrice(data.quoteAsset, inUSD, getLower);
         if (errorCode > 0) {
             pData.hadError = true;
             // If error code is BAD_SOURCE we can't use this price at all so return.

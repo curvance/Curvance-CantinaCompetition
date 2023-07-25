@@ -38,13 +38,13 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
     ) BaseOracleAdaptor(centralRegistry_) {}
 
     /// @notice Retrieves the price of a given asset.
-    /// @dev Uses Chainlink oracles to fetch the price data. Price is returned in USD or ETH depending on 'isUsd' parameter.
+    /// @dev Uses Chainlink oracles to fetch the price data. Price is returned in USD or ETH depending on 'inUSD' parameter.
     /// @param asset The address of the asset for which the price is needed.
-    /// @param isUsd A boolean to determine if the price should be returned in USD or not.
+    /// @param inUSD A boolean to determine if the price should be returned in USD or not.
     /// @return PriceReturnData A structure containing the price, error status, and the quote format of the price.
     function getPrice(
         address asset,
-        bool isUsd,
+        bool inUSD,
         bool
     ) external view override returns (PriceReturnData memory) {
         require(
@@ -52,7 +52,7 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
             "ChainlinkAdaptor: asset not supported"
         );
 
-        if (isUsd) {
+        if (inUSD) {
             return _getPriceinUSD(asset);
         }
 

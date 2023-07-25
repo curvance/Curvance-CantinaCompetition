@@ -53,12 +53,12 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
     /// @notice Gets the price of a given asset.
     /// @dev This function uses the Uniswap V3 oracle to calculate the price.
     /// @param asset The address of the asset for which the price is needed.
-    /// @param isUsd A boolean to determine if the price should be returned in USD or ETH.
+    /// @param inUSD A boolean to determine if the price should be returned in USD or ETH.
     /// @param getLower A boolean to determine if lower of two oracle prices should be retrieved.
     /// @return PriceReturnData A structure containing the price, error status, and the quote format of the price.
     function getPrice(
         address asset,
-        bool isUsd,
+        bool inUSD,
         bool getLower
     ) external view override returns (PriceReturnData memory) {
         require(
@@ -91,20 +91,20 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
             twapPrice = abi.decode(returnData, (uint256));
         } else {
             /// Uniswap TWAP check reverted, notify the price router that we had an error
-            return PriceReturnData({ price: 0, hadError: true, inUSD: isUsd });
+            return PriceReturnData({ price: 0, hadError: true, inUSD: inUSD });
         }
 
         IPriceRouter PriceRouter = IPriceRouter(centralRegistry.priceRouter());
 
         /// We want the asset price in USD which uniswap cant do, so find out the price of the quote token in USD then divide so its in USD
-        if (isUsd) {
+        if (inUSD) {
             if (!PriceRouter.isSupportedAsset(uniswapFeed.quoteToken)) {
                 /// Our price router does not know how to value this quote token so we cant use the TWAP data
                 return
                     PriceReturnData({
                         price: 0,
                         hadError: true,
-                        inUSD: isUsd
+                        inUSD: inUSD
                     });
             }
 
@@ -117,7 +117,7 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
                     PriceReturnData({
                         price: 0,
                         hadError: true,
-                        inUSD: isUsd
+                        inUSD: inUSD
                     });
             }
 
@@ -137,7 +137,7 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
                     PriceReturnData({
                         price: 0,
                         hadError: true,
-                        inUSD: isUsd
+                        inUSD: inUSD
                     });
             }
 
@@ -150,7 +150,7 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
                     PriceReturnData({
                         price: 0,
                         hadError: true,
-                        inUSD: isUsd
+                        inUSD: inUSD
                     });
             }
 
