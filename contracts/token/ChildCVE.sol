@@ -4,7 +4,22 @@ pragma solidity ^0.8.17;
 import "../layerzero/OFTV2.sol";
 
 contract CVE is OFTV2 {
+    /// CONSTANTS ///
+
     uint256 public constant DENOMINATOR = 10000;
+
+    /// MODIFIERS ///
+
+    modifier onlyProtocolMessagingHub() {
+        require(
+            msg.sender == centralRegistry.protocolMessagingHub(),
+            "CVE: UNAUTHORIZED"
+        );
+
+        _;
+    }
+
+    /// CONSTRUCTOR ///
 
     constructor(
         string memory _name,
@@ -18,14 +33,7 @@ contract CVE is OFTV2 {
         // Write sendEmissions in votingHub
     }
 
-    modifier onlyProtocolMessagingHub() {
-        require(
-            msg.sender == centralRegistry.protocolMessagingHub(),
-            "CVE: UNAUTHORIZED"
-        );
-
-        _;
-    }
+    /// EXTERNAL FUNCTIONIS ///
 
     /// @notice Mint new gauge emissions
     /// @dev Allows the VotingHub to mint new gauge emissions.

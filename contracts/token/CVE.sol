@@ -4,20 +4,42 @@ pragma solidity ^0.8.17;
 import "../layerzero/OFTV2.sol";
 
 contract CVE is OFTV2 {
+    /// CONSTANTS ///
 
-    uint256 public immutable TokenGenerationEventTimestamp;
     uint256 public constant DENOMINATOR = 10000;
     uint256 public constant month = 2_629_746;
-    address public teamAddress;
+    uint256 public immutable TokenGenerationEventTimestamp;
 
     uint256 public immutable DAOTreasuryAllocation;
     uint256 public immutable callOptionAllocation;
     uint256 public immutable TeamAllocation;
     uint256 public immutable TeamAllocationPerMonth;
 
+    /// STORAGE ///
+
+    address public teamAddress;
     uint256 public DAOTreasuryTokensMinted;
     uint256 public TeamAllocationTokensMinted;
     uint256 public callOptionTokensMinted;
+
+    /// MODIFIERS ///
+
+    modifier onlyProtocolMessagingHub() {
+        require(
+            msg.sender == centralRegistry.protocolMessagingHub(),
+            "CVE: UNAUTHORIZED"
+        );
+
+        _;
+    }
+
+    modifier onlyTeam() {
+        require(msg.sender == teamAddress, "CVE: UNAUTHORIZED");
+
+        _;
+    }
+
+    /// CONSTRUCTOR ///
 
     constructor(
         string memory name_,
@@ -50,20 +72,7 @@ contract CVE is OFTV2 {
         // Write sendEmissions in votingHub
     }
 
-    modifier onlyProtocolMessagingHub() {
-        require(
-            msg.sender == centralRegistry.protocolMessagingHub(),
-            "CVE: UNAUTHORIZED"
-        );
-
-        _;
-    }
-
-    modifier onlyTeam() {
-        require(msg.sender == teamAddress, "CVE: UNAUTHORIZED");
-
-        _;
-    }
+    /// EXTERNAL FUNCTIONS ///
 
     /// @notice Mint new gauge emissions
     /// @dev Allows the VotingHub to mint new gauge emissions.

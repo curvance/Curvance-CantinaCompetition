@@ -41,6 +41,7 @@ contract VeCVE is ERC20 {
     uint256 public immutable continuousLockPointMultiplier;
 
     /// STORAGE ///
+
     string private _name;
     string private _symbol;
     bool public isShutdown;
@@ -98,6 +99,8 @@ contract VeCVE is ERC20 {
         _;
     }
 
+    /// CONSTRUCTOR ///
+
     constructor(
         ICentralRegistry centralRegistry_,
         uint256 continuousLockPointMultiplier_
@@ -119,6 +122,38 @@ contract VeCVE is ERC20 {
         cveLocker = ICVELocker(centralRegistry.cveLocker());
         continuousLockPointMultiplier = continuousLockPointMultiplier_;
     }
+
+    /// EXTERNAL FUNCTIONS ///
+
+    /// @notice Recover tokens sent accidentally to the contract
+    ///         or leftover rewards (excluding VeCVE tokens)
+    /// @param token The address of the token to recover
+    /// @param to The address to receive the recovered tokens
+    /// @param amount The amount of tokens to recover
+    function recoverToken(
+        address token,
+        address to,
+        uint256 amount
+    ) external onlyDaoPermissions {
+        require(token != address(cve), "cannot withdraw cve token");
+
+        if (amount == 0) {
+            amount = IERC20(token).balanceOf(address(this));
+        }
+
+        SafeTransferLib.safeTransfer(token, to, amount);
+
+        emit TokenRecovered(token, to, amount);
+    }
+
+    /// @notice Shuts down the contract, unstakes all tokens,
+    ///         and releases all locks
+    function shutdown() external onlyElevatedPermissions {
+        isShutdown = true;
+        cveLocker.notifyLockerShutdown();
+    }
+
+    /// PUBLIC FUNCTIONS ///
 
     /// @dev Returns the name of the token
     function name() public view override returns (string memory) {
@@ -820,34 +855,6 @@ contract VeCVE is ERC20 {
         unchecked {
             userTokenPoints[user] -= userTokenUnlocksByEpoch[user][epoch];
         }
-    }
-
-    /// @notice Recover tokens sent accidentally to the contract
-    ///         or leftover rewards (excluding VeCVE tokens)
-    /// @param token The address of the token to recover
-    /// @param to The address to receive the recovered tokens
-    /// @param amount The amount of tokens to recover
-    function recoverToken(
-        address token,
-        address to,
-        uint256 amount
-    ) external onlyDaoPermissions {
-        require(token != address(cve), "cannot withdraw cve token");
-
-        if (amount == 0) {
-            amount = IERC20(token).balanceOf(address(this));
-        }
-
-        SafeTransferLib.safeTransfer(token, to, amount);
-
-        emit TokenRecovered(token, to, amount);
-    }
-
-    /// @notice Shuts down the contract, unstakes all tokens,
-    ///         and releases all locks
-    function shutdown() external onlyElevatedPermissions {
-        isShutdown = true;
-        cveLocker.notifyLockerShutdown();
     }
 
     /// View Functions ///
