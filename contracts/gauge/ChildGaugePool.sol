@@ -6,40 +6,47 @@ import { GaugePool, GaugeErrors } from "contracts/gauge/GaugePool.sol";
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { IERC20 } from "contracts/interfaces/IERC20.sol";
 
 contract ChildGaugePool is ReentrancyGuard {
+    /// TYPES ///
 
-    /// structs
     struct PoolInfo {
         uint256 lastRewardTimestamp;
-        uint256 accRewardPerShare; // Accumulated Rewards per share, times 1e12. See below.
+        // Accumulated Rewards per share, times 1e12. See below.
+        uint256 accRewardPerShare;
         uint256 totalAmount;
     }
+
     struct UserInfo {
         uint256 rewardDebt;
         uint256 rewardPending;
     }
+
     enum UserAction {
         DEPOSIT,
         WITHDRAW,
         CLAIM
     }
 
-    /// events
+    /// CONSTANTS ///
 
-    /// constants
     uint256 public constant EPOCH_WINDOW = 2 weeks;
     uint256 public constant PRECISION = 1e36;
     ICentralRegistry public immutable centralRegistry;
 
-    /// storage
+    /// STORAGE ///
+
     uint256 public activationTime;
     GaugePool public gaugeController;
     address public rewardToken;
-    mapping(uint256 => uint256) public epochRewardPerSec; // epoch => rewardPerSec
-    mapping(address => PoolInfo) public poolInfo; // token => pool info
-    mapping(address => mapping(address => UserInfo)) public userInfo; // token => user => info
+    // epoch => rewardPerSec
+    mapping(uint256 => uint256) public epochRewardPerSec;
+    // token => pool info
+    mapping(address => PoolInfo) public poolInfo;
+    // token => user => info
+    mapping(address => mapping(address => UserInfo)) public userInfo;
+
+    /// MODIFIERS ///
 
     modifier onlyGaugeController() {
         if (msg.sender != address(gaugeController)) {
@@ -49,15 +56,26 @@ contract ChildGaugePool is ReentrancyGuard {
     }
 
     modifier onlyDaoPermissions() {
-        require(centralRegistry.hasDaoPermissions(msg.sender), "childGaugePool: UNAUTHORIZED");
+        require(
+            centralRegistry.hasDaoPermissions(msg.sender),
+            "childGaugePool: UNAUTHORIZED"
+        );
         _;
     }
 
-    constructor(address gaugeController_, address rewardToken_, ICentralRegistry centralRegistry_) {
+    /// CONSTRUCTOR ///
+
+    constructor(
+        address gaugeController_,
+        address rewardToken_,
+        ICentralRegistry centralRegistry_
+    ) {
         gaugeController = GaugePool(gaugeController_);
         rewardToken = rewardToken_;
         centralRegistry = centralRegistry_;
     }
+
+    /// EXTERNAL FUNCTIONS ///
 
     function activate() external onlyGaugeController {
         activationTime = block.timestamp;
@@ -75,25 +93,19 @@ contract ChildGaugePool is ReentrancyGuard {
         epochRewardPerSec[epoch] = newRewardPerSec;
 
         if (prevRewardPerSec > newRewardPerSec) {
-            SafeTransferLib.safeTransfer(rewardToken,
+            SafeTransferLib.safeTransfer(
+                rewardToken,
                 msg.sender,
                 EPOCH_WINDOW * (prevRewardPerSec - newRewardPerSec)
             );
         } else {
-            SafeTransferLib.safeTransferFrom(rewardToken,
+            SafeTransferLib.safeTransferFrom(
+                rewardToken,
                 msg.sender,
                 address(this),
                 EPOCH_WINDOW * (newRewardPerSec - prevRewardPerSec)
             );
         }
-    }
-
-    function startTime() public view returns (uint256) {
-        return gaugeController.startTime();
-    }
-
-    function currentEpoch() public view returns (uint256) {
-        return gaugeController.currentEpoch();
     }
 
     /// @notice Returns pending rewards of user
@@ -209,6 +221,18 @@ contract ChildGaugePool is ReentrancyGuard {
 
         _calcDebt(msg.sender, token);
     }
+
+    /// PUBLIC FUNCTIONS ///
+
+    function startTime() public view returns (uint256) {
+        return gaugeController.startTime();
+    }
+
+    function currentEpoch() public view returns (uint256) {
+        return gaugeController.currentEpoch();
+    }
+
+    /// INTERNAL FUNCTIONS ///
 
     /// @notice Calculate user's pending rewards
     function _calcPending(

@@ -134,7 +134,7 @@ contract ConvexPositionVault is BasePositionVault {
 
         // add CRV as a reward token, then let convex tell you what rewards
         // the vault will receive
-        strategyData.rewardTokens.push() = CRV;
+        strategyData.rewardTokens.push() = _CRV;
 
         uint256 extraRewardsLength = strategyData
             .rewarder

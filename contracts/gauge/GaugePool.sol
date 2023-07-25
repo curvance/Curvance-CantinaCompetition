@@ -7,16 +7,17 @@ import { ChildGaugePool } from "contracts/gauge/ChildGaugePool.sol";
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 
-import { IERC20 } from "contracts/interfaces/IERC20.sol";
-import { ICVELocker, RewardsData } from "contracts/interfaces/ICVELocker.sol";
+import { RewardsData } from "contracts/interfaces/ICVELocker.sol";
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 contract GaugePool is GaugeController, ReentrancyGuard {
-    /// structs
+    /// TYPES ///
+
     struct PoolInfo {
         uint256 lastRewardTimestamp;
-        uint256 accRewardPerShare; // Accumulated Rewards per share, times 1e12. See below.
+        // Accumulated Rewards per share, times 1e12. See below.
+        uint256 accRewardPerShare;
         uint256 totalAmount;
     }
     struct UserInfo {
@@ -25,7 +26,18 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         uint256 rewardPending;
     }
 
-    /// events
+    /// CONSTANTS ///
+    uint256 public constant PRECISION = 1e36;
+
+    /// STORAGE ///
+
+    address public lendtroller;
+    ChildGaugePool[] public childGauges;
+    mapping(address => PoolInfo) public poolInfo; // token => pool info
+    mapping(address => mapping(address => UserInfo)) public userInfo; // token => user => info
+
+    /// EVENTS ///
+
     event AddChildGauge(address indexed childGauge);
     event RemoveChildGauge(address indexed childGauge);
     event Deposit(address indexed user, address indexed token, uint256 amount);
@@ -36,21 +48,14 @@ contract GaugePool is GaugeController, ReentrancyGuard {
     );
     event Claim(address indexed user, address indexed token, uint256 amount);
 
-    /// constants
-    uint256 public constant PRECISION = 1e36;
-
-    /// storage
-    address public lendtroller;
-    ChildGaugePool[] public childGauges;
-    mapping(address => PoolInfo) public poolInfo; // token => pool info
-    mapping(address => mapping(address => UserInfo)) public userInfo; // token => user => info
-
     constructor(
         ICentralRegistry centralRegistry_,
         address lendtroller_
     ) GaugeController(centralRegistry_) {
         lendtroller = lendtroller_;
     }
+
+    /// EXTERNAL FUNCTIONS ///
 
     function addChildGauge(address _childGauge) external onlyDaoPermissions {
         if (_childGauge == address(0)) {
@@ -316,22 +321,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         emit Claim(msg.sender, token, rewards);
     }
 
-    /// @notice Calculate user's pending rewards
-    function _calcPending(address user, address token) internal {
-        UserInfo storage info = userInfo[token][user];
-        info.rewardPending +=
-            (info.amount * poolInfo[token].accRewardPerShare) /
-            (PRECISION) -
-            info.rewardDebt;
-    }
-
-    /// @notice Calculate user's debt amount for reward calculation
-    function _calcDebt(address user, address token) internal {
-        UserInfo storage info = userInfo[token][user];
-        info.rewardDebt =
-            (info.amount * poolInfo[token].accRewardPerShare) /
-            (PRECISION);
-    }
+    /// PUBLIC FUNCTIONS ///
 
     /// @notice Update reward variables of the given pool to be up-to-date
     /// @param token Pool token address
@@ -351,6 +341,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         uint256 lastEpoch = epochOfTimestamp(lastRewardTimestamp);
         uint256 currentEpoch = currentEpoch();
         uint256 reward;
+
         while (lastEpoch < currentEpoch) {
             uint256 endTimestamp = epochEndTime(lastEpoch);
 
@@ -383,5 +374,24 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         // update pool storage
         poolInfo[token].lastRewardTimestamp = block.timestamp;
         poolInfo[token].accRewardPerShare = accRewardPerShare;
+    }
+
+    /// INTERNAL FUNCTIONS ///
+
+    /// @notice Calculate user's pending rewards
+    function _calcPending(address user, address token) internal {
+        UserInfo storage info = userInfo[token][user];
+        info.rewardPending +=
+            (info.amount * poolInfo[token].accRewardPerShare) /
+            (PRECISION) -
+            info.rewardDebt;
+    }
+
+    /// @notice Calculate user's debt amount for reward calculation
+    function _calcDebt(address user, address token) internal {
+        UserInfo storage info = userInfo[token][user];
+        info.rewardDebt =
+            (info.amount * poolInfo[token].accRewardPerShare) /
+            (PRECISION);
     }
 }

@@ -107,7 +107,8 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
 
     // PERMISSIONED FUNCTIONS
 
-    /// @notice Shutdown the vault. Used in an emergency or if the vault has been deprecated.
+    /// @notice Shutdown the vault. Used in an emergency or
+    ///         if the vault has been deprecated.
     function initiateShutdown() external vaultActive onlyDaoPermissions {
         isShutdown = true;
 
@@ -154,7 +155,8 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     }
 
     /// @notice Vault compound fee is in basis point form
-    /// @dev Returns the vaults current amount of yield used for compounding rewards
+    /// @dev Returns the vaults current amount of yield used
+    ///      for compounding rewards
     function vaultCompoundFee() public view returns (uint256) {
         return centralRegistry.protocolCompoundFee();
     }
@@ -166,7 +168,8 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     }
 
     /// @notice Vault harvest fee is in basis point form
-    /// @dev Returns the vaults current harvest fee for compounding rewards that pays for yield and compound fees
+    /// @dev Returns the vaults current harvest fee for compounding rewards
+    ///      that pays for yield and compound fees
     function vaultHarvestFee() public view returns (uint256) {
         return centralRegistry.protocolHarvestFee();
     }
@@ -206,7 +209,8 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
 
         // Add the users newly deposited assets.
         ta = ta + assets;
-        // If there are pending rewards to vest, or if high watermark is not set, vestRewards.
+        // If there are pending rewards to vest,
+        // or if high watermark is not set, vestRewards.
         if (pending > 0 || _sharePriceHighWatermark == 0) _vestRewards(ta);
         else _totalAssets = ta;
 
@@ -221,7 +225,8 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         uint256 pending = _calculatePendingRewards();
         uint256 ta = _totalAssets + pending;
 
-        assets = _previewMint(shares, ta); // No need to check for rounding error, previewMint rounds up.
+        // No need to check for rounding error, previewMint rounds up.
+        assets = _previewMint(shares, ta);
 
         // Need to transfer before minting or ERC777s could reenter.
         SafeTransferLib.safeTransferFrom(
@@ -238,7 +243,8 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         // Add the users newly deposited assets.
         ta = ta + assets;
 
-        // If there are pending rewards to vest, or if high watermark is not set, vestRewards.
+        // If there are pending rewards to vest,
+        // or if high watermark is not set, vestRewards.
         if (pending > 0 || _sharePriceHighWatermark == 0) {
             _vestRewards(ta);
         } else {
@@ -257,7 +263,8 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         uint256 pending = _calculatePendingRewards();
         uint256 ta = _totalAssets + pending;
 
-        shares = _previewWithdraw(assets, ta); // No need to check for rounding error, previewWithdraw rounds up.
+        // No need to check for rounding error, previewWithdraw rounds up.
+        shares = _previewWithdraw(assets, ta);
 
         if (msg.sender != owner) {
             uint256 allowed = allowance(owner, msg.sender);
@@ -270,7 +277,8 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         // Remove the users withdrawn assets.
         ta = ta - assets;
 
-        // If there are pending rewards to vest, or if high watermark is not set, vestRewards.
+        // If there are pending rewards to vest,
+        // or if high watermark is not set, vestRewards.
         if (pending > 0 || _sharePriceHighWatermark == 0) {
             _vestRewards(ta);
         } else {
@@ -311,7 +319,8 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         // Remove the users withdrawn assets.
         ta = ta - assets;
 
-        // If there are pending rewards to vest, or if high watermark is not set, vestRewards.
+        // If there are pending rewards to vest,
+        // or if high watermark is not set, vestRewards.
         if (pending > 0 || _sharePriceHighWatermark == 0) {
             _vestRewards(ta);
         } else {
@@ -374,7 +383,8 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     // REWARD AND HARVESTING LOGIC
 
     /// @notice Calculates the pending rewards.
-    /// @dev If there are no pending rewards or the vesting period has ended, it returns 0.
+    /// @dev If there are no pending rewards or the vesting period has ended,
+    ///      it returns 0.
     ///      Otherwise, it calculates the pending rewards and returns them.
     /// @return pendingRewards The calculated pending rewards.
     function _calculatePendingRewards()
@@ -406,7 +416,8 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         // else there are no pending rewards.
     }
 
-    /// @notice Vests the pending rewards, updates vault data and share price high watermark.
+    /// @notice Vests the pending rewards, updates vault data
+    ///         and share price high watermark.
     /// @param currentAssets The current assets of the vault.
     function _vestRewards(uint256 currentAssets) internal {
         // Update some reward timestamp.
