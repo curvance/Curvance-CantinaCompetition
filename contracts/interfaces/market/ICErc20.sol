@@ -5,7 +5,7 @@ import "./IEIP20NonStandard.sol";
 import "./ICToken.sol";
 
 interface ICErc20 {
-    ////////// Errors //////////
+    /// Errors ///
 
     error InvalidUnderlying();
     error TransferFailure();

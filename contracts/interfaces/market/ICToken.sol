@@ -5,7 +5,7 @@ import "contracts/market/interestRates/InterestRateModel.sol";
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 
 interface ICToken {
-    ////////// ERRORS //////////
+    /// ERRORS ///
 
     error AddressUnauthorized();
     error FailedNotFromPositionFolding();
@@ -22,7 +22,7 @@ interface ICToken {
     error ReduceReservesCashNotAvailable();
     error ReduceReservesCashValidation();
 
-    ////////// MARKET EVENTS //////////
+    /// MARKET EVENTS ///
 
     /// @notice Event emitted when interest is accrued
     event AccrueInterest(
@@ -69,7 +69,7 @@ interface ICToken {
         uint256 seizeTokens
     );
 
-    ////////// ADMIN EVENTS //////////
+    /// ADMIN EVENTS ///
 
     /// @notice Event emitted when lendtroller is changed
     event NewLendtroller(

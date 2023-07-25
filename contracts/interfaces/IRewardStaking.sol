@@ -14,13 +14,13 @@ interface IRewardStaking {
 
     function getReward() external;
 
-    function getReward(address _account, bool _claimExtras) external;
+    function getReward(address account, bool claimExtras) external;
 
     function extraRewardsLength() external view returns (uint256);
 
-    function extraRewards(uint256 _pid) external view returns (address);
+    function extraRewards(uint256 pid) external view returns (address);
 
     function rewardToken() external view returns (address);
 
-    function balanceOf(address _account) external view returns (uint256);
+    function balanceOf(address account) external view returns (uint256);
 }
