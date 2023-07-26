@@ -6,11 +6,13 @@ import { ERC20 } from "contracts/libraries/ERC20.sol";
 
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { IOracleAdaptor, PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
+import { PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
 import { IStaticOracle } from "contracts/interfaces/external/uniswap/IStaticOracle.sol";
 import { UniswapV3Pool } from "contracts/interfaces/external/uniswap/UniswapV3Pool.sol";
 
 contract UniswapV3Adaptor is BaseOracleAdaptor {
+    /// TYPES ///
+
     /// @notice Stores configuration data for Uniswap V3 Twap price sources.
     /// @param priceSource The address location where you query the associated assets TWAP price
     /// @param secondsAgo period used for TWAP calculation
@@ -27,19 +29,25 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
         address quoteToken;
     }
 
-    /// @notice Uniswap adaptor storage
-    mapping(address => AdaptorData) public adaptorData;
-
-    /// @notice Chain WETH address.
-    address public immutable WETH;
-
-    IStaticOracle public immutable uniswapOracleRouter;
+    /// CONSTANTS ///
 
     /// @notice The smallest possible TWAP that can be used.
     uint32 public constant MINIMUM_SECONDS_AGO = 300;
 
     /// @notice Token amount to check uniswap twap price against
     uint128 public constant ORACLE_PRECISION = 1e18;
+
+    /// @notice Chain WETH address.
+    address public immutable WETH;
+
+    IStaticOracle public immutable uniswapOracleRouter;
+
+    /// STORAGE ///
+
+    /// @notice Uniswap adaptor storage
+    mapping(address => AdaptorData) public adaptorData;
+
+    /// CONSTRUCTOR ///
 
     constructor(
         ICentralRegistry centralRegistry_,
@@ -50,12 +58,17 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
         WETH = WETH_;
     }
 
+    /// EXTERNAL FUNCTIONS ///
+
     /// @notice Gets the price of a given asset.
     /// @dev This function uses the Uniswap V3 oracle to calculate the price.
     /// @param asset The address of the asset for which the price is needed.
-    /// @param inUSD A boolean to determine if the price should be returned in USD or ETH.
-    /// @param getLower A boolean to determine if lower of two oracle prices should be retrieved.
-    /// @return PriceReturnData A structure containing the price, error status, and the quote format of the price.
+    /// @param inUSD A boolean to determine if the price should be returned
+    ///              in USD or ETH.
+    /// @param getLower A boolean to determine if lower of two oracle prices
+    ///                 should be retrieved.
+    /// @return PriceReturnData A structure containing the price, error status,
+    ///                         and the quote format of the price.
     function getPrice(
         address asset,
         bool inUSD,
@@ -90,16 +103,20 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
         if (success) {
             twapPrice = abi.decode(returnData, (uint256));
         } else {
-            /// Uniswap TWAP check reverted, notify the price router that we had an error
+            // Uniswap TWAP check reverted, notify the price router
+            // that we had an error
             return PriceReturnData({ price: 0, hadError: true, inUSD: inUSD });
         }
 
         IPriceRouter PriceRouter = IPriceRouter(centralRegistry.priceRouter());
 
-        /// We want the asset price in USD which uniswap cant do, so find out the price of the quote token in USD then divide so its in USD
+        // We want the asset price in USD which uniswap cant do,
+        // so find out the price of the quote token in USD then divide
+        // so its in USD
         if (inUSD) {
             if (!PriceRouter.isSupportedAsset(uniswapFeed.quoteToken)) {
-                /// Our price router does not know how to value this quote token so we cant use the TWAP data
+                // Our price router does not know how to value this quote token
+                // so we cant use the TWAP data
                 return
                     PriceReturnData({
                         price: 0,
@@ -111,7 +128,8 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
             (uint256 quoteTokenDenominator, uint256 errorCode) = PriceRouter
                 .getPrice(uniswapFeed.quoteToken, true, getLower);
 
-            /// Make sure that if the Price Router had an error, it was not catastrophic
+            // Make sure that if the Price Router had an error,
+            // it was not catastrophic
             if (errorCode > 1) {
                 return
                     PriceReturnData({
@@ -121,7 +139,8 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
                     });
             }
 
-            /// We have a route to USD pricing so we can convert the quote token price to USD and return
+            // We have a route to USD pricing so we can convert
+            // the quote token price to USD and return
             return
                 PriceReturnData({
                     price: uint240(twapPrice / quoteTokenDenominator),
@@ -132,7 +151,8 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
 
         if (uniswapFeed.quoteToken != WETH) {
             if (!PriceRouter.isSupportedAsset(uniswapFeed.quoteToken)) {
-                /// Our price router does not know how to value this quote token so we cant use the TWAP data
+                // Our price router does not know how to value this quote
+                // token so we cant use the TWAP data
                 return
                     PriceReturnData({
                         price: 0,
@@ -144,7 +164,8 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
             (uint256 quoteTokenDenominator, uint256 errorCode) = PriceRouter
                 .getPrice(uniswapFeed.quoteToken, false, getLower);
 
-            /// Make sure that if the Price Router had an error, it was not catastrophic
+            // Make sure that if the Price Router had an error,
+            // it was not catastrophic
             if (errorCode > 1) {
                 return
                     PriceReturnData({
@@ -154,7 +175,8 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
                     });
             }
 
-            /// We have a route to ETH pricing so we can convert the quote token price to ETH and return
+            // We have a route to ETH pricing so we can convert
+            // the quote token price to ETH and return
             return
                 PriceReturnData({
                     price: uint240(twapPrice / quoteTokenDenominator),
@@ -175,7 +197,7 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
         address asset,
         AdaptorData memory parameters
     ) external onlyElevatedPermissions {
-        /// Verify seconds ago is reasonable.
+        // Verify seconds ago is reasonable.
         require(
             parameters.secondsAgo >= MINIMUM_SECONDS_AGO,
             "UniswapV3Adaptor: seconds ago parameter too small"
@@ -209,13 +231,14 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
             "UniswapV3Adaptor: asset not supported"
         );
 
-        /// Notify the adaptor to stop supporting the asset
+        // Notify the adaptor to stop supporting the asset
         delete isSupportedAsset[asset];
 
-        /// Wipe config mapping entries for a gas refund
+        // Wipe config mapping entries for a gas refund
         delete adaptorData[asset];
 
-        /// Notify the price router that we are going to stop supporting the asset
+        // Notify the price router that we are going
+        // to stop supporting the asset
         IPriceRouter(centralRegistry.priceRouter())
             .notifyAssetPriceFeedRemoval(asset);
     }

@@ -12,6 +12,8 @@ import { IOracleAdaptor, PriceReturnData } from "contracts/interfaces/IOracleAda
 /// @notice Provides a universal interface allowing Curvance contracts
 ///         to retrieve secure pricing data based on various price feeds.
 contract PriceRouter {
+    /// TYPES ///
+
     /// @notice Return data from oracle adaptor
     /// @param price the price of the asset in some asset, either ETH or USD
     /// @param hadError the message return data, whether the adaptor ran into
@@ -284,6 +286,8 @@ contract PriceRouter {
 
         return assetPriceFeeds[asset].length > 0;
     }
+
+    /// PUBLIC FUNCTIONS ///
 
     /// @notice Retrieves the price of a specified asset from either single
     ///         or dual oracles.

@@ -5,19 +5,23 @@ import { BalancerPoolAdaptor, IVault } from "./BalancerPoolAdaptor.sol";
 
 import { IBalancerPool } from "contracts/interfaces/external/balancer/IBalancerPool.sol";
 import { IRateProvider } from "contracts/interfaces/external/balancer/IRateProvider.sol";
-import { IOracleAdaptor, PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
+import { PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 
 contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
+    /// TYPES ///
+
     /// @notice Adaptor storage
     /// @param poolId the pool id of the BPT being priced
     /// @param poolDecimals the decimals of the BPT being priced
     /// @param rateProviders array of rate providers for each constituent
-    ///        a zero address rate provider means we are using an underlying correlated to the
-    ///        pools virtual base.
-    /// @param underlyingOrConstituent the ERC20 underlying asset or the constituent in the pool
-    /// @dev Only use the underlying asset, if the underlying is correlated to the pools virtual base.
+    ///        a zero address rate provider means we are using an underlying
+    ///        correlated to the pools virtual base.
+    /// @param underlyingOrConstituent the ERC20 underlying asset or
+    ///                                the constituent in the pool
+    /// @dev Only use the underlying asset, if the underlying is correlated
+    ///      to the pools virtual base.
     struct AdaptorData {
         bytes32 poolId;
         uint8 poolDecimals;
@@ -26,23 +30,31 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
         address[8] underlyingOrConstituent;
     }
 
-    /// @notice Balancer Stable Pool Adaptor Storage
-    mapping(address => AdaptorData) public adaptorData;
+    /// CONSTANTS ///
 
     /// @notice Error code for bad source.
     uint256 public constant BAD_SOURCE = 2;
+
+    /// STORAGE ///
+
+    /// @notice Balancer Stable Pool Adaptor Storage
+    mapping(address => AdaptorData) public adaptorData;
+
+    /// CONSTRUCTOR ///
 
     constructor(
         ICentralRegistry centralRegistry_,
         IVault balancerVault_
     ) BalancerPoolAdaptor(centralRegistry_, balancerVault_) {}
 
+    /// EXTERNAL FUNCTIONS ///
+
     /// @notice Called during pricing operations.
     /// @param asset the bpt being priced
     /// @param inUSD indicates whether we want the price in USD or ETH
     /// @param getLower Since this adaptor calls back into the price router
-    ///                  it needs to know if it should be working with the upper
-    ///                  or lower prices of assets
+    ///                 it needs to know if it should be working with the
+    ///                 upper or lower prices of assets
     function getPrice(
         address asset,
         bool inUSD,
@@ -77,7 +89,8 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
             );
             if (errorCode > 0) {
                 pData.hadError = true;
-                // If error code is BAD_SOURCE we can't use this price at all so continue.
+                // If error code is BAD_SOURCE we can't use this price at all
+                // so continue.
                 if (errorCode == BAD_SOURCE) continue;
             }
             if (data.rateProviders[i] != address(0)) {
@@ -152,12 +165,12 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
             "BalancerStablePoolAdaptor: asset not supported"
         );
 
-        /// Notify the adaptor to stop supporting the asset
+        // Notify the adaptor to stop supporting the asset
         delete isSupportedAsset[asset];
-        /// Wipe config mapping entries for a gas refund
+        // Wipe config mapping entries for a gas refund
         delete adaptorData[asset];
 
-        /// Notify the price router that we are going to stop supporting the asset
+        // Notify the price router that we are going to stop supporting the asset
         IPriceRouter(centralRegistry.priceRouter())
             .notifyAssetPriceFeedRemoval(asset);
     }
