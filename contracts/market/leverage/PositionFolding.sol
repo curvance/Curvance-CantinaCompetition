@@ -111,6 +111,14 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         weth = weth_;
     }
 
+    function getProtocolLeverageFee() public view returns (uint256) {
+        return ICentralRegistry(centralRegistry).protocolLeverageFee();
+    }
+
+    function getDaoAddress() public view returns (address) {
+        return ICentralRegistry(centralRegistry).daoAddress();
+    }
+
     /// EXTERNAL FUNCTIONS ///
 
     function leverage(
@@ -172,6 +180,17 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
                 IERC20(borrowUnderlying).balanceOf(address(this)) ==
                     borrowAmount,
                 "PositionFolding: invalid amount"
+            );
+        }
+
+        // take protocol fee
+        uint256 fee = (borrowAmount * getProtocolLeverageFee()) / 10000;
+        if (fee > 0) {
+            borrowAmount -= fee;
+            SafeTransferLib.safeTransfer(
+                borrowUnderlying,
+                getDaoAddress(),
+                fee
             );
         }
 
@@ -286,6 +305,17 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
                 IERC20(collateralUnderlying).balanceOf(address(this)) ==
                     collateralAmount,
                 "PositionFolding: invalid amount"
+            );
+        }
+
+        // take protocol fee
+        uint256 fee = (collateralAmount * getProtocolLeverageFee()) / 10000;
+        if (fee > 0) {
+            collateralAmount -= fee;
+            SafeTransferLib.safeTransfer(
+                collateralUnderlying,
+                getDaoAddress(),
+                fee
             );
         }
 
