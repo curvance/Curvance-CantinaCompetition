@@ -10,43 +10,43 @@ import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { ICurveSwap } from "contracts/interfaces/external/curve/ICurve.sol";
 import { IWETH } from "contracts/interfaces/IWETH.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 
 contract ZapperGeneric {
-
     /// CONSTANTS ///
-    ICentralRegistry public immutable centralRegistry;
+
     uint256 public constant SLIPPAGE = 500;
     address public constant ETH = address(0);
+    ICentralRegistry public immutable centralRegistry;
     ILendtroller public immutable lendtroller;
     address public immutable weth;
 
+    /// CONSTRUCTOR ///
+
     constructor(
-        ICentralRegistry _centralRegistry,
-        address _lendtroller,
-        address _weth
+        ICentralRegistry centralRegistry_,
+        address lendtroller_,
+        address weth_
     ) {
-        
         require(
             ERC165Checker.supportsInterface(
-                address(_centralRegistry),
+                address(centralRegistry_),
                 type(ICentralRegistry).interfaceId
             ),
             "PositionFolding: invalid central registry"
         );
 
-        centralRegistry = _centralRegistry;
+        centralRegistry = centralRegistry_;
 
-        require(centralRegistry.lendingMarket(_lendtroller), "PositionFolding: lendtroller is invalid");
+        require(
+            centralRegistry.lendingMarket(lendtroller_),
+            "PositionFolding: lendtroller is invalid"
+        );
 
-        lendtroller = ILendtroller(_lendtroller);
-        weth = _weth;
+        lendtroller = ILendtroller(lendtroller_);
+        weth = weth_;
     }
 
-    function isETH (address token) internal pure returns (bool) {
-        /// We need to check against both null address and 0xEee because each protocol uses different implementations
-        return token == address(0) || token == address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
-    }
+    /// EXTERNAL FUNCTIONS ///
 
     /// @dev Deposit inputToken and enter curvance
     /// @param cToken The curvance deposit token address
@@ -148,6 +148,18 @@ contract ZapperGeneric {
         // transfer token back to user
         SafeTransferLib.safeTransfer(outputToken, recipient, outAmount);
     }
+
+    /// INTERNAL FUNCTIONS ///
+
+    function isETH(address token) internal pure returns (bool) {
+        // We need to check against both null address and 0xEee
+        // because each protocol uses different implementations
+        return
+            token == address(0) ||
+            token == address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
+    }
+
+    /// PRIVATE FUNCTIONS ///
 
     /// @dev Enter curvance
     /// @param lpMinter The minter address of Curve LP

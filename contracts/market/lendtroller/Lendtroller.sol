@@ -14,6 +14,7 @@ import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 /// @notice Manages risk within the lending & collateral markets
 contract Lendtroller is ILendtroller {
     /// CONSTANTS ///
+
     ICentralRegistry public immutable centralRegistry;
     /// @notice Indicator that this is a Lendtroller contract (for introspection)
     bool public constant override isLendtroller = true;
@@ -26,7 +27,11 @@ contract Lendtroller is ILendtroller {
     /// @notice Scaler for floating point math
     uint256 internal constant expScale = 1e18;
 
+    // GaugePool contract address
+    address public immutable override gaugePool;
+
     /// STORAGE ///
+
     /// @notice The Pause Guardian can pause certain actions as a safety mechanism.
     ///  Actions which allow users to remove their own assets cannot be paused.
     ///  Liquidation / seizing / transfer can only be paused globally, not by market.
@@ -46,13 +51,16 @@ contract Lendtroller is ILendtroller {
     /// Defaults to zero which corresponds to unlimited borrowing.
     mapping(address => uint256) public borrowCaps;
 
-    /// @notice Multiplier used to calculate the maximum repayAmount when liquidating a borrow
+    /// @notice Multiplier used to calculate the maximum repayAmount
+    ///         when liquidating a borrow
     uint256 public closeFactorScaled;
 
-    /// @notice Multiplier representing the discount on collateral that a liquidator receives
+    /// @notice Multiplier representing the discount on collateral that
+    ///         a liquidator receives
     uint256 public liquidationIncentiveScaled;
 
-    /// @notice Max number of assets a single account can participate in (borrow or use as collateral)
+    /// @notice Max number of assets a single account can participate in
+    ///         (borrow or use as collateral)
     uint256 public maxAssets;
 
     /// @notice Official mapping of cTokens -> Market metadata
@@ -72,20 +80,7 @@ contract Lendtroller is ILendtroller {
     // PositionFolding contract address
     address public override positionFolding;
 
-    // GaugePool contract address
-    address public immutable override gaugePool;
-
-    constructor(ICentralRegistry _centralRegistry, address _gaugePool) {
-        require(
-            ERC165Checker.supportsInterface(
-                address(_centralRegistry),
-                type(ICentralRegistry).interfaceId
-            ),
-            "lendtroller: invalid central registry"
-        );
-        centralRegistry = _centralRegistry;
-        gaugePool = _gaugePool;
-    }
+    /// MODIFIERS ///
 
     modifier onlyDaoPermissions() {
         require(
@@ -103,9 +98,21 @@ contract Lendtroller is ILendtroller {
         _;
     }
 
-    function getPriceRouter() public view returns (IPriceRouter) {
-        return IPriceRouter(centralRegistry.priceRouter());
+    /// CONSTRUCTOR ///
+
+    constructor(ICentralRegistry centralRegistry_, address gaugePool_) {
+        require(
+            ERC165Checker.supportsInterface(
+                address(centralRegistry_),
+                type(ICentralRegistry).interfaceId
+            ),
+            "lendtroller: invalid central registry"
+        );
+        centralRegistry = centralRegistry_;
+        gaugePool = gaugePool_;
     }
+
+    /// EXTERNAL FUNCTIONS ///
 
     /// @notice Returns the assets an account has entered
     /// @param account The address of the account to pull assets for
@@ -129,59 +136,13 @@ contract Lendtroller is ILendtroller {
         return markets[address(cToken)].accountMembership[account];
     }
 
-    /// @notice Add assets to be included in account liquidity calculation
-    /// @param cTokens The list of addresses of the cToken markets to be enabled
-    /// @return uint array: 0 = market not entered; 1 = market entered
-    function enterMarkets(
-        address[] memory cTokens
-    ) public override returns (uint256[] memory) {
-        uint256 numCTokens = cTokens.length;
-
-        uint256[] memory results = new uint256[](numCTokens);
-        for (uint256 i; i < numCTokens; ++i) {
-            results[i] = addToMarketInternal(ICToken(cTokens[i]), msg.sender);
-        }
-
-        // Return a list of markets joined & not joined (1 = joined, 0 = not joined)
-        return results;
-    }
-
-    /// @notice Add the market to the borrower's "assets in" for liquidity calculations
-    /// @param cToken The market to enter
-    /// @param borrower The address of the account to modify
-    /// @return uint 0 = unable to enter market; 1 = market entered
-    function addToMarketInternal(
-        ICToken cToken,
-        address borrower
-    ) internal returns (uint256) {
-        ILendtroller.Market storage marketToJoin = markets[address(cToken)];
-
-        if (!marketToJoin.isListed) {
-            // market is not listed, cannot join
-            return 0;
-        }
-
-        if (marketToJoin.accountMembership[borrower]) {
-            // market already joined
-            return 0;
-        }
-
-        marketToJoin.accountMembership[borrower] = true;
-        accountAssets[borrower].push(cToken);
-
-        emit MarketEntered(cToken, borrower);
-
-        // Indicates that a market was successfully entered
-        return 1;
-    }
-
     /// @notice Removes asset from sender's account liquidity calculation
     /// @dev Sender must not have an outstanding borrow balance in the asset,
     ///  or be providing necessary collateral for an outstanding borrow.
     /// @param cTokenAddress The address of the asset to be removed
     function exitMarket(address cTokenAddress) external override {
         ICToken cToken = ICToken(cTokenAddress);
-        /* Get sender tokensHeld and amountOwed underlying from the cToken */
+        // Get sender tokensHeld and amountOwed underlying from the cToken
         (uint256 tokensHeld, uint256 amountOwed, ) = cToken.getAccountSnapshot(
             msg.sender
         );
@@ -201,7 +162,7 @@ contract Lendtroller is ILendtroller {
             return;
         }
 
-        /* Set cToken account membership to false */
+        // Set cToken account membership to false
         delete marketToExit.accountMembership[msg.sender];
 
         // Delete cToken from the account’s list of assets
@@ -218,10 +179,12 @@ contract Lendtroller is ILendtroller {
             }
         }
 
-        // We *must* have found the asset in the list or our redundant data structure is broken
+        // We *must* have found the asset in the list or our redundant
+        // data structure is broken
         assert(assetIndex < numUserAssets);
 
-        // copy last item in list to location of item to be removed, reduce length by 1
+        // copy last item in list to location of item to be removed,
+        // reduce length by 1
         ICToken[] storage storedList = accountAssets[msg.sender];
         storedList[assetIndex] = storedList[storedList.length - 1];
         storedList.pop();
@@ -231,7 +194,8 @@ contract Lendtroller is ILendtroller {
 
     /// Policy Hooks
 
-    /// @notice Checks if the account should be allowed to mint tokens in the given market
+    /// @notice Checks if the account should be allowed to mint tokens
+    ///         in the given market
     /// @param cToken The market to verify the mint against
     function mintAllowed(address cToken, address) external view override {
         if (mintGuardianPaused[cToken]) {
@@ -243,10 +207,12 @@ contract Lendtroller is ILendtroller {
         }
     }
 
-    /// @notice Checks if the account should be allowed to redeem tokens in the given market
+    /// @notice Checks if the account should be allowed to redeem tokens
+    ///         in the given market
     /// @param cToken The market to verify the redeem against
     /// @param redeemer The account which would redeem the tokens
-    /// @param redeemTokens The number of cTokens to exchange for the underlying asset in the market
+    /// @param redeemTokens The number of cTokens to exchange
+    ///                     for the underlying asset in the market
     function redeemAllowed(
         address cToken,
         address redeemer,
@@ -255,38 +221,8 @@ contract Lendtroller is ILendtroller {
         redeemAllowedInternal(cToken, redeemer, redeemTokens);
     }
 
-    /// @notice Checks if the account should be allowed to redeem tokens in the given market
-    /// @param cToken The market to verify the redeem against
-    /// @param redeemer The account which would redeem the tokens
-    /// @param redeemTokens The number of cTokens to exchange for the underlying asset in the market
-    function redeemAllowedInternal(
-        address cToken,
-        address redeemer,
-        uint256 redeemTokens
-    ) internal view {
-        if (!markets[cToken].isListed) {
-            revert MarketNotListed(cToken);
-        }
-
-        // If the redeemer is not 'in' the market, then we can bypass the liquidity check
-        if (!markets[cToken].accountMembership[redeemer]) {
-            return;
-        }
-
-        // Otherwise, perform a hypothetical liquidity check to guard against shortfall
-        (, uint256 shortfall) = getHypotheticalAccountLiquidityInternal(
-            redeemer,
-            ICToken(cToken),
-            redeemTokens,
-            0
-        );
-
-        if (shortfall > 0) {
-            revert InsufficientLiquidity();
-        }
-    }
-
-    /// @notice Checks if the account should be allowed to borrow the underlying asset of the given market
+    /// @notice Checks if the account should be allowed to borrow
+    ///         the underlying asset of the given market
     /// @param cToken The market to verify the borrow against
     /// @param borrower The account which would borrow the asset
     /// @param borrowAmount The amount of underlying the account would borrow
@@ -315,11 +251,7 @@ contract Lendtroller is ILendtroller {
             assert(markets[cToken].accountMembership[borrower]);
         }
 
-        (, uint256 errorCode) = getPriceRouter().getPrice(
-            cToken,
-            true,
-            false
-        );
+        (, uint256 errorCode) = getPriceRouter().getPrice(cToken, true, false);
         if (errorCode > 0) {
             revert PriceError();
         }
@@ -347,7 +279,8 @@ contract Lendtroller is ILendtroller {
         }
     }
 
-    /// @notice Checks if the account should be allowed to repay a borrow in the given market
+    /// @notice Checks if the account should be allowed to repay a borrow
+    ///         in the given market
     /// @param cToken The market to verify the repay against
     function repayBorrowAllowed(
         address cToken,
@@ -382,7 +315,8 @@ contract Lendtroller is ILendtroller {
             revert InsufficientShortfall();
         }
 
-        // The liquidator may not close out more collateral than what is allowed by the closeFactor
+        // The liquidator may not close out more collateral than
+        // what is allowed by the closeFactor
         uint256 borrowBalance = ICToken(cTokenBorrowed).borrowBalanceStored(
             borrower
         );
@@ -394,7 +328,8 @@ contract Lendtroller is ILendtroller {
     }
 
     /// @notice Checks if the seizing of assets should be allowed to occur
-    /// @param cTokenCollateral Asset which was used as collateral and will be seized
+    /// @param cTokenCollateral Asset which was used as collateral
+    ///                         and will be seized
     /// @param cTokenBorrowed Asset which was borrowed by the borrower
     function seizeAllowed(
         address cTokenCollateral,
@@ -421,7 +356,8 @@ contract Lendtroller is ILendtroller {
         }
     }
 
-    /// @notice Checks if the account should be allowed to transfer tokens in the given market
+    /// @notice Checks if the account should be allowed to transfer tokens
+    ///         in the given market
     /// @param cToken The market to verify the transfer against
     /// @param src The account which sources the tokens
     /// @param transferTokens The number of cTokens to transfer
@@ -438,221 +374,13 @@ contract Lendtroller is ILendtroller {
         redeemAllowedInternal(cToken, src, transferTokens);
     }
 
-    /// Liquidity/Liquidation Calculations
-
-    /// @notice Determine the current account liquidity wrt collateral requirements
-    /// @return liquidity of account in excess of collateral requirements
-    /// @return shortfall of account below collateral requirements
-    function getAccountLiquidity(
-        address account
-    ) public view returns (uint256, uint256) {
-        (
-            uint256 liquidity,
-            uint256 shortfall
-        ) = getHypotheticalAccountLiquidityInternal(
-                account,
-                ICToken(address(0)),
-                0,
-                0
-            );
-
-        return (liquidity, shortfall);
-    }
-
-    /// @notice Determine the current account liquidity wrt collateral requirements
-    /// @return uint total collateral amount of user
-    /// @return uint max borrow amount of user
-    /// @return uint total borrow amount of user
-    function getAccountPosition(
-        address account
-    ) public view override returns (uint256, uint256, uint256) {
-        (
-            uint256 sumCollateral,
-            uint256 maxBorrow,
-            uint256 sumBorrow
-        ) = getHypotheticalAccountPositionInternal(
-                account,
-                ICToken(address(0)),
-                0,
-                0
-            );
-
-        return (sumCollateral, maxBorrow, sumBorrow);
-    }
-
-    /// @notice Determine the current account liquidity wrt collateral requirements
-    /// @return liquidity of account in excess of collateral requirements
-    /// @return shortfall of account below collateral requirements
-    function getAccountLiquidityInternal(
-        address account
-    ) internal view returns (uint256, uint256) {
-        return
-            getHypotheticalAccountLiquidityInternal(
-                account,
-                ICToken(address(0)),
-                0,
-                0
-            );
-    }
-
-    /// @notice Determine what the account liquidity would be if the given amounts were redeemed/borrowed
-    /// @param cTokenModify The market to hypothetically redeem/borrow in
-    /// @param account The account to determine liquidity for
-    /// @param redeemTokens The number of tokens to hypothetically redeem
-    /// @param borrowAmount The amount of underlying to hypothetically borrow
-    /// @return uint hypothetical account liquidity in excess of collateral requirements,
-    /// @return uint hypothetical account shortfall below collateral requirements)
-    function getHypotheticalAccountLiquidity(
-        address account,
-        address cTokenModify,
-        uint256 redeemTokens,
-        uint256 borrowAmount
-    ) public view returns (uint256, uint256) {
-        (
-            uint256 liquidity,
-            uint256 shortfall
-        ) = getHypotheticalAccountLiquidityInternal(
-                account,
-                ICToken(cTokenModify),
-                redeemTokens,
-                borrowAmount
-            );
-
-        return (liquidity, shortfall);
-    }
-
-    /// @notice Determine what the account liquidity would be if the given amounts were redeemed/borrowed
-    /// @param cTokenModify The market to hypothetically redeem/borrow in
-    /// @param account The account to determine liquidity for
-    /// @param redeemTokens The number of tokens to hypothetically redeem
-    /// @param borrowAmount The amount of underlying to hypothetically borrow
-    /// @dev Note that we calculate the exchangeRateStored for each collateral cToken using stored data,
-    ///  without calculating accumulated interest.
-    /// @return uint hypothetical account liquidity in excess of collateral requirements,
-    /// @return uint hypothetical account shortfall below collateral requirements)
-    function getHypotheticalAccountLiquidityInternal(
-        address account,
-        ICToken cTokenModify,
-        uint256 redeemTokens,
-        uint256 borrowAmount
-    ) internal view returns (uint256, uint256) {
-        (
-            ,
-            uint256 maxBorrow,
-            uint256 sumBorrowPlusEffects
-        ) = getHypotheticalAccountPositionInternal(
-                account,
-                cTokenModify,
-                redeemTokens,
-                borrowAmount
-            );
-
-        // These will not underflow from unchecked as the underflow condition is checked prior
-        if (maxBorrow > sumBorrowPlusEffects) {
-            unchecked {
-                return (maxBorrow - sumBorrowPlusEffects, 0);
-            }
-        } else {
-            unchecked {
-                return (0, sumBorrowPlusEffects - maxBorrow);
-            }
-        }
-    }
-
-    /// @notice Determine what the account liquidity would be if the given amounts were redeemed/borrowed
-    /// @param cTokenModify The market to hypothetically redeem/borrow in
-    /// @param account The account to determine liquidity for
-    /// @param redeemTokens The number of tokens to hypothetically redeem
-    /// @param borrowAmount The amount of underlying to hypothetically borrow
-    /// @dev Note that we calculate the exchangeRateStored for each collateral cToken using stored data,
-    ///  without calculating accumulated interest.
-    /// @return sumCollateral total collateral amount of user
-    /// @return maxBorrow max borrow amount of user
-    /// @return sumBorrowPlusEffects total borrow amount of user
-    function getHypotheticalAccountPositionInternal(
-        address account,
-        ICToken cTokenModify,
-        uint256 redeemTokens,
-        uint256 borrowAmount
-    )
-        internal
-        view
-        returns (
-            uint256 sumCollateral,
-            uint256 maxBorrow,
-            uint256 sumBorrowPlusEffects
-        )
-    {
-        uint256 numAccountAssets = accountAssets[account].length;
-        ICToken asset;
-        bool collateralEnabled;
-
-        // For each asset the account is in
-        for (uint256 i; i < numAccountAssets; ++i) {
-            asset = accountAssets[account][i];
-            collateralEnabled =
-                marketDisableCollateral[asset] == false &&
-                userDisableCollateral[account][asset] == false;
-
-            (
-                uint256 cTokenBalance,
-                uint256 borrowBalance,
-                uint256 exchangeRateScaled
-            ) = asset.getAccountSnapshot(account);
-
-            if (collateralEnabled) {
-                (uint256 lowerPrice, uint256 errorCode) = getPriceRouter()
-                    .getPrice(address(asset), true, true);
-                if (errorCode == 2) {
-                    revert PriceError();
-                }
-
-                uint256 assetValue = (((cTokenBalance * exchangeRateScaled) /
-                    expScale) * lowerPrice) / expScale;
-
-                sumCollateral += assetValue;
-                maxBorrow +=
-                    (assetValue *
-                        markets[address(asset)].collateralFactorScaled) /
-                    expScale;
-            }
-
-            {
-                (uint256 higherPrice, uint256 errorCode) = getPriceRouter()
-                    .getPrice(address(asset), true, false);
-                if (errorCode == 2) {
-                    revert PriceError();
-                }
-
-                sumBorrowPlusEffects += ((higherPrice * borrowBalance) /
-                    expScale);
-
-                // Calculate effects of interacting with cTokenModify
-                if (asset == cTokenModify) {
-                    if (collateralEnabled) {
-                        // Pre-compute a conversion factor from tokens -> ether (normalized price value)
-                        uint256 tokensToDenom = (((markets[address(asset)]
-                            .collateralFactorScaled * exchangeRateScaled) /
-                            expScale) * higherPrice) / expScale;
-
-                        // redeem effect
-                        sumBorrowPlusEffects += ((tokensToDenom *
-                            redeemTokens) / expScale);
-                    }
-
-                    // borrow effect
-                    sumBorrowPlusEffects += ((higherPrice * borrowAmount) /
-                        expScale);
-                }
-            }
-        }
-    }
-
-    /// @notice Calculate number of tokens of collateral asset to seize given an underlying amount
+    /// @notice Calculate number of tokens of collateral asset to
+    ///         seize given an underlying amount
     /// @dev Used in liquidation (called in cToken.liquidateBorrowFresh)
     /// @param cTokenBorrowed The address of the borrowed cToken
     /// @param cTokenCollateral The address of the collateral cToken
-    /// @param actualRepayAmount The amount of cTokenBorrowed underlying to convert into cTokenCollateral tokens
+    /// @param actualRepayAmount The amount of cTokenBorrowed underlying to
+    ///                          convert into cTokenCollateral tokens
     /// @return uint The number of cTokenCollateral tokens to be seized in a liquidation
     function liquidateCalculateSeizeTokens(
         address cTokenBorrowed,
@@ -669,10 +397,7 @@ contract Lendtroller is ILendtroller {
         );
 
         /// Validate that we were able to securely query prices from the dual oracle
-        if (
-            highPriceError == 2 ||
-            lowPriceError == 2
-        ) {
+        if (highPriceError == 2 || lowPriceError == 2) {
             revert PriceError();
         }
 
@@ -693,7 +418,8 @@ contract Lendtroller is ILendtroller {
     /// User Custom Functions
 
     /// @notice User set collateral on/off option for market token
-    /// @param cTokens The addresses of the markets (tokens) to change the collateral on/off option
+    /// @param cTokens The addresses of the markets (tokens) to
+    ///                change the collateral on/off option
     /// @param disableCollateral Disable cToken from collateral
     function setUserDisableCollateral(
         ICToken[] calldata cTokens,
@@ -746,7 +472,6 @@ contract Lendtroller is ILendtroller {
         ICToken cToken,
         uint256 newCollateralFactorScaled
     ) external onlyElevatedPermissions {
-
         // Verify market is listed
         ILendtroller.Market storage market = markets[address(cToken)];
         if (!market.isListed) {
@@ -763,12 +488,9 @@ contract Lendtroller is ILendtroller {
             true,
             true
         );
-        
+
         // Validate that we got a price and that collateral factor != 0
-        if (
-            lowPriceError == 2 ||
-            newCollateralFactorScaled != 0
-        ) {
+        if (lowPriceError == 2 || newCollateralFactorScaled != 0) {
             revert PriceError();
         }
 
@@ -822,24 +544,12 @@ contract Lendtroller is ILendtroller {
         emit MarketListed(cToken);
     }
 
-    /// @notice Add the market to the markets mapping and set it as listed
-    /// @param cToken The address of the market (token) to list
-    function _addMarketInternal(address cToken) internal {
-        uint256 numMarkets = allMarkets.length;
-
-        for (uint256 i; i < numMarkets; ++i) {
-            if (allMarkets[i] == ICToken(cToken)) {
-                revert MarketAlreadyListed();
-            }
-        }
-        allMarkets.push(ICToken(cToken));
-    }
-
     /// @notice Set the given borrow caps for the given cToken markets.
     ///   Borrowing that brings total borrows to or above borrow cap will revert.
     /// @dev Admin or borrowCapGuardian function to set the borrow caps.
     ///   A borrow cap of 0 corresponds to unlimited borrowing.
-    /// @param cTokens The addresses of the markets (tokens) to change the borrow caps for
+    /// @param cTokens The addresses of the markets (tokens) to
+    ///                change the borrow caps for
     /// @param newBorrowCaps The new borrow cap values in underlying to be set.
     ///   A value of 0 corresponds to unlimited borrowing.
     function _setMarketBorrowCaps(
@@ -866,7 +576,8 @@ contract Lendtroller is ILendtroller {
 
     /// @notice Set collateral on/off option for market token
     /// @dev Admin can set the collateral on or off
-    /// @param cTokens The addresses of the markets (tokens) to change the collateral on/off option
+    /// @param cTokens The addresses of the markets (tokens) to change
+    ///                the collateral on/off option
     /// @param disableCollateral Disable cToken from collateral
     function _setDisableCollateral(
         ICToken[] calldata cTokens,
@@ -895,6 +606,138 @@ contract Lendtroller is ILendtroller {
         borrowCapGuardian = newBorrowCapGuardian;
 
         emit NewBorrowCapGuardian(oldBorrowCapGuardian, newBorrowCapGuardian);
+    }
+
+    /// @notice Returns market status
+    /// @param cToken market token address
+    function getIsMarkets(
+        address cToken
+    ) external view override returns (bool, uint256) {
+        return (
+            markets[cToken].isListed,
+            markets[cToken].collateralFactorScaled
+        );
+    }
+
+    /// @notice Returns if user joined market
+    /// @param cToken market token address
+    /// @param user user address
+    function getAccountMembership(
+        address cToken,
+        address user
+    ) external view override returns (bool) {
+        return markets[cToken].accountMembership[user];
+    }
+
+    /// @notice Returns all markets
+    function getAllMarkets()
+        external
+        view
+        override
+        returns (ICToken[] memory)
+    {
+        return allMarkets;
+    }
+
+    /// @notice Returns all markets user joined
+    /// @param user user address
+    function getAccountAssets(
+        address user
+    ) external view override returns (ICToken[] memory) {
+        return accountAssets[user];
+    }
+
+    /// PUBLIC FUNCTIONS ///
+
+    function getPriceRouter() public view returns (IPriceRouter) {
+        return IPriceRouter(centralRegistry.priceRouter());
+    }
+
+    /// @notice Add assets to be included in account liquidity calculation
+    /// @param cTokens The list of addresses of the cToken markets to be enabled
+    /// @return uint array: 0 = market not entered; 1 = market entered
+    function enterMarkets(
+        address[] memory cTokens
+    ) public override returns (uint256[] memory) {
+        uint256 numCTokens = cTokens.length;
+
+        uint256[] memory results = new uint256[](numCTokens);
+        for (uint256 i; i < numCTokens; ++i) {
+            results[i] = addToMarketInternal(ICToken(cTokens[i]), msg.sender);
+        }
+
+        // Return a list of markets joined & not joined (1 = joined, 0 = not joined)
+        return results;
+    }
+
+    /// Liquidity/Liquidation Calculations
+
+    /// @notice Determine the current account liquidity wrt collateral requirements
+    /// @return liquidity of account in excess of collateral requirements
+    /// @return shortfall of account below collateral requirements
+    function getAccountLiquidity(
+        address account
+    ) public view returns (uint256, uint256) {
+        (
+            uint256 liquidity,
+            uint256 shortfall
+        ) = getHypotheticalAccountLiquidityInternal(
+                account,
+                ICToken(address(0)),
+                0,
+                0
+            );
+
+        return (liquidity, shortfall);
+    }
+
+    /// @notice Determine the current account liquidity wrt collateral requirements
+    /// @return uint total collateral amount of user
+    /// @return uint max borrow amount of user
+    /// @return uint total borrow amount of user
+    function getAccountPosition(
+        address account
+    ) public view override returns (uint256, uint256, uint256) {
+        (
+            uint256 sumCollateral,
+            uint256 maxBorrow,
+            uint256 sumBorrow
+        ) = getHypotheticalAccountPositionInternal(
+                account,
+                ICToken(address(0)),
+                0,
+                0
+            );
+
+        return (sumCollateral, maxBorrow, sumBorrow);
+    }
+
+    /// @notice Determine what the account liquidity would be if
+    ///         the given amounts were redeemed/borrowed
+    /// @param cTokenModify The market to hypothetically redeem/borrow in
+    /// @param account The account to determine liquidity for
+    /// @param redeemTokens The number of tokens to hypothetically redeem
+    /// @param borrowAmount The amount of underlying to hypothetically borrow
+    /// @return uint hypothetical account liquidity in excess
+    ///              of collateral requirements,
+    /// @return uint hypothetical account shortfall below collateral requirements)
+    function getHypotheticalAccountLiquidity(
+        address account,
+        address cTokenModify,
+        uint256 redeemTokens,
+        uint256 borrowAmount
+    ) public view returns (uint256, uint256) {
+        (
+            uint256 liquidity,
+            uint256 shortfall
+        ) = getHypotheticalAccountLiquidityInternal(
+                account,
+                ICToken(cTokenModify),
+                redeemTokens,
+                borrowAmount
+            );
+
+        return (liquidity, shortfall);
     }
 
     /// @notice Admin function to change the Pause Guardian
@@ -1003,45 +846,233 @@ contract Lendtroller is ILendtroller {
         // Assign new position folding contract
         positionFolding = _newPositionFolding;
 
-        emit NewPositionFoldingContract(oldPositionFolding, positionFolding);  
+        emit NewPositionFoldingContract(oldPositionFolding, positionFolding);
     }
 
-    /// @notice Returns market status
-    /// @param cToken market token address
-    function getIsMarkets(
-        address cToken
-    ) external view override returns (bool, uint256) {
-        return (
-            markets[cToken].isListed,
-            markets[cToken].collateralFactorScaled
-        );
+    /// INTERNAL FUNCTIONS ///
+
+    /// @notice Add the market to the borrower's "assets in"
+    ///         for liquidity calculations
+    /// @param cToken The market to enter
+    /// @param borrower The address of the account to modify
+    /// @return uint 0 = unable to enter market; 1 = market entered
+    function addToMarketInternal(
+        ICToken cToken,
+        address borrower
+    ) internal returns (uint256) {
+        ILendtroller.Market storage marketToJoin = markets[address(cToken)];
+
+        if (!marketToJoin.isListed) {
+            // market is not listed, cannot join
+            return 0;
+        }
+
+        if (marketToJoin.accountMembership[borrower]) {
+            // market already joined
+            return 0;
+        }
+
+        marketToJoin.accountMembership[borrower] = true;
+        accountAssets[borrower].push(cToken);
+
+        emit MarketEntered(cToken, borrower);
+
+        // Indicates that a market was successfully entered
+        return 1;
     }
 
-    /// @notice Returns if user joined market
-    /// @param cToken market token address
-    /// @param user user address
-    function getAccountMembership(
+    /// @notice Checks if the account should be allowed to redeem tokens
+    ///         in the given market
+    /// @param cToken The market to verify the redeem against
+    /// @param redeemer The account which would redeem the tokens
+    /// @param redeemTokens The number of cTokens to exchange for
+    ///                     the underlying asset in the market
+    function redeemAllowedInternal(
         address cToken,
-        address user
-    ) external view override returns (bool) {
-        return markets[cToken].accountMembership[user];
+        address redeemer,
+        uint256 redeemTokens
+    ) internal view {
+        if (!markets[cToken].isListed) {
+            revert MarketNotListed(cToken);
+        }
+
+        // If the redeemer is not 'in' the market, then we can bypass
+        // the liquidity check
+        if (!markets[cToken].accountMembership[redeemer]) {
+            return;
+        }
+
+        // Otherwise, perform a hypothetical liquidity check to guard against
+        // shortfall
+        (, uint256 shortfall) = getHypotheticalAccountLiquidityInternal(
+            redeemer,
+            ICToken(cToken),
+            redeemTokens,
+            0
+        );
+
+        if (shortfall > 0) {
+            revert InsufficientLiquidity();
+        }
     }
 
-    /// @notice Returns all markets
-    function getAllMarkets()
-        external
+    /// @notice Determine the current account liquidity wrt collateral requirements
+    /// @return liquidity of account in excess of collateral requirements
+    /// @return shortfall of account below collateral requirements
+    function getAccountLiquidityInternal(
+        address account
+    ) internal view returns (uint256, uint256) {
+        return
+            getHypotheticalAccountLiquidityInternal(
+                account,
+                ICToken(address(0)),
+                0,
+                0
+            );
+    }
+
+    /// @notice Determine what the account liquidity would be if
+    ///         the given amounts were redeemed/borrowed
+    /// @param cTokenModify The market to hypothetically redeem/borrow in
+    /// @param account The account to determine liquidity for
+    /// @param redeemTokens The number of tokens to hypothetically redeem
+    /// @param borrowAmount The amount of underlying to hypothetically borrow
+    /// @dev Note that we calculate the exchangeRateStored for each collateral
+    ///           cToken using stored data, without calculating accumulated interest.
+    /// @return uint hypothetical account liquidity in excess
+    ///              of collateral requirements,
+    /// @return uint hypothetical account shortfall below collateral requirements)
+    function getHypotheticalAccountLiquidityInternal(
+        address account,
+        ICToken cTokenModify,
+        uint256 redeemTokens,
+        uint256 borrowAmount
+    ) internal view returns (uint256, uint256) {
+        (
+            ,
+            uint256 maxBorrow,
+            uint256 sumBorrowPlusEffects
+        ) = getHypotheticalAccountPositionInternal(
+                account,
+                cTokenModify,
+                redeemTokens,
+                borrowAmount
+            );
+
+        // These will not underflow from unchecked as the underflow condition
+        // is checked prior
+        if (maxBorrow > sumBorrowPlusEffects) {
+            unchecked {
+                return (maxBorrow - sumBorrowPlusEffects, 0);
+            }
+        } else {
+            unchecked {
+                return (0, sumBorrowPlusEffects - maxBorrow);
+            }
+        }
+    }
+
+    /// @notice Determine what the account liquidity would be if
+    ///         the given amounts were redeemed/borrowed
+    /// @param cTokenModify The market to hypothetically redeem/borrow in
+    /// @param account The account to determine liquidity for
+    /// @param redeemTokens The number of tokens to hypothetically redeem
+    /// @param borrowAmount The amount of underlying to hypothetically borrow
+    /// @dev Note that we calculate the exchangeRateStored for each collateral
+    ///           cToken using stored data, without calculating accumulated interest.
+    /// @return sumCollateral total collateral amount of user
+    /// @return maxBorrow max borrow amount of user
+    /// @return sumBorrowPlusEffects total borrow amount of user
+    function getHypotheticalAccountPositionInternal(
+        address account,
+        ICToken cTokenModify,
+        uint256 redeemTokens,
+        uint256 borrowAmount
+    )
+        internal
         view
-        override
-        returns (ICToken[] memory)
+        returns (
+            uint256 sumCollateral,
+            uint256 maxBorrow,
+            uint256 sumBorrowPlusEffects
+        )
     {
-        return allMarkets;
+        uint256 numAccountAssets = accountAssets[account].length;
+        ICToken asset;
+        bool collateralEnabled;
+
+        // For each asset the account is in
+        for (uint256 i; i < numAccountAssets; ++i) {
+            asset = accountAssets[account][i];
+            collateralEnabled =
+                marketDisableCollateral[asset] == false &&
+                userDisableCollateral[account][asset] == false;
+
+            (
+                uint256 cTokenBalance,
+                uint256 borrowBalance,
+                uint256 exchangeRateScaled
+            ) = asset.getAccountSnapshot(account);
+
+            if (collateralEnabled) {
+                (uint256 lowerPrice, uint256 errorCode) = getPriceRouter()
+                    .getPrice(address(asset), true, true);
+                if (errorCode == 2) {
+                    revert PriceError();
+                }
+
+                uint256 assetValue = (((cTokenBalance * exchangeRateScaled) /
+                    expScale) * lowerPrice) / expScale;
+
+                sumCollateral += assetValue;
+                maxBorrow +=
+                    (assetValue *
+                        markets[address(asset)].collateralFactorScaled) /
+                    expScale;
+            }
+
+            {
+                (uint256 higherPrice, uint256 errorCode) = getPriceRouter()
+                    .getPrice(address(asset), true, false);
+                if (errorCode == 2) {
+                    revert PriceError();
+                }
+
+                sumBorrowPlusEffects += ((higherPrice * borrowBalance) /
+                    expScale);
+
+                // Calculate effects of interacting with cTokenModify
+                if (asset == cTokenModify) {
+                    if (collateralEnabled) {
+                        // Pre-compute a conversion factor
+                        // from tokens -> ether (normalized price value)
+                        uint256 tokensToDenom = (((markets[address(asset)]
+                            .collateralFactorScaled * exchangeRateScaled) /
+                            expScale) * higherPrice) / expScale;
+
+                        // redeem effect
+                        sumBorrowPlusEffects += ((tokensToDenom *
+                            redeemTokens) / expScale);
+                    }
+
+                    // borrow effect
+                    sumBorrowPlusEffects += ((higherPrice * borrowAmount) /
+                        expScale);
+                }
+            }
+        }
     }
 
-    /// @notice Returns all markets user joined
-    /// @param user user address
-    function getAccountAssets(
-        address user
-    ) external view override returns (ICToken[] memory) {
-        return accountAssets[user];
+    /// @notice Add the market to the markets mapping and set it as listed
+    /// @param cToken The address of the market (token) to list
+    function _addMarketInternal(address cToken) internal {
+        uint256 numMarkets = allMarkets.length;
+
+        for (uint256 i; i < numMarkets; ++i) {
+            if (allMarkets[i] == ICToken(cToken)) {
+                revert MarketAlreadyListed();
+            }
+        }
+        allMarkets.push(ICToken(cToken));
     }
 }
