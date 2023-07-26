@@ -13,38 +13,43 @@ import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { ICurveSwap } from "contracts/interfaces/external/curve/ICurve.sol";
 import { IWETH } from "contracts/interfaces/IWETH.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 
 contract ZapperGeneric {
     /// CONSTANTS ///
-    ICentralRegistry public immutable centralRegistry;
+
     uint256 public constant SLIPPAGE = 500;
+    address public constant ETH = address(0);
+    ICentralRegistry public immutable centralRegistry;
     ILendtroller public immutable lendtroller;
     address public immutable weth;
 
+    /// CONSTRUCTOR ///
+
     constructor(
-        ICentralRegistry _centralRegistry,
-        address _lendtroller,
-        address _weth
+        ICentralRegistry centralRegistry_,
+        address lendtroller_,
+        address weth_
     ) {
         require(
             ERC165Checker.supportsInterface(
-                address(_centralRegistry),
+                address(centralRegistry_),
                 type(ICentralRegistry).interfaceId
             ),
             "PositionFolding: invalid central registry"
         );
 
-        centralRegistry = _centralRegistry;
+        centralRegistry = centralRegistry_;
 
         require(
-            centralRegistry.lendingMarket(_lendtroller),
+            centralRegistry.lendingMarket(lendtroller_),
             "PositionFolding: lendtroller is invalid"
         );
 
-        lendtroller = ILendtroller(_lendtroller);
-        weth = _weth;
+        lendtroller = ILendtroller(lendtroller_);
+        weth = weth_;
     }
+
+    /// EXTERNAL FUNCTIONS ///
 
     /// @dev Deposit inputToken and enter curvance
     /// @param cToken The curvance deposit token address

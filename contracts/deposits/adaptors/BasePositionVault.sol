@@ -18,10 +18,7 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     using Math for uint256;
 
-    /// EVENTS ///
-    event vaultStatusChanged(bool isShutdown);
-
-    /// STRUCTS ///
+    /// TYPES ///
     struct VaultData {
         uint128 rewardRate;
         uint64 vestingPeriodEnd;
@@ -29,31 +26,67 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     }
 
     /// CONSTANTS ///
-    ICentralRegistry public immutable centralRegistry;
-    ERC20 private immutable _asset;
-    uint8 private immutable _decimals;
-    string private _name;
-    string private _symbol;
+
+    /// @notice Period newly harvested rewards are vested over.
+    uint256 public constant vestPeriod = 1 days;
     uint256 internal constant rewardOffset = 1e18;
     ERC20 private constant WETH =
         ERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
 
+    ICentralRegistry public immutable centralRegistry;
+    ERC20 private immutable _asset;
+    uint8 private immutable _decimals;
 
     /// STORAGE ///
-    VaultData public vaultData;
-    bool public isShutdown;
+
+    string private _name;
+    string private _symbol;
 
     // Internal stored total assets, share price high watermark.
     uint256 internal _totalAssets;
     uint256 internal _sharePriceHighWatermark;
 
-    /// @notice Period newly harvested rewards are vested over.
-    uint256 public constant vestPeriod = 1 days;
+    VaultData public vaultData;
+    bool public isShutdown;
 
-    constructor(
-        ERC20 asset_,
-        ICentralRegistry centralRegistry_
-    ) {
+    /// EVENTS ///
+
+    event vaultStatusChanged(bool isShutdown);
+
+    /// MODIFIERS ///
+
+    modifier onlyHarvestor() {
+        require(
+            centralRegistry.harvester(msg.sender),
+            "BasePositionVault: UNAUTHORIZED"
+        );
+        _;
+    }
+
+    modifier onlyDaoPermissions() {
+        require(
+            centralRegistry.hasDaoPermissions(msg.sender),
+            "BasePositionVault: UNAUTHORIZED"
+        );
+        _;
+    }
+
+    modifier onlyElevatedPermissions() {
+        require(
+            centralRegistry.hasElevatedPermissions(msg.sender),
+            "BasePositionVault: UNAUTHORIZED"
+        );
+        _;
+    }
+
+    modifier vaultActive() {
+        require(!isShutdown, "BasePositionVault: vault not active");
+        _;
+    }
+
+    /// CONSTRUCTOR ///
+
+    constructor(ERC20 asset_, ICentralRegistry centralRegistry_) {
         _asset = asset_;
         _name = string(abi.encodePacked("Curvance ", asset_.name()));
         _symbol = string(abi.encodePacked("cve", asset_.symbol()));
@@ -70,29 +103,36 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         centralRegistry = centralRegistry_;
     }
 
-    /// MODIFIERS ///
+    /// EXTERNAL FUNCTIONS ///
 
-    modifier onlyHarvestor() {
-        require(centralRegistry.harvester(msg.sender), "BasePositionVault: UNAUTHORIZED");
-        _;
+    // PERMISSIONED FUNCTIONS
+
+    /// @notice Shutdown the vault. Used in an emergency or
+    ///         if the vault has been deprecated.
+    function initiateShutdown() external vaultActive onlyDaoPermissions {
+        isShutdown = true;
+
+        emit vaultStatusChanged(true);
     }
 
-    modifier onlyDaoPermissions() {
-        require(centralRegistry.hasDaoPermissions(msg.sender), "BasePositionVault: UNAUTHORIZED");
-        _;
+    /// @notice Reactivate the vault.
+    function liftShutdown() external onlyElevatedPermissions {
+        require(isShutdown, "BasePositionVault: vault not active");
+        delete isShutdown;
+
+        emit vaultStatusChanged(false);
     }
 
-    modifier onlyElevatedPermissions() {
-        require(centralRegistry.hasElevatedPermissions(msg.sender), "BasePositionVault: UNAUTHORIZED");
-        _;
-    }
+    // EXTERNAL POSITION LOGIC TO OVERRIDE
 
-    modifier vaultActive() {
-        require (!isShutdown, "BasePositionVault: vault not active");
-        _;
-    }
+    function harvest(
+        bytes memory,
+        uint256 maxSlippage
+    ) public virtual returns (uint256 yield);
 
-    /// VAULT DATA QUERY FUNCTIONS ///
+    /// PUBLIC FUNCTIONS ///
+
+    // VAULT DATA QUERY FUNCTIONS
 
     /// @dev Returns the name of the token.
     function name() public view override returns (string memory) {
@@ -115,7 +155,8 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     }
 
     /// @notice Vault compound fee is in basis point form
-    /// @dev Returns the vaults current amount of yield used for compounding rewards
+    /// @dev Returns the vaults current amount of yield used
+    ///      for compounding rewards
     function vaultCompoundFee() public view returns (uint256) {
         return centralRegistry.protocolCompoundFee();
     }
@@ -127,7 +168,8 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     }
 
     /// @notice Vault harvest fee is in basis point form
-    /// @dev Returns the vaults current harvest fee for compounding rewards that pays for yield and compound fees
+    /// @dev Returns the vaults current harvest fee for compounding rewards
+    ///      that pays for yield and compound fees
     function vaultHarvestFee() public view returns (uint256) {
         return centralRegistry.protocolHarvestFee();
     }
@@ -137,71 +179,8 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         return IPriceRouter(centralRegistry.priceRouter());
     }
 
-    /// PERMISSIONED FUNCTIONS ///
+    // DEPOSIT AND WITHDRAWAL LOGIC
 
-    /// @notice Shutdown the vault. Used in an emergency or if the vault has been deprecated.
-    function initiateShutdown() external vaultActive onlyDaoPermissions {
-        isShutdown = true;
-
-        emit vaultStatusChanged(true);
-    }
-
-    /// @notice Reactivate the vault.
-    function liftShutdown() external onlyElevatedPermissions {
-        require(isShutdown, "BasePositionVault: vault not active");
-        delete isShutdown;
-
-        emit vaultStatusChanged(false);
-    }
-
-
-    /// REWARD AND HARVESTING LOGIC ///
-
-    /// @notice Calculates the pending rewards.
-    /// @dev If there are no pending rewards or the vesting period has ended, it returns 0. 
-    ///      Otherwise, it calculates the pending rewards and returns them.
-    /// @return pendingRewards The calculated pending rewards.
-    function _calculatePendingRewards()
-        internal
-        view
-        returns (uint256 pendingRewards)
-    {
-        if (
-            vaultData.rewardRate > 0 &&
-            vaultData.lastVestClaim <
-            vaultData.vestingPeriodEnd
-        ) {
-            // There are pending rewards.
-            // Logic follows: If the vesting period has not ended
-            //                pendingRewards = rewardRate * (block.timestamp - lastTimeVestClaimed)
-            //                If the vesting period has ended
-            //                rewardRate * (vestingPeriodEnd - lastTimeVestClaimed))
-            // Divide the pending rewards by the reward offset of 18 decimals
-            pendingRewards = (block.timestamp <
-                vaultData.vestingPeriodEnd
-                ? (vaultData.rewardRate *
-                    (block.timestamp - vaultData.lastVestClaim))
-                : (vaultData.rewardRate *
-                    (vaultData.vestingPeriodEnd -
-                        vaultData.lastVestClaim))) / rewardOffset;
-        } 
-        // else there are no pending rewards.
-    }
-
-    /// @notice Vests the pending rewards, updates vault data and share price high watermark.
-    /// @param currentAssets The current assets of the vault.
-    function _vestRewards(uint256 currentAssets) internal {
-        // Update some reward timestamp.
-        vaultData.lastVestClaim = uint64(block.timestamp);
-
-        // Set internal balance equal to totalAssets value
-        _totalAssets = currentAssets;
-
-        // Update share price high watermark since rewards have been vested.
-        _sharePriceHighWatermark = _convertToAssets(10 ** _decimals, currentAssets);
-    }
-
-    /// DEPOSIT AND WITHDRAWAL LOGIC ///
     function deposit(
         uint256 assets,
         address receiver
@@ -211,7 +190,10 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         uint256 ta = _totalAssets + pending;
 
         // Check for rounding error since we round down in previewDeposit.
-        require((shares = _previewDeposit(assets, ta)) != 0, "BasePositionVault: ZERO_SHARES");
+        require(
+            (shares = _previewDeposit(assets, ta)) != 0,
+            "BasePositionVault: ZERO_SHARES"
+        );
 
         // Need to transfer before minting or ERC777s could reenter.
         SafeTransferLib.safeTransferFrom(
@@ -227,7 +209,8 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
 
         // Add the users newly deposited assets.
         ta = ta + assets;
-        // If there are pending rewards to vest, or if high watermark is not set, vestRewards.
+        // If there are pending rewards to vest,
+        // or if high watermark is not set, vestRewards.
         if (pending > 0 || _sharePriceHighWatermark == 0) _vestRewards(ta);
         else _totalAssets = ta;
 
@@ -242,7 +225,8 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         uint256 pending = _calculatePendingRewards();
         uint256 ta = _totalAssets + pending;
 
-        assets = _previewMint(shares, ta); // No need to check for rounding error, previewMint rounds up.
+        // No need to check for rounding error, previewMint rounds up.
+        assets = _previewMint(shares, ta);
 
         // Need to transfer before minting or ERC777s could reenter.
         SafeTransferLib.safeTransferFrom(
@@ -258,8 +242,9 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
 
         // Add the users newly deposited assets.
         ta = ta + assets;
-        
-        // If there are pending rewards to vest, or if high watermark is not set, vestRewards.
+
+        // If there are pending rewards to vest,
+        // or if high watermark is not set, vestRewards.
         if (pending > 0 || _sharePriceHighWatermark == 0) {
             _vestRewards(ta);
         } else {
@@ -278,7 +263,8 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         uint256 pending = _calculatePendingRewards();
         uint256 ta = _totalAssets + pending;
 
-        shares = _previewWithdraw(assets, ta); // No need to check for rounding error, previewWithdraw rounds up.
+        // No need to check for rounding error, previewWithdraw rounds up.
+        shares = _previewWithdraw(assets, ta);
 
         if (msg.sender != owner) {
             uint256 allowed = allowance(owner, msg.sender);
@@ -286,13 +272,13 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
             if (allowed != type(uint256).max) {
                 decreaseAllowance(owner, allowed - shares);
             }
-                
         }
 
         // Remove the users withdrawn assets.
         ta = ta - assets;
 
-        // If there are pending rewards to vest, or if high watermark is not set, vestRewards.
+        // If there are pending rewards to vest,
+        // or if high watermark is not set, vestRewards.
         if (pending > 0 || _sharePriceHighWatermark == 0) {
             _vestRewards(ta);
         } else {
@@ -322,16 +308,19 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
             if (allowed != type(uint256).max) {
                 decreaseAllowance(owner, allowed - shares);
             }
-
         }
 
         // Check for rounding error since we round down in previewRedeem.
-        require((assets = _previewRedeem(shares, ta)) != 0, "BasePositionVault: ZERO_ASSETS");
+        require(
+            (assets = _previewRedeem(shares, ta)) != 0,
+            "BasePositionVault: ZERO_ASSETS"
+        );
 
         // Remove the users withdrawn assets.
         ta = ta - assets;
 
-        // If there are pending rewards to vest, or if high watermark is not set, vestRewards.
+        // If there are pending rewards to vest,
+        // or if high watermark is not set, vestRewards.
         if (pending > 0 || _sharePriceHighWatermark == 0) {
             _vestRewards(ta);
         } else {
@@ -346,7 +335,8 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         SafeTransferLib.safeTransfer(asset(), receiver, assets);
     }
 
-    /// ACCOUNTING LOGIC ///
+    // ACCOUNTING LOGIC
+
     function totalAssets() public view override returns (uint256) {
         // Returns stored internal balance + pending rewards that are vested.
         return _totalAssets + _calculatePendingRewards();
@@ -386,6 +376,61 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         uint256 shares
     ) public view override returns (uint256) {
         return convertToAssets(shares);
+    }
+
+    /// INTERNAL FUNCTIONS ///
+
+    // REWARD AND HARVESTING LOGIC
+
+    /// @notice Calculates the pending rewards.
+    /// @dev If there are no pending rewards or the vesting period has ended,
+    ///      it returns 0.
+    ///      Otherwise, it calculates the pending rewards and returns them.
+    /// @return pendingRewards The calculated pending rewards.
+    function _calculatePendingRewards()
+        internal
+        view
+        returns (uint256 pendingRewards)
+    {
+        if (
+            vaultData.rewardRate > 0 &&
+            vaultData.lastVestClaim < vaultData.vestingPeriodEnd
+        ) {
+            // There are pending rewards.
+            // Logic follows: If the vesting period has not ended
+            //                pendingRewards = rewardRate * (block.timestamp - lastTimeVestClaimed)
+            //                If the vesting period has ended
+            //                rewardRate * (vestingPeriodEnd - lastTimeVestClaimed))
+            // Divide the pending rewards by the reward offset of 18 decimals
+            pendingRewards =
+                (
+                    block.timestamp < vaultData.vestingPeriodEnd
+                        ? (vaultData.rewardRate *
+                            (block.timestamp - vaultData.lastVestClaim))
+                        : (vaultData.rewardRate *
+                            (vaultData.vestingPeriodEnd -
+                                vaultData.lastVestClaim))
+                ) /
+                rewardOffset;
+        }
+        // else there are no pending rewards.
+    }
+
+    /// @notice Vests the pending rewards, updates vault data
+    ///         and share price high watermark.
+    /// @param currentAssets The current assets of the vault.
+    function _vestRewards(uint256 currentAssets) internal {
+        // Update some reward timestamp.
+        vaultData.lastVestClaim = uint64(block.timestamp);
+
+        // Set internal balance equal to totalAssets value
+        _totalAssets = currentAssets;
+
+        // Update share price high watermark since rewards have been vested.
+        _sharePriceHighWatermark = _convertToAssets(
+            10 ** _decimals,
+            currentAssets
+        );
     }
 
     function _convertToShares(
@@ -446,13 +491,11 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         return _convertToAssets(shares, _ta);
     }
 
-    /// INTERNAL POSITION LOGIC TO OVERRIDE ///
+    // INTERNAL POSITION LOGIC TO OVERRIDE
+
     function _deposit(uint256 assets) internal virtual;
 
     function _withdraw(uint256 assets) internal virtual;
 
     function _getRealPositionBalance() internal view virtual returns (uint256);
-
-    /// EXTERNAL POSITION LOGIC TO OVERRIDE///
-    function harvest(bytes memory, uint256 maxSlippage) public virtual returns (uint256 yield);
 }

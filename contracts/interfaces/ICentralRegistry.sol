@@ -12,8 +12,11 @@ interface ICentralRegistry {
     /// @notice Returns whether the caller has dao permissions or not
     function hasDaoPermissions(address _address) external view returns (bool);
 
-    /// @notice Returns whether the caller has elevated protocol permissions or not
-    function hasElevatedPermissions(address _address) external view returns (bool);
+    /// @notice Returns whether the caller has elevated protocol permissions
+    ///         or not
+    function hasElevatedPermissions(
+        address _address
+    ) external view returns (bool);
 
     /// @notice Returns CVE Locker Address
     function cveLocker() external view returns (address);

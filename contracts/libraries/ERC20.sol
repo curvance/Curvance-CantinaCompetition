@@ -119,12 +119,9 @@ abstract contract ERC20 {
     }
 
     /// @dev Returns the amount of tokens owned by `owner`.
-    function balanceOf(address owner)
-        public
-        view
-        virtual
-        returns (uint256 result)
-    {
+    function balanceOf(
+        address owner
+    ) public view virtual returns (uint256 result) {
         /// @solidity memory-safe-assembly
         assembly {
             mstore(0x0c, _BALANCE_SLOT_SEED)
@@ -134,12 +131,10 @@ abstract contract ERC20 {
     }
 
     /// @dev Returns the amount of tokens that `spender` can spend on behalf of `owner`.
-    function allowance(address owner, address spender)
-        public
-        view
-        virtual
-        returns (uint256 result)
-    {
+    function allowance(
+        address owner,
+        address spender
+    ) public view virtual returns (uint256 result) {
         /// @solidity memory-safe-assembly
         assembly {
             mstore(0x20, spender)
@@ -152,11 +147,10 @@ abstract contract ERC20 {
     /// @dev Sets `amount` as the allowance of `spender` over the caller's tokens.
     ///
     /// Emits a {Approval} event.
-    function approve(address spender, uint256 amount)
-        public
-        virtual
-        returns (bool)
-    {
+    function approve(
+        address spender,
+        uint256 amount
+    ) public virtual returns (bool) {
         /// @solidity memory-safe-assembly
         assembly {
             // Compute the allowance slot and store the amount.
@@ -180,11 +174,10 @@ abstract contract ERC20 {
     /// @dev Atomically increases the allowance granted to `spender` by the caller.
     ///
     /// Emits a {Approval} event.
-    function increaseAllowance(address spender, uint256 difference)
-        public
-        virtual
-        returns (bool)
-    {
+    function increaseAllowance(
+        address spender,
+        uint256 difference
+    ) public virtual returns (bool) {
         /// @solidity memory-safe-assembly
         assembly {
             // Compute the allowance slot and load its value.
@@ -218,11 +211,10 @@ abstract contract ERC20 {
     /// @dev Atomically decreases the allowance granted to `spender` by the caller.
     ///
     /// Emits a {Approval} event.
-    function decreaseAllowance(address spender, uint256 difference)
-        public
-        virtual
-        returns (bool)
-    {
+    function decreaseAllowance(
+        address spender,
+        uint256 difference
+    ) public virtual returns (bool) {
         /// @solidity memory-safe-assembly
         assembly {
             // Compute the allowance slot and load its value.
@@ -258,11 +250,10 @@ abstract contract ERC20 {
     /// - `from` must at least have `amount`.
     ///
     /// Emits a {Transfer} event.
-    function transfer(address to, uint256 amount)
-        public
-        virtual
-        returns (bool)
-    {
+    function transfer(
+        address to,
+        uint256 amount
+    ) public virtual returns (bool) {
         _beforeTokenTransfer(msg.sender, to, amount);
         /// @solidity memory-safe-assembly
         assembly {
@@ -370,12 +361,9 @@ abstract contract ERC20 {
 
     /// @dev Returns the current nonce for `owner`.
     /// This value is used to compute the signature for EIP-2612 permit.
-    function nonces(address owner)
-        public
-        view
-        virtual
-        returns (uint256 result)
-    {
+    function nonces(
+        address owner
+    ) public view virtual returns (uint256 result) {
         /// @solidity memory-safe-assembly
         assembly {
             // Compute the nonce slot and load its value.

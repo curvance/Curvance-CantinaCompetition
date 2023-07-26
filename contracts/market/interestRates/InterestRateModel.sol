@@ -4,8 +4,13 @@ pragma solidity ^0.8.17;
 /// @title Curvance's InterestRateModel Interface
 /// @author Curvance
 abstract contract InterestRateModel {
-    /// @notice Indicator that this is an InterestRateModel contract (for inspection)
+    /// CONSTANTS ///
+
+    /// @notice Indicator that this is an InterestRateModel contract
+    ///         (for inspection)
     bool public constant isInterestRateModel = true;
+
+    /// EXTERNAL FUNCTIONS ///
 
     /// @notice Calculates the current borrow interest rate per block
     /// @param cash The total amount of cash the market has

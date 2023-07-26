@@ -16,13 +16,13 @@ struct RewardsData {
 }
 
 interface ICVELocker {
-    /// notice Update user claim index
+    /// @notice Update user claim index
     function updateUserClaimIndex(address user, uint256 index) external;
 
-    /// notice Reset user claim index
+    /// @notice Reset user claim index
     function resetUserClaimIndex(address user) external;
 
-    /// Claims a users VeCVE rewards, only callable by VeCVE contract
+    /// @notice Claims a users VeCVE rewards, only callable by VeCVE contract
     function claimRewardsFor(
         address user,
         address recipient,
@@ -32,12 +32,13 @@ interface ICVELocker {
         uint256 aux
     ) external;
 
-    /// Checks if a user has any CVE locker rewards to claim.
+    /// @notice Checks if a user has any CVE locker rewards to claim.
     function hasRewardsToClaim(address user) external view returns (bool);
 
-    /// Checks how many epoches of CVE locker rewards a user has.
+    /// @notice Checks how many epoches of CVE locker rewards a user has.
     function epochsToClaim(address user) external view returns (uint256);
 
-    /// Allows VeCVE to shut down cve locker to prepare for a new VeCVE locker
+    /// @notice Allows VeCVE to shut down cve locker to prepare
+    ///         for a new VeCVE locker
     function notifyLockerShutdown() external;
 }
