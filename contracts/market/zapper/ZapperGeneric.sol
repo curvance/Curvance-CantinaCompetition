@@ -7,7 +7,7 @@ import { CurveLib } from "contracts/market/zapper/protocols/CurveLib.sol";
 import { BalancerLib } from "contracts/market/zapper/protocols/BalancerLib.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
-import { CErc20, IERC20 } from "contracts/market/collateral/CErc20.sol";
+import { CToken, IERC20 } from "contracts/market/collateral/CToken.sol";
 
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { ICurveSwap } from "contracts/interfaces/external/curve/ICurve.sol";
@@ -251,7 +251,7 @@ contract ZapperGeneric {
         (bool isListed, ) = lendtroller.getIsMarkets(cToken);
         require(isListed, "invalid cToken address");
         // check cToken underlying
-        require(CErc20(cToken).underlying() == lpToken, "invalid lp address");
+        require(CToken(cToken).underlying() == lpToken, "invalid lp address");
 
         uint256 numTokenSwaps = tokenSwaps.length;
 
@@ -279,7 +279,7 @@ contract ZapperGeneric {
         SwapperLib.approveTokenIfNeeded(lpToken, cToken, amount);
 
         // enter curvance
-        require(CErc20(cToken).mint(amount), "curvance");
+        require(CToken(cToken).mint(amount), "curvance");
 
         out = CommonLib.getTokenBalance(cToken);
     }

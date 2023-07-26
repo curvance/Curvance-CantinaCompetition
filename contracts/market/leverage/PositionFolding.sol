@@ -5,7 +5,6 @@ import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
-import { CErc20 } from "contracts/market/collateral/CErc20.sol";
 import { CToken } from "contracts/market/collateral/CToken.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
@@ -152,7 +151,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
             "PositionFolding: invalid params"
         );
 
-        address borrowUnderlying = CErc20(borrowToken).underlying();
+        address borrowUnderlying = CToken(borrowToken).underlying();
 
         require(
             IERC20(borrowUnderlying).balanceOf(address(this)) == borrowAmount,
@@ -264,7 +263,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         );
 
         // swap collateral token to borrow token
-        address collateralUnderlying = CErc20(collateralToken).underlying();
+        address collateralUnderlying = CToken(collateralToken).underlying();
 
         require(
             IERC20(collateralUnderlying).balanceOf(address(this)) ==
@@ -320,7 +319,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         uint256 repayAmount = deleverageData.repayAmount;
         CToken borrowToken = deleverageData.borrowToken;
 
-        address borrowUnderlying = CErc20(address(borrowToken)).underlying();
+        address borrowUnderlying = CToken(address(borrowToken)).underlying();
         uint256 remaining = IERC20(borrowUnderlying).balanceOf(address(this)) -
             repayAmount;
 
@@ -330,7 +329,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
             repayAmount + remaining
         );
 
-        CErc20(address(borrowToken)).repayBorrowBehalf(redeemer, repayAmount);
+        CToken(address(borrowToken)).repayBorrowBehalf(redeemer, repayAmount);
 
         if (remaining > 0) {
             // remaining borrow underlying back to user
@@ -397,7 +396,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
 
         bytes memory params = abi.encode(leverageData);
 
-        CErc20(address(borrowToken)).borrowForPositionFolding(
+        CToken(address(borrowToken)).borrowForPositionFolding(
             msg.sender,
             borrowAmount,
             params
@@ -409,7 +408,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         CToken collateralToken = deleverageData.collateralToken;
         uint256 collateralAmount = deleverageData.collateralAmount;
 
-        CErc20(address(collateralToken)).redeemUnderlyingForPositionFolding(
+        CToken(address(collateralToken)).redeemUnderlyingForPositionFolding(
             msg.sender,
             collateralAmount,
             params
