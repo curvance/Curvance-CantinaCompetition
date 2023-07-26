@@ -2,16 +2,15 @@
 pragma solidity ^0.8.17;
 
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
-
 import { ERC165 } from "contracts/libraries/ERC165.sol";
 import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 import { GaugePool } from "contracts/gauge/GaugePool.sol";
+
 import { InterestRateModel } from "contracts/market/interestRates/InterestRateModel.sol";
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.sol";
-
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { ICToken } from "contracts/interfaces/market/ICToken.sol";
 import { IEIP20NonStandard } from "contracts/interfaces/market/IEIP20NonStandard.sol";
@@ -44,13 +43,13 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
 
     /// @notice Underlying asset for this CToken
     address public immutable underlying;
+    uint8 public immutable decimals;
 
     ICentralRegistry public immutable centralRegistry;
 
     /// STORAGE ///
     string public name;
     string public override symbol;
-    uint8 public decimals;
     ILendtroller public override lendtroller;
     InterestRateModel public interestRateModel;
     /// Initial exchange rate used when minting the first CTokens (used when totalSupply = 0)
@@ -163,7 +162,7 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
                 address(centralRegistry_),
                 type(ICentralRegistry).interfaceId
             ),
-            "lendtroller: invalid central registry"
+            "CToken: invalid central registry"
         );
 
         centralRegistry = centralRegistry_;
@@ -173,7 +172,8 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
         decimals = decimals_;
 
         // Set underlying and sanity check it
-        IERC20(underlying).totalSupply();
+        require (IERC20(underlying).totalSupply() < type(uint208).max, "CToken: Underlying token assumptions not met");
+
     }
 
     /// @notice Returns gauge pool contract address
