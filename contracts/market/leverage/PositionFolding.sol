@@ -6,13 +6,11 @@ import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 import { CErc20 } from "contracts/market/collateral/CErc20.sol";
-import { CEther } from "contracts/market/collateral/CEther.sol";
 import { CToken } from "contracts/market/collateral/CToken.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
-import { IWETH } from "contracts/interfaces/IWETH.sol";
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.sol";
 
@@ -48,8 +46,6 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
 
     ICentralRegistry public immutable centralRegistry;
     ILendtroller public immutable lendtroller;
-    address public immutable cether;
-    address public immutable weth;
 
     /// MODIFIERS ///
 
@@ -85,12 +81,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
 
     /// CONSTRUCTOR ///
 
-    constructor(
-        ICentralRegistry centralRegistry_,
-        address lendtroller_,
-        address cether_,
-        address weth_
-    ) {
+    constructor(ICentralRegistry centralRegistry_, address lendtroller_) {
         require(
             ERC165Checker.supportsInterface(
                 address(centralRegistry_),
@@ -107,8 +98,6 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         );
 
         lendtroller = ILendtroller(lendtroller_);
-        cether = cether_;
-        weth = weth_;
     }
 
     function getProtocolLeverageFee() public view returns (uint256) {
@@ -163,25 +152,12 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
             "PositionFolding: invalid params"
         );
 
-        address borrowUnderlying;
+        address borrowUnderlying = CErc20(borrowToken).underlying();
 
-        if (borrowToken == cether) {
-            require(
-                address(this).balance == borrowAmount,
-                "PositionFolding: invalid amount"
-            );
-
-            IWETH(weth).deposit{ value: borrowAmount }(borrowAmount);
-            borrowUnderlying = weth;
-        } else {
-            borrowUnderlying = CErc20(borrowToken).underlying();
-
-            require(
-                IERC20(borrowUnderlying).balanceOf(address(this)) ==
-                    borrowAmount,
-                "PositionFolding: invalid amount"
-            );
-        }
+        require(
+            IERC20(borrowUnderlying).balanceOf(address(this)) == borrowAmount,
+            "PositionFolding: invalid amount"
+        );
 
         // take protocol fee
         uint256 fee = (borrowAmount * getProtocolLeverageFee()) / 10000;
@@ -288,25 +264,13 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         );
 
         // swap collateral token to borrow token
-        address collateralUnderlying;
+        address collateralUnderlying = CErc20(collateralToken).underlying();
 
-        if (collateralToken == cether) {
-            require(
-                address(this).balance == collateralAmount,
-                "PositionFolding: invalid amount"
-            );
-
-            collateralUnderlying = weth;
-            IWETH(weth).deposit{ value: collateralAmount }(collateralAmount);
-        } else {
-            collateralUnderlying = CErc20(collateralToken).underlying();
-
-            require(
-                IERC20(collateralUnderlying).balanceOf(address(this)) ==
-                    collateralAmount,
-                "PositionFolding: invalid amount"
-            );
-        }
+        require(
+            IERC20(collateralUnderlying).balanceOf(address(this)) ==
+                collateralAmount,
+            "PositionFolding: invalid amount"
+        );
 
         // take protocol fee
         uint256 fee = (collateralAmount * getProtocolLeverageFee()) / 10000;
@@ -355,46 +319,26 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         // repay debt
         uint256 repayAmount = deleverageData.repayAmount;
         CToken borrowToken = deleverageData.borrowToken;
-        uint256 remaining;
 
-        if (address(borrowToken) == cether) {
-            remaining = address(this).balance - repayAmount;
+        address borrowUnderlying = CErc20(address(borrowToken)).underlying();
+        uint256 remaining = IERC20(borrowUnderlying).balanceOf(address(this)) -
+            repayAmount;
 
-            CEther(payable(address(borrowToken))).repayBorrowBehalf{
-                value: repayAmount
-            }(redeemer);
+        SwapperLib.approveTokenIfNeeded(
+            borrowUnderlying,
+            address(borrowToken),
+            repayAmount + remaining
+        );
 
-            if (remaining > 0) {
-                // remaining borrow underlying back to user
-                (bool sent, ) = redeemer.call{ value: remaining }("");
-                require(sent, "failed to send ether");
-            }
-        } else {
-            address borrowUnderlying = CErc20(address(borrowToken))
-                .underlying();
-            remaining =
-                IERC20(borrowUnderlying).balanceOf(address(this)) -
-                repayAmount;
+        CErc20(address(borrowToken)).repayBorrowBehalf(redeemer, repayAmount);
 
-            SwapperLib.approveTokenIfNeeded(
+        if (remaining > 0) {
+            // remaining borrow underlying back to user
+            SafeTransferLib.safeTransfer(
                 borrowUnderlying,
-                address(borrowToken),
-                repayAmount + remaining
-            );
-
-            CErc20(address(borrowToken)).repayBorrowBehalf(
                 redeemer,
-                repayAmount
+                remaining
             );
-
-            if (remaining > 0) {
-                // remaining borrow underlying back to user
-                SafeTransferLib.safeTransfer(
-                    borrowUnderlying,
-                    redeemer,
-                    remaining
-                );
-            }
         }
 
         // transfer remaining collateral underlying back to the user
@@ -453,19 +397,11 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
 
         bytes memory params = abi.encode(leverageData);
 
-        if (address(borrowToken) == cether) {
-            CEther(payable(address(borrowToken))).borrowForPositionFolding(
-                msg.sender,
-                borrowAmount,
-                params
-            );
-        } else {
-            CErc20(address(borrowToken)).borrowForPositionFolding(
-                msg.sender,
-                borrowAmount,
-                params
-            );
-        }
+        CErc20(address(borrowToken)).borrowForPositionFolding(
+            msg.sender,
+            borrowAmount,
+            params
+        );
     }
 
     function _deleverage(DeleverageStruct memory deleverageData) internal {
@@ -473,20 +409,10 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         CToken collateralToken = deleverageData.collateralToken;
         uint256 collateralAmount = deleverageData.collateralAmount;
 
-        if (address(collateralToken) == cether) {
-            CEther(payable(address(collateralToken)))
-                .redeemUnderlyingForPositionFolding(
-                    msg.sender,
-                    collateralAmount,
-                    params
-                );
-        } else {
-            CErc20(address(collateralToken))
-                .redeemUnderlyingForPositionFolding(
-                    msg.sender,
-                    collateralAmount,
-                    params
-                );
-        }
+        CErc20(address(collateralToken)).redeemUnderlyingForPositionFolding(
+            msg.sender,
+            collateralAmount,
+            params
+        );
     }
 }
