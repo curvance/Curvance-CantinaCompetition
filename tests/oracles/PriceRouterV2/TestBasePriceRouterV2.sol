@@ -3,7 +3,7 @@ pragma solidity 0.8.17;
 
 import { TestBase } from "tests/utils/TestBase.sol";
 import { CentralRegistry } from "contracts/architecture/CentralRegistry.sol";
-import { CErc20 } from "contracts/market/collateral/CErc20.sol";
+import { CToken } from "contracts/market/collateral/CToken.sol";
 import { InterestRateModel } from "contracts/market/interestRates/InterestRateModel.sol";
 import { JumpRateModelV2 } from "contracts/market/interestRates/JumpRateModelV2.sol";
 import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
@@ -27,7 +27,7 @@ contract TestBasePriceRouterV2 is TestBase {
     JumpRateModelV2 public jumpRateModel;
     Lendtroller public lendtroller;
     PriceRouter public priceRouter;
-    CErc20 public cUSDC;
+    CToken public cUSDC;
 
     function setUp() public virtual {
         _fork();
@@ -101,7 +101,7 @@ contract TestBasePriceRouterV2 is TestBase {
     }
 
     function _deployCUSDC() internal {
-        cUSDC = new CErc20(
+        cUSDC = new CToken(
             ICentralRegistry(address(centralRegistry)),
             _USDC_ADDRESS,
             address(lendtroller),

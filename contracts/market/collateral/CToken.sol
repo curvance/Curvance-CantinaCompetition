@@ -28,6 +28,13 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
         uint256 interestIndex;
     }
 
+    struct AccountData {
+        // The token balance of the user.
+        uint216 balance;
+        // Stores the timestamp of the last time a user deposited tokens.
+        uint40 lastTimestamp;
+}
+
     /// CONSTANTS ///
 
     uint256 internal constant expScale = 1e18;
@@ -38,11 +45,19 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
     // Maximum fraction of interest that can be set aside for reserves
     uint256 internal constant reserveFactorMaxScaled = 1e18;
 
+    // Mask of all bits in account data excluding timestamp, meaning all room reserved for balanceOf
+    uint256 private constant _BITMASK_BALANCE_OF_ENTRY = (1 << 216) - 1;
+
+    // The bit position of `aux` in packed address data.
+    uint256 private constant _BITPOS_TIMESTAMP = 216;
+
     /// @notice Indicator that this is a CToken contract (for inspection)
     bool public constant override isCToken = true;
 
     /// @notice Underlying asset for this CToken
     address public immutable underlying;
+    
+    /// @notice Decimals for this CToken
     uint8 public immutable decimals;
 
     ICentralRegistry public immutable centralRegistry;
@@ -659,6 +674,15 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
             borrowIndexNew,
             totalBorrowsNew
         );
+    }
+
+    /// @notice Sender supplies assets into the market and receives cTokens in exchange
+    /// @dev Accrues interest whether or not the operation succeeds, unless reverted
+    /// @param mintAmount The amount of the underlying asset to supply
+    /// @return bool true=success
+    function mint(uint256 mintAmount) external override returns (bool) {
+        mintInternal(mintAmount, msg.sender);
+        return true;
     }
 
     /// @notice Sender supplies assets into the market and receives cTokens in exchange
