@@ -49,13 +49,13 @@ contract CallOptionCVE is ERC20 {
 
     /// @param name_ The name of the token.
     /// @param symbol_ The symbol of the token.
-    /// @param _paymentToken The token used for payment when exercising options.
+    /// @param paymentToken_ The token used for payment when exercising options.
     /// @param centralRegistry_ The Central Registry contract address.
     constructor(
         string memory name_,
         string memory symbol_,
         ICentralRegistry centralRegistry_,
-        address _paymentToken
+        address paymentToken_
     ) {
         _name = name_;
         _symbol = symbol_;
@@ -69,7 +69,7 @@ contract CallOptionCVE is ERC20 {
         );
 
         centralRegistry = centralRegistry_;
-        paymentToken = _paymentToken;
+        paymentToken = paymentToken_;
         cve = centralRegistry.CVE();
 
         // total call option allocation for airdrops
@@ -79,33 +79,33 @@ contract CallOptionCVE is ERC20 {
     /// EXTERNAL FUNCTIONS ///
 
     /// @notice Rescue any token sent by mistake, also used for removing .
-    /// @param _token The token to rescue.
-    /// @param _recipient The address to receive the rescued token.
-    /// @param _amount The amount of tokens to rescue.
+    /// @param token The token to rescue.
+    /// @param recipient The address to receive the rescued token.
+    /// @param amount The amount of tokens to rescue.
     function rescueToken(
-        address _token,
-        address _recipient,
-        uint256 _amount
+        address token,
+        address recipient,
+        uint256 amount
     ) external onlyDaoPermissions {
         require(
-            _recipient != address(0),
+            recipient != address(0),
             "CallOptionCVE: invalid recipient address"
         );
 
-        if (_token == address(0)) {
+        if (token == address(0)) {
             require(
-                address(this).balance >= _amount,
+                address(this).balance >= amount,
                 "CallOptionCVE: insufficient balance"
             );
-            (bool success, ) = payable(_recipient).call{ value: _amount }("");
+            (bool success, ) = payable(recipient).call{ value: amount }("");
             require(success, "CallOptionCVE: !successful");
         } else {
-            require(_token != cve, "CallOptionCVE: cannot withdraw CVE");
+            require(token != cve, "CallOptionCVE: cannot withdraw CVE");
             require(
-                IERC20(_token).balanceOf(address(this)) >= _amount,
+                IERC20(token).balanceOf(address(this)) >= amount,
                 "CallOptionCVE: insufficient balance"
             );
-            SafeTransferLib.safeTransfer(_token, _recipient, _amount);
+            SafeTransferLib.safeTransfer(token, recipient, amount);
         }
     }
 
@@ -121,16 +121,16 @@ contract CallOptionCVE is ERC20 {
     }
 
     /// @notice Set the options expiry timestamp.
-    /// @param _timestampStart The start timestamp for options exercising.
-    /// @param _strikePrice The price in USD of CVE in 1e36 format.
+    /// @param timestampStart The start timestamp for options exercising.
+    /// @param strikePrice The price in USD of CVE in 1e36 format.
     function setOptionsTerms(
-        uint256 _timestampStart,
-        uint256 _strikePrice
+        uint256 timestampStart,
+        uint256 strikePrice
     ) external onlyDaoPermissions {
         require(
-            _strikePrice != 0 &&
+            strikePrice != 0 &&
                 paymentToken != address(0) &&
-                _timestampStart != 0,
+                timestampStart != 0,
             "CallOptionCVE: Cannot Configure Options"
         );
 
@@ -141,7 +141,7 @@ contract CallOptionCVE is ERC20 {
             );
         }
 
-        optionsStartTimestamp = _timestampStart;
+        optionsStartTimestamp = timestampStart;
 
         /// Give them 4 weeks to exercise their options before they expire
         optionsEndTimestamp = optionsStartTimestamp + (4 weeks);
@@ -157,12 +157,12 @@ contract CallOptionCVE is ERC20 {
         /// The strike price should always be greater than the strike price since it will be in 1e36 format offset,
         /// whereas paymentTokenCurrentPrice will be 1e18 so the price should always be larger
         require(
-            _strikePrice > paymentTokenCurrentPrice,
+            strikePrice > paymentTokenCurrentPrice,
             "CallOptionCVE: invalid strike price configuration"
         );
 
         paymentTokenPerCVE =
-            (_strikePrice / paymentTokenCurrentPrice) /
+            (strikePrice / paymentTokenCurrentPrice) /
             denominatorOffset;
     }
 
@@ -187,23 +187,23 @@ contract CallOptionCVE is ERC20 {
     }
 
     /// @notice Exercise CVE call options.
-    /// @param _amount The amount of options to exercise.
-    function exerciseOption(uint256 _amount) public payable {
+    /// @param amount The amount of options to exercise.
+    function exerciseOption(uint256 amount) public payable {
         require(
             optionsExercisable(),
             "CallOptionCVE: Options not exercisable yet"
         );
         require(
-            IERC20(cve).balanceOf(address(this)) >= _amount,
+            IERC20(cve).balanceOf(address(this)) >= amount,
             "CallOptionCVE: not enough CVE remaining"
         );
-        require(_amount > 0, "CallOptionCVE: invalid amount");
+        require(amount > 0, "CallOptionCVE: invalid amount");
         require(
-            balanceOf(msg.sender) >= _amount,
+            balanceOf(msg.sender) >= amount,
             "CallOptionCVE: not enough call options to exercise"
         );
 
-        uint256 optionExerciseCost = _amount * paymentTokenPerCVE;
+        uint256 optionExerciseCost = amount * paymentTokenPerCVE;
 
         /// Take their strike price payment
         if (
@@ -223,11 +223,11 @@ contract CallOptionCVE is ERC20 {
         }
 
         /// Burn the call options
-        _burn(msg.sender, _amount);
+        _burn(msg.sender, amount);
 
         /// Transfer them corresponding CVE
-        SafeTransferLib.safeTransfer(cve, msg.sender, _amount);
+        SafeTransferLib.safeTransfer(cve, msg.sender, amount);
 
-        emit CallOptionCVEExercised(msg.sender, _amount);
+        emit CallOptionCVEExercised(msg.sender, amount);
     }
 }

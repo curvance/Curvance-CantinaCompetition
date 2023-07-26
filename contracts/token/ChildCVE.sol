@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import "../layerzero/OFTV2.sol";
+import "contracts/layerzero/OFTV2.sol";
 
 contract CVE is OFTV2 {
     /// CONSTANTS ///
@@ -22,12 +22,12 @@ contract CVE is OFTV2 {
     /// CONSTRUCTOR ///
 
     constructor(
-        string memory _name,
-        string memory _symbol,
-        uint8 _sharedDecimals,
-        address _lzEndpoint,
+        string memory name_,
+        string memory symbol_,
+        uint8 sharedDecimals_,
+        address lzEndpoint_,
         ICentralRegistry centralRegistry_
-    ) OFTV2(_name, _symbol, _sharedDecimals, _lzEndpoint, centralRegistry_) {
+    ) OFTV2(name_, symbol_, sharedDecimals_, lzEndpoint_, centralRegistry_) {
         // TODO:
         // Permission sendAndCall?
         // Write sendEmissions in votingHub
@@ -37,15 +37,15 @@ contract CVE is OFTV2 {
 
     /// @notice Mint new gauge emissions
     /// @dev Allows the VotingHub to mint new gauge emissions.
-    /// @param _gaugeEmissions The amount of gauge emissions to be minted.
+    /// @param gaugeEmissions The amount of gauge emissions to be minted.
     /// Emission amount is multiplied by the lock boost value from the central registry.
     /// Resulting tokens are minted to the voting hub contract.
     function mintGaugeEmissions(
-        uint256 _gaugeEmissions
+        uint256 gaugeEmissions
     ) external onlyProtocolMessagingHub {
         _mint(
             msg.sender,
-            (_gaugeEmissions * centralRegistry.lockBoostValue()) / DENOMINATOR
+            (gaugeEmissions * centralRegistry.lockBoostValue()) / DENOMINATOR
         );
     }
 }
