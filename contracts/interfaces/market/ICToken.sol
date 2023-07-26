@@ -1,12 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import "contracts/market/interestRates/InterestRateModel.sol";
+import { InterestRateModel } from "contracts/market/interestRates/InterestRateModel.sol";
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
+import { IEIP20NonStandard } from "contracts/interfaces/market/IEIP20NonStandard.sol";
 
 interface ICToken {
-    /// ERRORS ///
+    /// Errors ///
 
+    error InvalidUnderlying();
+    error TransferFailure();
+    error ActionFailure();
     error AddressUnauthorized();
     error FailedNotFromPositionFolding();
     error FailedFreshnessCheck();
@@ -113,6 +117,28 @@ interface ICToken {
         uint256 amount
     );
 
+    /// User Interface
+
+    function mint(uint256 mintAmount) external returns (bool);
+
+    function redeem(uint256 redeemTokens) external;
+
+    function redeemUnderlying(uint256 redeemAmount) external;
+
+    function borrow(uint256 borrowAmount) external;
+
+    function repayBorrow(uint256 repayAmount) external;
+
+    function repayBorrowBehalf(address borrower, uint256 repayAmount) external;
+
+    function liquidateBorrow(
+        address borrower,
+        uint256 repayAmount,
+        ICToken cTokenCollateral
+    ) external;
+
+    function sweepToken(IEIP20NonStandard token) external;
+
     function isCToken() external view returns (bool);
 
     function underlying() external view returns (address);
@@ -173,6 +199,8 @@ interface ICToken {
     ) external;
 
     /// Admin Functions
+
+    function _addReserves(uint256 addAmount) external;
 
     function _setLendtroller(ILendtroller newLendtroller) external;
 
