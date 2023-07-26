@@ -1351,8 +1351,7 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
     /// @dev This excludes the value of the current message, if any
     /// @return uint The quantity of underlying tokens owned by this contract
     function getCashPrior() internal view returns (uint256) {
-        IEIP20 token = IEIP20(underlying);
-        return token.balanceOf(address(this));
+        return IEIP20(underlying).balanceOf(address(this));
     }
 
     /// @dev Similar to EIP20 transfer, except it handles a False result from `transferFrom` and reverts in that case.
@@ -1442,5 +1441,14 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
         if (!success) {
             revert TransferFailure();
         }
+    }
+
+    /// @inheritdoc ERC165
+    function supportsInterface(
+        bytes4 interfaceId
+    ) public view override returns (bool) {
+        return
+            interfaceId == type(ICToken).interfaceId ||
+            super.supportsInterface(interfaceId);
     }
 }
