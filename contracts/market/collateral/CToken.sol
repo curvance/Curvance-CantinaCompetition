@@ -15,7 +15,6 @@ import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.s
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { ICToken } from "contracts/interfaces/market/ICToken.sol";
 import { IDelegateToken } from "contracts/interfaces/market/IDelegateToken.sol";
-import { IEIP20 } from "contracts/interfaces/market/IEIP20.sol";
 import { IEIP20NonStandard } from "contracts/interfaces/market/IEIP20NonStandard.sol";
 
 /// @title Curvance's CToken Contract
@@ -175,7 +174,7 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
         decimals = decimals_;
 
         // Set underlying and sanity check it
-        IEIP20(underlying).totalSupply();
+        IERC20(underlying).totalSupply();
     }
 
     /// @notice Returns gauge pool contract address
@@ -354,6 +353,32 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
     /// @param addAmount The amount fo underlying token to add as reserves
     function _addReserves(uint256 addAmount) external override {
         _addReservesInternal(addAmount);
+    }
+
+    /// @notice Rescue any token sent by mistake
+    /// @param token The token to rescue.
+    /// @param amount The amount of tokens to rescue.
+    function rescueToken(
+        address token,
+        uint256 amount
+    ) external onlyDaoPermissions {
+        address daoOperator = centralRegistry.daoAddress();
+
+        if (token == address(0)) {
+            require(
+                address(this).balance >= amount,
+                "CToken: insufficient balance"
+            );
+            (bool success, ) = payable(daoOperator).call{ value: amount }("");
+            require(success, "CToken: !successful");
+        } else {
+            require(token != underlying, "CToken: cannot withdraw underlying");
+            require(
+                IERC20(token).balanceOf(address(this)) >= amount,
+                "CToken: insufficient balance"
+            );
+            SafeTransferLib.safeTransfer(token, daoOperator, amount);
+        }
     }
 
     /// @notice A public function to sweep accidental ERC-20 transfers to this contract.
@@ -1272,8 +1297,6 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
     function _reduceReservesFresh(
         uint256 reduceAmount
     ) internal onlyElevatedPermissions {
-        // totalReserves - reduceAmount
-        uint256 totalReservesNew;
 
         // We fail gracefully unless market's timestamp equals current timestamp
         if (accrualBlockTimestamp != getBlockTimestamp()) {
@@ -1293,7 +1316,7 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
         /////////////////////////
         // EFFECTS & INTERACTIONS
         // (No safe failures beyond this point)
-        totalReservesNew = totalReserves - reduceAmount;
+        uint256 totalReservesNew = totalReserves - reduceAmount;
 
         // Store reserves[n+1] = reserves[n] - reduceAmount
         totalReserves = totalReservesNew;
@@ -1351,7 +1374,7 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
     /// @dev This excludes the value of the current message, if any
     /// @return uint The quantity of underlying tokens owned by this contract
     function getCashPrior() internal view returns (uint256) {
-        return IEIP20(underlying).balanceOf(address(this));
+        return IERC20(underlying).balanceOf(address(this));
     }
 
     /// @dev Similar to EIP20 transfer, except it handles a False result from `transferFrom` and reverts in that case.
@@ -1400,7 +1423,7 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
         }
 
         // Calculate the amount that was *actually* transferred
-        uint256 balanceAfter = IEIP20(underlying_).balanceOf(address(this));
+        uint256 balanceAfter = IERC20(underlying_).balanceOf(address(this));
         return balanceAfter - balanceBefore; // underflow already checked above, just subtract
     }
 
