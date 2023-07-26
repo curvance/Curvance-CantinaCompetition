@@ -14,7 +14,6 @@ import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.s
 
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { ICToken } from "contracts/interfaces/market/ICToken.sol";
-import { IDelegateToken } from "contracts/interfaces/market/IDelegateToken.sol";
 import { IEIP20NonStandard } from "contracts/interfaces/market/IEIP20NonStandard.sol";
 
 /// @title Curvance's CToken Contract
