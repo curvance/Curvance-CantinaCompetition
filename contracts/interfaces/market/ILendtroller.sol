@@ -19,6 +19,7 @@ interface ILendtroller {
     error MarketAlreadyListed();
     error InvalidValue();
     error AddressUnauthorized();
+    error MinimumHoldPeriod();
 
     ////////// Events //////////
 
