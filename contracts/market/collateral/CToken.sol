@@ -17,7 +17,7 @@ import { IEIP20NonStandard } from "contracts/interfaces/market/IEIP20NonStandard
 
 /// @title Curvance's CToken Contract
 /// @notice Abstract base for CTokens
-abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
+contract CToken is ICToken, ERC165, ReentrancyGuard {
     /// STRUCTS ///
 
     /// @notice Container for borrow balance information
@@ -48,15 +48,18 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
     // Mask of all bits in account data excluding timestamp, meaning all room reserved for balanceOf
     uint256 private constant _BITMASK_BALANCE_OF_ENTRY = (1 << 216) - 1;
 
-    // The bit position of `aux` in packed address data.
+    // The bit position of `timestamp` in packed address data
     uint256 private constant _BITPOS_TIMESTAMP = 216;
+
+    // The bit length of `timestamp` in packed address data
+    uint256 private constant _BIT_LENGTH_TIMESTAMP = 40;
 
     /// @notice Indicator that this is a CToken contract (for inspection)
     bool public constant override isCToken = true;
 
     /// @notice Underlying asset for this CToken
     address public immutable underlying;
-    
+
     /// @notice Decimals for this CToken
     uint8 public immutable decimals;
 
@@ -83,7 +86,7 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
     uint256 public totalSupply;
 
     // Official record of token balances for each account
-    mapping(address => uint256) internal accountTokens;
+    mapping(address => uint256) internal _accountData;
 
     // Approved token transfer amounts on behalf of others
     mapping(address => mapping(address => uint256))
@@ -154,7 +157,7 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
         emit NewLendtroller(ILendtroller(address(0)), initializedLendtroller);
 
         // Initialize timestamp and borrow index (timestamp mocks depend on lendtroller being set)
-        accrualBlockTimestamp = getBlockTimestamp();
+        accrualBlockTimestamp = block.timestamp;
         borrowIndex = expScale;
 
         /// Set Interest Rate Model ///
@@ -191,87 +194,71 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
 
     }
 
-    /// @notice Returns gauge pool contract address
-    /// @return gaugePool the gauge controller contract address
-    function gaugePool() public view returns (address) {
-        return lendtroller.gaugePool();
-    }
-
-    /// @notice Transfer `tokens` tokens from `src` to `dst` by `spender` internally
+    /// @notice Transfer `tokens` tokens from `from` to `to` by `spender` internally
     /// @dev Called by both `transfer` and `transferFrom` internally
     /// @param spender The address of the account performing the transfer
-    /// @param src The address of the source account
-    /// @param dst The address of the destination account
+    /// @param from The address of the source account
+    /// @param to The address of the destination account
     /// @param tokens The number of tokens to transfer
     function transferTokens(
         address spender,
-        address src,
-        address dst,
+        address from,
+        address to,
         uint256 tokens
     ) internal {
         // Fails if transfer not allowed
-        lendtroller.transferAllowed(address(this), src, dst, tokens);
+        lendtroller.transferAllowed(address(this), from, to, tokens);
 
         // Do not allow self-transfers
-        if (src == dst) {
+        if (from == to) {
             revert TransferNotAllowed();
         }
 
-        // Get the allowance, infinite for the account owner
-        uint256 startingAllowance;
-        if (spender == src) {
-            startingAllowance = type(uint256).max;
-        } else {
-            startingAllowance = transferAllowances[src][spender];
+        // Get the allowance, if the spender is not the `from` address
+        if (spender != from) {
+            // Validate that spender has enough allowance for the transfer with underflow check
+            transferAllowances[from][spender] -= tokens;
         }
 
-        uint256 allowanceNew = startingAllowance - tokens;
-        uint256 srcTokensNew = accountTokens[src] - tokens;
-        uint256 dstTokensNew = accountTokens[dst] + tokens;
-
-        /////////////////////////
-        // EFFECTS & INTERACTIONS
-        // (No safe failures beyond this point)
-
-        accountTokens[src] = srcTokensNew;
-        accountTokens[dst] = dstTokensNew;
-
+        // Update token balances 
+        // shift token value by timestamp length bit length so we can check for underflow
+        _accountData[from] -= tokens << _BIT_LENGTH_TIMESTAMP;
+        /// We know that from balance wont overflow due to totalSupply check in constructor
+        unchecked {
+            _accountData[to] += tokens;
+        }
+        
         // emit events on gauge pool
-        GaugePool(gaugePool()).withdraw(address(this), src, tokens);
-        GaugePool(gaugePool()).deposit(address(this), dst, tokens);
-
-        // Reduce allowance if necessary
-        if (startingAllowance != type(uint256).max) {
-            transferAllowances[src][spender] = allowanceNew;
-        }
+        GaugePool(gaugePool()).withdraw(address(this), from, tokens);
+        GaugePool(gaugePool()).deposit(address(this), to, tokens);
 
         // We emit a Transfer event
-        emit Transfer(src, dst, tokens);
+        emit Transfer(from, to, tokens);
     }
 
-    /// @notice Transfer `amount` tokens from `msg.sender` to `dst`
-    /// @param dst The address of the destination account
+    /// @notice Transfer `amount` tokens from `msg.sender` to `to`
+    /// @param to The address of the destination account
     /// @param amount The number of tokens to transfer
     /// @return Whether or not the transfer succeeded
     function transfer(
-        address dst,
+        address to,
         uint256 amount
     ) external override nonReentrant returns (bool) {
-        transferTokens(msg.sender, msg.sender, dst, amount);
+        transferTokens(msg.sender, msg.sender, to, amount);
         return true;
     }
 
-    /// @notice Transfer `amount` tokens from `src` to `dst`
-    /// @param src The address of the source account
-    /// @param dst The address of the destination account
+    /// @notice Transfer `amount` tokens from `from` to `to`
+    /// @param from The address of the source account
+    /// @param to The address of the destination account
     /// @param amount The number of tokens to transfer
-    /// @return bool true=success
+    /// @return bool true = success
     function transferFrom(
-        address src,
-        address dst,
+        address from,
+        address to,
         uint256 amount
     ) external override nonReentrant returns (bool) {
-        transferTokens(msg.sender, src, dst, amount);
+        transferTokens(msg.sender, from, to, amount);
         return true;
     }
 
@@ -395,19 +382,6 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
         }
     }
 
-    /// @notice A public function to sweep accidental ERC-20 transfers to this contract.
-    ///  Tokens are sent to admin (timelock)
-    /// @param token The address of the ERC-20 token to sweep
-    function sweepToken(
-        IEIP20NonStandard token
-    ) external override onlyDaoPermissions {
-        if (address(token) == underlying) {
-            revert InvalidUnderlying();
-        }
-        uint256 balance = token.balanceOf(address(this));
-        token.transfer(centralRegistry.daoAddress(), balance);
-    }
-
     /// @notice Approve `spender` to transfer up to `amount` from `src`
     /// @dev This will overwrite the approval amount for `spender`
     ///  and is subject to issues noted [here](https://eips.ethereum.org/EIPS/eip-20#approve)
@@ -418,10 +392,9 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
         address spender,
         uint256 amount
     ) external override returns (bool) {
-        address src = msg.sender;
-        transferAllowances[src][spender] = amount;
+        transferAllowances[msg.sender][spender] = amount;
 
-        emit Approval(src, spender, amount);
+        emit Approval(msg.sender, spender, amount);
 
         return true;
     }
@@ -439,11 +412,15 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
 
     /// @notice Get the token balance of the `owner`
     /// @param owner The address of the account to query
-    /// @return uint The number of tokens owned by `owner`
-    function balanceOf(
-        address owner
-    ) external view override returns (uint256) {
-        return accountTokens[owner];
+    /// @return uint256 The number of tokens owned by `owner`
+    // @dev Returns the balance of tokens for `owner`
+    function balanceOf(address owner) public view override returns (uint256) {
+        return _accountData[owner] & _BITMASK_BALANCE_OF_ENTRY;
+    }
+
+    // Returns the last borrow timestamp for `account`.
+    function getBorrowTimestamp(address account) public view returns (uint40) {
+        return uint40(_accountData[account] >> _BITPOS_TIMESTAMP);
     }
 
     /// @notice Get the underlying balance of the `owner`
@@ -453,7 +430,7 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
     function balanceOfUnderlying(
         address owner
     ) external override returns (uint256) {
-        return ((exchangeRateCurrent() * accountTokens[owner]) / expScale);
+        return ((exchangeRateCurrent() * balanceOf(owner)) / expScale);
     }
 
     /// @notice Get a snapshot of the account's balances, and the cached exchange rate
@@ -466,17 +443,24 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
         address account
     ) external view override returns (uint256, uint256, uint256) {
         return (
-            accountTokens[account],
+            balanceOf(account),
             borrowBalanceStoredInternal(account),
             exchangeRateStoredInternal()
         );
     }
 
-    /// @dev Function to simply retrieve timestamp
-    ///  This exists mainly for inheriting test contracts to stub this result.
-    /// @return The current timestamp
-    function getBlockTimestamp() internal view virtual returns (uint256) {
-        return block.timestamp;
+        /// @notice Transfers collateral tokens (this market) to the liquidator.
+    /// @dev Will fail unless called by another cToken during the process of liquidation.
+    ///  Its absolutely critical to use msg.sender as the borrowed cToken and not a parameter.
+    /// @param liquidator The account receiving seized collateral
+    /// @param borrower The account having collateral seized
+    /// @param seizeTokens The number of cTokens to seize
+    function seize(
+        address liquidator,
+        address borrower,
+        uint256 seizeTokens
+    ) external override nonReentrant {
+        seizeInternal(msg.sender, liquidator, borrower, seizeTokens);
     }
 
     /// @notice Returns the current per-second borrow interest rate for this cToken
@@ -534,25 +518,10 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
         return borrowBalanceStoredInternal(account);
     }
 
-    /// @notice Return the borrow balance of account based on stored data
-    /// @param account The address whose balance should be calculated
-    /// @return the calculated balance or 0 if no borrow balances exist
-    function borrowBalanceStoredInternal(
-        address account
-    ) internal view returns (uint256) {
-        // Get borrowBalance and borrowIndex
-        BorrowSnapshot storage borrowSnapshot = accountBorrows[account];
-
-        // If borrowBalance = 0 then borrowIndex is likely also 0.
-        // Rather than failing the calculation with a division by 0, we immediately return 0 in this case.
-        if (borrowSnapshot.principal == 0) {
-            return 0;
-        }
-
-        // Calculate new borrow balance using the interest index:
-        // recentBorrowBalance = borrower.borrowBalance * market.borrowIndex / borrower.borrowIndex
-        uint256 principalTimesIndex = borrowSnapshot.principal * borrowIndex;
-        return principalTimesIndex / borrowSnapshot.interestIndex;
+    /// @notice Returns gauge pool contract address
+    /// @return gaugePool the gauge controller contract address
+    function gaugePool() public view returns (address) {
+        return lendtroller.gaugePool();
     }
 
     /// @notice Accrue interest then return the up-to-date exchange rate
@@ -613,11 +582,10 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
     ///   up to the current second and writes new checkpoint to storage.
     function accrueInterest() public virtual override {
         // Remember the initial timestamp
-        uint256 currentBlockTimestamp = getBlockTimestamp();
         uint256 accrualBlockTimestampPrior = accrualBlockTimestamp;
 
         // Short-circuit accumulating 0 interest
-        if (accrualBlockTimestampPrior == currentBlockTimestamp) {
+        if (accrualBlockTimestampPrior == block.timestamp) {
             return;
         }
 
@@ -638,7 +606,7 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
         }
 
         // Calculate the number of seconds elapsed since the last accrual
-        uint256 timeDelta = currentBlockTimestamp -
+        uint256 timeDelta = block.timestamp -
             accrualBlockTimestampPrior;
 
         // Calculate the interest accumulated into borrows and reserves and the new index:
@@ -662,7 +630,7 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
         // (No safe failures beyond this point)
 
         // We write the previously calculated values into storage
-        accrualBlockTimestamp = currentBlockTimestamp;
+        accrualBlockTimestamp = block.timestamp;
         borrowIndex = borrowIndexNew;
         totalBorrows = totalBorrowsNew;
         totalReserves = totalReservesNew;
@@ -711,7 +679,7 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
         lendtroller.mintAllowed(address(this), minter); //, mintAmount);
 
         // Verify market's timestamp equals current timestamp
-        if (accrualBlockTimestamp != getBlockTimestamp()) {
+        if (accrualBlockTimestamp != block.timestamp) {
             revert FailedFreshnessCheck();
         }
 
@@ -739,8 +707,9 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
         //  totalSupplyNew = totalSupply + mintTokens
         //  accountTokensNew = accountTokens[minter] + mintTokens
         // And write them into storage
-        totalSupply = totalSupply + mintTokens;
-        accountTokens[minter] = accountTokens[minter] + mintTokens;
+        totalSupply += mintTokens;
+        /// Calculate their new balance then store a fresh borrow timestamp on borrow
+        _accountData[minter] = _packedAccountData(uint216(balanceOf(minter) + mintTokens));
 
         // emit events on gauge pool
         GaugePool(gaugePool()).deposit(address(this), minter, mintTokens);
@@ -826,7 +795,7 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
         address payable recipient
     ) internal nonReentrant {
         // Verify market's timestamp equals current timestamp
-        if (accrualBlockTimestamp != getBlockTimestamp()) {
+        if (accrualBlockTimestamp != block.timestamp) {
             revert FailedFreshnessCheck();
         }
 
@@ -835,15 +804,10 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
             revert RedeemTransferOutNotPossible();
         }
 
-        /////////////////////////
-        // EFFECTS & INTERACTIONS
-        // (No safe failures beyond this point)
-
-        // We write the previously calculated values into storage.
-        // Note: Avoid token reentrancy attacks by writing reduced supply before external transfer.
-        totalSupply = totalSupply - redeemTokens;
-        accountTokens[redeemer] = accountTokens[redeemer] - redeemTokens;
-
+        // Need to shift bits by timestamp length to make sure we do a proper underflow check
+        _accountData[redeemer] -= redeemTokens << _BIT_LENGTH_TIMESTAMP;
+        totalSupply -= redeemTokens;
+        
         // emit events on gauge pool
         GaugePool(gaugePool()).withdraw(address(this), redeemer, redeemTokens);
 
@@ -906,7 +870,7 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
         address payable recipient
     ) internal nonReentrant {
         // Verify market's timestamp equals current timestamp
-        if (accrualBlockTimestamp != getBlockTimestamp()) {
+        if (accrualBlockTimestamp != block.timestamp) {
             revert FailedFreshnessCheck();
         }
 
@@ -947,6 +911,27 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
         );
     }
 
+    /// @notice Return the borrow balance of account based on stored data
+    /// @param account The address whose balance should be calculated
+    /// @return the calculated balance or 0 if no borrow balances exist
+    function borrowBalanceStoredInternal(
+        address account
+    ) internal view returns (uint256) {
+        // Get borrowBalance and borrowIndex
+        BorrowSnapshot storage borrowSnapshot = accountBorrows[account];
+
+        // If borrowBalance = 0 then borrowIndex is likely also 0.
+        // Rather than failing the calculation with a division by 0, we immediately return 0 in this case.
+        if (borrowSnapshot.principal == 0) {
+            return 0;
+        }
+
+        // Calculate new borrow balance using the interest index:
+        // recentBorrowBalance = borrower.borrowBalance * market.borrowIndex / borrower.borrowIndex
+        uint256 principalTimesIndex = borrowSnapshot.principal * borrowIndex;
+        return principalTimesIndex / borrowSnapshot.interestIndex;
+    }
+
     /// @notice Sender repays their own borrow
     /// @param repayAmount The amount to repay, or -1 for the full outstanding amount
     function repayBorrowInternal(uint256 repayAmount) internal nonReentrant {
@@ -981,7 +966,7 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
         lendtroller.repayBorrowAllowed(address(this), borrower); //, payer, repayAmount);
 
         // Verify market's timestamp equals current timestamp
-        if (accrualBlockTimestamp != getBlockTimestamp()) {
+        if (accrualBlockTimestamp != block.timestamp) {
             revert FailedFreshnessCheck();
         }
 
@@ -1071,12 +1056,12 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
         );
 
         // Verify market's timestamp equals current timestamp
-        if (accrualBlockTimestamp != getBlockTimestamp()) {
+        if (accrualBlockTimestamp != block.timestamp) {
             revert FailedFreshnessCheck();
         }
 
         // Verify cTokenCollateral market's timestamp equals current timestamp
-        if (cTokenCollateral.accrualBlockTimestamp() != getBlockTimestamp()) {
+        if (cTokenCollateral.accrualBlockTimestamp() != block.timestamp) {
             revert FailedFreshnessCheck();
         }
 
@@ -1136,20 +1121,6 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
     }
 
     /// @notice Transfers collateral tokens (this market) to the liquidator.
-    /// @dev Will fail unless called by another cToken during the process of liquidation.
-    ///  Its absolutely critical to use msg.sender as the borrowed cToken and not a parameter.
-    /// @param liquidator The account receiving seized collateral
-    /// @param borrower The account having collateral seized
-    /// @param seizeTokens The number of cTokens to seize
-    function seize(
-        address liquidator,
-        address borrower,
-        uint256 seizeTokens
-    ) external override nonReentrant {
-        seizeInternal(msg.sender, liquidator, borrower, seizeTokens);
-    }
-
-    /// @notice Transfers collateral tokens (this market) to the liquidator.
     /// @dev Called only during an in-kind liquidation, or by liquidateBorrow during the liquidation of another CToken.
     ///  Its absolutely critical to use msg.sender as the seizer cToken and not a parameter.
     /// @param seizerToken The contract seizing the collateral (i.e. borrowed cToken)
@@ -1175,28 +1146,23 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
             revert SelfLiquidationNotAllowed();
         }
 
-        // We calculate the new borrower and liquidator token balances, failing on underflow/overflow:
-        // borrowerTokensNew = accountTokens[borrower] - seizeTokens
-        // liquidatorTokensNew = accountTokens[liquidator] + seizeTokens
+        if (balanceOf(borrower) < seizeTokens) {
+            revert TransferNotAllowed();
+        }
+
         uint256 protocolSeizeTokens = (seizeTokens *
             centralRegistry.protocolLiquidationFee()) / expScale;
-        uint256 liquidatorSeizeTokens = seizeTokens - protocolSeizeTokens;
         uint256 protocolSeizeAmount = (exchangeRateStoredInternal() *
             protocolSeizeTokens) / expScale;
-        uint256 totalReservesNew = totalReserves + protocolSeizeAmount;
+        uint256 liquidatorSeizeTokens = seizeTokens - protocolSeizeTokens;
 
-        /////////////////////////
-        // EFFECTS & INTERACTIONS
-        // (No safe failures beyond this point)
-
-        // We write the calculated values into storage
-        totalReserves = totalReservesNew;
-        totalSupply = totalSupply - protocolSeizeTokens;
-        accountTokens[borrower] = accountTokens[borrower] - seizeTokens;
-        accountTokens[liquidator] =
-            accountTokens[liquidator] +
-            liquidatorSeizeTokens;
-
+        
+        // Document new account balances
+        _accountData[borrower] -= seizeTokens << _BIT_LENGTH_TIMESTAMP;
+        _accountData[liquidator] += liquidatorSeizeTokens;
+        totalReserves += protocolSeizeAmount;
+        totalSupply -= protocolSeizeTokens;
+        
         // emit events on gauge pool
         GaugePool(gaugePool()).withdraw(address(this), borrower, seizeTokens);
         GaugePool(gaugePool()).deposit(
@@ -1211,8 +1177,18 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
         emit ReservesAdded(
             address(this),
             protocolSeizeAmount,
-            totalReservesNew
+            totalReserves
         );
+    }
+
+    //@dev Packs account data into a single uint256
+    function _packedAccountData(uint216 tokenBalance) private view returns (uint256 packedData) {
+        assembly {
+            // Mask `balance` to the lower 216 bits
+            tokenBalance := and(tokenBalance, _BITMASK_BALANCE_OF_ENTRY)
+            // `balance | (block.timestamp << _BITPOS_TIMESTAMP)`.
+            packedData := or(tokenBalance, shl(_BITPOS_TIMESTAMP, timestamp()))
+        }
     }
 
     /// Admin Functions
@@ -1254,7 +1230,7 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
         uint256 newReserveFactorScaled
     ) internal onlyElevatedPermissions {
         // Verify market's timestamp equals current timestamp
-        if (accrualBlockTimestamp != getBlockTimestamp()) {
+        if (accrualBlockTimestamp != block.timestamp) {
             revert FailedFreshnessCheck();
         }
 
@@ -1284,7 +1260,7 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
     /// return uint the actual amount added, net token fees
     function _addReservesFresh(uint256 addAmount) internal {
         // We fail gracefully unless market's timestamp equals current timestamp
-        if (accrualBlockTimestamp != getBlockTimestamp()) {
+        if (accrualBlockTimestamp != block.timestamp) {
             revert FailedFreshnessCheck();
         }
 
@@ -1322,7 +1298,7 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
     ) internal onlyElevatedPermissions {
 
         // We fail gracefully unless market's timestamp equals current timestamp
-        if (accrualBlockTimestamp != getBlockTimestamp()) {
+        if (accrualBlockTimestamp != block.timestamp) {
             revert FailedFreshnessCheck();
         }
 
@@ -1369,7 +1345,7 @@ abstract contract CToken is ICToken, ERC165, ReentrancyGuard {
         InterestRateModel newInterestRateModel
     ) internal onlyDaoPermissions {
         // We fail gracefully unless market's timestamp equals current timestamp
-        if (accrualBlockTimestamp != getBlockTimestamp()) {
+        if (accrualBlockTimestamp != block.timestamp) {
             revert FailedFreshnessCheck();
         }
 

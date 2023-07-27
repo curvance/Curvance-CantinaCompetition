@@ -137,8 +137,6 @@ interface ICToken {
         ICToken cTokenCollateral
     ) external;
 
-    function sweepToken(IEIP20NonStandard token) external;
-
     function isCToken() external view returns (bool);
 
     function underlying() external view returns (address);
@@ -163,6 +161,8 @@ interface ICToken {
         address owner,
         address spender
     ) external view returns (uint256);
+
+    function getBorrowTimestamp(address owner) external view returns (uint40);
 
     function balanceOf(address owner) external view returns (uint256);
 
