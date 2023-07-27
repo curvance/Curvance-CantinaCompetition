@@ -113,6 +113,13 @@ contract CToken is ICToken, ERC165, ReentrancyGuard {
         _;
     }
 
+    modifier interestUpdated() {
+        require(
+            accrualBlockTimestamp == block.timestamp, "CToken: Freshness check failed"
+        );
+        _;
+    }
+
     /// @param centralRegistry_ The address of Curvances Central Registry
     /// @param underlying_ The address of the underlying asset
     /// @param lendtroller_ The address of the Lendtroller
@@ -194,6 +201,573 @@ contract CToken is ICToken, ERC165, ReentrancyGuard {
 
     }
 
+    /// @notice Transfer `amount` tokens from `msg.sender` to `to`
+    /// @param to The address of the destination account
+    /// @param amount The number of tokens to transfer
+    /// @return Whether or not the transfer succeeded
+    function transfer(
+        address to,
+        uint256 amount
+    ) external override nonReentrant returns (bool) {
+        transferTokens(msg.sender, msg.sender, to, amount);
+        return true;
+    }
+
+    /// @notice Transfer `amount` tokens from `from` to `to`
+    /// @param from The address of the source account
+    /// @param to The address of the destination account
+    /// @param amount The number of tokens to transfer
+    /// @return bool true = success
+    function transferFrom(
+        address from,
+        address to,
+        uint256 amount
+    ) external override nonReentrant returns (bool) {
+        transferTokens(msg.sender, from, to, amount);
+        return true;
+    }
+
+    /// @notice Sender borrows assets from the protocol to their own address
+    /// @param borrowAmount The amount of the underlying asset to borrow
+    function borrow(uint256 borrowAmount) external override {
+        accrueInterest();
+
+        // Reverts if borrow not allowed
+        lendtroller.borrowAllowed(address(this), msg.sender, borrowAmount);
+
+        _borrow(payable(msg.sender), borrowAmount, payable(msg.sender));
+    }
+
+    /// @notice Position folding contract will call this function
+    /// @param user The user address
+    /// @param borrowAmount The amount of the underlying asset to borrow
+    function borrowForPositionFolding(
+        address payable user,
+        uint256 borrowAmount,
+        bytes calldata params
+    ) external {
+        if (msg.sender != lendtroller.positionFolding()) {
+            revert FailedNotFromPositionFolding();
+        }
+
+        accrueInterest();
+
+        _borrow(user, borrowAmount, payable(msg.sender));
+
+        IPositionFolding(msg.sender).onBorrow(
+            address(this),
+            user,
+            borrowAmount,
+            params
+        );
+
+        // Fail if position is not allowed
+        lendtroller.borrowAllowed(address(this), user, 0);
+    }
+
+    /// @notice Sender repays their own borrow
+    /// @param repayAmount The amount to repay, or -1 for the full outstanding amount
+    function repayBorrow(uint256 repayAmount) external override nonReentrant {
+        accrueInterest();
+
+        _repayBorrow(msg.sender, msg.sender, repayAmount);
+    }
+
+    function repayBorrowForPositionFolding(address user, uint256 repayAmount) external nonReentrant {
+
+        if (msg.sender != lendtroller.positionFolding()) {
+            revert FailedNotFromPositionFolding();
+        }
+
+        accrueInterest();
+
+        _repayBorrow(msg.sender, user, repayAmount);
+    }
+
+    /// @notice Allows liquidation of a borrower's collateral,
+    ///         Transferring the liquidated collateral to the liquidator
+    /// @param borrower The address of the borrower to be liquidated
+    /// @param repayAmount The amount of underlying asset the liquidator wishes to repay
+    /// @param cTokenCollateral The market in which to seize collateral from the borrower
+    function liquidateBorrow(
+        address borrower,
+        uint256 repayAmount,
+        ICToken cTokenCollateral
+    ) external override nonReentrant {
+        // Accrue interest in both locations
+        accrueInterest();
+        cTokenCollateral.accrueInterest();
+
+        _liquidateBorrow(
+            msg.sender,
+            borrower,
+            repayAmount,
+            cTokenCollateral
+        );
+    }
+
+    /// @notice Sender redeems cTokens in exchange for the underlying asset
+    /// @dev Accrues interest whether or not the operation succeeds, unless reverted
+    /// @param redeemTokens The number of cTokens to redeem into underlying
+    function redeem(uint256 redeemTokens) external override {
+        accrueInterest();
+
+        _redeem(payable(msg.sender), redeemTokens, (exchangeRateStored() * redeemTokens) / expScale, payable(msg.sender));
+    }
+
+    /// @notice Sender redeems cTokens in exchange for a specified amount of underlying asset
+    /// @dev Accrues interest whether or not the operation succeeds, unless reverted
+    /// @param redeemAmount The amount of underlying to redeem
+    function redeemUnderlying(uint256 redeemAmount) external override {
+        accrueInterest();
+
+        address payable redeemer = payable(msg.sender);
+        uint256 redeemTokens = (redeemAmount * expScale) / exchangeRateStored();
+
+        // Fail if redeem not allowed
+        lendtroller.redeemAllowed(address(this), redeemer, redeemTokens);
+
+        _redeem(redeemer, redeemTokens, redeemAmount, redeemer);
+    }
+
+    /// @notice Helper function for Position Folding contract to redeem underlying tokens
+    /// @param user The user address
+    /// @param redeemAmount The amount of the underlying asset to redeem
+    function redeemUnderlyingForPositionFolding(
+        address payable user,
+        uint256 redeemAmount,
+        bytes calldata params
+    ) external {
+
+        if (msg.sender != lendtroller.positionFolding()) {
+            revert FailedNotFromPositionFolding();
+        }
+
+        accrueInterest();
+
+        _redeem(user, (redeemAmount * expScale) / exchangeRateStored(), redeemAmount, payable(msg.sender));
+
+        IPositionFolding(msg.sender).onRedeem(
+            address(this),
+            user,
+            redeemAmount,
+            params
+        );
+
+        // Fail if redeem not allowed
+        lendtroller.redeemAllowed(address(this), user, 0);
+    }
+
+    /// @notice Sender supplies assets into the market and receives cTokens in exchange
+    /// @dev Accrues interest whether or not the operation succeeds, unless reverted
+    /// @param mintAmount The amount of the underlying asset to supply
+    /// @return bool true=success
+    function mint(uint256 mintAmount) external override nonReentrant returns (bool) {
+        accrueInterest();
+
+        _mint(msg.sender, msg.sender, mintAmount);
+        return true;
+    }
+
+    /// @notice Sender supplies assets into the market and receives cTokens in exchange
+    /// @dev Accrues interest whether or not the operation succeeds, unless reverted
+    /// @param recipient The recipient address
+    /// @param mintAmount The amount of the underlying asset to supply
+    /// @return bool true=success
+    function mintFor(
+        uint256 mintAmount,
+        address recipient
+    ) external nonReentrant returns (bool) {
+        accrueInterest();
+
+        _mint(msg.sender, recipient, mintAmount);
+        return true;
+    }
+
+    /// @notice The sender adds to reserves.
+    /// @param addAmount The amount fo underlying token to add as reserves
+    function depositReserves(uint256 addAmount) external override nonReentrant onlyElevatedPermissions {
+        accrueInterest();
+
+        // We call doTransferIn for the caller and the addAmount
+        // On success, the cToken holds an additional addAmount of cash.
+        // doTransferIn reverts if anything goes wrong, since we can't be sure if side effects occurred.
+        // it returns the amount actually transferred, in case of a fee.
+        totalReserves += doTransferIn(msg.sender, addAmount);
+
+        // emit ReservesAdded(msg.sender, actualAddAmount, totalReserves); /// changed to emit correct variable
+        emit ReservesAdded(msg.sender, addAmount, totalReserves);
+    }
+
+    /// @notice Accrues interest and reduces reserves by transferring to admin
+    /// @param reduceAmount Amount of reduction to reserves
+    function withdrawReserves(
+        uint256 reduceAmount
+    ) external override nonReentrant onlyElevatedPermissions {
+        accrueInterest();
+
+        // Make sure we have enough cash to cover withdrawal
+        if (getCash() < reduceAmount) {
+            revert ReduceReservesCashNotAvailable();
+        }
+
+        // Need underflow check to check if we have sufficient totalReserves
+        totalReserves -= reduceAmount;
+
+        // Query current DAO operating address
+        address payable daoAddress = payable(centralRegistry.daoAddress());
+
+        // doTransferOut reverts if anything goes wrong, since we can't be sure if side effects occurred.
+        doTransferOut(daoAddress, reduceAmount);
+
+        emit ReservesReduced(daoAddress, reduceAmount, totalReserves);
+    }
+
+    /// @notice Approve `spender` to transfer up to `amount` from `src`
+    /// @dev This will overwrite the approval amount for `spender`
+    ///  and is subject to issues noted [here](https://eips.ethereum.org/EIPS/eip-20#approve)
+    /// @param spender The address of the account which may transfer tokens
+    /// @param amount The number of tokens that are approved (uint256.max means infinite)
+    /// @return bool true=success
+    function approve(
+        address spender,
+        uint256 amount
+    ) external override returns (bool) {
+        transferAllowances[msg.sender][spender] = amount;
+
+        emit Approval(msg.sender, spender, amount);
+
+        return true;
+    }
+
+    /// @notice Get the current allowance from `owner` for `spender`
+    /// @param owner The address of the account which owns the tokens to be spent
+    /// @param spender The address of the account which may transfer tokens
+    /// @return uint The number of tokens allowed to be spent (-1 means infinite)
+    function allowance(
+        address owner,
+        address spender
+    ) external view override returns (uint256) {
+        return transferAllowances[owner][spender];
+    }
+
+    /// Admin Functions
+
+    /// @notice Rescue any token sent by mistake
+    /// @param token The token to rescue.
+    /// @param amount The amount of tokens to rescue.
+    function rescueToken(
+        address token,
+        uint256 amount
+    ) external onlyDaoPermissions {
+        address daoOperator = centralRegistry.daoAddress();
+
+        if (token == address(0)) {
+            require(
+                address(this).balance >= amount,
+                "CToken: insufficient balance"
+            );
+            (bool success, ) = payable(daoOperator).call{ value: amount }("");
+            require(success, "CToken: !successful");
+        } else {
+            require(token != underlying, "CToken: cannot withdraw underlying");
+            require(
+                IERC20(token).balanceOf(address(this)) >= amount,
+                "CToken: insufficient balance"
+            );
+            SafeTransferLib.safeTransfer(token, daoOperator, amount);
+        }
+    }
+
+    /// @notice Sets a new lendtroller for the market
+    /// @dev Admin function to set a new lendtroller
+    /// @param newLendtroller New lendtroller address.
+    function setLendtroller(
+        ILendtroller newLendtroller
+    ) external override onlyElevatedPermissions {
+        ILendtroller oldLendtroller = lendtroller;
+        // Ensure invoke lendtroller.isLendtroller() returns true
+        if (!newLendtroller.isLendtroller()) {
+            revert LendtrollerMismatch();
+        }
+
+        // Set market's lendtroller to newLendtroller
+        lendtroller = newLendtroller;
+
+        // Emit NewLendtroller(oldLendtroller, newLendtroller)
+        emit NewLendtroller(oldLendtroller, newLendtroller);
+    }
+
+    /// @notice accrues interest and sets a new reserve factor for the protocol using _setReserveFactorFresh
+    /// @dev Admin function to accrue interest and set a new reserve factor
+    /// @param newReserveFactorScaled New reserve factor
+    function setReserveFactor(
+        uint256 newReserveFactorScaled
+    ) external override onlyElevatedPermissions {
+        accrueInterest();
+        
+        // Check newReserveFactor ≤ maxReserveFactor
+        if (newReserveFactorScaled > reserveFactorMaxScaled) {
+            revert ExcessiveValue();
+        }
+
+        uint256 oldReserveFactorScaled = reserveFactorScaled;
+        reserveFactorScaled = newReserveFactorScaled;
+
+        emit NewReserveFactor(oldReserveFactorScaled, newReserveFactorScaled);
+    }
+
+    /// @notice accrues interest and updates the interest rate model
+    /// @dev Admin function to accrue interest and update the interest rate model
+    /// @param newInterestRateModel the new interest rate model to use
+    function setInterestRateModel(
+        InterestRateModel newInterestRateModel
+    ) external override onlyElevatedPermissions {
+        accrueInterest();
+        
+        // Cache the current interest rate model to save gas
+        InterestRateModel oldInterestRateModel = interestRateModel;
+
+        // Ensure we are switching to an actual Interest Rate Model
+        if (!newInterestRateModel.isInterestRateModel()) {
+            revert ValidationFailed();
+        }
+
+        // Set the interest rate model to newInterestRateModel
+        interestRateModel = newInterestRateModel;
+
+        emit NewMarketInterestRateModel(
+            oldInterestRateModel,
+            newInterestRateModel
+        );
+    }
+
+    // Returns the last borrow timestamp for `account`.
+    function getBorrowTimestamp(address account) external view returns (uint40) {
+        return uint40(_accountData[account] >> _BITPOS_TIMESTAMP);
+    }
+
+    /// @notice Get the underlying balance of the `account`
+    /// @dev This also accrues interest in a transaction
+    /// @param account The address of the account to query
+    /// @return The amount of underlying owned by `account`
+    function balanceOfUnderlying(
+        address account
+    ) external override returns (uint256) {
+        return ((exchangeRateCurrent() * balanceOf(account)) / expScale);
+    }
+
+    /// @notice Get a snapshot of the account's balances, and the cached exchange rate
+    /// @dev This is used by lendtroller to more efficiently perform liquidity checks.
+    /// @param account Address of the account to snapshot
+    /// @return tokenBalance
+    /// @return borrowBalance
+    /// @return exchangeRate scaled 1e18
+    function getAccountSnapshot(
+        address account
+    ) external view override returns (uint256, uint256, uint256) {
+        return (
+            balanceOf(account),
+            borrowBalanceStored(account),
+            exchangeRateStored()
+        );
+    }
+
+    /// @notice Transfers collateral tokens (this market) to the liquidator.
+    /// @dev Will fail unless called by another cToken during the process of liquidation.
+    /// @param liquidator The account receiving seized collateral
+    /// @param borrower The account having collateral seized
+    /// @param seizeTokens The number of cTokens to seize
+    function seize(
+        address liquidator,
+        address borrower,
+        uint256 seizeTokens
+    ) external override nonReentrant {
+        _seize(msg.sender, liquidator, borrower, seizeTokens);
+    }
+
+    /// @notice Returns the current per-second borrow interest rate for this cToken
+    /// @return The borrow interest rate per second, scaled by 1e18
+    function borrowRatePerSecond() external view override returns (uint256) {
+        return
+            interestRateModel.getBorrowRate(
+                getCash(),
+                totalBorrows,
+                totalReserves
+            );
+    }
+
+    /// @notice Returns the current per-second supply interest rate for this cToken
+    /// @return The supply interest rate per second, scaled by 1e18
+    function supplyRatePerSecond() external view override returns (uint256) {
+        return
+            interestRateModel.getSupplyRate(
+                getCash(),
+                totalBorrows,
+                totalReserves,
+                reserveFactorScaled
+            );
+    }
+
+    /// @notice Returns the current total borrows plus accrued interest
+    /// @return The total borrows with interest
+    function totalBorrowsCurrent()
+        external
+        override
+        nonReentrant
+        returns (uint256)
+    {
+        accrueInterest();
+        return totalBorrows;
+    }
+
+    /// @notice Accrue interest to updated borrowIndex
+    ///  and then calculate account's borrow balance using the updated borrowIndex
+    /// @param account The address whose balance should be calculated after updating borrowIndex
+    /// @return The calculated balance
+    function borrowBalanceCurrent(
+        address account
+    ) external override nonReentrant returns (uint256) {
+        accrueInterest();
+        return borrowBalanceStored(account);
+    }
+
+    /// @notice Get the token balance of the `account`
+    /// @param account The address of the account to query
+    /// @return balance The number of tokens owned by `account`
+    // @dev Returns the balance of tokens for `account`
+    function balanceOf(address account) public view override returns (uint256) {
+        return _accountData[account] & _BITMASK_BALANCE_OF_ENTRY;
+    }
+
+    /// @notice Return the borrow balance of account based on stored data
+    /// @param account The address whose balance should be calculated
+    /// @return The calculated balance
+    function borrowBalanceStored(
+        address account
+    ) public view override returns (uint256) {
+        // Get borrowBalance and borrowIndex
+        BorrowSnapshot storage borrowSnapshot = accountBorrows[account];
+
+        // If borrowBalance = 0 then borrowIndex is likely also 0.
+        // Rather than failing the calculation with a division by 0, we immediately return 0 in this case.
+        if (borrowSnapshot.principal == 0) {
+            return 0;
+        }
+
+        // Calculate new borrow balance using the interest index:
+        // recentBorrowBalance = borrower.borrowBalance * market.borrowIndex / borrower.borrowIndex
+        uint256 principalTimesIndex = borrowSnapshot.principal * borrowIndex;
+        return principalTimesIndex / borrowSnapshot.interestIndex;
+    }
+
+    /// @notice Gets balance of this contract in terms of the underlying
+    /// @dev This excludes changes in underlying token balance by the current transaction, if any
+    /// @return The quantity of underlying tokens owned by this contract
+    function getCash() public view returns (uint256) {
+        return IERC20(underlying).balanceOf(address(this));
+    }
+
+    /// @notice Returns gauge pool contract address
+    /// @return gaugePool the gauge controller contract address
+    function gaugePool() public view returns (address) {
+        return lendtroller.gaugePool();
+    }
+
+    /// @notice Accrue interest then return the up-to-date exchange rate
+    /// @return Calculated exchange rate scaled by 1e18
+    function exchangeRateCurrent()
+        public
+        override
+        nonReentrant
+        returns (uint256)
+    {
+        accrueInterest();
+        return exchangeRateStored();
+    }
+
+    /// @notice Calculates the exchange rate from the underlying to the CToken
+    /// @dev This function does not accrue interest before calculating the exchange rate
+    /// @return Calculated exchange rate scaled by 1e18
+    function exchangeRateStored() public view override returns (uint256) {
+        uint256 _totalSupply = totalSupply;
+        if (_totalSupply == 0) {
+            // If there are no tokens minted:
+            //  exchangeRate = initialExchangeRate
+            return initialExchangeRateScaled;
+        } else {
+            // Otherwise:
+            // exchangeRate = (totalCash + totalBorrows - totalReserves) / totalSupply
+            uint256 totalCash = getCash();
+            uint256 cashPlusBorrowsMinusReserves = totalCash +
+                totalBorrows -
+                totalReserves;
+            uint256 exchangeRate = (cashPlusBorrowsMinusReserves * expScale) /
+                _totalSupply;
+
+            return exchangeRate;
+        }
+    }
+
+    /// @notice Applies accrued interest to total borrows and reserves
+    /// @dev This calculates interest accrued from the last checkpointed second
+    ///   up to the current second and writes new checkpoint to storage.
+    function accrueInterest() public override {
+        // Pull last accrual timestamp from storage
+        uint256 accrualBlockTimestampPrior = accrualBlockTimestamp;
+
+        // If we are up to date there is no reason to continue
+        if (accrualBlockTimestampPrior == block.timestamp) {
+            return;
+        }
+
+        // Cache current values to save gas
+        uint256 cashPrior = getCash();
+        uint256 borrowsPrior = totalBorrows;
+        uint256 reservesPrior = totalReserves;
+        uint256 borrowIndexPrior = borrowIndex;
+
+        // Calculate the current borrow interest rate
+        uint256 borrowRateScaled = interestRateModel.getBorrowRate(
+            cashPrior,
+            borrowsPrior,
+            reservesPrior
+        );
+        if (borrowRateMaxScaled < borrowRateScaled) {
+            revert ExcessiveValue();
+        }
+
+        // Calculate the interest accumulated into borrows and reserves and the new index:
+        // simpleInterestFactor = borrowRate * (block.timestamp - accrualBlockTimestampPrior)
+        // interestAccumulated = simpleInterestFactor * totalBorrows
+        // totalBorrowsNew = interestAccumulated + totalBorrows
+        // borrowIndexNew = simpleInterestFactor * borrowIndex + borrowIndex
+
+        uint256 simpleInterestFactor = borrowRateScaled * (block.timestamp -
+            accrualBlockTimestampPrior);
+        uint256 interestAccumulated = (simpleInterestFactor * borrowsPrior) /
+            expScale;
+        uint256 totalBorrowsNew = interestAccumulated + borrowsPrior;
+        uint256 borrowIndexNew = ((simpleInterestFactor * borrowIndexPrior) /
+            expScale) + borrowIndexPrior;
+
+        // Update storage data
+        accrualBlockTimestamp = block.timestamp;
+        borrowIndex = borrowIndexNew;
+        totalBorrows = totalBorrowsNew;
+        // totalReservesNew = interestAccumulated * reserveFactor + totalReserves
+        totalReserves = ((reserveFactorScaled *
+            interestAccumulated) / expScale) + reservesPrior;
+
+        // We emit an AccrueInterest event
+        emit AccrueInterest(
+            cashPrior,
+            interestAccumulated,
+            borrowIndexNew,
+            totalBorrowsNew
+        );
+    }
+
     /// @notice Transfer `tokens` tokens from `from` to `to` by `spender` internally
     /// @dev Called by both `transfer` and `transferFrom` internally
     /// @param spender The address of the account performing the transfer
@@ -236,423 +810,12 @@ contract CToken is ICToken, ERC165, ReentrancyGuard {
         emit Transfer(from, to, tokens);
     }
 
-    /// @notice Transfer `amount` tokens from `msg.sender` to `to`
-    /// @param to The address of the destination account
-    /// @param amount The number of tokens to transfer
-    /// @return Whether or not the transfer succeeded
-    function transfer(
-        address to,
-        uint256 amount
-    ) external override nonReentrant returns (bool) {
-        transferTokens(msg.sender, msg.sender, to, amount);
-        return true;
-    }
 
-    /// @notice Transfer `amount` tokens from `from` to `to`
-    /// @param from The address of the source account
-    /// @param to The address of the destination account
-    /// @param amount The number of tokens to transfer
-    /// @return bool true = success
-    function transferFrom(
-        address from,
-        address to,
-        uint256 amount
-    ) external override nonReentrant returns (bool) {
-        transferTokens(msg.sender, from, to, amount);
-        return true;
-    }
-
-    /// @notice Sender borrows assets from the protocol to their own address
-    /// @param borrowAmount The amount of the underlying asset to borrow
-    function borrow(uint256 borrowAmount) external override {
-        borrowInternal(borrowAmount);
-    }
-
-    /// @notice Position folding contract will call this function
-    /// @param user The user address
-    /// @param borrowAmount The amount of the underlying asset to borrow
-    function borrowForPositionFolding(
-        address user,
-        uint256 borrowAmount,
-        bytes calldata params
-    ) external {
-        borrowForPositionFoldingInternal(payable(user), borrowAmount, params);
-    }
-
-    /// @notice Sender repays their own borrow
-    /// @param repayAmount The amount to repay, or -1 for the full outstanding amount
-    function repayBorrow(uint256 repayAmount) external override {
-        repayBorrowInternal(repayAmount);
-    }
-
-    /// @notice Sender repays a borrow belonging to borrower
-    /// @param borrower the account with the debt being payed off
-    /// @param repayAmount The amount to repay, or -1 for the full outstanding amount
-    function repayBorrowBehalf(
-        address borrower,
-        uint256 repayAmount
-    ) external override {
-        repayBorrowBehalfInternal(borrower, repayAmount);
-    }
-
-    /// @notice The sender liquidates the borrowers collateral.
-    ///  The collateral seized is transferred to the liquidator.
-    /// @param borrower The borrower of this cToken to be liquidated
-    /// @param repayAmount The amount of the underlying borrowed asset to repay
-    /// @param cTokenCollateral The market in which to seize collateral from the borrower
-    function liquidateBorrow(
-        address borrower,
-        uint256 repayAmount,
-        ICToken cTokenCollateral
-    ) external override {
-        liquidateBorrowInternal(borrower, repayAmount, cTokenCollateral);
-    }
-
-    /// @notice Sender redeems cTokens in exchange for the underlying asset
-    /// @dev Accrues interest whether or not the operation succeeds, unless reverted
-    /// @param redeemTokens The number of cTokens to redeem into underlying
-    function redeem(uint256 redeemTokens) external override {
-        redeemInternal(redeemTokens);
-    }
-
-    /// @notice Sender redeems cTokens in exchange for a specified amount of underlying asset
-    /// @dev Accrues interest whether or not the operation succeeds, unless reverted
-    /// @param redeemAmount The amount of underlying to redeem
-    function redeemUnderlying(uint256 redeemAmount) external override {
-        redeemUnderlyingInternal(redeemAmount);
-    }
-
-    /// @notice Position folding contract will call this function
-    /// @param user The user address
-    /// @param redeemAmount The amount of the underlying asset to redeem
-    function redeemUnderlyingForPositionFolding(
-        address user,
-        uint256 redeemAmount,
-        bytes calldata params
-    ) external {
-        redeemUnderlyingForPositionFoldingInternal(
-            payable(user),
-            redeemAmount,
-            params
-        );
-    }
-
-    /// @notice Sender supplies assets into the market and receives cTokens in exchange
-    /// @dev Accrues interest whether or not the operation succeeds, unless reverted
-    /// @param mintAmount The amount of the underlying asset to supply
-    /// @param recipient The recipient address
-    /// @return bool true=success
-    function mintFor(
-        uint256 mintAmount,
-        address recipient
-    ) external returns (bool) {
-        mintInternal(mintAmount, recipient);
-        return true;
-    }
-
-    /// @notice Get cash balance of this cToken in the underlying asset
-    /// @return The quantity of underlying asset owned by this contract
-    function getCash() external view override returns (uint256) {
-        return getCashPrior();
-    }
-
-    /// @notice The sender adds to reserves.
-    /// @param addAmount The amount fo underlying token to add as reserves
-    function _addReserves(uint256 addAmount) external override {
-        _addReservesInternal(addAmount);
-    }
-
-    /// @notice Rescue any token sent by mistake
-    /// @param token The token to rescue.
-    /// @param amount The amount of tokens to rescue.
-    function rescueToken(
-        address token,
-        uint256 amount
-    ) external onlyDaoPermissions {
-        address daoOperator = centralRegistry.daoAddress();
-
-        if (token == address(0)) {
-            require(
-                address(this).balance >= amount,
-                "CToken: insufficient balance"
-            );
-            (bool success, ) = payable(daoOperator).call{ value: amount }("");
-            require(success, "CToken: !successful");
-        } else {
-            require(token != underlying, "CToken: cannot withdraw underlying");
-            require(
-                IERC20(token).balanceOf(address(this)) >= amount,
-                "CToken: insufficient balance"
-            );
-            SafeTransferLib.safeTransfer(token, daoOperator, amount);
-        }
-    }
-
-    /// @notice Approve `spender` to transfer up to `amount` from `src`
-    /// @dev This will overwrite the approval amount for `spender`
-    ///  and is subject to issues noted [here](https://eips.ethereum.org/EIPS/eip-20#approve)
-    /// @param spender The address of the account which may transfer tokens
-    /// @param amount The number of tokens that are approved (uint256.max means infinite)
-    /// @return bool true=success
-    function approve(
-        address spender,
-        uint256 amount
-    ) external override returns (bool) {
-        transferAllowances[msg.sender][spender] = amount;
-
-        emit Approval(msg.sender, spender, amount);
-
-        return true;
-    }
-
-    /// @notice Get the current allowance from `owner` for `spender`
-    /// @param owner The address of the account which owns the tokens to be spent
-    /// @param spender The address of the account which may transfer tokens
-    /// @return uint The number of tokens allowed to be spent (-1 means infinite)
-    function allowance(
-        address owner,
-        address spender
-    ) external view override returns (uint256) {
-        return transferAllowances[owner][spender];
-    }
-
-    /// @notice Get the token balance of the `account`
-    /// @param account The address of the account to query
-    /// @return balance The number of tokens owned by `account`
-    // @dev Returns the balance of tokens for `account`
-    function balanceOf(address account) public view override returns (uint256) {
-        return _accountData[account] & _BITMASK_BALANCE_OF_ENTRY;
-    }
-
-    // Returns the last borrow timestamp for `account`.
-    function getBorrowTimestamp(address account) public view returns (uint40) {
-        return uint40(_accountData[account] >> _BITPOS_TIMESTAMP);
-    }
-
-    /// @notice Get the underlying balance of the `account`
-    /// @dev This also accrues interest in a transaction
-    /// @param account The address of the account to query
-    /// @return The amount of underlying owned by `account`
-    function balanceOfUnderlying(
-        address account
-    ) external override returns (uint256) {
-        return ((exchangeRateCurrent() * balanceOf(account)) / expScale);
-    }
-
-    /// @notice Get a snapshot of the account's balances, and the cached exchange rate
-    /// @dev This is used by lendtroller to more efficiently perform liquidity checks.
-    /// @param account Address of the account to snapshot
-    /// @return tokenBalance
-    /// @return borrowBalance
-    /// @return exchangeRate scaled 1e18
-    function getAccountSnapshot(
-        address account
-    ) external view override returns (uint256, uint256, uint256) {
-        return (
-            balanceOf(account),
-            borrowBalanceStoredInternal(account),
-            exchangeRateStoredInternal()
-        );
-    }
-
-        /// @notice Transfers collateral tokens (this market) to the liquidator.
-    /// @dev Will fail unless called by another cToken during the process of liquidation.
-    ///  Its absolutely critical to use msg.sender as the borrowed cToken and not a parameter.
-    /// @param liquidator The account receiving seized collateral
-    /// @param borrower The account having collateral seized
-    /// @param seizeTokens The number of cTokens to seize
-    function seize(
-        address liquidator,
-        address borrower,
-        uint256 seizeTokens
-    ) external override nonReentrant {
-        seizeInternal(msg.sender, liquidator, borrower, seizeTokens);
-    }
-
-    /// @notice Returns the current per-second borrow interest rate for this cToken
-    /// @return The borrow interest rate per second, scaled by 1e18
-    function borrowRatePerSecond() external view override returns (uint256) {
-        return
-            interestRateModel.getBorrowRate(
-                getCashPrior(),
-                totalBorrows,
-                totalReserves
-            );
-    }
-
-    /// @notice Returns the current per-second supply interest rate for this cToken
-    /// @return The supply interest rate per second, scaled by 1e18
-    function supplyRatePerSecond() external view override returns (uint256) {
-        return
-            interestRateModel.getSupplyRate(
-                getCashPrior(),
-                totalBorrows,
-                totalReserves,
-                reserveFactorScaled
-            );
-    }
-
-    /// @notice Returns the current total borrows plus accrued interest
-    /// @return The total borrows with interest
-    function totalBorrowsCurrent()
-        external
-        override
-        nonReentrant
-        returns (uint256)
-    {
-        accrueInterest();
-        return totalBorrows;
-    }
-
-    /// @notice Accrue interest to updated borrowIndex
-    ///  and then calculate account's borrow balance using the updated borrowIndex
-    /// @param account The address whose balance should be calculated after updating borrowIndex
-    /// @return The calculated balance
-    function borrowBalanceCurrent(
-        address account
-    ) external override nonReentrant returns (uint256) {
-        accrueInterest();
-        return borrowBalanceStored(account);
-    }
-
-    /// @notice Return the borrow balance of account based on stored data
-    /// @param account The address whose balance should be calculated
-    /// @return The calculated balance
-    function borrowBalanceStored(
-        address account
-    ) public view override returns (uint256) {
-        return borrowBalanceStoredInternal(account);
-    }
-
-    /// @notice Returns gauge pool contract address
-    /// @return gaugePool the gauge controller contract address
-    function gaugePool() public view returns (address) {
-        return lendtroller.gaugePool();
-    }
-
-    /// @notice Accrue interest then return the up-to-date exchange rate
-    /// @return Calculated exchange rate scaled by 1e18
-    function exchangeRateCurrent()
-        public
-        override
-        nonReentrant
-        returns (uint256)
-    {
-        accrueInterest();
-        return exchangeRateStored();
-    }
-
-    /// @notice Calculates the exchange rate from the underlying to the CToken
-    /// @dev This function does not accrue interest before calculating the exchange rate
-    /// @return Calculated exchange rate scaled by 1e18
-    function exchangeRateStored() public view override returns (uint256) {
-        return exchangeRateStoredInternal();
-    }
-
-    /// @notice Applies accrued interest to total borrows and reserves
-    /// @dev This calculates interest accrued from the last checkpointed second
-    ///   up to the current second and writes new checkpoint to storage.
-    function accrueInterest() public override {
-        // Remember the initial timestamp
-        uint256 accrualBlockTimestampPrior = accrualBlockTimestamp;
-
-        // Short-circuit accumulating 0 interest
-        if (accrualBlockTimestampPrior == block.timestamp) {
-            return;
-        }
-
-        // Read the previous values out of storage
-        uint256 cashPrior = getCashPrior();
-        uint256 borrowsPrior = totalBorrows;
-        uint256 reservesPrior = totalReserves;
-        uint256 borrowIndexPrior = borrowIndex;
-
-        // Calculate the current borrow interest rate
-        uint256 borrowRateScaled = interestRateModel.getBorrowRate(
-            cashPrior,
-            borrowsPrior,
-            reservesPrior
-        );
-        if (borrowRateMaxScaled < borrowRateScaled) {
-            revert ExcessiveValue();
-        }
-
-        // Calculate the number of seconds elapsed since the last accrual
-        uint256 timeDelta = block.timestamp -
-            accrualBlockTimestampPrior;
-
-        // Calculate the interest accumulated into borrows and reserves and the new index:
-        // simpleInterestFactor = borrowRate * timeDelta
-        // interestAccumulated = simpleInterestFactor * totalBorrows
-        // totalBorrowsNew = interestAccumulated + totalBorrows
-        // totalReservesNew = interestAccumulated * reserveFactor + totalReserves
-        // borrowIndexNew = simpleInterestFactor * borrowIndex + borrowIndex
-
-        uint256 simpleInterestFactor = borrowRateScaled * timeDelta;
-        uint256 interestAccumulated = (simpleInterestFactor * borrowsPrior) /
-            expScale;
-        uint256 totalBorrowsNew = interestAccumulated + borrowsPrior;
-        uint256 totalReservesNew = ((reserveFactorScaled *
-            interestAccumulated) / expScale) + reservesPrior;
-        uint256 borrowIndexNew = ((simpleInterestFactor * borrowIndexPrior) /
-            expScale) + borrowIndexPrior;
-
-        /////////////////////////
-        // EFFECTS & INTERACTIONS
-        // (No safe failures beyond this point)
-
-        // We write the previously calculated values into storage
-        accrualBlockTimestamp = block.timestamp;
-        borrowIndex = borrowIndexNew;
-        totalBorrows = totalBorrowsNew;
-        totalReserves = totalReservesNew;
-
-        // We emit an AccrueInterest event
-        emit AccrueInterest(
-            cashPrior,
-            interestAccumulated,
-            borrowIndexNew,
-            totalBorrowsNew
-        );
-    }
-
-    /// @notice Sender supplies assets into the market and receives cTokens in exchange
-    /// @dev Accrues interest whether or not the operation succeeds, unless reverted
-    /// @param mintAmount The amount of the underlying asset to supply
-    /// @return bool true=success
-    function mint(uint256 mintAmount) external override returns (bool) {
-        mintInternal(mintAmount, msg.sender);
-        return true;
-    }
-
-    /// @notice Calculates the exchange rate from the underlying to the CToken
-    /// @dev This function does not accrue interest before calculating the exchange rate
-    /// @return exchangeRate The calculated exchange rate scaled by 1e18
-    function exchangeRateStoredInternal()
-        internal
-        view
-        returns (uint256)
-    {
-        uint256 _totalSupply = totalSupply;
-        if (_totalSupply == 0) {
-            // If there are no tokens minted:
-            //  exchangeRate = initialExchangeRate
-            return initialExchangeRateScaled;
-        } else {
-            // Otherwise:
-            // exchangeRate = (totalCash + totalBorrows - totalReserves) / totalSupply
-            uint256 totalCash = getCashPrior();
-            uint256 cashPlusBorrowsMinusReserves = totalCash +
-                totalBorrows -
-                totalReserves;
-            uint256 exchangeRate = (cashPlusBorrowsMinusReserves * expScale) /
-                _totalSupply;
-
-            return exchangeRate;
-        }
-    }
-
-    /// @dev Shoutout to Vectorized for helping refine these
+    /// @notice Packs balance and timestamp into a single uint256 with bitwise operations and assembly for efficiency.
+    /// @dev Shoutout to Vectorized for helping refine these functions
+    /// @param bal The user token balance
+    /// @param time The timestamp of the users last borrow
+    /// @return result The packed balance and timestamp
     function _packAccountData(uint216 bal, uint40 time) internal pure returns (uint256 result) {
         assembly {
             // Use assembly to avoid unnecessary masking when casting to uint256s.
@@ -661,6 +824,9 @@ contract CToken is ICToken, ERC165, ReentrancyGuard {
         }
     }
 
+    /// @notice Shifts a token balance left by 40 bits
+    /// @param bal The token balance
+    /// @return result The shifted balance
     function _leftShiftBalance(uint216 bal) internal pure returns (uint256 result) {
         assembly {
             // Use assembly to avoid unnecessary masking when casting to uint256s.
@@ -669,137 +835,56 @@ contract CToken is ICToken, ERC165, ReentrancyGuard {
         }
     }
 
+    /// @notice Replaces the timestamp in the packed user account data, 
+    ///         leverages bitwise operations and assembly for efficiency
+    /// @param bal The user token balance
+    /// @param time The new timestamp for the users last borrow
+    /// @return result The packed balance and timestamp
     function _replaceTimestamp(uint256 bal, uint40 time) internal pure returns (uint256 result) {
         assembly {
             // Use assembly to avoid unnecessary masking when casting to uint256s.
-            // This is equivalent to `p ^ (0xffffffffff & (p ^ t))`.
+            // This is equivalent to `bal ^ (0xffffffffff & (bal ^ time))`.
             result := xor(bal, and(0xffffffffff, xor(bal, time)))
         }
-    }
-
-    /// @notice Sender supplies assets into the market and receives cTokens in exchange
-    /// @dev Accrues interest whether or not the operation succeeds, unless reverted
-    /// @param mintAmount The amount of the underlying asset to supply
-    function mintInternal(
-        uint256 mintAmount,
-        address recipient
-    ) internal nonReentrant {
-        accrueInterest();
-        // mintFresh emits the actual Mint event if successful and logs on errors, so we don't need to
-        mintFresh(msg.sender, mintAmount, recipient);
     }
 
     /// @notice User supplies assets into the market and receives cTokens in exchange
     /// @dev Assumes interest has already been accrued up to the current timestamp
     /// @param user The address of the account which is supplying the assets
+    /// @param recipient The address of the account which will receive cToken
     /// @param mintAmount The amount of the underlying asset to supply
-    /// @param minter The address of the account which will receive cToken
-    function mintFresh(
+    
+    function _mint(
         address user,
-        uint256 mintAmount,
-        address minter
-    ) internal {
+        address recipient,
+        uint256 mintAmount   
+    ) internal interestUpdated {
         // Fail if mint not allowed
-        lendtroller.mintAllowed(address(this), minter); //, mintAmount);
+        lendtroller.mintAllowed(address(this), recipient); //, mintAmount);
 
-        // Verify market's timestamp equals current timestamp
-        if (accrualBlockTimestamp != block.timestamp) {
-            revert FailedFreshnessCheck();
-        }
+        // Exp memory exchangeRate = Exp({mantissa: exchangeRateStored()});
+        uint256 exchangeRate = exchangeRateStored();
 
-        // Exp memory exchangeRate = Exp({mantissa: exchangeRateStoredInternal()});
-        uint256 exchangeRate = exchangeRateStoredInternal();
-
-        /////////////////////////
-        // EFFECTS & INTERACTIONS
-        // (No safe failures beyond this point)
-
-        // We call `doTransferIn` for the minter and the mintAmount.
-        // Note: The cToken must handle variations between ERC-20 and ETH underlying.
-        // `doTransferIn` reverts if anything goes wrong, since we can't be sure if
-        // side-effects occurred. The function returns the amount actually transferred,
-        // in case of a fee. On success, the cToken holds an additional `actualMintAmount`
-        // of cash.
+        // Note: `doTransferIn` reverts if anything goes wrong, since we can't be sure if
+        //       side-effects occurred. The function returns the amount actually transferred,
+        //       in case of a fee. On success, the cToken holds an additional `actualMintAmount`
+        //       of cash.
         uint256 actualMintAmount = doTransferIn(user, mintAmount);
 
         // We get the current exchange rate and calculate the number of cTokens to be minted:
         //  mintTokens = actualMintAmount / exchangeRate
-
         uint256 mintTokens = (actualMintAmount * expScale) / exchangeRate;
         totalSupply += mintTokens;
 
-        /// Calculate their new balance then store a fresh borrow timestamp on borrow
-        _accountData[minter] = _packAccountData(uint216(balanceOf(minter) + mintTokens), uint40(block.timestamp));
+        /// Calculate their new balance
+        _accountData[recipient] = _leftShiftBalance(uint216(mintTokens));
 
         // emit events on gauge pool
-        GaugePool(gaugePool()).deposit(address(this), minter, mintTokens);
+        GaugePool(gaugePool()).deposit(address(this), recipient, mintTokens);
 
         // We emit a Mint event, and a Transfer event
-        emit Mint(user, actualMintAmount, mintTokens, minter);
-        emit Transfer(address(this), minter, mintTokens);
-    }
-
-    /// @notice Sender redeems cTokens in exchange for the underlying asset
-    /// @dev Accrues interest whether or not the operation succeeds, unless reverted
-    /// @param redeemTokens The number of cTokens to redeem into underlying
-    function redeemInternal(uint256 redeemTokens) internal {
-        accrueInterest();
-
-        address payable redeemer = payable(msg.sender);
-
-        uint256 exchangeRate = exchangeRateStoredInternal();
-        uint256 redeemAmount = (exchangeRate * redeemTokens) / expScale;
-
-        // redeemFresh emits redeem-specific logs on errors, so we don't need to
-        redeemFresh(redeemer, redeemTokens, redeemAmount, redeemer);
-    }
-
-    /// @notice Sender redeems cTokens in exchange for a specified amount of underlying asset
-    /// @dev Accrues interest whether or not the operation succeeds, unless reverted
-    /// @param redeemAmount The amount of underlying to receive from redeeming cTokens
-    function redeemUnderlyingInternal(uint256 redeemAmount) internal {
-        accrueInterest();
-
-        address payable redeemer = payable(msg.sender);
-
-        // exchangeRate = invoke Exchange Rate Stored()
-        uint256 exchangeRate = exchangeRateStoredInternal();
-        uint256 redeemTokens = (redeemAmount * expScale) / exchangeRate;
-
-        // Fail if redeem not allowed
-        lendtroller.redeemAllowed(address(this), redeemer, redeemTokens);
-
-        // redeemFresh emits redeem-specific logs on errors, so we don't need to
-        redeemFresh(redeemer, redeemTokens, redeemAmount, redeemer);
-    }
-
-    function redeemUnderlyingForPositionFoldingInternal(
-        address payable redeemer,
-        uint256 redeemAmount,
-        bytes memory params
-    ) internal {
-        if (msg.sender != lendtroller.positionFolding()) {
-            revert FailedNotFromPositionFolding();
-        }
-
-        accrueInterest();
-
-        // exchangeRate = invoke Exchange Rate Stored()
-        uint256 exchangeRate = exchangeRateStoredInternal();
-        uint256 redeemTokens = (redeemAmount * expScale) / exchangeRate;
-
-        // redeemFresh emits redeem-specific logs on errors, so we don't need to
-        redeemFresh(redeemer, redeemTokens, redeemAmount, payable(msg.sender));
-
-        IPositionFolding(msg.sender).onRedeem(
-            address(this),
-            redeemer,
-            redeemAmount,
-            params
-        );
-
-        // Fail if redeem not allowed
-        lendtroller.redeemAllowed(address(this), redeemer, 0);
+        emit Mint(user, actualMintAmount, mintTokens, recipient);
+        emit Transfer(address(this), recipient, mintTokens);
     }
 
     /// @notice User redeems cTokens in exchange for the underlying asset
@@ -808,19 +893,15 @@ contract CToken is ICToken, ERC165, ReentrancyGuard {
     /// @param redeemTokens The number of cTokens to redeem into underlying
     /// @param redeemAmount The number of underlying tokens to receive from redeeming cTokens
     /// @param recipient The recipient address
-    function redeemFresh(
+    function _redeem(
         address payable redeemer,
         uint256 redeemTokens,
         uint256 redeemAmount,
         address payable recipient
-    ) internal nonReentrant {
-        // Verify market's timestamp equals current timestamp
-        if (accrualBlockTimestamp != block.timestamp) {
-            revert FailedFreshnessCheck();
-        }
+    ) internal nonReentrant interestUpdated {
 
-        // Fail gracefully if protocol has insufficient cash
-        if (getCashPrior() < redeemAmount) {
+        // Check if we have enough cash to support the redeem
+        if (getCash() < redeemAmount) {
             revert RedeemTransferOutNotPossible();
         }
 
@@ -853,212 +934,79 @@ contract CToken is ICToken, ERC165, ReentrancyGuard {
         }
     }
 
-    /// @notice Sender borrows assets from the protocol to their own address
-    /// @param borrowAmount The amount of the underlying asset to borrow
-    function borrowInternal(uint256 borrowAmount) internal nonReentrant {
-        accrueInterest();
-
-        // Fail if borrow not allowed
-        lendtroller.borrowAllowed(address(this), msg.sender, borrowAmount);
-
-        borrowFresh(payable(msg.sender), borrowAmount, payable(msg.sender));
-    }
-
-    function borrowForPositionFoldingInternal(
-        address payable borrower,
-        uint256 borrowAmount,
-        bytes memory params
-    ) internal {
-        if (msg.sender != lendtroller.positionFolding()) {
-            revert FailedNotFromPositionFolding();
-        }
-
-        accrueInterest();
-
-        borrowFresh(payable(borrower), borrowAmount, payable(msg.sender));
-
-        IPositionFolding(msg.sender).onBorrow(
-            address(this),
-            borrower,
-            borrowAmount,
-            params
-        );
-
-        // Fail if position is not allowed
-        lendtroller.borrowAllowed(address(this), borrower, 0);
-    }
-
     /// @notice Users borrow assets from the protocol to their own address
     /// @param borrowAmount The amount of the underlying asset to borrow
-    function borrowFresh(
+    function _borrow(
         address borrower,
         uint256 borrowAmount,
         address payable recipient
-    ) internal nonReentrant {
-        // Verify market's timestamp equals current timestamp
-        if (accrualBlockTimestamp != block.timestamp) {
-            revert FailedFreshnessCheck();
-        }
+    ) internal nonReentrant interestUpdated {
 
-        // Fail gracefully if protocol has insufficient underlying cash
-        if (getCashPrior() < borrowAmount) {
+        // Check if we have enough cash to support the borrow
+        if (getCash() < borrowAmount) {
             revert BorrowCashNotAvailable();
         }
 
+        _accountData[borrower] = _replaceTimestamp(balanceOf(borrower), uint40(block.timestamp));
+
         // We calculate the new borrower and total borrow balances, failing on overflow:
-        // accountBorrowNew = accountBorrow + borrowAmount
-        // totalBorrowsNew = totalBorrows + borrowAmount
-        uint256 accountBorrowsPrev = borrowBalanceStoredInternal(borrower);
-        uint256 accountBorrowsNew = accountBorrowsPrev + borrowAmount;
-        uint256 totalBorrowsNew = totalBorrows + borrowAmount;
-
-        /////////////////////////
-        // EFFECTS & INTERACTIONS
-        // (No safe failures beyond this point)
-
-        // We write the previously calculated values into storage.
-        // Note: Avoid token reentrancy attacks by writing increased borrow before external transfer.
-        accountBorrows[borrower].principal = accountBorrowsNew;
+        accountBorrows[borrower].principal = borrowBalanceStored(borrower) + borrowAmount;
         accountBorrows[borrower].interestIndex = borrowIndex;
-        totalBorrows = totalBorrowsNew;
+        totalBorrows += borrowAmount;
 
-        // We invoke doTransferOut for the borrower and the borrowAmount.
-        // Note: The cToken must handle variations between ERC-20 and ETH underlying.
-        // On success, the cToken borrowAmount less of cash.
         // doTransferOut reverts if anything goes wrong, since we can't be sure if side effects occurred.
         doTransferOut(recipient, borrowAmount);
 
         // We emit a Borrow event
         emit Borrow(
             borrower,
-            borrowAmount,
-            accountBorrowsNew,
-            totalBorrowsNew
+            borrowAmount
         );
     }
 
-    /// @notice Return the borrow balance of account based on stored data
-    /// @param account The address whose balance should be calculated
-    /// @return the calculated balance or 0 if no borrow balances exist
-    function borrowBalanceStoredInternal(
-        address account
-    ) internal view returns (uint256) {
-        // Get borrowBalance and borrowIndex
-        BorrowSnapshot storage borrowSnapshot = accountBorrows[account];
-
-        // If borrowBalance = 0 then borrowIndex is likely also 0.
-        // Rather than failing the calculation with a division by 0, we immediately return 0 in this case.
-        if (borrowSnapshot.principal == 0) {
-            return 0;
-        }
-
-        // Calculate new borrow balance using the interest index:
-        // recentBorrowBalance = borrower.borrowBalance * market.borrowIndex / borrower.borrowIndex
-        uint256 principalTimesIndex = borrowSnapshot.principal * borrowIndex;
-        return principalTimesIndex / borrowSnapshot.interestIndex;
-    }
-
-    /// @notice Sender repays their own borrow
-    /// @param repayAmount The amount to repay, or -1 for the full outstanding amount
-    function repayBorrowInternal(uint256 repayAmount) internal nonReentrant {
-        accrueInterest();
-        // repayBorrowFresh emits repay-borrow-specific logs on errors, so we don't need to
-        repayBorrowFresh(msg.sender, msg.sender, repayAmount);
-    }
-
-    /// @notice Sender repays a borrow belonging to borrower
-    /// @param borrower the account with the debt being payed off
-    /// @param repayAmount The amount to repay, or -1 for the full outstanding amount
-    function repayBorrowBehalfInternal(
-        address borrower,
-        uint256 repayAmount
-    ) internal nonReentrant {
-        accrueInterest();
-        // repayBorrowFresh emits repay-borrow-specific logs on errors, so we don't need to
-        repayBorrowFresh(msg.sender, borrower, repayAmount);
-    }
-
-    /// @notice Borrows are repaid by another user (possibly the borrower).
-    /// @param payer the account paying off the borrow
-    /// @param borrower the account with the debt being payed off
-    /// @param repayAmount the amount of underlying tokens being returned, or -1 for the full outstanding amount
-    /// @return (uint) the actual repayment amount.
-    function repayBorrowFresh(
+    /// @notice Allows a payer to repay a loan on behalf of the borrower, usually themselves
+    /// @dev First validates that the payer is allowed to repay the loan, then repays
+    ///      the loan by transferring in the repay amount. Emits a RepayBorrow event on
+    ///      successful repayment.
+    /// @param payer The address paying off the borrow
+    /// @param borrower The account with the debt being paid off
+    /// @param repayAmount The amount the payer wishes to repay, or 0 for the full outstanding amount
+    /// @return actualRepayAmount The actual amount repaid
+    function _repayBorrow(
         address payer,
         address borrower,
         uint256 repayAmount
-    ) internal returns (uint256) {
-        // Fail if repayBorrow not allowed
-        lendtroller.repayBorrowAllowed(address(this), borrower); //, payer, repayAmount);
+    ) internal interestUpdated returns (uint256) {
+        // Validate that the payer is allowed to repay the loan
+        lendtroller.repayBorrowAllowed(address(this), borrower);
 
-        // Verify market's timestamp equals current timestamp
-        if (accrualBlockTimestamp != block.timestamp) {
-            revert FailedFreshnessCheck();
-        }
-
-        // We fetch the amount the borrower owes, with accumulated interest
-        uint256 accountBorrowsPrev = borrowBalanceStoredInternal(borrower);
+        // Cache how much the borrower has to save gas
+        uint256 accountBorrowsPrev = borrowBalanceStored(borrower);
 
         // If repayAmount == uint max, repayAmount = accountBorrows
-        uint256 repayAmountFinal = repayAmount == type(uint256).max
+        uint256 repayAmountFinal = repayAmount == 0
             ? accountBorrowsPrev
             : repayAmount;
 
-        /////////////////////////
-        // EFFECTS & INTERACTIONS
-        // (No safe failures beyond this point)
-
         // We call doTransferIn for the payer and the repayAmount
-        // Note: The cToken must handle variations between ERC-20 and ETH underlying.
-        // On success, the cToken holds an additional repayAmount of cash.
-        // doTransferIn reverts if anything goes wrong, since we can't be sure if side effects occurred.
-        //  it returns the amount actually transferred, in case of a fee.
+        // Note: On success, the cToken holds an additional repayAmount of cash.
+        //       doTransferIn reverts if anything goes wrong, since we can't be sure if side effects occurred.
+        //       it returns the amount actually transferred, in case of a fee.
         uint256 actualRepayAmount = doTransferIn(payer, repayAmountFinal);
 
         // We calculate the new borrower and total borrow balances, failing on underflow:
-        // accountBorrowsNew = accountBorrows - actualRepayAmount
-        // totalBorrowsNew = totalBorrows - actualRepayAmount
-        uint256 accountBorrowsNew = accountBorrowsPrev - actualRepayAmount;
-        uint256 totalBorrowsNew = totalBorrows - actualRepayAmount;
-
-        // We write the previously calculated values into storage
-        accountBorrows[borrower].principal = accountBorrowsNew;
+        accountBorrows[borrower].principal = accountBorrowsPrev - actualRepayAmount;
         accountBorrows[borrower].interestIndex = borrowIndex;
-        totalBorrows = totalBorrowsNew;
+        totalBorrows -= actualRepayAmount;
 
         // We emit a RepayBorrow event
         emit RepayBorrow(
             payer,
             borrower,
-            actualRepayAmount,
-            accountBorrowsNew,
-            totalBorrowsNew
+            actualRepayAmount
         );
 
         return actualRepayAmount;
-    }
-
-    /// @notice The sender liquidates the borrowers collateral.
-    ///  The collateral seized is transferred to the liquidator.
-    /// @param borrower The borrower of this cToken to be liquidated
-    /// @param cTokenCollateral The market in which to seize collateral from the borrower
-    /// @param repayAmount The amount of the underlying borrowed asset to repay
-    function liquidateBorrowInternal(
-        address borrower,
-        uint256 repayAmount,
-        ICToken cTokenCollateral
-    ) internal nonReentrant {
-        // Accrue interest in both locations
-        accrueInterest();
-
-        cTokenCollateral.accrueInterest();
-
-        liquidateBorrowFresh(
-            msg.sender,
-            borrower,
-            repayAmount,
-            cTokenCollateral
-        );
     }
 
     /// @notice The liquidator liquidates the borrowers collateral.
@@ -1067,13 +1015,20 @@ contract CToken is ICToken, ERC165, ReentrancyGuard {
     /// @param liquidator The address repaying the borrow and seizing collateral
     /// @param cTokenCollateral The market in which to seize collateral from the borrower
     /// @param repayAmount The amount of the underlying borrowed asset to repay
-    function liquidateBorrowFresh(
+    function _liquidateBorrow(
         address liquidator,
         address borrower,
         uint256 repayAmount,
         ICToken cTokenCollateral
-    ) internal {
-        // Fail if liquidate not allowed
+    ) internal interestUpdated {
+
+        // Fail if borrower = liquidator
+        if (borrower == liquidator) {
+            revert SelfLiquidationNotAllowed();
+        }
+
+        // Fail if liquidate not allowed, 
+        // trying to pay down too much with excessive repayAmount will revert here
         lendtroller.liquidateBorrowAllowed(
             address(this),
             address(cTokenCollateral),
@@ -1081,41 +1036,17 @@ contract CToken is ICToken, ERC165, ReentrancyGuard {
             repayAmount
         );
 
-        // Verify market's timestamp equals current timestamp
-        if (accrualBlockTimestamp != block.timestamp) {
-            revert FailedFreshnessCheck();
-        }
-
-        // Verify cTokenCollateral market's timestamp equals current timestamp
+        // Verify cTokenCollateral market's interest timestamp is up to date as well
         if (cTokenCollateral.accrualBlockTimestamp() != block.timestamp) {
             revert FailedFreshnessCheck();
         }
 
-        // Fail if borrower = liquidator
-        if (borrower == liquidator) {
-            revert SelfLiquidationNotAllowed();
-        }
-
-        // Fail if repayAmount = 0
-        if (repayAmount == 0) {
-            revert CannotEqualZero();
-        }
-
-        // Fail if repayAmount = uint max
-        if (repayAmount == type(uint256).max) {
-            revert ExcessiveValue();
-        }
-
         // Fail if repayBorrow fails
-        uint256 actualRepayAmount = repayBorrowFresh(
+        uint256 actualRepayAmount = _repayBorrow(
             liquidator,
             borrower,
             repayAmount
         );
-
-        /////////////////////////
-        // EFFECTS & INTERACTIONS
-        // (No safe failures beyond this point)
 
         // We calculate the number of collateral tokens that will be seized
         uint256 seizeTokens = lendtroller.liquidateCalculateSeizeTokens(
@@ -1129,9 +1060,9 @@ contract CToken is ICToken, ERC165, ReentrancyGuard {
             revert ExcessiveValue();
         }
 
-        // If this is also the collateral, run seizeInternal to avoid re-entrancy, otherwise make an external call
+        // If this is also the collateral, run _seize to avoid re-entrancy, otherwise make an external call
         if (address(cTokenCollateral) == address(this)) {
-            seizeInternal(address(this), liquidator, borrower, seizeTokens);
+            _seize(address(this), liquidator, borrower, seizeTokens);
         } else {
             cTokenCollateral.seize(liquidator, borrower, seizeTokens);
         }
@@ -1153,7 +1084,7 @@ contract CToken is ICToken, ERC165, ReentrancyGuard {
     /// @param liquidator The account receiving seized collateral
     /// @param borrower The account having collateral seized
     /// @param seizeTokens The number of cTokens to seize
-    function seizeInternal(
+    function _seize(
         address seizerToken,
         address liquidator,
         address borrower,
@@ -1172,18 +1103,13 @@ contract CToken is ICToken, ERC165, ReentrancyGuard {
             revert SelfLiquidationNotAllowed();
         }
 
-        if (balanceOf(borrower) < seizeTokens) {
-            revert TransferNotAllowed();
-        }
-
         uint256 protocolSeizeTokens = (seizeTokens *
             centralRegistry.protocolLiquidationFee()) / expScale;
-        uint256 protocolSeizeAmount = (exchangeRateStoredInternal() *
+        uint256 protocolSeizeAmount = (exchangeRateStored() *
             protocolSeizeTokens) / expScale;
         uint256 liquidatorSeizeTokens = seizeTokens - protocolSeizeTokens;
 
-        
-        // Document new account balances
+        // Document new account balances with underflow check on borrower balance
         _accountData[borrower] -= _leftShiftBalance(uint216(seizeTokens));
         _accountData[liquidator] += liquidatorSeizeTokens;
         totalReserves += protocolSeizeAmount;
@@ -1207,278 +1133,44 @@ contract CToken is ICToken, ERC165, ReentrancyGuard {
         );
     }
 
-    /// Admin Functions
-
-    /// @notice Sets a new lendtroller for the market
-    /// @dev Admin function to set a new lendtroller
-    /// @param newLendtroller New lendtroller address.
-    function _setLendtroller(
-        ILendtroller newLendtroller
-    ) public override onlyElevatedPermissions {
-        ILendtroller oldLendtroller = lendtroller;
-        // Ensure invoke lendtroller.isLendtroller() returns true
-        if (!newLendtroller.isLendtroller()) {
-            revert LendtrollerMismatch();
-        }
-
-        // Set market's lendtroller to newLendtroller
-        lendtroller = newLendtroller;
-
-        // Emit NewLendtroller(oldLendtroller, newLendtroller)
-        emit NewLendtroller(oldLendtroller, newLendtroller);
-    }
-
-    /// @notice accrues interest and sets a new reserve factor for the protocol using _setReserveFactorFresh
-    /// @dev Admin function to accrue interest and set a new reserve factor
-    /// @param newReserveFactorScaled New reserve factor
-    function _setReserveFactor(
-        uint256 newReserveFactorScaled
-    ) external override nonReentrant {
-        accrueInterest();
-        // _setReserveFactorFresh emits reserve-factor-specific logs & reverts, so we don't need to.
-        _setReserveFactorFresh(newReserveFactorScaled);
-    }
-
-    /// @notice Sets a new reserve factor for the protocol (*requires fresh interest accrual)
-    /// @dev Admin function to set a new reserve factor
-    /// @param newReserveFactorScaled The new reserve factore * 1e18 (ie, 0.8 == 800000000000000000)
-    function _setReserveFactorFresh(
-        uint256 newReserveFactorScaled
-    ) internal onlyElevatedPermissions {
-        // Verify market's timestamp equals current timestamp
-        if (accrualBlockTimestamp != block.timestamp) {
-            revert FailedFreshnessCheck();
-        }
-
-        // Check newReserveFactor ≤ maxReserveFactor
-        if (newReserveFactorScaled > reserveFactorMaxScaled) {
-            revert ExcessiveValue();
-        }
-
-        uint256 oldReserveFactorScaled = reserveFactorScaled;
-        reserveFactorScaled = newReserveFactorScaled;
-
-        emit NewReserveFactor(oldReserveFactorScaled, newReserveFactorScaled);
-    }
-
-    /// @notice Accrues interest and reduces reserves by transferring from msg.sender
-    /// @param addAmount Amount of addition to reserves
-    function _addReservesInternal(uint256 addAmount) internal nonReentrant {
-        accrueInterest();
-
-        // _addReservesFresh emits reserve-addition-specific logs & reverts, so we don't need to.
-        _addReservesFresh(addAmount);
-    }
-
-    /// @notice Add reserves by transferring from caller
-    /// @dev Requires fresh interest accrual
-    /// @param addAmount Amount of addition to reserves
-    /// return uint the actual amount added, net token fees
-    function _addReservesFresh(uint256 addAmount) internal {
-        // We fail gracefully unless market's timestamp equals current timestamp
-        if (accrualBlockTimestamp != block.timestamp) {
-            revert FailedFreshnessCheck();
-        }
-
-        /////////////////////////
-        // EFFECTS & INTERACTIONS
-        // (No safe failures beyond this point)
-
-        // We call doTransferIn for the caller and the addAmount
-        // Note: The cToken must handle variations between ERC-20 and ETH underlying.
-        // On success, the cToken holds an additional addAmount of cash.
-        // doTransferIn reverts if anything goes wrong, since we can't be sure if side effects occurred.
-        // it returns the amount actually transferred, in case of a fee.
-        totalReserves += doTransferIn(msg.sender, addAmount);
-
-        // Emit NewReserves(admin, actualAddAmount, reserves[n+1])
-        // emit ReservesAdded(msg.sender, actualAddAmount, totalReserves); /// changed to emit correct variable
-        emit ReservesAdded(msg.sender, addAmount, totalReserves);
-    }
-
-    /// @notice Accrues interest and reduces reserves by transferring to admin
-    /// @param reduceAmount Amount of reduction to reserves
-    function _reduceReserves(
-        uint256 reduceAmount
-    ) external override nonReentrant {
-        accrueInterest();
-        // _reduceReservesFresh emits reserve-reduction-specific logs on errors, so we don't need to.
-        _reduceReservesFresh(reduceAmount);
-    }
-
-    /// @notice Reduces reserves by transferring to admin
-    /// @dev Requires fresh interest accrual
-    /// @param reduceAmount Amount of reduction to reserves
-    function _reduceReservesFresh(
-        uint256 reduceAmount
-    ) internal onlyElevatedPermissions {
-
-        // We fail gracefully unless market's timestamp equals current timestamp
-        if (accrualBlockTimestamp != block.timestamp) {
-            revert FailedFreshnessCheck();
-        }
-
-        // Fail gracefully if protocol has insufficient underlying cash
-        if (getCashPrior() < reduceAmount) {
-            revert ReduceReservesCashNotAvailable();
-        }
-
-        // Check reduceAmount ≤ reserves[n] (totalReserves)
-        if (reduceAmount > totalReserves) {
-            revert ReduceReservesCashValidation();
-        }
-
-        /////////////////////////
-        // EFFECTS & INTERACTIONS
-        // (No safe failures beyond this point)
-        uint256 totalReservesNew = totalReserves - reduceAmount;
-
-        // Store reserves[n+1] = reserves[n] - reduceAmount
-        totalReserves = totalReservesNew;
-
-        address payable daoAddress = payable(centralRegistry.daoAddress());
-        // doTransferOut reverts if anything goes wrong, since we can't be sure if side effects occurred.
-        doTransferOut(daoAddress, reduceAmount);
-
-        emit ReservesReduced(daoAddress, reduceAmount, totalReservesNew);
-    }
-
-    /// @notice accrues interest and updates the interest rate model using _setInterestRateModelFresh
-    /// @dev Admin function to accrue interest and update the interest rate model
-    /// @param newInterestRateModel the new interest rate model to use
-    function _setInterestRateModel(
-        InterestRateModel newInterestRateModel
-    ) public override {
-        accrueInterest();
-        // _setInterestRateModelFresh emits interest-rate-model-update-specific logs & reverts, so we don't need to.
-        _setInterestRateModelFresh(newInterestRateModel);
-    }
-
-    /// @notice updates the interest rate model (*requires fresh interest accrual)
-    /// @dev Admin function to update the interest rate model
-    /// @param newInterestRateModel the new interest rate model to use
-    function _setInterestRateModelFresh(
-        InterestRateModel newInterestRateModel
-    ) internal onlyDaoPermissions {
-        // We fail gracefully unless market's timestamp equals current timestamp
-        if (accrualBlockTimestamp != block.timestamp) {
-            revert FailedFreshnessCheck();
-        }
-
-        // Track the market's current interest rate model
-        InterestRateModel oldInterestRateModel = interestRateModel;
-
-        // Ensure invoke newInterestRateModel.isInterestRateModel() returns true
-        if (!newInterestRateModel.isInterestRateModel()) {
-            revert ValidationFailed();
-        }
-
-        // Set the interest rate model to newInterestRateModel
-        interestRateModel = newInterestRateModel;
-
-        // Emit NewMarketInterestRateModel(oldInterestRateModel, newInterestRateModel)
-        emit NewMarketInterestRateModel(
-            oldInterestRateModel,
-            newInterestRateModel
-        );
-    }
-
-    /// Safe Token
-
-    /// @notice Gets balance of this contract in terms of the underlying
-    /// @dev This excludes the value of the current message, if any
-    /// @return uint The quantity of underlying tokens owned by this contract
-    function getCashPrior() internal view returns (uint256) {
-        return IERC20(underlying).balanceOf(address(this));
-    }
-
-    /// @dev Similar to EIP20 transfer, except it handles a False result from `transferFrom` and reverts in that case.
-    ///      This will revert due to insufficient balance or insufficient allowance.
-    ///      This function returns the actual amount received,
-    ///      which may be less than `amount` if there is a fee attached to the transfer.
-    ///
-    ///      Note: This wrapper safely handles non-standard ERC-20 tokens that do not return a value.
-    ///       See here: https://medium.com/coinmonks/missing-return-value-bug-at-least-130-tokens-affected-d67bf08521ca
+    /// @notice Handles incoming token transfers and notifies the amount received
+    /// @dev This function uses the SafeTransferLib to safely perform the transfer. It doesn't support tokens with a transfer tax.
+    /// @param from Address of the sender of the tokens
+    /// @param amount Amount of tokens to transfer in
+    /// @return Returns the amount transferred
     function doTransferIn(
         address from,
         uint256 amount
     ) internal returns (uint256) {
-        // Cache value storage
-        address underlying_ = underlying;
 
-        IERC20 token = IERC20(underlying_);
-        uint256 balanceBefore = token.balanceOf(address(this));
+        /// SafeTransferLib will handle reversion from insufficient balance or allowance
+        /// Note this will not support tokens with a transfer tax, which should not exist on a underlying asset anyway
         SafeTransferLib.safeTransferFrom(
-            underlying_,
+            underlying,
             from,
             address(this),
             amount
         );
 
-        bool success;
-        assembly {
-            switch returndatasize()
-            case 0 {
-                // This is a non-standard ERC-20
-                success := not(0) // set success to true
-            }
-            case 32 {
-                // This is a compliant ERC-20
-                returndatacopy(0, 0, 32)
-                success := mload(0) // Set `success = returndata` of override external call
-            }
-            default {
-                // This is an excessively non-compliant ERC-20, revert.
-                revert(0, 0)
-            }
-        }
-
-        if (!success) {
-            revert TransferFailure();
-        }
-
-        // Calculate the amount that was *actually* transferred
-        uint256 balanceAfter = IERC20(underlying_).balanceOf(address(this));
-        return balanceAfter - balanceBefore; // underflow already checked above, just subtract
+        return amount;
     }
 
-    /// @dev Similar to EIP20 transfer, except it handles a False success from `transfer` and returns an explanatory
-    ///      error code rather than reverting.
-    ///      If caller has not called checked protocol's balance,
-    ///      this may revert due to insufficient cash held in this contract.
-    ///      If caller has checked protocol's balance prior to this call, and verified
-    ///      it is >= amount, this should not revert in normal conditions.
-    ///
-    ///      Note: This wrapper safely handles non-standard ERC-20 tokens that do not return a value.
-    ///       See here: https://medium.com/coinmonks/missing-return-value-bug-at-least-130-tokens-affected-d67bf08521ca
+    /// @notice Handles outgoing token transfers
+    /// @dev This function uses the SafeTransferLib to safely perform the transfer.
+    /// @param to Address receiving the token transfer 
+    /// @param amount Amount of tokens to transfer out
     function doTransferOut(
-        address payable to,
+        address to,
         uint256 amount
     ) internal {
-        IEIP20NonStandard token = IEIP20NonStandard(underlying);
-        token.transfer(to, amount);
 
-        bool success;
-        assembly {
-            switch returndatasize()
-            case 0 {
-                // This is a non-standard ERC-20
-                success := not(0) // set success to true
-            }
-            case 32 {
-                // This is a compliant ERC-20
-                returndatacopy(0, 0, 32)
-                success := mload(0) // Set `success = returndata` of override external call
-            }
-            default {
-                // This is an excessively non-compliant ERC-20, revert.
-                revert(0, 0)
-            }
-        }
+        /// SafeTransferLib will handle reversion from insufficient cash held
+        SafeTransferLib.safeTransfer(
+            underlying,
+            to,
+            amount
+        );
 
-        if (!success) {
-            revert TransferFailure();
-        }
     }
 
     /// @inheritdoc ERC165
