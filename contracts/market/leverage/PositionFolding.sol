@@ -329,7 +329,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
             repayAmount + remaining
         );
 
-        CToken(address(borrowToken)).repayBorrowBehalf(redeemer, repayAmount);
+        CToken(address(borrowToken)).repayBorrowForPositionFolding(redeemer, repayAmount);
 
         if (remaining > 0) {
             // remaining borrow underlying back to user
@@ -397,7 +397,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         bytes memory params = abi.encode(leverageData);
 
         CToken(address(borrowToken)).borrowForPositionFolding(
-            msg.sender,
+            payable(msg.sender),
             borrowAmount,
             params
         );
@@ -409,7 +409,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         uint256 collateralAmount = deleverageData.collateralAmount;
 
         CToken(address(collateralToken)).redeemUnderlyingForPositionFolding(
-            msg.sender,
+            payable(msg.sender),
             collateralAmount,
             params
         );

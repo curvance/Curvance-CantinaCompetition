@@ -13,7 +13,6 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { ICToken } from "contracts/interfaces/market/ICToken.sol";
-import { IEIP20NonStandard } from "contracts/interfaces/market/IEIP20NonStandard.sol";
 
 /// @title Curvance's CToken Contract
 /// @notice Abstract base for CTokens

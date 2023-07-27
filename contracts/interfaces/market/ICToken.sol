@@ -3,7 +3,6 @@ pragma solidity ^0.8.17;
 
 import { InterestRateModel } from "contracts/market/interestRates/InterestRateModel.sol";
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
-import { IEIP20NonStandard } from "contracts/interfaces/market/IEIP20NonStandard.sol";
 
 interface ICToken {
     /// Errors ///
@@ -50,18 +49,14 @@ interface ICToken {
     /// @notice Event emitted when underlying is borrowed
     event Borrow(
         address borrower,
-        uint256 borrowAmount,
-        uint256 accountBorrows,
-        uint256 totalBorrows
+        uint256 borrowAmount
     );
 
     /// @notice Event emitted when a borrow is repaid
     event RepayBorrow(
         address payer,
         address borrower,
-        uint256 repayAmount,
-        uint256 accountBorrows,
-        uint256 totalBorrows
+        uint256 repayAmount
     );
 
     /// @notice Event emitted when a borrow is liquidated
@@ -128,8 +123,6 @@ interface ICToken {
     function borrow(uint256 borrowAmount) external;
 
     function repayBorrow(uint256 repayAmount) external;
-
-    function repayBorrowBehalf(address borrower, uint256 repayAmount) external;
 
     function liquidateBorrow(
         address borrower,
@@ -200,15 +193,15 @@ interface ICToken {
 
     /// Admin Functions
 
-    function _addReserves(uint256 addAmount) external;
+    function depositReserves(uint256 reduceAmount) external;
 
-    function _setLendtroller(ILendtroller newLendtroller) external;
+    function withdrawReserves(uint256 addAmount) external;
 
-    function _setReserveFactor(uint256 newReserveFactorMantissa) external;
+    function setLendtroller(ILendtroller newLendtroller) external;
 
-    function _reduceReserves(uint256 reduceAmount) external;
+    function setReserveFactor(uint256 newReserveFactorMantissa) external;
 
-    function _setInterestRateModel(
+    function setInterestRateModel(
         InterestRateModel newInterestRateModel
     ) external;
 
