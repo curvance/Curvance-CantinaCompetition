@@ -51,9 +51,6 @@ contract CToken is ICToken, ERC165, ReentrancyGuard {
     // The bit position of `timestamp` in packed address data
     uint256 private constant _BITPOS_TIMESTAMP = 216;
 
-    // The bit length of `timestamp` in packed address data
-    uint256 private constant _BIT_LENGTH_TIMESTAMP = 40;
-
     /// @notice Indicator that this is a CToken contract (for inspection)
     bool public constant override isCToken = true;
 
@@ -86,6 +83,9 @@ contract CToken is ICToken, ERC165, ReentrancyGuard {
     uint256 public totalSupply;
 
     // Official record of token balances for each account
+    // uint256 bit layout:
+    // - [0..215]    `balance`
+    // - [216..255]  `borrowTimestamp`
     mapping(address => uint256) internal _accountData;
 
     // Approved token transfer amounts on behalf of others
@@ -189,7 +189,7 @@ contract CToken is ICToken, ERC165, ReentrancyGuard {
         symbol = symbol_;
         decimals = decimals_;
 
-        // Set underlying and sanity check it
+        // Sanity check underlying so that we know users will not need to mint anywhere close to balance cap
         require (IERC20(underlying).totalSupply() < type(uint208).max, "CToken: Underlying token assumptions not met");
 
     }
@@ -222,8 +222,8 @@ contract CToken is ICToken, ERC165, ReentrancyGuard {
 
         // Update token balances 
         // shift token value by timestamp length bit length so we can check for underflow
-        _accountData[from] -= tokens << _BIT_LENGTH_TIMESTAMP;
-        /// We know that from balance wont overflow due to totalSupply check in constructor
+        _accountData[from] -= _leftShiftBalance(uint216(tokens));
+        /// We know that from balance wont overflow due to totalSupply check in constructor and underflow check above
         unchecked {
             _accountData[to] += tokens;
         }
@@ -350,6 +350,12 @@ contract CToken is ICToken, ERC165, ReentrancyGuard {
         return true;
     }
 
+    /// @notice Get cash balance of this cToken in the underlying asset
+    /// @return The quantity of underlying asset owned by this contract
+    function getCash() external view override returns (uint256) {
+        return getCashPrior();
+    }
+
     /// @notice The sender adds to reserves.
     /// @param addAmount The amount fo underlying token to add as reserves
     function _addReserves(uint256 addAmount) external override {
@@ -410,12 +416,12 @@ contract CToken is ICToken, ERC165, ReentrancyGuard {
         return transferAllowances[owner][spender];
     }
 
-    /// @notice Get the token balance of the `owner`
-    /// @param owner The address of the account to query
-    /// @return uint256 The number of tokens owned by `owner`
-    // @dev Returns the balance of tokens for `owner`
-    function balanceOf(address owner) public view override returns (uint256) {
-        return _accountData[owner] & _BITMASK_BALANCE_OF_ENTRY;
+    /// @notice Get the token balance of the `account`
+    /// @param account The address of the account to query
+    /// @return balance The number of tokens owned by `account`
+    // @dev Returns the balance of tokens for `account`
+    function balanceOf(address account) public view override returns (uint256) {
+        return _accountData[account] & _BITMASK_BALANCE_OF_ENTRY;
     }
 
     // Returns the last borrow timestamp for `account`.
@@ -423,14 +429,14 @@ contract CToken is ICToken, ERC165, ReentrancyGuard {
         return uint40(_accountData[account] >> _BITPOS_TIMESTAMP);
     }
 
-    /// @notice Get the underlying balance of the `owner`
+    /// @notice Get the underlying balance of the `account`
     /// @dev This also accrues interest in a transaction
-    /// @param owner The address of the account to query
-    /// @return The amount of underlying owned by `owner`
+    /// @param account The address of the account to query
+    /// @return The amount of underlying owned by `account`
     function balanceOfUnderlying(
-        address owner
+        address account
     ) external override returns (uint256) {
-        return ((exchangeRateCurrent() * balanceOf(owner)) / expScale);
+        return ((exchangeRateCurrent() * balanceOf(account)) / expScale);
     }
 
     /// @notice Get a snapshot of the account's balances, and the cached exchange rate
@@ -543,44 +549,10 @@ contract CToken is ICToken, ERC165, ReentrancyGuard {
         return exchangeRateStoredInternal();
     }
 
-    /// @notice Calculates the exchange rate from the underlying to the CToken
-    /// @dev This function does not accrue interest before calculating the exchange rate
-    /// @return exchangeRate The calculated exchange rate scaled by 1e18
-    function exchangeRateStoredInternal()
-        internal
-        view
-        virtual
-        returns (uint256)
-    {
-        uint256 _totalSupply = totalSupply;
-        if (_totalSupply == 0) {
-            // If there are no tokens minted:
-            //  exchangeRate = initialExchangeRate
-            return initialExchangeRateScaled;
-        } else {
-            // Otherwise:
-            // exchangeRate = (totalCash + totalBorrows - totalReserves) / totalSupply
-            uint256 totalCash = getCashPrior();
-            uint256 cashPlusBorrowsMinusReserves = totalCash +
-                totalBorrows -
-                totalReserves;
-            uint256 exchangeRate = (cashPlusBorrowsMinusReserves * expScale) /
-                _totalSupply;
-
-            return exchangeRate;
-        }
-    }
-
-    /// @notice Get cash balance of this cToken in the underlying asset
-    /// @return The quantity of underlying asset owned by this contract
-    function getCash() external view override returns (uint256) {
-        return getCashPrior();
-    }
-
     /// @notice Applies accrued interest to total borrows and reserves
     /// @dev This calculates interest accrued from the last checkpointed second
     ///   up to the current second and writes new checkpoint to storage.
-    function accrueInterest() public virtual override {
+    function accrueInterest() public override {
         // Remember the initial timestamp
         uint256 accrualBlockTimestampPrior = accrualBlockTimestamp;
 
@@ -653,6 +625,58 @@ contract CToken is ICToken, ERC165, ReentrancyGuard {
         return true;
     }
 
+    /// @notice Calculates the exchange rate from the underlying to the CToken
+    /// @dev This function does not accrue interest before calculating the exchange rate
+    /// @return exchangeRate The calculated exchange rate scaled by 1e18
+    function exchangeRateStoredInternal()
+        internal
+        view
+        returns (uint256)
+    {
+        uint256 _totalSupply = totalSupply;
+        if (_totalSupply == 0) {
+            // If there are no tokens minted:
+            //  exchangeRate = initialExchangeRate
+            return initialExchangeRateScaled;
+        } else {
+            // Otherwise:
+            // exchangeRate = (totalCash + totalBorrows - totalReserves) / totalSupply
+            uint256 totalCash = getCashPrior();
+            uint256 cashPlusBorrowsMinusReserves = totalCash +
+                totalBorrows -
+                totalReserves;
+            uint256 exchangeRate = (cashPlusBorrowsMinusReserves * expScale) /
+                _totalSupply;
+
+            return exchangeRate;
+        }
+    }
+
+    /// @dev Shoutout to Vectorized for helping refine these
+    function _packAccountData(uint216 bal, uint40 time) internal pure returns (uint256 result) {
+        assembly {
+            // Use assembly to avoid unnecessary masking when casting to uint256s.
+            // This is equivalent to `(uint256(bal) << 40) | uint256(time)`.
+            result := or(shl(40, bal), and(0xffffffffff, time))
+        }
+    }
+
+    function _leftShiftBalance(uint216 bal) internal pure returns (uint256 result) {
+        assembly {
+            // Use assembly to avoid unnecessary masking when casting to uint256s.
+            // This is equivalent to `uint256(bal) << 40`.
+            result := shl(40, bal)
+        }
+    }
+
+    function _replaceTimestamp(uint256 bal, uint40 time) internal pure returns (uint256 result) {
+        assembly {
+            // Use assembly to avoid unnecessary masking when casting to uint256s.
+            // This is equivalent to `p ^ (0xffffffffff & (p ^ t))`.
+            result := xor(bal, and(0xffffffffff, xor(bal, time)))
+        }
+    }
+
     /// @notice Sender supplies assets into the market and receives cTokens in exchange
     /// @dev Accrues interest whether or not the operation succeeds, unless reverted
     /// @param mintAmount The amount of the underlying asset to supply
@@ -702,14 +726,10 @@ contract CToken is ICToken, ERC165, ReentrancyGuard {
         //  mintTokens = actualMintAmount / exchangeRate
 
         uint256 mintTokens = (actualMintAmount * expScale) / exchangeRate;
-
-        // We calculate the new total supply of cTokens and minter token balance, checking for overflow:
-        //  totalSupplyNew = totalSupply + mintTokens
-        //  accountTokensNew = accountTokens[minter] + mintTokens
-        // And write them into storage
         totalSupply += mintTokens;
+
         /// Calculate their new balance then store a fresh borrow timestamp on borrow
-        _accountData[minter] = _packedAccountData(uint216(balanceOf(minter) + mintTokens));
+        _accountData[minter] = _packAccountData(uint216(balanceOf(minter) + mintTokens), uint40(block.timestamp));
 
         // emit events on gauge pool
         GaugePool(gaugePool()).deposit(address(this), minter, mintTokens);
@@ -805,8 +825,14 @@ contract CToken is ICToken, ERC165, ReentrancyGuard {
         }
 
         // Need to shift bits by timestamp length to make sure we do a proper underflow check
-        _accountData[redeemer] -= redeemTokens << _BIT_LENGTH_TIMESTAMP;
-        totalSupply -= redeemTokens;
+        // redeemTokens should never be above uint216 and the user can never have more than uint216,
+        // So if theyve put in a larger number than type(uint216).max we know it will revert from underflow
+        _accountData[redeemer] -= _leftShiftBalance(uint216(redeemTokens));
+
+        // We have user underflow check above so we do not need a redundant check here
+        unchecked {
+            totalSupply -= redeemTokens;
+        }
         
         // emit events on gauge pool
         GaugePool(gaugePool()).withdraw(address(this), redeemer, redeemTokens);
@@ -1158,7 +1184,7 @@ contract CToken is ICToken, ERC165, ReentrancyGuard {
 
         
         // Document new account balances
-        _accountData[borrower] -= seizeTokens << _BIT_LENGTH_TIMESTAMP;
+        _accountData[borrower] -= _leftShiftBalance(uint216(seizeTokens));
         _accountData[liquidator] += liquidatorSeizeTokens;
         totalReserves += protocolSeizeAmount;
         totalSupply -= protocolSeizeTokens;
@@ -1179,16 +1205,6 @@ contract CToken is ICToken, ERC165, ReentrancyGuard {
             protocolSeizeAmount,
             totalReserves
         );
-    }
-
-    //@dev Packs account data into a single uint256
-    function _packedAccountData(uint216 tokenBalance) private view returns (uint256 packedData) {
-        assembly {
-            // Mask `balance` to the lower 216 bits
-            tokenBalance := and(tokenBalance, _BITMASK_BALANCE_OF_ENTRY)
-            // `balance | (block.timestamp << _BITPOS_TIMESTAMP)`.
-            packedData := or(tokenBalance, shl(_BITPOS_TIMESTAMP, timestamp()))
-        }
     }
 
     /// Admin Functions

@@ -26,6 +26,8 @@ contract Lendtroller is ILendtroller {
     uint256 internal constant collateralFactorMaxScaled = 0.9e18; // 0.9
     /// @notice Scaler for floating point math
     uint256 internal constant expScale = 1e18;
+    /// @notice Minimum hold time on CToken to prevent oracle price attacks
+    uint256 internal constant minimumHoldPeriod = 15 minutes;
 
     // GaugePool contract address
     address public immutable override gaugePool;
@@ -894,6 +896,10 @@ contract Lendtroller is ILendtroller {
     ) internal view {
         if (!markets[cToken].isListed) {
             revert MarketNotListed(cToken);
+        }
+
+        if(uint256(ICToken(cToken).getBorrowTimestamp(redeemer)) + minimumHoldPeriod > block.timestamp) {
+            revert MinimumHoldPeriod();
         }
 
         // If the redeemer is not 'in' the market, then we can bypass
