@@ -21,17 +21,15 @@ contract InterestRateModel {
     /// STORAGE ///
 
     uint256 public multiplierPerSecond;
-    uint256 public baseRatePerSecond;
     uint256 public jumpMultiplierPerSecond;
-    uint256 public kink;
+    uint256 public rateCurveKink;
 
     /// EVENTS ///
 
     event NewInterestRateModel(
-        uint256 baseRatePerSecond,
         uint256 multiplierPerSecond,
         uint256 jumpMultiplierPerSecond,
-        uint256 kink
+        uint256 rateCurveKink
     );
 
     /// MODIFIERS ///
@@ -47,20 +45,17 @@ contract InterestRateModel {
     /// CONSTRUCTOR ///
 
     /// @notice Construct an interest rate model
-    /// @param baseRatePerYear The approximate target base APR,
-    ///                        as a mantissa (scaled by BASE)
     /// @param multiplierPerYear The rate of increase in interest rate by
     ///                          utilization rate (scaled by BASE)
     /// @param jumpMultiplierPerYear The multiplierPerSecond after hitting
     ///                              `kink_` utilization rate
-    /// @param kink_ The utilization point at which the jump multiplier
+    /// @param kink The utilization point at which the jump multiplier
     ///              is applied
     constructor(
         ICentralRegistry centralRegistry_,
-        uint256 baseRatePerYear,
         uint256 multiplierPerYear,
         uint256 jumpMultiplierPerYear,
-        uint256 kink_
+        uint256 kink
     ) {
 
         require(
@@ -73,15 +68,13 @@ contract InterestRateModel {
 
         centralRegistry = centralRegistry_;
 
-        baseRatePerSecond = baseRatePerYear / secondsPerYear;
         multiplierPerSecond =
             (multiplierPerYear * BASE) /
-            (secondsPerYear * kink_);
+            (secondsPerYear * kink);
         jumpMultiplierPerSecond = jumpMultiplierPerYear / secondsPerYear;
-        kink = kink_;
+        rateCurveKink = kink;
 
         emit NewInterestRateModel(
-            baseRatePerSecond,
             multiplierPerSecond,
             jumpMultiplierPerSecond,
             kink
@@ -92,30 +85,25 @@ contract InterestRateModel {
 
     /// @notice Update the parameters of the interest rate model
     ///         (only callable by Curvance DAO elevated permissions, i.e. Timelock)
-    /// @param baseRatePerYear The approximate target base APR,
-    ///                        as a mantissa (scaled by BASE)
     /// @param multiplierPerYear The rate of increase in interest rate by
     ///                          utilization rate (scaled by BASE)
     /// @param jumpMultiplierPerYear The multiplierPerSecond after hitting
-    ///                              `kink_` utilization rate
-    /// @param kink_ The utilization point at which the jump multiplier
-    ///              is applied
+    ///                              `kink` utilization rate
+    /// @param kink The utilization point at which the jump multiplier
+    ///             is applied
     function updateInterestRateModel(
-        uint256 baseRatePerYear,
         uint256 multiplierPerYear,
         uint256 jumpMultiplierPerYear,
-        uint256 kink_
+        uint256 kink
     ) external onlyElevatedPermissions {
 
-        baseRatePerSecond = baseRatePerYear / secondsPerYear;
         multiplierPerSecond =
             (multiplierPerYear * BASE) /
-            (secondsPerYear * kink_);
+            (secondsPerYear * kink);
         jumpMultiplierPerSecond = jumpMultiplierPerYear / secondsPerYear;
-        kink = kink_;
+        rateCurveKink = kink;
 
         emit NewInterestRateModel(
-            baseRatePerSecond,
             multiplierPerSecond,
             jumpMultiplierPerSecond,
             kink
@@ -156,20 +144,15 @@ contract InterestRateModel {
     ) public view returns (uint256) {
         uint256 util = utilizationRate(cash, borrows, reserves);
 
-        if (util <= kink) {
+        if (util <= rateCurveKink) {
             unchecked {
-                return ((util * multiplierPerSecond) / BASE) + baseRatePerSecond;
+                return getNormalInterestRate(util);
             }
         }
 
         /// We know this will not underflow or overflow because of Interest Rate Model configurations
         unchecked {
-            uint256 normalRate = ((kink * multiplierPerSecond) / BASE) +
-            baseRatePerSecond;
-            /// normalRate = ((kink * multiplierPerSecond) / BASE) + baseRatePerSecond;
-            /// jumpRate = ((util - kink) * jumpMultiplierPerSecond / Base)
-            /// BorrowRate = jumpRate + normalRate
-            return (((util - kink) * jumpMultiplierPerSecond) / BASE) + normalRate;
+            return(getJumpInterestRate(util - rateCurveKink) + getNormalInterestRate(rateCurveKink));
         }
     }
 
@@ -177,21 +160,36 @@ contract InterestRateModel {
     /// @param cash The amount of cash in the market
     /// @param borrows The amount of borrows in the market
     /// @param reserves The amount of reserves in the market
-    /// @param reserveFactorMantissa The current reserve factor for the market
+    /// @param marketReservesInterestFee The current interest rate reserve factor for the market
     /// @return The supply rate percentage per second as a mantissa
     ///         (scaled by BASE)
     function getSupplyRate(
         uint256 cash,
         uint256 borrows,
         uint256 reserves,
-        uint256 reserveFactorMantissa
+        uint256 marketReservesInterestFee
     ) public view returns (uint256) {
         /// RateToPool = (borrowRate * oneMinusReserveFactor) / BASE;
-        uint256 rateToPool = (getBorrowRate(cash, borrows, reserves) * (BASE - reserveFactorMantissa)) / BASE;
+        uint256 rateToPool = (getBorrowRate(cash, borrows, reserves) * (BASE - marketReservesInterestFee)) / BASE;
 
         /// Supply Rate = (utilizationRate * rateToPool) / BASE;
         return (utilizationRate(cash, borrows, reserves) * rateToPool) / BASE;
     }
 
-    
+    /**
+    * @notice Calculates the interest rate for `util` market utilization
+    * @param util The utilization rate of the market
+    * @return Returns the calculated interest rate
+    */
+    function getNormalInterestRate(uint256 util) internal view returns (uint256){
+        return (util * multiplierPerSecond) / BASE;
+    }
+
+    /// @notice Calculates the interest rate under `jump` conditions E.G. `util` > `kink ` based on market utilization
+    /// @param util The utilization rate of the market above `kink`
+    /// @return Returns the calculated excess interest rate
+    function getJumpInterestRate(uint256 util) internal view returns (uint256){
+        return (util * jumpMultiplierPerSecond) / BASE;
+    }
+
 }
