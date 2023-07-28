@@ -25,7 +25,6 @@ contract DToken is ERC165, ReentrancyGuard {
     struct BorrowSnapshot {
         uint256 principal;
         uint216 interestIndex;
-        uint40 borrowTimestamp;
     }
 
     /// CONSTANTS ///
@@ -171,6 +170,7 @@ contract DToken is ERC165, ReentrancyGuard {
 
     /// Errors ///
 
+    error DToken_InvalidSeizeTokenType();
     error InvalidUnderlying();
     error TransferFailure();
     error ActionFailure();
@@ -665,19 +665,6 @@ contract DToken is ERC165, ReentrancyGuard {
         );
     }
 
-    /// @notice Transfers collateral tokens (this market) to the liquidator.
-    /// @dev Will fail unless called by another cToken during the process of liquidation.
-    /// @param liquidator The account receiving seized collateral
-    /// @param borrower The account having collateral seized
-    /// @param seizeTokens The number of cTokens to seize
-    function seize(
-        address liquidator,
-        address borrower,
-        uint256 seizeTokens
-    ) external nonReentrant {
-        _seize(msg.sender, liquidator, borrower, seizeTokens);
-    }
-
     /// @notice Returns the current per-second borrow interest rate for this cToken
     /// @return The borrow interest rate per second, scaled by 1e18
     function borrowRatePerSecond() external view returns (uint256) {
@@ -1002,10 +989,11 @@ contract DToken is ERC165, ReentrancyGuard {
             revert BorrowCashNotAvailable();
         }
 
+        // Record that a user borrowed before everything else is updated
+        lendtroller.notifyAccountBorrow(borrower);
         // We calculate the new borrower and total borrow balances, failing on overflow:
         accountBorrows[borrower].principal = borrowBalanceStored(borrower) + borrowAmount;
         accountBorrows[borrower].interestIndex = uint216(borrowIndex);
-        accountBorrows[borrower].borrowTimestamp = uint40(block.timestamp);
         totalBorrows += borrowAmount;
 
         // doTransferOut reverts if anything goes wrong, since we can't be sure if side effects occurred.
@@ -1081,6 +1069,11 @@ contract DToken is ERC165, ReentrancyGuard {
             revert SelfLiquidationNotAllowed();
         }
 
+        /// The MToken must be a collateral token E.G. tokenType == 1
+        if (mTokenCollateral.tokenType() < 1) {
+            revert DToken_InvalidSeizeTokenType();
+        }
+
         // Fail if liquidate not allowed, 
         // trying to pay down too much with excessive repayAmount will revert here
         lendtroller.liquidateUserAllowed(
@@ -1114,12 +1107,10 @@ contract DToken is ERC165, ReentrancyGuard {
             revert ExcessiveValue();
         }
 
-        // If this is also the collateral, run _seize to avoid re-entrancy, otherwise make an external call
-        if (address(mTokenCollateral) == address(this)) {
-            _seize(address(this), liquidator, borrower, seizeTokens);
-        } else {
-            mTokenCollateral.seize(liquidator, borrower, seizeTokens);
-        }
+        // We check above that the mToken must be a collateral token, 
+        // so we cant be seizing this mToken as it is a debt token, 
+        // so there is no reEntry risk
+        mTokenCollateral.seize(liquidator, borrower, seizeTokens);
 
         // We emit a Liquidated event
         emit Liquidated(
@@ -1128,62 +1119,6 @@ contract DToken is ERC165, ReentrancyGuard {
             actualRepayAmount,
             address(mTokenCollateral),
             seizeTokens
-        );
-    }
-
-    /// @notice Transfers collateral tokens (this market) to the liquidator.
-    /// @dev Called only during an in-kind liquidation, or by liquidateUser during the liquidation of another CToken.
-    ///  Its absolutely critical to use msg.sender as the seizer cToken and not a parameter.
-    /// @param seizerToken The contract seizing the collateral (i.e. borrowed cToken)
-    /// @param liquidator The account receiving seized collateral
-    /// @param borrower The account having collateral seized
-    /// @param seizeTokens The number of cTokens to seize
-    function _seize(
-        address seizerToken,
-        address liquidator,
-        address borrower,
-        uint256 seizeTokens
-    ) internal {
-        // Fails if seize not allowed
-        lendtroller.seizeAllowed(
-            address(this),
-            seizerToken,
-            liquidator,
-            borrower
-        );
-
-        // Fails if borrower = liquidator
-        if (borrower == liquidator) {
-            revert SelfLiquidationNotAllowed();
-        }
-
-        uint256 protocolSeizeTokens = (seizeTokens *
-            centralRegistry.protocolLiquidationFee()) / expScale;
-        uint256 protocolSeizeAmount = (exchangeRateStored() *
-            protocolSeizeTokens) / expScale;
-        uint256 liquidatorSeizeTokens = seizeTokens - protocolSeizeTokens;
-
-        // Document new account balances with underflow check on borrower balance
-        _accountBalance[borrower] -= seizeTokens;
-        _accountBalance[liquidator] += liquidatorSeizeTokens;
-        totalReserves += protocolSeizeAmount;
-        totalSupply -= protocolSeizeTokens;
-        
-        // emit events on gauge pool
-        GaugePool(gaugePool()).withdraw(address(this), borrower, seizeTokens);
-        GaugePool(gaugePool()).deposit(
-            address(this),
-            liquidator,
-            liquidatorSeizeTokens
-        );
-
-        // Emit a Transfer event
-        emit Transfer(borrower, liquidator, liquidatorSeizeTokens);
-        emit Transfer(borrower, address(this), protocolSeizeTokens);
-        emit ReservesAdded(
-            address(this),
-            protocolSeizeAmount,
-            totalReserves
         );
     }
 
@@ -1224,6 +1159,7 @@ contract DToken is ERC165, ReentrancyGuard {
             to,
             amount
         );
+
     }
 
     /// @inheritdoc ERC165

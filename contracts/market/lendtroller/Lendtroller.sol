@@ -10,7 +10,7 @@ import { ICToken } from "contracts/interfaces/market/ICToken.sol";
 import { BasePositionVault } from "contracts/deposits/adaptors/BasePositionVault.sol";
 
 /// @title Curvance Lendtroller
-/// @notice Manages risk within the lending & collateral markets
+/// @notice Manages risk within the lending markets
 contract Lendtroller is ILendtroller {
     /// TYPES ///
 
@@ -18,7 +18,6 @@ contract Lendtroller is ILendtroller {
         mapping(IMToken => bool) collateralDisabled;
         uint256 lastBorrowTimestamp;
     }
-
 
     /// CONSTANTS ///
 
@@ -45,8 +44,6 @@ contract Lendtroller is ILendtroller {
     ///  Actions which allow users to remove their own assets cannot be paused.
     ///  Liquidation / seizing / transfer can only be paused globally, not by market.
     address public pauseGuardian;
-    bool public _mintGuardianPaused;
-    bool public _borrowGuardianPaused;
     bool public transferGuardianPaused;
     bool public seizeGuardianPaused;
     mapping(address => bool) public mintGuardianPaused;
@@ -68,10 +65,6 @@ contract Lendtroller is ILendtroller {
     ///         a liquidator receives
     uint256 public liquidationIncentiveScaled;
 
-    /// @notice Max number of assets a single account can participate in
-    ///         (borrow or use as collateral)
-    uint256 public maxAssets;
-
     /// @notice Official mapping of mTokens -> Market metadata
     /// @dev Used e.g. to determine if a market is supported
     mapping(address => ILendtroller.Market) public markets;
@@ -82,7 +75,7 @@ contract Lendtroller is ILendtroller {
     /// @notice Per-account mapping of "assets you are in", capped by maxAssets
     mapping(address => IMToken[]) public accountAssets;
 
-    /// Whether market can be used for collateral or not
+    /// @notice user => UserData (IMToken => Collateralizable, lastBorrowTimestamp)
     mapping(address => UserData) public userData;
 
     // PositionFolding contract address
@@ -265,10 +258,9 @@ contract Lendtroller is ILendtroller {
         uint256 borrowCap = borrowCaps[mToken];
         // Borrow cap of 0 corresponds to unlimited borrowing
         if (borrowCap != 0) {
-            uint256 totalBorrows = IMToken(mToken).totalBorrows();
-            uint256 nextTotalBorrows = totalBorrows + borrowAmount;
-
-            if (nextTotalBorrows >= borrowCap) {
+            // Validate that if there is a borrow cap, 
+            // we will not be over the cap with this new borrow
+            if ((IMToken(mToken).totalBorrows() + borrowAmount) > borrowCap) {
                 revert BorrowCapReached();
             }
         }
@@ -299,7 +291,7 @@ contract Lendtroller is ILendtroller {
         /// as well as short term price manipulations if the dynamic dual oracle 
         /// fails to protect the market somehow
         if (
-            uint256(IMToken(mToken).getBorrowTimestamp(account)) +
+            userData[account].lastBorrowTimestamp +
                 minimumHoldPeriod >
             block.timestamp
         ) {
@@ -398,7 +390,7 @@ contract Lendtroller is ILendtroller {
     /// @param mTokenCollateral The address of the collateral mToken
     /// @param actualRepayAmount The amount of mTokenBorrowed underlying to
     ///                          convert into mTokenCollateral tokens
-    /// @return uint The number of mTokenCollateral tokens to be seized in a liquidation
+    /// @return uint256 The number of mTokenCollateral tokens to be seized in a liquidation
     function liquidateCalculateSeizeTokens(
         address mTokenBorrowed,
         address mTokenCollateral,
@@ -673,6 +665,14 @@ contract Lendtroller is ILendtroller {
                 BasePositionVault(ICToken(cToken).vault()).convertToAssets(expScale)) / expScale;
     }
 
+    /// @notice Updates `accounts` lastBorrowTimestamp to the current block timestamp
+    /// @dev The caller must be a listed MToken in the `markets` mapping
+    /// @param account The address of the account that has just borrowed
+    function notifyAccountBorrow(address account) external {
+        require(markets[msg.sender].isListed, "Lendtroller: Caller not MToken");
+        userData[account].lastBorrowTimestamp = block.timestamp;
+    }
+
     /// @notice Add assets to be included in account liquidity calculation
     /// @param mTokens The list of addresses of the mToken markets to be enabled
     /// @return uint array: 0 = market not entered; 1 = market entered
@@ -787,6 +787,7 @@ contract Lendtroller is ILendtroller {
         if (msg.sender != pauseGuardian && !hasDaoPerms) {
             revert AddressUnauthorized();
         }
+        // Only the timelock or Emergency Council can turn minting back on
         if (!hasDaoPerms && state != true) {
             revert AddressUnauthorized();
         }
@@ -812,6 +813,7 @@ contract Lendtroller is ILendtroller {
         if (msg.sender != pauseGuardian && !hasDaoPerms) {
             revert AddressUnauthorized();
         }
+        // Only the timelock or Emergency Council can turn borrows back on
         if (!hasDaoPerms && state != true) {
             revert AddressUnauthorized();
         }
@@ -829,6 +831,7 @@ contract Lendtroller is ILendtroller {
         if (msg.sender != pauseGuardian && !hasDaoPerms) {
             revert AddressUnauthorized();
         }
+        // Only the timelock or Emergency Council can turn transfers back on
         if (!hasDaoPerms && state != true) {
             revert AddressUnauthorized();
         }
@@ -846,6 +849,7 @@ contract Lendtroller is ILendtroller {
         if (msg.sender != pauseGuardian && !hasDaoPerms) {
             revert AddressUnauthorized();
         }
+        // Only the timelock or Emergency Council can turn seizing assets back on
         if (!hasDaoPerms && state != true) {
             revert AddressUnauthorized();
         }
@@ -925,9 +929,8 @@ contract Lendtroller is ILendtroller {
         /// We require a `minimumHoldPeriod` to break flashloan manipulations attempts
         /// as well as short term price manipulations if the dynamic dual oracle 
         /// fails to protect the market somehow
-        /// @trust might need to store this timestamp in lendtroller 
         if (
-            uint256(IMToken(mToken).getBorrowTimestamp(redeemer)) +
+            userData[redeemer].lastBorrowTimestamp +
                 minimumHoldPeriod >
             block.timestamp
         ) {

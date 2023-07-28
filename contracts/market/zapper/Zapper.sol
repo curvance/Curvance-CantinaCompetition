@@ -14,7 +14,7 @@ import { ICurveSwap } from "contracts/interfaces/external/curve/ICurve.sol";
 import { IWETH } from "contracts/interfaces/IWETH.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
-contract ZapperGeneric {
+contract Zapper {
     /// CONSTANTS ///
 
     uint256 public constant SLIPPAGE = 500;
@@ -35,14 +35,14 @@ contract ZapperGeneric {
                 address(centralRegistry_),
                 type(ICentralRegistry).interfaceId
             ),
-            "PositionFolding: invalid central registry"
+            "Zapper: invalid central registry"
         );
 
         centralRegistry = centralRegistry_;
 
         require(
             centralRegistry.lendingMarket(lendtroller_),
-            "PositionFolding: lendtroller is invalid"
+            "Zapper: lendtroller is invalid"
         );
 
         lendtroller = ILendtroller(lendtroller_);
@@ -127,7 +127,7 @@ contract ZapperGeneric {
         }
 
         outAmount = IERC20(outputToken).balanceOf(address(this));
-        require(outAmount >= minoutAmount, "Received less than minOutAmount");
+        require(outAmount >= minoutAmount, "Zapper: received less than minOutAmount");
 
         // transfer token back to user
         SafeTransferLib.safeTransfer(outputToken, recipient, outAmount);
@@ -219,7 +219,7 @@ contract ZapperGeneric {
         }
 
         outAmount = IERC20(outputToken).balanceOf(address(this));
-        require(outAmount >= minoutAmount, "Received less than minOutAmount");
+        require(outAmount >= minoutAmount, "Zapper: received less than minOutAmount");
 
         // transfer token back to user
         SafeTransferLib.safeTransfer(outputToken, recipient, outAmount);
@@ -239,7 +239,7 @@ contract ZapperGeneric {
         address lpToken
     ) private {
         if (CommonLib.isETH(inputToken)) {
-            require(inputAmount == msg.value, "invalid amount");
+            require(inputAmount == msg.value, "Zapper: invalid amount");
             inputToken = weth;
             IWETH(weth).deposit{ value: inputAmount }(inputAmount);
         } else {
@@ -253,9 +253,9 @@ contract ZapperGeneric {
 
         // check valid cToken
         (bool isListed, ) = lendtroller.getIsMarkets(cToken);
-        require(isListed, "invalid cToken address");
+        require(isListed, "Zapper: invalid cToken address");
         // check cToken underlying
-        require(CToken(cToken).underlying() == lpToken, "invalid lp address");
+        require(CToken(cToken).underlying() == lpToken, "Zapper: invalid lp address");
 
         uint256 numTokenSwaps = tokenSwaps.length;
 
@@ -285,7 +285,7 @@ contract ZapperGeneric {
         SwapperLib.approveTokenIfNeeded(lpToken, cToken, amount);
 
         // enter curvance
-        require(CToken(cToken).mintFor(amount, recipient), "curvance");
+        require(CToken(cToken).mintFor(amount, recipient), "Zapper: error joining Curvance");
 
         out = CommonLib.getTokenBalance(cToken);
     }

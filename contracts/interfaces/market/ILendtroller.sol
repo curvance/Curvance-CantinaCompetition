@@ -4,7 +4,21 @@ pragma solidity ^0.8.17;
 import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 
 interface ILendtroller {
-    ////////// Errors //////////
+
+    /// TYPES ///
+
+    struct Market {
+        // Whether or not this market is listed
+        bool isListed;
+        //  Multiplier representing the most one can borrow against their collateral in this market.
+        //  For instance, 0.9 to allow borrowing 90% of collateral value.
+        //  Must be between 0 and 1, and stored as a mantissa.
+        uint256 collateralFactorScaled;
+        // Per-market mapping of "accounts in this asset"
+        mapping(address => bool) accountMembership;
+    }
+
+    /// Errors ///
 
     error MarketNotListed(address);
     error AddressAlreadyJoined();
@@ -21,7 +35,7 @@ interface ILendtroller {
     error AddressUnauthorized();
     error MinimumHoldPeriod();
 
-    ////////// Events //////////
+    /// Events ///
 
     /// @notice Emitted when an admin supports a market
     event MarketListed(IMToken cToken);
@@ -88,18 +102,7 @@ interface ILendtroller {
         address indexed newPositionFolding
     );
 
-    ////////// Structs //////////
-
-    struct Market {
-        // Whether or not this market is listed
-        bool isListed;
-        //  Multiplier representing the most one can borrow against their collateral in this market.
-        //  For instance, 0.9 to allow borrowing 90% of collateral value.
-        //  Must be between 0 and 1, and stored as a mantissa.
-        uint256 collateralFactorScaled;
-        // Per-market mapping of "accounts in this asset"
-        mapping(address => bool) accountMembership;
-    }
+    /// FUNCTIONS ///
 
     function enterMarkets(
         address[] calldata cTokens
@@ -144,7 +147,7 @@ interface ILendtroller {
         uint256 transferTokens
     ) external;
 
-    /*** Liquidity/Liquidation Calculations ***/
+    function notifyAccountBorrow(address account) external;
 
     function liquidateCalculateSeizeTokens(
         address cTokenBorrowed,
@@ -152,7 +155,6 @@ interface ILendtroller {
         uint256 repayAmount
     ) external view returns (uint256);
 
-    /** Query functions */
     function getIsMarkets(
         address cToken
     ) external view returns (bool, uint256);
