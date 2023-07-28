@@ -3,15 +3,15 @@ pragma solidity 0.8.17;
 
 import { TestBase } from "tests/utils/TestBase.sol";
 import { CentralRegistry } from "contracts/architecture/CentralRegistry.sol";
-import { CToken } from "contracts/market/collateral/CToken.sol";
+import { MToken } from "contracts/market/collateral/MToken.sol";
 import { InterestRateModel } from "contracts/market/interestRates/InterestRateModel.sol";
 import { JumpRateModelV2 } from "contracts/market/interestRates/JumpRateModelV2.sol";
 import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { ChainlinkAdaptor } from "contracts/oracles/adaptors/chainlink/ChainlinkAdaptor.sol";
-import { PriceRouter } from "contracts/oracles/PriceRouterV2.sol";
+import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
 
-contract TestBasePriceRouterV2 is TestBase {
+contract TestBasePriceRouter is TestBase {
     address internal constant _USDC_ADDRESS =
         0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address internal constant _CHAINLINK_ETH_USD =
@@ -27,7 +27,7 @@ contract TestBasePriceRouterV2 is TestBase {
     JumpRateModelV2 public jumpRateModel;
     Lendtroller public lendtroller;
     PriceRouter public priceRouter;
-    CToken public cUSDC;
+    MToken public mUSDC;
 
     function setUp() public virtual {
         _fork();
@@ -38,7 +38,7 @@ contract TestBasePriceRouterV2 is TestBase {
 
         _deployLendtroller();
         _deployJumpRateModel();
-        _deployCUSDC();
+        _deployMUSDC();
     }
 
     function _deployCentralRegistry() internal {
@@ -100,15 +100,15 @@ contract TestBasePriceRouterV2 is TestBase {
         );
     }
 
-    function _deployCUSDC() internal {
-        cUSDC = new CToken(
+    function _deployMUSDC() internal {
+        mUSDC = new MToken(
             ICentralRegistry(address(centralRegistry)),
             _USDC_ADDRESS,
             address(lendtroller),
             InterestRateModel(address(jumpRateModel)),
             _ONE,
-            "cUSDC",
-            "cUSDC",
+            "mUSDC",
+            "mUSDC",
             18
         );
     }

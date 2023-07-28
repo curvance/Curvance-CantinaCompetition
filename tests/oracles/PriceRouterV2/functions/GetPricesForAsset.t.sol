@@ -2,10 +2,10 @@
 pragma solidity 0.8.17;
 
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
-import { PriceRouter } from "contracts/oracles/PriceRouterV2.sol";
-import { TestBasePriceRouterV2 } from "../TestBasePriceRouterV2.sol";
+import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
+import { TestBasePriceRouter } from "../TestBasePriceRouter.sol";
 
-contract GetPricesForAssetTest is TestBasePriceRouterV2 {
+contract GetPricesForAssetTest is TestBasePriceRouter {
     function test_getPricesForAsset_fail_whenNoFeedsAvailable() public {
         vm.expectRevert("PriceRouter: no feeds available");
         priceRouter.getPricesForAsset(_USDC_ADDRESS, true);

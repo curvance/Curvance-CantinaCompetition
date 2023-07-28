@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.17;
 
-import { TestBasePriceRouterV2 } from "../TestBasePriceRouterV2.sol";
+import { TestBasePriceRouter } from "../TestBasePriceRouter.sol";
 
-contract NotifyAssetPriceFeedRemovalTest is TestBasePriceRouterV2 {
+contract NotifyAssetPriceFeedRemovalTest is TestBasePriceRouter {
     function test_notifyAssetPriceFeedRemoval_fail_whenCallerIsNotApprovedAdaptor()
         public
     {

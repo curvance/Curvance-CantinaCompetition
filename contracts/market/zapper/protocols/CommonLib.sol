@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.17;
 
-import { IERC20 } from "contracts/market/collateral/CToken.sol";
+import { IERC20 } from "contracts/interfaces/IERC20.sol";
 
 library CommonLib {
     function isETH(address token) internal pure returns (bool) {

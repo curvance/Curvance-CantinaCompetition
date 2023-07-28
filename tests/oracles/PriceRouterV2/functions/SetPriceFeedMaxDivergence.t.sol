@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.17;
 
-import { TestBasePriceRouterV2 } from "../TestBasePriceRouterV2.sol";
+import { TestBasePriceRouter } from "../TestBasePriceRouter.sol";
 
-contract SetPriceFeedMaxDivergenceTest is TestBasePriceRouterV2 {
+contract SetPriceFeedMaxDivergenceTest is TestBasePriceRouter {
     function test_setPriceFeedMaxDivergence_fail_whenCallerIsNotAuthorized()
         public
     {

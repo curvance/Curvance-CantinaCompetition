@@ -2,10 +2,10 @@
 pragma solidity 0.8.17;
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { PriceRouter } from "contracts/oracles/PriceRouterV2.sol";
-import { TestBasePriceRouterV2 } from "../TestBasePriceRouterV2.sol";
+import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
+import { TestBasePriceRouter } from "../TestBasePriceRouter.sol";
 
-contract PriceRouterDeploymentTest is TestBasePriceRouterV2 {
+contract PriceRouterDeploymentTest is TestBasePriceRouter {
     function test_priceRouterDeployment_fail_whenCentralRegistryIsInvalid()
         public
     {

@@ -2,9 +2,9 @@
 pragma solidity 0.8.17;
 
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
-import { TestBasePriceRouterV2 } from "../TestBasePriceRouterV2.sol";
+import { TestBasePriceRouter } from "../TestBasePriceRouter.sol";
 
-contract GetPriceMultiTest is TestBasePriceRouterV2 {
+contract GetPriceMultiTest is TestBasePriceRouter {
     address[] public assets;
     bool[] public inUSD;
     bool[] public getLower;
