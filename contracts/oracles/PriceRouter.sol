@@ -23,7 +23,7 @@ contract PriceRouter {
         bool hadError;
     }
 
-    struct CTokenData {
+    struct MTokenData {
         bool isMToken;
         address underlying;
     }
@@ -70,7 +70,7 @@ contract PriceRouter {
     mapping(address => address[]) public assetPriceFeeds;
 
     /// @notice Mapping used to link a collateral token to its underlying asset.
-    mapping(address => CTokenData) public mTokenAssets;
+    mapping(address => MTokenData) public mTokenAssets;
 
     /// MODIFIERS ///
 
@@ -159,26 +159,26 @@ contract PriceRouter {
         _removeAssetPriceFeed(asset, feed);
     }
 
-    function addCTokenSupport(
+    function addMTokenSupport(
         address mToken
     ) external onlyElevatedPermissions {
         require(
             !mTokenAssets[mToken].isMToken,
-            "PriceRouter: CToken already configured"
+            "PriceRouter: MToken already configured"
         );
         require(
             ERC165Checker.supportsInterface(mToken, type(IMToken).interfaceId),
-            "PriceRouter: CToken is invalid"
+            "PriceRouter: MToken is invalid"
         );
 
         mTokenAssets[mToken].isMToken = true;
         mTokenAssets[mToken].underlying = IMToken(mToken).underlying();
     }
 
-    function removeCTokenSupport(address mToken) external onlyDaoPermissions {
+    function removeMTokenSupport(address mToken) external onlyDaoPermissions {
         require(
             mTokenAssets[mToken].isMToken,
-            "PriceRouter: CToken is not configured"
+            "PriceRouter: MToken is not configured"
         );
         delete mTokenAssets[mToken];
     }

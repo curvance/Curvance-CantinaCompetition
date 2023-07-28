@@ -3,7 +3,8 @@ pragma solidity 0.8.17;
 
 import { TestBase } from "tests/utils/TestBase.sol";
 import { CentralRegistry } from "contracts/architecture/CentralRegistry.sol";
-import { MToken } from "contracts/interfaces/market/IMToken.sol";
+import { DToken } from "contracts/interfaces/market/DToken.sol";
+import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 import { InterestRateModel } from "contracts/market/interestRates/InterestRateModel.sol";
 import { JumpRateModelV2 } from "contracts/market/interestRates/JumpRateModelV2.sol";
 import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
@@ -27,7 +28,7 @@ contract TestBasePriceRouter is TestBase {
     JumpRateModelV2 public jumpRateModel;
     Lendtroller public lendtroller;
     PriceRouter public priceRouter;
-    MToken public mUSDC;
+    DToken public mUSDC;
 
     function setUp() public virtual {
         _fork();
@@ -101,7 +102,7 @@ contract TestBasePriceRouter is TestBase {
     }
 
     function _deployMUSDC() internal {
-        mUSDC = new MToken(
+        mUSDC = new DToken(
             ICentralRegistry(address(centralRegistry)),
             _USDC_ADDRESS,
             address(lendtroller),
