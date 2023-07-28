@@ -19,7 +19,7 @@ contract RemoveMTokenSupportTest is TestBasePriceRouter {
     function test_removeMTokenSupport_success() public {
         priceRouter.addMTokenSupport(address(mUSDC));
 
-        (bool isMToken, address underlying) = priceRouter.MTokenAssets(
+        (bool isMToken, address underlying) = priceRouter.mTokenAssets(
             address(mUSDC)
         );
 
@@ -28,7 +28,7 @@ contract RemoveMTokenSupportTest is TestBasePriceRouter {
 
         priceRouter.removeMTokenSupport(address(mUSDC));
 
-        (isMToken, underlying) = priceRouter.MTokenAssets(address(mUSDC));
+        (isMToken, underlying) = priceRouter.mTokenAssets(address(mUSDC));
 
         assertFalse(isMToken);
         assertEq(underlying, address(0));

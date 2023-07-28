@@ -26,7 +26,7 @@ contract AddMTokenSupportTest is TestBasePriceRouter {
     }
 
     function test_addMTokenSupport_success() public {
-        (bool isMToken, address underlying) = priceRouter.MTokenAssets(
+        (bool isMToken, address underlying) = priceRouter.mTokenAssets(
             address(mUSDC)
         );
 
@@ -35,7 +35,7 @@ contract AddMTokenSupportTest is TestBasePriceRouter {
 
         priceRouter.addMTokenSupport(address(mUSDC));
 
-        (isMToken, underlying) = priceRouter.MTokenAssets(address(mUSDC));
+        (isMToken, underlying) = priceRouter.mTokenAssets(address(mUSDC));
 
         assertTrue(isMToken);
         assertEq(underlying, _USDC_ADDRESS);
