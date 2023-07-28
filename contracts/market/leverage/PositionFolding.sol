@@ -6,6 +6,7 @@ import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 import { CToken } from "contracts/market/collateral/CToken.sol";
+import { DToken } from "contracts/market/collateral/DToken.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
@@ -17,7 +18,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
     /// TYPES ///
 
     struct LeverageStruct {
-        CToken borrowToken;
+        DToken borrowToken;
         uint256 borrowAmount;
         CToken collateralToken;
         // borrow underlying -> zapper input token
@@ -329,7 +330,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
             repayAmount + remaining
         );
 
-        CToken(address(borrowToken)).repayForPositionFolding(redeemer, repayAmount);
+        DToken(address(borrowToken)).repayForPositionFolding(redeemer, repayAmount);
 
         if (remaining > 0) {
             // remaining borrow underlying back to user
@@ -382,7 +383,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
     /// INTERNAL FUNCTIONS ///
 
     function _leverage(LeverageStruct memory leverageData) internal {
-        CToken borrowToken = leverageData.borrowToken;
+        DToken borrowToken = leverageData.borrowToken;
         uint256 borrowAmount = leverageData.borrowAmount;
         uint256 maxBorrowAmount = queryAmountToBorrowForLeverageMax(
             msg.sender,
@@ -396,7 +397,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
 
         bytes memory params = abi.encode(leverageData);
 
-        CToken(address(borrowToken)).borrowForPositionFolding(
+        DToken(address(borrowToken)).borrowForPositionFolding(
             payable(msg.sender),
             borrowAmount,
             params
