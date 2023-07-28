@@ -3,7 +3,7 @@ pragma solidity 0.8.17;
 
 import { TestBase } from "tests/utils/TestBase.sol";
 import { CentralRegistry } from "contracts/architecture/CentralRegistry.sol";
-import { MToken } from "contracts/market/collateral/MToken.sol";
+import { MToken } from "contracts/interfaces/market/IMToken.sol";
 import { InterestRateModel } from "contracts/market/interestRates/InterestRateModel.sol";
 import { JumpRateModelV2 } from "contracts/market/interestRates/JumpRateModelV2.sol";
 import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
