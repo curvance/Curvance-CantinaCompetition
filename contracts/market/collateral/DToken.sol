@@ -634,11 +634,6 @@ contract DToken is ERC165, ReentrancyGuard {
         );
     }
 
-    // Returns the last borrow timestamp for `account`.
-    function getBorrowTimestamp(address account) external view returns (uint40) {
-        return accountBorrows[account].borrowTimestamp;
-    }
-
     /// @notice Get the underlying balance of the `account`
     /// @dev This also accrues interest in a transaction
     /// @param account The address of the account to query

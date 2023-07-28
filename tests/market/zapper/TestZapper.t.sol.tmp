@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.15;
+pragma solidity ^0.8.17;
 
-import "contracts/market/zapper/ZapperGeneric.sol";
+import "contracts/market/zapper/Zapper.sol";
+import "contracts/interfaces/IERC20.sol"
+
 import "contracts/mocks/MockCToken.sol";
 import "contracts/mocks/MockLendtroller.sol";
-import "@openzeppelin/contracts/interfaces/IERC20.sol";
 
 import "tests/utils/TestBase.sol";
 
-contract TestZapperGeneric is TestBase {
+contract TestZapper is TestBase {
     address dai = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
     address usdt = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
     address usdc = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
@@ -36,14 +37,14 @@ contract TestZapperGeneric is TestBase {
         );
         MockLendtroller lendtroller = new MockLendtroller();
         lendtroller.setMarket(address(cToken), true);
-        ZapperGeneric zapper = new ZapperGeneric(address(lendtroller), weth);
+        Zapper zapper = new Zapper(address(lendtroller), weth);
 
         // try zap in
         address[] memory tokens = new address[](3);
         tokens[0] = usdt;
         tokens[1] = wbtc;
         tokens[2] = weth;
-        ZapperGeneric.Swap[] memory tokenSwaps = new ZapperGeneric.Swap[](0);
+        Zapper.Swap[] memory tokenSwaps = new Zapper.Swap[](0);
         zapper.curvanceIn{ value: 3 ether }(
             address(cToken),
             address(0),
@@ -75,7 +76,7 @@ contract TestZapperGeneric is TestBase {
         );
         MockLendtroller lendtroller = new MockLendtroller();
         lendtroller.setMarket(address(cToken), true);
-        ZapperGeneric zapper = new ZapperGeneric(address(lendtroller), weth);
+        Zapper zapper = new Zapper(address(lendtroller), weth);
 
         // approve dai
         IERC20(dai).approve(address(zapper), 3000 ether);
@@ -85,7 +86,7 @@ contract TestZapperGeneric is TestBase {
         tokens[0] = usdt;
         tokens[1] = wbtc;
         tokens[2] = weth;
-        ZapperGeneric.Swap[] memory tokenSwaps = new ZapperGeneric.Swap[](2);
+        Zapper.Swap[] memory tokenSwaps = new Zapper.Swap[](2);
         // 1000 dai -> usdt
         tokenSwaps[0].target = oneInchRouter;
         tokenSwaps[0]
@@ -125,13 +126,13 @@ contract TestZapperGeneric is TestBase {
         );
         MockLendtroller lendtroller = new MockLendtroller();
         lendtroller.setMarket(address(cToken), true);
-        ZapperGeneric zapper = new ZapperGeneric(address(lendtroller), weth);
+        Zapper zapper = new Zapper(address(lendtroller), weth);
 
         // try zap in
         address[] memory tokens = new address[](2);
         tokens[0] = frax;
         tokens[1] = usdc;
-        ZapperGeneric.Swap[] memory tokenSwaps = new ZapperGeneric.Swap[](2);
+        Zapper.Swap[] memory tokenSwaps = new Zapper.Swap[](2);
         // 1 weth -> frax
         tokenSwaps[0].target = oneInchRouter;
         tokenSwaps[0]
