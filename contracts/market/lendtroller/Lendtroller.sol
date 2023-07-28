@@ -5,9 +5,7 @@ import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
-import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IMToken } from "contracts/interfaces/market/IMToken.sol";
-import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 
 /// @title Curvance Lendtroller
 /// @notice Manages risk within the lending & collateral markets

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { ICToken } from "contracts/interfaces/market/ICToken.sol";
+import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 
 interface ILendtroller {
     ////////// Errors //////////
@@ -24,13 +24,13 @@ interface ILendtroller {
     ////////// Events //////////
 
     /// @notice Emitted when an admin supports a market
-    event MarketListed(ICToken cToken);
+    event MarketListed(IMToken cToken);
 
     /// @notice Emitted when an account enters a market
-    event MarketEntered(ICToken cToken, address account);
+    event MarketEntered(IMToken cToken, address account);
 
     /// @notice Emitted when an account exits a market
-    event MarketExited(ICToken cToken, address account);
+    event MarketExited(IMToken cToken, address account);
 
     /// @notice Emitted when close factor is changed by admin
     event NewCloseFactor(
@@ -40,7 +40,7 @@ interface ILendtroller {
 
     /// @notice Emitted when a collateral factor is changed by admin
     event NewCollateralFactor(
-        ICToken cToken,
+        IMToken cToken,
         uint256 oldCollateralFactorScaled,
         uint256 newCollateralFactorScaled
     );
@@ -61,18 +61,18 @@ interface ILendtroller {
     event ActionPaused(string action, bool pauseState);
 
     /// @notice Emitted when an action is paused on a market
-    event ActionPaused(ICToken cToken, string action, bool pauseState);
+    event ActionPaused(IMToken cToken, string action, bool pauseState);
 
     /// @notice Emitted when borrow cap for a cToken is changed
-    event NewBorrowCap(ICToken indexed cToken, uint256 newBorrowCap);
+    event NewBorrowCap(IMToken indexed cToken, uint256 newBorrowCap);
 
     /// @notice Emitted when borrow cap for a cToken is changed
-    event SetDisableCollateral(ICToken indexed cToken, bool disable);
+    event SetDisableCollateral(IMToken indexed cToken, bool disable);
 
     /// @notice Emitted when borrow cap for a cToken is changed
     event SetUserDisableCollateral(
         address indexed user,
-        ICToken indexed cToken,
+        IMToken indexed cToken,
         bool disable
     );
 
@@ -162,11 +162,11 @@ interface ILendtroller {
         address user
     ) external view returns (bool);
 
-    function getAllMarkets() external view returns (ICToken[] memory);
+    function getAllMarkets() external view returns (IMToken[] memory);
 
     function getAccountAssets(
         address cToken
-    ) external view returns (ICToken[] memory);
+    ) external view returns (IMToken[] memory);
 
     function positionFolding() external view returns (address);
 
