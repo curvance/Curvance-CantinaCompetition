@@ -3,10 +3,9 @@ pragma solidity 0.8.17;
 
 import { TestBase } from "tests/utils/TestBase.sol";
 import { CentralRegistry } from "contracts/architecture/CentralRegistry.sol";
-import { DToken } from "contracts/interfaces/market/DToken.sol";
+import { DToken } from "contracts/market/collateral/DToken.sol";
 import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 import { InterestRateModel } from "contracts/market/interestRates/InterestRateModel.sol";
-import { JumpRateModelV2 } from "contracts/market/interestRates/JumpRateModelV2.sol";
 import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { ChainlinkAdaptor } from "contracts/oracles/adaptors/chainlink/ChainlinkAdaptor.sol";
@@ -25,7 +24,7 @@ contract TestBasePriceRouter is TestBase {
     CentralRegistry public centralRegistry;
     ChainlinkAdaptor public chainlinkAdaptor;
     ChainlinkAdaptor public dualChainlinkAdaptor;
-    JumpRateModelV2 public jumpRateModel;
+    InterestRateModel public jumpRateModel;
     Lendtroller public lendtroller;
     PriceRouter public priceRouter;
     DToken public mUSDC;
@@ -38,7 +37,7 @@ contract TestBasePriceRouter is TestBase {
         _deployChainlinkAdaptors();
 
         _deployLendtroller();
-        _deployJumpRateModel();
+        _deployInterestRateModel();
         _deployMUSDC();
     }
 
@@ -91,13 +90,13 @@ contract TestBasePriceRouter is TestBase {
         );
     }
 
-    function _deployJumpRateModel() internal {
-        jumpRateModel = new JumpRateModelV2(
+    function _deployInterestRateModel() internal {
+        jumpRateModel = new InterestRateModel(
+            ICentralRegistry(address(centralRegistry)),
             0.1e18,
             0.1e18,
             0.1e18,
-            0.5e18,
-            address(this)
+            0.5e18
         );
     }
 
