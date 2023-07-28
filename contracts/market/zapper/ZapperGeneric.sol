@@ -15,6 +15,7 @@ import { IWETH } from "contracts/interfaces/IWETH.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 contract ZapperGeneric {
+    
     /// CONSTANTS ///
 
     uint256 public constant SLIPPAGE = 500;

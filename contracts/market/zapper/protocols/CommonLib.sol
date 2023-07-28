@@ -4,6 +4,7 @@ pragma solidity ^0.8.17;
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 
 library CommonLib {
+    
     function isETH(address token) internal pure returns (bool) {
         /// We need to check against both null address and 0xEee
         /// because each protocol uses different implementations

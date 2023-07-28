@@ -3,11 +3,12 @@ pragma solidity ^0.8.17;
 
 import { CommonLib, IERC20 } from "contracts/market/zapper/protocols/CommonLib.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
-import { IERC20 } from "contracts/market/collateral/CToken.sol";
+
 import { IBalancerVault } from "contracts/interfaces/external/balancer/IBalancerVault.sol";
 import { IBalancerPool } from "contracts/interfaces/external/balancer/IBalancerPool.sol";
 
 library BalancerLib {
+    
     /// @dev Enter Balancer
     /// @param balancerVault The balancer vault address
     /// @param balancerPoolId The balancer pool ID
