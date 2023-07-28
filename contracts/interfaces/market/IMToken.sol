@@ -5,6 +5,8 @@ import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 
 interface IMToken {
 
+    function underlying() external view returns (address);
+
     /// @notice Returns whether the market token is collateral or debt 1 = collateral, 0 = debt
     function tokenType() external view returns (uint256);
 
@@ -31,7 +33,7 @@ interface IMToken {
     function lendtroller() external view returns (ILendtroller);
 
     function exchangeRateStored() external view returns (uint256);
-    
+
     function getBorrowTimestamp(address account) external view returns (uint256);
 
 }

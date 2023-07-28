@@ -5,7 +5,7 @@ import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { ICToken } from "contracts/interfaces/market/ICToken.sol";
+import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 import { IOracleAdaptor, PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
 
 /// @title Curvance Dual Oracle Price Router
@@ -24,7 +24,7 @@ contract PriceRouter {
     }
 
     struct CTokenData {
-        bool isCToken;
+        bool isMToken;
         address underlying;
     }
 
@@ -70,7 +70,7 @@ contract PriceRouter {
     mapping(address => address[]) public assetPriceFeeds;
 
     /// @notice Mapping used to link a collateral token to its underlying asset.
-    mapping(address => CTokenData) public cTokenAssets;
+    mapping(address => CTokenData) public mTokenAssets;
 
     /// MODIFIERS ///
 
@@ -160,27 +160,27 @@ contract PriceRouter {
     }
 
     function addCTokenSupport(
-        address cToken
+        address mToken
     ) external onlyElevatedPermissions {
         require(
-            !cTokenAssets[cToken].isCToken,
+            !mTokenAssets[mToken].isMToken,
             "PriceRouter: CToken already configured"
         );
         require(
-            ERC165Checker.supportsInterface(cToken, type(ICToken).interfaceId),
+            ERC165Checker.supportsInterface(mToken, type(IMToken).interfaceId),
             "PriceRouter: CToken is invalid"
         );
 
-        cTokenAssets[cToken].isCToken = true;
-        cTokenAssets[cToken].underlying = ICToken(cToken).underlying();
+        mTokenAssets[mToken].isMToken = true;
+        mTokenAssets[mToken].underlying = IMToken(mToken).underlying();
     }
 
-    function removeCTokenSupport(address cToken) external onlyDaoPermissions {
+    function removeCTokenSupport(address mToken) external onlyDaoPermissions {
         require(
-            cTokenAssets[cToken].isCToken,
+            mTokenAssets[mToken].isMToken,
             "PriceRouter: CToken is not configured"
         );
-        delete cTokenAssets[cToken];
+        delete mTokenAssets[mToken];
     }
 
     function notifyAssetPriceFeedRemoval(address asset) external onlyAdaptor {
@@ -280,8 +280,8 @@ contract PriceRouter {
     /// @param asset The address of the asset to check.
     /// @return True if the asset is supported, false otherwise.
     function isSupportedAsset(address asset) external view returns (bool) {
-        if (cTokenAssets[asset].isCToken) {
-            return assetPriceFeeds[cTokenAssets[asset].underlying].length > 0;
+        if (mTokenAssets[asset].isMToken) {
+            return assetPriceFeeds[mTokenAssets[asset].underlying].length > 0;
         }
 
         return assetPriceFeeds[asset].length > 0;
@@ -308,8 +308,8 @@ contract PriceRouter {
         uint256 numAssetPriceFeeds = assetPriceFeeds[asset].length;
         require(numAssetPriceFeeds > 0, "PriceRouter: no feeds available");
 
-        if (cTokenAssets[asset].isCToken) {
-            asset = cTokenAssets[asset].underlying;
+        if (mTokenAssets[asset].isMToken) {
+            asset = mTokenAssets[asset].underlying;
         }
 
         if (numAssetPriceFeeds < 2) {
