@@ -75,7 +75,6 @@ contract Lendtroller is ILendtroller {
     mapping(address => IMToken[]) public accountAssets;
 
     /// Whether market can be used for collateral or not
-    mapping(IMToken => bool) public marketDisableCollateral;
     mapping(address => mapping(IMToken => bool)) public userDisableCollateral;
 
     // PositionFolding contract address
@@ -577,26 +576,6 @@ contract Lendtroller is ILendtroller {
         }
     }
 
-    /// @notice Set collateral on/off option for market token
-    /// @dev Admin can set the collateral on or off
-    /// @param mTokens The addresses of the markets (tokens) to change
-    ///                the collateral on/off option
-    /// @param disableCollateral Disable mToken from collateral
-    function _setDisableCollateral(
-        IMToken[] calldata mTokens,
-        bool disableCollateral
-    ) external onlyElevatedPermissions {
-        uint256 numMarkets = mTokens.length;
-        if (numMarkets == 0) {
-            revert InvalidValue();
-        }
-
-        for (uint256 i; i < numMarkets; ++i) {
-            marketDisableCollateral[mTokens[i]] = disableCollateral;
-            emit SetDisableCollateral(mTokens[i], disableCollateral);
-        }
-    }
-
     /// @notice Admin function to change the Borrow Cap Guardian
     /// @param newBorrowCapGuardian The address of the new Borrow Cap Guardian
     function _setBorrowCapGuardian(
@@ -1016,7 +995,7 @@ contract Lendtroller is ILendtroller {
         for (uint256 i; i < numAccountAssets; ++i) {
             asset = accountAssets[account][i];
             collateralEnabled =
-                marketDisableCollateral[asset] == false &&
+                asset.tokenType() == 1 &&
                 userDisableCollateral[account][asset] == false;
 
             (
