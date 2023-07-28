@@ -12,6 +12,14 @@ import { BasePositionVault } from "contracts/deposits/adaptors/BasePositionVault
 /// @title Curvance Lendtroller
 /// @notice Manages risk within the lending & collateral markets
 contract Lendtroller is ILendtroller {
+    /// TYPES ///
+
+    struct UserData {
+        mapping(IMToken => bool) collateralDisabled;
+        uint256 lastBorrowTimestamp;
+    }
+
+
     /// CONSTANTS ///
 
     ICentralRegistry public immutable centralRegistry;
@@ -75,7 +83,7 @@ contract Lendtroller is ILendtroller {
     mapping(address => IMToken[]) public accountAssets;
 
     /// Whether market can be used for collateral or not
-    mapping(address => mapping(IMToken => bool)) public userDisableCollateral;
+    mapping(address => UserData) public userData;
 
     // PositionFolding contract address
     address public override positionFolding;
@@ -280,10 +288,24 @@ contract Lendtroller is ILendtroller {
     /// @notice Checks if the account should be allowed to repay a borrow
     ///         in the given market
     /// @param mToken The market to verify the repay against
-    function repayAllowed(address mToken, address) external view override {
+    /// @param account The account who will have their loan repaid
+    function repayAllowed(address mToken, address account) external view override {
+
         if (!markets[mToken].isListed) {
             revert MarketNotListed(mToken);
         }
+
+        /// We require a `minimumHoldPeriod` to break flashloan manipulations attempts
+        /// as well as short term price manipulations if the dynamic dual oracle 
+        /// fails to protect the market somehow
+        if (
+            uint256(IMToken(mToken).getBorrowTimestamp(account)) +
+                minimumHoldPeriod >
+            block.timestamp
+        ) {
+            revert MinimumHoldPeriod();
+        }
+
     }
 
     /// @notice Checks if the liquidation should be allowed to occur
@@ -431,12 +453,15 @@ contract Lendtroller is ILendtroller {
         }
 
         for (uint256 i; i < numMarkets; ++i) {
-            userDisableCollateral[msg.sender][mTokens[i]] = disableCollateral;
-            emit SetUserDisableCollateral(
-                msg.sender,
-                mTokens[i],
-                disableCollateral
-            );
+            /// Make sure the mToken is a collateral token
+            if (mTokens[i].tokenType() > 0) {
+                userData[msg.sender].collateralDisabled[mTokens[i]] = disableCollateral;
+                emit SetUserDisableCollateral(
+                    msg.sender,
+                    mTokens[i],
+                    disableCollateral
+                );
+            }
         }
 
         (, uint256 shortfall) = getHypotheticalAccountLiquidityInternal(
@@ -629,8 +654,23 @@ contract Lendtroller is ILendtroller {
 
     /// PUBLIC FUNCTIONS ///
 
+    /// @notice Fetches the current price router from the central registry
+    /// @return Current PriceRouter interface address
     function getPriceRouter() public view returns (IPriceRouter) {
         return IPriceRouter(centralRegistry.priceRouter());
+    }
+
+    /// @notice Calculates the price of a cToken based on the underlying asset price and exchange ratio with vault
+    /// @param cToken The address of the cToken for which to calculate the price.
+    /// @param underlyingPrice The price of the underlying asset of the cToken
+    /// @return The price of the cToken
+    function getCTokenPrice(
+        address cToken,
+        uint256 underlyingPrice
+    ) public view returns (uint256) {
+        return
+            (underlyingPrice *
+                BasePositionVault(ICToken(cToken).vault()).convertToAssets(expScale)) / expScale;
     }
 
     /// @notice Add assets to be included in account liquidity calculation
@@ -876,18 +916,22 @@ contract Lendtroller is ILendtroller {
             revert MarketNotListed(mToken);
         }
 
+        // If the redeemer is not 'in' the market, then we can bypass
+        // the liquidity check
+        if (!markets[mToken].accountMembership[redeemer]) {
+            return;
+        }
+
+        /// We require a `minimumHoldPeriod` to break flashloan manipulations attempts
+        /// as well as short term price manipulations if the dynamic dual oracle 
+        /// fails to protect the market somehow
+        /// @trust might need to store this timestamp in lendtroller 
         if (
             uint256(IMToken(mToken).getBorrowTimestamp(redeemer)) +
                 minimumHoldPeriod >
             block.timestamp
         ) {
             revert MinimumHoldPeriod();
-        }
-
-        // If the redeemer is not 'in' the market, then we can bypass
-        // the liquidity check
-        if (!markets[mToken].accountMembership[redeemer]) {
-            return;
         }
 
         // Otherwise, perform a hypothetical liquidity check to guard against
@@ -994,7 +1038,7 @@ contract Lendtroller is ILendtroller {
             asset = accountAssets[account][i];
             collateralEnabled =
                 asset.tokenType() == 1 &&
-                !userDisableCollateral[account][asset];
+                !userData[account].collateralDisabled[asset];
 
             (
                 uint256 mTokenBalance,
@@ -1064,13 +1108,5 @@ contract Lendtroller is ILendtroller {
         allMarkets.push(IMToken(mToken));
     }
 
-    function getCTokenPrice(
-        address cToken,
-        uint256 underlyingPrice
-    ) public view returns (uint256 price) {
-        address vault = ICToken(cToken).vault();
-        return
-            (underlyingPrice *
-                BasePositionVault(vault).convertToAssets(expScale)) / expScale;
-    }
+    
 }

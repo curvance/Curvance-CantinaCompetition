@@ -24,7 +24,8 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @member interestIndex Global borrowIndex as of the most recent balance-changing action
     struct BorrowSnapshot {
         uint256 principal;
-        uint256 interestIndex;
+        uint216 interestIndex;
+        uint40 borrowTimestamp;
     }
 
     /// CONSTANTS ///
@@ -36,12 +37,6 @@ contract DToken is ERC165, ReentrancyGuard {
 
     // Maximum fraction of interest that can be set aside for reserves
     uint256 internal constant reserveFactorMaxScaled = 1e18;
-
-    // Mask of all bits in account data excluding timestamp, meaning all room reserved for balanceOf
-    uint256 private constant _BITMASK_BALANCE_OF_ENTRY = (1 << 216) - 1;
-
-    // The bit position of `timestamp` in packed address data
-    uint256 private constant _BITPOS_TIMESTAMP = 216;
 
     /// @notice Indicator that this is a DToken contract (for inspection)
     bool public constant isDToken = true;
@@ -78,7 +73,7 @@ contract DToken is ERC165, ReentrancyGuard {
     // uint256 bit layout:
     // - [0..215]    `balance`
     // - [216..255]  `borrowTimestamp`
-    mapping(address => uint256) internal _accountData;
+    mapping(address => uint256) internal _accountBalance;
 
     // @notice account => spender => approved amount
     mapping(address => mapping(address => uint256))
@@ -199,7 +194,7 @@ contract DToken is ERC165, ReentrancyGuard {
     modifier onlyDaoPermissions() {
         require(
             centralRegistry.hasDaoPermissions(msg.sender),
-            "CToken: UNAUTHORIZED"
+            "DToken: UNAUTHORIZED"
         );
         _;
     }
@@ -207,14 +202,14 @@ contract DToken is ERC165, ReentrancyGuard {
     modifier onlyElevatedPermissions() {
         require(
             centralRegistry.hasElevatedPermissions(msg.sender),
-            "CToken: UNAUTHORIZED"
+            "DToken: UNAUTHORIZED"
         );
         _;
     }
 
     modifier interestUpdated() {
         require(
-            accrualBlockTimestamp == block.timestamp, "CToken: Freshness check failed"
+            accrualBlockTimestamp == block.timestamp, "DToken: Freshness check failed"
         );
         _;
     }
@@ -286,7 +281,7 @@ contract DToken is ERC165, ReentrancyGuard {
                 address(centralRegistry_),
                 type(ICentralRegistry).interfaceId
             ),
-            "CToken: invalid central registry"
+            "DToken: invalid central registry"
         );
 
         centralRegistry = centralRegistry_;
@@ -641,7 +636,7 @@ contract DToken is ERC165, ReentrancyGuard {
 
     // Returns the last borrow timestamp for `account`.
     function getBorrowTimestamp(address account) external view returns (uint40) {
-        return uint40(_accountData[account] >> _BITPOS_TIMESTAMP);
+        return accountBorrows[account].borrowTimestamp;
     }
 
     /// @notice Get the underlying balance of the `account`
@@ -733,7 +728,7 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @return balance The number of tokens owned by `account`
     // @dev Returns the balance of tokens for `account`
     function balanceOf(address account) public view returns (uint256) {
-        return _accountData[account] & _BITMASK_BALANCE_OF_ENTRY;
+        return _accountBalance[account];
     }
 
     /// @notice Return the borrow balance of account based on stored data
@@ -895,11 +890,10 @@ contract DToken is ERC165, ReentrancyGuard {
         }
 
         // Update token balances 
-        // shift token value by timestamp length bit length so we can check for underflow
-        _accountData[from] -= _leftShiftBalance(uint216(tokens));
+        _accountBalance[from] -= tokens;
         /// We know that from balance wont overflow due to totalSupply check in constructor and underflow check above
         unchecked {
-            _accountData[to] += tokens;
+            _accountBalance[to] += tokens;
         }
         
         // emit events on gauge pool
@@ -910,50 +904,11 @@ contract DToken is ERC165, ReentrancyGuard {
         emit Transfer(from, to, tokens);
     }
 
-
-    /// @notice Packs balance and timestamp into a single uint256 with bitwise operations and assembly for efficiency.
-    /// @dev Shoutout to Vectorized for helping refine these functions
-    /// @param bal The user token balance
-    /// @param time The timestamp of the users last borrow
-    /// @return result The packed balance and timestamp
-    function _packAccountData(uint216 bal, uint40 time) internal pure returns (uint256 result) {
-        assembly {
-            // Use assembly to avoid unnecessary masking when casting to uint256s.
-            // This is equivalent to `(uint256(bal) << 40) | uint256(time)`.
-            result := or(shl(40, bal), and(0xffffffffff, time))
-        }
-    }
-
-    /// @notice Shifts a token balance left by 40 bits
-    /// @param bal The token balance
-    /// @return result The shifted balance
-    function _leftShiftBalance(uint216 bal) internal pure returns (uint256 result) {
-        assembly {
-            // Use assembly to avoid unnecessary masking when casting to uint256s.
-            // This is equivalent to `uint256(bal) << 40`.
-            result := shl(40, bal)
-        }
-    }
-
-    /// @notice Replaces the timestamp in the packed user account data, 
-    ///         leverages bitwise operations and assembly for efficiency
-    /// @param bal The user token balance
-    /// @param time The new timestamp for the users last borrow
-    /// @return result The packed balance and timestamp
-    function _replaceTimestamp(uint256 bal, uint40 time) internal pure returns (uint256 result) {
-        assembly {
-            // Use assembly to avoid unnecessary masking when casting to uint256s.
-            // This is equivalent to `bal ^ (0xffffffffff & (bal ^ time))`.
-            result := xor(bal, and(0xffffffffff, xor(bal, time)))
-        }
-    }
-
     /// @notice User supplies assets into the market and receives cTokens in exchange
     /// @dev Assumes interest has already been accrued up to the current timestamp
     /// @param user The address of the account which is supplying the assets
     /// @param recipient The address of the account which will receive cToken
     /// @param mintAmount The amount of the underlying asset to supply
-    
     function _mint(
         address user,
         address recipient,
@@ -977,7 +932,7 @@ contract DToken is ERC165, ReentrancyGuard {
         totalSupply += mintTokens;
 
         /// Calculate their new balance
-        _accountData[recipient] = _leftShiftBalance(uint216(mintTokens));
+        _accountBalance[recipient] += mintTokens;
 
         // emit events on gauge pool
         GaugePool(gaugePool()).deposit(address(this), recipient, mintTokens);
@@ -1008,7 +963,7 @@ contract DToken is ERC165, ReentrancyGuard {
         // Need to shift bits by timestamp length to make sure we do a proper underflow check
         // redeemTokens should never be above uint216 and the user can never have more than uint216,
         // So if theyve put in a larger number than type(uint216).max we know it will revert from underflow
-        _accountData[redeemer] -= _leftShiftBalance(uint216(redeemTokens));
+        _accountBalance[redeemer] -= redeemTokens;
 
         // We have user underflow check above so we do not need a redundant check here
         unchecked {
@@ -1047,11 +1002,10 @@ contract DToken is ERC165, ReentrancyGuard {
             revert BorrowCashNotAvailable();
         }
 
-        _accountData[borrower] = _replaceTimestamp(balanceOf(borrower), uint40(block.timestamp));
-
         // We calculate the new borrower and total borrow balances, failing on overflow:
         accountBorrows[borrower].principal = borrowBalanceStored(borrower) + borrowAmount;
-        accountBorrows[borrower].interestIndex = borrowIndex;
+        accountBorrows[borrower].interestIndex = uint216(borrowIndex);
+        accountBorrows[borrower].borrowTimestamp = uint40(block.timestamp);
         totalBorrows += borrowAmount;
 
         // doTransferOut reverts if anything goes wrong, since we can't be sure if side effects occurred.
@@ -1096,7 +1050,7 @@ contract DToken is ERC165, ReentrancyGuard {
 
         // We calculate the new borrower and total borrow balances, failing on underflow:
         accountBorrows[borrower].principal = accountBorrowsPrev - actualRepayAmount;
-        accountBorrows[borrower].interestIndex = borrowIndex;
+        accountBorrows[borrower].interestIndex = uint216(borrowIndex);
         totalBorrows -= actualRepayAmount;
 
         // We emit a Repay event
@@ -1210,8 +1164,8 @@ contract DToken is ERC165, ReentrancyGuard {
         uint256 liquidatorSeizeTokens = seizeTokens - protocolSeizeTokens;
 
         // Document new account balances with underflow check on borrower balance
-        _accountData[borrower] -= _leftShiftBalance(uint216(seizeTokens));
-        _accountData[liquidator] += liquidatorSeizeTokens;
+        _accountBalance[borrower] -= seizeTokens;
+        _accountBalance[liquidator] += liquidatorSeizeTokens;
         totalReserves += protocolSeizeAmount;
         totalSupply -= protocolSeizeTokens;
         
@@ -1270,7 +1224,6 @@ contract DToken is ERC165, ReentrancyGuard {
             to,
             amount
         );
-
     }
 
     /// @inheritdoc ERC165
