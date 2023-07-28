@@ -329,7 +329,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
             repayAmount + remaining
         );
 
-        CToken(address(borrowToken)).repayBorrowForPositionFolding(redeemer, repayAmount);
+        CToken(address(borrowToken)).repayForPositionFolding(redeemer, repayAmount);
 
         if (remaining > 0) {
             // remaining borrow underlying back to user

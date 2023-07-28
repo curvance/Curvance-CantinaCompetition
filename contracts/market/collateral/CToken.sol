@@ -266,13 +266,13 @@ contract CToken is ICToken, ERC165, ReentrancyGuard {
 
     /// @notice Sender repays their own borrow
     /// @param repayAmount The amount to repay, or -1 for the full outstanding amount
-    function repayBorrow(uint256 repayAmount) external override nonReentrant {
+    function repay(uint256 repayAmount) external override nonReentrant {
         accrueInterest();
 
-        _repayBorrow(msg.sender, msg.sender, repayAmount);
+        _repay(msg.sender, msg.sender, repayAmount);
     }
 
-    function repayBorrowForPositionFolding(address user, uint256 repayAmount) external nonReentrant {
+    function repayForPositionFolding(address user, uint256 repayAmount) external nonReentrant {
 
         if (msg.sender != lendtroller.positionFolding()) {
             revert FailedNotFromPositionFolding();
@@ -280,7 +280,7 @@ contract CToken is ICToken, ERC165, ReentrancyGuard {
 
         accrueInterest();
 
-        _repayBorrow(msg.sender, user, repayAmount);
+        _repay(msg.sender, user, repayAmount);
     }
 
     /// @notice Allows liquidation of a borrower's collateral,
@@ -288,7 +288,7 @@ contract CToken is ICToken, ERC165, ReentrancyGuard {
     /// @param borrower The address of the borrower to be liquidated
     /// @param repayAmount The amount of underlying asset the liquidator wishes to repay
     /// @param cTokenCollateral The market in which to seize collateral from the borrower
-    function liquidateBorrow(
+    function liquidateUser(
         address borrower,
         uint256 repayAmount,
         ICToken cTokenCollateral
@@ -297,7 +297,7 @@ contract CToken is ICToken, ERC165, ReentrancyGuard {
         accrueInterest();
         cTokenCollateral.accrueInterest();
 
-        _liquidateBorrow(
+        _liquidateUser(
             msg.sender,
             borrower,
             repayAmount,
@@ -965,19 +965,19 @@ contract CToken is ICToken, ERC165, ReentrancyGuard {
 
     /// @notice Allows a payer to repay a loan on behalf of the borrower, usually themselves
     /// @dev First validates that the payer is allowed to repay the loan, then repays
-    ///      the loan by transferring in the repay amount. Emits a RepayBorrow event on
+    ///      the loan by transferring in the repay amount. Emits a repay event on
     ///      successful repayment.
     /// @param payer The address paying off the borrow
     /// @param borrower The account with the debt being paid off
     /// @param repayAmount The amount the payer wishes to repay, or 0 for the full outstanding amount
     /// @return actualRepayAmount The actual amount repaid
-    function _repayBorrow(
+    function _repay(
         address payer,
         address borrower,
         uint256 repayAmount
     ) internal interestUpdated returns (uint256) {
         // Validate that the payer is allowed to repay the loan
-        lendtroller.repayBorrowAllowed(address(this), borrower);
+        lendtroller.repayAllowed(address(this), borrower);
 
         // Cache how much the borrower has to save gas
         uint256 accountBorrowsPrev = borrowBalanceStored(borrower);
@@ -998,8 +998,8 @@ contract CToken is ICToken, ERC165, ReentrancyGuard {
         accountBorrows[borrower].interestIndex = borrowIndex;
         totalBorrows -= actualRepayAmount;
 
-        // We emit a RepayBorrow event
-        emit RepayBorrow(
+        // We emit a Repay event
+        emit Repay(
             payer,
             borrower,
             actualRepayAmount
@@ -1014,7 +1014,7 @@ contract CToken is ICToken, ERC165, ReentrancyGuard {
     /// @param liquidator The address repaying the borrow and seizing collateral
     /// @param cTokenCollateral The market in which to seize collateral from the borrower
     /// @param repayAmount The amount of the underlying borrowed asset to repay
-    function _liquidateBorrow(
+    function _liquidateUser(
         address liquidator,
         address borrower,
         uint256 repayAmount,
@@ -1028,7 +1028,7 @@ contract CToken is ICToken, ERC165, ReentrancyGuard {
 
         // Fail if liquidate not allowed, 
         // trying to pay down too much with excessive repayAmount will revert here
-        lendtroller.liquidateBorrowAllowed(
+        lendtroller.liquidateUserAllowed(
             address(this),
             address(cTokenCollateral),
             borrower,
@@ -1040,8 +1040,8 @@ contract CToken is ICToken, ERC165, ReentrancyGuard {
             revert FailedFreshnessCheck();
         }
 
-        // Fail if repayBorrow fails
-        uint256 actualRepayAmount = _repayBorrow(
+        // Fail if repay fails
+        uint256 actualRepayAmount = _repay(
             liquidator,
             borrower,
             repayAmount
@@ -1066,8 +1066,8 @@ contract CToken is ICToken, ERC165, ReentrancyGuard {
             cTokenCollateral.seize(liquidator, borrower, seizeTokens);
         }
 
-        // We emit a LiquidateBorrow event
-        emit LiquidateBorrow(
+        // We emit a Liquidated event
+        emit Liquidated(
             liquidator,
             borrower,
             actualRepayAmount,
@@ -1077,7 +1077,7 @@ contract CToken is ICToken, ERC165, ReentrancyGuard {
     }
 
     /// @notice Transfers collateral tokens (this market) to the liquidator.
-    /// @dev Called only during an in-kind liquidation, or by liquidateBorrow during the liquidation of another CToken.
+    /// @dev Called only during an in-kind liquidation, or by liquidateUser during the liquidation of another CToken.
     ///  Its absolutely critical to use msg.sender as the seizer cToken and not a parameter.
     /// @param seizerToken The contract seizing the collateral (i.e. borrowed cToken)
     /// @param liquidator The account receiving seized collateral
@@ -1095,7 +1095,7 @@ contract CToken is ICToken, ERC165, ReentrancyGuard {
             seizerToken,
             liquidator,
             borrower
-        ); //, seizeTokens);
+        );
 
         // Fails if borrower = liquidator
         if (borrower == liquidator) {

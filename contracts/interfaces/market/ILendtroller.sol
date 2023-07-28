@@ -121,9 +121,9 @@ interface ILendtroller {
         uint256 borrowAmount
     ) external;
 
-    function repayBorrowAllowed(address cToken, address borrower) external;
+    function repayAllowed(address cToken, address borrower) external;
 
-    function liquidateBorrowAllowed(
+    function liquidateUserAllowed(
         address cTokenBorrowed,
         address cTokenCollateral,
         address borrower,

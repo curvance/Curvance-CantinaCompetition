@@ -284,7 +284,7 @@ contract Lendtroller is ILendtroller {
     /// @notice Checks if the account should be allowed to repay a borrow
     ///         in the given market
     /// @param cToken The market to verify the repay against
-    function repayBorrowAllowed(
+    function repayAllowed(
         address cToken,
         address
     ) external view override {
@@ -298,7 +298,7 @@ contract Lendtroller is ILendtroller {
     /// @param cTokenCollateral Asset which was used as collateral and will be seized
     /// @param borrower The address of the borrower
     /// @param repayAmount The amount of underlying being repaid
-    function liquidateBorrowAllowed(
+    function liquidateUserAllowed(
         address cTokenBorrowed,
         address cTokenCollateral,
         address borrower,
@@ -378,7 +378,7 @@ contract Lendtroller is ILendtroller {
 
     /// @notice Calculate number of tokens of collateral asset to
     ///         seize given an underlying amount
-    /// @dev Used in liquidation (called in cToken.liquidateBorrowFresh)
+    /// @dev Used in liquidation (called in cToken._liquidateUser)
     /// @param cTokenBorrowed The address of the borrowed cToken
     /// @param cTokenCollateral The address of the collateral cToken
     /// @param actualRepayAmount The amount of cTokenBorrowed underlying to

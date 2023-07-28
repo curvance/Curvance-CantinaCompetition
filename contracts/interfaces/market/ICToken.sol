@@ -53,14 +53,14 @@ interface ICToken {
     );
 
     /// @notice Event emitted when a borrow is repaid
-    event RepayBorrow(
+    event Repay(
         address payer,
         address borrower,
         uint256 repayAmount
     );
 
     /// @notice Event emitted when a borrow is liquidated
-    event LiquidateBorrow(
+    event Liquidated(
         address liquidator,
         address borrower,
         uint256 repayAmount,
@@ -122,9 +122,9 @@ interface ICToken {
 
     function borrow(uint256 borrowAmount) external;
 
-    function repayBorrow(uint256 repayAmount) external;
+    function repay(uint256 repayAmount) external;
 
-    function liquidateBorrow(
+    function liquidateUser(
         address borrower,
         uint256 repayAmount,
         ICToken cTokenCollateral
