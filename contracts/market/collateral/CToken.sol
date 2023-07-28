@@ -11,12 +11,12 @@ import { InterestRateModel } from "contracts/market/interestRates/InterestRateMo
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.sol";
+import { BasePositionVault } from "contracts/deposits/adaptors/BasePositionVault.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 
 /// @title Curvance's Collateral Token Contract
 contract CToken is ERC165, ReentrancyGuard {
-
     /// CONSTANTS ///
 
     uint256 internal constant expScale = 1e18;
@@ -43,7 +43,7 @@ contract CToken is ERC165, ReentrancyGuard {
     error ValidationFailed();
     error ReduceReservesCashNotAvailable();
 
-    /// EVENTS /// 
+    /// EVENTS ///
 
     /// @notice Event emitted when tokens are minted
     event Mint(
@@ -99,6 +99,7 @@ contract CToken is ERC165, ReentrancyGuard {
     string public name;
     string public symbol;
     ILendtroller public lendtroller;
+    BasePositionVault public vault;
     /// @notice Initial exchange rate used when minting the first CTokens (used when totalSupply = 0)
     uint256 internal initialExchangeRateScaled;
     /// @notice Total amount of reserves of the underlying held in this market
@@ -140,10 +141,10 @@ contract CToken is ERC165, ReentrancyGuard {
         ICentralRegistry centralRegistry_,
         address underlying_,
         address lendtroller_,
+        address vault_,
         uint256 initialExchangeRateScaled_,
         string memory name_
     ) {
-
         // Set initial exchange rate
         initialExchangeRateScaled = initialExchangeRateScaled_;
         if (initialExchangeRateScaled == 0) {
@@ -174,10 +175,10 @@ contract CToken is ERC165, ReentrancyGuard {
 
         centralRegistry = centralRegistry_;
         underlying = underlying_;
+        vault = BasePositionVault(vault_);
         name = name_;
         symbol = IERC20(underlying_).symbol();
         decimals = IERC20(underlying_).decimals();
-
     }
 
     /// @notice Transfer `amount` tokens from `msg.sender` to `to`
@@ -211,7 +212,6 @@ contract CToken is ERC165, ReentrancyGuard {
     /// @param mintAmount The amount of the underlying asset to supply
     /// @return bool true=success
     function mint(uint256 mintAmount) external nonReentrant returns (bool) {
-
         _mint(msg.sender, msg.sender, mintAmount);
         return true;
     }
@@ -225,7 +225,6 @@ contract CToken is ERC165, ReentrancyGuard {
         uint256 mintAmount,
         address recipient
     ) external nonReentrant returns (bool) {
-
         _mint(msg.sender, recipient, mintAmount);
         return true;
     }
@@ -234,16 +233,21 @@ contract CToken is ERC165, ReentrancyGuard {
     /// @dev Accrues interest whether or not the operation succeeds, unless reverted
     /// @param redeemTokens The number of cTokens to redeem into underlying
     function redeem(uint256 redeemTokens) external {
-        _redeem(payable(msg.sender), redeemTokens, (exchangeRateStored() * redeemTokens) / expScale, payable(msg.sender));
+        _redeem(
+            payable(msg.sender),
+            redeemTokens,
+            (exchangeRateStored() * redeemTokens) / expScale,
+            payable(msg.sender)
+        );
     }
 
     /// @notice Sender redeems cTokens in exchange for a specified amount of underlying asset
     /// @dev Accrues interest whether or not the operation succeeds, unless reverted
     /// @param redeemAmount The amount of underlying to redeem
     function redeemUnderlying(uint256 redeemAmount) external {
- 
         address payable redeemer = payable(msg.sender);
-        uint256 redeemTokens = (redeemAmount * expScale) / exchangeRateStored();
+        uint256 redeemTokens = (redeemAmount * expScale) /
+            exchangeRateStored();
 
         // Fail if redeem not allowed
         lendtroller.redeemAllowed(address(this), redeemer, redeemTokens);
@@ -259,12 +263,16 @@ contract CToken is ERC165, ReentrancyGuard {
         uint256 redeemAmount,
         bytes calldata params
     ) external {
-
         if (msg.sender != lendtroller.positionFolding()) {
             revert FailedNotFromPositionFolding();
         }
 
-        _redeem(user, (redeemAmount * expScale) / exchangeRateStored(), redeemAmount, payable(msg.sender));
+        _redeem(
+            user,
+            (redeemAmount * expScale) / exchangeRateStored(),
+            redeemAmount,
+            payable(msg.sender)
+        );
 
         IPositionFolding(msg.sender).onRedeem(
             address(this),
@@ -279,8 +287,9 @@ contract CToken is ERC165, ReentrancyGuard {
 
     /// @notice The sender adds to reserves.
     /// @param addAmount The amount fo underlying token to add as reserves
-    function depositReserves(uint256 addAmount) external nonReentrant onlyElevatedPermissions {
-
+    function depositReserves(
+        uint256 addAmount
+    ) external nonReentrant onlyElevatedPermissions {
         // On success, the cToken holds an additional addAmount of cash.
         totalReserves += doTransferIn(msg.sender, addAmount);
 
@@ -293,7 +302,6 @@ contract CToken is ERC165, ReentrancyGuard {
     function withdrawReserves(
         uint256 reduceAmount
     ) external nonReentrant onlyElevatedPermissions {
-
         // Make sure we have enough cash to cover withdrawal
         if (getCash() < reduceAmount) {
             revert ReduceReservesCashNotAvailable();
@@ -314,10 +322,7 @@ contract CToken is ERC165, ReentrancyGuard {
     /// @dev Sets `amount` as the allowance of `spender` over the caller's tokens.
     ///
     /// Emits a {Approval} event.
-    function approve(
-        address spender,
-        uint256 amount
-    ) external returns (bool) {
+    function approve(address spender, uint256 amount) external returns (bool) {
         transferAllowances[msg.sender][spender] = amount;
 
         emit Approval(msg.sender, spender, amount);
@@ -382,9 +387,7 @@ contract CToken is ERC165, ReentrancyGuard {
     /// @dev This also accrues interest in a transaction
     /// @param account The address of the account to query
     /// @return The amount of underlying owned by `account`
-    function balanceOfUnderlying(
-        address account
-    ) external returns (uint256) {
+    function balanceOfUnderlying(address account) external returns (uint256) {
         return ((exchangeRateCurrent() * balanceOf(account)) / expScale);
     }
 
@@ -397,11 +400,7 @@ contract CToken is ERC165, ReentrancyGuard {
     function getAccountSnapshot(
         address account
     ) external view returns (uint256, uint256, uint256) {
-        return (
-            balanceOf(account),
-            0,
-            exchangeRateStored()
-        );
+        return (balanceOf(account), 0, exchangeRateStored());
     }
 
     /// @notice Transfers collateral tokens (this market) to the liquidator.
@@ -445,11 +444,7 @@ contract CToken is ERC165, ReentrancyGuard {
 
     /// @notice Accrue interest then return the up-to-date exchange rate
     /// @return Calculated exchange rate scaled by 1e18
-    function exchangeRateCurrent()
-        public
-        nonReentrant
-        returns (uint256)
-    {
+    function exchangeRateCurrent() public nonReentrant returns (uint256) {
         return 1;
     }
 
@@ -486,14 +481,14 @@ contract CToken is ERC165, ReentrancyGuard {
             transferAllowances[from][spender] -= tokens;
         }
 
-        // Update token balances 
+        // Update token balances
         // shift token value by timestamp length bit length so we can check for underflow
         _accountBalance[from] -= tokens;
         /// We know that from balance wont overflow due to underflow check above
         unchecked {
             _accountBalance[to] += tokens;
         }
-        
+
         // emit events on gauge pool
         GaugePool(gaugePool()).withdraw(address(this), from, tokens);
         GaugePool(gaugePool()).deposit(address(this), to, tokens);
@@ -510,7 +505,7 @@ contract CToken is ERC165, ReentrancyGuard {
     function _mint(
         address user,
         address recipient,
-        uint256 mintAmount   
+        uint256 mintAmount
     ) internal {
         // Fail if mint not allowed
         lendtroller.mintAllowed(address(this), recipient);
@@ -552,7 +547,6 @@ contract CToken is ERC165, ReentrancyGuard {
         uint256 redeemAmount,
         address payable recipient
     ) internal nonReentrant {
-
         // Check if we have enough cash to support the redeem
         if (getCash() < redeemAmount) {
             revert RedeemTransferOutNotPossible();
@@ -567,7 +561,7 @@ contract CToken is ERC165, ReentrancyGuard {
         unchecked {
             totalSupply -= redeemTokens;
         }
-        
+
         // emit events on gauge pool
         GaugePool(gaugePool()).withdraw(address(this), redeemer, redeemTokens);
 
@@ -624,7 +618,7 @@ contract CToken is ERC165, ReentrancyGuard {
         _accountBalance[liquidator] += liquidatorSeizeTokens;
         totalReserves += protocolSeizeAmount;
         totalSupply -= protocolSeizeTokens;
-        
+
         // emit events on gauge pool
         GaugePool(gaugePool()).withdraw(address(this), borrower, seizeTokens);
         GaugePool(gaugePool()).deposit(
@@ -636,11 +630,7 @@ contract CToken is ERC165, ReentrancyGuard {
         // Emit a Transfer event
         emit Transfer(borrower, liquidator, liquidatorSeizeTokens);
         emit Transfer(borrower, address(this), protocolSeizeTokens);
-        emit ReservesAdded(
-            address(this),
-            protocolSeizeAmount,
-            totalReserves
-        );
+        emit ReservesAdded(address(this), protocolSeizeAmount, totalReserves);
     }
 
     /// @notice Handles incoming token transfers and notifies the amount received
@@ -652,7 +642,6 @@ contract CToken is ERC165, ReentrancyGuard {
         address from,
         uint256 amount
     ) internal returns (uint256) {
-
         /// SafeTransferLib will handle reversion from insufficient balance or allowance
         /// Note this will not support tokens with a transfer tax, which should not exist on a underlying asset anyway
         SafeTransferLib.safeTransferFrom(
@@ -662,25 +651,21 @@ contract CToken is ERC165, ReentrancyGuard {
             amount
         );
 
-        return amount;
+        // deposit into the vault
+        SafeTransferLib.safeApprove(underlying, address(vault), amount);
+        return vault.deposit(amount, address(this));
     }
 
     /// @notice Handles outgoing token transfers
     /// @dev This function uses the SafeTransferLib to safely perform the transfer.
-    /// @param to Address receiving the token transfer 
+    /// @param to Address receiving the token transfer
     /// @param amount Amount of tokens to transfer out
-    function doTransferOut(
-        address to,
-        uint256 amount
-    ) internal {
+    function doTransferOut(address to, uint256 amount) internal {
+        // withdraw from the vault
+        amount = vault.redeem(amount, address(this), address(this));
 
         /// SafeTransferLib will handle reversion from insufficient cash held
-        SafeTransferLib.safeTransfer(
-            underlying,
-            to,
-            amount
-        );
-
+        SafeTransferLib.safeTransfer(underlying, to, amount);
     }
 
     /// @inheritdoc ERC165

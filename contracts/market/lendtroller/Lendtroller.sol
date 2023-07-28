@@ -6,6 +6,8 @@ import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 import { IMToken } from "contracts/interfaces/market/IMToken.sol";
+import { ICToken } from "contracts/interfaces/market/ICToken.sol";
+import { BasePositionVault } from "contracts/deposits/adaptors/BasePositionVault.sol";
 
 /// @title Curvance Lendtroller
 /// @notice Manages risk within the lending & collateral markets
@@ -281,10 +283,7 @@ contract Lendtroller is ILendtroller {
     /// @notice Checks if the account should be allowed to repay a borrow
     ///         in the given market
     /// @param mToken The market to verify the repay against
-    function repayAllowed(
-        address mToken,
-        address
-    ) external view override {
+    function repayAllowed(address mToken, address) external view override {
         if (!markets[mToken].isListed) {
             revert MarketNotListed(mToken);
         }
@@ -400,6 +399,11 @@ contract Lendtroller is ILendtroller {
             revert PriceError();
         }
 
+        uint256 cTokenPrice = getCTokenPrice(
+            address(mTokenCollateral),
+            lowPrice
+        );
+
         // Get the exchange rate and calculate the number of collateral tokens to seize:
         //  seizeAmount = actualRepayAmount * liquidationIncentive * priceBorrowed / priceCollateral
         //  seizeTokens = seizeAmount / exchangeRate
@@ -407,7 +411,7 @@ contract Lendtroller is ILendtroller {
         uint256 exchangeRateScaled = IMToken(mTokenCollateral)
             .exchangeRateStored();
         uint256 numerator = liquidationIncentiveScaled * highPrice;
-        uint256 denominator = lowPrice * exchangeRateScaled;
+        uint256 denominator = cTokenPrice * exchangeRateScaled;
         uint256 ratio = (numerator * expScale) / denominator;
         uint256 seizeTokens = (ratio * actualRepayAmount) / expScale;
 
@@ -895,7 +899,11 @@ contract Lendtroller is ILendtroller {
             revert MarketNotListed(mToken);
         }
 
-        if(uint256(IMToken(mToken).getBorrowTimestamp(redeemer)) + minimumHoldPeriod > block.timestamp) {
+        if (
+            uint256(IMToken(mToken).getBorrowTimestamp(redeemer)) +
+                minimumHoldPeriod >
+            block.timestamp
+        ) {
             revert MinimumHoldPeriod();
         }
 
@@ -1018,14 +1026,14 @@ contract Lendtroller is ILendtroller {
             ) = asset.getAccountSnapshot(account);
 
             if (collateralEnabled) {
-                (uint256 lowerPrice, uint256 errorCode) = getPriceRouter()
+                (uint256 lowPrice, uint256 errorCode) = getPriceRouter()
                     .getPrice(address(asset), true, true);
                 if (errorCode == 2) {
                     revert PriceError();
                 }
-
+                uint256 cTokenPrice = getCTokenPrice(address(asset), lowPrice);
                 uint256 assetValue = (((mTokenBalance * exchangeRateScaled) /
-                    expScale) * lowerPrice) / expScale;
+                    expScale) * cTokenPrice) / expScale;
 
                 sumCollateral += assetValue;
                 maxBorrow +=
@@ -1035,13 +1043,13 @@ contract Lendtroller is ILendtroller {
             }
 
             {
-                (uint256 higherPrice, uint256 errorCode) = getPriceRouter()
+                (uint256 highPrice, uint256 errorCode) = getPriceRouter()
                     .getPrice(address(asset), true, false);
                 if (errorCode == 2) {
                     revert PriceError();
                 }
 
-                sumBorrowPlusEffects += ((higherPrice * borrowBalance) /
+                sumBorrowPlusEffects += ((highPrice * borrowBalance) /
                     expScale);
 
                 // Calculate effects of interacting with mTokenModify
@@ -1077,5 +1085,15 @@ contract Lendtroller is ILendtroller {
             }
         }
         allMarkets.push(IMToken(mToken));
+    }
+
+    function getCTokenPrice(
+        address cToken,
+        uint256 underlyingPrice
+    ) public view returns (uint256 price) {
+        address vault = ICToken(cToken).vault();
+        return
+            (underlyingPrice *
+                BasePositionVault(vault).convertToAssets(1 ether)) / 1 ether;
     }
 }

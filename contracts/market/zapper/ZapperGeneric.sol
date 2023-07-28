@@ -15,7 +15,6 @@ import { IWETH } from "contracts/interfaces/IWETH.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 contract ZapperGeneric {
-    
     /// CONSTANTS ///
 
     uint256 public constant SLIPPAGE = 500;
@@ -91,10 +90,12 @@ contract ZapperGeneric {
         );
 
         // enter curvance
-        cTokenOutAmount = _enterCurvance(cToken, lpToken, lpOutAmount);
-
-        // transfer cToken back to user
-        SafeTransferLib.safeTransfer(cToken, recipient, cTokenOutAmount);
+        cTokenOutAmount = _enterCurvance(
+            cToken,
+            lpToken,
+            lpOutAmount,
+            recipient
+        );
     }
 
     function curveOut(
@@ -174,10 +175,12 @@ contract ZapperGeneric {
         );
 
         // enter curvance
-        cTokenOutAmount = _enterCurvance(cToken, lpToken, lpOutAmount);
-
-        // transfer cToken back to user
-        SafeTransferLib.safeTransfer(cToken, recipient, cTokenOutAmount);
+        cTokenOutAmount = _enterCurvance(
+            cToken,
+            lpToken,
+            lpOutAmount,
+            recipient
+        );
     }
 
     function balancerOut(
@@ -270,18 +273,18 @@ contract ZapperGeneric {
     /// @param cToken The curvance deposit token address
     /// @param lpToken The Curve LP token address
     /// @param amount The amount to deposit
+    /// @param recipient The recipient adress
     /// @return out The output amount
     function _enterCurvance(
         address cToken,
         address lpToken,
-        uint256 amount
+        uint256 amount,
+        address recipient
     ) private returns (uint256 out) {
         // approve lp token
         SwapperLib.approveTokenIfNeeded(lpToken, cToken, amount);
 
         // enter curvance
-        require(CToken(cToken).mint(amount), "curvance");
-
-        out = CommonLib.getTokenBalance(cToken);
+        require(CToken(cToken).mintFor(amount, recipient), "curvance");
     }
 }
