@@ -1059,7 +1059,7 @@ contract Lendtroller is ILendtroller {
                         // from tokens -> ether (normalized price value)
                         uint256 tokensToDenom = (((markets[address(asset)]
                             .collateralFactorScaled * exchangeRateScaled) /
-                            expScale) * higherPrice) / expScale;
+                            expScale) * highPrice) / expScale;
 
                         // redeem effect
                         sumBorrowPlusEffects += ((tokensToDenom *
@@ -1067,7 +1067,7 @@ contract Lendtroller is ILendtroller {
                     }
 
                     // borrow effect
-                    sumBorrowPlusEffects += ((higherPrice * borrowAmount) /
+                    sumBorrowPlusEffects += ((highPrice * borrowAmount) /
                         expScale);
                 }
             }
