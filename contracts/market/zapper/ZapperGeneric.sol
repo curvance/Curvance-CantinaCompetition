@@ -286,5 +286,7 @@ contract ZapperGeneric {
 
         // enter curvance
         require(CToken(cToken).mintFor(amount, recipient), "curvance");
+
+        out = CommonLib.getTokenBalance(cToken);
     }
 }
