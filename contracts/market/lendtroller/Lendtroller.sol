@@ -159,7 +159,7 @@ contract Lendtroller is ILendtroller {
         }
 
         // Fail if the sender is not permitted to redeem all of their tokens
-        redeemAllowedInternal(mTokenAddress, msg.sender, tokensHeld);
+        _redeemAllowed(mTokenAddress, msg.sender, tokensHeld);
 
         ILendtroller.Market storage marketToExit = markets[address(mToken)];
 
@@ -224,7 +224,7 @@ contract Lendtroller is ILendtroller {
         address redeemer,
         uint256 redeemTokens
     ) external view override {
-        redeemAllowedInternal(mToken, redeemer, redeemTokens);
+        _redeemAllowed(mToken, redeemer, redeemTokens);
     }
 
     /// @notice Checks if the account should be allowed to borrow
@@ -251,7 +251,7 @@ contract Lendtroller is ILendtroller {
                 revert AddressUnauthorized();
             }
 
-            addToMarketInternal(IMToken(msg.sender), borrower);
+            _addToMarket(IMToken(msg.sender), borrower);
 
             // it should be impossible to break the important invariant
             require(markets[mToken].accountMembership[borrower], "lendtroller: invariant error");
@@ -273,7 +273,7 @@ contract Lendtroller is ILendtroller {
             }
         }
 
-        (, uint256 shortfall) = getHypotheticalAccountLiquidityInternal(
+        (, uint256 shortfall) = _getHypotheticalAccountLiquidity(
             borrower,
             IMToken(mToken),
             0,
@@ -327,7 +327,7 @@ contract Lendtroller is ILendtroller {
         }
 
         // The borrower must have shortfall in order to be liquidatable
-        (, uint256 shortfall) = getAccountLiquidityInternal(borrower);
+        (, uint256 shortfall) = _getAccountLiquidity(borrower);
         if (shortfall == 0) {
             revert InsufficientShortfall();
         }
@@ -388,7 +388,7 @@ contract Lendtroller is ILendtroller {
             revert Paused();
         }
 
-        redeemAllowedInternal(mToken, src, transferTokens);
+        _redeemAllowed(mToken, src, transferTokens);
     }
 
     /// @notice Calculate number of tokens of collateral asset to
@@ -464,7 +464,7 @@ contract Lendtroller is ILendtroller {
             }
         }
 
-        (, uint256 shortfall) = getHypotheticalAccountLiquidityInternal(
+        (, uint256 shortfall) = _getHypotheticalAccountLiquidity(
             msg.sender,
             IMToken(address(0)),
             0,
@@ -481,7 +481,7 @@ contract Lendtroller is ILendtroller {
     /// @notice Sets the closeFactor used when liquidating borrows
     /// @dev Admin function to set closeFactor
     /// @param newCloseFactorScaled New close factor, scaled by 1e18
-    function _setCloseFactor(
+    function setCloseFactor(
         uint256 newCloseFactorScaled
     ) external onlyElevatedPermissions {
         uint256 oldCloseFactorScaled = closeFactorScaled;
@@ -493,7 +493,7 @@ contract Lendtroller is ILendtroller {
     /// @dev Admin function to set per-market collateralFactor
     /// @param mToken The market to set the factor on
     /// @param newCollateralFactorScaled The new collateral factor, scaled by 1e18
-    function _setCollateralFactor(
+    function setCollateralFactor(
         IMToken mToken,
         uint256 newCollateralFactorScaled
     ) external onlyElevatedPermissions {
@@ -535,7 +535,7 @@ contract Lendtroller is ILendtroller {
     /// @notice Sets liquidationIncentive
     /// @dev Admin function to set liquidationIncentive
     /// @param newLiquidationIncentiveScaled New liquidationIncentive scaled by 1e18
-    function _setLiquidationIncentive(
+    function setLiquidationIncentive(
         uint256 newLiquidationIncentiveScaled
     ) external onlyElevatedPermissions {
         // Cache the current value for event log
@@ -553,7 +553,7 @@ contract Lendtroller is ILendtroller {
     /// @notice Add the market to the markets mapping and set it as listed
     /// @dev Admin function to set isListed and add support for the market
     /// @param mToken The address of the market (token) to list
-    function _supportMarket(IMToken mToken) external onlyElevatedPermissions {
+    function supportMarket(IMToken mToken) external onlyElevatedPermissions {
         if (markets[address(mToken)].isListed) {
             revert MarketAlreadyListed();
         }
@@ -564,7 +564,7 @@ contract Lendtroller is ILendtroller {
         market.isListed = true;
         market.collateralFactorScaled = 0;
 
-        _addMarketInternal(address(mToken));
+        _addMarket(address(mToken));
 
         emit MarketListed(mToken);
     }
@@ -577,7 +577,7 @@ contract Lendtroller is ILendtroller {
     ///                change the borrow caps for
     /// @param newBorrowCaps The new borrow cap values in underlying to be set.
     ///   A value of 0 corresponds to unlimited borrowing.
-    function _setMarketBorrowCaps(
+    function setMarketBorrowCaps(
         IMToken[] calldata mTokens,
         uint256[] calldata newBorrowCaps
     ) external {
@@ -601,7 +601,7 @@ contract Lendtroller is ILendtroller {
 
     /// @notice Admin function to change the Borrow Cap Guardian
     /// @param newBorrowCapGuardian The address of the new Borrow Cap Guardian
-    function _setBorrowCapGuardian(
+    function setBorrowCapGuardian(
         address newBorrowCapGuardian
     ) external onlyElevatedPermissions {
         // Cache the current value for event log
@@ -683,7 +683,7 @@ contract Lendtroller is ILendtroller {
 
         uint256[] memory results = new uint256[](numCTokens);
         for (uint256 i; i < numCTokens; ++i) {
-            results[i] = addToMarketInternal(IMToken(mTokens[i]), msg.sender);
+            results[i] = _addToMarket(IMToken(mTokens[i]), msg.sender);
         }
 
         // Return a list of markets joined & not joined (1 = joined, 0 = not joined)
@@ -701,7 +701,7 @@ contract Lendtroller is ILendtroller {
         (
             uint256 liquidity,
             uint256 shortfall
-        ) = getHypotheticalAccountLiquidityInternal(
+        ) = _getHypotheticalAccountLiquidity(
                 account,
                 IMToken(address(0)),
                 0,
@@ -722,7 +722,7 @@ contract Lendtroller is ILendtroller {
             uint256 sumCollateral,
             uint256 maxBorrow,
             uint256 sumBorrow
-        ) = getHypotheticalAccountPositionInternal(
+        ) = _getHypotheticalAccountPosition(
                 account,
                 IMToken(address(0)),
                 0,
@@ -750,7 +750,7 @@ contract Lendtroller is ILendtroller {
         (
             uint256 liquidity,
             uint256 shortfall
-        ) = getHypotheticalAccountLiquidityInternal(
+        ) = _getHypotheticalAccountLiquidity(
                 account,
                 IMToken(mTokenModify),
                 redeemTokens,
@@ -762,7 +762,7 @@ contract Lendtroller is ILendtroller {
 
     /// @notice Admin function to change the Pause Guardian
     /// @param newPauseGuardian The address of the new Pause Guardian
-    function _setPauseGuardian(
+    function setPauseGuardian(
         address newPauseGuardian
     ) public onlyElevatedPermissions {
         // Cache the current value for event log
@@ -777,7 +777,7 @@ contract Lendtroller is ILendtroller {
     /// @notice Admin function to set market mint paused
     /// @param mToken market token address
     /// @param state pause or unpause
-    function _setMintPaused(IMToken mToken, bool state) public returns (bool) {
+    function setMintPaused(IMToken mToken, bool state) public returns (bool) {
         if (!markets[address(mToken)].isListed) {
             revert MarketNotListed(address(mToken));
         }
@@ -799,7 +799,7 @@ contract Lendtroller is ILendtroller {
     /// @notice Admin function to set market borrow paused
     /// @param mToken market token address
     /// @param state pause or unpause
-    function _setBorrowPaused(
+    function setBorrowPaused(
         IMToken mToken,
         bool state
     ) public returns (bool) {
@@ -823,7 +823,7 @@ contract Lendtroller is ILendtroller {
 
     /// @notice Admin function to set transfer paused
     /// @param state pause or unpause
-    function _setTransferPaused(bool state) public returns (bool) {
+    function setTransferPaused(bool state) public returns (bool) {
         bool hasDaoPerms = centralRegistry.hasElevatedPermissions(msg.sender);
 
         if (msg.sender != pauseGuardian && !hasDaoPerms) {
@@ -840,7 +840,7 @@ contract Lendtroller is ILendtroller {
 
     /// @notice Admin function to set seize paused
     /// @param state pause or unpause
-    function _setSeizePaused(bool state) public returns (bool) {
+    function setSeizePaused(bool state) public returns (bool) {
         bool hasDaoPerms = centralRegistry.hasElevatedPermissions(msg.sender);
 
         if (msg.sender != pauseGuardian && !hasDaoPerms) {
@@ -856,15 +856,15 @@ contract Lendtroller is ILendtroller {
     }
 
     /// @notice Admin function to set position folding contract address
-    /// @param _newPositionFolding new position folding contract address
-    function _setPositionFolding(
-        address _newPositionFolding
+    /// @param newPositionFolding new position folding contract address
+    function setPositionFolding(
+        address newPositionFolding
     ) public onlyElevatedPermissions {
         // Cache the current value for event log
         address oldPositionFolding = positionFolding;
 
         // Assign new position folding contract
-        positionFolding = _newPositionFolding;
+        positionFolding = newPositionFolding;
 
         emit NewPositionFoldingContract(oldPositionFolding, positionFolding);
     }
@@ -876,7 +876,7 @@ contract Lendtroller is ILendtroller {
     /// @param mToken The market to enter
     /// @param borrower The address of the account to modify
     /// @return uint 0 = unable to enter market; 1 = market entered
-    function addToMarketInternal(
+    function _addToMarket(
         IMToken mToken,
         address borrower
     ) internal returns (uint256) {
@@ -907,7 +907,7 @@ contract Lendtroller is ILendtroller {
     /// @param redeemer The account which would redeem the tokens
     /// @param redeemTokens The number of mTokens to exchange for
     ///                     the underlying asset in the market
-    function redeemAllowedInternal(
+    function _redeemAllowed(
         address mToken,
         address redeemer,
         uint256 redeemTokens
@@ -936,7 +936,7 @@ contract Lendtroller is ILendtroller {
 
         // Otherwise, perform a hypothetical liquidity check to guard against
         // shortfall
-        (, uint256 shortfall) = getHypotheticalAccountLiquidityInternal(
+        (, uint256 shortfall) = _getHypotheticalAccountLiquidity(
             redeemer,
             IMToken(mToken),
             redeemTokens,
@@ -951,11 +951,11 @@ contract Lendtroller is ILendtroller {
     /// @notice Determine the current account liquidity wrt collateral requirements
     /// @return liquidity of account in excess of collateral requirements
     /// @return shortfall of account below collateral requirements
-    function getAccountLiquidityInternal(
+    function _getAccountLiquidity(
         address account
     ) internal view returns (uint256, uint256) {
         return
-            getHypotheticalAccountLiquidityInternal(
+            _getHypotheticalAccountLiquidity(
                 account,
                 IMToken(address(0)),
                 0,
@@ -974,7 +974,7 @@ contract Lendtroller is ILendtroller {
     /// @return uint hypothetical account liquidity in excess
     ///              of collateral requirements,
     /// @return uint hypothetical account shortfall below collateral requirements)
-    function getHypotheticalAccountLiquidityInternal(
+    function _getHypotheticalAccountLiquidity(
         address account,
         IMToken mTokenModify,
         uint256 redeemTokens,
@@ -984,7 +984,7 @@ contract Lendtroller is ILendtroller {
             ,
             uint256 maxBorrow,
             uint256 sumBorrowPlusEffects
-        ) = getHypotheticalAccountPositionInternal(
+        ) = _getHypotheticalAccountPosition(
                 account,
                 mTokenModify,
                 redeemTokens,
@@ -1015,7 +1015,7 @@ contract Lendtroller is ILendtroller {
     /// @return sumCollateral total collateral amount of user
     /// @return maxBorrow max borrow amount of user
     /// @return sumBorrowPlusEffects total borrow amount of user
-    function getHypotheticalAccountPositionInternal(
+    function _getHypotheticalAccountPosition(
         address account,
         IMToken mTokenModify,
         uint256 redeemTokens,
@@ -1097,7 +1097,7 @@ contract Lendtroller is ILendtroller {
 
     /// @notice Add the market to the markets mapping and set it as listed
     /// @param mToken The address of the market (token) to list
-    function _addMarketInternal(address mToken) internal {
+    function _addMarket(address mToken) internal {
         uint256 numMarkets = allMarkets.length;
 
         for (uint256 i; i < numMarkets; ++i) {
