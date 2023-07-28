@@ -95,7 +95,6 @@ contract TestBasePriceRouter is TestBase {
             ICentralRegistry(address(centralRegistry)),
             0.1e18,
             0.1e18,
-            0.1e18,
             0.5e18
         );
     }
