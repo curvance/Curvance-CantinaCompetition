@@ -68,10 +68,7 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @notice Total number of tokens in circulation
     uint256 public totalSupply;
 
-    // Official record of token balances for each account
-    // uint256 bit layout:
-    // - [0..215]    `balance`
-    // - [216..255]  `borrowTimestamp`
+    // @notice account => token balance
     mapping(address => uint256) internal _accountBalance;
 
     // @notice account => spender => approved amount
