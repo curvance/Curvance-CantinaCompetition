@@ -41,6 +41,7 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     uint256 public protocolHarvestFee = protocolCompoundFee + protocolYieldFee;
     uint256 public protocolLiquidationFee = 250;
     uint256 public protocolLeverageFee;
+    uint256 public protocolInterestRateFee;
     uint256 public voteBoostValue;
     uint256 public lockBoostValue;
     uint256 public earlyUnlockPenaltyValue;

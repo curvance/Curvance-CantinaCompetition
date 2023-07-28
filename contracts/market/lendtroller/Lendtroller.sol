@@ -120,9 +120,7 @@ contract Lendtroller is ILendtroller {
     function getAssetsIn(
         address account
     ) external view returns (IMToken[] memory) {
-        IMToken[] memory assetsIn = accountAssets[account];
-
-        return assetsIn;
+        return accountAssets[account];
     }
 
     /// @notice Returns whether the given account is entered in the given asset
@@ -181,7 +179,7 @@ contract Lendtroller is ILendtroller {
 
         // We *must* have found the asset in the list or our redundant
         // data structure is broken
-        assert(assetIndex < numUserAssets);
+        require(assetIndex < numUserAssets, "lendtroller: asset list misconfigured");
 
         // copy last item in list to location of item to be removed,
         // reduce length by 1
@@ -248,7 +246,7 @@ contract Lendtroller is ILendtroller {
             addToMarketInternal(IMToken(msg.sender), borrower);
 
             // it should be impossible to break the important invariant
-            assert(markets[mToken].accountMembership[borrower]);
+            require(markets[mToken].accountMembership[borrower], "lendtroller: invariant error");
         }
 
         (, uint256 errorCode) = getPriceRouter().getPrice(mToken, true, false);
@@ -754,7 +752,7 @@ contract Lendtroller is ILendtroller {
         }
 
         mintGuardianPaused[address(mToken)] = state;
-        emit ActionPaused(mToken, "Mint", state);
+        emit ActionPaused(mToken, "lendtroller: Mint Paused", state);
         return state;
     }
 
@@ -779,7 +777,7 @@ contract Lendtroller is ILendtroller {
         }
 
         borrowGuardianPaused[address(mToken)] = state;
-        emit ActionPaused(mToken, "Borrow", state);
+        emit ActionPaused(mToken, "lendtroller: Borrow Paused", state);
         return state;
     }
 
@@ -796,7 +794,7 @@ contract Lendtroller is ILendtroller {
         }
 
         transferGuardianPaused = state;
-        emit ActionPaused("Transfer", state);
+        emit ActionPaused("lendtroller: Transfer Paused", state);
         return state;
     }
 
@@ -813,7 +811,7 @@ contract Lendtroller is ILendtroller {
         }
 
         seizeGuardianPaused = state;
-        emit ActionPaused("Seize", state);
+        emit ActionPaused("lendtroller: Seize Paused", state);
         return state;
     }
 
@@ -996,7 +994,7 @@ contract Lendtroller is ILendtroller {
             asset = accountAssets[account][i];
             collateralEnabled =
                 asset.tokenType() == 1 &&
-                userDisableCollateral[account][asset] == false;
+                !userDisableCollateral[account][asset];
 
             (
                 uint256 mTokenBalance,
@@ -1073,6 +1071,6 @@ contract Lendtroller is ILendtroller {
         address vault = ICToken(cToken).vault();
         return
             (underlyingPrice *
-                BasePositionVault(vault).convertToAssets(1 ether)) / 1 ether;
+                BasePositionVault(vault).convertToAssets(expScale)) / expScale;
     }
 }

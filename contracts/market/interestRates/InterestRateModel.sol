@@ -176,6 +176,8 @@ contract InterestRateModel {
         return (utilizationRate(cash, borrows, reserves) * rateToPool) / BASE;
     }
 
+    /// Internal Functions ///
+
     /**
     * @notice Calculates the interest rate for `util` market utilization
     * @param util The utilization rate of the market

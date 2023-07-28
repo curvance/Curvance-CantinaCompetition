@@ -13,7 +13,6 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 contract CVELocker {
     // TO-DO:
-    // Process fee per cve reporting by chain in fee routing/here (permissioned functions for feerouting)
     // Add epoch rewards view for frontend?
 
     /// CONSTANTS ///

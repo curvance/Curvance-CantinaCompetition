@@ -35,7 +35,7 @@ contract GaugeController is IGaugePool {
     modifier onlyDaoPermissions() {
         require(
             centralRegistry.hasDaoPermissions(msg.sender),
-            "centralRegistry: UNAUTHORIZED"
+            "gaugeController: UNAUTHORIZED"
         );
         _;
     }
@@ -43,7 +43,7 @@ contract GaugeController is IGaugePool {
     modifier onlyMessagingHub() {
         require(
             msg.sender == centralRegistry.protocolMessagingHub(),
-            "cveLocker: UNAUTHORIZED"
+            "gaugeController: UNAUTHORIZED"
         );
         _;
     }
@@ -155,7 +155,7 @@ contract GaugeController is IGaugePool {
 
     /// @notice Returns current epoch number
     function currentEpoch() public view returns (uint256) {
-        assert(startTime != 0);
+        require(startTime != 0, "gaugeController: gauge not started");
         return (block.timestamp - startTime) / EPOCH_WINDOW;
     }
 
@@ -164,21 +164,21 @@ contract GaugeController is IGaugePool {
     function epochOfTimestamp(
         uint256 timestamp
     ) public view returns (uint256) {
-        assert(startTime != 0);
+        require(startTime != 0, "gaugeController: gauge not started");
         return (timestamp - startTime) / EPOCH_WINDOW;
     }
 
     /// @notice Returns start time of given epoch
     /// @param epoch Epoch number
     function epochStartTime(uint256 epoch) public view returns (uint256) {
-        assert(startTime != 0);
+        require(startTime != 0, "gaugeController: gauge not started");
         return startTime + epoch * EPOCH_WINDOW;
     }
 
     /// @notice Returns end time of given epoch
     /// @param epoch Epoch number
     function epochEndTime(uint256 epoch) public view returns (uint256) {
-        assert(startTime != 0);
+        require(startTime != 0, "gaugeController: gauge not started");
         return startTime + (epoch + 1) * EPOCH_WINDOW;
     }
 
