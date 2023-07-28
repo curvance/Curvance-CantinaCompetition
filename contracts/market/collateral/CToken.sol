@@ -21,9 +21,6 @@ contract CToken is ERC165, ReentrancyGuard {
 
     uint256 internal constant expScale = 1e18;
 
-    // Maximum fraction of interest that can be set aside for reserves
-    uint256 internal constant reserveFactorMaxScaled = 1e18;
-
     /// @notice Indicator that this is a CToken contract (for inspection)
     bool public constant isCToken = true;
 

@@ -14,9 +14,9 @@ import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.s
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 
-/// @title Curvance's CToken Contract
-/// @notice Abstract base for CTokens
+/// @title Curvance's Debt Token Contract
 contract DToken is ERC165, ReentrancyGuard {
+    
     /// TYPES ///
 
     /// @notice Container for borrow balance information
@@ -26,13 +26,6 @@ contract DToken is ERC165, ReentrancyGuard {
         uint256 principal;
         uint256 interestIndex;
     }
-
-    struct AccountData {
-        // The token balance of the user.
-        uint216 balance;
-        // Stores the timestamp of the last time a user deposited tokens.
-        uint40 lastTimestamp;
-}
 
     /// CONSTANTS ///
 
@@ -87,11 +80,11 @@ contract DToken is ERC165, ReentrancyGuard {
     // - [216..255]  `borrowTimestamp`
     mapping(address => uint256) internal _accountData;
 
-    // Approved token transfer amounts on behalf of others
+    // @notice account => spender => approved amount
     mapping(address => mapping(address => uint256))
         internal transferAllowances;
 
-    // Mapping of account addresses to outstanding borrow balances
+    // @notice account => BorrowSnapshot (Principal Borrowed, User Interest Index)
     mapping(address => BorrowSnapshot) internal accountBorrows;
 
     /// EVENTS ///
@@ -769,6 +762,11 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @return The quantity of underlying tokens owned by this contract
     function getCash() public view returns (uint256) {
         return IERC20(underlying).balanceOf(address(this));
+    }
+
+    /// @notice Returns the type of Curvance token, 1 = Collateral, 0 = Debt
+    function tokenType() public pure returns (uint256) {
+        return 0;
     }
 
     /// @notice Returns gauge pool contract address
