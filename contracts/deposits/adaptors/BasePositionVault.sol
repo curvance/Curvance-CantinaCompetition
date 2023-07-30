@@ -8,6 +8,7 @@ import { Math } from "contracts/libraries/Math.sol";
 
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 
 /// @notice Vault Positions must have all assets ready for withdraw,
 ///         IE assets can NOT be locked.
@@ -39,6 +40,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
 
     /// STORAGE ///
 
+    address public cToken;
     string private _name;
     string private _symbol;
 
@@ -47,13 +49,21 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     uint256 internal _sharePriceHighWatermark;
 
     VaultData public vaultData;
-    bool public isShutdown;
+    bool public vaultIsActive;
 
     /// EVENTS ///
 
     event vaultStatusChanged(bool isShutdown);
 
     /// MODIFIERS ///
+
+    modifier onlyCToken() {
+        require(
+            cToken == msg.sender,
+            "BasePositionVault: UNAUTHORIZED"
+        );
+        _;
+    }
 
     modifier onlyHarvestor() {
         require(
@@ -80,7 +90,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     }
 
     modifier vaultActive() {
-        require(!isShutdown, "BasePositionVault: vault not active");
+        require(vaultIsActive, "BasePositionVault: vault not active");
         _;
     }
 
@@ -107,18 +117,31 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
 
     // PERMISSIONED FUNCTIONS
 
-    /// @notice Shutdown the vault. Used in an emergency or
-    ///         if the vault has been deprecated.
+    /// @notice Initializes the vault and the cToken attached to it
+    function initiateVault(address cTokenAddress) external onlyDaoPermissions {
+        require(!vaultIsActive, "BasePositionVault: vault not active");
+        require(IMToken(cToken).tokenType() > 0, "BasePositionVault: not cToken");
+
+        cToken = cTokenAddress;
+        vaultIsActive = true;
+    }
+
+    /// @notice Shuts down the vault
+    /// @dev Used in an emergency or if the vault has been deprecated
     function initiateShutdown() external vaultActive onlyDaoPermissions {
-        isShutdown = true;
+        delete vaultIsActive;
 
         emit vaultStatusChanged(true);
     }
 
-    /// @notice Reactivate the vault.
-    function liftShutdown() external onlyElevatedPermissions {
-        require(isShutdown, "BasePositionVault: vault not active");
-        delete isShutdown;
+    /// @notice Reactivate the vault
+    /// @dev Allows for reconfiguration of cToken attached to vault
+    function liftShutdown(address cTokenAddress) external onlyElevatedPermissions {
+        require(!vaultIsActive, "BasePositionVault: vault not active");
+        require(IMToken(cToken).tokenType() > 0, "BasePositionVault: not cToken");
+
+        cToken = cTokenAddress;
+        vaultIsActive = true;
 
         emit vaultStatusChanged(false);
     }
@@ -184,7 +207,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     function deposit(
         uint256 assets,
         address receiver
-    ) public override vaultActive nonReentrant returns (uint256 shares) {
+    ) public override vaultActive onlyCToken returns (uint256 shares) {
         // Save _totalAssets and pendingRewards to memory.
         uint256 pending = _calculatePendingRewards();
         uint256 ta = _totalAssets + pending;
@@ -220,7 +243,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     function mint(
         uint256 shares,
         address receiver
-    ) public override vaultActive nonReentrant returns (uint256 assets) {
+    ) public override vaultActive onlyCToken returns (uint256 assets) {
         // Save _totalAssets and pendingRewards to memory.
         uint256 pending = _calculatePendingRewards();
         uint256 ta = _totalAssets + pending;
@@ -258,7 +281,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         uint256 assets,
         address receiver,
         address owner
-    ) public override nonReentrant returns (uint256 shares) {
+    ) public override onlyCToken returns (uint256 shares) {
         // Save _totalAssets and pendingRewards to memory.
         uint256 pending = _calculatePendingRewards();
         uint256 ta = _totalAssets + pending;
@@ -297,7 +320,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         uint256 shares,
         address receiver,
         address owner
-    ) public override nonReentrant returns (uint256 assets) {
+    ) public override onlyCToken returns (uint256 assets) {
         // Save _totalAssets and pendingRewards to memory.
         uint256 pending = _calculatePendingRewards();
         uint256 ta = _totalAssets + pending;

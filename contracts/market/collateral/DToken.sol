@@ -6,8 +6,8 @@ import { ERC165 } from "contracts/libraries/ERC165.sol";
 import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 import { GaugePool } from "contracts/gauge/GaugePool.sol";
-
 import { InterestRateModel } from "contracts/market/interestRates/InterestRateModel.sol";
+
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.sol";
@@ -24,7 +24,7 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @member interestIndex Global borrowIndex as of the most recent balance-changing action
     struct BorrowSnapshot {
         uint256 principal;
-        uint216 interestIndex;
+        uint256 interestIndex;
     }
 
     /// CONSTANTS ///
@@ -40,10 +40,10 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @notice Indicator that this is a DToken contract (for inspection)
     bool public constant isDToken = true;
 
-    /// @notice Underlying asset for this CToken
+    /// @notice Underlying asset for this DToken
     address public immutable underlying;
 
-    /// @notice Decimals for this CToken
+    /// @notice Decimals for this DToken
     uint8 public immutable decimals;
 
     ICentralRegistry public immutable centralRegistry;
@@ -53,7 +53,7 @@ contract DToken is ERC165, ReentrancyGuard {
     string public symbol;
     ILendtroller public lendtroller;
     InterestRateModel public interestRateModel;
-    /// Initial exchange rate used when minting the first CTokens (used when totalSupply = 0)
+    /// Initial exchange rate used when minting the first DTokens (used when totalSupply = 0)
     uint256 internal initialExchangeRateScaled;
     /// @notice Fraction of interest currently set aside for reserves
     uint256 public reserveFactorScaled;
@@ -288,7 +288,7 @@ contract DToken is ERC165, ReentrancyGuard {
         decimals = decimals_;
 
         // Sanity check underlying so that we know users will not need to mint anywhere close to balance cap
-        require (IERC20(underlying).totalSupply() < type(uint208).max, "CToken: Underlying token assumptions not met");
+        require (IERC20(underlying).totalSupply() < type(uint208).max, "DToken: Underlying token assumptions not met");
 
     }
 
@@ -320,7 +320,7 @@ contract DToken is ERC165, ReentrancyGuard {
 
     /// @notice Sender borrows assets from the protocol to their own address
     /// @param borrowAmount The amount of the underlying asset to borrow
-    function borrow(uint256 borrowAmount) external {
+    function borrow(uint256 borrowAmount) external nonReentrant {
         accrueInterest();
 
         // Reverts if borrow not allowed
@@ -336,7 +336,7 @@ contract DToken is ERC165, ReentrancyGuard {
         address payable user,
         uint256 borrowAmount,
         bytes calldata params
-    ) external {
+    ) external nonReentrant {
         if (msg.sender != lendtroller.positionFolding()) {
             revert FailedNotFromPositionFolding();
         }
@@ -352,7 +352,7 @@ contract DToken is ERC165, ReentrancyGuard {
             params
         );
 
-        // Fail if position is not allowed
+        // Fail if position is not allowed, after position folding has re-invested
         lendtroller.borrowAllowed(address(this), user, 0);
     }
 
@@ -398,7 +398,7 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @notice Sender redeems cTokens in exchange for the underlying asset
     /// @dev Accrues interest whether or not the operation succeeds, unless reverted
     /// @param redeemTokens The number of cTokens to redeem into underlying
-    function redeem(uint256 redeemTokens) external {
+    function redeem(uint256 redeemTokens) external nonReentrant {
         accrueInterest();
 
         _redeem(payable(msg.sender), redeemTokens, (exchangeRateStored() * redeemTokens) / expScale, payable(msg.sender));
@@ -407,7 +407,7 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @notice Sender redeems cTokens in exchange for a specified amount of underlying asset
     /// @dev Accrues interest whether or not the operation succeeds, unless reverted
     /// @param redeemAmount The amount of underlying to redeem
-    function redeemUnderlying(uint256 redeemAmount) external {
+    function redeemUnderlying(uint256 redeemAmount) external nonReentrant {
         accrueInterest();
 
         address payable redeemer = payable(msg.sender);
@@ -426,7 +426,7 @@ contract DToken is ERC165, ReentrancyGuard {
         address payable user,
         uint256 redeemAmount,
         bytes calldata params
-    ) external {
+    ) external nonReentrant {
 
         if (msg.sender != lendtroller.positionFolding()) {
             revert FailedNotFromPositionFolding();
@@ -443,7 +443,7 @@ contract DToken is ERC165, ReentrancyGuard {
             params
         );
 
-        // Fail if redeem not allowed
+        // Fail if redeem not allowed, position folding has re-invested
         lendtroller.redeemAllowed(address(this), user, 0);
     }
 
@@ -480,7 +480,6 @@ contract DToken is ERC165, ReentrancyGuard {
 
         // We call doTransferIn for the caller and the addAmount
         // On success, the cToken holds an additional addAmount of cash.
-        // doTransferIn reverts if anything goes wrong, since we can't be sure if side effects occurred.
         // it returns the amount actually transferred, in case of a fee.
         totalReserves += doTransferIn(msg.sender, addAmount);
 
@@ -554,15 +553,15 @@ contract DToken is ERC165, ReentrancyGuard {
         if (token == address(0)) {
             require(
                 address(this).balance >= amount,
-                "CToken: insufficient balance"
+                "DToken: insufficient balance"
             );
             (bool success, ) = payable(daoOperator).call{ value: amount }("");
-            require(success, "CToken: !successful");
+            require(success, "DToken: !successful");
         } else {
-            require(token != underlying, "CToken: cannot withdraw underlying");
+            require(token != underlying, "DToken: cannot withdraw underlying");
             require(
                 IERC20(token).balanceOf(address(this)) >= amount,
-                "CToken: insufficient balance"
+                "DToken: insufficient balance"
             );
             SafeTransferLib.safeTransfer(token, daoOperator, amount);
         }
@@ -657,7 +656,7 @@ contract DToken is ERC165, ReentrancyGuard {
         );
     }
 
-    /// @notice Returns the current per-second borrow interest rate for this cToken
+    /// @notice Returns the current per-second borrow interest rate for this dToken
     /// @return The borrow interest rate per second, scaled by 1e18
     function borrowRatePerSecond() external view returns (uint256) {
         return
@@ -668,7 +667,7 @@ contract DToken is ERC165, ReentrancyGuard {
             );
     }
 
-    /// @notice Returns the current per-second supply interest rate for this cToken
+    /// @notice Returns the current per-second supply interest rate for this dToken
     /// @return The supply interest rate per second, scaled by 1e18
     function supplyRatePerSecond() external view returns (uint256) {
         return
@@ -760,7 +759,7 @@ contract DToken is ERC165, ReentrancyGuard {
         return exchangeRateStored();
     }
 
-    /// @notice Calculates the exchange rate from the underlying to the CToken
+    /// @notice Calculates the exchange rate from the underlying to the dToken
     /// @dev This function does not accrue interest before calculating the exchange rate
     /// @return Calculated exchange rate scaled by 1e18
     function exchangeRateStored() public view returns (uint256) {
@@ -883,10 +882,10 @@ contract DToken is ERC165, ReentrancyGuard {
         emit Transfer(from, to, tokens);
     }
 
-    /// @notice User supplies assets into the market and receives cTokens in exchange
+    /// @notice User supplies assets into the market and receives dTokens in exchange
     /// @dev Assumes interest has already been accrued up to the current timestamp
     /// @param user The address of the account which is supplying the assets
-    /// @param recipient The address of the account which will receive cToken
+    /// @param recipient The address of the account which will receive dToken
     /// @param mintAmount The amount of the underlying asset to supply
     function _mint(
         address user,
@@ -901,11 +900,11 @@ contract DToken is ERC165, ReentrancyGuard {
 
         // Note: `doTransferIn` reverts if anything goes wrong, since we can't be sure if
         //       side-effects occurred. The function returns the amount actually transferred,
-        //       in case of a fee. On success, the cToken holds an additional `actualMintAmount`
+        //       in case of a fee. On success, the dToken holds an additional `actualMintAmount`
         //       of cash.
         uint256 actualMintAmount = doTransferIn(user, mintAmount);
 
-        // We get the current exchange rate and calculate the number of cTokens to be minted:
+        // We get the current exchange rate and calculate the number of dTokens to be minted:
         //  mintTokens = actualMintAmount / exchangeRate
         uint256 mintTokens = (actualMintAmount * expScale) / exchangeRate;
         totalSupply += mintTokens;
@@ -921,29 +920,25 @@ contract DToken is ERC165, ReentrancyGuard {
         emit Transfer(address(this), recipient, mintTokens);
     }
 
-    /// @notice User redeems cTokens in exchange for the underlying asset
+    /// @notice User redeems dTokens in exchange for the underlying asset
     /// @dev Assumes interest has already been accrued up to the current timestamp
     /// @param redeemer The address of the account which is redeeming the tokens
-    /// @param redeemTokens The number of cTokens to redeem into underlying
-    /// @param redeemAmount The number of underlying tokens to receive from redeeming cTokens
+    /// @param redeemTokens The number of dTokens to redeem into underlying
+    /// @param redeemAmount The number of underlying tokens to receive from redeeming dTokens
     /// @param recipient The recipient address
     function _redeem(
         address payable redeemer,
         uint256 redeemTokens,
         uint256 redeemAmount,
         address payable recipient
-    ) internal nonReentrant interestUpdated {
+    ) internal interestUpdated {
 
         // Check if we have enough cash to support the redeem
         if (getCash() < redeemAmount) {
             revert RedeemTransferOutNotPossible();
         }
 
-        // Need to shift bits by timestamp length to make sure we do a proper underflow check
-        // redeemTokens should never be above uint216 and the user can never have more than uint216,
-        // So if theyve put in a larger number than type(uint216).max we know it will revert from underflow
         _accountBalance[redeemer] -= redeemTokens;
-
         // We have user underflow check above so we do not need a redundant check here
         unchecked {
             totalSupply -= redeemTokens;
@@ -953,9 +948,7 @@ contract DToken is ERC165, ReentrancyGuard {
         GaugePool(gaugePool()).withdraw(address(this), redeemer, redeemTokens);
 
         // We invoke doTransferOut for the redeemer and the redeemAmount.
-        // Note: The cToken must handle variations between ERC-20 and ETH underlying.
-        // On success, the cToken has redeemAmount less of cash.
-        // doTransferOut reverts if anything goes wrong, since we can't be sure if side effects occurred.
+        // On success, the dToken has redeemAmount less of cash.
         doTransferOut(recipient, redeemAmount);
 
         // We emit a Transfer event, and a Redeem event
@@ -974,7 +967,7 @@ contract DToken is ERC165, ReentrancyGuard {
         address borrower,
         uint256 borrowAmount,
         address payable recipient
-    ) internal nonReentrant interestUpdated {
+    ) internal interestUpdated {
 
         // Check if we have enough cash to support the borrow
         if (getCash() < borrowAmount) {
@@ -985,7 +978,7 @@ contract DToken is ERC165, ReentrancyGuard {
         lendtroller.notifyAccountBorrow(borrower);
         // We calculate the new borrower and total borrow balances, failing on overflow:
         accountBorrows[borrower].principal = borrowBalanceStored(borrower) + borrowAmount;
-        accountBorrows[borrower].interestIndex = uint216(borrowIndex);
+        accountBorrows[borrower].interestIndex = borrowIndex;
         totalBorrows += borrowAmount;
 
         // doTransferOut reverts if anything goes wrong, since we can't be sure if side effects occurred.
@@ -1023,14 +1016,13 @@ contract DToken is ERC165, ReentrancyGuard {
             : repayAmount;
 
         // We call doTransferIn for the payer and the repayAmount
-        // Note: On success, the cToken holds an additional repayAmount of cash.
-        //       doTransferIn reverts if anything goes wrong, since we can't be sure if side effects occurred.
+        // Note: On success, the dToken holds an additional repayAmount of cash.
         //       it returns the amount actually transferred, in case of a fee.
         uint256 actualRepayAmount = doTransferIn(payer, repayAmountFinal);
 
         // We calculate the new borrower and total borrow balances, failing on underflow:
         accountBorrows[borrower].principal = accountBorrowsPrev - actualRepayAmount;
-        accountBorrows[borrower].interestIndex = uint216(borrowIndex);
+        accountBorrows[borrower].interestIndex = borrowIndex;
         totalBorrows -= actualRepayAmount;
 
         // We emit a Repay event
@@ -1045,7 +1037,7 @@ contract DToken is ERC165, ReentrancyGuard {
 
     /// @notice The liquidator liquidates the borrowers collateral.
     ///  The collateral seized is transferred to the liquidator.
-    /// @param borrower The borrower of this cToken to be liquidated
+    /// @param borrower The borrower of this dToken to be liquidated
     /// @param liquidator The address repaying the borrow and seizing collateral
     /// @param mTokenCollateral The market in which to seize collateral from the borrower
     /// @param repayAmount The amount of the underlying borrowed asset to repay

@@ -7,7 +7,6 @@ import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 import { GaugePool } from "contracts/gauge/GaugePool.sol";
 
-import { InterestRateModel } from "contracts/market/interestRates/InterestRateModel.sol";
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.sol";
@@ -232,7 +231,7 @@ contract CToken is ERC165, ReentrancyGuard {
     /// @notice Sender redeems cTokens in exchange for the underlying asset
     /// @dev Accrues interest whether or not the operation succeeds, unless reverted
     /// @param redeemTokens The number of cTokens to redeem into underlying
-    function redeem(uint256 redeemTokens) external {
+    function redeem(uint256 redeemTokens) external nonReentrant {
         _redeem(
             payable(msg.sender),
             redeemTokens,
@@ -244,7 +243,7 @@ contract CToken is ERC165, ReentrancyGuard {
     /// @notice Sender redeems cTokens in exchange for a specified amount of underlying asset
     /// @dev Accrues interest whether or not the operation succeeds, unless reverted
     /// @param redeemAmount The amount of underlying to redeem
-    function redeemUnderlying(uint256 redeemAmount) external {
+    function redeemUnderlying(uint256 redeemAmount) external nonReentrant {
         address payable redeemer = payable(msg.sender);
         uint256 redeemTokens = (redeemAmount * expScale) /
             exchangeRateStored();
@@ -262,7 +261,7 @@ contract CToken is ERC165, ReentrancyGuard {
         address payable user,
         uint256 redeemAmount,
         bytes calldata params
-    ) external {
+    ) external nonReentrant {
         if (msg.sender != lendtroller.positionFolding()) {
             revert FailedNotFromPositionFolding();
         }
@@ -546,7 +545,7 @@ contract CToken is ERC165, ReentrancyGuard {
         uint256 redeemTokens,
         uint256 redeemAmount,
         address payable recipient
-    ) internal nonReentrant {
+    ) internal {
         // Check if we have enough cash to support the redeem
         if (getCash() < redeemAmount) {
             revert RedeemTransferOutNotPossible();

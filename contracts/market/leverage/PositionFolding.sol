@@ -117,15 +117,11 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         _leverage(leverageData);
     }
 
-    function batchLeverage(
-        LeverageStruct[] calldata leverageData,
+    function deleverage(
+        DeleverageStruct calldata deleverageData,
         uint256 slippage
-    ) external checkSlippage(msg.sender, slippage) {
-        uint256 numLeverageData = leverageData.length;
-
-        for (uint256 i; i < numLeverageData; ++i) {
-            _leverage(leverageData[i]);
-        }
+    ) external checkSlippage(msg.sender, slippage) nonReentrant {
+        _deleverage(deleverageData);
     }
 
     function onBorrow(
@@ -218,24 +214,6 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
                 borrower,
                 remaining
             );
-        }
-    }
-
-    function deleverage(
-        DeleverageStruct calldata deleverageData,
-        uint256 slippage
-    ) external checkSlippage(msg.sender, slippage) nonReentrant {
-        _deleverage(deleverageData);
-    }
-
-    function batchDeleverage(
-        DeleverageStruct[] calldata deleverageData,
-        uint256 slippage
-    ) external checkSlippage(msg.sender, slippage) {
-        uint256 numLeverageData = deleverageData.length;
-
-        for (uint256 i; i < numLeverageData; ++i) {
-            _deleverage(deleverageData[i]);
         }
     }
 
