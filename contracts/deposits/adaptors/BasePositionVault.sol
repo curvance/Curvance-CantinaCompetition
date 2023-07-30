@@ -231,10 +231,14 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
 
         // Add the users newly deposited assets.
         ta = ta + assets;
+
         // If there are pending rewards to vest,
         // or if high watermark is not set, vestRewards.
-        if (pending > 0 || _sharePriceHighWatermark == 0) _vestRewards(ta);
-        else _totalAssets = ta;
+        if (pending > 0 || _sharePriceHighWatermark == 0){
+            _vestRewards(ta);
+        } else {
+            _totalAssets = ta;
+        }
 
         _deposit(assets);
     }
@@ -288,13 +292,8 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         // No need to check for rounding error, previewWithdraw rounds up.
         shares = _previewWithdraw(assets, ta);
 
-        if (msg.sender != owner) {
-            uint256 allowed = allowance(owner, msg.sender);
-
-            if (allowed != type(uint256).max) {
-                decreaseAllowance(owner, allowed - shares);
-            }
-        }
+        /// We do not need to check for msg.sender == owner or msg.sender != owner 
+        /// since CToken is the only contract who can call deposit, mint, withdraw, or redeem
 
         // Remove the users withdrawn assets.
         ta = ta - assets;
@@ -324,13 +323,8 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         uint256 pending = _calculatePendingRewards();
         uint256 ta = _totalAssets + pending;
 
-        if (msg.sender != owner) {
-            uint256 allowed = allowance(owner, msg.sender);
-
-            if (allowed != type(uint256).max) {
-                decreaseAllowance(owner, allowed - shares);
-            }
-        }
+        /// We do not need to check for msg.sender == owner or msg.sender != owner 
+        /// since CToken is the only contract who can call deposit, mint, withdraw, or redeem
 
         // Check for rounding error since we round down in previewRedeem.
         require(
