@@ -164,7 +164,6 @@ contract ConvexPositionVault is BasePositionVault {
         override
         onlyHarvestor
         vaultActive
-        nonReentrant
         returns (uint256 yield)
     {
         uint256 pending = _calculatePendingRewards();
