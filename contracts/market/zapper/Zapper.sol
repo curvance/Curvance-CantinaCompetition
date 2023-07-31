@@ -5,6 +5,7 @@ import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { CommonLib } from "contracts/market/zapper/protocols/CommonLib.sol";
 import { CurveLib } from "contracts/market/zapper/protocols/CurveLib.sol";
 import { BalancerLib } from "contracts/market/zapper/protocols/BalancerLib.sol";
+import { VelodromeLib } from "contracts/market/zapper/protocols/VelodromeLib.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { CToken, IERC20 } from "contracts/market/collateral/CToken.sol";
@@ -206,6 +207,86 @@ contract Zapper {
             tokens,
             lpAmount
         );
+
+        uint256 numTokenSwaps = tokenSwaps.length;
+        // prepare tokens to mint LP
+        for (uint256 i; i < numTokenSwaps; ++i) {
+            SwapperLib.swap(tokenSwaps[i]);
+        }
+
+        outAmount = IERC20(outputToken).balanceOf(address(this));
+        require(
+            outAmount >= minoutAmount,
+            "Zapper: received less than minOutAmount"
+        );
+
+        // transfer token back to user
+        SafeTransferLib.safeTransfer(outputToken, recipient, outAmount);
+    }
+
+    /// @dev Deposit inputToken and enter curvance
+    /// @param cToken The curvance deposit token address
+    /// @param inputToken The input token address
+    /// @param inputAmount The amount to deposit
+    /// @param tokenSwaps The swap aggregation data
+    /// @param router The velodrome router address
+    /// @param factory The velodrome factory address
+    /// @param lpToken The LP token address
+    /// @param lpMinOutAmount The minimum output amount
+    /// @return cTokenOutAmount The output amount
+    function velodromeInForCurvance(
+        address cToken,
+        address inputToken,
+        uint256 inputAmount,
+        SwapperLib.Swap[] memory tokenSwaps,
+        address router,
+        address factory,
+        address lpToken,
+        uint256 lpMinOutAmount,
+        address recipient
+    ) external payable returns (uint256 cTokenOutAmount) {
+        // swap input token for underlyings
+        _swapForUnderlyings(
+            cToken,
+            inputToken,
+            inputAmount,
+            tokenSwaps,
+            lpToken
+        );
+
+        // enter balancer
+        uint256 lpOutAmount = VelodromeLib.enterVelodrome(
+            router,
+            factory,
+            lpToken,
+            lpMinOutAmount
+        );
+
+        // enter curvance
+        cTokenOutAmount = _enterCurvance(
+            cToken,
+            lpToken,
+            lpOutAmount,
+            recipient
+        );
+    }
+
+    function velodromeOut(
+        address router,
+        address lpToken,
+        uint256 lpAmount,
+        SwapperLib.Swap[] memory tokenSwaps,
+        address outputToken,
+        uint256 minoutAmount,
+        address recipient
+    ) external returns (uint256 outAmount) {
+        SafeTransferLib.safeTransferFrom(
+            lpToken,
+            msg.sender,
+            address(this),
+            lpAmount
+        );
+        VelodromeLib.exitVelodrome(router, lpToken, lpAmount);
 
         uint256 numTokenSwaps = tokenSwaps.length;
         // prepare tokens to mint LP

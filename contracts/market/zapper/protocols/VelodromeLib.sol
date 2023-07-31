@@ -135,7 +135,7 @@ library VelodromeLib {
     /// @param router The velodrome router address
     /// @param lpToken The LP token address
     /// @param lpAmount The LP amount to exit
-    function exitCurve(
+    function exitVelodrome(
         address router,
         address lpToken,
         uint256 lpAmount
