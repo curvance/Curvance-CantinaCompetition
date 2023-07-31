@@ -2,7 +2,6 @@
 pragma solidity 0.8.17;
 
 interface IVeloRouter {
-    
     struct Route {
         address from;
         address to;
@@ -38,6 +37,28 @@ interface IVeloRouter {
         address to,
         uint256 deadline
     ) external returns (uint256 amountA, uint256 amountB, uint256 liquidity);
+
+    /// @notice Remove liquidity of two tokens from a Pool
+    /// @param tokenA       .
+    /// @param tokenB       .
+    /// @param stable       True if pool is stable, false if volatile
+    /// @param liquidity    Amount of liquidity to remove
+    /// @param amountAMin   Minimum amount of tokenA to receive
+    /// @param amountBMin   Minimum amount of tokenB to receive
+    /// @param to           Recipient of tokens received
+    /// @param deadline     Deadline to remove liquidity
+    /// @return amountA     Amount of tokenA received
+    /// @return amountB     Amount of tokenB received
+    function removeLiquidity(
+        address tokenA,
+        address tokenB,
+        bool stable,
+        uint256 liquidity,
+        uint256 amountAMin,
+        uint256 amountBMin,
+        address to,
+        uint256 deadline
+    ) external returns (uint256 amountA, uint256 amountB);
 
     /// @notice Swap one token for another
     /// @param amountIn     Amount of token in

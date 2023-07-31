@@ -159,13 +159,7 @@ contract ConvexPositionVault is BasePositionVault {
     function harvest(
         bytes memory data,
         uint256 maxSlippage
-    )
-        public
-        override
-        onlyHarvestor
-        vaultActive
-        returns (uint256 yield)
-    {
+    ) public override onlyHarvestor vaultActive returns (uint256 yield) {
         uint256 pending = _calculatePendingRewards();
 
         if (pending > 0) {
@@ -223,13 +217,7 @@ contract ConvexPositionVault is BasePositionVault {
 
                 // swap from rewardToken to underlying LP token if necessary
                 if (!isUnderlyingToken[rewardToken]) {
-                    // swap for 100% slippage,
-                    // we have slippage check later for global level
-                    SwapperLib.swap(
-                        swapDataArray[i],
-                        centralRegistry.priceRouter(),
-                        10000
-                    );
+                    SwapperLib.swap(swapDataArray[i]);
                 }
             }
 

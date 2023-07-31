@@ -94,13 +94,7 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
     function harvest(
         bytes memory data,
         uint256 maxSlippage
-    )
-        public
-        override
-        onlyHarvestor
-        vaultActive
-        returns (uint256 yield)
-    {
+    ) public override onlyHarvestor vaultActive returns (uint256 yield) {
         uint256 pending = _calculatePendingRewards();
 
         if (pending > 0) {
@@ -148,13 +142,7 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
 
                 // swap from VELO to underlying LP token if necessary
                 if (!rewardTokenIsUnderlying) {
-                    // swap for 100% slippage,
-                    // we have slippage check later for global level
-                    SwapperLib.swap(
-                        swapData,
-                        centralRegistry.priceRouter(),
-                        10000
-                    );
+                    SwapperLib.swap(swapData);
                 }
             }
 

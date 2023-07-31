@@ -173,11 +173,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
                 "PositionFolding: invalid swapper"
             );
 
-            SwapperLib.swap(
-                leverageData.swapData,
-                ICentralRegistry(centralRegistry).priceRouter(),
-                SLIPPAGE
-            );
+            SwapperLib.swap(leverageData.swapData);
         }
 
         // enter curvance
@@ -287,11 +283,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
                 "PositionFolding: invalid swapper"
             );
 
-            SwapperLib.swap(
-                deleverageData.swapData,
-                ICentralRegistry(centralRegistry).priceRouter(),
-                SLIPPAGE
-            );
+            SwapperLib.swap(deleverageData.swapData);
         }
 
         // repay debt
@@ -308,7 +300,10 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
             repayAmount + remaining
         );
 
-        DToken(address(borrowToken)).repayForPositionFolding(redeemer, repayAmount);
+        DToken(address(borrowToken)).repayForPositionFolding(
+            redeemer,
+            repayAmount
+        );
 
         if (remaining > 0) {
             // remaining borrow underlying back to user

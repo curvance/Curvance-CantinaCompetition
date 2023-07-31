@@ -119,15 +119,14 @@ contract Zapper {
         uint256 numTokenSwaps = tokenSwaps.length;
         // prepare tokens to mint LP
         for (uint256 i; i < numTokenSwaps; ++i) {
-            SwapperLib.swap(
-                tokenSwaps[i],
-                ICentralRegistry(centralRegistry).priceRouter(),
-                SLIPPAGE
-            );
+            SwapperLib.swap(tokenSwaps[i]);
         }
 
         outAmount = IERC20(outputToken).balanceOf(address(this));
-        require(outAmount >= minoutAmount, "Zapper: received less than minOutAmount");
+        require(
+            outAmount >= minoutAmount,
+            "Zapper: received less than minOutAmount"
+        );
 
         // transfer token back to user
         SafeTransferLib.safeTransfer(outputToken, recipient, outAmount);
@@ -211,15 +210,14 @@ contract Zapper {
         uint256 numTokenSwaps = tokenSwaps.length;
         // prepare tokens to mint LP
         for (uint256 i; i < numTokenSwaps; ++i) {
-            SwapperLib.swap(
-                tokenSwaps[i],
-                ICentralRegistry(centralRegistry).priceRouter(),
-                SLIPPAGE
-            );
+            SwapperLib.swap(tokenSwaps[i]);
         }
 
         outAmount = IERC20(outputToken).balanceOf(address(this));
-        require(outAmount >= minoutAmount, "Zapper: received less than minOutAmount");
+        require(
+            outAmount >= minoutAmount,
+            "Zapper: received less than minOutAmount"
+        );
 
         // transfer token back to user
         SafeTransferLib.safeTransfer(outputToken, recipient, outAmount);
@@ -255,17 +253,16 @@ contract Zapper {
         (bool isListed, ) = lendtroller.getIsMarkets(cToken);
         require(isListed, "Zapper: invalid cToken address");
         // check cToken underlying
-        require(CToken(cToken).underlying() == lpToken, "Zapper: invalid lp address");
+        require(
+            CToken(cToken).underlying() == lpToken,
+            "Zapper: invalid lp address"
+        );
 
         uint256 numTokenSwaps = tokenSwaps.length;
 
         // prepare tokens to mint LP
         for (uint256 i; i < numTokenSwaps; ++i) {
-            SwapperLib.swap(
-                tokenSwaps[i],
-                ICentralRegistry(centralRegistry).priceRouter(),
-                SLIPPAGE
-            );
+            SwapperLib.swap(tokenSwaps[i]);
         }
     }
 
@@ -285,7 +282,10 @@ contract Zapper {
         SwapperLib.approveTokenIfNeeded(lpToken, cToken, amount);
 
         // enter curvance
-        require(CToken(cToken).mintFor(amount, recipient), "Zapper: error joining Curvance");
+        require(
+            CToken(cToken).mintFor(amount, recipient),
+            "Zapper: error joining Curvance"
+        );
 
         out = CommonLib.getTokenBalance(cToken);
     }

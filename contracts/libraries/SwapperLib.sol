@@ -8,7 +8,6 @@ import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 
 library SwapperLib {
-    
     /// TYPES ///
     struct Swap {
         address inputToken;
@@ -51,19 +50,7 @@ library SwapperLib {
 
     /// @dev Swap input token
     /// @param swapData The swap data
-    /// @param priceRouter The price router address
-    /// @param slippage Slippage settings
-    function swap(
-        Swap memory swapData,
-        address priceRouter,
-        uint256 slippage
-    ) internal {
-        (uint256 price, uint256 errorCode) = IPriceRouter(priceRouter)
-            .getPrice(swapData.inputToken, true, true);
-        require(errorCode < 2, "SwapperLib: input token price bad source");
-        uint256 usdInput = (price * swapData.inputAmount) /
-            (10 ** ERC20(swapData.inputToken).decimals());
-
+    function swap(Swap memory swapData) internal {
         approveTokenIfNeeded(
             swapData.inputToken,
             swapData.target,
@@ -82,20 +69,8 @@ library SwapperLib {
 
         require(success == true, "SwapperLib: swap error");
 
-        uint256 outputAmount = IERC20(swapData.outputToken).balanceOf(
-            address(this)
-        ) - outputAmountBefore;
-
-        (price, errorCode) = IPriceRouter(priceRouter).getPrice(
-            swapData.outputToken,
-            true,
-            true
-        );
-        require(errorCode < 2, "SwapperLib: OT price bad source");
-        uint256 usdOutput = (price * outputAmount) /
-            (10 ** ERC20(swapData.outputToken).decimals());
-
-        checkSlippage(usdInput, usdOutput, slippage);
+        IERC20(swapData.outputToken).balanceOf(address(this)) -
+            outputAmountBefore;
     }
 
     /// @notice Zaps an input token into an output token.

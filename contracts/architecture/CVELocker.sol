@@ -22,7 +22,6 @@ contract CVELocker {
     uint256 public constant EPOCH_DURATION = 2 weeks;
     uint256 public constant DENOMINATOR = 10000;
     uint256 public constant ethPerCVEOffset = 1 ether;
-    uint256 public constant SLIPPAGE = 500; // 5%
 
     uint256 public immutable genesisEpoch;
 
@@ -406,11 +405,7 @@ contract CVELocker {
             );
 
             if (swapData.call.length > 0) {
-                SwapperLib.swap(
-                    swapData,
-                    ICentralRegistry(centralRegistry).priceRouter(),
-                    SLIPPAGE
-                );
+                SwapperLib.swap(swapData);
             } else {
                 revert("CVELocker: swapData misconfigured");
             }
