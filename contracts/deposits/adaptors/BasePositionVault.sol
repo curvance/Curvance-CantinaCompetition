@@ -4,6 +4,7 @@ pragma solidity ^0.8.17;
 import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { ERC4626, SafeTransferLib, ERC20 } from "contracts/libraries/ERC4626.sol";
 import { Math } from "contracts/libraries/Math.sol";
+import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
@@ -294,6 +295,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
 
         /// We do not need to check for msg.sender == owner or msg.sender != owner 
         /// since CToken is the only contract who can call deposit, mint, withdraw, or redeem
+        /// We just keep owner parameter for 4626 compliance
 
         // Remove the users withdrawn assets.
         ta = ta - assets;
@@ -325,6 +327,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
 
         /// We do not need to check for msg.sender == owner or msg.sender != owner 
         /// since CToken is the only contract who can call deposit, mint, withdraw, or redeem
+        /// We just keep owner parameter for 4626 compliance
 
         // Check for rounding error since we round down in previewRedeem.
         require(
@@ -352,6 +355,12 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     }
 
     // ACCOUNTING LOGIC
+
+    function totalAssetsSafe() public nonReentrant returns (uint256) {
+        // Returns stored internal balance + pending rewards that are vested.
+        // Has added re-entry lock for protocols building ontop of us to have confidence in data quality
+        return _totalAssets + _calculatePendingRewards();
+    }
 
     function totalAssets() public view override returns (uint256) {
         // Returns stored internal balance + pending rewards that are vested.
