@@ -44,8 +44,8 @@ contract Lendtroller is ILendtroller {
     ///  Actions which allow users to remove their own assets cannot be paused.
     ///  Liquidation / seizing / transfer can only be paused globally, not by market.
     address public pauseGuardian;
-    bool public transferGuardianPaused;
-    bool public seizeGuardianPaused;
+    uint256 public transferPaused = 1;
+    uint256 public seizePaused = 1;
     mapping(address => bool) public mintGuardianPaused;
     mapping(address => bool) public borrowGuardianPaused;
 
@@ -80,6 +80,23 @@ contract Lendtroller is ILendtroller {
 
     // PositionFolding contract address
     address public override positionFolding;
+
+    /// Errors ///
+
+    error Lendtroller_MarketNotListed();
+    error Lendtroller_MarketAlreadyListed();
+    error Lendtroller_AddressAlreadyJoined();
+    error Lendtroller_Paused();
+    error Lendtroller_InsufficientLiquidity();
+    error Lendtroller_PriceError();
+    error Lendtroller_HasActiveLoan();
+    error Lendtroller_BorrowCapReached();
+    error Lendtroller_InsufficientShortfall();
+    error Lendtroller_TooMuchRepay();
+    error Lendtroller_LendtrollerMismatch();
+    error Lendtroller_InvalidValue();
+    error Lendtroller_AddressUnauthorized();
+    error Lendtroller_MinimumHoldPeriod();
 
     /// MODIFIERS ///
 
@@ -148,7 +165,7 @@ contract Lendtroller is ILendtroller {
 
         // Do not let them leave if they owe a balance
         if (amountOwed != 0) {
-            revert NonZeroBorrowBalance();
+            revert Lendtroller_HasActiveLoan();
         }
 
         // Fail if the sender is not permitted to redeem all of their tokens
@@ -198,11 +215,11 @@ contract Lendtroller is ILendtroller {
     /// @param mToken The market to verify the mint against
     function mintAllowed(address mToken, address) external view override {
         if (mintGuardianPaused[mToken]) {
-            revert Paused();
+            revert Lendtroller_Paused();
         }
 
         if (!markets[mToken].isListed) {
-            revert MarketNotListed(mToken);
+            revert Lendtroller_MarketNotListed();
         }
     }
 
@@ -231,17 +248,17 @@ contract Lendtroller is ILendtroller {
         uint256 borrowAmount
     ) external override {
         if (borrowGuardianPaused[mToken]) {
-            revert Paused();
+            revert Lendtroller_Paused();
         }
 
         if (!markets[mToken].isListed) {
-            revert MarketNotListed(mToken);
+            revert Lendtroller_MarketNotListed();
         }
 
         if (!markets[mToken].accountMembership[borrower]) {
             // only mTokens may call borrowAllowed if borrower not in market
             if (msg.sender != mToken) {
-                revert AddressUnauthorized();
+                revert Lendtroller_AddressUnauthorized();
             }
 
             _addToMarket(IMToken(msg.sender), borrower);
@@ -252,7 +269,7 @@ contract Lendtroller is ILendtroller {
 
         (, uint256 errorCode) = getPriceRouter().getPrice(mToken, true, false);
         if (errorCode > 0) {
-            revert PriceError();
+            revert Lendtroller_PriceError();
         }
 
         uint256 borrowCap = borrowCaps[mToken];
@@ -261,7 +278,7 @@ contract Lendtroller is ILendtroller {
             // Validate that if there is a borrow cap, 
             // we will not be over the cap with this new borrow
             if ((IMToken(mToken).totalBorrows() + borrowAmount) > borrowCap) {
-                revert BorrowCapReached();
+                revert Lendtroller_BorrowCapReached();
             }
         }
 
@@ -273,7 +290,7 @@ contract Lendtroller is ILendtroller {
         );
 
         if (shortfall > 0) {
-            revert InsufficientLiquidity();
+            revert Lendtroller_InsufficientLiquidity();
         }
     }
 
@@ -284,7 +301,7 @@ contract Lendtroller is ILendtroller {
     function repayAllowed(address mToken, address account) external view override {
 
         if (!markets[mToken].isListed) {
-            revert MarketNotListed(mToken);
+            revert Lendtroller_MarketNotListed();
         }
 
         /// We require a `minimumHoldPeriod` to break flashloan manipulations attempts
@@ -295,7 +312,7 @@ contract Lendtroller is ILendtroller {
                 minimumHoldPeriod >
             block.timestamp
         ) {
-            revert MinimumHoldPeriod();
+            revert Lendtroller_MinimumHoldPeriod();
         }
 
     }
@@ -312,16 +329,25 @@ contract Lendtroller is ILendtroller {
         uint256 repayAmount
     ) external view override {
         if (!markets[mTokenBorrowed].isListed) {
-            revert MarketNotListed(mTokenBorrowed);
+            revert Lendtroller_MarketNotListed();
         }
         if (!markets[mTokenCollateral].isListed) {
-            revert MarketNotListed(mTokenCollateral);
+            revert Lendtroller_MarketNotListed();
         }
 
         // The borrower must have shortfall in order to be liquidatable
         (, uint256 shortfall) = _getAccountLiquidity(borrower);
+        assembly {
+            if iszero(shortfall) {
+                // store the error selector to location 0x0
+                // bytes4(keccak256(Lendtroller_InsufficientShortfall())) = a160c28b
+                mstore(0x0,0xa160c28b)
+                // return bytes 29-32 for the selector
+                revert(0x1c,0x04)
+            }
+         }
         if (shortfall == 0) {
-            revert InsufficientShortfall();
+            revert Lendtroller_InsufficientShortfall();
         }
 
         // The liquidator may not close out more collateral than
@@ -332,7 +358,7 @@ contract Lendtroller is ILendtroller {
         uint256 maxClose = (closeFactorScaled * borrowBalance) / expScale;
 
         if (repayAmount > maxClose) {
-            revert TooMuchRepay();
+            revert Lendtroller_TooMuchRepay();
         }
     }
 
@@ -346,22 +372,22 @@ contract Lendtroller is ILendtroller {
         address,
         address
     ) external view override {
-        if (seizeGuardianPaused) {
-            revert Paused();
+        if (seizePaused > 1) {
+            revert Lendtroller_Paused();
         }
 
         if (!markets[mTokenBorrowed].isListed) {
-            revert MarketNotListed(mTokenBorrowed);
+            revert Lendtroller_MarketNotListed();
         }
         if (!markets[mTokenCollateral].isListed) {
-            revert MarketNotListed(mTokenCollateral);
+            revert Lendtroller_MarketNotListed();
         }
 
         if (
             IMToken(mTokenCollateral).lendtroller() !=
             IMToken(mTokenBorrowed).lendtroller()
         ) {
-            revert LendtrollerMismatch();
+            revert Lendtroller_LendtrollerMismatch();
         }
     }
 
@@ -376,8 +402,8 @@ contract Lendtroller is ILendtroller {
         address,
         uint256 transferTokens
     ) external view override {
-        if (transferGuardianPaused) {
-            revert Paused();
+        if (transferPaused > 1) {
+            revert Lendtroller_Paused();
         }
 
         _redeemAllowed(mToken, src, transferTokens);
@@ -397,9 +423,13 @@ contract Lendtroller is ILendtroller {
         uint256 actualRepayAmount
     ) external view override returns (uint256) {
         /// Read oracle prices for borrowed and collateral markets
-        (uint256 highPrice, uint256 highPriceError) = getPriceRouter()
-            .getPrice(mTokenBorrowed, true, false);
-        (uint256 lowPrice, uint256 lowPriceError) = getPriceRouter().getPrice(
+        IPriceRouter router = getPriceRouter();
+        (uint256 highPrice, uint256 highPriceError) = router.getPrice(
+            mTokenBorrowed, 
+            true, 
+            false
+        );
+        (uint256 lowPrice, uint256 lowPriceError) = router.getPrice(
             mTokenCollateral,
             true,
             true
@@ -407,7 +437,7 @@ contract Lendtroller is ILendtroller {
 
         /// Validate that we were able to securely query prices from the dual oracle
         if (highPriceError == 2 || lowPriceError == 2) {
-            revert PriceError();
+            revert Lendtroller_PriceError();
         }
 
         uint256 cTokenPrice = getCTokenPrice(
@@ -440,9 +470,15 @@ contract Lendtroller is ILendtroller {
         bool disableCollateral
     ) external {
         uint256 numMarkets = mTokens.length;
-        if (numMarkets == 0) {
-            revert InvalidValue();
-        }
+        assembly {
+            if iszero(numMarkets) {
+                // store the error selector to location 0x0
+                // bytes4(keccak256(Lendtroller_InvalidValue())) = 74ebdb4f
+                mstore(0x0,0x74ebdb4f)
+                // return bytes 29-32 for the selector
+                revert(0x1c,0x04)
+            }
+         }
 
         for (uint256 i; i < numMarkets; ++i) {
             /// Make sure the mToken is a collateral token
@@ -464,7 +500,7 @@ contract Lendtroller is ILendtroller {
         );
 
         if (shortfall > 0) {
-            revert InsufficientLiquidity();
+            revert Lendtroller_InsufficientLiquidity();
         }
     }
 
@@ -478,7 +514,7 @@ contract Lendtroller is ILendtroller {
     ) external onlyElevatedPermissions {
         uint256 oldCloseFactorScaled = closeFactorScaled;
         closeFactorScaled = newCloseFactorScaled;
-        emit NewCloseFactor(oldCloseFactorScaled, closeFactorScaled);
+        emit NewCloseFactor(oldCloseFactorScaled, newCloseFactorScaled);
     }
 
     /// @notice Sets the collateralFactor for a market
@@ -492,12 +528,12 @@ contract Lendtroller is ILendtroller {
         // Verify market is listed
         ILendtroller.Market storage market = markets[address(mToken)];
         if (!market.isListed) {
-            revert MarketNotListed(address(mToken));
+            revert Lendtroller_MarketNotListed();
         }
 
         // Check collateral factor is not above maximum allowed
         if (collateralFactorMaxScaled < newCollateralFactorScaled) {
-            revert InvalidValue();
+            revert Lendtroller_InvalidValue();
         }
 
         (, uint256 lowPriceError) = getPriceRouter().getPrice(
@@ -508,7 +544,7 @@ contract Lendtroller is ILendtroller {
 
         // Validate that we got a price and that collateral factor != 0
         if (lowPriceError == 2 || newCollateralFactorScaled != 0) {
-            revert PriceError();
+            revert Lendtroller_PriceError();
         }
 
         // Cache the current value for event log
@@ -547,7 +583,7 @@ contract Lendtroller is ILendtroller {
     /// @param mToken The address of the market (token) to list
     function supportMarket(IMToken mToken) external onlyElevatedPermissions {
         if (markets[address(mToken)].isListed) {
-            revert MarketAlreadyListed();
+            revert Lendtroller_MarketAlreadyListed();
         }
 
         mToken.tokenType(); // Sanity check to make sure its really a mToken
@@ -577,12 +613,12 @@ contract Lendtroller is ILendtroller {
             !centralRegistry.hasElevatedPermissions(msg.sender) &&
             msg.sender != borrowCapGuardian
         ) {
-            revert AddressUnauthorized();
+            revert Lendtroller_AddressUnauthorized();
         }
         uint256 numMarkets = mTokens.length;
 
         if (numMarkets == 0 || numMarkets != newBorrowCaps.length) {
-            revert InvalidValue();
+            revert Lendtroller_InvalidValue();
         }
 
         for (uint256 i; i < numMarkets; ++i) {
@@ -771,7 +807,7 @@ contract Lendtroller is ILendtroller {
         // Assign new guardian
         pauseGuardian = newPauseGuardian;
 
-        emit NewPauseGuardian(oldPauseGuardian, pauseGuardian);
+        emit NewPauseGuardian(oldPauseGuardian, newPauseGuardian);
     }
 
     /// @notice Admin function to set market mint paused
@@ -779,17 +815,17 @@ contract Lendtroller is ILendtroller {
     /// @param state pause or unpause
     function setMintPaused(IMToken mToken, bool state) public returns (bool) {
         if (!markets[address(mToken)].isListed) {
-            revert MarketNotListed(address(mToken));
+            revert Lendtroller_MarketNotListed();
         }
 
         bool hasDaoPerms = centralRegistry.hasElevatedPermissions(msg.sender);
 
         if (msg.sender != pauseGuardian && !hasDaoPerms) {
-            revert AddressUnauthorized();
+            revert Lendtroller_AddressUnauthorized();
         }
         // Only the timelock or Emergency Council can turn minting back on
         if (!hasDaoPerms && state != true) {
-            revert AddressUnauthorized();
+            revert Lendtroller_AddressUnauthorized();
         }
 
         mintGuardianPaused[address(mToken)] = state;
@@ -805,17 +841,17 @@ contract Lendtroller is ILendtroller {
         bool state
     ) public returns (bool) {
         if (!markets[address(mToken)].isListed) {
-            revert MarketNotListed(address(mToken));
+            revert Lendtroller_MarketNotListed();
         }
 
         bool hasDaoPerms = centralRegistry.hasElevatedPermissions(msg.sender);
 
         if (msg.sender != pauseGuardian && !hasDaoPerms) {
-            revert AddressUnauthorized();
+            revert Lendtroller_AddressUnauthorized();
         }
         // Only the timelock or Emergency Council can turn borrows back on
         if (!hasDaoPerms && state != true) {
-            revert AddressUnauthorized();
+            revert Lendtroller_AddressUnauthorized();
         }
 
         borrowGuardianPaused[address(mToken)] = state;
@@ -829,14 +865,13 @@ contract Lendtroller is ILendtroller {
         bool hasDaoPerms = centralRegistry.hasElevatedPermissions(msg.sender);
 
         if (msg.sender != pauseGuardian && !hasDaoPerms) {
-            revert AddressUnauthorized();
+            revert Lendtroller_AddressUnauthorized();
         }
         // Only the timelock or Emergency Council can turn transfers back on
         if (!hasDaoPerms && state != true) {
-            revert AddressUnauthorized();
+            revert Lendtroller_AddressUnauthorized();
         }
-
-        transferGuardianPaused = state;
+        transferPaused = state ? 2: 1;
         emit ActionPaused("lendtroller: Transfer Paused", state);
         return state;
     }
@@ -847,14 +882,14 @@ contract Lendtroller is ILendtroller {
         bool hasDaoPerms = centralRegistry.hasElevatedPermissions(msg.sender);
 
         if (msg.sender != pauseGuardian && !hasDaoPerms) {
-            revert AddressUnauthorized();
+            revert Lendtroller_AddressUnauthorized();
         }
         // Only the timelock or Emergency Council can turn seizing assets back on
         if (!hasDaoPerms && state != true) {
-            revert AddressUnauthorized();
+            revert Lendtroller_AddressUnauthorized();
         }
 
-        seizeGuardianPaused = state;
+        seizePaused = state ? 2: 1;
         emit ActionPaused("lendtroller: Seize Paused", state);
         return state;
     }
@@ -870,7 +905,7 @@ contract Lendtroller is ILendtroller {
         // Assign new position folding contract
         positionFolding = newPositionFolding;
 
-        emit NewPositionFoldingContract(oldPositionFolding, positionFolding);
+        emit NewPositionFoldingContract(oldPositionFolding, newPositionFolding);
     }
 
     /// INTERNAL FUNCTIONS ///
@@ -917,7 +952,7 @@ contract Lendtroller is ILendtroller {
         uint256 redeemTokens
     ) internal view {
         if (!markets[mToken].isListed) {
-            revert MarketNotListed(mToken);
+            revert Lendtroller_MarketNotListed();
         }
 
         // If the redeemer is not 'in' the market, then we can bypass
@@ -934,7 +969,7 @@ contract Lendtroller is ILendtroller {
                 minimumHoldPeriod >
             block.timestamp
         ) {
-            revert MinimumHoldPeriod();
+            revert Lendtroller_MinimumHoldPeriod();
         }
 
         // Otherwise, perform a hypothetical liquidity check to guard against
@@ -947,7 +982,7 @@ contract Lendtroller is ILendtroller {
         );
 
         if (shortfall > 0) {
-            revert InsufficientLiquidity();
+            revert Lendtroller_InsufficientLiquidity();
         }
     }
 
@@ -1035,12 +1070,13 @@ contract Lendtroller is ILendtroller {
         uint256 numAccountAssets = accountAssets[account].length;
         IMToken asset;
         bool collateralEnabled;
+        IPriceRouter router = getPriceRouter();
 
         // For each asset the account is in
-        for (uint256 i; i < numAccountAssets; ++i) {
+        for (uint256 i; i < numAccountAssets; ) {
             asset = accountAssets[account][i];
             collateralEnabled =
-                asset.tokenType() == 1 &&
+                asset.tokenType() > 0 &&
                 !userData[account].collateralDisabled[asset];
 
             (
@@ -1050,10 +1086,9 @@ contract Lendtroller is ILendtroller {
             ) = asset.getAccountSnapshot(account);
 
             if (collateralEnabled) {
-                (uint256 lowPrice, uint256 errorCode) = getPriceRouter()
-                    .getPrice(address(asset), true, true);
+                (uint256 lowPrice, uint256 errorCode) = router.getPrice(address(asset), true, true);
                 if (errorCode == 2) {
-                    revert PriceError();
+                    revert Lendtroller_PriceError();
                 }
                 uint256 cTokenPrice = getCTokenPrice(address(asset), lowPrice);
                 uint256 assetValue = (((mTokenBalance * exchangeRateScaled) /
@@ -1067,10 +1102,9 @@ contract Lendtroller is ILendtroller {
             }
 
             {
-                (uint256 highPrice, uint256 errorCode) = getPriceRouter()
-                    .getPrice(address(asset), true, false);
+                (uint256 highPrice, uint256 errorCode) = router.getPrice(address(asset), true, false);
                 if (errorCode == 2) {
-                    revert PriceError();
+                    revert Lendtroller_PriceError();
                 }
 
                 sumBorrowPlusEffects += ((highPrice * borrowBalance) /
@@ -1095,6 +1129,10 @@ contract Lendtroller is ILendtroller {
                         expScale);
                 }
             }
+
+            unchecked {
+                ++i;
+            }
         }
     }
 
@@ -1105,7 +1143,7 @@ contract Lendtroller is ILendtroller {
 
         for (uint256 i; i < numMarkets; ++i) {
             if (allMarkets[i] == IMToken(mToken)) {
-                revert MarketAlreadyListed();
+                revert Lendtroller_MarketAlreadyListed();
             }
         }
         allMarkets.push(IMToken(mToken));

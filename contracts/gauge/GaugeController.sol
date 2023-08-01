@@ -2,7 +2,6 @@
 pragma solidity ^0.8.17;
 
 import { GaugeErrors } from "contracts/gauge/GaugeErrors.sol";
-
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
@@ -194,7 +193,7 @@ contract GaugeController is IGaugePool {
 
     /// @notice Update reward variables for all pools
     /// @dev Be careful of gas spending!
-    function massUpdatePools(address[] memory tokens) public {
+    function massUpdatePools(address[] calldata tokens) external {
         uint256 numTokens = tokens.length;
         for (uint256 i; i < numTokens; ) {
             unchecked {
