@@ -30,7 +30,10 @@ contract CVELocker {
     // Token Addresses
     address public immutable cve;
     address public immutable cvx;
-    IVeCVE public immutable veCVE;
+
+    /// STORAGE ///
+
+    IVeCVE public veCVE;
 
     uint256 public genesisEpoch;
     bool public lockerStarted;
