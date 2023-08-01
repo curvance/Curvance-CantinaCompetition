@@ -40,6 +40,9 @@ contract Lendtroller is ILendtroller {
     // @dev `bytes4(keccak256(bytes("Lendtroller_InvalidValue()")))`
     uint256 internal constant _INVALID_VALUE_SELECTOR = 0x74ebdb4f;
 
+    // @dev `bytes4(keccak256(bytes("Lendtroller_InsufficientShortfall()")))`
+    uint256 internal constant _INSUFFICIENT_SHORTFALL_SELECTOR = 0xa160c28b;
+
     /// STORAGE ///
 
     /// @notice The Pause Guardian can pause certain actions as a safety mechanism.
@@ -342,15 +345,11 @@ contract Lendtroller is ILendtroller {
         assembly {
             if iszero(shortfall) {
                 // store the error selector to location 0x0
-                // bytes4(keccak256(Lendtroller_InsufficientShortfall())) = a160c28b
-                mstore(0x0,0xa160c28b)
+                mstore(0x0,_INSUFFICIENT_SHORTFALL_SELECTOR)
                 // return bytes 29-32 for the selector
                 revert(0x1c,0x04)
             }
          }
-        if (shortfall == 0) {
-            revert Lendtroller_InsufficientShortfall();
-        }
 
         // The liquidator may not close out more collateral than
         // what is allowed by the closeFactor
