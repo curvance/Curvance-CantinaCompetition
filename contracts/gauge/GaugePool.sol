@@ -31,7 +31,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
 
     /// STORAGE ///
 
-    address public lendtroller;
+    address public immutable lendtroller;
     ChildGaugePool[] public childGauges;
     mapping(address => PoolInfo) public poolInfo; // token => pool info
     mapping(address => mapping(address => UserInfo)) public userInfo; // token => user => info
@@ -102,9 +102,10 @@ contract GaugePool is GaugeController, ReentrancyGuard {
             revert GaugeErrors.InvalidToken();
         }
 
-        uint256 accRewardPerShare = poolInfo[token].accRewardPerShare;
-        uint256 lastRewardTimestamp = poolInfo[token].lastRewardTimestamp;
-        uint256 totalDeposited = poolInfo[token].totalAmount;
+        PoolInfo storage _pool = poolInfo[token];
+        uint256 accRewardPerShare = _pool.accRewardPerShare;
+        uint256 lastRewardTimestamp = _pool.lastRewardTimestamp;
+        uint256 totalDeposited = _pool.totalAmount;
 
         if (block.timestamp > lastRewardTimestamp && totalDeposited != 0) {
             uint256 lastEpoch = epochOfTimestamp(lastRewardTimestamp);
@@ -157,13 +158,15 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         address user,
         uint256 amount
     ) external nonReentrant {
-        (bool isListed, ) = ILendtroller(lendtroller).getIsMarkets(token);
-        if (msg.sender != token || !isListed) {
-            revert GaugeErrors.InvalidToken();
-        }
+
         if (amount == 0) {
             revert GaugeErrors.InvalidAmount();
         }
+
+        (bool isListed, ) = ILendtroller(lendtroller).getIsMarkets(token);
+         if (msg.sender != token || !isListed) {
+             revert GaugeErrors.InvalidToken();
+         }
 
         updatePool(token);
         _calcPending(user, token);
@@ -197,13 +200,18 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         address user,
         uint256 amount
     ) external nonReentrant {
+
+        if (amount == 0){
+            revert GaugeErrors.InvalidAmount();
+        }
+
         (bool isListed, ) = ILendtroller(lendtroller).getIsMarkets(token);
         if (msg.sender != token || !isListed) {
             revert GaugeErrors.InvalidToken();
         }
 
         UserInfo storage info = userInfo[token][user];
-        if (amount == 0 || info.amount < amount) {
+        if (info.amount < amount) {
             revert GaugeErrors.InvalidAmount();
         }
 
