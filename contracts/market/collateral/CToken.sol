@@ -12,10 +12,11 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.sol";
 import { BasePositionVault } from "contracts/deposits/adaptors/BasePositionVault.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
-import { IMToken } from "contracts/interfaces/market/IMToken.sol";
+import { IMToken, accountSnapshot } from "contracts/interfaces/market/IMToken.sol";
 
 /// @title Curvance's Collateral Token Contract
 contract CToken is ERC165, ReentrancyGuard {
+
     /// CONSTANTS ///
 
     uint256 internal constant expScale = 1e18;
@@ -145,27 +146,25 @@ contract CToken is ERC165, ReentrancyGuard {
         address lendtroller_,
         address vault_,
         uint256 initialExchangeRateScaled_,
-        string memory name_
+        string memory name_,
+        string memory symbol_
     ) {
-        // Set initial exchange rate
-        initialExchangeRateScaled = initialExchangeRateScaled_;
-        if (initialExchangeRateScaled == 0) {
+        
+        if (initialExchangeRateScaled_ == 0) {
             revert CannotEqualZero();
         }
 
-        ILendtroller initializedLendtroller = ILendtroller(lendtroller_);
-
-        /// Set the lendtroller ///
-        // Ensure invoke lendtroller.isLendtroller() returns true
-        if (!initializedLendtroller.isLendtroller()) {
+        // Set initial exchange rate
+        initialExchangeRateScaled = initialExchangeRateScaled_;
+        
+        // Ensure that lendtroller parameter is a lendtroller
+        if (!ILendtroller(lendtroller_).isLendtroller()) {
             revert LendtrollerMismatch();
         }
 
-        // Set market's lendtroller to newLendtroller
-        lendtroller = initializedLendtroller;
-
-        // Emit NewLendtroller(address(0), newLendtroller)
-        emit NewLendtroller(ILendtroller(address(0)), initializedLendtroller);
+        // Set the lendtroller
+        lendtroller = ILendtroller(lendtroller_);
+        emit NewLendtroller(ILendtroller(address(0)), ILendtroller(lendtroller_));
 
         require(
             ERC165Checker.supportsInterface(
@@ -178,8 +177,8 @@ contract CToken is ERC165, ReentrancyGuard {
         centralRegistry = centralRegistry_;
         underlying = underlying_;
         vault = BasePositionVault(vault_);
-        name = name_;
-        symbol = IERC20(underlying_).symbol();
+        name = string(abi.encodePacked("Curvance collateralized ", name_));
+        symbol = string(abi.encodePacked("c", symbol_));
         decimals = IERC20(underlying_).decimals();
     }
 
@@ -248,36 +247,35 @@ contract CToken is ERC165, ReentrancyGuard {
 
     /// @notice Sender redeems cTokens in exchange for the underlying asset
     /// @dev Accrues interest whether or not the operation succeeds, unless reverted
-    /// @param redeemTokens The number of cTokens to redeem into underlying
-    function redeem(uint256 redeemTokens) external nonReentrant {
+    /// @param tokensToRedeem The number of cTokens to redeem into underlying
+    function redeem(uint256 tokensToRedeem) external nonReentrant {
         _redeem(
             payable(msg.sender),
-            redeemTokens,
-            (exchangeRateStored() * redeemTokens) / expScale,
+            tokensToRedeem,
+            (exchangeRateStored() * tokensToRedeem) / expScale,
             payable(msg.sender)
         );
     }
 
     /// @notice Sender redeems cTokens in exchange for a specified amount of underlying asset
     /// @dev Accrues interest whether or not the operation succeeds, unless reverted
-    /// @param redeemAmount The amount of underlying to redeem
-    function redeemUnderlying(uint256 redeemAmount) external nonReentrant {
-        address payable redeemer = payable(msg.sender);
-        uint256 redeemTokens = (redeemAmount * expScale) /
+    /// @param tokensToRedeem The amount of underlying to redeem
+    function redeemUnderlying(uint256 tokensToRedeem) external nonReentrant {
+        uint256 redeemTokens = (tokensToRedeem * expScale) /
             exchangeRateStored();
 
         // Fail if redeem not allowed
-        lendtroller.redeemAllowed(address(this), redeemer, redeemTokens);
+        lendtroller.redeemAllowed(address(this), msg.sender, redeemTokens);
 
-        _redeem(redeemer, redeemTokens, redeemAmount, redeemer);
+        _redeem(payable(msg.sender), redeemTokens, tokensToRedeem, payable(msg.sender));
     }
 
     /// @notice Helper function for Position Folding contract to redeem underlying tokens
     /// @param user The user address
-    /// @param redeemAmount The amount of the underlying asset to redeem
+    /// @param tokensToRedeem The amount of the underlying asset to redeem
     function redeemUnderlyingForPositionFolding(
         address payable user,
-        uint256 redeemAmount,
+        uint256 tokensToRedeem,
         bytes calldata params
     ) external nonReentrant {
         if (msg.sender != lendtroller.positionFolding()) {
@@ -286,15 +284,15 @@ contract CToken is ERC165, ReentrancyGuard {
 
         _redeem(
             user,
-            (redeemAmount * expScale) / exchangeRateStored(),
-            redeemAmount,
+            (tokensToRedeem * expScale) / exchangeRateStored(),
+            tokensToRedeem,
             payable(msg.sender)
         );
 
         IPositionFolding(msg.sender).onRedeem(
             address(this),
             user,
-            redeemAmount,
+            tokensToRedeem,
             params
         );
 
@@ -408,6 +406,7 @@ contract CToken is ERC165, ReentrancyGuard {
         return ((exchangeRateCurrent() * balanceOf(account)) / expScale);
     }
 
+   
     /// @notice Get a snapshot of the account's balances, and the cached exchange rate
     /// @dev This is used by lendtroller to more efficiently perform liquidity checks.
     /// @param account Address of the account to snapshot
@@ -418,6 +417,18 @@ contract CToken is ERC165, ReentrancyGuard {
         address account
     ) external view returns (uint256, uint256, uint256) {
         return (balanceOf(account), 0, exchangeRateStored());
+    }
+
+    /// @notice Get a snapshot of the account's balances, and the cached exchange rate
+    /// @dev This is used by lendtroller to more efficiently perform liquidity checks.
+    /// @param account Address of the account to snapshot
+    function getAccountSnapshotPacked(
+        address account
+    ) external view returns (accountSnapshot memory) {
+        return (accountSnapshot({
+            mTokenBalance: balanceOf(account), 
+            borrowBalance: 0, 
+            exchangeRateScaled: exchangeRateStored()}));
     }
 
     /// @notice Transfers collateral tokens (this market) to the liquidator.
@@ -484,13 +495,14 @@ contract CToken is ERC165, ReentrancyGuard {
         address to,
         uint256 tokens
     ) internal {
-        // Fails if transfer not allowed
-        lendtroller.transferAllowed(address(this), from, to, tokens);
 
         // Do not allow self-transfers
         if (from == to) {
             revert TransferNotAllowed();
         }
+
+        // Fails if transfer not allowed
+        lendtroller.transferAllowed(address(this), from, to, tokens);
 
         // Get the allowance, if the spender is not the `from` address
         if (spender != from) {
@@ -507,8 +519,9 @@ contract CToken is ERC165, ReentrancyGuard {
         }
 
         // emit events on gauge pool
-        GaugePool(gaugePool()).withdraw(address(this), from, tokens);
-        GaugePool(gaugePool()).deposit(address(this), to, tokens);
+        address _gaugePool = gaugePool();
+        GaugePool(_gaugePool).withdraw(address(this), from, tokens);
+        GaugePool(_gaugePool).deposit(address(this), to, tokens);
 
         // We emit a Transfer event
         emit Transfer(from, to, tokens);
@@ -530,20 +543,19 @@ contract CToken is ERC165, ReentrancyGuard {
         // Exp memory exchangeRate = Exp({mantissa: exchangeRateStored()});
         uint256 exchangeRate = exchangeRateStored();
 
-        // Note: `doTransferIn` reverts if anything goes wrong, since we can't be sure if
-        //       side-effects occurred. The function returns the amount actually transferred,
-        //       in case of a fee. On success, the cToken holds an additional `actualMintAmount`
-        //       of cash.
+        // Note: The function returns the amount actually received from the positionVault. 
+        //       On success, the cToken holds an additional `actualMintAmount` of cash.
         uint256 actualMintAmount = doTransferIn(user, mintAmount);
 
         // We get the current exchange rate and calculate the number of cTokens to be minted:
         //  mintTokens = actualMintAmount / exchangeRate
         uint256 mintTokens = (actualMintAmount * expScale) / exchangeRate;
-        totalSupply += mintTokens;
-
-        /// Calculate their new balance
-        _accountBalance[recipient] += mintTokens;
-
+        unchecked {
+            totalSupply = totalSupply + mintTokens;
+            /// Calculate their new balance
+            _accountBalance[recipient] += mintTokens;
+        }
+        
         // emit events on gauge pool
         GaugePool(gaugePool()).deposit(address(this), recipient, mintTokens);
 
@@ -582,10 +594,9 @@ contract CToken is ERC165, ReentrancyGuard {
         // emit events on gauge pool
         GaugePool(gaugePool()).withdraw(address(this), redeemer, redeemTokens);
 
-        // We invoke doTransferOut for the redeemer and the redeemAmount.
-        // Note: The cToken must handle variations between ERC-20 and ETH underlying.
+        // We invoke doTransferOut for the redeemer and the redeemAmount
+        // so that we can withdraw tokens from the position vault for the redeemer
         // On success, the cToken has redeemAmount less of cash.
-        // doTransferOut reverts if anything goes wrong, since we can't be sure if side effects occurred.
         doTransferOut(recipient, redeemAmount);
 
         // We emit a Transfer event, and a Redeem event
@@ -600,7 +611,6 @@ contract CToken is ERC165, ReentrancyGuard {
 
     /// @notice Transfers collateral tokens (this market) to the liquidator.
     /// @dev Called byliquidateUser during the liquidation of another CToken.
-    ///  Its absolutely critical to use msg.sender as the seizer cToken and not a parameter.
     /// @param seizerToken The contract seizing the collateral (i.e. borrowed cToken)
     /// @param liquidator The account receiving seized collateral
     /// @param borrower The account having collateral seized
@@ -611,6 +621,12 @@ contract CToken is ERC165, ReentrancyGuard {
         address borrower,
         uint256 seizeTokens
     ) internal {
+
+        // Fails if borrower = liquidator
+        if (borrower == liquidator) {
+            revert SelfLiquidationNotAllowed();
+        }
+
         // Fails if seize not allowed
         lendtroller.seizeAllowed(
             address(this),
@@ -618,11 +634,6 @@ contract CToken is ERC165, ReentrancyGuard {
             liquidator,
             borrower
         );
-
-        // Fails if borrower = liquidator
-        if (borrower == liquidator) {
-            revert SelfLiquidationNotAllowed();
-        }
 
         uint256 protocolSeizeTokens = (seizeTokens *
             centralRegistry.protocolLiquidationFee()) / expScale;
@@ -633,12 +644,16 @@ contract CToken is ERC165, ReentrancyGuard {
         // Document new account balances with underflow check on borrower balance
         _accountBalance[borrower] -= seizeTokens;
         _accountBalance[liquidator] += liquidatorSeizeTokens;
-        totalReserves += protocolSeizeAmount;
-        totalSupply -= protocolSeizeTokens;
-
+        // Reserves should never overflow since totalSupply will always be higher before function than totalReserves after this call
+        unchecked {
+            totalReserves = totalReserves + protocolSeizeAmount;
+            totalSupply = totalSupply - protocolSeizeTokens;
+        }
+        
         // emit events on gauge pool
-        GaugePool(gaugePool()).withdraw(address(this), borrower, seizeTokens);
-        GaugePool(gaugePool()).deposit(
+        address _gaugePool = gaugePool();
+        GaugePool(_gaugePool).withdraw(address(this), borrower, seizeTokens);
+        GaugePool(_gaugePool).deposit(
             address(this),
             liquidator,
             liquidatorSeizeTokens

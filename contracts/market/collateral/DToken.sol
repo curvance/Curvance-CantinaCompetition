@@ -12,7 +12,7 @@ import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
-import { IMToken } from "contracts/interfaces/market/IMToken.sol";
+import { IMToken, accountSnapshot } from "contracts/interfaces/market/IMToken.sol";
 
 /// @title Curvance's Debt Token Contract
 contract DToken is ERC165, ReentrancyGuard {
@@ -216,58 +216,41 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @param lendtroller_ The address of the Lendtroller
     /// @param interestRateModel_ The address of the interest rate model
     /// @param initialExchangeRateScaled_ The initial exchange rate, scaled by 1e18
-    /// @param name_ ERC-20 name of this token
-    /// @param symbol_ ERC-20 symbol of this token
-    /// @param decimals_ ERC-20 decimal precision of this token
     constructor(
         ICentralRegistry centralRegistry_,
         address underlying_,
         address lendtroller_,
         InterestRateModel interestRateModel_,
-        uint256 initialExchangeRateScaled_,
-        string memory name_,
-        string memory symbol_,
-        uint8 decimals_
+        uint256 initialExchangeRateScaled_
     ) {
-        // Validate that initialize has not been called prior
-        if (accrualBlockTimestamp != 0 && borrowIndex != 0) {
-            revert PreviouslyInitialized();
+
+        if (initialExchangeRateScaled_ == 0) {
+            revert CannotEqualZero();
         }
 
         // Set initial exchange rate
         initialExchangeRateScaled = initialExchangeRateScaled_;
-        if (initialExchangeRateScaled == 0) {
-            revert CannotEqualZero();
-        }
 
-        ILendtroller initializedLendtroller = ILendtroller(lendtroller_);
-
-        /// Set the lendtroller ///
-        // Ensure invoke lendtroller.isLendtroller() returns true
-        if (!initializedLendtroller.isLendtroller()) {
+        // Ensure that lendtroller parameter is a lendtroller
+        if (!ILendtroller(lendtroller_).isLendtroller()) {
             revert LendtrollerMismatch();
         }
 
-        // Set market's lendtroller to newLendtroller
-        lendtroller = initializedLendtroller;
-
-        // Emit NewLendtroller(address(0), newLendtroller)
-        emit NewLendtroller(ILendtroller(address(0)), initializedLendtroller);
+        // Set the lendtroller
+        lendtroller = ILendtroller(lendtroller_);
+        emit NewLendtroller(ILendtroller(address(0)), ILendtroller(lendtroller_));
 
         // Initialize timestamp and borrow index (timestamp mocks depend on lendtroller being set)
         accrualBlockTimestamp = block.timestamp;
         borrowIndex = expScale;
 
-        /// Set Interest Rate Model ///
-        // Ensure invoke newInterestRateModel.isInterestRateModel() returns true
+        // Ensure that interestRateModel_ parameter is an interest rate model
         if (!interestRateModel_.isInterestRateModel()) {
             revert ValidationFailed();
         }
 
-        // Configure initial interest rate model
+        // Set Interest Rate Model
         interestRateModel = interestRateModel_;
-
-        // Emit NewMarketInterestRateModel(address(0), newInterestRateModel)
         emit NewMarketInterestRateModel(
             InterestRateModel(address(0)),
             interestRateModel_
@@ -283,9 +266,9 @@ contract DToken is ERC165, ReentrancyGuard {
 
         centralRegistry = centralRegistry_;
         underlying = underlying_;
-        name = name_;
-        symbol = symbol_;
-        decimals = decimals_;
+        name = string(abi.encodePacked("Curvance interest bearing ", IERC20(underlying_).name()));
+        symbol = string(abi.encodePacked("c", IERC20(underlying_).symbol()));
+        decimals = IERC20(underlying_).decimals();
 
         // Sanity check underlying so that we know users will not need to mint anywhere close to balance cap
         require (IERC20(underlying).totalSupply() < type(uint208).max, "DToken: Underlying token assumptions not met");
@@ -397,11 +380,11 @@ contract DToken is ERC165, ReentrancyGuard {
 
     /// @notice Sender redeems cTokens in exchange for the underlying asset
     /// @dev Accrues interest whether or not the operation succeeds, unless reverted
-    /// @param redeemTokens The number of cTokens to redeem into underlying
-    function redeem(uint256 redeemTokens) external nonReentrant {
+    /// @param tokensToRedeem The number of cTokens to redeem into underlying
+    function redeem(uint256 tokensToRedeem) external nonReentrant {
         accrueInterest();
 
-        _redeem(payable(msg.sender), redeemTokens, (exchangeRateStored() * redeemTokens) / expScale, payable(msg.sender));
+        _redeem(payable(msg.sender), tokensToRedeem, (exchangeRateStored() * tokensToRedeem) / expScale, payable(msg.sender));
     }
 
     /// @notice Sender redeems cTokens in exchange for a specified amount of underlying asset
@@ -410,21 +393,20 @@ contract DToken is ERC165, ReentrancyGuard {
     function redeemUnderlying(uint256 redeemAmount) external nonReentrant {
         accrueInterest();
 
-        address payable redeemer = payable(msg.sender);
-        uint256 redeemTokens = (redeemAmount * expScale) / exchangeRateStored();
+        uint256 tokensToRedeem = (redeemAmount * expScale) / exchangeRateStored();
 
         // Fail if redeem not allowed
-        lendtroller.redeemAllowed(address(this), redeemer, redeemTokens);
+        lendtroller.redeemAllowed(address(this), msg.sender, tokensToRedeem);
 
-        _redeem(redeemer, redeemTokens, redeemAmount, redeemer);
+        _redeem(payable(msg.sender), tokensToRedeem, redeemAmount, payable(msg.sender));
     }
 
     /// @notice Helper function for Position Folding contract to redeem underlying tokens
     /// @param user The user address
-    /// @param redeemAmount The amount of the underlying asset to redeem
+    /// @param tokensToRedeem The amount of the underlying asset to redeem
     function redeemUnderlyingForPositionFolding(
         address payable user,
-        uint256 redeemAmount,
+        uint256 tokensToRedeem,
         bytes calldata params
     ) external nonReentrant {
 
@@ -434,12 +416,12 @@ contract DToken is ERC165, ReentrancyGuard {
 
         accrueInterest();
 
-        _redeem(user, (redeemAmount * expScale) / exchangeRateStored(), redeemAmount, payable(msg.sender));
+        _redeem(user, (tokensToRedeem * expScale) / exchangeRateStored(), tokensToRedeem, payable(msg.sender));
 
         IPositionFolding(msg.sender).onRedeem(
             address(this),
             user,
-            redeemAmount,
+            tokensToRedeem,
             params
         );
 
@@ -481,7 +463,7 @@ contract DToken is ERC165, ReentrancyGuard {
         // We call doTransferIn for the caller and the addAmount
         // On success, the cToken holds an additional addAmount of cash.
         // it returns the amount actually transferred, in case of a fee.
-        totalReserves += doTransferIn(msg.sender, addAmount);
+        totalReserves = totalReserves + doTransferIn(msg.sender, addAmount);
 
         // emit ReservesAdded(msg.sender, actualAddAmount, totalReserves); /// changed to emit correct variable
         emit ReservesAdded(msg.sender, addAmount, totalReserves);
@@ -500,7 +482,7 @@ contract DToken is ERC165, ReentrancyGuard {
         }
 
         // Need underflow check to check if we have sufficient totalReserves
-        totalReserves -= reduceAmount;
+        totalReserves = totalReserves - reduceAmount;
 
         // Query current DAO operating address
         address payable daoAddress = payable(centralRegistry.daoAddress());
@@ -511,12 +493,9 @@ contract DToken is ERC165, ReentrancyGuard {
         emit ReservesReduced(daoAddress, reduceAmount, totalReserves);
     }
 
-    /// @notice Approve `spender` to transfer up to `amount` from `src`
-    /// @dev This will overwrite the approval amount for `spender`
-    ///  and is subject to issues noted [here](https://eips.ethereum.org/EIPS/eip-20#approve)
-    /// @param spender The address of the account which may transfer tokens
-    /// @param amount The number of tokens that are approved (uint256.max means infinite)
-    /// @return bool true=success
+    /// @dev Sets `amount` as the allowance of `spender` over the caller's tokens.
+    ///
+    /// Emits a {Approval} event.
     function approve(
         address spender,
         uint256 amount
@@ -528,10 +507,7 @@ contract DToken is ERC165, ReentrancyGuard {
         return true;
     }
 
-    /// @notice Get the current allowance from `owner` for `spender`
-    /// @param owner The address of the account which owns the tokens to be spent
-    /// @param spender The address of the account which may transfer tokens
-    /// @return uint The number of tokens allowed to be spent (-1 means infinite)
+    /// @dev Returns the amount of tokens that `spender` can spend on behalf of `owner`.
     function allowance(
         address owner,
         address spender
@@ -656,6 +632,18 @@ contract DToken is ERC165, ReentrancyGuard {
         );
     }
 
+    /// @notice Get a snapshot of the account's balances, and the cached exchange rate
+    /// @dev This is used by lendtroller to more efficiently perform liquidity checks.
+    /// @param account Address of the account to snapshot
+    function getAccountSnapshotPacked(
+        address account
+    ) external view returns (accountSnapshot memory) {
+        return (accountSnapshot({
+            mTokenBalance: balanceOf(account), 
+            borrowBalance: borrowBalanceStored(account), 
+            exchangeRateScaled: exchangeRateStored()}));
+    }
+
     /// @notice Returns the current per-second borrow interest rate for this dToken
     /// @return The borrow interest rate per second, scaled by 1e18
     function borrowRatePerSecond() external view returns (uint256) {
@@ -771,8 +759,7 @@ contract DToken is ERC165, ReentrancyGuard {
         } else {
             // Otherwise:
             // exchangeRate = (totalCash + totalBorrows - totalReserves) / totalSupply
-            uint256 totalCash = getCash();
-            uint256 cashPlusBorrowsMinusReserves = totalCash +
+            uint256 cashPlusBorrowsMinusReserves = getCash() +
                 totalBorrows -
                 totalReserves;
             uint256 exchangeRate = (cashPlusBorrowsMinusReserves * expScale) /
@@ -853,13 +840,14 @@ contract DToken is ERC165, ReentrancyGuard {
         address to,
         uint256 tokens
     ) internal {
-        // Fails if transfer not allowed
-        lendtroller.transferAllowed(address(this), from, to, tokens);
-
+        
         // Do not allow self-transfers
         if (from == to) {
             revert TransferNotAllowed();
         }
+
+        // Fails if transfer not allowed
+        lendtroller.transferAllowed(address(this), from, to, tokens);
 
         // Get the allowance, if the spender is not the `from` address
         if (spender != from) {

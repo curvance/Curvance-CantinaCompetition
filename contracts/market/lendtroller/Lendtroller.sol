@@ -1104,9 +1104,8 @@ contract Lendtroller is ILendtroller {
                 if (errorCode == 2) {
                     revert Lendtroller_PriceError();
                 }
-                uint256 cTokenPrice = getCTokenPrice(address(asset), lowPrice);
                 uint256 assetValue = (((mTokenBalance * exchangeRateScaled) /
-                    expScale) * cTokenPrice) / expScale;
+                    expScale) * getCTokenPrice(address(asset), lowPrice)) / expScale;
 
                 sumCollateral += assetValue;
                 maxBorrow +=

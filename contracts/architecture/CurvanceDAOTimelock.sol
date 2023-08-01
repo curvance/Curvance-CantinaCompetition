@@ -33,7 +33,8 @@ contract Timelock is TimelockController {
         centralRegistry = centralRegistry_;
 
         // grant admin/proposer/executor role to DAO
-        _grantRole(PROPOSER_ROLE, centralRegistry.daoAddress());
-        _grantRole(EXECUTOR_ROLE, centralRegistry.daoAddress());
+        address _centralRegistryDaoAddress = centralRegistry.daoAddress();
+        _grantRole(PROPOSER_ROLE, _centralRegistryDaoAddress);
+        _grantRole(EXECUTOR_ROLE, _centralRegistryDaoAddress);
     }
 }
