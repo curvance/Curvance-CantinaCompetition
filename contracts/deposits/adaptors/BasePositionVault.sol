@@ -58,10 +58,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     /// MODIFIERS ///
 
     modifier onlyCToken() {
-        require(
-            cToken == msg.sender,
-            "BasePositionVault: UNAUTHORIZED"
-        );
+        require(cToken == msg.sender, "BasePositionVault: UNAUTHORIZED");
         _;
     }
 
@@ -120,7 +117,10 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     /// @notice Initializes the vault and the cToken attached to it
     function initiateVault(address cTokenAddress) external onlyDaoPermissions {
         require(!vaultIsActive, "BasePositionVault: vault not active");
-        require(IMToken(cToken).tokenType() > 0, "BasePositionVault: not cToken");
+        require(
+            IMToken(cToken).tokenType() > 0,
+            "BasePositionVault: not cToken"
+        );
 
         cToken = cTokenAddress;
         vaultIsActive = true;
@@ -136,9 +136,14 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
 
     /// @notice Reactivate the vault
     /// @dev Allows for reconfiguration of cToken attached to vault
-    function liftShutdown(address cTokenAddress) external onlyElevatedPermissions {
+    function liftShutdown(
+        address cTokenAddress
+    ) external onlyElevatedPermissions {
         require(!vaultIsActive, "BasePositionVault: vault not active");
-        require(IMToken(cToken).tokenType() > 0, "BasePositionVault: not cToken");
+        require(
+            IMToken(cToken).tokenType() > 0,
+            "BasePositionVault: not cToken"
+        );
 
         cToken = cTokenAddress;
         vaultIsActive = true;
@@ -235,7 +240,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
 
         // If there are pending rewards to vest,
         // or if high watermark is not set, vestRewards.
-        if (pending > 0 || _sharePriceHighWatermark == 0){
+        if (pending > 0 || _sharePriceHighWatermark == 0) {
             _vestRewards(ta);
         } else {
             _totalAssets = ta;
@@ -293,7 +298,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         // No need to check for rounding error, previewWithdraw rounds up.
         shares = _previewWithdraw(assets, ta);
 
-        /// We do not need to check for msg.sender == owner or msg.sender != owner 
+        /// We do not need to check for msg.sender == owner or msg.sender != owner
         /// since CToken is the only contract who can call deposit, mint, withdraw, or redeem
         /// We just keep owner parameter for 4626 compliance
 
@@ -325,7 +330,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         uint256 pending = _calculatePendingRewards();
         uint256 ta = _totalAssets + pending;
 
-        /// We do not need to check for msg.sender == owner or msg.sender != owner 
+        /// We do not need to check for msg.sender == owner or msg.sender != owner
         /// since CToken is the only contract who can call deposit, mint, withdraw, or redeem
         /// We just keep owner parameter for 4626 compliance
 
@@ -352,6 +357,34 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
 
         SafeTransferLib.safeTransfer(asset(), receiver, assets);
+    }
+
+    function migrateStart(
+        address newVault
+    ) public onlyCToken nonReentrant returns (bytes memory) {
+        // withdraw all assets (including pending rewards)
+        uint256 assets = totalAssetsSafe();
+        _withdraw(assets);
+
+        SafeTransferLib.safeTransfer(asset(), newVault, assets);
+
+        return abi.encode(_totalAssets, _sharePriceHighWatermark, vaultData);
+    }
+
+    /// @notice migrate confirm function
+    /// @dev this function can be upgraded on new vault contract
+    function migrateConfirm(
+        address, // oldVault,
+        bytes memory params
+    ) public onlyCToken nonReentrant {
+        (_totalAssets, _sharePriceHighWatermark, vaultData) = abi.decode(
+            params,
+            (uint256, uint256, VaultData)
+        );
+
+        // deposit all assets (including pending rewards)
+        uint256 assets = totalAssetsSafe();
+        _deposit(assets);
     }
 
     // ACCOUNTING LOGIC

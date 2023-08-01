@@ -44,6 +44,9 @@ contract CToken is ERC165, ReentrancyGuard {
 
     /// EVENTS ///
 
+    /// @notice Event emitted when the vault migrated
+    event MigrateVault(address oldVault, address newVault);
+
     /// @notice Event emitted when tokens are minted
     event Mint(
         address user,
@@ -178,6 +181,21 @@ contract CToken is ERC165, ReentrancyGuard {
         name = name_;
         symbol = IERC20(underlying_).symbol();
         decimals = IERC20(underlying_).decimals();
+    }
+
+    function migrateVault(
+        address newVault
+    ) external onlyDaoPermissions nonReentrant {
+        address oldVault = address(vault);
+        vault = BasePositionVault(address(0));
+
+        bytes memory params = BasePositionVault(oldVault).migrateStart(
+            newVault
+        );
+        BasePositionVault(newVault).migrateConfirm(oldVault, params);
+
+        vault = BasePositionVault(newVault);
+        emit MigrateVault(oldVault, newVault);
     }
 
     /// @notice Transfer `amount` tokens from `msg.sender` to `to`
