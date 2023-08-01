@@ -1070,7 +1070,6 @@ contract Lendtroller is ILendtroller {
         uint256 numAccountAssets = accountAssets[account].length;
         IMToken asset;
         bool collateralEnabled;
-        IPriceRouter router = getPriceRouter();
 
         // For each asset the account is in
         for (uint256 i; i < numAccountAssets; ) {
@@ -1086,7 +1085,7 @@ contract Lendtroller is ILendtroller {
             ) = asset.getAccountSnapshot(account);
 
             if (collateralEnabled) {
-                (uint256 lowPrice, uint256 errorCode) = router.getPrice(address(asset), true, true);
+                (uint256 lowPrice, uint256 errorCode) = getPriceRouter().getPrice(address(asset), true, true);
                 if (errorCode == 2) {
                     revert Lendtroller_PriceError();
                 }
@@ -1102,7 +1101,7 @@ contract Lendtroller is ILendtroller {
             }
 
             {
-                (uint256 highPrice, uint256 errorCode) = router.getPrice(address(asset), true, false);
+                (uint256 highPrice, uint256 errorCode) = getPriceRouter().getPrice(address(asset), true, false);
                 if (errorCode == 2) {
                     revert Lendtroller_PriceError();
                 }

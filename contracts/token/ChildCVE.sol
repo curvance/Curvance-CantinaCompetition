@@ -8,17 +8,6 @@ contract CVE is OFTV2 {
 
     uint256 public constant DENOMINATOR = 10000;
 
-    /// MODIFIERS ///
-
-    modifier onlyProtocolMessagingHub() {
-        require(
-            msg.sender == centralRegistry.protocolMessagingHub(),
-            "CVE: UNAUTHORIZED"
-        );
-
-        _;
-    }
-
     /// CONSTRUCTOR ///
 
     constructor(
@@ -42,7 +31,11 @@ contract CVE is OFTV2 {
     /// Resulting tokens are minted to the voting hub contract.
     function mintGaugeEmissions(
         uint256 gaugeEmissions
-    ) external onlyProtocolMessagingHub {
+    ) external {
+        require(
+            msg.sender == centralRegistry.protocolMessagingHub(),
+            "CVE: UNAUTHORIZED"
+        );
         _mint(
             msg.sender,
             (gaugeEmissions * centralRegistry.lockBoostValue()) / DENOMINATOR

@@ -19,11 +19,10 @@ contract CallOptionCVE is ERC20 {
     ICentralRegistry public immutable centralRegistry;
     address public immutable cve;
     address public immutable paymentToken;
+    bytes32 private immutable _name;
+    bytes32 private immutable _symbol;
 
     /// STORAGE ///
-
-    string private _name;
-    string private _symbol;
 
     uint256 public paymentTokenPerCVE;
 
@@ -47,18 +46,14 @@ contract CallOptionCVE is ERC20 {
 
     /// CONSTRUCTOR ///
 
-    /// @param name_ The name of the token.
-    /// @param symbol_ The symbol of the token.
     /// @param paymentToken_ The token used for payment when exercising options.
     /// @param centralRegistry_ The Central Registry contract address.
     constructor(
-        string memory name_,
-        string memory symbol_,
         ICentralRegistry centralRegistry_,
         address paymentToken_
     ) {
-        _name = name_;
-        _symbol = symbol_;
+        _name = "CVE Options";
+        _symbol = "CVEOpt";
 
         require(
             ERC165Checker.supportsInterface(
@@ -168,14 +163,14 @@ contract CallOptionCVE is ERC20 {
 
     /// PUBLIC FUNCTIONS ///
 
-    /// @dev Returns the name of the token.
+    /// @dev Returns the name of the token
     function name() public view override returns (string memory) {
-        return _name;
+        return string(abi.encodePacked(_name));
     }
 
-    /// @dev Returns the symbol of the token.
+    /// @dev Returns the symbol of the token
     function symbol() public view override returns (string memory) {
-        return _symbol;
+        return string(abi.encodePacked(_symbol));
     }
 
     /// @notice Check if options are exercisable.
@@ -189,6 +184,7 @@ contract CallOptionCVE is ERC20 {
     /// @notice Exercise CVE call options.
     /// @param amount The amount of options to exercise.
     function exerciseOption(uint256 amount) public payable {
+        require(amount > 0, "CallOptionCVE: invalid amount");
         require(
             optionsExercisable(),
             "CallOptionCVE: Options not exercisable yet"
@@ -197,7 +193,6 @@ contract CallOptionCVE is ERC20 {
             IERC20(cve).balanceOf(address(this)) >= amount,
             "CallOptionCVE: not enough CVE remaining"
         );
-        require(amount > 0, "CallOptionCVE: invalid amount");
         require(
             balanceOf(msg.sender) >= amount,
             "CallOptionCVE: not enough call options to exercise"
