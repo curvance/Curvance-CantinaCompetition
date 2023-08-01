@@ -105,10 +105,7 @@ contract TestBasePriceRouter is TestBase {
             _USDC_ADDRESS,
             address(lendtroller),
             InterestRateModel(address(jumpRateModel)),
-            _ONE,
-            "mUSDC",
-            "mUSDC",
-            18
+            _ONE
         );
     }
 
