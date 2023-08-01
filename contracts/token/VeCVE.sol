@@ -31,20 +31,16 @@ contract VeCVE is ERC20 {
     uint256 public constant DENOMINATOR = 10000;
 
     ICentralRegistry public immutable centralRegistry;
-
+    bytes32 private immutable _name;
+    bytes32 private immutable _symbol;
     address public immutable cve;
-
     ICVELocker public immutable cveLocker;
-
     uint256 public immutable genesisEpoch;
-
     uint256 public immutable continuousLockPointMultiplier;
-
+    
     /// STORAGE ///
 
-    string private _name;
-    string private _symbol;
-    bool public isShutdown;
+    uint256 public isShutdown = 1;
 
     // User => Array of VeCVE locks
     mapping(address => Lock[]) public userLocks;
@@ -80,6 +76,7 @@ contract VeCVE is ERC20 {
     error VeCVE_NotContinuousLock();
     error VeCVE_InvalidLock();
     error VeCVE_VeCVEShutdown();
+    error VeCVE_onlyCVELocker();
 
     /// MODIFIERS ///
 
@@ -149,58 +146,8 @@ contract VeCVE is ERC20 {
     /// @notice Shuts down the contract, unstakes all tokens,
     ///         and releases all locks
     function shutdown() external onlyElevatedPermissions {
-        isShutdown = true;
+        isShutdown = 2;
         cveLocker.notifyLockerShutdown();
-    }
-
-    /// PUBLIC FUNCTIONS ///
-
-    /// @dev Returns the name of the token
-    function name() public view override returns (string memory) {
-        return _name;
-    }
-
-    /// @dev Returns the symbol of the token
-    function symbol() public view override returns (string memory) {
-        return _symbol;
-    }
-
-    /// @notice Returns the current epoch for the given time
-    /// @param time The timestamp for which to calculate the epoch
-    /// @return The current epoch
-    function currentEpoch(uint256 time) public view returns (uint256) {
-        if (time < genesisEpoch) {
-            return 0;
-        }
-
-        return ((time - genesisEpoch) / EPOCH_DURATION);
-    }
-
-    /// @notice Returns the current epoch for the given time
-    /// @return The current epoch
-    function nextEpochStartTime() public view returns (uint256) {
-        uint256 timestampOffset = (currentEpoch(block.timestamp) + 1) *
-            EPOCH_DURATION;
-        return (genesisEpoch + timestampOffset);
-    }
-
-    /// @notice Returns the epoch to lock until for a lock executed
-    ///         at this moment
-    /// @return The epoch
-    function freshLockEpoch() public view returns (uint256) {
-        return currentEpoch(block.timestamp) + LOCK_DURATION_EPOCHS;
-    }
-
-    /// @notice Returns the timestamp to lock until for a lock executed
-    ///         at this moment
-    /// @return The timestamp
-    function freshLockTimestamp() public view returns (uint40) {
-        return
-            uint40(
-                genesisEpoch +
-                    (currentEpoch(block.timestamp) * EPOCH_DURATION) +
-                    LOCK_DURATION
-            );
     }
 
     /// @notice Locks a given amount of cve tokens and claims,
@@ -215,17 +162,19 @@ contract VeCVE is ERC20 {
         uint256 amount,
         bool continuousLock,
         address rewardRecipient,
-        RewardsData memory rewardsData,
-        bytes memory params,
+        RewardsData calldata rewardsData,
+        bytes calldata params,
         uint256 aux
-    ) public {
-        if (isShutdown) {
-            revert VeCVE_VeCVEShutdown();
-        }
+    ) external {
+
         if (amount == 0) {
             revert VeCVE_InvalidLock();
         }
 
+        if (isShutdown > 1) {
+            revert VeCVE_VeCVEShutdown();
+        }
+        
         SafeTransferLib.safeTransferFrom(
             cve,
             msg.sender,
@@ -255,16 +204,18 @@ contract VeCVE is ERC20 {
         uint256 amount,
         bool continuousLock,
         address rewardRecipient,
-        RewardsData memory rewardsData,
-        bytes memory params,
+        RewardsData calldata rewardsData,
+        bytes calldata params,
         uint256 aux
-    ) public {
-        if (isShutdown) {
-            revert VeCVE_VeCVEShutdown();
-        }
+    ) external {
         if (amount == 0) {
             revert VeCVE_InvalidLock();
         }
+
+        if (isShutdown > 1) {
+            revert VeCVE_VeCVEShutdown();
+        }
+
         if (!centralRegistry.approvedVeCVELocker(msg.sender)) {
             revert VeCVE_InvalidLock();
         }
@@ -296,11 +247,11 @@ contract VeCVE is ERC20 {
         uint256 lockIndex,
         bool continuousLock,
         address rewardRecipient,
-        RewardsData memory rewardsData,
-        bytes memory params,
+        RewardsData calldata rewardsData,
+        bytes calldata params,
         uint256 aux
-    ) public {
-        if (isShutdown) {
+    ) external {
+        if (isShutdown > 1) {
             revert VeCVE_VeCVEShutdown();
         }
 
@@ -361,15 +312,16 @@ contract VeCVE is ERC20 {
         uint256 lockIndex,
         bool continuousLock,
         address rewardRecipient,
-        RewardsData memory rewardsData,
-        bytes memory params,
+        RewardsData calldata rewardsData,
+        bytes calldata params,
         uint256 aux
-    ) public {
-        if (isShutdown) {
-            revert VeCVE_VeCVEShutdown();
-        }
+    ) external {
         if (amount == 0) {
             revert VeCVE_InvalidLock();
+        }
+
+        if (isShutdown > 1) {
+            revert VeCVE_VeCVEShutdown();
         }
 
         SafeTransferLib.safeTransferFrom(
@@ -407,16 +359,18 @@ contract VeCVE is ERC20 {
         uint256 lockIndex,
         bool continuousLock,
         address rewardRecipient,
-        RewardsData memory rewardsData,
-        bytes memory params,
+        RewardsData calldata rewardsData,
+        bytes calldata params,
         uint256 aux
-    ) public {
-        if (isShutdown) {
-            revert VeCVE_VeCVEShutdown();
-        }
+    ) external {
         if (amount == 0) {
             revert VeCVE_InvalidLock();
         }
+
+        if (isShutdown > 1) {
+            revert VeCVE_VeCVEShutdown();
+        }
+
         if (!centralRegistry.approvedVeCVELocker(msg.sender)) {
             revert VeCVE_InvalidLock();
         }
@@ -449,10 +403,10 @@ contract VeCVE is ERC20 {
     function disableContinuousLock(
         uint256 lockIndex,
         address rewardRecipient,
-        RewardsData memory rewardsData,
-        bytes memory params,
+        RewardsData calldata rewardsData,
+        bytes calldata params,
         uint256 aux
-    ) public {
+    ) external {
         Lock[] storage locks = userLocks[msg.sender];
 
         // Length is index + 1 so has to be less than array length
@@ -470,12 +424,16 @@ contract VeCVE is ERC20 {
         uint256 unlockEpoch = freshLockEpoch();
         locks[lockIndex].unlockTime = freshLockTimestamp();
 
-        _reduceTokenData(
-            msg.sender,
-            unlockEpoch,
-            _getContinuousPointValue(tokenAmount) - tokenAmount,
-            tokenAmount
-        );
+        // only modified on locking/unlocking VeCVE and we know theres never
+        // more than 420m so this should never over/underflow
+        unchecked {
+            uint256 tokenPoints = _getContinuousPointValue(tokenAmount) - tokenAmount;
+            chainTokenPoints = chainTokenPoints - tokenPoints;
+            chainUnlocksByEpoch[unlockEpoch] -= tokenAmount;
+            userTokenPoints[msg.sender] -= tokenPoints;
+            userTokenUnlocksByEpoch[msg.sender][unlockEpoch] -= tokenAmount;
+        }
+
     }
 
     /// @notice Combines all locks into a single lock,
@@ -490,10 +448,10 @@ contract VeCVE is ERC20 {
         uint256[] calldata lockIndexes,
         bool continuousLock,
         address rewardRecipient,
-        RewardsData memory rewardsData,
+        RewardsData calldata rewardsData,
         bytes memory params,
         uint256 aux
-    ) public {
+    ) external {
         // Claim pending locker rewards
         _claimRewards(msg.sender, rewardRecipient, rewardsData, params, aux);
 
@@ -567,8 +525,9 @@ contract VeCVE is ERC20 {
         if (excessPoints > 0) {
             _reduceTokenPoints(msg.sender, excessPoints);
         }
-
+        
         userLock = locks[lockIndexes[0]]; // We will combine the deleted locks into the first lock in the array
+        
         uint256 epoch;
 
         if (continuousLock) {
@@ -637,10 +596,10 @@ contract VeCVE is ERC20 {
     function combineAllLocks(
         bool continuousLock,
         address rewardRecipient,
-        RewardsData memory rewardsData,
-        bytes memory params,
+        RewardsData calldata rewardsData,
+        bytes calldata params,
         uint256 aux
-    ) public {
+    ) external {
         // Claim pending locker rewards
         _claimRewards(msg.sender, rewardRecipient, rewardsData, params, aux);
 
@@ -732,10 +691,10 @@ contract VeCVE is ERC20 {
         bool relock,
         bool continuousLock,
         address rewardRecipient,
-        RewardsData memory rewardsData,
-        bytes memory params,
+        RewardsData calldata rewardsData,
+        bytes calldata params,
         uint256 aux
-    ) public {
+    ) external {
         Lock[] storage locks = userLocks[msg.sender];
 
         // Length is index + 1 so has to be less than array length
@@ -744,7 +703,7 @@ contract VeCVE is ERC20 {
         }
 
         require(
-            block.timestamp >= locks[lockIndex].unlockTime || isShutdown,
+            block.timestamp >= locks[lockIndex].unlockTime || isShutdown == 2,
             "VeCVE: lock has not expired"
         );
 
@@ -790,10 +749,10 @@ contract VeCVE is ERC20 {
         address recipient,
         uint256 lockIndex,
         address rewardRecipient,
-        RewardsData memory rewardsData,
-        bytes memory params,
+        RewardsData calldata rewardsData,
+        bytes calldata params,
         uint256 aux
-    ) public {
+    ) external {
         Lock[] storage locks = userLocks[msg.sender];
 
         // Length is index + 1 so has to be less than array length
@@ -839,6 +798,56 @@ contract VeCVE is ERC20 {
         }
     }
 
+    /// PUBLIC FUNCTIONS ///
+
+    /// @dev Returns the name of the token
+    function name() public view override returns (string memory) {
+        return string(abi.encodePacked(_name));
+    }
+
+    /// @dev Returns the symbol of the token
+    function symbol() public view override returns (string memory) {
+        return string(abi.encodePacked(_symbol));
+    }
+
+    /// @notice Returns the current epoch for the given time
+    /// @param time The timestamp for which to calculate the epoch
+    /// @return The current epoch
+    function currentEpoch(uint256 time) public view returns (uint256) {
+        if (time < genesisEpoch) {
+            return 0;
+        }
+
+        return ((time - genesisEpoch) / EPOCH_DURATION);
+    }
+
+    /// @notice Returns the current epoch for the given time
+    /// @return The current epoch
+    function nextEpochStartTime() public view returns (uint256) {
+        uint256 timestampOffset = (currentEpoch(block.timestamp) + 1) *
+            EPOCH_DURATION;
+        return (genesisEpoch + timestampOffset);
+    }
+
+    /// @notice Returns the epoch to lock until for a lock executed
+    ///         at this moment
+    /// @return The epoch
+    function freshLockEpoch() public view returns (uint256) {
+        return currentEpoch(block.timestamp) + LOCK_DURATION_EPOCHS;
+    }
+
+    /// @notice Returns the timestamp to lock until for a lock executed
+    ///         at this moment
+    /// @return The timestamp
+    function freshLockTimestamp() public view returns (uint40) {
+        return
+            uint40(
+                genesisEpoch +
+                    (currentEpoch(block.timestamp) * EPOCH_DURATION) +
+                    LOCK_DURATION
+            );
+    }
+
     /// @notice Updates user points by reducing the amount that gets unlocked
     ///         in a specific epoch
     /// @param user The address of the user whose points are to be updated
@@ -847,10 +856,14 @@ contract VeCVE is ERC20 {
     ///      userTokenUnlocksByEpoch[user][epoch] > 0
     ///      so do not need to check here
     function updateUserPoints(address user, uint256 epoch) public {
-        require(
-            address(cveLocker) == msg.sender,
-            "VeCVE: only CVE Locker can update user points"
-        );
+        address _cveLocker = address(cveLocker);
+        assembly {
+            if iszero(eq(caller(),_cveLocker)){
+                //bytes4(keccak256("VeCVE_onlyCVELocker()")) = b5f2689b
+                mstore(0x00, 0xb5f2689b)
+                revert(0x1c,0x04)
+            }
+        }
 
         unchecked {
             userTokenPoints[user] -= userTokenUnlocksByEpoch[user][epoch];
@@ -869,6 +882,7 @@ contract VeCVE is ERC20 {
             return 0;
         }
 
+        uint256 currentLockBoost = centralRegistry.voteBoostValue();
         uint256 votes;
 
         for (uint256 i; i < numLocks; ) {
@@ -877,7 +891,8 @@ contract VeCVE is ERC20 {
                 votes += getVotesForSingleLockForTime(
                     user,
                     i++,
-                    block.timestamp
+                    block.timestamp,
+                    currentLockBoost
                 );
             }
         }
@@ -901,12 +916,13 @@ contract VeCVE is ERC20 {
         }
 
         uint256 timestamp = genesisEpoch + (EPOCH_DURATION * epoch);
+        uint256 currentLockBoost = centralRegistry.voteBoostValue();
         uint256 votes;
 
         for (uint256 i; i < numLocks; ) {
             // Based on CVE maximum supply this cannot overflow
             unchecked {
-                votes += getVotesForSingleLockForTime(user, i++, timestamp);
+                votes += getVotesForSingleLockForTime(user, i++, timestamp, currentLockBoost);
             }
         }
 
@@ -919,21 +935,27 @@ contract VeCVE is ERC20 {
     ///              for the calculation
     /// @param lockIndex The index of the lock to calculate votes for
     /// @param time The timestamp to use for the calculation
+    /// @param currentLockBoost The current voting boost a lock gets for being continuous
     /// @return The number of votes for the specified lock at the given timestamp
     function getVotesForSingleLockForTime(
         address user,
         uint256 lockIndex,
-        uint256 time
+        uint256 time, 
+        uint256 currentLockBoost
     ) public view returns (uint256) {
         Lock storage userLock = userLocks[user][lockIndex];
 
-        if (userLock.unlockTime == CONTINUOUS_LOCK_VALUE) {
-            return _getContinuousVoteValue(userLock.amount);
-        }
         if (userLock.unlockTime < time) {
             return 0;
         }
 
+        if (userLock.unlockTime == CONTINUOUS_LOCK_VALUE) {
+            unchecked {
+                return ((userLock.amount * currentLockBoost) /
+                DENOMINATOR);
+             }
+        }
+        
         // Equal to epochsLeft = (userLock.unlockTime - time) / EPOCH_DURATION
         // (userLock.amount * epochsLeft) / LOCK_DURATION_EPOCHS
         return
@@ -1018,7 +1040,15 @@ contract VeCVE is ERC20 {
                     unlockTime: freshLockTimestamp()
                 })
             );
-            _incrementTokenData(recipient, unlockEpoch, amount);
+            // Increment Token Data
+            unchecked {
+                // only modified on locking/unlocking VeCVE and we know theres never
+                // more than 420m so this should never over/underflow
+                chainTokenPoints = chainTokenPoints + amount;
+                chainUnlocksByEpoch[unlockEpoch] += amount;
+                userTokenPoints[recipient] += amount;
+                userTokenUnlocksByEpoch[recipient][unlockEpoch] += amount;
+            }
         }
 
         _mint(recipient, amount);
@@ -1114,49 +1144,6 @@ contract VeCVE is ERC20 {
         user.pop();
     }
 
-    /// @notice Increment token data
-    /// @dev Increments both the token points and token unlocks for the chain
-    ///      and user. Can only be called by the VeCVE contract
-    /// @param user The address of the user
-    /// @param points The number of points to add
-    function _incrementTokenData(
-        address user,
-        uint256 epoch,
-        uint256 points
-    ) internal {
-        // only modified on locking/unlocking VeCVE and we know theres never
-        // more than 420m so this should never over/underflow
-        unchecked {
-            chainTokenPoints += points;
-            chainUnlocksByEpoch[epoch] += points;
-            userTokenPoints[user] += points;
-            userTokenUnlocksByEpoch[user][epoch] += points;
-        }
-    }
-
-    /// @notice Reduce token data
-    /// @dev Reduces both the token points and token unlocks for the chain and
-    ///      user for a given epoch. Can only be called by the VeCVE contract
-    /// @param user The address of the user
-    /// @param epoch The epoch to reduce the data
-    /// @param tokenPoints The token points to reduce
-    /// @param tokenUnlocks The token unlocks to reduce
-    function _reduceTokenData(
-        address user,
-        uint256 epoch,
-        uint256 tokenPoints,
-        uint256 tokenUnlocks
-    ) internal {
-        // only modified on locking/unlocking VeCVE and we know theres never
-        // more than 420m so this should never over/underflow
-        unchecked {
-            chainTokenPoints -= tokenPoints;
-            chainUnlocksByEpoch[epoch] -= tokenUnlocks;
-            userTokenPoints[user] -= tokenPoints;
-            userTokenUnlocksByEpoch[user][epoch] -= tokenUnlocks;
-        }
-    }
-
     /// @notice Increment token points
     /// @dev Increments the token points of the chain and user.
     ///      Can only be called by the VeCVE contract
@@ -1166,7 +1153,7 @@ contract VeCVE is ERC20 {
         // We know theres never more than 420m
         // so this should never over/underflow
         unchecked {
-            chainTokenPoints += points;
+            chainTokenPoints = chainTokenPoints + points;
             userTokenPoints[user] += points;
         }
     }
@@ -1180,7 +1167,7 @@ contract VeCVE is ERC20 {
         // We know theres never more than 420m
         // so this should never over/underflow
         unchecked {
-            chainTokenPoints -= points;
+            chainTokenPoints = chainTokenPoints - points;
             userTokenPoints[user] -= points;
         }
     }
@@ -1269,7 +1256,7 @@ contract VeCVE is ERC20 {
         // We know theres never more than 420m
         // so this should never over/underflow
         unchecked {
-            chainTokenPoints += tokenPoints;
+            chainTokenPoints = chainTokenPoints + tokenPoints;
             chainUnlocksByEpoch[epoch] -= tokenUnlocks;
             userTokenPoints[user] += tokenPoints;
             userTokenUnlocksByEpoch[user][epoch] -= tokenUnlocks;
@@ -1288,16 +1275,4 @@ contract VeCVE is ERC20 {
         }
     }
 
-    /// @notice Calculates the continuous lock gauge voting power value
-    ///         for basePoints
-    /// @param basePoints The token points to be used in the calculation
-    /// @return The calculated continuous lock gauge voting power value
-    function _getContinuousVoteValue(
-        uint256 basePoints
-    ) internal view returns (uint256) {
-        unchecked {
-            return ((basePoints * centralRegistry.voteBoostValue()) /
-                DENOMINATOR);
-        }
-    }
 }
