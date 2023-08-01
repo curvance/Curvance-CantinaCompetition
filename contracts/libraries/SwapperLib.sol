@@ -67,7 +67,7 @@ library SwapperLib {
 
         propagateError(success, retData, "SwapperLib: swap");
 
-        require(success == true, "SwapperLib: swap error");
+        require(success, "SwapperLib: swap error");
 
         IERC20(swapData.outputToken).balanceOf(address(this)) -
             outputAmountBefore;

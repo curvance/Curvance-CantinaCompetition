@@ -16,7 +16,7 @@ library CurveLib {
     function enterCurve(
         address lpMinter,
         address lpToken,
-        address[] memory tokens,
+        address[] calldata tokens,
         uint256 lpMinOutAmount
     ) internal returns (uint256 lpOutAmount) {
         bool hasETH;
@@ -89,7 +89,7 @@ library CurveLib {
     function exitCurve(
         address lpMinter,
         address lpToken,
-        address[] memory tokens,
+        address[] calldata tokens,
         uint256 lpAmount
     ) internal {
         // approve lp token

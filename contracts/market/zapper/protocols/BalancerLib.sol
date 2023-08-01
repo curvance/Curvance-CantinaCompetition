@@ -19,7 +19,7 @@ library BalancerLib {
         address balancerVault,
         bytes32 balancerPoolId,
         address lpToken,
-        address[] memory tokens,
+        address[] calldata tokens,
         uint256 lpMinOutAmount
     ) internal returns (uint256 lpOutAmount) {
         uint256 numTokens = tokens.length;
@@ -69,7 +69,7 @@ library BalancerLib {
         address balancerVault,
         bytes32 balancerPoolId,
         address lpToken,
-        address[] memory tokens,
+        address[] calldata tokens,
         uint256 lpAmount
     ) internal {
         // approve lp token

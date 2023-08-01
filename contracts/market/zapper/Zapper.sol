@@ -66,7 +66,7 @@ contract Zapper {
         address cToken,
         address inputToken,
         uint256 inputAmount,
-        SwapperLib.Swap[] memory tokenSwaps,
+        SwapperLib.Swap[] calldata tokenSwaps,
         address lpMinter,
         address lpToken,
         uint256 lpMinOutAmount,
@@ -104,7 +104,7 @@ contract Zapper {
         address lpToken,
         uint256 lpAmount,
         address[] calldata tokens,
-        SwapperLib.Swap[] memory tokenSwaps,
+        SwapperLib.Swap[] calldata tokenSwaps,
         address outputToken,
         uint256 minoutAmount,
         address recipient
@@ -119,8 +119,10 @@ contract Zapper {
 
         uint256 numTokenSwaps = tokenSwaps.length;
         // prepare tokens to mint LP
-        for (uint256 i; i < numTokenSwaps; ++i) {
-            SwapperLib.swap(tokenSwaps[i]);
+        for (uint256 i; i < numTokenSwaps; ) {
+            unchecked {
+                SwapperLib.swap(tokenSwaps[i++]);
+            } 
         }
 
         outAmount = IERC20(outputToken).balanceOf(address(this));
@@ -148,7 +150,7 @@ contract Zapper {
         address cToken,
         address inputToken,
         uint256 inputAmount,
-        SwapperLib.Swap[] memory tokenSwaps,
+        SwapperLib.Swap[] calldata tokenSwaps,
         address balancerVault,
         bytes32 balancerPoolId,
         address lpToken,
@@ -189,7 +191,7 @@ contract Zapper {
         address lpToken,
         uint256 lpAmount,
         address[] calldata tokens,
-        SwapperLib.Swap[] memory tokenSwaps,
+        SwapperLib.Swap[] calldata tokenSwaps,
         address outputToken,
         uint256 minoutAmount,
         address recipient
@@ -210,8 +212,10 @@ contract Zapper {
 
         uint256 numTokenSwaps = tokenSwaps.length;
         // prepare tokens to mint LP
-        for (uint256 i; i < numTokenSwaps; ++i) {
-            SwapperLib.swap(tokenSwaps[i]);
+        for (uint256 i; i < numTokenSwaps; ) {
+            unchecked {
+                SwapperLib.swap(tokenSwaps[i++]);
+            }
         }
 
         outAmount = IERC20(outputToken).balanceOf(address(this));
@@ -238,7 +242,7 @@ contract Zapper {
         address cToken,
         address inputToken,
         uint256 inputAmount,
-        SwapperLib.Swap[] memory tokenSwaps,
+        SwapperLib.Swap[] calldata tokenSwaps,
         address router,
         address factory,
         address lpToken,
@@ -275,7 +279,7 @@ contract Zapper {
         address router,
         address lpToken,
         uint256 lpAmount,
-        SwapperLib.Swap[] memory tokenSwaps,
+        SwapperLib.Swap[] calldata tokenSwaps,
         address outputToken,
         uint256 minoutAmount,
         address recipient
@@ -290,8 +294,10 @@ contract Zapper {
 
         uint256 numTokenSwaps = tokenSwaps.length;
         // prepare tokens to mint LP
-        for (uint256 i; i < numTokenSwaps; ++i) {
-            SwapperLib.swap(tokenSwaps[i]);
+        for (uint256 i; i < numTokenSwaps; ) {
+            unchecked {
+                SwapperLib.swap(tokenSwaps[i++]);
+            } 
         }
 
         outAmount = IERC20(outputToken).balanceOf(address(this));
@@ -314,7 +320,7 @@ contract Zapper {
         address cToken,
         address inputToken,
         uint256 inputAmount,
-        SwapperLib.Swap[] memory tokenSwaps,
+        SwapperLib.Swap[] calldata tokenSwaps,
         address lpToken
     ) private {
         if (CommonLib.isETH(inputToken)) {
@@ -343,7 +349,9 @@ contract Zapper {
 
         // prepare tokens to mint LP
         for (uint256 i; i < numTokenSwaps; ++i) {
-            SwapperLib.swap(tokenSwaps[i]);
+            unchecked {
+                SwapperLib.swap(tokenSwaps[i++]);
+            }
         }
     }
 
