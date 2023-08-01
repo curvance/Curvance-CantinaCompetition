@@ -426,6 +426,7 @@ contract CToken is ERC165, ReentrancyGuard {
         address account
     ) external view returns (accountSnapshot memory) {
         return (accountSnapshot({
+            asset: IMToken(address(this)),
             mTokenBalance: balanceOf(account), 
             borrowBalance: 0, 
             exchangeRateScaled: exchangeRateStored()}));
@@ -470,17 +471,16 @@ contract CToken is ERC165, ReentrancyGuard {
         return lendtroller.gaugePool();
     }
 
-    /// @notice Accrue interest then return the up-to-date exchange rate
+    /// @notice Pull up-to-date exchange rate from the underlying to the CToken with reEntry lock
     /// @return Calculated exchange rate scaled by 1e18
     function exchangeRateCurrent() public nonReentrant returns (uint256) {
-        return 1;
+        return exchangeRateStored();
     }
 
-    /// @notice Calculates the exchange rate from the underlying to the CToken
-    /// @dev This function does not accrue interest before calculating the exchange rate
+    /// @notice Pull up-to-date exchange rate from the underlying to the CToken
     /// @return Calculated exchange rate scaled by 1e18
-    function exchangeRateStored() public pure returns (uint256) {
-        return 1;
+    function exchangeRateStored() public view returns (uint256) {
+        return vault.convertToAssets(expScale) / expScale;
     }
 
     /// @notice Transfer `tokens` tokens from `from` to `to` by `spender` internally

@@ -639,8 +639,9 @@ contract DToken is ERC165, ReentrancyGuard {
         address account
     ) external view returns (accountSnapshot memory) {
         return (accountSnapshot({
+            asset: IMToken(address(this)),
             mTokenBalance: balanceOf(account), 
-            borrowBalance: borrowBalanceStored(account), 
+            borrowBalance: 0, 
             exchangeRateScaled: exchangeRateStored()}));
     }
 

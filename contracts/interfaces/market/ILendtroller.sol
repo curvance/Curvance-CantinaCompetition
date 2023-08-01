@@ -18,23 +18,6 @@ interface ILendtroller {
         mapping(address => bool) accountMembership;
     }
 
-    /// Errors ///
-
-    error MarketNotListed(address);
-    error AddressAlreadyJoined();
-    error NonZeroBorrowBalance(); /// Take a look here, could soften the landing
-    error Paused();
-    error InsufficientLiquidity();
-    error PriceError();
-    error BorrowCapReached();
-    error InsufficientShortfall();
-    error TooMuchRepay();
-    error LendtrollerMismatch();
-    error MarketAlreadyListed();
-    error InvalidValue();
-    error AddressUnauthorized();
-    error MinimumHoldPeriod();
-
     /// Events ///
 
     /// @notice Emitted when an admin supports a market

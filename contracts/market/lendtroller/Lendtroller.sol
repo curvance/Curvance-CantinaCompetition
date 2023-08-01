@@ -5,7 +5,7 @@ import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
-import { IMToken } from "contracts/interfaces/market/IMToken.sol";
+import { IMToken, accountSnapshot } from "contracts/interfaces/market/IMToken.sol";
 import { ICToken } from "contracts/interfaces/market/ICToken.sol";
 import { BasePositionVault } from "contracts/deposits/adaptors/BasePositionVault.sol";
 
@@ -475,7 +475,6 @@ contract Lendtroller is ILendtroller {
         assembly {
             if iszero(numMarkets) {
                 // store the error selector to location 0x0
-                // bytes4(keccak256(Lendtroller_InvalidValue())) = 74ebdb4f
                 mstore(0x0,_INVALID_VALUE_SELECTOR)
                 // return bytes 29-32 for the selector
                 revert(0x1c,0x04)
@@ -1024,9 +1023,9 @@ contract Lendtroller is ILendtroller {
     /// @param borrowAmount The amount of underlying to hypothetically borrow
     /// @dev Note that we calculate the exchangeRateStored for each collateral
     ///           mToken using stored data, without calculating accumulated interest.
-    /// @return uint hypothetical account liquidity in excess
+    /// @return uint256 hypothetical account liquidity in excess
     ///              of collateral requirements,
-    /// @return uint hypothetical account shortfall below collateral requirements)
+    /// @return uint256 hypothetical account shortfall below collateral requirements)
     function _getHypotheticalAccountLiquidity(
         address account,
         IMToken mTokenModify,
@@ -1044,17 +1043,17 @@ contract Lendtroller is ILendtroller {
                 borrowAmount
             );
 
-        // These will not underflow from unchecked as the underflow condition
-        // is checked prior
+        // These will not underflow/overflow as condition is checked prior
         if (maxBorrow > sumBorrowPlusEffects) {
             unchecked {
                 return (maxBorrow - sumBorrowPlusEffects, 0);
             }
-        } else {
-            unchecked {
-                return (0, sumBorrowPlusEffects - maxBorrow);
-            }
         }
+
+        unchecked {
+            return (0, sumBorrowPlusEffects - maxBorrow);
+        }
+
     }
 
     /// @notice Determine what the account liquidity would be if
@@ -1083,68 +1082,69 @@ contract Lendtroller is ILendtroller {
         )
     {
         uint256 numAccountAssets = accountAssets[account].length;
-        IMToken asset;
-        bool collateralEnabled;
+        bool isCToken;
+        IPriceRouter router = getPriceRouter();
+        accountSnapshot memory assetSnapshot;
 
         // For each asset the account is in
         for (uint256 i; i < numAccountAssets; ) {
-            asset = accountAssets[account][i];
-            collateralEnabled =
-                asset.tokenType() > 0 &&
-                !userData[account].collateralDisabled[asset];
+            // Pull user token snapshot data for the asset and then increment i
+            unchecked {
+                assetSnapshot = accountAssets[account][i++].getAccountSnapshotPacked(account);
+            }
+            isCToken = assetSnapshot.asset.tokenType() > 0;
 
-            (
-                uint256 mTokenBalance,
-                uint256 borrowBalance,
-                uint256 exchangeRateScaled
-            ) = asset.getAccountSnapshot(account);
-
-            if (collateralEnabled) {
-                (uint256 lowPrice, uint256 errorCode) = getPriceRouter().getPrice(address(asset), true, true);
-                if (errorCode == 2) {
-                    revert Lendtroller_PriceError();
-                }
-                uint256 assetValue = (((mTokenBalance * exchangeRateScaled) /
-                    expScale) * getCTokenPrice(address(asset), lowPrice)) / expScale;
-
-                sumCollateral += assetValue;
-                maxBorrow +=
-                    (assetValue *
-                        markets[address(asset)].collateralFactorScaled) /
-                    expScale;
+            // Collateralized assets (CTokens) use the lower price, Debt assets (DTokens) use the higher price
+            (uint256 price, uint256 errorCode) = router.getPrice(address(assetSnapshot.asset), true, isCToken);
+            if (errorCode == 2) {
+                revert Lendtroller_PriceError();
             }
 
-            {
-                (uint256 highPrice, uint256 errorCode) = getPriceRouter().getPrice(address(asset), true, false);
-                if (errorCode == 2) {
-                    revert Lendtroller_PriceError();
+            if (isCToken) {
+                // If they do not have this collateral asset disabled increment their collateral and max borrow value
+                if (!userData[account].collateralDisabled[assetSnapshot.asset]) {
+                    uint256 assetValue = (assetSnapshot.mTokenBalance * price * assetSnapshot.exchangeRateScaled) /
+                    expScale;
+
+                    sumCollateral += assetValue;
+                    maxBorrow +=
+                        (assetValue *
+                            markets[address(assetSnapshot.asset)].collateralFactorScaled) /
+                        expScale;
                 }
 
-                sumBorrowPlusEffects += ((highPrice * borrowBalance) /
+            } else {
+                // If they have a borrow balance we need to document it
+                if (assetSnapshot.borrowBalance > 0) {
+                    sumBorrowPlusEffects += ((price * assetSnapshot.borrowBalance) /
                     expScale);
+                }
+            }
 
-                // Calculate effects of interacting with mTokenModify
-                if (asset == mTokenModify) {
-                    if (collateralEnabled) {
+            // Calculate effects of interacting with mTokenModify
+            if (assetSnapshot.asset == mTokenModify) {
+                // If its a CToken our only option is to redeem it since it cant be borrowed
+                // If its a DToken we can redeem it but it will not have any effect on borrow amount 
+                // since DToken have a collateral value of 0
+                if (isCToken) {
+                    if (!userData[account].collateralDisabled[assetSnapshot.asset]) {
                         // Pre-compute a conversion factor
-                        // from tokens -> ether (normalized price value)
-                        uint256 tokensToDenom = (((markets[address(asset)]
-                            .collateralFactorScaled * exchangeRateScaled) /
-                            expScale) * highPrice) / expScale;
+                        // from tokens -> $ (normalized price value)
+                        uint256 tokensToDenom = (((markets[address(assetSnapshot.asset)]
+                            .collateralFactorScaled * assetSnapshot.exchangeRateScaled) /
+                            expScale) * price) / expScale;
 
                         // redeem effect
                         sumBorrowPlusEffects += ((tokensToDenom *
                             redeemTokens) / expScale);
                     }
-
+                    
+                } else {
                     // borrow effect
-                    sumBorrowPlusEffects += ((highPrice * borrowAmount) /
+                    sumBorrowPlusEffects += ((price * borrowAmount) /
                         expScale);
                 }
-            }
-
-            unchecked {
-                ++i;
+ 
             }
         }
     }
