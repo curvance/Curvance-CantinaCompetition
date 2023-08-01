@@ -28,10 +28,10 @@ contract GaugePool is GaugeController, ReentrancyGuard {
 
     /// CONSTANTS ///
     uint256 public constant PRECISION = 1e36;
+    address public immutable lendtroller;
 
     /// STORAGE ///
 
-    address public immutable lendtroller;
     ChildGaugePool[] public childGauges;
     mapping(address => PoolInfo) public poolInfo; // token => pool info
     mapping(address => mapping(address => UserInfo)) public userInfo; // token => user => info
