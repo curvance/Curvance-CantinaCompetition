@@ -256,12 +256,14 @@ contract VeCVE is ERC20 {
         }
 
         Lock[] storage locks = userLocks[msg.sender];
-        uint40 unlockTimestamp = locks[lockIndex].unlockTime;
-
+        
         // Length is index + 1 so has to be less than array length
         if (lockIndex >= locks.length) {
             revert VeCVE_InvalidLock();
         }
+
+        uint40 unlockTimestamp = locks[lockIndex].unlockTime;
+
         if (unlockTimestamp < block.timestamp) {
             revert VeCVE_InvalidLock();
         }
@@ -429,9 +431,9 @@ contract VeCVE is ERC20 {
         unchecked {
             uint256 tokenPoints = _getContinuousPointValue(tokenAmount) - tokenAmount;
             chainTokenPoints = chainTokenPoints - tokenPoints;
-            chainUnlocksByEpoch[unlockEpoch] -= tokenAmount;
-            userTokenPoints[msg.sender] -= tokenPoints;
-            userTokenUnlocksByEpoch[msg.sender][unlockEpoch] -= tokenAmount;
+            chainUnlocksByEpoch[unlockEpoch] = chainUnlocksByEpoch[unlockEpoch] - tokenAmount;
+            userTokenPoints[msg.sender] = userTokenPoints[msg.sender] - tokenPoints;
+            userTokenUnlocksByEpoch[msg.sender][unlockEpoch] = userTokenUnlocksByEpoch[msg.sender][unlockEpoch]  - tokenAmount;
         }
 
     }
