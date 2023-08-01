@@ -34,9 +34,11 @@ contract Lendtroller is ILendtroller {
     uint256 internal constant expScale = 1e18;
     /// @notice Minimum hold time on CToken to prevent oracle price attacks
     uint256 internal constant minimumHoldPeriod = 15 minutes;
-
-    // GaugePool contract address
+    // @notice GaugePool contract address
     address public immutable override gaugePool;
+
+    // @dev `bytes4(keccak256(bytes("Lendtroller_InvalidValue()")))`
+    uint256 internal constant _INVALID_VALUE_SELECTOR = 0x74ebdb4f;
 
     /// STORAGE ///
 
@@ -394,11 +396,11 @@ contract Lendtroller is ILendtroller {
     /// @notice Checks if the account should be allowed to transfer tokens
     ///         in the given market
     /// @param mToken The market to verify the transfer against
-    /// @param src The account which sources the tokens
+    /// @param from The account which sources the tokens
     /// @param transferTokens The number of mTokens to transfer
     function transferAllowed(
         address mToken,
-        address src,
+        address from,
         address,
         uint256 transferTokens
     ) external view override {
@@ -406,7 +408,7 @@ contract Lendtroller is ILendtroller {
             revert Lendtroller_Paused();
         }
 
-        _redeemAllowed(mToken, src, transferTokens);
+        _redeemAllowed(mToken, from, transferTokens);
     }
 
     /// @notice Calculate number of tokens of collateral asset to
@@ -474,7 +476,7 @@ contract Lendtroller is ILendtroller {
             if iszero(numMarkets) {
                 // store the error selector to location 0x0
                 // bytes4(keccak256(Lendtroller_InvalidValue())) = 74ebdb4f
-                mstore(0x0,0x74ebdb4f)
+                mstore(0x0,_INVALID_VALUE_SELECTOR)
                 // return bytes 29-32 for the selector
                 revert(0x1c,0x04)
             }
@@ -617,8 +619,21 @@ contract Lendtroller is ILendtroller {
         }
         uint256 numMarkets = mTokens.length;
 
-        if (numMarkets == 0 || numMarkets != newBorrowCaps.length) {
-            revert Lendtroller_InvalidValue();
+        assembly {
+            if iszero(numMarkets) {
+                // store the error selector to location 0x0
+                mstore(0x0,_INVALID_VALUE_SELECTOR)
+                // return bytes 29-32 for the selector
+                revert(0x1c,0x04)
+            }
+        }
+
+        if (numMarkets != newBorrowCaps.length) {
+            assembly {
+                mstore(0x0,_INVALID_VALUE_SELECTOR)
+                // return bytes 29-32 for the selector
+                revert(0x1c,0x04)
+            }
         }
 
         for (uint256 i; i < numMarkets; ++i) {

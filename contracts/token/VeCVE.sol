@@ -466,9 +466,11 @@ contract VeCVE is ERC20 {
         // Check that the user has sufficient locks to combine,
         // then decrement 1 so we can use it to go through the lockIndexes
         // array backwards.
-        if (locksToCombineIndex > 0 && locksToCombineIndex <= lastLockIndex) {
-            revert VeCVE_InvalidLock();
-        }
+        if (locksToCombineIndex > 0 ){
+            if (locksToCombineIndex <= lastLockIndex) {
+                revert VeCVE_InvalidLock();
+            }
+         }
 
         uint256 lockAmount;
         Lock storage userLock;

@@ -53,7 +53,7 @@ contract CallOptionCVE is ERC20 {
         address paymentToken_
     ) {
         _name = "CVE Options";
-        _symbol = "CVEOpt";
+        _symbol = "optCVE";
 
         require(
             ERC165Checker.supportsInterface(
