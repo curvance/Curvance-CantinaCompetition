@@ -23,8 +23,6 @@ contract CVELocker {
     uint256 public constant DENOMINATOR = 10000;
     uint256 public constant ethPerCVEOffset = 1 ether;
 
-    uint256 public immutable genesisEpoch;
-
     /// @notice Address for Curvance DAO registry contract for ownership
     ///         and location data.
     ICentralRegistry public immutable centralRegistry;
@@ -34,6 +32,8 @@ contract CVELocker {
     address public immutable cvx;
     IVeCVE public immutable veCVE;
 
+    uint256 public genesisEpoch;
+    bool public lockerStarted;
     bool public isShutdown;
 
     ICVXLocker public cvxLocker;
@@ -102,6 +102,8 @@ contract CVELocker {
         _;
     }
 
+    receive() external payable {}
+
     /// CONSTRUCTOR ///
 
     constructor(ICentralRegistry centralRegistry_, address cvx_) {
@@ -122,7 +124,13 @@ contract CVELocker {
 
     /// EXTERNAL FUNCTIONS ///
 
-    receive() external payable {}
+    function startLocker() external onlyDaoPermissions {
+        require(!lockerStarted, "cveLocker: locker already started");
+
+        veCVE = IVeCVE(centralRegistry.veCVE());
+        genesisEpoch = centralRegistry.genesisEpoch();
+        lockerStarted = true;
+    }
 
     /// @notice Recover tokens sent accidentally to the contract
     ///         or leftover rewards (excluding veCVE tokens)
