@@ -1083,6 +1083,8 @@ contract Lendtroller is ILendtroller {
     {
         uint256 numAccountAssets = accountAssets[account].length;
         bool isCToken;
+        uint256 price;
+        uint256 errorCode;
         IPriceRouter router = getPriceRouter();
         accountSnapshot memory assetSnapshot;
 
@@ -1095,8 +1097,8 @@ contract Lendtroller is ILendtroller {
             isCToken = assetSnapshot.asset.tokenType() > 0;
 
             // Collateralized assets (CTokens) use the lower price, Debt assets (DTokens) use the higher price
-            (uint256 price, uint256 errorCode) = router.getPrice(address(assetSnapshot.asset), true, isCToken);
-            if (errorCode == 2) {
+            (price, errorCode) = router.getPrice(address(assetSnapshot.asset), true, isCToken);
+            if (errorCode > 1) {
                 revert Lendtroller_PriceError();
             }
 
