@@ -22,7 +22,7 @@ contract CVEAirdrop is ReentrancyGuard {
 
     /// STORAGE ///
     bytes32 public airdropMerkleRoot;
-    bool public isPaused = true;
+    uint256 public isPaused = 2;
 
     mapping(address => bool) public airdropClaimed;
 
@@ -53,7 +53,7 @@ contract CVEAirdrop is ReentrancyGuard {
     }
 
     modifier notPaused() {
-        require(!isPaused, "CVEAirdrop: Airdrop Paused");
+        require(isPaused < 2, "CVEAirdrop: Airdrop Paused");
         _;
     }
 
@@ -64,12 +64,7 @@ contract CVEAirdrop is ReentrancyGuard {
         uint256 amount,
         bytes32[] calldata proof
     ) external notPaused nonReentrant {
-        // Verify that the airdrop Merkle Root has been set
-        require(
-            airdropMerkleRoot != bytes32(0),
-            "CVEAirdrop: Airdrop Merkle Root not set"
-        );
-
+        
         // Verify CVE amount request is not above the maximum claim amount
         require(
             amount <= maximumClaimAmount,
@@ -80,6 +75,12 @@ contract CVEAirdrop is ReentrancyGuard {
         require(
             block.timestamp < endClaimTimestamp,
             "CVEAirdrop: Too late to claim"
+        );
+
+        // Verify that the airdrop Merkle Root has been set
+        require(
+            airdropMerkleRoot != bytes32(0),
+            "CVEAirdrop: Airdrop Merkle Root not set"
         );
 
         // Verify the user has not claimed their airdrop already
@@ -220,6 +221,6 @@ contract CVEAirdrop is ReentrancyGuard {
     /// @notice Set isPaused state
     /// @param state new pause state
     function setPauseState(bool state) external onlyDaoPermissions {
-        isPaused = state;
+        isPaused = state ? 2: 1;
     }
 }
