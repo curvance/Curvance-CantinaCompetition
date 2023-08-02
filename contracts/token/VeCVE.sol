@@ -1274,10 +1274,10 @@ contract VeCVE is ERC20 {
         // We know theres never more than 420m
         // so this should never over/underflow
         unchecked {
-            chainUnlocksByEpoch[previousEpoch] -= previousPoints;
-            userTokenUnlocksByEpoch[user][previousEpoch] -= previousPoints;
-            chainUnlocksByEpoch[epoch] += points;
-            userTokenUnlocksByEpoch[user][epoch] += points;
+            chainUnlocksByEpoch[previousEpoch] = chainUnlocksByEpoch[previousEpoch] - previousPoints;
+            userTokenUnlocksByEpoch[user][previousEpoch] = userTokenUnlocksByEpoch[user][previousEpoch] - previousPoints;
+            chainUnlocksByEpoch[epoch] = chainUnlocksByEpoch[epoch] + points;
+            userTokenUnlocksByEpoch[user][epoch] = userTokenUnlocksByEpoch[user][epoch] + points;
         }
     }
 
@@ -1299,9 +1299,9 @@ contract VeCVE is ERC20 {
         // so this should never over/underflow
         unchecked {
             chainTokenPoints = chainTokenPoints + tokenPoints;
-            chainUnlocksByEpoch[epoch] -= tokenUnlocks;
-            userTokenPoints[user] += tokenPoints;
-            userTokenUnlocksByEpoch[user][epoch] -= tokenUnlocks;
+            chainUnlocksByEpoch[epoch] = chainUnlocksByEpoch[epoch] - tokenUnlocks;
+            userTokenPoints[user] = userTokenPoints[user] + tokenPoints;
+            userTokenUnlocksByEpoch[user][epoch] = userTokenUnlocksByEpoch[user][epoch] - tokenUnlocks;
         }
     }
 
