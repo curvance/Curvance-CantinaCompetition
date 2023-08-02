@@ -16,6 +16,16 @@ import { IWETH } from "contracts/interfaces/IWETH.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 contract Zapper {
+
+    /// TYPES ///
+
+    struct zapperData {
+        address inputToken;
+        uint256 inputAmount;
+        address outputToken;
+        uint256 minimumOut;
+    }
+
     /// CONSTANTS ///
 
     uint256 public constant SLIPPAGE = 500;
@@ -54,46 +64,41 @@ contract Zapper {
 
     /// @dev Deposit inputToken and enter curvance
     /// @param cToken The curvance deposit token address
-    /// @param inputToken The input token address
-    /// @param inputAmount The amount to deposit
-    /// @param lpMinter The minter address of Curve LP
-    /// @param lpToken The Curve LP token address
-    /// @param lpMinOutAmount The minimum output amount
-    /// @param tokens The underlying coins of curve LP token
+    /// @param zapData Zap data containing input/output token addresses and amounts
     /// @param tokenSwaps The swap aggregation data
-    /// @return cTokenOutAmount The output amount
+    /// @param lpMinter The minter address of Curve LP
+    /// @param tokens The underlying coins of curve LP token
+    /// @param recipient Address that should receive zapped deposit
+    /// @return cTokenOutAmount The output amount received from zapping
     function curveInForCurvance(
         address cToken,
-        address inputToken,
-        uint256 inputAmount,
+        zapperData calldata zapData,
         SwapperLib.Swap[] calldata tokenSwaps,
         address lpMinter,
-        address lpToken,
-        uint256 lpMinOutAmount,
         address[] calldata tokens,
         address recipient
     ) external payable returns (uint256 cTokenOutAmount) {
         // swap input token for underlyings
         _swapForUnderlyings(
             cToken,
-            inputToken,
-            inputAmount,
+            zapData.inputToken,
+            zapData.inputAmount,
             tokenSwaps,
-            lpToken
+            zapData.outputToken
         );
 
         // enter curve
         uint256 lpOutAmount = CurveLib.enterCurve(
             lpMinter,
-            lpToken,
+            zapData.outputToken,
             tokens,
-            lpMinOutAmount
+            zapData.minimumOut
         );
 
         // enter curvance
         cTokenOutAmount = _enterCurvance(
             cToken,
-            lpToken,
+            zapData.outputToken,
             lpOutAmount,
             recipient
         );
@@ -101,21 +106,18 @@ contract Zapper {
 
     function curveOut(
         address lpMinter,
-        address lpToken,
-        uint256 lpAmount,
+        zapperData calldata zapData,
         address[] calldata tokens,
         SwapperLib.Swap[] calldata tokenSwaps,
-        address outputToken,
-        uint256 minoutAmount,
         address recipient
     ) external returns (uint256 outAmount) {
         SafeTransferLib.safeTransferFrom(
-            lpToken,
+            zapData.inputToken,
             msg.sender,
             address(this),
-            lpAmount
+            zapData.inputAmount
         );
-        CurveLib.exitCurve(lpMinter, lpToken, tokens, lpAmount);
+        CurveLib.exitCurve(lpMinter, zapData.inputToken, tokens, zapData.inputAmount);
 
         uint256 numTokenSwaps = tokenSwaps.length;
         // prepare tokens to mint LP
@@ -125,61 +127,56 @@ contract Zapper {
             } 
         }
 
-        outAmount = IERC20(outputToken).balanceOf(address(this));
+        outAmount = IERC20(zapData.outputToken).balanceOf(address(this));
         require(
-            outAmount >= minoutAmount,
+            outAmount >= zapData.minimumOut,
             "Zapper: received less than minOutAmount"
         );
 
         // transfer token back to user
-        SafeTransferLib.safeTransfer(outputToken, recipient, outAmount);
+        SafeTransferLib.safeTransfer(zapData.outputToken, recipient, outAmount);
     }
 
     /// @dev Deposit inputToken and enter curvance
     /// @param cToken The curvance deposit token address
-    /// @param inputToken The input token address
-    /// @param inputAmount The amount to deposit
+    /// @param zapData Zap data containing input/output token addresses and amounts
+    /// @param tokenSwaps The swap aggregation data
     /// @param balancerVault The balancer vault address
     /// @param balancerPoolId The balancer pool ID
-    /// @param lpToken The Curve LP token address
-    /// @param lpMinOutAmount The minimum output amount
-    /// @param tokens The underlying coins of curve LP token
-    /// @param tokenSwaps The swap aggregation data
-    /// @return cTokenOutAmount The output amount
+    /// @param tokens The underlying coins of balancer LP token
+    /// @param recipient Address that should receive zapped deposit
+    /// @return cTokenOutAmount The output amount received from zapping
     function balancerInForCurvance(
         address cToken,
-        address inputToken,
-        uint256 inputAmount,
+        zapperData calldata zapData,
         SwapperLib.Swap[] calldata tokenSwaps,
         address balancerVault,
         bytes32 balancerPoolId,
-        address lpToken,
-        uint256 lpMinOutAmount,
         address[] calldata tokens,
         address recipient
     ) external payable returns (uint256 cTokenOutAmount) {
         // swap input token for underlyings
         _swapForUnderlyings(
             cToken,
-            inputToken,
-            inputAmount,
+            zapData.inputToken,
+            zapData.inputAmount,
             tokenSwaps,
-            lpToken
+            zapData.outputToken
         );
 
         // enter balancer
         uint256 lpOutAmount = BalancerLib.enterBalancer(
             balancerVault,
             balancerPoolId,
-            lpToken,
+            zapData.outputToken,
             tokens,
-            lpMinOutAmount
+            zapData.minimumOut
         );
 
         // enter curvance
         cTokenOutAmount = _enterCurvance(
             cToken,
-            lpToken,
+            zapData.outputToken,
             lpOutAmount,
             recipient
         );
@@ -188,26 +185,23 @@ contract Zapper {
     function balancerOut(
         address balancerVault,
         bytes32 balancerPoolId,
-        address lpToken,
-        uint256 lpAmount,
+        zapperData calldata zapData,
         address[] calldata tokens,
         SwapperLib.Swap[] calldata tokenSwaps,
-        address outputToken,
-        uint256 minoutAmount,
         address recipient
     ) external returns (uint256 outAmount) {
         SafeTransferLib.safeTransferFrom(
-            lpToken,
+            zapData.inputToken,
             msg.sender,
             address(this),
-            lpAmount
+            zapData.inputAmount
         );
         BalancerLib.exitBalancer(
             balancerVault,
             balancerPoolId,
-            lpToken,
+            zapData.inputToken,
             tokens,
-            lpAmount
+            zapData.inputAmount
         );
 
         uint256 numTokenSwaps = tokenSwaps.length;
@@ -218,58 +212,53 @@ contract Zapper {
             }
         }
 
-        outAmount = IERC20(outputToken).balanceOf(address(this));
+        outAmount = IERC20(zapData.outputToken).balanceOf(address(this));
         require(
-            outAmount >= minoutAmount,
+            outAmount >= zapData.minimumOut,
             "Zapper: received less than minOutAmount"
         );
 
         // transfer token back to user
-        SafeTransferLib.safeTransfer(outputToken, recipient, outAmount);
+        SafeTransferLib.safeTransfer(zapData.outputToken, recipient, outAmount);
     }
 
     /// @dev Deposit inputToken and enter curvance
     /// @param cToken The curvance deposit token address
-    /// @param inputToken The input token address
-    /// @param inputAmount The amount to deposit
+    /// @param zapData Zap data containing input/output token addresses and amounts
     /// @param tokenSwaps The swap aggregation data
     /// @param router The velodrome router address
     /// @param factory The velodrome factory address
-    /// @param lpToken The LP token address
-    /// @param lpMinOutAmount The minimum output amount
-    /// @return cTokenOutAmount The output amount
+    /// @param recipient Address that should receive zapped deposit
+    /// @return cTokenOutAmount The output amount received from zapping
     function velodromeInForCurvance(
         address cToken,
-        address inputToken,
-        uint256 inputAmount,
+        zapperData calldata zapData,
         SwapperLib.Swap[] calldata tokenSwaps,
         address router,
         address factory,
-        address lpToken,
-        uint256 lpMinOutAmount,
         address recipient
     ) external payable returns (uint256 cTokenOutAmount) {
         // swap input token for underlyings
         _swapForUnderlyings(
             cToken,
-            inputToken,
-            inputAmount,
+            zapData.inputToken,
+            zapData.inputAmount,
             tokenSwaps,
-            lpToken
+            zapData.outputToken
         );
 
-        // enter balancer
+        // enter velodrome
         uint256 lpOutAmount = VelodromeLib.enterVelodrome(
             router,
             factory,
-            lpToken,
-            lpMinOutAmount
+            zapData.outputToken,
+            zapData.minimumOut
         );
 
         // enter curvance
         cTokenOutAmount = _enterCurvance(
             cToken,
-            lpToken,
+            zapData.outputToken,
             lpOutAmount,
             recipient
         );
@@ -277,20 +266,17 @@ contract Zapper {
 
     function velodromeOut(
         address router,
-        address lpToken,
-        uint256 lpAmount,
+        zapperData calldata zapData,
         SwapperLib.Swap[] calldata tokenSwaps,
-        address outputToken,
-        uint256 minoutAmount,
         address recipient
     ) external returns (uint256 outAmount) {
         SafeTransferLib.safeTransferFrom(
-            lpToken,
+            zapData.inputToken,
             msg.sender,
             address(this),
-            lpAmount
+            zapData.inputAmount
         );
-        VelodromeLib.exitVelodrome(router, lpToken, lpAmount);
+        VelodromeLib.exitVelodrome(router, zapData.inputToken, zapData.inputAmount);
 
         uint256 numTokenSwaps = tokenSwaps.length;
         // prepare tokens to mint LP
@@ -300,14 +286,14 @@ contract Zapper {
             } 
         }
 
-        outAmount = IERC20(outputToken).balanceOf(address(this));
+        outAmount = IERC20(zapData.outputToken).balanceOf(address(this));
         require(
-            outAmount >= minoutAmount,
+            outAmount >= zapData.minimumOut,
             "Zapper: received less than minOutAmount"
         );
 
         // transfer token back to user
-        SafeTransferLib.safeTransfer(outputToken, recipient, outAmount);
+        SafeTransferLib.safeTransfer(zapData.outputToken, recipient, outAmount);
     }
 
     /// @dev Deposit inputToken and enter curvance
