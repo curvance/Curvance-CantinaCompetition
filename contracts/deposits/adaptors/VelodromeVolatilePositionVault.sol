@@ -89,11 +89,9 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
     ///         and vests pending rewards
     /// @dev Only callable by Gelato Network bot
     /// @param data Bytes array for aggregator swap data
-    /// @param maxSlippage Maximum allowable slippage on swapping
     /// @return yield The amount of new assets acquired from compounding vault yield
     function harvest(
-        bytes memory data,
-        uint256 maxSlippage
+        bytes memory data
     ) public override onlyHarvestor vaultActive returns (uint256 yield) {
         uint256 pending = _calculatePendingRewards();
 
@@ -109,8 +107,6 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
 
             // claim velodrome rewards
             sd.gauge.getReward(address(this));
-
-            uint256 valueIn;
             SwapperLib.Swap memory swapData = abi.decode(
                 data,
                 (SwapperLib.Swap)
@@ -129,16 +125,6 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
                     centralRegistry.feeAccumulator(),
                     protocolFee
                 );
-                (uint256 rewardPrice, ) = getPriceRouter().getPrice(
-                    address(rewardToken),
-                    true,
-                    true
-                );
-
-                valueIn += rewardAmount.mulDivDown(
-                    rewardPrice,
-                    10 ** rewardTokenDecimals
-                );
 
                 // swap from VELO to underlying LP token if necessary
                 if (!rewardTokenIsUnderlying) {
@@ -149,56 +135,25 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
             uint256 totalAmountA;
             uint256 totalAmountB;
 
-            {
-                // swap token0 to LP Token underlying tokens
-                totalAmountA = ERC20(sd.token0).balanceOf(address(this));
+            // swap token0 to LP Token underlying tokens
+            totalAmountA = ERC20(sd.token0).balanceOf(address(this));
 
-                require(
-                    totalAmountA > 0,
-                    "VelodromeVolatilePositionVault: slippage error"
-                );
-
-                (uint256 r0, uint256 r1, ) = IVeloPair(asset()).getReserves();
-                uint256 reserveA = sd.token0 == IVeloPair(asset()).token0()
-                    ? r0
-                    : r1;
-
-                uint256 swapAmount = _optimalDeposit(totalAmountA, reserveA);
-
-                _swapExactTokensForTokens(sd.token0, sd.token1, swapAmount);
-
-                totalAmountA -= swapAmount;
-                totalAmountB = ERC20(sd.token1).balanceOf(address(this));
-            }
-
-            uint256 valueOut;
-
-            (uint256 tokenAPrice, ) = getPriceRouter().getPrice(
-                sd.token0,
-                true,
-                true
-            );
-            (uint256 tokenBPrice, ) = getPriceRouter().getPrice(
-                sd.token1,
-                true,
-                true
-            );
-            valueOut =
-                totalAmountA.mulDivDown(
-                    tokenAPrice,
-                    10 ** ERC20(sd.token0).decimals()
-                ) +
-                totalAmountB.mulDivDown(
-                    tokenBPrice,
-                    10 ** ERC20(sd.token1).decimals()
-                );
-
-            // check for slippage
             require(
-                valueOut > valueIn.mulDivDown(1e18 - maxSlippage, 1e18),
-                "VelodromeVolatilePositionVault: bad slippage"
+                totalAmountA > 0,
+                "VelodromeVolatilePositionVault: slippage error"
             );
 
+            (uint256 r0, uint256 r1, ) = IVeloPair(asset()).getReserves();
+            uint256 reserveA = sd.token0 == IVeloPair(asset()).token0()
+                ? r0
+                : r1;
+
+            uint256 swapAmount = _optimalDeposit(totalAmountA, reserveA);
+            _swapExactTokensForTokens(sd.token0, sd.token1, swapAmount);
+
+            totalAmountA -= swapAmount;
+            totalAmountB = ERC20(sd.token1).balanceOf(address(this));
+            
             // add liquidity to velodrome lp
             yield = _addLiquidity(
                 sd.token0,

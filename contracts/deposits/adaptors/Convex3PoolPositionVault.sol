@@ -38,7 +38,7 @@ contract ConvexPositionVault is BasePositionVault {
     /// @notice Vault Strategy Data
     StrategyData public strategyData;
 
-    /// @notice Curve 3Pool LP underlying assets
+    /// @notice Curve 2Pool LP underlying assets
     mapping(address => bool) public isUnderlyingToken;
 
     /// EVENTS ///
@@ -82,6 +82,7 @@ contract ConvexPositionVault is BasePositionVault {
 
         uint256 coinsLength;
         address token;
+
         // figure out how many tokens are in the curve pool
         while (true) {
             try strategyData.curvePool.coins(coinsLength) {
@@ -153,14 +154,11 @@ contract ConvexPositionVault is BasePositionVault {
     ///         and vests pending rewards
     /// @dev Only callable by Gelato Network bot
     /// @param data Bytes array for aggregator swap data
-    /// @param maxSlippage Maximum allowable slippage on swapping
     /// @return yield The amount of new assets acquired from compounding vault yield
     function harvest(
-        bytes memory data,
-        uint256 maxSlippage
+        bytes memory data
     ) public override onlyHarvestor vaultActive returns (uint256 yield) {
         uint256 pending = _calculatePendingRewards();
-
         if (pending > 0) {
             // claim vested rewards
             _vestRewards(_totalAssets + pending);
@@ -178,13 +176,10 @@ contract ConvexPositionVault is BasePositionVault {
                 data,
                 (SwapperLib.Swap[])
             );
-
             uint256 numRewardTokens = sd.rewardTokens.length;
-            uint256 valueIn;
             address rewardToken;
             uint256 rewardAmount;
             uint256 protocolFee;
-            uint256 rewardPrice;
 
             for (uint256 i; i < numRewardTokens; ++i) {
                 rewardToken = sd.rewardTokens[i];
@@ -203,29 +198,13 @@ contract ConvexPositionVault is BasePositionVault {
                     protocolFee
                 );
 
-                (rewardPrice, ) = getPriceRouter().getPrice(
-                    address(rewardToken),
-                    true,
-                    true
-                );
-
-                valueIn = rewardAmount.mulDivDown(
-                    rewardPrice,
-                    10 ** ERC20(rewardToken).decimals()
-                );
-
-                // swap from rewardToken to underlying LP token if necessary
+                /// swap from rewardToken to underlying LP token if necessary
                 if (!isUnderlyingToken[rewardToken]) {
                     SwapperLib.swap(swapDataArray[i]);
                 }
             }
 
-            // add liquidity to curve and check for slippage
-            require(
-                _addLiquidityToCurve() >
-                    valueIn.mulDivDown(1e18 - maxSlippage, 1e18),
-                "ConvexPositionVault: bad slippage"
-            );
+            _addLiquidityToCurve();
 
             // deposit assets into convex
             yield = ERC20(asset()).balanceOf(address(this));
@@ -276,10 +255,8 @@ contract ConvexPositionVault is BasePositionVault {
     }
 
     /// @notice Adds underlying tokens to the vaults Curve 3Pool LP
-    /// @return valueOut The total value of the assets in USD
-    function _addLiquidityToCurve() internal returns (uint256 valueOut) {
+    function _addLiquidityToCurve() internal {
         address underlyingToken;
-        uint256 assetPrice;
         uint256[3] memory amounts;
 
         for (uint256 i; i < 3; ++i) {
@@ -289,17 +266,6 @@ contract ConvexPositionVault is BasePositionVault {
                 underlyingToken,
                 address(strategyData.curvePool),
                 amounts[i]
-            );
-
-            (assetPrice, ) = getPriceRouter().getPrice(
-                underlyingToken,
-                true,
-                true
-            );
-
-            valueOut += amounts[i].mulDivDown(
-                assetPrice,
-                10 ** ERC20(underlyingToken).decimals()
             );
         }
 

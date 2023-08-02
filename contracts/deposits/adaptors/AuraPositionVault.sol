@@ -155,11 +155,9 @@ contract AuraPositionVault is BasePositionVault {
     ///         and vests pending rewards
     /// @dev Only callable by Gelato Network bot
     /// @param data Bytes array for aggregator swap data
-    /// @param maxSlippage Maximum allowable slippage on swapping
     /// @return yield The amount of new assets acquired from compounding vault yield
     function harvest(
-        bytes memory data,
-        uint256 maxSlippage
+        bytes memory data
     ) public override onlyHarvestor vaultActive returns (uint256 yield) {
         uint256 pending = _calculatePendingRewards();
         if (pending > 0) {
@@ -175,66 +173,48 @@ contract AuraPositionVault is BasePositionVault {
             // claim aura rewards
             sd.rewarder.getReward(address(this), true);
 
-            uint256 valueIn;
+            SwapperLib.Swap[] memory swapDataArray = abi.decode(
+                data,
+                (SwapperLib.Swap[])
+            );
 
-            {
-                SwapperLib.Swap[] memory swapDataArray = abi.decode(
-                    data,
-                    (SwapperLib.Swap[])
+            // swap assets to one of pool token
+            uint256 numRewardTokens = sd.rewardTokens.length;
+            address rewardToken;
+            uint256 rewardAmount;
+            uint256 protocolFee;
+
+            for (uint256 i; i < numRewardTokens; ++i) {
+                rewardToken = sd.rewardTokens[i];
+                rewardAmount = ERC20(rewardToken).balanceOf(address(this));
+
+                if (rewardAmount == 0) {
+                    continue;
+                }
+
+                // take protocol fee
+                protocolFee = rewardAmount.mulDivDown(
+                    vaultHarvestFee(),
+                    1e18
+                );
+                rewardAmount -= protocolFee;
+                SafeTransferLib.safeTransfer(
+                    rewardToken,
+                    centralRegistry.feeAccumulator(),
+                    protocolFee
                 );
 
-                // swap assets to one of pool token
-                uint256 numRewardTokens = sd.rewardTokens.length;
-                address rewardToken;
-                uint256 rewardAmount;
-                uint256 protocolFee;
-                uint256 rewardPrice;
-
-                for (uint256 i; i < numRewardTokens; ++i) {
-                    rewardToken = sd.rewardTokens[i];
-                    rewardAmount = ERC20(rewardToken).balanceOf(address(this));
-
-                    if (rewardAmount == 0) {
-                        continue;
-                    }
-
-                    // take protocol fee
-                    protocolFee = rewardAmount.mulDivDown(
-                        vaultHarvestFee(),
-                        1e18
-                    );
-                    rewardAmount -= protocolFee;
-                    SafeTransferLib.safeTransfer(
-                        rewardToken,
-                        centralRegistry.feeAccumulator(),
-                        protocolFee
-                    );
-
-                    (rewardPrice, ) = getPriceRouter().getPrice(
-                        rewardToken,
-                        true,
-                        true
-                    );
-
-                    valueIn += rewardAmount.mulDivDown(
-                        rewardPrice,
-                        10 ** ERC20(rewardToken).decimals()
-                    );
-
-                    // swap from rewardToken to underlying LP token if necessary
-                    if (!isUnderlyingToken[rewardToken]) {
-                        SwapperLib.swap(swapDataArray[i]);
-                    }
+                // swap from rewardToken to underlying LP token if necessary
+                if (!isUnderlyingToken[rewardToken]) {
+                    SwapperLib.swap(swapDataArray[i]);
                 }
             }
-
+            
             // prep adding liquidity to balancer
-            uint256 valueOut;
             uint256 numUnderlyingTokens = sd.underlyingTokens.length;
             address[] memory assets = new address[](numUnderlyingTokens);
             uint256[] memory maxAmountsIn = new uint256[](numUnderlyingTokens);
             address underlyingToken;
-            uint256 assetPrice;
 
             for (uint256 i; i < numUnderlyingTokens; ++i) {
                 underlyingToken = sd.underlyingTokens[i];
@@ -249,23 +229,7 @@ contract AuraPositionVault is BasePositionVault {
                     maxAmountsIn[i]
                 );
 
-                (assetPrice, ) = getPriceRouter().getPrice(
-                    underlyingToken,
-                    true,
-                    true
-                );
-
-                valueOut += maxAmountsIn[i].mulDivDown(
-                    assetPrice,
-                    10 ** ERC20(underlyingToken).decimals()
-                );
             }
-
-            // check for slippage
-            require(
-                valueOut > valueIn.mulDivDown(1e18 - maxSlippage, 1e18),
-                "AuraPositionVault: bad slippage"
-            );
 
             // deposit assets into balancer
             sd.balancerVault.joinPool(

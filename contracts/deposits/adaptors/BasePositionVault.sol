@@ -154,8 +154,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     // EXTERNAL POSITION LOGIC TO OVERRIDE
 
     function harvest(
-        bytes memory,
-        uint256 maxSlippage
+        bytes memory
     ) public virtual returns (uint256 yield);
 
     /// PUBLIC FUNCTIONS ///
