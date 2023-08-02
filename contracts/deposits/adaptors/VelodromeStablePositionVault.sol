@@ -142,11 +142,8 @@ contract VelodromeStablePositionVault is BasePositionVault {
                 }
             }
 
-            uint256 totalAmountA;
-            uint256 totalAmountB;
-
             // swap token0 to LP Token underlying tokens
-            totalAmountA = ERC20(sd.token0).balanceOf(address(this));
+            uint256 totalAmountA = ERC20(sd.token0).balanceOf(address(this));
 
             require(
                 totalAmountA > 0,
@@ -168,7 +165,7 @@ contract VelodromeStablePositionVault is BasePositionVault {
 
             _swapExactTokensForTokens(sd.token0, sd.token1, swapAmount);
             totalAmountA -= swapAmount;
-            totalAmountB = ERC20(sd.token1).balanceOf(address(this));
+            uint256 totalAmountB = ERC20(sd.token1).balanceOf(address(this));
 
             // add liquidity to velodrome lp
             yield = _addLiquidity(
@@ -200,13 +197,13 @@ contract VelodromeStablePositionVault is BasePositionVault {
     /// @notice Deposits specified amount of assets into velodrome gauge pool
     /// @param assets The amount of assets to deposit
     function _deposit(uint256 assets) internal override {
-        IVeloGauge _gauge = strategyData.gauge;
+        IVeloGauge gauge = strategyData.gauge;
         SafeTransferLib.safeApprove(
             asset(),
-            address(_gauge),
+            address(gauge),
             assets
         );
-        _gauge.deposit(assets);
+        gauge.deposit(assets);
     }
 
     /// @notice Withdraws specified amount of assets from velodrome gauge pool

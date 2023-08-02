@@ -175,7 +175,6 @@ contract AuraPositionVault is BasePositionVault {
                 (SwapperLib.Swap[])
             );
 
-            // swap assets to one of pool token
             uint256 numRewardTokens = sd.rewardTokens.length;
             address rewardToken;
             uint256 rewardAmount;
@@ -266,13 +265,13 @@ contract AuraPositionVault is BasePositionVault {
     /// @notice Deposits specified amount of assets into Aura booster contract
     /// @param assets The amount of assets to deposit
     function _deposit(uint256 assets) internal override {
-        IBooster _booster = strategyData.booster;
+        IBooster booster = strategyData.booster;
         SafeTransferLib.safeApprove(
             asset(),
-            address(_booster),
+            address(booster),
             assets
         );
-        _booster.deposit(strategyData.pid, assets, true);
+        booster.deposit(strategyData.pid, assets, true);
     }
 
     /// @notice Withdraws specified amount of assets from Aura reward pool

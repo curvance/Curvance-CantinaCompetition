@@ -173,6 +173,7 @@ contract ConvexPositionVault is BasePositionVault {
                 data,
                 (SwapperLib.Swap[])
             );
+            
             uint256 numRewardTokens = sd.rewardTokens.length;
             address rewardToken;
             uint256 rewardAmount;
@@ -226,13 +227,13 @@ contract ConvexPositionVault is BasePositionVault {
     /// @notice Deposits specified amount of assets into Convex booster contract
     /// @param assets The amount of assets to deposit
     function _deposit(uint256 assets) internal override {
-        IBooster _booster = strategyData.booster;
+        IBooster booster = strategyData.booster;
         SafeTransferLib.safeApprove(
             asset(),
-            address(_booster),
+            address(booster),
             assets
         );
-        _booster.deposit(strategyData.pid, assets, true);
+        booster.deposit(strategyData.pid, assets, true);
     }
 
     /// @notice Withdraws specified amount of assets from Convex reward pool
