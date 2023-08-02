@@ -29,7 +29,7 @@ contract CVELocker is ReentrancyGuard {
     // @dev `bytes4(keccak256(bytes("CVELocker_FailedETHTransfer()")))`
     uint256 internal constant _FAILED_ETH_TRANSFER_SELECTOR = 0xa9c60879;
     // @dev `bytes4(keccak256(bytes("CVELocker_NoEpochRewards()")))`
-    uint256 internal constant _NO_EPOCH_REWARDS_SELECTOR = 0x1fb59371;
+    uint256 internal constant _NO_EPOCH_REWARDS_SELECTOR = 0x2f75e00c;
 
     // Token Addresses
     address public immutable cve;
