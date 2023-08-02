@@ -48,16 +48,11 @@ contract Lendtroller is ILendtroller {
     /// @notice The Pause Guardian can pause certain actions as a safety mechanism.
     ///  Actions which allow users to remove their own assets cannot be paused.
     ///  Liquidation / seizing / transfer can only be paused globally, not by market.
-    address public pauseGuardian;
     uint256 public transferPaused = 1;
     uint256 public seizePaused = 1;
     mapping(address => bool) public mintPaused; // Token => Mint Paused
     mapping(address => bool) public borrowPaused; // Token => Borrow Paused
     mapping(address => uint256) public borrowCaps; // Token => Borrow Cap; 0 = unlimited
-
-    /// @notice The borrowCapGuardian can set borrowCaps to any number for any market.
-    /// Lowering the borrow cap could disable borrowing on the given market.
-    address public borrowCapGuardian;
 
     /// @notice Multiplier used to calculate the maximum repayAmount
     ///         when liquidating a borrow
@@ -339,14 +334,14 @@ contract Lendtroller is ILendtroller {
 
         // The borrower must have shortfall in order to be liquidatable
         (, uint256 shortfall) = _getAccountLiquidity(borrower);
-        // assembly {
-        //     if iszero(shortfall) {
-        //         // store the error selector to location 0x0
-        //         mstore(0x0,_INSUFFICIENT_SHORTFALL_SELECTOR)
-        //         // return bytes 29-32 for the selector
-        //         revert(0x1c,0x04)
-        //     }
-        //  }
+        assembly {
+            if iszero(shortfall) {
+                // store the error selector to location 0x0
+                mstore(0x0,_INSUFFICIENT_SHORTFALL_SELECTOR)
+                // return bytes 29-32 for the selector
+                revert(0x1c,0x04)
+            }
+         }
 
         // The liquidator may not close out more collateral than
         // what is allowed by the closeFactor
@@ -459,14 +454,14 @@ contract Lendtroller is ILendtroller {
         bool disableCollateral
     ) external {
         uint256 numMarkets = mTokens.length;
-        // assembly {
-        //     if iszero(numMarkets) {
-        //         // store the error selector to location 0x0
-        //         mstore(0x0,_INVALID_VALUE_SELECTOR)
-        //         // return bytes 29-32 for the selector
-        //         revert(0x1c,0x04)
-        //     }
-        //  }
+        assembly {
+            if iszero(numMarkets) {
+                // store the error selector to location 0x0
+                mstore(0x0,_INVALID_VALUE_SELECTOR)
+                // return bytes 29-32 for the selector
+                revert(0x1c,0x04)
+            }
+         }
 
         for (uint256 i; i < numMarkets; ++i) {
             /// Make sure the mToken is a collateral token
@@ -596,51 +591,32 @@ contract Lendtroller is ILendtroller {
     function setMarketBorrowCaps(
         IMToken[] calldata mTokens,
         uint256[] calldata newBorrowCaps
-    ) external {
-        if (
-            !centralRegistry.hasElevatedPermissions(msg.sender) &&
-            msg.sender != borrowCapGuardian
-        ) {
-            revert Lendtroller_AddressUnauthorized();
-        }
+    ) external onlyElevatedPermissions {
+
         uint256 numMarkets = mTokens.length;
 
-        // assembly {
-        //     if iszero(numMarkets) {
-        //         // store the error selector to location 0x0
-        //         mstore(0x0,_INVALID_VALUE_SELECTOR)
-        //         // return bytes 29-32 for the selector
-        //         revert(0x1c,0x04)
-        //     }
-        // }
+        assembly {
+            if iszero(numMarkets) {
+                // store the error selector to location 0x0
+                mstore(0x0,_INVALID_VALUE_SELECTOR)
+                // return bytes 29-32 for the selector
+                revert(0x1c,0x04)
+            }
+        }
 
-        // if (numMarkets != newBorrowCaps.length) {
-        //     assembly {
-        //         // store the error selector to location 0x0
-        //         mstore(0x0,_INVALID_VALUE_SELECTOR)
-        //         // return bytes 29-32 for the selector
-        //         revert(0x1c,0x04)
-        //     }
-        // }
+        if (numMarkets != newBorrowCaps.length) {
+            assembly {
+                // store the error selector to location 0x0
+                mstore(0x0,_INVALID_VALUE_SELECTOR)
+                // return bytes 29-32 for the selector
+                revert(0x1c,0x04)
+            }
+        }
 
         for (uint256 i; i < numMarkets; ++i) {
             borrowCaps[address(mTokens[i])] = newBorrowCaps[i];
             emit NewBorrowCap(mTokens[i], newBorrowCaps[i]);
         }
-    }
-
-    /// @notice Admin function to change the Borrow Cap Guardian
-    /// @param newBorrowCapGuardian The address of the new Borrow Cap Guardian
-    function setBorrowCapGuardian(
-        address newBorrowCapGuardian
-    ) external onlyElevatedPermissions {
-        // Cache the current value for event log
-        address oldBorrowCapGuardian = borrowCapGuardian;
-
-        // Assign new guardian
-        borrowCapGuardian = newBorrowCapGuardian;
-
-        emit NewBorrowCapGuardian(oldBorrowCapGuardian, newBorrowCapGuardian);
     }
 
     /// @notice Returns market status
@@ -785,102 +761,92 @@ contract Lendtroller is ILendtroller {
         return (liquidity, shortfall);
     }
 
-    /// @notice Admin function to change the Pause Guardian
-    /// @param newPauseGuardian The address of the new Pause Guardian
-    function setPauseGuardian(
-        address newPauseGuardian
-    ) public onlyElevatedPermissions {
-        // Cache the current value for event log
-        address oldPauseGuardian = pauseGuardian;
+    /// @notice Admin function to set market mint paused
+    /// @param mToken market token address
+    /// @param state pause or unpause
+    function setMintPaused(IMToken mToken, bool state) public {
+        if (!markets[address(mToken)].isListed) {
+            revert Lendtroller_MarketNotListed();
+        }
 
-        // Assign new guardian
-        pauseGuardian = newPauseGuardian;
+        // If we want to pause, DAO can execute immediately, if we want to unpause we need timelock authority
+        if (state) {
+            require(
+                centralRegistry.hasDaoPermissions(msg.sender),
+                "lendtroller: UNAUTHORIZED"
+            );
+        } else {
+            require(
+                centralRegistry.hasElevatedPermissions(msg.sender),
+                "lendtroller: UNAUTHORIZED"
+            );
+        }
 
-        emit NewPauseGuardian(oldPauseGuardian, newPauseGuardian);
+        mintPaused[address(mToken)] = state;
+        emit ActionPaused(mToken, "Mint Paused", state);
     }
 
     /// @notice Admin function to set market mint paused
     /// @param mToken market token address
     /// @param state pause or unpause
-    function setMintPaused(IMToken mToken, bool state) public returns (bool) {
+    function setBorrowPaused(IMToken mToken, bool state) public {
         if (!markets[address(mToken)].isListed) {
             revert Lendtroller_MarketNotListed();
         }
 
-        bool hasDaoPerms = centralRegistry.hasElevatedPermissions(msg.sender);
-
-        if (msg.sender != pauseGuardian && !hasDaoPerms) {
-            revert Lendtroller_AddressUnauthorized();
-        }
-        // Only the timelock or Emergency Council can turn minting back on
-        if (!hasDaoPerms && state != true) {
-            revert Lendtroller_AddressUnauthorized();
+        // If we want to pause, DAO can execute immediately, if we want to unpause we need timelock authority
+        if (state) {
+            require(
+                centralRegistry.hasDaoPermissions(msg.sender),
+                "lendtroller: UNAUTHORIZED"
+            );
+        } else {
+            require(
+                centralRegistry.hasElevatedPermissions(msg.sender),
+                "lendtroller: UNAUTHORIZED"
+            );
         }
 
         mintPaused[address(mToken)] = state;
-        emit ActionPaused(mToken, "lendtroller: Mint Paused", state);
-        return state;
-    }
-
-    /// @notice Admin function to set market borrow paused
-    /// @param mToken market token address
-    /// @param state pause or unpause
-    function setBorrowPaused(
-        IMToken mToken,
-        bool state
-    ) public returns (bool) {
-        if (!markets[address(mToken)].isListed) {
-            revert Lendtroller_MarketNotListed();
-        }
-
-        bool hasDaoPerms = centralRegistry.hasElevatedPermissions(msg.sender);
-
-        if (msg.sender != pauseGuardian && !hasDaoPerms) {
-            revert Lendtroller_AddressUnauthorized();
-        }
-        // Only the timelock or Emergency Council can turn borrows back on
-        if (!hasDaoPerms && state != true) {
-            revert Lendtroller_AddressUnauthorized();
-        }
-
-        borrowPaused[address(mToken)] = state;
-        emit ActionPaused(mToken, "lendtroller: Borrow Paused", state);
-        return state;
+        emit ActionPaused(mToken, "Borrow Paused", state);
     }
 
     /// @notice Admin function to set transfer paused
     /// @param state pause or unpause
-    function setTransferPaused(bool state) public returns (bool) {
-        bool hasDaoPerms = centralRegistry.hasElevatedPermissions(msg.sender);
+    function setTransferPaused(bool state) public {
+        if (state) {
+            require(
+                centralRegistry.hasDaoPermissions(msg.sender),
+                "lendtroller: UNAUTHORIZED"
+            );
+        } else {
+            require(
+                centralRegistry.hasElevatedPermissions(msg.sender),
+                "lendtroller: UNAUTHORIZED"
+            );
+        }
 
-        if (msg.sender != pauseGuardian && !hasDaoPerms) {
-            revert Lendtroller_AddressUnauthorized();
-        }
-        // Only the timelock or Emergency Council can turn transfers back on
-        if (!hasDaoPerms && state != true) {
-            revert Lendtroller_AddressUnauthorized();
-        }
         transferPaused = state ? 2: 1;
-        emit ActionPaused("lendtroller: Transfer Paused", state);
-        return state;
+        emit ActionPaused("Transfer Paused", state);
     }
 
     /// @notice Admin function to set seize paused
     /// @param state pause or unpause
-    function setSeizePaused(bool state) public returns (bool) {
-        bool hasDaoPerms = centralRegistry.hasElevatedPermissions(msg.sender);
-
-        if (msg.sender != pauseGuardian && !hasDaoPerms) {
-            revert Lendtroller_AddressUnauthorized();
-        }
-        // Only the timelock or Emergency Council can turn seizing assets back on
-        if (!hasDaoPerms && state != true) {
-            revert Lendtroller_AddressUnauthorized();
+    function setSeizePaused(bool state) public {
+        if (state) {
+            require(
+                centralRegistry.hasDaoPermissions(msg.sender),
+                "lendtroller: UNAUTHORIZED"
+            );
+        } else {
+            require(
+                centralRegistry.hasElevatedPermissions(msg.sender),
+                "lendtroller: UNAUTHORIZED"
+            );
         }
 
         seizePaused = state ? 2: 1;
-        emit ActionPaused("lendtroller: Seize Paused", state);
-        return state;
+        emit ActionPaused("Seize Paused", state);
     }
 
     /// @notice Admin function to set position folding contract address
