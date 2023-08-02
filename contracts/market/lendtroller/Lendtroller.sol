@@ -807,7 +807,7 @@ contract Lendtroller is ILendtroller {
             );
         }
 
-        mintPaused[address(mToken)] = state;
+        borrowPaused[address(mToken)] = state;
         emit ActionPaused(mToken, "Borrow Paused", state);
     }
 
