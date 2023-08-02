@@ -26,13 +26,17 @@ library BalancerLib {
 
         uint256[] memory balances = new uint256[](numTokens);
         // approve tokens
-        for (uint256 i; i < numTokens; ++i) {
+        for (uint256 i; i < numTokens; ) {
             balances[i] = CommonLib.getTokenBalance(tokens[i]);
             SwapperLib.approveTokenIfNeeded(
                 tokens[i],
                 balancerVault,
                 balances[i]
             );
+
+            unchecked {
+                ++i;
+            }
         }
 
         IBalancerVault(balancerVault).joinPool(

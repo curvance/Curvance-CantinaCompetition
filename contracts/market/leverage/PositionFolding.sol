@@ -219,12 +219,10 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         uint256 collateralAmount,
         bytes calldata params
     ) external override {
-        (bool isListed, ) = lendtroller.getIsMarkets(collateralToken);
+        require (msg.sender == collateralToken,"PositionFolding: UNAUTHORIZED");
 
-        require(
-            isListed && msg.sender == collateralToken,
-            "PositionFolding: UNAUTHORIZED"
-        );
+        (bool isListed, ) = lendtroller.getIsMarkets(collateralToken);
+        require( isListed,"PositionFolding: UNAUTHORIZED");
 
         DeleverageStruct memory deleverageData = abi.decode(
             params,

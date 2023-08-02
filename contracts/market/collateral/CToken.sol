@@ -312,7 +312,7 @@ contract CToken is ERC165, ReentrancyGuard {
         uint256 addAmount
     ) external nonReentrant onlyElevatedPermissions {
         // On success, the cToken holds an additional addAmount of cash.
-        totalReserves += doTransferIn(msg.sender, addAmount);
+        totalReserves = totalReserves + doTransferIn(msg.sender, addAmount);
 
         // emit ReservesAdded(msg.sender, actualAddAmount, totalReserves); /// changed to emit correct variable
         emit ReservesAdded(msg.sender, addAmount, totalReserves);
@@ -329,7 +329,7 @@ contract CToken is ERC165, ReentrancyGuard {
         }
 
         // Need underflow check to check if we have sufficient totalReserves
-        totalReserves -= reduceAmount;
+        totalReserves = totalReserves - reduceAmount;
 
         // Query current DAO operating address
         address payable daoAddress = payable(centralRegistry.daoAddress());
@@ -514,15 +514,15 @@ contract CToken is ERC165, ReentrancyGuard {
         // Get the allowance, if the spender is not the `from` address
         if (spender != from) {
             // Validate that spender has enough allowance for the transfer with underflow check
-            transferAllowances[from][spender] -= tokens;
+            transferAllowances[from][spender] = transferAllowances[from][spender] - tokens;
         }
 
         // Update token balances
         // shift token value by timestamp length bit length so we can check for underflow
-        _accountBalance[from] -= tokens;
+        _accountBalance[from] = _accountBalance[from] - tokens;
         /// We know that from balance wont overflow due to underflow check above
         unchecked {
-            _accountBalance[to] += tokens;
+            _accountBalance[to] = _accountBalance[to] + tokens;
         }
 
         // emit events on gauge pool
@@ -560,7 +560,7 @@ contract CToken is ERC165, ReentrancyGuard {
         unchecked {
             totalSupply = totalSupply + mintTokens;
             /// Calculate their new balance
-            _accountBalance[recipient] += mintTokens;
+            _accountBalance[recipient] = _accountBalance[recipient] + mintTokens;
         }
         
         // emit events on gauge pool
@@ -591,11 +591,11 @@ contract CToken is ERC165, ReentrancyGuard {
         // Need to shift bits by timestamp length to make sure we do a proper underflow check
         // redeemTokens should never be above uint216 and the user can never have more than uint216,
         // So if theyve put in a larger number than type(uint216).max we know it will revert from underflow
-        _accountBalance[redeemer] -= redeemTokens;
+        _accountBalance[redeemer] = _accountBalance[redeemer] - redeemTokens;
 
         // We have user underflow check above so we do not need a redundant check here
         unchecked {
-            totalSupply -= redeemTokens;
+            totalSupply = totalSupply - redeemTokens;
         }
 
         // emit events on gauge pool
@@ -649,8 +649,8 @@ contract CToken is ERC165, ReentrancyGuard {
         uint256 liquidatorSeizeTokens = seizeTokens - protocolSeizeTokens;
 
         // Document new account balances with underflow check on borrower balance
-        _accountBalance[borrower] -= seizeTokens;
-        _accountBalance[liquidator] += liquidatorSeizeTokens;
+        _accountBalance[borrower] = _accountBalance[borrower] - seizeTokens;
+        _accountBalance[liquidator] = _accountBalance[liquidator] + liquidatorSeizeTokens;
         // Reserves should never overflow since totalSupply will always be higher before function than totalReserves after this call
         unchecked {
             totalReserves = totalReserves + protocolSeizeAmount;
@@ -691,8 +691,9 @@ contract CToken is ERC165, ReentrancyGuard {
         );
 
         // deposit into the vault
-        SafeTransferLib.safeApprove(underlying, address(vault), amount);
-        return vault.deposit(amount, address(this));
+        BasePositionVault _vault = vault;
+        SafeTransferLib.safeApprove(underlying, address(_vault), amount);
+        return _vault.deposit(amount, address(this));
     }
 
     /// @notice Handles outgoing token transfers

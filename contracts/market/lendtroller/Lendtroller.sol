@@ -507,15 +507,15 @@ contract Lendtroller is ILendtroller {
         IMToken mToken,
         uint256 newCollateralFactorScaled
     ) external onlyElevatedPermissions {
+        // Check collateral factor is not above maximum allowed
+        if (collateralFactorMaxScaled < newCollateralFactorScaled) {
+            revert Lendtroller_InvalidValue();
+        }
+
         // Verify market is listed
         ILendtroller.Market storage market = markets[address(mToken)];
         if (!market.isListed) {
             revert Lendtroller_MarketNotListed();
-        }
-
-        // Check collateral factor is not above maximum allowed
-        if (collateralFactorMaxScaled < newCollateralFactorScaled) {
-            revert Lendtroller_InvalidValue();
         }
 
         (, uint256 lowPriceError) = getPriceRouter().getPrice(
@@ -788,8 +788,11 @@ contract Lendtroller is ILendtroller {
         uint256 numCTokens = mTokens.length;
 
         uint256[] memory results = new uint256[](numCTokens);
-        for (uint256 i; i < numCTokens; ++i) {
+        for (uint256 i; i < numCTokens; ) {
             results[i] = _addToMarket(IMToken(mTokens[i]), msg.sender);
+            unchecked {
+                ++i;
+            }
         }
 
         // Return a list of markets joined & not joined (1 = joined, 0 = not joined)
@@ -1098,10 +1101,12 @@ contract Lendtroller is ILendtroller {
     function _addMarket(address mToken) internal {
         uint256 numMarkets = allMarkets.length;
 
-        for (uint256 i; i < numMarkets; ++i) {
-            if (allMarkets[i] == IMToken(mToken)) {
-                revert Lendtroller_MarketAlreadyListed();
-            }
+        for (uint256 i; i < numMarkets; ) {
+            unchecked {
+                if (allMarkets[i++] == IMToken(mToken)) {
+                    revert Lendtroller_MarketAlreadyListed();
+                }
+            }  
         }
         allMarkets.push(IMToken(mToken));
     }

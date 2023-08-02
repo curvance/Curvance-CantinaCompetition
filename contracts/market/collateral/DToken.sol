@@ -857,19 +857,20 @@ contract DToken is ERC165, ReentrancyGuard {
         // Get the allowance, if the spender is not the `from` address
         if (spender != from) {
             // Validate that spender has enough allowance for the transfer with underflow check
-            transferAllowances[from][spender] -= tokens;
+            transferAllowances[from][spender] = transferAllowances[from][spender] - tokens;
         }
 
         // Update token balances 
-        _accountBalance[from] -= tokens;
+        _accountBalance[from] = _accountBalance[from] - tokens;
         /// We know that from balance wont overflow due to totalSupply check in constructor and underflow check above
         unchecked {
-            _accountBalance[to] += tokens;
+            _accountBalance[to] = _accountBalance[to] + tokens;
         }
         
         // emit events on gauge pool
-        GaugePool(gaugePool()).withdraw(address(this), from, tokens);
-        GaugePool(gaugePool()).deposit(address(this), to, tokens);
+        address _gaugePool = gaugePool();
+        GaugePool(_gaugePool).withdraw(address(this), from, tokens);
+        GaugePool(_gaugePool).deposit(address(this), to, tokens);
 
         // We emit a Transfer event
         emit Transfer(from, to, tokens);
@@ -895,10 +896,10 @@ contract DToken is ERC165, ReentrancyGuard {
         // We get the current exchange rate and calculate the number of dTokens to be minted:
         //  mintTokens = actualMintAmount / exchangeRate
         uint256 mintTokens = (actualMintAmount * expScale) / exchangeRateStored();
-        totalSupply += mintTokens;
+        totalSupply = totalSupply + mintTokens;
 
         /// Calculate their new balance
-        _accountBalance[recipient] += mintTokens;
+        _accountBalance[recipient] = _accountBalance[recipient] + mintTokens;
 
         // emit events on gauge pool
         GaugePool(gaugePool()).deposit(address(this), recipient, mintTokens);
@@ -926,10 +927,10 @@ contract DToken is ERC165, ReentrancyGuard {
             revert RedeemTransferOutNotPossible();
         }
 
-        _accountBalance[redeemer] -= redeemTokens;
+        _accountBalance[redeemer] = _accountBalance[redeemer] - redeemTokens;
         // We have user underflow check above so we do not need a redundant check here
         unchecked {
-            totalSupply -= redeemTokens;
+            totalSupply = totalSupply - redeemTokens;
         }
         
         // emit events on gauge pool
@@ -967,7 +968,7 @@ contract DToken is ERC165, ReentrancyGuard {
         // We calculate the new borrower and total borrow balances, failing on overflow:
         accountBorrows[borrower].principal = borrowBalanceStored(borrower) + borrowAmount;
         accountBorrows[borrower].interestIndex = borrowIndex;
-        totalBorrows += borrowAmount;
+        totalBorrows = totalBorrows + borrowAmount;
 
         // doTransferOut reverts if anything goes wrong, since we can't be sure if side effects occurred.
         doTransferOut(recipient, borrowAmount);
