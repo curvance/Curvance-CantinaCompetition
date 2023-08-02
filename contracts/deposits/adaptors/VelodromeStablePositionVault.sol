@@ -3,6 +3,7 @@ pragma solidity ^0.8.17;
 
 import { BasePositionVault, SafeTransferLib, ERC20, Math, ICentralRegistry } from "contracts/deposits/adaptors/BasePositionVault.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
+import { VelodromeLib } from "contracts/market/zapper/protocols/VelodromeLib.sol";
 
 import { IVeloGauge } from "contracts/interfaces/external/velodrome/IVeloGauge.sol";
 import { IVeloRouter } from "contracts/interfaces/external/velodrome/IVeloRouter.sol";
@@ -153,70 +154,25 @@ contract VelodromeStablePositionVault is BasePositionVault {
                 }
             }
 
-            uint256 totalAmountA;
-            uint256 totalAmountB;
+            // deposit into velodrome
+            yield = VelodromeLib.enterVelodrome(
+                address(sd.router),
+                address(sd.pairFactory),
+                asset(),
+                0
+            );
 
-            {
-                // swap token0 to LP Token underlying tokens
-                totalAmountA = ERC20(sd.token0).balanceOf(address(this));
-
-                require(
-                    totalAmountA > 0,
-                    "VelodromeStablePositionVault: slippage error"
-                );
-
-                (uint256 r0, uint256 r1, ) = IVeloPair(asset()).getReserves();
-                (uint256 reserveA, uint256 reserveB) = sd.token0 ==
-                    IVeloPair(asset()).token0()
-                    ? (r0, r1)
-                    : (r1, r0);
-                uint256 swapAmount = _optimalDeposit(
-                    totalAmountA,
-                    reserveA,
-                    reserveB,
-                    sd.decimalsA,
-                    sd.decimalsB
-                );
-
-                _swapExactTokensForTokens(sd.token0, sd.token1, swapAmount);
-                totalAmountA -= swapAmount;
-                totalAmountB = ERC20(sd.token1).balanceOf(address(this));
-            }
-
-            uint256 valueOut;
-
-            (uint256 tokenAPrice, ) = getPriceRouter().getPrice(
-                sd.token0,
+            (uint256 lpPrice, ) = getPriceRouter().getPrice(
+                asset(),
                 true,
                 true
             );
-            (uint256 tokenBPrice, ) = getPriceRouter().getPrice(
-                sd.token1,
-                true,
-                true
-            );
-            valueOut =
-                totalAmountA.mulDivDown(
-                    tokenAPrice,
-                    10 ** ERC20(sd.token0).decimals()
-                ) +
-                totalAmountB.mulDivDown(
-                    tokenBPrice,
-                    10 ** ERC20(sd.token1).decimals()
-                );
+            uint256 valueOut = yield.mulDivDown(lpPrice, 10 ** 18);
 
             // check for slippage
             require(
                 valueOut > valueIn.mulDivDown(1e18 - maxSlippage, 1e18),
                 "VelodromeStablePositionVault: bad slippage"
-            );
-
-            // add liquidity to velodrome lp
-            yield = _addLiquidity(
-                sd.token0,
-                sd.token1,
-                totalAmountA,
-                totalAmountB
             );
 
             // deposit assets into velodrome gauge
@@ -264,110 +220,5 @@ contract VelodromeStablePositionVault is BasePositionVault {
         returns (uint256)
     {
         return strategyData.gauge.balanceOf(address(this));
-    }
-
-    /// @notice Calculates the optimal amount of TokenA to swap to TokenB
-    ///         for a perfect LP deposit for a stable pair
-    /// @param amountA The amount of `token0` this vault has currently
-    /// @param reserveA The amount of `token0` the LP has in reserve
-    /// @param reserveB The amount of `token1` the LP has in reserve
-    /// @param decimalsA The decimals of `token0`
-    /// @param decimalsB The decimals of `token1`
-    /// @return The optimal amount of TokenA to swap
-    function _optimalDeposit(
-        uint256 amountA,
-        uint256 reserveA,
-        uint256 reserveB,
-        uint256 decimalsA,
-        uint256 decimalsB
-    ) internal pure returns (uint256) {
-        uint256 num;
-        uint256 den;
-
-        uint256 a = (amountA * 1e18) / decimalsA;
-        uint256 x = (reserveA * 1e18) / decimalsA;
-        uint256 y = (reserveB * 1e18) / decimalsB;
-        uint256 x2 = (x * x) / 1e18;
-        uint256 y2 = (y * y) / 1e18;
-        uint256 p = (y * (((x2 * 3 + y2) * 1e18) / (y2 * 3 + x2))) / x;
-        num = a * y;
-        den = ((a + x) * p) / 1e18 + y;
-
-        return ((num / den) * decimalsA) / 1e18;
-    }
-
-    /// @notice Approves the velodrome router to spend a token if it needs
-    ///         more approval
-    /// @param token The token the router will use
-    /// @param amount The amount that needs to be approved
-    function _approveRouter(address token, uint256 amount) internal {
-        if (
-            ERC20(token).allowance(
-                address(this),
-                address(strategyData.router)
-            ) >= amount
-        ) {
-            return;
-        }
-
-        SafeTransferLib.safeApprove(
-            token,
-            address(strategyData.router),
-            type(uint256).max
-        );
-    }
-
-    /// @notice Swaps an exact amount of `tokenIn` for `tokenOut`
-    /// @param tokenIn The token to be swapped from
-    /// @param tokenOut The token to be swapped into
-    /// @param amount The amount of `tokenIn` to be swapped
-    function _swapExactTokensForTokens(
-        address tokenIn,
-        address tokenOut,
-        uint256 amount
-    ) internal {
-        _approveRouter(tokenIn, amount);
-
-        IVeloRouter.Route[] memory routes = new IVeloRouter.Route[](1);
-        routes[0].from = tokenIn;
-        routes[0].to = tokenOut;
-        routes[0].stable = true;
-        routes[0].factory = IVeloPool(asset()).factory();
-
-        strategyData.router.swapExactTokensForTokens(
-            amount,
-            0,
-            routes,
-            address(this),
-            block.timestamp
-        );
-    }
-
-    /// @notice Adds `token0` and `token1` into a velodrome LP
-    /// @param token0 The first token of the pair
-    /// @param token1 The second token of the pair
-    /// @param amountA The amount of the `token0`
-    /// @param amountB The amount of the `token1`
-    /// @return liquidity The amount of LP tokens received
-    function _addLiquidity(
-        address token0,
-        address token1,
-        uint256 amountA,
-        uint256 amountB
-    ) internal returns (uint256 liquidity) {
-        _approveRouter(token0, amountA);
-        _approveRouter(token1, amountB);
-
-        (, , liquidity) = strategyData.router.addLiquidity(
-            token0,
-            token1,
-            true,
-            amountA,
-            amountB,
-            0,
-            0,
-            address(this),
-            block.timestamp
-        );
     }
 }

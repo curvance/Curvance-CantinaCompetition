@@ -26,27 +26,14 @@ library VelodromeLib {
         address token0 = IVeloPair(lpToken).token0();
         address token1 = IVeloPair(lpToken).token1();
         bool stable = IVeloPool(lpToken).stable();
-        uint256 amount0 = CommonLib.getTokenBalance(token0);
-        uint256 amount1 = CommonLib.getTokenBalance(token1);
 
-        SwapperLib.approveTokenIfNeeded(token0, router, amount0);
-        SwapperLib.approveTokenIfNeeded(token1, router, amount1);
-        (, , lpOutAmount) = IVeloRouter(router).addLiquidity(
-            token0,
-            token1,
-            stable,
-            amount0,
-            amount1,
-            0,
-            0,
-            address(this),
-            block.timestamp
-        );
+        uint256 amount0;
+        uint256 amount1;
 
         amount0 = CommonLib.getTokenBalance(token0);
         if (amount0 > 0) {
             (uint256 r0, uint256 r1, ) = IVeloPair(lpToken).getReserves();
-            uint256 swapAmount = _optimalDeposit(
+            uint256 swapAmount = optimalDeposit(
                 factory,
                 lpToken,
                 amount0,
@@ -57,7 +44,7 @@ library VelodromeLib {
                 stable
             );
 
-            _swapExactTokensForTokens(
+            amount1 = swapExactTokensForTokens(
                 router,
                 lpToken,
                 token0,
@@ -65,20 +52,14 @@ library VelodromeLib {
                 swapAmount
             );
             amount0 -= swapAmount;
-            amount1 = CommonLib.getTokenBalance(token1);
 
-            SwapperLib.approveTokenIfNeeded(token0, router, amount0);
-            SwapperLib.approveTokenIfNeeded(token1, router, amount1);
-            (, , uint256 newLpOutAmount) = IVeloRouter(router).addLiquidity(
+            uint256 newLpOutAmount = addLiquidity(
+                router,
                 token0,
                 token1,
                 stable,
                 amount0,
-                amount1,
-                0,
-                0,
-                address(this),
-                block.timestamp
+                amount1
             );
 
             lpOutAmount += newLpOutAmount;
@@ -87,7 +68,7 @@ library VelodromeLib {
         amount1 = CommonLib.getTokenBalance(token1);
         if (amount1 > 0) {
             (uint256 r0, uint256 r1, ) = IVeloPair(lpToken).getReserves();
-            uint256 swapAmount = _optimalDeposit(
+            uint256 swapAmount = optimalDeposit(
                 factory,
                 lpToken,
                 amount1,
@@ -98,7 +79,7 @@ library VelodromeLib {
                 stable
             );
 
-            _swapExactTokensForTokens(
+            amount0 = swapExactTokensForTokens(
                 router,
                 lpToken,
                 token1,
@@ -106,20 +87,14 @@ library VelodromeLib {
                 swapAmount
             );
             amount1 -= swapAmount;
-            amount0 = CommonLib.getTokenBalance(token0);
 
-            SwapperLib.approveTokenIfNeeded(token0, router, amount0);
-            SwapperLib.approveTokenIfNeeded(token1, router, amount1);
-            (, , uint256 newLpOutAmount) = IVeloRouter(router).addLiquidity(
+            uint256 newLpOutAmount = addLiquidity(
+                router,
                 token0,
                 token1,
                 stable,
                 amount0,
-                amount1,
-                0,
-                0,
-                address(this),
-                block.timestamp
+                amount1
             );
 
             lpOutAmount += newLpOutAmount;
@@ -156,6 +131,36 @@ library VelodromeLib {
         );
     }
 
+    /// @notice Adds `token0` and `token1` into a velodrome LP
+    /// @param router The velodrome router address
+    /// @param token0 The first token of the pair
+    /// @param token1 The second token of the pair
+    /// @param amount0 The amount of the `token0`
+    /// @param amount1 The amount of the `token1`
+    /// @return liquidity The amount of LP tokens received
+    function addLiquidity(
+        address router,
+        address token0,
+        address token1,
+        bool stable,
+        uint256 amount0,
+        uint256 amount1
+    ) internal returns (uint256 liquidity) {
+        SwapperLib.approveTokenIfNeeded(token0, router, amount0);
+        SwapperLib.approveTokenIfNeeded(token1, router, amount1);
+        (, , liquidity) = IVeloRouter(router).addLiquidity(
+            token0,
+            token1,
+            stable,
+            amount0,
+            amount1,
+            0,
+            0,
+            address(this),
+            block.timestamp
+        );
+    }
+
     /// @notice Calculates the optimal amount of TokenA to swap to TokenB
     ///         for a perfect LP deposit for a stable pair
     /// @param amountA The amount of `token0` this vault has currently
@@ -164,7 +169,7 @@ library VelodromeLib {
     /// @param decimalsA The decimals of `token0`
     /// @param decimalsB The decimals of `token1`
     /// @return The optimal amount of TokenA to swap
-    function _optimalDeposit(
+    function optimalDeposit(
         address factory,
         address lpToken,
         uint256 amountA,
@@ -203,13 +208,13 @@ library VelodromeLib {
     /// @param tokenIn The token to be swapped from
     /// @param tokenOut The token to be swapped into
     /// @param amount The amount of `tokenIn` to be swapped
-    function _swapExactTokensForTokens(
+    function swapExactTokensForTokens(
         address router,
         address lpToken,
         address tokenIn,
         address tokenOut,
         uint256 amount
-    ) internal {
+    ) internal returns (uint256) {
         SwapperLib.approveTokenIfNeeded(tokenIn, router, amount);
 
         IVeloRouter.Route[] memory routes = new IVeloRouter.Route[](1);
@@ -218,12 +223,15 @@ library VelodromeLib {
         routes[0].stable = true;
         routes[0].factory = IVeloPool(lpToken).factory();
 
-        IVeloRouter(router).swapExactTokensForTokens(
-            amount,
-            0,
-            routes,
-            address(this),
-            block.timestamp
-        );
+        uint256[] memory amountsOut = IVeloRouter(router)
+            .swapExactTokensForTokens(
+                amount,
+                0,
+                routes,
+                address(this),
+                block.timestamp
+            );
+
+        return amountsOut[amountsOut.length - 1];
     }
 }
