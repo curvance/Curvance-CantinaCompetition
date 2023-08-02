@@ -339,14 +339,14 @@ contract Lendtroller is ILendtroller {
 
         // The borrower must have shortfall in order to be liquidatable
         (, uint256 shortfall) = _getAccountLiquidity(borrower);
-        assembly {
-            if iszero(shortfall) {
-                // store the error selector to location 0x0
-                mstore(0x0,_INSUFFICIENT_SHORTFALL_SELECTOR)
-                // return bytes 29-32 for the selector
-                revert(0x1c,0x04)
-            }
-         }
+        // assembly {
+        //     if iszero(shortfall) {
+        //         // store the error selector to location 0x0
+        //         mstore(0x0,_INSUFFICIENT_SHORTFALL_SELECTOR)
+        //         // return bytes 29-32 for the selector
+        //         revert(0x1c,0x04)
+        //     }
+        //  }
 
         // The liquidator may not close out more collateral than
         // what is allowed by the closeFactor
@@ -459,14 +459,14 @@ contract Lendtroller is ILendtroller {
         bool disableCollateral
     ) external {
         uint256 numMarkets = mTokens.length;
-        assembly {
-            if iszero(numMarkets) {
-                // store the error selector to location 0x0
-                mstore(0x0,_INVALID_VALUE_SELECTOR)
-                // return bytes 29-32 for the selector
-                revert(0x1c,0x04)
-            }
-         }
+        // assembly {
+        //     if iszero(numMarkets) {
+        //         // store the error selector to location 0x0
+        //         mstore(0x0,_INVALID_VALUE_SELECTOR)
+        //         // return bytes 29-32 for the selector
+        //         revert(0x1c,0x04)
+        //     }
+        //  }
 
         for (uint256 i; i < numMarkets; ++i) {
             /// Make sure the mToken is a collateral token
@@ -605,23 +605,23 @@ contract Lendtroller is ILendtroller {
         }
         uint256 numMarkets = mTokens.length;
 
-        assembly {
-            if iszero(numMarkets) {
-                // store the error selector to location 0x0
-                mstore(0x0,_INVALID_VALUE_SELECTOR)
-                // return bytes 29-32 for the selector
-                revert(0x1c,0x04)
-            }
-        }
+        // assembly {
+        //     if iszero(numMarkets) {
+        //         // store the error selector to location 0x0
+        //         mstore(0x0,_INVALID_VALUE_SELECTOR)
+        //         // return bytes 29-32 for the selector
+        //         revert(0x1c,0x04)
+        //     }
+        // }
 
-        if (numMarkets != newBorrowCaps.length) {
-            assembly {
-                // store the error selector to location 0x0
-                mstore(0x0,_INVALID_VALUE_SELECTOR)
-                // return bytes 29-32 for the selector
-                revert(0x1c,0x04)
-            }
-        }
+        // if (numMarkets != newBorrowCaps.length) {
+        //     assembly {
+        //         // store the error selector to location 0x0
+        //         mstore(0x0,_INVALID_VALUE_SELECTOR)
+        //         // return bytes 29-32 for the selector
+        //         revert(0x1c,0x04)
+        //     }
+        // }
 
         for (uint256 i; i < numMarkets; ++i) {
             borrowCaps[address(mTokens[i])] = newBorrowCaps[i];
