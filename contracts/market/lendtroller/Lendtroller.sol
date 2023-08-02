@@ -786,7 +786,7 @@ contract Lendtroller is ILendtroller {
         emit ActionPaused(mToken, "Mint Paused", state);
     }
 
-    /// @notice Admin function to set market mint paused
+    /// @notice Admin function to set market borrow paused
     /// @param mToken market token address
     /// @param state pause or unpause
     function setBorrowPaused(IMToken mToken, bool state) public {
@@ -849,8 +849,8 @@ contract Lendtroller is ILendtroller {
         emit ActionPaused("Seize Paused", state);
     }
 
-    /// @notice Admin function to set position folding contract address
-    /// @param newPositionFolding new position folding contract address
+    /// @notice Admin function to set position folding address
+    /// @param newPositionFolding new position folding address
     function setPositionFolding(
         address newPositionFolding
     ) public onlyElevatedPermissions {

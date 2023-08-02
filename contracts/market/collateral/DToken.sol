@@ -549,16 +549,17 @@ contract DToken is ERC165, ReentrancyGuard {
     function setLendtroller(
         ILendtroller newLendtroller
     ) external onlyElevatedPermissions {
-        ILendtroller oldLendtroller = lendtroller;
-        // Ensure invoke lendtroller.isLendtroller() returns true
+        // Ensure we are switching to an actual lendtroller
         if (!newLendtroller.isLendtroller()) {
             revert LendtrollerMismatch();
         }
 
-        // Set market's lendtroller to newLendtroller
+        // Cache the current lendtroller to save gas
+        ILendtroller oldLendtroller = lendtroller;
+
+        // Set new lendtroller
         lendtroller = newLendtroller;
 
-        // Emit NewLendtroller(oldLendtroller, newLendtroller)
         emit NewLendtroller(oldLendtroller, newLendtroller);
     }
 
@@ -575,7 +576,10 @@ contract DToken is ERC165, ReentrancyGuard {
             revert ExcessiveValue();
         }
 
+        // Cache the current interest reserve factor to save gas
         uint256 oldReserveFactorScaled = reserveFactorScaled;
+
+        // Set new reserver factor
         reserveFactorScaled = newReserveFactorScaled;
 
         emit NewReserveFactor(oldReserveFactorScaled, newReserveFactorScaled);
@@ -588,16 +592,16 @@ contract DToken is ERC165, ReentrancyGuard {
         InterestRateModel newInterestRateModel
     ) external onlyElevatedPermissions {
         accrueInterest();
-        
-        // Cache the current interest rate model to save gas
-        InterestRateModel oldInterestRateModel = interestRateModel;
 
         // Ensure we are switching to an actual Interest Rate Model
         if (!newInterestRateModel.isInterestRateModel()) {
             revert ValidationFailed();
         }
+        
+        // Cache the current interest rate model to save gas
+        InterestRateModel oldInterestRateModel = interestRateModel;
 
-        // Set the interest rate model to newInterestRateModel
+        // Set new interest rate model
         interestRateModel = newInterestRateModel;
 
         emit NewMarketInterestRateModel(
@@ -884,18 +888,13 @@ contract DToken is ERC165, ReentrancyGuard {
         // Fail if mint not allowed
         lendtroller.mintAllowed(address(this), recipient); //, mintAmount);
 
-        // Exp memory exchangeRate = Exp({mantissa: exchangeRateStored()});
-        uint256 exchangeRate = exchangeRateStored();
-
-        // Note: `doTransferIn` reverts if anything goes wrong, since we can't be sure if
-        //       side-effects occurred. The function returns the amount actually transferred,
-        //       in case of a fee. On success, the dToken holds an additional `actualMintAmount`
-        //       of cash.
+        // The function returns the amount actually transferred,
+        // in case of a fee. On success, the dToken holds an additional `actualMintAmount` of cash.
         uint256 actualMintAmount = doTransferIn(user, mintAmount);
 
         // We get the current exchange rate and calculate the number of dTokens to be minted:
         //  mintTokens = actualMintAmount / exchangeRate
-        uint256 mintTokens = (actualMintAmount * expScale) / exchangeRate;
+        uint256 mintTokens = (actualMintAmount * expScale) / exchangeRateStored();
         totalSupply += mintTokens;
 
         /// Calculate their new balance

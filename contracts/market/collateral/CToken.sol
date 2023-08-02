@@ -185,14 +185,20 @@ contract CToken is ERC165, ReentrancyGuard {
     function migrateVault(
         address newVault
     ) external onlyDaoPermissions nonReentrant {
+        // Cache current vault
         address oldVault = address(vault);
+        // Zero out current vault
         vault = BasePositionVault(address(0));
 
+        // Begin Migration process
         bytes memory params = BasePositionVault(oldVault).migrateStart(
             newVault
         );
+
+        // Confirm Migration
         BasePositionVault(newVault).migrateConfirm(oldVault, params);
 
+        // Switch to new vault
         vault = BasePositionVault(newVault);
         emit MigrateVault(oldVault, newVault);
     }
@@ -381,20 +387,21 @@ contract CToken is ERC165, ReentrancyGuard {
 
     /// @notice Sets a new lendtroller for the market
     /// @dev Admin function to set a new lendtroller
-    /// @param newLendtroller New lendtroller address.
+    /// @param newLendtroller New lendtroller address
     function setLendtroller(
         ILendtroller newLendtroller
     ) external onlyElevatedPermissions {
-        ILendtroller oldLendtroller = lendtroller;
-        // Ensure invoke lendtroller.isLendtroller() returns true
+        // Ensure we are switching to an actual lendtroller
         if (!newLendtroller.isLendtroller()) {
             revert LendtrollerMismatch();
         }
 
-        // Set market's lendtroller to newLendtroller
+        // Cache the current lendtroller to save gas
+        ILendtroller oldLendtroller = lendtroller;
+
+        // Set new lendtroller
         lendtroller = newLendtroller;
 
-        // Emit NewLendtroller(oldLendtroller, newLendtroller)
         emit NewLendtroller(oldLendtroller, newLendtroller);
     }
 
