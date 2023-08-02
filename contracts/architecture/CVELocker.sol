@@ -4,6 +4,7 @@ pragma solidity ^0.8.17;
 import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
+import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { IVeCVE } from "contracts/interfaces/IVeCVE.sol";
@@ -11,7 +12,7 @@ import { RewardsData } from "contracts/interfaces/ICVELocker.sol";
 import { ICVXLocker } from "contracts/interfaces/ICVXLocker.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
-contract CVELocker {
+contract CVELocker is ReentrancyGuard {
     // TO-DO:
     // Add epoch rewards view for frontend?
 
@@ -27,6 +28,8 @@ contract CVELocker {
     uint256 internal constant _CVELOCKER_UNAUTHORIZED_SELECTOR = 0xeb83e515;
     // @dev `bytes4(keccak256(bytes("CVELocker_FailedETHTransfer()")))`
     uint256 internal constant _FAILED_ETH_TRANSFER_SELECTOR = 0xa9c60879;
+    // @dev `bytes4(keccak256(bytes("CVELocker_NoEpochRewards()")))`
+    uint256 internal constant _NO_EPOCH_REWARDS_SELECTOR = 0x1fb59371;
 
     // Token Addresses
     address public immutable cve;
@@ -79,6 +82,7 @@ contract CVELocker {
 
     error CVELocker_Unauthorized();
     error CVELocker_FailedETHTransfer();
+    error CVELocker_NoEpochRewards();
 
     /// MODIFIERS ///
 
@@ -102,7 +106,7 @@ contract CVELocker {
         address _veCVE = address(veCVE);
         assembly {
             if iszero(eq(caller(),_veCVE)){
-                mstore(0x00, _CVELOCKER_UNAUTHORIZED_SELECTOR)
+                mstore (0x00, _CVELOCKER_UNAUTHORIZED_SELECTOR)
                 // return bytes 29-32 for the selector
                 revert (0x1c,0x04)
             }
@@ -278,13 +282,20 @@ contract CVELocker {
     /// @param aux Auxiliary data for wrapped assets such as vlCVX and veCVE.
     function claimRewards(
         address recipient,
-        RewardsData memory rewardsData,
-        bytes memory params,
+        RewardsData calldata rewardsData,
+        bytes calldata params,
         uint256 aux
-    ) external {
+    ) external nonReentrant {
         uint256 epochs = epochsToClaim(msg.sender);
 
-        require(epochs > 0, "CVELocker: no epochs to claim");
+        // If there are no epoch rewards to claim, revert
+        assembly {
+            if iszero(epochs) {
+                mstore (0x00, _NO_EPOCH_REWARDS_SELECTOR)
+                // return bytes 29-32 for the selector
+                revert (0x1c, 0x04)
+            }
+        }
 
         _claimRewards(msg.sender, recipient, epochs, rewardsData, params, aux);
     }
@@ -299,10 +310,10 @@ contract CVELocker {
         address user,
         address recipient,
         uint256 epochs,
-        RewardsData memory rewardsData,
-        bytes memory params,
+        RewardsData calldata rewardsData,
+        bytes calldata params,
         uint256 aux
-    ) external onlyVeCVE {
+    ) external onlyVeCVE nonReentrant {
         // We check whether there are epochs to claim in veCVE
         // so we do not need to check here like in claimRewards
         _claimRewards(user, recipient, epochs, rewardsData, params, aux);
@@ -336,10 +347,10 @@ contract CVELocker {
         address user,
         address recipient,
         uint256 epochs,
-        RewardsData memory rewardsData,
-        bytes memory params,
+        RewardsData calldata rewardsData,
+        bytes calldata params,
         uint256 aux
-    ) public {
+    ) internal {
         uint256 nextUserRewardEpoch = userNextClaimIndex[user];
         uint256 userRewards;
 
@@ -408,8 +419,8 @@ contract CVELocker {
     function _processRewards(
         address recipient,
         uint256 userRewards,
-        RewardsData memory rewardsData,
-        bytes memory params,
+        RewardsData calldata rewardsData,
+        bytes calldata params,
         uint256 aux
     ) internal returns (uint256) {
         if (userRewards == 0) {
@@ -555,14 +566,12 @@ contract CVELocker {
         address payable recipient,
         uint256 reward
     ) internal returns (uint256) {
-        bool success;
         assembly {
-            success := call(gas(), recipient, reward, 0, 0, 0, 0)
             // Revert if we failed to transfer eth
-            if iszero(success) {
-                mstore(0x00, _FAILED_ETH_TRANSFER_SELECTOR)
-                // return bytes 29-32 for the selector
-                revert (0x1c,0x04)
+            if iszero(call(gas(), recipient, reward, 0x00, 0x00, 0x00, 0x00)) {
+               mstore(0x00, _FAILED_ETH_TRANSFER_SELECTOR)
+               // return bytes 29-32 for the selector
+               revert (0x1c,0x04)
             }
         }
 
