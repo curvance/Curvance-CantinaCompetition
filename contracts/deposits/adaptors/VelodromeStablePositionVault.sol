@@ -61,17 +61,19 @@ contract VelodromeStablePositionVault is BasePositionVault {
         IVeloPairFactory pairFactory,
         IVeloRouter router
     ) BasePositionVault(asset_, centralRegistry_) {
+        // Cache assigned asset address
+        address _asset = asset();
         // Validate that we have the proper gauge linked with the proper LP
         // and pair factory
         require(
-            gauge.stakingToken() == asset() &&
+            gauge.stakingToken() == _asset &&
                 address(pairFactory) == router.factory(),
             "VelodromeStablePositionVault: improper velodrome vault config"
         );
 
         // Query underlying token data from the pool
-        strategyData.token0 = IVeloPool(asset()).token0();
-        strategyData.token1 = IVeloPool(asset()).token1();
+        strategyData.token0 = IVeloPool(_asset).token0();
+        strategyData.token1 = IVeloPool(_asset).token1();
         strategyData.decimalsA = 10 ** ERC20(strategyData.token0).decimals();
         strategyData.decimalsB = 10 ** ERC20(strategyData.token0).decimals();
 
@@ -198,12 +200,13 @@ contract VelodromeStablePositionVault is BasePositionVault {
     /// @notice Deposits specified amount of assets into velodrome gauge pool
     /// @param assets The amount of assets to deposit
     function _deposit(uint256 assets) internal override {
+        IVeloGauge _gauge = strategyData.gauge;
         SafeTransferLib.safeApprove(
             asset(),
-            address(strategyData.gauge),
+            address(_gauge),
             assets
         );
-        strategyData.gauge.deposit(assets);
+        _gauge.deposit(assets);
     }
 
     /// @notice Withdraws specified amount of assets from velodrome gauge pool

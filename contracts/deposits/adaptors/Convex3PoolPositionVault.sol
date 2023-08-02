@@ -68,7 +68,7 @@ contract ConvexPositionVault is BasePositionVault {
             address crvRewards,
             ,
             bool shutdown
-        ) = strategyData.booster.poolInfo(strategyData.pid);
+        ) = IBooster(booster_).poolInfo(strategyData.pid);
 
         // validate that the pool is still active and that the lp token
         // and rewarder in convex matches what we are configuring for
@@ -85,7 +85,7 @@ contract ConvexPositionVault is BasePositionVault {
 
         // figure out how many tokens are in the curve pool
         while (true) {
-            try strategyData.curvePool.coins(coinsLength) {
+            try ICurveFi(pidToken).coins(coinsLength) {
                 ++coinsLength;
             } catch {
                 break;
@@ -103,19 +103,17 @@ contract ConvexPositionVault is BasePositionVault {
         // add CRV as a reward token, then let convex tell you what rewards
         // the vault will receive
         strategyData.rewardTokens.push() = _CRV;
-        uint256 extraRewardsLength = strategyData
-            .rewarder
-            .extraRewardsLength();
+        uint256 extraRewardsLength = IBaseRewardPool(rewarder_).extraRewardsLength();
         for (uint256 i; i < extraRewardsLength; ++i) {
             strategyData.rewardTokens.push() = IRewards(
-                strategyData.rewarder.extraRewards(i)
+                IBaseRewardPool(rewarder_).extraRewards(i)
             ).rewardToken();
         }
 
         // let curve lp tell you what its underlying tokens are
         strategyData.underlyingTokens = new address[](coinsLength);
         for (uint256 i; i < coinsLength; ) {
-            token = strategyData.curvePool.coins(i);
+            token = ICurveFi(pidToken).coins(i);
             strategyData.underlyingTokens[i] = token;
             isUnderlyingToken[token] = true;
 
@@ -135,13 +133,12 @@ contract ConvexPositionVault is BasePositionVault {
         // add CRV as a reward token, then let convex tell you what rewards
         // the vault will receive
         strategyData.rewardTokens.push() = _CRV;
+        IBaseRewardPool _rewarder = strategyData.rewarder;
 
-        uint256 extraRewardsLength = strategyData
-            .rewarder
-            .extraRewardsLength();
+        uint256 extraRewardsLength = _rewarder.extraRewardsLength();
         for (uint256 i; i < extraRewardsLength; ++i) {
             strategyData.rewardTokens.push() = IRewards(
-                strategyData.rewarder.extraRewards(i)
+                _rewarder.extraRewards(i)
             ).rewardToken();
         }
     }
@@ -229,12 +226,13 @@ contract ConvexPositionVault is BasePositionVault {
     /// @notice Deposits specified amount of assets into Convex booster contract
     /// @param assets The amount of assets to deposit
     function _deposit(uint256 assets) internal override {
+        IBooster _booster = strategyData.booster;
         SafeTransferLib.safeApprove(
             asset(),
-            address(strategyData.booster),
+            address(_booster),
             assets
         );
-        strategyData.booster.deposit(strategyData.pid, assets, true);
+        _booster.deposit(strategyData.pid, assets, true);
     }
 
     /// @notice Withdraws specified amount of assets from Convex reward pool

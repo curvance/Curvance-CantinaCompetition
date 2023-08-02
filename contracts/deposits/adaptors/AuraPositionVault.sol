@@ -70,7 +70,7 @@ contract AuraPositionVault is BasePositionVault {
             address balRewards,
             ,
             bool shutdown
-        ) = strategyData.booster.poolInfo(strategyData.pid);
+        ) = IBooster(booster_).poolInfo(strategyData.pid);
 
         // validate that the pool is still active and that the lp token
         // and rewarder in aura matches what we are configuring for
@@ -92,12 +92,10 @@ contract AuraPositionVault is BasePositionVault {
         // as a reward token
         strategyData.rewardTokens.push() = AURA;
 
-        uint256 extraRewardsLength = strategyData
-            .rewarder
-            .extraRewardsLength();
+        uint256 extraRewardsLength = IBaseRewardPool(rewarder_).extraRewardsLength();
         for (uint256 i; i < extraRewardsLength; ++i) {
             address rewardToken = IStashWrapper(
-                IRewards(strategyData.rewarder.extraRewards(i)).rewardToken()
+                IRewards(IBaseRewardPool(rewarder_).extraRewards(i)).rewardToken()
             ).baseToken();
 
             if (rewardToken != AURA) {
@@ -132,13 +130,12 @@ contract AuraPositionVault is BasePositionVault {
         // add AURA as a reward token, since some vaults do not list AURA
         // as a reward token
         strategyData.rewardTokens.push() = AURA;
+        IBaseRewardPool _rewarder = strategyData.rewarder;
 
-        uint256 extraRewardsLength = strategyData
-            .rewarder
-            .extraRewardsLength();
+        uint256 extraRewardsLength = _rewarder.extraRewardsLength();
         for (uint256 i; i < extraRewardsLength; ++i) {
             address rewardToken = IStashWrapper(
-                IRewards(strategyData.rewarder.extraRewards(i)).rewardToken()
+                IRewards(_rewarder.extraRewards(i)).rewardToken()
             ).baseToken();
 
             if (rewardToken != AURA) {
@@ -269,12 +266,13 @@ contract AuraPositionVault is BasePositionVault {
     /// @notice Deposits specified amount of assets into Aura booster contract
     /// @param assets The amount of assets to deposit
     function _deposit(uint256 assets) internal override {
+        IBooster _booster = strategyData.booster;
         SafeTransferLib.safeApprove(
             asset(),
-            address(strategyData.booster),
+            address(_booster),
             assets
         );
-        strategyData.booster.deposit(strategyData.pid, assets, true);
+        _booster.deposit(strategyData.pid, assets, true);
     }
 
     /// @notice Withdraws specified amount of assets from Aura reward pool
