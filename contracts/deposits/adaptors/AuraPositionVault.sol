@@ -130,12 +130,12 @@ contract AuraPositionVault is BasePositionVault {
         // add AURA as a reward token, since some vaults do not list AURA
         // as a reward token
         strategyData.rewardTokens.push() = AURA;
-        IBaseRewardPool _rewarder = strategyData.rewarder;
+        IBaseRewardPool rewarder = strategyData.rewarder;
 
-        uint256 extraRewardsLength = _rewarder.extraRewardsLength();
+        uint256 extraRewardsLength = rewarder.extraRewardsLength();
         for (uint256 i; i < extraRewardsLength; ++i) {
             address rewardToken = IStashWrapper(
-                IRewards(_rewarder.extraRewards(i)).rewardToken()
+                IRewards(rewarder.extraRewards(i)).rewardToken()
             ).baseToken();
 
             if (rewardToken != AURA) {

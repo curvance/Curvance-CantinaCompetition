@@ -133,12 +133,12 @@ contract ConvexPositionVault is BasePositionVault {
         // add CRV as a reward token, then let convex tell you what rewards
         // the vault will receive
         strategyData.rewardTokens.push() = _CRV;
-        IBaseRewardPool _rewarder = strategyData.rewarder;
+        IBaseRewardPool rewarder = strategyData.rewarder;
 
-        uint256 extraRewardsLength = _rewarder.extraRewardsLength();
+        uint256 extraRewardsLength = rewarder.extraRewardsLength();
         for (uint256 i; i < extraRewardsLength; ++i) {
             strategyData.rewardTokens.push() = IRewards(
-                _rewarder.extraRewards(i)
+                rewarder.extraRewards(i)
             ).rewardToken();
         }
     }
@@ -173,7 +173,7 @@ contract ConvexPositionVault is BasePositionVault {
                 data,
                 (SwapperLib.Swap[])
             );
-            
+
             uint256 numRewardTokens = sd.rewardTokens.length;
             address rewardToken;
             uint256 rewardAmount;

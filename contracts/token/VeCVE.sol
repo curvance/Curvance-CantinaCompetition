@@ -88,7 +88,7 @@ contract VeCVE is ERC20 {
     modifier canLock(uint256 amount) {
         assembly {
             if iszero(amount) {
-                mstore(0x0,_INVALID_LOCK_SELECTOR)
+                mstore(0x0, _INVALID_LOCK_SELECTOR)
                 // return bytes 29-32 for the selector
                 revert(0x1c,0x04)
             }
@@ -96,7 +96,7 @@ contract VeCVE is ERC20 {
 
         if (isShutdown > 1) {
             assembly {
-                mstore(0x0,_VECVE_SHUTDOWN_SELECTOR)
+                mstore(0x0, _VECVE_SHUTDOWN_SELECTOR)
                 // return bytes 29-32 for the selector
                 revert(0x1c,0x04)
             }

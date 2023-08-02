@@ -45,9 +45,6 @@ contract Lendtroller is ILendtroller {
 
     /// STORAGE ///
 
-    /// @notice The Pause Guardian can pause certain actions as a safety mechanism.
-    ///  Actions which allow users to remove their own assets cannot be paused.
-    ///  Liquidation / seizing / transfer can only be paused globally, not by market.
     uint256 public transferPaused = 1;
     uint256 public seizePaused = 1;
     mapping(address => bool) public mintPaused; // Token => Mint Paused
@@ -66,11 +63,10 @@ contract Lendtroller is ILendtroller {
     /// @dev Used e.g. to determine if a market is supported
     mapping(address => ILendtroller.Market) public markets;
 
-    /// @notice A list of all markets
+    /// @notice A list of all markets for frontend
     IMToken[] public allMarkets;
 
-    /// @notice Per-account mapping of "assets you are in", capped by maxAssets
-    mapping(address => IMToken[]) public accountAssets;
+    mapping(address => IMToken[]) public accountAssets; // Account => Assets 
 
     /// @notice user => UserData (IMToken => Collateralizable, lastBorrowTimestamp)
     mapping(address => UserData) public userData;
@@ -463,7 +459,7 @@ contract Lendtroller is ILendtroller {
             }
          }
 
-        for (uint256 i; i < numMarkets; ++i) {
+        for (uint256 i; i < mTokens.length; ++i) {
             /// Make sure the mToken is a collateral token
             if (mTokens[i].tokenType() > 0) {
                 userData[msg.sender].collateralDisabled[mTokens[i]] = disableCollateral;
@@ -495,8 +491,11 @@ contract Lendtroller is ILendtroller {
     function setCloseFactor(
         uint256 newCloseFactorScaled
     ) external onlyElevatedPermissions {
+        // Cache the current value for event log and gas savings
         uint256 oldCloseFactorScaled = closeFactorScaled;
+        // Assign new closeFactor
         closeFactorScaled = newCloseFactorScaled;
+
         emit NewCloseFactor(oldCloseFactorScaled, newCloseFactorScaled);
     }
 
@@ -549,7 +548,7 @@ contract Lendtroller is ILendtroller {
     function setLiquidationIncentive(
         uint256 newLiquidationIncentiveScaled
     ) external onlyElevatedPermissions {
-        // Cache the current value for event log
+        // Cache the current value for event log and gas savings
         uint256 oldLiquidationIncentiveScaled = liquidationIncentiveScaled;
 
         // Assign new liquidation incentive
@@ -591,7 +590,7 @@ contract Lendtroller is ILendtroller {
     function setMarketBorrowCaps(
         IMToken[] calldata mTokens,
         uint256[] calldata newBorrowCaps
-    ) external onlyElevatedPermissions {
+    ) external onlyDaoPermissions {
 
         uint256 numMarkets = mTokens.length;
 
@@ -658,12 +657,110 @@ contract Lendtroller is ILendtroller {
         return accountAssets[user];
     }
 
-    /// PUBLIC FUNCTIONS ///
+    /// @notice Admin function to set market mint paused
+    /// @dev requires timelock authority if unpausing
+    /// @param mToken market token address
+    /// @param state pause or unpause
+    function setMintPaused(IMToken mToken, bool state) external {
+        if (!markets[address(mToken)].isListed) {
+            revert Lendtroller_MarketNotListed();
+        }
 
-    /// @notice Fetches the current price router from the central registry
-    /// @return Current PriceRouter interface address
-    function getPriceRouter() public view returns (IPriceRouter) {
-        return IPriceRouter(centralRegistry.priceRouter());
+        // If we want to pause, DAO can execute immediately, if we want to unpause we need timelock authority
+        if (state) {
+            require(
+                centralRegistry.hasDaoPermissions(msg.sender),
+                "lendtroller: UNAUTHORIZED"
+            );
+        } else {
+            require(
+                centralRegistry.hasElevatedPermissions(msg.sender),
+                "lendtroller: UNAUTHORIZED"
+            );
+        }
+
+        mintPaused[address(mToken)] = state;
+        emit ActionPaused(mToken, "Mint Paused", state);
+    }
+
+    /// @notice Admin function to set market borrow paused
+    /// @dev requires timelock authority if unpausing
+    /// @param mToken market token address
+    /// @param state pause or unpause
+    function setBorrowPaused(IMToken mToken, bool state) external {
+        if (!markets[address(mToken)].isListed) {
+            revert Lendtroller_MarketNotListed();
+        }
+
+        // If we want to pause, DAO can execute immediately, if we want to unpause we need timelock authority
+        if (state) {
+            require(
+                centralRegistry.hasDaoPermissions(msg.sender),
+                "lendtroller: UNAUTHORIZED"
+            );
+        } else {
+            require(
+                centralRegistry.hasElevatedPermissions(msg.sender),
+                "lendtroller: UNAUTHORIZED"
+            );
+        }
+
+        borrowPaused[address(mToken)] = state;
+        emit ActionPaused(mToken, "Borrow Paused", state);
+    }
+
+    /// @notice Admin function to set transfer paused
+    /// @dev requires timelock authority if unpausing
+    /// @param state pause or unpause
+    function setTransferPaused(bool state) external {
+        if (state) {
+            require(
+                centralRegistry.hasDaoPermissions(msg.sender),
+                "lendtroller: UNAUTHORIZED"
+            );
+        } else {
+            require(
+                centralRegistry.hasElevatedPermissions(msg.sender),
+                "lendtroller: UNAUTHORIZED"
+            );
+        }
+
+        transferPaused = state ? 2: 1;
+        emit ActionPaused("Transfer Paused", state);
+    }
+
+    /// @notice Admin function to set seize paused
+    /// @dev requires timelock authority if unpausing
+    /// @param state pause or unpause
+    function setSeizePaused(bool state) external {
+        if (state) {
+            require(
+                centralRegistry.hasDaoPermissions(msg.sender),
+                "lendtroller: UNAUTHORIZED"
+            );
+        } else {
+            require(
+                centralRegistry.hasElevatedPermissions(msg.sender),
+                "lendtroller: UNAUTHORIZED"
+            );
+        }
+
+        seizePaused = state ? 2: 1;
+        emit ActionPaused("Seize Paused", state);
+    }
+
+    /// @notice Admin function to set position folding address
+    /// @param newPositionFolding new position folding address
+    function setPositionFolding(
+        address newPositionFolding
+    ) external onlyElevatedPermissions {
+        // Cache the current value for event log
+        address oldPositionFolding = positionFolding;
+
+        // Assign new position folding contract
+        positionFolding = newPositionFolding;
+
+        emit NewPositionFoldingContract(oldPositionFolding, newPositionFolding);
     }
 
     /// @notice Updates `accounts` lastBorrowTimestamp to the current block timestamp
@@ -672,6 +769,14 @@ contract Lendtroller is ILendtroller {
     function notifyAccountBorrow(address account) external {
         require(markets[msg.sender].isListed, "Lendtroller: Caller not MToken");
         userData[account].lastBorrowTimestamp = block.timestamp;
+    }
+
+    /// PUBLIC FUNCTIONS ///
+
+    /// @notice Fetches the current price router from the central registry
+    /// @return Current PriceRouter interface address
+    function getPriceRouter() public view returns (IPriceRouter) {
+        return IPriceRouter(centralRegistry.priceRouter());
     }
 
     /// @notice Add assets to be included in account liquidity calculation
@@ -759,108 +864,6 @@ contract Lendtroller is ILendtroller {
             );
 
         return (liquidity, shortfall);
-    }
-
-    /// @notice Admin function to set market mint paused
-    /// @param mToken market token address
-    /// @param state pause or unpause
-    function setMintPaused(IMToken mToken, bool state) public {
-        if (!markets[address(mToken)].isListed) {
-            revert Lendtroller_MarketNotListed();
-        }
-
-        // If we want to pause, DAO can execute immediately, if we want to unpause we need timelock authority
-        if (state) {
-            require(
-                centralRegistry.hasDaoPermissions(msg.sender),
-                "lendtroller: UNAUTHORIZED"
-            );
-        } else {
-            require(
-                centralRegistry.hasElevatedPermissions(msg.sender),
-                "lendtroller: UNAUTHORIZED"
-            );
-        }
-
-        mintPaused[address(mToken)] = state;
-        emit ActionPaused(mToken, "Mint Paused", state);
-    }
-
-    /// @notice Admin function to set market borrow paused
-    /// @param mToken market token address
-    /// @param state pause or unpause
-    function setBorrowPaused(IMToken mToken, bool state) public {
-        if (!markets[address(mToken)].isListed) {
-            revert Lendtroller_MarketNotListed();
-        }
-
-        // If we want to pause, DAO can execute immediately, if we want to unpause we need timelock authority
-        if (state) {
-            require(
-                centralRegistry.hasDaoPermissions(msg.sender),
-                "lendtroller: UNAUTHORIZED"
-            );
-        } else {
-            require(
-                centralRegistry.hasElevatedPermissions(msg.sender),
-                "lendtroller: UNAUTHORIZED"
-            );
-        }
-
-        borrowPaused[address(mToken)] = state;
-        emit ActionPaused(mToken, "Borrow Paused", state);
-    }
-
-    /// @notice Admin function to set transfer paused
-    /// @param state pause or unpause
-    function setTransferPaused(bool state) public {
-        if (state) {
-            require(
-                centralRegistry.hasDaoPermissions(msg.sender),
-                "lendtroller: UNAUTHORIZED"
-            );
-        } else {
-            require(
-                centralRegistry.hasElevatedPermissions(msg.sender),
-                "lendtroller: UNAUTHORIZED"
-            );
-        }
-
-        transferPaused = state ? 2: 1;
-        emit ActionPaused("Transfer Paused", state);
-    }
-
-    /// @notice Admin function to set seize paused
-    /// @param state pause or unpause
-    function setSeizePaused(bool state) public {
-        if (state) {
-            require(
-                centralRegistry.hasDaoPermissions(msg.sender),
-                "lendtroller: UNAUTHORIZED"
-            );
-        } else {
-            require(
-                centralRegistry.hasElevatedPermissions(msg.sender),
-                "lendtroller: UNAUTHORIZED"
-            );
-        }
-
-        seizePaused = state ? 2: 1;
-        emit ActionPaused("Seize Paused", state);
-    }
-
-    /// @notice Admin function to set position folding address
-    /// @param newPositionFolding new position folding address
-    function setPositionFolding(
-        address newPositionFolding
-    ) public onlyElevatedPermissions {
-        // Cache the current value for event log
-        address oldPositionFolding = positionFolding;
-
-        // Assign new position folding contract
-        positionFolding = newPositionFolding;
-
-        emit NewPositionFoldingContract(oldPositionFolding, newPositionFolding);
     }
 
     /// INTERNAL FUNCTIONS ///

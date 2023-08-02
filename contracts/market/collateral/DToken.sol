@@ -545,7 +545,7 @@ contract DToken is ERC165, ReentrancyGuard {
 
     /// @notice Sets a new lendtroller for the market
     /// @dev Admin function to set a new lendtroller
-    /// @param newLendtroller New lendtroller address.
+    /// @param newLendtroller New lendtroller address
     function setLendtroller(
         ILendtroller newLendtroller
     ) external onlyElevatedPermissions {

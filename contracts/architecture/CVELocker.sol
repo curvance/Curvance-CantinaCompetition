@@ -22,10 +22,11 @@ contract CVELocker {
     uint256 public constant EPOCH_DURATION = 2 weeks;
     uint256 public constant DENOMINATOR = 10000;
     uint256 public constant ethPerCVEOffset = 1 ether;
-
-    /// @notice Address for Curvance DAO registry contract for ownership
-    ///         and location data.
     ICentralRegistry public immutable centralRegistry;
+    // @dev `bytes4(keccak256(bytes("CVELocker_Unauthorized()")))`
+    uint256 internal constant _CVELOCKER_UNAUTHORIZED_SELECTOR = 0xeb83e515;
+    // @dev `bytes4(keccak256(bytes("CVELocker_FailedETHTransfer()")))`
+    uint256 internal constant _FAILED_ETH_TRANSFER_SELECTOR = 0xa9c60879;
 
     // Token Addresses
     address public immutable cve;
@@ -74,6 +75,11 @@ contract CVELocker {
         uint256 amount
     );
 
+    /// ERRORS ///
+
+    error CVELocker_Unauthorized();
+    error CVELocker_FailedETHTransfer();
+
     /// MODIFIERS ///
 
     modifier onlyDaoPermissions() {
@@ -93,7 +99,14 @@ contract CVELocker {
     }
 
     modifier onlyVeCVE() {
-        require(msg.sender == address(veCVE), "CVELocker: UNAUTHORIZED");
+        address _veCVE = address(veCVE);
+        assembly {
+            if iszero(eq(caller(),_veCVE)){
+                mstore(0x00, _CVELOCKER_UNAUTHORIZED_SELECTOR)
+                // return bytes 29-32 for the selector
+                revert (0x1c,0x04)
+            }
+        }
         _;
     }
 
@@ -122,7 +135,6 @@ contract CVELocker {
         genesisEpoch = centralRegistry.genesisEpoch();
         cvx = cvx_;
         cve = centralRegistry.CVE();
-        veCVE = IVeCVE(centralRegistry.veCVE());
     }
 
     /// EXTERNAL FUNCTIONS ///
@@ -452,7 +464,7 @@ contract CVELocker {
             return reward;
         }
 
-        return _distributeRewardsAsETH(recipient, userRewards);
+        return _distributeRewardsAsETH(payable(recipient), userRewards);
     }
 
     /// @notice Lock fees as veCVE
@@ -540,12 +552,19 @@ contract CVELocker {
     /// @param reward The amount of ETH to send.
     /// @return reward The total amount of ETH that was sent.
     function _distributeRewardsAsETH(
-        address recipient,
+        address payable recipient,
         uint256 reward
     ) internal returns (uint256) {
-        (bool success, ) = payable(recipient).call{ value: reward }("");
-
-        require(success, "CVELocker: error sending ETH rewards");
+        bool success;
+        assembly {
+            success := call(gas(), recipient, reward, 0, 0, 0, 0)
+            // Revert if we failed to transfer eth
+            if iszero(success) {
+                mstore(0x00, _FAILED_ETH_TRANSFER_SELECTOR)
+                // return bytes 29-32 for the selector
+                revert (0x1c,0x04)
+            }
+        }
 
         return reward;
     }
