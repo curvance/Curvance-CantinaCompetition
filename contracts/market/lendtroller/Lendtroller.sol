@@ -51,16 +51,13 @@ contract Lendtroller is ILendtroller {
     address public pauseGuardian;
     uint256 public transferPaused = 1;
     uint256 public seizePaused = 1;
-    mapping(address => bool) public mintGuardianPaused;
-    mapping(address => bool) public borrowGuardianPaused;
+    mapping(address => bool) public mintPaused; // Token => Mint Paused
+    mapping(address => bool) public borrowPaused; // Token => Borrow Paused
+    mapping(address => uint256) public borrowCaps; // Token => Borrow Cap; 0 = unlimited
 
     /// @notice The borrowCapGuardian can set borrowCaps to any number for any market.
     /// Lowering the borrow cap could disable borrowing on the given market.
     address public borrowCapGuardian;
-
-    /// @notice Borrow caps enforced by borrowAllowed for each mToken address.
-    /// Defaults to zero which corresponds to unlimited borrowing.
-    mapping(address => uint256) public borrowCaps;
 
     /// @notice Multiplier used to calculate the maximum repayAmount
     ///         when liquidating a borrow
@@ -219,7 +216,7 @@ contract Lendtroller is ILendtroller {
     ///         in the given market
     /// @param mToken The market to verify the mint against
     function mintAllowed(address mToken, address) external view override {
-        if (mintGuardianPaused[mToken]) {
+        if (mintPaused[mToken]) {
             revert Lendtroller_Paused();
         }
 
@@ -252,7 +249,7 @@ contract Lendtroller is ILendtroller {
         address borrower,
         uint256 borrowAmount
     ) external override {
-        if (borrowGuardianPaused[mToken]) {
+        if (borrowPaused[mToken]) {
             revert Lendtroller_Paused();
         }
 
@@ -425,12 +422,12 @@ contract Lendtroller is ILendtroller {
     ) external view override returns (uint256) {
         /// Read oracle prices for borrowed and collateral markets
         IPriceRouter router = getPriceRouter();
-        (uint256 highPrice, uint256 highPriceError) = router.getPrice(
+        (uint256 debtTokenPrice, uint256 highPriceError) = router.getPrice(
             mTokenBorrowed, 
             true, 
             false
         );
-        (uint256 lowPrice, uint256 lowPriceError) = router.getPrice(
+        (uint256 collateralTokenPrice, uint256 lowPriceError) = router.getPrice(
             mTokenCollateral,
             true,
             true
@@ -441,23 +438,14 @@ contract Lendtroller is ILendtroller {
             revert Lendtroller_PriceError();
         }
 
-        uint256 cTokenPrice = getCTokenPrice(
-            address(mTokenCollateral),
-            lowPrice
-        );
-
         // Get the exchange rate and calculate the number of collateral tokens to seize:
         //  seizeAmount = actualRepayAmount * liquidationIncentive * priceBorrowed / priceCollateral
         //  seizeTokens = seizeAmount / exchangeRate
-        //   = actualRepayAmount * (liquidationIncentive * priceBorrowed) / (priceCollateral * exchangeRate)
-        uint256 exchangeRateScaled = IMToken(mTokenCollateral)
-            .exchangeRateStored();
-        uint256 numerator = liquidationIncentiveScaled * highPrice;
-        uint256 denominator = cTokenPrice * exchangeRateScaled;
-        uint256 ratio = (numerator * expScale) / denominator;
-        uint256 seizeTokens = (ratio * actualRepayAmount) / expScale;
+        //   = actualRepayAmount * (liquidationIncentive * priceBorrowedDebt) / (priceCollateral * exchangeRate)
+        uint256 ratio = (liquidationIncentiveScaled * debtTokenPrice * expScale) / 
+        (collateralTokenPrice * IMToken(mTokenCollateral).exchangeRateStored());
 
-        return seizeTokens;
+        return (ratio * actualRepayAmount) / expScale;
     }
 
     /// User Custom Functions
@@ -628,6 +616,7 @@ contract Lendtroller is ILendtroller {
 
         if (numMarkets != newBorrowCaps.length) {
             assembly {
+                // store the error selector to location 0x0
                 mstore(0x0,_INVALID_VALUE_SELECTOR)
                 // return bytes 29-32 for the selector
                 revert(0x1c,0x04)
@@ -699,19 +688,6 @@ contract Lendtroller is ILendtroller {
     /// @return Current PriceRouter interface address
     function getPriceRouter() public view returns (IPriceRouter) {
         return IPriceRouter(centralRegistry.priceRouter());
-    }
-
-    /// @notice Calculates the price of a cToken based on the underlying asset price and exchange ratio with vault
-    /// @param cToken The address of the cToken for which to calculate the price.
-    /// @param underlyingPrice The price of the underlying asset of the cToken
-    /// @return The price of the cToken
-    function getCTokenPrice(
-        address cToken,
-        uint256 underlyingPrice
-    ) public view returns (uint256) {
-        return
-            (underlyingPrice *
-                BasePositionVault(ICToken(cToken).vault()).convertToAssets(expScale)) / expScale;
     }
 
     /// @notice Updates `accounts` lastBorrowTimestamp to the current block timestamp
@@ -841,7 +817,7 @@ contract Lendtroller is ILendtroller {
             revert Lendtroller_AddressUnauthorized();
         }
 
-        mintGuardianPaused[address(mToken)] = state;
+        mintPaused[address(mToken)] = state;
         emit ActionPaused(mToken, "lendtroller: Mint Paused", state);
         return state;
     }
@@ -867,7 +843,7 @@ contract Lendtroller is ILendtroller {
             revert Lendtroller_AddressUnauthorized();
         }
 
-        borrowGuardianPaused[address(mToken)] = state;
+        borrowPaused[address(mToken)] = state;
         emit ActionPaused(mToken, "lendtroller: Borrow Paused", state);
         return state;
     }
