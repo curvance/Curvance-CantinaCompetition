@@ -62,7 +62,8 @@ library VelodromeLib {
                 lpToken,
                 token0,
                 token1,
-                swapAmount
+                swapAmount,
+                stable
             );
             amount0 -= swapAmount;
             amount1 = CommonLib.getTokenBalance(token1);
@@ -103,7 +104,8 @@ library VelodromeLib {
                 lpToken,
                 token1,
                 token0,
-                swapAmount
+                swapAmount,
+                stable
             );
             amount1 -= swapAmount;
             amount0 = CommonLib.getTokenBalance(token0);
@@ -208,14 +210,15 @@ library VelodromeLib {
         address lpToken,
         address tokenIn,
         address tokenOut,
-        uint256 amount
+        uint256 amount,
+        bool stable
     ) internal {
         SwapperLib.approveTokenIfNeeded(tokenIn, router, amount);
 
         IVeloRouter.Route[] memory routes = new IVeloRouter.Route[](1);
         routes[0].from = tokenIn;
         routes[0].to = tokenOut;
-        routes[0].stable = true;
+        routes[0].stable = stable;
         routes[0].factory = IVeloPool(lpToken).factory();
 
         IVeloRouter(router).swapExactTokensForTokens(

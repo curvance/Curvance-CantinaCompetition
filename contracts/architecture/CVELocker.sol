@@ -333,7 +333,7 @@ contract CVELocker is ReentrancyGuard {
             veCVE.userTokenPoints(user) > 0
         ) {
             unchecked {
-                return nextEpochToDeliver - userNextClaimIndex[user] - 1;
+                return nextEpochToDeliver - (userNextClaimIndex[user] - 1);
             }
         }
 
@@ -557,11 +557,12 @@ contract CVELocker is ReentrancyGuard {
         return reward;
     }
 
-    /// @dev Distributes the specified reward amount as ETH to
-    ///      the recipient address.
-    /// @param recipient The address to receive the ETH rewards.
-    /// @param reward The amount of ETH to send.
-    /// @return reward The total amount of ETH that was sent.
+    /// @notice Distributes the specified reward amount as ETH to
+    ///         the recipient address
+    /// @dev Has reEntry protection via claimRewards & claimRewardsFor
+    /// @param recipient The address to receive the ETH rewards
+    /// @param reward The amount of ETH to send
+    /// @return reward The total amount of ETH that was sent
     function _distributeRewardsAsETH(
         address payable recipient,
         uint256 reward
