@@ -5,6 +5,7 @@ import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 
 struct accountSnapshot {
     IMToken asset;
+    uint256 tokenType;
     uint256 mTokenBalance;
     uint256 borrowBalance;
     uint256 exchangeRateScaled;

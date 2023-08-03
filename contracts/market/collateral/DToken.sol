@@ -621,7 +621,7 @@ contract DToken is ERC165, ReentrancyGuard {
     }
 
     /// @notice Get a snapshot of the account's balances, and the cached exchange rate
-    /// @dev This is used by lendtroller to more efficiently perform liquidity checks.
+    /// @dev This is used by lendtroller to more efficiently perform liquidity checks
     /// @param account Address of the account to snapshot
     /// @return tokenBalance
     /// @return borrowBalance
@@ -636,16 +636,17 @@ contract DToken is ERC165, ReentrancyGuard {
         );
     }
 
-    /// @notice Get a snapshot of the account's balances, and the cached exchange rate
-    /// @dev This is used by lendtroller to more efficiently perform liquidity checks.
+    /// @notice Get a snapshot of the dToken and `account` data
+    /// @dev This is used by lendtroller to more efficiently perform liquidity checks
     /// @param account Address of the account to snapshot
     function getAccountSnapshotPacked(
         address account
     ) external view returns (accountSnapshot memory) {
         return (accountSnapshot({
             asset: IMToken(address(this)),
+            tokenType: 0,
             mTokenBalance: balanceOf(account), 
-            borrowBalance: 0, 
+            borrowBalance: borrowBalanceStored(account), 
             exchangeRateScaled: exchangeRateStored()}));
     }
 
@@ -1043,7 +1044,7 @@ contract DToken is ERC165, ReentrancyGuard {
         }
 
         /// The MToken must be a collateral token E.G. tokenType == 1
-        if (mTokenCollateral.tokenType() < 1) {
+        if (mTokenCollateral.tokenType() == 0) {
             revert DToken_InvalidSeizeTokenType();
         }
 

@@ -415,10 +415,10 @@ contract CToken is ERC165, ReentrancyGuard {
 
    
     /// @notice Get a snapshot of the account's balances, and the cached exchange rate
-    /// @dev This is used by lendtroller to more efficiently perform liquidity checks.
+    /// @dev This is used by lendtroller to more efficiently perform liquidity checks
     /// @param account Address of the account to snapshot
     /// @return tokenBalance
-    /// @return borrowBalance
+    /// @return borrowBalance which we cant have in CTokens
     /// @return exchangeRate scaled 1e18
     function getAccountSnapshot(
         address account
@@ -426,14 +426,15 @@ contract CToken is ERC165, ReentrancyGuard {
         return (balanceOf(account), 0, exchangeRateStored());
     }
 
-    /// @notice Get a snapshot of the account's balances, and the cached exchange rate
-    /// @dev This is used by lendtroller to more efficiently perform liquidity checks.
+    /// @notice Get a snapshot of the cToken and `account` data
+    /// @dev This is used by lendtroller to more efficiently perform liquidity checks
     /// @param account Address of the account to snapshot
     function getAccountSnapshotPacked(
         address account
     ) external view returns (accountSnapshot memory) {
         return (accountSnapshot({
             asset: IMToken(address(this)),
+            tokenType: 1,
             mTokenBalance: balanceOf(account), 
             borrowBalance: 0, 
             exchangeRateScaled: exchangeRateStored()}));

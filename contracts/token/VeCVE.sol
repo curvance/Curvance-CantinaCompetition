@@ -95,11 +95,7 @@ contract VeCVE is ERC20 {
         }
 
         if (isShutdown == 2) {
-            assembly {
-                mstore(0x0, _VECVE_SHUTDOWN_SELECTOR)
-                // return bytes 29-32 for the selector
-                revert(0x1c,0x04)
-            }
+            _revert(_VECVE_SHUTDOWN_SELECTOR);
         }
 
         _;
@@ -225,11 +221,7 @@ contract VeCVE is ERC20 {
     ) external canLock(amount) {
 
         if (!centralRegistry.approvedVeCVELocker(msg.sender)) {
-            assembly {
-                mstore(0x0,_INVALID_LOCK_SELECTOR)
-                // return bytes 29-32 for the selector
-                revert(0x1c,0x04) 
-            }
+            _revert(_INVALID_LOCK_SELECTOR);
         }
 
         SafeTransferLib.safeTransferFrom(
@@ -271,21 +263,13 @@ contract VeCVE is ERC20 {
         
         // Length is index + 1 so has to be less than array length
         if (lockIndex >= locks.length) {
-            assembly {
-                mstore(0x0,_INVALID_LOCK_SELECTOR)
-                // return bytes 29-32 for the selector
-                revert(0x1c,0x04) 
-            }
+            _revert(_INVALID_LOCK_SELECTOR);
         }
 
         uint40 unlockTimestamp = locks[lockIndex].unlockTime;
 
         if (unlockTimestamp < block.timestamp) {
-            assembly {
-                mstore(0x0,_INVALID_LOCK_SELECTOR)
-                // return bytes 29-32 for the selector
-                revert(0x1c,0x04) 
-            }
+            _revert(_INVALID_LOCK_SELECTOR);
         }
         if (unlockTimestamp == CONTINUOUS_LOCK_VALUE) {
             revert VeCVE_ContinuousLock();
@@ -380,11 +364,7 @@ contract VeCVE is ERC20 {
     ) external canLock(amount) {
 
         if (!centralRegistry.approvedVeCVELocker(msg.sender)) {
-            assembly {
-                mstore(0x0,_INVALID_LOCK_SELECTOR)
-                // return bytes 29-32 for the selector
-                revert(0x1c,0x04) 
-            }
+            _revert(_INVALID_LOCK_SELECTOR);
         }
 
         SafeTransferLib.safeTransferFrom(
@@ -423,11 +403,7 @@ contract VeCVE is ERC20 {
 
         // Length is index + 1 so has to be less than array length
         if (lockIndex >= locks.length) {
-            assembly {
-                mstore(0x0,_INVALID_LOCK_SELECTOR)
-                // return bytes 29-32 for the selector
-                revert(0x1c,0x04)
-            }
+            _revert(_INVALID_LOCK_SELECTOR);
         }
         if (locks[lockIndex].unlockTime != CONTINUOUS_LOCK_VALUE) {
             revert VeCVE_NotContinuousLock();
@@ -482,11 +458,7 @@ contract VeCVE is ERC20 {
         // array backwards.
         if (locksToCombineIndex > 0 ){
             if (locksToCombineIndex <= lastLockIndex) {
-                assembly {
-                    mstore(0x0,_INVALID_LOCK_SELECTOR)
-                    // return bytes 29-32 for the selector
-                    revert(0x1c,0x04) 
-                }
+                _revert(_INVALID_LOCK_SELECTOR);
             }
          }
 
@@ -631,11 +603,7 @@ contract VeCVE is ERC20 {
         uint256 numLocks = locks.length;
 
         if (numLocks < 2) {
-            assembly {
-                mstore(0x0,_INVALID_LOCK_SELECTOR)
-                // return bytes 29-32 for the selector
-                revert(0x1c,0x04) 
-            }
+            _revert(_INVALID_LOCK_SELECTOR);
         }
 
         uint256 excessPoints;
@@ -725,11 +693,7 @@ contract VeCVE is ERC20 {
 
         // Length is index + 1 so has to be less than array length
         if (lockIndex >= locks.length) {
-            assembly {
-                mstore(0x0,_INVALID_LOCK_SELECTOR)
-                // return bytes 29-32 for the selector
-                revert(0x1c,0x04) 
-            }
+            _revert(_INVALID_LOCK_SELECTOR);
         }
 
         require(
@@ -787,11 +751,7 @@ contract VeCVE is ERC20 {
 
         // Length is index + 1 so has to be less than array length
         if (lockIndex >= locks.length) {
-            assembly {
-                mstore(0x0,_INVALID_LOCK_SELECTOR)
-                // return bytes 29-32 for the selector
-                revert(0x1c,0x04) 
-            }
+            _revert(_INVALID_LOCK_SELECTOR);
         }
 
         uint256 penaltyValue = centralRegistry.earlyUnlockPenaltyValue();
@@ -1104,11 +1064,7 @@ contract VeCVE is ERC20 {
 
         // Length is index + 1 so has to be less than array length
         if (lockIndex >= user.length) {
-            assembly {
-                mstore(0x0,_INVALID_LOCK_SELECTOR)
-                // return bytes 29-32 for the selector
-                revert(0x1c,0x04) 
-            }
+            _revert(_INVALID_LOCK_SELECTOR);
         }
 
         uint40 unlockTimestamp = user[lockIndex].unlockTime;
@@ -1122,11 +1078,7 @@ contract VeCVE is ERC20 {
             // User was not continuous locked prior so we will need
             // to clean up their unlock data
             if (unlockTimestamp < block.timestamp) {
-                assembly {
-                    mstore(0x0,_INVALID_LOCK_SELECTOR)
-                    // return bytes 29-32 for the selector
-                    revert(0x1c,0x04) 
-                }
+                _revert(_INVALID_LOCK_SELECTOR);
             }
 
             uint256 previousTokenAmount = user[lockIndex].amount;
@@ -1314,6 +1266,15 @@ contract VeCVE is ERC20 {
         unchecked {
             return ((basePoints * continuousLockPointMultiplier) /
                 DENOMINATOR);
+        }
+    }
+
+    /// @dev Internal helper for reverting efficiently.
+    function _revert(uint256 s) internal pure {
+        /// @solidity memory-safe-assembly
+        assembly {
+            mstore(0x00, s)
+            revert(0x1c, 0x04)
         }
     }
 
