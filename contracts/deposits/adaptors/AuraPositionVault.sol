@@ -93,11 +93,12 @@ contract AuraPositionVault is BasePositionVault {
         strategyData.rewardTokens.push() = AURA;
 
         uint256 extraRewardsLength = IBaseRewardPool(rewarder_).extraRewardsLength();
-        for (uint256 i; i < extraRewardsLength; ++i) {
-            address rewardToken = IStashWrapper(
-                IRewards(IBaseRewardPool(rewarder_).extraRewards(i)).rewardToken()
-            ).baseToken();
-
+        for (uint256 i; i < extraRewardsLength; ) {
+            unchecked {
+                address rewardToken = IStashWrapper(
+                    IRewards(IBaseRewardPool(rewarder_).extraRewards(i++)).rewardToken()
+                ).baseToken();
+            }
             if (rewardToken != AURA) {
                 strategyData.rewardTokens.push() = rewardToken;
             }
@@ -133,11 +134,13 @@ contract AuraPositionVault is BasePositionVault {
         IBaseRewardPool rewarder = strategyData.rewarder;
 
         uint256 extraRewardsLength = rewarder.extraRewardsLength();
-        for (uint256 i; i < extraRewardsLength; ++i) {
-            address rewardToken = IStashWrapper(
-                IRewards(rewarder.extraRewards(i)).rewardToken()
-            ).baseToken();
-
+        for (uint256 i; i < extraRewardsLength; ) {
+            unchecked {
+                address rewardToken = IStashWrapper(
+                    IRewards(rewarder.extraRewards(i++)).rewardToken()
+                ).baseToken();
+            }
+            
             if (rewardToken != AURA) {
                 strategyData.rewardTokens.push() = rewardToken;
             }

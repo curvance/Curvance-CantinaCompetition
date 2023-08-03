@@ -261,7 +261,7 @@ contract Lendtroller is ILendtroller {
         }
 
         (, uint256 errorCode) = getPriceRouter().getPrice(mToken, true, false);
-        if (errorCode > 0) {
+        if (errorCode >= 1) {
             revert Lendtroller_PriceError();
         }
 
@@ -361,7 +361,7 @@ contract Lendtroller is ILendtroller {
         address,
         address
     ) external view override {
-        if (seizePaused > 1) {
+        if (seizePaused == 2) {
             revert Lendtroller_Paused();
         }
 
@@ -391,7 +391,7 @@ contract Lendtroller is ILendtroller {
         address,
         uint256 transferTokens
     ) external view override {
-        if (transferPaused > 1) {
+        if (transferPaused == 2) {
             revert Lendtroller_Paused();
         }
 
@@ -461,7 +461,7 @@ contract Lendtroller is ILendtroller {
 
         for (uint256 i; i < mTokens.length; ++i) {
             /// Make sure the mToken is a collateral token
-            if (mTokens[i].tokenType() > 0) {
+            if (mTokens[i].tokenType() == 1) {
                 userData[msg.sender].collateralDisabled[mTokens[i]] = disableCollateral;
                 emit SetUserDisableCollateral(
                     msg.sender,
@@ -1039,11 +1039,11 @@ contract Lendtroller is ILendtroller {
             unchecked {
                 assetSnapshot = accountAssets[account][i++].getAccountSnapshotPacked(account);
             }
-            isCToken = assetSnapshot.asset.tokenType() > 0;
+            isCToken = assetSnapshot.asset.tokenType() == 1;
 
             // Collateralized assets (CTokens) use the lower price, Debt assets (DTokens) use the higher price
             (uint256 price, uint256 errorCode) = router.getPrice(address(assetSnapshot.asset), true, isCToken);
-            if (errorCode > 1) {
+            if (errorCode == 2) {
                 revert Lendtroller_PriceError();
             }
 

@@ -94,7 +94,7 @@ contract VeCVE is ERC20 {
             }
         }
 
-        if (isShutdown > 1) {
+        if (isShutdown == 2) {
             assembly {
                 mstore(0x0, _VECVE_SHUTDOWN_SELECTOR)
                 // return bytes 29-32 for the selector
@@ -263,7 +263,7 @@ contract VeCVE is ERC20 {
         bytes calldata params,
         uint256 aux
     ) external {
-        if (isShutdown > 1) {
+        if (isShutdown == 2) {
             revert VeCVE_VeCVEShutdown();
         }
 

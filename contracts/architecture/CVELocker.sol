@@ -40,8 +40,8 @@ contract CVELocker is ReentrancyGuard {
     IVeCVE public veCVE;
 
     uint256 public genesisEpoch;
-    bool public lockerStarted;
-    bool public isShutdown;
+    uint256 public lockerStarted = 1;
+    uint256 public isShutdown = 1;
 
     ICVXLocker public cvxLocker;
 
@@ -144,11 +144,11 @@ contract CVELocker is ReentrancyGuard {
     /// EXTERNAL FUNCTIONS ///
 
     function startLocker() external onlyDaoPermissions {
-        require(!lockerStarted, "cveLocker: locker already started");
+        require(lockerStarted == 1, "cveLocker: locker already started");
 
         veCVE = IVeCVE(centralRegistry.veCVE());
         genesisEpoch = centralRegistry.genesisEpoch();
-        lockerStarted = true;
+        lockerStarted = 2;
     }
 
     /// @notice Recover tokens sent accidentally to the contract
@@ -203,7 +203,7 @@ contract CVELocker is ReentrancyGuard {
                 centralRegistry.hasElevatedPermissions(msg.sender),
             "CVELocker: UNAUTHORIZED"
         );
-        isShutdown = true;
+        isShutdown = 2;
     }
 
     /// @param chainId The remote chainId sending the tokens
