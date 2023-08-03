@@ -323,7 +323,7 @@ contract Zapper {
         }
 
         // check valid cToken
-        (bool isListed, ) = lendtroller.getIsMarkets(cToken);
+        (bool isListed, ) = lendtroller.getMarketTokenData(cToken);
         require(isListed, "Zapper: invalid cToken address");
         // check cToken underlying
         require(
