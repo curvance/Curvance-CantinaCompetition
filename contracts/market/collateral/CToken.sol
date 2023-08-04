@@ -166,7 +166,7 @@ contract CToken is ERC165, ReentrancyGuard {
 
     function migrateVault(
         address newVault
-    ) external onlyDaoPermissions nonReentrant {
+    ) external onlyElevatedPermissions nonReentrant {
         // Cache current vault
         address oldVault = address(vault);
         // Zero out current vault

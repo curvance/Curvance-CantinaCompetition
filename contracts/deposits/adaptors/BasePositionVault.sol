@@ -232,11 +232,8 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     ) public override vaultActive onlyCToken returns (uint256 shares) {
         // Save _totalAssets and pendingRewards to memory
         uint256 pending = _calculatePendingRewards();
-        // We know that this will not overflow as its a partial vest that we've already claimed and we know that _totalAssets + full vest !> uint256
-        unchecked {
-            uint256 ta = _totalAssets + pending;
-        }
-        
+        uint256 ta = _totalAssets + pending;
+
         // Check for rounding error since we round down in previewDeposit
         require(
             (shares = _previewDeposit(assets, ta)) != 0,
@@ -256,8 +253,10 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         emit Deposit(msg.sender, receiver, assets, shares);
 
         // Add the users newly deposited assets
-        ta = ta + assets;
-
+        unchecked { // We know that this will not overflow as rewards are part vested and assets added and hasnt overflown from those operations
+            ta = ta + assets;
+        }
+        
         // If there are pending rewards to vest,
         // or if high watermark is not set, vestRewards
         if (pending > 0 || _sharePriceHighWatermark == 0) {
@@ -275,10 +274,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     ) public override vaultActive onlyCToken returns (uint256 assets) {
         // Save _totalAssets and pendingRewards to memory
         uint256 pending = _calculatePendingRewards();
-        // We know that this will not overflow as its a partial vest that we've already claimed and we know that _totalAssets + full vest !> uint256
-        unchecked {
-            uint256 ta = _totalAssets + pending;
-        }
+        uint256 ta = _totalAssets + pending;
         
         // No need to check for rounding error, previewMint rounds up
         assets = _previewMint(shares, ta);
@@ -295,8 +291,10 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
 
         emit Deposit(msg.sender, receiver, assets, shares);
 
-        // Add the users newly deposited assets.
-        ta = ta + assets;
+        // Add the users newly deposited assets
+        unchecked { // We know that this will not overflow as rewards are part vested and assets added and hasnt overflown from those operations
+            ta = ta + assets;
+        }
 
         // If there are pending rewards to vest,
         // or if high watermark is not set, vestRewards.
@@ -316,11 +314,8 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     ) public override onlyCToken returns (uint256 shares) {
         // Save _totalAssets and pendingRewards to memory
         uint256 pending = _calculatePendingRewards();
-        // We know that this will not overflow as its a partial vest that we've already claimed and we know that _totalAssets + full vest !> uint256
-        unchecked {
-            uint256 ta = _totalAssets + pending;
-        }
-        
+        uint256 ta = _totalAssets + pending;
+
         // No need to check for rounding error, previewWithdraw rounds up
         shares = _previewWithdraw(assets, ta);
 
@@ -330,7 +325,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
 
         // Remove the users withdrawn assets
         ta = ta - assets;
-
+        
         // If there are pending rewards to vest,
         // or if high watermark is not set, vestRewards
         if (pending > 0 || _sharePriceHighWatermark == 0) {
@@ -354,11 +349,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     ) public override onlyCToken returns (uint256 assets) {
         // Save _totalAssets and pendingRewards to memory
         uint256 pending = _calculatePendingRewards();
-        // We know that this will not overflow as its a partial vest that we've already claimed and we know that _totalAssets + full vest !> uint256
-        unchecked {
-            uint256 ta = _totalAssets + pending;
-        }
-        
+        uint256 ta = _totalAssets + pending;
 
         /// We do not need to check for msg.sender == owner or msg.sender != owner
         /// since CToken is the only contract who can call deposit, mint, withdraw, or redeem
@@ -393,11 +384,12 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         address newVault
     ) public onlyCToken nonReentrant returns (bytes memory) {
         // withdraw all assets (including pending rewards)
-        uint256 assets = totalAssetsSafe();
+        uint256 assets = _getRealPositionBalance();
         _withdraw(assets);
 
         SafeTransferLib.safeTransfer(asset(), newVault, assets);
 
+        /// Record current vault data to move over
         return abi.encode(_totalAssets, _sharePriceHighWatermark, _vaultData);
     }
 
@@ -413,8 +405,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         );
 
         // deposit all assets (including pending rewards)
-        uint256 assets = totalAssetsSafe();
-        _deposit(assets);
+        _deposit(_asset.balanceOf(address(this)));
     }
 
     // ACCOUNTING LOGIC
