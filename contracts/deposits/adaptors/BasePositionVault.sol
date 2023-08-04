@@ -181,12 +181,12 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
 
     // VAULT DATA QUERY FUNCTIONS
 
-    /// @dev Returns the name of the token.
+    /// @dev Returns the name of the token
     function name() public view override returns (string memory) {
         return _name;
     }
 
-    /// @dev Returns the symbol of the token.
+    /// @dev Returns the symbol of the token
     function symbol() public view override returns (string memory) {
         return _symbol;
     }
@@ -472,6 +472,9 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
 
     /// INTERNAL FUNCTIONS ///
 
+    /// @notice Packs parameters together with current block timestamp to calculate the new packed vault data value
+    /// @param newRewardRate The new rate per second that the vault vests fresh rewards
+    /// @param newVestPeriod The timestamp of when the new vesting period ends, which is block.timestamp + vestPeriod
     function _packVaultData(uint256 newRewardRate, uint256 newVestPeriod) internal view returns (uint256 result) {
         assembly {
             // Mask `newRewardRate` to the lower 128 bits, in case the upper bits somehow aren't clean
@@ -481,22 +484,27 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         }
     }
 
-    /// @dev Returns the unpacked `VaultData` struct from `packedVaultData`
+    /// @notice Returns the unpacked `VaultData` struct from `packedVaultData`
+    /// @param packedVaultData The current packed vault data value
+    /// @return vault Current vault data value but unpacked into a VaultData struct
     function _unpackedVaultData(uint256 packedVaultData) internal pure returns (VaultData memory vault) {
         vault.rewardRate = uint128(packedVaultData);
         vault.vestingPeriodEnd = uint64(packedVaultData >> _BITPOS_VEST_END);
         vault.lastVestClaim = uint64(packedVaultData >> _BITPOS_LAST_VEST);
     }
 
+    /// @notice Returns whether the current vesting period has ended based on the last vest timestamp
+    /// @param packedVaultData Current packed vault data value 
     function _checkVestStatus(uint256 packedVaultData) internal pure returns (bool) {
         return uint64(packedVaultData >> _BITPOS_LAST_VEST) >= uint64(packedVaultData >> _BITPOS_VEST_END);
     }
 
-    /// @dev Sets the last vest claim data for the vault
+    /// @notice Sets the last vest claim data for the vault
+    /// @param newVestClaim The new timestamp to record as the last vesting claim
     function _setlastVestClaim(uint64 newVestClaim) internal {
         uint256 packedVaultData = _vaultData;
         uint256 lastVestClaimCasted;
-        // Cast `aux` with assembly to avoid redundant masking.
+        // Cast `newVestClaim` with assembly to avoid redundant masking
         assembly {
             lastVestClaimCasted := newVestClaim
         }
@@ -537,7 +545,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
                 ) /
                 rewardOffset;
         }
-        // else there are no pending rewards.
+        // else there are no pending rewards
     }
 
     /// @notice Vests the pending rewards, updates vault data
