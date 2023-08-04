@@ -168,7 +168,7 @@ contract AuraPositionVault is BasePositionVault {
         }
 
         // can only harvest once previous reward period is done
-        if (vaultData.lastVestClaim >= vaultData.vestingPeriodEnd) {
+        if (_checkVestStatus(_vaultData)) {
             // cache strategy data
             StrategyData memory sd = strategyData;
 
@@ -185,7 +185,7 @@ contract AuraPositionVault is BasePositionVault {
             uint256 rewardAmount;
             uint256 protocolFee;
 
-            {
+            { // Use scoping to avoid stack too deep
                 // Cache Central registry values so we dont pay gas multiple times
                 address feeAccumulator = centralRegistry.feeAccumulator();
                 uint256 harvestFee = centralRegistry.protocolHarvestFee();
@@ -218,53 +218,54 @@ contract AuraPositionVault is BasePositionVault {
             }
             
             // prep adding liquidity to balancer
-            uint256 numUnderlyingTokens = sd.underlyingTokens.length;
-            address[] memory assets = new address[](numUnderlyingTokens);
-            uint256[] memory maxAmountsIn = new uint256[](numUnderlyingTokens);
-            address underlyingToken;
+            { // Use scoping to avoid stack too deep
+                uint256 numUnderlyingTokens = sd.underlyingTokens.length;
+                address[] memory assets = new address[](numUnderlyingTokens);
+                uint256[] memory maxAmountsIn = new uint256[](numUnderlyingTokens);
+                address underlyingToken;
 
-            for (uint256 i; i < numUnderlyingTokens; ++i) {
-                underlyingToken = sd.underlyingTokens[i];
-                assets[i] = underlyingToken;
-                maxAmountsIn[i] = ERC20(underlyingToken).balanceOf(
-                    address(this)
-                );
+                for (uint256 i; i < numUnderlyingTokens; ++i) {
+                    underlyingToken = sd.underlyingTokens[i];
+                    assets[i] = underlyingToken;
+                    maxAmountsIn[i] = ERC20(underlyingToken).balanceOf(
+                        address(this)
+                    );
 
-                SwapperLib.approveTokenIfNeeded(
-                    underlyingToken,
-                    address(sd.balancerVault),
-                    maxAmountsIn[i]
+                    SwapperLib.approveTokenIfNeeded(
+                        underlyingToken,
+                        address(sd.balancerVault),
+                        maxAmountsIn[i]
+                    );
+
+                }
+
+                // deposit assets into balancer
+                sd.balancerVault.joinPool(
+                    sd.balancerPoolId,
+                    address(this),
+                    address(this),
+                    IBalancerVault.JoinPoolRequest(
+                        assets,
+                        maxAmountsIn,
+                        abi.encode(
+                            IBalancerVault.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT,
+                            maxAmountsIn,
+                            1
+                        ),
+                        false // do not use internal balances
+                    )
                 );
 
             }
-
-            // deposit assets into balancer
-            sd.balancerVault.joinPool(
-                sd.balancerPoolId,
-                address(this),
-                address(this),
-                IBalancerVault.JoinPoolRequest(
-                    assets,
-                    maxAmountsIn,
-                    abi.encode(
-                        IBalancerVault.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT,
-                        maxAmountsIn,
-                        1
-                    ),
-                    false // do not use internal balances
-                )
-            );
 
             // deposit assets into aura
             yield = ERC20(asset()).balanceOf(address(this));
             _deposit(yield);
 
             // update vesting info
-            vaultData.rewardRate = uint128(
-                yield.mulDivDown(rewardOffset, vestPeriod)
-            );
-            vaultData.vestingPeriodEnd = uint64(block.timestamp + vestPeriod);
-            vaultData.lastVestClaim = uint64(block.timestamp);
+            // Cache vest period so we do not need to load it twice
+            uint256 _vestPeriod = vestPeriod;
+            _vaultData = _packVaultData(yield.mulDivDown(rewardOffset, _vestPeriod), block.timestamp + _vestPeriod);
 
             emit Harvest(yield);
         }

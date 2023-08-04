@@ -124,6 +124,14 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
 
     /// EXTERNAL FUNCTIONS ///
 
+    /// @notice Returns current position vault yield information in the form:
+    ///         rewardRate: Yield per second in underlying asset
+    ///         vestingPeriodEnd: When the current vesting period ends and a new harvest can execute
+    ///         lastVestClaim: Last time pending vested yield was claimed
+    function getVaultYieldStatus() external view returns (VaultData memory) {
+        return _unpackedVaultData(_vaultData);
+    }
+
     // PERMISSIONED FUNCTIONS
 
     /// @notice Initializes the vault and the cToken attached to it

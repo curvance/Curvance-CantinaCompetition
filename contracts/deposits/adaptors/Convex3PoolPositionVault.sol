@@ -162,7 +162,7 @@ contract ConvexPositionVault is BasePositionVault {
         }
 
         // can only harvest once previous reward period is done
-        if (vaultData.lastVestClaim >= vaultData.vestingPeriodEnd) {
+        if (_checkVestStatus(_vaultData)) {
             // cache strategy data
             StrategyData memory sd = strategyData;
 
@@ -215,11 +215,9 @@ contract ConvexPositionVault is BasePositionVault {
             _deposit(yield);
 
             // update vesting info
-            vaultData.rewardRate = uint128(
-                yield.mulDivDown(rewardOffset, vestPeriod)
-            );
-            vaultData.vestingPeriodEnd = uint64(block.timestamp + vestPeriod);
-            vaultData.lastVestClaim = uint64(block.timestamp);
+            // Cache vest period so we do not need to load it twice
+            uint256 _vestPeriod = vestPeriod;
+            _vaultData = _packVaultData(yield.mulDivDown(rewardOffset, _vestPeriod), block.timestamp + _vestPeriod);
 
             emit Harvest(yield);
         }
