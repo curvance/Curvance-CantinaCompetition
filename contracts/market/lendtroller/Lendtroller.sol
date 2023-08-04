@@ -2,14 +2,13 @@
 pragma solidity ^0.8.17;
 
 import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
-import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 import { IMToken, accountSnapshot } from "contracts/interfaces/market/IMToken.sol";
 
 /// @title Curvance Lendtroller
 /// @notice Manages risk within the lending markets
-contract Lendtroller is ILendtroller {
+contract Lendtroller {
     /// TYPES ///
 
     struct AccountData {
@@ -30,7 +29,7 @@ contract Lendtroller is ILendtroller {
     /// CONSTANTS ///
 
     ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
-    bool public constant override isLendtroller = true; // for introspection
+    bool public constant isLendtroller = true; // for introspection
     uint256 internal constant expScale = 1e18; // Scalar for math
     uint256 internal constant maxCloseFactor = 1e18; // 100% E.g close entire position
     uint256 internal constant maxCollateralizationRatio = 0.9e18; // 90%
@@ -59,6 +58,43 @@ contract Lendtroller is ILendtroller {
 
     mapping(address => MarketToken) public marketTokenData; // Market Token => Token metadata
     mapping(address => AccountData) public accountAssets; // Account => Assets, lastBorrowTimestamp
+
+    /// EVENTS ///
+
+    event MarketListed(address mToken);
+
+    event MarketEntered(address mToken, address account);
+
+    event MarketExited(address mToken, address account);
+
+    event NewCloseFactor(
+        uint256 oldCloseFactorScaled,
+        uint256 newCloseFactorScaled
+    );
+
+    event NewCollateralFactor(
+        IMToken mToken,
+        uint256 oldCollateralFactorScaled,
+        uint256 newCollateralFactorScaled
+    );
+
+    event NewLiquidationIncentive(
+        uint256 oldLiquidationIncentiveScaled,
+        uint256 newLiquidationIncentiveScaled
+    );
+
+    event ActionPaused(string action, bool pauseState);
+
+    event ActionPaused(IMToken mToken, string action, bool pauseState);
+
+    event NewBorrowCap(IMToken mToken, uint256 newBorrowCap);
+
+    event SetDisableCollateral(IMToken mToken, bool disable);
+
+    event NewPositionFoldingContract(
+        address oldPositionFolding,
+        address newPositionFolding
+    );
 
     /// ERRORS ///
 
@@ -193,7 +229,7 @@ contract Lendtroller is ILendtroller {
     /// @notice Checks if the account should be allowed to mint tokens
     ///         in the given market
     /// @param mToken The market to verify the mint against
-    function mintAllowed(address mToken, address) external view override {
+    function mintAllowed(address mToken, address) external view {
         if (mintPaused[mToken] == 2) {
             revert Lendtroller_Paused();
         }
@@ -213,7 +249,7 @@ contract Lendtroller is ILendtroller {
         address mToken,
         address redeemer,
         uint256 redeemTokens
-    ) external view override {
+    ) external view {
         _redeemAllowed(mToken, redeemer, redeemTokens);
     }
 
@@ -237,7 +273,7 @@ contract Lendtroller is ILendtroller {
     ///         in the given market
     /// @param mToken The market to verify the repay against
     /// @param account The account who will have their loan repaid
-    function repayAllowed(address mToken, address account) external view override {
+    function repayAllowed(address mToken, address account) external view {
 
         if (!marketTokenData[mToken].isListed) {
             revert Lendtroller_TokenNotListed();
@@ -266,7 +302,7 @@ contract Lendtroller is ILendtroller {
         address mTokenCollateral,
         address borrower,
         uint256 repayAmount
-    ) external view override {
+    ) external view {
         if (!marketTokenData[mTokenBorrowed].isListed) {
             revert Lendtroller_TokenNotListed();
         }
@@ -307,7 +343,7 @@ contract Lendtroller is ILendtroller {
         address mTokenBorrowed,
         address,
         address
-    ) external view override {
+    ) external view {
         if (seizePaused == 2) {
             revert Lendtroller_Paused();
         }
@@ -337,7 +373,7 @@ contract Lendtroller is ILendtroller {
         address from,
         address,
         uint256 transferTokens
-    ) external view override {
+    ) external view {
         if (transferPaused == 2) {
             revert Lendtroller_Paused();
         }
@@ -357,7 +393,7 @@ contract Lendtroller is ILendtroller {
         address mTokenBorrowed,
         address mTokenCollateral,
         uint256 actualRepayAmount
-    ) external view override returns (uint256) {
+    ) external view returns (uint256) {
         /// Read oracle prices for borrowed and collateral markets
         IPriceRouter router = getPriceRouter();
         (uint256 debtTokenPrice, uint256 highPriceError) = router.getPrice(
@@ -522,7 +558,7 @@ contract Lendtroller is ILendtroller {
     /// @param mToken market token address
     function getMarketTokenData(
         address mToken
-    ) external view override returns (bool, uint256) {
+    ) external view returns (bool, uint256) {
         return (
             marketTokenData[mToken].isListed,
             marketTokenData[mToken].collateralizationRatio
@@ -535,7 +571,7 @@ contract Lendtroller is ILendtroller {
     function getAccountMembership(
         address mToken,
         address user
-    ) external view override returns (bool) {
+    ) external view returns (bool) {
         return marketTokenData[mToken].accountInMarket[user] == 2;
     }
 
@@ -543,7 +579,6 @@ contract Lendtroller is ILendtroller {
     function getAllMarkets()
         external
         view
-        override
         returns (IMToken[] memory)
     {
         return allMarkets;
@@ -674,7 +709,7 @@ contract Lendtroller is ILendtroller {
         address mToken,
         address borrower,
         uint256 borrowAmount
-    ) public override {
+    ) public {
         if (borrowPaused[mToken] == 2) {
             revert Lendtroller_Paused();
         }
@@ -754,7 +789,7 @@ contract Lendtroller is ILendtroller {
     /// @return uint total borrow amount of user
     function getAccountPosition(
         address account
-    ) public view override returns (uint256, uint256, uint256) {
+    ) public view returns (uint256, uint256, uint256) {
         (
             uint256 sumCollateral,
             uint256 maxBorrow,
