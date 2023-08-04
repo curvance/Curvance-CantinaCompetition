@@ -28,12 +28,27 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
 
     /// CONSTANTS ///
 
-    /// @notice Period newly harvested rewards are vested over.
+    /// @notice Period newly harvested rewards are vested over
     uint256 public constant vestPeriod = 1 days;
     uint256 internal constant rewardOffset = 1e18;
     ICentralRegistry public immutable centralRegistry;
     ERC20 private immutable _asset;
     uint8 private immutable _decimals;
+
+    // Mask of reward rate entry in packed vault data
+    uint256 private constant _BITMASK_REWARD_RATE = (1 << 128) - 1;
+
+    // Mask of a timestamp entry in packed vault data
+    uint256 private constant _BITMASK_TIMESTAMP = (1 << 64) - 1;
+
+    // Mask of all bits in packed vault data except the 64 bits for `lastVestClaim`.
+    uint256 private constant _BITMASK_LAST_CLAIM_COMPLEMENT = (1 << 192) - 1;
+
+    // The bit position of `lastVestClaim` in packed vault data
+    uint256 private constant _BITPOS_VEST_END = 128;
+
+    // The bit position of `lastVestClaim` in packed vault data
+    uint256 private constant _BITPOS_LAST_VEST = 192;
 
     /// STORAGE ///
 
@@ -41,11 +56,11 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     string private _name;
     string private _symbol;
 
-    // Internal stored total assets, share price high watermark.
+    // Internal stored total assets, share price high watermark
     uint256 internal _totalAssets;
     uint256 internal _sharePriceHighWatermark;
 
-    VaultData public vaultData;
+    uint256 internal _vaultData;
     bool public vaultIsActive;
 
     /// EVENTS ///
@@ -362,7 +377,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
 
         SafeTransferLib.safeTransfer(asset(), newVault, assets);
 
-        return abi.encode(_totalAssets, _sharePriceHighWatermark, vaultData);
+        return abi.encode(_totalAssets, _sharePriceHighWatermark, _vaultData);
     }
 
     /// @notice migrate confirm function
@@ -371,9 +386,9 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         address, // oldVault,
         bytes memory params
     ) public onlyCToken nonReentrant {
-        (_totalAssets, _sharePriceHighWatermark, vaultData) = abi.decode(
+        (_totalAssets, _sharePriceHighWatermark, _vaultData) = abi.decode(
             params,
-            (uint256, uint256, VaultData)
+            (uint256, uint256, uint256)
         );
 
         // deposit all assets (including pending rewards)
@@ -382,6 +397,23 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     }
 
     // ACCOUNTING LOGIC
+
+    /// @dev Packs vault data into a single uint256
+
+    /// Returns the current per second yield of the vault 
+    function rewardRate() public view returns (uint256) {
+        return _vaultData & _BITMASK_REWARD_RATE;
+    }
+
+    /// @dev Returns the timestamp when the current vesting period ends
+    function vestingPeriodEnd() public view returns (uint256) {
+        return (_vaultData >> _BITPOS_VEST_END) & _BITMASK_TIMESTAMP;
+    }
+
+    /// @dev Returns the timestamp of the last claim during the current vesting period
+    function lastVestClaim() public view returns (uint256) {
+        return uint64(_vaultData >> _BITPOS_LAST_VEST);
+    }
 
     function totalAssetsSafe() public nonReentrant returns (uint256) {
         // Returns stored internal balance + pending rewards that are vested.
@@ -432,18 +464,50 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
 
     /// INTERNAL FUNCTIONS ///
 
+    function _packVaultData(uint256 newRewardRate, uint256 newVestPeriod) internal view returns (uint256 result) {
+        assembly {
+            // Mask `newRewardRate` to the lower 128 bits, in case the upper bits somehow aren't clean
+            newRewardRate := and(newRewardRate, _BITMASK_REWARD_RATE)
+            // `newRewardRate | (newVestPeriod << _BITPOS_VEST_END) | block.timestamp`.
+            result := or(newRewardRate, or(shl(_BITPOS_VEST_END, newVestPeriod), timestamp()))
+        }
+    }
+
+    /// @dev Returns the unpacked `VaultData` struct from `packedVaultData`
+    function _unpackedVaultData(uint256 packedVaultData) internal pure returns (VaultData memory vault) {
+        vault.rewardRate = uint128(packedVaultData);
+        vault.vestingPeriodEnd = uint64(packedVaultData >> _BITPOS_VEST_END);
+        vault.lastVestClaim = uint64(packedVaultData >> _BITPOS_LAST_VEST);
+    }
+
+    function _checkVestStatus(uint256 packedVaultData) internal pure returns (bool) {
+        return uint64(packedVaultData >> _BITPOS_LAST_VEST) >= uint64(packedVaultData >> _BITPOS_VEST_END);
+    }
+
+    /// @dev Sets the last vest claim data for the vault
+    function _setlastVestClaim(uint64 newVestClaim) internal {
+        uint256 packedVaultData = _vaultData;
+        uint256 lastVestClaimCasted;
+        // Cast `aux` with assembly to avoid redundant masking.
+        assembly {
+            lastVestClaimCasted := newVestClaim
+        }
+        packedVaultData = (packedVaultData & _BITMASK_LAST_CLAIM_COMPLEMENT) | (lastVestClaimCasted << _BITPOS_LAST_VEST);
+        _vaultData = packedVaultData;
+    }
+
     // REWARD AND HARVESTING LOGIC
 
-    /// @notice Calculates the pending rewards.
+    /// @notice Calculates the pending rewards
     /// @dev If there are no pending rewards or the vesting period has ended,
-    ///      it returns 0.
-    ///      Otherwise, it calculates the pending rewards and returns them.
-    /// @return pendingRewards The calculated pending rewards.
+    ///      it returns 0
+    /// @return pendingRewards The calculated pending rewards
     function _calculatePendingRewards()
         internal
         view
         returns (uint256 pendingRewards)
     {
+        VaultData memory vaultData = _unpackedVaultData(_vaultData);
         if (
             vaultData.rewardRate > 0 &&
             vaultData.lastVestClaim < vaultData.vestingPeriodEnd
@@ -469,11 +533,11 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     }
 
     /// @notice Vests the pending rewards, updates vault data
-    ///         and share price high watermark.
-    /// @param currentAssets The current assets of the vault.
+    ///         and share price high watermark
+    /// @param currentAssets The current assets of the vault
     function _vestRewards(uint256 currentAssets) internal {
-        // Update some reward timestamp.
-        vaultData.lastVestClaim = uint64(block.timestamp);
+        // Update the lastVestClaim timestamp
+        _setlastVestClaim(uint64(block.timestamp));
 
         // Set internal balance equal to totalAssets value
         _totalAssets = currentAssets;
