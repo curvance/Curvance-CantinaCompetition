@@ -53,8 +53,8 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     /// STORAGE ///
 
     address public cToken;
-    string private _name;
-    string private _symbol;
+    bytes32 private immutable _name;
+    bytes32 private immutable _symbol;
 
     // Internal stored total assets, share price high watermark
     uint256 internal _totalAssets;
@@ -107,8 +107,8 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
 
     constructor(ERC20 asset_, ICentralRegistry centralRegistry_) {
         _asset = asset_;
-        _name = string(abi.encodePacked("Curvance ", asset_.name()));
-        _symbol = string(abi.encodePacked("cve", asset_.symbol()));
+        _name = bytes32(abi.encodePacked("Curvance ", asset_.name()));
+        _symbol = bytes32(abi.encodePacked("cve", asset_.symbol()));
         _decimals = asset_.decimals();
 
         require(
@@ -183,12 +183,12 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
 
     /// @dev Returns the name of the token
     function name() public view override returns (string memory) {
-        return _name;
+        return string(abi.encodePacked(_name));
     }
 
     /// @dev Returns the symbol of the token
     function symbol() public view override returns (string memory) {
-        return _symbol;
+        return string(abi.encodePacked(_symbol));
     }
 
     /// @dev Returns the address of the underlying asset.
