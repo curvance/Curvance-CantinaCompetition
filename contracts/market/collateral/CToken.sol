@@ -189,10 +189,19 @@ contract CToken is ERC165, ReentrancyGuard {
         address oldVault = address(vault);
         vault = BasePositionVault(address(0));
 
-        bytes memory params = BasePositionVault(oldVault).migrateStart(
-            newVault
-        );
-        BasePositionVault(newVault).migrateConfirm(oldVault, params);
+        if (oldVault != address(0)) {
+            bytes memory params = BasePositionVault(oldVault).migrateStart(
+                newVault
+            );
+            BasePositionVault(newVault).migrateConfirm(oldVault, params);
+        } else {
+            SafeTransferLib.safeTransfer(
+                underlying,
+                newVault,
+                IERC20(underlying).balanceOf(address(this))
+            );
+            BasePositionVault(newVault).migrateConfirm(oldVault, "0x");
+        }
 
         vault = BasePositionVault(newVault);
         emit MigrateVault(oldVault, newVault);
@@ -668,9 +677,13 @@ contract CToken is ERC165, ReentrancyGuard {
             amount
         );
 
-        // deposit into the vault
-        SafeTransferLib.safeApprove(underlying, address(vault), amount);
-        return vault.deposit(amount, address(this));
+        if (address(vault) != address(0)) {
+            // deposit into the vault
+            SafeTransferLib.safeApprove(underlying, address(vault), amount);
+            return vault.deposit(amount, address(this));
+        }
+
+        return amount;
     }
 
     /// @notice Handles outgoing token transfers
@@ -678,8 +691,10 @@ contract CToken is ERC165, ReentrancyGuard {
     /// @param to Address receiving the token transfer
     /// @param amount Amount of tokens to transfer out
     function doTransferOut(address to, uint256 amount) internal {
-        // withdraw from the vault
-        amount = vault.redeem(amount, address(this), address(this));
+        if (address(vault) != address(0)) {
+            // withdraw from the vault
+            amount = vault.redeem(amount, address(this), address(this));
+        }
 
         /// SafeTransferLib will handle reversion from insufficient cash held
         SafeTransferLib.safeTransfer(underlying, to, amount);
