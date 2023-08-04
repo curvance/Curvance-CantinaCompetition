@@ -8,13 +8,13 @@ interface ILendtroller {
     /// Events ///
 
     /// @notice Emitted when an admin supports a market
-    event MarketListed(IMToken mToken);
+    event MarketListed(address mToken);
 
     /// @notice Emitted when an account enters a market
-    event MarketEntered(IMToken mToken, address account);
+    event MarketEntered(address mToken, address account);
 
     /// @notice Emitted when an account exits a market
-    event MarketExited(IMToken mToken, address account);
+    event MarketExited(address mToken, address account);
 
     /// @notice Emitted when close factor is changed by admin
     event NewCloseFactor(
@@ -35,12 +35,6 @@ interface ILendtroller {
         uint256 newLiquidationIncentiveScaled
     );
 
-    /// @notice Emitted when price oracle is changed
-    event NewPriceOracle(address oldPriceOracle, address newPriceOracle);
-
-    /// @notice Emitted when pause guardian is changed
-    event NewPauseGuardian(address oldPauseGuardian, address newPauseGuardian);
-
     /// @notice Emitted when an action is paused globally
     event ActionPaused(string action, bool pauseState);
 
@@ -53,19 +47,6 @@ interface ILendtroller {
     /// @notice Emitted when borrow cap for a mToken is changed
     event SetDisableCollateral(IMToken indexed mToken, bool disable);
 
-    /// @notice Emitted when borrow cap for a mToken is changed
-    event SetUserDisableCollateral(
-        address indexed user,
-        IMToken indexed mToken,
-        bool disable
-    );
-
-    /// @notice Emitted when borrow cap guardian is changed
-    event NewBorrowCapGuardian(
-        address oldBorrowCapGuardian,
-        address newBorrowCapGuardian
-    );
-
     /// @notice Emitted when position folding contract address is changed
     event NewPositionFoldingContract(
         address indexed oldPositionFolding,
@@ -74,18 +55,18 @@ interface ILendtroller {
 
     /// FUNCTIONS ///
 
-    function enterMarkets(
-        address[] calldata mTokens
-    ) external returns (uint256[] memory);
-
-    function exitMarket(address mToken) external;
-
     function mintAllowed(address mToken, address minter) external;
 
     function redeemAllowed(
         address mToken,
         address redeemer,
         uint256 redeemTokens
+    ) external;
+
+    function borrowAllowedWithNotify(
+        address mToken,
+        address borrower,
+        uint256 borrowAmount
     ) external;
 
     function borrowAllowed(

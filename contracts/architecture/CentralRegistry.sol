@@ -301,6 +301,19 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
         protocolLeverageFee = value;
     }
 
+    /// @notice Sets the fee taken by Curvance DAO from interest generated
+    /// @dev Only callable on a 7 day delay or by the Emergency Council,
+    ///      can only have a maximum value of 30%
+    function setProtocolInterestRateFee(
+        uint256 value
+    ) external onlyElevatedPermissions {
+        require(value <= 3000, "CentralRegistry: invalid parameter");
+        /// Interest Rate fee is represented as 1e16 format
+        /// So we need to multiply by 1e14 to format properly
+        /// from basis points to %
+        protocolInterestRateFee = value * 1e14;
+    }
+
     /// @notice Sets the voting power boost received by locks using
     ///         Continuous Lock mode
     /// @dev Only callable on a 7 day delay or by the Emergency Council,

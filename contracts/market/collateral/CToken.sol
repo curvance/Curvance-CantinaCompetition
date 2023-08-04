@@ -32,23 +32,10 @@ contract CToken is ERC165, ReentrancyGuard {
 
     ICentralRegistry public immutable centralRegistry;
 
-    /// Errors ///
-
-    error FailedNotFromPositionFolding();
-    error CannotEqualZero();
-    error TransferNotAllowed();
-    error RedeemTransferOutNotPossible();
-    error SelfLiquidationNotAllowed();
-    error LendtrollerMismatch();
-    error ValidationFailed();
-    error ReduceReservesCashNotAvailable();
-
     /// EVENTS ///
 
-    /// @notice Event emitted when the vault migrated
     event MigrateVault(address oldVault, address newVault);
 
-    /// @notice Event emitted when tokens are minted
     event Mint(
         address user,
         uint256 mintAmount,
@@ -56,47 +43,42 @@ contract CToken is ERC165, ReentrancyGuard {
         address minter
     );
 
-    /// @notice Event emitted when tokens are redeemed
     event Redeem(address redeemer, uint256 redeemAmount, uint256 redeemTokens);
 
-    /// @notice Event emitted when a borrow is liquidated
-    event Liquidated(
-        address liquidator,
-        address borrower,
-        uint256 repayAmount,
-        address cTokenCollateral,
-        uint256 seizeTokens
-    );
-
-    /// @notice Event emitted when lendtroller is changed
     event NewLendtroller(
         ILendtroller oldLendtroller,
         ILendtroller newLendtroller
     );
 
-    /// @notice Event emitted when the reserves are added
     event ReservesAdded(
         address benefactor,
         uint256 addAmount,
         uint256 newTotalReserves
     );
 
-    /// @notice Event emitted when the reserves are reduced
     event ReservesReduced(
         address admin,
         uint256 reduceAmount,
         uint256 newTotalReserves
     );
 
-    /// @notice ERC20 Transfer event
     event Transfer(address indexed from, address indexed to, uint256 amount);
 
-    /// @notice ERC20 Approval event
     event Approval(
         address indexed owner,
         address indexed spender,
         uint256 amount
     );
+
+    /// ERRORS ///
+
+    error FailedNotFromPositionFolding();
+    error CannotEqualZero();
+    error TransferNotAllowed();
+    error RedeemTransferOutNotPossible();
+    error SelfLiquidationNotAllowed();
+    error LendtrollerMismatch();
+    error ReduceReservesCashNotAvailable();
 
     /// STORAGE ///
     string public name;
@@ -418,7 +400,7 @@ contract CToken is ERC165, ReentrancyGuard {
     /// @dev This is used by lendtroller to more efficiently perform liquidity checks
     /// @param account Address of the account to snapshot
     /// @return tokenBalance
-    /// @return borrowBalance which we cant have in CTokens
+    /// @return borrowBalance
     /// @return exchangeRate scaled 1e18
     function getAccountSnapshot(
         address account
@@ -548,16 +530,13 @@ contract CToken is ERC165, ReentrancyGuard {
         // Fail if mint not allowed
         lendtroller.mintAllowed(address(this), recipient);
 
-        // Exp memory exchangeRate = Exp({mantissa: exchangeRateStored()});
-        uint256 exchangeRate = exchangeRateStored();
-
         // Note: The function returns the amount actually received from the positionVault. 
         //       On success, the cToken holds an additional `actualMintAmount` of cash.
         uint256 actualMintAmount = doTransferIn(user, mintAmount);
 
         // We get the current exchange rate and calculate the number of cTokens to be minted:
         //  mintTokens = actualMintAmount / exchangeRate
-        uint256 mintTokens = (actualMintAmount * expScale) / exchangeRate;
+        uint256 mintTokens = (actualMintAmount * expScale) / exchangeRateStored();
         unchecked {
             totalSupply = totalSupply + mintTokens;
             /// Calculate their new balance

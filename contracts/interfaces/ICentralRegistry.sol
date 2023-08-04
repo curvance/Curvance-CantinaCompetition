@@ -60,8 +60,11 @@ interface ICentralRegistry {
     /// @notice Returns protocolLiquidationFee Address
     function protocolLiquidationFee() external view returns (uint256);
 
-    /// @notice Returns protocolLiquidationFee Address
+    /// @notice Returns protocolLeverageFee Address
     function protocolLeverageFee() external view returns (uint256);
+
+    /// @notice Returns protocolInterestRateFee Address
+    function protocolInterestRateFee() external view returns (uint256);
 
     /// @notice Returns voteBoostValue value in basis point form
     function voteBoostValue() external view returns (uint256);
