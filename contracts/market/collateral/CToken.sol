@@ -288,19 +288,18 @@ contract CToken is ERC165, ReentrancyGuard {
         lendtroller.redeemAllowed(address(this), user, 0);
     }
 
-    /// @notice The sender adds to reserves.
+    /// @notice Adds reserves by transferring from Curvance DAO to the market and depositing to the gauge
     /// @param addAmount The amount fo underlying token to add as reserves
     function depositReserves(
         uint256 addAmount
     ) external nonReentrant onlyElevatedPermissions {
-        // On success, the cToken holds an additional addAmount of cash.
+        // On success, the market will deposit `addAmount` to the gauge pool
         totalReserves = totalReserves + doTransferIn(msg.sender, addAmount);
 
-        // emit ReservesAdded(msg.sender, actualAddAmount, totalReserves); /// changed to emit correct variable
         emit ReservesAdded(msg.sender, addAmount, totalReserves);
     }
 
-    /// @notice Accrues interest and reduces reserves by transferring to admin
+    /// @notice Reduces reserves by withdrawing from the gauge and transferring to Curvance DAO
     /// @param reduceAmount Amount of reduction to reserves
     function withdrawReserves(
         uint256 reduceAmount
@@ -310,7 +309,7 @@ contract CToken is ERC165, ReentrancyGuard {
             revert ReduceReservesCashNotAvailable();
         }
 
-        // Need underflow check to check if we have sufficient totalReserves
+        // Need underflow check to see if we have sufficient totalReserves
         totalReserves = totalReserves - reduceAmount;
 
         // Query current DAO operating address

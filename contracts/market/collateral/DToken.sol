@@ -422,7 +422,7 @@ contract DToken is ERC165, ReentrancyGuard {
         return true;
     }
 
-    /// @notice The sender adds to reserves.
+    /// @notice Adds reserves by transferring from Curvance DAO to the market and depositing to the gauge
     /// @param addAmount The amount fo underlying token to add as reserves
     function depositReserves(uint256 addAmount) external nonReentrant onlyElevatedPermissions {
         accrueInterest();
@@ -432,11 +432,10 @@ contract DToken is ERC165, ReentrancyGuard {
         // it returns the amount actually transferred, in case of a fee.
         totalReserves = totalReserves + doTransferIn(msg.sender, addAmount);
 
-        // emit ReservesAdded(msg.sender, actualAddAmount, totalReserves); /// changed to emit correct variable
         emit ReservesAdded(msg.sender, addAmount, totalReserves);
     }
 
-    /// @notice Accrues interest and reduces reserves by transferring to admin
+    /// @notice Reduces reserves by withdrawing from the gauge and transferring to Curvance DAO
     /// @param reduceAmount Amount of reduction to reserves
     function withdrawReserves(
         uint256 reduceAmount

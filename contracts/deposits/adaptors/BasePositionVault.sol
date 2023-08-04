@@ -31,9 +31,6 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     /// @notice Period newly harvested rewards are vested over.
     uint256 public constant vestPeriod = 1 days;
     uint256 internal constant rewardOffset = 1e18;
-    ERC20 private constant WETH =
-        ERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
-
     ICentralRegistry public immutable centralRegistry;
     ERC20 private immutable _asset;
     uint8 private immutable _decimals;
