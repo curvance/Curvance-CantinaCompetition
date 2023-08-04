@@ -100,8 +100,8 @@ contract VelodromeStablePositionVault is BasePositionVault {
     /// @param data Bytes array for aggregator swap data
     /// @return yield The amount of new assets acquired from compounding vault yield
     function harvest(
-        bytes memory data
-    ) public override onlyHarvestor vaultActive returns (uint256 yield) {
+        bytes calldata data
+    ) external override onlyHarvestor vaultActive returns (uint256 yield) {
         uint256 pending = _calculatePendingRewards();
 
         if (pending > 0) {
@@ -126,7 +126,7 @@ contract VelodromeStablePositionVault is BasePositionVault {
             if (rewardAmount > 0) {
                 // take protocol fee
                 uint256 protocolFee = rewardAmount.mulDivDown(
-                    vaultHarvestFee(),
+                    centralRegistry.protocolHarvestFee(),
                     1e18
                 );
                 rewardAmount -= protocolFee;

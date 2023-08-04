@@ -94,12 +94,14 @@ contract AuraPositionVault is BasePositionVault {
 
         uint256 extraRewardsLength = IBaseRewardPool(rewarder_).extraRewardsLength();
         for (uint256 i; i < extraRewardsLength; ) {
-            address rewardToken = IStashWrapper(
-                IRewards(IBaseRewardPool(rewarder_).extraRewards(i++)).rewardToken()
-            ).baseToken();
-        
-            if (rewardToken != AURA) {
-                strategyData.rewardTokens.push() = rewardToken;
+            unchecked {
+                address rewardToken = IStashWrapper(
+                    IRewards(IBaseRewardPool(rewarder_).extraRewards(i++)).rewardToken()
+                ).baseToken();
+            
+                if (rewardToken != AURA) {
+                    strategyData.rewardTokens.push() = rewardToken;
+                }
             }
         }
 
@@ -134,13 +136,15 @@ contract AuraPositionVault is BasePositionVault {
 
         uint256 extraRewardsLength = rewarder.extraRewardsLength();
         for (uint256 i; i < extraRewardsLength; ) {
-            address rewardToken = IStashWrapper(
-                IRewards(rewarder.extraRewards(i++)).rewardToken()
-            ).baseToken();
-        
-        
-            if (rewardToken != AURA) {
-                strategyData.rewardTokens.push() = rewardToken;
+            unchecked {
+                address rewardToken = IStashWrapper(
+                    IRewards(rewarder.extraRewards(i++)).rewardToken()
+                ).baseToken();
+            
+            
+                if (rewardToken != AURA) {
+                    strategyData.rewardTokens.push() = rewardToken;
+                }
             }
         }
     }
@@ -155,8 +159,8 @@ contract AuraPositionVault is BasePositionVault {
     /// @param data Bytes array for aggregator swap data
     /// @return yield The amount of new assets acquired from compounding vault yield
     function harvest(
-        bytes memory data
-    ) public override onlyHarvestor vaultActive returns (uint256 yield) {
+        bytes calldata data
+    ) external override onlyHarvestor vaultActive returns (uint256 yield) {
         uint256 pending = _calculatePendingRewards();
         if (pending > 0) {
             // claim vested rewards
@@ -181,29 +185,35 @@ contract AuraPositionVault is BasePositionVault {
             uint256 rewardAmount;
             uint256 protocolFee;
 
-            for (uint256 i; i < numRewardTokens; ++i) {
-                rewardToken = sd.rewardTokens[i];
-                rewardAmount = ERC20(rewardToken).balanceOf(address(this));
+            {
+                // Cache Central registry values so we dont pay gas multiple times
+                address feeAccumulator = centralRegistry.feeAccumulator();
+                uint256 harvestFee = centralRegistry.protocolHarvestFee();
 
-                if (rewardAmount == 0) {
-                    continue;
-                }
+                for (uint256 i; i < numRewardTokens; ++i) {
+                    rewardToken = sd.rewardTokens[i];
+                    rewardAmount = ERC20(rewardToken).balanceOf(address(this));
 
-                // take protocol fee
-                protocolFee = rewardAmount.mulDivDown(
-                    vaultHarvestFee(),
-                    1e18
-                );
-                rewardAmount -= protocolFee;
-                SafeTransferLib.safeTransfer(
-                    rewardToken,
-                    centralRegistry.feeAccumulator(),
-                    protocolFee
-                );
+                    if (rewardAmount == 0) {
+                        continue;
+                    }
 
-                // swap from rewardToken to underlying LP token if necessary
-                if (!isUnderlyingToken[rewardToken]) {
-                    SwapperLib.swap(swapDataArray[i]);
+                    // take protocol fee
+                    protocolFee = rewardAmount.mulDivDown(
+                        harvestFee,
+                        1e18
+                    );
+                    rewardAmount -= protocolFee;
+                    SafeTransferLib.safeTransfer(
+                        rewardToken,
+                        feeAccumulator,
+                        protocolFee
+                    );
+
+                    // swap from rewardToken to underlying LP token if necessary
+                    if (!isUnderlyingToken[rewardToken]) {
+                        SwapperLib.swap(swapDataArray[i]);
+                    }
                 }
             }
             

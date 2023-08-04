@@ -154,8 +154,8 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     // EXTERNAL POSITION LOGIC TO OVERRIDE
 
     function harvest(
-        bytes memory
-    ) public virtual returns (uint256 yield);
+        bytes calldata
+    ) external virtual returns (uint256 yield);
 
     /// PUBLIC FUNCTIONS ///
 
@@ -184,26 +184,24 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     /// @notice Vault compound fee is in basis point form
     /// @dev Returns the vaults current amount of yield used
     ///      for compounding rewards
-    function vaultCompoundFee() public view returns (uint256) {
+    ///      Used for frontend data query only
+    function vaultCompoundFee() external view returns (uint256) {
         return centralRegistry.protocolCompoundFee();
     }
 
     /// @notice Vault yield fee is in basis point form
     /// @dev Returns the vaults current protocol fee for compounding rewards
-    function vaultYieldFee() public view returns (uint256) {
+    ///      Used for frontend data query only
+    function vaultYieldFee() external view returns (uint256) {
         return centralRegistry.protocolYieldFee();
     }
 
     /// @notice Vault harvest fee is in basis point form
     /// @dev Returns the vaults current harvest fee for compounding rewards
     ///      that pays for yield and compound fees
-    function vaultHarvestFee() public view returns (uint256) {
+    ///      Used for frontend data query only
+    function vaultHarvestFee() external view returns (uint256) {
         return centralRegistry.protocolHarvestFee();
-    }
-
-    /// @dev Returns the protocol price router
-    function getPriceRouter() public view returns (IPriceRouter) {
-        return IPriceRouter(centralRegistry.priceRouter());
     }
 
     // DEPOSIT AND WITHDRAWAL LOGIC

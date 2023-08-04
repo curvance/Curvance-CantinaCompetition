@@ -6,8 +6,6 @@ import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 import { IMToken, accountSnapshot } from "contracts/interfaces/market/IMToken.sol";
-import { ICToken } from "contracts/interfaces/market/ICToken.sol";
-import { BasePositionVault } from "contracts/deposits/adaptors/BasePositionVault.sol";
 
 /// @title Curvance Lendtroller
 /// @notice Manages risk within the lending markets
@@ -15,10 +13,8 @@ contract Lendtroller is ILendtroller {
     /// TYPES ///
 
     struct AccountData {
-        // User assets
-        IMToken[] assets;
-        // Last time a user borrowed an asset
-        uint256 lastBorrowTimestamp;
+        IMToken[] assets; // Array of account assets
+        uint256 lastBorrowTimestamp; // Last time an account borrowed an asset
     }
 
     struct MarketToken {
@@ -27,7 +23,7 @@ contract Lendtroller is ILendtroller {
         //  Multiplier representing the most one can borrow against their collateral in this market
         //  On scale of 0 to 1e18 with 0.8e18 corresponding to 80% collateral value
         uint256 collateralizationRatio;
-        // Mapping that indicates whether an account is in a market, 0 or 1 for no, 2 for yes
+        // Mapping that indicates whether an account is in a market, 0 or 1 for no; 2 for yes
         mapping(address => uint256) accountInMarket;
     }
 
@@ -35,11 +31,11 @@ contract Lendtroller is ILendtroller {
 
     ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
     bool public constant override isLendtroller = true; // for introspection
+    uint256 internal constant expScale = 1e18; // Scalar for math
     uint256 internal constant maxCloseFactor = 1e18; // 100% E.g close entire position
     uint256 internal constant maxCollateralizationRatio = 0.9e18; // 90%
-    uint256 internal constant expScale = 1e18; // Scalar for math
     uint256 internal constant minHoldPeriod = 15 minutes; // Minimum hold time to prevent oracle price attacks
-    address public immutable gaugePool;
+    address public immutable gaugePool; // gaugePool contract address
 
     // @dev `bytes4(keccak256(bytes("Lendtroller_InvalidValue()")))`
     uint256 internal constant _INVALID_VALUE_SELECTOR = 0x74ebdb4f;
@@ -55,19 +51,11 @@ contract Lendtroller is ILendtroller {
     mapping(address => uint256) public borrowPaused; // Token => 0 or 1 = unpaused; 2 = paused
     mapping(address => uint256) public borrowCaps; // Token => Borrow Cap; 0 = unlimited
 
-    /// @notice Multiplier used to calculate the maximum repayAmount
-    ///         when liquidating a borrow
-    uint256 public closeFactor;
+    uint256 public closeFactor; // Maximum % that a liquidator can repay when liquidating a user
+    uint256 public liquidationIncentiveScaled; // Default discount multiplier a liquidation receives
+    address public positionFolding; // PositionFolding contract address
 
-    /// @notice Multiplier representing the discount on collateral that
-    ///         a liquidator receives
-    uint256 public liquidationIncentiveScaled;
-
-    // PositionFolding contract address
-    address public positionFolding;
-
-    /// @notice A list of all markets for frontend
-    IMToken[] public allMarkets;
+    IMToken[] public allMarkets; // A list of all markets for frontend
 
     mapping(address => MarketToken) public marketTokenData; // Market Token => Token metadata
     mapping(address => AccountData) public accountAssets; // Account => Assets, lastBorrowTimestamp
@@ -166,7 +154,7 @@ contract Lendtroller is ILendtroller {
 
         MarketToken storage marketToExit = marketTokenData[mTokenAddress];
 
-        // Return if the sender is not already ‘in’ the market
+        // We do not need to update any values if the account is not ‘in’ the market
         if (marketToExit.accountInMarket[msg.sender] < 2) {
             return;
         }
@@ -192,8 +180,7 @@ contract Lendtroller is ILendtroller {
         // so it corresponds to last element index now starting at index 0
         require(assetIndex < numUserAssets--, "lendtroller: asset list misconfigured");
 
-        // copy last item in list to location of item to be removed,
-        // reduce length by 1
+        // copy last item in list to location of item to be removed
         IMToken[] storage storedList = accountAssets[msg.sender].assets;
         // copy the last market index slot to assetIndex
         storedList[assetIndex] = storedList[numUserAssets];
@@ -399,8 +386,6 @@ contract Lendtroller is ILendtroller {
         return (ratio * actualRepayAmount) / expScale;
     }
 
-    /// Admin Functions
-
     /// @notice Sets the closeFactor used when liquidating borrows
     /// @dev Admin function to set closeFactor
     /// @param newCloseFactor New close factor, scaled by 1e18
@@ -490,6 +475,7 @@ contract Lendtroller is ILendtroller {
         IMToken(mToken).tokenType(); // Sanity check to make sure its really a mToken
 
         MarketToken storage market = marketTokenData[mToken];
+        // We want mTokens to have a default collateralization ratio of 0 and to configure after
         market.isListed = true;
         market.collateralizationRatio = 0;
 

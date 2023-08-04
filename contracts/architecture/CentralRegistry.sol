@@ -169,9 +169,9 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
 
         genesisEpoch = genesisEpoch_;
 
-        emit OwnershipTransferred(address(0), daoAddress);
-        emit newTimelockConfiguration(address(0), timelock);
-        emit EmergencyCouncilTransferred(address(0), emergencyCouncil);
+        emit OwnershipTransferred(address(0), daoAddress_);
+        emit newTimelockConfiguration(address(0), timelock_);
+        emit EmergencyCouncilTransferred(address(0), emergencyCouncil_);
     }
 
     /// EXTERNAL FUNCTIONS ///
@@ -256,7 +256,7 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
         protocolCompoundFee = value * 1e14;
 
         /// Update vault harvest fee with new yield fee
-        protocolHarvestFee = protocolYieldFee + protocolCompoundFee;
+        protocolHarvestFee = protocolYieldFee + (value * 1e14);
     }
 
     /// @notice Sets the fee taken by Curvance DAO on all generated
@@ -273,7 +273,7 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
         protocolYieldFee = value * 1e14;
 
         /// Update vault harvest fee with new yield fee
-        protocolHarvestFee = protocolYieldFee + protocolCompoundFee;
+        protocolHarvestFee = (value * 1e14) + protocolCompoundFee;
     }
 
     /// @notice Sets the fee taken by Curvance DAO on liquidation
