@@ -35,35 +35,28 @@ contract CToken is ERC165, ReentrancyGuard {
     /// EVENTS ///
 
     event MigrateVault(address oldVault, address newVault);
-
     event Mint(
         address user,
         uint256 mintAmount,
         uint256 mintTokens,
         address minter
     );
-
     event Redeem(address redeemer, uint256 redeemAmount, uint256 redeemTokens);
-
     event NewLendtroller(
         ILendtroller oldLendtroller,
         ILendtroller newLendtroller
     );
-
     event ReservesAdded(
         address benefactor,
         uint256 addAmount,
         uint256 newTotalReserves
     );
-
     event ReservesReduced(
         address admin,
         uint256 reduceAmount,
         uint256 newTotalReserves
     );
-
     event Transfer(address indexed from, address indexed to, uint256 amount);
-
     event Approval(
         address indexed owner,
         address indexed spender,

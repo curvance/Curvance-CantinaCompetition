@@ -81,27 +81,22 @@ contract DToken is ERC165, ReentrancyGuard {
         uint256 borrowIndex,
         uint256 totalBorrows
     );
-
     event Mint(
         address user,
         uint256 mintAmount,
         uint256 mintTokens,
         address minter
     );
-
     event Redeem(address redeemer, uint256 redeemAmount, uint256 redeemTokens);
-
     event Borrow(
         address borrower,
         uint256 borrowAmount
     );
-
     event Repay(
         address payer,
         address borrower,
         uint256 repayAmount
     );
-
     event Liquidated(
         address liquidator,
         address borrower,
@@ -109,31 +104,25 @@ contract DToken is ERC165, ReentrancyGuard {
         address cTokenCollateral,
         uint256 seizeTokens
     );
-
     event NewLendtroller(
         ILendtroller oldLendtroller,
         ILendtroller newLendtroller
     );
-
     event NewMarketInterestRateModel(
         InterestRateModel oldInterestRateModel,
         InterestRateModel newInterestRateModel
     );
-
     event ReservesAdded(
         address benefactor,
         uint256 addAmount,
         uint256 newTotalReserves
     );
-
     event ReservesReduced(
         address admin,
         uint256 reduceAmount,
         uint256 newTotalReserves
     );
-
     event Transfer(address indexed from, address indexed to, uint256 amount);
-
     event Approval(
         address indexed owner,
         address indexed spender,

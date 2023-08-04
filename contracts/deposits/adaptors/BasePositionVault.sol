@@ -29,10 +29,12 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     /// CONSTANTS ///
 
     /// @notice Period newly harvested rewards are vested over
+    ICentralRegistry public immutable centralRegistry;
     uint256 public constant vestPeriod = 1 days;
     uint256 internal constant rewardOffset = 1e18;
-    ICentralRegistry public immutable centralRegistry;
     ERC20 private immutable _asset;
+    bytes32 private immutable _name;
+    bytes32 private immutable _symbol;
     uint8 private immutable _decimals;
 
     // Mask of reward rate entry in packed vault data
@@ -53,14 +55,12 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     /// STORAGE ///
 
     address public cToken;
-    bytes32 private immutable _name;
-    bytes32 private immutable _symbol;
-
-    // Internal stored total assets, share price high watermark
+    
+    // Internal stored vault accounting
     uint256 internal _totalAssets;
     uint256 internal _sharePriceHighWatermark;
     uint256 internal _vaultData;
-    uint256 public vaultIsActive = 1;
+    uint256 internal _vaultIsActive = 1;
 
     /// EVENTS ///
 
@@ -98,7 +98,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     }
 
     modifier vaultActive() {
-        require(vaultIsActive == 2, "BasePositionVault: vault not active");
+        require(_vaultIsActive == 2, "BasePositionVault: vault not active");
         _;
     }
 
@@ -158,14 +158,14 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
 
     /// @notice Initializes the vault and the cToken attached to it
     function initiateVault(address cTokenAddress) external onlyDaoPermissions {
-        require(vaultIsActive == 1, "BasePositionVault: vault already initialized");
+        require(_vaultIsActive == 1, "BasePositionVault: vault already initialized");
         require(
             IMToken(cTokenAddress).tokenType() == 1,
             "BasePositionVault: not cToken"
         );
 
         cToken = cTokenAddress;
-        vaultIsActive = 2;
+        _vaultIsActive = 2;
 
         emit vaultStatusChanged(false);
     }
@@ -173,7 +173,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     /// @notice Shuts down the vault
     /// @dev Used in an emergency or if the vault has been deprecated
     function initiateShutdown() external vaultActive onlyDaoPermissions {
-        vaultIsActive = 1;
+        _vaultIsActive = 1;
 
         emit vaultStatusChanged(true);
     }
@@ -183,14 +183,14 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     function liftShutdown(
         address cTokenAddress
     ) external onlyElevatedPermissions {
-        require(vaultIsActive == 1, "BasePositionVault: vault not shutdown");
+        require(_vaultIsActive == 1, "BasePositionVault: vault not shutdown");
         require(
             IMToken(cTokenAddress).tokenType() == 1,
             "BasePositionVault: not cToken"
         );
 
         cToken = cTokenAddress;
-        vaultIsActive = 2;
+        _vaultIsActive = 2;
 
         emit vaultStatusChanged(false);
     }
@@ -222,7 +222,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
 
     /// @notice Returns the position vaults current status
     function vaultStatus() public view returns (string memory) {
-        return vaultIsActive == 2 ? "Active": "Inactive";
+        return _vaultIsActive == 2 ? "Active": "Inactive";
     }
 
     // DEPOSIT AND WITHDRAWAL LOGIC

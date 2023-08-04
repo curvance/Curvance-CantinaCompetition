@@ -30,12 +30,12 @@ contract Lendtroller {
 
     ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
     bool public constant isLendtroller = true; // for introspection
+    address public immutable gaugePool; // gaugePool contract address
     uint256 internal constant expScale = 1e18; // Scalar for math
     uint256 internal constant maxCloseFactor = 1e18; // 100% E.g close entire position
     uint256 internal constant maxCollateralizationRatio = 0.9e18; // 90%
     uint256 internal constant minHoldPeriod = 15 minutes; // Minimum hold time to prevent oracle price attacks
-    address public immutable gaugePool; // gaugePool contract address
-
+    
     // @dev `bytes4(keccak256(bytes("Lendtroller_InvalidValue()")))`
     uint256 internal constant _INVALID_VALUE_SELECTOR = 0x74ebdb4f;
 
@@ -62,39 +62,23 @@ contract Lendtroller {
     /// EVENTS ///
 
     event MarketListed(address mToken);
-
     event MarketEntered(address mToken, address account);
-
     event MarketExited(address mToken, address account);
-
-    event NewCloseFactor(
-        uint256 oldCloseFactorScaled,
-        uint256 newCloseFactorScaled
+    event NewCloseFactor(uint256 oldCloseFactor, uint256 newCloseFactor);
+    event NewCollateralizationRatio(
+        IMToken mToken, 
+        uint256 oldCR, 
+        uint256 newCR
     );
-
-    event NewCollateralFactor(
-        IMToken mToken,
-        uint256 oldCollateralFactorScaled,
-        uint256 newCollateralFactorScaled
-    );
-
     event NewLiquidationIncentive(
         uint256 oldLiquidationIncentiveScaled,
         uint256 newLiquidationIncentiveScaled
     );
-
     event ActionPaused(string action, bool pauseState);
-
     event ActionPaused(IMToken mToken, string action, bool pauseState);
-
     event NewBorrowCap(IMToken mToken, uint256 newBorrowCap);
-
     event SetDisableCollateral(IMToken mToken, bool disable);
-
-    event NewPositionFoldingContract(
-        address oldPositionFolding,
-        address newPositionFolding
-    );
+    event NewPositionFoldingContract(address oldPF, address newPF);
 
     /// ERRORS ///
 
@@ -396,19 +380,19 @@ contract Lendtroller {
     ) external view returns (uint256) {
         /// Read oracle prices for borrowed and collateral markets
         IPriceRouter router = getPriceRouter();
-        (uint256 debtTokenPrice, uint256 highPriceError) = router.getPrice(
+        (uint256 debtTokenPrice, uint256 debtTokenError) = router.getPrice(
             mTokenBorrowed, 
             true, 
             false
         );
-        (uint256 collateralTokenPrice, uint256 lowPriceError) = router.getPrice(
+        (uint256 collateralTokenPrice, uint256 collateralTokenError) = router.getPrice(
             mTokenCollateral,
             true,
             true
         );
 
         /// Validate that we were able to securely query prices from the dual oracle
-        if (highPriceError == 2 || lowPriceError == 2) {
+        if (debtTokenError == 2 || collateralTokenError == 2) {
             revert Lendtroller_PriceError();
         }
 
@@ -475,7 +459,7 @@ contract Lendtroller {
         // Note that a collateralization ratio of 0 corresponds to no collateralization of the mToken
         marketToken.collateralizationRatio = newCollateralizationRatio;
 
-        emit NewCollateralFactor(
+        emit NewCollateralizationRatio(
             mToken,
             oldCollateralizationRatio,
             newCollateralizationRatio
