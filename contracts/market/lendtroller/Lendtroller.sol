@@ -28,13 +28,13 @@ contract Lendtroller {
 
     /// CONSTANTS ///
 
-    ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
     bool public constant isLendtroller = true; // for introspection
     address public immutable gaugePool; // gaugePool contract address
     uint256 internal constant expScale = 1e18; // Scalar for math
     uint256 internal constant maxCloseFactor = 1e18; // 100% E.g close entire position
     uint256 internal constant maxCollateralizationRatio = 0.9e18; // 90%
     uint256 internal constant minHoldPeriod = 15 minutes; // Minimum hold time to prevent oracle price attacks
+    ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
     
     // @dev `bytes4(keccak256(bytes("Lendtroller_InvalidValue()")))`
     uint256 internal constant _INVALID_VALUE_SELECTOR = 0x74ebdb4f;
@@ -494,7 +494,7 @@ contract Lendtroller {
 
         IMToken(mToken).tokenType(); // Sanity check to make sure its really a mToken
         if (IMToken(mToken).totalSupply() == 0) {
-            require(IMToken(mToken).initiateMarket(msg.sender), "lendtroller: Market needs to be initialized");
+            require(IMToken(mToken).startMarket(msg.sender), "lendtroller: Market needs to be initialized");
         }
 
         MarketToken storage market = marketTokenData[mToken];

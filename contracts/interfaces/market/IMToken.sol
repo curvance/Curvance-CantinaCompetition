@@ -48,6 +48,6 @@ interface IMToken {
 
     function exchangeRateStored() external view returns (uint256);
 
-    function initiateMarket(address initializer) external returns (bool);
+    function startMarket(address initializer) external returns (bool);
 
 }

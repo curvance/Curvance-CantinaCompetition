@@ -19,20 +19,25 @@ contract CToken is ERC165, ReentrancyGuard {
 
     /// CONSTANTS ///
 
-    uint256 internal constant expScale = 1e18;
-
-    /// @notice Indicator that this is a CToken contract (for inspection)
-    bool public constant isCToken = true;
-
-    /// @notice Underlying asset for this CToken
-    address public immutable underlying;
-
-    /// @notice CToken data
-    bytes32 private immutable _name;
-    bytes32 private immutable _symbol;
-    uint8 public immutable decimals;
-
+    uint256 internal constant expScale = 1e18; // Scalar for math
+    bool public constant isCToken = true; // for inspection
+    address public immutable underlying; // underlying asset for the CToken
+    bytes32 private immutable _name; // token name metadata
+    bytes32 private immutable _symbol; // token symbol metadata
     ICentralRegistry public immutable centralRegistry;
+
+    /// STORAGE ///
+    ILendtroller public lendtroller; // Current lending market controller
+    BasePositionVault public vault; // Current position vault
+    uint256 public totalReserves; // Total protocol reserves of underlying
+    uint256 public totalSupply; // Total number of tokens in circulation
+
+    // @notice account => token balance
+    mapping(address => uint256) internal _accountBalance;
+
+    // @notice account => spender => approved amount
+    mapping(address => mapping(address => uint256))
+        internal transferAllowances;
 
     /// EVENTS ///
 
@@ -71,21 +76,6 @@ contract CToken is ERC165, ReentrancyGuard {
     error CToken_CannotEqualZero();
     error CToken_TransferNotAllowed();
     error CToken_ValidationFailed();
-
-    /// STORAGE ///
-    ILendtroller public lendtroller;
-    BasePositionVault public vault;
-    /// @notice Total amount of reserves of the underlying held in this market
-    uint256 public totalReserves;
-    /// @notice Total number of tokens in circulation
-    uint256 public totalSupply;
-
-    // @notice account => token balance
-    mapping(address => uint256) internal _accountBalance;
-
-    // @notice account => spender => approved amount
-    mapping(address => mapping(address => uint256))
-        internal transferAllowances;
 
     /// MODIFIERS ///
 
@@ -141,18 +131,17 @@ contract CToken is ERC165, ReentrancyGuard {
         vault = BasePositionVault(vault_);
         _name = bytes32(abi.encodePacked("Curvance collateralized ", name_));
         _symbol = bytes32(abi.encodePacked("c", symbol_));
-        decimals = IERC20(underlying_).decimals();
 
         // Sanity check underlying so that we know users will not need to mint anywhere close to exchange rate of 1e18
         require (IERC20(underlying).totalSupply() < type(uint232).max, "CToken: Underlying token assumptions not met");
 
     }
 
-    /// @notice Used to initiate a CTokens activity in lendtroller, 
-    ///         this initial mint is a failsafe against the empty market exploit
-    ///         although we protect against it in many ways, better safe than sorry
+    /// @notice Used to start a CToken market, executed via lendtroller 
+    /// @dev  this initial mint is a failsafe against the empty market exploit
+    ///       although we protect against it in many ways, better safe than sorry
     /// @param initializer the account initializing the market 
-    function initiateMarket(address initializer) external nonReentrant returns (bool) {
+    function startMarket(address initializer) external nonReentrant returns (bool) {
         if (msg.sender != address(lendtroller)) {
             revert CToken_UnauthorizedCaller();
         }
@@ -461,6 +450,13 @@ contract CToken is ERC165, ReentrancyGuard {
     /// @notice Returns the symbol of the token
     function symbol() public view returns (string memory) {
         return string(abi.encodePacked(_symbol));
+    }
+
+    /// @notice Returns the decimals of the token
+    /// @dev We pull directly from underlying incase its a proxy contract 
+    ///      and changes decimals on us
+    function decimals() public view returns (uint8) {
+        return IERC20(underlying).decimals();
     }
 
     /// @notice Returns the type of Curvance token, 1 = Collateral, 0 = Debt

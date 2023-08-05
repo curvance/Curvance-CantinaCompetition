@@ -29,47 +29,30 @@ contract DToken is ERC165, ReentrancyGuard {
 
     /// CONSTANTS ///
 
-    uint256 internal constant expScale = 1e18;
-
-    // Maximum borrow rate that can ever be applied (.0005% / second)
-    uint256 internal constant borrowRateMaxScaled = 0.0005e16;
-
-    /// @notice Indicator that this is a DToken contract (for inspection)
-    bool public constant isDToken = true;
-
-    /// @notice Underlying asset for this DToken
-    address public immutable underlying;
-
-    /// @notice Decimals for this DToken
-    bytes32 private immutable _name;
-    bytes32 private immutable _symbol;
-    uint8 public immutable decimals;
-
-    ICentralRegistry public immutable centralRegistry;
+    uint256 internal constant expScale = 1e18; // Scalar for math
+    bool public constant isDToken = true; // for inspection
+    address public immutable underlying; // underlying asset for the CToken
+    bytes32 private immutable _name; // token name metadata
+    bytes32 private immutable _symbol; // token symbol metadata
+    ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
 
     /// STORAGE ///
     
-    ILendtroller public lendtroller;
-    InterestRateModel public interestRateModel;
-    /// @notice Timestamp that interest was last accrued at
-    uint256 public accrualBlockTimestamp;
-    /// @notice Accumulator of the total earned interest rate since the opening of the market
-    uint256 public borrowIndex;
-    /// @notice Total amount of outstanding borrows of the underlying in this market
-    uint256 public totalBorrows;
-    /// @notice Total amount of reserves of the underlying held in this market
-    uint256 public totalReserves;
-    /// @notice Total number of tokens in circulation
-    uint256 public totalSupply;
+    ILendtroller public lendtroller; // Current lending market controller
+    InterestRateModel public interestRateModel; // Current Interest Rate Model
+    uint256 public accrualBlockTimestamp; // last accrued interest timestamp
+    uint256 public borrowIndex; // Multiplier ratio of total interest accrued
+    uint256 public totalBorrows; // Total outstanding borrows of underlying
+    uint256 public totalReserves; // Total protocol reserves of underlying
+    uint256 public totalSupply; // Total number of tokens in circulation
 
-    // @notice account => token balance
+    // account => token balance
     mapping(address => uint256) internal _accountBalance;
+    // account => spender => approved amount
+    mapping(address => mapping(address => uint256)) 
+        internal transferAllowances; 
 
-    // @notice account => spender => approved amount
-    mapping(address => mapping(address => uint256))
-        internal transferAllowances;
-
-    // @notice account => BorrowSnapshot (Principal Borrowed, User Interest Index)
+    // account => BorrowSnapshot (Principal Borrowed, User Interest Index)
     mapping(address => BorrowSnapshot) internal accountBorrows;
 
     /// EVENTS ///
@@ -202,18 +185,17 @@ contract DToken is ERC165, ReentrancyGuard {
         underlying = underlying_;
         _name = bytes32(abi.encodePacked("Curvance interest bearing ", IERC20(underlying_).name()));
         _symbol = bytes32(abi.encodePacked("c", IERC20(underlying_).symbol()));
-        decimals = IERC20(underlying_).decimals();
 
         // Sanity check underlying so that we know users will not need to mint anywhere close to exchange rate of 1e18
         require (IERC20(underlying).totalSupply() < type(uint232).max, "DToken: Underlying token assumptions not met");
 
     }
 
-    /// @notice Used to initiate a CTokens activity in lendtroller, 
-    ///         this initial mint is a failsafe against the empty market exploit
-    ///         although we protect against it in many ways, better safe than sorry
+    /// @notice Used to start a DToken market, executed via lendtroller 
+    /// @dev  this initial mint is a failsafe against the empty market exploit
+    ///       although we protect against it in many ways, better safe than sorry
     /// @param initializer the account initializing the market 
-    function initiateMarket(address initializer) external nonReentrant returns (bool) {
+    function startMarket(address initializer) external nonReentrant returns (bool) {
         if (msg.sender != address(lendtroller)) {
             revert DToken_UnauthorizedCaller();
         }
@@ -681,6 +663,13 @@ contract DToken is ERC165, ReentrancyGuard {
         return string(abi.encodePacked(_symbol));
     }
 
+    /// @notice Returns the decimals of the token
+    /// @dev We pull directly from underlying incase its a proxy contract 
+    ///      and changes decimals on us
+    function decimals() public view returns (uint8) {
+        return IERC20(underlying).decimals();
+    }
+
     /// @notice Gets balance of this contract in terms of the underlying
     /// @dev This excludes changes in underlying token balance by the current transaction, if any
     /// @return The quantity of underlying tokens owned by this contract
@@ -753,9 +742,6 @@ contract DToken is ERC165, ReentrancyGuard {
             borrowsPrior,
             reservesPrior
         );
-        if (borrowRateMaxScaled < borrowRateScaled) {
-            revert DToken_ExcessiveValue();
-        }
 
         // Calculate the interest accumulated into borrows and reserves and the new index:
         // simpleInterestFactor = borrowRate * (block.timestamp - accrualBlockTimestampPrior)
