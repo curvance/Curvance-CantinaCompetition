@@ -27,6 +27,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
     }
 
     /// CONSTANTS ///
+
     uint256 public constant PRECISION = 1e36; // Scalar for math
     address public immutable lendtroller; // Lendtroller linked
 
@@ -39,15 +40,11 @@ contract GaugePool is GaugeController, ReentrancyGuard {
 
     /// EVENTS ///
 
-    event AddChildGauge(address indexed childGauge);
-    event RemoveChildGauge(address indexed childGauge);
-    event Deposit(address indexed user, address indexed token, uint256 amount);
-    event Withdraw(
-        address indexed user,
-        address indexed token,
-        uint256 amount
-    );
-    event Claim(address indexed user, address indexed token, uint256 amount);
+    event AddChildGauge(address childGauge);
+    event RemoveChildGauge(address childGauge);
+    event Deposit(address user, address token, uint256 amount);
+    event Withdraw(address user, address token, uint256 amount);
+    event Claim(address user, address token, uint256 amount);
 
     constructor(
         ICentralRegistry centralRegistry_,
