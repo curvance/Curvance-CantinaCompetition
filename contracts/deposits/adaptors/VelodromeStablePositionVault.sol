@@ -37,7 +37,7 @@ contract VelodromeStablePositionVault is BasePositionVault {
 
     StrategyData public strategyData; // position vault packed configuration
 
-    /// @notice Is an underlying token of the sAMM LP
+    /// Token => underlying token of the sAMM LP or not
     mapping(address => bool) public isUnderlyingToken;
 
     /// EVENTS ///

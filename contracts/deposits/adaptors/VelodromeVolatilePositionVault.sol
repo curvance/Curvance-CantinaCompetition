@@ -35,7 +35,7 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
 
     StrategyData public strategyData; // position vault packed configuration
 
-    /// @notice Is an underlying token of the vAMM LP
+    /// Token => underlying token of the vAMM LP or not
     mapping(address => bool) public isUnderlyingToken;
 
     /// EVENTS ///

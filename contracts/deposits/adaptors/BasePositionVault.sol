@@ -19,6 +19,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     using Math for uint256;
 
     /// TYPES ///
+
     struct VaultData {
         uint128 rewardRate; // The rate that the vault vests fresh rewards
         uint64 vestingPeriodEnd; // When the current vesting period ends
@@ -29,7 +30,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
 
     // Period harvested rewards are vested over
     uint256 public constant vestPeriod = 1 days;
-    uint256 internal constant expScale = 1e18;
+    uint256 internal constant expScale = 1e18; // Scalar for math
     ERC20 private immutable _asset; // underlying asset for the vault
     bytes32 private immutable _name; // token name metadata
     bytes32 private immutable _symbol; // token symbol metadata
@@ -541,12 +542,12 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
             vaultData.rewardRate > 0 &&
             vaultData.lastVestClaim < vaultData.vestingPeriodEnd
         ) {
-            // There are pending rewards.
-            // Logic follows: If the vesting period has not ended
-            //                pendingRewards = rewardRate * (block.timestamp - lastTimeVestClaimed)
-            //                If the vesting period has ended
-            //                rewardRate * (vestingPeriodEnd - lastTimeVestClaimed))
-            // Divide the pending rewards by the reward offset of 18 decimals
+
+            // If the vesting period has not ended:
+            // pendingRewards = rewardRate * (block.timestamp - lastTimeVestClaimed)
+            // If the vesting period has ended:
+            // rewardRate * (vestingPeriodEnd - lastTimeVestClaimed))
+            // Divide the pending rewards by expScale
             pendingRewards =
                 (
                     block.timestamp < vaultData.vestingPeriodEnd

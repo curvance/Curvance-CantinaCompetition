@@ -31,7 +31,7 @@ contract ConvexPositionVault is BasePositionVault {
 
     StrategyData public strategyData; // position vault packed configuration
 
-    /// @notice Curve 3Pool LP underlying assets
+    /// Token => underlying token of the Curve 3Pool LP or not
     mapping(address => bool) public isUnderlyingToken;
 
     /// EVENTS ///

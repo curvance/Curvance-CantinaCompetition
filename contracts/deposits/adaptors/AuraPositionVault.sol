@@ -35,7 +35,7 @@ contract AuraPositionVault is BasePositionVault {
 
     StrategyData public strategyData; // position vault packed configuration
 
-    /// @notice Is an underlying token of the BPT
+    /// Token => underlying token of the BPT or not
     mapping(address => bool) public isUnderlyingToken;
 
     /// EVENTS ///
