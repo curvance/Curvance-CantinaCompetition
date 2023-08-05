@@ -41,11 +41,11 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
     /// CONSTANTS ///
 
     uint256 public constant MAX_LEVERAGE = 9900; // 99%
-    uint256 public constant DENOMINATOR = 10000;
-    uint256 public constant SLIPPAGE = 500;
+    uint256 public constant DENOMINATOR = 10000; // Scalar for math
+    uint256 public constant SLIPPAGE = 500; // 5%
 
-    ICentralRegistry public immutable centralRegistry;
-    ILendtroller public immutable lendtroller;
+    ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
+    ILendtroller public immutable lendtroller; // Lendtroller linked
 
     /// MODIFIERS ///
 

@@ -10,21 +10,38 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 contract CVEAirdrop is ReentrancyGuard {
 
+    /// CONSTANTS ///
+    
+    // Time by which users must claim their airdrop
+    uint256 public immutable endClaimTimestamp; 
+    uint256 public immutable maximumClaimAmount; // Maximum airdrop size
+    ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
+
+    /// STORAGE ///
+
+    bytes32 public airdropMerkleRoot; // Airdrop Merkle Root to validate claims
+    uint256 public isPaused = 2; // 1 = unpaused; 2 = paused
+
+    // User => Has Claimed
+    mapping(address => bool) public airdropClaimed;
+
     /// EVENTS ///
+    
     event callOptionCVEAirdropClaimed(address indexed claimer, uint256 amount);
     event RemainingCallOptionCVEWithdrawn(uint256 amount);
     event OwnerUpdated(address indexed user, address indexed newOwner);
 
-    /// CONSTANTS ///
-    ICentralRegistry public immutable centralRegistry;
-    uint256 public immutable maximumClaimAmount;
-    uint256 public immutable endClaimTimestamp;
+    /// MODIFIERS ///
 
-    /// STORAGE ///
-    bytes32 public airdropMerkleRoot;
-    uint256 public isPaused = 2;
+    modifier onlyDaoPermissions() {
+        require(centralRegistry.hasDaoPermissions(msg.sender), "CVEAirdrop: UNAUTHORIZED");
+        _;
+    }
 
-    mapping(address => bool) public airdropClaimed;
+    modifier notPaused() {
+        require(isPaused == 1, "CVEAirdrop: Airdrop Paused");
+        _;
+    }
 
     constructor(
         ICentralRegistry centralRegistry_,
@@ -45,16 +62,6 @@ contract CVEAirdrop is ReentrancyGuard {
         endClaimTimestamp = endTimestamp_;
         maximumClaimAmount = maximumClaimAmount_;
         airdropMerkleRoot = root_;
-    }
-
-    modifier onlyDaoPermissions() {
-        require(centralRegistry.hasDaoPermissions(msg.sender), "CVEAirdrop: UNAUTHORIZED");
-        _;
-    }
-
-    modifier notPaused() {
-        require(isPaused < 2, "CVEAirdrop: Airdrop Paused");
-        _;
     }
 
     /// @notice Claim CVE Call Option tokens for airdrop

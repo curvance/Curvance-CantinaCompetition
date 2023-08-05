@@ -23,30 +23,28 @@ contract VeCVE is ERC20 {
     IDelegateRegistry public constant snapshot =
         IDelegateRegistry(0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446);
 
-    // Might be better to put this in a uint256 so it doesnt need to
-    // convert to 256 for comparison, havent done gas check
     uint40 public constant CONTINUOUS_LOCK_VALUE = type(uint40).max;
-    uint256 public constant EPOCH_DURATION = 2 weeks;
+    uint256 public constant EPOCH_DURATION = 2 weeks; // Protocol epoch length
     uint256 public constant LOCK_DURATION_EPOCHS = 26; // in epochs
     uint256 public constant LOCK_DURATION = 52 weeks; // in seconds
-    uint256 public constant DENOMINATOR = 10000;
+    uint256 public constant DENOMINATOR = 10000; // Scalar for math
 
     // @dev `bytes4(keccak256(bytes("VeCVE_InvalidLock()")))`
     uint256 internal constant _INVALID_LOCK_SELECTOR = 0x3ca0e7ee;
     // @dev `bytes4(keccak256(bytes("VeCVE_VeCVEShutdown()")))`
     uint256 internal constant _VECVE_SHUTDOWN_SELECTOR = 0x8204c65e;
 
-    ICentralRegistry public immutable centralRegistry;
-    bytes32 private immutable _name;
-    bytes32 private immutable _symbol;
-    address public immutable cve;
-    ICVELocker public immutable cveLocker;
-    uint256 public immutable genesisEpoch;
-    uint256 public immutable continuousLockPointMultiplier;
+    bytes32 private immutable _name; // token name metadata
+    bytes32 private immutable _symbol; // token symbol metadata
+    address public immutable cve; // CVE contract address
+    ICVELocker public immutable cveLocker; // CVE Locker contract address 
+    uint256 public immutable genesisEpoch; // Genesis Epoch timestamp
+    uint256 public immutable clPointMultiplier; // Point multiplier for CL
+    ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
     
     /// STORAGE ///
 
-    uint256 public isShutdown = 1;
+    uint256 public isShutdown = 1;// 1 = active; 2 = shutdown
 
     // User => Array of VeCVE locks
     mapping(address => Lock[]) public userLocks;
@@ -121,7 +119,7 @@ contract VeCVE is ERC20 {
 
     constructor(
         ICentralRegistry centralRegistry_,
-        uint256 continuousLockPointMultiplier_
+        uint256 clPointMultiplier_
     ) {
         _name = "Vote Escrowed CVE";
         _symbol = "VeCVE";
@@ -138,7 +136,7 @@ contract VeCVE is ERC20 {
         genesisEpoch = centralRegistry.genesisEpoch();
         cve = centralRegistry.CVE();
         cveLocker = ICVELocker(centralRegistry.cveLocker());
-        continuousLockPointMultiplier = continuousLockPointMultiplier_;
+        clPointMultiplier = clPointMultiplier_;
     }
 
     /// EXTERNAL FUNCTIONS ///
@@ -1264,7 +1262,7 @@ contract VeCVE is ERC20 {
         uint256 basePoints
     ) internal view returns (uint256) {
         unchecked {
-            return ((basePoints * continuousLockPointMultiplier) /
+            return ((basePoints * clPointMultiplier) /
                 DENOMINATOR);
         }
     }

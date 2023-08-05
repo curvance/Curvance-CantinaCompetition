@@ -27,11 +27,12 @@ contract GaugePool is GaugeController, ReentrancyGuard {
     }
 
     /// CONSTANTS ///
-    uint256 public constant PRECISION = 1e36;
-    address public immutable lendtroller;
+    uint256 public constant PRECISION = 1e36; // Scalar for math
+    address public immutable lendtroller; // Lendtroller linked
 
     /// STORAGE ///
 
+    // Current child gauges attached to this gauge pool
     ChildGaugePool[] public childGauges;
     mapping(address => PoolInfo) public poolInfo; // token => pool info
     mapping(address => mapping(address => UserInfo)) public userInfo; // token => user => info

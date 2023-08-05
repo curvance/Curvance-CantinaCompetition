@@ -19,27 +19,26 @@ contract Zapper {
 
     /// TYPES ///
 
-    struct zapperData {
-        address inputToken;
-        uint256 inputAmount;
-        address outputToken;
-        uint256 minimumOut;
+    struct ZapperData {
+        address inputToken; // Input token to Zap from
+        uint256 inputAmount; // Input token amount to Zap from
+        address outputToken; // Output token to Zap to
+        uint256 minimumOut; // Minimum token amount acceptable
     }
 
     /// CONSTANTS ///
 
-    uint256 public constant SLIPPAGE = 500;
-    address public constant ETH = address(0);
-    ICentralRegistry public immutable centralRegistry;
-    ILendtroller public immutable lendtroller;
-    address public immutable weth;
+    uint256 public constant SLIPPAGE = 500; // 5% 
+    ILendtroller public immutable lendtroller; // Lendtroller linked
+    address public immutable WETH; // Address of WETH
+    ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
 
     /// CONSTRUCTOR ///
 
     constructor(
         ICentralRegistry centralRegistry_,
         address lendtroller_,
-        address weth_
+        address WETH_
     ) {
         require(
             ERC165Checker.supportsInterface(
@@ -57,7 +56,7 @@ contract Zapper {
         );
 
         lendtroller = ILendtroller(lendtroller_);
-        weth = weth_;
+        WETH = WETH_;
     }
 
     /// EXTERNAL FUNCTIONS ///
@@ -72,7 +71,7 @@ contract Zapper {
     /// @return cTokenOutAmount The output amount received from zapping
     function curveInForCurvance(
         address cToken,
-        zapperData calldata zapData,
+        ZapperData calldata zapData,
         SwapperLib.Swap[] calldata tokenSwaps,
         address lpMinter,
         address[] calldata tokens,
@@ -106,7 +105,7 @@ contract Zapper {
 
     function curveOut(
         address lpMinter,
-        zapperData calldata zapData,
+        ZapperData calldata zapData,
         address[] calldata tokens,
         SwapperLib.Swap[] calldata tokenSwaps,
         address recipient
@@ -148,7 +147,7 @@ contract Zapper {
     /// @return cTokenOutAmount The output amount received from zapping
     function balancerInForCurvance(
         address cToken,
-        zapperData calldata zapData,
+        ZapperData calldata zapData,
         SwapperLib.Swap[] calldata tokenSwaps,
         address balancerVault,
         bytes32 balancerPoolId,
@@ -185,7 +184,7 @@ contract Zapper {
     function balancerOut(
         address balancerVault,
         bytes32 balancerPoolId,
-        zapperData calldata zapData,
+        ZapperData calldata zapData,
         address[] calldata tokens,
         SwapperLib.Swap[] calldata tokenSwaps,
         address recipient
@@ -232,7 +231,7 @@ contract Zapper {
     /// @return cTokenOutAmount The output amount received from zapping
     function velodromeInForCurvance(
         address cToken,
-        zapperData calldata zapData,
+        ZapperData calldata zapData,
         SwapperLib.Swap[] calldata tokenSwaps,
         address router,
         address factory,
@@ -266,7 +265,7 @@ contract Zapper {
 
     function velodromeOut(
         address router,
-        zapperData calldata zapData,
+        ZapperData calldata zapData,
         SwapperLib.Swap[] calldata tokenSwaps,
         address recipient
     ) external returns (uint256 outAmount) {
@@ -311,8 +310,8 @@ contract Zapper {
     ) private {
         if (CommonLib.isETH(inputToken)) {
             require(inputAmount == msg.value, "Zapper: invalid amount");
-            inputToken = weth;
-            IWETH(weth).deposit{ value: inputAmount }(inputAmount);
+            inputToken = WETH;
+            IWETH(WETH).deposit{ value: inputAmount }(inputAmount);
         } else {
             SafeTransferLib.safeTransferFrom(
                 inputToken,

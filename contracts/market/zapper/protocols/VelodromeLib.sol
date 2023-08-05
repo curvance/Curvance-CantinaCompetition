@@ -12,6 +12,7 @@ import { IVeloPairFactory } from "contracts/interfaces/external/velodrome/IVeloP
 import { IVeloPool } from "contracts/interfaces/external/velodrome/IVeloPool.sol";
 
 library VelodromeLib {
+    
     /// @dev Enter Velodrome
     /// @param router The velodrome router address
     /// @param factory The velodrome factory address

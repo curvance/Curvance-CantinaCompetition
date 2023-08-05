@@ -14,62 +14,37 @@ import { IOracleAdaptor, PriceReturnData } from "contracts/interfaces/IOracleAda
 contract PriceRouter {
     /// TYPES ///
 
-    /// @notice Return data from oracle adaptor
-    /// @param price the price of the asset in some asset, either ETH or USD
-    /// @param hadError the message return data, whether the adaptor ran into
-    ///                 trouble pricing the asset
     struct FeedData {
-        uint240 price;
-        bool hadError;
+        uint240 price; // price of the asset in some asset, either ETH or USD
+        bool hadError; // message return data, true if adaptor couldnt price asset
     }
 
     struct MTokenData {
-        bool isMToken;
-        address underlying;
+        bool isMToken; // Whether the provided address is an MToken or not
+        address underlying; // Token address of underlying asset for MToken
     }
 
     /// CONSTANTS ///
 
-    /// @notice Offset for 8 decimal chainlink feeds.
-    uint256 public constant CHAINLINK_DIVISOR = 1e8;
-
-    /// @notice Offset for basis points precision for divergence value.
-    uint256 public constant DENOMINATOR = 10000;
-
-    /// @notice Error code for no error.
-    uint256 public constant NO_ERROR = 0;
-
-    /// @notice Error code for caution.
-    uint256 public constant CAUTION = 1;
-
-    /// @notice Error code for bad source.
-    uint256 public constant BAD_SOURCE = 2;
-
-    /// @notice Address for Curvance DAO registry contract for ownership
-    ///         and location data.
-    ICentralRegistry public immutable centralRegistry;
-
-    /// @notice Address for chainlink feed to convert from eth -> usd
-    ///         or usd -> eth.
-    address public immutable CHAINLINK_ETH_USD;
+    uint256 public constant CHAINLINK_DIVISOR = 1e8; // Chainlink decimal offset
+    uint256 public constant DENOMINATOR = 10000; // Scalar for divergence value
+    uint256 public constant NO_ERROR = 0; // 0 = no error
+    uint256 public constant CAUTION = 1; // 1 = price divergence or 1 missing price
+    uint256 public constant BAD_SOURCE = 2; // 2 = could not price at all
+    address public immutable CHAINLINK_ETH_USD; // Feed to convert ETH -> USD
+    ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
 
     /// STORAGE ///
 
-    /// @notice How wide a divergence between price feeds warrants
-    ///         pausing borrowing.
-    uint256 public PRICEFEED_MAXIMUM_DIVERGENCE = 11000;
+    uint256 public PRICEFEED_MAXIMUM_DIVERGENCE = 11000; // Corresponds to 10%
+    uint256 public CHAINLINK_MAX_DELAY = 1 days; // Maximum chainlink price staleness
 
-    /// @notice Maximum time that a chainlink feed can be stale before
-    ///         we do not trust the value.
-    uint256 public CHAINLINK_MAX_DELAY = 1 days;
 
-    /// @notice Mapping used to track whether or not an address is an Adaptor.
+    /// Address => Adaptor approval status
     mapping(address => bool) public isApprovedAdaptor;
-
-    /// @notice Mapping used to track an assets configured price feeds.
+    /// Address => Price Feed addresses
     mapping(address => address[]) public assetPriceFeeds;
-
-    /// @notice Mapping used to link a collateral token to its underlying asset.
+    /// Address => MToken metadata
     mapping(address => MTokenData) public mTokenAssets;
 
     /// MODIFIERS ///
@@ -90,7 +65,6 @@ contract PriceRouter {
         _;
     }
 
-    // Only callable by Adaptor
     modifier onlyAdaptor() {
         require(isApprovedAdaptor[msg.sender], "PriceRouter: UNAUTHORIZED");
         _;

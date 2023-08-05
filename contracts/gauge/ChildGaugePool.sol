@@ -30,15 +30,15 @@ contract ChildGaugePool is ReentrancyGuard {
 
     /// CONSTANTS ///
 
-    uint256 public constant EPOCH_WINDOW = 2 weeks;
-    uint256 public constant PRECISION = 1e36;
-    ICentralRegistry public immutable centralRegistry;
-    GaugePool public immutable gaugeController;
-    address public immutable rewardToken;
+    uint256 public constant EPOCH_WINDOW = 2 weeks; // VeCVE epoch length
+    uint256 public constant PRECISION = 1e36; // Scalar for math
+    GaugePool public immutable gaugeController; // Gauge Controller linked
+    address public immutable rewardToken; // Token child gauge rewards in
+    ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
 
     /// STORAGE ///
 
-    uint256 public activationTime;
+    uint256 public activationTime; // Child gauge emission start time
     
     // epoch => rewardPerSec
     mapping(uint256 => uint256) public epochRewardPerSec;

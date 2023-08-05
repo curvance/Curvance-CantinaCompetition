@@ -6,20 +6,26 @@ import "../layerzero/OFTV2.sol";
 contract CVE is OFTV2 {
     /// CONSTANTS ///
 
-    uint256 public constant DENOMINATOR = 10000;
+    uint256 public constant DENOMINATOR = 10000; // Scalar for math
+    // Seconds in a month based on 365.2425 days
     uint256 public constant MONTH = 2_629_746;
+    // Timestamp when token was created
     uint256 public immutable tokenGenerationEventTimestamp;
 
-    uint256 public immutable daoTreasuryAllocation;
-    uint256 public immutable callOptionAllocation;
-    uint256 public immutable teamAllocation;
+    uint256 public immutable daoTreasuryAllocation; // 14.5%
+    uint256 public immutable callOptionAllocation; // 3.75%
+    uint256 public immutable teamAllocation; // 13.5%
+    // 3% as veCVE immediately, 10.5% over 4 years
     uint256 public immutable teamAllocationPerMonth;
 
     /// STORAGE ///
 
-    address public teamAddress;
+    address public teamAddress; // Team operating address
+    // Number of DAO treasury tokens minted
     uint256 public daoTreasuryTokensMinted;
+    // Number of Team allocation tokens minted
     uint256 public teamAllocationTokensMinted;
+    // Number of Call Option reserved tokens minted
     uint256 public callOptionTokensMinted;
 
     /// MODIFIERS ///

@@ -6,7 +6,7 @@ import "contracts/layerzero/OFTV2.sol";
 contract CVE is OFTV2 {
     /// CONSTANTS ///
 
-    uint256 public constant DENOMINATOR = 10000;
+    uint256 public constant DENOMINATOR = 10000; // Scalar for math
 
     /// CONSTRUCTOR ///
 

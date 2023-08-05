@@ -12,22 +12,18 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 contract CallOptionCVE is ERC20 {
     /// CONSTANTS ///
 
-    /// @notice Will need to offset to match differential in decimals between
-    ///         strike price vs oracle pricing
-    uint256 public constant denominatorOffset = 1e18;
-
-    ICentralRegistry public immutable centralRegistry;
-    address public immutable cve;
-    address public immutable paymentToken;
-    bytes32 private immutable _name;
-    bytes32 private immutable _symbol;
+    uint256 public constant expScale = 1e18; // Scalar for math
+    address public immutable cve; // CVE contract address
+    address public immutable paymentToken; // Token exercisers pay in
+    bytes32 private immutable _name; // token name metadata
+    bytes32 private immutable _symbol; // token symbol metadata
+    ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
 
     /// STORAGE ///
 
-    uint256 public paymentTokenPerCVE;
-
-    uint256 optionsStartTimestamp;
-    uint256 optionsEndTimestamp;
+    uint256 public paymentTokenPerCVE; // Ratio between payment token and CVE
+    uint256 optionsStartTimestamp; // When options holders can begin exercising
+    uint256 optionsEndTimestamp; // When options holders have until to exercise
 
     /// EVENTS ///
 
@@ -158,7 +154,7 @@ contract CallOptionCVE is ERC20 {
 
         paymentTokenPerCVE =
             (strikePrice / paymentTokenCurrentPrice) /
-            denominatorOffset;
+            expScale;
     }
 
     /// PUBLIC FUNCTIONS ///

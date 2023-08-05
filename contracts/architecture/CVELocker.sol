@@ -20,7 +20,7 @@ contract CVELocker is ReentrancyGuard {
 
     address public constant baseRewardToken =
         0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE; // Reward token; ETH
-    uint256 public constant EPOCH_DURATION = 2 weeks; // VeCVE epoch length
+    uint256 public constant EPOCH_DURATION = 2 weeks; // Protocol epoch length
     uint256 public constant expScale = 1e18; // Scalar for math
     ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
     // @dev `bytes4(keccak256(bytes("CVELocker_Unauthorized()")))`
