@@ -49,12 +49,12 @@ contract CToken is ERC165, ReentrancyGuard {
         ILendtroller newLendtroller
     );
     event ReservesAdded(
-        address benefactor,
+        address daoAddress,
         uint256 addAmount,
         uint256 newTotalReserves
     );
     event ReservesReduced(
-        address admin,
+        address daoAddress,
         uint256 reduceAmount,
         uint256 newTotalReserves
     );
@@ -272,30 +272,32 @@ contract CToken is ERC165, ReentrancyGuard {
     }
 
     /// @notice Adds reserves by transferring from Curvance DAO to the market and depositing to the gauge
-    /// @param addAmount The amount fo underlying token to add as reserves
+    /// @param addAmount The amount of underlying token to add as reserves
     function depositReserves(
         uint256 addAmount
-    ) external nonReentrant onlyElevatedPermissions {
-        // On success, the market will deposit `addAmount` to the gauge pool
+    ) external nonReentrant onlyDaoPermissions {
+        // On success, the market will deposit `addAmount` to the position vault
         totalReserves = totalReserves + doTransferIn(msg.sender, addAmount);
+        // Query current DAO operating address
+        address daoAddress = centralRegistry.daoAddress();
         // Deposit new reserves into gauge
-        GaugePool(gaugePool()).deposit(address(this), msg.sender, addAmount);
+        GaugePool(gaugePool()).deposit(address(this), daoAddress, addAmount);
 
-        emit ReservesAdded(msg.sender, addAmount, totalReserves);
+        emit ReservesAdded(daoAddress, addAmount, totalReserves);
     }
 
     /// @notice Reduces reserves by withdrawing from the gauge and transferring to Curvance DAO
-    /// @param reduceAmount Amount of reduction to reserves
+    /// @dev If daoAddress is going to be moved all reserves should be withdrawn first
+    /// @param reduceAmount Amount of reserves to withdraw
     function withdrawReserves(
         uint256 reduceAmount
-    ) external nonReentrant onlyElevatedPermissions {
+    ) external nonReentrant onlyDaoPermissions {
         // Need underflow check to see if we have sufficient totalReserves
         totalReserves = totalReserves - reduceAmount;
 
         // Query current DAO operating address
-        address payable daoAddress = payable(centralRegistry.daoAddress());
+        address daoAddress = centralRegistry.daoAddress();
         // Withdraw reserves from gauge
-        // Note: If daoAddress is going to be moved all reserves should be withdrawn first
         GaugePool(gaugePool()).withdraw(address(this), daoAddress, reduceAmount);
 
         // doTransferOut reverts if anything goes wrong
