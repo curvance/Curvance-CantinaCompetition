@@ -15,21 +15,14 @@ contract VelodromeStablePositionVault is BasePositionVault {
 
     /// TYPES ///
 
-    /// @param gauge Velodrome Gauge contract
-    /// @param pairFactory Velodrome Pair Factory contract
-    /// @param router Velodrome Router contract
-    /// @param token0 LP first token address
-    /// @param token1 LP second token address
-    /// @param decimalsA token0 decimals
-    /// @param decimalsB token1 decimals
     struct StrategyData {
-        IVeloGauge gauge;
-        IVeloPairFactory pairFactory;
-        IVeloRouter router;
-        address token0;
-        address token1;
-        uint256 decimalsA;
-        uint256 decimalsB;
+        IVeloGauge gauge; // Velodrome Gauge contract
+        IVeloPairFactory pairFactory; // Velodrome Pair Factory contract
+        IVeloRouter router; // Velodrome Router contract
+        address token0; // LP first token address
+        address token1; // LP second token address
+        uint256 decimalsA; // token0 decimals
+        uint256 decimalsB; // token1 decimals
     }
 
     /// CONSTANTS ///
@@ -42,8 +35,7 @@ contract VelodromeStablePositionVault is BasePositionVault {
 
     /// STORAGE ///
 
-    /// @notice Vault Strategy Data
-    StrategyData public strategyData;
+    StrategyData public strategyData; // position vault packed configuration
 
     /// @notice Is an underlying token of the sAMM LP
     mapping(address => bool) public isUnderlyingToken;
@@ -180,7 +172,7 @@ contract VelodromeStablePositionVault is BasePositionVault {
             // update vesting info
             // Cache vest period so we do not need to load it twice
             uint256 _vestPeriod = vestPeriod;
-            _vaultData = _packVaultData(yield.mulDivDown(rewardOffset, _vestPeriod), block.timestamp + _vestPeriod);
+            _vaultData = _packVaultData(yield.mulDivDown(expScale, _vestPeriod), block.timestamp + _vestPeriod);
 
 
             emit Harvest(yield);

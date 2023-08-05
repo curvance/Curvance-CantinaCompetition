@@ -6,7 +6,6 @@ import { ERC4626, SafeTransferLib, ERC20 } from "contracts/libraries/ERC4626.sol
 import { Math } from "contracts/libraries/Math.sol";
 import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 
-import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 
@@ -21,21 +20,21 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
 
     /// TYPES ///
     struct VaultData {
-        uint128 rewardRate;
-        uint64 vestingPeriodEnd;
-        uint64 lastVestClaim;
+        uint128 rewardRate; // The rate that the vault vests fresh rewards
+        uint64 vestingPeriodEnd; // When the current vesting period ends
+        uint64 lastVestClaim; // Last time vesting rewards were claimed
     }
 
     /// CONSTANTS ///
 
-    /// @notice Period newly harvested rewards are vested over
-    ICentralRegistry public immutable centralRegistry;
+    // Period harvested rewards are vested over
     uint256 public constant vestPeriod = 1 days;
-    uint256 internal constant rewardOffset = 1e18;
-    ERC20 private immutable _asset;
-    bytes32 private immutable _name;
-    bytes32 private immutable _symbol;
-    uint8 private immutable _decimals;
+    uint256 internal constant expScale = 1e18;
+    ERC20 private immutable _asset; // underlying asset for the vault
+    bytes32 private immutable _name; // token name metadata
+    bytes32 private immutable _symbol; // token symbol metadata
+    uint8 private immutable _decimals; // vault assets decimals of precision 
+    ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
 
     // Mask of reward rate entry in packed vault data
     uint256 private constant _BITMASK_REWARD_RATE = (1 << 128) - 1;
@@ -54,13 +53,17 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
 
     /// STORAGE ///
 
-    address public cToken;
+    address public cToken; // cToken tied to this position vault
     
     // Internal stored vault accounting
-    uint256 internal _totalAssets;
-    uint256 internal _sharePriceHighWatermark;
-    uint256 internal _vaultData;
-    uint256 internal _vaultIsActive = 1;
+    // Bits Layout:
+    // - [0..127]    `rewardRate`
+    // - [128..191]  `vestingPeriodEnd`
+    // - [192..255] `lastVestClaim`
+    uint256 internal _vaultData; // Packed vault data
+    uint256 internal _totalAssets; // total vault assets minus vesting
+    uint256 internal _sharePriceHighWatermark; // incremented on reward vesting
+    uint256 internal _vaultIsActive = 1; // Vault Status: 2 = active; 1 = inactive
 
     /// EVENTS ///
 
@@ -553,7 +556,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
                             (vaultData.vestingPeriodEnd -
                                 vaultData.lastVestClaim))
                 ) /
-                rewardOffset;
+                expScale;
         }
         // else there are no pending rewards
     }

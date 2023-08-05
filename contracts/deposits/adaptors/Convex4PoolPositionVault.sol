@@ -14,19 +14,13 @@ contract ConvexPositionVault is BasePositionVault {
 
     /// TYPES ///
 
-    /// @param curvePool Curve Pool Address
-    /// @param pid Convex Pool Id
-    /// @param rewarder Convex Rewarder contract
-    /// @param booster Convex Booster contract
-    /// @param rewardTokens Convex reward assets
-    /// @param underlyingTokens Curve LP underlying assets
     struct StrategyData {
-        ICurveFi curvePool;
-        uint256 pid;
-        IBaseRewardPool rewarder;
-        IBooster booster;
-        address[] rewardTokens;
-        address[] underlyingTokens;
+        ICurveFi curvePool; // Curve Pool Address
+        uint256 pid; // Convex Pool Id
+        IBaseRewardPool rewarder; // Convex Rewarder contract
+        IBooster booster; // Convex Booster contract
+        address[] rewardTokens; // Convex reward assets
+        address[] underlyingTokens; // Curve LP underlying assets
     }
 
     /// CONSTANTS ///
@@ -35,10 +29,9 @@ contract ConvexPositionVault is BasePositionVault {
 
     /// STORAGE ///
 
-    /// @notice Vault Strategy Data
-    StrategyData public strategyData;
+    StrategyData public strategyData; // position vault packed configuration
 
-    /// @notice Curve 2Pool LP underlying assets
+    /// @notice Curve 4Pool LP underlying assets
     mapping(address => bool) public isUnderlyingToken;
 
     /// EVENTS ///
@@ -217,7 +210,7 @@ contract ConvexPositionVault is BasePositionVault {
             // update vesting info
             // Cache vest period so we do not need to load it twice
             uint256 _vestPeriod = vestPeriod;
-            _vaultData = _packVaultData(yield.mulDivDown(rewardOffset, _vestPeriod), block.timestamp + _vestPeriod);
+            _vaultData = _packVaultData(yield.mulDivDown(expScale, _vestPeriod), block.timestamp + _vestPeriod);
 
             emit Harvest(yield);
         }

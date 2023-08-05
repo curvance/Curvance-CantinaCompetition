@@ -19,11 +19,11 @@ contract DToken is ERC165, ReentrancyGuard {
     
     /// TYPES ///
 
-    /// @notice Container for borrow balance information
-    /// @member principal Total balance (with accrued interest), after applying the most recent balance-changing action
-    /// @member interestIndex Global borrowIndex as of the most recent balance-changing action
     struct BorrowSnapshot {
+        /// principal total balance (with accrued interest), 
+        /// after applying the most recent balance-changing action
         uint256 principal;
+        /// Global borrowIndex as of the most recent balance-changing action
         uint256 interestIndex;
     }
 
@@ -31,7 +31,7 @@ contract DToken is ERC165, ReentrancyGuard {
 
     uint256 internal constant expScale = 1e18; // Scalar for math
     bool public constant isDToken = true; // for inspection
-    address public immutable underlying; // underlying asset for the CToken
+    address public immutable underlying; // underlying asset for the DToken
     bytes32 private immutable _name; // token name metadata
     bytes32 private immutable _symbol; // token symbol metadata
     ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
@@ -321,16 +321,16 @@ contract DToken is ERC165, ReentrancyGuard {
         );
     }
 
-    /// @notice Sender redeems cTokens in exchange for the underlying asset
+    /// @notice Sender redeems dTokens in exchange for the underlying asset
     /// @dev Accrues interest whether or not the operation succeeds, unless reverted
-    /// @param tokensToRedeem The number of cTokens to redeem into underlying
+    /// @param tokensToRedeem The number of dTokens to redeem into underlying
     function redeem(uint256 tokensToRedeem) external nonReentrant {
         accrueInterest();
 
         _redeem(payable(msg.sender), tokensToRedeem, (exchangeRateStored() * tokensToRedeem) / expScale, payable(msg.sender));
     }
 
-    /// @notice Sender redeems cTokens in exchange for a specified amount of underlying asset
+    /// @notice Sender redeems dTokens in exchange for a specified amount of underlying asset
     /// @dev Accrues interest whether or not the operation succeeds, unless reverted
     /// @param redeemAmount The amount of underlying to redeem
     function redeemUnderlying(uint256 redeemAmount) external nonReentrant {
@@ -372,7 +372,7 @@ contract DToken is ERC165, ReentrancyGuard {
         lendtroller.redeemAllowed(address(this), user, 0);
     }
 
-    /// @notice Sender supplies assets into the market and receives cTokens in exchange
+    /// @notice Sender supplies assets into the market and receives dTokens in exchange
     /// @dev Accrues interest whether or not the operation succeeds, unless reverted
     /// @param mintAmount The amount of the underlying asset to supply
     /// @return bool true=success
@@ -383,7 +383,7 @@ contract DToken is ERC165, ReentrancyGuard {
         return true;
     }
 
-    /// @notice Sender supplies assets into the market and receives cTokens in exchange
+    /// @notice Sender supplies assets into the market and receives dTokens in exchange
     /// @dev Accrues interest whether or not the operation succeeds, unless reverted
     /// @param recipient The recipient address
     /// @param mintAmount The amount of the underlying asset to supply

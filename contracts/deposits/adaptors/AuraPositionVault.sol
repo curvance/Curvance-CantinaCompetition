@@ -16,21 +16,14 @@ contract AuraPositionVault is BasePositionVault {
 
     /// TYPES ///
 
-    /// @param balancerVault Balancer vault contract
-    /// @param balancerPoolId Balancer Pool Id
-    /// @param pid Aura Pool Id
-    /// @param rewarder Aura Rewarder contract
-    /// @param booster Aura Booster contract
-    /// @param rewardTokens Aura reward assets
-    /// @param underlyingTokens Balancer LP underlying assets
     struct StrategyData {
-        IBalancerVault balancerVault;
-        bytes32 balancerPoolId;
-        uint256 pid;
-        IBaseRewardPool rewarder;
-        IBooster booster;
-        address[] rewardTokens;
-        address[] underlyingTokens;
+        IBalancerVault balancerVault; // Balancer vault contract
+        bytes32 balancerPoolId; // Balancer Pool Id
+        uint256 pid; // Aura Pool Id
+        IBaseRewardPool rewarder; // Aura Rewarder contract
+        IBooster booster; // Aura Booster contract
+        address[] rewardTokens; // Aura reward assets
+        address[] underlyingTokens; // Balancer LP underlying assets
     }
 
     /// CONSTANTS ///
@@ -40,8 +33,7 @@ contract AuraPositionVault is BasePositionVault {
 
     /// STORAGE ///
 
-    /// @notice Vault Strategy Data
-    StrategyData public strategyData;
+    StrategyData public strategyData; // position vault packed configuration
 
     /// @notice Is an underlying token of the BPT
     mapping(address => bool) public isUnderlyingToken;
@@ -265,7 +257,7 @@ contract AuraPositionVault is BasePositionVault {
             // update vesting info
             // Cache vest period so we do not need to load it twice
             uint256 _vestPeriod = vestPeriod;
-            _vaultData = _packVaultData(yield.mulDivDown(rewardOffset, _vestPeriod), block.timestamp + _vestPeriod);
+            _vaultData = _packVaultData(yield.mulDivDown(expScale, _vestPeriod), block.timestamp + _vestPeriod);
 
             emit Harvest(yield);
         }

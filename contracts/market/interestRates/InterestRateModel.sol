@@ -7,22 +7,19 @@ import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 contract InterestRateModel {
     /// CONSTANTS ///
 
-    uint256 private constant expScale = 1e18;
     /// Unix time has 31,536,000 seconds per year 
     /// All my homies hate leap seconds and leap years
     uint256 private constant secondsPerYear = 31536000;
-
-    /// @notice Indicator that this is an InterestRateModel contract
-    ///         (for inspection)
-    bool public constant isInterestRateModel = true;
-
-    ICentralRegistry public immutable centralRegistry;
+    uint256 private constant expScale = 1e18; // Scalar for math
+    bool public constant isInterestRateModel = true; // for inspection
+    ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
 
     /// STORAGE ///
 
-    uint256 public multiplierPerSecond;
-    uint256 public jumpMultiplierPerSecond;
-    uint256 public rateCurveKink;
+    uint256 public multiplierPerSecond; // Rate interest grows
+    uint256 public jumpMultiplierPerSecond; // boosted rate interest grows
+    // Utilization rate point when jump multiplier kicks in
+    uint256 public rateCurveKink; 
 
     /// EVENTS ///
 

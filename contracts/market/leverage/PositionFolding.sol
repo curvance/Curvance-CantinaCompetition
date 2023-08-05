@@ -40,7 +40,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
 
     /// CONSTANTS ///
 
-    uint256 public constant MAX_LEVERAGE = 9900; // 0.99
+    uint256 public constant MAX_LEVERAGE = 9900; // 99%
     uint256 public constant DENOMINATOR = 10000;
     uint256 public constant SLIPPAGE = 500;
 

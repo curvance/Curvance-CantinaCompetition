@@ -19,11 +19,10 @@ contract CVELocker is ReentrancyGuard {
     /// CONSTANTS ///
 
     address public constant baseRewardToken =
-        0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
-    uint256 public constant EPOCH_DURATION = 2 weeks;
-    uint256 public constant DENOMINATOR = 10000;
-    uint256 public constant ethPerCVEOffset = 1 ether;
-    ICentralRegistry public immutable centralRegistry;
+        0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE; // Reward token; ETH
+    uint256 public constant EPOCH_DURATION = 2 weeks; // VeCVE epoch length
+    uint256 public constant expScale = 1e18; // Scalar for math
+    ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
     // @dev `bytes4(keccak256(bytes("CVELocker_Unauthorized()")))`
     uint256 internal constant _CVELOCKER_UNAUTHORIZED_SELECTOR = 0xeb83e515;
     // @dev `bytes4(keccak256(bytes("CVELocker_FailedETHTransfer()")))`
@@ -365,7 +364,7 @@ contract CVELocker is ReentrancyGuard {
         unchecked {
             userNextClaimIndex[user] += epochs;
             // Removes the 1e18 offset for proper reward value
-            userRewards = userRewards / ethPerCVEOffset;
+            userRewards = userRewards / expScale;
         }
 
         uint256 rewardAmount = _processRewards(
