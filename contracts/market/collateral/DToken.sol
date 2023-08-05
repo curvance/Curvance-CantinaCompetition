@@ -51,8 +51,6 @@ contract DToken is ERC165, ReentrancyGuard {
     
     ILendtroller public lendtroller;
     InterestRateModel public interestRateModel;
-    /// Initial exchange rate used when minting the first DTokens (used when totalSupply = 0)
-    uint256 internal initialExchangeRate;
     /// @notice Timestamp that interest was last accrued at
     uint256 public accrualBlockTimestamp;
     /// @notice Accumulator of the total earned interest rate since the opening of the market
@@ -161,21 +159,12 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @param underlying_ The address of the underlying asset
     /// @param lendtroller_ The address of the Lendtroller
     /// @param interestRateModel_ The address of the interest rate model
-    /// @param initialExchangeRate_ The initial exchange rate, scaled by 1e18
     constructor(
         ICentralRegistry centralRegistry_,
         address underlying_,
         address lendtroller_,
-        InterestRateModel interestRateModel_,
-        uint256 initialExchangeRate_
+        InterestRateModel interestRateModel_
     ) {
-
-        if (initialExchangeRate_ == 0) {
-            revert DToken_CannotEqualZero();
-        }
-
-        // Set initial exchange rate
-        initialExchangeRate = initialExchangeRate_;
 
         // Ensure that lendtroller parameter is a lendtroller
         if (!ILendtroller(lendtroller_).isLendtroller()) {
@@ -216,8 +205,8 @@ contract DToken is ERC165, ReentrancyGuard {
         _symbol = bytes32(abi.encodePacked("c", IERC20(underlying_).symbol()));
         decimals = IERC20(underlying_).decimals();
 
-        // Sanity check underlying so that we know users will not need to mint anywhere close to balance cap
-        require (IERC20(underlying).totalSupply() < type(uint208).max, "DToken: Underlying token assumptions not met");
+        // Sanity check underlying so that we know users will not need to mint anywhere close to exchange rate of 1e18
+        require (IERC20(underlying).totalSupply() < type(uint232).max, "DToken: Underlying token assumptions not met");
 
     }
 
@@ -703,8 +692,8 @@ contract DToken is ERC165, ReentrancyGuard {
         uint256 _totalSupply = totalSupply;
         if (_totalSupply == 0) {
             // If there are no tokens minted:
-            //  exchangeRate = initialExchangeRate
-            return initialExchangeRate;
+            //  exchangeRate = expScale
+            return expScale;
         } else {
             // Otherwise:
             // exchangeRate = (totalCash + totalBorrows - totalReserves) / totalSupply

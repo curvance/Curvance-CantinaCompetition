@@ -75,8 +75,6 @@ contract CToken is ERC165, ReentrancyGuard {
     /// STORAGE ///
     ILendtroller public lendtroller;
     BasePositionVault public vault;
-    /// @notice Initial exchange rate used when minting the first CTokens (used when totalSupply = 0)
-    uint256 internal initialExchangeRateScaled;
     /// @notice Total amount of reserves of the underlying held in this market
     uint256 public totalReserves;
     /// @notice Total number of tokens in circulation
@@ -110,25 +108,15 @@ contract CToken is ERC165, ReentrancyGuard {
     /// @param centralRegistry_ The address of Curvances Central Registry
     /// @param underlying_ The address of the underlying asset
     /// @param lendtroller_ The address of the Lendtroller
-    /// @param initialExchangeRateScaled_ The initial exchange rate, scaled by 1e18
     /// @param name_ ERC-20 name of this token
     constructor(
         ICentralRegistry centralRegistry_,
         address underlying_,
         address lendtroller_,
         address vault_,
-        uint256 initialExchangeRateScaled_,
         string memory name_,
         string memory symbol_
     ) {
-        
-        if (initialExchangeRateScaled_ == 0) {
-            revert CToken_CannotEqualZero();
-        }
-
-        // Set initial exchange rate
-        initialExchangeRateScaled = initialExchangeRateScaled_;
-        
         // Ensure that lendtroller parameter is a lendtroller
         if (!ILendtroller(lendtroller_).isLendtroller()) {
             revert CToken_ValidationFailed();
@@ -152,6 +140,9 @@ contract CToken is ERC165, ReentrancyGuard {
         _name = bytes32(abi.encodePacked("Curvance collateralized ", name_));
         _symbol = bytes32(abi.encodePacked("c", symbol_));
         decimals = IERC20(underlying_).decimals();
+
+        // Sanity check underlying so that we know users will not need to mint anywhere close to exchange rate of 1e18
+        require (IERC20(underlying).totalSupply() < type(uint232).max, "CToken: Underlying token assumptions not met");
     }
 
     function migrateVault(
@@ -302,6 +293,7 @@ contract CToken is ERC165, ReentrancyGuard {
         // Query current DAO operating address
         address payable daoAddress = payable(centralRegistry.daoAddress());
         // Withdraw reserves from gauge
+        // Note: If daoAddress is going to be moved all reserves should be withdrawn first
         GaugePool(gaugePool()).withdraw(address(this), daoAddress, reduceAmount);
 
         // doTransferOut reverts if anything goes wrong
@@ -461,7 +453,8 @@ contract CToken is ERC165, ReentrancyGuard {
     /// @notice Pull up-to-date exchange rate from the underlying to the CToken
     /// @return Calculated exchange rate scaled by 1e18
     function exchangeRateStored() public view returns (uint256) {
-        return vault.convertToAssets(expScale) / expScale;
+        // If the vault is empty this will default to 1e18 which is what we want
+        return vault.convertToAssets(expScale);
     }
 
     /// @inheritdoc ERC165
