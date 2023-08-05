@@ -207,13 +207,31 @@ contract DToken is ERC165, ReentrancyGuard {
         // Sanity check underlying so that we know users will not need to mint anywhere close to exchange rate of 1e18
         require (IERC20(underlying).totalSupply() < type(uint232).max, "DToken: Underlying token assumptions not met");
 
-        // While we have numerous protective layers against the empty market exploit is impossible
-        // We mint some initial tokens just incase
-        uint256 mintTokens = 42069420;
-        totalSupply = mintTokens;
-        _accountBalance[address(this)] = mintTokens;
-        emit Mint(address(0), mintTokens, mintTokens, address(this));
-        emit Transfer(address(0), address(this), mintTokens);
+    }
+
+    /// @notice Used to initiate a CTokens activity in lendtroller, 
+    ///         this initial mint is a failsafe against the empty market exploit
+    ///         although we protect against it in many ways, better safe than sorry
+    /// @param initializer the account initializing the market 
+    function initiateMarket(address initializer) external nonReentrant returns (bool) {
+        if (msg.sender != address(lendtroller)) {
+            revert DToken_UnauthorizedCaller();
+        }
+
+        uint256 mintAmount = 42069;
+        uint256 actualMintAmount = doTransferIn(initializer, mintAmount);
+        // We do not need to calculate exchange rate here as we will always be the initial depositer
+        // These values should always be zero but we will add them just incase we are re-initiating a market
+        totalSupply = totalSupply + actualMintAmount;
+        _accountBalance[initializer] = _accountBalance[initializer] + actualMintAmount;
+
+        // emit events on gauge pool
+        GaugePool(gaugePool()).deposit(address(this), initializer, actualMintAmount);
+
+        // We emit a Mint event, and a Transfer event
+        emit Mint(initializer, actualMintAmount, actualMintAmount, initializer);
+        emit Transfer(address(this), initializer, 6942069);
+        return true;
     }
 
     /// @notice Transfer `amount` tokens from `msg.sender` to `to`
@@ -696,22 +714,10 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @dev This function does not accrue interest before calculating the exchange rate
     /// @return Calculated exchange rate scaled by 1e18
     function exchangeRateStored() public view returns (uint256) {
-        uint256 _totalSupply = totalSupply;
-        if (_totalSupply == 0) {
-            // If there are no tokens minted:
-            //  exchangeRate = expScale
-            return expScale;
-        } else {
-            // Otherwise:
-            // exchangeRate = (totalCash + totalBorrows - totalReserves) / totalSupply
-            uint256 cashPlusBorrowsMinusReserves = getCash() +
-                totalBorrows -
-                totalReserves;
-            uint256 exchangeRate = (cashPlusBorrowsMinusReserves * expScale) /
-                _totalSupply;
-
-            return exchangeRate;
-        }
+        // We do not need to check for totalSupply = 0,
+        // when we list a market we mint a small amount ourselves
+        // exchangeRate = (totalCash + totalBorrows - totalReserves) / totalSupply
+        return ((getCash() + totalBorrows - totalReserves) * expScale) / totalSupply;
     }
 
     /// @inheritdoc ERC165
@@ -836,20 +842,21 @@ contract DToken is ERC165, ReentrancyGuard {
         uint256 mintAmount   
     ) internal {
         // Fail if mint not allowed
-        lendtroller.mintAllowed(address(this), recipient); //, mintAmount);
+        lendtroller.mintAllowed(address(this), recipient);
 
-        // The function returns the amount actually transferred,
-        // in case of a fee. On success, the dToken holds an additional `actualMintAmount` of cash.
+        // The function returns the amount actually transferred, in case of a fee
+        // On success, the dToken holds an additional `actualMintAmount` of cash
         uint256 actualMintAmount = doTransferIn(user, mintAmount);
 
         // We get the current exchange rate and calculate the number of dTokens to be minted:
         //  mintTokens = actualMintAmount / exchangeRate
         uint256 mintTokens = (actualMintAmount * expScale) / exchangeRateStored();
-        totalSupply = totalSupply + mintTokens;
-
-        /// Calculate their new balance
-        _accountBalance[recipient] = _accountBalance[recipient] + mintTokens;
-
+        unchecked {
+            totalSupply = totalSupply + mintTokens;
+            /// Calculate their new balance
+            _accountBalance[recipient] = _accountBalance[recipient] + mintTokens;
+        }
+        
         // emit events on gauge pool
         GaugePool(gaugePool()).deposit(address(this), recipient, mintTokens);
 

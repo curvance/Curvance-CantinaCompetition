@@ -33,7 +33,10 @@ interface IMToken {
     /// @notice Get a snapshot of the account's balances, and the cached exchange rate
     function getAccountSnapshotPacked(address account) external view returns (accountSnapshot memory);
 
-    /// @notice Total amount of outstanding borrows of the underlying in this market
+    /// @notice Returns the total amount of MToken
+    function totalSupply() external view returns (uint256);
+
+    /// @notice Returns total amount of outstanding borrows of the underlying in this market
     function totalBorrows() external view returns (uint256);
 
     /// @notice Return the borrow balance of account based on stored data
@@ -44,5 +47,7 @@ interface IMToken {
     function lendtroller() external view returns (ILendtroller);
 
     function exchangeRateStored() external view returns (uint256);
+
+    function initiateMarket(address initializer) external returns (bool);
 
 }

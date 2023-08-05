@@ -493,9 +493,11 @@ contract Lendtroller {
         }
 
         IMToken(mToken).tokenType(); // Sanity check to make sure its really a mToken
+        if (IMToken(mToken).totalSupply() == 0) {
+            require(IMToken(mToken).initiateMarket(msg.sender), "lendtroller: Market needs to be initialized");
+        }
 
         MarketToken storage market = marketTokenData[mToken];
-        // We want mTokens to have a default collateralization ratio of 0 and to configure after
         market.isListed = true;
         market.collateralizationRatio = 0;
 

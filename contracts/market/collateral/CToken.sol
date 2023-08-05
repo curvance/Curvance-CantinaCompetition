@@ -146,13 +146,31 @@ contract CToken is ERC165, ReentrancyGuard {
         // Sanity check underlying so that we know users will not need to mint anywhere close to exchange rate of 1e18
         require (IERC20(underlying).totalSupply() < type(uint232).max, "CToken: Underlying token assumptions not met");
 
-        // While we have numerous protective layers against the empty market exploit
-        // We mint some initial tokens just incase
-        uint256 mintTokens = 42069420;
-        totalSupply = mintTokens;
-        _accountBalance[address(this)] = mintTokens;
-        emit Mint(address(0), mintTokens, mintTokens, address(this));
-        emit Transfer(address(0), address(this), mintTokens);
+    }
+
+    /// @notice Used to initiate a CTokens activity in lendtroller, 
+    ///         this initial mint is a failsafe against the empty market exploit
+    ///         although we protect against it in many ways, better safe than sorry
+    /// @param initializer the account initializing the market 
+    function initiateMarket(address initializer) external nonReentrant returns (bool) {
+        if (msg.sender != address(lendtroller)) {
+            revert CToken_UnauthorizedCaller();
+        }
+
+        uint256 mintAmount = 42069;
+        uint256 actualMintAmount = doTransferIn(initializer, mintAmount);
+        // We do not need to calculate exchange rate here as we will always be the initial depositer
+        // These values should always be zero but we will add them just incase we are re-initiating a market
+        totalSupply = totalSupply + actualMintAmount;
+        _accountBalance[initializer] = _accountBalance[initializer] + actualMintAmount;
+
+        // emit events on gauge pool
+        GaugePool(gaugePool()).deposit(address(this), initializer, actualMintAmount);
+
+        // We emit a Mint event, and a Transfer event
+        emit Mint(initializer, actualMintAmount, actualMintAmount, initializer);
+        emit Transfer(address(this), initializer, 6942069);
+        return true;
     }
 
     function migrateVault(
@@ -465,7 +483,8 @@ contract CToken is ERC165, ReentrancyGuard {
     /// @notice Pull up-to-date exchange rate from the underlying to the CToken
     /// @return Calculated exchange rate scaled by 1e18
     function exchangeRateStored() public view returns (uint256) {
-        // If the vault is empty this will default to 1e18 which is what we want
+        // If the vault is empty this will default to 1e18 which is what we want,
+        // plus when we list a market we mint a small amount ourselves
         return vault.convertToAssets(expScale);
     }
 
@@ -535,8 +554,7 @@ contract CToken is ERC165, ReentrancyGuard {
         // Fail if mint not allowed
         lendtroller.mintAllowed(address(this), recipient);
 
-        // Note: The function returns the amount actually received from the positionVault. 
-        //       On success, the cToken holds an additional `actualMintAmount` of cash.
+        // The function returns the amount actually received from the positionVault
         uint256 actualMintAmount = doTransferIn(user, mintAmount);
 
         // We get the current exchange rate and calculate the number of cTokens to be minted:
