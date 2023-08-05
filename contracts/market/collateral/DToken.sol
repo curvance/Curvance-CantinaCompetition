@@ -165,7 +165,6 @@ contract DToken is ERC165, ReentrancyGuard {
         address lendtroller_,
         InterestRateModel interestRateModel_
     ) {
-
         // Ensure that lendtroller parameter is a lendtroller
         if (!ILendtroller(lendtroller_).isLendtroller()) {
             revert DToken_ValidationFailed();

@@ -108,7 +108,9 @@ contract CToken is ERC165, ReentrancyGuard {
     /// @param centralRegistry_ The address of Curvances Central Registry
     /// @param underlying_ The address of the underlying asset
     /// @param lendtroller_ The address of the Lendtroller
-    /// @param name_ ERC-20 name of this token
+    /// @param vault_ The address of the position vault
+    /// @param name_ Name of the CToken
+    /// @param symbol_ Symbol of the CToken
     constructor(
         ICentralRegistry centralRegistry_,
         address underlying_,
