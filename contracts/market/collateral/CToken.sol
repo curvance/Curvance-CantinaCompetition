@@ -27,7 +27,9 @@ contract CToken is ERC165, ReentrancyGuard {
     /// @notice Underlying asset for this CToken
     address public immutable underlying;
 
-    /// @notice Decimals for this CToken
+    /// @notice CToken data
+    bytes32 private immutable _name;
+    bytes32 private immutable _symbol;
     uint8 public immutable decimals;
 
     ICentralRegistry public immutable centralRegistry;
@@ -74,8 +76,6 @@ contract CToken is ERC165, ReentrancyGuard {
     error ReduceReservesCashNotAvailable();
 
     /// STORAGE ///
-    string public name;
-    string public symbol;
     ILendtroller public lendtroller;
     BasePositionVault public vault;
     /// @notice Initial exchange rate used when minting the first CTokens (used when totalSupply = 0)
@@ -152,8 +152,8 @@ contract CToken is ERC165, ReentrancyGuard {
         centralRegistry = centralRegistry_;
         underlying = underlying_;
         vault = BasePositionVault(vault_);
-        name = string(abi.encodePacked("Curvance collateralized ", name_));
-        symbol = string(abi.encodePacked("c", symbol_));
+        _name = bytes32(abi.encodePacked("Curvance collateralized ", name_));
+        _symbol = bytes32(abi.encodePacked("c", symbol_));
         decimals = IERC20(underlying_).decimals();
     }
 
@@ -433,6 +433,16 @@ contract CToken is ERC165, ReentrancyGuard {
     // @dev Returns the balance of tokens for `account`
     function balanceOf(address account) public view returns (uint256) {
         return _accountBalance[account];
+    }
+
+    /// @notice Returns the name of the token
+    function name() public view returns (string memory) {
+        return string(abi.encodePacked(_name));
+    }
+
+    /// @notice Returns the symbol of the token
+    function symbol() public view returns (string memory) {
+        return string(abi.encodePacked(_symbol));
     }
 
     /// @notice Gets balance of this contract in terms of the underlying

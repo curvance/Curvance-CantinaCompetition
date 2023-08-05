@@ -41,13 +41,14 @@ contract DToken is ERC165, ReentrancyGuard {
     address public immutable underlying;
 
     /// @notice Decimals for this DToken
+    bytes32 private immutable _name;
+    bytes32 private immutable _symbol;
     uint8 public immutable decimals;
 
     ICentralRegistry public immutable centralRegistry;
 
     /// STORAGE ///
-    string public name;
-    string public symbol;
+    
     ILendtroller public lendtroller;
     InterestRateModel public interestRateModel;
     /// Initial exchange rate used when minting the first DTokens (used when totalSupply = 0)
@@ -220,8 +221,8 @@ contract DToken is ERC165, ReentrancyGuard {
 
         centralRegistry = centralRegistry_;
         underlying = underlying_;
-        name = string(abi.encodePacked("Curvance interest bearing ", IERC20(underlying_).name()));
-        symbol = string(abi.encodePacked("c", IERC20(underlying_).symbol()));
+        _name = bytes32(abi.encodePacked("Curvance interest bearing ", IERC20(underlying_).name()));
+        _symbol = bytes32(abi.encodePacked("c", IERC20(underlying_).symbol()));
         decimals = IERC20(underlying_).decimals();
 
         // Sanity check underlying so that we know users will not need to mint anywhere close to balance cap
@@ -661,6 +662,16 @@ contract DToken is ERC165, ReentrancyGuard {
         // recentBorrowBalance = borrower.borrowBalance * market.borrowIndex / borrower.borrowIndex
         uint256 principalTimesIndex = borrowSnapshot.principal * borrowIndex;
         return principalTimesIndex / borrowSnapshot.interestIndex;
+    }
+
+    /// @notice Returns the name of the token
+    function name() public view returns (string memory) {
+        return string(abi.encodePacked(_name));
+    }
+
+    /// @notice Returns the symbol of the token
+    function symbol() public view returns (string memory) {
+        return string(abi.encodePacked(_symbol));
     }
 
     /// @notice Gets balance of this contract in terms of the underlying
