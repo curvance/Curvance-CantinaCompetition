@@ -207,6 +207,13 @@ contract DToken is ERC165, ReentrancyGuard {
         // Sanity check underlying so that we know users will not need to mint anywhere close to exchange rate of 1e18
         require (IERC20(underlying).totalSupply() < type(uint232).max, "DToken: Underlying token assumptions not met");
 
+        // While we have numerous protective layers against the empty market exploit is impossible
+        // We mint some initial tokens just incase
+        uint256 mintTokens = 42069420;
+        totalSupply = mintTokens;
+        _accountBalance[address(this)] = mintTokens;
+        emit Mint(address(0), mintTokens, mintTokens, address(this));
+        emit Transfer(address(0), address(this), mintTokens);
     }
 
     /// @notice Transfer `amount` tokens from `msg.sender` to `to`
