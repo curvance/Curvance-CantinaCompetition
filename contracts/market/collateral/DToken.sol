@@ -16,7 +16,6 @@ import { IMToken, accountSnapshot } from "contracts/interfaces/market/IMToken.so
 
 /// @title Curvance's Debt Token Contract
 contract DToken is ERC165, ReentrancyGuard {
-    
     /// TYPES ///
 
     struct BorrowSnapshot {

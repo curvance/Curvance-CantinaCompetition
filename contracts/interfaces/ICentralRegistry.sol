@@ -36,9 +36,6 @@ interface ICentralRegistry {
     /// @notice Returns Price Router Address
     function priceRouter() external view returns (address);
 
-    /// @notice Returns Deposit Router Address
-    function depositRouter() external view returns (address);
-
     /// @notice Returns ZRO Payment Address
     function zroAddress() external view returns (address);
 
@@ -66,14 +63,14 @@ interface ICentralRegistry {
     /// @notice Returns protocolInterestRateFee Address
     function protocolInterestRateFee() external view returns (uint256);
 
+    /// @notice Returns earlyUnlockPenaltyValue value in basis point form
+    function earlyUnlockPenaltyValue() external view returns (uint256);
+
     /// @notice Returns voteBoostValue value in basis point form
     function voteBoostValue() external view returns (uint256);
 
     /// @notice Returns lockBoostValue value in basis point form
     function lockBoostValue() external view returns (uint256);
-
-    /// @notice Returns earlyUnlockPenaltyValue value in basis point form
-    function earlyUnlockPenaltyValue() external view returns (uint256);
 
     /// @notice Returns whether the inputted address is an approved zapper
     function approvedZapper(address _address) external view returns (bool);

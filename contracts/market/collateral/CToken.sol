@@ -16,7 +16,6 @@ import { IMToken, accountSnapshot } from "contracts/interfaces/market/IMToken.so
 
 /// @title Curvance's Collateral Token Contract
 contract CToken is ERC165, ReentrancyGuard {
-
     /// CONSTANTS ///
 
     uint256 internal constant expScale = 1e18; // Scalar for math

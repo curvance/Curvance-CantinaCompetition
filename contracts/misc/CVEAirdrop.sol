@@ -9,7 +9,6 @@ import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 contract CVEAirdrop is ReentrancyGuard {
-
     /// CONSTANTS ///
     
     // Time by which users must claim their airdrop

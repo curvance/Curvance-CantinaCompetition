@@ -7,44 +7,41 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 contract CentralRegistry is ICentralRegistry, ERC165 {
     /// CONSTANTS ///
 
-    uint256 public constant DENOMINATOR = 10000;
-    uint256 public immutable genesisEpoch;
+    uint256 public constant DENOMINATOR = 10000; // Scalar for math
+    uint256 public immutable genesisEpoch; // Genesis Epoch timestamp
 
     /// STORAGE ///
 
     // DAO GOVERNANCE OPERATORS
-
-    /// @notice DAO multisig, for day to day operations
-    address public daoAddress;
-    /// @notice DAO multisig, on a time delay for dangerous permissions
-    address public timelock;
-    /// @notice  Multi-protocol multisig, only to be used during protocol threatening emergencies
-    address public emergencyCouncil;
+    address public daoAddress; // DAO multisig
+    address public timelock; // DAO multisig, with time delay
+    address public emergencyCouncil; // Multi-protocol multisig, for emergencies
 
     // CURVANCE TOKEN CONTRACTS
-    address public CVE;
-    address public veCVE;
-    address public callOptionCVE;
+    address public CVE; // CVE contract address
+    address public veCVE; // veCVE contract address
+    address public callOptionCVE; // CVE Call Option contract address
 
     // DAO CONTRACTS DATA
-    address public cveLocker;
-    address public protocolMessagingHub;
-    address public priceRouter;
-    address public depositRouter;
-    address public zroAddress;
-    address public feeAccumulator;
-    address public feeHub;
+    address public cveLocker; // CVE Locker contract address
+    address public protocolMessagingHub; // Protocol Messaging Hub contract address
+    address public priceRouter; // Price Router contract address
+    address public zroAddress; // ZRO contract address for layerzero
+    address public feeAccumulator; // Fee Accumulator contract address
+    address public feeHub; // Fee Hub contract address
 
-    // PROTOCOL VALUES
-    uint256 public protocolCompoundFee = 100 * 1e14;
-    uint256 public protocolYieldFee = 1500 * 1e14;
+    // PROTOCOL VALUES in `DENOMINATOR`
+    uint256 public protocolCompoundFee = 100 * 1e14; // Fee for compounding position vaults
+    uint256 public protocolYieldFee = 1500 * 1e14; // Fee on yield in position vaults
+    // Joint fee so that we can minimize an external call in position vault contracts
     uint256 public protocolHarvestFee = protocolCompoundFee + protocolYieldFee;
-    uint256 public protocolLiquidationFee = 250;
-    uint256 public protocolLeverageFee;
-    uint256 public protocolInterestRateFee;
-    uint256 public voteBoostValue;
-    uint256 public lockBoostValue;
-    uint256 public earlyUnlockPenaltyValue;
+    uint256 public protocolLiquidationFee = 250; // Protocol Reserve Share on liquidation
+    uint256 public protocolLeverageFee; // Protocol Fee on leveraging
+    uint256 public protocolInterestRateFee; // Protocol Reserve Share on Interest Rates
+    uint256 public earlyUnlockPenaltyValue; // Penalty Fee for unlocking from veCVE early
+    uint256 public voteBoostValue; // Voting power bonus for Continuous Lock Mode
+    uint256 public lockBoostValue; // Rewards bonus for Continuous Lock Mode
+    
 
     // DAO PERMISSION DATA
     mapping(address => bool) public hasDaoPermissions;
@@ -212,14 +209,6 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
         priceRouter = newPriceRouter;
     }
 
-    /// @notice Sets a new deposit router contract address
-    /// @dev Only callable on a 7 day delay or by the Emergency Council
-    function setDepositRouter(
-        address newDepositRouter
-    ) external onlyElevatedPermissions {
-        depositRouter = newDepositRouter;
-    }
-
     /// @notice Sets a new ZRO contract address
     /// @dev Only callable on a 7 day delay or by the Emergency Council
     function setZroAddress(
@@ -314,6 +303,20 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
         protocolInterestRateFee = value * 1e14;
     }
 
+    /// @notice Sets the early unlock penalty value for when users want to
+    ///         unlock their veCVE early
+    /// @dev Only callable on a 7 day delay or by the Emergency Council,
+    ///      must be between 30% and 90%
+    function setEarlyUnlockPenaltyValue(
+        uint256 value
+    ) external onlyElevatedPermissions {
+        require(
+            (value >= 3000 && value <= 9000) || value == 0,
+            "CentralRegistry: invalid parameter"
+        );
+        earlyUnlockPenaltyValue = value;
+    }
+
     /// @notice Sets the voting power boost received by locks using
     ///         Continuous Lock mode
     /// @dev Only callable on a 7 day delay or by the Emergency Council,
@@ -340,20 +343,6 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
             "CentralRegistry: invalid parameter"
         );
         lockBoostValue = value;
-    }
-
-    /// @notice Sets the early unlock penalty value for when users want to
-    ///         unlock their veCVE early
-    /// @dev Only callable on a 7 day delay or by the Emergency Council,
-    ///      must be between 30% and 90%
-    function setEarlyUnlockPenaltyValue(
-        uint256 value
-    ) external onlyElevatedPermissions {
-        require(
-            (value >= 3000 && value <= 9000) || value == 0,
-            "CentralRegistry: invalid parameter"
-        );
-        earlyUnlockPenaltyValue = value;
     }
 
     /// OWNERSHIP LOGIC

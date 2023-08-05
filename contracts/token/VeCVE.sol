@@ -23,6 +23,7 @@ contract VeCVE is ERC20 {
     IDelegateRegistry public constant snapshot =
         IDelegateRegistry(0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446);
 
+    // Timestamp `unlockTime` will be set to when a lock is on continuous lock (CL) mode
     uint40 public constant CONTINUOUS_LOCK_VALUE = type(uint40).max;
     uint256 public constant EPOCH_DURATION = 2 weeks; // Protocol epoch length
     uint256 public constant LOCK_DURATION_EPOCHS = 26; // in epochs
@@ -44,7 +45,7 @@ contract VeCVE is ERC20 {
     
     /// STORAGE ///
 
-    uint256 public isShutdown = 1;// 1 = active; 2 = shutdown
+    uint256 public isShutdown = 1; // 1 = active; 2 = shutdown
 
     // User => Array of VeCVE locks
     mapping(address => Lock[]) public userLocks;
