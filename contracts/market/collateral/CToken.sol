@@ -67,13 +67,10 @@ contract CToken is ERC165, ReentrancyGuard {
 
     /// ERRORS ///
 
-    error FailedNotFromPositionFolding();
-    error CannotEqualZero();
-    error TransferNotAllowed();
-    error RedeemTransferOutNotPossible();
-    error SelfLiquidationNotAllowed();
-    error LendtrollerMismatch();
-    error ReduceReservesCashNotAvailable();
+    error CToken_UnauthorizedCaller();
+    error CToken_CannotEqualZero();
+    error CToken_TransferNotAllowed();
+    error CToken_ValidationFailed();
 
     /// STORAGE ///
     ILendtroller public lendtroller;
@@ -126,7 +123,7 @@ contract CToken is ERC165, ReentrancyGuard {
     ) {
         
         if (initialExchangeRateScaled_ == 0) {
-            revert CannotEqualZero();
+            revert CToken_CannotEqualZero();
         }
 
         // Set initial exchange rate
@@ -134,7 +131,7 @@ contract CToken is ERC165, ReentrancyGuard {
         
         // Ensure that lendtroller parameter is a lendtroller
         if (!ILendtroller(lendtroller_).isLendtroller()) {
-            revert LendtrollerMismatch();
+            revert CToken_ValidationFailed();
         }
 
         // Set the lendtroller
@@ -260,7 +257,7 @@ contract CToken is ERC165, ReentrancyGuard {
         bytes calldata params
     ) external nonReentrant {
         if (msg.sender != lendtroller.positionFolding()) {
-            revert FailedNotFromPositionFolding();
+            revert CToken_UnauthorizedCaller();
         }
 
         _redeem(
@@ -288,6 +285,8 @@ contract CToken is ERC165, ReentrancyGuard {
     ) external nonReentrant onlyElevatedPermissions {
         // On success, the market will deposit `addAmount` to the gauge pool
         totalReserves = totalReserves + doTransferIn(msg.sender, addAmount);
+        // Deposit new reserves into gauge
+        GaugePool(gaugePool()).deposit(address(this), msg.sender, addAmount);
 
         emit ReservesAdded(msg.sender, addAmount, totalReserves);
     }
@@ -297,18 +296,15 @@ contract CToken is ERC165, ReentrancyGuard {
     function withdrawReserves(
         uint256 reduceAmount
     ) external nonReentrant onlyElevatedPermissions {
-        // Make sure we have enough cash to cover withdrawal
-        if (getCash() < reduceAmount) {
-            revert ReduceReservesCashNotAvailable();
-        }
-
         // Need underflow check to see if we have sufficient totalReserves
         totalReserves = totalReserves - reduceAmount;
 
         // Query current DAO operating address
         address payable daoAddress = payable(centralRegistry.daoAddress());
+        // Withdraw reserves from gauge
+        GaugePool(gaugePool()).withdraw(address(this), daoAddress, reduceAmount);
 
-        // doTransferOut reverts if anything goes wrong, since we can't be sure if side effects occurred.
+        // doTransferOut reverts if anything goes wrong
         doTransferOut(daoAddress, reduceAmount);
 
         emit ReservesReduced(daoAddress, reduceAmount, totalReserves);
@@ -367,7 +363,7 @@ contract CToken is ERC165, ReentrancyGuard {
     ) external onlyElevatedPermissions {
         // Ensure we are switching to an actual lendtroller
         if (!newLendtroller.isLendtroller()) {
-            revert LendtrollerMismatch();
+            revert CToken_ValidationFailed();
         }
 
         // Cache the current lendtroller to save gas
@@ -445,13 +441,6 @@ contract CToken is ERC165, ReentrancyGuard {
         return string(abi.encodePacked(_symbol));
     }
 
-    /// @notice Gets balance of this contract in terms of the underlying
-    /// @dev This excludes changes in underlying token balance by the current transaction, if any
-    /// @return The quantity of underlying tokens owned by this contract
-    function getCash() public view returns (uint256) {
-        return IERC20(underlying).balanceOf(address(this));
-    }
-
     /// @notice Returns the type of Curvance token, 1 = Collateral, 0 = Debt
     function tokenType() public pure returns (uint256) {
         return 1;
@@ -475,6 +464,15 @@ contract CToken is ERC165, ReentrancyGuard {
         return vault.convertToAssets(expScale) / expScale;
     }
 
+    /// @inheritdoc ERC165
+    function supportsInterface(
+        bytes4 interfaceId
+    ) public view override returns (bool) {
+        return
+            interfaceId == type(IMToken).interfaceId ||
+            super.supportsInterface(interfaceId);
+    }
+
     /// @notice Transfer `tokens` tokens from `from` to `to` by `spender` internally
     /// @dev Called by both `transfer` and `transferFrom` internally
     /// @param spender The address of the account performing the transfer
@@ -490,7 +488,7 @@ contract CToken is ERC165, ReentrancyGuard {
 
         // Do not allow self-transfers
         if (from == to) {
-            revert TransferNotAllowed();
+            revert CToken_TransferNotAllowed();
         }
 
         // Fails if transfer not allowed
@@ -565,9 +563,9 @@ contract CToken is ERC165, ReentrancyGuard {
         uint256 redeemAmount,
         address payable recipient
     ) internal {
-        // Check if we have enough cash to support the redeem
-        if (getCash() < redeemAmount) {
-            revert RedeemTransferOutNotPossible();
+        // Validate redemption parameters
+        if (redeemTokens == 0 && redeemAmount > 0) {
+            revert CToken_CannotEqualZero();
         }
 
         // Need to shift bits by timestamp length to make sure we do a proper underflow check
@@ -591,11 +589,6 @@ contract CToken is ERC165, ReentrancyGuard {
         // We emit a Transfer event, and a Redeem event
         emit Transfer(redeemer, address(this), redeemTokens);
         emit Redeem(redeemer, redeemAmount, redeemTokens);
-
-        // We call the defense hook
-        if (redeemTokens == 0 && redeemAmount > 0) {
-            revert CannotEqualZero();
-        }
     }
 
     /// @notice Transfers collateral tokens (this market) to the liquidator.
@@ -612,8 +605,12 @@ contract CToken is ERC165, ReentrancyGuard {
     ) internal {
 
         // Fails if borrower = liquidator
-        if (borrower == liquidator) {
-            revert SelfLiquidationNotAllowed();
+        assembly {
+            if eq(borrower, liquidator){
+                // revert with CToken_UnauthorizedCaller()
+                mstore(0x00, 0xb856b3fe)
+                revert(0x1c, 0x04)
+            }
         }
 
         // Fails if seize not allowed
@@ -688,14 +685,5 @@ contract CToken is ERC165, ReentrancyGuard {
 
         /// SafeTransferLib will handle reversion from insufficient cash held
         SafeTransferLib.safeTransfer(underlying, to, amount);
-    }
-
-    /// @inheritdoc ERC165
-    function supportsInterface(
-        bytes4 interfaceId
-    ) public view override returns (bool) {
-        return
-            interfaceId == type(IMToken).interfaceId ||
-            super.supportsInterface(interfaceId);
     }
 }

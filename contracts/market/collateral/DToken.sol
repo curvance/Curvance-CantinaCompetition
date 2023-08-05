@@ -132,21 +132,12 @@ contract DToken is ERC165, ReentrancyGuard {
 
     /// ERRORS ///
 
-    error DToken_InvalidSeizeTokenType();
-    error InvalidUnderlying();
-    error TransferFailure();
-    error ActionFailure();
-    error AddressUnauthorized();
-    error FailedNotFromPositionFolding();
-    error CannotEqualZero();
-    error ExcessiveValue();
-    error TransferNotAllowed();
-    error RedeemTransferOutNotPossible();
-    error BorrowCashNotAvailable();
-    error SelfLiquidationNotAllowed();
-    error LendtrollerMismatch();
-    error ValidationFailed();
-    error ReduceReservesCashNotAvailable();
+    error DToken_UnauthorizedCaller();
+    error DToken_CannotEqualZero();
+    error DToken_ExcessiveValue();
+    error DToken_TransferNotAllowed();
+    error DToken_CashNotAvailable();
+    error DToken_ValidationFailed();
 
     /// MODIFIERS ///
 
@@ -180,7 +171,7 @@ contract DToken is ERC165, ReentrancyGuard {
     ) {
 
         if (initialExchangeRate_ == 0) {
-            revert CannotEqualZero();
+            revert DToken_CannotEqualZero();
         }
 
         // Set initial exchange rate
@@ -188,7 +179,7 @@ contract DToken is ERC165, ReentrancyGuard {
 
         // Ensure that lendtroller parameter is a lendtroller
         if (!ILendtroller(lendtroller_).isLendtroller()) {
-            revert LendtrollerMismatch();
+            revert DToken_ValidationFailed();
         }
 
         // Set the lendtroller
@@ -201,7 +192,7 @@ contract DToken is ERC165, ReentrancyGuard {
 
         // Ensure that interestRateModel_ parameter is an interest rate model
         if (!interestRateModel_.isInterestRateModel()) {
-            revert ValidationFailed();
+            revert DToken_ValidationFailed();
         }
 
         // Set Interest Rate Model
@@ -276,7 +267,7 @@ contract DToken is ERC165, ReentrancyGuard {
         bytes calldata params
     ) external nonReentrant {
         if (msg.sender != lendtroller.positionFolding()) {
-            revert FailedNotFromPositionFolding();
+            revert DToken_UnauthorizedCaller();
         }
 
         accrueInterest();
@@ -307,7 +298,7 @@ contract DToken is ERC165, ReentrancyGuard {
     function repayForPositionFolding(address user, uint256 repayAmount) external nonReentrant {
 
         if (msg.sender != lendtroller.positionFolding()) {
-            revert FailedNotFromPositionFolding();
+            revert DToken_UnauthorizedCaller();
         }
 
         accrueInterest();
@@ -368,7 +359,7 @@ contract DToken is ERC165, ReentrancyGuard {
     ) external nonReentrant {
 
         if (msg.sender != lendtroller.positionFolding()) {
-            revert FailedNotFromPositionFolding();
+            revert DToken_UnauthorizedCaller();
         }
 
         accrueInterest();
@@ -421,6 +412,8 @@ contract DToken is ERC165, ReentrancyGuard {
         // On success, the cToken holds an additional addAmount of cash.
         // it returns the amount actually transferred, in case of a fee.
         totalReserves = totalReserves + doTransferIn(msg.sender, addAmount);
+        // Deposit new reserves into gauge
+        GaugePool(gaugePool()).deposit(address(this), msg.sender, addAmount);
 
         emit ReservesAdded(msg.sender, addAmount, totalReserves);
     }
@@ -434,7 +427,7 @@ contract DToken is ERC165, ReentrancyGuard {
 
         // Make sure we have enough cash to cover withdrawal
         if (getCash() < reduceAmount) {
-            revert ReduceReservesCashNotAvailable();
+            revert DToken_CashNotAvailable();
         }
 
         // Need underflow check to check if we have sufficient totalReserves
@@ -442,6 +435,8 @@ contract DToken is ERC165, ReentrancyGuard {
 
         // Query current DAO operating address
         address payable daoAddress = payable(centralRegistry.daoAddress());
+        // Withdraw reserves from gauge
+        GaugePool(gaugePool()).withdraw(address(this), daoAddress, reduceAmount);
 
         // doTransferOut reverts if anything goes wrong, since we can't be sure if side effects occurred.
         doTransferOut(daoAddress, reduceAmount);
@@ -513,7 +508,7 @@ contract DToken is ERC165, ReentrancyGuard {
     ) external onlyElevatedPermissions {
         // Ensure we are switching to an actual lendtroller
         if (!newLendtroller.isLendtroller()) {
-            revert LendtrollerMismatch();
+            revert DToken_ValidationFailed();
         }
 
         // Cache the current lendtroller to save gas
@@ -535,7 +530,7 @@ contract DToken is ERC165, ReentrancyGuard {
 
         // Ensure we are switching to an actual Interest Rate Model
         if (!newInterestRateModel.isInterestRateModel()) {
-            revert ValidationFailed();
+            revert DToken_ValidationFailed();
         }
         
         // Cache the current interest rate model to save gas
@@ -649,19 +644,17 @@ contract DToken is ERC165, ReentrancyGuard {
     function borrowBalanceStored(
         address account
     ) public view returns (uint256) {
-        // Get borrowBalance and borrowIndex
+        // Cache borrow data to save gas
         BorrowSnapshot storage borrowSnapshot = accountBorrows[account];
 
-        // If borrowBalance = 0 then borrowIndex is likely also 0.
-        // Rather than failing the calculation with a division by 0, we immediately return 0 in this case.
+        // If borrowBalance = 0 then borrowIndex is likely also 0
         if (borrowSnapshot.principal == 0) {
             return 0;
         }
 
         // Calculate new borrow balance using the interest index:
-        // recentBorrowBalance = borrower.borrowBalance * market.borrowIndex / borrower.borrowIndex
-        uint256 principalTimesIndex = borrowSnapshot.principal * borrowIndex;
-        return principalTimesIndex / borrowSnapshot.interestIndex;
+        // borrowBalanceStored = borrower.principal * DToken.borrowIndex / borrower.interestIndex
+        return (borrowSnapshot.principal * borrowIndex) / borrowSnapshot.interestIndex;
     }
 
     /// @notice Returns the name of the token
@@ -725,6 +718,15 @@ contract DToken is ERC165, ReentrancyGuard {
         }
     }
 
+    /// @inheritdoc ERC165
+    function supportsInterface(
+        bytes4 interfaceId
+    ) public view override returns (bool) {
+        return
+            interfaceId == type(IMToken).interfaceId ||
+            super.supportsInterface(interfaceId);
+    }
+
     /// @notice Applies accrued interest to total borrows and reserves
     /// @dev This calculates interest accrued from the last checkpointed second
     ///   up to the current second and writes new checkpoint to storage.
@@ -750,7 +752,7 @@ contract DToken is ERC165, ReentrancyGuard {
             reservesPrior
         );
         if (borrowRateMaxScaled < borrowRateScaled) {
-            revert ExcessiveValue();
+            revert DToken_ExcessiveValue();
         }
 
         // Calculate the interest accumulated into borrows and reserves and the new index:
@@ -799,7 +801,7 @@ contract DToken is ERC165, ReentrancyGuard {
         
         // Do not allow self-transfers
         if (from == to) {
-            revert TransferNotAllowed();
+            revert DToken_TransferNotAllowed();
         }
 
         // Fails if transfer not allowed
@@ -875,7 +877,12 @@ contract DToken is ERC165, ReentrancyGuard {
 
         // Check if we have enough cash to support the redeem
         if (getCash() < redeemAmount) {
-            revert RedeemTransferOutNotPossible();
+            revert DToken_CashNotAvailable();
+        }
+
+        // Validate redemption parameters
+        if (redeemTokens == 0 && redeemAmount > 0) {
+            revert DToken_CannotEqualZero();
         }
 
         _accountBalance[redeemer] = _accountBalance[redeemer] - redeemTokens;
@@ -895,10 +902,7 @@ contract DToken is ERC165, ReentrancyGuard {
         emit Transfer(redeemer, address(this), redeemTokens);
         emit Redeem(redeemer, redeemAmount, redeemTokens);
 
-        // We call the defense hook
-        if (redeemTokens == 0 && redeemAmount > 0) {
-            revert CannotEqualZero();
-        }
+        
     }
 
     /// @notice Users borrow assets from the protocol to their own address
@@ -911,7 +915,7 @@ contract DToken is ERC165, ReentrancyGuard {
 
         // Check if we have enough cash to support the borrow
         if (getCash() < borrowAmount) {
-            revert BorrowCashNotAvailable();
+            revert DToken_CashNotAvailable();
         }
 
         // We calculate the new borrower and total borrow balances, failing on overflow:
@@ -987,13 +991,17 @@ contract DToken is ERC165, ReentrancyGuard {
     ) internal {
 
         // Fail if borrower = liquidator
-        if (borrower == liquidator) {
-            revert SelfLiquidationNotAllowed();
+        assembly {
+            if eq(borrower, liquidator){
+                // revert with DToken_UnauthorizedCaller()
+                mstore(0x00, 0xefeae624)
+                revert(0x1c, 0x04)
+            }
         }
 
         /// The MToken must be a collateral token E.G. tokenType == 1
         if (mTokenCollateral.tokenType() == 0) {
-            revert DToken_InvalidSeizeTokenType();
+            revert DToken_ValidationFailed();
         }
 
         // Fail if liquidate not allowed, 
@@ -1021,7 +1029,7 @@ contract DToken is ERC165, ReentrancyGuard {
 
         // Revert if borrower collateral token balance < seizeTokens
         if (mTokenCollateral.balanceOf(borrower) < seizeTokens) {
-            revert ExcessiveValue();
+            revert DToken_ExcessiveValue();
         }
 
         // We check above that the mToken must be a collateral token, 
@@ -1076,15 +1084,5 @@ contract DToken is ERC165, ReentrancyGuard {
             to,
             amount
         );
-
-    }
-
-    /// @inheritdoc ERC165
-    function supportsInterface(
-        bytes4 interfaceId
-    ) public view override returns (bool) {
-        return
-            interfaceId == type(IMToken).interfaceId ||
-            super.supportsInterface(interfaceId);
     }
 }
