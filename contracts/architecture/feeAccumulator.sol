@@ -308,6 +308,25 @@ contract FeeAccumulator is ReentrancyGuard {
         rewardTokenInfo[newToken] = RewardToken({isRewardToken: 2, forOTC: 1});
     }
 
+    /// @notice Retrieves the balances of all reward tokens currently held by the Fee Accumulator
+    /// @return tokenBalances An array of uint256 values,
+    ///         representing the current balances of each reward token
+    function getRewardTokenBalances() external view returns (uint256[] memory) {
+        address[] memory currentTokens = rewardTokens;
+        uint256 rewardTokenLength = currentTokens.length;
+        uint256[] memory tokenBalances = new uint256[](rewardTokenLength);
+
+        for (uint256 i; i < rewardTokenLength;) {
+            tokenBalances[i] = IERC20(currentTokens[i]).balanceOf(address(this));
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        return tokenBalances;
+    }
+
     /// @notice Distributes the specified amount of ETH to
     ///         the recipient address
     /// @dev Has reEntry protection via multiSwap/daoOTC
