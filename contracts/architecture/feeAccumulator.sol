@@ -45,7 +45,7 @@ contract FeeAccumulator is ReentrancyGuard {
 
     modifier onlyHarvestor() {
         require(
-            centralRegistry.harvester(msg.sender),
+            centralRegistry.isHarvester(msg.sender),
             "FeeAccumulator: UNAUTHORIZED"
         );
         _;
