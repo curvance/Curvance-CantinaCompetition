@@ -149,8 +149,8 @@ contract TestBaseMarket is TestBase {
             _BALANCER_WETH_RETH,
             address(lendtroller),
             vault,
-            _ONE,
-            "cBAL-WETH-RETH"
+            "cBAL-WETH-RETH",
+            "cBAL-ETHPAIR"
         );
     }
 
