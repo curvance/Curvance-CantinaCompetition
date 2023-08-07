@@ -14,12 +14,15 @@ contract VeCVEDeploymentTest is TestBaseVeCVE {
     function test_veCVEDeployment_success() public {
         veCVE = new VeCVE(ICentralRegistry(address(centralRegistry)), 0);
 
-        assertEq(veCVE.name(), "Vote Escrowed CVE");
-        assertEq(veCVE.symbol(), "VeCVE");
+        assertEq(
+            veCVE.name(),
+            string(abi.encodePacked(bytes32("Vote Escrowed CVE")))
+        );
+        assertEq(veCVE.symbol(), string(abi.encodePacked(bytes32("VeCVE"))));
         assertEq(address(veCVE.centralRegistry()), address(centralRegistry));
         assertEq(veCVE.genesisEpoch(), centralRegistry.genesisEpoch());
         assertEq(veCVE.cve(), centralRegistry.CVE());
         assertEq(address(veCVE.cveLocker()), centralRegistry.cveLocker());
-        assertEq(veCVE.continuousLockPointMultiplier(), 0);
+        assertEq(veCVE.clPointMultiplier(), 0);
     }
 }

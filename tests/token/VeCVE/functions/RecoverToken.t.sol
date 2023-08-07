@@ -7,8 +7,6 @@ import { VeCVE } from "contracts/token/VeCVE.sol";
 import { TestBaseVeCVE } from "../TestBaseVeCVE.sol";
 
 contract RecoverTokenTest is TestBaseVeCVE {
-    event TokenRecovered(address token, address to, uint256 amount);
-
     function setUp() public override {
         super.setUp();
 
@@ -38,9 +36,6 @@ contract RecoverTokenTest is TestBaseVeCVE {
         uint256 balance = usdc.balanceOf(address(veCVE));
         uint256 holding = usdc.balanceOf(address(this));
 
-        vm.expectEmit(true, true, true, true, address(veCVE));
-        emit TokenRecovered(_USDC_ADDRESS, address(this), balance);
-
         veCVE.recoverToken(_USDC_ADDRESS, address(this), 0);
 
         assertEq(usdc.balanceOf(address(veCVE)), 0);
@@ -52,9 +47,6 @@ contract RecoverTokenTest is TestBaseVeCVE {
 
         uint256 balance = usdc.balanceOf(address(veCVE));
         uint256 holding = usdc.balanceOf(address(this));
-
-        vm.expectEmit(true, true, true, true, address(veCVE));
-        emit TokenRecovered(_USDC_ADDRESS, address(this), amount);
 
         veCVE.recoverToken(_USDC_ADDRESS, address(this), amount);
 
