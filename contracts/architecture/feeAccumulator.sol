@@ -12,6 +12,8 @@ import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 
 contract FeeAccumulator is ReentrancyGuard {
 
+    /// TYPES ///
+
     struct RewardToken {
         uint256 isRewardToken;
         uint256 forOTC;

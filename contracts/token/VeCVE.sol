@@ -11,6 +11,7 @@ import { ICVELocker, RewardsData } from "contracts/interfaces/ICVELocker.sol";
 import { IDelegateRegistry } from "contracts/interfaces/IDelegateRegistry.sol";
 
 contract VeCVE is ERC20 {
+    
     /// TYPES ///
 
     struct Lock {

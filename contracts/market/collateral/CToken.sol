@@ -16,6 +16,7 @@ import { IMToken, accountSnapshot } from "contracts/interfaces/market/IMToken.so
 
 /// @title Curvance's Collateral Token Contract
 contract CToken is ERC165, ReentrancyGuard {
+
     /// CONSTANTS ///
 
     uint256 internal constant expScale = 1e18; // Scalar for math
@@ -108,6 +109,19 @@ contract CToken is ERC165, ReentrancyGuard {
         string memory name_,
         string memory symbol_
     ) {
+        if (!ERC165Checker.supportsInterface(
+                address(centralRegistry_),
+                type(ICentralRegistry).interfaceId
+            )) {
+                revert CToken_ValidationFailed();
+            }
+
+        centralRegistry = centralRegistry_;
+
+        if (!centralRegistry_.isLendingMarket(lendtroller_)) {
+            revert CToken_ValidationFailed();
+        }
+
         // Ensure that lendtroller parameter is a lendtroller
         if (!ILendtroller(lendtroller_).isLendtroller()) {
             revert CToken_ValidationFailed();
@@ -117,15 +131,6 @@ contract CToken is ERC165, ReentrancyGuard {
         lendtroller = ILendtroller(lendtroller_);
         emit NewLendtroller(ILendtroller(address(0)), ILendtroller(lendtroller_));
 
-        require(
-            ERC165Checker.supportsInterface(
-                address(centralRegistry_),
-                type(ICentralRegistry).interfaceId
-            ),
-            "CToken: invalid central registry"
-        );
-
-        centralRegistry = centralRegistry_;
         underlying = underlying_;
         vault = BasePositionVault(vault_);
         _name = bytes32(abi.encodePacked("Curvance collateralized ", name_));

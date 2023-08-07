@@ -7,6 +7,7 @@ import { IVault } from "contracts/interfaces/external/balancer/IVault.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 abstract contract BalancerPoolAdaptor is BaseOracleAdaptor {
+    
     /// CONSTANTS ///
 
     /// @notice The Balancer Vault

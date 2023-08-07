@@ -5,6 +5,7 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 
 contract InterestRateModel {
+    
     /// CONSTANTS ///
 
     /// Unix time has 31,536,000 seconds per year 

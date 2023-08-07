@@ -16,6 +16,7 @@ import { IMToken, accountSnapshot } from "contracts/interfaces/market/IMToken.so
 
 /// @title Curvance's Debt Token Contract
 contract DToken is ERC165, ReentrancyGuard {
+
     /// TYPES ///
 
     struct BorrowSnapshot {
@@ -148,6 +149,19 @@ contract DToken is ERC165, ReentrancyGuard {
         address lendtroller_,
         InterestRateModel interestRateModel_
     ) {
+        if (!ERC165Checker.supportsInterface(
+                address(centralRegistry_),
+                type(ICentralRegistry).interfaceId
+            )) {
+                revert DToken_ValidationFailed();
+            }
+
+        centralRegistry = centralRegistry_;
+
+        if (!centralRegistry_.isLendingMarket(lendtroller_)) {
+            revert DToken_ValidationFailed();
+        }
+
         // Ensure that lendtroller parameter is a lendtroller
         if (!ILendtroller(lendtroller_).isLendtroller()) {
             revert DToken_ValidationFailed();
@@ -173,15 +187,6 @@ contract DToken is ERC165, ReentrancyGuard {
             interestRateModel_
         );
 
-        require(
-            ERC165Checker.supportsInterface(
-                address(centralRegistry_),
-                type(ICentralRegistry).interfaceId
-            ),
-            "DToken: invalid central registry"
-        );
-
-        centralRegistry = centralRegistry_;
         underlying = underlying_;
         _name = bytes32(abi.encodePacked("Curvance interest bearing ", IERC20(underlying_).name()));
         _symbol = bytes32(abi.encodePacked("c", IERC20(underlying_).symbol()));

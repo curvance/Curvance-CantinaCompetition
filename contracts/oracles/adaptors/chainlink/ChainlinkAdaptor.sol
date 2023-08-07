@@ -9,6 +9,7 @@ import { PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
 import { IChainlinkAggregator } from "contracts/interfaces/external/chainlink/IChainlinkAggregator.sol";
 
 contract ChainlinkAdaptor is BaseOracleAdaptor {
+    
     /// TYPES ///
 
     /// @notice Stores configuration data for Chainlink price sources.

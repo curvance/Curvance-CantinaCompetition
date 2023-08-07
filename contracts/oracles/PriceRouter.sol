@@ -12,6 +12,7 @@ import { IOracleAdaptor, PriceReturnData } from "contracts/interfaces/IOracleAda
 /// @notice Provides a universal interface allowing Curvance contracts
 ///         to retrieve secure pricing data based on various price feeds.
 contract PriceRouter {
+    
     /// TYPES ///
 
     struct FeedData {

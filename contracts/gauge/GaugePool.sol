@@ -12,6 +12,7 @@ import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 contract GaugePool is GaugeController, ReentrancyGuard {
+    
     /// TYPES ///
 
     struct PoolInfo {
@@ -29,7 +30,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
     /// CONSTANTS ///
 
     uint256 public constant PRECISION = 1e36; // Scalar for math
-    address public immutable lendtroller; // Lendtroller linked
+    address public lendtroller; // Lendtroller linked
 
     /// STORAGE ///
 
@@ -47,35 +48,58 @@ contract GaugePool is GaugeController, ReentrancyGuard {
     event Claim(address user, address token, uint256 amount);
 
     constructor(
-        ICentralRegistry centralRegistry_,
-        address lendtroller_
-    ) GaugeController(centralRegistry_) {
-        lendtroller = lendtroller_;
-    }
+        ICentralRegistry centralRegistry_
+    ) GaugeController(centralRegistry_) {}
 
     /// EXTERNAL FUNCTIONS ///
 
-    function addChildGauge(address _childGauge) external onlyDaoPermissions {
-        if (_childGauge == address(0)) {
+    /// @notice Initializes the gauge with a starting time based on the next epoch
+    /// @dev    Can only be called once, to start the gauge system
+    /// @param lendtroller_ The address to be configured as a lending market
+    function start(address lendtroller_) external onlyDaoPermissions {
+        if (startTime != 0) {
+            revert GaugeErrors.AlreadyStarted();
+        }
+
+        // Validate that the lendtroller we are setting is actually a lending market
+        if (!centralRegistry.isLendingMarket(lendtroller_)) {
             revert GaugeErrors.InvalidAddress();
         }
-        childGauges.push(ChildGaugePool(_childGauge));
 
-        ChildGaugePool(_childGauge).activate();
+        // // Ensure that lendtroller is not misconfigured in Central Registry
+        if (!ILendtroller(lendtroller_).isLendtroller()) {
+            revert GaugeErrors.InvalidAddress();
+        }
 
-        emit AddChildGauge(_childGauge);
+        startTime = veCVE.nextEpochStartTime();
     }
 
-    function removeChildGauge(
-        uint256 _index,
-        address _childGauge
-    ) external onlyDaoPermissions {
-        if (_childGauge != address(childGauges[_index])) {
+    /// @notice Adds a new child gauge to the gauge system
+    /// @param childGauge The address of the child gauge to be added
+    function addChildGauge(address childGauge) external onlyDaoPermissions {
+        if (childGauge == address(0)) {
             revert GaugeErrors.InvalidAddress();
         }
-        childGauges[_index] = ChildGaugePool(address(0));
+        childGauges.push(ChildGaugePool(childGauge));
 
-        emit RemoveChildGauge(_childGauge);
+        ChildGaugePool(childGauge).activate();
+
+        emit AddChildGauge(childGauge);
+    }
+
+    /// @notice Removes a child gauge from the gauge system
+    /// @param index The index of the child gauge
+    /// @param childGauge The address of the child gauge to be removed
+    function removeChildGauge(
+        uint256 index,
+        address childGauge
+    ) external onlyDaoPermissions {
+        if (childGauge != address(childGauges[index])) {
+            revert GaugeErrors.InvalidAddress();
+        }
+        childGauges[index] = ChildGaugePool(address(0));
+
+        emit RemoveChildGauge(childGauge);
     }
 
     function balanceOf(

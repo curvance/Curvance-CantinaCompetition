@@ -15,6 +15,7 @@ import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.sol";
 
 contract PositionFolding is ReentrancyGuard, IPositionFolding {
+    
     /// TYPES ///
 
     struct LeverageStruct {

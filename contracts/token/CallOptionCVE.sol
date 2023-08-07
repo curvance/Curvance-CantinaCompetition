@@ -10,6 +10,7 @@ import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 contract CallOptionCVE is ERC20 {
+    
     /// CONSTANTS ///
 
     uint256 public constant expScale = 1e18; // Scalar for math

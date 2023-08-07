@@ -9,6 +9,7 @@ import { IMToken, accountSnapshot } from "contracts/interfaces/market/IMToken.so
 /// @title Curvance Lendtroller
 /// @notice Manages risk within the lending markets
 contract Lendtroller {
+    
     /// TYPES ///
 
     struct AccountData {

@@ -48,6 +48,10 @@ contract ChildGaugePool is ReentrancyGuard {
     // token => user => info
     mapping(address => mapping(address => UserInfo)) public userInfo;
 
+    /// ERRORS ///
+
+    error ChildGaugePool_ConfigurationError();
+
     /// MODIFIERS ///
 
     modifier onlyGaugeController() {
@@ -72,22 +76,29 @@ contract ChildGaugePool is ReentrancyGuard {
         address rewardToken_,
         ICentralRegistry centralRegistry_
     ) {
-        require(
-            ERC165Checker.supportsInterface(
+        if (!ERC165Checker.supportsInterface(
                 address(centralRegistry_),
                 type(ICentralRegistry).interfaceId
-            ),
-            "ChildGaugePool: invalid central registry"
-        );
+            )) {
+            revert GaugeErrors.InvalidAddress();
+        }
+
+        centralRegistry = centralRegistry_;
+
+        if (!centralRegistry_.isGaugeController(gaugeController_)) {
+            revert ChildGaugePool_ConfigurationError();
+        }
+
         gaugeController = GaugePool(gaugeController_);
         rewardToken = rewardToken_;
-        centralRegistry = centralRegistry_;
+        
     }
 
     /// EXTERNAL FUNCTIONS ///
 
+    /// @notice Start the Child Gauge at the start of the Gauge Controller's next epoch
     function activate() external onlyGaugeController {
-        activationTime = block.timestamp;
+        activationTime = gaugeController.epochStartTime(gaugeController.currentEpoch() + 1);
     }
 
     function setRewardPerSec(

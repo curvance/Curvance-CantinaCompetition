@@ -7,6 +7,7 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 contract CentralRegistry is ICentralRegistry, ERC165 {
 
     /// TYPES ///
+    
     struct omnichainData {
         uint256 isAuthorized; // Whether the contract is supported or not; 2 = yes; 0 or 1 = no
         // @dev We will need to make sure SALTs are different crosschain
@@ -96,6 +97,7 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     event removedChain(uint256 chainId, address operatorAddress);
 
     /// ERRORS ///
+
     error CentralRegistry_ParametersMisconfigured();
     error CentralRegistry_Unauthorized();
 

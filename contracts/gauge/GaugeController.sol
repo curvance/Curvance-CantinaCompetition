@@ -9,7 +9,7 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IGaugePool } from "contracts/interfaces/IGaugePool.sol";
 import { IVeCVE } from "contracts/interfaces/IVeCVE.sol";
 
-contract GaugeController is IGaugePool {
+abstract contract GaugeController is IGaugePool {
     /// TYPES ///
 
     struct Epoch {
@@ -51,28 +51,18 @@ contract GaugeController is IGaugePool {
     /// CONSTRUCTOR ///
 
     constructor(ICentralRegistry centralRegistry_) {
-        require(
-            ERC165Checker.supportsInterface(
+        if (!ERC165Checker.supportsInterface(
                 address(centralRegistry_),
                 type(ICentralRegistry).interfaceId
-            ),
-            "GaugeController: invalid central registry"
-        );
+            )) {
+                revert GaugeErrors.InvalidAddress();
+            }
         centralRegistry = centralRegistry_;
         cve = centralRegistry.CVE();
         veCVE = IVeCVE(centralRegistry.veCVE());
     }
 
     /// EXTERNAL FUNCTIONS ///
-
-    /// @notice Start gauge system
-    /// @dev Only owner
-    function start() external onlyDaoPermissions {
-        if (startTime != 0) {
-            revert GaugeErrors.AlreadyStarted();
-        }
-        startTime = veCVE.nextEpochStartTime();
-    }
 
     /// @notice Returns reward per second of given epoch
     /// @param epoch Epoch number
