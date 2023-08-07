@@ -19,6 +19,10 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     /// CONSTANTS ///
 
     uint256 public constant DENOMINATOR = 10000; // Scalar for math
+    // `bytes4(keccak256(bytes("CentralRegistry_ParametersMisconfigured()")))`
+    uint256 internal constant _PARAMETERS_MISCONFIGURED_SELECTOR = 0x6fc38aea;
+    // `bytes4(keccak256(bytes("CentralRegistry_Unauthorized()")))`
+    uint256 internal constant _UNAUTHORIZED_SELECTOR = 0x88f093e;
     uint256 public immutable genesisEpoch; // Genesis Epoch timestamp
 
     /// STORAGE ///
@@ -93,40 +97,42 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
 
     /// ERRORS ///
     error CentralRegistry_ParametersMisconfigured();
+    error CentralRegistry_Unauthorized();
 
     /// MODIFIERS ///
 
     modifier onlyDaoManager() {
-        require(msg.sender == daoAddress, "CentralRegistry: UNAUTHORIZED");
+        if (msg.sender != daoAddress) {
+            _revert(_UNAUTHORIZED_SELECTOR);
+        }
         _;
     }
 
     modifier onlyTimelock() {
-        require(msg.sender == timelock, "CentralRegistry: UNAUTHORIZED");
+        if (msg.sender != timelock) {
+            _revert(_UNAUTHORIZED_SELECTOR);
+        }
         _;
     }
 
     modifier onlyEmergencyCouncil() {
-        require(
-            msg.sender == emergencyCouncil,
-            "CentralRegistry: UNAUTHORIZED"
-        );
+        if (msg.sender != emergencyCouncil) {
+            _revert(_UNAUTHORIZED_SELECTOR);
+        }
         _;
     }
 
     modifier onlyDaoPermissions() {
-        require(
-            hasDaoPermissions[msg.sender],
-            "CentralRegistry: UNAUTHORIZED"
-        );
+        if (!hasDaoPermissions[msg.sender]) {
+            _revert(_UNAUTHORIZED_SELECTOR);
+        }
         _;
     }
 
     modifier onlyElevatedPermissions() {
-        require(
-            hasElevatedPermissions[msg.sender],
-            "CentralRegistry: UNAUTHORIZED"
-        );
+        if (!hasElevatedPermissions[msg.sender]) {
+            _revert(_UNAUTHORIZED_SELECTOR);
+        }
         _;
     }
 
@@ -230,7 +236,9 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     function setProtocolCompoundFee(
         uint256 value
     ) external onlyElevatedPermissions {
-        require(value <= 500, "CentralRegistry: invalid parameter");
+        if (value > 500) {
+            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
+        }
         /// CompoundFee is represented in 1e16 format
         /// So we need to multiply by 1e14 to format properly
         /// from basis points to %
@@ -247,7 +255,9 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     function setProtocolYieldFee(
         uint256 value
     ) external onlyElevatedPermissions {
-        require(value <= 2000, "CentralRegistry: invalid parameter");
+        if (value > 2000) {
+            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
+        }
         /// YieldFee is represented in 1e16 format
         /// So we need to multiply by 1e14 to format properly
         /// from basis points to %
@@ -264,7 +274,9 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     function setProtocolLiquidationFee(
         uint256 value
     ) external onlyElevatedPermissions {
-        require(value <= 500, "CentralRegistry: invalid parameter");
+        if (value > 500) {
+            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
+        }
         /// Liquidation fee is represented as 1e16 format
         /// So we need to multiply by 1e14 to format properly
         /// from basis points to %
@@ -278,7 +290,9 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     function setProtocolLeverageFee(
         uint256 value
     ) external onlyElevatedPermissions {
-        require(value <= 100, "CentralRegistry: invalid parameter");
+        if (value > 100) {
+            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
+        }
         protocolLeverageFee = value;
     }
 
@@ -288,7 +302,9 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     function setProtocolInterestRateFee(
         uint256 value
     ) external onlyElevatedPermissions {
-        require(value <= 3000, "CentralRegistry: invalid parameter");
+        if (value > 3000) {
+            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
+        }
         /// Interest Rate fee is represented as 1e16 format
         /// So we need to multiply by 1e14 to format properly
         /// from basis points to %
@@ -302,10 +318,9 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     function setEarlyUnlockPenaltyValue(
         uint256 value
     ) external onlyElevatedPermissions {
-        require(
-            (value >= 3000 && value <= 9000) || value == 0,
-            "CentralRegistry: invalid parameter"
-        );
+        if ((value > 9000 || value < 3000) && value != 0) {
+            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
+        }
         earlyUnlockPenaltyValue = value;
     }
 
@@ -316,10 +331,9 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     function setVoteBoostValue(
         uint256 value
     ) external onlyElevatedPermissions {
-        require(
-            value > DENOMINATOR || value == 0,
-            "CentralRegistry: invalid parameter"
-        );
+        if (value < DENOMINATOR && value != 0) {
+            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
+        }
         voteBoostValue = value;
     }
 
@@ -330,10 +344,9 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     function setLockBoostValue(
         uint256 value
     ) external onlyElevatedPermissions {
-        require(
-            value > DENOMINATOR || value == 0,
-            "CentralRegistry: invalid parameter"
-        );
+        if (value < DENOMINATOR && value != 0) {
+            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
+        }
         lockBoostValue = value;
     }
 
@@ -395,13 +408,19 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
         address newOmnichainOperator, 
         uint256 chainId, 
         uint256 messagingChainId) external onlyElevatedPermissions {
-        require(omnichainOperators[newOmnichainOperator].isAuthorized < 2, "CentralRegistry: already approved operator");
+        if (omnichainOperators[newOmnichainOperator].isAuthorized == 2) {
+            // Chain Operator already added
+            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
+        }
 
         uint256[] memory currentChains = supportedChains;
         uint256 currentChainsLength = currentChains.length;
 
         for (uint256 i; i < currentChainsLength; ) {
-            require(currentChains[i++] != chainId, "CentralRegistry: already approved chain");
+            if(currentChains[i++] == chainId) {
+                // Chain already added
+                _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
+            }
         } 
 
         supportedChains.push() = chainId;
@@ -414,10 +433,13 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
         emit NewChainAdded(chainId, newOmnichainOperator);
     }
 
-    /// @notice 
+    /// @notice removes 
     function removeChainSupport(address currentOmnichainOperator) external onlyDaoPermissions {
         omnichainData storage operatorToRemove = omnichainOperators[currentOmnichainOperator];
-        require(operatorToRemove.isAuthorized == 2, "CentralRegistry: unsupported operator");
+        if (omnichainOperators[currentOmnichainOperator].isAuthorized < 2) {
+            // Operator unsupported
+            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
+        }
 
         uint256[] memory currentChains = supportedChains;
         uint256 currentChainsLength = currentChains.length;
@@ -455,65 +477,65 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
 
     /// CONTRACT MAPPING LOGIC
 
-    function addApprovedZapper(
-        address newApprovedZapper
+    function addZapper(
+        address newZapper
     ) external onlyElevatedPermissions {
-        require(
-            !approvedZapper[newApprovedZapper],
-            "CentralRegistry: already approved zapper"
-        );
+        if (approvedZapper[newZapper]) {
+            // Zapper already added
+            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
+        }
 
-        approvedZapper[newApprovedZapper] = true;
+        approvedZapper[newZapper] = true;
 
-        emit NewCurvanceContract("Zapper", newApprovedZapper);
+        emit NewCurvanceContract("Zapper", newZapper);
     }
 
-    function removeApprovedZapper(
-        address currentApprovedZapper
+    function removeZapper(
+        address currentZapper
     ) external onlyElevatedPermissions {
-        require(
-            approvedZapper[currentApprovedZapper],
-            "CentralRegistry: not approved zapper"
-        );
+        if (!approvedZapper[currentZapper]) {
+            // Not a Zapper
+            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
+        }
 
-        delete approvedZapper[currentApprovedZapper];
+        delete approvedZapper[currentZapper];
 
-        emit removedCurvanceContract("Zapper", currentApprovedZapper);
+        emit removedCurvanceContract("Zapper", currentZapper);
     }
 
-    function addApprovedSwapper(
-        address newApprovedSwapper
+    function addSwapper(
+        address newSwapper
     ) external onlyElevatedPermissions {
-        require(
-            !approvedSwapper[newApprovedSwapper],
-            "CentralRegistry: already approved swapper"
-        );
+        if (approvedSwapper[newSwapper]) {
+            // Swapper already added
+            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
+        }
 
-        approvedSwapper[newApprovedSwapper] = true;
+        approvedSwapper[newSwapper] = true;
 
-        emit NewCurvanceContract("Swapper", newApprovedSwapper);
+        emit NewCurvanceContract("Swapper", newSwapper);
     }
 
-    function removeApprovedSwapper(
-        address currentApprovedSwapper
+    function removeSwapper(
+        address currentSwapper
     ) external onlyElevatedPermissions {
-        require(
-            approvedSwapper[currentApprovedSwapper],
-            "CentralRegistry: not approved swapper"
-        );
+        if (!approvedSwapper[currentSwapper]) {
+            // Not a Swapper
+            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
+        }
 
-        delete approvedSwapper[currentApprovedSwapper];
+        delete approvedSwapper[currentSwapper];
 
-        emit removedCurvanceContract("Swapper", currentApprovedSwapper);
+        emit removedCurvanceContract("Swapper", currentSwapper);
     }
 
     function addVeCVELocker(
         address newVeCVELocker
     ) external onlyElevatedPermissions {
-        require(
-            !approvedVeCVELocker[newVeCVELocker],
-            "CentralRegistry: already veCVELocker"
-        );
+        if (approvedVeCVELocker[newVeCVELocker]) {
+            // VeCVE locker already added
+            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
+        }
 
         approvedVeCVELocker[newVeCVELocker] = true;
 
@@ -523,10 +545,10 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     function removeVeCVELocker(
         address currentVeCVELocker
     ) external onlyElevatedPermissions {
-        require(
-            approvedVeCVELocker[currentVeCVELocker],
-            "CentralRegistry: not veCVELocker"
-        );
+        if (!approvedVeCVELocker[currentVeCVELocker]) {
+            // Not a VeCVE locker
+            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
+        }
 
         delete approvedVeCVELocker[currentVeCVELocker];
 
@@ -536,10 +558,10 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     function addGaugeController(
         address newGaugeController
     ) external onlyElevatedPermissions {
-        require(
-            !gaugeController[newGaugeController],
-            "CentralRegistry: already gauge controller"
-        );
+        if (gaugeController[newGaugeController]) {
+            // Gauge Controller already added
+            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
+        }
 
         gaugeController[newGaugeController] = true;
 
@@ -549,10 +571,10 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     function removeGaugeController(
         address currentGaugeController
     ) external onlyElevatedPermissions {
-        require(
-            gaugeController[currentGaugeController],
-            "CentralRegistry: not gauge controller"
-        );
+        if (!gaugeController[currentGaugeController]) {
+            // Not a Gauge Controller
+            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
+        }
 
         delete gaugeController[currentGaugeController];
 
@@ -562,10 +584,10 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     function addHarvester(
         address newHarvester
     ) external onlyElevatedPermissions {
-        require(
-            !harvester[newHarvester],
-            "CentralRegistry: already harvester"
-        );
+        if (harvester[newHarvester]) {
+            // Harvestor already added
+            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
+        }
 
         harvester[newHarvester] = true;
 
@@ -575,7 +597,10 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     function removeHarvester(
         address currentHarvester
     ) external onlyElevatedPermissions {
-        require(harvester[currentHarvester], "CentralRegistry: not harvester");
+        if (!harvester[currentHarvester]) {
+            // Not a Harvestor
+            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
+        }
 
         delete harvester[currentHarvester];
 
@@ -585,10 +610,10 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     function addLendingMarket(
         address newLendingMarket
     ) external onlyElevatedPermissions {
-        require(
-            !lendingMarket[newLendingMarket],
-            "CentralRegistry: already lending market"
-        );
+        if (lendingMarket[newLendingMarket]) {
+            // Lending market already added
+            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
+        }
 
         lendingMarket[newLendingMarket] = true;
 
@@ -598,40 +623,49 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     function removeLendingMarket(
         address currentLendingMarket
     ) external onlyElevatedPermissions {
-        require(
-            lendingMarket[currentLendingMarket],
-            "CentralRegistry: not lending market"
-        );
+        if (!lendingMarket[currentLendingMarket]) {
+            // Not a Lending market
+            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
+        }
 
         delete lendingMarket[currentLendingMarket];
 
         emit removedCurvanceContract("Lending Market", currentLendingMarket);
     }
 
-    function addApprovedEndpoint(
-        address newApprovedEndpoint
+    function addEndpoint(
+        address newEndpoint
     ) external onlyElevatedPermissions {
-        require(
-            !approvedEndpoint[newApprovedEndpoint],
-            "CentralRegistry: already endpoint"
-        );
+        if (approvedEndpoint[newEndpoint]) {
+            // Endpoint already added
+            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
+        }
 
-        approvedEndpoint[newApprovedEndpoint] = true;
+        approvedEndpoint[newEndpoint] = true;
 
-        emit NewCurvanceContract("Endpoint", newApprovedEndpoint);
+        emit NewCurvanceContract("Endpoint", newEndpoint);
     }
 
-    function removeApprovedEndpoint(
-        address currentApprovedEndpoint
+    function removeEndpoint(
+        address currentEndpoint
     ) external onlyElevatedPermissions {
-        require(
-            approvedEndpoint[currentApprovedEndpoint],
-            "CentralRegistry: not endpoint"
-        );
+        if (!approvedEndpoint[currentEndpoint]) {
+            // Not an Endpoint
+            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
+        }
 
-        delete approvedEndpoint[currentApprovedEndpoint];
+        delete approvedEndpoint[currentEndpoint];
 
-        emit removedCurvanceContract("Endpoint", currentApprovedEndpoint);
+        emit removedCurvanceContract("Endpoint", currentEndpoint);
+    }
+
+    /// @dev Internal helper for reverting efficiently.
+    function _revert(uint256 s) internal pure {
+        /// @solidity memory-safe-assembly
+        assembly {
+            mstore(0x00, s)
+            revert(0x1c, 0x04)
+        }
     }
 
     /// @inheritdoc ERC165
