@@ -30,9 +30,9 @@ contract VeCVE is ERC20 {
     uint256 public constant LOCK_DURATION = 52 weeks; // in seconds
     uint256 public constant DENOMINATOR = 10000; // Scalar for math
 
-    // `bytes4(keccak256(bytes("VeCVE_InvalidLock()")))`
+    // @dev `bytes4(keccak256(bytes("VeCVE_InvalidLock()")))`
     uint256 internal constant _INVALID_LOCK_SELECTOR = 0x3ca0e7ee;
-    // `bytes4(keccak256(bytes("VeCVE_VeCVEShutdown()")))`
+    // @dev `bytes4(keccak256(bytes("VeCVE_VeCVEShutdown()")))`
     uint256 internal constant _VECVE_SHUTDOWN_SELECTOR = 0x8204c65e;
 
     bytes32 private immutable _name; // token name metadata
@@ -217,7 +217,7 @@ contract VeCVE is ERC20 {
         bytes calldata params,
         uint256 aux
     ) external canLock(amount) {
-        if (!centralRegistry.approvedVeCVELocker(msg.sender)) {
+        if (!centralRegistry.isVeCVELocker(msg.sender)) {
             _revert(_INVALID_LOCK_SELECTOR);
         }
 
@@ -358,7 +358,7 @@ contract VeCVE is ERC20 {
         bytes calldata params,
         uint256 aux
     ) external canLock(amount) {
-        if (!centralRegistry.approvedVeCVELocker(msg.sender)) {
+        if (!centralRegistry.isVeCVELocker(msg.sender)) {
             _revert(_INVALID_LOCK_SELECTOR);
         }
 

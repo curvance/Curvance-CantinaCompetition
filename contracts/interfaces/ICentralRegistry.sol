@@ -70,25 +70,25 @@ interface ICentralRegistry {
     function lockBoostValue() external view returns (uint256);
 
     /// @notice Returns whether the inputted address is an approved zapper
-    function approvedZapper(address _address) external view returns (bool);
+    function isZapper(address _address) external view returns (bool);
 
     /// @notice Returns whether the inputted address is an approved swapper
-    function approvedSwapper(address _address) external view returns (bool);
+    function isSwapper(address _address) external view returns (bool);
 
     /// @notice Returns whether the inputted address is an approved veCVELocker
-    function approvedVeCVELocker(
+    function isVeCVELocker(
         address _address
     ) external view returns (bool);
 
     /// @notice Returns whether the inputted address is a Gauge Controller
-    function gaugeController(address _address) external view returns (bool);
+    function isGaugeController(address _address) external view returns (bool);
 
     /// @notice Returns whether the inputted address is a Harvester
-    function harvester(address _address) external view returns (bool);
+    function isHarvester(address _address) external view returns (bool);
 
     /// @notice Returns whether the inputted address is a Lending Market
-    function lendingMarket(address _address) external view returns (bool);
+    function isLendingMarket(address _address) external view returns (bool);
 
     /// @notice Returns whether the inputted address is an Approved Endpoint
-    function approvedEndpoint(address _address) external view returns (bool);
+    function isEndpoint(address _address) external view returns (bool);
 }

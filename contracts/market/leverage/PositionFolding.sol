@@ -93,7 +93,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         centralRegistry = centralRegistry_;
 
         require(
-            centralRegistry.lendingMarket(lendtroller_),
+            centralRegistry.isLendingMarket(lendtroller_),
             "PositionFolding: lendtroller is invalid"
         );
 
@@ -169,7 +169,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         if (leverageData.swapData.call.length > 0) {
             // swap borrow underlying to zapper input token
             require(
-                centralRegistry.approvedSwapper(leverageData.swapData.target),
+                centralRegistry.isSwapper(leverageData.swapData.target),
                 "PositionFolding: invalid swapper"
             );
 
@@ -181,7 +181,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
 
         if (zapperCall.call.length > 0) {
             require(
-                centralRegistry.approvedZapper(leverageData.zapperCall.target),
+                centralRegistry.isZapper(leverageData.zapperCall.target),
                 "PositionFolding: invalid zapper"
             );
 
@@ -263,7 +263,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
                 "PositionFolding: invalid zapper param"
             );
             require(
-                centralRegistry.approvedZapper(
+                centralRegistry.isZapper(
                     deleverageData.zapperCall.target
                 ),
                 "PositionFolding: invalid zapper"
@@ -275,7 +275,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         if (deleverageData.swapData.call.length > 0) {
             // swap for borrow underlying
             require(
-                centralRegistry.approvedSwapper(
+                centralRegistry.isSwapper(
                     deleverageData.swapData.target
                 ),
                 "PositionFolding: invalid swapper"

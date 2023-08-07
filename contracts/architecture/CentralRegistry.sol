@@ -66,13 +66,13 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     mapping(address => omnichainData) public omnichainOperators;
 
     // DAO CONTRACT MAPPINGS
-    mapping(address => bool) public approvedZapper;
-    mapping(address => bool) public approvedSwapper;
-    mapping(address => bool) public approvedVeCVELocker;
-    mapping(address => bool) public gaugeController;
-    mapping(address => bool) public harvester;
-    mapping(address => bool) public lendingMarket;
-    mapping(address => bool) public approvedEndpoint;
+    mapping(address => bool) public isZapper;
+    mapping(address => bool) public isSwapper;
+    mapping(address => bool) public isVeCVELocker;
+    mapping(address => bool) public isGaugeController;
+    mapping(address => bool) public isHarvester;
+    mapping(address => bool) public isLendingMarket;
+    mapping(address => bool) public isEndpoint;
 
     /// EVENTS ///
 
@@ -480,12 +480,12 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     function addZapper(
         address newZapper
     ) external onlyElevatedPermissions {
-        if (approvedZapper[newZapper]) {
+        if (isZapper[newZapper]) {
             // Zapper already added
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
-        approvedZapper[newZapper] = true;
+        isZapper[newZapper] = true;
 
         emit NewCurvanceContract("Zapper", newZapper);
     }
@@ -493,12 +493,12 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     function removeZapper(
         address currentZapper
     ) external onlyElevatedPermissions {
-        if (!approvedZapper[currentZapper]) {
+        if (!isZapper[currentZapper]) {
             // Not a Zapper
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
-        delete approvedZapper[currentZapper];
+        delete isZapper[currentZapper];
 
         emit removedCurvanceContract("Zapper", currentZapper);
     }
@@ -506,12 +506,12 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     function addSwapper(
         address newSwapper
     ) external onlyElevatedPermissions {
-        if (approvedSwapper[newSwapper]) {
+        if (isSwapper[newSwapper]) {
             // Swapper already added
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
-        approvedSwapper[newSwapper] = true;
+        isSwapper[newSwapper] = true;
 
         emit NewCurvanceContract("Swapper", newSwapper);
     }
@@ -519,12 +519,12 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     function removeSwapper(
         address currentSwapper
     ) external onlyElevatedPermissions {
-        if (!approvedSwapper[currentSwapper]) {
+        if (!isSwapper[currentSwapper]) {
             // Not a Swapper
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
-        delete approvedSwapper[currentSwapper];
+        delete isSwapper[currentSwapper];
 
         emit removedCurvanceContract("Swapper", currentSwapper);
     }
@@ -532,12 +532,12 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     function addVeCVELocker(
         address newVeCVELocker
     ) external onlyElevatedPermissions {
-        if (approvedVeCVELocker[newVeCVELocker]) {
+        if (isVeCVELocker[newVeCVELocker]) {
             // VeCVE locker already added
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
-        approvedVeCVELocker[newVeCVELocker] = true;
+        isVeCVELocker[newVeCVELocker] = true;
 
         emit NewCurvanceContract("VeCVELocker", newVeCVELocker);
     }
@@ -545,12 +545,12 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     function removeVeCVELocker(
         address currentVeCVELocker
     ) external onlyElevatedPermissions {
-        if (!approvedVeCVELocker[currentVeCVELocker]) {
+        if (!isVeCVELocker[currentVeCVELocker]) {
             // Not a VeCVE locker
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
-        delete approvedVeCVELocker[currentVeCVELocker];
+        delete isVeCVELocker[currentVeCVELocker];
 
         emit removedCurvanceContract("VeCVELocker", currentVeCVELocker);
     }
@@ -558,12 +558,12 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     function addGaugeController(
         address newGaugeController
     ) external onlyElevatedPermissions {
-        if (gaugeController[newGaugeController]) {
+        if (isGaugeController[newGaugeController]) {
             // Gauge Controller already added
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
-        gaugeController[newGaugeController] = true;
+        isGaugeController[newGaugeController] = true;
 
         emit NewCurvanceContract("Gauge Controller", newGaugeController);
     }
@@ -571,12 +571,12 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     function removeGaugeController(
         address currentGaugeController
     ) external onlyElevatedPermissions {
-        if (!gaugeController[currentGaugeController]) {
+        if (!isGaugeController[currentGaugeController]) {
             // Not a Gauge Controller
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
-        delete gaugeController[currentGaugeController];
+        delete isGaugeController[currentGaugeController];
 
         emit removedCurvanceContract("Gauge Controller", currentGaugeController);
     }
@@ -584,12 +584,12 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     function addHarvester(
         address newHarvester
     ) external onlyElevatedPermissions {
-        if (harvester[newHarvester]) {
+        if (isHarvester[newHarvester]) {
             // Harvestor already added
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
-        harvester[newHarvester] = true;
+        isHarvester[newHarvester] = true;
 
         emit NewCurvanceContract("Harvestor", newHarvester);
     }
@@ -597,12 +597,12 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     function removeHarvester(
         address currentHarvester
     ) external onlyElevatedPermissions {
-        if (!harvester[currentHarvester]) {
+        if (!isHarvester[currentHarvester]) {
             // Not a Harvestor
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
-        delete harvester[currentHarvester];
+        delete isHarvester[currentHarvester];
 
         emit removedCurvanceContract("Harvestor", currentHarvester);
     }
@@ -610,12 +610,12 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     function addLendingMarket(
         address newLendingMarket
     ) external onlyElevatedPermissions {
-        if (lendingMarket[newLendingMarket]) {
+        if (isLendingMarket[newLendingMarket]) {
             // Lending market already added
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
-        lendingMarket[newLendingMarket] = true;
+        isLendingMarket[newLendingMarket] = true;
 
         emit NewCurvanceContract("Lending Market", newLendingMarket);
     }
@@ -623,12 +623,12 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     function removeLendingMarket(
         address currentLendingMarket
     ) external onlyElevatedPermissions {
-        if (!lendingMarket[currentLendingMarket]) {
+        if (!isLendingMarket[currentLendingMarket]) {
             // Not a Lending market
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
-        delete lendingMarket[currentLendingMarket];
+        delete isLendingMarket[currentLendingMarket];
 
         emit removedCurvanceContract("Lending Market", currentLendingMarket);
     }
@@ -636,12 +636,12 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     function addEndpoint(
         address newEndpoint
     ) external onlyElevatedPermissions {
-        if (approvedEndpoint[newEndpoint]) {
+        if (isEndpoint[newEndpoint]) {
             // Endpoint already added
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
-        approvedEndpoint[newEndpoint] = true;
+        isEndpoint[newEndpoint] = true;
 
         emit NewCurvanceContract("Endpoint", newEndpoint);
     }
@@ -649,12 +649,12 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     function removeEndpoint(
         address currentEndpoint
     ) external onlyElevatedPermissions {
-        if (!approvedEndpoint[currentEndpoint]) {
+        if (!isEndpoint[currentEndpoint]) {
             // Not an Endpoint
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
-        delete approvedEndpoint[currentEndpoint];
+        delete isEndpoint[currentEndpoint];
 
         emit removedCurvanceContract("Endpoint", currentEndpoint);
     }

@@ -79,7 +79,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
 
     modifier onlyHarvestor() {
         require(
-            centralRegistry.harvester(msg.sender),
+            centralRegistry.isHarvester(msg.sender),
             "BasePositionVault: UNAUTHORIZED"
         );
         _;
