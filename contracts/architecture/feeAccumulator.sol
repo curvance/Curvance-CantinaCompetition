@@ -137,7 +137,7 @@ contract FeeAccumulator is ReentrancyGuard {
     /// @dev The function validates that the token is earmarked for OTC and calculates the amount of ETH required based on the current prices
     /// @param tokenToOTC The address of the token to be OTC purchased by the DAO
     /// @param amountToOTC The amount of the token to be OTC purchased by the DAO
-    function daoOTC(address tokenToOTC, uint256 amountToOTC) external payable onlyDaoPermissions nonReentrant {
+    function executeOTC(address tokenToOTC, uint256 amountToOTC) external payable onlyDaoPermissions nonReentrant {
 
         // Validate that the token is earmarked for OTC
         if (rewardTokenInfo[tokenToOTC].forOTC < 2) {
@@ -184,6 +184,48 @@ contract FeeAccumulator is ReentrancyGuard {
         }
     }
 
+    /// @notice Sends all left over fees to new fee accumulator
+    /// @dev    This does not need to be permissioned as it pulls data directly
+    ///         from the Central Registry meaning a malicious actor cannot abuse this
+    function migrateFeeAccumulator() external {
+        address newFeeAccumulator = centralRegistry.feeAccumulator();
+        if (newFeeAccumulator == address(this)) {
+            revert FeeAccumulator_ConfigurationError();
+        }
+
+        address[] memory currentRewardTokens = rewardTokens;
+        uint256 numTokens = currentRewardTokens.length;
+        uint256 tokenBalance;
+
+        // Send remaining fee tokens to new fee accumulator, if any
+        for (uint256 i; i < numTokens; ) {
+            tokenBalance = IERC20(currentRewardTokens[i]).balanceOf(address(this));
+
+            if (tokenBalance > 0) {
+                SafeTransferLib.safeTransfer(
+                    currentRewardTokens[i],
+                    newFeeAccumulator,
+                    tokenBalance
+                );
+            } 
+        }
+
+        tokenBalance = IERC20(address(WETH)).balanceOf(address(this));
+        // Send remaining WETH to new fee accumulator, if any
+        if (tokenBalance > 0) {
+            SafeTransferLib.safeTransfer(
+                    address(WETH),
+                    newFeeAccumulator,
+                    tokenBalance
+            );
+        }
+
+        // Send remaining ETH to new fee accumulator, if any
+        if (address(this).balance > 0) {
+            _distributeETH(payable(newFeeAccumulator), address(this).balance);
+        }
+    }
+
     /// @notice Admin function to set Gelato Network one balance destination address to fund compounders
     function setOneBalanceAddress(address payable newOneBalanceAddress) external onlyDaoPermissions {
         oneBalanceAddress = newOneBalanceAddress;
@@ -217,12 +259,12 @@ contract FeeAccumulator is ReentrancyGuard {
     /// @dev    Does not fail on duplicate token, merely skips it and continues
     /// @param newTokens An array of token addresses to be added as reward tokens
     function addRewardTokens(address[] calldata newTokens) external onlyDaoPermissions {
-        uint256 newTokensLength = newTokens.length;
-        if (newTokensLength == 0) {
+        uint256 numTokens = newTokens.length;
+        if (numTokens == 0) {
             revert FeeAccumulator_ConfigurationError();
         }
 
-        for (uint256 i; i < newTokensLength; ++i){
+        for (uint256 i; i < numTokens; ++i){
 
             // If we already support the token just skip it
             if (rewardTokenInfo[newTokens[i]].isRewardToken == 2) {
@@ -314,10 +356,10 @@ contract FeeAccumulator is ReentrancyGuard {
     ///         representing the current balances of each reward token
     function getRewardTokenBalances() external view returns (uint256[] memory) {
         address[] memory currentTokens = rewardTokens;
-        uint256 rewardTokenLength = currentTokens.length;
-        uint256[] memory tokenBalances = new uint256[](rewardTokenLength);
+        uint256 numTokens = currentTokens.length;
+        uint256[] memory tokenBalances = new uint256[](numTokens);
 
-        for (uint256 i; i < rewardTokenLength;) {
+        for (uint256 i; i < numTokens; ) {
             tokenBalances[i] = IERC20(currentTokens[i]).balanceOf(address(this));
 
             unchecked {
