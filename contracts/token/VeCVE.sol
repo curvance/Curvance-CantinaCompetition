@@ -419,10 +419,10 @@ contract VeCVE is ERC20 {
                 tokenAmount;
             chainTokenPoints = chainTokenPoints - tokenPoints;
             chainUnlocksByEpoch[unlockEpoch] =
-                chainUnlocksByEpoch[unlockEpoch] -
+                chainUnlocksByEpoch[unlockEpoch] +
                 tokenAmount;
             userTokenPoints[msg.sender] =
-                userTokenPoints[msg.sender] +
+                userTokenPoints[msg.sender] -
                 tokenPoints;
             userTokenUnlocksByEpoch[msg.sender][unlockEpoch] =
                 userTokenUnlocksByEpoch[msg.sender][unlockEpoch] +
