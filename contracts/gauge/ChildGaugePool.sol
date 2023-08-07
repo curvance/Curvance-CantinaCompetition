@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
+import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { GaugePool, GaugeErrors } from "contracts/gauge/GaugePool.sol";
 
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
@@ -59,7 +60,7 @@ contract ChildGaugePool is ReentrancyGuard {
     modifier onlyDaoPermissions() {
         require(
             centralRegistry.hasDaoPermissions(msg.sender),
-            "childGaugePool: UNAUTHORIZED"
+            "ChildGaugePool: UNAUTHORIZED"
         );
         _;
     }
@@ -71,6 +72,13 @@ contract ChildGaugePool is ReentrancyGuard {
         address rewardToken_,
         ICentralRegistry centralRegistry_
     ) {
+        require(
+            ERC165Checker.supportsInterface(
+                address(centralRegistry_),
+                type(ICentralRegistry).interfaceId
+            ),
+            "ChildGaugePool: invalid central registry"
+        );
         gaugeController = GaugePool(gaugeController_);
         rewardToken = rewardToken_;
         centralRegistry = centralRegistry_;

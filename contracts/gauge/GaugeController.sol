@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
+import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { GaugeErrors } from "contracts/gauge/GaugeErrors.sol";
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 
@@ -34,7 +35,7 @@ contract GaugeController is IGaugePool {
     modifier onlyDaoPermissions() {
         require(
             centralRegistry.hasDaoPermissions(msg.sender),
-            "gaugeController: UNAUTHORIZED"
+            "GaugeController: UNAUTHORIZED"
         );
         _;
     }
@@ -42,7 +43,7 @@ contract GaugeController is IGaugePool {
     modifier onlyMessagingHub() {
         require(
             msg.sender == centralRegistry.protocolMessagingHub(),
-            "gaugeController: UNAUTHORIZED"
+            "GaugeController: UNAUTHORIZED"
         );
         _;
     }
@@ -50,6 +51,13 @@ contract GaugeController is IGaugePool {
     /// CONSTRUCTOR ///
 
     constructor(ICentralRegistry centralRegistry_) {
+        require(
+            ERC165Checker.supportsInterface(
+                address(centralRegistry_),
+                type(ICentralRegistry).interfaceId
+            ),
+            "GaugeController: invalid central registry"
+        );
         centralRegistry = centralRegistry_;
         cve = centralRegistry.CVE();
         veCVE = IVeCVE(centralRegistry.veCVE());
@@ -154,7 +162,7 @@ contract GaugeController is IGaugePool {
 
     /// @notice Returns current epoch number
     function currentEpoch() public view returns (uint256) {
-        require(startTime != 0, "gaugeController: gauge not started");
+        require(startTime != 0, "GaugeController: gauge not started");
         return (block.timestamp - startTime) / EPOCH_WINDOW;
     }
 
@@ -163,21 +171,21 @@ contract GaugeController is IGaugePool {
     function epochOfTimestamp(
         uint256 timestamp
     ) public view returns (uint256) {
-        require(startTime != 0, "gaugeController: gauge not started");
+        require(startTime != 0, "GaugeController: gauge not started");
         return (timestamp - startTime) / EPOCH_WINDOW;
     }
 
     /// @notice Returns start time of given epoch
     /// @param epoch Epoch number
     function epochStartTime(uint256 epoch) public view returns (uint256) {
-        require(startTime != 0, "gaugeController: gauge not started");
+        require(startTime != 0, "GaugeController: gauge not started");
         return startTime + epoch * EPOCH_WINDOW;
     }
 
     /// @notice Returns end time of given epoch
     /// @param epoch Epoch number
     function epochEndTime(uint256 epoch) public view returns (uint256) {
-        require(startTime != 0, "gaugeController: gauge not started");
+        require(startTime != 0, "GaugeController: gauge not started");
         return startTime + (epoch + 1) * EPOCH_WINDOW;
     }
 

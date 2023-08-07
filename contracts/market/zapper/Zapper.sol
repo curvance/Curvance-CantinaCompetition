@@ -51,7 +51,7 @@ contract Zapper {
         centralRegistry = centralRegistry_;
 
         require(
-            centralRegistry.lendingMarket(lendtroller_),
+            centralRegistry.isLendingMarket(lendtroller_),
             "Zapper: lendtroller is invalid"
         );
 
