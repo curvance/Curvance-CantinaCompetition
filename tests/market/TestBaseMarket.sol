@@ -139,11 +139,7 @@ contract TestBaseMarket is TestBase {
             ICentralRegistry(address(centralRegistry)),
             _USDC_ADDRESS,
             address(lendtroller),
-            InterestRateModel(address(jumpRateModel)),
-            _ONE,
-            "dUSDC",
-            "dUSDC",
-            6
+            InterestRateModel(address(jumpRateModel))
         );
     }
 
