@@ -249,6 +249,7 @@ contract FeeAccumulator is ReentrancyGuard {
 
         for (uint256 i; i < numTokens; ){
             if (currentTokens[i] == rewardTokenToRemove){
+                // We found the token so break out of loop
                 tokenIndex = i;
                 break;
             }

@@ -5,6 +5,17 @@ import { ERC165 } from "contracts/libraries/ERC165.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 contract CentralRegistry is ICentralRegistry, ERC165 {
+
+    /// TYPES ///
+    struct omnichainData {
+        uint256 isAuthorized; // Whether the contract is supported or not; 2 = yes; 0 or 1 = no
+        // @dev We will need to make sure SALTs are different crosschain
+        //      so that we do not accidently deploy the same contract address
+        //      across multiple chains
+        uint256 chainId; // chainId where this address authorized 
+        uint256 messagingChainId; // messaging chainId where this address authorized 
+    }
+
     /// CONSTANTS ///
 
     uint256 public constant DENOMINATOR = 10000; // Scalar for math
@@ -24,7 +35,7 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
 
     // DAO CONTRACTS DATA
     address public cveLocker; // CVE Locker contract address
-    address public protocolMessagingHub; // Protocol Messaging Hub contract address
+    address public protocolMessagingHub; // This chains Protocol Messaging Hub contract address
     address public priceRouter; // Price Router contract address
     address public zroAddress; // ZRO contract address for layerzero
     address public feeAccumulator; // Fee Accumulator contract address
@@ -32,7 +43,7 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     // PROTOCOL VALUES in `DENOMINATOR`
     uint256 public protocolCompoundFee = 100 * 1e14; // Fee for compounding position vaults
     uint256 public protocolYieldFee = 1500 * 1e14; // Fee on yield in position vaults
-    // Joint fee so that we can minimize an external call in position vault contracts
+    // Joint fee value so that we can perform one less external call in position vault contracts
     uint256 public protocolHarvestFee = protocolCompoundFee + protocolYieldFee;
     uint256 public protocolLiquidationFee = 250; // Protocol Reserve Share on liquidation
     uint256 public protocolLeverageFee; // Protocol Fee on leveraging
@@ -41,10 +52,14 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     uint256 public voteBoostValue; // Voting power bonus for Continuous Lock Mode
     uint256 public lockBoostValue; // Rewards bonus for Continuous Lock Mode
     
-
     // DAO PERMISSION DATA
     mapping(address => bool) public hasDaoPermissions;
     mapping(address => bool) public hasElevatedPermissions;
+
+    // MULTICHAIN CONFIGURATION DATA
+    uint256[] public supportedChains; // What other chains are supported
+    // Address => Curvance identification information
+    mapping(address => omnichainData) public omnichainOperators;
 
     // DAO CONTRACT MAPPINGS
     mapping(address => bool) public approvedZapper;
@@ -71,6 +86,12 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
         address indexed newEmergencyCouncil
     );
 
+    event NewCurvanceContract(string indexed contractType, address newAddress);
+    event removedCurvanceContract(string indexed contractType, address removedAddress);
+
+    event NewChainAdded(uint256 chainId, address operatorAddress);
+    event removedChain(uint256 chainId, address operatorAddress);
+
     event NewApprovedZapper(address indexed zapper);
     event approvedZapperRemoved(address indexed zapper);
 
@@ -94,6 +115,9 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
 
     event NewApprovedEndpoint(address indexed approvedEndpoint);
     event ApprovedEndpointRemoved(address indexed approvedEndpoint);
+
+    /// ERRORS ///
+    error CentralRegistry_ParametersMisconfigured();
 
     /// MODIFIERS ///
 
@@ -388,6 +412,70 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
             previousEmergencyCouncil,
             newEmergencyCouncil
         );
+    }
+
+    /// MULTICHAIN SUPPORT LOGIC
+
+    function addChainSupport(
+        address newOmnichainOperator, 
+        uint256 chainId, 
+        uint256 messagingChainId) external onlyElevatedPermissions {
+        require(omnichainOperators[newOmnichainOperator].isAuthorized < 2, "CentralRegistry: already approved operator");
+
+        uint256[] memory currentChains = supportedChains;
+        uint256 currentChainsLength = currentChains.length;
+
+        for (uint256 i; i < currentChainsLength; ) {
+            require(currentChains[i++] != chainId, "CentralRegistry: already approved chain");
+        } 
+
+        supportedChains.push() = chainId;
+        omnichainOperators[newOmnichainOperator] = omnichainData({
+            isAuthorized: 2,
+            chainId: chainId,
+            messagingChainId: messagingChainId
+        });
+
+        emit NewChainAdded(chainId, newOmnichainOperator);
+    }
+
+    /// @notice 
+    function removeChainSupport(address currentOmnichainOperator) external onlyDaoPermissions {
+        omnichainData storage operatorToRemove = omnichainOperators[currentOmnichainOperator];
+        require(operatorToRemove.isAuthorized == 2, "CentralRegistry: unsupported operator");
+
+        uint256[] memory currentChains = supportedChains;
+        uint256 currentChainsLength = currentChains.length;
+        uint256 chainIndex = currentChainsLength;
+
+        for (uint256 i; i < currentChainsLength; ){
+            if (currentChains[i] == operatorToRemove.chainId){
+                // We found the chain so break out of loop
+                chainIndex = i;
+                break;
+            }
+            unchecked {
+                ++i;
+            }
+        }
+
+        // subtract 1 from currentChainsLength so we properly have the end index
+        if (chainIndex == currentChainsLength--){
+            // we were unable to find the chain in the array,
+            // so something is wrong and we need to revert
+            revert CentralRegistry_ParametersMisconfigured();
+        }
+
+        // copy last item in list to location of item to be removed
+        uint256[] storage currentList = supportedChains;
+        // copy the last chain index slot to chainIndex
+        currentList[chainIndex] = currentList[currentChainsLength];
+        // remove chain from the last element
+        currentList.pop();
+
+        // Remove operator support from protocol
+        operatorToRemove.isAuthorized = 1;
+        emit removedChain(operatorToRemove.chainId, currentOmnichainOperator);
     }
 
     /// CONTRACT MAPPING LOGIC
