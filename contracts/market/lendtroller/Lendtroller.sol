@@ -2,84 +2,99 @@
 pragma solidity ^0.8.17;
 
 import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
-import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
-import { IMToken } from "contracts/interfaces/market/IMToken.sol";
-import { ICToken } from "contracts/interfaces/market/ICToken.sol";
-import { BasePositionVault } from "contracts/deposits/adaptors/BasePositionVault.sol";
+import { IMToken, accountSnapshot } from "contracts/interfaces/market/IMToken.sol";
 
 /// @title Curvance Lendtroller
 /// @notice Manages risk within the lending markets
-contract Lendtroller is ILendtroller {
+contract Lendtroller {
     /// TYPES ///
 
-    struct UserData {
-        mapping(IMToken => bool) collateralDisabled;
-        uint256 lastBorrowTimestamp;
+    struct AccountData {
+        IMToken[] assets; // Array of account assets
+        uint256 lastBorrowTimestamp; // Last time an account borrowed an asset
+    }
+
+    struct MarketToken {
+        // Whether or not this market token is listed
+        bool isListed;
+        //  Multiplier representing the most one can borrow against their collateral in this market
+        //  On scale of 0 to 1e18 with 0.8e18 corresponding to 80% collateral value
+        uint256 collateralizationRatio;
+        // Mapping that indicates whether an account is in a market, 0 or 1 for no; 2 for yes
+        mapping(address => uint256) accountInMarket;
     }
 
     /// CONSTANTS ///
 
-    ICentralRegistry public immutable centralRegistry;
-    /// @notice Indicator that this is a Lendtroller contract (for introspection)
-    bool public constant override isLendtroller = true;
-    /// @notice closeFactorScaled must be strictly greater than this value
-    uint256 internal constant closeFactorMinScaled = 0.05e18; // 0.05
-    /// @notice closeFactorScaled must not exceed this value
-    uint256 internal constant closeFactorMaxScaled = 0.9e18; // 0.9
-    /// @notice No collateralFactorScaled may exceed this value
-    uint256 internal constant collateralFactorMaxScaled = 0.9e18; // 0.9
-    /// @notice Scaler for floating point math
-    uint256 internal constant expScale = 1e18;
-    /// @notice Minimum hold time on CToken to prevent oracle price attacks
-    uint256 internal constant minimumHoldPeriod = 15 minutes;
+    bool public constant isLendtroller = true; // for introspection
+    address public immutable gaugePool; // gaugePool contract address
+    uint256 internal constant expScale = 1e18; // Scalar for math
+    uint256 internal constant maxCloseFactor = 1e18; // 100% E.g close entire position
+    uint256 internal constant maxCollateralizationRatio = 0.9e18; // 90%
+    uint256 internal constant minHoldPeriod = 15 minutes; // Minimum hold time to prevent oracle price attacks
+    ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
+    
+    // @dev `bytes4(keccak256(bytes("Lendtroller_InvalidValue()")))`
+    uint256 internal constant _INVALID_VALUE_SELECTOR = 0x74ebdb4f;
 
-    // GaugePool contract address
-    address public immutable override gaugePool;
+    // @dev `bytes4(keccak256(bytes("Lendtroller_InsufficientShortfall()")))`
+    uint256 internal constant _INSUFFICIENT_SHORTFALL_SELECTOR = 0xa160c28b;
 
     /// STORAGE ///
+ 
+    uint256 public transferPaused = 1; // 1 = unpaused; 2 = paused
+    uint256 public seizePaused = 1; // 1 = unpaused; 2 = paused
+    mapping(address => uint256) public mintPaused; // Token => 0 or 1 = unpaused; 2 = paused
+    mapping(address => uint256) public borrowPaused; // Token => 0 or 1 = unpaused; 2 = paused
+    mapping(address => uint256) public borrowCaps; // Token => Borrow Cap; 0 = unlimited
 
-    /// @notice The Pause Guardian can pause certain actions as a safety mechanism.
-    ///  Actions which allow users to remove their own assets cannot be paused.
-    ///  Liquidation / seizing / transfer can only be paused globally, not by market.
-    address public pauseGuardian;
-    bool public transferGuardianPaused;
-    bool public seizeGuardianPaused;
-    mapping(address => bool) public mintGuardianPaused;
-    mapping(address => bool) public borrowGuardianPaused;
+    uint256 public closeFactor; // Maximum % that a liquidator can repay when liquidating a user
+    uint256 public liquidationIncentiveScaled; // Default discount multiplier a liquidation receives
+    address public positionFolding; // PositionFolding contract address
 
-    /// @notice The borrowCapGuardian can set borrowCaps to any number for any market.
-    /// Lowering the borrow cap could disable borrowing on the given market.
-    address public borrowCapGuardian;
+    IMToken[] public allMarkets; // A list of all markets for frontend
 
-    /// @notice Borrow caps enforced by borrowAllowed for each mToken address.
-    /// Defaults to zero which corresponds to unlimited borrowing.
-    mapping(address => uint256) public borrowCaps;
+    mapping(address => MarketToken) public marketTokenData; // Market Token => Token metadata
+    mapping(address => AccountData) public accountAssets; // Account => Assets, lastBorrowTimestamp
 
-    /// @notice Multiplier used to calculate the maximum repayAmount
-    ///         when liquidating a borrow
-    uint256 public closeFactorScaled;
+    /// EVENTS ///
 
-    /// @notice Multiplier representing the discount on collateral that
-    ///         a liquidator receives
-    uint256 public liquidationIncentiveScaled;
+    event MarketListed(address mToken);
+    event MarketEntered(address mToken, address account);
+    event MarketExited(address mToken, address account);
+    event NewCloseFactor(uint256 oldCloseFactor, uint256 newCloseFactor);
+    event NewCollateralizationRatio(
+        IMToken mToken, 
+        uint256 oldCR, 
+        uint256 newCR
+    );
+    event NewLiquidationIncentive(
+        uint256 oldLiquidationIncentiveScaled,
+        uint256 newLiquidationIncentiveScaled
+    );
+    event ActionPaused(string action, bool pauseState);
+    event ActionPaused(IMToken mToken, string action, bool pauseState);
+    event NewBorrowCap(IMToken mToken, uint256 newBorrowCap);
+    event SetDisableCollateral(IMToken mToken, bool disable);
+    event NewPositionFoldingContract(address oldPF, address newPF);
 
-    /// @notice Official mapping of mTokens -> Market metadata
-    /// @dev Used e.g. to determine if a market is supported
-    mapping(address => ILendtroller.Market) public markets;
+    /// ERRORS ///
 
-    /// @notice A list of all markets
-    IMToken[] public allMarkets;
-
-    /// @notice Per-account mapping of "assets you are in", capped by maxAssets
-    mapping(address => IMToken[]) public accountAssets;
-
-    /// @notice user => UserData (IMToken => Collateralizable, lastBorrowTimestamp)
-    mapping(address => UserData) public userData;
-
-    // PositionFolding contract address
-    address public override positionFolding;
+    error Lendtroller_TokenNotListed();
+    error Lendtroller_TokenAlreadyListed();
+    error Lendtroller_Paused();
+    error Lendtroller_InsufficientLiquidity();
+    error Lendtroller_PriceError();
+    error Lendtroller_HasActiveLoan();
+    error Lendtroller_BorrowCapReached();
+    error Lendtroller_InsufficientShortfall();
+    error Lendtroller_TooMuchRepay();
+    error Lendtroller_LendtrollerMismatch();
+    error Lendtroller_InvalidValue();
+    error Lendtroller_AddressUnauthorized();
+    error Lendtroller_MinimumHoldPeriod();
 
     /// MODIFIERS ///
 
@@ -118,28 +133,31 @@ contract Lendtroller is ILendtroller {
     /// @notice Returns the assets an account has entered
     /// @param account The address of the account to pull assets for
     /// @return A dynamic list with the assets the account has entered
-    function getAssetsIn(
+    function getAccountAssets(
         address account
     ) external view returns (IMToken[] memory) {
-        return accountAssets[account];
+        return accountAssets[account].assets;
     }
 
-    /// @notice Returns whether the given account is entered in the given asset
-    /// @param account The address of the account to check
-    /// @param mToken The mToken to check
-    /// @return True if the account is in the asset, otherwise false.
-    function checkMembership(
-        address account,
-        IMToken mToken
-    ) external view returns (bool) {
-        return markets[address(mToken)].accountMembership[account];
+    /// @notice Add assets to be included in account liquidity calculation
+    /// @param mTokens The list of addresses of the mToken markets to be enabled
+    function enterMarkets(
+        address[] calldata mTokens
+    ) external {
+        uint256 numCTokens = mTokens.length;
+
+        for (uint256 i; i < numCTokens; ) {
+            unchecked {
+                _enterMarket(mTokens[i++], msg.sender);
+            }
+        }
     }
 
-    /// @notice Removes asset from sender's account liquidity calculation
+    /// @notice Removes an asset from an account's liquidity calculation
     /// @dev Sender must not have an outstanding borrow balance in the asset,
     ///  or be providing necessary collateral for an outstanding borrow.
     /// @param mTokenAddress The address of the asset to be removed
-    function exitMarket(address mTokenAddress) external override {
+    function exitMarket(address mTokenAddress) external {
         IMToken mToken = IMToken(mTokenAddress);
         // Get sender tokensHeld and amountOwed underlying from the mToken
         (uint256 tokensHeld, uint256 amountOwed, ) = mToken.getAccountSnapshot(
@@ -148,24 +166,24 @@ contract Lendtroller is ILendtroller {
 
         // Do not let them leave if they owe a balance
         if (amountOwed != 0) {
-            revert NonZeroBorrowBalance();
+            revert Lendtroller_HasActiveLoan();
         }
 
         // Fail if the sender is not permitted to redeem all of their tokens
         _redeemAllowed(mTokenAddress, msg.sender, tokensHeld);
 
-        ILendtroller.Market storage marketToExit = markets[address(mToken)];
+        MarketToken storage marketToExit = marketTokenData[mTokenAddress];
 
-        // Return true if the sender is not already ‘in’ the market
-        if (!marketToExit.accountMembership[msg.sender]) {
+        // We do not need to update any values if the account is not ‘in’ the market
+        if (marketToExit.accountInMarket[msg.sender] < 2) {
             return;
         }
 
-        // Set mToken account membership to false
-        delete marketToExit.accountMembership[msg.sender];
+        // Remove mToken account membership to `mTokenAddress`
+        marketToExit.accountInMarket[msg.sender] = 1;
 
         // Delete mToken from the account’s list of assets
-        IMToken[] memory userAssetList = accountAssets[msg.sender];
+        IMToken[] memory userAssetList = accountAssets[msg.sender].assets;
 
         // Cache asset list
         uint256 numUserAssets = userAssetList.length;
@@ -178,31 +196,30 @@ contract Lendtroller is ILendtroller {
             }
         }
 
-        // We *must* have found the asset in the list or our redundant
-        // data structure is broken
-        require(assetIndex < numUserAssets, "lendtroller: asset list misconfigured");
+        // Validate we found the asset and remove 1 from numUserAssets
+        // so it corresponds to last element index now starting at index 0
+        require(assetIndex < numUserAssets--, "lendtroller: asset list misconfigured");
 
-        // copy last item in list to location of item to be removed,
-        // reduce length by 1
-        IMToken[] storage storedList = accountAssets[msg.sender];
-        storedList[assetIndex] = storedList[storedList.length - 1];
+        // copy last item in list to location of item to be removed
+        IMToken[] storage storedList = accountAssets[msg.sender].assets;
+        // copy the last market index slot to assetIndex
+        storedList[assetIndex] = storedList[numUserAssets];
+        // remove the last element
         storedList.pop();
 
-        emit MarketExited(mToken, msg.sender);
+        emit MarketExited(mTokenAddress, msg.sender);
     }
-
-    /// Policy Hooks
 
     /// @notice Checks if the account should be allowed to mint tokens
     ///         in the given market
     /// @param mToken The market to verify the mint against
-    function mintAllowed(address mToken, address) external view override {
-        if (mintGuardianPaused[mToken]) {
-            revert Paused();
+    function mintAllowed(address mToken, address) external view {
+        if (mintPaused[mToken] == 2) {
+            revert Lendtroller_Paused();
         }
 
-        if (!markets[mToken].isListed) {
-            revert MarketNotListed(mToken);
+        if (!marketTokenData[mToken].isListed) {
+            revert Lendtroller_TokenNotListed();
         }
     }
 
@@ -216,7 +233,7 @@ contract Lendtroller is ILendtroller {
         address mToken,
         address redeemer,
         uint256 redeemTokens
-    ) external view override {
+    ) external view {
         _redeemAllowed(mToken, redeemer, redeemTokens);
     }
 
@@ -225,77 +242,36 @@ contract Lendtroller is ILendtroller {
     /// @param mToken The market to verify the borrow against
     /// @param borrower The account which would borrow the asset
     /// @param borrowAmount The amount of underlying the account would borrow
-    function borrowAllowed(
+    function borrowAllowedWithNotify(
         address mToken,
         address borrower,
         uint256 borrowAmount
-    ) external override {
-        if (borrowGuardianPaused[mToken]) {
-            revert Paused();
-        }
+    ) external {
+        require(marketTokenData[msg.sender].isListed, "Lendtroller: Caller not MToken");
+        accountAssets[borrower].lastBorrowTimestamp = block.timestamp;
 
-        if (!markets[mToken].isListed) {
-            revert MarketNotListed(mToken);
-        }
-
-        if (!markets[mToken].accountMembership[borrower]) {
-            // only mTokens may call borrowAllowed if borrower not in market
-            if (msg.sender != mToken) {
-                revert AddressUnauthorized();
-            }
-
-            _addToMarket(IMToken(msg.sender), borrower);
-
-            // it should be impossible to break the important invariant
-            require(markets[mToken].accountMembership[borrower], "lendtroller: invariant error");
-        }
-
-        (, uint256 errorCode) = getPriceRouter().getPrice(mToken, true, false);
-        if (errorCode > 0) {
-            revert PriceError();
-        }
-
-        uint256 borrowCap = borrowCaps[mToken];
-        // Borrow cap of 0 corresponds to unlimited borrowing
-        if (borrowCap != 0) {
-            // Validate that if there is a borrow cap, 
-            // we will not be over the cap with this new borrow
-            if ((IMToken(mToken).totalBorrows() + borrowAmount) > borrowCap) {
-                revert BorrowCapReached();
-            }
-        }
-
-        (, uint256 shortfall) = _getHypotheticalAccountLiquidity(
-            borrower,
-            IMToken(mToken),
-            0,
-            borrowAmount
-        );
-
-        if (shortfall > 0) {
-            revert InsufficientLiquidity();
-        }
+        borrowAllowed(mToken, borrower, borrowAmount);
     }
 
     /// @notice Checks if the account should be allowed to repay a borrow
     ///         in the given market
     /// @param mToken The market to verify the repay against
     /// @param account The account who will have their loan repaid
-    function repayAllowed(address mToken, address account) external view override {
+    function repayAllowed(address mToken, address account) external view {
 
-        if (!markets[mToken].isListed) {
-            revert MarketNotListed(mToken);
+        if (!marketTokenData[mToken].isListed) {
+            revert Lendtroller_TokenNotListed();
         }
 
         /// We require a `minimumHoldPeriod` to break flashloan manipulations attempts
         /// as well as short term price manipulations if the dynamic dual oracle 
         /// fails to protect the market somehow
         if (
-            userData[account].lastBorrowTimestamp +
-                minimumHoldPeriod >
+            accountAssets[account].lastBorrowTimestamp +
+                minHoldPeriod >
             block.timestamp
         ) {
-            revert MinimumHoldPeriod();
+            revert Lendtroller_MinimumHoldPeriod();
         }
 
     }
@@ -310,29 +286,35 @@ contract Lendtroller is ILendtroller {
         address mTokenCollateral,
         address borrower,
         uint256 repayAmount
-    ) external view override {
-        if (!markets[mTokenBorrowed].isListed) {
-            revert MarketNotListed(mTokenBorrowed);
+    ) external view {
+        if (!marketTokenData[mTokenBorrowed].isListed) {
+            revert Lendtroller_TokenNotListed();
         }
-        if (!markets[mTokenCollateral].isListed) {
-            revert MarketNotListed(mTokenCollateral);
+        if (!marketTokenData[mTokenCollateral].isListed) {
+            revert Lendtroller_TokenNotListed();
         }
 
         // The borrower must have shortfall in order to be liquidatable
         (, uint256 shortfall) = _getAccountLiquidity(borrower);
-        if (shortfall == 0) {
-            revert InsufficientShortfall();
-        }
+
+        assembly {
+            if iszero(shortfall) {
+                // store the error selector to location 0x0
+                mstore(0x0,_INSUFFICIENT_SHORTFALL_SELECTOR)
+                // return bytes 29-32 for the selector
+                revert(0x1c,0x04)
+            }
+         }
 
         // The liquidator may not close out more collateral than
         // what is allowed by the closeFactor
         uint256 borrowBalance = IMToken(mTokenBorrowed).borrowBalanceStored(
             borrower
         );
-        uint256 maxClose = (closeFactorScaled * borrowBalance) / expScale;
+        uint256 maxClose = (closeFactor * borrowBalance) / expScale;
 
         if (repayAmount > maxClose) {
-            revert TooMuchRepay();
+            revert Lendtroller_TooMuchRepay();
         }
     }
 
@@ -345,42 +327,42 @@ contract Lendtroller is ILendtroller {
         address mTokenBorrowed,
         address,
         address
-    ) external view override {
-        if (seizeGuardianPaused) {
-            revert Paused();
+    ) external view {
+        if (seizePaused == 2) {
+            revert Lendtroller_Paused();
         }
 
-        if (!markets[mTokenBorrowed].isListed) {
-            revert MarketNotListed(mTokenBorrowed);
+        if (!marketTokenData[mTokenBorrowed].isListed) {
+            revert Lendtroller_TokenNotListed();
         }
-        if (!markets[mTokenCollateral].isListed) {
-            revert MarketNotListed(mTokenCollateral);
+        if (!marketTokenData[mTokenCollateral].isListed) {
+            revert Lendtroller_TokenNotListed();
         }
 
         if (
             IMToken(mTokenCollateral).lendtroller() !=
             IMToken(mTokenBorrowed).lendtroller()
         ) {
-            revert LendtrollerMismatch();
+            revert Lendtroller_LendtrollerMismatch();
         }
     }
 
     /// @notice Checks if the account should be allowed to transfer tokens
     ///         in the given market
     /// @param mToken The market to verify the transfer against
-    /// @param src The account which sources the tokens
+    /// @param from The account which sources the tokens
     /// @param transferTokens The number of mTokens to transfer
     function transferAllowed(
         address mToken,
-        address src,
+        address from,
         address,
         uint256 transferTokens
-    ) external view override {
-        if (transferGuardianPaused) {
-            revert Paused();
+    ) external view {
+        if (transferPaused == 2) {
+            revert Lendtroller_Paused();
         }
 
-        _redeemAllowed(mToken, src, transferTokens);
+        _redeemAllowed(mToken, from, transferTokens);
     }
 
     /// @notice Calculate number of tokens of collateral asset to
@@ -395,132 +377,92 @@ contract Lendtroller is ILendtroller {
         address mTokenBorrowed,
         address mTokenCollateral,
         uint256 actualRepayAmount
-    ) external view override returns (uint256) {
+    ) external view returns (uint256) {
         /// Read oracle prices for borrowed and collateral markets
-        (uint256 highPrice, uint256 highPriceError) = getPriceRouter()
-            .getPrice(mTokenBorrowed, true, false);
-        (uint256 lowPrice, uint256 lowPriceError) = getPriceRouter().getPrice(
+        IPriceRouter router = getPriceRouter();
+        (uint256 debtTokenPrice, uint256 debtTokenError) = router.getPrice(
+            mTokenBorrowed, 
+            true, 
+            false
+        );
+        (uint256 collateralTokenPrice, uint256 collateralTokenError) = router.getPrice(
             mTokenCollateral,
             true,
             true
         );
 
         /// Validate that we were able to securely query prices from the dual oracle
-        if (highPriceError == 2 || lowPriceError == 2) {
-            revert PriceError();
+        if (debtTokenError == 2 || collateralTokenError == 2) {
+            revert Lendtroller_PriceError();
         }
-
-        uint256 cTokenPrice = getCTokenPrice(
-            address(mTokenCollateral),
-            lowPrice
-        );
 
         // Get the exchange rate and calculate the number of collateral tokens to seize:
         //  seizeAmount = actualRepayAmount * liquidationIncentive * priceBorrowed / priceCollateral
         //  seizeTokens = seizeAmount / exchangeRate
-        //   = actualRepayAmount * (liquidationIncentive * priceBorrowed) / (priceCollateral * exchangeRate)
-        uint256 exchangeRateScaled = IMToken(mTokenCollateral)
-            .exchangeRateStored();
-        uint256 numerator = liquidationIncentiveScaled * highPrice;
-        uint256 denominator = cTokenPrice * exchangeRateScaled;
-        uint256 ratio = (numerator * expScale) / denominator;
-        uint256 seizeTokens = (ratio * actualRepayAmount) / expScale;
+        //   = actualRepayAmount * (liquidationIncentive * priceBorrowedDebt) / (priceCollateral * exchangeRate)
+        uint256 ratio = (liquidationIncentiveScaled * debtTokenPrice * expScale) / 
+        (collateralTokenPrice * IMToken(mTokenCollateral).exchangeRateStored());
 
-        return seizeTokens;
+        return (ratio * actualRepayAmount) / expScale;
     }
-
-    /// User Custom Functions
-
-    /// @notice User set collateral on/off option for market token
-    /// @param mTokens The addresses of the markets (tokens) to
-    ///                change the collateral on/off option
-    /// @param disableCollateral Disable mToken from collateral
-    function setUserDisableCollateral(
-        IMToken[] calldata mTokens,
-        bool disableCollateral
-    ) external {
-        uint256 numMarkets = mTokens.length;
-        if (numMarkets == 0) {
-            revert InvalidValue();
-        }
-
-        for (uint256 i; i < numMarkets; ++i) {
-            /// Make sure the mToken is a collateral token
-            if (mTokens[i].tokenType() > 0) {
-                userData[msg.sender].collateralDisabled[mTokens[i]] = disableCollateral;
-                emit SetUserDisableCollateral(
-                    msg.sender,
-                    mTokens[i],
-                    disableCollateral
-                );
-            }
-        }
-
-        (, uint256 shortfall) = _getHypotheticalAccountLiquidity(
-            msg.sender,
-            IMToken(address(0)),
-            0,
-            0
-        );
-
-        if (shortfall > 0) {
-            revert InsufficientLiquidity();
-        }
-    }
-
-    /// Admin Functions
 
     /// @notice Sets the closeFactor used when liquidating borrows
     /// @dev Admin function to set closeFactor
-    /// @param newCloseFactorScaled New close factor, scaled by 1e18
+    /// @param newCloseFactor New close factor, scaled by 1e18
     function setCloseFactor(
-        uint256 newCloseFactorScaled
+        uint256 newCloseFactor
     ) external onlyElevatedPermissions {
-        uint256 oldCloseFactorScaled = closeFactorScaled;
-        closeFactorScaled = newCloseFactorScaled;
-        emit NewCloseFactor(oldCloseFactorScaled, closeFactorScaled);
+        if (newCloseFactor <= maxCloseFactor){
+            revert Lendtroller_InvalidValue();
+        }
+        // Cache the current value for event log and gas savings
+        uint256 oldCloseFactor = closeFactor;
+        // Assign new closeFactor
+        closeFactor = newCloseFactor;
+
+        emit NewCloseFactor(oldCloseFactor, newCloseFactor);
     }
 
-    /// @notice Sets the collateralFactor for a market
-    /// @dev Admin function to set per-market collateralFactor
-    /// @param mToken The market to set the factor on
-    /// @param newCollateralFactorScaled The new collateral factor, scaled by 1e18
-    function setCollateralFactor(
+    /// @notice Sets the collateralizationRatio for a market token
+    /// @param mToken The market to set the collateralization ratio on
+    /// @param newCollateralizationRatio The new collateral factor, scaled by 1e18
+    function setCollateralizationRatio(
         IMToken mToken,
-        uint256 newCollateralFactorScaled
+        uint256 newCollateralizationRatio
     ) external onlyElevatedPermissions {
-        // Verify market is listed
-        ILendtroller.Market storage market = markets[address(mToken)];
-        if (!market.isListed) {
-            revert MarketNotListed(address(mToken));
+        // Validate collateralization ratio is not above maximum allowed
+        if (maxCollateralizationRatio < newCollateralizationRatio) {
+            revert Lendtroller_InvalidValue();
         }
 
-        // Check collateral factor is not above maximum allowed
-        if (collateralFactorMaxScaled < newCollateralFactorScaled) {
-            revert InvalidValue();
+        // Verify mToken is listed
+        MarketToken storage marketToken = marketTokenData[address(mToken)];
+        if (!marketToken.isListed) {
+            revert Lendtroller_TokenNotListed();
         }
 
-        (, uint256 lowPriceError) = getPriceRouter().getPrice(
+        (, uint256 errorCode) = getPriceRouter().getPrice(
             address(mToken),
             true,
             true
         );
 
-        // Validate that we got a price and that collateral factor != 0
-        if (lowPriceError == 2 || newCollateralFactorScaled != 0) {
-            revert PriceError();
+        // Validate that we got a price
+        if (errorCode == 2) {
+            revert Lendtroller_PriceError();
         }
 
-        // Cache the current value for event log
-        uint256 oldCollateralFactorScaled = market.collateralFactorScaled;
+        // Cache the current value for gas and log
+        uint256 oldCollateralizationRatio = marketToken.collateralizationRatio;
 
-        // Assign new collateral factor
-        market.collateralFactorScaled = newCollateralFactorScaled;
+        // Assign new collateralization ratio
+        // Note that a collateralization ratio of 0 corresponds to no collateralization of the mToken
+        marketToken.collateralizationRatio = newCollateralizationRatio;
 
-        emit NewCollateralFactor(
+        emit NewCollateralizationRatio(
             mToken,
-            oldCollateralFactorScaled,
-            newCollateralFactorScaled
+            oldCollateralizationRatio,
+            newCollateralizationRatio
         );
     }
 
@@ -530,7 +472,7 @@ contract Lendtroller is ILendtroller {
     function setLiquidationIncentive(
         uint256 newLiquidationIncentiveScaled
     ) external onlyElevatedPermissions {
-        // Cache the current value for event log
+        // Cache the current value for event log and gas savings
         uint256 oldLiquidationIncentiveScaled = liquidationIncentiveScaled;
 
         // Assign new liquidation incentive
@@ -542,21 +484,24 @@ contract Lendtroller is ILendtroller {
         );
     }
 
-    /// @notice Add the market to the markets mapping and set it as listed
+    /// @notice Add the market token to the market and set it as listed
     /// @dev Admin function to set isListed and add support for the market
     /// @param mToken The address of the market (token) to list
-    function supportMarket(IMToken mToken) external onlyElevatedPermissions {
-        if (markets[address(mToken)].isListed) {
-            revert MarketAlreadyListed();
+    function listMarketToken(address mToken) external onlyElevatedPermissions {
+        if (marketTokenData[mToken].isListed) {
+            revert Lendtroller_TokenAlreadyListed();
         }
 
-        mToken.tokenType(); // Sanity check to make sure its really a mToken
+        IMToken(mToken).tokenType(); // Sanity check to make sure its really a mToken
+        if (IMToken(mToken).totalSupply() == 0) {
+            require(IMToken(mToken).startMarket(msg.sender), "lendtroller: Market needs to be initialized");
+        }
 
-        ILendtroller.Market storage market = markets[address(mToken)];
+        MarketToken storage market = marketTokenData[mToken];
         market.isListed = true;
-        market.collateralFactorScaled = 0;
+        market.collateralizationRatio = 0;
 
-        _addMarket(address(mToken));
+        _addMarketToken(mToken);
 
         emit MarketListed(mToken);
     }
@@ -569,20 +514,24 @@ contract Lendtroller is ILendtroller {
     ///                change the borrow caps for
     /// @param newBorrowCaps The new borrow cap values in underlying to be set.
     ///   A value of 0 corresponds to unlimited borrowing.
-    function setMarketBorrowCaps(
+    function setMarketTokenBorrowCaps(
         IMToken[] calldata mTokens,
         uint256[] calldata newBorrowCaps
-    ) external {
-        if (
-            !centralRegistry.hasElevatedPermissions(msg.sender) &&
-            msg.sender != borrowCapGuardian
-        ) {
-            revert AddressUnauthorized();
-        }
+    ) external onlyDaoPermissions {
+
         uint256 numMarkets = mTokens.length;
 
-        if (numMarkets == 0 || numMarkets != newBorrowCaps.length) {
-            revert InvalidValue();
+        assembly {
+            if iszero(numMarkets) {
+                // store the error selector to location 0x0
+                mstore(0x0,_INVALID_VALUE_SELECTOR)
+                // return bytes 29-32 for the selector
+                revert(0x1c,0x04)
+            }
+        }
+
+        if (numMarkets != newBorrowCaps.length) {
+            _revert(_INVALID_VALUE_SELECTOR);
         }
 
         for (uint256 i; i < numMarkets; ++i) {
@@ -591,28 +540,14 @@ contract Lendtroller is ILendtroller {
         }
     }
 
-    /// @notice Admin function to change the Borrow Cap Guardian
-    /// @param newBorrowCapGuardian The address of the new Borrow Cap Guardian
-    function setBorrowCapGuardian(
-        address newBorrowCapGuardian
-    ) external onlyElevatedPermissions {
-        // Cache the current value for event log
-        address oldBorrowCapGuardian = borrowCapGuardian;
-
-        // Assign new guardian
-        borrowCapGuardian = newBorrowCapGuardian;
-
-        emit NewBorrowCapGuardian(oldBorrowCapGuardian, newBorrowCapGuardian);
-    }
-
     /// @notice Returns market status
     /// @param mToken market token address
-    function getIsMarkets(
+    function getMarketTokenData(
         address mToken
-    ) external view override returns (bool, uint256) {
+    ) external view returns (bool, uint256) {
         return (
-            markets[mToken].isListed,
-            markets[mToken].collateralFactorScaled
+            marketTokenData[mToken].isListed,
+            marketTokenData[mToken].collateralizationRatio
         );
     }
 
@@ -622,72 +557,194 @@ contract Lendtroller is ILendtroller {
     function getAccountMembership(
         address mToken,
         address user
-    ) external view override returns (bool) {
-        return markets[mToken].accountMembership[user];
+    ) external view returns (bool) {
+        return marketTokenData[mToken].accountInMarket[user] == 2;
     }
 
     /// @notice Returns all markets
     function getAllMarkets()
         external
         view
-        override
         returns (IMToken[] memory)
     {
         return allMarkets;
     }
 
-    /// @notice Returns all markets user joined
-    /// @param user user address
-    function getAccountAssets(
-        address user
-    ) external view override returns (IMToken[] memory) {
-        return accountAssets[user];
+    /// @notice Admin function to set market mint paused
+    /// @dev requires timelock authority if unpausing
+    /// @param mToken market token address
+    /// @param state pause or unpause
+    function setMintPaused(IMToken mToken, bool state) external {
+        if (!marketTokenData[address(mToken)].isListed) {
+            revert Lendtroller_TokenNotListed();
+        }
+
+        // If we want to pause, DAO can execute immediately, if we want to unpause we need timelock authority
+        if (state) {
+            require(
+                centralRegistry.hasDaoPermissions(msg.sender),
+                "lendtroller: UNAUTHORIZED"
+            );
+        } else {
+            require(
+                centralRegistry.hasElevatedPermissions(msg.sender),
+                "lendtroller: UNAUTHORIZED"
+            );
+        }
+
+        mintPaused[address(mToken)] = state ? 2: 1;
+        emit ActionPaused(mToken, "Mint Paused", state);
+    }
+
+    /// @notice Admin function to set market borrow paused
+    /// @dev requires timelock authority if unpausing
+    /// @param mToken market token address
+    /// @param state pause or unpause
+    function setBorrowPaused(IMToken mToken, bool state) external {
+        if (!marketTokenData[address(mToken)].isListed) {
+            revert Lendtroller_TokenNotListed();
+        }
+
+        // If we want to pause, DAO can execute immediately, if we want to unpause we need timelock authority
+        if (state) {
+            require(
+                centralRegistry.hasDaoPermissions(msg.sender),
+                "lendtroller: UNAUTHORIZED"
+            );
+        } else {
+            require(
+                centralRegistry.hasElevatedPermissions(msg.sender),
+                "lendtroller: UNAUTHORIZED"
+            );
+        }
+
+        borrowPaused[address(mToken)] = state ? 2: 1;
+        emit ActionPaused(mToken, "Borrow Paused", state);
+    }
+
+    /// @notice Admin function to set transfer paused
+    /// @dev requires timelock authority if unpausing
+    /// @param state pause or unpause
+    function setTransferPaused(bool state) external {
+        if (state) {
+            require(
+                centralRegistry.hasDaoPermissions(msg.sender),
+                "lendtroller: UNAUTHORIZED"
+            );
+        } else {
+            require(
+                centralRegistry.hasElevatedPermissions(msg.sender),
+                "lendtroller: UNAUTHORIZED"
+            );
+        }
+
+        transferPaused = state ? 2: 1;
+        emit ActionPaused("Transfer Paused", state);
+    }
+
+    /// @notice Admin function to set seize paused
+    /// @dev requires timelock authority if unpausing
+    /// @param state pause or unpause
+    function setSeizePaused(bool state) external {
+        if (state) {
+            require(
+                centralRegistry.hasDaoPermissions(msg.sender),
+                "lendtroller: UNAUTHORIZED"
+            );
+        } else {
+            require(
+                centralRegistry.hasElevatedPermissions(msg.sender),
+                "lendtroller: UNAUTHORIZED"
+            );
+        }
+
+        seizePaused = state ? 2: 1;
+        emit ActionPaused("Seize Paused", state);
+    }
+
+    /// @notice Admin function to set position folding address
+    /// @param newPositionFolding new position folding address
+    function setPositionFolding(
+        address newPositionFolding
+    ) external onlyElevatedPermissions {
+        // Cache the current value for event log
+        address oldPositionFolding = positionFolding;
+
+        // Assign new position folding contract
+        positionFolding = newPositionFolding;
+
+        emit NewPositionFoldingContract(oldPositionFolding, newPositionFolding);
+    }
+
+    /// @notice Updates `accounts` lastBorrowTimestamp to the current block timestamp
+    /// @dev The caller must be a listed MToken in the `markets` mapping
+    /// @param borrower The address of the account that has just borrowed
+    function notifyAccountBorrow(address borrower) external {
+        require(marketTokenData[msg.sender].isListed, "Lendtroller: Caller not MToken");
+        accountAssets[borrower].lastBorrowTimestamp = block.timestamp;
     }
 
     /// PUBLIC FUNCTIONS ///
+
+    /// @notice Checks if the account should be allowed to borrow
+    ///         the underlying asset of the given market
+    /// @param mToken The market to verify the borrow against
+    /// @param borrower The account which would borrow the asset
+    /// @param borrowAmount The amount of underlying the account would borrow
+    function borrowAllowed(
+        address mToken,
+        address borrower,
+        uint256 borrowAmount
+    ) public {
+        if (borrowPaused[mToken] == 2) {
+            revert Lendtroller_Paused();
+        }
+
+        if (!marketTokenData[mToken].isListed) {
+            revert Lendtroller_TokenNotListed();
+        }
+
+        if (marketTokenData[mToken].accountInMarket[borrower] < 2) {
+            // only mTokens may call borrowAllowed if borrower not in market
+            if (msg.sender != mToken) {
+                revert Lendtroller_AddressUnauthorized();
+            }
+
+            // The user is not in the market yet, so make them enter
+            marketTokenData[mToken].accountInMarket[borrower] = 2;
+            accountAssets[borrower].assets.push(IMToken(mToken));
+
+            emit MarketEntered(mToken, borrower);
+        }
+
+        uint256 borrowCap = borrowCaps[mToken];
+        // Borrow cap of 0 corresponds to unlimited borrowing
+        if (borrowCap != 0) {
+            // Validate that if there is a borrow cap, 
+            // we will not be over the cap with this new borrow
+            if ((IMToken(mToken).totalBorrows() + borrowAmount) > borrowCap) {
+                revert Lendtroller_BorrowCapReached();
+            }
+        }
+
+        /// We call hypothetical account liquidity as normal but with heavier error code restriction on borrow
+        (, uint256 shortfall) = _getHypotheticalAccountLiquidity(
+            borrower,
+            IMToken(mToken),
+            0,
+            borrowAmount,
+            1
+        );
+
+        if (shortfall > 0) {
+            revert Lendtroller_InsufficientLiquidity();
+        }
+    }
 
     /// @notice Fetches the current price router from the central registry
     /// @return Current PriceRouter interface address
     function getPriceRouter() public view returns (IPriceRouter) {
         return IPriceRouter(centralRegistry.priceRouter());
-    }
-
-    /// @notice Calculates the price of a cToken based on the underlying asset price and exchange ratio with vault
-    /// @param cToken The address of the cToken for which to calculate the price.
-    /// @param underlyingPrice The price of the underlying asset of the cToken
-    /// @return The price of the cToken
-    function getCTokenPrice(
-        address cToken,
-        uint256 underlyingPrice
-    ) public view returns (uint256) {
-        return
-            (underlyingPrice *
-                BasePositionVault(ICToken(cToken).vault()).convertToAssets(expScale)) / expScale;
-    }
-
-    /// @notice Updates `accounts` lastBorrowTimestamp to the current block timestamp
-    /// @dev The caller must be a listed MToken in the `markets` mapping
-    /// @param account The address of the account that has just borrowed
-    function notifyAccountBorrow(address account) external {
-        require(markets[msg.sender].isListed, "Lendtroller: Caller not MToken");
-        userData[account].lastBorrowTimestamp = block.timestamp;
-    }
-
-    /// @notice Add assets to be included in account liquidity calculation
-    /// @param mTokens The list of addresses of the mToken markets to be enabled
-    /// @return uint array: 0 = market not entered; 1 = market entered
-    function enterMarkets(
-        address[] memory mTokens
-    ) public override returns (uint256[] memory) {
-        uint256 numCTokens = mTokens.length;
-
-        uint256[] memory results = new uint256[](numCTokens);
-        for (uint256 i; i < numCTokens; ++i) {
-            results[i] = _addToMarket(IMToken(mTokens[i]), msg.sender);
-        }
-
-        // Return a list of markets joined & not joined (1 = joined, 0 = not joined)
-        return results;
     }
 
     /// Liquidity/Liquidation Calculations
@@ -705,7 +762,8 @@ contract Lendtroller is ILendtroller {
                 account,
                 IMToken(address(0)),
                 0,
-                0
+                0,
+                2
             );
 
         return (liquidity, shortfall);
@@ -717,7 +775,7 @@ contract Lendtroller is ILendtroller {
     /// @return uint total borrow amount of user
     function getAccountPosition(
         address account
-    ) public view override returns (uint256, uint256, uint256) {
+    ) public view returns (uint256, uint256, uint256) {
         (
             uint256 sumCollateral,
             uint256 maxBorrow,
@@ -726,7 +784,8 @@ contract Lendtroller is ILendtroller {
                 account,
                 IMToken(address(0)),
                 0,
-                0
+                0,
+                2
             );
 
         return (sumCollateral, maxBorrow, sumBorrow);
@@ -754,155 +813,39 @@ contract Lendtroller is ILendtroller {
                 account,
                 IMToken(mTokenModify),
                 redeemTokens,
-                borrowAmount
+                borrowAmount,
+                2
             );
 
         return (liquidity, shortfall);
     }
 
-    /// @notice Admin function to change the Pause Guardian
-    /// @param newPauseGuardian The address of the new Pause Guardian
-    function setPauseGuardian(
-        address newPauseGuardian
-    ) public onlyElevatedPermissions {
-        // Cache the current value for event log
-        address oldPauseGuardian = pauseGuardian;
-
-        // Assign new guardian
-        pauseGuardian = newPauseGuardian;
-
-        emit NewPauseGuardian(oldPauseGuardian, pauseGuardian);
-    }
-
-    /// @notice Admin function to set market mint paused
-    /// @param mToken market token address
-    /// @param state pause or unpause
-    function setMintPaused(IMToken mToken, bool state) public returns (bool) {
-        if (!markets[address(mToken)].isListed) {
-            revert MarketNotListed(address(mToken));
-        }
-
-        bool hasDaoPerms = centralRegistry.hasElevatedPermissions(msg.sender);
-
-        if (msg.sender != pauseGuardian && !hasDaoPerms) {
-            revert AddressUnauthorized();
-        }
-        // Only the timelock or Emergency Council can turn minting back on
-        if (!hasDaoPerms && state != true) {
-            revert AddressUnauthorized();
-        }
-
-        mintGuardianPaused[address(mToken)] = state;
-        emit ActionPaused(mToken, "lendtroller: Mint Paused", state);
-        return state;
-    }
-
-    /// @notice Admin function to set market borrow paused
-    /// @param mToken market token address
-    /// @param state pause or unpause
-    function setBorrowPaused(
-        IMToken mToken,
-        bool state
-    ) public returns (bool) {
-        if (!markets[address(mToken)].isListed) {
-            revert MarketNotListed(address(mToken));
-        }
-
-        bool hasDaoPerms = centralRegistry.hasElevatedPermissions(msg.sender);
-
-        if (msg.sender != pauseGuardian && !hasDaoPerms) {
-            revert AddressUnauthorized();
-        }
-        // Only the timelock or Emergency Council can turn borrows back on
-        if (!hasDaoPerms && state != true) {
-            revert AddressUnauthorized();
-        }
-
-        borrowGuardianPaused[address(mToken)] = state;
-        emit ActionPaused(mToken, "lendtroller: Borrow Paused", state);
-        return state;
-    }
-
-    /// @notice Admin function to set transfer paused
-    /// @param state pause or unpause
-    function setTransferPaused(bool state) public returns (bool) {
-        bool hasDaoPerms = centralRegistry.hasElevatedPermissions(msg.sender);
-
-        if (msg.sender != pauseGuardian && !hasDaoPerms) {
-            revert AddressUnauthorized();
-        }
-        // Only the timelock or Emergency Council can turn transfers back on
-        if (!hasDaoPerms && state != true) {
-            revert AddressUnauthorized();
-        }
-
-        transferGuardianPaused = state;
-        emit ActionPaused("lendtroller: Transfer Paused", state);
-        return state;
-    }
-
-    /// @notice Admin function to set seize paused
-    /// @param state pause or unpause
-    function setSeizePaused(bool state) public returns (bool) {
-        bool hasDaoPerms = centralRegistry.hasElevatedPermissions(msg.sender);
-
-        if (msg.sender != pauseGuardian && !hasDaoPerms) {
-            revert AddressUnauthorized();
-        }
-        // Only the timelock or Emergency Council can turn seizing assets back on
-        if (!hasDaoPerms && state != true) {
-            revert AddressUnauthorized();
-        }
-
-        seizeGuardianPaused = state;
-        emit ActionPaused("lendtroller: Seize Paused", state);
-        return state;
-    }
-
-    /// @notice Admin function to set position folding contract address
-    /// @param newPositionFolding new position folding contract address
-    function setPositionFolding(
-        address newPositionFolding
-    ) public onlyElevatedPermissions {
-        // Cache the current value for event log
-        address oldPositionFolding = positionFolding;
-
-        // Assign new position folding contract
-        positionFolding = newPositionFolding;
-
-        emit NewPositionFoldingContract(oldPositionFolding, positionFolding);
-    }
-
     /// INTERNAL FUNCTIONS ///
 
-    /// @notice Add the market to the borrower's "assets in"
-    ///         for liquidity calculations
+    /// @notice Documents a user entering a market for liquidity calculations
     /// @param mToken The market to enter
-    /// @param borrower The address of the account to modify
-    /// @return uint 0 = unable to enter market; 1 = market entered
-    function _addToMarket(
-        IMToken mToken,
-        address borrower
-    ) internal returns (uint256) {
-        ILendtroller.Market storage marketToJoin = markets[address(mToken)];
+    /// @param user The address of the account entering the market
+    function _enterMarket(
+        address mToken,
+        address user
+    ) internal {
+        MarketToken storage marketToJoin = marketTokenData[mToken];
 
         if (!marketToJoin.isListed) {
             // market is not listed, cannot join
-            return 0;
+            return;
         }
 
-        if (marketToJoin.accountMembership[borrower]) {
-            // market already joined
-            return 0;
+        if (marketToJoin.accountInMarket[user] == 2) {
+            // user already joined market
+            return;
         }
 
-        marketToJoin.accountMembership[borrower] = true;
-        accountAssets[borrower].push(mToken);
+        marketToJoin.accountInMarket[user] = 2;
+        accountAssets[user].assets.push(IMToken(mToken));
 
-        emit MarketEntered(mToken, borrower);
+        emit MarketEntered(mToken, user);
 
-        // Indicates that a market was successfully entered
-        return 1;
     }
 
     /// @notice Checks if the account should be allowed to redeem tokens
@@ -916,25 +859,25 @@ contract Lendtroller is ILendtroller {
         address redeemer,
         uint256 redeemTokens
     ) internal view {
-        if (!markets[mToken].isListed) {
-            revert MarketNotListed(mToken);
-        }
-
-        // If the redeemer is not 'in' the market, then we can bypass
-        // the liquidity check
-        if (!markets[mToken].accountMembership[redeemer]) {
-            return;
+        if (!marketTokenData[mToken].isListed) {
+            revert Lendtroller_TokenNotListed();
         }
 
         /// We require a `minimumHoldPeriod` to break flashloan manipulations attempts
         /// as well as short term price manipulations if the dynamic dual oracle 
         /// fails to protect the market somehow
         if (
-            userData[redeemer].lastBorrowTimestamp +
-                minimumHoldPeriod >
+            accountAssets[redeemer].lastBorrowTimestamp +
+                minHoldPeriod >
             block.timestamp
         ) {
-            revert MinimumHoldPeriod();
+            revert Lendtroller_MinimumHoldPeriod();
+        }
+
+        // If the redeemer is not 'in' the market, then we can bypass
+        // the liquidity check
+        if (marketTokenData[mToken].accountInMarket[redeemer] < 2) {
+            return;
         }
 
         // Otherwise, perform a hypothetical liquidity check to guard against
@@ -943,11 +886,12 @@ contract Lendtroller is ILendtroller {
             redeemer,
             IMToken(mToken),
             redeemTokens,
-            0
+            0,
+            2
         );
 
         if (shortfall > 0) {
-            revert InsufficientLiquidity();
+            revert Lendtroller_InsufficientLiquidity();
         }
     }
 
@@ -962,7 +906,8 @@ contract Lendtroller is ILendtroller {
                 account,
                 IMToken(address(0)),
                 0,
-                0
+                0,
+                2
             );
     }
 
@@ -972,16 +917,18 @@ contract Lendtroller is ILendtroller {
     /// @param account The account to determine liquidity for
     /// @param redeemTokens The number of tokens to hypothetically redeem
     /// @param borrowAmount The amount of underlying to hypothetically borrow
+    /// @param errorCodeBreakpoint The error code that will cause liquidity operations to revert
     /// @dev Note that we calculate the exchangeRateStored for each collateral
     ///           mToken using stored data, without calculating accumulated interest.
-    /// @return uint hypothetical account liquidity in excess
+    /// @return uint256 hypothetical account liquidity in excess
     ///              of collateral requirements,
-    /// @return uint hypothetical account shortfall below collateral requirements)
+    /// @return uint256 hypothetical account shortfall below collateral requirements)
     function _getHypotheticalAccountLiquidity(
         address account,
         IMToken mTokenModify,
         uint256 redeemTokens,
-        uint256 borrowAmount
+        uint256 borrowAmount,
+        uint256 errorCodeBreakpoint
     ) internal view returns (uint256, uint256) {
         (
             ,
@@ -991,20 +938,21 @@ contract Lendtroller is ILendtroller {
                 account,
                 mTokenModify,
                 redeemTokens,
-                borrowAmount
+                borrowAmount,
+                errorCodeBreakpoint
             );
 
-        // These will not underflow from unchecked as the underflow condition
-        // is checked prior
+        // These will not underflow/overflow as condition is checked prior
         if (maxBorrow > sumBorrowPlusEffects) {
             unchecked {
                 return (maxBorrow - sumBorrowPlusEffects, 0);
             }
-        } else {
-            unchecked {
-                return (0, sumBorrowPlusEffects - maxBorrow);
-            }
         }
+
+        unchecked {
+            return (0, sumBorrowPlusEffects - maxBorrow);
+        }
+
     }
 
     /// @notice Determine what the account liquidity would be if
@@ -1013,6 +961,7 @@ contract Lendtroller is ILendtroller {
     /// @param account The account to determine liquidity for
     /// @param redeemTokens The number of tokens to hypothetically redeem
     /// @param borrowAmount The amount of underlying to hypothetically borrow
+    /// @param errorCodeBreakpoint The error code that will cause liquidity operations to revert
     /// @dev Note that we calculate the exchangeRateStored for each collateral
     ///           mToken using stored data, without calculating accumulated interest.
     /// @return sumCollateral total collateral amount of user
@@ -1022,7 +971,8 @@ contract Lendtroller is ILendtroller {
         address account,
         IMToken mTokenModify,
         uint256 redeemTokens,
-        uint256 borrowAmount
+        uint256 borrowAmount,
+        uint256 errorCodeBreakpoint
     )
         internal
         view
@@ -1032,84 +982,96 @@ contract Lendtroller is ILendtroller {
             uint256 sumBorrowPlusEffects
         )
     {
-        uint256 numAccountAssets = accountAssets[account].length;
-        IMToken asset;
-        bool collateralEnabled;
+        uint256 numAccountAssets = accountAssets[account].assets.length;
+        bool isCToken;
+        IPriceRouter router = getPriceRouter();
+        accountSnapshot memory assetSnapshot;
 
         // For each asset the account is in
-        for (uint256 i; i < numAccountAssets; ++i) {
-            asset = accountAssets[account][i];
-            collateralEnabled =
-                asset.tokenType() == 1 &&
-                !userData[account].collateralDisabled[asset];
+        for (uint256 i; i < numAccountAssets; ) {
+            // Pull user token snapshot data for the asset and then increment i
+            unchecked {
+                assetSnapshot = accountAssets[account].assets[i++].getAccountSnapshotPacked(account);
+            }
+            isCToken = assetSnapshot.tokenType == 1;
 
-            (
-                uint256 mTokenBalance,
-                uint256 borrowBalance,
-                uint256 exchangeRateScaled
-            ) = asset.getAccountSnapshot(account);
-
-            if (collateralEnabled) {
-                (uint256 lowPrice, uint256 errorCode) = getPriceRouter()
-                    .getPrice(address(asset), true, true);
-                if (errorCode == 2) {
-                    revert PriceError();
-                }
-                uint256 cTokenPrice = getCTokenPrice(address(asset), lowPrice);
-                uint256 assetValue = (((mTokenBalance * exchangeRateScaled) /
-                    expScale) * cTokenPrice) / expScale;
-
-                sumCollateral += assetValue;
-                maxBorrow +=
-                    (assetValue *
-                        markets[address(asset)].collateralFactorScaled) /
-                    expScale;
+            // Collateralized assets (CTokens) use the lower price, Debt assets (DTokens) use the higher price
+            (uint256 price, uint256 errorCode) = router.getPrice(address(assetSnapshot.asset), true, isCToken);
+            if (errorCode == errorCodeBreakpoint) {
+                revert Lendtroller_PriceError();
             }
 
-            {
-                (uint256 highPrice, uint256 errorCode) = getPriceRouter()
-                    .getPrice(address(asset), true, false);
-                if (errorCode == 2) {
-                    revert PriceError();
+            if (isCToken) {
+                // If the asset has a collateral ratio increment their collateral and max borrow value
+                if (!(marketTokenData[address(assetSnapshot.asset)].collateralizationRatio == 0)) {
+                    uint256 assetValue = (assetSnapshot.mTokenBalance * price * assetSnapshot.exchangeRateScaled) /
+                    expScale;
+
+                    sumCollateral += assetValue;
+                    maxBorrow +=
+                        (assetValue *
+                            marketTokenData[address(assetSnapshot.asset)].collateralizationRatio) /
+                        expScale;
                 }
 
-                sumBorrowPlusEffects += ((highPrice * borrowBalance) /
+            } else {
+                // If they have a borrow balance we need to document it
+                if (assetSnapshot.borrowBalance > 0) {
+                    sumBorrowPlusEffects += ((price * assetSnapshot.borrowBalance) /
                     expScale);
+                }
+            }
 
-                // Calculate effects of interacting with mTokenModify
-                if (asset == mTokenModify) {
-                    if (collateralEnabled) {
+            // Calculate effects of interacting with mTokenModify
+            if (assetSnapshot.asset == mTokenModify) {
+                // If its a CToken our only option is to redeem it since it cant be borrowed
+                // If its a DToken we can redeem it but it will not have any effect on borrow amount 
+                // since DToken have a collateral value of 0
+                if (isCToken) {
+                    if (!(marketTokenData[address(assetSnapshot.asset)].collateralizationRatio == 0)) {
                         // Pre-compute a conversion factor
-                        // from tokens -> ether (normalized price value)
-                        uint256 tokensToDenom = (((markets[address(asset)]
-                            .collateralFactorScaled * exchangeRateScaled) /
-                            expScale) * highPrice) / expScale;
+                        // from tokens -> $ (normalized price value)
+                        uint256 tokensToDenom = (((marketTokenData[address(assetSnapshot.asset)]
+                            .collateralizationRatio * assetSnapshot.exchangeRateScaled) /
+                            expScale) * price) / expScale;
 
                         // redeem effect
                         sumBorrowPlusEffects += ((tokensToDenom *
                             redeemTokens) / expScale);
                     }
-
+                    
+                } else {
                     // borrow effect
-                    sumBorrowPlusEffects += ((highPrice * borrowAmount) /
+                    sumBorrowPlusEffects += ((price * borrowAmount) /
                         expScale);
                 }
+ 
             }
         }
     }
 
-    /// @notice Add the market to the markets mapping and set it as listed
+    /// @notice Add the market token to the markets mapping and set it as listed
     /// @param mToken The address of the market (token) to list
-    function _addMarket(address mToken) internal {
+    function _addMarketToken(address mToken) internal {
         uint256 numMarkets = allMarkets.length;
 
-        for (uint256 i; i < numMarkets; ++i) {
-            if (allMarkets[i] == IMToken(mToken)) {
-                revert MarketAlreadyListed();
-            }
+        for (uint256 i; i < numMarkets; ) {
+            unchecked {
+                if (allMarkets[i++] == IMToken(mToken)) {
+                    revert Lendtroller_TokenAlreadyListed();
+                }
+            }  
         }
         allMarkets.push(IMToken(mToken));
     }
 
+    /// @dev Internal helper for reverting efficiently.
+    function _revert(uint256 s) internal pure {
+        /// @solidity memory-safe-assembly
+        assembly {
+            mstore(0x00, s)
+            revert(0x1c, 0x04)
+        }
+    }
     
 }

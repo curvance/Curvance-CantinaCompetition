@@ -40,12 +40,12 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
 
     /// CONSTANTS ///
 
-    uint256 public constant MAX_LEVERAGE = 9900; // 0.99
-    uint256 public constant DENOMINATOR = 10000;
-    uint256 public constant SLIPPAGE = 500;
+    uint256 public constant MAX_LEVERAGE = 9900; // 99%
+    uint256 public constant DENOMINATOR = 10000; // Scalar for math
+    uint256 public constant SLIPPAGE = 500; // 5%
 
-    ICentralRegistry public immutable centralRegistry;
-    ILendtroller public immutable lendtroller;
+    ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
+    ILendtroller public immutable lendtroller; // Lendtroller linked
 
     /// MODIFIERS ///
 
@@ -130,7 +130,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         uint256 borrowAmount,
         bytes calldata params
     ) external override {
-        (bool isListed, ) = lendtroller.getIsMarkets(borrowToken);
+        (bool isListed, ) = lendtroller.getMarketTokenData(borrowToken);
 
         require(
             isListed && msg.sender == borrowToken,
@@ -219,12 +219,10 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         uint256 collateralAmount,
         bytes calldata params
     ) external override {
-        (bool isListed, ) = lendtroller.getIsMarkets(collateralToken);
+        require (msg.sender == collateralToken,"PositionFolding: UNAUTHORIZED");
 
-        require(
-            isListed && msg.sender == collateralToken,
-            "PositionFolding: UNAUTHORIZED"
-        );
+        (bool isListed, ) = lendtroller.getMarketTokenData(collateralToken);
+        require( isListed,"PositionFolding: UNAUTHORIZED");
 
         DeleverageStruct memory deleverageData = abi.decode(
             params,

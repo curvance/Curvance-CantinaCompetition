@@ -4,6 +4,7 @@ pragma solidity ^0.8.17;
 import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
+import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { IVeCVE } from "contracts/interfaces/IVeCVE.sol";
@@ -11,21 +12,21 @@ import { RewardsData } from "contracts/interfaces/ICVELocker.sol";
 import { ICVXLocker } from "contracts/interfaces/ICVXLocker.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
-contract CVELocker {
-    // TO-DO:
-    // Add epoch rewards view for frontend?
+contract CVELocker is ReentrancyGuard {
 
     /// CONSTANTS ///
 
     address public constant baseRewardToken =
-        0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
-    uint256 public constant EPOCH_DURATION = 2 weeks;
-    uint256 public constant DENOMINATOR = 10000;
-    uint256 public constant ethPerCVEOffset = 1 ether;
-
-    /// @notice Address for Curvance DAO registry contract for ownership
-    ///         and location data.
-    ICentralRegistry public immutable centralRegistry;
+        0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE; // Reward token; ETH
+    uint256 public constant EPOCH_DURATION = 2 weeks; // Protocol epoch length
+    uint256 public constant expScale = 1e18; // Scalar for math
+    ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
+    // @dev `bytes4(keccak256(bytes("CVELocker_Unauthorized()")))`
+    uint256 internal constant _CVELOCKER_UNAUTHORIZED_SELECTOR = 0xeb83e515;
+    // @dev `bytes4(keccak256(bytes("CVELocker_FailedETHTransfer()")))`
+    uint256 internal constant _FAILED_ETH_TRANSFER_SELECTOR = 0xa9c60879;
+    // @dev `bytes4(keccak256(bytes("CVELocker_NoEpochRewards()")))`
+    uint256 internal constant _NO_EPOCH_REWARDS_SELECTOR = 0x2f75e00c;
 
     // Token Addresses
     address public immutable cve;
@@ -36,8 +37,8 @@ contract CVELocker {
     IVeCVE public veCVE;
 
     uint256 public genesisEpoch;
-    bool public lockerStarted;
-    bool public isShutdown;
+    uint256 public lockerStarted = 1;
+    uint256 public isShutdown = 1;
 
     ICVXLocker public cvxLocker;
 
@@ -74,6 +75,12 @@ contract CVELocker {
         uint256 amount
     );
 
+    /// ERRORS ///
+
+    error CVELocker_Unauthorized();
+    error CVELocker_FailedETHTransfer();
+    error CVELocker_NoEpochRewards();
+
     /// MODIFIERS ///
 
     modifier onlyDaoPermissions() {
@@ -93,7 +100,14 @@ contract CVELocker {
     }
 
     modifier onlyVeCVE() {
-        require(msg.sender == address(veCVE), "CVELocker: UNAUTHORIZED");
+        address _veCVE = address(veCVE);
+        assembly {
+            if iszero(eq(caller(),_veCVE)){
+                mstore (0x00, _CVELOCKER_UNAUTHORIZED_SELECTOR)
+                // return bytes 29-32 for the selector
+                revert (0x1c,0x04)
+            }
+        }
         _;
     }
 
@@ -122,17 +136,16 @@ contract CVELocker {
         genesisEpoch = centralRegistry.genesisEpoch();
         cvx = cvx_;
         cve = centralRegistry.CVE();
-        veCVE = IVeCVE(centralRegistry.veCVE());
     }
 
     /// EXTERNAL FUNCTIONS ///
 
     function startLocker() external onlyDaoPermissions {
-        require(!lockerStarted, "cveLocker: locker already started");
+        require(lockerStarted == 1, "cveLocker: locker already started");
 
         veCVE = IVeCVE(centralRegistry.veCVE());
         genesisEpoch = centralRegistry.genesisEpoch();
-        lockerStarted = true;
+        lockerStarted = 2;
     }
 
     /// @notice Recover tokens sent accidentally to the contract
@@ -187,7 +200,7 @@ contract CVELocker {
                 centralRegistry.hasElevatedPermissions(msg.sender),
             "CVELocker: UNAUTHORIZED"
         );
-        isShutdown = true;
+        isShutdown = 2;
     }
 
     /// @param chainId The remote chainId sending the tokens
@@ -266,13 +279,20 @@ contract CVELocker {
     /// @param aux Auxiliary data for wrapped assets such as vlCVX and veCVE.
     function claimRewards(
         address recipient,
-        RewardsData memory rewardsData,
-        bytes memory params,
+        RewardsData calldata rewardsData,
+        bytes calldata params,
         uint256 aux
-    ) external {
+    ) external nonReentrant {
         uint256 epochs = epochsToClaim(msg.sender);
 
-        require(epochs > 0, "CVELocker: no epochs to claim");
+        // If there are no epoch rewards to claim, revert
+        assembly {
+            if iszero(epochs) {
+                mstore (0x00, _NO_EPOCH_REWARDS_SELECTOR)
+                // return bytes 29-32 for the selector
+                revert (0x1c, 0x04)
+            }
+        }
 
         _claimRewards(msg.sender, recipient, epochs, rewardsData, params, aux);
     }
@@ -287,10 +307,10 @@ contract CVELocker {
         address user,
         address recipient,
         uint256 epochs,
-        RewardsData memory rewardsData,
-        bytes memory params,
+        RewardsData calldata rewardsData,
+        bytes calldata params,
         uint256 aux
-    ) external onlyVeCVE {
+    ) external onlyVeCVE nonReentrant {
         // We check whether there are epochs to claim in veCVE
         // so we do not need to check here like in claimRewards
         _claimRewards(user, recipient, epochs, rewardsData, params, aux);
@@ -310,7 +330,7 @@ contract CVELocker {
             veCVE.userTokenPoints(user) > 0
         ) {
             unchecked {
-                return nextEpochToDeliver - userNextClaimIndex[user] - 1;
+                return nextEpochToDeliver - (userNextClaimIndex[user] - 1);
             }
         }
 
@@ -324,10 +344,10 @@ contract CVELocker {
         address user,
         address recipient,
         uint256 epochs,
-        RewardsData memory rewardsData,
-        bytes memory params,
+        RewardsData calldata rewardsData,
+        bytes calldata params,
         uint256 aux
-    ) public {
+    ) internal {
         uint256 nextUserRewardEpoch = userNextClaimIndex[user];
         uint256 userRewards;
 
@@ -342,7 +362,7 @@ contract CVELocker {
         unchecked {
             userNextClaimIndex[user] += epochs;
             // Removes the 1e18 offset for proper reward value
-            userRewards = userRewards / ethPerCVEOffset;
+            userRewards = userRewards / expScale;
         }
 
         uint256 rewardAmount = _processRewards(
@@ -396,8 +416,8 @@ contract CVELocker {
     function _processRewards(
         address recipient,
         uint256 userRewards,
-        RewardsData memory rewardsData,
-        bytes memory params,
+        RewardsData calldata rewardsData,
+        bytes calldata params,
         uint256 aux
     ) internal returns (uint256) {
         if (userRewards == 0) {
@@ -452,7 +472,7 @@ contract CVELocker {
             return reward;
         }
 
-        return _distributeRewardsAsETH(recipient, userRewards);
+        return _distributeRewardsAsETH(payable(recipient), userRewards);
     }
 
     /// @notice Lock fees as veCVE
@@ -534,18 +554,24 @@ contract CVELocker {
         return reward;
     }
 
-    /// @dev Distributes the specified reward amount as ETH to
-    ///      the recipient address.
-    /// @param recipient The address to receive the ETH rewards.
-    /// @param reward The amount of ETH to send.
-    /// @return reward The total amount of ETH that was sent.
+    /// @notice Distributes the specified reward amount as ETH to
+    ///         the recipient address
+    /// @dev Has reEntry protection via claimRewards & claimRewardsFor
+    /// @param recipient The address to receive the ETH rewards
+    /// @param reward The amount of ETH to send
+    /// @return reward The total amount of ETH that was sent
     function _distributeRewardsAsETH(
-        address recipient,
+        address payable recipient,
         uint256 reward
     ) internal returns (uint256) {
-        (bool success, ) = payable(recipient).call{ value: reward }("");
-
-        require(success, "CVELocker: error sending ETH rewards");
+        assembly {
+            // Revert if we failed to transfer eth
+            if iszero(call(gas(), recipient, reward, 0x00, 0x00, 0x00, 0x00)) {
+               mstore(0x00, _FAILED_ETH_TRANSFER_SELECTOR)
+               // return bytes 29-32 for the selector
+               revert (0x1c,0x04)
+            }
+        }
 
         return reward;
     }

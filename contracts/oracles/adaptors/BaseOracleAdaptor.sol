@@ -7,21 +7,18 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IOracleAdaptor, PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
 
 abstract contract BaseOracleAdaptor {
+
     /// CONSTANTS ///
 
-    /// @notice Address for Curvance DAO registry contract for ownership
-    ///         and location data.
-    ICentralRegistry public immutable centralRegistry;
+    ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
 
     /// STORAGE ///
 
-    /// @notice Mapping used to track whether or not an asset is supported
-    ///         by the adaptor and pricing information.
+    /// Asset => Supported by adaptor
     mapping(address => bool) public isSupportedAsset;
 
     /// MODIFIERS ///
 
-    // Only callable by Price Router.
     modifier onlyPriceRouter() {
         require(
             msg.sender == centralRegistry.priceRouter(),

@@ -27,26 +27,24 @@ contract GaugePool is GaugeController, ReentrancyGuard {
     }
 
     /// CONSTANTS ///
-    uint256 public constant PRECISION = 1e36;
+
+    uint256 public constant PRECISION = 1e36; // Scalar for math
+    address public immutable lendtroller; // Lendtroller linked
 
     /// STORAGE ///
 
-    address public lendtroller;
+    // Current child gauges attached to this gauge pool
     ChildGaugePool[] public childGauges;
     mapping(address => PoolInfo) public poolInfo; // token => pool info
     mapping(address => mapping(address => UserInfo)) public userInfo; // token => user => info
 
     /// EVENTS ///
 
-    event AddChildGauge(address indexed childGauge);
-    event RemoveChildGauge(address indexed childGauge);
-    event Deposit(address indexed user, address indexed token, uint256 amount);
-    event Withdraw(
-        address indexed user,
-        address indexed token,
-        uint256 amount
-    );
-    event Claim(address indexed user, address indexed token, uint256 amount);
+    event AddChildGauge(address childGauge);
+    event RemoveChildGauge(address childGauge);
+    event Deposit(address user, address token, uint256 amount);
+    event Withdraw(address user, address token, uint256 amount);
+    event Claim(address user, address token, uint256 amount);
 
     constructor(
         ICentralRegistry centralRegistry_,
@@ -102,9 +100,10 @@ contract GaugePool is GaugeController, ReentrancyGuard {
             revert GaugeErrors.InvalidToken();
         }
 
-        uint256 accRewardPerShare = poolInfo[token].accRewardPerShare;
-        uint256 lastRewardTimestamp = poolInfo[token].lastRewardTimestamp;
-        uint256 totalDeposited = poolInfo[token].totalAmount;
+        PoolInfo storage _pool = poolInfo[token];
+        uint256 accRewardPerShare = _pool.accRewardPerShare;
+        uint256 lastRewardTimestamp = _pool.lastRewardTimestamp;
+        uint256 totalDeposited = _pool.totalAmount;
 
         if (block.timestamp > lastRewardTimestamp && totalDeposited != 0) {
             uint256 lastEpoch = epochOfTimestamp(lastRewardTimestamp);
@@ -157,13 +156,15 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         address user,
         uint256 amount
     ) external nonReentrant {
-        (bool isListed, ) = ILendtroller(lendtroller).getIsMarkets(token);
-        if (msg.sender != token || !isListed) {
-            revert GaugeErrors.InvalidToken();
-        }
+
         if (amount == 0) {
             revert GaugeErrors.InvalidAmount();
         }
+
+        (bool isListed, ) = ILendtroller(lendtroller).getMarketTokenData(token);
+         if (msg.sender != token || !isListed) {
+             revert GaugeErrors.InvalidToken();
+         }
 
         updatePool(token);
         _calcPending(user, token);
@@ -197,13 +198,18 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         address user,
         uint256 amount
     ) external nonReentrant {
-        (bool isListed, ) = ILendtroller(lendtroller).getIsMarkets(token);
+
+        if (amount == 0){
+            revert GaugeErrors.InvalidAmount();
+        }
+
+        (bool isListed, ) = ILendtroller(lendtroller).getMarketTokenData(token);
         if (msg.sender != token || !isListed) {
             revert GaugeErrors.InvalidToken();
         }
 
         UserInfo storage info = userInfo[token][user];
-        if (amount == 0 || info.amount < amount) {
+        if (info.amount < amount) {
             revert GaugeErrors.InvalidAmount();
         }
 

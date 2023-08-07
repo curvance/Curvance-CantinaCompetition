@@ -6,32 +6,29 @@ import "../layerzero/OFTV2.sol";
 contract CVE is OFTV2 {
     /// CONSTANTS ///
 
-    uint256 public constant DENOMINATOR = 10000;
+    uint256 public constant DENOMINATOR = 10000; // Scalar for math
+    // Seconds in a month based on 365.2425 days
     uint256 public constant MONTH = 2_629_746;
+    // Timestamp when token was created
     uint256 public immutable tokenGenerationEventTimestamp;
 
-    uint256 public immutable daoTreasuryAllocation;
-    uint256 public immutable callOptionAllocation;
-    uint256 public immutable teamAllocation;
+    uint256 public immutable daoTreasuryAllocation; // 14.5%
+    uint256 public immutable callOptionAllocation; // 3.75%
+    uint256 public immutable teamAllocation; // 13.5%
+    // 3% as veCVE immediately, 10.5% over 4 years
     uint256 public immutable teamAllocationPerMonth;
 
     /// STORAGE ///
 
-    address public teamAddress;
+    address public teamAddress; // Team operating address
+    // Number of DAO treasury tokens minted
     uint256 public daoTreasuryTokensMinted;
+    // Number of Team allocation tokens minted
     uint256 public teamAllocationTokensMinted;
+    // Number of Call Option reserved tokens minted
     uint256 public callOptionTokensMinted;
 
     /// MODIFIERS ///
-
-    modifier onlyProtocolMessagingHub() {
-        require(
-            msg.sender == centralRegistry.protocolMessagingHub(),
-            "CVE: UNAUTHORIZED"
-        );
-
-        _;
-    }
 
     modifier onlyTeam() {
         require(msg.sender == teamAddress, "CVE: UNAUTHORIZED");
@@ -67,9 +64,6 @@ contract CVE is OFTV2 {
 
         _mint(msg.sender, initialTokenMint_);
 
-        // TODO:
-        // Permission sendAndCall?
-        // Write sendEmissions in votingHub
     }
 
     /// EXTERNAL FUNCTIONS ///
@@ -81,7 +75,11 @@ contract CVE is OFTV2 {
     /// Resulting tokens are minted to the voting hub contract.
     function mintGaugeEmissions(
         uint256 gaugeEmissions
-    ) external onlyProtocolMessagingHub {
+    ) external {
+        require(
+            msg.sender == centralRegistry.protocolMessagingHub(),
+            "CVE: UNAUTHORIZED"
+        );
         _mint(
             msg.sender,
             (gaugeEmissions * centralRegistry.lockBoostValue()) / DENOMINATOR
@@ -94,12 +92,13 @@ contract CVE is OFTV2 {
     function mintTreasuryTokens(
         uint256 tokensToMint
     ) external onlyElevatedPermissions {
+        uint256 _daoTreasuryTokensMinted = daoTreasuryTokensMinted;
         require(
-            daoTreasuryAllocation >= daoTreasuryTokensMinted + tokensToMint,
+            daoTreasuryAllocation >= _daoTreasuryTokensMinted + tokensToMint,
             "CVE: insufficient token allocation"
         );
 
-        daoTreasuryTokensMinted += tokensToMint;
+        daoTreasuryTokensMinted = _daoTreasuryTokensMinted + tokensToMint;
         _mint(msg.sender, tokensToMint);
     }
 
@@ -109,12 +108,13 @@ contract CVE is OFTV2 {
     function mintCallOptionTokens(
         uint256 tokensToMint
     ) external onlyDaoPermissions {
+        uint256 _callOptionTokensMinted = callOptionTokensMinted;
         require(
-            callOptionAllocation >= callOptionTokensMinted + tokensToMint,
+            callOptionAllocation >= _callOptionTokensMinted + tokensToMint,
             "CVE: insufficient token allocation"
         );
 
-        callOptionTokensMinted += tokensToMint;
+        callOptionTokensMinted = _callOptionTokensMinted + tokensToMint;
         _mint(msg.sender, tokensToMint);
     }
 
@@ -125,17 +125,18 @@ contract CVE is OFTV2 {
     function mintTeamTokens() external onlyTeam {
         uint256 timeSinceTGE = block.timestamp - tokenGenerationEventTimestamp;
         uint256 monthsSinceTGE = timeSinceTGE / MONTH;
+        uint256 _teamAllocationTokensMinted = teamAllocationTokensMinted;
 
         uint256 tokensToMint = (monthsSinceTGE * teamAllocationPerMonth) -
-            teamAllocationTokensMinted;
+            _teamAllocationTokensMinted;
 
-        if (teamAllocation <= teamAllocationTokensMinted + tokensToMint) {
+        if (teamAllocation <= _teamAllocationTokensMinted + tokensToMint) {
             tokensToMint = teamAllocation - teamAllocationTokensMinted;
         }
 
         require(tokensToMint != 0, "CVE:  no tokens to mint");
 
-        teamAllocationTokensMinted += tokensToMint;
+        teamAllocationTokensMinted = _teamAllocationTokensMinted + tokensToMint;
         _mint(msg.sender, tokensToMint);
     }
 

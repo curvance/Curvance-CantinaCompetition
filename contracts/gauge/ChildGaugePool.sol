@@ -30,15 +30,16 @@ contract ChildGaugePool is ReentrancyGuard {
 
     /// CONSTANTS ///
 
-    uint256 public constant EPOCH_WINDOW = 2 weeks;
-    uint256 public constant PRECISION = 1e36;
-    ICentralRegistry public immutable centralRegistry;
+    uint256 public constant EPOCH_WINDOW = 2 weeks; // VeCVE epoch length
+    uint256 public constant PRECISION = 1e36; // Scalar for math
+    GaugePool public immutable gaugeController; // Gauge Controller linked
+    address public immutable rewardToken; // Token child gauge rewards in
+    ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
 
     /// STORAGE ///
 
-    uint256 public activationTime;
-    GaugePool public gaugeController;
-    address public rewardToken;
+    uint256 public activationTime; // Child gauge emission start time
+    
     // epoch => rewardPerSec
     mapping(uint256 => uint256) public epochRewardPerSec;
     // token => pool info
@@ -271,9 +272,11 @@ contract ChildGaugePool is ReentrancyGuard {
         UserAction action,
         uint256 amount
     ) internal {
-        uint256 lastRewardTimestamp = poolInfo[token].lastRewardTimestamp;
+        PoolInfo storage _pool = poolInfo[token];
+        uint256 lastRewardTimestamp = _pool.lastRewardTimestamp;
+        
         if (lastRewardTimestamp == 0) {
-            poolInfo[token].lastRewardTimestamp = activationTime;
+            _pool.lastRewardTimestamp = activationTime;
             lastRewardTimestamp = activationTime;
         }
 
@@ -289,11 +292,11 @@ contract ChildGaugePool is ReentrancyGuard {
         }
 
         if (totalDeposited == 0) {
-            poolInfo[token].lastRewardTimestamp = block.timestamp;
+            _pool.lastRewardTimestamp = block.timestamp;
             return;
         }
 
-        uint256 accRewardPerShare = poolInfo[token].accRewardPerShare;
+        uint256 accRewardPerShare = _pool.accRewardPerShare;
         uint256 lastEpoch = gaugeController.epochOfTimestamp(
             lastRewardTimestamp
         );
@@ -336,7 +339,7 @@ contract ChildGaugePool is ReentrancyGuard {
             totalDeposited;
 
         // update pool storage
-        poolInfo[token].lastRewardTimestamp = block.timestamp;
-        poolInfo[token].accRewardPerShare = accRewardPerShare;
+        _pool.lastRewardTimestamp = block.timestamp;
+        _pool.accRewardPerShare = accRewardPerShare;
     }
 }

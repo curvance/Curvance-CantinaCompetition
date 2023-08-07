@@ -12,23 +12,18 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 contract CallOptionCVE is ERC20 {
     /// CONSTANTS ///
 
-    /// @notice Will need to offset to match differential in decimals between
-    ///         strike price vs oracle pricing
-    uint256 public constant denominatorOffset = 1e18;
-
-    ICentralRegistry public immutable centralRegistry;
-    address public immutable cve;
-    address public immutable paymentToken;
+    uint256 public constant expScale = 1e18; // Scalar for math
+    address public immutable cve; // CVE contract address
+    address public immutable paymentToken; // Token exercisers pay in
+    bytes32 private immutable _name; // token name metadata
+    bytes32 private immutable _symbol; // token symbol metadata
+    ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
 
     /// STORAGE ///
 
-    string private _name;
-    string private _symbol;
-
-    uint256 public paymentTokenPerCVE;
-
-    uint256 optionsStartTimestamp;
-    uint256 optionsEndTimestamp;
+    uint256 public paymentTokenPerCVE; // Ratio between payment token and CVE
+    uint256 optionsStartTimestamp; // When options holders can begin exercising
+    uint256 optionsEndTimestamp; // When options holders have until to exercise
 
     /// EVENTS ///
 
@@ -47,18 +42,14 @@ contract CallOptionCVE is ERC20 {
 
     /// CONSTRUCTOR ///
 
-    /// @param name_ The name of the token.
-    /// @param symbol_ The symbol of the token.
     /// @param paymentToken_ The token used for payment when exercising options.
     /// @param centralRegistry_ The Central Registry contract address.
     constructor(
-        string memory name_,
-        string memory symbol_,
         ICentralRegistry centralRegistry_,
         address paymentToken_
     ) {
-        _name = name_;
-        _symbol = symbol_;
+        _name = "CVE Options";
+        _symbol = "optCVE";
 
         require(
             ERC165Checker.supportsInterface(
@@ -163,19 +154,19 @@ contract CallOptionCVE is ERC20 {
 
         paymentTokenPerCVE =
             (strikePrice / paymentTokenCurrentPrice) /
-            denominatorOffset;
+            expScale;
     }
 
     /// PUBLIC FUNCTIONS ///
 
-    /// @dev Returns the name of the token.
+    /// @dev Returns the name of the token
     function name() public view override returns (string memory) {
-        return _name;
+        return string(abi.encodePacked(_name));
     }
 
-    /// @dev Returns the symbol of the token.
+    /// @dev Returns the symbol of the token
     function symbol() public view override returns (string memory) {
-        return _symbol;
+        return string(abi.encodePacked(_symbol));
     }
 
     /// @notice Check if options are exercisable.
@@ -189,6 +180,7 @@ contract CallOptionCVE is ERC20 {
     /// @notice Exercise CVE call options.
     /// @param amount The amount of options to exercise.
     function exerciseOption(uint256 amount) public payable {
+        require(amount > 0, "CallOptionCVE: invalid amount");
         require(
             optionsExercisable(),
             "CallOptionCVE: Options not exercisable yet"
@@ -197,7 +189,6 @@ contract CallOptionCVE is ERC20 {
             IERC20(cve).balanceOf(address(this)) >= amount,
             "CallOptionCVE: not enough CVE remaining"
         );
-        require(amount > 0, "CallOptionCVE: invalid amount");
         require(
             balanceOf(msg.sender) >= amount,
             "CallOptionCVE: not enough call options to exercise"

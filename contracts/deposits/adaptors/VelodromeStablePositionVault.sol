@@ -16,37 +16,29 @@ contract VelodromeStablePositionVault is BasePositionVault {
 
     /// TYPES ///
 
-    /// @param gauge Velodrome Gauge contract
-    /// @param pairFactory Velodrome Pair Factory contract
-    /// @param router Velodrome Router contract
-    /// @param token0 LP first token address
-    /// @param token1 LP second token address
-    /// @param decimalsA token0 decimals
-    /// @param decimalsB token1 decimals
     struct StrategyData {
-        IVeloGauge gauge;
-        IVeloPairFactory pairFactory;
-        IVeloRouter router;
-        address token0;
-        address token1;
-        uint256 decimalsA;
-        uint256 decimalsB;
+        IVeloGauge gauge; // Velodrome Gauge contract
+        IVeloPairFactory pairFactory; // Velodrome Pair Factory contract
+        IVeloRouter router; // Velodrome Router contract
+        address token0; // LP first token address
+        address token1; // LP second token address
+        uint256 decimalsA; // token0 decimals
+        uint256 decimalsB; // token1 decimals
     }
 
     /// CONSTANTS ///
 
+    // Optimism VELO contract address
     ERC20 public constant rewardToken =
         ERC20(0x3c8B650257cFb5f272f799F5e2b4e65093a11a05);
-
-    uint256 public immutable rewardTokenDecimals;
+    // Whether VELO is an underlying token of the pair
     bool public immutable rewardTokenIsUnderlying;
 
     /// STORAGE ///
 
-    /// @notice Vault Strategy Data
-    StrategyData public strategyData;
+    StrategyData public strategyData; // position vault packed configuration
 
-    /// @notice Is an underlying token of the sAMM LP
+    /// Token => underlying token of the sAMM LP or not
     mapping(address => bool) public isUnderlyingToken;
 
     /// EVENTS ///
@@ -62,17 +54,19 @@ contract VelodromeStablePositionVault is BasePositionVault {
         IVeloPairFactory pairFactory,
         IVeloRouter router
     ) BasePositionVault(asset_, centralRegistry_) {
+        // Cache assigned asset address
+        address _asset = asset();
         // Validate that we have the proper gauge linked with the proper LP
         // and pair factory
         require(
-            gauge.stakingToken() == asset() &&
+            gauge.stakingToken() == _asset &&
                 address(pairFactory) == router.factory(),
             "VelodromeStablePositionVault: improper velodrome vault config"
         );
 
         // Query underlying token data from the pool
-        strategyData.token0 = IVeloPool(asset()).token0();
-        strategyData.token1 = IVeloPool(asset()).token1();
+        strategyData.token0 = IVeloPool(_asset).token0();
+        strategyData.token1 = IVeloPool(_asset).token1();
         strategyData.decimalsA = 10 ** ERC20(strategyData.token0).decimals();
         strategyData.decimalsB = 10 ** ERC20(strategyData.token0).decimals();
 
@@ -83,7 +77,6 @@ contract VelodromeStablePositionVault is BasePositionVault {
         isUnderlyingToken[strategyData.token0] = true;
         isUnderlyingToken[strategyData.token1] = true;
 
-        rewardTokenDecimals = rewardToken.decimals();
         rewardTokenIsUnderlying = (address(rewardToken) ==
             strategyData.token0 ||
             address(rewardToken) == strategyData.token1);
@@ -97,12 +90,10 @@ contract VelodromeStablePositionVault is BasePositionVault {
     ///         and vests pending rewards
     /// @dev Only callable by Gelato Network bot
     /// @param data Bytes array for aggregator swap data
-    /// @param maxSlippage Maximum allowable slippage on swapping
     /// @return yield The amount of new assets acquired from compounding vault yield
     function harvest(
-        bytes memory data,
-        uint256 maxSlippage
-    ) public override onlyHarvestor vaultActive returns (uint256 yield) {
+        bytes calldata data
+    ) external override onlyHarvestor vaultActive returns (uint256 yield) {
         uint256 pending = _calculatePendingRewards();
 
         if (pending > 0) {
@@ -111,79 +102,88 @@ contract VelodromeStablePositionVault is BasePositionVault {
         }
 
         // can only harvest once previous reward period is done
-        if (vaultData.lastVestClaim >= vaultData.vestingPeriodEnd) {
+        if (_checkVestStatus(_vaultData)) {
             // cache strategy data
             StrategyData memory sd = strategyData;
 
             // claim velodrome rewards
             sd.gauge.getReward(address(this));
 
-            uint256 valueIn;
             SwapperLib.Swap memory swapData = abi.decode(
                 data,
                 (SwapperLib.Swap)
             );
+            {
             uint256 rewardAmount = rewardToken.balanceOf(address(this));
 
-            if (rewardAmount > 0) {
-                // take protocol fee
-                uint256 protocolFee = rewardAmount.mulDivDown(
-                    vaultHarvestFee(),
-                    1e18
-                );
-                rewardAmount -= protocolFee;
-                SafeTransferLib.safeTransfer(
-                    address(rewardToken),
-                    centralRegistry.feeAccumulator(),
-                    protocolFee
-                );
-                (uint256 rewardPrice, ) = getPriceRouter().getPrice(
-                    address(rewardToken),
-                    true,
-                    true
-                );
+                if (rewardAmount > 0) {
+                    // take protocol fee
+                    uint256 protocolFee = rewardAmount.mulDivDown(
+                        centralRegistry.protocolHarvestFee(),
+                        1e18
+                    );
+                    rewardAmount -= protocolFee;
+                    SafeTransferLib.safeTransfer(
+                        address(rewardToken),
+                        centralRegistry.feeAccumulator(),
+                        protocolFee
+                    );
 
-                valueIn += rewardAmount.mulDivDown(
-                    rewardPrice,
-                    10 ** rewardTokenDecimals
-                );
-
-                // swap from VELO to underlying LP token if necessary
-                if (!rewardTokenIsUnderlying) {
-                    SwapperLib.swap(swapData);
+                    // swap from VELO to underlying LP token if necessary
+                    if (!rewardTokenIsUnderlying) {
+                        SwapperLib.swap(swapData);
+                    }
                 }
             }
 
-            // deposit into velodrome
-            yield = VelodromeLib.enterVelodrome(
-                address(sd.router),
-                address(sd.pairFactory),
-                asset(),
-                0
+            // swap token0 to LP Token underlying tokens
+            uint256 totalAmountA = ERC20(sd.token0).balanceOf(address(this));
+
+            require(
+                totalAmountA > 0,
+                "VelodromeStablePositionVault: slippage error"
             );
 
-            (uint256 lpPrice, ) = getPriceRouter().getPrice(
-                asset(),
-                true,
+            // Cache asset so we don't need to pay gas multiple times
+            address _asset = asset();
+            (uint256 r0, uint256 r1, ) = IVeloPair(_asset).getReserves();
+            (uint256 reserveA, uint256 reserveB) = sd.token0 ==
+                IVeloPair(_asset).token0()
+                ? (r0, r1)
+                : (r1, r0);
+            // Feed library pair factory, lpToken, and stable = true, plus calculated data
+            uint256 swapAmount = VelodromeLib._optimalDeposit(
+                address(sd.pairFactory), 
+                _asset,
+                totalAmountA,
+                reserveA,
+                reserveB,
+                sd.decimalsA,
+                sd.decimalsB,
                 true
             );
-            uint256 valueOut = yield.mulDivDown(lpPrice, 10 ** 18);
+            // Query router and feed calculated data, and stable = true
+            VelodromeLib._swapExactTokensForTokens(address(sd.router), _asset, sd.token0, sd.token1, swapAmount, true);
+            totalAmountA -= swapAmount;
 
-            // check for slippage
-            require(
-                valueOut > valueIn.mulDivDown(1e18 - maxSlippage, 1e18),
-                "VelodromeStablePositionVault: bad slippage"
+            // add liquidity to velodrome lp with stable params
+            yield = VelodromeLib._addLiquidity(
+                address(sd.router),
+                sd.token0,
+                sd.token1,
+                true,
+                totalAmountA,
+                ERC20(sd.token1).balanceOf(address(this)) // totalAmountB
             );
 
             // deposit assets into velodrome gauge
             _deposit(yield);
 
             // update vesting info
-            vaultData.rewardRate = uint128(
-                yield.mulDivDown(rewardOffset, vestPeriod)
-            );
-            vaultData.vestingPeriodEnd = uint64(block.timestamp + vestPeriod);
-            vaultData.lastVestClaim = uint64(block.timestamp);
+            // Cache vest period so we do not need to load it twice
+            uint256 _vestPeriod = vestPeriod;
+            _vaultData = _packVaultData(yield.mulDivDown(expScale, _vestPeriod), block.timestamp + _vestPeriod);
+
 
             emit Harvest(yield);
         }
@@ -197,12 +197,13 @@ contract VelodromeStablePositionVault is BasePositionVault {
     /// @notice Deposits specified amount of assets into velodrome gauge pool
     /// @param assets The amount of assets to deposit
     function _deposit(uint256 assets) internal override {
+        IVeloGauge gauge = strategyData.gauge;
         SafeTransferLib.safeApprove(
             asset(),
-            address(strategyData.gauge),
+            address(gauge),
             assets
         );
-        strategyData.gauge.deposit(assets);
+        gauge.deposit(assets);
     }
 
     /// @notice Withdraws specified amount of assets from velodrome gauge pool

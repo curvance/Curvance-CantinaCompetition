@@ -16,7 +16,7 @@ library CurveLib {
     function enterCurve(
         address lpMinter,
         address lpToken,
-        address[] memory tokens,
+        address[] calldata tokens,
         uint256 lpMinOutAmount
     ) internal returns (uint256 lpOutAmount) {
         bool hasETH;
@@ -25,11 +25,13 @@ library CurveLib {
 
         uint256[] memory balances = new uint256[](numTokens);
         // approve tokens
-        for (uint256 i; i < numTokens; ++i) {
+        for (uint256 i; i < numTokens; ) {
             balances[i] = CommonLib.getTokenBalance(tokens[i]);
             SwapperLib.approveTokenIfNeeded(tokens[i], lpMinter, balances[i]);
-            if (CommonLib.isETH(tokens[i])) {
-                hasETH = true;
+            unchecked {
+                if (CommonLib.isETH(tokens[i++])) {
+                    hasETH = true;
+                }
             }
         }
 
@@ -89,7 +91,7 @@ library CurveLib {
     function exitCurve(
         address lpMinter,
         address lpToken,
-        address[] memory tokens,
+        address[] calldata tokens,
         uint256 lpAmount
     ) internal {
         // approve lp token

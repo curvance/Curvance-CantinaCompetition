@@ -139,11 +139,7 @@ contract TestBaseMarket is TestBase {
             ICentralRegistry(address(centralRegistry)),
             _USDC_ADDRESS,
             address(lendtroller),
-            InterestRateModel(address(jumpRateModel)),
-            _ONE,
-            "dUSDC",
-            "dUSDC",
-            6
+            InterestRateModel(address(jumpRateModel))
         );
     }
 
@@ -153,8 +149,8 @@ contract TestBaseMarket is TestBase {
             _BALANCER_WETH_RETH,
             address(lendtroller),
             vault,
-            _ONE,
-            "cBAL-WETH-RETH"
+            "cBAL-WETH-RETH",
+            "cBAL-ETHPAIR"
         );
     }
 

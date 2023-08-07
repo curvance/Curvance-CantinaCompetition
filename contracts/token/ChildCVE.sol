@@ -6,18 +6,7 @@ import "contracts/layerzero/OFTV2.sol";
 contract CVE is OFTV2 {
     /// CONSTANTS ///
 
-    uint256 public constant DENOMINATOR = 10000;
-
-    /// MODIFIERS ///
-
-    modifier onlyProtocolMessagingHub() {
-        require(
-            msg.sender == centralRegistry.protocolMessagingHub(),
-            "CVE: UNAUTHORIZED"
-        );
-
-        _;
-    }
+    uint256 public constant DENOMINATOR = 10000; // Scalar for math
 
     /// CONSTRUCTOR ///
 
@@ -28,9 +17,7 @@ contract CVE is OFTV2 {
         address lzEndpoint_,
         ICentralRegistry centralRegistry_
     ) OFTV2(name_, symbol_, sharedDecimals_, lzEndpoint_, centralRegistry_) {
-        // TODO:
-        // Permission sendAndCall?
-        // Write sendEmissions in votingHub
+        
     }
 
     /// EXTERNAL FUNCTIONIS ///
@@ -42,7 +29,11 @@ contract CVE is OFTV2 {
     /// Resulting tokens are minted to the voting hub contract.
     function mintGaugeEmissions(
         uint256 gaugeEmissions
-    ) external onlyProtocolMessagingHub {
+    ) external {
+        require(
+            msg.sender == centralRegistry.protocolMessagingHub(),
+            "CVE: UNAUTHORIZED"
+        );
         _mint(
             msg.sender,
             (gaugeEmissions * centralRegistry.lockBoostValue()) / DENOMINATOR

@@ -19,20 +19,24 @@ library BalancerLib {
         address balancerVault,
         bytes32 balancerPoolId,
         address lpToken,
-        address[] memory tokens,
+        address[] calldata tokens,
         uint256 lpMinOutAmount
     ) internal returns (uint256 lpOutAmount) {
         uint256 numTokens = tokens.length;
 
         uint256[] memory balances = new uint256[](numTokens);
         // approve tokens
-        for (uint256 i; i < numTokens; ++i) {
+        for (uint256 i; i < numTokens; ) {
             balances[i] = CommonLib.getTokenBalance(tokens[i]);
             SwapperLib.approveTokenIfNeeded(
                 tokens[i],
                 balancerVault,
                 balances[i]
             );
+
+            unchecked {
+                ++i;
+            }
         }
 
         IBalancerVault(balancerVault).joinPool(
@@ -69,7 +73,7 @@ library BalancerLib {
         address balancerVault,
         bytes32 balancerPoolId,
         address lpToken,
-        address[] memory tokens,
+        address[] calldata tokens,
         uint256 lpAmount
     ) internal {
         // approve lp token
