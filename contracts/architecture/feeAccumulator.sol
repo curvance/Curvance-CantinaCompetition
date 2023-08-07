@@ -2,15 +2,20 @@
 pragma solidity ^0.8.17;
 
 import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
-import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
+import { SwapperLib, IERC20 } from "contracts/libraries/SwapperLib.sol";
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
+import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 
 import { IWETH } from "contracts/interfaces/IWETH.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
-import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 
 contract FeeAccumulator is ReentrancyGuard {
+
+    struct RewardToken {
+        uint256 isRewardToken;
+        uint256 forOTC;
+    }
 
     /// CONSTANTS ///
 
@@ -23,7 +28,11 @@ contract FeeAccumulator is ReentrancyGuard {
 
     address internal previousMessagingHub;
     address payable public oneBalanceAddress; 
-    mapping (address => uint256) public earmarkedOTC; // 2 = earmarked; 0 or 1 = not earmarked
+    
+    // We store token data semi redundantly to save gas
+    // on daily operations and to help with gelato network structure
+    address[] public rewardTokens; // Used for Gelato Network bots to check what tokens to swap
+    mapping (address => RewardToken) public rewardTokenInfo; // 2 = yes; 0 or 1 = no
 
     /// ERRORS ///
 
@@ -37,7 +46,7 @@ contract FeeAccumulator is ReentrancyGuard {
     modifier onlyHarvestor() {
         require(
             centralRegistry.harvester(msg.sender),
-            "BasePositionVault: UNAUTHORIZED"
+            "FeeAccumulator: UNAUTHORIZED"
         );
         _;
     }
@@ -45,7 +54,7 @@ contract FeeAccumulator is ReentrancyGuard {
     modifier onlyDaoPermissions() {
         require(
             centralRegistry.hasDaoPermissions(msg.sender),
-            "BasePositionVault: UNAUTHORIZED"
+            "FeeAccumulator: UNAUTHORIZED"
         );
         _;
     }
@@ -63,7 +72,7 @@ contract FeeAccumulator is ReentrancyGuard {
                 address(centralRegistry_),
                 type(ICentralRegistry).interfaceId
             ),
-            "Zapper: invalid central registry"
+            "FeeAccumulator: invalid central registry"
         );
 
         centralRegistry = centralRegistry_;
@@ -105,7 +114,7 @@ contract FeeAccumulator is ReentrancyGuard {
         for (uint256 i; i < numTokens; ++i) {
             currentToken = tokens[i];
             // Make sure we are not earmarking this token for DAO OTC
-            if (earmarkedOTC[currentToken] == 2) {
+            if (rewardTokenInfo[currentToken].forOTC == 2) {
                 continue;
             }
 
@@ -131,7 +140,7 @@ contract FeeAccumulator is ReentrancyGuard {
     function daoOTC(address tokenToOTC, uint256 amountToOTC) external payable onlyDaoPermissions nonReentrant {
 
         // Validate that the token is earmarked for OTC
-        if (earmarkedOTC[tokenToOTC] < 2) {
+        if (rewardTokenInfo[tokenToOTC].forOTC < 2) {
             revert FeeAccumulator_EarmarkError();
         }
 
@@ -183,7 +192,7 @@ contract FeeAccumulator is ReentrancyGuard {
     /// @notice Admin function to set status on whether a token should be earmarked to OTC
     /// @param state 2 = earmarked; 0 or 1 = not earmarked
     function setEarmarked(address token, bool state) external onlyDaoPermissions {
-        earmarkedOTC[token] = state ? 2: 1;
+        rewardTokenInfo[token].forOTC = state ? 2: 1;
     }
 
     /// @notice Moves WETH approval to new messaging hub
@@ -202,6 +211,68 @@ contract FeeAccumulator is ReentrancyGuard {
             centralRegistry.protocolMessagingHub(),
             type(uint256).max
         );
+    }
+
+    /// @notice Adds multiple reward tokens to the contract for Gelato Network to read. 
+    /// @dev    Does not fail on duplicate token, merely skips it and continues
+    /// @param newTokens An array of token addresses to be added as reward tokens
+    function addRewardTokens(address[] calldata newTokens) external onlyDaoPermissions {
+        uint256 newTokensLength = newTokens.length;
+        if (newTokensLength == 0) {
+            revert FeeAccumulator_ConfigurationError();
+        }
+
+        for (uint256 i; i < newTokensLength; ++i){
+
+            // If we already support the token just skip it
+            if (rewardTokenInfo[newTokens[i]].isRewardToken == 2) {
+                continue;
+            }
+
+            // Add reward token data to both rewardTokenInfo & rewardTokenData
+                _addRewardToken(newTokens[i]);
+        }
+    }
+
+    /// @notice Removes a reward token from the contract data that Gelato Network reads
+    /// @dev    Will revert on unsupported token address
+    /// @param rewardTokenToRemove The address of the token to be removed
+    function removeRewardToken(address rewardTokenToRemove) external onlyDaoPermissions {
+        RewardToken storage tokenToRemove = rewardTokenInfo[rewardTokenToRemove];
+        if (tokenToRemove.isRewardToken != 2) {
+            revert FeeAccumulator_ConfigurationError();
+        }
+
+        address[] memory currentTokens = rewardTokens;
+        uint256 numTokens = currentTokens.length;
+        uint256 tokenIndex = numTokens;
+
+        for (uint256 i; i < numTokens; ){
+            if (currentTokens[i] == rewardTokenToRemove){
+                tokenIndex = i;
+                break;
+            }
+            unchecked {
+                ++i;
+            }
+        }
+
+        // subtract 1 from numTokens so we properly have the end index
+        if (tokenIndex == numTokens--){
+            // we were unable to find the token in the array,
+            // so something is wrong and we need to revert
+            revert FeeAccumulator_ConfigurationError();
+        }
+
+        // copy last item in list to location of item to be removed
+        address[] storage currentList = rewardTokens;
+        // copy the last token index slot to tokenIndex
+        currentList[tokenIndex] = currentList[numTokens];
+        // remove the last element
+        currentList.pop();
+
+        // Now delete the reward token support flag from mapping
+        delete tokenToRemove.isRewardToken;
     }
 
     /// PUBLIC FUNCTIONS ///
@@ -226,6 +297,16 @@ contract FeeAccumulator is ReentrancyGuard {
     }
 
     /// INTERNAL FUNCTIONS ///
+
+    /// @notice Adds `newToken` to `rewardTokens` array and rewardTokenInfo mapping 
+    ///         so gelato network knows a new token has been added
+    function _addRewardToken(address newToken) internal {
+        rewardTokens.push() = newToken;
+        // Configure for isRewardToken = true and forOTC = false,
+        // if the DAO wants to accumulate reward tokens it will need to be passed
+        // by protocol governance
+        rewardTokenInfo[newToken] = RewardToken({isRewardToken: 2, forOTC: 1});
+    }
 
     /// @notice Distributes the specified amount of ETH to
     ///         the recipient address
