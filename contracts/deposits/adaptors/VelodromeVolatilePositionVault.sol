@@ -72,7 +72,6 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
         isUnderlyingToken[strategyData.token0] = true;
         isUnderlyingToken[strategyData.token1] = true;
 
-        rewardTokenDecimals = rewardToken.decimals();
         rewardTokenIsUnderlying = (address(rewardToken) ==
             strategyData.token0 ||
             address(rewardToken) == strategyData.token1);

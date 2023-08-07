@@ -39,9 +39,6 @@ interface ICentralRegistry {
     /// @notice Returns ZRO Payment Address
     function zroAddress() external view returns (address);
 
-    /// @notice Returns feeHub Address
-    function feeHub() external view returns (address);
-
     /// @notice Returns feeAccumulator Address
     function feeAccumulator() external view returns (address);
 

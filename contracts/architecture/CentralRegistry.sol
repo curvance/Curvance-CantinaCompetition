@@ -28,7 +28,6 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     address public priceRouter; // Price Router contract address
     address public zroAddress; // ZRO contract address for layerzero
     address public feeAccumulator; // Fee Accumulator contract address
-    address public feeHub; // Fee Hub contract address
 
     // PROTOCOL VALUES in `DENOMINATOR`
     uint256 public protocolCompoundFee = 100 * 1e14; // Fee for compounding position vaults
@@ -215,12 +214,6 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
         address newZroAddress
     ) external onlyElevatedPermissions {
         zroAddress = newZroAddress;
-    }
-
-    /// @notice Sets a new fee hub contract address
-    /// @dev Only callable on a 7 day delay or by the Emergency Council
-    function setFeeHub(address newFeeHub) external onlyElevatedPermissions {
-        feeHub = newFeeHub;
     }
 
     /// @notice Sets a new fee hub contract address
