@@ -68,7 +68,6 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     mapping(address => bool) public gaugeController;
     mapping(address => bool) public harvester;
     mapping(address => bool) public lendingMarket;
-    mapping(address => bool) public feeManager;
     mapping(address => bool) public approvedEndpoint;
 
     /// EVENTS ///
@@ -91,30 +90,6 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
 
     event NewChainAdded(uint256 chainId, address operatorAddress);
     event removedChain(uint256 chainId, address operatorAddress);
-
-    event NewApprovedZapper(address indexed zapper);
-    event approvedZapperRemoved(address indexed zapper);
-
-    event NewApprovedSwapper(address indexed swapper);
-    event approvedSwapperRemoved(address indexed swapper);
-
-    event NewVeCVELocker(address indexed veCVELocker);
-    event VeCVELockerRemoved(address indexed veCVELocker);
-
-    event NewGaugeController(address indexed gaugeController);
-    event GaugeControllerRemoved(address indexed gaugeController);
-
-    event NewHarvester(address indexed harvester);
-    event HarvesterRemoved(address indexed harvester);
-
-    event NewLendingMarket(address indexed lendingMarket);
-    event LendingMarketRemoved(address indexed lendingMarket);
-
-    event NewFeeManager(address indexed feeManager);
-    event FeeManagerRemoved(address indexed feeManager);
-
-    event NewApprovedEndpoint(address indexed approvedEndpoint);
-    event ApprovedEndpointRemoved(address indexed approvedEndpoint);
 
     /// ERRORS ///
     error CentralRegistry_ParametersMisconfigured();
@@ -490,7 +465,7 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
 
         approvedZapper[newApprovedZapper] = true;
 
-        emit NewApprovedZapper(newApprovedZapper);
+        emit NewCurvanceContract("Zapper", newApprovedZapper);
     }
 
     function removeApprovedZapper(
@@ -503,7 +478,7 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
 
         delete approvedZapper[currentApprovedZapper];
 
-        emit approvedZapperRemoved(currentApprovedZapper);
+        emit removedCurvanceContract("Zapper", currentApprovedZapper);
     }
 
     function addApprovedSwapper(
@@ -516,7 +491,7 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
 
         approvedSwapper[newApprovedSwapper] = true;
 
-        emit NewApprovedSwapper(newApprovedSwapper);
+        emit NewCurvanceContract("Swapper", newApprovedSwapper);
     }
 
     function removeApprovedSwapper(
@@ -529,7 +504,7 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
 
         delete approvedSwapper[currentApprovedSwapper];
 
-        emit approvedSwapperRemoved(currentApprovedSwapper);
+        emit removedCurvanceContract("Swapper", currentApprovedSwapper);
     }
 
     function addVeCVELocker(
@@ -542,7 +517,7 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
 
         approvedVeCVELocker[newVeCVELocker] = true;
 
-        emit NewVeCVELocker(newVeCVELocker);
+        emit NewCurvanceContract("VeCVELocker", newVeCVELocker);
     }
 
     function removeVeCVELocker(
@@ -555,7 +530,7 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
 
         delete approvedVeCVELocker[currentVeCVELocker];
 
-        emit VeCVELockerRemoved(currentVeCVELocker);
+        emit removedCurvanceContract("VeCVELocker", currentVeCVELocker);
     }
 
     function addGaugeController(
@@ -568,7 +543,7 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
 
         gaugeController[newGaugeController] = true;
 
-        emit NewGaugeController(newGaugeController);
+        emit NewCurvanceContract("Gauge Controller", newGaugeController);
     }
 
     function removeGaugeController(
@@ -581,7 +556,7 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
 
         delete gaugeController[currentGaugeController];
 
-        emit GaugeControllerRemoved(currentGaugeController);
+        emit removedCurvanceContract("Gauge Controller", currentGaugeController);
     }
 
     function addHarvester(
@@ -594,7 +569,7 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
 
         harvester[newHarvester] = true;
 
-        emit NewHarvester(newHarvester);
+        emit NewCurvanceContract("Harvestor", newHarvester);
     }
 
     function removeHarvester(
@@ -604,7 +579,7 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
 
         delete harvester[currentHarvester];
 
-        emit HarvesterRemoved(currentHarvester);
+        emit removedCurvanceContract("Harvestor", currentHarvester);
     }
 
     function addLendingMarket(
@@ -617,7 +592,7 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
 
         lendingMarket[newLendingMarket] = true;
 
-        emit NewLendingMarket(newLendingMarket);
+        emit NewCurvanceContract("Lending Market", newLendingMarket);
     }
 
     function removeLendingMarket(
@@ -630,33 +605,7 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
 
         delete lendingMarket[currentLendingMarket];
 
-        emit LendingMarketRemoved(currentLendingMarket);
-    }
-
-    function addFeeManager(
-        address newFeeManager
-    ) external onlyElevatedPermissions {
-        require(
-            !feeManager[newFeeManager],
-            "CentralRegistry: already fee manager"
-        );
-
-        feeManager[newFeeManager] = true;
-
-        emit NewFeeManager(newFeeManager);
-    }
-
-    function removeFeeManager(
-        address currentFeeManager
-    ) external onlyElevatedPermissions {
-        require(
-            feeManager[currentFeeManager],
-            "CentralRegistry: not fee manager"
-        );
-
-        delete feeManager[currentFeeManager];
-
-        emit FeeManagerRemoved(currentFeeManager);
+        emit removedCurvanceContract("Lending Market", currentLendingMarket);
     }
 
     function addApprovedEndpoint(
@@ -669,7 +618,7 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
 
         approvedEndpoint[newApprovedEndpoint] = true;
 
-        emit NewApprovedEndpoint(newApprovedEndpoint);
+        emit NewCurvanceContract("Endpoint", newApprovedEndpoint);
     }
 
     function removeApprovedEndpoint(
@@ -682,7 +631,7 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
 
         delete approvedEndpoint[currentApprovedEndpoint];
 
-        emit ApprovedEndpointRemoved(currentApprovedEndpoint);
+        emit removedCurvanceContract("Endpoint", currentApprovedEndpoint);
     }
 
     /// @inheritdoc ERC165

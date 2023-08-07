@@ -89,9 +89,6 @@ interface ICentralRegistry {
     /// @notice Returns whether the inputted address is a Lending Market
     function lendingMarket(address _address) external view returns (bool);
 
-    /// @notice Returns whether the inputted address is a Fee Manager
-    function feeManager(address _address) external view returns (bool);
-
     /// @notice Returns whether the inputted address is an Approved Endpoint
     function approvedEndpoint(address _address) external view returns (bool);
 }
