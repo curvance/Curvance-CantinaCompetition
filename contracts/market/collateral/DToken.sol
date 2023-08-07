@@ -138,14 +138,6 @@ contract DToken is ERC165, ReentrancyGuard {
         _;
     }
 
-    modifier interestUpdated() {
-        require(
-            accrualBlockTimestamp == block.timestamp,
-            "DToken: Freshness check failed"
-        );
-        _;
-    }
-
     /// @param centralRegistry_ The address of Curvances Central Registry
     /// @param underlying_ The address of the underlying asset
     /// @param lendtroller_ The address of the Lendtroller
