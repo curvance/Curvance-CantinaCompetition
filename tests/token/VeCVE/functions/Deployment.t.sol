@@ -1,0 +1,25 @@
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity 0.8.17;
+
+import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+import { VeCVE } from "contracts/token/VeCVE.sol";
+import { TestBaseVeCVE } from "../TestBaseVeCVE.sol";
+
+contract VeCVEDeploymentTest is TestBaseVeCVE {
+    function test_veCVEDeployment_fail_whenCentralRegistryIsInvalid() public {
+        vm.expectRevert("VeCVE: invalid central registry");
+        new VeCVE(ICentralRegistry(address(1)), 0);
+    }
+
+    function test_veCVEDeployment_success() public {
+        veCVE = new VeCVE(ICentralRegistry(address(centralRegistry)), 0);
+
+        assertEq(veCVE.name(), "Vote Escrowed CVE");
+        assertEq(veCVE.symbol(), "VeCVE");
+        assertEq(address(veCVE.centralRegistry()), address(centralRegistry));
+        assertEq(veCVE.genesisEpoch(), centralRegistry.genesisEpoch());
+        assertEq(veCVE.cve(), centralRegistry.CVE());
+        assertEq(address(veCVE.cveLocker()), centralRegistry.cveLocker());
+        assertEq(veCVE.continuousLockPointMultiplier(), 0);
+    }
+}
