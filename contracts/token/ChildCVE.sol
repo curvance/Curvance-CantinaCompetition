@@ -17,9 +17,7 @@ contract CVE is OFTV2 {
         address lzEndpoint_,
         ICentralRegistry centralRegistry_
     ) OFTV2(name_, symbol_, sharedDecimals_, lzEndpoint_, centralRegistry_) {
-        // TODO:
-        // Permission sendAndCall?
-        // Write sendEmissions in votingHub
+        
     }
 
     /// EXTERNAL FUNCTIONIS ///

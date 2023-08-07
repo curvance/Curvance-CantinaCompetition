@@ -28,10 +28,10 @@ contract VelodromeStablePositionVault is BasePositionVault {
 
     /// CONSTANTS ///
 
+    // Optimism VELO contract address
     ERC20 public constant rewardToken =
         ERC20(0x3c8B650257cFb5f272f799F5e2b4e65093a11a05);
-
-    uint256 public immutable rewardTokenDecimals;
+    // Whether VELO is an underlying token of the pair
     bool public immutable rewardTokenIsUnderlying;
 
     /// STORAGE ///
@@ -77,7 +77,6 @@ contract VelodromeStablePositionVault is BasePositionVault {
         isUnderlyingToken[strategyData.token0] = true;
         isUnderlyingToken[strategyData.token1] = true;
 
-        rewardTokenDecimals = rewardToken.decimals();
         rewardTokenIsUnderlying = (address(rewardToken) ==
             strategyData.token0 ||
             address(rewardToken) == strategyData.token1);

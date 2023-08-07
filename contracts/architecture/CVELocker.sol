@@ -13,8 +13,6 @@ import { ICVXLocker } from "contracts/interfaces/ICVXLocker.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 contract CVELocker is ReentrancyGuard {
-    // TO-DO:
-    // Add epoch rewards view for frontend?
 
     /// CONSTANTS ///
 

@@ -9,8 +9,9 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 contract Timelock is TimelockController {
     /// CONSTANTS ///
 
+    // Minimum delay for timelock transaction proposals to execute 
     uint256 public constant MINIMUM_DELAY = 7 days;
-    ICentralRegistry public immutable centralRegistry;
+    ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
 
     constructor(
         ICentralRegistry centralRegistry_

@@ -64,9 +64,6 @@ contract CVE is OFTV2 {
 
         _mint(msg.sender, initialTokenMint_);
 
-        // TODO:
-        // Permission sendAndCall?
-        // Write sendEmissions in votingHub
     }
 
     /// EXTERNAL FUNCTIONS ///
