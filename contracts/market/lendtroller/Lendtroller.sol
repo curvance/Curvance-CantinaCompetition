@@ -36,10 +36,10 @@ contract Lendtroller {
     uint256 internal constant minHoldPeriod = 15 minutes; // Minimum hold time to prevent oracle price attacks
     ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
     
-    // @dev `bytes4(keccak256(bytes("Lendtroller_InvalidValue()")))`
+    // `bytes4(keccak256(bytes("Lendtroller_InvalidValue()")))`
     uint256 internal constant _INVALID_VALUE_SELECTOR = 0x74ebdb4f;
 
-    // @dev `bytes4(keccak256(bytes("Lendtroller_InsufficientShortfall()")))`
+    // `bytes4(keccak256(bytes("Lendtroller_InsufficientShortfall()")))`
     uint256 internal constant _INSUFFICIENT_SHORTFALL_SELECTOR = 0xa160c28b;
 
     /// STORAGE ///

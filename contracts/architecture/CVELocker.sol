@@ -20,50 +20,36 @@ contract CVELocker is ReentrancyGuard {
         0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE; // Reward token; ETH
     uint256 public constant EPOCH_DURATION = 2 weeks; // Protocol epoch length
     uint256 public constant expScale = 1e18; // Scalar for math
-    ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
-    // @dev `bytes4(keccak256(bytes("CVELocker_Unauthorized()")))`
+    // `bytes4(keccak256(bytes("CVELocker_Unauthorized()")))`
     uint256 internal constant _CVELOCKER_UNAUTHORIZED_SELECTOR = 0xeb83e515;
-    // @dev `bytes4(keccak256(bytes("CVELocker_FailedETHTransfer()")))`
+    // `bytes4(keccak256(bytes("CVELocker_FailedETHTransfer()")))`
     uint256 internal constant _FAILED_ETH_TRANSFER_SELECTOR = 0xa9c60879;
-    // @dev `bytes4(keccak256(bytes("CVELocker_NoEpochRewards()")))`
+    // `bytes4(keccak256(bytes("CVELocker_NoEpochRewards()")))`
     uint256 internal constant _NO_EPOCH_REWARDS_SELECTOR = 0x2f75e00c;
-
-    // Token Addresses
-    address public immutable cve;
-    address public immutable cvx;
+    address public immutable cve; // CVE contract address
+    address public immutable cvx; // CVX contract address
+    ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
 
     /// STORAGE ///
 
-    IVeCVE public veCVE;
+    IVeCVE public veCVE; // veCVE contract address
+    uint256 public genesisEpoch; // Genesis Epoch timestamp
+    uint256 public lockerStarted = 1; // 2 = yes; 0 or 1 = no
+    uint256 public isShutdown = 1; // 2 = yes; 0 or 1 = no
 
-    uint256 public genesisEpoch;
-    uint256 public lockerStarted = 1;
-    uint256 public isShutdown = 1;
+    ICVXLocker public cvxLocker; // CVX Locker contract address
 
-    ICVXLocker public cvxLocker;
+    uint256 public nextEpochToDeliver; // The next undelivered epoch index
 
-    uint256 public nextEpochToDeliver;
-
-    // Move this to Central Registry
-    // What other chains are supported
-    uint256[] public childChains;
-
-    // User => Reward Next Claim Index
-    mapping(address => uint256) public userNextClaimIndex;
-
-    // RewardToken => Authorized
-    mapping(address => bool) public authorizedRewardToken;
-
-    // Epoch # => ChainID => Tokens Locked in Epoch
-    mapping(uint256 => mapping(uint256 => uint256)) public tokensLockedByChain;
-    // Epoch # => Child Chains updated
-    mapping(uint256 => uint256) public childChainsUpdatedByEpoch;
+    // Important user invariant for rewards
+    mapping(address => uint256) public userNextClaimIndex; // User => Reward Next Claim Index
+    mapping(address => uint256) public authorizedRewardToken; // RewardToken => 2 = yes; 0 or 1 = no
 
     // Epoch # => Total Tokens Locked across all chains
-    mapping(uint256 => uint256) public totalTokensLockedByEpoch;
+    mapping(uint256 => uint256) public tokensLockedByEpoch;
 
-    // Epoch # => Ether rewards per CVE multiplier by offset
-    mapping(uint256 => uint256) public ethPerCVE;
+    // Epoch # => Rewards per CVE multiplied by `expScale`
+    mapping(uint256 => uint256) public epochRewardsPerCVE;
 
     /// EVENTS ///
 
@@ -179,8 +165,8 @@ contract CVELocker is ReentrancyGuard {
         address token
     ) external onlyElevatedPermissions {
         require(token != address(0), "CVELocker: Invalid Token Address");
-        require(!authorizedRewardToken[token], "CVELocker: Invalid Operation");
-        authorizedRewardToken[token] = true;
+        require(authorizedRewardToken[token] < 2, "CVELocker: Invalid Operation");
+        authorizedRewardToken[token] = 2;
     }
 
     /// @notice Removes an authorized reward token.
@@ -190,8 +176,8 @@ contract CVELocker is ReentrancyGuard {
         address token
     ) external onlyDaoPermissions {
         require(token != address(0), "CVELocker: Invalid Token Address");
-        require(authorizedRewardToken[token], "CVELocker: Invalid Operation");
-        delete authorizedRewardToken[token];
+        require(authorizedRewardToken[token] == 2, "CVELocker: Invalid Operation");
+        authorizedRewardToken[token] = 1;
     }
 
     function notifyLockerShutdown() external {
@@ -399,7 +385,7 @@ contract CVELocker is ReentrancyGuard {
             veCVE.updateUserPoints(msg.sender, epoch);
         }
 
-        return (veCVE.userTokenPoints(msg.sender) * ethPerCVE[epoch]);
+        return (veCVE.userTokenPoints(msg.sender) * epochRewardsPerCVE[epoch]);
     }
 
     /// @notice Process user rewards
@@ -426,7 +412,7 @@ contract CVELocker is ReentrancyGuard {
 
         if (rewardsData.desiredRewardToken != baseRewardToken) {
             require(
-                authorizedRewardToken[rewardsData.desiredRewardToken],
+                authorizedRewardToken[rewardsData.desiredRewardToken] == 2,
                 "CVELocker: unsupported reward token"
             );
 
