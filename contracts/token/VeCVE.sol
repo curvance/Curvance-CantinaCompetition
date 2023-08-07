@@ -415,14 +415,15 @@ contract VeCVE is ERC20 {
         uint256 unlockEpoch = freshLockEpoch();
         locks[lockIndex].unlockTime = freshLockTimestamp();
 
-        // only modified on locking/unlocking VeCVE and we know theres never
-        // more than 420m so this should never over/underflow
+        // Remove their continuous lock bonus and document that they have tokens unlocking in a year
         unchecked {
+            // only modified on locking/unlocking VeCVE and we know theres never
+        // more than 420m so this should never over/underflow
             uint256 tokenPoints = _getContinuousPointValue(tokenAmount) - tokenAmount;
             chainTokenPoints = chainTokenPoints - tokenPoints;
             chainUnlocksByEpoch[unlockEpoch] = chainUnlocksByEpoch[unlockEpoch] - tokenAmount;
-            userTokenPoints[msg.sender] = userTokenPoints[msg.sender] - tokenPoints;
-            userTokenUnlocksByEpoch[msg.sender][unlockEpoch] = userTokenUnlocksByEpoch[msg.sender][unlockEpoch]  - tokenAmount;
+            userTokenPoints[msg.sender] = userTokenPoints[msg.sender] + tokenPoints;
+            userTokenUnlocksByEpoch[msg.sender][unlockEpoch] = userTokenUnlocksByEpoch[msg.sender][unlockEpoch]  + tokenAmount;
         }
 
     }
