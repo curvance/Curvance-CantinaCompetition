@@ -176,7 +176,6 @@ contract CToken is ERC165, ReentrancyGuard {
 
         // Confirm Migration
         BasePositionVault(newVault).migrateConfirm(oldVault, params);
-
         // Switch to new vault
         vault = BasePositionVault(newVault);
         emit MigrateVault(oldVault, newVault);
@@ -698,8 +697,10 @@ contract CToken is ERC165, ReentrancyGuard {
     /// @param to Address receiving the token transfer
     /// @param amount Amount of tokens to transfer out
     function doTransferOut(address to, uint256 amount) internal {
-        // withdraw from the vault
-        amount = vault.redeem(amount, address(this), address(this));
+        if (address(vault) != address(0)) {
+            // withdraw from the vault
+            amount = vault.redeem(amount, address(this), address(this));
+        }
 
         /// SafeTransferLib will handle reversion from insufficient cash held
         SafeTransferLib.safeTransfer(underlying, to, amount);
