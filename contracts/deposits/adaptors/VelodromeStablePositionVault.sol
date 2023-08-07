@@ -114,24 +114,26 @@ contract VelodromeStablePositionVault is BasePositionVault {
                 data,
                 (SwapperLib.Swap)
             );
+            {
             uint256 rewardAmount = rewardToken.balanceOf(address(this));
 
-            if (rewardAmount > 0) {
-                // take protocol fee
-                uint256 protocolFee = rewardAmount.mulDivDown(
-                    centralRegistry.protocolHarvestFee(),
-                    1e18
-                );
-                rewardAmount -= protocolFee;
-                SafeTransferLib.safeTransfer(
-                    address(rewardToken),
-                    centralRegistry.feeAccumulator(),
-                    protocolFee
-                );
+                if (rewardAmount > 0) {
+                    // take protocol fee
+                    uint256 protocolFee = rewardAmount.mulDivDown(
+                        centralRegistry.protocolHarvestFee(),
+                        1e18
+                    );
+                    rewardAmount -= protocolFee;
+                    SafeTransferLib.safeTransfer(
+                        address(rewardToken),
+                        centralRegistry.feeAccumulator(),
+                        protocolFee
+                    );
 
-                // swap from VELO to underlying LP token if necessary
-                if (!rewardTokenIsUnderlying) {
-                    SwapperLib.swap(swapData);
+                    // swap from VELO to underlying LP token if necessary
+                    if (!rewardTokenIsUnderlying) {
+                        SwapperLib.swap(swapData);
+                    }
                 }
             }
 
@@ -143,26 +145,34 @@ contract VelodromeStablePositionVault is BasePositionVault {
                 "VelodromeStablePositionVault: slippage error"
             );
 
-            (uint256 r0, uint256 r1, ) = IVeloPair(asset()).getReserves();
+            // Cache asset so we don't need to pay gas multiple times
+            address _asset = asset();
+            (uint256 r0, uint256 r1, ) = IVeloPair(_asset).getReserves();
             (uint256 reserveA, uint256 reserveB) = sd.token0 ==
-                IVeloPair(asset()).token0()
+                IVeloPair(_asset).token0()
                 ? (r0, r1)
                 : (r1, r0);
-            uint256 swapAmount = _optimalDeposit(
+            // Feed library pair factory, lpToken, and stable = true, plus calculated data
+            uint256 swapAmount = VelodromeLib._optimalDeposit(
+                address(sd.pairFactory), 
+                _asset,
                 totalAmountA,
                 reserveA,
                 reserveB,
                 sd.decimalsA,
-                sd.decimalsB
+                sd.decimalsB,
+                true
             );
-            
-            _swapExactTokensForTokens(sd.token0, sd.token1, swapAmount);
+            // Query router and feed calculated data, and stable = true
+            VelodromeLib._swapExactTokensForTokens(address(sd.router), _asset, sd.token0, sd.token1, swapAmount, true);
             totalAmountA -= swapAmount;
 
-            // add liquidity to velodrome lp
-            yield = _addLiquidity(
+            // add liquidity to velodrome lp with stable params
+            yield = VelodromeLib._addLiquidity(
+                address(sd.router),
                 sd.token0,
                 sd.token1,
+                true,
                 totalAmountA,
                 ERC20(sd.token1).balanceOf(address(this)) // totalAmountB
             );

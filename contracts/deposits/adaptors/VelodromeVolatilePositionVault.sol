@@ -137,19 +137,26 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
                 "VelodromeVolatilePositionVault: slippage error"
             );
 
-            (uint256 r0, uint256 r1, ) = IVeloPair(asset()).getReserves();
-            uint256 reserveA = sd.token0 == IVeloPair(asset()).token0()
+            // Cache asset so we don't need to pay gas multiple times
+            address _asset = asset();
+            (uint256 r0, uint256 r1, ) = IVeloPair(_asset).getReserves();
+            uint256 reserveA = sd.token0 == IVeloPair(_asset).token0()
                 ? r0
                 : r1;
 
-            uint256 swapAmount = _optimalDeposit(totalAmountA, reserveA);
-            _swapExactTokensForTokens(sd.token0, sd.token1, swapAmount);
+            // On Volatile Pair we only need to input factory, lptoken, amountA, reserveA, stable = false
+            // Decimals are unused and amountB is unused so we can pass 0
+            uint256 swapAmount = VelodromeLib._optimalDeposit(address(sd.pairFactory), _asset, totalAmountA, reserveA, 0, 0, 0, false);
+            // Can pass as normal with stable = false
+            VelodromeLib._swapExactTokensForTokens(address(sd.router), _asset, sd.token0, sd.token1, swapAmount, false);
 
             totalAmountA -= swapAmount;
-            // add liquidity to velodrome lp
-            yield = _addLiquidity(
+            // add liquidity to velodrome lp with stable = false
+            yield = VelodromeLib._addLiquidity(
+                address(sd.router),
                 sd.token0,
                 sd.token1,
+                false, 
                 totalAmountA,
                 ERC20(sd.token1).balanceOf(address(this)) // totalAmountB
             );

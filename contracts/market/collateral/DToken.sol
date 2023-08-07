@@ -323,6 +323,7 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @param tokensToRedeem The number of dTokens to redeem into underlying
     function redeem(uint256 tokensToRedeem) external nonReentrant {
         accrueInterest();
+
         _redeem(payable(msg.sender), tokensToRedeem, (exchangeRateStored() * tokensToRedeem) / expScale, payable(msg.sender));
     }
 
@@ -442,11 +443,9 @@ contract DToken is ERC165, ReentrancyGuard {
         address spender,
         uint256 amount
     ) external returns (bool) {
-
         transferAllowances[msg.sender][spender] = amount;
 
         emit Approval(msg.sender, spender, amount);
-
         return true;
     }
 

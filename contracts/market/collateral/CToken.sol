@@ -176,6 +176,7 @@ contract CToken is ERC165, ReentrancyGuard {
 
         // Confirm Migration
         BasePositionVault(newVault).migrateConfirm(oldVault, params);
+        
         // Switch to new vault
         vault = BasePositionVault(newVault);
         emit MigrateVault(oldVault, newVault);
