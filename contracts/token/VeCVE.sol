@@ -38,11 +38,11 @@ contract VeCVE is ERC20 {
     bytes32 private immutable _name; // token name metadata
     bytes32 private immutable _symbol; // token symbol metadata
     address public immutable cve; // CVE contract address
-    ICVELocker public immutable cveLocker; // CVE Locker contract address 
+    ICVELocker public immutable cveLocker; // CVE Locker contract address
     uint256 public immutable genesisEpoch; // Genesis Epoch timestamp
     uint256 public immutable clPointMultiplier; // Point multiplier for CL
     ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
-    
+
     /// STORAGE ///
 
     uint256 public isShutdown = 1; // 1 = active; 2 = shutdown
@@ -89,7 +89,7 @@ contract VeCVE is ERC20 {
             if iszero(amount) {
                 mstore(0x0, _INVALID_LOCK_SELECTOR)
                 // return bytes 29-32 for the selector
-                revert(0x1c,0x04)
+                revert(0x1c, 0x04)
             }
         }
 
@@ -184,7 +184,6 @@ contract VeCVE is ERC20 {
         bytes calldata params,
         uint256 aux
     ) external canLock(amount) {
-
         SafeTransferLib.safeTransferFrom(
             cve,
             msg.sender,
@@ -218,7 +217,6 @@ contract VeCVE is ERC20 {
         bytes calldata params,
         uint256 aux
     ) external canLock(amount) {
-
         if (!centralRegistry.approvedVeCVELocker(msg.sender)) {
             _revert(_INVALID_LOCK_SELECTOR);
         }
@@ -259,7 +257,7 @@ contract VeCVE is ERC20 {
         }
 
         Lock[] storage locks = userLocks[msg.sender];
-        
+
         // Length is index + 1 so has to be less than array length
         if (lockIndex >= locks.length) {
             _revert(_INVALID_LOCK_SELECTOR);
@@ -321,7 +319,6 @@ contract VeCVE is ERC20 {
         bytes calldata params,
         uint256 aux
     ) external canLock(amount) {
-
         SafeTransferLib.safeTransferFrom(
             cve,
             msg.sender,
@@ -361,7 +358,6 @@ contract VeCVE is ERC20 {
         bytes calldata params,
         uint256 aux
     ) external canLock(amount) {
-
         if (!centralRegistry.approvedVeCVELocker(msg.sender)) {
             _revert(_INVALID_LOCK_SELECTOR);
         }
@@ -418,14 +414,20 @@ contract VeCVE is ERC20 {
         // Remove their continuous lock bonus and document that they have tokens unlocking in a year
         unchecked {
             // only modified on locking/unlocking VeCVE and we know theres never
-        // more than 420m so this should never over/underflow
-            uint256 tokenPoints = _getContinuousPointValue(tokenAmount) - tokenAmount;
+            // more than 420m so this should never over/underflow
+            uint256 tokenPoints = _getContinuousPointValue(tokenAmount) -
+                tokenAmount;
             chainTokenPoints = chainTokenPoints - tokenPoints;
-            chainUnlocksByEpoch[unlockEpoch] = chainUnlocksByEpoch[unlockEpoch] - tokenAmount;
-            userTokenPoints[msg.sender] = userTokenPoints[msg.sender] + tokenPoints;
-            userTokenUnlocksByEpoch[msg.sender][unlockEpoch] = userTokenUnlocksByEpoch[msg.sender][unlockEpoch]  + tokenAmount;
+            chainUnlocksByEpoch[unlockEpoch] =
+                chainUnlocksByEpoch[unlockEpoch] -
+                tokenAmount;
+            userTokenPoints[msg.sender] =
+                userTokenPoints[msg.sender] +
+                tokenPoints;
+            userTokenUnlocksByEpoch[msg.sender][unlockEpoch] =
+                userTokenUnlocksByEpoch[msg.sender][unlockEpoch] +
+                tokenAmount;
         }
-
     }
 
     /// @notice Combines all locks into a single lock,
@@ -456,11 +458,9 @@ contract VeCVE is ERC20 {
         // Check that the user has sufficient locks to combine,
         // then decrement 1 so we can use it to go through the lockIndexes
         // array backwards.
-        if (locksToCombineIndex > 0 ){
-            if (locksToCombineIndex <= lastLockIndex) {
-                _revert(_INVALID_LOCK_SELECTOR);
-            }
-         }
+        if (locksToCombineIndex == 0 || locksToCombineIndex > lastLockIndex) {
+            _revert(_INVALID_LOCK_SELECTOR);
+        }
 
         uint256 lockAmount;
         Lock storage userLock;
@@ -519,9 +519,9 @@ contract VeCVE is ERC20 {
         if (excessPoints > 0) {
             _reduceTokenPoints(msg.sender, excessPoints);
         }
-        
+
         userLock = locks[lockIndexes[0]]; // We will combine the deleted locks into the first lock in the array
-        
+
         uint256 epoch;
 
         if (continuousLock) {
@@ -715,12 +715,7 @@ contract VeCVE is ERC20 {
             _removeLock(locks, lockIndex);
 
             // Transfer the recipient the unlocked CVE
-            SafeTransferLib.safeTransferFrom(
-                cve,
-                address(this),
-                recipient,
-                lockAmount
-            );
+            SafeTransferLib.safeTransfer(cve, recipient, lockAmount);
 
             emit Unlocked(msg.sender, lockAmount);
 
@@ -769,17 +764,15 @@ contract VeCVE is ERC20 {
         uint256 penaltyAmount = (lockAmount * penaltyValue) / DENOMINATOR;
 
         // Transfer the CVE penalty amount to Curvance DAO
-        SafeTransferLib.safeTransferFrom(
+        SafeTransferLib.safeTransfer(
             cve,
-            address(this),
             centralRegistry.daoAddress(),
             penaltyAmount
         );
 
         // Transfer the remainder of the CVE to the recipient
-        SafeTransferLib.safeTransferFrom(
+        SafeTransferLib.safeTransfer(
             cve,
-            address(this),
             recipient,
             lockAmount - penaltyAmount
         );
@@ -852,15 +845,17 @@ contract VeCVE is ERC20 {
     function updateUserPoints(address user, uint256 epoch) public {
         address _cveLocker = address(cveLocker);
         assembly {
-            if iszero(eq(caller(),_cveLocker)){
+            if iszero(eq(caller(), _cveLocker)) {
                 //bytes4(keccak256("VeCVE_onlyCVELocker()")) = b5f2689b
                 mstore(0x00, 0xb5f2689b)
-                revert(0x1c,0x04)
+                revert(0x1c, 0x04)
             }
         }
 
         unchecked {
-            userTokenPoints[user] = userTokenPoints[user] - userTokenUnlocksByEpoch[user][epoch];
+            userTokenPoints[user] =
+                userTokenPoints[user] -
+                userTokenUnlocksByEpoch[user][epoch];
         }
     }
 
@@ -916,7 +911,12 @@ contract VeCVE is ERC20 {
         for (uint256 i; i < numLocks; ) {
             // Based on CVE maximum supply this cannot overflow
             unchecked {
-                votes += getVotesForSingleLockForTime(user, i++, timestamp, currentLockBoost);
+                votes += getVotesForSingleLockForTime(
+                    user,
+                    i++,
+                    timestamp,
+                    currentLockBoost
+                );
             }
         }
 
@@ -934,7 +934,7 @@ contract VeCVE is ERC20 {
     function getVotesForSingleLockForTime(
         address user,
         uint256 lockIndex,
-        uint256 time, 
+        uint256 time,
         uint256 currentLockBoost
     ) public view returns (uint256) {
         Lock storage userLock = userLocks[user][lockIndex];
@@ -945,11 +945,10 @@ contract VeCVE is ERC20 {
 
         if (userLock.unlockTime == CONTINUOUS_LOCK_VALUE) {
             unchecked {
-                return ((userLock.amount * currentLockBoost) /
-                DENOMINATOR);
-             }
+                return ((userLock.amount * currentLockBoost) / DENOMINATOR);
+            }
         }
-        
+
         // Equal to epochsLeft = (userLock.unlockTime - time) / EPOCH_DURATION
         // (userLock.amount * epochsLeft) / LOCK_DURATION_EPOCHS
         return
@@ -1039,9 +1038,15 @@ contract VeCVE is ERC20 {
                 // only modified on locking/unlocking VeCVE and we know theres never
                 // more than 420m so this should never over/underflow
                 chainTokenPoints = chainTokenPoints + amount;
-                chainUnlocksByEpoch[unlockEpoch] = chainUnlocksByEpoch[unlockEpoch] + amount;
-                userTokenPoints[recipient] = userTokenPoints[recipient] + amount;
-                userTokenUnlocksByEpoch[recipient][unlockEpoch] = userTokenUnlocksByEpoch[recipient][unlockEpoch] + amount;
+                chainUnlocksByEpoch[unlockEpoch] =
+                    chainUnlocksByEpoch[unlockEpoch] +
+                    amount;
+                userTokenPoints[recipient] =
+                    userTokenPoints[recipient] +
+                    amount;
+                userTokenUnlocksByEpoch[recipient][unlockEpoch] =
+                    userTokenUnlocksByEpoch[recipient][unlockEpoch] +
+                    amount;
             }
         }
 
@@ -1182,7 +1187,9 @@ contract VeCVE is ERC20 {
         // so this should never over/underflow
         unchecked {
             chainUnlocksByEpoch[epoch] = chainUnlocksByEpoch[epoch] + points;
-            userTokenUnlocksByEpoch[user][epoch] = userTokenUnlocksByEpoch[user][epoch] + points;
+            userTokenUnlocksByEpoch[user][epoch] =
+                userTokenUnlocksByEpoch[user][epoch] +
+                points;
         }
     }
 
@@ -1201,7 +1208,9 @@ contract VeCVE is ERC20 {
         // so this should never over/underflow
         unchecked {
             chainUnlocksByEpoch[epoch] = chainUnlocksByEpoch[epoch] - points;
-            userTokenUnlocksByEpoch[user][epoch] = userTokenUnlocksByEpoch[user][epoch] - points;
+            userTokenUnlocksByEpoch[user][epoch] =
+                userTokenUnlocksByEpoch[user][epoch] -
+                points;
         }
     }
 
@@ -1226,10 +1235,16 @@ contract VeCVE is ERC20 {
         // We know theres never more than 420m
         // so this should never over/underflow
         unchecked {
-            chainUnlocksByEpoch[previousEpoch] = chainUnlocksByEpoch[previousEpoch] - previousPoints;
-            userTokenUnlocksByEpoch[user][previousEpoch] = userTokenUnlocksByEpoch[user][previousEpoch] - previousPoints;
+            chainUnlocksByEpoch[previousEpoch] =
+                chainUnlocksByEpoch[previousEpoch] -
+                previousPoints;
+            userTokenUnlocksByEpoch[user][previousEpoch] =
+                userTokenUnlocksByEpoch[user][previousEpoch] -
+                previousPoints;
             chainUnlocksByEpoch[epoch] = chainUnlocksByEpoch[epoch] + points;
-            userTokenUnlocksByEpoch[user][epoch] = userTokenUnlocksByEpoch[user][epoch] + points;
+            userTokenUnlocksByEpoch[user][epoch] =
+                userTokenUnlocksByEpoch[user][epoch] +
+                points;
         }
     }
 
@@ -1251,9 +1266,13 @@ contract VeCVE is ERC20 {
         // so this should never over/underflow
         unchecked {
             chainTokenPoints = chainTokenPoints + tokenPoints;
-            chainUnlocksByEpoch[epoch] = chainUnlocksByEpoch[epoch] - tokenUnlocks;
+            chainUnlocksByEpoch[epoch] =
+                chainUnlocksByEpoch[epoch] -
+                tokenUnlocks;
             userTokenPoints[user] = userTokenPoints[user] + tokenPoints;
-            userTokenUnlocksByEpoch[user][epoch] = userTokenUnlocksByEpoch[user][epoch] - tokenUnlocks;
+            userTokenUnlocksByEpoch[user][epoch] =
+                userTokenUnlocksByEpoch[user][epoch] -
+                tokenUnlocks;
         }
     }
 
@@ -1264,8 +1283,7 @@ contract VeCVE is ERC20 {
         uint256 basePoints
     ) internal view returns (uint256) {
         unchecked {
-            return ((basePoints * clPointMultiplier) /
-                DENOMINATOR);
+            return ((basePoints * clPointMultiplier) / DENOMINATOR);
         }
     }
 
@@ -1277,5 +1295,4 @@ contract VeCVE is ERC20 {
             revert(0x1c, 0x04)
         }
     }
-
 }
