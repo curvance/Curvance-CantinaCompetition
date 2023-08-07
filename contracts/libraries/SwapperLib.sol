@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { SafeTransferLib } from "./SafeTransferLib.sol";
-import { ERC20 } from "./ERC20.sol";
-import { IERC20 } from "../interfaces/IERC20.sol";
-import { IPriceRouter } from "../interfaces/IPriceRouter.sol";
+import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
+import { ERC20 } from "contracts/libraries/ERC20.sol";
+
+import { IERC20 } from "contracts/interfaces/IERC20.sol";
+import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 
 library SwapperLib {
-
-    /// STRUCTS ///
+    /// TYPES ///
     struct Swap {
         address inputToken;
         uint256 inputAmount;
@@ -28,7 +28,8 @@ library SwapperLib {
     uint256 public constant SLIPPAGE_DENOMINATOR = 10000;
 
     /// @notice Checks if the slippage is within an acceptable range.
-    /// @dev Calculates whether the zap slippage for the given input falls within the accepted range. 
+    /// @dev Calculates whether the zap slippage for the given input
+    ///      falls within the accepted range.
     ///      If not, the function reverts with a message.
     /// @param usdInput The USD amount input for the transaction.
     /// @param usdOutput The USD amount output from the transaction.
@@ -49,19 +50,7 @@ library SwapperLib {
 
     /// @dev Swap input token
     /// @param swapData The swap data
-    /// @param priceRouter The price router address
-    /// @param slippage Slippage settings
-    function swap(
-        Swap memory swapData,
-        address priceRouter,
-        uint256 slippage
-    ) internal {
-        (uint256 price, uint256 errorCode) = IPriceRouter(priceRouter)
-            .getPrice(swapData.inputToken, true, true);
-        require(errorCode < 2, "SwapperLib: input token price bad source");
-        uint256 usdInput = (price * swapData.inputAmount) /
-            (10 ** ERC20(swapData.inputToken).decimals());
-
+    function swap(Swap memory swapData) internal {
         approveTokenIfNeeded(
             swapData.inputToken,
             swapData.target,
@@ -78,31 +67,23 @@ library SwapperLib {
 
         propagateError(success, retData, "SwapperLib: swap");
 
-        require(success == true, "SwapperLib: swap error");
+        require(success, "SwapperLib: swap error");
 
-        uint256 outputAmount = IERC20(swapData.outputToken).balanceOf(
-            address(this)
-        ) - outputAmountBefore;
-
-        (price, errorCode) = IPriceRouter(priceRouter).getPrice(
-            swapData.outputToken,
-            true,
-            true
-        );
-        require(errorCode < 2, "SwapperLib: OT price bad source");
-        uint256 usdOutput = (price * outputAmount) /
-            (10 ** ERC20(swapData.outputToken).decimals());
-
-        checkSlippage(usdInput, usdOutput, slippage);
+        IERC20(swapData.outputToken).balanceOf(address(this)) -
+            outputAmountBefore;
     }
 
     /// @notice Zaps an input token into an output token.
-    /// @dev Calls the `zap` function in a specified contract (the zapper). 
-    ///      First, it approves the zapper to transfer the required amount of the input token. 
-    ///      Then, it calls the zapper and checks if the operation was successful. 
+    /// @dev Calls the `zap` function in a specified contract (the zapper).
+    ///      First, it approves the zapper to transfer
+    ///         the required amount of the input token.
+    ///      Then, it calls the zapper and checks
+    ///         if the operation was successful.
     ///      If the call failed, it reverts with an error message.
-    /// @param zapperCall A `ZapperCall` struct containing the zapper contract address, 
-    ///                   the calldata for the `zap` function, the input token address and the input amount.
+    /// @param zapperCall A `ZapperCall` struct containing
+    ///                         the zapper contract address,
+    ///                   the calldata for the `zap` function,
+    ///                         the input token address and the input amount.
     function zap(ZapperCall memory zapperCall) internal {
         SwapperLib.approveTokenIfNeeded(
             zapperCall.inputToken,

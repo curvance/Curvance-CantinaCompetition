@@ -9,49 +9,60 @@ import { IOracleAdaptor, PriceReturnData } from "contracts/interfaces/IOracleAda
 abstract contract BaseOracleAdaptor {
 
     /// CONSTANTS ///
-    /// @notice Address for Curvance DAO registry contract for ownership and location data.
-    ICentralRegistry public immutable centralRegistry;
+
+    ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
 
     /// STORAGE ///
-    /// @notice Mapping used to track whether or not an asset is supported by the adaptor and pricing information.
+
+    /// Asset => Supported by adaptor
     mapping(address => bool) public isSupportedAsset;
 
-    constructor(ICentralRegistry centralRegistry_) {
+    /// MODIFIERS ///
 
-        require(
-            ERC165Checker.supportsInterface(
-                address(centralRegistry_),
-                type(ICentralRegistry).interfaceId
-            ),
-            "priceRouter: Central Registry is invalid"
-        );
-
-        centralRegistry = centralRegistry_;
-    }
-
-    // Only callable by Price Router.
     modifier onlyPriceRouter() {
         require(
             msg.sender == centralRegistry.priceRouter(),
-            "adaptor: UNAUTHORIZED"
+            "Adaptor: UNAUTHORIZED"
         );
         _;
     }
 
     modifier onlyDaoPermissions() {
-        require(centralRegistry.hasDaoPermissions(msg.sender), "centralRegistry: UNAUTHORIZED");
+        require(
+            centralRegistry.hasDaoPermissions(msg.sender),
+            "CentralRegistry: UNAUTHORIZED"
+        );
         _;
     }
 
     modifier onlyElevatedPermissions() {
-            require(centralRegistry.hasElevatedPermissions(msg.sender), "centralRegistry: UNAUTHORIZED");
-            _;
+        require(
+            centralRegistry.hasElevatedPermissions(msg.sender),
+            "CentralRegistry: UNAUTHORIZED"
+        );
+        _;
     }
+
+    /// CONSTRUCTOR ///
+
+    constructor(ICentralRegistry centralRegistry_) {
+        require(
+            ERC165Checker.supportsInterface(
+                address(centralRegistry_),
+                type(ICentralRegistry).interfaceId
+            ),
+            "PriceRouter: Central Registry is invalid"
+        );
+
+        centralRegistry = centralRegistry_;
+    }
+
+    /// EXTERNAL FUNCTIONS ///
 
     /// @notice Called by PriceRouter to price an asset.
     function getPrice(
         address asset,
-        bool isUsd,
+        bool inUSD,
         bool getLower
     ) external view virtual returns (PriceReturnData memory);
 

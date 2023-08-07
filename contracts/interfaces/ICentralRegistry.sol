@@ -12,8 +12,11 @@ interface ICentralRegistry {
     /// @notice Returns whether the caller has dao permissions or not
     function hasDaoPermissions(address _address) external view returns (bool);
 
-    /// @notice Returns whether the caller has elevated protocol permissions or not
-    function hasElevatedPermissions(address _address) external view returns (bool);
+    /// @notice Returns whether the caller has elevated protocol permissions
+    ///         or not
+    function hasElevatedPermissions(
+        address _address
+    ) external view returns (bool);
 
     /// @notice Returns CVE Locker Address
     function cveLocker() external view returns (address);
@@ -33,23 +36,32 @@ interface ICentralRegistry {
     /// @notice Returns Price Router Address
     function priceRouter() external view returns (address);
 
-    /// @notice Returns Deposit Router Address
-    function depositRouter() external view returns (address);
-
     /// @notice Returns ZRO Payment Address
     function zroAddress() external view returns (address);
 
-    /// @notice Returns feeHub Address
-    function feeHub() external view returns (address);
+    /// @notice Returns feeAccumulator Address
+    function feeAccumulator() external view returns (address);
+
+    /// @notice Returns protocolCompoundFee Address
+    function protocolCompoundFee() external view returns (uint256);
 
     /// @notice Returns protocolYieldFee Address
     function protocolYieldFee() external view returns (uint256);
 
+    /// @notice Returns protocolHarvestFee Address
+    function protocolHarvestFee() external view returns (uint256);
+
     /// @notice Returns protocolLiquidationFee Address
     function protocolLiquidationFee() external view returns (uint256);
 
-    /// @notice Returns protocolLiquidationFee Address
+    /// @notice Returns protocolLeverageFee Address
     function protocolLeverageFee() external view returns (uint256);
+
+    /// @notice Returns protocolInterestRateFee Address
+    function protocolInterestRateFee() external view returns (uint256);
+
+    /// @notice Returns earlyUnlockPenaltyValue value in basis point form
+    function earlyUnlockPenaltyValue() external view returns (uint256);
 
     /// @notice Returns voteBoostValue value in basis point form
     function voteBoostValue() external view returns (uint256);

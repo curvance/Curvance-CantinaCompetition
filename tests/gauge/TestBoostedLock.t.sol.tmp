@@ -10,7 +10,7 @@ import "contracts/market/interestRates/InterestRateModel.sol";
 import { GaugePool } from "contracts/gauge/GaugePool.sol";
 import "contracts/mocks/MockToken.sol";
 import "contracts/mocks/MockCentralRegistry.sol";
-import { veCVE } from "contracts/token/veCVE.sol";
+import { VeCVE } from "contracts/token/VeCVE.sol";
 import "contracts/interfaces/ICentralRegistry.sol";
 
 import { DeployCompound } from "tests/market/deploy.sol";
@@ -29,7 +29,7 @@ contract TestBoostedLock is TestBase {
     address public owner;
     address[10] public tokens;
     address public cve;
-    veCVE public ve;
+    VeCVE public ve;
     MockCentralRegistry public centralRegistry;
     address[10] public users;
     GaugePool public gaugePool;
@@ -57,7 +57,7 @@ contract TestBoostedLock is TestBase {
         );
         cve = address(new MockToken("Reward Token", "RT", 18));
         centralRegistry.setCVE(cve);
-        ve = new veCVE(ICentralRegistry(address(centralRegistry)));
+        ve = new VeCVE(ICentralRegistry(address(centralRegistry)));
         gaugePool = new GaugePool(address(cve), address(ve), lendtroller);
         ve.addAuthorizedHelper(address(gaugePool));
 

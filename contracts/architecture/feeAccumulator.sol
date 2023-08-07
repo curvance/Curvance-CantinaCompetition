@@ -1,0 +1,253 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.17;
+
+import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
+import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
+import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
+
+import { IWETH } from "contracts/interfaces/IWETH.sol";
+import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
+import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
+
+contract FeeAccumulator is ReentrancyGuard {
+
+    /// CONSTANTS ///
+
+    address public constant ETHER =
+        0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE; // pseudo ETH address
+    IWETH public immutable WETH; // Address of WETH
+    ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
+
+    /// STORAGE ///
+
+    address internal previousMessagingHub;
+    address payable public oneBalanceAddress; 
+    mapping (address => uint256) public earmarkedOTC; // 2 = earmarked; 0 or 1 = not earmarked
+
+    /// ERRORS ///
+
+    error FeeAccumulator_TransferFailed();
+    error FeeAccumulator_ConfigurationError();
+    error FeeAccumulator_InsufficientETH();
+    error FeeAccumulator_EarmarkError();
+
+    /// MODIFIERS ///
+
+    modifier onlyHarvestor() {
+        require(
+            centralRegistry.harvester(msg.sender),
+            "BasePositionVault: UNAUTHORIZED"
+        );
+        _;
+    }
+
+    modifier onlyDaoPermissions() {
+        require(
+            centralRegistry.hasDaoPermissions(msg.sender),
+            "BasePositionVault: UNAUTHORIZED"
+        );
+        _;
+    }
+
+    receive() external payable {}
+
+    /// CONSTRUCTOR ///
+
+    constructor(
+        ICentralRegistry centralRegistry_,
+        address WETH_
+    ) {
+        require(
+            ERC165Checker.supportsInterface(
+                address(centralRegistry_),
+                type(ICentralRegistry).interfaceId
+            ),
+            "Zapper: invalid central registry"
+        );
+
+        centralRegistry = centralRegistry_;
+        WETH = IWETH(WETH_);
+        // We document this incase we ever need to update messaging hub and want to revoke
+        previousMessagingHub = centralRegistry.protocolMessagingHub();
+
+        // We infinite approve WETH so that protocol messaging hub can drag funds to proper chain
+        SafeTransferLib.safeApprove(
+            WETH_,
+            previousMessagingHub,
+            type(uint256).max
+        );
+
+        // We set oneBalance address initially to DAO,
+        // incase direct deposits to Gelato Network are not supported.
+        oneBalanceAddress = payable(centralRegistry.daoAddress());
+    }
+
+    /// EXTERNAL FUNCTIONS ///
+
+    /// @dev Performs multiple token swaps in a single transaction, 
+    ///      converting the provided tokens to ETH on behalf of Curvance DAO
+    /// @param data Encoded swap data containing the details of each swap
+    /// @param tokens An array of token addresses corresponding to the swap data, specifying the tokens to be swapped
+    function multiSwap(bytes calldata data, address[] calldata tokens) external onlyHarvestor nonReentrant {
+
+        SwapperLib.Swap[] memory swapDataArray = abi.decode(
+                data,
+                (SwapperLib.Swap[])
+        );
+
+        uint256 numTokens = swapDataArray.length;
+        if (numTokens != tokens.length) {
+            revert FeeAccumulator_ConfigurationError();
+        }
+        address currentToken;
+
+        for (uint256 i; i < numTokens; ++i) {
+            currentToken = tokens[i];
+            // Make sure we are not earmarking this token for DAO OTC
+            if (earmarkedOTC[currentToken] == 2) {
+                continue;
+            }
+
+            // Swap from token to output token (ETH)
+            // Note: Because this is ran directly from Gelato Network we know we will not have a malicious actor on swap routing
+            //       We route liquidity to 1Inch with tight slippage requirement, meaning we do not need to separately check
+            //       for slippage here.
+            SwapperLib.swap(swapDataArray[i]);
+        }
+
+        uint256 fees = address(this).balance;
+        // We do not need expScale since ether and fees are already in 1e18 form
+        // Transfer fees to Gelato Network One Balance or equivalent
+        fees = fees - _distributeETH(oneBalanceAddress, (fees * vaultCompoundFee()) / vaultYieldFee());
+        // Deposit remainder into WETH so protocol messaging hub can pull WETH to execute fee distribution
+        WETH.deposit{ value: fees }(fees);
+    }
+
+    /// @notice Performs an (OTC) operation for a specific token, transferring the token to the DAO in exchange for ETH.
+    /// @dev The function validates that the token is earmarked for OTC and calculates the amount of ETH required based on the current prices
+    /// @param tokenToOTC The address of the token to be OTC purchased by the DAO
+    /// @param amountToOTC The amount of the token to be OTC purchased by the DAO
+    function daoOTC(address tokenToOTC, uint256 amountToOTC) external payable onlyDaoPermissions nonReentrant {
+
+        // Validate that the token is earmarked for OTC
+        if (earmarkedOTC[tokenToOTC] < 2) {
+            revert FeeAccumulator_EarmarkError();
+        }
+
+        // Cache router to save gas
+        IPriceRouter router = getPriceRouter();
+        
+        (uint256 priceSwap, uint256 errorCodeSwap) = router.getPrice(tokenToOTC, true, true);
+        (uint256 priceETH, uint256 errorCodeETH) = router.getPrice(ETHER, true, true);
+
+        // Validate we got prices back
+        if (errorCodeETH == 2 || errorCodeSwap == 2) {
+            revert FeeAccumulator_ConfigurationError();
+        }
+
+        address daoAddress = centralRegistry.daoAddress();
+        // Price Router always returns in 1e18 format based on decimals,
+        // so we do not need to worry about decimal differences here
+        uint256 ethRequiredForOTC = (priceSwap * amountToOTC) / priceETH;
+
+        // Validate enough ether has been provided
+        if (msg.value < ethRequiredForOTC) {
+            revert FeeAccumulator_InsufficientETH();
+        }
+
+        // We do not need expScale since ether and fees are already in 1e18 form
+        // Transfer fees to Gelato Network One Balance or equivalent
+        ethRequiredForOTC = ethRequiredForOTC - _distributeETH(oneBalanceAddress, (ethRequiredForOTC * vaultCompoundFee()) / vaultYieldFee());
+        // Deposit remainder into WETH so protocol messaging hub can pull WETH to execute fee distribution
+        WETH.deposit{ value: ethRequiredForOTC }(ethRequiredForOTC);
+
+        // Give DAO the OTC'd tokens
+        SafeTransferLib.safeTransfer(
+            tokenToOTC,
+            daoAddress,
+            amountToOTC
+        );
+
+        // If there was excess make sure we reimburse the DAO
+        if (msg.value > ethRequiredForOTC) {
+            _distributeETH(payable(daoAddress), msg.value - ethRequiredForOTC);
+        }
+    }
+
+    /// @notice Admin function to set Gelato Network one balance destination address to fund compounders
+    function setOneBalanceAddress(address payable newOneBalanceAddress) external onlyDaoPermissions {
+        oneBalanceAddress = newOneBalanceAddress;
+    }
+
+    /// @notice Admin function to set status on whether a token should be earmarked to OTC
+    /// @param state 2 = earmarked; 0 or 1 = not earmarked
+    function setEarmarked(address token, bool state) external onlyDaoPermissions {
+        earmarkedOTC[token] = state ? 2: 1;
+    }
+
+    /// @notice Moves WETH approval to new messaging hub
+    /// @dev    Removes prior messaging hub approval for maximum safety
+    function reQueryMessagingHub() external onlyDaoPermissions {
+        // Revoke previous approval
+        SafeTransferLib.safeApprove(
+            address(WETH),
+            previousMessagingHub,
+            0
+        );
+
+        // We infinite approve WETH so that protocol messaging hub can drag funds to proper chain
+        SafeTransferLib.safeApprove(
+            address(WETH),
+            centralRegistry.protocolMessagingHub(),
+            type(uint256).max
+        );
+    }
+
+    /// PUBLIC FUNCTIONS ///
+
+    /// @notice Fetches the current price router from the central registry
+    /// @return Current PriceRouter interface address
+    function getPriceRouter() public view returns (IPriceRouter) {
+        return IPriceRouter(centralRegistry.priceRouter());
+    }
+
+    /// @notice Vault compound fee is in basis point form
+    /// @dev Returns the vaults current amount of yield used
+    ///      for compounding rewards
+    function vaultCompoundFee() public view returns (uint256) {
+        return centralRegistry.protocolCompoundFee();
+    }
+
+    /// @notice Vault yield fee is in basis point form
+    /// @dev Returns the vaults current protocol fee for compounding rewards
+    function vaultYieldFee() public view returns (uint256) {
+        return centralRegistry.protocolYieldFee();
+    }
+
+    /// INTERNAL FUNCTIONS ///
+
+    /// @notice Distributes the specified amount of ETH to
+    ///         the recipient address
+    /// @dev Has reEntry protection via multiSwap/daoOTC
+    /// @param recipient The address to receive the ETH
+    /// @param amount The amount of ETH to send
+    /// @return amount The total amount of ETH that was sent
+    function _distributeETH(
+        address payable recipient,
+        uint256 amount
+    ) internal returns (uint256) {
+        assembly {
+            // Revert if we failed to transfer eth
+            if iszero(call(gas(), recipient, amount, 0x00, 0x00, 0x00, 0x00)) {
+               // bytes4(keccak256(bytes("FeeAccumulator_TransferFailed()")))
+               mstore(0x00, 0x3595adc2)
+               // return bytes 29-32 for the selector
+               revert (0x1c,0x04)
+            }
+        }
+
+        return amount;
+    }
+
+}

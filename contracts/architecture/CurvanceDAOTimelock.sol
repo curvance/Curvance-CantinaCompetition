@@ -7,12 +7,15 @@ import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 contract Timelock is TimelockController {
-
     /// CONSTANTS ///
-    uint256 public constant MINIMUM_DELAY = 7 days;
-    ICentralRegistry public immutable centralRegistry;
 
-    constructor(ICentralRegistry centralRegistry_)
+    // Minimum delay for timelock transaction proposals to execute 
+    uint256 public constant MINIMUM_DELAY = 7 days;
+    ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
+
+    constructor(
+        ICentralRegistry centralRegistry_
+    )
         TimelockController(
             MINIMUM_DELAY,
             new address[](0),
@@ -31,7 +34,8 @@ contract Timelock is TimelockController {
         centralRegistry = centralRegistry_;
 
         // grant admin/proposer/executor role to DAO
-        _grantRole(PROPOSER_ROLE, centralRegistry.daoAddress());
-        _grantRole(EXECUTOR_ROLE, centralRegistry.daoAddress());
+        address _centralRegistryDaoAddress = centralRegistry.daoAddress();
+        _grantRole(PROPOSER_ROLE, _centralRegistryDaoAddress);
+        _grantRole(EXECUTOR_ROLE, _centralRegistryDaoAddress);
     }
 }

@@ -1,34 +1,188 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-/// @title Curvance's InterestRateModel Interface
-/// @author Curvance
-abstract contract InterestRateModel {
-    /// @notice Indicator that this is an InterestRateModel contract (for inspection)
-    bool public constant isInterestRateModel = true;
+import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 
-    /// @notice Calculates the current borrow interest rate per block
-    /// @param cash The total amount of cash the market has
-    /// @param borrows The total amount of borrows the market has outstanding
-    /// @param reserves The total amount of reserves the market has
-    /// @return The borrow rate per block (as a percentage, and scaled by 1e18)
-    /// @dev Calls function from JumpRateModel.sol
+contract InterestRateModel {
+    /// CONSTANTS ///
+
+    /// Unix time has 31,536,000 seconds per year 
+    /// All my homies hate leap seconds and leap years
+    uint256 private constant secondsPerYear = 31536000;
+    uint256 private constant expScale = 1e18; // Scalar for math
+    bool public constant isInterestRateModel = true; // for inspection
+    ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
+
+    /// STORAGE ///
+
+    uint256 public multiplierPerSecond; // Rate interest grows
+    uint256 public jumpMultiplierPerSecond; // boosted rate interest grows
+    // Utilization rate point when jump multiplier kicks in
+    uint256 public rateCurveKink; 
+
+    /// EVENTS ///
+
+    event NewInterestRateModel(
+        uint256 multiplierPerSecond,
+        uint256 jumpMultiplierPerSecond,
+        uint256 rateCurveKink
+    );
+
+    /// MODIFIERS ///
+
+    modifier onlyElevatedPermissions() {
+        require(
+            centralRegistry.hasElevatedPermissions(msg.sender),
+            "InterestRateModel: UNAUTHORIZED"
+        );
+        _;
+    }
+
+    /// CONSTRUCTOR ///
+
+    /// @notice Construct an interest rate model
+    /// @param multiplierPerYear The rate of increase in interest rate by
+    ///                          utilization rate (scaled by expScale)
+    /// @param jumpMultiplierPerYear The multiplierPerSecond after hitting
+    ///                              `kink_` utilization rate
+    /// @param kink The utilization point at which the jump multiplier
+    ///              is applied
+    constructor(
+        ICentralRegistry centralRegistry_,
+        uint256 multiplierPerYear,
+        uint256 jumpMultiplierPerYear,
+        uint256 kink
+    ) {
+
+        require(
+            ERC165Checker.supportsInterface(
+                address(centralRegistry_),
+                type(ICentralRegistry).interfaceId
+            ),
+            "InterestRateModel: invalid central registry"
+        );
+
+        centralRegistry = centralRegistry_;
+
+        multiplierPerSecond =
+            (multiplierPerYear * expScale) /
+            (secondsPerYear * kink);
+        jumpMultiplierPerSecond = jumpMultiplierPerYear / secondsPerYear;
+        rateCurveKink = kink;
+
+        emit NewInterestRateModel(
+            multiplierPerSecond,
+            jumpMultiplierPerSecond,
+            kink
+        );
+    }
+
+    /// EXTERNAL FUNCTIONS ///
+
+    /// @notice Update the parameters of the interest rate model
+    ///         (only callable by Curvance DAO elevated permissions, i.e. Timelock)
+    /// @param multiplierPerYear The rate of increase in interest rate by
+    ///                          utilization rate (scaled by expScale)
+    /// @param jumpMultiplierPerYear The multiplierPerSecond after hitting
+    ///                              `kink` utilization rate
+    /// @param kink The utilization point at which the jump multiplier
+    ///             is applied
+    function updateInterestRateModel(
+        uint256 multiplierPerYear,
+        uint256 jumpMultiplierPerYear,
+        uint256 kink
+    ) external onlyElevatedPermissions {
+
+        multiplierPerSecond =
+            (multiplierPerYear * expScale) /
+            (secondsPerYear * kink);
+        jumpMultiplierPerSecond = jumpMultiplierPerYear / secondsPerYear;
+        rateCurveKink = kink;
+
+        emit NewInterestRateModel(
+            multiplierPerSecond,
+            jumpMultiplierPerSecond,
+            kink
+        );
+    }
+
+    /// PUBLIC FUNCTIONS ///
+
+    /// @notice Calculates the utilization rate of the market:
+    ///         `borrows / (cash + borrows - reserves)`
+    /// @param cash The amount of cash in the market
+    /// @param borrows The amount of borrows in the market
+    /// @param reserves The amount of reserves in the market
+    /// @return The utilization rate between [0, expScale]
+    function utilizationRate(
+        uint256 cash,
+        uint256 borrows,
+        uint256 reserves
+    ) public pure returns (uint256) {
+        // Utilization rate is 0 when there are no borrows
+        if (borrows == 0) {
+            return 0;
+        }
+
+        return (borrows * expScale) / (cash + borrows - reserves);
+    }
+
+    /// @notice Calculates the current borrow rate per second
+    /// @param cash The amount of cash in the market
+    /// @param borrows The amount of borrows in the market
+    /// @param reserves The amount of reserves in the market
+    /// @return The borrow rate percentage per second (scaled by 1e18)
     function getBorrowRate(
         uint256 cash,
         uint256 borrows,
         uint256 reserves
-    ) external view virtual returns (uint256);
+    ) public view returns (uint256) {
+        uint256 util = utilizationRate(cash, borrows, reserves);
 
-    /// @notice Calculates the current supply interest rate per block
-    /// @param cash The total amount of cash the market has
-    /// @param borrows The total amount of borrows the market has outstanding
-    /// @param reserves The total amount of reserves the market has
-    /// @param reserveFactorMantissa The current reserve factor the market has
-    /// @return The supply rate per block (as a percentage, and scaled by 1e18)
+        if (util <= rateCurveKink) {
+            unchecked {
+                return getNormalInterestRate(util);
+            }
+        }
+
+        /// We know this will not underflow or overflow because of Interest Rate Model configurations
+        unchecked {
+            return(getJumpInterestRate(util - rateCurveKink) + getNormalInterestRate(rateCurveKink));
+        }
+    }
+
+    /// @notice Calculates the current supply rate per second
+    /// @param cash The amount of cash in the market
+    /// @param borrows The amount of borrows in the market
+    /// @param reserves The amount of reserves in the market
+    /// @param marketReservesInterestFee The current interest rate reserve factor for the market
+    /// @return The supply rate percentage per second (scaled by 1e18)
     function getSupplyRate(
         uint256 cash,
         uint256 borrows,
         uint256 reserves,
-        uint256 reserveFactorMantissa
-    ) external view virtual returns (uint256);
+        uint256 marketReservesInterestFee
+    ) public view returns (uint256) {
+        /// RateToPool = (borrowRate * oneMinusReserveFactor) / expScale;
+        uint256 rateToPool = (getBorrowRate(cash, borrows, reserves) * (expScale - marketReservesInterestFee)) / expScale;
+
+        /// Supply Rate = (utilizationRate * rateToPool) / expScale;
+        return (utilizationRate(cash, borrows, reserves) * rateToPool) / expScale;
+    }
+
+    /// @notice Calculates the interest rate for `util` market utilization
+    /// @param util The utilization rate of the market
+    /// @return Returns the calculated interest rate
+    function getNormalInterestRate(uint256 util) internal view returns (uint256){
+        return (util * multiplierPerSecond) / expScale;
+    }
+
+    /// @notice Calculates the interest rate under `jump` conditions E.G. `util` > `kink ` based on market utilization
+    /// @param util The utilization rate of the market above `kink`
+    /// @return Returns the calculated excess interest rate
+    function getJumpInterestRate(uint256 util) internal view returns (uint256){
+        return (util * jumpMultiplierPerSecond) / expScale;
+    }
+
 }

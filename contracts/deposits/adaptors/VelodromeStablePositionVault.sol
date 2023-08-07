@@ -1,513 +1,225 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { BasePositionVault, ERC4626, SafeTransferLib, ERC20, Math, PriceRouter } from "./BasePositionVault.sol";
-import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+import { BasePositionVault, SafeTransferLib, ERC20, Math, ICentralRegistry } from "contracts/deposits/adaptors/BasePositionVault.sol";
+import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
+import { VelodromeLib } from "contracts/market/zapper/protocols/VelodromeLib.sol";
 
-// External interfaces
 import { IVeloGauge } from "contracts/interfaces/external/velodrome/IVeloGauge.sol";
 import { IVeloRouter } from "contracts/interfaces/external/velodrome/IVeloRouter.sol";
 import { IVeloPair } from "contracts/interfaces/external/velodrome/IVeloPair.sol";
 import { IVeloPairFactory } from "contracts/interfaces/external/velodrome/IVeloPairFactory.sol";
-import { IOptiSwap } from "contracts/interfaces/external/velodrome/IOptiSwap.sol";
-import { IOptiSwapPair } from "contracts/interfaces/external/velodrome/IOptiSwapPair.sol";
-
-// Chainlink interfaces
-import { IChainlinkAggregator } from "contracts/interfaces/external/chainlink/IChainlinkAggregator.sol";
+import { IVeloPool } from "contracts/interfaces/external/velodrome/IVeloPool.sol";
 
 contract VelodromeStablePositionVault is BasePositionVault {
     using Math for uint256;
 
-    /*//////////////////////////////////////////////////////////////
-                             STRUCTS
-    //////////////////////////////////////////////////////////////*/
+    /// TYPES ///
 
-    /*//////////////////////////////////////////////////////////////
-                             GLOBAL STATE
-    //////////////////////////////////////////////////////////////*/
+    struct StrategyData {
+        IVeloGauge gauge; // Velodrome Gauge contract
+        IVeloPairFactory pairFactory; // Velodrome Pair Factory contract
+        IVeloRouter router; // Velodrome Router contract
+        address token0; // LP first token address
+        address token1; // LP second token address
+        uint256 decimalsA; // token0 decimals
+        uint256 decimalsB; // token1 decimals
+    }
 
-    /// @notice Velodrome Gauge contract.
-    IVeloGauge private gauge;
+    /// CONSTANTS ///
 
-    /// @notice Velodrome Router contract.
-    IVeloPairFactory private pairFactory;
-
-    /// @notice Velodrome Router contract.
-    IVeloRouter private router;
-
-    /// @notice Velodrome Router contract.
-    address private optiSwap;
-
-    /// @notice Reward token addresses.
-    address[] private rewards;
-
-    /// @notice tokenA address
-    address private tokenA;
-
-    /// @notice tokenB address
-    address private tokenB;
-
-    /// @notice tokenA decimals
-    uint256 private decimalsA;
-
-    /// @notice tokenB decimals
-    uint256 private decimalsB;
-
-    /// @notice Mainnet token contracts important for this vault.
-    ERC20 private constant WETH =
-        ERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
-    ERC20 private constant VELO =
+    // Optimism VELO contract address
+    ERC20 public constant rewardToken =
         ERC20(0x3c8B650257cFb5f272f799F5e2b4e65093a11a05);
+    // Whether VELO is an underlying token of the pair
+    bool public immutable rewardTokenIsUnderlying;
 
-    // Owner needs to be able to set swap paths, deposit data, fee, fee accumulator
-    /// @notice Value out from harvest swaps must be greater than
-    ///         value in * 1 - (harvestSlippage + upkeepFee);
-    uint64 public harvestSlippage = 0.01e18;
+    /// STORAGE ///
 
-    /*//////////////////////////////////////////////////////////////
-                                 EVENTS
-    //////////////////////////////////////////////////////////////*/
+    StrategyData public strategyData; // position vault packed configuration
 
-    event HarvestSlippageChanged(uint64 slippage);
+    /// Token => underlying token of the sAMM LP or not
+    mapping(address => bool) public isUnderlyingToken;
+
+    /// EVENTS ///
+
     event Harvest(uint256 yield);
 
-    /*//////////////////////////////////////////////////////////////
-                                 ERRORS
-    //////////////////////////////////////////////////////////////*/
+    /// CONSTRUCTOR ///
 
-    error VelodromePositionVault__BadSlippage();
-    error VelodromePositionVault__WatchdogNotSet();
-
-    /*//////////////////////////////////////////////////////////////
-                              SETUP LOGIC
-    //////////////////////////////////////////////////////////////*/
-
-    /// @notice Vaults are designed to be deployed using Minimal Proxy Contracts,
-    ///         but they can be deployed normally,
-    ///         but `initialize` must ALWAYS be called either way.
     constructor(
-        ERC20 _asset,
-        string memory _name,
-        string memory _symbol,
-        uint8 _decimals,
-        ICentralRegistry _centralRegistry
-    ) BasePositionVault(_asset, _name, _symbol, _decimals, _centralRegistry) {}
-
-    /// @notice Initialize function to fully setup this vault.
-    function initialize(
-        ERC20 _asset,
-        ICentralRegistry _centralRegistry,
-        string memory _name,
-        string memory _symbol,
-        uint8 _decimals,
-        BasePositionVault.PositionVaultMetaData calldata _metaData,
-        bytes memory _initializeData
-    ) public override initializer {
-        super.initialize(
-            _asset,
-            _centralRegistry,
-            _name,
-            _symbol,
-            _decimals,
-            _metaData,
-            _initializeData
+        ERC20 asset_,
+        ICentralRegistry centralRegistry_,
+        IVeloGauge gauge,
+        IVeloPairFactory pairFactory,
+        IVeloRouter router
+    ) BasePositionVault(asset_, centralRegistry_) {
+        // Cache assigned asset address
+        address _asset = asset();
+        // Validate that we have the proper gauge linked with the proper LP
+        // and pair factory
+        require(
+            gauge.stakingToken() == _asset &&
+                address(pairFactory) == router.factory(),
+            "VelodromeStablePositionVault: improper velodrome vault config"
         );
-        (
-            address _tokenA,
-            address _tokenB,
-            address[] memory _rewards,
-            IVeloGauge _gauge,
-            IVeloRouter _router,
-            IVeloPairFactory _pairFactory,
-            address _optiSwap
-        ) = abi.decode(
-                _initializeData,
-                (
-                    address,
-                    address,
-                    address[],
-                    IVeloGauge,
-                    IVeloRouter,
-                    IVeloPairFactory,
-                    address
-                )
-            );
-        tokenA = _tokenA;
-        tokenB = _tokenB;
-        decimalsA = 10 ** ERC20(_tokenA).decimals();
-        decimalsB = 10 ** ERC20(_tokenB).decimals();
-        gauge = _gauge;
-        router = _router;
-        pairFactory = _pairFactory;
-        optiSwap = _optiSwap;
 
-        uint256 numRewards = _rewards.length;
+        // Query underlying token data from the pool
+        strategyData.token0 = IVeloPool(_asset).token0();
+        strategyData.token1 = IVeloPool(_asset).token1();
+        strategyData.decimalsA = 10 ** ERC20(strategyData.token0).decimals();
+        strategyData.decimalsB = 10 ** ERC20(strategyData.token0).decimals();
 
-        for (uint256 i = 0; i < numRewards; ++i) {
-            rewards.push(_rewards[i]);
-        }
+        strategyData.gauge = gauge;
+        strategyData.router = router;
+        strategyData.pairFactory = pairFactory;
+
+        isUnderlyingToken[strategyData.token0] = true;
+        isUnderlyingToken[strategyData.token1] = true;
+
+        rewardTokenIsUnderlying = (address(rewardToken) ==
+            strategyData.token0 ||
+            address(rewardToken) == strategyData.token1);
     }
 
-    /*//////////////////////////////////////////////////////////////
-                              OWNER LOGIC
-    //////////////////////////////////////////////////////////////*/
+    /// PUBLIC FUNCTIONS ///
 
-    function updateHarvestSlippage(uint64 _slippage) external onlyDaoPermissions {
-        harvestSlippage = _slippage;
-        emit HarvestSlippageChanged(_slippage);
-    }
+    // REWARD AND HARVESTING LOGIC
 
-    /*//////////////////////////////////////////////////////////////
-                          EXTERNAL POSITION LOGIC
-    //////////////////////////////////////////////////////////////*/
-
+    /// @notice Harvests and compounds outstanding vault rewards
+    ///         and vests pending rewards
+    /// @dev Only callable by Gelato Network bot
+    /// @param data Bytes array for aggregator swap data
+    /// @return yield The amount of new assets acquired from compounding vault yield
     function harvest(
-        bytes memory
-    ) public override whenNotShutdown nonReentrant returns (uint256 yield) {
+        bytes calldata data
+    ) external override onlyHarvestor vaultActive returns (uint256 yield) {
         uint256 pending = _calculatePendingRewards();
+
         if (pending > 0) {
-            // We need to claim vested rewards.
+            // claim vested rewards
             _vestRewards(_totalAssets + pending);
         }
 
-        // Can only harvest once previous reward period is done.
-        if (
-            positionVaultAccounting._lastVestClaim >=
-            positionVaultAccounting._vestingPeriodEnd
-        ) {
+        // can only harvest once previous reward period is done
+        if (_checkVestStatus(_vaultData)) {
+            // cache strategy data
+            StrategyData memory sd = strategyData;
+
+            // claim velodrome rewards
+            sd.gauge.getReward(address(this));
+
+            SwapperLib.Swap memory swapData = abi.decode(
+                data,
+                (SwapperLib.Swap)
+            );
             {
-                // 1. Withdraw all the rewards.
-                gauge.getReward(address(this), rewards);
-            }
+            uint256 rewardAmount = rewardToken.balanceOf(address(this));
 
-            uint256 valueIn;
-            {
-                // 2. Convert rewards to ETH
-                uint256 rewardTokenCount = rewards.length;
-                address reward;
-                uint256 amount;
-                uint256 protocolFee;
-                uint256 rewardPrice;
-
-                for (uint256 i = 0; i < rewardTokenCount; ++i) {
-                    reward = rewards[i];
-                    amount = ERC20(reward).balanceOf(address(this));
-                    if (amount == 0) continue;
-
-                    // Take platform fee
-                    protocolFee = amount.mulDivDown(
-                        positionVaultMetaData.platformFee,
+                if (rewardAmount > 0) {
+                    // take protocol fee
+                    uint256 protocolFee = rewardAmount.mulDivDown(
+                        centralRegistry.protocolHarvestFee(),
                         1e18
                     );
-                    amount -= protocolFee;
+                    rewardAmount -= protocolFee;
                     SafeTransferLib.safeTransfer(
-                        reward,
-                        positionVaultMetaData.feeAccumulator,
+                        address(rewardToken),
+                        centralRegistry.feeAccumulator(),
                         protocolFee
                     );
-                    (rewardPrice, ) = positionVaultMetaData
-                        .priceRouter
-                        .getPrice(reward, true, true);
 
-                    valueIn += amount.mulDivDown(
-                        rewardPrice,
-                        10 ** ERC20(reward).decimals()
-                    );
-
-                    if (reward == tokenA) continue;
-
-                    optiSwapExactTokensForTokens(reward, tokenA, amount);
+                    // swap from VELO to underlying LP token if necessary
+                    if (!rewardTokenIsUnderlying) {
+                        SwapperLib.swap(swapData);
+                    }
                 }
             }
 
-            uint256 totalAmountA;
-            uint256 totalAmountB;
-            {
-                // 3. Convert tokenA to LP Token underlyings
-                totalAmountA = ERC20(tokenA).balanceOf(address(this));
-                if (totalAmountA == 0)
-                    revert VelodromePositionVault__BadSlippage();
+            // swap token0 to LP Token underlying tokens
+            uint256 totalAmountA = ERC20(sd.token0).balanceOf(address(this));
 
-                if (totalAmountA > 0) {
-                    uint256 feeForUpkeep = totalAmountA.mulDivDown(
-                        positionVaultMetaData.upkeepFee,
-                        1e18
-                    );
-                    if (positionVaultMetaData.positionWatchdog == address(0))
-                        revert VelodromePositionVault__WatchdogNotSet();
-                    SafeTransferLib.safeTransfer(
-                        tokenA,
-                        positionVaultMetaData.positionWatchdog,
-                        feeForUpkeep
-                    );
-                    totalAmountA -= feeForUpkeep;
-                }
-
-                (uint256 r0, uint256 r1, ) = IVeloPair(asset()).getReserves();
-                (uint256 reserveA, uint256 reserveB) = tokenA ==
-                    IVeloPair(asset()).token0()
-                    ? (r0, r1)
-                    : (r1, r0);
-                uint256 swapAmount = _optimalDeposit(
-                    totalAmountA,
-                    reserveA,
-                    reserveB,
-                    decimalsA,
-                    decimalsB
-                );
-                swapExactTokensForTokens(tokenA, tokenB, swapAmount);
-
-                totalAmountA -= swapAmount;
-                totalAmountB = ERC20(tokenB).balanceOf(address(this));
-            }
-
-            uint256 valueOut;
-            {
-                // 4. Check USD value slippage
-
-                (uint256 tokenAPrice, ) = positionVaultMetaData
-                    .priceRouter
-                    .getPrice(tokenA, true, true);
-                (uint256 tokenBPrice, ) = positionVaultMetaData
-                    .priceRouter
-                    .getPrice(tokenB, true, true);
-                valueOut =
-                    totalAmountA.mulDivDown(
-                        tokenAPrice,
-                        10 ** ERC20(tokenA).decimals()
-                    ) +
-                    totalAmountB.mulDivDown(
-                        tokenBPrice,
-                        10 ** ERC20(tokenB).decimals()
-                    );
-
-                // Compare value in vs value out.
-                if (
-                    valueOut <
-                    valueIn.mulDivDown(
-                        1e18 -
-                            (positionVaultMetaData.upkeepFee +
-                                harvestSlippage),
-                        1e18
-                    )
-                ) revert VelodromePositionVault__BadSlippage();
-            }
-
-            {
-                // 5. Deposit into Velodrome
-                yield = addLiquidity(
-                    tokenA,
-                    tokenB,
-                    totalAmountA,
-                    totalAmountB
-                );
-            }
-
-            {
-                // 6. Deposit into Gauge
-                _deposit(yield);
-            }
-
-            // Update Vesting info.
-            positionVaultAccounting._rewardRate = uint128(
-                yield.mulDivDown(REWARD_SCALER, REWARD_PERIOD)
+            require(
+                totalAmountA > 0,
+                "VelodromeStablePositionVault: slippage error"
             );
-            positionVaultAccounting._vestingPeriodEnd =
-                uint64(block.timestamp) +
-                REWARD_PERIOD;
-            positionVaultAccounting._lastVestClaim = uint64(block.timestamp);
+
+            // Cache asset so we don't need to pay gas multiple times
+            address _asset = asset();
+            (uint256 r0, uint256 r1, ) = IVeloPair(_asset).getReserves();
+            (uint256 reserveA, uint256 reserveB) = sd.token0 ==
+                IVeloPair(_asset).token0()
+                ? (r0, r1)
+                : (r1, r0);
+            // Feed library pair factory, lpToken, and stable = true, plus calculated data
+            uint256 swapAmount = VelodromeLib._optimalDeposit(
+                address(sd.pairFactory), 
+                _asset,
+                totalAmountA,
+                reserveA,
+                reserveB,
+                sd.decimalsA,
+                sd.decimalsB,
+                true
+            );
+            // Query router and feed calculated data, and stable = true
+            VelodromeLib._swapExactTokensForTokens(address(sd.router), _asset, sd.token0, sd.token1, swapAmount, true);
+            totalAmountA -= swapAmount;
+
+            // add liquidity to velodrome lp with stable params
+            yield = VelodromeLib._addLiquidity(
+                address(sd.router),
+                sd.token0,
+                sd.token1,
+                true,
+                totalAmountA,
+                ERC20(sd.token1).balanceOf(address(this)) // totalAmountB
+            );
+
+            // deposit assets into velodrome gauge
+            _deposit(yield);
+
+            // update vesting info
+            // Cache vest period so we do not need to load it twice
+            uint256 _vestPeriod = vestPeriod;
+            _vaultData = _packVaultData(yield.mulDivDown(expScale, _vestPeriod), block.timestamp + _vestPeriod);
+
+
             emit Harvest(yield);
-        } // else yield is zero.
+        }
+        // else yield is zero
     }
 
-    /*//////////////////////////////////////////////////////////////
-                          INTERNAL POSITION LOGIC
-    //////////////////////////////////////////////////////////////*/
+    /// INTERNAL FUNCTIONS ///
 
-    function _withdraw(uint256 assets) internal override {
-        gauge.withdraw(assets);
-    }
+    // INTERNAL POSITION LOGIC
 
+    /// @notice Deposits specified amount of assets into velodrome gauge pool
+    /// @param assets The amount of assets to deposit
     function _deposit(uint256 assets) internal override {
-        SafeTransferLib.safeApprove(asset(), address(gauge), assets);
-        gauge.deposit(assets, 0);
+        IVeloGauge gauge = strategyData.gauge;
+        SafeTransferLib.safeApprove(
+            asset(),
+            address(gauge),
+            assets
+        );
+        gauge.deposit(assets);
     }
 
+    /// @notice Withdraws specified amount of assets from velodrome gauge pool
+    /// @param assets The amount of assets to withdraw
+    function _withdraw(uint256 assets) internal override {
+        strategyData.gauge.withdraw(assets);
+    }
+
+    /// @notice Gets the balance of assets inside velodrome gauge pool
+    /// @return The current balance of assets
     function _getRealPositionBalance()
         internal
         view
         override
         returns (uint256)
     {
-        return gauge.balanceOf(address(this));
-    }
-
-    function _optimalDeposit(
-        uint256 _amountA,
-        uint256 _reserveA,
-        uint256 _reserveB,
-        uint256 _decimalsA,
-        uint256 _decimalsB
-    ) internal pure returns (uint256) {
-        uint256 num;
-        uint256 den;
-
-        {
-            uint256 a = (_amountA * 1e18) / _decimalsA;
-            uint256 x = (_reserveA * 1e18) / _decimalsA;
-            uint256 y = (_reserveB * 1e18) / _decimalsB;
-            uint256 x2 = (x * x) / 1e18;
-            uint256 y2 = (y * y) / 1e18;
-            uint256 p = (y * (((x2 * 3 + y2) * 1e18) / (y2 * 3 + x2))) / x;
-            num = a * y;
-            den = ((a + x) * p) / 1e18 + y;
-        }
-
-        return ((num / den) * _decimalsA) / 1e18;
-    }
-
-    function approveRouter(address token, uint256 amount) internal {
-        if (ERC20(token).allowance(address(this), address(router)) >= amount)
-            return;
-        SafeTransferLib.safeApprove(token, address(router), type(uint256).max);
-    }
-
-    function swapExactTokensForTokens(
-        address tokenIn,
-        address tokenOut,
-        uint256 amount
-    ) internal {
-        approveRouter(tokenIn, amount);
-        IVeloRouter(router).swapExactTokensForTokensSimple(
-            amount,
-            0,
-            tokenIn,
-            tokenOut,
-            true,
-            address(this),
-            block.timestamp
-        );
-    }
-
-    function addLiquidity(
-        address _tokenA,
-        address _tokenB,
-        uint256 _amountA,
-        uint256 _amountB
-    ) internal returns (uint256 liquidity) {
-        approveRouter(_tokenA, _amountA);
-        approveRouter(_tokenB, _amountB);
-        (, , liquidity) = IVeloRouter(router).addLiquidity(
-            _tokenA,
-            _tokenB,
-            true,
-            _amountA,
-            _amountB,
-            0,
-            0,
-            address(this),
-            block.timestamp
-        );
-    }
-
-    function swapTokensForBestAmountOut(
-        IOptiSwap _optiSwap,
-        address tokenIn,
-        address tokenOut,
-        uint256 amountIn
-    ) internal returns (uint256 amountOut) {
-        if (tokenIn == tokenOut) {
-            return amountIn;
-        }
-        address pair;
-        (pair, amountOut) = _optiSwap.getBestAmountOut(
-            amountIn,
-            tokenIn,
-            tokenOut
-        );
-        require(pair != address(0), "NO_PAIR");
-        SafeTransferLib.safeTransfer(tokenIn, pair, amountIn);
-        if (tokenIn < tokenOut) {
-            IOptiSwapPair(pair).swap(
-                0,
-                amountOut,
-                address(this),
-                new bytes(0)
-            );
-        } else {
-            IOptiSwapPair(pair).swap(
-                amountOut,
-                0,
-                address(this),
-                new bytes(0)
-            );
-        }
-    }
-
-    function optiSwapExactTokensForTokens(
-        address tokenIn,
-        address tokenOut,
-        uint256 amountIn
-    ) internal returns (uint256 amountOut) {
-        if (tokenIn == tokenOut) {
-            return amountIn;
-        }
-        IOptiSwap _optiSwap = IOptiSwap(optiSwap);
-        address nextHop = _optiSwap.getBridgeToken(tokenIn);
-        if (nextHop == tokenOut) {
-            return
-                swapTokensForBestAmountOut(
-                    _optiSwap,
-                    tokenIn,
-                    tokenOut,
-                    amountIn
-                );
-        }
-        address waypoint = _optiSwap.getBridgeToken(tokenOut);
-        if (tokenIn == waypoint) {
-            return
-                swapTokensForBestAmountOut(
-                    _optiSwap,
-                    tokenIn,
-                    tokenOut,
-                    amountIn
-                );
-        }
-        uint256 hopAmountOut;
-        if (nextHop != tokenIn) {
-            hopAmountOut = swapTokensForBestAmountOut(
-                _optiSwap,
-                tokenIn,
-                nextHop,
-                amountIn
-            );
-        } else {
-            hopAmountOut = amountIn;
-        }
-        if (nextHop == waypoint) {
-            return
-                swapTokensForBestAmountOut(
-                    _optiSwap,
-                    nextHop,
-                    tokenOut,
-                    hopAmountOut
-                );
-        } else if (waypoint == tokenOut) {
-            return
-                optiSwapExactTokensForTokens(nextHop, tokenOut, hopAmountOut);
-        } else {
-            uint256 waypointAmountOut = optiSwapExactTokensForTokens(
-                nextHop,
-                waypoint,
-                hopAmountOut
-            );
-            return
-                swapTokensForBestAmountOut(
-                    _optiSwap,
-                    waypoint,
-                    tokenOut,
-                    waypointAmountOut
-                );
-        }
+        return strategyData.gauge.balanceOf(address(this));
     }
 }

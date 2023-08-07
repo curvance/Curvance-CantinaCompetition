@@ -2,51 +2,60 @@
 pragma solidity ^0.8.17;
 
 import { GaugeErrors } from "contracts/gauge/GaugeErrors.sol";
-
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IGaugePool } from "contracts/interfaces/IGaugePool.sol";
-import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { IVeCVE } from "contracts/interfaces/IVeCVE.sol";
 
 contract GaugeController is IGaugePool {
+    /// TYPES ///
 
-    /// structs
     struct Epoch {
         uint256 rewardPerSec;
         uint256 totalWeights;
         mapping(address => uint256) poolWeights; // token => weight
     }
 
-    /// constants
-    uint256 public constant EPOCH_WINDOW = 2 weeks;
-    ICentralRegistry public immutable centralRegistry;
-    address public immutable cve;
-    IVeCVE public immutable veCVE;
+    /// CONSTANTS ///
 
-    /// storage
-    uint256 public startTime;
+    uint256 public constant EPOCH_WINDOW = 2 weeks; // Protocol epoch length
+    address public immutable cve; // CVE contract address
+    IVeCVE public immutable veCVE; // veCVE contract address
+    ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
+
+    /// STORAGE ///
+
+    uint256 public startTime; // Gauge emission start time
     mapping(uint256 => Epoch) internal epochInfo;
 
-    constructor(ICentralRegistry centralRegistry_){
-        centralRegistry = centralRegistry_;
-        cve = centralRegistry.CVE();
-        veCVE = IVeCVE(centralRegistry.veCVE());
-    }
+    /// MODIFIERS ///
 
     modifier onlyDaoPermissions() {
-        require(centralRegistry.hasDaoPermissions(msg.sender), "centralRegistry: UNAUTHORIZED");
+        require(
+            centralRegistry.hasDaoPermissions(msg.sender),
+            "gaugeController: UNAUTHORIZED"
+        );
         _;
     }
 
     modifier onlyMessagingHub() {
         require(
             msg.sender == centralRegistry.protocolMessagingHub(),
-            "cveLocker: UNAUTHORIZED"
+            "gaugeController: UNAUTHORIZED"
         );
         _;
     }
+
+    /// CONSTRUCTOR ///
+
+    constructor(ICentralRegistry centralRegistry_) {
+        centralRegistry = centralRegistry_;
+        cve = centralRegistry.CVE();
+        veCVE = IVeCVE(centralRegistry.veCVE());
+    }
+
+    /// EXTERNAL FUNCTIONS ///
 
     /// @notice Start gauge system
     /// @dev Only owner
@@ -55,35 +64,6 @@ contract GaugeController is IGaugePool {
             revert GaugeErrors.AlreadyStarted();
         }
         startTime = veCVE.nextEpochStartTime();
-    }
-
-    /// @notice Returns current epoch number
-    function currentEpoch() public view returns (uint256) {
-        assert(startTime != 0);
-        return (block.timestamp - startTime) / EPOCH_WINDOW;
-    }
-
-    /// @notice Returns epoch number of given timestamp
-    /// @param timestamp Timestamp in seconds
-    function epochOfTimestamp(
-        uint256 timestamp
-    ) public view returns (uint256) {
-        assert(startTime != 0);
-        return (timestamp - startTime) / EPOCH_WINDOW;
-    }
-
-    /// @notice Returns start time of given epoch
-    /// @param epoch Epoch number
-    function epochStartTime(uint256 epoch) public view returns (uint256) {
-        assert(startTime != 0);
-        return startTime + epoch * EPOCH_WINDOW;
-    }
-
-    /// @notice Returns end time of given epoch
-    /// @param epoch Epoch number
-    function epochEndTime(uint256 epoch) public view returns (uint256) {
-        assert(startTime != 0);
-        return startTime + (epoch + 1) * EPOCH_WINDOW;
     }
 
     /// @notice Returns reward per second of given epoch
@@ -105,16 +85,6 @@ contract GaugeController is IGaugePool {
         );
     }
 
-    /// @notice Returns if given gauge token is enabled in given epoch
-    /// @param epoch Epoch number
-    /// @param token Gauge token address
-    function isGaugeEnabled(
-        uint256 epoch,
-        address token
-    ) public view returns (bool) {
-        return epochInfo[epoch].poolWeights[token] > 0;
-    }
-
     /// @notice Set rewardPerSec of next epoch
     /// @dev Only owner
     /// @param epoch Next epoch number
@@ -131,12 +101,14 @@ contract GaugeController is IGaugePool {
         epochInfo[epoch].rewardPerSec = newRewardPerSec;
 
         if (prevRewardPerSec > newRewardPerSec) {
-            SafeTransferLib.safeTransfer(cve,
+            SafeTransferLib.safeTransfer(
+                cve,
                 msg.sender,
                 EPOCH_WINDOW * (prevRewardPerSec - newRewardPerSec)
             );
         } else {
-            SafeTransferLib.safeTransferFrom(cve,
+            SafeTransferLib.safeTransferFrom(
+                cve,
                 msg.sender,
                 address(this),
                 EPOCH_WINDOW * (newRewardPerSec - prevRewardPerSec)
@@ -178,9 +150,50 @@ contract GaugeController is IGaugePool {
         }
     }
 
+    /// PUBLIC FUNCTIONS ///
+
+    /// @notice Returns current epoch number
+    function currentEpoch() public view returns (uint256) {
+        require(startTime != 0, "gaugeController: gauge not started");
+        return (block.timestamp - startTime) / EPOCH_WINDOW;
+    }
+
+    /// @notice Returns epoch number of given timestamp
+    /// @param timestamp Timestamp in seconds
+    function epochOfTimestamp(
+        uint256 timestamp
+    ) public view returns (uint256) {
+        require(startTime != 0, "gaugeController: gauge not started");
+        return (timestamp - startTime) / EPOCH_WINDOW;
+    }
+
+    /// @notice Returns start time of given epoch
+    /// @param epoch Epoch number
+    function epochStartTime(uint256 epoch) public view returns (uint256) {
+        require(startTime != 0, "gaugeController: gauge not started");
+        return startTime + epoch * EPOCH_WINDOW;
+    }
+
+    /// @notice Returns end time of given epoch
+    /// @param epoch Epoch number
+    function epochEndTime(uint256 epoch) public view returns (uint256) {
+        require(startTime != 0, "gaugeController: gauge not started");
+        return startTime + (epoch + 1) * EPOCH_WINDOW;
+    }
+
+    /// @notice Returns if given gauge token is enabled in given epoch
+    /// @param epoch Epoch number
+    /// @param token Gauge token address
+    function isGaugeEnabled(
+        uint256 epoch,
+        address token
+    ) public view returns (bool) {
+        return epochInfo[epoch].poolWeights[token] > 0;
+    }
+
     /// @notice Update reward variables for all pools
     /// @dev Be careful of gas spending!
-    function massUpdatePools(address[] memory tokens) public {
+    function massUpdatePools(address[] calldata tokens) external {
         uint256 numTokens = tokens.length;
         for (uint256 i; i < numTokens; ) {
             unchecked {
