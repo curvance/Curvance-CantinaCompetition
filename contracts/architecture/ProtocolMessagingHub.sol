@@ -380,7 +380,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     
     /// INTERNAL FUNCTIONS ///
 
-    /// @notice Sends veCVE locked token data to multiple destination chains
+    /// @notice Sends veCVE locked token data to destination chain
     /// @param dstChainId The destination chain ID where the message data should be sent
     /// @param toAddress The destination addresses specified by `dstChainId`
     /// @param payload The payload data that is sent along with the message

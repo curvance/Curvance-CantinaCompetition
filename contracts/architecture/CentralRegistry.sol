@@ -51,13 +51,11 @@ contract CentralRegistry is ERC165 {
     mapping(address => bool) public hasElevatedPermissions;
 
     // MULTICHAIN CONFIGURATION DATA
-    // We store this data redundantly so that we can quickly get whatever output we need,
-    // with low gas overhead
     uint256 public supportedChains; // How many other chains are supported
     mapping(uint256 => uint256) public isSupportedChain; // ChainId => 2 = supported; 1 = unsupported
     // Address => Curvance identification information
-    mapping(address => omnichainData) public omnichainOperators;
-    mapping(uint256 => uint256) public messagingToGETHChainId;
+    mapping(address => omnichainData) public omnichainOperators; // Operator => omnichainData
+    mapping(uint256 => uint256) public messagingToGETHChainId; // Messaging Chain ID => GETH Chain ID
 
     // DAO CONTRACT MAPPINGS
     mapping(address => bool) public isZapper;
@@ -398,6 +396,13 @@ contract CentralRegistry is ERC165 {
 
     /// MULTICHAIN SUPPORT LOGIC
 
+    /// @notice Adds support for a new chain to the protocol by configuring all omnichain mappings and invariants
+    /// @dev    We store this data redundantly so that we can quickly get whatever output we need,
+    ///         with low gas overhead
+    /// @param newOmnichainOperator The address of the new Omnichain Operator responsible for `chainId`
+    /// @param cveAddress The LayerZero compatible CVE address associated with the chain.
+    /// @param chainId The GETH unique identifier of the chain being added
+    /// @param messagingChainId The Messaging layer unique identifier of the chain being added
     function addChainSupport(
         address newOmnichainOperator,
         bytes calldata cveAddress,  
@@ -415,7 +420,7 @@ contract CentralRegistry is ERC165 {
 
         isSupportedChain[chainId] = 2;
         messagingToGETHChainId[messagingChainId] = chainId;
-        supportedChains++;
+        ++supportedChains;
         omnichainOperators[newOmnichainOperator] = omnichainData({
             isAuthorized: 2,
             chainId: chainId,
@@ -426,27 +431,30 @@ contract CentralRegistry is ERC165 {
         emit NewChainAdded(chainId, newOmnichainOperator);
     }
 
-    /// @notice removes 
+    /// @notice Removes protocol support for a chain
+    /// @param currentOmnichainOperator The address of the Omnichain Operator,
+    ///                                 corresponding to the chain we are depreciating
     function removeChainSupport(address currentOmnichainOperator) external onlyDaoPermissions {
         omnichainData storage operatorToRemove = omnichainOperators[currentOmnichainOperator];
         if (omnichainOperators[currentOmnichainOperator].isAuthorized < 2) {
-            // Operator unsupported
+            // Chain Operator unsupported
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
         if (isSupportedChain[operatorToRemove.chainId] < 2) {
-            // Chain already added
+            // Chain unsupported
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
-        // Remove chain support from protocol
-        isSupportedChain[operatorToRemove.chainId] = 1;
         // Remove operator support from protocol
         operatorToRemove.isAuthorized = 1;
-        // Decrease supportedChains
-        supportedChains--;
+        // Decrease supportedChains invariant
+        --supportedChains;
         // Remove messagingChainId to chainId mapping
         delete messagingToGETHChainId[operatorToRemove.messagingChainId];
+        // Remove chain support from protocol
+        isSupportedChain[operatorToRemove.chainId] = 1;
+
         emit removedChain(operatorToRemove.chainId, currentOmnichainOperator);
     }
 
