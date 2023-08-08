@@ -51,4 +51,26 @@ contract CVE is OFTV2 {
             (gaugeEmissions * centralRegistry.lockBoostValue()) / DENOMINATOR
         );
     }
+
+    /// PUBLIC FUNCTIONS ///
+
+    function sendAndCall(
+        address from,
+        uint16 dstChainId,
+        bytes32 toAddress,
+        uint256 amount,
+        bytes calldata payload,
+        uint64 dstGasForCall,
+        LzCallParams calldata callParams
+    ) public payable override onlyMessagingHub {
+        super.sendAndCall(
+            from,
+            dstChainId,
+            toAddress,
+            amount,
+            payload,
+            dstGasForCall,
+            callParams
+        );
+    }
 }

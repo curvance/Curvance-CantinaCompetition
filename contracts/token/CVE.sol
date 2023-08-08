@@ -161,22 +161,22 @@ contract CVE is OFTV2 {
     /// PUBLIC FUNCTIONS ///
 
     function sendAndCall(
-        address _from,
-        uint16 _dstChainId,
-        bytes32 _toAddress,
-        uint256 _amount,
-        bytes calldata _payload,
-        uint64 _dstGasForCall,
-        LzCallParams calldata _callParams
+        address from,
+        uint16 dstChainId,
+        bytes32 toAddress,
+        uint256 amount,
+        bytes calldata payload,
+        uint64 dstGasForCall,
+        LzCallParams calldata callParams
     ) public payable override onlyMessagingHub {
         super.sendAndCall(
-            _from,
-            _dstChainId,
-            _toAddress,
-            _amount,
-            _payload,
-            _dstGasForCall,
-            _callParams
+            from,
+            dstChainId,
+            toAddress,
+            amount,
+            payload,
+            dstGasForCall,
+            callParams
         );
     }
 }

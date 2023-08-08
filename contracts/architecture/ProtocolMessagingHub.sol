@@ -9,7 +9,7 @@ import { GaugeController } from "contracts/gauge/GaugeController.sol";
 
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { IWETH } from "contracts/interfaces/IWETH.sol";
-import { ICVE } from "contracts/interfaces/ICVE.sol";
+import { ICVE, LzCallParams } from "contracts/interfaces/ICVE.sol";
 import { IFeeAccumulator } from "contracts/interfaces/IFeeAccumulator.sol";
 import { ICentralRegistry, omnichainData } from "contracts/interfaces/ICentralRegistry.sol";
 import { swapRouter, lzTxObj } from "contracts/interfaces/layerzero/IStargateRouter.sol";
@@ -19,12 +19,12 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     /// TYPES ///
 
     struct PoolData {
-        address endpoint;
-        uint256 dstChainId;
-        uint256 srcPoolId;
-        uint256 dstPoolId;
-        uint256 amountLD;
-        uint256 minAmountLD;
+        address endpoint; // Stargate Endpoint
+        uint256 dstChainId; // Destination Chain ID
+        uint256 srcPoolId; // Source Pool ID
+        uint256 dstPoolId; // Destination Pool ID
+        uint256 amountLD; // Amount to send
+        uint256 minAmountLD; // Min amount out
     }
 
     /// CONSTANTS ///
@@ -43,9 +43,10 @@ contract ProtocolMessagingHub is ReentrancyGuard {
 
     /// MODIFIERS ///
 
-    modifier onlyHarvestor() {
+    modifier onlyAuthorized() {
         require(
-            centralRegistry.isHarvester(msg.sender),
+            centralRegistry.isHarvester(msg.sender) || 
+            msg.sender == centralRegistry.feeAccumulator(),
             "ProtocolMessagingHub: UNAUTHORIZED"
         );
         _;
@@ -109,6 +110,18 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         }  
     }
 
+    function sendMessageData(
+        address _from,
+        uint16 _dstChainId,
+        bytes32 _toAddress,
+        uint256 _amount,
+        bytes calldata _payload,
+        uint64 _dstGasForCall,
+        LzCallParams calldata _callParams
+    ) external {
+
+    }
+
     /// @notice Sends WETH fees to the Fee Accumulator on `dstChainId`
     /// @param to The address Stargate Endpoint to call
     /// @param poolData Stargate pool routing data
@@ -119,7 +132,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         PoolData calldata poolData,
         lzTxObj calldata lzTxParams,
         bytes calldata payload
-    ) external onlyHarvestor {
+    ) external onlyAuthorized {
         omnichainData memory operator = centralRegistry.omnichainOperators(to);
         // Validate that the operator is authorized
         if (operator.isAuthorized < 2) {
@@ -297,6 +310,17 @@ contract ProtocolMessagingHub is ReentrancyGuard {
                 _toAddress,
                 _transferAndCallPayload,
                 _lzTxParams
+            );
+    }
+
+    /// @notice Non-permissioned function for returning fees reimbursed from Stargate to FeeAccumulator
+    function returnReimbursedFees() external {
+        WETH.deposit{ value: address(this).balance }(address(this).balance);
+
+            SafeTransferLib.safeTransfer(
+                address(WETH), 
+                centralRegistry.feeAccumulator(), 
+                address(this).balance
             );
     }
 
