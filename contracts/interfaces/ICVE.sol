@@ -25,4 +25,15 @@ interface ICVE {
         uint64 dstGasForCall,
         LzCallParams calldata callParams
     ) external payable;
+
+    /// @notice Estimates gas token needed to execute the desired sendAndCall
+    function estimateSendAndCallFee(
+        uint16 _dstChainId,
+        bytes32 _toAddress,
+        uint256 _amount,
+        bytes calldata _payload,
+        uint64 _dstGasForCall,
+        bool _useZro,
+        bytes calldata _adapterParams
+    ) external view returns (uint256);
 }

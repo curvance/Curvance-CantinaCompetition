@@ -81,8 +81,12 @@ interface ICentralRegistry {
     /// @notice Returns lockBoostValue value in basis point form
     function lockBoostValue() external view returns (uint256);
 
-    /// @notice Returns what other chains are supported
-    function supportedChains() external view returns (uint256[] memory);
+    /// @notice Returns how many other chains are supported
+    function supportedChains() external view returns (uint256);
+
+    /// @notice Returns whether a particular GETH chainId is supported
+    /// ChainId => 2 = supported; 1 = unsupported
+    function isSupportedChain(uint256 chainID) external view returns (uint256);
 
     // Address => Curvance identification information
     function omnichainOperators(address _address) external view returns (omnichainData memory);

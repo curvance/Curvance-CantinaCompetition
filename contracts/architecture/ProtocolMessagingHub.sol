@@ -30,6 +30,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     /// CONSTANTS ///
 
     uint256 public constant DENOMINATOR = 10000; // Scalar for math
+    ICVE public immutable CVE; // CVE contract address
     IWETH public immutable WETH; // Address of WETH
     ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
 
@@ -84,6 +85,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
             }
 
         centralRegistry = centralRegistry_;
+        CVE = ICVE(centralRegistry.CVE());
         WETH = IWETH(WETH_);
     }
 
@@ -110,16 +112,82 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         }  
     }
 
-    function sendMessageData(
-        address _from,
-        uint16 _dstChainId,
-        bytes32 _toAddress,
-        uint256 _amount,
-        bytes calldata _payload,
-        uint64 _dstGasForCall,
-        LzCallParams calldata _callParams
-    ) external {
+    /// @notice Sends veCVE locked token data to multiple destination chains
+    /// @param dstChainId An array containing the destination chain IDs where the message data should be sent
+    /// @param toAddress An array containing the destination addresses specified by `dstChainId`
+    /// @param payload The payload data that is sent along with the message
+    /// @param dstGasForCall The amount of gas that should be provided for the call on the destination chain
+    /// @param adapterParams Additional parameters for the adapter, as bytes
+    /// @param callParams AdditionalParameters for the call, as LzCallParams
+    /// @dev   We redundantly pass adapterParams & callParams so we do not need to coerce data in the function,
+    ///        calls with this function will have messageType = 1
+    function sendLockedTokenMessageData(
+        uint16[] calldata dstChainId,
+        bytes32[] calldata toAddress,
+        bytes calldata payload,
+        uint64 dstGasForCall,
+        bytes calldata adapterParams, 
+        LzCallParams calldata callParams
+    ) external onlyAuthorized {
+        uint256 numChainsLength = dstChainId.length;
+        if (numChainsLength != toAddress.length) {
+            revert ProtocolMessagingHub_ConfigurationError();
+        }
 
+        for (uint256 i; i < numChainsLength; ) {
+            _sendLockedTokenMessageData(
+                dstChainId[i],
+                toAddress[i],
+                payload,
+                dstGasForCall,
+                adapterParams, 
+                callParams
+            );
+            unchecked {
+                ++i;
+            } 
+        }
+    }
+
+    /// @notice Sends gauge emission information to multiple destination chains
+    /// @param dstChainId Destination chain ID where the message data should be sent
+    /// @param toAddress The destination address specified by `dstChainId`
+    /// @param payload The payload data that is sent along with the message
+    /// @param dstGasForCall The amount of gas that should be provided for the call on the destination chain
+    /// @param adapterParams Additional parameters for the adapter, as bytes
+    /// @param callParams AdditionalParameters for the call, as LzCallParams
+    /// @dev   We redundantly pass adapterParams & callParams so we do not need to coerce data in the function,
+    ///        calls with this function will have messageType = 2
+    function sendGaugeEmissions(
+        uint16 dstChainId,
+        bytes32 toAddress,
+        bytes calldata payload,
+        uint64 dstGasForCall,
+        bytes calldata adapterParams, 
+        LzCallParams calldata callParams
+    ) external onlyAuthorized {
+        // Validate that we are aiming for a supported chain
+        if (centralRegistry.isSupportedChain(centralRegistry.messagingToGETHChainId(dstChainId)) < 2) {
+            revert ProtocolMessagingHub_ConfigurationError();
+        }
+        CVE.sendAndCall{
+            value: CVE.estimateSendAndCallFee(
+                    dstChainId,
+                    toAddress,
+                    0,
+                    payload,
+                    dstGasForCall,
+                    false,// may need to turn on ZRO in the future but can redeploy ProtocolMessagingHub
+                    adapterParams
+            )}(
+            address(this), 
+            dstChainId, 
+            toAddress, 
+            0, 
+            payload, 
+            dstGasForCall, 
+            callParams
+        );
     }
 
     /// @notice Sends WETH fees to the Fee Accumulator on `dstChainId`
@@ -144,23 +212,9 @@ contract ProtocolMessagingHub is ReentrancyGuard {
             revert ProtocolMessagingHub_ConfigurationError();
         }
 
-        { // Use scoping to avoid stack too deep
-            uint256 destinationChain = centralRegistry.messagingToGETHChainId(poolData.dstChainId);
-            uint256[] memory supportedChains = centralRegistry.supportedChains();
-            uint256 numChains = supportedChains.length;
-            uint256 chainIndex = numChains;
-
-            for (uint256 i; i < numChains; ){
-                if (supportedChains[i] == destinationChain) {
-                    chainIndex = i;
-                    break;
-                }
-            }
-
-            // Validate that we are aiming for a supported chain
-            if (chainIndex == numChains) {
-                revert ProtocolMessagingHub_ConfigurationError();
-            }
+        // Validate that we are aiming for a supported chain
+        if (centralRegistry.isSupportedChain(centralRegistry.messagingToGETHChainId(poolData.dstChainId)) < 2) {
+            revert ProtocolMessagingHub_ConfigurationError();
         }
 
         bytes memory bytesTo = new bytes(32);
@@ -266,7 +320,6 @@ contract ProtocolMessagingHub is ReentrancyGuard {
 
         // Message Type 2+: update gauge emissions for all gauge controllers on this chain
         { // Use scoping for stack too deep logic
-            ICVE cveAddress = ICVE(centralRegistry.CVE());
             uint256 lockBoostMultiplier = centralRegistry.lockBoostValue();
             uint256 numPools = gaugePools.length;
             GaugeController gaugePool;
@@ -274,7 +327,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
             for (uint256 i; i < numPools; ) {
                 gaugePool = GaugeController(gaugePools[i]);
                 // Mint epoch gauge emissions to the gauge pool
-                cveAddress.mintGaugeEmissions(
+                CVE.mintGaugeEmissions(
                     (lockBoostMultiplier * emissionTotals[i]) / DENOMINATOR, 
                     address(gaugePool)
                 );
@@ -313,8 +366,9 @@ contract ProtocolMessagingHub is ReentrancyGuard {
             );
     }
 
-    /// @notice Non-permissioned function for returning fees reimbursed from Stargate to FeeAccumulator
-    function returnReimbursedFees() external {
+    /// @notice Permissioned function for returning fees reimbursed from Stargate to FeeAccumulator
+    /// @dev    This is for if we ever need to depreciate this ProtocolMessagingHub for another
+    function returnReimbursedFees() external onlyDaoPermissions{
         WETH.deposit{ value: address(this).balance }(address(this).balance);
 
             SafeTransferLib.safeTransfer(
@@ -323,5 +377,47 @@ contract ProtocolMessagingHub is ReentrancyGuard {
                 address(this).balance
             );
     }
+    
+    /// INTERNAL FUNCTIONS ///
 
+    /// @notice Sends veCVE locked token data to multiple destination chains
+    /// @param dstChainId The destination chain ID where the message data should be sent
+    /// @param toAddress The destination addresses specified by `dstChainId`
+    /// @param payload The payload data that is sent along with the message
+    /// @param dstGasForCall The amount of gas that should be provided for the call on the destination chain
+    /// @param adapterParams Additional parameters for the adapter, as bytes
+    /// @param callParams AdditionalParameters for the call, as LzCallParams
+    /// @dev   We redundantly pass adapterParams & callParams so we do not need to coerce data in the function,
+    ///        calls with this function will have messageType = 1
+    function _sendLockedTokenMessageData(
+        uint16 dstChainId,
+        bytes32 toAddress,
+        bytes calldata payload,
+        uint64 dstGasForCall,
+        bytes calldata adapterParams, 
+        LzCallParams calldata callParams
+    ) internal {
+        if (centralRegistry.isSupportedChain(centralRegistry.messagingToGETHChainId(dstChainId)) < 2) {
+            revert ProtocolMessagingHub_ConfigurationError();
+        }
+
+        CVE.sendAndCall{
+            value: CVE.estimateSendAndCallFee(
+                    dstChainId,
+                    toAddress,
+                    0,
+                    payload,
+                    dstGasForCall,
+                    false,// may need to turn on ZRO in the future but can redeploy ProtocolMessagingHub
+                    adapterParams
+            )}(
+            address(this), 
+            dstChainId, 
+            toAddress, 
+            0, 
+            payload, 
+            dstGasForCall, 
+            callParams
+        );
+    }
 }

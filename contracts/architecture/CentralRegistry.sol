@@ -53,7 +53,8 @@ contract CentralRegistry is ERC165 {
     // MULTICHAIN CONFIGURATION DATA
     // We store this data redundantly so that we can quickly get whatever output we need,
     // with low gas overhead
-    uint256 [] public supportedChains; // What other chains are supported
+    uint256 public supportedChains; // How many other chains are supported
+    mapping(uint256 => uint256) public isSupportedChain; // ChainId => 2 = supported; 1 = unsupported
     // Address => Curvance identification information
     mapping(address => omnichainData) public omnichainOperators;
     mapping(uint256 => uint256) public messagingToGETHChainId;
@@ -407,18 +408,14 @@ contract CentralRegistry is ERC165 {
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
-        uint256[] memory currentChains = supportedChains;
-        uint256 currentChainsLength = currentChains.length;
-
-        for (uint256 i; i < currentChainsLength; ) {
-            if(currentChains[i++] == chainId) {
-                // Chain already added
-                _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
-            }
+        if (isSupportedChain[chainId] == 2) {
+            // Chain already added
+            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
+        isSupportedChain[chainId] = 2;
         messagingToGETHChainId[messagingChainId] = chainId;
-        supportedChains.push() = chainId;
+        supportedChains++;
         omnichainOperators[newOmnichainOperator] = omnichainData({
             isAuthorized: 2,
             chainId: chainId,
@@ -437,37 +434,17 @@ contract CentralRegistry is ERC165 {
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
-        uint256[] memory currentChains = supportedChains;
-        uint256 currentChainsLength = currentChains.length;
-        uint256 chainIndex = currentChainsLength;
-
-        for (uint256 i; i < currentChainsLength; ){
-            if (currentChains[i] == operatorToRemove.chainId){
-                // We found the chain so break out of loop
-                chainIndex = i;
-                break;
-            }
-            unchecked {
-                ++i;
-            }
+        if (isSupportedChain[operatorToRemove.chainId] < 2) {
+            // Chain already added
+            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
-        // subtract 1 from currentChainsLength so we properly have the end index
-        if (chainIndex == currentChainsLength--){
-            // we were unable to find the chain in the array,
-            // so something is wrong and we need to revert
-            revert CentralRegistry_ParametersMisconfigured();
-        }
-
-        // copy last item in list to location of item to be removed
-        uint256[] storage currentList = supportedChains;
-        // copy the last chain index slot to chainIndex
-        currentList[chainIndex] = currentList[currentChainsLength];
-        // remove chain from the last element
-        currentList.pop();
-
+        // Remove chain support from protocol
+        isSupportedChain[operatorToRemove.chainId] = 1;
         // Remove operator support from protocol
         operatorToRemove.isAuthorized = 1;
+        // Decrease supportedChains
+        supportedChains--;
         // Remove messagingChainId to chainId mapping
         delete messagingToGETHChainId[operatorToRemove.messagingChainId];
         emit removedChain(operatorToRemove.chainId, currentOmnichainOperator);
