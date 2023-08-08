@@ -72,12 +72,13 @@ contract ChildGaugePool is ReentrancyGuard {
         address rewardToken_,
         ICentralRegistry centralRegistry_
     ) {
-        if (!ERC165Checker.supportsInterface(
+        require(
+            ERC165Checker.supportsInterface(
                 address(centralRegistry_),
                 type(ICentralRegistry).interfaceId
-            )) {
-            revert GaugeErrors.InvalidAddress();
-        }
+            ),
+            "ChildGaugePool: invalid central registry"
+        );
 
         centralRegistry = centralRegistry_;
 

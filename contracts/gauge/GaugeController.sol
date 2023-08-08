@@ -51,12 +51,13 @@ abstract contract GaugeController is IGaugePool {
     /// CONSTRUCTOR ///
 
     constructor(ICentralRegistry centralRegistry_) {
-        if (!ERC165Checker.supportsInterface(
+        require(
+            ERC165Checker.supportsInterface(
                 address(centralRegistry_),
                 type(ICentralRegistry).interfaceId
-            )) {
-                revert GaugeErrors.InvalidAddress();
-            }
+            ),
+            "GaugeController: invalid central registry"
+        );
         centralRegistry = centralRegistry_;
         cve = centralRegistry.CVE();
         veCVE = IVeCVE(centralRegistry.veCVE());
