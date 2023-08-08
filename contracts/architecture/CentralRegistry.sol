@@ -51,6 +51,8 @@ contract CentralRegistry is ERC165 {
     mapping(address => bool) public hasElevatedPermissions;
 
     // MULTICHAIN CONFIGURATION DATA
+    // We store this data redundantly so that we can quickly get whatever output we need,
+    // with low gas overhead
     uint256 [] public supportedChains; // What other chains are supported
     // Address => Curvance identification information
     mapping(address => omnichainData) public omnichainOperators;

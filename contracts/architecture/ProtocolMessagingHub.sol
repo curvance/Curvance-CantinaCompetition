@@ -7,12 +7,25 @@ import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 
 import { GaugeController } from "contracts/gauge/GaugeController.sol";
 
+import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { IWETH } from "contracts/interfaces/IWETH.sol";
 import { ICVE } from "contracts/interfaces/ICVE.sol";
 import { IFeeAccumulator } from "contracts/interfaces/IFeeAccumulator.sol";
 import { ICentralRegistry, omnichainData } from "contracts/interfaces/ICentralRegistry.sol";
+import { swapRouter, lzTxObj } from "contracts/interfaces/layerzero/IStargateRouter.sol";
 
-contract FeeAccumulator is ReentrancyGuard {
+contract ProtocolMessagingHub is ReentrancyGuard {
+
+    /// TYPES ///
+
+    struct PoolData {
+        address endpoint;
+        uint256 dstChainId;
+        uint256 srcPoolId;
+        uint256 dstPoolId;
+        uint256 amountLD;
+        uint256 minAmountLD;
+    }
 
     /// CONSTANTS ///
 
@@ -26,6 +39,7 @@ contract FeeAccumulator is ReentrancyGuard {
     /// ERRORS ///
 
     error ProtocolMessagingHub_ConfigurationError();
+    error ProtocolMessagingHub_InsufficientGasToken();
 
     /// MODIFIERS ///
 
@@ -93,6 +107,85 @@ contract FeeAccumulator is ReentrancyGuard {
                 amountLD
             );
         }  
+    }
+
+    function sendFees(
+        address to,
+        PoolData calldata poolData,
+        lzTxObj calldata lzTxParams,
+        bytes calldata payload
+    ) external onlyHarvestor {
+        omnichainData memory operator = centralRegistry.omnichainOperators(to);
+        // Validate that the operator is authorized
+        if (operator.isAuthorized < 2) {
+            revert ProtocolMessagingHub_ConfigurationError();
+        }
+
+        // Validate that the operator messaging chain matches the destination chain id
+        if (operator.messagingChainId != poolData.dstChainId) {
+            revert ProtocolMessagingHub_ConfigurationError();
+        }
+
+        { // Use scoping to avoid stack too deep
+            uint256 destinationChain = centralRegistry.messagingToGETHChainId(poolData.dstChainId);
+            uint256[] memory supportedChains = centralRegistry.supportedChains();
+            uint256 numChains = supportedChains.length;
+            uint256 chainIndex = numChains;
+
+            for (uint256 i; i < numChains; ){
+                if (supportedChains[i] == destinationChain) {
+                    chainIndex = i;
+                    break;
+                }
+            }
+
+            // Validate that we are aiming for a supported chain
+            if (chainIndex == numChains) {
+                revert ProtocolMessagingHub_ConfigurationError();
+            }
+        }
+
+        bytes memory bytesTo = new bytes(32);
+        assembly { 
+            mstore(add(bytesTo, 32), to) 
+        }
+
+        // Might be worth it to remove this and let the transaction fail if we do not have sufficient funds attached
+        // @trust what do you think?
+        (uint256 messageFee, ) = this.quoteStargateFee(
+            swapRouter(poolData.endpoint),
+            uint16(poolData.dstChainId),
+            1,
+            bytesTo,
+            "",
+            lzTxParams
+        );
+
+        // Validate that we have sufficient fees to send crosschain 
+        if (poolData.amountLD < messageFee) {
+            revert ProtocolMessagingHub_InsufficientGasToken();
+        }
+
+        // Pull the WETH from the fee accumulator
+        // This will revert if we've misconfigured WETH contract supply by `amountLD`
+        SafeTransferLib.safeTransferFrom(address(WETH), centralRegistry.feeAccumulator(), address(this), poolData.amountLD);
+
+        // Withdraw ETH from WETH contract
+        WETH.withdraw(poolData.amountLD);
+
+        // Sends funds to feeAccumulator on another chain
+        swapRouter(poolData.endpoint).swap{
+            value: poolData.amountLD}(
+            uint16(poolData.dstChainId),
+            poolData.srcPoolId,
+            poolData.dstPoolId,
+            payable(address(this)),
+            poolData.amountLD,
+            poolData.minAmountLD,
+            lzTxParams,
+            bytesTo,
+            payload
+        );
     }
 
     function onOFTReceived(
@@ -172,6 +265,25 @@ contract FeeAccumulator is ReentrancyGuard {
         }
 
         nonceUsed[nonce] = 2; // 2 = used; 0 or 1 = unused
+    }
+
+    /// @notice Quotes gas cost for executing crosschain stargate swap
+    function quoteStargateFee(
+        swapRouter stargateRouter, 
+        uint16 _dstChainId,
+        uint8 _functionType,
+        bytes calldata _toAddress,
+        bytes calldata _transferAndCallPayload,
+        lzTxObj memory _lzTxParams
+    ) external view returns (uint256, uint256) {
+        return
+            stargateRouter.quoteLayerZeroFee(
+                _dstChainId,
+                _functionType,
+                _toAddress,
+                _transferAndCallPayload,
+                _lzTxParams
+            );
     }
 
 }

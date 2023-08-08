@@ -87,6 +87,9 @@ interface ICentralRegistry {
     // Address => Curvance identification information
     function omnichainOperators(address _address) external view returns (omnichainData memory);
 
+    // Messaging specific ChainId => GETH comparable ChainId
+    function messagingToGETHChainId(uint256 chainId) external view returns (uint256);
+
     /// @notice Returns whether the inputted address is an approved zapper
     function isZapper(address _address) external view returns (bool);
 
