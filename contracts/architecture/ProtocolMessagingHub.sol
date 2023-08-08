@@ -13,19 +13,9 @@ import { ICVE, LzCallParams } from "contracts/interfaces/ICVE.sol";
 import { IFeeAccumulator } from "contracts/interfaces/IFeeAccumulator.sol";
 import { ICentralRegistry, omnichainData } from "contracts/interfaces/ICentralRegistry.sol";
 import { swapRouter, lzTxObj } from "contracts/interfaces/layerzero/IStargateRouter.sol";
+import { PoolData } from "contracts/interfaces/IProtocolMessagingHub.sol";
 
 contract ProtocolMessagingHub is ReentrancyGuard {
-
-    /// TYPES ///
-
-    struct PoolData {
-        address endpoint; // Stargate Endpoint
-        uint256 dstChainId; // Destination Chain ID
-        uint256 srcPoolId; // Source Pool ID
-        uint256 dstPoolId; // Destination Pool ID
-        uint256 amountLD; // Amount to send
-        uint256 minAmountLD; // Min amount out
-    }
 
     /// CONSTANTS ///
 
