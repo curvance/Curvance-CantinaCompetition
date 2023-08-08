@@ -19,12 +19,12 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     /// TYPES ///
 
     struct PoolData {
-        address endpoint; // Stargate Endpoint
-        uint256 dstChainId; // Destination Chain ID
-        uint256 srcPoolId; // Source Pool ID
-        uint256 dstPoolId; // Destination Pool ID
-        uint256 amountLD; // Amount to send
-        uint256 minAmountLD; // Min amount out
+        address endpoint;
+        uint256 dstChainId;
+        uint256 srcPoolId;
+        uint256 dstPoolId;
+        uint256 amountLD;
+        uint256 minAmountLD;
     }
 
     /// CONSTANTS ///
@@ -109,6 +109,11 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         }  
     }
 
+    /// @notice Sends WETH fees to the Fee Accumulator on `dstChainId`
+    /// @param to The address Stargate Endpoint to call
+    /// @param poolData Stargate pool routing data
+    /// @param lzTxParams Supplemental LayerZero parameters for the transaction
+    /// @param payload Additional payload data
     function sendFees(
         address to,
         PoolData calldata poolData,
@@ -188,6 +193,15 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         );
     }
 
+    /// @notice Handles actions based on the payload provided from calling CVE's OFT integration where:
+    ///         messageType = 1 corresponds to locked token information transfer
+    ///         messageType = 2 corresponds to configuring gauge emissions for the chain
+    /// @dev amount is always set to 0 since we are moving data, or minting gauge emissions here
+    /// @param srcChainId The source chain ID from which the calldata was received
+    /// @param srcAddress The CVE source address
+    /// @param nonce A unique identifier for the transaction, used to prevent replay attacks
+    /// @param from The address from which the OFT was sent
+    /// @param payload The message calldata, encoded in bytes
     function onOFTReceived(
         uint16 srcChainId,
         bytes memory srcAddress,
