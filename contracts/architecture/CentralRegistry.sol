@@ -2,20 +2,9 @@
 pragma solidity ^0.8.17;
 
 import { ERC165 } from "contracts/libraries/ERC165.sol";
-import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+import { ICentralRegistry, omnichainData } from "contracts/interfaces/ICentralRegistry.sol";
 
-contract CentralRegistry is ICentralRegistry, ERC165 {
-
-    /// TYPES ///
-    
-    struct omnichainData {
-        uint256 isAuthorized; // Whether the contract is supported or not; 2 = yes; 0 or 1 = no
-        // @dev We will need to make sure SALTs are different crosschain
-        //      so that we do not accidently deploy the same contract address
-        //      across multiple chains
-        uint256 chainId; // chainId where this address authorized 
-        uint256 messagingChainId; // messaging chainId where this address authorized 
-    }
+contract CentralRegistry is ERC165 {
 
     /// CONSTANTS ///
 
@@ -97,7 +86,6 @@ contract CentralRegistry is ICentralRegistry, ERC165 {
     event removedChain(uint256 chainId, address operatorAddress);
 
     /// ERRORS ///
-
     error CentralRegistry_ParametersMisconfigured();
     error CentralRegistry_Unauthorized();
 
