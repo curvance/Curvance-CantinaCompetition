@@ -48,10 +48,6 @@ contract ChildGaugePool is ReentrancyGuard {
     // token => user => info
     mapping(address => mapping(address => UserInfo)) public userInfo;
 
-    /// ERRORS ///
-
-    error ChildGaugePool_ConfigurationError();
-
     /// MODIFIERS ///
 
     modifier onlyGaugeController() {
@@ -86,7 +82,7 @@ contract ChildGaugePool is ReentrancyGuard {
         centralRegistry = centralRegistry_;
 
         if (!centralRegistry_.isGaugeController(gaugeController_)) {
-            revert ChildGaugePool_ConfigurationError();
+            revert GaugeErrors.InvalidAddress();
         }
 
         gaugeController = GaugePool(gaugeController_);
@@ -96,9 +92,9 @@ contract ChildGaugePool is ReentrancyGuard {
 
     /// EXTERNAL FUNCTIONS ///
 
-    /// @notice Start the Child Gauge at the start of the Gauge Controller's next epoch
+    /// @notice Start the Child Gauge
     function activate() external onlyGaugeController {
-        activationTime = gaugeController.epochStartTime(gaugeController.currentEpoch() + 1);
+        activationTime = block.timestamp;
     }
 
     function setRewardPerSec(
