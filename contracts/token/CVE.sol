@@ -4,6 +4,7 @@ pragma solidity ^0.8.17;
 import "../layerzero/OFTV2.sol";
 
 contract CVE is OFTV2 {
+    
     /// CONSTANTS ///
 
     uint256 public constant DENOMINATOR = 10000; // Scalar for math
@@ -32,7 +33,14 @@ contract CVE is OFTV2 {
 
     modifier onlyTeam() {
         require(msg.sender == teamAddress, "CVE: UNAUTHORIZED");
+        _;
+    }
 
+    modifier onlyMessagingHub() {
+        require(
+            msg.sender == centralRegistry.protocolMessagingHub(),
+            "FeeAccumulator: UNAUTHORIZED"
+        );
         _;
     }
 
@@ -148,5 +156,27 @@ contract CVE is OFTV2 {
     function setTeamAddress(address _address) external onlyTeam {
         require(_address != address(0), "CVE: invalid parameter");
         teamAddress = _address;
+    }
+
+    /// PUBLIC FUNCTIONS ///
+
+    function sendAndCall(
+        address _from,
+        uint16 _dstChainId,
+        bytes32 _toAddress,
+        uint256 _amount,
+        bytes calldata _payload,
+        uint64 _dstGasForCall,
+        LzCallParams calldata _callParams
+    ) public payable override onlyMessagingHub {
+        super.sendAndCall(
+            _from,
+            _dstChainId,
+            _toAddress,
+            _amount,
+            _payload,
+            _dstGasForCall,
+            _callParams
+        );
     }
 }
