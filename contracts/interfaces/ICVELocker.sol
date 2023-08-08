@@ -16,6 +16,16 @@ struct RewardsData {
 }
 
 interface ICVELocker {
+
+    /// @notice Called by Fee Accumulator to record an epochs rewards
+    function recordEpochRewards(uint256 epoch, uint256 rewardsPerCVE) external;
+
+    /// @notice Returns the current epoch for `time`
+    function currentEpoch(uint256 time) external view returns (uint256);
+
+    /// @notice Returns the next undelivered epoch index
+    function nextEpochToDeliver() external view returns (uint256);
+
     /// @notice Update user claim index
     function updateUserClaimIndex(address user, uint256 index) external;
 

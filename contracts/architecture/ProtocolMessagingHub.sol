@@ -10,8 +10,8 @@ import { GaugeController } from "contracts/gauge/GaugeController.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { IWETH } from "contracts/interfaces/IWETH.sol";
 import { ICVE, LzCallParams } from "contracts/interfaces/ICVE.sol";
-import { IFeeAccumulator } from "contracts/interfaces/IFeeAccumulator.sol";
-import { ICentralRegistry, omnichainData } from "contracts/interfaces/ICentralRegistry.sol";
+import { IFeeAccumulator, EpochRolloverData } from "contracts/interfaces/IFeeAccumulator.sol";
+import { ICentralRegistry, OmnichainData } from "contracts/interfaces/ICentralRegistry.sol";
 import { swapRouter, lzTxObj } from "contracts/interfaces/layerzero/IStargateRouter.sol";
 import { PoolData } from "contracts/interfaces/IProtocolMessagingHub.sol";
 
@@ -102,43 +102,6 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         }  
     }
 
-    /// @notice Sends veCVE locked token data to multiple destination chains
-    /// @param dstChainId An array containing the destination chain IDs where the message data should be sent
-    /// @param toAddress An array containing the destination addresses specified by `dstChainId`
-    /// @param payload The payload data that is sent along with the message
-    /// @param dstGasForCall The amount of gas that should be provided for the call on the destination chain
-    /// @param adapterParams Additional parameters for the adapter, as bytes
-    /// @param callParams AdditionalParameters for the call, as LzCallParams
-    /// @dev   We redundantly pass adapterParams & callParams so we do not need to coerce data in the function,
-    ///        calls with this function will have messageType = 1
-    function sendLockedTokenMessageData(
-        uint16[] calldata dstChainId,
-        bytes32[] calldata toAddress,
-        bytes calldata payload,
-        uint64 dstGasForCall,
-        bytes calldata adapterParams, 
-        LzCallParams calldata callParams
-    ) external onlyAuthorized {
-        uint256 numChainsLength = dstChainId.length;
-        if (numChainsLength != toAddress.length) {
-            revert ProtocolMessagingHub_ConfigurationError();
-        }
-
-        for (uint256 i; i < numChainsLength; ) {
-            _sendLockedTokenMessageData(
-                dstChainId[i],
-                toAddress[i],
-                payload,
-                dstGasForCall,
-                adapterParams, 
-                callParams
-            );
-            unchecked {
-                ++i;
-            } 
-        }
-    }
-
     /// @notice Sends gauge emission information to multiple destination chains
     /// @param dstChainId Destination chain ID where the message data should be sent
     /// @param toAddress The destination address specified by `dstChainId`
@@ -147,7 +110,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     /// @param adapterParams Additional parameters for the adapter, as bytes
     /// @param callParams AdditionalParameters for the call, as LzCallParams
     /// @dev   We redundantly pass adapterParams & callParams so we do not need to coerce data in the function,
-    ///        calls with this function will have messageType = 2
+    ///        calls with this function will have messageType = 3
     function sendGaugeEmissions(
         uint16 dstChainId,
         bytes32 toAddress,
@@ -157,7 +120,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         LzCallParams calldata callParams
     ) external onlyAuthorized {
         // Validate that we are aiming for a supported chain
-        if (centralRegistry.isSupportedChain(centralRegistry.messagingToGETHChainId(dstChainId)) < 2) {
+        if (centralRegistry.supportedChainData(centralRegistry.messagingToGETHChainId(dstChainId)).isSupported < 2) {
             revert ProtocolMessagingHub_ConfigurationError();
         }
         CVE.sendAndCall{
@@ -191,7 +154,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         lzTxObj calldata lzTxParams,
         bytes calldata payload
     ) external onlyAuthorized {
-        omnichainData memory operator = centralRegistry.omnichainOperators(to);
+        OmnichainData memory operator = centralRegistry.omnichainOperators(to);
         // Validate that the operator is authorized
         if (operator.isAuthorized < 2) {
             revert ProtocolMessagingHub_ConfigurationError();
@@ -203,9 +166,11 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         }
 
         // Validate that we are aiming for a supported chain
-        if (centralRegistry.isSupportedChain(centralRegistry.messagingToGETHChainId(poolData.dstChainId)) < 2) {
+        if (centralRegistry.supportedChainData(centralRegistry.messagingToGETHChainId(poolData.dstChainId)).isSupported < 2) {
             revert ProtocolMessagingHub_ConfigurationError();
         }
+
+        address endpoint = IFeeAccumulator(centralRegistry.feeAccumulator()).router();
 
         bytes memory bytesTo = new bytes(32);
         assembly { 
@@ -214,18 +179,20 @@ contract ProtocolMessagingHub is ReentrancyGuard {
 
         // Might be worth it to remove this and let the transaction fail if we do not have sufficient funds attached
         // @trust what do you think?
-        (uint256 messageFee, ) = this.quoteStargateFee(
-            swapRouter(poolData.endpoint),
-            uint16(poolData.dstChainId),
-            1,
-            bytesTo,
-            "",
-            lzTxParams
-        );
+        { // Scoping to avoid stack too deep
+            (uint256 messageFee, ) = this.quoteStargateFee(
+                swapRouter(endpoint),
+                uint16(poolData.dstChainId),
+                1,
+                bytesTo,
+                "",
+                lzTxParams
+            );
 
-        // Validate that we have sufficient fees to send crosschain 
-        if (poolData.amountLD < messageFee) {
-            revert ProtocolMessagingHub_InsufficientGasToken();
+            // Validate that we have sufficient fees to send crosschain 
+            if (poolData.amountLD < messageFee) {
+                revert ProtocolMessagingHub_InsufficientGasToken();
+            }
         }
 
         // Pull the WETH from the fee accumulator
@@ -236,7 +203,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         WETH.withdraw(poolData.amountLD);
 
         // Sends funds to feeAccumulator on another chain
-        swapRouter(poolData.endpoint).swap{
+        swapRouter(endpoint).swap{
             value: poolData.amountLD}(
             uint16(poolData.dstChainId),
             poolData.srcPoolId,
@@ -252,7 +219,8 @@ contract ProtocolMessagingHub is ReentrancyGuard {
 
     /// @notice Handles actions based on the payload provided from calling CVE's OFT integration where:
     ///         messageType = 1 corresponds to locked token information transfer
-    ///         messageType = 2 corresponds to configuring gauge emissions for the chain
+    ///         messageType = 2 receiving finalized token epoch rewards information
+    ///         messageType = 3 corresponds to configuring gauge emissions for the chain
     /// @dev amount is always set to 0 since we are moving data, or minting gauge emissions here
     /// @param srcChainId The source chain ID from which the calldata was received
     /// @param srcAddress The CVE source address
@@ -267,7 +235,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         uint256, // amount
         bytes calldata payload
     ) external onlyLayerZero {
-        omnichainData memory operator = centralRegistry.omnichainOperators(address(uint160(uint256(from))));
+        OmnichainData memory operator = centralRegistry.omnichainOperators(address(uint160(uint256(from))));
 
         // Validate the operator is authorized
         if (operator.isAuthorized < 2) {
@@ -301,14 +269,25 @@ contract ProtocolMessagingHub is ReentrancyGuard {
             (address[], uint256[], address[][], uint256[][], uint256, uint256)
         );
 
-        // Message Type 1: notify feeAccumulator of locked tokens on a chain
+        // Message Type 1: receive feeAccumulator information of locked tokens on a chain for the epoch
         if (messageType == 1) {
-            IFeeAccumulator(centralRegistry.feeAccumulator()).notifyCrossChainLockData(operator.chainId, chainLockedAmount);
+            IFeeAccumulator(centralRegistry.feeAccumulator()).receiveCrossChainLockData(
+                EpochRolloverData({chainId: operator.chainId,
+                         value: chainLockedAmount,
+                         numChainData: 0,
+                         epoch: 0
+                         })
+                );
             nonceUsed[nonce] = 2; // 2 = used; 0 or 1 = unused
             return;
         }
 
-        // Message Type 2+: update gauge emissions for all gauge controllers on this chain
+        // Message Type 2: receive finalized epoch rewards data
+        if (messageType == 2) {
+            IFeeAccumulator(centralRegistry.feeAccumulator()).receiveExecutableLockData(chainLockedAmount);
+        }
+
+        // Message Type 3+: update gauge emissions for all gauge controllers on this chain
         { // Use scoping for stack too deep logic
             uint256 lockBoostMultiplier = centralRegistry.lockBoostValue();
             uint256 numPools = gaugePools.length;
@@ -335,6 +314,43 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         }
 
         nonceUsed[nonce] = 2; // 2 = used; 0 or 1 = unused
+    }
+
+    /// @notice Quotes gas cost for executing crosschain stargate swap
+    /// @dev Intentionally greatly overestimates so we are sure that a multicall will not fail
+    function overEstimateStargateFee(
+        swapRouter stargateRouter, 
+        uint8 functionType,
+        bytes calldata toAddress,
+        uint256 transactions
+    ) external view returns (uint256 fee, uint256) {
+        if (block.chainid == 1) {
+            (fee, ) = stargateRouter.quoteLayerZeroFee(
+                        110, // Arbitrum Destination
+                        functionType,
+                        toAddress,
+                        "",
+                        lzTxObj({dstGasForCall: 0,
+                                dstNativeAmount: 0,
+                                dstNativeAddr: ""
+                        })
+                      );
+             // Overestimate fees 5x to make sure it does not fail
+             return (fee * transactions * 5, 0);    
+        }
+
+        (fee, ) = stargateRouter.quoteLayerZeroFee(
+                        101, // Ethereum Destination
+                        functionType,
+                        toAddress,
+                        "",
+                        lzTxObj({dstGasForCall: 0,
+                                dstNativeAmount: 0,
+                                dstNativeAddr: ""
+                        })
+                  );
+        // Overestimate fees by estimating moving to mainnet every time
+        return (fee * transactions, 0); 
     }
 
     /// @notice Quotes gas cost for executing crosschain stargate swap
@@ -368,39 +384,33 @@ contract ProtocolMessagingHub is ReentrancyGuard {
             );
     }
     
-    /// INTERNAL FUNCTIONS ///
+    /// PUBLIC FUNCTIONS ///
 
     /// @notice Sends veCVE locked token data to destination chain
     /// @param dstChainId The destination chain ID where the message data should be sent
     /// @param toAddress The destination addresses specified by `dstChainId`
     /// @param payload The payload data that is sent along with the message
     /// @param dstGasForCall The amount of gas that should be provided for the call on the destination chain
-    /// @param adapterParams Additional parameters for the adapter, as bytes
     /// @param callParams AdditionalParameters for the call, as LzCallParams
+    /// @param etherValue How much ether to attach to the transaction
     /// @dev   We redundantly pass adapterParams & callParams so we do not need to coerce data in the function,
-    ///        calls with this function will have messageType = 1
-    function _sendLockedTokenMessageData(
+    ///        calls with this function will have messageType = 1 or messageType = 2
+    function sendLockedTokenData(
         uint16 dstChainId,
         bytes32 toAddress,
         bytes calldata payload,
         uint64 dstGasForCall,
-        bytes calldata adapterParams, 
-        LzCallParams calldata callParams
-    ) internal {
-        if (centralRegistry.isSupportedChain(centralRegistry.messagingToGETHChainId(dstChainId)) < 2) {
+        LzCallParams calldata callParams,
+        uint256 etherValue
+    ) public payable onlyAuthorized {
+        // Validate that we are aiming for a supported chain
+        if (centralRegistry.supportedChainData(centralRegistry.messagingToGETHChainId(dstChainId)).isSupported < 2) {
             revert ProtocolMessagingHub_ConfigurationError();
         }
 
+        //
         CVE.sendAndCall{
-            value: CVE.estimateSendAndCallFee(
-                    dstChainId,
-                    toAddress,
-                    0,
-                    payload,
-                    dstGasForCall,
-                    false,// may need to turn on ZRO in the future but can redeploy ProtocolMessagingHub
-                    adapterParams
-            )}(
+            value: etherValue}(
             address(this), 
             dstChainId, 
             toAddress, 

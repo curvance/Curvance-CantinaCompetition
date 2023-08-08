@@ -5,7 +5,6 @@ import { ICVE, LzCallParams } from "contracts/interfaces/ICVE.sol";
 import { swapRouter, lzTxObj } from "contracts/interfaces/layerzero/IStargateRouter.sol";
 
 struct PoolData {
-        address endpoint; // Stargate Endpoint
         uint256 dstChainId; // Destination Chain ID
         uint256 srcPoolId; // Source Pool ID
         uint256 dstPoolId; // Destination Pool ID
@@ -15,14 +14,30 @@ struct PoolData {
 
 interface IProtocolMessagingHub {
 
-    function sendLockedTokenMessageData(
-        uint16[] calldata dstChainId,
-        bytes32[] calldata toAddress,
+    function overEstimateStargateFee(
+        swapRouter stargateRouter, 
+        uint8 functionType,
+        bytes calldata toAddress,
+        uint256 transactions
+    ) external view returns (uint256, uint256);
+
+    function quoteStargateFee(
+        swapRouter stargateRouter, 
+        uint16 dstChainId,
+        uint8 functionType,
+        bytes calldata toAddress,
+        bytes calldata transferAndCallPayload,
+        lzTxObj memory lzTxParams
+    ) external view returns (uint256, uint256);
+
+    function sendLockedTokenData(
+        uint16 dstChainId,
+        bytes32 toAddress,
         bytes calldata payload,
         uint64 dstGasForCall,
-        bytes calldata adapterParams, 
-        LzCallParams calldata callParams
-    ) external;
+        LzCallParams calldata callParams,
+        uint256 etherValue
+    ) external payable; 
 
     /// @notice Sends WETH fees to the Fee Accumulator on `dstChainId`
     /// @param to The address Stargate Endpoint to call

@@ -66,6 +66,7 @@ contract CVELocker is ReentrancyGuard {
     error CVELocker_Unauthorized();
     error CVELocker_FailedETHTransfer();
     error CVELocker_NoEpochRewards();
+    error CVELocker_WrongEpochRewardSubmission();
 
     /// MODIFIERS ///
 
@@ -97,9 +98,9 @@ contract CVELocker is ReentrancyGuard {
         _;
     }
 
-    modifier onlyMessagingHub() {
+    modifier onlyFeeAccumulator() {
         require(
-            msg.sender == centralRegistry.protocolMessagingHub(),
+            msg.sender == centralRegistry.feeAccumulator(),
             "CVELocker: UNAUTHORIZED"
         );
         _;
@@ -125,6 +126,20 @@ contract CVELocker is ReentrancyGuard {
     }
 
     /// EXTERNAL FUNCTIONS ///
+
+    function recordEpochRewards(uint256 epoch, uint256 rewardsPerCVE) external onlyFeeAccumulator {
+        if (epoch != nextEpochToDeliver) {
+            revert CVELocker_WrongEpochRewardSubmission();
+        }
+
+        // Record rewards per CVE for the epoch
+        epochRewardsPerCVE[epoch] = rewardsPerCVE;
+        
+        // Update nextEpochToDeliver invariant
+        unchecked {
+            ++nextEpochToDeliver;
+        }
+    }
 
     function startLocker() external onlyDaoPermissions {
         require(lockerStarted == 1, "cveLocker: locker already started");
