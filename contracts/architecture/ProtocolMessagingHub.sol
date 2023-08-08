@@ -19,12 +19,12 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     /// TYPES ///
 
     struct PoolData {
-        address endpoint;
-        uint256 dstChainId;
-        uint256 srcPoolId;
-        uint256 dstPoolId;
-        uint256 amountLD;
-        uint256 minAmountLD;
+        address endpoint; // Stargate Endpoint
+        uint256 dstChainId; // Destination Chain ID
+        uint256 srcPoolId; // Source Pool ID
+        uint256 dstPoolId; // Destination Pool ID
+        uint256 amountLD; // Amount to send
+        uint256 minAmountLD; // Min amount out
     }
 
     /// CONSTANTS ///
