@@ -31,7 +31,7 @@ interface IVeCVE {
     function chainTokenPoints() external view returns (uint256);
 
     /// @notice Returns the chain's token unlocks for an epoch
-    function chainTokenUnlocksByEpoch(
+    function chainUnlocksByEpoch(
         uint256 epoch
     ) external view returns (uint256);
 
