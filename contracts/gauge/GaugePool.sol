@@ -29,6 +29,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
 
     /// CONSTANTS ///
 
+    uint256 public constant DENOMINATOR = 10000; // Scalar for math
     uint256 public constant PRECISION = 1e36; // Scalar for math
     address public lendtroller; // Lendtroller linked
 
@@ -107,7 +108,6 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         if (index != (childGauges.length - 1)) {
             childGauges[index] = childGauges[childGauges.length - 1];
         }
-        
         childGauges.pop();
 
         emit RemoveChildGauge(childGauge);
@@ -212,8 +212,12 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         uint256 numChildGauges = childGauges.length;
 
         for (uint256 i; i < numChildGauges; ) {
+            if (address(childGauges[i]) != address(0)) {
+                childGauges[i].deposit(token, user, amount);
+            }
+
             unchecked {
-                childGauges[i++].deposit(token, user, amount);
+                ++i;
             }
         }
 
@@ -255,8 +259,12 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         uint256 numChildGauges = childGauges.length;
 
         for (uint256 i; i < numChildGauges; ) {
+            if (address(childGauges[i]) != address(0)) {
+                childGauges[i].withdraw(token, user, amount);
+            }
+
             unchecked {
-                childGauges[i++].withdraw(token, user, amount);
+                ++i;
             }
         }
 
@@ -300,6 +308,13 @@ contract GaugePool is GaugeController, ReentrancyGuard {
             revert GaugeErrors.NoReward();
         }
 
+        uint256 currentLockBoost = centralRegistry.lockBoostValue();
+        // If theres a current lock boost, recognize their bonus rewards
+        if (currentLockBoost > 0) {
+            rewards = (rewards * currentLockBoost) / DENOMINATOR;
+        }
+        userInfo[token][msg.sender].rewardPending = 0;
+
         SafeTransferLib.safeApprove(cve, address(veCVE), rewards);
         veCVE.increaseAmountAndExtendLockFor(
             msg.sender,
@@ -311,8 +326,6 @@ contract GaugePool is GaugeController, ReentrancyGuard {
             params,
             aux
         );
-
-        userInfo[token][msg.sender].rewardPending = 0;
 
         _calcDebt(msg.sender, token);
 
@@ -336,6 +349,14 @@ contract GaugePool is GaugeController, ReentrancyGuard {
             revert GaugeErrors.NoReward();
         }
 
+        uint256 currentLockBoost = centralRegistry.lockBoostValue();
+        // If theres a current lock boost, recognize their bonus rewards
+        if (currentLockBoost > 0) {
+            rewards = (rewards * currentLockBoost) / DENOMINATOR;
+        }
+        
+        userInfo[token][msg.sender].rewardPending = 0;
+
         SafeTransferLib.safeApprove(cve, address(veCVE), rewards);
         veCVE.lockFor(
             msg.sender,
@@ -346,8 +367,6 @@ contract GaugePool is GaugeController, ReentrancyGuard {
             params,
             aux
         );
-
-        userInfo[token][msg.sender].rewardPending = 0;
 
         _calcDebt(msg.sender, token);
 
