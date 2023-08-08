@@ -92,7 +92,7 @@ contract ChildGaugePool is ReentrancyGuard {
 
     /// EXTERNAL FUNCTIONS ///
 
-    /// @notice Start the Child Gauge
+    /// @notice Start the Child Gauge at the start of the Gauge Controller's next epoch
     function activate() external onlyGaugeController {
         activationTime = gaugeController.epochStartTime(gaugeController.currentEpoch() + 1);
     }

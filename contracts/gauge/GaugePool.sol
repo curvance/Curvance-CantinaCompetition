@@ -80,8 +80,12 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         if (childGauge == address(0)) {
             revert GaugeErrors.InvalidAddress();
         }
-        childGauges.push(ChildGaugePool(childGauge));
 
+        if (ChildGaugePool(childGauge).activationTime() != 0) {
+            revert GaugeErrors.InvalidAddress();
+        }
+
+        childGauges.push(ChildGaugePool(childGauge));
         ChildGaugePool(childGauge).activate();
 
         emit AddChildGauge(childGauge);
@@ -97,7 +101,14 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         if (childGauge != address(childGauges[index])) {
             revert GaugeErrors.InvalidAddress();
         }
-        childGauges[index] = ChildGaugePool(address(0));
+        
+        // If the child gauge is not the last one in the array, 
+        // copy its data down and then pop 
+        if (index != (childGauges.length - 1)) {
+            childGauges[index] = childGauges[childGauges.length - 1];
+        }
+        
+        childGauges.pop();
 
         emit RemoveChildGauge(childGauge);
     }
@@ -201,12 +212,8 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         uint256 numChildGauges = childGauges.length;
 
         for (uint256 i; i < numChildGauges; ) {
-            if (address(childGauges[i]) != address(0)) {
-                childGauges[i].deposit(token, user, amount);
-            }
-
             unchecked {
-                ++i;
+                childGauges[i++].deposit(token, user, amount);
             }
         }
 
@@ -248,12 +255,8 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         uint256 numChildGauges = childGauges.length;
 
         for (uint256 i; i < numChildGauges; ) {
-            if (address(childGauges[i]) != address(0)) {
-                childGauges[i].withdraw(token, user, amount);
-            }
-
             unchecked {
-                ++i;
+                childGauges[i++].withdraw(token, user, amount);
             }
         }
 
