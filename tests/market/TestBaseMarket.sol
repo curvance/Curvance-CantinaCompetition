@@ -10,6 +10,8 @@ import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { ChainlinkAdaptor } from "contracts/oracles/adaptors/chainlink/ChainlinkAdaptor.sol";
 import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
+import { MockToken } from "contracts/mocks/MockToken.sol";
+import { GaugePool } from "contracts/gauge/GaugePool.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 
 contract TestBaseMarket is TestBase {
@@ -42,6 +44,9 @@ contract TestBaseMarket is TestBase {
     IERC20 public usdc;
     IERC20 public balRETH;
 
+    MockToken public rewardToken;
+    GaugePool public gaugePool;
+
     address public randomUser = address(1000000);
     address public user1 = address(1000001);
     address public user2 = address(1000002);
@@ -56,6 +61,10 @@ contract TestBaseMarket is TestBase {
         _deployCentralRegistry();
         _deployPriceRouter();
         _deployChainlinkAdaptors();
+
+        rewardToken = new MockToken("Reward Token", "RT", 18);
+        gaugePool = new GaugePool(ICentralRegistry(address(centralRegistry)));
+        centralRegistry.addGaugeController(address(gaugePool));
 
         _deployLendtroller();
         _deployInterestRateModel();
@@ -74,6 +83,7 @@ contract TestBaseMarket is TestBase {
             0
         );
         centralRegistry.transferEmergencyCouncil(address(this));
+        centralRegistry.setCVE(address(rewardToken));
     }
 
     function _deployPriceRouter() internal {
@@ -121,8 +131,9 @@ contract TestBaseMarket is TestBase {
     function _deployLendtroller() internal {
         lendtroller = new Lendtroller(
             ICentralRegistry(address(centralRegistry)),
-            address(0)
+            address(gaugePool)
         );
+        centralRegistry.addLendingMarket(address(lendtroller));
     }
 
     function _deployInterestRateModel() internal {

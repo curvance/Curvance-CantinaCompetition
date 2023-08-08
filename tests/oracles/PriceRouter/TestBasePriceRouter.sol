@@ -88,6 +88,7 @@ contract TestBasePriceRouter is TestBase {
             ICentralRegistry(address(centralRegistry)),
             address(0)
         );
+        centralRegistry.addLendingMarket(address(lendtroller));
     }
 
     function _deployInterestRateModel() internal {
