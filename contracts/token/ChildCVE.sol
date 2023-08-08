@@ -4,7 +4,6 @@ pragma solidity ^0.8.17;
 import "contracts/layerzero/OFTV2.sol";
 
 contract CVE is OFTV2 {
-    
     /// CONSTANTS ///
 
     uint256 public constant DENOMINATOR = 10000; // Scalar for math
@@ -25,18 +24,20 @@ contract CVE is OFTV2 {
 
     /// @notice Mint new gauge emissions
     /// @dev Allows the VotingHub to mint new gauge emissions.
-    /// @param gaugeEmissions The amount of gauge emissions to be minted.
-    /// Emission amount is multiplied by the lock boost value from the central registry.
+    /// @param gaugeEmissions The amount of gauge emissions to be minted
+    /// @param gaugePool The address of the gauge pool where emissions will be configured
+    /// Emission amount is multiplied by the lock boost value from the central registry
     /// Resulting tokens are minted to the voting hub contract.
     function mintGaugeEmissions(
-        uint256 gaugeEmissions
+        uint256 gaugeEmissions,
+        address gaugePool
     ) external {
         require(
             msg.sender == centralRegistry.protocolMessagingHub(),
             "CVE: UNAUTHORIZED"
         );
         _mint(
-            msg.sender,
+            gaugePool,
             (gaugeEmissions * centralRegistry.lockBoostValue()) / DENOMINATOR
         );
     }

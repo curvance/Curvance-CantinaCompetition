@@ -61,6 +61,14 @@ contract FeeAccumulator is ReentrancyGuard {
         _;
     }
 
+    modifier onlyMessagingHub() {
+        require(
+            msg.sender == centralRegistry.protocolMessagingHub(),
+            "FeeAccumulator: UNAUTHORIZED"
+        );
+        _;
+    }
+
     receive() external payable {}
 
     /// CONSTRUCTOR ///
@@ -69,13 +77,12 @@ contract FeeAccumulator is ReentrancyGuard {
         ICentralRegistry centralRegistry_,
         address WETH_
     ) {
-        require(
-            ERC165Checker.supportsInterface(
+        if (!ERC165Checker.supportsInterface(
                 address(centralRegistry_),
                 type(ICentralRegistry).interfaceId
-            ),
-            "FeeAccumulator: invalid central registry"
-        );
+            )){
+                revert FeeAccumulator_ConfigurationError();
+            }
 
         centralRegistry = centralRegistry_;
         WETH = IWETH(WETH_);
@@ -95,8 +102,6 @@ contract FeeAccumulator is ReentrancyGuard {
     }
 
     /// EXTERNAL FUNCTIONS ///
-
-    
 
     /// @dev Performs multiple token swaps in a single transaction, 
     ///      converting the provided tokens to ETH on behalf of Curvance DAO

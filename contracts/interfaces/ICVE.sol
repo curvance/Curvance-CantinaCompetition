@@ -2,6 +2,13 @@
 pragma solidity >=0.8.17;
 
 interface ICVE {
+
+    /// @notice Used by protocol messaging hub to mint gauge emissions for the upcoming epoch
+    function mintGaugeEmissions(
+        uint256 gaugeEmissions,
+        address gaugePool
+    ) external;
+
     /// @notice Sends CVE to a desired destination chain
     function sendFrom(
         address from,

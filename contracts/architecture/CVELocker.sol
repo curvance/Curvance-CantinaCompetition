@@ -189,22 +189,6 @@ contract CVELocker is ReentrancyGuard {
         isShutdown = 2;
     }
 
-    /// @param chainId The remote chainId sending the tokens
-    /// @param srcAddress The remote Bridge address
-    /// @param nonce The message ordering nonce
-    /// @param token The token contract on the local chain
-    /// @param amountLD The qty of local _token contract tokens
-    /// @param payload The bytes containing the _tokenOut, _deadline,
-    ///                _amountOutMin, _toAddr
-    function sgReceive(
-        uint16 chainId,
-        bytes memory srcAddress,
-        uint256 nonce,
-        address token,
-        uint256 amountLD,
-        bytes memory payload
-    ) external payable {}
-
     /// @notice Returns the current epoch for the given time
     /// @param time The timestamp for which to calculate the epoch
     /// @return The current epoch

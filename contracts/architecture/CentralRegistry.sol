@@ -2,7 +2,7 @@
 pragma solidity ^0.8.17;
 
 import { ERC165 } from "contracts/libraries/ERC165.sol";
-import { ICentralRegistry, chainData, omnichainData } from "contracts/interfaces/ICentralRegistry.sol";
+import { ICentralRegistry, omnichainData } from "contracts/interfaces/ICentralRegistry.sol";
 
 contract CentralRegistry is ERC165 {
 
@@ -51,9 +51,10 @@ contract CentralRegistry is ERC165 {
     mapping(address => bool) public hasElevatedPermissions;
 
     // MULTICHAIN CONFIGURATION DATA
-    chainData [] public supportedChains; // What other chains are supported
+    uint256 [] public supportedChains; // What other chains are supported
     // Address => Curvance identification information
     mapping(address => omnichainData) public omnichainOperators;
+    mapping(uint256 => uint256) public messagingToGETHChainId;
 
     // DAO CONTRACT MAPPINGS
     mapping(address => bool) public isZapper;
@@ -404,21 +405,23 @@ contract CentralRegistry is ERC165 {
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
-        chainData[] memory currentChains = supportedChains;
+        uint256[] memory currentChains = supportedChains;
         uint256 currentChainsLength = currentChains.length;
 
         for (uint256 i; i < currentChainsLength; ) {
-            if(currentChains[i++].chainId == chainId) {
+            if(currentChains[i++] == chainId) {
                 // Chain already added
                 _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
             }
-        } 
+        }
 
-        supportedChains.push() = chainData({cveAddress: cveAddress, chainId: chainId});
+        messagingToGETHChainId[messagingChainId] = chainId;
+        supportedChains.push() = chainId;
         omnichainOperators[newOmnichainOperator] = omnichainData({
             isAuthorized: 2,
             chainId: chainId,
-            messagingChainId: messagingChainId
+            messagingChainId: messagingChainId,
+            cveAddress: cveAddress
         });
 
         emit NewChainAdded(chainId, newOmnichainOperator);
@@ -432,12 +435,12 @@ contract CentralRegistry is ERC165 {
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
-        chainData[] memory currentChains = supportedChains;
+        uint256[] memory currentChains = supportedChains;
         uint256 currentChainsLength = currentChains.length;
         uint256 chainIndex = currentChainsLength;
 
         for (uint256 i; i < currentChainsLength; ){
-            if (currentChains[i].chainId == operatorToRemove.chainId){
+            if (currentChains[i] == operatorToRemove.chainId){
                 // We found the chain so break out of loop
                 chainIndex = i;
                 break;
@@ -455,7 +458,7 @@ contract CentralRegistry is ERC165 {
         }
 
         // copy last item in list to location of item to be removed
-        chainData[] storage currentList = supportedChains;
+        uint256[] storage currentList = supportedChains;
         // copy the last chain index slot to chainIndex
         currentList[chainIndex] = currentList[currentChainsLength];
         // remove chain from the last element
@@ -463,6 +466,8 @@ contract CentralRegistry is ERC165 {
 
         // Remove operator support from protocol
         operatorToRemove.isAuthorized = 1;
+        // Remove messagingChainId to chainId mapping
+        delete messagingToGETHChainId[operatorToRemove.messagingChainId];
         emit removedChain(operatorToRemove.chainId, currentOmnichainOperator);
     }
 

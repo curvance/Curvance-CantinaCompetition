@@ -3,14 +3,16 @@
 pragma solidity >=0.8.17;
 
 /// TYPES ///
-    struct omnichainData {
-        uint256 isAuthorized; // Whether the contract is supported or not; 2 = yes; 0 or 1 = no
-        // @dev We will need to make sure SALTs are different crosschain
-        //      so that we do not accidently deploy the same contract address
-        //      across multiple chains
-        uint256 chainId; // chainId where this address authorized 
-        uint256 messagingChainId; // messaging chainId where this address authorized 
-    }
+
+struct omnichainData {
+    uint256 isAuthorized; // Whether the contract is supported or not; 2 = yes; 0 or 1 = no
+    // @dev We will need to make sure SALTs are different crosschain
+    //      so that we do not accidently deploy the same contract address
+    //      across multiple chains
+    uint256 chainId; // chainId where this address authorized 
+    uint256 messagingChainId; // messaging chainId where this address authorized
+    bytes cveAddress; // CVE Address on the chain
+}
 
 interface ICentralRegistry {
     /// @notice Returns Genesis Epoch Timestamp of Curvance
@@ -81,7 +83,7 @@ interface ICentralRegistry {
 
     /// @notice Returns what other chains are supported
     function supportedChains() external view returns (uint256[] memory);
-    
+
     // Address => Curvance identification information
     function omnichainOperators(address _address) external view returns (omnichainData memory);
 
