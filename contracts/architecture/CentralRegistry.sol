@@ -2,7 +2,7 @@
 pragma solidity ^0.8.17;
 
 import { ERC165 } from "contracts/libraries/ERC165.sol";
-import { ICentralRegistry, omnichainData } from "contracts/interfaces/ICentralRegistry.sol";
+import { ICentralRegistry, ChainData, OmnichainData } from "contracts/interfaces/ICentralRegistry.sol";
 
 contract CentralRegistry is ERC165 {
     /// CONSTANTS ///
@@ -50,11 +50,14 @@ contract CentralRegistry is ERC165 {
     mapping(address => bool) public hasElevatedPermissions;
 
     // MULTICHAIN CONFIGURATION DATA
+    // We store this data redundantly so that we can quickly get whatever output we need,
+    // with low gas overhead
     uint256 public supportedChains; // How many other chains are supported
-    mapping(uint256 => uint256) public isSupportedChain; // ChainId => 2 = supported; 1 = unsupported
+    mapping(uint256 => ChainData) public supportedChainData; // ChainId => 2 = supported; 1 = unsupported
     // Address => Curvance identification information
-    mapping(address => omnichainData) public omnichainOperators; // Operator => omnichainData
-    mapping(uint256 => uint256) public messagingToGETHChainId; // Messaging Chain ID => GETH Chain ID
+    mapping(address => OmnichainData) public omnichainOperators;
+    mapping(uint256 => uint256) public messagingToGETHChainId;
+    mapping(uint256 => uint256) public GETHToMessagingChainId;
 
     // DAO CONTRACT MAPPINGS
     mapping(address => bool) public isZapper;
@@ -406,17 +409,13 @@ contract CentralRegistry is ERC165 {
 
     /// MULTICHAIN SUPPORT LOGIC
 
-    /// @notice Adds support for a new chain to the protocol by configuring all omnichain mappings and invariants
-    /// @dev    We store this data redundantly so that we can quickly get whatever output we need,
-    ///         with low gas overhead
-    /// @param newOmnichainOperator The address of the new Omnichain Operator responsible for `chainId`
-    /// @param cveAddress The LayerZero compatible CVE address associated with the chain.
-    /// @param chainId The GETH unique identifier of the chain being added
-    /// @param messagingChainId The Messaging layer unique identifier of the chain being added
     function addChainSupport(
         address newOmnichainOperator,
+        address messagingHub,
         bytes calldata cveAddress,
         uint256 chainId,
+        uint256 sourceAux,
+        uint256 destinationAux,
         uint256 messagingChainId
     ) external onlyElevatedPermissions {
         if (omnichainOperators[newOmnichainOperator].isAuthorized == 2) {
@@ -424,15 +423,22 @@ contract CentralRegistry is ERC165 {
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
-        if (isSupportedChain[chainId] == 2) {
+        if (supportedChainData[chainId].isSupported == 2) {
             // Chain already added
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
-        isSupportedChain[chainId] = 2;
+        supportedChainData[chainId] = ChainData({
+            isSupported: 2,
+            messagingHub: messagingHub,
+            asSourceAux: sourceAux,
+            asDestinationAux: destinationAux,
+            cveAddress: bytes32(cveAddress)
+        });
         messagingToGETHChainId[messagingChainId] = chainId;
-        ++supportedChains;
-        omnichainOperators[newOmnichainOperator] = omnichainData({
+        GETHToMessagingChainId[chainId] = messagingChainId;
+        supportedChains++;
+        omnichainOperators[newOmnichainOperator] = OmnichainData({
             isAuthorized: 2,
             chainId: chainId,
             messagingChainId: messagingChainId,
@@ -442,34 +448,34 @@ contract CentralRegistry is ERC165 {
         emit NewChainAdded(chainId, newOmnichainOperator);
     }
 
-    /// @notice Removes protocol support for a chain
-    /// @param currentOmnichainOperator The address of the Omnichain Operator,
-    ///                                 corresponding to the chain we are depreciating
+    /// @notice removes
     function removeChainSupport(
         address currentOmnichainOperator
     ) external onlyDaoPermissions {
-        omnichainData storage operatorToRemove = omnichainOperators[
+        OmnichainData storage operatorToRemove = omnichainOperators[
             currentOmnichainOperator
         ];
         if (omnichainOperators[currentOmnichainOperator].isAuthorized < 2) {
-            // Chain Operator unsupported
+            // Operator unsupported
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
-        if (isSupportedChain[operatorToRemove.chainId] < 2) {
-            // Chain unsupported
+        if (supportedChainData[operatorToRemove.chainId].isSupported < 2) {
+            // Chain already added
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
+        // Remove chain support from protocol
+        supportedChainData[operatorToRemove.chainId].isSupported = 1;
         // Remove operator support from protocol
         operatorToRemove.isAuthorized = 1;
-        // Decrease supportedChains invariant
-        --supportedChains;
-        // Remove messagingChainId to chainId mapping
+        // Decrease supportedChains
+        supportedChains--;
+        // Remove messagingChainId <> GETH chainId mapping table references
+        delete GETHToMessagingChainId[
+            messagingToGETHChainId[operatorToRemove.messagingChainId]
+        ];
         delete messagingToGETHChainId[operatorToRemove.messagingChainId];
-        // Remove chain support from protocol
-        isSupportedChain[operatorToRemove.chainId] = 1;
-
         emit removedChain(operatorToRemove.chainId, currentOmnichainOperator);
     }
 

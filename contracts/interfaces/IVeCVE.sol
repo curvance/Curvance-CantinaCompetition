@@ -27,6 +27,14 @@ interface IVeCVE {
         uint256 aux
     ) external;
 
+    /// @notice Returns the chain's current token points for
+    function chainTokenPoints() external view returns (uint256);
+
+    /// @notice Returns the chain's token unlocks for an epoch
+    function chainUnlocksByEpoch(
+        uint256 epoch
+    ) external view returns (uint256);
+
     /// @notice Returns a user's current token points for
     function userTokenPoints(address user) external view returns (uint256);
 
