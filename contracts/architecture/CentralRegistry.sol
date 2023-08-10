@@ -5,7 +5,6 @@ import { ERC165 } from "contracts/libraries/ERC165.sol";
 import { ICentralRegistry, omnichainData } from "contracts/interfaces/ICentralRegistry.sol";
 
 contract CentralRegistry is ERC165 {
-
     /// CONSTANTS ///
 
     uint256 public constant DENOMINATOR = 10000; // Scalar for math
@@ -45,7 +44,7 @@ contract CentralRegistry is ERC165 {
     uint256 public earlyUnlockPenaltyValue; // Penalty Fee for unlocking from veCVE early
     uint256 public voteBoostValue; // Voting power bonus for Continuous Lock Mode
     uint256 public lockBoostValue; // Rewards bonus for Continuous Lock Mode
-    
+
     // DAO PERMISSION DATA
     mapping(address => bool) public hasDaoPermissions;
     mapping(address => bool) public hasElevatedPermissions;
@@ -82,7 +81,10 @@ contract CentralRegistry is ERC165 {
     );
 
     event NewCurvanceContract(string indexed contractType, address newAddress);
-    event removedCurvanceContract(string indexed contractType, address removedAddress);
+    event removedCurvanceContract(
+        string indexed contractType,
+        address removedAddress
+    );
 
     event NewChainAdded(uint256 chainId, address operatorAddress);
     event removedChain(uint256 chainId, address operatorAddress);
@@ -195,6 +197,14 @@ contract CentralRegistry is ERC165 {
         address newCVELocker
     ) external onlyElevatedPermissions {
         cveLocker = newCVELocker;
+    }
+
+    /// @notice Sets a new protocol messaging hub contract address
+    /// @dev Only callable on a 7 day delay or by the Emergency Council
+    function setProtocolMessagingHub(
+        address newProtocolMessagingHub
+    ) external onlyElevatedPermissions {
+        protocolMessagingHub = newProtocolMessagingHub;
     }
 
     /// @notice Sets a new price router contract address
@@ -405,9 +415,10 @@ contract CentralRegistry is ERC165 {
     /// @param messagingChainId The Messaging layer unique identifier of the chain being added
     function addChainSupport(
         address newOmnichainOperator,
-        bytes calldata cveAddress,  
-        uint256 chainId, 
-        uint256 messagingChainId) external onlyElevatedPermissions {
+        bytes calldata cveAddress,
+        uint256 chainId,
+        uint256 messagingChainId
+    ) external onlyElevatedPermissions {
         if (omnichainOperators[newOmnichainOperator].isAuthorized == 2) {
             // Chain Operator already added
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
@@ -434,8 +445,12 @@ contract CentralRegistry is ERC165 {
     /// @notice Removes protocol support for a chain
     /// @param currentOmnichainOperator The address of the Omnichain Operator,
     ///                                 corresponding to the chain we are depreciating
-    function removeChainSupport(address currentOmnichainOperator) external onlyDaoPermissions {
-        omnichainData storage operatorToRemove = omnichainOperators[currentOmnichainOperator];
+    function removeChainSupport(
+        address currentOmnichainOperator
+    ) external onlyDaoPermissions {
+        omnichainData storage operatorToRemove = omnichainOperators[
+            currentOmnichainOperator
+        ];
         if (omnichainOperators[currentOmnichainOperator].isAuthorized < 2) {
             // Chain Operator unsupported
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
@@ -460,9 +475,7 @@ contract CentralRegistry is ERC165 {
 
     /// CONTRACT MAPPING LOGIC
 
-    function addZapper(
-        address newZapper
-    ) external onlyElevatedPermissions {
+    function addZapper(address newZapper) external onlyElevatedPermissions {
         if (isZapper[newZapper]) {
             // Zapper already added
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
@@ -486,9 +499,7 @@ contract CentralRegistry is ERC165 {
         emit removedCurvanceContract("Zapper", currentZapper);
     }
 
-    function addSwapper(
-        address newSwapper
-    ) external onlyElevatedPermissions {
+    function addSwapper(address newSwapper) external onlyElevatedPermissions {
         if (isSwapper[newSwapper]) {
             // Swapper already added
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
@@ -561,7 +572,10 @@ contract CentralRegistry is ERC165 {
 
         delete isGaugeController[currentGaugeController];
 
-        emit removedCurvanceContract("Gauge Controller", currentGaugeController);
+        emit removedCurvanceContract(
+            "Gauge Controller",
+            currentGaugeController
+        );
     }
 
     function addHarvester(

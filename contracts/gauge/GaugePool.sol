@@ -12,7 +12,6 @@ import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 contract GaugePool is GaugeController, ReentrancyGuard {
-    
     /// TYPES ///
 
     struct PoolInfo {
@@ -73,6 +72,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         }
 
         startTime = veCVE.nextEpochStartTime();
+        lendtroller = lendtroller_;
     }
 
     /// @notice Adds a new child gauge to the gauge system
@@ -102,9 +102,9 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         if (childGauge != address(childGauges[index])) {
             revert GaugeErrors.InvalidAddress();
         }
-        
-        // If the child gauge is not the last one in the array, 
-        // copy its data down and then pop 
+
+        // If the child gauge is not the last one in the array,
+        // copy its data down and then pop
         if (index != (childGauges.length - 1)) {
             childGauges[index] = childGauges[childGauges.length - 1];
         }
@@ -191,15 +191,16 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         address user,
         uint256 amount
     ) external nonReentrant {
-
         if (amount == 0) {
             revert GaugeErrors.InvalidAmount();
         }
 
-        (bool isListed, ) = ILendtroller(lendtroller).getMarketTokenData(token);
-         if (msg.sender != token || !isListed) {
-             revert GaugeErrors.InvalidToken();
-         }
+        (bool isListed, ) = ILendtroller(lendtroller).getMarketTokenData(
+            token
+        );
+        if (msg.sender != token || !isListed) {
+            revert GaugeErrors.InvalidToken();
+        }
 
         updatePool(token);
         _calcPending(user, token);
@@ -233,12 +234,13 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         address user,
         uint256 amount
     ) external nonReentrant {
-
-        if (amount == 0){
+        if (amount == 0) {
             revert GaugeErrors.InvalidAmount();
         }
 
-        (bool isListed, ) = ILendtroller(lendtroller).getMarketTokenData(token);
+        (bool isListed, ) = ILendtroller(lendtroller).getMarketTokenData(
+            token
+        );
         if (msg.sender != token || !isListed) {
             revert GaugeErrors.InvalidToken();
         }
@@ -354,7 +356,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         if (currentLockBoost > 0) {
             rewards = (rewards * currentLockBoost) / DENOMINATOR;
         }
-        
+
         userInfo[token][msg.sender].rewardPending = 0;
 
         SafeTransferLib.safeApprove(cve, address(veCVE), rewards);

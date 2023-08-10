@@ -9,7 +9,6 @@ import { IMToken, accountSnapshot } from "contracts/interfaces/market/IMToken.so
 /// @title Curvance Lendtroller
 /// @notice Manages risk within the lending markets
 contract Lendtroller {
-    
     /// TYPES ///
 
     struct AccountData {
@@ -36,7 +35,7 @@ contract Lendtroller {
     uint256 internal constant maxCollateralizationRatio = 0.9e18; // 90%
     uint256 internal constant minHoldPeriod = 15 minutes; // Minimum hold time to prevent oracle price attacks
     ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
-    
+
     // `bytes4(keccak256(bytes("Lendtroller_InvalidValue()")))`
     uint256 internal constant _INVALID_VALUE_SELECTOR = 0x74ebdb4f;
 
@@ -44,7 +43,7 @@ contract Lendtroller {
     uint256 internal constant _INSUFFICIENT_SHORTFALL_SELECTOR = 0xa160c28b;
 
     /// STORAGE ///
- 
+
     uint256 public transferPaused = 1; // 1 = unpaused; 2 = paused
     uint256 public seizePaused = 1; // 1 = unpaused; 2 = paused
     mapping(address => uint256) public mintPaused; // Token => 0 or 1 = unpaused; 2 = paused
@@ -67,8 +66,8 @@ contract Lendtroller {
     event MarketExited(address mToken, address account);
     event NewCloseFactor(uint256 oldCloseFactor, uint256 newCloseFactor);
     event NewCollateralizationRatio(
-        IMToken mToken, 
-        uint256 oldCR, 
+        IMToken mToken,
+        uint256 oldCR,
         uint256 newCR
     );
     event NewLiquidationIncentive(
@@ -142,9 +141,7 @@ contract Lendtroller {
 
     /// @notice Add assets to be included in account liquidity calculation
     /// @param mTokens The list of addresses of the mToken markets to be enabled
-    function enterMarkets(
-        address[] calldata mTokens
-    ) external {
+    function enterMarkets(address[] calldata mTokens) external {
         uint256 numCTokens = mTokens.length;
 
         for (uint256 i; i < numCTokens; ) {
@@ -199,7 +196,10 @@ contract Lendtroller {
 
         // Validate we found the asset and remove 1 from numUserAssets
         // so it corresponds to last element index now starting at index 0
-        require(assetIndex < numUserAssets--, "lendtroller: asset list misconfigured");
+        require(
+            assetIndex < numUserAssets--,
+            "lendtroller: asset list misconfigured"
+        );
 
         // copy last item in list to location of item to be removed
         IMToken[] storage storedList = accountAssets[msg.sender].assets;
@@ -248,7 +248,10 @@ contract Lendtroller {
         address borrower,
         uint256 borrowAmount
     ) external {
-        require(marketTokenData[msg.sender].isListed, "Lendtroller: Caller not MToken");
+        require(
+            marketTokenData[msg.sender].isListed,
+            "Lendtroller: Caller not MToken"
+        );
         accountAssets[borrower].lastBorrowTimestamp = block.timestamp;
 
         borrowAllowed(mToken, borrower, borrowAmount);
@@ -259,22 +262,19 @@ contract Lendtroller {
     /// @param mToken The market to verify the repay against
     /// @param account The account who will have their loan repaid
     function repayAllowed(address mToken, address account) external view {
-
         if (!marketTokenData[mToken].isListed) {
             revert Lendtroller_TokenNotListed();
         }
 
         /// We require a `minimumHoldPeriod` to break flashloan manipulations attempts
-        /// as well as short term price manipulations if the dynamic dual oracle 
+        /// as well as short term price manipulations if the dynamic dual oracle
         /// fails to protect the market somehow
         if (
-            accountAssets[account].lastBorrowTimestamp +
-                minHoldPeriod >
+            accountAssets[account].lastBorrowTimestamp + minHoldPeriod >
             block.timestamp
         ) {
             revert Lendtroller_MinimumHoldPeriod();
         }
-
     }
 
     /// @notice Checks if the liquidation should be allowed to occur
@@ -301,11 +301,11 @@ contract Lendtroller {
         assembly {
             if iszero(shortfall) {
                 // store the error selector to location 0x0
-                mstore(0x0,_INSUFFICIENT_SHORTFALL_SELECTOR)
+                mstore(0x0, _INSUFFICIENT_SHORTFALL_SELECTOR)
                 // return bytes 29-32 for the selector
-                revert(0x1c,0x04)
+                revert(0x1c, 0x04)
             }
-         }
+        }
 
         // The liquidator may not close out more collateral than
         // what is allowed by the closeFactor
@@ -382,15 +382,12 @@ contract Lendtroller {
         /// Read oracle prices for borrowed and collateral markets
         IPriceRouter router = getPriceRouter();
         (uint256 debtTokenPrice, uint256 debtTokenError) = router.getPrice(
-            mTokenBorrowed, 
-            true, 
+            mTokenBorrowed,
+            true,
             false
         );
-        (uint256 collateralTokenPrice, uint256 collateralTokenError) = router.getPrice(
-            mTokenCollateral,
-            true,
-            true
-        );
+        (uint256 collateralTokenPrice, uint256 collateralTokenError) = router
+            .getPrice(mTokenCollateral, true, true);
 
         /// Validate that we were able to securely query prices from the dual oracle
         if (debtTokenError == 2 || collateralTokenError == 2) {
@@ -401,8 +398,11 @@ contract Lendtroller {
         //  seizeAmount = actualRepayAmount * liquidationIncentive * priceBorrowed / priceCollateral
         //  seizeTokens = seizeAmount / exchangeRate
         //   = actualRepayAmount * (liquidationIncentive * priceBorrowedDebt) / (priceCollateral * exchangeRate)
-        uint256 ratio = (liquidationIncentiveScaled * debtTokenPrice * expScale) / 
-        (collateralTokenPrice * IMToken(mTokenCollateral).exchangeRateStored());
+        uint256 ratio = (liquidationIncentiveScaled *
+            debtTokenPrice *
+            expScale) /
+            (collateralTokenPrice *
+                IMToken(mTokenCollateral).exchangeRateStored());
 
         return (ratio * actualRepayAmount) / expScale;
     }
@@ -413,7 +413,7 @@ contract Lendtroller {
     function setCloseFactor(
         uint256 newCloseFactor
     ) external onlyElevatedPermissions {
-        if (newCloseFactor <= maxCloseFactor){
+        if (newCloseFactor <= maxCloseFactor) {
             revert Lendtroller_InvalidValue();
         }
         // Cache the current value for event log and gas savings
@@ -494,15 +494,19 @@ contract Lendtroller {
         }
 
         IMToken(mToken).tokenType(); // Sanity check to make sure its really a mToken
-        if (IMToken(mToken).totalSupply() == 0) {
-            require(IMToken(mToken).startMarket(msg.sender), "lendtroller: Market needs to be initialized");
-        }
 
         MarketToken storage market = marketTokenData[mToken];
         market.isListed = true;
         market.collateralizationRatio = 0;
 
         _addMarketToken(mToken);
+
+        if (IMToken(mToken).totalSupply() == 0) {
+            require(
+                IMToken(mToken).startMarket(msg.sender),
+                "lendtroller: Market needs to be initialized"
+            );
+        }
 
         emit MarketListed(mToken);
     }
@@ -519,15 +523,14 @@ contract Lendtroller {
         IMToken[] calldata mTokens,
         uint256[] calldata newBorrowCaps
     ) external onlyDaoPermissions {
-
         uint256 numMarkets = mTokens.length;
 
         assembly {
             if iszero(numMarkets) {
                 // store the error selector to location 0x0
-                mstore(0x0,_INVALID_VALUE_SELECTOR)
+                mstore(0x0, _INVALID_VALUE_SELECTOR)
                 // return bytes 29-32 for the selector
-                revert(0x1c,0x04)
+                revert(0x1c, 0x04)
             }
         }
 
@@ -563,11 +566,7 @@ contract Lendtroller {
     }
 
     /// @notice Returns all markets
-    function getAllMarkets()
-        external
-        view
-        returns (IMToken[] memory)
-    {
+    function getAllMarkets() external view returns (IMToken[] memory) {
         return allMarkets;
     }
 
@@ -593,7 +592,7 @@ contract Lendtroller {
             );
         }
 
-        mintPaused[address(mToken)] = state ? 2: 1;
+        mintPaused[address(mToken)] = state ? 2 : 1;
         emit ActionPaused(mToken, "Mint Paused", state);
     }
 
@@ -619,7 +618,7 @@ contract Lendtroller {
             );
         }
 
-        borrowPaused[address(mToken)] = state ? 2: 1;
+        borrowPaused[address(mToken)] = state ? 2 : 1;
         emit ActionPaused(mToken, "Borrow Paused", state);
     }
 
@@ -639,7 +638,7 @@ contract Lendtroller {
             );
         }
 
-        transferPaused = state ? 2: 1;
+        transferPaused = state ? 2 : 1;
         emit ActionPaused("Transfer Paused", state);
     }
 
@@ -659,7 +658,7 @@ contract Lendtroller {
             );
         }
 
-        seizePaused = state ? 2: 1;
+        seizePaused = state ? 2 : 1;
         emit ActionPaused("Seize Paused", state);
     }
 
@@ -674,14 +673,20 @@ contract Lendtroller {
         // Assign new position folding contract
         positionFolding = newPositionFolding;
 
-        emit NewPositionFoldingContract(oldPositionFolding, newPositionFolding);
+        emit NewPositionFoldingContract(
+            oldPositionFolding,
+            newPositionFolding
+        );
     }
 
     /// @notice Updates `accounts` lastBorrowTimestamp to the current block timestamp
     /// @dev The caller must be a listed MToken in the `markets` mapping
     /// @param borrower The address of the account that has just borrowed
     function notifyAccountBorrow(address borrower) external {
-        require(marketTokenData[msg.sender].isListed, "Lendtroller: Caller not MToken");
+        require(
+            marketTokenData[msg.sender].isListed,
+            "Lendtroller: Caller not MToken"
+        );
         accountAssets[borrower].lastBorrowTimestamp = block.timestamp;
     }
 
@@ -721,7 +726,7 @@ contract Lendtroller {
         uint256 borrowCap = borrowCaps[mToken];
         // Borrow cap of 0 corresponds to unlimited borrowing
         if (borrowCap != 0) {
-            // Validate that if there is a borrow cap, 
+            // Validate that if there is a borrow cap,
             // we will not be over the cap with this new borrow
             if ((IMToken(mToken).totalBorrows() + borrowAmount) > borrowCap) {
                 revert Lendtroller_BorrowCapReached();
@@ -826,10 +831,7 @@ contract Lendtroller {
     /// @notice Documents a user entering a market for liquidity calculations
     /// @param mToken The market to enter
     /// @param user The address of the account entering the market
-    function _enterMarket(
-        address mToken,
-        address user
-    ) internal {
+    function _enterMarket(address mToken, address user) internal {
         MarketToken storage marketToJoin = marketTokenData[mToken];
 
         if (!marketToJoin.isListed) {
@@ -846,7 +848,6 @@ contract Lendtroller {
         accountAssets[user].assets.push(IMToken(mToken));
 
         emit MarketEntered(mToken, user);
-
     }
 
     /// @notice Checks if the account should be allowed to redeem tokens
@@ -865,11 +866,10 @@ contract Lendtroller {
         }
 
         /// We require a `minimumHoldPeriod` to break flashloan manipulations attempts
-        /// as well as short term price manipulations if the dynamic dual oracle 
+        /// as well as short term price manipulations if the dynamic dual oracle
         /// fails to protect the market somehow
         if (
-            accountAssets[redeemer].lastBorrowTimestamp +
-                minHoldPeriod >
+            accountAssets[redeemer].lastBorrowTimestamp + minHoldPeriod >
             block.timestamp
         ) {
             revert Lendtroller_MinimumHoldPeriod();
@@ -953,7 +953,6 @@ contract Lendtroller {
         unchecked {
             return (0, sumBorrowPlusEffects - maxBorrow);
         }
-
     }
 
     /// @notice Determine what the account liquidity would be if
@@ -992,61 +991,74 @@ contract Lendtroller {
         for (uint256 i; i < numAccountAssets; ) {
             // Pull user token snapshot data for the asset and then increment i
             unchecked {
-                assetSnapshot = accountAssets[account].assets[i++].getAccountSnapshotPacked(account);
+                assetSnapshot = accountAssets[account]
+                    .assets[i++]
+                    .getAccountSnapshotPacked(account);
             }
             isCToken = assetSnapshot.tokenType == 1;
 
             // Collateralized assets (CTokens) use the lower price, Debt assets (DTokens) use the higher price
-            (uint256 price, uint256 errorCode) = router.getPrice(address(assetSnapshot.asset), true, isCToken);
+            (uint256 price, uint256 errorCode) = router.getPrice(
+                address(assetSnapshot.asset),
+                true,
+                isCToken
+            );
             if (errorCode == errorCodeBreakpoint) {
                 revert Lendtroller_PriceError();
             }
 
             if (isCToken) {
                 // If the asset has a collateral ratio increment their collateral and max borrow value
-                if (!(marketTokenData[address(assetSnapshot.asset)].collateralizationRatio == 0)) {
-                    uint256 assetValue = (assetSnapshot.mTokenBalance * price * assetSnapshot.exchangeRateScaled) /
-                    expScale;
+                if (
+                    !(marketTokenData[address(assetSnapshot.asset)]
+                        .collateralizationRatio == 0)
+                ) {
+                    uint256 assetValue = (assetSnapshot.mTokenBalance *
+                        price *
+                        assetSnapshot.exchangeRateScaled) / expScale;
 
                     sumCollateral += assetValue;
                     maxBorrow +=
                         (assetValue *
-                            marketTokenData[address(assetSnapshot.asset)].collateralizationRatio) /
+                            marketTokenData[address(assetSnapshot.asset)]
+                                .collateralizationRatio) /
                         expScale;
                 }
-
             } else {
                 // If they have a borrow balance we need to document it
                 if (assetSnapshot.borrowBalance > 0) {
-                    sumBorrowPlusEffects += ((price * assetSnapshot.borrowBalance) /
-                    expScale);
+                    sumBorrowPlusEffects += ((price *
+                        assetSnapshot.borrowBalance) / expScale);
                 }
             }
 
             // Calculate effects of interacting with mTokenModify
             if (assetSnapshot.asset == mTokenModify) {
                 // If its a CToken our only option is to redeem it since it cant be borrowed
-                // If its a DToken we can redeem it but it will not have any effect on borrow amount 
+                // If its a DToken we can redeem it but it will not have any effect on borrow amount
                 // since DToken have a collateral value of 0
                 if (isCToken) {
-                    if (!(marketTokenData[address(assetSnapshot.asset)].collateralizationRatio == 0)) {
+                    if (
+                        !(marketTokenData[address(assetSnapshot.asset)]
+                            .collateralizationRatio == 0)
+                    ) {
                         // Pre-compute a conversion factor
                         // from tokens -> $ (normalized price value)
-                        uint256 tokensToDenom = (((marketTokenData[address(assetSnapshot.asset)]
-                            .collateralizationRatio * assetSnapshot.exchangeRateScaled) /
-                            expScale) * price) / expScale;
+                        uint256 tokensToDenom = (((marketTokenData[
+                            address(assetSnapshot.asset)
+                        ].collateralizationRatio *
+                            assetSnapshot.exchangeRateScaled) / expScale) *
+                            price) / expScale;
 
                         // redeem effect
                         sumBorrowPlusEffects += ((tokensToDenom *
                             redeemTokens) / expScale);
                     }
-                    
                 } else {
                     // borrow effect
                     sumBorrowPlusEffects += ((price * borrowAmount) /
                         expScale);
                 }
- 
             }
         }
     }
@@ -1061,7 +1073,7 @@ contract Lendtroller {
                 if (allMarkets[i++] == IMToken(mToken)) {
                     revert Lendtroller_TokenAlreadyListed();
                 }
-            }  
+            }
         }
         allMarkets.push(IMToken(mToken));
     }
@@ -1074,5 +1086,4 @@ contract Lendtroller {
             revert(0x1c, 0x04)
         }
     }
-    
 }

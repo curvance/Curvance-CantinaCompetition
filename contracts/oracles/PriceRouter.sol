@@ -12,7 +12,6 @@ import { IOracleAdaptor, PriceReturnData } from "contracts/interfaces/IOracleAda
 /// @notice Provides a universal interface allowing Curvance contracts
 ///         to retrieve secure pricing data based on various price feeds.
 contract PriceRouter {
-    
     /// TYPES ///
 
     struct FeedData {
@@ -39,7 +38,6 @@ contract PriceRouter {
 
     uint256 public PRICEFEED_MAXIMUM_DIVERGENCE = 11000; // Corresponds to 10%
     uint256 public CHAINLINK_MAX_DELAY = 1 days; // Maximum chainlink price staleness
-
 
     /// Address => Adaptor approval status
     mapping(address => bool) public isApprovedAdaptor;
@@ -280,12 +278,12 @@ contract PriceRouter {
         bool inUSD,
         bool getLower
     ) public view returns (uint256 price, uint256 errorCode) {
-        uint256 numAssetPriceFeeds = assetPriceFeeds[asset].length;
-        require(numAssetPriceFeeds > 0, "PriceRouter: no feeds available");
-
         if (mTokenAssets[asset].isMToken) {
             asset = mTokenAssets[asset].underlying;
         }
+
+        uint256 numAssetPriceFeeds = assetPriceFeeds[asset].length;
+        require(numAssetPriceFeeds > 0, "PriceRouter: no feeds available");
 
         if (numAssetPriceFeeds < 2) {
             (price, errorCode) = getPriceSingleFeed(asset, inUSD, getLower);

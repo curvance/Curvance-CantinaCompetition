@@ -51,12 +51,14 @@ abstract contract GaugeController is IGaugePool {
     /// CONSTRUCTOR ///
 
     constructor(ICentralRegistry centralRegistry_) {
-        if (!ERC165Checker.supportsInterface(
+        if (
+            !ERC165Checker.supportsInterface(
                 address(centralRegistry_),
                 type(ICentralRegistry).interfaceId
-            )) {
-                revert GaugeErrors.InvalidAddress();
-            }
+            )
+        ) {
+            revert GaugeErrors.InvalidAddress();
+        }
         centralRegistry = centralRegistry_;
         cve = centralRegistry.CVE();
         veCVE = IVeCVE(centralRegistry.veCVE());
@@ -95,23 +97,7 @@ abstract contract GaugeController is IGaugePool {
             revert GaugeErrors.InvalidEpoch();
         }
 
-        uint256 prevRewardPerSec = epochInfo[epoch].rewardPerSec;
         epochInfo[epoch].rewardPerSec = newRewardPerSec;
-
-        if (prevRewardPerSec > newRewardPerSec) {
-            SafeTransferLib.safeTransfer(
-                cve,
-                msg.sender,
-                EPOCH_WINDOW * (prevRewardPerSec - newRewardPerSec)
-            );
-        } else {
-            SafeTransferLib.safeTransferFrom(
-                cve,
-                msg.sender,
-                address(this),
-                EPOCH_WINDOW * (newRewardPerSec - prevRewardPerSec)
-            );
-        }
     }
 
     /// @notice Set emission rates of tokens of next epoch
