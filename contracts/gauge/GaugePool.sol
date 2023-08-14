@@ -11,8 +11,6 @@ import { RewardsData } from "contracts/interfaces/ICVELocker.sol";
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
-import "forge-std/Test.sol";
-
 contract GaugePool is GaugeController, ReentrancyGuard {
     /// TYPES ///
 
@@ -157,8 +155,6 @@ contract GaugePool is GaugeController, ReentrancyGuard {
                     ((endTimestamp - lastRewardTimestamp) *
                         epochInfo[lastEpoch].poolWeights[token]) /
                     EPOCH_WINDOW;
-                console.log("reward = ", reward);
-                console.log("totalDeposited = ", totalDeposited);
                 accRewardPerShare =
                     accRewardPerShare +
                     (reward * (PRECISION)) /
@@ -173,8 +169,6 @@ contract GaugePool is GaugeController, ReentrancyGuard {
                 ((block.timestamp - lastRewardTimestamp) *
                     epochInfo[lastEpoch].poolWeights[token]) /
                 EPOCH_WINDOW;
-            console.log("reward = ", reward);
-            console.log("totalDeposited = ", totalDeposited);
             accRewardPerShare =
                 accRewardPerShare +
                 (reward * (PRECISION)) /
@@ -198,7 +192,6 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         address user,
         uint256 amount
     ) external nonReentrant {
-        console.log("amount = ", amount);
         if (amount == 0) {
             revert GaugeErrors.InvalidAmount();
         }
@@ -415,7 +408,6 @@ contract GaugePool is GaugeController, ReentrancyGuard {
                 ((endTimestamp - lastRewardTimestamp) *
                     epochInfo[lastEpoch].poolWeights[token]) /
                 EPOCH_WINDOW;
-            console.log("reward = ", reward);
             accRewardPerShare =
                 accRewardPerShare +
                 (reward * (PRECISION)) /
@@ -430,7 +422,6 @@ contract GaugePool is GaugeController, ReentrancyGuard {
             ((block.timestamp - lastRewardTimestamp) *
                 epochInfo[lastEpoch].poolWeights[token]) /
             EPOCH_WINDOW;
-        console.log("reward = ", reward);
         accRewardPerShare =
             accRewardPerShare +
             (reward * (PRECISION)) /
