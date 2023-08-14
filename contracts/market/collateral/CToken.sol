@@ -16,7 +16,6 @@ import { IMToken, accountSnapshot } from "contracts/interfaces/market/IMToken.so
 
 /// @title Curvance's Collateral Token Contract
 contract CToken is ERC165, ReentrancyGuard {
-
     /// CONSTANTS ///
 
     uint256 internal constant expScale = 1e18; // Scalar for math
@@ -109,12 +108,14 @@ contract CToken is ERC165, ReentrancyGuard {
         string memory name_,
         string memory symbol_
     ) {
-        if (!ERC165Checker.supportsInterface(
+        if (
+            !ERC165Checker.supportsInterface(
                 address(centralRegistry_),
                 type(ICentralRegistry).interfaceId
-            )) {
-                revert CToken_ValidationFailed();
-            }
+            )
+        ) {
+            revert CToken_ValidationFailed();
+        }
 
         centralRegistry = centralRegistry_;
 
@@ -129,7 +130,10 @@ contract CToken is ERC165, ReentrancyGuard {
 
         // Set the lendtroller
         lendtroller = ILendtroller(lendtroller_);
-        emit NewLendtroller(ILendtroller(address(0)), ILendtroller(lendtroller_));
+        emit NewLendtroller(
+            ILendtroller(address(0)),
+            ILendtroller(lendtroller_)
+        );
 
         underlying = underlying_;
         vault = BasePositionVault(vault_);
@@ -137,15 +141,19 @@ contract CToken is ERC165, ReentrancyGuard {
         _symbol = bytes32(abi.encodePacked("c", symbol_));
 
         // Sanity check underlying so that we know users will not need to mint anywhere close to exchange rate of 1e18
-        require (IERC20(underlying).totalSupply() < type(uint232).max, "CToken: Underlying token assumptions not met");
-
+        require(
+            IERC20(underlying).totalSupply() < type(uint232).max,
+            "CToken: Underlying token assumptions not met"
+        );
     }
 
-    /// @notice Used to start a CToken market, executed via lendtroller 
+    /// @notice Used to start a CToken market, executed via lendtroller
     /// @dev  this initial mint is a failsafe against the empty market exploit
     ///       although we protect against it in many ways, better safe than sorry
-    /// @param initializer the account initializing the market 
-    function startMarket(address initializer) external nonReentrant returns (bool) {
+    /// @param initializer the account initializing the market
+    function startMarket(
+        address initializer
+    ) external nonReentrant returns (bool) {
         if (msg.sender != address(lendtroller)) {
             revert CToken_UnauthorizedCaller();
         }
@@ -155,13 +163,24 @@ contract CToken is ERC165, ReentrancyGuard {
         // We do not need to calculate exchange rate here as we will always be the initial depositer
         // These values should always be zero but we will add them just incase we are re-initiating a market
         totalSupply = totalSupply + actualMintAmount;
-        _accountBalance[initializer] = _accountBalance[initializer] + actualMintAmount;
+        _accountBalance[initializer] =
+            _accountBalance[initializer] +
+            actualMintAmount;
 
         // emit events on gauge pool
-        GaugePool(gaugePool()).deposit(address(this), initializer, actualMintAmount);
+        GaugePool(gaugePool()).deposit(
+            address(this),
+            initializer,
+            actualMintAmount
+        );
 
         // We emit a Mint event, and a Transfer event
-        emit Mint(initializer, actualMintAmount, actualMintAmount, initializer);
+        emit Mint(
+            initializer,
+            actualMintAmount,
+            actualMintAmount,
+            initializer
+        );
         emit Transfer(address(this), initializer, 6942069);
         return true;
     }
@@ -181,7 +200,7 @@ contract CToken is ERC165, ReentrancyGuard {
 
         // Confirm Migration
         BasePositionVault(newVault).migrateConfirm(oldVault, params);
-        
+
         // Switch to new vault
         vault = BasePositionVault(newVault);
         emit MigrateVault(oldVault, newVault);
@@ -257,7 +276,12 @@ contract CToken is ERC165, ReentrancyGuard {
         // Fail if redeem not allowed
         lendtroller.redeemAllowed(address(this), msg.sender, redeemTokens);
 
-        _redeem(payable(msg.sender), redeemTokens, tokensToRedeem, payable(msg.sender));
+        _redeem(
+            payable(msg.sender),
+            redeemTokens,
+            tokensToRedeem,
+            payable(msg.sender)
+        );
     }
 
     /// @notice Helper function for Position Folding contract to redeem underlying tokens
@@ -317,7 +341,11 @@ contract CToken is ERC165, ReentrancyGuard {
         // Query current DAO operating address
         address daoAddress = centralRegistry.daoAddress();
         // Withdraw reserves from gauge
-        GaugePool(gaugePool()).withdraw(address(this), daoAddress, reduceAmount);
+        GaugePool(gaugePool()).withdraw(
+            address(this),
+            daoAddress,
+            reduceAmount
+        );
 
         // doTransferOut reverts if anything goes wrong
         doTransferOut(daoAddress, reduceAmount);
@@ -398,7 +426,6 @@ contract CToken is ERC165, ReentrancyGuard {
         return ((exchangeRateCurrent() * balanceOf(account)) / expScale);
     }
 
-   
     /// @notice Get a snapshot of the account's balances, and the cached exchange rate
     /// @dev This is used by lendtroller to more efficiently perform liquidity checks
     /// @param account Address of the account to snapshot
@@ -417,12 +444,15 @@ contract CToken is ERC165, ReentrancyGuard {
     function getAccountSnapshotPacked(
         address account
     ) external view returns (accountSnapshot memory) {
-        return (accountSnapshot({
-            asset: IMToken(address(this)),
-            tokenType: 1,
-            mTokenBalance: balanceOf(account), 
-            borrowBalance: 0, 
-            exchangeRateScaled: exchangeRateStored()}));
+        return (
+            accountSnapshot({
+                asset: IMToken(address(this)),
+                tokenType: 1,
+                mTokenBalance: balanceOf(account),
+                borrowBalance: 0,
+                exchangeRateScaled: exchangeRateStored()
+            })
+        );
     }
 
     /// @notice Transfers collateral tokens (this market) to the liquidator.
@@ -457,7 +487,7 @@ contract CToken is ERC165, ReentrancyGuard {
     }
 
     /// @notice Returns the decimals of the token
-    /// @dev We pull directly from underlying incase its a proxy contract 
+    /// @dev We pull directly from underlying incase its a proxy contract
     ///      and changes decimals on us
     function decimals() public view returns (uint8) {
         return IERC20(underlying).decimals();
@@ -509,7 +539,6 @@ contract CToken is ERC165, ReentrancyGuard {
         address to,
         uint256 tokens
     ) internal {
-
         // Do not allow self-transfers
         if (from == to) {
             revert CToken_TransferNotAllowed();
@@ -521,7 +550,9 @@ contract CToken is ERC165, ReentrancyGuard {
         // Get the allowance, if the spender is not the `from` address
         if (spender != from) {
             // Validate that spender has enough allowance for the transfer with underflow check
-            transferAllowances[from][spender] = transferAllowances[from][spender] - tokens;
+            transferAllowances[from][spender] =
+                transferAllowances[from][spender] -
+                tokens;
         }
 
         // Update token balances
@@ -554,18 +585,21 @@ contract CToken is ERC165, ReentrancyGuard {
         // Fail if mint not allowed
         lendtroller.mintAllowed(address(this), recipient);
 
+        uint256 exchangeRate = exchangeRateStored();
         // The function returns the amount actually received from the positionVault
         uint256 actualMintAmount = doTransferIn(user, mintAmount);
 
         // We get the current exchange rate and calculate the number of cTokens to be minted:
         //  mintTokens = actualMintAmount / exchangeRate
-        uint256 mintTokens = (actualMintAmount * expScale) / exchangeRateStored();
+        uint256 mintTokens = (actualMintAmount * expScale) / exchangeRate;
         unchecked {
             totalSupply = totalSupply + mintTokens;
             /// Calculate their new balance
-            _accountBalance[recipient] = _accountBalance[recipient] + mintTokens;
+            _accountBalance[recipient] =
+                _accountBalance[recipient] +
+                mintTokens;
         }
-        
+
         // emit events on gauge pool
         GaugePool(gaugePool()).deposit(address(this), recipient, mintTokens);
 
@@ -626,10 +660,9 @@ contract CToken is ERC165, ReentrancyGuard {
         address borrower,
         uint256 seizeTokens
     ) internal {
-
         // Fails if borrower = liquidator
         assembly {
-            if eq(borrower, liquidator){
+            if eq(borrower, liquidator) {
                 // revert with CToken_UnauthorizedCaller()
                 mstore(0x00, 0xb856b3fe)
                 revert(0x1c, 0x04)
@@ -652,13 +685,15 @@ contract CToken is ERC165, ReentrancyGuard {
 
         // Document new account balances with underflow check on borrower balance
         _accountBalance[borrower] = _accountBalance[borrower] - seizeTokens;
-        _accountBalance[liquidator] = _accountBalance[liquidator] + liquidatorSeizeTokens;
+        _accountBalance[liquidator] =
+            _accountBalance[liquidator] +
+            liquidatorSeizeTokens;
         // Reserves should never overflow since totalSupply will always be higher before function than totalReserves after this call
         unchecked {
             totalReserves = totalReserves + protocolSeizeAmount;
             totalSupply = totalSupply - protocolSeizeTokens;
         }
-        
+
         // emit events on gauge pool
         address _gaugePool = gaugePool();
         GaugePool(_gaugePool).withdraw(address(this), borrower, seizeTokens);

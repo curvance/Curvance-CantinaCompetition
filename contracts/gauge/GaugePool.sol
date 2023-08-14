@@ -11,6 +11,8 @@ import { RewardsData } from "contracts/interfaces/ICVELocker.sol";
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
+import "forge-std/Test.sol";
+
 contract GaugePool is GaugeController, ReentrancyGuard {
     /// TYPES ///
 
@@ -139,6 +141,9 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         uint256 accRewardPerShare = _pool.accRewardPerShare;
         uint256 lastRewardTimestamp = _pool.lastRewardTimestamp;
         uint256 totalDeposited = _pool.totalAmount;
+        if (lastRewardTimestamp == 0) {
+            lastRewardTimestamp = startTime;
+        }
 
         if (block.timestamp > lastRewardTimestamp && totalDeposited != 0) {
             uint256 lastEpoch = epochOfTimestamp(lastRewardTimestamp);
@@ -150,9 +155,10 @@ contract GaugePool is GaugeController, ReentrancyGuard {
                 // update rewards from lastRewardTimestamp to endTimestamp
                 reward =
                     ((endTimestamp - lastRewardTimestamp) *
-                        epochInfo[lastEpoch].rewardPerSec *
                         epochInfo[lastEpoch].poolWeights[token]) /
-                    epochInfo[lastEpoch].totalWeights;
+                    EPOCH_WINDOW;
+                console.log("reward = ", reward);
+                console.log("totalDeposited = ", totalDeposited);
                 accRewardPerShare =
                     accRewardPerShare +
                     (reward * (PRECISION)) /
@@ -165,9 +171,10 @@ contract GaugePool is GaugeController, ReentrancyGuard {
             // update rewards from lastRewardTimestamp to current timestamp
             reward =
                 ((block.timestamp - lastRewardTimestamp) *
-                    epochInfo[lastEpoch].rewardPerSec *
                     epochInfo[lastEpoch].poolWeights[token]) /
-                epochInfo[lastEpoch].totalWeights;
+                EPOCH_WINDOW;
+            console.log("reward = ", reward);
+            console.log("totalDeposited = ", totalDeposited);
             accRewardPerShare =
                 accRewardPerShare +
                 (reward * (PRECISION)) /
@@ -191,6 +198,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         address user,
         uint256 amount
     ) external nonReentrant {
+        console.log("amount = ", amount);
         if (amount == 0) {
             revert GaugeErrors.InvalidAmount();
         }
@@ -203,6 +211,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         }
 
         updatePool(token);
+
         _calcPending(user, token);
 
         userInfo[token][user].amount += amount;
@@ -381,16 +390,18 @@ contract GaugePool is GaugeController, ReentrancyGuard {
     /// @param token Pool token address
     function updatePool(address token) public override {
         uint256 lastRewardTimestamp = poolInfo[token].lastRewardTimestamp;
-        if (block.timestamp <= lastRewardTimestamp) {
+        if (lastRewardTimestamp == 0) {
+            lastRewardTimestamp = startTime;
+        }
+
+        if (
+            block.timestamp <= startTime ||
+            block.timestamp <= lastRewardTimestamp
+        ) {
             return;
         }
 
         uint256 totalDeposited = poolInfo[token].totalAmount;
-        if (totalDeposited == 0) {
-            poolInfo[token].lastRewardTimestamp = block.timestamp;
-            return;
-        }
-
         uint256 accRewardPerShare = poolInfo[token].accRewardPerShare;
         uint256 lastEpoch = epochOfTimestamp(lastRewardTimestamp);
         uint256 currentEpoch = currentEpoch();
@@ -402,9 +413,9 @@ contract GaugePool is GaugeController, ReentrancyGuard {
             // update rewards from lastRewardTimestamp to endTimestamp
             reward =
                 ((endTimestamp - lastRewardTimestamp) *
-                    epochInfo[lastEpoch].rewardPerSec *
                     epochInfo[lastEpoch].poolWeights[token]) /
-                epochInfo[lastEpoch].totalWeights;
+                EPOCH_WINDOW;
+            console.log("reward = ", reward);
             accRewardPerShare =
                 accRewardPerShare +
                 (reward * (PRECISION)) /
@@ -417,9 +428,9 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         // update rewards from lastRewardTimestamp to current timestamp
         reward =
             ((block.timestamp - lastRewardTimestamp) *
-                epochInfo[lastEpoch].rewardPerSec *
                 epochInfo[lastEpoch].poolWeights[token]) /
-            epochInfo[lastEpoch].totalWeights;
+            EPOCH_WINDOW;
+        console.log("reward = ", reward);
         accRewardPerShare =
             accRewardPerShare +
             (reward * (PRECISION)) /
