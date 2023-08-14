@@ -12,7 +12,6 @@ struct accountSnapshot {
 }
 
 interface IMToken {
-
     function underlying() external view returns (address);
 
     /// @notice Returns whether the market token is collateral or debt 1 = collateral, 0 = debt
@@ -28,10 +27,14 @@ interface IMToken {
     ) external;
 
     /// @notice Get a snapshot of the account's balances, and the cached exchange rate
-    function getAccountSnapshot(address account) external view returns (uint256, uint256, uint256);
+    function getAccountSnapshot(
+        address account
+    ) external view returns (uint256, uint256, uint256);
 
     /// @notice Get a snapshot of the account's balances, and the cached exchange rate
-    function getAccountSnapshotPacked(address account) external view returns (accountSnapshot memory);
+    function getAccountSnapshotPacked(
+        address account
+    ) external view returns (accountSnapshot memory);
 
     /// @notice Returns the total amount of MToken
     function totalSupply() external view returns (uint256);
@@ -50,4 +53,7 @@ interface IMToken {
 
     function startMarket(address initializer) external returns (bool);
 
+    function mint(uint256 mintAmount) external returns (bool);
+
+    function redeem(uint256 tokensToRedeem) external;
 }

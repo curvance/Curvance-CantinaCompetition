@@ -65,6 +65,7 @@ contract TestBaseMarket is TestBase {
     address public user2 = address(1000002);
     address public liquidator = address(1000003);
     uint256 public clPointMultiplier = 11000; // 110%
+    uint256 public lockBoostValue = 10000; // 100%
 
     function setUp() public virtual {
         _fork();
@@ -98,6 +99,7 @@ contract TestBaseMarket is TestBase {
             0
         );
         centralRegistry.transferEmergencyCouncil(address(this));
+        centralRegistry.setLockBoostValue(lockBoostValue);
     }
 
     function _deployCVE() internal {
