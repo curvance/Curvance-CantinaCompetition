@@ -165,7 +165,7 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
         }
 
         uint256 mintAmount = 42069;
-        uint256 actualMintAmount = doTransferIn(initializer, mintAmount);
+        uint256 actualMintAmount = _doTransferIn(initializer, mintAmount);
 
         // We do not need to calculate exchange rate here as we will
         // always be the initial depositer.
@@ -340,7 +340,7 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
         uint256 addAmount
     ) external nonReentrant onlyDaoPermissions {
         // On success, the market will deposit `addAmount` to the position vault
-        totalReserves = totalReserves + doTransferIn(msg.sender, addAmount);
+        totalReserves = totalReserves + _doTransferIn(msg.sender, addAmount);
         // Query current DAO operating address
         address daoAddress = centralRegistry.daoAddress();
         // Deposit new reserves into gauge
@@ -369,8 +369,8 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
             reduceAmount
         );
 
-        // doTransferOut reverts if anything goes wrong
-        doTransferOut(daoAddress, reduceAmount);
+        // _doTransferOut reverts if anything goes wrong
+        _doTransferOut(daoAddress, reduceAmount);
 
         emit ReservesReduced(daoAddress, reduceAmount, totalReserves);
     }
@@ -624,7 +624,7 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
 
         uint256 exchangeRate = exchangeRateStored();
         // The function returns the amount actually received from the positionVault
-        uint256 actualMintAmount = doTransferIn(user, mintAmount);
+        uint256 actualMintAmount = _doTransferIn(user, mintAmount);
 
         // We get the current exchange rate and calculate the number of cTokens
         // to be minted:
@@ -682,10 +682,10 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
         // emit events on gauge pool
         GaugePool(gaugePool()).withdraw(address(this), redeemer, redeemTokens);
 
-        // We invoke doTransferOut for the redeemer and the redeemAmount
+        // We invoke _doTransferOut for the redeemer and the redeemAmount
         // so that we can withdraw tokens from the position vault for the redeemer
         // On success, the cToken has redeemAmount less of cash.
-        doTransferOut(recipient, redeemAmount);
+        _doTransferOut(recipient, redeemAmount);
 
         // We emit a Transfer event, and a Redeem event
         emit Transfer(redeemer, address(this), redeemTokens);
@@ -761,7 +761,7 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
     /// @param from Address of the sender of the tokens
     /// @param amount Amount of tokens to transfer in
     /// @return Returns the amount transferred
-    function doTransferIn(
+    function _doTransferIn(
         address from,
         uint256 amount
     ) internal returns (uint256) {
@@ -786,7 +786,7 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
     /// @dev This function uses the SafeTransferLib to safely perform the transfer.
     /// @param to Address receiving the token transfer
     /// @param amount Amount of tokens to transfer out
-    function doTransferOut(address to, uint256 amount) internal {
+    function _doTransferOut(address to, uint256 amount) internal {
         if (address(vault) != address(0)) {
             // withdraw from the vault
             amount = vault.redeem(amount, address(this), address(this));
