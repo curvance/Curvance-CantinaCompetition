@@ -31,12 +31,12 @@ contract DToken is ERC165, ReentrancyGuard {
     uint256 internal constant expScale = 1e18; // Scalar for math
     bool public constant isDToken = true; // for inspection
     address public immutable underlying; // underlying asset for the DToken
-    bytes32 private immutable _name; // token name metadata
-    bytes32 private immutable _symbol; // token symbol metadata
     ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
 
     /// STORAGE ///
 
+    string public name; // token name metadata
+    string public symbol; // token symbol metadata
     ILendtroller public lendtroller; // Current lending market controller
     InterestRateModel public interestRateModel; // Current Interest Rate Model
     uint256 public accrualBlockTimestamp; // last accrued interest timestamp
@@ -190,13 +190,11 @@ contract DToken is ERC165, ReentrancyGuard {
         );
 
         underlying = underlying_;
-        _name = bytes32(
-            abi.encodePacked(
-                "Curvance interest bearing ",
-                IERC20(underlying_).name()
-            )
+        name = string.concat(
+            "Curvance interest bearing ",
+            IERC20(underlying_).name()
         );
-        _symbol = bytes32(abi.encodePacked("c", IERC20(underlying_).symbol()));
+        symbol = string.concat("c", IERC20(underlying_).symbol());
 
         // Sanity check underlying so that we know users will not need to mint anywhere close to exchange rate of 1e18
         require(
@@ -700,16 +698,6 @@ contract DToken is ERC165, ReentrancyGuard {
         return
             (borrowSnapshot.principal * borrowIndex) /
             borrowSnapshot.interestIndex;
-    }
-
-    /// @notice Returns the name of the token
-    function name() public view returns (string memory) {
-        return string(abi.encodePacked(_name));
-    }
-
-    /// @notice Returns the symbol of the token
-    function symbol() public view returns (string memory) {
-        return string(abi.encodePacked(_symbol));
     }
 
     /// @notice Returns the decimals of the token

@@ -27,15 +27,15 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
     /// @notice Underlying asset for the CToken
     address public immutable underlying;
 
-    /// @notice Token name metadata
-    bytes32 private immutable _name;
-
-    /// @notice Token symbol metadata
-    bytes32 private immutable _symbol;
-
     ICentralRegistry public immutable centralRegistry;
 
     /// STORAGE ///
+
+    /// @notice Token name metadata
+    string public name;
+
+    /// @notice Token symbol metadata
+    string public symbol;
 
     /// @notice Current lending market controller
     ILendtroller public lendtroller;
@@ -141,8 +141,8 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
 
         underlying = underlying_;
         vault = BasePositionVault(vault_);
-        _name = bytes32(abi.encodePacked("Curvance collateralized ", name_));
-        _symbol = bytes32(abi.encodePacked("c", symbol_));
+        name = string.concat("Curvance collateralized ", name_);
+        symbol = string.concat("c", symbol_);
 
         // Sanity check underlying so that we know users will not need to
         // mint anywhere close to exchange rate of 1e18
@@ -489,16 +489,6 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
     // @dev Returns the balance of tokens for `account`
     function balanceOf(address account) public view returns (uint256) {
         return _accountBalance[account];
-    }
-
-    /// @notice Returns the name of the token
-    function name() public view returns (string memory) {
-        return string(abi.encodePacked(_name));
-    }
-
-    /// @notice Returns the symbol of the token
-    function symbol() public view returns (string memory) {
-        return string(abi.encodePacked(_symbol));
     }
 
     /// @notice Returns the decimals of the token
