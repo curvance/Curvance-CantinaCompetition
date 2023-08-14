@@ -157,7 +157,12 @@ contract DToken is ERC165, ReentrancyGuard {
         }
 
         // Ensure that lendtroller parameter is a lendtroller
-        if (!ILendtroller(lendtroller_).isLendtroller()) {
+        if (
+            !ERC165Checker.supportsInterface(
+                address(lendtroller_),
+                type(ILendtroller).interfaceId
+            )
+        ) {
             revert DToken_ValidationFailed();
         }
 
@@ -542,8 +547,13 @@ contract DToken is ERC165, ReentrancyGuard {
     function setLendtroller(
         ILendtroller newLendtroller
     ) external onlyElevatedPermissions {
-        // Ensure we are switching to an actual lendtroller
-        if (!newLendtroller.isLendtroller()) {
+        // Ensure that lendtroller parameter is a lendtroller
+        if (
+            !ERC165Checker.supportsInterface(
+                address(newLendtroller),
+                type(ILendtroller).interfaceId
+            )
+        ) {
             revert DToken_ValidationFailed();
         }
 

@@ -4,7 +4,6 @@ pragma solidity ^0.8.17;
 import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 
 interface ILendtroller {
-
     function mintAllowed(address mToken, address minter) external;
 
     function redeemAllowed(
@@ -74,8 +73,6 @@ interface ILendtroller {
     function positionFolding() external view returns (address);
 
     function gaugePool() external view returns (address);
-
-    function isLendtroller() external view returns (bool);
 
     function getAccountPosition(
         address account
