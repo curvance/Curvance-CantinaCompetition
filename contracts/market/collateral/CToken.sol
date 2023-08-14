@@ -83,7 +83,9 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
     error CToken_UnauthorizedCaller();
     error CToken_CannotEqualZero();
     error CToken_TransferNotAllowed();
-    error CToken_ValidationFailed();
+    error CToken_CentralRegistryIsInvalid();
+    error CToken_LendtrollerIsNotLendingMarket();
+    error CToken_LendtrollerIsInvalid();
 
     /// MODIFIERS ///
 
@@ -125,13 +127,13 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
                 type(ICentralRegistry).interfaceId
             )
         ) {
-            revert CToken_ValidationFailed();
+            revert CToken_CentralRegistryIsInvalid();
         }
 
         centralRegistry = centralRegistry_;
 
         if (!centralRegistry_.isLendingMarket(lendtroller_)) {
-            revert CToken_ValidationFailed();
+            revert CToken_LendtrollerIsNotLendingMarket();
         }
 
         // Set the lendtroller
@@ -553,7 +555,7 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
                 type(ILendtroller).interfaceId
             )
         ) {
-            revert CToken_ValidationFailed();
+            revert CToken_LendtrollerIsInvalid();
         }
 
         // Cache the current lendtroller to save gas
