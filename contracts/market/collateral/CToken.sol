@@ -80,12 +80,12 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
 
     /// ERRORS ///
 
-    error CToken_UnauthorizedCaller();
-    error CToken_CannotEqualZero();
-    error CToken_TransferNotAllowed();
-    error CToken_CentralRegistryIsInvalid();
-    error CToken_LendtrollerIsNotLendingMarket();
-    error CToken_LendtrollerIsInvalid();
+    error CToken__UnauthorizedCaller();
+    error CToken__CannotEqualZero();
+    error CToken__TransferNotAllowed();
+    error CToken__CentralRegistryIsInvalid();
+    error CToken__LendtrollerIsNotLendingMarket();
+    error CToken__LendtrollerIsInvalid();
 
     /// MODIFIERS ///
 
@@ -127,13 +127,13 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
                 type(ICentralRegistry).interfaceId
             )
         ) {
-            revert CToken_CentralRegistryIsInvalid();
+            revert CToken__CentralRegistryIsInvalid();
         }
 
         centralRegistry = centralRegistry_;
 
         if (!centralRegistry_.isLendingMarket(lendtroller_)) {
-            revert CToken_LendtrollerIsNotLendingMarket();
+            revert CToken__LendtrollerIsNotLendingMarket();
         }
 
         // Set the lendtroller
@@ -161,7 +161,7 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
         address initializer
     ) external nonReentrant returns (bool) {
         if (msg.sender != address(lendtroller)) {
-            revert CToken_UnauthorizedCaller();
+            revert CToken__UnauthorizedCaller();
         }
 
         uint256 mintAmount = 42069;
@@ -312,7 +312,7 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
         bytes calldata params
     ) external nonReentrant {
         if (msg.sender != lendtroller.positionFolding()) {
-            revert CToken_UnauthorizedCaller();
+            revert CToken__UnauthorizedCaller();
         }
 
         _redeem(
@@ -555,7 +555,7 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
                 type(ILendtroller).interfaceId
             )
         ) {
-            revert CToken_LendtrollerIsInvalid();
+            revert CToken__LendtrollerIsInvalid();
         }
 
         // Cache the current lendtroller to save gas
@@ -581,7 +581,7 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
     ) internal {
         // Do not allow self-transfers
         if (from == to) {
-            revert CToken_TransferNotAllowed();
+            revert CToken__TransferNotAllowed();
         }
 
         // Fails if transfer not allowed
@@ -667,7 +667,7 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
     ) internal {
         // Validate redemption parameters
         if (redeemTokens == 0 && redeemAmount > 0) {
-            revert CToken_CannotEqualZero();
+            revert CToken__CannotEqualZero();
         }
 
         // Need to shift bits by timestamp length to make sure we do
@@ -712,7 +712,7 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
         // Fails if borrower = liquidator
         assembly {
             if eq(borrower, liquidator) {
-                // revert with CToken_UnauthorizedCaller()
+                // revert with CToken__UnauthorizedCaller()
                 mstore(0x00, 0xb856b3fe)
                 revert(0x1c, 0x04)
             }
