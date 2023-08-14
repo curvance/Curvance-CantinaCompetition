@@ -104,13 +104,10 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
         address cTokenCollateral,
         uint256 seizeTokens
     );
-    event NewLendtroller(
-        ILendtroller oldLendtroller,
-        ILendtroller newLendtroller
-    );
+    event NewLendtroller(address oldLendtroller, address newLendtroller);
     event NewMarketInterestRateModel(
-        InterestRateModel oldInterestRateModel,
-        InterestRateModel newInterestRateModel
+        address oldInterestRateModel,
+        address newInterestRateModel
     );
     event ReservesAdded(
         address daoAddress,
@@ -158,7 +155,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
         ICentralRegistry centralRegistry_,
         address underlying_,
         address lendtroller_,
-        InterestRateModel interestRateModel_
+        address interestRateModel_
     ) {
         if (
             !ERC165Checker.supportsInterface(
@@ -175,38 +172,13 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
             revert DToken__ValidationFailed();
         }
 
-        // Ensure that lendtroller parameter is a lendtroller
-        if (
-            !ERC165Checker.supportsInterface(
-                address(lendtroller_),
-                type(ILendtroller).interfaceId
-            )
-        ) {
-            revert DToken__ValidationFailed();
-        }
-
-        // Set the lendtroller
-        lendtroller = ILendtroller(lendtroller_);
-        emit NewLendtroller(
-            ILendtroller(address(0)),
-            ILendtroller(lendtroller_)
-        );
+        _setLendtroller(lendtroller_);
 
         // Initialize timestamp and borrow index (timestamp mocks depend on lendtroller being set)
         accrualBlockTimestamp = block.timestamp;
         borrowIndex = expScale;
 
-        // Ensure that interestRateModel_ parameter is an interest rate model
-        if (!interestRateModel_.isInterestRateModel()) {
-            revert DToken__ValidationFailed();
-        }
-
-        // Set Interest Rate Model
-        interestRateModel = interestRateModel_;
-        emit NewMarketInterestRateModel(
-            InterestRateModel(address(0)),
-            interestRateModel_
-        );
+        _setInterestRateModel(interestRateModel_);
 
         underlying = underlying_;
         name = string.concat(
@@ -565,50 +537,20 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
     /// @dev Admin function to set a new lendtroller
     /// @param newLendtroller New lendtroller address
     function setLendtroller(
-        ILendtroller newLendtroller
+        address newLendtroller
     ) external onlyElevatedPermissions {
-        // Ensure that lendtroller parameter is a lendtroller
-        if (
-            !ERC165Checker.supportsInterface(
-                address(newLendtroller),
-                type(ILendtroller).interfaceId
-            )
-        ) {
-            revert DToken__ValidationFailed();
-        }
-
-        // Cache the current lendtroller to save gas
-        ILendtroller oldLendtroller = lendtroller;
-
-        // Set new lendtroller
-        lendtroller = newLendtroller;
-
-        emit NewLendtroller(oldLendtroller, newLendtroller);
+        _setLendtroller(newLendtroller);
     }
 
     /// @notice accrues interest and updates the interest rate model
     /// @dev Admin function to accrue interest and update the interest rate model
     /// @param newInterestRateModel the new interest rate model to use
     function setInterestRateModel(
-        InterestRateModel newInterestRateModel
+        address newInterestRateModel
     ) external onlyElevatedPermissions {
         accrueInterest();
 
-        // Ensure we are switching to an actual Interest Rate Model
-        if (!newInterestRateModel.isInterestRateModel()) {
-            revert DToken__ValidationFailed();
-        }
-
-        // Cache the current interest rate model to save gas
-        InterestRateModel oldInterestRateModel = interestRateModel;
-
-        // Set new interest rate model
-        interestRateModel = newInterestRateModel;
-
-        emit NewMarketInterestRateModel(
-            oldInterestRateModel,
-            newInterestRateModel
-        );
+        _setInterestRateModel(newInterestRateModel);
     }
 
     /// @notice Get the underlying balance of the `account`
@@ -692,6 +634,8 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
         accrueInterest();
         return borrowBalanceStored(account);
     }
+
+    /// PUBLIC FUNCTINOS ///
 
     /// @notice Get the token balance of the `account`
     /// @param account The address of the account to query
@@ -831,6 +775,52 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
             interestAccumulated,
             borrowIndexNew,
             totalBorrowsNew
+        );
+    }
+
+    /// INTERNAL FUNCTIONS ///
+
+    /// @notice Sets a new lendtroller for the market
+    /// @dev Admin function to set a new lendtroller
+    /// @param newLendtroller New lendtroller address
+    function _setLendtroller(address newLendtroller) internal {
+        // Ensure that lendtroller parameter is a lendtroller
+        if (
+            !ERC165Checker.supportsInterface(
+                newLendtroller,
+                type(ILendtroller).interfaceId
+            )
+        ) {
+            revert DToken__ValidationFailed();
+        }
+
+        // Cache the current lendtroller to save gas
+        address oldLendtroller = address(lendtroller);
+
+        // Set new lendtroller
+        lendtroller = ILendtroller(newLendtroller);
+
+        emit NewLendtroller(oldLendtroller, newLendtroller);
+    }
+
+    /// @notice accrues interest and updates the interest rate model
+    /// @dev Admin function to accrue interest and update the interest rate model
+    /// @param newInterestRateModel the new interest rate model to use
+    function _setInterestRateModel(address newInterestRateModel) internal {
+        // Ensure we are switching to an actual Interest Rate Model
+        if (!InterestRateModel(newInterestRateModel).isInterestRateModel()) {
+            revert DToken__ValidationFailed();
+        }
+
+        // Cache the current interest rate model to save gas
+        address oldInterestRateModel = address(interestRateModel);
+
+        // Set new interest rate model
+        interestRateModel = InterestRateModel(newInterestRateModel);
+
+        emit NewMarketInterestRateModel(
+            oldInterestRateModel,
+            newInterestRateModel
         );
     }
 

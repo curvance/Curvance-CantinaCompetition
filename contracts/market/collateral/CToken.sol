@@ -152,6 +152,8 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
         );
     }
 
+    /// EXTERNAL FUNCTIONS ///
+
     /// @notice Used to start a CToken market, executed via lendtroller
     /// @dev this initial mint is a failsafe against the empty market exploit
     ///      although we protect against it in many ways,
