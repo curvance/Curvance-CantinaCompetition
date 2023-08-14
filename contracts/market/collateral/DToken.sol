@@ -128,6 +128,9 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
     error DToken__TransferNotAllowed();
     error DToken__CashNotAvailable();
     error DToken__ValidationFailed();
+    error DToken__CentralRegistryIsInvalid();
+    error DToken__LendtrollerIsInvalid();
+    error DToken__InterestRateModelIsInvalid();
 
     /// MODIFIERS ///
 
@@ -163,7 +166,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
                 type(ICentralRegistry).interfaceId
             )
         ) {
-            revert DToken__ValidationFailed();
+            revert DToken__CentralRegistryIsInvalid();
         }
 
         centralRegistry = centralRegistry_;
@@ -206,7 +209,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
         }
 
         uint256 mintAmount = 42069;
-        uint256 actualMintAmount = doTransferIn(initializer, mintAmount);
+        uint256 actualMintAmount = _doTransferIn(initializer, mintAmount);
         // We do not need to calculate exchange rate here as we will always be the initial depositer
         // These values should always be zero but we will add them just incase we are re-initiating a market
         totalSupply = totalSupply + actualMintAmount;
@@ -240,7 +243,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
         address to,
         uint256 amount
     ) external override nonReentrant returns (bool) {
-        transferTokens(msg.sender, msg.sender, to, amount);
+        _transferTokens(msg.sender, msg.sender, to, amount);
         return true;
     }
 
@@ -254,7 +257,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
         address to,
         uint256 amount
     ) external override nonReentrant returns (bool) {
-        transferTokens(msg.sender, from, to, amount);
+        _transferTokens(msg.sender, from, to, amount);
         return true;
     }
 
@@ -438,7 +441,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
         accrueInterest();
 
         // On success, the market will deposit `addAmount` to the market adding more cash
-        totalReserves = totalReserves + doTransferIn(msg.sender, addAmount);
+        totalReserves = totalReserves + _doTransferIn(msg.sender, addAmount);
         // Query current DAO operating address
         address daoAddress = centralRegistry.daoAddress();
         // Deposit new reserves into gauge
@@ -472,8 +475,8 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
             reduceAmount
         );
 
-        // doTransferOut reverts if anything goes wrong
-        doTransferOut(daoAddress, reduceAmount);
+        // _doTransferOut reverts if anything goes wrong
+        _doTransferOut(daoAddress, reduceAmount);
 
         emit ReservesReduced(daoAddress, reduceAmount, totalReserves);
     }
@@ -791,7 +794,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
                 type(ILendtroller).interfaceId
             )
         ) {
-            revert DToken__ValidationFailed();
+            revert DToken__LendtrollerIsInvalid();
         }
 
         // Cache the current lendtroller to save gas
@@ -809,7 +812,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
     function _setInterestRateModel(address newInterestRateModel) internal {
         // Ensure we are switching to an actual Interest Rate Model
         if (!InterestRateModel(newInterestRateModel).isInterestRateModel()) {
-            revert DToken__ValidationFailed();
+            revert DToken__InterestRateModelIsInvalid();
         }
 
         // Cache the current interest rate model to save gas
@@ -830,7 +833,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
     /// @param from The address of the source account
     /// @param to The address of the destination account
     /// @param tokens The number of tokens to transfer
-    function transferTokens(
+    function _transferTokens(
         address spender,
         address from,
         address to,
@@ -884,7 +887,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
         uint256 exchangeRate = exchangeRateStored();
         // The function returns the amount actually transferred, in case of a fee
         // On success, the dToken holds an additional `actualMintAmount` of cash
-        uint256 actualMintAmount = doTransferIn(user, mintAmount);
+        uint256 actualMintAmount = _doTransferIn(user, mintAmount);
 
         // We get the current exchange rate and calculate the number of dTokens to be minted:
         //  mintTokens = actualMintAmount / exchangeRate
@@ -937,9 +940,9 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
         // emit events on gauge pool
         GaugePool(gaugePool()).withdraw(address(this), redeemer, redeemTokens);
 
-        // We invoke doTransferOut for the redeemer and the redeemAmount.
+        // We invoke _doTransferOut for the redeemer and the redeemAmount.
         // On success, the dToken has redeemAmount less of cash.
-        doTransferOut(recipient, redeemAmount);
+        _doTransferOut(recipient, redeemAmount);
 
         // We emit a Transfer event, and a Redeem event
         emit Transfer(redeemer, address(this), redeemTokens);
@@ -965,8 +968,8 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
         accountBorrows[borrower].interestIndex = borrowIndex;
         totalBorrows = totalBorrows + borrowAmount;
 
-        // doTransferOut reverts if anything goes wrong, since we can't be sure if side effects occurred.
-        doTransferOut(recipient, borrowAmount);
+        // _doTransferOut reverts if anything goes wrong, since we can't be sure if side effects occurred.
+        _doTransferOut(recipient, borrowAmount);
 
         // We emit a Borrow event
         emit Borrow(borrower, borrowAmount);
@@ -996,10 +999,10 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
             ? accountBorrowsPrev
             : repayAmount;
 
-        // We call doTransferIn for the payer and the repayAmount
+        // We call _doTransferIn for the payer and the repayAmount
         // Note: On success, the dToken holds an additional repayAmount of cash.
         //       it returns the amount actually transferred, in case of a fee.
-        uint256 actualRepayAmount = doTransferIn(payer, repayAmountFinal);
+        uint256 actualRepayAmount = _doTransferIn(payer, repayAmountFinal);
 
         // We calculate the new borrower and total borrow balances, failing on underflow:
         accountBorrows[borrower].principal =
@@ -1084,7 +1087,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
     /// @param from Address of the sender of the tokens
     /// @param amount Amount of tokens to transfer in
     /// @return Returns the amount transferred
-    function doTransferIn(
+    function _doTransferIn(
         address from,
         uint256 amount
     ) internal returns (uint256) {
@@ -1104,7 +1107,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
     /// @dev This function uses the SafeTransferLib to safely perform the transfer.
     /// @param to Address receiving the token transfer
     /// @param amount Amount of tokens to transfer out
-    function doTransferOut(address to, uint256 amount) internal {
+    function _doTransferOut(address to, uint256 amount) internal {
         /// SafeTransferLib will handle reversion from insufficient cash held
         SafeTransferLib.safeTransfer(underlying, to, amount);
     }
