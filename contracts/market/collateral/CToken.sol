@@ -15,7 +15,7 @@ import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { IMToken, accountSnapshot } from "contracts/interfaces/market/IMToken.sol";
 
 /// @title Curvance's Collateral Token Contract
-contract CToken is ERC165, ReentrancyGuard {
+contract CToken is IERC20, ERC165, ReentrancyGuard {
     /// CONSTANTS ///
 
     /// @notice Scalar for math
@@ -66,10 +66,7 @@ contract CToken is ERC165, ReentrancyGuard {
         address minter
     );
     event Redeem(address redeemer, uint256 redeemAmount, uint256 redeemTokens);
-    event NewLendtroller(
-        ILendtroller oldLendtroller,
-        ILendtroller newLendtroller
-    );
+    event NewLendtroller(address oldLendtroller, address newLendtroller);
     event ReservesAdded(
         address daoAddress,
         uint256 addAmount,
@@ -79,12 +76,6 @@ contract CToken is ERC165, ReentrancyGuard {
         address daoAddress,
         uint256 reduceAmount,
         uint256 newTotalReserves
-    );
-    event Transfer(address indexed from, address indexed to, uint256 amount);
-    event Approval(
-        address indexed owner,
-        address indexed spender,
-        uint256 amount
     );
 
     /// ERRORS ///
@@ -138,16 +129,6 @@ contract CToken is ERC165, ReentrancyGuard {
         }
 
         centralRegistry = centralRegistry_;
-
-        // Ensure that lendtroller parameter is a lendtroller
-        if (
-            !ERC165Checker.supportsInterface(
-                address(lendtroller_),
-                type(ILendtroller).interfaceId
-            )
-        ) {
-            revert CToken_ValidationFailed();
-        }
 
         if (!centralRegistry_.isLendingMarket(lendtroller_)) {
             revert CToken_ValidationFailed();
@@ -441,7 +422,7 @@ contract CToken is ERC165, ReentrancyGuard {
     /// @dev Admin function to set a new lendtroller
     /// @param newLendtroller New lendtroller address
     function setLendtroller(
-        ILendtroller newLendtroller
+        address newLendtroller
     ) external onlyElevatedPermissions {
         _setLendtroller(newLendtroller);
     }
@@ -564,11 +545,11 @@ contract CToken is ERC165, ReentrancyGuard {
 
     /// @notice Sets a new lendtroller for the market
     /// @param newLendtroller New lendtroller address
-    function _setLendtroller(ILendtroller newLendtroller) internal {
+    function _setLendtroller(address newLendtroller) internal {
         // Ensure that lendtroller parameter is a lendtroller
         if (
             !ERC165Checker.supportsInterface(
-                address(newLendtroller),
+                newLendtroller,
                 type(ILendtroller).interfaceId
             )
         ) {
@@ -576,10 +557,10 @@ contract CToken is ERC165, ReentrancyGuard {
         }
 
         // Cache the current lendtroller to save gas
-        ILendtroller oldLendtroller = lendtroller;
+        address oldLendtroller = address(lendtroller);
 
         // Set new lendtroller
-        lendtroller = newLendtroller;
+        lendtroller = ILendtroller(newLendtroller);
 
         emit NewLendtroller(oldLendtroller, newLendtroller);
     }
