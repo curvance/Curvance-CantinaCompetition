@@ -28,22 +28,46 @@ contract DToken is ERC165, ReentrancyGuard {
 
     /// CONSTANTS ///
 
-    uint256 internal constant expScale = 1e18; // Scalar for math
-    bool public constant isDToken = true; // for inspection
-    address public immutable underlying; // underlying asset for the DToken
-    ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
+    /// @notice Scalar for math
+    uint256 internal constant expScale = 1e18;
+
+    /// @notice for inspection
+    bool public constant isDToken = true;
+
+    /// @notice underlying asset for the DToken
+    address public immutable underlying;
+
+    /// @notice Curvance DAO hub
+    ICentralRegistry public immutable centralRegistry;
 
     /// STORAGE ///
 
-    string public name; // token name metadata
-    string public symbol; // token symbol metadata
-    ILendtroller public lendtroller; // Current lending market controller
-    InterestRateModel public interestRateModel; // Current Interest Rate Model
-    uint256 public accrualBlockTimestamp; // last accrued interest timestamp
-    uint256 public borrowIndex; // Multiplier ratio of total interest accrued
-    uint256 public totalBorrows; // Total outstanding borrows of underlying
-    uint256 public totalReserves; // Total protocol reserves of underlying
-    uint256 public totalSupply; // Total number of tokens in circulation
+    /// @notice token name metadata
+    string public name;
+
+    /// @notice token symbol metadata
+    string public symbol;
+
+    /// @notice Current lending market controller
+    ILendtroller public lendtroller;
+
+    /// @notice Current Interest Rate Model
+    InterestRateModel public interestRateModel;
+
+    /// @notice last accrued interest timestamp
+    uint256 public accrualBlockTimestamp;
+
+    /// @notice Multiplier ratio of total interest accrued
+    uint256 public borrowIndex;
+
+    /// @notice Total outstanding borrows of underlying
+    uint256 public totalBorrows;
+
+    /// @notice Total protocol reserves of underlying
+    uint256 public totalReserves;
+
+    /// @notice Total number of tokens in circulation
+    uint256 public totalSupply;
 
     // account => token balance
     mapping(address => uint256) internal _accountBalance;
