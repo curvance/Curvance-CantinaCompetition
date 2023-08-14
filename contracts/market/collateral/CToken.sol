@@ -567,12 +567,12 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
     /// @param spender The address of the account performing the transfer
     /// @param from The address of the source account
     /// @param to The address of the destination account
-    /// @param tokens The number of tokens to transfer
+    /// @param amount The number of tokens to transfer
     function _transferTokens(
         address spender,
         address from,
         address to,
-        uint256 tokens
+        uint256 amount
     ) internal {
         // Do not allow self-transfers
         if (from == to) {
@@ -580,7 +580,7 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
         }
 
         // Fails if transfer not allowed
-        lendtroller.transferAllowed(address(this), from, to, tokens);
+        lendtroller.transferAllowed(address(this), from, to, amount);
 
         // Get the allowance, if the spender is not the `from` address
         if (spender != from) {
@@ -588,25 +588,25 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
             // with underflow check
             transferAllowances[from][spender] =
                 transferAllowances[from][spender] -
-                tokens;
+                amount;
         }
 
         // Update token balances
         // shift token value by timestamp length bit length so we can check
         // for underflow
-        _accountBalance[from] = _accountBalance[from] - tokens;
+        _accountBalance[from] = _accountBalance[from] - amount;
         // We know that from balance wont overflow due to underflow check above
         unchecked {
-            _accountBalance[to] = _accountBalance[to] + tokens;
+            _accountBalance[to] = _accountBalance[to] + amount;
         }
 
         // emit events on gauge pool
         address _gaugePool = gaugePool();
-        GaugePool(_gaugePool).withdraw(address(this), from, tokens);
-        GaugePool(_gaugePool).deposit(address(this), to, tokens);
+        GaugePool(_gaugePool).withdraw(address(this), from, amount);
+        GaugePool(_gaugePool).deposit(address(this), to, amount);
 
         // We emit a Transfer event
-        emit Transfer(from, to, tokens);
+        emit Transfer(from, to, amount);
     }
 
     /// @notice User supplies assets into the market and receives cTokens in exchange

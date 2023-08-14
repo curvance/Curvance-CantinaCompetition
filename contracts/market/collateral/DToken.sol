@@ -71,6 +71,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
 
     // account => token balance
     mapping(address => uint256) internal _accountBalance;
+
     // account => spender => approved amount
     mapping(address => mapping(address => uint256))
         internal transferAllowances;
@@ -124,12 +125,12 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
 
     /// ERRORS ///
 
-    error DToken_UnauthorizedCaller();
-    error DToken_CannotEqualZero();
-    error DToken_ExcessiveValue();
-    error DToken_TransferNotAllowed();
-    error DToken_CashNotAvailable();
-    error DToken_ValidationFailed();
+    error DToken__UnauthorizedCaller();
+    error DToken__CannotEqualZero();
+    error DToken__ExcessiveValue();
+    error DToken__TransferNotAllowed();
+    error DToken__CashNotAvailable();
+    error DToken__ValidationFailed();
 
     /// MODIFIERS ///
 
@@ -165,13 +166,13 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
                 type(ICentralRegistry).interfaceId
             )
         ) {
-            revert DToken_ValidationFailed();
+            revert DToken__ValidationFailed();
         }
 
         centralRegistry = centralRegistry_;
 
         if (!centralRegistry_.isLendingMarket(lendtroller_)) {
-            revert DToken_ValidationFailed();
+            revert DToken__ValidationFailed();
         }
 
         // Ensure that lendtroller parameter is a lendtroller
@@ -181,7 +182,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
                 type(ILendtroller).interfaceId
             )
         ) {
-            revert DToken_ValidationFailed();
+            revert DToken__ValidationFailed();
         }
 
         // Set the lendtroller
@@ -197,7 +198,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
 
         // Ensure that interestRateModel_ parameter is an interest rate model
         if (!interestRateModel_.isInterestRateModel()) {
-            revert DToken_ValidationFailed();
+            revert DToken__ValidationFailed();
         }
 
         // Set Interest Rate Model
@@ -229,7 +230,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
         address initializer
     ) external nonReentrant returns (bool) {
         if (msg.sender != address(lendtroller)) {
-            revert DToken_UnauthorizedCaller();
+            revert DToken__UnauthorizedCaller();
         }
 
         uint256 mintAmount = 42069;
@@ -309,7 +310,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
         bytes calldata params
     ) external nonReentrant {
         if (msg.sender != lendtroller.positionFolding()) {
-            revert DToken_UnauthorizedCaller();
+            revert DToken__UnauthorizedCaller();
         }
 
         accrueInterest();
@@ -342,7 +343,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
         uint256 repayAmount
     ) external nonReentrant {
         if (msg.sender != lendtroller.positionFolding()) {
-            revert DToken_UnauthorizedCaller();
+            revert DToken__UnauthorizedCaller();
         }
 
         accrueInterest();
@@ -408,7 +409,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
         bytes calldata params
     ) external nonReentrant {
         if (msg.sender != lendtroller.positionFolding()) {
-            revert DToken_UnauthorizedCaller();
+            revert DToken__UnauthorizedCaller();
         }
 
         accrueInterest();
@@ -484,7 +485,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
 
         // Make sure we have enough cash to cover withdrawal
         if (getCash() < reduceAmount) {
-            revert DToken_CashNotAvailable();
+            revert DToken__CashNotAvailable();
         }
 
         // Need underflow check to check if we have sufficient totalReserves
@@ -573,7 +574,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
                 type(ILendtroller).interfaceId
             )
         ) {
-            revert DToken_ValidationFailed();
+            revert DToken__ValidationFailed();
         }
 
         // Cache the current lendtroller to save gas
@@ -595,7 +596,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
 
         // Ensure we are switching to an actual Interest Rate Model
         if (!newInterestRateModel.isInterestRateModel()) {
-            revert DToken_ValidationFailed();
+            revert DToken__ValidationFailed();
         }
 
         // Cache the current interest rate model to save gas
@@ -847,7 +848,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
     ) internal {
         // Do not allow self-transfers
         if (from == to) {
-            revert DToken_TransferNotAllowed();
+            revert DToken__TransferNotAllowed();
         }
 
         // Fails if transfer not allowed
@@ -929,12 +930,12 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
     ) internal {
         // Check if we have enough cash to support the redeem
         if (getCash() < redeemAmount) {
-            revert DToken_CashNotAvailable();
+            revert DToken__CashNotAvailable();
         }
 
         // Validate redemption parameters
         if (redeemTokens == 0 && redeemAmount > 0) {
-            revert DToken_CannotEqualZero();
+            revert DToken__CannotEqualZero();
         }
 
         _accountBalance[redeemer] = _accountBalance[redeemer] - redeemTokens;
@@ -964,7 +965,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
     ) internal {
         // Check if we have enough cash to support the borrow
         if (getCash() < borrowAmount) {
-            revert DToken_CashNotAvailable();
+            revert DToken__CashNotAvailable();
         }
 
         // We calculate the new borrower and total borrow balances, failing on overflow:
@@ -1038,7 +1039,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
         // Fail if borrower = liquidator
         assembly {
             if eq(borrower, liquidator) {
-                // revert with DToken_UnauthorizedCaller()
+                // revert with DToken__UnauthorizedCaller()
                 mstore(0x00, 0xefeae624)
                 revert(0x1c, 0x04)
             }
@@ -1046,7 +1047,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
 
         /// The MToken must be a collateral token E.G. tokenType == 1
         if (mTokenCollateral.tokenType() == 0) {
-            revert DToken_ValidationFailed();
+            revert DToken__ValidationFailed();
         }
 
         // Fail if liquidate not allowed,
@@ -1070,7 +1071,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
 
         // Revert if borrower collateral token balance < seizeTokens
         if (mTokenCollateral.balanceOf(borrower) < seizeTokens) {
-            revert DToken_ExcessiveValue();
+            revert DToken__ExcessiveValue();
         }
 
         // We check above that the mToken must be a collateral token,
