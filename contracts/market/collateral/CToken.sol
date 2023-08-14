@@ -224,7 +224,7 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
     function transfer(
         address to,
         uint256 amount
-    ) external nonReentrant returns (bool) {
+    ) external override nonReentrant returns (bool) {
         _transferTokens(msg.sender, msg.sender, to, amount);
         return true;
     }
@@ -238,7 +238,7 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
         address from,
         address to,
         uint256 amount
-    ) external nonReentrant returns (bool) {
+    ) external override nonReentrant returns (bool) {
         _transferTokens(msg.sender, from, to, amount);
         return true;
     }
@@ -377,7 +377,10 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
 
     /// @dev Sets `amount` as the allowance of `spender` over the caller's tokens.
     ///      Emits a {Approval} event.
-    function approve(address spender, uint256 amount) external returns (bool) {
+    function approve(
+        address spender,
+        uint256 amount
+    ) external override returns (bool) {
         transferAllowances[msg.sender][spender] = amount;
 
         emit Approval(msg.sender, spender, amount);
@@ -390,7 +393,7 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
     function allowance(
         address owner,
         address spender
-    ) external view returns (uint256) {
+    ) external view override returns (uint256) {
         return transferAllowances[owner][spender];
     }
 
@@ -487,14 +490,16 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
     /// @param account The address of the account to query
     /// @return balance The number of tokens owned by `account`
     // @dev Returns the balance of tokens for `account`
-    function balanceOf(address account) public view returns (uint256) {
+    function balanceOf(
+        address account
+    ) public view override returns (uint256) {
         return _accountBalance[account];
     }
 
     /// @notice Returns the decimals of the token
     /// @dev We pull directly from underlying incase its a proxy contract
     ///      and changes decimals on us
-    function decimals() public view returns (uint8) {
+    function decimals() public view override returns (uint8) {
         return IERC20(underlying).decimals();
     }
 

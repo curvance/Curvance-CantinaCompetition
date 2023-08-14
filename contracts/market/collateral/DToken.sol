@@ -15,7 +15,7 @@ import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { IMToken, accountSnapshot } from "contracts/interfaces/market/IMToken.sol";
 
 /// @title Curvance's Debt Token Contract
-contract DToken is ERC165, ReentrancyGuard {
+contract DToken is IERC20, ERC165, ReentrancyGuard {
     /// TYPES ///
 
     struct BorrowSnapshot {
@@ -120,12 +120,6 @@ contract DToken is ERC165, ReentrancyGuard {
         address daoAddress,
         uint256 reduceAmount,
         uint256 newTotalReserves
-    );
-    event Transfer(address indexed from, address indexed to, uint256 amount);
-    event Approval(
-        address indexed owner,
-        address indexed spender,
-        uint256 amount
     );
 
     /// ERRORS ///
@@ -272,7 +266,7 @@ contract DToken is ERC165, ReentrancyGuard {
     function transfer(
         address to,
         uint256 amount
-    ) external nonReentrant returns (bool) {
+    ) external override nonReentrant returns (bool) {
         transferTokens(msg.sender, msg.sender, to, amount);
         return true;
     }
@@ -286,7 +280,7 @@ contract DToken is ERC165, ReentrancyGuard {
         address from,
         address to,
         uint256 amount
-    ) external nonReentrant returns (bool) {
+    ) external override nonReentrant returns (bool) {
         transferTokens(msg.sender, from, to, amount);
         return true;
     }
@@ -514,7 +508,10 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @dev Sets `amount` as the allowance of `spender` over the caller's tokens.
     ///
     /// Emits a {Approval} event.
-    function approve(address spender, uint256 amount) external returns (bool) {
+    function approve(
+        address spender,
+        uint256 amount
+    ) external override returns (bool) {
         transferAllowances[msg.sender][spender] = amount;
 
         emit Approval(msg.sender, spender, amount);
@@ -525,7 +522,7 @@ contract DToken is ERC165, ReentrancyGuard {
     function allowance(
         address owner,
         address spender
-    ) external view returns (uint256) {
+    ) external view override returns (uint256) {
         return transferAllowances[owner][spender];
     }
 
@@ -699,7 +696,9 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @param account The address of the account to query
     /// @return balance The number of tokens owned by `account`
     // @dev Returns the balance of tokens for `account`
-    function balanceOf(address account) public view returns (uint256) {
+    function balanceOf(
+        address account
+    ) public view override returns (uint256) {
         return _accountBalance[account];
     }
 
