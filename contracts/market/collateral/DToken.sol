@@ -877,6 +877,7 @@ contract DToken is ERC165, ReentrancyGuard {
         // We get the current exchange rate and calculate the number of dTokens to be minted:
         //  mintTokens = actualMintAmount / exchangeRate
         uint256 mintTokens = (actualMintAmount * expScale) / exchangeRate;
+
         unchecked {
             totalSupply = totalSupply + mintTokens;
             /// Calculate their new balance
