@@ -139,10 +139,6 @@ contract CToken is ERC165, ReentrancyGuard {
 
         centralRegistry = centralRegistry_;
 
-        if (!centralRegistry_.isLendingMarket(lendtroller_)) {
-            revert CToken_ValidationFailed();
-        }
-
         // Ensure that lendtroller parameter is a lendtroller
         if (
             !ERC165Checker.supportsInterface(
@@ -153,12 +149,12 @@ contract CToken is ERC165, ReentrancyGuard {
             revert CToken_ValidationFailed();
         }
 
+        if (!centralRegistry_.isLendingMarket(lendtroller_)) {
+            revert CToken_ValidationFailed();
+        }
+
         // Set the lendtroller
-        lendtroller = ILendtroller(lendtroller_);
-        emit NewLendtroller(
-            ILendtroller(address(0)),
-            ILendtroller(lendtroller_)
-        );
+        _setLendtroller(lendtroller_);
 
         underlying = underlying_;
         vault = BasePositionVault(vault_);
@@ -246,7 +242,7 @@ contract CToken is ERC165, ReentrancyGuard {
         address to,
         uint256 amount
     ) external nonReentrant returns (bool) {
-        transferTokens(msg.sender, msg.sender, to, amount);
+        _transferTokens(msg.sender, msg.sender, to, amount);
         return true;
     }
 
@@ -260,7 +256,7 @@ contract CToken is ERC165, ReentrancyGuard {
         address to,
         uint256 amount
     ) external nonReentrant returns (bool) {
-        transferTokens(msg.sender, from, to, amount);
+        _transferTokens(msg.sender, from, to, amount);
         return true;
     }
 
@@ -447,23 +443,7 @@ contract CToken is ERC165, ReentrancyGuard {
     function setLendtroller(
         ILendtroller newLendtroller
     ) external onlyElevatedPermissions {
-        // Ensure that lendtroller parameter is a lendtroller
-        if (
-            !ERC165Checker.supportsInterface(
-                address(newLendtroller),
-                type(ILendtroller).interfaceId
-            )
-        ) {
-            revert CToken_ValidationFailed();
-        }
-
-        // Cache the current lendtroller to save gas
-        ILendtroller oldLendtroller = lendtroller;
-
-        // Set new lendtroller
-        lendtroller = newLendtroller;
-
-        emit NewLendtroller(oldLendtroller, newLendtroller);
+        _setLendtroller(newLendtroller);
     }
 
     /// @notice Get the underlying balance of the `account`
@@ -517,6 +497,8 @@ contract CToken is ERC165, ReentrancyGuard {
     ) external nonReentrant {
         _seize(msg.sender, liquidator, borrower, seizeTokens);
     }
+
+    /// PUBLIC FUNCTIONS ///
 
     /// @notice Get the token balance of the `account`
     /// @param account The address of the account to query
@@ -578,13 +560,37 @@ contract CToken is ERC165, ReentrancyGuard {
             super.supportsInterface(interfaceId);
     }
 
+    /// INTERNAL FUNCTIONS ///
+
+    /// @notice Sets a new lendtroller for the market
+    /// @param newLendtroller New lendtroller address
+    function _setLendtroller(ILendtroller newLendtroller) internal {
+        // Ensure that lendtroller parameter is a lendtroller
+        if (
+            !ERC165Checker.supportsInterface(
+                address(newLendtroller),
+                type(ILendtroller).interfaceId
+            )
+        ) {
+            revert CToken_ValidationFailed();
+        }
+
+        // Cache the current lendtroller to save gas
+        ILendtroller oldLendtroller = lendtroller;
+
+        // Set new lendtroller
+        lendtroller = newLendtroller;
+
+        emit NewLendtroller(oldLendtroller, newLendtroller);
+    }
+
     /// @notice Transfer `tokens` tokens from `from` to `to` by `spender` internally
     /// @dev Called by both `transfer` and `transferFrom` internally
     /// @param spender The address of the account performing the transfer
     /// @param from The address of the source account
     /// @param to The address of the destination account
     /// @param tokens The number of tokens to transfer
-    function transferTokens(
+    function _transferTokens(
         address spender,
         address from,
         address to,
