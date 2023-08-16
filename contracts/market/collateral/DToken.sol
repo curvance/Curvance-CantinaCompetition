@@ -151,6 +151,8 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
         _;
     }
 
+    /// CONSTRUCTOR ///
+
     /// @param centralRegistry_ The address of Curvances Central Registry
     /// @param underlying_ The address of the underlying asset
     /// @param lendtroller_ The address of the Lendtroller
@@ -197,6 +199,8 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
             "DToken: Underlying token assumptions not met"
         );
     }
+
+    /// EXTERNAL FUNCTIONS ///
 
     /// @notice Used to start a DToken market, executed via lendtroller
     /// @dev  this initial mint is a failsafe against the empty market exploit
@@ -639,7 +643,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
         return borrowBalanceStored(account);
     }
 
-    /// PUBLIC FUNCTINOS ///
+    /// PUBLIC FUNCTIONS ///
 
     /// @notice Get the token balance of the `account`
     /// @param account The address of the account to query

@@ -105,7 +105,7 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
         _;
     }
 
-    /// Constructur ///
+    /// CONSTRUCTOR ///
 
     /// @param centralRegistry_ The address of Curvances Central Registry
     /// @param underlying_ The address of the underlying asset
