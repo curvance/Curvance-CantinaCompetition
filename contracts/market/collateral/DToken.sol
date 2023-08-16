@@ -129,6 +129,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
     error DToken__CashNotAvailable();
     error DToken__ValidationFailed();
     error DToken__CentralRegistryIsInvalid();
+    error DToken__LendtrollerIsNotLendingMarket();
     error DToken__LendtrollerIsInvalid();
     error DToken__InterestRateModelIsInvalid();
 
@@ -172,7 +173,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
         centralRegistry = centralRegistry_;
 
         if (!centralRegistry_.isLendingMarket(lendtroller_)) {
-            revert DToken__ValidationFailed();
+            revert DToken__LendtrollerIsNotLendingMarket();
         }
 
         _setLendtroller(lendtroller_);
