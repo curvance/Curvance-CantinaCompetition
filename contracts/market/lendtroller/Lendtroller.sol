@@ -1,14 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
+import { ERC165 } from "contracts/libraries/ERC165.sol";
 import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 import { IMToken, accountSnapshot } from "contracts/interfaces/market/IMToken.sol";
 
 /// @title Curvance Lendtroller
 /// @notice Manages risk within the lending markets
-contract Lendtroller {
+contract Lendtroller is ILendtroller, ERC165 {
     /// TYPES ///
 
     struct AccountData {
@@ -28,7 +30,6 @@ contract Lendtroller {
 
     /// CONSTANTS ///
 
-    bool public constant isLendtroller = true; // for introspection
     address public immutable gaugePool; // gaugePool contract address
     uint256 internal constant expScale = 1e18; // Scalar for math
     uint256 internal constant maxCloseFactor = 1e18; // 100% E.g close entire position
@@ -135,7 +136,7 @@ contract Lendtroller {
     /// @return A dynamic list with the assets the account has entered
     function getAccountAssets(
         address account
-    ) external view returns (IMToken[] memory) {
+    ) external view override returns (IMToken[] memory) {
         return accountAssets[account].assets;
     }
 
@@ -214,7 +215,7 @@ contract Lendtroller {
     /// @notice Checks if the account should be allowed to mint tokens
     ///         in the given market
     /// @param mToken The market to verify the mint against
-    function mintAllowed(address mToken, address) external view {
+    function mintAllowed(address mToken, address) external view override {
         if (mintPaused[mToken] == 2) {
             revert Lendtroller_Paused();
         }
@@ -234,7 +235,7 @@ contract Lendtroller {
         address mToken,
         address redeemer,
         uint256 redeemTokens
-    ) external view {
+    ) external view override {
         _redeemAllowed(mToken, redeemer, redeemTokens);
     }
 
@@ -247,7 +248,7 @@ contract Lendtroller {
         address mToken,
         address borrower,
         uint256 borrowAmount
-    ) external {
+    ) external override {
         require(
             marketTokenData[msg.sender].isListed,
             "Lendtroller: Caller not MToken"
@@ -261,7 +262,10 @@ contract Lendtroller {
     ///         in the given market
     /// @param mToken The market to verify the repay against
     /// @param account The account who will have their loan repaid
-    function repayAllowed(address mToken, address account) external view {
+    function repayAllowed(
+        address mToken,
+        address account
+    ) external view override {
         if (!marketTokenData[mToken].isListed) {
             revert Lendtroller_TokenNotListed();
         }
@@ -287,7 +291,7 @@ contract Lendtroller {
         address mTokenCollateral,
         address borrower,
         uint256 repayAmount
-    ) external view {
+    ) external view override {
         if (!marketTokenData[mTokenBorrowed].isListed) {
             revert Lendtroller_TokenNotListed();
         }
@@ -328,7 +332,7 @@ contract Lendtroller {
         address mTokenBorrowed,
         address,
         address
-    ) external view {
+    ) external view override {
         if (seizePaused == 2) {
             revert Lendtroller_Paused();
         }
@@ -358,7 +362,7 @@ contract Lendtroller {
         address from,
         address,
         uint256 transferTokens
-    ) external view {
+    ) external view override {
         if (transferPaused == 2) {
             revert Lendtroller_Paused();
         }
@@ -378,7 +382,7 @@ contract Lendtroller {
         address mTokenBorrowed,
         address mTokenCollateral,
         uint256 actualRepayAmount
-    ) external view returns (uint256) {
+    ) external view override returns (uint256) {
         /// Read oracle prices for borrowed and collateral markets
         IPriceRouter router = getPriceRouter();
         (uint256 debtTokenPrice, uint256 debtTokenError) = router.getPrice(
@@ -548,7 +552,7 @@ contract Lendtroller {
     /// @param mToken market token address
     function getMarketTokenData(
         address mToken
-    ) external view returns (bool, uint256) {
+    ) external view override returns (bool, uint256) {
         return (
             marketTokenData[mToken].isListed,
             marketTokenData[mToken].collateralizationRatio
@@ -561,12 +565,17 @@ contract Lendtroller {
     function getAccountMembership(
         address mToken,
         address user
-    ) external view returns (bool) {
+    ) external view override returns (bool) {
         return marketTokenData[mToken].accountInMarket[user] == 2;
     }
 
     /// @notice Returns all markets
-    function getAllMarkets() external view returns (IMToken[] memory) {
+    function getAllMarkets()
+        external
+        view
+        override
+        returns (IMToken[] memory)
+    {
         return allMarkets;
     }
 
@@ -682,7 +691,7 @@ contract Lendtroller {
     /// @notice Updates `accounts` lastBorrowTimestamp to the current block timestamp
     /// @dev The caller must be a listed MToken in the `markets` mapping
     /// @param borrower The address of the account that has just borrowed
-    function notifyAccountBorrow(address borrower) external {
+    function notifyAccountBorrow(address borrower) external override {
         require(
             marketTokenData[msg.sender].isListed,
             "Lendtroller: Caller not MToken"
@@ -701,7 +710,7 @@ contract Lendtroller {
         address mToken,
         address borrower,
         uint256 borrowAmount
-    ) public {
+    ) public override {
         if (borrowPaused[mToken] == 2) {
             revert Lendtroller_Paused();
         }
@@ -781,7 +790,7 @@ contract Lendtroller {
     /// @return uint total borrow amount of user
     function getAccountPosition(
         address account
-    ) public view returns (uint256, uint256, uint256) {
+    ) public view override returns (uint256, uint256, uint256) {
         (
             uint256 sumCollateral,
             uint256 maxBorrow,
@@ -824,6 +833,15 @@ contract Lendtroller {
             );
 
         return (liquidity, shortfall);
+    }
+
+    /// @inheritdoc ERC165
+    function supportsInterface(
+        bytes4 interfaceId
+    ) public view override returns (bool) {
+        return
+            interfaceId == type(ILendtroller).interfaceId ||
+            super.supportsInterface(interfaceId);
     }
 
     /// INTERNAL FUNCTIONS ///

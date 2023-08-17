@@ -225,23 +225,23 @@ contract TestBaseMarket is TestBase {
     }
 
     function _deployDUSDC() internal returns (DToken) {
-        dUSDC = new DToken(
-            ICentralRegistry(address(centralRegistry)),
-            _USDC_ADDRESS,
-            address(lendtroller),
-            InterestRateModel(address(jumpRateModel))
-        );
+        dUSDC = _deployDToken(_USDC_ADDRESS);
         return dUSDC;
     }
 
     function _deployDDAI() internal returns (DToken) {
-        dDAI = new DToken(
-            ICentralRegistry(address(centralRegistry)),
-            _DAI_ADDRESS,
-            address(lendtroller),
-            InterestRateModel(address(jumpRateModel))
-        );
+        dDAI = _deployDToken(_DAI_ADDRESS);
         return dDAI;
+    }
+
+    function _deployDToken(address token) internal returns (DToken) {
+        return
+            new DToken(
+                ICentralRegistry(address(centralRegistry)),
+                token,
+                address(lendtroller),
+                address(jumpRateModel)
+            );
     }
 
     function _deployCBALRETH(address vault) internal returns (CToken) {
@@ -275,24 +275,14 @@ contract TestBaseMarket is TestBase {
     }
 
     function _prepareUSDC(address user, uint256 amount) internal {
-        vm.startPrank(0xDa9CE944a37d218c3302F6B82a094844C6ECEb17);
-        usdc.transfer(user, amount);
-        vm.stopPrank();
+        deal(_USDC_ADDRESS, user, amount * 2);
     }
 
     function _prepareDAI(address user, uint256 amount) internal {
-        vm.store(
-            _DAI_ADDRESS,
-            keccak256(abi.encodePacked(uint256(uint160(user)), uint256(2))),
-            bytes32(amount)
-        );
+        deal(_DAI_ADDRESS, user, amount * 2);
     }
 
     function _prepareBALRETH(address user, uint256 amount) internal {
-        vm.startPrank(randomUser);
-        vm.deal(randomUser, amount * 2);
-
-        // balRETH.transfer(user, amount);
-        vm.stopPrank();
+        deal(_BALANCER_WETH_RETH, user, amount * 2);
     }
 }

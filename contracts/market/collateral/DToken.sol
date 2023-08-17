@@ -15,7 +15,7 @@ import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { IMToken, accountSnapshot } from "contracts/interfaces/market/IMToken.sol";
 
 /// @title Curvance's Debt Token Contract
-contract DToken is ERC165, ReentrancyGuard {
+contract DToken is IERC20, ERC165, ReentrancyGuard {
     /// TYPES ///
 
     struct BorrowSnapshot {
@@ -28,25 +28,50 @@ contract DToken is ERC165, ReentrancyGuard {
 
     /// CONSTANTS ///
 
-    uint256 internal constant expScale = 1e18; // Scalar for math
-    bool public constant isDToken = true; // for inspection
-    address public immutable underlying; // underlying asset for the DToken
-    bytes32 private immutable _name; // token name metadata
-    bytes32 private immutable _symbol; // token symbol metadata
-    ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
+    /// @notice Scalar for math
+    uint256 internal constant expScale = 1e18;
+
+    /// @notice for inspection
+    bool public constant isDToken = true;
+
+    /// @notice underlying asset for the DToken
+    address public immutable underlying;
+
+    /// @notice Curvance DAO hub
+    ICentralRegistry public immutable centralRegistry;
 
     /// STORAGE ///
 
-    ILendtroller public lendtroller; // Current lending market controller
-    InterestRateModel public interestRateModel; // Current Interest Rate Model
-    uint256 public accrualBlockTimestamp; // last accrued interest timestamp
-    uint256 public borrowIndex; // Multiplier ratio of total interest accrued
-    uint256 public totalBorrows; // Total outstanding borrows of underlying
-    uint256 public totalReserves; // Total protocol reserves of underlying
-    uint256 public totalSupply; // Total number of tokens in circulation
+    /// @notice token name metadata
+    string public name;
+
+    /// @notice token symbol metadata
+    string public symbol;
+
+    /// @notice Current lending market controller
+    ILendtroller public lendtroller;
+
+    /// @notice Current Interest Rate Model
+    InterestRateModel public interestRateModel;
+
+    /// @notice last accrued interest timestamp
+    uint256 public accrualBlockTimestamp;
+
+    /// @notice Multiplier ratio of total interest accrued
+    uint256 public borrowIndex;
+
+    /// @notice Total outstanding borrows of underlying
+    uint256 public totalBorrows;
+
+    /// @notice Total protocol reserves of underlying
+    uint256 public totalReserves;
+
+    /// @notice Total number of tokens in circulation
+    uint256 public totalSupply;
 
     // account => token balance
     mapping(address => uint256) internal _accountBalance;
+
     // account => spender => approved amount
     mapping(address => mapping(address => uint256))
         internal transferAllowances;
@@ -79,13 +104,10 @@ contract DToken is ERC165, ReentrancyGuard {
         address cTokenCollateral,
         uint256 seizeTokens
     );
-    event NewLendtroller(
-        ILendtroller oldLendtroller,
-        ILendtroller newLendtroller
-    );
+    event NewLendtroller(address oldLendtroller, address newLendtroller);
     event NewMarketInterestRateModel(
-        InterestRateModel oldInterestRateModel,
-        InterestRateModel newInterestRateModel
+        address oldInterestRateModel,
+        address newInterestRateModel
     );
     event ReservesAdded(
         address daoAddress,
@@ -97,21 +119,19 @@ contract DToken is ERC165, ReentrancyGuard {
         uint256 reduceAmount,
         uint256 newTotalReserves
     );
-    event Transfer(address indexed from, address indexed to, uint256 amount);
-    event Approval(
-        address indexed owner,
-        address indexed spender,
-        uint256 amount
-    );
 
     /// ERRORS ///
 
-    error DToken_UnauthorizedCaller();
-    error DToken_CannotEqualZero();
-    error DToken_ExcessiveValue();
-    error DToken_TransferNotAllowed();
-    error DToken_CashNotAvailable();
-    error DToken_ValidationFailed();
+    error DToken__UnauthorizedCaller();
+    error DToken__CannotEqualZero();
+    error DToken__ExcessiveValue();
+    error DToken__TransferNotAllowed();
+    error DToken__CashNotAvailable();
+    error DToken__ValidationFailed();
+    error DToken__CentralRegistryIsInvalid();
+    error DToken__LendtrollerIsNotLendingMarket();
+    error DToken__LendtrollerIsInvalid();
+    error DToken__InterestRateModelIsInvalid();
 
     /// MODIFIERS ///
 
@@ -131,6 +151,8 @@ contract DToken is ERC165, ReentrancyGuard {
         _;
     }
 
+    /// CONSTRUCTOR ///
+
     /// @param centralRegistry_ The address of Curvances Central Registry
     /// @param underlying_ The address of the underlying asset
     /// @param lendtroller_ The address of the Lendtroller
@@ -139,7 +161,7 @@ contract DToken is ERC165, ReentrancyGuard {
         ICentralRegistry centralRegistry_,
         address underlying_,
         address lendtroller_,
-        InterestRateModel interestRateModel_
+        address interestRateModel_
     ) {
         if (
             !ERC165Checker.supportsInterface(
@@ -147,51 +169,29 @@ contract DToken is ERC165, ReentrancyGuard {
                 type(ICentralRegistry).interfaceId
             )
         ) {
-            revert DToken_ValidationFailed();
+            revert DToken__CentralRegistryIsInvalid();
         }
 
         centralRegistry = centralRegistry_;
 
         if (!centralRegistry_.isLendingMarket(lendtroller_)) {
-            revert DToken_ValidationFailed();
+            revert DToken__LendtrollerIsNotLendingMarket();
         }
 
-        // Ensure that lendtroller parameter is a lendtroller
-        if (!ILendtroller(lendtroller_).isLendtroller()) {
-            revert DToken_ValidationFailed();
-        }
-
-        // Set the lendtroller
-        lendtroller = ILendtroller(lendtroller_);
-        emit NewLendtroller(
-            ILendtroller(address(0)),
-            ILendtroller(lendtroller_)
-        );
+        _setLendtroller(lendtroller_);
 
         // Initialize timestamp and borrow index (timestamp mocks depend on lendtroller being set)
         accrualBlockTimestamp = block.timestamp;
         borrowIndex = expScale;
 
-        // Ensure that interestRateModel_ parameter is an interest rate model
-        if (!interestRateModel_.isInterestRateModel()) {
-            revert DToken_ValidationFailed();
-        }
-
-        // Set Interest Rate Model
-        interestRateModel = interestRateModel_;
-        emit NewMarketInterestRateModel(
-            InterestRateModel(address(0)),
-            interestRateModel_
-        );
+        _setInterestRateModel(interestRateModel_);
 
         underlying = underlying_;
-        _name = bytes32(
-            abi.encodePacked(
-                "Curvance interest bearing ",
-                IERC20(underlying_).name()
-            )
+        name = string.concat(
+            "Curvance interest bearing ",
+            IERC20(underlying_).name()
         );
-        _symbol = bytes32(abi.encodePacked("c", IERC20(underlying_).symbol()));
+        symbol = string.concat("c", IERC20(underlying_).symbol());
 
         // Sanity check underlying so that we know users will not need to mint anywhere close to exchange rate of 1e18
         require(
@@ -199,6 +199,8 @@ contract DToken is ERC165, ReentrancyGuard {
             "DToken: Underlying token assumptions not met"
         );
     }
+
+    /// EXTERNAL FUNCTIONS ///
 
     /// @notice Used to start a DToken market, executed via lendtroller
     /// @dev  this initial mint is a failsafe against the empty market exploit
@@ -208,11 +210,11 @@ contract DToken is ERC165, ReentrancyGuard {
         address initializer
     ) external nonReentrant returns (bool) {
         if (msg.sender != address(lendtroller)) {
-            revert DToken_UnauthorizedCaller();
+            revert DToken__UnauthorizedCaller();
         }
 
         uint256 mintAmount = 42069;
-        uint256 actualMintAmount = doTransferIn(initializer, mintAmount);
+        uint256 actualMintAmount = _doTransferIn(initializer, mintAmount);
         // We do not need to calculate exchange rate here as we will always be the initial depositer
         // These values should always be zero but we will add them just incase we are re-initiating a market
         totalSupply = totalSupply + actualMintAmount;
@@ -245,8 +247,8 @@ contract DToken is ERC165, ReentrancyGuard {
     function transfer(
         address to,
         uint256 amount
-    ) external nonReentrant returns (bool) {
-        transferTokens(msg.sender, msg.sender, to, amount);
+    ) external override nonReentrant returns (bool) {
+        _transferTokens(msg.sender, msg.sender, to, amount);
         return true;
     }
 
@@ -259,8 +261,8 @@ contract DToken is ERC165, ReentrancyGuard {
         address from,
         address to,
         uint256 amount
-    ) external nonReentrant returns (bool) {
-        transferTokens(msg.sender, from, to, amount);
+    ) external override nonReentrant returns (bool) {
+        _transferTokens(msg.sender, from, to, amount);
         return true;
     }
 
@@ -288,7 +290,7 @@ contract DToken is ERC165, ReentrancyGuard {
         bytes calldata params
     ) external nonReentrant {
         if (msg.sender != lendtroller.positionFolding()) {
-            revert DToken_UnauthorizedCaller();
+            revert DToken__UnauthorizedCaller();
         }
 
         accrueInterest();
@@ -321,7 +323,7 @@ contract DToken is ERC165, ReentrancyGuard {
         uint256 repayAmount
     ) external nonReentrant {
         if (msg.sender != lendtroller.positionFolding()) {
-            revert DToken_UnauthorizedCaller();
+            revert DToken__UnauthorizedCaller();
         }
 
         accrueInterest();
@@ -387,7 +389,7 @@ contract DToken is ERC165, ReentrancyGuard {
         bytes calldata params
     ) external nonReentrant {
         if (msg.sender != lendtroller.positionFolding()) {
-            revert DToken_UnauthorizedCaller();
+            revert DToken__UnauthorizedCaller();
         }
 
         accrueInterest();
@@ -444,7 +446,7 @@ contract DToken is ERC165, ReentrancyGuard {
         accrueInterest();
 
         // On success, the market will deposit `addAmount` to the market adding more cash
-        totalReserves = totalReserves + doTransferIn(msg.sender, addAmount);
+        totalReserves = totalReserves + _doTransferIn(msg.sender, addAmount);
         // Query current DAO operating address
         address daoAddress = centralRegistry.daoAddress();
         // Deposit new reserves into gauge
@@ -463,7 +465,7 @@ contract DToken is ERC165, ReentrancyGuard {
 
         // Make sure we have enough cash to cover withdrawal
         if (getCash() < reduceAmount) {
-            revert DToken_CashNotAvailable();
+            revert DToken__CashNotAvailable();
         }
 
         // Need underflow check to check if we have sufficient totalReserves
@@ -478,8 +480,8 @@ contract DToken is ERC165, ReentrancyGuard {
             reduceAmount
         );
 
-        // doTransferOut reverts if anything goes wrong
-        doTransferOut(daoAddress, reduceAmount);
+        // _doTransferOut reverts if anything goes wrong
+        _doTransferOut(daoAddress, reduceAmount);
 
         emit ReservesReduced(daoAddress, reduceAmount, totalReserves);
     }
@@ -487,7 +489,10 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @dev Sets `amount` as the allowance of `spender` over the caller's tokens.
     ///
     /// Emits a {Approval} event.
-    function approve(address spender, uint256 amount) external returns (bool) {
+    function approve(
+        address spender,
+        uint256 amount
+    ) external override returns (bool) {
         transferAllowances[msg.sender][spender] = amount;
 
         emit Approval(msg.sender, spender, amount);
@@ -498,7 +503,7 @@ contract DToken is ERC165, ReentrancyGuard {
     function allowance(
         address owner,
         address spender
-    ) external view returns (uint256) {
+    ) external view override returns (uint256) {
         return transferAllowances[owner][spender];
     }
 
@@ -540,45 +545,20 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @dev Admin function to set a new lendtroller
     /// @param newLendtroller New lendtroller address
     function setLendtroller(
-        ILendtroller newLendtroller
+        address newLendtroller
     ) external onlyElevatedPermissions {
-        // Ensure we are switching to an actual lendtroller
-        if (!newLendtroller.isLendtroller()) {
-            revert DToken_ValidationFailed();
-        }
-
-        // Cache the current lendtroller to save gas
-        ILendtroller oldLendtroller = lendtroller;
-
-        // Set new lendtroller
-        lendtroller = newLendtroller;
-
-        emit NewLendtroller(oldLendtroller, newLendtroller);
+        _setLendtroller(newLendtroller);
     }
 
     /// @notice accrues interest and updates the interest rate model
     /// @dev Admin function to accrue interest and update the interest rate model
     /// @param newInterestRateModel the new interest rate model to use
     function setInterestRateModel(
-        InterestRateModel newInterestRateModel
+        address newInterestRateModel
     ) external onlyElevatedPermissions {
         accrueInterest();
 
-        // Ensure we are switching to an actual Interest Rate Model
-        if (!newInterestRateModel.isInterestRateModel()) {
-            revert DToken_ValidationFailed();
-        }
-
-        // Cache the current interest rate model to save gas
-        InterestRateModel oldInterestRateModel = interestRateModel;
-
-        // Set new interest rate model
-        interestRateModel = newInterestRateModel;
-
-        emit NewMarketInterestRateModel(
-            oldInterestRateModel,
-            newInterestRateModel
-        );
+        _setInterestRateModel(newInterestRateModel);
     }
 
     /// @notice Get the underlying balance of the `account`
@@ -663,11 +643,15 @@ contract DToken is ERC165, ReentrancyGuard {
         return borrowBalanceStored(account);
     }
 
+    /// PUBLIC FUNCTIONS ///
+
     /// @notice Get the token balance of the `account`
     /// @param account The address of the account to query
     /// @return balance The number of tokens owned by `account`
     // @dev Returns the balance of tokens for `account`
-    function balanceOf(address account) public view returns (uint256) {
+    function balanceOf(
+        address account
+    ) public view override returns (uint256) {
         return _accountBalance[account];
     }
 
@@ -690,16 +674,6 @@ contract DToken is ERC165, ReentrancyGuard {
         return
             (borrowSnapshot.principal * borrowIndex) /
             borrowSnapshot.interestIndex;
-    }
-
-    /// @notice Returns the name of the token
-    function name() public view returns (string memory) {
-        return string(abi.encodePacked(_name));
-    }
-
-    /// @notice Returns the symbol of the token
-    function symbol() public view returns (string memory) {
-        return string(abi.encodePacked(_symbol));
     }
 
     /// @notice Returns the decimals of the token
@@ -812,13 +786,59 @@ contract DToken is ERC165, ReentrancyGuard {
         );
     }
 
+    /// INTERNAL FUNCTIONS ///
+
+    /// @notice Sets a new lendtroller for the market
+    /// @dev Admin function to set a new lendtroller
+    /// @param newLendtroller New lendtroller address
+    function _setLendtroller(address newLendtroller) internal {
+        // Ensure that lendtroller parameter is a lendtroller
+        if (
+            !ERC165Checker.supportsInterface(
+                newLendtroller,
+                type(ILendtroller).interfaceId
+            )
+        ) {
+            revert DToken__LendtrollerIsInvalid();
+        }
+
+        // Cache the current lendtroller to save gas
+        address oldLendtroller = address(lendtroller);
+
+        // Set new lendtroller
+        lendtroller = ILendtroller(newLendtroller);
+
+        emit NewLendtroller(oldLendtroller, newLendtroller);
+    }
+
+    /// @notice accrues interest and updates the interest rate model
+    /// @dev Admin function to accrue interest and update the interest rate model
+    /// @param newInterestRateModel the new interest rate model to use
+    function _setInterestRateModel(address newInterestRateModel) internal {
+        // Ensure we are switching to an actual Interest Rate Model
+        if (!InterestRateModel(newInterestRateModel).isInterestRateModel()) {
+            revert DToken__InterestRateModelIsInvalid();
+        }
+
+        // Cache the current interest rate model to save gas
+        address oldInterestRateModel = address(interestRateModel);
+
+        // Set new interest rate model
+        interestRateModel = InterestRateModel(newInterestRateModel);
+
+        emit NewMarketInterestRateModel(
+            oldInterestRateModel,
+            newInterestRateModel
+        );
+    }
+
     /// @notice Transfer `tokens` tokens from `from` to `to` by `spender` internally
     /// @dev Called by both `transfer` and `transferFrom` internally
     /// @param spender The address of the account performing the transfer
     /// @param from The address of the source account
     /// @param to The address of the destination account
     /// @param tokens The number of tokens to transfer
-    function transferTokens(
+    function _transferTokens(
         address spender,
         address from,
         address to,
@@ -826,7 +846,7 @@ contract DToken is ERC165, ReentrancyGuard {
     ) internal {
         // Do not allow self-transfers
         if (from == to) {
-            revert DToken_TransferNotAllowed();
+            revert DToken__TransferNotAllowed();
         }
 
         // Fails if transfer not allowed
@@ -872,11 +892,12 @@ contract DToken is ERC165, ReentrancyGuard {
         uint256 exchangeRate = exchangeRateStored();
         // The function returns the amount actually transferred, in case of a fee
         // On success, the dToken holds an additional `actualMintAmount` of cash
-        uint256 actualMintAmount = doTransferIn(user, mintAmount);
+        uint256 actualMintAmount = _doTransferIn(user, mintAmount);
 
         // We get the current exchange rate and calculate the number of dTokens to be minted:
         //  mintTokens = actualMintAmount / exchangeRate
         uint256 mintTokens = (actualMintAmount * expScale) / exchangeRate;
+
         unchecked {
             totalSupply = totalSupply + mintTokens;
             /// Calculate their new balance
@@ -907,12 +928,12 @@ contract DToken is ERC165, ReentrancyGuard {
     ) internal {
         // Check if we have enough cash to support the redeem
         if (getCash() < redeemAmount) {
-            revert DToken_CashNotAvailable();
+            revert DToken__CashNotAvailable();
         }
 
         // Validate redemption parameters
         if (redeemTokens == 0 && redeemAmount > 0) {
-            revert DToken_CannotEqualZero();
+            revert DToken__CannotEqualZero();
         }
 
         _accountBalance[redeemer] = _accountBalance[redeemer] - redeemTokens;
@@ -924,9 +945,9 @@ contract DToken is ERC165, ReentrancyGuard {
         // emit events on gauge pool
         GaugePool(gaugePool()).withdraw(address(this), redeemer, redeemTokens);
 
-        // We invoke doTransferOut for the redeemer and the redeemAmount.
+        // We invoke _doTransferOut for the redeemer and the redeemAmount.
         // On success, the dToken has redeemAmount less of cash.
-        doTransferOut(recipient, redeemAmount);
+        _doTransferOut(recipient, redeemAmount);
 
         // We emit a Transfer event, and a Redeem event
         emit Transfer(redeemer, address(this), redeemTokens);
@@ -942,7 +963,7 @@ contract DToken is ERC165, ReentrancyGuard {
     ) internal {
         // Check if we have enough cash to support the borrow
         if (getCash() < borrowAmount) {
-            revert DToken_CashNotAvailable();
+            revert DToken__CashNotAvailable();
         }
 
         // We calculate the new borrower and total borrow balances, failing on overflow:
@@ -952,8 +973,8 @@ contract DToken is ERC165, ReentrancyGuard {
         accountBorrows[borrower].interestIndex = borrowIndex;
         totalBorrows = totalBorrows + borrowAmount;
 
-        // doTransferOut reverts if anything goes wrong, since we can't be sure if side effects occurred.
-        doTransferOut(recipient, borrowAmount);
+        // _doTransferOut reverts if anything goes wrong, since we can't be sure if side effects occurred.
+        _doTransferOut(recipient, borrowAmount);
 
         // We emit a Borrow event
         emit Borrow(borrower, borrowAmount);
@@ -983,10 +1004,10 @@ contract DToken is ERC165, ReentrancyGuard {
             ? accountBorrowsPrev
             : repayAmount;
 
-        // We call doTransferIn for the payer and the repayAmount
+        // We call _doTransferIn for the payer and the repayAmount
         // Note: On success, the dToken holds an additional repayAmount of cash.
         //       it returns the amount actually transferred, in case of a fee.
-        uint256 actualRepayAmount = doTransferIn(payer, repayAmountFinal);
+        uint256 actualRepayAmount = _doTransferIn(payer, repayAmountFinal);
 
         // We calculate the new borrower and total borrow balances, failing on underflow:
         accountBorrows[borrower].principal =
@@ -1016,7 +1037,7 @@ contract DToken is ERC165, ReentrancyGuard {
         // Fail if borrower = liquidator
         assembly {
             if eq(borrower, liquidator) {
-                // revert with DToken_UnauthorizedCaller()
+                // revert with DToken__UnauthorizedCaller()
                 mstore(0x00, 0xefeae624)
                 revert(0x1c, 0x04)
             }
@@ -1024,7 +1045,7 @@ contract DToken is ERC165, ReentrancyGuard {
 
         /// The MToken must be a collateral token E.G. tokenType == 1
         if (mTokenCollateral.tokenType() == 0) {
-            revert DToken_ValidationFailed();
+            revert DToken__ValidationFailed();
         }
 
         // Fail if liquidate not allowed,
@@ -1048,7 +1069,7 @@ contract DToken is ERC165, ReentrancyGuard {
 
         // Revert if borrower collateral token balance < seizeTokens
         if (mTokenCollateral.balanceOf(borrower) < seizeTokens) {
-            revert DToken_ExcessiveValue();
+            revert DToken__ExcessiveValue();
         }
 
         // We check above that the mToken must be a collateral token,
@@ -1071,7 +1092,7 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @param from Address of the sender of the tokens
     /// @param amount Amount of tokens to transfer in
     /// @return Returns the amount transferred
-    function doTransferIn(
+    function _doTransferIn(
         address from,
         uint256 amount
     ) internal returns (uint256) {
@@ -1091,7 +1112,7 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @dev This function uses the SafeTransferLib to safely perform the transfer.
     /// @param to Address receiving the token transfer
     /// @param amount Amount of tokens to transfer out
-    function doTransferOut(address to, uint256 amount) internal {
+    function _doTransferOut(address to, uint256 amount) internal {
         /// SafeTransferLib will handle reversion from insufficient cash held
         SafeTransferLib.safeTransfer(underlying, to, amount);
     }

@@ -17,7 +17,6 @@ import { EpochRolloverData } from "contracts/interfaces/IFeeAccumulator.sol";
 import { ICentralRegistry, ChainData } from "contracts/interfaces/ICentralRegistry.sol";
 
 contract FeeAccumulator is ReentrancyGuard {
-
     /// TYPES ///
 
     struct RewardToken {
@@ -33,11 +32,10 @@ contract FeeAccumulator is ReentrancyGuard {
 
     /// CONSTANTS ///
 
-    address public constant ETHER =
-        0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE; // pseudo ETH address
+    address public constant ETHER = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE; // pseudo ETH address
     IWETH public immutable WETH; // Address of WETH
     uint256 public constant expScale = 1e18; // Scalar for math
-    uint256 public constant SLIPPED_MINIMUM = 9500; // 5% 
+    uint256 public constant SLIPPED_MINIMUM = 9500; // 5%
     uint256 public constant SLIPPAGE_DENOMINATOR = 10000;
     ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
 
@@ -48,12 +46,12 @@ contract FeeAccumulator is ReentrancyGuard {
     address payable public oneBalanceAddress;
     uint256 internal _gasForCalldata;
     uint256 internal _gasForCrosschain;
-    
+
     LockData[] public crossChainLockData;
     // We store token data semi redundantly to save gas
     // on daily operations and to help with gelato network structure
     address[] public rewardTokens; // Used for Gelato Network bots to check what tokens to swap
-    mapping (address => RewardToken) public rewardTokenInfo; // 2 = yes; 0 or 1 = no
+    mapping(address => RewardToken) public rewardTokenInfo; // 2 = yes; 0 or 1 = no
 
     /// ERRORS ///
 
@@ -99,12 +97,14 @@ contract FeeAccumulator is ReentrancyGuard {
         uint256 gasForCalldata_,
         uint256 gasForCrosschain_
     ) {
-        if (!ERC165Checker.supportsInterface(
+        if (
+            !ERC165Checker.supportsInterface(
                 address(centralRegistry_),
                 type(ICentralRegistry).interfaceId
-            )){
-                revert FeeAccumulator_ConfigurationError();
-            }
+            )
+        ) {
+            revert FeeAccumulator_ConfigurationError();
+        }
 
         centralRegistry = centralRegistry_;
         WETH = IWETH(WETH_);
@@ -129,15 +129,17 @@ contract FeeAccumulator is ReentrancyGuard {
 
     /// EXTERNAL FUNCTIONS ///
 
-    /// @dev Performs multiple token swaps in a single transaction, 
+    /// @dev Performs multiple token swaps in a single transaction,
     ///      converting the provided tokens to ETH on behalf of Curvance DAO
     /// @param data Encoded swap data containing the details of each swap
     /// @param tokens An array of token addresses corresponding to the swap data, specifying the tokens to be swapped
-    function multiSwap(bytes calldata data, address[] calldata tokens) external onlyHarvestor nonReentrant {
-
+    function multiSwap(
+        bytes calldata data,
+        address[] calldata tokens
+    ) external onlyHarvestor nonReentrant {
         SwapperLib.Swap[] memory swapDataArray = abi.decode(
-                data,
-                (SwapperLib.Swap[])
+            data,
+            (SwapperLib.Swap[])
         );
 
         uint256 numTokens = swapDataArray.length;
@@ -163,7 +165,12 @@ contract FeeAccumulator is ReentrancyGuard {
         uint256 fees = address(this).balance;
         // We do not need expScale since ether and fees are already in 1e18 form
         // Transfer fees to Gelato Network One Balance or equivalent
-        fees = fees - _distributeETH(oneBalanceAddress, (fees * vaultCompoundFee()) / vaultYieldFee());
+        fees =
+            fees -
+            _distributeETH(
+                oneBalanceAddress,
+                (fees * vaultCompoundFee()) / vaultYieldFee()
+            );
         // Deposit remainder into WETH so protocol messaging hub can pull WETH to execute fee distribution
         WETH.deposit{ value: fees }(fees);
     }
@@ -172,8 +179,10 @@ contract FeeAccumulator is ReentrancyGuard {
     /// @dev The function validates that the token is earmarked for OTC and calculates the amount of ETH required based on the current prices
     /// @param tokenToOTC The address of the token to be OTC purchased by the DAO
     /// @param amountToOTC The amount of the token to be OTC purchased by the DAO
-    function executeOTC(address tokenToOTC, uint256 amountToOTC) external payable onlyDaoPermissions nonReentrant {
-
+    function executeOTC(
+        address tokenToOTC,
+        uint256 amountToOTC
+    ) external payable onlyDaoPermissions nonReentrant {
         // Validate that the token is earmarked for OTC
         if (rewardTokenInfo[tokenToOTC].forOTC < 2) {
             revert FeeAccumulator_EarmarkError();
@@ -181,9 +190,17 @@ contract FeeAccumulator is ReentrancyGuard {
 
         // Cache router to save gas
         IPriceRouter PriceRouter = getPriceRouter();
-        
-        (uint256 priceSwap, uint256 errorCodeSwap) = PriceRouter.getPrice(tokenToOTC, true, true);
-        (uint256 priceETH, uint256 errorCodeETH) = PriceRouter.getPrice(ETHER, true, true);
+
+        (uint256 priceSwap, uint256 errorCodeSwap) = PriceRouter.getPrice(
+            tokenToOTC,
+            true,
+            true
+        );
+        (uint256 priceETH, uint256 errorCodeETH) = PriceRouter.getPrice(
+            ETHER,
+            true,
+            true
+        );
 
         // Validate we got prices back
         if (errorCodeETH == 2 || errorCodeSwap == 2) {
@@ -202,16 +219,17 @@ contract FeeAccumulator is ReentrancyGuard {
 
         // We do not need expScale since ether and fees are already in 1e18 form
         // Transfer fees to Gelato Network One Balance or equivalent
-        ethRequiredForOTC = ethRequiredForOTC - _distributeETH(oneBalanceAddress, (ethRequiredForOTC * vaultCompoundFee()) / vaultYieldFee());
+        ethRequiredForOTC =
+            ethRequiredForOTC -
+            _distributeETH(
+                oneBalanceAddress,
+                (ethRequiredForOTC * vaultCompoundFee()) / vaultYieldFee()
+            );
         // Deposit remainder into WETH so protocol messaging hub can pull WETH to execute fee distribution
         WETH.deposit{ value: ethRequiredForOTC }(ethRequiredForOTC);
 
         // Give DAO the OTC'd tokens
-        SafeTransferLib.safeTransfer(
-            tokenToOTC,
-            daoAddress,
-            amountToOTC
-        );
+        SafeTransferLib.safeTransfer(tokenToOTC, daoAddress, amountToOTC);
 
         // If there was excess make sure we reimburse the DAO
         if (msg.value > ethRequiredForOTC) {
@@ -223,7 +241,9 @@ contract FeeAccumulator is ReentrancyGuard {
         uint16 dstChainId,
         bytes32 toAddress
     ) external onlyHarvestor {
-        ChainData memory chainData = centralRegistry.supportedChainData(dstChainId);
+        ChainData memory chainData = centralRegistry.supportedChainData(
+            dstChainId
+        );
 
         if (chainData.isSupported < 2) {
             revert FeeAccumulator_ConfigurationError();
@@ -236,114 +256,141 @@ contract FeeAccumulator is ReentrancyGuard {
         address veCVE = centralRegistry.veCVE();
         uint16 version = 1;
 
-        bytes memory payload = 
-        abi.encode(IVeCVE(veCVE).chainTokenPoints() - 
-        IVeCVE(veCVE).chainUnlocksByEpoch(ICVELocker(centralRegistry.cveLocker()).nextEpochToDeliver()));
+        bytes memory payload = abi.encode(
+            IVeCVE(veCVE).chainTokenPoints() -
+                IVeCVE(veCVE).chainUnlocksByEpoch(
+                    ICVELocker(centralRegistry.cveLocker())
+                        .nextEpochToDeliver()
+                )
+        );
 
         uint256 gas = CVE.estimateSendAndCallFee(
-                uint16(dstChainId),
-                chainData.cveAddress,
-                0,
-                payload,
-                uint64(_gasForCalldata),
-                false,
-                abi.encodePacked(version, _gasForCrosschain)
-            );
-        
-        IProtocolMessagingHub(centralRegistry.protocolMessagingHub()).sendLockedTokenData{
-                value: gas
-            }(
-                uint16(dstChainId),
-                chainData.cveAddress,
-                payload,
-                uint64(_gasForCalldata),
-                LzCallParams({refundAddress: payable(address(this)),
-                         zroPaymentAddress: address(0),
-                         adapterParams: abi.encodePacked(version, _gasForCrosschain)
-                }),
-                gas
-                );
+            uint16(dstChainId),
+            chainData.cveAddress,
+            0,
+            payload,
+            uint64(_gasForCalldata),
+            false,
+            abi.encodePacked(version, _gasForCrosschain)
+        );
 
+        IProtocolMessagingHub(centralRegistry.protocolMessagingHub())
+            .sendLockedTokenData{ value: gas }(
+            uint16(dstChainId),
+            chainData.cveAddress,
+            payload,
+            uint64(_gasForCalldata),
+            LzCallParams({
+                refundAddress: payable(address(this)),
+                zroPaymentAddress: address(0),
+                adapterParams: abi.encodePacked(version, _gasForCrosschain)
+            }),
+            gas
+        );
     }
 
     /// @notice Receives and records the epoch rewards for CVE from the protocol messaging hub
     /// @param epochRewardsPerCVE The rewards per CVE for the previous epoch
-    function receiveExecutableLockData(uint256 epochRewardsPerCVE) external onlyMessagingHub {
+    function receiveExecutableLockData(
+        uint256 epochRewardsPerCVE
+    ) external onlyMessagingHub {
         ICVELocker locker = ICVELocker(centralRegistry.cveLocker());
-        // We validate nextEpochToDeliver in receiveCrossChainLockData on the chain calculating values 
-        locker.recordEpochRewards(locker.nextEpochToDeliver(), epochRewardsPerCVE);
+        // We validate nextEpochToDeliver in receiveCrossChainLockData on the chain calculating values
+        locker.recordEpochRewards(
+            locker.nextEpochToDeliver(),
+            epochRewardsPerCVE
+        );
     }
 
     /// @notice Receives and processes cross-chain lock data for the next undelivered epoch
     /// @param data Struct containing ChainID and value, with extra room for epoch, and number of chains
     ///             this is to avoid stack too deep issues in the function
     /// @dev This function handles cross-chain communication and the coordination of fee routing,
-    ///      as well as recording and reporting epoch rewards on those fees. 
-    ///      Uses both Layerzero and Stargate to execute all necessary actions. If sufficient chains have reported, 
+    ///      as well as recording and reporting epoch rewards on those fees.
+    ///      Uses both Layerzero and Stargate to execute all necessary actions. If sufficient chains have reported,
     ///      it calculates rewards, notifies other chains, and executes crosschain fee routing.
-    function receiveCrossChainLockData(EpochRolloverData memory data) external onlyMessagingHub {
-        
-        ChainData memory chainData = centralRegistry.supportedChainData(data.chainId);
+    function receiveCrossChainLockData(
+        EpochRolloverData memory data
+    ) external onlyMessagingHub {
+        ChainData memory chainData = centralRegistry.supportedChainData(
+            data.chainId
+        );
         if (chainData.isSupported < 2) {
             return;
         }
 
         data.numChainData = crossChainLockData.length;
-        data.epoch = ICVELocker(centralRegistry.cveLocker()).nextEpochToDeliver();
+        data.epoch = ICVELocker(centralRegistry.cveLocker())
+            .nextEpochToDeliver();
 
-        _validateAndRecordChainData(data.value, data.chainId, data.numChainData, data.epoch);
+        _validateAndRecordChainData(
+            data.value,
+            data.chainId,
+            data.numChainData,
+            data.epoch
+        );
 
         // If we have sufficient chains reported, time to execute epoch fee routing
         if ((++data.numChainData) == centralRegistry.supportedChains()) {
             // Execute Fee Routing to each chain and unwrap enough WETH to pay for LayerZero fees below
-            uint256 epochRewardsPerCVE = _executeEpochFeeRouter(chainData, data.numChainData, data.epoch, data.chainId);
+            uint256 epochRewardsPerCVE = _executeEpochFeeRouter(
+                chainData,
+                data.numChainData,
+                data.epoch,
+                data.chainId
+            );
 
             ICVE CVE = ICVE(centralRegistry.CVE());
-            IProtocolMessagingHub messagingHub = IProtocolMessagingHub(centralRegistry.protocolMessagingHub());
+            IProtocolMessagingHub messagingHub = IProtocolMessagingHub(
+                centralRegistry.protocolMessagingHub()
+            );
             LockData memory lockData;
             uint16 version = 1;
 
-        // Notify the other chains of the per epoch rewards
-        for (uint256 i; i < data.numChainData; ) {
-            lockData = crossChainLockData[i];
-            chainData = centralRegistry.supportedChainData(lockData.chainId);
-            data.chainId = centralRegistry.GETHToMessagingChainId(lockData.chainId);
-            abi.encode(epochRewardsPerCVE);
-            data.value = CVE.estimateSendAndCallFee(
-                uint16(data.chainId),
-                chainData.cveAddress,
-                0,
-                abi.encode(epochRewardsPerCVE),
-                uint64(_gasForCalldata),
-                false,
-                abi.encodePacked(version, _gasForCrosschain)
-            );
-
-            messagingHub.sendLockedTokenData{
-                value: data.value
-            }(
-                uint16(data.chainId),
-                chainData.cveAddress,
-                abi.encode(epochRewardsPerCVE),
-                uint64(_gasForCalldata),
-                LzCallParams({refundAddress: payable(address(this)),
-                         zroPaymentAddress: address(0),
-                         adapterParams: abi.encodePacked(version, _gasForCrosschain)
-                }),
-                data.value
+            // Notify the other chains of the per epoch rewards
+            for (uint256 i; i < data.numChainData; ) {
+                lockData = crossChainLockData[i];
+                chainData = centralRegistry.supportedChainData(
+                    lockData.chainId
                 );
-        
-            unchecked {
-                ++i;
+                data.chainId = centralRegistry.GETHToMessagingChainId(
+                    lockData.chainId
+                );
+                abi.encode(epochRewardsPerCVE);
+                data.value = CVE.estimateSendAndCallFee(
+                    uint16(data.chainId),
+                    chainData.cveAddress,
+                    0,
+                    abi.encode(epochRewardsPerCVE),
+                    uint64(_gasForCalldata),
+                    false,
+                    abi.encodePacked(version, _gasForCrosschain)
+                );
+
+                messagingHub.sendLockedTokenData{ value: data.value }(
+                    uint16(data.chainId),
+                    chainData.cveAddress,
+                    abi.encode(epochRewardsPerCVE),
+                    uint64(_gasForCalldata),
+                    LzCallParams({
+                        refundAddress: payable(address(this)),
+                        zroPaymentAddress: address(0),
+                        adapterParams: abi.encodePacked(
+                            version,
+                            _gasForCrosschain
+                        )
+                    }),
+                    data.value
+                );
+
+                unchecked {
+                    ++i;
+                }
             }
+
+            delete crossChainLockData;
         }
-
-        delete crossChainLockData;
-
-        }
-
     }
-
 
     /// @notice Sends all left over fees to new fee accumulator
     /// @dev    This does not need to be permissioned as it pulls data directly
@@ -360,7 +407,9 @@ contract FeeAccumulator is ReentrancyGuard {
 
         // Send remaining fee tokens to new fee accumulator, if any
         for (uint256 i; i < numTokens; ) {
-            tokenBalance = IERC20(currentRewardTokens[i]).balanceOf(address(this));
+            tokenBalance = IERC20(currentRewardTokens[i]).balanceOf(
+                address(this)
+            );
 
             if (tokenBalance > 0) {
                 SafeTransferLib.safeTransfer(
@@ -368,16 +417,16 @@ contract FeeAccumulator is ReentrancyGuard {
                     newFeeAccumulator,
                     tokenBalance
                 );
-            } 
+            }
         }
 
         tokenBalance = IERC20(address(WETH)).balanceOf(address(this));
         // Send remaining WETH to new fee accumulator, if any
         if (tokenBalance > 0) {
             SafeTransferLib.safeTransfer(
-                    address(WETH),
-                    newFeeAccumulator,
-                    tokenBalance
+                address(WETH),
+                newFeeAccumulator,
+                tokenBalance
             );
         }
 
@@ -388,22 +437,32 @@ contract FeeAccumulator is ReentrancyGuard {
     }
 
     /// @notice Admin function to set Stargate router destination address to route fees
-    function setStargateAddress(address payable newOneBalanceAddress) external onlyDaoPermissions {
+    function setStargateAddress(
+        address payable newOneBalanceAddress
+    ) external onlyDaoPermissions {
         oneBalanceAddress = newOneBalanceAddress;
     }
 
     /// @notice Admin function to set Gelato Network one balance destination address to fund compounders
-    function setOneBalanceAddress(address payable newOneBalanceAddress) external onlyDaoPermissions {
+    function setOneBalanceAddress(
+        address payable newOneBalanceAddress
+    ) external onlyDaoPermissions {
         oneBalanceAddress = newOneBalanceAddress;
     }
 
     /// @notice Admin function to set status on whether a token should be earmarked to OTC
     /// @param state 2 = earmarked; 0 or 1 = not earmarked
-    function setEarmarked(address token, bool state) external onlyDaoPermissions {
-        rewardTokenInfo[token].forOTC = state ? 2: 1;
+    function setEarmarked(
+        address token,
+        bool state
+    ) external onlyDaoPermissions {
+        rewardTokenInfo[token].forOTC = state ? 2 : 1;
     }
 
-    function setGasParameters(uint256 gasForCalldata, uint256 gasForCrosschain) external onlyDaoPermissions {
+    function setGasParameters(
+        uint256 gasForCalldata,
+        uint256 gasForCrosschain
+    ) external onlyDaoPermissions {
         _gasForCrosschain = gasForCalldata;
         _gasForCrosschain = gasForCrosschain;
     }
@@ -412,11 +471,7 @@ contract FeeAccumulator is ReentrancyGuard {
     /// @dev    Removes prior messaging hub approval for maximum safety
     function reQueryMessagingHub() external onlyDaoPermissions {
         // Revoke previous approval
-        SafeTransferLib.safeApprove(
-            address(WETH),
-            _previousMessagingHub,
-            0
-        );
+        SafeTransferLib.safeApprove(address(WETH), _previousMessagingHub, 0);
 
         // We infinite approve WETH so that protocol messaging hub can drag funds to proper chain
         SafeTransferLib.safeApprove(
@@ -426,32 +481,37 @@ contract FeeAccumulator is ReentrancyGuard {
         );
     }
 
-    /// @notice Adds multiple reward tokens to the contract for Gelato Network to read. 
+    /// @notice Adds multiple reward tokens to the contract for Gelato Network to read.
     /// @dev    Does not fail on duplicate token, merely skips it and continues
     /// @param newTokens An array of token addresses to be added as reward tokens
-    function addRewardTokens(address[] calldata newTokens) external onlyDaoPermissions {
+    function addRewardTokens(
+        address[] calldata newTokens
+    ) external onlyDaoPermissions {
         uint256 numTokens = newTokens.length;
         if (numTokens == 0) {
             revert FeeAccumulator_ConfigurationError();
         }
 
-        for (uint256 i; i < numTokens; ++i){
-
+        for (uint256 i; i < numTokens; ++i) {
             // If we already support the token just skip it
             if (rewardTokenInfo[newTokens[i]].isRewardToken == 2) {
                 continue;
             }
 
             // Add reward token data to both rewardTokenInfo & rewardTokenData
-                _addRewardToken(newTokens[i]);
+            _addRewardToken(newTokens[i]);
         }
     }
 
     /// @notice Removes a reward token from the contract data that Gelato Network reads
     /// @dev    Will revert on unsupported token address
     /// @param rewardTokenToRemove The address of the token to be removed
-    function removeRewardToken(address rewardTokenToRemove) external onlyDaoPermissions {
-        RewardToken storage tokenToRemove = rewardTokenInfo[rewardTokenToRemove];
+    function removeRewardToken(
+        address rewardTokenToRemove
+    ) external onlyDaoPermissions {
+        RewardToken storage tokenToRemove = rewardTokenInfo[
+            rewardTokenToRemove
+        ];
         if (tokenToRemove.isRewardToken != 2) {
             revert FeeAccumulator_ConfigurationError();
         }
@@ -460,8 +520,8 @@ contract FeeAccumulator is ReentrancyGuard {
         uint256 numTokens = currentTokens.length;
         uint256 tokenIndex = numTokens;
 
-        for (uint256 i; i < numTokens; ){
-            if (currentTokens[i] == rewardTokenToRemove){
+        for (uint256 i; i < numTokens; ) {
+            if (currentTokens[i] == rewardTokenToRemove) {
                 // We found the token so break out of loop
                 tokenIndex = i;
                 break;
@@ -472,7 +532,7 @@ contract FeeAccumulator is ReentrancyGuard {
         }
 
         // subtract 1 from numTokens so we properly have the end index
-        if (tokenIndex == numTokens--){
+        if (tokenIndex == numTokens--) {
             // we were unable to find the token in the array,
             // so something is wrong and we need to revert
             revert FeeAccumulator_ConfigurationError();
@@ -512,26 +572,35 @@ contract FeeAccumulator is ReentrancyGuard {
 
     /// INTERNAL FUNCTIONS ///
 
-    /// @notice Adds `newToken` to `rewardTokens` array and rewardTokenInfo mapping 
+    /// @notice Adds `newToken` to `rewardTokens` array and rewardTokenInfo mapping
     ///         so gelato network knows a new token has been added
     function _addRewardToken(address newToken) internal {
         rewardTokens.push() = newToken;
         // Configure for isRewardToken = true and forOTC = false,
         // if the DAO wants to accumulate reward tokens it will need to be passed
         // by protocol governance
-        rewardTokenInfo[newToken] = RewardToken({isRewardToken: 2, forOTC: 1});
+        rewardTokenInfo[newToken] = RewardToken({
+            isRewardToken: 2,
+            forOTC: 1
+        });
     }
 
     /// @notice Retrieves the balances of all reward tokens currently held by the Fee Accumulator
     /// @return tokenBalances An array of uint256 values,
     ///         representing the current balances of each reward token
-    function getRewardTokenBalances() external view returns (uint256[] memory) {
+    function getRewardTokenBalances()
+        external
+        view
+        returns (uint256[] memory)
+    {
         address[] memory currentTokens = rewardTokens;
         uint256 numTokens = currentTokens.length;
         uint256[] memory tokenBalances = new uint256[](numTokens);
 
         for (uint256 i; i < numTokens; ) {
-            tokenBalances[i] = IERC20(currentTokens[i]).balanceOf(address(this));
+            tokenBalances[i] = IERC20(currentTokens[i]).balanceOf(
+                address(this)
+            );
 
             unchecked {
                 ++i;
@@ -548,13 +617,20 @@ contract FeeAccumulator is ReentrancyGuard {
     /// @param epoch The current epoch number
     /// @dev This function also serves the purpose of validating that the current data structure,
     ///      if the data is stale or a repeat of the same chain, it resets and starts over.
-    function _validateAndRecordChainData(uint256 value, uint256 chainId, uint256 numChainData, uint256 epoch) internal {
-
+    function _validateAndRecordChainData(
+        uint256 value,
+        uint256 chainId,
+        uint256 numChainData,
+        uint256 epoch
+    ) internal {
         if (numChainData > 0) {
-            for(uint256 i; i < numChainData; ){
-                // If somehow the data is stale or we are repeat adding the same chain, 
+            for (uint256 i; i < numChainData; ) {
+                // If somehow the data is stale or we are repeat adding the same chain,
                 // reset and start over
-                if (crossChainLockData[i].epoch < epoch || crossChainLockData[i].chainId == chainId) {
+                if (
+                    crossChainLockData[i].epoch < epoch ||
+                    crossChainLockData[i].chainId == chainId
+                ) {
                     delete crossChainLockData;
                     break;
                 }
@@ -562,36 +638,47 @@ contract FeeAccumulator is ReentrancyGuard {
         }
 
         // Add the new chain recorded data
-        crossChainLockData.push() = LockData ({
-                                        lockAmount: uint224(value),
-                                        epoch: uint16(epoch),
-                                        chainId: uint16(chainId)
-                                    });
-
+        crossChainLockData.push() = LockData({
+            lockAmount: uint224(value),
+            epoch: uint16(epoch),
+            chainId: uint16(chainId)
+        });
     }
 
-    function _executeEpochFeeRouter(ChainData memory chainData, uint256 numChains, uint256 epoch, uint256 chainId) internal returns (uint256) {
-
+    function _executeEpochFeeRouter(
+        ChainData memory chainData,
+        uint256 numChains,
+        uint256 epoch,
+        uint256 chainId
+    ) internal returns (uint256) {
         uint256 feeBalance = IERC20(address(WETH)).balanceOf(address(this));
-        IProtocolMessagingHub messagingHub = IProtocolMessagingHub(centralRegistry.protocolMessagingHub());
+        IProtocolMessagingHub messagingHub = IProtocolMessagingHub(
+            centralRegistry.protocolMessagingHub()
+        );
         uint256 minBalance;
 
-        { // Use scoping to avoid stack too deep
+        {
+            // Use scoping to avoid stack too deep
             bytes memory bytesAddress = new bytes(32);
             address feeEstimateAddress = chainData.messagingHub;
-            assembly { 
-                mstore(add(bytesAddress, 32), feeEstimateAddress) 
+            assembly {
+                mstore(add(bytesAddress, 32), feeEstimateAddress)
             }
-            
+
             (uint256 stargateFees, ) = messagingHub.overEstimateStargateFee(
-                swapRouter(router), 
+                swapRouter(router),
                 1,
                 bytesAddress,
                 numChains
             );
-            
-            uint256 layerZeroFees = _overEstimateLZFees(chainData, chainId, numChains, ICVE(centralRegistry.CVE()));
-            // Withdraw sufficient eth from WETH to cover layerzero fees  
+
+            uint256 layerZeroFees = _overEstimateLZFees(
+                chainData,
+                chainId,
+                numChains,
+                ICVE(centralRegistry.CVE())
+            );
+            // Withdraw sufficient eth from WETH to cover layerzero fees
             WETH.withdraw(layerZeroFees);
             feeBalance = feeBalance - (stargateFees + layerZeroFees);
 
@@ -601,22 +688,26 @@ contract FeeAccumulator is ReentrancyGuard {
             minBalance = (feeBalance * SLIPPED_MINIMUM) / SLIPPAGE_DENOMINATOR;
         }
 
-        
         // Messaging Hub can pull WETH directly so we do not need to queue up any safe transfers
         for (uint256 i; i < numChains; ) {
-            chainData = centralRegistry.supportedChainData(crossChainLockData[i].chainId);
+            chainData = centralRegistry.supportedChainData(
+                crossChainLockData[i].chainId
+            );
             messagingHub.sendFees(
                 router,
                 PoolData({
-                    dstChainId: centralRegistry.GETHToMessagingChainId(crossChainLockData[i].chainId),
+                    dstChainId: centralRegistry.GETHToMessagingChainId(
+                        crossChainLockData[i].chainId
+                    ),
                     srcPoolId: chainData.asSourceAux,
                     dstPoolId: chainData.asDestinationAux,
                     amountLD: feeBalance,
                     minAmountLD: minBalance
                 }),
-                lzTxObj({dstGasForCall: 0,
-                            dstNativeAmount: 0,
-                            dstNativeAddr: ""
+                lzTxObj({
+                    dstGasForCall: 0,
+                    dstNativeAmount: 0,
+                    dstNativeAddr: ""
                 }),
                 ""
             );
@@ -633,13 +724,14 @@ contract FeeAccumulator is ReentrancyGuard {
         address locker = centralRegistry.cveLocker();
         address veCVE = centralRegistry.veCVE();
 
-        totalLockedTokens += (IVeCVE(veCVE).chainTokenPoints() - IVeCVE(veCVE).chainUnlocksByEpoch(epoch));
+        totalLockedTokens += (IVeCVE(veCVE).chainTokenPoints() -
+            IVeCVE(veCVE).chainUnlocksByEpoch(epoch));
 
         epochRewardsPerCVE = (feeBalance * expScale) / totalLockedTokens;
         WETH.withdraw(feeBalance);
         _distributeETH(payable(locker), feeBalance);
         ICVELocker(locker).recordEpochRewards(epoch, epochRewardsPerCVE);
-        
+
         return epochRewardsPerCVE;
     }
 
@@ -653,20 +745,23 @@ contract FeeAccumulator is ReentrancyGuard {
     ) internal view returns (uint256) {
         uint16 version = 1;
         if (block.chainid == 1) {
-            return CVE.estimateSendAndCallFee(
-                uint16(centralRegistry.GETHToMessagingChainId(chainId)),
-                chainData.cveAddress,
-                0,
-                abi.encode(type(uint256).max),
-                uint64(_gasForCalldata),
-                false,
-                abi.encodePacked(version, _gasForCrosschain)
-            ) * numChains * 3;
- 
+            return
+                CVE.estimateSendAndCallFee(
+                    uint16(centralRegistry.GETHToMessagingChainId(chainId)),
+                    chainData.cveAddress,
+                    0,
+                    abi.encode(type(uint256).max),
+                    uint64(_gasForCalldata),
+                    false,
+                    abi.encodePacked(version, _gasForCrosschain)
+                ) *
+                numChains *
+                3;
         }
 
         // Calculate fees based on all chains being eth since thats infinitely more expensive
-        return CVE.estimateSendAndCallFee(
+        return
+            CVE.estimateSendAndCallFee(
                 uint16(centralRegistry.GETHToMessagingChainId(1)),
                 chainData.cveAddress,
                 0,
@@ -675,7 +770,6 @@ contract FeeAccumulator is ReentrancyGuard {
                 false,
                 abi.encodePacked(version, _gasForCrosschain)
             ) * numChains;
-
     }
 
     /// @notice Distributes the specified amount of ETH to
@@ -691,14 +785,13 @@ contract FeeAccumulator is ReentrancyGuard {
         assembly {
             // Revert if we failed to transfer eth
             if iszero(call(gas(), recipient, amount, 0x00, 0x00, 0x00, 0x00)) {
-               // bytes4(keccak256(bytes("FeeAccumulator_TransferFailed()")))
-               mstore(0x00, 0x3595adc2)
-               // return bytes 29-32 for the selector
-               revert (0x1c,0x04)
+                // bytes4(keccak256(bytes("FeeAccumulator_TransferFailed()")))
+                mstore(0x00, 0x3595adc2)
+                // return bytes 29-32 for the selector
+                revert(0x1c, 0x04)
             }
         }
 
         return amount;
     }
-
 }

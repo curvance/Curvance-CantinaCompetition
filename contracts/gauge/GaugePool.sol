@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
+import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { GaugeController, GaugeErrors } from "contracts/gauge/GaugeController.sol";
 import { ChildGaugePool } from "contracts/gauge/ChildGaugePool.sol";
 
@@ -66,8 +67,12 @@ contract GaugePool is GaugeController, ReentrancyGuard {
             revert GaugeErrors.InvalidAddress();
         }
 
-        // // Ensure that lendtroller is not misconfigured in Central Registry
-        if (!ILendtroller(lendtroller_).isLendtroller()) {
+        if (
+            !ERC165Checker.supportsInterface(
+                address(lendtroller_),
+                type(ILendtroller).interfaceId
+            )
+        ) {
             revert GaugeErrors.InvalidAddress();
         }
 

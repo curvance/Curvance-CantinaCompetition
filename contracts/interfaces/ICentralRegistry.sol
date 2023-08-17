@@ -9,7 +9,7 @@ struct OmnichainData {
     // @dev We will need to make sure SALTs are different crosschain
     //      so that we do not accidently deploy the same contract address
     //      across multiple chains
-    uint256 chainId; // chainId where this address authorized 
+    uint256 chainId; // chainId where this address authorized
     uint256 messagingChainId; // messaging chainId where this address authorized
     bytes cveAddress; // CVE Address on the chain as bytes array
 }
@@ -94,16 +94,24 @@ interface ICentralRegistry {
 
     /// @notice Returns whether a particular GETH chainId is supported
     /// ChainId => messagingHub address, 2 = supported; 1 = unsupported
-    function supportedChainData(uint256 chainID) external view returns (ChainData memory);
+    function supportedChainData(
+        uint256 chainID
+    ) external view returns (ChainData memory);
 
     // Address => Curvance identification information
-    function omnichainOperators(address _address) external view returns (OmnichainData memory);
+    function omnichainOperators(
+        address _address
+    ) external view returns (OmnichainData memory);
 
     // Messaging specific ChainId => GETH comparable ChainId
-    function messagingToGETHChainId(uint256 chainId) external view returns (uint256);
+    function messagingToGETHChainId(
+        uint256 chainId
+    ) external view returns (uint256);
 
     // GETH comparable ChainId => Messaging specific ChainId
-    function GETHToMessagingChainId(uint256 chainId) external view returns (uint256);
+    function GETHToMessagingChainId(
+        uint256 chainId
+    ) external view returns (uint256);
 
     /// @notice Returns whether the inputted address is an approved zapper
     function isZapper(address _address) external view returns (bool);
@@ -112,9 +120,7 @@ interface ICentralRegistry {
     function isSwapper(address _address) external view returns (bool);
 
     /// @notice Returns whether the inputted address is an approved veCVELocker
-    function isVeCVELocker(
-        address _address
-    ) external view returns (bool);
+    function isVeCVELocker(address _address) external view returns (bool);
 
     /// @notice Returns whether the inputted address is a Gauge Controller
     function isGaugeController(address _address) external view returns (bool);

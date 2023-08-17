@@ -7,10 +7,9 @@ import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 contract Timelock is TimelockController {
-    
     /// CONSTANTS ///
 
-    // Minimum delay for timelock transaction proposals to execute 
+    // Minimum delay for timelock transaction proposals to execute
     uint256 public constant MINIMUM_DELAY = 7 days;
     ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
 

@@ -105,7 +105,7 @@ contract TestBasePriceRouter is TestBase {
             ICentralRegistry(address(centralRegistry)),
             _USDC_ADDRESS,
             address(lendtroller),
-            InterestRateModel(address(jumpRateModel))
+            address(jumpRateModel)
         );
     }
 

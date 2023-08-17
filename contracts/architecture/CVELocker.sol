@@ -13,7 +13,6 @@ import { ICVXLocker } from "contracts/interfaces/ICVXLocker.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 contract CVELocker is ReentrancyGuard {
-
     /// CONSTANTS ///
 
     address public constant baseRewardToken =
@@ -89,10 +88,10 @@ contract CVELocker is ReentrancyGuard {
     modifier onlyVeCVE() {
         address _veCVE = address(veCVE);
         assembly {
-            if iszero(eq(caller(),_veCVE)){
-                mstore (0x00, _CVELOCKER_UNAUTHORIZED_SELECTOR)
+            if iszero(eq(caller(), _veCVE)) {
+                mstore(0x00, _CVELOCKER_UNAUTHORIZED_SELECTOR)
                 // return bytes 29-32 for the selector
-                revert (0x1c,0x04)
+                revert(0x1c, 0x04)
             }
         }
         _;
@@ -127,14 +126,17 @@ contract CVELocker is ReentrancyGuard {
 
     /// EXTERNAL FUNCTIONS ///
 
-    function recordEpochRewards(uint256 epoch, uint256 rewardsPerCVE) external onlyFeeAccumulator {
+    function recordEpochRewards(
+        uint256 epoch,
+        uint256 rewardsPerCVE
+    ) external onlyFeeAccumulator {
         if (epoch != nextEpochToDeliver) {
             revert CVELocker_WrongEpochRewardSubmission();
         }
 
         // Record rewards per CVE for the epoch
         epochRewardsPerCVE[epoch] = rewardsPerCVE;
-        
+
         // Update nextEpochToDeliver invariant
         unchecked {
             ++nextEpochToDeliver;
@@ -180,7 +182,10 @@ contract CVELocker is ReentrancyGuard {
         address token
     ) external onlyElevatedPermissions {
         require(token != address(0), "CVELocker: Invalid Token Address");
-        require(authorizedRewardToken[token] < 2, "CVELocker: Invalid Operation");
+        require(
+            authorizedRewardToken[token] < 2,
+            "CVELocker: Invalid Operation"
+        );
         authorizedRewardToken[token] = 2;
     }
 
@@ -191,7 +196,10 @@ contract CVELocker is ReentrancyGuard {
         address token
     ) external onlyDaoPermissions {
         require(token != address(0), "CVELocker: Invalid Token Address");
-        require(authorizedRewardToken[token] == 2, "CVELocker: Invalid Operation");
+        require(
+            authorizedRewardToken[token] == 2,
+            "CVELocker: Invalid Operation"
+        );
         authorizedRewardToken[token] = 1;
     }
 
@@ -273,9 +281,9 @@ contract CVELocker is ReentrancyGuard {
         // If there are no epoch rewards to claim, revert
         assembly {
             if iszero(epochs) {
-                mstore (0x00, _NO_EPOCH_REWARDS_SELECTOR)
+                mstore(0x00, _NO_EPOCH_REWARDS_SELECTOR)
                 // return bytes 29-32 for the selector
-                revert (0x1c, 0x04)
+                revert(0x1c, 0x04)
             }
         }
 
@@ -552,9 +560,9 @@ contract CVELocker is ReentrancyGuard {
         assembly {
             // Revert if we failed to transfer eth
             if iszero(call(gas(), recipient, reward, 0x00, 0x00, 0x00, 0x00)) {
-               mstore(0x00, _FAILED_ETH_TRANSFER_SELECTOR)
-               // return bytes 29-32 for the selector
-               revert (0x1c,0x04)
+                mstore(0x00, _FAILED_ETH_TRANSFER_SELECTOR)
+                // return bytes 29-32 for the selector
+                revert(0x1c, 0x04)
             }
         }
 
