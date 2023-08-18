@@ -11,7 +11,6 @@ import { ICVELocker, RewardsData } from "contracts/interfaces/ICVELocker.sol";
 import { IDelegateRegistry } from "contracts/interfaces/IDelegateRegistry.sol";
 
 contract VeCVE is ERC20 {
-    
     /// TYPES ///
 
     struct Lock {
@@ -218,7 +217,10 @@ contract VeCVE is ERC20 {
         bytes calldata params,
         uint256 aux
     ) external canLock(amount) {
-        if (!centralRegistry.isVeCVELocker(msg.sender)) {
+        if (
+            !centralRegistry.isVeCVELocker(msg.sender) &&
+            !centralRegistry.isGaugeController(msg.sender)
+        ) {
             _revert(_INVALID_LOCK_SELECTOR);
         }
 
@@ -359,7 +361,10 @@ contract VeCVE is ERC20 {
         bytes calldata params,
         uint256 aux
     ) external canLock(amount) {
-        if (!centralRegistry.isVeCVELocker(msg.sender)) {
+        if (
+            !centralRegistry.isVeCVELocker(msg.sender) &&
+            !centralRegistry.isGaugeController(msg.sender)
+        ) {
             _revert(_INVALID_LOCK_SELECTOR);
         }
 
@@ -1124,7 +1129,7 @@ contract VeCVE is ERC20 {
             user[lockIndex].amount = uint216(newTokenAmount);
         }
 
-        _mint(msg.sender, amount);
+        _mint(recipient, amount);
 
         emit Locked(recipient, amount);
     }
