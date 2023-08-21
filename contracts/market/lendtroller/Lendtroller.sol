@@ -13,29 +13,40 @@ import { IMToken, accountSnapshot } from "contracts/interfaces/market/IMToken.so
 contract Lendtroller is ILendtroller, ERC165 {
     /// TYPES ///
 
+    /// @param assets Array of account assets.
+    /// @param lastBorrowTimestamp Last time an account borrowed an asset.
     struct AccountData {
-        IMToken[] assets; // Array of account assets
-        uint256 lastBorrowTimestamp; // Last time an account borrowed an asset
+        IMToken[] assets;
+        uint256 lastBorrowTimestamp;
     }
 
+    /// @param isListed Whether or not this market token is listed.
+    /// @param collateralizationRatio Multiplier representing the most one can
+    ///                 borrow against their collateral in this market.
+    ///                 On scale of 0 to 1e18 with 0.8e18 corresponding to 80%
+    ///                 collateral value.
+    /// @param accountInMarket Mapping that indicates whether an account is in
+    ///                 a market, 0 or 1 for no; 2 for yes
     struct MarketToken {
-        // Whether or not this market token is listed
         bool isListed;
-        //  Multiplier representing the most one can borrow against their collateral in this market
-        //  On scale of 0 to 1e18 with 0.8e18 corresponding to 80% collateral value
         uint256 collateralizationRatio;
-        // Mapping that indicates whether an account is in a market, 0 or 1 for no; 2 for yes
         mapping(address => uint256) accountInMarket;
     }
 
     /// CONSTANTS ///
 
-    address public immutable gaugePool; // gaugePool contract address
-    uint256 internal constant expScale = 1e18; // Scalar for math
-    uint256 internal constant maxCloseFactor = 1e18; // 100% E.g close entire position
-    uint256 internal constant maxCollateralizationRatio = 0.9e18; // 90%
-    uint256 internal constant minHoldPeriod = 15 minutes; // Minimum hold time to prevent oracle price attacks
-    ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
+    /// @notice gaugePool contract address.
+    address public immutable gaugePool;
+    /// @notice Scalar for math.
+    uint256 internal constant expScale = 1e18;
+    /// @notice 100% E.g close entire position.
+    uint256 internal constant maxCloseFactor = 1e18;
+    /// @notice Maximum collateralization ratio. 90%
+    uint256 internal constant maxCollateralizationRatio = 0.9e18;
+    /// @notice Minimum hold time to prevent oracle price attacks.
+    uint256 internal constant minHoldPeriod = 15 minutes;
+    /// @notice Curvance DAO hub
+    ICentralRegistry public immutable centralRegistry;
 
     // `bytes4(keccak256(bytes("Lendtroller_InvalidValue()")))`
     uint256 internal constant _INVALID_VALUE_SELECTOR = 0x74ebdb4f;
@@ -45,20 +56,32 @@ contract Lendtroller is ILendtroller, ERC165 {
 
     /// STORAGE ///
 
-    uint256 public transferPaused = 1; // 1 = unpaused; 2 = paused
-    uint256 public seizePaused = 1; // 1 = unpaused; 2 = paused
-    mapping(address => uint256) public mintPaused; // Token => 0 or 1 = unpaused; 2 = paused
-    mapping(address => uint256) public borrowPaused; // Token => 0 or 1 = unpaused; 2 = paused
-    mapping(address => uint256) public borrowCaps; // Token => Borrow Cap; 0 = unlimited
+    /// @dev 1 = unpaused; 2 = paused
+    uint256 public transferPaused = 1;
+    /// @dev 1 = unpaused; 2 = paused
+    uint256 public seizePaused = 1;
+    /// @dev Token => 0 or 1 = unpaused; 2 = paused
+    mapping(address => uint256) public mintPaused;
+    /// @dev Token => 0 or 1 = unpaused; 2 = paused
+    mapping(address => uint256) public borrowPaused;
+    /// @notice Token => Borrow Cap
+    /// @dev 0 = unlimited
+    mapping(address => uint256) public borrowCaps;
 
-    uint256 public closeFactor; // Maximum % that a liquidator can repay when liquidating a user
-    uint256 public liquidationIncentiveScaled; // Default discount multiplier a liquidation receives
-    address public positionFolding; // PositionFolding contract address
+    /// @notice Maximum % that a liquidator can repay when liquidating a user.
+    uint256 public closeFactor;
+    /// @notice Default discount multiplier a liquidation receives.
+    uint256 public liquidationIncentiveScaled;
+    /// @notice PositionFolding contract address.
+    address public positionFolding;
 
-    IMToken[] public allMarkets; // A list of all markets for frontend
+    /// @notice A list of all markets for frontend.
+    IMToken[] public allMarkets;
 
-    mapping(address => MarketToken) public marketTokenData; // Market Token => Token metadata
-    mapping(address => AccountData) public accountAssets; // Account => Assets, lastBorrowTimestamp
+    /// @notice Market Token => Token metadata.
+    mapping(address => MarketToken) public marketTokenData;
+    /// @notice Account => Assets, lastBorrowTimestamp.
+    mapping(address => AccountData) public accountAssets;
 
     /// EVENTS ///
 
@@ -169,7 +192,7 @@ contract Lendtroller is ILendtroller, ERC165 {
 
     /// @notice Removes an asset from an account's liquidity calculation
     /// @dev Sender must not have an outstanding borrow balance in the asset,
-    ///  or be providing necessary collateral for an outstanding borrow.
+    ///      or be providing necessary collateral for an outstanding borrow.
     /// @param mTokenAddress The address of the asset to be removed
     function exitMarket(address mTokenAddress) external {
         IMToken mToken = IMToken(mTokenAddress);
@@ -285,9 +308,9 @@ contract Lendtroller is ILendtroller, ERC165 {
             revert Lendtroller_TokenNotListed();
         }
 
-        /// We require a `minimumHoldPeriod` to break flashloan manipulations attempts
-        /// as well as short term price manipulations if the dynamic dual oracle
-        /// fails to protect the market somehow
+        // We require a `minimumHoldPeriod` to break flashloan manipulations attempts
+        // as well as short term price manipulations if the dynamic dual oracle
+        // fails to protect the market somehow
         if (
             accountAssets[account].lastBorrowTimestamp + minHoldPeriod >
             block.timestamp
@@ -398,7 +421,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         address mTokenCollateral,
         uint256 actualRepayAmount
     ) external view override returns (uint256) {
-        /// Read oracle prices for borrowed and collateral markets
+        // Read oracle prices for borrowed and collateral markets
         IPriceRouter router = getPriceRouter();
         (uint256 debtTokenPrice, uint256 debtTokenError) = router.getPrice(
             mTokenBorrowed,
@@ -408,7 +431,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         (uint256 collateralTokenPrice, uint256 collateralTokenError) = router
             .getPrice(mTokenCollateral, true, true);
 
-        /// Validate that we were able to securely query prices from the dual oracle
+        // Validate that we were able to securely query prices from the dual oracle
         if (debtTokenError == 2 || collateralTokenError == 2) {
             revert Lendtroller_PriceError();
         }
@@ -476,7 +499,8 @@ contract Lendtroller is ILendtroller, ERC165 {
         uint256 oldCollateralizationRatio = marketToken.collateralizationRatio;
 
         // Assign new collateralization ratio
-        // Note that a collateralization ratio of 0 corresponds to no collateralization of the mToken
+        // Note that a collateralization ratio of 0 corresponds to
+        // no collateralization of the mToken
         marketToken.collateralizationRatio = newCollateralizationRatio;
 
         emit NewCollateralizationRatio(
@@ -531,13 +555,13 @@ contract Lendtroller is ILendtroller, ERC165 {
     }
 
     /// @notice Set the given borrow caps for the given mToken markets.
-    ///   Borrowing that brings total borrows to or above borrow cap will revert.
+    ///         Borrowing that brings total borrows to or above borrow cap will revert.
     /// @dev Admin or borrowCapGuardian function to set the borrow caps.
-    ///   A borrow cap of 0 corresponds to unlimited borrowing.
+    ///      A borrow cap of 0 corresponds to unlimited borrowing.
     /// @param mTokens The addresses of the markets (tokens) to
     ///                change the borrow caps for
     /// @param newBorrowCaps The new borrow cap values in underlying to be set.
-    ///   A value of 0 corresponds to unlimited borrowing.
+    ///                      A value of 0 corresponds to unlimited borrowing.
     function setMarketTokenBorrowCaps(
         IMToken[] calldata mTokens,
         uint256[] calldata newBorrowCaps
@@ -717,7 +741,8 @@ contract Lendtroller is ILendtroller, ERC165 {
             }
         }
 
-        /// We call hypothetical account liquidity as normal but with heavier error code restriction on borrow
+        // We call hypothetical account liquidity as normal but with
+        // heavier error code restriction on borrow
         (, uint256 shortfall) = _getHypotheticalAccountLiquidity(
             borrower,
             IMToken(mToken),
@@ -858,9 +883,9 @@ contract Lendtroller is ILendtroller, ERC165 {
             revert Lendtroller_TokenNotListed();
         }
 
-        /// We require a `minimumHoldPeriod` to break flashloan manipulations attempts
-        /// as well as short term price manipulations if the dynamic dual oracle
-        /// fails to protect the market somehow
+        // We require a `minimumHoldPeriod` to break flashloan manipulations attempts
+        // as well as short term price manipulations if the dynamic dual oracle
+        // fails to protect the market somehow
         if (
             accountAssets[redeemer].lastBorrowTimestamp + minHoldPeriod >
             block.timestamp
