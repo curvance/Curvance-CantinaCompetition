@@ -12,6 +12,8 @@ import { InterestRateModel } from "contracts/market/interestRates/InterestRateMo
 import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { ChainlinkAdaptor } from "contracts/oracles/adaptors/chainlink/ChainlinkAdaptor.sol";
+import { IVault } from "contracts/oracles/adaptors/balancer/BalancerPoolAdaptor.sol";
+import { BalancerStablePoolAdaptor } from "contracts/oracles/adaptors/balancer/BalancerStablePoolAdaptor.sol";
 import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
 import { MockToken } from "contracts/mocks/MockToken.sol";
 import { GaugePool } from "contracts/gauge/GaugePool.sol";
@@ -44,10 +46,16 @@ contract TestBaseMarket is TestBase {
     address internal constant _CHAINLINK_RETH_ETH =
         0x536218f9E9Eb48863970252233c8F271f554C2d0;
 
+    address internal constant _BALANCER_VAULT =
+        0xBA12222222228d8Ba445958a75a0704d566BF2C8;
+    bytes32 internal constant _BAL_WETH_RETH_POOLID =
+        0x1e19cf2d73a72ef1332c882f20534b6519be0276000200000000000000000112;
+
     CVE public cve;
     VeCVE public veCVE;
     CVELocker public cveLocker;
     CentralRegistry public centralRegistry;
+    BalancerStablePoolAdaptor public balRETHAdapter;
     ChainlinkAdaptor public chainlinkAdaptor;
     ChainlinkAdaptor public dualChainlinkAdaptor;
     InterestRateModel public jumpRateModel;
@@ -217,6 +225,26 @@ contract TestBaseMarket is TestBase {
         priceRouter.addAssetPriceFeed(
             _RETH_ADDRESS,
             address(dualChainlinkAdaptor)
+        );
+
+        balRETHAdapter = new BalancerStablePoolAdaptor(
+            ICentralRegistry(address(centralRegistry)),
+            IVault(_BALANCER_VAULT)
+        );
+        BalancerStablePoolAdaptor.AdaptorData memory adapterData;
+        adapterData.poolId = _BAL_WETH_RETH_POOLID;
+        adapterData.poolDecimals = 18;
+        adapterData.rateProviderDecimals[0] = 18;
+        adapterData.rateProviders[
+            0
+        ] = 0x1a8F81c256aee9C640e14bB0453ce247ea0DFE6F;
+        adapterData.underlyingOrConstituent[0] = _RETH_ADDRESS;
+        adapterData.underlyingOrConstituent[1] = _WETH_ADDRESS;
+        balRETHAdapter.addAsset(_BALANCER_WETH_RETH, adapterData);
+        priceRouter.addApprovedAdaptor(address(balRETHAdapter));
+        priceRouter.addAssetPriceFeed(
+            _BALANCER_WETH_RETH,
+            address(balRETHAdapter)
         );
     }
 

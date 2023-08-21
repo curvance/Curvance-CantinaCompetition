@@ -15,7 +15,6 @@ import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.sol";
 
 contract PositionFolding is ReentrancyGuard, IPositionFolding {
-    
     /// TYPES ///
 
     struct LeverageStruct {
@@ -220,10 +219,13 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         uint256 collateralAmount,
         bytes calldata params
     ) external override {
-        require (msg.sender == collateralToken,"PositionFolding: UNAUTHORIZED");
+        require(
+            msg.sender == collateralToken,
+            "PositionFolding: UNAUTHORIZED"
+        );
 
         (bool isListed, ) = lendtroller.getMarketTokenData(collateralToken);
-        require( isListed,"PositionFolding: UNAUTHORIZED");
+        require(isListed, "PositionFolding: UNAUTHORIZED");
 
         DeleverageStruct memory deleverageData = abi.decode(
             params,
@@ -264,9 +266,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
                 "PositionFolding: invalid zapper param"
             );
             require(
-                centralRegistry.isZapper(
-                    deleverageData.zapperCall.target
-                ),
+                centralRegistry.isZapper(deleverageData.zapperCall.target),
                 "PositionFolding: invalid zapper"
             );
 
@@ -276,9 +276,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         if (deleverageData.swapData.call.length > 0) {
             // swap for borrow underlying
             require(
-                centralRegistry.isSwapper(
-                    deleverageData.swapData.target
-                ),
+                centralRegistry.isSwapper(deleverageData.swapData.target),
                 "PositionFolding: invalid swapper"
             );
 
