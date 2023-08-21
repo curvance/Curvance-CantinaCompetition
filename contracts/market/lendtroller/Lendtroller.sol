@@ -115,6 +115,21 @@ contract Lendtroller is ILendtroller, ERC165 {
         _;
     }
 
+    modifier onlyAuthorizedPermissions(bool state) {
+        if (state) {
+            require(
+                centralRegistry.hasDaoPermissions(msg.sender),
+                "lendtroller: UNAUTHORIZED"
+            );
+        } else {
+            require(
+                centralRegistry.hasElevatedPermissions(msg.sender),
+                "lendtroller: UNAUTHORIZED"
+            );
+        }
+        _;
+    }
+
     /// CONSTRUCTOR ///
 
     constructor(ICentralRegistry centralRegistry_, address gaugePool_) {
@@ -583,22 +598,12 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @dev requires timelock authority if unpausing
     /// @param mToken market token address
     /// @param state pause or unpause
-    function setMintPaused(IMToken mToken, bool state) external {
+    function setMintPaused(
+        IMToken mToken,
+        bool state
+    ) external onlyAuthorizedPermissions(state) {
         if (!marketTokenData[address(mToken)].isListed) {
             revert Lendtroller_TokenNotListed();
-        }
-
-        // If we want to pause, DAO can execute immediately, if we want to unpause we need timelock authority
-        if (state) {
-            require(
-                centralRegistry.hasDaoPermissions(msg.sender),
-                "lendtroller: UNAUTHORIZED"
-            );
-        } else {
-            require(
-                centralRegistry.hasElevatedPermissions(msg.sender),
-                "lendtroller: UNAUTHORIZED"
-            );
         }
 
         mintPaused[address(mToken)] = state ? 2 : 1;
@@ -609,22 +614,12 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @dev requires timelock authority if unpausing
     /// @param mToken market token address
     /// @param state pause or unpause
-    function setBorrowPaused(IMToken mToken, bool state) external {
+    function setBorrowPaused(
+        IMToken mToken,
+        bool state
+    ) external onlyAuthorizedPermissions(state) {
         if (!marketTokenData[address(mToken)].isListed) {
             revert Lendtroller_TokenNotListed();
-        }
-
-        // If we want to pause, DAO can execute immediately, if we want to unpause we need timelock authority
-        if (state) {
-            require(
-                centralRegistry.hasDaoPermissions(msg.sender),
-                "lendtroller: UNAUTHORIZED"
-            );
-        } else {
-            require(
-                centralRegistry.hasElevatedPermissions(msg.sender),
-                "lendtroller: UNAUTHORIZED"
-            );
         }
 
         borrowPaused[address(mToken)] = state ? 2 : 1;
@@ -634,19 +629,9 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @notice Admin function to set transfer paused
     /// @dev requires timelock authority if unpausing
     /// @param state pause or unpause
-    function setTransferPaused(bool state) external {
-        if (state) {
-            require(
-                centralRegistry.hasDaoPermissions(msg.sender),
-                "lendtroller: UNAUTHORIZED"
-            );
-        } else {
-            require(
-                centralRegistry.hasElevatedPermissions(msg.sender),
-                "lendtroller: UNAUTHORIZED"
-            );
-        }
-
+    function setTransferPaused(
+        bool state
+    ) external onlyAuthorizedPermissions(state) {
         transferPaused = state ? 2 : 1;
         emit ActionPaused("Transfer Paused", state);
     }
@@ -654,19 +639,9 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @notice Admin function to set seize paused
     /// @dev requires timelock authority if unpausing
     /// @param state pause or unpause
-    function setSeizePaused(bool state) external {
-        if (state) {
-            require(
-                centralRegistry.hasDaoPermissions(msg.sender),
-                "lendtroller: UNAUTHORIZED"
-            );
-        } else {
-            require(
-                centralRegistry.hasElevatedPermissions(msg.sender),
-                "lendtroller: UNAUTHORIZED"
-            );
-        }
-
+    function setSeizePaused(
+        bool state
+    ) external onlyAuthorizedPermissions(state) {
         seizePaused = state ? 2 : 1;
         emit ActionPaused("Seize Paused", state);
     }
