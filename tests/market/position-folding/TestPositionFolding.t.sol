@@ -9,6 +9,8 @@ import { AuraPositionVault } from "contracts/deposits/adaptors/AuraPositionVault
 
 import "tests/market/TestBaseMarket.sol";
 
+contract User {}
+
 contract TestPositionFolding is TestBaseMarket {
     address internal constant _UNISWAP_V2_ROUTER =
         0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
@@ -119,28 +121,17 @@ contract TestPositionFolding is TestBaseMarket {
     }
 
     function provideEnoughLiquidityForLeverage() internal {
-        // address liquidityProvider = address(new User());
-        // // prepare 200K DAI
-        // vm.store(
-        //     DAI_ADDRESS,
-        //     keccak256(
-        //         abi.encodePacked(
-        //             uint256(uint160(liquidityProvider)),
-        //             uint256(2)
-        //         )
-        //     ),
-        //     bytes32(uint256(200000 ether))
-        // );
-        // // prepare 200K ETH
-        // vm.deal(liquidityProvider, 200000 ether);
-        // _enterMarkets(liquidityProvider);
-        // vm.startPrank(liquidityProvider);
-        // // mint cDAI
-        // dai.approve(address(cDAI), 200000 ether);
-        // cDAI.mint(200000 ether);
-        // // mint cETH
-        // cETH.mint{ value: 200000 ether }();
-        // vm.stopPrank();
+        address liquidityProvider = address(new User());
+        _prepareDAI(liquidityProvider, 200000e18);
+        _prepareBALRETH(liquidityProvider, 10 ether);
+        // mint dDAI
+        vm.startPrank(liquidityProvider);
+        dai.approve(address(dDAI), 200000 ether);
+        dDAI.mint(200000 ether);
+        // mint cBALETH
+        balRETH.approve(address(cBALRETH), 10 ether);
+        cBALRETH.mint(10 ether);
+        vm.stopPrank();
     }
 
     function testInitialize() public {
