@@ -102,7 +102,7 @@ contract Lendtroller is ILendtroller, ERC165 {
     modifier onlyDaoPermissions() {
         require(
             centralRegistry.hasDaoPermissions(msg.sender),
-            "lendtroller: UNAUTHORIZED"
+            "Lendtroller: UNAUTHORIZED"
         );
         _;
     }
@@ -110,7 +110,7 @@ contract Lendtroller is ILendtroller, ERC165 {
     modifier onlyElevatedPermissions() {
         require(
             centralRegistry.hasElevatedPermissions(msg.sender),
-            "lendtroller: UNAUTHORIZED"
+            "Lendtroller: UNAUTHORIZED"
         );
         _;
     }
@@ -119,12 +119,12 @@ contract Lendtroller is ILendtroller, ERC165 {
         if (state) {
             require(
                 centralRegistry.hasDaoPermissions(msg.sender),
-                "lendtroller: UNAUTHORIZED"
+                "Lendtroller: UNAUTHORIZED"
             );
         } else {
             require(
                 centralRegistry.hasElevatedPermissions(msg.sender),
-                "lendtroller: UNAUTHORIZED"
+                "Lendtroller: UNAUTHORIZED"
             );
         }
         _;
@@ -138,7 +138,7 @@ contract Lendtroller is ILendtroller, ERC165 {
                 address(centralRegistry_),
                 type(ICentralRegistry).interfaceId
             ),
-            "lendtroller: invalid central registry"
+            "Lendtroller: invalid central registry"
         );
         centralRegistry = centralRegistry_;
         gaugePool = gaugePool_;
@@ -214,7 +214,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         // so it corresponds to last element index now starting at index 0
         require(
             assetIndex < numUserAssets--,
-            "lendtroller: asset list misconfigured"
+            "Lendtroller: asset list misconfigured"
         );
 
         // copy last item in list to location of item to be removed
@@ -523,7 +523,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         if (IMToken(mToken).totalSupply() == 0) {
             require(
                 IMToken(mToken).startMarket(msg.sender),
-                "lendtroller: Market needs to be initialized"
+                "Lendtroller: Market needs to be initialized"
             );
         }
 
