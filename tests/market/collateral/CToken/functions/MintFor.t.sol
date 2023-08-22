@@ -16,7 +16,7 @@ contract CTokenMintForTest is TestBaseCToken {
     function test_cTokenMintFor_fail_whenMintIsNotAllowed() public {
         lendtroller.setMintPaused(IMToken(address(cBALRETH)), true);
 
-        vm.expectRevert(Lendtroller.Lendtroller_Paused.selector);
+        vm.expectRevert(Lendtroller.Lendtroller__Paused.selector);
         cBALRETH.mintFor(100, user1);
     }
 

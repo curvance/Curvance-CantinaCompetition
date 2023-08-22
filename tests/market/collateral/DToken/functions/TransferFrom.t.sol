@@ -29,7 +29,7 @@ contract DTokenTransferFromTest is TestBaseDToken {
     function test_transfer_fail_whenTransferIsNotAllowed() public {
         lendtroller.setTransferPaused(true);
 
-        vm.expectRevert(Lendtroller.Lendtroller_Paused.selector);
+        vm.expectRevert(Lendtroller.Lendtroller__Paused.selector);
         dUSDC.transferFrom(address(this), user1, 100e6);
     }
 
