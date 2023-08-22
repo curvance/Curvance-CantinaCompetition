@@ -460,7 +460,7 @@ contract Lendtroller is ILendtroller, ERC165 {
     function setCloseFactor(
         uint256 newCloseFactor
     ) external onlyElevatedPermissions {
-        if (newCloseFactor <= maxCloseFactor) {
+        if (newCloseFactor > maxCloseFactor) {
             revert Lendtroller__InvalidValue();
         }
         // Cache the current value for event log and gas savings
