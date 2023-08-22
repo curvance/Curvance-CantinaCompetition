@@ -2,10 +2,6 @@
 pragma solidity ^0.8.13;
 
 import { IMToken } from "contracts/interfaces/market/IMToken.sol";
-import { ERC20 } from "contracts/libraries/ERC20.sol";
-
-import { PositionFolding } from "contracts/market/leverage/PositionFolding.sol";
-import { AuraPositionVault } from "contracts/deposits/adaptors/AuraPositionVault.sol";
 
 import "tests/market/TestBaseMarket.sol";
 
@@ -14,15 +10,9 @@ contract User {}
 contract TestPositionFolding is TestBaseMarket {
     address internal constant _UNISWAP_V2_ROUTER =
         0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
-    address internal constant _AURA_BOOSTER =
-        0xA57b8d98dAE62B26Ec3bcC4a365338157060B234;
-    address internal constant _REWARDER =
-        0xDd1fE5AD401D4777cE89959b7fa587e569Bf125D;
 
     address public owner;
     address public user;
-    AuraPositionVault public vault;
-    PositionFolding public positionFolding;
 
     receive() external payable {}
 
@@ -33,11 +23,6 @@ contract TestPositionFolding is TestBaseMarket {
 
         owner = address(this);
         user = user1;
-
-        positionFolding = new PositionFolding(
-            ICentralRegistry(address(centralRegistry)),
-            address(lendtroller)
-        );
 
         _prepareUSDC(user, 200000e6);
         _prepareDAI(user, 200000e18);
@@ -67,15 +52,7 @@ contract TestPositionFolding is TestBaseMarket {
         // deploy CBALRETH
         {
             // deploy aura position vault
-            vault = new AuraPositionVault(
-                ERC20(_BALANCER_WETH_RETH),
-                ICentralRegistry(address(centralRegistry)),
-                109,
-                _REWARDER,
-                _AURA_BOOSTER
-            );
-            _deployCBALRETH(address(vault));
-            vault.initiateVault(address(cBALRETH));
+            _deployCBALRETH();
 
             // support market
             _prepareBALRETH(owner, 1 ether);

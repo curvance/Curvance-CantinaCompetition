@@ -8,8 +8,11 @@ import { CVELocker } from "contracts/architecture/CVELocker.sol";
 import { CentralRegistry } from "contracts/architecture/CentralRegistry.sol";
 import { DToken } from "contracts/market/collateral/DToken.sol";
 import { CToken } from "contracts/market/collateral/CToken.sol";
+import { AuraPositionVault } from "contracts/deposits/adaptors/AuraPositionVault.sol";
 import { InterestRateModel } from "contracts/market/interestRates/InterestRateModel.sol";
 import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
+import { Zapper } from "contracts/market/zapper/Zapper.sol";
+import { PositionFolding } from "contracts/market/leverage/PositionFolding.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { ChainlinkAdaptor } from "contracts/oracles/adaptors/chainlink/ChainlinkAdaptor.sol";
 import { IVault } from "contracts/oracles/adaptors/balancer/BalancerPoolAdaptor.sol";
@@ -18,6 +21,7 @@ import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
 import { MockToken } from "contracts/mocks/MockToken.sol";
 import { GaugePool } from "contracts/gauge/GaugePool.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
+import { ERC20 } from "contracts/libraries/ERC20.sol";
 
 contract TestBaseMarket is TestBase {
     address internal constant _WETH_ADDRESS =
@@ -50,6 +54,10 @@ contract TestBaseMarket is TestBase {
         0xBA12222222228d8Ba445958a75a0704d566BF2C8;
     bytes32 internal constant _BAL_WETH_RETH_POOLID =
         0x1e19cf2d73a72ef1332c882f20534b6519be0276000200000000000000000112;
+    address internal constant _AURA_BOOSTER =
+        0xA57b8d98dAE62B26Ec3bcC4a365338157060B234;
+    address internal constant _REWARDER =
+        0xDd1fE5AD401D4777cE89959b7fa587e569Bf125D;
 
     CVE public cve;
     VeCVE public veCVE;
@@ -63,6 +71,7 @@ contract TestBaseMarket is TestBase {
     PriceRouter public priceRouter;
     DToken public dUSDC;
     DToken public dDAI;
+    AuraPositionVault public vault;
     CToken public cBALRETH;
     IERC20 public usdc;
     IERC20 public dai;
@@ -81,8 +90,11 @@ contract TestBaseMarket is TestBase {
     uint256 public voteBoostValue = 11000;
     uint256 public lockBoostValue = 10000; // 100%
 
+    Zapper public zapper;
+    PositionFolding public positionFolding;
+
     function setUp() public virtual {
-        _fork();
+        _fork(17960200);
 
         usdc = IERC20(_USDC_ADDRESS);
         dai = IERC20(_DAI_ADDRESS);
@@ -101,7 +113,10 @@ contract TestBaseMarket is TestBase {
         _deployInterestRateModel();
         _deployDUSDC();
         _deployDDAI();
-        _deployCBALRETH(address(0));
+        _deployCBALRETH();
+
+        _deployZapper();
+        _deployPositionFolding();
 
         priceRouter.addMTokenSupport(address(dUSDC));
         priceRouter.addMTokenSupport(address(cBALRETH));
@@ -290,16 +305,41 @@ contract TestBaseMarket is TestBase {
             );
     }
 
-    function _deployCBALRETH(address vault) internal returns (CToken) {
+    function _deployCBALRETH() internal returns (CToken) {
+        vault = new AuraPositionVault(
+            ERC20(_BALANCER_WETH_RETH),
+            ICentralRegistry(address(centralRegistry)),
+            109,
+            _REWARDER,
+            _AURA_BOOSTER
+        );
         cBALRETH = new CToken(
             ICentralRegistry(address(centralRegistry)),
             _BALANCER_WETH_RETH,
             address(lendtroller),
-            vault,
+            address(vault),
             "cBAL-WETH-RETH",
             "cBAL-ETHPAIR"
         );
+        vault.initiateVault(address(cBALRETH));
         return cBALRETH;
+    }
+
+    function _deployZapper() internal returns (Zapper) {
+        zapper = new Zapper(
+            ICentralRegistry(address(centralRegistry)),
+            address(lendtroller),
+            _WETH_ADDRESS
+        );
+        return zapper;
+    }
+
+    function _deployPositionFolding() internal returns (PositionFolding) {
+        positionFolding = new PositionFolding(
+            ICentralRegistry(address(centralRegistry)),
+            address(lendtroller)
+        );
+        return positionFolding;
     }
 
     function _addSinglePriceFeed() internal {
