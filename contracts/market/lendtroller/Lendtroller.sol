@@ -211,15 +211,15 @@ contract Lendtroller is ILendtroller, ERC165 {
             revert Lendtroller__HasActiveLoan();
         }
 
-        // Fail if the sender is not permitted to redeem all of their tokens
-        _redeemAllowed(mTokenAddress, msg.sender, tokensHeld);
-
         MarketToken storage marketToExit = marketTokenData[mTokenAddress];
 
         // We do not need to update any values if the account is not ‘in’ the market
         if (marketToExit.accountInMarket[msg.sender] < 2) {
             return;
         }
+
+        // Fail if the sender is not permitted to redeem all of their tokens
+        _redeemAllowed(mTokenAddress, msg.sender, tokensHeld);
 
         // Remove mToken account membership to `mTokenAddress`
         marketToExit.accountInMarket[msg.sender] = 1;
