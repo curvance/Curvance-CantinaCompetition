@@ -5,6 +5,7 @@ import { ERC165 } from "contracts/libraries/ERC165.sol";
 import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
+import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.sol";
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 import { IMToken, accountSnapshot } from "contracts/interfaces/market/IMToken.sol";
 
@@ -106,6 +107,8 @@ contract Lendtroller is ILendtroller, ERC165 {
 
     /// ERRORS ///
 
+    error Lendtroller__CentralRegistryIsInvalid();
+    error Lendtroller__PositionFoldingIsInvalid();
     error Lendtroller__GaugePoolIsZeroAddress();
     error Lendtroller__TokenNotListed();
     error Lendtroller__TokenAlreadyListed();
@@ -157,13 +160,14 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// CONSTRUCTOR ///
 
     constructor(ICentralRegistry centralRegistry_, address gaugePool_) {
-        require(
-            ERC165Checker.supportsInterface(
+        if (
+            !ERC165Checker.supportsInterface(
                 address(centralRegistry_),
                 type(ICentralRegistry).interfaceId
-            ),
-            "Lendtroller: invalid central registry"
-        );
+            )
+        ) {
+            revert Lendtroller__CentralRegistryIsInvalid();
+        }
         if (gaugePool_ == address(0)) {
             revert Lendtroller__GaugePoolIsZeroAddress();
         }
@@ -680,6 +684,15 @@ contract Lendtroller is ILendtroller, ERC165 {
     function setPositionFolding(
         address newPositionFolding
     ) external onlyElevatedPermissions {
+        if (
+            !ERC165Checker.supportsInterface(
+                newPositionFolding,
+                type(IPositionFolding).interfaceId
+            )
+        ) {
+            revert Lendtroller__PositionFoldingIsInvalid();
+        }
+
         // Cache the current value for event log
         address oldPositionFolding = positionFolding;
 
