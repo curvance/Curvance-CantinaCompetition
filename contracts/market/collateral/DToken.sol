@@ -679,15 +679,17 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
     /// @notice Returns the decimals of the token
     /// @dev We pull directly from underlying incase its a proxy contract
     ///      and changes decimals on us
-    function decimals() public view returns (uint8) {
-        return IERC20(underlying).decimals();
+    function decimals() public pure returns (uint8) {
+        return 18;
     }
 
     /// @notice Gets balance of this contract in terms of the underlying
     /// @dev This excludes changes in underlying token balance by the current transaction, if any
     /// @return The quantity of underlying tokens owned by this contract
     function getCash() public view returns (uint256) {
-        return IERC20(underlying).balanceOf(address(this));
+        return
+            (IERC20(underlying).balanceOf(address(this)) * expScale) /
+            (10 ** IERC20(underlying).decimals());
     }
 
     /// @notice Returns the type of Curvance token, 1 = Collateral, 0 = Debt
@@ -1105,7 +1107,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
             amount
         );
 
-        return amount;
+        return (amount * expScale) / (10 ** IERC20(underlying).decimals());
     }
 
     /// @notice Handles outgoing token transfers
@@ -1113,6 +1115,8 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
     /// @param to Address receiving the token transfer
     /// @param amount Amount of tokens to transfer out
     function _doTransferOut(address to, uint256 amount) internal {
+        amount = (amount * (10 ** IERC20(underlying).decimals())) / expScale;
+
         /// SafeTransferLib will handle reversion from insufficient cash held
         SafeTransferLib.safeTransfer(underlying, to, amount);
     }

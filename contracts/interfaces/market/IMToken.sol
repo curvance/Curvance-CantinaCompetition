@@ -56,4 +56,6 @@ interface IMToken {
     function mint(uint256 mintAmount) external returns (bool);
 
     function redeem(uint256 tokensToRedeem) external;
+
+    function decimals() external view returns (uint8);
 }

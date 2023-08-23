@@ -501,8 +501,8 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
     /// @notice Returns the decimals of the token
     /// @dev We pull directly from underlying incase its a proxy contract
     ///      and changes decimals on us
-    function decimals() public view override returns (uint8) {
-        return IERC20(underlying).decimals();
+    function decimals() public pure override returns (uint8) {
+        return 18;
     }
 
     /// @notice Returns the type of Curvance token, 1 = Collateral, 0 = Debt
@@ -781,7 +781,9 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
         // deposit into the vault
         BasePositionVault _vault = vault;
         SafeTransferLib.safeApprove(underlying, address(_vault), amount);
-        return _vault.deposit(amount, address(this));
+        return
+            (_vault.deposit(amount, address(this)) * expScale) /
+            (10 ** IERC20(underlying).decimals());
     }
 
     /// @notice Handles outgoing token transfers
@@ -789,6 +791,8 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
     /// @param to Address receiving the token transfer
     /// @param amount Amount of tokens to transfer out
     function _doTransferOut(address to, uint256 amount) internal {
+        amount = (amount * (10 ** IERC20(underlying).decimals())) / expScale;
+
         if (address(vault) != address(0)) {
             // withdraw from the vault
             amount = vault.redeem(amount, address(this), address(this));
