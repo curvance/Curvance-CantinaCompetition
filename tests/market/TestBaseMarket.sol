@@ -11,6 +11,7 @@ import { DToken } from "contracts/market/collateral/DToken.sol";
 import { CToken } from "contracts/market/collateral/CToken.sol";
 import { InterestRateModel } from "contracts/market/interestRates/InterestRateModel.sol";
 import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
+import { PositionFolding } from "contracts/market/leverage/PositionFolding.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { ChainlinkAdaptor } from "contracts/oracles/adaptors/chainlink/ChainlinkAdaptor.sol";
 import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
@@ -58,6 +59,7 @@ contract TestBaseMarket is TestBase {
     ChainlinkAdaptor public dualChainlinkAdaptor;
     InterestRateModel public jumpRateModel;
     Lendtroller public lendtroller;
+    PositionFolding public positionFolding;
     PriceRouter public priceRouter;
     AuraPositionVault public vault;
     DToken public dUSDC;
@@ -172,6 +174,11 @@ contract TestBaseMarket is TestBase {
         chainlinkAdaptor.addAsset(_DAI_ADDRESS, _CHAINLINK_DAI_USD, true);
         chainlinkAdaptor.addAsset(_DAI_ADDRESS, _CHAINLINK_DAI_ETH, false);
         chainlinkAdaptor.addAsset(_RETH_ADDRESS, _CHAINLINK_RETH_ETH, false);
+        chainlinkAdaptor.addAsset(
+            _BALANCER_WETH_RETH,
+            _CHAINLINK_RETH_ETH,
+            false
+        );
 
         priceRouter.addApprovedAdaptor(address(chainlinkAdaptor));
         priceRouter.addAssetPriceFeed(
@@ -185,6 +192,10 @@ contract TestBaseMarket is TestBase {
         priceRouter.addAssetPriceFeed(_DAI_ADDRESS, address(chainlinkAdaptor));
         priceRouter.addAssetPriceFeed(
             _RETH_ADDRESS,
+            address(chainlinkAdaptor)
+        );
+        priceRouter.addAssetPriceFeed(
+            _BALANCER_WETH_RETH,
             address(chainlinkAdaptor)
         );
 
@@ -239,6 +250,13 @@ contract TestBaseMarket is TestBase {
             address(gaugePool)
         );
         centralRegistry.addLendingMarket(address(lendtroller));
+    }
+
+    function _deployPositionFolding() internal {
+        positionFolding = new PositionFolding(
+            ICentralRegistry(address(centralRegistry)),
+            address(lendtroller)
+        );
     }
 
     function _deployInterestRateModel() internal {
