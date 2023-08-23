@@ -94,7 +94,7 @@ contract TestBaseMarket is TestBase {
     PositionFolding public positionFolding;
 
     function setUp() public virtual {
-        _fork(17960200);
+        _fork(17971884);
 
         usdc = IERC20(_USDC_ADDRESS);
         dai = IERC20(_DAI_ADDRESS);

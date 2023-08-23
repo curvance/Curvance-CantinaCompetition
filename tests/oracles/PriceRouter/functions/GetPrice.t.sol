@@ -22,7 +22,7 @@ contract GetPriceTest is TestBasePriceRouter {
             true
         );
 
-        assertEq(price, uint256(usdcPrice));
+        assertEq(price, uint256(usdcPrice) * 1e10);
         assertEq(errorCode, 0);
 
         (, int256 ethPrice, , , ) = AggregatorV3Interface(_CHAINLINK_USDC_ETH)

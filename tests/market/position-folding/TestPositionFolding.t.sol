@@ -77,21 +77,21 @@ contract TestPositionFolding is TestBaseMarket {
         // set position folding
         Lendtroller(lendtroller).setPositionFolding(address(positionFolding));
 
-        vm.warp(gaugePool.startTime());
-        vm.roll(block.number + 1000);
+        // vm.warp(gaugePool.startTime());
+        // vm.roll(block.number + 1000);
 
-        // set gauge settings of next epoch
-        address[] memory tokensParam = new address[](2);
-        tokensParam[0] = address(dDAI);
-        tokensParam[1] = address(cBALRETH);
-        uint256[] memory poolWeights = new uint256[](2);
-        poolWeights[0] = 100;
-        poolWeights[1] = 100;
-        vm.prank(protocolMessagingHub);
-        gaugePool.setEmissionRates(1, tokensParam, poolWeights);
-        vm.prank(protocolMessagingHub);
-        cve.mintGaugeEmissions(300 * 2 weeks, address(gaugePool));
-        vm.warp(gaugePool.startTime() + 1 * 2 weeks);
+        // // set gauge settings of next epoch
+        // address[] memory tokensParam = new address[](2);
+        // tokensParam[0] = address(dDAI);
+        // tokensParam[1] = address(cBALRETH);
+        // uint256[] memory poolWeights = new uint256[](2);
+        // poolWeights[0] = 100;
+        // poolWeights[1] = 100;
+        // vm.prank(protocolMessagingHub);
+        // gaugePool.setEmissionRates(1, tokensParam, poolWeights);
+        // vm.prank(protocolMessagingHub);
+        // cve.mintGaugeEmissions(300 * 2 weeks, address(gaugePool));
+        // vm.warp(gaugePool.startTime() + 1 * 2 weeks);
 
         // provide enough liquidity for leverage
         provideEnoughLiquidityForLeverage();
@@ -119,46 +119,37 @@ contract TestPositionFolding is TestBaseMarket {
         assertEq(address(positionFolding.lendtroller()), address(lendtroller));
     }
 
-    // function testLeverageMaxWithOnlyCToken() public {
-    //     vm.startPrank(user);
+    function testLeverageMaxWithOnlyCToken() public {
+        vm.startPrank(user);
 
-    //     // enter markets
-    //     _enterCDAIMarket(user);
+        // approve
+        balRETH.approve(address(cBALRETH), 1 ether);
 
-    //     // approve
-    //     dai.approve(address(cDAI), 100 ether);
+        // mint
+        assertTrue(cBALRETH.mint(1 ether));
+        assertEq(cBALRETH.balanceOf(user), 1 ether);
 
-    //     // mint
-    //     assertTrue(cDAI.mint(100 ether));
-    //     assertEq(cDAI.balanceOf(user), 100 ether);
+        uint256 balanceBeforeBorrow = dai.balanceOf(user);
+        // borrow
+        dDAI.borrow(100 ether);
+        assertEq(balanceBeforeBorrow + 100 ether, dai.balanceOf(user));
 
-    //     uint256 balanceBeforeBorrow = dai.balanceOf(user);
-    //     // borrow
-    //     cDAI.borrow(25 ether);
-    //     assertEq(cDAI.balanceOf(user), 100 ether);
-    //     assertEq(balanceBeforeBorrow + 25 ether, dai.balanceOf(user));
+        uint256 amountForLeverageMax = positionFolding
+            .queryAmountToBorrowForLeverageMax(user, address(dDAI));
+        // positionFolding.leverageMax(
+        //     CToken(address(cDAI)),
+        //     CToken(address(cDAI)),
+        //     PositionFolding.Swap({ target: address(0), call: "0x" }),
+        //     3000
+        // );
 
-    //     assertEq(
-    //         positionFolding.queryAmountToBorrowForLeverageMax(
-    //             user,
-    //             CToken(address(cDAI))
-    //         ),
-    //         172 ether
-    //     );
-    //     positionFolding.leverageMax(
-    //         CToken(address(cDAI)),
-    //         CToken(address(cDAI)),
-    //         PositionFolding.Swap({ target: address(0), call: "0x" }),
-    //         3000
-    //     );
+        // (uint256 cTokenBalance, uint256 borrowBalance, ) = cDAI
+        //     .getAccountSnapshot(user);
+        // assertEq(cTokenBalance, 272 ether);
+        // assertEq(borrowBalance, 197 ether);
 
-    //     (uint256 cTokenBalance, uint256 borrowBalance, ) = cDAI
-    //         .getAccountSnapshot(user);
-    //     assertEq(cTokenBalance, 272 ether);
-    //     assertEq(borrowBalance, 197 ether);
-
-    //     vm.stopPrank();
-    // }
+        vm.stopPrank();
+    }
 
     // function testDeLeverageWithOnlyCToken() public {
     //     vm.startPrank(user);

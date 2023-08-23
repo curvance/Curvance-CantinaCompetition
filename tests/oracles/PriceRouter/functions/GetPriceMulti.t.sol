@@ -37,7 +37,7 @@ contract GetPriceMultiTest is TestBasePriceRouter {
         (uint256[] memory prices, uint256[] memory errorCodes) = priceRouter
             .getPriceMulti(assets, inUSD, getLower);
 
-        assertEq(prices[0], uint256(usdcPrice));
+        assertEq(prices[0], uint256(usdcPrice) * 1e10);
         assertEq(errorCodes[0], 0);
 
         assertEq(prices[1], uint256(ethPrice));
