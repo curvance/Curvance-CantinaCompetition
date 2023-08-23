@@ -296,11 +296,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         address borrower,
         uint256 borrowAmount
     ) external override {
-        require(
-            marketTokenData[msg.sender].isListed,
-            "Lendtroller: Caller not MToken"
-        );
-        accountAssets[borrower].lastBorrowTimestamp = block.timestamp;
+        _notifyAccountBorrow(borrower);
 
         borrowAllowed(mToken, borrower, borrowAmount);
     }
@@ -709,11 +705,7 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @dev The caller must be a listed MToken in the `markets` mapping
     /// @param borrower The address of the account that has just borrowed
     function notifyAccountBorrow(address borrower) external override {
-        require(
-            marketTokenData[msg.sender].isListed,
-            "Lendtroller: Caller not MToken"
-        );
-        accountAssets[borrower].lastBorrowTimestamp = block.timestamp;
+        _notifyAccountBorrow(borrower);
     }
 
     /// PUBLIC FUNCTIONS ///
@@ -1112,6 +1104,17 @@ contract Lendtroller is ILendtroller, ERC165 {
             }
         }
         allMarkets.push(IMToken(mToken));
+    }
+
+    /// @notice Updates `accounts` lastBorrowTimestamp to the current block timestamp
+    /// @dev The caller must be a listed MToken in the `markets` mapping
+    /// @param borrower The address of the account that has just borrowed
+    function _notifyAccountBorrow(address borrower) internal {
+        require(
+            marketTokenData[msg.sender].isListed,
+            "Lendtroller: Caller not MToken"
+        );
+        accountAssets[borrower].lastBorrowTimestamp = block.timestamp;
     }
 
     /// @dev Internal helper for reverting efficiently.
