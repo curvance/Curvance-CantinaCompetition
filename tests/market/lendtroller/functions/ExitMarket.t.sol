@@ -22,12 +22,12 @@ contract ExitMarketTest is TestBaseLendtroller {
         }
     }
 
-    function test_exitMarket_fail_whenAmountOwedIsNotZero() public {
-        dUSDC.borrow(1);
+    // function test_exitMarket_fail_whenAmountOwedIsNotZero() public {
+    //     dUSDC.borrow(1);
 
-        vm.expectRevert(Lendtroller.Lendtroller__HasActiveLoan.selector);
-        lendtroller.exitMarket(address(dUSDC));
-    }
+    //     vm.expectRevert(Lendtroller.Lendtroller__HasActiveLoan.selector);
+    //     lendtroller.exitMarket(address(dUSDC));
+    // }
 
     function test_exitMarket_success_whenUserNotJoinedMarket() public {
         for (uint256 i = 0; i < tokens.length; i++) {

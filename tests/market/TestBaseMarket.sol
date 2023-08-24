@@ -190,11 +190,6 @@ contract TestBaseMarket is TestBase {
         chainlinkAdaptor.addAsset(_DAI_ADDRESS, _CHAINLINK_DAI_USD, true);
         chainlinkAdaptor.addAsset(_DAI_ADDRESS, _CHAINLINK_DAI_ETH, false);
         chainlinkAdaptor.addAsset(_RETH_ADDRESS, _CHAINLINK_RETH_ETH, false);
-        chainlinkAdaptor.addAsset(
-            _BALANCER_WETH_RETH,
-            _CHAINLINK_RETH_ETH,
-            false
-        );
 
         priceRouter.addApprovedAdaptor(address(chainlinkAdaptor));
         priceRouter.addAssetPriceFeed(
@@ -208,10 +203,6 @@ contract TestBaseMarket is TestBase {
         priceRouter.addAssetPriceFeed(_DAI_ADDRESS, address(chainlinkAdaptor));
         priceRouter.addAssetPriceFeed(
             _RETH_ADDRESS,
-            address(chainlinkAdaptor)
-        );
-        priceRouter.addAssetPriceFeed(
-            _BALANCER_WETH_RETH,
             address(chainlinkAdaptor)
         );
 
