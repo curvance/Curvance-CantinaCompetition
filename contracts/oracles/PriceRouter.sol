@@ -6,6 +6,7 @@ import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/interfaces/
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IMToken } from "contracts/interfaces/market/IMToken.sol";
+import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { IOracleAdaptor, PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
 
 /// @title Curvance Dual Oracle Price Router
@@ -278,7 +279,9 @@ contract PriceRouter {
         bool inUSD,
         bool getLower
     ) public view returns (uint256 price, uint256 errorCode) {
+        bool isMToken;
         if (mTokenAssets[asset].isMToken) {
+            isMToken = mTokenAssets[asset].isMToken;
             asset = mTokenAssets[asset].underlying;
         }
 
@@ -294,6 +297,10 @@ contract PriceRouter {
         /// If somehow a feed returns a price of 0 make sure we trigger the BAD_SOURCE flag
         if (price == 0 && errorCode < BAD_SOURCE) {
             errorCode = BAD_SOURCE;
+        }
+
+        if (isMToken) {
+            price = (price * 1e18) / (10 ** IERC20(asset).decimals());
         }
     }
 

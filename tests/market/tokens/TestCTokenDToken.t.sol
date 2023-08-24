@@ -23,7 +23,7 @@ contract TestCTokenDToken is TestBaseMarket {
     }
 
     function testInitialize() public {
-        assertEq(dUSDC.decimals(), 18);
+        assertEq(dUSDC.decimals(), 6);
         assertEq(cBALRETH.decimals(), 18);
     }
 
