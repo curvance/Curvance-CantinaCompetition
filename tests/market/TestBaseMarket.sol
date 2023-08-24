@@ -6,6 +6,7 @@ import { CVE } from "contracts/token/CVE.sol";
 import { VeCVE } from "contracts/token/VeCVE.sol";
 import { CVELocker } from "contracts/architecture/CVELocker.sol";
 import { CentralRegistry } from "contracts/architecture/CentralRegistry.sol";
+import { AuraPositionVault } from "contracts/deposits/adaptors/AuraPositionVault.sol";
 import { DToken } from "contracts/market/collateral/DToken.sol";
 import { CToken } from "contracts/market/collateral/CToken.sol";
 import { AuraPositionVault } from "contracts/deposits/adaptors/AuraPositionVault.sol";
@@ -20,6 +21,7 @@ import { BalancerStablePoolAdaptor } from "contracts/oracles/adaptors/balancer/B
 import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
 import { MockToken } from "contracts/mocks/MockToken.sol";
 import { GaugePool } from "contracts/gauge/GaugePool.sol";
+import { ERC20 } from "contracts/libraries/ERC20.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { ERC20 } from "contracts/libraries/ERC20.sol";
 
@@ -68,10 +70,11 @@ contract TestBaseMarket is TestBase {
     ChainlinkAdaptor public dualChainlinkAdaptor;
     InterestRateModel public jumpRateModel;
     Lendtroller public lendtroller;
+    PositionFolding public positionFolding;
     PriceRouter public priceRouter;
+    AuraPositionVault public vault;
     DToken public dUSDC;
     DToken public dDAI;
-    AuraPositionVault public vault;
     CToken public cBALRETH;
     IERC20 public usdc;
     IERC20 public dai;
@@ -91,10 +94,9 @@ contract TestBaseMarket is TestBase {
     uint256 public lockBoostValue = 10000; // 100%
 
     Zapper public zapper;
-    PositionFolding public positionFolding;
 
     function setUp() public virtual {
-        _fork(17971884);
+        _fork();
 
         usdc = IERC20(_USDC_ADDRESS);
         dai = IERC20(_DAI_ADDRESS);
@@ -109,6 +111,7 @@ contract TestBaseMarket is TestBase {
         _deployChainlinkAdaptors();
         _deployGaugePool();
 
+        _deployAuraPositionVault();
         _deployLendtroller();
         _deployInterestRateModel();
         _deployDUSDC();
@@ -187,6 +190,11 @@ contract TestBaseMarket is TestBase {
         chainlinkAdaptor.addAsset(_DAI_ADDRESS, _CHAINLINK_DAI_USD, true);
         chainlinkAdaptor.addAsset(_DAI_ADDRESS, _CHAINLINK_DAI_ETH, false);
         chainlinkAdaptor.addAsset(_RETH_ADDRESS, _CHAINLINK_RETH_ETH, false);
+        chainlinkAdaptor.addAsset(
+            _BALANCER_WETH_RETH,
+            _CHAINLINK_RETH_ETH,
+            false
+        );
 
         priceRouter.addApprovedAdaptor(address(chainlinkAdaptor));
         priceRouter.addAssetPriceFeed(
@@ -200,6 +208,10 @@ contract TestBaseMarket is TestBase {
         priceRouter.addAssetPriceFeed(_DAI_ADDRESS, address(chainlinkAdaptor));
         priceRouter.addAssetPriceFeed(
             _RETH_ADDRESS,
+            address(chainlinkAdaptor)
+        );
+        priceRouter.addAssetPriceFeed(
+            _BALANCER_WETH_RETH,
             address(chainlinkAdaptor)
         );
 
@@ -305,7 +317,7 @@ contract TestBaseMarket is TestBase {
             );
     }
 
-    function _deployCBALRETH() internal returns (CToken) {
+    function _deployAuraPositionVault() internal {
         vault = new AuraPositionVault(
             ERC20(_BALANCER_WETH_RETH),
             ICentralRegistry(address(centralRegistry)),
@@ -313,6 +325,11 @@ contract TestBaseMarket is TestBase {
             _REWARDER,
             _AURA_BOOSTER
         );
+    }
+
+    function _deployCBALRETH() internal returns (CToken) {
+        _deployAuraPositionVault();
+
         cBALRETH = new CToken(
             ICentralRegistry(address(centralRegistry)),
             _BALANCER_WETH_RETH,

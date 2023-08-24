@@ -29,7 +29,7 @@ contract CTokenTransferFromTest is TestBaseCToken {
     function test_transfer_fail_whenTransferIsNotAllowed() public {
         lendtroller.setTransferPaused(true);
 
-        vm.expectRevert(Lendtroller.Lendtroller_Paused.selector);
+        vm.expectRevert(Lendtroller.Lendtroller__Paused.selector);
         cBALRETH.transferFrom(address(this), user1, 100);
     }
 
