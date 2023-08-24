@@ -3,6 +3,7 @@ pragma solidity 0.8.17;
 
 import { TestBase } from "tests/utils/TestBase.sol";
 import { CentralRegistry } from "contracts/architecture/CentralRegistry.sol";
+import { GaugePool } from "contracts/gauge/GaugePool.sol";
 import { DToken } from "contracts/market/collateral/DToken.sol";
 import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 import { InterestRateModel } from "contracts/market/interestRates/InterestRateModel.sol";
@@ -84,9 +85,12 @@ contract TestBasePriceRouter is TestBase {
     }
 
     function _deployLendtroller() internal {
+        GaugePool gaugePool = new GaugePool(
+            ICentralRegistry(address(centralRegistry))
+        );
         lendtroller = new Lendtroller(
             ICentralRegistry(address(centralRegistry)),
-            address(0)
+            address(gaugePool)
         );
         centralRegistry.addLendingMarket(address(lendtroller));
     }

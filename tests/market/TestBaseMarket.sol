@@ -6,15 +6,18 @@ import { CVE } from "contracts/token/CVE.sol";
 import { VeCVE } from "contracts/token/VeCVE.sol";
 import { CVELocker } from "contracts/architecture/CVELocker.sol";
 import { CentralRegistry } from "contracts/architecture/CentralRegistry.sol";
+import { AuraPositionVault } from "contracts/deposits/adaptors/AuraPositionVault.sol";
 import { DToken } from "contracts/market/collateral/DToken.sol";
 import { CToken } from "contracts/market/collateral/CToken.sol";
 import { InterestRateModel } from "contracts/market/interestRates/InterestRateModel.sol";
 import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
+import { PositionFolding } from "contracts/market/leverage/PositionFolding.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { ChainlinkAdaptor } from "contracts/oracles/adaptors/chainlink/ChainlinkAdaptor.sol";
 import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
 import { MockToken } from "contracts/mocks/MockToken.sol";
 import { GaugePool } from "contracts/gauge/GaugePool.sol";
+import { ERC20 } from "contracts/libraries/ERC20.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 
 contract TestBaseMarket is TestBase {
@@ -30,6 +33,10 @@ contract TestBaseMarket is TestBase {
         0x6B175474E89094C44Da98b954EedeAC495271d0F;
     address internal constant _CVX_ADDRESS =
         0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
+    address internal constant _AURA_BOOSTER =
+        0xA57b8d98dAE62B26Ec3bcC4a365338157060B234;
+    address internal constant _REWARDER =
+        0xDd1fE5AD401D4777cE89959b7fa587e569Bf125D;
 
     address internal constant _CHAINLINK_ETH_USD =
         0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
@@ -52,7 +59,9 @@ contract TestBaseMarket is TestBase {
     ChainlinkAdaptor public dualChainlinkAdaptor;
     InterestRateModel public jumpRateModel;
     Lendtroller public lendtroller;
+    PositionFolding public positionFolding;
     PriceRouter public priceRouter;
+    AuraPositionVault public vault;
     DToken public dUSDC;
     DToken public dDAI;
     CToken public cBALRETH;
@@ -89,11 +98,12 @@ contract TestBaseMarket is TestBase {
         _deployChainlinkAdaptors();
         _deployGaugePool();
 
+        _deployAuraPositionVault();
         _deployLendtroller();
         _deployInterestRateModel();
         _deployDUSDC();
         _deployDDAI();
-        _deployCBALRETH(address(0));
+        _deployCBALRETH();
 
         priceRouter.addMTokenSupport(address(dUSDC));
         priceRouter.addMTokenSupport(address(cBALRETH));
@@ -164,6 +174,11 @@ contract TestBaseMarket is TestBase {
         chainlinkAdaptor.addAsset(_DAI_ADDRESS, _CHAINLINK_DAI_USD, true);
         chainlinkAdaptor.addAsset(_DAI_ADDRESS, _CHAINLINK_DAI_ETH, false);
         chainlinkAdaptor.addAsset(_RETH_ADDRESS, _CHAINLINK_RETH_ETH, false);
+        chainlinkAdaptor.addAsset(
+            _BALANCER_WETH_RETH,
+            _CHAINLINK_RETH_ETH,
+            false
+        );
 
         priceRouter.addApprovedAdaptor(address(chainlinkAdaptor));
         priceRouter.addAssetPriceFeed(
@@ -177,6 +192,10 @@ contract TestBaseMarket is TestBase {
         priceRouter.addAssetPriceFeed(_DAI_ADDRESS, address(chainlinkAdaptor));
         priceRouter.addAssetPriceFeed(
             _RETH_ADDRESS,
+            address(chainlinkAdaptor)
+        );
+        priceRouter.addAssetPriceFeed(
+            _BALANCER_WETH_RETH,
             address(chainlinkAdaptor)
         );
 
@@ -233,6 +252,13 @@ contract TestBaseMarket is TestBase {
         centralRegistry.addLendingMarket(address(lendtroller));
     }
 
+    function _deployPositionFolding() internal {
+        positionFolding = new PositionFolding(
+            ICentralRegistry(address(centralRegistry)),
+            address(lendtroller)
+        );
+    }
+
     function _deployInterestRateModel() internal {
         jumpRateModel = new InterestRateModel(
             ICentralRegistry(address(centralRegistry)),
@@ -262,12 +288,22 @@ contract TestBaseMarket is TestBase {
             );
     }
 
-    function _deployCBALRETH(address vault) internal returns (CToken) {
+    function _deployAuraPositionVault() internal {
+        vault = new AuraPositionVault(
+            ERC20(_BALANCER_WETH_RETH),
+            ICentralRegistry(address(centralRegistry)),
+            109,
+            _REWARDER,
+            _AURA_BOOSTER
+        );
+    }
+
+    function _deployCBALRETH() internal returns (CToken) {
         cBALRETH = new CToken(
             ICentralRegistry(address(centralRegistry)),
             _BALANCER_WETH_RETH,
             address(lendtroller),
-            vault,
+            address(vault),
             "cBAL-WETH-RETH",
             "cBAL-ETHPAIR"
         );

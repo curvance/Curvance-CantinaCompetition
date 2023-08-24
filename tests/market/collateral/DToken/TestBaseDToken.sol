@@ -8,10 +8,7 @@ contract TestBaseDToken is TestBaseMarket {
     function setUp() public virtual override {
         super.setUp();
 
-        _deployDUSDC();
-
         gaugePool.start(address(lendtroller));
-        priceRouter.addMTokenSupport(address(dUSDC));
 
         _prepareUSDC(user1, _ONE);
         _prepareUSDC(address(this), _ONE);

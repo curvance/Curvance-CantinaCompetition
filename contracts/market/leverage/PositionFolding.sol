@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
+import { ERC165 } from "contracts/libraries/ERC165.sol";
 import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
@@ -14,8 +15,7 @@ import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.sol";
 
-contract PositionFolding is ReentrancyGuard, IPositionFolding {
-    
+contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
     /// TYPES ///
 
     struct LeverageStruct {
@@ -220,10 +220,13 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         uint256 collateralAmount,
         bytes calldata params
     ) external override {
-        require (msg.sender == collateralToken,"PositionFolding: UNAUTHORIZED");
+        require(
+            msg.sender == collateralToken,
+            "PositionFolding: UNAUTHORIZED"
+        );
 
         (bool isListed, ) = lendtroller.getMarketTokenData(collateralToken);
-        require( isListed,"PositionFolding: UNAUTHORIZED");
+        require(isListed, "PositionFolding: UNAUTHORIZED");
 
         DeleverageStruct memory deleverageData = abi.decode(
             params,
@@ -264,9 +267,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
                 "PositionFolding: invalid zapper param"
             );
             require(
-                centralRegistry.isZapper(
-                    deleverageData.zapperCall.target
-                ),
+                centralRegistry.isZapper(deleverageData.zapperCall.target),
                 "PositionFolding: invalid zapper"
             );
 
@@ -276,9 +277,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         if (deleverageData.swapData.call.length > 0) {
             // swap for borrow underlying
             require(
-                centralRegistry.isSwapper(
-                    deleverageData.swapData.target
-                ),
+                centralRegistry.isSwapper(deleverageData.swapData.target),
                 "PositionFolding: invalid swapper"
             );
 
@@ -350,6 +349,15 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         require(errorCode == 0, "PositionFolding: invalid token price");
 
         return ((maxLeverage - sumBorrow) * 1e18) / price;
+    }
+
+    /// @inheritdoc ERC165
+    function supportsInterface(
+        bytes4 interfaceId
+    ) public view override returns (bool) {
+        return
+            interfaceId == type(IPositionFolding).interfaceId ||
+            super.supportsInterface(interfaceId);
     }
 
     /// INTERNAL FUNCTIONS ///
