@@ -16,7 +16,6 @@ import { IWETH } from "contracts/interfaces/IWETH.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 contract Zapper {
-
     /// TYPES ///
 
     struct ZapperData {
@@ -28,7 +27,7 @@ contract Zapper {
 
     /// CONSTANTS ///
 
-    uint256 public constant SLIPPAGE = 500; // 5% 
+    uint256 public constant SLIPPAGE = 500; // 5%
     ILendtroller public immutable lendtroller; // Lendtroller linked
     address public immutable WETH; // Address of WETH
     ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
@@ -116,14 +115,19 @@ contract Zapper {
             address(this),
             zapData.inputAmount
         );
-        CurveLib.exitCurve(lpMinter, zapData.inputToken, tokens, zapData.inputAmount);
+        CurveLib.exitCurve(
+            lpMinter,
+            zapData.inputToken,
+            tokens,
+            zapData.inputAmount
+        );
 
         uint256 numTokenSwaps = tokenSwaps.length;
         // prepare tokens to mint LP
         for (uint256 i; i < numTokenSwaps; ) {
             unchecked {
                 SwapperLib.swap(tokenSwaps[i++]);
-            } 
+            }
         }
 
         outAmount = IERC20(zapData.outputToken).balanceOf(address(this));
@@ -133,7 +137,11 @@ contract Zapper {
         );
 
         // transfer token back to user
-        SafeTransferLib.safeTransfer(zapData.outputToken, recipient, outAmount);
+        SafeTransferLib.safeTransfer(
+            zapData.outputToken,
+            recipient,
+            outAmount
+        );
     }
 
     /// @dev Deposit inputToken and enter curvance
@@ -185,6 +193,7 @@ contract Zapper {
         address balancerVault,
         bytes32 balancerPoolId,
         ZapperData calldata zapData,
+        uint256 exitTokenIndex,
         address[] calldata tokens,
         SwapperLib.Swap[] calldata tokenSwaps,
         address recipient
@@ -200,7 +209,8 @@ contract Zapper {
             balancerPoolId,
             zapData.inputToken,
             tokens,
-            zapData.inputAmount
+            zapData.inputAmount,
+            exitTokenIndex
         );
 
         uint256 numTokenSwaps = tokenSwaps.length;
@@ -218,7 +228,11 @@ contract Zapper {
         );
 
         // transfer token back to user
-        SafeTransferLib.safeTransfer(zapData.outputToken, recipient, outAmount);
+        SafeTransferLib.safeTransfer(
+            zapData.outputToken,
+            recipient,
+            outAmount
+        );
     }
 
     /// @dev Deposit inputToken and enter curvance
@@ -275,14 +289,18 @@ contract Zapper {
             address(this),
             zapData.inputAmount
         );
-        VelodromeLib.exitVelodrome(router, zapData.inputToken, zapData.inputAmount);
+        VelodromeLib.exitVelodrome(
+            router,
+            zapData.inputToken,
+            zapData.inputAmount
+        );
 
         uint256 numTokenSwaps = tokenSwaps.length;
         // prepare tokens to mint LP
         for (uint256 i; i < numTokenSwaps; ) {
             unchecked {
                 SwapperLib.swap(tokenSwaps[i++]);
-            } 
+            }
         }
 
         outAmount = IERC20(zapData.outputToken).balanceOf(address(this));
@@ -292,7 +310,11 @@ contract Zapper {
         );
 
         // transfer token back to user
-        SafeTransferLib.safeTransfer(zapData.outputToken, recipient, outAmount);
+        SafeTransferLib.safeTransfer(
+            zapData.outputToken,
+            recipient,
+            outAmount
+        );
     }
 
     /// @dev Deposit inputToken and enter curvance
