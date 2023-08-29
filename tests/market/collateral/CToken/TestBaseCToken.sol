@@ -2,7 +2,6 @@
 pragma solidity 0.8.17;
 
 import { TestBaseMarket } from "tests/market/TestBaseMarket.sol";
-import { ERC20 } from "contracts/libraries/ERC20.sol";
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 
 contract TestBaseCToken is TestBaseMarket {
