@@ -31,7 +31,7 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
     struct DeleverageStruct {
         CToken collateralToken;
         uint256 collateralAmount;
-        CToken borrowToken;
+        DToken borrowToken;
         // collateral underlying to a single token (can be borrow underlying)
         SwapperLib.ZapperCall zapperCall;
         // (optional) zapper outout to borrow underlying
@@ -58,7 +58,7 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
         _;
     }
 
-    modifier checkSlippage(address user, uint256 slippage) {
+    modifier checkSlippage(address user) {
         (uint256 sumCollateralBefore, , uint256 sumBorrowBefore) = lendtroller
             .getAccountPosition(user);
         uint256 userValueBefore = sumCollateralBefore - sumBorrowBefore;
@@ -73,7 +73,7 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
             ? userValue - userValueBefore
             : userValueBefore - userValue;
         require(
-            diff < (userValueBefore * slippage) / DENOMINATOR,
+            diff < (userValueBefore * SLIPPAGE) / DENOMINATOR,
             "PositionFolding: slippage"
         );
     }
@@ -112,16 +112,14 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
     /// EXTERNAL FUNCTIONS ///
 
     function leverage(
-        LeverageStruct calldata leverageData,
-        uint256 slippage
-    ) external checkSlippage(msg.sender, slippage) nonReentrant {
+        LeverageStruct calldata leverageData
+    ) external checkSlippage(msg.sender) nonReentrant {
         _leverage(leverageData);
     }
 
     function deleverage(
-        DeleverageStruct calldata deleverageData,
-        uint256 slippage
-    ) external checkSlippage(msg.sender, slippage) nonReentrant {
+        DeleverageStruct calldata deleverageData
+    ) external checkSlippage(msg.sender) nonReentrant {
         _deleverage(deleverageData);
     }
 
@@ -286,16 +284,16 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
 
         // repay debt
         uint256 repayAmount = deleverageData.repayAmount;
-        CToken borrowToken = deleverageData.borrowToken;
+        DToken borrowToken = deleverageData.borrowToken;
 
-        address borrowUnderlying = CToken(address(borrowToken)).underlying();
+        address borrowUnderlying = borrowToken.underlying();
         uint256 remaining = IERC20(borrowUnderlying).balanceOf(address(this)) -
             repayAmount;
 
         SwapperLib.approveTokenIfNeeded(
             borrowUnderlying,
             address(borrowToken),
-            repayAmount + remaining
+            repayAmount
         );
 
         DToken(address(borrowToken)).repayForPositionFolding(

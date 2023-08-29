@@ -9,16 +9,21 @@ import { CentralRegistry } from "contracts/architecture/CentralRegistry.sol";
 import { AuraPositionVault } from "contracts/deposits/adaptors/AuraPositionVault.sol";
 import { DToken } from "contracts/market/collateral/DToken.sol";
 import { CToken } from "contracts/market/collateral/CToken.sol";
+import { AuraPositionVault } from "contracts/deposits/adaptors/AuraPositionVault.sol";
 import { InterestRateModel } from "contracts/market/interestRates/InterestRateModel.sol";
 import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
+import { Zapper } from "contracts/market/zapper/Zapper.sol";
 import { PositionFolding } from "contracts/market/leverage/PositionFolding.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { ChainlinkAdaptor } from "contracts/oracles/adaptors/chainlink/ChainlinkAdaptor.sol";
+import { IVault } from "contracts/oracles/adaptors/balancer/BalancerPoolAdaptor.sol";
+import { BalancerStablePoolAdaptor } from "contracts/oracles/adaptors/balancer/BalancerStablePoolAdaptor.sol";
 import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
 import { MockToken } from "contracts/mocks/MockToken.sol";
 import { GaugePool } from "contracts/gauge/GaugePool.sol";
 import { ERC20 } from "contracts/libraries/ERC20.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
+import { ERC20 } from "contracts/libraries/ERC20.sol";
 
 contract TestBaseMarket is TestBase {
     address internal constant _WETH_ADDRESS =
@@ -33,10 +38,6 @@ contract TestBaseMarket is TestBase {
         0x6B175474E89094C44Da98b954EedeAC495271d0F;
     address internal constant _CVX_ADDRESS =
         0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
-    address internal constant _AURA_BOOSTER =
-        0xA57b8d98dAE62B26Ec3bcC4a365338157060B234;
-    address internal constant _REWARDER =
-        0xDd1fE5AD401D4777cE89959b7fa587e569Bf125D;
 
     address internal constant _CHAINLINK_ETH_USD =
         0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
@@ -51,10 +52,20 @@ contract TestBaseMarket is TestBase {
     address internal constant _CHAINLINK_RETH_ETH =
         0x536218f9E9Eb48863970252233c8F271f554C2d0;
 
+    address internal constant _BALANCER_VAULT =
+        0xBA12222222228d8Ba445958a75a0704d566BF2C8;
+    bytes32 internal constant _BAL_WETH_RETH_POOLID =
+        0x1e19cf2d73a72ef1332c882f20534b6519be0276000200000000000000000112;
+    address internal constant _AURA_BOOSTER =
+        0xA57b8d98dAE62B26Ec3bcC4a365338157060B234;
+    address internal constant _REWARDER =
+        0xDd1fE5AD401D4777cE89959b7fa587e569Bf125D;
+
     CVE public cve;
     VeCVE public veCVE;
     CVELocker public cveLocker;
     CentralRegistry public centralRegistry;
+    BalancerStablePoolAdaptor public balRETHAdapter;
     ChainlinkAdaptor public chainlinkAdaptor;
     ChainlinkAdaptor public dualChainlinkAdaptor;
     InterestRateModel public jumpRateModel;
@@ -82,6 +93,8 @@ contract TestBaseMarket is TestBase {
     uint256 public voteBoostValue = 11000;
     uint256 public lockBoostValue = 10000; // 100%
 
+    Zapper public zapper;
+
     function setUp() public virtual {
         _fork();
 
@@ -104,6 +117,9 @@ contract TestBaseMarket is TestBase {
         _deployDUSDC();
         _deployDDAI();
         _deployCBALRETH();
+
+        _deployZapper();
+        _deployPositionFolding();
 
         priceRouter.addMTokenSupport(address(dUSDC));
         priceRouter.addMTokenSupport(address(cBALRETH));
@@ -174,11 +190,6 @@ contract TestBaseMarket is TestBase {
         chainlinkAdaptor.addAsset(_DAI_ADDRESS, _CHAINLINK_DAI_USD, true);
         chainlinkAdaptor.addAsset(_DAI_ADDRESS, _CHAINLINK_DAI_ETH, false);
         chainlinkAdaptor.addAsset(_RETH_ADDRESS, _CHAINLINK_RETH_ETH, false);
-        chainlinkAdaptor.addAsset(
-            _BALANCER_WETH_RETH,
-            _CHAINLINK_RETH_ETH,
-            false
-        );
 
         priceRouter.addApprovedAdaptor(address(chainlinkAdaptor));
         priceRouter.addAssetPriceFeed(
@@ -192,10 +203,6 @@ contract TestBaseMarket is TestBase {
         priceRouter.addAssetPriceFeed(_DAI_ADDRESS, address(chainlinkAdaptor));
         priceRouter.addAssetPriceFeed(
             _RETH_ADDRESS,
-            address(chainlinkAdaptor)
-        );
-        priceRouter.addAssetPriceFeed(
-            _BALANCER_WETH_RETH,
             address(chainlinkAdaptor)
         );
 
@@ -237,6 +244,26 @@ contract TestBaseMarket is TestBase {
             _RETH_ADDRESS,
             address(dualChainlinkAdaptor)
         );
+
+        balRETHAdapter = new BalancerStablePoolAdaptor(
+            ICentralRegistry(address(centralRegistry)),
+            IVault(_BALANCER_VAULT)
+        );
+        BalancerStablePoolAdaptor.AdaptorData memory adapterData;
+        adapterData.poolId = _BAL_WETH_RETH_POOLID;
+        adapterData.poolDecimals = 18;
+        adapterData.rateProviderDecimals[0] = 18;
+        adapterData.rateProviders[
+            0
+        ] = 0x1a8F81c256aee9C640e14bB0453ce247ea0DFE6F;
+        adapterData.underlyingOrConstituent[0] = _RETH_ADDRESS;
+        adapterData.underlyingOrConstituent[1] = _WETH_ADDRESS;
+        balRETHAdapter.addAsset(_BALANCER_WETH_RETH, adapterData);
+        priceRouter.addApprovedAdaptor(address(balRETHAdapter));
+        priceRouter.addAssetPriceFeed(
+            _BALANCER_WETH_RETH,
+            address(balRETHAdapter)
+        );
     }
 
     function _deployGaugePool() internal {
@@ -250,13 +277,6 @@ contract TestBaseMarket is TestBase {
             address(gaugePool)
         );
         centralRegistry.addLendingMarket(address(lendtroller));
-    }
-
-    function _deployPositionFolding() internal {
-        positionFolding = new PositionFolding(
-            ICentralRegistry(address(centralRegistry)),
-            address(lendtroller)
-        );
     }
 
     function _deployInterestRateModel() internal {
@@ -299,6 +319,8 @@ contract TestBaseMarket is TestBase {
     }
 
     function _deployCBALRETH() internal returns (CToken) {
+        _deployAuraPositionVault();
+
         cBALRETH = new CToken(
             ICentralRegistry(address(centralRegistry)),
             _BALANCER_WETH_RETH,
@@ -307,7 +329,26 @@ contract TestBaseMarket is TestBase {
             "cBAL-WETH-RETH",
             "cBAL-ETHPAIR"
         );
+        vault.initiateVault(address(cBALRETH));
         return cBALRETH;
+    }
+
+    function _deployZapper() internal returns (Zapper) {
+        zapper = new Zapper(
+            ICentralRegistry(address(centralRegistry)),
+            address(lendtroller),
+            _WETH_ADDRESS
+        );
+        centralRegistry.addZapper(address(zapper));
+        return zapper;
+    }
+
+    function _deployPositionFolding() internal returns (PositionFolding) {
+        positionFolding = new PositionFolding(
+            ICentralRegistry(address(centralRegistry)),
+            address(lendtroller)
+        );
+        return positionFolding;
     }
 
     function _addSinglePriceFeed() internal {

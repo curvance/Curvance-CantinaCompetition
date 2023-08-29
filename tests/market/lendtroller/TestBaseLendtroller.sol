@@ -8,7 +8,6 @@ contract TestBaseLendtroller is TestBaseMarket {
     function setUp() public virtual override {
         super.setUp();
 
-        vault.initiateVault(address(cBALRETH));
         gaugePool.start(address(lendtroller));
 
         _prepareUSDC(address(this), _ONE);

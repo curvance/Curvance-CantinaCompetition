@@ -8,7 +8,6 @@ contract TestBaseCToken is TestBaseMarket {
     function setUp() public virtual override {
         super.setUp();
 
-        vault.initiateVault(address(cBALRETH));
         gaugePool.start(address(lendtroller));
 
         _prepareBALRETH(user1, _ONE);

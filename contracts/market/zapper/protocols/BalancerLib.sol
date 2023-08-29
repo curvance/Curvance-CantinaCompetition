@@ -8,7 +8,6 @@ import { IBalancerVault } from "contracts/interfaces/external/balancer/IBalancer
 import { IBalancerPool } from "contracts/interfaces/external/balancer/IBalancerPool.sol";
 
 library BalancerLib {
-    
     /// @dev Enter Balancer
     /// @param balancerVault The balancer vault address
     /// @param balancerPoolId The balancer pool ID
@@ -74,7 +73,8 @@ library BalancerLib {
         bytes32 balancerPoolId,
         address lpToken,
         address[] calldata tokens,
-        uint256 lpAmount
+        uint256 lpAmount,
+        uint256 exitTokenIndex
     ) internal {
         // approve lp token
         SwapperLib.approveTokenIfNeeded(lpToken, balancerVault, lpAmount);
@@ -89,8 +89,9 @@ library BalancerLib {
                 tokens,
                 balances,
                 abi.encode(
-                    IBalancerVault.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT,
-                    lpAmount
+                    IBalancerVault.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT,
+                    lpAmount,
+                    exitTokenIndex
                 ),
                 false // do not use internal balances
             )

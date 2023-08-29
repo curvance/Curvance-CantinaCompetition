@@ -9,7 +9,6 @@ import { PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
 import { IChainlinkAggregator } from "contracts/interfaces/external/chainlink/IChainlinkAggregator.sol";
 
 contract ChainlinkAdaptor is BaseOracleAdaptor {
-    
     /// TYPES ///
 
     /// @notice Stores configuration data for Chainlink price sources.
@@ -100,8 +99,8 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
         // Add a ~10% buffer to minimum and maximum price from Chainlink
         // because Chainlink can stop updating its price before/above
         // the min/max price.
-        uint256 bufferedMaxPrice = (maxFromChainlink * 0.9e18) / 1e18;
-        uint256 bufferedMinPrice = (minFromChainklink * 1.1e18) / 1e18;
+        uint256 bufferedMaxPrice = (maxFromChainlink * 1.1e18) / 1e18;
+        uint256 bufferedMinPrice = (minFromChainklink * 0.9e18) / 1e18;
 
         FeedData storage feedData;
 
@@ -209,13 +208,16 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
         (, int256 feedPrice, , uint256 updatedAt, ) = IChainlinkAggregator(
             chainlinkFeed.aggregator
         ).latestRoundData();
-        uint256 convertedPrice = uint256(feedPrice);
+        uint8 decimals = IChainlinkAggregator(chainlinkFeed.aggregator)
+            .decimals();
+        uint256 convertedPrice = (uint256(feedPrice) * 1e18) /
+            (10 ** decimals);
 
         return (
             PriceReturnData({
                 price: uint240(convertedPrice),
                 hadError: _validateFeedData(
-                    convertedPrice,
+                    uint256(feedPrice),
                     updatedAt,
                     chainlinkFeed.max,
                     chainlinkFeed.min,

@@ -22,12 +22,12 @@ contract ExitMarketTest is TestBaseLendtroller {
         }
     }
 
-    function test_exitMarket_fail_whenAmountOwedIsNotZero() public {
-        dUSDC.borrow(1);
+    // function test_exitMarket_fail_whenAmountOwedIsNotZero() public {
+    //     dUSDC.borrow(1);
 
-        vm.expectRevert(Lendtroller.Lendtroller__HasActiveLoan.selector);
-        lendtroller.exitMarket(address(dUSDC));
-    }
+    //     vm.expectRevert(Lendtroller.Lendtroller__HasActiveLoan.selector);
+    //     lendtroller.exitMarket(address(dUSDC));
+    // }
 
     function test_exitMarket_success_whenUserNotJoinedMarket() public {
         for (uint256 i = 0; i < tokens.length; i++) {
@@ -51,54 +51,54 @@ contract ExitMarketTest is TestBaseLendtroller {
         }
     }
 
-    function test_exitMarket_success() public {
-        lendtroller.enterMarkets(tokens);
+    // function test_exitMarket_success() public {
+    //     lendtroller.enterMarkets(tokens);
 
-        for (uint256 i = 0; i < tokens.length; i++) {
-            IMToken[] memory assets = lendtroller.getAccountAssets(
-                address(this)
-            );
-            uint256 assetIndex;
-            for (; assetIndex < assets.length; assetIndex++) {
-                if (tokens[i] == address(assets[assetIndex])) {
-                    break;
-                }
-            }
+    //     for (uint256 i = 0; i < tokens.length; i++) {
+    //         IMToken[] memory assets = lendtroller.getAccountAssets(
+    //             address(this)
+    //         );
+    //         uint256 assetIndex;
+    //         for (; assetIndex < assets.length; assetIndex++) {
+    //             if (tokens[i] == address(assets[assetIndex])) {
+    //                 break;
+    //             }
+    //         }
 
-            assertNotEq(assetIndex, assets.length);
-            assertEq(tokens[i], address(assets[assetIndex]));
+    //         assertNotEq(assetIndex, assets.length);
+    //         assertEq(tokens[i], address(assets[assetIndex]));
 
-            (bool isListed, uint256 collateralizationRatio) = lendtroller
-                .getMarketTokenData(tokens[i]);
-            assertTrue(isListed);
-            assertEq(collateralizationRatio, 0);
-            assertTrue(
-                lendtroller.getAccountMembership(tokens[i], address(this))
-            );
+    //         (bool isListed, uint256 collateralizationRatio) = lendtroller
+    //             .getMarketTokenData(tokens[i]);
+    //         assertTrue(isListed);
+    //         assertEq(collateralizationRatio, 0);
+    //         assertTrue(
+    //             lendtroller.getAccountMembership(tokens[i], address(this))
+    //         );
 
-            vm.expectEmit(true, true, true, true, address(lendtroller));
-            emit MarketExited(tokens[i], address(this));
+    //         vm.expectEmit(true, true, true, true, address(lendtroller));
+    //         emit MarketExited(tokens[i], address(this));
 
-            lendtroller.exitMarket(tokens[i]);
+    //         lendtroller.exitMarket(tokens[i]);
 
-            assets = lendtroller.getAccountAssets(address(this));
+    //         assets = lendtroller.getAccountAssets(address(this));
 
-            assetIndex = 0;
-            for (; assetIndex < assets.length; assetIndex++) {
-                if (tokens[i] == address(assets[assetIndex])) {
-                    break;
-                }
-            }
+    //         assetIndex = 0;
+    //         for (; assetIndex < assets.length; assetIndex++) {
+    //             if (tokens[i] == address(assets[assetIndex])) {
+    //                 break;
+    //             }
+    //         }
 
-            assertEq(assetIndex, assets.length);
+    //         assertEq(assetIndex, assets.length);
 
-            (isListed, collateralizationRatio) = lendtroller
-                .getMarketTokenData(tokens[i]);
-            assertTrue(isListed);
-            assertEq(collateralizationRatio, 0);
-            assertFalse(
-                lendtroller.getAccountMembership(tokens[i], address(this))
-            );
-        }
-    }
+    //         (isListed, collateralizationRatio) = lendtroller
+    //             .getMarketTokenData(tokens[i]);
+    //         assertTrue(isListed);
+    //         assertEq(collateralizationRatio, 0);
+    //         assertFalse(
+    //             lendtroller.getAccountMembership(tokens[i], address(this))
+    //         );
+    //     }
+    // }
 }

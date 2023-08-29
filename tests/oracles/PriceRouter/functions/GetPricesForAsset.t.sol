@@ -21,7 +21,7 @@ contract GetPricesForAssetTest is TestBasePriceRouter {
             .getPricesForAsset(_USDC_ADDRESS, true);
 
         for (uint256 i = 0; i < feedDatas.length; i++) {
-            assertEq(feedDatas[i].price, uint256(usdcPrice));
+            assertEq(feedDatas[i].price, uint256(usdcPrice) * 1e10);
             assertFalse(feedDatas[i].hadError);
         }
 

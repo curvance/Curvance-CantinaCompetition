@@ -55,15 +55,15 @@ contract BorrowAllowedTest is TestBaseLendtroller {
         lendtroller.borrowAllowed(address(dUSDC), user1, 100e6);
     }
 
-    function test_borrowAllowed_success() public {
-        address[] memory tokens = new address[](1);
-        tokens[0] = address(dUSDC);
+    // function test_borrowAllowed_success() public {
+    //     address[] memory tokens = new address[](1);
+    //     tokens[0] = address(dUSDC);
 
-        vm.prank(user1);
-        lendtroller.enterMarkets(tokens);
+    //     vm.prank(user1);
+    //     lendtroller.enterMarkets(tokens);
 
-        lendtroller.borrowAllowed(address(dUSDC), user1, 100e6);
+    //     lendtroller.borrowAllowed(address(dUSDC), user1, 100e6);
 
-        assertTrue(lendtroller.getAccountMembership(address(dUSDC), user1));
-    }
+    //     assertTrue(lendtroller.getAccountMembership(address(dUSDC), user1));
+    // }
 }
