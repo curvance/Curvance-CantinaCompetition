@@ -293,7 +293,7 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
         SwapperLib.approveTokenIfNeeded(
             borrowUnderlying,
             address(borrowToken),
-            repayAmount + remaining
+            repayAmount
         );
 
         DToken(address(borrowToken)).repayForPositionFolding(

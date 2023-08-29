@@ -202,6 +202,89 @@ contract TestPositionFolding is TestBaseMarket {
         vm.stopPrank();
     }
 
+    function testDeLeverage() public {
+        testLeverage();
+        vm.warp(block.timestamp + 15 minutes);
+        dDAI.accrueInterest();
+
+        vm.startPrank(user);
+
+        PositionFolding.DeleverageStruct memory deleverageData;
+
+        (, uint256 dDAIBorrowedBefore, ) = dDAI.getAccountSnapshot(user);
+        (uint256 cBALRETHBalanceBefore, , ) = cBALRETH.getAccountSnapshot(
+            user
+        );
+
+        deleverageData.collateralToken = cBALRETH;
+        deleverageData.collateralAmount = 0.3 ether;
+        deleverageData.borrowToken = dDAI;
+
+        deleverageData.zapperCall.inputToken = address(balRETH);
+        deleverageData.zapperCall.inputAmount = deleverageData
+            .collateralAmount;
+
+        address[] memory tokens = new address[](2);
+        tokens[0] = _RETH_ADDRESS;
+        tokens[1] = _WETH_ADDRESS;
+        deleverageData.zapperCall.target = address(zapper);
+        deleverageData.zapperCall.call = abi.encodeWithSelector(
+            Zapper.balancerOut.selector,
+            _BALANCER_VAULT,
+            _BAL_WETH_RETH_POOLID,
+            Zapper.ZapperData(
+                address(balRETH),
+                deleverageData.zapperCall.inputAmount,
+                _WETH_ADDRESS,
+                0
+            ),
+            1,
+            tokens,
+            new SwapperLib.Swap[](0),
+            address(positionFolding)
+        );
+
+        uint256 amountForDeleverage = 0.3 ether;
+        deleverageData.swapData.inputToken = _WETH_ADDRESS;
+        deleverageData.swapData.inputAmount = amountForDeleverage;
+        deleverageData.swapData.outputToken = address(dai);
+        deleverageData.swapData.target = _UNISWAP_V2_ROUTER;
+        address[] memory path = new address[](2);
+        path[0] = _WETH_ADDRESS;
+        path[1] = address(dai);
+        deleverageData.swapData.call = abi.encodeWithSignature(
+            "swapExactTokensForTokens(uint256,uint256,address[],address,uint256)",
+            amountForDeleverage,
+            0,
+            path,
+            address(positionFolding),
+            block.timestamp
+        );
+        uint256[] memory amountsOut = IUniswapV2Router(_UNISWAP_V2_ROUTER)
+            .getAmountsOut(amountForDeleverage, path);
+        deleverageData.repayAmount = amountsOut[1];
+
+        positionFolding.deleverage(deleverageData);
+
+        (uint256 dDAIBalance, uint256 dDAIBorrowed, ) = dDAI
+            .getAccountSnapshot(user);
+        assertEq(dDAIBalance, 0);
+        assertEq(
+            dDAIBorrowed,
+            dDAIBorrowedBefore - deleverageData.repayAmount
+        );
+
+        (uint256 cBALRETHBalance, uint256 cBALRETHBorrowed, ) = cBALRETH
+            .getAccountSnapshot(user);
+        assertEq(
+            cBALRETHBalance,
+            cBALRETHBalanceBefore - deleverageData.collateralAmount
+        );
+        assertEq(cBALRETHBorrowed, 0);
+
+        vm.stopPrank();
+    }
+
     // function testLeverageMaxWithOnlyCEther() public {
     //     vm.startPrank(user);
 

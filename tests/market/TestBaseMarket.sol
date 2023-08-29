@@ -96,7 +96,7 @@ contract TestBaseMarket is TestBase {
     Zapper public zapper;
 
     function setUp() public virtual {
-        _fork(18017265);
+        _fork();
 
         usdc = IERC20(_USDC_ADDRESS);
         dai = IERC20(_DAI_ADDRESS);
