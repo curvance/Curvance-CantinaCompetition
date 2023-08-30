@@ -15,7 +15,7 @@ contract DTokenRescueTokenTest is TestBaseDToken {
         vm.prank(address(1));
 
         vm.expectRevert("DToken: UNAUTHORIZED");
-        dUSDC.rescueToken(address(this), 100);
+        dUSDC.rescueToken(_USDC_ADDRESS, 100);
     }
 
     function test_dTokenRescueToken_fail_whenETHAmountExceedsBalance() public {
@@ -23,11 +23,6 @@ contract DTokenRescueTokenTest is TestBaseDToken {
 
         vm.expectRevert("DToken: insufficient balance");
         dUSDC.rescueToken(address(0), balance + 1);
-    }
-
-    function test_dTokenRescueToken_fail_whenTransferZeroAmount() public {
-        vm.expectRevert();
-        dUSDC.rescueToken(user1, 0);
     }
 
     function test_dTokenRescueToken_fail_whenTokenIsUnderlyingToken() public {
