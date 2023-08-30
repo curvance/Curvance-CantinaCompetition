@@ -36,10 +36,10 @@ contract CallOptionCVE is ERC20 {
     uint256 public paymentTokenPerCVE;
 
     /// @notice When options holders can begin exercising
-    uint256 optionsStartTimestamp;
+    uint256 public optionsStartTimestamp;
 
     /// @notice When options holders have until to exercise
-    uint256 optionsEndTimestamp;
+    uint256 public optionsEndTimestamp;
 
     /// EVENTS ///
 
@@ -137,9 +137,10 @@ contract CallOptionCVE is ERC20 {
         uint256 strikePrice
     ) external onlyDaoPermissions {
         require(
-            strikePrice != 0 && timestampStart != 0,
-            "CallOptionCVE: Cannot Configure Options"
+            timestampStart >= block.timestamp,
+            "CallOptionCVE: Start timestamp is invalid"
         );
+        require(strikePrice != 0, "CallOptionCVE: Strike price is invalid");
 
         if (optionsStartTimestamp > 0) {
             require(
@@ -218,9 +219,7 @@ contract CallOptionCVE is ERC20 {
         uint256 optionExerciseCost = amount * paymentTokenPerCVE;
 
         // Take their strike price payment
-        if (
-            paymentToken == address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE)
-        ) {
+        if (paymentToken == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE) {
             require(
                 msg.value >= optionExerciseCost,
                 "CallOptionCVE: invalid msg value"
