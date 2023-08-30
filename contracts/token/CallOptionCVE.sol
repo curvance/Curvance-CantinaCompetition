@@ -71,6 +71,10 @@ contract CallOptionCVE is ERC20 {
             ),
             "CallOptionCVE: invalid central registry"
         );
+        require(
+            paymentToken_ != address(0),
+            "CallOptionCVE: invalid payment token"
+        );
 
         centralRegistry = centralRegistry_;
         paymentToken = paymentToken_;
@@ -133,9 +137,7 @@ contract CallOptionCVE is ERC20 {
         uint256 strikePrice
     ) external onlyDaoPermissions {
         require(
-            strikePrice != 0 &&
-                paymentToken != address(0) &&
-                timestampStart != 0,
+            strikePrice != 0 && timestampStart != 0,
             "CallOptionCVE: Cannot Configure Options"
         );
 
