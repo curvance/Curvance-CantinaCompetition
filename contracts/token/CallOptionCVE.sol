@@ -162,7 +162,7 @@ contract CallOptionCVE is ERC20 {
         // the payment token
         require(error < 2, "CallOptionCVE: error pulling paymentToken price");
 
-        // The strike price should always be greater than the strike price
+        // The strike price should always be greater than the token price
         // since it will be in 1e36 format offset,
         // whereas paymentTokenCurrentPrice will be 1e18 so the price should
         // always be larger
