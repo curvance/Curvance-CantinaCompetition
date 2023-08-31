@@ -27,7 +27,6 @@ contract Zapper {
 
     /// CONSTANTS ///
 
-    uint256 public constant SLIPPAGE = 500; // 5%
     ILendtroller public immutable lendtroller; // Lendtroller linked
     address public immutable WETH; // Address of WETH
     ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
