@@ -67,7 +67,7 @@ contract Zapper {
     /// @param tokens The underlying coins of curve LP token
     /// @param recipient Address that should receive zapped deposit
     /// @return cTokenOutAmount The output amount received from zapping
-    function curveInForCurvance(
+    function curveIn(
         address cToken,
         ZapperData calldata zapData,
         SwapperLib.Swap[] calldata tokenSwaps,
@@ -77,11 +77,9 @@ contract Zapper {
     ) external payable returns (uint256 cTokenOutAmount) {
         // swap input token for underlyings
         _swapForUnderlyings(
-            cToken,
             zapData.inputToken,
             zapData.inputAmount,
-            tokenSwaps,
-            zapData.outputToken
+            tokenSwaps
         );
 
         // enter curve
@@ -152,7 +150,7 @@ contract Zapper {
     /// @param tokens The underlying coins of balancer LP token
     /// @param recipient Address that should receive zapped deposit
     /// @return cTokenOutAmount The output amount received from zapping
-    function balancerInForCurvance(
+    function balancerIn(
         address cToken,
         ZapperData calldata zapData,
         SwapperLib.Swap[] calldata tokenSwaps,
@@ -163,11 +161,9 @@ contract Zapper {
     ) external payable returns (uint256 cTokenOutAmount) {
         // swap input token for underlyings
         _swapForUnderlyings(
-            cToken,
             zapData.inputToken,
             zapData.inputAmount,
-            tokenSwaps,
-            zapData.outputToken
+            tokenSwaps
         );
 
         // enter balancer
@@ -252,11 +248,9 @@ contract Zapper {
     ) external payable returns (uint256 cTokenOutAmount) {
         // swap input token for underlyings
         _swapForUnderlyings(
-            cToken,
             zapData.inputToken,
             zapData.inputAmount,
-            tokenSwaps,
-            zapData.outputToken
+            tokenSwaps
         );
 
         // enter velodrome
@@ -317,17 +311,13 @@ contract Zapper {
     }
 
     /// @dev Deposit inputToken and enter curvance
-    /// @param cToken The curvance deposit token address
     /// @param inputToken The input token address
     /// @param inputAmount The amount to deposit
     /// @param tokenSwaps The swap aggregation data
-    /// @param lpToken The Curve LP token address
     function _swapForUnderlyings(
-        address cToken,
         address inputToken,
         uint256 inputAmount,
-        SwapperLib.Swap[] calldata tokenSwaps,
-        address lpToken
+        SwapperLib.Swap[] calldata tokenSwaps
     ) private {
         if (CommonLib.isETH(inputToken)) {
             require(inputAmount == msg.value, "Zapper: invalid amount");
@@ -341,15 +331,6 @@ contract Zapper {
                 inputAmount
             );
         }
-
-        // check valid cToken
-        (bool isListed, ) = lendtroller.getMarketTokenData(cToken);
-        require(isListed, "Zapper: invalid cToken address");
-        // check cToken underlying
-        require(
-            CToken(cToken).underlying() == lpToken,
-            "Zapper: invalid lp address"
-        );
 
         uint256 numTokenSwaps = tokenSwaps.length;
 
@@ -373,6 +354,21 @@ contract Zapper {
         uint256 amount,
         address recipient
     ) private returns (uint256 out) {
+        if (cToken == address(0)) {
+            // transfer LP token to recipient
+            SafeTransferLib.safeTransfer(lpToken, recipient, amount);
+            return amount;
+        }
+
+        // check valid cToken
+        (bool isListed, ) = lendtroller.getMarketTokenData(cToken);
+        require(isListed, "Zapper: invalid cToken address");
+        // check cToken underlying
+        require(
+            CToken(cToken).underlying() == lpToken,
+            "Zapper: invalid lp address"
+        );
+
         // approve lp token
         SwapperLib.approveTokenIfNeeded(lpToken, cToken, amount);
 

@@ -172,7 +172,7 @@ contract TestPositionFolding is TestBaseMarket {
         tokens[1] = _WETH_ADDRESS;
         leverageData.zapperCall.target = address(zapper);
         leverageData.zapperCall.call = abi.encodeWithSelector(
-            Zapper.balancerInForCurvance.selector,
+            Zapper.balancerIn.selector,
             address(cBALRETH),
             Zapper.ZapperData(
                 _WETH_ADDRESS,
