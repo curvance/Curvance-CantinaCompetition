@@ -103,6 +103,8 @@ contract Zapper {
         address lpMinter,
         ZapperData calldata zapData,
         address[] calldata tokens,
+        bool singleAssetWithdraw,
+        int128 singleAssetIndex,
         SwapperLib.Swap[] calldata tokenSwaps,
         address recipient
     ) external returns (uint256 outAmount) {
@@ -116,7 +118,9 @@ contract Zapper {
             lpMinter,
             zapData.inputToken,
             tokens,
-            zapData.inputAmount
+            zapData.inputAmount,
+            singleAssetWithdraw,
+            singleAssetIndex
         );
 
         uint256 numTokenSwaps = tokenSwaps.length;
@@ -188,8 +192,9 @@ contract Zapper {
         address balancerVault,
         bytes32 balancerPoolId,
         ZapperData calldata zapData,
-        uint256 exitTokenIndex,
         address[] calldata tokens,
+        bool singleAssetWithdraw,
+        uint256 singleAssetIndex,
         SwapperLib.Swap[] calldata tokenSwaps,
         address recipient
     ) external returns (uint256 outAmount) {
@@ -205,7 +210,8 @@ contract Zapper {
             zapData.inputToken,
             tokens,
             zapData.inputAmount,
-            exitTokenIndex
+            singleAssetWithdraw,
+            singleAssetIndex
         );
 
         uint256 numTokenSwaps = tokenSwaps.length;
@@ -335,7 +341,7 @@ contract Zapper {
         uint256 numTokenSwaps = tokenSwaps.length;
 
         // prepare tokens to mint LP
-        for (uint256 i; i < numTokenSwaps; ++i) {
+        for (uint256 i; i < numTokenSwaps; ) {
             unchecked {
                 SwapperLib.swap(tokenSwaps[i++]);
             }

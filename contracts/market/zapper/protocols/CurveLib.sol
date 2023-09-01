@@ -7,7 +7,6 @@ import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { ICurveSwap } from "contracts/interfaces/external/curve/ICurve.sol";
 
 library CurveLib {
-    
     /// @dev Enter Curve
     /// @param lpMinter The minter address of Curve LP
     /// @param lpToken The Curve LP token address
@@ -92,22 +91,31 @@ library CurveLib {
         address lpMinter,
         address lpToken,
         address[] calldata tokens,
-        uint256 lpAmount
+        uint256 lpAmount,
+        bool singleAssetWithdraw,
+        int128 singleAssetIndex
     ) internal {
         // approve lp token
         SwapperLib.approveTokenIfNeeded(lpToken, lpMinter, lpAmount);
 
         uint256 numTokens = tokens.length;
-        // enter curve lp minter
-        if (numTokens == 4) {
-            uint256[4] memory amounts;
-            ICurveSwap(lpMinter).remove_liquidity(lpAmount, amounts);
-        } else if (numTokens == 3) {
-            uint256[3] memory amounts;
-            ICurveSwap(lpMinter).remove_liquidity(lpAmount, amounts);
+        if (!singleAssetWithdraw) {
+            if (numTokens == 4) {
+                uint256[4] memory amounts;
+                ICurveSwap(lpMinter).remove_liquidity(lpAmount, amounts);
+            } else if (numTokens == 3) {
+                uint256[3] memory amounts;
+                ICurveSwap(lpMinter).remove_liquidity(lpAmount, amounts);
+            } else {
+                uint256[2] memory amounts;
+                ICurveSwap(lpMinter).remove_liquidity(lpAmount, amounts);
+            }
         } else {
-            uint256[2] memory amounts;
-            ICurveSwap(lpMinter).remove_liquidity(lpAmount, amounts);
+            ICurveSwap(lpMinter).remove_liquidity_one_coin(
+                lpAmount,
+                singleAssetIndex,
+                0
+            );
         }
     }
 }

@@ -41,7 +41,7 @@ contract TestZapper is TestBaseMarket {
         vm.startPrank(user);
         address[] memory tokens = new address[](3);
         tokens[0] = _USDT_ADDRESS;
-        tokens[1] = _USDC_ADDRESS;
+        tokens[1] = _WBTC_ADDRESS;
         tokens[2] = _WETH_ADDRESS;
         zapper.curveIn{ value: ethAmount }(
             address(0),
@@ -54,32 +54,31 @@ contract TestZapper is TestBaseMarket {
         vm.stopPrank();
 
         assertEq(user.balance, 0);
-        assertEq(IERC20(_CURVE_TRICRYPTO_LP).balanceOf(user), 0);
+        assertGt(IERC20(_CURVE_TRICRYPTO_LP).balanceOf(user), 0);
     }
 
     function testCurveOut() public {
         testCurveIn();
 
-        uint256 ethAmount = 3 ether;
+        uint256 withdrawAmount = IERC20(_CURVE_TRICRYPTO_LP).balanceOf(user);
 
         vm.startPrank(user);
         address[] memory tokens = new address[](3);
         tokens[0] = _USDT_ADDRESS;
         tokens[1] = _USDC_ADDRESS;
         tokens[2] = _WETH_ADDRESS;
-        IERC20(_CURVE_TRICRYPTO_LP).approve(
-            address(zapper),
-            IERC20(_CURVE_TRICRYPTO_LP).balanceOf(user)
-        );
+        IERC20(_CURVE_TRICRYPTO_LP).approve(address(zapper), withdrawAmount);
         zapper.curveOut(
             _CURVE_TRICRYPTO_MINTER,
             Zapper.ZapperData(
                 _CURVE_TRICRYPTO_LP,
-                ethAmount,
+                withdrawAmount,
                 _WETH_ADDRESS,
                 0
             ),
             tokens,
+            true,
+            2,
             new SwapperLib.Swap[](0),
             user
         );

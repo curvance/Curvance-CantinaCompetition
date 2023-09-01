@@ -238,8 +238,9 @@ contract TestPositionFolding is TestBaseMarket {
                 _WETH_ADDRESS,
                 0
             ),
-            1,
             tokens,
+            true,
+            1,
             new SwapperLib.Swap[](0),
             address(positionFolding)
         );
