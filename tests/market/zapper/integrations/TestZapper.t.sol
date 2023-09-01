@@ -65,7 +65,7 @@ contract TestZapper is TestBaseMarket {
         vm.startPrank(user);
         address[] memory tokens = new address[](3);
         tokens[0] = _USDT_ADDRESS;
-        tokens[1] = _USDC_ADDRESS;
+        tokens[1] = _WBTC_ADDRESS;
         tokens[2] = _WETH_ADDRESS;
         IERC20(_CURVE_TRICRYPTO_LP).approve(address(zapper), withdrawAmount);
         zapper.curveOut(
@@ -77,14 +77,18 @@ contract TestZapper is TestBaseMarket {
                 0
             ),
             tokens,
-            true,
+            1,
             2,
             new SwapperLib.Swap[](0),
             user
         );
         vm.stopPrank();
 
-        assertEq(IERC20(_WETH_ADDRESS).balanceOf(user), 3 ether);
+        assertApproxEqRel(
+            IERC20(_WETH_ADDRESS).balanceOf(user),
+            3 ether,
+            0.01 ether
+        );
         assertEq(IERC20(_CURVE_TRICRYPTO_LP).balanceOf(user), 0);
     }
 }

@@ -103,8 +103,8 @@ contract Zapper {
         address lpMinter,
         ZapperData calldata zapData,
         address[] calldata tokens,
-        bool singleAssetWithdraw,
-        int128 singleAssetIndex,
+        uint256 singleAssetWithdraw,
+        uint256 singleAssetIndex,
         SwapperLib.Swap[] calldata tokenSwaps,
         address recipient
     ) external returns (uint256 outAmount) {

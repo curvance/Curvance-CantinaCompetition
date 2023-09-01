@@ -92,14 +92,14 @@ library CurveLib {
         address lpToken,
         address[] calldata tokens,
         uint256 lpAmount,
-        bool singleAssetWithdraw,
-        int128 singleAssetIndex
+        uint256 singleAssetWithdraw,
+        uint256 singleAssetIndex
     ) internal {
         // approve lp token
         SwapperLib.approveTokenIfNeeded(lpToken, lpMinter, lpAmount);
 
         uint256 numTokens = tokens.length;
-        if (!singleAssetWithdraw) {
+        if (singleAssetWithdraw == 0) {
             if (numTokens == 4) {
                 uint256[4] memory amounts;
                 ICurveSwap(lpMinter).remove_liquidity(lpAmount, amounts);
@@ -111,11 +111,19 @@ library CurveLib {
                 ICurveSwap(lpMinter).remove_liquidity(lpAmount, amounts);
             }
         } else {
-            ICurveSwap(lpMinter).remove_liquidity_one_coin(
-                lpAmount,
-                singleAssetIndex,
-                0
-            );
+            if (singleAssetWithdraw == 1) {
+                ICurveSwap(lpMinter).remove_liquidity_one_coin(
+                    lpAmount,
+                    singleAssetIndex,
+                    0
+                );
+            } else {
+                ICurveSwap(lpMinter).remove_liquidity_one_coin(
+                    lpAmount,
+                    int128(uint128(singleAssetIndex)),
+                    0
+                );
+            }
         }
     }
 }
