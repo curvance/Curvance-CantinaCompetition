@@ -10,21 +10,36 @@ import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 contract CallOptionCVE is ERC20 {
-    
     /// CONSTANTS ///
 
-    uint256 public constant expScale = 1e18; // Scalar for math
-    address public immutable cve; // CVE contract address
-    address public immutable paymentToken; // Token exercisers pay in
-    bytes32 private immutable _name; // token name metadata
-    bytes32 private immutable _symbol; // token symbol metadata
-    ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
+    /// @notice Scalar for math
+    uint256 public constant expScale = 1e18;
+
+    /// @notice CVE contract address
+    address public immutable cve;
+
+    /// @notice Token exercisers pay in
+    address public immutable paymentToken;
+
+    /// @notice token name metadata
+    bytes32 private immutable _name;
+
+    /// @notice token symbol metadata
+    bytes32 private immutable _symbol;
+
+    /// @notice Curvance DAO hub
+    ICentralRegistry public immutable centralRegistry;
 
     /// STORAGE ///
 
-    uint256 public paymentTokenPerCVE; // Ratio between payment token and CVE
-    uint256 optionsStartTimestamp; // When options holders can begin exercising
-    uint256 optionsEndTimestamp; // When options holders have until to exercise
+    /// @notice Ratio between payment token and CVE
+    uint256 public paymentTokenPerCVE;
+
+    /// @notice When options holders can begin exercising
+    uint256 public optionsStartTimestamp;
+
+    /// @notice When options holders have until to exercise
+    uint256 public optionsEndTimestamp;
 
     /// EVENTS ///
 
@@ -45,10 +60,7 @@ contract CallOptionCVE is ERC20 {
 
     /// @param paymentToken_ The token used for payment when exercising options.
     /// @param centralRegistry_ The Central Registry contract address.
-    constructor(
-        ICentralRegistry centralRegistry_,
-        address paymentToken_
-    ) {
+    constructor(ICentralRegistry centralRegistry_, address paymentToken_) {
         _name = "CVE Options";
         _symbol = "optCVE";
 
@@ -58,6 +70,10 @@ contract CallOptionCVE is ERC20 {
                 type(ICentralRegistry).interfaceId
             ),
             "CallOptionCVE: invalid central registry"
+        );
+        require(
+            paymentToken_ != address(0),
+            "CallOptionCVE: invalid payment token"
         );
 
         centralRegistry = centralRegistry_;
@@ -70,7 +86,7 @@ contract CallOptionCVE is ERC20 {
 
     /// EXTERNAL FUNCTIONS ///
 
-    /// @notice Rescue any token sent by mistake, also used for removing .
+    /// @notice Rescue any token sent by mistake, also used for removing.
     /// @param token The token to rescue.
     /// @param recipient The address to receive the rescued token.
     /// @param amount The amount of tokens to rescue.
@@ -101,7 +117,8 @@ contract CallOptionCVE is ERC20 {
         }
     }
 
-    /// @notice Withdraws CVE from unexercised CVE call options to DAO after exercising period has ended
+    /// @notice Withdraws CVE from unexercised CVE call options to DAO
+    ///         after exercising period has ended
     function withdrawRemainingAirdropTokens() external onlyDaoPermissions {
         require(
             block.timestamp > optionsEndTimestamp,
@@ -120,11 +137,10 @@ contract CallOptionCVE is ERC20 {
         uint256 strikePrice
     ) external onlyDaoPermissions {
         require(
-            strikePrice != 0 &&
-                paymentToken != address(0) &&
-                timestampStart != 0,
-            "CallOptionCVE: Cannot Configure Options"
+            timestampStart >= block.timestamp,
+            "CallOptionCVE: Start timestamp is invalid"
         );
+        require(strikePrice != 0, "CallOptionCVE: Strike price is invalid");
 
         if (optionsStartTimestamp > 0) {
             require(
@@ -135,19 +151,24 @@ contract CallOptionCVE is ERC20 {
 
         optionsStartTimestamp = timestampStart;
 
-        /// Give them 4 weeks to exercise their options before they expire
+        // Give them 4 weeks to exercise their options before they expire
         optionsEndTimestamp = optionsStartTimestamp + (4 weeks);
 
-        /// Get the current price of the payment token from the price router in USD and multiply it by the Strike Price to see how much per CVE they must pay
+        // Get the current price of the payment token from the price router
+        // in USD and multiply it by the Strike Price to see how much per CVE
+        // they must pay
         (uint256 paymentTokenCurrentPrice, uint256 error) = IPriceRouter(
             centralRegistry.priceRouter()
         ).getPrice(paymentToken, true, true);
 
-        /// Make sure that we didnt have a catastrophic error when pricing the payment token
+        // Make sure that we didnt have a catastrophic error when pricing
+        // the payment token
         require(error < 2, "CallOptionCVE: error pulling paymentToken price");
 
-        /// The strike price should always be greater than the strike price since it will be in 1e36 format offset,
-        /// whereas paymentTokenCurrentPrice will be 1e18 so the price should always be larger
+        // The strike price should always be greater than the token price
+        // since it will be in 1e36 format offset,
+        // whereas paymentTokenCurrentPrice will be 1e18 so the price should
+        // always be larger
         require(
             strikePrice > paymentTokenCurrentPrice,
             "CallOptionCVE: invalid strike price configuration"
@@ -197,10 +218,8 @@ contract CallOptionCVE is ERC20 {
 
         uint256 optionExerciseCost = amount * paymentTokenPerCVE;
 
-        /// Take their strike price payment
-        if (
-            paymentToken == address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE)
-        ) {
+        // Take their strike price payment
+        if (paymentToken == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE) {
             require(
                 msg.value >= optionExerciseCost,
                 "CallOptionCVE: invalid msg value"
@@ -214,10 +233,10 @@ contract CallOptionCVE is ERC20 {
             );
         }
 
-        /// Burn the call options
+        // Burn the call options
         _burn(msg.sender, amount);
 
-        /// Transfer them corresponding CVE
+        // Transfer them corresponding CVE
         SafeTransferLib.safeTransfer(cve, msg.sender, amount);
 
         emit CallOptionCVEExercised(msg.sender, amount);
