@@ -244,7 +244,7 @@ contract Zapper {
     /// @param factory The velodrome factory address
     /// @param recipient Address that should receive zapped deposit
     /// @return cTokenOutAmount The output amount received from zapping
-    function velodromeInForCurvance(
+    function velodromeIn(
         address cToken,
         ZapperData calldata zapData,
         SwapperLib.Swap[] calldata tokenSwaps,
