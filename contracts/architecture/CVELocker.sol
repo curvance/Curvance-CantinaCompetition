@@ -15,34 +15,48 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 contract CVELocker is ReentrancyGuard {
     /// CONSTANTS ///
 
+    /// @notice Reward token; ETH
     address public constant baseRewardToken =
-        0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE; // Reward token; ETH
-    uint256 public constant EPOCH_DURATION = 2 weeks; // Protocol epoch length
-    uint256 public constant expScale = 1e18; // Scalar for math
+        0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+    /// @notice Protocol epoch length
+    uint256 public constant EPOCH_DURATION = 2 weeks;
+    /// @notice Scalar for math
+    uint256 public constant expScale = 1e18;
     // `bytes4(keccak256(bytes("CVELocker_Unauthorized()")))`
     uint256 internal constant _CVELOCKER_UNAUTHORIZED_SELECTOR = 0xeb83e515;
     // `bytes4(keccak256(bytes("CVELocker_FailedETHTransfer()")))`
     uint256 internal constant _FAILED_ETH_TRANSFER_SELECTOR = 0xa9c60879;
     // `bytes4(keccak256(bytes("CVELocker_NoEpochRewards()")))`
     uint256 internal constant _NO_EPOCH_REWARDS_SELECTOR = 0x2f75e00c;
-    address public immutable cve; // CVE contract address
-    address public immutable cvx; // CVX contract address
-    ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
+    /// @notice CVE contract address
+    address public immutable cve;
+    /// @notice CVX contract address
+    address public immutable cvx;
+    /// @notice Curvance DAO hub
+    ICentralRegistry public immutable centralRegistry;
 
     /// STORAGE ///
 
-    IVeCVE public veCVE; // veCVE contract address
-    uint256 public genesisEpoch; // Genesis Epoch timestamp
-    uint256 public lockerStarted = 1; // 2 = yes; 0 or 1 = no
-    uint256 public isShutdown = 1; // 2 = yes; 0 or 1 = no
+    /// @notice veCVE contract address
+    IVeCVE public veCVE;
+    /// @notice Genesis Epoch timestamp
+    uint256 public genesisEpoch;
+    // 2 = yes; 1 = no
+    uint256 public lockerStarted = 1;
+    // 2 = yes; 1 = no
+    uint256 public isShutdown = 1;
 
-    ICVXLocker public cvxLocker; // CVX Locker contract address
+    /// @notice CVX Locker contract address
+    ICVXLocker public cvxLocker;
 
-    uint256 public nextEpochToDeliver; // The next undelivered epoch index
+    /// @notice The next undelivered epoch index
+    uint256 public nextEpochToDeliver;
 
     // Important user invariant for rewards
-    mapping(address => uint256) public userNextClaimIndex; // User => Reward Next Claim Index
-    mapping(address => uint256) public authorizedRewardToken; // RewardToken => 2 = yes; 0 or 1 = no
+    // User => Reward Next Claim Index
+    mapping(address => uint256) public userNextClaimIndex;
+    // RewardToken => 2 = yes; 0 or 1 = no
+    mapping(address => uint256) public authorizedRewardToken;
 
     // Epoch # => Total Tokens Locked across all chains
     mapping(uint256 => uint256) public tokensLockedByEpoch;
