@@ -144,7 +144,7 @@ contract CVELocker is ReentrancyGuard {
     }
 
     function startLocker() external onlyDaoPermissions {
-        require(lockerStarted == 1, "cveLocker: locker already started");
+        require(lockerStarted == 1, "CVELocker: locker already started");
 
         veCVE = IVeCVE(centralRegistry.veCVE());
         genesisEpoch = centralRegistry.genesisEpoch();
