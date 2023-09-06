@@ -437,6 +437,10 @@ contract CVELocker is ReentrancyGuard {
                 "CVELocker: unsupported reward token"
             );
 
+            uint256 desiredRewardTokenBalance = IERC20(
+                rewardsData.desiredRewardToken
+            ).balanceOf(address(this));
+
             SwapperLib.Swap memory swapData = abi.decode(
                 params,
                 (SwapperLib.Swap)
@@ -474,8 +478,13 @@ contract CVELocker is ReentrancyGuard {
 
             uint256 reward = IERC20(rewardsData.desiredRewardToken).balanceOf(
                 address(this)
+            ) - desiredRewardTokenBalance;
+            SafeTransferLib.safeTransfer(
+                rewardsData.desiredRewardToken,
+                recipient,
+                reward
             );
-            SafeTransferLib.safeTransfer(baseRewardToken, recipient, reward);
+
             return reward;
         }
 
