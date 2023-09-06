@@ -12,7 +12,6 @@ import { IVeloPairFactory } from "contracts/interfaces/external/velodrome/IVeloP
 import { IVeloPool } from "contracts/interfaces/external/velodrome/IVeloPool.sol";
 
 library VelodromeLib {
-    
     /// @dev Enter Velodrome
     /// @param router The velodrome router address
     /// @param factory The velodrome factory address
@@ -122,6 +121,7 @@ library VelodromeLib {
         address token1 = IVeloPair(lpToken).token1();
         bool stable = IVeloPool(lpToken).stable();
 
+        SwapperLib.approveTokenIfNeeded(lpToken, router, lpAmount);
         IVeloRouter(router).removeLiquidity(
             token0,
             token1,
@@ -218,7 +218,7 @@ library VelodromeLib {
         address tokenOut,
         uint256 amount,
         bool stable
-    ) internal returns (uint256){
+    ) internal returns (uint256) {
         SwapperLib.approveTokenIfNeeded(tokenIn, router, amount);
 
         IVeloRouter.Route[] memory routes = new IVeloRouter.Route[](1);

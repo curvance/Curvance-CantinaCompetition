@@ -43,7 +43,6 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
 
     uint256 public constant MAX_LEVERAGE = 9900; // 99%
     uint256 public constant DENOMINATOR = 10000; // Scalar for math
-    uint256 public constant SLIPPAGE = 500; // 5%
 
     ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
     ILendtroller public immutable lendtroller; // Lendtroller linked
@@ -58,7 +57,7 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
         _;
     }
 
-    modifier checkSlippage(address user) {
+    modifier checkSlippage(address user, uint256 slippage) {
         (uint256 sumCollateralBefore, , uint256 sumBorrowBefore) = lendtroller
             .getAccountPosition(user);
         uint256 userValueBefore = sumCollateralBefore - sumBorrowBefore;
@@ -73,7 +72,7 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
             ? userValue - userValueBefore
             : userValueBefore - userValue;
         require(
-            diff < (userValueBefore * SLIPPAGE) / DENOMINATOR,
+            diff < (userValueBefore * slippage) / DENOMINATOR,
             "PositionFolding: slippage"
         );
     }
@@ -112,14 +111,16 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
     /// EXTERNAL FUNCTIONS ///
 
     function leverage(
-        LeverageStruct calldata leverageData
-    ) external checkSlippage(msg.sender) nonReentrant {
+        LeverageStruct calldata leverageData,
+        uint256 slippage
+    ) external checkSlippage(msg.sender, slippage) nonReentrant {
         _leverage(leverageData);
     }
 
     function deleverage(
-        DeleverageStruct calldata deleverageData
-    ) external checkSlippage(msg.sender) nonReentrant {
+        DeleverageStruct calldata deleverageData,
+        uint256 slippage
+    ) external checkSlippage(msg.sender, slippage) nonReentrant {
         _deleverage(deleverageData);
     }
 

@@ -30,6 +30,8 @@ contract TestBaseMarket is TestBase {
         0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address internal constant _USDC_ADDRESS =
         0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+    address internal constant _USDT_ADDRESS =
+        0xdAC17F958D2ee523a2206206994597C13D831ec7;
     address internal constant _RETH_ADDRESS =
         0xae78736Cd615f374D3085123A210448E74Fc6393;
     address internal constant _BALANCER_WETH_RETH =
@@ -38,6 +40,10 @@ contract TestBaseMarket is TestBase {
         0x6B175474E89094C44Da98b954EedeAC495271d0F;
     address internal constant _CVX_ADDRESS =
         0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
+    address internal constant _WBTC_ADDRESS =
+        0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
+    address internal constant _FRAX_ADDRESS =
+        0x853d955aCEf822Db058eb8505911ED77F175b99e;
 
     address internal constant _CHAINLINK_ETH_USD =
         0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
@@ -96,7 +102,7 @@ contract TestBaseMarket is TestBase {
     Zapper public zapper;
 
     function setUp() public virtual {
-        _fork();
+        _fork(18031848);
 
         usdc = IERC20(_USDC_ADDRESS);
         dai = IERC20(_DAI_ADDRESS);

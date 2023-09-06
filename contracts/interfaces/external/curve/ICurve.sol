@@ -35,6 +35,18 @@ interface ICurveSwap {
         uint256 amount,
         uint256[4] calldata min_amounts
     ) external;
+
+    function remove_liquidity_one_coin(
+        uint256 _token_amount,
+        int128 i,
+        uint256 min_amount
+    ) external;
+
+    function remove_liquidity_one_coin(
+        uint256 _token_amount,
+        uint256 i,
+        uint256 min_amount
+    ) external;
 }
 
 interface ICurveEthSwap {
