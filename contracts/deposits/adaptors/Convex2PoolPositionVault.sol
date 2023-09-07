@@ -54,14 +54,9 @@ contract ConvexPositionVault is BasePositionVault {
         strategyData.booster = IBooster(booster_);
 
         // query actual convex pool configuration data
-        (
-            address pidToken,
-            ,
-            ,
-            address crvRewards,
-            ,
-            bool shutdown
-        ) = IBooster(booster_).poolInfo(strategyData.pid);
+        (address pidToken, , , address crvRewards, , bool shutdown) = IBooster(
+            booster_
+        ).poolInfo(strategyData.pid);
 
         // validate that the pool is still active and that the lp token
         // and rewarder in convex matches what we are configuring for
@@ -96,7 +91,8 @@ contract ConvexPositionVault is BasePositionVault {
         // add CRV as a reward token, then let convex tell you what rewards
         // the vault will receive
         strategyData.rewardTokens.push() = _CRV;
-        uint256 extraRewardsLength = IBaseRewardPool(rewarder_).extraRewardsLength();
+        uint256 extraRewardsLength = IBaseRewardPool(rewarder_)
+            .extraRewardsLength();
         for (uint256 i; i < extraRewardsLength; ++i) {
             strategyData.rewardTokens.push() = IRewards(
                 IBaseRewardPool(rewarder_).extraRewards(i)
@@ -193,11 +189,12 @@ contract ConvexPositionVault is BasePositionVault {
                         feeAccumulator,
                         protocolFee
                     );
+                }
+            }
 
-                    /// swap from rewardToken to underlying LP token if necessary
-                    if (!isUnderlyingToken[rewardToken]) {
-                        SwapperLib.swap(swapDataArray[i]);
-                    }
+            {
+                for (uint256 i; i < swapDataArray.length; ++i) {
+                    SwapperLib.swap(swapDataArray[i]);
                 }
             }
 
@@ -210,7 +207,10 @@ contract ConvexPositionVault is BasePositionVault {
             // update vesting info
             // Cache vest period so we do not need to load it twice
             uint256 _vestPeriod = vestPeriod;
-            _vaultData = _packVaultData(yield.mulDivDown(expScale, _vestPeriod), block.timestamp + _vestPeriod);
+            _vaultData = _packVaultData(
+                yield.mulDivDown(expScale, _vestPeriod),
+                block.timestamp + _vestPeriod
+            );
 
             emit Harvest(yield);
         }
@@ -225,11 +225,7 @@ contract ConvexPositionVault is BasePositionVault {
     /// @param assets The amount of assets to deposit
     function _deposit(uint256 assets) internal override {
         IBooster booster = strategyData.booster;
-        SafeTransferLib.safeApprove(
-            asset(),
-            address(booster),
-            assets
-        );
+        SafeTransferLib.safeApprove(asset(), address(booster), assets);
         booster.deposit(strategyData.pid, assets, true);
     }
 
