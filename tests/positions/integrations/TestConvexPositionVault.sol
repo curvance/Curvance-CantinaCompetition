@@ -89,6 +89,7 @@ contract TestConvexPositionVault is TestBaseMarket {
         // Mint some extra rewards for Vault.
         deal(address(CRV), address(positionVault), 100e18);
         deal(address(CVX), address(positionVault), 100e18);
+        deal(address(positionVault), 1 ether);
 
         positionVault.harvest(abi.encode(new SwapperLib.Swap[](0)));
 
@@ -103,6 +104,7 @@ contract TestConvexPositionVault is TestBaseMarket {
         // Mint some extra rewards for Vault.
         deal(address(CRV), address(positionVault), 100e18);
         deal(address(CVX), address(positionVault), 100e18);
+        deal(address(positionVault), 1 ether);
         positionVault.harvest(abi.encode(new SwapperLib.Swap[](0)));
         vm.warp(block.timestamp + 7 days);
 

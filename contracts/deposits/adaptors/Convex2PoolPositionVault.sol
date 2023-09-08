@@ -3,6 +3,7 @@ pragma solidity ^0.8.17;
 
 import { BasePositionVault, SafeTransferLib, ERC20, Math, ICentralRegistry } from "contracts/deposits/adaptors/BasePositionVault.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
+import { CommonLib } from "contracts/market/zapper/protocols/CommonLib.sol";
 
 import { IBooster } from "contracts/interfaces/external/convex/IBooster.sol";
 import { IBaseRewardPool } from "contracts/interfaces/external/convex/IBaseRewardPool.sol";
@@ -202,6 +203,7 @@ contract ConvexPositionVault is BasePositionVault {
 
             // deposit assets into convex
             yield = ERC20(asset()).balanceOf(address(this));
+            require(yield > 0, "no yield");
             _deposit(yield);
 
             // update vesting info
@@ -251,16 +253,32 @@ contract ConvexPositionVault is BasePositionVault {
         address underlyingToken;
         uint256[2] memory amounts;
 
+        bool liquidityAvailable;
+        uint256 ethValue;
         for (uint256 i; i < 2; ++i) {
             underlyingToken = strategyData.underlyingTokens[i];
-            amounts[i] = ERC20(underlyingToken).balanceOf(address(this));
-            SwapperLib.approveTokenIfNeeded(
-                underlyingToken,
-                address(strategyData.curvePool),
-                amounts[i]
-            );
+            if (CommonLib.isETH(underlyingToken)) {
+                ethValue = address(this).balance;
+                amounts[i] = ethValue;
+            } else {
+                amounts[i] = ERC20(underlyingToken).balanceOf(address(this));
+                SwapperLib.approveTokenIfNeeded(
+                    underlyingToken,
+                    address(strategyData.curvePool),
+                    amounts[i]
+                );
+            }
+
+            if (amounts[i] > 0) {
+                liquidityAvailable = true;
+            }
         }
 
-        strategyData.curvePool.add_liquidity(amounts, 0);
+        if (liquidityAvailable) {
+            strategyData.curvePool.add_liquidity{ value: ethValue }(
+                amounts,
+                0
+            );
+        }
     }
 }
