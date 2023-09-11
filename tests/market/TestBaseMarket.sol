@@ -155,7 +155,8 @@ contract TestBaseMarket is TestBase {
     function _deployCVELocker() internal {
         cveLocker = new CVELocker(
             ICentralRegistry(address(centralRegistry)),
-            address(cvx)
+            _CVX_ADDRESS,
+            _USDC_ADDRESS
         );
         centralRegistry.setCVELocker(address(cveLocker));
     }
