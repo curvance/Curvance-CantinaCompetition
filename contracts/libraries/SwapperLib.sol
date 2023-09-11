@@ -50,16 +50,23 @@ library SwapperLib {
 
     /// @dev Swap input token
     /// @param swapData The swap data
-    function swap(Swap memory swapData) internal {
+    /// @return Swapped amount of token
+    function swap(Swap memory swapData) internal returns (uint256) {
         approveTokenIfNeeded(
             swapData.inputToken,
             swapData.target,
             swapData.inputAmount
         );
 
-        uint256 outputAmountBefore = IERC20(swapData.outputToken).balanceOf(
-            address(this)
-        );
+        address outputToken = swapData.outputToken;
+
+        uint256 balance;
+
+        if (outputToken == address(0)) {
+            balance = address(this).balance;
+        } else {
+            balance = IERC20(outputToken).balanceOf(address(this));
+        }
 
         (bool success, bytes memory retData) = swapData.target.call(
             swapData.call
@@ -69,8 +76,10 @@ library SwapperLib {
 
         require(success, "SwapperLib: swap error");
 
-        IERC20(swapData.outputToken).balanceOf(address(this)) -
-            outputAmountBefore;
+        if (outputToken == address(0)) {
+            return address(this).balance - balance;
+        }
+        return IERC20(outputToken).balanceOf(address(this)) - balance;
     }
 
     /// @notice Zaps an input token into an output token.
