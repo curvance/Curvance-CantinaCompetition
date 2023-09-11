@@ -75,6 +75,7 @@ contract CVELocker is ReentrancyGuard {
 
     /// ERRORS ///
 
+    error CVELocker__CVXIsZeroAddress();
     error CVELocker__BaseRewardTokenIsZeroAddress();
     error CVELocker__Unauthorized();
     error CVELocker__FailedETHTransfer();
@@ -135,7 +136,10 @@ contract CVELocker is ReentrancyGuard {
             ),
             "CVELocker: invalid central registry"
         );
-        if (baseRewardToken_ == address()) {
+        if (cvx_ == address(0)) {
+            revert CVELocker__CVXIsZeroAddress();
+        }
+        if (baseRewardToken_ == address(0)) {
             revert CVELocker__BaseRewardTokenIsZeroAddress();
         }
 
