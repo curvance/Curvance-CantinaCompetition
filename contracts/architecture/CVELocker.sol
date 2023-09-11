@@ -449,20 +449,6 @@ contract CVELocker is ReentrancyGuard {
                 "CVELocker: unsupported reward token"
             );
 
-            SwapperLib.Swap memory swapData = abi.decode(
-                params,
-                (SwapperLib.Swap)
-            );
-
-            if (
-                swapData.call.length == 0 ||
-                swapData.outputToken != rewardsData.desiredRewardToken
-            ) {
-                revert("CVELocker: swapData misconfigured");
-            }
-
-            uint256 reward = SwapperLib.swap(swapData);
-
             if (
                 rewardsData.desiredRewardToken == cvx && rewardsData.shouldLock
             ) {
@@ -486,6 +472,22 @@ contract CVELocker is ReentrancyGuard {
                         aux
                     );
             }
+
+            SwapperLib.Swap memory swapData = abi.decode(
+                params,
+                (SwapperLib.Swap)
+            );
+
+            if (
+                swapData.call.length == 0 ||
+                swapData.inputToken != baseRewardToken ||
+                swapData.outputToken != rewardsData.desiredRewardToken ||
+                swapData.inputAmount > userRewards
+            ) {
+                revert("CVELocker: swapData misconfigured");
+            }
+
+            uint256 reward = SwapperLib.swap(swapData);
 
             if (swapData.outputToken == address(0)) {
                 SafeTransferLib.safeTransferETH(recipient, reward);
@@ -580,28 +582,6 @@ contract CVELocker is ReentrancyGuard {
     ) internal returns (uint256) {
         uint256 reward = IERC20(desiredRewardToken).balanceOf(address(this));
         cvxLocker.lock(recipient, reward, spendRatio);
-
-        return reward;
-    }
-
-    /// @notice Distributes the specified reward amount as ETH to
-    ///         the recipient address
-    /// @dev Has reEntry protection via claimRewards & claimRewardsFor
-    /// @param recipient The address to receive the ETH rewards
-    /// @param reward The amount of ETH to send
-    /// @return reward The total amount of ETH that was sent
-    function _distributeRewardsAsETH(
-        address payable recipient,
-        uint256 reward
-    ) internal returns (uint256) {
-        assembly {
-            // Revert if we failed to transfer eth
-            if iszero(call(gas(), recipient, reward, 0x00, 0x00, 0x00, 0x00)) {
-                mstore(0x00, _FAILED_ETH_TRANSFER_SELECTOR)
-                // return bytes 29-32 for the selector
-                revert(0x1c, 0x04)
-            }
-        }
 
         return reward;
     }
