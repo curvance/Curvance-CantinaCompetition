@@ -15,25 +15,24 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 contract CVELocker is ReentrancyGuard {
     /// CONSTANTS ///
 
-    /// @notice Reward token; ETH
-    address public constant baseRewardToken =
-        0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
     /// @notice Protocol epoch length
     uint256 public constant EPOCH_DURATION = 2 weeks;
     /// @notice Scalar for math
-    uint256 public constant expScale = 1e18;
-    // `bytes4(keccak256(bytes("CVELocker_Unauthorized()")))`
-    uint256 internal constant _CVELOCKER_UNAUTHORIZED_SELECTOR = 0xeb83e515;
-    // `bytes4(keccak256(bytes("CVELocker_FailedETHTransfer()")))`
-    uint256 internal constant _FAILED_ETH_TRANSFER_SELECTOR = 0xa9c60879;
-    // `bytes4(keccak256(bytes("CVELocker_NoEpochRewards()")))`
-    uint256 internal constant _NO_EPOCH_REWARDS_SELECTOR = 0x2f75e00c;
+    uint256 public constant EXP_SCALE = 1e18;
+    // `bytes4(keccak256(bytes("CVELocker__Unauthorized()")))`
+    uint256 internal constant _CVELOCKER_UNAUTHORIZED_SELECTOR = 0x82274acf;
+    // `bytes4(keccak256(bytes("CVELocker__FailedETHTransfer()")))`
+    uint256 internal constant _FAILED_ETH_TRANSFER_SELECTOR = 0xe2e395e8;
+    // `bytes4(keccak256(bytes("CVELocker__NoEpochRewards()")))`
+    uint256 internal constant _NO_EPOCH_REWARDS_SELECTOR = 0x95721ba7;
     /// @notice CVE contract address
     address public immutable cve;
     /// @notice CVX contract address
     address public immutable cvx;
     /// @notice Curvance DAO hub
     ICentralRegistry public immutable centralRegistry;
+    /// @notice Reward token
+    address public immutable baseRewardToken;
 
     /// STORAGE ///
 
@@ -61,7 +60,7 @@ contract CVELocker is ReentrancyGuard {
     // Epoch # => Total Tokens Locked across all chains
     mapping(uint256 => uint256) public tokensLockedByEpoch;
 
-    // Epoch # => Rewards per CVE multiplied by `expScale`
+    // Epoch # => Rewards per CVE multiplied by `EXP_SCALE`
     mapping(uint256 => uint256) public epochRewardsPerCVE;
 
     /// EVENTS ///
@@ -76,10 +75,11 @@ contract CVELocker is ReentrancyGuard {
 
     /// ERRORS ///
 
-    error CVELocker_Unauthorized();
-    error CVELocker_FailedETHTransfer();
-    error CVELocker_NoEpochRewards();
-    error CVELocker_WrongEpochRewardSubmission();
+    error CVELocker__BaseRewardTokenIsZeroAddress();
+    error CVELocker__Unauthorized();
+    error CVELocker__FailedETHTransfer();
+    error CVELocker__NoEpochRewards();
+    error CVELocker__WrongEpochRewardSubmission();
 
     /// MODIFIERS ///
 
@@ -123,7 +123,11 @@ contract CVELocker is ReentrancyGuard {
 
     /// CONSTRUCTOR ///
 
-    constructor(ICentralRegistry centralRegistry_, address cvx_) {
+    constructor(
+        ICentralRegistry centralRegistry_,
+        address cvx_,
+        address baseRewardToken_
+    ) {
         require(
             ERC165Checker.supportsInterface(
                 address(centralRegistry_),
@@ -131,10 +135,14 @@ contract CVELocker is ReentrancyGuard {
             ),
             "CVELocker: invalid central registry"
         );
+        if (baseRewardToken_ == address()) {
+            revert CVELocker__BaseRewardTokenIsZeroAddress();
+        }
 
         centralRegistry = centralRegistry_;
         genesisEpoch = centralRegistry.genesisEpoch();
         cvx = cvx_;
+        baseRewardToken = baseRewardToken_;
         cve = centralRegistry.CVE();
     }
 
@@ -145,7 +153,7 @@ contract CVELocker is ReentrancyGuard {
         uint256 rewardsPerCVE
     ) external onlyFeeAccumulator {
         if (epoch != nextEpochToDeliver) {
-            revert CVELocker_WrongEpochRewardSubmission();
+            revert CVELocker__WrongEpochRewardSubmission();
         }
 
         // Record rewards per CVE for the epoch
@@ -369,7 +377,7 @@ contract CVELocker is ReentrancyGuard {
         unchecked {
             userNextClaimIndex[user] += epochs;
             // Removes the 1e18 offset for proper reward value
-            userRewards = userRewards / expScale;
+            userRewards = userRewards / EXP_SCALE;
         }
 
         uint256 rewardAmount = _processRewards(
@@ -437,20 +445,19 @@ contract CVELocker is ReentrancyGuard {
                 "CVELocker: unsupported reward token"
             );
 
-            uint256 desiredRewardTokenBalance = IERC20(
-                rewardsData.desiredRewardToken
-            ).balanceOf(address(this));
-
             SwapperLib.Swap memory swapData = abi.decode(
                 params,
                 (SwapperLib.Swap)
             );
 
-            if (swapData.call.length > 0) {
-                SwapperLib.swap(swapData);
-            } else {
+            if (
+                swapData.call.length == 0 ||
+                swapData.outputToken != rewardsData.desiredRewardToken
+            ) {
                 revert("CVELocker: swapData misconfigured");
             }
+
+            uint256 reward = SwapperLib.swap(swapData);
 
             if (
                 rewardsData.desiredRewardToken == cvx && rewardsData.shouldLock
@@ -476,19 +483,22 @@ contract CVELocker is ReentrancyGuard {
                     );
             }
 
-            uint256 reward = IERC20(rewardsData.desiredRewardToken).balanceOf(
-                address(this)
-            ) - desiredRewardTokenBalance;
-            SafeTransferLib.safeTransfer(
-                rewardsData.desiredRewardToken,
-                recipient,
-                reward
-            );
+            if (swapData.outputToken == address(0)) {
+                SafeTransferLib.safeTransferETH(recipient, reward);
+            } else {
+                SafeTransferLib.safeTransfer(
+                    rewardsData.desiredRewardToken,
+                    recipient,
+                    reward
+                );
+            }
 
             return reward;
         }
 
-        return _distributeRewardsAsETH(payable(recipient), userRewards);
+        SafeTransferLib.safeTransfer(baseRewardToken, recipient, userRewards);
+
+        return userRewards;
     }
 
     /// @notice Lock fees as veCVE
