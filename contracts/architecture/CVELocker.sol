@@ -317,6 +317,7 @@ contract CVELocker is ReentrancyGuard {
     }
 
     /// @notice Claim rewards for multiple epochs
+    /// @param user The address of the user.
     /// @param recipient The address who should receive the rewards of user
     /// @param epochs The number of epochs for which to claim rewards.
     /// @param rewardsData Rewards data for CVE rewards locker
@@ -373,6 +374,7 @@ contract CVELocker is ReentrancyGuard {
         for (uint256 i; i < epochs; ) {
             unchecked {
                 userRewards += _calculateRewardsForEpoch(
+                    user,
                     nextUserRewardEpoch + i++
                 );
             }
@@ -405,20 +407,22 @@ contract CVELocker is ReentrancyGuard {
     }
 
     /// @notice Calculate the rewards for a given epoch
+    /// @param user The address of the user.
     /// @param epoch The epoch for which to calculate the rewards.
     /// @return The calculated reward amount.
     ///         This is calculated based on the user's token points
     ///         for the given epoch.
     function _calculateRewardsForEpoch(
+        address user,
         uint256 epoch
     ) internal returns (uint256) {
-        if (veCVE.userTokenUnlocksByEpoch(msg.sender, epoch) > 0) {
+        if (veCVE.userTokenUnlocksByEpoch(user, epoch) > 0) {
             // If they have tokens unlocking this epoch we need to decrease
             // their tokenPoints
-            veCVE.updateUserPoints(msg.sender, epoch);
+            veCVE.updateUserPoints(user, epoch);
         }
 
-        return (veCVE.userTokenPoints(msg.sender) * epochRewardsPerCVE[epoch]);
+        return (veCVE.userTokenPoints(user) * epochRewardsPerCVE[epoch]);
     }
 
     /// @notice Process user rewards

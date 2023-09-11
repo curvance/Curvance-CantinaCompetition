@@ -993,12 +993,12 @@ contract VeCVE is ERC20 {
         bytes memory params,
         uint256 aux
     ) internal {
-        uint256 epoches = cveLocker.epochsToClaim(user);
-        if (epoches > 0) {
+        uint256 epochs = cveLocker.epochsToClaim(user);
+        if (epochs > 0) {
             cveLocker.claimRewardsFor(
                 user,
                 recipient,
-                epoches,
+                epochs,
                 rewardsData,
                 params,
                 aux
