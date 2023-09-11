@@ -55,14 +55,9 @@ contract AuraPositionVault is BasePositionVault {
         strategyData.booster = IBooster(booster_);
 
         // query actual aura pool configuration data
-        (
-            address pidToken,
-            ,
-            ,
-            address balRewards,
-            ,
-            bool shutdown
-        ) = IBooster(booster_).poolInfo(strategyData.pid);
+        (address pidToken, , , address balRewards, , bool shutdown) = IBooster(
+            booster_
+        ).poolInfo(strategyData.pid);
 
         // validate that the pool is still active and that the lp token
         // and rewarder in aura matches what we are configuring for
@@ -84,13 +79,15 @@ contract AuraPositionVault is BasePositionVault {
         // as a reward token
         strategyData.rewardTokens.push() = AURA;
 
-        uint256 extraRewardsLength = IBaseRewardPool(rewarder_).extraRewardsLength();
+        uint256 extraRewardsLength = IBaseRewardPool(rewarder_)
+            .extraRewardsLength();
         for (uint256 i; i < extraRewardsLength; ) {
             unchecked {
                 address rewardToken = IStashWrapper(
-                    IRewards(IBaseRewardPool(rewarder_).extraRewards(i++)).rewardToken()
+                    IRewards(IBaseRewardPool(rewarder_).extraRewards(i++))
+                        .rewardToken()
                 ).baseToken();
-            
+
                 if (rewardToken != AURA) {
                     strategyData.rewardTokens.push() = rewardToken;
                 }
@@ -132,8 +129,7 @@ contract AuraPositionVault is BasePositionVault {
                 address rewardToken = IStashWrapper(
                     IRewards(rewarder.extraRewards(i++)).rewardToken()
                 ).baseToken();
-            
-            
+
                 if (rewardToken != AURA) {
                     strategyData.rewardTokens.push() = rewardToken;
                 }
@@ -177,7 +173,8 @@ contract AuraPositionVault is BasePositionVault {
             uint256 rewardAmount;
             uint256 protocolFee;
 
-            { // Use scoping to avoid stack too deep
+            {
+                // Use scoping to avoid stack too deep
                 // Cache Central registry values so we dont pay gas multiple times
                 address feeAccumulator = centralRegistry.feeAccumulator();
                 uint256 harvestFee = centralRegistry.protocolHarvestFee();
@@ -191,10 +188,7 @@ contract AuraPositionVault is BasePositionVault {
                     }
 
                     // take protocol fee
-                    protocolFee = rewardAmount.mulDivDown(
-                        harvestFee,
-                        1e18
-                    );
+                    protocolFee = rewardAmount.mulDivDown(harvestFee, 1e18);
                     rewardAmount -= protocolFee;
                     SafeTransferLib.safeTransfer(
                         rewardToken,
@@ -208,12 +202,15 @@ contract AuraPositionVault is BasePositionVault {
                     }
                 }
             }
-            
+
             // prep adding liquidity to balancer
-            { // Use scoping to avoid stack too deep
+            {
+                // Use scoping to avoid stack too deep
                 uint256 numUnderlyingTokens = sd.underlyingTokens.length;
                 address[] memory assets = new address[](numUnderlyingTokens);
-                uint256[] memory maxAmountsIn = new uint256[](numUnderlyingTokens);
+                uint256[] memory maxAmountsIn = new uint256[](
+                    numUnderlyingTokens
+                );
                 address underlyingToken;
 
                 for (uint256 i; i < numUnderlyingTokens; ++i) {
@@ -228,7 +225,6 @@ contract AuraPositionVault is BasePositionVault {
                         address(sd.balancerVault),
                         maxAmountsIn[i]
                     );
-
                 }
 
                 // deposit assets into balancer
@@ -240,14 +236,15 @@ contract AuraPositionVault is BasePositionVault {
                         assets,
                         maxAmountsIn,
                         abi.encode(
-                            IBalancerVault.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT,
+                            IBalancerVault
+                                .JoinKind
+                                .EXACT_TOKENS_IN_FOR_BPT_OUT,
                             maxAmountsIn,
                             1
                         ),
                         false // do not use internal balances
                     )
                 );
-
             }
 
             // deposit assets into aura
@@ -257,7 +254,10 @@ contract AuraPositionVault is BasePositionVault {
             // update vesting info
             // Cache vest period so we do not need to load it twice
             uint256 _vestPeriod = vestPeriod;
-            _vaultData = _packVaultData(yield.mulDivDown(expScale, _vestPeriod), block.timestamp + _vestPeriod);
+            _vaultData = _packVaultData(
+                yield.mulDivDown(expScale, _vestPeriod),
+                block.timestamp + _vestPeriod
+            );
 
             emit Harvest(yield);
         }
@@ -270,11 +270,7 @@ contract AuraPositionVault is BasePositionVault {
     /// @param assets The amount of assets to deposit
     function _deposit(uint256 assets) internal override {
         IBooster booster = strategyData.booster;
-        SafeTransferLib.safeApprove(
-            asset(),
-            address(booster),
-            assets
-        );
+        SafeTransferLib.safeApprove(asset(), address(booster), assets);
         booster.deposit(strategyData.pid, assets, true);
     }
 

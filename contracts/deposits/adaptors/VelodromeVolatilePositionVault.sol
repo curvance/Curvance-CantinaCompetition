@@ -127,7 +127,7 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
                     SwapperLib.swap(swapData);
                 }
             }
-            
+
             // swap token0 to LP Token underlying tokens
             uint256 totalAmountA = ERC20(sd.token0).balanceOf(address(this));
 
@@ -145,9 +145,25 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
 
             // On Volatile Pair we only need to input factory, lptoken, amountA, reserveA, stable = false
             // Decimals are unused and amountB is unused so we can pass 0
-            uint256 swapAmount = VelodromeLib._optimalDeposit(address(sd.pairFactory), _asset, totalAmountA, reserveA, 0, 0, 0, false);
+            uint256 swapAmount = VelodromeLib._optimalDeposit(
+                address(sd.pairFactory),
+                _asset,
+                totalAmountA,
+                reserveA,
+                0,
+                0,
+                0,
+                false
+            );
             // Can pass as normal with stable = false
-            VelodromeLib._swapExactTokensForTokens(address(sd.router), _asset, sd.token0, sd.token1, swapAmount, false);
+            VelodromeLib._swapExactTokensForTokens(
+                address(sd.router),
+                _asset,
+                sd.token0,
+                sd.token1,
+                swapAmount,
+                false
+            );
 
             totalAmountA -= swapAmount;
             // add liquidity to velodrome lp with stable = false
@@ -155,7 +171,7 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
                 address(sd.router),
                 sd.token0,
                 sd.token1,
-                false, 
+                false,
                 totalAmountA,
                 ERC20(sd.token1).balanceOf(address(this)) // totalAmountB
             );
@@ -166,7 +182,10 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
             // update vesting info
             // Cache vest period so we do not need to load it twice
             uint256 _vestPeriod = vestPeriod;
-            _vaultData = _packVaultData(yield.mulDivDown(expScale, _vestPeriod), block.timestamp + _vestPeriod);
+            _vaultData = _packVaultData(
+                yield.mulDivDown(expScale, _vestPeriod),
+                block.timestamp + _vestPeriod
+            );
 
             emit Harvest(yield);
         } // else yield is zero
@@ -180,11 +199,7 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
     /// @param assets The amount of assets to deposit
     function _deposit(uint256 assets) internal override {
         IVeloGauge gauge = strategyData.gauge;
-        SafeTransferLib.safeApprove(
-            asset(),
-            address(gauge),
-            assets
-        );
+        SafeTransferLib.safeApprove(asset(), address(gauge), assets);
         gauge.deposit(assets);
     }
 

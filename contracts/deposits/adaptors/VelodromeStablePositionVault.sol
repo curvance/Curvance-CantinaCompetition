@@ -114,7 +114,7 @@ contract VelodromeStablePositionVault is BasePositionVault {
                 (SwapperLib.Swap)
             );
             {
-            uint256 rewardAmount = rewardToken.balanceOf(address(this));
+                uint256 rewardAmount = rewardToken.balanceOf(address(this));
 
                 if (rewardAmount > 0) {
                     // take protocol fee
@@ -153,7 +153,7 @@ contract VelodromeStablePositionVault is BasePositionVault {
                 : (r1, r0);
             // Feed library pair factory, lpToken, and stable = true, plus calculated data
             uint256 swapAmount = VelodromeLib._optimalDeposit(
-                address(sd.pairFactory), 
+                address(sd.pairFactory),
                 _asset,
                 totalAmountA,
                 reserveA,
@@ -163,7 +163,14 @@ contract VelodromeStablePositionVault is BasePositionVault {
                 true
             );
             // Query router and feed calculated data, and stable = true
-            VelodromeLib._swapExactTokensForTokens(address(sd.router), _asset, sd.token0, sd.token1, swapAmount, true);
+            VelodromeLib._swapExactTokensForTokens(
+                address(sd.router),
+                _asset,
+                sd.token0,
+                sd.token1,
+                swapAmount,
+                true
+            );
             totalAmountA -= swapAmount;
 
             // add liquidity to velodrome lp with stable params
@@ -182,8 +189,10 @@ contract VelodromeStablePositionVault is BasePositionVault {
             // update vesting info
             // Cache vest period so we do not need to load it twice
             uint256 _vestPeriod = vestPeriod;
-            _vaultData = _packVaultData(yield.mulDivDown(expScale, _vestPeriod), block.timestamp + _vestPeriod);
-
+            _vaultData = _packVaultData(
+                yield.mulDivDown(expScale, _vestPeriod),
+                block.timestamp + _vestPeriod
+            );
 
             emit Harvest(yield);
         }
@@ -198,11 +207,7 @@ contract VelodromeStablePositionVault is BasePositionVault {
     /// @param assets The amount of assets to deposit
     function _deposit(uint256 assets) internal override {
         IVeloGauge gauge = strategyData.gauge;
-        SafeTransferLib.safeApprove(
-            asset(),
-            address(gauge),
-            assets
-        );
+        SafeTransferLib.safeApprove(asset(), address(gauge), assets);
         gauge.deposit(assets);
     }
 
