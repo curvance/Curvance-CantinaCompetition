@@ -173,7 +173,6 @@ contract VelodromeStablePositionVault is BasePositionVault {
             // Query router and feed calculated data, and stable = true
             VelodromeLib._swapExactTokensForTokens(
                 address(sd.router),
-                _asset,
                 sd.token0,
                 sd.token1,
                 swapAmount,

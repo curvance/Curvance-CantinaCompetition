@@ -169,7 +169,6 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
             // Can pass as normal with stable = false
             VelodromeLib._swapExactTokensForTokens(
                 address(sd.router),
-                _asset,
                 sd.token0,
                 sd.token1,
                 swapAmount,

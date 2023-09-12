@@ -46,7 +46,6 @@ library VelodromeLib {
 
             amount1 = _swapExactTokensForTokens(
                 router,
-                lpToken,
                 token0,
                 token1,
                 swapAmount,
@@ -82,7 +81,6 @@ library VelodromeLib {
 
             amount0 = _swapExactTokensForTokens(
                 router,
-                lpToken,
                 token1,
                 token0,
                 swapAmount,
@@ -213,7 +211,6 @@ library VelodromeLib {
     /// @param amount The amount of `tokenIn` to be swapped
     function _swapExactTokensForTokens(
         address router,
-        address lpToken,
         address tokenIn,
         address tokenOut,
         uint256 amount,
@@ -225,7 +222,6 @@ library VelodromeLib {
         routes[0].from = tokenIn;
         routes[0].to = tokenOut;
         routes[0].stable = stable;
-        routes[0].factory = IVeloPool(lpToken).factory();
 
         uint256[] memory amountsOut = IVeloRouter(router)
             .swapExactTokensForTokens(
