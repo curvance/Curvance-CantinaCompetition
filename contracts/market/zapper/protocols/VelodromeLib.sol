@@ -35,7 +35,6 @@ library VelodromeLib {
             (uint256 r0, uint256 r1, ) = IVeloPair(lpToken).getReserves();
             uint256 swapAmount = _optimalDeposit(
                 factory,
-                lpToken,
                 amount0,
                 r0,
                 r1,
@@ -70,7 +69,6 @@ library VelodromeLib {
             (uint256 r0, uint256 r1, ) = IVeloPair(lpToken).getReserves();
             uint256 swapAmount = _optimalDeposit(
                 factory,
-                lpToken,
                 amount1,
                 r1,
                 r0,
@@ -172,7 +170,6 @@ library VelodromeLib {
     /// @return The optimal amount of TokenA to swap
     function _optimalDeposit(
         address factory,
-        address lpToken,
         uint256 amountA,
         uint256 reserveA,
         uint256 reserveB,
@@ -195,7 +192,7 @@ library VelodromeLib {
 
             return ((num / den) * decimalsA) / 1e18;
         } else {
-            uint256 swapFee = IVeloPairFactory(factory).getFee(lpToken, false);
+            uint256 swapFee = IVeloPairFactory(factory).getFee(false);
             uint256 swapFeeFactor = 10000 - swapFee;
             uint256 a = (10000 + swapFeeFactor) * reserveA;
             uint256 b = amountA * 10000 * reserveA * 4 * swapFeeFactor;

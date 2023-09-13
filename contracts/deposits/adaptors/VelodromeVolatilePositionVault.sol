@@ -158,7 +158,6 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
             // Decimals are unused and amountB is unused so we can pass 0
             uint256 swapAmount = VelodromeLib._optimalDeposit(
                 address(sd.pairFactory),
-                _asset,
                 totalAmountA,
                 reserveA,
                 0,

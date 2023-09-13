@@ -162,7 +162,6 @@ contract VelodromeStablePositionVault is BasePositionVault {
             // Feed library pair factory, lpToken, and stable = true, plus calculated data
             uint256 swapAmount = VelodromeLib._optimalDeposit(
                 address(sd.pairFactory),
-                _asset,
                 totalAmountA,
                 reserveA,
                 reserveB,
