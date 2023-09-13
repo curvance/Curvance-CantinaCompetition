@@ -77,11 +77,11 @@ contract TestVelodromeVolatilePositionVault is TestBaseMarket {
         );
 
         // Advance time to earn CRV and CVX rewards
-        vm.warp(block.timestamp + 3 days);
+        vm.warp(block.timestamp + 1 days);
 
         // Mint some extra rewards for Vault.
-        deal(address(VELO), address(positionVault), 100e18);
-        uint256 amount = (100e18 * 84) / 100;
+        uint256 earned = gauge.earned(address(positionVault));
+        uint256 amount = (earned * 84) / 100;
         SwapperLib.Swap memory swapData;
         swapData.inputToken = address(VELO);
         swapData.inputAmount = amount;
@@ -112,7 +112,17 @@ contract TestVelodromeVolatilePositionVault is TestBaseMarket {
         vm.warp(block.timestamp + 8 days);
 
         // Mint some extra rewards for Vault.
-        deal(address(VELO), address(positionVault), 100e18);
+        earned = gauge.earned(address(positionVault));
+        amount = (earned * 84) / 100;
+        swapData.inputAmount = amount;
+        swapData.call = abi.encodeWithSelector(
+            IVeloRouter.swapExactTokensForTokens.selector,
+            amount,
+            0,
+            routes,
+            address(positionVault),
+            type(uint256).max
+        );
         positionVault.harvest(abi.encode(swapData));
         vm.warp(block.timestamp + 7 days);
 
