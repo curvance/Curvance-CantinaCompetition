@@ -18,5 +18,5 @@ interface IVeloPairFactory {
         bool stable
     ) external returns (address pair);
 
-    function getFee(bool _stable) external view returns (uint);
+    function getFee(address pool, bool _stable) external view returns (uint);
 }

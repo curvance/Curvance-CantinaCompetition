@@ -6,9 +6,8 @@ interface IVeloRouter {
         address from;
         address to;
         bool stable;
+        address factory;
     }
-
-    function factory() external view returns (address);
 
     function weth() external view returns (address);
 

@@ -20,18 +20,18 @@ contract TestVelodromeStablePositionVault is TestBaseMarket {
     VelodromeStablePositionVault positionVault;
 
     IVeloPairFactory private veloPairFactory =
-        IVeloPairFactory(0x25CbdDb98b35ab1FF77413456B31EC81A6B6B746);
+        IVeloPairFactory(0xF1046053aa5682b4F9a81b5481394DA16BE5FF5a);
     IVeloRouter private veloRouter =
-        IVeloRouter(0x9c12939390052919aF3155f41Bf4160Fd3666A6f);
+        IVeloRouter(0xa062aE8A9c5e11aaA026fc2670B0D65cCc8B2858);
     address private optiSwap = 0x6108FeAA628155b073150F408D0b390eC3121834;
 
     ERC20 private USDC = ERC20(0x7F5c764cBc14f9669B88837ca1490cCa17c31607);
     ERC20 private DAI = ERC20(0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1);
-    ERC20 private VELO = ERC20(0x3c8B650257cFb5f272f799F5e2b4e65093a11a05);
+    ERC20 private VELO = ERC20(0x9560e827aF36c94D2Ac33a39bCE1Fe78631088Db);
 
-    ERC20 private USDC_DAI = ERC20(0x4F7ebc19844259386DBdDB7b2eB759eeFc6F8353);
+    ERC20 private USDC_DAI = ERC20(0x19715771E30c93915A5bbDa134d782b81A820076);
     IVeloGauge private gauge =
-        IVeloGauge(0xc4fF55A961bC04b880e60219CCBBDD139c6451A4);
+        IVeloGauge(0x6998089F6bDd9c74C7D8d01b99d7e379ccCcb02D);
 
     receive() external payable {}
 
@@ -80,10 +80,27 @@ contract TestVelodromeStablePositionVault is TestBaseMarket {
 
         // Mint some extra rewards for Vault.
         deal(address(VELO), address(positionVault), 100e18);
-        deal(address(DAI), address(positionVault), 100e18);
-        deal(address(USDC), address(positionVault), 100e6);
+        uint256 amount = (100e18 * 84) / 100;
+        SwapperLib.Swap memory swapData;
+        swapData.inputToken = address(VELO);
+        swapData.inputAmount = amount;
+        swapData.outputToken = address(USDC);
+        swapData.target = address(veloRouter);
+        IVeloRouter.Route[] memory routes = new IVeloRouter.Route[](1);
+        routes[0].from = address(VELO);
+        routes[0].to = address(USDC);
+        routes[0].stable = false;
+        routes[0].factory = address(veloPairFactory);
+        swapData.call = abi.encodeWithSelector(
+            IVeloRouter.swapExactTokensForTokens.selector,
+            amount,
+            0,
+            routes,
+            address(positionVault),
+            type(uint256).max
+        );
 
-        positionVault.harvest(abi.encode(new SwapperLib.Swap[](0)));
+        positionVault.harvest(abi.encode(swapData));
 
         assertEq(
             positionVault.totalAssets(),
@@ -95,9 +112,7 @@ contract TestVelodromeStablePositionVault is TestBaseMarket {
 
         // Mint some extra rewards for Vault.
         deal(address(VELO), address(positionVault), 100e18);
-        deal(address(DAI), address(positionVault), 100e18);
-        deal(address(USDC), address(positionVault), 100e6);
-        positionVault.harvest(abi.encode(new SwapperLib.Swap[](0)));
+        positionVault.harvest(abi.encode(swapData));
         vm.warp(block.timestamp + 7 days);
 
         assertGt(

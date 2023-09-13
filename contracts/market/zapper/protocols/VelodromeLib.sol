@@ -35,6 +35,7 @@ library VelodromeLib {
             (uint256 r0, uint256 r1, ) = IVeloPair(lpToken).getReserves();
             uint256 swapAmount = _optimalDeposit(
                 factory,
+                lpToken,
                 amount0,
                 r0,
                 r1,
@@ -45,6 +46,7 @@ library VelodromeLib {
 
             amount1 = _swapExactTokensForTokens(
                 router,
+                lpToken,
                 token0,
                 token1,
                 swapAmount,
@@ -69,6 +71,7 @@ library VelodromeLib {
             (uint256 r0, uint256 r1, ) = IVeloPair(lpToken).getReserves();
             uint256 swapAmount = _optimalDeposit(
                 factory,
+                lpToken,
                 amount1,
                 r1,
                 r0,
@@ -79,6 +82,7 @@ library VelodromeLib {
 
             amount0 = _swapExactTokensForTokens(
                 router,
+                lpToken,
                 token1,
                 token0,
                 swapAmount,
@@ -170,6 +174,7 @@ library VelodromeLib {
     /// @return The optimal amount of TokenA to swap
     function _optimalDeposit(
         address factory,
+        address lpToken,
         uint256 amountA,
         uint256 reserveA,
         uint256 reserveB,
@@ -192,7 +197,7 @@ library VelodromeLib {
 
             return ((num / den) * decimalsA) / 1e18;
         } else {
-            uint256 swapFee = IVeloPairFactory(factory).getFee(false);
+            uint256 swapFee = IVeloPairFactory(factory).getFee(lpToken, false);
             uint256 swapFeeFactor = 10000 - swapFee;
             uint256 a = (10000 + swapFeeFactor) * reserveA;
             uint256 b = amountA * 10000 * reserveA * 4 * swapFeeFactor;
@@ -208,6 +213,7 @@ library VelodromeLib {
     /// @param amount The amount of `tokenIn` to be swapped
     function _swapExactTokensForTokens(
         address router,
+        address lpToken,
         address tokenIn,
         address tokenOut,
         uint256 amount,
@@ -219,6 +225,7 @@ library VelodromeLib {
         routes[0].from = tokenIn;
         routes[0].to = tokenOut;
         routes[0].stable = stable;
+        routes[0].factory = IVeloPool(lpToken).factory();
 
         uint256[] memory amountsOut = IVeloRouter(router)
             .swapExactTokensForTokens(

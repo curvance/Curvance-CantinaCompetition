@@ -22,10 +22,15 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
         IVeloRouter router; // Velodrome Router contract
         address token0; // LP first token address
         address token1; // LP second token address
-        address[] rewardTokens; // Convex reward assets
     }
 
     /// CONSTANTS ///
+
+    // Optimism VELO contract address
+    ERC20 public constant rewardToken =
+        ERC20(0x9560e827aF36c94D2Ac33a39bCE1Fe78631088Db);
+    // Whether VELO is an underlying token of the pair
+    bool public immutable rewardTokenIsUnderlying;
 
     /// STORAGE ///
 
@@ -52,8 +57,7 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
         // Validate that we have the proper gauge linked with the proper LP
         // and pair factory
         require(
-            gauge.stake() == _asset &&
-                address(pairFactory) == router.factory(),
+            gauge.stakingToken() == _asset,
             "VelodromeVolatilePositionVault: improper velodrome vault config"
         );
 
@@ -64,13 +68,12 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
         strategyData.router = router;
         strategyData.pairFactory = pairFactory;
 
-        uint256 numRewardTokens = gauge.rewardsListLength();
-        for (uint256 i; i < numRewardTokens; ++i) {
-            strategyData.rewardTokens.push(gauge.rewards(i));
-        }
-
         isUnderlyingToken[strategyData.token0] = true;
         isUnderlyingToken[strategyData.token1] = true;
+
+        rewardTokenIsUnderlying = (address(rewardToken) ==
+            strategyData.token0 ||
+            address(rewardToken) == strategyData.token1);
     }
 
     /// PUBLIC FUNCTIONS ///
@@ -98,29 +101,13 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
             StrategyData memory sd = strategyData;
 
             // claim velodrome rewards
-            sd.gauge.claimFees();
-            sd.gauge.getReward(address(this), sd.rewardTokens);
-
-            SwapperLib.Swap[] memory swapDataArray = abi.decode(
-                data,
-                (SwapperLib.Swap[])
-            );
+            sd.gauge.getReward(address(this));
 
             {
-                uint256 numRewardTokens = sd.rewardTokens.length;
-                address rewardToken;
-                uint256 rewardAmount;
-                uint256 protocolFee;
-                for (uint256 i; i < numRewardTokens; ++i) {
-                    rewardToken = sd.rewardTokens[i];
-                    rewardAmount = ERC20(rewardToken).balanceOf(address(this));
-
-                    if (rewardAmount == 0) {
-                        continue;
-                    }
-
+                uint256 rewardAmount = rewardToken.balanceOf(address(this));
+                if (rewardAmount > 0) {
                     // take protocol fee
-                    protocolFee = rewardAmount.mulDivDown(
+                    uint256 protocolFee = rewardAmount.mulDivDown(
                         centralRegistry.protocolHarvestFee(),
                         1e18
                     );
@@ -130,12 +117,15 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
                         centralRegistry.feeAccumulator(),
                         protocolFee
                     );
-                }
-            }
 
-            {
-                for (uint256 i; i < swapDataArray.length; ++i) {
-                    SwapperLib.swap(swapDataArray[i]);
+                    // swap from VELO to underlying LP token if necessary
+                    if (!rewardTokenIsUnderlying) {
+                        SwapperLib.Swap memory swapData = abi.decode(
+                            data,
+                            (SwapperLib.Swap)
+                        );
+                        SwapperLib.swap(swapData);
+                    }
                 }
             }
 
@@ -158,6 +148,7 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
             // Decimals are unused and amountB is unused so we can pass 0
             uint256 swapAmount = VelodromeLib._optimalDeposit(
                 address(sd.pairFactory),
+                _asset,
                 totalAmountA,
                 reserveA,
                 0,
@@ -168,6 +159,7 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
             // Can pass as normal with stable = false
             VelodromeLib._swapExactTokensForTokens(
                 address(sd.router),
+                _asset,
                 sd.token0,
                 sd.token1,
                 swapAmount,
@@ -210,7 +202,7 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
     function _deposit(uint256 assets) internal override {
         IVeloGauge gauge = strategyData.gauge;
         SafeTransferLib.safeApprove(asset(), address(gauge), assets);
-        gauge.deposit(assets, 0);
+        gauge.deposit(assets);
     }
 
     /// @notice Withdraws specified amount of assets from velodrome gauge pool
