@@ -212,8 +212,9 @@ contract DToken is ERC165, ReentrancyGuard {
             address(this),
             amount
         );
+
         // We do not need to calculate exchange rate here as we will always be the initial depositer
-        // These values should always be zero but we will add them just incase we are re-initiating a market
+        // with totalSupply equal to 0
         totalSupply = totalSupply + amount;
         balanceOf[initializer] =
             balanceOf[initializer] +
@@ -687,7 +688,7 @@ contract DToken is ERC165, ReentrancyGuard {
     function tokenType() public pure returns (uint256) {
         return 0;
     }
-
+exchangeRateStored
     /// @notice Returns gauge pool contract address
     /// @return gaugePool the gauge controller contract address
     function gaugePool() public view returns (address) {

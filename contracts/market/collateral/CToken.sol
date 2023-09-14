@@ -43,7 +43,7 @@ contract CToken is ERC165, ReentrancyGuard {
     /// @notice Current position vault
     BasePositionVault public vault;
 
-    /// @notice Total protocol reserves of underlying
+    /// @notice Total protocol reserves of underlying in shares
     uint256 public totalReserves;
 
     /// @notice Total number of tokens in circulation
@@ -154,26 +154,25 @@ contract CToken is ERC165, ReentrancyGuard {
             revert CToken__UnauthorizedCaller();
         }
 
-        uint256 mintAmount = 42069;
-        uint256 mintTokens = _enterVault(initializer, mintAmount);
+        uint256 amount = 42069;
+        // `tokens` should be equal to `amount` but we use tokens just incase
+        uint256 tokens = _enterVault(initializer, amount);
 
-        // We do not need to calculate exchange rate here as we will
-        // always be the initial depositer.
         // These values should always be zero but we will add them
-        // just incase we are re-initiating a market.
-        totalSupply = totalSupply + mintTokens;
+        // just incase
+        totalSupply = totalSupply + tokens;
         balanceOf[initializer] =
             balanceOf[initializer] +
-            mintTokens;
+            tokens;
 
         // emit events on gauge pool
         GaugePool(gaugePool()).deposit(
             address(this),
             initializer,
-            mintTokens
+            tokens
         );
 
-        emit Transfer(address(0), initializer, mintAmount);
+        emit Transfer(address(0), initializer, tokens);
         return true;
     }
 
