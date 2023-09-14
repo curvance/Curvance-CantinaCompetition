@@ -73,8 +73,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
     mapping(address => uint256) internal _accountBalance;
 
     // account => spender => approved amount
-    mapping(address => mapping(address => uint256))
-        internal transferAllowances;
+    mapping(address => mapping(address => uint256)) public allowance;
 
     // account => BorrowSnapshot (Principal Borrowed, User Interest Index)
     mapping(address => BorrowSnapshot) internal accountBorrows;
@@ -235,7 +234,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
             mintAmount,
             initializer
         );
-        emit Transfer(address(this), initializer, 6942069);
+        emit Transfer(address(this), initializer, 42069);
         return true;
     }
 
@@ -247,7 +246,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
         address to,
         uint256 amount
     ) external override nonReentrant returns (bool) {
-        _transferTokens(msg.sender, msg.sender, to, amount);
+        _transfer(msg.sender, msg.sender, to, amount);
         return true;
     }
 
@@ -261,7 +260,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
         address to,
         uint256 amount
     ) external override nonReentrant returns (bool) {
-        _transferTokens(msg.sender, from, to, amount);
+        _transfer(msg.sender, from, to, amount);
         return true;
     }
 
@@ -846,7 +845,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
     /// @param from The address of the source account
     /// @param to The address of the destination account
     /// @param tokens The number of tokens to transfer
-    function _transferTokens(
+    function _transfer(
         address spender,
         address from,
         address to,

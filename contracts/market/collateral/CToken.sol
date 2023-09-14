@@ -181,7 +181,7 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
             mintTokens,
             initializer
         );
-        emit Transfer(address(this), initializer, 6942069);
+        emit Transfer(address(this), initializer, 42069);
 
         return true;
     }
@@ -216,7 +216,7 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
         address to,
         uint256 amount
     ) external override nonReentrant returns (bool) {
-        _transferTokens(msg.sender, msg.sender, to, amount);
+        _transfer(msg.sender, msg.sender, to, amount);
         return true;
     }
 
@@ -230,7 +230,7 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
         address to,
         uint256 amount
     ) external override nonReentrant returns (bool) {
-        _transferTokens(msg.sender, from, to, amount);
+        _transfer(msg.sender, from, to, amount);
         return true;
     }
 
@@ -564,7 +564,7 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
     /// @param from The address of the source account
     /// @param to The address of the destination account
     /// @param amount The number of tokens to transfer
-    function _transferTokens(
+    function _transfer(
         address spender,
         address from,
         address to,
