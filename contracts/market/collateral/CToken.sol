@@ -15,11 +15,11 @@ import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { IMToken, accountSnapshot } from "contracts/interfaces/market/IMToken.sol";
 
 /// @title Curvance's Collateral Token Contract
-contract CToken is IERC20, ERC165, ReentrancyGuard {
+contract CToken is ERC165, ReentrancyGuard {
     /// CONSTANTS ///
 
     /// @notice Scalar for math
-    uint256 internal constant expScale = 1e18;
+    uint256 internal constant EXP_SCALE = 1e18;
 
     /// @notice For inspection
     bool public constant isCToken = true;
@@ -57,6 +57,12 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
 
     /// EVENTS ///
 
+    event Transfer(address indexed from, address indexed to, uint256 value);
+    event Approval(
+        address indexed owner,
+        address indexed spender,
+        uint256 value
+    );
     event MigrateVault(address oldVault, address newVault);
     event NewLendtroller(address oldLendtroller, address newLendtroller);
     event ReservesAdded(
@@ -201,7 +207,7 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
     function transfer(
         address to,
         uint256 amount
-    ) external override nonReentrant returns (bool) {
+    ) external nonReentrant returns (bool) {
         _transfer(msg.sender, msg.sender, to, amount);
         return true;
     }
@@ -215,7 +221,7 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
         address from,
         address to,
         uint256 amount
-    ) external override nonReentrant returns (bool) {
+    ) external nonReentrant returns (bool) {
         _transfer(msg.sender, from, to, amount);
         return true;
     }
@@ -263,7 +269,7 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
         _redeem(
             msg.sender,
             tokensToRedeem,
-            (exchangeRateStored() * tokensToRedeem) / expScale,
+            (exchangeRateStored() * tokensToRedeem) / EXP_SCALE,
             msg.sender
         );
     }
@@ -274,7 +280,7 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
     ///      unless reverted
     /// @param tokensToRedeem The amount of underlying to redeem
     function redeemUnderlying(uint256 tokensToRedeem) external nonReentrant {
-        uint256 redeemTokens = (tokensToRedeem * expScale) /
+        uint256 redeemTokens = (tokensToRedeem * EXP_SCALE) /
             exchangeRateStored();
 
         // Fail if redeem not allowed
@@ -303,7 +309,7 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
 
         _redeem(
             user,
-            (tokensToRedeem * expScale) / exchangeRateStored(),
+            (tokensToRedeem * EXP_SCALE) / exchangeRateStored(),
             tokensToRedeem,
             msg.sender
         );
@@ -355,7 +361,6 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
             reduceAmount
         );
 
-        // _doTransferOut reverts if anything goes wrong
         _exitVault(daoAddress, reduceAmount);
 
         emit ReservesReduced(daoAddress, reduceAmount, totalReserves);
@@ -366,7 +371,7 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
     function approve(
         address spender,
         uint256 amount
-    ) external override returns (bool) {
+    ) external returns (bool) {
         allowance[msg.sender][spender] = amount;
 
         emit Approval(msg.sender, spender, amount);
@@ -414,7 +419,7 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
     /// @param account The address of the account to query
     /// @return The amount of underlying owned by `account`
     function balanceOfUnderlying(address account) external returns (uint256) {
-        return ((exchangeRateCurrent() * balanceOf[account]) / expScale);
+        return ((exchangeRateCurrent() * balanceOf[account]) / EXP_SCALE);
     }
 
     /// @notice Get a snapshot of the account's balances,
@@ -466,7 +471,7 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
     /// @notice Returns the decimals of the token
     /// @dev We pull directly from underlying incase its a proxy contract
     ///      and changes decimals on us
-    function decimals() public view override returns (uint8) {
+    function decimals() public view returns (uint8) {
         return IERC20(underlying).decimals();
     }
 
@@ -493,7 +498,7 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
     function exchangeRateStored() public view returns (uint256) {
         // If the vault is empty this will default to 1e18 which is what we want,
         // plus when we list a market we mint a small amount ourselves
-        return vault.convertToAssets(expScale);
+        return vault.convertToAssets(EXP_SCALE);
     }
 
     /// @inheritdoc ERC165
@@ -566,7 +571,6 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
         GaugePool(_gaugePool).withdraw(address(this), from, amount);
         GaugePool(_gaugePool).deposit(address(this), to, amount);
 
-        // We emit a Transfer event
         emit Transfer(from, to, amount);
     }
 
@@ -666,7 +670,7 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
         );
 
         uint256 protocolSeizeTokens = (tokens *
-            centralRegistry.protocolLiquidationFee()) / expScale;
+            centralRegistry.protocolLiquidationFee()) / EXP_SCALE;
         uint256 liquidatorSeizeTokens = tokens - protocolSeizeTokens;
 
         // Document new account balances with underflow check on borrower balance
@@ -696,7 +700,6 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
             protocolSeizeTokens
         );
 
-        // Emit a Transfer event
         emit Transfer(borrower, liquidator, liquidatorSeizeTokens);
         emit Transfer(borrower, address(this), protocolSeizeTokens);
         emit ReservesAdded(address(this), protocolSeizeTokens, totalReserves);

@@ -15,7 +15,7 @@ import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { IMToken, accountSnapshot } from "contracts/interfaces/market/IMToken.sol";
 
 /// @title Curvance's Debt Token Contract
-contract DToken is IERC20, ERC165, ReentrancyGuard {
+contract DToken is ERC165, ReentrancyGuard {
     /// TYPES ///
 
     struct DebtData {
@@ -79,13 +79,18 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
 
     /// EVENTS ///
 
+    event Transfer(address indexed from, address indexed to, uint256 value);
+    event Approval(
+        address indexed owner,
+        address indexed spender,
+        uint256 value
+    );
     event AccrueInterest(
         uint256 cashPrior,
         uint256 interestAccumulated,
         uint256 borrowIndex,
         uint256 totalBorrows
     );
-
     event Borrow(address borrower, uint256 amount);
     event Repay(address payer, address borrower, uint256 amount);
     event Liquidated(
@@ -232,7 +237,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
     function transfer(
         address to,
         uint256 amount
-    ) external override nonReentrant returns (bool) {
+    ) external nonReentrant returns (bool) {
         _transfer(msg.sender, msg.sender, to, amount);
         return true;
     }
@@ -246,7 +251,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
         address from,
         address to,
         uint256 amount
-    ) external override nonReentrant returns (bool) {
+    ) external nonReentrant returns (bool) {
         _transfer(msg.sender, from, to, amount);
         return true;
     }
@@ -489,7 +494,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
     function approve(
         address spender,
         uint256 amount
-    ) external override returns (bool) {
+    ) external returns (bool) {
         allowance[msg.sender][spender] = amount;
 
         emit Approval(msg.sender, spender, amount);
@@ -947,7 +952,6 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
 
         SafeTransferLib.safeTransfer(underlying, recipient, amount);
 
-        // We emit a Borrow event
         emit Borrow(borrower, amount);
     }
 
@@ -989,9 +993,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
         debtOf[borrower].interestIndex = borrowIndex;
         totalBorrows -= amount;
 
-        // We emit a Repay event
         emit Repay(payer, borrower, amount);
-
         return amount;
     }
 
@@ -1030,14 +1032,14 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
             amount
         );
 
-        // Fail if repay fails
-        uint256 actualRepayAmount = _repay(liquidator, borrower, amount);
+        // reverts if repay fails
+        uint256 repayAmount = _repay(liquidator, borrower, amount);
 
         // We calculate the number of collateral tokens that will be seized
         uint256 seizeTokens = lendtroller.liquidateCalculateSeizeTokens(
             address(this),
             address(mTokenCollateral),
-            actualRepayAmount
+            repayAmount
         );
 
         // Revert if borrower collateral token balance < seizeTokens
@@ -1050,11 +1052,10 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
         // so there is no reEntry risk
         mTokenCollateral.seize(liquidator, borrower, seizeTokens);
 
-        // We emit a Liquidated event
         emit Liquidated(
             liquidator,
             borrower,
-            actualRepayAmount,
+            repayAmount,
             address(mTokenCollateral),
             seizeTokens
         );
