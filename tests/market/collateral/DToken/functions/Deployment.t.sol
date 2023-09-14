@@ -66,7 +66,7 @@ contract DTokenDeploymentTest is TestBaseDToken {
             .sig(IERC20.totalSupply.selector)
             .checked_write(type(uint232).max);
 
-        vm.expectRevert("DToken: Underlying token assumptions not met");
+        vm.expectRevert(DToken.DToken__ValidationFailed.selector);
         new DToken(
             ICentralRegistry(address(centralRegistry)),
             _USDC_ADDRESS,

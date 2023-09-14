@@ -53,8 +53,8 @@ contract CTokenDeploymentTest is TestBaseCToken {
             .target(_BALANCER_WETH_RETH)
             .sig(IERC20.totalSupply.selector)
             .checked_write(type(uint232).max);
-
-        vm.expectRevert("CToken: Underlying token assumptions not met");
+            
+        vm.expectRevert(CToken.CToken__ValidationFailed.selector);
         new CToken(
             ICentralRegistry(address(centralRegistry)),
             _BALANCER_WETH_RETH,

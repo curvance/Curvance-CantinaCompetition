@@ -135,10 +135,9 @@ contract CToken is ERC165, ReentrancyGuard {
 
         // Sanity check underlying so that we know users will not need to
         // mint anywhere close to exchange rate of 1e18
-        require(
-            IERC20(underlying).totalSupply() < type(uint232).max,
-            "CToken: Underlying token assumptions not met"
-        );
+        if (IERC20(underlying).totalSupply() >= type(uint232).max) {
+            revert CToken__ValidationFailed();
+        }
     }
 
     /// EXTERNAL FUNCTIONS ///

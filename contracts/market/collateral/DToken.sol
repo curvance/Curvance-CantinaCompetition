@@ -185,11 +185,11 @@ contract DToken is ERC165, ReentrancyGuard {
         );
         symbol = string.concat("c", IERC20(underlying_).symbol());
 
-        // Sanity check underlying so that we know users will not need to mint anywhere close to exchange rate of 1e18
-        require(
-            IERC20(underlying).totalSupply() < type(uint232).max,
-            "DToken: Underlying token assumptions not met"
-        );
+        // Sanity check underlying so that we know users will not need to
+        // mint anywhere close to exchange rate of 1e18
+        if (IERC20(underlying).totalSupply() >= type(uint232).max) {
+            revert DToken__ValidationFailed();
+        }
     }
 
     /// EXTERNAL FUNCTIONS ///
