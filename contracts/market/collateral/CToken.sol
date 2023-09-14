@@ -230,7 +230,7 @@ contract CToken is ERC165, ReentrancyGuard {
     /// @dev Accrues interest whether or not the operation succeeds,
     ///      unless reverted
     /// @param amount The amount of the underlying asset to supply
-    /// @return bool true=success
+    /// @return bool true = success
     function mint(uint256 amount) external nonReentrant returns (bool) {
         // Fail if mint not allowed
         lendtroller.mintAllowed(address(this), msg.sender);
@@ -245,7 +245,7 @@ contract CToken is ERC165, ReentrancyGuard {
     ///      unless reverted
     /// @param recipient The recipient address
     /// @param amount The amount of the underlying asset to supply
-    /// @return bool true=success
+    /// @return bool true = success
     function mintFor(
         uint256 amount,
         address recipient
@@ -260,15 +260,15 @@ contract CToken is ERC165, ReentrancyGuard {
     /// @notice Sender redeems cTokens in exchange for the underlying asset
     /// @dev Accrues interest whether or not the operation succeeds,
     ///      unless reverted
-    /// @param tokensToRedeem The number of cTokens to redeem into underlying
-    function redeem(uint256 tokensToRedeem) external nonReentrant {
+    /// @param amount The number of cTokens to redeem into underlying
+    function redeem(uint256 amount) external nonReentrant {
 
-        lendtroller.redeemAllowed(address(this), msg.sender, tokensToRedeem);
+        lendtroller.redeemAllowed(address(this), msg.sender, amount);
 
         _redeem(
             msg.sender,
-            tokensToRedeem,
-            (exchangeRateStored() * tokensToRedeem) / EXP_SCALE,
+            amount,
+            (exchangeRateStored() * amount) / EXP_SCALE,
             msg.sender
         );
     }
@@ -277,18 +277,18 @@ contract CToken is ERC165, ReentrancyGuard {
     ///         of underlying asset
     /// @dev Accrues interest whether or not the operation succeeds,
     ///      unless reverted
-    /// @param tokensToRedeem The amount of underlying to redeem
-    function redeemUnderlying(uint256 tokensToRedeem) external nonReentrant {
-        uint256 redeemTokens = (tokensToRedeem * EXP_SCALE) /
+    /// @param underlyingAmount The amount of underlying to redeem
+    function redeemUnderlying(uint256 underlyingAmount) external nonReentrant {
+        uint256 amount = (underlyingAmount * EXP_SCALE) /
             exchangeRateStored();
 
         // Fail if redeem not allowed
-        lendtroller.redeemAllowed(address(this), msg.sender, redeemTokens);
+        lendtroller.redeemAllowed(address(this), msg.sender, amount);
 
         _redeem(
             msg.sender,
-            redeemTokens,
-            tokensToRedeem,
+            amount,
+            underlyingAmount,
             msg.sender
         );
     }
@@ -296,10 +296,10 @@ contract CToken is ERC165, ReentrancyGuard {
     /// @notice Helper function for Position Folding contract to
     ///         redeem underlying tokens
     /// @param user The user address
-    /// @param tokensToRedeem The amount of the underlying asset to redeem
+    /// @param underlyingAmount The amount of the underlying asset to redeem
     function redeemUnderlyingForPositionFolding(
         address user,
-        uint256 tokensToRedeem,
+        uint256 underlyingAmount,
         bytes calldata params
     ) external nonReentrant {
         if (msg.sender != lendtroller.positionFolding()) {
@@ -308,15 +308,15 @@ contract CToken is ERC165, ReentrancyGuard {
 
         _redeem(
             user,
-            (tokensToRedeem * EXP_SCALE) / exchangeRateStored(),
-            tokensToRedeem,
+            (underlyingAmount * EXP_SCALE) / exchangeRateStored(),
+            underlyingAmount,
             msg.sender
         );
 
         IPositionFolding(msg.sender).onRedeem(
             address(this),
             user,
-            tokensToRedeem,
+            underlyingAmount,
             params
         );
 
@@ -675,21 +675,21 @@ contract CToken is ERC165, ReentrancyGuard {
             borrower
         );
 
-        uint256 protocolSeizeTokens = (tokens *
+        uint256 protocolTokens = (tokens *
             centralRegistry.protocolLiquidationFee()) / EXP_SCALE;
-        uint256 liquidatorSeizeTokens = tokens - protocolSeizeTokens;
+        uint256 liquidatorTokens = tokens - protocolTokens;
 
         // Document new account balances with underflow check on borrower balance
         balanceOf[borrower] = balanceOf[borrower] - tokens;
         balanceOf[liquidator] =
             balanceOf[liquidator] +
-            liquidatorSeizeTokens;
+            liquidatorTokens;
 
         // Reserves should never overflow since totalSupply will always be
         // higher before function than totalReserves after this call
         unchecked {
-            totalReserves = totalReserves + protocolSeizeTokens;
-            totalSupply = totalSupply - protocolSeizeTokens;
+            totalReserves = totalReserves + protocolTokens;
+            totalSupply = totalSupply - protocolTokens;
         }
 
         // emit events on gauge pool
@@ -698,17 +698,17 @@ contract CToken is ERC165, ReentrancyGuard {
         GaugePool(_gaugePool).deposit(
             address(this),
             liquidator,
-            liquidatorSeizeTokens
+            liquidatorTokens
         );
         GaugePool(_gaugePool).deposit(
             address(this),
             centralRegistry.daoAddress(),
-            protocolSeizeTokens
+            protocolTokens
         );
 
-        emit Transfer(borrower, liquidator, liquidatorSeizeTokens);
-        emit Transfer(borrower, address(this), protocolSeizeTokens);
-        emit ReservesAdded(address(this), protocolSeizeTokens, totalReserves);
+        emit Transfer(borrower, liquidator, liquidatorTokens);
+        emit Transfer(borrower, address(this), protocolTokens);
+        emit ReservesAdded(address(this), protocolTokens, totalReserves);
     }
 
     /// @notice Handles incoming token transfers and notifies the amount received
