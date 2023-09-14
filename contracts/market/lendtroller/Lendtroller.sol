@@ -1031,7 +1031,7 @@ contract Lendtroller is ILendtroller, ERC165 {
                 true,
                 isCToken
             );
-            if (errorCode == errorCodeBreakpoint) {
+            if (errorCode >= errorCodeBreakpoint) {
                 revert Lendtroller__PriceError();
             }
 
@@ -1041,9 +1041,9 @@ contract Lendtroller is ILendtroller, ERC165 {
                     !(marketTokenData[address(assetSnapshot.asset)]
                         .collateralizationRatio == 0)
                 ) {
-                    uint256 assetValue = (((assetSnapshot.mTokenBalance *
-                        assetSnapshot.exchangeRateScaled) / expScale) *
-                        price) / expScale;
+                    uint256 assetValue = (assetSnapshot.mTokenBalance *
+                        price *
+                        assetSnapshot.exchangeRateScaled) / (expScale * expScale);
 
                     sumCollateral += assetValue;
                     maxBorrow +=
