@@ -25,7 +25,7 @@ contract CTokenMintTest is TestBaseCToken {
         uint256 balance = cBALRETH.balanceOf(address(this));
         uint256 totalSupply = cBALRETH.totalSupply();
 
-        vm.expectEmit(true, true, true, true, address(cBALRETH));
+        vm.expectEmit(true, true, true, address(cBALRETH));
         emit Transfer(address(cBALRETH), address(this), 100);
 
         cBALRETH.mint(100);

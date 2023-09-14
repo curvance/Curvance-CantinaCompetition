@@ -28,7 +28,7 @@ contract CTokenSetLendtrollerTest is TestBaseCToken {
     }
 
     function test_cTokenSetLendtroller_fail_whenLendtrollerIsInvalid() public {
-        vm.expectRevert(CToken.CToken__LendtrollerIsInvalid.selector);
+        vm.expectRevert(CToken.CToken__LendtrollerIsNotLendingMarket.selector);
         cBALRETH.setLendtroller(address(1));
     }
 
