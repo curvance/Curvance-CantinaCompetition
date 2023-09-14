@@ -8,6 +8,7 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { GaugePool } from "contracts/gauge/GaugePool.sol";
 import { ChildGaugePool } from "contracts/gauge/ChildGaugePool.sol";
 import { MockToken } from "contracts/mocks/MockToken.sol";
+import { MockDataFeed } from "contracts/mocks/MockDataFeed.sol";
 import { TestBaseMarket } from "tests/market/TestBaseMarket.sol";
 
 contract User {}
@@ -20,6 +21,8 @@ contract TestChildGaugePool is TestBaseMarket {
     uint256 constant CHILD_GAUGE_COUNT = 5;
     ChildGaugePool[CHILD_GAUGE_COUNT] public childGauges;
     address[CHILD_GAUGE_COUNT] public childRewardTokens;
+
+    MockDataFeed public mockDaiFeed;
 
     receive() external payable {}
 
@@ -111,6 +114,9 @@ contract TestChildGaugePool is TestBaseMarket {
 
             gaugePool.addChildGauge(address(childGauges[i]));
         }
+
+        mockDaiFeed = new MockDataFeed(_CHAINLINK_DAI_USD);
+        chainlinkAdaptor.addAsset(_DAI_ADDRESS, address(mockDaiFeed), true);
     }
 
     function testChildGaugesRewardRatioOfDifferentPools() public {
@@ -131,6 +137,7 @@ contract TestChildGaugePool is TestBaseMarket {
         }
 
         vm.warp(gaugePool.startTime() + 1 * 2 weeks);
+        mockDaiFeed.setMockUpdatedAt(block.timestamp);
 
         // user0 deposit 100 token0
         vm.prank(users[0]);
@@ -335,6 +342,7 @@ contract TestChildGaugePool is TestBaseMarket {
         }
 
         vm.warp(gaugePool.startTime() + 1 * 2 weeks);
+        mockDaiFeed.setMockUpdatedAt(block.timestamp);
 
         // user0 deposit 100 token0
         vm.prank(users[0]);
@@ -373,6 +381,7 @@ contract TestChildGaugePool is TestBaseMarket {
 
         // check pending rewards after 2 weeks
         vm.warp(block.timestamp + 2 weeks);
+        mockDaiFeed.setMockUpdatedAt(block.timestamp);
         assertEq(
             gaugePool.pendingRewards(tokens[0], users[0]),
             2 weeks * 100 + 100 * 200 - 1
