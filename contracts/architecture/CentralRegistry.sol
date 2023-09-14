@@ -2,7 +2,9 @@
 pragma solidity ^0.8.17;
 
 import { ERC165 } from "contracts/libraries/ERC165.sol";
+import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { ICentralRegistry, ChainData, OmnichainData } from "contracts/interfaces/ICentralRegistry.sol";
+import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 
 contract CentralRegistry is ERC165 {
     /// CONSTANTS ///
@@ -616,6 +618,16 @@ contract CentralRegistry is ERC165 {
     ) external onlyElevatedPermissions {
         if (isLendingMarket[newLendingMarket]) {
             // Lending market already added
+            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
+        }
+
+        // Ensure that lending market parameter is a lending market
+        if (
+            !ERC165Checker.supportsInterface(
+                newLendingMarket,
+                type(ILendtroller).interfaceId
+            )
+        ) {
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 

@@ -84,7 +84,6 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
     error CToken__TransferNotAllowed();
     error CToken__CentralRegistryIsInvalid();
     error CToken__LendtrollerIsNotLendingMarket();
-    error CToken__LendtrollerIsInvalid();
 
     /// MODIFIERS ///
 
@@ -551,15 +550,6 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
     /// @notice Sets a new lendtroller for the market
     /// @param newLendtroller New lendtroller address
     function _setLendtroller(address newLendtroller) internal {
-        // Ensure that lendtroller parameter is a lendtroller
-        if (
-            !ERC165Checker.supportsInterface(
-                newLendtroller,
-                type(ILendtroller).interfaceId
-            )
-        ) {
-            revert CToken__LendtrollerIsInvalid();
-        }
 
         // Cache the current lendtroller to save gas
         address oldLendtroller = address(lendtroller);

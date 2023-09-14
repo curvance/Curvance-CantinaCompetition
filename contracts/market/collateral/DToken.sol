@@ -129,7 +129,6 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
     error DToken__ValidationFailed();
     error DToken__CentralRegistryIsInvalid();
     error DToken__LendtrollerIsNotLendingMarket();
-    error DToken__LendtrollerIsInvalid();
     error DToken__InterestRateModelIsInvalid();
 
     /// MODIFIERS ///
@@ -810,15 +809,6 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
     /// @dev Admin function to set a new lendtroller
     /// @param newLendtroller New lendtroller address
     function _setLendtroller(address newLendtroller) internal {
-        // Ensure that lendtroller parameter is a lendtroller
-        if (
-            !ERC165Checker.supportsInterface(
-                newLendtroller,
-                type(ILendtroller).interfaceId
-            )
-        ) {
-            revert DToken__LendtrollerIsInvalid();
-        }
 
         // Cache the current lendtroller to save gas
         address oldLendtroller = address(lendtroller);

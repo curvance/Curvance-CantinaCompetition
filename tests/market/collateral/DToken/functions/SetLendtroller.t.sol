@@ -28,7 +28,7 @@ contract DTokenSetLendtrollerTest is TestBaseDToken {
     }
 
     function test_dTokenSetLendtroller_fail_whenLendtrollerIsInvalid() public {
-        vm.expectRevert(DToken.DToken__LendtrollerIsInvalid.selector);
+        vm.expectRevert(DToken.DToken__LendtrollerIsNotLendingMarket.selector);
         dUSDC.setLendtroller(address(1));
     }
 
