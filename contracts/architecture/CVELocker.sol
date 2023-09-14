@@ -9,7 +9,6 @@ import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { IVeCVE } from "contracts/interfaces/IVeCVE.sol";
 import { RewardsData } from "contracts/interfaces/ICVELocker.sol";
-import { ICVXLocker } from "contracts/interfaces/ICVXLocker.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 contract CVELocker is ReentrancyGuard {
@@ -284,7 +283,7 @@ contract CVELocker is ReentrancyGuard {
     /// @param recipient The address who should receive the rewards of user
     /// @param rewardsData Rewards data for CVE rewards locker
     /// @param params Swap data for token swapping rewards to desiredRewardToken.
-    /// @param aux Auxiliary data for wrapped assets such as vlCVX and veCVE.
+    /// @param aux Auxiliary data for wrapped assets such as veCVE.
     function claimRewards(
         address recipient,
         RewardsData calldata rewardsData,
@@ -311,7 +310,7 @@ contract CVELocker is ReentrancyGuard {
     /// @param epochs The number of epochs for which to claim rewards.
     /// @param rewardsData Rewards data for CVE rewards locker
     /// @param params Swap data for token swapping rewards to desiredRewardToken.
-    /// @param aux Auxiliary data for wrapped assets such as vlCVX and veCVE.
+    /// @param aux Auxiliary data for wrapped assets such as veCVE.
     function claimRewardsFor(
         address user,
         address recipient,
@@ -424,7 +423,7 @@ contract CVELocker is ReentrancyGuard {
     /// @param rewardsData Rewards data for CVE rewards locker
     /// @param params Additional parameters required for reward processing,
     ///               which may include swap data.
-    /// @param aux Auxiliary data for wrapped assets such as vlCVX and veCVE.
+    /// @param aux Auxiliary data for wrapped assets such as veCVE.
     function _processRewards(
         address recipient,
         uint256 userRewards,
