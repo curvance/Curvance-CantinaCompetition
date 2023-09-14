@@ -40,6 +40,8 @@ contract TestBaseMarket is TestBase {
         0x6B175474E89094C44Da98b954EedeAC495271d0F;
     address internal constant _CVX_ADDRESS =
         0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
+    address internal constant _CVX_LOCKER_ADDRESS =
+        0x72a19342e8F1838460eBFCCEf09F6585e32db86E;
     address internal constant _WBTC_ADDRESS =
         0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
     address internal constant _FRAX_ADDRESS =
@@ -70,6 +72,7 @@ contract TestBaseMarket is TestBase {
     CVE public cve;
     VeCVE public veCVE;
     CVELocker public cveLocker;
+    ICVXLocker public cvxLocker;
     CentralRegistry public centralRegistry;
     BalancerStablePoolAdaptor public balRETHAdapter;
     ChainlinkAdaptor public chainlinkAdaptor;
@@ -107,6 +110,7 @@ contract TestBaseMarket is TestBase {
         usdc = IERC20(_USDC_ADDRESS);
         dai = IERC20(_DAI_ADDRESS);
         cvx = IERC20(_CVX_ADDRESS);
+        cvxLocker = ICVXLocker(0x72a19342e8F1838460eBFCCEf09F6585e32db86E);
         balRETH = IERC20(_BALANCER_WETH_RETH);
 
         _deployCentralRegistry();
@@ -162,6 +166,7 @@ contract TestBaseMarket is TestBase {
         cveLocker = new CVELocker(
             ICentralRegistry(address(centralRegistry)),
             _CVX_ADDRESS,
+            _CVX_LOCKER_ADDRESS,
             _USDC_ADDRESS
         );
         centralRegistry.setCVELocker(address(cveLocker));

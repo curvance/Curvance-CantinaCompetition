@@ -13,6 +13,7 @@ contract CVELockerDeploymentTest is TestBaseCVELocker {
         new CVELocker(
             ICentralRegistry(address(0)),
             _CVX_ADDRESS,
+            _CVX_LOCKER_ADDRESS,
             _USDC_ADDRESS
         );
     }
@@ -22,6 +23,7 @@ contract CVELockerDeploymentTest is TestBaseCVELocker {
         new CVELocker(
             ICentralRegistry(address(centralRegistry)),
             address(0),
+            _CVX_LOCKER_ADDRESS,
             _USDC_ADDRESS
         );
     }
@@ -35,6 +37,7 @@ contract CVELockerDeploymentTest is TestBaseCVELocker {
         new CVELocker(
             ICentralRegistry(address(centralRegistry)),
             _CVX_ADDRESS,
+            _CVX_LOCKER_ADDRESS,
             address(0)
         );
     }
@@ -43,6 +46,7 @@ contract CVELockerDeploymentTest is TestBaseCVELocker {
         cveLocker = new CVELocker(
             ICentralRegistry(address(centralRegistry)),
             _CVX_ADDRESS,
+            _CVX_LOCKER_ADDRESS,
             _USDC_ADDRESS
         );
 
@@ -52,6 +56,7 @@ contract CVELockerDeploymentTest is TestBaseCVELocker {
         );
         assertEq(cveLocker.genesisEpoch(), centralRegistry.genesisEpoch());
         assertEq(cveLocker.cvx(), _CVX_ADDRESS);
+        assertEq(cveLocker.cvxLocker(), _CVX_LOCKER_ADDRESS);
         assertEq(cveLocker.baseRewardToken(), _USDC_ADDRESS);
         assertEq(cveLocker.cve(), centralRegistry.CVE());
     }
