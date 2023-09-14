@@ -5,7 +5,6 @@ import { TestBase } from "tests/utils/TestBase.sol";
 import { CVE } from "contracts/token/CVE.sol";
 import { VeCVE } from "contracts/token/VeCVE.sol";
 import { CVELocker } from "contracts/architecture/CVELocker.sol";
-import { ICVXLocker } from "contracts/interfaces/ICVXLocker.sol";
 import { CentralRegistry } from "contracts/architecture/CentralRegistry.sol";
 import { AuraPositionVault } from "contracts/deposits/adaptors/AuraPositionVault.sol";
 import { DToken } from "contracts/market/collateral/DToken.sol";
@@ -39,15 +38,10 @@ contract TestBaseMarket is TestBase {
         0x1E19CF2D73a72Ef1332C882F20534B6519Be0276;
     address internal constant _DAI_ADDRESS =
         0x6B175474E89094C44Da98b954EedeAC495271d0F;
-    address internal constant _CVX_ADDRESS =
-        0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
-    address internal constant _CVX_LOCKER_ADDRESS =
-        0x72a19342e8F1838460eBFCCEf09F6585e32db86E;
     address internal constant _WBTC_ADDRESS =
         0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
     address internal constant _FRAX_ADDRESS =
         0x853d955aCEf822Db058eb8505911ED77F175b99e;
-
     address internal constant _CHAINLINK_ETH_USD =
         0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
     address internal constant _CHAINLINK_USDC_USD =
@@ -73,7 +67,6 @@ contract TestBaseMarket is TestBase {
     CVE public cve;
     VeCVE public veCVE;
     CVELocker public cveLocker;
-    ICVXLocker public cvxLocker;
     CentralRegistry public centralRegistry;
     BalancerStablePoolAdaptor public balRETHAdapter;
     ChainlinkAdaptor public chainlinkAdaptor;
@@ -88,7 +81,6 @@ contract TestBaseMarket is TestBase {
     CToken public cBALRETH;
     IERC20 public usdc;
     IERC20 public dai;
-    IERC20 public cvx;
     IERC20 public balRETH;
 
     MockToken public rewardToken;
@@ -110,8 +102,6 @@ contract TestBaseMarket is TestBase {
 
         usdc = IERC20(_USDC_ADDRESS);
         dai = IERC20(_DAI_ADDRESS);
-        cvx = IERC20(_CVX_ADDRESS);
-        cvxLocker = ICVXLocker(_CVX_LOCKER_ADDRESS);
         balRETH = IERC20(_BALANCER_WETH_RETH);
 
         _deployCentralRegistry();
@@ -166,8 +156,6 @@ contract TestBaseMarket is TestBase {
     function _deployCVELocker() internal {
         cveLocker = new CVELocker(
             ICentralRegistry(address(centralRegistry)),
-            _CVX_ADDRESS,
-            _CVX_LOCKER_ADDRESS,
             _USDC_ADDRESS
         );
         centralRegistry.setCVELocker(address(cveLocker));

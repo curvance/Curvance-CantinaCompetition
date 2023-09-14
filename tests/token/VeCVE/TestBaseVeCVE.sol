@@ -13,10 +13,6 @@ import { IERC20 } from "contracts/interfaces/IERC20.sol";
 contract TestBaseVeCVE is TestBase {
     address internal constant _USDC_ADDRESS =
         0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
-    address internal constant _CVX_ADDRESS =
-        0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
-    address internal constant _CVX_LOCKER_ADDRESS =
-        0x72a19342e8F1838460eBFCCEf09F6585e32db86E;
 
     CentralRegistry public centralRegistry;
     CVE public cve;
@@ -81,8 +77,6 @@ contract TestBaseVeCVE is TestBase {
     function _deployCVELocker() internal {
         cveLocker = new CVELocker(
             ICentralRegistry(address(centralRegistry)),
-            _CVX_ADDRESS,
-            _CVX_LOCKER_ADDRESS,
             _USDC_ADDRESS
         );
         centralRegistry.setCVELocker(address(cveLocker));
