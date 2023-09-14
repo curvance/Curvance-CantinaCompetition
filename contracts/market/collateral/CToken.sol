@@ -126,11 +126,7 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
 
         centralRegistry = centralRegistry_;
 
-        if (!centralRegistry_.isLendingMarket(lendtroller_)) {
-            revert CToken__LendtrollerIsNotLendingMarket();
-        }
-
-        // Set the lendtroller
+        // Set the lendtroller after consulting Central Registry
         _setLendtroller(lendtroller_);
 
         underlying = underlying_;
@@ -433,9 +429,6 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
     function setLendtroller(
         address newLendtroller
     ) external onlyElevatedPermissions {
-        if (!centralRegistry.isLendingMarket(newLendtroller)) {
-            revert CToken__LendtrollerIsNotLendingMarket();
-        }
         _setLendtroller(newLendtroller);
     }
 
@@ -550,6 +543,11 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
     /// @notice Sets a new lendtroller for the market
     /// @param newLendtroller New lendtroller address
     function _setLendtroller(address newLendtroller) internal {
+
+        // Ensure that lendtroller parameter is a lendtroller
+        if (!centralRegistry.isLendingMarket(newLendtroller)) {
+            revert CToken__LendtrollerIsNotLendingMarket();
+        }
 
         // Cache the current lendtroller to save gas
         address oldLendtroller = address(lendtroller);

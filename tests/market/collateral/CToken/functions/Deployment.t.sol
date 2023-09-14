@@ -22,7 +22,7 @@ contract CTokenDeploymentTest is TestBaseCToken {
         );
     }
 
-    function test_cTokenDeployment_fail_whenLendtrollderIsNotLendingMarket()
+    function test_cTokenDeployment_fail_whenLendtrollerIsNotSet()
         public
     {
         vm.expectRevert(CToken.CToken__LendtrollerIsNotLendingMarket.selector);
@@ -34,10 +34,10 @@ contract CTokenDeploymentTest is TestBaseCToken {
         );
     }
 
-    function test_cTokenDeployment_fail_whenLendtrollderIsInvalid() public {
+    function test_cTokenDeployment_fail_whenLendtrollerIsNotLendingMarket() public {
         centralRegistry.addLendingMarket(address(1));
 
-        vm.expectRevert(CToken.CToken__LendtrollerIsInvalid.selector);
+        vm.expectRevert(CToken.CToken__LendtrollerIsNotLendingMarket.selector);
         new CToken(
             ICentralRegistry(address(centralRegistry)),
             _BALANCER_WETH_RETH,

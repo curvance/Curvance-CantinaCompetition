@@ -172,10 +172,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
 
         centralRegistry = centralRegistry_;
 
-        if (!centralRegistry_.isLendingMarket(lendtroller_)) {
-            revert DToken__LendtrollerIsNotLendingMarket();
-        }
-
+        // Set the lendtroller after consulting Central Registry
         _setLendtroller(lendtroller_);
 
         // Initialize timestamp and borrow index (timestamp mocks depend on lendtroller being set)
@@ -561,9 +558,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
     function setLendtroller(
         address newLendtroller
     ) external onlyElevatedPermissions {
-        if (!centralRegistry.isLendingMarket(newLendtroller)) {
-            revert DToken__LendtrollerIsNotLendingMarket();
-        }
+
         _setLendtroller(newLendtroller);
     }
 
@@ -809,6 +804,11 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
     /// @dev Admin function to set a new lendtroller
     /// @param newLendtroller New lendtroller address
     function _setLendtroller(address newLendtroller) internal {
+
+        // Ensure that lendtroller parameter is a lendtroller
+        if (!centralRegistry.isLendingMarket(newLendtroller)) {
+            revert DToken__LendtrollerIsNotLendingMarket();
+        }
 
         // Cache the current lendtroller to save gas
         address oldLendtroller = address(lendtroller);

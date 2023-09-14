@@ -22,7 +22,7 @@ contract DTokenDeploymentTest is TestBaseDToken {
         );
     }
 
-    function test_dTokenDeployment_fail_whenLendtrollderIsNotLendingMarket()
+    function test_dTokenDeployment_fail_whenLendtrollerIsNotSet()
         public
     {
         vm.expectRevert(DToken.DToken__LendtrollerIsNotLendingMarket.selector);
@@ -34,10 +34,10 @@ contract DTokenDeploymentTest is TestBaseDToken {
         );
     }
 
-    function test_dTokenDeployment_fail_whenLendtrollderIsInvalid() public {
+    function test_dTokenDeployment_fail_whenLendtrollerIsNotLendingMarket() public {
         centralRegistry.addLendingMarket(address(1));
 
-        vm.expectRevert(DToken.DToken__LendtrollerIsInvalid.selector);
+        vm.expectRevert(DToken.DToken__LendtrollerIsNotLendingMarket.selector);
         new DToken(
             ICentralRegistry(address(centralRegistry)),
             _USDC_ADDRESS,
