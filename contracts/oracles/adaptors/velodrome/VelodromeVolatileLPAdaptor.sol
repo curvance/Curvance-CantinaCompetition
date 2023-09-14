@@ -44,6 +44,7 @@ contract VelodromeVolatileLPAdaptor is BaseOracleAdaptor {
     /// EXTERNAL FUNCTIONS ///
 
     /// @notice Called during pricing operations.
+    /// @dev https://blog.alphaventuredao.io/fair-lp-token-pricing/
     /// @param asset the bpt being priced
     /// @param inUSD indicates whether we want the price in USD or ETH
     /// @param getLower Since this adaptor calls back into the price router
