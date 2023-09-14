@@ -80,6 +80,7 @@ contract TestBaseVeCVE is TestBase {
         cveLocker = new CVELocker(
             ICentralRegistry(address(centralRegistry)),
             _CVX_ADDRESS,
+            _CVX_LOCKER_ADDRESS,
             _USDC_ADDRESS
         );
         centralRegistry.setCVELocker(address(cveLocker));
