@@ -89,18 +89,17 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
     );
     event Mint(
         address user,
-        uint256 mintAmount,
-        uint256 mintTokens,
+        uint256 amount,
         address minter
     );
-    event Redeem(address redeemer, uint256 redeemAmount, uint256 redeemTokens);
+    event Redeem(address redeemer, uint256 amount, uint256 tokens);
 
-    event Borrow(address borrower, uint256 borrowAmount);
-    event Repay(address payer, address borrower, uint256 repayAmount);
+    event Borrow(address borrower, uint256 amount);
+    event Repay(address payer, address borrower, uint256 amount);
     event Liquidated(
         address liquidator,
         address borrower,
-        uint256 repayAmount,
+        uint256 amount,
         address cTokenCollateral,
         uint256 seizeTokens
     );
@@ -111,12 +110,12 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
     );
     event ReservesAdded(
         address daoAddress,
-        uint256 addAmount,
+        uint256 amount,
         uint256 newTotalReserves
     );
     event ReservesReduced(
         address daoAddress,
-        uint256 reduceAmount,
+        uint256 amount,
         uint256 newTotalReserves
     );
 
@@ -214,26 +213,30 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
         }
 
         uint256 mintAmount = 42069;
-        uint256 actualMintAmount = _doTransferIn(initializer, mintAmount);
+        SafeTransferLib.safeTransferFrom(
+            underlying,
+            initializer,
+            address(this),
+            mintAmount
+        );
         // We do not need to calculate exchange rate here as we will always be the initial depositer
         // These values should always be zero but we will add them just incase we are re-initiating a market
-        totalSupply = totalSupply + actualMintAmount;
+        totalSupply = totalSupply + mintAmount;
         _accountBalance[initializer] =
             _accountBalance[initializer] +
-            actualMintAmount;
+            mintAmount;
 
         // emit events on gauge pool
         GaugePool(gaugePool()).deposit(
             address(this),
             initializer,
-            actualMintAmount
+            mintAmount
         );
 
         // We emit a Mint event, and a Transfer event
         emit Mint(
             initializer,
-            actualMintAmount,
-            actualMintAmount,
+            mintAmount,
             initializer
         );
         emit Transfer(address(this), initializer, 6942069);
@@ -441,37 +444,48 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
     }
 
     /// @notice Adds reserves by transferring from Curvance DAO to the market and depositing to the gauge
-    /// @param addAmount The amount of underlying token to add as reserves
+    /// @param amount The amount of underlying token to add as reserves measured in assets
     function depositReserves(
-        uint256 addAmount
+        uint256 amount
     ) external nonReentrant onlyDaoPermissions {
         accrueInterest();
 
-        // On success, the market will deposit `addAmount` to the market adding more cash
-        totalReserves = totalReserves + _doTransferIn(msg.sender, addAmount);
+        SafeTransferLib.safeTransferFrom(
+            underlying,
+            msg.sender,
+            address(this),
+            amount
+        );
+
         // Query current DAO operating address
         address daoAddress = centralRegistry.daoAddress();
         // Deposit new reserves into gauge
-        GaugePool(gaugePool()).deposit(address(this), daoAddress, addAmount);
+        GaugePool(gaugePool()).deposit(address(this), daoAddress, amount);
 
-        emit ReservesAdded(daoAddress, addAmount, totalReserves);
+        // We get the current exchange rate and calculate the number of dTokens to be minted:
+        uint256 tokens = (amount * expScale) / exchangeRateStored();
+        totalReserves = totalReserves + tokens;
+
+        emit ReservesAdded(daoAddress, tokens, totalReserves);
     }
 
     /// @notice Reduces reserves by withdrawing from the gauge and transferring to Curvance DAO
     /// @dev If daoAddress is going to be moved all reserves should be withdrawn first
-    /// @param reduceAmount Amount of reserves to withdraw
+    /// @param amount Amount of reserves to withdraw measured in assets
     function withdrawReserves(
-        uint256 reduceAmount
+        uint256 amount
     ) external nonReentrant onlyDaoPermissions {
         accrueInterest();
 
         // Make sure we have enough cash to cover withdrawal
-        if (getCash() < reduceAmount) {
+        if (getCash() < amount) {
             revert DToken__CashNotAvailable();
         }
 
+        uint256 tokens = (amount * expScale) / exchangeRateStored();
+
         // Need underflow check to check if we have sufficient totalReserves
-        totalReserves = totalReserves - reduceAmount;
+        totalReserves = totalReserves - tokens;
 
         // Query current DAO operating address
         address daoAddress = centralRegistry.daoAddress();
@@ -479,13 +493,12 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
         GaugePool(gaugePool()).withdraw(
             address(this),
             daoAddress,
-            reduceAmount
+            amount
         );
 
-        // _doTransferOut reverts if anything goes wrong
-        _doTransferOut(daoAddress, reduceAmount);
+        SafeTransferLib.safeTransfer(underlying, daoAddress, tokens);
 
-        emit ReservesReduced(daoAddress, reduceAmount, totalReserves);
+        emit ReservesReduced(daoAddress, tokens, totalReserves);
     }
 
     /// @dev Sets `amount` as the allowance of `spender` over the caller's tokens.
@@ -549,6 +562,9 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
     function setLendtroller(
         address newLendtroller
     ) external onlyElevatedPermissions {
+        if (!centralRegistry.isLendingMarket(newLendtroller)) {
+            revert DToken__LendtrollerIsNotLendingMarket();
+        }
         _setLendtroller(newLendtroller);
     }
 
@@ -882,23 +898,27 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
     /// @dev Assumes interest has already been accrued up to the current timestamp
     /// @param user The address of the account which is supplying the assets
     /// @param recipient The address of the account which will receive dToken
-    /// @param mintAmount The amount of the underlying asset to supply
+    /// @param amount The amount of the underlying asset to supply
     function _mint(
         address user,
         address recipient,
-        uint256 mintAmount
+        uint256 amount
     ) internal {
         // Fail if mint not allowed
         lendtroller.mintAllowed(address(this), recipient);
 
         uint256 exchangeRate = exchangeRateStored();
-        // The function returns the amount actually transferred, in case of a fee
-        // On success, the dToken holds an additional `actualMintAmount` of cash
-        uint256 actualMintAmount = _doTransferIn(user, mintAmount);
+        // Transfer underlying in
+        SafeTransferLib.safeTransferFrom(
+            underlying,
+            user,
+            address(this),
+            amount
+        );
 
         // We get the current exchange rate and calculate the number of dTokens to be minted:
         //  mintTokens = actualMintAmount / exchangeRate
-        uint256 mintTokens = (actualMintAmount * expScale) / exchangeRate;
+        uint256 mintTokens = (amount * expScale) / exchangeRate;
 
         unchecked {
             totalSupply = totalSupply + mintTokens;
@@ -912,74 +932,71 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
         GaugePool(gaugePool()).deposit(address(this), recipient, mintTokens);
 
         // We emit a Mint event, and a Transfer event
-        emit Mint(user, actualMintAmount, mintTokens, recipient);
+        emit Mint(user, mintTokens, recipient);
         emit Transfer(address(this), recipient, mintTokens);
     }
 
     /// @notice User redeems dTokens in exchange for the underlying asset
     /// @dev Assumes interest has already been accrued up to the current timestamp
     /// @param redeemer The address of the account which is redeeming the tokens
-    /// @param redeemTokens The number of dTokens to redeem into underlying
-    /// @param redeemAmount The number of underlying tokens to receive from redeeming dTokens
+    /// @param tokens The number of dTokens to redeem into underlying
+    /// @param amount The number of underlying tokens to receive from redeeming dTokens
     /// @param recipient The recipient address
     function _redeem(
         address redeemer,
-        uint256 redeemTokens,
-        uint256 redeemAmount,
+        uint256 tokens,
+        uint256 amount,
         address recipient
     ) internal {
         // Check if we have enough cash to support the redeem
-        if (getCash() < redeemAmount) {
+        if (getCash() < amount) {
             revert DToken__CashNotAvailable();
         }
 
         // Validate redemption parameters
-        if (redeemTokens == 0 && redeemAmount > 0) {
+        if (tokens == 0 && amount > 0) {
             revert DToken__CannotEqualZero();
         }
 
-        _accountBalance[redeemer] = _accountBalance[redeemer] - redeemTokens;
+        _accountBalance[redeemer] = _accountBalance[redeemer] - tokens;
         // We have user underflow check above so we do not need a redundant check here
         unchecked {
-            totalSupply = totalSupply - redeemTokens;
+            totalSupply = totalSupply - tokens;
         }
 
         // emit events on gauge pool
-        GaugePool(gaugePool()).withdraw(address(this), redeemer, redeemTokens);
+        GaugePool(gaugePool()).withdraw(address(this), redeemer, tokens);
 
-        // We invoke _doTransferOut for the redeemer and the redeemAmount.
-        // On success, the dToken has redeemAmount less of cash.
-        _doTransferOut(recipient, redeemAmount);
+        SafeTransferLib.safeTransfer(underlying, recipient, amount);
 
         // We emit a Transfer event, and a Redeem event
-        emit Transfer(redeemer, address(this), redeemTokens);
-        emit Redeem(redeemer, redeemAmount, redeemTokens);
+        emit Transfer(redeemer, address(this), tokens);
+        emit Redeem(redeemer, amount, tokens);
     }
 
     /// @notice Users borrow assets from the protocol to their own address
-    /// @param borrowAmount The amount of the underlying asset to borrow
+    /// @param amount The amount of the underlying asset to borrow
     function _borrow(
         address borrower,
-        uint256 borrowAmount,
-        address payable recipient
+        uint256 amount,
+        address recipient
     ) internal {
         // Check if we have enough cash to support the borrow
-        if (getCash() < borrowAmount) {
+        if (getCash() - totalReserves < amount) {
             revert DToken__CashNotAvailable();
         }
 
         // We calculate the new borrower and total borrow balances, failing on overflow:
         accountBorrows[borrower].principal =
             borrowBalanceStored(borrower) +
-            borrowAmount;
+            amount;
         accountBorrows[borrower].interestIndex = borrowIndex;
-        totalBorrows = totalBorrows + borrowAmount;
+        totalBorrows = totalBorrows + amount;
 
-        // _doTransferOut reverts if anything goes wrong, since we can't be sure if side effects occurred.
-        _doTransferOut(recipient, borrowAmount);
+        SafeTransferLib.safeTransfer(underlying, recipient, amount);
 
         // We emit a Borrow event
-        emit Borrow(borrower, borrowAmount);
+        emit Borrow(borrower, amount);
     }
 
     /// @notice Allows a payer to repay a loan on behalf of the borrower, usually themselves
@@ -988,12 +1005,12 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
     ///      successful repayment.
     /// @param payer The address paying off the borrow
     /// @param borrower The account with the debt being paid off
-    /// @param repayAmount The amount the payer wishes to repay, or 0 for the full outstanding amount
-    /// @return actualRepayAmount The actual amount repaid
+    /// @param amount The amount the payer wishes to repay, or 0 for the full outstanding amount
+    /// @return The actual amount repaid
     function _repay(
         address payer,
         address borrower,
-        uint256 repayAmount
+        uint256 amount
     ) internal returns (uint256) {
         // Validate that the payer is allowed to repay the loan
         lendtroller.repayAllowed(address(this), borrower);
@@ -1001,27 +1018,29 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
         // Cache how much the borrower has to save gas
         uint256 accountBorrowsPrev = borrowBalanceStored(borrower);
 
-        // If repayAmount == uint max, repayAmount = accountBorrows
-        uint256 repayAmountFinal = repayAmount == 0
+        // If amount == uint max, amount = accountBorrows
+        amount = amount == 0
             ? accountBorrowsPrev
-            : repayAmount;
+            : amount;
 
-        // We call _doTransferIn for the payer and the repayAmount
-        // Note: On success, the dToken holds an additional repayAmount of cash.
-        //       it returns the amount actually transferred, in case of a fee.
-        uint256 actualRepayAmount = _doTransferIn(payer, repayAmountFinal);
+        SafeTransferLib.safeTransferFrom(
+            underlying,
+            payer,
+            address(this),
+            amount
+        );
 
         // We calculate the new borrower and total borrow balances, failing on underflow:
         accountBorrows[borrower].principal =
             accountBorrowsPrev -
-            actualRepayAmount;
+            amount;
         accountBorrows[borrower].interestIndex = borrowIndex;
-        totalBorrows -= actualRepayAmount;
+        totalBorrows -= amount;
 
         // We emit a Repay event
-        emit Repay(payer, borrower, actualRepayAmount);
+        emit Repay(payer, borrower, amount);
 
-        return actualRepayAmount;
+        return amount;
     }
 
     /// @notice The liquidator liquidates the borrowers collateral.
@@ -1029,11 +1048,11 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
     /// @param borrower The borrower of this dToken to be liquidated
     /// @param liquidator The address repaying the borrow and seizing collateral
     /// @param mTokenCollateral The market in which to seize collateral from the borrower
-    /// @param repayAmount The amount of the underlying borrowed asset to repay
+    /// @param amount The amount of the underlying borrowed asset to repay
     function _liquidateUser(
         address liquidator,
         address borrower,
-        uint256 repayAmount,
+        uint256 amount,
         IMToken mTokenCollateral
     ) internal {
         // Fail if borrower = liquidator
@@ -1056,11 +1075,11 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
             address(this),
             address(mTokenCollateral),
             borrower,
-            repayAmount
+            amount
         );
 
         // Fail if repay fails
-        uint256 actualRepayAmount = _repay(liquidator, borrower, repayAmount);
+        uint256 actualRepayAmount = _repay(liquidator, borrower, amount);
 
         // We calculate the number of collateral tokens that will be seized
         uint256 seizeTokens = lendtroller.liquidateCalculateSeizeTokens(
@@ -1087,35 +1106,5 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
             address(mTokenCollateral),
             seizeTokens
         );
-    }
-
-    /// @notice Handles incoming token transfers and notifies the amount received
-    /// @dev This function uses the SafeTransferLib to safely perform the transfer. It doesn't support tokens with a transfer tax.
-    /// @param from Address of the sender of the tokens
-    /// @param amount Amount of tokens to transfer in
-    /// @return Returns the amount transferred
-    function _doTransferIn(
-        address from,
-        uint256 amount
-    ) internal returns (uint256) {
-        /// SafeTransferLib will handle reversion from insufficient balance or allowance
-        /// Note this will not support tokens with a transfer tax, which should not exist on a underlying asset anyway
-        SafeTransferLib.safeTransferFrom(
-            underlying,
-            from,
-            address(this),
-            amount
-        );
-
-        return amount;
-    }
-
-    /// @notice Handles outgoing token transfers
-    /// @dev This function uses the SafeTransferLib to safely perform the transfer.
-    /// @param to Address receiving the token transfer
-    /// @param amount Amount of tokens to transfer out
-    function _doTransferOut(address to, uint256 amount) internal {
-        /// SafeTransferLib will handle reversion from insufficient cash held
-        SafeTransferLib.safeTransfer(underlying, to, amount);
     }
 }

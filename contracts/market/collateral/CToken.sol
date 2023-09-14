@@ -61,19 +61,19 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
     event MigrateVault(address oldVault, address newVault);
     event Mint(
         address user,
-        uint256 mintTokens,
+        uint256 amount,
         address minter
     );
-    event Redeem(address redeemer, uint256 redeemAmount, uint256 redeemTokens);
+    event Redeem(address redeemer, uint256 amount, uint256 tokens);
     event NewLendtroller(address oldLendtroller, address newLendtroller);
     event ReservesAdded(
         address daoAddress,
-        uint256 addAmount,
+        uint256 amount,
         uint256 newTotalReserves
     );
     event ReservesReduced(
         address daoAddress,
-        uint256 reduceAmount,
+        uint256 amount,
         uint256 newTotalReserves
     );
 
@@ -110,15 +110,11 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
     /// @param underlying_ The address of the underlying asset
     /// @param lendtroller_ The address of the Lendtroller
     /// @param vault_ The address of the position vault
-    /// @param name_ Name of the CToken
-    /// @param symbol_ Symbol of the CToken
     constructor(
         ICentralRegistry centralRegistry_,
         address underlying_,
         address lendtroller_,
-        address vault_,
-        string memory name_,
-        string memory symbol_
+        address vault_
     ) {
         if (
             !ERC165Checker.supportsInterface(
@@ -140,8 +136,8 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
 
         underlying = underlying_;
         vault = BasePositionVault(vault_);
-        name = string.concat("Curvance collateralized ", name_);
-        symbol = string.concat("c", symbol_);
+        name = string.concat("Curvance collateralized ", IERC20(underlying_).name());
+        symbol = string.concat("c", IERC20(underlying_).symbol());
 
         // Sanity check underlying so that we know users will not need to
         // mint anywhere close to exchange rate of 1e18
@@ -423,7 +419,7 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
             (bool success, ) = payable(daoOperator).call{ value: amount }("");
             require(success, "CToken: !successful");
         } else {
-            require(token != underlying, "CToken: cannot withdraw underlying");
+            require(token != address(vault), "CToken: cannot withdraw vault tokens");
             require(
                 IERC20(token).balanceOf(address(this)) >= amount,
                 "CToken: insufficient balance"
@@ -438,6 +434,9 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
     function setLendtroller(
         address newLendtroller
     ) external onlyElevatedPermissions {
+        if (!centralRegistry.isLendingMarket(newLendtroller)) {
+            revert CToken__LendtrollerIsNotLendingMarket();
+        }
         _setLendtroller(newLendtroller);
     }
 
@@ -622,15 +621,15 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
     /// @dev Assumes interest has already been accrued up to the current timestamp
     /// @param user The address of the account which is supplying the assets
     /// @param recipient The address of the account which will receive cToken
-    /// @param mintAmount The amount of the underlying asset to supply
+    /// @param amount The amount of the underlying asset to supply
     function _mint(
         address user,
         address recipient,
-        uint256 mintAmount
+        uint256 amount
     ) internal {
         
         // The function returns the amount actually received from the positionVault
-        uint256 mintTokens = _enterVault(user, mintAmount);
+        uint256 mintTokens = _enterVault(user, amount);
 
         unchecked {
             totalSupply = totalSupply + mintTokens;
@@ -651,18 +650,18 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
     /// @notice User redeems cTokens in exchange for the underlying asset
     /// @dev Assumes interest has already been accrued up to the current timestamp
     /// @param redeemer The address of the account which is redeeming the tokens
-    /// @param redeemTokens The number of cTokens to redeem into underlying
-    /// @param redeemAmount The number of underlying tokens to receive
+    /// @param tokens The number of cTokens to redeem into underlying
+    /// @param amount The number of underlying tokens to receive
     ///                     from redeeming cTokens
     /// @param recipient The recipient address
     function _redeem(
         address redeemer,
-        uint256 redeemTokens,
-        uint256 redeemAmount,
+        uint256 tokens,
+        uint256 amount,
         address recipient
     ) internal {
         // Validate redemption parameters
-        if (redeemTokens == 0 && redeemAmount > 0) {
+        if (tokens == 0 && amount > 0) {
             revert CToken__CannotEqualZero();
         }
 
@@ -672,38 +671,38 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
         // have more than uint216.
         // So if theyve put in a larger number than type(uint216).max
         // we know it will revert from underflow
-        _accountBalance[redeemer] = _accountBalance[redeemer] - redeemTokens;
+        _accountBalance[redeemer] = _accountBalance[redeemer] - tokens;
 
         // We have user underflow check above so we do not need
         // a redundant check here
         unchecked {
-            totalSupply = totalSupply - redeemTokens;
+            totalSupply = totalSupply - tokens;
         }
 
         // emit events on gauge pool
-        GaugePool(gaugePool()).withdraw(address(this), redeemer, redeemTokens);
+        GaugePool(gaugePool()).withdraw(address(this), redeemer, tokens);
 
         // We invoke _doTransferOut for the redeemer and the redeemAmount
         // so that we can withdraw tokens from the position vault for the redeemer
         // On success, the cToken has redeemAmount less of cash.
-        _exitVault(recipient, redeemAmount);
+        _exitVault(recipient, amount);
 
         // We emit a Transfer event, and a Redeem event
-        emit Transfer(redeemer, address(this), redeemTokens);
-        emit Redeem(redeemer, redeemAmount, redeemTokens);
+        emit Transfer(redeemer, address(this), tokens);
+        emit Redeem(redeemer, amount, tokens);
     }
 
     /// @notice Transfers collateral tokens (this market) to the liquidator.
     /// @dev Called byliquidateUser during the liquidation of another CToken.
-    /// @param seizerToken The contract seizing the collateral (i.e. borrowed cToken)
+    /// @param token The contract seizing the collateral (i.e. borrowed cToken)
     /// @param liquidator The account receiving seized collateral
     /// @param borrower The account having collateral seized
-    /// @param seizeTokens The number of cTokens to seize
+    /// @param tokens The number of cTokens to seize
     function _seize(
-        address seizerToken,
+        address token,
         address liquidator,
         address borrower,
-        uint256 seizeTokens
+        uint256 tokens
     ) internal {
         // Fails if borrower = liquidator
         assembly {
@@ -717,17 +716,17 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
         // Fails if seize not allowed
         lendtroller.seizeAllowed(
             address(this),
-            seizerToken,
+            token,
             liquidator,
             borrower
         );
 
-        uint256 protocolSeizeTokens = (seizeTokens *
+        uint256 protocolSeizeTokens = (tokens *
             centralRegistry.protocolLiquidationFee()) / expScale;
-        uint256 liquidatorSeizeTokens = seizeTokens - protocolSeizeTokens;
+        uint256 liquidatorSeizeTokens = tokens - protocolSeizeTokens;
 
         // Document new account balances with underflow check on borrower balance
-        _accountBalance[borrower] = _accountBalance[borrower] - seizeTokens;
+        _accountBalance[borrower] = _accountBalance[borrower] - tokens;
         _accountBalance[liquidator] =
             _accountBalance[liquidator] +
             liquidatorSeizeTokens;
@@ -741,7 +740,7 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
 
         // emit events on gauge pool
         address _gaugePool = gaugePool();
-        GaugePool(_gaugePool).withdraw(address(this), borrower, seizeTokens);
+        GaugePool(_gaugePool).withdraw(address(this), borrower, tokens);
         GaugePool(_gaugePool).deposit(
             address(this),
             liquidator,
