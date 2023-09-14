@@ -5,6 +5,7 @@ import { TestBase } from "tests/utils/TestBase.sol";
 import { CVE } from "contracts/token/CVE.sol";
 import { VeCVE } from "contracts/token/VeCVE.sol";
 import { CVELocker } from "contracts/architecture/CVELocker.sol";
+import { ICVXLocker } from "contracts/interfaces/ICVXLocker.sol";
 import { CentralRegistry } from "contracts/architecture/CentralRegistry.sol";
 import { AuraPositionVault } from "contracts/deposits/adaptors/AuraPositionVault.sol";
 import { DToken } from "contracts/market/collateral/DToken.sol";
