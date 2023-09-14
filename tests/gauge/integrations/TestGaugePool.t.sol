@@ -3,6 +3,7 @@ pragma solidity ^0.8.15;
 
 import { GaugeErrors } from "contracts/gauge/GaugeErrors.sol";
 import { IMToken } from "contracts/interfaces/market/IMToken.sol";
+import { MockDataFeed } from "contracts/mocks/MockDataFeed.sol";
 
 import { TestBaseMarket } from "tests/market/TestBaseMarket.sol";
 
@@ -12,6 +13,8 @@ contract TestGaugePool is TestBaseMarket {
     address public owner;
     address[] public tokens;
     address[] public users;
+
+    MockDataFeed public mockDaiFeed;
 
     function setUp() public override {
         super.setUp();
@@ -81,6 +84,9 @@ contract TestGaugePool is TestBaseMarket {
 
         vm.warp(gaugePool.startTime());
         vm.roll(block.number + 1000);
+
+        mockDaiFeed = new MockDataFeed(_CHAINLINK_DAI_USD);
+        chainlinkAdaptor.addAsset(_DAI_ADDRESS, address(mockDaiFeed), true);
     }
 
     function testManageEmissionRatesOfEachEpoch() public {
@@ -160,6 +166,7 @@ contract TestGaugePool is TestBaseMarket {
         cve.mintGaugeEmissions(300 * 2 weeks, address(gaugePool));
 
         vm.warp(gaugePool.startTime() + 1 * 2 weeks);
+        mockDaiFeed.setMockUpdatedAt(block.timestamp);
 
         // user0 deposit 100 token0
         vm.prank(users[0]);
@@ -255,6 +262,7 @@ contract TestGaugePool is TestBaseMarket {
         cve.mintGaugeEmissions(300 * 2 weeks, address(gaugePool));
 
         vm.warp(gaugePool.startTime() + 1 * 2 weeks);
+        mockDaiFeed.setMockUpdatedAt(block.timestamp);
 
         // user0 deposit 100 token0
         vm.prank(users[0]);
@@ -281,6 +289,7 @@ contract TestGaugePool is TestBaseMarket {
 
         // check pending rewards after 2 weeks
         vm.warp(block.timestamp + 2 weeks);
+        mockDaiFeed.setMockUpdatedAt(block.timestamp);
         assertEq(
             gaugePool.pendingRewards(tokens[0], users[0]),
             2 weeks * 100 + 100 * 200 - 1
@@ -316,6 +325,7 @@ contract TestGaugePool is TestBaseMarket {
         cve.mintGaugeEmissions(300 * 2 weeks, address(gaugePool));
 
         vm.warp(gaugePool.startTime() + 1 * 2 weeks);
+        mockDaiFeed.setMockUpdatedAt(block.timestamp);
 
         // user0 deposit 100 token0
         vm.prank(users[0]);
