@@ -326,9 +326,7 @@ contract TestBaseMarket is TestBase {
             ICentralRegistry(address(centralRegistry)),
             _BALANCER_WETH_RETH,
             address(lendtroller),
-            address(vault),
-            "cBAL-WETH-RETH",
-            "cBAL-ETHPAIR"
+            address(vault)
         );
         vault.initiateVault(address(cBALRETH));
         return cBALRETH;
