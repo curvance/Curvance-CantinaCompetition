@@ -34,7 +34,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     ERC20 private immutable _asset; // underlying asset for the vault
     bytes32 private immutable _name; // token name metadata
     bytes32 private immutable _symbol; // token symbol metadata
-    uint8 private immutable _decimals; // vault assets decimals of precision 
+    uint8 private immutable _decimals; // vault assets decimals of precision
     ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
 
     // Mask of reward rate entry in packed vault data
@@ -55,7 +55,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     /// STORAGE ///
 
     address public cToken; // cToken tied to this position vault
-    
+
     // Internal stored vault accounting
     // Bits Layout:
     // - [0..127]    `rewardRate`
@@ -162,7 +162,10 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
 
     /// @notice Initializes the vault and the cToken attached to it
     function initiateVault(address cTokenAddress) external onlyDaoPermissions {
-        require(_vaultIsActive == 1, "BasePositionVault: vault already initialized");
+        require(
+            _vaultIsActive == 1,
+            "BasePositionVault: vault already initialized"
+        );
         require(
             IMToken(cTokenAddress).tokenType() == 1,
             "BasePositionVault: not cToken"
@@ -201,9 +204,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
 
     // EXTERNAL POSITION LOGIC TO OVERRIDE
 
-    function harvest(
-        bytes calldata
-    ) external virtual returns (uint256 yield);
+    function harvest(bytes calldata) external virtual returns (uint256 yield);
 
     /// PUBLIC FUNCTIONS ///
 
@@ -226,7 +227,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
 
     /// @notice Returns the position vaults current status
     function vaultStatus() public view returns (string memory) {
-        return _vaultIsActive == 2 ? "Active": "Inactive";
+        return _vaultIsActive == 2 ? "Active" : "Inactive";
     }
 
     // DEPOSIT AND WITHDRAWAL LOGIC
@@ -258,10 +259,11 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         emit Deposit(msg.sender, receiver, assets, shares);
 
         // Add the users newly deposited assets
-        unchecked { // We know that this will not overflow as rewards are part vested and assets added and hasnt overflown from those operations
+        unchecked {
+            // We know that this will not overflow as rewards are part vested and assets added and hasnt overflown from those operations
             ta = ta + assets;
         }
-        
+
         // If there are pending rewards to vest,
         // or if high watermark is not set, vestRewards
         if (pending > 0 || _sharePriceHighWatermark == 0) {
@@ -280,7 +282,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         // Save _totalAssets and pendingRewards to memory
         uint256 pending = _calculatePendingRewards();
         uint256 ta = _totalAssets + pending;
-        
+
         // No need to check for rounding error, previewMint rounds up
         assets = _previewMint(shares, ta);
 
@@ -297,7 +299,8 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         emit Deposit(msg.sender, receiver, assets, shares);
 
         // Add the users newly deposited assets
-        unchecked { // We know that this will not overflow as rewards are part vested and assets added and hasnt overflown from those operations
+        unchecked {
+            // We know that this will not overflow as rewards are part vested and assets added and hasnt overflown from those operations
             ta = ta + assets;
         }
 
@@ -330,7 +333,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
 
         // Remove the users withdrawn assets
         ta = ta - assets;
-        
+
         // If there are pending rewards to vest,
         // or if high watermark is not set, vestRewards
         if (pending > 0 || _sharePriceHighWatermark == 0) {
@@ -417,7 +420,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
 
     /// @dev Packs vault data into a single uint256
 
-    /// Returns the current per second yield of the vault 
+    /// Returns the current per second yield of the vault
     function rewardRate() public view returns (uint256) {
         return _vaultData & _BITMASK_REWARD_RATE;
     }
@@ -484,28 +487,43 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     /// @notice Packs parameters together with current block timestamp to calculate the new packed vault data value
     /// @param newRewardRate The new rate per second that the vault vests fresh rewards
     /// @param newVestPeriod The timestamp of when the new vesting period ends, which is block.timestamp + vestPeriod
-    function _packVaultData(uint256 newRewardRate, uint256 newVestPeriod) internal view returns (uint256 result) {
+    function _packVaultData(
+        uint256 newRewardRate,
+        uint256 newVestPeriod
+    ) internal view returns (uint256 result) {
         assembly {
             // Mask `newRewardRate` to the lower 128 bits, in case the upper bits somehow aren't clean
             newRewardRate := and(newRewardRate, _BITMASK_REWARD_RATE)
             // `newRewardRate | (newVestPeriod << _BITPOS_VEST_END) | block.timestamp`
-            result := or(newRewardRate, or(shl(_BITPOS_VEST_END, newVestPeriod), timestamp()))
+            result := or(
+                newRewardRate,
+                or(
+                    shl(_BITPOS_VEST_END, newVestPeriod),
+                    shl(_BITPOS_LAST_VEST, timestamp())
+                )
+            )
         }
     }
 
     /// @notice Returns the unpacked `VaultData` struct from `packedVaultData`
     /// @param packedVaultData The current packed vault data value
     /// @return vault Current vault data value but unpacked into a VaultData struct
-    function _unpackedVaultData(uint256 packedVaultData) internal pure returns (VaultData memory vault) {
+    function _unpackedVaultData(
+        uint256 packedVaultData
+    ) internal pure returns (VaultData memory vault) {
         vault.rewardRate = uint128(packedVaultData);
         vault.vestingPeriodEnd = uint64(packedVaultData >> _BITPOS_VEST_END);
         vault.lastVestClaim = uint64(packedVaultData >> _BITPOS_LAST_VEST);
     }
 
     /// @notice Returns whether the current vesting period has ended based on the last vest timestamp
-    /// @param packedVaultData Current packed vault data value 
-    function _checkVestStatus(uint256 packedVaultData) internal pure returns (bool) {
-        return uint64(packedVaultData >> _BITPOS_LAST_VEST) >= uint64(packedVaultData >> _BITPOS_VEST_END);
+    /// @param packedVaultData Current packed vault data value
+    function _checkVestStatus(
+        uint256 packedVaultData
+    ) internal pure returns (bool) {
+        return
+            uint64(packedVaultData >> _BITPOS_LAST_VEST) >=
+            uint64(packedVaultData >> _BITPOS_VEST_END);
     }
 
     /// @notice Sets the last vest claim data for the vault
@@ -517,7 +535,9 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         assembly {
             lastVestClaimCasted := newVestClaim
         }
-        packedVaultData = (packedVaultData & _BITMASK_LAST_CLAIM_COMPLEMENT) | (lastVestClaimCasted << _BITPOS_LAST_VEST);
+        packedVaultData =
+            (packedVaultData & _BITMASK_LAST_CLAIM_COMPLEMENT) |
+            (lastVestClaimCasted << _BITPOS_LAST_VEST);
         _vaultData = packedVaultData;
     }
 
@@ -542,7 +562,6 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
             vaultData.rewardRate > 0 &&
             vaultData.lastVestClaim < vaultData.vestingPeriodEnd
         ) {
-
             // If the vesting period has not ended:
             // pendingRewards = rewardRate * (block.timestamp - lastTimeVestClaimed)
             // If the vesting period has ended:
