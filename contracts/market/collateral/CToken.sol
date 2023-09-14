@@ -66,12 +66,12 @@ contract CToken is ERC165, ReentrancyGuard {
     event MigrateVault(address oldVault, address newVault);
     event NewLendtroller(address oldLendtroller, address newLendtroller);
     event ReservesAdded(
-        address daoAddress,
+        address depositer,
         uint256 amount,
         uint256 newTotalReserves
     );
     event ReservesReduced(
-        address daoAddress,
+        address beneficiary,
         uint256 amount,
         uint256 newTotalReserves
     );
@@ -81,7 +81,7 @@ contract CToken is ERC165, ReentrancyGuard {
     error CToken__UnauthorizedCaller();
     error CToken__CannotEqualZero();
     error CToken__TransferNotAllowed();
-    error CToken__CentralRegistryIsInvalid();
+    error CToken__ConstructorParametersareInvalid();
     error CToken__LendtrollerIsNotLendingMarket();
 
     /// MODIFIERS ///
@@ -120,7 +120,7 @@ contract CToken is ERC165, ReentrancyGuard {
                 type(ICentralRegistry).interfaceId
             )
         ) {
-            revert CToken__CentralRegistryIsInvalid();
+            revert CToken__ConstructorParametersareInvalid();
         }
 
         centralRegistry = centralRegistry_;
@@ -136,7 +136,7 @@ contract CToken is ERC165, ReentrancyGuard {
         // Sanity check underlying so that we know users will not need to
         // mint anywhere close to exchange rate of 1e18
         if (IERC20(underlying).totalSupply() >= type(uint232).max) {
-            revert CToken__ValidationFailed();
+            revert CToken__ConstructorParametersareInvalid();
         }
     }
 

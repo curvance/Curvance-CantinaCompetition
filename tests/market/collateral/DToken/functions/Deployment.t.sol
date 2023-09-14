@@ -13,7 +13,7 @@ contract DTokenDeploymentTest is TestBaseDToken {
     event NewLendtroller(address oldLendtroller, address newLendtroller);
 
     function test_dTokenDeployment_fail_whenCentralRegistryIsInvalid() public {
-        vm.expectRevert(DToken.DToken__CentralRegistryIsInvalid.selector);
+        vm.expectRevert(DToken.DToken__ConstructorParametersareInvalid.selector);
         new DToken(
             ICentralRegistry(address(0)),
             _USDC_ADDRESS,
@@ -49,7 +49,7 @@ contract DTokenDeploymentTest is TestBaseDToken {
     function test_dTokenDeployment_fail_whenInterestRateModelIsInvalid()
         public
     {
-        vm.expectRevert();
+        vm.expectRevert(DToken.DToken__InvalidInterestRateModel.selector);
         new DToken(
             ICentralRegistry(address(centralRegistry)),
             _USDC_ADDRESS,
@@ -66,7 +66,7 @@ contract DTokenDeploymentTest is TestBaseDToken {
             .sig(IERC20.totalSupply.selector)
             .checked_write(type(uint232).max);
 
-        vm.expectRevert(DToken.DToken__ValidationFailed.selector);
+        vm.expectRevert(DToken.DToken__ConstructorParametersareInvalid.selector);
         new DToken(
             ICentralRegistry(address(centralRegistry)),
             _USDC_ADDRESS,

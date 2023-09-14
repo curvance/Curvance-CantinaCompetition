@@ -106,12 +106,12 @@ contract DToken is ERC165, ReentrancyGuard {
         address newInterestRateModel
     );
     event ReservesAdded(
-        address daoAddress,
+        address depositer,
         uint256 amount,
         uint256 newTotalReserves
     );
     event ReservesReduced(
-        address daoAddress,
+        address beneficiary,
         uint256 amount,
         uint256 newTotalReserves
     );
@@ -124,9 +124,9 @@ contract DToken is ERC165, ReentrancyGuard {
     error DToken__TransferNotAllowed();
     error DToken__CashNotAvailable();
     error DToken__ValidationFailed();
-    error DToken__CentralRegistryIsInvalid();
+    error DToken__ConstructorParametersareInvalid();
     error DToken__LendtrollerIsNotLendingMarket();
-    error DToken__InterestRateModelIsInvalid();
+    error DToken__InvalidInterestRateModel();
 
     /// MODIFIERS ///
 
@@ -164,7 +164,7 @@ contract DToken is ERC165, ReentrancyGuard {
                 type(ICentralRegistry).interfaceId
             )
         ) {
-            revert DToken__CentralRegistryIsInvalid();
+            revert DToken__ConstructorParametersareInvalid();
         }
 
         centralRegistry = centralRegistry_;
@@ -188,7 +188,7 @@ contract DToken is ERC165, ReentrancyGuard {
         // Sanity check underlying so that we know users will not need to
         // mint anywhere close to exchange rate of 1e18
         if (IERC20(underlying).totalSupply() >= type(uint232).max) {
-            revert DToken__ValidationFailed();
+            revert DToken__ConstructorParametersareInvalid();
         }
     }
 
@@ -364,16 +364,16 @@ contract DToken is ERC165, ReentrancyGuard {
     function redeemUnderlying(uint256 underlyingAmount) external nonReentrant {
         accrueInterest();
 
-        uint256 tokensToRedeem = (underlyingAmount * EXP_SCALE) /
+        uint256 amount = (underlyingAmount * EXP_SCALE) /
             exchangeRateStored();
 
         // Fail if redeem not allowed
-        lendtroller.redeemAllowed(address(this), msg.sender, tokensToRedeem);
+        lendtroller.redeemAllowed(address(this), msg.sender, amount);
 
         _redeem(
             msg.sender,
-            tokensToRedeem,
-            redeemAmount,
+            amount,
+            underlyingAmount,
             msg.sender
         );
     }
@@ -688,7 +688,7 @@ contract DToken is ERC165, ReentrancyGuard {
     function tokenType() public pure returns (uint256) {
         return 0;
     }
-exchangeRateStored
+
     /// @notice Returns gauge pool contract address
     /// @return gaugePool the gauge controller contract address
     function gaugePool() public view returns (address) {
@@ -807,7 +807,7 @@ exchangeRateStored
     function _setInterestRateModel(address newInterestRateModel) internal {
         // Ensure we are switching to an actual Interest Rate Model
         if (!InterestRateModel(newInterestRateModel).isInterestRateModel()) {
-            revert DToken__InterestRateModelIsInvalid();
+            revert DToken__InvalidInterestRateModel();
         }
 
         // Cache the current interest rate model to save gas
