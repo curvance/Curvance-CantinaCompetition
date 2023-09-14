@@ -172,7 +172,7 @@ contract DToken is ERC165, ReentrancyGuard {
         // Set the lendtroller after consulting Central Registry
         _setLendtroller(lendtroller_);
 
-        // Initialize timestamp and borrow index (timestamp mocks depend on lendtroller being set)
+        // Initialize timestamp and borrow index
         accrualBlockTimestamp = block.timestamp;
         borrowIndex = EXP_SCALE;
 
@@ -226,7 +226,7 @@ contract DToken is ERC165, ReentrancyGuard {
             mintAmount
         );
 
-        emit Transfer(address(0), initializer, 42069);
+        emit Transfer(address(0), initializer, mintAmount);
         return true;
     }
 
@@ -437,6 +437,10 @@ contract DToken is ERC165, ReentrancyGuard {
     ) external nonReentrant onlyDaoPermissions {
         accrueInterest();
 
+        // Calculate asset -> shares exchange rate
+        uint256 tokens = (amount * EXP_SCALE) / exchangeRateStored();
+
+        // On success, the market will deposit `amount` to the market
         SafeTransferLib.safeTransferFrom(
             underlying,
             msg.sender,
@@ -446,11 +450,10 @@ contract DToken is ERC165, ReentrancyGuard {
 
         // Query current DAO operating address
         address daoAddress = centralRegistry.daoAddress();
+        
         // Deposit new reserves into gauge
-        GaugePool(gaugePool()).deposit(address(this), daoAddress, amount);
+        GaugePool(gaugePool()).deposit(address(this), daoAddress, tokens);
 
-        // We get the current exchange rate and calculate the number of dTokens to be minted:
-        uint256 tokens = (amount * EXP_SCALE) / exchangeRateStored();
         totalReserves = totalReserves + tokens;
 
         emit ReservesAdded(daoAddress, tokens, totalReserves);
@@ -480,10 +483,11 @@ contract DToken is ERC165, ReentrancyGuard {
         GaugePool(gaugePool()).withdraw(
             address(this),
             daoAddress,
-            amount
+            tokens
         );
 
-        SafeTransferLib.safeTransfer(underlying, daoAddress, tokens);
+        // Transfer underlying to DAO in assets
+        SafeTransferLib.safeTransfer(underlying, daoAddress, amount);
 
         emit ReservesReduced(daoAddress, tokens, totalReserves);
     }
@@ -869,7 +873,9 @@ contract DToken is ERC165, ReentrancyGuard {
         // Fail if mint not allowed
         lendtroller.mintAllowed(address(this), recipient);
 
+        // Get exchange rate before transfer
         uint256 exchangeRate = exchangeRateStored();
+        
         // Transfer underlying in
         SafeTransferLib.safeTransferFrom(
             underlying,
@@ -879,20 +885,20 @@ contract DToken is ERC165, ReentrancyGuard {
         );
 
         // Calculate dTokens to be minted
-        uint256 mintTokens = (amount * EXP_SCALE) / exchangeRate;
+        uint256 tokens = (amount * EXP_SCALE) / exchangeRate;
 
         unchecked {
-            totalSupply = totalSupply + mintTokens;
+            totalSupply = totalSupply + tokens;
             /// Calculate their new balance
             balanceOf[recipient] =
                 balanceOf[recipient] +
-                mintTokens;
+                tokens;
         }
 
         // emit events on gauge pool
-        GaugePool(gaugePool()).deposit(address(this), recipient, mintTokens);
+        GaugePool(gaugePool()).deposit(address(this), recipient, tokens);
 
-        emit Transfer(address(0), recipient, mintTokens);
+        emit Transfer(address(0), recipient, tokens);
     }
 
     /// @notice User redeems dTokens in exchange for the underlying asset

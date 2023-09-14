@@ -173,7 +173,7 @@ contract CToken is ERC165, ReentrancyGuard {
             mintTokens
         );
 
-        emit Transfer(address(0), initializer, 42069);
+        emit Transfer(address(0), initializer, mintAmount);
         return true;
     }
 
@@ -229,13 +229,13 @@ contract CToken is ERC165, ReentrancyGuard {
     ///         in exchange
     /// @dev Accrues interest whether or not the operation succeeds,
     ///      unless reverted
-    /// @param mintAmount The amount of the underlying asset to supply
+    /// @param amount The amount of the underlying asset to supply
     /// @return bool true=success
-    function mint(uint256 mintAmount) external nonReentrant returns (bool) {
+    function mint(uint256 amount) external nonReentrant returns (bool) {
         // Fail if mint not allowed
         lendtroller.mintAllowed(address(this), msg.sender);
 
-        _mint(msg.sender, msg.sender, mintAmount);
+        _mint(msg.sender, msg.sender, amount);
         return true;
     }
 
@@ -244,16 +244,16 @@ contract CToken is ERC165, ReentrancyGuard {
     /// @dev Accrues interest whether or not the operation succeeds,
     ///      unless reverted
     /// @param recipient The recipient address
-    /// @param mintAmount The amount of the underlying asset to supply
+    /// @param amount The amount of the underlying asset to supply
     /// @return bool true=success
     function mintFor(
-        uint256 mintAmount,
+        uint256 amount,
         address recipient
     ) external nonReentrant returns (bool) {
         // Fail if mint not allowed
         lendtroller.mintAllowed(address(this), recipient);
 
-        _mint(msg.sender, recipient, mintAmount);
+        _mint(msg.sender, recipient, amount);
         return true;
     }
 
@@ -326,43 +326,52 @@ contract CToken is ERC165, ReentrancyGuard {
 
     /// @notice Adds reserves by transferring from Curvance DAO to the market
     ///         and depositing to the gauge
-    /// @param addAmount The amount of underlying token to add as reserves
+    /// @param amount The amount of underlying token to add as reserves measured in assets
     function depositReserves(
-        uint256 addAmount
+        uint256 amount
     ) external nonReentrant onlyDaoPermissions {
-        // On success, the market will deposit `addAmount` to the position vault
-        totalReserves = totalReserves + _enterVault(msg.sender, addAmount);
+        // On success, the market will deposit `amount` to the position vault
+        // Also calculates asset -> shares exchange rate
+        uint256 tokens = _enterVault(msg.sender, amount);
+
         // Query current DAO operating address
         address daoAddress = centralRegistry.daoAddress();
-        // Deposit new reserves into gauge
-        GaugePool(gaugePool()).deposit(address(this), daoAddress, addAmount);
 
-        emit ReservesAdded(daoAddress, addAmount, totalReserves);
+        // Deposit new reserves into gauge
+        GaugePool(gaugePool()).deposit(address(this), daoAddress, tokens);
+
+        totalReserves = totalReserves + tokens;
+
+        emit ReservesAdded(daoAddress, tokens, totalReserves);
     }
 
     /// @notice Reduces reserves by withdrawing from the gauge
     ///         and transferring to Curvance DAO
     /// @dev If daoAddress is going to be moved all reserves should be
     ///      withdrawn first
-    /// @param reduceAmount Amount of reserves to withdraw
+    /// @param amount Amount of reserves to withdraw measured in assets
     function withdrawReserves(
-        uint256 reduceAmount
+        uint256 amount
     ) external nonReentrant onlyDaoPermissions {
+
         // Need underflow check to see if we have sufficient totalReserves
-        totalReserves = totalReserves - reduceAmount;
+        uint256 tokens = (amount * EXP_SCALE) / exchangeRateStored();
+        totalReserves = totalReserves - tokens;
 
         // Query current DAO operating address
         address daoAddress = centralRegistry.daoAddress();
+
         // Withdraw reserves from gauge
         GaugePool(gaugePool()).withdraw(
             address(this),
             daoAddress,
-            reduceAmount
+            tokens
         );
 
-        _exitVault(daoAddress, reduceAmount);
+        // Transfer underlying to DAO in tokens
+        _exitVault(daoAddress, tokens);
 
-        emit ReservesReduced(daoAddress, reduceAmount, totalReserves);
+        emit ReservesReduced(daoAddress, tokens, totalReserves);
     }
 
     /// @dev Sets `amount` as the allowance of `spender` over the caller's tokens.
@@ -585,20 +594,20 @@ contract CToken is ERC165, ReentrancyGuard {
     ) internal {
         
         // The function returns the amount actually received from the positionVault
-        uint256 mintTokens = _enterVault(user, amount);
+        uint256 tokens = _enterVault(user, amount);
 
         unchecked {
-            totalSupply = totalSupply + mintTokens;
+            totalSupply = totalSupply + tokens;
             /// Calculate their new balance
             balanceOf[recipient] =
                 balanceOf[recipient] +
-                mintTokens;
+                tokens;
         }
 
         // emit events on gauge pool
-        GaugePool(gaugePool()).deposit(address(this), recipient, mintTokens);
+        GaugePool(gaugePool()).deposit(address(this), recipient, tokens);
 
-        emit Transfer(address(0), recipient, mintTokens);
+        emit Transfer(address(0), recipient, tokens);
     }
 
     /// @notice User redeems cTokens in exchange for the underlying asset
@@ -631,10 +640,8 @@ contract CToken is ERC165, ReentrancyGuard {
         // emit events on gauge pool
         GaugePool(gaugePool()).withdraw(address(this), redeemer, tokens);
 
-        // We invoke _doTransferOut for the redeemer and the redeemAmount
-        // so that we can withdraw tokens from the position vault for the redeemer
-        // On success, the cToken has redeemAmount less of cash.
-        _exitVault(recipient, amount);
+        // Exit position vault and transfer underlying to `recipient` in assets
+        _exitVault(recipient, tokens);
 
         emit Transfer(redeemer, address(0), tokens);
     }
@@ -705,19 +712,16 @@ contract CToken is ERC165, ReentrancyGuard {
     }
 
     /// @notice Handles incoming token transfers and notifies the amount received
-    /// @dev This function uses the SafeTransferLib to safely perform the transfer.
-    ///      It doesn't support tokens with a transfer tax.
+    /// @dev  Note this will not support tokens with a transfer tax,
+    ///       which should not exist on a underlying asset anyway
     /// @param from Address of the sender of the tokens
-    /// @param amount Amount of tokens to transfer in
-    /// @return Returns the amount transferred
+    /// @param amount Amount of underlying tokens to deposit into the position vault
+    /// @return Returns the CTokens received
     function _enterVault(
         address from,
         uint256 amount
     ) internal returns (uint256) {
-        // SafeTransferLib will handle reversion from insufficient balance
-        // or allowance.
-        // Note this will not support tokens with a transfer tax,
-        // which should not exist on a underlying asset anyway.
+        // Reverts on insufficient balance
         SafeTransferLib.safeTransferFrom(
             underlying,
             from,
@@ -732,9 +736,8 @@ contract CToken is ERC165, ReentrancyGuard {
     }
 
     /// @notice Handles outgoing token transfers
-    /// @dev This function uses the SafeTransferLib to safely perform the transfer.
     /// @param to Address receiving the token transfer
-    /// @param amount Amount of tokens to transfer out
+    /// @param amount Amount of CTokens to withdraw from position vault
     function _exitVault(address to, uint256 amount) internal {
         if (address(vault) != address(0)) {
             // withdraw from the vault
