@@ -352,11 +352,13 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
     function redeem(uint256 tokensToRedeem) external nonReentrant {
         accrueInterest();
 
+        lendtroller.redeemAllowed(address(this), msg.sender, tokensToRedeem);
+
         _redeem(
-            payable(msg.sender),
+            msg.sender,
             tokensToRedeem,
             (exchangeRateStored() * tokensToRedeem) / expScale,
-            payable(msg.sender)
+            msg.sender
         );
     }
 
@@ -373,10 +375,10 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
         lendtroller.redeemAllowed(address(this), msg.sender, tokensToRedeem);
 
         _redeem(
-            payable(msg.sender),
+            msg.sender,
             tokensToRedeem,
             redeemAmount,
-            payable(msg.sender)
+            msg.sender
         );
     }
 
@@ -384,7 +386,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
     /// @param user The user address
     /// @param tokensToRedeem The amount of the underlying asset to redeem
     function redeemUnderlyingForPositionFolding(
-        address payable user,
+        address user,
         uint256 tokensToRedeem,
         bytes calldata params
     ) external nonReentrant {
@@ -398,7 +400,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
             user,
             (tokensToRedeem * expScale) / exchangeRateStored(),
             tokensToRedeem,
-            payable(msg.sender)
+            msg.sender
         );
 
         IPositionFolding(msg.sender).onRedeem(
@@ -921,10 +923,10 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
     /// @param redeemAmount The number of underlying tokens to receive from redeeming dTokens
     /// @param recipient The recipient address
     function _redeem(
-        address payable redeemer,
+        address redeemer,
         uint256 redeemTokens,
         uint256 redeemAmount,
-        address payable recipient
+        address recipient
     ) internal {
         // Check if we have enough cash to support the redeem
         if (getCash() < redeemAmount) {

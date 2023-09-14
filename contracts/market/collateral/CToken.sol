@@ -276,11 +276,14 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
     ///      unless reverted
     /// @param tokensToRedeem The number of cTokens to redeem into underlying
     function redeem(uint256 tokensToRedeem) external nonReentrant {
+
+        lendtroller.redeemAllowed(address(this), msg.sender, tokensToRedeem);
+
         _redeem(
-            payable(msg.sender),
+            msg.sender,
             tokensToRedeem,
             (exchangeRateStored() * tokensToRedeem) / expScale,
-            payable(msg.sender)
+            msg.sender
         );
     }
 
@@ -297,10 +300,10 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
         lendtroller.redeemAllowed(address(this), msg.sender, redeemTokens);
 
         _redeem(
-            payable(msg.sender),
+            msg.sender,
             redeemTokens,
             tokensToRedeem,
-            payable(msg.sender)
+            msg.sender
         );
     }
 
@@ -309,7 +312,7 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
     /// @param user The user address
     /// @param tokensToRedeem The amount of the underlying asset to redeem
     function redeemUnderlyingForPositionFolding(
-        address payable user,
+        address user,
         uint256 tokensToRedeem,
         bytes calldata params
     ) external nonReentrant {
@@ -321,7 +324,7 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
             user,
             (tokensToRedeem * expScale) / exchangeRateStored(),
             tokensToRedeem,
-            payable(msg.sender)
+            msg.sender
         );
 
         IPositionFolding(msg.sender).onRedeem(
@@ -657,10 +660,10 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
     ///                     from redeeming cTokens
     /// @param recipient The recipient address
     function _redeem(
-        address payable redeemer,
+        address redeemer,
         uint256 redeemTokens,
         uint256 redeemAmount,
-        address payable recipient
+        address recipient
     ) internal {
         // Validate redemption parameters
         if (redeemTokens == 0 && redeemAmount > 0) {

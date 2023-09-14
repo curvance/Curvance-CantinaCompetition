@@ -38,7 +38,7 @@ contract CentralRegistry is ERC165 {
     uint256 public protocolYieldFee = 1500 * 1e14; // Fee on yield in position vaults
     // Joint fee value so that we can perform one less external call in position vault contracts
     uint256 public protocolHarvestFee = protocolCompoundFee + protocolYieldFee;
-    uint256 public protocolLiquidationFee = 250; // Protocol Reserve Share on liquidation
+    uint256 public protocolLiquidationFee = 250 * 1e14; // Protocol Reserve Share on liquidation
     uint256 public protocolLeverageFee; // Protocol Fee on leveraging
     uint256 public protocolInterestRateFee; // Protocol Reserve Share on Interest Rates
     uint256 public earlyUnlockPenaltyValue; // Penalty Fee for unlocking from veCVE early
@@ -74,7 +74,7 @@ contract CentralRegistry is ERC165 {
         address indexed previousOwner,
         address indexed newOwner
     );
-    event newTimelockConfiguration(
+    event NewTimelockConfiguration(
         address indexed previousTimelock,
         address indexed newTimelock
     );
@@ -84,13 +84,13 @@ contract CentralRegistry is ERC165 {
     );
 
     event NewCurvanceContract(string indexed contractType, address newAddress);
-    event removedCurvanceContract(
+    event RemovedCurvanceContract(
         string indexed contractType,
         address removedAddress
     );
 
     event NewChainAdded(uint256 chainId, address operatorAddress);
-    event removedChain(uint256 chainId, address operatorAddress);
+    event RemovedChain(uint256 chainId, address operatorAddress);
 
     /// ERRORS ///
     error CentralRegistry_ParametersMisconfigured();
@@ -168,7 +168,7 @@ contract CentralRegistry is ERC165 {
         genesisEpoch = genesisEpoch_;
 
         emit OwnershipTransferred(address(0), daoAddress_);
-        emit newTimelockConfiguration(address(0), timelock_);
+        emit NewTimelockConfiguration(address(0), timelock_);
         emit EmergencyCouncilTransferred(address(0), emergencyCouncil_);
     }
 
@@ -384,7 +384,7 @@ contract CentralRegistry is ERC165 {
         hasDaoPermissions[newTimelock] = true;
         hasElevatedPermissions[newTimelock] = true;
 
-        emit newTimelockConfiguration(previousTimelock, newTimelock);
+        emit NewTimelockConfiguration(previousTimelock, newTimelock);
     }
 
     function transferEmergencyCouncil(
@@ -476,7 +476,7 @@ contract CentralRegistry is ERC165 {
             messagingToGETHChainId[operatorToRemove.messagingChainId]
         ];
         delete messagingToGETHChainId[operatorToRemove.messagingChainId];
-        emit removedChain(operatorToRemove.chainId, currentOmnichainOperator);
+        emit RemovedChain(operatorToRemove.chainId, currentOmnichainOperator);
     }
 
     /// CONTRACT MAPPING LOGIC
@@ -502,7 +502,7 @@ contract CentralRegistry is ERC165 {
 
         delete isZapper[currentZapper];
 
-        emit removedCurvanceContract("Zapper", currentZapper);
+        emit RemovedCurvanceContract("Zapper", currentZapper);
     }
 
     function addSwapper(address newSwapper) external onlyElevatedPermissions {
@@ -526,7 +526,7 @@ contract CentralRegistry is ERC165 {
 
         delete isSwapper[currentSwapper];
 
-        emit removedCurvanceContract("Swapper", currentSwapper);
+        emit RemovedCurvanceContract("Swapper", currentSwapper);
     }
 
     function addVeCVELocker(
@@ -552,7 +552,7 @@ contract CentralRegistry is ERC165 {
 
         delete isVeCVELocker[currentVeCVELocker];
 
-        emit removedCurvanceContract("VeCVELocker", currentVeCVELocker);
+        emit RemovedCurvanceContract("VeCVELocker", currentVeCVELocker);
     }
 
     function addGaugeController(
@@ -578,7 +578,7 @@ contract CentralRegistry is ERC165 {
 
         delete isGaugeController[currentGaugeController];
 
-        emit removedCurvanceContract(
+        emit RemovedCurvanceContract(
             "Gauge Controller",
             currentGaugeController
         );
@@ -607,7 +607,7 @@ contract CentralRegistry is ERC165 {
 
         delete isHarvester[currentHarvester];
 
-        emit removedCurvanceContract("Harvestor", currentHarvester);
+        emit RemovedCurvanceContract("Harvestor", currentHarvester);
     }
 
     function addLendingMarket(
@@ -633,7 +633,7 @@ contract CentralRegistry is ERC165 {
 
         delete isLendingMarket[currentLendingMarket];
 
-        emit removedCurvanceContract("Lending Market", currentLendingMarket);
+        emit RemovedCurvanceContract("Lending Market", currentLendingMarket);
     }
 
     function addEndpoint(
@@ -659,7 +659,7 @@ contract CentralRegistry is ERC165 {
 
         delete isEndpoint[currentEndpoint];
 
-        emit removedCurvanceContract("Endpoint", currentEndpoint);
+        emit RemovedCurvanceContract("Endpoint", currentEndpoint);
     }
 
     /// @dev Internal helper for reverting efficiently.

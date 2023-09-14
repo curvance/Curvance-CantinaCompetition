@@ -33,20 +33,20 @@ contract CVELocker is ReentrancyGuard {
     ICentralRegistry public immutable centralRegistry;
     /// @notice Reward token
     address public immutable baseRewardToken;
+    /// @notice Genesis Epoch timestamp
+    uint256 public immutable genesisEpoch;
 
     /// STORAGE ///
 
     /// @notice veCVE contract address
     IVeCVE public veCVE;
-    /// @notice Genesis Epoch timestamp
-    uint256 public genesisEpoch;
     // 2 = yes; 1 = no
     uint256 public lockerStarted = 1;
     // 2 = yes; 1 = no
     uint256 public isShutdown = 1;
 
     /// @notice CVX Locker contract address
-    ICVXLocker public cvxLocker;
+    ICVXLocker public immutable cvxLocker;
 
     /// @notice The next undelivered epoch index
     uint256 public nextEpochToDeliver;
@@ -76,6 +76,7 @@ contract CVELocker is ReentrancyGuard {
     /// ERRORS ///
 
     error CVELocker__CVXIsZeroAddress();
+    error CVELocker__CVXLockerMisconfigured();
     error CVELocker__BaseRewardTokenIsZeroAddress();
     error CVELocker__Unauthorized();
     error CVELocker__FailedETHTransfer();
@@ -127,6 +128,7 @@ contract CVELocker is ReentrancyGuard {
     constructor(
         ICentralRegistry centralRegistry_,
         address cvx_,
+        address cvxLocker_,
         address baseRewardToken_
     ) {
         require(
@@ -143,9 +145,14 @@ contract CVELocker is ReentrancyGuard {
             revert CVELocker__BaseRewardTokenIsZeroAddress();
         }
 
+        if (ICVXLocker(cvxLocker_).isShutdown() || cvx_ != ICVXLocker(cvxLocker_).stakingToken()) {
+            revert CVELocker__CVXLockerMisconfigured();
+        }
+
         centralRegistry = centralRegistry_;
         genesisEpoch = centralRegistry.genesisEpoch();
         cvx = cvx_;
+        cvxLocker = ICVXLocker(cvxLocker_);
         baseRewardToken = baseRewardToken_;
         cve = centralRegistry.CVE();
     }
