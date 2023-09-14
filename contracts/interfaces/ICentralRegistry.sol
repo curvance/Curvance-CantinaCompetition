@@ -98,9 +98,10 @@ interface ICentralRegistry {
         uint256 chainID
     ) external view returns (ChainData memory);
 
-    // Address => Curvance identification information
+    // Address => chainID => Curvance identification information
     function omnichainOperators(
-        address _address
+        address _address,
+        uint256 chainID
     ) external view returns (OmnichainData memory);
 
     // Messaging specific ChainId => GETH comparable ChainId

@@ -158,26 +158,31 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         lzTxObj calldata lzTxParams,
         bytes calldata payload
     ) external onlyAuthorized {
-        OmnichainData memory operator = centralRegistry.omnichainOperators(to);
-        // Validate that the operator is authorized
-        if (operator.isAuthorized < 2) {
-            revert ProtocolMessagingHub_ConfigurationError();
-        }
+        { // Avoid stack too deep
+            uint256 GETHChainId = centralRegistry.messagingToGETHChainId(poolData.dstChainId);
+            OmnichainData memory operator = centralRegistry.omnichainOperators(to, GETHChainId);
 
-        // Validate that the operator messaging chain matches the destination chain id
-        if (operator.messagingChainId != poolData.dstChainId) {
-            revert ProtocolMessagingHub_ConfigurationError();
-        }
+            // Validate that the operator is authorized
+            if (operator.isAuthorized < 2) {
+                revert ProtocolMessagingHub_ConfigurationError();
+            }
 
-        // Validate that we are aiming for a supported chain
-        if (
-            centralRegistry
-                .supportedChainData(
-                    centralRegistry.messagingToGETHChainId(poolData.dstChainId)
-                )
-                .isSupported < 2
-        ) {
-            revert ProtocolMessagingHub_ConfigurationError();
+            // Validate that the operator messaging chain matches the destination chain id
+            if (operator.messagingChainId != poolData.dstChainId) {
+                revert ProtocolMessagingHub_ConfigurationError();
+            }
+        
+            // Validate that we are aiming for a supported chain
+            if (
+                centralRegistry
+                    .supportedChainData(
+                        GETHChainId
+                    )
+                    .isSupported < 2
+            ) {
+                revert ProtocolMessagingHub_ConfigurationError();
+            }
+
         }
 
         address endpoint = IFeeAccumulator(centralRegistry.feeAccumulator())
@@ -252,7 +257,8 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         bytes calldata payload
     ) external onlyLayerZero {
         OmnichainData memory operator = centralRegistry.omnichainOperators(
-            address(uint160(uint256(from)))
+            address(uint160(uint256(from))), 
+            centralRegistry.messagingToGETHChainId(srcChainId)
         );
 
         // Validate the operator is authorized

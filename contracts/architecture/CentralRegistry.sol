@@ -54,8 +54,8 @@ contract CentralRegistry is ERC165 {
     // with low gas overhead
     uint256 public supportedChains; // How many other chains are supported
     mapping(uint256 => ChainData) public supportedChainData; // ChainId => 2 = supported; 1 = unsupported
-    // Address => Curvance identification information
-    mapping(address => OmnichainData) public omnichainOperators;
+    // Address => chainID => Curvance identification information
+    mapping(address => mapping (uint256 => OmnichainData)) public omnichainOperators;
     mapping(uint256 => uint256) public messagingToGETHChainId;
     mapping(uint256 => uint256) public GETHToMessagingChainId;
 
@@ -418,7 +418,7 @@ contract CentralRegistry is ERC165 {
         uint256 destinationAux,
         uint256 messagingChainId
     ) external onlyElevatedPermissions {
-        if (omnichainOperators[newOmnichainOperator].isAuthorized == 2) {
+        if (omnichainOperators[newOmnichainOperator][chainId].isAuthorized == 2) {
             // Chain Operator already added
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
@@ -438,7 +438,7 @@ contract CentralRegistry is ERC165 {
         messagingToGETHChainId[messagingChainId] = chainId;
         GETHToMessagingChainId[chainId] = messagingChainId;
         supportedChains++;
-        omnichainOperators[newOmnichainOperator] = OmnichainData({
+        omnichainOperators[newOmnichainOperator][chainId] = OmnichainData({
             isAuthorized: 2,
             chainId: chainId,
             messagingChainId: messagingChainId,
@@ -450,12 +450,13 @@ contract CentralRegistry is ERC165 {
 
     /// @notice removes
     function removeChainSupport(
-        address currentOmnichainOperator
+        address currentOmnichainOperator,
+        uint256 chainId
     ) external onlyDaoPermissions {
         OmnichainData storage operatorToRemove = omnichainOperators[
             currentOmnichainOperator
-        ];
-        if (omnichainOperators[currentOmnichainOperator].isAuthorized < 2) {
+        ][chainId];
+        if (omnichainOperators[currentOmnichainOperator][chainId].isAuthorized < 2) {
             // Operator unsupported
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
