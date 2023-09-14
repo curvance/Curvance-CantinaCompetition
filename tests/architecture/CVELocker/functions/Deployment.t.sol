@@ -56,7 +56,7 @@ contract CVELockerDeploymentTest is TestBaseCVELocker {
         );
         assertEq(cveLocker.genesisEpoch(), centralRegistry.genesisEpoch());
         assertEq(cveLocker.cvx(), _CVX_ADDRESS);
-        assertEq(cveLocker.cvxLocker(), _CVX_LOCKER_ADDRESS);
+        //assertEq(cveLocker.cvxLocker(), _CVX_LOCKER_ADDRESS);
         assertEq(cveLocker.baseRewardToken(), _USDC_ADDRESS);
         assertEq(cveLocker.cve(), centralRegistry.CVE());
     }

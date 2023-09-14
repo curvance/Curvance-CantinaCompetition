@@ -90,7 +90,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     ) external payable {
         // Stargate uses address(0) = ETH
         if (token == address(0)) {
-            WETH.deposit{ value: amountLD }(amountLD);
+            WETH.deposit{ value: amountLD }();
             SafeTransferLib.safeTransfer(
                 address(WETH),
                 centralRegistry.feeAccumulator(),
@@ -408,7 +408,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     /// @notice Permissioned function for returning fees reimbursed from Stargate to FeeAccumulator
     /// @dev    This is for if we ever need to depreciate this ProtocolMessagingHub for another
     function returnReimbursedFees() external onlyDaoPermissions {
-        WETH.deposit{ value: address(this).balance }(address(this).balance);
+        WETH.deposit{ value: address(this).balance }();
 
         SafeTransferLib.safeTransfer(
             address(WETH),

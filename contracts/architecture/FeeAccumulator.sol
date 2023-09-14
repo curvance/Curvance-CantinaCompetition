@@ -172,7 +172,7 @@ contract FeeAccumulator is ReentrancyGuard {
                 (fees * vaultCompoundFee()) / vaultYieldFee()
             );
         // Deposit remainder into WETH so protocol messaging hub can pull WETH to execute fee distribution
-        WETH.deposit{ value: fees }(fees);
+        WETH.deposit{ value: fees }();
     }
 
     /// @notice Performs an (OTC) operation for a specific token, transferring the token to the DAO in exchange for ETH.
@@ -226,7 +226,7 @@ contract FeeAccumulator is ReentrancyGuard {
                 (ethRequiredForOTC * vaultCompoundFee()) / vaultYieldFee()
             );
         // Deposit remainder into WETH so protocol messaging hub can pull WETH to execute fee distribution
-        WETH.deposit{ value: ethRequiredForOTC }(ethRequiredForOTC);
+        WETH.deposit{ value: ethRequiredForOTC }();
 
         // Give DAO the OTC'd tokens
         SafeTransferLib.safeTransfer(tokenToOTC, daoAddress, amountToOTC);

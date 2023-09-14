@@ -111,7 +111,7 @@ contract TestBaseMarket is TestBase {
         usdc = IERC20(_USDC_ADDRESS);
         dai = IERC20(_DAI_ADDRESS);
         cvx = IERC20(_CVX_ADDRESS);
-        cvxLocker = ICVXLocker(0x72a19342e8F1838460eBFCCEf09F6585e32db86E);
+        cvxLocker = ICVXLocker(_CVX_LOCKER_ADDRESS);
         balRETH = IERC20(_BALANCER_WETH_RETH);
 
         _deployCentralRegistry();

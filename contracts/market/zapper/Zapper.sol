@@ -328,7 +328,7 @@ contract Zapper {
         if (CommonLib.isETH(inputToken)) {
             require(inputAmount == msg.value, "Zapper: invalid amount");
             inputToken = WETH;
-            IWETH(WETH).deposit{ value: inputAmount }(inputAmount);
+            IWETH(WETH).deposit{ value: inputAmount }();
         } else {
             SafeTransferLib.safeTransferFrom(
                 inputToken,

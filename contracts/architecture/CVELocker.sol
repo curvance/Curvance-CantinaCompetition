@@ -29,6 +29,8 @@ contract CVELocker is ReentrancyGuard {
     address public immutable cve;
     /// @notice CVX contract address
     address public immutable cvx;
+    /// @notice CVX Locker contract address
+    ICVXLocker public immutable cvxLocker;
     /// @notice Curvance DAO hub
     ICentralRegistry public immutable centralRegistry;
     /// @notice Reward token
@@ -44,9 +46,6 @@ contract CVELocker is ReentrancyGuard {
     uint256 public lockerStarted = 1;
     // 2 = yes; 1 = no
     uint256 public isShutdown = 1;
-
-    /// @notice CVX Locker contract address
-    ICVXLocker public immutable cvxLocker;
 
     /// @notice The next undelivered epoch index
     uint256 public nextEpochToDeliver;
