@@ -29,8 +29,6 @@ contract TestZapperVelodrome is TestBaseMarket {
 
         _deployCentralRegistry();
         _deployCVE();
-        _deployCVELocker();
-        _deployVeCVE();
         _deployGaugePool();
         _deployLendtroller();
 
