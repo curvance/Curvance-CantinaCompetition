@@ -61,7 +61,6 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
     event MigrateVault(address oldVault, address newVault);
     event Mint(
         address user,
-        uint256 mintAmount,
         uint256 mintTokens,
         address minter
     );
@@ -167,29 +166,28 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
         }
 
         uint256 mintAmount = 42069;
-        uint256 actualMintAmount = _doTransferIn(initializer, mintAmount);
+        uint256 mintTokens = _enterVault(initializer, mintAmount);
 
         // We do not need to calculate exchange rate here as we will
         // always be the initial depositer.
         // These values should always be zero but we will add them
         // just incase we are re-initiating a market.
-        totalSupply = totalSupply + actualMintAmount;
+        totalSupply = totalSupply + mintTokens;
         _accountBalance[initializer] =
             _accountBalance[initializer] +
-            actualMintAmount;
+            mintTokens;
 
         // emit events on gauge pool
         GaugePool(gaugePool()).deposit(
             address(this),
             initializer,
-            actualMintAmount
+            mintTokens
         );
 
         // We emit a Mint event, and a Transfer event
         emit Mint(
             initializer,
-            actualMintAmount,
-            actualMintAmount,
+            mintTokens,
             initializer
         );
         emit Transfer(address(this), initializer, 6942069);
@@ -252,6 +250,9 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
     /// @param mintAmount The amount of the underlying asset to supply
     /// @return bool true=success
     function mint(uint256 mintAmount) external nonReentrant returns (bool) {
+        // Fail if mint not allowed
+        lendtroller.mintAllowed(address(this), msg.sender);
+
         _mint(msg.sender, msg.sender, mintAmount);
         return true;
     }
@@ -267,6 +268,9 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
         uint256 mintAmount,
         address recipient
     ) external nonReentrant returns (bool) {
+        // Fail if mint not allowed
+        lendtroller.mintAllowed(address(this), recipient);
+
         _mint(msg.sender, recipient, mintAmount);
         return true;
     }
@@ -345,7 +349,7 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
         uint256 addAmount
     ) external nonReentrant onlyDaoPermissions {
         // On success, the market will deposit `addAmount` to the position vault
-        totalReserves = totalReserves + _doTransferIn(msg.sender, addAmount);
+        totalReserves = totalReserves + _enterVault(msg.sender, addAmount);
         // Query current DAO operating address
         address daoAddress = centralRegistry.daoAddress();
         // Deposit new reserves into gauge
@@ -375,7 +379,7 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
         );
 
         // _doTransferOut reverts if anything goes wrong
-        _doTransferOut(daoAddress, reduceAmount);
+        _exitVault(daoAddress, reduceAmount);
 
         emit ReservesReduced(daoAddress, reduceAmount, totalReserves);
     }
@@ -624,17 +628,9 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
         address recipient,
         uint256 mintAmount
     ) internal {
-        // Fail if mint not allowed
-        lendtroller.mintAllowed(address(this), recipient);
-
-        uint256 exchangeRate = exchangeRateStored();
+        
         // The function returns the amount actually received from the positionVault
-        uint256 actualMintAmount = _doTransferIn(user, mintAmount);
-
-        // We get the current exchange rate and calculate the number of cTokens
-        // to be minted:
-        // mintTokens = actualMintAmount / exchangeRate
-        uint256 mintTokens = (actualMintAmount * expScale) / exchangeRate;
+        uint256 mintTokens = _enterVault(user, mintAmount);
 
         unchecked {
             totalSupply = totalSupply + mintTokens;
@@ -648,7 +644,7 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
         GaugePool(gaugePool()).deposit(address(this), recipient, mintTokens);
 
         // We emit a Mint event, and a Transfer event
-        emit Mint(user, actualMintAmount, mintTokens, recipient);
+        emit Mint(user, mintTokens, recipient);
         emit Transfer(address(this), recipient, mintTokens);
     }
 
@@ -690,7 +686,7 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
         // We invoke _doTransferOut for the redeemer and the redeemAmount
         // so that we can withdraw tokens from the position vault for the redeemer
         // On success, the cToken has redeemAmount less of cash.
-        _doTransferOut(recipient, redeemAmount);
+        _exitVault(recipient, redeemAmount);
 
         // We emit a Transfer event, and a Redeem event
         emit Transfer(redeemer, address(this), redeemTokens);
@@ -728,8 +724,6 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
 
         uint256 protocolSeizeTokens = (seizeTokens *
             centralRegistry.protocolLiquidationFee()) / expScale;
-        uint256 protocolSeizeAmount = (exchangeRateStored() *
-            protocolSeizeTokens) / expScale;
         uint256 liquidatorSeizeTokens = seizeTokens - protocolSeizeTokens;
 
         // Document new account balances with underflow check on borrower balance
@@ -741,7 +735,7 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
         // Reserves should never overflow since totalSupply will always be
         // higher before function than totalReserves after this call
         unchecked {
-            totalReserves = totalReserves + protocolSeizeAmount;
+            totalReserves = totalReserves + protocolSeizeTokens;
             totalSupply = totalSupply - protocolSeizeTokens;
         }
 
@@ -753,11 +747,16 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
             liquidator,
             liquidatorSeizeTokens
         );
+        GaugePool(_gaugePool).deposit(
+            address(this),
+            centralRegistry.daoAddress(),
+            protocolSeizeTokens
+        );
 
         // Emit a Transfer event
         emit Transfer(borrower, liquidator, liquidatorSeizeTokens);
         emit Transfer(borrower, address(this), protocolSeizeTokens);
-        emit ReservesAdded(address(this), protocolSeizeAmount, totalReserves);
+        emit ReservesAdded(address(this), protocolSeizeTokens, totalReserves);
     }
 
     /// @notice Handles incoming token transfers and notifies the amount received
@@ -766,7 +765,7 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
     /// @param from Address of the sender of the tokens
     /// @param amount Amount of tokens to transfer in
     /// @return Returns the amount transferred
-    function _doTransferIn(
+    function _enterVault(
         address from,
         uint256 amount
     ) internal returns (uint256) {
@@ -791,7 +790,7 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
     /// @dev This function uses the SafeTransferLib to safely perform the transfer.
     /// @param to Address receiving the token transfer
     /// @param amount Amount of tokens to transfer out
-    function _doTransferOut(address to, uint256 amount) internal {
+    function _exitVault(address to, uint256 amount) internal {
         if (address(vault) != address(0)) {
             // withdraw from the vault
             amount = vault.redeem(amount, address(this), address(this));
