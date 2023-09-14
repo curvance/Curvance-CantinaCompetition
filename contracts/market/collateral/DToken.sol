@@ -18,18 +18,17 @@ import { IMToken, accountSnapshot } from "contracts/interfaces/market/IMToken.so
 contract DToken is IERC20, ERC165, ReentrancyGuard {
     /// TYPES ///
 
-    struct BorrowSnapshot {
-        /// principal total balance (with accrued interest),
-        /// after applying the most recent balance-changing action
+    struct DebtData {
+        /// @notice principal total balance (with accrued interest)
         uint256 principal;
-        /// Global borrowIndex as of the most recent balance-changing action
+        /// @notice current borrowIndex of user
         uint256 interestIndex;
     }
 
     /// CONSTANTS ///
 
     /// @notice Scalar for math
-    uint256 internal constant expScale = 1e18;
+    uint256 internal constant EXP_SCALE = 1e18;
 
     /// @notice for inspection
     bool public constant isDToken = true;
@@ -69,14 +68,14 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
     /// @notice Total number of tokens in circulation
     uint256 public totalSupply;
 
-    // account => token balance
-    mapping(address => uint256) internal _accountBalance;
+    /// @notice account => token balance
+    mapping(address => uint256) public balanceOf;
 
-    // account => spender => approved amount
+    /// @notice account => spender => approved amount
     mapping(address => mapping(address => uint256)) public allowance;
 
-    // account => BorrowSnapshot (Principal Borrowed, User Interest Index)
-    mapping(address => BorrowSnapshot) internal accountBorrows;
+    /// @notice account => BorrowSnapshot (Principal Borrowed, User Interest Index)
+    mapping(address => DebtData) internal debtOf;
 
     /// EVENTS ///
 
@@ -86,12 +85,6 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
         uint256 borrowIndex,
         uint256 totalBorrows
     );
-    event Mint(
-        address user,
-        uint256 amount,
-        address minter
-    );
-    event Redeem(address redeemer, uint256 amount, uint256 tokens);
 
     event Borrow(address borrower, uint256 amount);
     event Repay(address payer, address borrower, uint256 amount);
@@ -176,7 +169,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
 
         // Initialize timestamp and borrow index (timestamp mocks depend on lendtroller being set)
         accrualBlockTimestamp = block.timestamp;
-        borrowIndex = expScale;
+        borrowIndex = EXP_SCALE;
 
         _setInterestRateModel(interestRateModel_);
 
@@ -217,8 +210,8 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
         // We do not need to calculate exchange rate here as we will always be the initial depositer
         // These values should always be zero but we will add them just incase we are re-initiating a market
         totalSupply = totalSupply + mintAmount;
-        _accountBalance[initializer] =
-            _accountBalance[initializer] +
+        balanceOf[initializer] =
+            balanceOf[initializer] +
             mintAmount;
 
         // emit events on gauge pool
@@ -228,13 +221,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
             mintAmount
         );
 
-        // We emit a Mint event, and a Transfer event
-        emit Mint(
-            initializer,
-            mintAmount,
-            initializer
-        );
-        emit Transfer(address(this), initializer, 42069);
+        emit Transfer(address(0), initializer, 42069);
         return true;
     }
 
@@ -355,7 +342,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
         _redeem(
             msg.sender,
             tokensToRedeem,
-            (exchangeRateStored() * tokensToRedeem) / expScale,
+            (exchangeRateStored() * tokensToRedeem) / EXP_SCALE,
             msg.sender
         );
     }
@@ -366,7 +353,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
     function redeemUnderlying(uint256 redeemAmount) external nonReentrant {
         accrueInterest();
 
-        uint256 tokensToRedeem = (redeemAmount * expScale) /
+        uint256 tokensToRedeem = (redeemAmount * EXP_SCALE) /
             exchangeRateStored();
 
         // Fail if redeem not allowed
@@ -396,7 +383,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
 
         _redeem(
             user,
-            (tokensToRedeem * expScale) / exchangeRateStored(),
+            (tokensToRedeem * EXP_SCALE) / exchangeRateStored(),
             tokensToRedeem,
             msg.sender
         );
@@ -458,7 +445,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
         GaugePool(gaugePool()).deposit(address(this), daoAddress, amount);
 
         // We get the current exchange rate and calculate the number of dTokens to be minted:
-        uint256 tokens = (amount * expScale) / exchangeRateStored();
+        uint256 tokens = (amount * EXP_SCALE) / exchangeRateStored();
         totalReserves = totalReserves + tokens;
 
         emit ReservesAdded(daoAddress, tokens, totalReserves);
@@ -477,7 +464,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
             revert DToken__CashNotAvailable();
         }
 
-        uint256 tokens = (amount * expScale) / exchangeRateStored();
+        uint256 tokens = (amount * EXP_SCALE) / exchangeRateStored();
 
         // Need underflow check to check if we have sufficient totalReserves
         totalReserves = totalReserves - tokens;
@@ -503,18 +490,10 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
         address spender,
         uint256 amount
     ) external override returns (bool) {
-        transferAllowances[msg.sender][spender] = amount;
+        allowance[msg.sender][spender] = amount;
 
         emit Approval(msg.sender, spender, amount);
         return true;
-    }
-
-    /// @dev Returns the amount of tokens that `spender` can spend on behalf of `owner`.
-    function allowance(
-        address owner,
-        address spender
-    ) external view override returns (uint256) {
-        return transferAllowances[owner][spender];
     }
 
     /// @notice Reserve fee is in basis point form
@@ -557,7 +536,6 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
     function setLendtroller(
         address newLendtroller
     ) external onlyElevatedPermissions {
-
         _setLendtroller(newLendtroller);
     }
 
@@ -577,7 +555,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
     /// @param account The address of the account to query
     /// @return The amount of underlying owned by `account`
     function balanceOfUnderlying(address account) external returns (uint256) {
-        return ((exchangeRateCurrent() * balanceOf(account)) / expScale);
+        return ((exchangeRateCurrent() * balanceOf[account]) / EXP_SCALE);
     }
 
     /// @notice Get a snapshot of the account's balances, and the cached exchange rate
@@ -590,7 +568,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
         address account
     ) external view returns (uint256, uint256, uint256) {
         return (
-            balanceOf(account),
+            balanceOf[account],
             borrowBalanceStored(account),
             exchangeRateStored()
         );
@@ -606,7 +584,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
             accountSnapshot({
                 asset: IMToken(address(this)),
                 tokenType: 0,
-                mTokenBalance: balanceOf(account),
+                mTokenBalance: balanceOf[account],
                 borrowBalance: borrowBalanceStored(account),
                 exchangeRateScaled: exchangeRateStored()
             })
@@ -656,16 +634,6 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
 
     /// PUBLIC FUNCTIONS ///
 
-    /// @notice Get the token balance of the `account`
-    /// @param account The address of the account to query
-    /// @return balance The number of tokens owned by `account`
-    // @dev Returns the balance of tokens for `account`
-    function balanceOf(
-        address account
-    ) public view override returns (uint256) {
-        return _accountBalance[account];
-    }
-
     /// @notice Return the borrow balance of account based on stored data
     /// @param account The address whose balance should be calculated
     /// @return The calculated balance
@@ -673,7 +641,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
         address account
     ) public view returns (uint256) {
         // Cache borrow data to save gas
-        BorrowSnapshot storage borrowSnapshot = accountBorrows[account];
+        DebtData storage borrowSnapshot = debtOf[account];
 
         // If borrowBalance = 0 then borrowIndex is likely also 0
         if (borrowSnapshot.principal == 0) {
@@ -727,7 +695,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
         // when we list a market we mint a small amount ourselves
         // exchangeRate = (totalCash + totalBorrows - totalReserves) / totalSupply
         return
-            ((getCash() + totalBorrows - totalReserves) * expScale) /
+            ((getCash() + totalBorrows - totalReserves) * EXP_SCALE) /
             totalSupply;
     }
 
@@ -774,10 +742,10 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
         uint256 simpleInterestFactor = borrowRateScaled *
             (block.timestamp - accrualBlockTimestampPrior);
         uint256 interestAccumulated = (simpleInterestFactor * borrowsPrior) /
-            expScale;
+            EXP_SCALE;
         uint256 totalBorrowsNew = interestAccumulated + borrowsPrior;
         uint256 borrowIndexNew = ((simpleInterestFactor * borrowIndexPrior) /
-            expScale) + borrowIndexPrior;
+            EXP_SCALE) + borrowIndexPrior;
 
         // Update storage data
         accrualBlockTimestamp = block.timestamp;
@@ -785,7 +753,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
         totalBorrows = totalBorrowsNew;
         // totalReservesNew = interestAccumulated * reserveFactor + totalReserves
         totalReserves =
-            ((reserveFee() * interestAccumulated) / expScale) +
+            ((reserveFee() * interestAccumulated) / EXP_SCALE) +
             reservesPrior;
 
         // We emit an AccrueInterest event
@@ -862,16 +830,16 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
         // Get the allowance, if the spender is not the `from` address
         if (spender != from) {
             // Validate that spender has enough allowance for the transfer with underflow check
-            transferAllowances[from][spender] =
-                transferAllowances[from][spender] -
+            allowance[from][spender] =
+                allowance[from][spender] -
                 tokens;
         }
 
         // Update token balances
-        _accountBalance[from] = _accountBalance[from] - tokens;
-        /// We know that from balance wont overflow due to totalSupply check in constructor and underflow check above
+        balanceOf[from] = balanceOf[from] - tokens;
+        /// We know that from balance wont overflow due to underflow check above
         unchecked {
-            _accountBalance[to] = _accountBalance[to] + tokens;
+            balanceOf[to] = balanceOf[to] + tokens;
         }
 
         // emit events on gauge pool
@@ -905,24 +873,21 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
             amount
         );
 
-        // We get the current exchange rate and calculate the number of dTokens to be minted:
-        //  mintTokens = actualMintAmount / exchangeRate
-        uint256 mintTokens = (amount * expScale) / exchangeRate;
+        // Calculate dTokens to be minted
+        uint256 mintTokens = (amount * EXP_SCALE) / exchangeRate;
 
         unchecked {
             totalSupply = totalSupply + mintTokens;
             /// Calculate their new balance
-            _accountBalance[recipient] =
-                _accountBalance[recipient] +
+            balanceOf[recipient] =
+                balanceOf[recipient] +
                 mintTokens;
         }
 
         // emit events on gauge pool
         GaugePool(gaugePool()).deposit(address(this), recipient, mintTokens);
 
-        // We emit a Mint event, and a Transfer event
-        emit Mint(user, mintTokens, recipient);
-        emit Transfer(address(this), recipient, mintTokens);
+        emit Transfer(address(0), recipient, mintTokens);
     }
 
     /// @notice User redeems dTokens in exchange for the underlying asset
@@ -947,7 +912,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
             revert DToken__CannotEqualZero();
         }
 
-        _accountBalance[redeemer] = _accountBalance[redeemer] - tokens;
+        balanceOf[redeemer] = balanceOf[redeemer] - tokens;
         // We have user underflow check above so we do not need a redundant check here
         unchecked {
             totalSupply = totalSupply - tokens;
@@ -958,9 +923,7 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
 
         SafeTransferLib.safeTransfer(underlying, recipient, amount);
 
-        // We emit a Transfer event, and a Redeem event
-        emit Transfer(redeemer, address(this), tokens);
-        emit Redeem(redeemer, amount, tokens);
+        emit Transfer(redeemer, address(0), tokens);
     }
 
     /// @notice Users borrow assets from the protocol to their own address
@@ -976,10 +939,10 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
         }
 
         // We calculate the new borrower and total borrow balances, failing on overflow:
-        accountBorrows[borrower].principal =
+        debtOf[borrower].principal =
             borrowBalanceStored(borrower) +
             amount;
-        accountBorrows[borrower].interestIndex = borrowIndex;
+        debtOf[borrower].interestIndex = borrowIndex;
         totalBorrows = totalBorrows + amount;
 
         SafeTransferLib.safeTransfer(underlying, recipient, amount);
@@ -1020,10 +983,10 @@ contract DToken is IERC20, ERC165, ReentrancyGuard {
         );
 
         // We calculate the new borrower and total borrow balances, failing on underflow:
-        accountBorrows[borrower].principal =
+        debtOf[borrower].principal =
             accountBorrowsPrev -
             amount;
-        accountBorrows[borrower].interestIndex = borrowIndex;
+        debtOf[borrower].interestIndex = borrowIndex;
         totalBorrows -= amount;
 
         // We emit a Repay event

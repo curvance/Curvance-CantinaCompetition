@@ -50,21 +50,14 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
     uint256 public totalSupply;
 
     /// @notice account => token balance
-    mapping(address => uint256) internal _accountBalance;
+    mapping(address => uint256) public balanceOf;
 
     /// @notice account => spender => approved amount
-    mapping(address => mapping(address => uint256))
-        internal transferAllowances;
+    mapping(address => mapping(address => uint256)) public allowance;
 
     /// EVENTS ///
 
     event MigrateVault(address oldVault, address newVault);
-    event Mint(
-        address user,
-        uint256 amount,
-        address minter
-    );
-    event Redeem(address redeemer, uint256 amount, uint256 tokens);
     event NewLendtroller(address oldLendtroller, address newLendtroller);
     event ReservesAdded(
         address daoAddress,
@@ -164,8 +157,8 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
         // These values should always be zero but we will add them
         // just incase we are re-initiating a market.
         totalSupply = totalSupply + mintTokens;
-        _accountBalance[initializer] =
-            _accountBalance[initializer] +
+        balanceOf[initializer] =
+            balanceOf[initializer] +
             mintTokens;
 
         // emit events on gauge pool
@@ -175,14 +168,7 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
             mintTokens
         );
 
-        // We emit a Mint event, and a Transfer event
-        emit Mint(
-            initializer,
-            mintTokens,
-            initializer
-        );
-        emit Transfer(address(this), initializer, 42069);
-
+        emit Transfer(address(0), initializer, 42069);
         return true;
     }
 
@@ -381,20 +367,11 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
         address spender,
         uint256 amount
     ) external override returns (bool) {
-        transferAllowances[msg.sender][spender] = amount;
+        allowance[msg.sender][spender] = amount;
 
         emit Approval(msg.sender, spender, amount);
 
         return true;
-    }
-
-    /// @dev Returns the amount of tokens that `spender` can spend
-    ///      on behalf of `owner`.
-    function allowance(
-        address owner,
-        address spender
-    ) external view override returns (uint256) {
-        return transferAllowances[owner][spender];
     }
 
     /// @notice Rescue any token sent by mistake
@@ -437,7 +414,7 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
     /// @param account The address of the account to query
     /// @return The amount of underlying owned by `account`
     function balanceOfUnderlying(address account) external returns (uint256) {
-        return ((exchangeRateCurrent() * balanceOf(account)) / expScale);
+        return ((exchangeRateCurrent() * balanceOf[account]) / expScale);
     }
 
     /// @notice Get a snapshot of the account's balances,
@@ -450,7 +427,7 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
     function getAccountSnapshot(
         address account
     ) external view returns (uint256, uint256, uint256) {
-        return (balanceOf(account), 0, exchangeRateStored());
+        return (balanceOf[account], 0, exchangeRateStored());
     }
 
     /// @notice Get a snapshot of the cToken and `account` data
@@ -463,7 +440,7 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
             accountSnapshot({
                 asset: IMToken(address(this)),
                 tokenType: 1,
-                mTokenBalance: balanceOf(account),
+                mTokenBalance: balanceOf[account],
                 borrowBalance: 0,
                 exchangeRateScaled: exchangeRateStored()
             })
@@ -485,16 +462,6 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
     }
 
     /// PUBLIC FUNCTIONS ///
-
-    /// @notice Get the token balance of the `account`
-    /// @param account The address of the account to query
-    /// @return balance The number of tokens owned by `account`
-    // @dev Returns the balance of tokens for `account`
-    function balanceOf(
-        address account
-    ) public view override returns (uint256) {
-        return _accountBalance[account];
-    }
 
     /// @notice Returns the decimals of the token
     /// @dev We pull directly from underlying incase its a proxy contract
@@ -582,18 +549,16 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
         if (spender != from) {
             // Validate that spender has enough allowance for the transfer
             // with underflow check
-            transferAllowances[from][spender] =
-                transferAllowances[from][spender] -
+            allowance[from][spender] =
+                allowance[from][spender] -
                 amount;
         }
 
         // Update token balances
-        // shift token value by timestamp length bit length so we can check
-        // for underflow
-        _accountBalance[from] = _accountBalance[from] - amount;
+        balanceOf[from] = balanceOf[from] - amount;
         // We know that from balance wont overflow due to underflow check above
         unchecked {
-            _accountBalance[to] = _accountBalance[to] + amount;
+            balanceOf[to] = balanceOf[to] + amount;
         }
 
         // emit events on gauge pool
@@ -622,17 +587,15 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
         unchecked {
             totalSupply = totalSupply + mintTokens;
             /// Calculate their new balance
-            _accountBalance[recipient] =
-                _accountBalance[recipient] +
+            balanceOf[recipient] =
+                balanceOf[recipient] +
                 mintTokens;
         }
 
         // emit events on gauge pool
         GaugePool(gaugePool()).deposit(address(this), recipient, mintTokens);
 
-        // We emit a Mint event, and a Transfer event
-        emit Mint(user, mintTokens, recipient);
-        emit Transfer(address(this), recipient, mintTokens);
+        emit Transfer(address(0), recipient, mintTokens);
     }
 
     /// @notice User redeems cTokens in exchange for the underlying asset
@@ -653,13 +616,8 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
             revert CToken__CannotEqualZero();
         }
 
-        // Need to shift bits by timestamp length to make sure we do
-        // a proper underflow check.
-        // redeemTokens should never be above uint216 and the user can never
-        // have more than uint216.
-        // So if theyve put in a larger number than type(uint216).max
         // we know it will revert from underflow
-        _accountBalance[redeemer] = _accountBalance[redeemer] - tokens;
+        balanceOf[redeemer] = balanceOf[redeemer] - tokens;
 
         // We have user underflow check above so we do not need
         // a redundant check here
@@ -675,9 +633,7 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
         // On success, the cToken has redeemAmount less of cash.
         _exitVault(recipient, amount);
 
-        // We emit a Transfer event, and a Redeem event
-        emit Transfer(redeemer, address(this), tokens);
-        emit Redeem(redeemer, amount, tokens);
+        emit Transfer(redeemer, address(0), tokens);
     }
 
     /// @notice Transfers collateral tokens (this market) to the liquidator.
@@ -714,9 +670,9 @@ contract CToken is IERC20, ERC165, ReentrancyGuard {
         uint256 liquidatorSeizeTokens = tokens - protocolSeizeTokens;
 
         // Document new account balances with underflow check on borrower balance
-        _accountBalance[borrower] = _accountBalance[borrower] - tokens;
-        _accountBalance[liquidator] =
-            _accountBalance[liquidator] +
+        balanceOf[borrower] = balanceOf[borrower] - tokens;
+        balanceOf[liquidator] =
+            balanceOf[liquidator] +
             liquidatorSeizeTokens;
 
         // Reserves should never overflow since totalSupply will always be
