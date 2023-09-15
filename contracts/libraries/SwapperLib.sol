@@ -2,10 +2,8 @@
 pragma solidity ^0.8.17;
 
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
-import { ERC20 } from "contracts/libraries/ERC20.sol";
 
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
-import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 
 library SwapperLib {
     /// TYPES ///
