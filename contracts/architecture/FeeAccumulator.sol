@@ -423,6 +423,10 @@ contract FeeAccumulator is ReentrancyGuard {
                     tokenBalance
                 );
             }
+
+            unchecked {
+                ++i;
+            }
         }
 
         tokenBalance = IERC20(address(WETH)).balanceOf(address(this));
