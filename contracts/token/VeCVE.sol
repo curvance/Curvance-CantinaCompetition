@@ -1081,8 +1081,13 @@ contract VeCVE is ERC20 {
         uint40 unlockTimestamp = user[lockIndex].unlockTime;
 
         if (unlockTimestamp == CONTINUOUS_LOCK_VALUE) {
+            if (!continuousLock) {
+                _revert(_INVALID_LOCK_SELECTOR);
+            }
+
             // Increment the chain and user token point balance
             _incrementTokenPoints(recipient, _getContinuousPointValue(amount));
+            
             // Update the lock value to include the new locked tokens
             user[lockIndex].amount = uint216(user[lockIndex].amount + amount);
         } else {

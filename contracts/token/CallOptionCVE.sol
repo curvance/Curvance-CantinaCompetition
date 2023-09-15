@@ -44,7 +44,11 @@ contract CallOptionCVE is ERC20 {
     /// EVENTS ///
 
     event RemainingCVEWithdrawn(uint256 amount);
-    event CallOptionCVEExercised(address indexed exerciser, uint256 amount);
+    event OptionsExercised(address indexed exerciser, uint256 amount);
+
+    /// ERRORS /// 
+
+    error CallOptionCVE__ConstructorParametersareInvalid();
 
     /// MODIFIERS ///
 
@@ -64,17 +68,16 @@ contract CallOptionCVE is ERC20 {
         _name = "CVE Options";
         _symbol = "optCVE";
 
-        require(
-            ERC165Checker.supportsInterface(
+        if (!ERC165Checker.supportsInterface(
                 address(centralRegistry_),
                 type(ICentralRegistry).interfaceId
-            ),
-            "CallOptionCVE: invalid central registry"
-        );
-        require(
-            paymentToken_ != address(0),
-            "CallOptionCVE: invalid payment token"
-        );
+            )) {
+                revert CallOptionCVE__ConstructorParametersareInvalid();
+            }
+
+        if (paymentToken_ == address(0)) {
+            revert CallOptionCVE__ConstructorParametersareInvalid();
+        }
 
         centralRegistry = centralRegistry_;
         paymentToken = paymentToken_;
@@ -237,6 +240,6 @@ contract CallOptionCVE is ERC20 {
         // Transfer them corresponding CVE
         SafeTransferLib.safeTransfer(cve, msg.sender, amount);
 
-        emit CallOptionCVEExercised(msg.sender, amount);
+        emit OptionsExercised(msg.sender, amount);
     }
 }
