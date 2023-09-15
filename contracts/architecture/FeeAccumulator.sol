@@ -461,7 +461,7 @@ contract FeeAccumulator is ReentrancyGuard {
         uint256 gasForCalldata,
         uint256 gasForCrosschain
     ) external onlyDaoPermissions {
-        _gasForCrosschain = gasForCalldata;
+        _gasForCalldata = gasForCalldata;
         _gasForCrosschain = gasForCrosschain;
     }
 
