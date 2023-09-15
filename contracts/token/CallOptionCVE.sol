@@ -174,9 +174,7 @@ contract CallOptionCVE is ERC20 {
             "CallOptionCVE: invalid strike price configuration"
         );
 
-        paymentTokenPerCVE =
-            (strikePrice / paymentTokenCurrentPrice) /
-            expScale;
+        paymentTokenPerCVE = strikePrice / paymentTokenCurrentPrice;
     }
 
     /// PUBLIC FUNCTIONS ///

@@ -67,7 +67,7 @@ contract CVE is OFTV2 {
         daoTreasuryAllocation = daoTreasuryAllocation_;
         callOptionAllocation = callOptionAllocation_;
         teamAllocation = teamAllocation_;
-        teamAllocationPerMonth = teamAllocation_ / (48 * MONTH); // Team Vesting is for 4 years and unlocked monthly
+        teamAllocationPerMonth = teamAllocation_ / 48; // Team Vesting is for 4 years and unlocked monthly
 
         _mint(msg.sender, initialTokenMint_);
     }

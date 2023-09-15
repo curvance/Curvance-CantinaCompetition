@@ -230,6 +230,31 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         return _vaultIsActive == 2 ? "Active" : "Inactive";
     }
 
+    function maxDeposit(address to)
+        public
+        view
+        override
+        returns (uint256 maxAssets)
+    {
+        if (_vaultIsActive < 2) {
+            return;
+        }
+
+        super.maxDeposit(to);
+    }
+
+    function maxMint(address to)
+        public
+        view
+        override
+        returns (uint256 maxShares)
+    {
+        if (_vaultIsActive < 2) {
+            return;
+        }
+        super.maxMint(to);
+    }
+
     // DEPOSIT AND WITHDRAWAL LOGIC
 
     function deposit(
@@ -449,7 +474,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     function convertToShares(
         uint256 assets
     ) public view override returns (uint256) {
-        return _convertToShares(assets, totalSupply());
+        return _convertToShares(assets, totalAssets());
     }
 
     function convertToAssets(
@@ -605,7 +630,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         uint256 totalShares = totalSupply();
 
         shares = totalShares == 0
-            ? assets.changeDecimals(_asset.decimals(), 18)
+            ? assets
             : assets.mulDivDown(totalShares, _ta);
     }
 
@@ -616,7 +641,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         uint256 totalShares = totalSupply();
 
         assets = totalShares == 0
-            ? shares.changeDecimals(18, _asset.decimals())
+            ? shares
             : shares.mulDivDown(_ta, totalShares);
     }
 
@@ -634,7 +659,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         uint256 totalShares = totalSupply();
 
         assets = totalShares == 0
-            ? shares.changeDecimals(18, _asset.decimals())
+            ? shares
             : shares.mulDivUp(_ta, totalShares);
     }
 
@@ -645,7 +670,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         uint256 totalShares = totalSupply();
 
         shares = totalShares == 0
-            ? assets.changeDecimals(_asset.decimals(), 18)
+            ? assets
             : assets.mulDivUp(totalShares, _ta);
     }
 

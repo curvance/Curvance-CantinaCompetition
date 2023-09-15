@@ -378,12 +378,13 @@ contract Zapper {
         // approve lp token
         SwapperLib.approveTokenIfNeeded(lpToken, cToken, amount);
 
+        uint256 priorBalance = IERC20(cToken).balanceOf(recipient);
+
         // enter curvance
         require(
             CToken(cToken).mintFor(amount, recipient),
             "Zapper: error joining Curvance"
         );
-
-        out = CommonLib.getTokenBalance(cToken);
+        out = IERC20(cToken).balanceOf(recipient) - priorBalance;
     }
 }

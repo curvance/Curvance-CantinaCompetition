@@ -287,7 +287,7 @@ contract VeCVE is ERC20 {
             _updateTokenDataFromContinuousOn(
                 msg.sender,
                 priorUnlockEpoch,
-                _getContinuousPointValue(tokenAmount),
+                _getContinuousPointValue(tokenAmount) - tokenAmount,
                 tokenAmount
             );
         } else {
