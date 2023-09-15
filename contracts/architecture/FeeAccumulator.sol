@@ -632,6 +632,10 @@ contract FeeAccumulator is ReentrancyGuard {
                     delete crossChainLockData;
                     break;
                 }
+
+                unchecked {
+                    ++i;
+                }
             }
         }
 
