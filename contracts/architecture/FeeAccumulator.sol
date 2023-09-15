@@ -564,7 +564,7 @@ contract FeeAccumulator is ReentrancyGuard {
         currentList.pop();
 
         // Now delete the reward token support flag from mapping
-        delete tokenToRemove.isRewardToken;
+        tokenToRemove.isRewardToken = 1;
     }
 
     /// PUBLIC FUNCTIONS ///
