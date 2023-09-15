@@ -28,7 +28,7 @@ contract DTokenMintForTest is TestBaseDToken {
         uint256 totalSupply = dUSDC.totalSupply();
 
         vm.expectEmit(true, true, true, true, address(dUSDC));
-        emit Transfer(address(dUSDC), user1, 100e6);
+        emit Transfer(address(0), user1, 100e6);
 
         dUSDC.mintFor(100e6, user1);
 
