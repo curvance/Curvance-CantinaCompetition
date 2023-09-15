@@ -478,16 +478,20 @@ contract FeeAccumulator is ReentrancyGuard {
 
     /// @notice Moves WETH approval to new messaging hub
     /// @dev    Removes prior messaging hub approval for maximum safety
-    function reQueryMessagingHub() external onlyDaoPermissions {
+    function requeryMessagingHub() external onlyDaoPermissions {
         // Revoke previous approval
         SafeTransferLib.safeApprove(address(WETH), _previousMessagingHub, 0);
+
+        address messagingHub = centralRegistry.protocolMessagingHub();
 
         // We infinite approve WETH so that protocol messaging hub can drag funds to proper chain
         SafeTransferLib.safeApprove(
             address(WETH),
-            centralRegistry.protocolMessagingHub(),
+            messagingHub,
             type(uint256).max
         );
+
+        _previousMessagingHub = messagingHub;
     }
 
     /// @notice Adds multiple reward tokens to the contract for Gelato Network to read.
