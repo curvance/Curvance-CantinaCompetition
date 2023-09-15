@@ -436,9 +436,9 @@ contract FeeAccumulator is ReentrancyGuard {
 
     /// @notice Admin function to set Stargate router destination address to route fees
     function setStargateAddress(
-        address payable newOneBalanceAddress
+        address payable newRouter
     ) external onlyDaoPermissions {
-        oneBalanceAddress = newOneBalanceAddress;
+        router = newRouter;
     }
 
     /// @notice Admin function to set Gelato Network one balance destination address to fund compounders
