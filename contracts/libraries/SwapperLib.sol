@@ -24,30 +24,6 @@ library SwapperLib {
         bytes call;
     }
 
-    /// CONSTANTS ///
-    uint256 public constant SLIPPAGE_DENOMINATOR = 10000;
-
-    /// @notice Checks if the slippage is within an acceptable range.
-    /// @dev Calculates whether the zap slippage for the given input
-    ///      falls within the accepted range.
-    ///      If not, the function reverts with a message.
-    /// @param usdInput The USD amount input for the transaction.
-    /// @param usdOutput The USD amount output from the transaction.
-    /// @param slippage The slippage percentage for the transaction.
-    function checkSlippage(
-        uint256 usdInput,
-        uint256 usdOutput,
-        uint256 slippage
-    ) internal pure {
-        require(
-            usdOutput >=
-                (usdInput * (SLIPPAGE_DENOMINATOR - slippage)) / slippage &&
-                usdOutput <=
-                (usdInput * (SLIPPAGE_DENOMINATOR + slippage)) / slippage,
-            "SwapperLib: exceed slippage"
-        );
-    }
-
     /// @dev Swap input token
     /// @param swapData The swap data
     /// @return Swapped amount of token
