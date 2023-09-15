@@ -237,7 +237,8 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         returns (uint256 maxAssets)
     {
         if (_vaultIsActive < 2) {
-            return;
+            maxAssets = 0;
+            return maxAssets;
         }
 
         super.maxDeposit(to);
@@ -250,7 +251,8 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         returns (uint256 maxShares)
     {
         if (_vaultIsActive < 2) {
-            return;
+            maxShares = 0;
+            return maxShares;
         }
         super.maxMint(to);
     }
