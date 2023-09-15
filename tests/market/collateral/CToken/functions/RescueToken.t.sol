@@ -25,9 +25,9 @@ contract CTokenRescueTokenTest is TestBaseCToken {
         cBALRETH.rescueToken(address(0), balance + 1);
     }
 
-    function test_cTokenRescueToken_fail_whenTokenIsUnderlyingToken() public {
+    function test_cTokenRescueToken_fail_whenTokenIsVaultToken() public {
         vm.expectRevert("CToken: cannot withdraw vault tokens");
-        cBALRETH.rescueToken(_BALANCER_WETH_RETH, 100);
+        cBALRETH.rescueToken(address(vault), 100);
     }
 
     function test_cTokenRescueToken_fail_whenTokenAmountExceedsBalance()

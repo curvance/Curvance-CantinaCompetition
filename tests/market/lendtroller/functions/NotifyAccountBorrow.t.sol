@@ -2,6 +2,7 @@
 pragma solidity 0.8.17;
 
 import { TestBaseLendtroller } from "../TestBaseLendtroller.sol";
+import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
 
 contract NotifyAccountBorrowTest is TestBaseLendtroller {
     event MarketEntered(address mToken, address account);

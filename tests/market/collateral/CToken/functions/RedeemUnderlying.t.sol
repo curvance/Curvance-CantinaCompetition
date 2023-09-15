@@ -28,7 +28,7 @@ contract CTokenRedeemUnderlyingTest is TestBaseCToken {
         uint256 totalSupply = cBALRETH.totalSupply();
 
         vm.expectEmit(true, true, true, true, address(cBALRETH));
-        emit Transfer(address(this), address(cBALRETH), 100);
+        emit Transfer(address(this), address(0), 100);
 
         cBALRETH.redeemUnderlying(100);
 
