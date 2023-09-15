@@ -24,7 +24,7 @@ contract BorrowAllowedWithNotifyTest is TestBaseLendtroller {
     {
         vm.prank(address(dDAI));
 
-        vm.expectRevert(Lendtroller.Lendtroller__AddressUnauthorized.selector);
+        vm.expectRevert(Lendtroller.Lendtroller__TokenNotListed.selector);
         lendtroller.borrowAllowedWithNotify(address(dDAI), user1, 100e6);
     }
 
@@ -40,7 +40,7 @@ contract BorrowAllowedWithNotifyTest is TestBaseLendtroller {
     function test_borrowAllowedWithNotify_fail_whenMTokenIsNotListed() public {
         vm.prank(address(dUSDC));
 
-        vm.expectRevert(Lendtroller.Lendtroller__TokenNotListed.selector);
+        vm.expectRevert(Lendtroller.Lendtroller__AddressUnauthorized.selector);
         lendtroller.borrowAllowedWithNotify(address(dDAI), user1, 100e6);
     }
 

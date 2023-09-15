@@ -14,7 +14,7 @@ contract NotifyAccountBorrowTest is TestBaseLendtroller {
     }
 
     function test_notifyAccountBorrow_fail_whenCallerIsNotMToken() public {
-        vm.expectRevert(Lendtroller.Lendtroller__AddressUnauthorized.selector);
+        vm.expectRevert(Lendtroller.Lendtroller__TokenNotListed.selector);
         lendtroller.notifyAccountBorrow(user1);
     }
 
@@ -23,7 +23,7 @@ contract NotifyAccountBorrowTest is TestBaseLendtroller {
     {
         vm.prank(address(dDAI));
 
-        vm.expectRevert(Lendtroller.Lendtroller__AddressUnauthorized.selector);
+        vm.expectRevert(Lendtroller.Lendtroller__TokenNotListed.selector);
         lendtroller.notifyAccountBorrow(user1);
     }
 
