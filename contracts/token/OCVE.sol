@@ -9,7 +9,7 @@ import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
-contract CallOptionCVE is ERC20 {
+contract OCVE is ERC20 {
     /// CONSTANTS ///
 
     /// @notice Scalar for math
@@ -48,14 +48,14 @@ contract CallOptionCVE is ERC20 {
 
     /// ERRORS /// 
 
-    error CallOptionCVE__ConstructorParametersareInvalid();
+    error OCVE__ConstructorParametersareInvalid();
 
     /// MODIFIERS ///
 
     modifier onlyDaoPermissions() {
         require(
             centralRegistry.hasDaoPermissions(msg.sender),
-            "CallOptionCVE: UNAUTHORIZED"
+            "OCVE: UNAUTHORIZED"
         );
         _;
     }
@@ -66,17 +66,17 @@ contract CallOptionCVE is ERC20 {
     /// @param centralRegistry_ The Central Registry contract address.
     constructor(ICentralRegistry centralRegistry_, address paymentToken_) {
         _name = "CVE Options";
-        _symbol = "optCVE";
+        _symbol = "oCVE";
 
         if (!ERC165Checker.supportsInterface(
                 address(centralRegistry_),
                 type(ICentralRegistry).interfaceId
             )) {
-                revert CallOptionCVE__ConstructorParametersareInvalid();
+                revert OCVE__ConstructorParametersareInvalid();
             }
 
         if (paymentToken_ == address(0)) {
-            revert CallOptionCVE__ConstructorParametersareInvalid();
+            revert OCVE__ConstructorParametersareInvalid();
         }
 
         centralRegistry = centralRegistry_;
@@ -100,21 +100,21 @@ contract CallOptionCVE is ERC20 {
     ) external onlyDaoPermissions {
         require(
             recipient != address(0),
-            "CallOptionCVE: invalid recipient address"
+            "OCVE: invalid recipient address"
         );
 
         if (token == address(0)) {
             require(
                 address(this).balance >= amount,
-                "CallOptionCVE: insufficient balance"
+                "OCVE: insufficient balance"
             );
             (bool success, ) = payable(recipient).call{ value: amount }("");
-            require(success, "CallOptionCVE: !successful");
+            require(success, "OCVE: !successful");
         } else {
-            require(token != cve, "CallOptionCVE: cannot withdraw CVE");
+            require(token != cve, "OCVE: cannot withdraw CVE");
             require(
                 IERC20(token).balanceOf(address(this)) >= amount,
-                "CallOptionCVE: insufficient balance"
+                "OCVE: insufficient balance"
             );
             SafeTransferLib.safeTransfer(token, recipient, amount);
         }
@@ -125,7 +125,7 @@ contract CallOptionCVE is ERC20 {
     function withdrawRemainingAirdropTokens() external onlyDaoPermissions {
         require(
             block.timestamp > optionsEndTimestamp,
-            "CallOptionCVE: Too early"
+            "OCVE: Too early"
         );
         uint256 tokensToWithdraw = IERC20(cve).balanceOf(address(this));
         SafeTransferLib.safeTransfer(cve, msg.sender, tokensToWithdraw);
@@ -141,14 +141,14 @@ contract CallOptionCVE is ERC20 {
     ) external onlyDaoPermissions {
         require(
             timestampStart >= block.timestamp,
-            "CallOptionCVE: Start timestamp is invalid"
+            "OCVE: Start timestamp is invalid"
         );
-        require(strikePrice != 0, "CallOptionCVE: Strike price is invalid");
+        require(strikePrice != 0, "OCVE: Strike price is invalid");
 
         if (optionsStartTimestamp > 0) {
             require(
                 optionsStartTimestamp > block.timestamp,
-                "CallOptionCVE: Options exercising already active"
+                "OCVE: Options exercising already active"
             );
         }
 
@@ -166,7 +166,7 @@ contract CallOptionCVE is ERC20 {
 
         // Make sure that we didnt have a catastrophic error when pricing
         // the payment token
-        require(error < 2, "CallOptionCVE: error pulling paymentToken price");
+        require(error < 2, "OCVE: error pulling paymentToken price");
 
         // The strike price should always be greater than the token price
         // since it will be in 1e36 format offset,
@@ -174,7 +174,7 @@ contract CallOptionCVE is ERC20 {
         // always be larger
         require(
             strikePrice > paymentTokenCurrentPrice,
-            "CallOptionCVE: invalid strike price configuration"
+            "OCVE: invalid strike price configuration"
         );
 
         paymentTokenPerCVE = strikePrice / paymentTokenCurrentPrice;
@@ -203,18 +203,18 @@ contract CallOptionCVE is ERC20 {
     /// @notice Exercise CVE call options.
     /// @param amount The amount of options to exercise.
     function exerciseOption(uint256 amount) public payable {
-        require(amount > 0, "CallOptionCVE: invalid amount");
+        require(amount > 0, "OCVE: invalid amount");
         require(
             optionsExercisable(),
-            "CallOptionCVE: Options not exercisable yet"
+            "OCVE: Options not exercisable yet"
         );
         require(
             IERC20(cve).balanceOf(address(this)) >= amount,
-            "CallOptionCVE: not enough CVE remaining"
+            "OCVE: not enough CVE remaining"
         );
         require(
             balanceOf(msg.sender) >= amount,
-            "CallOptionCVE: not enough call options to exercise"
+            "OCVE: not enough call options to exercise"
         );
 
         uint256 optionExerciseCost = amount * paymentTokenPerCVE;
@@ -223,7 +223,7 @@ contract CallOptionCVE is ERC20 {
         if (paymentToken == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE) {
             require(
                 msg.value >= optionExerciseCost,
-                "CallOptionCVE: invalid msg value"
+                "OCVE: invalid msg value"
             );
         } else {
             SafeTransferLib.safeTransferFrom(

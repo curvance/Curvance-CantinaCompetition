@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.17;
 
-import { TestBaseCallOptionCVE } from "../TestBaseCallOptionCVE.sol";
+import { TestBaseOCVE } from "../TestBaseOCVE.sol";
 
-contract SetOptionsTermsTest is TestBaseCallOptionCVE {
+contract SetOptionsTermsTest is TestBaseOCVE {
     uint256 public paymentTokenCurrentPrice;
 
     function setUp() public override {
@@ -21,21 +21,21 @@ contract SetOptionsTermsTest is TestBaseCallOptionCVE {
     function test_setOptionsTerms_fail_whenCallerIsNotAuthorized() public {
         vm.prank(address(1));
 
-        vm.expectRevert("CallOptionCVE: UNAUTHORIZED");
-        callOptionCVE.setOptionsTerms(
+        vm.expectRevert("OCVE: UNAUTHORIZED");
+        oCVE.setOptionsTerms(
             block.timestamp,
             paymentTokenCurrentPrice * _ONE
         );
     }
 
     function test_setOptionsTerms_fail_whenStrikePriceIsZero() public {
-        vm.expectRevert("CallOptionCVE: Strike price is invalid");
-        callOptionCVE.setOptionsTerms(block.timestamp, 0);
+        vm.expectRevert("OCVE: Strike price is invalid");
+        oCVE.setOptionsTerms(block.timestamp, 0);
     }
 
     function test_setOptionsTerms_fail_whenStartTimestampIsInvalid() public {
-        vm.expectRevert("CallOptionCVE: Start timestamp is invalid");
-        callOptionCVE.setOptionsTerms(
+        vm.expectRevert("OCVE: Start timestamp is invalid");
+        oCVE.setOptionsTerms(
             block.timestamp - 1,
             paymentTokenCurrentPrice * _ONE
         );
@@ -44,37 +44,37 @@ contract SetOptionsTermsTest is TestBaseCallOptionCVE {
     function test_setOptionsTerms_fail_whenOptionsExercisingIsAlreadyActive()
         public
     {
-        callOptionCVE.setOptionsTerms(
+        oCVE.setOptionsTerms(
             block.timestamp,
             paymentTokenCurrentPrice * _ONE
         );
 
-        vm.expectRevert("CallOptionCVE: Options exercising already active");
-        callOptionCVE.setOptionsTerms(
+        vm.expectRevert("OCVE: Options exercising already active");
+        oCVE.setOptionsTerms(
             block.timestamp,
             paymentTokenCurrentPrice * _ONE
         );
     }
 
     function test_setOptionsTerms_fail_whenStrikePriceIsInvalid() public {
-        vm.expectRevert("CallOptionCVE: invalid strike price configuration");
-        callOptionCVE.setOptionsTerms(
+        vm.expectRevert("OCVE: invalid strike price configuration");
+        oCVE.setOptionsTerms(
             block.timestamp,
             paymentTokenCurrentPrice
         );
     }
 
     function test_setOptionsTerms_success() public {
-        callOptionCVE.setOptionsTerms(
+        oCVE.setOptionsTerms(
             block.timestamp,
             paymentTokenCurrentPrice * _ONE * 2
         );
 
-        assertEq(callOptionCVE.optionsStartTimestamp(), block.timestamp);
+        assertEq(oCVE.optionsStartTimestamp(), block.timestamp);
         assertEq(
-            callOptionCVE.optionsEndTimestamp(),
+            oCVE.optionsEndTimestamp(),
             block.timestamp + 4 weeks
         );
-        assertEq(callOptionCVE.paymentTokenPerCVE(), 2);
+        assertEq(oCVE.paymentTokenPerCVE(), 2);
     }
 }
