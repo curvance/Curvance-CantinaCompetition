@@ -219,12 +219,10 @@ contract FeeAccumulator is ReentrancyGuard {
 
         // We do not need expScale since ether and fees are already in 1e18 form
         // Transfer fees to Gelato Network One Balance or equivalent
-        ethRequiredForOTC =
-            ethRequiredForOTC -
-            _distributeETH(
-                oneBalanceAddress,
-                (ethRequiredForOTC * vaultCompoundFee()) / vaultYieldFee()
-            );
+        _distributeETH(
+            oneBalanceAddress,
+            (ethRequiredForOTC * vaultCompoundFee()) / vaultYieldFee()
+        );
         // Deposit remainder into WETH so protocol messaging hub can pull WETH to execute fee distribution
         WETH.deposit{ value: ethRequiredForOTC }();
 
