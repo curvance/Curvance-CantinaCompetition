@@ -56,10 +56,10 @@ contract FeeAccumulator is ReentrancyGuard {
 
     /// ERRORS ///
 
-    error FeeAccumulator_TransferFailed();
-    error FeeAccumulator_ConfigurationError();
-    error FeeAccumulator_InsufficientETH();
-    error FeeAccumulator_EarmarkError();
+    error FeeAccumulator__TransferFailed();
+    error FeeAccumulator__ConfigurationError();
+    error FeeAccumulator__InsufficientETH();
+    error FeeAccumulator__EarmarkError();
 
     /// MODIFIERS ///
 
@@ -106,7 +106,7 @@ contract FeeAccumulator is ReentrancyGuard {
                 type(ICentralRegistry).interfaceId
             )
         ) {
-            revert FeeAccumulator_ConfigurationError();
+            revert FeeAccumulator__ConfigurationError();
         }
 
         centralRegistry = centralRegistry_;
@@ -147,7 +147,7 @@ contract FeeAccumulator is ReentrancyGuard {
 
         uint256 numTokens = swapDataArray.length;
         if (numTokens != tokens.length) {
-            revert FeeAccumulator_ConfigurationError();
+            revert FeeAccumulator__ConfigurationError();
         }
         address currentToken;
 
@@ -158,7 +158,7 @@ contract FeeAccumulator is ReentrancyGuard {
                 continue;
             }
             if (rewardTokenInfo[currentToken].isRewardToken != 2) {
-                revert FeeAccumulator_ConfigurationError();
+                revert FeeAccumulator__ConfigurationError();
             }
 
             // Swap from token to output token (ETH)
@@ -191,7 +191,7 @@ contract FeeAccumulator is ReentrancyGuard {
     ) external payable onlyDaoPermissions nonReentrant {
         // Validate that the token is earmarked for OTC
         if (rewardTokenInfo[tokenToOTC].forOTC < 2) {
-            revert FeeAccumulator_EarmarkError();
+            revert FeeAccumulator__EarmarkError();
         }
 
         // Cache router to save gas
@@ -210,7 +210,7 @@ contract FeeAccumulator is ReentrancyGuard {
 
         // Validate we got prices back
         if (errorCodeETH == 2 || errorCodeSwap == 2) {
-            revert FeeAccumulator_ConfigurationError();
+            revert FeeAccumulator__ConfigurationError();
         }
 
         address daoAddress = centralRegistry.daoAddress();
@@ -220,7 +220,7 @@ contract FeeAccumulator is ReentrancyGuard {
 
         // Validate enough ether has been provided
         if (msg.value < ethRequiredForOTC) {
-            revert FeeAccumulator_InsufficientETH();
+            revert FeeAccumulator__InsufficientETH();
         }
 
         // We do not need expScale since ether and fees are already in 1e18 form
@@ -259,11 +259,11 @@ contract FeeAccumulator is ReentrancyGuard {
         );
 
         if (chainData.isSupported < 2) {
-            revert FeeAccumulator_ConfigurationError();
+            revert FeeAccumulator__ConfigurationError();
         }
 
         if (chainData.cveAddress != toAddress) {
-            revert FeeAccumulator_ConfigurationError();
+            revert FeeAccumulator__ConfigurationError();
         }
 
         ICVE CVE = ICVE(centralRegistry.CVE());
@@ -408,7 +408,7 @@ contract FeeAccumulator is ReentrancyGuard {
     function migrateFeeAccumulator() external {
         address newFeeAccumulator = centralRegistry.feeAccumulator();
         if (newFeeAccumulator == address(this)) {
-            revert FeeAccumulator_ConfigurationError();
+            revert FeeAccumulator__ConfigurationError();
         }
 
         address[] memory currentRewardTokens = rewardTokens;
@@ -507,7 +507,7 @@ contract FeeAccumulator is ReentrancyGuard {
     ) external onlyDaoPermissions {
         uint256 numTokens = newTokens.length;
         if (numTokens == 0) {
-            revert FeeAccumulator_ConfigurationError();
+            revert FeeAccumulator__ConfigurationError();
         }
 
         for (uint256 i; i < numTokens; ++i) {
@@ -531,7 +531,7 @@ contract FeeAccumulator is ReentrancyGuard {
             rewardTokenToRemove
         ];
         if (tokenToRemove.isRewardToken != 2) {
-            revert FeeAccumulator_ConfigurationError();
+            revert FeeAccumulator__ConfigurationError();
         }
 
         address[] memory currentTokens = rewardTokens;
@@ -553,7 +553,7 @@ contract FeeAccumulator is ReentrancyGuard {
         if (tokenIndex == numTokens--) {
             // we were unable to find the token in the array,
             // so something is wrong and we need to revert
-            revert FeeAccumulator_ConfigurationError();
+            revert FeeAccumulator__ConfigurationError();
         }
 
         // copy last item in list to location of item to be removed
@@ -821,8 +821,8 @@ contract FeeAccumulator is ReentrancyGuard {
         assembly {
             // Revert if we failed to transfer eth
             if iszero(call(gas(), recipient, amount, 0x00, 0x00, 0x00, 0x00)) {
-                // bytes4(keccak256(bytes("FeeAccumulator_TransferFailed()")))
-                mstore(0x00, 0x3595adc2)
+                // bytes4(keccak256(bytes("FeeAccumulator__TransferFailed()")))
+                mstore(0x00, 0xf7d285e4)
                 // return bytes 29-32 for the selector
                 revert(0x1c, 0x04)
             }
