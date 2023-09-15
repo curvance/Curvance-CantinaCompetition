@@ -730,6 +730,10 @@ contract FeeAccumulator is ReentrancyGuard {
                 }),
                 ""
             );
+
+            unchecked {
+                ++i;
+            }
         }
 
         feeBalanceForChain = (feeBalance * lockedTokens) / totalLockedTokens;
