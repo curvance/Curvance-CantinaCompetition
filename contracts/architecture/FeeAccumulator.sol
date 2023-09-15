@@ -155,6 +155,9 @@ contract FeeAccumulator is ReentrancyGuard {
             if (rewardTokenInfo[currentToken].forOTC == 2) {
                 continue;
             }
+            if (rewardTokenInfo[currentToken].isRewardToken != 2) {
+                revert FeeAccumulator_ConfigurationError();
+            }
 
             // Swap from token to output token (ETH)
             // Note: Because this is ran directly from Gelato Network we know we will not have a malicious actor on swap routing
