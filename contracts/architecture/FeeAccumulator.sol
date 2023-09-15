@@ -648,12 +648,12 @@ contract FeeAccumulator is ReentrancyGuard {
         uint256 numChains,
         uint256 epoch,
         uint256 chainId
-    ) internal returns (uint256) {
+    ) internal returns (uint256 epochRewardsPerCVE) {
         uint256 feeBalance = IERC20(address(WETH)).balanceOf(address(this));
         IProtocolMessagingHub messagingHub = IProtocolMessagingHub(
             centralRegistry.protocolMessagingHub()
         );
-        uint256 minBalance;
+        uint256 lockedTokens;
 
         {
             // Use scoping to avoid stack too deep
@@ -680,17 +680,33 @@ contract FeeAccumulator is ReentrancyGuard {
             WETH.withdraw(layerZeroFees);
             feeBalance = feeBalance - (stargateFees + layerZeroFees);
 
-            uint256 totalChains = numChains + 1;
-            // Need to add extra 1 to numChainData for this chain itself
-            feeBalance = feeBalance / (totalChains);
-            minBalance = (feeBalance * SLIPPED_MINIMUM) / SLIPPAGE_DENOMINATOR;
+            IVeCVE veCVE = IVeCVE(centralRegistry.veCVE());
+            lockedTokens = (veCVE.chainTokenPoints() -
+                veCVE.chainUnlocksByEpoch(epoch));
         }
+
+        uint256 totalLockedTokens = lockedTokens;
+
+        // Record this chains reward data and prep remaining data for other chains
+        for (uint256 i; i < numChains; ) {
+            totalLockedTokens += crossChainLockData[i].lockAmount;
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        uint256 feeBalanceForChain;
 
         // Messaging Hub can pull WETH directly so we do not need to queue up any safe transfers
         for (uint256 i; i < numChains; ) {
             chainData = centralRegistry.supportedChainData(
                 crossChainLockData[i].chainId
             );
+            feeBalanceForChain =
+                (feeBalance * crossChainLockData[i].lockAmount) /
+                totalLockedTokens;
+
             messagingHub.sendFees(
                 router,
                 PoolData({
@@ -699,8 +715,9 @@ contract FeeAccumulator is ReentrancyGuard {
                     ),
                     srcPoolId: chainData.asSourceAux,
                     dstPoolId: chainData.asDestinationAux,
-                    amountLD: feeBalance,
-                    minAmountLD: minBalance
+                    amountLD: feeBalanceForChain,
+                    minAmountLD: (feeBalanceForChain * SLIPPED_MINIMUM) /
+                        SLIPPAGE_DENOMINATOR
                 }),
                 lzTxObj({
                     dstGasForCall: 0,
@@ -711,23 +728,16 @@ contract FeeAccumulator is ReentrancyGuard {
             );
         }
 
-        uint256 totalLockedTokens;
-        uint256 epochRewardsPerCVE;
+        feeBalanceForChain = (feeBalance * lockedTokens) / totalLockedTokens;
+        epochRewardsPerCVE =
+            (feeBalanceForChain * expScale) /
+            totalLockedTokens;
 
-        // Record this chains reward data and prep remaining data for other chains
-        for (uint256 i; i < numChains; ) {
-            totalLockedTokens += crossChainLockData[i].lockAmount;
-        }
+        WETH.withdraw(feeBalanceForChain);
 
         address locker = centralRegistry.cveLocker();
-        address veCVE = centralRegistry.veCVE();
 
-        totalLockedTokens += (IVeCVE(veCVE).chainTokenPoints() -
-            IVeCVE(veCVE).chainUnlocksByEpoch(epoch));
-
-        epochRewardsPerCVE = (feeBalance * expScale) / totalLockedTokens;
-        WETH.withdraw(feeBalance);
-        _distributeETH(payable(locker), feeBalance);
+        _distributeETH(payable(locker), feeBalanceForChain);
         ICVELocker(locker).recordEpochRewards(epoch, epochRewardsPerCVE);
 
         return epochRewardsPerCVE;
