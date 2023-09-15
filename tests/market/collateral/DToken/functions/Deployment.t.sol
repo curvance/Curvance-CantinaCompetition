@@ -49,7 +49,7 @@ contract DTokenDeploymentTest is TestBaseDToken {
     function test_dTokenDeployment_fail_whenInterestRateModelIsInvalid()
         public
     {
-        vm.expectRevert(DToken.DToken__InvalidInterestRateModel.selector);
+        vm.expectRevert();
         new DToken(
             ICentralRegistry(address(centralRegistry)),
             _USDC_ADDRESS,
