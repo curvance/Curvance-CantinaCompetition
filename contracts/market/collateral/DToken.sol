@@ -126,7 +126,6 @@ contract DToken is ERC165, ReentrancyGuard {
     error DToken__ValidationFailed();
     error DToken__ConstructorParametersareInvalid();
     error DToken__LendtrollerIsNotLendingMarket();
-    error DToken__InvalidInterestRateModel();
 
     /// MODIFIERS ///
 
@@ -806,9 +805,7 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @param newInterestRateModel the new interest rate model to use
     function _setInterestRateModel(address newInterestRateModel) internal {
         // Ensure we are switching to an actual Interest Rate Model
-        if (!InterestRateModel(newInterestRateModel).isInterestRateModel()) {
-            revert DToken__InvalidInterestRateModel();
-        }
+        InterestRateModel(newInterestRateModel).isInterestRateModel();
 
         // Cache the current interest rate model to save gas
         address oldInterestRateModel = address(interestRateModel);
