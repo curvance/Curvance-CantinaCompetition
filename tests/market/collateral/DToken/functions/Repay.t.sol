@@ -9,6 +9,9 @@ contract DTokenRepayTest is TestBaseDToken {
     function setUp() public override {
         super.setUp();
 
+        vm.prank(user1);
+        dUSDC.mintFor(100e6, address(this));
+
         dUSDC.borrow(100e6);
 
         skip(15 minutes);

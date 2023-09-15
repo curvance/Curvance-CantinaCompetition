@@ -28,7 +28,7 @@ contract DTokenRedeemUnderlyingTest is TestBaseDToken {
         uint256 totalSupply = dUSDC.totalSupply();
 
         vm.expectEmit(true, true, true, true, address(dUSDC));
-        emit Transfer(address(this), address(dUSDC), 100e6);
+        emit Transfer(address(this), address(0), 100e6);
 
         dUSDC.redeemUnderlying(100e6);
 
