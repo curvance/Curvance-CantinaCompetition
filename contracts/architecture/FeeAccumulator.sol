@@ -87,7 +87,9 @@ contract FeeAccumulator is ReentrancyGuard {
         _;
     }
 
-    receive() external payable {}
+    receive() external payable {
+        WETH.deposit{ value: msg.value }();
+    }
 
     /// CONSTRUCTOR ///
 
