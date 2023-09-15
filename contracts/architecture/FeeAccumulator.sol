@@ -52,6 +52,7 @@ contract FeeAccumulator is ReentrancyGuard {
     // on daily operations and to help with gelato network structure
     address[] public rewardTokens; // Used for Gelato Network bots to check what tokens to swap
     mapping(address => RewardToken) public rewardTokenInfo; // 2 = yes; 0 or 1 = no
+    mapping(uint16 => mapping(uint256 => uint256)) public lockedTokenDataSent; // 2 = yes;
 
     /// ERRORS ///
 
@@ -239,6 +240,15 @@ contract FeeAccumulator is ReentrancyGuard {
         uint16 dstChainId,
         bytes32 toAddress
     ) external onlyHarvestor {
+        ICVELocker locker = ICVELocker(centralRegistry.cveLocker());
+        uint256 epoch = locker.nextEpochToDeliver();
+
+        if (lockedTokenDataSent[dstChainId][epoch] == 2) {
+            return;
+        }
+
+        lockedTokenDataSent[dstChainId][epoch] = 2;
+
         ChainData memory chainData = centralRegistry.supportedChainData(
             dstChainId
         );
@@ -250,16 +260,13 @@ contract FeeAccumulator is ReentrancyGuard {
         if (chainData.cveAddress != toAddress) {
             revert FeeAccumulator_ConfigurationError();
         }
+
         ICVE CVE = ICVE(centralRegistry.CVE());
-        address veCVE = centralRegistry.veCVE();
+        IVeCVE veCVE = IVeCVE(centralRegistry.veCVE());
         uint16 version = 1;
 
         bytes memory payload = abi.encode(
-            IVeCVE(veCVE).chainTokenPoints() -
-                IVeCVE(veCVE).chainUnlocksByEpoch(
-                    ICVELocker(centralRegistry.cveLocker())
-                        .nextEpochToDeliver()
-                )
+            veCVE.chainTokenPoints() - veCVE.chainUnlocksByEpoch(epoch)
         );
 
         uint256 gas = CVE.estimateSendAndCallFee(
