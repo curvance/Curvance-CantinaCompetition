@@ -15,7 +15,7 @@ contract BorrowAllowedWithNotifyTest is TestBaseLendtroller {
     }
 
     function test_borrowAllowedWithNotify_fail_whenCallerIsNotMToken() public {
-        vm.expectRevert("Lendtroller: Caller not MToken");
+        vm.expectRevert(Lendtroller.Lendtroller__AddressUnauthorized.selector);
         lendtroller.borrowAllowedWithNotify(address(dUSDC), user1, 100e6);
     }
 
@@ -24,7 +24,7 @@ contract BorrowAllowedWithNotifyTest is TestBaseLendtroller {
     {
         vm.prank(address(dDAI));
 
-        vm.expectRevert("Lendtroller: Caller not MToken");
+        vm.expectRevert(Lendtroller.Lendtroller__AddressUnauthorized.selector);
         lendtroller.borrowAllowedWithNotify(address(dDAI), user1, 100e6);
     }
 
