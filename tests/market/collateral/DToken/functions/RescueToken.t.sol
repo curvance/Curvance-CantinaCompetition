@@ -21,12 +21,12 @@ contract DTokenRescueTokenTest is TestBaseDToken {
     function test_dTokenRescueToken_fail_whenETHAmountExceedsBalance() public {
         uint256 balance = address(dUSDC).balance;
 
-        vm.expectRevert("DToken: insufficient balance");
+        vm.expectRevert(DToken.DToken__ExcessiveValue.selector);
         dUSDC.rescueToken(address(0), balance + 1);
     }
 
     function test_dTokenRescueToken_fail_whenTokenIsUnderlyingToken() public {
-        vm.expectRevert("DToken: cannot withdraw underlying");
+        vm.expectRevert(DToken.DToken__TransferNotAllowed.selector);
         dUSDC.rescueToken(_USDC_ADDRESS, 100);
     }
 
@@ -35,7 +35,7 @@ contract DTokenRescueTokenTest is TestBaseDToken {
     {
         uint256 balance = dai.balanceOf(address(dUSDC));
 
-        vm.expectRevert("DToken: insufficient balance");
+        vm.expectRevert(DToken.DToken__ExcessiveValue.selector);
         dUSDC.rescueToken(_DAI_ADDRESS, balance + 1);
     }
 

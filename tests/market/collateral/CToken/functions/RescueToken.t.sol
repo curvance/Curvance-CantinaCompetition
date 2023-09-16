@@ -21,12 +21,12 @@ contract CTokenRescueTokenTest is TestBaseCToken {
     function test_cTokenRescueToken_fail_whenETHAmountExceedsBalance() public {
         uint256 balance = address(cBALRETH).balance;
 
-        vm.expectRevert("CToken: insufficient balance");
+        vm.expectRevert(CToken.CToken__ExcessiveValue.selector);
         cBALRETH.rescueToken(address(0), balance + 1);
     }
 
     function test_cTokenRescueToken_fail_whenTokenIsVaultToken() public {
-        vm.expectRevert("CToken: cannot withdraw vault tokens");
+        vm.expectRevert(CToken.CToken__TransferNotAllowed.selector);
         cBALRETH.rescueToken(address(vault), 100);
     }
 
@@ -35,7 +35,7 @@ contract CTokenRescueTokenTest is TestBaseCToken {
     {
         uint256 balance = usdc.balanceOf(address(cBALRETH));
 
-        vm.expectRevert("CToken: insufficient balance");
+        vm.expectRevert(CToken.CToken__ExcessiveValue.selector);
         cBALRETH.rescueToken(_USDC_ADDRESS, balance + 1);
     }
 

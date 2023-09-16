@@ -21,7 +21,7 @@ contract SetCloseFactorTest is TestBaseLendtroller {
 
     function test_setCloseFactor_success() public {
         vm.expectEmit(true, true, true, true, address(lendtroller));
-        emit NewCloseFactor(0, 1e18);
+        emit NewCloseFactor(0.5e18, 1e18);
 
         lendtroller.setCloseFactor(1e18);
 

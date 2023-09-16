@@ -27,7 +27,7 @@ contract SetCollateralizationRatioTest is TestBaseLendtroller {
         vm.expectRevert(Lendtroller.Lendtroller__InvalidValue.selector);
         lendtroller.setCollateralizationRatio(
             IMToken(address(dUSDC)),
-            0.9e18 + 1
+            0.91e18 + 1
         );
     }
 
