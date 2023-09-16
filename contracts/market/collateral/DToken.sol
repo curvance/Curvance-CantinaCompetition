@@ -608,22 +608,33 @@ contract DToken is ERC165, ReentrancyGuard {
         );
     }
 
-    /// @notice Returns the current per-second borrow interest rate for this dToken
-    /// @return The borrow interest rate per second, scaled by 1e18
-    function borrowRatePerSecond() external view returns (uint256) {
+    /// @notice Calculates the current dToken utilization rate
+    /// @return The utilization rate between [0, EXP_SCALE]
+    function utilizationRate() external view returns (uint256) {
+        return 
+            interestRateModel.utilizationRate(
+                getCash(),
+                totalBorrows,
+                totalReserves
+        );
+    }
+
+    /// @notice Returns the current dToken borrow interest rate per year
+    /// @return The borrow interest rate per year, scaled by 1e18
+    function borrowRatePerYear() external view returns (uint256) {
         return
-            interestRateModel.getBorrowRate(
+            interestRateModel.getBorrowRatePerYear(
                 getCash(),
                 totalBorrows,
                 totalReserves
             );
     }
 
-    /// @notice Returns the current per-second supply interest rate for this dToken
-    /// @return The supply interest rate per second, scaled by 1e18
-    function supplyRatePerSecond() external view returns (uint256) {
+    /// @notice Returns the current dToken supply interest rate per year
+    /// @return The supply interest rate per year, scaled by 1e18
+    function supplyRatePerYear() external view returns (uint256) {
         return
-            interestRateModel.getSupplyRate(
+            interestRateModel.getSupplyRatePerYear(
                 getCash(),
                 totalBorrows,
                 totalReserves,

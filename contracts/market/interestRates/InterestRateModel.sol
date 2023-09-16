@@ -130,7 +130,7 @@ contract InterestRateModel {
         return (borrows * EXP_SCALE) / (cash + borrows - reserves);
     }
 
-    /// @notice Calculates the current borrow rate per second
+    /// @notice Calculates the current borrow rate per compound
     /// @param cash The amount of cash in the market
     /// @param borrows The amount of borrows in the market
     /// @param reserves The amount of reserves in the market
@@ -154,23 +154,57 @@ contract InterestRateModel {
         }
     }
 
-    /// @notice Calculates the current supply rate per second
+    /// @notice Calculates the current supply rate per compound
     /// @param cash The amount of cash in the market
     /// @param borrows The amount of borrows in the market
     /// @param reserves The amount of reserves in the market
-    /// @param marketReservesInterestFee The current interest rate reserve factor for the market
+    /// @param interestFee The current interest rate reserve factor for the market
     /// @return The supply rate percentage per second (scaled by 1e18)
     function getSupplyRate(
         uint256 cash,
         uint256 borrows,
         uint256 reserves,
-        uint256 marketReservesInterestFee
+        uint256 interestFee
     ) public view returns (uint256) {
         /// RateToPool = (borrowRate * oneMinusReserveFactor) / EXP_SCALE;
-        uint256 rateToPool = (getBorrowRate(cash, borrows, reserves) * (EXP_SCALE - marketReservesInterestFee)) / EXP_SCALE;
+        uint256 rateToPool = (getBorrowRate(cash, borrows, reserves) * (EXP_SCALE - interestFee)) / EXP_SCALE;
 
         /// Supply Rate = (utilizationRate * rateToPool) / EXP_SCALE;
         return (utilizationRate(cash, borrows, reserves) * rateToPool) / EXP_SCALE;
+    }
+
+
+    /// @notice Calculates the current borrow rate per year
+    /// @param cash The amount of cash in the market
+    /// @param borrows The amount of borrows in the market
+    /// @param reserves The amount of reserves in the market
+    /// @return The borrow rate percentage per second (scaled by 1e18)
+    function getBorrowRatePerYear(
+        uint256 cash,
+        uint256 borrows,
+        uint256 reserves) external view returns (uint256) {
+            return 
+                SECONDS_PER_YEAR * 
+                (getBorrowRate(cash, borrows, reserves) / 
+                INTEREST_COMPOUND_RATE);
+        }
+
+    /// @notice Calculates the current supply rate per year
+    /// @param cash The amount of cash in the market
+    /// @param borrows The amount of borrows in the market
+    /// @param reserves The amount of reserves in the market
+    /// @param interestFee The current interest rate reserve factor for the market
+    /// @return The supply rate percentage per second (scaled by 1e18)
+    function getSupplyRatePerYear(
+        uint256 cash,
+        uint256 borrows,
+        uint256 reserves,
+        uint256 interestFee
+    )  external view returns (uint256) {
+        return 
+                SECONDS_PER_YEAR * 
+                (getSupplyRate(cash, borrows, reserves, interestFee) / 
+                INTEREST_COMPOUND_RATE);
     }
 
     /// @notice Returns the rate at which interest compounds, in seconds
