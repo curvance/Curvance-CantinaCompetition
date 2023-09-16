@@ -771,7 +771,7 @@ contract DToken is ERC165, ReentrancyGuard {
             EXP_SCALE) + exchangeRatePrior;
 
         // Update storage data
-        borrowExchangeRate.lastTimestampUpdated = uint32(borrowData.lastTimestampUpdated + interestCompounds);
+        borrowExchangeRate.lastTimestampUpdated = uint32(borrowData.lastTimestampUpdated + (interestCompounds * borrowData.compoundRate));
         borrowExchangeRate.exchangeRate = uint224(exchangeRateNew);
         totalBorrows = totalBorrowsNew;
         totalReserves =
