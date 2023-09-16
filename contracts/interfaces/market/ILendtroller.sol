@@ -57,14 +57,12 @@ interface ILendtroller {
 
     function getMarketTokenData(
         address mToken
-    ) external view returns (bool, uint256);
+    ) external view returns (bool, uint256, uint256);
 
     function getAccountMembership(
         address mToken,
         address user
     ) external view returns (bool);
-
-    function getAllMarkets() external view returns (IMToken[] memory);
 
     function getAccountAssets(
         address mToken

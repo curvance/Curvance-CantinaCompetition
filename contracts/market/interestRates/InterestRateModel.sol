@@ -11,10 +11,14 @@ contract InterestRateModel {
     /// Unix time has 31,536,000 seconds per year 
     /// All my homies hate leap seconds and leap years
     uint256 private constant SECONDS_PER_YEAR = 31536000;
-    uint256 private constant EXP_SCALE = 1e18; // Scalar for math
+    /// @notice Scalar for math
+    uint256 private constant EXP_SCALE = 1e18;
+    /// @notice Rate at which interest is compounded, in seconds
     uint256 internal constant INTEREST_COMPOUND_RATE = 300;
-    bool public constant isInterestRateModel = true; // for inspection
-    ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
+    /// @notice For external contract's to call for validation
+    bool public constant IS_INTEREST_RATE_MODEL = true;
+    /// @notice Curvance DAO hub
+    ICentralRegistry public immutable centralRegistry;
 
     /// STORAGE ///
 

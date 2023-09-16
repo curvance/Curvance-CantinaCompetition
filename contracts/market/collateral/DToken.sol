@@ -811,7 +811,7 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @param newInterestRateModel the new interest rate model to use
     function _setInterestRateModel(address newInterestRateModel) internal {
         // Ensure we are switching to an actual Interest Rate Model
-        InterestRateModel(newInterestRateModel).isInterestRateModel();
+        InterestRateModel(newInterestRateModel).IS_INTEREST_RATE_MODEL();
 
         // Cache the current interest rate model to save gas
         address oldInterestRateModel = address(interestRateModel);
