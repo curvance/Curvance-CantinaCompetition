@@ -2,6 +2,7 @@
 pragma solidity 0.8.17;
 
 import { TestBaseDToken } from "../TestBaseDToken.sol";
+import { DToken } from "contracts/market/collateral/DToken.sol";
 
 contract DTokenRescueTokenTest is TestBaseDToken {
     function setUp() public override {

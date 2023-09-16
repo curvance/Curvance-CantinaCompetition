@@ -2,6 +2,7 @@
 pragma solidity 0.8.17;
 
 import { TestBaseCToken } from "../TestBaseCToken.sol";
+import { CToken } from "contracts/market/collateral/CToken.sol";
 
 contract CTokenRescueTokenTest is TestBaseCToken {
     function setUp() public override {
