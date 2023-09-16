@@ -68,9 +68,9 @@ contract InterestRateModel {
         centralRegistry = centralRegistry_;
 
         baseRate =
-            (baseRatePerYear * EXP_SCALE) /
-            (INTEREST_COMPOUND_RATE * SECONDS_PER_YEAR * vertexUtilizationStart);
-        vertexRate = vertexRatePerYear / (INTEREST_COMPOUND_RATE * SECONDS_PER_YEAR);
+            (INTEREST_COMPOUND_RATE * baseRatePerYear * EXP_SCALE) /
+            (SECONDS_PER_YEAR * vertexUtilizationStart);
+        vertexRate = (INTEREST_COMPOUND_RATE * vertexRatePerYear) / SECONDS_PER_YEAR;
         vertexStart = vertexUtilizationStart;
 
         emit NewInterestRateModel(
@@ -97,9 +97,9 @@ contract InterestRateModel {
     ) external onlyElevatedPermissions {
 
         baseRate =
-            (baseRatePerYear * EXP_SCALE) /
-            (INTEREST_COMPOUND_RATE * SECONDS_PER_YEAR * vertexUtilizationStart);
-        vertexRate = vertexRatePerYear / (INTEREST_COMPOUND_RATE * SECONDS_PER_YEAR);
+            (INTEREST_COMPOUND_RATE * baseRatePerYear * EXP_SCALE) /
+            (SECONDS_PER_YEAR * vertexUtilizationStart);
+        vertexRate = (INTEREST_COMPOUND_RATE * vertexRatePerYear) / SECONDS_PER_YEAR;
         vertexStart = vertexUtilizationStart;
 
         emit NewInterestRateModel(
