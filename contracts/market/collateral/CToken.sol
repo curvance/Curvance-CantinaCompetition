@@ -70,7 +70,9 @@ contract CToken is ERC165, ReentrancyGuard {
 
     error CToken__UnauthorizedCaller();
     error CToken__CannotEqualZero();
+    error CToken__ExcessiveValue();
     error CToken__TransferNotAllowed();
+    error CToken__ValidationFailed();
     error CToken__ConstructorParametersareInvalid();
     error CToken__LendtrollerIsNotLendingMarket();
 
@@ -329,6 +331,7 @@ contract CToken is ERC165, ReentrancyGuard {
         // Deposit new reserves into gauge
         GaugePool(gaugePool()).deposit(address(this), daoAddress, tokens);
 
+        // Update reserves
         totalReserves = totalReserves + tokens;
 
         emit Transfer(address(0), address(this), tokens);
@@ -345,6 +348,8 @@ contract CToken is ERC165, ReentrancyGuard {
 
         // Need underflow check to see if we have sufficient totalReserves
         uint256 tokens = (amount * EXP_SCALE) / exchangeRateStored();
+
+        // Update reserves with underflow check
         totalReserves = totalReserves - tokens;
 
         // Query current DAO operating address
@@ -357,8 +362,9 @@ contract CToken is ERC165, ReentrancyGuard {
             tokens
         );
 
-        // Transfer underlying to DAO in tokens
+        // Transfer underlying to DAO measured in assets
         _exitVault(daoAddress, tokens);
+
         emit Transfer(address(this), address(0), tokens);
     }
 
@@ -385,18 +391,25 @@ contract CToken is ERC165, ReentrancyGuard {
         address daoOperator = centralRegistry.daoAddress();
 
         if (token == address(0)) {
-            require(
-                address(this).balance >= amount,
-                "CToken: insufficient balance"
-            );
+            if (address(this).balance < amount) {
+                revert CToken__ExcessiveValue();
+            }
+            
             (bool success, ) = payable(daoOperator).call{ value: amount }("");
-            require(success, "CToken: !successful");
+
+            if (!success) {
+                revert CToken__ValidationFailed();
+            }
+
         } else {
-            require(token != address(vault), "CToken: cannot withdraw vault tokens");
-            require(
-                IERC20(token).balanceOf(address(this)) >= amount,
-                "CToken: insufficient balance"
-            );
+            if (token == address(vault)) {
+                revert CToken__TransferNotAllowed();
+            }
+
+            if (IERC20(token).balanceOf(address(this)) < amount) {
+                revert CToken__ExcessiveValue();
+            }
+
             SafeTransferLib.safeTransfer(token, daoOperator, amount);
         }
     }

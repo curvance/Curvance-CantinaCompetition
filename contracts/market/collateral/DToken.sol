@@ -21,8 +21,13 @@ contract DToken is ERC165, ReentrancyGuard {
     struct DebtData {
         /// @notice principal total balance (with accrued interest)
         uint256 principal;
-        /// @notice current borrowIndex of user
+        /// @notice current exchange rate for user
         uint256 interestIndex;
+    }
+
+    struct ExchangeRateData {
+        uint32 lastTimestampUpdated;
+        uint224 exchangeRate;
     }
 
     /// CONSTANTS ///
@@ -53,12 +58,6 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @notice Current Interest Rate Model
     InterestRateModel public interestRateModel;
 
-    /// @notice last accrued interest timestamp
-    uint256 public accrualBlockTimestamp;
-
-    /// @notice Multiplier ratio of total interest accrued
-    uint256 public borrowIndex;
-
     /// @notice Total outstanding borrows of underlying
     uint256 public totalBorrows;
 
@@ -68,6 +67,8 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @notice Total number of tokens in circulation
     uint256 public totalSupply;
 
+    ExchangeRateData public exchangeRateData;
+
     /// @notice account => token balance
     mapping(address => uint256) public balanceOf;
 
@@ -75,7 +76,7 @@ contract DToken is ERC165, ReentrancyGuard {
     mapping(address => mapping(address => uint256)) public allowance;
 
     /// @notice account => BorrowSnapshot (Principal Borrowed, User Interest Index)
-    mapping(address => DebtData) internal debtOf;
+    mapping(address => DebtData) internal _debtOf;
 
     /// EVENTS ///
 
@@ -85,10 +86,9 @@ contract DToken is ERC165, ReentrancyGuard {
         address indexed spender,
         uint256 value
     );
-    event AccrueInterest(
-        uint256 cashPrior,
-        uint256 interestAccumulated,
-        uint256 borrowIndex,
+    event DebtAccrued(
+        uint256 debtAccumulated,
+        uint256 exchangeRate,
         uint256 totalBorrows
     );
     event Borrow(address borrower, uint256 amount);
@@ -161,8 +161,8 @@ contract DToken is ERC165, ReentrancyGuard {
         _setLendtroller(lendtroller_);
 
         // Initialize timestamp and borrow index
-        accrualBlockTimestamp = block.timestamp;
-        borrowIndex = EXP_SCALE;
+        exchangeRateData.lastTimestampUpdated = uint32(block.timestamp);
+        exchangeRateData.exchangeRate = uint224(EXP_SCALE);
 
         _setInterestRateModel(interestRateModel_);
 
@@ -448,6 +448,7 @@ contract DToken is ERC165, ReentrancyGuard {
         // Deposit new reserves into gauge
         GaugePool(gaugePool()).deposit(address(this), daoAddress, tokens);
 
+        // Update reserves
         totalReserves = totalReserves + tokens;
 
         emit Transfer(address(0), address(this), tokens);
@@ -468,7 +469,7 @@ contract DToken is ERC165, ReentrancyGuard {
 
         uint256 tokens = (amount * EXP_SCALE) / exchangeRateStored();
 
-        // Need underflow check to check if we have sufficient totalReserves
+        // Update reserves with underflow check
         totalReserves = totalReserves - tokens;
 
         // Query current DAO operating address
@@ -480,7 +481,7 @@ contract DToken is ERC165, ReentrancyGuard {
             tokens
         );
 
-        // Transfer underlying to DAO in assets
+        // Transfer underlying to DAO measured in assets
         SafeTransferLib.safeTransfer(underlying, daoAddress, amount);
 
         emit Transfer(address(this), address(0), tokens);
@@ -517,18 +518,25 @@ contract DToken is ERC165, ReentrancyGuard {
         address daoOperator = centralRegistry.daoAddress();
 
         if (token == address(0)) {
-            require(
-                address(this).balance >= amount,
-                "DToken: insufficient balance"
-            );
+            if (address(this).balance < amount) {
+                revert DToken__ExcessiveValue();
+            }
+            
             (bool success, ) = payable(daoOperator).call{ value: amount }("");
-            require(success, "DToken: !successful");
+
+            if (!success) {
+                revert DToken__ValidationFailed();
+            }
+
         } else {
-            require(token != underlying, "DToken: cannot withdraw underlying");
-            require(
-                IERC20(token).balanceOf(address(this)) >= amount,
-                "DToken: insufficient balance"
-            );
+            if (token == underlying) {
+                revert DToken__TransferNotAllowed();
+            }
+
+            if (IERC20(token).balanceOf(address(this)) < amount) {
+                revert DToken__ExcessiveValue();
+            }
+
             SafeTransferLib.safeTransfer(token, daoOperator, amount);
         }
     }
@@ -644,7 +652,7 @@ contract DToken is ERC165, ReentrancyGuard {
         address account
     ) public view returns (uint256) {
         // Cache borrow data to save gas
-        DebtData storage borrowSnapshot = debtOf[account];
+        DebtData storage borrowSnapshot = _debtOf[account];
 
         // If borrowBalance = 0 then borrowIndex is likely also 0
         if (borrowSnapshot.principal == 0) {
@@ -654,7 +662,7 @@ contract DToken is ERC165, ReentrancyGuard {
         // Calculate new borrow balance using the interest index:
         // borrowBalanceStored = borrower.principal * DToken.borrowIndex / borrower.interestIndex
         return
-            (borrowSnapshot.principal * borrowIndex) /
+            (borrowSnapshot.principal * exchangeRateData.exchangeRate) /
             borrowSnapshot.interestIndex;
     }
 
@@ -716,10 +724,10 @@ contract DToken is ERC165, ReentrancyGuard {
     ///   up to the current second and writes new checkpoint to storage.
     function accrueInterest() public {
         // Pull last accrual timestamp from storage
-        uint256 accrualBlockTimestampPrior = accrualBlockTimestamp;
+        uint256 lastTimestampUpdated = exchangeRateData.lastTimestampUpdated;
 
         // If we are up to date there is no reason to continue
-        if (accrualBlockTimestampPrior == block.timestamp) {
+        if (lastTimestampUpdated == block.timestamp) {
             return;
         }
 
@@ -727,43 +735,35 @@ contract DToken is ERC165, ReentrancyGuard {
         uint256 cashPrior = getCash();
         uint256 borrowsPrior = totalBorrows;
         uint256 reservesPrior = totalReserves;
-        uint256 borrowIndexPrior = borrowIndex;
+        uint256 exchangeRatePrior = exchangeRateData.exchangeRate;
 
         // Calculate the current borrow interest rate
-        uint256 borrowRateScaled = interestRateModel.getBorrowRate(
+        uint256 borrowRate = interestRateModel.getBorrowRate(
             cashPrior,
             borrowsPrior,
             reservesPrior
         );
 
-        // Calculate the interest accumulated into borrows and reserves and the new index:
-        // simpleInterestFactor = borrowRate * (block.timestamp - accrualBlockTimestampPrior)
-        // interestAccumulated = simpleInterestFactor * totalBorrows
-        // totalBorrowsNew = interestAccumulated + totalBorrows
-        // borrowIndexNew = simpleInterestFactor * borrowIndex + borrowIndex
-
-        uint256 simpleInterestFactor = borrowRateScaled *
-            (block.timestamp - accrualBlockTimestampPrior);
-        uint256 interestAccumulated = (simpleInterestFactor * borrowsPrior) /
+        // Calculate the interest accumulated into borrows and reserves and the new exchange rate:
+        uint256 interestAccumulated = borrowRate *
+            (block.timestamp - lastTimestampUpdated);
+        uint256 debtAccumulated = (interestAccumulated * borrowsPrior) /
             EXP_SCALE;
-        uint256 totalBorrowsNew = interestAccumulated + borrowsPrior;
-        uint256 borrowIndexNew = ((simpleInterestFactor * borrowIndexPrior) /
-            EXP_SCALE) + borrowIndexPrior;
+        uint256 totalBorrowsNew = debtAccumulated + borrowsPrior;
+        uint256 exchangeRateNew = ((interestAccumulated * exchangeRatePrior) /
+            EXP_SCALE) + exchangeRatePrior;
 
         // Update storage data
-        accrualBlockTimestamp = block.timestamp;
-        borrowIndex = borrowIndexNew;
+        exchangeRateData.lastTimestampUpdated = uint32(block.timestamp);
+        exchangeRateData.exchangeRate = uint224(exchangeRateNew);
         totalBorrows = totalBorrowsNew;
-        // totalReservesNew = interestAccumulated * reserveFactor + totalReserves
         totalReserves =
-            ((reserveFee() * interestAccumulated) / EXP_SCALE) +
+            ((reserveFee() * debtAccumulated) / EXP_SCALE) +
             reservesPrior;
 
-        // We emit an AccrueInterest event
-        emit AccrueInterest(
-            cashPrior,
-            interestAccumulated,
-            borrowIndexNew,
+        emit DebtAccrued(
+            debtAccumulated,
+            exchangeRateNew,
             totalBorrowsNew
         );
     }
@@ -866,7 +866,7 @@ contract DToken is ERC165, ReentrancyGuard {
         lendtroller.mintAllowed(address(this), recipient);
 
         // Get exchange rate before transfer
-        uint256 exchangeRate = exchangeRateStored();
+        uint256 er = exchangeRateStored();
 
         // Transfer underlying in
         SafeTransferLib.safeTransferFrom(
@@ -877,7 +877,7 @@ contract DToken is ERC165, ReentrancyGuard {
         );
 
         // Calculate dTokens to be minted
-        uint256 tokens = (amount * EXP_SCALE) / exchangeRate;
+        uint256 tokens = (amount * EXP_SCALE) / er;
 
         unchecked {
             totalSupply = totalSupply + tokens;
@@ -942,10 +942,10 @@ contract DToken is ERC165, ReentrancyGuard {
         }
 
         // We calculate the new borrower and total borrow balances, failing on overflow:
-        debtOf[borrower].principal =
+        _debtOf[borrower].principal =
             borrowBalanceStored(borrower) +
             amount;
-        debtOf[borrower].interestIndex = borrowIndex;
+        _debtOf[borrower].interestIndex = exchangeRateData.exchangeRate;
         totalBorrows = totalBorrows + amount;
 
         SafeTransferLib.safeTransfer(underlying, recipient, amount);
@@ -985,10 +985,10 @@ contract DToken is ERC165, ReentrancyGuard {
         );
 
         // We calculate the new borrower and total borrow balances, failing on underflow:
-        debtOf[borrower].principal =
+        _debtOf[borrower].principal =
             accountBorrowsPrev -
             amount;
-        debtOf[borrower].interestIndex = borrowIndex;
+        _debtOf[borrower].interestIndex = exchangeRateData.exchangeRate;
         totalBorrows -= amount;
 
         emit Repay(payer, borrower, amount);
