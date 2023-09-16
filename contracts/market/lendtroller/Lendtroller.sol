@@ -332,7 +332,7 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @param mTokenCollateral Asset which was used as collateral and will be seized
     /// @param borrower The address of the borrower
     /// @param repayAmount The amount of underlying being repaid
-    function liquidateUserAllowed(
+    function liquidateAllowed(
         address mTokenBorrowed,
         address mTokenCollateral,
         address borrower,
@@ -430,7 +430,7 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @param amount The amount of mTokenBorrowed underlying to
     ///                          convert into mTokenCollateral tokens
     /// @return uint256 The number of mTokenCollateral tokens to be seized in a liquidation
-    function liquidateCalculateSeizeTokens(
+    function calculateLiquidatedTokens(
         address mTokenBorrowed,
         address mTokenCollateral,
         uint256 amount

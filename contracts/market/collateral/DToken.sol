@@ -26,8 +26,12 @@ contract DToken is ERC165, ReentrancyGuard {
     }
 
     struct ExchangeRateData {
+        /// @notice Timestamp interest was last update
         uint32 lastTimestampUpdated;
+        /// @notice Borrow exchange rate at `lastTimestampUpdated`
         uint224 exchangeRate;
+        /// @notice Rate at which interest compounds, in seconds
+        uint256 compoundRate;
     }
 
     /// CONSTANTS ///
@@ -67,7 +71,8 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @notice Total number of tokens in circulation
     uint256 public totalSupply;
 
-    ExchangeRateData public exchangeRateData;
+    /// @notice Information corresponding to borrow exchange rate
+    ExchangeRateData public borrowExchangeRate;
 
     /// @notice account => token balance
     mapping(address => uint256) public balanceOf;
@@ -86,7 +91,7 @@ contract DToken is ERC165, ReentrancyGuard {
         address indexed spender,
         uint256 value
     );
-    event DebtAccrued(
+    event InterestAccrued(
         uint256 debtAccumulated,
         uint256 exchangeRate,
         uint256 totalBorrows
@@ -103,7 +108,8 @@ contract DToken is ERC165, ReentrancyGuard {
     event NewLendtroller(address oldLendtroller, address newLendtroller);
     event NewMarketInterestRateModel(
         address oldInterestRateModel,
-        address newInterestRateModel
+        address newInterestRateModel,
+        uint256 newInterestCompoundRate
     );
     /// ERRORS ///
 
@@ -161,8 +167,8 @@ contract DToken is ERC165, ReentrancyGuard {
         _setLendtroller(lendtroller_);
 
         // Initialize timestamp and borrow index
-        exchangeRateData.lastTimestampUpdated = uint32(block.timestamp);
-        exchangeRateData.exchangeRate = uint224(EXP_SCALE);
+        borrowExchangeRate.lastTimestampUpdated = uint32(block.timestamp);
+        borrowExchangeRate.exchangeRate = uint224(EXP_SCALE);
 
         _setInterestRateModel(interestRateModel_);
 
@@ -320,14 +326,14 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @param borrower The address of the borrower to be liquidated
     /// @param amount The amount of underlying asset the liquidator wishes to repay
     /// @param mTokenCollateral The market in which to seize collateral from the borrower
-    function liquidateUser(
+    function liquidate(
         address borrower,
         uint256 amount,
         IMToken mTokenCollateral
     ) external nonReentrant {
         accrueInterest();
 
-        _liquidateUser(msg.sender, borrower, amount, mTokenCollateral);
+        _liquidate(msg.sender, borrower, amount, mTokenCollateral);
     }
 
     /// @notice Sender redeems dTokens in exchange for the underlying asset
@@ -662,7 +668,7 @@ contract DToken is ERC165, ReentrancyGuard {
         // Calculate new borrow balance using the interest index:
         // borrowBalanceStored = borrower.principal * DToken.borrowIndex / borrower.interestIndex
         return
-            (borrowSnapshot.principal * exchangeRateData.exchangeRate) /
+            (borrowSnapshot.principal * borrowExchangeRate.exchangeRate) /
             borrowSnapshot.interestIndex;
     }
 
@@ -720,33 +726,33 @@ contract DToken is ERC165, ReentrancyGuard {
     }
 
     /// @notice Applies accrued interest to total borrows and reserves
-    /// @dev This calculates interest accrued from the last checkpointed second
-    ///   up to the current second and writes new checkpoint to storage.
+    /// @dev This calculates interest accrued from the last checkpoint
+    ///      up to the latest available checkpoint.
     function accrueInterest() public {
-        // Pull last accrual timestamp from storage
-        uint256 lastTimestampUpdated = exchangeRateData.lastTimestampUpdated;
+        // Pull current exchange rate data
+        ExchangeRateData memory borrowData = borrowExchangeRate;
 
         // If we are up to date there is no reason to continue
-        if (lastTimestampUpdated == block.timestamp) {
+        if (borrowData.lastTimestampUpdated + borrowData.compoundRate > block.timestamp) {
             return;
         }
 
         // Cache current values to save gas
-        uint256 cashPrior = getCash();
         uint256 borrowsPrior = totalBorrows;
         uint256 reservesPrior = totalReserves;
-        uint256 exchangeRatePrior = exchangeRateData.exchangeRate;
+        uint256 exchangeRatePrior = borrowData.exchangeRate;
 
         // Calculate the current borrow interest rate
         uint256 borrowRate = interestRateModel.getBorrowRate(
-            cashPrior,
+            getCash(),
             borrowsPrior,
             reservesPrior
         );
 
+        // Calculate the interest compounds to update, in `interestCompoundRate`
         // Calculate the interest accumulated into borrows and reserves and the new exchange rate:
-        uint256 interestAccumulated = borrowRate *
-            (block.timestamp - lastTimestampUpdated);
+        uint256 interestCompounds = (block.timestamp - borrowData.lastTimestampUpdated) / borrowData.compoundRate;
+        uint256 interestAccumulated = borrowRate * interestCompounds;
         uint256 debtAccumulated = (interestAccumulated * borrowsPrior) /
             EXP_SCALE;
         uint256 totalBorrowsNew = debtAccumulated + borrowsPrior;
@@ -754,14 +760,14 @@ contract DToken is ERC165, ReentrancyGuard {
             EXP_SCALE) + exchangeRatePrior;
 
         // Update storage data
-        exchangeRateData.lastTimestampUpdated = uint32(block.timestamp);
-        exchangeRateData.exchangeRate = uint224(exchangeRateNew);
+        borrowExchangeRate.lastTimestampUpdated = uint32(borrowData.lastTimestampUpdated + interestCompounds);
+        borrowExchangeRate.exchangeRate = uint224(exchangeRateNew);
         totalBorrows = totalBorrowsNew;
         totalReserves =
             ((reserveFee() * debtAccumulated) / EXP_SCALE) +
             reservesPrior;
 
-        emit DebtAccrued(
+        emit InterestAccrued(
             debtAccumulated,
             exchangeRateNew,
             totalBorrowsNew
@@ -789,7 +795,7 @@ contract DToken is ERC165, ReentrancyGuard {
         emit NewLendtroller(oldLendtroller, newLendtroller);
     }
 
-    /// @notice accrues interest and updates the interest rate model
+    /// @notice Updates the interest rate model
     /// @dev Admin function to accrue interest and update the interest rate model
     /// @param newInterestRateModel the new interest rate model to use
     function _setInterestRateModel(address newInterestRateModel) internal {
@@ -799,12 +805,14 @@ contract DToken is ERC165, ReentrancyGuard {
         // Cache the current interest rate model to save gas
         address oldInterestRateModel = address(interestRateModel);
 
-        // Set new interest rate model
+        // Set new interest rate model and compound rate
         interestRateModel = InterestRateModel(newInterestRateModel);
+        borrowExchangeRate.compoundRate = InterestRateModel(newInterestRateModel).compoundRate();
 
         emit NewMarketInterestRateModel(
             oldInterestRateModel,
-            newInterestRateModel
+            newInterestRateModel,
+            borrowExchangeRate.compoundRate
         );
     }
 
@@ -945,7 +953,7 @@ contract DToken is ERC165, ReentrancyGuard {
         _debtOf[borrower].principal =
             borrowBalanceStored(borrower) +
             amount;
-        _debtOf[borrower].interestIndex = exchangeRateData.exchangeRate;
+        _debtOf[borrower].interestIndex = borrowExchangeRate.exchangeRate;
         totalBorrows = totalBorrows + amount;
 
         SafeTransferLib.safeTransfer(underlying, recipient, amount);
@@ -988,7 +996,7 @@ contract DToken is ERC165, ReentrancyGuard {
         _debtOf[borrower].principal =
             accountBorrowsPrev -
             amount;
-        _debtOf[borrower].interestIndex = exchangeRateData.exchangeRate;
+        _debtOf[borrower].interestIndex = borrowExchangeRate.exchangeRate;
         totalBorrows -= amount;
 
         emit Repay(payer, borrower, amount);
@@ -1001,7 +1009,7 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @param liquidator The address repaying the borrow and seizing collateral
     /// @param mTokenCollateral The market in which to seize collateral from the borrower
     /// @param amount The amount of the underlying borrowed asset to repay
-    function _liquidateUser(
+    function _liquidate(
         address liquidator,
         address borrower,
         uint256 amount,
@@ -1023,39 +1031,39 @@ contract DToken is ERC165, ReentrancyGuard {
 
         // Fail if liquidate not allowed,
         // trying to pay down too much with excessive repayAmount will revert here
-        lendtroller.liquidateUserAllowed(
+        lendtroller.liquidateAllowed(
             address(this),
             address(mTokenCollateral),
             borrower,
             amount
         );
 
-        // calculates DTokens to repay, reverts if repay fails
+        // calculates DTokens to repay for liquidation, reverts if repay fails
         uint256 repayAmount = _repay(liquidator, borrower, amount);
 
-        // We calculate the number of CTokens that will be seized
-        uint256 tokensToSeize = lendtroller.liquidateCalculateSeizeTokens(
+        // We calculate the number of CTokens that will be liquidated
+        uint256 tokens = lendtroller.calculateLiquidatedTokens(
             address(this),
             address(mTokenCollateral),
             repayAmount
         );
 
-        // Revert if borrower collateral token balance < seizeTokens
-        if (mTokenCollateral.balanceOf(borrower) < tokensToSeize) {
+        // Revert if borrower does not have enough collateral
+        if (mTokenCollateral.balanceOf(borrower) < tokens) {
             revert DToken__ExcessiveValue();
         }
 
         // We check above that the mToken must be a collateral token,
         // so we cant be seizing this mToken as it is a debt token,
         // so there is no reEntry risk
-        mTokenCollateral.seize(liquidator, borrower, tokensToSeize);
+        mTokenCollateral.seize(liquidator, borrower, tokens);
 
         emit Liquidated(
             liquidator,
             borrower,
             repayAmount,
             address(mTokenCollateral),
-            tokensToSeize
+            tokens
         );
     }
 }

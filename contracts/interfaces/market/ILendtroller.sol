@@ -26,7 +26,7 @@ interface ILendtroller {
 
     function repayAllowed(address mToken, address borrower) external;
 
-    function liquidateUserAllowed(
+    function liquidateAllowed(
         address mTokenBorrowed,
         address mTokenCollateral,
         address borrower,
@@ -49,7 +49,7 @@ interface ILendtroller {
 
     function notifyAccountBorrow(address account) external;
 
-    function liquidateCalculateSeizeTokens(
+    function calculateLiquidatedTokens(
         address mTokenBorrowed,
         address mTokenCollateral,
         uint256 repayAmount
