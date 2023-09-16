@@ -23,9 +23,6 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     IWETH public immutable WETH; // Address of WETH
     ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
 
-    /// STORAGE ///
-    mapping(uint256 => uint256) public nonceUsed;
-
     /// ERRORS ///
 
     error ProtocolMessagingHub_ConfigurationError();
@@ -245,13 +242,12 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     /// @dev amount is always set to 0 since we are moving data, or minting gauge emissions here
     /// @param srcChainId The source chain ID from which the calldata was received
     /// @param srcAddress The CVE source address
-    /// @param nonce A unique identifier for the transaction, used to prevent replay attacks
     /// @param from The address from which the OFT was sent
     /// @param payload The message calldata, encoded in bytes
     function onOFTReceived(
         uint16 srcChainId,
         bytes memory srcAddress,
-        uint64 nonce,
+        uint64, // nonce
         bytes32 from,
         uint256, // amount
         bytes calldata payload
@@ -275,11 +271,6 @@ contract ProtocolMessagingHub is ReentrancyGuard {
 
         // Validate message came directly from CVE on the source chain
         if (bytes32(operator.cveAddress) != bytes32(srcAddress)) {
-            return;
-        }
-
-        // Validate message nonce has not been used before
-        if (nonceUsed[nonce] == 2) {
             return;
         }
 
@@ -313,7 +304,6 @@ contract ProtocolMessagingHub is ReentrancyGuard {
                         epoch: 0
                     })
                 );
-            nonceUsed[nonce] = 2; // 2 = used; 0 or 1 = unused
             return;
         }
 
@@ -350,7 +340,6 @@ contract ProtocolMessagingHub is ReentrancyGuard {
             }
         }
 
-        nonceUsed[nonce] = 2; // 2 = used; 0 or 1 = unused
     }
 
     /// @notice Quotes gas cost for executing crosschain stargate swap
