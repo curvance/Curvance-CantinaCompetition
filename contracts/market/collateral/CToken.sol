@@ -65,16 +65,6 @@ contract CToken is ERC165, ReentrancyGuard {
     );
     event MigrateVault(address oldVault, address newVault);
     event NewLendtroller(address oldLendtroller, address newLendtroller);
-    event ReservesAdded(
-        address depositer,
-        uint256 amount,
-        uint256 newTotalReserves
-    );
-    event ReservesReduced(
-        address beneficiary,
-        uint256 amount,
-        uint256 newTotalReserves
-    );
 
     /// ERRORS ///
 
@@ -341,7 +331,7 @@ contract CToken is ERC165, ReentrancyGuard {
 
         totalReserves = totalReserves + tokens;
 
-        emit ReservesAdded(daoAddress, tokens, totalReserves);
+        emit Transfer(address(0), address(this), tokens);
     }
 
     /// @notice Reduces reserves by withdrawing from the gauge
@@ -369,8 +359,7 @@ contract CToken is ERC165, ReentrancyGuard {
 
         // Transfer underlying to DAO in tokens
         _exitVault(daoAddress, tokens);
-
-        emit ReservesReduced(daoAddress, tokens, totalReserves);
+        emit Transfer(address(this), address(0), tokens);
     }
 
     /// @dev Sets `amount` as the allowance of `spender` over the caller's tokens.
@@ -707,7 +696,6 @@ contract CToken is ERC165, ReentrancyGuard {
 
         emit Transfer(borrower, liquidator, liquidatorTokens);
         emit Transfer(borrower, address(this), protocolTokens);
-        emit ReservesAdded(address(this), protocolTokens, totalReserves);
     }
 
     /// @notice Handles incoming token transfers and notifies the amount received

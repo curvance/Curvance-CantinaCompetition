@@ -105,17 +105,6 @@ contract DToken is ERC165, ReentrancyGuard {
         address oldInterestRateModel,
         address newInterestRateModel
     );
-    event ReservesAdded(
-        address depositer,
-        uint256 amount,
-        uint256 newTotalReserves
-    );
-    event ReservesReduced(
-        address beneficiary,
-        uint256 amount,
-        uint256 newTotalReserves
-    );
-
     /// ERRORS ///
 
     error DToken__UnauthorizedCaller();
@@ -461,7 +450,7 @@ contract DToken is ERC165, ReentrancyGuard {
 
         totalReserves = totalReserves + tokens;
 
-        emit ReservesAdded(daoAddress, tokens, totalReserves);
+        emit Transfer(address(0), address(this), tokens);
     }
 
     /// @notice Reduces reserves by withdrawing from the gauge and transferring to Curvance DAO
@@ -494,7 +483,7 @@ contract DToken is ERC165, ReentrancyGuard {
         // Transfer underlying to DAO in assets
         SafeTransferLib.safeTransfer(underlying, daoAddress, amount);
 
-        emit ReservesReduced(daoAddress, tokens, totalReserves);
+        emit Transfer(address(this), address(0), tokens);
     }
 
     /// @dev Sets `amount` as the allowance of `spender` over the caller's tokens.
