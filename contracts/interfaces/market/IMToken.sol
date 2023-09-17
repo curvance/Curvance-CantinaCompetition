@@ -3,12 +3,12 @@ pragma solidity ^0.8.17;
 
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 
-struct accountSnapshot {
-    IMToken asset;
+struct AccountSnapshot {
+    address asset;
     uint256 tokenType;
     uint256 mTokenBalance;
     uint256 borrowBalance;
-    uint256 exchangeRateScaled;
+    uint256 exchangeRate;
 }
 
 interface IMToken {
@@ -34,7 +34,7 @@ interface IMToken {
     /// @notice Get a snapshot of the account's balances, and the cached exchange rate
     function getAccountSnapshotPacked(
         address account
-    ) external view returns (accountSnapshot memory);
+    ) external view returns (AccountSnapshot memory);
 
     /// @notice Returns the total amount of MToken
     function totalSupply() external view returns (uint256);

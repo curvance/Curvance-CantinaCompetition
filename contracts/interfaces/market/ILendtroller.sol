@@ -59,7 +59,7 @@ interface ILendtroller {
         address mToken
     ) external view returns (bool);
 
-    function getMarketTokenData(
+    function getMTokenData(
         address mToken
     ) external view returns (bool, uint256, uint256);
 

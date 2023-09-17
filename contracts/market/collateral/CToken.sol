@@ -12,7 +12,7 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.sol";
 import { BasePositionVault } from "contracts/deposits/adaptors/BasePositionVault.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
-import { IMToken, accountSnapshot } from "contracts/interfaces/market/IMToken.sol";
+import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.sol";
 
 /// @title Curvance's Collateral Token Contract
 contract CToken is ERC165, ReentrancyGuard {
@@ -449,14 +449,14 @@ contract CToken is ERC165, ReentrancyGuard {
     /// @param account Address of the account to snapshot
     function getAccountSnapshotPacked(
         address account
-    ) external view returns (accountSnapshot memory) {
+    ) external view returns (AccountSnapshot memory) {
         return (
-            accountSnapshot({
-                asset: IMToken(address(this)),
+            AccountSnapshot({
+                asset: address(this),
                 tokenType: 1,
                 mTokenBalance: balanceOf[account],
                 borrowBalance: 0,
-                exchangeRateScaled: exchangeRateStored()
+                exchangeRate: exchangeRateStored()
             })
         );
     }

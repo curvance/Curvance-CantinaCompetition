@@ -7,7 +7,7 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.sol";
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
-import { IMToken, accountSnapshot } from "contracts/interfaces/market/IMToken.sol";
+import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.sol";
 
 /// @title Curvance Lendtroller
 /// @notice Manages risk within the lending markets
@@ -23,6 +23,7 @@ contract Lendtroller is ILendtroller, ERC165 {
 
     struct MarketToken {
         /// @notice Whether or not this market token is listed.
+        /// @dev    0 or 1 = unlisted; 2 = listed
         bool isListed;
         /// @notice The ratio at which this token can be collateralized.
         /// @dev    in `EXP_SCALE` format, with 0.8e18 = 80% collateral value
@@ -45,8 +46,6 @@ contract Lendtroller is ILendtroller, ERC165 {
 
     /// @notice Scalar for math.
     uint256 internal constant _EXP_SCALE = 1e18;
-    /// @notice 100% E.g close entire position.
-    uint256 internal constant _MAX_CLOSE_FACTOR = 1e18;
     /// @notice Maximum collateralization ratio. 91%
     uint256 internal constant _MAX_COLLATERALIZATION_RATIO = 0.91e18;
     /// @notice Minimum hold time to prevent oracle price attacks.
@@ -80,8 +79,8 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @dev 0 = unlimited
     mapping(address => uint256) public collateralCaps;
 
-    /// @notice Maximum % that a liquidator can repay when liquidating a user, in EXP_SCALE.
-    /// @dev Default 50%
+    /// @notice Maximum % that a liquidator can repay when liquidating a user, 
+    /// @dev    In `EXP_SCALE` format, default 50%
     uint256 public closeFactor = 0.5e18;
     /// @notice PositionFolding contract address.
     address public positionFolding;
@@ -90,7 +89,7 @@ contract Lendtroller is ILendtroller, ERC165 {
     IMToken[] public allMarkets;
 
     /// @notice Market Token => isListed, CollateralizationRatio, accountInmarket.
-    mapping(address => MarketToken) public marketTokenData;
+    mapping(address => MarketToken) public mTokenData;
     /// @notice Account => Assets, lastBorrowTimestamp.
     mapping(address => AccountData) public accountAssets;
 
@@ -205,7 +204,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         for (uint256 i; i < numTokens; ) {
             unchecked {
                 mToken = mTokens[i++];
-                MarketToken storage marketToJoin = marketTokenData[mToken];
+                MarketToken storage marketToJoin = mTokenData[mToken];
 
                 if (!marketToJoin.isListed) {
                     // market is not listed, cannot join
@@ -241,7 +240,7 @@ contract Lendtroller is ILendtroller, ERC165 {
             revert Lendtroller__HasActiveLoan();
         }
 
-        MarketToken storage marketToExit = marketTokenData[mTokenAddress];
+        MarketToken storage marketToExit = mTokenData[mTokenAddress];
 
         // We do not need to update any values if the account is not ‘in’ the market
         if (marketToExit.accountInMarket[msg.sender] < 2) {
@@ -292,7 +291,7 @@ contract Lendtroller is ILendtroller, ERC165 {
             revert Lendtroller__Paused();
         }
 
-        if (!marketTokenData[mToken].isListed) {
+        if (!mTokenData[mToken].isListed) {
             revert Lendtroller__TokenNotListed();
         }
     }
@@ -337,7 +336,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         address mToken,
         address account
     ) external view override {
-        if (!marketTokenData[mToken].isListed) {
+        if (!mTokenData[mToken].isListed) {
             revert Lendtroller__TokenNotListed();
         }
 
@@ -363,10 +362,10 @@ contract Lendtroller is ILendtroller, ERC165 {
         address borrower,
         uint256 repayAmount
     ) external view override {
-        if (!marketTokenData[mTokenBorrowed].isListed) {
+        if (!mTokenData[mTokenBorrowed].isListed) {
             revert Lendtroller__TokenNotListed();
         }
-        if (!marketTokenData[mTokenCollateral].isListed) {
+        if (!mTokenData[mTokenCollateral].isListed) {
             revert Lendtroller__TokenNotListed();
         }
 
@@ -414,10 +413,10 @@ contract Lendtroller is ILendtroller, ERC165 {
             revert Lendtroller__Paused();
         }
 
-        if (!marketTokenData[mTokenBorrowed].isListed) {
+        if (!mTokenData[mTokenBorrowed].isListed) {
             revert Lendtroller__TokenNotListed();
         }
-        if (!marketTokenData[mTokenCollateral].isListed) {
+        if (!mTokenData[mTokenCollateral].isListed) {
             revert Lendtroller__TokenNotListed();
         }
 
@@ -476,7 +475,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         }
 
         // Get the exchange rate and calculate the number of collateral tokens to seize:
-        uint256 ratio = (marketTokenData[mTokenCollateral].liquidationIncentive *
+        uint256 ratio = (mTokenData[mTokenCollateral].liquidationIncentive *
             debtTokenPrice *
             _EXP_SCALE) /
             (collateralTokenPrice *
@@ -494,7 +493,8 @@ contract Lendtroller is ILendtroller, ERC165 {
         // Convert parameter from basis points to `EXP_SCALE`
         newCloseFactor = newCloseFactor * 1e14;
 
-        if (newCloseFactor > _MAX_CLOSE_FACTOR) {
+        // 100% e.g close entire position
+        if (newCloseFactor > _EXP_SCALE) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
         // Cache the current value for event log and gas savings
@@ -509,13 +509,13 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @dev Admin function to set isListed and add support for the market
     /// @param mToken The address of the market (token) to list
     function listMarketToken(address mToken, uint256 liquidationIncentive) external onlyElevatedPermissions {
-        if (marketTokenData[mToken].isListed) {
+        if (mTokenData[mToken].isListed) {
             revert Lendtroller__TokenAlreadyListed();
         }
 
         uint256 tokenType = IMToken(mToken).tokenType(); // Sanity check to make sure its really a mToken
 
-        MarketToken storage market = marketTokenData[mToken];
+        MarketToken storage market = mTokenData[mToken];
         market.isListed = true;
         market.collateralizationRatio = 0;
 
@@ -573,7 +573,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         }
 
         // Verify mToken is listed
-        MarketToken storage marketToken = marketTokenData[address(mToken)];
+        MarketToken storage marketToken = mTokenData[address(mToken)];
         if (!marketToken.isListed) {
             revert Lendtroller__TokenNotListed();
         }
@@ -649,7 +649,8 @@ contract Lendtroller is ILendtroller, ERC165 {
         }
 
         for (uint256 i; i < numMarkets; ++i) {
-            if (mTokens[i].tokenType() != 0) {
+            // Make sure the mToken is a cToken
+            if (mTokens[i].tokenType() != 1) {
                 _revert(_INVALID_PARAMETER_SELECTOR);
             }
 
@@ -664,19 +665,19 @@ contract Lendtroller is ILendtroller, ERC165 {
         address mToken
     ) external view override returns (bool) {
         return (
-            marketTokenData[mToken].isListed
+            mTokenData[mToken].isListed
         );
     }
 
     /// @notice Returns market status
     /// @param mToken market token address
-    function getMarketTokenData(
+    function getMTokenData(
         address mToken
     ) external view override returns (bool, uint256, uint256) {
         return (
-            marketTokenData[mToken].isListed,
-            marketTokenData[mToken].liquidationIncentive,
-            marketTokenData[mToken].collateralizationRatio
+            mTokenData[mToken].isListed,
+            mTokenData[mToken].liquidationIncentive,
+            mTokenData[mToken].collateralizationRatio
         );
     }
 
@@ -687,7 +688,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         address mToken,
         address user
     ) external view override returns (bool) {
-        return marketTokenData[mToken].accountInMarket[user] == 2;
+        return mTokenData[mToken].accountInMarket[user] == 2;
     }
 
     /// @notice Admin function to set market mint paused
@@ -698,7 +699,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         IMToken mToken,
         bool state
     ) external onlyAuthorizedPermissions(state) {
-        if (!marketTokenData[address(mToken)].isListed) {
+        if (!mTokenData[address(mToken)].isListed) {
             revert Lendtroller__TokenNotListed();
         }
 
@@ -714,7 +715,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         IMToken mToken,
         bool state
     ) external onlyAuthorizedPermissions(state) {
-        if (!marketTokenData[address(mToken)].isListed) {
+        if (!mTokenData[address(mToken)].isListed) {
             revert Lendtroller__TokenNotListed();
         }
 
@@ -772,7 +773,7 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @dev The caller must be a listed MToken in the `markets` mapping
     /// @param borrower The address of the account that has just borrowed
     function notifyAccountBorrow(address borrower) external override {
-        if (!marketTokenData[msg.sender].isListed) {
+        if (!mTokenData[msg.sender].isListed) {
             revert Lendtroller__TokenNotListed();
         }
 
@@ -795,18 +796,18 @@ contract Lendtroller is ILendtroller, ERC165 {
             revert Lendtroller__Paused();
         }
 
-        if (!marketTokenData[mToken].isListed) {
+        if (!mTokenData[mToken].isListed) {
             revert Lendtroller__TokenNotListed();
         }
 
-        if (marketTokenData[mToken].accountInMarket[borrower] < 2) {
+        if (mTokenData[mToken].accountInMarket[borrower] < 2) {
             // only mTokens may call borrowAllowed if borrower not in market
             if (msg.sender != mToken) {
                 revert Lendtroller__AddressUnauthorized();
             }
 
             // The user is not in the market yet, so make them enter
-            marketTokenData[mToken].accountInMarket[borrower] = 2;
+            mTokenData[mToken].accountInMarket[borrower] = 2;
             accountAssets[borrower].assets.push(IMToken(mToken));
 
             emit MarketEntered(mToken, borrower);
@@ -851,18 +852,14 @@ contract Lendtroller is ILendtroller, ERC165 {
     function getAccountLiquidity(
         address account
     ) public view returns (uint256, uint256) {
-        (
-            uint256 liquidity,
-            uint256 shortfall
-        ) = _getHypotheticalAccountLiquidity(
+        return
+            _getHypotheticalAccountLiquidity(
                 account,
                 IMToken(address(0)),
                 0,
                 0,
                 2
             );
-
-        return (liquidity, shortfall);
     }
 
     /// @notice Determine the current account liquidity wrt collateral requirements
@@ -871,20 +868,15 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @return uint256 total borrow amount of user
     function getAccountPosition(
         address account
-    ) public view override returns (uint256, uint256, uint256) {
-        (
-            uint256 sumCollateral,
-            uint256 maxBorrow,
-            uint256 sumBorrow
-        ) = _getHypotheticalAccountPosition(
+    ) public view returns (uint256, uint256, uint256) {
+        return 
+            _getHypotheticalAccountPosition(
                 account,
                 IMToken(address(0)),
                 0,
                 0,
                 2
             );
-
-        return (sumCollateral, maxBorrow, sumBorrow);
     }
 
     /// @notice Determine what the account liquidity would be if
@@ -902,18 +894,14 @@ contract Lendtroller is ILendtroller, ERC165 {
         uint256 redeemTokens,
         uint256 borrowAmount
     ) public view returns (uint256, uint256) {
-        (
-            uint256 liquidity,
-            uint256 shortfall
-        ) = _getHypotheticalAccountLiquidity(
+        return
+            _getHypotheticalAccountLiquidity(
                 account,
                 IMToken(mTokenModify),
                 redeemTokens,
                 borrowAmount,
                 2
             );
-
-        return (liquidity, shortfall);
     }
 
     /// @inheritdoc ERC165
@@ -938,7 +926,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         address redeemer,
         uint256 redeemTokens
     ) internal view {
-        if (!marketTokenData[mToken].isListed) {
+        if (!mTokenData[mToken].isListed) {
             revert Lendtroller__TokenNotListed();
         }
 
@@ -954,7 +942,7 @@ contract Lendtroller is ILendtroller, ERC165 {
 
         // If the redeemer is not 'in' the market, then we can bypass
         // the liquidity check
-        if (marketTokenData[mToken].accountInMarket[redeemer] < 2) {
+        if (mTokenData[mToken].accountInMarket[redeemer] < 2) {
             return;
         }
 
@@ -1046,21 +1034,21 @@ contract Lendtroller is ILendtroller, ERC165 {
         uint256 numAccountAssets = accountAssets[account].assets.length;
         bool isCToken;
         IPriceRouter router = getPriceRouter();
-        accountSnapshot memory assetSnapshot;
+        AccountSnapshot memory accountSnapshot;
 
         // For each asset the account is in
         for (uint256 i; i < numAccountAssets; ) {
             // Pull user token snapshot data for the asset and then increment i
             unchecked {
-                assetSnapshot = accountAssets[account]
+                accountSnapshot = accountAssets[account]
                     .assets[i++]
                     .getAccountSnapshotPacked(account);
             }
-            isCToken = assetSnapshot.tokenType == 1;
+            isCToken = accountSnapshot.tokenType == 1;
 
             // Collateralized assets (CTokens) use the lower price, Debt assets (DTokens) use the higher price
             (uint256 price, uint256 errorCode) = router.getPrice(
-                address(assetSnapshot.asset),
+                accountSnapshot.asset,
                 true,
                 isCToken
             );
@@ -1069,46 +1057,45 @@ contract Lendtroller is ILendtroller, ERC165 {
             }
 
             if (isCToken) {
-                // If the asset has a collateral ratio increment their collateral and max borrow value
+                // If the asset has a CR increment their collateral and max borrow value
                 if (
-                    !(marketTokenData[address(assetSnapshot.asset)]
-                        .collateralizationRatio == 0)
+                    !(mTokenData[accountSnapshot.asset].collateralizationRatio == 0)
                 ) {
-                    uint256 assetValue = (((assetSnapshot.mTokenBalance *
-                        assetSnapshot.exchangeRateScaled) / _EXP_SCALE) *
+                    uint256 assetValue = (((accountSnapshot.mTokenBalance *
+                        accountSnapshot.exchangeRate) / _EXP_SCALE) *
                         price) / _EXP_SCALE;
 
                     sumCollateral += assetValue;
                     maxBorrow +=
                         (assetValue *
-                            marketTokenData[address(assetSnapshot.asset)]
+                            mTokenData[accountSnapshot.asset]
                                 .collateralizationRatio) /
                         _EXP_SCALE;
                 }
             } else {
                 // If they have a borrow balance we need to document it
-                if (assetSnapshot.borrowBalance > 0) {
+                if (accountSnapshot.borrowBalance > 0) {
                     sumBorrowPlusEffects += ((price *
-                        assetSnapshot.borrowBalance) / _EXP_SCALE);
+                        accountSnapshot.borrowBalance) / _EXP_SCALE);
                 }
             }
 
             // Calculate effects of interacting with mTokenModify
-            if (assetSnapshot.asset == mTokenModify) {
+            if (IMToken(accountSnapshot.asset) == mTokenModify) {
                 // If its a CToken our only option is to redeem it since it cant be borrowed
                 // If its a DToken we can redeem it but it will not have any effect on borrow amount
                 // since DToken have a collateral value of 0
                 if (isCToken) {
                     if (
-                        !(marketTokenData[address(assetSnapshot.asset)]
+                        !(mTokenData[accountSnapshot.asset]
                             .collateralizationRatio == 0)
                     ) {
                         // Pre-compute a conversion factor
                         // from tokens -> $ (normalized price value)
-                        uint256 tokensToDenom = (((marketTokenData[
-                            address(assetSnapshot.asset)
+                        uint256 tokensToDenom = (((mTokenData[
+                            accountSnapshot.asset
                         ].collateralizationRatio *
-                            assetSnapshot.exchangeRateScaled) / _EXP_SCALE) *
+                            accountSnapshot.exchangeRate) / _EXP_SCALE) *
                             price) / _EXP_SCALE;
 
                         // redeem effect
@@ -1132,4 +1119,5 @@ contract Lendtroller is ILendtroller, ERC165 {
             revert(0x1c, 0x04)
         }
     }
+    
 }

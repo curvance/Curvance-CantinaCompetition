@@ -12,7 +12,7 @@ import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
-import { IMToken, accountSnapshot } from "contracts/interfaces/market/IMToken.sol";
+import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.sol";
 
 /// @title Curvance's Debt Token Contract
 contract DToken is ERC165, ReentrancyGuard {
@@ -604,14 +604,14 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @param account Address of the account to snapshot
     function getAccountSnapshotPacked(
         address account
-    ) external view returns (accountSnapshot memory) {
+    ) external view returns (AccountSnapshot memory) {
         return (
-            accountSnapshot({
-                asset: IMToken(address(this)),
+            AccountSnapshot({
+                asset: address(this),
                 tokenType: 0,
                 mTokenBalance: balanceOf[account],
                 borrowBalance: borrowBalanceStored(account),
-                exchangeRateScaled: exchangeRateStored()
+                exchangeRate: exchangeRateStored()
             })
         );
     }
