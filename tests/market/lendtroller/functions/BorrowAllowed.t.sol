@@ -33,7 +33,7 @@ contract BorrowAllowedTest is TestBaseLendtroller {
     function test_borrowAllowed_fail_whenCallerIsNotMTokenAndBorrowerNotInMarket()
         public
     {
-        lendtroller.listMarketToken(address(dDAI));
+        lendtroller.listMarketToken(address(dDAI), 200);
 
         vm.prank(address(dUSDC));
 

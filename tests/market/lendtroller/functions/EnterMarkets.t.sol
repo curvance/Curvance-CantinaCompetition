@@ -18,7 +18,7 @@ contract EnterMarketsTest is TestBaseLendtroller {
 
     function test_enterMarkets_success_whenMarketIsNotListed() public {
         for (uint256 i = 0; i < tokens.length; i++) {
-            (bool isListed, uint256 collateralizationRatio) = lendtroller
+            (bool isListed,, uint256 collateralizationRatio) = lendtroller
                 .getMarketTokenData(tokens[i]);
             assertFalse(isListed);
             assertEq(collateralizationRatio, 0);
@@ -30,7 +30,7 @@ contract EnterMarketsTest is TestBaseLendtroller {
         lendtroller.enterMarkets(tokens);
 
         for (uint256 i = 0; i < tokens.length; i++) {
-            (bool isListed, uint256 collateralizationRatio) = lendtroller
+            (bool isListed,, uint256 collateralizationRatio) = lendtroller
                 .getMarketTokenData(tokens[i]);
             assertFalse(isListed);
             assertEq(collateralizationRatio, 0);
@@ -42,13 +42,13 @@ contract EnterMarketsTest is TestBaseLendtroller {
 
     function test_enterMarkets_success_whenUserAlreadyJoinedMarket() public {
         for (uint256 i = 0; i < tokens.length; i++) {
-            lendtroller.listMarketToken(tokens[i]);
+            lendtroller.listMarketToken(tokens[i], 200);
         }
 
         lendtroller.enterMarkets(tokens);
 
         for (uint256 i = 0; i < tokens.length; i++) {
-            (bool isListed, uint256 collateralizationRatio) = lendtroller
+            (bool isListed,, uint256 collateralizationRatio) = lendtroller
                 .getMarketTokenData(tokens[i]);
             assertTrue(isListed);
             assertEq(collateralizationRatio, 0);
@@ -60,7 +60,7 @@ contract EnterMarketsTest is TestBaseLendtroller {
         lendtroller.enterMarkets(tokens);
 
         for (uint256 i = 0; i < tokens.length; i++) {
-            (bool isListed, uint256 collateralizationRatio) = lendtroller
+            (bool isListed,, uint256 collateralizationRatio) = lendtroller
                 .getMarketTokenData(tokens[i]);
             assertTrue(isListed);
             assertEq(collateralizationRatio, 0);
@@ -72,11 +72,11 @@ contract EnterMarketsTest is TestBaseLendtroller {
 
     function test_enterMarkets_success() public {
         for (uint256 i = 0; i < tokens.length; i++) {
-            lendtroller.listMarketToken(tokens[i]);
+            lendtroller.listMarketToken(tokens[i], 200);
         }
 
         for (uint256 i = 0; i < tokens.length; i++) {
-            (bool isListed, uint256 collateralizationRatio) = lendtroller
+            (bool isListed,, uint256 collateralizationRatio) = lendtroller
                 .getMarketTokenData(tokens[i]);
             assertTrue(isListed);
             assertEq(collateralizationRatio, 0);
@@ -91,7 +91,7 @@ contract EnterMarketsTest is TestBaseLendtroller {
         lendtroller.enterMarkets(tokens);
 
         for (uint256 i = 0; i < tokens.length; i++) {
-            (bool isListed, uint256 collateralizationRatio) = lendtroller
+            (bool isListed,, uint256 collateralizationRatio) = lendtroller
                 .getMarketTokenData(tokens[i]);
             assertTrue(isListed);
             assertEq(collateralizationRatio, 0);
