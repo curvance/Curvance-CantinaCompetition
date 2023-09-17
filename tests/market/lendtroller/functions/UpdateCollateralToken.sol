@@ -27,6 +27,7 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
         vm.expectRevert(Lendtroller.Lendtroller__InvalidParameter.selector);
         lendtroller.updateCollateralToken(
             IMToken(address(dUSDC)),
+            200,
             0.91e18 + 1
         );
     }
