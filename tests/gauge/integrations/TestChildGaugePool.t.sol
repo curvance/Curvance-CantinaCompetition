@@ -72,13 +72,13 @@ contract TestChildGaugePool is TestBaseMarket {
 
             // support market
             dai.approve(address(tokens[i]), 200000e18);
-            lendtroller.listMarketToken(tokens[i]);
+            lendtroller.listMarketToken(tokens[i], 200);
 
             // add MToken support on price router
             priceRouter.addMTokenSupport(tokens[i]);
 
             // set collateral factor
-            lendtroller.setCollateralizationRatio(IMToken(tokens[i]), 5e17);
+            lendtroller.updateCollateralToken(IMToken(tokens[i]), 200, 5e17);
 
             for (uint256 j = 0; j < 10; j++) {
                 address user = users[j];
