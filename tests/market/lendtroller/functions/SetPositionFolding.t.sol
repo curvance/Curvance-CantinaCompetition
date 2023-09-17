@@ -18,7 +18,7 @@ contract SetPositionFoldingTest is TestBaseLendtroller {
         public
     {
         vm.expectRevert(
-            Lendtroller.Lendtroller__PositionFoldingIsInvalid.selector
+            Lendtroller.Lendtroller__InvalidParameter.selector
         );
         lendtroller.setPositionFolding(address(1));
     }
