@@ -677,7 +677,7 @@ contract CToken is ERC165, ReentrancyGuard {
         );
 
         uint256 protocolTokens = (tokens *
-            centralRegistry.protocolLiquidationFee()) / EXP_SCALE;
+            centralRegistry.protocolLiquidationFactor(address(lendtroller))) / EXP_SCALE;
         uint256 liquidatorTokens = tokens - protocolTokens;
 
         // Document new account balances with underflow check on borrower balance

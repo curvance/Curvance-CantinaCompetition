@@ -367,8 +367,7 @@ contract Zapper {
         }
 
         // check valid cToken
-        (bool isListed, ) = lendtroller.getMarketTokenData(cToken);
-        require(isListed, "Zapper: invalid cToken address");
+        require(lendtroller.isListed(cToken), "PositionFolding: UNAUTHORIZED");
         // check cToken underlying
         require(
             CToken(cToken).underlying() == lpToken,

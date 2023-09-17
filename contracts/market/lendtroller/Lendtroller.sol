@@ -24,12 +24,18 @@ contract Lendtroller is ILendtroller, ERC165 {
     struct MarketToken {
         /// @notice Whether or not this market token is listed.
         bool isListed;
-        /// @notice The ratio at which this token will be compensated on liquidation.
-        /// @dev    Always above 1e18 with 1.05e18 = 5% incentive on liquidation
-        uint256 liquidationIncentive;
         /// @notice The ratio at which this token can be collateralized.
-        /// @dev    Scale of 0 to 1e18 with 0.8e18 = 80% collateral value
+        /// @dev    in `EXP_SCALE` format, with 0.8e18 = 80% collateral value
         uint256 collateralizationRatio;
+        /// @notice The ratio at which this token will be liquidated.
+        /// @dev    in `EXP_SCALE` format, with 0.8e18 = 80% debt vs collateral value
+        uint256 liquidationThreshold;
+        /// @notice The ratio at which this token will be compensated on liquidation.
+        /// @dev    In `EXP_SCALE` format, always above 1e18 with 1.05e18 = 5% incentive
+        uint256 liquidationIncentive;
+        /// @notice The fee that will be taken on liquidation for this token.
+        /// @dev    In `EXP_SCALE` format, 0.01e18 = 1% liquidation fee
+        uint256 protocolLiquidationFee;
         /// @notice Mapping that indicates whether an account is in a market. 
         /// @dev    0 or 1 for no; 2 for yes
         mapping(address => uint256) accountInMarket;
@@ -40,25 +46,25 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @notice Scalar for math.
     uint256 internal constant _EXP_SCALE = 1e18;
     /// @notice 100% E.g close entire position.
-    uint256 internal constant maxCloseFactor = 1e18;
+    uint256 internal constant _MAX_CLOSE_FACTOR = 1e18;
     /// @notice Maximum collateralization ratio. 91%
-    uint256 internal constant maxCollateralizationRatio = 0.91e18;
+    uint256 internal constant _MAX_COLLATERALIZATION_RATIO = 0.91e18;
     /// @notice Minimum hold time to prevent oracle price attacks.
-    uint256 internal constant minHoldPeriod = 15 minutes;
+    uint256 internal constant _MIN_HOLD_PERIOD = 15 minutes;
     /// @notice The maximum liquidation incentive. 30%
     uint256 internal constant _MAX_LIQUIDATION_INCENTIVE = .3e18;
     /// @notice The minimum liquidation incentive. 1%
     uint256 internal constant _MIN_LIQUIDATION_INCENTIVE = .01e18;
+    /// @notice The maximum liquidation incentive. 5%
+    uint256 internal constant _MAX_LIQUIDATION_FEE = .05e18;
+    // `bytes4(keccak256(bytes("Lendtroller__InvalidParameter()")))`
+    uint256 internal constant _INVALID_PARAMETER_SELECTOR = 0x31765827;
+    // `bytes4(keccak256(bytes("Lendtroller__InsufficientShortfall()")))`
+    uint256 internal constant _INSUFFICIENT_SHORTFALL_SELECTOR = 0x751bba8d;
     /// @notice Curvance DAO hub
     ICentralRegistry public immutable centralRegistry;
     /// @notice gaugePool contract address.
     address public immutable gaugePool;
-
-    // `bytes4(keccak256(bytes("Lendtroller__InvalidParameter()")))`
-    uint256 internal constant _INVALID_PARAMETER_SELECTOR = 0x31765827;
-
-    // `bytes4(keccak256(bytes("Lendtroller__InsufficientShortfall()")))`
-    uint256 internal constant _INSUFFICIENT_SHORTFALL_SELECTOR = 0x751bba8d;
 
     /// STORAGE ///
 
@@ -339,7 +345,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         // as well as short term price manipulations if the dynamic dual oracle
         // fails to protect the market somehow
         if (
-            accountAssets[account].lastBorrowTimestamp + minHoldPeriod >
+            accountAssets[account].lastBorrowTimestamp + _MIN_HOLD_PERIOD >
             block.timestamp
         ) {
             revert Lendtroller__MinimumHoldPeriod();
@@ -488,7 +494,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         // Convert parameter from basis points to `EXP_SCALE`
         newCloseFactor = newCloseFactor * 1e14;
 
-        if (newCloseFactor > maxCloseFactor) {
+        if (newCloseFactor > _MAX_CLOSE_FACTOR) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
         // Cache the current value for event log and gas savings
@@ -527,6 +533,7 @@ contract Lendtroller is ILendtroller, ERC165 {
                 _revert(_INVALID_PARAMETER_SELECTOR);
             }
 
+            // We use the value as a premium in `calculateLiquidatedTokens` so it needs to be 1 + incentive
             market.liquidationIncentive = _EXP_SCALE + liquidationIncentive;
         }
         
@@ -566,7 +573,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         }
 
         // Validate collateralization ratio is not above maximum allowed
-        if (maxCollateralizationRatio < newCollateralizationRatio) {
+        if (newCollateralizationRatio > _MAX_COLLATERALIZATION_RATIO) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
@@ -600,7 +607,7 @@ contract Lendtroller is ILendtroller, ERC165 {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
-        // Assign new liquidation incentive
+        // We use the value as a premium in `calculateLiquidatedTokens` so it needs to be 1 + incentive
         marketToken.liquidationIncentive = _EXP_SCALE + newLiquidationIncentive;
 
         // Assign new collateralization ratio
@@ -650,6 +657,16 @@ contract Lendtroller is ILendtroller, ERC165 {
             borrowCaps[address(mTokens[i])] = newBorrowCaps[i];
             emit NewBorrowCap(mTokens[i], newBorrowCaps[i]);
         }
+    }
+
+    /// @notice Returns whether `mToken` is listed in the lending market
+    /// @param mToken market token address
+    function isListed(
+        address mToken
+    ) external view override returns (bool) {
+        return (
+            marketTokenData[mToken].isListed
+        );
     }
 
     /// @notice Returns market status
@@ -929,7 +946,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         // as well as short term price manipulations if the dynamic dual oracle
         // fails to protect the market somehow
         if (
-            accountAssets[redeemer].lastBorrowTimestamp + minHoldPeriod >
+            accountAssets[redeemer].lastBorrowTimestamp + _MIN_HOLD_PERIOD >
             block.timestamp
         ) {
             revert Lendtroller__MinimumHoldPeriod();

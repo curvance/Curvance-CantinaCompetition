@@ -55,6 +55,10 @@ interface ILendtroller {
         uint256 repayAmount
     ) external view returns (uint256);
 
+    function isListed(
+        address mToken
+    ) external view returns (bool);
+
     function getMarketTokenData(
         address mToken
     ) external view returns (bool, uint256, uint256);

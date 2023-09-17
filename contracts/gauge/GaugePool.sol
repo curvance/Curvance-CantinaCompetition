@@ -201,10 +201,8 @@ contract GaugePool is GaugeController, ReentrancyGuard {
             revert GaugeErrors.InvalidAmount();
         }
 
-        (bool isListed, ) = ILendtroller(lendtroller).getMarketTokenData(
-            token
-        );
-        if (msg.sender != token || !isListed) {
+        if (msg.sender != token || 
+        !ILendtroller(lendtroller).isListed(token)) {
             revert GaugeErrors.InvalidToken();
         }
 
@@ -245,10 +243,8 @@ contract GaugePool is GaugeController, ReentrancyGuard {
             revert GaugeErrors.InvalidAmount();
         }
 
-        (bool isListed, ) = ILendtroller(lendtroller).getMarketTokenData(
-            token
-        );
-        if (msg.sender != token || !isListed) {
+        if (msg.sender != token || 
+        !ILendtroller(lendtroller).isListed(token)) {
             revert GaugeErrors.InvalidToken();
         }
 

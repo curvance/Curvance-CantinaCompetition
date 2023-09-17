@@ -74,6 +74,9 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @notice Information corresponding to borrow exchange rate
     ExchangeRateData public borrowExchangeRate;
 
+    /// @notice Interest rate reserve factor
+    uint256 internal interestFactor;
+
     /// @notice account => token balance
     mapping(address => uint256) public balanceOf;
 
@@ -111,6 +114,7 @@ contract DToken is ERC165, ReentrancyGuard {
         address newInterestRateModel,
         uint256 newInterestCompoundRate
     );
+    event NewInterestFactor(uint256 oldInterestFactor, uint256 newInterestFactor);
     /// ERRORS ///
 
     error DToken__UnauthorizedCaller();
@@ -171,6 +175,7 @@ contract DToken is ERC165, ReentrancyGuard {
         borrowExchangeRate.exchangeRate = uint224(EXP_SCALE);
 
         _setInterestRateModel(interestRateModel_);
+        _setInterestFactor(centralRegistry.protocolInterestFactor(lendtroller_));
 
         underlying = underlying_;
         name = string.concat(
@@ -506,12 +511,6 @@ contract DToken is ERC165, ReentrancyGuard {
         return true;
     }
 
-    /// @notice Reserve fee is in basis point form
-    /// @dev Returns the protocols current interest rate fee to fill reserves
-    function reserveFee() public view returns (uint256) {
-        return centralRegistry.protocolInterestRateFee();
-    }
-
     /// Admin Functions
 
     /// @notice Rescue any token sent by mistake
@@ -557,7 +556,7 @@ contract DToken is ERC165, ReentrancyGuard {
     }
 
     /// @notice accrues interest and updates the interest rate model
-    /// @dev Admin function to accrue interest and update the interest rate model
+    /// @dev Admin function to update the interest rate model
     /// @param newInterestRateModel the new interest rate model to use
     function setInterestRateModel(
         address newInterestRateModel
@@ -565,6 +564,15 @@ contract DToken is ERC165, ReentrancyGuard {
         accrueInterest();
 
         _setInterestRateModel(newInterestRateModel);
+    }
+
+    /// @notice accrues interest and updates the interest factor
+    /// @dev Admin function to update the interest factor value
+    /// @param newInterestFactor the new interest factor to use
+    function setInterestFactor(uint256 newInterestFactor) external onlyElevatedPermissions {
+        accrueInterest();
+
+        _setInterestFactor(newInterestFactor);
     }
 
     /// @notice Get the underlying balance of the `account`
@@ -638,7 +646,7 @@ contract DToken is ERC165, ReentrancyGuard {
                 getCash(),
                 totalBorrows,
                 totalReserves,
-                reserveFee()
+                interestFactor
             );
     }
 
@@ -775,7 +783,7 @@ contract DToken is ERC165, ReentrancyGuard {
         borrowExchangeRate.exchangeRate = uint224(exchangeRateNew);
         totalBorrows = totalBorrowsNew;
         totalReserves =
-            ((reserveFee() * debtAccumulated) / EXP_SCALE) +
+            ((interestFactor * debtAccumulated) / EXP_SCALE) +
             reservesPrior;
 
         emit InterestAccrued(
@@ -788,7 +796,6 @@ contract DToken is ERC165, ReentrancyGuard {
     /// INTERNAL FUNCTIONS ///
 
     /// @notice Sets a new lendtroller for the market
-    /// @dev Admin function to set a new lendtroller
     /// @param newLendtroller New lendtroller address
     function _setLendtroller(address newLendtroller) internal {
 
@@ -807,7 +814,6 @@ contract DToken is ERC165, ReentrancyGuard {
     }
 
     /// @notice Updates the interest rate model
-    /// @dev Admin function to accrue interest and update the interest rate model
     /// @param newInterestRateModel the new interest rate model to use
     function _setInterestRateModel(address newInterestRateModel) internal {
         // Ensure we are switching to an actual Interest Rate Model
@@ -825,6 +831,23 @@ contract DToken is ERC165, ReentrancyGuard {
             newInterestRateModel,
             borrowExchangeRate.compoundRate
         );
+    }
+
+    /// @notice Updates the interest factor value
+    /// @param newInterestFactor the new interest factor
+    function _setInterestFactor(uint256 newInterestFactor) internal {
+        if (newInterestFactor > 5000) {
+            revert DToken__ExcessiveValue();
+        }
+        
+        uint256 oldInterestFactor = interestFactor;
+
+        /// The Interest Rate Factor is in `EXP_SCALE` format
+        /// So we need to multiply by 1e14 to format properly
+        /// from basis points to %
+        interestFactor = newInterestFactor * 1e14;
+
+        emit NewInterestFactor(oldInterestFactor, newInterestFactor);
     }
 
     /// @notice Transfer `tokens` tokens from `from` to `to` by `spender` internally
