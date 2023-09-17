@@ -47,7 +47,7 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
 
         lendtroller.updateCollateralToken(IMToken(address(dUSDC)), 200, 0.9e18);
 
-        (,, uint256 collateralizationRatio) = lendtroller.getMarketTokenData(
+        (,, uint256 collateralizationRatio) = lendtroller.getMTokenData(
             address(dUSDC)
         );
         assertEq(collateralizationRatio, 0.9e18);
