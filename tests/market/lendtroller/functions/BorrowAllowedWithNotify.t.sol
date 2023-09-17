@@ -61,7 +61,7 @@ contract BorrowAllowedWithNotifyTest is TestBaseLendtroller {
         mTokens[0] = IMToken(address(dUSDC));
         borrowCaps[0] = 100e6 - 1;
 
-        lendtroller.setMarketTokenBorrowCaps(mTokens, borrowCaps);
+        lendtroller.setCTokenCollateralCaps(mTokens, borrowCaps);
 
         vm.prank(address(dUSDC));
 
