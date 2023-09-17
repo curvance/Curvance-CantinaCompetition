@@ -76,9 +76,9 @@ contract Lendtroller is ILendtroller, ERC165 {
     mapping(address => uint256) public mintPaused;
     /// @dev Token => 0 or 1 = unpaused; 2 = paused
     mapping(address => uint256) public borrowPaused;
-    /// @notice Token => Borrow Cap
+    /// @notice Token => Collateral Cap
     /// @dev 0 = unlimited
-    mapping(address => uint256) public borrowCaps;
+    mapping(address => uint256) public collateralCaps;
 
     /// @notice Maximum % that a liquidator can repay when liquidating a user, in EXP_SCALE.
     /// @dev Default 50%
@@ -103,7 +103,7 @@ contract Lendtroller is ILendtroller, ERC165 {
     event CollateralTokenUpdated(IMToken mToken, uint256 newLI, uint256 newCR);
     event ActionPaused(string action, bool pauseState);
     event ActionPaused(IMToken mToken, string action, bool pauseState);
-    event NewBorrowCap(IMToken mToken, uint256 newBorrowCap);
+    event NewCollateralCap(IMToken mToken, uint256 newCollateralCap);
     event NewPositionFoldingContract(address oldPF, address newPF);
 
     /// ERRORS ///
@@ -569,11 +569,6 @@ contract Lendtroller is ILendtroller, ERC165 {
     ) external onlyElevatedPermissions {
 
         if (IMToken(mToken).tokenType() != 1) {
-            revert Lendtroller__TokenNotListed();
-        }
-
-        // Validate collateralization ratio is not above maximum allowed
-        if (newCollateralizationRatio > _MAX_COLLATERALIZATION_RATIO) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
@@ -581,6 +576,20 @@ contract Lendtroller is ILendtroller, ERC165 {
         MarketToken storage marketToken = marketTokenData[address(mToken)];
         if (!marketToken.isListed) {
             revert Lendtroller__TokenNotListed();
+        }
+
+        // Convert the parameters from basis points to `EXP_SCALE` format
+        newLiquidationIncentive = newLiquidationIncentive * 1e14;
+        newCollateralizationRatio = newCollateralizationRatio * 1e14;
+
+        // Validate liquidation incentive is not above the maximum allowed
+        if (newLiquidationIncentive > _MAX_LIQUIDATION_INCENTIVE) {
+            _revert(_INVALID_PARAMETER_SELECTOR);
+        }
+
+        // Validate collateralization ratio is not above the maximum allowed
+        if (newCollateralizationRatio > _MAX_COLLATERALIZATION_RATIO) {
+            _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
         (, uint256 errorCode) = getPriceRouter().getPrice(
@@ -594,14 +603,7 @@ contract Lendtroller is ILendtroller, ERC165 {
             revert Lendtroller__PriceError();
         }
 
-        // Convert the parameters from basis points to `EXP_SCALE` format
-        newLiquidationIncentive = newLiquidationIncentive * 1e14;
-        newCollateralizationRatio = newCollateralizationRatio * 1e14;
-
-        // Make sure that the liquidation incentive is not above the maximum
-        if (newLiquidationIncentive > _MAX_LIQUIDATION_INCENTIVE) {
-            _revert(_INVALID_PARAMETER_SELECTOR);
-        }
+        
         // We need to make sure that the liquidation incentive is enough for both the protocol and the users
         if (newLiquidationIncentive - centralRegistry.protocolLiquidationFactor(address(this)) < _MIN_LIQUIDATION_INCENTIVE) {
             _revert(_INVALID_PARAMETER_SELECTOR);
@@ -622,17 +624,14 @@ contract Lendtroller is ILendtroller, ERC165 {
         );
     }
 
-    /// @notice Set the given borrow caps for the given mToken markets.
-    ///         Borrowing that brings total borrows to or above borrow cap will revert.
-    /// @dev Admin or borrowCapGuardian function to set the borrow caps.
-    ///      A borrow cap of 0 corresponds to unlimited borrowing.
+    /// @notice Set `newCollateralizationCaps` for the given `mTokens`.
+    /// @dev    A collateral cap of 0 corresponds to unlimited collateralization.
     /// @param mTokens The addresses of the markets (tokens) to
     ///                change the borrow caps for
-    /// @param newBorrowCaps The new borrow cap values in underlying to be set.
-    ///                      A value of 0 corresponds to unlimited borrowing.
-    function setMarketTokenBorrowCaps(
+    /// @param newCollateralCaps The new collateral cap values in underlying to be set.
+    function setCTokenCollateralCaps(
         IMToken[] calldata mTokens,
-        uint256[] calldata newBorrowCaps
+        uint256[] calldata newCollateralCaps
     ) external onlyDaoPermissions {
         uint256 numMarkets = mTokens.length;
 
@@ -645,7 +644,7 @@ contract Lendtroller is ILendtroller, ERC165 {
             }
         }
 
-        if (numMarkets != newBorrowCaps.length) {
+        if (numMarkets != newCollateralCaps.length) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
@@ -654,8 +653,8 @@ contract Lendtroller is ILendtroller, ERC165 {
                 _revert(_INVALID_PARAMETER_SELECTOR);
             }
 
-            borrowCaps[address(mTokens[i])] = newBorrowCaps[i];
-            emit NewBorrowCap(mTokens[i], newBorrowCaps[i]);
+            collateralCaps[address(mTokens[i])] = newCollateralCaps[i];
+            emit NewCollateralCap(mTokens[i], newCollateralCaps[i]);
         }
     }
 
@@ -769,13 +768,14 @@ contract Lendtroller is ILendtroller, ERC165 {
         );
     }
 
-    /// @notice Updates `accounts` lastBorrowTimestamp to the current block timestamp
+    /// @notice Updates `borrower` lastBorrowTimestamp to the current block timestamp
     /// @dev The caller must be a listed MToken in the `markets` mapping
     /// @param borrower The address of the account that has just borrowed
     function notifyAccountBorrow(address borrower) external override {
         if (!marketTokenData[msg.sender].isListed) {
             revert Lendtroller__TokenNotListed();
         }
+
         accountAssets[borrower].lastBorrowTimestamp = block.timestamp;
     }
 
@@ -812,12 +812,12 @@ contract Lendtroller is ILendtroller, ERC165 {
             emit MarketEntered(mToken, borrower);
         }
 
-        uint256 borrowCap = borrowCaps[mToken];
-        // Borrow cap of 0 corresponds to unlimited borrowing
-        if (borrowCap != 0) {
-            // Validate that if there is a borrow cap,
+        uint256 collateralCap = collateralCaps[mToken];
+        // Collateral Cap of 0 corresponds to unlimited collateralization
+        if (collateralCap != 0) {
+            // Validate that if there is a collateral cap,
             // we will not be over the cap with this new borrow
-            if ((IMToken(mToken).totalBorrows() + borrowAmount) > borrowCap) {
+            if ((IMToken(mToken).totalBorrows() + borrowAmount) > collateralCap) {
                 revert Lendtroller__BorrowCapReached();
             }
         }
