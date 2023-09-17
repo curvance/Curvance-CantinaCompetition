@@ -54,7 +54,6 @@ contract TestBaseMarket is TestBase {
         0x773616E4d11A78F511299002da57A0a94577F1f4;
     address internal constant _CHAINLINK_RETH_ETH =
         0x536218f9E9Eb48863970252233c8F271f554C2d0;
-
     address internal constant _BALANCER_VAULT =
         0xBA12222222228d8Ba445958a75a0704d566BF2C8;
     bytes32 internal constant _BAL_WETH_RETH_POOLID =
