@@ -8,7 +8,7 @@ contract SetCTokenCollateralCapsTest is TestBaseLendtroller {
     IMToken[] public mTokens;
     uint256[] public collateralCaps;
 
-    event NewCollateralCaps(IMToken mToken, uint256 newCollateralCaps);
+    event NewCollateralCap(IMToken mToken, uint256 newCollateralCap);
 
     function setUp() public override {
         super.setUp();
