@@ -11,7 +11,7 @@ contract BorrowAllowedTest is TestBaseLendtroller {
     function setUp() public override {
         super.setUp();
 
-        lendtroller.listMarketToken(address(dUSDC));
+        lendtroller.listMarketToken(address(dUSDC), 200);
     }
 
     function test_borrowAllowed_fail_whenBorrowPaused() public {

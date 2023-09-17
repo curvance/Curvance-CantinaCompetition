@@ -10,7 +10,7 @@ contract NotifyAccountBorrowTest is TestBaseLendtroller {
     function setUp() public override {
         super.setUp();
 
-        lendtroller.listMarketToken(address(dUSDC));
+        lendtroller.listMarketToken(address(dUSDC), 200);
     }
 
     function test_notifyAccountBorrow_fail_whenCallerIsNotMToken() public {

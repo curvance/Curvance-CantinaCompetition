@@ -11,23 +11,23 @@ contract ListMarketTokenTest is TestBaseLendtroller {
         vm.prank(address(1));
 
         vm.expectRevert("Lendtroller: UNAUTHORIZED");
-        lendtroller.listMarketToken(address(dUSDC));
+        lendtroller.listMarketToken(address(dUSDC), 200);
     }
 
     function test_listMarketToken_fail_whenMTokenIsAlreadyListed() public {
-        lendtroller.listMarketToken(address(dUSDC));
+        lendtroller.listMarketToken(address(dUSDC), 200);
 
         vm.expectRevert(Lendtroller.Lendtroller__TokenAlreadyListed.selector);
-        lendtroller.listMarketToken(address(dUSDC));
+        lendtroller.listMarketToken(address(dUSDC), 200);
     }
 
     function test_listMarketToken_fail_whenMTokenIsInvalid() public {
         vm.expectRevert();
-        lendtroller.listMarketToken(address(1));
+        lendtroller.listMarketToken(address(1), 200);
     }
 
     function test_listMarketToken_success() public {
-        (bool isListed, uint256 collateralizationRatio) = lendtroller
+        (bool isListed,, uint256 collateralizationRatio) = lendtroller
             .getMarketTokenData(address(dUSDC));
         assertFalse(isListed);
         assertEq(collateralizationRatio, 0);
@@ -35,9 +35,9 @@ contract ListMarketTokenTest is TestBaseLendtroller {
         vm.expectEmit(true, true, true, true, address(lendtroller));
         emit MarketListed(address(dUSDC));
 
-        lendtroller.listMarketToken(address(dUSDC));
+        lendtroller.listMarketToken(address(dUSDC), 200);
 
-        (isListed, collateralizationRatio) = lendtroller.getMarketTokenData(
+        (isListed,, collateralizationRatio) = lendtroller.getMarketTokenData(
             address(dUSDC)
         );
         assertTrue(isListed);

@@ -10,7 +10,7 @@ contract LendtrollerDeploymentTest is TestBaseLendtroller {
         public
     {
         vm.expectRevert(
-            Lendtroller.Lendtroller__CentralRegistryIsInvalid.selector
+            Lendtroller.Lendtroller__InvalidParameter.selector
         );
         new Lendtroller(ICentralRegistry(address(0)), address(gaugePool));
     }
@@ -19,7 +19,7 @@ contract LendtrollerDeploymentTest is TestBaseLendtroller {
         public
     {
         vm.expectRevert(
-            Lendtroller.Lendtroller__GaugePoolIsZeroAddress.selector
+            Lendtroller.Lendtroller__InvalidParameter.selector
         );
         new Lendtroller(
             ICentralRegistry(address(centralRegistry)),
