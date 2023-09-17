@@ -21,7 +21,7 @@ contract SetBorrowPausedTest is TestBaseLendtroller {
     }
 
     function test_setBorrowPaused_success() public {
-        lendtroller.listMarketToken(address(dUSDC));
+        lendtroller.listMarketToken(address(dUSDC), 200);
 
         assertEq(lendtroller.borrowPaused(address(dUSDC)), 0);
 

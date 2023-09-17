@@ -15,7 +15,7 @@ contract SetCloseFactorTest is TestBaseLendtroller {
     }
 
     function test_setCloseFactor_fail_whenNewValueExceedsMaximum() public {
-        vm.expectRevert(Lendtroller.Lendtroller__InvalidValue.selector);
+        vm.expectRevert(Lendtroller.Lendtroller__InvalidParameter.selector);
         lendtroller.setCloseFactor(1e18 + 1);
     }
 

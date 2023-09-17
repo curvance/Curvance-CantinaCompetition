@@ -39,7 +39,7 @@ contract SetCollateralizationRatioTest is TestBaseLendtroller {
     }
 
     function test_setCollateralizationRatio_success() public {
-        lendtroller.listMarketToken(address(dUSDC));
+        lendtroller.listMarketToken(address(dUSDC), 200);
 
         vm.expectEmit(true, true, true, true, address(lendtroller));
         emit NewCollateralizationRatio(IMToken(address(dUSDC)), 0, 0.9e18);

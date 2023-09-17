@@ -15,7 +15,7 @@ contract SetTransferPausedTest is TestBaseLendtroller {
     }
 
     function test_setTransferPaused_success() public {
-        lendtroller.listMarketToken(address(dUSDC));
+        lendtroller.listMarketToken(address(dUSDC), 200);
 
         lendtroller.transferAllowed(address(dUSDC), address(this), user1, 1);
 

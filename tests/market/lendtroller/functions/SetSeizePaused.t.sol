@@ -24,8 +24,8 @@ contract SetSeizePausedTest is TestBaseLendtroller {
             user1
         );
 
-        lendtroller.listMarketToken(address(cBALRETH));
-        lendtroller.listMarketToken(address(dUSDC));
+        lendtroller.listMarketToken(address(cBALRETH), 200);
+        lendtroller.listMarketToken(address(dUSDC), 200);
 
         lendtroller.seizeAllowed(
             address(cBALRETH),
