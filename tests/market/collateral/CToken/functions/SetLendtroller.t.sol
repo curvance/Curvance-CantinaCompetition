@@ -33,7 +33,7 @@ contract CTokenSetLendtrollerTest is TestBaseCToken {
     }
 
     function test_cTokenSetLendtroller_success() public {
-        centralRegistry.addLendingMarket(address(newLendtroller), 0;
+        centralRegistry.addLendingMarket(address(newLendtroller), 0);
 
         assertEq(address(cBALRETH.lendtroller()), address(lendtroller));
 
