@@ -53,7 +53,7 @@ interface ILendtroller {
         address mTokenBorrowed,
         address mTokenCollateral,
         uint256 repayAmount
-    ) external view returns (uint256);
+    ) external view returns (uint256, uint256);
 
     function isListed(
         address mToken

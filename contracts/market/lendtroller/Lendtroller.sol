@@ -32,10 +32,13 @@ contract Lendtroller is ILendtroller, ERC165 {
         /// @dev    in `EXP_SCALE` format, with 0.8e18 = 80% debt vs collateral value
         uint256 liquidationThreshold;
         /// @notice The ratio at which this token will be compensated on liquidation.
-        /// @dev    In `EXP_SCALE` format, always above 1e18 with 1.05e18 = 5% incentive
+        /// @dev    In `EXP_SCALE` format, stored as (Incentive + EXP_SCALE)
+        ///         e.g 1.05e18 = 5% incentive, this saves gas for liquidation calculations
         uint256 liquidationIncentive;
         /// @notice The fee that will be taken on liquidation for this token.
-        /// @dev    In `EXP_SCALE` format, 0.01e18 = 1% liquidation fee
+        /// @dev    In `EXP_SCALE` format, 0.01e18 = 1%
+        ///         Note: this is stored as (Fee * EXP_SCALE) / `liquidationIncentive`
+        ///         in order to save gas for liquidation calculations
         uint256 protocolLiquidationFee;
         /// @notice Mapping that indicates whether an account is in a market. 
         /// @dev    0 or 1 for no; 2 for yes
@@ -613,8 +616,9 @@ contract Lendtroller is ILendtroller, ERC165 {
         // We use the value as a premium in `calculateLiquidatedTokens` so it needs to be 1 + incentive
         marketToken.liquidationIncentive = _EXP_SCALE + liquidationIncentive;
 
-        // Add protocol liquidation fee
-        marketToken.protocolLiquidationFee = protocolLiquidationFee;
+        // Store protocol liquidation fee divided by the liquidation incentive offset,
+        // that way we can directly multiply later instead of needing extra calculations
+        marketToken.protocolLiquidationFee = (_EXP_SCALE * protocolLiquidationFee) / (_EXP_SCALE + liquidationIncentive);
 
         // Assign new collateralization ratio
         // Note that a collateralization ratio of 0 corresponds to
