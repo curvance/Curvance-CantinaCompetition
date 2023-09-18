@@ -588,6 +588,7 @@ contract Lendtroller is ILendtroller, ERC165 {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
+        // Validate protocol liquidation fee is not above the maximum allowed
         if (protocolLiquidationFee > _MAX_LIQUIDATION_FEE) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
