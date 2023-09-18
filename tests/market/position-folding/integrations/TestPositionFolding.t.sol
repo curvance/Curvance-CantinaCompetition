@@ -66,6 +66,7 @@ contract TestPositionFolding is TestBaseMarket {
             lendtroller.updateCollateralToken(
                 IMToken(address(cBALRETH)),
                 200,
+                0,
                 5e17
             );
             vm.prank(user);

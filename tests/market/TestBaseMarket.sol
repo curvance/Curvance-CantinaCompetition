@@ -276,7 +276,7 @@ contract TestBaseMarket is TestBase {
             ICentralRegistry(address(centralRegistry)),
             address(gaugePool)
         );
-        centralRegistry.addLendingMarket(address(lendtroller));
+        centralRegistry.addLendingMarket(address(lendtroller), 0);
     }
 
     function _deployInterestRateModel() internal {

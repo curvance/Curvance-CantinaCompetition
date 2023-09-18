@@ -33,7 +33,7 @@ contract DTokenSetLendtrollerTest is TestBaseDToken {
     }
 
     function test_dTokenSetLendtroller_success() public {
-        centralRegistry.addLendingMarket(address(newLendtroller));
+        centralRegistry.addLendingMarket(address(newLendtroller), 0);
 
         assertEq(address(dUSDC.lendtroller()), address(lendtroller));
 

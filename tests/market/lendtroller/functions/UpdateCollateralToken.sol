@@ -9,6 +9,7 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
     event CollateralTokenUpdated(
         IMToken mToken, 
         uint256 newLI, 
+        uint256 newLF, 
         uint256 newCR
         );
 
@@ -18,7 +19,7 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
         vm.prank(address(1));
 
         vm.expectRevert("Lendtroller: UNAUTHORIZED");
-        lendtroller.updateCollateralToken(IMToken(address(dUSDC)), 200, 0.9e18);
+        lendtroller.updateCollateralToken(IMToken(address(dUSDC)), 200, 0, 0.9e18);
     }
 
     function test_updateCollateralToken_fail_whenNewValueExceedsMaximum()
@@ -28,6 +29,7 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
         lendtroller.updateCollateralToken(
             IMToken(address(dUSDC)),
             200,
+            0,
             0.91e18 + 1
         );
     }
@@ -36,16 +38,16 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
         public
     {
         vm.expectRevert(Lendtroller.Lendtroller__TokenNotListed.selector);
-        lendtroller.updateCollateralToken(IMToken(address(dUSDC)), 200, 0.9e18);
+        lendtroller.updateCollateralToken(IMToken(address(dUSDC)), 200, 0, 0.9e18);
     }
 
     function test_updateCollateralToken_success() public {
         lendtroller.listMarketToken(address(dUSDC));
 
         vm.expectEmit(true, true, true, true, address(lendtroller));
-        emit CollateralTokenUpdated(IMToken(address(dUSDC)), 0, 0.9e18);
+        emit CollateralTokenUpdated(IMToken(address(dUSDC)), 0, 0, 0.9e18);
 
-        lendtroller.updateCollateralToken(IMToken(address(dUSDC)), 200, 0.9e18);
+        lendtroller.updateCollateralToken(IMToken(address(dUSDC)), 200, 0, 0.9e18);
 
         (,, uint256 collateralizationRatio) = lendtroller.getMTokenData(
             address(dUSDC)
