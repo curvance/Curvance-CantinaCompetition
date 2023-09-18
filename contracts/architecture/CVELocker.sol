@@ -179,7 +179,6 @@ contract CVELocker is ReentrancyGuard {
         require(lockerStarted == 1, "CVELocker: locker already started");
 
         veCVE = IVeCVE(centralRegistry.veCVE());
-        genesisEpoch = centralRegistry.genesisEpoch();
         lockerStarted = 2;
     }
 

@@ -17,6 +17,10 @@ contract MockDataFeed {
         return realFeed.aggregator();
     }
 
+    function decimals() external view returns (uint8) {
+        return realFeed.decimals();
+    }
+
     function latestRoundData()
         external
         view
