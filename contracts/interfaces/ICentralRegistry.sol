@@ -77,9 +77,6 @@ interface ICentralRegistry {
     /// @notice Lending Market => Protocol Reserve Factor on interest generated
     function protocolInterestFactor(address market) external view returns (uint256);
 
-    /// @notice Lending Market => Protocol Liquidation Factor on liquidated positions
-    function protocolLiquidationFactor(address market) external view returns (uint256);
-
     /// @notice Returns earlyUnlockPenaltyValue value in basis point form
     function earlyUnlockPenaltyValue() external view returns (uint256);
 
