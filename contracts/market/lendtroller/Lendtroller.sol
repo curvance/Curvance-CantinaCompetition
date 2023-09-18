@@ -99,7 +99,12 @@ contract Lendtroller is ILendtroller, ERC165 {
     event MarketEntered(address mToken, address account);
     event MarketExited(address mToken, address account);
     event NewCloseFactor(uint256 oldCloseFactor, uint256 newCloseFactor);
-    event CollateralTokenUpdated(IMToken mToken, uint256 newLI, uint256 newCR);
+    event CollateralTokenUpdated(
+        IMToken mToken, 
+        uint256 newLI, 
+        uint256 newLF, 
+        uint256 newCR
+    );
     event ActionPaused(string action, bool pauseState);
     event ActionPaused(IMToken mToken, string action, bool pauseState);
     event NewCollateralCap(IMToken mToken, uint256 newCollateralCap);
@@ -508,35 +513,17 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @notice Add the market token to the market and set it as listed
     /// @dev Admin function to set isListed and add support for the market
     /// @param mToken The address of the market (token) to list
-    function listMarketToken(address mToken, uint256 liquidationIncentive) external onlyElevatedPermissions {
+    function listMarketToken(address mToken) external onlyElevatedPermissions {
         if (mTokenData[mToken].isListed) {
             revert Lendtroller__TokenAlreadyListed();
         }
 
-        uint256 tokenType = IMToken(mToken).tokenType(); // Sanity check to make sure its really a mToken
+        IMToken(mToken).tokenType(); // Sanity check to make sure its really a mToken
 
         MarketToken storage market = mTokenData[mToken];
         market.isListed = true;
         market.collateralizationRatio = 0;
 
-        // If the mToken is a cToken then we need a liquidation incentive for users to liquidate 
-        if (tokenType == 1) {
-            // Convert the parameter from basis points to `EXP_SCALE` format
-            liquidationIncentive = liquidationIncentive * 1e14;
-
-            // Make sure that the liquidation incentive is not above the maximum
-            if (liquidationIncentive > _MAX_LIQUIDATION_INCENTIVE) {
-                _revert(_INVALID_PARAMETER_SELECTOR);
-            }
-            // We need to make sure that the liquidation incentive is enough for both the protocol and the users
-            if (liquidationIncentive - centralRegistry.protocolLiquidationFactor(address(this)) < _MIN_LIQUIDATION_INCENTIVE) {
-                _revert(_INVALID_PARAMETER_SELECTOR);
-            }
-
-            // We use the value as a premium in `calculateLiquidatedTokens` so it needs to be 1 + incentive
-            market.liquidationIncentive = _EXP_SCALE + liquidationIncentive;
-        }
-        
         uint256 numMarkets = allMarkets.length;
 
         for (uint256 i; i < numMarkets; ) {
@@ -560,12 +547,14 @@ contract Lendtroller is ILendtroller, ERC165 {
 
     /// @notice Sets the collateralizationRatio for a market token
     /// @param mToken The market to set the collateralization ratio on
-    /// @param newLiquidationIncentive The new liquidation incentive for `mToken`, in basis points
-    /// @param newCollateralizationRatio The new collateral factor for `mToken`, in basis points
+    /// @param liquidationIncentive The liquidation incentive for `mToken`, in basis points
+    /// @param protocolLiquidationFee The protocol liquidation fee for `mToken`, in basis points
+    /// @param collateralizationRatio The new collateral factor for `mToken`, in basis points
     function updateCollateralToken(
         IMToken mToken,
-        uint256 newLiquidationIncentive,
-        uint256 newCollateralizationRatio
+        uint256 liquidationIncentive,
+        uint256 protocolLiquidationFee,
+        uint256 collateralizationRatio
     ) external onlyElevatedPermissions {
 
         if (IMToken(mToken).tokenType() != 1) {
@@ -579,16 +568,26 @@ contract Lendtroller is ILendtroller, ERC165 {
         }
 
         // Convert the parameters from basis points to `EXP_SCALE` format
-        newLiquidationIncentive = newLiquidationIncentive * 1e14;
-        newCollateralizationRatio = newCollateralizationRatio * 1e14;
+        liquidationIncentive = liquidationIncentive * 1e14;
+        protocolLiquidationFee = protocolLiquidationFee * 1e14;
+        collateralizationRatio = collateralizationRatio * 1e14;
 
         // Validate liquidation incentive is not above the maximum allowed
-        if (newLiquidationIncentive > _MAX_LIQUIDATION_INCENTIVE) {
+        if (liquidationIncentive > _MAX_LIQUIDATION_INCENTIVE) {
+            _revert(_INVALID_PARAMETER_SELECTOR);
+        }
+
+        if (protocolLiquidationFee > _MAX_LIQUIDATION_FEE) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
         // Validate collateralization ratio is not above the maximum allowed
-        if (newCollateralizationRatio > _MAX_COLLATERALIZATION_RATIO) {
+        if (collateralizationRatio > _MAX_COLLATERALIZATION_RATIO) {
+            _revert(_INVALID_PARAMETER_SELECTOR);
+        }
+
+        // We need to make sure that the liquidation incentive is enough for both the protocol and the users
+        if ((liquidationIncentive - protocolLiquidationFee) < _MIN_LIQUIDATION_INCENTIVE) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
@@ -603,24 +602,22 @@ contract Lendtroller is ILendtroller, ERC165 {
             revert Lendtroller__PriceError();
         }
 
-        
-        // We need to make sure that the liquidation incentive is enough for both the protocol and the users
-        if (newLiquidationIncentive - centralRegistry.protocolLiquidationFactor(address(this)) < _MIN_LIQUIDATION_INCENTIVE) {
-            _revert(_INVALID_PARAMETER_SELECTOR);
-        }
-
         // We use the value as a premium in `calculateLiquidatedTokens` so it needs to be 1 + incentive
-        marketToken.liquidationIncentive = _EXP_SCALE + newLiquidationIncentive;
+        marketToken.liquidationIncentive = _EXP_SCALE + liquidationIncentive;
+
+        // Add protocol liquidation fee
+        marketToken.protocolLiquidationFee = protocolLiquidationFee;
 
         // Assign new collateralization ratio
         // Note that a collateralization ratio of 0 corresponds to
         // no collateralization of the mToken
-        marketToken.collateralizationRatio = newCollateralizationRatio;
+        marketToken.collateralizationRatio = collateralizationRatio;
 
         emit CollateralTokenUpdated(
             mToken,
-            newLiquidationIncentive,
-            newCollateralizationRatio
+            liquidationIncentive,
+            protocolLiquidationFee,
+            collateralizationRatio
         );
     }
 
@@ -1119,5 +1116,5 @@ contract Lendtroller is ILendtroller, ERC165 {
             revert(0x1c, 0x04)
         }
     }
-    
+
 }
