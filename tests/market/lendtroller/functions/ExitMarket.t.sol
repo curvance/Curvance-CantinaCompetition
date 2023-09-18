@@ -18,7 +18,7 @@ contract ExitMarketTest is TestBaseLendtroller {
         tokens.push(address(cBALRETH));
 
         for (uint256 i = 0; i < tokens.length; i++) {
-            lendtroller.listMarketToken(tokens[i], 200);
+            lendtroller.listMarketToken(tokens[i]);
         }
     }
 

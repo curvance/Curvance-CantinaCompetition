@@ -11,19 +11,19 @@ contract ListMarketTokenTest is TestBaseLendtroller {
         vm.prank(address(1));
 
         vm.expectRevert("Lendtroller: UNAUTHORIZED");
-        lendtroller.listMarketToken(address(dUSDC), 200);
+        lendtroller.listMarketToken(address(dUSDC));
     }
 
     function test_listMarketToken_fail_whenMTokenIsAlreadyListed() public {
-        lendtroller.listMarketToken(address(dUSDC), 200);
+        lendtroller.listMarketToken(address(dUSDC));
 
         vm.expectRevert(Lendtroller.Lendtroller__TokenAlreadyListed.selector);
-        lendtroller.listMarketToken(address(dUSDC), 200);
+        lendtroller.listMarketToken(address(dUSDC));
     }
 
     function test_listMarketToken_fail_whenMTokenIsInvalid() public {
         vm.expectRevert();
-        lendtroller.listMarketToken(address(1), 200);
+        lendtroller.listMarketToken(address(1));
     }
 
     function test_listMarketToken_success() public {
@@ -35,7 +35,7 @@ contract ListMarketTokenTest is TestBaseLendtroller {
         vm.expectEmit(true, true, true, true, address(lendtroller));
         emit MarketListed(address(dUSDC));
 
-        lendtroller.listMarketToken(address(dUSDC), 200);
+        lendtroller.listMarketToken(address(dUSDC));
 
         (isListed,, collateralizationRatio) = lendtroller.getMTokenData(
             address(dUSDC)

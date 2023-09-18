@@ -42,7 +42,7 @@ contract EnterMarketsTest is TestBaseLendtroller {
 
     function test_enterMarkets_success_whenUserAlreadyJoinedMarket() public {
         for (uint256 i = 0; i < tokens.length; i++) {
-            lendtroller.listMarketToken(tokens[i], 200);
+            lendtroller.listMarketToken(tokens[i]);
         }
 
         lendtroller.enterMarkets(tokens);
@@ -72,7 +72,7 @@ contract EnterMarketsTest is TestBaseLendtroller {
 
     function test_enterMarkets_success() public {
         for (uint256 i = 0; i < tokens.length; i++) {
-            lendtroller.listMarketToken(tokens[i], 200);
+            lendtroller.listMarketToken(tokens[i]);
         }
 
         for (uint256 i = 0; i < tokens.length; i++) {

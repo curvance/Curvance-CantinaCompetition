@@ -24,7 +24,7 @@ contract SetMintPausedTest is TestBaseLendtroller {
     }
 
     function test_setMintPaused_success() public {
-        lendtroller.listMarketToken(address(dUSDC), 200);
+        lendtroller.listMarketToken(address(dUSDC));
 
         lendtroller.mintAllowed(address(dUSDC), user1);
 

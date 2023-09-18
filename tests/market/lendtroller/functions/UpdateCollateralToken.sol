@@ -40,7 +40,7 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
     }
 
     function test_updateCollateralToken_success() public {
-        lendtroller.listMarketToken(address(dUSDC), 200);
+        lendtroller.listMarketToken(address(dUSDC));
 
         vm.expectEmit(true, true, true, true, address(lendtroller));
         emit CollateralTokenUpdated(IMToken(address(dUSDC)), 0, 0.9e18);
