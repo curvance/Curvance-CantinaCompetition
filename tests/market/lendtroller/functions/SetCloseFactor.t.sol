@@ -11,19 +11,19 @@ contract SetCloseFactorTest is TestBaseLendtroller {
         vm.prank(address(1));
 
         vm.expectRevert("Lendtroller: UNAUTHORIZED");
-        lendtroller.setCloseFactor(1e18);
+        lendtroller.setCloseFactor(1e4);
     }
 
     function test_setCloseFactor_fail_whenNewValueExceedsMaximum() public {
         vm.expectRevert(Lendtroller.Lendtroller__InvalidParameter.selector);
-        lendtroller.setCloseFactor(1e18 + 1);
+        lendtroller.setCloseFactor(1e4 + 1);
     }
 
     function test_setCloseFactor_success() public {
         vm.expectEmit(true, true, true, true, address(lendtroller));
         emit NewCloseFactor(0.5e18, 1e18);
 
-        lendtroller.setCloseFactor(1e18);
+        lendtroller.setCloseFactor(1e4);
 
         assertEq(lendtroller.closeFactor(), 1e18);
     }
