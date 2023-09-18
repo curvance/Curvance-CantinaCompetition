@@ -459,11 +459,12 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @param amount The amount of mTokenBorrowed underlying to
     ///                          convert into mTokenCollateral tokens
     /// @return uint256 The number of mTokenCollateral tokens to be seized in a liquidation
+    /// @return uint256 The number of mTokenCollateral tokens to be seized for the protocol
     function calculateLiquidatedTokens(
         address mTokenBorrowed,
         address mTokenCollateral,
         uint256 amount
-    ) external view override returns (uint256) {
+    ) external view override returns (uint256, uint256) {
         // Read oracle prices for borrowed and collateral markets
         IPriceRouter router = getPriceRouter();
         (uint256 debtTokenPrice, uint256 debtTokenError) = router.getPrice(
@@ -479,14 +480,19 @@ contract Lendtroller is ILendtroller, ERC165 {
             revert Lendtroller__PriceError();
         }
 
+        /// Cache the collateral mToken
+        MarketToken storage mToken = mTokenData[mTokenCollateral];
+
         // Get the exchange rate and calculate the number of collateral tokens to seize:
-        uint256 ratio = (mTokenData[mTokenCollateral].liquidationIncentive *
+        uint256 debtCollateralRatio = (mToken.liquidationIncentive *
             debtTokenPrice *
             _EXP_SCALE) /
             (collateralTokenPrice *
                 IMToken(mTokenCollateral).exchangeRateStored());
 
-        return (ratio * amount) / _EXP_SCALE;
+        uint256 liquidatedTokens = (debtCollateralRatio * amount) / _EXP_SCALE;
+
+        return (liquidatedTokens, (liquidatedTokens * mToken.protocolLiquidationFee) / _EXP_SCALE);
     }
 
     /// @notice Sets the closeFactor used when liquidating borrows
@@ -513,7 +519,9 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @notice Add the market token to the market and set it as listed
     /// @dev Admin function to set isListed and add support for the market
     /// @param mToken The address of the market (token) to list
-    function listMarketToken(address mToken) external onlyElevatedPermissions {
+    function listMarketToken(
+        address mToken
+    ) external onlyElevatedPermissions {
         if (mTokenData[mToken].isListed) {
             revert Lendtroller__TokenAlreadyListed();
         }

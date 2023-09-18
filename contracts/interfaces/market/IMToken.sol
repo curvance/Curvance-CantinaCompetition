@@ -23,7 +23,8 @@ interface IMToken {
     function seize(
         address liquidator,
         address borrower,
-        uint256 seizeTokens
+        uint256 liquidatedTokens,
+        uint256 protocolTokens
     ) external;
 
     /// @notice Get a snapshot of the account's balances, and the cached exchange rate

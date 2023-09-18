@@ -1076,28 +1076,28 @@ contract DToken is ERC165, ReentrancyGuard {
         uint256 repayAmount = _repay(liquidator, borrower, amount);
 
         // We calculate the number of CTokens that will be liquidated
-        uint256 tokens = lendtroller.calculateLiquidatedTokens(
+        (uint256 liquidatedTokens, uint256 protocolTokens) = lendtroller.calculateLiquidatedTokens(
             address(this),
             address(mTokenCollateral),
             repayAmount
         );
 
         // Revert if borrower does not have enough collateral
-        if (mTokenCollateral.balanceOf(borrower) < tokens) {
+        if (mTokenCollateral.balanceOf(borrower) < liquidatedTokens) {
             revert DToken__ExcessiveValue();
         }
 
         // We check above that the mToken must be a collateral token,
         // so we cant be seizing this mToken as it is a debt token,
         // so there is no reEntry risk
-        mTokenCollateral.seize(liquidator, borrower, tokens);
+        mTokenCollateral.seize(liquidator, borrower, liquidatedTokens, protocolTokens);
 
         emit Liquidated(
             liquidator,
             borrower,
             repayAmount,
             address(mTokenCollateral),
-            tokens
+            liquidatedTokens
         );
     }
 }

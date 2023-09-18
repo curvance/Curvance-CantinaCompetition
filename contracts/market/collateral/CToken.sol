@@ -466,13 +466,15 @@ contract CToken is ERC165, ReentrancyGuard {
     ///      of liquidation.
     /// @param liquidator The account receiving seized collateral
     /// @param borrower The account having collateral seized
-    /// @param seizeTokens The number of cTokens to seize
+    /// @param liquidatedTokens The total number of cTokens to seize
+    /// @param protocolTokens The number of cTokens to seize for protocol
     function seize(
         address liquidator,
         address borrower,
-        uint256 seizeTokens
+        uint256 liquidatedTokens,
+        uint256 protocolTokens
     ) external nonReentrant {
-        _seize(msg.sender, liquidator, borrower, seizeTokens);
+        _seize(msg.sender, liquidator, borrower, liquidatedTokens, protocolTokens);
     }
 
     /// PUBLIC FUNCTIONS ///
@@ -652,12 +654,14 @@ contract CToken is ERC165, ReentrancyGuard {
     /// @param token The contract seizing the collateral (i.e. borrowed cToken)
     /// @param liquidator The account receiving seized collateral
     /// @param borrower The account having collateral seized
-    /// @param tokens The number of cTokens to seize
+    /// @param liquidatedTokens The total number of cTokens to seize
+    /// @param protocolTokens The number of cTokens to seize for protocol
     function _seize(
         address token,
         address liquidator,
         address borrower,
-        uint256 tokens
+        uint256 liquidatedTokens,
+        uint256 protocolTokens
     ) internal {
         // Fails if borrower = liquidator
         assembly {
@@ -676,12 +680,10 @@ contract CToken is ERC165, ReentrancyGuard {
             borrower
         );
 
-        uint256 protocolTokens = (tokens *
-            centralRegistry.protocolLiquidationFactor(address(lendtroller))) / EXP_SCALE;
-        uint256 liquidatorTokens = tokens - protocolTokens;
+        uint256 liquidatorTokens = liquidatedTokens - protocolTokens;
 
         // Document new account balances with underflow check on borrower balance
-        balanceOf[borrower] = balanceOf[borrower] - tokens;
+        balanceOf[borrower] = balanceOf[borrower] - liquidatedTokens;
         balanceOf[liquidator] =
             balanceOf[liquidator] +
             liquidatorTokens;
@@ -695,7 +697,7 @@ contract CToken is ERC165, ReentrancyGuard {
 
         // emit events on gauge pool
         address _gaugePool = gaugePool();
-        GaugePool(_gaugePool).withdraw(address(this), borrower, tokens);
+        GaugePool(_gaugePool).withdraw(address(this), borrower, liquidatedTokens);
         GaugePool(_gaugePool).deposit(
             address(this),
             liquidator,
