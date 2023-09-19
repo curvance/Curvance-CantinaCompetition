@@ -9,7 +9,7 @@ contract ExerciseOptionTest is TestBaseOCVE {
     address internal _E_ADDRESS = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
     uint256 public oCVEBalance;
 
-    event OCVEExercised(address indexed exerciser, uint256 amount);
+    event OptionsExercised(address indexed exerciser, uint256 amount);
 
     function setUp() public override {
         super.setUp();
@@ -22,10 +22,7 @@ contract ExerciseOptionTest is TestBaseOCVE {
             true
         );
 
-        oCVE.setOptionsTerms(
-            block.timestamp,
-            paymentTokenCurrentPrice * _ONE
-        );
+        oCVE.setOptionsTerms(block.timestamp, paymentTokenCurrentPrice * _ONE);
 
         oCVEBalance = oCVE.balanceOf(address(this));
     }
@@ -71,22 +68,21 @@ contract ExerciseOptionTest is TestBaseOCVE {
             true
         );
 
-        oCVE.setOptionsTerms(
-            block.timestamp,
-            paymentTokenCurrentPrice * _ONE
-        );
+        oCVE.setOptionsTerms(block.timestamp, paymentTokenCurrentPrice * _ONE);
 
         oCVEBalance = oCVE.balanceOf(address(this));
 
         deal(address(cve), address(oCVE), oCVEBalance);
 
         vm.expectRevert("OCVE: invalid msg value");
-        oCVE.exerciseOption{ value: oCVEBalance - 1 }(
-            oCVEBalance
-        );
+        oCVE.exerciseOption{ value: oCVEBalance - 1 }(oCVEBalance);
     }
 
-    function test_exerciseOption_success_withETH() public {
+    function test_exerciseOption_success_withETH_fuzzed(
+        uint256 amount
+    ) public {
+        vm.assume(amount > 0 && amount < 1_000_000_000e18);
+
         chainlinkAdaptor.addAsset(_E_ADDRESS, _CHAINLINK_ETH_USD, true);
         priceRouter.addAssetPriceFeed(_E_ADDRESS, address(chainlinkAdaptor));
 
@@ -103,57 +99,46 @@ contract ExerciseOptionTest is TestBaseOCVE {
             true
         );
 
-        oCVE.setOptionsTerms(
-            block.timestamp,
-            paymentTokenCurrentPrice * _ONE
-        );
+        oCVE.setOptionsTerms(block.timestamp, paymentTokenCurrentPrice * _ONE);
 
-        oCVEBalance = oCVE.balanceOf(address(this));
-
-        deal(address(cve), address(oCVE), oCVEBalance);
+        deal(address(this), amount);
+        deal(address(oCVE), address(this), amount);
+        deal(address(cve), address(oCVE), amount);
 
         uint256 ethBalance = address(this).balance;
         uint256 oCVEETHBalance = address(oCVE).balance;
 
         vm.expectEmit(true, true, true, true, address(oCVE));
-        emit OCVEExercised(address(this), oCVEBalance);
+        emit OptionsExercised(address(this), amount);
 
-        oCVE.exerciseOption{ value: oCVEBalance }(
-            oCVEBalance
-        );
+        oCVE.exerciseOption{ value: amount }(amount);
 
-        assertEq(address(this).balance, ethBalance - oCVEBalance);
-        assertEq(
-            address(oCVE).balance,
-            oCVEETHBalance + oCVEBalance
-        );
+        assertEq(address(this).balance, ethBalance - amount);
+        assertEq(address(oCVE).balance, oCVEETHBalance + amount);
     }
 
-    function test_exerciseOption_success_withERC20() public {
-        oCVEBalance = oCVE.balanceOf(address(this));
+    function test_exerciseOption_success_withERC20_fuzzed(
+        uint256 amount
+    ) public {
+        vm.assume(amount > 0 && amount < 1_000_000_000e18);
 
-        deal(address(cve), address(oCVE), oCVEBalance);
-        deal(_USDC_ADDRESS, address(this), oCVEBalance);
+        deal(address(oCVE), address(this), amount);
+        deal(address(cve), address(oCVE), amount);
+        deal(_USDC_ADDRESS, address(this), amount);
 
         uint256 usdcBalance = usdc.balanceOf(address(this));
-        uint256 oCVEUSDCBalance = usdc.balanceOf(
-            address(oCVE)
-        );
+        uint256 oCVEUSDCBalance = usdc.balanceOf(address(oCVE));
 
-        usdc.approve(address(oCVE), oCVEBalance);
+        usdc.approve(address(oCVE), amount);
 
         vm.expectEmit(true, true, true, true, address(oCVE));
-        emit OCVEExercised(address(this), oCVEBalance);
+        emit OptionsExercised(address(this), amount);
 
-        oCVE.exerciseOption(oCVEBalance);
+        usdc.allowance(address(this), address(oCVE));
 
-        assertEq(
-            usdc.balanceOf(address(this)),
-            usdcBalance - oCVEBalance
-        );
-        assertEq(
-            usdc.balanceOf(address(oCVE)),
-            oCVEUSDCBalance + oCVEBalance
-        );
+        oCVE.exerciseOption(amount);
+
+        assertEq(usdc.balanceOf(address(this)), usdcBalance - amount);
+        assertEq(usdc.balanceOf(address(oCVE)), oCVEUSDCBalance + amount);
     }
 }

@@ -27,7 +27,7 @@ contract ListMarketTokenTest is TestBaseLendtroller {
     }
 
     function test_listMarketToken_success() public {
-        (bool isListed,, uint256 collateralizationRatio) = lendtroller
+        (bool isListed, , uint256 collateralizationRatio) = lendtroller
             .getMTokenData(address(dUSDC));
         assertFalse(isListed);
         assertEq(collateralizationRatio, 0);
@@ -37,7 +37,7 @@ contract ListMarketTokenTest is TestBaseLendtroller {
 
         lendtroller.listMarketToken(address(dUSDC));
 
-        (isListed,, collateralizationRatio) = lendtroller.getMTokenData(
+        (isListed, , collateralizationRatio) = lendtroller.getMTokenData(
             address(dUSDC)
         );
         assertTrue(isListed);

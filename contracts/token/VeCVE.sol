@@ -1087,7 +1087,7 @@ contract VeCVE is ERC20 {
 
             // Increment the chain and user token point balance
             _incrementTokenPoints(recipient, _getContinuousPointValue(amount));
-            
+
             // Update the lock value to include the new locked tokens
             user[lockIndex].amount = uint216(user[lockIndex].amount + amount);
         } else {

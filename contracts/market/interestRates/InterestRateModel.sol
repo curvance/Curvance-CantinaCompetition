@@ -5,10 +5,9 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 
 contract InterestRateModel {
-    
     /// CONSTANTS ///
 
-    /// Unix time has 31,536,000 seconds per year 
+    /// Unix time has 31,536,000 seconds per year
     /// All my homies hate leap seconds and leap years
     uint256 private constant SECONDS_PER_YEAR = 31536000;
     /// @notice Scalar for math
@@ -25,7 +24,7 @@ contract InterestRateModel {
     uint256 public baseRate; // Rate interest grows
     uint256 public vertexRate; // boosted rate interest grows
     // Utilization rate point when jump multiplier kicks in
-    uint256 public vertexStart; 
+    uint256 public vertexStart;
 
     /// EVENTS ///
 
@@ -60,7 +59,6 @@ contract InterestRateModel {
         uint256 vertexRatePerYear,
         uint256 vertexUtilizationStart
     ) {
-
         require(
             ERC165Checker.supportsInterface(
                 address(centralRegistry_),
@@ -74,7 +72,9 @@ contract InterestRateModel {
         baseRate =
             (INTEREST_COMPOUND_RATE * baseRatePerYear * EXP_SCALE) /
             (SECONDS_PER_YEAR * vertexUtilizationStart);
-        vertexRate = (INTEREST_COMPOUND_RATE * vertexRatePerYear) / SECONDS_PER_YEAR;
+        vertexRate =
+            (INTEREST_COMPOUND_RATE * vertexRatePerYear) /
+            SECONDS_PER_YEAR;
         vertexStart = vertexUtilizationStart;
 
         emit NewInterestRateModel(
@@ -99,11 +99,12 @@ contract InterestRateModel {
         uint256 vertexRatePerYear,
         uint256 vertexUtilizationStart
     ) external onlyElevatedPermissions {
-
         baseRate =
             (INTEREST_COMPOUND_RATE * baseRatePerYear * EXP_SCALE) /
             (SECONDS_PER_YEAR * vertexUtilizationStart);
-        vertexRate = (INTEREST_COMPOUND_RATE * vertexRatePerYear) / SECONDS_PER_YEAR;
+        vertexRate =
+            (INTEREST_COMPOUND_RATE * vertexRatePerYear) /
+            SECONDS_PER_YEAR;
         vertexStart = vertexUtilizationStart;
 
         emit NewInterestRateModel(
@@ -154,7 +155,8 @@ contract InterestRateModel {
 
         /// We know this will not underflow or overflow because of Interest Rate Model configurations
         unchecked {
-            return(getVertexInterestRate(util - vertexStart) + getNormalInterestRate(vertexStart));
+            return (getVertexInterestRate(util - vertexStart) +
+                getNormalInterestRate(vertexStart));
         }
     }
 
@@ -171,12 +173,14 @@ contract InterestRateModel {
         uint256 interestFee
     ) public view returns (uint256) {
         /// RateToPool = (borrowRate * oneMinusReserveFactor) / EXP_SCALE;
-        uint256 rateToPool = (getBorrowRate(cash, borrows, reserves) * (EXP_SCALE - interestFee)) / EXP_SCALE;
+        uint256 rateToPool = (getBorrowRate(cash, borrows, reserves) *
+            (EXP_SCALE - interestFee)) / EXP_SCALE;
 
         /// Supply Rate = (utilizationRate * rateToPool) / EXP_SCALE;
-        return (utilizationRate(cash, borrows, reserves) * rateToPool) / EXP_SCALE;
+        return
+            (utilizationRate(cash, borrows, reserves) * rateToPool) /
+            EXP_SCALE;
     }
-
 
     /// @notice Calculates the current borrow rate per year
     /// @param cash The amount of cash in the market
@@ -186,12 +190,12 @@ contract InterestRateModel {
     function getBorrowRatePerYear(
         uint256 cash,
         uint256 borrows,
-        uint256 reserves) external view returns (uint256) {
-            return 
-                SECONDS_PER_YEAR * 
-                (getBorrowRate(cash, borrows, reserves) / 
-                INTEREST_COMPOUND_RATE);
-        }
+        uint256 reserves
+    ) external view returns (uint256) {
+        return
+            SECONDS_PER_YEAR *
+            (getBorrowRate(cash, borrows, reserves) / INTEREST_COMPOUND_RATE);
+    }
 
     /// @notice Calculates the current supply rate per year
     /// @param cash The amount of cash in the market
@@ -204,10 +208,10 @@ contract InterestRateModel {
         uint256 borrows,
         uint256 reserves,
         uint256 interestFee
-    )  external view returns (uint256) {
-        return 
-                SECONDS_PER_YEAR * 
-                (getSupplyRate(cash, borrows, reserves, interestFee) / 
+    ) external view returns (uint256) {
+        return
+            SECONDS_PER_YEAR *
+            (getSupplyRate(cash, borrows, reserves, interestFee) /
                 INTEREST_COMPOUND_RATE);
     }
 
@@ -219,15 +223,18 @@ contract InterestRateModel {
     /// @notice Calculates the interest rate for `util` market utilization
     /// @param util The utilization rate of the market
     /// @return Returns the calculated interest rate
-    function getNormalInterestRate(uint256 util) internal view returns (uint256){
+    function getNormalInterestRate(
+        uint256 util
+    ) internal view returns (uint256) {
         return (util * baseRate) / EXP_SCALE;
     }
 
     /// @notice Calculates the interest rate under `jump` conditions E.G. `util` > `vertex ` based on market utilization
     /// @param util The utilization rate of the market above `vertex`
     /// @return Returns the calculated excess interest rate
-    function getVertexInterestRate(uint256 util) internal view returns (uint256){
+    function getVertexInterestRate(
+        uint256 util
+    ) internal view returns (uint256) {
         return (util * vertexRate) / EXP_SCALE;
     }
-
 }

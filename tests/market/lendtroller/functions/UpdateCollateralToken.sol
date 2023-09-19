@@ -7,11 +7,11 @@ import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 
 contract UpdateCollateralTokenTest is TestBaseLendtroller {
     event CollateralTokenUpdated(
-        IMToken mToken, 
-        uint256 newLI, 
-        uint256 newLF, 
+        IMToken mToken,
+        uint256 newLI,
+        uint256 newLF,
         uint256 newCR
-        );
+    );
 
     function test_updateCollateralToken_fail_whenCallerIsNotAuthorized()
         public
@@ -19,7 +19,12 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
         vm.prank(address(1));
 
         vm.expectRevert("Lendtroller: UNAUTHORIZED");
-        lendtroller.updateCollateralToken(IMToken(address(dUSDC)), 200, 0, 9000);
+        lendtroller.updateCollateralToken(
+            IMToken(address(dUSDC)),
+            200,
+            0,
+            9000
+        );
     }
 
     function test_updateCollateralToken_fail_whenNewValueExceedsMaximum()
@@ -34,23 +39,39 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
         );
     }
 
-    function test_updateCollateralToken_fail_whenMTokenIsNotListed()
-        public
-    {
+    function test_updateCollateralToken_fail_whenMTokenIsNotListed() public {
+        _deployCBALRETH();
+
         vm.expectRevert(Lendtroller.Lendtroller__TokenNotListed.selector);
-        lendtroller.updateCollateralToken(IMToken(address(_BALANCER_WETH_RETH)), 200, 0, 9000);
+        lendtroller.updateCollateralToken(
+            IMToken(address(cBALRETH)),
+            200,
+            0,
+            9000
+        );
     }
 
     function test_updateCollateralToken_success() public {
-        lendtroller.listMarketToken(address(dUSDC));
+        balRETH.approve(address(cBALRETH), 1e18);
+        lendtroller.listMarketToken(address(cBALRETH));
 
         vm.expectEmit(true, true, true, true, address(lendtroller));
-        emit CollateralTokenUpdated(IMToken(address(dUSDC)), 0, 0, 0.9e18);
+        emit CollateralTokenUpdated(
+            IMToken(address(cBALRETH)),
+            0.02e18,
+            0,
+            0.9e18
+        );
 
-        lendtroller.updateCollateralToken(IMToken(address(dUSDC)), 200, 0, 9000);
+        lendtroller.updateCollateralToken(
+            IMToken(address(cBALRETH)),
+            200,
+            0,
+            9000
+        );
 
-        (,, uint256 collateralizationRatio) = lendtroller.getMTokenData(
-            address(dUSDC)
+        (, , uint256 collateralizationRatio) = lendtroller.getMTokenData(
+            address(cBALRETH)
         );
         assertEq(collateralizationRatio, 0.9e18);
     }
