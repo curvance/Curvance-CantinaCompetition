@@ -26,9 +26,7 @@ contract CVE is OFTV2 {
         uint8 sharedDecimals_,
         address lzEndpoint_,
         ICentralRegistry centralRegistry_
-    ) OFTV2(name_, symbol_, sharedDecimals_, lzEndpoint_, centralRegistry_) {
-        
-    }
+    ) OFTV2(name_, symbol_, sharedDecimals_, lzEndpoint_, centralRegistry_) {}
 
     /// EXTERNAL FUNCTIONIS ///
 

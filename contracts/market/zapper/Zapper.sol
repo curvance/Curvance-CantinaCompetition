@@ -11,7 +11,6 @@ import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { CToken, IERC20 } from "contracts/market/collateral/CToken.sol";
 
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
-import { ICurveSwap } from "contracts/interfaces/external/curve/ICurve.sol";
 import { IWETH } from "contracts/interfaces/IWETH.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 

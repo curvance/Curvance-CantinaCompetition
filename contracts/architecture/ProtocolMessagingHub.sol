@@ -155,9 +155,15 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         lzTxObj calldata lzTxParams,
         bytes calldata payload
     ) external onlyAuthorized {
-        { // Avoid stack too deep
-            uint256 GETHChainId = centralRegistry.messagingToGETHChainId(poolData.dstChainId);
-            OmnichainData memory operator = centralRegistry.omnichainOperators(to, GETHChainId);
+        {
+            // Avoid stack too deep
+            uint256 GETHChainId = centralRegistry.messagingToGETHChainId(
+                poolData.dstChainId
+            );
+            OmnichainData memory operator = centralRegistry.omnichainOperators(
+                to,
+                GETHChainId
+            );
 
             // Validate that the operator is authorized
             if (operator.isAuthorized < 2) {
@@ -168,18 +174,13 @@ contract ProtocolMessagingHub is ReentrancyGuard {
             if (operator.messagingChainId != poolData.dstChainId) {
                 revert ProtocolMessagingHub_ConfigurationError();
             }
-        
+
             // Validate that we are aiming for a supported chain
             if (
-                centralRegistry
-                    .supportedChainData(
-                        GETHChainId
-                    )
-                    .isSupported < 2
+                centralRegistry.supportedChainData(GETHChainId).isSupported < 2
             ) {
                 revert ProtocolMessagingHub_ConfigurationError();
             }
-
         }
 
         address endpoint = IFeeAccumulator(centralRegistry.feeAccumulator())
@@ -253,7 +254,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         bytes calldata payload
     ) external onlyLayerZero {
         OmnichainData memory operator = centralRegistry.omnichainOperators(
-            address(uint160(uint256(from))), 
+            address(uint160(uint256(from))),
             centralRegistry.messagingToGETHChainId(srcChainId)
         );
 
@@ -339,7 +340,6 @@ contract ProtocolMessagingHub is ReentrancyGuard {
                 }
             }
         }
-
     }
 
     /// @notice Quotes gas cost for executing crosschain stargate swap

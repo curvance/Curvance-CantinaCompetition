@@ -117,10 +117,7 @@ contract CVELocker is ReentrancyGuard {
 
     /// CONSTRUCTOR ///
 
-    constructor(
-        ICentralRegistry centralRegistry_,
-        address baseRewardToken_
-    ) {
+    constructor(ICentralRegistry centralRegistry_, address baseRewardToken_) {
         require(
             ERC165Checker.supportsInterface(
                 address(centralRegistry_),
@@ -548,5 +545,4 @@ contract CVELocker is ReentrancyGuard {
 
         return reward;
     }
-
 }
