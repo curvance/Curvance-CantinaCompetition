@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import { IMToken } from "contracts/interfaces/market/IMToken.sol";
+import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.sol";
 import { IUniswapV2Router } from "contracts/interfaces/external/uniswap/IUniswapV2Router.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
+import { MockDataFeed } from "contracts/mocks/MockDataFeed.sol";
 
 import "tests/market/TestBaseMarket.sol";
 
@@ -18,6 +19,10 @@ contract TestTokens is TestBaseMarket {
     receive() external payable {}
 
     fallback() external payable {}
+
+    MockDataFeed public mockDaiFeed;
+    MockDataFeed public mockEthFeed;
+    MockDataFeed public mockRethFeed;
 
     function setUp() public override {
         super.setUp();
@@ -74,6 +79,14 @@ contract TestTokens is TestBaseMarket {
         provideEnoughLiquidityForLeverage();
 
         centralRegistry.addSwapper(_UNISWAP_V2_ROUTER);
+
+        // use mock pricing for testing
+        // mockDaiFeed = new MockDataFeed(_CHAINLINK_DAI_USD);
+        // mockEthFeed = new MockDataFeed(_CHAINLINK_ETH_USD);
+        // mockRethFeed = new MockDataFeed(_CHAINLINK_RETH_ETH);
+        // chainlinkAdaptor.addAsset(_DAI_ADDRESS, address(mockDaiFeed), true);
+        // chainlinkAdaptor.addAsset(_WETH_ADDRESS, address(mockEthFeed), true);
+        // chainlinkAdaptor.addAsset(_RETH_ADDRESS, address(mockRethFeed), true);
     }
 
     function provideEnoughLiquidityForLeverage() internal {
@@ -158,11 +171,91 @@ contract TestTokens is TestBaseMarket {
     }
 
     function testDTokenBorrowRepay() public {
-        // testAccountSnapshot
+        _prepareBALRETH(user1, 1 ether);
+
+        // try mint()
+        vm.startPrank(user1);
+        balRETH.approve(address(cBALRETH), 1 ether);
+        cBALRETH.mint(1 ether);
+        vm.stopPrank();
+        AccountSnapshot memory snapshot = cBALRETH.getAccountSnapshotPacked(
+            user1
+        );
+        assertEq(snapshot.mTokenBalance, 1 ether);
+        assertEq(snapshot.borrowBalance, 0);
+        assertEq(snapshot.exchangeRate, 1 ether);
+
+        // try borrow()
+        vm.startPrank(user1);
+        dDAI.borrow(500 ether);
+        vm.stopPrank();
+        snapshot = dDAI.getAccountSnapshotPacked(user1);
+        assertEq(snapshot.mTokenBalance, 0);
+        assertEq(snapshot.borrowBalance, 500 ether);
+        assertEq(snapshot.exchangeRate, 1 ether);
+
+        // try borrow()
+        skip(1200);
+        vm.startPrank(user1);
+        dDAI.borrow(100 ether);
+        vm.stopPrank();
+        snapshot = dDAI.getAccountSnapshotPacked(user1);
+        assertEq(snapshot.mTokenBalance, 0);
+        assertGt(snapshot.borrowBalance, 600 ether);
+        assertGt(snapshot.exchangeRate, 1 ether);
+
+        // skip min hold period
+        skip(900);
+
+        // try partial repay
+        (, uint256 borrowBalanceBefore, uint256 exchangeRateBefore) = dDAI
+            .getAccountSnapshot(user1);
+        _prepareDAI(user1, 200 ether);
+        vm.startPrank(user1);
+        dai.approve(address(dDAI), 200 ether);
+        dDAI.repay(200 ether);
+        vm.stopPrank();
+        snapshot = dDAI.getAccountSnapshotPacked(user1);
+        assertEq(snapshot.mTokenBalance, 0);
+        assertGt(snapshot.borrowBalance, borrowBalanceBefore - 200 ether);
+        assertGt(snapshot.exchangeRate, exchangeRateBefore);
+
+        // skip some period
+        skip(1200);
+
+        // try repay full
+        (, borrowBalanceBefore, exchangeRateBefore) = dDAI.getAccountSnapshot(
+            user1
+        );
+        _prepareDAI(user1, borrowBalanceBefore);
+        vm.startPrank(user1);
+        dai.approve(address(dDAI), borrowBalanceBefore);
+        dDAI.repay(borrowBalanceBefore);
+        vm.stopPrank();
+        snapshot = dDAI.getAccountSnapshotPacked(user1);
+        assertEq(snapshot.mTokenBalance, 0);
+        assertGt(snapshot.borrowBalance, 0);
+        assertGt(snapshot.exchangeRate, exchangeRateBefore);
     }
 
     function testCTokenRedeemOnBorrow() public {
-        // testAccountSnapshot
+        _prepareBALRETH(user1, 1 ether);
+
+        // try mint()
+        vm.startPrank(user1);
+        balRETH.approve(address(cBALRETH), 1 ether);
+        cBALRETH.mint(1 ether);
+        vm.stopPrank();
+
+        // try borrow()
+        vm.startPrank(user1);
+        dDAI.borrow(500 ether);
+        vm.stopPrank();
+
+        AccountSnapshot memory snapshot = dDAI.getAccountSnapshotPacked(user1);
+        assertEq(snapshot.mTokenBalance, 0);
+        assertEq(snapshot.borrowBalance, 500 ether);
+        assertEq(snapshot.exchangeRate, 1 ether);
     }
 
     function testDTokenRedeemOnBorrow() public {
