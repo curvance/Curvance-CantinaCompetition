@@ -65,9 +65,6 @@ contract TestGaugePool is TestBaseMarket {
             // add MToken support on price router
             priceRouter.addMTokenSupport(tokens[i]);
 
-            // set collateral factor
-            lendtroller.updateCollateralToken(IMToken(tokens[i]), 200, 0, 5000);
-
             for (uint256 j = 0; j < 10; j++) {
                 address user = users[j];
 

@@ -63,6 +63,7 @@ contract SetSeizePausedTest is TestBaseLendtroller {
             address(gaugePool)
         );
 
+        centralRegistry.addLendingMarket(address(newLendtroller), 0);
         cBALRETH.setLendtroller(address(newLendtroller));
 
         vm.expectRevert(Lendtroller.Lendtroller__LendtrollerMismatch.selector);

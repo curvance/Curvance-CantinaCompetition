@@ -31,7 +31,7 @@ contract ExitMarketTest is TestBaseLendtroller {
 
     function test_exitMarket_success_whenUserNotJoinedMarket() public {
         for (uint256 i = 0; i < tokens.length; i++) {
-            (bool isListed,, uint256 collateralizationRatio) = lendtroller
+            (bool isListed, , uint256 collateralizationRatio) = lendtroller
                 .getMTokenData(tokens[i]);
             assertTrue(isListed);
             assertEq(collateralizationRatio, 0);
@@ -41,8 +41,9 @@ contract ExitMarketTest is TestBaseLendtroller {
 
             lendtroller.exitMarket(tokens[i]);
 
-            (isListed,, collateralizationRatio) = lendtroller
-                .getMTokenData(tokens[i]);
+            (isListed, , collateralizationRatio) = lendtroller.getMTokenData(
+                tokens[i]
+            );
             assertTrue(isListed);
             assertEq(collateralizationRatio, 0);
             assertFalse(
