@@ -35,7 +35,7 @@ contract TestBaseDToken is TestBaseMarket {
             IMToken(address(cBALRETH)),
             200,
             0,
-            5e17
+            5000
         );
 
         markets[0] = address(cBALRETH);

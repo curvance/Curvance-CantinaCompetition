@@ -46,7 +46,7 @@ contract OCVE is ERC20 {
     event RemainingCVEWithdrawn(uint256 amount);
     event OptionsExercised(address indexed exerciser, uint256 amount);
 
-    /// ERRORS /// 
+    /// ERRORS ///
 
     error OCVE__ConstructorParametersareInvalid();
 
@@ -68,12 +68,14 @@ contract OCVE is ERC20 {
         _name = "CVE Options";
         _symbol = "oCVE";
 
-        if (!ERC165Checker.supportsInterface(
+        if (
+            !ERC165Checker.supportsInterface(
                 address(centralRegistry_),
                 type(ICentralRegistry).interfaceId
-            )) {
-                revert OCVE__ConstructorParametersareInvalid();
-            }
+            )
+        ) {
+            revert OCVE__ConstructorParametersareInvalid();
+        }
 
         if (paymentToken_ == address(0)) {
             revert OCVE__ConstructorParametersareInvalid();
@@ -98,10 +100,7 @@ contract OCVE is ERC20 {
         address recipient,
         uint256 amount
     ) external onlyDaoPermissions {
-        require(
-            recipient != address(0),
-            "OCVE: invalid recipient address"
-        );
+        require(recipient != address(0), "OCVE: invalid recipient address");
 
         if (token == address(0)) {
             require(
@@ -123,10 +122,7 @@ contract OCVE is ERC20 {
     /// @notice Withdraws CVE from unexercised CVE call options to DAO
     ///         after exercising period has ended
     function withdrawRemainingAirdropTokens() external onlyDaoPermissions {
-        require(
-            block.timestamp > optionsEndTimestamp,
-            "OCVE: Too early"
-        );
+        require(block.timestamp > optionsEndTimestamp, "OCVE: Too early");
         uint256 tokensToWithdraw = IERC20(cve).balanceOf(address(this));
         SafeTransferLib.safeTransfer(cve, msg.sender, tokensToWithdraw);
         emit RemainingCVEWithdrawn(tokensToWithdraw);
@@ -204,10 +200,7 @@ contract OCVE is ERC20 {
     /// @param amount The amount of options to exercise.
     function exerciseOption(uint256 amount) public payable {
         require(amount > 0, "OCVE: invalid amount");
-        require(
-            optionsExercisable(),
-            "OCVE: Options not exercisable yet"
-        );
+        require(optionsExercisable(), "OCVE: Options not exercisable yet");
         require(
             IERC20(cve).balanceOf(address(this)) >= amount,
             "OCVE: not enough CVE remaining"
@@ -217,7 +210,7 @@ contract OCVE is ERC20 {
             "OCVE: not enough call options to exercise"
         );
 
-        uint256 optionExerciseCost = amount * paymentTokenPerCVE;
+        uint256 optionExerciseCost = (amount * paymentTokenPerCVE) / expScale;
 
         // Take their strike price payment
         if (paymentToken == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE) {

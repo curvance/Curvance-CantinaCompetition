@@ -22,10 +22,7 @@ contract SetOptionsTermsTest is TestBaseOCVE {
         vm.prank(address(1));
 
         vm.expectRevert("OCVE: UNAUTHORIZED");
-        oCVE.setOptionsTerms(
-            block.timestamp,
-            paymentTokenCurrentPrice * _ONE
-        );
+        oCVE.setOptionsTerms(block.timestamp, paymentTokenCurrentPrice * _ONE);
     }
 
     function test_setOptionsTerms_fail_whenStrikePriceIsZero() public {
@@ -44,24 +41,15 @@ contract SetOptionsTermsTest is TestBaseOCVE {
     function test_setOptionsTerms_fail_whenOptionsExercisingIsAlreadyActive()
         public
     {
-        oCVE.setOptionsTerms(
-            block.timestamp,
-            paymentTokenCurrentPrice * _ONE
-        );
+        oCVE.setOptionsTerms(block.timestamp, paymentTokenCurrentPrice * _ONE);
 
         vm.expectRevert("OCVE: Options exercising already active");
-        oCVE.setOptionsTerms(
-            block.timestamp,
-            paymentTokenCurrentPrice * _ONE
-        );
+        oCVE.setOptionsTerms(block.timestamp, paymentTokenCurrentPrice * _ONE);
     }
 
     function test_setOptionsTerms_fail_whenStrikePriceIsInvalid() public {
         vm.expectRevert("OCVE: invalid strike price configuration");
-        oCVE.setOptionsTerms(
-            block.timestamp,
-            paymentTokenCurrentPrice
-        );
+        oCVE.setOptionsTerms(block.timestamp, paymentTokenCurrentPrice);
     }
 
     function test_setOptionsTerms_success() public {
@@ -71,10 +59,7 @@ contract SetOptionsTermsTest is TestBaseOCVE {
         );
 
         assertEq(oCVE.optionsStartTimestamp(), block.timestamp);
-        assertEq(
-            oCVE.optionsEndTimestamp(),
-            block.timestamp + 4 weeks
-        );
-        assertEq(oCVE.paymentTokenPerCVE(), 2);
+        assertEq(oCVE.optionsEndTimestamp(), block.timestamp + 4 weeks);
+        assertEq(oCVE.paymentTokenPerCVE(), 2e18);
     }
 }

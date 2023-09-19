@@ -40,7 +40,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         ///         Note: this is stored as (Fee * EXP_SCALE) / `liquidationIncentive`
         ///         in order to save gas for liquidation calculations
         uint256 protocolLiquidationFee;
-        /// @notice Mapping that indicates whether an account is in a market. 
+        /// @notice Mapping that indicates whether an account is in a market.
         /// @dev    0 or 1 for no; 2 for yes
         mapping(address => uint256) accountInMarket;
     }
@@ -82,7 +82,7 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @dev 0 = unlimited
     mapping(address => uint256) public collateralCaps;
 
-    /// @notice Maximum % that a liquidator can repay when liquidating a user, 
+    /// @notice Maximum % that a liquidator can repay when liquidating a user,
     /// @dev    In `EXP_SCALE` format, default 50%
     uint256 public closeFactor = 0.5e18;
     /// @notice PositionFolding contract address.
@@ -103,9 +103,9 @@ contract Lendtroller is ILendtroller, ERC165 {
     event MarketExited(address mToken, address account);
     event NewCloseFactor(uint256 oldCloseFactor, uint256 newCloseFactor);
     event CollateralTokenUpdated(
-        IMToken mToken, 
-        uint256 newLI, 
-        uint256 newLF, 
+        IMToken mToken,
+        uint256 newLI,
+        uint256 newLF,
         uint256 newCR
     );
     event ActionPaused(string action, bool pauseState);
@@ -384,7 +384,7 @@ contract Lendtroller is ILendtroller, ERC165 {
             0,
             0,
             2
-            );
+        );
 
         assembly {
             if iszero(shortfall) {
@@ -495,7 +495,10 @@ contract Lendtroller is ILendtroller, ERC165 {
 
         uint256 liquidatedTokens = (debtCollateralRatio * amount) / _EXP_SCALE;
 
-        return (liquidatedTokens, (liquidatedTokens * mToken.protocolLiquidationFee) / _EXP_SCALE);
+        return (
+            liquidatedTokens,
+            (liquidatedTokens * mToken.protocolLiquidationFee) / _EXP_SCALE
+        );
     }
 
     /// @notice Sets the closeFactor used when liquidating borrows
@@ -522,9 +525,7 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @notice Add the market token to the market and set it as listed
     /// @dev Admin function to set isListed and add support for the market
     /// @param mToken The address of the market (token) to list
-    function listMarketToken(
-        address mToken
-    ) external onlyElevatedPermissions {
+    function listMarketToken(address mToken) external onlyElevatedPermissions {
         if (mTokenData[mToken].isListed) {
             revert Lendtroller__TokenAlreadyListed();
         }
@@ -567,7 +568,6 @@ contract Lendtroller is ILendtroller, ERC165 {
         uint256 protocolLiquidationFee,
         uint256 collateralizationRatio
     ) external onlyElevatedPermissions {
-
         if (IMToken(mToken).tokenType() != 1) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
@@ -599,7 +599,10 @@ contract Lendtroller is ILendtroller, ERC165 {
         }
 
         // We need to make sure that the liquidation incentive is enough for both the protocol and the users
-        if ((liquidationIncentive - protocolLiquidationFee) < _MIN_LIQUIDATION_INCENTIVE) {
+        if (
+            (liquidationIncentive - protocolLiquidationFee) <
+            _MIN_LIQUIDATION_INCENTIVE
+        ) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
@@ -619,7 +622,9 @@ contract Lendtroller is ILendtroller, ERC165 {
 
         // Store protocol liquidation fee divided by the liquidation incentive offset,
         // that way we can directly multiply later instead of needing extra calculations
-        marketToken.protocolLiquidationFee = (_EXP_SCALE * protocolLiquidationFee) / (_EXP_SCALE + liquidationIncentive);
+        marketToken.protocolLiquidationFee =
+            (_EXP_SCALE * protocolLiquidationFee) /
+            (_EXP_SCALE + liquidationIncentive);
 
         // Assign new collateralization ratio
         // Note that a collateralization ratio of 0 corresponds to
@@ -671,12 +676,8 @@ contract Lendtroller is ILendtroller, ERC165 {
 
     /// @notice Returns whether `mToken` is listed in the lending market
     /// @param mToken market token address
-    function isListed(
-        address mToken
-    ) external view override returns (bool) {
-        return (
-            mTokenData[mToken].isListed
-        );
+    function isListed(address mToken) external view override returns (bool) {
+        return (mTokenData[mToken].isListed);
     }
 
     /// @notice Returns market status
@@ -828,7 +829,9 @@ contract Lendtroller is ILendtroller, ERC165 {
         if (collateralCap != 0) {
             // Validate that if there is a collateral cap,
             // we will not be over the cap with this new borrow
-            if ((IMToken(mToken).totalBorrows() + borrowAmount) > collateralCap) {
+            if (
+                (IMToken(mToken).totalBorrows() + borrowAmount) > collateralCap
+            ) {
                 revert Lendtroller__BorrowCapReached();
             }
         }
@@ -879,7 +882,7 @@ contract Lendtroller is ILendtroller, ERC165 {
     function getAccountPosition(
         address account
     ) public view returns (uint256, uint256, uint256) {
-        return 
+        return
             _getHypotheticalAccountPosition(
                 account,
                 IMToken(address(0)),
@@ -1069,11 +1072,12 @@ contract Lendtroller is ILendtroller, ERC165 {
             if (isCToken) {
                 // If the asset has a CR increment their collateral and max borrow value
                 if (
-                    !(mTokenData[accountSnapshot.asset].collateralizationRatio == 0)
+                    !(mTokenData[accountSnapshot.asset]
+                        .collateralizationRatio == 0)
                 ) {
                     uint256 assetValue = (((accountSnapshot.mTokenBalance *
-                        accountSnapshot.exchangeRate) / _EXP_SCALE) *
-                        price) / _EXP_SCALE;
+                        accountSnapshot.exchangeRate) / _EXP_SCALE) * price) /
+                        _EXP_SCALE;
 
                     sumCollateral += assetValue;
                     maxBorrow +=
@@ -1129,5 +1133,4 @@ contract Lendtroller is ILendtroller, ERC165 {
             revert(0x1c, 0x04)
         }
     }
-
 }

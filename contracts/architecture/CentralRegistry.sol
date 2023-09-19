@@ -59,7 +59,8 @@ contract CentralRegistry is ERC165 {
     uint256 public supportedChains; // How many other chains are supported
     mapping(uint256 => ChainData) public supportedChainData; // ChainId => 2 = supported; 1 = unsupported
     /// Address => chainID => Curvance identification information
-    mapping(address => mapping (uint256 => OmnichainData)) public omnichainOperators;
+    mapping(address => mapping(uint256 => OmnichainData))
+        public omnichainOperators;
     mapping(uint256 => uint256) public messagingToGETHChainId;
     mapping(uint256 => uint256) public GETHToMessagingChainId;
 
@@ -412,7 +413,9 @@ contract CentralRegistry is ERC165 {
         uint256 destinationAux,
         uint256 messagingChainId
     ) external onlyElevatedPermissions {
-        if (omnichainOperators[newOmnichainOperator][chainId].isAuthorized == 2) {
+        if (
+            omnichainOperators[newOmnichainOperator][chainId].isAuthorized == 2
+        ) {
             // Chain Operator already added
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
@@ -450,7 +453,10 @@ contract CentralRegistry is ERC165 {
         OmnichainData storage operatorToRemove = omnichainOperators[
             currentOmnichainOperator
         ][chainId];
-        if (omnichainOperators[currentOmnichainOperator][chainId].isAuthorized < 2) {
+        if (
+            omnichainOperators[currentOmnichainOperator][chainId]
+                .isAuthorized < 2
+        ) {
             // Operator unsupported
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
