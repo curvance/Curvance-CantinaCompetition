@@ -677,7 +677,7 @@ contract CToken is ERC165, ReentrancyGuard {
                 protocolTokens
             );
 
-             // Reserves should never overflow since totalSupply will always be
+            // Reserves should never overflow since totalSupply will always be
             // higher before function than totalReserves after this call
             unchecked {
                 totalSupply = totalSupply - protocolTokens;
