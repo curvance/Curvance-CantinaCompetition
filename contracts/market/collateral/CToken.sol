@@ -658,13 +658,6 @@ contract CToken is ERC165, ReentrancyGuard {
         balanceOf[borrower] = balanceOf[borrower] - liquidatedTokens;
         balanceOf[liquidator] = balanceOf[liquidator] + liquidatorTokens;
 
-        // Reserves should never overflow since totalSupply will always be
-        // higher before function than totalReserves after this call
-        unchecked {
-            totalReserves = totalReserves + protocolTokens;
-            totalSupply = totalSupply - protocolTokens;
-        }
-
         // emit events on gauge pool
         address _gaugePool = gaugePool();
         GaugePool(_gaugePool).withdraw(
@@ -683,10 +676,18 @@ contract CToken is ERC165, ReentrancyGuard {
                 centralRegistry.daoAddress(),
                 protocolTokens
             );
+
+             // Reserves should never overflow since totalSupply will always be
+            // higher before function than totalReserves after this call
+            unchecked {
+                totalSupply = totalSupply - protocolTokens;
+                totalReserves = totalReserves + protocolTokens;
+            }
+            
+            emit Transfer(borrower, address(this), protocolTokens);
         }
 
-        emit Transfer(borrower, liquidator, liquidatorTokens);
-        emit Transfer(borrower, address(this), protocolTokens);
+        emit Transfer(borrower, liquidator, liquidatorTokens); 
     }
 
     /// @notice Handles incoming token transfers and notifies the amount received
