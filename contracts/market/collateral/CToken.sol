@@ -43,9 +43,6 @@ contract CToken is ERC165, ReentrancyGuard {
     /// @notice Current position vault
     BasePositionVault public vault;
 
-    /// @notice Total protocol reserves of underlying in shares
-    uint256 public totalReserves;
-
     /// @notice Total number of tokens in circulation
     uint256 public totalSupply;
 
@@ -303,54 +300,6 @@ contract CToken is ERC165, ReentrancyGuard {
 
         // Fail if redeem not allowed
         lendtroller.redeemAllowed(address(this), user, 0);
-    }
-
-    /// @notice Adds reserves by transferring from Curvance DAO to the market
-    ///         and depositing to the gauge
-    /// @param amount The amount of underlying token to add as reserves measured in assets
-    function depositReserves(
-        uint256 amount
-    ) external nonReentrant onlyDaoPermissions {
-        // On success, the market will deposit `amount` to the position vault
-        // Also calculates asset -> shares exchange rate
-        uint256 tokens = _enterVault(msg.sender, amount);
-
-        // Query current DAO operating address
-        address daoAddress = centralRegistry.daoAddress();
-
-        // Deposit new reserves into gauge
-        _gaugePool().deposit(address(this), daoAddress, tokens);
-
-        // Update reserves
-        totalReserves = totalReserves + tokens;
-
-        emit Transfer(address(0), address(this), tokens);
-    }
-
-    /// @notice Reduces reserves by withdrawing from the gauge
-    ///         and transferring to Curvance DAO
-    /// @dev If daoAddress is going to be moved all reserves should be
-    ///      withdrawn first
-    /// @param amount Amount of reserves to withdraw measured in assets
-    function withdrawReserves(
-        uint256 amount
-    ) external nonReentrant onlyDaoPermissions {
-        // Need underflow check to see if we have sufficient totalReserves
-        uint256 tokens = (amount * EXP_SCALE) / exchangeRateStored();
-
-        // Update reserves with underflow check
-        totalReserves = totalReserves - tokens;
-
-        // Query current DAO operating address
-        address daoAddress = centralRegistry.daoAddress();
-
-        // Withdraw reserves from gauge
-        _gaugePool().withdraw(address(this), daoAddress, tokens);
-
-        // Transfer underlying to DAO measured in assets
-        _exitVault(daoAddress, tokens);
-
-        emit Transfer(address(this), address(0), tokens);
     }
 
     /// @dev Sets `amount` as the allowance of `spender` over the caller's tokens.
@@ -657,20 +606,18 @@ contract CToken is ERC165, ReentrancyGuard {
         gaugePool.withdraw(address(this), borrower, liquidatedTokens);
         gaugePool.deposit(address(this), liquidator, liquidatorTokens);
         if (protocolTokens > 0) {
+            address daoAddress = centralRegistry.daoAddress();
             gaugePool.deposit(
                 address(this),
-                centralRegistry.daoAddress(),
+                daoAddress,
                 protocolTokens
             );
 
-            // Reserves should never overflow since totalSupply will always be
-            // higher before function than totalReserves after this call
             unchecked {
-                totalSupply = totalSupply - protocolTokens;
-                totalReserves = totalReserves + protocolTokens;
+                balanceOf[daoAddress] = balanceOf[daoAddress] + protocolTokens;
             }
-
-            emit Transfer(borrower, address(this), protocolTokens);
+            
+            emit Transfer(borrower, daoAddress, protocolTokens);
         }
 
         emit Transfer(borrower, liquidator, liquidatorTokens);
