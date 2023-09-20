@@ -762,11 +762,15 @@ contract DToken is ERC165, ReentrancyGuard {
         borrowExchangeRate.exchangeRate = uint224(exchangeRateNew);
         totalBorrows = totalBorrowsNew;
 
-        uint256 newReserves =  ((interestFactor * debtAccumulated) / EXP_SCALE);
+        uint256 newReserves = ((interestFactor * debtAccumulated) / EXP_SCALE);
         totalReserves = newReserves + reservesPrior;
 
         // Deposit new reserves into gauge
-        GaugePool(gaugePool()).deposit(address(this), centralRegistry.daoAddress(), newReserves);
+        _gaugePool().deposit(
+            address(this),
+            centralRegistry.daoAddress(),
+            newReserves
+        );
 
         emit InterestAccrued(
             debtAccumulated,
