@@ -179,7 +179,9 @@ contract DToken is ERC165, ReentrancyGuard {
 
         _setInterestRateModel(interestRateModel_);
 
-        uint256 newInterestFactor = centralRegistry.protocolInterestFactor(lendtroller_);
+        uint256 newInterestFactor = centralRegistry.protocolInterestFactor(
+            lendtroller_
+        );
         interestFactor = newInterestFactor;
 
         emit NewInterestFactor(0, newInterestFactor);
@@ -766,7 +768,8 @@ contract DToken is ERC165, ReentrancyGuard {
 
         // Check whether the market takes interest and debt has been accumulated
         if (interestFactor > 0 && debtAccumulated > 0) {
-            uint256 newReserves = ((interestFactor * debtAccumulated) / EXP_SCALE);
+            uint256 newReserves = ((interestFactor * debtAccumulated) /
+                EXP_SCALE);
             totalReserves = newReserves + reservesPrior;
 
             // Deposit new reserves into gauge

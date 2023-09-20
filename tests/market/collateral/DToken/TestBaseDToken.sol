@@ -2,7 +2,6 @@
 pragma solidity 0.8.17;
 
 import { TestBaseMarket } from "tests/market/TestBaseMarket.sol";
-import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 
 contract TestBaseDToken is TestBaseMarket {
