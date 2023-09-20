@@ -178,9 +178,11 @@ contract DToken is ERC165, ReentrancyGuard {
         borrowExchangeRate.exchangeRate = uint224(EXP_SCALE);
 
         _setInterestRateModel(interestRateModel_);
-        _setInterestFactor(
-            centralRegistry.protocolInterestFactor(lendtroller_)
-        );
+
+        uint256 newInterestFactor = centralRegistry.protocolInterestFactor(lendtroller_);
+        interestFactor = newInterestFactor;
+
+        emit NewInterestFactor(0, newInterestFactor);
 
         underlying = underlying_;
         name = string.concat(
