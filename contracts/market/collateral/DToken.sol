@@ -449,8 +449,6 @@ contract DToken is ERC165, ReentrancyGuard {
 
         // Update reserves
         totalReserves = totalReserves + tokens;
-
-        emit Transfer(address(0), address(this), tokens);
     }
 
     /// @notice Reduces reserves by withdrawing from the gauge and transferring to Curvance DAO
@@ -478,8 +476,6 @@ contract DToken is ERC165, ReentrancyGuard {
 
         // Transfer underlying to DAO measured in assets
         SafeTransferLib.safeTransfer(underlying, daoAddress, amount);
-
-        emit Transfer(address(this), address(0), tokens);
     }
 
     /// @dev Sets `amount` as the allowance of `spender` over the caller's tokens.
@@ -771,17 +767,18 @@ contract DToken is ERC165, ReentrancyGuard {
         );
         borrowExchangeRate.exchangeRate = uint224(exchangeRateNew);
         totalBorrows = totalBorrowsNew;
-        uint256 reservesIncrease = (interestFactor * debtAccumulated) / EXP_SCALE;
-        totalReserves = reservesIncrease + reservesPrior;
 
-        GaugePool(gaugePool()).deposit(address(this), centralRegistry.daoAddress(), reservesIncrease);
+        uint256 newReserves =  ((interestFactor * debtAccumulated) / EXP_SCALE);
+        totalReserves = newReserves + reservesPrior;
+
+        // Deposit new reserves into gauge
+        GaugePool(gaugePool()).deposit(address(this), centralRegistry.daoAddress(), newReserves);
 
         emit InterestAccrued(
             debtAccumulated,
             exchangeRateNew,
             totalBorrowsNew
         );
-        emit Transfer(address(0), address(this), reservesIncrease);
     }
 
     /// INTERNAL FUNCTIONS ///
