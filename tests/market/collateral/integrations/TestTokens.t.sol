@@ -394,13 +394,13 @@ contract TestTokens is TestBaseMarket {
 
         snapshot = dDAI.getAccountSnapshotPacked(user1);
         assertEq(snapshot.mTokenBalance, 0);
-        assertGt(snapshot.borrowBalance, 500 ether);
-        assertGt(snapshot.exchangeRate, 1 ether);
+        assertEq(snapshot.borrowBalance, 500 ether);
+        assertEq(snapshot.exchangeRate, 1 ether);
 
         snapshot = dDAI.getAccountSnapshotPacked(user2);
         assertEq(snapshot.mTokenBalance, 1000 ether);
-        assertGt(snapshot.borrowBalance, 0 ether);
-        assertGt(snapshot.exchangeRate, 1 ether);
+        assertEq(snapshot.borrowBalance, 0 ether);
+        assertEq(snapshot.exchangeRate, 1 ether);
     }
 
     function testLiquidation() public {
