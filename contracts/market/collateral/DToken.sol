@@ -178,9 +178,13 @@ contract DToken is ERC165, ReentrancyGuard {
         borrowExchangeRate.exchangeRate = uint224(EXP_SCALE);
 
         _setInterestRateModel(interestRateModel_);
-        _setInterestFactor(
-            centralRegistry.protocolInterestFactor(lendtroller_)
+
+        uint256 newInterestFactor = centralRegistry.protocolInterestFactor(
+            lendtroller_
         );
+        interestFactor = newInterestFactor;
+
+        emit NewInterestFactor(0, newInterestFactor);
 
         underlying = underlying_;
         name = string.concat(
@@ -223,7 +227,7 @@ contract DToken is ERC165, ReentrancyGuard {
         balanceOf[initializer] = balanceOf[initializer] + amount;
 
         // emit events on gauge pool
-        GaugePool(gaugePool()).deposit(address(this), initializer, amount);
+        _gaugePool().deposit(address(this), initializer, amount);
 
         emit Transfer(address(0), initializer, amount);
         return true;
@@ -445,7 +449,7 @@ contract DToken is ERC165, ReentrancyGuard {
         address daoAddress = centralRegistry.daoAddress();
 
         // Deposit new reserves into gauge
-        GaugePool(gaugePool()).deposit(address(this), daoAddress, tokens);
+        _gaugePool().deposit(address(this), daoAddress, tokens);
 
         // Update reserves
         totalReserves = totalReserves + tokens;
@@ -472,7 +476,7 @@ contract DToken is ERC165, ReentrancyGuard {
         // Query current DAO operating address
         address daoAddress = centralRegistry.daoAddress();
         // Withdraw reserves from gauge
-        GaugePool(gaugePool()).withdraw(address(this), daoAddress, tokens);
+        _gaugePool().withdraw(address(this), daoAddress, tokens);
 
         // Transfer underlying to DAO measured in assets
         SafeTransferLib.safeTransfer(underlying, daoAddress, amount);
@@ -688,12 +692,6 @@ contract DToken is ERC165, ReentrancyGuard {
         return 0;
     }
 
-    /// @notice Returns gauge pool contract address
-    /// @return gaugePool the gauge controller contract address
-    function gaugePool() public view returns (address) {
-        return lendtroller.gaugePool();
-    }
-
     /// @notice Accrue interest then return the up-to-date exchange rate
     /// @return Calculated exchange rate scaled by 1e18
     function exchangeRateCurrent() public nonReentrant returns (uint256) {
@@ -768,11 +766,19 @@ contract DToken is ERC165, ReentrancyGuard {
         borrowExchangeRate.exchangeRate = uint224(exchangeRateNew);
         totalBorrows = totalBorrowsNew;
 
-        uint256 newReserves =  ((interestFactor * debtAccumulated) / EXP_SCALE);
-        totalReserves = newReserves + reservesPrior;
+        // Check whether the market takes interest and debt has been accumulated
+        if (interestFactor > 0 && debtAccumulated > 0) {
+            uint256 newReserves = ((interestFactor * debtAccumulated) /
+                EXP_SCALE);
+            totalReserves = newReserves + reservesPrior;
 
-        // Deposit new reserves into gauge
-        GaugePool(gaugePool()).deposit(address(this), centralRegistry.daoAddress(), newReserves);
+            // Deposit new reserves into gauge
+            _gaugePool().deposit(
+                address(this),
+                centralRegistry.daoAddress(),
+                newReserves
+            );
+        }
 
         emit InterestAccrued(
             debtAccumulated,
@@ -873,9 +879,9 @@ contract DToken is ERC165, ReentrancyGuard {
         }
 
         // emit events on gauge pool
-        address _gaugePool = gaugePool();
-        GaugePool(_gaugePool).withdraw(address(this), from, tokens);
-        GaugePool(_gaugePool).deposit(address(this), to, tokens);
+        GaugePool gaugePool = _gaugePool();
+        gaugePool.withdraw(address(this), from, tokens);
+        gaugePool.deposit(address(this), to, tokens);
 
         // We emit a Transfer event
         emit Transfer(from, to, tokens);
@@ -911,7 +917,7 @@ contract DToken is ERC165, ReentrancyGuard {
         }
 
         // emit events on gauge pool
-        GaugePool(gaugePool()).deposit(address(this), recipient, tokens);
+        _gaugePool().deposit(address(this), recipient, tokens);
 
         emit Transfer(address(0), recipient, tokens);
     }
@@ -945,7 +951,7 @@ contract DToken is ERC165, ReentrancyGuard {
         }
 
         // emit events on gauge pool
-        GaugePool(gaugePool()).withdraw(address(this), redeemer, tokens);
+        _gaugePool().withdraw(address(this), redeemer, tokens);
 
         SafeTransferLib.safeTransfer(underlying, recipient, amount);
 
@@ -1080,5 +1086,11 @@ contract DToken is ERC165, ReentrancyGuard {
             address(mTokenCollateral),
             liquidatedTokens
         );
+    }
+
+    /// @notice Returns gauge pool contract address
+    /// @return The gauge controller contract address
+    function _gaugePool() internal view returns (GaugePool) {
+        return lendtroller.gaugePool();
     }
 }

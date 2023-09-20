@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
+import { GaugePool } from "contracts/gauge/GaugePool.sol";
 import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 
 interface ILendtroller {
@@ -55,9 +56,7 @@ interface ILendtroller {
         uint256 repayAmount
     ) external view returns (uint256, uint256);
 
-    function isListed(
-        address mToken
-    ) external view returns (bool);
+    function isListed(address mToken) external view returns (bool);
 
     function getMTokenData(
         address mToken
@@ -74,7 +73,7 @@ interface ILendtroller {
 
     function positionFolding() external view returns (address);
 
-    function gaugePool() external view returns (address);
+    function gaugePool() external view returns (GaugePool);
 
     function getAccountPosition(
         address account

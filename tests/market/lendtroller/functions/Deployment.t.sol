@@ -30,7 +30,6 @@ contract LendtrollerDeploymentTest is TestBaseLendtroller {
         );
 
         assertEq(address(dUSDC.centralRegistry()), address(centralRegistry));
-        assertEq(dUSDC.gaugePool(), address(gaugePool));
         assertEq(
             address(lendtroller.getPriceRouter()),
             centralRegistry.priceRouter()

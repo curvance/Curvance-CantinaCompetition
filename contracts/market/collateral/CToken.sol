@@ -156,7 +156,7 @@ contract CToken is ERC165, ReentrancyGuard {
         balanceOf[initializer] = balanceOf[initializer] + tokens;
 
         // emit events on gauge pool
-        GaugePool(gaugePool()).deposit(address(this), initializer, tokens);
+        _gaugePool().deposit(address(this), initializer, tokens);
 
         emit Transfer(address(0), initializer, tokens);
         return true;
@@ -427,12 +427,6 @@ contract CToken is ERC165, ReentrancyGuard {
         return 1;
     }
 
-    /// @notice Returns gauge pool contract address
-    /// @return gaugePool the gauge controller contract address
-    function gaugePool() public view returns (address) {
-        return lendtroller.gaugePool();
-    }
-
     /// @notice Pull up-to-date exchange rate from the underlying to
     ///         the CToken with reEntry lock
     /// @return Calculated exchange rate scaled by 1e18
@@ -511,9 +505,9 @@ contract CToken is ERC165, ReentrancyGuard {
         }
 
         // emit events on gauge pool
-        address _gaugePool = gaugePool();
-        GaugePool(_gaugePool).withdraw(address(this), from, amount);
-        GaugePool(_gaugePool).deposit(address(this), to, amount);
+        GaugePool gaugePool = _gaugePool();
+        gaugePool.withdraw(address(this), from, amount);
+        gaugePool.deposit(address(this), to, amount);
 
         emit Transfer(from, to, amount);
     }
@@ -534,7 +528,7 @@ contract CToken is ERC165, ReentrancyGuard {
         }
 
         // emit events on gauge pool
-        GaugePool(gaugePool()).deposit(address(this), recipient, tokens);
+        _gaugePool().deposit(address(this), recipient, tokens);
 
         emit Transfer(address(0), recipient, tokens);
     }
@@ -567,7 +561,7 @@ contract CToken is ERC165, ReentrancyGuard {
         }
 
         // emit events on gauge pool
-        GaugePool(gaugePool()).withdraw(address(this), redeemer, tokens);
+        _gaugePool().withdraw(address(this), redeemer, tokens);
 
         // Exit position vault and transfer underlying to `recipient` in assets
         _exitVault(recipient, tokens);
@@ -608,20 +602,12 @@ contract CToken is ERC165, ReentrancyGuard {
         balanceOf[liquidator] = balanceOf[liquidator] + liquidatorTokens;
 
         // emit events on gauge pool
-        address _gaugePool = gaugePool();
-        GaugePool(_gaugePool).withdraw(
-            address(this),
-            borrower,
-            liquidatedTokens
-        );
-        GaugePool(_gaugePool).deposit(
-            address(this),
-            liquidator,
-            liquidatorTokens
-        );
+        GaugePool gaugePool = _gaugePool();
+        gaugePool.withdraw(address(this), borrower, liquidatedTokens);
+        gaugePool.deposit(address(this), liquidator, liquidatorTokens);
         if (protocolTokens > 0) {
             address daoAddress = centralRegistry.daoAddress();
-            GaugePool(_gaugePool).deposit(
+            gaugePool.deposit(
                 address(this),
                 daoAddress,
                 protocolTokens
@@ -634,7 +620,7 @@ contract CToken is ERC165, ReentrancyGuard {
             emit Transfer(borrower, daoAddress, protocolTokens);
         }
 
-        emit Transfer(borrower, liquidator, liquidatorTokens); 
+        emit Transfer(borrower, liquidator, liquidatorTokens);
     }
 
     /// @notice Handles incoming token transfers and notifies the amount received
@@ -672,5 +658,11 @@ contract CToken is ERC165, ReentrancyGuard {
 
         // SafeTransferLib will handle reversion from insufficient cash held
         SafeTransferLib.safeTransfer(underlying, to, amount);
+    }
+
+    /// @notice Returns gauge pool contract address
+    /// @return The gauge controller contract address
+    function _gaugePool() internal view returns (GaugePool) {
+        return lendtroller.gaugePool();
     }
 }

@@ -642,7 +642,7 @@ contract CentralRegistry is ERC165 {
         }
 
         isLendingMarket[newLendingMarket] = true;
-        protocolInterestFactor[newLendingMarket] = marketInterestFactor;
+        protocolInterestFactor[newLendingMarket] = marketInterestFactor * 1e14;
 
         emit NewCurvanceContract("Lending Market", newLendingMarket);
     }

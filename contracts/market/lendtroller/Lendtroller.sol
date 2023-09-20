@@ -3,6 +3,7 @@ pragma solidity ^0.8.17;
 
 import { ERC165 } from "contracts/libraries/ERC165.sol";
 import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
+import { GaugePool } from "contracts/gauge/GaugePool.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.sol";
@@ -66,7 +67,7 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @notice Curvance DAO hub
     ICentralRegistry public immutable centralRegistry;
     /// @notice gaugePool contract address.
-    address public immutable gaugePool;
+    GaugePool public immutable gaugePool;
 
     /// STORAGE ///
 
@@ -179,7 +180,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         }
 
         centralRegistry = centralRegistry_;
-        gaugePool = gaugePool_;
+        gaugePool = GaugePool(gaugePool_);
     }
 
     /// EXTERNAL FUNCTIONS ///
