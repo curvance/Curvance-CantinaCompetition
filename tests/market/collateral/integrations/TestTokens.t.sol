@@ -252,29 +252,158 @@ contract TestTokens is TestBaseMarket {
         dDAI.borrow(500 ether);
         vm.stopPrank();
 
-        AccountSnapshot memory snapshot = dDAI.getAccountSnapshotPacked(user1);
-        assertEq(snapshot.mTokenBalance, 0);
-        assertEq(snapshot.borrowBalance, 500 ether);
+        // skip min hold period
+        skip(900);
+
+        // can't redeem full
+        vm.startPrank(user1);
+        vm.expectRevert(
+            bytes4(keccak256("Lendtroller__InsufficientLiquidity()"))
+        );
+        cBALRETH.redeem(1 ether);
+        vm.stopPrank();
+
+        // can redeem partially
+        vm.startPrank(user1);
+        cBALRETH.redeem(0.2 ether);
+        vm.stopPrank();
+        AccountSnapshot memory snapshot = cBALRETH.getAccountSnapshotPacked(
+            user1
+        );
+        assertEq(snapshot.mTokenBalance, 0.8 ether);
+        assertEq(snapshot.borrowBalance, 0 ether);
         assertEq(snapshot.exchangeRate, 1 ether);
     }
 
     function testDTokenRedeemOnBorrow() public {
-        // testAccountSnapshot
+        // try mint()
+        _prepareBALRETH(user1, 1 ether);
+        vm.startPrank(user1);
+        balRETH.approve(address(cBALRETH), 1 ether);
+        cBALRETH.mint(1 ether);
+        vm.stopPrank();
+
+        // try mint()
+        _prepareDAI(user1, 1000 ether);
+        vm.startPrank(user1);
+        dai.approve(address(dDAI), 1000 ether);
+        dDAI.mint(1000 ether);
+        vm.stopPrank();
+
+        // try borrow()
+        vm.startPrank(user1);
+        dDAI.borrow(500 ether);
+        vm.stopPrank();
+
+        // skip min hold period
+        skip(900);
+
+        // can redeem fully
+        vm.startPrank(user1);
+        dDAI.redeem(1000 ether);
+        vm.stopPrank();
+
+        AccountSnapshot memory snapshot = cBALRETH.getAccountSnapshotPacked(
+            user1
+        );
+        assertEq(snapshot.mTokenBalance, 1 ether);
+        assertEq(snapshot.borrowBalance, 0);
+        assertEq(snapshot.exchangeRate, 1 ether);
+
+        snapshot = dDAI.getAccountSnapshotPacked(user1);
+        assertEq(snapshot.mTokenBalance, 0);
+        assertGt(snapshot.borrowBalance, 500 ether);
+        assertGt(snapshot.exchangeRate, 1 ether);
     }
 
     function testCTokenTransferOnBorrow() public {
-        // testAccountSnapshot
+        _prepareBALRETH(user1, 1 ether);
+
+        // try mint()
+        vm.startPrank(user1);
+        balRETH.approve(address(cBALRETH), 1 ether);
+        cBALRETH.mint(1 ether);
+        vm.stopPrank();
+
+        // try borrow()
+        vm.startPrank(user1);
+        dDAI.borrow(500 ether);
+        vm.stopPrank();
+
+        // skip min hold period
+        skip(900);
+
+        // can't transfer full
+        vm.startPrank(user1);
+        vm.expectRevert(
+            bytes4(keccak256("Lendtroller__InsufficientLiquidity()"))
+        );
+        cBALRETH.transfer(user2, 1 ether);
+        vm.stopPrank();
+
+        // can redeem partially
+        vm.startPrank(user1);
+        cBALRETH.transfer(user2, 0.2 ether);
+        vm.stopPrank();
+        AccountSnapshot memory snapshot = cBALRETH.getAccountSnapshotPacked(
+            user1
+        );
+        assertEq(snapshot.mTokenBalance, 0.8 ether);
+        assertEq(snapshot.borrowBalance, 0 ether);
+        assertEq(snapshot.exchangeRate, 1 ether);
+        snapshot = cBALRETH.getAccountSnapshotPacked(user2);
+        assertEq(snapshot.mTokenBalance, 0.2 ether);
+        assertEq(snapshot.borrowBalance, 0 ether);
+        assertEq(snapshot.exchangeRate, 1 ether);
     }
 
     function testDTokenTransferOnBorrow() public {
-        // testAccountSnapshot
+        // try mint()
+        _prepareBALRETH(user1, 1 ether);
+        vm.startPrank(user1);
+        balRETH.approve(address(cBALRETH), 1 ether);
+        cBALRETH.mint(1 ether);
+        vm.stopPrank();
+
+        // try mint()
+        _prepareDAI(user1, 1000 ether);
+        vm.startPrank(user1);
+        dai.approve(address(dDAI), 1000 ether);
+        dDAI.mint(1000 ether);
+        vm.stopPrank();
+
+        // try borrow()
+        vm.startPrank(user1);
+        dDAI.borrow(500 ether);
+        vm.stopPrank();
+
+        // skip min hold period
+        skip(900);
+
+        // can transefr fully
+        vm.startPrank(user1);
+        dDAI.transfer(user2, 1000 ether);
+        vm.stopPrank();
+
+        AccountSnapshot memory snapshot = cBALRETH.getAccountSnapshotPacked(
+            user1
+        );
+        assertEq(snapshot.mTokenBalance, 1 ether);
+        assertEq(snapshot.borrowBalance, 0);
+        assertEq(snapshot.exchangeRate, 1 ether);
+
+        snapshot = dDAI.getAccountSnapshotPacked(user1);
+        assertEq(snapshot.mTokenBalance, 0);
+        assertGt(snapshot.borrowBalance, 500 ether);
+        assertGt(snapshot.exchangeRate, 1 ether);
+
+        snapshot = dDAI.getAccountSnapshotPacked(user2);
+        assertEq(snapshot.mTokenBalance, 1000 ether);
+        assertGt(snapshot.borrowBalance, 0 ether);
+        assertGt(snapshot.exchangeRate, 1 ether);
     }
 
     function testLiquidation() public {
-        // testAccountSnapshot
-    }
-
-    function testExchangeRate() public {
         // testAccountSnapshot
     }
 }
