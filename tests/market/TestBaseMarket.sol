@@ -368,14 +368,14 @@ contract TestBaseMarket is TestBase {
     }
 
     function _prepareUSDC(address user, uint256 amount) internal {
-        deal(_USDC_ADDRESS, user, amount * 2);
+        deal(_USDC_ADDRESS, user, amount);
     }
 
     function _prepareDAI(address user, uint256 amount) internal {
-        deal(_DAI_ADDRESS, user, amount * 2);
+        deal(_DAI_ADDRESS, user, amount);
     }
 
     function _prepareBALRETH(address user, uint256 amount) internal {
-        deal(_BALANCER_WETH_RETH, user, amount * 2);
+        deal(_BALANCER_WETH_RETH, user, amount);
     }
 }
