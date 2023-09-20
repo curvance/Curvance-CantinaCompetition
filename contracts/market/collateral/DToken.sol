@@ -764,7 +764,8 @@ contract DToken is ERC165, ReentrancyGuard {
         borrowExchangeRate.exchangeRate = uint224(exchangeRateNew);
         totalBorrows = totalBorrowsNew;
 
-        if (interestFactor > 0) {
+        // Check whether the market takes interest and debt has been accumulated
+        if (interestFactor > 0 && debtAccumulated > 0) {
             uint256 newReserves = ((interestFactor * debtAccumulated) / EXP_SCALE);
             totalReserves = newReserves + reservesPrior;
 
