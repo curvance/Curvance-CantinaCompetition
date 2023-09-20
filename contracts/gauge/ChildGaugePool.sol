@@ -2,7 +2,8 @@
 pragma solidity ^0.8.17;
 
 import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
-import { GaugePool, GaugeErrors } from "contracts/gauge/GaugePool.sol";
+import { GaugePool } from "contracts/gauge/GaugePool.sol";
+import { GaugeErrors } from "contracts/gauge/GaugeController.sol";
 
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";

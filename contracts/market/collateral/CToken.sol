@@ -716,6 +716,6 @@ contract CToken is ERC165, ReentrancyGuard {
     /// @notice Returns gauge pool contract address
     /// @return The gauge controller contract address
     function _gaugePool() internal view returns (GaugePool) {
-        return GaugePool(lendtroller.gaugePool());
+        return lendtroller.gaugePool();
     }
 }
