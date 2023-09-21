@@ -45,7 +45,13 @@ contract TestZapper is TestBaseMarket {
         tokens[2] = _WETH_ADDRESS;
         zapper.curveIn{ value: ethAmount }(
             address(0),
-            Zapper.ZapperData(address(0), ethAmount, _CURVE_TRICRYPTO_LP, 1),
+            Zapper.ZapperData(
+                address(0),
+                ethAmount,
+                _CURVE_TRICRYPTO_LP,
+                1,
+                true
+            ),
             new SwapperLib.Swap[](0),
             _CURVE_TRICRYPTO_MINTER,
             tokens,
@@ -74,7 +80,8 @@ contract TestZapper is TestBaseMarket {
                 _CURVE_TRICRYPTO_LP,
                 withdrawAmount,
                 _WETH_ADDRESS,
-                0
+                0,
+                false
             ),
             tokens,
             1,

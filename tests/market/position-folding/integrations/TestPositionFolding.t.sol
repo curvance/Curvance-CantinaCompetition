@@ -180,7 +180,8 @@ contract TestPositionFolding is TestBaseMarket {
                 _WETH_ADDRESS,
                 leverageData.zapperCall.inputAmount,
                 address(balRETH),
-                0
+                0,
+                false
             ),
             new SwapperLib.Swap[](0),
             _BALANCER_VAULT,
@@ -238,7 +239,8 @@ contract TestPositionFolding is TestBaseMarket {
                 address(balRETH),
                 deleverageData.zapperCall.inputAmount,
                 _WETH_ADDRESS,
-                0
+                0,
+                false
             ),
             tokens,
             true,

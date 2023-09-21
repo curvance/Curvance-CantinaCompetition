@@ -10,8 +10,8 @@ import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { CToken, IERC20 } from "contracts/market/collateral/CToken.sol";
 
-import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { IWETH } from "contracts/interfaces/IWETH.sol";
+import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 contract Zapper {
@@ -22,6 +22,7 @@ contract Zapper {
         uint256 inputAmount; // Input token amount to Zap from
         address outputToken; // Output token to Zap to
         uint256 minimumOut; // Minimum token amount acceptable
+        bool autoSellForWETH; // Only valid if input token is ETH for zap in
     }
 
     /// CONSTANTS ///
@@ -31,6 +32,8 @@ contract Zapper {
     ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
 
     /// CONSTRUCTOR ///
+
+    receive() external payable {}
 
     constructor(
         ICentralRegistry centralRegistry_,
@@ -78,7 +81,8 @@ contract Zapper {
         _swapForUnderlyings(
             zapData.inputToken,
             zapData.inputAmount,
-            tokenSwaps
+            tokenSwaps,
+            zapData.autoSellForWETH
         );
 
         // enter curve
@@ -166,7 +170,8 @@ contract Zapper {
         _swapForUnderlyings(
             zapData.inputToken,
             zapData.inputAmount,
-            tokenSwaps
+            tokenSwaps,
+            zapData.autoSellForWETH
         );
 
         // enter balancer
@@ -255,7 +260,8 @@ contract Zapper {
         _swapForUnderlyings(
             zapData.inputToken,
             zapData.inputAmount,
-            tokenSwaps
+            tokenSwaps,
+            zapData.autoSellForWETH
         );
 
         // enter velodrome
@@ -322,12 +328,15 @@ contract Zapper {
     function _swapForUnderlyings(
         address inputToken,
         uint256 inputAmount,
-        SwapperLib.Swap[] calldata tokenSwaps
+        SwapperLib.Swap[] calldata tokenSwaps,
+        bool autoSellForWETH
     ) private {
         if (CommonLib.isETH(inputToken)) {
             require(inputAmount == msg.value, "Zapper: invalid amount");
-            inputToken = WETH;
-            IWETH(WETH).deposit{ value: inputAmount }();
+            if (autoSellForWETH) {
+                inputToken = WETH;
+                IWETH(WETH).deposit{ value: inputAmount }();
+            }
         } else {
             SafeTransferLib.safeTransferFrom(
                 inputToken,
