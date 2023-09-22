@@ -27,8 +27,8 @@ contract Zapper {
 
     /// CONSTANTS ///
 
-    // `bytes4(keccak256(bytes("CVELocker_FailedETHTransfer()")))`
-    uint256 internal constant _FAILED_ETH_TRANSFER_SELECTOR = 0xa9c60879;
+    // `bytes4(keccak256(bytes("Zapper__FailedETHTransfer()")))`
+    uint256 internal constant _FAILED_ETH_TRANSFER_SELECTOR = 0xefade630;
     ILendtroller public immutable lendtroller; // Lendtroller linked
     address public immutable WETH; // Address of WETH
     ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
@@ -315,6 +315,8 @@ contract Zapper {
     /// @param inputToken The input token address
     /// @param inputAmount The amount to deposit
     /// @param tokenSwaps The swap aggregation data
+    /// @param autoSellForWETH Used when `inputToken` is ether, 
+    ///                        indicates depositing ether into WETH9 contract
     function _swapForUnderlyings(
         address inputToken,
         uint256 inputAmount,
@@ -393,7 +395,7 @@ contract Zapper {
         if (CommonLib.isETH(token)) {
             assembly {
                 // Transfer the Ether, reverts on failure
-                /// Had to add NonReentrant to all doTransferOut calls to prevent .call reentry
+                // Had to add NonReentrant to all doTransferOut calls to prevent .call reentry
                 if iszero(call(gas(), recipient, amount, 0x00, 0x00, 0x00, 0x00)) {
                 mstore(0x00, _FAILED_ETH_TRANSFER_SELECTOR)
                 // return bytes 29-32 for the selector
