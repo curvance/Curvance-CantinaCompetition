@@ -388,20 +388,20 @@ contract Zapper {
     function _transferOut(
         address token,
         address recipient,
-        uint256 outAmount
+        uint256 amount
     ) internal {
         if (CommonLib.isETH(token)) {
             assembly {
                 // Transfer the Ether, reverts on failure
                 /// Had to add NonReentrant to all doTransferOut calls to prevent .call reentry
-                if iszero(call(gas(), recipient, reward, 0x00, 0x00, 0x00, 0x00)) {
+                if iszero(call(gas(), recipient, amount, 0x00, 0x00, 0x00, 0x00)) {
                 mstore(0x00, _FAILED_ETH_TRANSFER_SELECTOR)
                 // return bytes 29-32 for the selector
                 revert (0x1c,0x04)
                 }
             }
         } else {
-            SafeTransferLib.safeTransfer(token, recipient, outAmount);
+            SafeTransferLib.safeTransfer(token, recipient, amount);
         }
     }
 }
