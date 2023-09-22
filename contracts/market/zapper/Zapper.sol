@@ -9,12 +9,13 @@ import { VelodromeLib } from "contracts/market/zapper/protocols/VelodromeLib.sol
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { CToken, IERC20 } from "contracts/market/collateral/CToken.sol";
+import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 
 import { IWETH } from "contracts/interfaces/IWETH.sol";
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
-contract Zapper {
+contract Zapper is ReentrancyGuard {
     /// TYPES ///
 
     struct ZapperData {
@@ -32,11 +33,11 @@ contract Zapper {
     ILendtroller public immutable lendtroller; // Lendtroller linked
     address public immutable WETH; // Address of WETH
     ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
-    
+
     /// ERRORS ///
 
     error Zapper__FailedETHTransfer();
-    
+
     /// CONSTRUCTOR ///
 
     receive() external payable {}
@@ -82,7 +83,7 @@ contract Zapper {
         address lpMinter,
         address[] calldata tokens,
         address recipient
-    ) external payable returns (uint256 cTokenOutAmount) {
+    ) external payable nonReentrant returns (uint256 cTokenOutAmount) {
         // swap input token for underlyings
         _swapForUnderlyings(
             zapData.inputToken,
@@ -116,7 +117,7 @@ contract Zapper {
         uint256 singleAssetIndex,
         SwapperLib.Swap[] calldata tokenSwaps,
         address recipient
-    ) external returns (uint256 outAmount) {
+    ) external nonReentrant returns (uint256 outAmount) {
         SafeTransferLib.safeTransferFrom(
             zapData.inputToken,
             msg.sender,
@@ -167,7 +168,7 @@ contract Zapper {
         bytes32 balancerPoolId,
         address[] calldata tokens,
         address recipient
-    ) external payable returns (uint256 cTokenOutAmount) {
+    ) external payable nonReentrant returns (uint256 cTokenOutAmount) {
         // swap input token for underlyings
         _swapForUnderlyings(
             zapData.inputToken,
@@ -203,7 +204,7 @@ contract Zapper {
         uint256 singleAssetIndex,
         SwapperLib.Swap[] calldata tokenSwaps,
         address recipient
-    ) external returns (uint256 outAmount) {
+    ) external nonReentrant returns (uint256 outAmount) {
         SafeTransferLib.safeTransferFrom(
             zapData.inputToken,
             msg.sender,
@@ -253,7 +254,7 @@ contract Zapper {
         address router,
         address factory,
         address recipient
-    ) external payable returns (uint256 cTokenOutAmount) {
+    ) external payable nonReentrant returns (uint256 cTokenOutAmount) {
         // swap input token for underlyings
         _swapForUnderlyings(
             zapData.inputToken,
@@ -284,7 +285,7 @@ contract Zapper {
         ZapperData calldata zapData,
         SwapperLib.Swap[] calldata tokenSwaps,
         address recipient
-    ) external returns (uint256 outAmount) {
+    ) external nonReentrant returns (uint256 outAmount) {
         SafeTransferLib.safeTransferFrom(
             zapData.inputToken,
             msg.sender,
@@ -319,7 +320,7 @@ contract Zapper {
     /// @param inputToken The input token address
     /// @param inputAmount The amount to deposit
     /// @param tokenSwaps The swap aggregation data
-    /// @param autoSellForWETH Used when `inputToken` is ether, 
+    /// @param autoSellForWETH Used when `inputToken` is ether,
     ///                        indicates depositing ether into WETH9 contract
     function _swapForUnderlyings(
         address inputToken,
@@ -400,10 +401,12 @@ contract Zapper {
             assembly {
                 // Transfer the Ether, reverts on failure
                 // Had to add NonReentrant to all doTransferOut calls to prevent .call reentry
-                if iszero(call(gas(), recipient, amount, 0x00, 0x00, 0x00, 0x00)) {
-                mstore(0x00, _FAILED_ETH_TRANSFER_SELECTOR)
-                // return bytes 29-32 for the selector
-                revert (0x1c,0x04)
+                if iszero(
+                    call(gas(), recipient, amount, 0x00, 0x00, 0x00, 0x00)
+                ) {
+                    mstore(0x00, _FAILED_ETH_TRANSFER_SELECTOR)
+                    // return bytes 29-32 for the selector
+                    revert(0x1c, 0x04)
                 }
             }
         } else {
