@@ -23,7 +23,7 @@ contract Zapper is ReentrancyGuard {
         uint256 inputAmount; // Input token amount to Zap from
         address outputToken; // Output token to Zap to
         uint256 minimumOut; // Minimum token amount acceptable
-        bool autoSellForWETH; // Only valid if input token is ETH for zap in
+        bool depositInputAsWETH; // Only valid if input token is ETH for zap in
     }
 
     /// CONSTANTS ///
@@ -89,7 +89,7 @@ contract Zapper is ReentrancyGuard {
             zapData.inputToken,
             zapData.inputAmount,
             tokenSwaps,
-            zapData.autoSellForWETH
+            zapData.depositInputAsWETH
         );
 
         // enter curve
@@ -174,7 +174,7 @@ contract Zapper is ReentrancyGuard {
             zapData.inputToken,
             zapData.inputAmount,
             tokenSwaps,
-            zapData.autoSellForWETH
+            zapData.depositInputAsWETH
         );
 
         // enter balancer
@@ -260,7 +260,7 @@ contract Zapper is ReentrancyGuard {
             zapData.inputToken,
             zapData.inputAmount,
             tokenSwaps,
-            zapData.autoSellForWETH
+            zapData.depositInputAsWETH
         );
 
         // enter velodrome
@@ -320,17 +320,17 @@ contract Zapper is ReentrancyGuard {
     /// @param inputToken The input token address
     /// @param inputAmount The amount to deposit
     /// @param tokenSwaps The swap aggregation data
-    /// @param autoSellForWETH Used when `inputToken` is ether,
-    ///                        indicates depositing ether into WETH9 contract
+    /// @param depositInputAsWETH Used when `inputToken` is ether,
+    ///                           indicates depositing ether into WETH9 contract
     function _swapForUnderlyings(
         address inputToken,
         uint256 inputAmount,
         SwapperLib.Swap[] calldata tokenSwaps,
-        bool autoSellForWETH
+        bool depositInputAsWETH
     ) private {
         if (CommonLib.isETH(inputToken)) {
             require(inputAmount == msg.value, "Zapper: invalid amount");
-            if (autoSellForWETH) {
+            if (depositInputAsWETH) {
                 IWETH(WETH).deposit{ value: inputAmount }();
             }
         } else {
