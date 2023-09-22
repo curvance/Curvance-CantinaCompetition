@@ -134,18 +134,14 @@ contract Zapper {
             }
         }
 
-        outAmount = IERC20(zapData.outputToken).balanceOf(address(this));
+        outAmount = CommonLib.getTokenBalance(zapData.outputToken);
         require(
             outAmount >= zapData.minimumOut,
             "Zapper: received less than minOutAmount"
         );
 
         // transfer token back to user
-        SafeTransferLib.safeTransfer(
-            zapData.outputToken,
-            recipient,
-            outAmount
-        );
+        _transferOut(zapData.outputToken, recipient, outAmount);
     }
 
     /// @dev Deposit inputToken and enter curvance
@@ -226,18 +222,14 @@ contract Zapper {
             }
         }
 
-        outAmount = IERC20(zapData.outputToken).balanceOf(address(this));
+        outAmount = CommonLib.getTokenBalance(zapData.outputToken);
         require(
             outAmount >= zapData.minimumOut,
             "Zapper: received less than minOutAmount"
         );
 
         // transfer token back to user
-        SafeTransferLib.safeTransfer(
-            zapData.outputToken,
-            recipient,
-            outAmount
-        );
+        _transferOut(zapData.outputToken, recipient, outAmount);
     }
 
     /// @dev Deposit inputToken and enter curvance
@@ -307,18 +299,14 @@ contract Zapper {
             }
         }
 
-        outAmount = IERC20(zapData.outputToken).balanceOf(address(this));
+        outAmount = CommonLib.getTokenBalance(zapData.outputToken);
         require(
             outAmount >= zapData.minimumOut,
             "Zapper: received less than minOutAmount"
         );
 
         // transfer token back to user
-        SafeTransferLib.safeTransfer(
-            zapData.outputToken,
-            recipient,
-            outAmount
-        );
+        _transferOut(zapData.outputToken, recipient, outAmount);
     }
 
     /// @dev Deposit inputToken and enter curvance
@@ -393,5 +381,20 @@ contract Zapper {
             "Zapper: error joining Curvance"
         );
         out = IERC20(cToken).balanceOf(recipient) - priorBalance;
+    }
+
+    function _transferOut(
+        address token,
+        address recipient,
+        uint256 outAmount
+    ) internal {
+        if (CommonLib.isETH(token)) {
+            /// Transfer the Ether, reverts on failure
+            /// Had to add NonReentrant to all doTransferOut calls to prevent .call reentry
+            (bool success, ) = recipient.call{ value: outAmount }("");
+            require(success, "Zapper: failed to send ether");
+        } else {
+            SafeTransferLib.safeTransfer(token, recipient, outAmount);
+        }
     }
 }
