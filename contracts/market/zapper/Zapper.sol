@@ -27,6 +27,8 @@ contract Zapper {
 
     /// CONSTANTS ///
 
+    // `bytes4(keccak256(bytes("CVELocker_FailedETHTransfer()")))`
+    uint256 internal constant _FAILED_ETH_TRANSFER_SELECTOR = 0xa9c60879;
     ILendtroller public immutable lendtroller; // Lendtroller linked
     address public immutable WETH; // Address of WETH
     ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
@@ -355,7 +357,7 @@ contract Zapper {
         address lpToken,
         uint256 amount,
         address recipient
-    ) private returns (uint256 out) {
+    ) private returns (uint256) {
         if (cToken == address(0)) {
             // transfer LP token to recipient
             SafeTransferLib.safeTransfer(lpToken, recipient, amount);
@@ -380,7 +382,7 @@ contract Zapper {
             CToken(cToken).mintFor(amount, recipient),
             "Zapper: error joining Curvance"
         );
-        out = IERC20(cToken).balanceOf(recipient) - priorBalance;
+        return IERC20(cToken).balanceOf(recipient) - priorBalance;
     }
 
     function _transferOut(
@@ -389,10 +391,15 @@ contract Zapper {
         uint256 outAmount
     ) internal {
         if (CommonLib.isETH(token)) {
-            /// Transfer the Ether, reverts on failure
-            /// Had to add NonReentrant to all doTransferOut calls to prevent .call reentry
-            (bool success, ) = recipient.call{ value: outAmount }("");
-            require(success, "Zapper: failed to send ether");
+            assembly {
+                // Transfer the Ether, reverts on failure
+                /// Had to add NonReentrant to all doTransferOut calls to prevent .call reentry
+                if iszero(call(gas(), recipient, reward, 0x00, 0x00, 0x00, 0x00)) {
+                mstore(0x00, _FAILED_ETH_TRANSFER_SELECTOR)
+                // return bytes 29-32 for the selector
+                revert (0x1c,0x04)
+                }
+            }
         } else {
             SafeTransferLib.safeTransfer(token, recipient, outAmount);
         }
