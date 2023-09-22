@@ -49,7 +49,7 @@ contract TestZapperCurve is TestBaseMarket {
                 ethAmount,
                 _CURVE_STETH_LP,
                 1,
-                true
+                false
             ),
             new SwapperLib.Swap[](0),
             _CURVE_STETH_MINTER,
@@ -77,7 +77,7 @@ contract TestZapperCurve is TestBaseMarket {
             Zapper.ZapperData(
                 _CURVE_STETH_LP,
                 withdrawAmount,
-                _WETH_ADDRESS,
+                0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE,
                 0,
                 false
             ),
