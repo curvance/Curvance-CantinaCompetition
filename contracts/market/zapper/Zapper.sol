@@ -331,7 +331,6 @@ contract Zapper is ReentrancyGuard {
         if (CommonLib.isETH(inputToken)) {
             require(inputAmount == msg.value, "Zapper: invalid amount");
             if (autoSellForWETH) {
-                inputToken = WETH;
                 IWETH(WETH).deposit{ value: inputAmount }();
             }
         } else {
