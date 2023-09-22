@@ -32,7 +32,11 @@ contract Zapper {
     ILendtroller public immutable lendtroller; // Lendtroller linked
     address public immutable WETH; // Address of WETH
     ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
+    
+    /// ERRORS ///
 
+    error Zapper__FailedETHTransfer();
+    
     /// CONSTRUCTOR ///
 
     receive() external payable {}
