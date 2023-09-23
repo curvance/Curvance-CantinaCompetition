@@ -477,9 +477,9 @@ contract TestTokens is TestBaseMarket {
         mockDaiFeed.setMockAnswer(200000000);
 
         // try liquidate
-        _prepareDAI(user2, 250 ether);
+        _prepareDAI(user2, 300 ether);
         vm.startPrank(user2);
-        dai.approve(address(dDAI), 250 ether);
+        dai.approve(address(dDAI), 300 ether);
         dDAI.liquidate(user1, IMToken(address(cBALRETH)));
         vm.stopPrank();
 
