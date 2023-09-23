@@ -34,6 +34,11 @@ contract PriceRouter {
     address public immutable CHAINLINK_ETH_USD; // Feed to convert ETH -> USD
     ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
 
+    // `bytes4(keccak256(bytes("PriceRouter__NotSupported()")))`
+    uint256 internal constant _NOT_SUPPORTED_SELECTOR = 0xe4558fac;
+    // `bytes4(keccak256(bytes("PriceRouter__InvalidParameter()")))`
+    uint256 internal constant _INVALID_PARAMETER_SELECTOR = 0xebd2e1ff;
+
     /// STORAGE ///
 
     uint256 public PRICEFEED_MAXIMUM_DIVERGENCE = 11000; // Corresponds to 10%
@@ -45,6 +50,11 @@ contract PriceRouter {
     mapping(address => address[]) public assetPriceFeeds;
     /// Address => MToken metadata
     mapping(address => MTokenData) public mTokenAssets;
+
+    /// ERRORS /// 
+
+    error PriceRouter__NotSupported();
+    error PriceRouter__InvalidParameter();
 
     /// MODIFIERS ///
 
@@ -72,17 +82,16 @@ contract PriceRouter {
     /// CONSTRUCTOR ///
 
     constructor(ICentralRegistry centralRegistry_, address ETH_USDFEED) {
-        require(
-            ERC165Checker.supportsInterface(
+        if (!ERC165Checker.supportsInterface(
                 address(centralRegistry_),
                 type(ICentralRegistry).interfaceId
-            ),
-            "PriceRouter: invalid central registry"
-        );
-        require(
-            ETH_USDFEED != address(0),
-            "PriceRouter: ETH-USD Feed is invalid"
-        );
+            )) {
+                _revert(_INVALID_PARAMETER_SELECTOR);
+            }
+
+        if (ETH_USDFEED == address(0)) {
+            _revert(_INVALID_PARAMETER_SELECTOR);
+        }
 
         centralRegistry = centralRegistry_;
         // Save the USD-ETH price feed because it is a widely used pricing path.
@@ -100,24 +109,24 @@ contract PriceRouter {
         address asset,
         address feed
     ) external onlyElevatedPermissions {
-        require(isApprovedAdaptor[feed], "PriceRouter: unapproved feed");
+        if (!isApprovedAdaptor[feed]) {
+            _revert(_INVALID_PARAMETER_SELECTOR);
+        }
 
-        require(
-            IOracleAdaptor(feed).isSupportedAsset(asset),
-            "PriceRouter: not supported"
-        );
+        if (!IOracleAdaptor(feed).isSupportedAsset(asset)) {
+            _revert(_INVALID_PARAMETER_SELECTOR);
+        }
 
         uint256 numPriceFeeds = assetPriceFeeds[asset].length;
 
-        require(
-            numPriceFeeds < 2,
-            "PriceRouter: dual feed already configured"
-        );
-        require(
-            numPriceFeeds == 0 || assetPriceFeeds[asset][0] != feed,
-            "PriceRouter: feed already added"
-        );
+        if (numPriceFeeds >= 2) {
+            _revert(_INVALID_PARAMETER_SELECTOR);
+        }
 
+        if (numPriceFeeds != 0 && assetPriceFeeds[asset][0] == feed) {
+            _revert(_INVALID_PARAMETER_SELECTOR);
+        }
+        
         assetPriceFeeds[asset].push(feed);
     }
 
@@ -135,24 +144,23 @@ contract PriceRouter {
     function addMTokenSupport(
         address mToken
     ) external onlyElevatedPermissions {
-        require(
-            !mTokenAssets[mToken].isMToken,
-            "PriceRouter: MToken already configured"
-        );
-        require(
-            ERC165Checker.supportsInterface(mToken, type(IMToken).interfaceId),
-            "PriceRouter: MToken is invalid"
-        );
+        if (mTokenAssets[mToken].isMToken) {
+            _revert(_INVALID_PARAMETER_SELECTOR);
+        }
+
+        if (!ERC165Checker.supportsInterface(mToken, type(IMToken).interfaceId)) {
+            _revert(_INVALID_PARAMETER_SELECTOR);
+        }
 
         mTokenAssets[mToken].isMToken = true;
         mTokenAssets[mToken].underlying = IMToken(mToken).underlying();
     }
 
     function removeMTokenSupport(address mToken) external onlyDaoPermissions {
-        require(
-            mTokenAssets[mToken].isMToken,
-            "PriceRouter: MToken is not configured"
-        );
+        if (!mTokenAssets[mToken].isMToken) {
+            _revert(_INVALID_PARAMETER_SELECTOR);
+        }
+
         delete mTokenAssets[mToken];
     }
 
@@ -166,10 +174,10 @@ contract PriceRouter {
     function addApprovedAdaptor(
         address _adaptor
     ) external onlyElevatedPermissions {
-        require(
-            !isApprovedAdaptor[_adaptor],
-            "PriceRouter: adaptor already approved"
-        );
+        if (isApprovedAdaptor[_adaptor]) {
+            _revert(_INVALID_PARAMETER_SELECTOR);
+        }
+
         isApprovedAdaptor[_adaptor] = true;
     }
 
@@ -179,10 +187,10 @@ contract PriceRouter {
     function removeApprovedAdaptor(
         address _adaptor
     ) external onlyDaoPermissions {
-        require(
-            isApprovedAdaptor[_adaptor],
-            "PriceRouter: adaptor does not exist"
-        );
+        if (!isApprovedAdaptor[_adaptor]) {
+            _revert(_INVALID_PARAMETER_SELECTOR);
+        }
+
         delete isApprovedAdaptor[_adaptor];
     }
 
@@ -193,10 +201,10 @@ contract PriceRouter {
     function setPriceFeedMaxDivergence(
         uint256 maxDivergence
     ) external onlyElevatedPermissions {
-        require(
-            maxDivergence >= 10200,
-            "PriceRouter: divergence check is too small"
-        );
+        if (maxDivergence < 10200) {
+            _revert(_INVALID_PARAMETER_SELECTOR);
+        }
+
         PRICEFEED_MAXIMUM_DIVERGENCE = maxDivergence;
     }
 
@@ -207,7 +215,10 @@ contract PriceRouter {
     function setChainlinkDelay(
         uint256 delay
     ) external onlyElevatedPermissions {
-        require(delay < 1 days, "PriceRouter: delay is too large");
+        if (delay >= 1 days) {
+            _revert(_INVALID_PARAMETER_SELECTOR);
+        }
+
         CHAINLINK_MAX_DELAY = delay;
     }
 
@@ -226,7 +237,10 @@ contract PriceRouter {
         bool inUSD
     ) external view returns (FeedData[] memory) {
         uint256 numAssetPriceFeeds = assetPriceFeeds[asset].length;
-        require(numAssetPriceFeeds > 0, "PriceRouter: no feeds available");
+        if (numAssetPriceFeeds == 0) {
+            _revert(_NOT_SUPPORTED_SELECTOR);
+        }
+
         FeedData[] memory data = new FeedData[](numAssetPriceFeeds * 2);
 
         /// If the asset only has one price feed, we know itll be in
@@ -285,7 +299,9 @@ contract PriceRouter {
         }
 
         uint256 numAssetPriceFeeds = assetPriceFeeds[asset].length;
-        require(numAssetPriceFeeds > 0, "PriceRouter: no feeds available");
+        if (numAssetPriceFeeds == 0) {
+            _revert(_NOT_SUPPORTED_SELECTOR);
+        }
 
         if (numAssetPriceFeeds < 2) {
             (price, errorCode) = getPriceSingleFeed(asset, inUSD, getLower);
@@ -319,12 +335,13 @@ contract PriceRouter {
         bool[] calldata getLower
     ) public view returns (uint256[] memory, uint256[] memory) {
         uint256 numAssets = assets.length;
+        if (numAssets == 0) {
+            _revert(_INVALID_PARAMETER_SELECTOR);
+        }
 
-        require(numAssets > 0, "PriceRouter: no assets to price");
-        require(
-            numAssets == inUSD.length && numAssets == getLower.length,
-            "PriceRouter: incorrect param lengths"
-        );
+        if (numAssets != inUSD.length || numAssets != getLower.length) {
+            _revert(_INVALID_PARAMETER_SELECTOR);
+        }
 
         uint256[] memory prices = new uint256[](numAssets);
         uint256[] memory hadError = new uint256[](numAssets);
@@ -352,14 +369,16 @@ contract PriceRouter {
     /// @param feed The address of the feed to be removed.
     function _removeAssetPriceFeed(address asset, address feed) internal {
         uint256 numAssetPriceFeeds = assetPriceFeeds[asset].length;
+        if (numAssetPriceFeeds == 0) {
+            _revert(_NOT_SUPPORTED_SELECTOR);
+        }
         require(numAssetPriceFeeds > 0, "PriceRouter: no feeds available");
 
         if (numAssetPriceFeeds > 1) {
-            require(
-                assetPriceFeeds[asset][0] == feed ||
-                    assetPriceFeeds[asset][1] == feed,
-                "PriceRouter: feed does not exist"
-            );
+            if (assetPriceFeeds[asset][0] != feed &&
+                    assetPriceFeeds[asset][1] != feed) {
+                _revert(_NOT_SUPPORTED_SELECTOR);
+            }
 
             // we want to remove the first feed of two,
             // so move the second feed to slot one
@@ -367,10 +386,10 @@ contract PriceRouter {
                 assetPriceFeeds[asset][0] = assetPriceFeeds[asset][1];
             }
         } else {
-            require(
-                assetPriceFeeds[asset][0] == feed,
-                "PriceRouter: feed does not exist"
-            );
+            if (assetPriceFeeds[asset][0] != feed) {
+                _revert(_NOT_SUPPORTED_SELECTOR);
+            }
+
         }
         // we know the feed exists, cant use isApprovedAdaptor as
         // we could have removed it as an approved adaptor prior
@@ -602,5 +621,15 @@ contract PriceRouter {
         // So if feed0 had the error, feed1 is okay, and vice versa
         if (feed0.hadError) return feed1.price;
         return feed0.price;
+    }
+
+    /// @notice Internal helper for reverting efficiently.
+    /// @param s Selector to revert with.
+    function _revert(uint256 s) internal pure {
+        /// @solidity memory-safe-assembly
+        assembly {
+            mstore(0x00, s)
+            revert(0x1c, 0x04)
+        }
     }
 }
