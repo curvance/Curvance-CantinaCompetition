@@ -431,7 +431,7 @@ contract TestTokens is TestBaseMarket {
         _prepareDAI(user2, 250 ether);
         vm.startPrank(user2);
         dai.approve(address(dDAI), 250 ether);
-        dDAI.liquidate(user1, 250 ether, IMToken(address(cBALRETH)));
+        dDAI.liquidateExact(user1, 250 ether, IMToken(address(cBALRETH)));
         vm.stopPrank();
 
         AccountSnapshot memory snapshot = cBALRETH.getAccountSnapshotPacked(
