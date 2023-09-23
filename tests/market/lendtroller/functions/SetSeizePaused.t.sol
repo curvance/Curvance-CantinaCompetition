@@ -17,21 +17,17 @@ contract SetSeizePausedTest is TestBaseLendtroller {
 
     function test_setSeizePaused_success() public {
         vm.expectRevert(Lendtroller.Lendtroller__TokenNotListed.selector);
-        lendtroller.seizeAllowed(
+        lendtroller.canSeize(
             address(cBALRETH),
-            address(dUSDC),
-            user1,
-            user1
+            address(dUSDC)
         );
 
         lendtroller.listMarketToken(address(cBALRETH));
         lendtroller.listMarketToken(address(dUSDC));
 
-        lendtroller.seizeAllowed(
+        lendtroller.canSeize(
             address(cBALRETH),
-            address(dUSDC),
-            user1,
-            user1
+            address(dUSDC)
         );
 
         assertEq(lendtroller.seizePaused(), 1);
@@ -42,11 +38,9 @@ contract SetSeizePausedTest is TestBaseLendtroller {
         lendtroller.setSeizePaused(true);
 
         vm.expectRevert(Lendtroller.Lendtroller__Paused.selector);
-        lendtroller.seizeAllowed(
+        lendtroller.canSeize(
             address(cBALRETH),
-            address(dUSDC),
-            user1,
-            user1
+            address(dUSDC)
         );
 
         assertEq(lendtroller.seizePaused(), 2);
@@ -67,11 +61,9 @@ contract SetSeizePausedTest is TestBaseLendtroller {
         cBALRETH.setLendtroller(address(newLendtroller));
 
         vm.expectRevert(Lendtroller.Lendtroller__LendtrollerMismatch.selector);
-        lendtroller.seizeAllowed(
+        lendtroller.canSeize(
             address(cBALRETH),
-            address(dUSDC),
-            user1,
-            user1
+            address(dUSDC)
         );
     }
 }
