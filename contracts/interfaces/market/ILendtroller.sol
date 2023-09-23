@@ -5,50 +5,53 @@ import { GaugePool } from "contracts/gauge/GaugePool.sol";
 import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 
 interface ILendtroller {
-    function mintAllowed(address mToken, address minter) external;
+    function canMint(address mToken) external;
 
-    function redeemAllowed(
+    function canRedeem(
         address mToken,
         address redeemer,
-        uint256 redeemTokens
+        uint256 amount
     ) external;
 
-    function borrowAllowedWithNotify(
+    function canBorrowWithNotify(
         address mToken,
         address borrower,
-        uint256 borrowAmount
+        uint256 amount
     ) external;
 
-    function borrowAllowed(
+    function canBorrow(
         address mToken,
         address borrower,
-        uint256 borrowAmount
+        uint256 amount
     ) external;
 
-    function repayAllowed(address mToken, address borrower) external;
+    function canRepay(address mToken, address borrower) external;
 
-    function liquidateAllowed(
+    function canLiquidateExact(
         address mTokenBorrowed,
         address mTokenCollateral,
         address borrower,
-        uint256 repayAmount
+        uint256 amount
     ) external;
 
-    function seizeAllowed(
-        address mTokenCollateral,
+    function canLiquidate(
         address mTokenBorrowed,
-        address liquidator,
+        address mTokenCollateral,
         address borrower
+    ) external returns (uint256);
+
+    function canSeize(
+        address mTokenCollateral,
+        address mTokenBorrowed
     ) external;
 
-    function transferAllowed(
+    function canTransfer(
         address mToken,
-        address src,
-        address dst,
-        uint256 transferTokens
+        address from,
+        uint256 amount
     ) external;
 
-    function notifyAccountBorrow(address account) external;
+    function notifyBorrow(address account) external;
 
     function calculateLiquidatedTokens(
         address mTokenBorrowed,

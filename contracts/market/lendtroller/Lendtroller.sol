@@ -240,7 +240,7 @@ contract Lendtroller is ILendtroller, ERC165 {
     function exitMarket(address mTokenAddress) external {
         IMToken mToken = IMToken(mTokenAddress);
         // Get sender tokensHeld and amountOwed underlying from the mToken
-        (uint256 tokensHeld, uint256 amountOwed, ) = mToken.getAccountSnapshot(
+        (uint256 tokens, uint256 amountOwed, ) = mToken.getAccountSnapshot(
             msg.sender
         );
 
@@ -257,7 +257,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         }
 
         // Fail if the sender is not permitted to redeem all of their tokens
-        _redeemAllowed(mTokenAddress, msg.sender, tokensHeld);
+        _canRedeem(mTokenAddress, msg.sender, tokens);
 
         // Remove mToken account membership to `mTokenAddress`
         marketToExit.accountInMarket[msg.sender] = 1;
@@ -295,7 +295,7 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @notice Checks if the account should be allowed to mint tokens
     ///         in the given market
     /// @param mToken The market to verify the mint against
-    function mintAllowed(address mToken, address) external view override {
+    function canMint(address mToken) external view override {
         if (mintPaused[mToken] == 2) {
             revert Lendtroller__Paused();
         }
@@ -309,39 +309,39 @@ contract Lendtroller is ILendtroller, ERC165 {
     ///         in the given market
     /// @param mToken The market to verify the redeem against
     /// @param redeemer The account which would redeem the tokens
-    /// @param redeemTokens The number of mTokens to exchange
-    ///                     for the underlying asset in the market
-    function redeemAllowed(
+    /// @param amount The number of mTokens to exchange
+    ///               for the underlying asset in the market
+    function canRedeem(
         address mToken,
         address redeemer,
-        uint256 redeemTokens
+        uint256 amount
     ) external view override {
-        _redeemAllowed(mToken, redeemer, redeemTokens);
+        _canRedeem(mToken, redeemer, amount);
     }
 
     /// @notice Checks if the account should be allowed to borrow
     ///         the underlying asset of the given market
     /// @param mToken The market to verify the borrow against
     /// @param borrower The account which would borrow the asset
-    /// @param borrowAmount The amount of underlying the account would borrow
-    function borrowAllowedWithNotify(
+    /// @param amount The amount of underlying the account would borrow
+    function canBorrowWithNotify(
         address mToken,
         address borrower,
-        uint256 borrowAmount
+        uint256 amount
     ) external override {
         if (msg.sender != mToken) {
             revert Lendtroller__AddressUnauthorized();
         }
 
         accountAssets[borrower].lastBorrowTimestamp = block.timestamp;
-        borrowAllowed(mToken, borrower, borrowAmount);
+        canBorrow(mToken, borrower, amount);
     }
 
     /// @notice Checks if the account should be allowed to repay a borrow
     ///         in the given market
     /// @param mToken The market to verify the repay against
     /// @param account The account who will have their loan repaid
-    function repayAllowed(
+    function canRepay(
         address mToken,
         address account
     ) external view override {
@@ -364,59 +364,39 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @param mTokenBorrowed Asset which was borrowed by the borrower
     /// @param mTokenCollateral Asset which was used as collateral and will be seized
     /// @param borrower The address of the borrower
-    /// @param repayAmount The amount of underlying being repaid
-    function liquidateAllowed(
+    /// @param amount The amount of underlying being repaid
+    function canLiquidateExact(
         address mTokenBorrowed,
         address mTokenCollateral,
         address borrower,
-        uint256 repayAmount
+        uint256 amount
     ) external view override {
-        if (!mTokenData[mTokenBorrowed].isListed) {
-            revert Lendtroller__TokenNotListed();
-        }
-        if (!mTokenData[mTokenCollateral].isListed) {
-            revert Lendtroller__TokenNotListed();
-        }
-
-        // The borrower must have shortfall CURRENTLY in order to be liquidatable
-        (, uint256 shortfall) = _getHypotheticalAccountLiquidity(
-            borrower,
-            IMToken(address(0)),
-            0,
-            0,
-            2
-        );
-
-        assembly {
-            if iszero(shortfall) {
-                // store the error selector to location 0x0
-                mstore(0x0, _INSUFFICIENT_SHORTFALL_SELECTOR)
-                // return bytes 29-32 for the selector
-                revert(0x1c, 0x04)
-            }
-        }
-
-        // The liquidator may not close out more collateral than
-        // what is allowed by the closeFactor
-        uint256 borrowBalance = IMToken(mTokenBorrowed).borrowBalanceStored(
-            borrower
-        );
-        uint256 maxClose = (closeFactor * borrowBalance) / _EXP_SCALE;
-
-        if (repayAmount > maxClose) {
+        uint256 liquidationLimit = _canLiquidate(mTokenBorrowed, mTokenCollateral, borrower);
+        
+        if (amount > liquidationLimit) {
             revert Lendtroller__TooMuchRepay();
         }
+    }
+
+    /// @notice Checks if the liquidation should be allowed to occur
+    /// @param mTokenBorrowed Asset which was borrowed by the borrower
+    /// @param mTokenCollateral Asset which was used as collateral and will be seized
+    /// @param borrower The address of the borrower
+    function canLiquidate(
+        address mTokenBorrowed,
+        address mTokenCollateral,
+        address borrower
+    ) external view override returns (uint256){
+        return _canLiquidate(mTokenBorrowed, mTokenCollateral, borrower);
     }
 
     /// @notice Checks if the seizing of assets should be allowed to occur
     /// @param mTokenCollateral Asset which was used as collateral
     ///                         and will be seized
     /// @param mTokenBorrowed Asset which was borrowed by the borrower
-    function seizeAllowed(
+    function canSeize(
         address mTokenCollateral,
-        address mTokenBorrowed,
-        address,
-        address
+        address mTokenBorrowed
     ) external view override {
         if (seizePaused == 2) {
             revert Lendtroller__Paused();
@@ -441,18 +421,17 @@ contract Lendtroller is ILendtroller, ERC165 {
     ///         in the given market
     /// @param mToken The market to verify the transfer against
     /// @param from The account which sources the tokens
-    /// @param transferTokens The number of mTokens to transfer
-    function transferAllowed(
+    /// @param amount The number of mTokens to transfer
+    function canTransfer(
         address mToken,
         address from,
-        address,
-        uint256 transferTokens
+        uint256 amount
     ) external view override {
         if (transferPaused == 2) {
             revert Lendtroller__Paused();
         }
 
-        _redeemAllowed(mToken, from, transferTokens);
+        _canRedeem(mToken, from, amount);
     }
 
     /// @notice Calculate number of tokens of collateral asset to
@@ -784,7 +763,7 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @notice Updates `borrower` lastBorrowTimestamp to the current block timestamp
     /// @dev The caller must be a listed MToken in the `markets` mapping
     /// @param borrower The address of the account that has just borrowed
-    function notifyAccountBorrow(address borrower) external override {
+    function notifyBorrow(address borrower) external override {
         if (!mTokenData[msg.sender].isListed) {
             revert Lendtroller__TokenNotListed();
         }
@@ -798,11 +777,11 @@ contract Lendtroller is ILendtroller, ERC165 {
     ///         the underlying asset of the given market
     /// @param mToken The market to verify the borrow against
     /// @param borrower The account which would borrow the asset
-    /// @param borrowAmount The amount of underlying the account would borrow
-    function borrowAllowed(
+    /// @param amount The amount of underlying the account would borrow
+    function canBorrow(
         address mToken,
         address borrower,
-        uint256 borrowAmount
+        uint256 amount
     ) public override {
         if (borrowPaused[mToken] == 2) {
             revert Lendtroller__Paused();
@@ -831,7 +810,7 @@ contract Lendtroller is ILendtroller, ERC165 {
             // Validate that if there is a collateral cap,
             // we will not be over the cap with this new borrow
             if (
-                (IMToken(mToken).totalBorrows() + borrowAmount) > collateralCap
+                (IMToken(mToken).totalBorrows() + amount) > collateralCap
             ) {
                 revert Lendtroller__BorrowCapReached();
             }
@@ -843,7 +822,7 @@ contract Lendtroller is ILendtroller, ERC165 {
             borrower,
             IMToken(mToken),
             0,
-            borrowAmount,
+            amount,
             1
         );
 
@@ -933,12 +912,12 @@ contract Lendtroller is ILendtroller, ERC165 {
     ///         in the given market
     /// @param mToken The market to verify the redeem against
     /// @param redeemer The account which would redeem the tokens
-    /// @param redeemTokens The number of mTokens to exchange for
-    ///                     the underlying asset in the market
-    function _redeemAllowed(
+    /// @param amount The number of mTokens to exchange for
+    ///               the underlying asset in the market
+    function _canRedeem(
         address mToken,
         address redeemer,
-        uint256 redeemTokens
+        uint256 amount
     ) internal view {
         if (!mTokenData[mToken].isListed) {
             revert Lendtroller__TokenNotListed();
@@ -965,7 +944,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         (, uint256 shortfall) = _getHypotheticalAccountLiquidity(
             redeemer,
             IMToken(mToken),
-            redeemTokens,
+            amount,
             0,
             2
         );
@@ -973,6 +952,46 @@ contract Lendtroller is ILendtroller, ERC165 {
         if (shortfall > 0) {
             revert Lendtroller__InsufficientLiquidity();
         }
+    }
+
+    /// @notice Checks if the liquidation should be allowed to occur
+    /// @param mTokenBorrowed Asset which was borrowed by the borrower
+    /// @param mTokenCollateral Asset which was used as collateral and will be seized
+    /// @param borrower The address of the borrower
+    function _canLiquidate(
+        address mTokenBorrowed,
+        address mTokenCollateral,
+        address borrower
+    ) internal view returns (uint256){
+        if (!mTokenData[mTokenBorrowed].isListed) {
+            revert Lendtroller__TokenNotListed();
+        }
+        if (!mTokenData[mTokenCollateral].isListed) {
+            revert Lendtroller__TokenNotListed();
+        }
+
+        // The borrower must have shortfall CURRENTLY in order to be liquidatable
+        (, uint256 shortfall) = _getHypotheticalAccountLiquidity(
+            borrower,
+            IMToken(address(0)),
+            0,
+            0,
+            2
+        );
+
+        assembly {
+            if iszero(shortfall) {
+                // store the error selector to location 0x0
+                mstore(0x0, _INSUFFICIENT_SHORTFALL_SELECTOR)
+                // return bytes 29-32 for the selector
+                revert(0x1c, 0x04)
+            }
+        }
+
+        // Calculate the maximum amount of collateral that can be liquidated
+        return (closeFactor * IMToken(mTokenBorrowed).borrowBalanceStored(
+            borrower
+        )) / _EXP_SCALE;
     }
 
     /// @notice Determine what the account liquidity would be if
