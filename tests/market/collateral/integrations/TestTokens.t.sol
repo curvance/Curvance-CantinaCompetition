@@ -402,7 +402,7 @@ contract TestTokens is TestBaseMarket {
         assertEq(snapshot.exchangeRate, 1 ether);
     }
 
-    function testLiquidation() public {
+    function testLiquidationExact() public {
         _prepareBALRETH(user1, 1 ether);
 
         // try mint()
@@ -432,6 +432,55 @@ contract TestTokens is TestBaseMarket {
         vm.startPrank(user2);
         dai.approve(address(dDAI), 250 ether);
         dDAI.liquidateExact(user1, 250 ether, IMToken(address(cBALRETH)));
+        vm.stopPrank();
+
+        AccountSnapshot memory snapshot = cBALRETH.getAccountSnapshotPacked(
+            user1
+        );
+        assertApproxEqRel(
+            snapshot.mTokenBalance,
+            1 ether - (500 ether * 1 ether) / balRETHPrice,
+            0.01e18
+        );
+        assertEq(snapshot.borrowBalance, 0);
+        assertEq(snapshot.exchangeRate, 1 ether);
+
+        snapshot = dDAI.getAccountSnapshotPacked(user1);
+        assertEq(snapshot.mTokenBalance, 0);
+        assertApproxEqRel(snapshot.borrowBalance, 250 ether, 0.01e18);
+        assertApproxEqRel(snapshot.exchangeRate, 1 ether, 0.01e18);
+    }
+
+    function testLiquidation() public {
+        _prepareBALRETH(user1, 1 ether);
+
+        // try mint()
+        vm.startPrank(user1);
+        balRETH.approve(address(cBALRETH), 1 ether);
+        cBALRETH.mint(1 ether);
+        vm.stopPrank();
+
+        // try borrow()
+        vm.startPrank(user1);
+        dDAI.borrow(500 ether);
+        vm.stopPrank();
+
+        // skip min hold period
+        skip(900);
+
+        (uint256 balRETHPrice, ) = priceRouter.getPrice(
+            address(balRETH),
+            true,
+            true
+        );
+
+        mockDaiFeed.setMockAnswer(200000000);
+
+        // try liquidate
+        _prepareDAI(user2, 250 ether);
+        vm.startPrank(user2);
+        dai.approve(address(dDAI), 250 ether);
+        dDAI.liquidate(user1, IMToken(address(cBALRETH)));
         vm.stopPrank();
 
         AccountSnapshot memory snapshot = cBALRETH.getAccountSnapshotPacked(
