@@ -22,7 +22,7 @@ contract GetPriceMultiTest is TestBasePriceRouter {
     }
 
     function test_getPriceMulti_fail_whenNoFeedsAvailable() public {
-        vm.expectRevert("PriceRouter: no feeds available");
+        vm.expectRevert(0xe4558fac);
         priceRouter.getPriceMulti(assets, inUSD, getLower);
     }
 

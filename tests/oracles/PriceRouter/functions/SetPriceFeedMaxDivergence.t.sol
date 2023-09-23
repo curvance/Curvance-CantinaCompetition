@@ -16,7 +16,7 @@ contract SetPriceFeedMaxDivergenceTest is TestBasePriceRouter {
     function test_setPriceFeedMaxDivergence_fail_whenDivergenceIsTooSmall()
         public
     {
-        vm.expectRevert("PriceRouter: divergence check is too small");
+        vm.expectRevert(0xebd2e1ff);
         priceRouter.setPriceFeedMaxDivergence(10199);
     }
 
