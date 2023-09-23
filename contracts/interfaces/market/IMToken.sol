@@ -5,7 +5,7 @@ import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 
 struct AccountSnapshot {
     address asset;
-    uint256 tokenType;
+    bool isCToken;
     uint256 mTokenBalance;
     uint256 borrowBalance;
     uint256 exchangeRate;
@@ -14,8 +14,8 @@ struct AccountSnapshot {
 interface IMToken {
     function underlying() external view returns (address);
 
-    /// @notice Returns whether the market token is collateral or debt 1 = collateral, 0 = debt
-    function tokenType() external view returns (uint256);
+    /// @notice Returns whether the market token is a collateral token
+    function isCToken() external view returns (bool);
 
     /// @notice Get the token balance of the `owner`
     function balanceOf(address owner) external view returns (uint256);

@@ -21,9 +21,6 @@ contract CToken is ERC165, ReentrancyGuard {
     /// @notice Scalar for math
     uint256 internal constant EXP_SCALE = 1e18;
 
-    /// @notice For inspection
-    bool public constant isCToken = true;
-
     /// @notice Underlying asset for the CToken
     address public immutable underlying;
 
@@ -368,7 +365,7 @@ contract CToken is ERC165, ReentrancyGuard {
         return (
             AccountSnapshot({
                 asset: address(this),
-                tokenType: 1,
+                isCToken: true,
                 mTokenBalance: balanceOf[account],
                 borrowBalance: 0,
                 exchangeRate: exchangeRateStored()
@@ -407,9 +404,9 @@ contract CToken is ERC165, ReentrancyGuard {
         return IERC20(underlying).decimals();
     }
 
-    /// @notice Returns the type of Curvance token, 1 = Collateral, 0 = Debt
-    function tokenType() public pure returns (uint256) {
-        return 1;
+    /// @notice Returns whether the MToken is a collateral token or not
+    function isCToken() public pure returns (bool) {
+        return true;
     }
 
     /// @notice Pull up-to-date exchange rate from the underlying to

@@ -39,9 +39,6 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @notice Scalar for math
     uint256 internal constant EXP_SCALE = 1e18;
 
-    /// @notice for inspection
-    bool public constant isDToken = true;
-
     /// @notice underlying asset for the DToken
     address public immutable underlying;
 
@@ -627,7 +624,7 @@ contract DToken is ERC165, ReentrancyGuard {
         return (
             AccountSnapshot({
                 asset: address(this),
-                tokenType: 0,
+                isCToken: false,
                 mTokenBalance: balanceOf[account],
                 borrowBalance: borrowBalanceStored(account),
                 exchangeRate: exchangeRateStored()
@@ -723,9 +720,9 @@ contract DToken is ERC165, ReentrancyGuard {
         return IERC20(underlying).balanceOf(address(this));
     }
 
-    /// @notice Returns the type of Curvance token, 1 = Collateral, 0 = Debt
-    function tokenType() public pure returns (uint256) {
-        return 0;
+    /// @notice Returns whether the MToken is a collateral token or not
+    function isCToken() public pure returns (bool) {
+        return false;
     }
 
     /// @notice Accrues interest then return the up-to-date exchange rate
@@ -1074,8 +1071,8 @@ contract DToken is ERC165, ReentrancyGuard {
             }
         }
 
-        /// The MToken must be a collateral token E.G. tokenType == 1
-        if (mTokenCollateral.tokenType() == 0) {
+        /// The MToken must be a collateral token
+        if (!mTokenCollateral.isCToken()) {
             revert DToken__ValidationFailed();
         }
 

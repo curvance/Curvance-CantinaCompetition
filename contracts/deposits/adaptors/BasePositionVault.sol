@@ -167,7 +167,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
             "BasePositionVault: vault already initialized"
         );
         require(
-            IMToken(cTokenAddress).tokenType() == 1,
+            IMToken(cTokenAddress).isCToken(),
             "BasePositionVault: not cToken"
         );
 
@@ -192,7 +192,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     ) external onlyElevatedPermissions {
         require(_vaultIsActive == 1, "BasePositionVault: vault not shutdown");
         require(
-            IMToken(cTokenAddress).tokenType() == 1,
+            IMToken(cTokenAddress).isCToken(),
             "BasePositionVault: not cToken"
         );
 
