@@ -1129,8 +1129,8 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @param errorCodeBreakpoint The error code that will cause liquidity operations to revert
     /// @dev Note that we calculate the exchangeRateStored for each collateral
     ///           mToken using stored data, without calculating accumulated interest.
-    /// @return uint256 hypothetical account liquidity in excess of collateral requirements.
-    /// @return uint256 hypothetical account shortfall below collateral requirements)
+    /// @return uint256 Account liquidity in excess of collateral requirements.
+    /// @return uint256 Account shortfall below collateral requirements.
     function _getLiquidity(
         address account,
         uint256 errorCodeBreakpoint
@@ -1162,9 +1162,9 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @param errorCodeBreakpoint The error code that will cause liquidity operations to revert
     /// @dev Note that we calculate the exchangeRateStored for each collateral
     ///           mToken using stored data, without calculating accumulated interest.
-    /// @return uint256 hypothetical account liquidity in excess
+    /// @return uint256 Hypothetical account liquidity in excess
     ///              of collateral requirements,
-    /// @return uint256 hypothetical account shortfall below collateral requirements)
+    /// @return uint256 Hypothetical account shortfall below collateral requirements.
     function _getHypotheticalLiquidity(
         address account,
         IMToken mTokenModify,
@@ -1198,7 +1198,7 @@ contract Lendtroller is ILendtroller, ERC165 {
 
     /// @notice Retrieves the prices and account data of multiple assets inside this market.
     /// @param account The account to retrieve data for.
-    /// @param errorCodeBreakpoint The error code that will cause protective reversion.
+    /// @param errorCodeBreakpoint The error code that will cause liquidity operations to revert.
     /// @return AccountSnapshot[] Contains `assets` data for `account`
     /// @return uint256[] Contains prices for `assets`.
     /// @return uint256 The number of assets `account` is in.
