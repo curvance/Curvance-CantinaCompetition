@@ -367,6 +367,8 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @param collateralToken Asset which was used as collateral and will be seized
     /// @param borrower The address of the borrower
     /// @param amount The amount of underlying being repaid
+    /// @return The number of `collateralToken` tokens to be seized in a liquidation
+    /// @return The number of `collateralToken` tokens to be seized for the protocol
     function canLiquidateExact(
         address debtToken,
         address collateralToken,
@@ -388,6 +390,9 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @param debtToken Asset which was borrowed by the borrower
     /// @param collateralToken Asset which was used as collateral and will be seized
     /// @param borrower The address of the borrower
+    /// @return The amount of underlying to be repaid on liquidation
+    /// @return The number of `collateralToken` tokens to be seized in a liquidation
+    /// @return The number of `collateralToken` tokens to be seized for the protocol
     function canLiquidate(
         address debtToken,
         address collateralToken,
@@ -929,7 +934,8 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @param collateralToken Asset which was used as collateral and will be seized
     /// @param borrower The address of the borrower
     /// @return The maximum amount of `debtToken` that can be repaid during liquidation
-    /// @return 
+    /// @return Current price for `debtToken`
+    /// @return Current price for `collateralToken`
     function _canLiquidate(
         address debtToken,
         address collateralToken,
@@ -938,7 +944,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         if (!mTokenData[debtToken].isListed) {
             revert Lendtroller__TokenNotListed();
         }
-        
+
         if (!mTokenData[collateralToken].isListed) {
             revert Lendtroller__TokenNotListed();
         }
