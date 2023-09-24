@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.17;
 
-import { AccountSnapshot } from "contracts/interfaces/market/IMToken.sol";
+import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.sol";
 
 interface IPriceRouter {
     /// @notice queries price from an oracle adaptor
@@ -12,7 +12,8 @@ interface IPriceRouter {
     ) external view returns (uint256, uint256);
 
     function getPricesForMarket(
-        address[] calldata assets, 
+        address account,
+        IMToken[] calldata assets, 
         uint256 errorCodeBreakpoint
     ) external view returns (AccountSnapshot [] memory, uint256[] memory);
 
