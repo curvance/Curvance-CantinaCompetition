@@ -109,6 +109,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         IMToken mToken,
         uint256 newLI,
         uint256 newLF,
+        uint256 newLT,
         uint256 newCR
     );
     event ActionPaused(string action, bool pauseState);
@@ -602,6 +603,7 @@ contract Lendtroller is ILendtroller, ERC165 {
             mToken,
             liquidationIncentive,
             protocolLiquidationFee,
+            liquidationThreshold,
             collateralizationRatio
         );
     }
@@ -830,13 +832,14 @@ contract Lendtroller is ILendtroller, ERC165 {
         return _getStatus(account, 2);
     }
 
-    /// @notice Determine the current account liquidity wrt collateral requirements
-    /// @return liquidity of account in excess of collateral requirements
-    /// @return shortfall of account below collateral requirements
-    function getLiquidity(
-        address account
-    ) public view returns (uint256, uint256) {
-        return _getLiquidity(account, 2);
+    /// @notice Determine whether `account` can currently be liquidated in this market
+    /// @param account The account to check for liquidation flag
+    /// @dev Note that we calculate the exchangeRateStored for each collateral
+    ///           mToken using stored data, without calculating accumulated interest.
+    /// @return Whether `account` can be liquidated currently
+    function flaggedForLiquidation(address account) internal view returns (bool) {
+        (uint256 shortfall,,) =_getStatusForLiquidation(account, address(0), address(0));
+        return shortfall > 0;
     }
 
     /// @notice Determine what the account liquidity would be if
@@ -1143,36 +1146,6 @@ contract Lendtroller is ILendtroller, ERC165 {
             unchecked {
                 ++i;
             }
-        }
-    }
-
-    /// @notice Determine what the account liquidity would be if
-    ///         the given amounts were redeemed/borrowed
-    /// @param account The account to determine liquidity for
-    /// @param errorCodeBreakpoint The error code that will cause liquidity operations to revert
-    /// @dev Note that we calculate the exchangeRateStored for each collateral
-    ///           mToken using stored data, without calculating accumulated interest.
-    /// @return uint256 Account liquidity in excess of collateral requirements.
-    /// @return uint256 Account shortfall below collateral requirements.
-    function _getLiquidity(
-        address account,
-        uint256 errorCodeBreakpoint
-    ) internal view returns (uint256, uint256) {
-        (
-            ,
-            uint256 maxBorrow,
-            uint256 sumBorrowPlusEffects
-        ) = _getStatus(account, errorCodeBreakpoint);
-
-        // These will not underflow/overflow as condition is checked prior
-        if (maxBorrow > sumBorrowPlusEffects) {
-            unchecked {
-                return (maxBorrow - sumBorrowPlusEffects, 0);
-            }
-        }
-
-        unchecked {
-            return (0, sumBorrowPlusEffects - maxBorrow);
         }
     }
 
