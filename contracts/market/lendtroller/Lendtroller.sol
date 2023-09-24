@@ -892,7 +892,7 @@ contract Lendtroller is ILendtroller, ERC165 {
     ///         in the given market
     /// @param mToken The market to verify the redeem against
     /// @param redeemer The account which would redeem the tokens
-    /// @param amount The number of mTokens to exchange for
+    /// @param amount The number of `mToken` to redeem for
     ///               the underlying asset in the market
     function _canRedeem(
         address mToken,
@@ -974,9 +974,9 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @param errorCodeBreakpoint The error code that will cause liquidity operations to revert
     /// @dev Note that we calculate the exchangeRateStored for each collateral
     ///           mToken using stored data, without calculating accumulated interest.
-    /// @return sumCollateral total collateral amount of user
-    /// @return maxBorrow max borrow amount of user
-    /// @return sumBorrowPlusEffects total borrow amount of user
+    /// @return sumCollateral Total collateral amount of user
+    /// @return maxBorrow Max borrow amount of user
+    /// @return sumBorrowPlusEffects Total borrow amount of user
     function _getStatus(
         address account,
         uint256 errorCodeBreakpoint
@@ -1038,9 +1038,9 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @param errorCodeBreakpoint The error code that will cause liquidity operations to revert
     /// @dev Note that we calculate the exchangeRateStored for each collateral
     ///           mToken using stored data, without calculating accumulated interest.
-    /// @return sumCollateral total collateral amount of user
-    /// @return maxBorrow max borrow amount of user
-    /// @return sumBorrowPlusEffects total borrow amount of user
+    /// @return sumCollateral Total collateral amount of user
+    /// @return maxBorrow Max borrow amount of user
+    /// @return sumBorrowPlusEffects Total borrow amount of user
     function _getHypotheticalStatus(
         address account,
         IMToken mTokenModify,
@@ -1154,16 +1154,15 @@ contract Lendtroller is ILendtroller, ERC165 {
     }
 
     /// @notice Determine what the account liquidity would be if
-    ///         the given amounts were redeemed/borrowed
-    /// @param mTokenModify The market to hypothetically redeem/borrow in
-    /// @param account The account to determine liquidity for
-    /// @param redeemTokens The number of tokens to hypothetically redeem
-    /// @param borrowAmount The amount of underlying to hypothetically borrow
-    /// @param errorCodeBreakpoint The error code that will cause liquidity operations to revert
+    ///         the given amounts were redeemed/borrowed.
+    /// @param mTokenModify The mToken to hypothetically redeem/borrow.
+    /// @param account The account to determine liquidity for.
+    /// @param redeemTokens The number of tokens to hypothetically redeem.
+    /// @param borrowAmount The amount of underlying to hypothetically borrow.
+    /// @param errorCodeBreakpoint The error code that will cause liquidity operations to revert.
     /// @dev Note that we calculate the exchangeRateStored for each collateral
     ///           mToken using stored data, without calculating accumulated interest.
-    /// @return uint256 Hypothetical account liquidity in excess
-    ///              of collateral requirements,
+    /// @return uint256 Hypothetical account liquidity in excess of collateral requirements.
     /// @return uint256 Hypothetical account shortfall below collateral requirements.
     function _getHypotheticalLiquidity(
         address account,
