@@ -1198,7 +1198,7 @@ contract Lendtroller is ILendtroller, ERC165 {
 
     /// @notice Retrieves the prices and account data of multiple assets inside this market.
     /// @param account The account to retrieve data for.
-    /// @param errorCodeBreakpoint The error code that will cause liquidity operations to revert.
+    /// @param errorCodeBreakpoint The error code that will cause protective reversion.
     /// @return AccountSnapshot[] Contains `assets` data for `account`
     /// @return uint256[] Contains prices for `assets`.
     /// @return uint256 The number of assets `account` is in.

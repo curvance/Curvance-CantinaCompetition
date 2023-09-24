@@ -104,7 +104,7 @@ contract TestTokens is TestBaseMarket {
 
     function testInitialize() public {
         assertEq(cBALRETH.isCToken(), true);
-        assertEq(dDAI.isDToken(), true);
+        assertEq(dDAI.isCToken(), false);
     }
 
     function testCTokenMintRedeem() public {
