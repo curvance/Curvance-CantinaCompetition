@@ -720,7 +720,7 @@ contract DToken is ERC165, ReentrancyGuard {
         return IERC20(underlying).balanceOf(address(this));
     }
 
-    /// @notice Returns whether the MToken is a collateral token or not
+    /// @notice Returns the type of Curvance token, 1 = Collateral, 0 = Debt
     function isCToken() public pure returns (bool) {
         return false;
     }

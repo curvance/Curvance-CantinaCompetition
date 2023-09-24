@@ -404,7 +404,7 @@ contract CToken is ERC165, ReentrancyGuard {
         return IERC20(underlying).decimals();
     }
 
-    /// @notice Returns whether the MToken is a collateral token or not
+    /// @notice Returns whether the MToken is a cToken
     function isCToken() public pure returns (bool) {
         return true;
     }

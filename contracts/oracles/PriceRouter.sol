@@ -5,7 +5,7 @@ import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { IMToken } from "contracts/interfaces/market/IMToken.sol";
+import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { IOracleAdaptor, PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
 
@@ -38,6 +38,8 @@ contract PriceRouter {
     uint256 internal constant _NOT_SUPPORTED_SELECTOR = 0xe4558fac;
     // `bytes4(keccak256(bytes("PriceRouter__InvalidParameter()")))`
     uint256 internal constant _INVALID_PARAMETER_SELECTOR = 0xebd2e1ff;
+    // `bytes4(keccak256(bytes("PriceRouter__ErrorCodeFlagged()")))`
+    uint256 internal constant _ERROR_CODE_FLAGGED_SELECTOR = 0x891531fb;
 
     /// STORAGE ///
 
@@ -55,6 +57,7 @@ contract PriceRouter {
 
     error PriceRouter__NotSupported();
     error PriceRouter__InvalidParameter();
+    error PriceRouter__ErrorCodeFlagged();
 
     /// MODIFIERS ///
 
@@ -319,9 +322,7 @@ contract PriceRouter {
         }
     }
 
-    /// @notice Retrieves the prices of multiple specified assets.
-    /// @dev Loops through the array of assets and retrieves the price
-    ///      for each using the getPrice function.
+    /// @notice Retrieves the prices of multiple assets.
     /// @param assets An array of asset addresses to retrieve the prices for.
     /// @param inUSD An array of bools indicating whether the price should be
     ///              returned in USD or ETH.
@@ -329,11 +330,11 @@ contract PriceRouter {
     ///                 or higher price should be returned if two feeds are available.
     /// @return Two arrays. The first one contains prices for each asset,
     ///         and the second one contains corresponding error flags (if any).
-    function getPriceMulti(
+    function getPrices(
         address[] calldata assets,
         bool[] calldata inUSD,
         bool[] calldata getLower
-    ) public view returns (uint256[] memory, uint256[] memory) {
+    ) external view returns (uint256[] memory, uint256[] memory) {
         uint256 numAssets = assets.length;
         if (numAssets == 0) {
             _revert(_INVALID_PARAMETER_SELECTOR);
@@ -359,6 +360,47 @@ contract PriceRouter {
         }
 
         return (prices, hadError);
+    }
+
+    /// @notice Retrieves the prices and account data of multiple assets inside a Curvance Market.
+    /// @param account The account to retrieve data for.
+    /// @param assets An array of asset addresses to retrieve the prices for.
+    /// @param errorCodeBreakpoint The error code that will cause liquidity operations to revert.
+    /// @return Two arrays. The first one contains `assets` data for `account`,
+    ///         and the second one contains prices for `assets`.
+    function getPricesForMarket(
+        address account,
+        IMToken[] calldata assets, 
+        uint256 errorCodeBreakpoint
+    ) external view returns (AccountSnapshot[] memory, uint256[] memory) {
+        uint256 numAssets = assets.length;
+        if (numAssets == 0) {
+            _revert(_INVALID_PARAMETER_SELECTOR);
+        }
+
+        AccountSnapshot[] memory snapshots = new AccountSnapshot[](numAssets);
+        uint256[] memory prices = new uint256[](numAssets);
+        uint256 hadError;
+
+        for (uint256 i; i < numAssets; ) {
+            snapshots[i] = assets[i].getAccountSnapshotPacked(account);
+            (prices[i], hadError) = getPrice(
+                snapshots[i].asset,
+                true,
+                snapshots[i].isCToken
+            );
+
+            if (hadError >= errorCodeBreakpoint) {
+                _revert(_ERROR_CODE_FLAGGED_SELECTOR);
+            }
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        return (snapshots, prices);
+
     }
 
     /// INTERNAL FUNCTIONS ///
