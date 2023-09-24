@@ -59,13 +59,13 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
 
     modifier checkSlippage(address user, uint256 slippage) {
         (uint256 sumCollateralBefore, , uint256 sumBorrowBefore) = lendtroller
-            .getAccountPosition(user);
+            .getStatus(user);
         uint256 userValueBefore = sumCollateralBefore - sumBorrowBefore;
 
         _;
 
         (uint256 sumCollateral, , uint256 sumBorrow) = lendtroller
-            .getAccountPosition(user);
+            .getStatus(user);
         uint256 userValue = sumCollateral - sumBorrow;
 
         uint256 diff = userValue > userValueBefore
@@ -333,7 +333,7 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
             uint256 sumCollateral,
             uint256 maxBorrow,
             uint256 sumBorrow
-        ) = lendtroller.getAccountPosition(user);
+        ) = lendtroller.getStatus(user);
         uint256 maxLeverage = ((sumCollateral - sumBorrow) *
             MAX_LEVERAGE *
             sumCollateral) /
