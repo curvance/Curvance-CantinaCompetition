@@ -67,6 +67,7 @@ contract TestPositionFolding is TestBaseMarket {
                 IMToken(address(cBALRETH)),
                 200,
                 0,
+                5500,
                 5000
             );
             vm.prank(user);
