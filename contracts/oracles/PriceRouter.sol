@@ -384,7 +384,7 @@ contract PriceRouter {
         uint256 hadError;
 
         for (uint256 i; i < numAssets; ) {
-            snapshots[i] = assets[i].getAccountSnapshotPacked(account);
+            snapshots[i] = assets[i].getSnapshotPacked(account);
             (prices[i], hadError) = getPrice(
                 snapshots[i].asset,
                 true,
