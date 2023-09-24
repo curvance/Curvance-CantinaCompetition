@@ -938,8 +938,14 @@ contract Lendtroller is ILendtroller, ERC165 {
         if (!mTokenData[debtToken].isListed) {
             revert Lendtroller__TokenNotListed();
         }
+        
         if (!mTokenData[collateralToken].isListed) {
             revert Lendtroller__TokenNotListed();
+        }
+
+        // Do not let people liquidate 0 collateralization ratio assets
+        if (mTokenData[collateralToken].collateralizationRatio == 0) {
+            _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
         // The borrower must have shortfall CURRENTLY in order to be liquidatable
@@ -1044,8 +1050,7 @@ contract Lendtroller is ILendtroller, ERC165 {
             } else {
                 // If they have a debt balance we need to document it
                 if (snapshot.debtBalance > 0) {
-                    currentDebt += ((prices[i] *
-                        snapshot.debtBalance) / _EXP_SCALE);
+                    currentDebt += ((prices[i] * snapshot.debtBalance) / _EXP_SCALE);
                 }
             }
 
@@ -1155,8 +1160,8 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @param errorCodeBreakpoint The error code that will cause liquidity operations to revert.
     /// @dev Note that we calculate the exchangeRateStored for each collateral
     ///           mToken using stored data, without calculating accumulated interest.
-    /// @return uint256 Hypothetical account liquidity in excess of collateral requirements.
-    /// @return uint256 Hypothetical account shortfall below collateral requirements.
+    /// @return uint256 Hypothetical `account` excess liquidity versus collateral requirements.
+    /// @return uint256 Hypothetical `account` shortfall below collateral requirements.
     function _getHypotheticalLiquidity(
         address account,
         IMToken mTokenModify,
