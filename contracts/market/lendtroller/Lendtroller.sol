@@ -1064,9 +1064,9 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @param errorCodeBreakpoint The error code that will cause liquidity operations to revert
     /// @dev Note that we calculate the exchangeRateStored for each collateral
     ///           mToken using stored data, without calculating accumulated interest.
-    /// @return sumCollateral Total collateral amount of user
-    /// @return maxBorrow Max borrow amount of user
-    /// @return sumBorrowPlusEffects Total borrow amount of user
+    /// @return sumCollateral The total market value of `account`'s collateral
+    /// @return maxBorrow Maximum amount `account` can borrow versus current collateral
+    /// @return newDebt The new debt of `account` after the hypothetical action
     function _getHypotheticalStatus(
         address account,
         IMToken mTokenModify,
@@ -1079,7 +1079,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         returns (
             uint256 sumCollateral,
             uint256 maxBorrow,
-            uint256 sumBorrowPlusEffects
+            uint256 newDebt
         )
     {
        (AccountSnapshot[] memory snapshots, 
@@ -1110,8 +1110,7 @@ contract Lendtroller is ILendtroller, ERC165 {
             } else {
                 // If they have a borrow balance we need to document it
                 if (snapshot.debtBalance > 0) {
-                    sumBorrowPlusEffects += ((prices[i] *
-                        snapshot.debtBalance) / _EXP_SCALE);
+                    newDebt += ((prices[i] * snapshot.debtBalance) / _EXP_SCALE);
                 }
             }
 
@@ -1133,13 +1132,11 @@ contract Lendtroller is ILendtroller, ERC165 {
                             prices[i]) / _EXP_SCALE;
 
                         // hypothetical redemption
-                        sumBorrowPlusEffects += ((collateralValue *
-                            redeemTokens) / _EXP_SCALE);
+                        newDebt += ((collateralValue * redeemTokens) / _EXP_SCALE);
                     }
                 } else {
                     // hypothetical borrow
-                    sumBorrowPlusEffects += ((prices[i] * borrowAmount) /
-                        _EXP_SCALE);
+                    newDebt += ((prices[i] * borrowAmount) / _EXP_SCALE);
                 }
             }
 
@@ -1170,7 +1167,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         (
             ,
             uint256 maxBorrow,
-            uint256 sumBorrowPlusEffects
+            uint256 newDebt
         ) = _getHypotheticalStatus(
                 account,
                 mTokenModify,
@@ -1180,14 +1177,14 @@ contract Lendtroller is ILendtroller, ERC165 {
             );
 
         // These will not underflow/overflow as condition is checked prior
-        if (maxBorrow > sumBorrowPlusEffects) {
+        if (maxBorrow > newDebt) {
             unchecked {
-                return (maxBorrow - sumBorrowPlusEffects, 0);
+                return (maxBorrow - newDebt, 0);
             }
         }
 
         unchecked {
-            return (0, sumBorrowPlusEffects - maxBorrow);
+            return (0, newDebt - maxBorrow);
         }
     }
 
