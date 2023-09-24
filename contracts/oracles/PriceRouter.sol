@@ -366,13 +366,14 @@ contract PriceRouter {
     /// @param account The account to retrieve data for.
     /// @param assets An array of asset addresses to retrieve the prices for.
     /// @param errorCodeBreakpoint The error code that will cause liquidity operations to revert.
-    /// @return Two arrays. The first one contains `assets` data for `account`,
-    ///         and the second one contains prices for `assets`.
+    /// @return AccountSnapshot[] Contains `assets` data for `account`
+    /// @return uint256[] Contains prices for `assets`.
+    /// @return uint256 The number of assets `account` is in.
     function getPricesForMarket(
         address account,
         IMToken[] calldata assets, 
         uint256 errorCodeBreakpoint
-    ) external view returns (AccountSnapshot[] memory, uint256[] memory) {
+    ) external view returns (AccountSnapshot[] memory, uint256[] memory, uint256) {
         uint256 numAssets = assets.length;
         if (numAssets == 0) {
             _revert(_INVALID_PARAMETER_SELECTOR);
@@ -399,7 +400,7 @@ contract PriceRouter {
             }
         }
 
-        return (snapshots, prices);
+        return (snapshots, prices, numAssets);
 
     }
 

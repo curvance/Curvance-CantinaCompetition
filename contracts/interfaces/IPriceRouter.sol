@@ -15,7 +15,7 @@ interface IPriceRouter {
         address account,
         IMToken[] calldata assets, 
         uint256 errorCodeBreakpoint
-    ) external view returns (AccountSnapshot [] memory, uint256[] memory);
+    ) external view returns (AccountSnapshot [] memory, uint256[] memory, uint256);
 
     /// @notice Notifies the price router that an asset has been removed
     ///         from the adaptor calling the function

@@ -78,7 +78,7 @@ interface ILendtroller {
 
     function gaugePool() external view returns (GaugePool);
 
-    function getAccountPosition(
+    function getStatus(
         address account
     ) external view returns (uint256, uint256, uint256);
 }

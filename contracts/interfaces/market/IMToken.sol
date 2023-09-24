@@ -6,8 +6,8 @@ import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 struct AccountSnapshot {
     address asset;
     bool isCToken;
-    uint256 mTokenBalance;
-    uint256 borrowBalance;
+    uint256 balance;
+    uint256 debtBalance;
     uint256 exchangeRate;
 }
 
@@ -28,12 +28,12 @@ interface IMToken {
     ) external;
 
     /// @notice Get a snapshot of the account's balances, and the cached exchange rate
-    function getAccountSnapshot(
+    function getSnapshot(
         address account
     ) external view returns (uint256, uint256, uint256);
 
     /// @notice Get a snapshot of the account's balances, and the cached exchange rate
-    function getAccountSnapshotPacked(
+    function getSnapshotPacked(
         address account
     ) external view returns (AccountSnapshot memory);
 

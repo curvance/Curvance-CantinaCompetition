@@ -350,7 +350,7 @@ contract CToken is ERC165, ReentrancyGuard {
     /// @return tokenBalance
     /// @return borrowBalance
     /// @return exchangeRate scaled 1e18
-    function getAccountSnapshot(
+    function getSnapshot(
         address account
     ) external view returns (uint256, uint256, uint256) {
         return (balanceOf[account], 0, exchangeRateStored());
@@ -359,15 +359,15 @@ contract CToken is ERC165, ReentrancyGuard {
     /// @notice Get a snapshot of the cToken and `account` data
     /// @dev This is used by lendtroller to more efficiently perform liquidity checks
     /// @param account Address of the account to snapshot
-    function getAccountSnapshotPacked(
+    function getSnapshotPacked(
         address account
     ) external view returns (AccountSnapshot memory) {
         return (
             AccountSnapshot({
                 asset: address(this),
                 isCToken: true,
-                mTokenBalance: balanceOf[account],
-                borrowBalance: 0,
+                balance: balanceOf[account],
+                debtBalance: 0,
                 exchangeRate: exchangeRateStored()
             })
         );

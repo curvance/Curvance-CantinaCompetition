@@ -605,7 +605,7 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @return Account token balance
     /// @return Account borrow balance
     /// @return Token => Underlying exchange rate scaled by `EXP_SCALE`
-    function getAccountSnapshot(
+    function getSnapshot(
         address account
     ) external view returns (uint256, uint256, uint256) {
         return (
@@ -618,15 +618,15 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @notice Get a snapshot of the dToken and `account` data
     /// @dev This is used by lendtroller to more efficiently perform liquidity checks
     /// @param account Address of the account to snapshot
-    function getAccountSnapshotPacked(
+    function getSnapshotPacked(
         address account
     ) external view returns (AccountSnapshot memory) {
         return (
             AccountSnapshot({
                 asset: address(this),
                 isCToken: false,
-                mTokenBalance: balanceOf[account],
-                borrowBalance: borrowBalanceStored(account),
+                balance: balanceOf[account],
+                debtBalance: borrowBalanceStored(account),
                 exchangeRate: exchangeRateStored()
             })
         );
