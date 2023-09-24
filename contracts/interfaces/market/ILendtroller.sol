@@ -32,13 +32,13 @@ interface ILendtroller {
         address mTokenCollateral,
         address borrower,
         uint256 amount
-    ) external;
+    ) external returns (uint256, uint256);
 
     function canLiquidate(
         address mTokenBorrowed,
         address mTokenCollateral,
         address borrower
-    ) external returns (uint256);
+    ) external returns (uint256, uint256, uint256);
 
     function canSeize(
         address mTokenCollateral,
@@ -52,12 +52,6 @@ interface ILendtroller {
     ) external;
 
     function notifyBorrow(address account) external;
-
-    function calculateLiquidatedTokens(
-        address mTokenBorrowed,
-        address mTokenCollateral,
-        uint256 repayAmount
-    ) external view returns (uint256, uint256);
 
     function isListed(address mToken) external view returns (bool);
 

@@ -44,7 +44,7 @@ interface IMToken {
     function totalBorrows() external view returns (uint256);
 
     /// @notice Return the borrow balance of account based on stored data
-    function borrowBalanceStored(
+    function debtBalanceStored(
         address account
     ) external view returns (uint256);
 

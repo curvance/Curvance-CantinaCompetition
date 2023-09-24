@@ -338,16 +338,31 @@ contract DToken is ERC165, ReentrancyGuard {
     ) external nonReentrant {
         accrueInterest();
 
+        // Fail if borrower = liquidator
+        assembly {
+            if eq(borrower, caller()) {
+                // revert with DToken__UnauthorizedCaller()
+                mstore(0x00, 0xefeae624)
+                revert(0x1c, 0x04)
+            }
+        }
+
+        /// The MToken must be a collateral token
+        if (!collateralToken.isCToken()) {
+            revert DToken__ValidationFailed();
+        }
+
         // Fail if liquidate not allowed,
         // trying to pay too much debt with excessive `amount` will revert
-        lendtroller.canLiquidateExact(
+        (uint256 liquidatedTokens,
+        uint256 protocolTokens) = lendtroller.canLiquidateExact(
             address(this),
             address(collateralToken),
             borrower,
             amount
         );
 
-        _liquidate(msg.sender, borrower, amount, collateralToken);
+        _liquidate(msg.sender, borrower, amount, collateralToken, liquidatedTokens, protocolTokens);
     }
 
     /// @notice Liquidates `borrower`'s collateral by repaying debt and 
@@ -361,14 +376,30 @@ contract DToken is ERC165, ReentrancyGuard {
     ) external nonReentrant {
         accrueInterest();
 
+        // Fail if borrower = liquidator
+        assembly {
+            if eq(borrower, caller()) {
+                // revert with DToken__UnauthorizedCaller()
+                mstore(0x00, 0xefeae624)
+                revert(0x1c, 0x04)
+            }
+        }
+
+        /// The MToken must be a collateral token
+        if (!collateralToken.isCToken()) {
+            revert DToken__ValidationFailed();
+        }
+
         // Fail if liquidate not allowed
-        uint256 amount = lendtroller.canLiquidate(
+        (uint256 amount,
+        uint256 liquidatedTokens,
+        uint256 protocolTokens) = lendtroller.canLiquidate(
             address(this),
             address(collateralToken),
             borrower
         );
 
-        _liquidate(msg.sender, borrower, amount, collateralToken);
+        _liquidate(msg.sender, borrower, amount, collateralToken, liquidatedTokens, protocolTokens);
     }
 
     /// @notice Sender redeems dTokens in exchange for the underlying asset
@@ -603,14 +634,14 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @dev This is used by lendtroller to more efficiently perform liquidity checks
     /// @param account Address of the account to snapshot
     /// @return Account token balance
-    /// @return Account borrow balance
+    /// @return Account debt balance
     /// @return Token => Underlying exchange rate scaled by `EXP_SCALE`
     function getSnapshot(
         address account
     ) external view returns (uint256, uint256, uint256) {
         return (
             balanceOf[account],
-            borrowBalanceStored(account),
+            debtBalanceStored(account),
             exchangeRateStored()
         );
     }
@@ -626,7 +657,7 @@ contract DToken is ERC165, ReentrancyGuard {
                 asset: address(this),
                 isCToken: false,
                 balance: balanceOf[account],
-                debtBalance: borrowBalanceStored(account),
+                debtBalance: debtBalanceStored(account),
                 exchangeRate: exchangeRateStored()
             })
         );
@@ -673,37 +704,37 @@ contract DToken is ERC165, ReentrancyGuard {
         return totalBorrows;
     }
 
-    /// @notice Accrues interest and then returns the current borrow index for `account`
+    /// @notice Accrues interest and then returns the current debt balance for `account`
     /// @param account The address whose balance should be calculated after updating borrowIndex
     /// @return `account`'s current balance index
-    function borrowBalanceCurrent(
+    function debtBalanceCurrent(
         address account
     ) external nonReentrant returns (uint256) {
         accrueInterest();
-        return borrowBalanceStored(account);
+        return debtBalanceStored(account);
     }
 
     /// PUBLIC FUNCTIONS ///
 
-    /// @notice Return the borrow balance of account based on stored data
+    /// @notice Return the debt balance of account based on stored data
     /// @param account The address whose balance should be calculated
     /// @return `account`'s cached balance index
-    function borrowBalanceStored(
+    function debtBalanceStored(
         address account
     ) public view returns (uint256) {
         // Cache borrow data to save gas
-        DebtData storage borrowSnapshot = _debtOf[account];
+        DebtData storage debtSnapshot = _debtOf[account];
 
-        // If borrowBalance = 0 then borrowIndex is likely also 0
-        if (borrowSnapshot.principal == 0) {
+        // If debtBalance = 0 then borrowIndex is likely also 0
+        if (debtSnapshot.principal == 0) {
             return 0;
         }
 
-        // Calculate new borrow balance using the interest index:
-        // borrowBalanceStored = borrower.principal * DToken.borrowIndex / borrower.interestIndex
+        // Calculate debt balance using the interest index:
+        // debtBalanceStored = account.principal * DToken.borrowIndex / account.interestIndex
         return
-            (borrowSnapshot.principal * borrowExchangeRate.exchangeRate) /
-            borrowSnapshot.interestIndex;
+            (debtSnapshot.principal * borrowExchangeRate.exchangeRate) /
+            debtSnapshot.interestIndex;
     }
 
     /// @notice Returns the decimals of the token
@@ -1003,7 +1034,7 @@ contract DToken is ERC165, ReentrancyGuard {
         }
 
         // We calculate the new borrower and total borrow balances, failing on overflow:
-        _debtOf[borrower].principal = borrowBalanceStored(borrower) + amount;
+        _debtOf[borrower].principal = debtBalanceStored(borrower) + amount;
         _debtOf[borrower].interestIndex = borrowExchangeRate.exchangeRate;
         totalBorrows = totalBorrows + amount;
 
@@ -1029,7 +1060,7 @@ contract DToken is ERC165, ReentrancyGuard {
         lendtroller.canRepay(address(this), borrower);
 
         // Cache how much the borrower has to save gas
-        uint256 accountBorrowsPrev = borrowBalanceStored(borrower);
+        uint256 accountBorrowsPrev = debtBalanceStored(borrower);
 
         // If amount == uint max, amount = accountBorrows
         amount = amount == 0 ? accountBorrowsPrev : amount;
@@ -1054,48 +1085,29 @@ contract DToken is ERC165, ReentrancyGuard {
     ///  The collateral seized is transferred to the liquidator.
     /// @param borrower The borrower of this dToken to be liquidated
     /// @param liquidator The address repaying the borrow and seizing collateral
-    /// @param mTokenCollateral The market in which to seize collateral from the borrower
     /// @param amount The amount of the underlying borrowed asset to repay
+    /// @param collateralToken The market in which to seize collateral from the borrower
     function _liquidate(
         address liquidator,
         address borrower,
         uint256 amount,
-        IMToken mTokenCollateral
+        IMToken collateralToken,
+        uint256 liquidatedTokens,
+        uint256 protocolTokens
     ) internal {
-        // Fail if borrower = liquidator
-        assembly {
-            if eq(borrower, liquidator) {
-                // revert with DToken__UnauthorizedCaller()
-                mstore(0x00, 0xefeae624)
-                revert(0x1c, 0x04)
-            }
-        }
-
-        /// The MToken must be a collateral token
-        if (!mTokenCollateral.isCToken()) {
-            revert DToken__ValidationFailed();
-        }
 
         // calculates DTokens to repay for liquidation, reverts if repay fails
         uint256 repayAmount = _repay(liquidator, borrower, amount);
 
-        // We calculate the number of CTokens that will be liquidated
-        (uint256 liquidatedTokens, uint256 protocolTokens) = lendtroller
-            .calculateLiquidatedTokens(
-                address(this),
-                address(mTokenCollateral),
-                repayAmount
-            );
-
         // Revert if borrower does not have enough collateral
-        if (mTokenCollateral.balanceOf(borrower) < liquidatedTokens) {
+        if (collateralToken.balanceOf(borrower) < liquidatedTokens) {
             revert DToken__ExcessiveValue();
         }
 
         // We check above that the mToken must be a collateral token,
         // so we cant be seizing this mToken as it is a debt token,
         // so there is no reEntry risk
-        mTokenCollateral.seize(
+        collateralToken.seize(
             liquidator,
             borrower,
             liquidatedTokens,
@@ -1106,7 +1118,7 @@ contract DToken is ERC165, ReentrancyGuard {
             liquidator,
             borrower,
             repayAmount,
-            address(mTokenCollateral),
+            address(collateralToken),
             liquidatedTokens
         );
     }

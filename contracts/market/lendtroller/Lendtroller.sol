@@ -50,6 +50,8 @@ contract Lendtroller is ILendtroller, ERC165 {
 
     /// @notice Scalar for math.
     uint256 internal constant _EXP_SCALE = 1e18;
+    /// @notice Maximum liquidation threshold. 95%
+    uint256 internal constant _MAX_LIQUIDATION_THRESHOLD = 0.95e18;
     /// @notice Maximum collateralization ratio. 91%
     uint256 internal constant _MAX_COLLATERALIZATION_RATIO = 0.91e18;
     /// @notice Minimum hold time to prevent oracle price attacks.
@@ -124,7 +126,6 @@ contract Lendtroller is ILendtroller, ERC165 {
     error Lendtroller__HasActiveLoan();
     error Lendtroller__BorrowCapReached();
     error Lendtroller__InsufficientShortfall();
-    error Lendtroller__TooMuchRepay();
     error Lendtroller__LendtrollerMismatch();
     error Lendtroller__InvalidParameter();
     error Lendtroller__AddressUnauthorized();
@@ -294,7 +295,7 @@ contract Lendtroller is ILendtroller, ERC165 {
 
     /// @notice Checks if the account should be allowed to mint tokens
     ///         in the given market
-    /// @param mToken The market to verify the mint against
+    /// @param mToken The token to verify mints against
     function canMint(address mToken) external view override {
         if (mintPaused[mToken] == 2) {
             revert Lendtroller__Paused();
@@ -361,33 +362,48 @@ contract Lendtroller is ILendtroller, ERC165 {
     }
 
     /// @notice Checks if the liquidation should be allowed to occur
-    /// @param mTokenBorrowed Asset which was borrowed by the borrower
-    /// @param mTokenCollateral Asset which was used as collateral and will be seized
+    /// @param debtToken Asset which was borrowed by the borrower
+    /// @param collateralToken Asset which was used as collateral and will be seized
     /// @param borrower The address of the borrower
     /// @param amount The amount of underlying being repaid
     function canLiquidateExact(
-        address mTokenBorrowed,
-        address mTokenCollateral,
+        address debtToken,
+        address collateralToken,
         address borrower,
         uint256 amount
-    ) external view override {
-        uint256 liquidationLimit = _canLiquidate(mTokenBorrowed, mTokenCollateral, borrower);
+    ) external view override returns (uint256, uint256) {
+        (uint256 liquidationLimit,
+        uint256 debtTokenPrice,
+        uint256 collateralTokenPrice) = _canLiquidate(debtToken, collateralToken, borrower);
         
         if (amount > liquidationLimit) {
-            revert Lendtroller__TooMuchRepay();
+            _revert(_INVALID_PARAMETER_SELECTOR);
         }
+
+        return _getLiquidatedTokens(collateralToken, amount, debtTokenPrice, collateralTokenPrice);
     }
 
     /// @notice Checks if the liquidation should be allowed to occur
-    /// @param mTokenBorrowed Asset which was borrowed by the borrower
-    /// @param mTokenCollateral Asset which was used as collateral and will be seized
+    /// @param debtToken Asset which was borrowed by the borrower
+    /// @param collateralToken Asset which was used as collateral and will be seized
     /// @param borrower The address of the borrower
     function canLiquidate(
-        address mTokenBorrowed,
-        address mTokenCollateral,
+        address debtToken,
+        address collateralToken,
         address borrower
-    ) external view override returns (uint256){
-        return _canLiquidate(mTokenBorrowed, mTokenCollateral, borrower);
+    ) external view override returns (uint256, uint256, uint256){
+        (uint256 amount,
+        uint256 debtTokenPrice,
+        uint256 collateralTokenPrice) = _canLiquidate(debtToken, collateralToken, borrower);
+
+        (uint256 liquidatedTokens, uint256 protocolTokens) = _getLiquidatedTokens(
+            collateralToken, 
+            amount, 
+            debtTokenPrice, 
+            collateralTokenPrice
+        );
+        
+        return (amount, liquidatedTokens, protocolTokens);
     }
 
     /// @notice Checks if the seizing of assets should be allowed to occur
@@ -432,53 +448,6 @@ contract Lendtroller is ILendtroller, ERC165 {
         }
 
         _canRedeem(mToken, from, amount);
-    }
-
-    /// @notice Calculate number of tokens of collateral asset to
-    ///         seize given an underlying amount
-    /// @dev Used in liquidation (called in mToken._liquidateUser)
-    /// @param mTokenBorrowed The address of the borrowed mToken
-    /// @param mTokenCollateral The address of the collateral mToken
-    /// @param amount The amount of mTokenBorrowed underlying to
-    ///                          convert into mTokenCollateral tokens
-    /// @return uint256 The number of mTokenCollateral tokens to be seized in a liquidation
-    /// @return uint256 The number of mTokenCollateral tokens to be seized for the protocol
-    function calculateLiquidatedTokens(
-        address mTokenBorrowed,
-        address mTokenCollateral,
-        uint256 amount
-    ) external view override returns (uint256, uint256) {
-        // Read oracle prices for borrowed and collateral markets
-        IPriceRouter router = IPriceRouter(centralRegistry.priceRouter());
-        (uint256 debtTokenPrice, uint256 debtTokenError) = router.getPrice(
-            mTokenBorrowed,
-            true,
-            false
-        );
-        (uint256 collateralTokenPrice, uint256 collateralTokenError) = router
-            .getPrice(mTokenCollateral, true, true);
-
-        // Validate that we were able to securely query prices from the dual oracle
-        if (debtTokenError == 2 || collateralTokenError == 2) {
-            revert Lendtroller__PriceError();
-        }
-
-        /// Cache the collateral mToken
-        MarketToken storage mToken = mTokenData[mTokenCollateral];
-
-        // Get the exchange rate and calculate the number of collateral tokens to seize:
-        uint256 debtCollateralRatio = (mToken.liquidationIncentive *
-            debtTokenPrice *
-            _EXP_SCALE) /
-            (collateralTokenPrice *
-                IMToken(mTokenCollateral).exchangeRateStored());
-
-        uint256 liquidatedTokens = (debtCollateralRatio * amount) / _EXP_SCALE;
-
-        return (
-            liquidatedTokens,
-            (liquidatedTokens * mToken.protocolLiquidationFee) / _EXP_SCALE
-        );
     }
 
     /// @notice Sets the closeFactor used when liquidating borrows
@@ -541,11 +510,14 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @param mToken The market to set the collateralization ratio on
     /// @param liquidationIncentive The liquidation incentive for `mToken`, in basis points
     /// @param protocolLiquidationFee The protocol liquidation fee for `mToken`, in basis points
-    /// @param collateralizationRatio The new collateral factor for `mToken`, in basis points
+    /// @param liquidationThreshold The threshold at which `mToken` will be liquidated, in basis point 
+    /// @param collateralizationRatio The ratio at which $1 of collateral can be borrowed against,
+    ///                               for `mToken`, in basis points
     function updateCollateralToken(
         IMToken mToken,
         uint256 liquidationIncentive,
         uint256 protocolLiquidationFee,
+        uint256 liquidationThreshold,
         uint256 collateralizationRatio
     ) external onlyElevatedPermissions {
         if (IMToken(mToken).isCToken()) {
@@ -561,6 +533,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         // Convert the parameters from basis points to `EXP_SCALE` format
         liquidationIncentive = liquidationIncentive * 1e14;
         protocolLiquidationFee = protocolLiquidationFee * 1e14;
+        liquidationThreshold = liquidationThreshold * 1e14;
         collateralizationRatio = collateralizationRatio * 1e14;
 
         // Validate liquidation incentive is not above the maximum allowed
@@ -573,8 +546,18 @@ contract Lendtroller is ILendtroller, ERC165 {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
+        // Validate liquidation threshold is not above the maximum allowed
+        if (liquidationThreshold > _MAX_LIQUIDATION_THRESHOLD) {
+            _revert(_INVALID_PARAMETER_SELECTOR);
+        }
+
         // Validate collateralization ratio is not above the maximum allowed
         if (collateralizationRatio > _MAX_COLLATERALIZATION_RATIO) {
+            _revert(_INVALID_PARAMETER_SELECTOR);
+        }
+
+        // Validate liquidation threshold is larger than the collateralization ratio
+        if (liquidationThreshold > collateralizationRatio) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
@@ -605,6 +588,10 @@ contract Lendtroller is ILendtroller, ERC165 {
         marketToken.protocolLiquidationFee =
             (_EXP_SCALE * protocolLiquidationFee) /
             (_EXP_SCALE + liquidationIncentive);
+
+        // Store the liquidation threshold as a multiplier ontop of collateralization ratio,
+        // that way we can multiply debt by the stored threshold / EXP_SCALE in _getStatusForLiquidation
+        marketToken.liquidationThreshold = (liquidationThreshold * _EXP_SCALE) / collateralizationRatio;
 
         // Assign new collateralization ratio
         // Note that a collateralization ratio of 0 corresponds to
@@ -935,23 +922,27 @@ contract Lendtroller is ILendtroller, ERC165 {
     }
 
     /// @notice Checks if the liquidation should be allowed to occur
-    /// @param mTokenBorrowed Asset which was borrowed by the borrower
-    /// @param mTokenCollateral Asset which was used as collateral and will be seized
+    /// @param debtToken Asset which was borrowed by the borrower
+    /// @param collateralToken Asset which was used as collateral and will be seized
     /// @param borrower The address of the borrower
+    /// @return The maximum amount of `debtToken` that can be repaid during liquidation
+    /// @return 
     function _canLiquidate(
-        address mTokenBorrowed,
-        address mTokenCollateral,
+        address debtToken,
+        address collateralToken,
         address borrower
-    ) internal view returns (uint256){
-        if (!mTokenData[mTokenBorrowed].isListed) {
+    ) internal view returns (uint256, uint256, uint256){
+        if (!mTokenData[debtToken].isListed) {
             revert Lendtroller__TokenNotListed();
         }
-        if (!mTokenData[mTokenCollateral].isListed) {
+        if (!mTokenData[collateralToken].isListed) {
             revert Lendtroller__TokenNotListed();
         }
 
         // The borrower must have shortfall CURRENTLY in order to be liquidatable
-        (, uint256 shortfall) = _getLiquidity(borrower, 2);
+        (uint256 shortfall, 
+        uint256 debtTokenPrice, 
+        uint256 collateralTokenPrice) = _getStatusForLiquidation(borrower, debtToken, collateralToken);
 
         assembly {
             if iszero(shortfall) {
@@ -961,11 +952,43 @@ contract Lendtroller is ILendtroller, ERC165 {
                 revert(0x1c, 0x04)
             }
         }
-
-        // Calculate the maximum amount of collateral that can be liquidated
-        return (closeFactor * IMToken(mTokenBorrowed).borrowBalanceStored(
+        uint256 maxLiquidationAmount = (closeFactor * IMToken(debtToken).debtBalanceStored(
             borrower
         )) / _EXP_SCALE;
+
+        // Calculate the maximum amount of collateral that can be liquidated
+        return (maxLiquidationAmount, debtTokenPrice, collateralTokenPrice);
+    }
+
+    /// @notice Calculate number of `collateralToken` to
+    ///         seize given an underlying amount
+    /// @param collateralToken The address of the collateral mToken
+    /// @param amount The amount of debtToken underlying to repay
+    /// @param debtTokenPrice Current price for the debtToken
+    /// @param collateralTokenPrice Current price for `collateralToken`
+    /// @return uint256 The number of `collateralToken` tokens to be seized in a liquidation
+    /// @return uint256 The number of `collateralToken` tokens to be seized for the protocol
+    function _getLiquidatedTokens(
+        address collateralToken,
+        uint256 amount,
+        uint256 debtTokenPrice,
+        uint256 collateralTokenPrice
+    ) internal view returns (uint256, uint256) {
+
+        MarketToken storage mToken = mTokenData[collateralToken];
+
+        // Get the exchange rate and calculate the number of collateral tokens to seize:
+        uint256 debtToCollateralRatio = (mToken.liquidationIncentive *
+            debtTokenPrice *
+            _EXP_SCALE) /
+            (collateralTokenPrice *
+                IMToken(collateralToken).exchangeRateStored());
+
+        uint256 liquidatedTokens = (debtToCollateralRatio * amount) / _EXP_SCALE;
+
+        return (liquidatedTokens,
+            (liquidatedTokens * mToken.protocolLiquidationFee) / _EXP_SCALE
+        );
     }
 
     /// @notice Determine what the account liquidity would be if
@@ -976,7 +999,7 @@ contract Lendtroller is ILendtroller, ERC165 {
     ///           mToken using stored data, without calculating accumulated interest.
     /// @return sumCollateral Total collateral amount of user
     /// @return maxBorrow Max borrow amount of user
-    /// @return sumBorrowPlusEffects Total borrow amount of user
+    /// @return currentDebt Total borrow amount of user
     function _getStatus(
         address account,
         uint256 errorCodeBreakpoint
@@ -986,7 +1009,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         returns (
             uint256 sumCollateral,
             uint256 maxBorrow,
-            uint256 sumBorrowPlusEffects
+            uint256 currentDebt
         )
     {
 
@@ -1016,9 +1039,9 @@ contract Lendtroller is ILendtroller, ERC165 {
                         _EXP_SCALE;
                 }
             } else {
-                // If they have a borrow balance we need to document it
+                // If they have a debt balance we need to document it
                 if (snapshot.debtBalance > 0) {
-                    sumBorrowPlusEffects += ((prices[i] *
+                    currentDebt += ((prices[i] *
                         snapshot.debtBalance) / _EXP_SCALE);
                 }
             }
@@ -1193,6 +1216,80 @@ contract Lendtroller is ILendtroller, ERC165 {
         unchecked {
             return (0, sumBorrowPlusEffects - maxBorrow);
         }
+    }
+
+    /// @notice Determine what the account liquidity would be if
+    ///         the given amounts were redeemed/borrowed
+    /// @param account The account to determine liquidity for
+    /// @dev Note that we calculate the exchangeRateStored for each collateral
+    ///           mToken using stored data, without calculating accumulated interest.
+    /// @return Current shortfall versus liquidation threshold
+    /// @return Current price for `debtToken`
+    /// @return Current price for `collateralToken`
+    function _getStatusForLiquidation(
+        address account,
+        address debtToken,
+        address collateralToken
+    )
+        internal
+        view
+        returns (uint256, uint256, uint256)
+    {
+
+       (AccountSnapshot[] memory snapshots, 
+       uint256[] memory prices,
+       uint256 numAssets) = _getAssetData(account, 2);
+       AccountSnapshot memory snapshot;
+       uint256 sumCollateral;
+       uint256 collateralRequirement;
+       uint256 debtTokenPrice;
+       uint256 collateralTokenPrice;
+
+       for (uint256 i; i < numAssets; ) {
+           snapshot = snapshots[i];
+
+           if (snapshot.isCToken) {
+               if (snapshot.asset == collateralToken) {
+                   collateralTokenPrice = prices[i];
+               }
+               // If the asset has a CR increment their collateral and max borrow value
+               if (
+                   !(mTokenData[snapshot.asset]
+                       .collateralizationRatio == 0)
+               ) {
+                   sumCollateral += (((snapshot.balance *
+                       snapshot.exchangeRate) / _EXP_SCALE) * prices[i]) /
+                       _EXP_SCALE;
+               }
+            } else {
+                if (snapshot.asset == debtToken) {
+                   debtTokenPrice = prices[i];
+                }
+
+                // If they have a debt balance we need to document it
+                if (snapshot.debtBalance > 0) {
+                    uint256 debt = ((prices[i] *
+                        snapshot.debtBalance) / _EXP_SCALE);
+                    collateralRequirement += (debt * mTokenData[
+                            snapshot.asset
+                        ].liquidationThreshold) / _EXP_SCALE;
+                }
+            }
+
+            unchecked {
+                ++i;
+            }
+
+       }
+
+       if (sumCollateral >= collateralRequirement) {
+            return (0, debtTokenPrice, collateralTokenPrice);
+        }
+
+        unchecked {
+            return (collateralRequirement - sumCollateral, debtTokenPrice, collateralTokenPrice);
+        }
+
     }
 
     /// @notice Retrieves the prices and account data of multiple assets inside this market.
