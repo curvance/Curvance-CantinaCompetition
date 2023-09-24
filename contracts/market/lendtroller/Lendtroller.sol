@@ -322,7 +322,8 @@ contract Lendtroller is ILendtroller, ERC165 {
     }
 
     /// @notice Checks if the account should be allowed to borrow
-    ///         the underlying asset of the given market
+    ///         the underlying asset of the given market,
+    ///         and notifies the market of the borrow
     /// @param mToken The market to verify the borrow against
     /// @param borrower The account which would borrow the asset
     /// @param amount The amount of underlying the account would borrow
@@ -362,11 +363,12 @@ contract Lendtroller is ILendtroller, ERC165 {
         }
     }
 
-    /// @notice Checks if the liquidation should be allowed to occur
+    /// @notice Checks if the liquidation should be allowed to occur,
+    ///         and returns how many collateral tokens should be seized on liquidation
     /// @param debtToken Asset which was borrowed by the borrower
     /// @param collateralToken Asset which was used as collateral and will be seized
     /// @param borrower The address of the borrower
-    /// @param amount The amount of underlying being repaid
+    /// @param amount The amount of `debtToken` underlying being repaid
     /// @return The number of `collateralToken` tokens to be seized in a liquidation
     /// @return The number of `collateralToken` tokens to be seized for the protocol
     function canLiquidateExact(
@@ -386,11 +388,12 @@ contract Lendtroller is ILendtroller, ERC165 {
         return _getLiquidatedTokens(collateralToken, amount, debtTokenPrice, collateralTokenPrice);
     }
 
-    /// @notice Checks if the liquidation should be allowed to occur
+    /// @notice Checks if the liquidation should be allowed to occur,
+    ///         and returns how many collateral tokens should be seized on liquidation
     /// @param debtToken Asset which was borrowed by the borrower
     /// @param collateralToken Asset which was used as collateral and will be seized
     /// @param borrower The address of the borrower
-    /// @return The amount of underlying to be repaid on liquidation
+    /// @return The amount of `debtToken` underlying to be repaid on liquidation
     /// @return The number of `collateralToken` tokens to be seized in a liquidation
     /// @return The number of `collateralToken` tokens to be seized for the protocol
     function canLiquidate(
@@ -1157,8 +1160,8 @@ contract Lendtroller is ILendtroller, ERC165 {
         }
     }
 
-    /// @notice Determine what the account liquidity would be if
-    ///         the given amounts were redeemed/borrowed.
+    /// @notice Determine what `account`'s liquidity would be if
+    ///         `mTokenModify` were redeemed or borrowed.
     /// @param mTokenModify The mToken to hypothetically redeem/borrow.
     /// @param account The account to determine liquidity for.
     /// @param redeemTokens The number of tokens to hypothetically redeem.
