@@ -106,6 +106,7 @@ contract TestCTokenReserves is TestBaseMarket {
 
     function testInitialize() public {
         assertEq(centralRegistry.daoAddress(), dao);
+        assertEq(dDAI.interestFactor(), marketInterestFactor);
     }
 
     function testSeizeProtocolFee() public {
@@ -197,6 +198,64 @@ contract TestCTokenReserves is TestBaseMarket {
         assertEq(
             gaugePool.balanceOf(address(cBALRETH), user),
             amountToTransfer
+        );
+    }
+
+    function testDaoInterestFromDToken() public {
+        _prepareBALRETH(user1, 1 ether);
+
+        // try mint()
+        vm.startPrank(user1);
+        balRETH.approve(address(cBALRETH), 1 ether);
+        cBALRETH.mint(1 ether);
+        vm.stopPrank();
+
+        // try borrow()
+        vm.startPrank(user1);
+        dDAI.borrow(500 ether);
+        vm.stopPrank();
+
+        // skip min hold period
+        skip(900);
+
+        mockDaiFeed.setMockAnswer(200000000);
+
+        uint256 repayAmount = 250 ether;
+        (uint256 liquidatedTokens, uint256 protocolTokens) = lendtroller
+            .calculateLiquidatedTokens(
+                address(dDAI),
+                address(cBALRETH),
+                repayAmount
+            );
+        uint256 daoBalanceBefore = cBALRETH.balanceOf(dao);
+
+        // try liquidate half
+        _prepareDAI(user2, repayAmount);
+        vm.startPrank(user2);
+        dai.approve(address(dDAI), repayAmount);
+        dDAI.liquidate(user1, repayAmount, IMToken(address(cBALRETH)));
+        vm.stopPrank();
+
+        AccountSnapshot memory snapshot = cBALRETH.getAccountSnapshotPacked(
+            user1
+        );
+        assertApproxEqRel(
+            snapshot.mTokenBalance,
+            1 ether - liquidatedTokens,
+            0.01e18
+        );
+        assertEq(snapshot.borrowBalance, 0);
+        assertEq(snapshot.exchangeRate, 1 ether);
+
+        snapshot = dDAI.getAccountSnapshotPacked(user1);
+        assertEq(snapshot.mTokenBalance, 0);
+        assertApproxEqRel(snapshot.borrowBalance, 250 ether, 0.01e18);
+        assertApproxEqRel(snapshot.exchangeRate, 1 ether, 0.01e18);
+
+        assertEq(cBALRETH.balanceOf(dao), daoBalanceBefore + protocolTokens);
+        assertEq(
+            gaugePool.balanceOf(address(cBALRETH), dao),
+            daoBalanceBefore + protocolTokens
         );
     }
 }

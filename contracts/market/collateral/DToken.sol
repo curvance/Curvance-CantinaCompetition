@@ -75,7 +75,7 @@ contract DToken is ERC165, ReentrancyGuard {
     ExchangeRateData public borrowExchangeRate;
 
     /// @notice Interest rate reserve factor
-    uint256 internal interestFactor;
+    uint256 public interestFactor;
 
     /// @notice account => token balance
     mapping(address => uint256) public balanceOf;
