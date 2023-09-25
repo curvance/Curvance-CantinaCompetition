@@ -37,6 +37,13 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     uint8 private immutable _decimals; // vault assets decimals of precision
     ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
 
+    // `bytes4(keccak256(bytes("BasePositionVault__NotCToken()")))`
+    uint256 internal constant _NOT_C_TOKEN_SELECTOR = 0xac056953;
+    // `bytes4(keccak256(bytes("BasePositionVault__VaultNotActive()")))`
+    uint256 internal constant _VAULT_NOT_ACTIVE_SELECTOR = 0xd4387e2b;
+    // `bytes4(keccak256(bytes("BasePositionVault__VaultIsActive()")))`
+    uint256 internal constant _VAULT_IS_ACTIVE_SELECTOR = 0xa10a588e;
+
     // Mask of reward rate entry in packed vault data
     uint256 private constant _BITMASK_REWARD_RATE = (1 << 128) - 1;
 
@@ -70,6 +77,12 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
 
     event vaultStatusChanged(bool isShutdown);
 
+    /// ERRORS ///
+
+    error BasePositionVault__NotCToken();
+    error BasePositionVault__VaultNotActive();
+    error BasePositionVault__VaultIsActive();
+
     /// MODIFIERS ///
 
     modifier onlyCToken() {
@@ -102,7 +115,9 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     }
 
     modifier vaultActive() {
-        require(_vaultIsActive == 2, "BasePositionVault: vault not active");
+        if (_vaultIsActive != 2) {
+            _revert(_VAULT_NOT_ACTIVE_SELECTOR);
+        }
         _;
     }
 
@@ -162,14 +177,13 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
 
     /// @notice Initializes the vault and the cToken attached to it
     function initiateVault(address cTokenAddress) external onlyDaoPermissions {
-        require(
-            _vaultIsActive == 1,
-            "BasePositionVault: vault already initialized"
-        );
-        require(
-            !IMToken(cTokenAddress).isCToken(),
-            "BasePositionVault: not cToken"
-        );
+        if (_vaultIsActive != 1) {
+            _revert(_VAULT_IS_ACTIVE_SELECTOR);
+        }
+
+        if (!IMToken(cTokenAddress).isCToken()) {
+            _revert(_NOT_C_TOKEN_SELECTOR);
+        }
 
         cToken = cTokenAddress;
         _vaultIsActive = 2;
@@ -190,11 +204,13 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     function liftShutdown(
         address cTokenAddress
     ) external onlyElevatedPermissions {
-        require(_vaultIsActive == 1, "BasePositionVault: vault not shutdown");
-        require(
-            !IMToken(cTokenAddress).isCToken(),
-            "BasePositionVault: not cToken"
-        );
+        if (_vaultIsActive != 1) {
+            _revert(_VAULT_IS_ACTIVE_SELECTOR);
+        }
+
+        if (!IMToken(cTokenAddress).isCToken()) {
+            _revert(_NOT_C_TOKEN_SELECTOR);
+        }
 
         cToken = cTokenAddress;
         _vaultIsActive = 2;

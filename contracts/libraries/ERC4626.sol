@@ -560,7 +560,7 @@ abstract contract ERC4626 is ERC20 {
     }
 
     /// @dev Internal helper for reverting efficiently.
-    function _revert(uint256 s) private pure {
+    function _revert(uint256 s) internal pure {
         /// @solidity memory-safe-assembly
         assembly {
             mstore(0x00, s)
