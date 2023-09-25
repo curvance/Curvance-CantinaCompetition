@@ -519,10 +519,10 @@ contract CToken is ERC165, ReentrancyGuard {
 
     /// @notice User redeems cTokens in exchange for the underlying asset
     /// @param redeemer The address of the account which is redeeming the tokens
+    /// @param recipient The recipient receiving the redeemed tokens
     /// @param tokens The number of cTokens to redeem into underlying
     /// @param amount The number of underlying tokens to receive
     ///               from redeeming cTokens
-    /// @param recipient The recipient address
     function _redeem(
         address redeemer,
         address recipient,

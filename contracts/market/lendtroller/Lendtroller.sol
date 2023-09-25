@@ -416,27 +416,28 @@ contract Lendtroller is ILendtroller, ERC165 {
     }
 
     /// @notice Checks if the seizing of assets should be allowed to occur
-    /// @param mTokenCollateral Asset which was used as collateral
-    ///                         and will be seized
-    /// @param mTokenBorrowed Asset which was borrowed by the borrower
+    /// @param collateralToken Asset which was used as collateral
+    ///                        and will be seized
+    /// @param debtToken Asset which was borrowed by the borrower
     function canSeize(
-        address mTokenCollateral,
-        address mTokenBorrowed
+        address collateralToken,
+        address debtToken
     ) external view override {
         if (seizePaused == 2) {
             revert Lendtroller__Paused();
         }
 
-        if (!mTokenData[mTokenBorrowed].isListed) {
-            revert Lendtroller__TokenNotListed();
-        }
-        if (!mTokenData[mTokenCollateral].isListed) {
+        if (!mTokenData[collateralToken].isListed) {
             revert Lendtroller__TokenNotListed();
         }
 
+        if (!mTokenData[debtToken].isListed) {
+            revert Lendtroller__TokenNotListed();
+        }
+        
         if (
-            IMToken(mTokenCollateral).lendtroller() !=
-            IMToken(mTokenBorrowed).lendtroller()
+            IMToken(collateralToken).lendtroller() !=
+            IMToken(debtToken).lendtroller()
         ) {
             revert Lendtroller__LendtrollerMismatch();
         }
