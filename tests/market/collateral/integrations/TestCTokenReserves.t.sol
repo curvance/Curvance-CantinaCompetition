@@ -106,7 +106,7 @@ contract TestCTokenReserves is TestBaseMarket {
 
     function testInitialize() public {
         assertEq(centralRegistry.daoAddress(), dao);
-        assertEq(dDAI.interestFactor(), marketInterestFactor);
+        assertEq(dDAI.interestFactor(), (marketInterestFactor * 1e18) / 10000);
     }
 
     function testSeizeProtocolFee() public {
