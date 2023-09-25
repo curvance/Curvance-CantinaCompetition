@@ -15,6 +15,7 @@ contract TestCTokenReserves is TestBaseMarket {
         0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
 
     address public owner;
+    address public dao;
 
     receive() external payable {}
 
@@ -26,6 +27,7 @@ contract TestCTokenReserves is TestBaseMarket {
         super.setUp();
 
         owner = address(this);
+        dao = address(this);
 
         // start epoch
         gaugePool.start(address(lendtroller));
@@ -103,7 +105,7 @@ contract TestCTokenReserves is TestBaseMarket {
     }
 
     function testInitialize() public {
-        assertEq(centralRegistry.daoAddress(), address(this));
+        assertEq(centralRegistry.daoAddress(), dao);
     }
 
     function testSeizeProtocolFee() public {
@@ -123,12 +125,6 @@ contract TestCTokenReserves is TestBaseMarket {
         // skip min hold period
         skip(900);
 
-        (uint256 balRETHPrice, ) = priceRouter.getPrice(
-            address(balRETH),
-            true,
-            true
-        );
-
         mockDaiFeed.setMockAnswer(200000000);
 
         uint256 repayAmount = 250 ether;
@@ -138,7 +134,7 @@ contract TestCTokenReserves is TestBaseMarket {
                 address(cBALRETH),
                 repayAmount
             );
-        uint256 daoBalanceBefore = cBALRETH.balanceOf(address(this));
+        uint256 daoBalanceBefore = cBALRETH.balanceOf(dao);
 
         // try liquidate half
         _prepareDAI(user2, repayAmount);
@@ -163,9 +159,44 @@ contract TestCTokenReserves is TestBaseMarket {
         assertApproxEqRel(snapshot.borrowBalance, 250 ether, 0.01e18);
         assertApproxEqRel(snapshot.exchangeRate, 1 ether, 0.01e18);
 
+        assertEq(cBALRETH.balanceOf(dao), daoBalanceBefore + protocolTokens);
         assertEq(
-            cBALRETH.balanceOf(address(this)),
+            gaugePool.balanceOf(address(cBALRETH), dao),
             daoBalanceBefore + protocolTokens
+        );
+    }
+
+    function testDaoCanRedeemProtocolFee() public {
+        testSeizeProtocolFee();
+
+        uint256 amountToRedeem = cBALRETH.balanceOf(dao);
+        uint256 daoBalanceBefore = balRETH.balanceOf(dao);
+
+        vm.startPrank(dao);
+        cBALRETH.redeem(amountToRedeem);
+        vm.stopPrank();
+
+        assertEq(cBALRETH.balanceOf(dao), 0);
+        assertEq(gaugePool.balanceOf(address(cBALRETH), dao), 0);
+        assertEq(balRETH.balanceOf(dao), daoBalanceBefore + amountToRedeem);
+    }
+
+    function testDaoCanTransferProtocolFee() public {
+        testSeizeProtocolFee();
+
+        uint256 amountToTransfer = cBALRETH.balanceOf(dao);
+
+        address user = address(new User());
+        vm.startPrank(dao);
+        cBALRETH.transferFrom(dao, user, amountToTransfer);
+        vm.stopPrank();
+
+        assertEq(cBALRETH.balanceOf(dao), 0);
+        assertEq(gaugePool.balanceOf(address(cBALRETH), dao), 0);
+        assertEq(cBALRETH.balanceOf(user), amountToTransfer);
+        assertEq(
+            gaugePool.balanceOf(address(cBALRETH), user),
+            amountToTransfer
         );
     }
 }
