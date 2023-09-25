@@ -833,9 +833,9 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @notice Determine `account`'s current status between collateral, 
     ///         debt, and additional liquidity
     /// @param account The account to determine liquidity for
-    /// @return uint256 total collateral amount of user
-    /// @return uint256 max borrow amount of user
-    /// @return uint256 total borrow amount of user
+    /// @return sumCollateral total collateral amount of user
+    /// @return maxBorrow max borrow amount of user
+    /// @return currentDebt total borrow amount of user
     function getStatus(
         address account
     ) public view returns (

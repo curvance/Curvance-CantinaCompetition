@@ -1089,7 +1089,7 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @param liquidator The address repaying the borrow and seizing collateral
     /// @param amount The amount of the underlying borrowed asset to repay
     /// @param collateralToken The market in which to seize collateral from the borrower
-    /// @param liquidatedToken The number of `collateralToken` tokens to be seized in a liquidation
+    /// @param liquidatedTokens The number of `collateralToken` tokens to be seized in a liquidation
     /// @param protocolTokens The number of `collateralToken` tokens to be seized for the protocol
     function _liquidate(
         address liquidator,
