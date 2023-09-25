@@ -88,7 +88,7 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
     function harvest(
         bytes calldata data
     ) external override onlyHarvestor returns (uint256 yield) {
-        if (_vaultIsActive != 2) {
+        if (_vaultIsActive == 1) {
             _revert(_VAULT_NOT_ACTIVE_SELECTOR);
         }
 
