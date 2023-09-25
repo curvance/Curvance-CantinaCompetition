@@ -830,14 +830,56 @@ contract Lendtroller is ILendtroller, ERC165 {
 
     /// Liquidity/Liquidation Calculations
 
-    /// @notice Determine the current account liquidity wrt collateral requirements
+    /// @notice Determine `account`'s current status between collateral, 
+    ///         debt, and additional liquidity
+    /// @param account The account to determine liquidity for
     /// @return uint256 total collateral amount of user
     /// @return uint256 max borrow amount of user
     /// @return uint256 total borrow amount of user
     function getStatus(
         address account
-    ) public view returns (uint256, uint256, uint256) {
-        return _getStatus(account, 2);
+    ) public view returns (
+        uint256 sumCollateral,
+        uint256 maxBorrow,
+        uint256 currentDebt
+    ) {
+
+       (AccountSnapshot[] memory snapshots, 
+       uint256[] memory prices,
+       uint256 numAssets) = _getAssetData(account, 2);
+       AccountSnapshot memory snapshot;
+
+       for (uint256 i; i < numAssets; ) {
+           snapshot = snapshots[i];
+
+           if (snapshot.isCToken) {
+                // If the asset has a CR increment their collateral and max borrow value
+                if (
+                    !(mTokenData[snapshot.asset]
+                        .collateralizationRatio == 0)
+                ) {
+                    uint256 assetValue = (((snapshot.balance *
+                        snapshot.exchangeRate) / _EXP_SCALE) * prices[i]) /
+                        _EXP_SCALE;
+
+                    sumCollateral += assetValue;
+                    maxBorrow +=
+                        (assetValue *
+                            mTokenData[snapshot.asset]
+                                .collateralizationRatio) /
+                        _EXP_SCALE;
+                }
+            } else {
+                // If they have a debt balance we need to document it
+                if (snapshot.debtBalance > 0) {
+                    currentDebt += ((prices[i] * snapshot.debtBalance) / _EXP_SCALE);
+                }
+            }
+
+            unchecked {
+                ++i;
+            }
+       }
     }
 
     /// @notice Determine whether `account` can currently be liquidated in this market
@@ -1007,67 +1049,6 @@ contract Lendtroller is ILendtroller, ERC165 {
         return (liquidatedTokens,
             (liquidatedTokens * mToken.protocolLiquidationFee) / _EXP_SCALE
         );
-    }
-
-    /// @notice Determine what the account liquidity would be if
-    ///         the given amounts were redeemed/borrowed
-    /// @param account The account to determine liquidity for
-    /// @param errorCodeBreakpoint The error code that will cause liquidity operations to revert
-    /// @dev Note that we calculate the exchangeRateStored for each collateral
-    ///           mToken using stored data, without calculating accumulated interest.
-    /// @return sumCollateral Total collateral amount of user
-    /// @return maxBorrow Max borrow amount of user
-    /// @return currentDebt Total borrow amount of user
-    function _getStatus(
-        address account,
-        uint256 errorCodeBreakpoint
-    )
-        internal
-        view
-        returns (
-            uint256 sumCollateral,
-            uint256 maxBorrow,
-            uint256 currentDebt
-        )
-    {
-
-       (AccountSnapshot[] memory snapshots, 
-       uint256[] memory prices,
-       uint256 numAssets) = _getAssetData(account, errorCodeBreakpoint);
-       AccountSnapshot memory snapshot;
-
-       for (uint256 i; i < numAssets; ) {
-           snapshot = snapshots[i];
-
-           if (snapshot.isCToken) {
-                // If the asset has a CR increment their collateral and max borrow value
-                if (
-                    !(mTokenData[snapshot.asset]
-                        .collateralizationRatio == 0)
-                ) {
-                    uint256 assetValue = (((snapshot.balance *
-                        snapshot.exchangeRate) / _EXP_SCALE) * prices[i]) /
-                        _EXP_SCALE;
-
-                    sumCollateral += assetValue;
-                    maxBorrow +=
-                        (assetValue *
-                            mTokenData[snapshot.asset]
-                                .collateralizationRatio) /
-                        _EXP_SCALE;
-                }
-            } else {
-                // If they have a debt balance we need to document it
-                if (snapshot.debtBalance > 0) {
-                    currentDebt += ((prices[i] * snapshot.debtBalance) / _EXP_SCALE);
-                }
-            }
-
-            unchecked {
-                ++i;
-            }
-       }
-
     }
 
     /// @notice Determine what the account status if an action were done (redeem/borrow)
