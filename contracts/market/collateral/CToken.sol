@@ -607,16 +607,12 @@ contract CToken is ERC165, ReentrancyGuard {
         gaugePool.deposit(address(this), liquidator, liquidatorTokens);
         if (protocolTokens > 0) {
             address daoAddress = centralRegistry.daoAddress();
-            gaugePool.deposit(
-                address(this),
-                daoAddress,
-                protocolTokens
-            );
+            gaugePool.deposit(address(this), daoAddress, protocolTokens);
 
             unchecked {
                 balanceOf[daoAddress] = balanceOf[daoAddress] + protocolTokens;
             }
-            
+
             emit Transfer(borrower, daoAddress, protocolTokens);
         }
 
