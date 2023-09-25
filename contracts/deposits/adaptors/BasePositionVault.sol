@@ -114,13 +114,6 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         _;
     }
 
-    modifier vaultActive() {
-        if (_vaultIsActive != 2) {
-            _revert(_VAULT_NOT_ACTIVE_SELECTOR);
-        }
-        _;
-    }
-
     /// CONSTRUCTOR ///
 
     constructor(ERC20 asset_, ICentralRegistry centralRegistry_) {
@@ -193,7 +186,11 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
 
     /// @notice Shuts down the vault
     /// @dev Used in an emergency or if the vault has been deprecated
-    function initiateShutdown() external vaultActive onlyDaoPermissions {
+    function initiateShutdown() external onlyDaoPermissions {
+        if (_vaultIsActive != 2) {
+            _revert(_VAULT_NOT_ACTIVE_SELECTOR);
+        }
+
         _vaultIsActive = 1;
 
         emit vaultStatusChanged(true);
@@ -278,7 +275,11 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     function deposit(
         uint256 assets,
         address receiver
-    ) public override vaultActive onlyCToken returns (uint256 shares) {
+    ) public override onlyCToken returns (uint256 shares) {
+        if (_vaultIsActive != 2) {
+            _revert(_VAULT_NOT_ACTIVE_SELECTOR);
+        }
+
         // Save _totalAssets and pendingRewards to memory
         uint256 pending = _calculatePendingRewards();
         uint256 ta = _totalAssets + pending;
@@ -321,7 +322,11 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     function mint(
         uint256 shares,
         address receiver
-    ) public override vaultActive onlyCToken returns (uint256 assets) {
+    ) public override onlyCToken returns (uint256 assets) {
+        if (_vaultIsActive != 2) {
+            _revert(_VAULT_NOT_ACTIVE_SELECTOR);
+        }
+
         // Save _totalAssets and pendingRewards to memory
         uint256 pending = _calculatePendingRewards();
         uint256 ta = _totalAssets + pending;
