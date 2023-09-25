@@ -529,7 +529,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         uint256 liquidationThreshold,
         uint256 collateralizationRatio
     ) external onlyElevatedPermissions {
-        if (IMToken(mToken).isCToken()) {
+        if (!IMToken(mToken).isCToken()) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
@@ -642,7 +642,7 @@ contract Lendtroller is ILendtroller, ERC165 {
 
         for (uint256 i; i < numMarkets; ++i) {
             // Make sure the mToken is a cToken
-            if (mTokens[i].isCToken()) {
+            if (!mTokens[i].isCToken()) {
                 _revert(_INVALID_PARAMETER_SELECTOR);
             }
 
