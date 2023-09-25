@@ -53,7 +53,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     // Mask of all bits in packed vault data except the 64 bits for `lastVestClaim`
     uint256 private constant _BITMASK_LAST_CLAIM_COMPLEMENT = (1 << 192) - 1;
 
-    // The bit position of `lastVestClaim` in packed vault data
+    // The bit position of `vestingPeriodEnd` in packed vault data
     uint256 private constant _BITPOS_VEST_END = 128;
 
     // The bit position of `lastVestClaim` in packed vault data
