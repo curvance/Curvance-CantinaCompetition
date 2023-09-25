@@ -1162,8 +1162,8 @@ contract Lendtroller is ILendtroller, ERC165 {
 
     /// @notice Determine what `account`'s liquidity would be if
     ///         `mTokenModify` were redeemed or borrowed.
-    /// @param mTokenModify The mToken to hypothetically redeem/borrow.
     /// @param account The account to determine liquidity for.
+    /// @param mTokenModify The mToken to hypothetically redeem/borrow.
     /// @param redeemTokens The number of tokens to hypothetically redeem.
     /// @param borrowAmount The amount of underlying to hypothetically borrow.
     /// @param errorCodeBreakpoint The error code that will cause liquidity operations to revert.
@@ -1204,9 +1204,11 @@ contract Lendtroller is ILendtroller, ERC165 {
 
     /// @notice Determine what the account liquidity would be if
     ///         the given amounts were redeemed/borrowed
-    /// @param account The account to determine liquidity for
     /// @dev Note that we calculate the exchangeRateStored for each collateral
     ///           mToken using stored data, without calculating accumulated interest.
+    /// @param account The account to determine liquidity for
+    /// @param debtToken The dToken to be repaid during liquidation
+    /// @param collateralToken The cToken to be seized during liquidation
     /// @return Current shortfall versus liquidation threshold
     /// @return Current price for `debtToken`
     /// @return Current price for `collateralToken`
@@ -1236,7 +1238,7 @@ contract Lendtroller is ILendtroller, ERC165 {
                if (snapshot.asset == collateralToken) {
                    collateralTokenPrice = prices[i];
                }
-               // If the asset has a CR increment their collateral and max borrow value
+               // If the asset has a CR increment their collateral
                if (
                    !(mTokenData[snapshot.asset]
                        .collateralizationRatio == 0)
@@ -1250,7 +1252,8 @@ contract Lendtroller is ILendtroller, ERC165 {
                    debtTokenPrice = prices[i];
                 }
 
-                // If they have a debt balance we need to document it
+                // If they have a debt balance,
+                // we need to document collateral requirements
                 if (snapshot.debtBalance > 0) {
                     uint256 debt = ((prices[i] *
                         snapshot.debtBalance) / _EXP_SCALE);

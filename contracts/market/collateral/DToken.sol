@@ -310,7 +310,7 @@ contract DToken is ERC165, ReentrancyGuard {
 
     /// @notice Position folding repays `user`'s borrow
     /// @dev Only Position folding contract can call this function,
-    /// @dev updates interest before executing the repay
+    ///      updates interest before executing the repay
     /// @param amount The amount to repay, or 0 for the full outstanding amount
     function repayForPositionFolding(
         address user,
@@ -347,7 +347,7 @@ contract DToken is ERC165, ReentrancyGuard {
             }
         }
 
-        /// The MToken must be a collateral token
+        // The MToken must be a collateral token
         if (!collateralToken.isCToken()) {
             revert DToken__ValidationFailed();
         }
@@ -385,7 +385,7 @@ contract DToken is ERC165, ReentrancyGuard {
             }
         }
 
-        /// The MToken must be a collateral token
+        // The MToken must be a collateral token
         if (!collateralToken.isCToken()) {
             revert DToken__ValidationFailed();
         }
@@ -522,7 +522,7 @@ contract DToken is ERC165, ReentrancyGuard {
 
     /// @notice Reduces reserves by withdrawing from the gauge and transferring to Curvance DAO
     /// @dev If daoAddress is going to be moved all reserves should be withdrawn first,
-    /// @dev    updates interest before executing the reserve withdrawal
+    ///      updates interest before executing the reserve withdrawal
     /// @param amount Amount of reserves to withdraw measured in assets
     function withdrawReserves(
         uint256 amount
@@ -1021,8 +1021,10 @@ contract DToken is ERC165, ReentrancyGuard {
         emit Transfer(redeemer, address(0), tokens);
     }
 
-    /// @notice Users borrow assets from the protocol to their own address
+    /// @notice Users borrow assets from the protocol
+    /// @param borrower The user borrowing the assets
     /// @param amount The amount of the underlying asset to borrow
+    /// @param recipient The user receiving the borrwed assets
     function _borrow(
         address borrower,
         uint256 amount,
@@ -1087,6 +1089,8 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @param liquidator The address repaying the borrow and seizing collateral
     /// @param amount The amount of the underlying borrowed asset to repay
     /// @param collateralToken The market in which to seize collateral from the borrower
+    /// @param liquidatedToken The number of `collateralToken` tokens to be seized in a liquidation
+    /// @param protocolTokens The number of `collateralToken` tokens to be seized for the protocol
     function _liquidate(
         address liquidator,
         address borrower,
@@ -1105,7 +1109,7 @@ contract DToken is ERC165, ReentrancyGuard {
         }
 
         // We check above that the mToken must be a collateral token,
-        // so we cant be seizing this mToken as it is a debt token,
+        // so we cant seize this mToken as it is a debt token,
         // so there is no reEntry risk
         collateralToken.seize(
             liquidator,
