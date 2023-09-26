@@ -2,13 +2,9 @@
 pragma solidity ^0.8.13;
 
 import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.sol";
-import { IUniswapV2Router } from "contracts/interfaces/external/uniswap/IUniswapV2Router.sol";
-import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { MockDataFeed } from "contracts/mocks/MockDataFeed.sol";
 
 import "tests/market/TestBaseMarket.sol";
-
-contract User {}
 
 contract TestDTokenReserves is TestBaseMarket {
     address internal constant _UNISWAP_V2_ROUTER =
@@ -97,7 +93,7 @@ contract TestDTokenReserves is TestBaseMarket {
     }
 
     function testDaoInterestFromDToken() public {
-        address liquidityProvider = address(new User());
+        address liquidityProvider = makeAddr("liquidityProvider");
         _prepareDAI(liquidityProvider, 1000 ether);
         _prepareBALRETH(liquidityProvider, 10 ether);
         // mint dDAI

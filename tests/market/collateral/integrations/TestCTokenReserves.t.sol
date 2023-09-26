@@ -2,13 +2,9 @@
 pragma solidity ^0.8.13;
 
 import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.sol";
-import { IUniswapV2Router } from "contracts/interfaces/external/uniswap/IUniswapV2Router.sol";
-import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { MockDataFeed } from "contracts/mocks/MockDataFeed.sol";
 
 import "tests/market/TestBaseMarket.sol";
-
-contract User {}
 
 contract TestCTokenReserves is TestBaseMarket {
     address internal constant _UNISWAP_V2_ROUTER =
@@ -91,7 +87,7 @@ contract TestCTokenReserves is TestBaseMarket {
     }
 
     function provideEnoughLiquidityForLeverage() internal {
-        address liquidityProvider = address(new User());
+        address liquidityProvider = makeAddr("liquidityProvider");
         _prepareDAI(liquidityProvider, 200000e18);
         _prepareBALRETH(liquidityProvider, 10 ether);
         // mint dDAI
@@ -186,7 +182,7 @@ contract TestCTokenReserves is TestBaseMarket {
 
         uint256 amountToTransfer = cBALRETH.balanceOf(dao);
 
-        address user = address(new User());
+        address user = makeAddr("user");
         vm.startPrank(dao);
         cBALRETH.transferFrom(dao, user, amountToTransfer);
         vm.stopPrank();
