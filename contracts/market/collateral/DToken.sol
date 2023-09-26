@@ -325,7 +325,7 @@ contract DToken is ERC165, ReentrancyGuard {
         _repay(msg.sender, user, amount);
     }
 
-    /// @notice Liquidates `borrower`'s collateral by repaying `amount` debt and 
+    /// @notice Liquidates `borrower`'s collateral by repaying `amount` debt and
     ///         transferring the liquidated collateral to the liquidator
     /// @dev    Updates interest before executing the liquidation
     /// @param borrower The address of the borrower to be liquidated
@@ -354,18 +354,25 @@ contract DToken is ERC165, ReentrancyGuard {
 
         // Fail if liquidate not allowed,
         // trying to pay too much debt with excessive `amount` will revert
-        (uint256 liquidatedTokens,
-        uint256 protocolTokens) = lendtroller.canLiquidateExact(
-            address(this),
-            address(collateralToken),
-            borrower,
-            amount
-        );
+        (uint256 liquidatedTokens, uint256 protocolTokens) = lendtroller
+            .canLiquidateExact(
+                address(this),
+                address(collateralToken),
+                borrower,
+                amount
+            );
 
-        _liquidate(msg.sender, borrower, amount, collateralToken, liquidatedTokens, protocolTokens);
+        _liquidate(
+            msg.sender,
+            borrower,
+            amount,
+            collateralToken,
+            liquidatedTokens,
+            protocolTokens
+        );
     }
 
-    /// @notice Liquidates `borrower`'s collateral by repaying debt and 
+    /// @notice Liquidates `borrower`'s collateral by repaying debt and
     ///         transferring the liquidated collateral to the liquidator
     /// @dev    Updates interest before executing the liquidation
     /// @param borrower The address of the borrower to be liquidated
@@ -391,15 +398,24 @@ contract DToken is ERC165, ReentrancyGuard {
         }
 
         // Fail if liquidate not allowed
-        (uint256 amount,
-        uint256 liquidatedTokens,
-        uint256 protocolTokens) = lendtroller.canLiquidate(
-            address(this),
-            address(collateralToken),
-            borrower
-        );
+        (
+            uint256 amount,
+            uint256 liquidatedTokens,
+            uint256 protocolTokens
+        ) = lendtroller.canLiquidate(
+                address(this),
+                address(collateralToken),
+                borrower
+            );
 
-        _liquidate(msg.sender, borrower, amount, collateralToken, liquidatedTokens, protocolTokens);
+        _liquidate(
+            msg.sender,
+            borrower,
+            amount,
+            collateralToken,
+            liquidatedTokens,
+            protocolTokens
+        );
     }
 
     /// @notice Sender redeems dTokens in exchange for the underlying asset
@@ -719,9 +735,7 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @notice Return the debt balance of account based on stored data
     /// @param account The address whose balance should be calculated
     /// @return `account`'s cached balance index
-    function debtBalanceStored(
-        address account
-    ) public view returns (uint256) {
+    function debtBalanceStored(address account) public view returns (uint256) {
         // Cache borrow data to save gas
         DebtData storage debtSnapshot = _debtOf[account];
 
@@ -1099,7 +1113,6 @@ contract DToken is ERC165, ReentrancyGuard {
         uint256 liquidatedTokens,
         uint256 protocolTokens
     ) internal {
-
         // calculates DTokens to repay for liquidation, reverts if repay fails
         uint256 repayAmount = _repay(liquidator, borrower, amount);
 

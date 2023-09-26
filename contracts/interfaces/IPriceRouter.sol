@@ -13,9 +13,12 @@ interface IPriceRouter {
 
     function getPricesForMarket(
         address account,
-        IMToken[] calldata assets, 
+        IMToken[] calldata assets,
         uint256 errorCodeBreakpoint
-    ) external view returns (AccountSnapshot [] memory, uint256[] memory, uint256);
+    )
+        external
+        view
+        returns (AccountSnapshot[] memory, uint256[] memory, uint256);
 
     /// @notice Notifies the price router that an asset has been removed
     ///         from the adaptor calling the function

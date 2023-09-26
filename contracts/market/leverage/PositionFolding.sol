@@ -64,8 +64,9 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
 
         _;
 
-        (uint256 sumCollateral, , uint256 sumBorrow) = lendtroller
-            .getStatus(user);
+        (uint256 sumCollateral, , uint256 sumBorrow) = lendtroller.getStatus(
+            user
+        );
         uint256 userValue = sumCollateral - sumBorrow;
 
         uint256 diff = userValue > userValueBefore

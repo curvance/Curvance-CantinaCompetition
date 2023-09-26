@@ -53,7 +53,7 @@ contract PriceRouter {
     /// Address => MToken metadata
     mapping(address => MTokenData) public mTokenAssets;
 
-    /// ERRORS /// 
+    /// ERRORS ///
 
     error PriceRouter__NotSupported();
     error PriceRouter__InvalidParameter();
@@ -85,12 +85,14 @@ contract PriceRouter {
     /// CONSTRUCTOR ///
 
     constructor(ICentralRegistry centralRegistry_, address ETH_USDFEED) {
-        if (!ERC165Checker.supportsInterface(
+        if (
+            !ERC165Checker.supportsInterface(
                 address(centralRegistry_),
                 type(ICentralRegistry).interfaceId
-            )) {
-                _revert(_INVALID_PARAMETER_SELECTOR);
-            }
+            )
+        ) {
+            _revert(_INVALID_PARAMETER_SELECTOR);
+        }
 
         if (ETH_USDFEED == address(0)) {
             _revert(_INVALID_PARAMETER_SELECTOR);
@@ -129,7 +131,7 @@ contract PriceRouter {
         if (numPriceFeeds != 0 && assetPriceFeeds[asset][0] == feed) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
-        
+
         assetPriceFeeds[asset].push(feed);
     }
 
@@ -151,7 +153,9 @@ contract PriceRouter {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
-        if (!ERC165Checker.supportsInterface(mToken, type(IMToken).interfaceId)) {
+        if (
+            !ERC165Checker.supportsInterface(mToken, type(IMToken).interfaceId)
+        ) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
@@ -371,9 +375,13 @@ contract PriceRouter {
     /// @return uint256 The number of assets `account` is in.
     function getPricesForMarket(
         address account,
-        IMToken[] calldata assets, 
+        IMToken[] calldata assets,
         uint256 errorCodeBreakpoint
-    ) external view returns (AccountSnapshot[] memory, uint256[] memory, uint256) {
+    )
+        external
+        view
+        returns (AccountSnapshot[] memory, uint256[] memory, uint256)
+    {
         uint256 numAssets = assets.length;
         if (numAssets == 0) {
             _revert(_INVALID_PARAMETER_SELECTOR);
@@ -401,7 +409,6 @@ contract PriceRouter {
         }
 
         return (snapshots, prices, numAssets);
-
     }
 
     /// INTERNAL FUNCTIONS ///
@@ -418,8 +425,10 @@ contract PriceRouter {
         require(numAssetPriceFeeds > 0, "PriceRouter: no feeds available");
 
         if (numAssetPriceFeeds > 1) {
-            if (assetPriceFeeds[asset][0] != feed &&
-                    assetPriceFeeds[asset][1] != feed) {
+            if (
+                assetPriceFeeds[asset][0] != feed &&
+                assetPriceFeeds[asset][1] != feed
+            ) {
                 _revert(_NOT_SUPPORTED_SELECTOR);
             }
 
@@ -432,7 +441,6 @@ contract PriceRouter {
             if (assetPriceFeeds[asset][0] != feed) {
                 _revert(_NOT_SUPPORTED_SELECTOR);
             }
-
         }
         // we know the feed exists, cant use isApprovedAdaptor as
         // we could have removed it as an approved adaptor prior

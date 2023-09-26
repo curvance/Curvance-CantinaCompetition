@@ -221,12 +221,9 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         return _vaultIsActive == 2 ? "Active" : "Inactive";
     }
 
-    function maxDeposit(address to)
-        public
-        view
-        override
-        returns (uint256 maxAssets)
-    {
+    function maxDeposit(
+        address to
+    ) public view override returns (uint256 maxAssets) {
         if (_vaultIsActive == 1) {
             maxAssets = 0;
             return maxAssets;
@@ -235,12 +232,9 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         super.maxDeposit(to);
     }
 
-    function maxMint(address to)
-        public
-        view
-        override
-        returns (uint256 maxShares)
-    {
+    function maxMint(
+        address to
+    ) public view override returns (uint256 maxShares) {
         if (_vaultIsActive == 1) {
             maxShares = 0;
             return maxShares;
@@ -674,9 +668,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     ) internal view returns (uint256 assets) {
         uint256 totalShares = totalSupply();
 
-        assets = totalShares == 0
-            ? shares
-            : shares.mulDivUp(_ta, totalShares);
+        assets = totalShares == 0 ? shares : shares.mulDivUp(_ta, totalShares);
     }
 
     function _previewWithdraw(
@@ -685,9 +677,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     ) internal view returns (uint256 shares) {
         uint256 totalShares = totalSupply();
 
-        shares = totalShares == 0
-            ? assets
-            : assets.mulDivUp(totalShares, _ta);
+        shares = totalShares == 0 ? assets : assets.mulDivUp(totalShares, _ta);
     }
 
     function _previewRedeem(
