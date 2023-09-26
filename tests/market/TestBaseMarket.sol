@@ -93,6 +93,7 @@ contract TestBaseMarket is TestBase {
     uint256 public clPointMultiplier = 11000; // 110%
     uint256 public voteBoostValue = 11000;
     uint256 public lockBoostValue = 10000; // 100%
+    uint256 public marketInterestFactor = 1000; // 10%
 
     Zapper public zapper;
 
@@ -276,7 +277,10 @@ contract TestBaseMarket is TestBase {
             ICentralRegistry(address(centralRegistry)),
             address(gaugePool)
         );
-        centralRegistry.addLendingMarket(address(lendtroller), 1000);
+        centralRegistry.addLendingMarket(
+            address(lendtroller),
+            marketInterestFactor
+        );
     }
 
     function _deployInterestRateModel() internal {
