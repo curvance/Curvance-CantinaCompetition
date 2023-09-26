@@ -379,9 +379,9 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         uint256 pending = _calculatePendingRewards();
         uint256 ta = _totalAssets + pending;
 
-        /// We do not need to check for msg.sender == owner or msg.sender != owner
-        /// since CToken is the only contract who can call deposit, mint, withdraw, or redeem
-        /// We just keep owner parameter for 4626 compliance
+        // We do not need to check for msg.sender == owner or msg.sender != owner
+        // since CToken is the only contract who can call deposit, mint, withdraw, or redeem
+        // We just keep owner parameter for 4626 compliance
 
         // Check for rounding error since we round down in previewRedeem
         require(
@@ -417,7 +417,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
 
         SafeTransferLib.safeTransfer(asset(), newVault, assets);
 
-        /// Record current vault data to move over
+        // Record current vault data to move over
         return abi.encode(_totalAssets, _sharePriceHighWatermark, _vaultData);
     }
 
@@ -438,19 +438,17 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
 
     // ACCOUNTING LOGIC
 
-    /// @dev Packs vault data into a single uint256
-
-    /// Returns the current per second yield of the vault
+    /// @notice Returns the current per second yield of the vault
     function rewardRate() public view returns (uint256) {
         return _vaultData & _BITMASK_REWARD_RATE;
     }
 
-    /// @dev Returns the timestamp when the current vesting period ends
+    /// @notice Returns the timestamp when the current vesting period ends
     function vestingPeriodEnd() public view returns (uint256) {
         return (_vaultData >> _BITPOS_VEST_END) & _BITMASK_TIMESTAMP;
     }
 
-    /// @dev Returns the timestamp of the last claim during the current vesting period
+    /// @notice Returns the timestamp of the last claim during the current vesting period
     function lastVestClaim() public view returns (uint256) {
         return uint64(_vaultData >> _BITPOS_LAST_VEST);
     }
@@ -687,7 +685,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         return _convertToAssets(shares, _ta);
     }
 
-    // INTERNAL POSITION LOGIC TO OVERRIDE
+    /// INTERNAL POSITION LOGIC TO OVERRIDE
 
     function _deposit(uint256 assets) internal virtual;
 

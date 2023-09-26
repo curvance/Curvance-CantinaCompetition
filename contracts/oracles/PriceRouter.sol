@@ -46,11 +46,11 @@ contract PriceRouter {
     uint256 public PRICEFEED_MAXIMUM_DIVERGENCE = 11000; // Corresponds to 10%
     uint256 public CHAINLINK_MAX_DELAY = 1 days; // Maximum chainlink price staleness
 
-    /// Address => Adaptor approval status
+    // Address => Adaptor approval status
     mapping(address => bool) public isApprovedAdaptor;
-    /// Address => Price Feed addresses
+    // Address => Price Feed addresses
     mapping(address => address[]) public assetPriceFeeds;
-    /// Address => MToken metadata
+    // Address => MToken metadata
     mapping(address => MTokenData) public mTokenAssets;
 
     /// ERRORS ///
@@ -250,16 +250,16 @@ contract PriceRouter {
 
         FeedData[] memory data = new FeedData[](numAssetPriceFeeds * 2);
 
-        /// If the asset only has one price feed, we know itll be in
-        /// feed slot 0 so get both prices and return
+        // If the asset only has one price feed, we know itll be in
+        // feed slot 0 so get both prices and return
         if (numAssetPriceFeeds < 2) {
             data[0] = getPriceFromFeed(asset, 0, inUSD, true);
             data[1] = getPriceFromFeed(asset, 0, inUSD, false);
             return data;
         }
 
-        /// We know the asset has two price feeds, so get pricing from
-        /// both feeds and return
+        // We know the asset has two price feeds, so get pricing from
+        // both feeds and return
         data[0] = getPriceFromFeed(asset, 0, inUSD, true);
         data[1] = getPriceFromFeed(asset, 0, inUSD, false);
         data[2] = getPriceFromFeed(asset, 1, inUSD, true);
@@ -607,8 +607,8 @@ contract PriceRouter {
             // Check if both feeds are within PRICEFEED_MAXIMUM_DIVERGENCE
             // of each other
             if (((a * PRICEFEED_MAXIMUM_DIVERGENCE) / DENOMINATOR) < b) {
-                /// Return the price but notify that the price should be taken with caution
-                /// because we are outside the accepted range of divergence
+                // Return the price but notify that the price should be taken with caution
+                // because we are outside the accepted range of divergence
                 return (a, CAUTION);
             }
             return (a, NO_ERROR);
@@ -617,8 +617,8 @@ contract PriceRouter {
         // Check if both feeds are within PRICEFEED_MAXIMUM_DIVERGENCE
         // of each other
         if (((b * PRICEFEED_MAXIMUM_DIVERGENCE) / DENOMINATOR) < a) {
-            /// Return the price but notify that the price should be taken with caution
-            /// because we are outside the accepted range of divergence
+            // Return the price but notify that the price should be taken with caution
+            // because we are outside the accepted range of divergence
             return (b, CAUTION);
         }
         return (b, NO_ERROR);
@@ -640,8 +640,8 @@ contract PriceRouter {
             // Check if both feeds are within PRICEFEED_MAXIMUM_DIVERGENCE
             // of each other
             if (((b * PRICEFEED_MAXIMUM_DIVERGENCE) / DENOMINATOR) < a) {
-                /// Return the price but notify that the price should be taken with caution
-                /// because we are outside the accepted range of divergence
+                // Return the price but notify that the price should be taken with caution
+                // because we are outside the accepted range of divergence
                 return (a, CAUTION);
             }
             return (a, NO_ERROR);
@@ -650,8 +650,8 @@ contract PriceRouter {
         // Check if both feeds are within PRICEFEED_MAXIMUM_DIVERGENCE
         // of each other
         if (((a * PRICEFEED_MAXIMUM_DIVERGENCE) / DENOMINATOR) < b) {
-            /// Return the price but notify that the price should be taken with caution
-            /// because we are outside the accepted range of divergence
+            // Return the price but notify that the price should be taken with caution
+            // because we are outside the accepted range of divergence
             return (b, CAUTION);
         }
         return (b, NO_ERROR);

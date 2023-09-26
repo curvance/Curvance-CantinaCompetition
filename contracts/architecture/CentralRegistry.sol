@@ -98,6 +98,7 @@ contract CentralRegistry is ERC165 {
     event RemovedChain(uint256 chainId, address operatorAddress);
 
     /// ERRORS ///
+
     error CentralRegistry_ParametersMisconfigured();
     error CentralRegistry_Unauthorized();
 
@@ -158,7 +159,7 @@ contract CentralRegistry is ERC165 {
             emergencyCouncil_ = msg.sender;
         }
 
-        /// Configure DAO permission data
+        // Configure DAO permission data
         daoAddress = daoAddress_;
         timelock = timelock_;
         emergencyCouncil = emergencyCouncil_;
@@ -249,12 +250,12 @@ contract CentralRegistry is ERC165 {
         if (value > 500) {
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
-        /// CompoundFee is represented in 1e16 format
-        /// So we need to multiply by 1e14 to format properly
-        /// from basis points to %
+        // CompoundFee is represented in 1e16 format
+        // So we need to multiply by 1e14 to format properly
+        // from basis points to %
         protocolCompoundFee = value * 1e14;
 
-        /// Update vault harvest fee with new yield fee
+        // Update vault harvest fee with new yield fee
         protocolHarvestFee = protocolYieldFee + (value * 1e14);
     }
 
@@ -268,12 +269,12 @@ contract CentralRegistry is ERC165 {
         if (value > 2000) {
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
-        /// YieldFee is represented in 1e16 format
-        /// So we need to multiply by 1e14 to format properly
-        /// from basis points to %
+        // YieldFee is represented in 1e16 format
+        // So we need to multiply by 1e14 to format properly
+        // from basis points to %
         protocolYieldFee = value * 1e14;
 
-        /// Update vault harvest fee with new yield fee
+        // Update vault harvest fee with new yield fee
         protocolHarvestFee = (value * 1e14) + protocolCompoundFee;
     }
 
@@ -305,9 +306,9 @@ contract CentralRegistry is ERC165 {
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
-        /// Interest Rate fee is represented as 1e16 format
-        /// So we need to multiply by 1e14 to format properly
-        /// from basis points to %
+        // Interest Rate fee is represented as 1e16 format
+        // So we need to multiply by 1e14 to format properly
+        // from basis points to %
         protocolInterestFactor[market] = value * 1e14;
     }
 
@@ -371,11 +372,11 @@ contract CentralRegistry is ERC165 {
         address previousTimelock = timelock;
         timelock = newTimelock;
 
-        /// Delete permission data
+        // Delete permission data
         delete hasDaoPermissions[previousTimelock];
         delete hasElevatedPermissions[previousTimelock];
 
-        /// Add new permission data
+        // Add new permission data
         hasDaoPermissions[newTimelock] = true;
         hasElevatedPermissions[newTimelock] = true;
 
@@ -388,11 +389,11 @@ contract CentralRegistry is ERC165 {
         address previousEmergencyCouncil = emergencyCouncil;
         emergencyCouncil = newEmergencyCouncil;
 
-        /// Delete permission data
+        // Delete permission data
         delete hasDaoPermissions[previousEmergencyCouncil];
         delete hasElevatedPermissions[previousEmergencyCouncil];
 
-        /// Add new permission data
+        // Add new permission data
         hasDaoPermissions[newEmergencyCouncil] = true;
         hasElevatedPermissions[newEmergencyCouncil] = true;
 
