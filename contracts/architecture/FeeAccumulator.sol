@@ -2,13 +2,15 @@
 pragma solidity ^0.8.17;
 
 import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
-import { SwapperLib, IERC20 } from "contracts/libraries/SwapperLib.sol";
+import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 import { ICVE, LzCallParams } from "contracts/interfaces/ICVE.sol";
 import { ICVELocker } from "contracts/interfaces/ICVELocker.sol";
+import { IERC20 } from "contracts/interfaces/IERC20.sol";
+import { IGelatoOneBalance } from "contracts/interfaces/IGelatoOneBalance.sol";
 import { IVeCVE } from "contracts/interfaces/IVeCVE.sol";
 import { IProtocolMessagingHub, PoolData } from "contracts/interfaces/IProtocolMessagingHub.sol";
 import { swapRouter, lzTxObj } from "contracts/interfaces/layerzero/IStargateRouter.sol";
@@ -45,8 +47,10 @@ contract FeeAccumulator is ReentrancyGuard {
     /// STORAGE ///
 
     address internal _previousMessagingHub;
-    address public router; // Address of Stargate Router
-    address public oneBalanceAddress;
+    /// @notice Address of Stargate Router
+    address public router;
+    /// @notice Address of Gelato 1Balance
+    IGelatoOneBalance public gelatoOneBalance;
     uint256 internal _gasForCalldata;
     uint256 internal _gasForCrosschain;
 
@@ -127,7 +131,7 @@ contract FeeAccumulator is ReentrancyGuard {
 
         // We set oneBalance address initially to DAO,
         // incase direct deposits to Gelato Network are not supported.
-        oneBalanceAddress = centralRegistry.daoAddress();
+        gelatoOneBalance = IGelatoOneBalance(centralRegistry.daoAddress());
 
         // We infinite approve fee token so that protocol messaging hub
         // can drag funds to proper chain
@@ -140,8 +144,8 @@ contract FeeAccumulator is ReentrancyGuard {
 
     /// EXTERNAL FUNCTIONS ///
 
-    /// @dev Performs multiple token swaps in a single transaction,
-    ///      converting the provided tokens to fee token on behalf of Curvance DAO
+    /// @dev Performs multiple token swaps in a single transaction, converting
+    ///      the provided tokens to fee token on behalf of Curvance DAO
     /// @param data Encoded swap data containing the details of each swap
     /// @param tokens An array of token addresses corresponding to
     ///               the swap data, specifying the tokens to be swapped
@@ -180,8 +184,9 @@ contract FeeAccumulator is ReentrancyGuard {
         }
 
         // Transfer fees to Gelato Network One Balance or equivalent
-        _distributeFeeToken(
-            oneBalanceAddress,
+        gelatoOneBalance.depositToken(
+            address(this),
+            IERC20(feeToken),
             (IERC20(feeToken).balanceOf(address(this)) * vaultCompoundFee()) /
                 vaultYieldFee()
         );
@@ -234,8 +239,9 @@ contract FeeAccumulator is ReentrancyGuard {
         );
 
         // Transfer fees to Gelato Network One Balance or equivalent
-        _distributeFeeToken(
-            oneBalanceAddress,
+        gelatoOneBalance.depositToken(
+            address(this),
+            IERC20(feeToken),
             (feeTokenRequiredForOTC * vaultCompoundFee()) / vaultYieldFee()
         );
 
@@ -463,9 +469,9 @@ contract FeeAccumulator is ReentrancyGuard {
     /// @notice Set Gelato Network one balance destination address to
     ///         fund compounders
     function setOneBalanceAddress(
-        address payable newOneBalanceAddress
+        address payable newGelatoOneBalance
     ) external onlyDaoPermissions {
-        oneBalanceAddress = newOneBalanceAddress;
+        gelatoOneBalance = IGelatoOneBalance(newGelatoOneBalance);
     }
 
     /// @notice Set status on whether a token should be earmarked to OTC
