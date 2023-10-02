@@ -11,7 +11,7 @@ import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { ICVE, LzCallParams } from "contracts/interfaces/ICVE.sol";
 import { IFeeAccumulator, EpochRolloverData } from "contracts/interfaces/IFeeAccumulator.sol";
 import { ICentralRegistry, OmnichainData } from "contracts/interfaces/ICentralRegistry.sol";
-import { swapRouter, lzTxObj } from "contracts/interfaces/layerzero/IStargateRouter.sol";
+import { SwapRouter, lzTxObj } from "contracts/interfaces/layerzero/IStargateRouter.sol";
 import { PoolData } from "contracts/interfaces/IProtocolMessagingHub.sol";
 
 contract ProtocolMessagingHub is ReentrancyGuard {
@@ -29,6 +29,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     /// ERRORS ///
 
     error ProtocolMessagingHub__FeeTokenIsZeroAddress();
+    error ProtocolMessagingHub__CallerIsNotStargateRouter();
     error ProtocolMessagingHub__ConfigurationError();
     error ProtocolMessagingHub__InsufficientGasToken();
 
@@ -94,6 +95,13 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         uint256 amountLD,
         bytes memory /* payload */
     ) external payable {
+        if (
+            msg.sender !=
+            IFeeAccumulator(centralRegistry.feeAccumulator()).stargateRouter()
+        ) {
+            revert ProtocolMessagingHub__CallerIsNotStargateRouter();
+        }
+
         SafeTransferLib.safeTransfer(
             token,
             centralRegistry.feeAccumulator(),
@@ -195,7 +203,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         }
 
         address endpoint = IFeeAccumulator(centralRegistry.feeAccumulator())
-            .router();
+            .stargateRouter();
 
         bytes memory bytesTo = new bytes(32);
         assembly {
@@ -205,7 +213,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         {
             // Scoping to avoid stack too deep
             (uint256 messageFee, ) = this.quoteStargateFee(
-                swapRouter(endpoint),
+                SwapRouter(endpoint),
                 uint16(poolData.dstChainId),
                 1,
                 bytesTo,
@@ -230,7 +238,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         );
 
         // Sends funds to feeAccumulator on another chain
-        swapRouter(endpoint).swap{ value: msg.value }(
+        SwapRouter(endpoint).swap{ value: msg.value }(
             uint16(poolData.dstChainId),
             poolData.srcPoolId,
             poolData.dstPoolId,
@@ -358,7 +366,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     /// @dev Intentionally greatly overestimates so we are sure that
     ///      a multicall will not fail
     function overEstimateStargateFee(
-        swapRouter stargateRouter,
+        SwapRouter stargateRouter,
         uint8 functionType,
         bytes calldata toAddress
     ) external view returns (uint256) {
@@ -399,7 +407,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
 
     /// @notice Quotes gas cost for executing crosschain stargate swap
     function quoteStargateFee(
-        swapRouter stargateRouter,
+        SwapRouter stargateRouter,
         uint16 _dstChainId,
         uint8 _functionType,
         bytes calldata _toAddress,
