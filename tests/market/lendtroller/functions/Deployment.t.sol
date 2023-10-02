@@ -9,18 +9,14 @@ contract LendtrollerDeploymentTest is TestBaseLendtroller {
     function test_lendtrollerDeployment_fail_whenCentralRegistryIsInvalid()
         public
     {
-        vm.expectRevert(
-            Lendtroller.Lendtroller__CentralRegistryIsInvalid.selector
-        );
+        vm.expectRevert(Lendtroller.Lendtroller__InvalidParameter.selector);
         new Lendtroller(ICentralRegistry(address(0)), address(gaugePool));
     }
 
     function test_lendtrollerDeployment_fail_whenGaugePoolIsZeroAddress()
         public
     {
-        vm.expectRevert(
-            Lendtroller.Lendtroller__GaugePoolIsZeroAddress.selector
-        );
+        vm.expectRevert(Lendtroller.Lendtroller__InvalidParameter.selector);
         new Lendtroller(
             ICentralRegistry(address(centralRegistry)),
             address(0)
@@ -34,7 +30,6 @@ contract LendtrollerDeploymentTest is TestBaseLendtroller {
         );
 
         assertEq(address(dUSDC.centralRegistry()), address(centralRegistry));
-        assertEq(dUSDC.gaugePool(), address(gaugePool));
         assertEq(
             address(lendtroller.getPriceRouter()),
             centralRegistry.priceRouter()

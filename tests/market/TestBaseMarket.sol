@@ -5,7 +5,6 @@ import { TestBase } from "tests/utils/TestBase.sol";
 import { CVE } from "contracts/token/CVE.sol";
 import { VeCVE } from "contracts/token/VeCVE.sol";
 import { CVELocker } from "contracts/architecture/CVELocker.sol";
-import { ICVXLocker } from "contracts/interfaces/ICVXLocker.sol";
 import { CentralRegistry } from "contracts/architecture/CentralRegistry.sol";
 import { AuraPositionVault } from "contracts/deposits/adaptors/AuraPositionVault.sol";
 import { DToken } from "contracts/market/collateral/DToken.sol";
@@ -39,15 +38,10 @@ contract TestBaseMarket is TestBase {
         0x1E19CF2D73a72Ef1332C882F20534B6519Be0276;
     address internal constant _DAI_ADDRESS =
         0x6B175474E89094C44Da98b954EedeAC495271d0F;
-    address internal constant _CVX_ADDRESS =
-        0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
-    address internal constant _CVX_LOCKER_ADDRESS =
-        0x72a19342e8F1838460eBFCCEf09F6585e32db86E;
     address internal constant _WBTC_ADDRESS =
         0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
     address internal constant _FRAX_ADDRESS =
         0x853d955aCEf822Db058eb8505911ED77F175b99e;
-
     address internal constant _CHAINLINK_ETH_USD =
         0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
     address internal constant _CHAINLINK_USDC_USD =
@@ -60,7 +54,6 @@ contract TestBaseMarket is TestBase {
         0x773616E4d11A78F511299002da57A0a94577F1f4;
     address internal constant _CHAINLINK_RETH_ETH =
         0x536218f9E9Eb48863970252233c8F271f554C2d0;
-
     address internal constant _BALANCER_VAULT =
         0xBA12222222228d8Ba445958a75a0704d566BF2C8;
     bytes32 internal constant _BAL_WETH_RETH_POOLID =
@@ -73,7 +66,6 @@ contract TestBaseMarket is TestBase {
     CVE public cve;
     VeCVE public veCVE;
     CVELocker public cveLocker;
-    ICVXLocker public cvxLocker;
     CentralRegistry public centralRegistry;
     BalancerStablePoolAdaptor public balRETHAdapter;
     ChainlinkAdaptor public chainlinkAdaptor;
@@ -88,7 +80,6 @@ contract TestBaseMarket is TestBase {
     CToken public cBALRETH;
     IERC20 public usdc;
     IERC20 public dai;
-    IERC20 public cvx;
     IERC20 public balRETH;
 
     MockToken public rewardToken;
@@ -102,6 +93,7 @@ contract TestBaseMarket is TestBase {
     uint256 public clPointMultiplier = 11000; // 110%
     uint256 public voteBoostValue = 11000;
     uint256 public lockBoostValue = 10000; // 100%
+    uint256 public marketInterestFactor = 1000; // 10%
 
     Zapper public zapper;
 
@@ -110,8 +102,6 @@ contract TestBaseMarket is TestBase {
 
         usdc = IERC20(_USDC_ADDRESS);
         dai = IERC20(_DAI_ADDRESS);
-        cvx = IERC20(_CVX_ADDRESS);
-        cvxLocker = ICVXLocker(_CVX_LOCKER_ADDRESS);
         balRETH = IERC20(_BALANCER_WETH_RETH);
 
         _deployCentralRegistry();
@@ -166,8 +156,6 @@ contract TestBaseMarket is TestBase {
     function _deployCVELocker() internal {
         cveLocker = new CVELocker(
             ICentralRegistry(address(centralRegistry)),
-            _CVX_ADDRESS,
-            _CVX_LOCKER_ADDRESS,
             _USDC_ADDRESS
         );
         centralRegistry.setCVELocker(address(cveLocker));
@@ -289,7 +277,10 @@ contract TestBaseMarket is TestBase {
             ICentralRegistry(address(centralRegistry)),
             address(gaugePool)
         );
-        centralRegistry.addLendingMarket(address(lendtroller));
+        centralRegistry.addLendingMarket(
+            address(lendtroller),
+            marketInterestFactor
+        );
     }
 
     function _deployInterestRateModel() internal {
@@ -338,9 +329,7 @@ contract TestBaseMarket is TestBase {
             ICentralRegistry(address(centralRegistry)),
             _BALANCER_WETH_RETH,
             address(lendtroller),
-            address(vault),
-            "cBAL-WETH-RETH",
-            "cBAL-ETHPAIR"
+            address(vault)
         );
         vault.initiateVault(address(cBALRETH));
         return cBALRETH;
@@ -383,14 +372,14 @@ contract TestBaseMarket is TestBase {
     }
 
     function _prepareUSDC(address user, uint256 amount) internal {
-        deal(_USDC_ADDRESS, user, amount * 2);
+        deal(_USDC_ADDRESS, user, amount);
     }
 
     function _prepareDAI(address user, uint256 amount) internal {
-        deal(_DAI_ADDRESS, user, amount * 2);
+        deal(_DAI_ADDRESS, user, amount);
     }
 
     function _prepareBALRETH(address user, uint256 amount) internal {
-        deal(_BALANCER_WETH_RETH, user, amount * 2);
+        deal(_BALANCER_WETH_RETH, user, amount);
     }
 }

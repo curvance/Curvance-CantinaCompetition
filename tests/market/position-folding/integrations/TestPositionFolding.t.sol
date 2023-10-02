@@ -63,9 +63,11 @@ contract TestPositionFolding is TestBaseMarket {
             // add MToken support on price router
             priceRouter.addMTokenSupport(address(cBALRETH));
             // set collateral factor
-            lendtroller.setCollateralizationRatio(
+            lendtroller.updateCollateralToken(
                 IMToken(address(cBALRETH)),
-                5e17
+                200,
+                0,
+                5000
             );
             vm.prank(user);
             address[] memory markets = new address[](1);
@@ -178,7 +180,8 @@ contract TestPositionFolding is TestBaseMarket {
                 _WETH_ADDRESS,
                 leverageData.zapperCall.inputAmount,
                 address(balRETH),
-                0
+                0,
+                false
             ),
             new SwapperLib.Swap[](0),
             _BALANCER_VAULT,
@@ -236,7 +239,8 @@ contract TestPositionFolding is TestBaseMarket {
                 address(balRETH),
                 deleverageData.zapperCall.inputAmount,
                 _WETH_ADDRESS,
-                0
+                0,
+                false
             ),
             tokens,
             true,

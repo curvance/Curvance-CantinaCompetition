@@ -13,11 +13,10 @@ library CommonLib {
     /// @dev Get token balance of this contract
     /// @param token The token address
     function getTokenBalance(address token) internal view returns (uint256) {
-        return IERC20(token).balanceOf(address(this));
-    }
-
-    /// @dev Get eth balance of this contract
-    function getETHBalance() internal view returns (uint256) {
-        return address(this).balance;
+        if (isETH(token)) {
+            return address(this).balance;
+        } else {
+            return IERC20(token).balanceOf(address(this));
+        }
     }
 }

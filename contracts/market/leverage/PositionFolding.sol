@@ -130,10 +130,8 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
         uint256 borrowAmount,
         bytes calldata params
     ) external override {
-        (bool isListed, ) = lendtroller.getMarketTokenData(borrowToken);
-
         require(
-            isListed && msg.sender == borrowToken,
+            lendtroller.isListed(borrowToken) && msg.sender == borrowToken,
             "PositionFolding: UNAUTHORIZED"
         );
 
@@ -151,7 +149,7 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
         address borrowUnderlying = CToken(borrowToken).underlying();
 
         require(
-            IERC20(borrowUnderlying).balanceOf(address(this)) == borrowAmount,
+            IERC20(borrowUnderlying).balanceOf(address(this)) >= borrowAmount,
             "PositionFolding: invalid amount"
         );
 
@@ -224,8 +222,10 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
             "PositionFolding: UNAUTHORIZED"
         );
 
-        (bool isListed, ) = lendtroller.getMarketTokenData(collateralToken);
-        require(isListed, "PositionFolding: UNAUTHORIZED");
+        require(
+            lendtroller.isListed(collateralToken),
+            "PositionFolding: UNAUTHORIZED"
+        );
 
         DeleverageStruct memory deleverageData = abi.decode(
             params,
@@ -242,7 +242,7 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
         address collateralUnderlying = CToken(collateralToken).underlying();
 
         require(
-            IERC20(collateralUnderlying).balanceOf(address(this)) ==
+            IERC20(collateralUnderlying).balanceOf(address(this)) >=
                 collateralAmount,
             "PositionFolding: invalid amount"
         );

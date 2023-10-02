@@ -2,6 +2,7 @@
 pragma solidity 0.8.17;
 
 import { TestBaseLendtroller } from "../TestBaseLendtroller.sol";
+import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
 
 contract NotifyAccountBorrowTest is TestBaseLendtroller {
     event MarketEntered(address mToken, address account);
@@ -13,7 +14,7 @@ contract NotifyAccountBorrowTest is TestBaseLendtroller {
     }
 
     function test_notifyAccountBorrow_fail_whenCallerIsNotMToken() public {
-        vm.expectRevert("Lendtroller: Caller not MToken");
+        vm.expectRevert(Lendtroller.Lendtroller__TokenNotListed.selector);
         lendtroller.notifyAccountBorrow(user1);
     }
 
@@ -22,7 +23,7 @@ contract NotifyAccountBorrowTest is TestBaseLendtroller {
     {
         vm.prank(address(dDAI));
 
-        vm.expectRevert("Lendtroller: Caller not MToken");
+        vm.expectRevert(Lendtroller.Lendtroller__TokenNotListed.selector);
         lendtroller.notifyAccountBorrow(user1);
     }
 

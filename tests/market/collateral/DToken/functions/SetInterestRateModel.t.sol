@@ -30,7 +30,7 @@ contract DTokenSetInterestRateModelTest is TestBaseDToken {
         dUSDC.setInterestRateModel(address(newInterestRateModel));
     }
 
-    function test_dTokenSetInterestRateModel_fail_whenInterestRateModelIsInvalid()
+    function test_dTokenSetInterestRateModel_fail_whenInvalidInterestRateModel()
         public
     {
         vm.expectRevert();

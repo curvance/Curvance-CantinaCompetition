@@ -2,6 +2,7 @@
 pragma solidity 0.8.17;
 
 import { TestBaseCToken } from "../TestBaseCToken.sol";
+import { CToken } from "contracts/market/collateral/CToken.sol";
 
 contract CTokenRescueTokenTest is TestBaseCToken {
     function setUp() public override {
@@ -21,13 +22,13 @@ contract CTokenRescueTokenTest is TestBaseCToken {
     function test_cTokenRescueToken_fail_whenETHAmountExceedsBalance() public {
         uint256 balance = address(cBALRETH).balance;
 
-        vm.expectRevert("CToken: insufficient balance");
+        vm.expectRevert(CToken.CToken__ExcessiveValue.selector);
         cBALRETH.rescueToken(address(0), balance + 1);
     }
 
-    function test_cTokenRescueToken_fail_whenTokenIsUnderlyingToken() public {
-        vm.expectRevert("CToken: cannot withdraw underlying");
-        cBALRETH.rescueToken(_BALANCER_WETH_RETH, 100);
+    function test_cTokenRescueToken_fail_whenTokenIsVaultToken() public {
+        vm.expectRevert(CToken.CToken__TransferNotAllowed.selector);
+        cBALRETH.rescueToken(address(vault), 100);
     }
 
     function test_cTokenRescueToken_fail_whenTokenAmountExceedsBalance()
@@ -35,7 +36,7 @@ contract CTokenRescueTokenTest is TestBaseCToken {
     {
         uint256 balance = usdc.balanceOf(address(cBALRETH));
 
-        vm.expectRevert("CToken: insufficient balance");
+        vm.expectRevert(CToken.CToken__ExcessiveValue.selector);
         cBALRETH.rescueToken(_USDC_ADDRESS, balance + 1);
     }
 

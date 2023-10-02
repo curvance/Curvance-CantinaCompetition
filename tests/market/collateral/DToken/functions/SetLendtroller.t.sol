@@ -28,11 +28,13 @@ contract DTokenSetLendtrollerTest is TestBaseDToken {
     }
 
     function test_dTokenSetLendtroller_fail_whenLendtrollerIsInvalid() public {
-        vm.expectRevert(DToken.DToken__LendtrollerIsInvalid.selector);
+        vm.expectRevert(DToken.DToken__LendtrollerIsNotLendingMarket.selector);
         dUSDC.setLendtroller(address(1));
     }
 
     function test_dTokenSetLendtroller_success() public {
+        centralRegistry.addLendingMarket(address(newLendtroller), 0);
+
         assertEq(address(dUSDC.lendtroller()), address(lendtroller));
 
         dUSDC.setLendtroller(address(newLendtroller));

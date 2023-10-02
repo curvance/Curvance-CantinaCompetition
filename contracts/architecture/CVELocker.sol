@@ -9,7 +9,6 @@ import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { IVeCVE } from "contracts/interfaces/IVeCVE.sol";
 import { RewardsData } from "contracts/interfaces/ICVELocker.sol";
-import { ICVXLocker } from "contracts/interfaces/ICVXLocker.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 contract CVELocker is ReentrancyGuard {
@@ -27,10 +26,6 @@ contract CVELocker is ReentrancyGuard {
     uint256 internal constant _NO_EPOCH_REWARDS_SELECTOR = 0x95721ba7;
     /// @notice CVE contract address
     address public immutable cve;
-    /// @notice CVX contract address
-    address public immutable cvx;
-    /// @notice CVX Locker contract address
-    ICVXLocker public immutable cvxLocker;
     /// @notice Curvance DAO hub
     ICentralRegistry public immutable centralRegistry;
     /// @notice Reward token
@@ -74,8 +69,6 @@ contract CVELocker is ReentrancyGuard {
 
     /// ERRORS ///
 
-    error CVELocker__CVXIsZeroAddress();
-    error CVELocker__CVXLockerMisconfigured();
     error CVELocker__BaseRewardTokenIsZeroAddress();
     error CVELocker__Unauthorized();
     error CVELocker__FailedETHTransfer();
@@ -124,12 +117,7 @@ contract CVELocker is ReentrancyGuard {
 
     /// CONSTRUCTOR ///
 
-    constructor(
-        ICentralRegistry centralRegistry_,
-        address cvx_,
-        address cvxLocker_,
-        address baseRewardToken_
-    ) {
+    constructor(ICentralRegistry centralRegistry_, address baseRewardToken_) {
         require(
             ERC165Checker.supportsInterface(
                 address(centralRegistry_),
@@ -137,21 +125,13 @@ contract CVELocker is ReentrancyGuard {
             ),
             "CVELocker: invalid central registry"
         );
-        if (cvx_ == address(0)) {
-            revert CVELocker__CVXIsZeroAddress();
-        }
+
         if (baseRewardToken_ == address(0)) {
             revert CVELocker__BaseRewardTokenIsZeroAddress();
         }
 
-        if (ICVXLocker(cvxLocker_).isShutdown() || cvx_ != ICVXLocker(cvxLocker_).stakingToken()) {
-            revert CVELocker__CVXLockerMisconfigured();
-        }
-
         centralRegistry = centralRegistry_;
         genesisEpoch = centralRegistry.genesisEpoch();
-        cvx = cvx_;
-        cvxLocker = ICVXLocker(cvxLocker_);
         baseRewardToken = baseRewardToken_;
         cve = centralRegistry.CVE();
     }
@@ -300,7 +280,7 @@ contract CVELocker is ReentrancyGuard {
     /// @param recipient The address who should receive the rewards of user
     /// @param rewardsData Rewards data for CVE rewards locker
     /// @param params Swap data for token swapping rewards to desiredRewardToken.
-    /// @param aux Auxiliary data for wrapped assets such as vlCVX and veCVE.
+    /// @param aux Auxiliary data for wrapped assets such as veCVE.
     function claimRewards(
         address recipient,
         RewardsData calldata rewardsData,
@@ -327,7 +307,7 @@ contract CVELocker is ReentrancyGuard {
     /// @param epochs The number of epochs for which to claim rewards.
     /// @param rewardsData Rewards data for CVE rewards locker
     /// @param params Swap data for token swapping rewards to desiredRewardToken.
-    /// @param aux Auxiliary data for wrapped assets such as vlCVX and veCVE.
+    /// @param aux Auxiliary data for wrapped assets such as veCVE.
     function claimRewardsFor(
         address user,
         address recipient,
@@ -440,7 +420,7 @@ contract CVELocker is ReentrancyGuard {
     /// @param rewardsData Rewards data for CVE rewards locker
     /// @param params Additional parameters required for reward processing,
     ///               which may include swap data.
-    /// @param aux Auxiliary data for wrapped assets such as vlCVX and veCVE.
+    /// @param aux Auxiliary data for wrapped assets such as veCVE.
     function _processRewards(
         address recipient,
         uint256 userRewards,
@@ -457,17 +437,6 @@ contract CVELocker is ReentrancyGuard {
                 authorizedRewardToken[rewardsData.desiredRewardToken] == 2,
                 "CVELocker: unsupported reward token"
             );
-
-            if (
-                rewardsData.desiredRewardToken == cvx && rewardsData.shouldLock
-            ) {
-                return
-                    _lockFeesAsVlCVX(
-                        recipient,
-                        rewardsData.desiredRewardToken,
-                        aux
-                    );
-            }
 
             if (
                 rewardsData.desiredRewardToken == cve && rewardsData.shouldLock
@@ -573,24 +542,6 @@ contract CVELocker is ReentrancyGuard {
             "",
             0
         );
-
-        return reward;
-    }
-
-    /// @dev Lock fees as vlCVX
-    /// @param recipient The address to receive the locked vlCVX tokens.
-    /// @param desiredRewardToken The address of the token to be locked,
-    ///                           this should be CVX.
-    /// @param spendRatio X% of your deposit to gain Y% boost on the deposit,
-    ///                   currently disabled.
-    /// @return reward The total amount of CVX that was locked as vlCVX.
-    function _lockFeesAsVlCVX(
-        address recipient,
-        address desiredRewardToken,
-        uint256 spendRatio
-    ) internal returns (uint256) {
-        uint256 reward = IERC20(desiredRewardToken).balanceOf(address(this));
-        cvxLocker.lock(recipient, reward, spendRatio);
 
         return reward;
     }

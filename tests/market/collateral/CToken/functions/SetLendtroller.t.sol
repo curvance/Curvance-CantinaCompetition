@@ -28,11 +28,13 @@ contract CTokenSetLendtrollerTest is TestBaseCToken {
     }
 
     function test_cTokenSetLendtroller_fail_whenLendtrollerIsInvalid() public {
-        vm.expectRevert(CToken.CToken__LendtrollerIsInvalid.selector);
+        vm.expectRevert(CToken.CToken__LendtrollerIsNotLendingMarket.selector);
         cBALRETH.setLendtroller(address(1));
     }
 
     function test_cTokenSetLendtroller_success() public {
+        centralRegistry.addLendingMarket(address(newLendtroller), 0);
+
         assertEq(address(cBALRETH.lendtroller()), address(lendtroller));
 
         cBALRETH.setLendtroller(address(newLendtroller));

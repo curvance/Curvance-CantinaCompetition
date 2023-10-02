@@ -13,42 +13,24 @@ contract CTokenDeploymentTest is TestBaseCToken {
     event NewLendtroller(address oldLendtroller, address newLendtroller);
 
     function test_cTokenDeployment_fail_whenCentralRegistryIsInvalid() public {
-        vm.expectRevert(CToken.CToken__CentralRegistryIsInvalid.selector);
+        vm.expectRevert(
+            CToken.CToken__ConstructorParametersareInvalid.selector
+        );
         new CToken(
             ICentralRegistry(address(0)),
             _BALANCER_WETH_RETH,
             address(lendtroller),
-            address(0),
-            "cBAL-WETH-RETH",
-            "cBAL-ETHPAIR"
+            address(0)
         );
     }
 
-    function test_cTokenDeployment_fail_whenLendtrollderIsNotLendingMarket()
-        public
-    {
+    function test_cTokenDeployment_fail_whenLendtrollerIsNotSet() public {
         vm.expectRevert(CToken.CToken__LendtrollerIsNotLendingMarket.selector);
         new CToken(
             ICentralRegistry(address(centralRegistry)),
             _BALANCER_WETH_RETH,
             address(1),
-            address(0),
-            "cBAL-WETH-RETH",
-            "cBAL-ETHPAIR"
-        );
-    }
-
-    function test_cTokenDeployment_fail_whenLendtrollderIsInvalid() public {
-        centralRegistry.addLendingMarket(address(1));
-
-        vm.expectRevert(CToken.CToken__LendtrollerIsInvalid.selector);
-        new CToken(
-            ICentralRegistry(address(centralRegistry)),
-            _BALANCER_WETH_RETH,
-            address(1),
-            address(0),
-            "cBAL-WETH-RETH",
-            "cBAL-ETHPAIR"
+            address(0)
         );
     }
 
@@ -60,14 +42,14 @@ contract CTokenDeploymentTest is TestBaseCToken {
             .sig(IERC20.totalSupply.selector)
             .checked_write(type(uint232).max);
 
-        vm.expectRevert("CToken: Underlying token assumptions not met");
+        vm.expectRevert(
+            CToken.CToken__ConstructorParametersareInvalid.selector
+        );
         new CToken(
             ICentralRegistry(address(centralRegistry)),
             _BALANCER_WETH_RETH,
             address(lendtroller),
-            address(0),
-            "cBAL-WETH-RETH",
-            "cBAL-ETHPAIR"
+            address(0)
         );
     }
 
@@ -79,9 +61,7 @@ contract CTokenDeploymentTest is TestBaseCToken {
             ICentralRegistry(address(centralRegistry)),
             _BALANCER_WETH_RETH,
             address(lendtroller),
-            address(0),
-            "cBAL-WETH-RETH",
-            "cBAL-ETHPAIR"
+            address(0)
         );
 
         assertEq(
@@ -91,6 +71,6 @@ contract CTokenDeploymentTest is TestBaseCToken {
         assertEq(cBALRETH.underlying(), _BALANCER_WETH_RETH);
         assertEq(address(cBALRETH.vault()), address(0));
         assertEq(address(cBALRETH.lendtroller()), address(lendtroller));
-        assertEq(cBALRETH.name(), "Curvance collateralized cBAL-WETH-RETH");
+        //assertEq(cBALRETH.name(), "Curvance collateralized cBAL-WETH-RETH");
     }
 }

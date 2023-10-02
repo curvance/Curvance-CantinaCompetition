@@ -22,8 +22,9 @@ library BalancerLib {
         uint256 lpMinOutAmount
     ) internal returns (uint256 lpOutAmount) {
         uint256 numTokens = tokens.length;
-
         uint256[] memory balances = new uint256[](numTokens);
+        uint256 value;
+
         // approve tokens
         for (uint256 i; i < numTokens; ) {
             balances[i] = CommonLib.getTokenBalance(tokens[i]);
@@ -33,12 +34,16 @@ library BalancerLib {
                 balances[i]
             );
 
+            if (CommonLib.isETH(tokens[i])) {
+                value = balances[i];
+            }
+
             unchecked {
                 ++i;
             }
         }
 
-        IBalancerVault(balancerVault).joinPool(
+        IBalancerVault(balancerVault).joinPool{ value: value }(
             balancerPoolId,
             address(this),
             address(this),
