@@ -13,7 +13,7 @@ import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { IGelatoOneBalance } from "contracts/interfaces/IGelatoOneBalance.sol";
 import { IVeCVE } from "contracts/interfaces/IVeCVE.sol";
 import { IProtocolMessagingHub, PoolData } from "contracts/interfaces/IProtocolMessagingHub.sol";
-import { swapRouter, lzTxObj } from "contracts/interfaces/layerzero/IStargateRouter.sol";
+import { SwapRouter, lzTxObj } from "contracts/interfaces/layerzero/IStargateRouter.sol";
 import { EpochRolloverData } from "contracts/interfaces/IFeeAccumulator.sol";
 import { ICentralRegistry, ChainData } from "contracts/interfaces/ICentralRegistry.sol";
 
@@ -48,7 +48,7 @@ contract FeeAccumulator is ReentrancyGuard {
 
     address internal _previousMessagingHub;
     /// @notice Address of Stargate Router
-    address public router;
+    address public stargateRouter;
     /// @notice Address of Gelato 1Balance
     IGelatoOneBalance public gelatoOneBalance;
     uint256 internal _gasForCalldata;
@@ -102,7 +102,7 @@ contract FeeAccumulator is ReentrancyGuard {
     constructor(
         ICentralRegistry centralRegistry_,
         address feeToken_,
-        address router_,
+        address stargateRouter_,
         uint256 gasForCalldata_,
         uint256 gasForCrosschain_
     ) {
@@ -121,7 +121,7 @@ contract FeeAccumulator is ReentrancyGuard {
         centralRegistry = centralRegistry_;
         feeToken = feeToken_;
         feeTokenUnit = 10 ** IERC20(feeToken_).decimals();
-        router = router_;
+        stargateRouter = stargateRouter_;
         _gasForCalldata = gasForCalldata_;
         _gasForCrosschain = gasForCrosschain_;
 
@@ -202,7 +202,7 @@ contract FeeAccumulator is ReentrancyGuard {
     function executeOTC(
         address tokenToOTC,
         uint256 amountToOTC
-    ) external payable onlyDaoPermissions nonReentrant {
+    ) external onlyDaoPermissions nonReentrant {
         // Validate that the token is earmarked for OTC
         if (rewardTokenInfo[tokenToOTC].forOTC < 2) {
             revert FeeAccumulator__EarmarkError();
@@ -461,9 +461,9 @@ contract FeeAccumulator is ReentrancyGuard {
 
     /// @notice Set Stargate router destination address to route fees
     function setStargateAddress(
-        address payable newRouter
+        address payable newStargateRouter
     ) external onlyDaoPermissions {
-        router = newRouter;
+        stargateRouter = newStargateRouter;
     }
 
     /// @notice Set Gelato Network one balance destination address to
@@ -702,7 +702,11 @@ contract FeeAccumulator is ReentrancyGuard {
             }
 
             uint256 stargateFeesForChain = messagingHub
-                .overEstimateStargateFee(swapRouter(router), 1, bytesAddress);
+                .overEstimateStargateFee(
+                    SwapRouter(stargateRouter),
+                    1,
+                    bytesAddress
+                );
 
             uint256 layerZeroFeesForChain = _overEstimateLZFees(
                 chainData,
@@ -773,7 +777,7 @@ contract FeeAccumulator is ReentrancyGuard {
                 totalLockedTokens;
 
             messagingHub.sendFees{ value: bridgeFee }(
-                router,
+                stargateRouter,
                 PoolData({
                     dstChainId: centralRegistry.GETHToMessagingChainId(
                         crossChainLockData[i].chainId

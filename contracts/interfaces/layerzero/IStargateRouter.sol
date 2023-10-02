@@ -7,7 +7,7 @@ struct lzTxObj {
     bytes dstNativeAddr;
 }
 
-interface swapRouter {
+interface SwapRouter {
     function swap(
         uint16 _dstChainId,
         uint256 _srcPoolId,

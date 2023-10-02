@@ -11,7 +11,7 @@ struct EpochRolloverData {
 interface IFeeAccumulator {
 
     /// @notice Returns stargate router address
-    function router() external view returns (address);
+    function stargateRouter() external view returns (address);
     /// @notice Receive finalized epoch rewards data
     function receiveExecutableLockData(uint256 lockValue) external;
     /// @notice Receive feeAccumulator information of locked tokens on a chain for the epoch
