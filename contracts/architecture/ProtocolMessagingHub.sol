@@ -8,7 +8,6 @@ import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 import { GaugeController } from "contracts/gauge/GaugeController.sol";
 
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
-import { IWETH } from "contracts/interfaces/IWETH.sol";
 import { ICVE, LzCallParams } from "contracts/interfaces/ICVE.sol";
 import { IFeeAccumulator, EpochRolloverData } from "contracts/interfaces/IFeeAccumulator.sol";
 import { ICentralRegistry, OmnichainData } from "contracts/interfaces/ICentralRegistry.sol";
@@ -18,15 +17,20 @@ import { PoolData } from "contracts/interfaces/IProtocolMessagingHub.sol";
 contract ProtocolMessagingHub is ReentrancyGuard {
     /// CONSTANTS ///
 
-    uint256 public constant DENOMINATOR = 10000; // Scalar for math
-    ICVE public immutable CVE; // CVE contract address
-    IWETH public immutable WETH; // Address of WETH
-    ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
+    /// @notice Scalar for math
+    uint256 public constant DENOMINATOR = 10000;
+    /// @notice CVE contract address
+    ICVE public immutable CVE;
+    /// @notice Address of fee token
+    address public immutable feeToken;
+    /// @notice Curvance DAO hub
+    ICentralRegistry public immutable centralRegistry;
 
     /// ERRORS ///
 
-    error ProtocolMessagingHub_ConfigurationError();
-    error ProtocolMessagingHub_InsufficientGasToken();
+    error ProtocolMessagingHub__FeeTokenIsZeroAddress();
+    error ProtocolMessagingHub__ConfigurationError();
+    error ProtocolMessagingHub__InsufficientGasToken();
 
     /// MODIFIERS ///
 
@@ -59,52 +63,56 @@ contract ProtocolMessagingHub is ReentrancyGuard {
 
     /// CONSTRUCTOR ///
 
-    constructor(ICentralRegistry centralRegistry_, address WETH_) {
+    constructor(ICentralRegistry centralRegistry_, address feeToken_) {
         if (
             !ERC165Checker.supportsInterface(
                 address(centralRegistry_),
                 type(ICentralRegistry).interfaceId
             )
         ) {
-            revert ProtocolMessagingHub_ConfigurationError();
+            revert ProtocolMessagingHub__ConfigurationError();
+        }
+        if (feeToken_ == address(0)) {
+            revert ProtocolMessagingHub__FeeTokenIsZeroAddress();
         }
 
         centralRegistry = centralRegistry_;
         CVE = ICVE(centralRegistry.CVE());
-        WETH = IWETH(WETH_);
+        feeToken = feeToken_;
     }
 
     /// EXTERNAL FUNCTIONS ///
 
-    // Used when fees are received from other chains
+    /// @notice Used when fees are received from other chains.
+    /// @param token The token contract on the local chain.
+    /// @param amountLD The qty of local _token contract tokens.
     function sgReceive(
-        uint16, // chainId: The remote chainId sending the tokens
-        bytes memory, // srcAddress: The remote Bridge address
-        uint256, // nonce: The message ordering nonce
-        address token, // The token contract on the local chain
-        uint256 amountLD, // The qty of local _token contract tokens
-        bytes memory // payload: The bytes containing the _tokenOut, //_deadline, _amountOutMin, _toAddr
+        uint16 /* chainId */, // The remote chainId sending the tokens
+        bytes memory /* srcAddress */, // The remote Bridge address
+        uint256 /* nonce */, // The message ordering nonce
+        address token,
+        uint256 amountLD,
+        bytes memory /* payload */
     ) external payable {
-        // Stargate uses address(0) = ETH
-        if (token == address(0)) {
-            WETH.deposit{ value: amountLD }();
-            SafeTransferLib.safeTransfer(
-                address(WETH),
-                centralRegistry.feeAccumulator(),
-                amountLD
-            );
-        }
+        SafeTransferLib.safeTransfer(
+            token,
+            centralRegistry.feeAccumulator(),
+            amountLD
+        );
     }
 
     /// @notice Sends gauge emission information to multiple destination chains
-    /// @param dstChainId Destination chain ID where the message data should be sent
+    /// @param dstChainId Destination chain ID where the message data should be
+    ///                   sent
     /// @param toAddress The destination address specified by `dstChainId`
     /// @param payload The payload data that is sent along with the message
-    /// @param dstGasForCall The amount of gas that should be provided for the call on the destination chain
+    /// @param dstGasForCall The amount of gas that should be provided for
+    ///                      the call on the destination chain
     /// @param adapterParams Additional parameters for the adapter, as bytes
     /// @param callParams AdditionalParameters for the call, as LzCallParams
-    /// @dev   We redundantly pass adapterParams & callParams so we do not need to coerce data in the function,
-    ///        calls with this function will have messageType = 3
+    /// @dev We redundantly pass adapterParams & callParams so we do not
+    ///      need to coerce data in the function, calls with this function will
+    ///      have messageType = 3
     function sendGaugeEmissions(
         uint16 dstChainId,
         bytes32 toAddress,
@@ -121,7 +129,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
                 )
                 .isSupported < 2
         ) {
-            revert ProtocolMessagingHub_ConfigurationError();
+            revert ProtocolMessagingHub__ConfigurationError();
         }
         CVE.sendAndCall{
             value: CVE.estimateSendAndCallFee(
@@ -130,7 +138,9 @@ contract ProtocolMessagingHub is ReentrancyGuard {
                 0,
                 payload,
                 dstGasForCall,
-                false, // may need to turn on ZRO in the future but can redeploy ProtocolMessagingHub
+                // may need to turn on ZRO in the future but can redeploy
+                // ProtocolMessagingHub
+                false,
                 adapterParams
             )
         }(
@@ -144,7 +154,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         );
     }
 
-    /// @notice Sends WETH fees to the Fee Accumulator on `dstChainId`
+    /// @notice Sends fee tokens to the Fee Accumulator on `dstChainId`
     /// @param to The address Stargate Endpoint to call
     /// @param poolData Stargate pool routing data
     /// @param lzTxParams Supplemental LayerZero parameters for the transaction
@@ -154,7 +164,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         PoolData calldata poolData,
         lzTxObj calldata lzTxParams,
         bytes calldata payload
-    ) external onlyAuthorized {
+    ) external payable onlyAuthorized {
         {
             // Avoid stack too deep
             uint256 GETHChainId = centralRegistry.messagingToGETHChainId(
@@ -167,19 +177,20 @@ contract ProtocolMessagingHub is ReentrancyGuard {
 
             // Validate that the operator is authorized
             if (operator.isAuthorized < 2) {
-                revert ProtocolMessagingHub_ConfigurationError();
+                revert ProtocolMessagingHub__ConfigurationError();
             }
 
-            // Validate that the operator messaging chain matches the destination chain id
+            // Validate that the operator messaging chain matches
+            // the destination chain id
             if (operator.messagingChainId != poolData.dstChainId) {
-                revert ProtocolMessagingHub_ConfigurationError();
+                revert ProtocolMessagingHub__ConfigurationError();
             }
 
             // Validate that we are aiming for a supported chain
             if (
                 centralRegistry.supportedChainData(GETHChainId).isSupported < 2
             ) {
-                revert ProtocolMessagingHub_ConfigurationError();
+                revert ProtocolMessagingHub__ConfigurationError();
             }
         }
 
@@ -191,8 +202,6 @@ contract ProtocolMessagingHub is ReentrancyGuard {
             mstore(add(bytesTo, 32), to)
         }
 
-        // Might be worth it to remove this and let the transaction fail if we do not have sufficient funds attached
-        // @trust what do you think?
         {
             // Scoping to avoid stack too deep
             (uint256 messageFee, ) = this.quoteStargateFee(
@@ -205,25 +214,23 @@ contract ProtocolMessagingHub is ReentrancyGuard {
             );
 
             // Validate that we have sufficient fees to send crosschain
-            if (poolData.amountLD < messageFee) {
-                revert ProtocolMessagingHub_InsufficientGasToken();
+            if (msg.value < messageFee) {
+                revert ProtocolMessagingHub__InsufficientGasToken();
             }
         }
 
-        // Pull the WETH from the fee accumulator
-        // This will revert if we've misconfigured WETH contract supply by `amountLD`
+        // Pull the fee token from the fee accumulator
+        // This will revert if we've misconfigured fee token contract supply
+        // by `amountLD`
         SafeTransferLib.safeTransferFrom(
-            address(WETH),
+            feeToken,
             centralRegistry.feeAccumulator(),
             address(this),
             poolData.amountLD
         );
 
-        // Withdraw ETH from WETH contract
-        WETH.withdraw(poolData.amountLD);
-
         // Sends funds to feeAccumulator on another chain
-        swapRouter(endpoint).swap{ value: poolData.amountLD }(
+        swapRouter(endpoint).swap{ value: msg.value }(
             uint16(poolData.dstChainId),
             poolData.srcPoolId,
             poolData.dstPoolId,
@@ -236,12 +243,15 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         );
     }
 
-    /// @notice Handles actions based on the payload provided from calling CVE's OFT integration where:
-    ///         messageType = 1 corresponds to locked token information transfer
-    ///         messageType = 2 receiving finalized token epoch rewards information
-    ///         messageType = 3 corresponds to configuring gauge emissions for the chain
-    /// @dev amount is always set to 0 since we are moving data, or minting gauge emissions here
-    /// @param srcChainId The source chain ID from which the calldata was received
+    /// @notice Handles actions based on the payload provided from calling
+    ///         CVE's OFT integration where messageType:
+    ///         1: corresponds to locked token information transfer
+    ///         2: receiving finalized token epoch rewards information
+    ///         3: corresponds to configuring gauge emissions for the chain
+    /// @dev amount is always set to 0 since we are moving data,
+    ///      or minting gauge emissions here
+    /// @param srcChainId The source chain ID from which the calldata
+    ///                   was received
     /// @param srcAddress The CVE source address
     /// @param from The address from which the OFT was sent
     /// @param payload The message calldata, encoded in bytes
@@ -294,7 +304,8 @@ contract ProtocolMessagingHub is ReentrancyGuard {
                 )
             );
 
-        // Message Type 1: receive feeAccumulator information of locked tokens on a chain for the epoch
+        // Message Type 1: receive feeAccumulator information of locked tokens
+        //                 on a chain for the epoch
         if (messageType == 1) {
             IFeeAccumulator(centralRegistry.feeAccumulator())
                 .receiveCrossChainLockData(
@@ -314,7 +325,8 @@ contract ProtocolMessagingHub is ReentrancyGuard {
                 .receiveExecutableLockData(chainLockedAmount);
         }
 
-        // Message Type 3+: update gauge emissions for all gauge controllers on this chain
+        // Message Type 3+: update gauge emissions for all gauge controllers on
+        //                  this chain
         {
             // Use scoping for stack too deep logic
             uint256 lockBoostMultiplier = centralRegistry.lockBoostValue();
@@ -343,13 +355,15 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     }
 
     /// @notice Quotes gas cost for executing crosschain stargate swap
-    /// @dev Intentionally greatly overestimates so we are sure that a multicall will not fail
+    /// @dev Intentionally greatly overestimates so we are sure that
+    ///      a multicall will not fail
     function overEstimateStargateFee(
         swapRouter stargateRouter,
         uint8 functionType,
-        bytes calldata toAddress,
-        uint256 transactions
-    ) external view returns (uint256 fee, uint256) {
+        bytes calldata toAddress
+    ) external view returns (uint256) {
+        uint256 fee;
+
         if (block.chainid == 1) {
             (fee, ) = stargateRouter.quoteLayerZeroFee(
                 110, // Arbitrum Destination
@@ -362,8 +376,9 @@ contract ProtocolMessagingHub is ReentrancyGuard {
                     dstNativeAddr: ""
                 })
             );
+
             // Overestimate fees 5x to make sure it does not fail
-            return (fee * transactions * 5, 0);
+            return fee * 5;
         }
 
         (fee, ) = stargateRouter.quoteLayerZeroFee(
@@ -377,8 +392,9 @@ contract ProtocolMessagingHub is ReentrancyGuard {
                 dstNativeAddr: ""
             })
         );
+
         // Overestimate fees by estimating moving to mainnet every time
-        return (fee * transactions, 0);
+        return fee;
     }
 
     /// @notice Quotes gas cost for executing crosschain stargate swap
@@ -400,29 +416,35 @@ contract ProtocolMessagingHub is ReentrancyGuard {
             );
     }
 
-    /// @notice Permissioned function for returning fees reimbursed from Stargate to FeeAccumulator
-    /// @dev    This is for if we ever need to depreciate this ProtocolMessagingHub for another
+    /// @notice Permissioned function for returning fees reimbursed from
+    ///         Stargate to FeeAccumulator
+    /// @dev This is for if we ever need to depreciate this
+    ///      ProtocolMessagingHub for another
     function returnReimbursedFees() external onlyDaoPermissions {
-        WETH.deposit{ value: address(this).balance }();
-
         SafeTransferLib.safeTransfer(
-            address(WETH),
+            feeToken,
             centralRegistry.feeAccumulator(),
-            address(this).balance
+            IERC20(feeToken).balanceOf(address(this))
+        );
+        centralRegistry.feeAccumulator().call{ value: address(this).balance }(
+            ""
         );
     }
 
     /// PUBLIC FUNCTIONS ///
 
     /// @notice Sends veCVE locked token data to destination chain
-    /// @param dstChainId The destination chain ID where the message data should be sent
+    /// @param dstChainId The destination chain ID where the message data
+    ///                   should be sent
     /// @param toAddress The destination addresses specified by `dstChainId`
     /// @param payload The payload data that is sent along with the message
-    /// @param dstGasForCall The amount of gas that should be provided for the call on the destination chain
+    /// @param dstGasForCall The amount of gas that should be provided for
+    ///                      the call on the destination chain
     /// @param callParams AdditionalParameters for the call, as LzCallParams
     /// @param etherValue How much ether to attach to the transaction
-    /// @dev   We redundantly pass adapterParams & callParams so we do not need to coerce data in the function,
-    ///        calls with this function will have messageType = 1 or messageType = 2
+    /// @dev We redundantly pass adapterParams & callParams so we do not
+    ///      need to coerce data in the function, calls with this function will
+    ///      have messageType = 1 or messageType = 2
     function sendLockedTokenData(
         uint16 dstChainId,
         bytes32 toAddress,
@@ -439,7 +461,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
                 )
                 .isSupported < 2
         ) {
-            revert ProtocolMessagingHub_ConfigurationError();
+            revert ProtocolMessagingHub__ConfigurationError();
         }
 
         //

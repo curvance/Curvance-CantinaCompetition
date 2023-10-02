@@ -6,7 +6,6 @@ import { SwapperLib, IERC20 } from "contracts/libraries/SwapperLib.sol";
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 
-import { IWETH } from "contracts/interfaces/IWETH.sol";
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 import { ICVE, LzCallParams } from "contracts/interfaces/ICVE.sol";
 import { ICVELocker } from "contracts/interfaces/ICVELocker.sol";
@@ -20,7 +19,7 @@ contract FeeAccumulator is ReentrancyGuard {
     /// TYPES ///
 
     struct RewardToken {
-        uint256 isRewardToken;
+        uint256 isRewardToken; // 2 = yes; 0 or 1 = no
         uint256 forOTC;
     }
 
@@ -32,30 +31,37 @@ contract FeeAccumulator is ReentrancyGuard {
 
     /// CONSTANTS ///
 
-    address public constant ETHER = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE; // pseudo ETH address
-    IWETH public immutable WETH; // Address of WETH
-    uint256 public constant expScale = 1e18; // Scalar for math
+    /// @notice Address of fee token
+    address public immutable feeToken;
+    /// @notice Fee token decimal unit
+    uint256 public immutable feeTokenUnit;
+    /// @notice Scalar for math
+    uint256 public constant expScale = 1e18;
     uint256 public constant SLIPPED_MINIMUM = 9500; // 5%
     uint256 public constant SLIPPAGE_DENOMINATOR = 10000;
-    ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
+    /// @notice Curvance DAO hub
+    ICentralRegistry public immutable centralRegistry;
 
     /// STORAGE ///
 
     address internal _previousMessagingHub;
     address public router; // Address of Stargate Router
-    address payable public oneBalanceAddress;
+    address public oneBalanceAddress;
     uint256 internal _gasForCalldata;
     uint256 internal _gasForCrosschain;
 
     LockData[] public crossChainLockData;
-    // We store token data semi redundantly to save gas
-    // on daily operations and to help with gelato network structure
-    address[] public rewardTokens; // Used for Gelato Network bots to check what tokens to swap
-    mapping(address => RewardToken) public rewardTokenInfo; // 2 = yes; 0 or 1 = no
-    mapping(uint16 => mapping(uint256 => uint256)) public lockedTokenDataSent; // 2 = yes;
+    /// @dev We store token data semi redundantly to save gas
+    ///      on daily operations and to help with gelato network structure
+    ///      Used for Gelato Network bots to check what tokens to swap
+    address[] public rewardTokens;
+    mapping(address => RewardToken) public rewardTokenInfo;
+    /// @dev 2 = yes;
+    mapping(uint16 => mapping(uint256 => uint256)) public lockedTokenDataSent;
 
     /// ERRORS ///
 
+    error FeeAccumulator__FeeTokenIsZeroAddress();
     error FeeAccumulator__TransferFailed();
     error FeeAccumulator__ConfigurationError();
     error FeeAccumulator__InsufficientETH();
@@ -87,15 +93,11 @@ contract FeeAccumulator is ReentrancyGuard {
         _;
     }
 
-    receive() external payable {
-        WETH.deposit{ value: msg.value }();
-    }
-
     /// CONSTRUCTOR ///
 
     constructor(
         ICentralRegistry centralRegistry_,
-        address WETH_,
+        address feeToken_,
         address router_,
         uint256 gasForCalldata_,
         uint256 gasForCrosschain_
@@ -108,34 +110,41 @@ contract FeeAccumulator is ReentrancyGuard {
         ) {
             revert FeeAccumulator__ConfigurationError();
         }
+        if (feeToken_ == address(0)) {
+            revert FeeAccumulator__FeeTokenIsZeroAddress();
+        }
 
         centralRegistry = centralRegistry_;
-        WETH = IWETH(WETH_);
+        feeToken = feeToken_;
+        feeTokenUnit = 10 ** IERC20(feeToken_).decimals();
         router = router_;
         _gasForCalldata = gasForCalldata_;
         _gasForCrosschain = gasForCrosschain_;
 
-        // We document this incase we ever need to update messaging hub and want to revoke
+        // We document this incase we ever need to update messaging hub
+        // and want to revoke
         _previousMessagingHub = centralRegistry.protocolMessagingHub();
-
-        // We infinite approve WETH so that protocol messaging hub can drag funds to proper chain
-        SafeTransferLib.safeApprove(
-            WETH_,
-            _previousMessagingHub,
-            type(uint256).max
-        );
 
         // We set oneBalance address initially to DAO,
         // incase direct deposits to Gelato Network are not supported.
-        oneBalanceAddress = payable(centralRegistry.daoAddress());
+        oneBalanceAddress = centralRegistry.daoAddress();
+
+        // We infinite approve fee token so that protocol messaging hub
+        // can drag funds to proper chain
+        SafeTransferLib.safeApprove(
+            feeToken,
+            _previousMessagingHub,
+            type(uint256).max
+        );
     }
 
     /// EXTERNAL FUNCTIONS ///
 
     /// @dev Performs multiple token swaps in a single transaction,
-    ///      converting the provided tokens to ETH on behalf of Curvance DAO
+    ///      converting the provided tokens to fee token on behalf of Curvance DAO
     /// @param data Encoded swap data containing the details of each swap
-    /// @param tokens An array of token addresses corresponding to the swap data, specifying the tokens to be swapped
+    /// @param tokens An array of token addresses corresponding to
+    ///               the swap data, specifying the tokens to be swapped
     function multiSwap(
         bytes calldata data,
         address[] calldata tokens
@@ -161,30 +170,30 @@ contract FeeAccumulator is ReentrancyGuard {
                 revert FeeAccumulator__ConfigurationError();
             }
 
-            // Swap from token to output token (ETH)
-            // Note: Because this is ran directly from Gelato Network we know we will not have a malicious actor on swap routing
-            //       We route liquidity to 1Inch with tight slippage requirement, meaning we do not need to separately check
+            // Swap from token to output token (fee token)
+            // Note: Because this is ran directly from Gelato Network we know
+            //       we will not have a malicious actor on swap routing
+            //       We route liquidity to 1Inch with tight slippage
+            //       requirement, meaning we do not need to separately check
             //       for slippage here.
             SwapperLib.swap(swapDataArray[i]);
         }
 
-        uint256 fees = address(this).balance;
-        // We do not need expScale since ether and fees are already in 1e18 form
         // Transfer fees to Gelato Network One Balance or equivalent
-        fees =
-            fees -
-            _distributeETH(
-                oneBalanceAddress,
-                (fees * vaultCompoundFee()) / vaultYieldFee()
-            );
-        // Deposit remainder into WETH so protocol messaging hub can pull WETH to execute fee distribution
-        WETH.deposit{ value: fees }();
+        _distributeFeeToken(
+            oneBalanceAddress,
+            (IERC20(feeToken).balanceOf(address(this)) * vaultCompoundFee()) /
+                vaultYieldFee()
+        );
     }
 
-    /// @notice Performs an (OTC) operation for a specific token, transferring the token to the DAO in exchange for ETH.
-    /// @dev The function validates that the token is earmarked for OTC and calculates the amount of ETH required based on the current prices
-    /// @param tokenToOTC The address of the token to be OTC purchased by the DAO
-    /// @param amountToOTC The amount of the token to be OTC purchased by the DAO
+    /// @notice Performs an (OTC) operation for a specific token,
+    ///         transferring the token to the DAO in exchange for fee token.
+    /// @dev The function validates that the token is earmarked for OTC and
+    ///      calculates the amount of fee token required based on the
+    ///      current prices.
+    /// @param tokenToOTC Address of the token to be OTC purchased by the DAO.
+    /// @param amountToOTC Amount of the token to be OTC purchased by the DAO.
     function executeOTC(
         address tokenToOTC,
         uint256 amountToOTC
@@ -202,43 +211,36 @@ contract FeeAccumulator is ReentrancyGuard {
             true,
             true
         );
-        (uint256 priceETH, uint256 errorCodeETH) = PriceRouter.getPrice(
-            ETHER,
-            true,
-            true
-        );
+        (uint256 priceFeeToken, uint256 errorCodeFeeToken) = PriceRouter
+            .getPrice(feeToken, true, true);
 
         // Validate we got prices back
-        if (errorCodeETH == 2 || errorCodeSwap == 2) {
+        if (errorCodeFeeToken == 2 || errorCodeSwap == 2) {
             revert FeeAccumulator__ConfigurationError();
         }
 
         address daoAddress = centralRegistry.daoAddress();
         // Price Router always returns in 1e18 format based on decimals,
-        // so we do not need to worry about decimal differences here
-        uint256 ethRequiredForOTC = (priceSwap * amountToOTC) / priceETH;
+        // so we only need to worry about decimal differences here
+        uint256 feeTokenRequiredForOTC = (
+            ((priceSwap * amountToOTC * feeTokenUnit) / priceFeeToken)
+        ) / 10 ** IERC20(tokenToOTC).decimals();
 
-        // Validate enough ether has been provided
-        if (msg.value < ethRequiredForOTC) {
-            revert FeeAccumulator__InsufficientETH();
-        }
-
-        // We do not need expScale since ether and fees are already in 1e18 form
-        // Transfer fees to Gelato Network One Balance or equivalent
-        _distributeETH(
-            oneBalanceAddress,
-            (ethRequiredForOTC * vaultCompoundFee()) / vaultYieldFee()
+        SafeTransferLib.safeTransferFrom(
+            feeToken,
+            msg.sender,
+            address(this),
+            feeTokenRequiredForOTC
         );
-        // Deposit remainder into WETH so protocol messaging hub can pull WETH to execute fee distribution
-        WETH.deposit{ value: ethRequiredForOTC }();
+
+        // Transfer fees to Gelato Network One Balance or equivalent
+        _distributeFeeToken(
+            oneBalanceAddress,
+            (feeTokenRequiredForOTC * vaultCompoundFee()) / vaultYieldFee()
+        );
 
         // Give DAO the OTC'd tokens
         SafeTransferLib.safeTransfer(tokenToOTC, daoAddress, amountToOTC);
-
-        // If there was excess make sure we reimburse the DAO
-        if (msg.value > ethRequiredForOTC) {
-            _distributeETH(payable(daoAddress), msg.value - ethRequiredForOTC);
-        }
     }
 
     function sendLockedTokenData(
@@ -299,26 +301,32 @@ contract FeeAccumulator is ReentrancyGuard {
         );
     }
 
-    /// @notice Receives and records the epoch rewards for CVE from the protocol messaging hub
+    /// @notice Receives and records the epoch rewards for CVE from
+    ///         the protocol messaging hub
     /// @param epochRewardsPerCVE The rewards per CVE for the previous epoch
     function receiveExecutableLockData(
         uint256 epochRewardsPerCVE
     ) external onlyMessagingHub {
         ICVELocker locker = ICVELocker(centralRegistry.cveLocker());
-        // We validate nextEpochToDeliver in receiveCrossChainLockData on the chain calculating values
+        // We validate nextEpochToDeliver in receiveCrossChainLockData on
+        // the chain calculating values
         locker.recordEpochRewards(
             locker.nextEpochToDeliver(),
             epochRewardsPerCVE
         );
     }
 
-    /// @notice Receives and processes cross-chain lock data for the next undelivered epoch
-    /// @param data Struct containing ChainID and value, with extra room for epoch, and number of chains
-    ///             this is to avoid stack too deep issues in the function
-    /// @dev This function handles cross-chain communication and the coordination of fee routing,
-    ///      as well as recording and reporting epoch rewards on those fees.
-    ///      Uses both Layerzero and Stargate to execute all necessary actions. If sufficient chains have reported,
-    ///      it calculates rewards, notifies other chains, and executes crosschain fee routing.
+    /// @notice Receives and processes cross-chain lock data for
+    ///         the next undelivered epoch
+    /// @param data Struct containing ChainID and value, with extra room for
+    ///             epoch, and number of chains
+    ///             This is to avoid stack too deep issues in the function
+    /// @dev This function handles cross-chain communication and
+    ///      the coordination of fee routing, as well as recording and
+    ///      reporting epoch rewards on those fees.
+    ///      Uses both Layerzero and Stargate to execute all necessary actions.
+    ///      If sufficient chains have reported, it calculates rewards,
+    ///      notifies other chains, and executes crosschain fee routing.
     function receiveCrossChainLockData(
         EpochRolloverData memory data
     ) external onlyMessagingHub {
@@ -340,9 +348,11 @@ contract FeeAccumulator is ReentrancyGuard {
             data.epoch
         );
 
-        // If we have sufficient chains reported, time to execute epoch fee routing
+        // If we have sufficient chains reported,
+        // time to execute epoch fee routing
         if ((++data.numChainData) == centralRegistry.supportedChains()) {
-            // Execute Fee Routing to each chain and unwrap enough WETH to pay for LayerZero fees below
+            // Execute Fee Routing to each chain and unwrap enough fee token
+            // to pay for LayerZero fees below
             uint256 epochRewardsPerCVE = _executeEpochFeeRouter(
                 chainData,
                 data.numChainData,
@@ -403,8 +413,9 @@ contract FeeAccumulator is ReentrancyGuard {
     }
 
     /// @notice Sends all left over fees to new fee accumulator
-    /// @dev    This does not need to be permissioned as it pulls data directly
-    ///         from the Central Registry meaning a malicious actor cannot abuse this
+    /// @dev This does not need to be permissioned as it pulls data
+    ///      directly from the Central Registry meaning a malicious actor
+    ///      cannot abuse this
     function migrateFeeAccumulator() external {
         address newFeeAccumulator = centralRegistry.feeAccumulator();
         if (newFeeAccumulator == address(this)) {
@@ -434,37 +445,30 @@ contract FeeAccumulator is ReentrancyGuard {
             }
         }
 
-        tokenBalance = IERC20(address(WETH)).balanceOf(address(this));
-        // Send remaining WETH to new fee accumulator, if any
-        if (tokenBalance > 0) {
-            SafeTransferLib.safeTransfer(
-                address(WETH),
-                newFeeAccumulator,
-                tokenBalance
-            );
-        }
+        tokenBalance = IERC20(feeToken).balanceOf(address(this));
 
-        // Send remaining ETH to new fee accumulator, if any
-        if (address(this).balance > 0) {
-            _distributeETH(payable(newFeeAccumulator), address(this).balance);
+        // Send remaining fee token to new fee accumulator, if any
+        if (tokenBalance > 0) {
+            _distributeFeeToken(newFeeAccumulator, tokenBalance);
         }
     }
 
-    /// @notice Admin function to set Stargate router destination address to route fees
+    /// @notice Set Stargate router destination address to route fees
     function setStargateAddress(
         address payable newRouter
     ) external onlyDaoPermissions {
         router = newRouter;
     }
 
-    /// @notice Admin function to set Gelato Network one balance destination address to fund compounders
+    /// @notice Set Gelato Network one balance destination address to
+    ///         fund compounders
     function setOneBalanceAddress(
         address payable newOneBalanceAddress
     ) external onlyDaoPermissions {
         oneBalanceAddress = newOneBalanceAddress;
     }
 
-    /// @notice Admin function to set status on whether a token should be earmarked to OTC
+    /// @notice Set status on whether a token should be earmarked to OTC
     /// @param state 2 = earmarked; 0 or 1 = not earmarked
     function setEarmarked(
         address token,
@@ -481,27 +485,25 @@ contract FeeAccumulator is ReentrancyGuard {
         _gasForCrosschain = gasForCrosschain;
     }
 
-    /// @notice Moves WETH approval to new messaging hub
-    /// @dev    Removes prior messaging hub approval for maximum safety
+    /// @notice Moves fee token approval to new messaging hub
+    /// @dev Removes prior messaging hub approval for maximum safety
     function requeryMessagingHub() external onlyDaoPermissions {
         // Revoke previous approval
-        SafeTransferLib.safeApprove(address(WETH), _previousMessagingHub, 0);
+        SafeTransferLib.safeApprove(feeToken, _previousMessagingHub, 0);
 
         address messagingHub = centralRegistry.protocolMessagingHub();
 
-        // We infinite approve WETH so that protocol messaging hub can drag funds to proper chain
-        SafeTransferLib.safeApprove(
-            address(WETH),
-            messagingHub,
-            type(uint256).max
-        );
+        // We infinite approve fee token so that protocol messaging hub can
+        // drag funds to proper chain
+        SafeTransferLib.safeApprove(feeToken, messagingHub, type(uint256).max);
 
         _previousMessagingHub = messagingHub;
     }
 
-    /// @notice Adds multiple reward tokens to the contract for Gelato Network to read.
-    /// @dev    Does not fail on duplicate token, merely skips it and continues
-    /// @param newTokens An array of token addresses to be added as reward tokens
+    /// @notice Adds multiple reward tokens to the contract for Gelato Network
+    ///         to read.
+    /// @dev Does not fail on duplicate token, merely skips it and continues
+    /// @param newTokens Array of token addresses to be added as reward tokens
     function addRewardTokens(
         address[] calldata newTokens
     ) external onlyDaoPermissions {
@@ -521,7 +523,8 @@ contract FeeAccumulator is ReentrancyGuard {
         }
     }
 
-    /// @notice Removes a reward token from the contract data that Gelato Network reads
+    /// @notice Removes a reward token from the contract data that
+    ///         Gelato Network reads
     /// @dev    Will revert on unsupported token address
     /// @param rewardTokenToRemove The address of the token to be removed
     function removeRewardToken(
@@ -590,20 +593,22 @@ contract FeeAccumulator is ReentrancyGuard {
 
     /// INTERNAL FUNCTIONS ///
 
-    /// @notice Adds `newToken` to `rewardTokens` array and rewardTokenInfo mapping
-    ///         so gelato network knows a new token has been added
+    /// @notice Adds `newToken` to `rewardTokens` array and
+    ///         rewardTokenInfo mapping so gelato network knows a new token
+    ///         has been added
     function _addRewardToken(address newToken) internal {
         rewardTokens.push() = newToken;
         // Configure for isRewardToken = true and forOTC = false,
-        // if the DAO wants to accumulate reward tokens it will need to be passed
-        // by protocol governance
+        // if the DAO wants to accumulate reward tokens it will need to be
+        // passed by protocol governance
         rewardTokenInfo[newToken] = RewardToken({
             isRewardToken: 2,
             forOTC: 1
         });
     }
 
-    /// @notice Retrieves the balances of all reward tokens currently held by the Fee Accumulator
+    /// @notice Retrieves the balances of all reward tokens currently held by
+    ///         the Fee Accumulator
     /// @return tokenBalances An array of uint256 values,
     ///         representing the current balances of each reward token
     function getRewardTokenBalances()
@@ -628,13 +633,16 @@ contract FeeAccumulator is ReentrancyGuard {
         return tokenBalances;
     }
 
-    /// @notice Validates the inbound chain data and records it in the crossChainLockData
+    /// @notice Validates the inbound chain data and records it in the
+    ///         crossChainLockData
     /// @param value The locked amount value to record
     /// @param chainId The ID of the chain where the data is coming from
-    /// @param numChainData The number of data entries in the crossChainLockData
+    /// @param numChainData Number of data entries in the crossChainLockData
     /// @param epoch The current epoch number
-    /// @dev This function also serves the purpose of validating that the current data structure,
-    ///      if the data is stale or a repeat of the same chain, it resets and starts over.
+    /// @dev This function also serves the purpose of validating that
+    ///      the current data structure
+    ///      If the data is stale or a repeat of the same chain, it resets and
+    ///      starts over.
     function _validateAndRecordChainData(
         uint256 value,
         uint256 chainId,
@@ -643,8 +651,8 @@ contract FeeAccumulator is ReentrancyGuard {
     ) internal {
         if (numChainData > 0) {
             for (uint256 i; i < numChainData; ) {
-                // If somehow the data is stale or we are repeat adding the same chain,
-                // reset and start over
+                // If somehow the data is stale or we are repeat adding
+                // the same chain, reset and start over
                 if (
                     crossChainLockData[i].epoch < epoch ||
                     crossChainLockData[i].chainId == chainId
@@ -672,12 +680,12 @@ contract FeeAccumulator is ReentrancyGuard {
         uint256 numChains,
         uint256 epoch,
         uint256 chainId
-    ) internal returns (uint256 epochRewardsPerCVE) {
-        uint256 feeBalance = IERC20(address(WETH)).balanceOf(address(this));
+    ) internal returns (uint256) {
         IProtocolMessagingHub messagingHub = IProtocolMessagingHub(
             centralRegistry.protocolMessagingHub()
         );
         uint256 lockedTokens;
+        uint256 bridgeFee;
 
         {
             // Use scoping to avoid stack too deep
@@ -687,22 +695,16 @@ contract FeeAccumulator is ReentrancyGuard {
                 mstore(add(bytesAddress, 32), feeEstimateAddress)
             }
 
-            (uint256 stargateFees, ) = messagingHub.overEstimateStargateFee(
-                swapRouter(router),
-                1,
-                bytesAddress,
-                numChains
-            );
+            uint256 stargateFeesForChain = messagingHub
+                .overEstimateStargateFee(swapRouter(router), 1, bytesAddress);
 
-            uint256 layerZeroFees = _overEstimateLZFees(
+            uint256 layerZeroFeesForChain = _overEstimateLZFees(
                 chainData,
                 chainId,
-                numChains,
                 ICVE(centralRegistry.CVE())
             );
-            // Withdraw sufficient eth from WETH to cover layerzero fees
-            WETH.withdraw(layerZeroFees);
-            feeBalance = feeBalance - (stargateFees + layerZeroFees);
+
+            bridgeFee = stargateFeesForChain + layerZeroFeesForChain;
 
             IVeCVE veCVE = IVeCVE(centralRegistry.veCVE());
             lockedTokens = (veCVE.chainTokenPoints() -
@@ -711,7 +713,8 @@ contract FeeAccumulator is ReentrancyGuard {
 
         uint256 totalLockedTokens = lockedTokens;
 
-        // Record this chains reward data and prep remaining data for other chains
+        // Record this chains reward data and prep remaining data for
+        // other chains
         for (uint256 i; i < numChains; ) {
             totalLockedTokens += crossChainLockData[i].lockAmount;
 
@@ -720,18 +723,50 @@ contract FeeAccumulator is ReentrancyGuard {
             }
         }
 
-        uint256 feeBalanceForChain;
+        uint256 feeTokenBalance = IERC20(feeToken).balanceOf(address(this));
 
-        // Messaging Hub can pull WETH directly so we do not need to queue up any safe transfers
+        _sendFees(
+            messagingHub,
+            numChains,
+            feeTokenBalance,
+            totalLockedTokens,
+            bridgeFee
+        );
+
+        uint256 feeTokenBalanceForChain = (feeTokenBalance * lockedTokens) /
+            totalLockedTokens;
+        uint256 epochRewardsPerCVE = (feeTokenBalanceForChain * expScale) /
+            totalLockedTokens;
+
+        address locker = centralRegistry.cveLocker();
+
+        _distributeFeeToken(locker, feeTokenBalanceForChain);
+        ICVELocker(locker).recordEpochRewards(epoch, epochRewardsPerCVE);
+
+        return epochRewardsPerCVE;
+    }
+
+    function _sendFees(
+        IProtocolMessagingHub messagingHub,
+        uint256 numChains,
+        uint256 feeTokenBalance,
+        uint256 totalLockedTokens,
+        uint256 bridgeFee
+    ) internal {
+        ChainData memory chainData;
+        uint256 feeTokenBalanceForChain;
+
+        // Messaging Hub can pull fee token directly so we do not
+        // need to queue up any safe transfers
         for (uint256 i; i < numChains; ) {
             chainData = centralRegistry.supportedChainData(
                 crossChainLockData[i].chainId
             );
-            feeBalanceForChain =
-                (feeBalance * crossChainLockData[i].lockAmount) /
+            feeTokenBalanceForChain =
+                (feeTokenBalance * crossChainLockData[i].lockAmount) /
                 totalLockedTokens;
 
-            messagingHub.sendFees(
+            messagingHub.sendFees{ value: bridgeFee }(
                 router,
                 PoolData({
                     dstChainId: centralRegistry.GETHToMessagingChainId(
@@ -739,8 +774,8 @@ contract FeeAccumulator is ReentrancyGuard {
                     ),
                     srcPoolId: chainData.asSourceAux,
                     dstPoolId: chainData.asDestinationAux,
-                    amountLD: feeBalanceForChain,
-                    minAmountLD: (feeBalanceForChain * SLIPPED_MINIMUM) /
+                    amountLD: feeTokenBalanceForChain,
+                    minAmountLD: (feeTokenBalanceForChain * SLIPPED_MINIMUM) /
                         SLIPPAGE_DENOMINATOR
                 }),
                 lzTxObj({
@@ -755,28 +790,14 @@ contract FeeAccumulator is ReentrancyGuard {
                 ++i;
             }
         }
-
-        feeBalanceForChain = (feeBalance * lockedTokens) / totalLockedTokens;
-        epochRewardsPerCVE =
-            (feeBalanceForChain * expScale) /
-            totalLockedTokens;
-
-        WETH.withdraw(feeBalanceForChain);
-
-        address locker = centralRegistry.cveLocker();
-
-        _distributeETH(payable(locker), feeBalanceForChain);
-        ICVELocker(locker).recordEpochRewards(epoch, epochRewardsPerCVE);
-
-        return epochRewardsPerCVE;
     }
 
     /// @notice Quotes gas cost for executing crosschain stargate swap
-    /// @dev Intentionally greatly overestimates so we are sure that a multicall will not fail
+    /// @dev Intentionally greatly overestimates so we are sure that
+    ///      a multicall will not fail
     function _overEstimateLZFees(
         ChainData memory chainData,
         uint256 chainId,
-        uint256 numChains,
         ICVE CVE
     ) internal view returns (uint256) {
         uint16 version = 1;
@@ -790,12 +811,11 @@ contract FeeAccumulator is ReentrancyGuard {
                     uint64(_gasForCalldata),
                     false,
                     abi.encodePacked(version, _gasForCrosschain)
-                ) *
-                numChains *
-                3;
+                ) * 3;
         }
 
-        // Calculate fees based on all chains being eth since thats infinitely more expensive
+        // Calculate fees based on all chains being eth since thats infinitely
+        // more expensive
         return
             CVE.estimateSendAndCallFee(
                 uint16(centralRegistry.GETHToMessagingChainId(1)),
@@ -805,29 +825,15 @@ contract FeeAccumulator is ReentrancyGuard {
                 uint64(_gasForCalldata),
                 false,
                 abi.encodePacked(version, _gasForCrosschain)
-            ) * numChains;
+            );
     }
 
-    /// @notice Distributes the specified amount of ETH to
+    /// @notice Distributes the specified amount of fee token to
     ///         the recipient address
     /// @dev Has reEntry protection via multiSwap/daoOTC
-    /// @param recipient The address to receive the ETH
-    /// @param amount The amount of ETH to send
-    /// @return amount The total amount of ETH that was sent
-    function _distributeETH(
-        address payable recipient,
-        uint256 amount
-    ) internal returns (uint256) {
-        assembly {
-            // Revert if we failed to transfer eth
-            if iszero(call(gas(), recipient, amount, 0x00, 0x00, 0x00, 0x00)) {
-                // bytes4(keccak256(bytes("FeeAccumulator__TransferFailed()")))
-                mstore(0x00, 0xf7d285e4)
-                // return bytes 29-32 for the selector
-                revert(0x1c, 0x04)
-            }
-        }
-
-        return amount;
+    /// @param recipient The address to receive the fee token
+    /// @param amount The amount of fee token to send
+    function _distributeFeeToken(address recipient, uint256 amount) internal {
+        SafeTransferLib.safeTransfer(feeToken, recipient, amount);
     }
 }
