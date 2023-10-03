@@ -27,9 +27,15 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     /// @notice Curvance DAO hub
     ICentralRegistry public immutable centralRegistry;
 
+    /// STORAGE ///
+
+    /// @notice Address of Stargate Router
+    address public stargateRouter;
+
     /// ERRORS ///
 
     error ProtocolMessagingHub__FeeTokenIsZeroAddress();
+    error ProtocolMessagingHub__StargateRouterIsZeroAddress();
     error ProtocolMessagingHub__CallerIsNotStargateRouter();
     error ProtocolMessagingHub__ConfigurationError();
     error ProtocolMessagingHub__InsufficientGasToken();
@@ -65,7 +71,11 @@ contract ProtocolMessagingHub is ReentrancyGuard {
 
     /// CONSTRUCTOR ///
 
-    constructor(ICentralRegistry centralRegistry_, address feeToken_) {
+    constructor(
+        ICentralRegistry centralRegistry_,
+        address feeToken_,
+        address stargateRouter_
+    ) {
         if (
             !ERC165Checker.supportsInterface(
                 address(centralRegistry_),
@@ -77,13 +87,28 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         if (feeToken_ == address(0)) {
             revert ProtocolMessagingHub__FeeTokenIsZeroAddress();
         }
+        if (stargateRouter_ == address(0)) {
+            revert ProtocolMessagingHub__StargateRouterIsZeroAddress();
+        }
 
         centralRegistry = centralRegistry_;
         CVE = ICVE(centralRegistry.CVE());
         feeToken = feeToken_;
+        stargateRouter = stargateRouter_;
     }
 
     /// EXTERNAL FUNCTIONS ///
+
+    /// @notice Set Stargate router destination address to route fees
+    function setStargateAddress(
+        address payable newStargateRouter
+    ) external onlyDaoPermissions {
+        if (newStargateRouter == address(0)) {
+            revert ProtocolMessagingHub__StargateRouterIsZeroAddress();
+        }
+
+        stargateRouter = newStargateRouter;
+    }
 
     /// @notice Used when fees are received from other chains.
     /// @param token The token contract on the local chain.
@@ -96,10 +121,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         uint256 amountLD,
         bytes memory /* payload */
     ) external payable {
-        if (
-            msg.sender !=
-            IFeeAccumulator(centralRegistry.feeAccumulator()).stargateRouter()
-        ) {
+        if (msg.sender != stargateRouter) {
             revert ProtocolMessagingHub__CallerIsNotStargateRouter();
         }
 
@@ -162,7 +184,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     }
 
     /// @notice Sends fee tokens to the Messaging Hub on `dstChainId`
-    /// @param to The address of Messaging Hub on `dstChainId` 
+    /// @param to The address of Messaging Hub on `dstChainId`
     /// @param poolData Stargate pool routing data
     /// @param lzTxParams Supplemental LayerZero parameters for the transaction
     /// @param payload Additional payload data
@@ -201,17 +223,12 @@ contract ProtocolMessagingHub is ReentrancyGuard {
             }
         }
 
-        address feeAccumulator = centralRegistry.feeAccumulator();
-        address stargateRouter = IFeeAccumulator(feeAccumulator)
-            .stargateRouter();
-
         bytes memory bytesTo = new bytes(32);
         assembly {
             mstore(add(bytesTo, 32), to)
         }
 
         (uint256 messageFee, ) = _quoteStargateFee(
-            SwapRouter(stargateRouter),
             uint16(poolData.dstChainId),
             1,
             bytesTo,
@@ -229,7 +246,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         // by `amountLD`
         SafeTransferLib.safeTransferFrom(
             feeToken,
-            feeAccumulator,
+            centralRegistry.feeAccumulator(),
             address(this),
             poolData.amountLD
         );
@@ -369,14 +386,13 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     /// @dev Intentionally greatly overestimates so we are sure that
     ///      a multicall will not fail
     function overEstimateStargateFee(
-        SwapRouter stargateRouter,
         uint8 functionType,
         bytes calldata toAddress
     ) external view returns (uint256) {
         uint256 fee;
 
         if (block.chainid == 1) {
-            (fee, ) = stargateRouter.quoteLayerZeroFee(
+            (fee, ) = SwapRouter(stargateRouter).quoteLayerZeroFee(
                 110, // Arbitrum Destination
                 functionType,
                 toAddress,
@@ -392,7 +408,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
             return fee * 5;
         }
 
-        (fee, ) = stargateRouter.quoteLayerZeroFee(
+        (fee, ) = SwapRouter(stargateRouter).quoteLayerZeroFee(
             101, // Ethereum Destination
             functionType,
             toAddress,
@@ -410,7 +426,6 @@ contract ProtocolMessagingHub is ReentrancyGuard {
 
     /// @notice Quotes gas cost for executing crosschain stargate swap
     function quoteStargateFee(
-        SwapRouter stargateRouter,
         uint16 _dstChainId,
         uint8 _functionType,
         bytes calldata _toAddress,
@@ -419,7 +434,6 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     ) external view returns (uint256, uint256) {
         return
             _quoteStargateFee(
-                stargateRouter,
                 _dstChainId,
                 _functionType,
                 _toAddress,
@@ -492,7 +506,6 @@ contract ProtocolMessagingHub is ReentrancyGuard {
 
     /// @notice Quotes gas cost for executing crosschain stargate swap
     function _quoteStargateFee(
-        SwapRouter stargateRouter,
         uint16 _dstChainId,
         uint8 _functionType,
         bytes memory _toAddress,
@@ -500,7 +513,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         LzTxObj memory _lzTxParams
     ) internal view returns (uint256, uint256) {
         return
-            stargateRouter.quoteLayerZeroFee(
+            SwapRouter(stargateRouter).quoteLayerZeroFee(
                 _dstChainId,
                 _functionType,
                 _toAddress,

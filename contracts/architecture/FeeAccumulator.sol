@@ -47,8 +47,6 @@ contract FeeAccumulator is ReentrancyGuard {
     /// STORAGE ///
 
     address internal _previousMessagingHub;
-    /// @notice Address of Stargate Router
-    address public stargateRouter;
     /// @notice Address of Gelato 1Balance
     IGelatoOneBalance public gelatoOneBalance;
     uint256 internal _gasForCalldata;
@@ -102,7 +100,6 @@ contract FeeAccumulator is ReentrancyGuard {
     constructor(
         ICentralRegistry centralRegistry_,
         address feeToken_,
-        address stargateRouter_,
         uint256 gasForCalldata_,
         uint256 gasForCrosschain_
     ) {
@@ -121,7 +118,6 @@ contract FeeAccumulator is ReentrancyGuard {
         centralRegistry = centralRegistry_;
         feeToken = feeToken_;
         feeTokenUnit = 10 ** IERC20(feeToken_).decimals();
-        stargateRouter = stargateRouter_;
         _gasForCalldata = gasForCalldata_;
         _gasForCrosschain = gasForCrosschain_;
 
@@ -458,13 +454,6 @@ contract FeeAccumulator is ReentrancyGuard {
         }
     }
 
-    /// @notice Set Stargate router destination address to route fees
-    function setStargateAddress(
-        address payable newStargateRouter
-    ) external onlyDaoPermissions {
-        stargateRouter = newStargateRouter;
-    }
-
     /// @notice Set Gelato Network one balance destination address to
     ///         fund compounders
     function setOneBalanceAddress(
@@ -688,13 +677,10 @@ contract FeeAccumulator is ReentrancyGuard {
         IProtocolMessagingHub messagingHub = IProtocolMessagingHub(
             centralRegistry.protocolMessagingHub()
         );
-        uint256 lockedTokens;
 
-        {
-            IVeCVE veCVE = IVeCVE(centralRegistry.veCVE());
-            lockedTokens = (veCVE.chainTokenPoints() -
-                veCVE.chainUnlocksByEpoch(epoch));
-        }
+        IVeCVE veCVE = IVeCVE(centralRegistry.veCVE());
+        uint256 lockedTokens = (veCVE.chainTokenPoints() -
+            veCVE.chainUnlocksByEpoch(epoch));
 
         uint256 totalLockedTokens = lockedTokens;
 

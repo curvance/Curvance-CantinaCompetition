@@ -2,7 +2,7 @@
 pragma solidity >=0.8.17;
 
 import { LzCallParams } from "contracts/interfaces/ICVE.sol";
-import { SwapRouter, LzTxObj } from "contracts/interfaces/layerzero/IStargateRouter.sol";
+import { LzTxObj } from "contracts/interfaces/layerzero/IStargateRouter.sol";
 
 /// @param dstChainId Destination Chain ID
 /// @param srcPoolId Source Pool ID
@@ -19,13 +19,11 @@ struct PoolData {
 
 interface IProtocolMessagingHub {
     function overEstimateStargateFee(
-        SwapRouter stargateRouter,
         uint8 functionType,
         bytes calldata toAddress
     ) external view returns (uint256);
 
     function quoteStargateFee(
-        SwapRouter stargateRouter,
         uint16 dstChainId,
         uint8 functionType,
         bytes calldata toAddress,
