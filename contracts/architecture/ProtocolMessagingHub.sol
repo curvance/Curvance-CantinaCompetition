@@ -171,7 +171,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         PoolData calldata poolData,
         LzTxObj calldata lzTxParams,
         bytes calldata payload
-    ) external payable onlyAuthorized {
+    ) external onlyAuthorized {
         {
             // Avoid stack too deep
             uint256 GETHChainId = centralRegistry.messagingToGETHChainId(
@@ -201,30 +201,28 @@ contract ProtocolMessagingHub is ReentrancyGuard {
             }
         }
 
-        address stargateRouter = IFeeAccumulator(
-            centralRegistry.feeAccumulator()
-        ).stargateRouter();
+        address feeAccumulator = centralRegistry.feeAccumulator();
+        address stargateRouter = IFeeAccumulator(feeAccumulator)
+            .stargateRouter();
 
         bytes memory bytesTo = new bytes(32);
         assembly {
             mstore(add(bytesTo, 32), to)
         }
 
-        {
-            // Scoping to avoid stack too deep
-            (uint256 messageFee, ) = this.quoteStargateFee(
-                SwapRouter(stargateRouter),
-                uint16(poolData.dstChainId),
-                1,
-                bytesTo,
-                "",
-                lzTxParams
-            );
+        // Scoping to avoid stack too deep
+        (uint256 messageFee, ) = _quoteStargateFee(
+            SwapRouter(stargateRouter),
+            uint16(poolData.dstChainId),
+            1,
+            bytesTo,
+            "",
+            lzTxParams
+        );
 
-            // Validate that we have sufficient fees to send crosschain
-            if (msg.value < messageFee) {
-                revert ProtocolMessagingHub__InsufficientGasToken();
-            }
+        // Validate that we have sufficient fees to send crosschain
+        if (address(this).balance < messageFee) {
+            revert ProtocolMessagingHub__InsufficientGasToken();
         }
 
         // Pull the fee token from the fee accumulator
@@ -232,7 +230,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         // by `amountLD`
         SafeTransferLib.safeTransferFrom(
             feeToken,
-            centralRegistry.feeAccumulator(),
+            feeAccumulator,
             address(this),
             poolData.amountLD
         );
@@ -244,7 +242,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         );
 
         // Sends funds to feeAccumulator on another chain
-        SwapRouter(stargateRouter).swap{ value: msg.value }(
+        SwapRouter(stargateRouter).swap{ value: messageFee }(
             uint16(poolData.dstChainId),
             poolData.srcPoolId,
             poolData.dstPoolId,
@@ -421,7 +419,8 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         LzTxObj memory _lzTxParams
     ) external view returns (uint256, uint256) {
         return
-            stargateRouter.quoteLayerZeroFee(
+            _quoteStargateFee(
+                stargateRouter,
                 _dstChainId,
                 _functionType,
                 _toAddress,
@@ -488,5 +487,26 @@ contract ProtocolMessagingHub is ReentrancyGuard {
             dstGasForCall,
             callParams
         );
+    }
+
+    /// INTERNAL FUNCTIONS ///
+
+    /// @notice Quotes gas cost for executing crosschain stargate swap
+    function _quoteStargateFee(
+        SwapRouter stargateRouter,
+        uint16 _dstChainId,
+        uint8 _functionType,
+        bytes memory _toAddress,
+        bytes memory _transferAndCallPayload,
+        LzTxObj memory _lzTxParams
+    ) internal view returns (uint256, uint256) {
+        return
+            stargateRouter.quoteLayerZeroFee(
+                _dstChainId,
+                _functionType,
+                _toAddress,
+                _transferAndCallPayload,
+                _lzTxParams
+            );
     }
 }

@@ -13,7 +13,7 @@ import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { IGelatoOneBalance } from "contracts/interfaces/IGelatoOneBalance.sol";
 import { IVeCVE } from "contracts/interfaces/IVeCVE.sol";
 import { IProtocolMessagingHub, PoolData } from "contracts/interfaces/IProtocolMessagingHub.sol";
-import { SwapRouter, LzTxObj } from "contracts/interfaces/layerzero/IStargateRouter.sol";
+import { LzTxObj } from "contracts/interfaces/layerzero/IStargateRouter.sol";
 import { EpochRolloverData } from "contracts/interfaces/IFeeAccumulator.sol";
 import { ICentralRegistry, ChainData } from "contracts/interfaces/ICentralRegistry.sol";
 
@@ -362,8 +362,7 @@ contract FeeAccumulator is ReentrancyGuard {
             uint256 epochRewardsPerCVE = _executeEpochFeeRouter(
                 chainData,
                 data.numChainData,
-                data.epoch,
-                data.chainId
+                data.epoch
             );
 
             ICVE CVE = ICVE(centralRegistry.CVE());
@@ -684,14 +683,12 @@ contract FeeAccumulator is ReentrancyGuard {
     function _executeEpochFeeRouter(
         ChainData memory chainData,
         uint256 numChains,
-        uint256 epoch,
-        uint256 chainId
+        uint256 epoch
     ) internal returns (uint256) {
         IProtocolMessagingHub messagingHub = IProtocolMessagingHub(
             centralRegistry.protocolMessagingHub()
         );
         uint256 lockedTokens;
-        uint256 bridgeFee;
 
         {
             // Use scoping to avoid stack too deep
@@ -700,21 +697,6 @@ contract FeeAccumulator is ReentrancyGuard {
             assembly {
                 mstore(add(bytesAddress, 32), feeEstimateAddress)
             }
-
-            uint256 stargateFeesForChain = messagingHub
-                .overEstimateStargateFee(
-                    SwapRouter(stargateRouter),
-                    1,
-                    bytesAddress
-                );
-
-            uint256 layerZeroFeesForChain = _overEstimateLZFees(
-                chainData,
-                chainId,
-                ICVE(centralRegistry.CVE())
-            );
-
-            bridgeFee = stargateFeesForChain + layerZeroFeesForChain;
 
             IVeCVE veCVE = IVeCVE(centralRegistry.veCVE());
             lockedTokens = (veCVE.chainTokenPoints() -
@@ -734,36 +716,6 @@ contract FeeAccumulator is ReentrancyGuard {
         }
 
         uint256 feeTokenBalance = IERC20(feeToken).balanceOf(address(this));
-
-        _sendFees(
-            messagingHub,
-            numChains,
-            feeTokenBalance,
-            totalLockedTokens,
-            bridgeFee
-        );
-
-        uint256 feeTokenBalanceForChain = (feeTokenBalance * lockedTokens) /
-            totalLockedTokens;
-        uint256 epochRewardsPerCVE = (feeTokenBalanceForChain * expScale) /
-            totalLockedTokens;
-
-        address locker = centralRegistry.cveLocker();
-
-        _distributeFeeToken(locker, feeTokenBalanceForChain);
-        ICVELocker(locker).recordEpochRewards(epoch, epochRewardsPerCVE);
-
-        return epochRewardsPerCVE;
-    }
-
-    function _sendFees(
-        IProtocolMessagingHub messagingHub,
-        uint256 numChains,
-        uint256 feeTokenBalance,
-        uint256 totalLockedTokens,
-        uint256 bridgeFee
-    ) internal {
-        ChainData memory chainData;
         uint256 feeTokenBalanceForChain;
 
         // Messaging Hub can pull fee token directly so we do not
@@ -776,7 +728,7 @@ contract FeeAccumulator is ReentrancyGuard {
                 (feeTokenBalance * crossChainLockData[i].lockAmount) /
                 totalLockedTokens;
 
-            messagingHub.sendFees{ value: bridgeFee }(
+            messagingHub.sendFees(
                 stargateRouter,
                 PoolData({
                     dstChainId: centralRegistry.GETHToMessagingChainId(
@@ -800,6 +752,19 @@ contract FeeAccumulator is ReentrancyGuard {
                 ++i;
             }
         }
+
+        feeTokenBalanceForChain =
+            (feeTokenBalance * lockedTokens) /
+            totalLockedTokens;
+        uint256 epochRewardsPerCVE = (feeTokenBalanceForChain * expScale) /
+            totalLockedTokens;
+
+        address locker = centralRegistry.cveLocker();
+
+        _distributeFeeToken(locker, feeTokenBalanceForChain);
+        ICVELocker(locker).recordEpochRewards(epoch, epochRewardsPerCVE);
+
+        return epochRewardsPerCVE;
     }
 
     /// @notice Quotes gas cost for executing crosschain stargate swap

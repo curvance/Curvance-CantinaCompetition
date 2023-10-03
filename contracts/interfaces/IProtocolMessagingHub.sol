@@ -52,5 +52,5 @@ interface IProtocolMessagingHub {
         PoolData calldata poolData,
         LzTxObj calldata lzTxParams,
         bytes calldata payload
-    ) external payable;
+    ) external;
 }
