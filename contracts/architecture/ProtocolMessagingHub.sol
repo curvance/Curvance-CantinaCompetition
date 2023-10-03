@@ -384,19 +384,19 @@ contract ProtocolMessagingHub is ReentrancyGuard {
 
     /// @notice Quotes gas cost for executing crosschain stargate swap
     function quoteStargateFee(
-        uint16 _dstChainId,
-        uint8 _functionType,
-        bytes calldata _toAddress,
-        bytes calldata _transferAndCallPayload,
-        LzTxObj memory _lzTxParams
+        uint16 dstChainId,
+        uint8 functionType,
+        bytes calldata toAddress,
+        bytes calldata transferAndCallPayload,
+        LzTxObj calldata lzTxParams
     ) external view returns (uint256, uint256) {
         return
             _quoteStargateFee(
-                _dstChainId,
-                _functionType,
-                _toAddress,
-                _transferAndCallPayload,
-                _lzTxParams
+                dstChainId,
+                functionType,
+                toAddress,
+                transferAndCallPayload,
+                lzTxParams
             );
     }
 
@@ -409,9 +409,6 @@ contract ProtocolMessagingHub is ReentrancyGuard {
             feeToken,
             centralRegistry.feeAccumulator(),
             IERC20(feeToken).balanceOf(address(this))
-        );
-        centralRegistry.feeAccumulator().call{ value: address(this).balance }(
-            ""
         );
     }
 
@@ -448,7 +445,6 @@ contract ProtocolMessagingHub is ReentrancyGuard {
             revert ProtocolMessagingHub__ConfigurationError();
         }
 
-        //
         CVE.sendAndCall{ value: etherValue }(
             address(this),
             dstChainId,
@@ -464,19 +460,19 @@ contract ProtocolMessagingHub is ReentrancyGuard {
 
     /// @notice Quotes gas cost for executing crosschain stargate swap
     function _quoteStargateFee(
-        uint16 _dstChainId,
-        uint8 _functionType,
-        bytes memory _toAddress,
-        bytes memory _transferAndCallPayload,
-        LzTxObj memory _lzTxParams
+        uint16 dstChainId,
+        uint8 functionType,
+        bytes memory toAddress,
+        bytes memory transferAndCallPayload,
+        LzTxObj memory lzTxParams
     ) internal view returns (uint256, uint256) {
         return
             SwapRouter(stargateRouter).quoteLayerZeroFee(
-                _dstChainId,
-                _functionType,
-                _toAddress,
-                _transferAndCallPayload,
-                _lzTxParams
+                dstChainId,
+                functionType,
+                toAddress,
+                transferAndCallPayload,
+                lzTxParams
             );
     }
 }
