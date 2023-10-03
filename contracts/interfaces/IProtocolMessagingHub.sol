@@ -18,11 +18,6 @@ struct PoolData {
 }
 
 interface IProtocolMessagingHub {
-    function overEstimateStargateFee(
-        uint8 functionType,
-        bytes calldata toAddress
-    ) external view returns (uint256);
-
     function quoteStargateFee(
         uint16 dstChainId,
         uint8 functionType,

@@ -383,48 +383,6 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     }
 
     /// @notice Quotes gas cost for executing crosschain stargate swap
-    /// @dev Intentionally greatly overestimates so we are sure that
-    ///      a multicall will not fail
-    function overEstimateStargateFee(
-        uint8 functionType,
-        bytes calldata toAddress
-    ) external view returns (uint256) {
-        uint256 fee;
-
-        if (block.chainid == 1) {
-            (fee, ) = SwapRouter(stargateRouter).quoteLayerZeroFee(
-                110, // Arbitrum Destination
-                functionType,
-                toAddress,
-                "",
-                LzTxObj({
-                    dstGasForCall: 0,
-                    dstNativeAmount: 0,
-                    dstNativeAddr: ""
-                })
-            );
-
-            // Overestimate fees 5x to make sure it does not fail
-            return fee * 5;
-        }
-
-        (fee, ) = SwapRouter(stargateRouter).quoteLayerZeroFee(
-            101, // Ethereum Destination
-            functionType,
-            toAddress,
-            "",
-            LzTxObj({
-                dstGasForCall: 0,
-                dstNativeAmount: 0,
-                dstNativeAddr: ""
-            })
-        );
-
-        // Overestimate fees by estimating moving to mainnet every time
-        return fee;
-    }
-
-    /// @notice Quotes gas cost for executing crosschain stargate swap
     function quoteStargateFee(
         uint16 _dstChainId,
         uint8 _functionType,
