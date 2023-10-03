@@ -63,6 +63,14 @@ contract TestVelodromeStableLPAdapter is TestBasePriceRouter {
         assertGt(price, 0);
     }
 
+    function testRevertAfterAssetRemove() public {
+        testReturnsCorrectPrice();
+
+        adapter.removeAsset(DAI_USDC);
+        vm.expectRevert("PriceRouter: no feeds available");
+        priceRouter.getPrice(DAI_USDC, true, false);
+    }
+
     function testPriceDoesNotChangeAfterLargeSwap() public {
         chainlinkAdaptor = new ChainlinkAdaptor(
             ICentralRegistry(address(centralRegistry))

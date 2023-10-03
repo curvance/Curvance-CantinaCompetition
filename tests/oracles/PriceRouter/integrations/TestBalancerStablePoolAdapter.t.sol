@@ -85,4 +85,12 @@ contract TestBalancerStablePoolAdapter is TestBasePriceRouter {
         assertEq(errorCode, 0);
         assertGt(price, 0);
     }
+
+    function testRevertAfterAssetRemove() public {
+        testReturnsCorrectPrice();
+
+        adapter.removeAsset(WETH_RETH);
+        vm.expectRevert("PriceRouter: no feeds available");
+        priceRouter.getPrice(WETH_RETH, true, false);
+    }
 }
