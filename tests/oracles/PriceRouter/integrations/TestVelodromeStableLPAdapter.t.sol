@@ -3,6 +3,7 @@ pragma solidity 0.8.17;
 
 import { VelodromeStableLPAdaptor } from "contracts/oracles/adaptors/velodrome/VelodromeStableLPAdaptor.sol";
 import { ChainlinkAdaptor } from "contracts/oracles/adaptors/chainlink/ChainlinkAdaptor.sol";
+import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { VelodromeLib } from "contracts/market/zapper/protocols/VelodromeLib.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
@@ -12,6 +13,8 @@ contract TestVelodromeStableLPAdapter is TestBasePriceRouter {
     address private DAI = address(0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1);
     address private USDC = address(0x7F5c764cBc14f9669B88837ca1490cCa17c31607);
 
+    address private CHAINLINK_PRICE_FEED_ETH =
+        0xb7B9A39CC63f856b90B364911CC324dC46aC1770;
     address private CHAINLINK_PRICE_FEED_DAI =
         0x8dBa75e83DA73cc766A7e5a0ee71F656BAb470d6;
     address private CHAINLINK_PRICE_FEED_USDC =
@@ -28,7 +31,12 @@ contract TestVelodromeStableLPAdapter is TestBasePriceRouter {
         _fork("ETH_NODE_URI_OPTIMISM", 110333246);
 
         _deployCentralRegistry();
-        _deployPriceRouter();
+
+        priceRouter = new PriceRouter(
+            ICentralRegistry(address(centralRegistry)),
+            CHAINLINK_PRICE_FEED_ETH
+        );
+        centralRegistry.setPriceRouter(address(priceRouter));
 
         adapter = new VelodromeStableLPAdaptor(
             ICentralRegistry(address(centralRegistry))

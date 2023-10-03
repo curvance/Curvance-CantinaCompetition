@@ -9,7 +9,7 @@ import { VelodromeLib } from "contracts/market/zapper/protocols/VelodromeLib.sol
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { TestBasePriceRouter } from "../TestBasePriceRouter.sol";
 
-contract TestVelodromeVolatileLPAdapter is TestBasePriceRouter {
+contract TestPriceRouter is TestBasePriceRouter {
     address private WETH = address(0x4200000000000000000000000000000000000006);
     address private USDC = address(0x7F5c764cBc14f9669B88837ca1490cCa17c31607);
 
@@ -29,6 +29,7 @@ contract TestVelodromeVolatileLPAdapter is TestBasePriceRouter {
         _fork("ETH_NODE_URI_OPTIMISM", 110333246);
 
         _deployCentralRegistry();
+
         priceRouter = new PriceRouter(
             ICentralRegistry(address(centralRegistry)),
             CHAINLINK_PRICE_FEED_ETH
@@ -42,14 +43,7 @@ contract TestVelodromeVolatileLPAdapter is TestBasePriceRouter {
 
         priceRouter.addApprovedAdaptor(address(adapter));
         priceRouter.addAssetPriceFeed(WETH_USDC, address(adapter));
-    }
 
-    function testRevertWhenUnderlyingChainAssetPriceNotSet() public {
-        vm.expectRevert("PriceRouter: no feeds available");
-        priceRouter.getPrice(WETH_USDC, true, false);
-    }
-
-    function testReturnsCorrectPrice() public {
         chainlinkAdaptor = new ChainlinkAdaptor(
             ICentralRegistry(address(centralRegistry))
         );
@@ -58,62 +52,49 @@ contract TestVelodromeVolatileLPAdapter is TestBasePriceRouter {
         priceRouter.addApprovedAdaptor(address(chainlinkAdaptor));
         priceRouter.addAssetPriceFeed(USDC, address(chainlinkAdaptor));
         priceRouter.addAssetPriceFeed(WETH, address(chainlinkAdaptor));
+    }
 
-        (uint256 price, uint256 errorCode) = priceRouter.getPrice(
+    function testReturnsCorrectPrice() public {
+        uint256 higherPrice;
+        uint256 lowerPrice;
+        uint256 errorCode;
+
+        (higherPrice, errorCode) = priceRouter.getPrice(
             WETH_USDC,
             true,
             false
         );
         assertEq(errorCode, 0);
-        assertGt(price, 0);
+        assertGt(higherPrice, 0);
+
+        (lowerPrice, errorCode) = priceRouter.getPrice(WETH_USDC, true, true);
+        assertEq(errorCode, 0);
+        assertGt(lowerPrice, 0);
+        assertEq(higherPrice, lowerPrice);
+
+        (higherPrice, errorCode) = priceRouter.getPrice(
+            WETH_USDC,
+            false,
+            false
+        );
+        assertEq(errorCode, 0);
+        assertGt(higherPrice, 0);
+
+        (lowerPrice, errorCode) = priceRouter.getPrice(WETH_USDC, false, true);
+        assertEq(errorCode, 0);
+        assertGt(lowerPrice, 0);
+        assertEq(higherPrice, lowerPrice);
     }
 
     function testRevertAfterAssetRemove() public {
-        testReturnsCorrectPrice();
-
         adapter.removeAsset(WETH_USDC);
         vm.expectRevert("PriceRouter: no feeds available");
         priceRouter.getPrice(WETH_USDC, true, false);
     }
 
-    function testPriceDoesNotChangeAfterLargeSwap() public {
-        chainlinkAdaptor = new ChainlinkAdaptor(
-            ICentralRegistry(address(centralRegistry))
-        );
-        chainlinkAdaptor.addAsset(USDC, CHAINLINK_PRICE_FEED_USDC, true);
-        chainlinkAdaptor.addAsset(WETH, CHAINLINK_PRICE_FEED_ETH, true);
-        priceRouter.addApprovedAdaptor(address(chainlinkAdaptor));
-        priceRouter.addAssetPriceFeed(USDC, address(chainlinkAdaptor));
-        priceRouter.addAssetPriceFeed(WETH, address(chainlinkAdaptor));
+    function testWithDualPriceFeed() public {}
 
-        uint256 errorCode;
-        uint256 priceBefore;
-        (priceBefore, errorCode) = priceRouter.getPrice(
-            WETH_USDC,
-            true,
-            false
-        );
-        assertEq(errorCode, 0);
-        assertGt(priceBefore, 0);
+    function testMTokenSupport() public {}
 
-        // try large swap (500K USDC)
-        uint256 amount = 500000e6;
-        deal(USDC, address(this), amount);
-        VelodromeLib._swapExactTokensForTokens(
-            veloRouter,
-            WETH_USDC,
-            USDC,
-            WETH,
-            amount,
-            false
-        );
-
-        assertEq(IERC20(USDC).balanceOf(address(this)), 0);
-        assertGt(IERC20(WETH).balanceOf(address(this)), 0);
-
-        uint256 priceAfter;
-        (priceAfter, errorCode) = priceRouter.getPrice(WETH_USDC, true, false);
-        assertEq(errorCode, 0);
-        assertApproxEqRel(priceBefore, priceAfter, 100000);
-    }
+    function testApproveAdapter() public {}
 }
