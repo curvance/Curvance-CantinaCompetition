@@ -117,7 +117,6 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     /// @param payload The payload data that is sent along with the message
     /// @param dstGasForCall The amount of gas that should be provided for
     ///                      the call on the destination chain
-    /// @param adapterParams Additional parameters for the adapter, as bytes
     /// @param callParams AdditionalParameters for the call, as LzCallParams
     /// @dev We redundantly pass adapterParams & callParams so we do not
     ///      need to coerce data in the function, calls with this function will
@@ -127,7 +126,6 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         bytes32 toAddress,
         bytes calldata payload,
         uint64 dstGasForCall,
-        bytes calldata adapterParams,
         LzCallParams calldata callParams
     ) external onlyAuthorized {
         // Validate that we are aiming for a supported chain
@@ -150,7 +148,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
                 // may need to turn on ZRO in the future but can redeploy
                 // ProtocolMessagingHub
                 false,
-                adapterParams
+                callParams.adapterParams
             )
         }(
             address(this),
