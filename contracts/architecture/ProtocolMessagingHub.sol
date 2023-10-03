@@ -2,8 +2,9 @@
 pragma solidity ^0.8.17;
 
 import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
-import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
+import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
+import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 
 import { GaugeController } from "contracts/gauge/GaugeController.sol";
 
@@ -202,8 +203,9 @@ contract ProtocolMessagingHub is ReentrancyGuard {
             }
         }
 
-        address endpoint = IFeeAccumulator(centralRegistry.feeAccumulator())
-            .stargateRouter();
+        address stargateRouter = IFeeAccumulator(
+            centralRegistry.feeAccumulator()
+        ).stargateRouter();
 
         bytes memory bytesTo = new bytes(32);
         assembly {
@@ -213,7 +215,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         {
             // Scoping to avoid stack too deep
             (uint256 messageFee, ) = this.quoteStargateFee(
-                SwapRouter(endpoint),
+                SwapRouter(stargateRouter),
                 uint16(poolData.dstChainId),
                 1,
                 bytesTo,
@@ -237,8 +239,14 @@ contract ProtocolMessagingHub is ReentrancyGuard {
             poolData.amountLD
         );
 
+        SwapperLib.approveTokenIfNeeded(
+            feeToken,
+            stargateRouter,
+            poolData.amountLD
+        );
+
         // Sends funds to feeAccumulator on another chain
-        SwapRouter(endpoint).swap{ value: msg.value }(
+        SwapRouter(stargateRouter).swap{ value: msg.value }(
             uint16(poolData.dstChainId),
             poolData.srcPoolId,
             poolData.dstPoolId,
