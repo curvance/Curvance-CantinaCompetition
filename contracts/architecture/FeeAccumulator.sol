@@ -13,7 +13,7 @@ import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { IGelatoOneBalance } from "contracts/interfaces/IGelatoOneBalance.sol";
 import { IVeCVE } from "contracts/interfaces/IVeCVE.sol";
 import { IProtocolMessagingHub, PoolData } from "contracts/interfaces/IProtocolMessagingHub.sol";
-import { SwapRouter, lzTxObj } from "contracts/interfaces/layerzero/IStargateRouter.sol";
+import { SwapRouter, LzTxObj } from "contracts/interfaces/layerzero/IStargateRouter.sol";
 import { EpochRolloverData } from "contracts/interfaces/IFeeAccumulator.sol";
 import { ICentralRegistry, ChainData } from "contracts/interfaces/ICentralRegistry.sol";
 
@@ -788,7 +788,7 @@ contract FeeAccumulator is ReentrancyGuard {
                     minAmountLD: (feeTokenBalanceForChain * SLIPPED_MINIMUM) /
                         SLIPPAGE_DENOMINATOR
                 }),
-                lzTxObj({
+                LzTxObj({
                     dstGasForCall: 0,
                     dstNativeAmount: 0,
                     dstNativeAddr: ""

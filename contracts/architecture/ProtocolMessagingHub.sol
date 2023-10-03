@@ -12,7 +12,7 @@ import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { ICVE, LzCallParams } from "contracts/interfaces/ICVE.sol";
 import { IFeeAccumulator, EpochRolloverData } from "contracts/interfaces/IFeeAccumulator.sol";
 import { ICentralRegistry, OmnichainData } from "contracts/interfaces/ICentralRegistry.sol";
-import { SwapRouter, lzTxObj } from "contracts/interfaces/layerzero/IStargateRouter.sol";
+import { SwapRouter, LzTxObj } from "contracts/interfaces/layerzero/IStargateRouter.sol";
 import { PoolData } from "contracts/interfaces/IProtocolMessagingHub.sol";
 
 contract ProtocolMessagingHub is ReentrancyGuard {
@@ -171,7 +171,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     function sendFees(
         address to,
         PoolData calldata poolData,
-        lzTxObj calldata lzTxParams,
+        LzTxObj calldata lzTxParams,
         bytes calldata payload
     ) external payable onlyAuthorized {
         {
@@ -386,7 +386,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
                 functionType,
                 toAddress,
                 "",
-                lzTxObj({
+                LzTxObj({
                     dstGasForCall: 0,
                     dstNativeAmount: 0,
                     dstNativeAddr: ""
@@ -402,7 +402,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
             functionType,
             toAddress,
             "",
-            lzTxObj({
+            LzTxObj({
                 dstGasForCall: 0,
                 dstNativeAmount: 0,
                 dstNativeAddr: ""
@@ -420,7 +420,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         uint8 _functionType,
         bytes calldata _toAddress,
         bytes calldata _transferAndCallPayload,
-        lzTxObj memory _lzTxParams
+        LzTxObj memory _lzTxParams
     ) external view returns (uint256, uint256) {
         return
             stargateRouter.quoteLayerZeroFee(

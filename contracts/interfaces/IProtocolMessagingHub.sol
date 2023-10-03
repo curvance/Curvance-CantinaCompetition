@@ -2,7 +2,7 @@
 pragma solidity >=0.8.17;
 
 import { LzCallParams } from "contracts/interfaces/ICVE.sol";
-import { SwapRouter, lzTxObj } from "contracts/interfaces/layerzero/IStargateRouter.sol";
+import { SwapRouter, LzTxObj } from "contracts/interfaces/layerzero/IStargateRouter.sol";
 
 /// @param dstChainId Destination Chain ID
 /// @param srcPoolId Source Pool ID
@@ -30,7 +30,7 @@ interface IProtocolMessagingHub {
         uint8 functionType,
         bytes calldata toAddress,
         bytes calldata transferAndCallPayload,
-        lzTxObj memory lzTxParams
+        LzTxObj memory lzTxParams
     ) external view returns (uint256, uint256);
 
     function sendLockedTokenData(
@@ -50,7 +50,7 @@ interface IProtocolMessagingHub {
     function sendFees(
         address to,
         PoolData calldata poolData,
-        lzTxObj calldata lzTxParams,
+        LzTxObj calldata lzTxParams,
         bytes calldata payload
     ) external payable;
 }

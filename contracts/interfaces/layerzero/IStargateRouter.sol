@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.12;
 
-struct lzTxObj {
+struct LzTxObj {
     uint256 dstGasForCall;
     uint256 dstNativeAmount;
     bytes dstNativeAddr;
@@ -15,7 +15,7 @@ interface SwapRouter {
         address payable _refundAddress,
         uint256 _amountLD,
         uint256 _minAmountLD,
-        lzTxObj memory _lzTxParams,
+        LzTxObj memory _lzTxParams,
         bytes calldata _to,
         bytes calldata _payload
     ) external payable;
@@ -25,6 +25,6 @@ interface SwapRouter {
         uint8 _functionType,
         bytes calldata _toAddress,
         bytes calldata _transferAndCallPayload,
-        lzTxObj memory _lzTxParams
+        LzTxObj memory _lzTxParams
     ) external view returns (uint256, uint256);
 }
