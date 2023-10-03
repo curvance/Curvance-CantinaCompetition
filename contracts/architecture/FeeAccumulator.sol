@@ -450,7 +450,11 @@ contract FeeAccumulator is ReentrancyGuard {
 
         // Send remaining fee token to new fee accumulator, if any
         if (tokenBalance > 0) {
-            _distributeFeeToken(newFeeAccumulator, tokenBalance);
+            SafeTransferLib.safeTransfer(
+                feeToken,
+                newFeeAccumulator,
+                tokenBalance
+            );
         }
     }
 
@@ -740,18 +744,13 @@ contract FeeAccumulator is ReentrancyGuard {
 
         address locker = centralRegistry.cveLocker();
 
-        _distributeFeeToken(locker, feeTokenBalanceForChain);
+        SafeTransferLib.safeTransfer(
+            feeToken,
+            locker,
+            feeTokenBalanceForChain
+        );
         ICVELocker(locker).recordEpochRewards(epoch, epochRewardsPerCVE);
 
         return epochRewardsPerCVE;
-    }
-
-    /// @notice Distributes the specified amount of fee token to
-    ///         the recipient address
-    /// @dev Has reEntry protection via multiSwap/daoOTC
-    /// @param recipient The address to receive the fee token
-    /// @param amount The amount of fee token to send
-    function _distributeFeeToken(address recipient, uint256 amount) internal {
-        SafeTransferLib.safeTransfer(feeToken, recipient, amount);
     }
 }
