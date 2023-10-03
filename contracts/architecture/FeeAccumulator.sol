@@ -691,13 +691,6 @@ contract FeeAccumulator is ReentrancyGuard {
         uint256 lockedTokens;
 
         {
-            // Use scoping to avoid stack too deep
-            bytes memory bytesAddress = new bytes(32);
-            address feeEstimateAddress = chainData.messagingHub;
-            assembly {
-                mstore(add(bytesAddress, 32), feeEstimateAddress)
-            }
-
             IVeCVE veCVE = IVeCVE(centralRegistry.veCVE());
             lockedTokens = (veCVE.chainTokenPoints() -
                 veCVE.chainUnlocksByEpoch(epoch));
@@ -729,7 +722,7 @@ contract FeeAccumulator is ReentrancyGuard {
                 totalLockedTokens;
 
             messagingHub.sendFees(
-                stargateRouter,
+                chainData.messagingHub,
                 PoolData({
                     dstChainId: centralRegistry.GETHToMessagingChainId(
                         crossChainLockData[i].chainId

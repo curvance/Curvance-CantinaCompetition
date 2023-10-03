@@ -161,8 +161,8 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         );
     }
 
-    /// @notice Sends fee tokens to the Fee Accumulator on `dstChainId`
-    /// @param to The address Stargate Endpoint to call
+    /// @notice Sends fee tokens to the Messaging Hub on `dstChainId`
+    /// @param to The address of Messaging Hub on `dstChainId` 
     /// @param poolData Stargate pool routing data
     /// @param lzTxParams Supplemental LayerZero parameters for the transaction
     /// @param payload Additional payload data
@@ -210,7 +210,6 @@ contract ProtocolMessagingHub is ReentrancyGuard {
             mstore(add(bytesTo, 32), to)
         }
 
-        // Scoping to avoid stack too deep
         (uint256 messageFee, ) = _quoteStargateFee(
             SwapRouter(stargateRouter),
             uint16(poolData.dstChainId),
