@@ -746,42 +746,6 @@ contract FeeAccumulator is ReentrancyGuard {
         return epochRewardsPerCVE;
     }
 
-    /// @notice Quotes gas cost for executing crosschain stargate swap
-    /// @dev Intentionally greatly overestimates so we are sure that
-    ///      a multicall will not fail
-    function _overEstimateLZFees(
-        ChainData memory chainData,
-        uint256 chainId,
-        ICVE CVE
-    ) internal view returns (uint256) {
-        uint16 version = 1;
-        if (block.chainid == 1) {
-            return
-                CVE.estimateSendAndCallFee(
-                    uint16(centralRegistry.GETHToMessagingChainId(chainId)),
-                    chainData.cveAddress,
-                    0,
-                    abi.encode(type(uint256).max),
-                    uint64(_gasForCalldata),
-                    false,
-                    abi.encodePacked(version, _gasForCrosschain)
-                ) * 3;
-        }
-
-        // Calculate fees based on all chains being eth since thats infinitely
-        // more expensive
-        return
-            CVE.estimateSendAndCallFee(
-                uint16(centralRegistry.GETHToMessagingChainId(1)),
-                chainData.cveAddress,
-                0,
-                abi.encode(type(uint256).max),
-                uint64(_gasForCalldata),
-                false,
-                abi.encodePacked(version, _gasForCrosschain)
-            );
-    }
-
     /// @notice Distributes the specified amount of fee token to
     ///         the recipient address
     /// @dev Has reEntry protection via multiSwap/daoOTC
