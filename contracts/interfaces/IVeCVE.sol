@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.12;
 
-import "contracts/interfaces/ICVELocker.sol";
+import { RewardsData } from "contracts/interfaces/ICVELocker.sol";
 
 interface IVeCVE {
     /// @notice Sends CVE to a desired destination chain
