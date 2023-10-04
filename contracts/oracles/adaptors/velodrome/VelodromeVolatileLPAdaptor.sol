@@ -45,8 +45,8 @@ contract VelodromeVolatileLPAdaptor is BaseOracleAdaptor {
 
     /// @notice Called during pricing operations.
     /// @dev https://blog.alphaventuredao.io/fair-lp-token-pricing/
-    /// @param asset the bpt being priced
-    /// @param inUSD indicates whether we want the price in USD or ETH
+    /// @param asset The bpt being priced
+    /// @param inUSD Indicates whether we want the price in USD or ETH
     /// @param getLower Since this adaptor calls back into the price router
     ///                 it needs to know if it should be working with the
     ///                 upper or lower prices of assets
@@ -107,7 +107,7 @@ contract VelodromeVolatileLPAdaptor is BaseOracleAdaptor {
 
     /// @notice Add a Balancer Stable Pool Bpt as an asset.
     /// @dev Should be called before `PriceRotuer:addAssetPriceFeed` is called.
-    /// @param asset the address of the bpt to add
+    /// @param asset The address of the bpt to add
     function addAsset(address asset) external onlyElevatedPermissions {
         require(
             !isSupportedAsset[asset],
