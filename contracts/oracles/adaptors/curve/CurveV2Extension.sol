@@ -1,76 +1,82 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.17;
 
+import { BaseOracleAdaptor } from "contracts/oracles/adaptors/BaseOracleAdaptor.sol";
+
+import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+import { PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
 import { ICurvePool } from "contracts/interfaces/external/curve/ICurvePool.sol";
-import { Extension } from "contracts/oracles/adaptors/Extension.sol";
-import { PriceOps } from "contracts/oracles/PriceOps.sol";
-import { Math } from "contracts/libraries/Math.sol";
-import { AutomationCompatibleInterface } from "@chainlink/contracts/src/v0.8/interfaces/AutomationCompatibleInterface.sol";
-import { ERC20, SafeTransferLib } from "contracts/libraries/ERC4626.sol";
 
-// TODO Add Chainlink Curve VP bound check
-contract CurveV2Extension is Extension {
-    using Math for uint256;
+contract CurveV2LPAdapter is BaseOracleAdaptor {
+    error CurveV2LPAdapter__UnsupportedPool();
+    error CurveV2LPAdapter__DidNotConverge();
 
-    error CurveV2Extension__UnsupportedPool();
-    error CurveV2Extension__DidNotConverge();
-
-    // Technically I think curve pools will at most have 3 assets, or atleast the majority have 2-3 so we could replace this struct with 5 addresses.
-    struct CurveDerivativeStorage {
+    // Technically I think curve pools will at most have 3 assets
+    // or atleast the majority have 2-3 so we could replace this struct with 5 addresses.
+    struct AdaptorData {
         address[] coins;
         address pool;
-        address asset;
     }
 
-    /// @notice Curve Derivative Storage
-    /// @dev Stores an array of the underlying token addresses in the curve pool.
-    mapping(uint64 => CurveDerivativeStorage) public getCurveDerivativeStorage;
+    /// @notice Curve Pool Adaptor Storage
+    mapping(address => AdaptorData) public adaptorData;
 
-    constructor(PriceOps _priceOps) Extension(_priceOps) {}
+    constructor(
+        ICentralRegistry centralRegistry_
+    ) BaseOracleAdaptor(centralRegistry_) {}
 
-    /// @notice Setup function for pricing CurveV2 derivative assets.
-    /// @dev _source The address of the CurveV2 Pool.
-    /// @dev _storage A VirtualPriceBound value for this asset.
-    /// @dev Assumes that curve pools never add or remove tokens.
-    function setupSource(
+    /// @notice Add a Balancer Stable Pool Bpt as an asset.
+    /// @dev Should be called before `PriceRotuer:addAssetPriceFeed` is called.
+    /// @param asset the address of the bpt to add
+    function addAsset(
         address asset,
-        uint64 _sourceId,
-        bytes calldata data
-    ) external override onlyPriceOps {
-        address _source = abi.decode(data, (address));
-        ICurvePool pool = ICurvePool(_source);
+        address pool
+    ) external onlyElevatedPermissions {
+        require(
+            !isSupportedAsset[asset],
+            "CurveV2LPAdapter: asset already supported"
+        );
+
         uint8 coinsLength = 0;
         // Figure out how many tokens are in the curve pool.
         while (true) {
-            try pool.coins(coinsLength) {
+            try ICurvePool(pool).coins(coinsLength) {
                 ++coinsLength;
             } catch {
                 break;
             }
         }
         if (coinsLength != 2 && coinsLength != 3)
-            revert CurveV2Extension__UnsupportedPool();
+            revert CurveV2LPAdapter__UnsupportedPool();
+
         address[] memory coins = new address[](coinsLength);
         for (uint256 i = 0; i < coinsLength; ++i) {
-            coins[i] = pool.coins(i);
+            coins[i] = ICurvePool(pool).coins(i);
         }
 
-        getCurveDerivativeStorage[_sourceId].coins = coins;
-        getCurveDerivativeStorage[_sourceId].pool = _source;
-        getCurveDerivativeStorage[_sourceId].asset = asset;
+        // Save values in Adaptor storage.
+        adaptorData[asset].coins = coins;
+        adapterData[asset].pool = pool;
+        adaptorData[asset] = data;
+        isSupportedAsset[asset] = true;
+    }
 
-        // curveAssets.push(address(_asset));
+    /// @notice Removes a supported asset from the adaptor.
+    /// @dev Calls back into price router to notify it of its removal
+    function removeAsset(address asset) external override onlyDaoPermissions {
+        require(
+            isSupportedAsset[asset],
+            "VelodromeVolatileLPAdaptor: asset not supported"
+        );
 
-        // Setup virtual price bound.
-        // VirtualPriceBound memory vpBound = abi.decode(_storage, (VirtualPriceBound));
-        // uint256 upper = uint256(vpBound.datum).mulDivDown(vpBound.posDelta, 1e8);
-        // upper = upper.changeDecimals(8, 18);
-        // uint256 lower = uint256(vpBound.datum).mulDivDown(vpBound.negDelta, 1e8);
-        // lower = lower.changeDecimals(8, 18);
-        // _checkBounds(lower, upper, pool.get_virtual_price());
-        // if (vpBound.rateLimit == 0) vpBound.rateLimit = DEFAULT_RATE_LIMIT;
-        // vpBound.timeLastUpdated = uint64(block.timestamp);
-        // getVirtualPriceBound[address(_asset)] = vpBound;
+        // Notify the adaptor to stop supporting the asset
+        delete isSupportedAsset[asset];
+        // Wipe config mapping entries for a gas refund
+        delete adaptorData[asset];
+
+        // Notify the price router that we are going to stop supporting the asset
+        IPriceRouter(centralRegistry.priceRouter())
+            .notifyAssetPriceFeedRemoval(asset);
     }
 
     uint256 private constant GAMMA0 = 28000000000000;
@@ -91,8 +97,14 @@ contract CurveV2Extension is Extension {
             else diff = D_prev - D;
             if (diff <= 1 || diff * 10 ** 18 < D) return D;
         }
-        revert CurveV2Extension__DidNotConverge();
+        revert CurveV2LPAdapter__DidNotConverge();
     }
+
+    function getPrice(
+        address asset,
+        bool inUSD,
+        bool getLower
+    ) external view override returns (PriceReturnData memory pData) {}
 
     /// Inspired by https:// etherscan.io/address/0xE8b2989276E2Ca8FDEA2268E3551b2b4B2418950#code
     /// @notice Get the price of a CurveV2 derivative in terms of Base.
@@ -105,9 +117,7 @@ contract CurveV2Extension is Extension {
         onlyPriceOps
         returns (uint256 upper, uint256 lower, uint8 errorCode)
     {
-        CurveDerivativeStorage memory stor = getCurveDerivativeStorage[
-            sourceId
-        ];
+        AdaptorData memory stor = getAdaptorData[sourceId];
 
         ICurvePool pool = ICurvePool(stor.pool);
 
