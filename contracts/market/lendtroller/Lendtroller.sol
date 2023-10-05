@@ -18,13 +18,14 @@ contract Lendtroller is ILendtroller, ERC165 {
     struct AccountData {
         /// @notice Array of account assets.
         IMToken[] assets;
-        /// @notice lastBorrowTimestamp Last time an account borrowed an asset.
-        uint256 lastBorrowTimestamp;
+        /// @notice cooldownTimestamp Last time an account performed an action,
+        ///         which activates the redeem/repay/exit market cooldown.
+        uint256 cooldownTimestamp;
     }
 
     struct MarketToken {
         /// @notice Whether or not this market token is listed.
-        /// @dev    0 or 1 = unlisted; 2 = listed
+        /// @dev    false = unlisted; true = listed
         bool isListed;
         /// @notice The collateral requirement where dipping below this will cause a soft liquidation.
         /// @dev    in `EXP_SCALE` format, with 1.2e18 = 120% collateral vs debt value
@@ -44,7 +45,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         ///         Note: this is stored as (Fee * EXP_SCALE) / `liqInc`
         ///         in order to save gas for liquidation calculations
         uint256 liqFee;
-        /// @notice Mapping that indicates whether an account is in a market.
+        /// @notice Mapping that indicates whether an account is activate in a market.
         /// @dev    0 or 1 for no; 2 for yes
         mapping(address => uint256) accountInMarket;
     }
@@ -99,7 +100,7 @@ contract Lendtroller is ILendtroller, ERC165 {
 
     /// @notice Market Token => isListed, collRatio, accountInmarket.
     mapping(address => MarketToken) public mTokenData;
-    /// @notice Account => Assets, lastBorrowTimestamp.
+    /// @notice Account => Assets, cooldownTimestamp.
     mapping(address => AccountData) public accountAssets;
 
     /// EVENTS ///
@@ -340,7 +341,7 @@ contract Lendtroller is ILendtroller, ERC165 {
             revert Lendtroller__AddressUnauthorized();
         }
 
-        accountAssets[borrower].lastBorrowTimestamp = block.timestamp;
+        accountAssets[borrower].cooldownTimestamp = block.timestamp;
         canBorrow(mToken, borrower, amount);
     }
 
@@ -357,7 +358,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         // as well as short term price manipulations if the dynamic dual oracle
         // fails to protect the market somehow
         if (
-            accountAssets[account].lastBorrowTimestamp + _MIN_HOLD_PERIOD >
+            accountAssets[account].cooldownTimestamp + _MIN_HOLD_PERIOD >
             block.timestamp
         ) {
             revert Lendtroller__MinimumHoldPeriod();
@@ -784,7 +785,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         );
     }
 
-    /// @notice Updates `borrower` lastBorrowTimestamp to the current block timestamp
+    /// @notice Updates `borrower` cooldownTimestamp to the current block timestamp
     /// @dev The caller must be a listed MToken in the `markets` mapping
     /// @param borrower The address of the account that has just borrowed
     function notifyBorrow(address borrower) external override {
@@ -792,7 +793,7 @@ contract Lendtroller is ILendtroller, ERC165 {
             revert Lendtroller__TokenNotListed();
         }
 
-        accountAssets[borrower].lastBorrowTimestamp = block.timestamp;
+        accountAssets[borrower].cooldownTimestamp = block.timestamp;
     }
 
     /// PUBLIC FUNCTIONS ///
@@ -979,7 +980,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         // as well as short term price manipulations if the dynamic dual oracle
         // fails to protect the market somehow
         if (
-            accountAssets[redeemer].lastBorrowTimestamp + _MIN_HOLD_PERIOD >
+            accountAssets[redeemer].cooldownTimestamp + _MIN_HOLD_PERIOD >
             block.timestamp
         ) {
             revert Lendtroller__MinimumHoldPeriod();
@@ -1243,6 +1244,7 @@ contract Lendtroller is ILendtroller, ERC165 {
                 if (snapshot.asset == collateralToken) {
                     collateralTokenPrice = prices[i];
                 }
+
                 // If the asset has a CR increment their collateral
                 if (
                     !(mTokenData[snapshot.asset].collRatio == 0)
