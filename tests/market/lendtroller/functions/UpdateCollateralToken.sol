@@ -10,7 +10,8 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
         IMToken mToken,
         uint256 newLI,
         uint256 newLF,
-        uint256 newLT,
+        uint256 newCR_A,
+        uint256 newCR_B,
         uint256 newCR
     );
 
