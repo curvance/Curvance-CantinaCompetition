@@ -142,7 +142,7 @@ contract TestDTokenReserves is TestBaseMarket {
             );
 
             // check borrower debt increased
-            AccountSnapshot memory snapshot = dDAI.getAccountSnapshotPacked(
+            AccountSnapshot memory snapshot = dDAI.getSnapshotPacked(
                 user1
             );
             assertEq(snapshot.mTokenBalance, 0);
@@ -185,7 +185,7 @@ contract TestDTokenReserves is TestBaseMarket {
             );
 
             // check borrower debt increased
-            AccountSnapshot memory snapshot = dDAI.getAccountSnapshotPacked(
+            AccountSnapshot memory snapshot = dDAI.getSnapshotPacked(
                 user1
             );
             assertEq(snapshot.mTokenBalance, 0);

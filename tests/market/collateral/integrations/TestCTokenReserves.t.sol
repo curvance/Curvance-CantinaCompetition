@@ -61,6 +61,8 @@ contract TestCTokenReserves is TestBaseMarket {
                 IMToken(address(cBALRETH)),
                 2000,
                 500,
+                1500,
+                1200,
                 5000
             );
             address[] memory markets = new address[](1);
@@ -125,9 +127,10 @@ contract TestCTokenReserves is TestBaseMarket {
 
         uint256 repayAmount = 250 ether;
         (uint256 liquidatedTokens, uint256 protocolTokens) = lendtroller
-            .calculateLiquidatedTokens(
+            .canLiquidateExact(
                 address(dDAI),
                 address(cBALRETH),
+                user1,
                 repayAmount
             );
         uint256 daoBalanceBefore = cBALRETH.balanceOf(dao);
@@ -139,7 +142,7 @@ contract TestCTokenReserves is TestBaseMarket {
         dDAI.liquidate(user1, repayAmount, IMToken(address(cBALRETH)));
         vm.stopPrank();
 
-        AccountSnapshot memory snapshot = cBALRETH.getAccountSnapshotPacked(
+        AccountSnapshot memory snapshot = cBALRETH.getSnapshotPacked(
             user1
         );
         assertApproxEqRel(
@@ -150,7 +153,7 @@ contract TestCTokenReserves is TestBaseMarket {
         assertEq(snapshot.borrowBalance, 0);
         assertEq(snapshot.exchangeRate, 1 ether);
 
-        snapshot = dDAI.getAccountSnapshotPacked(user1);
+        snapshot = dDAI.getSnapshotPacked(user1);
         assertEq(snapshot.mTokenBalance, 0);
         assertApproxEqRel(snapshot.borrowBalance, 250 ether, 0.01e18);
         assertApproxEqRel(snapshot.exchangeRate, 1 ether, 0.01e18);
