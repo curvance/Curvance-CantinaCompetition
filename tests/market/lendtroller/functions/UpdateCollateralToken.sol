@@ -67,8 +67,8 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
             IMToken(address(cBALRETH)),
             0.02e18,
             0,
-            1.03e18,
-            1.025e18,
+            0.03e18,
+            0.025e18,
             0.9e18
         );
 
