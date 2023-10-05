@@ -590,7 +590,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         }
 
         // Validate the soft liquidation collateral premium is not more strict than the asset's CR
-        if (collRatio > (_EXP_SCALE * _EXP_SCALE)/(_EXP_SCALE + collReqA)) {
+        if (collRatio > (_EXP_SCALE * _EXP_SCALE) / (_EXP_SCALE + collReqA)) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
@@ -600,10 +600,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         }
 
         // We need to make sure that the liquidation incentive is enough for both the protocol and the users
-        if (
-            (liqInc - liqFee) <
-            _MIN_LIQUIDATION_INCENTIVE
-        ) {
+        if ((liqInc - liqFee) < _MIN_LIQUIDATION_INCENTIVE) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
@@ -620,9 +617,7 @@ contract Lendtroller is ILendtroller, ERC165 {
 
         // Store protocol liquidation fee divided by the liquidation incentive offset,
         // that way we can directly multiply later instead of needing extra calculations
-        marketToken.liqFee =
-            (_EXP_SCALE * liqFee) /
-            (_EXP_SCALE + liqInc);
+        marketToken.liqFee = (_EXP_SCALE * liqFee) / (_EXP_SCALE + liqInc);
 
         // Store the collateral requirement as a premium above `EXP_SCALE`,
         // that way we can calculate solvency via division easily in _getStatusForLiquidation
@@ -881,18 +876,14 @@ contract Lendtroller is ILendtroller, ERC165 {
 
             if (snapshot.isCToken) {
                 // If the asset has a CR increment their collateral and max borrow value
-                if (
-                    !(mTokenData[snapshot.asset].collRatio == 0)
-                ) {
+                if (!(mTokenData[snapshot.asset].collRatio == 0)) {
                     uint256 assetValue = (((snapshot.balance *
                         snapshot.exchangeRate) / _EXP_SCALE) * prices[i]) /
                         _EXP_SCALE;
 
                     sumCollateral += assetValue;
                     maxBorrow +=
-                        (assetValue *
-                            mTokenData[snapshot.asset]
-                                .collRatio) /
+                        (assetValue * mTokenData[snapshot.asset].collRatio) /
                         _EXP_SCALE;
                 }
             } else {
@@ -1120,18 +1111,14 @@ contract Lendtroller is ILendtroller, ERC165 {
 
             if (snapshot.isCToken) {
                 // If the asset has a CR increment their collateral and max borrow value
-                if (
-                    !(mTokenData[snapshot.asset].collRatio == 0)
-                ) {
+                if (!(mTokenData[snapshot.asset].collRatio == 0)) {
                     uint256 assetValue = (((snapshot.balance *
                         snapshot.exchangeRate) / _EXP_SCALE) * prices[i]) /
                         _EXP_SCALE;
 
                     sumCollateral += assetValue;
                     maxBorrow +=
-                        (assetValue *
-                            mTokenData[snapshot.asset]
-                                .collRatio) /
+                        (assetValue * mTokenData[snapshot.asset].collRatio) /
                         _EXP_SCALE;
                 }
             } else {
@@ -1148,14 +1135,11 @@ contract Lendtroller is ILendtroller, ERC165 {
                 // If its a DToken we can redeem it but it will not have any effect on borrow amount
                 // since DToken have a collateral value of 0
                 if (snapshot.isCToken) {
-                    if (
-                        !(mTokenData[snapshot.asset].collRatio ==
-                            0)
-                    ) {
+                    if (!(mTokenData[snapshot.asset].collRatio == 0)) {
                         // collateralValue = price * collateralization ratio * exchange rate
                         uint256 collateralValue = (((mTokenData[snapshot.asset]
-                            .collRatio * snapshot.exchangeRate) /
-                            _EXP_SCALE) * prices[i]) / _EXP_SCALE;
+                            .collRatio * snapshot.exchangeRate) / _EXP_SCALE) *
+                            prices[i]) / _EXP_SCALE;
 
                         // hypothetical redemption
                         newDebt += ((collateralValue * redeemTokens) /
@@ -1246,9 +1230,7 @@ contract Lendtroller is ILendtroller, ERC165 {
                 }
 
                 // If the asset has a CR increment their collateral
-                if (
-                    !(mTokenData[snapshot.asset].collRatio == 0)
-                ) {
+                if (!(mTokenData[snapshot.asset].collRatio == 0)) {
                     totalCollateral +=
                         (((snapshot.balance * snapshot.exchangeRate) /
                             _EXP_SCALE) * prices[i]) /
@@ -1262,7 +1244,8 @@ contract Lendtroller is ILendtroller, ERC165 {
                 // If they have a debt balance,
                 // we need to document collateral requirements
                 if (snapshot.debtBalance > 0) {
-                    totalDebt += (prices[i] * snapshot.debtBalance) /
+                    totalDebt +=
+                        (prices[i] * snapshot.debtBalance) /
                         _EXP_SCALE;
                 }
             }
