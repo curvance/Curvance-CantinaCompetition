@@ -192,7 +192,7 @@ contract TestDTokenReserves is TestBaseMarket {
             );
             assertEq(snapshot.balance, 0);
             assertApproxEqRel(
-                snapshot.borrowBalance,
+                snapshot.debtBalance,
                 debtBalanceBefore + debt,
                 10000
             );
