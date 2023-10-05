@@ -61,11 +61,11 @@ contract TestTokens is TestBaseMarket {
             // set collateral token configuration
             lendtroller.updateCollateralToken(
                 IMToken(address(cBALRETH)),
-                200,
+                200, // 2% liq incentive
                 0,
-                1500,
-                1000,
-                5000
+                4000, // liquidate at 71%
+                3000,
+                7000
             );
             address[] memory markets = new address[](1);
             markets[0] = address(cBALRETH);
@@ -132,7 +132,6 @@ contract TestTokens is TestBaseMarket {
         cBALRETH.redeem(1 ether);
         vm.stopPrank();
         assertEq(cBALRETH.balanceOf(user1), 0);
-
     }
 
     function testDTokenMintRedeem() public {
@@ -158,7 +157,6 @@ contract TestTokens is TestBaseMarket {
         dDAI.redeem(1 ether);
         vm.stopPrank();
         assertEq(dDAI.balanceOf(user1), 0);
-
     }
 
     function testDTokenBorrowRepay() public {
@@ -169,9 +167,7 @@ contract TestTokens is TestBaseMarket {
         balRETH.approve(address(cBALRETH), 1 ether);
         cBALRETH.mint(1 ether);
         vm.stopPrank();
-        AccountSnapshot memory snapshot = cBALRETH.getSnapshotPacked(
-            user1
-        );
+        AccountSnapshot memory snapshot = cBALRETH.getSnapshotPacked(user1);
         assertEq(snapshot.balance, 1 ether);
         assertEq(snapshot.debtBalance, 0);
         assertEq(snapshot.exchangeRate, 1 ether);
@@ -215,9 +211,7 @@ contract TestTokens is TestBaseMarket {
         skip(1200);
 
         // try repay full
-        (, borrowBalanceBefore, exchangeRateBefore) = dDAI.getSnapshot(
-            user1
-        );
+        (, borrowBalanceBefore, exchangeRateBefore) = dDAI.getSnapshot(user1);
         _prepareDAI(user1, borrowBalanceBefore);
         vm.startPrank(user1);
         dai.approve(address(dDAI), borrowBalanceBefore);
@@ -258,9 +252,7 @@ contract TestTokens is TestBaseMarket {
         vm.startPrank(user1);
         cBALRETH.redeem(0.2 ether);
         vm.stopPrank();
-        AccountSnapshot memory snapshot = cBALRETH.getSnapshotPacked(
-            user1
-        );
+        AccountSnapshot memory snapshot = cBALRETH.getSnapshotPacked(user1);
         assertEq(snapshot.balance, 0.8 ether);
         assertEq(snapshot.debtBalance, 0 ether);
         assertEq(snapshot.exchangeRate, 1 ether);
@@ -294,9 +286,7 @@ contract TestTokens is TestBaseMarket {
         dDAI.redeem(1000 ether);
         vm.stopPrank();
 
-        AccountSnapshot memory snapshot = cBALRETH.getSnapshotPacked(
-            user1
-        );
+        AccountSnapshot memory snapshot = cBALRETH.getSnapshotPacked(user1);
         assertEq(snapshot.balance, 1 ether);
         assertEq(snapshot.debtBalance, 0);
         assertEq(snapshot.exchangeRate, 1 ether);
@@ -336,9 +326,7 @@ contract TestTokens is TestBaseMarket {
         vm.startPrank(user1);
         cBALRETH.transfer(user2, 0.2 ether);
         vm.stopPrank();
-        AccountSnapshot memory snapshot = cBALRETH.getSnapshotPacked(
-            user1
-        );
+        AccountSnapshot memory snapshot = cBALRETH.getSnapshotPacked(user1);
         assertEq(snapshot.balance, 0.8 ether);
         assertEq(snapshot.debtBalance, 0 ether);
         assertEq(snapshot.exchangeRate, 1 ether);
@@ -376,9 +364,7 @@ contract TestTokens is TestBaseMarket {
         dDAI.transfer(user2, 1000 ether);
         vm.stopPrank();
 
-        AccountSnapshot memory snapshot = cBALRETH.getSnapshotPacked(
-            user1
-        );
+        AccountSnapshot memory snapshot = cBALRETH.getSnapshotPacked(user1);
         assertEq(snapshot.balance, 1 ether);
         assertEq(snapshot.debtBalance, 0);
         assertEq(snapshot.exchangeRate, 1 ether);
@@ -394,101 +380,97 @@ contract TestTokens is TestBaseMarket {
         assertEq(snapshot.exchangeRate, 1 ether);
     }
 
-    // function testLiquidationExact() public {
-    //     _prepareBALRETH(user1, 1 ether);
+    function testLiquidationExact() public {
+        _prepareBALRETH(user1, 1 ether);
 
-    //     // try mint()
-    //     vm.startPrank(user1);
-    //     balRETH.approve(address(cBALRETH), 1 ether);
-    //     cBALRETH.mint(1 ether);
-    //     vm.stopPrank();
+        // try mint()
+        vm.startPrank(user1);
+        balRETH.approve(address(cBALRETH), 1 ether);
+        cBALRETH.mint(1 ether);
+        vm.stopPrank();
 
-    //     // try borrow()
-    //     vm.startPrank(user1);
-    //     dDAI.borrow(500 ether);
-    //     vm.stopPrank();
+        // try borrow()
+        vm.startPrank(user1);
+        dDAI.borrow(1000 ether);
+        vm.stopPrank();
 
-    //     // skip min hold period
-    //     skip(900);
+        // skip min hold period
+        skip(900);
 
-    //     (uint256 balRETHPrice, ) = priceRouter.getPrice(
-    //         address(balRETH),
-    //         true,
-    //         true
-    //     );
+        (uint256 balRETHPrice, ) = priceRouter.getPrice(
+            address(balRETH),
+            true,
+            true
+        );
 
-    //     mockDaiFeed.setMockAnswer(200000000);
+        mockDaiFeed.setMockAnswer(200000000);
 
-    //     // try liquidate half
-    //     _prepareDAI(user2, 250 ether);
-    //     vm.startPrank(user2);
-    //     dai.approve(address(dDAI), 250 ether);
-    //     dDAI.liquidateExact(user1, 250 ether, IMToken(address(cBALRETH)));
-    //     vm.stopPrank();
+        // try liquidate half
+        _prepareDAI(user2, 250 ether);
+        vm.startPrank(user2);
+        dai.approve(address(dDAI), 250 ether);
+        dDAI.liquidateExact(user1, 250 ether, IMToken(address(cBALRETH)));
+        vm.stopPrank();
 
-    //     AccountSnapshot memory snapshot = cBALRETH.getSnapshotPacked(
-    //         user1
-    //     );
-    //     assertApproxEqRel(
-    //         snapshot.balance,
-    //         1 ether - (500 ether * 1 ether) / balRETHPrice,
-    //         0.01e18
-    //     );
-    //     assertEq(snapshot.debtBalance, 0);
-    //     assertEq(snapshot.exchangeRate, 1 ether);
+        AccountSnapshot memory snapshot = cBALRETH.getSnapshotPacked(user1);
+        assertApproxEqRel(
+            snapshot.balance,
+            1 ether - (500 ether * 1 ether) / balRETHPrice,
+            0.01e18
+        );
+        assertEq(snapshot.debtBalance, 0);
+        assertEq(snapshot.exchangeRate, 1 ether);
 
-    //     snapshot = dDAI.getSnapshotPacked(user1);
-    //     assertEq(snapshot.balance, 0);
-    //     assertApproxEqRel(snapshot.debtBalance, 250 ether, 0.01e18);
-    //     assertApproxEqRel(snapshot.exchangeRate, 1 ether, 0.01e18);
-    // }
+        snapshot = dDAI.getSnapshotPacked(user1);
+        assertEq(snapshot.balance, 0);
+        assertApproxEqRel(snapshot.debtBalance, 750 ether, 0.01e18);
+        assertApproxEqRel(snapshot.exchangeRate, 1 ether, 0.01e18);
+    }
 
-    // function testLiquidation() public {
-    //     _prepareBALRETH(user1, 1 ether);
+    function testLiquidationasdf() public {
+        _prepareBALRETH(user1, 1 ether);
 
-    //     // try mint()
-    //     vm.startPrank(user1);
-    //     balRETH.approve(address(cBALRETH), 1 ether);
-    //     cBALRETH.mint(1 ether);
-    //     vm.stopPrank();
+        // try mint()
+        vm.startPrank(user1);
+        balRETH.approve(address(cBALRETH), 1 ether);
+        cBALRETH.mint(1 ether);
+        vm.stopPrank();
 
-    //     // try borrow()
-    //     vm.startPrank(user1);
-    //     dDAI.borrow(500 ether);
-    //     vm.stopPrank();
+        // try borrow()
+        vm.startPrank(user1);
+        dDAI.borrow(1000 ether);
+        vm.stopPrank();
 
-    //     // skip min hold period
-    //     skip(900);
+        // skip min hold period
+        skip(900);
 
-    //     (uint256 balRETHPrice, ) = priceRouter.getPrice(
-    //         address(balRETH),
-    //         true,
-    //         true
-    //     );
+        (uint256 balRETHPrice, ) = priceRouter.getPrice(
+            address(balRETH),
+            true,
+            true
+        );
 
-    //     mockDaiFeed.setMockAnswer(200000000);
+        mockDaiFeed.setMockAnswer(200000000);
 
-    //     // try liquidate
-    //     _prepareDAI(user2, 300 ether);
-    //     vm.startPrank(user2);
-    //     dai.approve(address(dDAI), 300 ether);
-    //     dDAI.liquidate(user1, IMToken(address(cBALRETH)));
-    //     vm.stopPrank();
+        // try liquidate
+        _prepareDAI(user2, 600 ether);
+        vm.startPrank(user2);
+        dai.approve(address(dDAI), 600 ether);
+        dDAI.liquidate(user1, IMToken(address(cBALRETH)));
+        vm.stopPrank();
 
-    //     AccountSnapshot memory snapshot = cBALRETH.getSnapshotPacked(
-    //         user1
-    //     );
-    //     assertApproxEqRel(
-    //         snapshot.balance,
-    //         1 ether - (500 ether * 1 ether) / balRETHPrice,
-    //         0.01e18
-    //     );
-    //     assertEq(snapshot.debtBalance, 0);
-    //     assertEq(snapshot.exchangeRate, 1 ether);
+        AccountSnapshot memory snapshot = cBALRETH.getSnapshotPacked(user1);
+        assertApproxEqRel(
+            snapshot.balance,
+            1 ether - (1000 ether * 1 ether) / balRETHPrice,
+            0.03e18
+        );
+        assertEq(snapshot.debtBalance, 0);
+        assertEq(snapshot.exchangeRate, 1 ether);
 
-    //     snapshot = dDAI.getSnapshotPacked(user1);
-    //     assertEq(snapshot.balance, 0);
-    //     assertApproxEqRel(snapshot.debtBalance, 250 ether, 0.01e18);
-    //     assertApproxEqRel(snapshot.exchangeRate, 1 ether, 0.01e18);
-    // }
+        snapshot = dDAI.getSnapshotPacked(user1);
+        assertEq(snapshot.balance, 0);
+        assertApproxEqRel(snapshot.debtBalance, 500 ether, 0.01e18);
+        assertApproxEqRel(snapshot.exchangeRate, 1 ether, 0.01e18);
+    }
 }
