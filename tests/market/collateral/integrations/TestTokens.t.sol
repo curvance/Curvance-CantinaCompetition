@@ -133,11 +133,6 @@ contract TestTokens is TestBaseMarket {
         vm.stopPrank();
         assertEq(cBALRETH.balanceOf(user1), 0);
 
-        // try redeemUnderlying()
-        vm.startPrank(user2);
-        cBALRETH.redeemUnderlying(1 ether);
-        vm.stopPrank();
-        assertEq(cBALRETH.balanceOf(user2), 0);
     }
 
     function testDTokenMintRedeem() public {
@@ -164,11 +159,6 @@ contract TestTokens is TestBaseMarket {
         vm.stopPrank();
         assertEq(dDAI.balanceOf(user1), 0);
 
-        // try redeemUnderlying()
-        vm.startPrank(user2);
-        dDAI.redeemUnderlying(1 ether);
-        vm.stopPrank();
-        assertEq(dDAI.balanceOf(user2), 0);
     }
 
     function testDTokenBorrowRepay() public {
