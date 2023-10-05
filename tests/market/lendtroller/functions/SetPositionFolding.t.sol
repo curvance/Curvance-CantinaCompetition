@@ -17,9 +17,7 @@ contract SetPositionFoldingTest is TestBaseLendtroller {
     function test_setPositionFolding_fail_whenPositionFoldingIsInvalid()
         public
     {
-        vm.expectRevert(
-            Lendtroller.Lendtroller__PositionFoldingIsInvalid.selector
-        );
+        vm.expectRevert(Lendtroller.Lendtroller__InvalidParameter.selector);
         lendtroller.setPositionFolding(address(1));
     }
 

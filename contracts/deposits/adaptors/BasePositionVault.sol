@@ -37,6 +37,13 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     uint8 private immutable _decimals; // vault assets decimals of precision
     ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
 
+    // `bytes4(keccak256(bytes("BasePositionVault__NotCToken()")))`
+    uint256 internal constant _NOT_C_TOKEN_SELECTOR = 0xac056953;
+    // `bytes4(keccak256(bytes("BasePositionVault__VaultNotActive()")))`
+    uint256 internal constant _VAULT_NOT_ACTIVE_SELECTOR = 0xd4387e2b;
+    // `bytes4(keccak256(bytes("BasePositionVault__VaultIsActive()")))`
+    uint256 internal constant _VAULT_IS_ACTIVE_SELECTOR = 0xa10a588e;
+
     // Mask of reward rate entry in packed vault data
     uint256 private constant _BITMASK_REWARD_RATE = (1 << 128) - 1;
 
@@ -46,7 +53,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     // Mask of all bits in packed vault data except the 64 bits for `lastVestClaim`
     uint256 private constant _BITMASK_LAST_CLAIM_COMPLEMENT = (1 << 192) - 1;
 
-    // The bit position of `lastVestClaim` in packed vault data
+    // The bit position of `vestingPeriodEnd` in packed vault data
     uint256 private constant _BITPOS_VEST_END = 128;
 
     // The bit position of `lastVestClaim` in packed vault data
@@ -69,6 +76,12 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     /// EVENTS ///
 
     event vaultStatusChanged(bool isShutdown);
+
+    /// ERRORS ///
+
+    error BasePositionVault__NotCToken();
+    error BasePositionVault__VaultNotActive();
+    error BasePositionVault__VaultIsActive();
 
     /// MODIFIERS ///
 
@@ -98,11 +111,6 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
             centralRegistry.hasElevatedPermissions(msg.sender),
             "BasePositionVault: UNAUTHORIZED"
         );
-        _;
-    }
-
-    modifier vaultActive() {
-        require(_vaultIsActive == 2, "BasePositionVault: vault not active");
         _;
     }
 
@@ -162,24 +170,16 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
 
     /// @notice Initializes the vault and the cToken attached to it
     function initiateVault(address cTokenAddress) external onlyDaoPermissions {
-        require(
-            _vaultIsActive == 1,
-            "BasePositionVault: vault already initialized"
-        );
-        require(
-            IMToken(cTokenAddress).tokenType() == 1,
-            "BasePositionVault: not cToken"
-        );
-
-        cToken = cTokenAddress;
-        _vaultIsActive = 2;
-
-        emit vaultStatusChanged(false);
+        _activateVault(cTokenAddress);
     }
 
     /// @notice Shuts down the vault
     /// @dev Used in an emergency or if the vault has been deprecated
-    function initiateShutdown() external vaultActive onlyDaoPermissions {
+    function initiateShutdown() external onlyDaoPermissions {
+        if (_vaultIsActive == 1) {
+            _revert(_VAULT_NOT_ACTIVE_SELECTOR);
+        }
+
         _vaultIsActive = 1;
 
         emit vaultStatusChanged(true);
@@ -190,16 +190,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     function liftShutdown(
         address cTokenAddress
     ) external onlyElevatedPermissions {
-        require(_vaultIsActive == 1, "BasePositionVault: vault not shutdown");
-        require(
-            IMToken(cTokenAddress).tokenType() == 1,
-            "BasePositionVault: not cToken"
-        );
-
-        cToken = cTokenAddress;
-        _vaultIsActive = 2;
-
-        emit vaultStatusChanged(false);
+        _activateVault(cTokenAddress);
     }
 
     // EXTERNAL POSITION LOGIC TO OVERRIDE
@@ -230,12 +221,28 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         return _vaultIsActive == 2 ? "Active" : "Inactive";
     }
 
+    function maxDeposit(
+        address to
+    ) public view override returns (uint256 maxAssets) {
+        maxAssets = _vaultIsActive == 2 ? super.maxDeposit(to) : 0;
+    }
+
+    function maxMint(
+        address to
+    ) public view override returns (uint256 maxShares) {
+        maxShares = _vaultIsActive == 2 ? super.maxMint(to) : 0;
+    }
+
     // DEPOSIT AND WITHDRAWAL LOGIC
 
     function deposit(
         uint256 assets,
         address receiver
-    ) public override vaultActive onlyCToken returns (uint256 shares) {
+    ) public override onlyCToken returns (uint256 shares) {
+        if (_vaultIsActive == 1) {
+            _revert(_VAULT_NOT_ACTIVE_SELECTOR);
+        }
+
         // Save _totalAssets and pendingRewards to memory
         uint256 pending = _calculatePendingRewards();
         uint256 ta = _totalAssets + pending;
@@ -278,7 +285,11 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     function mint(
         uint256 shares,
         address receiver
-    ) public override vaultActive onlyCToken returns (uint256 assets) {
+    ) public override onlyCToken returns (uint256 assets) {
+        if (_vaultIsActive == 1) {
+            _revert(_VAULT_NOT_ACTIVE_SELECTOR);
+        }
+
         // Save _totalAssets and pendingRewards to memory
         uint256 pending = _calculatePendingRewards();
         uint256 ta = _totalAssets + pending;
@@ -359,9 +370,9 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         uint256 pending = _calculatePendingRewards();
         uint256 ta = _totalAssets + pending;
 
-        /// We do not need to check for msg.sender == owner or msg.sender != owner
-        /// since CToken is the only contract who can call deposit, mint, withdraw, or redeem
-        /// We just keep owner parameter for 4626 compliance
+        // We do not need to check for msg.sender == owner or msg.sender != owner
+        // since CToken is the only contract who can call deposit, mint, withdraw, or redeem
+        // We just keep owner parameter for 4626 compliance
 
         // Check for rounding error since we round down in previewRedeem
         require(
@@ -397,7 +408,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
 
         SafeTransferLib.safeTransfer(asset(), newVault, assets);
 
-        /// Record current vault data to move over
+        // Record current vault data to move over
         return abi.encode(_totalAssets, _sharePriceHighWatermark, _vaultData);
     }
 
@@ -418,19 +429,17 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
 
     // ACCOUNTING LOGIC
 
-    /// @dev Packs vault data into a single uint256
-
-    /// Returns the current per second yield of the vault
+    /// @notice Returns the current per second yield of the vault
     function rewardRate() public view returns (uint256) {
         return _vaultData & _BITMASK_REWARD_RATE;
     }
 
-    /// @dev Returns the timestamp when the current vesting period ends
+    /// @notice Returns the timestamp when the current vesting period ends
     function vestingPeriodEnd() public view returns (uint256) {
         return (_vaultData >> _BITPOS_VEST_END) & _BITMASK_TIMESTAMP;
     }
 
-    /// @dev Returns the timestamp of the last claim during the current vesting period
+    /// @notice Returns the timestamp of the last claim during the current vesting period
     function lastVestClaim() public view returns (uint256) {
         return uint64(_vaultData >> _BITPOS_LAST_VEST);
     }
@@ -449,7 +458,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     function convertToShares(
         uint256 assets
     ) public view override returns (uint256) {
-        return _convertToShares(assets, totalSupply());
+        return _convertToShares(assets, totalAssets());
     }
 
     function convertToAssets(
@@ -546,6 +555,21 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         return _decimals;
     }
 
+    function _activateVault(address cTokenAddress) internal {
+        if (_vaultIsActive == 2) {
+            _revert(_VAULT_IS_ACTIVE_SELECTOR);
+        }
+
+        if (!IMToken(cTokenAddress).isCToken()) {
+            _revert(_NOT_C_TOKEN_SELECTOR);
+        }
+
+        cToken = cTokenAddress;
+        _vaultIsActive = 2;
+
+        emit vaultStatusChanged(false);
+    }
+
     // REWARD AND HARVESTING LOGIC
 
     /// @notice Calculates the pending rewards
@@ -605,7 +629,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         uint256 totalShares = totalSupply();
 
         shares = totalShares == 0
-            ? assets.changeDecimals(_asset.decimals(), 18)
+            ? assets
             : assets.mulDivDown(totalShares, _ta);
     }
 
@@ -616,7 +640,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         uint256 totalShares = totalSupply();
 
         assets = totalShares == 0
-            ? shares.changeDecimals(18, _asset.decimals())
+            ? shares
             : shares.mulDivDown(_ta, totalShares);
     }
 
@@ -633,9 +657,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     ) internal view returns (uint256 assets) {
         uint256 totalShares = totalSupply();
 
-        assets = totalShares == 0
-            ? shares.changeDecimals(18, _asset.decimals())
-            : shares.mulDivUp(_ta, totalShares);
+        assets = totalShares == 0 ? shares : shares.mulDivUp(_ta, totalShares);
     }
 
     function _previewWithdraw(
@@ -644,9 +666,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     ) internal view returns (uint256 shares) {
         uint256 totalShares = totalSupply();
 
-        shares = totalShares == 0
-            ? assets.changeDecimals(_asset.decimals(), 18)
-            : assets.mulDivUp(totalShares, _ta);
+        shares = totalShares == 0 ? assets : assets.mulDivUp(totalShares, _ta);
     }
 
     function _previewRedeem(
@@ -656,7 +676,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         return _convertToAssets(shares, _ta);
     }
 
-    // INTERNAL POSITION LOGIC TO OVERRIDE
+    /// INTERNAL POSITION LOGIC TO OVERRIDE
 
     function _deposit(uint256 assets) internal virtual;
 

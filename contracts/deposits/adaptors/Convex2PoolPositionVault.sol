@@ -144,7 +144,11 @@ contract ConvexPositionVault is BasePositionVault {
     /// @return yield The amount of new assets acquired from compounding vault yield
     function harvest(
         bytes calldata data
-    ) external override onlyHarvestor vaultActive returns (uint256 yield) {
+    ) external override onlyHarvestor returns (uint256 yield) {
+        if (_vaultIsActive == 1) {
+            _revert(_VAULT_NOT_ACTIVE_SELECTOR);
+        }
+
         uint256 pending = _calculatePendingRewards();
         if (pending > 0) {
             // claim vested rewards
@@ -254,20 +258,20 @@ contract ConvexPositionVault is BasePositionVault {
         uint256[2] memory amounts;
 
         bool liquidityAvailable;
-        uint256 ethValue;
+        uint256 value;
         for (uint256 i; i < 2; ++i) {
             underlyingToken = strategyData.underlyingTokens[i];
+            amounts[i] = CommonLib.getTokenBalance(underlyingToken);
+
             if (CommonLib.isETH(underlyingToken)) {
-                ethValue = address(this).balance;
-                amounts[i] = ethValue;
-            } else {
-                amounts[i] = ERC20(underlyingToken).balanceOf(address(this));
-                SwapperLib.approveTokenIfNeeded(
-                    underlyingToken,
-                    address(strategyData.curvePool),
-                    amounts[i]
-                );
+                value = amounts[i];
             }
+
+            SwapperLib.approveTokenIfNeeded(
+                underlyingToken,
+                address(strategyData.curvePool),
+                amounts[i]
+            );
 
             if (amounts[i] > 0) {
                 liquidityAvailable = true;
@@ -275,10 +279,7 @@ contract ConvexPositionVault is BasePositionVault {
         }
 
         if (liquidityAvailable) {
-            strategyData.curvePool.add_liquidity{ value: ethValue }(
-                amounts,
-                0
-            );
+            strategyData.curvePool.add_liquidity{ value: value }(amounts, 0);
         }
     }
 }

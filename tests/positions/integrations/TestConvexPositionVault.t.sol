@@ -1,13 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import { IMToken } from "contracts/interfaces/market/IMToken.sol";
-import { IUniswapV2Router } from "contracts/interfaces/external/uniswap/IUniswapV2Router.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { ERC20 } from "contracts/deposits/adaptors/BasePositionVault.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-
 import { ConvexPositionVault } from "contracts/deposits/adaptors/Convex2PoolPositionVault.sol";
+import { CToken } from "contracts/market/collateral/CToken.sol";
 
 import "tests/market/TestBaseMarket.sol";
 
@@ -15,23 +13,19 @@ contract TestConvexPositionVault is TestBaseMarket {
     address internal constant _UNISWAP_V2_ROUTER =
         0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
 
-    address public owner;
-    address public user;
+    ERC20 public constant CVX =
+        ERC20(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
+    ERC20 public constant CRV =
+        ERC20(0xD533a949740bb3306d119CC777fa900bA034cd52);
+    ERC20 public CONVEX_STETH_ETH_POOL =
+        ERC20(0x21E27a5E5513D6e65C4f830167390997aA84843a);
+    uint256 public CONVEX_STETH_ETH_POOL_ID = 177;
+    address public CONVEX_STETH_ETH_REWARD =
+        0x6B27D7BC63F1999D14fF9bA900069ee516669ee8;
+    address public CONVEX_BOOSTER = 0xF403C135812408BFbE8713b5A23a04b3D48AAE31;
 
     ConvexPositionVault positionVault;
-
-    ERC20 private constant CVX =
-        ERC20(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
-    ERC20 private constant CRV =
-        ERC20(0xD533a949740bb3306d119CC777fa900bA034cd52);
-
-    ERC20 private CONVEX_STETH_ETH_POOL =
-        ERC20(0x21E27a5E5513D6e65C4f830167390997aA84843a);
-    uint256 private CONVEX_STETH_ETH_POOL_ID = 177;
-    address private CONVEX_STETH_ETH_REWARD =
-        0x6B27D7BC63F1999D14fF9bA900069ee516669ee8;
-    address private CONVEX_BOOSTER =
-        0xF403C135812408BFbE8713b5A23a04b3D48AAE31;
+    CToken public cSTETH;
 
     /*
     LP token address	0xf5f5B97624542D72A9E06f04804Bf81baA15e2B4
@@ -53,10 +47,10 @@ contract TestConvexPositionVault is TestBaseMarket {
     function setUp() public override {
         _fork();
 
-        owner = address(this);
-        user = user1;
-
         _deployCentralRegistry();
+        _deployGaugePool();
+        _deployLendtroller();
+
         centralRegistry.addHarvester(address(this));
         centralRegistry.setFeeAccumulator(address(this));
 
@@ -67,14 +61,24 @@ contract TestConvexPositionVault is TestBaseMarket {
             CONVEX_STETH_ETH_REWARD,
             CONVEX_BOOSTER
         );
-        positionVault.initiateVault(address(this));
+
+        cSTETH = new CToken(
+            ICentralRegistry(address(centralRegistry)),
+            address(CONVEX_STETH_ETH_POOL),
+            address(lendtroller),
+            address(positionVault)
+        );
+        positionVault.initiateVault(address(cSTETH));
     }
 
     function testConvexStethEthPool() public {
         uint256 assets = 100e18;
-        deal(address(CONVEX_STETH_ETH_POOL), address(this), assets);
+        deal(address(CONVEX_STETH_ETH_POOL), address(cSTETH), assets);
+
+        vm.prank(address(cSTETH));
         CONVEX_STETH_ETH_POOL.approve(address(positionVault), assets);
 
+        vm.prank(address(cSTETH));
         positionVault.deposit(assets, address(this));
 
         assertEq(
@@ -108,16 +112,15 @@ contract TestConvexPositionVault is TestBaseMarket {
         positionVault.harvest(abi.encode(new SwapperLib.Swap[](0)));
         vm.warp(block.timestamp + 7 days);
 
+        uint256 totalAssets = positionVault.totalAssets();
+
         assertGt(
-            positionVault.totalAssets(),
+            totalAssets,
             assets,
             "Total Assets should greater than original deposit."
         );
 
-        positionVault.withdraw(
-            positionVault.totalAssets(),
-            address(this),
-            address(this)
-        );
+        vm.prank(address(cSTETH));
+        positionVault.withdraw(totalAssets, address(this), address(this));
     }
 }

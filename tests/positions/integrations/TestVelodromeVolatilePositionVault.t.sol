@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import { IMToken } from "contracts/interfaces/market/IMToken.sol";
-import { IUniswapV2Router } from "contracts/interfaces/external/uniswap/IUniswapV2Router.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { ERC20 } from "contracts/deposits/adaptors/BasePositionVault.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { VelodromeVolatilePositionVault, BasePositionVault, IVeloGauge, IVeloRouter, IVeloPairFactory } from "contracts/deposits/adaptors/VelodromeVolatilePositionVault.sol";
+import { VelodromeVolatilePositionVault, IVeloGauge, IVeloRouter, IVeloPairFactory } from "contracts/deposits/adaptors/VelodromeVolatilePositionVault.sol";
+import { CToken } from "contracts/market/collateral/CToken.sol";
 
 import "tests/market/TestBaseMarket.sol";
 
@@ -14,25 +13,21 @@ contract TestVelodromeVolatilePositionVault is TestBaseMarket {
     address internal constant _UNISWAP_V2_ROUTER =
         0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
 
-    address public owner;
-    address public user;
+    ERC20 public WETH = ERC20(0x4200000000000000000000000000000000000006);
+    ERC20 public USDC = ERC20(0x7F5c764cBc14f9669B88837ca1490cCa17c31607);
+    ERC20 public VELO = ERC20(0x9560e827aF36c94D2Ac33a39bCE1Fe78631088Db);
+    ERC20 public WETH_USDC = ERC20(0x0493Bf8b6DBB159Ce2Db2E0E8403E753Abd1235b);
+
+    IVeloPairFactory public veloPairFactory =
+        IVeloPairFactory(0xF1046053aa5682b4F9a81b5481394DA16BE5FF5a);
+    IVeloRouter public veloRouter =
+        IVeloRouter(0xa062aE8A9c5e11aaA026fc2670B0D65cCc8B2858);
+    address public optiSwap = 0x6108FeAA628155b073150F408D0b390eC3121834;
+    IVeloGauge public gauge =
+        IVeloGauge(0xE7630c9560C59CCBf5EEd8f33dd0ccA2E67a3981);
 
     VelodromeVolatilePositionVault positionVault;
-
-    IVeloPairFactory private veloPairFactory =
-        IVeloPairFactory(0xF1046053aa5682b4F9a81b5481394DA16BE5FF5a);
-    IVeloRouter private veloRouter =
-        IVeloRouter(0xa062aE8A9c5e11aaA026fc2670B0D65cCc8B2858);
-    address private optiSwap = 0x6108FeAA628155b073150F408D0b390eC3121834;
-
-    ERC20 private WETH = ERC20(0x4200000000000000000000000000000000000006);
-    ERC20 private USDC = ERC20(0x7F5c764cBc14f9669B88837ca1490cCa17c31607);
-    ERC20 private VELO = ERC20(0x9560e827aF36c94D2Ac33a39bCE1Fe78631088Db);
-
-    ERC20 private WETH_USDC =
-        ERC20(0x0493Bf8b6DBB159Ce2Db2E0E8403E753Abd1235b);
-    IVeloGauge private gauge =
-        IVeloGauge(0xE7630c9560C59CCBf5EEd8f33dd0ccA2E67a3981);
+    CToken public cWETHUSDC;
 
     receive() external payable {}
 
@@ -46,10 +41,10 @@ contract TestVelodromeVolatilePositionVault is TestBaseMarket {
     function setUp() public override {
         _fork("ETH_NODE_URI_OPTIMISM", 109095500);
 
-        owner = address(this);
-        user = user1;
-
         _deployCentralRegistry();
+        _deployGaugePool();
+        _deployLendtroller();
+
         centralRegistry.addHarvester(address(this));
         centralRegistry.setFeeAccumulator(address(this));
 
@@ -60,14 +55,24 @@ contract TestVelodromeVolatilePositionVault is TestBaseMarket {
             veloPairFactory,
             veloRouter
         );
-        positionVault.initiateVault(address(this));
+
+        cWETHUSDC = new CToken(
+            ICentralRegistry(address(centralRegistry)),
+            address(WETH_USDC),
+            address(lendtroller),
+            address(positionVault)
+        );
+        positionVault.initiateVault(address(cWETHUSDC));
     }
 
     function testWethUsdcVolatilePool() public {
         uint256 assets = 0.0001e18;
-        deal(address(WETH_USDC), address(this), assets);
+        deal(address(WETH_USDC), address(cWETHUSDC), assets);
+
+        vm.prank(address(cWETHUSDC));
         WETH_USDC.approve(address(positionVault), assets);
 
+        vm.prank(address(cWETHUSDC));
         positionVault.deposit(assets, address(this));
 
         assertEq(
@@ -126,16 +131,15 @@ contract TestVelodromeVolatilePositionVault is TestBaseMarket {
         positionVault.harvest(abi.encode(swapData));
         vm.warp(block.timestamp + 7 days);
 
+        uint256 totalAssets = positionVault.totalAssets();
+
         assertGt(
-            positionVault.totalAssets(),
+            totalAssets,
             assets,
             "Total Assets should greater than original deposit."
         );
 
-        positionVault.withdraw(
-            positionVault.totalAssets(),
-            address(this),
-            address(this)
-        );
+        vm.prank(address(cWETHUSDC));
+        positionVault.withdraw(totalAssets, address(this), address(this));
     }
 }

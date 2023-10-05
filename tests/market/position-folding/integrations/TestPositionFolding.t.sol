@@ -63,9 +63,13 @@ contract TestPositionFolding is TestBaseMarket {
             // add MToken support on price router
             priceRouter.addMTokenSupport(address(cBALRETH));
             // set collateral factor
-            lendtroller.setCollateralizationRatio(
+            lendtroller.updateCollateralToken(
                 IMToken(address(cBALRETH)),
-                5e17
+                200,
+                0,
+                1200,
+                1000,
+                5000
             );
             vm.prank(user);
             address[] memory markets = new address[](1);
@@ -178,7 +182,8 @@ contract TestPositionFolding is TestBaseMarket {
                 _WETH_ADDRESS,
                 leverageData.zapperCall.inputAmount,
                 address(balRETH),
-                0
+                0,
+                false
             ),
             new SwapperLib.Swap[](0),
             _BALANCER_VAULT,
@@ -190,12 +195,12 @@ contract TestPositionFolding is TestBaseMarket {
         positionFolding.leverage(leverageData, 500);
 
         (uint256 dDAIBalance, uint256 dDAIBorrowed, ) = dDAI
-            .getAccountSnapshot(user);
+            .getSnapshot(user);
         assertEq(dDAIBalance, 0);
         assertEq(dDAIBorrowed, 100 ether + amountForLeverage);
 
         (uint256 cBALRETHBalance, uint256 cBALRETHBorrowed, ) = cBALRETH
-            .getAccountSnapshot(user);
+            .getSnapshot(user);
         assertGt(cBALRETHBalance, 1.5 ether);
         assertEq(cBALRETHBorrowed, 0 ether);
 
@@ -211,10 +216,8 @@ contract TestPositionFolding is TestBaseMarket {
 
         PositionFolding.DeleverageStruct memory deleverageData;
 
-        (, uint256 dDAIBorrowedBefore, ) = dDAI.getAccountSnapshot(user);
-        (uint256 cBALRETHBalanceBefore, , ) = cBALRETH.getAccountSnapshot(
-            user
-        );
+        (, uint256 dDAIBorrowedBefore, ) = dDAI.getSnapshot(user);
+        (uint256 cBALRETHBalanceBefore, , ) = cBALRETH.getSnapshot(user);
 
         deleverageData.collateralToken = cBALRETH;
         deleverageData.collateralAmount = 0.3 ether;
@@ -236,7 +239,8 @@ contract TestPositionFolding is TestBaseMarket {
                 address(balRETH),
                 deleverageData.zapperCall.inputAmount,
                 _WETH_ADDRESS,
-                0
+                0,
+                false
             ),
             tokens,
             true,
@@ -268,7 +272,7 @@ contract TestPositionFolding is TestBaseMarket {
         positionFolding.deleverage(deleverageData, 500);
 
         (uint256 dDAIBalance, uint256 dDAIBorrowed, ) = dDAI
-            .getAccountSnapshot(user);
+            .getSnapshot(user);
         assertEq(dDAIBalance, 0);
         assertEq(
             dDAIBorrowed,
@@ -276,7 +280,7 @@ contract TestPositionFolding is TestBaseMarket {
         );
 
         (uint256 cBALRETHBalance, uint256 cBALRETHBorrowed, ) = cBALRETH
-            .getAccountSnapshot(user);
+            .getSnapshot(user);
         assertEq(
             cBALRETHBalance,
             cBALRETHBalanceBefore - deleverageData.collateralAmount

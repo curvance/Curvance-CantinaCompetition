@@ -2,16 +2,16 @@
 pragma solidity 0.8.17;
 
 import { TestBaseMarket } from "tests/market/TestBaseMarket.sol";
-import { CallOptionCVE } from "contracts/token/CallOptionCVE.sol";
+import { OCVE } from "contracts/token/OCVE.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
-contract TestBaseCallOptionCVE is TestBaseMarket {
-    CallOptionCVE public callOptionCVE;
+contract TestBaseOCVE is TestBaseMarket {
+    OCVE public oCVE;
 
     function setUp() public virtual override {
         super.setUp();
 
-        callOptionCVE = new CallOptionCVE(
+        oCVE = new OCVE(
             ICentralRegistry(address(centralRegistry)),
             _USDC_ADDRESS
         );

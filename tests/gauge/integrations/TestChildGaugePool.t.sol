@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.15;
 
-import { GaugeErrors } from "contracts/gauge/GaugeErrors.sol";
 import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
@@ -76,9 +75,6 @@ contract TestChildGaugePool is TestBaseMarket {
 
             // add MToken support on price router
             priceRouter.addMTokenSupport(tokens[i]);
-
-            // set collateral factor
-            lendtroller.setCollateralizationRatio(IMToken(tokens[i]), 5e17);
 
             for (uint256 j = 0; j < 10; j++) {
                 address user = users[j];

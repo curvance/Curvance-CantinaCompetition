@@ -54,7 +54,13 @@ contract TestZapperVelodrome is TestBaseMarket {
         vm.startPrank(user);
         zapper.velodromeIn{ value: ethAmount }(
             address(0),
-            Zapper.ZapperData(address(0), ethAmount, _VELODROME_WETH_USDC, 1),
+            Zapper.ZapperData(
+                address(0),
+                ethAmount,
+                _VELODROME_WETH_USDC,
+                1,
+                true
+            ),
             new SwapperLib.Swap[](0),
             _VELODROME_ROUTER,
             _VELODROME_FACTORY,
@@ -75,7 +81,13 @@ contract TestZapperVelodrome is TestBaseMarket {
         IERC20(_VELODROME_WETH_USDC).approve(address(zapper), withdrawAmount);
         zapper.velodromeOut(
             _VELODROME_ROUTER,
-            Zapper.ZapperData(_VELODROME_WETH_USDC, withdrawAmount, _WETH, 0),
+            Zapper.ZapperData(
+                _VELODROME_WETH_USDC,
+                withdrawAmount,
+                _WETH,
+                0,
+                false
+            ),
             new SwapperLib.Swap[](0),
             user
         );

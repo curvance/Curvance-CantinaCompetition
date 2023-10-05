@@ -9,13 +9,13 @@ import { VelodromeLib } from "contracts/market/zapper/protocols/VelodromeLib.sol
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { CToken, IERC20 } from "contracts/market/collateral/CToken.sol";
+import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 
-import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
-import { ICurveSwap } from "contracts/interfaces/external/curve/ICurve.sol";
 import { IWETH } from "contracts/interfaces/IWETH.sol";
+import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
-contract Zapper {
+contract Zapper is ReentrancyGuard {
     /// TYPES ///
 
     struct ZapperData {
@@ -23,15 +23,24 @@ contract Zapper {
         uint256 inputAmount; // Input token amount to Zap from
         address outputToken; // Output token to Zap to
         uint256 minimumOut; // Minimum token amount acceptable
+        bool depositInputAsWETH; // Only valid if input token is ETH for zap in
     }
 
     /// CONSTANTS ///
 
+    // `bytes4(keccak256(bytes("Zapper__FailedETHTransfer()")))`
+    uint256 internal constant _FAILED_ETH_TRANSFER_SELECTOR = 0xefade630;
     ILendtroller public immutable lendtroller; // Lendtroller linked
     address public immutable WETH; // Address of WETH
     ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
 
+    /// ERRORS ///
+
+    error Zapper__FailedETHTransfer();
+
     /// CONSTRUCTOR ///
+
+    receive() external payable {}
 
     constructor(
         ICentralRegistry centralRegistry_,
@@ -74,12 +83,13 @@ contract Zapper {
         address lpMinter,
         address[] calldata tokens,
         address recipient
-    ) external payable returns (uint256 cTokenOutAmount) {
+    ) external payable nonReentrant returns (uint256 cTokenOutAmount) {
         // swap input token for underlyings
         _swapForUnderlyings(
             zapData.inputToken,
             zapData.inputAmount,
-            tokenSwaps
+            tokenSwaps,
+            zapData.depositInputAsWETH
         );
 
         // enter curve
@@ -107,7 +117,7 @@ contract Zapper {
         uint256 singleAssetIndex,
         SwapperLib.Swap[] calldata tokenSwaps,
         address recipient
-    ) external returns (uint256 outAmount) {
+    ) external nonReentrant returns (uint256 outAmount) {
         SafeTransferLib.safeTransferFrom(
             zapData.inputToken,
             msg.sender,
@@ -131,18 +141,14 @@ contract Zapper {
             }
         }
 
-        outAmount = IERC20(zapData.outputToken).balanceOf(address(this));
+        outAmount = CommonLib.getTokenBalance(zapData.outputToken);
         require(
             outAmount >= zapData.minimumOut,
             "Zapper: received less than minOutAmount"
         );
 
         // transfer token back to user
-        SafeTransferLib.safeTransfer(
-            zapData.outputToken,
-            recipient,
-            outAmount
-        );
+        _transferOut(zapData.outputToken, recipient, outAmount);
     }
 
     /// @dev Deposit inputToken and enter curvance
@@ -162,12 +168,13 @@ contract Zapper {
         bytes32 balancerPoolId,
         address[] calldata tokens,
         address recipient
-    ) external payable returns (uint256 cTokenOutAmount) {
+    ) external payable nonReentrant returns (uint256 cTokenOutAmount) {
         // swap input token for underlyings
         _swapForUnderlyings(
             zapData.inputToken,
             zapData.inputAmount,
-            tokenSwaps
+            tokenSwaps,
+            zapData.depositInputAsWETH
         );
 
         // enter balancer
@@ -197,7 +204,7 @@ contract Zapper {
         uint256 singleAssetIndex,
         SwapperLib.Swap[] calldata tokenSwaps,
         address recipient
-    ) external returns (uint256 outAmount) {
+    ) external nonReentrant returns (uint256 outAmount) {
         SafeTransferLib.safeTransferFrom(
             zapData.inputToken,
             msg.sender,
@@ -222,18 +229,14 @@ contract Zapper {
             }
         }
 
-        outAmount = IERC20(zapData.outputToken).balanceOf(address(this));
+        outAmount = CommonLib.getTokenBalance(zapData.outputToken);
         require(
             outAmount >= zapData.minimumOut,
             "Zapper: received less than minOutAmount"
         );
 
         // transfer token back to user
-        SafeTransferLib.safeTransfer(
-            zapData.outputToken,
-            recipient,
-            outAmount
-        );
+        _transferOut(zapData.outputToken, recipient, outAmount);
     }
 
     /// @dev Deposit inputToken and enter curvance
@@ -251,12 +254,13 @@ contract Zapper {
         address router,
         address factory,
         address recipient
-    ) external payable returns (uint256 cTokenOutAmount) {
+    ) external payable nonReentrant returns (uint256 cTokenOutAmount) {
         // swap input token for underlyings
         _swapForUnderlyings(
             zapData.inputToken,
             zapData.inputAmount,
-            tokenSwaps
+            tokenSwaps,
+            zapData.depositInputAsWETH
         );
 
         // enter velodrome
@@ -281,7 +285,7 @@ contract Zapper {
         ZapperData calldata zapData,
         SwapperLib.Swap[] calldata tokenSwaps,
         address recipient
-    ) external returns (uint256 outAmount) {
+    ) external nonReentrant returns (uint256 outAmount) {
         SafeTransferLib.safeTransferFrom(
             zapData.inputToken,
             msg.sender,
@@ -302,33 +306,33 @@ contract Zapper {
             }
         }
 
-        outAmount = IERC20(zapData.outputToken).balanceOf(address(this));
+        outAmount = CommonLib.getTokenBalance(zapData.outputToken);
         require(
             outAmount >= zapData.minimumOut,
             "Zapper: received less than minOutAmount"
         );
 
         // transfer token back to user
-        SafeTransferLib.safeTransfer(
-            zapData.outputToken,
-            recipient,
-            outAmount
-        );
+        _transferOut(zapData.outputToken, recipient, outAmount);
     }
 
     /// @dev Deposit inputToken and enter curvance
     /// @param inputToken The input token address
     /// @param inputAmount The amount to deposit
     /// @param tokenSwaps The swap aggregation data
+    /// @param depositInputAsWETH Used when `inputToken` is ether,
+    ///                           indicates depositing ether into WETH9 contract
     function _swapForUnderlyings(
         address inputToken,
         uint256 inputAmount,
-        SwapperLib.Swap[] calldata tokenSwaps
+        SwapperLib.Swap[] calldata tokenSwaps,
+        bool depositInputAsWETH
     ) private {
         if (CommonLib.isETH(inputToken)) {
             require(inputAmount == msg.value, "Zapper: invalid amount");
-            inputToken = WETH;
-            IWETH(WETH).deposit{ value: inputAmount }();
+            if (depositInputAsWETH) {
+                IWETH(WETH).deposit{ value: inputAmount }();
+            }
         } else {
             SafeTransferLib.safeTransferFrom(
                 inputToken,
@@ -359,7 +363,7 @@ contract Zapper {
         address lpToken,
         uint256 amount,
         address recipient
-    ) private returns (uint256 out) {
+    ) private returns (uint256) {
         if (cToken == address(0)) {
             // transfer LP token to recipient
             SafeTransferLib.safeTransfer(lpToken, recipient, amount);
@@ -367,8 +371,7 @@ contract Zapper {
         }
 
         // check valid cToken
-        (bool isListed, ) = lendtroller.getMarketTokenData(cToken);
-        require(isListed, "Zapper: invalid cToken address");
+        require(lendtroller.isListed(cToken), "PositionFolding: UNAUTHORIZED");
         // check cToken underlying
         require(
             CToken(cToken).underlying() == lpToken,
@@ -378,12 +381,35 @@ contract Zapper {
         // approve lp token
         SwapperLib.approveTokenIfNeeded(lpToken, cToken, amount);
 
+        uint256 priorBalance = IERC20(cToken).balanceOf(recipient);
+
         // enter curvance
         require(
             CToken(cToken).mintFor(amount, recipient),
             "Zapper: error joining Curvance"
         );
+        return IERC20(cToken).balanceOf(recipient) - priorBalance;
+    }
 
-        out = CommonLib.getTokenBalance(cToken);
+    function _transferOut(
+        address token,
+        address recipient,
+        uint256 amount
+    ) internal {
+        if (CommonLib.isETH(token)) {
+            assembly {
+                // Transfer the Ether, reverts on failure
+                // Had to add NonReentrant to all doTransferOut calls to prevent .call reentry
+                if iszero(
+                    call(gas(), recipient, amount, 0x00, 0x00, 0x00, 0x00)
+                ) {
+                    mstore(0x00, _FAILED_ETH_TRANSFER_SELECTOR)
+                    // return bytes 29-32 for the selector
+                    revert(0x1c, 0x04)
+                }
+            }
+        } else {
+            SafeTransferLib.safeTransfer(token, recipient, amount);
+        }
     }
 }

@@ -71,14 +71,11 @@ interface ICentralRegistry {
     /// @notice Returns protocolHarvestFee Address
     function protocolHarvestFee() external view returns (uint256);
 
-    /// @notice Returns protocolLiquidationFee Address
-    function protocolLiquidationFee() external view returns (uint256);
-
     /// @notice Returns protocolLeverageFee Address
     function protocolLeverageFee() external view returns (uint256);
 
-    /// @notice Returns protocolInterestRateFee Address
-    function protocolInterestRateFee() external view returns (uint256);
+    /// @notice Lending Market => Protocol Reserve Factor on interest generated
+    function protocolInterestFactor(address market) external view returns (uint256);
 
     /// @notice Returns earlyUnlockPenaltyValue value in basis point form
     function earlyUnlockPenaltyValue() external view returns (uint256);
@@ -98,9 +95,10 @@ interface ICentralRegistry {
         uint256 chainID
     ) external view returns (ChainData memory);
 
-    // Address => Curvance identification information
+    // Address => chainID => Curvance identification information
     function omnichainOperators(
-        address _address
+        address _address,
+        uint256 chainID
     ) external view returns (OmnichainData memory);
 
     // Messaging specific ChainId => GETH comparable ChainId

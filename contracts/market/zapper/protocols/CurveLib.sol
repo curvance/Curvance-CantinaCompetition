@@ -18,7 +18,7 @@ library CurveLib {
         address[] calldata tokens,
         uint256 lpMinOutAmount
     ) internal returns (uint256 lpOutAmount) {
-        bool hasETH;
+        uint256 value;
 
         uint256 numTokens = tokens.length;
 
@@ -27,10 +27,13 @@ library CurveLib {
         for (uint256 i; i < numTokens; ) {
             balances[i] = CommonLib.getTokenBalance(tokens[i]);
             SwapperLib.approveTokenIfNeeded(tokens[i], lpMinter, balances[i]);
+
+            if (CommonLib.isETH(tokens[i])) {
+                value = balances[i];
+            }
+
             unchecked {
-                if (CommonLib.isETH(tokens[i++])) {
-                    hasETH = true;
-                }
+                ++i;
             }
         }
 
@@ -41,37 +44,19 @@ library CurveLib {
             amounts[1] = balances[1];
             amounts[2] = balances[2];
             amounts[3] = balances[3];
-            if (hasETH) {
-                ICurveSwap(lpMinter).add_liquidity{
-                    value: CommonLib.getETHBalance()
-                }(amounts, 0);
-            } else {
-                ICurveSwap(lpMinter).add_liquidity(amounts, 0);
-            }
+            ICurveSwap(lpMinter).add_liquidity{ value: value }(amounts, 0);
         } else if (numTokens == 3) {
             uint256[3] memory amounts;
             amounts[0] = balances[0];
             amounts[1] = balances[1];
             amounts[2] = balances[2];
-            if (hasETH) {
-                ICurveSwap(lpMinter).add_liquidity{
-                    value: CommonLib.getETHBalance()
-                }(amounts, 0);
-            } else {
-                ICurveSwap(lpMinter).add_liquidity(amounts, 0);
-            }
+            ICurveSwap(lpMinter).add_liquidity{ value: value }(amounts, 0);
         } else {
             uint256[2] memory amounts;
             amounts[0] = balances[0];
             amounts[1] = balances[1];
 
-            if (hasETH) {
-                ICurveSwap(lpMinter).add_liquidity{
-                    value: CommonLib.getETHBalance()
-                }(amounts, 0);
-            } else {
-                ICurveSwap(lpMinter).add_liquidity(amounts, 0);
-            }
+            ICurveSwap(lpMinter).add_liquidity{ value: value }(amounts, 0);
         }
 
         // check min out amount
