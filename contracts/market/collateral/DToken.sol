@@ -434,20 +434,6 @@ contract DToken is ERC165, ReentrancyGuard {
         );
     }
 
-    /// @notice Sender redeems dTokens in exchange for a specified amount of underlying asset
-    /// @dev    Updates interest before executing the redemption
-    /// @param underlyingAmount The amount of underlying to redeem
-    function redeemUnderlying(uint256 underlyingAmount) external nonReentrant {
-        accrueInterest();
-
-        uint256 amount = (underlyingAmount * EXP_SCALE) / exchangeRateStored();
-
-        // Fail if redeem not allowed
-        lendtroller.canRedeem(address(this), msg.sender, amount);
-
-        _redeem(msg.sender, amount, underlyingAmount, msg.sender);
-    }
-
     /// @notice Helper function for Position Folding contract to redeem underlying tokens
     /// @dev    Updates interest before executing the redemption
     /// @param user The user address

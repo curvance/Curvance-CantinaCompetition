@@ -24,7 +24,8 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
             IMToken(address(dUSDC)),
             200,
             0,
-            9200,
+            300,
+            250,
             9000
         );
     }
@@ -37,7 +38,8 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
             IMToken(address(dUSDC)),
             200,
             0,
-            9200,
+            300,
+            250,
             9100 + 1
         );
     }
@@ -50,7 +52,8 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
             IMToken(address(cBALRETH)),
             200,
             0,
-            9200,
+            300,
+            250,
             9000
         );
     }
@@ -64,7 +67,8 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
             IMToken(address(cBALRETH)),
             0.02e18,
             0,
-            0.92e18,
+            1.03e18,
+            1.025e18,
             0.9e18
         );
 
@@ -72,7 +76,8 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
             IMToken(address(cBALRETH)),
             200,
             0,
-            9200,
+            300,
+            250,
             9000
         );
 

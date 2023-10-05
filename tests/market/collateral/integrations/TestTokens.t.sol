@@ -63,7 +63,8 @@ contract TestTokens is TestBaseMarket {
                 IMToken(address(cBALRETH)),
                 200,
                 0,
-                5500,
+                1200,
+                1000,
                 5000
             );
             address[] memory markets = new address[](1);

@@ -26,12 +26,15 @@ contract Lendtroller is ILendtroller, ERC165 {
         /// @notice Whether or not this market token is listed.
         /// @dev    0 or 1 = unlisted; 2 = listed
         bool isListed;
+        /// @notice The collateral requirement where dipping below this will cause a soft liquidation.
+        /// @dev    in `EXP_SCALE` format, with 1.2e18 = 120% collateral vs debt value
+        uint256 collateralRequirementA;
+        /// @notice The collateral requirement where dipping below this will cause a hard liquidation.
+        /// @dev    in `EXP_SCALE` format, with 1.2e18 = 120% collateral vs debt value
+        uint256 collateralRequirementB;
         /// @notice The ratio at which this token can be collateralized.
         /// @dev    in `EXP_SCALE` format, with 0.8e18 = 80% collateral value
         uint256 collateralizationRatio;
-        /// @notice The ratio at which this token will be liquidated.
-        /// @dev    in `EXP_SCALE` format, with 0.8e18 = 80% debt vs collateral value
-        uint256 liquidationThreshold;
         /// @notice The ratio at which this token will be compensated on liquidation.
         /// @dev    In `EXP_SCALE` format, stored as (Incentive + EXP_SCALE)
         ///         e.g 1.05e18 = 5% incentive, this saves gas for liquidation calculations
@@ -50,8 +53,8 @@ contract Lendtroller is ILendtroller, ERC165 {
 
     /// @notice Scalar for math.
     uint256 internal constant _EXP_SCALE = 1e18;
-    /// @notice Maximum liquidation threshold. 95%
-    uint256 internal constant _MAX_LIQUIDATION_THRESHOLD = 0.95e18;
+    /// @notice Maximum collateral requirement to avoid liquidation. 140%
+    uint256 internal constant _MAX_COLLATERAL_REQUIREMENT = 1.4e18;
     /// @notice Maximum collateralization ratio. 91%
     uint256 internal constant _MAX_COLLATERALIZATION_RATIO = 0.91e18;
     /// @notice Minimum hold time to prevent oracle price attacks.
@@ -109,7 +112,8 @@ contract Lendtroller is ILendtroller, ERC165 {
         IMToken mToken,
         uint256 newLI,
         uint256 newLF,
-        uint256 newLT,
+        uint256 newCR_A,
+        uint256 newCR_B,
         uint256 newCR
     );
     event ActionPaused(string action, bool pauseState);
@@ -530,14 +534,16 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @param mToken The market to set the collateralization ratio on
     /// @param liquidationIncentive The liquidation incentive for `mToken`, in basis points
     /// @param protocolLiquidationFee The protocol liquidation fee for `mToken`, in basis points
-    /// @param liquidationThreshold The threshold at which `mToken` will be liquidated, in basis point
+    /// @param collateralRequirementA The premium of excess collateral required to avoid soft liquidation, in basis points
+    /// @param collateralRequirementB The premium of excess collateral required to avoid hard liquidation, in basis points
     /// @param collateralizationRatio The ratio at which $1 of collateral can be borrowed against,
     ///                               for `mToken`, in basis points
     function updateCollateralToken(
         IMToken mToken,
         uint256 liquidationIncentive,
         uint256 protocolLiquidationFee,
-        uint256 liquidationThreshold,
+        uint256 collateralRequirementA,
+        uint256 collateralRequirementB,
         uint256 collateralizationRatio
     ) external onlyElevatedPermissions {
         if (!IMToken(mToken).isCToken()) {
@@ -553,7 +559,8 @@ contract Lendtroller is ILendtroller, ERC165 {
         // Convert the parameters from basis points to `EXP_SCALE` format
         liquidationIncentive = liquidationIncentive * 1e14;
         protocolLiquidationFee = protocolLiquidationFee * 1e14;
-        liquidationThreshold = liquidationThreshold * 1e14;
+        collateralRequirementA = collateralRequirementA * 1e14;
+        collateralRequirementB = collateralRequirementB * 1e14;
         collateralizationRatio = collateralizationRatio * 1e14;
 
         // Validate liquidation incentive is not above the maximum allowed
@@ -566,8 +573,13 @@ contract Lendtroller is ILendtroller, ERC165 {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
-        // Validate liquidation threshold is not above the maximum allowed
-        if (liquidationThreshold > _MAX_LIQUIDATION_THRESHOLD) {
+        // Validate collateral requirement is not above the maximum allowed
+        if (collateralRequirementA > _MAX_COLLATERAL_REQUIREMENT) {
+            _revert(_INVALID_PARAMETER_SELECTOR);
+        }
+
+        // Validate hard liquidation requirement is not above the soft liquidation requirement
+        if (collateralRequirementB > collateralRequirementA) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
@@ -576,8 +588,8 @@ contract Lendtroller is ILendtroller, ERC165 {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
-        // Validate liquidation threshold is larger than the collateralization ratio
-        if (collateralizationRatio > liquidationThreshold) {
+        // Validate collateral requirement is larger than the liquidation incentive
+        if (liquidationIncentive > collateralRequirementB) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
@@ -606,11 +618,10 @@ contract Lendtroller is ILendtroller, ERC165 {
             (_EXP_SCALE * protocolLiquidationFee) /
             (_EXP_SCALE + liquidationIncentive);
 
-        // Store the liquidation threshold as a multiplier ontop of collateralization ratio,
-        // that way we can multiply debt by the stored threshold / EXP_SCALE in _getStatusForLiquidation
-        marketToken.liquidationThreshold =
-            (liquidationThreshold * _EXP_SCALE) /
-            collateralizationRatio;
+        // Store the collateral requirement as a premium above `EXP_SCALE`,
+        // that way we can calculate solvency via division easily in _getStatusForLiquidation
+        marketToken.collateralRequirementA = collateralRequirementA + _EXP_SCALE;
+        marketToken.collateralRequirementB = collateralRequirementB + _EXP_SCALE;
 
         // Assign new collateralization ratio
         // Note that a collateralization ratio of 0 corresponds to
@@ -621,7 +632,8 @@ contract Lendtroller is ILendtroller, ERC165 {
             mToken,
             liquidationIncentive,
             protocolLiquidationFee,
-            liquidationThreshold,
+            collateralRequirementA,
+            collateralRequirementB,
             collateralizationRatio
         );
     }
@@ -1214,8 +1226,8 @@ contract Lendtroller is ILendtroller, ERC165 {
             uint256 numAssets
         ) = _getAssetData(account, 2);
         AccountSnapshot memory snapshot;
-        uint256 sumCollateral;
-        uint256 collateralRequirement;
+        uint256 totalCollateral;
+        uint256 totalDebt;
         uint256 debtTokenPrice;
         uint256 collateralTokenPrice;
 
@@ -1226,14 +1238,15 @@ contract Lendtroller is ILendtroller, ERC165 {
                 if (snapshot.asset == collateralToken) {
                     collateralTokenPrice = prices[i];
                 }
+                
                 // If the asset has a CR increment their collateral
                 if (
                     !(mTokenData[snapshot.asset].collateralizationRatio == 0)
                 ) {
-                    sumCollateral +=
+                    totalCollateral +=
                         (((snapshot.balance * snapshot.exchangeRate) /
                             _EXP_SCALE) * prices[i]) /
-                        _EXP_SCALE;
+                        mTokenData[snapshot.asset].collateralRequirementA;
                 }
             } else {
                 if (snapshot.asset == debtToken) {
@@ -1243,11 +1256,7 @@ contract Lendtroller is ILendtroller, ERC165 {
                 // If they have a debt balance,
                 // we need to document collateral requirements
                 if (snapshot.debtBalance > 0) {
-                    uint256 debt = ((prices[i] * snapshot.debtBalance) /
-                        _EXP_SCALE);
-                    collateralRequirement +=
-                        (debt *
-                            mTokenData[snapshot.asset].liquidationThreshold) /
+                    totalDebt += (prices[i] * snapshot.debtBalance) /
                         _EXP_SCALE;
                 }
             }
@@ -1257,13 +1266,13 @@ contract Lendtroller is ILendtroller, ERC165 {
             }
         }
 
-        if (sumCollateral >= collateralRequirement) {
+        if (totalCollateral >= totalDebt) {
             return (0, debtTokenPrice, collateralTokenPrice);
         }
 
         unchecked {
             return (
-                collateralRequirement - sumCollateral,
+                totalDebt - totalCollateral,
                 debtTokenPrice,
                 collateralTokenPrice
             );
