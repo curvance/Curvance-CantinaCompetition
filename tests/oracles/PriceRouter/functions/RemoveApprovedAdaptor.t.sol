@@ -9,7 +9,7 @@ contract RemoveApprovedAdaptorTest is TestBasePriceRouter {
     {
         vm.prank(address(1));
 
-        vm.expectRevert("centralRegistry: UNAUTHORIZED");
+        vm.expectRevert("PriceRouter: UNAUTHORIZED");
         priceRouter.removeApprovedAdaptor(address(chainlinkAdaptor));
     }
 

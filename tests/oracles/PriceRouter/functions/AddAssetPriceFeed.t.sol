@@ -7,7 +7,7 @@ contract AddAssetPriceFeedTest is TestBasePriceRouter {
     function test_addAssetPriceFeed_fail_whenCallerIsNotAuthorized() public {
         vm.prank(address(1));
 
-        vm.expectRevert("centralRegistry: UNAUTHORIZED");
+        vm.expectRevert("PriceRouter: UNAUTHORIZED");
         priceRouter.addAssetPriceFeed(
             _USDC_ADDRESS,
             address(chainlinkAdaptor)

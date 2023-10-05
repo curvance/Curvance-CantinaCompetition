@@ -7,7 +7,7 @@ contract AddApprovedAdaptorTest is TestBasePriceRouter {
     function test_addApprovedAdaptor_fail_whenCallerIsNotAuthorized() public {
         vm.prank(address(1));
 
-        vm.expectRevert("centralRegistry: UNAUTHORIZED");
+        vm.expectRevert("PriceRouter: UNAUTHORIZED");
         priceRouter.addApprovedAdaptor(address(chainlinkAdaptor));
     }
 

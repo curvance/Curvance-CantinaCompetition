@@ -7,7 +7,7 @@ contract RemoveMTokenSupportTest is TestBasePriceRouter {
     function test_removeMTokenSupport_fail_whenCallerIsNotAuthorized() public {
         vm.prank(address(1));
 
-        vm.expectRevert("centralRegistry: UNAUTHORIZED");
+        vm.expectRevert("PriceRouter: UNAUTHORIZED");
         priceRouter.removeMTokenSupport(address(mUSDC));
     }
 

@@ -9,7 +9,7 @@ contract RemoveAssetPriceFeedTest is TestBasePriceRouter {
     {
         vm.prank(address(1));
 
-        vm.expectRevert("centralRegistry: UNAUTHORIZED");
+        vm.expectRevert("PriceRouter: UNAUTHORIZED");
         priceRouter.removeAssetPriceFeed(
             _USDC_ADDRESS,
             address(chainlinkAdaptor)
