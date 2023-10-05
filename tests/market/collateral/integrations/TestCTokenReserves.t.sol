@@ -59,11 +59,11 @@ contract TestCTokenReserves is TestBaseMarket {
             // set collateral factor
             lendtroller.updateCollateralToken(
                 IMToken(address(cBALRETH)),
-                2000,
-                500,
-                1500,
-                1200,
-                5000
+                200,
+                0,
+                4000, // liquidate at 71%
+                3000,
+                7000
             );
             address[] memory markets = new address[](1);
             markets[0] = address(cBALRETH);
@@ -117,7 +117,7 @@ contract TestCTokenReserves is TestBaseMarket {
 
         // try borrow()
         vm.startPrank(user1);
-        dDAI.borrow(500 ether);
+        dDAI.borrow(1000 ether);
         vm.stopPrank();
 
         // skip min hold period
@@ -142,9 +142,7 @@ contract TestCTokenReserves is TestBaseMarket {
         dDAI.liquidateExact(user1, repayAmount, IMToken(address(cBALRETH)));
         vm.stopPrank();
 
-        AccountSnapshot memory snapshot = cBALRETH.getSnapshotPacked(
-            user1
-        );
+        AccountSnapshot memory snapshot = cBALRETH.getSnapshotPacked(user1);
         assertApproxEqRel(
             snapshot.balance,
             1 ether - liquidatedTokens,
@@ -155,7 +153,7 @@ contract TestCTokenReserves is TestBaseMarket {
 
         snapshot = dDAI.getSnapshotPacked(user1);
         assertEq(snapshot.balance, 0);
-        assertApproxEqRel(snapshot.debtBalance, 250 ether, 0.01e18);
+        assertApproxEqRel(snapshot.debtBalance, 750 ether, 0.01e18);
         assertApproxEqRel(snapshot.exchangeRate, 1 ether, 0.01e18);
 
         assertEq(cBALRETH.balanceOf(dao), daoBalanceBefore + protocolTokens);
