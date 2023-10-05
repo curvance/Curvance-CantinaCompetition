@@ -237,8 +237,7 @@ contract CToken is ERC165, ReentrancyGuard {
         _redeem(
             msg.sender,
             msg.sender,
-            amount,
-            (exchangeRateStored() * amount) / EXP_SCALE
+            amount
         );
     }
 
@@ -258,8 +257,7 @@ contract CToken is ERC165, ReentrancyGuard {
         _redeem(
             user,
             msg.sender,
-            (underlyingAmount * EXP_SCALE) / exchangeRateStored(),
-            underlyingAmount
+            (underlyingAmount * EXP_SCALE) / exchangeRateStored()
         );
 
         IPositionFolding(msg.sender).onRedeem(
@@ -509,16 +507,13 @@ contract CToken is ERC165, ReentrancyGuard {
     /// @param redeemer The address of the account which is redeeming the tokens
     /// @param recipient The recipient receiving the redeemed tokens
     /// @param tokens The number of cTokens to redeem into underlying
-    /// @param amount The number of underlying tokens to receive
-    ///               from redeeming cTokens
     function _redeem(
         address redeemer,
         address recipient,
-        uint256 tokens,
-        uint256 amount
+        uint256 tokens
     ) internal {
         // Validate redemption parameters
-        if (tokens == 0 && amount > 0) {
+        if (tokens == 0) {
             revert CToken__CannotEqualZero();
         }
 

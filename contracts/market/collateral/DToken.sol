@@ -428,9 +428,9 @@ contract DToken is ERC165, ReentrancyGuard {
 
         _redeem(
             msg.sender,
+            msg.sender,
             amount,
-            (exchangeRateStored() * amount) / EXP_SCALE,
-            msg.sender
+            (exchangeRateStored() * amount) / EXP_SCALE
         );
     }
 
@@ -451,9 +451,9 @@ contract DToken is ERC165, ReentrancyGuard {
 
         _redeem(
             user,
+            msg.sender,
             (underlyingAmount * EXP_SCALE) / exchangeRateStored(),
-            underlyingAmount,
-            msg.sender
+            underlyingAmount
         );
 
         IPositionFolding(msg.sender).onRedeem(
@@ -993,9 +993,9 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @param recipient The recipient address
     function _redeem(
         address redeemer,
+        address recipient,
         uint256 tokens,
-        uint256 amount,
-        address recipient
+        uint256 amount
     ) internal {
         // Check if we have enough cash to support the redeem
         if (getCash() < amount) {
