@@ -64,7 +64,7 @@ contract PriceRouter {
     modifier onlyDaoPermissions() {
         require(
             centralRegistry.hasDaoPermissions(msg.sender),
-            "centralRegistry: UNAUTHORIZED"
+            "PriceRouter: UNAUTHORIZED"
         );
         _;
     }
@@ -72,7 +72,7 @@ contract PriceRouter {
     modifier onlyElevatedPermissions() {
         require(
             centralRegistry.hasElevatedPermissions(msg.sender),
-            "centralRegistry: UNAUTHORIZED"
+            "PriceRouter: UNAUTHORIZED"
         );
         _;
     }
@@ -422,7 +422,6 @@ contract PriceRouter {
         if (numAssetPriceFeeds == 0) {
             _revert(_NOT_SUPPORTED_SELECTOR);
         }
-        require(numAssetPriceFeeds > 0, "PriceRouter: no feeds available");
 
         if (numAssetPriceFeeds > 1) {
             if (

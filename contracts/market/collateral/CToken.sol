@@ -20,32 +20,26 @@ contract CToken is ERC165, ReentrancyGuard {
 
     /// @notice Scalar for math
     uint256 internal constant EXP_SCALE = 1e18;
-
     /// @notice Underlying asset for the CToken
     address public immutable underlying;
-
+    /// @notice Curvance DAO hub
     ICentralRegistry public immutable centralRegistry;
 
     /// STORAGE ///
 
     /// @notice Token name metadata
     string public name;
-
     /// @notice Token symbol metadata
     string public symbol;
-
     /// @notice Current lending market controller
     ILendtroller public lendtroller;
-
     /// @notice Current position vault
     BasePositionVault public vault;
-
     /// @notice Total number of tokens in circulation
     uint256 public totalSupply;
-
+    
     /// @notice account => token balance
     mapping(address => uint256) public balanceOf;
-
     /// @notice account => spender => approved amount
     mapping(address => mapping(address => uint256)) public allowance;
 
