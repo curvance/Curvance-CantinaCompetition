@@ -118,7 +118,6 @@ contract DToken is ERC165, ReentrancyGuard {
     /// ERRORS ///
 
     error DToken__UnauthorizedCaller();
-    error DToken__CannotEqualZero();
     error DToken__ExcessiveValue();
     error DToken__TransferNotAllowed();
     error DToken__CashNotAvailable();
@@ -1002,11 +1001,6 @@ contract DToken is ERC165, ReentrancyGuard {
             revert DToken__CashNotAvailable();
         }
 
-        // Validate redemption parameters
-        if (tokens == 0 && amount > 0) {
-            revert DToken__CannotEqualZero();
-        }
-
         balanceOf[redeemer] = balanceOf[redeemer] - tokens;
         // We have user underflow check above so we do not need a redundant check here
         unchecked {
@@ -1062,10 +1056,10 @@ contract DToken is ERC165, ReentrancyGuard {
         lendtroller.canRepay(address(this), borrower);
 
         // Cache how much the borrower has to save gas
-        uint256 accountBorrowsPrev = debtBalanceStored(borrower);
+        uint256 accountDebt = debtBalanceStored(borrower);
 
         // If amount == uint max, amount = accountBorrows
-        amount = amount == 0 ? accountBorrowsPrev : amount;
+        amount = amount == 0 ? accountDebt : amount;
 
         SafeTransferLib.safeTransferFrom(
             underlying,
@@ -1075,7 +1069,7 @@ contract DToken is ERC165, ReentrancyGuard {
         );
 
         // We calculate the new borrower and total borrow balances, failing on underflow:
-        _debtOf[borrower].principal = accountBorrowsPrev - amount;
+        _debtOf[borrower].principal = accountDebt - amount;
         _debtOf[borrower].interestIndex = borrowExchangeRate.exchangeRate;
         totalBorrows -= amount;
 

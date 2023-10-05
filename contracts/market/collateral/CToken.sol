@@ -63,7 +63,6 @@ contract CToken is ERC165, ReentrancyGuard {
     /// ERRORS ///
 
     error CToken__UnauthorizedCaller();
-    error CToken__CannotEqualZero();
     error CToken__ExcessiveValue();
     error CToken__TransferNotAllowed();
     error CToken__ValidationFailed();
@@ -512,11 +511,6 @@ contract CToken is ERC165, ReentrancyGuard {
         address recipient,
         uint256 tokens
     ) internal {
-        // Validate redemption parameters
-        if (tokens == 0) {
-            revert CToken__CannotEqualZero();
-        }
-
         // we know it will revert from underflow
         balanceOf[redeemer] = balanceOf[redeemer] - tokens;
 
