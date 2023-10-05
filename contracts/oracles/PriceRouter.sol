@@ -27,7 +27,6 @@ contract PriceRouter {
 
     /// CONSTANTS ///
 
-    uint256 public constant CHAINLINK_DIVISOR = 1e8; // Chainlink decimal offset
     uint256 public constant DENOMINATOR = 10000; // Scalar for divergence value
     uint256 public constant NO_ERROR = 0; // 0 = no error
     uint256 public constant CAUTION = 1; // 1 = price divergence or 1 missing price
