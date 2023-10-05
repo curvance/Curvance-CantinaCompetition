@@ -22,8 +22,8 @@ contract GetPriceMultiTest is TestBasePriceRouter {
     }
 
     function test_getPriceMulti_fail_whenNoFeedsAvailable() public {
-        vm.expectRevert("PriceRouter: no feeds available");
-        priceRouter.getPriceMulti(assets, inUSD, getLower);
+        vm.expectRevert(0xe4558fac);
+        priceRouter.getPrices(assets, inUSD, getLower);
     }
 
     function test_getPriceMulti_success() public {
@@ -35,9 +35,9 @@ contract GetPriceMultiTest is TestBasePriceRouter {
             .latestRoundData();
 
         (uint256[] memory prices, uint256[] memory errorCodes) = priceRouter
-            .getPriceMulti(assets, inUSD, getLower);
+            .getPrices(assets, inUSD, getLower);
 
-        assertEq(prices[0], uint256(usdcPrice));
+        assertEq(prices[0], uint256(usdcPrice) * 1e10);
         assertEq(errorCodes[0], 0);
 
         assertEq(prices[1], uint256(ethPrice));

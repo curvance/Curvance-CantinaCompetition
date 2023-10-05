@@ -27,8 +27,10 @@ interface ICurveFi {
         uint256 max_burn_amount
     ) external;
 
-    function remove_liquidity(uint256 _amount, uint256[2] calldata amounts)
-        external;
+    function remove_liquidity(
+        uint256 _amount,
+        uint256[2] calldata amounts
+    ) external;
 
     function remove_liquidity_one_coin(
         uint256 _token_amount,
@@ -66,10 +68,10 @@ interface ICurveFi {
     ) external view returns (uint256);
 
     // EURt
-    function calc_token_amount(uint256[2] calldata _amounts, bool _is_deposit)
-        external
-        view
-        returns (uint256);
+    function calc_token_amount(
+        uint256[2] calldata _amounts,
+        bool _is_deposit
+    ) external view returns (uint256);
 
     // 3Crv Metapools
     function calc_token_amount(
@@ -79,19 +81,19 @@ interface ICurveFi {
     ) external view returns (uint256);
 
     // sUSD, Y pool, etc
-    function calc_token_amount(uint256[4] calldata _amounts, bool _is_deposit)
-        external
-        view
-        returns (uint256);
+    function calc_token_amount(
+        uint256[4] calldata _amounts,
+        bool _is_deposit
+    ) external view returns (uint256);
 
     // 3pool, Iron Bank, etc
-    function calc_token_amount(uint256[3] calldata _amounts, bool _is_deposit)
-        external
-        view
-        returns (uint256);
+    function calc_token_amount(
+        uint256[3] calldata _amounts,
+        bool _is_deposit
+    ) external view returns (uint256);
 
-    function calc_withdraw_one_coin(uint256 amount, int128 i)
-        external
-        view
-        returns (uint256);
+    function calc_withdraw_one_coin(
+        uint256 amount,
+        int128 i
+    ) external view returns (uint256);
 }

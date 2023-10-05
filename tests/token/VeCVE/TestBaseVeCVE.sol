@@ -77,7 +77,7 @@ contract TestBaseVeCVE is TestBase {
     function _deployCVELocker() internal {
         cveLocker = new CVELocker(
             ICentralRegistry(address(centralRegistry)),
-            _ZERO_ADDRESS
+            _USDC_ADDRESS
         );
         centralRegistry.setCVELocker(address(cveLocker));
     }

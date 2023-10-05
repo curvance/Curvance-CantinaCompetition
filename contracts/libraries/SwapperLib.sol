@@ -2,10 +2,9 @@
 pragma solidity ^0.8.17;
 
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
-import { ERC20 } from "contracts/libraries/ERC20.sol";
+import { CommonLib } from "contracts/market/zapper/protocols/CommonLib.sol";
 
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
-import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 
 library SwapperLib {
     /// TYPES ///
@@ -24,53 +23,33 @@ library SwapperLib {
         bytes call;
     }
 
-    /// CONSTANTS ///
-    uint256 public constant SLIPPAGE_DENOMINATOR = 10000;
-
-    /// @notice Checks if the slippage is within an acceptable range.
-    /// @dev Calculates whether the zap slippage for the given input
-    ///      falls within the accepted range.
-    ///      If not, the function reverts with a message.
-    /// @param usdInput The USD amount input for the transaction.
-    /// @param usdOutput The USD amount output from the transaction.
-    /// @param slippage The slippage percentage for the transaction.
-    function checkSlippage(
-        uint256 usdInput,
-        uint256 usdOutput,
-        uint256 slippage
-    ) internal pure {
-        require(
-            usdOutput >=
-                (usdInput * (SLIPPAGE_DENOMINATOR - slippage)) / slippage &&
-                usdOutput <=
-                (usdInput * (SLIPPAGE_DENOMINATOR + slippage)) / slippage,
-            "SwapperLib: exceed slippage"
-        );
-    }
-
     /// @dev Swap input token
     /// @param swapData The swap data
-    function swap(Swap memory swapData) internal {
+    /// @return Swapped amount of token
+    function swap(Swap memory swapData) internal returns (uint256) {
         approveTokenIfNeeded(
             swapData.inputToken,
             swapData.target,
             swapData.inputAmount
         );
 
-        uint256 outputAmountBefore = IERC20(swapData.outputToken).balanceOf(
-            address(this)
-        );
+        address outputToken = swapData.outputToken;
 
-        (bool success, bytes memory retData) = swapData.target.call(
-            swapData.call
-        );
+        uint256 balance = CommonLib.getTokenBalance(outputToken);
+
+        uint256 value = CommonLib.isETH(swapData.inputToken)
+            ? swapData.inputAmount
+            : 0;
+
+        (bool success, bytes memory retData) = swapData.target.call{
+            value: value
+        }(swapData.call);
 
         propagateError(success, retData, "SwapperLib: swap");
 
         require(success, "SwapperLib: swap error");
 
-        IERC20(swapData.outputToken).balanceOf(address(this)) -
-            outputAmountBefore;
+        return CommonLib.getTokenBalance(outputToken) - balance;
     }
 
     /// @notice Zaps an input token into an output token.
@@ -90,9 +69,13 @@ library SwapperLib {
             zapperCall.target,
             zapperCall.inputAmount
         );
-        (bool success, bytes memory retData) = zapperCall.target.call(
-            zapperCall.call
-        );
+        uint256 value = 0;
+        if (CommonLib.isETH(zapperCall.inputToken)) {
+            value = zapperCall.inputAmount;
+        }
+        (bool success, bytes memory retData) = zapperCall.target.call{
+            value: value
+        }(zapperCall.call);
         SwapperLib.propagateError(success, retData, "SwapperLib: zapper");
     }
 
@@ -105,7 +88,10 @@ library SwapperLib {
         address spender,
         uint256 amount
     ) internal {
-        if (IERC20(token).allowance(address(this), spender) < amount) {
+        if (
+            !CommonLib.isETH(token) &&
+            IERC20(token).allowance(address(this), spender) < amount
+        ) {
             SafeTransferLib.safeApprove(token, spender, amount);
         }
     }

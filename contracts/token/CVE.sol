@@ -4,7 +4,6 @@ pragma solidity ^0.8.17;
 import "../layerzero/OFTV2.sol";
 
 contract CVE is OFTV2 {
-    
     /// CONSTANTS ///
 
     uint256 public constant DENOMINATOR = 10000; // Scalar for math
@@ -68,10 +67,9 @@ contract CVE is OFTV2 {
         daoTreasuryAllocation = daoTreasuryAllocation_;
         callOptionAllocation = callOptionAllocation_;
         teamAllocation = teamAllocation_;
-        teamAllocationPerMonth = teamAllocation_ / (48 * MONTH); // Team Vesting is for 4 years and unlocked monthly
+        teamAllocationPerMonth = teamAllocation_ / 48; // Team Vesting is for 4 years and unlocked monthly
 
         _mint(msg.sender, initialTokenMint_);
-
     }
 
     /// EXTERNAL FUNCTIONS ///
@@ -146,7 +144,9 @@ contract CVE is OFTV2 {
 
         require(tokensToMint != 0, "CVE:  no tokens to mint");
 
-        teamAllocationTokensMinted = _teamAllocationTokensMinted + tokensToMint;
+        teamAllocationTokensMinted =
+            _teamAllocationTokensMinted +
+            tokensToMint;
         _mint(msg.sender, tokensToMint);
     }
 

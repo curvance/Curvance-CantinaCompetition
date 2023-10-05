@@ -18,7 +18,7 @@ contract NotifyAssetPriceFeedRemovalTest is TestBasePriceRouter {
 
         vm.prank(address(chainlinkAdaptor));
 
-        vm.expectRevert("PriceRouter: no feeds available");
+        vm.expectRevert(0xe4558fac);
         priceRouter.notifyAssetPriceFeedRemoval(_USDC_ADDRESS);
     }
 
@@ -31,7 +31,7 @@ contract NotifyAssetPriceFeedRemovalTest is TestBasePriceRouter {
 
         vm.prank(address(dualChainlinkAdaptor));
 
-        vm.expectRevert("PriceRouter: feed does not exist");
+        vm.expectRevert(0xe4558fac);
         priceRouter.notifyAssetPriceFeedRemoval(_USDC_ADDRESS);
     }
 
@@ -44,7 +44,7 @@ contract NotifyAssetPriceFeedRemovalTest is TestBasePriceRouter {
 
         vm.prank(address(1));
 
-        vm.expectRevert("PriceRouter: feed does not exist");
+        vm.expectRevert(0xe4558fac);
         priceRouter.notifyAssetPriceFeedRemoval(_USDC_ADDRESS);
     }
 

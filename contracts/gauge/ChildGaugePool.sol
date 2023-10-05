@@ -2,7 +2,8 @@
 pragma solidity ^0.8.17;
 
 import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
-import { GaugePool, GaugeErrors } from "contracts/gauge/GaugePool.sol";
+import { GaugePool } from "contracts/gauge/GaugePool.sol";
+import { GaugeErrors } from "contracts/gauge/GaugeController.sol";
 
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
@@ -40,7 +41,7 @@ contract ChildGaugePool is ReentrancyGuard {
     /// STORAGE ///
 
     uint256 public activationTime; // Child gauge emission start time
-    
+
     // epoch => rewardPerSec
     mapping(uint256 => uint256) public epochRewardPerSec;
     // token => pool info
@@ -72,10 +73,12 @@ contract ChildGaugePool is ReentrancyGuard {
         address rewardToken_,
         ICentralRegistry centralRegistry_
     ) {
-        if (!ERC165Checker.supportsInterface(
+        if (
+            !ERC165Checker.supportsInterface(
                 address(centralRegistry_),
                 type(ICentralRegistry).interfaceId
-            )) {
+            )
+        ) {
             revert GaugeErrors.InvalidAddress();
         }
 
@@ -87,14 +90,15 @@ contract ChildGaugePool is ReentrancyGuard {
 
         gaugeController = GaugePool(gaugeController_);
         rewardToken = rewardToken_;
-        
     }
 
     /// EXTERNAL FUNCTIONS ///
 
     /// @notice Start the Child Gauge at the start of the Gauge Controller's next epoch
     function activate() external onlyGaugeController {
-        activationTime = gaugeController.epochStartTime(gaugeController.currentEpoch() + 1);
+        activationTime = gaugeController.epochStartTime(
+            gaugeController.currentEpoch() + 1
+        );
     }
 
     function setRewardPerSec(
@@ -289,7 +293,7 @@ contract ChildGaugePool is ReentrancyGuard {
     ) internal {
         PoolInfo storage _pool = poolInfo[token];
         uint256 lastRewardTimestamp = _pool.lastRewardTimestamp;
-        
+
         if (lastRewardTimestamp == 0) {
             _pool.lastRewardTimestamp = activationTime;
             lastRewardTimestamp = activationTime;

@@ -10,7 +10,6 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 
 contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
-    
     /// TYPES ///
 
     /// @notice Adaptor storage

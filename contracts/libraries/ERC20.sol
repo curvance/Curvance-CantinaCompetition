@@ -7,10 +7,17 @@ pragma solidity ^0.8.4;
 /// @author Modified from OpenZeppelin (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/ERC20.sol)
 ///
 /// @dev Note:
-/// The ERC20 standard allows minting and transferring to and from the zero address,
-/// minting and transferring zero tokens, as well as self-approvals.
-/// For performance, this implementation WILL NOT revert for such actions.
-/// Please add any checks with overrides if desired.
+/// - The ERC20 standard allows minting and transferring to and from the zero address,
+///   minting and transferring zero tokens, as well as self-approvals.
+///   For performance, this implementation WILL NOT revert for such actions.
+///   Please add any checks with overrides if desired.
+/// - The `permit` function use the ecrecover precompile (0x1).
+///
+/// If you are overriding:
+/// - NEVER violate the ERC20 invariant:
+///   the total sum of all balances must be equal to `totalSupply()`.
+/// - Check that the overridden function is actually used in the function you want to
+///   change the behavior of. Much of the code has been manually inlined for performance.
 abstract contract ERC20 {
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                       CUSTOM ERRORS                        */
@@ -45,11 +52,7 @@ abstract contract ERC20 {
     event Transfer(address indexed from, address indexed to, uint256 amount);
 
     /// @dev Emitted when `amount` tokens is approved by `owner` to be used by `spender`.
-    event Approval(
-        address indexed owner,
-        address indexed spender,
-        uint256 amount
-    );
+    event Approval(address indexed owner, address indexed spender, uint256 amount);
 
     /// @dev `keccak256(bytes("Transfer(address,address,uint256)"))`.
     uint256 private constant _TRANSFER_EVENT_SIGNATURE =
@@ -92,6 +95,25 @@ abstract contract ERC20 {
     uint256 private constant _NONCES_SLOT_SEED = 0x38377508;
 
     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
+    /*                         CONSTANTS                          */
+    /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
+
+    /// @dev `(_NONCES_SLOT_SEED << 16) | 0x1901`.
+    uint256 private constant _NONCES_SLOT_SEED_WITH_SIGNATURE_PREFIX = 0x383775081901;
+
+    /// @dev `keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)")`.
+    bytes32 private constant _DOMAIN_TYPEHASH =
+        0x8b73c3c69bb8fe3d512ecc4cf759cc79239f7b179b0ffacaa9a75d522b39400f;
+
+    /// @dev `keccak256("1")`.
+    bytes32 private constant _VERSION_HASH =
+        0xc89efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bc6;
+
+    /// @dev `keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)")`.
+    bytes32 private constant _PERMIT_TYPEHASH =
+        0x6e71edae12b1b97f4d1f60370fef10105fa2faae0126114a169c64845d6126c9;
+
+    /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/
     /*                       ERC20 METADATA                       */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
@@ -119,9 +141,7 @@ abstract contract ERC20 {
     }
 
     /// @dev Returns the amount of tokens owned by `owner`.
-    function balanceOf(
-        address owner
-    ) public view virtual returns (uint256 result) {
+    function balanceOf(address owner) public view virtual returns (uint256 result) {
         /// @solidity memory-safe-assembly
         assembly {
             mstore(0x0c, _BALANCE_SLOT_SEED)
@@ -131,10 +151,12 @@ abstract contract ERC20 {
     }
 
     /// @dev Returns the amount of tokens that `spender` can spend on behalf of `owner`.
-    function allowance(
-        address owner,
-        address spender
-    ) public view virtual returns (uint256 result) {
+    function allowance(address owner, address spender)
+        public
+        view
+        virtual
+        returns (uint256 result)
+    {
         /// @solidity memory-safe-assembly
         assembly {
             mstore(0x20, spender)
@@ -147,10 +169,7 @@ abstract contract ERC20 {
     /// @dev Sets `amount` as the allowance of `spender` over the caller's tokens.
     ///
     /// Emits a {Approval} event.
-    function approve(
-        address spender,
-        uint256 amount
-    ) public virtual returns (bool) {
+    function approve(address spender, uint256 amount) public virtual returns (bool) {
         /// @solidity memory-safe-assembly
         assembly {
             // Compute the allowance slot and store the amount.
@@ -160,86 +179,7 @@ abstract contract ERC20 {
             sstore(keccak256(0x0c, 0x34), amount)
             // Emit the {Approval} event.
             mstore(0x00, amount)
-            log3(
-                0x00,
-                0x20,
-                _APPROVAL_EVENT_SIGNATURE,
-                caller(),
-                shr(96, mload(0x2c))
-            )
-        }
-        return true;
-    }
-
-    /// @dev Atomically increases the allowance granted to `spender` by the caller.
-    ///
-    /// Emits a {Approval} event.
-    function increaseAllowance(
-        address spender,
-        uint256 difference
-    ) public virtual returns (bool) {
-        /// @solidity memory-safe-assembly
-        assembly {
-            // Compute the allowance slot and load its value.
-            mstore(0x20, spender)
-            mstore(0x0c, _ALLOWANCE_SLOT_SEED)
-            mstore(0x00, caller())
-            let allowanceSlot := keccak256(0x0c, 0x34)
-            let allowanceBefore := sload(allowanceSlot)
-            // Add to the allowance.
-            let allowanceAfter := add(allowanceBefore, difference)
-            // Revert upon overflow.
-            if lt(allowanceAfter, allowanceBefore) {
-                mstore(0x00, 0xf9067066) // `AllowanceOverflow()`.
-                revert(0x1c, 0x04)
-            }
-            // Store the updated allowance.
-            sstore(allowanceSlot, allowanceAfter)
-            // Emit the {Approval} event.
-            mstore(0x00, allowanceAfter)
-            log3(
-                0x00,
-                0x20,
-                _APPROVAL_EVENT_SIGNATURE,
-                caller(),
-                shr(96, mload(0x2c))
-            )
-        }
-        return true;
-    }
-
-    /// @dev Atomically decreases the allowance granted to `spender` by the caller.
-    ///
-    /// Emits a {Approval} event.
-    function decreaseAllowance(
-        address spender,
-        uint256 difference
-    ) public virtual returns (bool) {
-        /// @solidity memory-safe-assembly
-        assembly {
-            // Compute the allowance slot and load its value.
-            mstore(0x20, spender)
-            mstore(0x0c, _ALLOWANCE_SLOT_SEED)
-            mstore(0x00, caller())
-            let allowanceSlot := keccak256(0x0c, 0x34)
-            let allowanceBefore := sload(allowanceSlot)
-            // Revert if will underflow.
-            if lt(allowanceBefore, difference) {
-                mstore(0x00, 0x8301ab38) // `AllowanceUnderflow()`.
-                revert(0x1c, 0x04)
-            }
-            // Subtract and store the updated allowance.
-            let allowanceAfter := sub(allowanceBefore, difference)
-            sstore(allowanceSlot, allowanceAfter)
-            // Emit the {Approval} event.
-            mstore(0x00, allowanceAfter)
-            log3(
-                0x00,
-                0x20,
-                _APPROVAL_EVENT_SIGNATURE,
-                caller(),
-                shr(96, mload(0x2c))
-            )
+            log3(0x00, 0x20, _APPROVAL_EVENT_SIGNATURE, caller(), shr(96, mload(0x2c)))
         }
         return true;
     }
@@ -250,10 +190,7 @@ abstract contract ERC20 {
     /// - `from` must at least have `amount`.
     ///
     /// Emits a {Transfer} event.
-    function transfer(
-        address to,
-        uint256 amount
-    ) public virtual returns (bool) {
+    function transfer(address to, uint256 amount) public virtual returns (bool) {
         _beforeTokenTransfer(msg.sender, to, amount);
         /// @solidity memory-safe-assembly
         assembly {
@@ -278,13 +215,7 @@ abstract contract ERC20 {
             sstore(toBalanceSlot, add(sload(toBalanceSlot), amount))
             // Emit the {Transfer} event.
             mstore(0x20, amount)
-            log3(
-                0x20,
-                0x20,
-                _TRANSFER_EVENT_SIGNATURE,
-                caller(),
-                shr(96, mload(0x0c))
-            )
+            log3(0x20, 0x20, _TRANSFER_EVENT_SIGNATURE, caller(), shr(96, mload(0x0c)))
         }
         _afterTokenTransfer(msg.sender, to, amount);
         return true;
@@ -299,11 +230,7 @@ abstract contract ERC20 {
     /// - The caller must have at least `amount` of allowance to transfer the tokens of `from`.
     ///
     /// Emits a {Transfer} event.
-    function transferFrom(
-        address from,
-        address to,
-        uint256 amount
-    ) public virtual returns (bool) {
+    function transferFrom(address from, address to, uint256 amount) public virtual returns (bool) {
         _beforeTokenTransfer(from, to, amount);
         /// @solidity memory-safe-assembly
         assembly {
@@ -314,7 +241,7 @@ abstract contract ERC20 {
             let allowanceSlot := keccak256(0x0c, 0x34)
             let allowance_ := sload(allowanceSlot)
             // If the allowance is not the maximum uint256 value.
-            if iszero(eq(allowance_, not(0))) {
+            if add(allowance_, 1) {
                 // Revert if the amount to be transferred exceeds the allowance.
                 if gt(amount, allowance_) {
                     mstore(0x00, 0x13be252b) // `InsufficientAllowance()`.
@@ -343,13 +270,7 @@ abstract contract ERC20 {
             sstore(toBalanceSlot, add(sload(toBalanceSlot), amount))
             // Emit the {Transfer} event.
             mstore(0x20, amount)
-            log3(
-                0x20,
-                0x20,
-                _TRANSFER_EVENT_SIGNATURE,
-                shr(96, from_),
-                shr(96, mload(0x0c))
-            )
+            log3(0x20, 0x20, _TRANSFER_EVENT_SIGNATURE, shr(96, from_), shr(96, mload(0x0c)))
         }
         _afterTokenTransfer(from, to, amount);
         return true;
@@ -359,11 +280,13 @@ abstract contract ERC20 {
     /*                          EIP-2612                          */
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
+    /// @dev For more performance, override to return the constant value
+    /// of `keccak256(bytes(name()))` if `name()` will never change.
+    function _constantNameHash() internal view virtual returns (bytes32 result) {}
+
     /// @dev Returns the current nonce for `owner`.
     /// This value is used to compute the signature for EIP-2612 permit.
-    function nonces(
-        address owner
-    ) public view virtual returns (uint256 result) {
+    function nonces(address owner) public view virtual returns (uint256 result) {
         /// @solidity memory-safe-assembly
         assembly {
             // Compute the nonce slot and load its value.
@@ -386,48 +309,46 @@ abstract contract ERC20 {
         bytes32 r,
         bytes32 s
     ) public virtual {
-        bytes32 domainSeparator = DOMAIN_SEPARATOR();
+        bytes32 nameHash = _constantNameHash();
+        //  We simply calculate it on-the-fly to allow for cases where the `name` may change.
+        if (nameHash == bytes32(0)) nameHash = keccak256(bytes(name()));
         /// @solidity memory-safe-assembly
         assembly {
-            // Grab the free memory pointer.
-            let m := mload(0x40)
             // Revert if the block timestamp greater than `deadline`.
             if gt(timestamp(), deadline) {
                 mstore(0x00, 0x1a15a3cc) // `PermitExpired()`.
                 revert(0x1c, 0x04)
             }
+            let m := mload(0x40) // Grab the free memory pointer.
             // Clean the upper 96 bits.
             owner := shr(96, shl(96, owner))
             spender := shr(96, shl(96, spender))
             // Compute the nonce slot and load its value.
-            mstore(0x0c, _NONCES_SLOT_SEED)
+            mstore(0x0e, _NONCES_SLOT_SEED_WITH_SIGNATURE_PREFIX)
             mstore(0x00, owner)
             let nonceSlot := keccak256(0x0c, 0x20)
             let nonceValue := sload(nonceSlot)
-            // Increment and store the updated nonce.
-            sstore(nonceSlot, add(nonceValue, 1))
-            // Prepare the inner hash.
-            // `keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)")`.
-            // forgefmt: disable-next-item
-            mstore(
-                m,
-                0x6e71edae12b1b97f4d1f60370fef10105fa2faae0126114a169c64845d6126c9
-            )
+            // Prepare the domain separator.
+            mstore(m, _DOMAIN_TYPEHASH)
+            mstore(add(m, 0x20), nameHash)
+            mstore(add(m, 0x40), _VERSION_HASH)
+            mstore(add(m, 0x60), chainid())
+            mstore(add(m, 0x80), address())
+            mstore(0x2e, keccak256(m, 0xa0))
+            // Prepare the struct hash.
+            mstore(m, _PERMIT_TYPEHASH)
             mstore(add(m, 0x20), owner)
             mstore(add(m, 0x40), spender)
             mstore(add(m, 0x60), value)
             mstore(add(m, 0x80), nonceValue)
             mstore(add(m, 0xa0), deadline)
-            // Prepare the outer hash.
-            mstore(0, 0x1901)
-            mstore(0x20, domainSeparator)
-            mstore(0x40, keccak256(m, 0xc0))
+            mstore(0x4e, keccak256(m, 0xc0))
             // Prepare the ecrecover calldata.
-            mstore(0, keccak256(0x1e, 0x42))
+            mstore(0x00, keccak256(0x2c, 0x42))
             mstore(0x20, and(0xff, v))
             mstore(0x40, r)
             mstore(0x60, s)
-            pop(staticcall(gas(), 1, 0, 0x80, 0x20, 0x20))
+            let t := staticcall(gas(), 1, 0, 0x80, 0x20, 0x20)
             // If the ecrecover fails, the returndatasize will be 0x00,
             // `owner` will be be checked if it equals the hash at 0x00,
             // which evaluates to false (i.e. 0), and we will revert.
@@ -437,6 +358,8 @@ abstract contract ERC20 {
                 mstore(0x00, 0xddafbaef) // `InvalidPermit()`.
                 revert(0x1c, 0x04)
             }
+            // Increment and store the updated nonce.
+            sstore(nonceSlot, add(nonceValue, t)) // `t` is 1 if ecrecover succeeds.
             // Compute the allowance slot and store the value.
             // The `owner` is already at slot 0x20.
             mstore(0x40, or(shl(160, _ALLOWANCE_SLOT_SEED), spender))
@@ -448,30 +371,17 @@ abstract contract ERC20 {
         }
     }
 
-    /// @dev Returns the EIP-2612 domains separator.
+    /// @dev Returns the EIP-712 domain separator for the EIP-2612 permit.
     function DOMAIN_SEPARATOR() public view virtual returns (bytes32 result) {
-        /// @solidity memory-safe-assembly
-        assembly {
-            result := mload(0x40) // Grab the free memory pointer.
-        }
+        bytes32 nameHash = _constantNameHash();
         //  We simply calculate it on-the-fly to allow for cases where the `name` may change.
-        bytes32 nameHash = keccak256(bytes(name()));
+        if (nameHash == bytes32(0)) nameHash = keccak256(bytes(name()));
         /// @solidity memory-safe-assembly
         assembly {
-            let m := result
-            // `keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)")`.
-            // forgefmt: disable-next-item
-            mstore(
-                m,
-                0x8b73c3c69bb8fe3d512ecc4cf759cc79239f7b179b0ffacaa9a75d522b39400f
-            )
+            let m := mload(0x40) // Grab the free memory pointer.
+            mstore(m, _DOMAIN_TYPEHASH)
             mstore(add(m, 0x20), nameHash)
-            // `keccak256("1")`.
-            // forgefmt: disable-next-item
-            mstore(
-                add(m, 0x40),
-                0xc89efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bc6
-            )
+            mstore(add(m, 0x40), _VERSION_HASH)
             mstore(add(m, 0x60), chainid())
             mstore(add(m, 0x80), address())
             result := keccak256(m, 0xa0)
@@ -506,13 +416,7 @@ abstract contract ERC20 {
             sstore(toBalanceSlot, add(sload(toBalanceSlot), amount))
             // Emit the {Transfer} event.
             mstore(0x20, amount)
-            log3(
-                0x20,
-                0x20,
-                _TRANSFER_EVENT_SIGNATURE,
-                0,
-                shr(96, mload(0x0c))
-            )
+            log3(0x20, 0x20, _TRANSFER_EVENT_SIGNATURE, 0, shr(96, mload(0x0c)))
         }
         _afterTokenTransfer(address(0), to, amount);
     }
@@ -544,13 +448,7 @@ abstract contract ERC20 {
             sstore(_TOTAL_SUPPLY_SLOT, sub(sload(_TOTAL_SUPPLY_SLOT), amount))
             // Emit the {Transfer} event.
             mstore(0x00, amount)
-            log3(
-                0x00,
-                0x20,
-                _TRANSFER_EVENT_SIGNATURE,
-                shr(96, shl(96, from)),
-                0
-            )
+            log3(0x00, 0x20, _TRANSFER_EVENT_SIGNATURE, shr(96, shl(96, from)), 0)
         }
         _afterTokenTransfer(from, address(0), amount);
     }
@@ -560,11 +458,7 @@ abstract contract ERC20 {
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
     /// @dev Moves `amount` of tokens from `from` to `to`.
-    function _transfer(
-        address from,
-        address to,
-        uint256 amount
-    ) internal virtual {
+    function _transfer(address from, address to, uint256 amount) internal virtual {
         _beforeTokenTransfer(from, to, amount);
         /// @solidity memory-safe-assembly
         assembly {
@@ -589,13 +483,7 @@ abstract contract ERC20 {
             sstore(toBalanceSlot, add(sload(toBalanceSlot), amount))
             // Emit the {Transfer} event.
             mstore(0x20, amount)
-            log3(
-                0x20,
-                0x20,
-                _TRANSFER_EVENT_SIGNATURE,
-                shr(96, from_),
-                shr(96, mload(0x0c))
-            )
+            log3(0x20, 0x20, _TRANSFER_EVENT_SIGNATURE, shr(96, from_), shr(96, mload(0x0c)))
         }
         _afterTokenTransfer(from, to, amount);
     }
@@ -605,11 +493,7 @@ abstract contract ERC20 {
     /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
     /// @dev Updates the allowance of `owner` for `spender` based on spent `amount`.
-    function _spendAllowance(
-        address owner,
-        address spender,
-        uint256 amount
-    ) internal virtual {
+    function _spendAllowance(address owner, address spender, uint256 amount) internal virtual {
         /// @solidity memory-safe-assembly
         assembly {
             // Compute the allowance slot and load its value.
@@ -619,7 +503,7 @@ abstract contract ERC20 {
             let allowanceSlot := keccak256(0x0c, 0x34)
             let allowance_ := sload(allowanceSlot)
             // If the allowance is not the maximum uint256 value.
-            if iszero(eq(allowance_, not(0))) {
+            if add(allowance_, 1) {
                 // Revert if the amount to be transferred exceeds the allowance.
                 if gt(amount, allowance_) {
                     mstore(0x00, 0x13be252b) // `InsufficientAllowance()`.
@@ -634,11 +518,7 @@ abstract contract ERC20 {
     /// @dev Sets `amount` as the allowance of `spender` over the tokens of `owner`.
     ///
     /// Emits a {Approval} event.
-    function _approve(
-        address owner,
-        address spender,
-        uint256 amount
-    ) internal virtual {
+    function _approve(address owner, address spender, uint256 amount) internal virtual {
         /// @solidity memory-safe-assembly
         assembly {
             let owner_ := shl(96, owner)
@@ -648,13 +528,7 @@ abstract contract ERC20 {
             sstore(keccak256(0x0c, 0x34), amount)
             // Emit the {Approval} event.
             mstore(0x00, amount)
-            log3(
-                0x00,
-                0x20,
-                _APPROVAL_EVENT_SIGNATURE,
-                shr(96, owner_),
-                shr(96, mload(0x2c))
-            )
+            log3(0x00, 0x20, _APPROVAL_EVENT_SIGNATURE, shr(96, owner_), shr(96, mload(0x2c)))
         }
     }
 
@@ -664,17 +538,9 @@ abstract contract ERC20 {
 
     /// @dev Hook that is called before any transfer of tokens.
     /// This includes minting and burning.
-    function _beforeTokenTransfer(
-        address from,
-        address to,
-        uint256 amount
-    ) internal virtual {}
+    function _beforeTokenTransfer(address from, address to, uint256 amount) internal virtual {}
 
     /// @dev Hook that is called after any transfer of tokens.
     /// This includes minting and burning.
-    function _afterTokenTransfer(
-        address from,
-        address to,
-        uint256 amount
-    ) internal virtual {}
+    function _afterTokenTransfer(address from, address to, uint256 amount) internal virtual {}
 }

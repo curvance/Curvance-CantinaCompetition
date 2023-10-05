@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
+import { ERC165 } from "contracts/libraries/ERC165.sol";
 import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
@@ -14,8 +15,7 @@ import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.sol";
 
-contract PositionFolding is ReentrancyGuard, IPositionFolding {
-    
+contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
     /// TYPES ///
 
     struct LeverageStruct {
@@ -31,7 +31,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
     struct DeleverageStruct {
         CToken collateralToken;
         uint256 collateralAmount;
-        CToken borrowToken;
+        DToken borrowToken;
         // collateral underlying to a single token (can be borrow underlying)
         SwapperLib.ZapperCall zapperCall;
         // (optional) zapper outout to borrow underlying
@@ -43,7 +43,6 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
 
     uint256 public constant MAX_LEVERAGE = 9900; // 99%
     uint256 public constant DENOMINATOR = 10000; // Scalar for math
-    uint256 public constant SLIPPAGE = 500; // 5%
 
     ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
     ILendtroller public immutable lendtroller; // Lendtroller linked
@@ -60,13 +59,14 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
 
     modifier checkSlippage(address user, uint256 slippage) {
         (uint256 sumCollateralBefore, , uint256 sumBorrowBefore) = lendtroller
-            .getAccountPosition(user);
+            .getStatus(user);
         uint256 userValueBefore = sumCollateralBefore - sumBorrowBefore;
 
         _;
 
-        (uint256 sumCollateral, , uint256 sumBorrow) = lendtroller
-            .getAccountPosition(user);
+        (uint256 sumCollateral, , uint256 sumBorrow) = lendtroller.getStatus(
+            user
+        );
         uint256 userValue = sumCollateral - sumBorrow;
 
         uint256 diff = userValue > userValueBefore
@@ -131,10 +131,8 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         uint256 borrowAmount,
         bytes calldata params
     ) external override {
-        (bool isListed, ) = lendtroller.getMarketTokenData(borrowToken);
-
         require(
-            isListed && msg.sender == borrowToken,
+            lendtroller.isListed(borrowToken) && msg.sender == borrowToken,
             "PositionFolding: UNAUTHORIZED"
         );
 
@@ -152,7 +150,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         address borrowUnderlying = CToken(borrowToken).underlying();
 
         require(
-            IERC20(borrowUnderlying).balanceOf(address(this)) == borrowAmount,
+            IERC20(borrowUnderlying).balanceOf(address(this)) >= borrowAmount,
             "PositionFolding: invalid amount"
         );
 
@@ -220,10 +218,15 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         uint256 collateralAmount,
         bytes calldata params
     ) external override {
-        require (msg.sender == collateralToken,"PositionFolding: UNAUTHORIZED");
+        require(
+            msg.sender == collateralToken,
+            "PositionFolding: UNAUTHORIZED"
+        );
 
-        (bool isListed, ) = lendtroller.getMarketTokenData(collateralToken);
-        require( isListed,"PositionFolding: UNAUTHORIZED");
+        require(
+            lendtroller.isListed(collateralToken),
+            "PositionFolding: UNAUTHORIZED"
+        );
 
         DeleverageStruct memory deleverageData = abi.decode(
             params,
@@ -240,7 +243,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         address collateralUnderlying = CToken(collateralToken).underlying();
 
         require(
-            IERC20(collateralUnderlying).balanceOf(address(this)) ==
+            IERC20(collateralUnderlying).balanceOf(address(this)) >=
                 collateralAmount,
             "PositionFolding: invalid amount"
         );
@@ -264,9 +267,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
                 "PositionFolding: invalid zapper param"
             );
             require(
-                centralRegistry.isZapper(
-                    deleverageData.zapperCall.target
-                ),
+                centralRegistry.isZapper(deleverageData.zapperCall.target),
                 "PositionFolding: invalid zapper"
             );
 
@@ -276,9 +277,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         if (deleverageData.swapData.call.length > 0) {
             // swap for borrow underlying
             require(
-                centralRegistry.isSwapper(
-                    deleverageData.swapData.target
-                ),
+                centralRegistry.isSwapper(deleverageData.swapData.target),
                 "PositionFolding: invalid swapper"
             );
 
@@ -287,16 +286,16 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
 
         // repay debt
         uint256 repayAmount = deleverageData.repayAmount;
-        CToken borrowToken = deleverageData.borrowToken;
+        DToken borrowToken = deleverageData.borrowToken;
 
-        address borrowUnderlying = CToken(address(borrowToken)).underlying();
+        address borrowUnderlying = borrowToken.underlying();
         uint256 remaining = IERC20(borrowUnderlying).balanceOf(address(this)) -
             repayAmount;
 
         SwapperLib.approveTokenIfNeeded(
             borrowUnderlying,
             address(borrowToken),
-            repayAmount + remaining
+            repayAmount
         );
 
         DToken(address(borrowToken)).repayForPositionFolding(
@@ -335,7 +334,7 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
             uint256 sumCollateral,
             uint256 maxBorrow,
             uint256 sumBorrow
-        ) = lendtroller.getAccountPosition(user);
+        ) = lendtroller.getStatus(user);
         uint256 maxLeverage = ((sumCollateral - sumBorrow) *
             MAX_LEVERAGE *
             sumCollateral) /
@@ -350,6 +349,15 @@ contract PositionFolding is ReentrancyGuard, IPositionFolding {
         require(errorCode == 0, "PositionFolding: invalid token price");
 
         return ((maxLeverage - sumBorrow) * 1e18) / price;
+    }
+
+    /// @inheritdoc ERC165
+    function supportsInterface(
+        bytes4 interfaceId
+    ) public view override returns (bool) {
+        return
+            interfaceId == type(IPositionFolding).interfaceId ||
+            super.supportsInterface(interfaceId);
     }
 
     /// INTERNAL FUNCTIONS ///

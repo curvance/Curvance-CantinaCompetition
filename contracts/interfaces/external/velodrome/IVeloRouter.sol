@@ -9,8 +9,6 @@ interface IVeloRouter {
         address factory;
     }
 
-    function factory() external view returns (address);
-
     function weth() external view returns (address);
 
     /// @notice Add liquidity of two tokens to a Pool

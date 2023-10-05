@@ -8,7 +8,6 @@ import { IBalancerVault } from "contracts/interfaces/external/balancer/IBalancer
 import { IBalancerPool } from "contracts/interfaces/external/balancer/IBalancerPool.sol";
 
 library BalancerLib {
-    
     /// @dev Enter Balancer
     /// @param balancerVault The balancer vault address
     /// @param balancerPoolId The balancer pool ID
@@ -23,8 +22,9 @@ library BalancerLib {
         uint256 lpMinOutAmount
     ) internal returns (uint256 lpOutAmount) {
         uint256 numTokens = tokens.length;
-
         uint256[] memory balances = new uint256[](numTokens);
+        uint256 value;
+
         // approve tokens
         for (uint256 i; i < numTokens; ) {
             balances[i] = CommonLib.getTokenBalance(tokens[i]);
@@ -34,12 +34,16 @@ library BalancerLib {
                 balances[i]
             );
 
+            if (CommonLib.isETH(tokens[i])) {
+                value = balances[i];
+            }
+
             unchecked {
                 ++i;
             }
         }
 
-        IBalancerVault(balancerVault).joinPool(
+        IBalancerVault(balancerVault).joinPool{ value: value }(
             balancerPoolId,
             address(this),
             address(this),
@@ -74,26 +78,47 @@ library BalancerLib {
         bytes32 balancerPoolId,
         address lpToken,
         address[] calldata tokens,
-        uint256 lpAmount
+        uint256 lpAmount,
+        bool singleAssetWithdraw,
+        uint256 singleAssetIndex
     ) internal {
         // approve lp token
         SwapperLib.approveTokenIfNeeded(lpToken, balancerVault, lpAmount);
 
         uint256 numTokens = tokens.length;
         uint256[] memory balances = new uint256[](numTokens);
-        IBalancerVault(balancerVault).exitPool(
-            balancerPoolId,
-            address(this),
-            payable(address(this)),
-            IBalancerVault.ExitPoolRequest(
-                tokens,
-                balances,
-                abi.encode(
-                    IBalancerVault.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT,
-                    lpAmount
-                ),
-                false // do not use internal balances
-            )
-        );
+
+        if (!singleAssetWithdraw) {
+            IBalancerVault(balancerVault).exitPool(
+                balancerPoolId,
+                address(this),
+                payable(address(this)),
+                IBalancerVault.ExitPoolRequest(
+                    tokens,
+                    balances,
+                    abi.encode(
+                        IBalancerVault.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT,
+                        lpAmount
+                    ),
+                    false // do not use internal balances
+                )
+            );
+        } else {
+            IBalancerVault(balancerVault).exitPool(
+                balancerPoolId,
+                address(this),
+                payable(address(this)),
+                IBalancerVault.ExitPoolRequest(
+                    tokens,
+                    balances,
+                    abi.encode(
+                        IBalancerVault.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT,
+                        lpAmount,
+                        singleAssetIndex
+                    ),
+                    false // do not use internal balances
+                )
+            );
+        }
     }
 }

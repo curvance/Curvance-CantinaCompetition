@@ -6,7 +6,7 @@ import { TestBasePriceRouter } from "../TestBasePriceRouter.sol";
 
 contract GetPriceTest is TestBasePriceRouter {
     function test_getPrice_fail_whenNoFeedsAvailable() public {
-        vm.expectRevert("PriceRouter: no feeds available");
+        vm.expectRevert(0xe4558fac);
         priceRouter.getPrice(_USDC_ADDRESS, true, true);
     }
 
@@ -22,7 +22,7 @@ contract GetPriceTest is TestBasePriceRouter {
             true
         );
 
-        assertEq(price, uint256(usdcPrice));
+        assertEq(price, uint256(usdcPrice) * 1e10);
         assertEq(errorCode, 0);
 
         (, int256 ethPrice, , , ) = AggregatorV3Interface(_CHAINLINK_USDC_ETH)

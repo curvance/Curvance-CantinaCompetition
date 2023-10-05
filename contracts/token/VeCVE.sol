@@ -11,7 +11,6 @@ import { ICVELocker, RewardsData } from "contracts/interfaces/ICVELocker.sol";
 import { IDelegateRegistry } from "contracts/interfaces/IDelegateRegistry.sol";
 
 contract VeCVE is ERC20 {
-    
     /// TYPES ///
 
     struct Lock {
@@ -218,7 +217,10 @@ contract VeCVE is ERC20 {
         bytes calldata params,
         uint256 aux
     ) external canLock(amount) {
-        if (!centralRegistry.isVeCVELocker(msg.sender)) {
+        if (
+            !centralRegistry.isVeCVELocker(msg.sender) &&
+            !centralRegistry.isGaugeController(msg.sender)
+        ) {
             _revert(_INVALID_LOCK_SELECTOR);
         }
 
@@ -285,7 +287,7 @@ contract VeCVE is ERC20 {
             _updateTokenDataFromContinuousOn(
                 msg.sender,
                 priorUnlockEpoch,
-                _getContinuousPointValue(tokenAmount),
+                _getContinuousPointValue(tokenAmount) - tokenAmount,
                 tokenAmount
             );
         } else {
@@ -359,7 +361,10 @@ contract VeCVE is ERC20 {
         bytes calldata params,
         uint256 aux
     ) external canLock(amount) {
-        if (!centralRegistry.isVeCVELocker(msg.sender)) {
+        if (
+            !centralRegistry.isVeCVELocker(msg.sender) &&
+            !centralRegistry.isGaugeController(msg.sender)
+        ) {
             _revert(_INVALID_LOCK_SELECTOR);
         }
 
@@ -988,12 +993,12 @@ contract VeCVE is ERC20 {
         bytes memory params,
         uint256 aux
     ) internal {
-        uint256 epoches = cveLocker.epochsToClaim(user);
-        if (epoches > 0) {
+        uint256 epochs = cveLocker.epochsToClaim(user);
+        if (epochs > 0) {
             cveLocker.claimRewardsFor(
                 user,
                 recipient,
-                epoches,
+                epochs,
                 rewardsData,
                 params,
                 aux
@@ -1076,8 +1081,13 @@ contract VeCVE is ERC20 {
         uint40 unlockTimestamp = user[lockIndex].unlockTime;
 
         if (unlockTimestamp == CONTINUOUS_LOCK_VALUE) {
+            if (!continuousLock) {
+                _revert(_INVALID_LOCK_SELECTOR);
+            }
+
             // Increment the chain and user token point balance
             _incrementTokenPoints(recipient, _getContinuousPointValue(amount));
+
             // Update the lock value to include the new locked tokens
             user[lockIndex].amount = uint216(user[lockIndex].amount + amount);
         } else {
@@ -1124,7 +1134,7 @@ contract VeCVE is ERC20 {
             user[lockIndex].amount = uint216(newTokenAmount);
         }
 
-        _mint(msg.sender, amount);
+        _mint(recipient, amount);
 
         emit Locked(recipient, amount);
     }

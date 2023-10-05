@@ -7,7 +7,7 @@ contract AddMTokenSupportTest is TestBasePriceRouter {
     function test_addMTokenSupport_fail_whenCallerIsNotAuthorized() public {
         vm.prank(address(1));
 
-        vm.expectRevert("centralRegistry: UNAUTHORIZED");
+        vm.expectRevert("PriceRouter: UNAUTHORIZED");
         priceRouter.addMTokenSupport(address(mUSDC));
     }
 
@@ -16,12 +16,12 @@ contract AddMTokenSupportTest is TestBasePriceRouter {
     {
         priceRouter.addMTokenSupport(address(mUSDC));
 
-        vm.expectRevert("PriceRouter: MToken already configured");
+        vm.expectRevert(0xebd2e1ff);
         priceRouter.addMTokenSupport(address(mUSDC));
     }
 
     function test_addMTokenSupport_fail_whenMTokenIsInvalid() public {
-        vm.expectRevert("PriceRouter: MToken is invalid");
+        vm.expectRevert(0xebd2e1ff);
         priceRouter.addMTokenSupport(address(1));
     }
 

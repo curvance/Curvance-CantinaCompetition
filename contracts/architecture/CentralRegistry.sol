@@ -2,64 +2,69 @@
 pragma solidity ^0.8.17;
 
 import { ERC165 } from "contracts/libraries/ERC165.sol";
+import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { ICentralRegistry, ChainData, OmnichainData } from "contracts/interfaces/ICentralRegistry.sol";
+import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 
 contract CentralRegistry is ERC165 {
     /// CONSTANTS ///
 
     uint256 public constant DENOMINATOR = 10000; // Scalar for math
-    // `bytes4(keccak256(bytes("CentralRegistry_ParametersMisconfigured()")))`
+    /// `bytes4(keccak256(bytes("CentralRegistry_ParametersMisconfigured()")))`
     uint256 internal constant _PARAMETERS_MISCONFIGURED_SELECTOR = 0x6fc38aea;
-    // `bytes4(keccak256(bytes("CentralRegistry_Unauthorized()")))`
+    /// `bytes4(keccak256(bytes("CentralRegistry_Unauthorized()")))`
     uint256 internal constant _UNAUTHORIZED_SELECTOR = 0x88f093e;
     uint256 public immutable genesisEpoch; // Genesis Epoch timestamp
 
     /// STORAGE ///
 
-    // DAO GOVERNANCE OPERATORS
+    /// DAO GOVERNANCE OPERATORS
     address public daoAddress; // DAO multisig
     address public timelock; // DAO multisig, with time delay
     address public emergencyCouncil; // Multi-protocol multisig, for emergencies
 
-    // CURVANCE TOKEN CONTRACTS
+    /// CURVANCE TOKEN CONTRACTS
     address public CVE; // CVE contract address
     address public veCVE; // veCVE contract address
     address public callOptionCVE; // CVE Call Option contract address
 
-    // DAO CONTRACTS DATA
+    /// DAO CONTRACTS DATA
     address public cveLocker; // CVE Locker contract address
     address public protocolMessagingHub; // This chains Protocol Messaging Hub contract address
     address public priceRouter; // Price Router contract address
     address public zroAddress; // ZRO contract address for layerzero
     address public feeAccumulator; // Fee Accumulator contract address
 
-    // PROTOCOL VALUES in `DENOMINATOR`
+    /// PROTOCOL VALUES in `EXP_SCALE` set in `DENOMINATOR`
     uint256 public protocolCompoundFee = 100 * 1e14; // Fee for compounding position vaults
     uint256 public protocolYieldFee = 1500 * 1e14; // Fee on yield in position vaults
-    // Joint fee value so that we can perform one less external call in position vault contracts
+    /// Joint fee value so that we can perform one less external call in position vault contracts
     uint256 public protocolHarvestFee = protocolCompoundFee + protocolYieldFee;
-    uint256 public protocolLiquidationFee = 250; // Protocol Reserve Share on liquidation
     uint256 public protocolLeverageFee; // Protocol Fee on leveraging
-    uint256 public protocolInterestRateFee; // Protocol Reserve Share on Interest Rates
     uint256 public earlyUnlockPenaltyValue; // Penalty Fee for unlocking from veCVE early
     uint256 public voteBoostValue; // Voting power bonus for Continuous Lock Mode
     uint256 public lockBoostValue; // Rewards bonus for Continuous Lock Mode
 
-    // DAO PERMISSION DATA
+    /// PROTOCOL VALUES DATA `EXP_SCALE` set in `DENOMINATOR`
+    /// @notice Lending Market => Protocol Reserve Factor on interest generated
+    mapping(address => uint256) public protocolInterestFactor;
+
+    /// DAO PERMISSION DATA
     mapping(address => bool) public hasDaoPermissions;
     mapping(address => bool) public hasElevatedPermissions;
 
-    // MULTICHAIN CONFIGURATION DATA
-    // We store this data redundantly so that we can quickly get whatever output we need,
-    // with low gas overhead
+    /// MULTICHAIN CONFIGURATION DATA
+    /// We store this data redundantly so that we can quickly get whatever output we need,
+    /// with low gas overhead
     uint256 public supportedChains; // How many other chains are supported
     mapping(uint256 => ChainData) public supportedChainData; // ChainId => 2 = supported; 1 = unsupported
-    // Address => Curvance identification information
-    mapping(address => OmnichainData) public omnichainOperators;
+    /// Address => chainID => Curvance identification information
+    mapping(address => mapping(uint256 => OmnichainData))
+        public omnichainOperators;
     mapping(uint256 => uint256) public messagingToGETHChainId;
     mapping(uint256 => uint256) public GETHToMessagingChainId;
 
-    // DAO CONTRACT MAPPINGS
+    /// DAO CONTRACT MAPPINGS
     mapping(address => bool) public isZapper;
     mapping(address => bool) public isSwapper;
     mapping(address => bool) public isVeCVELocker;
@@ -74,7 +79,7 @@ contract CentralRegistry is ERC165 {
         address indexed previousOwner,
         address indexed newOwner
     );
-    event newTimelockConfiguration(
+    event NewTimelockConfiguration(
         address indexed previousTimelock,
         address indexed newTimelock
     );
@@ -84,15 +89,16 @@ contract CentralRegistry is ERC165 {
     );
 
     event NewCurvanceContract(string indexed contractType, address newAddress);
-    event removedCurvanceContract(
+    event RemovedCurvanceContract(
         string indexed contractType,
         address removedAddress
     );
 
     event NewChainAdded(uint256 chainId, address operatorAddress);
-    event removedChain(uint256 chainId, address operatorAddress);
+    event RemovedChain(uint256 chainId, address operatorAddress);
 
     /// ERRORS ///
+
     error CentralRegistry_ParametersMisconfigured();
     error CentralRegistry_Unauthorized();
 
@@ -153,7 +159,7 @@ contract CentralRegistry is ERC165 {
             emergencyCouncil_ = msg.sender;
         }
 
-        /// Configure DAO permission data
+        // Configure DAO permission data
         daoAddress = daoAddress_;
         timelock = timelock_;
         emergencyCouncil = emergencyCouncil_;
@@ -168,7 +174,7 @@ contract CentralRegistry is ERC165 {
         genesisEpoch = genesisEpoch_;
 
         emit OwnershipTransferred(address(0), daoAddress_);
-        emit newTimelockConfiguration(address(0), timelock_);
+        emit NewTimelockConfiguration(address(0), timelock_);
         emit EmergencyCouncilTransferred(address(0), emergencyCouncil_);
     }
 
@@ -244,12 +250,12 @@ contract CentralRegistry is ERC165 {
         if (value > 500) {
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
-        /// CompoundFee is represented in 1e16 format
-        /// So we need to multiply by 1e14 to format properly
-        /// from basis points to %
+        // CompoundFee is represented in 1e16 format
+        // So we need to multiply by 1e14 to format properly
+        // from basis points to %
         protocolCompoundFee = value * 1e14;
 
-        /// Update vault harvest fee with new yield fee
+        // Update vault harvest fee with new yield fee
         protocolHarvestFee = protocolYieldFee + (value * 1e14);
     }
 
@@ -263,29 +269,13 @@ contract CentralRegistry is ERC165 {
         if (value > 2000) {
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
-        /// YieldFee is represented in 1e16 format
-        /// So we need to multiply by 1e14 to format properly
-        /// from basis points to %
+        // YieldFee is represented in 1e16 format
+        // So we need to multiply by 1e14 to format properly
+        // from basis points to %
         protocolYieldFee = value * 1e14;
 
-        /// Update vault harvest fee with new yield fee
+        // Update vault harvest fee with new yield fee
         protocolHarvestFee = (value * 1e14) + protocolCompoundFee;
-    }
-
-    /// @notice Sets the fee taken by Curvance DAO on liquidation
-    ///         of collateral assets
-    /// @dev Only callable on a 7 day delay or by the Emergency Council,
-    ///      can only have a maximum value of 5%
-    function setProtocolLiquidationFee(
-        uint256 value
-    ) external onlyElevatedPermissions {
-        if (value > 500) {
-            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
-        }
-        /// Liquidation fee is represented as 1e16 format
-        /// So we need to multiply by 1e14 to format properly
-        /// from basis points to %
-        protocolLiquidationFee = value * 1e14;
     }
 
     /// @notice Sets the fee taken by Curvance DAO on leverage/deleverage
@@ -303,17 +293,23 @@ contract CentralRegistry is ERC165 {
 
     /// @notice Sets the fee taken by Curvance DAO from interest generated
     /// @dev Only callable on a 7 day delay or by the Emergency Council,
-    ///      can only have a maximum value of 30%
+    ///      can only have a maximum value of 50%
     function setProtocolInterestRateFee(
+        address market,
         uint256 value
     ) external onlyElevatedPermissions {
-        if (value > 3000) {
+        if (value > 5000) {
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
-        /// Interest Rate fee is represented as 1e16 format
-        /// So we need to multiply by 1e14 to format properly
-        /// from basis points to %
-        protocolInterestRateFee = value * 1e14;
+
+        if (!isLendingMarket[market]) {
+            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
+        }
+
+        // Interest Rate fee is represented as 1e16 format
+        // So we need to multiply by 1e14 to format properly
+        // from basis points to %
+        protocolInterestFactor[market] = value * 1e14;
     }
 
     /// @notice Sets the early unlock penalty value for when users want to
@@ -376,15 +372,15 @@ contract CentralRegistry is ERC165 {
         address previousTimelock = timelock;
         timelock = newTimelock;
 
-        /// Delete permission data
+        // Delete permission data
         delete hasDaoPermissions[previousTimelock];
         delete hasElevatedPermissions[previousTimelock];
 
-        /// Add new permission data
+        // Add new permission data
         hasDaoPermissions[newTimelock] = true;
         hasElevatedPermissions[newTimelock] = true;
 
-        emit newTimelockConfiguration(previousTimelock, newTimelock);
+        emit NewTimelockConfiguration(previousTimelock, newTimelock);
     }
 
     function transferEmergencyCouncil(
@@ -393,11 +389,11 @@ contract CentralRegistry is ERC165 {
         address previousEmergencyCouncil = emergencyCouncil;
         emergencyCouncil = newEmergencyCouncil;
 
-        /// Delete permission data
+        // Delete permission data
         delete hasDaoPermissions[previousEmergencyCouncil];
         delete hasElevatedPermissions[previousEmergencyCouncil];
 
-        /// Add new permission data
+        // Add new permission data
         hasDaoPermissions[newEmergencyCouncil] = true;
         hasElevatedPermissions[newEmergencyCouncil] = true;
 
@@ -418,7 +414,9 @@ contract CentralRegistry is ERC165 {
         uint256 destinationAux,
         uint256 messagingChainId
     ) external onlyElevatedPermissions {
-        if (omnichainOperators[newOmnichainOperator].isAuthorized == 2) {
+        if (
+            omnichainOperators[newOmnichainOperator][chainId].isAuthorized == 2
+        ) {
             // Chain Operator already added
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
@@ -438,7 +436,7 @@ contract CentralRegistry is ERC165 {
         messagingToGETHChainId[messagingChainId] = chainId;
         GETHToMessagingChainId[chainId] = messagingChainId;
         supportedChains++;
-        omnichainOperators[newOmnichainOperator] = OmnichainData({
+        omnichainOperators[newOmnichainOperator][chainId] = OmnichainData({
             isAuthorized: 2,
             chainId: chainId,
             messagingChainId: messagingChainId,
@@ -450,12 +448,16 @@ contract CentralRegistry is ERC165 {
 
     /// @notice removes
     function removeChainSupport(
-        address currentOmnichainOperator
+        address currentOmnichainOperator,
+        uint256 chainId
     ) external onlyDaoPermissions {
         OmnichainData storage operatorToRemove = omnichainOperators[
             currentOmnichainOperator
-        ];
-        if (omnichainOperators[currentOmnichainOperator].isAuthorized < 2) {
+        ][chainId];
+        if (
+            omnichainOperators[currentOmnichainOperator][chainId]
+                .isAuthorized < 2
+        ) {
             // Operator unsupported
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
@@ -476,7 +478,8 @@ contract CentralRegistry is ERC165 {
             messagingToGETHChainId[operatorToRemove.messagingChainId]
         ];
         delete messagingToGETHChainId[operatorToRemove.messagingChainId];
-        emit removedChain(operatorToRemove.chainId, currentOmnichainOperator);
+
+        emit RemovedChain(operatorToRemove.chainId, currentOmnichainOperator);
     }
 
     /// CONTRACT MAPPING LOGIC
@@ -502,7 +505,7 @@ contract CentralRegistry is ERC165 {
 
         delete isZapper[currentZapper];
 
-        emit removedCurvanceContract("Zapper", currentZapper);
+        emit RemovedCurvanceContract("Zapper", currentZapper);
     }
 
     function addSwapper(address newSwapper) external onlyElevatedPermissions {
@@ -526,7 +529,7 @@ contract CentralRegistry is ERC165 {
 
         delete isSwapper[currentSwapper];
 
-        emit removedCurvanceContract("Swapper", currentSwapper);
+        emit RemovedCurvanceContract("Swapper", currentSwapper);
     }
 
     function addVeCVELocker(
@@ -552,7 +555,7 @@ contract CentralRegistry is ERC165 {
 
         delete isVeCVELocker[currentVeCVELocker];
 
-        emit removedCurvanceContract("VeCVELocker", currentVeCVELocker);
+        emit RemovedCurvanceContract("VeCVELocker", currentVeCVELocker);
     }
 
     function addGaugeController(
@@ -578,7 +581,7 @@ contract CentralRegistry is ERC165 {
 
         delete isGaugeController[currentGaugeController];
 
-        emit removedCurvanceContract(
+        emit RemovedCurvanceContract(
             "Gauge Controller",
             currentGaugeController
         );
@@ -607,22 +610,47 @@ contract CentralRegistry is ERC165 {
 
         delete isHarvester[currentHarvester];
 
-        emit removedCurvanceContract("Harvestor", currentHarvester);
+        emit RemovedCurvanceContract("Harvestor", currentHarvester);
     }
 
+    /// @notice Add a new lending market and associated fee configurations.
+    /// @dev Only callable on a 7 day delay or by the Emergency Council,
+    ///      and 50% for interest generated
+    /// @param newLendingMarket The address of the new lending market to be added.
+    /// @param marketInterestFactor The interest factor associated with the lending market.
     function addLendingMarket(
-        address newLendingMarket
+        address newLendingMarket,
+        uint256 marketInterestFactor
     ) external onlyElevatedPermissions {
         if (isLendingMarket[newLendingMarket]) {
             // Lending market already added
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
+        // Ensure that lending market parameter is a lending market
+        if (
+            !ERC165Checker.supportsInterface(
+                newLendingMarket,
+                type(ILendtroller).interfaceId
+            )
+        ) {
+            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
+        }
+
+        if (marketInterestFactor > 5000) {
+            /// Fee too high
+            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
+        }
+
         isLendingMarket[newLendingMarket] = true;
+        protocolInterestFactor[newLendingMarket] = marketInterestFactor * 1e14;
 
         emit NewCurvanceContract("Lending Market", newLendingMarket);
     }
 
+    /// @notice Remove a current lending market from Curvance.
+    /// @dev Only callable on a 7 day delay or by the Emergency Council
+    /// @param currentLendingMarket The address of the lending market to be removed.
     function removeLendingMarket(
         address currentLendingMarket
     ) external onlyElevatedPermissions {
@@ -633,9 +661,12 @@ contract CentralRegistry is ERC165 {
 
         delete isLendingMarket[currentLendingMarket];
 
-        emit removedCurvanceContract("Lending Market", currentLendingMarket);
+        emit RemovedCurvanceContract("Lending Market", currentLendingMarket);
     }
 
+    /// @notice Add a new crosschain endpoint.
+    /// @dev Only callable on a 7 day delay or by the Emergency Council
+    /// @param newEndpoint The address of the new crosschain endpoint to be added.
     function addEndpoint(
         address newEndpoint
     ) external onlyElevatedPermissions {
@@ -649,6 +680,9 @@ contract CentralRegistry is ERC165 {
         emit NewCurvanceContract("Endpoint", newEndpoint);
     }
 
+    /// @notice Removes a current crosschain endpoint.
+    /// @dev Only callable on a 7 day delay or by the Emergency Council
+    /// @param currentEndpoint The address of the crosschain endpoint to be removed.
     function removeEndpoint(
         address currentEndpoint
     ) external onlyElevatedPermissions {
@@ -659,7 +693,7 @@ contract CentralRegistry is ERC165 {
 
         delete isEndpoint[currentEndpoint];
 
-        emit removedCurvanceContract("Endpoint", currentEndpoint);
+        emit RemovedCurvanceContract("Endpoint", currentEndpoint);
     }
 
     /// @dev Internal helper for reverting efficiently.

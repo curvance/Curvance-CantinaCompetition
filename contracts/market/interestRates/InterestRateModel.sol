@@ -5,29 +5,33 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 
 contract InterestRateModel {
-    
     /// CONSTANTS ///
 
-    /// Unix time has 31,536,000 seconds per year 
+    /// Unix time has 31,536,000 seconds per year
     /// All my homies hate leap seconds and leap years
-    uint256 private constant secondsPerYear = 31536000;
-    uint256 private constant expScale = 1e18; // Scalar for math
-    bool public constant isInterestRateModel = true; // for inspection
-    ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
+    uint256 private constant SECONDS_PER_YEAR = 31536000;
+    /// @notice Scalar for math
+    uint256 private constant EXP_SCALE = 1e18;
+    /// @notice Rate at which interest is compounded, in seconds
+    uint256 internal constant INTEREST_COMPOUND_RATE = 300;
+    /// @notice For external contract's to call for validation
+    bool public constant IS_INTEREST_RATE_MODEL = true;
+    /// @notice Curvance DAO hub
+    ICentralRegistry public immutable centralRegistry;
 
     /// STORAGE ///
 
-    uint256 public multiplierPerSecond; // Rate interest grows
-    uint256 public jumpMultiplierPerSecond; // boosted rate interest grows
+    uint256 public baseRate; // Rate interest grows
+    uint256 public vertexRate; // boosted rate interest grows
     // Utilization rate point when jump multiplier kicks in
-    uint256 public rateCurveKink; 
+    uint256 public vertexStart;
 
     /// EVENTS ///
 
     event NewInterestRateModel(
-        uint256 multiplierPerSecond,
-        uint256 jumpMultiplierPerSecond,
-        uint256 rateCurveKink
+        uint256 baseRate,
+        uint256 vertexRate,
+        uint256 vertexUtilizationStart
     );
 
     /// MODIFIERS ///
@@ -43,19 +47,18 @@ contract InterestRateModel {
     /// CONSTRUCTOR ///
 
     /// @notice Construct an interest rate model
-    /// @param multiplierPerYear The rate of increase in interest rate by
-    ///                          utilization rate (scaled by expScale)
-    /// @param jumpMultiplierPerYear The multiplierPerSecond after hitting
-    ///                              `kink_` utilization rate
-    /// @param kink The utilization point at which the jump multiplier
-    ///              is applied
+    /// @param baseRatePerYear The rate of increase in interest rate by
+    ///                        utilization rate (scaled by EXP_SCALE)
+    /// @param vertexRatePerYear The multiplierPerSecond after hitting
+    ///                              `vertex_` utilization rate
+    /// @param vertexUtilizationStart The utilization point at which the vertex rate
+    ///               is applied
     constructor(
         ICentralRegistry centralRegistry_,
-        uint256 multiplierPerYear,
-        uint256 jumpMultiplierPerYear,
-        uint256 kink
+        uint256 baseRatePerYear,
+        uint256 vertexRatePerYear,
+        uint256 vertexUtilizationStart
     ) {
-
         require(
             ERC165Checker.supportsInterface(
                 address(centralRegistry_),
@@ -66,16 +69,18 @@ contract InterestRateModel {
 
         centralRegistry = centralRegistry_;
 
-        multiplierPerSecond =
-            (multiplierPerYear * expScale) /
-            (secondsPerYear * kink);
-        jumpMultiplierPerSecond = jumpMultiplierPerYear / secondsPerYear;
-        rateCurveKink = kink;
+        baseRate =
+            (INTEREST_COMPOUND_RATE * baseRatePerYear * EXP_SCALE) /
+            (SECONDS_PER_YEAR * vertexUtilizationStart);
+        vertexRate =
+            (INTEREST_COMPOUND_RATE * vertexRatePerYear) /
+            SECONDS_PER_YEAR;
+        vertexStart = vertexUtilizationStart;
 
         emit NewInterestRateModel(
-            multiplierPerSecond,
-            jumpMultiplierPerSecond,
-            kink
+            baseRate,
+            vertexRate,
+            vertexUtilizationStart
         );
     }
 
@@ -83,28 +88,29 @@ contract InterestRateModel {
 
     /// @notice Update the parameters of the interest rate model
     ///         (only callable by Curvance DAO elevated permissions, i.e. Timelock)
-    /// @param multiplierPerYear The rate of increase in interest rate by
-    ///                          utilization rate (scaled by expScale)
-    /// @param jumpMultiplierPerYear The multiplierPerSecond after hitting
-    ///                              `kink` utilization rate
-    /// @param kink The utilization point at which the jump multiplier
-    ///             is applied
+    /// @param baseRatePerYear The rate of increase in interest rate by
+    ///                          utilization rate (scaled by EXP_SCALE)
+    /// @param vertexRatePerYear The multiplierPerSecond after hitting
+    ///                              `vertex` utilization rate
+    /// @param vertexUtilizationStart The utilization point at which the jump multiplier
+    ///                               is applied
     function updateInterestRateModel(
-        uint256 multiplierPerYear,
-        uint256 jumpMultiplierPerYear,
-        uint256 kink
+        uint256 baseRatePerYear,
+        uint256 vertexRatePerYear,
+        uint256 vertexUtilizationStart
     ) external onlyElevatedPermissions {
-
-        multiplierPerSecond =
-            (multiplierPerYear * expScale) /
-            (secondsPerYear * kink);
-        jumpMultiplierPerSecond = jumpMultiplierPerYear / secondsPerYear;
-        rateCurveKink = kink;
+        baseRate =
+            (INTEREST_COMPOUND_RATE * baseRatePerYear * EXP_SCALE) /
+            (SECONDS_PER_YEAR * vertexUtilizationStart);
+        vertexRate =
+            (INTEREST_COMPOUND_RATE * vertexRatePerYear) /
+            SECONDS_PER_YEAR;
+        vertexStart = vertexUtilizationStart;
 
         emit NewInterestRateModel(
-            multiplierPerSecond,
-            jumpMultiplierPerSecond,
-            kink
+            baseRate,
+            vertexRate,
+            vertexUtilizationStart
         );
     }
 
@@ -115,7 +121,7 @@ contract InterestRateModel {
     /// @param cash The amount of cash in the market
     /// @param borrows The amount of borrows in the market
     /// @param reserves The amount of reserves in the market
-    /// @return The utilization rate between [0, expScale]
+    /// @return The utilization rate between [0, EXP_SCALE]
     function utilizationRate(
         uint256 cash,
         uint256 borrows,
@@ -126,10 +132,10 @@ contract InterestRateModel {
             return 0;
         }
 
-        return (borrows * expScale) / (cash + borrows - reserves);
+        return (borrows * EXP_SCALE) / (cash + borrows - reserves);
     }
 
-    /// @notice Calculates the current borrow rate per second
+    /// @notice Calculates the current borrow rate per compound
     /// @param cash The amount of cash in the market
     /// @param borrows The amount of borrows in the market
     /// @param reserves The amount of reserves in the market
@@ -141,7 +147,7 @@ contract InterestRateModel {
     ) public view returns (uint256) {
         uint256 util = utilizationRate(cash, borrows, reserves);
 
-        if (util <= rateCurveKink) {
+        if (util <= vertexStart) {
             unchecked {
                 return getNormalInterestRate(util);
             }
@@ -149,41 +155,86 @@ contract InterestRateModel {
 
         /// We know this will not underflow or overflow because of Interest Rate Model configurations
         unchecked {
-            return(getJumpInterestRate(util - rateCurveKink) + getNormalInterestRate(rateCurveKink));
+            return (getVertexInterestRate(util - vertexStart) +
+                getNormalInterestRate(vertexStart));
         }
     }
 
-    /// @notice Calculates the current supply rate per second
+    /// @notice Calculates the current supply rate per compound
     /// @param cash The amount of cash in the market
     /// @param borrows The amount of borrows in the market
     /// @param reserves The amount of reserves in the market
-    /// @param marketReservesInterestFee The current interest rate reserve factor for the market
+    /// @param interestFee The current interest rate reserve factor for the market
     /// @return The supply rate percentage per second (scaled by 1e18)
     function getSupplyRate(
         uint256 cash,
         uint256 borrows,
         uint256 reserves,
-        uint256 marketReservesInterestFee
+        uint256 interestFee
     ) public view returns (uint256) {
-        /// RateToPool = (borrowRate * oneMinusReserveFactor) / expScale;
-        uint256 rateToPool = (getBorrowRate(cash, borrows, reserves) * (expScale - marketReservesInterestFee)) / expScale;
+        /// RateToPool = (borrowRate * oneMinusReserveFactor) / EXP_SCALE;
+        uint256 rateToPool = (getBorrowRate(cash, borrows, reserves) *
+            (EXP_SCALE - interestFee)) / EXP_SCALE;
 
-        /// Supply Rate = (utilizationRate * rateToPool) / expScale;
-        return (utilizationRate(cash, borrows, reserves) * rateToPool) / expScale;
+        /// Supply Rate = (utilizationRate * rateToPool) / EXP_SCALE;
+        return
+            (utilizationRate(cash, borrows, reserves) * rateToPool) /
+            EXP_SCALE;
+    }
+
+    /// @notice Calculates the current borrow rate per year
+    /// @param cash The amount of cash in the market
+    /// @param borrows The amount of borrows in the market
+    /// @param reserves The amount of reserves in the market
+    /// @return The borrow rate percentage per second (scaled by 1e18)
+    function getBorrowRatePerYear(
+        uint256 cash,
+        uint256 borrows,
+        uint256 reserves
+    ) external view returns (uint256) {
+        return
+            SECONDS_PER_YEAR *
+            (getBorrowRate(cash, borrows, reserves) / INTEREST_COMPOUND_RATE);
+    }
+
+    /// @notice Calculates the current supply rate per year
+    /// @param cash The amount of cash in the market
+    /// @param borrows The amount of borrows in the market
+    /// @param reserves The amount of reserves in the market
+    /// @param interestFee The current interest rate reserve factor for the market
+    /// @return The supply rate percentage per second (scaled by 1e18)
+    function getSupplyRatePerYear(
+        uint256 cash,
+        uint256 borrows,
+        uint256 reserves,
+        uint256 interestFee
+    ) external view returns (uint256) {
+        return
+            SECONDS_PER_YEAR *
+            (getSupplyRate(cash, borrows, reserves, interestFee) /
+                INTEREST_COMPOUND_RATE);
+    }
+
+    /// @notice Returns the rate at which interest compounds, in seconds
+    function compoundRate() external pure returns (uint256) {
+        return INTEREST_COMPOUND_RATE;
     }
 
     /// @notice Calculates the interest rate for `util` market utilization
     /// @param util The utilization rate of the market
     /// @return Returns the calculated interest rate
-    function getNormalInterestRate(uint256 util) internal view returns (uint256){
-        return (util * multiplierPerSecond) / expScale;
+    function getNormalInterestRate(
+        uint256 util
+    ) internal view returns (uint256) {
+        return (util * baseRate) / EXP_SCALE;
     }
 
-    /// @notice Calculates the interest rate under `jump` conditions E.G. `util` > `kink ` based on market utilization
-    /// @param util The utilization rate of the market above `kink`
+    /// @notice Calculates the interest rate under `jump` conditions E.G. `util` > `vertex ` based on market utilization
+    /// @param util The utilization rate of the market above `vertex`
     /// @return Returns the calculated excess interest rate
-    function getJumpInterestRate(uint256 util) internal view returns (uint256){
-        return (util * jumpMultiplierPerSecond) / expScale;
+    function getVertexInterestRate(
+        uint256 util
+    ) internal view returns (uint256) {
+        return (util * vertexRate) / EXP_SCALE;
     }
-
 }

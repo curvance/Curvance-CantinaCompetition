@@ -13,7 +13,6 @@ abstract contract GaugeController is IGaugePool {
     /// TYPES ///
 
     struct Epoch {
-        uint256 rewardPerSec;
         uint256 totalWeights;
         mapping(address => uint256) poolWeights; // token => weight
     }
@@ -66,12 +65,6 @@ abstract contract GaugeController is IGaugePool {
 
     /// EXTERNAL FUNCTIONS ///
 
-    /// @notice Returns reward per second of given epoch
-    /// @param epoch Epoch number
-    function rewardPerSec(uint256 epoch) external view returns (uint256) {
-        return epochInfo[epoch].rewardPerSec;
-    }
-
     /// @notice Returns gauge weight of given epoch and token
     /// @param epoch Epoch number
     /// @param token Gauge token address
@@ -83,21 +76,6 @@ abstract contract GaugeController is IGaugePool {
             epochInfo[epoch].totalWeights,
             epochInfo[epoch].poolWeights[token]
         );
-    }
-
-    /// @notice Set rewardPerSec of next epoch
-    /// @dev Only owner
-    /// @param epoch Next epoch number
-    /// @param newRewardPerSec Reward per second
-    function setRewardPerSecOfNextEpoch(
-        uint256 epoch,
-        uint256 newRewardPerSec
-    ) external override onlyMessagingHub {
-        if (!(epoch == 0 && startTime == 0) && epoch != currentEpoch() + 1) {
-            revert GaugeErrors.InvalidEpoch();
-        }
-
-        epochInfo[epoch].rewardPerSec = newRewardPerSec;
     }
 
     /// @notice Set emission rates of tokens of next epoch
@@ -138,8 +116,7 @@ abstract contract GaugeController is IGaugePool {
 
     /// @notice Returns current epoch number
     function currentEpoch() public view returns (uint256) {
-        require(startTime != 0, "GaugeController: gauge not started");
-        return (block.timestamp - startTime) / EPOCH_WINDOW;
+        return epochOfTimestamp(block.timestamp);
     }
 
     /// @notice Returns epoch number of given timestamp
@@ -148,6 +125,9 @@ abstract contract GaugeController is IGaugePool {
         uint256 timestamp
     ) public view returns (uint256) {
         require(startTime != 0, "GaugeController: gauge not started");
+        if (timestamp <= startTime) {
+            return 0;
+        }
         return (timestamp - startTime) / EPOCH_WINDOW;
     }
 

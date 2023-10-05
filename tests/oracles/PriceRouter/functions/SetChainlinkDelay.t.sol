@@ -7,12 +7,12 @@ contract SetChainlinkDelayTest is TestBasePriceRouter {
     function test_setChainlinkDelay_fail_whenCallerIsNotAuthorized() public {
         vm.prank(address(1));
 
-        vm.expectRevert("centralRegistry: UNAUTHORIZED");
+        vm.expectRevert("PriceRouter: UNAUTHORIZED");
         priceRouter.setChainlinkDelay(0.5 days);
     }
 
     function test_setChainlinkDelay_fail_whenDelayIsTooLarge() public {
-        vm.expectRevert("PriceRouter: delay is too large");
+        vm.expectRevert(0xebd2e1ff);
         priceRouter.setChainlinkDelay(1 days);
     }
 
