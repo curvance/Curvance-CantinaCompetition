@@ -61,6 +61,8 @@ contract TestDTokenReserves is TestBaseMarket {
                 IMToken(address(cBALRETH)),
                 2000,
                 500,
+                1500,
+                1200,
                 5000
             );
             address[] memory markets = new address[](1);
@@ -126,7 +128,7 @@ contract TestDTokenReserves is TestBaseMarket {
                 address(dDAI),
                 dao
             );
-            uint256 debtBalanceBefore = dDAI.borrowBalanceStored(user1);
+            uint256 debtBalanceBefore = dDAI.debtBalanceStored(user1);
 
             // skip 1 day
             skip(24 hours);
@@ -169,7 +171,7 @@ contract TestDTokenReserves is TestBaseMarket {
                 address(dDAI),
                 dao
             );
-            uint256 debtBalanceBefore = dDAI.borrowBalanceStored(user1);
+            uint256 debtBalanceBefore = dDAI.debtBalanceStored(user1);
 
             // skip 1 day
             skip(24 hours);
