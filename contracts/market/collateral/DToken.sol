@@ -987,9 +987,9 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @notice User redeems dTokens in exchange for the underlying asset
     /// @dev Assumes interest has already been accrued up to the current timestamp
     /// @param redeemer The address of the account which is redeeming the tokens
+    /// @param recipient The recipient address
     /// @param tokens The number of dTokens to redeem into underlying
     /// @param amount The number of underlying tokens to receive from redeeming dTokens
-    /// @param recipient The recipient address
     function _redeem(
         address redeemer,
         address recipient,
@@ -1007,7 +1007,7 @@ contract DToken is ERC165, ReentrancyGuard {
             totalSupply = totalSupply - tokens;
         }
 
-        // emit events on gauge pool
+        // emit events on gauge pool and check if tokens == 0
         _gaugePool().withdraw(address(this), redeemer, tokens);
 
         SafeTransferLib.safeTransfer(underlying, recipient, amount);

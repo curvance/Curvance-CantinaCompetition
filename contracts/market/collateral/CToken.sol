@@ -520,7 +520,7 @@ contract CToken is ERC165, ReentrancyGuard {
             totalSupply = totalSupply - tokens;
         }
 
-        // emit events on gauge pool
+        // emit events on gauge pool and check if tokens == 0
         _gaugePool().withdraw(address(this), redeemer, tokens);
 
         // Exit position vault and transfer underlying to `recipient` in assets
