@@ -58,12 +58,12 @@ contract TestTokens is TestBaseMarket {
             lendtroller.listMarketToken(address(cBALRETH));
             // add MToken support on price router
             priceRouter.addMTokenSupport(address(cBALRETH));
-            // set collateral factor
+            // set collateral token configuration
             lendtroller.updateCollateralToken(
                 IMToken(address(cBALRETH)),
                 200,
                 0,
-                1200,
+                1500,
                 1000,
                 5000
             );
@@ -371,7 +371,7 @@ contract TestTokens is TestBaseMarket {
         // skip min hold period
         skip(900);
 
-        // can transefr fully
+        // try full transfer
         vm.startPrank(user1);
         dDAI.transfer(user2, 1000 ether);
         vm.stopPrank();
