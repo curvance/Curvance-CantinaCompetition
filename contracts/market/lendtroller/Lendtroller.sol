@@ -38,12 +38,12 @@ contract Lendtroller is ILendtroller, ERC165 {
         /// @notice The ratio at which this token will be compensated on liquidation.
         /// @dev    In `EXP_SCALE` format, stored as (Incentive + EXP_SCALE)
         ///         e.g 1.05e18 = 5% incentive, this saves gas for liquidation calculations
-        uint256 liquidationIncentive;
-        /// @notice The fee that will be taken on liquidation for this token.
+        uint256 liqInc;
+        /// @notice The protocol fee that will be taken on liquidation for this token.
         /// @dev    In `EXP_SCALE` format, 0.01e18 = 1%
-        ///         Note: this is stored as (Fee * EXP_SCALE) / `liquidationIncentive`
+        ///         Note: this is stored as (Fee * EXP_SCALE) / `liqInc`
         ///         in order to save gas for liquidation calculations
-        uint256 protocolLiquidationFee;
+        uint256 liqFee;
         /// @notice Mapping that indicates whether an account is in a market.
         /// @dev    0 or 1 for no; 2 for yes
         mapping(address => uint256) accountInMarket;
@@ -532,16 +532,16 @@ contract Lendtroller is ILendtroller, ERC165 {
 
     /// @notice Sets the collRatio for a market token
     /// @param mToken The market to set the collateralization ratio on
-    /// @param liquidationIncentive The liquidation incentive for `mToken`, in basis points
-    /// @param protocolLiquidationFee The protocol liquidation fee for `mToken`, in basis points
+    /// @param liqInc The liquidation incentive for `mToken`, in basis points
+    /// @param liqFee The protocol liquidation fee for `mToken`, in basis points
     /// @param collReqA The premium of excess collateral required to avoid soft liquidation, in basis points
     /// @param collReqB The premium of excess collateral required to avoid hard liquidation, in basis points
     /// @param collRatio The ratio at which $1 of collateral can be borrowed against,
     ///                               for `mToken`, in basis points
     function updateCollateralToken(
         IMToken mToken,
-        uint256 liquidationIncentive,
-        uint256 protocolLiquidationFee,
+        uint256 liqInc,
+        uint256 liqFee,
         uint256 collReqA,
         uint256 collReqB,
         uint256 collRatio
@@ -557,19 +557,19 @@ contract Lendtroller is ILendtroller, ERC165 {
         }
 
         // Convert the parameters from basis points to `EXP_SCALE` format
-        liquidationIncentive = liquidationIncentive * 1e14;
-        protocolLiquidationFee = protocolLiquidationFee * 1e14;
+        liqInc = liqInc * 1e14;
+        liqFee = liqFee * 1e14;
         collReqA = collReqA * 1e14;
         collReqB = collReqB * 1e14;
         collRatio = collRatio * 1e14;
 
         // Validate liquidation incentive is not above the maximum allowed
-        if (liquidationIncentive > _MAX_LIQUIDATION_INCENTIVE) {
+        if (liqInc > _MAX_LIQUIDATION_INCENTIVE) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
         // Validate protocol liquidation fee is not above the maximum allowed
-        if (protocolLiquidationFee > _MAX_LIQUIDATION_FEE) {
+        if (liqFee > _MAX_LIQUIDATION_FEE) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
@@ -589,18 +589,18 @@ contract Lendtroller is ILendtroller, ERC165 {
         }
 
         // Validate the soft liquidation collateral premium is not more strict than the asset's CR
-        if (collRatio > _EXP_SCALE/(_EXP_SCALE + collReqA)) {
+        if (collRatio > (_EXP_SCALE * _EXP_SCALE)/(_EXP_SCALE + collReqA)) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
         // Validate collateral requirement is larger than the liquidation incentive
-        if (liquidationIncentive > collReqB) {
+        if (liqInc > collReqB) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
         // We need to make sure that the liquidation incentive is enough for both the protocol and the users
         if (
-            (liquidationIncentive - protocolLiquidationFee) <
+            (liqInc - liqFee) <
             _MIN_LIQUIDATION_INCENTIVE
         ) {
             _revert(_INVALID_PARAMETER_SELECTOR);
@@ -615,13 +615,13 @@ contract Lendtroller is ILendtroller, ERC165 {
         }
 
         // We use the value as a premium in `calculateLiquidatedTokens` so it needs to be 1 + incentive
-        marketToken.liquidationIncentive = _EXP_SCALE + liquidationIncentive;
+        marketToken.liqInc = _EXP_SCALE + liqInc;
 
         // Store protocol liquidation fee divided by the liquidation incentive offset,
         // that way we can directly multiply later instead of needing extra calculations
-        marketToken.protocolLiquidationFee =
-            (_EXP_SCALE * protocolLiquidationFee) /
-            (_EXP_SCALE + liquidationIncentive);
+        marketToken.liqFee =
+            (_EXP_SCALE * liqFee) /
+            (_EXP_SCALE + liqInc);
 
         // Store the collateral requirement as a premium above `EXP_SCALE`,
         // that way we can calculate solvency via division easily in _getStatusForLiquidation
@@ -635,8 +635,8 @@ contract Lendtroller is ILendtroller, ERC165 {
 
         emit CollateralTokenUpdated(
             mToken,
-            liquidationIncentive,
-            protocolLiquidationFee,
+            liqInc,
+            liqFee,
             collReqA,
             collReqB,
             collRatio
@@ -691,7 +691,7 @@ contract Lendtroller is ILendtroller, ERC165 {
     ) external view override returns (bool, uint256, uint256) {
         return (
             mTokenData[mToken].isListed,
-            mTokenData[mToken].liquidationIncentive,
+            mTokenData[mToken].liqInc,
             mTokenData[mToken].collRatio
         );
     }
@@ -1070,7 +1070,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         MarketToken storage mToken = mTokenData[collateralToken];
 
         // Get the exchange rate and calculate the number of collateral tokens to seize:
-        uint256 debtToCollateralRatio = (mToken.liquidationIncentive *
+        uint256 debtToCollateralRatio = (mToken.liqInc *
             debtTokenPrice *
             _EXP_SCALE) /
             (collateralTokenPrice *
@@ -1081,7 +1081,7 @@ contract Lendtroller is ILendtroller, ERC165 {
 
         return (
             liquidatedTokens,
-            (liquidatedTokens * mToken.protocolLiquidationFee) / _EXP_SCALE
+            (liquidatedTokens * mToken.liqFee) / _EXP_SCALE
         );
     }
 
