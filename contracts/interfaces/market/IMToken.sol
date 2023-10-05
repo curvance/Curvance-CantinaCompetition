@@ -5,17 +5,17 @@ import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 
 struct AccountSnapshot {
     address asset;
-    uint256 tokenType;
-    uint256 mTokenBalance;
-    uint256 borrowBalance;
+    bool isCToken;
+    uint256 balance;
+    uint256 debtBalance;
     uint256 exchangeRate;
 }
 
 interface IMToken {
     function underlying() external view returns (address);
 
-    /// @notice Returns whether the market token is collateral or debt 1 = collateral, 0 = debt
-    function tokenType() external view returns (uint256);
+    /// @notice Returns whether the market token is a collateral token
+    function isCToken() external view returns (bool);
 
     /// @notice Get the token balance of the `owner`
     function balanceOf(address owner) external view returns (uint256);
@@ -28,12 +28,12 @@ interface IMToken {
     ) external;
 
     /// @notice Get a snapshot of the account's balances, and the cached exchange rate
-    function getAccountSnapshot(
+    function getSnapshot(
         address account
     ) external view returns (uint256, uint256, uint256);
 
     /// @notice Get a snapshot of the account's balances, and the cached exchange rate
-    function getAccountSnapshotPacked(
+    function getSnapshotPacked(
         address account
     ) external view returns (AccountSnapshot memory);
 
@@ -44,7 +44,7 @@ interface IMToken {
     function totalBorrows() external view returns (uint256);
 
     /// @notice Return the borrow balance of account based on stored data
-    function borrowBalanceStored(
+    function debtBalanceStored(
         address account
     ) external view returns (uint256);
 

@@ -30,9 +30,5 @@ contract LendtrollerDeploymentTest is TestBaseLendtroller {
         );
 
         assertEq(address(dUSDC.centralRegistry()), address(centralRegistry));
-        assertEq(
-            address(lendtroller.getPriceRouter()),
-            centralRegistry.priceRouter()
-        );
     }
 }

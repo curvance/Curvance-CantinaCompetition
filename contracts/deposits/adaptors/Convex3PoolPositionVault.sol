@@ -144,7 +144,11 @@ contract ConvexPositionVault is BasePositionVault {
     /// @return yield The amount of new assets acquired from compounding vault yield
     function harvest(
         bytes calldata data
-    ) external override onlyHarvestor vaultActive returns (uint256 yield) {
+    ) external override onlyHarvestor returns (uint256 yield) {
+        if (_vaultIsActive == 1) {
+            _revert(_VAULT_NOT_ACTIVE_SELECTOR);
+        }
+
         uint256 pending = _calculatePendingRewards();
         if (pending > 0) {
             // claim vested rewards

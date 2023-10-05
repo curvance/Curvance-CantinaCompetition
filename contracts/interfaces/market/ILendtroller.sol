@@ -5,56 +5,53 @@ import { GaugePool } from "contracts/gauge/GaugePool.sol";
 import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 
 interface ILendtroller {
-    function mintAllowed(address mToken, address minter) external;
+    function canMint(address mToken) external;
 
-    function redeemAllowed(
+    function canRedeem(
         address mToken,
         address redeemer,
-        uint256 redeemTokens
+        uint256 amount
     ) external;
 
-    function borrowAllowedWithNotify(
+    function canBorrowWithNotify(
         address mToken,
         address borrower,
-        uint256 borrowAmount
+        uint256 amount
     ) external;
 
-    function borrowAllowed(
+    function canBorrow(
         address mToken,
         address borrower,
-        uint256 borrowAmount
+        uint256 amount
     ) external;
 
-    function repayAllowed(address mToken, address borrower) external;
+    function canRepay(address mToken, address borrower) external;
 
-    function liquidateAllowed(
+    function canLiquidateExact(
         address mTokenBorrowed,
         address mTokenCollateral,
         address borrower,
-        uint256 repayAmount
-    ) external;
+        uint256 amount
+    ) external returns (uint256, uint256);
 
-    function seizeAllowed(
-        address mTokenCollateral,
+    function canLiquidate(
         address mTokenBorrowed,
-        address liquidator,
+        address mTokenCollateral,
         address borrower
-    ) external;
+    ) external returns (uint256, uint256, uint256);
 
-    function transferAllowed(
-        address mToken,
-        address src,
-        address dst,
-        uint256 transferTokens
-    ) external;
-
-    function notifyAccountBorrow(address account) external;
-
-    function calculateLiquidatedTokens(
-        address mTokenBorrowed,
+    function canSeize(
         address mTokenCollateral,
-        uint256 repayAmount
-    ) external view returns (uint256, uint256);
+        address mTokenBorrowed
+    ) external;
+
+    function canTransfer(
+        address mToken,
+        address from,
+        uint256 amount
+    ) external;
+
+    function notifyBorrow(address account) external;
 
     function isListed(address mToken) external view returns (bool);
 
@@ -75,7 +72,7 @@ interface ILendtroller {
 
     function gaugePool() external view returns (GaugePool);
 
-    function getAccountPosition(
+    function getStatus(
         address account
     ) external view returns (uint256, uint256, uint256);
 }

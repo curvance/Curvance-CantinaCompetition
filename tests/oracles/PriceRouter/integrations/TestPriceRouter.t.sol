@@ -88,7 +88,7 @@ contract TestPriceRouter is TestBasePriceRouter {
 
     function testRevertAfterAssetRemove() public {
         adapter.removeAsset(WETH_USDC);
-        vm.expectRevert("PriceRouter: no feeds available");
+        vm.expectRevert(0xe4558fac);
         priceRouter.getPrice(WETH_USDC, true, false);
     }
 

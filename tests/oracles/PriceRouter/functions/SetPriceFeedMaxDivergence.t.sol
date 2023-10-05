@@ -9,14 +9,14 @@ contract SetPriceFeedMaxDivergenceTest is TestBasePriceRouter {
     {
         vm.prank(address(1));
 
-        vm.expectRevert("centralRegistry: UNAUTHORIZED");
+        vm.expectRevert("PriceRouter: UNAUTHORIZED");
         priceRouter.setPriceFeedMaxDivergence(10200);
     }
 
     function test_setPriceFeedMaxDivergence_fail_whenDivergenceIsTooSmall()
         public
     {
-        vm.expectRevert("PriceRouter: divergence check is too small");
+        vm.expectRevert(0xebd2e1ff);
         priceRouter.setPriceFeedMaxDivergence(10199);
     }
 

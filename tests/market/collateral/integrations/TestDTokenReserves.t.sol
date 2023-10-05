@@ -59,8 +59,10 @@ contract TestDTokenReserves is TestBaseMarket {
             // set collateral factor
             lendtroller.updateCollateralToken(
                 IMToken(address(cBALRETH)),
-                2000,
-                500,
+                200,
+                0,
+                1500,
+                1200,
                 5000
             );
             address[] memory markets = new address[](1);
@@ -126,7 +128,7 @@ contract TestDTokenReserves is TestBaseMarket {
                 address(dDAI),
                 dao
             );
-            uint256 borrowBalanceBefore = dDAI.borrowBalanceStored(user1);
+            uint256 debtBalanceBefore = dDAI.debtBalanceStored(user1);
 
             // skip 1 day
             skip(24 hours);
@@ -142,11 +144,9 @@ contract TestDTokenReserves is TestBaseMarket {
             );
 
             // check borrower debt increased
-            AccountSnapshot memory snapshot = dDAI.getAccountSnapshotPacked(
-                user1
-            );
-            assertEq(snapshot.mTokenBalance, 0);
-            assertEq(snapshot.borrowBalance, borrowBalanceBefore + debt);
+            AccountSnapshot memory snapshot = dDAI.getSnapshotPacked(user1);
+            assertEq(snapshot.balance, 0);
+            assertEq(snapshot.debtBalance, debtBalanceBefore + debt);
             assertGt(snapshot.exchangeRate, exchangeRateBefore);
 
             // dao dDAI balance doesn't increase
@@ -169,7 +169,7 @@ contract TestDTokenReserves is TestBaseMarket {
                 address(dDAI),
                 dao
             );
-            uint256 borrowBalanceBefore = dDAI.borrowBalanceStored(user1);
+            uint256 debtBalanceBefore = dDAI.debtBalanceStored(user1);
 
             // skip 1 day
             skip(24 hours);
@@ -185,13 +185,11 @@ contract TestDTokenReserves is TestBaseMarket {
             );
 
             // check borrower debt increased
-            AccountSnapshot memory snapshot = dDAI.getAccountSnapshotPacked(
-                user1
-            );
-            assertEq(snapshot.mTokenBalance, 0);
+            AccountSnapshot memory snapshot = dDAI.getSnapshotPacked(user1);
+            assertEq(snapshot.balance, 0);
             assertApproxEqRel(
-                snapshot.borrowBalance,
-                borrowBalanceBefore + debt,
+                snapshot.debtBalance,
+                debtBalanceBefore + debt,
                 10000
             );
             assertGt(snapshot.exchangeRate, exchangeRateBefore);
