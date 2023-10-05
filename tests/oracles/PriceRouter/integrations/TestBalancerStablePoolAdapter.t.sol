@@ -90,7 +90,7 @@ contract TestBalancerStablePoolAdapter is TestBasePriceRouter {
         testReturnsCorrectPrice();
 
         adapter.removeAsset(WETH_RETH);
-        vm.expectRevert("PriceRouter: no feeds available");
+        vm.expectRevert(0xe4558fac);
         priceRouter.getPrice(WETH_RETH, true, false);
     }
 }
