@@ -139,23 +139,23 @@ contract TestCTokenReserves is TestBaseMarket {
         _prepareDAI(user2, repayAmount);
         vm.startPrank(user2);
         dai.approve(address(dDAI), repayAmount);
-        dDAI.liquidate(user1, repayAmount, IMToken(address(cBALRETH)));
+        dDAI.liquidateExact(user1, repayAmount, IMToken(address(cBALRETH)));
         vm.stopPrank();
 
         AccountSnapshot memory snapshot = cBALRETH.getSnapshotPacked(
             user1
         );
         assertApproxEqRel(
-            snapshot.mTokenBalance,
+            snapshot.balance,
             1 ether - liquidatedTokens,
             0.01e18
         );
-        assertEq(snapshot.borrowBalance, 0);
+        assertEq(snapshot.debtBalance, 0);
         assertEq(snapshot.exchangeRate, 1 ether);
 
         snapshot = dDAI.getSnapshotPacked(user1);
-        assertEq(snapshot.mTokenBalance, 0);
-        assertApproxEqRel(snapshot.borrowBalance, 250 ether, 0.01e18);
+        assertEq(snapshot.balance, 0);
+        assertApproxEqRel(snapshot.debtBalance, 250 ether, 0.01e18);
         assertApproxEqRel(snapshot.exchangeRate, 1 ether, 0.01e18);
 
         assertEq(cBALRETH.balanceOf(dao), daoBalanceBefore + protocolTokens);
