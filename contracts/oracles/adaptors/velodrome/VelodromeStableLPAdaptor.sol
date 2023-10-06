@@ -45,8 +45,8 @@ contract VelodromeStableLPAdaptor is BaseOracleAdaptor {
 
     /// @notice Called during pricing operations.
     /// @dev https://blog.alphaventuredao.io/fair-lp-token-pricing/
-    /// @param asset the bpt being priced
-    /// @param inUSD indicates whether we want the price in USD or ETH
+    /// @param asset The bpt being priced
+    /// @param inUSD Indicates whether we want the price in USD or ETH
     /// @param getLower Since this adaptor calls back into the price router
     ///                 it needs to know if it should be working with the
     ///                 upper or lower prices of assets
@@ -57,7 +57,7 @@ contract VelodromeStableLPAdaptor is BaseOracleAdaptor {
     ) external view override returns (PriceReturnData memory pData) {
         require(
             isSupportedAsset[asset],
-            "VelodromeVolatileLPAdaptor: asset not supported"
+            "VelodromeStableLPAdaptor: asset not supported"
         );
 
         // Read Adaptor storage and grab pool tokens
@@ -69,8 +69,12 @@ contract VelodromeStableLPAdaptor is BaseOracleAdaptor {
         // LP reserves
         (uint256 reserve0, uint256 reserve1, ) = pool.getReserves();
         // convert to 18 decimals
-        reserve0 = (reserve0 * 1e18) / (10 ** data.decimals0);
-        reserve1 = (reserve1 * 1e18) / (10 ** data.decimals1);
+        if (data.decimals0 != 18) {
+            reserve0 = (reserve0 * 1e18) / (10 ** data.decimals0);
+        }
+        if (data.decimals1 != 18) {
+            reserve1 = (reserve1 * 1e18) / (10 ** data.decimals1);
+        }
 
         uint256 price0;
         uint256 price1;
@@ -103,11 +107,11 @@ contract VelodromeStableLPAdaptor is BaseOracleAdaptor {
 
     /// @notice Add a Balancer Stable Pool Bpt as an asset.
     /// @dev Should be called before `PriceRotuer:addAssetPriceFeed` is called.
-    /// @param asset the address of the bpt to add
+    /// @param asset The address of the bpt to add
     function addAsset(address asset) external onlyElevatedPermissions {
         require(
             !isSupportedAsset[asset],
-            "VelodromeVolatileLPAdaptor: asset already supported"
+            "VelodromeStableLPAdaptor: asset already supported"
         );
         IVeloPair pool = IVeloPair(asset);
         AdaptorData memory data;
@@ -126,7 +130,7 @@ contract VelodromeStableLPAdaptor is BaseOracleAdaptor {
     function removeAsset(address asset) external override onlyDaoPermissions {
         require(
             isSupportedAsset[asset],
-            "VelodromeVolatileLPAdaptor: asset not supported"
+            "VelodromeStableLPAdaptor: asset not supported"
         );
 
         // Notify the adaptor to stop supporting the asset
@@ -140,6 +144,7 @@ contract VelodromeStableLPAdaptor is BaseOracleAdaptor {
     }
 
     /// INTERNAL FUNCTIONS ///
+
     function _getFairPrice(
         uint256 reserve0,
         uint256 reserve1,
@@ -152,12 +157,11 @@ contract VelodromeStableLPAdaptor is BaseOracleAdaptor {
             Math.sqrt(reserve0 * reserve1) *
                 Math.sqrt(reserve0 * reserve0 + reserve1 * reserve1)
         );
-        uint256 ratio = ((10 ** 18) * price0) / price1;
+        uint256 ratio = ((1e18) * price0) / price1;
         uint256 sqrtPrice = Math.sqrt(
-            Math.sqrt((10 ** 18) * ratio) * Math.sqrt(10 ** 36 + ratio * ratio)
+            Math.sqrt((1e18) * ratio) * Math.sqrt(1e36 + ratio * ratio)
         );
         return
-            ((((10 ** 18) * sqrtReserve) / sqrtPrice) * price0 * 2) /
-            totalSupply;
+            ((((1e18) * sqrtReserve) / sqrtPrice) * price0 * 2) / totalSupply;
     }
 }

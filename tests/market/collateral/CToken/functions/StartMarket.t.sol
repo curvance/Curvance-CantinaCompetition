@@ -2,6 +2,7 @@
 pragma solidity 0.8.17;
 
 import { TestBaseCToken } from "../TestBaseCToken.sol";
+import { BasePositionVault } from "contracts/deposits/adaptors/BasePositionVault.sol";
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { CToken } from "contracts/market/collateral/CToken.sol";
 
@@ -31,7 +32,9 @@ contract CTokenStartMarketTest is TestBaseCToken {
             1e18
         );
 
-        vm.expectRevert("BasePositionVault: vault not active");
+        vm.expectRevert(
+            BasePositionVault.BasePositionVault__VaultNotActive.selector
+        );
 
         vm.prank(address(lendtroller));
         cBALRETH.startMarket(user1);

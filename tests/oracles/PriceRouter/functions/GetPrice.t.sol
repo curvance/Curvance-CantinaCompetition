@@ -6,7 +6,7 @@ import { TestBasePriceRouter } from "../TestBasePriceRouter.sol";
 
 contract GetPriceTest is TestBasePriceRouter {
     function test_getPrice_fail_whenNoFeedsAvailable() public {
-        vm.expectRevert("PriceRouter: no feeds available");
+        vm.expectRevert(0xe4558fac);
         priceRouter.getPrice(_USDC_ADDRESS, true, true);
     }
 

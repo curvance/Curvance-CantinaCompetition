@@ -17,7 +17,7 @@ contract SetTransferPausedTest is TestBaseLendtroller {
     function test_setTransferPaused_success() public {
         lendtroller.listMarketToken(address(dUSDC));
 
-        lendtroller.transferAllowed(address(dUSDC), address(this), user1, 1);
+        lendtroller.canTransfer(address(dUSDC), address(this), 1);
 
         assertEq(lendtroller.transferPaused(), 1);
 
@@ -27,7 +27,7 @@ contract SetTransferPausedTest is TestBaseLendtroller {
         lendtroller.setTransferPaused(true);
 
         vm.expectRevert(Lendtroller.Lendtroller__Paused.selector);
-        lendtroller.transferAllowed(address(dUSDC), address(this), user1, 1);
+        lendtroller.canTransfer(address(dUSDC), address(this), 1);
 
         assertEq(lendtroller.transferPaused(), 2);
 

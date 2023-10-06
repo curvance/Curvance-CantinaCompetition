@@ -20,35 +20,26 @@ contract CToken is ERC165, ReentrancyGuard {
 
     /// @notice Scalar for math
     uint256 internal constant EXP_SCALE = 1e18;
-
-    /// @notice For inspection
-    bool public constant isCToken = true;
-
     /// @notice Underlying asset for the CToken
     address public immutable underlying;
-
+    /// @notice Curvance DAO hub
     ICentralRegistry public immutable centralRegistry;
 
     /// STORAGE ///
 
     /// @notice Token name metadata
     string public name;
-
     /// @notice Token symbol metadata
     string public symbol;
-
     /// @notice Current lending market controller
     ILendtroller public lendtroller;
-
     /// @notice Current position vault
     BasePositionVault public vault;
-
     /// @notice Total number of tokens in circulation
     uint256 public totalSupply;
-
+    
     /// @notice account => token balance
     mapping(address => uint256) public balanceOf;
-
     /// @notice account => spender => approved amount
     mapping(address => mapping(address => uint256)) public allowance;
 
@@ -66,7 +57,6 @@ contract CToken is ERC165, ReentrancyGuard {
     /// ERRORS ///
 
     error CToken__UnauthorizedCaller();
-    error CToken__CannotEqualZero();
     error CToken__ExcessiveValue();
     error CToken__TransferNotAllowed();
     error CToken__ValidationFailed();
@@ -210,24 +200,17 @@ contract CToken is ERC165, ReentrancyGuard {
         return true;
     }
 
-    /// @notice Sender supplies assets into the market and receives cTokens
+    /// @notice Caller supplies assets into the market and receives cTokens
     ///         in exchange
-    /// @dev Accrues interest whether or not the operation succeeds,
-    ///      unless reverted
     /// @param amount The amount of the underlying asset to supply
     /// @return bool true = success
     function mint(uint256 amount) external nonReentrant returns (bool) {
-        // Fail if mint not allowed
-        lendtroller.mintAllowed(address(this), msg.sender);
-
         _mint(msg.sender, msg.sender, amount);
         return true;
     }
 
-    /// @notice Sender supplies assets into the market and receives cTokens
+    /// @notice Caller supplies assets into the market and `recipient` receives cTokens
     ///         in exchange
-    /// @dev Accrues interest whether or not the operation succeeds,
-    ///      unless reverted
     /// @param recipient The recipient address
     /// @param amount The amount of the underlying asset to supply
     /// @return bool true = success
@@ -235,40 +218,20 @@ contract CToken is ERC165, ReentrancyGuard {
         uint256 amount,
         address recipient
     ) external nonReentrant returns (bool) {
-        // Fail if mint not allowed
-        lendtroller.mintAllowed(address(this), recipient);
-
         _mint(msg.sender, recipient, amount);
         return true;
     }
 
-    /// @notice Sender redeems cTokens in exchange for the underlying asset
-    /// @dev Accrues interest whether or not the operation succeeds,
-    ///      unless reverted
+    /// @notice Caller redeems cTokens in exchange for the underlying asset
     /// @param amount The number of cTokens to redeem into underlying
     function redeem(uint256 amount) external nonReentrant {
-        lendtroller.redeemAllowed(address(this), msg.sender, amount);
+        lendtroller.canRedeem(address(this), msg.sender, amount);
 
         _redeem(
             msg.sender,
-            amount,
-            (exchangeRateStored() * amount) / EXP_SCALE,
-            msg.sender
+            msg.sender,
+            amount
         );
-    }
-
-    /// @notice Sender redeems cTokens in exchange for a specified amount
-    ///         of underlying asset
-    /// @dev Accrues interest whether or not the operation succeeds,
-    ///      unless reverted
-    /// @param underlyingAmount The amount of underlying to redeem
-    function redeemUnderlying(uint256 underlyingAmount) external nonReentrant {
-        uint256 amount = (underlyingAmount * EXP_SCALE) / exchangeRateStored();
-
-        // Fail if redeem not allowed
-        lendtroller.redeemAllowed(address(this), msg.sender, amount);
-
-        _redeem(msg.sender, amount, underlyingAmount, msg.sender);
     }
 
     /// @notice Helper function for Position Folding contract to
@@ -286,9 +249,8 @@ contract CToken is ERC165, ReentrancyGuard {
 
         _redeem(
             user,
-            (underlyingAmount * EXP_SCALE) / exchangeRateStored(),
-            underlyingAmount,
-            msg.sender
+            msg.sender,
+            (underlyingAmount * EXP_SCALE) / exchangeRateStored()
         );
 
         IPositionFolding(msg.sender).onRedeem(
@@ -299,7 +261,7 @@ contract CToken is ERC165, ReentrancyGuard {
         );
 
         // Fail if redeem not allowed
-        lendtroller.redeemAllowed(address(this), user, 0);
+        lendtroller.canRedeem(address(this), user, 0);
     }
 
     /// @dev Sets `amount` as the allowance of `spender` over the caller's tokens.
@@ -354,7 +316,6 @@ contract CToken is ERC165, ReentrancyGuard {
     }
 
     /// @notice Get the underlying balance of the `account`
-    /// @dev This also accrues interest in a transaction
     /// @param account The address of the account to query
     /// @return The amount of underlying owned by `account`
     function balanceOfUnderlying(address account) external returns (uint256) {
@@ -368,7 +329,7 @@ contract CToken is ERC165, ReentrancyGuard {
     /// @return tokenBalance
     /// @return borrowBalance
     /// @return exchangeRate scaled 1e18
-    function getAccountSnapshot(
+    function getSnapshot(
         address account
     ) external view returns (uint256, uint256, uint256) {
         return (balanceOf[account], 0, exchangeRateStored());
@@ -377,15 +338,15 @@ contract CToken is ERC165, ReentrancyGuard {
     /// @notice Get a snapshot of the cToken and `account` data
     /// @dev This is used by lendtroller to more efficiently perform liquidity checks
     /// @param account Address of the account to snapshot
-    function getAccountSnapshotPacked(
+    function getSnapshotPacked(
         address account
     ) external view returns (AccountSnapshot memory) {
         return (
             AccountSnapshot({
                 asset: address(this),
-                tokenType: 1,
-                mTokenBalance: balanceOf[account],
-                borrowBalance: 0,
+                isCToken: true,
+                balance: balanceOf[account],
+                debtBalance: 0,
                 exchangeRate: exchangeRateStored()
             })
         );
@@ -422,9 +383,9 @@ contract CToken is ERC165, ReentrancyGuard {
         return IERC20(underlying).decimals();
     }
 
-    /// @notice Returns the type of Curvance token, 1 = Collateral, 0 = Debt
-    function tokenType() public pure returns (uint256) {
-        return 1;
+    /// @notice Returns whether the MToken is a cToken
+    function isCToken() public pure returns (bool) {
+        return true;
     }
 
     /// @notice Pull up-to-date exchange rate from the underlying to
@@ -488,7 +449,7 @@ contract CToken is ERC165, ReentrancyGuard {
         }
 
         // Fails if transfer not allowed
-        lendtroller.transferAllowed(address(this), from, to, amount);
+        lendtroller.canTransfer(address(this), from, amount);
 
         // Get the allowance, if the spender is not the `from` address
         if (spender != from) {
@@ -512,12 +473,14 @@ contract CToken is ERC165, ReentrancyGuard {
         emit Transfer(from, to, amount);
     }
 
-    /// @notice User supplies assets into the market and receives cTokens in exchange
-    /// @dev Assumes interest has already been accrued up to the current timestamp
+    /// @notice User supplies assets into the market and `recipient` receives cTokens in exchange
     /// @param user The address of the account which is supplying the assets
     /// @param recipient The address of the account which will receive cToken
     /// @param amount The amount of the underlying asset to supply
     function _mint(address user, address recipient, uint256 amount) internal {
+        // Fail if mint not allowed
+        lendtroller.canMint(address(this));
+
         // The function returns the amount actually received from the positionVault
         uint256 tokens = _enterVault(user, amount);
 
@@ -534,23 +497,14 @@ contract CToken is ERC165, ReentrancyGuard {
     }
 
     /// @notice User redeems cTokens in exchange for the underlying asset
-    /// @dev Assumes interest has already been accrued up to the current timestamp
     /// @param redeemer The address of the account which is redeeming the tokens
+    /// @param recipient The recipient receiving the redeemed tokens
     /// @param tokens The number of cTokens to redeem into underlying
-    /// @param amount The number of underlying tokens to receive
-    ///                     from redeeming cTokens
-    /// @param recipient The recipient address
     function _redeem(
         address redeemer,
-        uint256 tokens,
-        uint256 amount,
-        address recipient
+        address recipient,
+        uint256 tokens
     ) internal {
-        // Validate redemption parameters
-        if (tokens == 0 && amount > 0) {
-            revert CToken__CannotEqualZero();
-        }
-
         // we know it will revert from underflow
         balanceOf[redeemer] = balanceOf[redeemer] - tokens;
 
@@ -560,7 +514,7 @@ contract CToken is ERC165, ReentrancyGuard {
             totalSupply = totalSupply - tokens;
         }
 
-        // emit events on gauge pool
+        // emit events on gauge pool and check if tokens == 0
         _gaugePool().withdraw(address(this), redeemer, tokens);
 
         // Exit position vault and transfer underlying to `recipient` in assets
@@ -593,7 +547,7 @@ contract CToken is ERC165, ReentrancyGuard {
         }
 
         // Fails if seize not allowed
-        lendtroller.seizeAllowed(address(this), token, liquidator, borrower);
+        lendtroller.canSeize(address(this), token);
 
         uint256 liquidatorTokens = liquidatedTokens - protocolTokens;
 

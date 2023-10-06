@@ -10,6 +10,8 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
         IMToken mToken,
         uint256 newLI,
         uint256 newLF,
+        uint256 newCR_A,
+        uint256 newCR_B,
         uint256 newCR
     );
 
@@ -23,6 +25,8 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
             IMToken(address(dUSDC)),
             200,
             0,
+            300,
+            250,
             9000
         );
     }
@@ -35,6 +39,8 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
             IMToken(address(dUSDC)),
             200,
             0,
+            300,
+            250,
             9100 + 1
         );
     }
@@ -47,6 +53,8 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
             IMToken(address(cBALRETH)),
             200,
             0,
+            300,
+            250,
             9000
         );
     }
@@ -60,6 +68,8 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
             IMToken(address(cBALRETH)),
             0.02e18,
             0,
+            0.03e18,
+            0.025e18,
             0.9e18
         );
 
@@ -67,6 +77,8 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
             IMToken(address(cBALRETH)),
             200,
             0,
+            300,
+            250,
             9000
         );
 

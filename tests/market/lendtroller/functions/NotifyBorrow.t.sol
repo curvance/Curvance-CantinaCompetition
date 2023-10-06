@@ -4,7 +4,7 @@ pragma solidity 0.8.17;
 import { TestBaseLendtroller } from "../TestBaseLendtroller.sol";
 import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
 
-contract NotifyAccountBorrowTest is TestBaseLendtroller {
+contract NotifyBorrowTest is TestBaseLendtroller {
     event MarketEntered(address mToken, address account);
 
     function setUp() public override {
@@ -13,23 +13,23 @@ contract NotifyAccountBorrowTest is TestBaseLendtroller {
         lendtroller.listMarketToken(address(dUSDC));
     }
 
-    function test_notifyAccountBorrow_fail_whenCallerIsNotMToken() public {
+    function test_notifyBorrow_fail_whenCallerIsNotMToken() public {
         vm.expectRevert(Lendtroller.Lendtroller__TokenNotListed.selector);
-        lendtroller.notifyAccountBorrow(user1);
+        lendtroller.notifyBorrow(user1);
     }
 
-    function test_notifyAccountBorrow_fail_whenCallerMTokenIsNotListed()
+    function test_notifyBorrow_fail_whenCallerMTokenIsNotListed()
         public
     {
         vm.prank(address(dDAI));
 
         vm.expectRevert(Lendtroller.Lendtroller__TokenNotListed.selector);
-        lendtroller.notifyAccountBorrow(user1);
+        lendtroller.notifyBorrow(user1);
     }
 
-    function test_notifyAccountBorrow_success() public {
+    function test_notifyBorrow_success() public {
         vm.prank(address(dUSDC));
-        lendtroller.notifyAccountBorrow(user1);
+        lendtroller.notifyBorrow(user1);
 
         assertEq(lendtroller.accountAssets(user1), block.timestamp);
     }

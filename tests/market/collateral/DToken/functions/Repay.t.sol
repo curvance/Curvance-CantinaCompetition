@@ -25,16 +25,16 @@ contract DTokenRepayTest is TestBaseDToken {
     }
 
     function test_dTokenRepay_fail_whenBorrowAmountExceedsCash() public {
-        uint256 borrowBalanceCurrent = dUSDC.borrowBalanceCurrent(
+        uint256 debtBalanceCurrent = dUSDC.debtBalanceCurrent(
             address(this)
         );
 
         vm.expectRevert();
-        dUSDC.repay(borrowBalanceCurrent + 1);
+        dUSDC.repay(debtBalanceCurrent + 1);
     }
 
     function test_dTokenRepay_success() public {
-        dUSDC.borrowBalanceCurrent(address(this));
+        dUSDC.debtBalanceCurrent(address(this));
 
         uint256 underlyingBalance = usdc.balanceOf(address(this));
         uint256 balance = dUSDC.balanceOf(address(this));
@@ -53,7 +53,7 @@ contract DTokenRepayTest is TestBaseDToken {
     }
 
     function test_dTokenRepay_success_whenRepayAll() public {
-        uint256 borrowBalanceCurrent = dUSDC.borrowBalanceCurrent(
+        uint256 debtBalanceCurrent = dUSDC.debtBalanceCurrent(
             address(this)
         );
         uint256 underlyingBalance = usdc.balanceOf(address(this));
@@ -62,16 +62,16 @@ contract DTokenRepayTest is TestBaseDToken {
         uint256 totalBorrows = dUSDC.totalBorrows();
 
         vm.expectEmit(true, true, true, true, address(dUSDC));
-        emit Repay(address(this), address(this), borrowBalanceCurrent);
+        emit Repay(address(this), address(this), debtBalanceCurrent);
 
         dUSDC.repay(0);
 
         assertEq(
             usdc.balanceOf(address(this)),
-            underlyingBalance - borrowBalanceCurrent
+            underlyingBalance - debtBalanceCurrent
         );
         assertEq(dUSDC.balanceOf(address(this)), balance);
         assertEq(dUSDC.totalSupply(), totalSupply);
-        assertEq(dUSDC.totalBorrows(), totalBorrows - borrowBalanceCurrent);
+        assertEq(dUSDC.totalBorrows(), totalBorrows - debtBalanceCurrent);
     }
 }

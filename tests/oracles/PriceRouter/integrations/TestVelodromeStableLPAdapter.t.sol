@@ -48,7 +48,7 @@ contract TestVelodromeStableLPAdapter is TestBasePriceRouter {
     }
 
     function testRevertWhenUnderlyingChainAssetPriceNotSet() public {
-        vm.expectRevert("PriceRouter: no feeds available");
+        vm.expectRevert(0xe4558fac);
         priceRouter.getPrice(DAI_USDC, true, false);
     }
 
@@ -75,7 +75,7 @@ contract TestVelodromeStableLPAdapter is TestBasePriceRouter {
         testReturnsCorrectPrice();
 
         adapter.removeAsset(DAI_USDC);
-        vm.expectRevert("PriceRouter: no feeds available");
+        vm.expectRevert(0xe4558fac);
         priceRouter.getPrice(DAI_USDC, true, false);
     }
 

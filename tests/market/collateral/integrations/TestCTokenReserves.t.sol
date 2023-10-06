@@ -59,9 +59,11 @@ contract TestCTokenReserves is TestBaseMarket {
             // set collateral factor
             lendtroller.updateCollateralToken(
                 IMToken(address(cBALRETH)),
-                2000,
-                500,
-                5000
+                200,
+                0,
+                4000, // liquidate at 71%
+                3000,
+                7000
             );
             address[] memory markets = new address[](1);
             markets[0] = address(cBALRETH);
@@ -115,7 +117,7 @@ contract TestCTokenReserves is TestBaseMarket {
 
         // try borrow()
         vm.startPrank(user1);
-        dDAI.borrow(500 ether);
+        dDAI.borrow(1000 ether);
         vm.stopPrank();
 
         // skip min hold period
@@ -125,9 +127,10 @@ contract TestCTokenReserves is TestBaseMarket {
 
         uint256 repayAmount = 250 ether;
         (uint256 liquidatedTokens, uint256 protocolTokens) = lendtroller
-            .calculateLiquidatedTokens(
+            .canLiquidateExact(
                 address(dDAI),
                 address(cBALRETH),
+                user1,
                 repayAmount
             );
         uint256 daoBalanceBefore = cBALRETH.balanceOf(dao);
@@ -136,23 +139,21 @@ contract TestCTokenReserves is TestBaseMarket {
         _prepareDAI(user2, repayAmount);
         vm.startPrank(user2);
         dai.approve(address(dDAI), repayAmount);
-        dDAI.liquidate(user1, repayAmount, IMToken(address(cBALRETH)));
+        dDAI.liquidateExact(user1, repayAmount, IMToken(address(cBALRETH)));
         vm.stopPrank();
 
-        AccountSnapshot memory snapshot = cBALRETH.getAccountSnapshotPacked(
-            user1
-        );
+        AccountSnapshot memory snapshot = cBALRETH.getSnapshotPacked(user1);
         assertApproxEqRel(
-            snapshot.mTokenBalance,
+            snapshot.balance,
             1 ether - liquidatedTokens,
             0.01e18
         );
-        assertEq(snapshot.borrowBalance, 0);
+        assertEq(snapshot.debtBalance, 0);
         assertEq(snapshot.exchangeRate, 1 ether);
 
-        snapshot = dDAI.getAccountSnapshotPacked(user1);
-        assertEq(snapshot.mTokenBalance, 0);
-        assertApproxEqRel(snapshot.borrowBalance, 250 ether, 0.01e18);
+        snapshot = dDAI.getSnapshotPacked(user1);
+        assertEq(snapshot.balance, 0);
+        assertApproxEqRel(snapshot.debtBalance, 750 ether, 0.01e18);
         assertApproxEqRel(snapshot.exchangeRate, 1 ether, 0.01e18);
 
         assertEq(cBALRETH.balanceOf(dao), daoBalanceBefore + protocolTokens);
