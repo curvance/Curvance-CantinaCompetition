@@ -2,13 +2,14 @@
 pragma solidity ^0.8.17;
 
 import { BaseOracleAdaptor } from "contracts/oracles/adaptors/BaseOracleAdaptor.sol";
+import { CurveReentrancyCheck } from "contracts/oracles/adaptors/curve/CurveReentrancyCheck.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 import { ICurvePool } from "contracts/interfaces/external/curve/ICurvePool.sol";
 
-contract CurveV2LPAdapter is BaseOracleAdaptor {
+contract CurveV2LPAdapter is BaseOracleAdaptor, CurveReentrancyCheck {
     error CurveV2LPAdapter__UnsupportedPool();
     error CurveV2LPAdapter__DidNotConverge();
 
@@ -19,6 +20,9 @@ contract CurveV2LPAdapter is BaseOracleAdaptor {
         address[] coins;
         address pool;
     }
+
+    /// @dev Revert in the case when the `@nonreentrant('lock')` is activated in the Curve pool
+    error NonreentrantLockIsActive();
 
     /// CONSTANTS ///
 
@@ -42,6 +46,15 @@ contract CurveV2LPAdapter is BaseOracleAdaptor {
 
     /// EXTERNAL FUNCTIONS ///
 
+    /// @inheritdoc CurveReentrancyCheck
+    function setReentrancyVerificationConfig(
+        address _pool,
+        uint128 _gasLimit,
+        CurveReentrancyCheck.N_COINS _nCoins
+    ) external override onlyElevatedPermissions {
+        _setReentrancyVerificationConfig(_pool, _gasLimit, _nCoins);
+    }
+
     /// @notice Add a Balancer Stable Pool Bpt as an asset.
     /// @dev Should be called before `PriceRotuer:addAssetPriceFeed` is called.
     /// @param asset the address of the bpt to add
@@ -54,7 +67,7 @@ contract CurveV2LPAdapter is BaseOracleAdaptor {
             "CurveV2LPAdapter: asset already supported"
         );
 
-        uint8 coinsLength = 0;
+        uint256 coinsLength = 0;
         // Figure out how many tokens are in the curve pool.
         while (true) {
             try ICurvePool(pool).coins(coinsLength) {
@@ -103,59 +116,31 @@ contract CurveV2LPAdapter is BaseOracleAdaptor {
         pData.inUSD = inUSD;
 
         AdaptorData memory adapter = adaptorData[asset];
+        if (isLocked(adapter.pool)) revert NonreentrantLockIsActive();
+
         IPriceRouter priceRouter = IPriceRouter(centralRegistry.priceRouter());
-        (uint256 price0, uint256 errorCode) = priceRouter.getPrice(
-            adapter.coins[0],
-            inUSD,
-            getLower
-        );
-        if (errorCode > 0) {
-            pData.hadError = true;
-            if (errorCode == BAD_SOURCE) return pData;
-        }
-
         ICurvePool pool = ICurvePool(adapter.pool);
-        if (adapter.coins.length == 2) {
-            uint256 poolLpPrice = pool.lp_price();
-            pData.price = uint240((poolLpPrice * price0) / 1e18);
-        } else if (adapter.coins.length == 3) {
-            uint256 virtualPrice = pool.get_virtual_price();
-            uint256 t1Price = pool.price_oracle(0);
-            uint256 t2Price = pool.price_oracle(1);
-            uint256 maxPrice = (3 *
-                virtualPrice *
-                _cubicRoot(t1Price * t2Price)) / 1e18;
 
-            {
-                uint256 g = (pool.gamma() * 1e18) / GAMMA0;
-                uint256 a = (pool.A() * 1e18) / A0;
-                uint256 coefficient = (g ** 2 / 1e18) * a;
-                uint256 discount = coefficient > 1e34 ? coefficient : 1e34;
-                discount = (_cubicRoot(discount) * DISCOUNT0) / 1e18;
-
-                maxPrice -= (maxPrice * discount) / 1e18;
+        uint256 virtualPrice = pool.get_virtual_price();
+        uint256 minPrice = type(uint256).max;
+        for (uint256 i = 0; i < adapter.coins.length; ) {
+            (uint256 price, uint256 errorCode) = priceRouter.getPrice(
+                adapter.coins[i],
+                inUSD,
+                getLower
+            );
+            if (errorCode > 0) {
+                pData.hadError = true;
+                if (errorCode == BAD_SOURCE) return pData;
             }
 
-            pData.price = uint240((maxPrice * price0) / 1e18);
-        }
-    }
+            minPrice = minPrice < price ? minPrice : price;
 
-    /// INTERNAL FUNCTIONS ///
-
-    /// @dev x has 36 decimals
-    /// result has 18 decimals.
-    function _cubicRoot(uint256 x) internal pure returns (uint256) {
-        uint256 D = x / 1e18;
-        for (uint8 i; i < 256; ++i) {
-            uint256 diff;
-            uint256 D_prev = D;
-            D =
-                (D * (2 * 1e18 + ((((x / D) * 1e18) / D) * 1e18) / D)) /
-                (3 * 1e18);
-            if (D > D_prev) diff = D - D_prev;
-            else diff = D_prev - D;
-            if (diff <= 1 || diff * 10 ** 18 < D) return D;
+            unchecked {
+                i++;
+            }
         }
-        revert CurveV2LPAdapter__DidNotConverge();
+
+        pData.price = uint240((minPrice * virtualPrice) / 1e18);
     }
 }
