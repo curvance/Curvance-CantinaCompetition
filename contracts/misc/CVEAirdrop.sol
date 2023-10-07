@@ -161,7 +161,7 @@ contract CVEAirdrop is ReentrancyGuard {
         if (amount > maxClaim){
             return false;
         }
-        
+
         if (!airdropClaimed[user]) {
             if (block.timestamp < endClaimTimestamp) {
                 // Compute the leaf and verify the merkle proof
@@ -173,6 +173,7 @@ contract CVEAirdrop is ReentrancyGuard {
                     );
             }
         }
+        
         return false;
     }
 

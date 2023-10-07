@@ -42,6 +42,11 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
     /// EVENTS ///
 
     event Harvest(uint256 yield);
+    
+    /// ERRORS ///
+
+    error VelodromeVolatilePositionVault__ConfigurationError();
+    error VelodromeVolatilePositionVault__SlippageError();
 
     /// CONSTRUCTOR ///
 
@@ -56,10 +61,13 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
         address _asset = asset();
         // Validate that we have the proper gauge linked with the proper LP
         // and pair factory
-        require(
-            gauge.stakingToken() == _asset,
-            "VelodromeVolatilePositionVault: improper velodrome vault config"
-        );
+        if (gauge.stakingToken() != _asset){
+            revert VelodromeVolatilePositionVault__ConfigurationError();
+        }
+
+        if (IVeloPool(_asset).stable()){
+            revert VelodromeVolatilePositionVault__ConfigurationError();
+        }
 
         // Query underlying token data from the pool
         strategyData.token0 = IVeloPool(_asset).token0();
@@ -135,11 +143,9 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
 
             // swap token0 to LP Token underlying tokens
             uint256 totalAmountA = ERC20(sd.token0).balanceOf(address(this));
-
-            require(
-                totalAmountA > 0,
-                "VelodromeVolatilePositionVault: slippage error"
-            );
+            if (totalAmountA == 0){
+                revert VelodromeVolatilePositionVault__SlippageError();
+            }
 
             // Cache asset so we don't need to pay gas multiple times
             address _asset = asset();
