@@ -26,7 +26,7 @@ contract MigrateVaultTest is TestBaseCToken {
     function test_migrateVault_fail_whenCallerIsNotAuthorized() public {
         vm.prank(user1);
 
-        vm.expectRevert("CToken: UNAUTHORIZED");
+        vm.expectRevert(CToken.CToken__Unauthorized.selector);
         cBALRETH.migrateVault(address(newVault));
     }
 

@@ -56,9 +56,9 @@ contract CToken is ERC165, ReentrancyGuard {
 
     /// ERRORS ///
 
-    error CToken__UnauthorizedCaller();
+    error CToken__Unauthorized();
     error CToken__ExcessiveValue();
-    error CToken__TransferNotAllowed();
+    error CToken__TransferError();
     error CToken__ValidationFailed();
     error CToken__ConstructorParametersareInvalid();
     error CToken__LendtrollerIsNotLendingMarket();
@@ -66,18 +66,16 @@ contract CToken is ERC165, ReentrancyGuard {
     /// MODIFIERS ///
 
     modifier onlyDaoPermissions() {
-        require(
-            centralRegistry.hasDaoPermissions(msg.sender),
-            "CToken: UNAUTHORIZED"
-        );
+        if (!centralRegistry.hasDaoPermissions(msg.sender)){
+            revert CToken__Unauthorized();
+        }
         _;
     }
 
     modifier onlyElevatedPermissions() {
-        require(
-            centralRegistry.hasElevatedPermissions(msg.sender),
-            "CToken: UNAUTHORIZED"
-        );
+        if (!centralRegistry.hasElevatedPermissions(msg.sender)){
+            revert CToken__Unauthorized();
+        }
         _;
     }
 
@@ -133,22 +131,18 @@ contract CToken is ERC165, ReentrancyGuard {
         address initializer
     ) external nonReentrant returns (bool) {
         if (msg.sender != address(lendtroller)) {
-            revert CToken__UnauthorizedCaller();
+            revert CToken__Unauthorized();
         }
 
         uint256 amount = 42069;
         // `tokens` should be equal to `amount` but we use tokens just incase
-        uint256 tokens = _enterVault(initializer, amount);
+        uint256 tokens = _enterVault(address(this), amount);
 
-        // These values should always be zero but we will add them
-        // just incase
+        // These values should always be zero but we will add them just incase
         totalSupply = totalSupply + tokens;
-        balanceOf[initializer] = balanceOf[initializer] + tokens;
+        balanceOf[address(this)] = balanceOf[address(this)] + tokens;
 
-        // emit events on gauge pool
-        _gaugePool().deposit(address(this), initializer, tokens);
-
-        emit Transfer(address(0), initializer, tokens);
+        emit Transfer(address(0), address(this), tokens);
         return true;
     }
 
@@ -244,7 +238,7 @@ contract CToken is ERC165, ReentrancyGuard {
         bytes calldata params
     ) external nonReentrant {
         if (msg.sender != lendtroller.positionFolding()) {
-            revert CToken__UnauthorizedCaller();
+            revert CToken__Unauthorized();
         }
 
         _redeem(
@@ -295,7 +289,7 @@ contract CToken is ERC165, ReentrancyGuard {
             }
         } else {
             if (token == address(vault)) {
-                revert CToken__TransferNotAllowed();
+                revert CToken__TransferError();
             }
 
             if (IERC20(token).balanceOf(address(this)) < amount) {
@@ -445,7 +439,7 @@ contract CToken is ERC165, ReentrancyGuard {
     ) internal {
         // Do not allow self-transfers
         if (from == to) {
-            revert CToken__TransferNotAllowed();
+            revert CToken__TransferError();
         }
 
         // Fails if transfer not allowed
@@ -540,7 +534,7 @@ contract CToken is ERC165, ReentrancyGuard {
         // Fails if borrower = liquidator
         assembly {
             if eq(borrower, liquidator) {
-                // revert with CToken__UnauthorizedCaller()
+                // revert with CToken__Unauthorized()
                 mstore(0x00, 0xb856b3fe)
                 revert(0x1c, 0x04)
             }

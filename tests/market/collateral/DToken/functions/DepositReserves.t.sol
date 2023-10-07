@@ -3,12 +3,13 @@ pragma solidity 0.8.17;
 
 import { TestBaseDToken } from "../TestBaseDToken.sol";
 import { GaugeErrors } from "contracts/gauge/GaugeErrors.sol";
+import { DToken } from "contracts/market/collateral/DToken.sol";
 
 contract DTokenDepositReservesTest is TestBaseDToken {
     function test_dTokenDepositReserves_fail_whenCallIsNotAuthorized() public {
         vm.prank(address(1));
 
-        vm.expectRevert("DToken: UNAUTHORIZED");
+        vm.expectRevert(DToken.DToken__Unauthorized.selector);
         dUSDC.depositReserves(100e6);
     }
 

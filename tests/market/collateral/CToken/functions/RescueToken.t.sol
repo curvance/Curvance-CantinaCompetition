@@ -15,7 +15,7 @@ contract CTokenRescueTokenTest is TestBaseCToken {
     function test_cTokenRescueToken_fail_whenCallerIsNotAuthorized() public {
         vm.prank(address(1));
 
-        vm.expectRevert("CToken: UNAUTHORIZED");
+        vm.expectRevert(CToken.CToken__Unauthorized.selector);
         cBALRETH.rescueToken(_USDC_ADDRESS, 100);
     }
 
@@ -27,7 +27,7 @@ contract CTokenRescueTokenTest is TestBaseCToken {
     }
 
     function test_cTokenRescueToken_fail_whenTokenIsVaultToken() public {
-        vm.expectRevert(CToken.CToken__TransferNotAllowed.selector);
+        vm.expectRevert(CToken.CToken__TransferError.selector);
         cBALRETH.rescueToken(address(vault), 100);
     }
 

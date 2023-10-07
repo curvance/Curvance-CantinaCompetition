@@ -23,7 +23,7 @@ contract CTokenSetLendtrollerTest is TestBaseCToken {
     {
         vm.prank(address(1));
 
-        vm.expectRevert("CToken: UNAUTHORIZED");
+        vm.expectRevert(CToken.CToken__Unauthorized.selector);
         cBALRETH.setLendtroller(address(newLendtroller));
     }
 

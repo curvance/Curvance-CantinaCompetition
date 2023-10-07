@@ -15,7 +15,7 @@ contract DTokenRescueTokenTest is TestBaseDToken {
     function test_dTokenRescueToken_fail_whenCallerIsNotAuthorized() public {
         vm.prank(address(1));
 
-        vm.expectRevert("DToken: UNAUTHORIZED");
+        vm.expectRevert(DToken.DToken__Unauthorized.selector);
         dUSDC.rescueToken(_USDC_ADDRESS, 100);
     }
 
@@ -27,7 +27,7 @@ contract DTokenRescueTokenTest is TestBaseDToken {
     }
 
     function test_dTokenRescueToken_fail_whenTokenIsUnderlyingToken() public {
-        vm.expectRevert(DToken.DToken__TransferNotAllowed.selector);
+        vm.expectRevert(DToken.DToken__TransferError.selector);
         dUSDC.rescueToken(_USDC_ADDRESS, 100);
     }
 
