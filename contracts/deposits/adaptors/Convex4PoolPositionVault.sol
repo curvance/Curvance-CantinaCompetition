@@ -117,7 +117,7 @@ contract ConvexPositionVault is BasePositionVault {
 
     // PERMISSIONED FUNCTIONS
 
-    function reQueryRewardTokens() external onlyDaoPermissions {
+    function reQueryRewardTokens() external {
         delete strategyData.rewardTokens;
 
         // add CRV as a reward token, then let convex tell you what rewards

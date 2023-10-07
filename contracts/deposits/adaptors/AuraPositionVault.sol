@@ -112,7 +112,7 @@ contract AuraPositionVault is BasePositionVault {
 
     // PERMISSIONED FUNCTIONS
 
-    function reQueryRewardTokens() external onlyDaoPermissions {
+    function reQueryRewardTokens() external {
         delete strategyData.rewardTokens;
 
         // add BAL as a reward token, then let aura tell you what rewards

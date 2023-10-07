@@ -43,6 +43,7 @@ contract SetOptionsTermsTest is TestBaseOCVE {
         public
     {
         oCVE.setOptionsTerms(block.timestamp, paymentTokenCurrentPrice * _ONE);
+        skip(1 weeks);
 
         vm.expectRevert(OCVE.OCVE__ConfigurationError.selector);
         oCVE.setOptionsTerms(block.timestamp, paymentTokenCurrentPrice * _ONE);
