@@ -9,7 +9,7 @@ contract CVELockerDeploymentTest is TestBaseCVELocker {
     function test_cveLockerDeployment_fail_whenCentralRegistryIsInvalid()
         public
     {
-        vm.expectRevert("CVELocker: invalid central registry");
+        vm.expectRevert(CVELocker.CVELocker__ParametersareInvalid.selector);
         new CVELocker(
             ICentralRegistry(address(0)),
             _USDC_ADDRESS

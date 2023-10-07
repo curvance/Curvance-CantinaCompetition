@@ -19,14 +19,14 @@ contract CVELockerRecoverTokenTest is TestBaseCVELocker {
     {
         vm.prank(address(1));
 
-        vm.expectRevert("CVELocker: UNAUTHORIZED");
+        vm.expectRevert(CVELocker.CVELocker__Unauthorized.selector);
         cveLocker.recoverToken(_DAI_ADDRESS, address(this), 100);
     }
 
     function test_cveLockerRecoverToken_fail_whenTokenIsBaseRewardToken()
         public
     {
-        vm.expectRevert("CVELocker: cannot withdraw reward token");
+        vm.expectRevert(CVELocker.CVELocker__Unauthorized.selector);
         cveLocker.recoverToken(_USDC_ADDRESS, address(this), 100);
     }
 

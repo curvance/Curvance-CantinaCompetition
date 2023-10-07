@@ -16,7 +16,7 @@ contract RecordEpochRewardsTest is TestBaseCVELocker {
     function test_recordEpochRewards_fail_whenCallerIsNotFeeAccumulator()
         public
     {
-        vm.expectRevert("CVELocker: UNAUTHORIZED");
+        vm.expectRevert(CVELocker.CVELocker__Unauthorized.selector);
         cveLocker.recordEpochRewards(nextEpochToDeliver, _ONE);
     }
 

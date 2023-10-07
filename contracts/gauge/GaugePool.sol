@@ -136,9 +136,6 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         address token,
         address user
     ) external view returns (uint256) {
-        if (!isGaugeEnabled(currentEpoch(), token)) {
-            revert GaugeErrors.InvalidToken();
-        }
 
         PoolInfo storage _pool = poolInfo[token];
         uint256 accRewardPerShare = _pool.accRewardPerShare;

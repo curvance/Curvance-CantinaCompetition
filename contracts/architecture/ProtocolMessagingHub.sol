@@ -351,6 +351,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         if (messageType == 2) {
             IFeeAccumulator(centralRegistry.feeAccumulator())
                 .receiveExecutableLockData(chainLockedAmount);
+            return;
         }
 
         // Message Type 3+: update gauge emissions for all gauge controllers on
