@@ -2,6 +2,7 @@
 pragma solidity 0.8.17;
 
 import { TestBaseOCVE } from "../TestBaseOCVE.sol";
+import { OCVE } from "contracts/token/OCVE.sol";
 
 contract OCVERescueTokenTest is TestBaseOCVE {
     function setUp() public override {
