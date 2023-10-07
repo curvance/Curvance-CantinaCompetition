@@ -158,6 +158,10 @@ contract CVEAirdrop is ReentrancyGuard {
         uint256 amount,
         bytes32[] calldata proof
     ) external view returns (bool) {
+        if (amount > maxClaim){
+            return false;
+        }
+        
         if (!airdropClaimed[user]) {
             if (block.timestamp < endClaimTimestamp) {
                 // Compute the leaf and verify the merkle proof
