@@ -19,9 +19,7 @@ contract CVELockerDeploymentTest is TestBaseCVELocker {
     function test_cveLockerDeployment_fail_whenBaseRewardTokenIsZeroAddress()
         public
     {
-        vm.expectRevert(
-            CVELocker.CVELocker__BaseRewardTokenIsZeroAddress.selector
-        );
+        vm.expectRevert(CVELocker.CVELocker__ParametersareInvalid.selector);
         new CVELocker(
             ICentralRegistry(address(centralRegistry)),
             address(0)

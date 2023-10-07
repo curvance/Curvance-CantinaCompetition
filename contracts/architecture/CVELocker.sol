@@ -67,7 +67,6 @@ contract CVELocker is ReentrancyGuard {
     /// ERRORS ///
 
     error CVELocker__ParametersareInvalid();
-    error CVELocker__rewardTokenIsZeroAddress();
     error CVELocker__Unauthorized();
     error CVELocker__NoEpochRewards();
     error CVELocker__WrongEpochRewardSubmission();
@@ -122,7 +121,7 @@ contract CVELocker is ReentrancyGuard {
         }
 
         if (rewardToken_ == address(0)) {
-            revert CVELocker__rewardTokenIsZeroAddress();
+            revert CVELocker__ParametersareInvalid();
         }
 
         centralRegistry = centralRegistry_;
