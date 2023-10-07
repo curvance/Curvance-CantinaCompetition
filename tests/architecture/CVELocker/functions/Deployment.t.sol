@@ -16,7 +16,7 @@ contract CVELockerDeploymentTest is TestBaseCVELocker {
         );
     }
 
-    function test_cveLockerDeployment_fail_whenBaseRewardTokenIsZeroAddress()
+    function test_cveLockerDeployment_fail_whenRewardTokenIsZeroAddress()
         public
     {
         vm.expectRevert(CVELocker.CVELocker__ParametersareInvalid.selector);
@@ -37,7 +37,7 @@ contract CVELockerDeploymentTest is TestBaseCVELocker {
             address(centralRegistry)
         );
         assertEq(cveLocker.genesisEpoch(), centralRegistry.genesisEpoch());
-        assertEq(cveLocker.baseRewardToken(), _USDC_ADDRESS);
+        assertEq(cveLocker.rewardToken(), _USDC_ADDRESS);
         assertEq(cveLocker.cve(), centralRegistry.CVE());
     }
 }

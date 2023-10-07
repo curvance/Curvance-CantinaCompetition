@@ -5,6 +5,7 @@ import { TestBaseCToken } from "../TestBaseCToken.sol";
 import { AuraPositionVault } from "contracts/deposits/adaptors/AuraPositionVault.sol";
 import { ERC20 } from "contracts/libraries/ERC20.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+import { CToken } from "contracts/market/collateral/CToken.sol";
 
 contract MigrateVaultTest is TestBaseCToken {
     event MigrateVault(address oldVault, address newVault);

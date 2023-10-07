@@ -23,7 +23,7 @@ contract CVELockerRecoverTokenTest is TestBaseCVELocker {
         cveLocker.recoverToken(_DAI_ADDRESS, address(this), 100);
     }
 
-    function test_cveLockerRecoverToken_fail_whenTokenIsBaseRewardToken()
+    function test_cveLockerRecoverToken_fail_whenTokenIsRewardToken()
         public
     {
         vm.expectRevert(CVELocker.CVELocker__Unauthorized.selector);
