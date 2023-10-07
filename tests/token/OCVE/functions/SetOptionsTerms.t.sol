@@ -32,7 +32,7 @@ contract SetOptionsTermsTest is TestBaseOCVE {
     }
 
     function test_setOptionsTerms_fail_whenStartTimestampIsInvalid() public {
-        vm.expectRevert(OCVE.OCVE__ConfigurationError.selector);
+        vm.expectRevert(OCVE.OCVE__ParametersareInvalid.selector);
         oCVE.setOptionsTerms(
             block.timestamp - 1,
             paymentTokenCurrentPrice * _ONE

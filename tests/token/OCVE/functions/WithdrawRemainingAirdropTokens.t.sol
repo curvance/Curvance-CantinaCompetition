@@ -32,7 +32,7 @@ contract WithdrawRemainingAirdropTokensTest is TestBaseOCVE {
             paymentTokenCurrentPrice * _ONE
         );
 
-        skip(4 weeks);
+        skip(3 weeks);
 
         vm.expectRevert(OCVE.OCVE__TransferError.selector);
         oCVE.withdrawRemainingAirdropTokens();

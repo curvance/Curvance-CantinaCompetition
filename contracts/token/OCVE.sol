@@ -182,7 +182,7 @@ contract OCVE is ERC20 {
         // since it will be in 1e36 format offset,
         // whereas currentPrice will be 1e18 so the price should
         // always be larger
-        if (strikePrice < currentPrice){
+        if (strikePrice <= currentPrice){
             revert OCVE__ParametersareInvalid();
         }
 
