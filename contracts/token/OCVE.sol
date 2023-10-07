@@ -156,7 +156,8 @@ contract OCVE is ERC20 {
             revert OCVE__ParametersareInvalid();
         }
 
-        if (optionsStartTimestamp > 0) {
+        // If the option are exercisable do not allow reconfiguration of the terms
+        if (optionsStartTimestamp > 0 && optionsStartTimestamp < block.timestamp) {
             revert OCVE__ConfigurationError();
         }
 
