@@ -26,12 +26,12 @@ contract SetOptionsTermsTest is TestBaseOCVE {
     }
 
     function test_setOptionsTerms_fail_whenStrikePriceIsZero() public {
-        vm.expectRevert("OCVE: Strike price is invalid");
+        vm.expectRevert(OCVE.OCVE__ParametersareInvalid.selector);
         oCVE.setOptionsTerms(block.timestamp, 0);
     }
 
     function test_setOptionsTerms_fail_whenStartTimestampIsInvalid() public {
-        vm.expectRevert("OCVE: Start timestamp is invalid");
+        vm.expectRevert(OCVE.OCVE__ConfigurationError.selector);
         oCVE.setOptionsTerms(
             block.timestamp - 1,
             paymentTokenCurrentPrice * _ONE
@@ -43,12 +43,12 @@ contract SetOptionsTermsTest is TestBaseOCVE {
     {
         oCVE.setOptionsTerms(block.timestamp, paymentTokenCurrentPrice * _ONE);
 
-        vm.expectRevert("OCVE: Options exercising already active");
+        vm.expectRevert(OCVE.OCVE__ConfigurationError.selector);
         oCVE.setOptionsTerms(block.timestamp, paymentTokenCurrentPrice * _ONE);
     }
 
     function test_setOptionsTerms_fail_whenStrikePriceIsInvalid() public {
-        vm.expectRevert("OCVE: invalid strike price configuration");
+        vm.expectRevert(OCVE.OCVE__ParametersareInvalid.selector);
         oCVE.setOptionsTerms(block.timestamp, paymentTokenCurrentPrice);
     }
 

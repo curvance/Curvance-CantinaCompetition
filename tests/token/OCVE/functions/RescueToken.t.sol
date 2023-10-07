@@ -23,7 +23,7 @@ contract OCVERescueTokenTest is TestBaseOCVE {
     function test_oCVERescueToken_fail_whenRecipientIsZeroAddress()
         public
     {
-        vm.expectRevert("OCVE: invalid recipient address");
+        vm.expectRevert(OCVE.OCVE__ParametersareInvalid.selector);
         oCVE.rescueToken(_USDC_ADDRESS, address(0), 100);
     }
 
@@ -32,14 +32,14 @@ contract OCVERescueTokenTest is TestBaseOCVE {
     {
         uint256 balance = address(oCVE).balance;
 
-        vm.expectRevert("OCVE: insufficient balance");
+        vm.expectRevert(OCVE.OCVE__ParametersareInvalid.selector);
         oCVE.rescueToken(address(0), user1, balance + 1);
     }
 
     function test_oCVERescueToken_fail_whenTokenIsTransferCVE()
         public
     {
-        vm.expectRevert("OCVE: cannot withdraw CVE");
+        vm.expectRevert(OCVE.OCVE__TransferError.selector);
         oCVE.rescueToken(address(cve), user1, 100);
     }
 
@@ -48,7 +48,7 @@ contract OCVERescueTokenTest is TestBaseOCVE {
     {
         uint256 balance = usdc.balanceOf(address(oCVE));
 
-        vm.expectRevert("OCVE: insufficient balance");
+        vm.expectRevert(OCVE.OCVE__ParametersareInvalid.selector);
         oCVE.rescueToken(_USDC_ADDRESS, user1, balance + 1);
     }
 

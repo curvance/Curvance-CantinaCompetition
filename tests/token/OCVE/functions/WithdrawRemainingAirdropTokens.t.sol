@@ -33,7 +33,7 @@ contract WithdrawRemainingAirdropTokensTest is TestBaseOCVE {
 
         skip(4 weeks);
 
-        vm.expectRevert("OCVE: Too early");
+        vm.expectRevert(OCVE.OCVE__TransferError.selector);
         oCVE.withdrawRemainingAirdropTokens();
     }
 

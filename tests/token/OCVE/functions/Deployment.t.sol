@@ -9,14 +9,14 @@ contract OCVEDeploymentTest is TestBaseOCVE {
     function test_oCVEDeployment_fail_whenCentralRegistryIsInvalid()
         public
     {
-        vm.expectRevert(OCVE.OCVE__ConstructorParametersareInvalid.selector);
+        vm.expectRevert(OCVE.OCVE__ParametersareInvalid.selector);
         new OCVE(ICentralRegistry(address(0)), _USDC_ADDRESS);
     }
 
     function test_oCVEDeployment_fail_whenPaymentTokenIsInvalid()
         public
     {
-        vm.expectRevert(OCVE.OCVE__ConstructorParametersareInvalid.selector);
+        vm.expectRevert(OCVE.OCVE__ParametersareInvalid.selector);
         new OCVE(
             ICentralRegistry(address(centralRegistry)),
             address(0)
