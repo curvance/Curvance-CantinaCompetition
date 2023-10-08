@@ -180,7 +180,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     /// @notice Shuts down the vault
     /// @dev Used in an emergency or if the vault has been deprecated
     function initiateShutdown() external onlyDaoPermissions {
-        if (_vaultIsActive == 1) {
+        if (_vaultIsActive != 2) {
             _revert(VAULT_NOT_ACTIVE_SELECTOR);
         }
 

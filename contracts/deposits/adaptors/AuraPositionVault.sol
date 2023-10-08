@@ -150,7 +150,7 @@ contract AuraPositionVault is BasePositionVault {
         bytes calldata data
     ) external override onlyHarvestor returns (uint256 yield) {
         if (_vaultIsActive != 2) {
-            _revert(_VAULT_NOT_ACTIVE_SELECTOR);
+            _revert(VAULT_NOT_ACTIVE_SELECTOR);
         }
 
         uint256 pending = _calculatePendingRewards();
