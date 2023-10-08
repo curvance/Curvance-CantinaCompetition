@@ -26,7 +26,7 @@ contract CentralRegistry is ERC165 {
     /// CURVANCE TOKEN CONTRACTS
     address public CVE; // CVE contract address
     address public veCVE; // veCVE contract address
-    address public callOptionCVE; // CVE Call Option contract address
+    address public oCVE; // CVE Call Option contract address
 
     /// DAO CONTRACTS DATA
     address public cveLocker; // CVE Locker contract address
@@ -87,13 +87,12 @@ contract CentralRegistry is ERC165 {
         address indexed previousEmergencyCouncil,
         address indexed newEmergencyCouncil
     );
-
+    event CoreContractSet(string indexed contractType, address newAddress);
     event NewCurvanceContract(string indexed contractType, address newAddress);
     event RemovedCurvanceContract(
         string indexed contractType,
         address removedAddress
     );
-
     event NewChainAdded(uint256 chainId, address operatorAddress);
     event RemovedChain(uint256 chainId, address operatorAddress);
 
@@ -103,21 +102,7 @@ contract CentralRegistry is ERC165 {
     error CentralRegistry_Unauthorized();
 
     /// MODIFIERS ///
-
-    modifier onlyDaoManager() {
-        if (msg.sender != daoAddress) {
-            _revert(_UNAUTHORIZED_SELECTOR);
-        }
-        _;
-    }
-
-    modifier onlyTimelock() {
-        if (msg.sender != timelock) {
-            _revert(_UNAUTHORIZED_SELECTOR);
-        }
-        _;
-    }
-
+ 
     modifier onlyEmergencyCouncil() {
         if (msg.sender != emergencyCouncil) {
             _revert(_UNAUTHORIZED_SELECTOR);
@@ -184,20 +169,23 @@ contract CentralRegistry is ERC165 {
     /// @dev Only callable on a 7 day delay or by the Emergency Council
     function setCVE(address newCVE) external onlyElevatedPermissions {
         CVE = newCVE;
+        emit CoreContractSet("CVE", newCVE);
     }
 
     /// @notice Sets a new veCVE contract address
     /// @dev Only callable on a 7 day delay or by the Emergency Council
     function setVeCVE(address newVeCVE) external onlyElevatedPermissions {
         veCVE = newVeCVE;
+        emit CoreContractSet("VeCVE", newVeCVE);
     }
 
     /// @notice Sets a new CVE contract address
     /// @dev Only callable by the DAO
-    function setCallOptionCVE(
-        address newCallOptionCVE
+    function setOCVE(
+        address newOCVE
     ) external onlyDaoPermissions {
-        callOptionCVE = newCallOptionCVE;
+        oCVE = newOCVE;
+        emit CoreContractSet("oCVE", newOCVE);
     }
 
     /// @notice Sets a new CVE locker contract address
@@ -206,6 +194,7 @@ contract CentralRegistry is ERC165 {
         address newCVELocker
     ) external onlyElevatedPermissions {
         cveLocker = newCVELocker;
+        emit CoreContractSet("CVE Locker", newCVELocker);
     }
 
     /// @notice Sets a new protocol messaging hub contract address
@@ -214,6 +203,10 @@ contract CentralRegistry is ERC165 {
         address newProtocolMessagingHub
     ) external onlyElevatedPermissions {
         protocolMessagingHub = newProtocolMessagingHub;
+        emit CoreContractSet(
+            "Protocol Messaging Hub", 
+            newProtocolMessagingHub
+        );
     }
 
     /// @notice Sets a new price router contract address
@@ -222,6 +215,7 @@ contract CentralRegistry is ERC165 {
         address newPriceRouter
     ) external onlyElevatedPermissions {
         priceRouter = newPriceRouter;
+        emit CoreContractSet("Price Router", newPriceRouter);
     }
 
     /// @notice Sets a new ZRO contract address
@@ -230,6 +224,7 @@ contract CentralRegistry is ERC165 {
         address newZroAddress
     ) external onlyElevatedPermissions {
         zroAddress = newZroAddress;
+        emit CoreContractSet("ZRO", newZroAddress);
     }
 
     /// @notice Sets a new fee hub contract address
@@ -238,6 +233,7 @@ contract CentralRegistry is ERC165 {
         address newFeeAccumulator
     ) external onlyElevatedPermissions {
         feeAccumulator = newFeeAccumulator;
+        emit CoreContractSet("Fee Accumulator", newFeeAccumulator);
     }
 
     /// @notice Sets the fee from yield by Curvance DAO to use as gas

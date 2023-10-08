@@ -22,11 +22,11 @@ contract CVE is OFTV2 {
 
     address public teamAddress; // Team operating address
     // Number of DAO treasury tokens minted
-    uint256 public daoTreasuryTokensMinted;
+    uint256 public daoTreasuryMinted;
     // Number of Team allocation tokens minted
-    uint256 public teamAllocationTokensMinted;
+    uint256 public teamAllocationMinted;
     // Number of Call Option reserved tokens minted
-    uint256 public callOptionTokensMinted;
+    uint256 public callOptionsMinted;
 
     /// ERRORS ///
 
@@ -93,12 +93,12 @@ contract CVE is OFTV2 {
     function mintTreasuryTokens(
         uint256 amount
     ) external onlyElevatedPermissions {
-        uint256 _daoTreasuryTokensMinted = daoTreasuryTokensMinted;
-        if (daoTreasuryAllocation < _daoTreasuryTokensMinted + amount){
+        uint256 _daoTreasuryMinted = daoTreasuryMinted;
+        if (daoTreasuryAllocation < _daoTreasuryMinted + amount){
             revert CVE__InsufficientCVEAllocation();
         }
 
-        daoTreasuryTokensMinted = _daoTreasuryTokensMinted + amount;
+        daoTreasuryMinted = _daoTreasuryMinted + amount;
         _mint(msg.sender, amount);
     }
 
@@ -108,12 +108,12 @@ contract CVE is OFTV2 {
     function mintCallOptionTokens(
         uint256 amount
     ) external onlyDaoPermissions {
-        uint256 _callOptionTokensMinted = callOptionTokensMinted;
-        if (callOptionAllocation < _callOptionTokensMinted + amount){
+        uint256 _callOptionsMinted = callOptionsMinted;
+        if (callOptionAllocation < _callOptionsMinted + amount){
             revert CVE__InsufficientCVEAllocation();
         }
 
-        callOptionTokensMinted = _callOptionTokensMinted + amount;
+        callOptionsMinted = _callOptionsMinted + amount;
         _mint(msg.sender, amount);
     }
 
@@ -128,22 +128,20 @@ contract CVE is OFTV2 {
 
         uint256 timeSinceTGE = block.timestamp - tokenGenerationEventTimestamp;
         uint256 monthsSinceTGE = timeSinceTGE / MONTH;
-        uint256 _teamAllocationTokensMinted = teamAllocationTokensMinted;
+        uint256 _teamAllocationMinted = teamAllocationMinted;
 
         uint256 amount = (monthsSinceTGE * teamAllocationPerMonth) -
-            _teamAllocationTokensMinted;
+            _teamAllocationMinted;
 
-        if (teamAllocation <= _teamAllocationTokensMinted + amount) {
-            amount = teamAllocation - teamAllocationTokensMinted;
+        if (teamAllocation <= _teamAllocationMinted + amount) {
+            amount = teamAllocation - teamAllocationMinted;
         }
         
         if (amount == 0){
             revert CVE__ParametersareInvalid();
         }
 
-        teamAllocationTokensMinted =
-            _teamAllocationTokensMinted +
-            amount;
+        teamAllocationMinted = _teamAllocationMinted + amount;
         _mint(msg.sender, amount);
     }
 

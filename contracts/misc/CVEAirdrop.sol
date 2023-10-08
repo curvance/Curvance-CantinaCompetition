@@ -31,9 +31,8 @@ contract CVEAirdrop is ReentrancyGuard {
 
     /// EVENTS ///
     
-    event callOptionCVEAirdropClaimed(address indexed claimer, uint256 amount);
-    event RemainingCallOptionCVEWithdrawn(uint256 amount);
-    event OwnerUpdated(address indexed user, address indexed newOwner);
+    event AirdropClaimed(address indexed claimer, uint256 amount);
+    event RemainingOCVEWithdrawn(uint256 amount);
 
     /// ERRORS ///
 
@@ -112,12 +111,12 @@ contract CVEAirdrop is ReentrancyGuard {
         airdropClaimed[msg.sender] = true;
 
         // Transfer CVE tokens
-        SafeTransferLib.safeTransfer(centralRegistry.callOptionCVE(),
+        SafeTransferLib.safeTransfer(centralRegistry.oCVE(),
             msg.sender,
             amount
         );
 
-        emit callOptionCVEAirdropClaimed(msg.sender, amount);
+        emit AirdropClaimed(msg.sender, amount);
     }
 
     /// @dev Returns whether `leaf` exists in the Merkle tree with `root`, given `proof`.
@@ -196,7 +195,7 @@ contract CVEAirdrop is ReentrancyGuard {
 
             SafeTransferLib.forceSafeTransferETH(daoOperator, amount);
         } else {
-            if (token == centralRegistry.callOptionCVE()){
+            if (token == centralRegistry.oCVE()){
                 revert CVEAirdrop__TransferError();
             }
 
@@ -214,14 +213,11 @@ contract CVEAirdrop is ReentrancyGuard {
             revert CVEAirdrop__TransferError();
         }
 
-        uint256 tokensToWithdraw = IERC20(centralRegistry.callOptionCVE())
-            .balanceOf(address(this));
-        SafeTransferLib.safeTransfer(centralRegistry.callOptionCVE(),
-            msg.sender,
-            tokensToWithdraw
-        );
+        address oCVE = centralRegistry.oCVE();
+        uint256 amount = IERC20(oCVE).balanceOf(address(this));
+        SafeTransferLib.safeTransfer(oCVE, msg.sender, amount);
 
-        emit RemainingCallOptionCVEWithdrawn(tokensToWithdraw);
+        emit RemainingOCVEWithdrawn(amount);
     }
 
     /// @notice Set airdropMerkleRoot for airdrop validation
