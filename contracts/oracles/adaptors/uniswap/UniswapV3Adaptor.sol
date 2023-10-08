@@ -35,7 +35,7 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
     uint32 public constant MINIMUM_SECONDS_AGO = 300;
 
     /// @notice Token amount to check uniswap twap price against
-    uint128 public constant ORACLE_PRECISION = 1e18;
+    uint128 public constant PRECISION = 1e18;
 
     /// @notice Chain WETH address.
     address public immutable WETH;
@@ -91,7 +91,7 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
                         .quoteSpecificPoolsWithTimePeriod
                         .selector,
                     abi.encode(
-                        ORACLE_PRECISION,
+                        PRECISION,
                         uniswapFeed.baseToken,
                         uniswapFeed.quoteToken,
                         pools,

@@ -75,7 +75,7 @@ contract VelodromeStablePositionVault is BasePositionVault {
         strategyData.token0 = IVeloPool(_asset).token0();
         strategyData.token1 = IVeloPool(_asset).token1();
         strategyData.decimalsA = 10 ** ERC20(strategyData.token0).decimals();
-        strategyData.decimalsB = 10 ** ERC20(strategyData.token0).decimals();
+        strategyData.decimalsB = 10 ** ERC20(strategyData.token1).decimals();
 
         strategyData.gauge = gauge;
         strategyData.router = router;

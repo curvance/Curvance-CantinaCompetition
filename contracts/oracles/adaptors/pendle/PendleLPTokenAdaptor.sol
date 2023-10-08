@@ -31,7 +31,7 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
     /// @notice The minimum acceptable twap duration when pricing
     uint32 public constant MINIMUM_TWAP_DURATION = 3600;
     /// @notice Token amount to check uniswap twap price against
-    uint128 public constant ORACLE_PRECISION = 1e18;
+    uint128 public constant PRECISION = 1e18;
     /// @notice Error code for bad source.
     uint256 public constant BAD_SOURCE = 2;
     /// @notice Current networks ptOracle
@@ -89,7 +89,7 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
 
         // Multiply the quote asset price by the lpRate
         // to get the Lp Token fair value.
-        pData.price = uint240((price * lpRate) / ORACLE_PRECISION);
+        pData.price = uint240((price * lpRate) / PRECISION);
     }
 
     /// @notice Add a Pendle Market as an asset.

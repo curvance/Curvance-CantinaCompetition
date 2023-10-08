@@ -341,7 +341,7 @@ contract CVELocker is ReentrancyGuard {
             veCVE.userTokenPoints(user) > 0
         ) {
             unchecked {
-                return nextEpochToDeliver - (userNextClaimIndex[user] - 1);
+                return nextEpochToDeliver - (userNextClaimIndex[user]);
             }
         }
 

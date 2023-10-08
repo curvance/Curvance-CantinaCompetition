@@ -32,6 +32,8 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
 
     /// CONSTANTS ///
 
+    /// @notice Token amount to check uniswap twap price against
+    uint128 public constant PRECISION = 1e18;
     /// @notice Error code for bad source.
     uint256 public constant BAD_SOURCE = 2;
 
@@ -102,9 +104,7 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
 
         if (minPrice == type(uint256).max) pData.hadError = true;
         else {
-            pData.price = uint240(
-                (price * pool.getRate()) / 10 ** data.poolDecimals
-            );
+            pData.price = uint240((price * pool.getRate()) / PRECISION);
         }
     }
 
