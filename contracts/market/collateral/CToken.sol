@@ -278,8 +278,8 @@ contract CToken is ERC165, ReentrancyGuard {
         address daoOperator = centralRegistry.daoAddress();
 
         if (token == address(0)) {
-            if (address(this).balance < amount) {
-                revert CToken__ExcessiveValue();
+            if (amount == 0){
+                amount = address(this).balance;
             }
 
             (bool success, ) = payable(daoOperator).call{ value: amount }("");
@@ -290,6 +290,10 @@ contract CToken is ERC165, ReentrancyGuard {
         } else {
             if (token == address(vault)) {
                 revert CToken__TransferError();
+            }
+
+            if (amount == 0){
+                amount = IERC20(token).balanceOf(address(this));
             }
 
             SafeTransferLib.safeTransfer(token, daoOperator, amount);

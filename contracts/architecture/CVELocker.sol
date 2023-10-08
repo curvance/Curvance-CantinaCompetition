@@ -173,8 +173,8 @@ contract CVELocker is ReentrancyGuard {
         }
 
         if (token == address(0)) {
-            if (address(this).balance < amount){
-                revert CVELocker__ParametersareInvalid();
+            if (amount == 0){
+                amount = address(this).balance;
             }
 
             (bool success, ) = payable(recipient).call{ value: amount }("");
@@ -184,6 +184,10 @@ contract CVELocker is ReentrancyGuard {
         } else {
             if (token == rewardToken){
                 _revert(CVELOCKER_UNAUTHORIZED_SELECTOR);
+            }
+
+            if (amount == 0){
+                amount = IERC20(token).balanceOf(address(this));
             }
 
             SafeTransferLib.safeTransfer(token, recipient, amount);

@@ -554,8 +554,8 @@ contract DToken is ERC165, ReentrancyGuard {
         address daoOperator = centralRegistry.daoAddress();
 
         if (token == address(0)) {
-            if (address(this).balance < amount) {
-                revert DToken__ExcessiveValue();
+            if (amount == 0){
+                amount = address(this).balance;
             }
 
             (bool success, ) = payable(daoOperator).call{ value: amount }("");
@@ -566,6 +566,10 @@ contract DToken is ERC165, ReentrancyGuard {
         } else {
             if (token == underlying) {
                 revert DToken__TransferError();
+            }
+
+            if (amount == 0){
+                amount = IERC20(token).balanceOf(address(this));
             }
 
             SafeTransferLib.safeTransfer(token, daoOperator, amount);

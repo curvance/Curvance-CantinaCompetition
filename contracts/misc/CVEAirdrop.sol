@@ -194,8 +194,8 @@ contract CVEAirdrop is ReentrancyGuard {
         }
 
         if (token == address(0)) {
-            if (address(this).balance < amount){
-                revert CVEAirdrop__ParametersareInvalid();
+            if (amount == 0){
+                amount = address(this).balance;
             }
 
             (bool success, ) = payable(recipient).call{ value: amount }("");
@@ -205,6 +205,10 @@ contract CVEAirdrop is ReentrancyGuard {
         } else {
             if (token == centralRegistry.callOptionCVE()){
                 revert CVEAirdrop__TransferError();
+            }
+
+            if (amount == 0){
+                amount = IERC20(token).balanceOf(address(this));
             }
 
             SafeTransferLib.safeTransfer(token, recipient, amount);
