@@ -40,7 +40,7 @@ contract EarlyExpireLockTest is TestBaseVeCVE {
         bool isFreshLock,
         bool isFreshLockContinuous
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
-        vm.expectRevert(VeCVE.VeCVE__Unauthorized.selector);
+        vm.expectRevert(VeCVE.VeCVE__InvalidLock.selector);
         veCVE.earlyExpireLock(
             0,
             address(this),

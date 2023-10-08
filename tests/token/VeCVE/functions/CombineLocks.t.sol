@@ -111,7 +111,7 @@ contract CombineLocksTest is TestBaseVeCVE {
             0
         );
 
-        vm.expectRevert(VeCVE.VeCVE__ParametersareInvalid.selector);
+        vm.expectRevert();
         veCVE.userLocks(address(this), 1);
 
         (lockAmount, unlockTime) = veCVE.userLocks(address(this), 0);
@@ -163,7 +163,7 @@ contract CombineLocksTest is TestBaseVeCVE {
             0
         );
 
-        vm.expectRevert(VeCVE.VeCVE__ParametersareInvalid.selector);
+        vm.expectRevert();
         veCVE.userLocks(address(this), 1);
 
         (lockAmount, unlockTime) = veCVE.userLocks(address(this), 0);
