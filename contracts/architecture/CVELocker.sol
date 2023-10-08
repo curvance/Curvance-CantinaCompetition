@@ -186,10 +186,6 @@ contract CVELocker is ReentrancyGuard {
                 _revert(CVELOCKER_UNAUTHORIZED_SELECTOR);
             }
 
-            if (IERC20(token).balanceOf(address(this)) < amount){
-                revert CVELocker__ParametersareInvalid();
-            }
-
             SafeTransferLib.safeTransfer(token, recipient, amount);
         }
     }

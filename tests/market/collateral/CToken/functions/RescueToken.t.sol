@@ -36,7 +36,7 @@ contract CTokenRescueTokenTest is TestBaseCToken {
     {
         uint256 balance = usdc.balanceOf(address(cBALRETH));
 
-        vm.expectRevert(CToken.CToken__ExcessiveValue.selector);
+        vm.expectRevert(SafeTransferLib.TransferFailed.selector);
         cBALRETH.rescueToken(_USDC_ADDRESS, balance + 1);
     }
 

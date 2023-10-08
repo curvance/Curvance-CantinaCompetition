@@ -46,9 +46,9 @@ contract FeeAccumulator is ReentrancyGuard {
 
     /// STORAGE ///
 
-    address internal _previousMessagingHub;
     /// @notice Address of Gelato 1Balance
     IGelatoOneBalance public gelatoOneBalance;
+    address internal _previousMessagingHub;
     uint256 internal _gasForCalldata;
     uint256 internal _gasForCrosschain;
 
@@ -57,41 +57,24 @@ contract FeeAccumulator is ReentrancyGuard {
     ///      on daily operations and to help with gelato network structure
     ///      Used for Gelato Network bots to check what tokens to swap
     address[] public rewardTokens;
+
     mapping(address => RewardToken) public rewardTokenInfo;
     /// @dev 2 = yes;
     mapping(uint16 => mapping(uint256 => uint256)) public lockedTokenDataSent;
 
     /// ERRORS ///
 
+    error FeeAccumulator__Unauthorized();
     error FeeAccumulator__FeeTokenIsZeroAddress();
-    error FeeAccumulator__TransferFailed();
     error FeeAccumulator__ConfigurationError();
-    error FeeAccumulator__InsufficientETH();
     error FeeAccumulator__EarmarkError();
 
     /// MODIFIERS ///
 
-    modifier onlyHarvestor() {
-        require(
-            centralRegistry.isHarvester(msg.sender),
-            "FeeAccumulator: UNAUTHORIZED"
-        );
-        _;
-    }
-
     modifier onlyDaoPermissions() {
-        require(
-            centralRegistry.hasDaoPermissions(msg.sender),
-            "FeeAccumulator: UNAUTHORIZED"
-        );
-        _;
-    }
-
-    modifier onlyMessagingHub() {
-        require(
-            msg.sender == centralRegistry.protocolMessagingHub(),
-            "FeeAccumulator: UNAUTHORIZED"
-        );
+        if (!centralRegistry.hasDaoPermissions(msg.sender)){
+            revert FeeAccumulator__Unauthorized();
+        }
         _;
     }
 
@@ -148,7 +131,11 @@ contract FeeAccumulator is ReentrancyGuard {
     function multiSwap(
         bytes calldata data,
         address[] calldata tokens
-    ) external onlyHarvestor nonReentrant {
+    ) external nonReentrant {
+        if (!centralRegistry.isHarvester(msg.sender)){
+            revert FeeAccumulator__Unauthorized();
+        }
+
         SwapperLib.Swap[] memory swapDataArray = abi.decode(
             data,
             (SwapperLib.Swap[])
@@ -248,7 +235,11 @@ contract FeeAccumulator is ReentrancyGuard {
     function sendLockedTokenData(
         uint16 dstChainId,
         bytes32 toAddress
-    ) external onlyHarvestor {
+    ) external {
+        if (!centralRegistry.isHarvester(msg.sender)){
+            revert FeeAccumulator__Unauthorized();
+        }
+
         ICVELocker locker = ICVELocker(centralRegistry.cveLocker());
         uint256 epoch = locker.nextEpochToDeliver();
 
@@ -308,7 +299,11 @@ contract FeeAccumulator is ReentrancyGuard {
     /// @param epochRewardsPerCVE The rewards per CVE for the previous epoch
     function receiveExecutableLockData(
         uint256 epochRewardsPerCVE
-    ) external onlyMessagingHub {
+    ) external {
+        if ( msg.sender != centralRegistry.protocolMessagingHub()){
+            revert FeeAccumulator__Unauthorized();
+        }
+
         ICVELocker locker = ICVELocker(centralRegistry.cveLocker());
         // We validate nextEpochToDeliver in receiveCrossChainLockData on
         // the chain calculating values
@@ -331,7 +326,11 @@ contract FeeAccumulator is ReentrancyGuard {
     ///      notifies other chains, and executes crosschain fee routing.
     function receiveCrossChainLockData(
         EpochRolloverData memory data
-    ) external onlyMessagingHub {
+    ) external {
+        if ( msg.sender != centralRegistry.protocolMessagingHub()){
+            revert FeeAccumulator__Unauthorized();
+        }
+
         ChainData memory chainData = centralRegistry.supportedChainData(
             data.chainId
         );

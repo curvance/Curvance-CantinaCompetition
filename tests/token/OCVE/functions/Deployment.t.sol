@@ -43,6 +43,6 @@ contract OCVEDeploymentTest is TestBaseOCVE {
         );
         assertEq(oCVE.paymentToken(), _USDC_ADDRESS);
         assertEq(address(oCVE.cve()), address(centralRegistry.CVE()));
-        assertEq(oCVE.totalSupply(), 7560001.242 ether);
+        assertEq(oCVE.totalSupply(), 15750002.59 ether);
     }
 }

@@ -49,7 +49,7 @@ contract OCVERescueTokenTest is TestBaseOCVE {
     {
         uint256 balance = usdc.balanceOf(address(oCVE));
 
-        vm.expectRevert(OCVE.OCVE__ParametersareInvalid.selector);
+        vm.expectRevert(SafeTransferLib.TransferFailed.selector);
         oCVE.rescueToken(_USDC_ADDRESS, user1, balance + 1);
     }
 

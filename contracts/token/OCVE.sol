@@ -121,10 +121,6 @@ contract OCVE is ERC20 {
                 revert OCVE__TransferError();
             }
 
-            if (IERC20(token).balanceOf(address(this)) < amount){
-                revert OCVE__ParametersareInvalid();
-            }
-
             SafeTransferLib.safeTransfer(token, recipient, amount);
         }
     }
@@ -137,7 +133,12 @@ contract OCVE is ERC20 {
         }
 
         uint256 tokensToWithdraw = IERC20(cve).balanceOf(address(this));
-        SafeTransferLib.safeTransfer(cve, msg.sender, tokensToWithdraw);
+        SafeTransferLib.safeTransfer(
+            cve, 
+            centralRegistry.daoAddress(), 
+            tokensToWithdraw
+        );
+
         emit RemainingCVEWithdrawn(tokensToWithdraw);
     }
 

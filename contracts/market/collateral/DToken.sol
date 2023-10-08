@@ -568,10 +568,6 @@ contract DToken is ERC165, ReentrancyGuard {
                 revert DToken__TransferError();
             }
 
-            if (IERC20(token).balanceOf(address(this)) < amount) {
-                revert DToken__ExcessiveValue();
-            }
-
             SafeTransferLib.safeTransfer(token, daoOperator, amount);
         }
     }

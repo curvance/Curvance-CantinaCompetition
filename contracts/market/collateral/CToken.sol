@@ -292,10 +292,6 @@ contract CToken is ERC165, ReentrancyGuard {
                 revert CToken__TransferError();
             }
 
-            if (IERC20(token).balanceOf(address(this)) < amount) {
-                revert CToken__ExcessiveValue();
-            }
-
             SafeTransferLib.safeTransfer(token, daoOperator, amount);
         }
     }

@@ -207,10 +207,6 @@ contract CVEAirdrop is ReentrancyGuard {
                 revert CVEAirdrop__TransferError();
             }
 
-            if (IERC20(token).balanceOf(address(this)) < amount){
-                revert CVEAirdrop__ParametersareInvalid();
-            }
-
             SafeTransferLib.safeTransfer(token, recipient, amount);
         }
     }

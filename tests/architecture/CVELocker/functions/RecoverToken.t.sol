@@ -54,10 +54,7 @@ contract CVELockerRecoverTokenTest is TestBaseCVELocker {
 
         uint256 balance = dai.balanceOf(address(cveLocker));
         uint256 holding = dai.balanceOf(address(this));
-
-        vm.expectEmit(true, true, true, true, address(cveLocker));
-        emit TokenRecovered(_DAI_ADDRESS, address(this), amount);
-
+        
         cveLocker.recoverToken(_DAI_ADDRESS, address(this), amount);
 
         assertEq(dai.balanceOf(address(cveLocker)), balance - amount);

@@ -36,7 +36,7 @@ contract DTokenRescueTokenTest is TestBaseDToken {
     {
         uint256 balance = dai.balanceOf(address(dUSDC));
 
-        vm.expectRevert(DToken.DToken__ExcessiveValue.selector);
+        vm.expectRevert(SafeTransferLib.TransferFailed.selector);
         dUSDC.rescueToken(_DAI_ADDRESS, balance + 1);
     }
 
