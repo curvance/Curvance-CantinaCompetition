@@ -136,7 +136,7 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
             if (address(data.underlyingOrConstituent[i]) == address(0)){
                 continue;
             }
-            
+
             require(
                 IPriceRouter(centralRegistry.priceRouter()).isSupportedAsset(
                     data.underlyingOrConstituent[i]
@@ -174,7 +174,6 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
         delete adaptorData[asset];
 
         // Notify the price router that we are going to stop supporting the asset
-        IPriceRouter(centralRegistry.priceRouter())
-            .notifyAssetPriceFeedRemoval(asset);
+        IPriceRouter(centralRegistry.priceRouter()).notifyFeedRemoval(asset);
     }
 }

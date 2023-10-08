@@ -236,7 +236,6 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
 
         // Notify the price router that we are going
         // to stop supporting the asset
-        IPriceRouter(centralRegistry.priceRouter())
-            .notifyAssetPriceFeedRemoval(asset);
+        IPriceRouter(centralRegistry.priceRouter()).notifyFeedRemoval(asset);
     }
 }

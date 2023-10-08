@@ -3,6 +3,7 @@ pragma solidity 0.8.17;
 
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import { TestBasePriceRouter } from "../TestBasePriceRouter.sol";
+import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
 
 contract GetPriceTest is TestBasePriceRouter {
     function test_getPrice_fail_whenNoFeedsAvailable() public {
