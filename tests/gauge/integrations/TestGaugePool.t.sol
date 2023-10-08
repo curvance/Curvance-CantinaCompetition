@@ -160,7 +160,7 @@ contract TestGaugePool is TestBaseMarket {
         vm.prank(protocolMessagingHub);
         gaugePool.setEmissionRates(1, tokensParam, poolWeights);
         vm.prank(protocolMessagingHub);
-        cve.mintGaugeEmissions(300 * 2 weeks, address(gaugePool));
+        cve.mintGaugeEmissions(address(gaugePool), 300 * 2 weeks);
 
         vm.warp(gaugePool.startTime() + 1 * 2 weeks);
         mockDaiFeed.setMockUpdatedAt(block.timestamp);
@@ -256,7 +256,7 @@ contract TestGaugePool is TestBaseMarket {
         vm.prank(protocolMessagingHub);
         gaugePool.setEmissionRates(1, tokensParam, poolWeights);
         vm.prank(protocolMessagingHub);
-        cve.mintGaugeEmissions(300 * 2 weeks, address(gaugePool));
+        cve.mintGaugeEmissions(address(gaugePool), 300 * 2 weeks);
 
         vm.warp(gaugePool.startTime() + 1 * 2 weeks);
         mockDaiFeed.setMockUpdatedAt(block.timestamp);
@@ -319,7 +319,7 @@ contract TestGaugePool is TestBaseMarket {
         vm.prank(protocolMessagingHub);
         gaugePool.setEmissionRates(1, tokensParam, poolWeights);
         vm.prank(protocolMessagingHub);
-        cve.mintGaugeEmissions(300 * 2 weeks, address(gaugePool));
+        cve.mintGaugeEmissions(address(gaugePool), 300 * 2 weeks);
 
         vm.warp(gaugePool.startTime() + 1 * 2 weeks);
         mockDaiFeed.setMockUpdatedAt(block.timestamp);
