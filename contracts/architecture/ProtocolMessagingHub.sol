@@ -365,10 +365,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
             for (uint256 i; i < numPools; ) {
                 gaugePool = GaugeController(gaugePools[i]);
                 // Mint epoch gauge emissions to the gauge pool
-                CVE.mintGaugeEmissions(
-                    (lockBoostMultiplier * emissionTotals[i]) / DENOMINATOR,
-                    address(gaugePool)
-                );
+                CVE.mintGaugeEmissions(address(gaugePool), emissionTotals[i]);
                 // Set upcoming epoch emissions for the voted configuration
                 gaugePool.setEmissionRates(
                     gaugePool.currentEpoch() + 1,

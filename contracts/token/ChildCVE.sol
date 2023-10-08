@@ -8,15 +8,9 @@ contract CVE is OFTV2 {
 
     uint256 public constant DENOMINATOR = 10000; // Scalar for math
 
-    /// MODIFIERS ///
+    /// ERRORS ///
 
-    modifier onlyMessagingHub() {
-        require(
-            msg.sender == centralRegistry.protocolMessagingHub(),
-            "FeeAccumulator: UNAUTHORIZED"
-        );
-        _;
-    }
+    error CVE__Unauthorized();
 
     /// CONSTRUCTOR ///
 
@@ -32,22 +26,29 @@ contract CVE is OFTV2 {
 
     /// @notice Mint new gauge emissions
     /// @dev Allows the VotingHub to mint new gauge emissions.
-    /// @param gaugeEmissions The amount of gauge emissions to be minted
+    /// @param amount The amount of gauge emissions to be minted
     /// @param gaugePool The address of the gauge pool where emissions will be configured
     /// Emission amount is multiplied by the lock boost value from the central registry
     /// Resulting tokens are minted to the voting hub contract.
     function mintGaugeEmissions(
-        uint256 gaugeEmissions,
+        uint256 amount,
         address gaugePool
     ) external {
-        require(
-            msg.sender == centralRegistry.protocolMessagingHub(),
-            "CVE: UNAUTHORIZED"
-        );
-        _mint(
-            gaugePool,
-            (gaugeEmissions * centralRegistry.lockBoostValue()) / DENOMINATOR
-        );
+        if (msg.sender != centralRegistry.protocolMessagingHub()){
+            revert CVE__Unauthorized();
+        }
+
+        _mint(gaugePool, amount);
+    }
+
+    /// @notice Mints CVE to the calling gauge pool to fund the users lock boost
+    /// @param tokensForLockBoost The amount of tokens to be minted
+    function mintLockBoost(uint256 amount) external {
+        if (centralRegistry.isGaugeController(msg.sender)){
+            revert CVE__Unauthorized();
+        }
+
+        _mint(msg.sender, amount);
     }
 
     /// PUBLIC FUNCTIONS ///
@@ -60,7 +61,11 @@ contract CVE is OFTV2 {
         bytes calldata payload,
         uint64 dstGasForCall,
         LzCallParams calldata callParams
-    ) public payable override onlyMessagingHub {
+    ) public payable override {
+        if (msg.sender != centralRegistry.protocolMessagingHub()){
+            revert CVE__Unauthorized();
+        }
+
         super.sendAndCall(
             from,
             dstChainId,

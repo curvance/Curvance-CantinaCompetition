@@ -10,10 +10,10 @@ struct LzCallParams {
 interface ICVE {
     /// @notice Used by protocol messaging hub to mint gauge emissions for
     ///         the upcoming epoch
-    function mintGaugeEmissions(
-        uint256 gaugeEmissions,
-        address gaugePool
-    ) external;
+    function mintGaugeEmissions(address gaugePool, uint256 amount) external;
+
+    /// @notice Used by gauge pools to mint CVE for a users lock boost
+    function mintLockBoost(amount) external;
 
     /// @notice Sends CVE Gauge Emissions or token lock data to
     ///         a desired destination chain

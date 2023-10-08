@@ -11,6 +11,7 @@ import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 import { RewardsData } from "contracts/interfaces/ICVELocker.sol";
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+import { ICVE } from "contracts/interfaces/ICVE.sol";
 
 contract GaugePool is GaugeController, ReentrancyGuard {
     /// TYPES ///
@@ -29,9 +30,13 @@ contract GaugePool is GaugeController, ReentrancyGuard {
 
     /// CONSTANTS ///
 
-    uint256 public constant DENOMINATOR = 10000; // Scalar for math
-    uint256 public constant PRECISION = 1e36; // Scalar for math
+    /// @notice Scalar for math
+    uint256 internal constant _DENOMINATOR = 10000;
+    /// @notice Scalar for math
+    uint256 internal constant _PRECISION = 1e36;
     address public lendtroller; // Lendtroller linked
+    /// @notice Scalar for math
+    uint256 internal constant _EXP_SCALE = 1e18;
 
     /// STORAGE ///
 
@@ -159,7 +164,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
                     EPOCH_WINDOW;
                 accRewardPerShare =
                     accRewardPerShare +
-                    (reward * (PRECISION)) /
+                    (reward * (_PRECISION)) /
                     totalDeposited;
 
                 ++lastEpoch;
@@ -173,7 +178,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
                 EPOCH_WINDOW;
             accRewardPerShare =
                 accRewardPerShare +
-                (reward * (PRECISION)) /
+                (reward * (_PRECISION)) /
                 totalDeposited;
         }
 
@@ -181,7 +186,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         return
             info.rewardPending +
             (info.amount * accRewardPerShare) /
-            (PRECISION) -
+            (_PRECISION) -
             info.rewardDebt;
     }
 
@@ -310,13 +315,16 @@ contract GaugePool is GaugeController, ReentrancyGuard {
             revert GaugeErrors.NoReward();
         }
 
+        userInfo[token][msg.sender].rewardPending = 0;
+
         uint256 currentLockBoost = centralRegistry.lockBoostValue();
         // If theres a current lock boost, recognize their bonus rewards
         if (currentLockBoost > 0) {
-            rewards = (rewards * currentLockBoost) / DENOMINATOR;
+            uint256 boostedRewards = (rewards * currentLockBoost) / _DENOMINATOR;
+            ICVE(cve).mintLockBoost(boostedRewards - rewards);
+            rewards = boostedRewards; 
         }
-        userInfo[token][msg.sender].rewardPending = 0;
-
+        
         SafeTransferLib.safeApprove(cve, address(veCVE), rewards);
         veCVE.increaseAmountAndExtendLockFor(
             msg.sender,
@@ -351,13 +359,15 @@ contract GaugePool is GaugeController, ReentrancyGuard {
             revert GaugeErrors.NoReward();
         }
 
+        userInfo[token][msg.sender].rewardPending = 0;
+
         uint256 currentLockBoost = centralRegistry.lockBoostValue();
         // If theres a current lock boost, recognize their bonus rewards
         if (currentLockBoost > 0) {
-            rewards = (rewards * currentLockBoost) / DENOMINATOR;
+            uint256 boostedRewards = (rewards * currentLockBoost) / _DENOMINATOR;
+            ICVE(cve).mintLockBoost(boostedRewards - rewards);
+            rewards = boostedRewards; 
         }
-
-        userInfo[token][msg.sender].rewardPending = 0;
 
         SafeTransferLib.safeApprove(cve, address(veCVE), rewards);
         veCVE.lockFor(
@@ -408,7 +418,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
                 EPOCH_WINDOW;
             accRewardPerShare =
                 accRewardPerShare +
-                (reward * (PRECISION)) /
+                (reward * (_PRECISION)) /
                 totalDeposited;
 
             ++lastEpoch;
@@ -422,7 +432,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
             EPOCH_WINDOW;
         accRewardPerShare =
             accRewardPerShare +
-            (reward * (PRECISION)) /
+            (reward * (_PRECISION)) /
             totalDeposited;
 
         // update pool storage
@@ -437,7 +447,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         UserInfo storage info = userInfo[token][user];
         info.rewardPending +=
             (info.amount * poolInfo[token].accRewardPerShare) /
-            (PRECISION) -
+            (_PRECISION) -
             info.rewardDebt;
     }
 
@@ -446,6 +456,6 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         UserInfo storage info = userInfo[token][user];
         info.rewardDebt =
             (info.amount * poolInfo[token].accRewardPerShare) /
-            (PRECISION);
+            (_PRECISION);
     }
 }

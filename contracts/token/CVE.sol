@@ -28,20 +28,11 @@ contract CVE is OFTV2 {
     // Number of Call Option reserved tokens minted
     uint256 public callOptionTokensMinted;
 
-    /// MODIFIERS ///
+    /// ERRORS ///
 
-    modifier onlyTeam() {
-        require(msg.sender == teamAddress, "CVE: UNAUTHORIZED");
-        _;
-    }
-
-    modifier onlyMessagingHub() {
-        require(
-            msg.sender == centralRegistry.protocolMessagingHub(),
-            "FeeAccumulator: UNAUTHORIZED"
-        );
-        _;
-    }
+    error CVE__Unauthorized();
+    error CVE__InsufficientCVEAllocation();
+    error CVE__ParametersareInvalid();
 
     /// CONSTRUCTOR ///
 
@@ -74,87 +65,102 @@ contract CVE is OFTV2 {
 
     /// EXTERNAL FUNCTIONS ///
 
-    /// @notice Mint new gauge emissions
+    /// @notice Mints gauge emissions for the desired gauge pool
     /// @dev Allows the VotingHub to mint new gauge emissions.
-    /// @param gaugeEmissions The amount of gauge emissions to be minted
     /// @param gaugePool The address of the gauge pool where emissions will be configured
+    /// @param amount The amount of gauge emissions to be minted
     /// Emission amount is multiplied by the lock boost value from the central registry
     /// Resulting tokens are minted to the voting hub contract.
-    function mintGaugeEmissions(
-        uint256 gaugeEmissions,
-        address gaugePool
-    ) external {
-        require(
-            msg.sender == centralRegistry.protocolMessagingHub(),
-            "CVE: UNAUTHORIZED"
-        );
-        _mint(
-            gaugePool,
-            (gaugeEmissions * centralRegistry.lockBoostValue()) / DENOMINATOR
-        );
+    function mintGaugeEmissions(address gaugePool, uint256 amount) external {
+        if (msg.sender != centralRegistry.protocolMessagingHub()){
+            revert CVE__Unauthorized();
+        }
+
+        _mint(gaugePool, amount);
+    }
+
+    /// @notice Mints CVE to the calling gauge pool to fund the users lock boost
+    /// @param tokensForLockBoost The amount of tokens to be minted
+    function mintLockBoost(uint256 amount) external {
+        if (centralRegistry.isGaugeController(msg.sender)){
+            revert CVE__Unauthorized();
+        }
+
+        _mint(msg.sender, amount);
     }
 
     /// @notice Mint CVE for the DAO treasury
-    /// @param tokensToMint The amount of treasury tokens to be minted.
+    /// @param amount The amount of treasury tokens to be minted.
     /// The number of tokens to mint cannot not exceed the available treasury allocation.
     function mintTreasuryTokens(
-        uint256 tokensToMint
+        uint256 amount
     ) external onlyElevatedPermissions {
         uint256 _daoTreasuryTokensMinted = daoTreasuryTokensMinted;
-        require(
-            daoTreasuryAllocation >= _daoTreasuryTokensMinted + tokensToMint,
-            "CVE: insufficient token allocation"
-        );
+        if (daoTreasuryAllocation < _daoTreasuryTokensMinted + amount){
+            revert CVE__InsufficientCVEAllocation();
+        }
 
-        daoTreasuryTokensMinted = _daoTreasuryTokensMinted + tokensToMint;
-        _mint(msg.sender, tokensToMint);
+        daoTreasuryTokensMinted = _daoTreasuryTokensMinted + amount;
+        _mint(msg.sender, amount);
     }
 
     /// @notice Mint CVE for deposit into callOptionCVE contract
-    /// @param tokensToMint The amount of call option tokens to be minted.
+    /// @param amount The amount of call option tokens to be minted.
     /// The number of tokens to mint cannot not exceed the available call option allocation.
     function mintCallOptionTokens(
-        uint256 tokensToMint
+        uint256 amount
     ) external onlyDaoPermissions {
         uint256 _callOptionTokensMinted = callOptionTokensMinted;
-        require(
-            callOptionAllocation >= _callOptionTokensMinted + tokensToMint,
-            "CVE: insufficient token allocation"
-        );
+        if (callOptionAllocation < _callOptionTokensMinted + amount){
+            revert CVE__InsufficientCVEAllocation();
+        }
 
-        callOptionTokensMinted = _callOptionTokensMinted + tokensToMint;
-        _mint(msg.sender, tokensToMint);
+        callOptionTokensMinted = _callOptionTokensMinted + amount;
+        _mint(msg.sender, amount);
     }
 
     /// @notice Mint CVE from team allocation
     /// @dev Allows the DAO Manager to mint new tokens for the team allocation.
     /// @dev The amount of tokens minted is calculated based on the time passed since the Token Generation Event.
     /// @dev The number of tokens minted is capped by the total team allocation.
-    function mintTeamTokens() external onlyTeam {
+    function mintTeamTokens() external {
+        if (msg.sender != teamAddress){
+            revert CVE__Unauthorized();
+        }
+
         uint256 timeSinceTGE = block.timestamp - tokenGenerationEventTimestamp;
         uint256 monthsSinceTGE = timeSinceTGE / MONTH;
         uint256 _teamAllocationTokensMinted = teamAllocationTokensMinted;
 
-        uint256 tokensToMint = (monthsSinceTGE * teamAllocationPerMonth) -
+        uint256 amount = (monthsSinceTGE * teamAllocationPerMonth) -
             _teamAllocationTokensMinted;
 
-        if (teamAllocation <= _teamAllocationTokensMinted + tokensToMint) {
-            tokensToMint = teamAllocation - teamAllocationTokensMinted;
+        if (teamAllocation <= _teamAllocationTokensMinted + amount) {
+            amount = teamAllocation - teamAllocationTokensMinted;
         }
-
-        require(tokensToMint != 0, "CVE:  no tokens to mint");
+        
+        if (amount == 0){
+            revert CVE__ParametersareInvalid();
+        }
 
         teamAllocationTokensMinted =
             _teamAllocationTokensMinted +
-            tokensToMint;
-        _mint(msg.sender, tokensToMint);
+            amount;
+        _mint(msg.sender, amount);
     }
 
     /// @notice Set the team address
     /// @dev Allows the team to change the team's address.
     /// @param _address The new address for the team.
-    function setTeamAddress(address _address) external onlyTeam {
-        require(_address != address(0), "CVE: invalid parameter");
+    function setTeamAddress(address _address) external {
+        if (msg.sender != teamAddress){
+            revert CVE__Unauthorized();
+        }
+
+        if (_address == address(0)){
+            revert CVE__ParametersareInvalid();
+        }
+
         teamAddress = _address;
     }
 
@@ -168,7 +174,11 @@ contract CVE is OFTV2 {
         bytes calldata payload,
         uint64 dstGasForCall,
         LzCallParams calldata callParams
-    ) public payable override onlyMessagingHub {
+    ) public payable override {
+        if (msg.sender != centralRegistry.protocolMessagingHub()){
+            revert CVE__Unauthorized();
+        }
+
         super.sendAndCall(
             from,
             dstChainId,
