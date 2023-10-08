@@ -23,7 +23,7 @@ contract DTokenRescueTokenTest is TestBaseDToken {
     function test_dTokenRescueToken_fail_whenETHAmountExceedsBalance() public {
         uint256 balance = address(dUSDC).balance;
 
-        vm.expectRevert(DToken.DToken__ExcessiveValue.selector);
+        vm.expectRevert(0xb12d13eb);
         dUSDC.rescueToken(address(0), balance + 1);
     }
 

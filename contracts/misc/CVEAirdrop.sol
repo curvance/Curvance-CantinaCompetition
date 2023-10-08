@@ -182,26 +182,19 @@ contract CVEAirdrop is ReentrancyGuard {
 
     /// @dev rescue any token sent by mistake
     /// @param token token to rescue
-    /// @param recipient address to receive token
     /// @param amount amount of `token` to rescue, 0 indicates to rescue all
     function rescueToken(
         address token,
-        address recipient,
         uint256 amount
     ) external onlyDaoPermissions {
-        if (recipient == address(0)){
-            revert CVEAirdrop__ParametersareInvalid();
-        }
+        address daoOperator = centralRegistry.daoAddress();
 
         if (token == address(0)) {
             if (amount == 0){
                 amount = address(this).balance;
             }
 
-            (bool success, ) = payable(recipient).call{ value: amount }("");
-            if (!success){
-                revert CVEAirdrop__TransferError();
-            }
+            SafeTransferLib.forceSafeTransferETH(daoOperator, amount);
         } else {
             if (token == centralRegistry.callOptionCVE()){
                 revert CVEAirdrop__TransferError();
@@ -211,7 +204,7 @@ contract CVEAirdrop is ReentrancyGuard {
                 amount = IERC20(token).balanceOf(address(this));
             }
 
-            SafeTransferLib.safeTransfer(token, recipient, amount);
+            SafeTransferLib.safeTransfer(token, daoOperator, amount);
         }
     }
 

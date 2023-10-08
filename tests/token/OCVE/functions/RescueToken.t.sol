@@ -22,27 +22,20 @@ contract OCVERescueTokenTest is TestBaseOCVE {
         oCVE.rescueToken(_USDC_ADDRESS, user1, 100);
     }
 
-    function test_oCVERescueToken_fail_whenRecipientIsZeroAddress()
-        public
-    {
-        vm.expectRevert(OCVE.OCVE__ParametersareInvalid.selector);
-        oCVE.rescueToken(_USDC_ADDRESS, address(0), 100);
-    }
-
     function test_oCVERescueToken_fail_whenETHAmountExceedsBalance()
         public
     {
         uint256 balance = address(oCVE).balance;
 
-        vm.expectRevert(OCVE.OCVE__ParametersareInvalid.selector);
-        oCVE.rescueToken(address(0), user1, balance + 1);
+        vm.expectRevert(0xb12d13eb);
+        oCVE.rescueToken(address(0), balance + 1);
     }
 
     function test_oCVERescueToken_fail_whenTokenIsTransferCVE()
         public
     {
         vm.expectRevert(OCVE.OCVE__TransferError.selector);
-        oCVE.rescueToken(address(cve), user1, 100);
+        oCVE.rescueToken(address(cve), 100);
     }
 
     function test_oCVERescueToken_fail_whenTokenAmountExceedsBalance()
@@ -51,7 +44,7 @@ contract OCVERescueTokenTest is TestBaseOCVE {
         uint256 balance = usdc.balanceOf(address(oCVE));
 
         vm.expectRevert(SafeTransferLib.TransferFailed.selector);
-        oCVE.rescueToken(_USDC_ADDRESS, user1, balance + 1);
+        oCVE.rescueToken(_USDC_ADDRESS, balance + 1);
     }
 
     function test_oCVERescueToken_success() public {
@@ -60,8 +53,8 @@ contract OCVERescueTokenTest is TestBaseOCVE {
         uint256 userEthBalance = user1.balance;
         uint256 userUsdcBalance = usdc.balanceOf(user1);
 
-        oCVE.rescueToken(address(0), user1, 100);
-        oCVE.rescueToken(_USDC_ADDRESS, user1, 100);
+        oCVE.rescueToken(address(0), 100);
+        oCVE.rescueToken(_USDC_ADDRESS, 100);
 
         assertEq(address(oCVE).balance, ethBalance - 100);
         assertEq(usdc.balanceOf(address(oCVE)), usdcBalance - 100);

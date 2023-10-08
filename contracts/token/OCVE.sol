@@ -94,28 +94,21 @@ contract OCVE is ERC20 {
 
     /// EXTERNAL FUNCTIONS ///
 
-    /// @notice Rescue any token sent by mistake, also used for removing.
-    /// @param token The token to rescue.
-    /// @param recipient The address to receive the rescued token.
-    /// @param amount The amount of tokens to rescue.
+    /// @notice Rescue any token sent by mistake
+    /// @param token token to rescue
+    /// @param amount amount of `token` to rescue, 0 indicates to rescue all
     function rescueToken(
         address token,
-        address recipient,
         uint256 amount
     ) external onlyDaoPermissions {
-        if (recipient == address(0)){
-            revert OCVE__ParametersareInvalid();
-        }
+        address daoOperator = centralRegistry.daoAddress();
 
         if (token == address(0)) {
             if (amount == 0){
                 amount = address(this).balance;
             }
 
-            (bool success, ) = payable(recipient).call{ value: amount }("");
-            if (!success){
-                revert OCVE__TransferError();
-            }
+            SafeTransferLib.forceSafeTransferETH(daoOperator, amount);
         } else {
             if (token == cve){
                 revert OCVE__TransferError();
@@ -125,7 +118,7 @@ contract OCVE is ERC20 {
                 amount = IERC20(token).balanceOf(address(this));
             }
 
-            SafeTransferLib.safeTransfer(token, recipient, amount);
+            SafeTransferLib.safeTransfer(token, daoOperator, amount);
         }
     }
 

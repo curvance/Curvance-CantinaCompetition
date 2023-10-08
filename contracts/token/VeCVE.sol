@@ -143,23 +143,32 @@ contract VeCVE is ERC20, ReentrancyGuard {
 
     /// EXTERNAL FUNCTIONS ///
 
-    /// @notice Recover tokens sent accidentally to the contract
-    ///         or leftover rewards (excluding VeCVE tokens)
-    /// @param token The address of the token to recover
-    /// @param to The address to receive the recovered tokens
-    /// @param amount The amount of tokens to recover
-    function recoverToken(
+    /// @notice Rescue any token sent by mistake
+    /// @param token token to rescue
+    /// @param amount amount of `token` to rescue, 0 indicates to rescue all
+    function rescueToken(
         address token,
-        address to,
         uint256 amount
     ) external onlyDaoPermissions {
-        require(token != address(cve), "cannot withdraw cve token");
+        address daoOperator = centralRegistry.daoAddress();
 
-        if (amount == 0) {
-            amount = IERC20(token).balanceOf(address(this));
+        if (token == address(0)) {
+            if (amount == 0){
+                amount = address(this).balance;
+            }
+
+            SafeTransferLib.forceSafeTransferETH(daoOperator, amount);
+        } else {
+            if (token == address(cve)) {
+                revert VeCVE_NonTransferrable();
+            }
+
+            if (amount == 0){
+                amount = IERC20(token).balanceOf(address(this));
+            }
+
+            SafeTransferLib.safeTransfer(token, daoOperator, amount);
         }
-
-        SafeTransferLib.safeTransfer(token, to, amount);
     }
 
     /// @notice Shuts down the contract, unstakes all tokens,

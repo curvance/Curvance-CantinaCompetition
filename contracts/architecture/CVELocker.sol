@@ -158,29 +158,21 @@ contract CVELocker is ReentrancyGuard {
         lockerStarted = 2;
     }
 
-    /// @notice Recover tokens sent accidentally to the contract
-    ///         or leftover rewards (excluding veCVE tokens)
-    /// @param token The address of the token to recover
-    /// @param recipient The address to receive the recovered tokens
-    /// @param amount The amount of tokens to recover
-    function recoverToken(
+    /// @notice Rescue any token sent by mistake
+    /// @param token token to rescue
+    /// @param amount amount of `token` to rescue, 0 indicates to rescue all
+    function rescueToken(
         address token,
-        address recipient,
         uint256 amount
     ) external onlyDaoPermissions {
-        if (recipient == address(0)){
-            revert CVELocker__ParametersareInvalid();
-        }
+        address daoOperator = centralRegistry.daoAddress();
 
         if (token == address(0)) {
             if (amount == 0){
                 amount = address(this).balance;
             }
 
-            (bool success, ) = payable(recipient).call{ value: amount }("");
-            if (!success){
-                revert CVELocker__TransferError();
-            }
+            SafeTransferLib.forceSafeTransferETH(daoOperator, amount);
         } else {
             if (token == rewardToken){
                 _revert(CVELOCKER_UNAUTHORIZED_SELECTOR);
@@ -190,7 +182,7 @@ contract CVELocker is ReentrancyGuard {
                 amount = IERC20(token).balanceOf(address(this));
             }
 
-            SafeTransferLib.safeTransfer(token, recipient, amount);
+            SafeTransferLib.safeTransfer(token, daoOperator, amount);
         }
     }
 

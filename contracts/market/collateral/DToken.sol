@@ -545,8 +545,8 @@ contract DToken is ERC165, ReentrancyGuard {
     /// Admin Functions
 
     /// @notice Rescue any token sent by mistake
-    /// @param token The token to rescue.
-    /// @param amount The amount of tokens to rescue.
+    /// @param token token to rescue
+    /// @param amount amount of `token` to rescue, 0 indicates to rescue all
     function rescueToken(
         address token,
         uint256 amount
@@ -558,11 +558,7 @@ contract DToken is ERC165, ReentrancyGuard {
                 amount = address(this).balance;
             }
 
-            (bool success, ) = payable(daoOperator).call{ value: amount }("");
-
-            if (!success) {
-                revert DToken__ValidationFailed();
-            }
+            SafeTransferLib.forceSafeTransferETH(daoOperator, amount);
         } else {
             if (token == underlying) {
                 revert DToken__TransferError();
