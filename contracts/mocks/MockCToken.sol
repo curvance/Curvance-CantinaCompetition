@@ -7,17 +7,29 @@ import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 
 contract MockCToken is ERC20 {
 
+    string private _name;
+    string private _symbol;
     uint8 private _decimals;
     address public underlying;
 
     constructor(
         address underlying_,
-        string memory name,
-        string memory symbol,
+        string memory name_,
+        string memory symbol_,
         uint8 decimals_
-    ) ERC20(name, symbol) {
+    ) {
         underlying = underlying_;
-        decimals = decimals_;
+        _name = name_;
+        _symbol = symbol_;
+        _decimals = decimals_;
+    }
+
+    function name() public view override returns (string memory) {
+        return _name;
+    }
+
+    function symbol() public view override returns (string memory) {
+        return _symbol;
     }
 
     function decimals() public view override returns (uint8) {

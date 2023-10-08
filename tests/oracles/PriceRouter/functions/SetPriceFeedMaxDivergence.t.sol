@@ -22,10 +22,10 @@ contract SetPriceFeedMaxDivergenceTest is TestBasePriceRouter {
     }
 
     function test_setPriceFeedMaxDivergence_success() public {
-        assertEq(priceRouter.PRICEFEED_MAXIMUM_DIVERGENCE(), 11000);
+        assertEq(priceRouter.MAXIMUM_DIVERGENCE(), 11000);
 
         priceRouter.setPriceFeedMaxDivergence(10200);
 
-        assertEq(priceRouter.PRICEFEED_MAXIMUM_DIVERGENCE(), 10200);
+        assertEq(priceRouter.MAXIMUM_DIVERGENCE(), 10200);
     }
 }
