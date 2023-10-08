@@ -24,16 +24,11 @@ contract CVE is OFTV2 {
 
     /// EXTERNAL FUNCTIONIS ///
 
-    /// @notice Mint new gauge emissions
+    /// @notice Mints gauge emissions for the desired gauge pool
     /// @dev Allows the VotingHub to mint new gauge emissions.
-    /// @param amount The amount of gauge emissions to be minted
     /// @param gaugePool The address of the gauge pool where emissions will be configured
-    /// Emission amount is multiplied by the lock boost value from the central registry
-    /// Resulting tokens are minted to the voting hub contract.
-    function mintGaugeEmissions(
-        uint256 amount,
-        address gaugePool
-    ) external {
+    /// @param amount The amount of gauge emissions to be minted
+    function mintGaugeEmissions(address gaugePool, uint256 amount) external {
         if (msg.sender != centralRegistry.protocolMessagingHub()){
             revert CVE__Unauthorized();
         }
@@ -42,7 +37,7 @@ contract CVE is OFTV2 {
     }
 
     /// @notice Mints CVE to the calling gauge pool to fund the users lock boost
-    /// @param tokensForLockBoost The amount of tokens to be minted
+    /// @param amount The amount of tokens to be minted
     function mintLockBoost(uint256 amount) external {
         if (centralRegistry.isGaugeController(msg.sender)){
             revert CVE__Unauthorized();

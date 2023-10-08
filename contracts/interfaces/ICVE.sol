@@ -13,7 +13,7 @@ interface ICVE {
     function mintGaugeEmissions(address gaugePool, uint256 amount) external;
 
     /// @notice Used by gauge pools to mint CVE for a users lock boost
-    function mintLockBoost(amount) external;
+    function mintLockBoost(uint256 amount) external;
 
     /// @notice Sends CVE Gauge Emissions or token lock data to
     ///         a desired destination chain
