@@ -133,7 +133,10 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
         // Make sure we can price all underlying tokens.
         for (uint256 i; i < numUnderlyingOrConstituent; ++i) {
             // Break when a zero address is found.
-            if (address(data.underlyingOrConstituent[i]) == address(0)) break;
+            if (address(data.underlyingOrConstituent[i]) == address(0)){
+                continue;
+            }
+            
             require(
                 IPriceRouter(centralRegistry.priceRouter()).isSupportedAsset(
                     data.underlyingOrConstituent[i]

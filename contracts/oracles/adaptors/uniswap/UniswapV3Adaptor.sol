@@ -18,14 +18,12 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
     /// @param secondsAgo period used for TWAP calculation
     /// @param baseDecimals the asset you want to price, decimals
     /// @param quoteDecimals the asset price is quoted in, decimals
-    /// @param baseToken the asset you want to price
     /// @param quoteToken the asset Twap calulation denominates in
     struct AdaptorData {
         address priceSource;
         uint32 secondsAgo;
         uint8 baseDecimals;
         uint8 quoteDecimals;
-        address baseToken;
         address quoteToken;
     }
 
@@ -92,7 +90,7 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
                         .selector,
                     abi.encode(
                         PRECISION,
-                        uniswapFeed.baseToken,
+                        asset,
                         uniswapFeed.quoteToken,
                         pools,
                         uniswapFeed.secondsAgo
@@ -218,7 +216,6 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
         } else revert("UniswapV3Adaptor: twap asset not in pool");
 
         adaptorData[asset] = parameters;
-
         isSupportedAsset[asset] = true;
     }
 

@@ -263,10 +263,10 @@ contract PriceRouter {
             data[1] = getPriceFromFeed(asset, 0, inUSD, false);
             if (isMToken) {
                 uint256 decimals = IERC20(asset).decimals();
-                data[0] = (data[0] * 1e18) / (10 ** decimals);
-                data[1] = (data[1] * 1e18) / (10 ** decimals);
+                data[0].price = (data[0].price * 1e18) / (10 ** decimals);
+                data[1].price = (data[1].price * 1e18) / (10 ** decimals);
             }
-            
+
             return data;
         }
 
@@ -279,10 +279,10 @@ contract PriceRouter {
 
         if (isMToken) {
             uint256 decimals = IERC20(asset).decimals();
-            data[0] = (data[0] * 1e18) / (10 ** decimals);
-            data[1] = (data[1] * 1e18) / (10 ** decimals);
-            data[2] = (data[2] * 1e18) / (10 ** decimals);
-            data[3] = (data[3] * 1e18) / (10 ** decimals);
+            data[0].price = (data[0].price * 1e18) / (10 ** decimals);
+            data[1].price = (data[1].price * 1e18) / (10 ** decimals);
+            data[2].price = (data[2].price * 1e18) / (10 ** decimals);
+            data[3].price = (data[3].price * 1e18) / (10 ** decimals);
         }
 
         return data;
@@ -558,6 +558,8 @@ contract PriceRouter {
         if (data.inUSD != inUSD) {
             uint256 conversionPrice;
             (conversionPrice, data.hadError) = getETHUSD();
+            if (data.hadError) return (0, BAD_SOURCE);
+            
             data.price = uint240(
                 convertPriceETHUSD(data.price, conversionPrice, data.inUSD)
             );
