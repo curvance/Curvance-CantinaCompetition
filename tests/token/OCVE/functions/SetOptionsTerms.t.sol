@@ -22,7 +22,7 @@ contract SetOptionsTermsTest is TestBaseOCVE {
     function test_setOptionsTerms_fail_whenCallerIsNotAuthorized() public {
         vm.prank(address(1));
 
-        vm.expectRevert("OCVE: UNAUTHORIZED");
+        vm.expectRevert(OCVE.OCVE__Unauthorized.selector);
         oCVE.setOptionsTerms(block.timestamp, paymentTokenCurrentPrice * _ONE);
     }
 

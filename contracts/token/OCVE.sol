@@ -52,14 +52,14 @@ contract OCVE is ERC20 {
     error OCVE__ConfigurationError();
     error OCVE__CannotExercise();
     error OCVE__TransferError();
+    error OCVE__Unauthorized();
 
     /// MODIFIERS ///
 
     modifier onlyDaoPermissions() {
-        require(
-            centralRegistry.hasDaoPermissions(msg.sender),
-            "OCVE: UNAUTHORIZED"
-        );
+        if (!centralRegistry.hasDaoPermissions(msg.sender)){
+            revert OCVE__Unauthorized();
+        }
         _;
     }
 

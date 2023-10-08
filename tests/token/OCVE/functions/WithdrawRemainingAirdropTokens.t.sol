@@ -12,7 +12,7 @@ contract WithdrawRemainingAirdropTokensTest is TestBaseOCVE {
     {
         vm.prank(address(1));
 
-        vm.expectRevert("OCVE: UNAUTHORIZED");
+        vm.expectRevert(OCVE.OCVE__Unauthorized.selector);
         oCVE.withdrawRemainingAirdropTokens();
     }
 

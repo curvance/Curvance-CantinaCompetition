@@ -18,8 +18,8 @@ contract OCVERescueTokenTest is TestBaseOCVE {
     {
         vm.prank(address(1));
 
-        vm.expectRevert("OCVE: UNAUTHORIZED");
-        oCVE.rescueToken(_USDC_ADDRESS, user1, 100);
+        vm.expectRevert(OCVE.OCVE__Unauthorized.selector);
+        oCVE.rescueToken(_USDC_ADDRESS, 100);
     }
 
     function test_oCVERescueToken_fail_whenETHAmountExceedsBalance()
