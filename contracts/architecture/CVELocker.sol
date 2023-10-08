@@ -19,9 +19,9 @@ contract CVELocker is ReentrancyGuard {
     /// @notice Scalar for math
     uint256 public constant EXP_SCALE = 1e18;
     /// `bytes4(keccak256(bytes("CVELocker__Unauthorized()")))`
-    uint256 internal constant _CVELOCKER_UNAUTHORIZED_SELECTOR = 0x82274acf;
+    uint256 internal constant CVELOCKER_UNAUTHORIZED_SELECTOR = 0x82274acf;
     /// `bytes4(keccak256(bytes("CVELocker__NoEpochRewards()")))`
-    uint256 internal constant _NO_EPOCH_REWARDS_SELECTOR = 0x95721ba7;
+    uint256 internal constant NO_EPOCH_REWARDS_SELECTOR = 0x95721ba7;
     /// @notice CVE contract address
     address public immutable cve;
     /// @notice Curvance DAO hub
@@ -77,14 +77,14 @@ contract CVELocker is ReentrancyGuard {
 
     modifier onlyDaoPermissions() {
         if (!centralRegistry.hasDaoPermissions(msg.sender)){
-            _revert(_CVELOCKER_UNAUTHORIZED_SELECTOR);
+            _revert(CVELOCKER_UNAUTHORIZED_SELECTOR);
         }
         _;
     }
 
     modifier onlyElevatedPermissions() {
         if (!centralRegistry.hasElevatedPermissions(msg.sender)){
-            _revert(_CVELOCKER_UNAUTHORIZED_SELECTOR);
+            _revert(CVELOCKER_UNAUTHORIZED_SELECTOR);
         }
         _;
     }
@@ -93,7 +93,7 @@ contract CVELocker is ReentrancyGuard {
         address _veCVE = address(veCVE);
         assembly {
             if iszero(eq(caller(), _veCVE)) {
-                mstore(0x00, _CVELOCKER_UNAUTHORIZED_SELECTOR)
+                mstore(0x00, CVELOCKER_UNAUTHORIZED_SELECTOR)
                 // return bytes 29-32 for the selector
                 revert(0x1c, 0x04)
             }
@@ -103,7 +103,7 @@ contract CVELocker is ReentrancyGuard {
 
     modifier onlyFeeAccumulator() {
         if(msg.sender != centralRegistry.feeAccumulator()){
-            _revert(_CVELOCKER_UNAUTHORIZED_SELECTOR);
+            _revert(CVELOCKER_UNAUTHORIZED_SELECTOR);
         }
         _;
     }
@@ -183,7 +183,7 @@ contract CVELocker is ReentrancyGuard {
             }
         } else {
             if (token == rewardToken){
-                _revert(_CVELOCKER_UNAUTHORIZED_SELECTOR);
+                _revert(CVELOCKER_UNAUTHORIZED_SELECTOR);
             }
 
             if (IERC20(token).balanceOf(address(this)) < amount){
@@ -231,7 +231,7 @@ contract CVELocker is ReentrancyGuard {
     function notifyLockerShutdown() external {
         if (msg.sender != address(veCVE) &&
                 !centralRegistry.hasElevatedPermissions(msg.sender)){
-            _revert(_CVELOCKER_UNAUTHORIZED_SELECTOR);
+            _revert(CVELOCKER_UNAUTHORIZED_SELECTOR);
         }
 
         isShutdown = 2;
@@ -306,7 +306,7 @@ contract CVELocker is ReentrancyGuard {
         // If there are no epoch rewards to claim, revert
         assembly {
             if iszero(epochs) {
-                mstore(0x00, _NO_EPOCH_REWARDS_SELECTOR)
+                mstore(0x00, NO_EPOCH_REWARDS_SELECTOR)
                 // return bytes 29-32 for the selector
                 revert(0x1c, 0x04)
             }

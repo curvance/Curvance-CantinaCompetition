@@ -31,12 +31,10 @@ contract GaugePool is GaugeController, ReentrancyGuard {
     /// CONSTANTS ///
 
     /// @notice Scalar for math
-    uint256 internal constant _DENOMINATOR = 10000;
+    uint256 internal constant DENOMINATOR = 10000;
     /// @notice Scalar for math
-    uint256 internal constant _PRECISION = 1e36;
+    uint256 internal constant PRECISION = 1e36;
     address public lendtroller; // Lendtroller linked
-    /// @notice Scalar for math
-    uint256 internal constant _EXP_SCALE = 1e18;
 
     /// STORAGE ///
 
@@ -164,7 +162,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
                     EPOCH_WINDOW;
                 accRewardPerShare =
                     accRewardPerShare +
-                    (reward * (_PRECISION)) /
+                    (reward * (PRECISION)) /
                     totalDeposited;
 
                 ++lastEpoch;
@@ -178,7 +176,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
                 EPOCH_WINDOW;
             accRewardPerShare =
                 accRewardPerShare +
-                (reward * (_PRECISION)) /
+                (reward * (PRECISION)) /
                 totalDeposited;
         }
 
@@ -186,7 +184,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         return
             info.rewardPending +
             (info.amount * accRewardPerShare) /
-            (_PRECISION) -
+            (PRECISION) -
             info.rewardDebt;
     }
 
@@ -320,7 +318,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         uint256 currentLockBoost = centralRegistry.lockBoostValue();
         // If theres a current lock boost, recognize their bonus rewards
         if (currentLockBoost > 0) {
-            uint256 boostedRewards = (rewards * currentLockBoost) / _DENOMINATOR;
+            uint256 boostedRewards = (rewards * currentLockBoost) / DENOMINATOR;
             ICVE(cve).mintLockBoost(boostedRewards - rewards);
             rewards = boostedRewards; 
         }
@@ -364,7 +362,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         uint256 currentLockBoost = centralRegistry.lockBoostValue();
         // If theres a current lock boost, recognize their bonus rewards
         if (currentLockBoost > 0) {
-            uint256 boostedRewards = (rewards * currentLockBoost) / _DENOMINATOR;
+            uint256 boostedRewards = (rewards * currentLockBoost) / DENOMINATOR;
             ICVE(cve).mintLockBoost(boostedRewards - rewards);
             rewards = boostedRewards; 
         }
@@ -418,7 +416,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
                 EPOCH_WINDOW;
             accRewardPerShare =
                 accRewardPerShare +
-                (reward * (_PRECISION)) /
+                (reward * (PRECISION)) /
                 totalDeposited;
 
             ++lastEpoch;
@@ -432,7 +430,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
             EPOCH_WINDOW;
         accRewardPerShare =
             accRewardPerShare +
-            (reward * (_PRECISION)) /
+            (reward * (PRECISION)) /
             totalDeposited;
 
         // update pool storage
@@ -447,7 +445,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         UserInfo storage info = userInfo[token][user];
         info.rewardPending +=
             (info.amount * poolInfo[token].accRewardPerShare) /
-            (_PRECISION) -
+            (PRECISION) -
             info.rewardDebt;
     }
 
@@ -456,6 +454,6 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         UserInfo storage info = userInfo[token][user];
         info.rewardDebt =
             (info.amount * poolInfo[token].accRewardPerShare) /
-            (_PRECISION);
+            (PRECISION);
     }
 }

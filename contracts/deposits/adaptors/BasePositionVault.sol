@@ -38,11 +38,11 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
 
     // `bytes4(keccak256(bytes("BasePositionVault__NotCToken()")))`
-    uint256 internal constant _NOT_C_TOKEN_SELECTOR = 0xac056953;
+    uint256 internal constant NOT_C_TOKEN_SELECTOR = 0xac056953;
     // `bytes4(keccak256(bytes("BasePositionVault__VaultNotActive()")))`
-    uint256 internal constant _VAULT_NOT_ACTIVE_SELECTOR = 0xd4387e2b;
+    uint256 internal constant VAULT_NOT_ACTIVE_SELECTOR = 0xd4387e2b;
     // `bytes4(keccak256(bytes("BasePositionVault__VaultIsActive()")))`
-    uint256 internal constant _VAULT_IS_ACTIVE_SELECTOR = 0xa10a588e;
+    uint256 internal constant VAULT_IS_ACTIVE_SELECTOR = 0xa10a588e;
 
     // Mask of reward rate entry in packed vault data
     uint256 private constant _BITMASK_REWARD_RATE = (1 << 128) - 1;
@@ -71,7 +71,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     uint256 internal _vaultData; // Packed vault data
     uint256 internal _totalAssets; // total vault assets minus vesting
     uint256 internal _sharePriceHighWatermark; // incremented on reward vesting
-    uint256 internal _vaultIsActive = 1; // Vault Status: 2 = active; 1 = inactive
+    uint256 internal _vaultIsActive; // Vault Status: 2 = active; 0 or 1 = inactive
 
     /// EVENTS ///
 
@@ -170,6 +170,10 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
 
     /// @notice Initializes the vault and the cToken attached to it
     function initiateVault(address cTokenAddress) external onlyDaoPermissions {
+        if (_vaultIsActive != 0) {
+            _revert(VAULT_IS_ACTIVE_SELECTOR);
+        }
+
         _activateVault(cTokenAddress);
     }
 
@@ -177,7 +181,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     /// @dev Used in an emergency or if the vault has been deprecated
     function initiateShutdown() external onlyDaoPermissions {
         if (_vaultIsActive == 1) {
-            _revert(_VAULT_NOT_ACTIVE_SELECTOR);
+            _revert(VAULT_NOT_ACTIVE_SELECTOR);
         }
 
         _vaultIsActive = 1;
@@ -190,6 +194,10 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     function liftShutdown(
         address cTokenAddress
     ) external onlyElevatedPermissions {
+        if (_vaultIsActive == 2) {
+            _revert(VAULT_IS_ACTIVE_SELECTOR);
+        }
+
         _activateVault(cTokenAddress);
     }
 
@@ -240,7 +248,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         address receiver
     ) public override onlyCToken returns (uint256 shares) {
         if (_vaultIsActive == 1) {
-            _revert(_VAULT_NOT_ACTIVE_SELECTOR);
+            _revert(VAULT_NOT_ACTIVE_SELECTOR);
         }
 
         // Save _totalAssets and pendingRewards to memory
@@ -287,7 +295,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         address receiver
     ) public override onlyCToken returns (uint256 assets) {
         if (_vaultIsActive == 1) {
-            _revert(_VAULT_NOT_ACTIVE_SELECTOR);
+            _revert(VAULT_NOT_ACTIVE_SELECTOR);
         }
 
         // Save _totalAssets and pendingRewards to memory
@@ -556,12 +564,8 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     }
 
     function _activateVault(address cTokenAddress) internal {
-        if (_vaultIsActive == 2) {
-            _revert(_VAULT_IS_ACTIVE_SELECTOR);
-        }
-
         if (!IMToken(cTokenAddress).isCToken()) {
-            _revert(_NOT_C_TOKEN_SELECTOR);
+            _revert(NOT_C_TOKEN_SELECTOR);
         }
 
         cToken = cTokenAddress;
