@@ -31,7 +31,7 @@ contract rescueTokenTest is TestBaseVeCVE {
         uint256 balance = address(veCVE).balance;
 
         vm.expectRevert(0xb12d13eb);
-        oCVE.rescueToken(address(0), balance + 1);
+        veCVE.rescueToken(address(0), balance + 1);
     }
 
     function test_rescueToken_fail_whenAmountExceedsBalance() public {

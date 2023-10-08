@@ -43,7 +43,7 @@ contract CentralRegistry is ERC165 {
     uint256 public protocolLeverageFee; // Protocol Fee on leveraging
     uint256 public earlyUnlockPenaltyValue; // Penalty Fee for unlocking from veCVE early
     uint256 public voteBoostValue; // Voting power bonus for Continuous Lock Mode
-    uint256 public lockBoostValue; // Rewards bonus for Continuous Lock Mode
+    uint256 public lockBoostValue; // Rewards bonus for locking gauge emissions
 
     /// PROTOCOL VALUES DATA `EXP_SCALE` set in `DENOMINATOR`
     /// @notice Lending Market => Protocol Reserve Factor on interest generated
