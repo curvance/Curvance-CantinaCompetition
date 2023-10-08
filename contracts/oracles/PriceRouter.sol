@@ -2,10 +2,10 @@
 pragma solidity ^0.8.17;
 
 import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
-import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.sol";
+import { IChainlink } from "contracts/interfaces/external/chainlink/IChainlink.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { IOracleAdaptor, PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
 
@@ -27,11 +27,19 @@ contract PriceRouter {
 
     /// CONSTANTS ///
 
-    uint256 public constant DENOMINATOR = 10000; // Scalar for divergence value
-    uint256 public constant NO_ERROR = 0; // 0 = no error
-    uint256 public constant CAUTION = 1; // 1 = price divergence or 1 missing price
-    uint256 public constant BAD_SOURCE = 2; // 2 = could not price at all
-    address public immutable CHAINLINK_ETH_USD; // Feed to convert ETH -> USD
+
+    /// @notice Scalar for math
+    uint256 public constant DENOMINATOR = 10000;
+    /// @notice Return value indicating no price error
+    uint256 public constant NO_ERROR = 0;
+    /// @notice Return value indicating price divergence or 1 missing price
+    uint256 public constant CAUTION = 1;
+    /// @notice Return value indicating no price returned at all
+    uint256 public constant BAD_SOURCE = 2;
+    /// @notice The address of the chainlink feed to convert ETH -> USD
+    address public immutable CHAINLINK_ETH_USD;
+    /// @notice The number of decimals the aggregator responses with.
+    uint256 public immutable CHAINLINK_DECIMALS;
     ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
 
     // `bytes4(keccak256(bytes("PriceRouter__NotSupported()")))`
@@ -43,8 +51,10 @@ contract PriceRouter {
 
     /// STORAGE ///
 
-    uint256 public MAXIMUM_DIVERGENCE = 11000; // Corresponds to 10%
-    uint256 public CHAINLINK_MAX_DELAY = 1 days; // Maximum chainlink price staleness
+    /// @notice The maximum allowed divergence between prices in `DENOMINATOR`
+    uint256 public MAXIMUM_DIVERGENCE = 11000; // 10%
+    /// @notice The maximum delay accepted between answers from chainlink
+    uint256 public CHAINLINK_MAX_DELAY = 1 days;
 
     // Address => Adaptor approval status
     mapping(address => bool) public isApprovedAdaptor;
@@ -95,6 +105,7 @@ contract PriceRouter {
         centralRegistry = centralRegistry_;
         // Save the USD-ETH price feed because it is a widely used pricing path.
         CHAINLINK_ETH_USD = ETH_USDFEED; // 0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419 on mainnet
+        CHAINLINK_DECIMALS = 10 ** IChainlink(CHAINLINK_ETH_USD).decimals();
     }
 
     /// FUNCTIONS ///
@@ -584,7 +595,7 @@ contract PriceRouter {
     ///         it returns (answer, true).
     ///         Where true corresponded to hasError = true.
     function _getETHUSD() internal view returns (uint256, bool) {
-        (, int256 answer, , uint256 updatedAt, ) = AggregatorV3Interface(
+        (, int256 answer, , uint256 updatedAt, ) = IChainlink(
             CHAINLINK_ETH_USD
         ).latestRoundData();
 
@@ -614,10 +625,10 @@ contract PriceRouter {
     ) internal pure returns (uint256) {
         if (!currentFormatInUSD) {
             // current format is in ETH and we want USD
-            return (currentPrice * conversionRate);
+            return (currentPrice * conversionRate) / CHAINLINK_DECIMALS;
         }
 
-        return (currentPrice / conversionRate);
+        return (currentPrice * CHAINLINK_DECIMALS) / conversionRate;
     }
 
     /// @notice Processes the price data from two different feeds.

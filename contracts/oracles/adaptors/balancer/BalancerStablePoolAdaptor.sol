@@ -81,29 +81,38 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
         uint256 minPrice = type(uint256).max;
         uint256 price;
         uint256 errorCode;
+        
         for (uint256 i; i < numUnderlyingOrConstituent; ++i) {
             // Break when a zero address is found.
-            if (address(data.underlyingOrConstituent[i]) == address(0)) break;
+            if (address(data.underlyingOrConstituent[i]) == address(0)){
+                break;
+            }
+
             (price, errorCode) = priceRouter.getPrice(
                 data.underlyingOrConstituent[i],
                 inUSD,
                 getLower
             );
             if (errorCode > 0) {
-                pData.hadError = true;
-                // If error code is BAD_SOURCE we can't use this price at all
-                // so continue.
-                if (errorCode == BAD_SOURCE) continue;
+                // If error code is BAD_SOURCE we can't use this price so continue.
+                if (errorCode == BAD_SOURCE){
+                    continue;
+                }
             }
+
             if (data.rateProviders[i] != address(0)) {
                 uint256 rate = IRateProvider(data.rateProviders[i]).getRate();
                 price = (price * 10 ** data.rateProviderDecimals[i]) / rate;
             }
-            if (price < minPrice) minPrice = price;
+
+            if (price < minPrice){
+                minPrice = price;
+            }
         }
 
-        if (minPrice == type(uint256).max) pData.hadError = true;
-        else {
+        if (minPrice == type(uint256).max){
+            pData.hadError = true;
+        } else {
             pData.price = uint240((price * pool.getRate()) / PRECISION);
         }
     }

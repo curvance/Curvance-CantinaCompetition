@@ -6,23 +6,28 @@ import { BaseOracleAdaptor } from "contracts/oracles/adaptors/BaseOracleAdaptor.
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 import { PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
-import { IChainlinkAggregator } from "contracts/interfaces/external/chainlink/IChainlinkAggregator.sol";
+import { IChainlink } from "contracts/interfaces/external/chainlink/IChainlink.sol";
 
 contract ChainlinkAdaptor is BaseOracleAdaptor {
     /// TYPES ///
 
     /// @notice Stores configuration data for Chainlink price sources.
-    /// @param heartbeat the max amount of time between price updates
-    ///                  - 0 defaults to using DEFAULT_HEART_BEAT
-    /// @param max the max valid price of the asset
-    ///            - 0 defaults to use aggregators max price buffered by ~10%
-    /// @param min the min valid price of the asset
-    ///            - 0 defaults to use aggregators min price buffered by ~10%
     struct FeedData {
-        IChainlinkAggregator aggregator;
+        /// @notice The current phase's aggregator address.
+        IChainlink aggregator;
+        /// @notice Whether the asset is configured or not.
+        /// @dev    false = unconfigured; true = configured
         bool isConfigured;
+        /// @notice Returns the number of decimals the aggregator responses with.
+        uint8 decimals;
+        /// @notice heartbeat the max amount of time between price updates
+        /// @dev    0 defaults to using DEFAULT_HEART_BEAT
         uint256 heartbeat;
+        /// @notice max the max valid price of the asset
+        /// @dev    0 defaults to use aggregators max price reduced by ~10%
         uint256 max;
+        /// @notice min the min valid price of the asset
+        /// @dev    0 defaults to use aggregators min price increased by ~10%
         uint256 min;
     }
 
@@ -85,8 +90,8 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
         bool inUSD
     ) external onlyElevatedPermissions {
         // Use Chainlink to get the min and max of the asset.
-        IChainlinkAggregator feedAggregator = IChainlinkAggregator(
-            IChainlinkAggregator(aggregator).aggregator()
+        IChainlink feedAggregator = IChainlink(
+            IChainlink(aggregator).aggregator()
         );
 
         uint256 maxFromChainlink = uint256(
@@ -135,11 +140,12 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
             "ChainlinkAdaptor: invalid min/max config"
         );
 
+        feedData.decimals = feedAggregator.decimals();
         feedData.heartbeat = feedData.heartbeat != 0
             ? feedData.heartbeat
             : DEFAULT_HEART_BEAT;
 
-        feedData.aggregator = IChainlinkAggregator(aggregator);
+        feedData.aggregator = IChainlink(aggregator);
         feedData.isConfigured = true;
         isSupportedAsset[asset] = true;
     }
@@ -196,31 +202,28 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
     /// @notice Parses the chainlink feed data for pricing of an asset.
     /// @dev Calls latestRoundData() from Chainlink to get the latest data
     ///      for pricing and staleness.
-    /// @param chainlinkFeed Chainlink feed details.
+    /// @param feed Chainlink feed details.
     /// @param inUSD A boolean to denote if the price is in USD.
     /// @return A structure containing the price, error status,
     ///         and the currency of the price.
     function _parseFeedData(
-        FeedData memory chainlinkFeed,
+        FeedData memory feed,
         bool inUSD
     ) internal view returns (PriceReturnData memory) {
-        (, int256 feedPrice, , uint256 updatedAt, ) = IChainlinkAggregator(
-            chainlinkFeed.aggregator
-        ).latestRoundData();
-        uint8 decimals = IChainlinkAggregator(chainlinkFeed.aggregator)
-            .decimals();
-        uint256 convertedPrice = (uint256(feedPrice) * 1e18) /
-            (10 ** decimals);
+
+        (, int256 price, , uint256 updatedAt, ) = 
+            IChainlink(feed.aggregator).latestRoundData();
+        uint256 newPrice = (uint256(price) * 1e18) / (10 ** feed.decimals);
 
         return (
             PriceReturnData({
-                price: uint240(convertedPrice),
+                price: uint240(newPrice),
                 hadError: _validateFeedData(
-                    uint256(feedPrice),
+                    uint256(price),
                     updatedAt,
-                    chainlinkFeed.max,
-                    chainlinkFeed.min,
-                    chainlinkFeed.heartbeat
+                    feed.max,
+                    feed.min,
+                    feed.heartbeat
                 ),
                 inUSD: inUSD
             })

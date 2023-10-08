@@ -22,7 +22,7 @@ interface IPriceRouter {
 
     /// @notice Notifies the price router that an asset has been removed
     ///         from the adaptor calling the function
-    function notifyAssetPriceFeedRemoval(address asset) external;
+    function notifyFeedRemoval(address asset) external;
 
     function isSupportedAsset(address asset) external view returns (bool);
 }
