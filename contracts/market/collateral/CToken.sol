@@ -136,7 +136,7 @@ contract CToken is ERC165, ReentrancyGuard {
 
         uint256 amount = 42069;
         // `tokens` should be equal to `amount` but we use tokens just incase
-        uint256 tokens = _enterVault(address(this), amount);
+        uint256 tokens = _enterVault(initializer, amount);
 
         // These values should always be zero but we will add them just incase
         totalSupply = totalSupply + tokens;

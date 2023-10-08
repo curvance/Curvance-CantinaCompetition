@@ -66,9 +66,9 @@ contract Lendtroller is ILendtroller, ERC165 {
     uint256 internal constant _MIN_LIQUIDATION_INCENTIVE = .01e18;
     /// @notice The maximum liquidation incentive. 5%
     uint256 internal constant _MAX_LIQUIDATION_FEE = .05e18;
-    // `bytes4(keccak256(bytes("Lendtroller__InvalidParameter()")))`
+    /// `bytes4(keccak256(bytes("Lendtroller__InvalidParameter()")))`
     uint256 internal constant _INVALID_PARAMETER_SELECTOR = 0x31765827;
-    // `bytes4(keccak256(bytes("Lendtroller__InsufficientShortfall()")))`
+    /// `bytes4(keccak256(bytes("Lendtroller__InsufficientShortfall()")))`
     uint256 internal constant _INSUFFICIENT_SHORTFALL_SELECTOR = 0x751bba8d;
     /// @notice Curvance DAO hub
     ICentralRegistry public immutable centralRegistry;

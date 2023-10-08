@@ -89,7 +89,7 @@ contract OCVE is ERC20 {
         cve = centralRegistry.CVE();
 
         // total call option allocation for airdrops
-        _mint(msg.sender, 7560001.242 ether);
+        _mint(msg.sender, 15750002.59 ether);
     }
 
     /// EXTERNAL FUNCTIONS ///

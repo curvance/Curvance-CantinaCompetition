@@ -11,18 +11,22 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 contract CVEAirdrop is ReentrancyGuard {
     
     /// CONSTANTS ///
-    
-    // Time by which users must claim their airdrop
-    uint256 public immutable endClaimTimestamp; 
-    uint256 public immutable maxClaim; // Maximum airdrop size
-    ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
+
+    /// @notice Maximum airdrop size any user can receive
+    uint256 public immutable maxClaim;
+    /// @notice Curvance DAO hub
+    ICentralRegistry public immutable centralRegistry;
 
     /// STORAGE ///
 
-    bytes32 public airdropMerkleRoot; // Airdrop Merkle Root to validate claims
-    uint256 public isPaused = 2; // 1 = unpaused; 2 = paused
-
-    // User => Has Claimed
+    /// @notice Airdrop Merkle Root to validate claims
+    bytes32 public airdropMerkleRoot;
+    /// @notice Airdrop claim state; 1 = unpaused; 2 = paused
+    uint256 public isPaused = 2;
+    /// @notice Time by which users must claim their airdrop
+    uint256 public endClaimTimestamp;
+    
+    /// User => Has Claimed
     mapping(address => bool) public airdropClaimed;
 
     /// EVENTS ///
@@ -59,7 +63,6 @@ contract CVEAirdrop is ReentrancyGuard {
                 revert CVEAirdrop__ParametersareInvalid();
             }
         centralRegistry = centralRegistry_;
-        endClaimTimestamp = block.timestamp + (12 weeks);
         maxClaim = maxClaim_;
 
     }
@@ -173,7 +176,7 @@ contract CVEAirdrop is ReentrancyGuard {
                     );
             }
         }
-        
+
         return false;
     }
 
@@ -247,6 +250,14 @@ contract CVEAirdrop is ReentrancyGuard {
     /// @notice Set isPaused state
     /// @param state new pause state
     function setPauseState(bool state) external onlyDaoPermissions {
+        uint256 currentState = isPaused;
         isPaused = state ? 2: 1;
+
+        // If it was paused prior, 
+        // you need to provide users 3 months to claim their airdrop
+        if (isPaused == 1 && currentState == 2){
+            endClaimTimestamp = block.timestamp + (12 weeks); 
+        }
+
     }
 }

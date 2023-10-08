@@ -18,9 +18,9 @@ contract CVELocker is ReentrancyGuard {
     uint256 public constant EPOCH_DURATION = 2 weeks;
     /// @notice Scalar for math
     uint256 public constant EXP_SCALE = 1e18;
-    // `bytes4(keccak256(bytes("CVELocker__Unauthorized()")))`
+    /// `bytes4(keccak256(bytes("CVELocker__Unauthorized()")))`
     uint256 internal constant _CVELOCKER_UNAUTHORIZED_SELECTOR = 0x82274acf;
-    // `bytes4(keccak256(bytes("CVELocker__NoEpochRewards()")))`
+    /// `bytes4(keccak256(bytes("CVELocker__NoEpochRewards()")))`
     uint256 internal constant _NO_EPOCH_REWARDS_SELECTOR = 0x95721ba7;
     /// @notice CVE contract address
     address public immutable cve;

@@ -4,13 +4,14 @@ pragma solidity ^0.8.17;
 import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { ERC20 } from "contracts/libraries/ERC20.sol";
+import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { ICVELocker, RewardsData } from "contracts/interfaces/ICVELocker.sol";
 import { IDelegateRegistry } from "contracts/interfaces/IDelegateRegistry.sol";
 
-contract VeCVE is ERC20 {
+contract VeCVE is ERC20, ReentrancyGuard {
     /// TYPES ///
 
     struct Lock {
@@ -183,7 +184,7 @@ contract VeCVE is ERC20 {
         RewardsData calldata rewardsData,
         bytes calldata params,
         uint256 aux
-    ) external canLock(amount) {
+    ) external canLock(amount) nonReentrant {
         SafeTransferLib.safeTransferFrom(
             cve,
             msg.sender,
@@ -216,7 +217,7 @@ contract VeCVE is ERC20 {
         RewardsData calldata rewardsData,
         bytes calldata params,
         uint256 aux
-    ) external canLock(amount) {
+    ) external canLock(amount) nonReentrant {
         if (
             !centralRegistry.isVeCVELocker(msg.sender) &&
             !centralRegistry.isGaugeController(msg.sender)
@@ -254,7 +255,7 @@ contract VeCVE is ERC20 {
         RewardsData calldata rewardsData,
         bytes calldata params,
         uint256 aux
-    ) external {
+    ) external nonReentrant {
         if (isShutdown == 2) {
             revert VeCVE_VeCVEShutdown();
         }
@@ -321,7 +322,7 @@ contract VeCVE is ERC20 {
         RewardsData calldata rewardsData,
         bytes calldata params,
         uint256 aux
-    ) external canLock(amount) {
+    ) external canLock(amount) nonReentrant {
         SafeTransferLib.safeTransferFrom(
             cve,
             msg.sender,
@@ -360,7 +361,7 @@ contract VeCVE is ERC20 {
         RewardsData calldata rewardsData,
         bytes calldata params,
         uint256 aux
-    ) external canLock(amount) {
+    ) external canLock(amount) nonReentrant {
         if (
             !centralRegistry.isVeCVELocker(msg.sender) &&
             !centralRegistry.isGaugeController(msg.sender)
@@ -399,7 +400,7 @@ contract VeCVE is ERC20 {
         RewardsData calldata rewardsData,
         bytes calldata params,
         uint256 aux
-    ) external {
+    ) external nonReentrant {
         Lock[] storage locks = userLocks[msg.sender];
 
         // Length is index + 1 so has to be less than array length
@@ -451,7 +452,7 @@ contract VeCVE is ERC20 {
         RewardsData calldata rewardsData,
         bytes memory params,
         uint256 aux
-    ) external {
+    ) external nonReentrant {
         // Claim pending locker rewards
         _claimRewards(msg.sender, rewardRecipient, rewardsData, params, aux);
 
@@ -599,7 +600,7 @@ contract VeCVE is ERC20 {
         RewardsData calldata rewardsData,
         bytes calldata params,
         uint256 aux
-    ) external {
+    ) external nonReentrant {
         // Claim pending locker rewards
         _claimRewards(msg.sender, rewardRecipient, rewardsData, params, aux);
 
@@ -694,7 +695,7 @@ contract VeCVE is ERC20 {
         RewardsData calldata rewardsData,
         bytes calldata params,
         uint256 aux
-    ) external {
+    ) external nonReentrant {
         Lock[] storage locks = userLocks[msg.sender];
 
         // Length is index + 1 so has to be less than array length
@@ -747,7 +748,7 @@ contract VeCVE is ERC20 {
         RewardsData calldata rewardsData,
         bytes calldata params,
         uint256 aux
-    ) external {
+    ) external nonReentrant {
         Lock[] storage locks = userLocks[msg.sender];
 
         // Length is index + 1 so has to be less than array length
