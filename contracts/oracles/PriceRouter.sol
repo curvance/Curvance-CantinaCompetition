@@ -243,6 +243,12 @@ contract PriceRouter {
         address asset,
         bool inUSD
     ) external view returns (FeedData[] memory) {
+        bool isMToken;
+        if (mTokenAssets[asset].isMToken) {
+            isMToken = mTokenAssets[asset].isMToken;
+            asset = mTokenAssets[asset].underlying;
+        }
+
         uint256 numAssetPriceFeeds = assetPriceFeeds[asset].length;
         if (numAssetPriceFeeds == 0) {
             _revert(_NOT_SUPPORTED_SELECTOR);
@@ -255,6 +261,12 @@ contract PriceRouter {
         if (numAssetPriceFeeds < 2) {
             data[0] = getPriceFromFeed(asset, 0, inUSD, true);
             data[1] = getPriceFromFeed(asset, 0, inUSD, false);
+            if (isMToken) {
+                uint256 decimals = IERC20(asset).decimals();
+                data[0] = (data[0] * 1e18) / (10 ** decimals);
+                data[1] = (data[1] * 1e18) / (10 ** decimals);
+            }
+            
             return data;
         }
 
@@ -264,6 +276,14 @@ contract PriceRouter {
         data[1] = getPriceFromFeed(asset, 0, inUSD, false);
         data[2] = getPriceFromFeed(asset, 1, inUSD, true);
         data[3] = getPriceFromFeed(asset, 1, inUSD, false);
+
+        if (isMToken) {
+            uint256 decimals = IERC20(asset).decimals();
+            data[0] = (data[0] * 1e18) / (10 ** decimals);
+            data[1] = (data[1] * 1e18) / (10 ** decimals);
+            data[2] = (data[2] * 1e18) / (10 ** decimals);
+            data[3] = (data[3] * 1e18) / (10 ** decimals);
+        }
 
         return data;
     }

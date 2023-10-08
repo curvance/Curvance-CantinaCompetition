@@ -131,7 +131,7 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
         }
 
         require(
-            feedData.min < feedData.max,
+            minFromChainklink < maxFromChainlink,
             "ChainlinkAdaptor: invalid min/max config"
         );
 
