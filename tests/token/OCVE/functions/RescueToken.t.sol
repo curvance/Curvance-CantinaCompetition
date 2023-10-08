@@ -50,16 +50,19 @@ contract OCVERescueTokenTest is TestBaseOCVE {
     function test_oCVERescueToken_success() public {
         uint256 ethBalance = address(oCVE).balance;
         uint256 usdcBalance = usdc.balanceOf(address(oCVE));
-        uint256 userEthBalance = user1.balance;
-        uint256 userUsdcBalance = usdc.balanceOf(user1);
+
+        address dao = address(centralRegistry.DaoAddress());
+        uint256 userEthBalance = dao.balance;
+        uint256 userUsdcBalance = usdc.balanceOf(dao);
 
         oCVE.rescueToken(address(0), 100);
         oCVE.rescueToken(_USDC_ADDRESS, 100);
 
         assertEq(address(oCVE).balance, ethBalance - 100);
         assertEq(usdc.balanceOf(address(oCVE)), usdcBalance - 100);
-        assertEq(user1.balance, userEthBalance + 100);
-        assertEq(usdc.balanceOf(user1), userUsdcBalance + 100);
+        
+        assertEq(dao.balance, userEthBalance + 100);
+        assertEq(usdc.balanceOf(dao), userUsdcBalance + 100);
     }
 
     receive() external payable {}

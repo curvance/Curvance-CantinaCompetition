@@ -30,7 +30,7 @@ contract CombineLocksTest is TestBaseVeCVE {
         lockIndexes.pop();
         lockIndexes.pop();
 
-        vm.expectRevert(VeCVE.VeCVE_InvalidLock.selector);
+        vm.expectRevert(VeCVE.VeCVE__InvalidLock.selector);
         veCVE.combineLocks(
             lockIndexes,
             false,
@@ -48,7 +48,7 @@ contract CombineLocksTest is TestBaseVeCVE {
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
         lockIndexes.push(3);
 
-        vm.expectRevert(VeCVE.VeCVE_InvalidLock.selector);
+        vm.expectRevert(VeCVE.VeCVE__InvalidLock.selector);
         veCVE.combineLocks(
             lockIndexes,
             false,
@@ -67,7 +67,7 @@ contract CombineLocksTest is TestBaseVeCVE {
         lockIndexes[1] = 2;
         lockIndexes[2] = 1;
 
-        vm.expectRevert("VeCVE: lockIndexes misconfigured");
+        vm.expectRevert(VeCVE.VeCVE__ParametersareInvalid.selector);
         veCVE.combineLocks(
             lockIndexes,
             false,
@@ -111,7 +111,7 @@ contract CombineLocksTest is TestBaseVeCVE {
             0
         );
 
-        vm.expectRevert();
+        vm.expectRevert(VeCVE.VeCVE__ParametersareInvalid.selector);
         veCVE.userLocks(address(this), 1);
 
         (lockAmount, unlockTime) = veCVE.userLocks(address(this), 0);
@@ -163,7 +163,7 @@ contract CombineLocksTest is TestBaseVeCVE {
             0
         );
 
-        vm.expectRevert();
+        vm.expectRevert(VeCVE.VeCVE__ParametersareInvalid.selector);
         veCVE.userLocks(address(this), 1);
 
         (lockAmount, unlockTime) = veCVE.userLocks(address(this), 0);

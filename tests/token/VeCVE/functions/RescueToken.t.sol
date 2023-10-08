@@ -16,12 +16,12 @@ contract rescueTokenTest is TestBaseVeCVE {
     function test_rescueToken_fail_whenCallerIsNotAuthorized() public {
         vm.prank(address(1));
 
-        vm.expectRevert("VeCVE: UNAUTHORIZED");
+        vm.expectRevert(VeCVE.VeCVE__Unauthorized.selector);
         veCVE.rescueToken(_USDC_ADDRESS, 100);
     }
 
     function test_rescueToken_fail_whenTokenIsCVE() public {
-        vm.expectRevert("cannot withdraw cve token");
+        vm.expectRevert(VeCVE.VeCVE__NonTransferrable.selector);
         veCVE.rescueToken(address(cve), 100);
     }
 

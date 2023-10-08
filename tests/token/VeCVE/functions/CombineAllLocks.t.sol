@@ -19,7 +19,7 @@ contract CombineAllLocksTest is TestBaseVeCVE {
         bool isFreshLock,
         bool isFreshLockContinuous
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
-        vm.expectRevert(VeCVE.VeCVE_InvalidLock.selector);
+        vm.expectRevert(VeCVE.VeCVE__InvalidLock.selector);
         veCVE.combineAllLocks(false, address(this), rewardsData, "", 0);
     }
 
@@ -48,7 +48,7 @@ contract CombineAllLocksTest is TestBaseVeCVE {
 
         veCVE.combineAllLocks(true, address(this), rewardsData, "", 0);
 
-        vm.expectRevert();
+        vm.expectRevert(VeCVE.VeCVE__ParametersareInvalid.selector);
         veCVE.userLocks(address(this), 1);
 
         (lockAmount, unlockTime) = veCVE.userLocks(address(this), 0);
@@ -92,7 +92,7 @@ contract CombineAllLocksTest is TestBaseVeCVE {
 
         veCVE.combineAllLocks(false, address(this), rewardsData, "", 0);
 
-        vm.expectRevert();
+        vm.expectRevert(VeCVE.VeCVE__ParametersareInvalid.selector);
         veCVE.userLocks(address(this), 1);
 
         (lockAmount, unlockTime) = veCVE.userLocks(address(this), 0);

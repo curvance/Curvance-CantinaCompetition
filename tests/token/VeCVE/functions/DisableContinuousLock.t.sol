@@ -19,7 +19,7 @@ contract DisableContinuousLockTest is TestBaseVeCVE {
         bool isFreshLock,
         bool isFreshLockContinuous
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
-        vm.expectRevert(VeCVE.VeCVE_InvalidLock.selector);
+        vm.expectRevert(VeCVE.VeCVE__InvalidLock.selector);
         veCVE.disableContinuousLock(1, address(this), rewardsData, "", 0);
     }
 
@@ -30,7 +30,7 @@ contract DisableContinuousLockTest is TestBaseVeCVE {
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
         veCVE.lock(100, false, address(this), rewardsData, "", 0);
 
-        vm.expectRevert(VeCVE.VeCVE_NotContinuousLock.selector);
+        vm.expectRevert(VeCVE.VeCVE__LockTypeMismatch.selector);
         veCVE.disableContinuousLock(1, address(this), rewardsData, "", 0);
     }
 

@@ -31,10 +31,12 @@ contract VeCVE is ERC20, ReentrancyGuard {
     uint256 public constant LOCK_DURATION = 52 weeks; // in seconds
     uint256 public constant DENOMINATOR = 10000; // Scalar for math
 
-    // @dev `bytes4(keccak256(bytes("VeCVE_InvalidLock()")))`
-    uint256 internal constant _INVALID_LOCK_SELECTOR = 0x3ca0e7ee;
-    // @dev `bytes4(keccak256(bytes("VeCVE_VeCVEShutdown()")))`
-    uint256 internal constant _VECVE_SHUTDOWN_SELECTOR = 0x8204c65e;
+    /// @dev `bytes4(keccak256(bytes("VeCVE__Unauthorized()")))`
+    uint256 internal constant _UNAUTHORIZED_SELECTOR = 0x32c4d25d;
+    /// @dev `bytes4(keccak256(bytes("VeCVE__InvalidLock()")))`
+    uint256 internal constant _INVALID_LOCK_SELECTOR = 0x21d223d9;
+    /// @dev `bytes4(keccak256(bytes("VeCVE__VeCVEShutdown()")))`
+    uint256 internal constant _VECVE_SHUTDOWN_SELECTOR = 0x3ad2450b;
 
     bytes32 private immutable _name; // token name metadata
     bytes32 private immutable _symbol; // token symbol metadata
@@ -76,12 +78,12 @@ contract VeCVE is ERC20, ReentrancyGuard {
 
     /// ERRORS ///
 
-    error VeCVE_NonTransferrable();
-    error VeCVE_ContinuousLock();
-    error VeCVE_NotContinuousLock();
-    error VeCVE_InvalidLock();
-    error VeCVE_VeCVEShutdown();
-    error VeCVE_onlyCVELocker();
+    error VeCVE__Unauthorized();
+    error VeCVE__NonTransferrable();
+    error VeCVE__LockTypeMismatch();
+    error VeCVE__InvalidLock();
+    error VeCVE__VeCVEShutdown();
+    error VeCVE__ParametersareInvalid();
 
     /// MODIFIERS ///
 
@@ -102,18 +104,16 @@ contract VeCVE is ERC20, ReentrancyGuard {
     }
 
     modifier onlyDaoPermissions() {
-        require(
-            centralRegistry.hasDaoPermissions(msg.sender),
-            "VeCVE: UNAUTHORIZED"
-        );
+        if (!centralRegistry.hasDaoPermissions(msg.sender)){
+            _revert(_UNAUTHORIZED_SELECTOR);
+        }
         _;
     }
 
     modifier onlyElevatedPermissions() {
-        require(
-            centralRegistry.hasElevatedPermissions(msg.sender),
-            "VeCVE: UNAUTHORIZED"
-        );
+        if (!centralRegistry.hasElevatedPermissions(msg.sender)){
+            _revert(_UNAUTHORIZED_SELECTOR);
+        }
         _;
     }
 
@@ -126,13 +126,12 @@ contract VeCVE is ERC20, ReentrancyGuard {
         _name = "Vote Escrowed CVE";
         _symbol = "VeCVE";
 
-        require(
-            ERC165Checker.supportsInterface(
+        if (!ERC165Checker.supportsInterface(
                 address(centralRegistry_),
                 type(ICentralRegistry).interfaceId
-            ),
-            "VeCVE: invalid central registry"
-        );
+            )){
+            revert VeCVE__ParametersareInvalid();
+        }
 
         centralRegistry = centralRegistry_;
         genesisEpoch = centralRegistry.genesisEpoch();
@@ -160,7 +159,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
             SafeTransferLib.forceSafeTransferETH(daoOperator, amount);
         } else {
             if (token == address(cve)) {
-                revert VeCVE_NonTransferrable();
+                revert VeCVE__NonTransferrable();
             }
 
             if (amount == 0){
@@ -266,7 +265,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
         uint256 aux
     ) external nonReentrant {
         if (isShutdown == 2) {
-            revert VeCVE_VeCVEShutdown();
+            revert VeCVE__VeCVEShutdown();
         }
 
         Lock[] storage locks = userLocks[msg.sender];
@@ -282,7 +281,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
             _revert(_INVALID_LOCK_SELECTOR);
         }
         if (unlockTimestamp == CONTINUOUS_LOCK_VALUE) {
-            revert VeCVE_ContinuousLock();
+            revert VeCVE__LockTypeMismatch();
         }
 
         // Claim pending locker rewards
@@ -417,7 +416,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
             _revert(_INVALID_LOCK_SELECTOR);
         }
         if (locks[lockIndex].unlockTime != CONTINUOUS_LOCK_VALUE) {
-            revert VeCVE_NotContinuousLock();
+            revert VeCVE__LockTypeMismatch();
         }
 
         // Claim pending locker rewards
@@ -488,10 +487,9 @@ contract VeCVE is ERC20, ReentrancyGuard {
             if (i != locksToCombineIndex) {
                 // If this is the first iteration we do not need to check
                 // for sorted lockIndexes
-                require(
-                    lockIndexes[i] < previousLockIndex,
-                    "VeCVE: lockIndexes misconfigured"
-                );
+                if (lockIndexes[i] >= previousLockIndex){
+                    revert VeCVE__ParametersareInvalid();
+                }
             }
 
             previousLockIndex = lockIndexes[i];
@@ -573,10 +571,9 @@ contract VeCVE is ERC20, ReentrancyGuard {
                 userLock.amount = uint216(lockAmount);
             }
         } else {
-            require(
-                userLock.unlockTime != CONTINUOUS_LOCK_VALUE,
-                "VeCVE: disable combined lock continuous mode first"
-            );
+            if (userLock.unlockTime == CONTINUOUS_LOCK_VALUE){
+                revert VeCVE__LockTypeMismatch();
+            }
             // Remove the previous unlock data
             _reduceTokenUnlocks(
                 msg.sender,
@@ -710,10 +707,9 @@ contract VeCVE is ERC20, ReentrancyGuard {
             _revert(_INVALID_LOCK_SELECTOR);
         }
 
-        require(
-            block.timestamp >= locks[lockIndex].unlockTime || isShutdown == 2,
-            "VeCVE: lock has not expired"
-        );
+        if (block.timestamp < locks[lockIndex].unlockTime && isShutdown != 2){
+            _revert(_INVALID_LOCK_SELECTOR);
+        }
 
         // Claim pending locker rewards
         _claimRewards(msg.sender, rewardRecipient, rewardsData, params, aux);
@@ -763,7 +759,9 @@ contract VeCVE is ERC20, ReentrancyGuard {
 
         uint256 penaltyValue = centralRegistry.earlyUnlockPenaltyValue();
 
-        require(penaltyValue > 0, "VeCVE: early unlocks disabled");
+        if (penaltyValue == 0){
+            _revert(_INVALID_LOCK_SELECTOR);
+        }
 
         // Claim pending locker rewards
         _claimRewards(msg.sender, rewardRecipient, rewardsData, params, aux);
@@ -858,8 +856,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
         address _cveLocker = address(cveLocker);
         assembly {
             if iszero(eq(caller(), _cveLocker)) {
-                //bytes4(keccak256("VeCVE_onlyCVELocker()")) = b5f2689b
-                mstore(0x00, 0xb5f2689b)
+                mstore(0x00, _UNAUTHORIZED_SELECTOR)
                 revert(0x1c, 0x04)
             }
         }
@@ -975,7 +972,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
     /// @dev This function always reverts, as the token is non-transferrable
     /// @return This function always reverts and does not return a value
     function transfer(address, uint256) public pure override returns (bool) {
-        revert VeCVE_NonTransferrable();
+        revert VeCVE__NonTransferrable();
     }
 
     /// @notice Overridden transferFrom function to prevent token transfers
@@ -986,7 +983,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
         address,
         uint256
     ) public pure override returns (bool) {
-        revert VeCVE_NonTransferrable();
+        revert VeCVE__NonTransferrable();
     }
 
     /// INTERNAL FUNCTIONS ///

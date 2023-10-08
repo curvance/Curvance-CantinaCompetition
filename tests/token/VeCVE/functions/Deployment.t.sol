@@ -7,7 +7,7 @@ import { TestBaseVeCVE } from "../TestBaseVeCVE.sol";
 
 contract VeCVEDeploymentTest is TestBaseVeCVE {
     function test_veCVEDeployment_fail_whenCentralRegistryIsInvalid() public {
-        vm.expectRevert("VeCVE: invalid central registry");
+        vm.expectRevert(VeCVE.VeCVE__ParametersareInvalid.selector);
         new VeCVE(ICentralRegistry(address(1)), 0);
     }
 
