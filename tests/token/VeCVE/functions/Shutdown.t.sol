@@ -2,6 +2,7 @@
 pragma solidity 0.8.17;
 
 import { TestBaseVeCVE } from "../TestBaseVeCVE.sol";
+import { VeCVE } from "contracts/token/VeCVE.sol";
 
 contract ShutdownTest is TestBaseVeCVE {
     function test_shutdown_fail_whenCallerIsNotAuthorized() public {
