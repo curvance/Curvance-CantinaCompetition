@@ -137,6 +137,10 @@ contract VeCVE is ERC20, ReentrancyGuard {
         genesisEpoch = centralRegistry.genesisEpoch();
         cve = centralRegistry.CVE();
         cveLocker = ICVELocker(centralRegistry.cveLocker());
+        if (clPointMultiplier_ <= DENOMINATOR){
+            revert VeCVE__ParametersareInvalid();
+        }
+
         clPointMultiplier = clPointMultiplier_;
     }
 
@@ -293,7 +297,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
 
         if (continuousLock) {
             locks[lockIndex].unlockTime = CONTINUOUS_LOCK_VALUE;
-            _updateTokenDataFromContinuousOn(
+            _updateDataToContinuousOn(
                 msg.sender,
                 priorUnlockEpoch,
                 _getContinuousPointValue(tokenAmount) - tokenAmount,
@@ -302,7 +306,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
         } else {
             locks[lockIndex].unlockTime = freshLockTimestamp();
             // Updates unlock data for chain and user for new unlock time
-            _updateTokenUnlockDataFromExtendedLock(
+            _updateUnlockDataToExtendedLock(
                 msg.sender,
                 priorUnlockEpoch,
                 unlockEpoch,
@@ -1110,7 +1114,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
                 user[lockIndex].unlockTime = CONTINUOUS_LOCK_VALUE;
                 // Decrement their previous non-continuous lock value
                 // and increase points by the continuous lock value
-                _updateTokenDataFromContinuousOn(
+                _updateDataToContinuousOn(
                     recipient,
                     priorUnlockEpoch,
                     _getContinuousPointValue(newTokenAmount) -
@@ -1122,7 +1126,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
                 uint256 unlockEpoch = freshLockEpoch();
                 // Update unlock data removing the old lock amount
                 // from old epoch and add the new lock amount to the new epoch
-                _updateTokenUnlockDataFromExtendedLock(
+                _updateUnlockDataToExtendedLock(
                     recipient,
                     priorUnlockEpoch,
                     unlockEpoch,
@@ -1239,7 +1243,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
     /// @param previousPoints The previous points to remove
     ///                        from the old unlock time
     /// @param points The new token points to add for the new unlock time
-    function _updateTokenUnlockDataFromExtendedLock(
+    function _updateUnlockDataToExtendedLock(
         address user,
         uint256 previousEpoch,
         uint256 epoch,
@@ -1270,7 +1274,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
     /// @param epoch The epoch to update the data
     /// @param tokenPoints The token points to add
     /// @param tokenUnlocks The token unlocks to reduce
-    function _updateTokenDataFromContinuousOn(
+    function _updateDataToContinuousOn(
         address user,
         uint256 epoch,
         uint256 tokenPoints,

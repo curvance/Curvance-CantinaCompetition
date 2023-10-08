@@ -88,7 +88,7 @@ contract AuraPositionVault is BasePositionVault {
                         .rewardToken()
                 ).baseToken();
 
-                if (rewardToken != AURA) {
+                if (rewardToken != AURA && rewardToken != BAL) {
                     strategyData.rewardTokens.push() = rewardToken;
                 }
             }
