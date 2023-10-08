@@ -48,7 +48,7 @@ interface ICentralRegistry {
     function veCVE() external view returns (address);
 
     /// @notice Returns Call Option Address
-    function callOptionCVE() external view returns (address);
+    function oCVE() external view returns (address);
 
     /// @notice Returns Protocol Messaging Hub Address
     function protocolMessagingHub() external view returns (address);

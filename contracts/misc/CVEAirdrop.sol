@@ -20,7 +20,7 @@ contract CVEAirdrop is ReentrancyGuard {
     /// STORAGE ///
 
     /// @notice Airdrop Merkle Root to validate claims
-    bytes32 public airdropMerkleRoot;
+    bytes32 public merkleRoot;
     /// @notice Airdrop claim state; 1 = unpaused; 2 = paused
     uint256 public isPaused = 2;
     /// @notice Time by which users must claim their airdrop
@@ -32,7 +32,7 @@ contract CVEAirdrop is ReentrancyGuard {
     /// EVENTS ///
     
     event AirdropClaimed(address indexed claimer, uint256 amount);
-    event RemainingOCVEWithdrawn(uint256 amount);
+    event RemainingOptionsWithdrawn(uint256 amount);
 
     /// ERRORS ///
 
@@ -84,7 +84,7 @@ contract CVEAirdrop is ReentrancyGuard {
         }
 
         // Verify that the claim merkle root has been configured
-        if (airdropMerkleRoot == bytes32(0)){
+        if (merkleRoot == bytes32(0)){
             revert CVEAirdrop__Unauthorized();
         }
 
@@ -101,7 +101,7 @@ contract CVEAirdrop is ReentrancyGuard {
         // Compute the merkle leaf and verify the merkle proof
         if (!verify(
                 proof,
-                airdropMerkleRoot,
+                merkleRoot,
                 keccak256(abi.encodePacked(msg.sender, amount))
             )){
                 revert CVEAirdrop__NotEligible();
@@ -170,7 +170,7 @@ contract CVEAirdrop is ReentrancyGuard {
                 return
                     verify(
                         proof,
-                        airdropMerkleRoot,
+                        merkleRoot,
                         keccak256(abi.encodePacked(user, amount))
                     );
             }
@@ -217,23 +217,23 @@ contract CVEAirdrop is ReentrancyGuard {
         uint256 amount = IERC20(oCVE).balanceOf(address(this));
         SafeTransferLib.safeTransfer(oCVE, msg.sender, amount);
 
-        emit RemainingOCVEWithdrawn(amount);
+        emit RemainingOptionsWithdrawn(amount);
     }
 
-    /// @notice Set airdropMerkleRoot for airdrop validation
+    /// @notice Set merkleRoot for airdrop validation
     /// @param newRoot new merkle root
     function setMerkleRoot(bytes32 newRoot) external onlyDaoPermissions {
         if (newRoot == bytes32(0)){
             revert CVEAirdrop__ParametersareInvalid();
         }
 
-        if (airdropMerkleRoot == bytes32(0)){
+        if (merkleRoot == bytes32(0)){
             if (!centralRegistry.hasElevatedPermissions(msg.sender)){
                 revert CVEAirdrop__Unauthorized();
             }
         }
 
-        airdropMerkleRoot = newRoot;
+        merkleRoot = newRoot;
     }
 
     /// @notice Set isPaused state
