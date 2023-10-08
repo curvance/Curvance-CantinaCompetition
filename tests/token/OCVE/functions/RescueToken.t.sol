@@ -51,7 +51,7 @@ contract OCVERescueTokenTest is TestBaseOCVE {
         uint256 ethBalance = address(oCVE).balance;
         uint256 usdcBalance = usdc.balanceOf(address(oCVE));
 
-        address dao = address(centralRegistry.DaoAddress());
+        address dao = address(centralRegistry.daoAddress());
         uint256 userEthBalance = dao.balance;
         uint256 userUsdcBalance = usdc.balanceOf(dao);
 
@@ -60,7 +60,7 @@ contract OCVERescueTokenTest is TestBaseOCVE {
 
         assertEq(address(oCVE).balance, ethBalance - 100);
         assertEq(usdc.balanceOf(address(oCVE)), usdcBalance - 100);
-        
+
         assertEq(dao.balance, userEthBalance + 100);
         assertEq(usdc.balanceOf(dao), userUsdcBalance + 100);
     }
