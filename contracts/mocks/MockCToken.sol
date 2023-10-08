@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0
-pragma solidity ^0.8.15;
+pragma solidity ^0.8.17;
 
 import { ERC20 } from "contracts/libraries/ERC20.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 
 contract MockCToken is ERC20 {
-    using SafeERC20 for IERC20;
 
     uint8 private _decimals;
     address public underlying;
