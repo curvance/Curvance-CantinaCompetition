@@ -23,7 +23,6 @@ contract ProcessExpiredLockTest is TestBaseVeCVE {
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
         vm.expectRevert(VeCVE.VeCVE_InvalidLock.selector);
         veCVE.processExpiredLock(
-            address(this),
             1,
             false,
             false,
@@ -41,7 +40,6 @@ contract ProcessExpiredLockTest is TestBaseVeCVE {
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
         vm.expectRevert("VeCVE: lock has not expired");
         veCVE.processExpiredLock(
-            address(this),
             0,
             false,
             false,
@@ -64,7 +62,6 @@ contract ProcessExpiredLockTest is TestBaseVeCVE {
         emit Unlocked(address(this), 30e18);
 
         veCVE.processExpiredLock(
-            address(this),
             0,
             false,
             true,
@@ -87,7 +84,6 @@ contract ProcessExpiredLockTest is TestBaseVeCVE {
         emit Unlocked(address(this), 30e18);
 
         veCVE.processExpiredLock(
-            address(this),
             0,
             false,
             false,

@@ -677,7 +677,6 @@ contract VeCVE is ERC20, ReentrancyGuard {
 
     /// @notice Processes an expired lock for the specified lock index,
     ///         and processes any pending locker rewards
-    /// @param recipient The address to send unlocked tokens to
     /// @param lockIndex The index of the lock to process
     /// @param relock Whether the expired lock should be relocked in a fresh lock
     /// @param continuousLock Whether the relocked fresh lock should be
@@ -687,7 +686,6 @@ contract VeCVE is ERC20, ReentrancyGuard {
     /// @param params Parameters for rewards claim function
     /// @param aux Auxiliary data
     function processExpiredLock(
-        address recipient,
         uint256 lockIndex,
         bool relock,
         bool continuousLock,
@@ -709,40 +707,38 @@ contract VeCVE is ERC20, ReentrancyGuard {
         );
 
         // Claim pending locker rewards
-        _claimRewards(recipient, rewardRecipient, rewardsData, params, aux);
+        _claimRewards(msg.sender, rewardRecipient, rewardsData, params, aux);
 
         uint256 lockAmount = locks[lockIndex].amount;
 
         if (relock) {
             // Token points will be caught up by _claimRewards call
             // so we can treat this as a fresh lock and increment rewards again
-            _lock(recipient, lockAmount, continuousLock);
+            _lock(msg.sender, lockAmount, continuousLock);
         } else {
             _burn(msg.sender, lockAmount);
             _removeLock(locks, lockIndex);
 
-            // Transfer the recipient the unlocked CVE
-            SafeTransferLib.safeTransfer(cve, recipient, lockAmount);
+            // Transfer the user the unlocked CVE
+            SafeTransferLib.safeTransfer(cve, msg.sender, lockAmount);
 
             emit Unlocked(msg.sender, lockAmount);
 
             /// Might be better gas to check if first user lock has amount == 0
             if (locks.length == 0) {
-                cveLocker.resetUserClaimIndex(recipient);
+                cveLocker.resetUserClaimIndex(msg.sender);
             }
         }
     }
 
     /// @notice Processes an active lock as if its expired, for a penalty,
     ///         and processes any pending locker rewards
-    /// @param recipient The address to receive the unlocked CVE
     /// @param lockIndex The index of the lock to process
     /// @param rewardRecipient Address to receive the reward tokens
     /// @param rewardsData Rewards data for CVE rewards locker
     /// @param params Parameters for rewards claim function
     /// @param aux Auxiliary data
     function earlyExpireLock(
-        address recipient,
         uint256 lockIndex,
         address rewardRecipient,
         RewardsData calldata rewardsData,
@@ -761,7 +757,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
         require(penaltyValue > 0, "VeCVE: early unlocks disabled");
 
         // Claim pending locker rewards
-        _claimRewards(recipient, rewardRecipient, rewardsData, params, aux);
+        _claimRewards(msg.sender, rewardRecipient, rewardsData, params, aux);
 
         // Burn their VeCVE and remove their lock
         uint256 lockAmount = locks[lockIndex].amount;
@@ -777,10 +773,10 @@ contract VeCVE is ERC20, ReentrancyGuard {
             penaltyAmount
         );
 
-        // Transfer the remainder of the CVE to the recipient
+        // Transfer the remainder of the CVE
         SafeTransferLib.safeTransfer(
             cve,
-            recipient,
+            msg.sender,
             lockAmount - penaltyAmount
         );
 
@@ -788,7 +784,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
 
         /// Might be better gas to check if first user lock has amount == 0
         if (locks.length == 0) {
-            cveLocker.resetUserClaimIndex(recipient);
+            cveLocker.resetUserClaimIndex(msg.sender);
         }
     }
 
