@@ -33,14 +33,14 @@ contract FeeAccumulator is ReentrancyGuard {
 
     /// CONSTANTS ///
 
+    /// @notice Scalar for math
+    uint256 public constant EXP_SCALE = 1e18;
+    uint256 public constant SLIPPED_MINIMUM = 9500; // 5%
+    uint256 public constant SLIPPAGE_DENOMINATOR = 10000;
     /// @notice Address of fee token
     address public immutable feeToken;
     /// @notice Fee token decimal unit
-    uint256 public immutable feeTokenUnit;
-    /// @notice Scalar for math
-    uint256 public constant expScale = 1e18;
-    uint256 public constant SLIPPED_MINIMUM = 9500; // 5%
-    uint256 public constant SLIPPAGE_DENOMINATOR = 10000;
+    uint256 internal immutable _feeTokenUnit;
     /// @notice Curvance DAO hub
     ICentralRegistry public immutable centralRegistry;
 
@@ -100,7 +100,7 @@ contract FeeAccumulator is ReentrancyGuard {
 
         centralRegistry = centralRegistry_;
         feeToken = feeToken_;
-        feeTokenUnit = 10 ** IERC20(feeToken_).decimals();
+        _feeTokenUnit = 10 ** IERC20(feeToken_).decimals();
         _gasForCalldata = gasForCalldata_;
         _gasForCrosschain = gasForCrosschain_;
 
@@ -111,6 +111,14 @@ contract FeeAccumulator is ReentrancyGuard {
         // We set oneBalance address initially to DAO,
         // incase direct deposits to Gelato Network are not supported.
         gelatoOneBalance = IGelatoOneBalance(centralRegistry.daoAddress());
+
+        // We infinite approve fee token so that gelato one balance
+        // can drag funds to proper chain
+        SafeTransferLib.safeApprove(
+            feeToken,
+            address(gelatoOneBalance),
+            type(uint256).max
+        );
 
         // We infinite approve fee token so that protocol messaging hub
         // can drag funds to proper chain
@@ -211,7 +219,7 @@ contract FeeAccumulator is ReentrancyGuard {
         // Price Router always returns in 1e18 format based on decimals,
         // so we only need to worry about decimal differences here
         uint256 feeTokenRequiredForOTC = (
-            ((priceSwap * amountToOTC * feeTokenUnit) / priceFeeToken)
+            ((priceSwap * amountToOTC * _feeTokenUnit) / priceFeeToken)
         ) / 10 ** IERC20(tokenToOTC).decimals();
 
         SafeTransferLib.safeTransferFrom(
@@ -462,7 +470,18 @@ contract FeeAccumulator is ReentrancyGuard {
     function setOneBalanceAddress(
         address payable newGelatoOneBalance
     ) external onlyDaoPermissions {
+        // Revoke previous approval
+        SafeTransferLib.safeApprove(feeToken, address(gelatoOneBalance), 0);
+
         gelatoOneBalance = IGelatoOneBalance(newGelatoOneBalance);
+
+        // We infinite approve fee token so that gelato one balance
+        // can drag funds to proper chain
+        SafeTransferLib.safeApprove(
+            feeToken,
+            newGelatoOneBalance,
+            type(uint256).max
+        );
     }
 
     /// @notice Set status on whether a token should be earmarked to OTC
@@ -738,7 +757,7 @@ contract FeeAccumulator is ReentrancyGuard {
         feeTokenBalanceForChain =
             (feeTokenBalance * lockedTokens) /
             totalLockedTokens;
-        uint256 epochRewardsPerCVE = (feeTokenBalanceForChain * expScale) /
+        uint256 epochRewardsPerCVE = (feeTokenBalanceForChain * EXP_SCALE) /
             totalLockedTokens;
 
         address locker = centralRegistry.cveLocker();
