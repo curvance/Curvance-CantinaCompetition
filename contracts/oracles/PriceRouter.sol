@@ -212,12 +212,12 @@ contract PriceRouter {
 
     /// @notice Sets a new maximum divergence for price feeds.
     /// @dev Requires that the new divergence is greater than
-    ///      or equal to 10200 aka 2%.
+    ///      or equal to 10200 aka 2% and less than or equal to 12000 aka 20%.
     /// @param maxDivergence The new maximum divergence.
     function setPriceFeedMaxDivergence(
         uint256 maxDivergence
     ) external onlyElevatedPermissions {
-        if (maxDivergence < 10200) {
+        if (maxDivergence < 10200 || maxDivergence > 12000) {
             _revert(INVALID_PARAMETER_SELECTOR);
         }
 
@@ -225,13 +225,13 @@ contract PriceRouter {
     }
 
     /// @notice Sets a new maximum delay for Chainlink price feed.
-    /// @dev Requires that the new delay is less than 1 day.
+    /// @dev Requires that the new delay is less than 1 day and more than 1 hour.
     ///      Only callable by the DaoManager.
     /// @param delay The new maximum delay in seconds.
     function setChainlinkDelay(
         uint256 delay
     ) external onlyElevatedPermissions {
-        if (delay >= 1 days) {
+        if (delay < 1 hours || delay > 1 days) {
             _revert(INVALID_PARAMETER_SELECTOR);
         }
 
