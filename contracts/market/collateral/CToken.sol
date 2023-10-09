@@ -136,7 +136,20 @@ contract CToken is ERC165, ReentrancyGuard {
 
         uint256 amount = 42069;
         // `tokens` should be equal to `amount` but we use tokens just incase
-        uint256 tokens = _enterVault(msg.sender, amount);
+        // deposit into the vault
+
+        SafeTransferLib.safeTransferFrom(
+            underlying,
+            initializer,
+            address(this),
+            amount
+        );
+        
+        BasePositionVault _vault = vault;
+        SafeTransferLib.safeApprove(underlying, address(_vault), amount);
+        uint256 tokens _vault.deposit(amount, address(this));
+
+        //uint256 tokens = _enterVault(address(this), amount);
 
         // These values should always be zero but we will add them just incase
         totalSupply = totalSupply + tokens;
