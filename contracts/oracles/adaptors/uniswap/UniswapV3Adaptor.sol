@@ -89,7 +89,7 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
                         .quoteSpecificPoolsWithTimePeriod
                         .selector,
                     abi.encode(
-                        PRECISION,
+                        10 ** uniswapFeed.baseDecimals,
                         asset,
                         uniswapFeed.quoteToken,
                         pools,

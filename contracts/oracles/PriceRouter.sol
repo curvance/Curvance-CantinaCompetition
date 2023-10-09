@@ -622,7 +622,7 @@ contract PriceRouter {
         uint240 currentPrice,
         uint256 conversionRate,
         bool currentFormatInUSD
-    ) internal pure returns (uint256) {
+    ) internal view returns (uint256) {
         if (!currentFormatInUSD) {
             // current format is in ETH and we want USD
             return (currentPrice * conversionRate) / CHAINLINK_DECIMALS;
