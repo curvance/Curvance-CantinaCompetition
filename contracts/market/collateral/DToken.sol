@@ -817,9 +817,8 @@ contract DToken is ERC165, ReentrancyGuard {
         totalBorrows = totalBorrowsNew;
 
         // Check whether the market takes interest and debt has been accumulated
-        if (interestFactor > 0 && debtAccumulated > 0) {
-            uint256 newReserves = ((interestFactor * debtAccumulated) /
-                EXP_SCALE);
+        uint256 newReserves = ((interestFactor * debtAccumulated) / EXP_SCALE);
+        if (newReserves > 0) {
             totalReserves = newReserves + reservesPrior;
 
             // Deposit new reserves into gauge
