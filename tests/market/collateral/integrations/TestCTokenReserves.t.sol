@@ -60,7 +60,7 @@ contract TestCTokenReserves is TestBaseMarket {
             lendtroller.updateCollateralToken(
                 IMToken(address(cBALRETH)),
                 200,
-                0,
+                100,
                 4000, // liquidate at 71%
                 3000,
                 7000

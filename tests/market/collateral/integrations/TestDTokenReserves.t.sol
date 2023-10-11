@@ -275,7 +275,7 @@ contract TestDTokenReserves is TestBaseMarket {
             vm.stopPrank();
 
             assertEq(dDAI.totalReserves(), 0);
-            assertEq(gaugePool.balanceOf(address(dDAI), dao), 42069);
+            assertEq(gaugePool.balanceOf(address(dDAI), dao), 0);
             assertEq(dai.balanceOf(dao), daiBalanceBefore + withdrawAmount);
         }
     }
