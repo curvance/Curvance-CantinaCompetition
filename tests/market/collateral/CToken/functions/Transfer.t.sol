@@ -27,6 +27,8 @@ contract CTokenTransferTest is TestBaseCToken {
     }
 
     function test_cTokenTransfer_success() public {
+        cBALRETH.mint(100);
+
         uint256 balance = cBALRETH.balanceOf(address(this));
         uint256 user1Balance = cBALRETH.balanceOf(user1);
 
