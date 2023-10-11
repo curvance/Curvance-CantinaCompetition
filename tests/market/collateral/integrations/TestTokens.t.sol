@@ -2,8 +2,6 @@
 pragma solidity ^0.8.13;
 
 import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.sol";
-import { IUniswapV2Router } from "contracts/interfaces/external/uniswap/IUniswapV2Router.sol";
-import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { MockDataFeed } from "contracts/mocks/MockDataFeed.sol";
 
 import "tests/market/TestBaseMarket.sol";
@@ -11,9 +9,6 @@ import "tests/market/TestBaseMarket.sol";
 contract User {}
 
 contract TestTokens is TestBaseMarket {
-    address internal constant _UNISWAP_V2_ROUTER =
-        0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
-
     address public owner;
 
     receive() external payable {}
@@ -77,8 +72,6 @@ contract TestTokens is TestBaseMarket {
 
         // provide enough liquidity
         provideEnoughLiquidityForLeverage();
-
-        centralRegistry.addSwapper(_UNISWAP_V2_ROUTER);
 
         // use mock pricing for testing
         mockDaiFeed = new MockDataFeed(_CHAINLINK_DAI_USD);
