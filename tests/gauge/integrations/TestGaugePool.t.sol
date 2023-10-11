@@ -281,7 +281,7 @@ contract TestGaugePool is TestBaseMarket {
         poolWeights[1] = 200 * 2 weeks;
         vm.prank(address(protocolMessagingHub));
         gaugePool.setEmissionRates(2, tokensParam, poolWeights);
-        vm.prank(protocolMessagingHub);
+        vm.prank(address(protocolMessagingHub));
         cve.mintGaugeEmissions(address(gaugePool), 400 * 2 weeks);
 
         // check pending rewards after 2 weeks
@@ -318,7 +318,7 @@ contract TestGaugePool is TestBaseMarket {
         poolWeights[1] = 200 * 2 weeks;
         vm.prank(address(protocolMessagingHub));
         gaugePool.setEmissionRates(1, tokensParam, poolWeights);
-        vm.prank(protocolMessagingHub);
+        vm.prank(address(protocolMessagingHub));
         cve.mintGaugeEmissions(address(gaugePool), 300 * 2 weeks);
 
         vm.warp(gaugePool.startTime() + 1 * 2 weeks);
