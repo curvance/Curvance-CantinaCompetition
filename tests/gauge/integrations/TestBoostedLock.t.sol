@@ -41,7 +41,7 @@ contract TestBoostedLock is TestBaseMarket {
         }
 
         // set gauge weights
-        vm.prank(protocolMessagingHub);
+        vm.prank(address(protocolMessagingHub));
         gaugePool.setEmissionRates(0, tokens, new uint256[](tokens.length));
 
         address[] memory tokensParam = new address[](1);
@@ -49,7 +49,7 @@ contract TestBoostedLock is TestBaseMarket {
         uint256[] memory poolWeights = new uint256[](1);
         poolWeights[0] = 100;
 
-        vm.prank(protocolMessagingHub);
+        vm.prank(address(protocolMessagingHub));
         gaugePool.setEmissionRates(0, tokensParam, poolWeights);
 
         // start epoch
@@ -91,9 +91,9 @@ contract TestBoostedLock is TestBaseMarket {
         uint256[] memory poolWeights = new uint256[](2);
         poolWeights[0] = 100 * 2 weeks;
         poolWeights[1] = 200 * 2 weeks;
-        vm.prank(protocolMessagingHub);
+        vm.prank(address(protocolMessagingHub));
         gaugePool.setEmissionRates(1, tokensParam, poolWeights);
-        vm.prank(protocolMessagingHub);
+        vm.prank(address(protocolMessagingHub));
         cve.mintGaugeEmissions(address(gaugePool), 300 * 2 weeks);
 
         vm.warp(gaugePool.startTime() + 1 * 2 weeks);
