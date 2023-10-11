@@ -28,26 +28,26 @@ contract ExerciseOptionTest is TestBaseOCVE {
     }
 
     function test_exerciseOption_fail_whenAmountIsZero() public {
-        vm.expectRevert("OCVE: invalid amount");
+        vm.expectRevert(OCVE.OCVE__ParametersareInvalid.selector);
         oCVE.exerciseOption(0);
     }
 
     function test_exerciseOption_fail_whenOptionsAreNotExercisable() public {
         skip(4 weeks);
 
-        vm.expectRevert("OCVE: Options not exercisable yet");
+        vm.expectRevert(OCVE.OCVE__CannotExercise.selector);
         oCVE.exerciseOption(oCVEBalance);
     }
 
     function test_exerciseOption_fail_whenCVEIsNotEnough() public {
-        vm.expectRevert("OCVE: not enough CVE remaining");
+        vm.expectRevert(OCVE.OCVE__CannotExercise.selector);
         oCVE.exerciseOption(oCVEBalance);
     }
 
     function test_exerciseOption_fail_whenOptionIsNotEnough() public {
         deal(address(cve), address(oCVE), oCVEBalance + 1);
 
-        vm.expectRevert("OCVE: not enough call options to exercise");
+        vm.expectRevert(OCVE.OCVE__CannotExercise.selector);
         oCVE.exerciseOption(oCVEBalance + 1);
     }
 
@@ -74,7 +74,7 @@ contract ExerciseOptionTest is TestBaseOCVE {
 
         deal(address(cve), address(oCVE), oCVEBalance);
 
-        vm.expectRevert("OCVE: invalid msg value");
+        vm.expectRevert(OCVE.OCVE__CannotExercise.selector);
         oCVE.exerciseOption{ value: oCVEBalance - 1 }(oCVEBalance);
     }
 

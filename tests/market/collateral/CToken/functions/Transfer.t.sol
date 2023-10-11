@@ -10,7 +10,7 @@ contract CTokenTransferTest is TestBaseCToken {
     event Transfer(address indexed from, address indexed to, uint256 amount);
 
     function test_cTokenTransfer_fail_whenSenderAndReceiverAreSame() public {
-        vm.expectRevert(CToken.CToken__TransferNotAllowed.selector);
+        vm.expectRevert(CToken.CToken__TransferError.selector);
         cBALRETH.transfer(address(this), 100);
     }
 

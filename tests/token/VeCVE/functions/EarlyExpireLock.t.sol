@@ -25,9 +25,8 @@ contract EarlyExpireLockTest is TestBaseVeCVE {
         bool isFreshLock,
         bool isFreshLockContinuous
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
-        vm.expectRevert(VeCVE.VeCVE_InvalidLock.selector);
+        vm.expectRevert(VeCVE.VeCVE__InvalidLock.selector);
         veCVE.earlyExpireLock(
-            address(this),
             1,
             address(this),
             rewardsData,
@@ -41,9 +40,8 @@ contract EarlyExpireLockTest is TestBaseVeCVE {
         bool isFreshLock,
         bool isFreshLockContinuous
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
-        vm.expectRevert("VeCVE: early unlocks disabled");
+        vm.expectRevert(VeCVE.VeCVE__InvalidLock.selector);
         veCVE.earlyExpireLock(
-            address(this),
             0,
             address(this),
             rewardsData,
@@ -65,7 +63,6 @@ contract EarlyExpireLockTest is TestBaseVeCVE {
         emit UnlockedWithPenalty(address(this), 30e18, panaltyAmount);
 
         veCVE.earlyExpireLock(
-            address(this),
             0,
             address(this),
             rewardsData,

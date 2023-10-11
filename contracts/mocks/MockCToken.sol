@@ -1,36 +1,45 @@
 // SPDX-License-Identifier: GPL-3.0
-pragma solidity ^0.8.15;
+pragma solidity ^0.8.17;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/interfaces/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { ERC20 } from "contracts/libraries/ERC20.sol";
+import { IERC20 } from "contracts/interfaces/IERC20.sol";
+import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 
 contract MockCToken is ERC20 {
-    using SafeERC20 for IERC20;
 
-    uint8 private __decimals;
-
+    string private _name;
+    string private _symbol;
+    uint8 private _decimals;
     address public underlying;
 
     constructor(
-        address _underlying,
-        string memory name,
-        string memory symbol,
-        uint8 _decimals
-    ) ERC20(name, symbol) {
-        underlying = _underlying;
-        __decimals = _decimals;
+        address underlying_,
+        string memory name_,
+        string memory symbol_,
+        uint8 decimals_
+    ) {
+        underlying = underlying_;
+        _name = name_;
+        _symbol = symbol_;
+        _decimals = decimals_;
+    }
+
+    function name() public view override returns (string memory) {
+        return _name;
+    }
+
+    function symbol() public view override returns (string memory) {
+        return _symbol;
     }
 
     function decimals() public view override returns (uint8) {
-        return __decimals;
+        return _decimals;
     }
 
     function mint(uint256 amount) external returns (bool) {
-        IERC20(underlying).safeTransferFrom(msg.sender, address(this), amount);
+        SafeTransferLib.safeTransferFrom(underlying, msg.sender, address(this), amount);
 
         _mint(msg.sender, amount);
-
         return true;
     }
 

@@ -21,7 +21,7 @@ contract ExtendLockTest is TestBaseVeCVE {
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
         veCVE.shutdown();
 
-        vm.expectRevert(VeCVE.VeCVE_VeCVEShutdown.selector);
+        vm.expectRevert(VeCVE.VeCVE__VeCVEShutdown.selector);
         veCVE.extendLock(0, true, address(this), rewardsData, "", 0);
     }
 
@@ -30,7 +30,7 @@ contract ExtendLockTest is TestBaseVeCVE {
         bool isFreshLock,
         bool isFreshLockContinuous
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
-        vm.expectRevert(VeCVE.VeCVE_InvalidLock.selector);
+        vm.expectRevert(VeCVE.VeCVE__InvalidLock.selector);
         veCVE.extendLock(1, true, address(this), rewardsData, "", 0);
     }
 
@@ -42,7 +42,7 @@ contract ExtendLockTest is TestBaseVeCVE {
         (, uint40 unlockTime) = veCVE.userLocks(address(this), 0);
         vm.warp(unlockTime + 1);
 
-        vm.expectRevert(VeCVE.VeCVE_InvalidLock.selector);
+        vm.expectRevert(VeCVE.VeCVE__InvalidLock.selector);
         veCVE.extendLock(0, true, address(this), rewardsData, "", 0);
     }
 
@@ -53,7 +53,7 @@ contract ExtendLockTest is TestBaseVeCVE {
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
         veCVE.lock(10e18, true, address(this), rewardsData, "", 0);
 
-        vm.expectRevert(VeCVE.VeCVE_ContinuousLock.selector);
+        vm.expectRevert(VeCVE.VeCVE__LockTypeMismatch.selector);
         veCVE.extendLock(1, true, address(this), rewardsData, "", 0);
     }
 

@@ -12,7 +12,7 @@ contract CTokenTransferFromTest is TestBaseCToken {
     function test_cTokenTransferFrom_fail_whenSenderAndReceiverAreSame()
         public
     {
-        vm.expectRevert(CToken.CToken__TransferNotAllowed.selector);
+        vm.expectRevert(CToken.CToken__TransferError.selector);
         cBALRETH.transferFrom(address(this), address(this), 1e18);
     }
 

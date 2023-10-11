@@ -88,7 +88,7 @@ contract AuraPositionVault is BasePositionVault {
                         .rewardToken()
                 ).baseToken();
 
-                if (rewardToken != AURA) {
+                if (rewardToken != AURA && rewardToken != BAL) {
                     strategyData.rewardTokens.push() = rewardToken;
                 }
             }
@@ -112,7 +112,7 @@ contract AuraPositionVault is BasePositionVault {
 
     // PERMISSIONED FUNCTIONS
 
-    function reQueryRewardTokens() external onlyDaoPermissions {
+    function reQueryRewardTokens() external {
         delete strategyData.rewardTokens;
 
         // add BAL as a reward token, then let aura tell you what rewards
@@ -150,7 +150,7 @@ contract AuraPositionVault is BasePositionVault {
         bytes calldata data
     ) external override onlyHarvestor returns (uint256 yield) {
         if (_vaultIsActive != 2) {
-            _revert(_VAULT_NOT_ACTIVE_SELECTOR);
+            _revert(VAULT_NOT_ACTIVE_SELECTOR);
         }
 
         uint256 pending = _calculatePendingRewards();

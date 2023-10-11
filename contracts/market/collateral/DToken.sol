@@ -105,9 +105,9 @@ contract DToken is ERC165, ReentrancyGuard {
     );
     /// ERRORS ///
 
-    error DToken__UnauthorizedCaller();
+    error DToken__Unauthorized();
     error DToken__ExcessiveValue();
-    error DToken__TransferNotAllowed();
+    error DToken__TransferError();
     error DToken__CashNotAvailable();
     error DToken__ValidationFailed();
     error DToken__ConstructorParametersareInvalid();
@@ -116,18 +116,16 @@ contract DToken is ERC165, ReentrancyGuard {
     /// MODIFIERS ///
 
     modifier onlyDaoPermissions() {
-        require(
-            centralRegistry.hasDaoPermissions(msg.sender),
-            "DToken: UNAUTHORIZED"
-        );
+        if (!centralRegistry.hasDaoPermissions(msg.sender)){
+            revert DToken__Unauthorized();
+        }
         _;
     }
 
     modifier onlyElevatedPermissions() {
-        require(
-            centralRegistry.hasElevatedPermissions(msg.sender),
-            "DToken: UNAUTHORIZED"
-        );
+        if (!centralRegistry.hasElevatedPermissions(msg.sender)){
+            revert DToken__Unauthorized();
+        }
         _;
     }
 
@@ -194,7 +192,7 @@ contract DToken is ERC165, ReentrancyGuard {
         address initializer
     ) external nonReentrant returns (bool) {
         if (msg.sender != address(lendtroller)) {
-            revert DToken__UnauthorizedCaller();
+            revert DToken__Unauthorized();
         }
 
         uint256 amount = 42069;
@@ -205,15 +203,13 @@ contract DToken is ERC165, ReentrancyGuard {
             amount
         );
 
-        // We do not need to calculate exchange rate here as we will always be the initial depositer
-        // with totalSupply equal to 0
+        // We do not need to calculate exchange rate here,
+        // `initializer` will always be the first depositor with totalSupply = 0
+        // These values should always be zero but we will add them just incase
         totalSupply = totalSupply + amount;
-        balanceOf[initializer] = balanceOf[initializer] + amount;
+        balanceOf[address(this)] = balanceOf[address(this)] + amount;
 
-        // emit events on gauge pool
-        _gaugePool().deposit(address(this), initializer, amount);
-
-        emit Transfer(address(0), initializer, amount);
+        emit Transfer(address(0), address(this), amount);
         return true;
     }
 
@@ -266,7 +262,7 @@ contract DToken is ERC165, ReentrancyGuard {
         bytes calldata params
     ) external nonReentrant {
         if (msg.sender != lendtroller.positionFolding()) {
-            revert DToken__UnauthorizedCaller();
+            revert DToken__Unauthorized();
         }
 
         accrueInterest();
@@ -304,7 +300,7 @@ contract DToken is ERC165, ReentrancyGuard {
         uint256 amount
     ) external nonReentrant {
         if (msg.sender != lendtroller.positionFolding()) {
-            revert DToken__UnauthorizedCaller();
+            revert DToken__Unauthorized();
         }
 
         accrueInterest();
@@ -328,7 +324,7 @@ contract DToken is ERC165, ReentrancyGuard {
         // Fail if borrower = liquidator
         assembly {
             if eq(borrower, caller()) {
-                // revert with DToken__UnauthorizedCaller()
+                // revert with DToken__Unauthorized()
                 mstore(0x00, 0xefeae624)
                 revert(0x1c, 0x04)
             }
@@ -373,7 +369,7 @@ contract DToken is ERC165, ReentrancyGuard {
         // Fail if borrower = liquidator
         assembly {
             if eq(borrower, caller()) {
-                // revert with DToken__UnauthorizedCaller()
+                // revert with DToken__Unauthorized()
                 mstore(0x00, 0xefeae624)
                 revert(0x1c, 0x04)
             }
@@ -431,7 +427,7 @@ contract DToken is ERC165, ReentrancyGuard {
         bytes calldata params
     ) external nonReentrant {
         if (msg.sender != lendtroller.positionFolding()) {
-            revert DToken__UnauthorizedCaller();
+            revert DToken__Unauthorized();
         }
 
         accrueInterest();
@@ -549,8 +545,8 @@ contract DToken is ERC165, ReentrancyGuard {
     /// Admin Functions
 
     /// @notice Rescue any token sent by mistake
-    /// @param token The token to rescue.
-    /// @param amount The amount of tokens to rescue.
+    /// @param token token to rescue
+    /// @param amount amount of `token` to rescue, 0 indicates to rescue all
     function rescueToken(
         address token,
         uint256 amount
@@ -558,22 +554,18 @@ contract DToken is ERC165, ReentrancyGuard {
         address daoOperator = centralRegistry.daoAddress();
 
         if (token == address(0)) {
-            if (address(this).balance < amount) {
-                revert DToken__ExcessiveValue();
+            if (amount == 0){
+                amount = address(this).balance;
             }
 
-            (bool success, ) = payable(daoOperator).call{ value: amount }("");
-
-            if (!success) {
-                revert DToken__ValidationFailed();
-            }
+            SafeTransferLib.forceSafeTransferETH(daoOperator, amount);
         } else {
             if (token == underlying) {
-                revert DToken__TransferNotAllowed();
+                revert DToken__TransferError();
             }
 
-            if (IERC20(token).balanceOf(address(this)) < amount) {
-                revert DToken__ExcessiveValue();
+            if (amount == 0){
+                amount = IERC20(token).balanceOf(address(this));
             }
 
             SafeTransferLib.safeTransfer(token, daoOperator, amount);
@@ -908,7 +900,7 @@ contract DToken is ERC165, ReentrancyGuard {
     ) internal {
         // Do not allow self-transfers
         if (from == to) {
-            revert DToken__TransferNotAllowed();
+            revert DToken__TransferError();
         }
 
         // Fails if transfer not allowed

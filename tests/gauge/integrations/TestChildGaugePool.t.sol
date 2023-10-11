@@ -126,7 +126,7 @@ contract TestChildGaugePool is TestBaseMarket {
         vm.prank(protocolMessagingHub);
         gaugePool.setEmissionRates(1, tokensParam, poolWeights);
         vm.prank(protocolMessagingHub);
-        cve.mintGaugeEmissions(300 * 2 weeks, address(gaugePool));
+        cve.mintGaugeEmissions(address(gaugePool), 300 * 2 weeks);
 
         for (uint256 i = 0; i < CHILD_GAUGE_COUNT; i++) {
             childGauges[i].setRewardPerSec(1, 300);
@@ -331,7 +331,7 @@ contract TestChildGaugePool is TestBaseMarket {
         vm.prank(protocolMessagingHub);
         gaugePool.setEmissionRates(1, tokensParam, poolWeights);
         vm.prank(protocolMessagingHub);
-        cve.mintGaugeEmissions(300 * 2 weeks, address(gaugePool));
+        cve.mintGaugeEmissions(address(gaugePool), 300 * 2 weeks);
 
         for (uint256 i = 0; i < CHILD_GAUGE_COUNT; i++) {
             childGauges[i].setRewardPerSec(1, 300);
@@ -373,7 +373,7 @@ contract TestChildGaugePool is TestBaseMarket {
         vm.prank(protocolMessagingHub);
         gaugePool.setEmissionRates(2, tokensParam, poolWeights);
         vm.prank(protocolMessagingHub);
-        cve.mintGaugeEmissions(400 * 2 weeks, address(gaugePool));
+        cve.mintGaugeEmissions(address(gaugePool), 400 * 2 weeks);
 
         // check pending rewards after 2 weeks
         vm.warp(block.timestamp + 2 weeks);

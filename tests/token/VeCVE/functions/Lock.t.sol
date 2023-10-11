@@ -15,7 +15,7 @@ contract LockTest is TestBaseVeCVE {
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
         veCVE.shutdown();
 
-        vm.expectRevert(VeCVE.VeCVE_VeCVEShutdown.selector);
+        vm.expectRevert(VeCVE.VeCVE__VeCVEShutdown.selector);
         veCVE.lock(100, true, address(this), rewardsData, "", 0);
     }
 
@@ -24,7 +24,7 @@ contract LockTest is TestBaseVeCVE {
         bool isFreshLock,
         bool isFreshLockContinuous
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
-        vm.expectRevert(VeCVE.VeCVE_InvalidLock.selector);
+        vm.expectRevert(VeCVE.VeCVE__InvalidLock.selector);
         veCVE.lock(0, true, address(this), rewardsData, "", 0);
     }
 

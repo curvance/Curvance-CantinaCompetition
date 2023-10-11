@@ -2,6 +2,7 @@
 pragma solidity 0.8.17;
 
 import { TestBaseOCVE } from "../TestBaseOCVE.sol";
+import { OCVE } from "contracts/token/OCVE.sol";
 
 contract WithdrawRemainingAirdropTokensTest is TestBaseOCVE {
     event RemainingCVEWithdrawn(uint256 amount);
@@ -11,7 +12,7 @@ contract WithdrawRemainingAirdropTokensTest is TestBaseOCVE {
     {
         vm.prank(address(1));
 
-        vm.expectRevert("OCVE: UNAUTHORIZED");
+        vm.expectRevert(OCVE.OCVE__Unauthorized.selector);
         oCVE.withdrawRemainingAirdropTokens();
     }
 
@@ -31,9 +32,9 @@ contract WithdrawRemainingAirdropTokensTest is TestBaseOCVE {
             paymentTokenCurrentPrice * _ONE
         );
 
-        skip(4 weeks);
+        skip(3 weeks);
 
-        vm.expectRevert("OCVE: Too early");
+        vm.expectRevert(OCVE.OCVE__TransferError.selector);
         oCVE.withdrawRemainingAirdropTokens();
     }
 

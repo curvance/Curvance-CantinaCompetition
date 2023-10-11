@@ -11,6 +11,7 @@ import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 import { RewardsData } from "contracts/interfaces/ICVELocker.sol";
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+import { ICVE } from "contracts/interfaces/ICVE.sol";
 
 contract GaugePool is GaugeController, ReentrancyGuard {
     /// TYPES ///
@@ -29,8 +30,10 @@ contract GaugePool is GaugeController, ReentrancyGuard {
 
     /// CONSTANTS ///
 
-    uint256 public constant DENOMINATOR = 10000; // Scalar for math
-    uint256 public constant PRECISION = 1e36; // Scalar for math
+    /// @notice Scalar for math
+    uint256 internal constant DENOMINATOR = 10000;
+    /// @notice Scalar for math
+    uint256 internal constant PRECISION = 1e36;
     address public lendtroller; // Lendtroller linked
 
     /// STORAGE ///
@@ -136,9 +139,6 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         address token,
         address user
     ) external view returns (uint256) {
-        if (!isGaugeEnabled(currentEpoch(), token)) {
-            revert GaugeErrors.InvalidToken();
-        }
 
         PoolInfo storage _pool = poolInfo[token];
         uint256 accRewardPerShare = _pool.accRewardPerShare;
@@ -313,13 +313,16 @@ contract GaugePool is GaugeController, ReentrancyGuard {
             revert GaugeErrors.NoReward();
         }
 
+        userInfo[token][msg.sender].rewardPending = 0;
+
         uint256 currentLockBoost = centralRegistry.lockBoostValue();
         // If theres a current lock boost, recognize their bonus rewards
         if (currentLockBoost > 0) {
-            rewards = (rewards * currentLockBoost) / DENOMINATOR;
+            uint256 boostedRewards = (rewards * currentLockBoost) / DENOMINATOR;
+            ICVE(cve).mintLockBoost(boostedRewards - rewards);
+            rewards = boostedRewards; 
         }
-        userInfo[token][msg.sender].rewardPending = 0;
-
+        
         SafeTransferLib.safeApprove(cve, address(veCVE), rewards);
         veCVE.increaseAmountAndExtendLockFor(
             msg.sender,
@@ -354,13 +357,15 @@ contract GaugePool is GaugeController, ReentrancyGuard {
             revert GaugeErrors.NoReward();
         }
 
+        userInfo[token][msg.sender].rewardPending = 0;
+
         uint256 currentLockBoost = centralRegistry.lockBoostValue();
         // If theres a current lock boost, recognize their bonus rewards
         if (currentLockBoost > 0) {
-            rewards = (rewards * currentLockBoost) / DENOMINATOR;
+            uint256 boostedRewards = (rewards * currentLockBoost) / DENOMINATOR;
+            ICVE(cve).mintLockBoost(boostedRewards - rewards);
+            rewards = boostedRewards; 
         }
-
-        userInfo[token][msg.sender].rewardPending = 0;
 
         SafeTransferLib.safeApprove(cve, address(veCVE), rewards);
         veCVE.lockFor(

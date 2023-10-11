@@ -18,14 +18,12 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
     /// @param secondsAgo period used for TWAP calculation
     /// @param baseDecimals the asset you want to price, decimals
     /// @param quoteDecimals the asset price is quoted in, decimals
-    /// @param baseToken the asset you want to price
     /// @param quoteToken the asset Twap calulation denominates in
     struct AdaptorData {
         address priceSource;
         uint32 secondsAgo;
         uint8 baseDecimals;
         uint8 quoteDecimals;
-        address baseToken;
         address quoteToken;
     }
 
@@ -35,7 +33,7 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
     uint32 public constant MINIMUM_SECONDS_AGO = 300;
 
     /// @notice Token amount to check uniswap twap price against
-    uint128 public constant ORACLE_PRECISION = 1e18;
+    uint128 public constant PRECISION = 1e18;
 
     /// @notice Chain WETH address.
     address public immutable WETH;
@@ -91,8 +89,8 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
                         .quoteSpecificPoolsWithTimePeriod
                         .selector,
                     abi.encode(
-                        ORACLE_PRECISION,
-                        uniswapFeed.baseToken,
+                        10 ** uniswapFeed.baseDecimals,
+                        asset,
                         uniswapFeed.quoteToken,
                         pools,
                         uniswapFeed.secondsAgo
@@ -218,7 +216,6 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
         } else revert("UniswapV3Adaptor: twap asset not in pool");
 
         adaptorData[asset] = parameters;
-
         isSupportedAsset[asset] = true;
     }
 
@@ -239,7 +236,6 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
 
         // Notify the price router that we are going
         // to stop supporting the asset
-        IPriceRouter(centralRegistry.priceRouter())
-            .notifyAssetPriceFeedRemoval(asset);
+        IPriceRouter(centralRegistry.priceRouter()).notifyFeedRemoval(asset);
     }
 }

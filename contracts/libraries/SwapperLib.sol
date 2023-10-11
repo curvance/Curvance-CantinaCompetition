@@ -92,6 +92,7 @@ library SwapperLib {
             !CommonLib.isETH(token) &&
             IERC20(token).allowance(address(this), spender) < amount
         ) {
+            SafeTransferLib.safeApprove(token, spender, 0);
             SafeTransferLib.safeApprove(token, spender, amount);
         }
     }

@@ -30,10 +30,10 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
 
     /// @notice The minimum acceptable twap duration when pricing
     uint32 public constant MINIMUM_TWAP_DURATION = 3600;
-
+    /// @notice Token amount to check uniswap twap price against
+    uint128 public constant PRECISION = 1e18;
     /// @notice Error code for bad source.
     uint256 public constant BAD_SOURCE = 2;
-
     /// @notice Current networks ptOracle
     /// @dev for mainnet use 0x414d3C8A26157085f286abE3BC6E1bb010733602
     IPendlePTOracle public immutable ptOracle;
@@ -89,9 +89,7 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
 
         // Multiply the quote asset price by the lpRate
         // to get the Lp Token fair value.
-        pData.price = uint240(
-            (price * lpRate) / 10 ** data.quoteAssetDecimals
-        );
+        pData.price = uint240((price * lpRate) / PRECISION);
     }
 
     /// @notice Add a Pendle Market as an asset.
@@ -165,7 +163,6 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
         delete adaptorData[asset];
 
         // Notify the price router that we are going to stop supporting the asset
-        IPriceRouter(centralRegistry.priceRouter())
-            .notifyAssetPriceFeedRemoval(asset);
+        IPriceRouter(centralRegistry.priceRouter()).notifyFeedRemoval(asset);
     }
 }

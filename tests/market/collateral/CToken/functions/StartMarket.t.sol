@@ -8,7 +8,7 @@ import { CToken } from "contracts/market/collateral/CToken.sol";
 
 contract CTokenStartMarketTest is TestBaseCToken {
     function test_cTokenStartMarket_fail_whenCallerIsNotLendtroller() public {
-        vm.expectRevert(CToken.CToken__UnauthorizedCaller.selector);
+        vm.expectRevert(CToken.CToken__Unauthorized.selector);
 
         cBALRETH.startMarket(address(0));
     }

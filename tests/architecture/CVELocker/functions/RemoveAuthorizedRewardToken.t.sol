@@ -2,6 +2,7 @@
 pragma solidity 0.8.17;
 
 import { TestBaseCVELocker } from "../TestBaseCVELocker.sol";
+import { CVELocker } from "contracts/architecture/CVELocker.sol";
 
 contract RemoveAuthorizedRewardTokenTest is TestBaseCVELocker {
     function test_removeAuthorizedRewardToken_fail_whenCallerIsNotAuthorized()
@@ -9,21 +10,21 @@ contract RemoveAuthorizedRewardTokenTest is TestBaseCVELocker {
     {
         vm.prank(address(1));
 
-        vm.expectRevert("CVELocker: UNAUTHORIZED");
+        vm.expectRevert(CVELocker.CVELocker__Unauthorized.selector);
         cveLocker.removeAuthorizedRewardToken(_USDC_ADDRESS);
     }
 
     function test_removeAuthorizedRewardToken_fail_whenTokenIsZeroAddress()
         public
     {
-        vm.expectRevert("CVELocker: Invalid Token Address");
+        vm.expectRevert(CVELocker.CVELocker__ParametersareInvalid.selector);
         cveLocker.removeAuthorizedRewardToken(address(0));
     }
 
     function test_removeAuthorizedRewardToken_fail_whenTokenIsNotAuthorized()
         public
     {
-        vm.expectRevert("CVELocker: Invalid Operation");
+        vm.expectRevert(CVELocker.CVELocker__ParametersareInvalid.selector);
         cveLocker.removeAuthorizedRewardToken(_USDC_ADDRESS);
     }
 

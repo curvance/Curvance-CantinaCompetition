@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.17;
 
-import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import { IChainlink } from "contracts/interfaces/external/chainlink/IChainlink.sol";
 import { TestBasePriceRouter } from "../TestBasePriceRouter.sol";
+import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
 
 contract GetPriceTest is TestBasePriceRouter {
     function test_getPrice_fail_whenNoFeedsAvailable() public {
@@ -13,7 +14,7 @@ contract GetPriceTest is TestBasePriceRouter {
     function test_getPrice_success() public {
         _addSinglePriceFeed();
 
-        (, int256 usdcPrice, , , ) = AggregatorV3Interface(_CHAINLINK_USDC_USD)
+        (, int256 usdcPrice, , , ) = IChainlink(_CHAINLINK_USDC_USD)
             .latestRoundData();
 
         (uint256 price, uint256 errorCode) = priceRouter.getPrice(
@@ -25,7 +26,7 @@ contract GetPriceTest is TestBasePriceRouter {
         assertEq(price, uint256(usdcPrice) * 1e10);
         assertEq(errorCode, 0);
 
-        (, int256 ethPrice, , , ) = AggregatorV3Interface(_CHAINLINK_USDC_ETH)
+        (, int256 ethPrice, , , ) = IChainlink(_CHAINLINK_USDC_ETH)
             .latestRoundData();
 
         (price, errorCode) = priceRouter.getPrice(_USDC_ADDRESS, false, true);

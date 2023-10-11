@@ -2,6 +2,7 @@
 pragma solidity 0.8.17;
 
 import { TestBaseCVELocker } from "../TestBaseCVELocker.sol";
+import { CVELocker } from "contracts/architecture/CVELocker.sol";
 
 contract NotifyLockerShutdownTest is TestBaseCVELocker {
     function test_notifyLockerShutdown_fail_whenCallerIsNotAuthorized()
@@ -9,7 +10,7 @@ contract NotifyLockerShutdownTest is TestBaseCVELocker {
     {
         vm.prank(address(1));
 
-        vm.expectRevert("CVELocker: UNAUTHORIZED");
+        vm.expectRevert(CVELocker.CVELocker__Unauthorized.selector);
         cveLocker.notifyLockerShutdown();
     }
 

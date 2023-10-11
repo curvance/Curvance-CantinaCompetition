@@ -18,18 +18,16 @@ contract CVELocker is ReentrancyGuard {
     uint256 public constant EPOCH_DURATION = 2 weeks;
     /// @notice Scalar for math
     uint256 public constant EXP_SCALE = 1e18;
-    // `bytes4(keccak256(bytes("CVELocker__Unauthorized()")))`
-    uint256 internal constant _CVELOCKER_UNAUTHORIZED_SELECTOR = 0x82274acf;
-    // `bytes4(keccak256(bytes("CVELocker__FailedETHTransfer()")))`
-    uint256 internal constant _FAILED_ETH_TRANSFER_SELECTOR = 0xe2e395e8;
-    // `bytes4(keccak256(bytes("CVELocker__NoEpochRewards()")))`
-    uint256 internal constant _NO_EPOCH_REWARDS_SELECTOR = 0x95721ba7;
+    /// `bytes4(keccak256(bytes("CVELocker__Unauthorized()")))`
+    uint256 internal constant CVELOCKER_UNAUTHORIZED_SELECTOR = 0x82274acf;
+    /// `bytes4(keccak256(bytes("CVELocker__NoEpochRewards()")))`
+    uint256 internal constant NO_EPOCH_REWARDS_SELECTOR = 0x95721ba7;
     /// @notice CVE contract address
     address public immutable cve;
     /// @notice Curvance DAO hub
     ICentralRegistry public immutable centralRegistry;
     /// @notice Reward token
-    address public immutable baseRewardToken;
+    address public immutable rewardToken;
     /// @notice Genesis Epoch timestamp
     uint256 public immutable genesisEpoch;
 
@@ -59,7 +57,6 @@ contract CVELocker is ReentrancyGuard {
 
     /// EVENTS ///
 
-    event TokenRecovered(address token, address to, uint256 amount);
     event RewardPaid(
         address user,
         address recipient,
@@ -69,27 +66,26 @@ contract CVELocker is ReentrancyGuard {
 
     /// ERRORS ///
 
-    error CVELocker__BaseRewardTokenIsZeroAddress();
+    error CVELocker__ParametersareInvalid();
     error CVELocker__Unauthorized();
-    error CVELocker__FailedETHTransfer();
     error CVELocker__NoEpochRewards();
     error CVELocker__WrongEpochRewardSubmission();
+    error CVELocker__TransferError();
+    error CVELocker__LockerStarted();
 
     /// MODIFIERS ///
 
     modifier onlyDaoPermissions() {
-        require(
-            centralRegistry.hasDaoPermissions(msg.sender),
-            "CVELocker: UNAUTHORIZED"
-        );
+        if (!centralRegistry.hasDaoPermissions(msg.sender)){
+            _revert(CVELOCKER_UNAUTHORIZED_SELECTOR);
+        }
         _;
     }
 
     modifier onlyElevatedPermissions() {
-        require(
-            centralRegistry.hasElevatedPermissions(msg.sender),
-            "CVELocker: UNAUTHORIZED"
-        );
+        if (!centralRegistry.hasElevatedPermissions(msg.sender)){
+            _revert(CVELOCKER_UNAUTHORIZED_SELECTOR);
+        }
         _;
     }
 
@@ -97,7 +93,7 @@ contract CVELocker is ReentrancyGuard {
         address _veCVE = address(veCVE);
         assembly {
             if iszero(eq(caller(), _veCVE)) {
-                mstore(0x00, _CVELOCKER_UNAUTHORIZED_SELECTOR)
+                mstore(0x00, CVELOCKER_UNAUTHORIZED_SELECTOR)
                 // return bytes 29-32 for the selector
                 revert(0x1c, 0x04)
             }
@@ -106,10 +102,9 @@ contract CVELocker is ReentrancyGuard {
     }
 
     modifier onlyFeeAccumulator() {
-        require(
-            msg.sender == centralRegistry.feeAccumulator(),
-            "CVELocker: UNAUTHORIZED"
-        );
+        if(msg.sender != centralRegistry.feeAccumulator()){
+            _revert(CVELOCKER_UNAUTHORIZED_SELECTOR);
+        }
         _;
     }
 
@@ -117,22 +112,21 @@ contract CVELocker is ReentrancyGuard {
 
     /// CONSTRUCTOR ///
 
-    constructor(ICentralRegistry centralRegistry_, address baseRewardToken_) {
-        require(
-            ERC165Checker.supportsInterface(
+    constructor(ICentralRegistry centralRegistry_, address rewardToken_) {
+        if(!ERC165Checker.supportsInterface(
                 address(centralRegistry_),
                 type(ICentralRegistry).interfaceId
-            ),
-            "CVELocker: invalid central registry"
-        );
+            )){
+            revert CVELocker__ParametersareInvalid();
+        }
 
-        if (baseRewardToken_ == address(0)) {
-            revert CVELocker__BaseRewardTokenIsZeroAddress();
+        if (rewardToken_ == address(0)) {
+            revert CVELocker__ParametersareInvalid();
         }
 
         centralRegistry = centralRegistry_;
         genesisEpoch = centralRegistry.genesisEpoch();
-        baseRewardToken = baseRewardToken_;
+        rewardToken = rewardToken_;
         cve = centralRegistry.CVE();
     }
 
@@ -156,34 +150,40 @@ contract CVELocker is ReentrancyGuard {
     }
 
     function startLocker() external onlyDaoPermissions {
-        require(lockerStarted == 1, "CVELocker: locker already started");
+        if (lockerStarted == 2){
+            revert CVELocker__LockerStarted();
+        }
 
         veCVE = IVeCVE(centralRegistry.veCVE());
         lockerStarted = 2;
     }
 
-    /// @notice Recover tokens sent accidentally to the contract
-    ///         or leftover rewards (excluding veCVE tokens)
-    /// @param token The address of the token to recover
-    /// @param to The address to receive the recovered tokens
-    /// @param amount The amount of tokens to recover
-    function recoverToken(
+    /// @notice Rescue any token sent by mistake
+    /// @param token token to rescue
+    /// @param amount amount of `token` to rescue, 0 indicates to rescue all
+    function rescueToken(
         address token,
-        address to,
         uint256 amount
     ) external onlyDaoPermissions {
-        require(
-            token != baseRewardToken,
-            "CVELocker: cannot withdraw reward token"
-        );
+        address daoOperator = centralRegistry.daoAddress();
 
-        if (amount == 0) {
-            amount = IERC20(token).balanceOf(address(this));
+        if (token == address(0)) {
+            if (amount == 0){
+                amount = address(this).balance;
+            }
+
+            SafeTransferLib.forceSafeTransferETH(daoOperator, amount);
+        } else {
+            if (token == rewardToken){
+                _revert(CVELOCKER_UNAUTHORIZED_SELECTOR);
+            }
+
+            if (amount == 0){
+                amount = IERC20(token).balanceOf(address(this));
+            }
+
+            SafeTransferLib.safeTransfer(token, daoOperator, amount);
         }
-
-        SafeTransferLib.safeTransfer(token, to, amount);
-
-        emit TokenRecovered(token, to, amount);
     }
 
     /// @notice Authorizes a new reward token.
@@ -192,11 +192,14 @@ contract CVELocker is ReentrancyGuard {
     function addAuthorizedRewardToken(
         address token
     ) external onlyElevatedPermissions {
-        require(token != address(0), "CVELocker: Invalid Token Address");
-        require(
-            authorizedRewardToken[token] < 2,
-            "CVELocker: Invalid Operation"
-        );
+        if (token == address(0)){
+            revert CVELocker__ParametersareInvalid();
+        }
+
+        if (authorizedRewardToken[token] == 2){
+            revert CVELocker__ParametersareInvalid();
+        }
+
         authorizedRewardToken[token] = 2;
     }
 
@@ -206,20 +209,23 @@ contract CVELocker is ReentrancyGuard {
     function removeAuthorizedRewardToken(
         address token
     ) external onlyDaoPermissions {
-        require(token != address(0), "CVELocker: Invalid Token Address");
-        require(
-            authorizedRewardToken[token] == 2,
-            "CVELocker: Invalid Operation"
-        );
+        if (token == address(0)){
+            revert CVELocker__ParametersareInvalid();
+        }
+
+        if (authorizedRewardToken[token] < 2){
+            revert CVELocker__ParametersareInvalid();
+        }
+
         authorizedRewardToken[token] = 1;
     }
 
     function notifyLockerShutdown() external {
-        require(
-            msg.sender == address(veCVE) ||
-                centralRegistry.hasElevatedPermissions(msg.sender),
-            "CVELocker: UNAUTHORIZED"
-        );
+        if (msg.sender != address(veCVE) &&
+                !centralRegistry.hasElevatedPermissions(msg.sender)){
+            _revert(CVELOCKER_UNAUTHORIZED_SELECTOR);
+        }
+
         isShutdown = 2;
     }
 
@@ -292,7 +298,7 @@ contract CVELocker is ReentrancyGuard {
         // If there are no epoch rewards to claim, revert
         assembly {
             if iszero(epochs) {
-                mstore(0x00, _NO_EPOCH_REWARDS_SELECTOR)
+                mstore(0x00, NO_EPOCH_REWARDS_SELECTOR)
                 // return bytes 29-32 for the selector
                 revert(0x1c, 0x04)
             }
@@ -335,7 +341,7 @@ contract CVELocker is ReentrancyGuard {
             veCVE.userTokenPoints(user) > 0
         ) {
             unchecked {
-                return nextEpochToDeliver - (userNextClaimIndex[user] - 1);
+                return nextEpochToDeliver - (userNextClaimIndex[user]);
             }
         }
 
@@ -432,11 +438,10 @@ contract CVELocker is ReentrancyGuard {
             return 0;
         }
 
-        if (rewardsData.desiredRewardToken != baseRewardToken) {
-            require(
-                authorizedRewardToken[rewardsData.desiredRewardToken] == 2,
-                "CVELocker: unsupported reward token"
-            );
+        if (rewardsData.desiredRewardToken != rewardToken) {
+            if (authorizedRewardToken[rewardsData.desiredRewardToken] < 2){
+                revert CVELocker__ParametersareInvalid();
+            }
 
             if (
                 rewardsData.desiredRewardToken == cve && rewardsData.shouldLock
@@ -458,7 +463,7 @@ contract CVELocker is ReentrancyGuard {
 
             if (
                 swapData.call.length == 0 ||
-                swapData.inputToken != baseRewardToken ||
+                swapData.inputToken != rewardToken ||
                 swapData.outputToken != rewardsData.desiredRewardToken ||
                 swapData.inputAmount > userRewards
             ) {
@@ -480,7 +485,7 @@ contract CVELocker is ReentrancyGuard {
             return reward;
         }
 
-        SafeTransferLib.safeTransfer(baseRewardToken, recipient, userRewards);
+        SafeTransferLib.safeTransfer(rewardToken, recipient, userRewards);
 
         return userRewards;
     }
@@ -544,5 +549,14 @@ contract CVELocker is ReentrancyGuard {
         );
 
         return reward;
+    }
+
+    /// @dev Internal helper for reverting efficiently.
+    function _revert(uint256 s) internal pure {
+        /// @solidity memory-safe-assembly
+        assembly {
+            mstore(0x00, s)
+            revert(0x1c, 0x04)
+        }
     }
 }

@@ -2,16 +2,17 @@
 pragma solidity 0.8.17;
 
 import { TestBasePriceRouter } from "../TestBasePriceRouter.sol";
+import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
 
-contract NotifyAssetPriceFeedRemovalTest is TestBasePriceRouter {
-    function test_notifyAssetPriceFeedRemoval_fail_whenCallerIsNotApprovedAdaptor()
+contract NotifyFeedRemovalTest is TestBasePriceRouter {
+    function test_notifyFeedRemoval_fail_whenCallerIsNotApprovedAdaptor()
         public
     {
-        vm.expectRevert("PriceRouter: UNAUTHORIZED");
-        priceRouter.notifyAssetPriceFeedRemoval(_USDC_ADDRESS);
+        vm.expectRevert(PriceRouter.PriceRouter__Unauthorized.selector);
+        priceRouter.notifyFeedRemoval(_USDC_ADDRESS);
     }
 
-    function test_notifyAssetPriceFeedRemoval_fail_whenNoFeedsAvailable()
+    function test_notifyFeedRemoval_fail_whenNoFeedsAvailable()
         public
     {
         priceRouter.addApprovedAdaptor(address(chainlinkAdaptor));
@@ -19,10 +20,10 @@ contract NotifyAssetPriceFeedRemovalTest is TestBasePriceRouter {
         vm.prank(address(chainlinkAdaptor));
 
         vm.expectRevert(0xe4558fac);
-        priceRouter.notifyAssetPriceFeedRemoval(_USDC_ADDRESS);
+        priceRouter.notifyFeedRemoval(_USDC_ADDRESS);
     }
 
-    function test_notifyAssetPriceFeedRemoval_fail_whenSingleFeedDoesNotExist()
+    function test_notifyFeedRemoval_fail_whenSingleFeedDoesNotExist()
         public
     {
         _addSinglePriceFeed();
@@ -32,10 +33,10 @@ contract NotifyAssetPriceFeedRemovalTest is TestBasePriceRouter {
         vm.prank(address(dualChainlinkAdaptor));
 
         vm.expectRevert(0xe4558fac);
-        priceRouter.notifyAssetPriceFeedRemoval(_USDC_ADDRESS);
+        priceRouter.notifyFeedRemoval(_USDC_ADDRESS);
     }
 
-    function test_notifyAssetPriceFeedRemoval_fail_whenDualFeedDoesNotExist()
+    function test_notifyFeedRemoval_fail_whenDualFeedDoesNotExist()
         public
     {
         _addDualPriceFeed();
@@ -45,10 +46,10 @@ contract NotifyAssetPriceFeedRemovalTest is TestBasePriceRouter {
         vm.prank(address(1));
 
         vm.expectRevert(0xe4558fac);
-        priceRouter.notifyAssetPriceFeedRemoval(_USDC_ADDRESS);
+        priceRouter.notifyFeedRemoval(_USDC_ADDRESS);
     }
 
-    function test_notifyAssetPriceFeedRemoval_success_whenRemoveSingleFeed()
+    function test_notifyFeedRemoval_success_whenRemoveSingleFeed()
         public
     {
         _addSinglePriceFeed();
@@ -59,13 +60,13 @@ contract NotifyAssetPriceFeedRemovalTest is TestBasePriceRouter {
         );
 
         vm.prank(address(chainlinkAdaptor));
-        priceRouter.notifyAssetPriceFeedRemoval(_USDC_ADDRESS);
+        priceRouter.notifyFeedRemoval(_USDC_ADDRESS);
 
         vm.expectRevert();
         priceRouter.assetPriceFeeds(_USDC_ADDRESS, 0);
     }
 
-    function test_notifyAssetPriceFeedRemoval_success_whenRemoveDualFeed()
+    function test_notifyFeedRemoval_success_whenRemoveDualFeed()
         public
     {
         _addDualPriceFeed();
@@ -80,7 +81,7 @@ contract NotifyAssetPriceFeedRemovalTest is TestBasePriceRouter {
         );
 
         vm.prank(address(chainlinkAdaptor));
-        priceRouter.notifyAssetPriceFeedRemoval(_USDC_ADDRESS);
+        priceRouter.notifyFeedRemoval(_USDC_ADDRESS);
 
         assertEq(
             priceRouter.assetPriceFeeds(_USDC_ADDRESS, 0),

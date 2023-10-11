@@ -2,12 +2,13 @@
 pragma solidity 0.8.17;
 
 import { TestBaseVeCVE } from "../TestBaseVeCVE.sol";
+import { VeCVE } from "contracts/token/VeCVE.sol";
 
 contract ShutdownTest is TestBaseVeCVE {
     function test_shutdown_fail_whenCallerIsNotAuthorized() public {
         vm.prank(address(1));
 
-        vm.expectRevert("VeCVE: UNAUTHORIZED");
+        vm.expectRevert(VeCVE.VeCVE__Unauthorized.selector);
         veCVE.shutdown();
     }
 

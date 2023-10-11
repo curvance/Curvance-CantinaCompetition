@@ -9,14 +9,14 @@ contract OCVEDeploymentTest is TestBaseOCVE {
     function test_oCVEDeployment_fail_whenCentralRegistryIsInvalid()
         public
     {
-        vm.expectRevert(OCVE.OCVE__ConstructorParametersareInvalid.selector);
+        vm.expectRevert(OCVE.OCVE__ParametersareInvalid.selector);
         new OCVE(ICentralRegistry(address(0)), _USDC_ADDRESS);
     }
 
     function test_oCVEDeployment_fail_whenPaymentTokenIsInvalid()
         public
     {
-        vm.expectRevert(OCVE.OCVE__ConstructorParametersareInvalid.selector);
+        vm.expectRevert(OCVE.OCVE__ParametersareInvalid.selector);
         new OCVE(
             ICentralRegistry(address(centralRegistry)),
             address(0)
@@ -43,6 +43,6 @@ contract OCVEDeploymentTest is TestBaseOCVE {
         );
         assertEq(oCVE.paymentToken(), _USDC_ADDRESS);
         assertEq(address(oCVE.cve()), address(centralRegistry.CVE()));
-        assertEq(oCVE.totalSupply(), 7560001.242 ether);
+        assertEq(oCVE.totalSupply(), 15750002.59 ether);
     }
 }

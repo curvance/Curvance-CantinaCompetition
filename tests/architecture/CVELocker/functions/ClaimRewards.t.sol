@@ -58,7 +58,7 @@ contract ClaimRewardsTest is TestBaseCVELocker {
             cveLocker.recordEpochRewards(nextEpochToDeliver, _ONE);
         }
 
-        vm.expectRevert("CVELocker: unsupported reward token");
+        vm.expectRevert(CVELocker.CVELocker__ParametersareInvalid.selector);
 
         vm.prank(user1);
         cveLocker.claimRewards(user1, rewardsData, abi.encode(swapData), 0);

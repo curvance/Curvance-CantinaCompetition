@@ -7,12 +7,12 @@ import { TestBaseVeCVE } from "../TestBaseVeCVE.sol";
 
 contract VeCVEDeploymentTest is TestBaseVeCVE {
     function test_veCVEDeployment_fail_whenCentralRegistryIsInvalid() public {
-        vm.expectRevert("VeCVE: invalid central registry");
+        vm.expectRevert(VeCVE.VeCVE__ParametersareInvalid.selector);
         new VeCVE(ICentralRegistry(address(1)), 0);
     }
 
     function test_veCVEDeployment_success() public {
-        veCVE = new VeCVE(ICentralRegistry(address(centralRegistry)), 0);
+        veCVE = new VeCVE(ICentralRegistry(address(centralRegistry)), 11000);
 
         assertEq(
             veCVE.name(),
@@ -23,6 +23,6 @@ contract VeCVEDeploymentTest is TestBaseVeCVE {
         assertEq(veCVE.genesisEpoch(), centralRegistry.genesisEpoch());
         assertEq(veCVE.cve(), centralRegistry.CVE());
         assertEq(address(veCVE.cveLocker()), centralRegistry.cveLocker());
-        assertEq(veCVE.clPointMultiplier(), 0);
+        assertEq(veCVE.clPointMultiplier(), 11000);
     }
 }
