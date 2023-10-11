@@ -75,7 +75,9 @@ interface ICentralRegistry {
     function protocolLeverageFee() external view returns (uint256);
 
     /// @notice Lending Market => Protocol Reserve Factor on interest generated
-    function protocolInterestFactor(address market) external view returns (uint256);
+    function protocolInterestFactor(
+        address market
+    ) external view returns (uint256);
 
     /// @notice Returns earlyUnlockPenaltyValue value in basis point form
     function earlyUnlockPenaltyValue() external view returns (uint256);
@@ -96,7 +98,7 @@ interface ICentralRegistry {
     ) external view returns (ChainData memory);
 
     // Address => chainID => Curvance identification information
-    function omnichainOperators(
+    function getOmnichainOperators(
         address _address,
         uint256 chainID
     ) external view returns (OmnichainData memory);
