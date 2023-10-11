@@ -14,7 +14,7 @@ contract SetChainlinkDelayTest is TestBasePriceRouter {
 
     function test_setChainlinkDelay_fail_whenDelayIsTooLarge() public {
         vm.expectRevert(0xebd2e1ff);
-        priceRouter.setChainlinkDelay(1 days);
+        priceRouter.setChainlinkDelay(1 days + 1);
     }
 
     function test_setChainlinkDelay_success() public {

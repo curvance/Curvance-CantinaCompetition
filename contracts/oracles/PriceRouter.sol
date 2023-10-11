@@ -27,7 +27,6 @@ contract PriceRouter {
 
     /// CONSTANTS ///
 
-
     /// @notice Scalar for math
     uint256 public constant DENOMINATOR = 10000;
     /// @notice Return value indicating no price error
@@ -73,14 +72,14 @@ contract PriceRouter {
     /// MODIFIERS ///
 
     modifier onlyDaoPermissions() {
-        if (!centralRegistry.hasDaoPermissions(msg.sender)){
+        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
             revert PriceRouter__Unauthorized();
         }
         _;
     }
 
     modifier onlyElevatedPermissions() {
-        if (!centralRegistry.hasElevatedPermissions(msg.sender)){
+        if (!centralRegistry.hasElevatedPermissions(msg.sender)) {
             revert PriceRouter__Unauthorized();
         }
         _;
@@ -176,11 +175,11 @@ contract PriceRouter {
         delete mTokenAssets[mToken];
     }
 
-    function notifyFeedRemoval(address asset) external  {
-        if (!isApprovedAdaptor[msg.sender]){
+    function notifyFeedRemoval(address asset) external {
+        if (!isApprovedAdaptor[msg.sender]) {
             revert PriceRouter__Unauthorized();
         }
-        
+
         _removeFeed(asset, msg.sender);
     }
 
@@ -272,8 +271,12 @@ contract PriceRouter {
             data[1] = _getPriceFromFeed(asset, 0, inUSD, false);
             if (isMToken) {
                 uint256 decimals = IERC20(asset).decimals();
-                data[0].price = uint240((data[0].price * 1e18) / (10 ** decimals));
-                data[1].price = uint240((data[1].price * 1e18) / (10 ** decimals));
+                data[0].price = uint240(
+                    (data[0].price * 1e18) / (10 ** decimals)
+                );
+                data[1].price = uint240(
+                    (data[1].price * 1e18) / (10 ** decimals)
+                );
             }
 
             return data;
@@ -350,9 +353,9 @@ contract PriceRouter {
             errorCode = BAD_SOURCE;
         }
 
-        if (isMToken) {
-            price = (price * 1e18) / (10 ** IERC20(asset).decimals());
-        }
+        // if (isMToken) {
+        //     price = (price * 1e18) / (10 ** IERC20(asset).decimals());
+        // }
     }
 
     /// @notice Retrieves the prices of multiple assets.
@@ -427,6 +430,11 @@ contract PriceRouter {
                 true,
                 snapshots[i].isCToken
             );
+            // adjust price (consider underlying asset decimals)
+            uint256 decimals = assets[i].decimals();
+            if (decimals != 18) {
+                prices[i] = (prices[i] * 1e18) / (10 ** decimals);
+            }
 
             if (hadError >= errorCodeBreakpoint) {
                 _revert(ERROR_CODE_FLAGGED_SELECTOR);
@@ -504,9 +512,9 @@ contract PriceRouter {
         if (feed0.hadError || feed1.hadError) {
             return (_getWorkingPrice(feed0, feed1), CAUTION);
         }
-        if (getLower){
+        if (getLower) {
             return _calculateLowerPrice(feed0.price, feed1.price);
-        } 
+        }
 
         return _calculateHigherPrice(feed0.price, feed1.price);
     }
@@ -525,16 +533,24 @@ contract PriceRouter {
         bool inUSD,
         bool getLower
     ) internal view returns (uint256, uint256) {
-        PriceReturnData memory data = IOracleAdaptor(assetPriceFeeds[asset][0])
-            .getPrice(asset, inUSD, getLower);
-        if (data.hadError){
+        address adapter = assetPriceFeeds[asset][0];
+        require(
+            isApprovedAdaptor[adapter],
+            "PriceRouter: Adapter Not Approved"
+        );
+        PriceReturnData memory data = IOracleAdaptor(adapter).getPrice(
+            asset,
+            inUSD,
+            getLower
+        );
+        if (data.hadError) {
             return (0, BAD_SOURCE);
         }
 
         if (data.inUSD != inUSD) {
             uint256 newPrice;
             (newPrice, data.hadError) = _getETHUSD();
-            if (data.hadError){
+            if (data.hadError) {
                 return (0, BAD_SOURCE);
             }
 
@@ -565,20 +581,27 @@ contract PriceRouter {
         bool inUSD,
         bool getLower
     ) internal view returns (FeedData memory) {
-        PriceReturnData memory data = IOracleAdaptor(
-            assetPriceFeeds[asset][feedNumber]
-        ).getPrice(asset, inUSD, getLower);
-        if (data.hadError){
+        address adapter = assetPriceFeeds[asset][feedNumber];
+        require(
+            isApprovedAdaptor[adapter],
+            "PriceRouter: Adapter Not Approved"
+        );
+        PriceReturnData memory data = IOracleAdaptor(adapter).getPrice(
+            asset,
+            inUSD,
+            getLower
+        );
+        if (data.hadError) {
             return FeedData({ price: 0, hadError: true });
-        } 
+        }
 
         if (data.inUSD != inUSD) {
             uint256 newPrice;
             (newPrice, data.hadError) = _getETHUSD();
-            if (data.hadError){
+            if (data.hadError) {
                 return FeedData({ price: 0, hadError: true });
-            } 
-            
+            }
+
             data.price = uint240(
                 _convertETHUSD(data.price, newPrice, data.inUSD)
             );

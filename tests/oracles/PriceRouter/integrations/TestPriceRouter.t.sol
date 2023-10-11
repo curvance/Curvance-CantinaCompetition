@@ -4,6 +4,7 @@ pragma solidity 0.8.17;
 import { VelodromeVolatileLPAdaptor } from "contracts/oracles/adaptors/velodrome/VelodromeVolatileLPAdaptor.sol";
 import { ChainlinkAdaptor } from "contracts/oracles/adaptors/chainlink/ChainlinkAdaptor.sol";
 import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
+import { DToken } from "contracts/market/collateral/DToken.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { VelodromeLib } from "contracts/market/zapper/protocols/VelodromeLib.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
@@ -29,6 +30,8 @@ contract TestPriceRouter is TestBasePriceRouter {
         _fork("ETH_NODE_URI_OPTIMISM", 110333246);
 
         _deployCentralRegistry();
+        _deployLendtroller();
+        _deployInterestRateModel();
 
         priceRouter = new PriceRouter(
             ICentralRegistry(address(centralRegistry)),
@@ -92,9 +95,36 @@ contract TestPriceRouter is TestBasePriceRouter {
         priceRouter.getPrice(WETH_USDC, true, false);
     }
 
-    function testWithDualPriceFeed() public {}
+    function testReturnsCorrectPriceForMTokens() public {
+        DToken dUSDC = new DToken(
+            ICentralRegistry(address(centralRegistry)),
+            USDC,
+            address(lendtroller),
+            address(jumpRateModel)
+        );
+        priceRouter.addMTokenSupport(address(dUSDC));
 
-    function testMTokenSupport() public {}
+        uint256 dUSDCPrice;
+        uint256 usdcPrice;
+        uint256 errorCode;
 
-    function testApproveAdapter() public {}
+        (dUSDCPrice, errorCode) = priceRouter.getPrice(
+            address(dUSDC),
+            true,
+            false
+        );
+        assertEq(errorCode, 0);
+        assertApproxEqRel(dUSDCPrice, 1 ether, 0.01 ether);
+
+        (usdcPrice, errorCode) = priceRouter.getPrice(USDC, true, false);
+        assertEq(errorCode, 0);
+        assertEq(dUSDCPrice, usdcPrice);
+    }
+
+    function testRevertWhenAdapterNotApproved() public {
+        priceRouter.removeApprovedAdaptor(address(adapter));
+
+        vm.expectRevert("PriceRouter: Adapter Not Approved");
+        priceRouter.getPrice(WETH_USDC, true, false);
+    }
 }

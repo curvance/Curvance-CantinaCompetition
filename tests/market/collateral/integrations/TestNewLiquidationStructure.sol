@@ -6,12 +6,10 @@ import { MockDataFeed } from "contracts/mocks/MockDataFeed.sol";
 
 import "tests/market/TestBaseMarket.sol";
 
-contract TestCTokenReserves is TestBaseMarket {
-    address internal constant _UNISWAP_V2_ROUTER =
-        0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
+contract User {}
 
+contract TestNewLiquidationStructure is TestBaseMarket {
     address public owner;
-    address public dao;
 
     receive() external payable {}
 
@@ -23,7 +21,6 @@ contract TestCTokenReserves is TestBaseMarket {
         super.setUp();
 
         owner = address(this);
-        dao = address(this);
 
         // start epoch
         gaugePool.start(address(lendtroller));
@@ -56,12 +53,12 @@ contract TestCTokenReserves is TestBaseMarket {
             lendtroller.listMarketToken(address(cBALRETH));
             // add MToken support on price router
             priceRouter.addMTokenSupport(address(cBALRETH));
-            // set collateral factor
+            // set collateral token configuration
             lendtroller.updateCollateralToken(
                 IMToken(address(cBALRETH)),
-                200,
-                100,
-                4000, // liquidate at 71%
+                200, // 2% liq incentive
+                0,
+                4000, // liquidate at 71.42857143 %
                 3000,
                 7000
             );
@@ -76,8 +73,6 @@ contract TestCTokenReserves is TestBaseMarket {
         // provide enough liquidity
         provideEnoughLiquidityForLeverage();
 
-        centralRegistry.addSwapper(_UNISWAP_V2_ROUTER);
-
         // use mock pricing for testing
         mockDaiFeed = new MockDataFeed(_CHAINLINK_DAI_USD);
         chainlinkAdaptor.addAsset(_DAI_ADDRESS, address(mockDaiFeed), true);
@@ -89,7 +84,7 @@ contract TestCTokenReserves is TestBaseMarket {
     }
 
     function provideEnoughLiquidityForLeverage() internal {
-        address liquidityProvider = makeAddr("liquidityProvider");
+        address liquidityProvider = address(new User());
         _prepareDAI(liquidityProvider, 200000e18);
         _prepareBALRETH(liquidityProvider, 10 ether);
         // mint dDAI
@@ -102,11 +97,7 @@ contract TestCTokenReserves is TestBaseMarket {
         vm.stopPrank();
     }
 
-    function testInitialize() public {
-        assertEq(centralRegistry.daoAddress(), dao);
-    }
-
-    function testSeizeProtocolFee() public {
+    function testLiquidateRevertWhenBelowColReqA() public {
         _prepareBALRETH(user1, 1 ether);
 
         // try mint()
@@ -123,29 +114,60 @@ contract TestCTokenReserves is TestBaseMarket {
         // skip min hold period
         skip(900);
 
+        (uint256 balRETHPrice, ) = priceRouter.getPrice(
+            address(balRETH),
+            true,
+            true
+        );
+
+        // adjust dai price, a bit lower than colReqA
+        // 1000 dai > 1 cBALRETH / colReqA
+        mockDaiFeed.setMockAnswer(
+            int256(
+                (balRETHPrice * 1 ether * 1e8) / 1000 ether / 1.4 ether - 100
+            )
+        );
+
+        vm.expectRevert(0x751bba8d);
+        dDAI.liquidateExact(user1, 250 ether, IMToken(address(cBALRETH)));
+    }
+
+    function testLiquidateWorksWhenAboveColReqA() public {
+        _prepareBALRETH(user1, 1 ether);
+
+        // try mint()
+        vm.startPrank(user1);
+        balRETH.approve(address(cBALRETH), 1 ether);
+        cBALRETH.mint(1 ether);
+        vm.stopPrank();
+
+        // try borrow()
+        vm.startPrank(user1);
+        dDAI.borrow(1000 ether);
+        vm.stopPrank();
+
+        // skip min hold period
+        skip(900);
+
+        (uint256 balRETHPrice, ) = priceRouter.getPrice(
+            address(balRETH),
+            true,
+            true
+        );
+
         mockDaiFeed.setMockAnswer(200000000);
 
-        uint256 repayAmount = 250 ether;
-        (uint256 liquidatedTokens, uint256 protocolTokens) = lendtroller
-            .canLiquidateExact(
-                address(dDAI),
-                address(cBALRETH),
-                user1,
-                repayAmount
-            );
-        uint256 daoBalanceBefore = cBALRETH.balanceOf(dao);
-
         // try liquidate half
-        _prepareDAI(user2, repayAmount);
+        _prepareDAI(user2, 250 ether);
         vm.startPrank(user2);
-        dai.approve(address(dDAI), repayAmount);
-        dDAI.liquidateExact(user1, repayAmount, IMToken(address(cBALRETH)));
+        dai.approve(address(dDAI), 250 ether);
+        dDAI.liquidateExact(user1, 250 ether, IMToken(address(cBALRETH)));
         vm.stopPrank();
 
         AccountSnapshot memory snapshot = cBALRETH.getSnapshotPacked(user1);
         assertApproxEqRel(
             snapshot.balance,
-            1 ether - liquidatedTokens,
+            1 ether - (500 ether * 1 ether) / balRETHPrice,
             0.01e18
         );
         assertEq(snapshot.debtBalance, 0);
@@ -155,45 +177,5 @@ contract TestCTokenReserves is TestBaseMarket {
         assertEq(snapshot.balance, 0);
         assertApproxEqRel(snapshot.debtBalance, 750 ether, 0.01e18);
         assertApproxEqRel(snapshot.exchangeRate, 1 ether, 0.01e18);
-
-        assertEq(cBALRETH.balanceOf(dao), daoBalanceBefore + protocolTokens);
-        assertEq(
-            gaugePool.balanceOf(address(cBALRETH), dao),
-            daoBalanceBefore + protocolTokens
-        );
-    }
-
-    function testDaoCanRedeemProtocolFee() public {
-        testSeizeProtocolFee();
-
-        uint256 amountToRedeem = cBALRETH.balanceOf(dao);
-        uint256 daoBalanceBefore = balRETH.balanceOf(dao);
-
-        vm.startPrank(dao);
-        cBALRETH.redeem(amountToRedeem);
-        vm.stopPrank();
-
-        assertEq(cBALRETH.balanceOf(dao), 0);
-        assertEq(gaugePool.balanceOf(address(cBALRETH), dao), 0);
-        assertEq(balRETH.balanceOf(dao), daoBalanceBefore + amountToRedeem);
-    }
-
-    function testDaoCanTransferProtocolFee() public {
-        testSeizeProtocolFee();
-
-        uint256 amountToTransfer = cBALRETH.balanceOf(dao);
-
-        address user = makeAddr("user");
-        vm.startPrank(dao);
-        cBALRETH.transferFrom(dao, user, amountToTransfer);
-        vm.stopPrank();
-
-        assertEq(cBALRETH.balanceOf(dao), 0);
-        assertEq(gaugePool.balanceOf(address(cBALRETH), dao), 0);
-        assertEq(cBALRETH.balanceOf(user), amountToTransfer);
-        assertEq(
-            gaugePool.balanceOf(address(cBALRETH), user),
-            amountToTransfer
-        );
     }
 }
