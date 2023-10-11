@@ -101,7 +101,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
 
     /// @notice Set Stargate router destination address to route fees
     function setStargateAddress(
-        address payable newStargateRouter
+        address newStargateRouter
     ) external onlyDaoPermissions {
         if (newStargateRouter == address(0)) {
             revert ProtocolMessagingHub__StargateRouterIsZeroAddress();
@@ -199,10 +199,8 @@ contract ProtocolMessagingHub is ReentrancyGuard {
             uint256 GETHChainId = centralRegistry.messagingToGETHChainId(
                 poolData.dstChainId
             );
-            OmnichainData memory operator = centralRegistry.omnichainOperators(
-                to,
-                GETHChainId
-            );
+            OmnichainData memory operator = centralRegistry
+                .getOmnichainOperators(to, GETHChainId);
 
             // Validate that the operator is authorized
             if (operator.isAuthorized < 2) {
@@ -291,7 +289,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         uint256, // amount
         bytes calldata payload
     ) external onlyLayerZero {
-        OmnichainData memory operator = centralRegistry.omnichainOperators(
+        OmnichainData memory operator = centralRegistry.getOmnichainOperators(
             address(uint160(uint256(from))),
             centralRegistry.messagingToGETHChainId(srcChainId)
         );

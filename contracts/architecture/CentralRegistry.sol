@@ -692,6 +692,13 @@ contract CentralRegistry is ERC165 {
         emit RemovedCurvanceContract("Endpoint", currentEndpoint);
     }
 
+    function getOmnichainOperators(
+        address _address,
+        uint256 chainID
+    ) external view returns (OmnichainData memory) {
+        return omnichainOperators[_address][chainID];
+    }
+
     /// @dev Internal helper for reverting efficiently.
     function _revert(uint256 s) internal pure {
         /// @solidity memory-safe-assembly

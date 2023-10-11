@@ -33,14 +33,14 @@ contract FeeAccumulator is ReentrancyGuard {
 
     /// CONSTANTS ///
 
+    /// @notice Scalar for math
+    uint256 public constant EXP_SCALE = 1e18;
+    uint256 public constant SLIPPED_MINIMUM = 9500; // 5%
+    uint256 public constant SLIPPAGE_DENOMINATOR = 10000;
     /// @notice Address of fee token
     address public immutable feeToken;
     /// @notice Fee token decimal unit
-    uint256 public immutable feeTokenUnit;
-    /// @notice Scalar for math
-    uint256 public constant expScale = 1e18;
-    uint256 public constant SLIPPED_MINIMUM = 9500; // 5%
-    uint256 public constant SLIPPAGE_DENOMINATOR = 10000;
+    uint256 internal immutable _feeTokenUnit;
     /// @notice Curvance DAO hub
     ICentralRegistry public immutable centralRegistry;
 
@@ -100,7 +100,7 @@ contract FeeAccumulator is ReentrancyGuard {
 
         centralRegistry = centralRegistry_;
         feeToken = feeToken_;
-        feeTokenUnit = 10 ** IERC20(feeToken_).decimals();
+        _feeTokenUnit = 10 ** IERC20(feeToken_).decimals();
         _gasForCalldata = gasForCalldata_;
         _gasForCrosschain = gasForCrosschain_;
 
@@ -111,6 +111,14 @@ contract FeeAccumulator is ReentrancyGuard {
         // We set oneBalance address initially to DAO,
         // incase direct deposits to Gelato Network are not supported.
         gelatoOneBalance = IGelatoOneBalance(centralRegistry.daoAddress());
+
+        // We infinite approve fee token so that gelato one balance
+        // can drag funds to proper chain
+        SafeTransferLib.safeApprove(
+            feeToken,
+            address(gelatoOneBalance),
+            type(uint256).max
+        );
 
         // We infinite approve fee token so that protocol messaging hub
         // can drag funds to proper chain
@@ -192,7 +200,7 @@ contract FeeAccumulator is ReentrancyGuard {
         }
 
         // Cache router to save gas
-        IPriceRouter PriceRouter = getPriceRouter();
+        IPriceRouter PriceRouter = IPriceRouter(centralRegistry.priceRouter());
 
         (uint256 priceSwap, uint256 errorCodeSwap) = PriceRouter.getPrice(
             tokenToOTC,
@@ -211,7 +219,7 @@ contract FeeAccumulator is ReentrancyGuard {
         // Price Router always returns in 1e18 format based on decimals,
         // so we only need to worry about decimal differences here
         uint256 feeTokenRequiredForOTC = (
-            ((priceSwap * amountToOTC * feeTokenUnit) / priceFeeToken)
+            ((priceSwap * amountToOTC * _feeTokenUnit) / priceFeeToken)
         ) / 10 ** IERC20(tokenToOTC).decimals();
 
         SafeTransferLib.safeTransferFrom(
@@ -376,7 +384,6 @@ contract FeeAccumulator is ReentrancyGuard {
                 data.chainId = centralRegistry.GETHToMessagingChainId(
                     lockData.chainId
                 );
-                abi.encode(epochRewardsPerCVE);
                 data.value = CVE.estimateSendAndCallFee(
                     uint16(data.chainId),
                     chainData.cveAddress,
@@ -460,9 +467,20 @@ contract FeeAccumulator is ReentrancyGuard {
     /// @notice Set Gelato Network one balance destination address to
     ///         fund compounders
     function setOneBalanceAddress(
-        address payable newGelatoOneBalance
+        address newGelatoOneBalance
     ) external onlyDaoPermissions {
+        // Revoke previous approval
+        SafeTransferLib.safeApprove(feeToken, address(gelatoOneBalance), 0);
+
         gelatoOneBalance = IGelatoOneBalance(newGelatoOneBalance);
+
+        // We infinite approve fee token so that gelato one balance
+        // can drag funds to proper chain
+        SafeTransferLib.safeApprove(
+            feeToken,
+            newGelatoOneBalance,
+            type(uint256).max
+        );
     }
 
     /// @notice Set status on whether a token should be earmarked to OTC
@@ -567,6 +585,32 @@ contract FeeAccumulator is ReentrancyGuard {
         tokenToRemove.isRewardToken = 1;
     }
 
+    /// @notice Retrieves the balances of all reward tokens currently held by
+    ///         the Fee Accumulator
+    /// @return tokenBalances An array of uint256 values,
+    ///         representing the current balances of each reward token
+    function getRewardTokenBalances()
+        external
+        view
+        returns (uint256[] memory)
+    {
+        address[] memory currentTokens = rewardTokens;
+        uint256 numTokens = currentTokens.length;
+        uint256[] memory tokenBalances = new uint256[](numTokens);
+
+        for (uint256 i; i < numTokens; ) {
+            tokenBalances[i] = IERC20(currentTokens[i]).balanceOf(
+                address(this)
+            );
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        return tokenBalances;
+    }
+
     /// PUBLIC FUNCTIONS ///
 
     /// @notice Fetches the current price router from the central registry
@@ -602,32 +646,6 @@ contract FeeAccumulator is ReentrancyGuard {
             isRewardToken: 2,
             forOTC: 1
         });
-    }
-
-    /// @notice Retrieves the balances of all reward tokens currently held by
-    ///         the Fee Accumulator
-    /// @return tokenBalances An array of uint256 values,
-    ///         representing the current balances of each reward token
-    function getRewardTokenBalances()
-        external
-        view
-        returns (uint256[] memory)
-    {
-        address[] memory currentTokens = rewardTokens;
-        uint256 numTokens = currentTokens.length;
-        uint256[] memory tokenBalances = new uint256[](numTokens);
-
-        for (uint256 i; i < numTokens; ) {
-            tokenBalances[i] = IERC20(currentTokens[i]).balanceOf(
-                address(this)
-            );
-
-            unchecked {
-                ++i;
-            }
-        }
-
-        return tokenBalances;
     }
 
     /// @notice Validates the inbound chain data and records it in the
@@ -738,7 +756,7 @@ contract FeeAccumulator is ReentrancyGuard {
         feeTokenBalanceForChain =
             (feeTokenBalance * lockedTokens) /
             totalLockedTokens;
-        uint256 epochRewardsPerCVE = (feeTokenBalanceForChain * expScale) /
+        uint256 epochRewardsPerCVE = (feeTokenBalanceForChain * EXP_SCALE) /
             totalLockedTokens;
 
         address locker = centralRegistry.cveLocker();
