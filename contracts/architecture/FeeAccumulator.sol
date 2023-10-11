@@ -200,7 +200,7 @@ contract FeeAccumulator is ReentrancyGuard {
         }
 
         // Cache router to save gas
-        IPriceRouter PriceRouter = getPriceRouter();
+        IPriceRouter PriceRouter = IPriceRouter(centralRegistry.priceRouter());
 
         (uint256 priceSwap, uint256 errorCodeSwap) = PriceRouter.getPrice(
             tokenToOTC,
@@ -384,7 +384,6 @@ contract FeeAccumulator is ReentrancyGuard {
                 data.chainId = centralRegistry.GETHToMessagingChainId(
                     lockData.chainId
                 );
-                abi.encode(epochRewardsPerCVE);
                 data.value = CVE.estimateSendAndCallFee(
                     uint16(data.chainId),
                     chainData.cveAddress,
@@ -468,7 +467,7 @@ contract FeeAccumulator is ReentrancyGuard {
     /// @notice Set Gelato Network one balance destination address to
     ///         fund compounders
     function setOneBalanceAddress(
-        address payable newGelatoOneBalance
+        address newGelatoOneBalance
     ) external onlyDaoPermissions {
         // Revoke previous approval
         SafeTransferLib.safeApprove(feeToken, address(gelatoOneBalance), 0);
@@ -586,6 +585,32 @@ contract FeeAccumulator is ReentrancyGuard {
         tokenToRemove.isRewardToken = 1;
     }
 
+    /// @notice Retrieves the balances of all reward tokens currently held by
+    ///         the Fee Accumulator
+    /// @return tokenBalances An array of uint256 values,
+    ///         representing the current balances of each reward token
+    function getRewardTokenBalances()
+        external
+        view
+        returns (uint256[] memory)
+    {
+        address[] memory currentTokens = rewardTokens;
+        uint256 numTokens = currentTokens.length;
+        uint256[] memory tokenBalances = new uint256[](numTokens);
+
+        for (uint256 i; i < numTokens; ) {
+            tokenBalances[i] = IERC20(currentTokens[i]).balanceOf(
+                address(this)
+            );
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        return tokenBalances;
+    }
+
     /// PUBLIC FUNCTIONS ///
 
     /// @notice Fetches the current price router from the central registry
@@ -621,32 +646,6 @@ contract FeeAccumulator is ReentrancyGuard {
             isRewardToken: 2,
             forOTC: 1
         });
-    }
-
-    /// @notice Retrieves the balances of all reward tokens currently held by
-    ///         the Fee Accumulator
-    /// @return tokenBalances An array of uint256 values,
-    ///         representing the current balances of each reward token
-    function getRewardTokenBalances()
-        external
-        view
-        returns (uint256[] memory)
-    {
-        address[] memory currentTokens = rewardTokens;
-        uint256 numTokens = currentTokens.length;
-        uint256[] memory tokenBalances = new uint256[](numTokens);
-
-        for (uint256 i; i < numTokens; ) {
-            tokenBalances[i] = IERC20(currentTokens[i]).balanceOf(
-                address(this)
-            );
-
-            unchecked {
-                ++i;
-            }
-        }
-
-        return tokenBalances;
     }
 
     /// @notice Validates the inbound chain data and records it in the
