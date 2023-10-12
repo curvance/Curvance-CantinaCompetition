@@ -8,7 +8,7 @@ contract ExecuteOTCTest is TestBaseFeeAccumulator {
     function test_executeOTC_fail_whenCallerIsNotAuthorized() public {
         vm.prank(user1);
 
-        vm.expectRevert("FeeAccumulator: UNAUTHORIZED");
+        vm.expectRevert(FeeAccumulator.FeeAccumulator__Unauthorized.selector);
         feeAccumulator.executeOTC(_WETH_ADDRESS, _ONE);
     }
 

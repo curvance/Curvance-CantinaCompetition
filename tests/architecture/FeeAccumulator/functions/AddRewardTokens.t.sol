@@ -17,7 +17,7 @@ contract AddRewardTokensTest is TestBaseFeeAccumulator {
     function test_addRewardTokens_fail_whenCallerIsNotAuthorized() public {
         vm.prank(user1);
 
-        vm.expectRevert("FeeAccumulator: UNAUTHORIZED");
+        vm.expectRevert(FeeAccumulator.FeeAccumulator__Unauthorized.selector);
         feeAccumulator.addRewardTokens(tokens);
     }
 

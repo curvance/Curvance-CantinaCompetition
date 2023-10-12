@@ -42,7 +42,7 @@ contract MultiSwapTest is TestBaseFeeAccumulator {
     }
 
     function test_multiSwap_fail_whenCallerIsNotAuthorized() public {
-        vm.expectRevert("FeeAccumulator: UNAUTHORIZED");
+        vm.expectRevert(FeeAccumulator.FeeAccumulator__Unauthorized.selector);
         feeAccumulator.multiSwap(abi.encode(swapData), tokens);
     }
 
