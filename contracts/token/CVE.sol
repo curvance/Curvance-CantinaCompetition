@@ -70,7 +70,7 @@ contract CVE is OFTV2 {
     /// @param gaugePool The address of the gauge pool where emissions will be configured
     /// @param amount The amount of gauge emissions to be minted
     function mintGaugeEmissions(address gaugePool, uint256 amount) external {
-        if (msg.sender != centralRegistry.protocolMessagingHub()){
+        if (msg.sender != centralRegistry.protocolMessagingHub()) {
             revert CVE__Unauthorized();
         }
 
@@ -80,7 +80,7 @@ contract CVE is OFTV2 {
     /// @notice Mints CVE to the calling gauge pool to fund the users lock boost
     /// @param amount The amount of tokens to be minted
     function mintLockBoost(uint256 amount) external {
-        if (centralRegistry.isGaugeController(msg.sender)){
+        if (!centralRegistry.isGaugeController(msg.sender)) {
             revert CVE__Unauthorized();
         }
 
@@ -94,7 +94,7 @@ contract CVE is OFTV2 {
         uint256 amount
     ) external onlyElevatedPermissions {
         uint256 _daoTreasuryMinted = daoTreasuryMinted;
-        if (daoTreasuryAllocation < _daoTreasuryMinted + amount){
+        if (daoTreasuryAllocation < _daoTreasuryMinted + amount) {
             revert CVE__InsufficientCVEAllocation();
         }
 
@@ -105,11 +105,9 @@ contract CVE is OFTV2 {
     /// @notice Mint CVE for deposit into callOptionCVE contract
     /// @param amount The amount of call option tokens to be minted.
     /// The number of tokens to mint cannot not exceed the available call option allocation.
-    function mintCallOptionTokens(
-        uint256 amount
-    ) external onlyDaoPermissions {
+    function mintCallOptionTokens(uint256 amount) external onlyDaoPermissions {
         uint256 _callOptionsMinted = callOptionsMinted;
-        if (callOptionAllocation < _callOptionsMinted + amount){
+        if (callOptionAllocation < _callOptionsMinted + amount) {
             revert CVE__InsufficientCVEAllocation();
         }
 
@@ -122,7 +120,7 @@ contract CVE is OFTV2 {
     /// @dev The amount of tokens minted is calculated based on the time passed since the Token Generation Event.
     /// @dev The number of tokens minted is capped by the total team allocation.
     function mintTeamTokens() external {
-        if (msg.sender != teamAddress){
+        if (msg.sender != teamAddress) {
             revert CVE__Unauthorized();
         }
 
@@ -136,8 +134,8 @@ contract CVE is OFTV2 {
         if (teamAllocation <= _teamAllocationMinted + amount) {
             amount = teamAllocation - teamAllocationMinted;
         }
-        
-        if (amount == 0){
+
+        if (amount == 0) {
             revert CVE__ParametersareInvalid();
         }
 
@@ -149,11 +147,11 @@ contract CVE is OFTV2 {
     /// @dev Allows the team to change the team's address.
     /// @param _address The new address for the team.
     function setTeamAddress(address _address) external {
-        if (msg.sender != teamAddress){
+        if (msg.sender != teamAddress) {
             revert CVE__Unauthorized();
         }
 
-        if (_address == address(0)){
+        if (_address == address(0)) {
             revert CVE__ParametersareInvalid();
         }
 
@@ -171,7 +169,7 @@ contract CVE is OFTV2 {
         uint64 dstGasForCall,
         LzCallParams calldata callParams
     ) public payable override {
-        if (msg.sender != centralRegistry.protocolMessagingHub()){
+        if (msg.sender != centralRegistry.protocolMessagingHub()) {
             revert CVE__Unauthorized();
         }
 

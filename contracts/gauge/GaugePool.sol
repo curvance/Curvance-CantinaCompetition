@@ -139,7 +139,6 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         address token,
         address user
     ) external view returns (uint256) {
-
         PoolInfo storage _pool = poolInfo[token];
         uint256 accRewardPerShare = _pool.accRewardPerShare;
         uint256 lastRewardTimestamp = _pool.lastRewardTimestamp;
@@ -201,8 +200,9 @@ contract GaugePool is GaugeController, ReentrancyGuard {
             revert GaugeErrors.InvalidAmount();
         }
 
-        if (msg.sender != token || 
-        !ILendtroller(lendtroller).isListed(token)) {
+        if (
+            msg.sender != token || !ILendtroller(lendtroller).isListed(token)
+        ) {
             revert GaugeErrors.InvalidToken();
         }
 
@@ -243,8 +243,9 @@ contract GaugePool is GaugeController, ReentrancyGuard {
             revert GaugeErrors.InvalidAmount();
         }
 
-        if (msg.sender != token || 
-        !ILendtroller(lendtroller).isListed(token)) {
+        if (
+            msg.sender != token || !ILendtroller(lendtroller).isListed(token)
+        ) {
             revert GaugeErrors.InvalidToken();
         }
 
@@ -318,11 +319,12 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         uint256 currentLockBoost = centralRegistry.lockBoostValue();
         // If theres a current lock boost, recognize their bonus rewards
         if (currentLockBoost > 0) {
-            uint256 boostedRewards = (rewards * currentLockBoost) / DENOMINATOR;
+            uint256 boostedRewards = (rewards * currentLockBoost) /
+                DENOMINATOR;
             ICVE(cve).mintLockBoost(boostedRewards - rewards);
-            rewards = boostedRewards; 
+            rewards = boostedRewards;
         }
-        
+
         SafeTransferLib.safeApprove(cve, address(veCVE), rewards);
         veCVE.increaseAmountAndExtendLockFor(
             msg.sender,
@@ -362,9 +364,10 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         uint256 currentLockBoost = centralRegistry.lockBoostValue();
         // If theres a current lock boost, recognize their bonus rewards
         if (currentLockBoost > 0) {
-            uint256 boostedRewards = (rewards * currentLockBoost) / DENOMINATOR;
+            uint256 boostedRewards = (rewards * currentLockBoost) /
+                DENOMINATOR;
             ICVE(cve).mintLockBoost(boostedRewards - rewards);
-            rewards = boostedRewards; 
+            rewards = boostedRewards;
         }
 
         SafeTransferLib.safeApprove(cve, address(veCVE), rewards);
@@ -401,6 +404,10 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         }
 
         uint256 totalDeposited = poolInfo[token].totalAmount;
+        if (totalDeposited == 0) {
+            return;
+        }
+
         uint256 accRewardPerShare = poolInfo[token].accRewardPerShare;
         uint256 lastEpoch = epochOfTimestamp(lastRewardTimestamp);
         uint256 currentEpoch = currentEpoch();

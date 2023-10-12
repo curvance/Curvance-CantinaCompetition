@@ -19,7 +19,7 @@ contract RemoveRewardTokenTest is TestBaseFeeAccumulator {
     function test_removeRewardToken_fail_whenCallerIsNotAuthorized() public {
         vm.prank(user1);
 
-        vm.expectRevert("FeeAccumulator: UNAUTHORIZED");
+        vm.expectRevert(FeeAccumulator.FeeAccumulator__Unauthorized.selector);
         feeAccumulator.removeRewardToken(_WETH_ADDRESS);
     }
 

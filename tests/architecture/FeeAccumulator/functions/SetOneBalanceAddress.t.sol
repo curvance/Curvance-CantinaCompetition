@@ -2,6 +2,7 @@
 pragma solidity 0.8.17;
 
 import { TestBaseFeeAccumulator } from "../TestBaseFeeAccumulator.sol";
+import { FeeAccumulator } from "contracts/architecture/FeeAccumulator.sol";
 
 contract SetOneBalanceAddressTest is TestBaseFeeAccumulator {
     function test_setOneBalanceAddress_fail_whenCallerIsNotAuthorized()
@@ -9,7 +10,7 @@ contract SetOneBalanceAddressTest is TestBaseFeeAccumulator {
     {
         vm.prank(user1);
 
-        vm.expectRevert("FeeAccumulator: UNAUTHORIZED");
+        vm.expectRevert(FeeAccumulator.FeeAccumulator__Unauthorized.selector);
         feeAccumulator.setOneBalanceAddress(address(1));
     }
 

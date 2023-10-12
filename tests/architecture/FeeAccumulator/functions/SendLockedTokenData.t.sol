@@ -6,7 +6,7 @@ import { FeeAccumulator } from "contracts/architecture/FeeAccumulator.sol";
 
 contract SendLockedTokenDataTest is TestBaseFeeAccumulator {
     function test_sendLockedTokenData_fail_whenCallerIsNotAuthorized() public {
-        vm.expectRevert("FeeAccumulator: UNAUTHORIZED");
+        vm.expectRevert(FeeAccumulator.FeeAccumulator__Unauthorized.selector);
         feeAccumulator.sendLockedTokenData(42161, bytes32(bytes20(user1)));
     }
 

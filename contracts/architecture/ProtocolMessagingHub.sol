@@ -34,36 +34,26 @@ contract ProtocolMessagingHub is ReentrancyGuard {
 
     /// ERRORS ///
 
+    error ProtocolMessagingHub__Unauthorized();
     error ProtocolMessagingHub__FeeTokenIsZeroAddress();
     error ProtocolMessagingHub__StargateRouterIsZeroAddress();
-    error ProtocolMessagingHub__CallerIsNotStargateRouter();
     error ProtocolMessagingHub__ConfigurationError();
     error ProtocolMessagingHub__InsufficientGasToken();
 
     /// MODIFIERS ///
 
     modifier onlyAuthorized() {
-        require(
-            centralRegistry.isHarvester(msg.sender) ||
-                msg.sender == centralRegistry.feeAccumulator(),
-            "ProtocolMessagingHub: UNAUTHORIZED"
-        );
+        if (!centralRegistry.isHarvester(msg.sender) &&
+                msg.sender != centralRegistry.feeAccumulator()){
+            revert ProtocolMessagingHub__Unauthorized();
+        }
         _;
     }
 
     modifier onlyDaoPermissions() {
-        require(
-            centralRegistry.hasDaoPermissions(msg.sender),
-            "ProtocolMessagingHub: UNAUTHORIZED"
-        );
-        _;
-    }
-
-    modifier onlyLayerZero() {
-        require(
-            msg.sender == centralRegistry.CVE(),
-            "ProtocolMessagingHub: UNAUTHORIZED"
-        );
+        if (!centralRegistry.hasDaoPermissions(msg.sender)){
+            revert ProtocolMessagingHub__Unauthorized();
+        }
         _;
     }
 
@@ -122,7 +112,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         bytes memory /* payload */
     ) external payable {
         if (msg.sender != stargateRouter) {
-            revert ProtocolMessagingHub__CallerIsNotStargateRouter();
+            revert ProtocolMessagingHub__Unauthorized();
         }
 
         SafeTransferLib.safeTransfer(
@@ -288,7 +278,12 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         bytes32 from,
         uint256, // amount
         bytes calldata payload
-    ) external onlyLayerZero {
+    ) external {
+        // Validate caller is CVE itself
+        if (msg.sender != centralRegistry.CVE()){
+            revert ProtocolMessagingHub__Unauthorized();
+        }
+
         OmnichainData memory operator = centralRegistry.getOmnichainOperators(
             address(uint160(uint256(from))),
             centralRegistry.messagingToGETHChainId(srcChainId)
@@ -356,7 +351,6 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         //                  this chain
         {
             // Use scoping for stack too deep logic
-            uint256 lockBoostMultiplier = centralRegistry.lockBoostValue();
             uint256 numPools = gaugePools.length;
             GaugeController gaugePool;
 

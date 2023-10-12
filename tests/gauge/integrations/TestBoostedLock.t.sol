@@ -108,8 +108,8 @@ contract TestBoostedLock is TestBaseMarket {
 
         // check pending rewards after 100 seconds
         vm.warp(block.timestamp + 100);
-        assertEq(gaugePool.pendingRewards(tokens[0], users[0]), 9999);
-        assertEq(gaugePool.pendingRewards(tokens[1], users[2]), 19999);
+        assertEq(gaugePool.pendingRewards(tokens[0], users[0]), 10000);
+        assertEq(gaugePool.pendingRewards(tokens[1], users[2]), 20000);
 
         // user1 deposit 400 token0
         vm.prank(users[1]);
@@ -121,9 +121,9 @@ contract TestBoostedLock is TestBaseMarket {
 
         // check pending rewards after 100 seconds
         vm.warp(block.timestamp + 100);
-        assertEq(gaugePool.pendingRewards(tokens[0], users[0]), 11999);
+        assertEq(gaugePool.pendingRewards(tokens[0], users[0]), 12000);
         assertEq(gaugePool.pendingRewards(tokens[0], users[1]), 8000);
-        assertEq(gaugePool.pendingRewards(tokens[1], users[2]), 23999);
+        assertEq(gaugePool.pendingRewards(tokens[1], users[2]), 24000);
         assertEq(gaugePool.pendingRewards(tokens[1], users[3]), 16000);
 
         // user0, user3 claims
@@ -132,9 +132,9 @@ contract TestBoostedLock is TestBaseMarket {
         gaugePool.claimAndLock(tokens[0], false, rewardData, "0x", 0);
         vm.prank(users[3]);
         gaugePool.claimAndLock(tokens[1], false, rewardData, "0x", 0);
-        assertEq(veCVE.balanceOf(users[0]), 11999);
+        assertEq(veCVE.balanceOf(users[0]), 12000);
         assertEq(veCVE.balanceOf(users[3]), 16000);
-        assertEq(veCVE.getVotes(users[0]), 11537);
+        assertEq(veCVE.getVotes(users[0]), 11538);
         assertEq(veCVE.getVotes(users[3]), 15384);
 
         vm.warp(block.timestamp + 1000);
@@ -144,15 +144,15 @@ contract TestBoostedLock is TestBaseMarket {
         gaugePool.claimAndExtendLock(tokens[0], 0, true, rewardData, "0x", 0);
         vm.prank(users[3]);
         gaugePool.claimAndExtendLock(tokens[1], 0, false, rewardData, "0x", 0);
-        assertEq(veCVE.balanceOf(users[0]), 31999);
+        assertEq(veCVE.balanceOf(users[0]), 32000);
         assertEq(veCVE.balanceOf(users[3]), 176000);
-        assertEq(veCVE.getVotes(users[0]), 35198);
+        assertEq(veCVE.getVotes(users[0]), 35200);
         assertEq(veCVE.getVotes(users[3]), 169230);
 
         vm.warp(block.timestamp + 6 weeks);
-        assertEq(veCVE.balanceOf(users[0]), 31999);
+        assertEq(veCVE.balanceOf(users[0]), 32000);
         assertEq(veCVE.balanceOf(users[3]), 176000);
-        assertEq(veCVE.getVotes(users[0]), 35198);
+        assertEq(veCVE.getVotes(users[0]), 35200);
         assertEq(veCVE.getVotes(users[3]), 148923);
     }
 }

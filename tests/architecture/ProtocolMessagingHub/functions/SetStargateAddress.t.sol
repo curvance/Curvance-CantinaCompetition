@@ -8,7 +8,8 @@ contract SetStargateAddressTest is TestBaseProtocolMessagingHub {
     function test_protocolMessagingHubDeployment_fail_whenCallerIsNotAuthorized()
         public
     {
-        vm.expectRevert("ProtocolMessagingHub: UNAUTHORIZED");
+        vm.prank(user1);
+        vm.expectRevert(ProtocolMessagingHub.ProtocolMessagingHub__Unauthorized.selector);
         protocolMessagingHub.setStargateAddress(address(1));
     }
 

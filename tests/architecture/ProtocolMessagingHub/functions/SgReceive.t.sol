@@ -8,8 +8,8 @@ contract SgReceiveTest is TestBaseProtocolMessagingHub {
     function test_sgReceive_fail_whenCallerIsNotStargateRouter() public {
         vm.expectRevert(
             ProtocolMessagingHub
-                .ProtocolMessagingHub__CallerIsNotStargateRouter
-                .selector
+            .ProtocolMessagingHub__Unauthorized
+            .selector
         );
         protocolMessagingHub.sgReceive(
             110,

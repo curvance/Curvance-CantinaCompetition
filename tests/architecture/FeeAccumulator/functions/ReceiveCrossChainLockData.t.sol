@@ -3,12 +3,13 @@ pragma solidity 0.8.17;
 
 import { TestBaseFeeAccumulator } from "../TestBaseFeeAccumulator.sol";
 import { EpochRolloverData } from "contracts/interfaces/IFeeAccumulator.sol";
+import { FeeAccumulator } from "contracts/architecture/FeeAccumulator.sol";
 
 contract ReceiveCrossChainLockDataTest is TestBaseFeeAccumulator {
     function test_receiveCrossChainLockData_fail_whenCallerIsNotMessagingHub()
         public
     {
-        vm.expectRevert("FeeAccumulator: UNAUTHORIZED");
+        vm.expectRevert(FeeAccumulator.FeeAccumulator__Unauthorized.selector);
         feeAccumulator.receiveCrossChainLockData(
             EpochRolloverData({
                 chainId: 110,

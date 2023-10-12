@@ -6,7 +6,7 @@ import { ProtocolMessagingHub } from "contracts/architecture/ProtocolMessagingHu
 
 contract OnOFTReceivedTest is TestBaseProtocolMessagingHub {
     function test_onOFTReceived_fail_whenCallerIsNotCVE() public {
-        vm.expectRevert("ProtocolMessagingHub: UNAUTHORIZED");
+        vm.expectRevert(ProtocolMessagingHub.ProtocolMessagingHub__Unauthorized.selector);
         protocolMessagingHub.onOFTReceived(
             110,
             abi.encodePacked(address(cve)),

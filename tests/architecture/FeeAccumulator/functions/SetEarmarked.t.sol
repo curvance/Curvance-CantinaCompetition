@@ -2,12 +2,13 @@
 pragma solidity 0.8.17;
 
 import { TestBaseFeeAccumulator } from "../TestBaseFeeAccumulator.sol";
+import { FeeAccumulator } from "contracts/architecture/FeeAccumulator.sol";
 
 contract SetEarmarkedTest is TestBaseFeeAccumulator {
     function test_setEarmarked_fail_whenCallerIsNotAuthorized() public {
         vm.prank(user1);
 
-        vm.expectRevert("FeeAccumulator: UNAUTHORIZED");
+        vm.expectRevert(FeeAccumulator.FeeAccumulator__Unauthorized.selector);
         feeAccumulator.setEarmarked(_WETH_ADDRESS, true);
     }
 
