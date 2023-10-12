@@ -8,7 +8,7 @@ import { LzTxObj } from "contracts/interfaces/layerzero/IStargateRouter.sol";
 
 contract SendFeesTest is TestBaseProtocolMessagingHub {
     function test_sendFees_fail_whenCallerIsNotAuthorized() public {
-        vm.expectRevert("ProtocolMessagingHub: UNAUTHORIZED");
+        vm.expectRevert(ProtocolMessagingHub.ProtocolMessagingHub__Unauthorized.selector);
         protocolMessagingHub.sendFees(
             address(this),
             PoolData({
