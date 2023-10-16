@@ -250,7 +250,7 @@ contract CVELocker is ReentrancyGuard {
     function hasRewardsToClaim(address user) external view returns (bool) {
         if (
             nextEpochToDeliver > userNextClaimIndex[user] &&
-            veCVE.userTokenPoints(user) > 0
+            veCVE.userPoints(user) > 0
         ) {
             return true;
         }
@@ -338,7 +338,7 @@ contract CVELocker is ReentrancyGuard {
     function epochsToClaim(address user) public view returns (uint256) {
         if (
             nextEpochToDeliver > userNextClaimIndex[user] &&
-            veCVE.userTokenPoints(user) > 0
+            veCVE.userPoints(user) > 0
         ) {
             unchecked {
                 return nextEpochToDeliver - (userNextClaimIndex[user]);
@@ -407,13 +407,13 @@ contract CVELocker is ReentrancyGuard {
         address user,
         uint256 epoch
     ) internal returns (uint256) {
-        if (veCVE.userTokenUnlocksByEpoch(user, epoch) > 0) {
+        if (veCVE.userUnlocksByEpoch(user, epoch) > 0) {
             // If they have tokens unlocking this epoch we need to decrease
             // their tokenPoints
             veCVE.updateUserPoints(user, epoch);
         }
 
-        return (veCVE.userTokenPoints(user) * epochRewardsPerCVE[epoch]);
+        return (veCVE.userPoints(user) * epochRewardsPerCVE[epoch]);
     }
 
     /// @notice Process user rewards

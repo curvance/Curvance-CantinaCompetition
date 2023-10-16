@@ -274,7 +274,7 @@ contract FeeAccumulator is ReentrancyGuard {
         uint16 version = 1;
 
         bytes memory payload = abi.encode(
-            veCVE.chainTokenPoints() - veCVE.chainUnlocksByEpoch(epoch)
+            veCVE.chainPoints() - veCVE.chainUnlocksByEpoch(epoch)
         );
 
         uint256 gas = CVE.estimateSendAndCallFee(
@@ -700,7 +700,7 @@ contract FeeAccumulator is ReentrancyGuard {
         );
 
         IVeCVE veCVE = IVeCVE(centralRegistry.veCVE());
-        uint256 lockedTokens = (veCVE.chainTokenPoints() -
+        uint256 lockedTokens = (veCVE.chainPoints() -
             veCVE.chainUnlocksByEpoch(epoch));
 
         uint256 totalLockedTokens = lockedTokens;
