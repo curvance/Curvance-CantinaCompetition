@@ -59,7 +59,6 @@ contract CVELocker is ReentrancyGuard {
 
     event RewardPaid(
         address user,
-        address recipient,
         address rewardToken,
         uint256 amount
     );
@@ -354,26 +353,24 @@ contract CVELocker is ReentrancyGuard {
         bytes calldata params,
         uint256 aux
     ) internal {
-        uint256 nextUserRewardEpoch = userNextClaimIndex[user];
-        uint256 userRewards;
+        uint256 startEpoch = userNextClaimIndex[user];
+        uint256 rewards;
 
         for (uint256 i; i < epochs; ) {
             unchecked {
-                userRewards += _calculateRewardsForEpoch(
-                    user,
-                    nextUserRewardEpoch + i++
-                );
+                rewards += _calculateRewardsForEpoch(user, startEpoch + i++);
             }
         }
 
         unchecked {
             userNextClaimIndex[user] += epochs;
             // Removes the 1e18 offset for proper reward value
-            userRewards = userRewards / EXP_SCALE;
+            rewards = rewards / EXP_SCALE;
         }
 
         uint256 rewardAmount = _processRewards(
-            userRewards,
+            user,
+            rewards,
             rewardsData,
             params,
             aux
@@ -384,7 +381,6 @@ contract CVELocker is ReentrancyGuard {
             // do not wanna revert to maintain composability
             emit RewardPaid(
                 user,
-                msg.sender,
                 rewardsData.desiredRewardToken,
                 rewardAmount
             );
@@ -416,18 +412,20 @@ contract CVELocker is ReentrancyGuard {
     ///      the base reward token, a swap is performed.
     ///      If the desired reward token is CVE and the user opts for lock,
     ///      the rewards are locked as VeCVE.
-    /// @param userRewards The amount of rewards to process for the user.
+    /// @param user The address of the user.
+    /// @param rewards The amount of rewards to process for the user.
     /// @param rewardsData Rewards data for CVE rewards locker
     /// @param params Additional parameters required for reward processing,
     ///               which may include swap data.
     /// @param aux Auxiliary data for wrapped assets such as veCVE.
     function _processRewards(
-        uint256 userRewards,
+        address user,
+        uint256 rewards,
         RewardsData calldata rewardsData,
         bytes calldata params,
         uint256 aux
     ) internal returns (uint256) {
-        if (userRewards == 0) {
+        if (rewards == 0) {
             return 0;
         }
 
@@ -442,6 +440,7 @@ contract CVELocker is ReentrancyGuard {
                 // dont allow users to lock for others to avoid spam attacks
                 return
                     _lockFeesAsVeCVE(
+                        user,
                         rewardsData.desiredRewardToken,
                         rewardsData.isFreshLock,
                         rewardsData.isFreshLockContinuous,
@@ -458,7 +457,7 @@ contract CVELocker is ReentrancyGuard {
                 swapData.call.length == 0 ||
                 swapData.inputToken != rewardToken ||
                 swapData.outputToken != rewardsData.desiredRewardToken ||
-                swapData.inputAmount > userRewards
+                swapData.inputAmount > rewards
             ) {
                 revert("CVELocker: swapData misconfigured");
             }
@@ -466,11 +465,11 @@ contract CVELocker is ReentrancyGuard {
             uint256 reward = SwapperLib.swap(swapData);
 
             if (swapData.outputToken == address(0)) {
-                SafeTransferLib.safeTransferETH(msg.sender, reward);
+                SafeTransferLib.safeTransferETH(user, reward);
             } else {
                 SafeTransferLib.safeTransfer(
                     rewardsData.desiredRewardToken,
-                    msg.sender,
+                    user,
                     reward
                 );
             }
@@ -478,12 +477,13 @@ contract CVELocker is ReentrancyGuard {
             return reward;
         }
 
-        SafeTransferLib.safeTransfer(rewardToken, msg.sender, userRewards);
+        SafeTransferLib.safeTransfer(rewardToken, user, rewards);
 
-        return userRewards;
+        return rewards;
     }
 
     /// @notice Lock fees as veCVE
+    /// @param user The address of the user.
     /// @param desiredRewardToken The address of the token to be locked,
     ///                           this should be CVE.
     /// @param isFreshLock A boolean to indicate if it's a new lock.
@@ -491,6 +491,7 @@ contract CVELocker is ReentrancyGuard {
     /// @param lockIndex The index of the lock in the user's lock array.
     ///                  This parameter is only required if it is not a fresh lock.
     function _lockFeesAsVeCVE(
+        address user, 
         address desiredRewardToken,
         bool isFreshLock,
         bool continuousLock,
@@ -504,7 +505,7 @@ contract CVELocker is ReentrancyGuard {
         // empty reward data to the veCVE calls
         if (isFreshLock) {
             veCVE.lockFor(
-                msg.sender,
+                user,
                 reward,
                 continuousLock,
                 RewardsData({
@@ -525,7 +526,7 @@ contract CVELocker is ReentrancyGuard {
         // and thus no potential secondary lock so we can just pass
         // empty reward data to the veCVE calls
         veCVE.increaseAmountAndExtendLockFor(
-            msg.sender,
+            user,
             reward,
             lockIndex,
             continuousLock,
