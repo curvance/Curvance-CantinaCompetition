@@ -21,9 +21,6 @@ contract VeCVE is ERC20, ReentrancyGuard {
 
     /// CONSTANTS ///
 
-    IDelegateRegistry public constant snapshot =
-        IDelegateRegistry(0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446);
-
     // Timestamp `unlockTime` will be set to when a lock is on continuous lock (CL) mode
     uint40 public constant CONTINUOUS_LOCK_VALUE = type(uint40).max;
     uint256 public constant EPOCH_DURATION = 2 weeks; // Protocol epoch length
@@ -54,14 +51,14 @@ contract VeCVE is ERC20, ReentrancyGuard {
     mapping(address => Lock[]) public userLocks;
 
     // User => Token Points
-    mapping(address => uint256) public userTokenPoints;
+    mapping(address => uint256) public userPoints;
 
     // User => Epoch # => Tokens unlocked
     mapping(address => mapping(uint256 => uint256))
-        public userTokenUnlocksByEpoch;
+        public userUnlocksByEpoch;
 
     // Token Points on this chain
-    uint256 public chainTokenPoints;
+    uint256 public chainPoints;
 
     // Epoch # => Token unlocks on this chain
     mapping(uint256 => uint256) public chainUnlocksByEpoch;
@@ -103,20 +100,6 @@ contract VeCVE is ERC20, ReentrancyGuard {
         _;
     }
 
-    modifier onlyDaoPermissions() {
-        if (!centralRegistry.hasDaoPermissions(msg.sender)){
-            _revert(_UNAUTHORIZED_SELECTOR);
-        }
-        _;
-    }
-
-    modifier onlyElevatedPermissions() {
-        if (!centralRegistry.hasElevatedPermissions(msg.sender)){
-            _revert(_UNAUTHORIZED_SELECTOR);
-        }
-        _;
-    }
-
     /// CONSTRUCTOR ///
 
     constructor(
@@ -137,6 +120,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
         genesisEpoch = centralRegistry.genesisEpoch();
         cve = centralRegistry.CVE();
         cveLocker = ICVELocker(centralRegistry.cveLocker());
+        
         if (clPointMultiplier_ <= DENOMINATOR){
             revert VeCVE__ParametersareInvalid();
         }
@@ -152,7 +136,11 @@ contract VeCVE is ERC20, ReentrancyGuard {
     function rescueToken(
         address token,
         uint256 amount
-    ) external onlyDaoPermissions {
+    ) external {
+        if (!centralRegistry.hasDaoPermissions(msg.sender)){
+            _revert(_UNAUTHORIZED_SELECTOR);
+        }
+
         address daoOperator = centralRegistry.daoAddress();
 
         if (token == address(0)) {
@@ -176,7 +164,11 @@ contract VeCVE is ERC20, ReentrancyGuard {
 
     /// @notice Shuts down the contract, unstakes all tokens,
     ///         and releases all locks
-    function shutdown() external onlyElevatedPermissions {
+    function shutdown() external {
+        if (!centralRegistry.hasElevatedPermissions(msg.sender)){
+            _revert(_UNAUTHORIZED_SELECTOR);
+        }
+
         isShutdown = 2;
         cveLocker.notifyLockerShutdown();
     }
@@ -436,15 +428,15 @@ contract VeCVE is ERC20, ReentrancyGuard {
             // more than 420m so this should never over/underflow
             uint256 tokenPoints = _getContinuousPointValue(tokenAmount) -
                 tokenAmount;
-            chainTokenPoints = chainTokenPoints - tokenPoints;
+            chainPoints = chainPoints - tokenPoints;
             chainUnlocksByEpoch[unlockEpoch] =
                 chainUnlocksByEpoch[unlockEpoch] +
                 tokenAmount;
-            userTokenPoints[msg.sender] =
-                userTokenPoints[msg.sender] -
+            userPoints[msg.sender] =
+                userPoints[msg.sender] -
                 tokenPoints;
-            userTokenUnlocksByEpoch[msg.sender][unlockEpoch] =
-                userTokenUnlocksByEpoch[msg.sender][unlockEpoch] +
+            userUnlocksByEpoch[msg.sender][unlockEpoch] =
+                userUnlocksByEpoch[msg.sender][unlockEpoch] +
                 tokenAmount;
         }
     }
@@ -718,7 +710,31 @@ contract VeCVE is ERC20, ReentrancyGuard {
         // Claim pending locker rewards
         _claimRewards(msg.sender, rewardRecipient, rewardsData, params, aux);
 
-        uint256 lockAmount = locks[lockIndex].amount;
+        Lock memory expiredLock = locks[lockIndex];
+        uint256 lockAmount = expiredLock.amount;
+        // If the locker is shutdown, do not allow them to relock,
+        // we'd want them to exit locked positions 
+        if (isShutdown == 2){
+            relock = false;
+
+            if (block.timestamp < locks[lockIndex].unlockTime){
+                if (expiredLock.unlockTime == CONTINUOUS_LOCK_VALUE){
+                    _reduceTokenPoints(msg.sender, _getContinuousPointValue(lockAmount));
+                } else {
+                    uint256 unlockEpoch = currentEpoch(expiredLock.unlockTime);
+                    chainPoints = chainPoints - lockAmount;
+                    chainUnlocksByEpoch[unlockEpoch] =
+                        chainUnlocksByEpoch[unlockEpoch] -
+                        lockAmount;
+                    userPoints[msg.sender] =
+                        userPoints[msg.sender] -
+                        lockAmount;
+                    userUnlocksByEpoch[msg.sender][unlockEpoch] =
+                        userUnlocksByEpoch[msg.sender][unlockEpoch] -
+                        lockAmount;
+                }
+            }    
+        }
 
         if (relock) {
             // Token points will be caught up by _claimRewards call
@@ -733,8 +749,10 @@ contract VeCVE is ERC20, ReentrancyGuard {
 
             emit Unlocked(msg.sender, lockAmount);
 
-            /// Might be better gas to check if first user lock has amount == 0
-            if (locks.length == 0) {
+            // Check whether the user has no remaining locks and reset their index,
+            // that way if in the future they create a new lock, they do not need to claim
+            // a bunch of epochs they have no rewards for
+            if (locks.length == 0 && isShutdown != 2) {
                 cveLocker.resetUserClaimIndex(msg.sender);
             }
         }
@@ -761,6 +779,10 @@ contract VeCVE is ERC20, ReentrancyGuard {
             _revert(_INVALID_LOCK_SELECTOR);
         }
 
+        if (block.timestamp >= locks[lockIndex].unlockTime){
+            _revert(_INVALID_LOCK_SELECTOR);
+        }
+
         uint256 penaltyValue = centralRegistry.earlyUnlockPenaltyValue();
 
         if (penaltyValue == 0){
@@ -770,8 +792,26 @@ contract VeCVE is ERC20, ReentrancyGuard {
         // Claim pending locker rewards
         _claimRewards(msg.sender, rewardRecipient, rewardsData, params, aux);
 
+        Lock memory expiredLock = locks[lockIndex];
+        uint256 lockAmount = expiredLock.amount;
+
+        if (expiredLock.unlockTime == CONTINUOUS_LOCK_VALUE){
+                _reduceTokenPoints(msg.sender, _getContinuousPointValue(lockAmount));
+            } else {
+                uint256 unlockEpoch = currentEpoch(expiredLock.unlockTime);
+                chainPoints = chainPoints - lockAmount;
+                chainUnlocksByEpoch[unlockEpoch] =
+                    chainUnlocksByEpoch[unlockEpoch] -
+                    lockAmount;
+                userPoints[msg.sender] =
+                    userPoints[msg.sender] -
+                    lockAmount;
+                userUnlocksByEpoch[msg.sender][unlockEpoch] =
+                    userUnlocksByEpoch[msg.sender][unlockEpoch] -
+                    lockAmount;
+            }
+
         // Burn their VeCVE and remove their lock
-        uint256 lockAmount = locks[lockIndex].amount;
         _burn(msg.sender, lockAmount);
         _removeLock(locks, lockIndex);
 
@@ -793,8 +833,10 @@ contract VeCVE is ERC20, ReentrancyGuard {
 
         emit UnlockedWithPenalty(msg.sender, lockAmount, penaltyAmount);
 
-        /// Might be better gas to check if first user lock has amount == 0
-        if (locks.length == 0) {
+        // Check whether the user has no remaining locks and reset their index,
+        // that way if in the future they create a new lock, they do not need to claim
+        // a bunch of epochs they have no rewards for
+        if (locks.length == 0 && isShutdown != 2) {
             cveLocker.resetUserClaimIndex(msg.sender);
         }
     }
@@ -854,7 +896,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
     /// @param user The address of the user whose points are to be updated
     /// @param epoch The epoch from which the unlock amount will be reduced
     /// @dev This function is only called when
-    ///      userTokenUnlocksByEpoch[user][epoch] > 0
+    ///      userUnlocksByEpoch[user][epoch] > 0
     ///      so do not need to check here
     function updateUserPoints(address user, uint256 epoch) public {
         address _cveLocker = address(cveLocker);
@@ -866,9 +908,9 @@ contract VeCVE is ERC20, ReentrancyGuard {
         }
 
         unchecked {
-            userTokenPoints[user] =
-                userTokenPoints[user] -
-                userTokenUnlocksByEpoch[user][epoch];
+            userPoints[user] =
+                userPoints[user] -
+                userUnlocksByEpoch[user][epoch];
         }
     }
 
@@ -1050,15 +1092,15 @@ contract VeCVE is ERC20, ReentrancyGuard {
             unchecked {
                 // only modified on locking/unlocking VeCVE and we know theres never
                 // more than 420m so this should never over/underflow
-                chainTokenPoints = chainTokenPoints + amount;
+                chainPoints = chainPoints + amount;
                 chainUnlocksByEpoch[unlockEpoch] =
                     chainUnlocksByEpoch[unlockEpoch] +
                     amount;
-                userTokenPoints[recipient] =
-                    userTokenPoints[recipient] +
+                userPoints[recipient] =
+                    userPoints[recipient] +
                     amount;
-                userTokenUnlocksByEpoch[recipient][unlockEpoch] =
-                    userTokenUnlocksByEpoch[recipient][unlockEpoch] +
+                userUnlocksByEpoch[recipient][unlockEpoch] =
+                    userUnlocksByEpoch[recipient][unlockEpoch] +
                     amount;
             }
         }
@@ -1170,8 +1212,8 @@ contract VeCVE is ERC20, ReentrancyGuard {
         // We know theres never more than 420m
         // so this should never over/underflow
         unchecked {
-            chainTokenPoints = chainTokenPoints + points;
-            userTokenPoints[user] = userTokenPoints[user] + points;
+            chainPoints = chainPoints + points;
+            userPoints[user] = userPoints[user] + points;
         }
     }
 
@@ -1184,8 +1226,8 @@ contract VeCVE is ERC20, ReentrancyGuard {
         // We know theres never more than 420m
         // so this should never over/underflow
         unchecked {
-            chainTokenPoints = chainTokenPoints - points;
-            userTokenPoints[user] = userTokenPoints[user] - points;
+            chainPoints = chainPoints - points;
+            userPoints[user] = userPoints[user] - points;
         }
     }
 
@@ -1205,8 +1247,8 @@ contract VeCVE is ERC20, ReentrancyGuard {
         // so this should never over/underflow
         unchecked {
             chainUnlocksByEpoch[epoch] = chainUnlocksByEpoch[epoch] + points;
-            userTokenUnlocksByEpoch[user][epoch] =
-                userTokenUnlocksByEpoch[user][epoch] +
+            userUnlocksByEpoch[user][epoch] =
+                userUnlocksByEpoch[user][epoch] +
                 points;
         }
     }
@@ -1226,8 +1268,8 @@ contract VeCVE is ERC20, ReentrancyGuard {
         // so this should never over/underflow
         unchecked {
             chainUnlocksByEpoch[epoch] = chainUnlocksByEpoch[epoch] - points;
-            userTokenUnlocksByEpoch[user][epoch] =
-                userTokenUnlocksByEpoch[user][epoch] -
+            userUnlocksByEpoch[user][epoch] =
+                userUnlocksByEpoch[user][epoch] -
                 points;
         }
     }
@@ -1256,12 +1298,12 @@ contract VeCVE is ERC20, ReentrancyGuard {
             chainUnlocksByEpoch[previousEpoch] =
                 chainUnlocksByEpoch[previousEpoch] -
                 previousPoints;
-            userTokenUnlocksByEpoch[user][previousEpoch] =
-                userTokenUnlocksByEpoch[user][previousEpoch] -
+            userUnlocksByEpoch[user][previousEpoch] =
+                userUnlocksByEpoch[user][previousEpoch] -
                 previousPoints;
             chainUnlocksByEpoch[epoch] = chainUnlocksByEpoch[epoch] + points;
-            userTokenUnlocksByEpoch[user][epoch] =
-                userTokenUnlocksByEpoch[user][epoch] +
+            userUnlocksByEpoch[user][epoch] =
+                userUnlocksByEpoch[user][epoch] +
                 points;
         }
     }
@@ -1283,13 +1325,13 @@ contract VeCVE is ERC20, ReentrancyGuard {
         // We know theres never more than 420m
         // so this should never over/underflow
         unchecked {
-            chainTokenPoints = chainTokenPoints + tokenPoints;
+            chainPoints = chainPoints + tokenPoints;
             chainUnlocksByEpoch[epoch] =
                 chainUnlocksByEpoch[epoch] -
                 tokenUnlocks;
-            userTokenPoints[user] = userTokenPoints[user] + tokenPoints;
-            userTokenUnlocksByEpoch[user][epoch] =
-                userTokenUnlocksByEpoch[user][epoch] -
+            userPoints[user] = userPoints[user] + tokenPoints;
+            userUnlocksByEpoch[user][epoch] =
+                userUnlocksByEpoch[user][epoch] -
                 tokenUnlocks;
         }
     }
