@@ -13,8 +13,8 @@ contract CurveAdaptor is BaseOracleAdaptor, CurveReentrancyCheck {
     
     /// TYPES ///
 
-    // TO-DO add coin length here so we do not need to call .length to save an MLOAD
     struct AdaptorData {
+        uint256 coinsLength;
         address[] coins;
         address pool;
     }
@@ -37,8 +37,7 @@ contract CurveAdaptor is BaseOracleAdaptor, CurveReentrancyCheck {
 
     error CurveAdaptor__UnsupportedPool();
     error CurveAdaptor__DidNotConverge();
-    /// @dev Revert in the case when the `@nonreentrant('lock')` is activated in the Curve pool
-    error NonreentrantLockIsActive();
+    error CurveAdaptor__Reentrant();
 
     /// CONSTRUCTOR ///
 
@@ -57,6 +56,16 @@ contract CurveAdaptor is BaseOracleAdaptor, CurveReentrancyCheck {
         _setReentrancyVerificationConfig(_pool, _gasLimit, _nCoins);
     }
 
+    /// @notice Retrieves the price of a given asset.
+    /// @dev Uses Curve to fetch the price data for the LP token.
+    ///      Price is returned in USD or ETH depending on 'inUSD' parameter.
+    /// @param asset The address of the asset for which the price is needed.
+    /// @param inUSD A boolean to determine if the price should be returned in
+    ///              USD or not.
+    /// @param getLower A boolean to determine if lower of two oracle prices
+    ///                 should be retrieved.
+    /// @return pData A structure containing the price, error status,
+    ///                         and the quote format of the price.
     function getPrice(
         address asset,
         bool inUSD,
@@ -65,14 +74,18 @@ contract CurveAdaptor is BaseOracleAdaptor, CurveReentrancyCheck {
         pData.inUSD = inUSD;
 
         AdaptorData memory adapter = adaptorData[asset];
-        if (isLocked(adapter.pool)) revert NonreentrantLockIsActive();
+        if (isLocked(adapter.pool)){
+            revert CurveAdaptor__Reentrant();
+        }
 
         IPriceRouter priceRouter = IPriceRouter(centralRegistry.priceRouter());
         ICurvePool pool = ICurvePool(adapter.pool);
 
+        uint256 coins = adapter.coinsLength;
         uint256 virtualPrice = pool.get_virtual_price();
         uint256 minPrice = type(uint256).max;
-        for (uint256 i = 0; i < adapter.coins.length; ) {
+
+        for (uint256 i; i < coins; ) {
             (uint256 price, uint256 errorCode) = priceRouter.getPrice(
                 adapter.coins[i],
                 inUSD,
@@ -80,22 +93,25 @@ contract CurveAdaptor is BaseOracleAdaptor, CurveReentrancyCheck {
             );
             if (errorCode > 0) {
                 pData.hadError = true;
-                if (errorCode == BAD_SOURCE) return pData;
+
+                if (errorCode == BAD_SOURCE){
+                    return pData;
+                }
             }
 
             minPrice = minPrice < price ? minPrice : price;
 
             unchecked {
-                i++;
+                ++i;
             }
         }
 
         pData.price = uint240((minPrice * virtualPrice) / 1e18);
     }
 
-    /// @notice Add a Balancer Stable Pool Bpt as an asset.
-    /// @dev Should be called before `PriceRotuer:addAssetPriceFeed` is called.
-    /// @param asset the address of the bpt to add
+    /// @notice Adds a Curve LP as an asset.
+    /// @dev Should be called before `PriceRouter:addAssetPriceFeed` is called.
+    /// @param asset the address of the lp to add
     function addAsset(
         address asset,
         address pool
@@ -105,7 +121,7 @@ contract CurveAdaptor is BaseOracleAdaptor, CurveReentrancyCheck {
             "CurveAdaptor: asset already supported"
         );
 
-        uint256 coinsLength = 0;
+        uint256 coinsLength;
         // Figure out how many tokens are in the curve pool.
         while (true) {
             try ICurvePool(pool).coins(coinsLength) {
@@ -114,17 +130,28 @@ contract CurveAdaptor is BaseOracleAdaptor, CurveReentrancyCheck {
                 break;
             }
         }
-        if (coinsLength != 2 && coinsLength != 3)
+        // Only support LPs with 2 - 4 underlying assets
+        if (coinsLength > 4){
             revert CurveAdaptor__UnsupportedPool();
-
+        }
+    
         address[] memory coins = new address[](coinsLength);
-        for (uint256 i = 0; i < coinsLength; ++i) {
+        for (uint256 i; i < coinsLength; ) {
             coins[i] = ICurvePool(pool).coins(i);
+
+            unchecked {
+                ++i;
+            }
         }
 
+        AdaptorData storage newAsset = adaptorData[asset];
+
         // Save values in Adaptor storage.
-        adaptorData[asset].coins = coins;
-        adaptorData[asset].pool = pool;
+        newAsset.coinsLength = coinsLength;
+        newAsset.coins = coins;
+        newAsset.pool = pool;
+
+        // Notify the adaptor to support the asset
         isSupportedAsset[asset] = true;
     }
 
