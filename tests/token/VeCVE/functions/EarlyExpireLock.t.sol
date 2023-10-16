@@ -17,7 +17,7 @@ contract EarlyExpireLockTest is TestBaseVeCVE {
         deal(address(cve), address(this), 100e18);
         cve.approve(address(veCVE), 100e18);
 
-        veCVE.lock(30e18, false, address(this), rewardsData, "", 0);
+        veCVE.lock(30e18, false, rewardsData, "", 0);
     }
 
     function test_earlyExpireLock_fail_whenLockIndexExceeds(
@@ -28,7 +28,6 @@ contract EarlyExpireLockTest is TestBaseVeCVE {
         vm.expectRevert(VeCVE.VeCVE__InvalidLock.selector);
         veCVE.earlyExpireLock(
             1,
-            address(this),
             rewardsData,
             "",
             0
@@ -43,7 +42,6 @@ contract EarlyExpireLockTest is TestBaseVeCVE {
         vm.expectRevert(VeCVE.VeCVE__InvalidLock.selector);
         veCVE.earlyExpireLock(
             0,
-            address(this),
             rewardsData,
             "",
             0
@@ -64,7 +62,6 @@ contract EarlyExpireLockTest is TestBaseVeCVE {
 
         veCVE.earlyExpireLock(
             0,
-            address(this),
             rewardsData,
             "",
             0

@@ -11,7 +11,7 @@ contract ExtendLockTest is TestBaseVeCVE {
         deal(address(cve), address(this), 100e18);
         cve.approve(address(veCVE), 100e18);
 
-        veCVE.lock(50e18, false, address(this), rewardsData, "", 0);
+        veCVE.lock(50e18, false, rewardsData, "", 0);
     }
 
     function test_extendLock_fail_whenVeCVEShutdown(
@@ -22,7 +22,7 @@ contract ExtendLockTest is TestBaseVeCVE {
         veCVE.shutdown();
 
         vm.expectRevert(VeCVE.VeCVE__VeCVEShutdown.selector);
-        veCVE.extendLock(0, true, address(this), rewardsData, "", 0);
+        veCVE.extendLock(0, true, rewardsData, "", 0);
     }
 
     function test_extendLock_fail_whenLockIndexIsInvalid(
@@ -31,7 +31,7 @@ contract ExtendLockTest is TestBaseVeCVE {
         bool isFreshLockContinuous
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
         vm.expectRevert(VeCVE.VeCVE__InvalidLock.selector);
-        veCVE.extendLock(1, true, address(this), rewardsData, "", 0);
+        veCVE.extendLock(1, true, rewardsData, "", 0);
     }
 
     function test_extendLock_fail_whenUnlockTimestampIsExpired(
@@ -43,7 +43,7 @@ contract ExtendLockTest is TestBaseVeCVE {
         vm.warp(unlockTime + 1);
 
         vm.expectRevert(VeCVE.VeCVE__InvalidLock.selector);
-        veCVE.extendLock(0, true, address(this), rewardsData, "", 0);
+        veCVE.extendLock(0, true, rewardsData, "", 0);
     }
 
     function test_extendLock_fail_whenContinuousLock(
@@ -51,10 +51,10 @@ contract ExtendLockTest is TestBaseVeCVE {
         bool isFreshLock,
         bool isFreshLockContinuous
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
-        veCVE.lock(10e18, true, address(this), rewardsData, "", 0);
+        veCVE.lock(10e18, true, rewardsData, "", 0);
 
         vm.expectRevert(VeCVE.VeCVE__LockTypeMismatch.selector);
-        veCVE.extendLock(1, true, address(this), rewardsData, "", 0);
+        veCVE.extendLock(1, true, rewardsData, "", 0);
     }
 
     function test_extendLock_success_withContinuousLock(
@@ -62,7 +62,7 @@ contract ExtendLockTest is TestBaseVeCVE {
         bool isFreshLock,
         bool isFreshLockContinuous
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
-        veCVE.extendLock(0, true, address(this), rewardsData, "", 0);
+        veCVE.extendLock(0, true, rewardsData, "", 0);
 
         (, uint40 unlockTime) = veCVE.userLocks(address(this), 0);
         assertEq(unlockTime, veCVE.CONTINUOUS_LOCK_VALUE());

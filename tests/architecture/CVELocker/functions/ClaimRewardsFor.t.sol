@@ -46,7 +46,7 @@ contract ClaimRewardsForTest is TestBaseCVELocker {
         deal(address(cve), user1, 100e18);
         cve.approve(address(veCVE), 100e18);
 
-        veCVE.lock(1e18, false, user1, rewardsData, "0x", 0);
+        veCVE.lock(1e18, false, rewardsData, "0x", 0);
 
         vm.stopPrank();
 
@@ -65,7 +65,6 @@ contract ClaimRewardsForTest is TestBaseCVELocker {
         vm.expectRevert(CVELocker.CVELocker__Unauthorized.selector);
         cveLocker.claimRewardsFor(
             user1,
-            user1,
             epochs,
             rewardsData,
             abi.encode(swapData),
@@ -81,7 +80,7 @@ contract ClaimRewardsForTest is TestBaseCVELocker {
         deal(address(cve), user1, 100e18);
         cve.approve(address(veCVE), 100e18);
 
-        veCVE.lock(1e18, false, user1, rewardsData, "0x", 0);
+        veCVE.lock(1e18, false, rewardsData, "0x", 0);
 
         vm.stopPrank();
 
@@ -102,7 +101,6 @@ contract ClaimRewardsForTest is TestBaseCVELocker {
         vm.prank(address(veCVE));
         cveLocker.claimRewardsFor(
             user1,
-            user1,
             epochs,
             rewardsData,
             abi.encode(swapData),
@@ -120,7 +118,7 @@ contract ClaimRewardsForTest is TestBaseCVELocker {
         deal(address(cve), user1, 100e18);
         cve.approve(address(veCVE), 100e18);
 
-        veCVE.lock(amount, false, user1, rewardsData, "0x", 0);
+        veCVE.lock(amount, false, rewardsData, "0x", 0);
 
         vm.stopPrank();
 

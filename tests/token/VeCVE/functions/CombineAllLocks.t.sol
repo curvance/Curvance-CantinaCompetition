@@ -11,7 +11,7 @@ contract CombineAllLocksTest is TestBaseVeCVE {
         deal(address(cve), address(this), 100e18);
         cve.approve(address(veCVE), 100e18);
 
-        veCVE.lock(30e18, false, address(this), rewardsData, "", 0);
+        veCVE.lock(30e18, false, rewardsData, "", 0);
     }
 
     function test_combineAllLocks_fail_whenCombineOneLock(
@@ -20,7 +20,7 @@ contract CombineAllLocksTest is TestBaseVeCVE {
         bool isFreshLockContinuous
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
         vm.expectRevert(VeCVE.VeCVE__InvalidLock.selector);
-        veCVE.combineAllLocks(false, address(this), rewardsData, "", 0);
+        veCVE.combineAllLocks(false, rewardsData, "", 0);
     }
 
     function test_combineAllLocks_success_withContinuousLock(
@@ -28,7 +28,7 @@ contract CombineAllLocksTest is TestBaseVeCVE {
         bool isFreshLock,
         bool isFreshLockContinuous
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
-        veCVE.lock(30e18, true, address(this), rewardsData, "", 0);
+        veCVE.lock(30e18, true, rewardsData, "", 0);
 
         (uint256 lockAmount, uint40 unlockTime) = veCVE.userLocks(
             address(this),
@@ -46,7 +46,7 @@ contract CombineAllLocksTest is TestBaseVeCVE {
             0
         );
 
-        veCVE.combineAllLocks(true, address(this), rewardsData, "", 0);
+        veCVE.combineAllLocks(true, rewardsData, "", 0);
 
         vm.expectRevert();
         veCVE.userLocks(address(this), 1);
@@ -72,7 +72,7 @@ contract CombineAllLocksTest is TestBaseVeCVE {
         bool isFreshLock,
         bool isFreshLockContinuous
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
-        veCVE.lock(30e18, true, address(this), rewardsData, "", 0);
+        veCVE.lock(30e18, true, rewardsData, "", 0);
 
         (uint256 lockAmount, uint40 unlockTime) = veCVE.userLocks(
             address(this),
@@ -90,7 +90,7 @@ contract CombineAllLocksTest is TestBaseVeCVE {
             0
         );
 
-        veCVE.combineAllLocks(false, address(this), rewardsData, "", 0);
+        veCVE.combineAllLocks(false, rewardsData, "", 0);
 
         vm.expectRevert();
         veCVE.userLocks(address(this), 1);

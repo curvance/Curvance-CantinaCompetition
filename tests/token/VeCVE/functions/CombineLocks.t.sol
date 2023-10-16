@@ -13,9 +13,9 @@ contract CombineLocksTest is TestBaseVeCVE {
         deal(address(cve), address(this), 100e18);
         cve.approve(address(veCVE), 100e18);
 
-        veCVE.lock(30e18, false, address(this), rewardsData, "", 0);
-        veCVE.lock(30e18, true, address(this), rewardsData, "", 0);
-        veCVE.lock(30e18, false, address(this), rewardsData, "", 0);
+        veCVE.lock(30e18, false, rewardsData, "", 0);
+        veCVE.lock(30e18, true, rewardsData, "", 0);
+        veCVE.lock(30e18, false, rewardsData, "", 0);
 
         lockIndexes.push(0);
         lockIndexes.push(1);
@@ -34,7 +34,6 @@ contract CombineLocksTest is TestBaseVeCVE {
         veCVE.combineLocks(
             lockIndexes,
             false,
-            address(this),
             rewardsData,
             "",
             0
@@ -52,7 +51,6 @@ contract CombineLocksTest is TestBaseVeCVE {
         veCVE.combineLocks(
             lockIndexes,
             false,
-            address(this),
             rewardsData,
             "",
             0
@@ -71,7 +69,6 @@ contract CombineLocksTest is TestBaseVeCVE {
         veCVE.combineLocks(
             lockIndexes,
             false,
-            address(this),
             rewardsData,
             "",
             0
@@ -105,7 +102,6 @@ contract CombineLocksTest is TestBaseVeCVE {
         veCVE.combineLocks(
             lockIndexes,
             true,
-            address(this),
             rewardsData,
             "",
             0
@@ -157,7 +153,6 @@ contract CombineLocksTest is TestBaseVeCVE {
         veCVE.combineLocks(
             lockIndexes,
             false,
-            address(this),
             rewardsData,
             "",
             0

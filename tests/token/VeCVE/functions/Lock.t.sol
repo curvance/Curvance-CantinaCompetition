@@ -16,7 +16,7 @@ contract LockTest is TestBaseVeCVE {
         veCVE.shutdown();
 
         vm.expectRevert(VeCVE.VeCVE__VeCVEShutdown.selector);
-        veCVE.lock(100, true, address(this), rewardsData, "", 0);
+        veCVE.lock(100, true, rewardsData, "", 0);
     }
 
     function test_lock_fail_whenAmountIsZero(
@@ -25,7 +25,7 @@ contract LockTest is TestBaseVeCVE {
         bool isFreshLockContinuous
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
         vm.expectRevert(VeCVE.VeCVE__InvalidLock.selector);
-        veCVE.lock(0, true, address(this), rewardsData, "", 0);
+        veCVE.lock(0, true, rewardsData, "", 0);
     }
 
     function test_lock_fail_whenBalanceIsNotEnough(
@@ -34,7 +34,7 @@ contract LockTest is TestBaseVeCVE {
         bool isFreshLockContinuous
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
         vm.expectRevert(SafeTransferLib.TransferFromFailed.selector);
-        veCVE.lock(100, true, address(this), rewardsData, "", 0);
+        veCVE.lock(100, true, rewardsData, "", 0);
     }
 
     function test_lock_fail_whenAllowanceIsNotEnough(
@@ -45,7 +45,7 @@ contract LockTest is TestBaseVeCVE {
         deal(address(cve), address(this), 100e18);
 
         vm.expectRevert(SafeTransferLib.TransferFromFailed.selector);
-        veCVE.lock(100, true, address(this), rewardsData, "", 0);
+        veCVE.lock(100, true, rewardsData, "", 0);
     }
 
     function test_lock_success_withContinuousLock_fuzzed(
@@ -62,7 +62,7 @@ contract LockTest is TestBaseVeCVE {
         vm.expectEmit(true, true, true, true, address(veCVE));
         emit Locked(address(this), amount);
 
-        veCVE.lock(amount, true, address(this), rewardsData, "", 0);
+        veCVE.lock(amount, true, rewardsData, "", 0);
 
         assertEq(cve.balanceOf(address(this)), 100e18 - amount);
         assertEq(veCVE.balanceOf(address(this)), amount);
@@ -101,7 +101,7 @@ contract LockTest is TestBaseVeCVE {
         vm.expectEmit(true, true, true, true, address(veCVE));
         emit Locked(address(this), amount);
 
-        veCVE.lock(amount, false, address(this), rewardsData, "", 0);
+        veCVE.lock(amount, false, rewardsData, "", 0);
 
         assertEq(cve.balanceOf(address(this)), 100e18 - amount);
         assertEq(veCVE.balanceOf(address(this)), amount);

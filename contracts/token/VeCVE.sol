@@ -195,7 +195,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
         );
 
         // Claim pending locker rewards
-        _claimRewards(msg.sender, msg.sender, rewardsData, params, aux);
+        _claimRewards(msg.sender, rewardsData, params, aux);
 
         _lock(msg.sender, amount, continuousLock);
 
@@ -233,7 +233,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
         );
 
         // Claim pending locker rewards
-        _claimRewards(recipient, msg.sender, rewardsData, params, aux);
+        _claimRewards(recipient, rewardsData, params, aux);
 
         _lock(recipient, amount, continuousLock);
 
@@ -275,7 +275,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
         }
 
         // Claim pending locker rewards
-        _claimRewards(msg.sender, msg.sender, rewardsData, params, aux);
+        _claimRewards(msg.sender, rewardsData, params, aux);
 
         uint216 tokenAmount = locks[lockIndex].amount;
         uint256 unlockEpoch = freshLockEpoch();
@@ -327,7 +327,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
         );
 
         // Claim pending locker rewards
-        _claimRewards(msg.sender, msg.sender, rewardsData, params, aux);
+        _claimRewards(msg.sender, rewardsData, params, aux);
 
         _increaseAmountAndExtendLockFor(
             msg.sender,
@@ -371,7 +371,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
         );
 
         // Claim pending locker rewards
-        _claimRewards(recipient, msg.sender, rewardsData, params, aux);
+        _claimRewards(recipient, rewardsData, params, aux);
 
         _increaseAmountAndExtendLockFor(
             recipient,
@@ -404,7 +404,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
         }
 
         // Claim pending locker rewards
-        _claimRewards(msg.sender, msg.sender, rewardsData, params, aux);
+        _claimRewards(msg.sender, rewardsData, params, aux);
 
         uint216 tokenAmount = locks[lockIndex].amount;
         uint256 unlockEpoch = freshLockEpoch();
@@ -444,7 +444,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
         uint256 aux
     ) external nonReentrant {
         // Claim pending locker rewards
-        _claimRewards(msg.sender, msg.sender, rewardsData, params, aux);
+        _claimRewards(msg.sender, rewardsData, params, aux);
 
         Lock[] storage locks = userLocks[msg.sender];
         uint256 lastLockIndex = locks.length - 1;
@@ -588,7 +588,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
         uint256 aux
     ) external nonReentrant {
         // Claim pending locker rewards
-        _claimRewards(msg.sender, msg.sender, rewardsData, params, aux);
+        _claimRewards(msg.sender, rewardsData, params, aux);
 
         // Need to have this check after _claimRewards as the user could have
         // created a new lock with their pending rewards
@@ -690,7 +690,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
         }
 
         // Claim pending locker rewards
-        _claimRewards(msg.sender, msg.sender, rewardsData, params, aux);
+        _claimRewards(msg.sender, rewardsData, params, aux);
 
         Lock memory expiredLock = locks[lockIndex];
         uint256 lockAmount = expiredLock.amount;
@@ -770,7 +770,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
         }
 
         // Claim pending locker rewards
-        _claimRewards(msg.sender, msg.sender, rewardsData, params, aux);
+        _claimRewards(msg.sender, rewardsData, params, aux);
 
         Lock memory expiredLock = locks[lockIndex];
         uint256 lockAmount = expiredLock.amount;
@@ -1017,7 +1017,6 @@ contract VeCVE is ERC20, ReentrancyGuard {
     /// See claimRewardsFor in CVE Locker
     function _claimRewards(
         address user,
-        address recipient,
         RewardsData memory rewardsData,
         bytes memory params,
         uint256 aux
@@ -1026,7 +1025,6 @@ contract VeCVE is ERC20, ReentrancyGuard {
         if (epochs > 0) {
             cveLocker.claimRewardsFor(
                 user,
-                recipient,
                 epochs,
                 rewardsData,
                 params,

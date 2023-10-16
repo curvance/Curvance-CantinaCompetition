@@ -20,7 +20,6 @@ contract LockForTest is TestBaseVeCVE {
             address(1),
             100,
             true,
-            address(this),
             rewardsData,
             "",
             0
@@ -33,7 +32,7 @@ contract LockForTest is TestBaseVeCVE {
         bool isFreshLockContinuous
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
         vm.expectRevert(VeCVE.VeCVE__InvalidLock.selector);
-        veCVE.lockFor(address(1), 0, true, address(this), rewardsData, "", 0);
+        veCVE.lockFor(address(1), 0, true, rewardsData, "", 0);
     }
 
     function test_lockFor_fail_whenLockerIsNotApproved(
@@ -46,7 +45,6 @@ contract LockForTest is TestBaseVeCVE {
             address(1),
             100,
             true,
-            address(this),
             rewardsData,
             "",
             0
@@ -65,7 +63,6 @@ contract LockForTest is TestBaseVeCVE {
             address(1),
             100,
             true,
-            address(this),
             rewardsData,
             "",
             0
@@ -86,7 +83,6 @@ contract LockForTest is TestBaseVeCVE {
             address(1),
             100,
             true,
-            address(this),
             rewardsData,
             "",
             0
@@ -113,7 +109,6 @@ contract LockForTest is TestBaseVeCVE {
             address(1),
             amount,
             true,
-            address(this),
             rewardsData,
             "",
             0
@@ -162,7 +157,6 @@ contract LockForTest is TestBaseVeCVE {
             address(1),
             amount,
             false,
-            address(this),
             rewardsData,
             "",
             0

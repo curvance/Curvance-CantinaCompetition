@@ -17,7 +17,6 @@ contract IncreaseAmountAndExtendLockForTest is TestBaseVeCVE {
             address(1),
             50e18,
             false,
-            address(this),
             rewardsData,
             "",
             0
@@ -39,7 +38,6 @@ contract IncreaseAmountAndExtendLockForTest is TestBaseVeCVE {
             100,
             0,
             true,
-            address(this),
             rewardsData,
             "",
             0
@@ -57,7 +55,6 @@ contract IncreaseAmountAndExtendLockForTest is TestBaseVeCVE {
             0,
             0,
             true,
-            address(this),
             rewardsData,
             "",
             0
@@ -75,7 +72,6 @@ contract IncreaseAmountAndExtendLockForTest is TestBaseVeCVE {
             100,
             0,
             true,
-            address(this),
             rewardsData,
             "",
             0
@@ -95,7 +91,6 @@ contract IncreaseAmountAndExtendLockForTest is TestBaseVeCVE {
             100,
             1,
             true,
-            address(this),
             rewardsData,
             "",
             0
@@ -118,7 +113,6 @@ contract IncreaseAmountAndExtendLockForTest is TestBaseVeCVE {
             100,
             0,
             true,
-            address(this),
             rewardsData,
             "",
             0
@@ -137,7 +131,6 @@ contract IncreaseAmountAndExtendLockForTest is TestBaseVeCVE {
             100,
             0,
             true,
-            address(this),
             rewardsData,
             "",
             0
@@ -159,7 +152,6 @@ contract IncreaseAmountAndExtendLockForTest is TestBaseVeCVE {
             100,
             0,
             false,
-            address(this),
             rewardsData,
             "",
             0

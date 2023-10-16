@@ -13,7 +13,7 @@ contract ProcessExpiredLockTest is TestBaseVeCVE {
         deal(address(cve), address(this), 100e18);
         cve.approve(address(veCVE), 100e18);
 
-        veCVE.lock(30e18, false, address(this), rewardsData, "", 0);
+        veCVE.lock(30e18, false, rewardsData, "", 0);
     }
 
     function test_processExpiredLock_fail_whenLockIndexExceeds(
@@ -26,7 +26,6 @@ contract ProcessExpiredLockTest is TestBaseVeCVE {
             1,
             false,
             false,
-            address(this),
             rewardsData,
             "",
             0
@@ -43,7 +42,6 @@ contract ProcessExpiredLockTest is TestBaseVeCVE {
             0,
             false,
             false,
-            address(this),
             rewardsData,
             "",
             0
@@ -65,7 +63,6 @@ contract ProcessExpiredLockTest is TestBaseVeCVE {
             0,
             false,
             true,
-            address(this),
             rewardsData,
             "",
             0
@@ -87,7 +84,6 @@ contract ProcessExpiredLockTest is TestBaseVeCVE {
             0,
             false,
             false,
-            address(this),
             rewardsData,
             "",
             0

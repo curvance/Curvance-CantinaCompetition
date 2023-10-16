@@ -11,7 +11,7 @@ contract IncreaseAmountAndExtendLockTest is TestBaseVeCVE {
         deal(address(cve), address(this), 100e18);
         cve.approve(address(veCVE), 100e18);
 
-        veCVE.lock(50e18, false, address(this), rewardsData, "", 0);
+        veCVE.lock(50e18, false, rewardsData, "", 0);
     }
 
     function test_increaseAmountAndExtendLock_fail_whenVeCVEShutdown(
@@ -26,7 +26,6 @@ contract IncreaseAmountAndExtendLockTest is TestBaseVeCVE {
             100,
             0,
             true,
-            address(this),
             rewardsData,
             "",
             0
@@ -43,7 +42,6 @@ contract IncreaseAmountAndExtendLockTest is TestBaseVeCVE {
             0,
             0,
             true,
-            address(this),
             rewardsData,
             "",
             0
@@ -60,7 +58,6 @@ contract IncreaseAmountAndExtendLockTest is TestBaseVeCVE {
             100,
             1,
             true,
-            address(this),
             rewardsData,
             "",
             0
@@ -80,7 +77,6 @@ contract IncreaseAmountAndExtendLockTest is TestBaseVeCVE {
             100,
             0,
             true,
-            address(this),
             rewardsData,
             "",
             0
@@ -96,7 +92,6 @@ contract IncreaseAmountAndExtendLockTest is TestBaseVeCVE {
             100,
             0,
             true,
-            address(this),
             rewardsData,
             "",
             0
@@ -115,7 +110,6 @@ contract IncreaseAmountAndExtendLockTest is TestBaseVeCVE {
             100,
             0,
             false,
-            address(this),
             rewardsData,
             "",
             0

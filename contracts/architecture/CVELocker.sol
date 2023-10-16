@@ -283,12 +283,10 @@ contract CVELocker is ReentrancyGuard {
     // Reward Functions
 
     /// @notice Claim rewards for multiple epochs
-    /// @param recipient The address who should receive the rewards of user
     /// @param rewardsData Rewards data for CVE rewards locker
     /// @param params Swap data for token swapping rewards to desiredRewardToken.
     /// @param aux Auxiliary data for wrapped assets such as veCVE.
     function claimRewards(
-        address recipient,
         RewardsData calldata rewardsData,
         bytes calldata params,
         uint256 aux
@@ -304,19 +302,17 @@ contract CVELocker is ReentrancyGuard {
             }
         }
 
-        _claimRewards(msg.sender, recipient, epochs, rewardsData, params, aux);
+        _claimRewards(msg.sender, epochs, rewardsData, params, aux);
     }
 
     /// @notice Claim rewards for multiple epochs
     /// @param user The address of the user.
-    /// @param recipient The address who should receive the rewards of user
     /// @param epochs The number of epochs for which to claim rewards.
     /// @param rewardsData Rewards data for CVE rewards locker
     /// @param params Swap data for token swapping rewards to desiredRewardToken.
     /// @param aux Auxiliary data for wrapped assets such as veCVE.
     function claimRewardsFor(
         address user,
-        address recipient,
         uint256 epochs,
         RewardsData calldata rewardsData,
         bytes calldata params,
@@ -324,7 +320,7 @@ contract CVELocker is ReentrancyGuard {
     ) external onlyVeCVE nonReentrant {
         // We check whether there are epochs to claim in veCVE
         // so we do not need to check here like in claimRewards
-        _claimRewards(user, recipient, epochs, rewardsData, params, aux);
+        _claimRewards(user, epochs, rewardsData, params, aux);
     }
 
     /// PUBLIC FUNCTIONS ///
@@ -353,7 +349,6 @@ contract CVELocker is ReentrancyGuard {
     // See claimRewardFor above
     function _claimRewards(
         address user,
-        address recipient,
         uint256 epochs,
         RewardsData calldata rewardsData,
         bytes calldata params,
@@ -378,7 +373,6 @@ contract CVELocker is ReentrancyGuard {
         }
 
         uint256 rewardAmount = _processRewards(
-            recipient,
             userRewards,
             rewardsData,
             params,
@@ -390,7 +384,7 @@ contract CVELocker is ReentrancyGuard {
             // do not wanna revert to maintain composability
             emit RewardPaid(
                 user,
-                recipient,
+                msg.sender,
                 rewardsData.desiredRewardToken,
                 rewardAmount
             );
@@ -428,7 +422,6 @@ contract CVELocker is ReentrancyGuard {
     ///               which may include swap data.
     /// @param aux Auxiliary data for wrapped assets such as veCVE.
     function _processRewards(
-        address recipient,
         uint256 userRewards,
         RewardsData calldata rewardsData,
         bytes calldata params,
@@ -473,11 +466,11 @@ contract CVELocker is ReentrancyGuard {
             uint256 reward = SwapperLib.swap(swapData);
 
             if (swapData.outputToken == address(0)) {
-                SafeTransferLib.safeTransferETH(recipient, reward);
+                SafeTransferLib.safeTransferETH(msg.sender, reward);
             } else {
                 SafeTransferLib.safeTransfer(
                     rewardsData.desiredRewardToken,
-                    recipient,
+                    msg.sender,
                     reward
                 );
             }
@@ -485,7 +478,7 @@ contract CVELocker is ReentrancyGuard {
             return reward;
         }
 
-        SafeTransferLib.safeTransfer(rewardToken, recipient, userRewards);
+        SafeTransferLib.safeTransfer(rewardToken, msg.sender, userRewards);
 
         return userRewards;
     }
