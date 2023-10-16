@@ -70,16 +70,16 @@ contract LockTest is TestBaseVeCVE {
         (, uint40 unlockTime) = veCVE.userLocks(address(this), 0);
 
         assertEq(
-            veCVE.chainTokenPoints(),
+            veCVE.chainPoints(),
             (amount * veCVE.clPointMultiplier()) / veCVE.DENOMINATOR()
         );
         assertEq(
-            veCVE.userTokenPoints(address(this)),
+            veCVE.userPoints(address(this)),
             (amount * veCVE.clPointMultiplier()) / veCVE.DENOMINATOR()
         );
         assertEq(veCVE.chainUnlocksByEpoch(veCVE.currentEpoch(unlockTime)), 0);
         assertEq(
-            veCVE.userTokenUnlocksByEpoch(
+            veCVE.userUnlocksByEpoch(
                 address(this),
                 veCVE.currentEpoch(unlockTime)
             ),
@@ -108,14 +108,14 @@ contract LockTest is TestBaseVeCVE {
 
         (, uint40 unlockTime) = veCVE.userLocks(address(this), 0);
 
-        assertEq(veCVE.chainTokenPoints(), amount);
-        assertEq(veCVE.userTokenPoints(address(this)), amount);
+        assertEq(veCVE.chainPoints(), amount);
+        assertEq(veCVE.userPoints(address(this)), amount);
         assertEq(
             veCVE.chainUnlocksByEpoch(veCVE.currentEpoch(unlockTime)),
             amount
         );
         assertEq(
-            veCVE.userTokenUnlocksByEpoch(
+            veCVE.userUnlocksByEpoch(
                 address(this),
                 veCVE.currentEpoch(unlockTime)
             ),

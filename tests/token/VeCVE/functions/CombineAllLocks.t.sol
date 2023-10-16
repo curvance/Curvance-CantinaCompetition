@@ -35,11 +35,11 @@ contract CombineAllLocksTest is TestBaseVeCVE {
             1
         );
 
-        assertEq(veCVE.chainTokenPoints(), 90e18);
-        assertEq(veCVE.userTokenPoints(address(this)), 90e18);
+        assertEq(veCVE.chainPoints(), 90e18);
+        assertEq(veCVE.userPoints(address(this)), 90e18);
         assertEq(veCVE.chainUnlocksByEpoch(veCVE.currentEpoch(unlockTime)), 0);
         assertEq(
-            veCVE.userTokenUnlocksByEpoch(
+            veCVE.userUnlocksByEpoch(
                 address(this),
                 veCVE.currentEpoch(unlockTime)
             ),
@@ -55,11 +55,11 @@ contract CombineAllLocksTest is TestBaseVeCVE {
 
         assertEq(lockAmount, 60e18);
         assertEq(unlockTime, veCVE.CONTINUOUS_LOCK_VALUE());
-        assertEq(veCVE.chainTokenPoints(), 120e18);
-        assertEq(veCVE.userTokenPoints(address(this)), 120e18);
+        assertEq(veCVE.chainPoints(), 120e18);
+        assertEq(veCVE.userPoints(address(this)), 120e18);
         assertEq(veCVE.chainUnlocksByEpoch(veCVE.currentEpoch(unlockTime)), 0);
         assertEq(
-            veCVE.userTokenUnlocksByEpoch(
+            veCVE.userUnlocksByEpoch(
                 address(this),
                 veCVE.currentEpoch(unlockTime)
             ),
@@ -79,11 +79,11 @@ contract CombineAllLocksTest is TestBaseVeCVE {
             1
         );
 
-        assertEq(veCVE.chainTokenPoints(), 90e18);
-        assertEq(veCVE.userTokenPoints(address(this)), 90e18);
+        assertEq(veCVE.chainPoints(), 90e18);
+        assertEq(veCVE.userPoints(address(this)), 90e18);
         assertEq(veCVE.chainUnlocksByEpoch(veCVE.currentEpoch(unlockTime)), 0);
         assertEq(
-            veCVE.userTokenUnlocksByEpoch(
+            veCVE.userUnlocksByEpoch(
                 address(this),
                 veCVE.currentEpoch(unlockTime)
             ),
@@ -99,14 +99,14 @@ contract CombineAllLocksTest is TestBaseVeCVE {
 
         assertEq(lockAmount, 60e18);
         assertEq(unlockTime, veCVE.freshLockTimestamp());
-        assertEq(veCVE.chainTokenPoints(), 60e18);
-        assertEq(veCVE.userTokenPoints(address(this)), 60e18);
+        assertEq(veCVE.chainPoints(), 60e18);
+        assertEq(veCVE.userPoints(address(this)), 60e18);
         assertEq(
             veCVE.chainUnlocksByEpoch(veCVE.currentEpoch(unlockTime)),
             60e18
         );
         assertEq(
-            veCVE.userTokenUnlocksByEpoch(
+            veCVE.userUnlocksByEpoch(
                 address(this),
                 veCVE.currentEpoch(unlockTime)
             ),

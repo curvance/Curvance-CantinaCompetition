@@ -514,7 +514,6 @@ contract CVELocker is ReentrancyGuard {
                 msg.sender,
                 reward,
                 continuousLock,
-                msg.sender,
                 RewardsData({
                     desiredRewardToken: desiredRewardToken,
                     shouldLock: false,
@@ -537,7 +536,6 @@ contract CVELocker is ReentrancyGuard {
             reward,
             lockIndex,
             continuousLock,
-            msg.sender,
             RewardsData({
                 desiredRewardToken: desiredRewardToken,
                 shouldLock: false,

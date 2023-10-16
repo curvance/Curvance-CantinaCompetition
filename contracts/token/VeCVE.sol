@@ -120,7 +120,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
         genesisEpoch = centralRegistry.genesisEpoch();
         cve = centralRegistry.CVE();
         cveLocker = ICVELocker(centralRegistry.cveLocker());
-        
+
         if (clPointMultiplier_ <= DENOMINATOR){
             revert VeCVE__ParametersareInvalid();
         }
@@ -177,14 +177,12 @@ contract VeCVE is ERC20, ReentrancyGuard {
     ///         and processes any pending locker rewards
     /// @param amount The amount of tokens to lock
     /// @param continuousLock Indicator of whether the lock should be continuous
-    /// @param rewardRecipient Address to receive the reward tokens
     /// @param rewardsData Rewards data for CVE rewards locker
     /// @param params Parameters for rewards claim function
     /// @param aux Auxiliary data
     function lock(
         uint256 amount,
         bool continuousLock,
-        address rewardRecipient,
         RewardsData calldata rewardsData,
         bytes calldata params,
         uint256 aux
@@ -197,7 +195,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
         );
 
         // Claim pending locker rewards
-        _claimRewards(msg.sender, rewardRecipient, rewardsData, params, aux);
+        _claimRewards(msg.sender, msg.sender, rewardsData, params, aux);
 
         _lock(msg.sender, amount, continuousLock);
 
@@ -209,7 +207,6 @@ contract VeCVE is ERC20, ReentrancyGuard {
     /// @param recipient The address to lock tokens for
     /// @param amount The amount of tokens to lock
     /// @param continuousLock Indicator of whether the lock should be continuous
-    /// @param rewardRecipient Address to receive the reward tokens
     /// @param rewardsData Rewards data for CVE rewards locker
     /// @param params Parameters for rewards claim function
     /// @param aux Auxiliary data
@@ -217,7 +214,6 @@ contract VeCVE is ERC20, ReentrancyGuard {
         address recipient,
         uint256 amount,
         bool continuousLock,
-        address rewardRecipient,
         RewardsData calldata rewardsData,
         bytes calldata params,
         uint256 aux
@@ -237,7 +233,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
         );
 
         // Claim pending locker rewards
-        _claimRewards(recipient, rewardRecipient, rewardsData, params, aux);
+        _claimRewards(recipient, msg.sender, rewardsData, params, aux);
 
         _lock(recipient, amount, continuousLock);
 
@@ -248,14 +244,12 @@ contract VeCVE is ERC20, ReentrancyGuard {
     ///         and processes any pending locker rewards
     /// @param lockIndex The index of the lock to extend
     /// @param continuousLock Indicator of whether the lock should be continuous
-    /// @param rewardRecipient Address to receive the reward tokens
     /// @param rewardsData Rewards data for CVE rewards locker
     /// @param params Parameters for rewards claim function
     /// @param aux Auxiliary data
     function extendLock(
         uint256 lockIndex,
         bool continuousLock,
-        address rewardRecipient,
         RewardsData calldata rewardsData,
         bytes calldata params,
         uint256 aux
@@ -281,7 +275,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
         }
 
         // Claim pending locker rewards
-        _claimRewards(msg.sender, rewardRecipient, rewardsData, params, aux);
+        _claimRewards(msg.sender, msg.sender, rewardsData, params, aux);
 
         uint216 tokenAmount = locks[lockIndex].amount;
         uint256 unlockEpoch = freshLockEpoch();
@@ -314,7 +308,6 @@ contract VeCVE is ERC20, ReentrancyGuard {
     /// @param amount The amount to increase the lock by
     /// @param lockIndex The index of the lock to extend
     /// @param continuousLock Whether the lock should be continuous or not
-    /// @param rewardRecipient Address to receive the reward tokens
     /// @param rewardsData Rewards data for CVE rewards locker
     /// @param params Parameters for rewards claim function
     /// @param aux Auxiliary data
@@ -322,7 +315,6 @@ contract VeCVE is ERC20, ReentrancyGuard {
         uint256 amount,
         uint256 lockIndex,
         bool continuousLock,
-        address rewardRecipient,
         RewardsData calldata rewardsData,
         bytes calldata params,
         uint256 aux
@@ -335,7 +327,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
         );
 
         // Claim pending locker rewards
-        _claimRewards(msg.sender, rewardRecipient, rewardsData, params, aux);
+        _claimRewards(msg.sender, msg.sender, rewardsData, params, aux);
 
         _increaseAmountAndExtendLockFor(
             msg.sender,
@@ -352,7 +344,6 @@ contract VeCVE is ERC20, ReentrancyGuard {
     /// @param amount The amount to increase the lock by
     /// @param lockIndex The index of the lock to extend
     /// @param continuousLock Whether the lock should be continuous or not
-    /// @param rewardRecipient Address to receive the reward tokens
     /// @param rewardsData Rewards data for CVE rewards locker
     /// @param params Parameters for rewards claim function
     /// @param aux Auxiliary data
@@ -361,7 +352,6 @@ contract VeCVE is ERC20, ReentrancyGuard {
         uint256 amount,
         uint256 lockIndex,
         bool continuousLock,
-        address rewardRecipient,
         RewardsData calldata rewardsData,
         bytes calldata params,
         uint256 aux
@@ -381,7 +371,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
         );
 
         // Claim pending locker rewards
-        _claimRewards(recipient, rewardRecipient, rewardsData, params, aux);
+        _claimRewards(recipient, msg.sender, rewardsData, params, aux);
 
         _increaseAmountAndExtendLockFor(
             recipient,
@@ -394,13 +384,11 @@ contract VeCVE is ERC20, ReentrancyGuard {
     /// @notice Disables a continuous lock for the user at the specified
     ///         lock index, and processes any pending locker rewards
     /// @param lockIndex The index of the lock to be disabled
-    /// @param rewardRecipient Address to receive the reward tokens
     /// @param rewardsData Rewards data for CVE rewards locker
     /// @param params Parameters for rewards claim function
     /// @param aux Auxiliary data
     function disableContinuousLock(
         uint256 lockIndex,
-        address rewardRecipient,
         RewardsData calldata rewardsData,
         bytes calldata params,
         uint256 aux
@@ -416,7 +404,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
         }
 
         // Claim pending locker rewards
-        _claimRewards(msg.sender, rewardRecipient, rewardsData, params, aux);
+        _claimRewards(msg.sender, msg.sender, rewardsData, params, aux);
 
         uint216 tokenAmount = locks[lockIndex].amount;
         uint256 unlockEpoch = freshLockEpoch();
@@ -445,20 +433,18 @@ contract VeCVE is ERC20, ReentrancyGuard {
     ///         and processes any pending locker rewards
     /// @param continuousLock Whether the combined lock should be continuous
     ///                       or not
-    /// @param rewardRecipient Address to receive the reward tokens
     /// @param rewardsData Rewards data for CVE rewards locker
     /// @param params Parameters for rewards claim function
     /// @param aux Auxiliary data
     function combineLocks(
         uint256[] calldata lockIndexes,
         bool continuousLock,
-        address rewardRecipient,
         RewardsData calldata rewardsData,
         bytes memory params,
         uint256 aux
     ) external nonReentrant {
         // Claim pending locker rewards
-        _claimRewards(msg.sender, rewardRecipient, rewardsData, params, aux);
+        _claimRewards(msg.sender, msg.sender, rewardsData, params, aux);
 
         Lock[] storage locks = userLocks[msg.sender];
         uint256 lastLockIndex = locks.length - 1;
@@ -592,19 +578,17 @@ contract VeCVE is ERC20, ReentrancyGuard {
     ///         and processes any pending locker rewards
     /// @param continuousLock Whether the combined lock should be continuous
     ///                       or not
-    /// @param rewardRecipient Address to receive the reward tokens
     /// @param rewardsData Rewards data for CVE rewards locker
     /// @param params Parameters for rewards claim function
     /// @param aux Auxiliary data
     function combineAllLocks(
         bool continuousLock,
-        address rewardRecipient,
         RewardsData calldata rewardsData,
         bytes calldata params,
         uint256 aux
     ) external nonReentrant {
         // Claim pending locker rewards
-        _claimRewards(msg.sender, rewardRecipient, rewardsData, params, aux);
+        _claimRewards(msg.sender, msg.sender, rewardsData, params, aux);
 
         // Need to have this check after _claimRewards as the user could have
         // created a new lock with their pending rewards
@@ -683,7 +667,6 @@ contract VeCVE is ERC20, ReentrancyGuard {
     /// @param relock Whether the expired lock should be relocked in a fresh lock
     /// @param continuousLock Whether the relocked fresh lock should be
     ///                       continuous or not
-    /// @param rewardRecipient Address to receive the reward tokens
     /// @param rewardsData Rewards data for CVE rewards locker
     /// @param params Parameters for rewards claim function
     /// @param aux Auxiliary data
@@ -691,7 +674,6 @@ contract VeCVE is ERC20, ReentrancyGuard {
         uint256 lockIndex,
         bool relock,
         bool continuousLock,
-        address rewardRecipient,
         RewardsData calldata rewardsData,
         bytes calldata params,
         uint256 aux
@@ -708,7 +690,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
         }
 
         // Claim pending locker rewards
-        _claimRewards(msg.sender, rewardRecipient, rewardsData, params, aux);
+        _claimRewards(msg.sender, msg.sender, rewardsData, params, aux);
 
         Lock memory expiredLock = locks[lockIndex];
         uint256 lockAmount = expiredLock.amount;
@@ -761,13 +743,11 @@ contract VeCVE is ERC20, ReentrancyGuard {
     /// @notice Processes an active lock as if its expired, for a penalty,
     ///         and processes any pending locker rewards
     /// @param lockIndex The index of the lock to process
-    /// @param rewardRecipient Address to receive the reward tokens
     /// @param rewardsData Rewards data for CVE rewards locker
     /// @param params Parameters for rewards claim function
     /// @param aux Auxiliary data
     function earlyExpireLock(
         uint256 lockIndex,
-        address rewardRecipient,
         RewardsData calldata rewardsData,
         bytes calldata params,
         uint256 aux
@@ -790,7 +770,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
         }
 
         // Claim pending locker rewards
-        _claimRewards(msg.sender, rewardRecipient, rewardsData, params, aux);
+        _claimRewards(msg.sender, msg.sender, rewardsData, params, aux);
 
         Lock memory expiredLock = locks[lockIndex];
         uint256 lockAmount = expiredLock.amount;

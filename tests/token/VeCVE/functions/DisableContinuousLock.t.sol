@@ -41,11 +41,11 @@ contract DisableContinuousLockTest is TestBaseVeCVE {
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
         (, uint40 unlockTime) = veCVE.userLocks(address(this), 0);
 
-        assertEq(veCVE.chainTokenPoints(), 100e18);
-        assertEq(veCVE.userTokenPoints(address(this)), 100e18);
+        assertEq(veCVE.chainPoints(), 100e18);
+        assertEq(veCVE.userPoints(address(this)), 100e18);
         assertEq(veCVE.chainUnlocksByEpoch(veCVE.currentEpoch(unlockTime)), 0);
         assertEq(
-            veCVE.userTokenUnlocksByEpoch(
+            veCVE.userUnlocksByEpoch(
                 address(this),
                 veCVE.currentEpoch(unlockTime)
             ),
@@ -57,14 +57,14 @@ contract DisableContinuousLockTest is TestBaseVeCVE {
         (, unlockTime) = veCVE.userLocks(address(this), 0);
 
         assertEq(unlockTime, veCVE.freshLockTimestamp());
-        assertEq(veCVE.chainTokenPoints(), 50e18);
-        assertEq(veCVE.userTokenPoints(address(this)), 50e18);
+        assertEq(veCVE.chainPoints(), 50e18);
+        assertEq(veCVE.userPoints(address(this)), 50e18);
         assertEq(
             veCVE.chainUnlocksByEpoch(veCVE.currentEpoch(unlockTime)),
             50e18
         );
         assertEq(
-            veCVE.userTokenUnlocksByEpoch(
+            veCVE.userUnlocksByEpoch(
                 address(this),
                 veCVE.currentEpoch(unlockTime)
             ),

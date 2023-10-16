@@ -331,7 +331,6 @@ contract GaugePool is GaugeController, ReentrancyGuard {
             rewards,
             lockIndex,
             continuousLock,
-            msg.sender,
             rewardsData,
             params,
             aux
@@ -375,7 +374,6 @@ contract GaugePool is GaugeController, ReentrancyGuard {
             msg.sender,
             rewards,
             continuousLock,
-            msg.sender,
             rewardsData,
             params,
             aux
