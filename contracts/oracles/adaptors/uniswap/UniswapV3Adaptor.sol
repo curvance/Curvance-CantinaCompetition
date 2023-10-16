@@ -141,7 +141,8 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
             // the quote token price to USD and return
             return
                 PriceReturnData({
-                    price: uint240(twapPrice / quoteTokenDenominator),
+                    price: uint240((twapPrice * quoteTokenDenominator) / 
+                    uniswapFeed.quoteDecimals),
                     hadError: false,
                     inUSD: true
                 });
