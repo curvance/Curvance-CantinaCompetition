@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.17;
 
-import { CurveV2LPAdapter } from "contracts/oracles/adaptors/curve/CurveV2LPAdapter.sol";
+import { CurveAdaptor } from "contracts/oracles/adaptors/curve/CurveAdaptor.sol";
 import { CurveReentrancyCheck } from "contracts/oracles/adaptors/curve/CurveReentrancyCheck.sol";
 import { IVault } from "contracts/oracles/adaptors/balancer/BalancerPoolAdaptor.sol";
 import { ChainlinkAdaptor } from "contracts/oracles/adaptors/chainlink/ChainlinkAdaptor.sol";
@@ -10,7 +10,7 @@ import { VelodromeLib } from "contracts/market/zapper/protocols/VelodromeLib.sol
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { TestBasePriceRouter } from "../TestBasePriceRouter.sol";
 
-contract TestCurveV2LPAdapter is TestBasePriceRouter {
+contract TestCurveAdaptor is TestBasePriceRouter {
     address private CHAINLINK_PRICE_FEED_ETH =
         0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
     address private CHAINLINK_PRICE_FEED_STETH =
@@ -20,7 +20,7 @@ contract TestCurveV2LPAdapter is TestBasePriceRouter {
     address private ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
     address private STETH = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
 
-    CurveV2LPAdapter adapter;
+    CurveAdaptor adapter;
 
     function setUp() public override {
         _fork();
@@ -28,7 +28,7 @@ contract TestCurveV2LPAdapter is TestBasePriceRouter {
         _deployCentralRegistry();
         _deployPriceRouter();
 
-        adapter = new CurveV2LPAdapter(
+        adapter = new CurveAdaptor(
             ICentralRegistry(address(centralRegistry))
         );
 
