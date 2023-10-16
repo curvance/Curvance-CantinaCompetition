@@ -154,7 +154,6 @@ contract ClaimRewardsForTest is TestBaseCVELocker {
         vm.prank(address(veCVE));
         cveLocker.claimRewardsFor(
             user1,
-            user1,
             epochs,
             rewardsData,
             abi.encode(swapData),

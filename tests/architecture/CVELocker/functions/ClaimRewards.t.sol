@@ -61,7 +61,7 @@ contract ClaimRewardsTest is TestBaseCVELocker {
         vm.expectRevert(CVELocker.CVELocker__ParametersareInvalid.selector);
 
         vm.prank(user1);
-        cveLocker.claimRewards(user1, rewardsData, abi.encode(swapData), 0);
+        cveLocker.claimRewards(rewardsData, abi.encode(swapData), 0);
     }
 
     function test_claimRewards_fail_whenNoEpochRewardsToClaim() public {
@@ -80,7 +80,7 @@ contract ClaimRewardsTest is TestBaseCVELocker {
         vm.expectRevert(CVELocker.CVELocker__NoEpochRewards.selector);
 
         vm.prank(user1);
-        cveLocker.claimRewards(user1, rewardsData, abi.encode(swapData), 0);
+        cveLocker.claimRewards(rewardsData, abi.encode(swapData), 0);
     }
 
     function test_claimRewards_success_fuzzed(uint256 amount) public {
@@ -125,7 +125,7 @@ contract ClaimRewardsTest is TestBaseCVELocker {
         uint256 desiredTokenBalance = IERC20(_WETH_ADDRESS).balanceOf(user1);
 
         vm.prank(user1);
-        cveLocker.claimRewards(user1, rewardsData, abi.encode(swapData), 0);
+        cveLocker.claimRewards(rewardsData, abi.encode(swapData), 0);
 
         assertEq(
             usdc.balanceOf(address(cveLocker)),

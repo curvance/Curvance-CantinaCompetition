@@ -73,7 +73,7 @@ contract ExtendLockTest is TestBaseVeCVE {
         bool isFreshLock,
         bool isFreshLockContinuous
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
-        veCVE.extendLock(0, false, address(this), rewardsData, "", 0);
+        veCVE.extendLock(0, false, rewardsData, "", 0);
 
         (, uint40 unlockTime) = veCVE.userLocks(address(this), 0);
         assertEq(unlockTime, veCVE.freshLockTimestamp());
