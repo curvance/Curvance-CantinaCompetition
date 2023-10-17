@@ -40,6 +40,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     error ProtocolMessagingHub__StargateRouterIsZeroAddress();
     error ProtocolMessagingHub__ConfigurationError();
     error ProtocolMessagingHub__InsufficientGasToken();
+    error ProtocolMessagingHub__InvalidMsgValue();
 
     /// MODIFIERS ///
 
@@ -437,6 +438,10 @@ contract ProtocolMessagingHub is ReentrancyGuard {
                 .isSupported < 2
         ) {
             revert ProtocolMessagingHub__ConfigurationError();
+        }
+
+        if (msg.value != etherValue) {
+            revert ProtocolMessagingHub__InvalidMsgValue();
         }
 
         CVE.sendAndCall{ value: etherValue }(
