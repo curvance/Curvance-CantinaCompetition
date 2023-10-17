@@ -57,11 +57,7 @@ contract CVELocker is ReentrancyGuard {
 
     /// EVENTS ///
 
-    event RewardPaid(
-        address user,
-        address rewardToken,
-        uint256 amount
-    );
+    event RewardPaid(address user, address rewardToken, uint256 amount);
 
     /// ERRORS ///
 
@@ -75,14 +71,14 @@ contract CVELocker is ReentrancyGuard {
     /// MODIFIERS ///
 
     modifier onlyDaoPermissions() {
-        if (!centralRegistry.hasDaoPermissions(msg.sender)){
+        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
             _revert(CVELOCKER_UNAUTHORIZED_SELECTOR);
         }
         _;
     }
 
     modifier onlyElevatedPermissions() {
-        if (!centralRegistry.hasElevatedPermissions(msg.sender)){
+        if (!centralRegistry.hasElevatedPermissions(msg.sender)) {
             _revert(CVELOCKER_UNAUTHORIZED_SELECTOR);
         }
         _;
@@ -101,7 +97,7 @@ contract CVELocker is ReentrancyGuard {
     }
 
     modifier onlyFeeAccumulator() {
-        if(msg.sender != centralRegistry.feeAccumulator()){
+        if (msg.sender != centralRegistry.feeAccumulator()) {
             _revert(CVELOCKER_UNAUTHORIZED_SELECTOR);
         }
         _;
@@ -112,10 +108,12 @@ contract CVELocker is ReentrancyGuard {
     /// CONSTRUCTOR ///
 
     constructor(ICentralRegistry centralRegistry_, address rewardToken_) {
-        if(!ERC165Checker.supportsInterface(
+        if (
+            !ERC165Checker.supportsInterface(
                 address(centralRegistry_),
                 type(ICentralRegistry).interfaceId
-            )){
+            )
+        ) {
             revert CVELocker__ParametersareInvalid();
         }
 
@@ -149,7 +147,7 @@ contract CVELocker is ReentrancyGuard {
     }
 
     function startLocker() external onlyDaoPermissions {
-        if (lockerStarted == 2){
+        if (lockerStarted == 2) {
             revert CVELocker__LockerStarted();
         }
 
@@ -167,17 +165,17 @@ contract CVELocker is ReentrancyGuard {
         address daoOperator = centralRegistry.daoAddress();
 
         if (token == address(0)) {
-            if (amount == 0){
+            if (amount == 0) {
                 amount = address(this).balance;
             }
 
             SafeTransferLib.forceSafeTransferETH(daoOperator, amount);
         } else {
-            if (token == rewardToken){
+            if (token == rewardToken) {
                 _revert(CVELOCKER_UNAUTHORIZED_SELECTOR);
             }
 
-            if (amount == 0){
+            if (amount == 0) {
                 amount = IERC20(token).balanceOf(address(this));
             }
 
@@ -191,11 +189,11 @@ contract CVELocker is ReentrancyGuard {
     function addAuthorizedRewardToken(
         address token
     ) external onlyElevatedPermissions {
-        if (token == address(0)){
+        if (token == address(0)) {
             revert CVELocker__ParametersareInvalid();
         }
 
-        if (authorizedRewardToken[token] == 2){
+        if (authorizedRewardToken[token] == 2) {
             revert CVELocker__ParametersareInvalid();
         }
 
@@ -208,11 +206,11 @@ contract CVELocker is ReentrancyGuard {
     function removeAuthorizedRewardToken(
         address token
     ) external onlyDaoPermissions {
-        if (token == address(0)){
+        if (token == address(0)) {
             revert CVELocker__ParametersareInvalid();
         }
 
-        if (authorizedRewardToken[token] < 2){
+        if (authorizedRewardToken[token] < 2) {
             revert CVELocker__ParametersareInvalid();
         }
 
@@ -220,8 +218,10 @@ contract CVELocker is ReentrancyGuard {
     }
 
     function notifyLockerShutdown() external {
-        if (msg.sender != address(veCVE) &&
-                !centralRegistry.hasElevatedPermissions(msg.sender)){
+        if (
+            msg.sender != address(veCVE) &&
+            !centralRegistry.hasElevatedPermissions(msg.sender)
+        ) {
             _revert(CVELOCKER_UNAUTHORIZED_SELECTOR);
         }
 
@@ -430,7 +430,7 @@ contract CVELocker is ReentrancyGuard {
         }
 
         if (rewardsData.desiredRewardToken != rewardToken) {
-            if (authorizedRewardToken[rewardsData.desiredRewardToken] < 2){
+            if (authorizedRewardToken[rewardsData.desiredRewardToken] < 2) {
                 revert CVELocker__ParametersareInvalid();
             }
 
@@ -457,7 +457,8 @@ contract CVELocker is ReentrancyGuard {
                 swapData.call.length == 0 ||
                 swapData.inputToken != rewardToken ||
                 swapData.outputToken != rewardsData.desiredRewardToken ||
-                swapData.inputAmount > rewards
+                swapData.inputAmount > rewards ||
+                !centralRegistry.isSwapper(swapData.target)
             ) {
                 revert("CVELocker: swapData misconfigured");
             }
@@ -491,7 +492,7 @@ contract CVELocker is ReentrancyGuard {
     /// @param lockIndex The index of the lock in the user's lock array.
     ///                  This parameter is only required if it is not a fresh lock.
     function _lockFeesAsVeCVE(
-        address user, 
+        address user,
         address desiredRewardToken,
         bool isFreshLock,
         bool continuousLock,

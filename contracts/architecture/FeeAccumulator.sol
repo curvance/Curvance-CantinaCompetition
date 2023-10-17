@@ -163,6 +163,9 @@ contract FeeAccumulator is ReentrancyGuard {
             if (swapDataArray[i].outputToken != feeToken) {
                 revert FeeAccumulator__ConfigurationError();
             }
+            if (!centralRegistry.isSwapper(swapDataArray[i].target)) {
+                revert FeeAccumulator__ConfigurationError();
+            }
             // Make sure we are not earmarking this token for DAO OTC
             if (rewardTokenInfo[currentToken].forOTC == 2) {
                 continue;
