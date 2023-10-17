@@ -353,16 +353,28 @@ contract FeeAccumulator is ReentrancyGuard {
             return;
         }
 
-        data.numChainData = crossChainLockData.length;
-        data.epoch = ICVELocker(centralRegistry.cveLocker())
+        uint256 epoch = ICVELocker(centralRegistry.cveLocker())
             .nextEpochToDeliver();
 
         _validateAndRecordChainData(
             data.value,
             data.chainId,
-            data.numChainData,
-            data.epoch
+            crossChainLockData.length,
+            epoch
         );
+    }
+
+    function executeEpochFeeRouter(EpochRolloverData memory data) external {
+        ChainData memory chainData = centralRegistry.supportedChainData(
+            data.chainId
+        );
+        if (chainData.isSupported < 2) {
+            return;
+        }
+
+        data.numChainData = crossChainLockData.length;
+        data.epoch = ICVELocker(centralRegistry.cveLocker())
+            .nextEpochToDeliver();
 
         // If we have sufficient chains reported,
         // time to execute epoch fee routing
