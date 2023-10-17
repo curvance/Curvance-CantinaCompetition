@@ -10,7 +10,6 @@ import { GaugeController } from "contracts/gauge/GaugeController.sol";
 
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { ICVE, LzCallParams } from "contracts/interfaces/ICVE.sol";
-import { ICVELocker } from "contracts/interfaces/ICVELocker.sol";
 import { IFeeAccumulator, EpochRolloverData } from "contracts/interfaces/IFeeAccumulator.sol";
 import { ICentralRegistry, OmnichainData } from "contracts/interfaces/ICentralRegistry.sol";
 import { SwapRouter, LzTxObj } from "contracts/interfaces/layerzero/IStargateRouter.sol";
@@ -123,8 +122,9 @@ contract ProtocolMessagingHub is ReentrancyGuard {
 
         SafeTransferLib.safeTransfer(token, locker, amountLD);
 
-        uint256 epoch = ICVELocker(locker).nextEpochToDeliver();
-        ICVELocker(locker).recordEpochRewards(epoch, amountLD);
+        IFeeAccumulator(centralRegistry.feeAccumulator()).recordEpochRewards(
+            amountLD
+        );
     }
 
     /// @notice Sends gauge emission information to multiple destination chains
@@ -134,7 +134,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     /// @param payload The payload data that is sent along with the message
     /// @param dstGasForCall The amount of gas that should be provided for
     ///                      the call on the destination chain
-    /// @param callParams AdditionalParameters for the call, as LzCallParams
+    /// @param callParams Additional parameters for the call, as LzCallParams
     /// @dev We redundantly pass adapterParams & callParams so we do not
     ///      need to coerce data in the function, calls with this function will
     ///      have messageType = 3

@@ -78,6 +78,13 @@ contract FeeAccumulator is ReentrancyGuard {
         _;
     }
 
+    modifier onlyMessagingHub() {
+        if (msg.sender != _previousMessagingHub) {
+            revert FeeAccumulator__Unauthorized();
+        }
+        _;
+    }
+
     /// CONSTRUCTOR ///
 
     constructor(
@@ -601,6 +608,12 @@ contract FeeAccumulator is ReentrancyGuard {
 
         // Now delete the reward token support flag from mapping
         tokenToRemove.isRewardToken = 1;
+    }
+
+    /// @notice Record rewards for epoch
+    function recordEpochRewards(uint256 amount) external onlyMessagingHub {
+        ICVELocker locker = ICVELocker(centralRegistry.cveLocker());
+        locker.recordEpochRewards(locker.nextEpochToDeliver(), amount);
     }
 
     /// @notice Retrieves the balances of all reward tokens currently held by
