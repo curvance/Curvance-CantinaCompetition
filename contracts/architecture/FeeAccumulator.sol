@@ -72,7 +72,7 @@ contract FeeAccumulator is ReentrancyGuard {
     /// MODIFIERS ///
 
     modifier onlyDaoPermissions() {
-        if (!centralRegistry.hasDaoPermissions(msg.sender)){
+        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
             revert FeeAccumulator__Unauthorized();
         }
         _;
@@ -140,7 +140,7 @@ contract FeeAccumulator is ReentrancyGuard {
         bytes calldata data,
         address[] calldata tokens
     ) external nonReentrant {
-        if (!centralRegistry.isHarvester(msg.sender)){
+        if (!centralRegistry.isHarvester(msg.sender)) {
             revert FeeAccumulator__Unauthorized();
         }
 
@@ -157,6 +157,12 @@ contract FeeAccumulator is ReentrancyGuard {
 
         for (uint256 i; i < numTokens; ++i) {
             currentToken = tokens[i];
+            if (swapDataArray[i].inputToken != currentToken) {
+                revert FeeAccumulator__ConfigurationError();
+            }
+            if (swapDataArray[i].outputToken != feeToken) {
+                revert FeeAccumulator__ConfigurationError();
+            }
             // Make sure we are not earmarking this token for DAO OTC
             if (rewardTokenInfo[currentToken].forOTC == 2) {
                 continue;
@@ -244,7 +250,7 @@ contract FeeAccumulator is ReentrancyGuard {
         uint16 dstChainId,
         bytes32 toAddress
     ) external {
-        if (!centralRegistry.isHarvester(msg.sender)){
+        if (!centralRegistry.isHarvester(msg.sender)) {
             revert FeeAccumulator__Unauthorized();
         }
 
@@ -305,10 +311,8 @@ contract FeeAccumulator is ReentrancyGuard {
     /// @notice Receives and records the epoch rewards for CVE from
     ///         the protocol messaging hub
     /// @param epochRewardsPerCVE The rewards per CVE for the previous epoch
-    function receiveExecutableLockData(
-        uint256 epochRewardsPerCVE
-    ) external {
-        if ( msg.sender != centralRegistry.protocolMessagingHub()){
+    function receiveExecutableLockData(uint256 epochRewardsPerCVE) external {
+        if (msg.sender != centralRegistry.protocolMessagingHub()) {
             revert FeeAccumulator__Unauthorized();
         }
 
@@ -335,7 +339,7 @@ contract FeeAccumulator is ReentrancyGuard {
     function receiveCrossChainLockData(
         EpochRolloverData memory data
     ) external {
-        if ( msg.sender != centralRegistry.protocolMessagingHub()){
+        if (msg.sender != centralRegistry.protocolMessagingHub()) {
             revert FeeAccumulator__Unauthorized();
         }
 
