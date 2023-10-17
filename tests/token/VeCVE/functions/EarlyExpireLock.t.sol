@@ -55,7 +55,7 @@ contract EarlyExpireLockTest is TestBaseVeCVE {
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
         centralRegistry.setEarlyUnlockPenaltyValue(3000);
 
-        uint256 panaltyAmount = (30e18 * 3000) / veCVE.DENOMINATOR();
+        uint256 penaltyAmount = veCVE.getUnlockPenalty(address(this), 0);
 
         vm.expectEmit(true, true, true, true, address(veCVE));
         emit UnlockedWithPenalty(address(this), 30e18, panaltyAmount);
