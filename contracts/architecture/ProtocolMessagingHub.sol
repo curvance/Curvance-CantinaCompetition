@@ -10,6 +10,7 @@ import { GaugeController } from "contracts/gauge/GaugeController.sol";
 
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { ICVE, LzCallParams } from "contracts/interfaces/ICVE.sol";
+import { ICVELocker } from "contracts/interfaces/ICVELocker.sol";
 import { IFeeAccumulator, EpochRolloverData } from "contracts/interfaces/IFeeAccumulator.sol";
 import { ICentralRegistry, OmnichainData } from "contracts/interfaces/ICentralRegistry.sol";
 import { SwapRouter, LzTxObj } from "contracts/interfaces/layerzero/IStargateRouter.sol";
@@ -43,15 +44,17 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     /// MODIFIERS ///
 
     modifier onlyAuthorized() {
-        if (!centralRegistry.isHarvester(msg.sender) &&
-                msg.sender != centralRegistry.feeAccumulator()){
+        if (
+            !centralRegistry.isHarvester(msg.sender) &&
+            msg.sender != centralRegistry.feeAccumulator()
+        ) {
             revert ProtocolMessagingHub__Unauthorized();
         }
         _;
     }
 
     modifier onlyDaoPermissions() {
-        if (!centralRegistry.hasDaoPermissions(msg.sender)){
+        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
             revert ProtocolMessagingHub__Unauthorized();
         }
         _;
@@ -115,11 +118,12 @@ contract ProtocolMessagingHub is ReentrancyGuard {
             revert ProtocolMessagingHub__Unauthorized();
         }
 
-        SafeTransferLib.safeTransfer(
-            token,
-            centralRegistry.feeAccumulator(),
-            amountLD
-        );
+        address locker = centralRegistry.cveLocker();
+
+        SafeTransferLib.safeTransfer(token, locker, amountLD);
+
+        uint256 epoch = ICVELocker(locker).nextEpochToDeliver();
+        ICVELocker(locker).recordEpochRewards(epoch, amountLD);
     }
 
     /// @notice Sends gauge emission information to multiple destination chains
@@ -280,7 +284,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         bytes calldata payload
     ) external {
         // Validate caller is CVE itself
-        if (msg.sender != centralRegistry.CVE()){
+        if (msg.sender != centralRegistry.CVE()) {
             revert ProtocolMessagingHub__Unauthorized();
         }
 
