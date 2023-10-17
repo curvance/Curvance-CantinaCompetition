@@ -116,14 +116,14 @@ contract DToken is ERC165, ReentrancyGuard {
     /// MODIFIERS ///
 
     modifier onlyDaoPermissions() {
-        if (!centralRegistry.hasDaoPermissions(msg.sender)){
+        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
             revert DToken__Unauthorized();
         }
         _;
     }
 
     modifier onlyElevatedPermissions() {
-        if (!centralRegistry.hasElevatedPermissions(msg.sender)){
+        if (!centralRegistry.hasElevatedPermissions(msg.sender)) {
             revert DToken__Unauthorized();
         }
         _;
@@ -554,7 +554,7 @@ contract DToken is ERC165, ReentrancyGuard {
         address daoOperator = centralRegistry.daoAddress();
 
         if (token == address(0)) {
-            if (amount == 0){
+            if (amount == 0) {
                 amount = address(this).balance;
             }
 
@@ -564,7 +564,7 @@ contract DToken is ERC165, ReentrancyGuard {
                 revert DToken__TransferError();
             }
 
-            if (amount == 0){
+            if (amount == 0) {
                 amount = IERC20(token).balanceOf(address(this));
             }
 
@@ -637,6 +637,7 @@ contract DToken is ERC165, ReentrancyGuard {
             AccountSnapshot({
                 asset: address(this),
                 isCToken: false,
+                decimals: decimals(),
                 balance: balanceOf[account],
                 debtBalance: debtBalanceStored(account),
                 exchangeRate: exchangeRateStored()

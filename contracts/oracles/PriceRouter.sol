@@ -430,11 +430,6 @@ contract PriceRouter {
                 true,
                 snapshots[i].isCToken
             );
-            // adjust price (consider underlying asset decimals)
-            uint256 decimals = assets[i].decimals();
-            if (decimals != 18) {
-                prices[i] = (prices[i] * 1e18) / (10 ** decimals);
-            }
 
             if (hadError >= errorCodeBreakpoint) {
                 _revert(ERROR_CODE_FLAGGED_SELECTOR);
