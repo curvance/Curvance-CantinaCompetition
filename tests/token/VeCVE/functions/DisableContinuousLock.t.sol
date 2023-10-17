@@ -11,7 +11,7 @@ contract DisableContinuousLockTest is TestBaseVeCVE {
         deal(address(cve), address(this), 100e18);
         cve.approve(address(veCVE), 100e18);
 
-        veCVE.lock(50e18, true, rewardsData, "", 0);
+        veCVE.createLock(50e18, true, rewardsData, "", 0);
     }
 
     function test_disableContinuousLock_fail_whenLockIndexIsInvalid(
@@ -28,7 +28,7 @@ contract DisableContinuousLockTest is TestBaseVeCVE {
         bool isFreshLock,
         bool isFreshLockContinuous
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
-        veCVE.lock(100, false, rewardsData, "", 0);
+        veCVE.createLock(100, false, rewardsData, "", 0);
 
         vm.expectRevert(VeCVE.VeCVE__LockTypeMismatch.selector);
         veCVE.disableContinuousLock(1, rewardsData, "", 0);

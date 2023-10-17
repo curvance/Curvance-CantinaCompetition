@@ -11,7 +11,7 @@ contract ExtendLockTest is TestBaseVeCVE {
         deal(address(cve), address(this), 100e18);
         cve.approve(address(veCVE), 100e18);
 
-        veCVE.lock(50e18, false, rewardsData, "", 0);
+        veCVE.createLock(50e18, false, rewardsData, "", 0);
     }
 
     function test_extendLock_fail_whenVeCVEShutdown(
@@ -51,7 +51,7 @@ contract ExtendLockTest is TestBaseVeCVE {
         bool isFreshLock,
         bool isFreshLockContinuous
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
-        veCVE.lock(10e18, true, rewardsData, "", 0);
+        veCVE.createLock(10e18, true, rewardsData, "", 0);
 
         vm.expectRevert(VeCVE.VeCVE__LockTypeMismatch.selector);
         veCVE.extendLock(1, true, rewardsData, "", 0);

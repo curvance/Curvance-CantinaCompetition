@@ -13,7 +13,7 @@ contract IncreaseAmountAndExtendLockForTest is TestBaseVeCVE {
 
         centralRegistry.addVeCVELocker(address(this));
 
-        veCVE.lockFor(
+        veCVE.createLockFor(
             address(1),
             50e18,
             false,

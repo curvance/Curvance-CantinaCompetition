@@ -16,7 +16,7 @@ contract LockForTest is TestBaseVeCVE {
         veCVE.shutdown();
 
         vm.expectRevert(VeCVE.VeCVE__VeCVEShutdown.selector);
-        veCVE.lockFor(
+        veCVE.createLockFor(
             address(1),
             100,
             true,
@@ -32,7 +32,7 @@ contract LockForTest is TestBaseVeCVE {
         bool isFreshLockContinuous
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
         vm.expectRevert(VeCVE.VeCVE__InvalidLock.selector);
-        veCVE.lockFor(address(1), 0, true, rewardsData, "", 0);
+        veCVE.createLockFor(address(1), 0, true, rewardsData, "", 0);
     }
 
     function test_lockFor_fail_whenLockerIsNotApproved(
@@ -41,7 +41,7 @@ contract LockForTest is TestBaseVeCVE {
         bool isFreshLockContinuous
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
         vm.expectRevert(VeCVE.VeCVE__InvalidLock.selector);
-        veCVE.lockFor(
+        veCVE.createLockFor(
             address(1),
             100,
             true,
@@ -59,7 +59,7 @@ contract LockForTest is TestBaseVeCVE {
         centralRegistry.addVeCVELocker(address(this));
 
         vm.expectRevert(SafeTransferLib.TransferFromFailed.selector);
-        veCVE.lockFor(
+        veCVE.createLockFor(
             address(1),
             100,
             true,
@@ -79,7 +79,7 @@ contract LockForTest is TestBaseVeCVE {
         deal(address(cve), address(this), 100e18);
 
         vm.expectRevert(SafeTransferLib.TransferFromFailed.selector);
-        veCVE.lockFor(
+        veCVE.createLockFor(
             address(1),
             100,
             true,
@@ -105,7 +105,7 @@ contract LockForTest is TestBaseVeCVE {
         vm.expectEmit(true, true, true, true, address(veCVE));
         emit Locked(address(1), amount);
 
-        veCVE.lockFor(
+        veCVE.createLockFor(
             address(1),
             amount,
             true,
@@ -153,7 +153,7 @@ contract LockForTest is TestBaseVeCVE {
         vm.expectEmit(true, true, true, true, address(veCVE));
         emit Locked(address(1), amount);
 
-        veCVE.lockFor(
+        veCVE.createLockFor(
             address(1),
             amount,
             false,
