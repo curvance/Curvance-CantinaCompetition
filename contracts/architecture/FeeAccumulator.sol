@@ -759,7 +759,7 @@ contract FeeAccumulator is ReentrancyGuard {
         feeTokenBalanceForChain =
             (feeTokenBalance * lockedTokens) /
             totalLockedTokens;
-        uint256 epochRewardsPerCVE = (feeTokenBalanceForChain * EXP_SCALE) /
+        uint256 epochRewardsPerCVE = (feeTokenBalance * EXP_SCALE) /
             totalLockedTokens;
 
         address locker = centralRegistry.cveLocker();
