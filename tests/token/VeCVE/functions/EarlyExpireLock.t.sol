@@ -58,7 +58,7 @@ contract EarlyExpireLockTest is TestBaseVeCVE {
         uint256 penaltyAmount = veCVE.getUnlockPenalty(address(this), 0);
 
         vm.expectEmit(true, true, true, true, address(veCVE));
-        emit UnlockedWithPenalty(address(this), 30e18, panaltyAmount);
+        emit UnlockedWithPenalty(address(this), 30e18, penaltyAmount);
 
         veCVE.earlyExpireLock(
             0,
