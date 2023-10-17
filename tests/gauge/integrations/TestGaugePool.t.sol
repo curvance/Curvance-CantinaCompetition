@@ -40,10 +40,6 @@ contract TestGaugePool is TestBaseMarket {
             _prepareDAI(users[i], 200000e18);
         }
 
-        // set gauge weights
-        vm.prank(address(protocolMessagingHub));
-        gaugePool.setEmissionRates(0, tokens, new uint256[](tokens.length));
-
         address[] memory tokensParam = new address[](1);
         tokensParam[0] = tokens[0];
         uint256[] memory poolWeights = new uint256[](1);
