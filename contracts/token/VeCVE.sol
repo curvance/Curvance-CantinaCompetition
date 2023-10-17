@@ -180,7 +180,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
     /// @param rewardsData Rewards data for CVE rewards locker
     /// @param params Parameters for rewards claim function
     /// @param aux Auxiliary data
-    function lock(
+    function createLock(
         uint256 amount,
         bool continuousLock,
         RewardsData calldata rewardsData,
@@ -210,7 +210,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
     /// @param rewardsData Rewards data for CVE rewards locker
     /// @param params Parameters for rewards claim function
     /// @param aux Auxiliary data
-    function lockFor(
+    function createLockFor(
         address recipient,
         uint256 amount,
         bool continuousLock,
@@ -277,27 +277,27 @@ contract VeCVE is ERC20, ReentrancyGuard {
         // Claim pending locker rewards
         _claimRewards(msg.sender, rewardsData, params, aux);
 
-        uint216 tokenAmount = locks[lockIndex].amount;
-        uint256 unlockEpoch = freshLockEpoch();
-        uint256 priorUnlockEpoch = currentEpoch(locks[lockIndex].unlockTime);
+        uint216 amount = locks[lockIndex].amount;
+        uint256 epoch = freshLockEpoch();
+        uint256 priorEpoch = currentEpoch(locks[lockIndex].unlockTime);
 
         if (continuousLock) {
             locks[lockIndex].unlockTime = CONTINUOUS_LOCK_VALUE;
             _updateDataToContinuousOn(
                 msg.sender,
-                priorUnlockEpoch,
-                _getCLPoints(tokenAmount) - tokenAmount,
-                tokenAmount
+                priorEpoch,
+                _getCLPoints(amount) - amount,
+                amount
             );
         } else {
             locks[lockIndex].unlockTime = freshLockTimestamp();
             // Updates unlock data for chain and user for new unlock time
             _updateUnlockDataToExtendedLock(
                 msg.sender,
-                priorUnlockEpoch,
-                unlockEpoch,
-                tokenAmount,
-                tokenAmount
+                priorEpoch,
+                epoch,
+                amount,
+                amount
             );
         }
     }
@@ -406,27 +406,15 @@ contract VeCVE is ERC20, ReentrancyGuard {
         // Claim pending locker rewards
         _claimRewards(msg.sender, rewardsData, params, aux);
 
-        uint216 tokenAmount = locks[lockIndex].amount;
-        uint256 unlockEpoch = freshLockEpoch();
+        uint216 amount = locks[lockIndex].amount;
+        uint256 epoch = freshLockEpoch();
         locks[lockIndex].unlockTime = freshLockTimestamp();
 
-        // Remove their continuous lock bonus and document that they have tokens unlocking in a year
-        unchecked {
-            // only modified on locking/unlocking VeCVE and we know theres never
-            // more than 420m so this should never over/underflow
-            uint256 tokenPoints = _getCLPoints(tokenAmount) -
-                tokenAmount;
-            chainPoints = chainPoints - tokenPoints;
-            chainUnlocksByEpoch[unlockEpoch] =
-                chainUnlocksByEpoch[unlockEpoch] +
-                tokenAmount;
-            userPoints[msg.sender] =
-                userPoints[msg.sender] -
-                tokenPoints;
-            userUnlocksByEpoch[msg.sender][unlockEpoch] =
-                userUnlocksByEpoch[msg.sender][unlockEpoch] +
-                tokenAmount;
-        }
+        // Remove their continuous lock bonus and
+        // document that they have tokens unlocking in a year
+        _reducePoints(msg.sender, _getCLPoints(amount) - amount);
+        _incrementTokenUnlocks(msg.sender, epoch, amount);
+
     }
 
     /// @notice Combines all locks into a single lock,
@@ -459,8 +447,8 @@ contract VeCVE is ERC20, ReentrancyGuard {
             _revert(_INVALID_LOCK_SELECTOR);
         }
 
-        uint256 lockAmount;
-        Lock storage userLock;
+        uint256 amount;
+        Lock storage lock;
         uint256 previousLockIndex;
         uint256 excessPoints;
 
@@ -482,20 +470,20 @@ contract VeCVE is ERC20, ReentrancyGuard {
                 locks[lastLockIndex] = tempValue;
             }
 
-            userLock = locks[lastLockIndex];
+            lock = locks[lastLockIndex];
 
-            if (userLock.unlockTime != CONTINUOUS_LOCK_VALUE) {
+            if (lock.unlockTime != CONTINUOUS_LOCK_VALUE) {
                 // Remove unlock data if there is any
                 _reduceTokenUnlocks(
                     msg.sender,
-                    currentEpoch(userLock.unlockTime),
-                    userLock.amount
+                    currentEpoch(lock.unlockTime),
+                    lock.amount
                 );
             } else {
                 unchecked {
                     excessPoints +=
-                        _getCLPoints(userLock.amount) -
-                        userLock.amount;
+                        _getCLPoints(lock.amount) -
+                        lock.amount;
                 }
                 // calculate and sum how many additional points they got
                 // from their continuous lock
@@ -505,7 +493,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
                 // Should never overflow as the total amount of tokens a user
                 // could ever lock is equal to the entire token supply
                 // Decrement the array length since we need to pop the last entry
-                lockAmount += locks[lastLockIndex--].amount;
+                amount += locks[lastLockIndex--].amount;
                 --i;
             }
 
@@ -516,61 +504,61 @@ contract VeCVE is ERC20, ReentrancyGuard {
             _reducePoints(msg.sender, excessPoints);
         }
 
-        userLock = locks[lockIndexes[0]]; // We will combine the deleted locks into the first lock in the array
+        lock = locks[lockIndexes[0]]; // We will combine the deleted locks into the first lock in the array
 
         uint256 epoch;
 
         if (continuousLock) {
-            if (userLock.unlockTime != CONTINUOUS_LOCK_VALUE) {
+            if (lock.unlockTime != CONTINUOUS_LOCK_VALUE) {
                 // Finalize new combined lock amount
-                lockAmount += userLock.amount;
+                amount += lock.amount;
 
                 // Remove the previous unlock data
-                epoch = currentEpoch(userLock.unlockTime);
-                _reduceTokenUnlocks(msg.sender, epoch, userLock.amount);
+                epoch = currentEpoch(lock.unlockTime);
+                _reduceTokenUnlocks(msg.sender, epoch, lock.amount);
 
                 // Give the user extra token points from continuous lock
                 // being enabled
                 _incrementPoints(
                     msg.sender,
-                    _getCLPoints(lockAmount) - lockAmount
+                    _getCLPoints(amount) - amount
                 );
 
                 // Assign new lock data
-                userLock.amount = uint216(lockAmount);
-                userLock.unlockTime = CONTINUOUS_LOCK_VALUE;
+                lock.amount = uint216(amount);
+                lock.unlockTime = CONTINUOUS_LOCK_VALUE;
             } else {
                 // Give the user extra token points from continuous lock
                 // being enabled, but only from the other locks
                 _incrementPoints(
                     msg.sender,
-                    _getCLPoints(lockAmount) - lockAmount
+                    _getCLPoints(amount) - amount
                 );
 
                 // Finalize new combined lock amount
-                lockAmount += userLock.amount;
+                amount += lock.amount;
                 // Assign new lock data
-                userLock.amount = uint216(lockAmount);
+                lock.amount = uint216(amount);
             }
         } else {
-            if (userLock.unlockTime == CONTINUOUS_LOCK_VALUE){
+            if (lock.unlockTime == CONTINUOUS_LOCK_VALUE){
                 revert VeCVE__LockTypeMismatch();
             }
             // Remove the previous unlock data
             _reduceTokenUnlocks(
                 msg.sender,
-                currentEpoch(userLock.unlockTime),
-                userLock.amount
+                currentEpoch(lock.unlockTime),
+                lock.amount
             );
 
             // Finalize new combined lock amount
-            lockAmount += userLock.amount;
+            amount += lock.amount;
             // Assign new lock data
-            userLock.amount = uint216(lockAmount);
-            userLock.unlockTime = freshLockTimestamp();
+            lock.amount = uint216(amount);
+            lock.unlockTime = freshLockTimestamp();
 
             // Record the new unlock data
-            _incrementTokenUnlocks(msg.sender, freshLockEpoch(), lockAmount);
+            _incrementTokenUnlocks(msg.sender, freshLockEpoch(), amount);
         }
     }
 
@@ -600,24 +588,24 @@ contract VeCVE is ERC20, ReentrancyGuard {
         }
 
         uint256 excessPoints;
-        uint256 lockAmount;
-        Lock storage userLock;
+        uint256 amount;
+        Lock storage lock;
 
         for (uint256 i; i < numLocks; ) {
-            userLock = locks[i];
+            lock = locks[i];
 
-            if (userLock.unlockTime != CONTINUOUS_LOCK_VALUE) {
+            if (lock.unlockTime != CONTINUOUS_LOCK_VALUE) {
                 // Remove unlock data if there is any
                 _reduceTokenUnlocks(
                     msg.sender,
-                    currentEpoch(userLock.unlockTime),
-                    userLock.amount
+                    currentEpoch(lock.unlockTime),
+                    lock.amount
                 );
             } else {
                 unchecked {
                     excessPoints +=
-                        _getCLPoints(userLock.amount) -
-                        userLock.amount;
+                        _getCLPoints(lock.amount) -
+                        lock.amount;
                 }
                 // calculate and sum how many additional points they got
                 // from their continuous lock
@@ -626,7 +614,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
             unchecked {
                 // Should never overflow as the total amount of tokens a user
                 // could ever lock is equal to the entire token supply
-                lockAmount += locks[i++].amount;
+                amount += locks[i++].amount;
             }
         }
 
@@ -640,24 +628,24 @@ contract VeCVE is ERC20, ReentrancyGuard {
         if (continuousLock) {
             userLocks[msg.sender].push(
                 Lock({
-                    amount: uint216(lockAmount),
+                    amount: uint216(amount),
                     unlockTime: CONTINUOUS_LOCK_VALUE
                 })
             );
             // Give the user extra token points from continuous lock being enabled
             _incrementPoints(
                 msg.sender,
-                _getCLPoints(lockAmount) - lockAmount
+                _getCLPoints(amount) - amount
             );
         } else {
             userLocks[msg.sender].push(
                 Lock({
-                    amount: uint216(lockAmount),
+                    amount: uint216(amount),
                     unlockTime: freshLockTimestamp()
                 })
             );
             // Record the new unlock data
-            _incrementTokenUnlocks(msg.sender, freshLockEpoch(), lockAmount);
+            _incrementTokenUnlocks(msg.sender, freshLockEpoch(), amount);
         }
     }
 
@@ -692,8 +680,8 @@ contract VeCVE is ERC20, ReentrancyGuard {
         // Claim pending locker rewards
         _claimRewards(msg.sender, rewardsData, params, aux);
 
-        Lock memory expiredLock = locks[lockIndex];
-        uint256 lockAmount = expiredLock.amount;
+        Lock memory lock = locks[lockIndex];
+        uint256 amount = lock.amount;
 
         // If the locker is shutdown, do not allow them to relock,
         // we'd want them to exit locked positions 
@@ -702,23 +690,23 @@ contract VeCVE is ERC20, ReentrancyGuard {
             // Update their points to reflect the removed lock
             _updateDataFromEarlyUnlock(
                 msg.sender, 
-                lockAmount, 
-                expiredLock.unlockTime
+                amount, 
+                lock.unlockTime
             );
         }
 
         if (relock) {
             // Token points will be caught up by _claimRewards call
             // so we can treat this as a fresh lock and increment rewards again
-            _lock(msg.sender, lockAmount, continuousLock);
+            _lock(msg.sender, amount, continuousLock);
         } else {
-            _burn(msg.sender, lockAmount);
+            _burn(msg.sender, amount);
             _removeLock(locks, lockIndex);
 
             // Transfer the user the unlocked CVE
-            SafeTransferLib.safeTransfer(cve, msg.sender, lockAmount);
+            SafeTransferLib.safeTransfer(cve, msg.sender, amount);
 
-            emit Unlocked(msg.sender, lockAmount);
+            emit Unlocked(msg.sender, amount);
 
             // Check whether the user has no remaining locks and reset their index,
             // that way if in the future they create a new lock, they do not need to claim
@@ -762,23 +750,23 @@ contract VeCVE is ERC20, ReentrancyGuard {
         // Claim pending locker rewards
         _claimRewards(msg.sender, rewardsData, params, aux);
 
-        Lock memory selectedLock = locks[lockIndex];
-        uint256 lockAmount = selectedLock.amount;
+        Lock memory lock = locks[lockIndex];
+        uint256 amount = lock.amount;
 
         // Update their points to reflect the removed lock
         _updateDataFromEarlyUnlock(
             msg.sender, 
-            lockAmount, 
-            selectedLock.unlockTime
+            amount, 
+            lock.unlockTime
         );
 
         // Burn their VeCVE and remove their lock
-        _burn(msg.sender, lockAmount);
+        _burn(msg.sender, amount);
         _removeLock(locks, lockIndex);
 
         // Penalty value = lock amount * penalty multiplier (in `DENOMINATOR`),
         // linearly scaled down as `unlockTime` scales from `LOCK_DURATION` down to 0.
-        uint256 penaltyAmount = _getUnlockPenalty(lockAmount, penalty, selectedLock.unlockTime);
+        uint256 penaltyAmount = _getUnlockPenalty(amount, penalty, lock.unlockTime);
         
         // Transfer the CVE penalty amount to Curvance DAO
         SafeTransferLib.safeTransfer(
@@ -791,10 +779,10 @@ contract VeCVE is ERC20, ReentrancyGuard {
         SafeTransferLib.safeTransfer(
             cve,
             msg.sender,
-            lockAmount - penaltyAmount
+            amount - penaltyAmount
         );
 
-        emit UnlockedWithPenalty(msg.sender, lockAmount, penaltyAmount);
+        emit UnlockedWithPenalty(msg.sender, amount, penaltyAmount);
 
         // Check whether the user has no remaining locks and reset their index,
         // that way if in the future they create a new lock, they do not need to claim
@@ -955,23 +943,23 @@ contract VeCVE is ERC20, ReentrancyGuard {
         uint256 time,
         uint256 currentLockBoost
     ) public view returns (uint256) {
-        Lock storage userLock = userLocks[user][lockIndex];
+        Lock storage lock = userLocks[user][lockIndex];
 
-        if (userLock.unlockTime < time) {
+        if (lock.unlockTime < time) {
             return 0;
         }
 
-        if (userLock.unlockTime == CONTINUOUS_LOCK_VALUE) {
+        if (lock.unlockTime == CONTINUOUS_LOCK_VALUE) {
             unchecked {
-                return ((userLock.amount * currentLockBoost) / DENOMINATOR);
+                return ((lock.amount * currentLockBoost) / DENOMINATOR);
             }
         }
 
-        // Equal to epochsLeft = (userLock.unlockTime - time) / EPOCH_DURATION
-        // (userLock.amount * epochsLeft) / LOCK_DURATION_EPOCHS
+        // Equal to epochsLeft = (lock.unlockTime - time) / EPOCH_DURATION
+        // (lock.amount * epochsLeft) / LOCK_DURATION_EPOCHS
         return
-            (userLock.amount *
-                ((userLock.unlockTime - time) / EPOCH_DURATION)) /
+            (lock.amount *
+                ((lock.unlockTime - time) / EPOCH_DURATION)) /
             LOCK_DURATION_EPOCHS;
     }
 
@@ -994,8 +982,8 @@ contract VeCVE is ERC20, ReentrancyGuard {
             return 0;
         }
 
-        Lock memory selectedLock = locks[lockIndex];
-        return _getUnlockPenalty(selectedLock.amount, penalty, selectedLock.unlockTime);
+        Lock memory lock = locks[lockIndex];
+        return _getUnlockPenalty(lock.amount, penalty, lock.unlockTime);
     }
 
     /// Transfer Locked Functions ///
@@ -1066,7 +1054,6 @@ contract VeCVE is ERC20, ReentrancyGuard {
             // Increment User Data
             _incrementPoints(recipient, _getCLPoints(amount));
         } else {
-            uint256 unlockEpoch = freshLockEpoch();
             userLocks[recipient].push(
                 Lock({
                     amount: uint216(amount),
@@ -1075,7 +1062,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
             );
             // Increment User Data
             _incrementPoints(recipient, amount);
-            _incrementTokenUnlocks(recipient, unlockEpoch, amount);
+            _incrementTokenUnlocks(recipient, freshLockEpoch(), amount);
         }
 
         _mint(recipient, amount);
@@ -1119,41 +1106,42 @@ contract VeCVE is ERC20, ReentrancyGuard {
                 _revert(_INVALID_LOCK_SELECTOR);
             }
 
-            uint256 previousTokenAmount = user[lockIndex].amount;
-            uint256 newTokenAmount = previousTokenAmount + amount;
-            uint256 priorUnlockEpoch = currentEpoch(
+            uint256 previousAmount = user[lockIndex].amount;
+            uint256 newAmount = previousAmount + amount;
+            uint256 priorEpoch = currentEpoch(
                 user[lockIndex].unlockTime
             );
 
             if (continuousLock) {
                 user[lockIndex].unlockTime = CONTINUOUS_LOCK_VALUE;
+
                 // Decrement their previous non-continuous lock value
                 // and increase points by the continuous lock value
                 _updateDataToContinuousOn(
                     recipient,
-                    priorUnlockEpoch,
-                    _getCLPoints(newTokenAmount) -
-                        previousTokenAmount,
-                    previousTokenAmount
+                    priorEpoch,
+                    _getCLPoints(newAmount) -
+                        previousAmount,
+                    previousAmount
                 );
             } else {
                 user[lockIndex].unlockTime = freshLockTimestamp();
-                uint256 unlockEpoch = freshLockEpoch();
+
                 // Update unlock data removing the old lock amount
                 // from old epoch and add the new lock amount to the new epoch
                 _updateUnlockDataToExtendedLock(
                     recipient,
-                    priorUnlockEpoch,
-                    unlockEpoch,
-                    previousTokenAmount,
-                    newTokenAmount
+                    priorEpoch,
+                    freshLockEpoch(),
+                    previousAmount,
+                    newAmount
                 );
 
                 // Increment the chain and user token point balance
                 _incrementPoints(recipient, amount);
             }
 
-            user[lockIndex].amount = uint216(newTokenAmount);
+            user[lockIndex].amount = uint216(newAmount);
         }
 
         _mint(recipient, amount);
@@ -1168,9 +1156,9 @@ contract VeCVE is ERC20, ReentrancyGuard {
         uint256 lastLockIndex = user.length - 1;
 
         if (lockIndex != lastLockIndex) {
-            Lock memory tempValue = user[lockIndex];
+            Lock memory lock = user[lockIndex];
             user[lockIndex] = user[lastLockIndex];
-            user[lastLockIndex] = tempValue;
+            user[lastLockIndex] = lock;
         }
 
         user.pop();
@@ -1335,16 +1323,16 @@ contract VeCVE is ERC20, ReentrancyGuard {
 
     /// @notice Calculates the current unlock penalty for early unlocking
     ///         a lock expiring at `unlockTime`
-    /// @param lockAmount The token amount to calculate the penalty against.
+    /// @param amount The token amount to calculate the penalty against.
     /// @param penalty The current early unlock penalty,
     ///                for full length locks in `DENOMINATOR`.
     /// @param unlockTime The unlock timestamp to calculate the penalty for.
-    /// @return The early unlock penalty for a `lockAmount` lock, 
+    /// @return The early unlock penalty for a `amount` lock, 
     ///         unlocking at `unlockTime`
-    function _getUnlockPenalty(uint256 lockAmount, uint256 penalty, uint256 unlockTime) internal view returns (uint256) {
+    function _getUnlockPenalty(uint256 amount, uint256 penalty, uint256 unlockTime) internal view returns (uint256) {
         // Penalty value = lock amount * penalty multiplier (in `DENOMINATOR`),
         // linearly scaled down as `unlockTime` scales from `LOCK_DURATION` down to 0.
-        return (lockAmount * ((penalty * (LOCK_DURATION - (unlockTime - block.timestamp))) / LOCK_DURATION)) / DENOMINATOR;
+        return (amount * ((penalty * (LOCK_DURATION - (unlockTime - block.timestamp))) / LOCK_DURATION)) / DENOMINATOR;
     }
 
     /// @dev Internal helper for reverting efficiently.

@@ -370,7 +370,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         }
 
         SafeTransferLib.safeApprove(cve, address(veCVE), rewards);
-        veCVE.lockFor(
+        veCVE.createLockFor(
             msg.sender,
             rewards,
             continuousLock,

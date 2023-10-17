@@ -5,7 +5,7 @@ import { RewardsData } from "contracts/interfaces/ICVELocker.sol";
 
 interface IVeCVE {
     /// @notice Sends CVE to a desired destination chain
-    function lockFor(
+    function createLockFor(
         address recipient,
         uint256 amount,
         bool continuousLock,

@@ -504,7 +504,7 @@ contract CVELocker is ReentrancyGuard {
         // and thus no potential secondary lock so we can just pass
         // empty reward data to the veCVE calls
         if (isFreshLock) {
-            veCVE.lockFor(
+            veCVE.createLockFor(
                 user,
                 reward,
                 continuousLock,
