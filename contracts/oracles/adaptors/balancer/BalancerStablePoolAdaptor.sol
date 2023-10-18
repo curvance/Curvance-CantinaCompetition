@@ -81,10 +81,10 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
         uint256 minPrice = type(uint256).max;
         uint256 price;
         uint256 errorCode;
-        
+
         for (uint256 i; i < numUnderlyingOrConstituent; ++i) {
             // Break when a zero address is found.
-            if (address(data.underlyingOrConstituent[i]) == address(0)){
+            if (address(data.underlyingOrConstituent[i]) == address(0)) {
                 break;
             }
 
@@ -95,7 +95,7 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
             );
             if (errorCode > 0) {
                 // If error code is BAD_SOURCE we can't use this price so continue.
-                if (errorCode == BAD_SOURCE){
+                if (errorCode == BAD_SOURCE) {
                     continue;
                 }
             }
@@ -105,12 +105,12 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
                 price = (price * 10 ** data.rateProviderDecimals[i]) / rate;
             }
 
-            if (price < minPrice){
+            if (price < minPrice) {
                 minPrice = price;
             }
         }
 
-        if (minPrice == type(uint256).max){
+        if (minPrice == type(uint256).max) {
             pData.hadError = true;
         } else {
             pData.price = uint240((price * pool.getRate()) / PRECISION);
@@ -142,7 +142,7 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
         // Make sure we can price all underlying tokens.
         for (uint256 i; i < numUnderlyingOrConstituent; ++i) {
             // Break when a zero address is found.
-            if (address(data.underlyingOrConstituent[i]) == address(0)){
+            if (address(data.underlyingOrConstituent[i]) == address(0)) {
                 continue;
             }
 

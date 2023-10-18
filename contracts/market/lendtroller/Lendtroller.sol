@@ -869,7 +869,7 @@ contract Lendtroller is ILendtroller, ERC165 {
     {
         (
             AccountSnapshot[] memory snapshots,
-            uint256[] memory prices,
+            uint256[] memory underlyingPrices,
             uint256 numAssets
         ) = _getAssetData(account, 2);
         AccountSnapshot memory snapshot;
@@ -882,7 +882,7 @@ contract Lendtroller is ILendtroller, ERC165 {
                 if (!(mTokenData[snapshot.asset].collRatio == 0)) {
                     uint256 assetValue = _getAssetValue(
                         (snapshot.balance * snapshot.exchangeRate) / EXP_SCALE,
-                        prices[i],
+                        underlyingPrices[i],
                         snapshot.decimals
                     );
 
@@ -896,7 +896,7 @@ contract Lendtroller is ILendtroller, ERC165 {
                 if (snapshot.debtBalance > 0) {
                     currentDebt += _getAssetValue(
                         snapshot.debtBalance,
-                        prices[i],
+                        underlyingPrices[i],
                         snapshot.decimals
                     );
                 }
@@ -1114,7 +1114,7 @@ contract Lendtroller is ILendtroller, ERC165 {
     {
         (
             AccountSnapshot[] memory snapshots,
-            uint256[] memory prices,
+            uint256[] memory underlyingPrices,
             uint256 numAssets
         ) = _getAssetData(account, errorCodeBreakpoint);
         AccountSnapshot memory snapshot;
@@ -1127,7 +1127,7 @@ contract Lendtroller is ILendtroller, ERC165 {
                 if (!(mTokenData[snapshot.asset].collRatio == 0)) {
                     uint256 assetValue = _getAssetValue(
                         (snapshot.balance * snapshot.exchangeRate) / EXP_SCALE,
-                        prices[i],
+                        underlyingPrices[i],
                         snapshot.decimals
                     );
 
@@ -1141,7 +1141,7 @@ contract Lendtroller is ILendtroller, ERC165 {
                 if (snapshot.debtBalance > 0) {
                     newDebt += _getAssetValue(
                         snapshot.debtBalance,
-                        prices[i],
+                        underlyingPrices[i],
                         snapshot.decimals
                     );
                 }
@@ -1156,7 +1156,7 @@ contract Lendtroller is ILendtroller, ERC165 {
                     if (!(mTokenData[snapshot.asset].collRatio == 0)) {
                         uint256 collateralValue = _getAssetValue(
                             (redeemTokens * snapshot.exchangeRate) / EXP_SCALE,
-                            prices[i],
+                            underlyingPrices[i],
                             snapshot.decimals
                         );
 
@@ -1168,7 +1168,7 @@ contract Lendtroller is ILendtroller, ERC165 {
                     // hypothetical borrow
                     newDebt += _getAssetValue(
                         borrowAmount,
-                        prices[i],
+                        underlyingPrices[i],
                         snapshot.decimals
                     );
                 }
@@ -1235,7 +1235,7 @@ contract Lendtroller is ILendtroller, ERC165 {
     ) internal view returns (uint256, uint256, uint256) {
         (
             AccountSnapshot[] memory snapshots,
-            uint256[] memory prices,
+            uint256[] memory underlyingPrices,
             uint256 numAssets
         ) = _getAssetData(account, 2);
         AccountSnapshot memory snapshot;
@@ -1249,7 +1249,7 @@ contract Lendtroller is ILendtroller, ERC165 {
 
             if (snapshot.isCToken) {
                 if (snapshot.asset == collateralToken) {
-                    collateralTokenPrice = prices[i];
+                    collateralTokenPrice = underlyingPrices[i];
                 }
 
                 // If the asset has a CR increment their collateral
@@ -1258,14 +1258,14 @@ contract Lendtroller is ILendtroller, ERC165 {
                         (_getAssetValue(
                             (snapshot.balance * snapshot.exchangeRate) /
                                 EXP_SCALE,
-                            prices[i],
+                            underlyingPrices[i],
                             snapshot.decimals
                         ) * EXP_SCALE) /
                         mTokenData[snapshot.asset].collReqA;
                 }
             } else {
                 if (snapshot.asset == debtToken) {
-                    debtTokenPrice = prices[i];
+                    debtTokenPrice = underlyingPrices[i];
                 }
 
                 // If they have a debt balance,
@@ -1273,7 +1273,7 @@ contract Lendtroller is ILendtroller, ERC165 {
                 if (snapshot.debtBalance > 0) {
                     totalDebt += _getAssetValue(
                         snapshot.debtBalance,
-                        prices[i],
+                        underlyingPrices[i],
                         snapshot.decimals
                     );
                 }
