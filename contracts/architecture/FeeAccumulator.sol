@@ -67,6 +67,7 @@ contract FeeAccumulator is ReentrancyGuard {
     error FeeAccumulator__Unauthorized();
     error FeeAccumulator__FeeTokenIsZeroAddress();
     error FeeAccumulator__ConfigurationError();
+    error FeeAccumulator__CurrentEpochError();
     error FeeAccumulator__EarmarkError();
 
     /// MODIFIERS ///
@@ -371,26 +372,31 @@ contract FeeAccumulator is ReentrancyGuard {
         );
     }
 
-    function executeEpochFeeRouter(EpochRolloverData memory data) external {
+    function executeEpochFeeRouter(uint256 chainId) external {
+        ICVELocker locker = ICVELocker(centralRegistry.cveLocker());
+        uint256 epoch = locker.nextEpochToDeliver();
+
+        if (locker.currentEpoch(block.timestamp) <= epoch) {
+            revert FeeAccumulator__CurrentEpochError();
+        }
+
         ChainData memory chainData = centralRegistry.supportedChainData(
-            data.chainId
+            chainId
         );
         if (chainData.isSupported < 2) {
             return;
         }
 
-        data.numChainData = crossChainLockData.length;
-        data.epoch = ICVELocker(centralRegistry.cveLocker())
-            .nextEpochToDeliver();
+        uint256 numChainData = crossChainLockData.length;
 
         // If we have sufficient chains reported,
         // time to execute epoch fee routing
-        if ((++data.numChainData) == centralRegistry.supportedChains()) {
+        if ((++numChainData) == centralRegistry.supportedChains()) {
             // Execute Fee Routing to each chain
             uint256 epochRewardsPerCVE = _executeEpochFeeRouter(
                 chainData,
-                data.numChainData,
-                data.epoch
+                numChainData,
+                epoch
             );
 
             ICVE CVE = ICVE(centralRegistry.CVE());
@@ -399,18 +405,19 @@ contract FeeAccumulator is ReentrancyGuard {
             );
             LockData memory lockData;
             uint16 version = 1;
+            uint256 value;
 
             // Notify the other chains of the per epoch rewards
-            for (uint256 i; i < data.numChainData; ) {
+            for (uint256 i; i < numChainData; ) {
                 lockData = crossChainLockData[i];
                 chainData = centralRegistry.supportedChainData(
                     lockData.chainId
                 );
-                data.chainId = centralRegistry.GETHToMessagingChainId(
+                chainId = centralRegistry.GETHToMessagingChainId(
                     lockData.chainId
                 );
-                data.value = CVE.estimateSendAndCallFee(
-                    uint16(data.chainId),
+                value = CVE.estimateSendAndCallFee(
+                    uint16(chainId),
                     chainData.cveAddress,
                     0,
                     abi.encode(epochRewardsPerCVE),
@@ -419,8 +426,8 @@ contract FeeAccumulator is ReentrancyGuard {
                     abi.encodePacked(version, _gasForCrosschain)
                 );
 
-                messagingHub.sendLockedTokenData{ value: data.value }(
-                    uint16(data.chainId),
+                messagingHub.sendLockedTokenData{ value: value }(
+                    uint16(chainId),
                     chainData.cveAddress,
                     abi.encode(epochRewardsPerCVE),
                     uint64(_gasForCalldata),
@@ -432,7 +439,7 @@ contract FeeAccumulator is ReentrancyGuard {
                             _gasForCrosschain
                         )
                     }),
-                    data.value
+                    value
                 );
 
                 unchecked {
