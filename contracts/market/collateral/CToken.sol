@@ -37,7 +37,7 @@ contract CToken is ERC165, ReentrancyGuard {
     BasePositionVault public vault;
     /// @notice Total number of tokens in circulation
     uint256 public totalSupply;
-    
+
     /// @notice account => token balance
     mapping(address => uint256) public balanceOf;
     /// @notice account => spender => approved amount
@@ -66,14 +66,14 @@ contract CToken is ERC165, ReentrancyGuard {
     /// MODIFIERS ///
 
     modifier onlyDaoPermissions() {
-        if (!centralRegistry.hasDaoPermissions(msg.sender)){
+        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
             revert CToken__Unauthorized();
         }
         _;
     }
 
     modifier onlyElevatedPermissions() {
-        if (!centralRegistry.hasElevatedPermissions(msg.sender)){
+        if (!centralRegistry.hasElevatedPermissions(msg.sender)) {
             revert CToken__Unauthorized();
         }
         _;
@@ -234,11 +234,7 @@ contract CToken is ERC165, ReentrancyGuard {
     function redeem(uint256 amount) external nonReentrant {
         lendtroller.canRedeem(address(this), msg.sender, amount);
 
-        _redeem(
-            msg.sender,
-            msg.sender,
-            amount
-        );
+        _redeem(msg.sender, msg.sender, amount);
     }
 
     /// @notice Helper function for Position Folding contract to
@@ -291,7 +287,7 @@ contract CToken is ERC165, ReentrancyGuard {
         address daoOperator = centralRegistry.daoAddress();
 
         if (token == address(0)) {
-            if (amount == 0){
+            if (amount == 0) {
                 amount = address(this).balance;
             }
 
@@ -301,7 +297,7 @@ contract CToken is ERC165, ReentrancyGuard {
                 revert CToken__TransferError();
             }
 
-            if (amount == 0){
+            if (amount == 0) {
                 amount = IERC20(token).balanceOf(address(this));
             }
 
@@ -348,6 +344,7 @@ contract CToken is ERC165, ReentrancyGuard {
             AccountSnapshot({
                 asset: address(this),
                 isCToken: true,
+                decimals: decimals(),
                 balance: balanceOf[account],
                 debtBalance: 0,
                 exchangeRate: exchangeRateStored()

@@ -270,13 +270,9 @@ contract PriceRouter {
             data[0] = _getPriceFromFeed(asset, 0, inUSD, true);
             data[1] = _getPriceFromFeed(asset, 0, inUSD, false);
             if (isMToken) {
-                uint256 decimals = IERC20(asset).decimals();
-                data[0].price = uint240(
-                    (data[0].price * 1e18) / (10 ** decimals)
-                );
-                data[1].price = uint240(
-                    (data[1].price * 1e18) / (10 ** decimals)
-                );
+                uint256 exchangeRate = IMToken(asset).exchangeRateStored();
+                data[0].price = uint240((data[0].price * exchangeRate) / 1e18);
+                data[1].price = uint240((data[1].price * exchangeRate) / 1e18);
             }
 
             return data;
@@ -290,11 +286,11 @@ contract PriceRouter {
         data[3] = _getPriceFromFeed(asset, 1, inUSD, false);
 
         if (isMToken) {
-            uint256 decimals = IERC20(asset).decimals();
-            data[0].price = uint240((data[0].price * 1e18) / (10 ** decimals));
-            data[1].price = uint240((data[1].price * 1e18) / (10 ** decimals));
-            data[2].price = uint240((data[2].price * 1e18) / (10 ** decimals));
-            data[3].price = uint240((data[3].price * 1e18) / (10 ** decimals));
+            uint256 exchangeRate = IMToken(asset).exchangeRateStored();
+            data[0].price = uint240((data[0].price * exchangeRate) / 1e18);
+            data[1].price = uint240((data[1].price * exchangeRate) / 1e18);
+            data[2].price = uint240((data[2].price * exchangeRate) / 1e18);
+            data[3].price = uint240((data[3].price * exchangeRate) / 1e18);
         }
 
         return data;
@@ -331,9 +327,9 @@ contract PriceRouter {
         bool inUSD,
         bool getLower
     ) public view returns (uint256 price, uint256 errorCode) {
-        bool isMToken;
+        address mAsset;
         if (mTokenAssets[asset].isMToken) {
-            isMToken = mTokenAssets[asset].isMToken;
+            mAsset = asset;
             asset = mTokenAssets[asset].underlying;
         }
 
@@ -353,9 +349,10 @@ contract PriceRouter {
             errorCode = BAD_SOURCE;
         }
 
-        // if (isMToken) {
-        //     price = (price * 1e18) / (10 ** IERC20(asset).decimals());
-        // }
+        if (mAsset != address(0)) {
+            uint256 exchangeRate = IMToken(mAsset).exchangeRateStored();
+            price = (price * exchangeRate) / 1e18;
+        }
     }
 
     /// @notice Retrieves the prices of multiple assets.
@@ -420,21 +417,16 @@ contract PriceRouter {
         }
 
         AccountSnapshot[] memory snapshots = new AccountSnapshot[](numAssets);
-        uint256[] memory prices = new uint256[](numAssets);
+        uint256[] memory underlyingPrices = new uint256[](numAssets);
         uint256 hadError;
 
         for (uint256 i; i < numAssets; ) {
             snapshots[i] = assets[i].getSnapshotPacked(account);
-            (prices[i], hadError) = getPrice(
-                snapshots[i].asset,
+            (underlyingPrices[i], hadError) = getPrice(
+                assets[i].underlying(),
                 true,
                 snapshots[i].isCToken
             );
-            // adjust price (consider underlying asset decimals)
-            uint256 decimals = assets[i].decimals();
-            if (decimals != 18) {
-                prices[i] = (prices[i] * 1e18) / (10 ** decimals);
-            }
 
             if (hadError >= errorCodeBreakpoint) {
                 _revert(ERROR_CODE_FLAGGED_SELECTOR);
@@ -445,7 +437,7 @@ contract PriceRouter {
             }
         }
 
-        return (snapshots, prices, numAssets);
+        return (snapshots, underlyingPrices, numAssets);
     }
 
     /// INTERNAL FUNCTIONS ///
