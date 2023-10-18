@@ -10,7 +10,6 @@ import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 import { ICurvePool } from "contracts/interfaces/external/curve/ICurvePool.sol";
 
 contract CurveAdaptor is BaseOracleAdaptor, CurveReentrancyCheck {
-    
     /// TYPES ///
 
     struct AdaptorData {
@@ -74,7 +73,7 @@ contract CurveAdaptor is BaseOracleAdaptor, CurveReentrancyCheck {
         pData.inUSD = inUSD;
 
         AdaptorData memory adapter = adaptorData[asset];
-        if (isLocked(adapter.pool)){
+        if (isLocked(adapter.pool)) {
             revert CurveAdaptor__Reentrant();
         }
 
@@ -93,10 +92,7 @@ contract CurveAdaptor is BaseOracleAdaptor, CurveReentrancyCheck {
             );
             if (errorCode > 0) {
                 pData.hadError = true;
-
-                if (errorCode == BAD_SOURCE){
-                    return pData;
-                }
+                return pData;
             }
 
             minPrice = minPrice < price ? minPrice : price;
@@ -131,10 +127,10 @@ contract CurveAdaptor is BaseOracleAdaptor, CurveReentrancyCheck {
             }
         }
         // Only support LPs with 2 - 4 underlying assets
-        if (coinsLength > 4){
+        if (coinsLength > 4) {
             revert CurveAdaptor__UnsupportedPool();
         }
-    
+
         address[] memory coins = new address[](coinsLength);
         for (uint256 i; i < coinsLength; ) {
             coins[i] = ICurvePool(pool).coins(i);
@@ -171,5 +167,4 @@ contract CurveAdaptor is BaseOracleAdaptor, CurveReentrancyCheck {
         // Notify the price router that we are going to stop supporting the asset
         IPriceRouter(centralRegistry.priceRouter()).notifyFeedRemoval(asset);
     }
-
 }

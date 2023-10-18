@@ -80,11 +80,7 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
 
         if (errorCode > 0) {
             pData.hadError = true;
-            // If error code is BAD_SOURCE we can't use this price at all
-            // so return.
-            if (errorCode == BAD_SOURCE) {
-                return pData;
-            }
+            return pData;
         }
 
         // Multiply the quote asset price by the lpRate
