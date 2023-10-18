@@ -327,9 +327,9 @@ contract PriceRouter {
         bool inUSD,
         bool getLower
     ) public view returns (uint256 price, uint256 errorCode) {
-        bool isMToken;
+        address mAsset;
         if (mTokenAssets[asset].isMToken) {
-            isMToken = mTokenAssets[asset].isMToken;
+            mAsset = asset;
             asset = mTokenAssets[asset].underlying;
         }
 
@@ -349,8 +349,8 @@ contract PriceRouter {
             errorCode = BAD_SOURCE;
         }
 
-        if (isMToken) {
-            uint256 exchangeRate = IMToken(asset).exchangeRateStored();
+        if (mAsset != address(0)) {
+            uint256 exchangeRate = IMToken(mAsset).exchangeRateStored();
             price = (price * exchangeRate) / 1e18;
         }
     }

@@ -78,10 +78,11 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
         uint256 numUnderlyingOrConstituent = data
             .underlyingOrConstituent
             .length;
-        uint256 minPrice = type(uint256).max;
+        uint256 averagePrice = 0;
+        uint256 availablePriceCount = 0;
+
         uint256 price;
         uint256 errorCode;
-
         for (uint256 i; i < numUnderlyingOrConstituent; ++i) {
             // Break when a zero address is found.
             if (address(data.underlyingOrConstituent[i]) == address(0)) {
@@ -100,19 +101,14 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
                 }
             }
 
-            if (data.rateProviders[i] != address(0)) {
-                uint256 rate = IRateProvider(data.rateProviders[i]).getRate();
-                price = (price * 10 ** data.rateProviderDecimals[i]) / rate;
-            }
-
-            if (price < minPrice) {
-                minPrice = price;
-            }
+            averagePrice += price;
+            availablePriceCount += 1;
         }
 
-        if (minPrice == type(uint256).max) {
+        if (availablePriceCount == 0) {
             pData.hadError = true;
         } else {
+            averagePrice = averagePrice / availablePriceCount;
             pData.price = uint240((price * pool.getRate()) / PRECISION);
         }
     }
