@@ -102,6 +102,11 @@ contract TestPriceRouter is TestBasePriceRouter {
             address(lendtroller),
             address(jumpRateModel)
         );
+        // support market
+        deal(USDC, address(this), 200000e6);
+        IERC20(USDC).approve(address(dUSDC), 200000e6);
+        lendtroller.listMarketToken(address(dUSDC));
+
         priceRouter.addMTokenSupport(address(dUSDC));
 
         uint256 dUSDCPrice;
