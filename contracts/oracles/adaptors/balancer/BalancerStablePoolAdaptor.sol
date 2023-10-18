@@ -94,11 +94,9 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
                 inUSD,
                 getLower
             );
-            if (errorCode > 0) {
-                // If error code is BAD_SOURCE we can't use this price so continue.
-                if (errorCode == BAD_SOURCE) {
-                    continue;
-                }
+            // If error code is BAD_SOURCE we can't use this price so continue.
+            if (errorCode == BAD_SOURCE) {
+                continue;
             }
 
             averagePrice += price;
