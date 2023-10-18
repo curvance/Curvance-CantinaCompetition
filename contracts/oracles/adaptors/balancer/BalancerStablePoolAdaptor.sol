@@ -105,7 +105,7 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
             availablePriceCount += 1;
         }
 
-        if (availablePriceCount == 0) {
+        if (averagePrice == 0) {
             pData.hadError = true;
         } else {
             averagePrice = averagePrice / availablePriceCount;
