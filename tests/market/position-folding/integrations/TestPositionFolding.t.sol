@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
+import { MockDataFeed } from "contracts/mocks/MockDataFeed.sol";
 import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 import { IUniswapV2Router } from "contracts/interfaces/external/uniswap/IUniswapV2Router.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
@@ -15,6 +16,10 @@ contract TestPositionFolding is TestBaseMarket {
 
     address public owner;
     address public user;
+    MockDataFeed public mockUsdcFeed;
+    MockDataFeed public mockDaiFeed;
+    MockDataFeed public mockWethFeed;
+    MockDataFeed public mockRethFeed;
 
     receive() external payable {}
 
@@ -26,12 +31,49 @@ contract TestPositionFolding is TestBaseMarket {
         owner = address(this);
         user = user1;
 
+        // use mock pricing for testing
+        mockUsdcFeed = new MockDataFeed(_CHAINLINK_USDC_USD);
+        chainlinkAdaptor.addAsset(_USDC_ADDRESS, address(mockUsdcFeed), true);
+        dualChainlinkAdaptor.addAsset(
+            _USDC_ADDRESS,
+            address(mockUsdcFeed),
+            true
+        );
+        mockDaiFeed = new MockDataFeed(_CHAINLINK_DAI_USD);
+        chainlinkAdaptor.addAsset(_DAI_ADDRESS, address(mockDaiFeed), true);
+        dualChainlinkAdaptor.addAsset(
+            _DAI_ADDRESS,
+            address(mockDaiFeed),
+            true
+        );
+        mockWethFeed = new MockDataFeed(_CHAINLINK_ETH_USD);
+        chainlinkAdaptor.addAsset(_WETH_ADDRESS, address(mockWethFeed), true);
+        dualChainlinkAdaptor.addAsset(
+            _WETH_ADDRESS,
+            address(mockWethFeed),
+            true
+        );
+        mockRethFeed = new MockDataFeed(_CHAINLINK_RETH_ETH);
+        chainlinkAdaptor.addAsset(_RETH_ADDRESS, address(mockRethFeed), false);
+        dualChainlinkAdaptor.addAsset(
+            _RETH_ADDRESS,
+            address(mockRethFeed),
+            true
+        );
+
         _prepareUSDC(user, 200000e6);
         _prepareDAI(user, 200000e18);
         _prepareBALRETH(user, 1 ether);
 
         // start epoch
         gaugePool.start(address(lendtroller));
+        vm.warp(gaugePool.startTime());
+        vm.roll(block.number + 1000);
+
+        mockUsdcFeed.setMockUpdatedAt(block.timestamp);
+        mockDaiFeed.setMockUpdatedAt(block.timestamp);
+        mockWethFeed.setMockUpdatedAt(block.timestamp);
+        mockRethFeed.setMockUpdatedAt(block.timestamp);
 
         // deploy dDAI
         {
@@ -194,8 +236,7 @@ contract TestPositionFolding is TestBaseMarket {
 
         positionFolding.leverage(leverageData, 500);
 
-        (uint256 dDAIBalance, uint256 dDAIBorrowed, ) = dDAI
-            .getSnapshot(user);
+        (uint256 dDAIBalance, uint256 dDAIBorrowed, ) = dDAI.getSnapshot(user);
         assertEq(dDAIBalance, 0);
         assertEq(dDAIBorrowed, 100 ether + amountForLeverage);
 
@@ -271,8 +312,7 @@ contract TestPositionFolding is TestBaseMarket {
 
         positionFolding.deleverage(deleverageData, 500);
 
-        (uint256 dDAIBalance, uint256 dDAIBorrowed, ) = dDAI
-            .getSnapshot(user);
+        (uint256 dDAIBalance, uint256 dDAIBorrowed, ) = dDAI.getSnapshot(user);
         assertEq(dDAIBalance, 0);
         assertEq(
             dDAIBorrowed,

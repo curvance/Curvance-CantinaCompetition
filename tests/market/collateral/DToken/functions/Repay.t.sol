@@ -25,9 +25,7 @@ contract DTokenRepayTest is TestBaseDToken {
     }
 
     function test_dTokenRepay_fail_whenBorrowAmountExceedsCash() public {
-        uint256 debtBalanceCurrent = dUSDC.debtBalanceCurrent(
-            address(this)
-        );
+        uint256 debtBalanceCurrent = dUSDC.debtBalanceCurrent(address(this));
 
         vm.expectRevert();
         dUSDC.repay(debtBalanceCurrent + 1);
@@ -53,9 +51,7 @@ contract DTokenRepayTest is TestBaseDToken {
     }
 
     function test_dTokenRepay_success_whenRepayAll() public {
-        uint256 debtBalanceCurrent = dUSDC.debtBalanceCurrent(
-            address(this)
-        );
+        uint256 debtBalanceCurrent = dUSDC.debtBalanceCurrent(address(this));
         uint256 underlyingBalance = usdc.balanceOf(address(this));
         uint256 balance = dUSDC.balanceOf(address(this));
         uint256 totalSupply = dUSDC.totalSupply();
