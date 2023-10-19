@@ -100,6 +100,16 @@ abstract contract GaugeController is IGaugePool {
 
         Epoch storage info = epochInfo[epoch];
         for (uint256 i; i < numTokens; ) {
+            for (uint256 j; j < numTokens; ) {
+                if (i != j && tokens[i] == tokens[j]) {
+                    revert GaugeErrors.InvalidToken();
+                }
+
+                unchecked {
+                    ++j;
+                }
+            }
+
             info.totalWeights =
                 info.totalWeights +
                 poolWeights[i] -

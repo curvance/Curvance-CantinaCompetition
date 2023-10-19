@@ -47,6 +47,7 @@ contract TestVelodromeVolatilePositionVault is TestBaseMarket {
 
         centralRegistry.addHarvester(address(this));
         centralRegistry.setFeeAccumulator(address(this));
+        centralRegistry.addSwapper(address(veloRouter));
 
         positionVault = new VelodromeVolatilePositionVault(
             WETH_USDC,

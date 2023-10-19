@@ -42,11 +42,12 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
     /// EVENTS ///
 
     event Harvest(uint256 yield);
-    
+
     /// ERRORS ///
 
     error VelodromeVolatilePositionVault__ConfigurationError();
     error VelodromeVolatilePositionVault__SlippageError();
+    error VelodromeVolatilePositionVault__InvalidSwapper();
 
     /// CONSTRUCTOR ///
 
@@ -61,11 +62,11 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
         address _asset = asset();
         // Validate that we have the proper gauge linked with the proper LP
         // and pair factory
-        if (gauge.stakingToken() != _asset){
+        if (gauge.stakingToken() != _asset) {
             revert VelodromeVolatilePositionVault__ConfigurationError();
         }
 
-        if (IVeloPool(_asset).stable()){
+        if (IVeloPool(_asset).stable()) {
             revert VelodromeVolatilePositionVault__ConfigurationError();
         }
 
@@ -136,6 +137,11 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
                             data,
                             (SwapperLib.Swap)
                         );
+
+                        if (!centralRegistry.isSwapper(swapData.target)) {
+                            revert VelodromeVolatilePositionVault__InvalidSwapper();
+                        }
+
                         SwapperLib.swap(swapData);
                     }
                 }
@@ -143,7 +149,7 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
 
             // swap token0 to LP Token underlying tokens
             uint256 totalAmountA = ERC20(sd.token0).balanceOf(address(this));
-            if (totalAmountA == 0){
+            if (totalAmountA == 0) {
                 revert VelodromeVolatilePositionVault__SlippageError();
             }
 

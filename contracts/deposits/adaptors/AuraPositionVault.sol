@@ -202,6 +202,10 @@ contract AuraPositionVault is BasePositionVault {
 
                     // swap from rewardToken to underlying LP token if necessary
                     if (!isUnderlyingToken[rewardToken]) {
+                        require(
+                            centralRegistry.isSwapper(swapDataArray[i].target),
+                            "AuraPositionVault: invalid swapper"
+                        );
                         SwapperLib.swap(swapDataArray[i]);
                     }
                 }

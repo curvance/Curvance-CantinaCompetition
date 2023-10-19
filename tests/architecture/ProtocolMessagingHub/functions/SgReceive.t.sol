@@ -7,9 +7,7 @@ import { ProtocolMessagingHub } from "contracts/architecture/ProtocolMessagingHu
 contract SgReceiveTest is TestBaseProtocolMessagingHub {
     function test_sgReceive_fail_whenCallerIsNotStargateRouter() public {
         vm.expectRevert(
-            ProtocolMessagingHub
-            .ProtocolMessagingHub__Unauthorized
-            .selector
+            ProtocolMessagingHub.ProtocolMessagingHub__Unauthorized.selector
         );
         protocolMessagingHub.sgReceive(
             110,
@@ -39,7 +37,7 @@ contract SgReceiveTest is TestBaseProtocolMessagingHub {
         deal(_USDC_ADDRESS, address(protocolMessagingHub), 100e6);
 
         assertEq(usdc.balanceOf(address(protocolMessagingHub)), 100e6);
-        assertEq(usdc.balanceOf(address(feeAccumulator)), 0);
+        assertEq(usdc.balanceOf(address(cveLocker)), 0);
 
         vm.prank(_STARGATE_ROUTER);
         protocolMessagingHub.sgReceive(
@@ -52,6 +50,6 @@ contract SgReceiveTest is TestBaseProtocolMessagingHub {
         );
 
         assertEq(usdc.balanceOf(address(protocolMessagingHub)), 0);
-        assertEq(usdc.balanceOf(address(feeAccumulator)), 100e6);
+        assertEq(usdc.balanceOf(address(cveLocker)), 100e6);
     }
 }

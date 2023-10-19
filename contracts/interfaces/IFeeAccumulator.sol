@@ -14,4 +14,7 @@ interface IFeeAccumulator {
 
     /// @notice Receive feeAccumulator information of locked tokens on a chain for the epoch
     function receiveCrossChainLockData(EpochRolloverData memory data) external;
+
+    /// @notice Record rewards for epoch
+    function recordEpochRewards(uint256 amount) external;
 }

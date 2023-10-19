@@ -198,7 +198,12 @@ contract ConvexPositionVault is BasePositionVault {
             }
 
             {
-                for (uint256 i; i < swapDataArray.length; ++i) {
+                uint256 numSwapData = swapDataArray.length;
+                for (uint256 i; i < numSwapData; ++i) {
+                    require(
+                        centralRegistry.isSwapper(swapDataArray[i].target),
+                        "Convex2PoolPositionVault: invalid swapper"
+                    );
                     SwapperLib.swap(swapDataArray[i]);
                 }
             }

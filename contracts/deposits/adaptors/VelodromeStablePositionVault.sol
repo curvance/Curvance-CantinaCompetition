@@ -49,6 +49,7 @@ contract VelodromeStablePositionVault is BasePositionVault {
 
     error VelodromeStablePositionVault__ConfigurationError();
     error VelodromeStablePositionVault__SlippageError();
+    error VelodromeStablePositionVault__InvalidSwapper();
 
     /// CONSTRUCTOR ///
 
@@ -63,11 +64,11 @@ contract VelodromeStablePositionVault is BasePositionVault {
         address _asset = asset();
         // Validate that we have the proper gauge linked with the proper LP
         // and pair factory
-        if (gauge.stakingToken() != _asset){
+        if (gauge.stakingToken() != _asset) {
             revert VelodromeStablePositionVault__ConfigurationError();
         }
 
-        if (!IVeloPool(_asset).stable()){
+        if (!IVeloPool(_asset).stable()) {
             revert VelodromeStablePositionVault__ConfigurationError();
         }
 
@@ -141,6 +142,11 @@ contract VelodromeStablePositionVault is BasePositionVault {
                             data,
                             (SwapperLib.Swap)
                         );
+
+                        if (!centralRegistry.isSwapper(swapData.target)) {
+                            revert VelodromeStablePositionVault__InvalidSwapper();
+                        }
+
                         SwapperLib.swap(swapData);
                     }
                 }
@@ -149,7 +155,7 @@ contract VelodromeStablePositionVault is BasePositionVault {
             // swap token0 to LP Token underlying tokens
             uint256 totalAmountA = ERC20(sd.token0).balanceOf(address(this));
 
-            if (totalAmountA == 0){
+            if (totalAmountA == 0) {
                 revert VelodromeStablePositionVault__SlippageError();
             }
 

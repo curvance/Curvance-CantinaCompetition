@@ -39,19 +39,22 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     error ProtocolMessagingHub__StargateRouterIsZeroAddress();
     error ProtocolMessagingHub__ConfigurationError();
     error ProtocolMessagingHub__InsufficientGasToken();
+    error ProtocolMessagingHub__InvalidMsgValue();
 
     /// MODIFIERS ///
 
     modifier onlyAuthorized() {
-        if (!centralRegistry.isHarvester(msg.sender) &&
-                msg.sender != centralRegistry.feeAccumulator()){
+        if (
+            !centralRegistry.isHarvester(msg.sender) &&
+            msg.sender != centralRegistry.feeAccumulator()
+        ) {
             revert ProtocolMessagingHub__Unauthorized();
         }
         _;
     }
 
     modifier onlyDaoPermissions() {
-        if (!centralRegistry.hasDaoPermissions(msg.sender)){
+        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
             revert ProtocolMessagingHub__Unauthorized();
         }
         _;
@@ -115,9 +118,11 @@ contract ProtocolMessagingHub is ReentrancyGuard {
             revert ProtocolMessagingHub__Unauthorized();
         }
 
-        SafeTransferLib.safeTransfer(
-            token,
-            centralRegistry.feeAccumulator(),
+        address locker = centralRegistry.cveLocker();
+
+        SafeTransferLib.safeTransfer(token, locker, amountLD);
+
+        IFeeAccumulator(centralRegistry.feeAccumulator()).recordEpochRewards(
             amountLD
         );
     }
@@ -129,7 +134,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     /// @param payload The payload data that is sent along with the message
     /// @param dstGasForCall The amount of gas that should be provided for
     ///                      the call on the destination chain
-    /// @param callParams AdditionalParameters for the call, as LzCallParams
+    /// @param callParams Additional parameters for the call, as LzCallParams
     /// @dev We redundantly pass adapterParams & callParams so we do not
     ///      need to coerce data in the function, calls with this function will
     ///      have messageType = 3
@@ -280,7 +285,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         bytes calldata payload
     ) external {
         // Validate caller is CVE itself
-        if (msg.sender != centralRegistry.CVE()){
+        if (msg.sender != centralRegistry.CVE()) {
             revert ProtocolMessagingHub__Unauthorized();
         }
 
@@ -433,6 +438,10 @@ contract ProtocolMessagingHub is ReentrancyGuard {
                 .isSupported < 2
         ) {
             revert ProtocolMessagingHub__ConfigurationError();
+        }
+
+        if (msg.value != etherValue) {
+            revert ProtocolMessagingHub__InvalidMsgValue();
         }
 
         CVE.sendAndCall{ value: etherValue }(

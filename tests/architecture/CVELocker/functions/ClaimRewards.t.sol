@@ -35,6 +35,8 @@ contract ClaimRewardsTest is TestBaseCVELocker {
             block.timestamp
         );
 
+        centralRegistry.addSwapper(_UNISWAP_V2_ROUTER);
+
         deal(_USDC_ADDRESS, address(cveLocker), 1e18);
     }
 
