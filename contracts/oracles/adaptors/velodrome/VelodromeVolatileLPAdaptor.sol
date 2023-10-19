@@ -87,7 +87,7 @@ contract VelodromeVolatileLPAdaptor is BaseOracleAdaptor {
         );
         if (errorCode > 0) {
             pData.hadError = true;
-            if (errorCode == BAD_SOURCE) return pData;
+            return pData;
         }
         (price1, errorCode) = priceRouter.getPrice(
             data.token1,
@@ -96,7 +96,7 @@ contract VelodromeVolatileLPAdaptor is BaseOracleAdaptor {
         );
         if (errorCode > 0) {
             pData.hadError = true;
-            if (errorCode == BAD_SOURCE) return pData;
+            return pData;
         }
         uint256 sqrtPrice = Math.sqrt(price0 * price1);
 
