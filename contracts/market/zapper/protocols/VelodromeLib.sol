@@ -12,6 +12,8 @@ import { IVeloPairFactory } from "contracts/interfaces/external/velodrome/IVeloP
 import { IVeloPool } from "contracts/interfaces/external/velodrome/IVeloPool.sol";
 
 library VelodromeLib {
+    uint256 public constant VELODROME_ADD_LIQUIDITY_SLIPPAGE = 100; // 1%
+
     /// @dev Enter Velodrome
     /// @param router The velodrome router address
     /// @param factory The velodrome factory address
@@ -60,7 +62,8 @@ library VelodromeLib {
                 token1,
                 stable,
                 amount0,
-                amount1
+                amount1,
+                VELODROME_ADD_LIQUIDITY_SLIPPAGE
             );
 
             lpOutAmount += newLpOutAmount;
@@ -96,7 +99,8 @@ library VelodromeLib {
                 token1,
                 stable,
                 amount0,
-                amount1
+                amount1,
+                VELODROME_ADD_LIQUIDITY_SLIPPAGE
             );
 
             lpOutAmount += newLpOutAmount;
@@ -140,6 +144,7 @@ library VelodromeLib {
     /// @param token1 The second token of the pair
     /// @param amount0 The amount of the `token0`
     /// @param amount1 The amount of the `token1`
+    /// @param slippage The slippage percent, 10000 for 100%
     /// @return liquidity The amount of LP tokens received
     function _addLiquidity(
         address router,
@@ -147,7 +152,8 @@ library VelodromeLib {
         address token1,
         bool stable,
         uint256 amount0,
-        uint256 amount1
+        uint256 amount1,
+        uint256 slippage
     ) internal returns (uint256 liquidity) {
         SwapperLib.approveTokenIfNeeded(token0, router, amount0);
         SwapperLib.approveTokenIfNeeded(token1, router, amount1);
@@ -157,8 +163,8 @@ library VelodromeLib {
             stable,
             amount0,
             amount1,
-            0,
-            0,
+            amount0 - (amount0 * slippage) / 10000,
+            amount1 - (amount1 * slippage) / 10000,
             address(this),
             block.timestamp
         );

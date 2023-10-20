@@ -63,11 +63,11 @@ contract VelodromeStablePositionVault is BasePositionVault {
         address _asset = asset();
         // Validate that we have the proper gauge linked with the proper LP
         // and pair factory
-        if (gauge.stakingToken() != _asset){
+        if (gauge.stakingToken() != _asset) {
             revert VelodromeStablePositionVault__ConfigurationError();
         }
 
-        if (!IVeloPool(_asset).stable()){
+        if (!IVeloPool(_asset).stable()) {
             revert VelodromeStablePositionVault__ConfigurationError();
         }
 
@@ -149,7 +149,7 @@ contract VelodromeStablePositionVault is BasePositionVault {
             // swap token0 to LP Token underlying tokens
             uint256 totalAmountA = ERC20(sd.token0).balanceOf(address(this));
 
-            if (totalAmountA == 0){
+            if (totalAmountA == 0) {
                 revert VelodromeStablePositionVault__SlippageError();
             }
 
@@ -189,7 +189,8 @@ contract VelodromeStablePositionVault is BasePositionVault {
                 sd.token1,
                 true,
                 totalAmountA,
-                ERC20(sd.token1).balanceOf(address(this)) // totalAmountB
+                ERC20(sd.token1).balanceOf(address(this)), // totalAmountB
+                VelodromeLib.VELODROME_ADD_LIQUIDITY_SLIPPAGE
             );
 
             // deposit assets into velodrome gauge

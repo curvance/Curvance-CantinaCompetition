@@ -48,16 +48,18 @@ contract Zapper is ReentrancyGuard {
         address lendtroller_,
         address WETH_
     ) {
-        if (!ERC165Checker.supportsInterface(
+        if (
+            !ERC165Checker.supportsInterface(
                 address(centralRegistry_),
                 type(ICentralRegistry).interfaceId
-            )){
-                revert Zapper__ParametersareInvalid();
-            }
+            )
+        ) {
+            revert Zapper__ParametersareInvalid();
+        }
 
         centralRegistry = centralRegistry_;
 
-        if (!centralRegistry.isLendingMarket(lendtroller_)){
+        if (!centralRegistry.isLendingMarket(lendtroller_)) {
             revert Zapper__ParametersareInvalid();
         }
 
@@ -141,7 +143,7 @@ contract Zapper is ReentrancyGuard {
         }
 
         outAmount = CommonLib.getTokenBalance(zapData.outputToken);
-        if (outAmount < zapData.minimumOut){
+        if (outAmount < zapData.minimumOut) {
             revert Zapper__SlippageError();
         }
 
@@ -228,7 +230,7 @@ contract Zapper is ReentrancyGuard {
         }
 
         outAmount = CommonLib.getTokenBalance(zapData.outputToken);
-        if (outAmount < zapData.minimumOut){
+        if (outAmount < zapData.minimumOut) {
             revert Zapper__SlippageError();
         }
 
@@ -304,7 +306,7 @@ contract Zapper is ReentrancyGuard {
         }
 
         outAmount = CommonLib.getTokenBalance(zapData.outputToken);
-        if (outAmount < zapData.minimumOut){
+        if (outAmount < zapData.minimumOut) {
             revert Zapper__SlippageError();
         }
 
@@ -325,7 +327,7 @@ contract Zapper is ReentrancyGuard {
         bool depositInputAsWETH
     ) private {
         if (CommonLib.isETH(inputToken)) {
-            if (inputAmount != msg.value){
+            if (inputAmount != msg.value) {
                 revert Zapper__ExecutionError();
             }
             if (depositInputAsWETH) {
@@ -369,12 +371,12 @@ contract Zapper is ReentrancyGuard {
         }
 
         // check valid cToken
-        if (!lendtroller.isListed(cToken)){
+        if (!lendtroller.isListed(cToken)) {
             revert Zapper__Unauthorized();
         }
 
         // check cToken underlying
-        if (CToken(cToken).underlying() != lpToken){
+        if (CToken(cToken).underlying() != lpToken) {
             revert Zapper__ParametersareInvalid();
         }
 
@@ -384,7 +386,7 @@ contract Zapper is ReentrancyGuard {
         uint256 priorBalance = IERC20(cToken).balanceOf(recipient);
 
         // enter curvance
-        if (!CToken(cToken).mintFor(amount, recipient)){
+        if (!CToken(cToken).mintFor(amount, recipient)) {
             revert Zapper__ExecutionError();
         }
 
