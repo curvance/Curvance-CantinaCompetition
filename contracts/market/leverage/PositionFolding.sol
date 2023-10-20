@@ -14,6 +14,7 @@ import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.sol";
+import { DENOMINATOR } from "contracts/libraries/Constants.sol";
 
 contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
     /// TYPES ///
@@ -42,7 +43,6 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
     /// CONSTANTS ///
 
     uint256 public constant MAX_LEVERAGE = 9900; // 99%
-    uint256 public constant DENOMINATOR = 10000; // Scalar for math
 
     ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
     ILendtroller public immutable lendtroller; // Lendtroller linked

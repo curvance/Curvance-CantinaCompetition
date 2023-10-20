@@ -10,14 +10,13 @@ import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { IVeCVE } from "contracts/interfaces/IVeCVE.sol";
 import { RewardsData } from "contracts/interfaces/ICVELocker.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+import { EXP_SCALE } from "contracts/libraries/Constants.sol";
 
 contract CVELocker is ReentrancyGuard {
     /// CONSTANTS ///
 
     /// @notice Protocol epoch length
     uint256 public constant EPOCH_DURATION = 2 weeks;
-    /// @notice Scalar for math
-    uint256 public constant EXP_SCALE = 1e18;
     /// `bytes4(keccak256(bytes("CVELocker__Unauthorized()")))`
     uint256 internal constant CVELOCKER_UNAUTHORIZED_SELECTOR = 0x82274acf;
     /// `bytes4(keccak256(bytes("CVELocker__NoEpochRewards()")))`

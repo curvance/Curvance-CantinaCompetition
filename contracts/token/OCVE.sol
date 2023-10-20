@@ -8,6 +8,7 @@ import { ERC20 } from "contracts/libraries/ERC20.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+import { EXP_SCALE } from "contracts/libraries/Constants.sol";
 
 contract OCVE is ERC20 {
     /// CONSTANTS ///
@@ -26,9 +27,6 @@ contract OCVE is ERC20 {
 
     /// @notice Curvance DAO hub
     ICentralRegistry public immutable centralRegistry;
-
-    /// @notice Scalar for math
-    uint256 internal constant _EXP_SCALE = 1e18;
 
     /// STORAGE ///
 
@@ -57,7 +55,7 @@ contract OCVE is ERC20 {
     /// MODIFIERS ///
 
     modifier onlyDaoPermissions() {
-        if (!centralRegistry.hasDaoPermissions(msg.sender)){
+        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
             revert OCVE__Unauthorized();
         }
         _;
@@ -104,17 +102,17 @@ contract OCVE is ERC20 {
         address daoOperator = centralRegistry.daoAddress();
 
         if (token == address(0)) {
-            if (amount == 0){
+            if (amount == 0) {
                 amount = address(this).balance;
             }
 
             SafeTransferLib.forceSafeTransferETH(daoOperator, amount);
         } else {
-            if (token == cve){
+            if (token == cve) {
                 revert OCVE__TransferError();
             }
 
-            if (amount == 0){
+            if (amount == 0) {
                 amount = IERC20(token).balanceOf(address(this));
             }
 
@@ -125,14 +123,14 @@ contract OCVE is ERC20 {
     /// @notice Withdraws CVE from unexercised CVE call options to DAO
     ///         after exercising period has ended
     function withdrawRemainingAirdropTokens() external onlyDaoPermissions {
-        if (block.timestamp < optionsEndTimestamp){
+        if (block.timestamp < optionsEndTimestamp) {
             revert OCVE__TransferError();
         }
 
         uint256 tokensToWithdraw = IERC20(cve).balanceOf(address(this));
         SafeTransferLib.safeTransfer(
-            cve, 
-            centralRegistry.daoAddress(), 
+            cve,
+            centralRegistry.daoAddress(),
             tokensToWithdraw
         );
 
@@ -146,16 +144,19 @@ contract OCVE is ERC20 {
         uint256 timestampStart,
         uint256 strikePrice
     ) external onlyDaoPermissions {
-        if (timestampStart < block.timestamp){
+        if (timestampStart < block.timestamp) {
             revert OCVE__ParametersareInvalid();
         }
 
-        if (strikePrice == 0){
+        if (strikePrice == 0) {
             revert OCVE__ParametersareInvalid();
         }
 
         // If the option are exercisable do not allow reconfiguration of the terms
-        if (optionsStartTimestamp > 0 && optionsStartTimestamp < block.timestamp) {
+        if (
+            optionsStartTimestamp > 0 &&
+            optionsStartTimestamp < block.timestamp
+        ) {
             revert OCVE__ConfigurationError();
         }
 
@@ -173,7 +174,7 @@ contract OCVE is ERC20 {
 
         // Make sure that we didnt have a catastrophic error when pricing
         // the payment token
-        if (error == 2){
+        if (error == 2) {
             revert OCVE__ConfigurationError();
         }
 
@@ -181,7 +182,7 @@ contract OCVE is ERC20 {
         // since it will be in 1e36 format offset,
         // whereas currentPrice will be 1e18 so the price should
         // always be larger
-        if (strikePrice <= currentPrice){
+        if (strikePrice <= currentPrice) {
             revert OCVE__ParametersareInvalid();
         }
 
@@ -211,15 +212,15 @@ contract OCVE is ERC20 {
     /// @notice Exercise CVE call options.
     /// @param amount The amount of options to exercise.
     function exerciseOption(uint256 amount) public payable {
-        if (amount == 0){
+        if (amount == 0) {
             revert OCVE__ParametersareInvalid();
         }
 
-        if (!optionsExercisable()){
+        if (!optionsExercisable()) {
             revert OCVE__CannotExercise();
         }
 
-        if (IERC20(cve).balanceOf(address(this)) < amount){
+        if (IERC20(cve).balanceOf(address(this)) < amount) {
             revert OCVE__CannotExercise();
         }
 
@@ -227,7 +228,7 @@ contract OCVE is ERC20 {
             revert OCVE__CannotExercise();
         }
 
-        uint256 optionExerciseCost = (amount * paymentTokenPerCVE) / _EXP_SCALE;
+        uint256 optionExerciseCost = (amount * paymentTokenPerCVE) / EXP_SCALE;
 
         // Take their strike price payment
         if (paymentToken == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE) {

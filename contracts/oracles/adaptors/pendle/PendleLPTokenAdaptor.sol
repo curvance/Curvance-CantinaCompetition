@@ -65,12 +65,15 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
         bool inUSD,
         bool getLower
     ) external view override returns (PriceReturnData memory pData) {
+        AdaptorData memory data = adaptorData[asset];
+
+        _checkPtTwap(data.pt, data.twapDuration);
+
         require(
             isSupportedAsset[asset],
             "PendleLPTokenAdaptor: asset not supported"
         );
 
-        AdaptorData memory data = adaptorData[asset];
         uint256 lpRate = IPMarket(asset).getLpToAssetRate(data.twapDuration);
         pData.inUSD = inUSD;
 
@@ -114,20 +117,8 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
         );
 
         // Make sure the underlying PT TWAP is working.
-        (
-            bool increaseCardinalityRequired,
-            ,
-            bool oldestObservationSatisfied
-        ) = ptOracle.getOracleState(address(data.pt), data.twapDuration);
+        _checkPtTwap(data.pt, data.twapDuration);
 
-        require(
-            !increaseCardinalityRequired,
-            "PendleLPTokenAdaptor: call increase observations cardinality"
-        );
-        require(
-            oldestObservationSatisfied,
-            "PendleLPTokenAdaptor: oldest observation not satisfied"
-        );
         require(
             IPriceRouter(centralRegistry.priceRouter()).isSupportedAsset(
                 data.quoteAsset
@@ -160,5 +151,27 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
 
         // Notify the price router that we are going to stop supporting the asset
         IPriceRouter(centralRegistry.priceRouter()).notifyFeedRemoval(asset);
+    }
+
+    /// INTERNAL FUNCTIONS ///
+
+    /// @notice Check whether the underlying PT TWAP is working.
+    /// @param pt the address of the Pendle PT associated with LP.
+    /// @param twapDuration the twap duration to use when pricing
+    function _checkPtTwap(address pt, uint32 twapDuration) internal view {
+        (
+            bool increaseCardinalityRequired,
+            ,
+            bool oldestObservationSatisfied
+        ) = ptOracle.getOracleState(pt, twapDuration);
+
+        require(
+            !increaseCardinalityRequired,
+            "PendleLPTokenAdaptor: call increase observations cardinality"
+        );
+        require(
+            oldestObservationSatisfied,
+            "PendleLPTokenAdaptor: oldest observation not satisfied"
+        );
     }
 }

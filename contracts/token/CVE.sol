@@ -6,7 +6,6 @@ import "../layerzero/OFTV2.sol";
 contract CVE is OFTV2 {
     /// CONSTANTS ///
 
-    uint256 public constant DENOMINATOR = 10000; // Scalar for math
     // Seconds in a month based on 365.2425 days
     uint256 public constant MONTH = 2_629_746;
     // Timestamp when token was created

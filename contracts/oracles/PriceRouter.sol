@@ -6,8 +6,8 @@ import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.sol";
 import { IChainlink } from "contracts/interfaces/external/chainlink/IChainlink.sol";
-import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { IOracleAdaptor, PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
+import { DENOMINATOR } from "contracts/libraries/Constants.sol";
 
 /// @title Curvance Dual Oracle Price Router
 /// @notice Provides a universal interface allowing Curvance contracts
@@ -27,8 +27,6 @@ contract PriceRouter {
 
     /// CONSTANTS ///
 
-    /// @notice Scalar for math
-    uint256 public constant DENOMINATOR = 10000;
     /// @notice Return value indicating no price error
     uint256 public constant NO_ERROR = 0;
     /// @notice Return value indicating price divergence or 1 missing price
