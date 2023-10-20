@@ -412,12 +412,19 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     ) public onlyCToken nonReentrant returns (bytes memory) {
         // withdraw all assets (including pending rewards)
         uint256 assets = _getRealPositionBalance();
+        uint256 shares = balanceOf(msg.sender);
         _withdraw(assets);
 
         SafeTransferLib.safeTransfer(asset(), newVault, assets);
 
         // Record current vault data to move over
-        return abi.encode(_totalAssets, _sharePriceHighWatermark, _vaultData);
+        return
+            abi.encode(
+                _totalAssets,
+                _sharePriceHighWatermark,
+                _vaultData,
+                shares
+            );
     }
 
     /// @notice migrate confirm function
@@ -426,10 +433,11 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         address, // oldVault,
         bytes memory params
     ) public onlyCToken nonReentrant {
-        (_totalAssets, _sharePriceHighWatermark, _vaultData) = abi.decode(
-            params,
-            (uint256, uint256, uint256)
-        );
+        uint256 shares;
+        (_totalAssets, _sharePriceHighWatermark, _vaultData, shares) = abi
+            .decode(params, (uint256, uint256, uint256, uint256));
+
+        _mint(msg.sender, shares);
 
         // deposit all assets (including pending rewards)
         _deposit(_asset.balanceOf(address(this)));
