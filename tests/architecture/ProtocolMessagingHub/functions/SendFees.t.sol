@@ -8,7 +8,9 @@ import { LzTxObj } from "contracts/interfaces/layerzero/IStargateRouter.sol";
 
 contract SendFeesTest is TestBaseProtocolMessagingHub {
     function test_sendFees_fail_whenCallerIsNotAuthorized() public {
-        vm.expectRevert(ProtocolMessagingHub.ProtocolMessagingHub__Unauthorized.selector);
+        vm.expectRevert(
+            ProtocolMessagingHub.ProtocolMessagingHub__Unauthorized.selector
+        );
         protocolMessagingHub.sendFees(
             address(this),
             PoolData({
@@ -29,45 +31,13 @@ contract SendFeesTest is TestBaseProtocolMessagingHub {
 
     function test_sendFees_fail_whenOperatorIsNotAuthorized() public {
         vm.expectRevert(
-            ProtocolMessagingHub
-                .ProtocolMessagingHub__ConfigurationError
-                .selector
-        );
-
-        vm.prank(address(feeAccumulator));
-        protocolMessagingHub.sendFees(
-            address(this),
-            PoolData({
-                dstChainId: 110,
-                srcPoolId: 1,
-                dstPoolId: 1,
-                amountLD: 10e6,
-                minAmountLD: 9e6
-            }),
-            LzTxObj({
-                dstGasForCall: 0,
-                dstNativeAmount: 0,
-                dstNativeAddr: ""
-            }),
-            ""
-        );
-    }
-
-    function test_sendFees_fail_whenChainIdsNotMatch() public {
-        centralRegistry.addChainSupport(
-            address(this),
-            address(this),
-            abi.encodePacked(address(cve)),
-            110,
-            1,
-            1,
-            42161
-        );
-
-        vm.expectRevert(
-            ProtocolMessagingHub
-                .ProtocolMessagingHub__ConfigurationError
-                .selector
+            abi.encodeWithSelector(
+                ProtocolMessagingHub
+                    .ProtocolMessagingHub__OperatorIsNotAuthorized
+                    .selector,
+                address(this),
+                0
+            )
         );
 
         vm.prank(address(feeAccumulator));

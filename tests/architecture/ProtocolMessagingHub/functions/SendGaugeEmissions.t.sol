@@ -7,7 +7,9 @@ import { LzCallParams } from "contracts/interfaces/ICVE.sol";
 
 contract SendGaugeEmissionsTest is TestBaseProtocolMessagingHub {
     function test_sendGaugeEmissions_fail_whenCallerIsNotAuthorized() public {
-        vm.expectRevert(ProtocolMessagingHub.ProtocolMessagingHub__Unauthorized.selector);
+        vm.expectRevert(
+            ProtocolMessagingHub.ProtocolMessagingHub__Unauthorized.selector
+        );
         protocolMessagingHub.sendGaugeEmissions(
             110,
             bytes32(bytes20(address(this))),
@@ -24,7 +26,7 @@ contract SendGaugeEmissionsTest is TestBaseProtocolMessagingHub {
     function test_sendGaugeEmissions_fail_whenChainIsNotSupported() public {
         vm.expectRevert(
             ProtocolMessagingHub
-                .ProtocolMessagingHub__ConfigurationError
+                .ProtocolMessagingHub__ChainIsNotSupported
                 .selector
         );
 

@@ -31,7 +31,7 @@ contract CVE is OFTV2 {
 
     error CVE__Unauthorized();
     error CVE__InsufficientCVEAllocation();
-    error CVE__ParametersareInvalid();
+    error CVE__ParametersAreInvalid();
 
     /// CONSTRUCTOR ///
 
@@ -135,7 +135,7 @@ contract CVE is OFTV2 {
         }
 
         if (amount == 0) {
-            revert CVE__ParametersareInvalid();
+            revert CVE__ParametersAreInvalid();
         }
 
         teamAllocationMinted = _teamAllocationMinted + amount;
@@ -151,7 +151,7 @@ contract CVE is OFTV2 {
         }
 
         if (_address == address(0)) {
-            revert CVE__ParametersareInvalid();
+            revert CVE__ParametersAreInvalid();
         }
 
         teamAddress = _address;

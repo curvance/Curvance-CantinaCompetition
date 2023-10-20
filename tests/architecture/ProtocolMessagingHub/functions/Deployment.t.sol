@@ -11,7 +11,7 @@ contract ProtocolMessagingHubDeploymentTest is TestBaseProtocolMessagingHub {
     {
         vm.expectRevert(
             ProtocolMessagingHub
-                .ProtocolMessagingHub__ConfigurationError
+                .ProtocolMessagingHub__InvalidCentralRegistry
                 .selector
         );
         new ProtocolMessagingHub(

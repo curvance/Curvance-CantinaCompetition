@@ -65,9 +65,44 @@ contract FeeAccumulator is ReentrancyGuard {
 
     error FeeAccumulator__Unauthorized();
     error FeeAccumulator__FeeTokenIsZeroAddress();
+    error FeeAccumulator__InvalidCentralRegistry();
+    error FeeAccumulator__SwapDataAndTokenLengthMismatch(
+        uint256 numSwapData,
+        uint256 numTokens
+    );
+    error FeeAccumulator__SwapDataInputTokenIsNotCurrentToken(
+        uint256 index,
+        address inputToken,
+        address currentToken
+    );
+    error FeeAccumulator__SwapDataOutputTokenIsNotFeeToken(
+        uint256 index,
+        address inputToken,
+        address currentToken
+    );
+    error FeeAccumulator__SwapDataInvalidSwapper(
+        uint256 index,
+        address invalidSwapper
+    );
+    error FeeAccumulator__SwapDataCurrentTokenIsNotRewardToken(
+        uint256 index,
+        address currentToken
+    );
+    error FeeAccumulator__TokenIsNotEarmarked();
+    error FeeAccumulator__ChainIsNotSupported();
+    error FeeAccumulator__CVEAddressIsNotToAddress(
+        bytes32 cveAddress,
+        bytes32 toAddress
+    );
     error FeeAccumulator__ConfigurationError();
-    error FeeAccumulator__CurrentEpochError();
-    error FeeAccumulator__EarmarkError();
+    error FeeAccumulator__CurrentEpochError(
+        uint256 currentEpoch,
+        uint256 nextEpochToDeliver
+    );
+    error FeeAccumulator__NewFeeAccumulatorIsNotChanged();
+    error FeeAccumulator__TokenLengthIsZero();
+    error FeeAccumulator__RemovalTokenIsNotRewardToken();
+    error FeeAccumulator__RemovalTokenDoesNotExist();
 
     /// MODIFIERS ///
 
@@ -99,7 +134,7 @@ contract FeeAccumulator is ReentrancyGuard {
                 type(ICentralRegistry).interfaceId
             )
         ) {
-            revert FeeAccumulator__ConfigurationError();
+            revert FeeAccumulator__InvalidCentralRegistry();
         }
         if (feeToken_ == address(0)) {
             revert FeeAccumulator__FeeTokenIsZeroAddress();
@@ -158,27 +193,44 @@ contract FeeAccumulator is ReentrancyGuard {
 
         uint256 numTokens = swapDataArray.length;
         if (numTokens != tokens.length) {
-            revert FeeAccumulator__ConfigurationError();
+            revert FeeAccumulator__SwapDataAndTokenLengthMismatch(
+                numTokens,
+                tokens.length
+            );
         }
         address currentToken;
 
         for (uint256 i; i < numTokens; ++i) {
             currentToken = tokens[i];
-            if (swapDataArray[i].inputToken != currentToken) {
-                revert FeeAccumulator__ConfigurationError();
-            }
-            if (swapDataArray[i].outputToken != feeToken) {
-                revert FeeAccumulator__ConfigurationError();
-            }
-            if (!centralRegistry.isSwapper(swapDataArray[i].target)) {
-                revert FeeAccumulator__ConfigurationError();
-            }
             // Make sure we are not earmarking this token for DAO OTC
             if (rewardTokenInfo[currentToken].forOTC == 2) {
                 continue;
             }
             if (rewardTokenInfo[currentToken].isRewardToken != 2) {
-                revert FeeAccumulator__ConfigurationError();
+                revert FeeAccumulator__SwapDataCurrentTokenIsNotRewardToken(
+                    i,
+                    currentToken
+                );
+            }
+            if (swapDataArray[i].inputToken != currentToken) {
+                revert FeeAccumulator__SwapDataInputTokenIsNotCurrentToken(
+                    i,
+                    swapDataArray[i].inputToken,
+                    currentToken
+                );
+            }
+            if (swapDataArray[i].outputToken != feeToken) {
+                revert FeeAccumulator__SwapDataOutputTokenIsNotFeeToken(
+                    i,
+                    swapDataArray[i].outputToken,
+                    feeToken
+                );
+            }
+            if (!centralRegistry.isSwapper(swapDataArray[i].target)) {
+                revert FeeAccumulator__SwapDataInvalidSwapper(
+                    i,
+                    swapDataArray[i].target
+                );
             }
 
             // Swap from token to output token (fee token)
@@ -212,7 +264,7 @@ contract FeeAccumulator is ReentrancyGuard {
     ) external onlyDaoPermissions nonReentrant {
         // Validate that the token is earmarked for OTC
         if (rewardTokenInfo[tokenToOTC].forOTC < 2) {
-            revert FeeAccumulator__EarmarkError();
+            revert FeeAccumulator__TokenIsNotEarmarked();
         }
 
         // Cache router to save gas
@@ -278,11 +330,14 @@ contract FeeAccumulator is ReentrancyGuard {
         );
 
         if (chainData.isSupported < 2) {
-            revert FeeAccumulator__ConfigurationError();
+            revert FeeAccumulator__ChainIsNotSupported();
         }
 
         if (chainData.cveAddress != toAddress) {
-            revert FeeAccumulator__ConfigurationError();
+            revert FeeAccumulator__CVEAddressIsNotToAddress(
+                chainData.cveAddress,
+                toAddress
+            );
         }
 
         ICVE CVE = ICVE(centralRegistry.CVE());
@@ -376,7 +431,10 @@ contract FeeAccumulator is ReentrancyGuard {
         uint256 epoch = locker.nextEpochToDeliver();
 
         if (locker.currentEpoch(block.timestamp) <= epoch) {
-            revert FeeAccumulator__CurrentEpochError();
+            revert FeeAccumulator__CurrentEpochError(
+                locker.currentEpoch(block.timestamp),
+                epoch
+            );
         }
 
         ChainData memory chainData = centralRegistry.supportedChainData(
@@ -457,7 +515,7 @@ contract FeeAccumulator is ReentrancyGuard {
     function migrateFeeAccumulator() external {
         address newFeeAccumulator = centralRegistry.feeAccumulator();
         if (newFeeAccumulator == address(this)) {
-            revert FeeAccumulator__ConfigurationError();
+            revert FeeAccumulator__NewFeeAccumulatorIsNotChanged();
         }
 
         address[] memory currentRewardTokens = rewardTokens;
@@ -555,7 +613,7 @@ contract FeeAccumulator is ReentrancyGuard {
     ) external onlyDaoPermissions {
         uint256 numTokens = newTokens.length;
         if (numTokens == 0) {
-            revert FeeAccumulator__ConfigurationError();
+            revert FeeAccumulator__TokenLengthIsZero();
         }
 
         for (uint256 i; i < numTokens; ++i) {
@@ -580,7 +638,7 @@ contract FeeAccumulator is ReentrancyGuard {
             rewardTokenToRemove
         ];
         if (tokenToRemove.isRewardToken != 2) {
-            revert FeeAccumulator__ConfigurationError();
+            revert FeeAccumulator__RemovalTokenIsNotRewardToken();
         }
 
         address[] memory currentTokens = rewardTokens;
@@ -602,7 +660,7 @@ contract FeeAccumulator is ReentrancyGuard {
         if (tokenIndex == numTokens--) {
             // we were unable to find the token in the array,
             // so something is wrong and we need to revert
-            revert FeeAccumulator__ConfigurationError();
+            revert FeeAccumulator__RemovalTokenDoesNotExist();
         }
 
         // copy last item in list to location of item to be removed

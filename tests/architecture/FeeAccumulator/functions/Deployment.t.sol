@@ -10,7 +10,7 @@ contract FeeAccumulatorDeploymentTest is TestBaseFeeAccumulator {
         public
     {
         vm.expectRevert(
-            FeeAccumulator.FeeAccumulator__ConfigurationError.selector
+            FeeAccumulator.FeeAccumulator__InvalidCentralRegistry.selector
         );
         new FeeAccumulator(ICentralRegistry(address(0)), _USDC_ADDRESS, 0, 0);
     }

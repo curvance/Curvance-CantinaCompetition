@@ -43,6 +43,14 @@ contract AuraPositionVault is BasePositionVault {
 
     event Harvest(uint256 yield);
 
+    /// ERRORS ///
+
+    error AuraPositionVault__InvalidVaultConfig();
+    error AuraPositionVault__InvalidSwapper(
+        uint256 index,
+        address invalidSwapper
+    );
+
     /// CONSTRUCTOR ///
 
     constructor(
@@ -62,10 +70,9 @@ contract AuraPositionVault is BasePositionVault {
 
         // validate that the pool is still active and that the lp token
         // and rewarder in aura matches what we are configuring for
-        require(
-            pidToken == asset() && !shutdown && balRewards == rewarder_,
-            "AuraPositionVault: improper aura vault config"
-        );
+        if (pidToken != asset() || shutdown || balRewards != rewarder_) {
+            revert AuraPositionVault__InvalidVaultConfig();
+        }
 
         strategyData.rewarder = IBaseRewardPool(rewarder_);
         strategyData.balancerVault = IBalancerVault(
@@ -203,10 +210,15 @@ contract AuraPositionVault is BasePositionVault {
 
                     // swap from rewardToken to underlying LP token if necessary
                     if (!isUnderlyingToken[rewardToken]) {
-                        require(
-                            centralRegistry.isSwapper(swapDataArray[i].target),
-                            "AuraPositionVault: invalid swapper"
-                        );
+                        if (
+                            !centralRegistry.isSwapper(swapDataArray[i].target)
+                        ) {
+                            revert AuraPositionVault__InvalidSwapper(
+                                i,
+                                swapDataArray[i].target
+                            );
+                        }
+
                         SwapperLib.swap(swapDataArray[i]);
                     }
                 }

@@ -47,13 +47,29 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
     ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
     ILendtroller public immutable lendtroller; // Lendtroller linked
 
+    /// ERRORS ///
+
+    error PositionFolding__Unauthorized();
+    error PositionFolding__InvalidSlippage();
+    error PositionFolding__InvalidCentralRegistry();
+    error PositionFolding__InvalidLendtroller();
+    error PositionFolding__InvalidSwapper(address invalidSwapper);
+    error PositionFolding__InvalidParam();
+    error PositionFolding__InvalidAmount();
+    error PositionFolding__InvalidZapper(address invalidZapper);
+    error PositionFolding__InvalidZapperParam();
+    error PositionFolding__InvalidTokenPrice();
+    error PositionFolding__ExceedsMaximumBorrowAmount(
+        uint256 amount,
+        uint256 maximum
+    );
+
     /// MODIFIERS ///
 
     modifier onlyDaoPermissions() {
-        require(
-            centralRegistry.hasDaoPermissions(msg.sender),
-            "PositionFolding: UNAUTHORIZED"
-        );
+        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
+            revert PositionFolding__Unauthorized();
+        }
         _;
     }
 
@@ -72,10 +88,9 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
         uint256 diff = userValue > userValueBefore
             ? userValue - userValueBefore
             : userValueBefore - userValue;
-        require(
-            diff < (userValueBefore * slippage) / DENOMINATOR,
-            "PositionFolding: slippage"
-        );
+        if (diff >= (userValueBefore * slippage) / DENOMINATOR) {
+            revert PositionFolding__InvalidSlippage();
+        }
     }
 
     receive() external payable {}
@@ -83,21 +98,20 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
     /// CONSTRUCTOR ///
 
     constructor(ICentralRegistry centralRegistry_, address lendtroller_) {
-        require(
-            ERC165Checker.supportsInterface(
+        if (
+            !ERC165Checker.supportsInterface(
                 address(centralRegistry_),
                 type(ICentralRegistry).interfaceId
-            ),
-            "PositionFolding: invalid central registry"
-        );
+            )
+        ) {
+            revert PositionFolding__InvalidCentralRegistry();
+        }
+
+        if (!centralRegistry_.isLendingMarket(lendtroller_)) {
+            revert PositionFolding__InvalidLendtroller();
+        }
 
         centralRegistry = centralRegistry_;
-
-        require(
-            centralRegistry.isLendingMarket(lendtroller_),
-            "PositionFolding: lendtroller is invalid"
-        );
-
         lendtroller = ILendtroller(lendtroller_);
     }
 
@@ -131,28 +145,27 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
         uint256 borrowAmount,
         bytes calldata params
     ) external override {
-        require(
-            lendtroller.isListed(borrowToken) && msg.sender == borrowToken,
-            "PositionFolding: UNAUTHORIZED"
-        );
+        if (!lendtroller.isListed(borrowToken) && msg.sender == borrowToken) {
+            revert PositionFolding__Unauthorized();
+        }
 
         LeverageStruct memory leverageData = abi.decode(
             params,
             (LeverageStruct)
         );
 
-        require(
-            borrowToken == address(leverageData.borrowToken) &&
-                borrowAmount == leverageData.borrowAmount,
-            "PositionFolding: invalid params"
-        );
+        if (
+            borrowToken != address(leverageData.borrowToken) ||
+            borrowAmount != leverageData.borrowAmount
+        ) {
+            revert PositionFolding__InvalidParam();
+        }
 
         address borrowUnderlying = CToken(borrowToken).underlying();
 
-        require(
-            IERC20(borrowUnderlying).balanceOf(address(this)) >= borrowAmount,
-            "PositionFolding: invalid amount"
-        );
+        if (IERC20(borrowUnderlying).balanceOf(address(this)) < borrowAmount) {
+            revert PositionFolding__InvalidAmount();
+        }
 
         // take protocol fee
         uint256 fee = (borrowAmount * getProtocolLeverageFee()) / 10000;
@@ -167,10 +180,11 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
 
         if (leverageData.swapData.call.length > 0) {
             // swap borrow underlying to zapper input token
-            require(
-                centralRegistry.isSwapper(leverageData.swapData.target),
-                "PositionFolding: invalid swapper"
-            );
+            if (!centralRegistry.isSwapper(leverageData.swapData.target)) {
+                revert PositionFolding__InvalidSwapper(
+                    leverageData.swapData.target
+                );
+            }
 
             SwapperLib.swap(leverageData.swapData);
         }
@@ -179,10 +193,11 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
         SwapperLib.ZapperCall memory zapperCall = leverageData.zapperCall;
 
         if (zapperCall.call.length > 0) {
-            require(
-                centralRegistry.isZapper(leverageData.zapperCall.target),
-                "PositionFolding: invalid zapper"
-            );
+            if (!centralRegistry.isZapper(leverageData.zapperCall.target)) {
+                revert PositionFolding__InvalidZapper(
+                    leverageData.zapperCall.target
+                );
+            }
 
             SwapperLib.zap(zapperCall);
         }
@@ -218,35 +233,35 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
         uint256 collateralAmount,
         bytes calldata params
     ) external override {
-        require(
-            msg.sender == collateralToken,
-            "PositionFolding: UNAUTHORIZED"
-        );
+        if (msg.sender != collateralToken) {
+            revert PositionFolding__Unauthorized();
+        }
 
-        require(
-            lendtroller.isListed(collateralToken),
-            "PositionFolding: UNAUTHORIZED"
-        );
+        if (!lendtroller.isListed(collateralToken)) {
+            revert PositionFolding__Unauthorized();
+        }
 
         DeleverageStruct memory deleverageData = abi.decode(
             params,
             (DeleverageStruct)
         );
 
-        require(
-            collateralToken == address(deleverageData.collateralToken) &&
-                collateralAmount == deleverageData.collateralAmount,
-            "PositionFolding: invalid params"
-        );
+        if (
+            collateralToken != address(deleverageData.collateralToken) ||
+            collateralAmount != deleverageData.collateralAmount
+        ) {
+            revert PositionFolding__InvalidParam();
+        }
 
         // swap collateral token to borrow token
         address collateralUnderlying = CToken(collateralToken).underlying();
 
-        require(
-            IERC20(collateralUnderlying).balanceOf(address(this)) >=
-                collateralAmount,
-            "PositionFolding: invalid amount"
-        );
+        if (
+            IERC20(collateralUnderlying).balanceOf(address(this)) <
+            collateralAmount
+        ) {
+            revert PositionFolding__InvalidAmount();
+        }
 
         // take protocol fee
         uint256 fee = (collateralAmount * getProtocolLeverageFee()) / 10000;
@@ -262,24 +277,25 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
         SwapperLib.ZapperCall memory zapperCall = deleverageData.zapperCall;
 
         if (zapperCall.call.length > 0) {
-            require(
-                collateralUnderlying == zapperCall.inputToken,
-                "PositionFolding: invalid zapper param"
-            );
-            require(
-                centralRegistry.isZapper(deleverageData.zapperCall.target),
-                "PositionFolding: invalid zapper"
-            );
+            if (collateralUnderlying != zapperCall.inputToken) {
+                revert PositionFolding__InvalidZapperParam();
+            }
+            if (!centralRegistry.isZapper(deleverageData.zapperCall.target)) {
+                revert PositionFolding__InvalidZapper(
+                    deleverageData.zapperCall.target
+                );
+            }
 
             SwapperLib.zap(zapperCall);
         }
 
         if (deleverageData.swapData.call.length > 0) {
             // swap for borrow underlying
-            require(
-                centralRegistry.isSwapper(deleverageData.swapData.target),
-                "PositionFolding: invalid swapper"
-            );
+            if (!centralRegistry.isSwapper(deleverageData.swapData.target)) {
+                revert PositionFolding__InvalidSwapper(
+                    deleverageData.swapData.target
+                );
+            }
 
             SwapperLib.swap(deleverageData.swapData);
         }
@@ -346,7 +362,9 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
             ICentralRegistry(centralRegistry).priceRouter()
         ).getPrice(address(borrowToken), true, false);
 
-        require(errorCode == 0, "PositionFolding: invalid token price");
+        if (errorCode != 0) {
+            revert PositionFolding__InvalidTokenPrice();
+        }
 
         return ((maxLeverage - sumBorrow) * 1e18) / price;
     }
@@ -370,10 +388,12 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
             address(borrowToken)
         );
 
-        require(
-            borrowAmount <= maxBorrowAmount,
-            "PositionFolding: exceeded maximum borrow amount"
-        );
+        if (borrowAmount > maxBorrowAmount) {
+            revert PositionFolding__ExceedsMaximumBorrowAmount(
+                borrowAmount,
+                maxBorrowAmount
+            );
+        }
 
         bytes memory params = abi.encode(leverageData);
 

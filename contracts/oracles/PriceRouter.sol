@@ -66,6 +66,7 @@ contract PriceRouter {
     error PriceRouter__NotSupported();
     error PriceRouter__InvalidParameter();
     error PriceRouter__ErrorCodeFlagged();
+    error PriceRouter__AdaptorIsNotApproved();
 
     /// MODIFIERS ///
 
@@ -524,10 +525,10 @@ contract PriceRouter {
         bool getLower
     ) internal view returns (uint256, uint256) {
         address adapter = assetPriceFeeds[asset][0];
-        require(
-            isApprovedAdaptor[adapter],
-            "PriceRouter: Adapter Not Approved"
-        );
+        if (!isApprovedAdaptor[adapter]) {
+            revert PriceRouter__AdaptorIsNotApproved();
+        }
+
         PriceReturnData memory data = IOracleAdaptor(adapter).getPrice(
             asset,
             inUSD,
@@ -572,10 +573,10 @@ contract PriceRouter {
         bool getLower
     ) internal view returns (FeedData memory) {
         address adapter = assetPriceFeeds[asset][feedNumber];
-        require(
-            isApprovedAdaptor[adapter],
-            "PriceRouter: Adapter Not Approved"
-        );
+        if (!isApprovedAdaptor[adapter]) {
+            revert PriceRouter__AdaptorIsNotApproved();
+        }
+
         PriceReturnData memory data = IOracleAdaptor(adapter).getPrice(
             asset,
             inUSD,

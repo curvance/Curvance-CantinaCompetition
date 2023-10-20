@@ -79,38 +79,41 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
 
     /// ERRORS ///
 
+    error BasePositionVault__Unauthorized();
+    error BasePositionVault__InvalidCentralRegistry();
     error BasePositionVault__NotCToken();
     error BasePositionVault__VaultNotActive();
     error BasePositionVault__VaultIsActive();
+    error BasePositionVault__ZeroShares();
+    error BasePositionVault__ZeroAssets();
 
     /// MODIFIERS ///
 
     modifier onlyCToken() {
-        require(cToken == msg.sender, "BasePositionVault: UNAUTHORIZED");
+        if (cToken != msg.sender) {
+            revert BasePositionVault__Unauthorized();
+        }
         _;
     }
 
     modifier onlyHarvestor() {
-        require(
-            centralRegistry.isHarvester(msg.sender),
-            "BasePositionVault: UNAUTHORIZED"
-        );
+        if (!centralRegistry.isHarvester(msg.sender)) {
+            revert BasePositionVault__Unauthorized();
+        }
         _;
     }
 
     modifier onlyDaoPermissions() {
-        require(
-            centralRegistry.hasDaoPermissions(msg.sender),
-            "BasePositionVault: UNAUTHORIZED"
-        );
+        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
+            revert BasePositionVault__Unauthorized();
+        }
         _;
     }
 
     modifier onlyElevatedPermissions() {
-        require(
-            centralRegistry.hasElevatedPermissions(msg.sender),
-            "BasePositionVault: UNAUTHORIZED"
-        );
+        if (!centralRegistry.hasElevatedPermissions(msg.sender)) {
+            revert BasePositionVault__Unauthorized();
+        }
         _;
     }
 
@@ -122,13 +125,14 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         _symbol = bytes32(abi.encodePacked("cve", asset_.symbol()));
         _decimals = asset_.decimals();
 
-        require(
-            ERC165Checker.supportsInterface(
+        if (
+            !ERC165Checker.supportsInterface(
                 address(centralRegistry_),
                 type(ICentralRegistry).interfaceId
-            ),
-            "BasePositionVault: invalid central registry"
-        );
+            )
+        ) {
+            revert BasePositionVault__InvalidCentralRegistry();
+        }
 
         centralRegistry = centralRegistry_;
     }
@@ -256,10 +260,9 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         uint256 ta = _totalAssets + pending;
 
         // Check for rounding error since we round down in previewDeposit
-        require(
-            (shares = _previewDeposit(assets, ta)) != 0,
-            "BasePositionVault: ZERO_SHARES"
-        );
+        if ((shares = _previewDeposit(assets, ta)) == 0) {
+            revert BasePositionVault__ZeroShares();
+        }
 
         // Need to transfer before minting or ERC777s could reenter
         SafeTransferLib.safeTransferFrom(
@@ -383,10 +386,9 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         // We just keep owner parameter for 4626 compliance
 
         // Check for rounding error since we round down in previewRedeem
-        require(
-            (assets = _previewRedeem(shares, ta)) != 0,
-            "BasePositionVault: ZERO_ASSETS"
-        );
+        if ((assets = _previewRedeem(shares, ta)) == 0) {
+            revert BasePositionVault__ZeroAssets();
+        }
 
         // Remove the users withdrawn assets
         ta = ta - assets;

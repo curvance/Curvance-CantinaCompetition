@@ -37,6 +37,8 @@ contract CurveAdaptor is BaseOracleAdaptor, CurveReentrancyCheck {
     error CurveAdaptor__UnsupportedPool();
     error CurveAdaptor__DidNotConverge();
     error CurveAdaptor__Reentrant();
+    error CurveAdaptor__AssetIsAlreadyAdded();
+    error CurveAdaptor__AssetIsNotSupported();
 
     /// CONSTRUCTOR ///
 
@@ -112,10 +114,9 @@ contract CurveAdaptor is BaseOracleAdaptor, CurveReentrancyCheck {
         address asset,
         address pool
     ) external onlyElevatedPermissions {
-        require(
-            !isSupportedAsset[asset],
-            "CurveAdaptor: asset already supported"
-        );
+        if (isSupportedAsset[asset]) {
+            revert CurveAdaptor__AssetIsAlreadyAdded();
+        }
 
         uint256 coinsLength;
         // Figure out how many tokens are in the curve pool.
@@ -154,10 +155,9 @@ contract CurveAdaptor is BaseOracleAdaptor, CurveReentrancyCheck {
     /// @notice Removes a supported asset from the adaptor.
     /// @dev Calls back into price router to notify it of its removal
     function removeAsset(address asset) external override onlyDaoPermissions {
-        require(
-            isSupportedAsset[asset],
-            "VelodromeVolatileLPAdaptor: asset not supported"
-        );
+        if (!isSupportedAsset[asset]) {
+            revert CurveAdaptor__AssetIsNotSupported();
+        }
 
         // Notify the adaptor to stop supporting the asset
         delete isSupportedAsset[asset];

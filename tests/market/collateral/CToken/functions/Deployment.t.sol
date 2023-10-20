@@ -13,9 +13,7 @@ contract CTokenDeploymentTest is TestBaseCToken {
     event NewLendtroller(address oldLendtroller, address newLendtroller);
 
     function test_cTokenDeployment_fail_whenCentralRegistryIsInvalid() public {
-        vm.expectRevert(
-            CToken.CToken__ConstructorParametersareInvalid.selector
-        );
+        vm.expectRevert(CToken.CToken__InvalidCentralRegistry.selector);
         new CToken(
             ICentralRegistry(address(0)),
             _BALANCER_WETH_RETH,
@@ -43,7 +41,7 @@ contract CTokenDeploymentTest is TestBaseCToken {
             .checked_write(type(uint232).max);
 
         vm.expectRevert(
-            CToken.CToken__ConstructorParametersareInvalid.selector
+            CToken.CToken__UnderlyingAssetTotalSupplyExceedsMaximum.selector
         );
         new CToken(
             ICentralRegistry(address(centralRegistry)),

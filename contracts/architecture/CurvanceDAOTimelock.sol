@@ -14,6 +14,12 @@ contract Timelock is TimelockController {
     ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
     address internal _daoAddress;
 
+    /// ERRORS ///
+
+    error Timelock__InvalidCentralRegistry(address invalidCentralRegistry);
+
+    /// CONSTRUCTOR ///
+
     constructor(
         ICentralRegistry centralRegistry_
     )
@@ -24,13 +30,14 @@ contract Timelock is TimelockController {
             address(0)
         )
     {
-        require(
-            ERC165Checker.supportsInterface(
+        if (
+            !ERC165Checker.supportsInterface(
                 address(centralRegistry_),
                 type(ICentralRegistry).interfaceId
-            ),
-            "Timelock: invalid central registry"
-        );
+            )
+        ) {
+            revert Timelock__InvalidCentralRegistry(address(centralRegistry_));
+        }
 
         centralRegistry = centralRegistry_;
 

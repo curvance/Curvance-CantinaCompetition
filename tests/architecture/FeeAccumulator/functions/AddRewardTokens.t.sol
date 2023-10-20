@@ -26,7 +26,7 @@ contract AddRewardTokensTest is TestBaseFeeAccumulator {
         tokens.pop();
 
         vm.expectRevert(
-            FeeAccumulator.FeeAccumulator__ConfigurationError.selector
+            FeeAccumulator.FeeAccumulator__TokenLengthIsZero.selector
         );
         feeAccumulator.addRewardTokens(tokens);
     }

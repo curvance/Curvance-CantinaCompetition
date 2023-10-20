@@ -33,9 +33,19 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     /// ERRORS ///
 
     error ProtocolMessagingHub__Unauthorized();
+    error ProtocolMessagingHub__InvalidCentralRegistry();
     error ProtocolMessagingHub__FeeTokenIsZeroAddress();
     error ProtocolMessagingHub__StargateRouterIsZeroAddress();
-    error ProtocolMessagingHub__ConfigurationError();
+    error ProtocolMessagingHub__ChainIsNotSupported();
+    error ProtocolMessagingHub__OperatorIsNotAuthorized(
+        address to,
+        uint256 gethChainId
+    );
+    error ProtocolMessagingHub__MessagingChainIdIsNotDstChainId(
+        uint256 messagingChainId,
+        uint256 dstChainId
+    );
+    error ProtocolMessagingHub__GETHChainIdIsNotSupported(uint256 gethChainId);
     error ProtocolMessagingHub__InsufficientGasToken();
     error ProtocolMessagingHub__InvalidMsgValue();
 
@@ -73,7 +83,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
                 type(ICentralRegistry).interfaceId
             )
         ) {
-            revert ProtocolMessagingHub__ConfigurationError();
+            revert ProtocolMessagingHub__InvalidCentralRegistry();
         }
         if (feeToken_ == address(0)) {
             revert ProtocolMessagingHub__FeeTokenIsZeroAddress();
@@ -151,7 +161,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
                 )
                 .isSupported < 2
         ) {
-            revert ProtocolMessagingHub__ConfigurationError();
+            revert ProtocolMessagingHub__ChainIsNotSupported();
         }
         CVE.sendAndCall{
             value: CVE.estimateSendAndCallFee(
@@ -189,28 +199,36 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     ) external onlyAuthorized {
         {
             // Avoid stack too deep
-            uint256 GETHChainId = centralRegistry.messagingToGETHChainId(
+            uint256 gethChainId = centralRegistry.messagingToGETHChainId(
                 poolData.dstChainId
             );
             OmnichainData memory operator = centralRegistry
-                .getOmnichainOperators(to, GETHChainId);
+                .getOmnichainOperators(to, gethChainId);
 
             // Validate that the operator is authorized
             if (operator.isAuthorized < 2) {
-                revert ProtocolMessagingHub__ConfigurationError();
+                revert ProtocolMessagingHub__OperatorIsNotAuthorized(
+                    to,
+                    gethChainId
+                );
             }
 
             // Validate that the operator messaging chain matches
             // the destination chain id
             if (operator.messagingChainId != poolData.dstChainId) {
-                revert ProtocolMessagingHub__ConfigurationError();
+                revert ProtocolMessagingHub__MessagingChainIdIsNotDstChainId(
+                    operator.messagingChainId,
+                    poolData.dstChainId
+                );
             }
 
             // Validate that we are aiming for a supported chain
             if (
-                centralRegistry.supportedChainData(GETHChainId).isSupported < 2
+                centralRegistry.supportedChainData(gethChainId).isSupported < 2
             ) {
-                revert ProtocolMessagingHub__ConfigurationError();
+                revert ProtocolMessagingHub__GETHChainIdIsNotSupported(
+                    gethChainId
+                );
             }
         }
 
@@ -435,7 +453,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
                 )
                 .isSupported < 2
         ) {
-            revert ProtocolMessagingHub__ConfigurationError();
+            revert ProtocolMessagingHub__ChainIsNotSupported();
         }
 
         if (msg.value != etherValue) {

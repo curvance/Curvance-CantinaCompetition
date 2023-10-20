@@ -43,6 +43,16 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
     /// @notice Pendle LP adaptor storage
     mapping(address => AdaptorData) public adaptorData;
 
+    /// ERRORS ///
+
+    error PendleLPTokenAdaptor__AssetIsNotSupported();
+    error PendleLPTokenAdaptor__WrongMarket();
+    error PendleLPTokenAdaptor__WrongQuote();
+    error PendleLPTokenAdaptor__TwapDurationIsLessThanMinimum();
+    error PendleLPTokenAdaptor__QuoteAssetIsNotSupported();
+    error PendleLPTokenAdaptor__CallIncreaseCardinality();
+    error PendleLPTokenAdaptor__OldestObservationIsNotSatisfied();
+
     /// CONSTRUCTOR ///
 
     constructor(
@@ -69,10 +79,9 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
 
         _checkPtTwap(data.pt, data.twapDuration);
 
-        require(
-            isSupportedAsset[asset],
-            "PendleLPTokenAdaptor: asset not supported"
-        );
+        if (!isSupportedAsset[asset]) {
+            revert PendleLPTokenAdaptor__AssetIsNotSupported();
+        }
 
         uint256 lpRate = IPMarket(asset).getLpToAssetRate(data.twapDuration);
         pData.inUSD = inUSD;
@@ -103,28 +112,30 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
         (IStandardizedYield sy, IPPrincipalToken pt, ) = IPMarket(asset)
             .readTokens();
 
-        require(address(pt) == data.pt, "PendleLPTokenAdaptor: wrong market");
+        if (address(pt) != data.pt) {
+            revert PendleLPTokenAdaptor__WrongMarket();
+        }
+
         // Make sure quote asset is the same as SY `assetInfo.assetAddress`
         (, address assetAddress, ) = sy.assetInfo();
-        require(
-            assetAddress == data.quoteAsset,
-            "PendleLPTokenAdaptor: wrong quote"
-        );
+        if (assetAddress != data.quoteAsset) {
+            revert PendleLPTokenAdaptor__WrongQuote();
+        }
 
-        require(
-            data.twapDuration >= MINIMUM_TWAP_DURATION,
-            "PendleLPTokenAdaptor: minimum twap duration not met"
-        );
+        if (data.twapDuration < MINIMUM_TWAP_DURATION) {
+            revert PendleLPTokenAdaptor__TwapDurationIsLessThanMinimum();
+        }
 
         // Make sure the underlying PT TWAP is working.
         _checkPtTwap(data.pt, data.twapDuration);
 
-        require(
-            IPriceRouter(centralRegistry.priceRouter()).isSupportedAsset(
+        if (
+            !IPriceRouter(centralRegistry.priceRouter()).isSupportedAsset(
                 data.quoteAsset
-            ),
-            "PendleLPTokenAdaptor: quote asset not supported"
-        );
+            )
+        ) {
+            revert PendleLPTokenAdaptor__QuoteAssetIsNotSupported();
+        }
 
         // Write to adaptor storage.
         adaptorData[asset] = AdaptorData({
@@ -139,10 +150,10 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
     /// @dev Calls back into price router to notify it of its removal
     /// @param asset The address of the asset to be removed.
     function removeAsset(address asset) external override onlyDaoPermissions {
-        require(
-            isSupportedAsset[asset],
-            "PendleLPTokenAdaptor: asset not supported"
-        );
+        if (!isSupportedAsset[asset]) {
+            revert PendleLPTokenAdaptor__AssetIsNotSupported();
+        }
+
         // Notify the adaptor to stop supporting the asset
         delete isSupportedAsset[asset];
 
@@ -165,13 +176,11 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
             bool oldestObservationSatisfied
         ) = ptOracle.getOracleState(pt, twapDuration);
 
-        require(
-            !increaseCardinalityRequired,
-            "PendleLPTokenAdaptor: call increase observations cardinality"
-        );
-        require(
-            oldestObservationSatisfied,
-            "PendleLPTokenAdaptor: oldest observation not satisfied"
-        );
+        if (increaseCardinalityRequired) {
+            revert PendleLPTokenAdaptor__CallIncreaseCardinality();
+        }
+        if (!oldestObservationSatisfied) {
+            revert PendleLPTokenAdaptor__OldestObservationIsNotSatisfied();
+        }
     }
 }

@@ -33,13 +33,17 @@ contract InterestRateModel {
         uint256 vertexUtilizationStart
     );
 
+    /// ERRORS ///
+
+    error InterestRateModel__Unauthorized();
+    error InterestRateModel__InvalidCentralRegistry();
+
     /// MODIFIERS ///
 
     modifier onlyElevatedPermissions() {
-        require(
-            centralRegistry.hasElevatedPermissions(msg.sender),
-            "InterestRateModel: UNAUTHORIZED"
-        );
+        if (!centralRegistry.hasElevatedPermissions(msg.sender)) {
+            revert InterestRateModel__Unauthorized();
+        }
         _;
     }
 
@@ -58,13 +62,14 @@ contract InterestRateModel {
         uint256 vertexRatePerYear,
         uint256 vertexUtilizationStart
     ) {
-        require(
-            ERC165Checker.supportsInterface(
+        if (
+            !ERC165Checker.supportsInterface(
                 address(centralRegistry_),
                 type(ICentralRegistry).interfaceId
-            ),
-            "InterestRateModel: invalid central registry"
-        );
+            )
+        ) {
+            revert InterestRateModel__InvalidCentralRegistry();
+        }
 
         centralRegistry = centralRegistry_;
 

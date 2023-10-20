@@ -11,24 +11,18 @@ contract SetSeizePausedTest is TestBaseLendtroller {
     function test_setSeizePaused_fail_whenCallerIsNotAuthorized() public {
         vm.prank(address(1));
 
-        vm.expectRevert("Lendtroller: UNAUTHORIZED");
+        vm.expectRevert(Lendtroller.Lendtroller__Unauthorized.selector);
         lendtroller.setSeizePaused(true);
     }
 
     function test_setSeizePaused_success() public {
         vm.expectRevert(Lendtroller.Lendtroller__TokenNotListed.selector);
-        lendtroller.canSeize(
-            address(cBALRETH),
-            address(dUSDC)
-        );
+        lendtroller.canSeize(address(cBALRETH), address(dUSDC));
 
         lendtroller.listMarketToken(address(cBALRETH));
         lendtroller.listMarketToken(address(dUSDC));
 
-        lendtroller.canSeize(
-            address(cBALRETH),
-            address(dUSDC)
-        );
+        lendtroller.canSeize(address(cBALRETH), address(dUSDC));
 
         assertEq(lendtroller.seizePaused(), 1);
 
@@ -38,10 +32,7 @@ contract SetSeizePausedTest is TestBaseLendtroller {
         lendtroller.setSeizePaused(true);
 
         vm.expectRevert(Lendtroller.Lendtroller__Paused.selector);
-        lendtroller.canSeize(
-            address(cBALRETH),
-            address(dUSDC)
-        );
+        lendtroller.canSeize(address(cBALRETH), address(dUSDC));
 
         assertEq(lendtroller.seizePaused(), 2);
 
@@ -61,9 +52,6 @@ contract SetSeizePausedTest is TestBaseLendtroller {
         cBALRETH.setLendtroller(address(newLendtroller));
 
         vm.expectRevert(Lendtroller.Lendtroller__LendtrollerMismatch.selector);
-        lendtroller.canSeize(
-            address(cBALRETH),
-            address(dUSDC)
-        );
+        lendtroller.canSeize(address(cBALRETH), address(dUSDC));
     }
 }

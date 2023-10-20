@@ -20,7 +20,7 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
     {
         vm.prank(address(1));
 
-        vm.expectRevert("Lendtroller: UNAUTHORIZED");
+        vm.expectRevert(Lendtroller.Lendtroller__Unauthorized.selector);
         lendtroller.updateCollateralToken(
             IMToken(address(dUSDC)),
             200,

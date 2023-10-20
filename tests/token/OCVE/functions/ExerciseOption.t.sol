@@ -28,7 +28,7 @@ contract ExerciseOptionTest is TestBaseOCVE {
     }
 
     function test_exerciseOption_fail_whenAmountIsZero() public {
-        vm.expectRevert(OCVE.OCVE__ParametersareInvalid.selector);
+        vm.expectRevert(OCVE.OCVE__ParametersAreInvalid.selector);
         oCVE.exerciseOption(0);
     }
 

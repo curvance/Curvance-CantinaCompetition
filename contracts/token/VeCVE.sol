@@ -78,7 +78,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
     error VeCVE__LockTypeMismatch();
     error VeCVE__InvalidLock();
     error VeCVE__VeCVEShutdown();
-    error VeCVE__ParametersareInvalid();
+    error VeCVE__ParametersAreInvalid();
 
     /// MODIFIERS ///
 
@@ -113,7 +113,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
                 type(ICentralRegistry).interfaceId
             )
         ) {
-            revert VeCVE__ParametersareInvalid();
+            revert VeCVE__ParametersAreInvalid();
         }
 
         centralRegistry = centralRegistry_;
@@ -122,7 +122,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
         cveLocker = ICVELocker(centralRegistry.cveLocker());
 
         if (clPointMultiplier_ <= DENOMINATOR) {
-            revert VeCVE__ParametersareInvalid();
+            revert VeCVE__ParametersAreInvalid();
         }
 
         clPointMultiplier = clPointMultiplier_;
@@ -454,7 +454,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
                 // If this is the first iteration we do not need to check
                 // for sorted lockIndexes
                 if (lockIndexes[i] >= previousLockIndex) {
-                    revert VeCVE__ParametersareInvalid();
+                    revert VeCVE__ParametersAreInvalid();
                 }
             }
 

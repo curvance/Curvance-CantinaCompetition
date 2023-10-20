@@ -46,7 +46,7 @@ contract OCVE is ERC20 {
 
     /// ERRORS ///
 
-    error OCVE__ParametersareInvalid();
+    error OCVE__ParametersAreInvalid();
     error OCVE__ConfigurationError();
     error OCVE__CannotExercise();
     error OCVE__TransferError();
@@ -75,11 +75,11 @@ contract OCVE is ERC20 {
                 type(ICentralRegistry).interfaceId
             )
         ) {
-            revert OCVE__ParametersareInvalid();
+            revert OCVE__ParametersAreInvalid();
         }
 
         if (paymentToken_ == address(0)) {
-            revert OCVE__ParametersareInvalid();
+            revert OCVE__ParametersAreInvalid();
         }
 
         centralRegistry = centralRegistry_;
@@ -145,11 +145,11 @@ contract OCVE is ERC20 {
         uint256 strikePrice
     ) external onlyDaoPermissions {
         if (timestampStart < block.timestamp) {
-            revert OCVE__ParametersareInvalid();
+            revert OCVE__ParametersAreInvalid();
         }
 
         if (strikePrice == 0) {
-            revert OCVE__ParametersareInvalid();
+            revert OCVE__ParametersAreInvalid();
         }
 
         // If the option are exercisable do not allow reconfiguration of the terms
@@ -183,7 +183,7 @@ contract OCVE is ERC20 {
         // whereas currentPrice will be 1e18 so the price should
         // always be larger
         if (strikePrice <= currentPrice) {
-            revert OCVE__ParametersareInvalid();
+            revert OCVE__ParametersAreInvalid();
         }
 
         paymentTokenPerCVE = strikePrice / currentPrice;
@@ -213,7 +213,7 @@ contract OCVE is ERC20 {
     /// @param amount The amount of options to exercise.
     function exerciseOption(uint256 amount) public payable {
         if (amount == 0) {
-            revert OCVE__ParametersareInvalid();
+            revert OCVE__ParametersAreInvalid();
         }
 
         if (!optionsExercisable()) {

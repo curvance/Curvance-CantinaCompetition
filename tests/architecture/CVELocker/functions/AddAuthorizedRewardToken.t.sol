@@ -17,7 +17,9 @@ contract AddAuthorizedRewardTokenTest is TestBaseCVELocker {
     function test_addAuthorizedRewardToken_fail_whenTokenIsZeroAddress()
         public
     {
-        vm.expectRevert(CVELocker.CVELocker__ParametersareInvalid.selector);
+        vm.expectRevert(
+            CVELocker.CVELocker__RewardTokenIsZeroAddress.selector
+        );
         cveLocker.addAuthorizedRewardToken(address(0));
     }
 
@@ -26,7 +28,9 @@ contract AddAuthorizedRewardTokenTest is TestBaseCVELocker {
     {
         cveLocker.addAuthorizedRewardToken(_USDC_ADDRESS);
 
-        vm.expectRevert(CVELocker.CVELocker__ParametersareInvalid.selector);
+        vm.expectRevert(
+            CVELocker.CVELocker__RewardTokenIsAlreadyAuthorized.selector
+        );
         cveLocker.addAuthorizedRewardToken(_USDC_ADDRESS);
     }
 

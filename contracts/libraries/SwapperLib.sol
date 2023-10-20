@@ -23,6 +23,12 @@ library SwapperLib {
         bytes call;
     }
 
+    /// ERRORS ///
+
+    error SwapperLib__SwapError();
+
+    /// FUNCTIONS ///
+
     /// @dev Swap input token
     /// @param swapData The swap data
     /// @return Swapped amount of token
@@ -47,7 +53,9 @@ library SwapperLib {
 
         propagateError(success, retData, "SwapperLib: swap");
 
-        require(success, "SwapperLib: swap error");
+        if (!success) {
+            revert SwapperLib__SwapError();
+        }
 
         return CommonLib.getTokenBalance(outputToken) - balance;
     }

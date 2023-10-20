@@ -10,7 +10,9 @@ contract MigrateFeeAccumulatorTest is TestBaseFeeAccumulator {
         public
     {
         vm.expectRevert(
-            FeeAccumulator.FeeAccumulator__ConfigurationError.selector
+            FeeAccumulator
+                .FeeAccumulator__NewFeeAccumulatorIsNotChanged
+                .selector
         );
         feeAccumulator.migrateFeeAccumulator();
     }

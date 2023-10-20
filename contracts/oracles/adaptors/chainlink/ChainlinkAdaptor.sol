@@ -45,6 +45,13 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
     /// @notice Chainlink Adaptor Data for pricing in USD
     mapping(address => FeedData) public adaptorDataUSD;
 
+    /// ERRORS ///
+
+    error ChainlinkAdaptor__AssetIsNotSupported();
+    error ChainlinkAdaptor__InvalidMinPrice();
+    error ChainlinkAdaptor__InvalidMaxPrice();
+    error ChainlinkAdaptor__InvalidMinMaxConfig();
+
     /// CONSTRUCTOR ///
 
     constructor(
@@ -66,10 +73,9 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
         bool inUSD,
         bool
     ) external view override returns (PriceReturnData memory) {
-        require(
-            isSupportedAsset[asset],
-            "ChainlinkAdaptor: asset not supported"
-        );
+        if (!isSupportedAsset[asset]) {
+            revert ChainlinkAdaptor__AssetIsNotSupported();
+        }
 
         if (inUSD) {
             return _getPriceinUSD(asset);
@@ -118,27 +124,23 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
         if (feedData.min == 0) {
             feedData.min = bufferedMinPrice;
         } else {
-            require(
-                feedData.min >= bufferedMinPrice,
-                "ChainlinkAdaptor: invalid min price"
-            );
+            if (feedData.min < bufferedMinPrice) {
+                revert ChainlinkAdaptor__InvalidMinPrice();
+            }
             feedData.min = bufferedMinPrice;
         }
 
         if (feedData.max == 0) {
             feedData.max = bufferedMaxPrice;
         } else {
-            require(
-                feedData.max <= bufferedMaxPrice,
-                "ChainlinkAdaptor: invalid max price"
-            );
+            if (feedData.max > bufferedMaxPrice) {
+                revert ChainlinkAdaptor__InvalidMaxPrice();
+            }
             feedData.max = bufferedMaxPrice;
         }
 
-        require(
-            minFromChainklink < maxFromChainlink,
-            "ChainlinkAdaptor: invalid min/max config"
-        );
+        if (minFromChainklink >= maxFromChainlink)
+            revert ChainlinkAdaptor__InvalidMinMaxConfig();
 
         feedData.decimals = feedAggregator.decimals();
         feedData.heartbeat = feedData.heartbeat != 0
@@ -153,10 +155,9 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
     /// @notice Removes a supported asset from the adaptor.
     /// @dev Calls back into price router to notify it of its removal
     function removeAsset(address asset) external override onlyDaoPermissions {
-        require(
-            isSupportedAsset[asset],
-            "ChainlinkAdaptor: asset not supported"
-        );
+        if (!isSupportedAsset[asset]) {
+            revert ChainlinkAdaptor__AssetIsNotSupported();
+        }
 
         // Notify the adaptor to stop supporting the asset
         delete isSupportedAsset[asset];
@@ -210,9 +211,8 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
         FeedData memory feed,
         bool inUSD
     ) internal view returns (PriceReturnData memory) {
-
-        (, int256 price, , uint256 updatedAt, ) = 
-            IChainlink(feed.aggregator).latestRoundData();
+        (, int256 price, , uint256 updatedAt, ) = IChainlink(feed.aggregator)
+            .latestRoundData();
         uint256 newPrice = (uint256(price) * 1e18) / (10 ** feed.decimals);
 
         return (
