@@ -60,12 +60,15 @@ contract CVELocker is ReentrancyGuard {
 
     /// ERRORS ///
 
-    error CVELocker__ParametersareInvalid();
+    error CVELocker__InvalidCentralRegistry();
+    error CVELocker__RewardTokenIsZeroAddress();
+    error CVELocker__RewardTokenIsNotAuthorized();
+    error CVELocker__SwapDataIsInvalid();
     error CVELocker__Unauthorized();
     error CVELocker__NoEpochRewards();
     error CVELocker__WrongEpochRewardSubmission();
     error CVELocker__TransferError();
-    error CVELocker__LockerStarted();
+    error CVELocker__LockerIsAlreadyStarted();
 
     /// MODIFIERS ///
 
@@ -113,11 +116,11 @@ contract CVELocker is ReentrancyGuard {
                 type(ICentralRegistry).interfaceId
             )
         ) {
-            revert CVELocker__ParametersareInvalid();
+            revert CVELocker__InvalidCentralRegistry();
         }
 
         if (rewardToken_ == address(0)) {
-            revert CVELocker__ParametersareInvalid();
+            revert CVELocker__RewardTokenIsZeroAddress();
         }
 
         centralRegistry = centralRegistry_;
@@ -147,7 +150,7 @@ contract CVELocker is ReentrancyGuard {
 
     function startLocker() external onlyDaoPermissions {
         if (lockerStarted == 2) {
-            revert CVELocker__LockerStarted();
+            revert CVELocker__LockerIsAlreadyStarted();
         }
 
         veCVE = IVeCVE(centralRegistry.veCVE());
@@ -189,11 +192,11 @@ contract CVELocker is ReentrancyGuard {
         address token
     ) external onlyElevatedPermissions {
         if (token == address(0)) {
-            revert CVELocker__ParametersareInvalid();
+            revert CVELocker__RewardTokenIsZeroAddress();
         }
 
         if (authorizedRewardToken[token] == 2) {
-            revert CVELocker__ParametersareInvalid();
+            revert CVELocker__RewardTokenIsNotAuthorized();
         }
 
         authorizedRewardToken[token] = 2;
@@ -206,11 +209,11 @@ contract CVELocker is ReentrancyGuard {
         address token
     ) external onlyDaoPermissions {
         if (token == address(0)) {
-            revert CVELocker__ParametersareInvalid();
+            revert CVELocker__RewardTokenIsZeroAddress();
         }
 
         if (authorizedRewardToken[token] < 2) {
-            revert CVELocker__ParametersareInvalid();
+            revert CVELocker__RewardTokenIsNotAuthorized(token);
         }
 
         authorizedRewardToken[token] = 1;
@@ -430,7 +433,9 @@ contract CVELocker is ReentrancyGuard {
 
         if (rewardsData.desiredRewardToken != rewardToken) {
             if (authorizedRewardToken[rewardsData.desiredRewardToken] < 2) {
-                revert CVELocker__ParametersareInvalid();
+                revert CVELocker__RewardTokenIsNotAuthorized(
+                    rewardsData.desiredRewardToken
+                );
             }
 
             if (
@@ -459,7 +464,7 @@ contract CVELocker is ReentrancyGuard {
                 swapData.inputAmount > rewards ||
                 !centralRegistry.isSwapper(swapData.target)
             ) {
-                revert("CVELocker: swapData misconfigured");
+                revert CVELocker__SwapDataIsInvalid();
             }
 
             uint256 reward = SwapperLib.swap(swapData);

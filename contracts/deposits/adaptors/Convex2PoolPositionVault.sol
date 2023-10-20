@@ -45,7 +45,10 @@ contract ConvexPositionVault is BasePositionVault {
     error ConvexPositionVault__UnsafePool();
     error ConvexPositionVault__InvalidVaultConfig();
     error ConvexPositionVault__InvalidCoinLength();
-    error ConvexPositionVault__InvalidSwapper();
+    error ConvexPositionVault__InvalidSwapper(
+        uint256 index,
+        address invalidSwapper
+    );
     error ConvexPositionVault__NoYield();
 
     /// CONSTRUCTOR ///
@@ -211,7 +214,10 @@ contract ConvexPositionVault is BasePositionVault {
                 uint256 numSwapData = swapDataArray.length;
                 for (uint256 i; i < numSwapData; ++i) {
                     if (!centralRegistry.isSwapper(swapDataArray[i].target)) {
-                        revert ConvexPositionVault__InvalidSwapper();
+                        revert ConvexPositionVault__InvalidSwapper(
+                            i,
+                            swapDataArray[i].target
+                        );
                     }
                     SwapperLib.swap(swapDataArray[i]);
                 }

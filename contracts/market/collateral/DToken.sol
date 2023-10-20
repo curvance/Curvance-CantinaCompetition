@@ -109,7 +109,8 @@ contract DToken is ERC165, ReentrancyGuard {
     error DToken__TransferError();
     error DToken__CashNotAvailable();
     error DToken__ValidationFailed();
-    error DToken__ConstructorParametersareInvalid();
+    error DToken__InvalidCentralRegistry();
+    error DToken__UnderlyingAssetTotalSupplyExceedsMaximum();
     error DToken__LendtrollerIsNotLendingMarket();
 
     /// MODIFIERS ///
@@ -146,7 +147,7 @@ contract DToken is ERC165, ReentrancyGuard {
                 type(ICentralRegistry).interfaceId
             )
         ) {
-            revert DToken__ConstructorParametersareInvalid();
+            revert DToken__InvalidCentralRegistry();
         }
 
         centralRegistry = centralRegistry_;
@@ -177,7 +178,7 @@ contract DToken is ERC165, ReentrancyGuard {
         // Sanity check underlying so that we know users will not need to
         // mint anywhere close to exchange rate of 1e18
         if (IERC20(underlying).totalSupply() >= type(uint232).max) {
-            revert DToken__ConstructorParametersareInvalid();
+            revert DToken__UnderlyingAssetTotalSupplyExceedsMaximum();
         }
     }
 

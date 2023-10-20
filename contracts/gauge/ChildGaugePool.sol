@@ -49,10 +49,6 @@ contract ChildGaugePool is ReentrancyGuard {
     // token => user => info
     mapping(address => mapping(address => UserInfo)) public userInfo;
 
-    /// ERRORS ///
-
-    error ChildGaugePool__Unauthorized();
-
     /// MODIFIERS ///
 
     modifier onlyGaugeController() {
@@ -64,7 +60,7 @@ contract ChildGaugePool is ReentrancyGuard {
 
     modifier onlyDaoPermissions() {
         if (!centralRegistry.hasDaoPermissions(msg.sender)) {
-            revert ChildGaugePool__Unauthorized();
+            revert GaugeErrors.Unauthorized();
         }
         _;
     }

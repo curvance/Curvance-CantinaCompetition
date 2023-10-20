@@ -44,7 +44,7 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
 
     /// ERRORS ///
 
-    error BalancerStablePoolAdaptor__Unsupported();
+    error BalancerStablePoolAdaptor__AssetIsNotSupported();
     error BalancerStablePoolAdaptor__ConfigurationError();
 
     /// CONSTRUCTOR ///
@@ -68,7 +68,7 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
         bool getLower
     ) external view override returns (PriceReturnData memory pData) {
         if (!isSupportedAsset[asset]) {
-            revert BalancerStablePoolAdaptor__Unsupported();
+            revert BalancerStablePoolAdaptor__AssetIsNotSupported();
         }
 
         _ensureNotInVaultContext(balancerVault);
@@ -175,7 +175,7 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
     /// @dev Calls back into price router to notify it of its removal
     function removeAsset(address asset) external override onlyDaoPermissions {
         if (!isSupportedAsset[asset]) {
-            revert BalancerStablePoolAdaptor__Unsupported();
+            revert BalancerStablePoolAdaptor__AssetIsNotSupported();
         }
 
         // Notify the adaptor to stop supporting the asset

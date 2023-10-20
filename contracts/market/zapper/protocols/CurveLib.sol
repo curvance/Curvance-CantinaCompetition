@@ -9,7 +9,10 @@ import { ICurveSwap } from "contracts/interfaces/external/curve/ICurve.sol";
 library CurveLib {
     /// ERRORS ///
 
-    error CurveLib__ReceivedAmountIsLessThanMinimum();
+    error CurveLib__ReceivedAmountIsLessThanMinimum(
+        uint256 amount,
+        uint256 minimum
+    );
 
     /// FUNCTIONS ///
 
@@ -68,7 +71,10 @@ library CurveLib {
         // check min out amount
         lpOutAmount = IERC20(lpToken).balanceOf(address(this));
         if (lpOutAmount < lpMinOutAmount) {
-            revert CurveLib__ReceivedAmountIsLessThanMinimum();
+            revert CurveLib__ReceivedAmountIsLessThanMinimum(
+                lpOutAmount,
+                lpMinOutAmount
+            );
         }
     }
 

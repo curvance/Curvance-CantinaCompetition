@@ -48,9 +48,12 @@ contract VelodromeStablePositionVault is BasePositionVault {
 
     /// ERRORS ///
 
-    error VelodromeStablePositionVault__ConfigurationError();
+    error VelodromeStablePositionVault__StakingTokenIsNotAsset(
+        address stakingToken
+    );
+    error VelodromeStablePositionVault__AssetIsNotStable();
     error VelodromeStablePositionVault__SlippageError();
-    error VelodromeStablePositionVault__InvalidSwapper();
+    error VelodromeStablePositionVault__InvalidSwapper(address invalidSwapper);
 
     /// CONSTRUCTOR ///
 
@@ -66,11 +69,13 @@ contract VelodromeStablePositionVault is BasePositionVault {
         // Validate that we have the proper gauge linked with the proper LP
         // and pair factory
         if (gauge.stakingToken() != _asset) {
-            revert VelodromeStablePositionVault__ConfigurationError();
+            revert VelodromeStablePositionVault__StakingTokenIsNotAsset(
+                gauge.stakingToken()
+            );
         }
 
         if (!IVeloPool(_asset).stable()) {
-            revert VelodromeStablePositionVault__ConfigurationError();
+            revert VelodromeStablePositionVault__AssetIsNotStable();
         }
 
         // Query underlying token data from the pool
@@ -145,7 +150,9 @@ contract VelodromeStablePositionVault is BasePositionVault {
                         );
 
                         if (!centralRegistry.isSwapper(swapData.target)) {
-                            revert VelodromeStablePositionVault__InvalidSwapper();
+                            revert VelodromeStablePositionVault__InvalidSwapper(
+                                swapData.target
+                            );
                         }
 
                         SwapperLib.swap(swapData);

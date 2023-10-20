@@ -16,7 +16,7 @@ contract Timelock is TimelockController {
 
     /// ERRORS ///
 
-    error Timelock__InvalidCentralRegistry();
+    error Timelock__InvalidCentralRegistry(address invalidCentralRegistry);
 
     /// CONSTRUCTOR ///
 
@@ -36,7 +36,7 @@ contract Timelock is TimelockController {
                 type(ICentralRegistry).interfaceId
             )
         ) {
-            revert Timelock__InvalidCentralRegistry();
+            revert Timelock__InvalidCentralRegistry(address(centralRegistry_));
         }
 
         centralRegistry = centralRegistry_;

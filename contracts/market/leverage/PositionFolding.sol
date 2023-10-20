@@ -53,13 +53,16 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
     error PositionFolding__InvalidSlippage();
     error PositionFolding__InvalidCentralRegistry();
     error PositionFolding__InvalidLendtroller();
-    error PositionFolding__InvalidSwapper();
+    error PositionFolding__InvalidSwapper(address invalidSwapper);
     error PositionFolding__InvalidParam();
     error PositionFolding__InvalidAmount();
-    error PositionFolding__InvalidZapper();
+    error PositionFolding__InvalidZapper(address invalidZapper);
     error PositionFolding__InvalidZapperParam();
     error PositionFolding__InvalidTokenPrice();
-    error PositionFolding__ExceedsMaximumBorrowAmount();
+    error PositionFolding__ExceedsMaximumBorrowAmount(
+        uint256 amount,
+        uint256 maximum
+    );
 
     /// MODIFIERS ///
 
@@ -178,7 +181,9 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
         if (leverageData.swapData.call.length > 0) {
             // swap borrow underlying to zapper input token
             if (!centralRegistry.isSwapper(leverageData.swapData.target)) {
-                revert PositionFolding__InvalidSwapper();
+                revert PositionFolding__InvalidSwapper(
+                    leverageData.swapData.target
+                );
             }
 
             SwapperLib.swap(leverageData.swapData);
@@ -189,7 +194,9 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
 
         if (zapperCall.call.length > 0) {
             if (!centralRegistry.isZapper(leverageData.zapperCall.target)) {
-                revert PositionFolding__InvalidZapper();
+                revert PositionFolding__InvalidZapper(
+                    leverageData.zapperCall.target
+                );
             }
 
             SwapperLib.zap(zapperCall);
@@ -274,7 +281,9 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
                 revert PositionFolding__InvalidZapperParam();
             }
             if (!centralRegistry.isZapper(deleverageData.zapperCall.target)) {
-                revert PositionFolding__InvalidZapper();
+                revert PositionFolding__InvalidZapper(
+                    deleverageData.zapperCall.target
+                );
             }
 
             SwapperLib.zap(zapperCall);
@@ -283,7 +292,9 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
         if (deleverageData.swapData.call.length > 0) {
             // swap for borrow underlying
             if (!centralRegistry.isSwapper(deleverageData.swapData.target)) {
-                revert PositionFolding__InvalidSwapper();
+                revert PositionFolding__InvalidSwapper(
+                    deleverageData.swapData.target
+                );
             }
 
             SwapperLib.swap(deleverageData.swapData);
@@ -378,7 +389,10 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
         );
 
         if (borrowAmount > maxBorrowAmount) {
-            revert PositionFolding__ExceedsMaximumBorrowAmount();
+            revert PositionFolding__ExceedsMaximumBorrowAmount(
+                borrowAmount,
+                maxBorrowAmount
+            );
         }
 
         bytes memory params = abi.encode(leverageData);

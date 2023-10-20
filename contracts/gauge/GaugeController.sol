@@ -3,7 +3,6 @@ pragma solidity ^0.8.17;
 
 import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { GaugeErrors } from "contracts/gauge/GaugeErrors.sol";
-import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IGaugePool } from "contracts/interfaces/IGaugePool.sol";
@@ -29,30 +28,25 @@ abstract contract GaugeController is IGaugePool {
     uint256 public startTime; // Gauge emission start time
     mapping(uint256 => Epoch) internal _epochInfo;
 
-    /// ERRORS ///
-
-    error GaugeController__Unauthorized();
-    error GaugeController__NotStarted();
-
     /// MODIFIERS ///
 
     modifier onlyDaoPermissions() {
         if (!centralRegistry.hasDaoPermissions(msg.sender)) {
-            revert GaugeController__Unauthorized();
+            revert GaugeErrors.Unauthorized();
         }
         _;
     }
 
     modifier onlyMessagingHub() {
         if (msg.sender != centralRegistry.protocolMessagingHub()) {
-            revert GaugeController__Unauthorized();
+            revert GaugeErrors.Unauthorized();
         }
         _;
     }
 
     modifier whenGaugeStarted() {
         if (startTime == 0) {
-            revert GaugeController__NotStarted();
+            revert GaugeErrors.NotStarted();
         }
         _;
     }

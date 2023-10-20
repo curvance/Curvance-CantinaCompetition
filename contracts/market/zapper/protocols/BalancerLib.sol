@@ -9,7 +9,10 @@ import { IBalancerVault } from "contracts/interfaces/external/balancer/IBalancer
 library BalancerLib {
     /// ERRORS ///
 
-    error BalancerLib__ReceivedAmountIsLessThanMinimum();
+    error BalancerLib__ReceivedAmountIsLessThanMinimum(
+        uint256 amount,
+        uint256 minimum
+    );
 
     /// FUNCTIONS ///
 
@@ -67,7 +70,10 @@ library BalancerLib {
         // check min out amount
         lpOutAmount = IERC20(lpToken).balanceOf(address(this));
         if (lpOutAmount < lpMinOutAmount) {
-            revert BalancerLib__ReceivedAmountIsLessThanMinimum();
+            revert BalancerLib__ReceivedAmountIsLessThanMinimum(
+                lpOutAmount,
+                lpMinOutAmount
+            );
         }
     }
 

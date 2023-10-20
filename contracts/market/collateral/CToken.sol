@@ -56,10 +56,9 @@ contract CToken is ERC165, ReentrancyGuard {
     /// ERRORS ///
 
     error CToken__Unauthorized();
-    error CToken__ExcessiveValue();
     error CToken__TransferError();
-    error CToken__ValidationFailed();
-    error CToken__ConstructorParametersareInvalid();
+    error CToken__InvalidCentralRegistry();
+    error CToken__UnderlyingAssetTotalSupplyExceedsMaximum();
     error CToken__LendtrollerIsNotLendingMarket();
 
     /// MODIFIERS ///
@@ -96,7 +95,7 @@ contract CToken is ERC165, ReentrancyGuard {
                 type(ICentralRegistry).interfaceId
             )
         ) {
-            revert CToken__ConstructorParametersareInvalid();
+            revert CToken__InvalidCentralRegistry();
         }
 
         centralRegistry = centralRegistry_;
@@ -115,7 +114,7 @@ contract CToken is ERC165, ReentrancyGuard {
         // Sanity check underlying so that we know users will not need to
         // mint anywhere close to exchange rate of 1e18
         if (IERC20(underlying).totalSupply() >= type(uint232).max) {
-            revert CToken__ConstructorParametersareInvalid();
+            revert CToken__UnderlyingAssetTotalSupplyExceedsMaximum();
         }
     }
 

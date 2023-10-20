@@ -35,10 +35,12 @@ contract Zapper is ReentrancyGuard {
     /// ERRORS ///
 
     error Zapper__ExecutionError();
-    error Zapper__ParametersareInvalid();
+    error Zapper__InvalidCentralRegistry();
+    error Zapper__LendtrollerIsNotLendingMarket();
+    error Zapper__CTokenUnderlyingIsNotLPToken();
     error Zapper__Unauthorized();
     error Zapper__SlippageError();
-    error Zapper__InvalidSwapper();
+    error Zapper__InvalidSwapper(uint256 index, address invalidSwapper);
 
     /// CONSTRUCTOR ///
 
@@ -55,13 +57,13 @@ contract Zapper is ReentrancyGuard {
                 type(ICentralRegistry).interfaceId
             )
         ) {
-            revert Zapper__ParametersareInvalid();
+            revert Zapper__InvalidCentralRegistry();
         }
 
         centralRegistry = centralRegistry_;
 
         if (!centralRegistry.isLendingMarket(lendtroller_)) {
-            revert Zapper__ParametersareInvalid();
+            revert Zapper__LendtrollerIsNotLendingMarket();
         }
 
         lendtroller = ILendtroller(lendtroller_);
@@ -139,7 +141,7 @@ contract Zapper is ReentrancyGuard {
         // prepare tokens to mint LP
         for (uint256 i; i < numTokenSwaps; ) {
             if (!centralRegistry.isSwapper(tokenSwaps[i].target)) {
-                revert Zapper__InvalidSwapper();
+                revert Zapper__InvalidSwapper(i, tokenSwaps[i].target);
             }
 
             unchecked {
@@ -230,7 +232,7 @@ contract Zapper is ReentrancyGuard {
         // prepare tokens to mint LP
         for (uint256 i; i < numTokenSwaps; ) {
             if (!centralRegistry.isSwapper(tokenSwaps[i].target)) {
-                revert Zapper__InvalidSwapper();
+                revert Zapper__InvalidSwapper(i, tokenSwaps[i].target);
             }
 
             unchecked {
@@ -310,7 +312,7 @@ contract Zapper is ReentrancyGuard {
         // prepare tokens to mint LP
         for (uint256 i; i < numTokenSwaps; ) {
             if (!centralRegistry.isSwapper(tokenSwaps[i].target)) {
-                revert Zapper__InvalidSwapper();
+                revert Zapper__InvalidSwapper(i, tokenSwaps[i].target);
             }
 
             unchecked {
@@ -360,7 +362,7 @@ contract Zapper is ReentrancyGuard {
         // prepare tokens to mint LP
         for (uint256 i; i < numTokenSwaps; ) {
             if (!centralRegistry.isSwapper(tokenSwaps[i].target)) {
-                revert Zapper__InvalidSwapper();
+                revert Zapper__InvalidSwapper(i, tokenSwaps[i].target);
             }
 
             unchecked {
@@ -394,7 +396,7 @@ contract Zapper is ReentrancyGuard {
 
         // check cToken underlying
         if (CToken(cToken).underlying() != lpToken) {
-            revert Zapper__ParametersareInvalid();
+            revert Zapper__CTokenUnderlyingIsNotLPToken();
         }
 
         // approve lp token

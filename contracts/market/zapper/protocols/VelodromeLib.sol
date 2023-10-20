@@ -14,7 +14,10 @@ import { IVeloPool } from "contracts/interfaces/external/velodrome/IVeloPool.sol
 library VelodromeLib {
     /// ERRORS ///
 
-    error VelodromeLib__ReceivedAmountIsLessThanMinimum();
+    error VelodromeLib__ReceivedAmountIsLessThanMinimum(
+        uint256 amount,
+        uint256 minimum
+    );
 
     /// FUNCTIONS ///
 
@@ -109,7 +112,10 @@ library VelodromeLib {
         }
 
         if (lpOutAmount < lpMinOutAmount) {
-            revert VelodromeLib__ReceivedAmountIsLessThanMinimum();
+            revert VelodromeLib__ReceivedAmountIsLessThanMinimum(
+                lpOutAmount,
+                lpMinOutAmount
+            );
         }
     }
 

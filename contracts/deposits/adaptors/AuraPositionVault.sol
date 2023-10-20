@@ -46,7 +46,10 @@ contract AuraPositionVault is BasePositionVault {
     /// ERRORS ///
 
     error AuraPositionVault__InvalidVaultConfig();
-    error AuraPositionVault__InvalidSwapper();
+    error AuraPositionVault__InvalidSwapper(
+        uint256 index,
+        address invalidSwapper
+    );
 
     /// CONSTRUCTOR ///
 
@@ -210,7 +213,10 @@ contract AuraPositionVault is BasePositionVault {
                         if (
                             !centralRegistry.isSwapper(swapDataArray[i].target)
                         ) {
-                            revert AuraPositionVault__InvalidSwapper();
+                            revert AuraPositionVault__InvalidSwapper(
+                                i,
+                                swapDataArray[i].target
+                            );
                         }
 
                         SwapperLib.swap(swapDataArray[i]);
