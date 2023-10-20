@@ -12,6 +12,7 @@ contract Timelock is TimelockController {
     // Minimum delay for timelock transaction proposals to execute
     uint256 public constant MINIMUM_DELAY = 7 days;
     ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
+    address internal _daoAddress;
 
     constructor(
         ICentralRegistry centralRegistry_
@@ -34,8 +35,19 @@ contract Timelock is TimelockController {
         centralRegistry = centralRegistry_;
 
         // grant admin/proposer/executor role to DAO
-        address _centralRegistryDaoAddress = centralRegistry.daoAddress();
-        _grantRole(PROPOSER_ROLE, _centralRegistryDaoAddress);
-        _grantRole(EXECUTOR_ROLE, _centralRegistryDaoAddress);
+        _daoAddress = centralRegistry.daoAddress();
+        _grantRole(PROPOSER_ROLE, _daoAddress);
+        _grantRole(EXECUTOR_ROLE, _daoAddress);
+    }
+
+    function updateDaoAddress() external {
+        address daoAddress = centralRegistry.daoAddress();
+        if (daoAddress != _daoAddress) {
+            _revokeRole(PROPOSER_ROLE, _daoAddress);
+            _revokeRole(EXECUTOR_ROLE, _daoAddress);
+
+            _grantRole(PROPOSER_ROLE, daoAddress);
+            _grantRole(EXECUTOR_ROLE, daoAddress);
+        }
     }
 }
