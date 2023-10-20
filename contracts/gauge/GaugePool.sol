@@ -12,6 +12,7 @@ import { RewardsData } from "contracts/interfaces/ICVELocker.sol";
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { ICVE } from "contracts/interfaces/ICVE.sol";
+import { DENOMINATOR } from "contracts/libraries/Constants.sol";
 
 contract GaugePool is GaugeController, ReentrancyGuard {
     /// TYPES ///
@@ -30,8 +31,6 @@ contract GaugePool is GaugeController, ReentrancyGuard {
 
     /// CONSTANTS ///
 
-    /// @notice Scalar for math
-    uint256 internal constant DENOMINATOR = 10000;
     /// @notice Scalar for math
     uint256 internal constant PRECISION = 1e36;
     address public lendtroller; // Lendtroller linked

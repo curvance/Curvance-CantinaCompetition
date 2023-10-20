@@ -18,8 +18,6 @@ import { PoolData } from "contracts/interfaces/IProtocolMessagingHub.sol";
 contract ProtocolMessagingHub is ReentrancyGuard {
     /// CONSTANTS ///
 
-    /// @notice Scalar for math
-    uint256 public constant DENOMINATOR = 10000;
     /// @notice CVE contract address
     ICVE public immutable CVE;
     /// @notice Address of fee token

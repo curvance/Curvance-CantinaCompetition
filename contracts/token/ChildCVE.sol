@@ -4,10 +4,6 @@ pragma solidity ^0.8.17;
 import "contracts/layerzero/OFTV2.sol";
 
 contract CVE is OFTV2 {
-    /// CONSTANTS ///
-
-    uint256 public constant DENOMINATOR = 10000; // Scalar for math
-
     /// ERRORS ///
 
     error CVE__Unauthorized();
@@ -29,7 +25,7 @@ contract CVE is OFTV2 {
     /// @param gaugePool The address of the gauge pool where emissions will be configured
     /// @param amount The amount of gauge emissions to be minted
     function mintGaugeEmissions(address gaugePool, uint256 amount) external {
-        if (msg.sender != centralRegistry.protocolMessagingHub()){
+        if (msg.sender != centralRegistry.protocolMessagingHub()) {
             revert CVE__Unauthorized();
         }
 
@@ -39,7 +35,7 @@ contract CVE is OFTV2 {
     /// @notice Mints CVE to the calling gauge pool to fund the users lock boost
     /// @param amount The amount of tokens to be minted
     function mintLockBoost(uint256 amount) external {
-        if (centralRegistry.isGaugeController(msg.sender)){
+        if (centralRegistry.isGaugeController(msg.sender)) {
             revert CVE__Unauthorized();
         }
 
@@ -57,7 +53,7 @@ contract CVE is OFTV2 {
         uint64 dstGasForCall,
         LzCallParams calldata callParams
     ) public payable override {
-        if (msg.sender != centralRegistry.protocolMessagingHub()){
+        if (msg.sender != centralRegistry.protocolMessagingHub()) {
             revert CVE__Unauthorized();
         }
 

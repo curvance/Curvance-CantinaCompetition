@@ -8,6 +8,7 @@ import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IMToken } from "contracts/interfaces/market/IMToken.sol";
+import { EXP_SCALE } from "contracts/libraries/Constants.sol";
 
 /// @notice Vault Positions must have all assets ready for withdraw,
 ///         IE assets can NOT be locked.
@@ -30,7 +31,6 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
 
     // Period harvested rewards are vested over
     uint256 public constant vestPeriod = 1 days;
-    uint256 internal constant expScale = 1e18; // Scalar for math
     ERC20 private immutable _asset; // underlying asset for the vault
     bytes32 private immutable _name; // token name metadata
     bytes32 private immutable _symbol; // token symbol metadata
@@ -594,7 +594,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
             // pendingRewards = rewardRate * (block.timestamp - lastTimeVestClaimed)
             // If the vesting period has ended:
             // rewardRate * (vestingPeriodEnd - lastTimeVestClaimed))
-            // Divide the pending rewards by expScale
+            // Divide the pending rewards by EXP_SCALE
             pendingRewards =
                 (
                     block.timestamp < vaultData.vestingPeriodEnd
@@ -604,7 +604,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
                             (vaultData.vestingPeriodEnd -
                                 vaultData.lastVestClaim))
                 ) /
-                expScale;
+                EXP_SCALE;
         }
         // else there are no pending rewards
     }

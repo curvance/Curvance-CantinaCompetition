@@ -10,6 +10,7 @@ import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.s
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
+import { EXP_SCALE } from "contracts/libraries/Constants.sol";
 
 /// @title Curvance Lendtroller
 /// @notice Manages risk within the lending markets
@@ -53,8 +54,6 @@ contract Lendtroller is ILendtroller, ERC165 {
 
     /// CONSTANTS ///
 
-    /// @notice Scalar for math.
-    uint256 internal constant EXP_SCALE = 1e18;
     /// @notice Maximum collateral requirement to avoid liquidation. 40%
     uint256 internal constant _MAX_COLLATERAL_REQUIREMENT = 0.4e18;
     /// @notice Maximum collateralization ratio. 91%

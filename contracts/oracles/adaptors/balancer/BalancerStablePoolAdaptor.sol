@@ -67,7 +67,7 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
         bool inUSD,
         bool getLower
     ) external view override returns (PriceReturnData memory pData) {
-        if (!isSupportedAsset[asset]){
+        if (!isSupportedAsset[asset]) {
             revert BalancerStablePoolAdaptor__Unsupported();
         }
 
@@ -124,7 +124,7 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
         address asset,
         AdaptorData memory data
     ) external onlyElevatedPermissions {
-        if (isSupportedAsset[asset]){
+        if (isSupportedAsset[asset]) {
             revert BalancerStablePoolAdaptor__ConfigurationError();
         }
 
@@ -145,23 +145,24 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
                 continue;
             }
 
-            if (!IPriceRouter(centralRegistry.priceRouter()).isSupportedAsset(
+            if (
+                !IPriceRouter(centralRegistry.priceRouter()).isSupportedAsset(
                     data.underlyingOrConstituent[i]
-                )){
-                    revert BalancerStablePoolAdaptor__ConfigurationError();
-                }
+                )
+            ) {
+                revert BalancerStablePoolAdaptor__ConfigurationError();
+            }
 
             if (data.rateProviders[i] != address(0)) {
                 // Make sure decimals were provided.
-                if (data.rateProviderDecimals[i] == 0){
+                if (data.rateProviderDecimals[i] == 0) {
                     revert BalancerStablePoolAdaptor__ConfigurationError();
                 }
 
                 // Make sure we can call it and get a non zero value.
-                if (IRateProvider(data.rateProviders[i]).getRate() == 0){
+                if (IRateProvider(data.rateProviders[i]).getRate() == 0) {
                     revert BalancerStablePoolAdaptor__ConfigurationError();
                 }
-
             }
         }
 
@@ -173,7 +174,7 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
     /// @notice Removes a supported asset from the adaptor.
     /// @dev Calls back into price router to notify it of its removal
     function removeAsset(address asset) external override onlyDaoPermissions {
-        if (!isSupportedAsset[asset]){
+        if (!isSupportedAsset[asset]) {
             revert BalancerStablePoolAdaptor__Unsupported();
         }
 

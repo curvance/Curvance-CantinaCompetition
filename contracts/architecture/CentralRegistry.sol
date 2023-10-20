@@ -5,11 +5,11 @@ import { ERC165 } from "contracts/libraries/ERC165.sol";
 import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { ICentralRegistry, ChainData, OmnichainData } from "contracts/interfaces/ICentralRegistry.sol";
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
+import { DENOMINATOR } from "contracts/libraries/Constants.sol";
 
 contract CentralRegistry is ERC165 {
     /// CONSTANTS ///
 
-    uint256 public constant DENOMINATOR = 10000; // Scalar for math
     /// `bytes4(keccak256(bytes("CentralRegistry_ParametersMisconfigured()")))`
     uint256 internal constant _PARAMETERS_MISCONFIGURED_SELECTOR = 0x6fc38aea;
     /// `bytes4(keccak256(bytes("CentralRegistry_Unauthorized()")))`
@@ -102,7 +102,7 @@ contract CentralRegistry is ERC165 {
     error CentralRegistry_Unauthorized();
 
     /// MODIFIERS ///
- 
+
     modifier onlyEmergencyCouncil() {
         if (msg.sender != emergencyCouncil) {
             _revert(_UNAUTHORIZED_SELECTOR);
@@ -181,9 +181,7 @@ contract CentralRegistry is ERC165 {
 
     /// @notice Sets a new CVE contract address
     /// @dev Only callable by the DAO
-    function setOCVE(
-        address newOCVE
-    ) external onlyDaoPermissions {
+    function setOCVE(address newOCVE) external onlyDaoPermissions {
         oCVE = newOCVE;
         emit CoreContractSet("oCVE", newOCVE);
     }
@@ -204,7 +202,7 @@ contract CentralRegistry is ERC165 {
     ) external onlyElevatedPermissions {
         protocolMessagingHub = newProtocolMessagingHub;
         emit CoreContractSet(
-            "Protocol Messaging Hub", 
+            "Protocol Messaging Hub",
             newProtocolMessagingHub
         );
     }

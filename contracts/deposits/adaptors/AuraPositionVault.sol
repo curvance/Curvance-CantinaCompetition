@@ -10,6 +10,7 @@ import { IRewards } from "contracts/interfaces/external/convex/IRewards.sol";
 import { IBalancerVault } from "contracts/interfaces/external/balancer/IBalancerVault.sol";
 import { IBalancerPool } from "contracts/interfaces/external/balancer/IBalancerPool.sol";
 import { IStashWrapper } from "contracts/interfaces/external/aura/IStashWrapper.sol";
+import { EXP_SCALE } from "contracts/libraries/Constants.sol";
 
 contract AuraPositionVault is BasePositionVault {
     using Math for uint256;
@@ -263,7 +264,7 @@ contract AuraPositionVault is BasePositionVault {
             // Cache vest period so we do not need to load it twice
             uint256 _vestPeriod = vestPeriod;
             _vaultData = _packVaultData(
-                yield.mulDivDown(expScale, _vestPeriod),
+                yield.mulDivDown(EXP_SCALE, _vestPeriod),
                 block.timestamp + _vestPeriod
             );
 

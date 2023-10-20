@@ -32,9 +32,6 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
     /// @notice The smallest possible TWAP that can be used.
     uint32 public constant MINIMUM_SECONDS_AGO = 300;
 
-    /// @notice Token amount to check uniswap twap price against
-    uint128 public constant PRECISION = 1e18;
-
     /// @notice Chain WETH address.
     address public immutable WETH;
 
@@ -141,8 +138,10 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
             // the quote token price to USD and return
             return
                 PriceReturnData({
-                    price: uint240((twapPrice * quoteTokenDenominator) / 
-                    uniswapFeed.quoteDecimals),
+                    price: uint240(
+                        (twapPrice * quoteTokenDenominator) /
+                            uniswapFeed.quoteDecimals
+                    ),
                     hadError: false,
                     inUSD: true
                 });

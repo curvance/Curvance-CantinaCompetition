@@ -13,13 +13,12 @@ import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.s
 import { BasePositionVault } from "contracts/deposits/adaptors/BasePositionVault.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.sol";
+import { EXP_SCALE } from "contracts/libraries/Constants.sol";
 
 /// @title Curvance's Collateral Token Contract
 contract CToken is ERC165, ReentrancyGuard {
     /// CONSTANTS ///
 
-    /// @notice Scalar for math
-    uint256 internal constant EXP_SCALE = 1e18;
     /// @notice Underlying asset for the CToken
     address public immutable underlying;
     /// @notice Curvance DAO hub

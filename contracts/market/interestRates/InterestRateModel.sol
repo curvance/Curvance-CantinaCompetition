@@ -3,6 +3,7 @@ pragma solidity ^0.8.17;
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
+import { EXP_SCALE } from "contracts/libraries/Constants.sol";
 
 contract InterestRateModel {
     /// CONSTANTS ///
@@ -10,8 +11,6 @@ contract InterestRateModel {
     /// Unix time has 31,536,000 seconds per year
     /// All my homies hate leap seconds and leap years
     uint256 private constant SECONDS_PER_YEAR = 31536000;
-    /// @notice Scalar for math
-    uint256 private constant EXP_SCALE = 1e18;
     /// @notice Rate at which interest is compounded, in seconds
     uint256 internal constant INTEREST_COMPOUND_RATE = 300;
     /// @notice For external contract's to call for validation

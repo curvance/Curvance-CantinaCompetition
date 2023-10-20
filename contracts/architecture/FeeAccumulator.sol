@@ -16,6 +16,7 @@ import { IProtocolMessagingHub, PoolData } from "contracts/interfaces/IProtocolM
 import { LzTxObj } from "contracts/interfaces/layerzero/IStargateRouter.sol";
 import { EpochRolloverData } from "contracts/interfaces/IFeeAccumulator.sol";
 import { ICentralRegistry, ChainData } from "contracts/interfaces/ICentralRegistry.sol";
+import { EXP_SCALE } from "contracts/libraries/Constants.sol";
 
 contract FeeAccumulator is ReentrancyGuard {
     /// TYPES ///
@@ -33,8 +34,6 @@ contract FeeAccumulator is ReentrancyGuard {
 
     /// CONSTANTS ///
 
-    /// @notice Scalar for math
-    uint256 public constant EXP_SCALE = 1e18;
     uint256 public constant SLIPPED_MINIMUM = 9500; // 5%
     uint256 public constant SLIPPAGE_DENOMINATOR = 10000;
     /// @notice Address of fee token
