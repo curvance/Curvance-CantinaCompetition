@@ -16,14 +16,45 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
     fallback() external payable {}
 
     MockDataFeed public mockUsdcFeed;
+    MockDataFeed public mockWethFeed;
+    MockDataFeed public mockRethFeed;
 
     function setUp() public override {
         super.setUp();
 
         owner = address(this);
 
+        // use mock pricing for testing
+        mockUsdcFeed = new MockDataFeed(_CHAINLINK_USDC_USD);
+        chainlinkAdaptor.addAsset(_USDC_ADDRESS, address(mockUsdcFeed), true);
+        dualChainlinkAdaptor.addAsset(
+            _USDC_ADDRESS,
+            address(mockUsdcFeed),
+            true
+        );
+        mockWethFeed = new MockDataFeed(_CHAINLINK_ETH_USD);
+        chainlinkAdaptor.addAsset(_WETH_ADDRESS, address(mockWethFeed), true);
+        dualChainlinkAdaptor.addAsset(
+            _WETH_ADDRESS,
+            address(mockWethFeed),
+            true
+        );
+        mockRethFeed = new MockDataFeed(_CHAINLINK_RETH_ETH);
+        chainlinkAdaptor.addAsset(_RETH_ADDRESS, address(mockRethFeed), false);
+        dualChainlinkAdaptor.addAsset(
+            _RETH_ADDRESS,
+            address(mockRethFeed),
+            true
+        );
+
         // start epoch
         gaugePool.start(address(lendtroller));
+        vm.warp(gaugePool.startTime());
+        vm.roll(block.number + 1000);
+
+        mockUsdcFeed.setMockUpdatedAt(block.timestamp);
+        mockWethFeed.setMockUpdatedAt(block.timestamp);
+        mockRethFeed.setMockUpdatedAt(block.timestamp);
 
         // deploy dUSDC
         {
@@ -72,15 +103,6 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
 
         // provide enough liquidity
         provideEnoughLiquidityForLeverage();
-
-        // use mock pricing for testing
-        mockUsdcFeed = new MockDataFeed(_CHAINLINK_USDC_USD);
-        chainlinkAdaptor.addAsset(_USDC_ADDRESS, address(mockUsdcFeed), true);
-        dualChainlinkAdaptor.addAsset(
-            _USDC_ADDRESS,
-            address(mockUsdcFeed),
-            true
-        );
     }
 
     function provideEnoughLiquidityForLeverage() internal {

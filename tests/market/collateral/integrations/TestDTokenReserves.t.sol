@@ -18,6 +18,8 @@ contract TestDTokenReserves is TestBaseMarket {
     fallback() external payable {}
 
     MockDataFeed public mockDaiFeed;
+    MockDataFeed public mockWethFeed;
+    MockDataFeed public mockRethFeed;
 
     function setUp() public override {
         super.setUp();
@@ -25,8 +27,37 @@ contract TestDTokenReserves is TestBaseMarket {
         owner = address(this);
         dao = address(this);
 
+        // use mock pricing for testing
+        mockDaiFeed = new MockDataFeed(_CHAINLINK_DAI_USD);
+        chainlinkAdaptor.addAsset(_DAI_ADDRESS, address(mockDaiFeed), true);
+        dualChainlinkAdaptor.addAsset(
+            _DAI_ADDRESS,
+            address(mockDaiFeed),
+            true
+        );
+        mockWethFeed = new MockDataFeed(_CHAINLINK_ETH_USD);
+        chainlinkAdaptor.addAsset(_WETH_ADDRESS, address(mockWethFeed), true);
+        dualChainlinkAdaptor.addAsset(
+            _WETH_ADDRESS,
+            address(mockWethFeed),
+            true
+        );
+        mockRethFeed = new MockDataFeed(_CHAINLINK_RETH_ETH);
+        chainlinkAdaptor.addAsset(_RETH_ADDRESS, address(mockRethFeed), false);
+        dualChainlinkAdaptor.addAsset(
+            _RETH_ADDRESS,
+            address(mockRethFeed),
+            true
+        );
+
         // start epoch
         gaugePool.start(address(lendtroller));
+        vm.warp(gaugePool.startTime());
+        vm.roll(block.number + 1000);
+
+        mockDaiFeed.setMockUpdatedAt(block.timestamp);
+        mockWethFeed.setMockUpdatedAt(block.timestamp);
+        mockRethFeed.setMockUpdatedAt(block.timestamp);
 
         // deploy dDAI
         {
@@ -74,15 +105,6 @@ contract TestDTokenReserves is TestBaseMarket {
         }
 
         centralRegistry.addSwapper(_UNISWAP_V2_ROUTER);
-
-        // use mock pricing for testing
-        mockDaiFeed = new MockDataFeed(_CHAINLINK_DAI_USD);
-        chainlinkAdaptor.addAsset(_DAI_ADDRESS, address(mockDaiFeed), true);
-        dualChainlinkAdaptor.addAsset(
-            _DAI_ADDRESS,
-            address(mockDaiFeed),
-            true
-        );
     }
 
     function testInitialize() public {

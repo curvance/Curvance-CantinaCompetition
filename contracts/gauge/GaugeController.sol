@@ -138,9 +138,6 @@ abstract contract GaugeController is IGaugePool {
     function epochOfTimestamp(
         uint256 timestamp
     ) public view whenGaugeStarted returns (uint256) {
-        if (timestamp <= startTime) {
-            return 0;
-        }
         return (timestamp - startTime) / EPOCH_WINDOW;
     }
 
