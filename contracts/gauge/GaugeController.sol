@@ -134,21 +134,30 @@ abstract contract GaugeController is IGaugePool {
     function epochOfTimestamp(
         uint256 timestamp
     ) public view returns (uint256) {
-        require(startTime != 0, "GaugeController: gauge not started");
+        if (startTime == 0) {
+            revert GaugeErrors.NotStarted();
+        }
+
         return (timestamp - startTime) / EPOCH_WINDOW;
     }
 
     /// @notice Returns start time of given epoch
     /// @param epoch Epoch number
     function epochStartTime(uint256 epoch) public view returns (uint256) {
-        require(startTime != 0, "GaugeController: gauge not started");
+        if (startTime == 0) {
+            revert GaugeErrors.NotStarted();
+        }
+        
         return startTime + epoch * EPOCH_WINDOW;
     }
 
     /// @notice Returns end time of given epoch
     /// @param epoch Epoch number
     function epochEndTime(uint256 epoch) public view returns (uint256) {
-        require(startTime != 0, "GaugeController: gauge not started");
+        if (startTime == 0) {
+            revert GaugeErrors.NotStarted();
+        }
+        
         return startTime + (epoch + 1) * EPOCH_WINDOW;
     }
 
