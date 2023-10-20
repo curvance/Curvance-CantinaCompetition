@@ -98,7 +98,9 @@ contract ClaimRewardsForTest is TestBaseCVELocker {
 
         uint256 epochs = cveLocker.epochsToClaim(user1);
 
-        vm.expectRevert(CVELocker.CVELocker__ParametersareInvalid.selector);
+        vm.expectRevert(
+            CVELocker.CVELocker__RewardTokenIsNotAuthorized.selector
+        );
 
         vm.prank(address(veCVE));
         cveLocker.claimRewardsFor(

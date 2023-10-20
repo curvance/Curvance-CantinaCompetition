@@ -50,7 +50,13 @@ contract MultiSwapTest is TestBaseFeeAccumulator {
         tokens.push(_USDT_ADDRESS);
 
         vm.expectRevert(
-            FeeAccumulator.FeeAccumulator__ConfigurationError.selector
+            abi.encodeWithSelector(
+                FeeAccumulator
+                    .FeeAccumulator__SwapDataAndTokenLengthMismatch
+                    .selector,
+                1,
+                2
+            )
         );
 
         vm.prank(harvester);
@@ -61,7 +67,13 @@ contract MultiSwapTest is TestBaseFeeAccumulator {
         tokens[0] = _USDT_ADDRESS;
 
         vm.expectRevert(
-            FeeAccumulator.FeeAccumulator__ConfigurationError.selector
+            abi.encodeWithSelector(
+                FeeAccumulator
+                    .FeeAccumulator__SwapDataCurrentTokenIsNotRewardToken
+                    .selector,
+                0,
+                _USDT_ADDRESS
+            )
         );
 
         vm.prank(harvester);

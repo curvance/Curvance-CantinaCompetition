@@ -6,7 +6,6 @@ import { ChainlinkAdaptor } from "contracts/oracles/adaptors/chainlink/Chainlink
 import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
 import { DToken } from "contracts/market/collateral/DToken.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { VelodromeLib } from "contracts/market/zapper/protocols/VelodromeLib.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { TestBasePriceRouter } from "../TestBasePriceRouter.sol";
 
@@ -129,7 +128,9 @@ contract TestPriceRouter is TestBasePriceRouter {
     function testRevertWhenAdapterNotApproved() public {
         priceRouter.removeApprovedAdaptor(address(adapter));
 
-        vm.expectRevert("PriceRouter: Adapter Not Approved");
+        vm.expectRevert(
+            PriceRouter.PriceRouter__AdaptorIsNotApproved.selector
+        );
         priceRouter.getPrice(WETH_USDC, true, false);
     }
 }

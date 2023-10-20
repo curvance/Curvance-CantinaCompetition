@@ -264,7 +264,7 @@ contract FeeAccumulator is ReentrancyGuard {
     ) external onlyDaoPermissions nonReentrant {
         // Validate that the token is earmarked for OTC
         if (rewardTokenInfo[tokenToOTC].forOTC < 2) {
-            revert FeeAccumulator__TokenIsNotEarmarked(tokenToOTC);
+            revert FeeAccumulator__TokenIsNotEarmarked();
         }
 
         // Cache router to save gas

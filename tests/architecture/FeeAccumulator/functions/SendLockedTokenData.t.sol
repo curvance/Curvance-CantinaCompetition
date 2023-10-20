@@ -12,7 +12,7 @@ contract SendLockedTokenDataTest is TestBaseFeeAccumulator {
 
     function test_sendLockedTokenData_fail_whenChainIsNotSupported() public {
         vm.expectRevert(
-            FeeAccumulator.FeeAccumulator__ConfigurationError.selector
+            FeeAccumulator.FeeAccumulator__ChainIsNotSupported.selector
         );
 
         vm.prank(harvester);
@@ -33,12 +33,18 @@ contract SendLockedTokenDataTest is TestBaseFeeAccumulator {
         );
 
         vm.expectRevert(
-            FeeAccumulator.FeeAccumulator__ConfigurationError.selector
+            abi.encodeWithSelector(
+                FeeAccumulator
+                    .FeeAccumulator__CVEAddressIsNotToAddress
+                    .selector,
+                bytes32(bytes20(address(1))),
+                bytes32(bytes20(address(cve)))
+            )
         );
 
         vm.prank(harvester);
         feeAccumulator.sendLockedTokenData(
-            42161,
+            110,
             bytes32(bytes20(address(cve)))
         );
     }

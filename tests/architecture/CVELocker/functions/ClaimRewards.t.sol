@@ -60,7 +60,9 @@ contract ClaimRewardsTest is TestBaseCVELocker {
             cveLocker.recordEpochRewards(nextEpochToDeliver, _ONE);
         }
 
-        vm.expectRevert(CVELocker.CVELocker__ParametersareInvalid.selector);
+        vm.expectRevert(
+            CVELocker.CVELocker__RewardTokenIsNotAuthorized.selector
+        );
 
         vm.prank(user1);
         cveLocker.claimRewards(rewardsData, abi.encode(swapData), 0);

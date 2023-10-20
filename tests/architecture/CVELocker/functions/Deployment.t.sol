@@ -9,21 +9,17 @@ contract CVELockerDeploymentTest is TestBaseCVELocker {
     function test_cveLockerDeployment_fail_whenCentralRegistryIsInvalid()
         public
     {
-        vm.expectRevert(CVELocker.CVELocker__ParametersareInvalid.selector);
-        new CVELocker(
-            ICentralRegistry(address(0)),
-            _USDC_ADDRESS
-        );
+        vm.expectRevert(CVELocker.CVELocker__InvalidCentralRegistry.selector);
+        new CVELocker(ICentralRegistry(address(0)), _USDC_ADDRESS);
     }
 
     function test_cveLockerDeployment_fail_whenRewardTokenIsZeroAddress()
         public
     {
-        vm.expectRevert(CVELocker.CVELocker__ParametersareInvalid.selector);
-        new CVELocker(
-            ICentralRegistry(address(centralRegistry)),
-            address(0)
+        vm.expectRevert(
+            CVELocker.CVELocker__RewardTokenIsZeroAddress.selector
         );
+        new CVELocker(ICentralRegistry(address(centralRegistry)), address(0));
     }
 
     function test_cveLockerDeployment_success() public {

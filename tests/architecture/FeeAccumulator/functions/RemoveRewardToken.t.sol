@@ -25,7 +25,9 @@ contract RemoveRewardTokenTest is TestBaseFeeAccumulator {
 
     function test_removeRewardToken_fail_whenTokenIsNotRewardToken() public {
         vm.expectRevert(
-            FeeAccumulator.FeeAccumulator__ConfigurationError.selector
+            FeeAccumulator
+                .FeeAccumulator__RemovalTokenIsNotRewardToken
+                .selector
         );
         feeAccumulator.removeRewardToken(_USDT_ADDRESS);
     }

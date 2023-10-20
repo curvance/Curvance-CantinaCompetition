@@ -31,13 +31,7 @@ contract CombineLocksTest is TestBaseVeCVE {
         lockIndexes.pop();
 
         vm.expectRevert(VeCVE.VeCVE__InvalidLock.selector);
-        veCVE.combineLocks(
-            lockIndexes,
-            false,
-            rewardsData,
-            "",
-            0
-        );
+        veCVE.combineLocks(lockIndexes, false, rewardsData, "", 0);
     }
 
     function test_combineLocks_fail_whenLockIndexesLengthExceeds(
@@ -48,13 +42,7 @@ contract CombineLocksTest is TestBaseVeCVE {
         lockIndexes.push(3);
 
         vm.expectRevert(VeCVE.VeCVE__InvalidLock.selector);
-        veCVE.combineLocks(
-            lockIndexes,
-            false,
-            rewardsData,
-            "",
-            0
-        );
+        veCVE.combineLocks(lockIndexes, false, rewardsData, "", 0);
     }
 
     function test_combineLocks_fail_whenLockIndexesAreNotSorted(
@@ -65,14 +53,8 @@ contract CombineLocksTest is TestBaseVeCVE {
         lockIndexes[1] = 2;
         lockIndexes[2] = 1;
 
-        vm.expectRevert(VeCVE.VeCVE__ParametersareInvalid.selector);
-        veCVE.combineLocks(
-            lockIndexes,
-            false,
-            rewardsData,
-            "",
-            0
-        );
+        vm.expectRevert(VeCVE.VeCVE__ParametersAreInvalid.selector);
+        veCVE.combineLocks(lockIndexes, false, rewardsData, "", 0);
     }
 
     function test_combineLocks_success_withContinuousLock(
@@ -99,13 +81,7 @@ contract CombineLocksTest is TestBaseVeCVE {
             60e18
         );
 
-        veCVE.combineLocks(
-            lockIndexes,
-            true,
-            rewardsData,
-            "",
-            0
-        );
+        veCVE.combineLocks(lockIndexes, true, rewardsData, "", 0);
 
         vm.expectRevert();
         veCVE.userLocks(address(this), 1);
@@ -150,13 +126,7 @@ contract CombineLocksTest is TestBaseVeCVE {
             60e18
         );
 
-        veCVE.combineLocks(
-            lockIndexes,
-            false,
-            rewardsData,
-            "",
-            0
-        );
+        veCVE.combineLocks(lockIndexes, false, rewardsData, "", 0);
 
         vm.expectRevert();
         veCVE.userLocks(address(this), 1);

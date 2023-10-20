@@ -17,14 +17,18 @@ contract RemoveAuthorizedRewardTokenTest is TestBaseCVELocker {
     function test_removeAuthorizedRewardToken_fail_whenTokenIsZeroAddress()
         public
     {
-        vm.expectRevert(CVELocker.CVELocker__ParametersareInvalid.selector);
+        vm.expectRevert(
+            CVELocker.CVELocker__RewardTokenIsZeroAddress.selector
+        );
         cveLocker.removeAuthorizedRewardToken(address(0));
     }
 
     function test_removeAuthorizedRewardToken_fail_whenTokenIsNotAuthorized()
         public
     {
-        vm.expectRevert(CVELocker.CVELocker__ParametersareInvalid.selector);
+        vm.expectRevert(
+            CVELocker.CVELocker__RewardTokenIsNotAuthorized.selector
+        );
         cveLocker.removeAuthorizedRewardToken(_USDC_ADDRESS);
     }
 

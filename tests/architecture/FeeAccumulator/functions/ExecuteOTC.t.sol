@@ -13,7 +13,9 @@ contract ExecuteOTCTest is TestBaseFeeAccumulator {
     }
 
     function test_executeOTC_fail_whenTokenIsNotEarmarked() public {
-        vm.expectRevert(FeeAccumulator.FeeAccumulator__EarmarkError.selector);
+        vm.expectRevert(
+            FeeAccumulator.FeeAccumulator__TokenIsNotEarmarked.selector
+        );
         feeAccumulator.executeOTC(_WETH_ADDRESS, _ONE);
     }
 

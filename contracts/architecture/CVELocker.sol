@@ -62,6 +62,7 @@ contract CVELocker is ReentrancyGuard {
 
     error CVELocker__InvalidCentralRegistry();
     error CVELocker__RewardTokenIsZeroAddress();
+    error CVELocker__RewardTokenIsAlreadyAuthorized();
     error CVELocker__RewardTokenIsNotAuthorized();
     error CVELocker__SwapDataIsInvalid();
     error CVELocker__Unauthorized();
@@ -196,7 +197,7 @@ contract CVELocker is ReentrancyGuard {
         }
 
         if (authorizedRewardToken[token] == 2) {
-            revert CVELocker__RewardTokenIsNotAuthorized();
+            revert CVELocker__RewardTokenIsAlreadyAuthorized();
         }
 
         authorizedRewardToken[token] = 2;
@@ -213,7 +214,7 @@ contract CVELocker is ReentrancyGuard {
         }
 
         if (authorizedRewardToken[token] < 2) {
-            revert CVELocker__RewardTokenIsNotAuthorized(token);
+            revert CVELocker__RewardTokenIsNotAuthorized();
         }
 
         authorizedRewardToken[token] = 1;
@@ -433,9 +434,7 @@ contract CVELocker is ReentrancyGuard {
 
         if (rewardsData.desiredRewardToken != rewardToken) {
             if (authorizedRewardToken[rewardsData.desiredRewardToken] < 2) {
-                revert CVELocker__RewardTokenIsNotAuthorized(
-                    rewardsData.desiredRewardToken
-                );
+                revert CVELocker__RewardTokenIsNotAuthorized();
             }
 
             if (

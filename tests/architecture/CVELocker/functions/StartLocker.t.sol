@@ -25,7 +25,7 @@ contract StartLockerTest is TestBaseCVELocker {
     function test_startLocker_fail_whenLockerIsAlreadyStarted() public {
         cveLocker.startLocker();
 
-        vm.expectRevert(CVELocker.CVELocker__LockerStarted.selector);
+        vm.expectRevert(CVELocker.CVELocker__LockerIsAlreadyStarted.selector);
         cveLocker.startLocker();
     }
 

@@ -27,12 +27,12 @@ contract SetOptionsTermsTest is TestBaseOCVE {
     }
 
     function test_setOptionsTerms_fail_whenStrikePriceIsZero() public {
-        vm.expectRevert(OCVE.OCVE__ParametersareInvalid.selector);
+        vm.expectRevert(OCVE.OCVE__ParametersAreInvalid.selector);
         oCVE.setOptionsTerms(block.timestamp, 0);
     }
 
     function test_setOptionsTerms_fail_whenStartTimestampIsInvalid() public {
-        vm.expectRevert(OCVE.OCVE__ParametersareInvalid.selector);
+        vm.expectRevert(OCVE.OCVE__ParametersAreInvalid.selector);
         oCVE.setOptionsTerms(
             block.timestamp - 1,
             paymentTokenCurrentPrice * _ONE
@@ -50,7 +50,7 @@ contract SetOptionsTermsTest is TestBaseOCVE {
     }
 
     function test_setOptionsTerms_fail_whenStrikePriceIsInvalid() public {
-        vm.expectRevert(OCVE.OCVE__ParametersareInvalid.selector);
+        vm.expectRevert(OCVE.OCVE__ParametersAreInvalid.selector);
         oCVE.setOptionsTerms(block.timestamp, paymentTokenCurrentPrice);
     }
 
