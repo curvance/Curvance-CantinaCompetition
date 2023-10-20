@@ -135,9 +135,6 @@ abstract contract GaugeController is IGaugePool {
         uint256 timestamp
     ) public view returns (uint256) {
         require(startTime != 0, "GaugeController: gauge not started");
-        if (timestamp <= startTime) {
-            return 0;
-        }
         return (timestamp - startTime) / EPOCH_WINDOW;
     }
 

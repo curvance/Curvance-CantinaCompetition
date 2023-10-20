@@ -196,7 +196,8 @@ contract VelodromeStablePositionVault is BasePositionVault {
                 sd.token1,
                 true,
                 totalAmountA,
-                ERC20(sd.token1).balanceOf(address(this)) // totalAmountB
+                ERC20(sd.token1).balanceOf(address(this)), // totalAmountB
+                VelodromeLib.VELODROME_ADD_LIQUIDITY_SLIPPAGE
             );
 
             // deposit assets into velodrome gauge

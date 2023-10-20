@@ -198,6 +198,9 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         if (amount == 0) {
             revert GaugeErrors.InvalidAmount();
         }
+        if (block.timestamp < startTime) {
+            revert GaugeErrors.NotStarted();
+        }
 
         if (
             msg.sender != token || !ILendtroller(lendtroller).isListed(token)
@@ -241,6 +244,9 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         if (amount == 0) {
             revert GaugeErrors.InvalidAmount();
         }
+        if (block.timestamp < startTime) {
+            revert GaugeErrors.NotStarted();
+        }
 
         if (
             msg.sender != token || !ILendtroller(lendtroller).isListed(token)
@@ -279,6 +285,10 @@ contract GaugePool is GaugeController, ReentrancyGuard {
     /// @notice Claim rewards from gauge pool
     /// @param token Pool token address
     function claim(address token) external nonReentrant {
+        if (block.timestamp < startTime) {
+            revert GaugeErrors.NotStarted();
+        }
+
         updatePool(token);
         _calcPending(msg.sender, token);
 
@@ -305,6 +315,10 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         bytes memory params,
         uint256 aux
     ) external nonReentrant {
+        if (block.timestamp < startTime) {
+            revert GaugeErrors.NotStarted();
+        }
+
         updatePool(token);
         _calcPending(msg.sender, token);
 
@@ -349,6 +363,10 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         bytes memory params,
         uint256 aux
     ) external nonReentrant {
+        if (block.timestamp < startTime) {
+            revert GaugeErrors.NotStarted();
+        }
+
         updatePool(token);
         _calcPending(msg.sender, token);
 
@@ -388,6 +406,10 @@ contract GaugePool is GaugeController, ReentrancyGuard {
     /// @notice Update reward variables of the given pool to be up-to-date
     /// @param token Pool token address
     function updatePool(address token) public override {
+        if (block.timestamp < startTime) {
+            revert GaugeErrors.NotStarted();
+        }
+
         uint256 lastRewardTimestamp = poolInfo[token].lastRewardTimestamp;
         if (lastRewardTimestamp == 0) {
             lastRewardTimestamp = startTime;
