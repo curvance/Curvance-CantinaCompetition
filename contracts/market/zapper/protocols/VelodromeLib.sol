@@ -12,6 +12,12 @@ import { IVeloPairFactory } from "contracts/interfaces/external/velodrome/IVeloP
 import { IVeloPool } from "contracts/interfaces/external/velodrome/IVeloPool.sol";
 
 library VelodromeLib {
+    /// ERRORS ///
+
+    error VelodromeLib__ReceivedAmountIsLessThanMinimum();
+
+    /// FUNCTIONS ///
+
     /// @dev Enter Velodrome
     /// @param router The velodrome router address
     /// @param factory The velodrome factory address
@@ -102,10 +108,9 @@ library VelodromeLib {
             lpOutAmount += newLpOutAmount;
         }
 
-        require(
-            lpOutAmount >= lpMinOutAmount,
-            "Received less than lpMinOutAmount"
-        );
+        if (lpOutAmount < lpMinOutAmount) {
+            revert VelodromeLib__ReceivedAmountIsLessThanMinimum();
+        }
     }
 
     /// @dev Exit velodrome

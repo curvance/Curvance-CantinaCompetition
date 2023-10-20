@@ -35,6 +35,11 @@ contract VelodromeVolatileLPAdaptor is BaseOracleAdaptor {
     /// @notice Balancer Stable Pool Adaptor Storage
     mapping(address => AdaptorData) public adaptorData;
 
+    /// ERRORS ///
+
+    error VelodromeVolatileLPAdaptor__AssetIsNotSupported();
+    error VelodromeVolatileLPAdaptor__AssetIsAlreadyAdded();
+
     /// CONSTRUCTOR ///
 
     constructor(
@@ -55,10 +60,9 @@ contract VelodromeVolatileLPAdaptor is BaseOracleAdaptor {
         bool inUSD,
         bool getLower
     ) external view override returns (PriceReturnData memory pData) {
-        require(
-            isSupportedAsset[asset],
-            "VelodromeVolatileLPAdaptor: asset not supported"
-        );
+        if (!isSupportedAsset[asset]) {
+            revert VelodromeVolatileLPAdaptor__AssetIsNotSupported();
+        }
 
         // Read Adaptor storage and grab pool tokens
         AdaptorData memory data = adaptorData[asset];
@@ -109,10 +113,10 @@ contract VelodromeVolatileLPAdaptor is BaseOracleAdaptor {
     /// @dev Should be called before `PriceRotuer:addAssetPriceFeed` is called.
     /// @param asset The address of the bpt to add
     function addAsset(address asset) external onlyElevatedPermissions {
-        require(
-            !isSupportedAsset[asset],
-            "VelodromeVolatileLPAdaptor: asset already supported"
-        );
+        if (isSupportedAsset[asset]) {
+            revert VelodromeVolatileLPAdaptor__AssetIsAlreadyAdded();
+        }
+
         IVeloPair pool = IVeloPair(asset);
         AdaptorData memory data;
         data.token0 = pool.token0();
@@ -128,10 +132,9 @@ contract VelodromeVolatileLPAdaptor is BaseOracleAdaptor {
     /// @notice Removes a supported asset from the adaptor.
     /// @dev Calls back into price router to notify it of its removal
     function removeAsset(address asset) external override onlyDaoPermissions {
-        require(
-            isSupportedAsset[asset],
-            "VelodromeVolatileLPAdaptor: asset not supported"
-        );
+        if (!isSupportedAsset[asset]) {
+            revert VelodromeVolatileLPAdaptor__AssetIsNotSupported();
+        }
 
         // Notify the adaptor to stop supporting the asset
         delete isSupportedAsset[asset];

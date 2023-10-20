@@ -44,6 +44,16 @@ contract PendlePrincipalTokenAdaptor is BaseOracleAdaptor {
     /// @notice Pendle PT adaptor storage
     mapping(address => AdaptorData) public adaptorData;
 
+    /// ERRORS ///
+
+    error PendlePrincipalTokenAdaptor__AssetIsNotSupported();
+    error PendlePrincipalTokenAdaptor__WrongMarket();
+    error PendlePrincipalTokenAdaptor__WrongQuote();
+    error PendlePrincipalTokenAdaptor__TwapDurationIsLessThanMinimum();
+    error PendlePrincipalTokenAdaptor__CallIncreaseCardinality();
+    error PendlePrincipalTokenAdaptor__OldestObservationIsNotSatisfied();
+    error PendlePrincipalTokenAdaptor__QuoteAssetIsNotSupported();
+
     /// CONSTRUCTOR ///
 
     constructor(
@@ -66,10 +76,9 @@ contract PendlePrincipalTokenAdaptor is BaseOracleAdaptor {
         bool inUSD,
         bool getLower
     ) external view override returns (PriceReturnData memory pData) {
-        require(
-            isSupportedAsset[asset],
-            "PendlePrincipalTokenAdaptor: asset not supported"
-        );
+        if (!isSupportedAsset[asset]) {
+            revert PendlePrincipalTokenAdaptor__AssetIsNotSupported();
+        }
 
         AdaptorData memory data = adaptorData[asset];
         pData.inUSD = inUSD;
@@ -101,21 +110,19 @@ contract PendlePrincipalTokenAdaptor is BaseOracleAdaptor {
             .market
             .readTokens();
 
-        require(
-            address(pt) == asset,
-            "PendlePrincipalTokenAdaptor: wrong market"
-        );
+        if (address(pt) != asset) {
+            revert PendlePrincipalTokenAdaptor__WrongMarket();
+        }
+
         // Make sure quote asset is the same as SY `assetInfo.assetAddress`
         (, address assetAddress, ) = sy.assetInfo();
-        require(
-            assetAddress == data.quoteAsset,
-            "PendlePrincipalTokenAdaptor: wrong quote"
-        );
+        if (assetAddress != data.quoteAsset) {
+            revert PendlePrincipalTokenAdaptor__WrongQuote();
+        }
 
-        require(
-            data.twapDuration >= MINIMUM_TWAP_DURATION,
-            "PendlePrincipalTokenAdaptor: minimum twap duration not met"
-        );
+        if (data.twapDuration < MINIMUM_TWAP_DURATION) {
+            revert PendlePrincipalTokenAdaptor__TwapDurationIsLessThanMinimum();
+        }
 
         (
             bool increaseCardinalityRequired,
@@ -123,20 +130,19 @@ contract PendlePrincipalTokenAdaptor is BaseOracleAdaptor {
             bool oldestObservationSatisfied
         ) = ptOracle.getOracleState(address(data.market), data.twapDuration);
 
-        require(
-            !increaseCardinalityRequired,
-            "PendlePrincipalTokenAdaptor: call increase observations cardinality"
-        );
-        require(
-            oldestObservationSatisfied,
-            "PendlePrincipalTokenAdaptor: oldest observation not satisfied"
-        );
-        require(
-            IPriceRouter(centralRegistry.priceRouter()).isSupportedAsset(
+        if (increaseCardinalityRequired) {
+            revert PendlePrincipalTokenAdaptor__CallIncreaseCardinality();
+        }
+        if (!oldestObservationSatisfied) {
+            revert PendlePrincipalTokenAdaptor__OldestObservationIsNotSatisfied();
+        }
+        if (
+            !IPriceRouter(centralRegistry.priceRouter()).isSupportedAsset(
                 data.quoteAsset
-            ),
-            "PendlePrincipalTokenAdaptor: quote asset not supported"
-        );
+            )
+        ) {
+            revert PendlePrincipalTokenAdaptor__QuoteAssetIsNotSupported();
+        }
 
         // Write to extension storage.
         adaptorData[asset] = AdaptorData({
@@ -151,10 +157,9 @@ contract PendlePrincipalTokenAdaptor is BaseOracleAdaptor {
     /// @dev Calls back into price router to notify it of its removal
     /// @param asset The address of the asset to be removed.
     function removeAsset(address asset) external override onlyDaoPermissions {
-        require(
-            isSupportedAsset[asset],
-            "PendlePrincipalTokenAdaptor: asset not supported"
-        );
+        if (!isSupportedAsset[asset]) {
+            revert PendlePrincipalTokenAdaptor__AssetIsNotSupported();
+        }
 
         // Notify the adaptor to stop supporting the asset
         delete isSupportedAsset[asset];

@@ -42,6 +42,11 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
     /// @notice Uniswap adaptor storage
     mapping(address => AdaptorData) public adaptorData;
 
+    /// ERRORS ///
+
+    error UniswapV3Adaptor__AssetIsNotSupported();
+    error UniswapV3Adaptor__SecondsAgoIsLessThanMinimum();
+
     /// CONSTRUCTOR ///
 
     constructor(
@@ -69,10 +74,9 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
         bool inUSD,
         bool getLower
     ) external view override returns (PriceReturnData memory) {
-        require(
-            isSupportedAsset[asset],
-            "UniswapV3Adaptor: asset not supported"
-        );
+        if (!isSupportedAsset[asset]) {
+            revert UniswapV3Adaptor__AssetIsNotSupported();
+        }
 
         AdaptorData memory uniswapFeed = adaptorData[asset];
         address[] memory pools = new address[](1);
@@ -196,10 +200,9 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
         AdaptorData memory parameters
     ) external onlyElevatedPermissions {
         // Verify seconds ago is reasonable.
-        require(
-            parameters.secondsAgo >= MINIMUM_SECONDS_AGO,
-            "UniswapV3Adaptor: seconds ago parameter too small"
-        );
+        if (parameters.secondsAgo < MINIMUM_SECONDS_AGO) {
+            revert UniswapV3Adaptor__SecondsAgoIsLessThanMinimum();
+        }
 
         UniswapV3Pool pool = UniswapV3Pool(parameters.priceSource);
 
@@ -223,10 +226,9 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
     /// @dev Calls back into price router to notify it of its removal
     /// @param asset The address of the asset to be removed.
     function removeAsset(address asset) external override onlyDaoPermissions {
-        require(
-            isSupportedAsset[asset],
-            "UniswapV3Adaptor: asset not supported"
-        );
+        if (!isSupportedAsset[asset]) {
+            revert UniswapV3Adaptor__AssetIsNotSupported();
+        }
 
         // Notify the adaptor to stop supporting the asset
         delete isSupportedAsset[asset];

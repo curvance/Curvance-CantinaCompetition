@@ -5,9 +5,14 @@ import { CommonLib, IERC20 } from "contracts/market/zapper/protocols/CommonLib.s
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 
 import { IBalancerVault } from "contracts/interfaces/external/balancer/IBalancerVault.sol";
-import { IBalancerPool } from "contracts/interfaces/external/balancer/IBalancerPool.sol";
 
 library BalancerLib {
+    /// ERRORS ///
+
+    error BalancerLib__ReceivedAmountIsLessThanMinimum();
+
+    /// FUNCTIONS ///
+
     /// @dev Enter Balancer
     /// @param balancerVault The balancer vault address
     /// @param balancerPoolId The balancer pool ID
@@ -61,10 +66,9 @@ library BalancerLib {
 
         // check min out amount
         lpOutAmount = IERC20(lpToken).balanceOf(address(this));
-        require(
-            lpOutAmount >= lpMinOutAmount,
-            "Received less than lpMinOutAmount"
-        );
+        if (lpOutAmount < lpMinOutAmount) {
+            revert BalancerLib__ReceivedAmountIsLessThanMinimum();
+        }
     }
 
     /// @dev Exit balancer

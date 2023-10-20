@@ -156,7 +156,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
                 // update rewards from lastRewardTimestamp to endTimestamp
                 reward =
                     ((endTimestamp - lastRewardTimestamp) *
-                        epochInfo[lastEpoch].poolWeights[token]) /
+                        _epochInfo[lastEpoch].poolWeights[token]) /
                     EPOCH_WINDOW;
                 accRewardPerShare =
                     accRewardPerShare +
@@ -170,7 +170,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
             // update rewards from lastRewardTimestamp to current timestamp
             reward =
                 ((block.timestamp - lastRewardTimestamp) *
-                    epochInfo[lastEpoch].poolWeights[token]) /
+                    _epochInfo[lastEpoch].poolWeights[token]) /
                 EPOCH_WINDOW;
             accRewardPerShare =
                 accRewardPerShare +
@@ -416,7 +416,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
             // update rewards from lastRewardTimestamp to endTimestamp
             reward =
                 ((endTimestamp - lastRewardTimestamp) *
-                    epochInfo[lastEpoch].poolWeights[token]) /
+                    _epochInfo[lastEpoch].poolWeights[token]) /
                 EPOCH_WINDOW;
             accRewardPerShare =
                 accRewardPerShare +
@@ -430,7 +430,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         // update rewards from lastRewardTimestamp to current timestamp
         reward =
             ((block.timestamp - lastRewardTimestamp) *
-                epochInfo[lastEpoch].poolWeights[token]) /
+                _epochInfo[lastEpoch].poolWeights[token]) /
             EPOCH_WINDOW;
         accRewardPerShare =
             accRewardPerShare +

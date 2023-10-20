@@ -124,6 +124,7 @@ contract Lendtroller is ILendtroller, ERC165 {
 
     /// ERRORS ///
 
+    error Lendtroller__Unauthorized();
     error Lendtroller__TokenNotListed();
     error Lendtroller__TokenAlreadyListed();
     error Lendtroller__Paused();
@@ -141,32 +142,28 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// MODIFIERS ///
 
     modifier onlyDaoPermissions() {
-        require(
-            centralRegistry.hasDaoPermissions(msg.sender),
-            "Lendtroller: UNAUTHORIZED"
-        );
+        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
+            revert Lendtroller__Unauthorized();
+        }
         _;
     }
 
     modifier onlyElevatedPermissions() {
-        require(
-            centralRegistry.hasElevatedPermissions(msg.sender),
-            "Lendtroller: UNAUTHORIZED"
-        );
+        if (!centralRegistry.hasElevatedPermissions(msg.sender)) {
+            revert Lendtroller__Unauthorized();
+        }
         _;
     }
 
     modifier onlyAuthorizedPermissions(bool state) {
         if (state) {
-            require(
-                centralRegistry.hasDaoPermissions(msg.sender),
-                "Lendtroller: UNAUTHORIZED"
-            );
+            if (!centralRegistry.hasDaoPermissions(msg.sender)) {
+                revert Lendtroller__Unauthorized();
+            }
         } else {
-            require(
-                centralRegistry.hasElevatedPermissions(msg.sender),
-                "Lendtroller: UNAUTHORIZED"
-            );
+            if (!centralRegistry.hasElevatedPermissions(msg.sender)) {
+                revert Lendtroller__Unauthorized();
+            }
         }
         _;
     }
