@@ -2,7 +2,7 @@
 pragma solidity ^0.8.17;
 
 import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
-import { CommonLib } from "contracts/market/zapper/protocols/CommonLib.sol";
+import { CommonLib, IERC20 } from "contracts/market/zapper/protocols/CommonLib.sol";
 import { CurveLib } from "contracts/market/zapper/protocols/CurveLib.sol";
 import { BalancerLib } from "contracts/market/zapper/protocols/BalancerLib.sol";
 import { VelodromeLib } from "contracts/market/zapper/protocols/VelodromeLib.sol";
@@ -14,6 +14,7 @@ import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 import { IWETH } from "contracts/interfaces/IWETH.sol";
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+import { IVeloPair } from "contracts/interfaces/external/velodrome/IVeloPair.sol";
 
 contract Zapper is ReentrancyGuard {
     /// TYPES ///
@@ -265,29 +266,39 @@ contract Zapper is ReentrancyGuard {
         address factory,
         address recipient
     ) external payable nonReentrant returns (uint256 cTokenOutAmount) {
-        // swap input token for underlyings
-        _swapForUnderlyings(
-            zapData.inputToken,
-            zapData.inputAmount,
-            tokenSwaps,
-            zapData.depositInputAsWETH
-        );
-
-        // enter velodrome
-        uint256 lpOutAmount = VelodromeLib.enterVelodrome(
-            router,
-            factory,
-            zapData.outputToken,
-            zapData.minimumOut
-        );
-
-        // enter curvance
-        cTokenOutAmount = _enterCurvance(
-            cToken,
-            zapData.outputToken,
-            lpOutAmount,
-            recipient
-        );
+        {
+            // swap input token for underlyings
+            _swapForUnderlyings(
+                zapData.inputToken,
+                zapData.inputAmount,
+                tokenSwaps,
+                zapData.depositInputAsWETH
+            );
+        }
+        {
+            // enter velodrome
+            cTokenOutAmount = VelodromeLib.enterVelodrome(
+                router,
+                factory,
+                zapData.outputToken,
+                CommonLib.getTokenBalance(
+                    IVeloPair(zapData.outputToken).token0()
+                ),
+                CommonLib.getTokenBalance(
+                    IVeloPair(zapData.outputToken).token1()
+                ),
+                zapData.minimumOut
+            );
+        }
+        {
+            // enter curvance
+            cTokenOutAmount = _enterCurvance(
+                cToken,
+                zapData.outputToken,
+                cTokenOutAmount,
+                recipient
+            );
+        }
     }
 
     function velodromeOut(
