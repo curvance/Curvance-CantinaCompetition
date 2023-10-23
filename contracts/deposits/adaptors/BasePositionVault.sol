@@ -409,9 +409,13 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         SafeTransferLib.safeTransfer(asset(), receiver, assets);
     }
 
+    function _migrationStart(address) internal virtual {}
+
     function migrateStart(
         address newVault
     ) public onlyCToken nonReentrant returns (bytes memory) {
+        _migrationStart(newVault);
+
         // withdraw all assets (including pending rewards)
         uint256 assets = _getRealPositionBalance();
         uint256 shares = balanceOf(msg.sender);

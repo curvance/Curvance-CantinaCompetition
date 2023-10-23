@@ -329,4 +329,19 @@ contract AuraPositionVault is BasePositionVault {
     {
         return strategyData.rewarder.balanceOf(address(this));
     }
+
+    /// @notice pre calculation logic for migration start
+    /// @param newVault The new vault address
+    function _migrationStart(address newVault) internal override {
+        // claim aura rewards
+        strategyData.rewarder.getReward(address(this), true);
+        uint256 numRewardTokens = strategyData.rewardTokens.length;
+        for (uint256 i; i < numRewardTokens; ++i) {
+            SafeTransferLib.safeApprove(
+                strategyData.rewardTokens[i],
+                newVault,
+                type(uint256).max
+            );
+        }
+    }
 }
