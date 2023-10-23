@@ -250,7 +250,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     function deposit(
         uint256 assets,
         address receiver
-    ) public override onlyCToken returns (uint256 shares) {
+    ) public override onlyCToken nonReentrant returns (uint256 shares) {
         if (_vaultIsActive == 1) {
             _revert(VAULT_NOT_ACTIVE_SELECTOR);
         }
@@ -296,7 +296,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     function mint(
         uint256 shares,
         address receiver
-    ) public override onlyCToken returns (uint256 assets) {
+    ) public override onlyCToken nonReentrant returns (uint256 assets) {
         if (_vaultIsActive == 1) {
             _revert(VAULT_NOT_ACTIVE_SELECTOR);
         }
@@ -341,7 +341,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         uint256 assets,
         address receiver,
         address owner
-    ) public override onlyCToken returns (uint256 shares) {
+    ) public override onlyCToken nonReentrant returns (uint256 shares) {
         // Save _totalAssets and pendingRewards to memory
         uint256 pending = _calculatePendingRewards();
         uint256 ta = _totalAssets + pending;
@@ -376,7 +376,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         uint256 shares,
         address receiver,
         address owner
-    ) public override onlyCToken returns (uint256 assets) {
+    ) public override onlyCToken nonReentrant returns (uint256 assets) {
         // Save _totalAssets and pendingRewards to memory
         uint256 pending = _calculatePendingRewards();
         uint256 ta = _totalAssets + pending;
