@@ -146,22 +146,23 @@ contract AuraPositionVault is BasePositionVault {
     }
 
     function reQueryUnderlyingTokens() external {
-        uint256 numUnderlyingTokens = strategyData.underlyingTokens.length;
+        address[] memory underlyingTokens = strategyData.underlyingTokens;
+        uint256 numUnderlyingTokens = underlyingTokens.length;
         for (uint256 i = 0; i < numUnderlyingTokens; ) {
             unchecked {
-                isUnderlyingToken[strategyData.underlyingTokens[i++]] = false;
+                isUnderlyingToken[underlyingTokens[i++]] = false;
             }
         }
 
-        (address[] memory underlyingTokens, , ) = strategyData
-            .balancerVault
-            .getPoolTokens(strategyData.balancerPoolId);
+        (underlyingTokens, , ) = strategyData.balancerVault.getPoolTokens(
+            strategyData.balancerPoolId
+        );
         strategyData.underlyingTokens = underlyingTokens;
 
-        numUnderlyingTokens = strategyData.underlyingTokens.length;
+        numUnderlyingTokens = underlyingTokens.length;
         for (uint256 i = 0; i < numUnderlyingTokens; ) {
             unchecked {
-                isUnderlyingToken[strategyData.underlyingTokens[i++]] = true;
+                isUnderlyingToken[underlyingTokens[i++]] = true;
             }
         }
     }
