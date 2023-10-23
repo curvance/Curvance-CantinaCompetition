@@ -200,21 +200,22 @@ library VelodromeLib {
         bool stable
     ) internal view returns (uint256) {
         uint256 swapFee = IVeloPairFactory(factory).getFee(lpToken, stable);
-        uint256 swapFeeFactor = 10000 - swapFee;
         if (stable) {
+            uint256 a = (((amountA * 10000) / (10000 - swapFee)) * 1e18) /
+                decimalsA;
+
             uint256 x = (reserveA * 1e18) / decimalsA;
             uint256 y = (reserveB * 1e18) / decimalsB;
             uint256 x2 = (x * x) / 1e18;
             uint256 y2 = (y * y) / 1e18;
             uint256 p = (y * (((x2 * 3 + y2) * 1e18) / (y2 * 3 + x2))) / x;
 
-            uint256 a = (((amountA * 10000) / swapFeeFactor) * 1e18) /
-                decimalsA;
             uint256 num = a * y;
             uint256 den = ((a + x) * p) / 1e18 + y;
 
             return ((num / den) * decimalsA) / 1e18;
         } else {
+            uint256 swapFeeFactor = 10000 - swapFee;
             uint256 a = (10000 + swapFeeFactor) * reserveA;
             uint256 b = amountA * 10000 * reserveA * 4 * swapFeeFactor;
             uint256 c = Math.sqrt(a * a + b);

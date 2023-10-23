@@ -41,6 +41,8 @@ contract GaugePool is GaugeController, ReentrancyGuard {
     ChildGaugePool[] public childGauges;
     mapping(address => PoolInfo) public poolInfo; // token => pool info
     mapping(address => mapping(address => UserInfo)) public userInfo; // token => user => info
+    uint256 public firstDeposit;
+    uint256 public unallocatedRewards;
 
     /// EVENTS ///
 
@@ -214,6 +216,16 @@ contract GaugePool is GaugeController, ReentrancyGuard {
 
         userInfo[token][user].amount += amount;
         poolInfo[token].totalAmount += amount;
+
+        if (firstDeposit == 0) {
+            // if first deposit, the new rewards from gauge start to this point will be unallocated rewards
+            firstDeposit = block.timestamp;
+            updatePool(token);
+            unallocatedRewards =
+                (poolInfo[token].accRewardPerShare *
+                    poolInfo[token].totalAmount) /
+                PRECISION;
+        }
 
         _calcDebt(user, token);
 
@@ -399,6 +411,13 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         _calcDebt(msg.sender, token);
 
         emit Claim(msg.sender, token, rewards);
+    }
+
+    function claimUnallocatedRewards(
+        address recipient
+    ) external onlyDaoPermissions {
+        SafeTransferLib.safeTransfer(cve, recipient, unallocatedRewards);
+        unallocatedRewards = 0;
     }
 
     /// PUBLIC FUNCTIONS ///
