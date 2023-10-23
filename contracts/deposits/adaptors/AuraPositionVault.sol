@@ -145,6 +145,27 @@ contract AuraPositionVault is BasePositionVault {
         }
     }
 
+    function reQueryUnderlyingTokens() external {
+        uint256 numUnderlyingTokens = strategyData.underlyingTokens.length;
+        for (uint256 i = 0; i < numUnderlyingTokens; ) {
+            unchecked {
+                isUnderlyingToken[strategyData.underlyingTokens[i++]] = false;
+            }
+        }
+
+        (address[] memory underlyingTokens, , ) = strategyData
+            .balancerVault
+            .getPoolTokens(strategyData.balancerPoolId);
+        strategyData.underlyingTokens = underlyingTokens;
+
+        numUnderlyingTokens = strategyData.underlyingTokens.length;
+        for (uint256 i = 0; i < numUnderlyingTokens; ) {
+            unchecked {
+                isUnderlyingToken[strategyData.underlyingTokens[i++]] = true;
+            }
+        }
+    }
+
     /// PUBLIC FUNCTIONS ///
 
     // REWARD AND HARVESTING LOGIC
