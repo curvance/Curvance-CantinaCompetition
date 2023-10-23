@@ -145,6 +145,28 @@ contract AuraPositionVault is BasePositionVault {
         }
     }
 
+    function reQueryUnderlyingTokens() external {
+        address[] memory underlyingTokens = strategyData.underlyingTokens;
+        uint256 numUnderlyingTokens = underlyingTokens.length;
+        for (uint256 i = 0; i < numUnderlyingTokens; ) {
+            unchecked {
+                isUnderlyingToken[underlyingTokens[i++]] = false;
+            }
+        }
+
+        (underlyingTokens, , ) = strategyData.balancerVault.getPoolTokens(
+            strategyData.balancerPoolId
+        );
+        strategyData.underlyingTokens = underlyingTokens;
+
+        numUnderlyingTokens = underlyingTokens.length;
+        for (uint256 i = 0; i < numUnderlyingTokens; ) {
+            unchecked {
+                isUnderlyingToken[underlyingTokens[i++]] = true;
+            }
+        }
+    }
+
     /// PUBLIC FUNCTIONS ///
 
     // REWARD AND HARVESTING LOGIC
@@ -161,10 +183,12 @@ contract AuraPositionVault is BasePositionVault {
             _revert(VAULT_NOT_ACTIVE_SELECTOR);
         }
 
-        uint256 pending = _calculatePendingRewards();
-        if (pending > 0) {
-            // claim vested rewards
-            _vestRewards(_totalAssets + pending);
+        {
+            uint256 pending = _calculatePendingRewards();
+            if (pending > 0) {
+                // claim vested rewards
+                _vestRewards(_totalAssets + pending);
+            }
         }
 
         // can only harvest once previous reward period is done
@@ -175,18 +199,15 @@ contract AuraPositionVault is BasePositionVault {
             // claim aura rewards
             sd.rewarder.getReward(address(this), true);
 
-            SwapperLib.Swap[] memory swapDataArray = abi.decode(
-                data,
-                (SwapperLib.Swap[])
-            );
-
-            uint256 numRewardTokens = sd.rewardTokens.length;
-            address rewardToken;
-            uint256 rewardAmount;
-            uint256 protocolFee;
+            (SwapperLib.Swap[] memory swapDataArray, uint256 minLPAmount) = abi
+                .decode(data, (SwapperLib.Swap[], uint256));
 
             {
                 // Use scoping to avoid stack too deep
+                uint256 numRewardTokens = sd.rewardTokens.length;
+                address rewardToken;
+                uint256 rewardAmount;
+                uint256 protocolFee;
                 // Cache Central registry values so we dont pay gas multiple times
                 address feeAccumulator = centralRegistry.feeAccumulator();
                 uint256 harvestFee = centralRegistry.protocolHarvestFee();
@@ -261,7 +282,7 @@ contract AuraPositionVault is BasePositionVault {
                                 .JoinKind
                                 .EXACT_TOKENS_IN_FOR_BPT_OUT,
                             maxAmountsIn,
-                            1
+                            minLPAmount
                         ),
                         false // do not use internal balances
                     )
@@ -273,11 +294,9 @@ contract AuraPositionVault is BasePositionVault {
             _deposit(yield);
 
             // update vesting info
-            // Cache vest period so we do not need to load it twice
-            uint256 _vestPeriod = vestPeriod;
             _vaultData = _packVaultData(
-                yield.mulDivDown(EXP_SCALE, _vestPeriod),
-                block.timestamp + _vestPeriod
+                yield.mulDivDown(EXP_SCALE, vestPeriod),
+                block.timestamp + vestPeriod
             );
 
             emit Harvest(yield);
@@ -310,5 +329,20 @@ contract AuraPositionVault is BasePositionVault {
         returns (uint256)
     {
         return strategyData.rewarder.balanceOf(address(this));
+    }
+
+    /// @notice pre calculation logic for migration start
+    /// @param newVault The new vault address
+    function _migrationStart(address newVault) internal override {
+        // claim aura rewards
+        strategyData.rewarder.getReward(address(this), true);
+        uint256 numRewardTokens = strategyData.rewardTokens.length;
+        for (uint256 i; i < numRewardTokens; ++i) {
+            SafeTransferLib.safeApprove(
+                strategyData.rewardTokens[i],
+                newVault,
+                type(uint256).max
+            );
+        }
     }
 }

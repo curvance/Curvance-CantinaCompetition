@@ -81,6 +81,12 @@ contract VelodromeStablePositionVault is BasePositionVault {
         // Query underlying token data from the pool
         strategyData.token0 = IVeloPool(_asset).token0();
         strategyData.token1 = IVeloPool(_asset).token1();
+        // make sure token0 is VELO if one of underlying tokens is VELO
+        // so that it can be used properly in harvest function.
+        if (strategyData.token1 == address(rewardToken)) {
+            strategyData.token1 = strategyData.token0;
+            strategyData.token0 = address(rewardToken);
+        }
         strategyData.decimalsA = 10 ** ERC20(strategyData.token0).decimals();
         strategyData.decimalsB = 10 ** ERC20(strategyData.token1).decimals();
 
@@ -160,6 +166,7 @@ contract VelodromeStablePositionVault is BasePositionVault {
                 }
             }
 
+            // token0 is VELO of one of underlying tokens is VELO
             // swap token0 to LP Token underlying tokens
             uint256 totalAmountA = ERC20(sd.token0).balanceOf(address(this));
 
@@ -250,5 +257,17 @@ contract VelodromeStablePositionVault is BasePositionVault {
         returns (uint256)
     {
         return strategyData.gauge.balanceOf(address(this));
+    }
+
+    /// @notice pre calculation logic for migration start
+    /// @param newVault The new vault address
+    function _migrationStart(address newVault) internal override {
+        // claim velodrome rewards
+        strategyData.gauge.getReward(address(this));
+        SafeTransferLib.safeApprove(
+            address(rewardToken),
+            newVault,
+            type(uint256).max
+        );
     }
 }

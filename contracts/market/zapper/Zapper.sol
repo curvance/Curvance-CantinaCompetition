@@ -14,6 +14,7 @@ import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 import { IWETH } from "contracts/interfaces/IWETH.sol";
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+import { IVeloPair } from "contracts/interfaces/external/velodrome/IVeloPair.sol";
 
 contract Zapper is ReentrancyGuard {
     /// TYPES ///
@@ -272,20 +273,20 @@ contract Zapper is ReentrancyGuard {
             tokenSwaps,
             zapData.depositInputAsWETH
         );
-
         // enter velodrome
-        uint256 lpOutAmount = VelodromeLib.enterVelodrome(
+        cTokenOutAmount = VelodromeLib.enterVelodrome(
             router,
             factory,
             zapData.outputToken,
+            CommonLib.getTokenBalance(IVeloPair(zapData.outputToken).token0()),
+            CommonLib.getTokenBalance(IVeloPair(zapData.outputToken).token1()),
             zapData.minimumOut
         );
-
         // enter curvance
         cTokenOutAmount = _enterCurvance(
             cToken,
             zapData.outputToken,
-            lpOutAmount,
+            cTokenOutAmount,
             recipient
         );
     }

@@ -176,10 +176,8 @@ contract ConvexPositionVault is BasePositionVault {
             // claim convex rewards
             sd.rewarder.getReward(address(this), true);
 
-            SwapperLib.Swap[] memory swapDataArray = abi.decode(
-                data,
-                (SwapperLib.Swap[])
-            );
+            (SwapperLib.Swap[] memory swapDataArray, uint256 minLPAmount) = abi
+                .decode(data, (SwapperLib.Swap[], uint256));
 
             uint256 numRewardTokens = sd.rewardTokens.length;
             address rewardToken;
@@ -223,7 +221,7 @@ contract ConvexPositionVault is BasePositionVault {
                 }
             }
 
-            _addLiquidityToCurve();
+            _addLiquidityToCurve(minLPAmount);
 
             // deposit assets into convex
             yield = ERC20(asset()).balanceOf(address(this));
@@ -275,7 +273,7 @@ contract ConvexPositionVault is BasePositionVault {
     }
 
     /// @notice Adds underlying tokens to the vaults Curve 2Pool LP
-    function _addLiquidityToCurve() internal {
+    function _addLiquidityToCurve(uint256 minLPAmount) internal {
         address underlyingToken;
         uint256[2] memory amounts;
 
@@ -301,7 +299,25 @@ contract ConvexPositionVault is BasePositionVault {
         }
 
         if (liquidityAvailable) {
-            strategyData.curvePool.add_liquidity{ value: value }(amounts, 0);
+            strategyData.curvePool.add_liquidity{ value: value }(
+                amounts,
+                minLPAmount
+            );
+        }
+    }
+
+    /// @notice pre calculation logic for migration start
+    /// @param newVault The new vault address
+    function _migrationStart(address newVault) internal override {
+        // claim convex rewards
+        strategyData.rewarder.getReward(address(this), true);
+        uint256 numRewardTokens = strategyData.rewardTokens.length;
+        for (uint256 i; i < numRewardTokens; ++i) {
+            SafeTransferLib.safeApprove(
+                strategyData.rewardTokens[i],
+                newVault,
+                type(uint256).max
+            );
         }
     }
 }
