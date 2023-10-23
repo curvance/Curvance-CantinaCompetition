@@ -266,39 +266,29 @@ contract Zapper is ReentrancyGuard {
         address factory,
         address recipient
     ) external payable nonReentrant returns (uint256 cTokenOutAmount) {
-        {
-            // swap input token for underlyings
-            _swapForUnderlyings(
-                zapData.inputToken,
-                zapData.inputAmount,
-                tokenSwaps,
-                zapData.depositInputAsWETH
-            );
-        }
-        {
-            // enter velodrome
-            cTokenOutAmount = VelodromeLib.enterVelodrome(
-                router,
-                factory,
-                zapData.outputToken,
-                CommonLib.getTokenBalance(
-                    IVeloPair(zapData.outputToken).token0()
-                ),
-                CommonLib.getTokenBalance(
-                    IVeloPair(zapData.outputToken).token1()
-                ),
-                zapData.minimumOut
-            );
-        }
-        {
-            // enter curvance
-            cTokenOutAmount = _enterCurvance(
-                cToken,
-                zapData.outputToken,
-                cTokenOutAmount,
-                recipient
-            );
-        }
+        // swap input token for underlyings
+        _swapForUnderlyings(
+            zapData.inputToken,
+            zapData.inputAmount,
+            tokenSwaps,
+            zapData.depositInputAsWETH
+        );
+        // enter velodrome
+        cTokenOutAmount = VelodromeLib.enterVelodrome(
+            router,
+            factory,
+            zapData.outputToken,
+            CommonLib.getTokenBalance(IVeloPair(zapData.outputToken).token0()),
+            CommonLib.getTokenBalance(IVeloPair(zapData.outputToken).token1()),
+            zapData.minimumOut
+        );
+        // enter curvance
+        cTokenOutAmount = _enterCurvance(
+            cToken,
+            zapData.outputToken,
+            cTokenOutAmount,
+            recipient
+        );
     }
 
     function velodromeOut(
