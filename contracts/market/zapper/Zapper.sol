@@ -2,7 +2,7 @@
 pragma solidity ^0.8.17;
 
 import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
-import { CommonLib, IERC20 } from "contracts/market/zapper/protocols/CommonLib.sol";
+import { CommonLib } from "contracts/market/zapper/protocols/CommonLib.sol";
 import { CurveLib } from "contracts/market/zapper/protocols/CurveLib.sol";
 import { BalancerLib } from "contracts/market/zapper/protocols/BalancerLib.sol";
 import { VelodromeLib } from "contracts/market/zapper/protocols/VelodromeLib.sol";
