@@ -23,7 +23,7 @@ contract CTokenRescueTokenTest is TestBaseCToken {
     function test_cTokenRescueToken_fail_whenETHAmountExceedsBalance() public {
         uint256 balance = address(cBALRETH).balance;
 
-        vm.expectRevert(0xb12d13eb);
+        vm.expectRevert(SafeTransferLib.ETHTransferFailed.selector);
         cBALRETH.rescueToken(address(0), balance + 1);
     }
 
