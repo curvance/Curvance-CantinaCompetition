@@ -25,12 +25,10 @@ contract rescueTokenTest is TestBaseVeCVE {
         veCVE.rescueToken(address(cve), 100);
     }
 
-    function test_rescueToken_fail_whenETHAmountExceedsBalance()
-        public
-    {
+    function test_rescueToken_fail_whenETHAmountExceedsBalance() public {
         uint256 balance = address(veCVE).balance;
 
-        vm.expectRevert(0xb12d13eb);
+        vm.expectRevert(SafeTransferLib.ETHTransferFailed.selector);
         veCVE.rescueToken(address(0), balance + 1);
     }
 

@@ -13,34 +13,26 @@ contract OCVERescueTokenTest is TestBaseOCVE {
         deal(_USDC_ADDRESS, address(oCVE), 1e6);
     }
 
-    function test_oCVERescueToken_fail_whenCallerIsNotAuthorized()
-        public
-    {
+    function test_oCVERescueToken_fail_whenCallerIsNotAuthorized() public {
         vm.prank(address(1));
 
         vm.expectRevert(OCVE.OCVE__Unauthorized.selector);
         oCVE.rescueToken(_USDC_ADDRESS, 100);
     }
 
-    function test_oCVERescueToken_fail_whenETHAmountExceedsBalance()
-        public
-    {
+    function test_oCVERescueToken_fail_whenETHAmountExceedsBalance() public {
         uint256 balance = address(oCVE).balance;
 
-        vm.expectRevert(0xb12d13eb);
+        vm.expectRevert(SafeTransferLib.ETHTransferFailed.selector);
         oCVE.rescueToken(address(0), balance + 1);
     }
 
-    function test_oCVERescueToken_fail_whenTokenIsTransferCVE()
-        public
-    {
+    function test_oCVERescueToken_fail_whenTokenIsTransferCVE() public {
         vm.expectRevert(OCVE.OCVE__TransferError.selector);
         oCVE.rescueToken(address(cve), 100);
     }
 
-    function test_oCVERescueToken_fail_whenTokenAmountExceedsBalance()
-        public
-    {
+    function test_oCVERescueToken_fail_whenTokenAmountExceedsBalance() public {
         uint256 balance = usdc.balanceOf(address(oCVE));
 
         vm.expectRevert(SafeTransferLib.TransferFailed.selector);
