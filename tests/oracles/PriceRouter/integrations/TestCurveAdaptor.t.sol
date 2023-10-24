@@ -1,14 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.17;
 
+import { TestBasePriceRouter } from "../TestBasePriceRouter.sol";
 import { CurveAdaptor } from "contracts/oracles/adaptors/curve/CurveAdaptor.sol";
 import { CurveReentrancyCheck } from "contracts/oracles/adaptors/curve/CurveReentrancyCheck.sol";
-import { IVault } from "contracts/oracles/adaptors/balancer/BalancerPoolAdaptor.sol";
 import { ChainlinkAdaptor } from "contracts/oracles/adaptors/chainlink/ChainlinkAdaptor.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { VelodromeLib } from "contracts/market/zapper/protocols/VelodromeLib.sol";
-import { IERC20 } from "contracts/interfaces/IERC20.sol";
-import { TestBasePriceRouter } from "../TestBasePriceRouter.sol";
+import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
 
 contract TestCurveAdaptor is TestBasePriceRouter {
     address private CHAINLINK_PRICE_FEED_ETH =
@@ -28,9 +26,7 @@ contract TestCurveAdaptor is TestBasePriceRouter {
         _deployCentralRegistry();
         _deployPriceRouter();
 
-        adapter = new CurveAdaptor(
-            ICentralRegistry(address(centralRegistry))
-        );
+        adapter = new CurveAdaptor(ICentralRegistry(address(centralRegistry)));
 
         adapter.setReentrancyVerificationConfig(
             ETH_STETH,
@@ -42,7 +38,7 @@ contract TestCurveAdaptor is TestBasePriceRouter {
     function testRevertWhenUnderlyingAssetPriceNotSet() public {
         adapter.addAsset(ETH_STETH, ETH_STETH);
 
-        vm.expectRevert(0xe4558fac);
+        vm.expectRevert(PriceRouter.PriceRouter__NotSupported.selector);
         priceRouter.getPrice(ETH_STETH, true, false);
     }
 
@@ -75,7 +71,7 @@ contract TestCurveAdaptor is TestBasePriceRouter {
         testReturnsCorrectPrice();
         adapter.removeAsset(ETH_STETH);
 
-        vm.expectRevert(0xe4558fac);
+        vm.expectRevert(PriceRouter.PriceRouter__NotSupported.selector);
         priceRouter.getPrice(ETH_STETH, true, false);
     }
 }

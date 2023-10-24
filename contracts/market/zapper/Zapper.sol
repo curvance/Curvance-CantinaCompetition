@@ -376,8 +376,8 @@ contract Zapper is ReentrancyGuard {
     /// @param cToken The curvance deposit token address
     /// @param lpToken The Curve LP token address
     /// @param amount The amount to deposit
-    /// @param recipient The recipient adress
-    /// @return out The output amount
+    /// @param recipient The recipient address
+    /// @return The output amount
     function _enterCurvance(
         address cToken,
         address lpToken,

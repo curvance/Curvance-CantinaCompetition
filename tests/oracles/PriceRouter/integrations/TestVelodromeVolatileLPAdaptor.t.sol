@@ -45,7 +45,7 @@ contract TestVelodromeVolatileLPAdapter is TestBasePriceRouter {
     }
 
     function testRevertWhenUnderlyingChainAssetPriceNotSet() public {
-        vm.expectRevert(0xe4558fac);
+        vm.expectRevert(PriceRouter.PriceRouter__NotSupported.selector);
         priceRouter.getPrice(WETH_USDC, true, false);
     }
 
@@ -72,7 +72,7 @@ contract TestVelodromeVolatileLPAdapter is TestBasePriceRouter {
         testReturnsCorrectPrice();
 
         adapter.removeAsset(WETH_USDC);
-        vm.expectRevert(0xe4558fac);
+        vm.expectRevert(PriceRouter.PriceRouter__NotSupported.selector);
         priceRouter.getPrice(WETH_USDC, true, false);
     }
 

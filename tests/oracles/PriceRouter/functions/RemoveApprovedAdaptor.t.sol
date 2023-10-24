@@ -15,7 +15,7 @@ contract RemoveApprovedAdaptorTest is TestBasePriceRouter {
     }
 
     function test_removeApprovedAdaptor_fail_whenAdaptorDoesNotExist() public {
-        vm.expectRevert(0xebd2e1ff);
+        vm.expectRevert(PriceRouter.PriceRouter__InvalidParameter.selector);
         priceRouter.removeApprovedAdaptor(address(chainlinkAdaptor));
     }
 

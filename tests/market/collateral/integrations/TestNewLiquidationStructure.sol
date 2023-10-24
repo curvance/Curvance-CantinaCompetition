@@ -150,7 +150,9 @@ contract TestNewLiquidationStructure is TestBaseMarket {
             )
         );
 
-        vm.expectRevert(0x751bba8d);
+        vm.expectRevert(
+            Lendtroller.Lendtroller__InsufficientShortfall.selector
+        );
         dDAI.liquidateExact(user1, 250 ether, IMToken(address(cBALRETH)));
     }
 

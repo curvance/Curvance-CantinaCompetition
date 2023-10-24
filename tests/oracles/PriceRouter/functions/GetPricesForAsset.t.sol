@@ -7,7 +7,7 @@ import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
 
 contract GetPricesForAssetTest is TestBasePriceRouter {
     function test_getPricesForAsset_fail_whenNoFeedsAvailable() public {
-        vm.expectRevert(0xe4558fac);
+        vm.expectRevert(PriceRouter.PriceRouter__NotSupported.selector);
         priceRouter.getPricesForAsset(_USDC_ADDRESS, true);
     }
 
