@@ -256,9 +256,10 @@ contract ChildGaugePool is ReentrancyGuard {
     function claimUnallocatedRewards() external onlyDaoPermissions {
         SafeTransferLib.safeTransfer(
             rewardToken,
-            msg.sender,
+            centralRegistry.daoAddress(),
             unallocatedRewards
         );
+        
         unallocatedRewards = 0;
     }
 
