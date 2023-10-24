@@ -332,7 +332,9 @@ contract AuraPositionVault is BasePositionVault {
 
     /// @notice pre calculation logic for migration start
     /// @param newVault The new vault address
-    function _migrationStart(address newVault) internal override {
+    function _migrationStart(
+        address newVault
+    ) internal override returns (bytes memory) {
         // claim aura rewards
         strategyData.rewarder.getReward(address(this), true);
         uint256 numRewardTokens = strategyData.rewardTokens.length;
