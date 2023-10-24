@@ -9,14 +9,14 @@ contract PriceRouterDeploymentTest is TestBasePriceRouter {
     function test_priceRouterDeployment_fail_whenCentralRegistryIsInvalid()
         public
     {
-        vm.expectRevert(0xebd2e1ff);
+        vm.expectRevert(PriceRouter.PriceRouter__InvalidParameter.selector);
         new PriceRouter(ICentralRegistry(address(1)), _CHAINLINK_ETH_USD);
     }
 
     function test_priceRouterDeployment_fail_whenEthUsdFeedIsZeroAddress()
         public
     {
-        vm.expectRevert(0xebd2e1ff);
+        vm.expectRevert(PriceRouter.PriceRouter__InvalidParameter.selector);
         new PriceRouter(
             ICentralRegistry(address(centralRegistry)),
             address(0)

@@ -12,46 +12,38 @@ contract NotifyFeedRemovalTest is TestBasePriceRouter {
         priceRouter.notifyFeedRemoval(_USDC_ADDRESS);
     }
 
-    function test_notifyFeedRemoval_fail_whenNoFeedsAvailable()
-        public
-    {
+    function test_notifyFeedRemoval_fail_whenNoFeedsAvailable() public {
         priceRouter.addApprovedAdaptor(address(chainlinkAdaptor));
 
         vm.prank(address(chainlinkAdaptor));
 
-        vm.expectRevert(0xe4558fac);
+        vm.expectRevert(PriceRouter.PriceRouter__NotSupported.selector);
         priceRouter.notifyFeedRemoval(_USDC_ADDRESS);
     }
 
-    function test_notifyFeedRemoval_fail_whenSingleFeedDoesNotExist()
-        public
-    {
+    function test_notifyFeedRemoval_fail_whenSingleFeedDoesNotExist() public {
         _addSinglePriceFeed();
 
         priceRouter.addApprovedAdaptor(address(dualChainlinkAdaptor));
 
         vm.prank(address(dualChainlinkAdaptor));
 
-        vm.expectRevert(0xe4558fac);
+        vm.expectRevert(PriceRouter.PriceRouter__NotSupported.selector);
         priceRouter.notifyFeedRemoval(_USDC_ADDRESS);
     }
 
-    function test_notifyFeedRemoval_fail_whenDualFeedDoesNotExist()
-        public
-    {
+    function test_notifyFeedRemoval_fail_whenDualFeedDoesNotExist() public {
         _addDualPriceFeed();
 
         priceRouter.addApprovedAdaptor(address(1));
 
         vm.prank(address(1));
 
-        vm.expectRevert(0xe4558fac);
+        vm.expectRevert(PriceRouter.PriceRouter__NotSupported.selector);
         priceRouter.notifyFeedRemoval(_USDC_ADDRESS);
     }
 
-    function test_notifyFeedRemoval_success_whenRemoveSingleFeed()
-        public
-    {
+    function test_notifyFeedRemoval_success_whenRemoveSingleFeed() public {
         _addSinglePriceFeed();
 
         assertEq(
@@ -66,9 +58,7 @@ contract NotifyFeedRemovalTest is TestBasePriceRouter {
         priceRouter.assetPriceFeeds(_USDC_ADDRESS, 0);
     }
 
-    function test_notifyFeedRemoval_success_whenRemoveDualFeed()
-        public
-    {
+    function test_notifyFeedRemoval_success_whenRemoveDualFeed() public {
         _addDualPriceFeed();
 
         assertEq(
