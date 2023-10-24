@@ -48,6 +48,8 @@ contract ChildGaugePool is ReentrancyGuard {
     mapping(address => PoolInfo) public poolInfo;
     // token => user => info
     mapping(address => mapping(address => UserInfo)) public userInfo;
+    uint256 public firstDeposit;
+    uint256 public unallocatedRewards;
 
     /// MODIFIERS ///
 
@@ -210,6 +212,16 @@ contract ChildGaugePool is ReentrancyGuard {
 
         _calcPending(user, token, UserAction.DEPOSIT, amount);
 
+        if (firstDeposit == 0) {
+            // if first deposit, the new rewards from gauge start to this point will be unallocated rewards
+            firstDeposit = block.timestamp;
+            _updatePool(token, UserAction.DEPOSIT, 0);
+            unallocatedRewards =
+                (poolInfo[token].accRewardPerShare *
+                    gaugeController.totalSupply(token)) /
+                PRECISION;
+        }
+
         _calcDebt(user, token);
     }
 
@@ -239,6 +251,17 @@ contract ChildGaugePool is ReentrancyGuard {
         userInfo[token][msg.sender].rewardPending = 0;
 
         _calcDebt(msg.sender, token);
+    }
+
+    function claimUnallocatedRewards(
+        address recipient
+    ) external onlyDaoPermissions {
+        SafeTransferLib.safeTransfer(
+            rewardToken,
+            recipient,
+            unallocatedRewards
+        );
+        unallocatedRewards = 0;
     }
 
     /// PUBLIC FUNCTIONS ///
