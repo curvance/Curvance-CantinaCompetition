@@ -170,7 +170,6 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
         // take protocol fee
         uint256 fee = (borrowAmount * getProtocolLeverageFee()) / 10000;
         if (fee > 0) {
-            borrowAmount -= fee;
             SafeTransferLib.safeTransfer(
                 borrowUnderlying,
                 getDaoAddress(),
