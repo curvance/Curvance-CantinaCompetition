@@ -261,7 +261,9 @@ contract VelodromeStablePositionVault is BasePositionVault {
 
     /// @notice pre calculation logic for migration start
     /// @param newVault The new vault address
-    function _migrationStart(address newVault) internal override {
+    function _migrationStart(
+        address newVault
+    ) internal override returns (bytes memory) {
         // claim velodrome rewards
         strategyData.gauge.getReward(address(this));
         SafeTransferLib.safeApprove(

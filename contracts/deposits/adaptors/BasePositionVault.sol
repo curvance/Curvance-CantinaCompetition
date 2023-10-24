@@ -250,7 +250,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     function deposit(
         uint256 assets,
         address receiver
-    ) public override onlyCToken returns (uint256 shares) {
+    ) public override onlyCToken nonReentrant returns (uint256 shares) {
         if (_vaultIsActive == 1) {
             _revert(VAULT_NOT_ACTIVE_SELECTOR);
         }
@@ -296,7 +296,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
     function mint(
         uint256 shares,
         address receiver
-    ) public override onlyCToken returns (uint256 assets) {
+    ) public override onlyCToken nonReentrant returns (uint256 assets) {
         if (_vaultIsActive == 1) {
             _revert(VAULT_NOT_ACTIVE_SELECTOR);
         }
@@ -341,7 +341,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         uint256 assets,
         address receiver,
         address owner
-    ) public override onlyCToken returns (uint256 shares) {
+    ) public override onlyCToken nonReentrant returns (uint256 shares) {
         // Save _totalAssets and pendingRewards to memory
         uint256 pending = _calculatePendingRewards();
         uint256 ta = _totalAssets + pending;
@@ -376,7 +376,7 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         uint256 shares,
         address receiver,
         address owner
-    ) public override onlyCToken returns (uint256 assets) {
+    ) public override onlyCToken nonReentrant returns (uint256 assets) {
         // Save _totalAssets and pendingRewards to memory
         uint256 pending = _calculatePendingRewards();
         uint256 ta = _totalAssets + pending;
@@ -409,12 +409,16 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
         SafeTransferLib.safeTransfer(asset(), receiver, assets);
     }
 
-    function _migrationStart(address) internal virtual {}
+    function _migrationStart(
+        address
+    ) internal virtual returns (bytes memory data) {}
+
+    function _migrationConfirm(address, bytes memory) internal virtual {}
 
     function migrateStart(
         address newVault
     ) public onlyCToken nonReentrant returns (bytes memory) {
-        _migrationStart(newVault);
+        bytes memory data = _migrationStart(newVault);
 
         // withdraw all assets (including pending rewards)
         uint256 assets = _getRealPositionBalance();
@@ -429,21 +433,30 @@ abstract contract BasePositionVault is ERC4626, ReentrancyGuard {
                 _totalAssets,
                 _sharePriceHighWatermark,
                 _vaultData,
-                shares
+                shares,
+                data
             );
     }
 
     /// @notice migrate confirm function
     /// @dev this function can be upgraded on new vault contract
     function migrateConfirm(
-        address, // oldVault,
+        address oldVault,
         bytes memory params
     ) public onlyCToken nonReentrant {
         uint256 shares;
-        (_totalAssets, _sharePriceHighWatermark, _vaultData, shares) = abi
-            .decode(params, (uint256, uint256, uint256, uint256));
+        bytes memory data;
+        (
+            _totalAssets,
+            _sharePriceHighWatermark,
+            _vaultData,
+            shares,
+            data
+        ) = abi.decode(params, (uint256, uint256, uint256, uint256, bytes));
 
         _mint(msg.sender, shares);
+
+        _migrationConfirm(oldVault, data);
 
         // deposit all assets (including pending rewards)
         _deposit(_asset.balanceOf(address(this)));

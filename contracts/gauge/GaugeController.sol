@@ -92,7 +92,10 @@ abstract contract GaugeController is IGaugePool {
         address[] calldata tokens,
         uint256[] calldata poolWeights
     ) external override onlyMessagingHub {
-        if (!(epoch == 0 && startTime == 0) && epoch != currentEpoch() + 1) {
+        if (
+            !(epoch == 0 && (startTime == 0 || block.timestamp < startTime)) &&
+            epoch != currentEpoch() + 1
+        ) {
             revert GaugeErrors.InvalidEpoch();
         }
 

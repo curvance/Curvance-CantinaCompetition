@@ -413,10 +413,8 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         emit Claim(msg.sender, token, rewards);
     }
 
-    function claimUnallocatedRewards(
-        address recipient
-    ) external onlyDaoPermissions {
-        SafeTransferLib.safeTransfer(cve, recipient, unallocatedRewards);
+    function claimUnallocatedRewards() external onlyDaoPermissions {
+        SafeTransferLib.safeTransfer(cve, msg.sender, unallocatedRewards);
         unallocatedRewards = 0;
     }
 
