@@ -221,10 +221,12 @@ contract GaugePool is GaugeController, ReentrancyGuard {
             // if first deposit, the new rewards from gauge start to this point will be unallocated rewards
             firstDeposit = block.timestamp;
             updatePool(token);
-            unallocatedRewards =
+            SafeTransferLib.safeTransfer(
+                cve,
+                centralRegistry.daoAddress(),
                 (poolInfo[token].accRewardPerShare *
-                    poolInfo[token].totalAmount) /
-                PRECISION;
+                    poolInfo[token].totalAmount) / PRECISION
+            );
         }
 
         _calcDebt(user, token);
@@ -411,11 +413,6 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         _calcDebt(msg.sender, token);
 
         emit Claim(msg.sender, token, rewards);
-    }
-
-    function claimUnallocatedRewards() external onlyDaoPermissions {
-        SafeTransferLib.safeTransfer(cve, msg.sender, unallocatedRewards);
-        unallocatedRewards = 0;
     }
 
     /// PUBLIC FUNCTIONS ///
