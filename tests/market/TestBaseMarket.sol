@@ -22,6 +22,7 @@ import { IVault } from "contracts/oracles/adaptors/balancer/BalancerBaseAdaptor.
 import { BalancerStablePoolAdaptor } from "contracts/oracles/adaptors/balancer/BalancerStablePoolAdaptor.sol";
 import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
 import { MockToken } from "contracts/mocks/MockToken.sol";
+import { MockV3Aggregator } from "contracts/mocks/MockV3Aggregator.sol";
 import { GaugePool } from "contracts/gauge/GaugePool.sol";
 import { ERC20 } from "contracts/libraries/ERC20.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
@@ -89,6 +90,9 @@ contract TestBaseMarket is TestBase {
     IERC20 public usdc;
     IERC20 public dai;
     IERC20 public balRETH;
+
+    MockV3Aggregator public chainlinkUsdcUsd;
+    MockV3Aggregator public chainlinkUsdcEth;
 
     MockToken public rewardToken;
     GaugePool public gaugePool;
@@ -217,12 +221,15 @@ contract TestBaseMarket is TestBase {
     }
 
     function _deployChainlinkAdaptors() internal {
+        chainlinkUsdcUsd = new MockV3Aggregator(8, 0, 1e11, 1e6);
+        chainlinkUsdcEth = new MockV3Aggregator(18, 0, 1e24, 1e13);
+
         chainlinkAdaptor = new ChainlinkAdaptor(
             ICentralRegistry(address(centralRegistry))
         );
         chainlinkAdaptor.addAsset(_WETH_ADDRESS, _CHAINLINK_ETH_USD, true);
-        chainlinkAdaptor.addAsset(_USDC_ADDRESS, _CHAINLINK_USDC_USD, true);
-        chainlinkAdaptor.addAsset(_USDC_ADDRESS, _CHAINLINK_USDC_ETH, false);
+        chainlinkAdaptor.addAsset(_USDC_ADDRESS, address(chainlinkUsdcUsd), true);
+        chainlinkAdaptor.addAsset(_USDC_ADDRESS, address(chainlinkUsdcEth), false);
         chainlinkAdaptor.addAsset(_DAI_ADDRESS, _CHAINLINK_DAI_USD, true);
         chainlinkAdaptor.addAsset(_DAI_ADDRESS, _CHAINLINK_DAI_ETH, false);
         chainlinkAdaptor.addAsset(_RETH_ADDRESS, _CHAINLINK_RETH_ETH, false);
@@ -245,15 +252,18 @@ contract TestBaseMarket is TestBase {
         dualChainlinkAdaptor = new ChainlinkAdaptor(
             ICentralRegistry(address(centralRegistry))
         );
+
         dualChainlinkAdaptor.addAsset(_WETH_ADDRESS, _CHAINLINK_ETH_USD, true);
+
         dualChainlinkAdaptor.addAsset(
             _USDC_ADDRESS,
-            _CHAINLINK_USDC_USD,
+            address(chainlinkUsdcUsd),
             true
         );
+
         dualChainlinkAdaptor.addAsset(
             _USDC_ADDRESS,
-            _CHAINLINK_USDC_ETH,
+            address(chainlinkUsdcEth),
             false
         );
         dualChainlinkAdaptor.addAsset(_DAI_ADDRESS, _CHAINLINK_DAI_USD, true);
