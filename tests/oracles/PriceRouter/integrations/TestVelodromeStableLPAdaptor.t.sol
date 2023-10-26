@@ -54,8 +54,7 @@ contract TestVelodromeStableLPAdapter is TestBasePriceRouter {
 
     function testReturnsCorrectPrice() public {
         chainlinkAdaptor = new ChainlinkAdaptor(
-            ICentralRegistry(address(centralRegistry)),
-            address(0)
+            ICentralRegistry(address(centralRegistry))
         );
         chainlinkAdaptor.addAsset(USDC, CHAINLINK_PRICE_FEED_USDC, true);
         chainlinkAdaptor.addAsset(DAI, CHAINLINK_PRICE_FEED_DAI, true);
@@ -82,8 +81,7 @@ contract TestVelodromeStableLPAdapter is TestBasePriceRouter {
 
     function testPriceDoesNotChangeAfterLargeSwap() public {
         chainlinkAdaptor = new ChainlinkAdaptor(
-            ICentralRegistry(address(centralRegistry)),
-            address(0)
+            ICentralRegistry(address(centralRegistry))
         );
         chainlinkAdaptor.addAsset(USDC, CHAINLINK_PRICE_FEED_USDC, true);
         chainlinkAdaptor.addAsset(DAI, CHAINLINK_PRICE_FEED_DAI, true);

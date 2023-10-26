@@ -44,8 +44,7 @@ contract TestCurveAdaptor is TestBasePriceRouter {
 
     function testReturnsCorrectPrice() public {
         chainlinkAdaptor = new ChainlinkAdaptor(
-            ICentralRegistry(address(centralRegistry)),
-            address(0)
+            ICentralRegistry(address(centralRegistry))
         );
         chainlinkAdaptor.addAsset(ETH, CHAINLINK_PRICE_FEED_ETH, true);
         chainlinkAdaptor.addAsset(STETH, CHAINLINK_PRICE_FEED_STETH, true);

@@ -41,9 +41,6 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
     ///         this value is used instead.
     uint24 public constant DEFAULT_HEART_BEAT = 1 days;
 
-    /// @notice Sequencer Uptime Feed address for L2.
-    IChainlink public immutable sequencer;
-
     /// STORAGE ///
 
     /// @notice Chainlink Adaptor Data for pricing in ETH
@@ -64,13 +61,9 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
     /// CONSTRUCTOR ///
 
     /// @param centralRegistry_ The address of central registry.
-    /// @param sequencer_ Sequencer Uptime Feed address for L2.
     constructor(
-        ICentralRegistry centralRegistry_,
-        address sequencer_
-    ) BaseOracleAdaptor(centralRegistry_) {
-        sequencer = IChainlink(sequencer_);
-    }
+        ICentralRegistry centralRegistry_
+    ) BaseOracleAdaptor(centralRegistry_) {}
 
     /// EXTERNAL FUNCTIONS ///
 
@@ -225,8 +218,10 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
         FeedData memory feed,
         bool inUSD
     ) internal view returns (PriceReturnData memory) {
-        if (address(sequencer) != address(0)) {
-            (, int256 answer, uint256 startedAt, , ) = sequencer
+        address sequencer = centralRegistry.sequencer();
+
+        if (sequencer != address(0)) {
+            (, int256 answer, uint256 startedAt, , ) = IChainlink(sequencer)
                 .latestRoundData();
 
             // Answer == 0: Sequencer is up

@@ -141,7 +141,8 @@ contract TestBaseMarket is TestBase {
             _ZERO_ADDRESS,
             _ZERO_ADDRESS,
             _ZERO_ADDRESS,
-            0
+            0,
+            address(0)
         );
         centralRegistry.transferEmergencyCouncil(address(this));
         centralRegistry.setLockBoostValue(lockBoostValue);
@@ -217,8 +218,7 @@ contract TestBaseMarket is TestBase {
 
     function _deployChainlinkAdaptors() internal {
         chainlinkAdaptor = new ChainlinkAdaptor(
-            ICentralRegistry(address(centralRegistry)),
-            address(0)
+            ICentralRegistry(address(centralRegistry))
         );
         chainlinkAdaptor.addAsset(_WETH_ADDRESS, _CHAINLINK_ETH_USD, true);
         chainlinkAdaptor.addAsset(_USDC_ADDRESS, _CHAINLINK_USDC_USD, true);
@@ -243,8 +243,7 @@ contract TestBaseMarket is TestBase {
         );
 
         dualChainlinkAdaptor = new ChainlinkAdaptor(
-            ICentralRegistry(address(centralRegistry)),
-            address(0)
+            ICentralRegistry(address(centralRegistry))
         );
         dualChainlinkAdaptor.addAsset(_WETH_ADDRESS, _CHAINLINK_ETH_USD, true);
         dualChainlinkAdaptor.addAsset(

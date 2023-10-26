@@ -26,6 +26,9 @@ interface ICentralRegistry {
     /// @notice Returns Genesis Epoch Timestamp of Curvance
     function genesisEpoch() external view returns (uint256);
 
+    /// @notice Sequencer Uptime Feed address for L2.
+    function sequencer() external view returns (address);
+
     /// @notice Returns Protocol DAO Address
     function daoAddress() external view returns (address);
 
