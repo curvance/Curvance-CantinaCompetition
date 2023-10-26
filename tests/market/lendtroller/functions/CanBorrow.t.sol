@@ -57,12 +57,11 @@ contract CanBorrowTest is TestBaseLendtroller {
         lendtroller.canBorrow(address(dUSDC), user1, 100e6);
     }
 
-    function test_canBorrow_userHasSufficientLiquidity() public {
+    function test_canBorrow_success_whenSufficientLiquidity() public {
         skip(gaugePool.startTime() - block.timestamp);
         chainlinkEthUsd.updateRoundData(0, 1500e8, block.timestamp, block.timestamp);
         chainlinkUsdcUsd.updateRoundData(0, 1e8, block.timestamp, block.timestamp);
         chainlinkUsdcEth.updateRoundData(0, 1e18, block.timestamp, block.timestamp);
-        chainlinkRethEth.updateRoundData(0, 1e18, block.timestamp, block.timestamp);
 
         lendtroller.listMarketToken(address(cBALRETH));
         lendtroller.updateCollateralToken(IMToken(address(cBALRETH)), 2000, 100, 3000, 3000, 7000);
@@ -112,55 +111,38 @@ contract CanBorrowTest is TestBaseLendtroller {
         assertEq(address(accountAssets[0]), address(dUSDC));
     }
 
-    function test_getHypotheticalLiquidity_returnsCorrectValues() external {
+    function test_canBorrow_fail_whenExceedsBorrowCap() external {
         skip(gaugePool.startTime() - block.timestamp);
         chainlinkUsdcUsd.updateRoundData(0, 1e8, block.timestamp, block.timestamp);
         chainlinkUsdcEth.updateRoundData(0, 1e18, block.timestamp, block.timestamp);
 
-        address[] memory tokens = new address[](1);
-        tokens[0] = address(dUSDC);
+        IMToken[] memory mTokens = new IMToken[](1);
+        uint256[] memory borrowCaps = new uint256[](1);
+        mTokens[0] = IMToken(address(cBALRETH));
+        borrowCaps[0] = 100e6 - 1;
 
-        // deal(address(dUSDC), address(this), 10e6);
-        // vm.prank(address(this));
-        // dUSDC.depositReserves(1e6);
+        lendtroller.listMarketToken(address(cBALRETH));
+        lendtroller.setCTokenCollateralCaps(mTokens, borrowCaps);
 
-        // deal(address(usdc), user1, 10_000e6);
-        vm.startPrank(user1);
-        // usdc.approve(address(dUSDC), type(uint256).max);
-        lendtroller.enterMarkets(tokens);
-        // dUSDC.mint(1000e6);
-        vm.stopPrank();
-
-        lendtroller.canBorrow(address(dUSDC), user1, 100e6);
-
-        // (uint256 maxBorrow, uint256 newDebt) = lendtroller.getHypotheticalLiquidity(user1, address(dUSDC), 1e6, 1000e6);
-        // console.log("Max Borrow: ", maxBorrow);
-        // console.log("New Debt: ", newDebt);
+        vm.expectRevert(Lendtroller.Lendtroller__BorrowCapReached.selector);
+        vm.prank(address(cBALRETH));
+        lendtroller.canBorrow(address(cBALRETH), user1, 100e6);
     }
 
-    // function test_canBorrow_fail_whenExceedsBorrowCaps() public {
-    //     IMToken[] memory mTokens = new IMToken[](1);
-    //     uint256[] memory borrowCaps = new uint256[](1);
-    //     mTokens[0] = IMToken(address(dUSDC));
-    //     borrowCaps[0] = 100e6 - 1;
+    function test_canBorrow_success_whenExceedsBorrowCap() external {
+        skip(gaugePool.startTime() - block.timestamp);
+        chainlinkUsdcUsd.updateRoundData(0, 1e8, block.timestamp, block.timestamp);
+        chainlinkUsdcEth.updateRoundData(0, 1e18, block.timestamp, block.timestamp);
 
-    //     lendtroller.setCTokenCollateralCaps(mTokens, borrowCaps);
+        IMToken[] memory mTokens = new IMToken[](1);
+        uint256[] memory borrowCaps = new uint256[](1);
+        mTokens[0] = IMToken(address(cBALRETH));
+        borrowCaps[0] = 100e6;
 
-    //     vm.prank(address(dUSDC));
+        lendtroller.listMarketToken(address(cBALRETH));
+        lendtroller.setCTokenCollateralCaps(mTokens, borrowCaps);
 
-    //     vm.expectRevert(Lendtroller.Lendtroller__BorrowCapReached.selector);
-    //     lendtroller.canBorrow(address(dUSDC), user1, 100e6);
-    // }
-
-    // function test_canBorrow_success() public {
-    //     address[] memory tokens = new address[](1);
-    //     tokens[0] = address(dUSDC);
-
-    //     vm.prank(user1);
-    //     lendtroller.enterMarkets(tokens);
-
-    //     lendtroller.canBorrow(address(dUSDC), user1, 100e6);
-
-    //     assertTrue(lendtroller.getAccountMembership(address(dUSDC), user1));
-    // }
+        vm.prank(address(cBALRETH));
+        lendtroller.canBorrow(address(cBALRETH), user1, borrowCaps[0] - 1);
+    }
 }
