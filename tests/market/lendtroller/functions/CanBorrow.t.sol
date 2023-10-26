@@ -57,9 +57,39 @@ contract CanBorrowTest is TestBaseLendtroller {
         lendtroller.canBorrow(address(dUSDC), user1, 100e6);
     }
 
+    function test_canBorrow_fail_entersUserInMarket() external {
+        skip(gaugePool.startTime() - block.timestamp);
+        chainlinkUsdcUsd.updateRoundData(0, 1e8, block.timestamp, block.timestamp);
+        chainlinkUsdcEth.updateRoundData(0, 1e18, block.timestamp, block.timestamp);
+
+        address[] memory tokens = new address[](1);
+        tokens[0] = address(dUSDC);
+
+        vm.expectRevert(Lendtroller.Lendtroller__AddressUnauthorized.selector);
+        lendtroller.canBorrow(address(dUSDC), user1, 0);
+    }
+
+    function test_canBorrow_entersUserInMarket() external {
+        skip(gaugePool.startTime() - block.timestamp);
+        chainlinkUsdcUsd.updateRoundData(0, 1e8, block.timestamp, block.timestamp);
+        chainlinkUsdcEth.updateRoundData(0, 1e18, block.timestamp, block.timestamp);
+
+        assertFalse(lendtroller.getAccountMembership(address(dUSDC), user1));
+        IMToken[] memory accountAssets = lendtroller.getAccountAssets(user1);
+        assertEq(accountAssets.length, 0);
+
+        vm.prank(address(dUSDC));
+        lendtroller.canBorrow(address(dUSDC), user1, 0);
+
+        assertTrue(lendtroller.getAccountMembership(address(dUSDC), user1));
+
+        accountAssets = lendtroller.getAccountAssets(user1);
+        assertEq(accountAssets.length, 1);
+        assertEq(address(accountAssets[0]), address(dUSDC));
+    }
+
     function test_getHypotheticalLiquidity_returnsCorrectValues() external {
         skip(gaugePool.startTime() - block.timestamp);
-        console.log("Oracles: ", address(chainlinkUsdcUsd), address(chainlinkUsdcEth));
         chainlinkUsdcUsd.updateRoundData(0, 1e8, block.timestamp, block.timestamp);
         chainlinkUsdcEth.updateRoundData(0, 1e18, block.timestamp, block.timestamp);
 
