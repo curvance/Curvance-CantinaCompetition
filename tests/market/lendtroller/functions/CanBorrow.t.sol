@@ -61,7 +61,7 @@ contract CanBorrowTest is TestBaseLendtroller {
         skip(gaugePool.startTime() - block.timestamp);
         chainlinkEthUsd.updateRoundData(0, 1500e8, block.timestamp, block.timestamp);
         chainlinkUsdcUsd.updateRoundData(0, 1e8, block.timestamp, block.timestamp);
-        chainlinkUsdcEth.updateRoundData(0, 1e18, block.timestamp, block.timestamp);
+        chainlinkUsdcEth.updateRoundData(0, 1500e18, block.timestamp, block.timestamp);
 
         lendtroller.listMarketToken(address(cBALRETH));
         lendtroller.updateCollateralToken(IMToken(address(cBALRETH)), 2000, 100, 3000, 3000, 7000);
@@ -77,7 +77,24 @@ contract CanBorrowTest is TestBaseLendtroller {
         cBALRETH.mint(1_000e18);
         vm.stopPrank();
 
+        vm.prank(address(dUSDC));
         lendtroller.canBorrow(address(dUSDC), user1, 100e6);
+
+        AccountSnapshot memory snapshot = cBALRETH.getSnapshotPacked(user1);
+        (uint256 price,) = priceRouter.getPrice(cBALRETH.underlying(), true, true);
+        (,,uint256 collRatio) = lendtroller.getMTokenData(address(cBALRETH));
+        uint256 assetValue = price * (snapshot.balance * snapshot.exchangeRate / 1e18) / 10 ** cBALRETH.decimals();
+        uint256 maxBorrow = assetValue * collRatio / 1e18;
+
+        // max amount of USDC that can be borrowed based on provided collateral in cBALRETH
+        uint256 borrowInUSDC = maxBorrow / 10 ** cBALRETH.decimals() * 10 ** dUSDC.decimals();
+        vm.prank(address(dUSDC));
+        lendtroller.canBorrow(address(dUSDC), user1, borrowInUSDC);
+
+        // should fail when borrowing more than is allowed by provided collateral
+        vm.expectRevert(Lendtroller.Lendtroller__InsufficientLiquidity.selector);
+        vm.prank(address(dUSDC));
+        lendtroller.canBorrow(address(dUSDC), user1, borrowInUSDC + 1e6);
     }
 
     function test_canBorrow_fail_entersUserInMarket() external {
