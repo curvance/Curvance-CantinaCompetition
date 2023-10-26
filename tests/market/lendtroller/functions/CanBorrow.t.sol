@@ -57,6 +57,30 @@ contract CanBorrowTest is TestBaseLendtroller {
         lendtroller.canBorrow(address(dUSDC), user1, 100e6);
     }
 
+    function test_canBorrow_userHasSufficientLiquidity() public {
+        skip(gaugePool.startTime() - block.timestamp);
+        chainlinkEthUsd.updateRoundData(0, 1500e8, block.timestamp, block.timestamp);
+        chainlinkUsdcUsd.updateRoundData(0, 1e8, block.timestamp, block.timestamp);
+        chainlinkUsdcEth.updateRoundData(0, 1e18, block.timestamp, block.timestamp);
+        chainlinkRethEth.updateRoundData(0, 1e18, block.timestamp, block.timestamp);
+
+        lendtroller.listMarketToken(address(cBALRETH));
+        lendtroller.updateCollateralToken(IMToken(address(cBALRETH)), 2000, 100, 3000, 3000, 7000);
+        address[] memory tokens = new address[](2);
+        tokens[0] = address(dUSDC);
+        tokens[1] = address(cBALRETH);
+
+        // Need some CTokens/collateral to have enough liquidity for borrowing
+        deal(address(balRETH), user1, 10_000e18);
+        vm.startPrank(user1);
+        lendtroller.enterMarkets(tokens);
+        balRETH.approve(address(cBALRETH), 1_000e18);
+        cBALRETH.mint(1_000e18);
+        vm.stopPrank();
+
+        lendtroller.canBorrow(address(dUSDC), user1, 100e6);
+    }
+
     function test_canBorrow_fail_entersUserInMarket() external {
         skip(gaugePool.startTime() - block.timestamp);
         chainlinkUsdcUsd.updateRoundData(0, 1e8, block.timestamp, block.timestamp);
