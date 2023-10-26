@@ -93,6 +93,8 @@ contract TestBaseMarket is TestBase {
 
     MockV3Aggregator public chainlinkUsdcUsd;
     MockV3Aggregator public chainlinkUsdcEth;
+    MockV3Aggregator public chainlinkRethEth;
+    MockV3Aggregator public chainlinkEthUsd;
 
     MockToken public rewardToken;
     GaugePool public gaugePool;
@@ -122,6 +124,7 @@ contract TestBaseMarket is TestBase {
         _deployProtocolMessagingHub();
         _deployFeeAccumulator();
         _deployVeCVE();
+        chainlinkEthUsd = new MockV3Aggregator(8, 1500e8, 1e50, 1e6);
         _deployPriceRouter();
         _deployChainlinkAdaptors();
         _deployGaugePool();
@@ -192,7 +195,7 @@ contract TestBaseMarket is TestBase {
     function _deployPriceRouter() internal {
         priceRouter = new PriceRouter(
             ICentralRegistry(address(centralRegistry)),
-            _CHAINLINK_ETH_USD
+            address(chainlinkEthUsd)
         );
 
         centralRegistry.setPriceRouter(address(priceRouter));
@@ -221,18 +224,19 @@ contract TestBaseMarket is TestBase {
     }
 
     function _deployChainlinkAdaptors() internal {
-        chainlinkUsdcUsd = new MockV3Aggregator(8, 0, 1e11, 1e6);
-        chainlinkUsdcEth = new MockV3Aggregator(18, 0, 1e24, 1e13);
+        chainlinkUsdcUsd = new MockV3Aggregator(8, 1e8, 1e11, 1e6);
+        chainlinkUsdcEth = new MockV3Aggregator(18, 1e18, 1e24, 1e13);
+        chainlinkRethEth = new MockV3Aggregator(18, 1e18, 1e24, 1e13);
 
         chainlinkAdaptor = new ChainlinkAdaptor(
             ICentralRegistry(address(centralRegistry))
         );
-        chainlinkAdaptor.addAsset(_WETH_ADDRESS, _CHAINLINK_ETH_USD, true);
+        chainlinkAdaptor.addAsset(_WETH_ADDRESS, address(chainlinkEthUsd), true);
         chainlinkAdaptor.addAsset(_USDC_ADDRESS, address(chainlinkUsdcUsd), true);
         chainlinkAdaptor.addAsset(_USDC_ADDRESS, address(chainlinkUsdcEth), false);
         chainlinkAdaptor.addAsset(_DAI_ADDRESS, _CHAINLINK_DAI_USD, true);
         chainlinkAdaptor.addAsset(_DAI_ADDRESS, _CHAINLINK_DAI_ETH, false);
-        chainlinkAdaptor.addAsset(_RETH_ADDRESS, _CHAINLINK_RETH_ETH, false);
+        chainlinkAdaptor.addAsset(_RETH_ADDRESS, address(chainlinkRethEth), false);
 
         priceRouter.addApprovedAdaptor(address(chainlinkAdaptor));
         priceRouter.addAssetPriceFeed(
@@ -253,7 +257,7 @@ contract TestBaseMarket is TestBase {
             ICentralRegistry(address(centralRegistry))
         );
 
-        dualChainlinkAdaptor.addAsset(_WETH_ADDRESS, _CHAINLINK_ETH_USD, true);
+        dualChainlinkAdaptor.addAsset(_WETH_ADDRESS, address(chainlinkEthUsd), true);
 
         dualChainlinkAdaptor.addAsset(
             _USDC_ADDRESS,
@@ -270,7 +274,7 @@ contract TestBaseMarket is TestBase {
         dualChainlinkAdaptor.addAsset(_DAI_ADDRESS, _CHAINLINK_DAI_ETH, false);
         dualChainlinkAdaptor.addAsset(
             _RETH_ADDRESS,
-            _CHAINLINK_RETH_ETH,
+            address(chainlinkRethEth),
             false
         );
         priceRouter.addApprovedAdaptor(address(dualChainlinkAdaptor));
