@@ -62,10 +62,12 @@ contract TestBasePriceRouter is TestBase {
 
     function _deployChainlinkAdaptors() internal {
         chainlinkAdaptor = new ChainlinkAdaptor(
-            ICentralRegistry(address(centralRegistry))
+            ICentralRegistry(address(centralRegistry)),
+            address(0)
         );
         dualChainlinkAdaptor = new ChainlinkAdaptor(
-            ICentralRegistry(address(centralRegistry))
+            ICentralRegistry(address(centralRegistry)),
+            address(0)
         );
 
         chainlinkAdaptor.addAsset(_USDC_ADDRESS, _CHAINLINK_USDC_USD, true);

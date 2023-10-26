@@ -217,7 +217,8 @@ contract TestBaseMarket is TestBase {
 
     function _deployChainlinkAdaptors() internal {
         chainlinkAdaptor = new ChainlinkAdaptor(
-            ICentralRegistry(address(centralRegistry))
+            ICentralRegistry(address(centralRegistry)),
+            address(0)
         );
         chainlinkAdaptor.addAsset(_WETH_ADDRESS, _CHAINLINK_ETH_USD, true);
         chainlinkAdaptor.addAsset(_USDC_ADDRESS, _CHAINLINK_USDC_USD, true);
@@ -242,7 +243,8 @@ contract TestBaseMarket is TestBase {
         );
 
         dualChainlinkAdaptor = new ChainlinkAdaptor(
-            ICentralRegistry(address(centralRegistry))
+            ICentralRegistry(address(centralRegistry)),
+            address(0)
         );
         dualChainlinkAdaptor.addAsset(_WETH_ADDRESS, _CHAINLINK_ETH_USD, true);
         dualChainlinkAdaptor.addAsset(

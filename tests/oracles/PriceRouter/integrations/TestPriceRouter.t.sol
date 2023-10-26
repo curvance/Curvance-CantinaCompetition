@@ -47,7 +47,8 @@ contract TestPriceRouter is TestBasePriceRouter {
         priceRouter.addAssetPriceFeed(WETH_USDC, address(adapter));
 
         chainlinkAdaptor = new ChainlinkAdaptor(
-            ICentralRegistry(address(centralRegistry))
+            ICentralRegistry(address(centralRegistry)),
+            address(0)
         );
         chainlinkAdaptor.addAsset(USDC, CHAINLINK_PRICE_FEED_USDC, true);
         chainlinkAdaptor.addAsset(WETH, CHAINLINK_PRICE_FEED_ETH, true);

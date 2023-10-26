@@ -58,7 +58,8 @@ contract TestBalancerStablePoolAdapter is TestBasePriceRouter {
 
     function testReturnsCorrectPrice() public {
         chainlinkAdaptor = new ChainlinkAdaptor(
-            ICentralRegistry(address(centralRegistry))
+            ICentralRegistry(address(centralRegistry)),
+            address(0)
         );
         chainlinkAdaptor.addAsset(WETH, CHAINLINK_PRICE_FEED_ETH, true);
         chainlinkAdaptor.addAsset(RETH, CHAINLINK_PRICE_FEED_RETH_ETH, false);
