@@ -2,6 +2,7 @@
 pragma solidity 0.8.17;
 
 import { TestBaseLendtroller } from "../TestBaseLendtroller.sol";
+import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
 
 contract EnterMarketsTest is TestBaseLendtroller {
     address[] public tokens;
@@ -14,6 +15,11 @@ contract EnterMarketsTest is TestBaseLendtroller {
         tokens.push(address(dUSDC));
         tokens.push(address(dDAI));
         tokens.push(address(cBALRETH));
+    }
+
+    function test_enterMarkets_fail_whenParameterIsInvalid() public {
+        vm.expectRevert(Lendtroller.Lendtroller__InvalidParameter.selector);
+        lendtroller.enterMarkets(new address[](0));
     }
 
     function test_enterMarkets_success_whenMarketIsNotListed() public {
