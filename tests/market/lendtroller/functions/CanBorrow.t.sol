@@ -4,7 +4,6 @@ pragma solidity 0.8.17;
 import { TestBaseLendtroller } from "../TestBaseLendtroller.sol";
 import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
 import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.sol";
-import "hardhat/console.sol";
 
 contract CanBorrowTest is TestBaseLendtroller {
     event MarketEntered(address mToken, address account);
@@ -109,7 +108,7 @@ contract CanBorrowTest is TestBaseLendtroller {
         lendtroller.canBorrow(address(dUSDC), user1, 0);
     }
 
-    function test_canBorrow_entersUserInMarket() external {
+    function test_canBorrow_success_entersUserInMarket() external {
         skip(gaugePool.startTime() - block.timestamp);
         chainlinkUsdcUsd.updateRoundData(0, 1e8, block.timestamp, block.timestamp);
         chainlinkUsdcEth.updateRoundData(0, 1e18, block.timestamp, block.timestamp);
@@ -146,7 +145,7 @@ contract CanBorrowTest is TestBaseLendtroller {
         lendtroller.canBorrow(address(cBALRETH), user1, 100e6);
     }
 
-    function test_canBorrow_success_whenExceedsBorrowCap() external {
+    function test_canBorrow_success_whenCapNotExceeded() external {
         skip(gaugePool.startTime() - block.timestamp);
         chainlinkUsdcUsd.updateRoundData(0, 1e8, block.timestamp, block.timestamp);
         chainlinkUsdcEth.updateRoundData(0, 1e18, block.timestamp, block.timestamp);
