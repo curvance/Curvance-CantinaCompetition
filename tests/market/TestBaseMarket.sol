@@ -95,6 +95,8 @@ contract TestBaseMarket is TestBase {
     MockV3Aggregator public chainlinkUsdcEth;
     MockV3Aggregator public chainlinkRethEth;
     MockV3Aggregator public chainlinkEthUsd;
+    MockV3Aggregator public chainlinkDaiUsd;
+    MockV3Aggregator public chainlinkDaiEth;
 
     MockToken public rewardToken;
     GaugePool public gaugePool;
@@ -225,8 +227,10 @@ contract TestBaseMarket is TestBase {
 
     function _deployChainlinkAdaptors() internal {
         chainlinkUsdcUsd = new MockV3Aggregator(8, 1e8, 1e11, 1e6);
+        chainlinkDaiUsd = new MockV3Aggregator(8, 1e8, 1e11, 1e6);
         chainlinkUsdcEth = new MockV3Aggregator(18, 1e18, 1e24, 1e13);
         chainlinkRethEth = new MockV3Aggregator(18, 1e18, 1e24, 1e13);
+        chainlinkDaiEth = new MockV3Aggregator(18, 1e18, 1e24, 1e13);
 
         chainlinkAdaptor = new ChainlinkAdaptor(
             ICentralRegistry(address(centralRegistry))
@@ -234,8 +238,8 @@ contract TestBaseMarket is TestBase {
         chainlinkAdaptor.addAsset(_WETH_ADDRESS, address(chainlinkEthUsd), true);
         chainlinkAdaptor.addAsset(_USDC_ADDRESS, address(chainlinkUsdcUsd), true);
         chainlinkAdaptor.addAsset(_USDC_ADDRESS, address(chainlinkUsdcEth), false);
-        chainlinkAdaptor.addAsset(_DAI_ADDRESS, _CHAINLINK_DAI_USD, true);
-        chainlinkAdaptor.addAsset(_DAI_ADDRESS, _CHAINLINK_DAI_ETH, false);
+        chainlinkAdaptor.addAsset(_DAI_ADDRESS, address(chainlinkDaiUsd), true);
+        chainlinkAdaptor.addAsset(_DAI_ADDRESS, address(chainlinkDaiEth), false);
         chainlinkAdaptor.addAsset(_RETH_ADDRESS, address(chainlinkRethEth), false);
 
         priceRouter.addApprovedAdaptor(address(chainlinkAdaptor));
@@ -270,8 +274,8 @@ contract TestBaseMarket is TestBase {
             address(chainlinkUsdcEth),
             false
         );
-        dualChainlinkAdaptor.addAsset(_DAI_ADDRESS, _CHAINLINK_DAI_USD, true);
-        dualChainlinkAdaptor.addAsset(_DAI_ADDRESS, _CHAINLINK_DAI_ETH, false);
+        dualChainlinkAdaptor.addAsset(_DAI_ADDRESS, address(chainlinkDaiUsd), true);
+        dualChainlinkAdaptor.addAsset(_DAI_ADDRESS, address(chainlinkDaiEth), false);
         dualChainlinkAdaptor.addAsset(
             _RETH_ADDRESS,
             address(chainlinkRethEth),
