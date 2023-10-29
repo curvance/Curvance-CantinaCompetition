@@ -10,6 +10,7 @@ import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { ChainlinkAdaptor } from "contracts/oracles/adaptors/chainlink/ChainlinkAdaptor.sol";
 import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
+import { MockDataFeed } from "contracts/mocks/MockDataFeed.sol";
 
 contract TestBasePriceRouter is TestBase {
     address internal constant _USDC_ADDRESS =
@@ -28,6 +29,7 @@ contract TestBasePriceRouter is TestBase {
     Lendtroller public lendtroller;
     PriceRouter public priceRouter;
     DToken public mUSDC;
+    MockDataFeed public sequencer;
 
     function setUp() public virtual {
         _fork();
@@ -42,11 +44,14 @@ contract TestBasePriceRouter is TestBase {
     }
 
     function _deployCentralRegistry() internal {
+        sequencer = new MockDataFeed(address(0));
+
         centralRegistry = new CentralRegistry(
             _ZERO_ADDRESS,
             _ZERO_ADDRESS,
             _ZERO_ADDRESS,
-            0
+            0,
+            address(sequencer)
         );
         centralRegistry.transferEmergencyCouncil(address(this));
     }

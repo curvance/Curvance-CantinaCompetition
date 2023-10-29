@@ -54,7 +54,8 @@ contract TestBaseVeCVE is TestBase {
             _ZERO_ADDRESS,
             _ZERO_ADDRESS,
             _ZERO_ADDRESS,
-            0
+            0,
+            address(0)
         );
     }
 

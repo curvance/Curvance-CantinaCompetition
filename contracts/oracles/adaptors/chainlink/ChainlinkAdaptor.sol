@@ -33,6 +33,10 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
 
     /// CONSTANTS ///
 
+    /// @notice Time to pass before accepting answers when sequencer
+    ///         comes back up.
+    uint256 public constant GRACE_PERIOD_TIME = 3600;
+
     /// @notice If zero is specified for a Chainlink asset heartbeat,
     ///         this value is used instead.
     uint24 public constant DEFAULT_HEART_BEAT = 1 days;
@@ -51,9 +55,12 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
     error ChainlinkAdaptor__InvalidMinPrice();
     error ChainlinkAdaptor__InvalidMaxPrice();
     error ChainlinkAdaptor__InvalidMinMaxConfig();
+    error ChainlinkAdaptor__SequencerIsDown();
+    error ChainlinkAdaptor__GracePeriodNotOver();
 
     /// CONSTRUCTOR ///
 
+    /// @param centralRegistry_ The address of central registry.
     constructor(
         ICentralRegistry centralRegistry_
     ) BaseOracleAdaptor(centralRegistry_) {}
@@ -211,6 +218,27 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
         FeedData memory feed,
         bool inUSD
     ) internal view returns (PriceReturnData memory) {
+        address sequencer = centralRegistry.sequencer();
+
+        if (sequencer != address(0)) {
+            (, int256 answer, uint256 startedAt, , ) = IChainlink(sequencer)
+                .latestRoundData();
+
+            // Answer == 0: Sequencer is up
+            // Check that the sequencer is up or the grace period has passed
+            // after the sequencer is back up.
+            if (
+                answer != 0 || block.timestamp < startedAt + GRACE_PERIOD_TIME
+            ) {
+                return
+                    PriceReturnData({
+                        price: 0,
+                        hadError: true,
+                        inUSD: inUSD
+                    });
+            }
+        }
+
         (, int256 price, , uint256 updatedAt, ) = IChainlink(feed.aggregator)
             .latestRoundData();
         uint256 newPrice = (uint256(price) * 1e18) / (10 ** feed.decimals);
