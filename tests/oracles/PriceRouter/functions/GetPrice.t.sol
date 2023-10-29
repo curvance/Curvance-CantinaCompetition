@@ -12,24 +12,34 @@ contract GetPriceTest is TestBasePriceRouter {
         priceRouter.getPrice(_USDC_ADDRESS, true, true);
     }
 
-    function test_getPrice_fail_whenSequencerIsDown() public {
+    function test_getPrice_success_withBadSourceErrorCode_whenSequencerIsDown()
+        public
+    {
         _addSinglePriceFeed();
         sequencer.setMockAnswer(1);
 
-        vm.expectRevert(
-            ChainlinkAdaptor.ChainlinkAdaptor__SequencerIsDown.selector
+        (uint256 price, uint256 errorCode) = priceRouter.getPrice(
+            _USDC_ADDRESS,
+            true,
+            true
         );
-        priceRouter.getPrice(_USDC_ADDRESS, true, true);
+        assertEq(price, 0);
+        assertEq(errorCode, priceRouter.BAD_SOURCE());
     }
 
-    function test_getPrice_fail_whenGracePeriodNotOver() public {
+    function test_getPrice_fail_withBadSourceErrorCode_whenGracePeriodNotOver()
+        public
+    {
         _addSinglePriceFeed();
         sequencer.setMockStartedAt(block.timestamp);
 
-        vm.expectRevert(
-            ChainlinkAdaptor.ChainlinkAdaptor__GracePeriodNotOver.selector
+        (uint256 price, uint256 errorCode) = priceRouter.getPrice(
+            _USDC_ADDRESS,
+            true,
+            true
         );
-        priceRouter.getPrice(_USDC_ADDRESS, true, true);
+        assertEq(price, 0);
+        assertEq(errorCode, priceRouter.BAD_SOURCE());
     }
 
     function test_getPrice_success() public {

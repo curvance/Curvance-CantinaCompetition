@@ -225,15 +225,17 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
                 .latestRoundData();
 
             // Answer == 0: Sequencer is up
-            // Check that the sequencer is up.
-            if (answer != 0) {
-                revert ChainlinkAdaptor__SequencerIsDown();
-            }
-
-            // Check that the grace period has passed after the
-            // sequencer is back up.
-            if (block.timestamp < startedAt + GRACE_PERIOD_TIME) {
-                revert ChainlinkAdaptor__GracePeriodNotOver();
+            // Check that the sequencer is up or the grace period has passed
+            // after the sequencer is back up.
+            if (
+                answer != 0 || block.timestamp < startedAt + GRACE_PERIOD_TIME
+            ) {
+                return
+                    PriceReturnData({
+                        price: 0,
+                        hadError: true,
+                        inUSD: inUSD
+                    });
             }
         }
 
