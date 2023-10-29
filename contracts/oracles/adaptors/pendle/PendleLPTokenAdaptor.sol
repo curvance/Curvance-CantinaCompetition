@@ -32,8 +32,6 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
     uint32 public constant MINIMUM_TWAP_DURATION = 3600;
     /// @notice Token amount to check uniswap twap price against
     uint128 public constant PRECISION = 1e18;
-    /// @notice Error code for bad source.
-    uint256 public constant BAD_SOURCE = 2;
     /// @notice Current networks ptOracle
     /// @dev for mainnet use 0x414d3C8A26157085f286abE3BC6E1bb010733602
     IPendlePTOracle public immutable ptOracle;

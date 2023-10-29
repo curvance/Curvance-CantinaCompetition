@@ -20,9 +20,6 @@ contract CurveAdaptor is BaseOracleAdaptor, CurveReentrancyCheck {
 
     /// CONSTANTS ///
 
-    /// @notice Error code for bad source.
-    uint256 public constant BAD_SOURCE = 2;
-
     uint256 private constant GAMMA0 = 28000000000000;
     uint256 private constant A0 = 2 * 3 ** 3 * 10000;
     uint256 private constant DISCOUNT0 = 1087460000000000;

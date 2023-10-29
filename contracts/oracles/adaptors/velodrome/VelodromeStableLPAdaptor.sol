@@ -25,11 +25,6 @@ contract VelodromeStableLPAdaptor is BaseOracleAdaptor {
         uint8 decimals1;
     }
 
-    /// CONSTANTS ///
-
-    /// @notice Error code for bad source.
-    uint256 public constant BAD_SOURCE = 2;
-
     /// STORAGE ///
 
     /// @notice Balancer Stable Pool Adaptor Storage
