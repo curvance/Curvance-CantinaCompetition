@@ -3,7 +3,6 @@ pragma solidity 0.8.17;
 
 import { TestBasePriceRouter } from "../TestBasePriceRouter.sol";
 import { IChainlink } from "contracts/interfaces/external/chainlink/IChainlink.sol";
-import { ChainlinkAdaptor } from "contracts/oracles/adaptors/chainlink/ChainlinkAdaptor.sol";
 import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
 
 contract GetPriceTest is TestBasePriceRouter {
