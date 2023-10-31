@@ -23,6 +23,7 @@ contract CVEPublicSale {
     address public weth;
 
     uint256 public saleCommitted;
+    mapping(address => uint256) public userCommitted;
 
     /// Errors
     error CVEPublicSale__InvalidCentralRegistry();
@@ -30,13 +31,14 @@ contract CVEPublicSale {
     error CVEPublicSale__InvalidStartTime();
     error CVEPublicSale__NotStarted();
     error CVEPublicSale__AlreadyStarted();
-    error CVEPublicSale__InvalidPrice();
     error CVEPublicSale__InSale();
-    error CVEPublicSale__HardCap();
+    error CVEPublicSale__Ended();
+    error CVEPublicSale__InvalidPrice();
 
     /// Events
     event PublicSaleStarted(uint256 startTime);
-    event Sold(uint256 wethAmount, uint256 cveAmount);
+    event Committed(address user, uint256 wethAmount);
+    event Claimed(address user, uint256 cveAmount);
 
     constructor(ICentralRegistry centralRegistry_) {
         if (
@@ -93,10 +95,22 @@ contract CVEPublicSale {
         emit PublicSaleStarted(_startTime);
     }
 
-    /// @notice buy CVE with WETH
-    function buy(
-        uint256 wethAmount
-    ) external returns (uint256 totalBuyAmount) {
+    function commit(uint256 wethAmount) external {
+        if (startTime == 0 || block.timestamp < startTime) {
+            revert CVEPublicSale__NotStarted();
+        }
+
+        uint256 remaining = hardCap() - saleCommitted;
+
+        if (remaining == 0) {
+            revert CVEPublicSale__Ended();
+        }
+
+        if (wethAmount > remaining) {
+            // users can commit for only remaining amount
+            wethAmount = remaining;
+        }
+
         SafeTransferLib.safeTransferFrom(
             weth,
             msg.sender,
@@ -104,124 +118,28 @@ contract CVEPublicSale {
             wethAmount
         );
 
-        totalBuyAmount = preBuy(wethAmount);
-        saleCommitted += wethAmount;
+        userCommitted[msg.sender] += wethAmount;
 
-        SafeTransferLib.safeTransfer(cve, msg.sender, totalBuyAmount);
-
-        emit Sold(wethAmount, totalBuyAmount);
+        emit Committed(msg.sender, wethAmount);
     }
 
-    /// @notice pre calculation for buy
-    function preBuy(
-        uint256 wethAmount
-    ) public view returns (uint256 totalBuyAmount) {
+    function claim() external returns (uint256 cveAmount) {
         if (startTime == 0 || block.timestamp < startTime) {
             revert CVEPublicSale__NotStarted();
         }
-
-        uint256 _saleCommitted = saleCommitted;
-        uint256 _softCap = softCap();
-        if (_saleCommitted < _softCap) {
-            // try until soft cap
-
-            if (_saleCommitted + wethAmount <= _softCap) {
-                // buy all with soft price
-
-                totalBuyAmount += (wethAmount * 1e18) / softPrice;
-                wethAmount = 0;
-                _saleCommitted += wethAmount;
-            } else {
-                uint256 buyAmount = _softCap - _saleCommitted;
-                totalBuyAmount += (buyAmount * 1e18) / softPrice;
-                wethAmount -= buyAmount;
-                _saleCommitted += buyAmount;
-            }
+        if (block.timestamp < startTime + SALE_PERIOD) {
+            revert CVEPublicSale__InSale();
         }
 
-        if (wethAmount > 0) {
-            // try until hardcap
-            uint256 startPrice = _priceAt(_saleCommitted);
-            uint256 endPrice = _priceAt(_saleCommitted + wethAmount);
-            uint256 averagePrice = (startPrice + endPrice) / 2;
+        uint256 wethAmount = userCommitted[msg.sender];
+        userCommitted[msg.sender] = 0;
 
-            totalBuyAmount += (wethAmount * 1e18) / averagePrice;
-            wethAmount -= wethAmount;
-            _saleCommitted += wethAmount;
-        }
+        uint256 price = currentPrice();
+        cveAmount = (wethAmount * 1e18) / price;
 
-        if (_saleCommitted > hardCap()) {
-            revert CVEPublicSale__HardCap();
-        }
-    }
+        SafeTransferLib.safeTransfer(weth, msg.sender, wethAmount);
 
-    /// @notice buy CVE with WETH
-    function buyExact(uint256 cveAmount) external returns (uint256 payAmount) {
-        payAmount = preBuyExact(cveAmount);
-
-        SafeTransferLib.safeTransferFrom(
-            weth,
-            msg.sender,
-            address(this),
-            payAmount
-        );
-
-        saleCommitted += payAmount;
-
-        SafeTransferLib.safeTransfer(cve, msg.sender, cveAmount);
-
-        emit Sold(payAmount, cveAmount);
-    }
-
-    /// @notice pre calculation for buyExact
-    function preBuyExact(
-        uint256 cveAmount
-    ) public view returns (uint256 payAmount) {
-        if (startTime == 0 || block.timestamp < startTime) {
-            revert CVEPublicSale__NotStarted();
-        }
-
-        uint256 _saleCommitted = saleCommitted;
-        uint256 _softCap = softCap();
-        if (_saleCommitted < _softCap) {
-            // try until soft cap
-
-            if (_saleCommitted + (cveAmount * softPrice) / 1e18 <= _softCap) {
-                // buy all with soft price
-
-                payAmount += (cveAmount * softPrice) / 1e18;
-                cveAmount = 0;
-                _saleCommitted += payAmount;
-            } else {
-                uint256 buyAmount = (_softCap - _saleCommitted);
-                payAmount += buyAmount;
-                cveAmount -= (buyAmount * 1e18) / softPrice;
-                _saleCommitted += buyAmount;
-            }
-        }
-
-        if (cveAmount > 0) {
-            // try until hardcap
-            uint256 _cveAllocationForHardCap = cveAllocationForHardCap();
-
-            uint256 startPrice = _priceAt(_saleCommitted);
-            // this formula is from following
-            // hardPrice / cveAllocationForHardCap = (endPrice - startPrice) / cveAmount
-            uint256 endPrice = startPrice +
-                (cveAmount * hardPrice) /
-                _cveAllocationForHardCap;
-
-            uint256 averagePrice = (startPrice + endPrice) / 2;
-
-            uint256 buyAmount = (cveAmount * averagePrice) / 1e18;
-            payAmount += buyAmount;
-            cveAmount = 0;
-            _saleCommitted += buyAmount;
-        }
-
-        if (_saleCommitted > hardCap()) {
-            revert CVEPublicSale__HardCap();
-        }
+        emit Claimed(msg.sender, cveAmount);
     }
 
     /// @notice return sale soft cap
@@ -234,34 +152,8 @@ contract CVEPublicSale {
         return (hardPrice * cveAmountForSale) / 1e18;
     }
 
-    function cveAllocationForHardCap() public view returns (uint256) {
-        uint256 _softCap = softCap();
-        uint256 _hardCap = hardCap();
-        // this formula is from following
-        // cveAllocationForHardCap * ((hardPrice + softPrice) / 2) = _hardCap - _softCap
-        return ((_hardCap - _softCap) * 2) / (hardPrice + softPrice);
-    }
-
-    /// @notice return current sale price
-    /// @dev current sale price is calculated based on sale committed
-    function currentPrice() external view returns (uint256) {
-        return _priceAt(saleCommitted);
-    }
-
-    /// @notice withdraw remaining CVE
-    /// @dev (only dao permissions)
-    ///      this function is only available when the public sale is over
-    function withdrawRemainingCVE() external onlyDaoPermissions {
-        if (block.timestamp < startTime + SALE_PERIOD) {
-            revert CVEPublicSale__InSale();
-        }
-
-        uint256 remaining = IERC20(cve).balanceOf(address(this));
-        SafeTransferLib.safeTransfer(cve, msg.sender, remaining);
-    }
-
     /// @notice return sale price from sale committed
-    function _priceAt(uint256 _saleCommitted) internal view returns (uint256) {
+    function priceAt(uint256 _saleCommitted) public view returns (uint256) {
         uint256 _softCap = softCap();
         if (_saleCommitted < _softCap) {
             return softPrice;
@@ -272,5 +164,33 @@ contract CVEPublicSale {
         }
 
         return softPrice + (_saleCommitted - _softCap) / cveAmountForSale;
+    }
+
+    /// @notice return current sale price
+    /// @dev current sale price is calculated based on sale committed
+    function currentPrice() public view returns (uint256) {
+        return priceAt(saleCommitted);
+    }
+
+    function inSale() public view returns (bool) {
+        return
+            startTime != 0 &&
+            startTime < block.timestamp &&
+            block.timestamp < startTime + SALE_PERIOD;
+    }
+
+    /// @notice withdraw remaining CVE
+    /// @dev (only dao permissions)
+    ///      this function is only available when the public sale is over
+    function withdrawRemainingCVE() external onlyDaoPermissions {
+        if (startTime == 0 || block.timestamp < startTime) {
+            revert CVEPublicSale__NotStarted();
+        }
+        if (block.timestamp < startTime + SALE_PERIOD) {
+            revert CVEPublicSale__InSale();
+        }
+
+        uint256 remaining = IERC20(cve).balanceOf(address(this));
+        SafeTransferLib.safeTransfer(cve, msg.sender, remaining);
     }
 }
