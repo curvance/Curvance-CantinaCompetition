@@ -40,7 +40,7 @@ contract GMAdaptor is BaseOracleAdaptor {
     error GMAdaptor__DataStoreIsZeroAddress();
     error GMAdaptor__AssetIsAlreadySupported();
     error GMAdaptor__AssetIsNotSupported();
-    error GMAdaptor__MarketTokenIsNotSupported(address marketToken);
+    error GMAdaptor__MarketTokenIsNotSupported(address token);
 
     /// CONSTRUCTOR ///
 
@@ -81,40 +81,29 @@ contract GMAdaptor is BaseOracleAdaptor {
         }
 
         IPriceRouter priceRouter = IPriceRouter(centralRegistry.priceRouter());
-        uint256[] memory marketTokenPrices = new uint256[](3);
-        address[] memory marketTokens = marketData[asset];
+        uint256[] memory prices = new uint256[](3);
+        address[] memory tokens = marketData[asset];
         uint256 errorCode;
-        address marketToken;
+        address token;
 
         for (uint256 i = 0; i < 3; ++i) {
-            marketToken = marketTokens[i];
+            token = tokens[i];
 
-            (marketTokenPrices[i], errorCode) = priceRouter.getPrice(
-                marketToken,
-                true,
-                false
-            );
+            (prices[i], errorCode) = priceRouter.getPrice(token, true, false);
             if (errorCode > 0) {
                 pData.hadError = true;
                 return pData;
             }
 
-            marketTokenPrices[i] =
-                (marketTokenPrices[i] * 1e30) /
-                _priceUnit[marketToken];
+            prices[i] = (prices[i] * 1e30) / _priceUnit[token];
         }
 
         (int256 price, ) = reader.getMarketTokenPrice(
             dataStore,
-            IReader.MarketProps(
-                asset,
-                marketTokens[0],
-                marketTokens[1],
-                marketTokens[2]
-            ),
-            IReader.PriceProps(marketTokenPrices[0], marketTokenPrices[0]),
-            IReader.PriceProps(marketTokenPrices[1], marketTokenPrices[1]),
-            IReader.PriceProps(marketTokenPrices[2], marketTokenPrices[2]),
+            IReader.MarketProps(asset, tokens[0], tokens[1], tokens[2]),
+            IReader.PriceProps(prices[0], prices[0]),
+            IReader.PriceProps(prices[1], prices[1]),
+            IReader.PriceProps(prices[2], prices[2]),
             PNL_FACTOR_TYPE,
             true
         );
@@ -142,28 +131,26 @@ contract GMAdaptor is BaseOracleAdaptor {
         IReader.MarketProps memory market = reader.getMarket(dataStore, asset);
         IPriceRouter priceRouter = IPriceRouter(centralRegistry.priceRouter());
 
-        address[] memory marketTokens = new address[](3);
-        address marketToken;
-        marketTokens[0] = market.indexToken;
-        marketTokens[1] = market.longToken;
-        marketTokens[2] = market.shortToken;
+        address[] memory tokens = new address[](3);
+        address token;
+        tokens[0] = market.indexToken;
+        tokens[1] = market.longToken;
+        tokens[2] = market.shortToken;
 
         for (uint256 i = 0; i < 3; ++i) {
-            marketToken = marketTokens[i];
+            token = tokens[i];
 
-            if (!priceRouter.isSupportedAsset(marketToken)) {
-                revert GMAdaptor__MarketTokenIsNotSupported(marketToken);
+            if (!priceRouter.isSupportedAsset(token)) {
+                revert GMAdaptor__MarketTokenIsNotSupported(token);
             }
 
-            if (marketToken == _ARB_BTC) {
-                _priceUnit[marketToken] = 1e26;
+            if (token == _ARB_BTC) {
+                _priceUnit[token] = 1e26;
             } else {
-                _priceUnit[marketToken] =
-                    1e18 *
-                    10 ** IERC20(marketToken).decimals();
+                _priceUnit[token] = 1e18 * 10 ** IERC20(token).decimals();
             }
 
-            marketData[asset].push(marketToken);
+            marketData[asset].push(token);
         }
 
         isSupportedAsset[asset] = true;
