@@ -27,8 +27,9 @@ contract GMAdaptor is BaseOracleAdaptor {
 
     /// STORAGE ///
 
-    /// @notice GMX GM Token Market Data
-    mapping(address => IReader.MarketProps) public marketData;
+    /// @notice GMX GM Token Market Data in array
+    /// @dev [indexToken, longToken, shortToken]
+    mapping(address => address[]) public marketData;
 
     /// @notice Price unit for token on GMX Reader
     mapping(address => uint256) internal _priceUnit;
@@ -39,7 +40,7 @@ contract GMAdaptor is BaseOracleAdaptor {
     error GMAdaptor__DataStoreIsZeroAddress();
     error GMAdaptor__AssetIsAlreadySupported();
     error GMAdaptor__AssetIsNotSupported();
-    error GMAdaptor__ConfigurationError();
+    error GMAdaptor__MarketTokenIsNotSupported(address marketToken);
 
     /// CONSTRUCTOR ///
 
@@ -80,56 +81,40 @@ contract GMAdaptor is BaseOracleAdaptor {
         }
 
         IPriceRouter priceRouter = IPriceRouter(centralRegistry.priceRouter());
-        uint256 indexTokenPrice;
-        uint256 longTokenPrice;
-        uint256 shortTokenPrice;
+        uint256[] memory marketTokenPrices = new uint256[](3);
+        address[] memory marketTokens = marketData[asset];
         uint256 errorCode;
+        address marketToken;
 
-        (indexTokenPrice, errorCode) = priceRouter.getPrice(
-            marketData[asset].indexToken,
-            true,
-            false
-        );
-        if (errorCode > 0) {
-            pData.hadError = true;
-            return pData;
-        }
+        for (uint256 i = 0; i < 3; ++i) {
+            marketToken = marketTokens[i];
 
-        (longTokenPrice, errorCode) = priceRouter.getPrice(
-            marketData[asset].longToken,
-            true,
-            false
-        );
-        if (errorCode > 0) {
-            pData.hadError = true;
-            return pData;
-        }
+            (marketTokenPrices[i], errorCode) = priceRouter.getPrice(
+                marketToken,
+                true,
+                false
+            );
+            if (errorCode > 0) {
+                pData.hadError = true;
+                return pData;
+            }
 
-        (shortTokenPrice, errorCode) = priceRouter.getPrice(
-            marketData[asset].shortToken,
-            true,
-            false
-        );
-        if (errorCode > 0) {
-            pData.hadError = true;
-            return pData;
+            marketTokenPrices[i] =
+                (marketTokenPrices[i] * 1e30) /
+                _priceUnit[marketToken];
         }
-        indexTokenPrice =
-            (indexTokenPrice * 1e30) /
-            _priceUnit[marketData[asset].indexToken];
-        longTokenPrice =
-            (longTokenPrice * 1e30) /
-            _priceUnit[marketData[asset].longToken];
-        shortTokenPrice =
-            (shortTokenPrice * 1e30) /
-            _priceUnit[marketData[asset].shortToken];
 
         (int256 price, ) = reader.getMarketTokenPrice(
             dataStore,
-            marketData[asset],
-            IReader.PriceProps(indexTokenPrice, indexTokenPrice),
-            IReader.PriceProps(longTokenPrice, longTokenPrice),
-            IReader.PriceProps(shortTokenPrice, shortTokenPrice),
+            IReader.MarketProps(
+                asset,
+                marketTokens[0],
+                marketTokens[1],
+                marketTokens[2]
+            ),
+            IReader.PriceProps(marketTokenPrices[0], marketTokenPrices[0]),
+            IReader.PriceProps(marketTokenPrices[1], marketTokenPrices[1]),
+            IReader.PriceProps(marketTokenPrices[2], marketTokenPrices[2]),
             PNL_FACTOR_TYPE,
             true
         );
@@ -148,7 +133,7 @@ contract GMAdaptor is BaseOracleAdaptor {
     }
 
     /// @notice Add a GMX GM Token as an asset.
-    /// @param asset The address of the token to add pricing for
+    /// @param asset The address of the token to add pricing for.
     function addAsset(address asset) external onlyElevatedPermissions {
         if (isSupportedAsset[asset]) {
             revert GMAdaptor__AssetIsAlreadySupported();
@@ -157,44 +142,36 @@ contract GMAdaptor is BaseOracleAdaptor {
         IReader.MarketProps memory market = reader.getMarket(dataStore, asset);
         IPriceRouter priceRouter = IPriceRouter(centralRegistry.priceRouter());
 
-        if (!priceRouter.isSupportedAsset(market.indexToken)) {
-            revert GMAdaptor__ConfigurationError();
-        }
-        if (!priceRouter.isSupportedAsset(market.longToken)) {
-            revert GMAdaptor__ConfigurationError();
-        }
-        if (!priceRouter.isSupportedAsset(market.shortToken)) {
-            revert GMAdaptor__ConfigurationError();
+        address[] memory marketTokens = new address[](3);
+        address marketToken;
+        marketTokens[0] = market.indexToken;
+        marketTokens[1] = market.longToken;
+        marketTokens[2] = market.shortToken;
+
+        for (uint256 i = 0; i < 3; ++i) {
+            marketToken = marketTokens[i];
+
+            if (!priceRouter.isSupportedAsset(marketToken)) {
+                revert GMAdaptor__MarketTokenIsNotSupported(marketToken);
+            }
+
+            if (marketToken == _ARB_BTC) {
+                _priceUnit[marketToken] = 1e26;
+            } else {
+                _priceUnit[marketToken] =
+                    1e18 *
+                    10 ** IERC20(marketToken).decimals();
+            }
+
+            marketData[asset].push(marketToken);
         }
 
-        if (market.indexToken == _ARB_BTC) {
-            _priceUnit[market.indexToken] = 1e26;
-        } else {
-            _priceUnit[market.indexToken] =
-                1e18 *
-                10 ** IERC20(market.indexToken).decimals();
-        }
-        if (market.longToken == _ARB_BTC) {
-            _priceUnit[market.longToken] = 1e26;
-        } else {
-            _priceUnit[market.longToken] =
-                1e18 *
-                10 ** IERC20(market.longToken).decimals();
-        }
-        if (market.shortToken == _ARB_BTC) {
-            _priceUnit[market.shortToken] = 1e26;
-        } else {
-            _priceUnit[market.shortToken] =
-                1e18 *
-                10 ** IERC20(market.shortToken).decimals();
-        }
-
-        marketData[asset] = market;
         isSupportedAsset[asset] = true;
     }
 
     /// @notice Removes a supported asset from the adaptor.
-    /// @dev Calls back into price router to notify it of its removal
+    /// @dev Calls back into price router to notify it of its removal.
+    /// @param asset The address of the token to remove.
     function removeAsset(address asset) external override onlyDaoPermissions {
         if (!isSupportedAsset[asset]) {
             revert GMAdaptor__AssetIsNotSupported();
@@ -209,6 +186,4 @@ contract GMAdaptor is BaseOracleAdaptor {
         // Notify the price router that we are going to stop supporting the asset
         IPriceRouter(centralRegistry.priceRouter()).notifyFeedRemoval(asset);
     }
-
-    /// INTERNAL FUNCTIONS ///
 }

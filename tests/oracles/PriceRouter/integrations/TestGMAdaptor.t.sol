@@ -100,7 +100,12 @@ contract TestGMAdaptor is TestBasePriceRouter {
         adapter.removeAsset(GM_BTC_USDC);
         priceRouter.removeAssetPriceFeed(BTC, address(chainlinkAdaptor));
 
-        vm.expectRevert(GMAdaptor.GMAdaptor__ConfigurationError.selector);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                GMAdaptor.GMAdaptor__MarketTokenIsNotSupported.selector,
+                BTC
+            )
+        );
         adapter.addAsset(GM_BTC_USDC);
     }
 
@@ -108,7 +113,12 @@ contract TestGMAdaptor is TestBasePriceRouter {
         adapter.removeAsset(GM_BTC_USDC);
         priceRouter.removeAssetPriceFeed(WBTC, address(chainlinkAdaptor));
 
-        vm.expectRevert(GMAdaptor.GMAdaptor__ConfigurationError.selector);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                GMAdaptor.GMAdaptor__MarketTokenIsNotSupported.selector,
+                WBTC
+            )
+        );
         adapter.addAsset(GM_BTC_USDC);
     }
 
@@ -116,7 +126,12 @@ contract TestGMAdaptor is TestBasePriceRouter {
         adapter.removeAsset(GM_BTC_USDC);
         priceRouter.removeAssetPriceFeed(USDC, address(chainlinkAdaptor));
 
-        vm.expectRevert(GMAdaptor.GMAdaptor__ConfigurationError.selector);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                GMAdaptor.GMAdaptor__MarketTokenIsNotSupported.selector,
+                USDC
+            )
+        );
         adapter.addAsset(GM_BTC_USDC);
     }
 
