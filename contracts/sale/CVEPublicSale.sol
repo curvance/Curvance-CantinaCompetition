@@ -6,6 +6,7 @@ import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 
 contract CVEPublicSale {
     /// @notice Curvance DAO hub
@@ -17,10 +18,10 @@ contract CVEPublicSale {
     /// @notice Public sale configurations
     uint256 public constant SALE_PERIOD = 3 days;
     uint256 public startTime;
-    uint256 public softPrice; // price in WETH (18 decimals)
-    uint256 public hardPrice; // price in WETH (18 decimals)
+    uint256 public softPriceInETH; // price in WETH (18 decimals)
+    uint256 public hardPriceInETH; // price in WETH (18 decimals)
     uint256 public cveAmountForSale;
-    address public weth;
+    address public payToken; // ideally WETH
 
     uint256 public saleCommitted;
     mapping(address => uint256) public userCommitted;
@@ -33,12 +34,16 @@ contract CVEPublicSale {
     error CVEPublicSale__AlreadyStarted();
     error CVEPublicSale__InSale();
     error CVEPublicSale__Ended();
+    error CVEPublicSale__Failed();
+    error CVEPublicSale__Success();
     error CVEPublicSale__InvalidPrice();
+    error CVEPublicSale__InvalidPriceSource();
 
     /// Events
     event PublicSaleStarted(uint256 startTime);
-    event Committed(address user, uint256 wethAmount);
+    event Committed(address user, uint256 payAmount);
     event Claimed(address user, uint256 cveAmount);
+    event Refunded(address user, uint256 refundAmount);
 
     constructor(ICentralRegistry centralRegistry_) {
         if (
@@ -63,16 +68,16 @@ contract CVEPublicSale {
 
     /// @notice start public sale
     /// @param _startTime public sale start timestamp (in seconds)
-    /// @param _softPrice public sale base token price (in payToken)
-    /// @param _hardPrice public sale hard token price (in payToken)
+    /// @param _softPriceInUSD public sale base token price (in USD)
+    /// @param _hardPriceInUSD public sale hard token price (in USD)
     /// @param _cveAmountForSale public sale CVE amount base cap
-    /// @param _weth public sale pay token address
+    /// @param _payToken public sale pay token address
     function start(
         uint256 _startTime,
-        uint256 _softPrice,
-        uint256 _hardPrice,
+        uint256 _softPriceInUSD,
+        uint256 _hardPriceInUSD,
         uint256 _cveAmountForSale,
-        address _weth
+        address _payToken
     ) external onlyDaoPermissions {
         if (startTime != 0) {
             revert CVEPublicSale__AlreadyStarted();
@@ -82,20 +87,30 @@ contract CVEPublicSale {
             revert CVEPublicSale__InvalidStartTime();
         }
 
-        if (softPrice >= hardPrice) {
+        if (softPriceInETH >= hardPriceInETH) {
             revert CVEPublicSale__InvalidPrice();
         }
 
+        (uint256 ethPrice, uint256 error) = IPriceRouter(
+            centralRegistry.priceRouter()
+        ).getPrice(_payToken, true, true);
+
+        // Make sure that we didnt have a catastrophic error when pricing
+        // the payment token
+        if (error == 2) {
+            revert CVEPublicSale__InvalidPriceSource();
+        }
+
         startTime = _startTime;
-        softPrice = _softPrice;
-        hardPrice = _hardPrice;
+        softPriceInETH = (_softPriceInUSD * 1e18) / ethPrice;
+        hardPriceInETH = (_hardPriceInUSD * 1e18) / ethPrice;
         cveAmountForSale = _cveAmountForSale;
-        weth = _weth;
+        payToken = _payToken;
 
         emit PublicSaleStarted(_startTime);
     }
 
-    function commit(uint256 wethAmount) external {
+    function commit(uint256 payAmount) external {
         if (startTime == 0 || block.timestamp < startTime) {
             revert CVEPublicSale__NotStarted();
         }
@@ -106,21 +121,21 @@ contract CVEPublicSale {
             revert CVEPublicSale__Ended();
         }
 
-        if (wethAmount > remaining) {
+        if (payAmount > remaining) {
             // users can commit for only remaining amount
-            wethAmount = remaining;
+            payAmount = remaining;
         }
 
         SafeTransferLib.safeTransferFrom(
-            weth,
+            payToken,
             msg.sender,
             address(this),
-            wethAmount
+            payAmount
         );
 
-        userCommitted[msg.sender] += wethAmount;
+        userCommitted[msg.sender] += payAmount;
 
-        emit Committed(msg.sender, wethAmount);
+        emit Committed(msg.sender, payAmount);
     }
 
     function claim() external returns (uint256 cveAmount) {
@@ -130,40 +145,62 @@ contract CVEPublicSale {
         if (block.timestamp < startTime + SALE_PERIOD) {
             revert CVEPublicSale__InSale();
         }
+        if (saleCommitted < softCap()) {
+            revert CVEPublicSale__Failed();
+        }
 
-        uint256 wethAmount = userCommitted[msg.sender];
+        uint256 payAmount = userCommitted[msg.sender];
         userCommitted[msg.sender] = 0;
 
         uint256 price = currentPrice();
-        cveAmount = (wethAmount * 1e18) / price;
+        cveAmount = (payAmount * 1e18) / price;
 
-        SafeTransferLib.safeTransfer(weth, msg.sender, wethAmount);
+        SafeTransferLib.safeTransfer(cve, msg.sender, cveAmount);
 
         emit Claimed(msg.sender, cveAmount);
     }
 
+    function refund() external {
+        if (startTime == 0 || block.timestamp < startTime) {
+            revert CVEPublicSale__NotStarted();
+        }
+        if (block.timestamp < startTime + SALE_PERIOD) {
+            revert CVEPublicSale__InSale();
+        }
+        if (saleCommitted >= softCap()) {
+            revert CVEPublicSale__Success();
+        }
+
+        uint256 refundAmount = userCommitted[msg.sender];
+        userCommitted[msg.sender] = 0;
+
+        SafeTransferLib.safeTransfer(payToken, msg.sender, refundAmount);
+
+        emit Refunded(msg.sender, refundAmount);
+    }
+
     /// @notice return sale soft cap
     function softCap() public view returns (uint256) {
-        return (softPrice * cveAmountForSale) / 1e18;
+        return (softPriceInETH * cveAmountForSale) / 1e18;
     }
 
     /// @notice return sale hard cap
     function hardCap() public view returns (uint256) {
-        return (hardPrice * cveAmountForSale) / 1e18;
+        return (hardPriceInETH * cveAmountForSale) / 1e18;
     }
 
     /// @notice return sale price from sale committed
     function priceAt(uint256 _saleCommitted) public view returns (uint256) {
         uint256 _softCap = softCap();
         if (_saleCommitted < _softCap) {
-            return softPrice;
+            return softPriceInETH;
         }
         uint256 _hardCap = hardCap();
         if (_saleCommitted >= _hardCap) {
-            return hardPrice;
+            return hardPriceInETH;
         }
 
-        return softPrice + (_saleCommitted - _softCap) / cveAmountForSale;
+        return softPriceInETH + (_saleCommitted - _softCap) / cveAmountForSale;
     }
 
     /// @notice return current sale price
