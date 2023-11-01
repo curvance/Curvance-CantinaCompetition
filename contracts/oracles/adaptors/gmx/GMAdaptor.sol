@@ -118,7 +118,7 @@ contract GMAdaptor is BaseOracleAdaptor {
             true
         );
 
-        if (price < 0) {
+        if (price <= 0) {
             pData.hadError = true;
             return pData;
         }
