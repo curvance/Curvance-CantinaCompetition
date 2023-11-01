@@ -9,6 +9,12 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 
 contract CVEPublicSale {
+    enum SaleStatus {
+        NotStarted,
+        InSale,
+        Closed
+    }
+
     /// @notice Curvance DAO hub
     ICentralRegistry public immutable centralRegistry;
 
@@ -31,21 +37,17 @@ contract CVEPublicSale {
     error CVEPublicSale__InvalidCentralRegistry();
     error CVEPublicSale__Unauthorized();
     error CVEPublicSale__InvalidStartTime();
+    error CVEPublicSale__InvalidPrice();
+    error CVEPublicSale__InvalidPriceSource();
     error CVEPublicSale__NotStarted();
     error CVEPublicSale__AlreadyStarted();
     error CVEPublicSale__InSale();
-    error CVEPublicSale__Ended();
-    error CVEPublicSale__Failed();
-    error CVEPublicSale__Success();
-    error CVEPublicSale__HardCap();
-    error CVEPublicSale__InvalidPrice();
-    error CVEPublicSale__InvalidPriceSource();
+    error CVEPublicSale__Closed();
 
     /// Events
     event PublicSaleStarted(uint256 startTime);
     event Committed(address user, uint256 payAmount);
     event Claimed(address user, uint256 cveAmount);
-    event Refunded(address user, uint256 refundAmount);
 
     constructor(ICentralRegistry centralRegistry_) {
         if (
@@ -113,19 +115,16 @@ contract CVEPublicSale {
     }
 
     function commit(uint256 payAmount) external {
-        if (startTime == 0 || block.timestamp < startTime) {
+        SaleStatus saleStatus = currentStatus();
+        if (saleStatus == SaleStatus.NotStarted) {
             revert CVEPublicSale__NotStarted();
         }
 
-        if (block.timestamp > startTime + SALE_PERIOD) {
-            revert CVEPublicSale__Ended();
+        if (saleStatus == SaleStatus.Closed) {
+            revert CVEPublicSale__Closed();
         }
 
         uint256 remaining = hardCap() - saleCommitted;
-
-        if (remaining == 0) {
-            revert CVEPublicSale__HardCap();
-        }
 
         if (payAmount > remaining) {
             // users can commit for only remaining amount
@@ -146,14 +145,12 @@ contract CVEPublicSale {
     }
 
     function claim() external returns (uint256 cveAmount) {
-        if (startTime == 0 || block.timestamp < startTime) {
+        SaleStatus saleStatus = currentStatus();
+        if (saleStatus == SaleStatus.NotStarted) {
             revert CVEPublicSale__NotStarted();
         }
-        if (block.timestamp < startTime + SALE_PERIOD) {
+        if (saleStatus == SaleStatus.InSale) {
             revert CVEPublicSale__InSale();
-        }
-        if (saleCommitted < softCap()) {
-            revert CVEPublicSale__Failed();
         }
 
         uint256 payAmount = userCommitted[msg.sender];
@@ -165,25 +162,6 @@ contract CVEPublicSale {
         SafeTransferLib.safeTransfer(cve, msg.sender, cveAmount);
 
         emit Claimed(msg.sender, cveAmount);
-    }
-
-    function refund() external {
-        if (startTime == 0 || block.timestamp < startTime) {
-            revert CVEPublicSale__NotStarted();
-        }
-        if (block.timestamp < startTime + SALE_PERIOD) {
-            revert CVEPublicSale__InSale();
-        }
-        if (saleCommitted >= softCap()) {
-            revert CVEPublicSale__Success();
-        }
-
-        uint256 refundAmount = userCommitted[msg.sender];
-        userCommitted[msg.sender] = 0;
-
-        SafeTransferLib.safeTransfer(payToken, msg.sender, refundAmount);
-
-        emit Refunded(msg.sender, refundAmount);
     }
 
     /// @notice return sale soft cap
@@ -216,25 +194,34 @@ contract CVEPublicSale {
         return priceAt(saleCommitted);
     }
 
-    function inSale() public view returns (bool) {
-        return
-            startTime != 0 &&
-            startTime < block.timestamp &&
-            block.timestamp < startTime + SALE_PERIOD;
+    function currentStatus() public view returns (SaleStatus) {
+        if (startTime == 0 || block.timestamp < startTime) {
+            return SaleStatus.NotStarted;
+        }
+
+        if (
+            block.timestamp < startTime + SALE_PERIOD &&
+            saleCommitted < hardCap()
+        ) {
+            return SaleStatus.InSale;
+        }
+
+        return SaleStatus.Closed;
     }
 
-    /// @notice withdraw remaining CVE
+    /// @notice withdraw Fund
     /// @dev (only dao permissions)
     ///      this function is only available when the public sale is over
-    function withdrawRemainingCVE() external onlyDaoPermissions {
-        if (startTime == 0 || block.timestamp < startTime) {
+    function withdrawFund() external onlyDaoPermissions {
+        SaleStatus saleStatus = currentStatus();
+        if (saleStatus == SaleStatus.NotStarted) {
             revert CVEPublicSale__NotStarted();
         }
-        if (block.timestamp < startTime + SALE_PERIOD) {
+        if (saleStatus == SaleStatus.InSale) {
             revert CVEPublicSale__InSale();
         }
 
-        uint256 remaining = IERC20(cve).balanceOf(address(this));
-        SafeTransferLib.safeTransfer(cve, msg.sender, remaining);
+        uint256 balance = IERC20(payToken).balanceOf(address(this));
+        SafeTransferLib.safeTransfer(payToken, msg.sender, balance);
     }
 }

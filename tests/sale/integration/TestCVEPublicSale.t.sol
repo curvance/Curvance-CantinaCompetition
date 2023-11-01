@@ -103,24 +103,14 @@ contract TestCVEPublicSale is TestBaseMarket {
         publicSale.commit(1e18);
     }
 
-    function testCommitRevertWhenPublicSaleEnded() public {
+    function testCommitRevertWhenPublicSaleClosed() public {
         testStartSuccess();
 
         _prepareCommit(address(this), 1e18);
 
         skip(publicSale.SALE_PERIOD() + 1);
 
-        vm.expectRevert(CVEPublicSale.CVEPublicSale__Ended.selector);
-        publicSale.commit(1e18);
-    }
-
-    function testCommitRevertWhenPublicSaleHardCap() public {
-        testStartSuccess();
-
-        _prepareCommit(address(this), 10000e18);
-        publicSale.commit(10000e18);
-
-        vm.expectRevert(CVEPublicSale.CVEPublicSale__HardCap.selector);
+        vm.expectRevert(CVEPublicSale.CVEPublicSale__Closed.selector);
         publicSale.commit(1e18);
     }
 
@@ -144,46 +134,6 @@ contract TestCVEPublicSale is TestBaseMarket {
         assertEq(publicSale.currentPrice(), publicSale.hardPriceInPayToken());
     }
 
-    function testRefundRevertWhenPubliSaleNotStarted() public {
-        vm.expectRevert(CVEPublicSale.CVEPublicSale__NotStarted.selector);
-        publicSale.refund();
-    }
-
-    function testRefundRevertWhenPubliSaleInProgress() public {
-        testStartSuccess();
-
-        vm.expectRevert(CVEPublicSale.CVEPublicSale__InSale.selector);
-        publicSale.refund();
-    }
-
-    function testRefundRevertWhenPubliSaleSuccess() public {
-        testStartSuccess();
-
-        uint256 commitAmount = publicSale.softCap();
-        _prepareCommit(address(this), commitAmount);
-        publicSale.commit(commitAmount);
-
-        skip(publicSale.SALE_PERIOD() + 1);
-
-        vm.expectRevert(CVEPublicSale.CVEPublicSale__Success.selector);
-        publicSale.refund();
-    }
-
-    function testRefundSuccess() public {
-        testStartSuccess();
-
-        uint256 commitAmount = 1e18;
-        _prepareCommit(address(this), commitAmount);
-        publicSale.commit(commitAmount);
-
-        skip(publicSale.SALE_PERIOD() + 1);
-
-        publicSale.refund();
-
-        assertEq(publicSale.userCommitted(address(this)), 0);
-        assertEq(IERC20(_WETH_ADDRESS).balanceOf(address(this)), commitAmount);
-    }
-
     function testClaimRevertWhenPubliSaleNotStarted() public {
         vm.expectRevert(CVEPublicSale.CVEPublicSale__NotStarted.selector);
         publicSale.claim();
@@ -193,19 +143,6 @@ contract TestCVEPublicSale is TestBaseMarket {
         testStartSuccess();
 
         vm.expectRevert(CVEPublicSale.CVEPublicSale__InSale.selector);
-        publicSale.claim();
-    }
-
-    function testClaimRevertWhenPubliSaleFailed() public {
-        testStartSuccess();
-
-        uint256 commitAmount = publicSale.softCap() - 1;
-        _prepareCommit(address(this), commitAmount);
-        publicSale.commit(commitAmount);
-
-        skip(publicSale.SALE_PERIOD() + 1);
-
-        vm.expectRevert(CVEPublicSale.CVEPublicSale__Failed.selector);
         publicSale.claim();
     }
 
