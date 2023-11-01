@@ -10,10 +10,16 @@ import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 import { IReader } from "contracts/interfaces/external/gmx/IReader.sol";
 
 contract GMAdaptor is BaseOracleAdaptor {
-    /// CONSTANTS ///
+    /// TYPES ///
 
-    address internal constant _ARB_BTC =
-        0x47904963fc8b2340414262125aF798B9655E58Cd;
+    /// @param asset The address of synthetic asset for native token.
+    /// @param decimals The decimals of synthetic asset.
+    struct SyntheticAsset {
+        address asset;
+        uint256 decimals;
+    }
+
+    /// CONSTANTS ///
 
     /// @notice keccak256(abi.encode("MAX_PNL_FACTOR_FOR_TRADERS"));
     bytes32 public constant PNL_FACTOR_TYPE =
@@ -36,6 +42,7 @@ contract GMAdaptor is BaseOracleAdaptor {
 
     /// ERRORS ///
 
+    error GMAdaptor__ChainIsNotSupported();
     error GMAdaptor__ReaderIsZeroAddress();
     error GMAdaptor__DataStoreIsZeroAddress();
     error GMAdaptor__AssetIsAlreadySupported();
@@ -52,6 +59,9 @@ contract GMAdaptor is BaseOracleAdaptor {
         address reader_,
         address dataStore_
     ) BaseOracleAdaptor(centralRegistry_) {
+        if (block.chainid != 42161) {
+            revert GMAdaptor__ChainIsNotSupported();
+        }
         if (reader_ == address(0)) {
             revert GMAdaptor__ReaderIsZeroAddress();
         }
@@ -144,9 +154,7 @@ contract GMAdaptor is BaseOracleAdaptor {
                 revert GMAdaptor__MarketTokenIsNotSupported(token);
             }
 
-            if (token == _ARB_BTC) {
-                _priceUnit[token] = 1e26;
-            } else {
+            if (_priceUnit[token] == 0) {
                 _priceUnit[token] = 1e18 * 10 ** IERC20(token).decimals();
             }
 
@@ -172,5 +180,29 @@ contract GMAdaptor is BaseOracleAdaptor {
 
         // Notify the price router that we are going to stop supporting the asset
         IPriceRouter(centralRegistry.priceRouter()).notifyFeedRemoval(asset);
+    }
+
+    /// @notice Register synthetic assets and decimals.
+    /// @param assets The struct array of the synthetic assets to register.
+    function registerSyntheticAssets(
+        SyntheticAsset[] memory assets
+    ) external onlyDaoPermissions {
+        uint256 numAssets = assets.length;
+
+        for (uint256 i = 0; i < numAssets; ++i) {
+            _priceUnit[assets[i].asset] = 1e18 * 10 ** assets[i].decimals;
+        }
+    }
+
+    /// @notice Unregister synthetic assets and decimals.
+    /// @param assets The struct array of the synthetic assets to unregister.
+    function unregisterSyntheticAssets(
+        address[] memory assets
+    ) external onlyDaoPermissions {
+        uint256 numAssets = assets.length;
+
+        for (uint256 i = 0; i < numAssets; ++i) {
+            _priceUnit[assets[i]] = 0;
+        }
     }
 }
