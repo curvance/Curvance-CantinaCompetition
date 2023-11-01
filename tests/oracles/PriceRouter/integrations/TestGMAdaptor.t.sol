@@ -26,7 +26,7 @@ contract TestGMAdaptor is TestBasePriceRouter {
     address private CHAINLINK_PRICE_FEED_USDC =
         0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3;
 
-    GMAdaptor adapter;
+    GMAdaptor public adapter;
 
     function setUp() public override {
         _fork("ETH_NODE_URI_ARBITRUM", 145755190);
@@ -59,6 +59,11 @@ contract TestGMAdaptor is TestBasePriceRouter {
         priceRouter.addAssetPriceFeed(WBTC, address(chainlinkAdaptor));
         priceRouter.addAssetPriceFeed(USDC, address(chainlinkAdaptor));
 
+        GMAdaptor.SyntheticAsset[]
+            memory syntheticAssets = new GMAdaptor.SyntheticAsset[](1);
+        syntheticAssets[0] = GMAdaptor.SyntheticAsset(BTC, 8);
+
+        adapter.registerSyntheticAssets(syntheticAssets);
         adapter.addAsset(GM_BTC_USDC);
 
         priceRouter.addAssetPriceFeed(GM_BTC_USDC, address(adapter));
