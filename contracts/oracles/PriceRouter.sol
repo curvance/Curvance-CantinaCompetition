@@ -29,15 +29,25 @@ contract PriceRouter {
 
     /// @notice Return value indicating no price error
     uint256 public constant NO_ERROR = 0;
+
     /// @notice Return value indicating price divergence or 1 missing price
     uint256 public constant CAUTION = 1;
+
     /// @notice Return value indicating no price returned at all
     uint256 public constant BAD_SOURCE = 2;
+
     /// @notice The address of the chainlink feed to convert ETH -> USD
     address public immutable CHAINLINK_ETH_USD;
+
     /// @notice The number of decimals the aggregator responses with.
     uint256 public immutable CHAINLINK_DECIMALS;
-    ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
+
+    /// @notice Curvance DAO hub
+    ICentralRegistry public immutable centralRegistry;
+
+    /// @notice Time to pass before accepting answers when sequencer
+    ///         comes back up.
+    uint256 public constant GRACE_PERIOD_TIME = 3600;
 
     // `bytes4(keccak256(bytes("PriceRouter__NotSupported()")))`
     uint256 internal constant NOT_SUPPORTED_SELECTOR = 0xe4558fac;
@@ -306,6 +316,12 @@ contract PriceRouter {
         }
 
         return assetPriceFeeds[asset].length > 0;
+    }
+
+    /// @notice Check whether sequencer is valid or down.
+    /// @return True if sequencer is valid
+    function isSequencerValid() external view returns (bool) {
+        return _isSequencerValid();
     }
 
     /// PUBLIC FUNCTIONS ///
@@ -609,6 +625,10 @@ contract PriceRouter {
     ///         it returns (answer, true).
     ///         Where true corresponded to hasError = true.
     function _getETHUSD() internal view returns (uint256, bool) {
+        if (!_isSequencerValid()) {
+            return (0, true);
+        }
+
         (, int256 answer, , uint256 updatedAt, ) = IChainlink(
             CHAINLINK_ETH_USD
         ).latestRoundData();
@@ -619,7 +639,30 @@ contract PriceRouter {
         ) {
             return (uint256(answer), true);
         }
+
         return (uint256(answer), false);
+    }
+
+    /// @notice Check whether sequencer is valid or down.
+    /// @return True if sequencer is valid
+    function _isSequencerValid() internal view returns (bool) {
+        address sequencer = centralRegistry.sequencer();
+
+        if (sequencer != address(0)) {
+            (, int256 answer, uint256 startedAt, , ) = IChainlink(sequencer)
+                .latestRoundData();
+
+            // Answer == 0: Sequencer is up
+            // Check that the sequencer is up or the grace period has passed
+            // after the sequencer is back up.
+            if (
+                answer != 0 || block.timestamp < startedAt + GRACE_PERIOD_TIME
+            ) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /// @notice Converts a given price between ETH and USD formats.

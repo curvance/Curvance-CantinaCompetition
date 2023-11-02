@@ -14,7 +14,12 @@ contract CentralRegistry is ERC165 {
     uint256 internal constant _PARAMETERS_MISCONFIGURED_SELECTOR = 0x6fc38aea;
     /// `bytes4(keccak256(bytes("CentralRegistry_Unauthorized()")))`
     uint256 internal constant _UNAUTHORIZED_SELECTOR = 0x88f093e;
-    uint256 public immutable genesisEpoch; // Genesis Epoch timestamp
+
+    /// @notice Genesis Epoch timestamp
+    uint256 public immutable genesisEpoch;
+
+    /// @notice Sequencer Uptime Feed address for L2.
+    address public immutable sequencer;
 
     /// STORAGE ///
 
@@ -130,7 +135,8 @@ contract CentralRegistry is ERC165 {
         address daoAddress_,
         address timelock_,
         address emergencyCouncil_,
-        uint256 genesisEpoch_
+        uint256 genesisEpoch_,
+        address sequencer_
     ) {
         if (daoAddress_ == address(0)) {
             daoAddress_ = msg.sender;
@@ -157,6 +163,7 @@ contract CentralRegistry is ERC165 {
         hasElevatedPermissions[emergencyCouncil] = true;
 
         genesisEpoch = genesisEpoch_;
+        sequencer = sequencer_;
 
         emit OwnershipTransferred(address(0), daoAddress_);
         emit NewTimelockConfiguration(address(0), timelock_);

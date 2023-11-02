@@ -54,6 +54,7 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
 
     /// CONSTRUCTOR ///
 
+    /// @param centralRegistry_ The address of central registry.
     constructor(
         ICentralRegistry centralRegistry_
     ) BaseOracleAdaptor(centralRegistry_) {}
@@ -211,6 +212,10 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
         FeedData memory feed,
         bool inUSD
     ) internal view returns (PriceReturnData memory) {
+        if (!IPriceRouter(centralRegistry.priceRouter()).isSequencerValid()) {
+            return PriceReturnData({ price: 0, hadError: true, inUSD: inUSD });
+        }
+
         (, int256 price, , uint256 updatedAt, ) = IChainlink(feed.aggregator)
             .latestRoundData();
         uint256 newPrice = (uint256(price) * 1e18) / (10 ** feed.decimals);
