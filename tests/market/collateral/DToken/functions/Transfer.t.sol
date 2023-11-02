@@ -10,7 +10,7 @@ contract DTokenTransferTest is TestBaseDToken {
     event Transfer(address indexed from, address indexed to, uint256 amount);
 
     function test_dTokenTransfer_fail_whenSenderAndReceiverAreSame() public {
-        vm.expectRevert(DToken.DToken__TransferNotAllowed.selector);
+        vm.expectRevert(DToken.DToken__TransferError.selector);
         dUSDC.transfer(address(this), 100e6);
     }
 

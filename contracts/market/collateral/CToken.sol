@@ -13,13 +13,12 @@ import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.s
 import { BasePositionVault } from "contracts/deposits/adaptors/BasePositionVault.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.sol";
+import { EXP_SCALE } from "contracts/libraries/Constants.sol";
 
 /// @title Curvance's Collateral Token Contract
 contract CToken is ERC165, ReentrancyGuard {
     /// CONSTANTS ///
 
-    /// @notice Scalar for math
-    uint256 internal constant EXP_SCALE = 1e18;
     /// @notice Underlying asset for the CToken
     address public immutable underlying;
     /// @notice Curvance DAO hub
@@ -37,7 +36,7 @@ contract CToken is ERC165, ReentrancyGuard {
     BasePositionVault public vault;
     /// @notice Total number of tokens in circulation
     uint256 public totalSupply;
-    
+
     /// @notice account => token balance
     mapping(address => uint256) public balanceOf;
     /// @notice account => spender => approved amount
@@ -56,28 +55,25 @@ contract CToken is ERC165, ReentrancyGuard {
 
     /// ERRORS ///
 
-    error CToken__UnauthorizedCaller();
-    error CToken__ExcessiveValue();
-    error CToken__TransferNotAllowed();
-    error CToken__ValidationFailed();
-    error CToken__ConstructorParametersareInvalid();
+    error CToken__Unauthorized();
+    error CToken__TransferError();
+    error CToken__InvalidCentralRegistry();
+    error CToken__UnderlyingAssetTotalSupplyExceedsMaximum();
     error CToken__LendtrollerIsNotLendingMarket();
 
     /// MODIFIERS ///
 
     modifier onlyDaoPermissions() {
-        require(
-            centralRegistry.hasDaoPermissions(msg.sender),
-            "CToken: UNAUTHORIZED"
-        );
+        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
+            revert CToken__Unauthorized();
+        }
         _;
     }
 
     modifier onlyElevatedPermissions() {
-        require(
-            centralRegistry.hasElevatedPermissions(msg.sender),
-            "CToken: UNAUTHORIZED"
-        );
+        if (!centralRegistry.hasElevatedPermissions(msg.sender)) {
+            revert CToken__Unauthorized();
+        }
         _;
     }
 
@@ -99,7 +95,7 @@ contract CToken is ERC165, ReentrancyGuard {
                 type(ICentralRegistry).interfaceId
             )
         ) {
-            revert CToken__ConstructorParametersareInvalid();
+            revert CToken__InvalidCentralRegistry();
         }
 
         centralRegistry = centralRegistry_;
@@ -118,7 +114,7 @@ contract CToken is ERC165, ReentrancyGuard {
         // Sanity check underlying so that we know users will not need to
         // mint anywhere close to exchange rate of 1e18
         if (IERC20(underlying).totalSupply() >= type(uint232).max) {
-            revert CToken__ConstructorParametersareInvalid();
+            revert CToken__UnderlyingAssetTotalSupplyExceedsMaximum();
         }
     }
 
@@ -133,22 +129,31 @@ contract CToken is ERC165, ReentrancyGuard {
         address initializer
     ) external nonReentrant returns (bool) {
         if (msg.sender != address(lendtroller)) {
-            revert CToken__UnauthorizedCaller();
+            revert CToken__Unauthorized();
         }
 
         uint256 amount = 42069;
         // `tokens` should be equal to `amount` but we use tokens just incase
-        uint256 tokens = _enterVault(initializer, amount);
+        // deposit into the vault
 
-        // These values should always be zero but we will add them
-        // just incase
+        SafeTransferLib.safeTransferFrom(
+            underlying,
+            initializer,
+            address(this),
+            amount
+        );
+
+        BasePositionVault _vault = vault;
+        SafeTransferLib.safeApprove(underlying, address(_vault), amount);
+        uint256 tokens = _vault.deposit(amount, address(this));
+
+        //uint256 tokens = _enterVault(address(this), amount);
+
+        // These values should always be zero but we will add them just incase
         totalSupply = totalSupply + tokens;
-        balanceOf[initializer] = balanceOf[initializer] + tokens;
+        balanceOf[address(this)] = balanceOf[address(this)] + tokens;
 
-        // emit events on gauge pool
-        _gaugePool().deposit(address(this), initializer, tokens);
-
-        emit Transfer(address(0), initializer, tokens);
+        emit Transfer(address(0), address(this), tokens);
         return true;
     }
 
@@ -227,11 +232,7 @@ contract CToken is ERC165, ReentrancyGuard {
     function redeem(uint256 amount) external nonReentrant {
         lendtroller.canRedeem(address(this), msg.sender, amount);
 
-        _redeem(
-            msg.sender,
-            msg.sender,
-            amount
-        );
+        _redeem(msg.sender, msg.sender, amount);
     }
 
     /// @notice Helper function for Position Folding contract to
@@ -244,7 +245,7 @@ contract CToken is ERC165, ReentrancyGuard {
         bytes calldata params
     ) external nonReentrant {
         if (msg.sender != lendtroller.positionFolding()) {
-            revert CToken__UnauthorizedCaller();
+            revert CToken__Unauthorized();
         }
 
         _redeem(
@@ -275,8 +276,8 @@ contract CToken is ERC165, ReentrancyGuard {
     }
 
     /// @notice Rescue any token sent by mistake
-    /// @param token The token to rescue.
-    /// @param amount The amount of tokens to rescue.
+    /// @param token token to rescue
+    /// @param amount amount of `token` to rescue, 0 indicates to rescue all
     function rescueToken(
         address token,
         uint256 amount
@@ -284,22 +285,18 @@ contract CToken is ERC165, ReentrancyGuard {
         address daoOperator = centralRegistry.daoAddress();
 
         if (token == address(0)) {
-            if (address(this).balance < amount) {
-                revert CToken__ExcessiveValue();
+            if (amount == 0) {
+                amount = address(this).balance;
             }
 
-            (bool success, ) = payable(daoOperator).call{ value: amount }("");
-
-            if (!success) {
-                revert CToken__ValidationFailed();
-            }
+            SafeTransferLib.forceSafeTransferETH(daoOperator, amount);
         } else {
             if (token == address(vault)) {
-                revert CToken__TransferNotAllowed();
+                revert CToken__TransferError();
             }
 
-            if (IERC20(token).balanceOf(address(this)) < amount) {
-                revert CToken__ExcessiveValue();
+            if (amount == 0) {
+                amount = IERC20(token).balanceOf(address(this));
             }
 
             SafeTransferLib.safeTransfer(token, daoOperator, amount);
@@ -345,6 +342,7 @@ contract CToken is ERC165, ReentrancyGuard {
             AccountSnapshot({
                 asset: address(this),
                 isCToken: true,
+                decimals: decimals(),
                 balance: balanceOf[account],
                 debtBalance: 0,
                 exchangeRate: exchangeRateStored()
@@ -445,7 +443,7 @@ contract CToken is ERC165, ReentrancyGuard {
     ) internal {
         // Do not allow self-transfers
         if (from == to) {
-            revert CToken__TransferNotAllowed();
+            revert CToken__TransferError();
         }
 
         // Fails if transfer not allowed
@@ -540,7 +538,7 @@ contract CToken is ERC165, ReentrancyGuard {
         // Fails if borrower = liquidator
         assembly {
             if eq(borrower, liquidator) {
-                // revert with CToken__UnauthorizedCaller()
+                // revert with CToken__Unauthorized()
                 mstore(0x00, 0xb856b3fe)
                 revert(0x1c, 0x04)
             }

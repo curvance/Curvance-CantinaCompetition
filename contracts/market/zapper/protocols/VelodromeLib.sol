@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { CommonLib, IERC20 } from "contracts/market/zapper/protocols/CommonLib.sol";
+import { CommonLib } from "contracts/market/zapper/protocols/CommonLib.sol";
 import { Math } from "contracts/libraries/Math.sol";
 import { ERC20 } from "contracts/libraries/ERC20.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
@@ -12,6 +12,19 @@ import { IVeloPairFactory } from "contracts/interfaces/external/velodrome/IVeloP
 import { IVeloPool } from "contracts/interfaces/external/velodrome/IVeloPool.sol";
 
 library VelodromeLib {
+    /// ERRORS ///
+
+    error VelodromeLib__ReceivedAmountIsLessThanMinimum(
+        uint256 amount,
+        uint256 minimum
+    );
+
+    /// CONSTANTS ///
+
+    uint256 public constant VELODROME_ADD_LIQUIDITY_SLIPPAGE = 100; // 1%
+
+    /// FUNCTIONS ///
+
     /// @dev Enter Velodrome
     /// @param router The velodrome router address
     /// @param factory The velodrome factory address
@@ -21,16 +34,14 @@ library VelodromeLib {
         address router,
         address factory,
         address lpToken,
+        uint256 amount0,
+        uint256 amount1,
         uint256 lpMinOutAmount
     ) internal returns (uint256 lpOutAmount) {
         address token0 = IVeloPair(lpToken).token0();
         address token1 = IVeloPair(lpToken).token1();
         bool stable = IVeloPool(lpToken).stable();
 
-        uint256 amount0;
-        uint256 amount1;
-
-        amount0 = CommonLib.getTokenBalance(token0);
         if (amount0 > 0) {
             (uint256 r0, uint256 r1, ) = IVeloPair(lpToken).getReserves();
             uint256 swapAmount = _optimalDeposit(
@@ -60,7 +71,8 @@ library VelodromeLib {
                 token1,
                 stable,
                 amount0,
-                amount1
+                amount1,
+                VELODROME_ADD_LIQUIDITY_SLIPPAGE
             );
 
             lpOutAmount += newLpOutAmount;
@@ -96,16 +108,19 @@ library VelodromeLib {
                 token1,
                 stable,
                 amount0,
-                amount1
+                amount1,
+                VELODROME_ADD_LIQUIDITY_SLIPPAGE
             );
 
             lpOutAmount += newLpOutAmount;
         }
 
-        require(
-            lpOutAmount >= lpMinOutAmount,
-            "Received less than lpMinOutAmount"
-        );
+        if (lpOutAmount < lpMinOutAmount) {
+            revert VelodromeLib__ReceivedAmountIsLessThanMinimum(
+                lpOutAmount,
+                lpMinOutAmount
+            );
+        }
     }
 
     /// @dev Exit velodrome
@@ -140,6 +155,7 @@ library VelodromeLib {
     /// @param token1 The second token of the pair
     /// @param amount0 The amount of the `token0`
     /// @param amount1 The amount of the `token1`
+    /// @param slippage The slippage percent, 10000 for 100%
     /// @return liquidity The amount of LP tokens received
     function _addLiquidity(
         address router,
@@ -147,7 +163,8 @@ library VelodromeLib {
         address token1,
         bool stable,
         uint256 amount0,
-        uint256 amount1
+        uint256 amount1,
+        uint256 slippage
     ) internal returns (uint256 liquidity) {
         SwapperLib.approveTokenIfNeeded(token0, router, amount0);
         SwapperLib.approveTokenIfNeeded(token1, router, amount1);
@@ -157,8 +174,8 @@ library VelodromeLib {
             stable,
             amount0,
             amount1,
-            0,
-            0,
+            amount0 - (amount0 * slippage) / 10000,
+            amount1 - (amount1 * slippage) / 10000,
             address(this),
             block.timestamp
         );
@@ -182,22 +199,22 @@ library VelodromeLib {
         uint256 decimalsB,
         bool stable
     ) internal view returns (uint256) {
+        uint256 swapFee = IVeloPairFactory(factory).getFee(lpToken, stable);
         if (stable) {
-            uint256 num;
-            uint256 den;
+            uint256 a = (((amountA * 10000) / (10000 - swapFee)) * 1e18) /
+                decimalsA;
 
-            uint256 a = (amountA * 1e18) / decimalsA;
             uint256 x = (reserveA * 1e18) / decimalsA;
             uint256 y = (reserveB * 1e18) / decimalsB;
             uint256 x2 = (x * x) / 1e18;
             uint256 y2 = (y * y) / 1e18;
             uint256 p = (y * (((x2 * 3 + y2) * 1e18) / (y2 * 3 + x2))) / x;
-            num = a * y;
-            den = ((a + x) * p) / 1e18 + y;
+
+            uint256 num = a * y;
+            uint256 den = ((a + x) * p) / 1e18 + y;
 
             return ((num / den) * decimalsA) / 1e18;
         } else {
-            uint256 swapFee = IVeloPairFactory(factory).getFee(lpToken, false);
             uint256 swapFeeFactor = 10000 - swapFee;
             uint256 a = (10000 + swapFeeFactor) * reserveA;
             uint256 b = amountA * 10000 * reserveA * 4 * swapFeeFactor;

@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.17;
 
+import { TestBasePriceRouter } from "../TestBasePriceRouter.sol";
 import { BalancerStablePoolAdaptor } from "contracts/oracles/adaptors/balancer/BalancerStablePoolAdaptor.sol";
 import { IVault } from "contracts/oracles/adaptors/balancer/BalancerPoolAdaptor.sol";
 import { ChainlinkAdaptor } from "contracts/oracles/adaptors/chainlink/ChainlinkAdaptor.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { VelodromeLib } from "contracts/market/zapper/protocols/VelodromeLib.sol";
-import { IERC20 } from "contracts/interfaces/IERC20.sol";
-import { TestBasePriceRouter } from "../TestBasePriceRouter.sol";
+import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
 
 contract TestBalancerStablePoolAdapter is TestBasePriceRouter {
     address internal constant _BALANCER_VAULT =
@@ -49,7 +48,11 @@ contract TestBalancerStablePoolAdapter is TestBasePriceRouter {
         ] = 0x1a8F81c256aee9C640e14bB0453ce247ea0DFE6F;
         adapterData.underlyingOrConstituent[0] = RETH;
         adapterData.underlyingOrConstituent[1] = WETH;
-        vm.expectRevert("BalancerStablePoolAdaptor: unsupported dependent");
+        vm.expectRevert(
+            BalancerStablePoolAdaptor
+                .BalancerStablePoolAdaptor__ConfigurationError
+                .selector
+        );
         adapter.addAsset(WETH_RETH, adapterData);
     }
 
@@ -90,7 +93,7 @@ contract TestBalancerStablePoolAdapter is TestBasePriceRouter {
         testReturnsCorrectPrice();
 
         adapter.removeAsset(WETH_RETH);
-        vm.expectRevert(0xe4558fac);
+        vm.expectRevert(PriceRouter.PriceRouter__NotSupported.selector);
         priceRouter.getPrice(WETH_RETH, true, false);
     }
 }

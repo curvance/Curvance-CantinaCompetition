@@ -35,7 +35,6 @@ interface ICVELocker {
     /// @notice Claims a users VeCVE rewards, only callable by VeCVE contract
     function claimRewardsFor(
         address user,
-        address recipient,
         uint256 epoches,
         RewardsData memory rewardsData,
         bytes memory params,

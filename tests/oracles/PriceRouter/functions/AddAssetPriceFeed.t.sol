@@ -2,12 +2,13 @@
 pragma solidity 0.8.17;
 
 import { TestBasePriceRouter } from "../TestBasePriceRouter.sol";
+import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
 
 contract AddAssetPriceFeedTest is TestBasePriceRouter {
     function test_addAssetPriceFeed_fail_whenCallerIsNotAuthorized() public {
         vm.prank(address(1));
 
-        vm.expectRevert("PriceRouter: UNAUTHORIZED");
+        vm.expectRevert(PriceRouter.PriceRouter__Unauthorized.selector);
         priceRouter.addAssetPriceFeed(
             _USDC_ADDRESS,
             address(chainlinkAdaptor)
@@ -15,7 +16,7 @@ contract AddAssetPriceFeedTest is TestBasePriceRouter {
     }
 
     function test_addAssetPriceFeed_fail_whenAdaptorIsNotApproved() public {
-        vm.expectRevert(0xebd2e1ff);
+        vm.expectRevert(PriceRouter.PriceRouter__InvalidParameter.selector);
         priceRouter.addAssetPriceFeed(
             _USDC_ADDRESS,
             address(chainlinkAdaptor)
@@ -27,7 +28,7 @@ contract AddAssetPriceFeedTest is TestBasePriceRouter {
     {
         _addDualPriceFeed();
 
-        vm.expectRevert(0xebd2e1ff);
+        vm.expectRevert(PriceRouter.PriceRouter__InvalidParameter.selector);
         priceRouter.addAssetPriceFeed(
             _USDC_ADDRESS,
             address(dualChainlinkAdaptor)
@@ -37,7 +38,7 @@ contract AddAssetPriceFeedTest is TestBasePriceRouter {
     function test_addAssetPriceFeed_fail_whenFeedAlreadyAdded() public {
         _addSinglePriceFeed();
 
-        vm.expectRevert(0xebd2e1ff);
+        vm.expectRevert(PriceRouter.PriceRouter__InvalidParameter.selector);
         priceRouter.addAssetPriceFeed(
             _USDC_ADDRESS,
             address(chainlinkAdaptor)
@@ -49,7 +50,7 @@ contract AddAssetPriceFeedTest is TestBasePriceRouter {
 
         chainlinkAdaptor.removeAsset(_USDC_ADDRESS);
 
-        vm.expectRevert(0xebd2e1ff);
+        vm.expectRevert(PriceRouter.PriceRouter__InvalidParameter.selector);
         priceRouter.addAssetPriceFeed(
             _USDC_ADDRESS,
             address(chainlinkAdaptor)

@@ -32,6 +32,8 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
 
     /// CONSTANTS ///
 
+    /// @notice Token amount to check uniswap twap price against
+    uint128 public constant PRECISION = 1e18;
     /// @notice Error code for bad source.
     uint256 public constant BAD_SOURCE = 2;
 
@@ -39,6 +41,11 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
 
     /// @notice Balancer Stable Pool Adaptor Storage
     mapping(address => AdaptorData) public adaptorData;
+
+    /// ERRORS ///
+
+    error BalancerStablePoolAdaptor__AssetIsNotSupported();
+    error BalancerStablePoolAdaptor__ConfigurationError();
 
     /// CONSTRUCTOR ///
 
@@ -60,10 +67,10 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
         bool inUSD,
         bool getLower
     ) external view override returns (PriceReturnData memory pData) {
-        require(
-            isSupportedAsset[asset],
-            "BalancerStablePoolAdaptor: asset not supported"
-        );
+        if (!isSupportedAsset[asset]) {
+            revert BalancerStablePoolAdaptor__AssetIsNotSupported();
+        }
+
         _ensureNotInVaultContext(balancerVault);
         // Read Adaptor storage and grab pool tokens
         AdaptorData memory data = adaptorData[asset];
@@ -76,35 +83,36 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
         uint256 numUnderlyingOrConstituent = data
             .underlyingOrConstituent
             .length;
-        uint256 minPrice = type(uint256).max;
+        uint256 averagePrice;
+        uint256 availablePriceCount;
+
         uint256 price;
         uint256 errorCode;
         for (uint256 i; i < numUnderlyingOrConstituent; ++i) {
             // Break when a zero address is found.
-            if (address(data.underlyingOrConstituent[i]) == address(0)) break;
+            if (address(data.underlyingOrConstituent[i]) == address(0)) {
+                break;
+            }
+
             (price, errorCode) = priceRouter.getPrice(
                 data.underlyingOrConstituent[i],
                 inUSD,
                 getLower
             );
-            if (errorCode > 0) {
-                pData.hadError = true;
-                // If error code is BAD_SOURCE we can't use this price at all
-                // so continue.
-                if (errorCode == BAD_SOURCE) continue;
+            // If error code is BAD_SOURCE we can't use this price so continue.
+            if (errorCode == BAD_SOURCE) {
+                continue;
             }
-            if (data.rateProviders[i] != address(0)) {
-                uint256 rate = IRateProvider(data.rateProviders[i]).getRate();
-                price = (price * 10 ** data.rateProviderDecimals[i]) / rate;
-            }
-            if (price < minPrice) minPrice = price;
+
+            averagePrice += price;
+            availablePriceCount += 1;
         }
 
-        if (minPrice == type(uint256).max) pData.hadError = true;
-        else {
-            pData.price = uint240(
-                (price * pool.getRate()) / 10 ** data.poolDecimals
-            );
+        if (averagePrice == 0) {
+            pData.hadError = true;
+        } else {
+            averagePrice = averagePrice / availablePriceCount;
+            pData.price = uint240((price * pool.getRate()) / PRECISION);
         }
     }
 
@@ -116,10 +124,10 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
         address asset,
         AdaptorData memory data
     ) external onlyElevatedPermissions {
-        require(
-            !isSupportedAsset[asset],
-            "BalancerStablePoolAdaptor: asset already supported"
-        );
+        if (isSupportedAsset[asset]) {
+            revert BalancerStablePoolAdaptor__ConfigurationError();
+        }
+
         IBalancerPool pool = IBalancerPool(asset);
 
         // Grab the poolId and decimals.
@@ -133,22 +141,28 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
         // Make sure we can price all underlying tokens.
         for (uint256 i; i < numUnderlyingOrConstituent; ++i) {
             // Break when a zero address is found.
-            if (address(data.underlyingOrConstituent[i]) == address(0)) break;
-            require(
-                IPriceRouter(centralRegistry.priceRouter()).isSupportedAsset(
+            if (address(data.underlyingOrConstituent[i]) == address(0)) {
+                continue;
+            }
+
+            if (
+                !IPriceRouter(centralRegistry.priceRouter()).isSupportedAsset(
                     data.underlyingOrConstituent[i]
-                ),
-                "BalancerStablePoolAdaptor: unsupported dependent"
-            );
+                )
+            ) {
+                revert BalancerStablePoolAdaptor__ConfigurationError();
+            }
+
             if (data.rateProviders[i] != address(0)) {
                 // Make sure decimals were provided.
-                require(
-                    data.rateProviderDecimals[i] > 0,
-                    "BalancerStablePoolAdaptor: rate decimals zero"
-                );
+                if (data.rateProviderDecimals[i] == 0) {
+                    revert BalancerStablePoolAdaptor__ConfigurationError();
+                }
+
                 // Make sure we can call it and get a non zero value.
-                uint256 rate = IRateProvider(data.rateProviders[i]).getRate();
-                require(rate > 0, "BalancerStablePoolAdaptor: zero rate");
+                if (IRateProvider(data.rateProviders[i]).getRate() == 0) {
+                    revert BalancerStablePoolAdaptor__ConfigurationError();
+                }
             }
         }
 
@@ -160,10 +174,9 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
     /// @notice Removes a supported asset from the adaptor.
     /// @dev Calls back into price router to notify it of its removal
     function removeAsset(address asset) external override onlyDaoPermissions {
-        require(
-            isSupportedAsset[asset],
-            "BalancerStablePoolAdaptor: asset not supported"
-        );
+        if (!isSupportedAsset[asset]) {
+            revert BalancerStablePoolAdaptor__AssetIsNotSupported();
+        }
 
         // Notify the adaptor to stop supporting the asset
         delete isSupportedAsset[asset];
@@ -171,7 +184,6 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
         delete adaptorData[asset];
 
         // Notify the price router that we are going to stop supporting the asset
-        IPriceRouter(centralRegistry.priceRouter())
-            .notifyAssetPriceFeedRemoval(asset);
+        IPriceRouter(centralRegistry.priceRouter()).notifyFeedRemoval(asset);
     }
 }

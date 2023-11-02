@@ -8,12 +8,10 @@ import { ERC20 } from "contracts/libraries/ERC20.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+import { EXP_SCALE } from "contracts/libraries/Constants.sol";
 
 contract OCVE is ERC20 {
     /// CONSTANTS ///
-
-    /// @notice Scalar for math
-    uint256 public constant expScale = 1e18;
 
     /// @notice CVE contract address
     address public immutable cve;
@@ -48,15 +46,18 @@ contract OCVE is ERC20 {
 
     /// ERRORS ///
 
-    error OCVE__ConstructorParametersareInvalid();
+    error OCVE__ParametersAreInvalid();
+    error OCVE__ConfigurationError();
+    error OCVE__CannotExercise();
+    error OCVE__TransferError();
+    error OCVE__Unauthorized();
 
     /// MODIFIERS ///
 
     modifier onlyDaoPermissions() {
-        require(
-            centralRegistry.hasDaoPermissions(msg.sender),
-            "OCVE: UNAUTHORIZED"
-        );
+        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
+            revert OCVE__Unauthorized();
+        }
         _;
     }
 
@@ -74,11 +75,11 @@ contract OCVE is ERC20 {
                 type(ICentralRegistry).interfaceId
             )
         ) {
-            revert OCVE__ConstructorParametersareInvalid();
+            revert OCVE__ParametersAreInvalid();
         }
 
         if (paymentToken_ == address(0)) {
-            revert OCVE__ConstructorParametersareInvalid();
+            revert OCVE__ParametersAreInvalid();
         }
 
         centralRegistry = centralRegistry_;
@@ -86,45 +87,53 @@ contract OCVE is ERC20 {
         cve = centralRegistry.CVE();
 
         // total call option allocation for airdrops
-        _mint(msg.sender, 7560001.242 ether);
+        _mint(msg.sender, 15750002.59 ether);
     }
 
     /// EXTERNAL FUNCTIONS ///
 
-    /// @notice Rescue any token sent by mistake, also used for removing.
-    /// @param token The token to rescue.
-    /// @param recipient The address to receive the rescued token.
-    /// @param amount The amount of tokens to rescue.
+    /// @notice Rescue any token sent by mistake
+    /// @param token token to rescue
+    /// @param amount amount of `token` to rescue, 0 indicates to rescue all
     function rescueToken(
         address token,
-        address recipient,
         uint256 amount
     ) external onlyDaoPermissions {
-        require(recipient != address(0), "OCVE: invalid recipient address");
+        address daoOperator = centralRegistry.daoAddress();
 
         if (token == address(0)) {
-            require(
-                address(this).balance >= amount,
-                "OCVE: insufficient balance"
-            );
-            (bool success, ) = payable(recipient).call{ value: amount }("");
-            require(success, "OCVE: !successful");
+            if (amount == 0) {
+                amount = address(this).balance;
+            }
+
+            SafeTransferLib.forceSafeTransferETH(daoOperator, amount);
         } else {
-            require(token != cve, "OCVE: cannot withdraw CVE");
-            require(
-                IERC20(token).balanceOf(address(this)) >= amount,
-                "OCVE: insufficient balance"
-            );
-            SafeTransferLib.safeTransfer(token, recipient, amount);
+            if (token == cve) {
+                revert OCVE__TransferError();
+            }
+
+            if (amount == 0) {
+                amount = IERC20(token).balanceOf(address(this));
+            }
+
+            SafeTransferLib.safeTransfer(token, daoOperator, amount);
         }
     }
 
     /// @notice Withdraws CVE from unexercised CVE call options to DAO
     ///         after exercising period has ended
     function withdrawRemainingAirdropTokens() external onlyDaoPermissions {
-        require(block.timestamp > optionsEndTimestamp, "OCVE: Too early");
+        if (block.timestamp < optionsEndTimestamp) {
+            revert OCVE__TransferError();
+        }
+
         uint256 tokensToWithdraw = IERC20(cve).balanceOf(address(this));
-        SafeTransferLib.safeTransfer(cve, msg.sender, tokensToWithdraw);
+        SafeTransferLib.safeTransfer(
+            cve,
+            centralRegistry.daoAddress(),
+            tokensToWithdraw
+        );
+
         emit RemainingCVEWithdrawn(tokensToWithdraw);
     }
 
@@ -135,17 +144,20 @@ contract OCVE is ERC20 {
         uint256 timestampStart,
         uint256 strikePrice
     ) external onlyDaoPermissions {
-        require(
-            timestampStart >= block.timestamp,
-            "OCVE: Start timestamp is invalid"
-        );
-        require(strikePrice != 0, "OCVE: Strike price is invalid");
+        if (timestampStart < block.timestamp) {
+            revert OCVE__ParametersAreInvalid();
+        }
 
-        if (optionsStartTimestamp > 0) {
-            require(
-                optionsStartTimestamp > block.timestamp,
-                "OCVE: Options exercising already active"
-            );
+        if (strikePrice == 0) {
+            revert OCVE__ParametersAreInvalid();
+        }
+
+        // If the option are exercisable do not allow reconfiguration of the terms
+        if (
+            optionsStartTimestamp > 0 &&
+            optionsStartTimestamp < block.timestamp
+        ) {
+            revert OCVE__ConfigurationError();
         }
 
         optionsStartTimestamp = timestampStart;
@@ -156,24 +168,25 @@ contract OCVE is ERC20 {
         // Get the current price of the payment token from the price router
         // in USD and multiply it by the Strike Price to see how much per CVE
         // they must pay
-        (uint256 paymentTokenCurrentPrice, uint256 error) = IPriceRouter(
+        (uint256 currentPrice, uint256 error) = IPriceRouter(
             centralRegistry.priceRouter()
         ).getPrice(paymentToken, true, true);
 
         // Make sure that we didnt have a catastrophic error when pricing
         // the payment token
-        require(error < 2, "OCVE: error pulling paymentToken price");
+        if (error == 2) {
+            revert OCVE__ConfigurationError();
+        }
 
         // The strike price should always be greater than the token price
         // since it will be in 1e36 format offset,
-        // whereas paymentTokenCurrentPrice will be 1e18 so the price should
+        // whereas currentPrice will be 1e18 so the price should
         // always be larger
-        require(
-            strikePrice > paymentTokenCurrentPrice,
-            "OCVE: invalid strike price configuration"
-        );
+        if (strikePrice <= currentPrice) {
+            revert OCVE__ParametersAreInvalid();
+        }
 
-        paymentTokenPerCVE = strikePrice / paymentTokenCurrentPrice;
+        paymentTokenPerCVE = strikePrice / currentPrice;
     }
 
     /// PUBLIC FUNCTIONS ///
@@ -199,25 +212,29 @@ contract OCVE is ERC20 {
     /// @notice Exercise CVE call options.
     /// @param amount The amount of options to exercise.
     function exerciseOption(uint256 amount) public payable {
-        require(amount > 0, "OCVE: invalid amount");
-        require(optionsExercisable(), "OCVE: Options not exercisable yet");
-        require(
-            IERC20(cve).balanceOf(address(this)) >= amount,
-            "OCVE: not enough CVE remaining"
-        );
-        require(
-            balanceOf(msg.sender) >= amount,
-            "OCVE: not enough call options to exercise"
-        );
+        if (amount == 0) {
+            revert OCVE__ParametersAreInvalid();
+        }
 
-        uint256 optionExerciseCost = (amount * paymentTokenPerCVE) / expScale;
+        if (!optionsExercisable()) {
+            revert OCVE__CannotExercise();
+        }
+
+        if (IERC20(cve).balanceOf(address(this)) < amount) {
+            revert OCVE__CannotExercise();
+        }
+
+        if (balanceOf(msg.sender) < amount) {
+            revert OCVE__CannotExercise();
+        }
+
+        uint256 optionExerciseCost = (amount * paymentTokenPerCVE) / EXP_SCALE;
 
         // Take their strike price payment
         if (paymentToken == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE) {
-            require(
-                msg.value >= optionExerciseCost,
-                "OCVE: invalid msg value"
-            );
+            if (msg.value < optionExerciseCost) {
+                revert OCVE__CannotExercise();
+            }
         } else {
             SafeTransferLib.safeTransferFrom(
                 paymentToken,

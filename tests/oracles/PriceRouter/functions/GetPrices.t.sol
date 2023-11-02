@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.17;
 
-import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import { IChainlink } from "contracts/interfaces/external/chainlink/IChainlink.sol";
 import { TestBasePriceRouter } from "../TestBasePriceRouter.sol";
+import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
 
-contract GetPriceMultiTest is TestBasePriceRouter {
+contract GetPricesTest is TestBasePriceRouter {
     address[] public assets;
     bool[] public inUSD;
     bool[] public getLower;
@@ -21,17 +22,37 @@ contract GetPriceMultiTest is TestBasePriceRouter {
         getLower.push(true);
     }
 
-    function test_getPriceMulti_fail_whenNoFeedsAvailable() public {
-        vm.expectRevert(0xe4558fac);
+    function test_getPrice_fail_whenAssetsLengthIsZero() public {
+        assets.pop();
+        assets.pop();
+
+        vm.expectRevert(PriceRouter.PriceRouter__InvalidParameter.selector);
         priceRouter.getPrices(assets, inUSD, getLower);
     }
 
-    function test_getPriceMulti_success() public {
+    function test_getPrice_fail_whenParameterLengthNotMatch() public {
+        assets.pop();
+
+        vm.expectRevert(PriceRouter.PriceRouter__InvalidParameter.selector);
+        priceRouter.getPrices(assets, inUSD, getLower);
+
+        inUSD.pop();
+
+        vm.expectRevert(PriceRouter.PriceRouter__InvalidParameter.selector);
+        priceRouter.getPrices(assets, inUSD, getLower);
+    }
+
+    function test_getPrice_fail_whenNoFeedsAvailable() public {
+        vm.expectRevert(PriceRouter.PriceRouter__NotSupported.selector);
+        priceRouter.getPrices(assets, inUSD, getLower);
+    }
+
+    function test_getPrice_success() public {
         _addSinglePriceFeed();
 
-        (, int256 usdcPrice, , , ) = AggregatorV3Interface(_CHAINLINK_USDC_USD)
+        (, int256 usdcPrice, , , ) = IChainlink(_CHAINLINK_USDC_USD)
             .latestRoundData();
-        (, int256 ethPrice, , , ) = AggregatorV3Interface(_CHAINLINK_USDC_ETH)
+        (, int256 ethPrice, , , ) = IChainlink(_CHAINLINK_USDC_ETH)
             .latestRoundData();
 
         (uint256[] memory prices, uint256[] memory errorCodes) = priceRouter

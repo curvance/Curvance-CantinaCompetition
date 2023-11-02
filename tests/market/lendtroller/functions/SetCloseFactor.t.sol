@@ -10,7 +10,7 @@ contract SetCloseFactorTest is TestBaseLendtroller {
     function test_setCloseFactor_fail_whenCallerIsNotAuthorized() public {
         vm.prank(address(1));
 
-        vm.expectRevert("Lendtroller: UNAUTHORIZED");
+        vm.expectRevert(Lendtroller.Lendtroller__Unauthorized.selector);
         lendtroller.setCloseFactor(1e4);
     }
 

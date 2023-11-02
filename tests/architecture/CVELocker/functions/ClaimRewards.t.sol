@@ -35,6 +35,8 @@ contract ClaimRewardsTest is TestBaseCVELocker {
             block.timestamp
         );
 
+        centralRegistry.addSwapper(_UNISWAP_V2_ROUTER);
+
         deal(_USDC_ADDRESS, address(cveLocker), 1e18);
     }
 
@@ -44,7 +46,7 @@ contract ClaimRewardsTest is TestBaseCVELocker {
         deal(address(cve), user1, 100e18);
         cve.approve(address(veCVE), 100e18);
 
-        veCVE.lock(1e18, false, user1, rewardsData, "0x", 0);
+        veCVE.createLock(1e18, false, rewardsData, "0x", 0);
 
         vm.stopPrank();
 
@@ -58,10 +60,12 @@ contract ClaimRewardsTest is TestBaseCVELocker {
             cveLocker.recordEpochRewards(nextEpochToDeliver, _ONE);
         }
 
-        vm.expectRevert("CVELocker: unsupported reward token");
+        vm.expectRevert(
+            CVELocker.CVELocker__RewardTokenIsNotAuthorized.selector
+        );
 
         vm.prank(user1);
-        cveLocker.claimRewards(user1, rewardsData, abi.encode(swapData), 0);
+        cveLocker.claimRewards(rewardsData, abi.encode(swapData), 0);
     }
 
     function test_claimRewards_fail_whenNoEpochRewardsToClaim() public {
@@ -80,7 +84,7 @@ contract ClaimRewardsTest is TestBaseCVELocker {
         vm.expectRevert(CVELocker.CVELocker__NoEpochRewards.selector);
 
         vm.prank(user1);
-        cveLocker.claimRewards(user1, rewardsData, abi.encode(swapData), 0);
+        cveLocker.claimRewards(rewardsData, abi.encode(swapData), 0);
     }
 
     function test_claimRewards_success_fuzzed(uint256 amount) public {
@@ -93,7 +97,7 @@ contract ClaimRewardsTest is TestBaseCVELocker {
         deal(address(cve), user1, 100e18);
         cve.approve(address(veCVE), 100e18);
 
-        veCVE.lock(amount, false, user1, rewardsData, "0x", 0);
+        veCVE.createLock(amount, false, rewardsData, "0x", 0);
 
         vm.stopPrank();
 
@@ -125,7 +129,7 @@ contract ClaimRewardsTest is TestBaseCVELocker {
         uint256 desiredTokenBalance = IERC20(_WETH_ADDRESS).balanceOf(user1);
 
         vm.prank(user1);
-        cveLocker.claimRewards(user1, rewardsData, abi.encode(swapData), 0);
+        cveLocker.claimRewards(rewardsData, abi.encode(swapData), 0);
 
         assertEq(
             usdc.balanceOf(address(cveLocker)),

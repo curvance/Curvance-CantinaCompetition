@@ -9,6 +9,8 @@ import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.sol";
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.sol";
+import { IERC20 } from "contracts/interfaces/IERC20.sol";
+import { EXP_SCALE } from "contracts/libraries/Constants.sol";
 
 /// @title Curvance Lendtroller
 /// @notice Manages risk within the lending markets
@@ -52,8 +54,6 @@ contract Lendtroller is ILendtroller, ERC165 {
 
     /// CONSTANTS ///
 
-    /// @notice Scalar for math.
-    uint256 internal constant _EXP_SCALE = 1e18;
     /// @notice Maximum collateral requirement to avoid liquidation. 40%
     uint256 internal constant _MAX_COLLATERAL_REQUIREMENT = 0.4e18;
     /// @notice Maximum collateralization ratio. 91%
@@ -66,9 +66,9 @@ contract Lendtroller is ILendtroller, ERC165 {
     uint256 internal constant _MIN_LIQUIDATION_INCENTIVE = .01e18;
     /// @notice The maximum liquidation incentive. 5%
     uint256 internal constant _MAX_LIQUIDATION_FEE = .05e18;
-    // `bytes4(keccak256(bytes("Lendtroller__InvalidParameter()")))`
+    /// `bytes4(keccak256(bytes("Lendtroller__InvalidParameter()")))`
     uint256 internal constant _INVALID_PARAMETER_SELECTOR = 0x31765827;
-    // `bytes4(keccak256(bytes("Lendtroller__InsufficientShortfall()")))`
+    /// `bytes4(keccak256(bytes("Lendtroller__InsufficientShortfall()")))`
     uint256 internal constant _INSUFFICIENT_SHORTFALL_SELECTOR = 0x751bba8d;
     /// @notice Curvance DAO hub
     ICentralRegistry public immutable centralRegistry;
@@ -124,6 +124,7 @@ contract Lendtroller is ILendtroller, ERC165 {
 
     /// ERRORS ///
 
+    error Lendtroller__Unauthorized();
     error Lendtroller__TokenNotListed();
     error Lendtroller__TokenAlreadyListed();
     error Lendtroller__Paused();
@@ -141,32 +142,28 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// MODIFIERS ///
 
     modifier onlyDaoPermissions() {
-        require(
-            centralRegistry.hasDaoPermissions(msg.sender),
-            "Lendtroller: UNAUTHORIZED"
-        );
+        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
+            revert Lendtroller__Unauthorized();
+        }
         _;
     }
 
     modifier onlyElevatedPermissions() {
-        require(
-            centralRegistry.hasElevatedPermissions(msg.sender),
-            "Lendtroller: UNAUTHORIZED"
-        );
+        if (!centralRegistry.hasElevatedPermissions(msg.sender)) {
+            revert Lendtroller__Unauthorized();
+        }
         _;
     }
 
     modifier onlyAuthorizedPermissions(bool state) {
         if (state) {
-            require(
-                centralRegistry.hasDaoPermissions(msg.sender),
-                "Lendtroller: UNAUTHORIZED"
-            );
+            if (!centralRegistry.hasDaoPermissions(msg.sender)) {
+                revert Lendtroller__Unauthorized();
+            }
         } else {
-            require(
-                centralRegistry.hasElevatedPermissions(msg.sender),
-                "Lendtroller: UNAUTHORIZED"
-            );
+            if (!centralRegistry.hasElevatedPermissions(msg.sender)) {
+                revert Lendtroller__Unauthorized();
+            }
         }
         _;
     }
@@ -393,6 +390,7 @@ contract Lendtroller is ILendtroller, ERC165 {
             _getLiquidatedTokens(
                 collateralToken,
                 amount,
+                debtToken,
                 debtTokenPrice,
                 collateralTokenPrice
             );
@@ -423,6 +421,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         ) = _getLiquidatedTokens(
                 collateralToken,
                 amount,
+                debtToken,
                 debtTokenPrice,
                 collateralTokenPrice
             );
@@ -485,7 +484,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         newCloseFactor = newCloseFactor * 1e14;
 
         // 100% e.g close entire position
-        if (newCloseFactor > _EXP_SCALE) {
+        if (newCloseFactor > EXP_SCALE) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
         // Cache the current value for event log and gas savings
@@ -590,7 +589,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         }
 
         // Validate the soft liquidation collateral premium is not more strict than the asset's CR
-        if (collRatio > (_EXP_SCALE * _EXP_SCALE) / (_EXP_SCALE + collReqA)) {
+        if (collRatio > (EXP_SCALE * EXP_SCALE) / (EXP_SCALE + collReqA)) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
@@ -613,16 +612,16 @@ contract Lendtroller is ILendtroller, ERC165 {
         }
 
         // We use the value as a premium in `calculateLiquidatedTokens` so it needs to be 1 + incentive
-        marketToken.liqInc = _EXP_SCALE + liqInc;
+        marketToken.liqInc = EXP_SCALE + liqInc;
 
         // Store protocol liquidation fee divided by the liquidation incentive offset,
         // that way we can directly multiply later instead of needing extra calculations
-        marketToken.liqFee = (_EXP_SCALE * liqFee) / (_EXP_SCALE + liqInc);
+        marketToken.liqFee = (EXP_SCALE * liqFee) / (EXP_SCALE + liqInc);
 
         // Store the collateral requirement as a premium above `EXP_SCALE`,
         // that way we can calculate solvency via division easily in _getStatusForLiquidation
-        marketToken.collReqA = collReqA + _EXP_SCALE;
-        marketToken.collReqB = collReqB + _EXP_SCALE;
+        marketToken.collReqA = collReqA + EXP_SCALE;
+        marketToken.collReqB = collReqB + EXP_SCALE;
 
         // Assign new collateralization ratio
         // Note that a collateralization ratio of 0 corresponds to
@@ -866,7 +865,7 @@ contract Lendtroller is ILendtroller, ERC165 {
     {
         (
             AccountSnapshot[] memory snapshots,
-            uint256[] memory prices,
+            uint256[] memory underlyingPrices,
             uint256 numAssets
         ) = _getAssetData(account, 2);
         AccountSnapshot memory snapshot;
@@ -877,20 +876,25 @@ contract Lendtroller is ILendtroller, ERC165 {
             if (snapshot.isCToken) {
                 // If the asset has a CR increment their collateral and max borrow value
                 if (!(mTokenData[snapshot.asset].collRatio == 0)) {
-                    uint256 assetValue = (((snapshot.balance *
-                        snapshot.exchangeRate) / _EXP_SCALE) * prices[i]) /
-                        _EXP_SCALE;
+                    uint256 assetValue = _getAssetValue(
+                        (snapshot.balance * snapshot.exchangeRate) / EXP_SCALE,
+                        underlyingPrices[i],
+                        snapshot.decimals
+                    );
 
                     sumCollateral += assetValue;
                     maxBorrow +=
                         (assetValue * mTokenData[snapshot.asset].collRatio) /
-                        _EXP_SCALE;
+                        EXP_SCALE;
                 }
             } else {
                 // If they have a debt balance we need to document it
                 if (snapshot.debtBalance > 0) {
-                    currentDebt += ((prices[i] * snapshot.debtBalance) /
-                        _EXP_SCALE);
+                    currentDebt += _getAssetValue(
+                        snapshot.debtBalance,
+                        underlyingPrices[i],
+                        snapshot.decimals
+                    );
                 }
             }
 
@@ -1039,7 +1043,7 @@ contract Lendtroller is ILendtroller, ERC165 {
             }
         }
         uint256 maxLiquidationAmount = (closeFactor *
-            IMToken(debtToken).debtBalanceStored(borrower)) / _EXP_SCALE;
+            IMToken(debtToken).debtBalanceStored(borrower)) / EXP_SCALE;
 
         // Calculate the maximum amount of collateral that can be liquidated
         return (maxLiquidationAmount, debtTokenPrice, collateralTokenPrice);
@@ -1049,6 +1053,7 @@ contract Lendtroller is ILendtroller, ERC165 {
     ///         seize given an underlying amount
     /// @param collateralToken The address of the collateral mToken
     /// @param amount The amount of debtToken underlying to repay
+    /// @param debtToken The address of the debt token
     /// @param debtTokenPrice Current price for the debtToken
     /// @param collateralTokenPrice Current price for `collateralToken`
     /// @return uint256 The number of `collateralToken` tokens to be seized in a liquidation
@@ -1056,6 +1061,7 @@ contract Lendtroller is ILendtroller, ERC165 {
     function _getLiquidatedTokens(
         address collateralToken,
         uint256 amount,
+        address debtToken,
         uint256 debtTokenPrice,
         uint256 collateralTokenPrice
     ) internal view returns (uint256, uint256) {
@@ -1064,16 +1070,19 @@ contract Lendtroller is ILendtroller, ERC165 {
         // Get the exchange rate and calculate the number of collateral tokens to seize:
         uint256 debtToCollateralRatio = (mToken.liqInc *
             debtTokenPrice *
-            _EXP_SCALE) /
+            EXP_SCALE) /
             (collateralTokenPrice *
                 IMToken(collateralToken).exchangeRateStored());
 
-        uint256 liquidatedTokens = (debtToCollateralRatio * amount) /
-            _EXP_SCALE;
+        uint256 amountAdjusted = (amount *
+            (10 ** IERC20(collateralToken).decimals())) /
+            (10 ** IERC20(debtToken).decimals());
+        uint256 liquidatedTokens = (amountAdjusted * debtToCollateralRatio) /
+            EXP_SCALE;
 
         return (
             liquidatedTokens,
-            (liquidatedTokens * mToken.liqFee) / _EXP_SCALE
+            (liquidatedTokens * mToken.liqFee) / EXP_SCALE
         );
     }
 
@@ -1101,7 +1110,7 @@ contract Lendtroller is ILendtroller, ERC165 {
     {
         (
             AccountSnapshot[] memory snapshots,
-            uint256[] memory prices,
+            uint256[] memory underlyingPrices,
             uint256 numAssets
         ) = _getAssetData(account, errorCodeBreakpoint);
         AccountSnapshot memory snapshot;
@@ -1112,20 +1121,25 @@ contract Lendtroller is ILendtroller, ERC165 {
             if (snapshot.isCToken) {
                 // If the asset has a CR increment their collateral and max borrow value
                 if (!(mTokenData[snapshot.asset].collRatio == 0)) {
-                    uint256 assetValue = (((snapshot.balance *
-                        snapshot.exchangeRate) / _EXP_SCALE) * prices[i]) /
-                        _EXP_SCALE;
+                    uint256 assetValue = _getAssetValue(
+                        (snapshot.balance * snapshot.exchangeRate) / EXP_SCALE,
+                        underlyingPrices[i],
+                        snapshot.decimals
+                    );
 
                     sumCollateral += assetValue;
                     maxBorrow +=
                         (assetValue * mTokenData[snapshot.asset].collRatio) /
-                        _EXP_SCALE;
+                        EXP_SCALE;
                 }
             } else {
                 // If they have a borrow balance we need to document it
                 if (snapshot.debtBalance > 0) {
-                    newDebt += ((prices[i] * snapshot.debtBalance) /
-                        _EXP_SCALE);
+                    newDebt += _getAssetValue(
+                        snapshot.debtBalance,
+                        underlyingPrices[i],
+                        snapshot.decimals
+                    );
                 }
             }
 
@@ -1136,18 +1150,23 @@ contract Lendtroller is ILendtroller, ERC165 {
                 // since DToken have a collateral value of 0
                 if (snapshot.isCToken) {
                     if (!(mTokenData[snapshot.asset].collRatio == 0)) {
-                        // collateralValue = price * collateralization ratio * exchange rate
-                        uint256 collateralValue = (((mTokenData[snapshot.asset]
-                            .collRatio * snapshot.exchangeRate) / _EXP_SCALE) *
-                            prices[i]) / _EXP_SCALE;
+                        uint256 collateralValue = _getAssetValue(
+                            (redeemTokens * snapshot.exchangeRate) / EXP_SCALE,
+                            underlyingPrices[i],
+                            snapshot.decimals
+                        );
 
                         // hypothetical redemption
-                        newDebt += ((collateralValue * redeemTokens) /
-                            _EXP_SCALE);
+                        newDebt += ((collateralValue *
+                            mTokenData[snapshot.asset].collRatio) / EXP_SCALE);
                     }
                 } else {
                     // hypothetical borrow
-                    newDebt += ((prices[i] * borrowAmount) / _EXP_SCALE);
+                    newDebt += _getAssetValue(
+                        borrowAmount,
+                        underlyingPrices[i],
+                        snapshot.decimals
+                    );
                 }
             }
 
@@ -1212,7 +1231,7 @@ contract Lendtroller is ILendtroller, ERC165 {
     ) internal view returns (uint256, uint256, uint256) {
         (
             AccountSnapshot[] memory snapshots,
-            uint256[] memory prices,
+            uint256[] memory underlyingPrices,
             uint256 numAssets
         ) = _getAssetData(account, 2);
         AccountSnapshot memory snapshot;
@@ -1226,27 +1245,33 @@ contract Lendtroller is ILendtroller, ERC165 {
 
             if (snapshot.isCToken) {
                 if (snapshot.asset == collateralToken) {
-                    collateralTokenPrice = prices[i];
+                    collateralTokenPrice = underlyingPrices[i];
                 }
 
                 // If the asset has a CR increment their collateral
                 if (!(mTokenData[snapshot.asset].collRatio == 0)) {
                     totalCollateral +=
-                        (((snapshot.balance * snapshot.exchangeRate) /
-                            _EXP_SCALE) * prices[i]) /
+                        (_getAssetValue(
+                            (snapshot.balance * snapshot.exchangeRate) /
+                                EXP_SCALE,
+                            underlyingPrices[i],
+                            snapshot.decimals
+                        ) * EXP_SCALE) /
                         mTokenData[snapshot.asset].collReqA;
                 }
             } else {
                 if (snapshot.asset == debtToken) {
-                    debtTokenPrice = prices[i];
+                    debtTokenPrice = underlyingPrices[i];
                 }
 
                 // If they have a debt balance,
                 // we need to document collateral requirements
                 if (snapshot.debtBalance > 0) {
-                    totalDebt +=
-                        (prices[i] * snapshot.debtBalance) /
-                        _EXP_SCALE;
+                    totalDebt += _getAssetValue(
+                        snapshot.debtBalance,
+                        underlyingPrices[i],
+                        snapshot.decimals
+                    );
                 }
             }
 
@@ -1288,6 +1313,14 @@ contract Lendtroller is ILendtroller, ERC165 {
                 accountAssets[account].assets,
                 errorCodeBreakpoint
             );
+    }
+
+    function _getAssetValue(
+        uint256 amount,
+        uint256 price,
+        uint256 decimals
+    ) internal pure returns (uint256) {
+        return (amount * price) / (10 ** decimals);
     }
 
     /// @dev Internal helper for reverting efficiently.

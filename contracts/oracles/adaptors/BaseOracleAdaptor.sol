@@ -4,10 +4,9 @@ pragma solidity ^0.8.17;
 import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { IOracleAdaptor, PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
+import { PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
 
 abstract contract BaseOracleAdaptor {
-
     /// CONSTANTS ///
 
     ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
@@ -17,42 +16,45 @@ abstract contract BaseOracleAdaptor {
     /// Asset => Supported by adaptor
     mapping(address => bool) public isSupportedAsset;
 
+    /// ERRORS ///
+
+    error BaseOracleAdaptor__Unauthorized();
+    error BaseOracleAdaptor__InvalidCentralRegistry();
+
     /// MODIFIERS ///
 
     modifier onlyPriceRouter() {
-        require(
-            msg.sender == centralRegistry.priceRouter(),
-            "Adaptor: UNAUTHORIZED"
-        );
+        if (msg.sender != centralRegistry.priceRouter()) {
+            revert BaseOracleAdaptor__Unauthorized();
+        }
         _;
     }
 
     modifier onlyDaoPermissions() {
-        require(
-            centralRegistry.hasDaoPermissions(msg.sender),
-            "CentralRegistry: UNAUTHORIZED"
-        );
+        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
+            revert BaseOracleAdaptor__Unauthorized();
+        }
         _;
     }
 
     modifier onlyElevatedPermissions() {
-        require(
-            centralRegistry.hasElevatedPermissions(msg.sender),
-            "CentralRegistry: UNAUTHORIZED"
-        );
+        if (!centralRegistry.hasElevatedPermissions(msg.sender)) {
+            revert BaseOracleAdaptor__Unauthorized();
+        }
         _;
     }
 
     /// CONSTRUCTOR ///
 
     constructor(ICentralRegistry centralRegistry_) {
-        require(
-            ERC165Checker.supportsInterface(
+        if (
+            !ERC165Checker.supportsInterface(
                 address(centralRegistry_),
                 type(ICentralRegistry).interfaceId
-            ),
-            "PriceRouter: Central Registry is invalid"
-        );
+            )
+        ) {
+            revert BaseOracleAdaptor__InvalidCentralRegistry();
+        }
 
         centralRegistry = centralRegistry_;
     }

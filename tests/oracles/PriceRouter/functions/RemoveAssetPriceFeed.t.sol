@@ -2,6 +2,7 @@
 pragma solidity 0.8.17;
 
 import { TestBasePriceRouter } from "../TestBasePriceRouter.sol";
+import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
 
 contract RemoveAssetPriceFeedTest is TestBasePriceRouter {
     function test_removeAssetPriceFeed_fail_whenCallerIsNotAuthorized()
@@ -9,7 +10,7 @@ contract RemoveAssetPriceFeedTest is TestBasePriceRouter {
     {
         vm.prank(address(1));
 
-        vm.expectRevert("PriceRouter: UNAUTHORIZED");
+        vm.expectRevert(PriceRouter.PriceRouter__Unauthorized.selector);
         priceRouter.removeAssetPriceFeed(
             _USDC_ADDRESS,
             address(chainlinkAdaptor)
@@ -17,7 +18,7 @@ contract RemoveAssetPriceFeedTest is TestBasePriceRouter {
     }
 
     function test_removeAssetPriceFeed_fail_whenNoFeedsAvailable() public {
-        vm.expectRevert(0xe4558fac);
+        vm.expectRevert(PriceRouter.PriceRouter__NotSupported.selector);
         priceRouter.removeAssetPriceFeed(
             _USDC_ADDRESS,
             address(chainlinkAdaptor)
@@ -29,14 +30,14 @@ contract RemoveAssetPriceFeedTest is TestBasePriceRouter {
     {
         _addSinglePriceFeed();
 
-        vm.expectRevert(0xe4558fac);
+        vm.expectRevert(PriceRouter.PriceRouter__NotSupported.selector);
         priceRouter.removeAssetPriceFeed(_USDC_ADDRESS, address(1));
     }
 
     function test_removeAssetPriceFeed_fail_whenDualFeedDoesNotExist() public {
         _addDualPriceFeed();
 
-        vm.expectRevert(0xe4558fac);
+        vm.expectRevert(PriceRouter.PriceRouter__NotSupported.selector);
         priceRouter.removeAssetPriceFeed(_USDC_ADDRESS, address(1));
     }
 

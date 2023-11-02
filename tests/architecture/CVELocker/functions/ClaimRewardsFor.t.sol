@@ -35,6 +35,8 @@ contract ClaimRewardsForTest is TestBaseCVELocker {
             block.timestamp
         );
 
+        centralRegistry.addSwapper(_UNISWAP_V2_ROUTER);
+
         deal(_USDC_ADDRESS, address(cveLocker), 1e18);
     }
 
@@ -46,7 +48,7 @@ contract ClaimRewardsForTest is TestBaseCVELocker {
         deal(address(cve), user1, 100e18);
         cve.approve(address(veCVE), 100e18);
 
-        veCVE.lock(1e18, false, user1, rewardsData, "0x", 0);
+        veCVE.createLock(1e18, false, rewardsData, "0x", 0);
 
         vm.stopPrank();
 
@@ -65,7 +67,6 @@ contract ClaimRewardsForTest is TestBaseCVELocker {
         vm.expectRevert(CVELocker.CVELocker__Unauthorized.selector);
         cveLocker.claimRewardsFor(
             user1,
-            user1,
             epochs,
             rewardsData,
             abi.encode(swapData),
@@ -81,7 +82,7 @@ contract ClaimRewardsForTest is TestBaseCVELocker {
         deal(address(cve), user1, 100e18);
         cve.approve(address(veCVE), 100e18);
 
-        veCVE.lock(1e18, false, user1, rewardsData, "0x", 0);
+        veCVE.createLock(1e18, false, rewardsData, "0x", 0);
 
         vm.stopPrank();
 
@@ -97,11 +98,12 @@ contract ClaimRewardsForTest is TestBaseCVELocker {
 
         uint256 epochs = cveLocker.epochsToClaim(user1);
 
-        vm.expectRevert("CVELocker: unsupported reward token");
+        vm.expectRevert(
+            CVELocker.CVELocker__RewardTokenIsNotAuthorized.selector
+        );
 
         vm.prank(address(veCVE));
         cveLocker.claimRewardsFor(
-            user1,
             user1,
             epochs,
             rewardsData,
@@ -120,7 +122,7 @@ contract ClaimRewardsForTest is TestBaseCVELocker {
         deal(address(cve), user1, 100e18);
         cve.approve(address(veCVE), 100e18);
 
-        veCVE.lock(amount, false, user1, rewardsData, "0x", 0);
+        veCVE.createLock(amount, false, rewardsData, "0x", 0);
 
         vm.stopPrank();
 
@@ -155,7 +157,6 @@ contract ClaimRewardsForTest is TestBaseCVELocker {
 
         vm.prank(address(veCVE));
         cveLocker.claimRewardsFor(
-            user1,
             user1,
             epochs,
             rewardsData,

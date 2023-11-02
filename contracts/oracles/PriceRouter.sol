@@ -2,12 +2,12 @@
 pragma solidity ^0.8.17;
 
 import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
-import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.sol";
-import { IERC20 } from "contracts/interfaces/IERC20.sol";
+import { IChainlink } from "contracts/interfaces/external/chainlink/IChainlink.sol";
 import { IOracleAdaptor, PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
+import { DENOMINATOR } from "contracts/libraries/Constants.sol";
 
 /// @title Curvance Dual Oracle Price Router
 /// @notice Provides a universal interface allowing Curvance contracts
@@ -27,24 +27,41 @@ contract PriceRouter {
 
     /// CONSTANTS ///
 
-    uint256 public constant DENOMINATOR = 10000; // Scalar for divergence value
-    uint256 public constant NO_ERROR = 0; // 0 = no error
-    uint256 public constant CAUTION = 1; // 1 = price divergence or 1 missing price
-    uint256 public constant BAD_SOURCE = 2; // 2 = could not price at all
-    address public immutable CHAINLINK_ETH_USD; // Feed to convert ETH -> USD
-    ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
+    /// @notice Return value indicating no price error
+    uint256 public constant NO_ERROR = 0;
+
+    /// @notice Return value indicating price divergence or 1 missing price
+    uint256 public constant CAUTION = 1;
+
+    /// @notice Return value indicating no price returned at all
+    uint256 public constant BAD_SOURCE = 2;
+
+    /// @notice The address of the chainlink feed to convert ETH -> USD
+    address public immutable CHAINLINK_ETH_USD;
+
+    /// @notice The number of decimals the aggregator responses with.
+    uint256 public immutable CHAINLINK_DECIMALS;
+
+    /// @notice Curvance DAO hub
+    ICentralRegistry public immutable centralRegistry;
+
+    /// @notice Time to pass before accepting answers when sequencer
+    ///         comes back up.
+    uint256 public constant GRACE_PERIOD_TIME = 3600;
 
     // `bytes4(keccak256(bytes("PriceRouter__NotSupported()")))`
-    uint256 internal constant _NOT_SUPPORTED_SELECTOR = 0xe4558fac;
+    uint256 internal constant NOT_SUPPORTED_SELECTOR = 0xe4558fac;
     // `bytes4(keccak256(bytes("PriceRouter__InvalidParameter()")))`
-    uint256 internal constant _INVALID_PARAMETER_SELECTOR = 0xebd2e1ff;
+    uint256 internal constant INVALID_PARAMETER_SELECTOR = 0xebd2e1ff;
     // `bytes4(keccak256(bytes("PriceRouter__ErrorCodeFlagged()")))`
-    uint256 internal constant _ERROR_CODE_FLAGGED_SELECTOR = 0x891531fb;
+    uint256 internal constant ERROR_CODE_FLAGGED_SELECTOR = 0x891531fb;
 
     /// STORAGE ///
 
-    uint256 public PRICEFEED_MAXIMUM_DIVERGENCE = 11000; // Corresponds to 10%
-    uint256 public CHAINLINK_MAX_DELAY = 1 days; // Maximum chainlink price staleness
+    /// @notice The maximum allowed divergence between prices in `DENOMINATOR`
+    uint256 public MAXIMUM_DIVERGENCE = 11000; // 10%
+    /// @notice The maximum delay accepted between answers from chainlink
+    uint256 public CHAINLINK_MAX_DELAY = 1 days;
 
     // Address => Adaptor approval status
     mapping(address => bool) public isApprovedAdaptor;
@@ -55,30 +72,25 @@ contract PriceRouter {
 
     /// ERRORS ///
 
+    error PriceRouter__Unauthorized();
     error PriceRouter__NotSupported();
     error PriceRouter__InvalidParameter();
     error PriceRouter__ErrorCodeFlagged();
+    error PriceRouter__AdaptorIsNotApproved();
 
     /// MODIFIERS ///
 
     modifier onlyDaoPermissions() {
-        require(
-            centralRegistry.hasDaoPermissions(msg.sender),
-            "PriceRouter: UNAUTHORIZED"
-        );
+        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
+            revert PriceRouter__Unauthorized();
+        }
         _;
     }
 
     modifier onlyElevatedPermissions() {
-        require(
-            centralRegistry.hasElevatedPermissions(msg.sender),
-            "PriceRouter: UNAUTHORIZED"
-        );
-        _;
-    }
-
-    modifier onlyAdaptor() {
-        require(isApprovedAdaptor[msg.sender], "PriceRouter: UNAUTHORIZED");
+        if (!centralRegistry.hasElevatedPermissions(msg.sender)) {
+            revert PriceRouter__Unauthorized();
+        }
         _;
     }
 
@@ -91,16 +103,17 @@ contract PriceRouter {
                 type(ICentralRegistry).interfaceId
             )
         ) {
-            _revert(_INVALID_PARAMETER_SELECTOR);
+            _revert(INVALID_PARAMETER_SELECTOR);
         }
 
         if (ETH_USDFEED == address(0)) {
-            _revert(_INVALID_PARAMETER_SELECTOR);
+            _revert(INVALID_PARAMETER_SELECTOR);
         }
 
         centralRegistry = centralRegistry_;
         // Save the USD-ETH price feed because it is a widely used pricing path.
         CHAINLINK_ETH_USD = ETH_USDFEED; // 0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419 on mainnet
+        CHAINLINK_DECIMALS = 10 ** IChainlink(CHAINLINK_ETH_USD).decimals();
     }
 
     /// FUNCTIONS ///
@@ -115,21 +128,21 @@ contract PriceRouter {
         address feed
     ) external onlyElevatedPermissions {
         if (!isApprovedAdaptor[feed]) {
-            _revert(_INVALID_PARAMETER_SELECTOR);
+            _revert(INVALID_PARAMETER_SELECTOR);
         }
 
         if (!IOracleAdaptor(feed).isSupportedAsset(asset)) {
-            _revert(_INVALID_PARAMETER_SELECTOR);
+            _revert(INVALID_PARAMETER_SELECTOR);
         }
 
         uint256 numPriceFeeds = assetPriceFeeds[asset].length;
 
         if (numPriceFeeds >= 2) {
-            _revert(_INVALID_PARAMETER_SELECTOR);
+            _revert(INVALID_PARAMETER_SELECTOR);
         }
 
         if (numPriceFeeds != 0 && assetPriceFeeds[asset][0] == feed) {
-            _revert(_INVALID_PARAMETER_SELECTOR);
+            _revert(INVALID_PARAMETER_SELECTOR);
         }
 
         assetPriceFeeds[asset].push(feed);
@@ -143,20 +156,20 @@ contract PriceRouter {
         address asset,
         address feed
     ) external onlyDaoPermissions {
-        _removeAssetPriceFeed(asset, feed);
+        _removeFeed(asset, feed);
     }
 
     function addMTokenSupport(
         address mToken
     ) external onlyElevatedPermissions {
         if (mTokenAssets[mToken].isMToken) {
-            _revert(_INVALID_PARAMETER_SELECTOR);
+            _revert(INVALID_PARAMETER_SELECTOR);
         }
 
         if (
             !ERC165Checker.supportsInterface(mToken, type(IMToken).interfaceId)
         ) {
-            _revert(_INVALID_PARAMETER_SELECTOR);
+            _revert(INVALID_PARAMETER_SELECTOR);
         }
 
         mTokenAssets[mToken].isMToken = true;
@@ -165,14 +178,18 @@ contract PriceRouter {
 
     function removeMTokenSupport(address mToken) external onlyDaoPermissions {
         if (!mTokenAssets[mToken].isMToken) {
-            _revert(_INVALID_PARAMETER_SELECTOR);
+            _revert(INVALID_PARAMETER_SELECTOR);
         }
 
         delete mTokenAssets[mToken];
     }
 
-    function notifyAssetPriceFeedRemoval(address asset) external onlyAdaptor {
-        _removeAssetPriceFeed(asset, msg.sender);
+    function notifyFeedRemoval(address asset) external {
+        if (!isApprovedAdaptor[msg.sender]) {
+            revert PriceRouter__Unauthorized();
+        }
+
+        _removeFeed(asset, msg.sender);
     }
 
     /// @notice Adds a new approved adaptor.
@@ -182,7 +199,7 @@ contract PriceRouter {
         address _adaptor
     ) external onlyElevatedPermissions {
         if (isApprovedAdaptor[_adaptor]) {
-            _revert(_INVALID_PARAMETER_SELECTOR);
+            _revert(INVALID_PARAMETER_SELECTOR);
         }
 
         isApprovedAdaptor[_adaptor] = true;
@@ -195,7 +212,7 @@ contract PriceRouter {
         address _adaptor
     ) external onlyDaoPermissions {
         if (!isApprovedAdaptor[_adaptor]) {
-            _revert(_INVALID_PARAMETER_SELECTOR);
+            _revert(INVALID_PARAMETER_SELECTOR);
         }
 
         delete isApprovedAdaptor[_adaptor];
@@ -203,27 +220,27 @@ contract PriceRouter {
 
     /// @notice Sets a new maximum divergence for price feeds.
     /// @dev Requires that the new divergence is greater than
-    ///      or equal to 10200 aka 2%.
+    ///      or equal to 10200 aka 2% and less than or equal to 12000 aka 20%.
     /// @param maxDivergence The new maximum divergence.
     function setPriceFeedMaxDivergence(
         uint256 maxDivergence
     ) external onlyElevatedPermissions {
-        if (maxDivergence < 10200) {
-            _revert(_INVALID_PARAMETER_SELECTOR);
+        if (maxDivergence < 10200 || maxDivergence > 12000) {
+            _revert(INVALID_PARAMETER_SELECTOR);
         }
 
-        PRICEFEED_MAXIMUM_DIVERGENCE = maxDivergence;
+        MAXIMUM_DIVERGENCE = maxDivergence;
     }
 
     /// @notice Sets a new maximum delay for Chainlink price feed.
-    /// @dev Requires that the new delay is less than 1 day.
+    /// @dev Requires that the new delay is less than 1 day and more than 1 hour.
     ///      Only callable by the DaoManager.
     /// @param delay The new maximum delay in seconds.
     function setChainlinkDelay(
         uint256 delay
     ) external onlyElevatedPermissions {
-        if (delay >= 1 days) {
-            _revert(_INVALID_PARAMETER_SELECTOR);
+        if (delay < 1 hours || delay > 1 days) {
+            _revert(INVALID_PARAMETER_SELECTOR);
         }
 
         CHAINLINK_MAX_DELAY = delay;
@@ -243,27 +260,47 @@ contract PriceRouter {
         address asset,
         bool inUSD
     ) external view returns (FeedData[] memory) {
-        uint256 numAssetPriceFeeds = assetPriceFeeds[asset].length;
-        if (numAssetPriceFeeds == 0) {
-            _revert(_NOT_SUPPORTED_SELECTOR);
+        bool isMToken;
+        if (mTokenAssets[asset].isMToken) {
+            isMToken = mTokenAssets[asset].isMToken;
+            asset = mTokenAssets[asset].underlying;
         }
 
-        FeedData[] memory data = new FeedData[](numAssetPriceFeeds * 2);
+        uint256 numFeeds = assetPriceFeeds[asset].length;
+        if (numFeeds == 0) {
+            _revert(NOT_SUPPORTED_SELECTOR);
+        }
+
+        FeedData[] memory data = new FeedData[](numFeeds * 2);
 
         // If the asset only has one price feed, we know itll be in
         // feed slot 0 so get both prices and return
-        if (numAssetPriceFeeds < 2) {
-            data[0] = getPriceFromFeed(asset, 0, inUSD, true);
-            data[1] = getPriceFromFeed(asset, 0, inUSD, false);
+        if (numFeeds < 2) {
+            data[0] = _getPriceFromFeed(asset, 0, inUSD, true);
+            data[1] = _getPriceFromFeed(asset, 0, inUSD, false);
+            if (isMToken) {
+                uint256 exchangeRate = IMToken(asset).exchangeRateStored();
+                data[0].price = uint240((data[0].price * exchangeRate) / 1e18);
+                data[1].price = uint240((data[1].price * exchangeRate) / 1e18);
+            }
+
             return data;
         }
 
         // We know the asset has two price feeds, so get pricing from
         // both feeds and return
-        data[0] = getPriceFromFeed(asset, 0, inUSD, true);
-        data[1] = getPriceFromFeed(asset, 0, inUSD, false);
-        data[2] = getPriceFromFeed(asset, 1, inUSD, true);
-        data[3] = getPriceFromFeed(asset, 1, inUSD, false);
+        data[0] = _getPriceFromFeed(asset, 0, inUSD, true);
+        data[1] = _getPriceFromFeed(asset, 0, inUSD, false);
+        data[2] = _getPriceFromFeed(asset, 1, inUSD, true);
+        data[3] = _getPriceFromFeed(asset, 1, inUSD, false);
+
+        if (isMToken) {
+            uint256 exchangeRate = IMToken(asset).exchangeRateStored();
+            data[0].price = uint240((data[0].price * exchangeRate) / 1e18);
+            data[1].price = uint240((data[1].price * exchangeRate) / 1e18);
+            data[2].price = uint240((data[2].price * exchangeRate) / 1e18);
+            data[3].price = uint240((data[3].price * exchangeRate) / 1e18);
+        }
 
         return data;
     }
@@ -279,6 +316,12 @@ contract PriceRouter {
         }
 
         return assetPriceFeeds[asset].length > 0;
+    }
+
+    /// @notice Check whether sequencer is valid or down.
+    /// @return True if sequencer is valid
+    function isSequencerValid() external view returns (bool) {
+        return _isSequencerValid();
     }
 
     /// PUBLIC FUNCTIONS ///
@@ -299,21 +342,21 @@ contract PriceRouter {
         bool inUSD,
         bool getLower
     ) public view returns (uint256 price, uint256 errorCode) {
-        bool isMToken;
+        address mAsset;
         if (mTokenAssets[asset].isMToken) {
-            isMToken = mTokenAssets[asset].isMToken;
+            mAsset = asset;
             asset = mTokenAssets[asset].underlying;
         }
 
-        uint256 numAssetPriceFeeds = assetPriceFeeds[asset].length;
-        if (numAssetPriceFeeds == 0) {
-            _revert(_NOT_SUPPORTED_SELECTOR);
+        uint256 numFeeds = assetPriceFeeds[asset].length;
+        if (numFeeds == 0) {
+            _revert(NOT_SUPPORTED_SELECTOR);
         }
 
-        if (numAssetPriceFeeds < 2) {
-            (price, errorCode) = getPriceSingleFeed(asset, inUSD, getLower);
+        if (numFeeds < 2) {
+            (price, errorCode) = _getPriceSingleFeed(asset, inUSD, getLower);
         } else {
-            (price, errorCode) = getPriceDualFeed(asset, inUSD, getLower);
+            (price, errorCode) = _getPriceDualFeed(asset, inUSD, getLower);
         }
 
         /// If somehow a feed returns a price of 0 make sure we trigger the BAD_SOURCE flag
@@ -321,8 +364,9 @@ contract PriceRouter {
             errorCode = BAD_SOURCE;
         }
 
-        if (isMToken) {
-            price = (price * 1e18) / (10 ** IERC20(asset).decimals());
+        if (mAsset != address(0)) {
+            uint256 exchangeRate = IMToken(mAsset).exchangeRateStored();
+            price = (price * exchangeRate) / 1e18;
         }
     }
 
@@ -341,11 +385,11 @@ contract PriceRouter {
     ) external view returns (uint256[] memory, uint256[] memory) {
         uint256 numAssets = assets.length;
         if (numAssets == 0) {
-            _revert(_INVALID_PARAMETER_SELECTOR);
+            _revert(INVALID_PARAMETER_SELECTOR);
         }
 
         if (numAssets != inUSD.length || numAssets != getLower.length) {
-            _revert(_INVALID_PARAMETER_SELECTOR);
+            _revert(INVALID_PARAMETER_SELECTOR);
         }
 
         uint256[] memory prices = new uint256[](numAssets);
@@ -384,23 +428,23 @@ contract PriceRouter {
     {
         uint256 numAssets = assets.length;
         if (numAssets == 0) {
-            _revert(_INVALID_PARAMETER_SELECTOR);
+            _revert(INVALID_PARAMETER_SELECTOR);
         }
 
         AccountSnapshot[] memory snapshots = new AccountSnapshot[](numAssets);
-        uint256[] memory prices = new uint256[](numAssets);
+        uint256[] memory underlyingPrices = new uint256[](numAssets);
         uint256 hadError;
 
         for (uint256 i; i < numAssets; ) {
             snapshots[i] = assets[i].getSnapshotPacked(account);
-            (prices[i], hadError) = getPrice(
-                snapshots[i].asset,
+            (underlyingPrices[i], hadError) = getPrice(
+                assets[i].underlying(),
                 true,
                 snapshots[i].isCToken
             );
 
             if (hadError >= errorCodeBreakpoint) {
-                _revert(_ERROR_CODE_FLAGGED_SELECTOR);
+                _revert(ERROR_CODE_FLAGGED_SELECTOR);
             }
 
             unchecked {
@@ -408,7 +452,7 @@ contract PriceRouter {
             }
         }
 
-        return (snapshots, prices, numAssets);
+        return (snapshots, underlyingPrices, numAssets);
     }
 
     /// INTERNAL FUNCTIONS ///
@@ -417,18 +461,18 @@ contract PriceRouter {
     /// @dev Requires that the feed exists for the asset.
     /// @param asset The address of the asset.
     /// @param feed The address of the feed to be removed.
-    function _removeAssetPriceFeed(address asset, address feed) internal {
-        uint256 numAssetPriceFeeds = assetPriceFeeds[asset].length;
-        if (numAssetPriceFeeds == 0) {
-            _revert(_NOT_SUPPORTED_SELECTOR);
+    function _removeFeed(address asset, address feed) internal {
+        uint256 numFeeds = assetPriceFeeds[asset].length;
+        if (numFeeds == 0) {
+            _revert(NOT_SUPPORTED_SELECTOR);
         }
 
-        if (numAssetPriceFeeds > 1) {
+        if (numFeeds > 1) {
             if (
                 assetPriceFeeds[asset][0] != feed &&
                 assetPriceFeeds[asset][1] != feed
             ) {
-                _revert(_NOT_SUPPORTED_SELECTOR);
+                _revert(NOT_SUPPORTED_SELECTOR);
             }
 
             // we want to remove the first feed of two,
@@ -438,7 +482,7 @@ contract PriceRouter {
             }
         } else {
             if (assetPriceFeeds[asset][0] != feed) {
-                _revert(_NOT_SUPPORTED_SELECTOR);
+                _revert(NOT_SUPPORTED_SELECTOR);
             }
         }
         // we know the feed exists, cant use isApprovedAdaptor as
@@ -459,13 +503,13 @@ contract PriceRouter {
     ///         If one of the price feeds return an error, it returns the price
     ///         from the working feed along with a CAUTION flag.
     ///         Otherwise, it returns (price, NO_ERROR).
-    function getPriceDualFeed(
+    function _getPriceDualFeed(
         address asset,
         bool inUSD,
         bool getLower
     ) internal view returns (uint256, uint256) {
-        FeedData memory feed0 = getPriceFromFeed(asset, 0, inUSD, getLower);
-        FeedData memory feed1 = getPriceFromFeed(asset, 1, inUSD, getLower);
+        FeedData memory feed0 = _getPriceFromFeed(asset, 0, inUSD, getLower);
+        FeedData memory feed1 = _getPriceFromFeed(asset, 1, inUSD, getLower);
 
         // Check if we had any working price feeds,
         // if not we need to block any market operations
@@ -473,11 +517,13 @@ contract PriceRouter {
 
         // Check if we had an error in either price that should limit borrowing
         if (feed0.hadError || feed1.hadError) {
-            return (getWorkingPrice(feed0, feed1), CAUTION);
+            return (_getWorkingPrice(feed0, feed1), CAUTION);
         }
-        if (getLower) return calculateLowerPriceFeed(feed0.price, feed1.price);
+        if (getLower) {
+            return _calculateLowerPrice(feed0.price, feed1.price);
+        }
 
-        return calculateHigherPriceFeed(feed0.price, feed1.price);
+        return _calculateHigherPrice(feed0.price, feed1.price);
     }
 
     /// @notice Retrieves the price of a specified asset from a single oracle.
@@ -489,22 +535,34 @@ contract PriceRouter {
     /// @return A tuple containing the asset's price and an error flag (if any).
     ///         If the price feed returns an error, it returns (0, BAD_SOURCE).
     ///         Otherwise, it returns (price, NO_ERROR).
-    function getPriceSingleFeed(
+    function _getPriceSingleFeed(
         address asset,
         bool inUSD,
         bool getLower
     ) internal view returns (uint256, uint256) {
-        PriceReturnData memory data = IOracleAdaptor(assetPriceFeeds[asset][0])
-            .getPrice(asset, inUSD, getLower);
-        if (data.hadError) return (0, BAD_SOURCE);
+        address adapter = assetPriceFeeds[asset][0];
+        if (!isApprovedAdaptor[adapter]) {
+            revert PriceRouter__AdaptorIsNotApproved();
+        }
+
+        PriceReturnData memory data = IOracleAdaptor(adapter).getPrice(
+            asset,
+            inUSD,
+            getLower
+        );
+        if (data.hadError) {
+            return (0, BAD_SOURCE);
+        }
 
         if (data.inUSD != inUSD) {
-            uint256 conversionPrice;
-            (conversionPrice, data.hadError) = getETHUSD();
-            if (data.hadError) return (0, BAD_SOURCE);
+            uint256 newPrice;
+            (newPrice, data.hadError) = _getETHUSD();
+            if (data.hadError) {
+                return (0, BAD_SOURCE);
+            }
 
             data.price = uint240(
-                convertPriceETHUSD(data.price, conversionPrice, data.inUSD)
+                _convertETHUSD(data.price, newPrice, data.inUSD)
             );
         }
 
@@ -524,26 +582,39 @@ contract PriceRouter {
     ///         and an error flag (if any).
     ///         If the price feed returns an error, it returns feedData
     ///         with price 0 and hadError set to true.
-    function getPriceFromFeed(
+    function _getPriceFromFeed(
         address asset,
         uint256 feedNumber,
         bool inUSD,
         bool getLower
     ) internal view returns (FeedData memory) {
-        PriceReturnData memory data = IOracleAdaptor(
-            assetPriceFeeds[asset][feedNumber]
-        ).getPrice(asset, inUSD, getLower);
-        if (data.hadError) return (FeedData({ price: 0, hadError: true }));
+        address adapter = assetPriceFeeds[asset][feedNumber];
+        if (!isApprovedAdaptor[adapter]) {
+            revert PriceRouter__AdaptorIsNotApproved();
+        }
+
+        PriceReturnData memory data = IOracleAdaptor(adapter).getPrice(
+            asset,
+            inUSD,
+            getLower
+        );
+        if (data.hadError) {
+            return FeedData({ price: 0, hadError: true });
+        }
 
         if (data.inUSD != inUSD) {
-            uint256 conversionPrice;
-            (conversionPrice, data.hadError) = getETHUSD();
+            uint256 newPrice;
+            (newPrice, data.hadError) = _getETHUSD();
+            if (data.hadError) {
+                return FeedData({ price: 0, hadError: true });
+            }
+
             data.price = uint240(
-                convertPriceETHUSD(data.price, conversionPrice, data.inUSD)
+                _convertETHUSD(data.price, newPrice, data.inUSD)
             );
         }
 
-        return (FeedData({ price: data.price, hadError: data.hadError }));
+        return FeedData({ price: data.price, hadError: data.hadError });
     }
 
     /// @notice Queries the current price of ETH in USD using Chainlink's ETH/USD feed.
@@ -553,8 +624,12 @@ contract PriceRouter {
     ///         If the Chainlink data is stale or negative,
     ///         it returns (answer, true).
     ///         Where true corresponded to hasError = true.
-    function getETHUSD() internal view returns (uint256, bool) {
-        (, int256 answer, , uint256 updatedAt, ) = AggregatorV3Interface(
+    function _getETHUSD() internal view returns (uint256, bool) {
+        if (!_isSequencerValid()) {
+            return (0, true);
+        }
+
+        (, int256 answer, , uint256 updatedAt, ) = IChainlink(
             CHAINLINK_ETH_USD
         ).latestRoundData();
 
@@ -564,7 +639,30 @@ contract PriceRouter {
         ) {
             return (uint256(answer), true);
         }
+
         return (uint256(answer), false);
+    }
+
+    /// @notice Check whether sequencer is valid or down.
+    /// @return True if sequencer is valid
+    function _isSequencerValid() internal view returns (bool) {
+        address sequencer = centralRegistry.sequencer();
+
+        if (sequencer != address(0)) {
+            (, int256 answer, uint256 startedAt, , ) = IChainlink(sequencer)
+                .latestRoundData();
+
+            // Answer == 0: Sequencer is up
+            // Check that the sequencer is up or the grace period has passed
+            // after the sequencer is back up.
+            if (
+                answer != 0 || block.timestamp < startedAt + GRACE_PERIOD_TIME
+            ) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /// @notice Converts a given price between ETH and USD formats.
@@ -577,17 +675,17 @@ contract PriceRouter {
     ///                           If true, it will convert the price from USD to ETH.
     ///                           If false, it will convert the price from ETH to USD.
     /// @return The converted price.
-    function convertPriceETHUSD(
+    function _convertETHUSD(
         uint240 currentPrice,
         uint256 conversionRate,
         bool currentFormatInUSD
-    ) internal pure returns (uint256) {
+    ) internal view returns (uint256) {
         if (!currentFormatInUSD) {
             // current format is in ETH and we want USD
-            return (currentPrice * conversionRate);
+            return (currentPrice * conversionRate) / CHAINLINK_DECIMALS;
         }
 
-        return (currentPrice / conversionRate);
+        return (currentPrice * CHAINLINK_DECIMALS) / conversionRate;
     }
 
     /// @notice Processes the price data from two different feeds.
@@ -598,14 +696,14 @@ contract PriceRouter {
     /// @return A tuple containing the lower of two prices and an error flag (if any).
     ///         If the prices are within acceptable range,
     ///         it returns (min(a,b), NO_ERROR).
-    function calculateLowerPriceFeed(
+    function _calculateLowerPrice(
         uint256 a,
         uint256 b
     ) internal view returns (uint256, uint256) {
         if (a <= b) {
-            // Check if both feeds are within PRICEFEED_MAXIMUM_DIVERGENCE
+            // Check if both feeds are within MAXIMUM_DIVERGENCE
             // of each other
-            if (((a * PRICEFEED_MAXIMUM_DIVERGENCE) / DENOMINATOR) < b) {
+            if (((a * MAXIMUM_DIVERGENCE) / DENOMINATOR) < b) {
                 // Return the price but notify that the price should be taken with caution
                 // because we are outside the accepted range of divergence
                 return (a, CAUTION);
@@ -613,9 +711,9 @@ contract PriceRouter {
             return (a, NO_ERROR);
         }
 
-        // Check if both feeds are within PRICEFEED_MAXIMUM_DIVERGENCE
+        // Check if both feeds are within MAXIMUM_DIVERGENCE
         // of each other
-        if (((b * PRICEFEED_MAXIMUM_DIVERGENCE) / DENOMINATOR) < a) {
+        if (((b * MAXIMUM_DIVERGENCE) / DENOMINATOR) < a) {
             // Return the price but notify that the price should be taken with caution
             // because we are outside the accepted range of divergence
             return (b, CAUTION);
@@ -631,14 +729,14 @@ contract PriceRouter {
     /// @return A tuple containing the higher of two prices and an error flag (if any).
     ///         If the prices are within acceptable range,
     ///         it returns (max(a,b), NO_ERROR).
-    function calculateHigherPriceFeed(
+    function _calculateHigherPrice(
         uint256 a,
         uint256 b
     ) internal view returns (uint256, uint256) {
         if (a >= b) {
-            // Check if both feeds are within PRICEFEED_MAXIMUM_DIVERGENCE
+            // Check if both feeds are within MAXIMUM_DIVERGENCE
             // of each other
-            if (((b * PRICEFEED_MAXIMUM_DIVERGENCE) / DENOMINATOR) < a) {
+            if (((b * MAXIMUM_DIVERGENCE) / DENOMINATOR) < a) {
                 // Return the price but notify that the price should be taken with caution
                 // because we are outside the accepted range of divergence
                 return (a, CAUTION);
@@ -646,9 +744,9 @@ contract PriceRouter {
             return (a, NO_ERROR);
         }
 
-        // Check if both feeds are within PRICEFEED_MAXIMUM_DIVERGENCE
+        // Check if both feeds are within MAXIMUM_DIVERGENCE
         // of each other
-        if (((a * PRICEFEED_MAXIMUM_DIVERGENCE) / DENOMINATOR) < b) {
+        if (((a * MAXIMUM_DIVERGENCE) / DENOMINATOR) < b) {
             // Return the price but notify that the price should be taken with caution
             // because we are outside the accepted range of divergence
             return (b, CAUTION);
@@ -662,7 +760,7 @@ contract PriceRouter {
     /// @param feed0 The first feed's data.
     /// @param feed1 The second feed's data.
     /// @return The price from the working feed.
-    function getWorkingPrice(
+    function _getWorkingPrice(
         FeedData memory feed0,
         FeedData memory feed1
     ) internal pure returns (uint256) {

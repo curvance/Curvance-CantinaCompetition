@@ -5,6 +5,8 @@ import { TestBaseCToken } from "../TestBaseCToken.sol";
 import { AuraPositionVault } from "contracts/deposits/adaptors/AuraPositionVault.sol";
 import { ERC20 } from "contracts/libraries/ERC20.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+import { CToken } from "contracts/market/collateral/CToken.sol";
+import { BasePositionVault } from "contracts/deposits/adaptors/BasePositionVault.sol";
 
 contract MigrateVaultTest is TestBaseCToken {
     event MigrateVault(address oldVault, address newVault);
@@ -26,12 +28,14 @@ contract MigrateVaultTest is TestBaseCToken {
     function test_migrateVault_fail_whenCallerIsNotAuthorized() public {
         vm.prank(user1);
 
-        vm.expectRevert("CToken: UNAUTHORIZED");
+        vm.expectRevert(CToken.CToken__Unauthorized.selector);
         cBALRETH.migrateVault(address(newVault));
     }
 
     function test_migrateVault_fail_whenNewVaultIsNotInitalized() public {
-        vm.expectRevert("BasePositionVault: UNAUTHORIZED");
+        vm.expectRevert(
+            BasePositionVault.BasePositionVault__Unauthorized.selector
+        );
         cBALRETH.migrateVault(address(newVault));
     }
 

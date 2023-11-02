@@ -17,7 +17,7 @@ contract EarlyExpireLockTest is TestBaseVeCVE {
         deal(address(cve), address(this), 100e18);
         cve.approve(address(veCVE), 100e18);
 
-        veCVE.lock(30e18, false, address(this), rewardsData, "", 0);
+        veCVE.createLock(30e18, false, rewardsData, "", 0);
     }
 
     function test_earlyExpireLock_fail_whenLockIndexExceeds(
@@ -25,11 +25,9 @@ contract EarlyExpireLockTest is TestBaseVeCVE {
         bool isFreshLock,
         bool isFreshLockContinuous
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
-        vm.expectRevert(VeCVE.VeCVE_InvalidLock.selector);
+        vm.expectRevert(VeCVE.VeCVE__InvalidLock.selector);
         veCVE.earlyExpireLock(
-            address(this),
             1,
-            address(this),
             rewardsData,
             "",
             0
@@ -41,11 +39,9 @@ contract EarlyExpireLockTest is TestBaseVeCVE {
         bool isFreshLock,
         bool isFreshLockContinuous
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
-        vm.expectRevert("VeCVE: early unlocks disabled");
+        vm.expectRevert(VeCVE.VeCVE__InvalidLock.selector);
         veCVE.earlyExpireLock(
-            address(this),
             0,
-            address(this),
             rewardsData,
             "",
             0
@@ -59,15 +55,13 @@ contract EarlyExpireLockTest is TestBaseVeCVE {
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
         centralRegistry.setEarlyUnlockPenaltyValue(3000);
 
-        uint256 panaltyAmount = (30e18 * 3000) / veCVE.DENOMINATOR();
+        uint256 penaltyAmount = veCVE.getUnlockPenalty(address(this), 0);
 
         vm.expectEmit(true, true, true, true, address(veCVE));
-        emit UnlockedWithPenalty(address(this), 30e18, panaltyAmount);
+        emit UnlockedWithPenalty(address(this), 30e18, penaltyAmount);
 
         veCVE.earlyExpireLock(
-            address(this),
             0,
-            address(this),
             rewardsData,
             "",
             0

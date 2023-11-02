@@ -26,6 +26,9 @@ interface ICentralRegistry {
     /// @notice Returns Genesis Epoch Timestamp of Curvance
     function genesisEpoch() external view returns (uint256);
 
+    /// @notice Sequencer Uptime Feed address for L2.
+    function sequencer() external view returns (address);
+
     /// @notice Returns Protocol DAO Address
     function daoAddress() external view returns (address);
 
@@ -48,7 +51,7 @@ interface ICentralRegistry {
     function veCVE() external view returns (address);
 
     /// @notice Returns Call Option Address
-    function callOptionCVE() external view returns (address);
+    function oCVE() external view returns (address);
 
     /// @notice Returns Protocol Messaging Hub Address
     function protocolMessagingHub() external view returns (address);
@@ -75,7 +78,9 @@ interface ICentralRegistry {
     function protocolLeverageFee() external view returns (uint256);
 
     /// @notice Lending Market => Protocol Reserve Factor on interest generated
-    function protocolInterestFactor(address market) external view returns (uint256);
+    function protocolInterestFactor(
+        address market
+    ) external view returns (uint256);
 
     /// @notice Returns earlyUnlockPenaltyValue value in basis point form
     function earlyUnlockPenaltyValue() external view returns (uint256);
@@ -96,7 +101,7 @@ interface ICentralRegistry {
     ) external view returns (ChainData memory);
 
     // Address => chainID => Curvance identification information
-    function omnichainOperators(
+    function getOmnichainOperators(
         address _address,
         uint256 chainID
     ) external view returns (OmnichainData memory);

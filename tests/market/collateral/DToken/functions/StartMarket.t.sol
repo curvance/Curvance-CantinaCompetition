@@ -7,7 +7,7 @@ import { DToken } from "contracts/market/collateral/DToken.sol";
 
 contract DTokenStartMarketTest is TestBaseDToken {
     function test_dTokenStartMarket_fail_whenCallerIsNotLendtroller() public {
-        vm.expectRevert(DToken.DToken__UnauthorizedCaller.selector);
+        vm.expectRevert(DToken.DToken__Unauthorized.selector);
 
         dUSDC.startMarket(address(0));
     }

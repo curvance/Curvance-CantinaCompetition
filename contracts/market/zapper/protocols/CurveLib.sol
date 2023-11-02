@@ -7,6 +7,15 @@ import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { ICurveSwap } from "contracts/interfaces/external/curve/ICurve.sol";
 
 library CurveLib {
+    /// ERRORS ///
+
+    error CurveLib__ReceivedAmountIsLessThanMinimum(
+        uint256 amount,
+        uint256 minimum
+    );
+
+    /// FUNCTIONS ///
+
     /// @dev Enter Curve
     /// @param lpMinter The minter address of Curve LP
     /// @param lpToken The Curve LP token address
@@ -61,10 +70,12 @@ library CurveLib {
 
         // check min out amount
         lpOutAmount = IERC20(lpToken).balanceOf(address(this));
-        require(
-            lpOutAmount >= lpMinOutAmount,
-            "Received less than lpMinOutAmount"
-        );
+        if (lpOutAmount < lpMinOutAmount) {
+            revert CurveLib__ReceivedAmountIsLessThanMinimum(
+                lpOutAmount,
+                lpMinOutAmount
+            );
+        }
     }
 
     /// @dev Exit curvance

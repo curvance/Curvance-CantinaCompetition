@@ -10,7 +10,6 @@ import { PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 contract RedstoneAdaptor is RedstoneConsumerNumericBase, BaseOracleAdaptor {
-    
     /// TYPES ///
 
     /// @notice Stores configuration data for Redstone price sources.
@@ -31,6 +30,10 @@ contract RedstoneAdaptor is RedstoneConsumerNumericBase, BaseOracleAdaptor {
 
     /// @notice Redstone adaptor storage
     mapping(address => FeedData) public adaptorData;
+
+    /// ERRORS ///
+
+    error RedstoneAdaptor__AssetIsNotSupported();
 
     /// CONSTRUCTOR ///
 
@@ -53,10 +56,9 @@ contract RedstoneAdaptor is RedstoneConsumerNumericBase, BaseOracleAdaptor {
         bool inUSD,
         bool
     ) external view override returns (PriceReturnData memory) {
-        require(
-            isSupportedAsset[asset],
-            "RedstoneAdaptor: asset not supported"
-        );
+        if (!isSupportedAsset[asset]) {
+            revert RedstoneAdaptor__AssetIsNotSupported();
+        }
     }
 
     /// @notice Add a Redstone Price Feed as an asset.
@@ -76,10 +78,9 @@ contract RedstoneAdaptor is RedstoneConsumerNumericBase, BaseOracleAdaptor {
     /// @notice Removes a supported asset from the adaptor.
     /// @dev Calls back into price router to notify it of its removal
     function removeAsset(address asset) external override onlyDaoPermissions {
-        require(
-            isSupportedAsset[asset],
-            "RedstoneAdaptor: asset not supported"
-        );
+        if (!isSupportedAsset[asset]) {
+            revert RedstoneAdaptor__AssetIsNotSupported();
+        }
 
         // Notify the adaptor to stop supporting the asset
         delete isSupportedAsset[asset];
@@ -88,8 +89,7 @@ contract RedstoneAdaptor is RedstoneConsumerNumericBase, BaseOracleAdaptor {
         delete adaptorData[asset];
 
         // Notify the price router that we are going to stop supporting the asset
-        IPriceRouter(centralRegistry.priceRouter())
-            .notifyAssetPriceFeedRemoval(asset);
+        IPriceRouter(centralRegistry.priceRouter()).notifyFeedRemoval(asset);
     }
 
     /// PUBLIC FUNCTIONS ///

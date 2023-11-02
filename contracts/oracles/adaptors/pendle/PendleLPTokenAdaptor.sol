@@ -30,10 +30,8 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
 
     /// @notice The minimum acceptable twap duration when pricing
     uint32 public constant MINIMUM_TWAP_DURATION = 3600;
-
-    /// @notice Error code for bad source.
-    uint256 public constant BAD_SOURCE = 2;
-
+    /// @notice Token amount to check uniswap twap price against
+    uint128 public constant PRECISION = 1e18;
     /// @notice Current networks ptOracle
     /// @dev for mainnet use 0x414d3C8A26157085f286abE3BC6E1bb010733602
     IPendlePTOracle public immutable ptOracle;
@@ -42,6 +40,16 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
 
     /// @notice Pendle LP adaptor storage
     mapping(address => AdaptorData) public adaptorData;
+
+    /// ERRORS ///
+
+    error PendleLPTokenAdaptor__AssetIsNotSupported();
+    error PendleLPTokenAdaptor__WrongMarket();
+    error PendleLPTokenAdaptor__WrongQuote();
+    error PendleLPTokenAdaptor__TwapDurationIsLessThanMinimum();
+    error PendleLPTokenAdaptor__QuoteAssetIsNotSupported();
+    error PendleLPTokenAdaptor__CallIncreaseCardinality();
+    error PendleLPTokenAdaptor__OldestObservationIsNotSatisfied();
 
     /// CONSTRUCTOR ///
 
@@ -65,12 +73,14 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
         bool inUSD,
         bool getLower
     ) external view override returns (PriceReturnData memory pData) {
-        require(
-            isSupportedAsset[asset],
-            "PendleLPTokenAdaptor: asset not supported"
-        );
-
         AdaptorData memory data = adaptorData[asset];
+
+        _checkPtTwap(data.pt, data.twapDuration);
+
+        if (!isSupportedAsset[asset]) {
+            revert PendleLPTokenAdaptor__AssetIsNotSupported();
+        }
+
         uint256 lpRate = IPMarket(asset).getLpToAssetRate(data.twapDuration);
         pData.inUSD = inUSD;
 
@@ -80,18 +90,12 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
 
         if (errorCode > 0) {
             pData.hadError = true;
-            // If error code is BAD_SOURCE we can't use this price at all
-            // so return.
-            if (errorCode == BAD_SOURCE) {
-                return pData;
-            }
+            return pData;
         }
 
         // Multiply the quote asset price by the lpRate
         // to get the Lp Token fair value.
-        pData.price = uint240(
-            (price * lpRate) / 10 ** data.quoteAssetDecimals
-        );
+        pData.price = uint240((price * lpRate) / PRECISION);
     }
 
     /// @notice Add a Pendle Market as an asset.
@@ -106,40 +110,30 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
         (IStandardizedYield sy, IPPrincipalToken pt, ) = IPMarket(asset)
             .readTokens();
 
-        require(address(pt) == data.pt, "PendleLPTokenAdaptor: wrong market");
+        if (address(pt) != data.pt) {
+            revert PendleLPTokenAdaptor__WrongMarket();
+        }
+
         // Make sure quote asset is the same as SY `assetInfo.assetAddress`
         (, address assetAddress, ) = sy.assetInfo();
-        require(
-            assetAddress == data.quoteAsset,
-            "PendleLPTokenAdaptor: wrong quote"
-        );
+        if (assetAddress != data.quoteAsset) {
+            revert PendleLPTokenAdaptor__WrongQuote();
+        }
 
-        require(
-            data.twapDuration >= MINIMUM_TWAP_DURATION,
-            "PendleLPTokenAdaptor: minimum twap duration not met"
-        );
+        if (data.twapDuration < MINIMUM_TWAP_DURATION) {
+            revert PendleLPTokenAdaptor__TwapDurationIsLessThanMinimum();
+        }
 
         // Make sure the underlying PT TWAP is working.
-        (
-            bool increaseCardinalityRequired,
-            ,
-            bool oldestObservationSatisfied
-        ) = ptOracle.getOracleState(address(data.pt), data.twapDuration);
+        _checkPtTwap(data.pt, data.twapDuration);
 
-        require(
-            !increaseCardinalityRequired,
-            "PendleLPTokenAdaptor: call increase observations cardinality"
-        );
-        require(
-            oldestObservationSatisfied,
-            "PendleLPTokenAdaptor: oldest observation not satisfied"
-        );
-        require(
-            IPriceRouter(centralRegistry.priceRouter()).isSupportedAsset(
+        if (
+            !IPriceRouter(centralRegistry.priceRouter()).isSupportedAsset(
                 data.quoteAsset
-            ),
-            "PendleLPTokenAdaptor: quote asset not supported"
-        );
+            )
+        ) {
+            revert PendleLPTokenAdaptor__QuoteAssetIsNotSupported();
+        }
 
         // Write to adaptor storage.
         adaptorData[asset] = AdaptorData({
@@ -154,10 +148,10 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
     /// @dev Calls back into price router to notify it of its removal
     /// @param asset The address of the asset to be removed.
     function removeAsset(address asset) external override onlyDaoPermissions {
-        require(
-            isSupportedAsset[asset],
-            "PendleLPTokenAdaptor: asset not supported"
-        );
+        if (!isSupportedAsset[asset]) {
+            revert PendleLPTokenAdaptor__AssetIsNotSupported();
+        }
+
         // Notify the adaptor to stop supporting the asset
         delete isSupportedAsset[asset];
 
@@ -165,7 +159,26 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
         delete adaptorData[asset];
 
         // Notify the price router that we are going to stop supporting the asset
-        IPriceRouter(centralRegistry.priceRouter())
-            .notifyAssetPriceFeedRemoval(asset);
+        IPriceRouter(centralRegistry.priceRouter()).notifyFeedRemoval(asset);
+    }
+
+    /// INTERNAL FUNCTIONS ///
+
+    /// @notice Check whether the underlying PT TWAP is working.
+    /// @param pt the address of the Pendle PT associated with LP.
+    /// @param twapDuration the twap duration to use when pricing
+    function _checkPtTwap(address pt, uint32 twapDuration) internal view {
+        (
+            bool increaseCardinalityRequired,
+            ,
+            bool oldestObservationSatisfied
+        ) = ptOracle.getOracleState(pt, twapDuration);
+
+        if (increaseCardinalityRequired) {
+            revert PendleLPTokenAdaptor__CallIncreaseCardinality();
+        }
+        if (!oldestObservationSatisfied) {
+            revert PendleLPTokenAdaptor__OldestObservationIsNotSatisfied();
+        }
     }
 }

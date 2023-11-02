@@ -2,6 +2,7 @@
 pragma solidity 0.8.17;
 
 import { TestBasePriceRouter } from "../TestBasePriceRouter.sol";
+import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
 
 contract RemoveApprovedAdaptorTest is TestBasePriceRouter {
     function test_removeApprovedAdaptor_fail_whenCallerIsNotAuthorized()
@@ -9,12 +10,12 @@ contract RemoveApprovedAdaptorTest is TestBasePriceRouter {
     {
         vm.prank(address(1));
 
-        vm.expectRevert("PriceRouter: UNAUTHORIZED");
+        vm.expectRevert(PriceRouter.PriceRouter__Unauthorized.selector);
         priceRouter.removeApprovedAdaptor(address(chainlinkAdaptor));
     }
 
     function test_removeApprovedAdaptor_fail_whenAdaptorDoesNotExist() public {
-        vm.expectRevert(0xebd2e1ff);
+        vm.expectRevert(PriceRouter.PriceRouter__InvalidParameter.selector);
         priceRouter.removeApprovedAdaptor(address(chainlinkAdaptor));
     }
 

@@ -18,14 +18,12 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
     /// @param secondsAgo period used for TWAP calculation
     /// @param baseDecimals the asset you want to price, decimals
     /// @param quoteDecimals the asset price is quoted in, decimals
-    /// @param baseToken the asset you want to price
     /// @param quoteToken the asset Twap calulation denominates in
     struct AdaptorData {
         address priceSource;
         uint32 secondsAgo;
         uint8 baseDecimals;
         uint8 quoteDecimals;
-        address baseToken;
         address quoteToken;
     }
 
@@ -33,9 +31,6 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
 
     /// @notice The smallest possible TWAP that can be used.
     uint32 public constant MINIMUM_SECONDS_AGO = 300;
-
-    /// @notice Token amount to check uniswap twap price against
-    uint128 public constant ORACLE_PRECISION = 1e18;
 
     /// @notice Chain WETH address.
     address public immutable WETH;
@@ -46,6 +41,11 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
 
     /// @notice Uniswap adaptor storage
     mapping(address => AdaptorData) public adaptorData;
+
+    /// ERRORS ///
+
+    error UniswapV3Adaptor__AssetIsNotSupported();
+    error UniswapV3Adaptor__SecondsAgoIsLessThanMinimum();
 
     /// CONSTRUCTOR ///
 
@@ -74,10 +74,9 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
         bool inUSD,
         bool getLower
     ) external view override returns (PriceReturnData memory) {
-        require(
-            isSupportedAsset[asset],
-            "UniswapV3Adaptor: asset not supported"
-        );
+        if (!isSupportedAsset[asset]) {
+            revert UniswapV3Adaptor__AssetIsNotSupported();
+        }
 
         AdaptorData memory uniswapFeed = adaptorData[asset];
         address[] memory pools = new address[](1);
@@ -91,8 +90,8 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
                         .quoteSpecificPoolsWithTimePeriod
                         .selector,
                     abi.encode(
-                        ORACLE_PRECISION,
-                        uniswapFeed.baseToken,
+                        10 ** uniswapFeed.baseDecimals,
+                        asset,
                         uniswapFeed.quoteToken,
                         pools,
                         uniswapFeed.secondsAgo
@@ -143,7 +142,10 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
             // the quote token price to USD and return
             return
                 PriceReturnData({
-                    price: uint240(twapPrice / quoteTokenDenominator),
+                    price: uint240(
+                        (twapPrice * quoteTokenDenominator) /
+                            uniswapFeed.quoteDecimals
+                    ),
                     hadError: false,
                     inUSD: true
                 });
@@ -198,10 +200,9 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
         AdaptorData memory parameters
     ) external onlyElevatedPermissions {
         // Verify seconds ago is reasonable.
-        require(
-            parameters.secondsAgo >= MINIMUM_SECONDS_AGO,
-            "UniswapV3Adaptor: seconds ago parameter too small"
-        );
+        if (parameters.secondsAgo < MINIMUM_SECONDS_AGO) {
+            revert UniswapV3Adaptor__SecondsAgoIsLessThanMinimum();
+        }
 
         UniswapV3Pool pool = UniswapV3Pool(parameters.priceSource);
 
@@ -218,7 +219,6 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
         } else revert("UniswapV3Adaptor: twap asset not in pool");
 
         adaptorData[asset] = parameters;
-
         isSupportedAsset[asset] = true;
     }
 
@@ -226,10 +226,9 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
     /// @dev Calls back into price router to notify it of its removal
     /// @param asset The address of the asset to be removed.
     function removeAsset(address asset) external override onlyDaoPermissions {
-        require(
-            isSupportedAsset[asset],
-            "UniswapV3Adaptor: asset not supported"
-        );
+        if (!isSupportedAsset[asset]) {
+            revert UniswapV3Adaptor__AssetIsNotSupported();
+        }
 
         // Notify the adaptor to stop supporting the asset
         delete isSupportedAsset[asset];
@@ -239,7 +238,6 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
 
         // Notify the price router that we are going
         // to stop supporting the asset
-        IPriceRouter(centralRegistry.priceRouter())
-            .notifyAssetPriceFeedRemoval(asset);
+        IPriceRouter(centralRegistry.priceRouter()).notifyFeedRemoval(asset);
     }
 }

@@ -2,12 +2,13 @@
 pragma solidity 0.8.17;
 
 import { TestBasePriceRouter } from "../TestBasePriceRouter.sol";
+import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
 
 contract AddMTokenSupportTest is TestBasePriceRouter {
     function test_addMTokenSupport_fail_whenCallerIsNotAuthorized() public {
         vm.prank(address(1));
 
-        vm.expectRevert("PriceRouter: UNAUTHORIZED");
+        vm.expectRevert(PriceRouter.PriceRouter__Unauthorized.selector);
         priceRouter.addMTokenSupport(address(mUSDC));
     }
 
@@ -16,12 +17,12 @@ contract AddMTokenSupportTest is TestBasePriceRouter {
     {
         priceRouter.addMTokenSupport(address(mUSDC));
 
-        vm.expectRevert(0xebd2e1ff);
+        vm.expectRevert(PriceRouter.PriceRouter__InvalidParameter.selector);
         priceRouter.addMTokenSupport(address(mUSDC));
     }
 
     function test_addMTokenSupport_fail_whenMTokenIsInvalid() public {
-        vm.expectRevert(0xebd2e1ff);
+        vm.expectRevert(PriceRouter.PriceRouter__InvalidParameter.selector);
         priceRouter.addMTokenSupport(address(1));
     }
 

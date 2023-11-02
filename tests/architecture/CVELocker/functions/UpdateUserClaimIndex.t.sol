@@ -2,10 +2,11 @@
 pragma solidity 0.8.17;
 
 import { TestBaseCVELocker } from "../TestBaseCVELocker.sol";
+import { CVELocker } from "contracts/architecture/CVELocker.sol";
 
 contract UpdateUserClaimIndexTest is TestBaseCVELocker {
     function test_updateUserClaimIndex_fail_whenCallerIsVeCVE() public {
-        vm.expectRevert(bytes4(keccak256(bytes("CVELocker__Unauthorized()"))));
+        vm.expectRevert(CVELocker.CVELocker__Unauthorized.selector);
         cveLocker.updateUserClaimIndex(user1, 1);
     }
 

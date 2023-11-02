@@ -13,7 +13,7 @@ contract ProcessExpiredLockTest is TestBaseVeCVE {
         deal(address(cve), address(this), 100e18);
         cve.approve(address(veCVE), 100e18);
 
-        veCVE.lock(30e18, false, address(this), rewardsData, "", 0);
+        veCVE.createLock(30e18, false, rewardsData, "", 0);
     }
 
     function test_processExpiredLock_fail_whenLockIndexExceeds(
@@ -21,13 +21,11 @@ contract ProcessExpiredLockTest is TestBaseVeCVE {
         bool isFreshLock,
         bool isFreshLockContinuous
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
-        vm.expectRevert(VeCVE.VeCVE_InvalidLock.selector);
+        vm.expectRevert(VeCVE.VeCVE__InvalidLock.selector);
         veCVE.processExpiredLock(
-            address(this),
             1,
             false,
             false,
-            address(this),
             rewardsData,
             "",
             0
@@ -39,13 +37,11 @@ contract ProcessExpiredLockTest is TestBaseVeCVE {
         bool isFreshLock,
         bool isFreshLockContinuous
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
-        vm.expectRevert("VeCVE: lock has not expired");
+        vm.expectRevert(VeCVE.VeCVE__InvalidLock.selector);
         veCVE.processExpiredLock(
-            address(this),
             0,
             false,
             false,
-            address(this),
             rewardsData,
             "",
             0
@@ -64,11 +60,9 @@ contract ProcessExpiredLockTest is TestBaseVeCVE {
         emit Unlocked(address(this), 30e18);
 
         veCVE.processExpiredLock(
-            address(this),
             0,
             false,
             true,
-            address(this),
             rewardsData,
             "",
             0
@@ -87,11 +81,9 @@ contract ProcessExpiredLockTest is TestBaseVeCVE {
         emit Unlocked(address(this), 30e18);
 
         veCVE.processExpiredLock(
-            address(this),
             0,
             false,
             false,
-            address(this),
             rewardsData,
             "",
             0

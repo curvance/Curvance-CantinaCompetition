@@ -11,6 +11,8 @@ import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 import { RewardsData } from "contracts/interfaces/ICVELocker.sol";
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+import { ICVE } from "contracts/interfaces/ICVE.sol";
+import { DENOMINATOR } from "contracts/libraries/Constants.sol";
 
 contract GaugePool is GaugeController, ReentrancyGuard {
     /// TYPES ///
@@ -29,8 +31,8 @@ contract GaugePool is GaugeController, ReentrancyGuard {
 
     /// CONSTANTS ///
 
-    uint256 public constant DENOMINATOR = 10000; // Scalar for math
-    uint256 public constant PRECISION = 1e36; // Scalar for math
+    /// @notice Scalar for math
+    uint256 internal constant PRECISION = 1e36;
     address public lendtroller; // Lendtroller linked
 
     /// STORAGE ///
@@ -39,6 +41,8 @@ contract GaugePool is GaugeController, ReentrancyGuard {
     ChildGaugePool[] public childGauges;
     mapping(address => PoolInfo) public poolInfo; // token => pool info
     mapping(address => mapping(address => UserInfo)) public userInfo; // token => user => info
+    uint256 public firstDeposit;
+    uint256 public unallocatedRewards;
 
     /// EVENTS ///
 
@@ -136,10 +140,6 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         address token,
         address user
     ) external view returns (uint256) {
-        if (!isGaugeEnabled(currentEpoch(), token)) {
-            revert GaugeErrors.InvalidToken();
-        }
-
         PoolInfo storage _pool = poolInfo[token];
         uint256 accRewardPerShare = _pool.accRewardPerShare;
         uint256 lastRewardTimestamp = _pool.lastRewardTimestamp;
@@ -158,7 +158,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
                 // update rewards from lastRewardTimestamp to endTimestamp
                 reward =
                     ((endTimestamp - lastRewardTimestamp) *
-                        epochInfo[lastEpoch].poolWeights[token]) /
+                        _epochInfo[lastEpoch].poolWeights[token]) /
                     EPOCH_WINDOW;
                 accRewardPerShare =
                     accRewardPerShare +
@@ -172,7 +172,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
             // update rewards from lastRewardTimestamp to current timestamp
             reward =
                 ((block.timestamp - lastRewardTimestamp) *
-                    epochInfo[lastEpoch].poolWeights[token]) /
+                    _epochInfo[lastEpoch].poolWeights[token]) /
                 EPOCH_WINDOW;
             accRewardPerShare =
                 accRewardPerShare +
@@ -200,9 +200,13 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         if (amount == 0) {
             revert GaugeErrors.InvalidAmount();
         }
+        if (block.timestamp < startTime) {
+            revert GaugeErrors.NotStarted();
+        }
 
-        if (msg.sender != token || 
-        !ILendtroller(lendtroller).isListed(token)) {
+        if (
+            msg.sender != token || !ILendtroller(lendtroller).isListed(token)
+        ) {
             revert GaugeErrors.InvalidToken();
         }
 
@@ -212,6 +216,18 @@ contract GaugePool is GaugeController, ReentrancyGuard {
 
         userInfo[token][user].amount += amount;
         poolInfo[token].totalAmount += amount;
+
+        if (firstDeposit == 0) {
+            // if first deposit, the new rewards from gauge start to this point will be unallocated rewards
+            firstDeposit = block.timestamp;
+            updatePool(token);
+            SafeTransferLib.safeTransfer(
+                cve,
+                centralRegistry.daoAddress(),
+                (poolInfo[token].accRewardPerShare *
+                    poolInfo[token].totalAmount) / PRECISION
+            );
+        }
 
         _calcDebt(user, token);
 
@@ -242,9 +258,13 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         if (amount == 0) {
             revert GaugeErrors.InvalidAmount();
         }
+        if (block.timestamp < startTime) {
+            revert GaugeErrors.NotStarted();
+        }
 
-        if (msg.sender != token || 
-        !ILendtroller(lendtroller).isListed(token)) {
+        if (
+            msg.sender != token || !ILendtroller(lendtroller).isListed(token)
+        ) {
             revert GaugeErrors.InvalidToken();
         }
 
@@ -279,6 +299,10 @@ contract GaugePool is GaugeController, ReentrancyGuard {
     /// @notice Claim rewards from gauge pool
     /// @param token Pool token address
     function claim(address token) external nonReentrant {
+        if (block.timestamp < startTime) {
+            revert GaugeErrors.NotStarted();
+        }
+
         updatePool(token);
         _calcPending(msg.sender, token);
 
@@ -305,6 +329,10 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         bytes memory params,
         uint256 aux
     ) external nonReentrant {
+        if (block.timestamp < startTime) {
+            revert GaugeErrors.NotStarted();
+        }
+
         updatePool(token);
         _calcPending(msg.sender, token);
 
@@ -313,12 +341,16 @@ contract GaugePool is GaugeController, ReentrancyGuard {
             revert GaugeErrors.NoReward();
         }
 
+        userInfo[token][msg.sender].rewardPending = 0;
+
         uint256 currentLockBoost = centralRegistry.lockBoostValue();
         // If theres a current lock boost, recognize their bonus rewards
         if (currentLockBoost > 0) {
-            rewards = (rewards * currentLockBoost) / DENOMINATOR;
+            uint256 boostedRewards = (rewards * currentLockBoost) /
+                DENOMINATOR;
+            ICVE(cve).mintLockBoost(boostedRewards - rewards);
+            rewards = boostedRewards;
         }
-        userInfo[token][msg.sender].rewardPending = 0;
 
         SafeTransferLib.safeApprove(cve, address(veCVE), rewards);
         veCVE.increaseAmountAndExtendLockFor(
@@ -326,7 +358,6 @@ contract GaugePool is GaugeController, ReentrancyGuard {
             rewards,
             lockIndex,
             continuousLock,
-            msg.sender,
             rewardsData,
             params,
             aux
@@ -346,6 +377,10 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         bytes memory params,
         uint256 aux
     ) external nonReentrant {
+        if (block.timestamp < startTime) {
+            revert GaugeErrors.NotStarted();
+        }
+
         updatePool(token);
         _calcPending(msg.sender, token);
 
@@ -354,20 +389,22 @@ contract GaugePool is GaugeController, ReentrancyGuard {
             revert GaugeErrors.NoReward();
         }
 
+        userInfo[token][msg.sender].rewardPending = 0;
+
         uint256 currentLockBoost = centralRegistry.lockBoostValue();
         // If theres a current lock boost, recognize their bonus rewards
         if (currentLockBoost > 0) {
-            rewards = (rewards * currentLockBoost) / DENOMINATOR;
+            uint256 boostedRewards = (rewards * currentLockBoost) /
+                DENOMINATOR;
+            ICVE(cve).mintLockBoost(boostedRewards - rewards);
+            rewards = boostedRewards;
         }
 
-        userInfo[token][msg.sender].rewardPending = 0;
-
         SafeTransferLib.safeApprove(cve, address(veCVE), rewards);
-        veCVE.lockFor(
+        veCVE.createLockFor(
             msg.sender,
             rewards,
             continuousLock,
-            msg.sender,
             rewardsData,
             params,
             aux
@@ -383,6 +420,10 @@ contract GaugePool is GaugeController, ReentrancyGuard {
     /// @notice Update reward variables of the given pool to be up-to-date
     /// @param token Pool token address
     function updatePool(address token) public override {
+        if (block.timestamp < startTime) {
+            revert GaugeErrors.NotStarted();
+        }
+
         uint256 lastRewardTimestamp = poolInfo[token].lastRewardTimestamp;
         if (lastRewardTimestamp == 0) {
             lastRewardTimestamp = startTime;
@@ -396,6 +437,10 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         }
 
         uint256 totalDeposited = poolInfo[token].totalAmount;
+        if (totalDeposited == 0) {
+            return;
+        }
+
         uint256 accRewardPerShare = poolInfo[token].accRewardPerShare;
         uint256 lastEpoch = epochOfTimestamp(lastRewardTimestamp);
         uint256 currentEpoch = currentEpoch();
@@ -407,7 +452,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
             // update rewards from lastRewardTimestamp to endTimestamp
             reward =
                 ((endTimestamp - lastRewardTimestamp) *
-                    epochInfo[lastEpoch].poolWeights[token]) /
+                    _epochInfo[lastEpoch].poolWeights[token]) /
                 EPOCH_WINDOW;
             accRewardPerShare =
                 accRewardPerShare +
@@ -421,7 +466,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         // update rewards from lastRewardTimestamp to current timestamp
         reward =
             ((block.timestamp - lastRewardTimestamp) *
-                epochInfo[lastEpoch].poolWeights[token]) /
+                _epochInfo[lastEpoch].poolWeights[token]) /
             EPOCH_WINDOW;
         accRewardPerShare =
             accRewardPerShare +

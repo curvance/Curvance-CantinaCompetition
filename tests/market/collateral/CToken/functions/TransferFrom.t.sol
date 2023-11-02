@@ -12,7 +12,7 @@ contract CTokenTransferFromTest is TestBaseCToken {
     function test_cTokenTransferFrom_fail_whenSenderAndReceiverAreSame()
         public
     {
-        vm.expectRevert(CToken.CToken__TransferNotAllowed.selector);
+        vm.expectRevert(CToken.CToken__TransferError.selector);
         cBALRETH.transferFrom(address(this), address(this), 1e18);
     }
 
@@ -34,6 +34,8 @@ contract CTokenTransferFromTest is TestBaseCToken {
     }
 
     function test_cTokenTransferFrom_success() public {
+        cBALRETH.mint(100);
+
         uint256 balance = cBALRETH.balanceOf(address(this));
         uint256 user1Balance = cBALRETH.balanceOf(user1);
 

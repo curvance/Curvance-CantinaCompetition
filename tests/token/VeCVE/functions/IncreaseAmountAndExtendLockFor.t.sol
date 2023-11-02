@@ -13,11 +13,10 @@ contract IncreaseAmountAndExtendLockForTest is TestBaseVeCVE {
 
         centralRegistry.addVeCVELocker(address(this));
 
-        veCVE.lockFor(
+        veCVE.createLockFor(
             address(1),
             50e18,
             false,
-            address(this),
             rewardsData,
             "",
             0
@@ -33,13 +32,12 @@ contract IncreaseAmountAndExtendLockForTest is TestBaseVeCVE {
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
         veCVE.shutdown();
 
-        vm.expectRevert(VeCVE.VeCVE_VeCVEShutdown.selector);
+        vm.expectRevert(VeCVE.VeCVE__VeCVEShutdown.selector);
         veCVE.increaseAmountAndExtendLockFor(
             address(1),
             100,
             0,
             true,
-            address(this),
             rewardsData,
             "",
             0
@@ -51,13 +49,12 @@ contract IncreaseAmountAndExtendLockForTest is TestBaseVeCVE {
         bool isFreshLock,
         bool isFreshLockContinuous
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
-        vm.expectRevert(VeCVE.VeCVE_InvalidLock.selector);
+        vm.expectRevert(VeCVE.VeCVE__InvalidLock.selector);
         veCVE.increaseAmountAndExtendLockFor(
             address(1),
             0,
             0,
             true,
-            address(this),
             rewardsData,
             "",
             0
@@ -69,13 +66,12 @@ contract IncreaseAmountAndExtendLockForTest is TestBaseVeCVE {
         bool isFreshLock,
         bool isFreshLockContinuous
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
-        vm.expectRevert(VeCVE.VeCVE_InvalidLock.selector);
+        vm.expectRevert(VeCVE.VeCVE__InvalidLock.selector);
         veCVE.increaseAmountAndExtendLockFor(
             address(1),
             100,
             0,
             true,
-            address(this),
             rewardsData,
             "",
             0
@@ -89,13 +85,12 @@ contract IncreaseAmountAndExtendLockForTest is TestBaseVeCVE {
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
         centralRegistry.addVeCVELocker(address(this));
 
-        vm.expectRevert(VeCVE.VeCVE_InvalidLock.selector);
+        vm.expectRevert(VeCVE.VeCVE__InvalidLock.selector);
         veCVE.increaseAmountAndExtendLockFor(
             address(1),
             100,
             1,
             true,
-            address(this),
             rewardsData,
             "",
             0
@@ -112,13 +107,12 @@ contract IncreaseAmountAndExtendLockForTest is TestBaseVeCVE {
         (, uint40 unlockTime) = veCVE.userLocks(address(1), 0);
         vm.warp(unlockTime + 1);
 
-        vm.expectRevert(VeCVE.VeCVE_InvalidLock.selector);
+        vm.expectRevert(VeCVE.VeCVE__InvalidLock.selector);
         veCVE.increaseAmountAndExtendLockFor(
             address(1),
             100,
             0,
             true,
-            address(this),
             rewardsData,
             "",
             0
@@ -137,7 +131,6 @@ contract IncreaseAmountAndExtendLockForTest is TestBaseVeCVE {
             100,
             0,
             true,
-            address(this),
             rewardsData,
             "",
             0
@@ -159,7 +152,6 @@ contract IncreaseAmountAndExtendLockForTest is TestBaseVeCVE {
             100,
             0,
             false,
-            address(this),
             rewardsData,
             "",
             0

@@ -5,16 +5,21 @@ import { ERC165 } from "contracts/libraries/ERC165.sol";
 import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { ICentralRegistry, ChainData, OmnichainData } from "contracts/interfaces/ICentralRegistry.sol";
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
+import { DENOMINATOR } from "contracts/libraries/Constants.sol";
 
 contract CentralRegistry is ERC165 {
     /// CONSTANTS ///
 
-    uint256 public constant DENOMINATOR = 10000; // Scalar for math
     /// `bytes4(keccak256(bytes("CentralRegistry_ParametersMisconfigured()")))`
     uint256 internal constant _PARAMETERS_MISCONFIGURED_SELECTOR = 0x6fc38aea;
     /// `bytes4(keccak256(bytes("CentralRegistry_Unauthorized()")))`
     uint256 internal constant _UNAUTHORIZED_SELECTOR = 0x88f093e;
-    uint256 public immutable genesisEpoch; // Genesis Epoch timestamp
+
+    /// @notice Genesis Epoch timestamp
+    uint256 public immutable genesisEpoch;
+
+    /// @notice Sequencer Uptime Feed address for L2.
+    address public immutable sequencer;
 
     /// STORAGE ///
 
@@ -26,7 +31,7 @@ contract CentralRegistry is ERC165 {
     /// CURVANCE TOKEN CONTRACTS
     address public CVE; // CVE contract address
     address public veCVE; // veCVE contract address
-    address public callOptionCVE; // CVE Call Option contract address
+    address public oCVE; // CVE Call Option contract address
 
     /// DAO CONTRACTS DATA
     address public cveLocker; // CVE Locker contract address
@@ -43,7 +48,7 @@ contract CentralRegistry is ERC165 {
     uint256 public protocolLeverageFee; // Protocol Fee on leveraging
     uint256 public earlyUnlockPenaltyValue; // Penalty Fee for unlocking from veCVE early
     uint256 public voteBoostValue; // Voting power bonus for Continuous Lock Mode
-    uint256 public lockBoostValue; // Rewards bonus for Continuous Lock Mode
+    uint256 public lockBoostValue; // Rewards bonus for locking gauge emissions
 
     /// PROTOCOL VALUES DATA `EXP_SCALE` set in `DENOMINATOR`
     /// @notice Lending Market => Protocol Reserve Factor on interest generated
@@ -87,13 +92,12 @@ contract CentralRegistry is ERC165 {
         address indexed previousEmergencyCouncil,
         address indexed newEmergencyCouncil
     );
-
+    event CoreContractSet(string indexed contractType, address newAddress);
     event NewCurvanceContract(string indexed contractType, address newAddress);
     event RemovedCurvanceContract(
         string indexed contractType,
         address removedAddress
     );
-
     event NewChainAdded(uint256 chainId, address operatorAddress);
     event RemovedChain(uint256 chainId, address operatorAddress);
 
@@ -103,20 +107,6 @@ contract CentralRegistry is ERC165 {
     error CentralRegistry_Unauthorized();
 
     /// MODIFIERS ///
-
-    modifier onlyDaoManager() {
-        if (msg.sender != daoAddress) {
-            _revert(_UNAUTHORIZED_SELECTOR);
-        }
-        _;
-    }
-
-    modifier onlyTimelock() {
-        if (msg.sender != timelock) {
-            _revert(_UNAUTHORIZED_SELECTOR);
-        }
-        _;
-    }
 
     modifier onlyEmergencyCouncil() {
         if (msg.sender != emergencyCouncil) {
@@ -145,7 +135,8 @@ contract CentralRegistry is ERC165 {
         address daoAddress_,
         address timelock_,
         address emergencyCouncil_,
-        uint256 genesisEpoch_
+        uint256 genesisEpoch_,
+        address sequencer_
     ) {
         if (daoAddress_ == address(0)) {
             daoAddress_ = msg.sender;
@@ -172,6 +163,7 @@ contract CentralRegistry is ERC165 {
         hasElevatedPermissions[emergencyCouncil] = true;
 
         genesisEpoch = genesisEpoch_;
+        sequencer = sequencer_;
 
         emit OwnershipTransferred(address(0), daoAddress_);
         emit NewTimelockConfiguration(address(0), timelock_);
@@ -184,20 +176,21 @@ contract CentralRegistry is ERC165 {
     /// @dev Only callable on a 7 day delay or by the Emergency Council
     function setCVE(address newCVE) external onlyElevatedPermissions {
         CVE = newCVE;
+        emit CoreContractSet("CVE", newCVE);
     }
 
     /// @notice Sets a new veCVE contract address
     /// @dev Only callable on a 7 day delay or by the Emergency Council
     function setVeCVE(address newVeCVE) external onlyElevatedPermissions {
         veCVE = newVeCVE;
+        emit CoreContractSet("VeCVE", newVeCVE);
     }
 
     /// @notice Sets a new CVE contract address
     /// @dev Only callable by the DAO
-    function setCallOptionCVE(
-        address newCallOptionCVE
-    ) external onlyDaoPermissions {
-        callOptionCVE = newCallOptionCVE;
+    function setOCVE(address newOCVE) external onlyDaoPermissions {
+        oCVE = newOCVE;
+        emit CoreContractSet("oCVE", newOCVE);
     }
 
     /// @notice Sets a new CVE locker contract address
@@ -206,6 +199,7 @@ contract CentralRegistry is ERC165 {
         address newCVELocker
     ) external onlyElevatedPermissions {
         cveLocker = newCVELocker;
+        emit CoreContractSet("CVE Locker", newCVELocker);
     }
 
     /// @notice Sets a new protocol messaging hub contract address
@@ -214,6 +208,10 @@ contract CentralRegistry is ERC165 {
         address newProtocolMessagingHub
     ) external onlyElevatedPermissions {
         protocolMessagingHub = newProtocolMessagingHub;
+        emit CoreContractSet(
+            "Protocol Messaging Hub",
+            newProtocolMessagingHub
+        );
     }
 
     /// @notice Sets a new price router contract address
@@ -222,6 +220,7 @@ contract CentralRegistry is ERC165 {
         address newPriceRouter
     ) external onlyElevatedPermissions {
         priceRouter = newPriceRouter;
+        emit CoreContractSet("Price Router", newPriceRouter);
     }
 
     /// @notice Sets a new ZRO contract address
@@ -230,6 +229,7 @@ contract CentralRegistry is ERC165 {
         address newZroAddress
     ) external onlyElevatedPermissions {
         zroAddress = newZroAddress;
+        emit CoreContractSet("ZRO", newZroAddress);
     }
 
     /// @notice Sets a new fee hub contract address
@@ -238,6 +238,7 @@ contract CentralRegistry is ERC165 {
         address newFeeAccumulator
     ) external onlyElevatedPermissions {
         feeAccumulator = newFeeAccumulator;
+        emit CoreContractSet("Fee Accumulator", newFeeAccumulator);
     }
 
     /// @notice Sets the fee from yield by Curvance DAO to use as gas
@@ -694,6 +695,13 @@ contract CentralRegistry is ERC165 {
         delete isEndpoint[currentEndpoint];
 
         emit RemovedCurvanceContract("Endpoint", currentEndpoint);
+    }
+
+    function getOmnichainOperators(
+        address _address,
+        uint256 chainID
+    ) external view returns (OmnichainData memory) {
+        return omnichainOperators[_address][chainID];
     }
 
     /// @dev Internal helper for reverting efficiently.

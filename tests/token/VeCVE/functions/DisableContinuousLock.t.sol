@@ -11,7 +11,7 @@ contract DisableContinuousLockTest is TestBaseVeCVE {
         deal(address(cve), address(this), 100e18);
         cve.approve(address(veCVE), 100e18);
 
-        veCVE.lock(50e18, true, address(this), rewardsData, "", 0);
+        veCVE.createLock(50e18, true, rewardsData, "", 0);
     }
 
     function test_disableContinuousLock_fail_whenLockIndexIsInvalid(
@@ -19,8 +19,8 @@ contract DisableContinuousLockTest is TestBaseVeCVE {
         bool isFreshLock,
         bool isFreshLockContinuous
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
-        vm.expectRevert(VeCVE.VeCVE_InvalidLock.selector);
-        veCVE.disableContinuousLock(1, address(this), rewardsData, "", 0);
+        vm.expectRevert(VeCVE.VeCVE__InvalidLock.selector);
+        veCVE.disableContinuousLock(1, rewardsData, "", 0);
     }
 
     function test_disableContinuousLock_fail_whenLockIsNotContinousLock(
@@ -28,10 +28,10 @@ contract DisableContinuousLockTest is TestBaseVeCVE {
         bool isFreshLock,
         bool isFreshLockContinuous
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
-        veCVE.lock(100, false, address(this), rewardsData, "", 0);
+        veCVE.createLock(100, false, rewardsData, "", 0);
 
-        vm.expectRevert(VeCVE.VeCVE_NotContinuousLock.selector);
-        veCVE.disableContinuousLock(1, address(this), rewardsData, "", 0);
+        vm.expectRevert(VeCVE.VeCVE__LockTypeMismatch.selector);
+        veCVE.disableContinuousLock(1, rewardsData, "", 0);
     }
 
     function test_disableContinuousLock_success(
@@ -41,30 +41,30 @@ contract DisableContinuousLockTest is TestBaseVeCVE {
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
         (, uint40 unlockTime) = veCVE.userLocks(address(this), 0);
 
-        assertEq(veCVE.chainTokenPoints(), 100e18);
-        assertEq(veCVE.userTokenPoints(address(this)), 100e18);
+        assertEq(veCVE.chainPoints(), 100e18);
+        assertEq(veCVE.userPoints(address(this)), 100e18);
         assertEq(veCVE.chainUnlocksByEpoch(veCVE.currentEpoch(unlockTime)), 0);
         assertEq(
-            veCVE.userTokenUnlocksByEpoch(
+            veCVE.userUnlocksByEpoch(
                 address(this),
                 veCVE.currentEpoch(unlockTime)
             ),
             0
         );
 
-        veCVE.disableContinuousLock(0, address(this), rewardsData, "", 0);
+        veCVE.disableContinuousLock(0, rewardsData, "", 0);
 
         (, unlockTime) = veCVE.userLocks(address(this), 0);
 
         assertEq(unlockTime, veCVE.freshLockTimestamp());
-        assertEq(veCVE.chainTokenPoints(), 50e18);
-        assertEq(veCVE.userTokenPoints(address(this)), 50e18);
+        assertEq(veCVE.chainPoints(), 50e18);
+        assertEq(veCVE.userPoints(address(this)), 50e18);
         assertEq(
             veCVE.chainUnlocksByEpoch(veCVE.currentEpoch(unlockTime)),
             50e18
         );
         assertEq(
-            veCVE.userTokenUnlocksByEpoch(
+            veCVE.userUnlocksByEpoch(
                 address(this),
                 veCVE.currentEpoch(unlockTime)
             ),

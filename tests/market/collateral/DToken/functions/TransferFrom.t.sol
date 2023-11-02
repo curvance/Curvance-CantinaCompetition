@@ -12,7 +12,7 @@ contract DTokenTransferFromTest is TestBaseDToken {
     function test_dTokenTransferFrom_fail_whenSenderAndReceiverAreSame()
         public
     {
-        vm.expectRevert(DToken.DToken__TransferNotAllowed.selector);
+        vm.expectRevert(DToken.DToken__TransferError.selector);
         dUSDC.transferFrom(address(this), address(this), 100e6);
     }
 

@@ -4,6 +4,7 @@ pragma solidity 0.8.17;
 import { TestBaseVeCVE } from "../TestBaseVeCVE.sol";
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { VeCVE } from "contracts/token/VeCVE.sol";
+import { DENOMINATOR } from "contracts/libraries/Constants.sol";
 
 contract LockTest is TestBaseVeCVE {
     event Locked(address indexed user, uint256 amount);
@@ -15,8 +16,8 @@ contract LockTest is TestBaseVeCVE {
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
         veCVE.shutdown();
 
-        vm.expectRevert(VeCVE.VeCVE_VeCVEShutdown.selector);
-        veCVE.lock(100, true, address(this), rewardsData, "", 0);
+        vm.expectRevert(VeCVE.VeCVE__VeCVEShutdown.selector);
+        veCVE.createLock(100, true, rewardsData, "", 0);
     }
 
     function test_lock_fail_whenAmountIsZero(
@@ -24,8 +25,8 @@ contract LockTest is TestBaseVeCVE {
         bool isFreshLock,
         bool isFreshLockContinuous
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
-        vm.expectRevert(VeCVE.VeCVE_InvalidLock.selector);
-        veCVE.lock(0, true, address(this), rewardsData, "", 0);
+        vm.expectRevert(VeCVE.VeCVE__InvalidLock.selector);
+        veCVE.createLock(0, true, rewardsData, "", 0);
     }
 
     function test_lock_fail_whenBalanceIsNotEnough(
@@ -34,7 +35,7 @@ contract LockTest is TestBaseVeCVE {
         bool isFreshLockContinuous
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
         vm.expectRevert(SafeTransferLib.TransferFromFailed.selector);
-        veCVE.lock(100, true, address(this), rewardsData, "", 0);
+        veCVE.createLock(100, true, rewardsData, "", 0);
     }
 
     function test_lock_fail_whenAllowanceIsNotEnough(
@@ -45,7 +46,7 @@ contract LockTest is TestBaseVeCVE {
         deal(address(cve), address(this), 100e18);
 
         vm.expectRevert(SafeTransferLib.TransferFromFailed.selector);
-        veCVE.lock(100, true, address(this), rewardsData, "", 0);
+        veCVE.createLock(100, true, rewardsData, "", 0);
     }
 
     function test_lock_success_withContinuousLock_fuzzed(
@@ -62,7 +63,7 @@ contract LockTest is TestBaseVeCVE {
         vm.expectEmit(true, true, true, true, address(veCVE));
         emit Locked(address(this), amount);
 
-        veCVE.lock(amount, true, address(this), rewardsData, "", 0);
+        veCVE.createLock(amount, true, rewardsData, "", 0);
 
         assertEq(cve.balanceOf(address(this)), 100e18 - amount);
         assertEq(veCVE.balanceOf(address(this)), amount);
@@ -70,16 +71,16 @@ contract LockTest is TestBaseVeCVE {
         (, uint40 unlockTime) = veCVE.userLocks(address(this), 0);
 
         assertEq(
-            veCVE.chainTokenPoints(),
-            (amount * veCVE.clPointMultiplier()) / veCVE.DENOMINATOR()
+            veCVE.chainPoints(),
+            (amount * veCVE.clPointMultiplier()) / DENOMINATOR
         );
         assertEq(
-            veCVE.userTokenPoints(address(this)),
-            (amount * veCVE.clPointMultiplier()) / veCVE.DENOMINATOR()
+            veCVE.userPoints(address(this)),
+            (amount * veCVE.clPointMultiplier()) / DENOMINATOR
         );
         assertEq(veCVE.chainUnlocksByEpoch(veCVE.currentEpoch(unlockTime)), 0);
         assertEq(
-            veCVE.userTokenUnlocksByEpoch(
+            veCVE.userUnlocksByEpoch(
                 address(this),
                 veCVE.currentEpoch(unlockTime)
             ),
@@ -101,21 +102,21 @@ contract LockTest is TestBaseVeCVE {
         vm.expectEmit(true, true, true, true, address(veCVE));
         emit Locked(address(this), amount);
 
-        veCVE.lock(amount, false, address(this), rewardsData, "", 0);
+        veCVE.createLock(amount, false, rewardsData, "", 0);
 
         assertEq(cve.balanceOf(address(this)), 100e18 - amount);
         assertEq(veCVE.balanceOf(address(this)), amount);
 
         (, uint40 unlockTime) = veCVE.userLocks(address(this), 0);
 
-        assertEq(veCVE.chainTokenPoints(), amount);
-        assertEq(veCVE.userTokenPoints(address(this)), amount);
+        assertEq(veCVE.chainPoints(), amount);
+        assertEq(veCVE.userPoints(address(this)), amount);
         assertEq(
             veCVE.chainUnlocksByEpoch(veCVE.currentEpoch(unlockTime)),
             amount
         );
         assertEq(
-            veCVE.userTokenUnlocksByEpoch(
+            veCVE.userUnlocksByEpoch(
                 address(this),
                 veCVE.currentEpoch(unlockTime)
             ),

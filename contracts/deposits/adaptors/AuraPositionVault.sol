@@ -10,6 +10,7 @@ import { IRewards } from "contracts/interfaces/external/convex/IRewards.sol";
 import { IBalancerVault } from "contracts/interfaces/external/balancer/IBalancerVault.sol";
 import { IBalancerPool } from "contracts/interfaces/external/balancer/IBalancerPool.sol";
 import { IStashWrapper } from "contracts/interfaces/external/aura/IStashWrapper.sol";
+import { EXP_SCALE } from "contracts/libraries/Constants.sol";
 
 contract AuraPositionVault is BasePositionVault {
     using Math for uint256;
@@ -42,6 +43,14 @@ contract AuraPositionVault is BasePositionVault {
 
     event Harvest(uint256 yield);
 
+    /// ERRORS ///
+
+    error AuraPositionVault__InvalidVaultConfig();
+    error AuraPositionVault__InvalidSwapper(
+        uint256 index,
+        address invalidSwapper
+    );
+
     /// CONSTRUCTOR ///
 
     constructor(
@@ -61,10 +70,9 @@ contract AuraPositionVault is BasePositionVault {
 
         // validate that the pool is still active and that the lp token
         // and rewarder in aura matches what we are configuring for
-        require(
-            pidToken == asset() && !shutdown && balRewards == rewarder_,
-            "AuraPositionVault: improper aura vault config"
-        );
+        if (pidToken != asset() || shutdown || balRewards != rewarder_) {
+            revert AuraPositionVault__InvalidVaultConfig();
+        }
 
         strategyData.rewarder = IBaseRewardPool(rewarder_);
         strategyData.balancerVault = IBalancerVault(
@@ -88,7 +96,7 @@ contract AuraPositionVault is BasePositionVault {
                         .rewardToken()
                 ).baseToken();
 
-                if (rewardToken != AURA) {
+                if (rewardToken != AURA && rewardToken != BAL) {
                     strategyData.rewardTokens.push() = rewardToken;
                 }
             }
@@ -112,7 +120,7 @@ contract AuraPositionVault is BasePositionVault {
 
     // PERMISSIONED FUNCTIONS
 
-    function reQueryRewardTokens() external onlyDaoPermissions {
+    function reQueryRewardTokens() external {
         delete strategyData.rewardTokens;
 
         // add BAL as a reward token, then let aura tell you what rewards
@@ -137,6 +145,28 @@ contract AuraPositionVault is BasePositionVault {
         }
     }
 
+    function reQueryUnderlyingTokens() external {
+        address[] memory underlyingTokens = strategyData.underlyingTokens;
+        uint256 numUnderlyingTokens = underlyingTokens.length;
+        for (uint256 i = 0; i < numUnderlyingTokens; ) {
+            unchecked {
+                isUnderlyingToken[underlyingTokens[i++]] = false;
+            }
+        }
+
+        (underlyingTokens, , ) = strategyData.balancerVault.getPoolTokens(
+            strategyData.balancerPoolId
+        );
+        strategyData.underlyingTokens = underlyingTokens;
+
+        numUnderlyingTokens = underlyingTokens.length;
+        for (uint256 i = 0; i < numUnderlyingTokens; ) {
+            unchecked {
+                isUnderlyingToken[underlyingTokens[i++]] = true;
+            }
+        }
+    }
+
     /// PUBLIC FUNCTIONS ///
 
     // REWARD AND HARVESTING LOGIC
@@ -150,13 +180,15 @@ contract AuraPositionVault is BasePositionVault {
         bytes calldata data
     ) external override onlyHarvestor returns (uint256 yield) {
         if (_vaultIsActive != 2) {
-            _revert(_VAULT_NOT_ACTIVE_SELECTOR);
+            _revert(VAULT_NOT_ACTIVE_SELECTOR);
         }
 
-        uint256 pending = _calculatePendingRewards();
-        if (pending > 0) {
-            // claim vested rewards
-            _vestRewards(_totalAssets + pending);
+        {
+            uint256 pending = _calculatePendingRewards();
+            if (pending > 0) {
+                // claim vested rewards
+                _vestRewards(_totalAssets + pending);
+            }
         }
 
         // can only harvest once previous reward period is done
@@ -167,18 +199,15 @@ contract AuraPositionVault is BasePositionVault {
             // claim aura rewards
             sd.rewarder.getReward(address(this), true);
 
-            SwapperLib.Swap[] memory swapDataArray = abi.decode(
-                data,
-                (SwapperLib.Swap[])
-            );
-
-            uint256 numRewardTokens = sd.rewardTokens.length;
-            address rewardToken;
-            uint256 rewardAmount;
-            uint256 protocolFee;
+            (SwapperLib.Swap[] memory swapDataArray, uint256 minLPAmount) = abi
+                .decode(data, (SwapperLib.Swap[], uint256));
 
             {
                 // Use scoping to avoid stack too deep
+                uint256 numRewardTokens = sd.rewardTokens.length;
+                address rewardToken;
+                uint256 rewardAmount;
+                uint256 protocolFee;
                 // Cache Central registry values so we dont pay gas multiple times
                 address feeAccumulator = centralRegistry.feeAccumulator();
                 uint256 harvestFee = centralRegistry.protocolHarvestFee();
@@ -202,6 +231,15 @@ contract AuraPositionVault is BasePositionVault {
 
                     // swap from rewardToken to underlying LP token if necessary
                     if (!isUnderlyingToken[rewardToken]) {
+                        if (
+                            !centralRegistry.isSwapper(swapDataArray[i].target)
+                        ) {
+                            revert AuraPositionVault__InvalidSwapper(
+                                i,
+                                swapDataArray[i].target
+                            );
+                        }
+
                         SwapperLib.swap(swapDataArray[i]);
                     }
                 }
@@ -244,7 +282,7 @@ contract AuraPositionVault is BasePositionVault {
                                 .JoinKind
                                 .EXACT_TOKENS_IN_FOR_BPT_OUT,
                             maxAmountsIn,
-                            1
+                            minLPAmount
                         ),
                         false // do not use internal balances
                     )
@@ -256,11 +294,9 @@ contract AuraPositionVault is BasePositionVault {
             _deposit(yield);
 
             // update vesting info
-            // Cache vest period so we do not need to load it twice
-            uint256 _vestPeriod = vestPeriod;
             _vaultData = _packVaultData(
-                yield.mulDivDown(expScale, _vestPeriod),
-                block.timestamp + _vestPeriod
+                yield.mulDivDown(EXP_SCALE, vestPeriod),
+                block.timestamp + vestPeriod
             );
 
             emit Harvest(yield);
@@ -293,5 +329,22 @@ contract AuraPositionVault is BasePositionVault {
         returns (uint256)
     {
         return strategyData.rewarder.balanceOf(address(this));
+    }
+
+    /// @notice pre calculation logic for migration start
+    /// @param newVault The new vault address
+    function _migrationStart(
+        address newVault
+    ) internal override returns (bytes memory) {
+        // claim aura rewards
+        strategyData.rewarder.getReward(address(this), true);
+        uint256 numRewardTokens = strategyData.rewardTokens.length;
+        for (uint256 i; i < numRewardTokens; ++i) {
+            SafeTransferLib.safeApprove(
+                strategyData.rewardTokens[i],
+                newVault,
+                type(uint256).max
+            );
+        }
     }
 }

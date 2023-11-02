@@ -46,6 +46,7 @@ contract TestVelodromeStablePositionVault is TestBaseMarket {
 
         centralRegistry.addHarvester(address(this));
         centralRegistry.setFeeAccumulator(address(this));
+        centralRegistry.addSwapper(address(veloRouter));
 
         positionVault = new VelodromeStablePositionVault(
             USDC_DAI,

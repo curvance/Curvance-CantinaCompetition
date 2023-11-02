@@ -22,7 +22,13 @@ interface IPriceRouter {
 
     /// @notice Notifies the price router that an asset has been removed
     ///         from the adaptor calling the function
-    function notifyAssetPriceFeedRemoval(address asset) external;
+    function notifyFeedRemoval(address asset) external;
 
+    /// @notice Checks if a given asset is supported by the price router.
+    /// @param asset The address of the asset to check.
     function isSupportedAsset(address asset) external view returns (bool);
+
+    /// @notice Check whether sequencer is valid or down.
+    /// @return True if sequencer is valid
+    function isSequencerValid() external view returns (bool);
 }

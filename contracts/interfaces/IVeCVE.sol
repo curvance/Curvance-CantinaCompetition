@@ -5,11 +5,10 @@ import { RewardsData } from "contracts/interfaces/ICVELocker.sol";
 
 interface IVeCVE {
     /// @notice Sends CVE to a desired destination chain
-    function lockFor(
+    function createLockFor(
         address recipient,
         uint256 amount,
         bool continuousLock,
-        address rewardRecipient,
         RewardsData memory rewardsData,
         bytes memory params,
         uint256 aux
@@ -21,14 +20,13 @@ interface IVeCVE {
         uint256 amount,
         uint256 lockIndex,
         bool continuousLock,
-        address rewardRecipient,
         RewardsData memory rewardsData,
         bytes memory params,
         uint256 aux
     ) external;
 
     /// @notice Returns the chain's current token points for
-    function chainTokenPoints() external view returns (uint256);
+    function chainPoints() external view returns (uint256);
 
     /// @notice Returns the chain's token unlocks for an epoch
     function chainUnlocksByEpoch(
@@ -36,10 +34,10 @@ interface IVeCVE {
     ) external view returns (uint256);
 
     /// @notice Returns a user's current token points for
-    function userTokenPoints(address user) external view returns (uint256);
+    function userPoints(address user) external view returns (uint256);
 
     /// @notice Returns a user's token unlocks for an epoch
-    function userTokenUnlocksByEpoch(
+    function userUnlocksByEpoch(
         address user,
         uint256 epoch
     ) external view returns (uint256);

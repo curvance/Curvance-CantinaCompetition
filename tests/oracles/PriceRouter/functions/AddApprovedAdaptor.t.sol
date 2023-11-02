@@ -2,12 +2,13 @@
 pragma solidity 0.8.17;
 
 import { TestBasePriceRouter } from "../TestBasePriceRouter.sol";
+import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
 
 contract AddApprovedAdaptorTest is TestBasePriceRouter {
     function test_addApprovedAdaptor_fail_whenCallerIsNotAuthorized() public {
         vm.prank(address(1));
 
-        vm.expectRevert("PriceRouter: UNAUTHORIZED");
+        vm.expectRevert(PriceRouter.PriceRouter__Unauthorized.selector);
         priceRouter.addApprovedAdaptor(address(chainlinkAdaptor));
     }
 
@@ -16,7 +17,7 @@ contract AddApprovedAdaptorTest is TestBasePriceRouter {
     {
         priceRouter.addApprovedAdaptor(address(chainlinkAdaptor));
 
-        vm.expectRevert(0xebd2e1ff);
+        vm.expectRevert(PriceRouter.PriceRouter__InvalidParameter.selector);
         priceRouter.addApprovedAdaptor(address(chainlinkAdaptor));
     }
 

@@ -6,6 +6,7 @@ import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 struct AccountSnapshot {
     address asset;
     bool isCToken;
+    uint8 decimals;
     uint256 balance;
     uint256 debtBalance;
     uint256 exchangeRate;

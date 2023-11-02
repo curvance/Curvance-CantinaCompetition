@@ -2,6 +2,7 @@
 pragma solidity 0.8.17;
 
 import { TestBaseOCVE } from "../TestBaseOCVE.sol";
+import { OCVE } from "contracts/token/OCVE.sol";
 
 contract SetOptionsTermsTest is TestBaseOCVE {
     uint256 public paymentTokenCurrentPrice;
@@ -21,17 +22,17 @@ contract SetOptionsTermsTest is TestBaseOCVE {
     function test_setOptionsTerms_fail_whenCallerIsNotAuthorized() public {
         vm.prank(address(1));
 
-        vm.expectRevert("OCVE: UNAUTHORIZED");
+        vm.expectRevert(OCVE.OCVE__Unauthorized.selector);
         oCVE.setOptionsTerms(block.timestamp, paymentTokenCurrentPrice * _ONE);
     }
 
     function test_setOptionsTerms_fail_whenStrikePriceIsZero() public {
-        vm.expectRevert("OCVE: Strike price is invalid");
+        vm.expectRevert(OCVE.OCVE__ParametersAreInvalid.selector);
         oCVE.setOptionsTerms(block.timestamp, 0);
     }
 
     function test_setOptionsTerms_fail_whenStartTimestampIsInvalid() public {
-        vm.expectRevert("OCVE: Start timestamp is invalid");
+        vm.expectRevert(OCVE.OCVE__ParametersAreInvalid.selector);
         oCVE.setOptionsTerms(
             block.timestamp - 1,
             paymentTokenCurrentPrice * _ONE
@@ -42,13 +43,14 @@ contract SetOptionsTermsTest is TestBaseOCVE {
         public
     {
         oCVE.setOptionsTerms(block.timestamp, paymentTokenCurrentPrice * _ONE);
+        skip(1 weeks);
 
-        vm.expectRevert("OCVE: Options exercising already active");
+        vm.expectRevert(OCVE.OCVE__ConfigurationError.selector);
         oCVE.setOptionsTerms(block.timestamp, paymentTokenCurrentPrice * _ONE);
     }
 
     function test_setOptionsTerms_fail_whenStrikePriceIsInvalid() public {
-        vm.expectRevert("OCVE: invalid strike price configuration");
+        vm.expectRevert(OCVE.OCVE__ParametersAreInvalid.selector);
         oCVE.setOptionsTerms(block.timestamp, paymentTokenCurrentPrice);
     }
 

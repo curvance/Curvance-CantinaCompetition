@@ -30,9 +30,8 @@ contract PendlePrincipalTokenAdaptor is BaseOracleAdaptor {
 
     /// @notice The minimum acceptable twap duration when pricing
     uint32 public constant MINIMUM_TWAP_DURATION = 3600;
-
-    /// @notice Error code for bad source.
-    uint256 public constant BAD_SOURCE = 2;
+    /// @notice Token amount to check uniswap twap price against
+    uint128 public constant PRECISION = 1e18;
 
     /// @notice Current networks ptOracle
     /// @dev for mainnet use 0x414d3C8A26157085f286abE3BC6E1bb010733602
@@ -42,6 +41,16 @@ contract PendlePrincipalTokenAdaptor is BaseOracleAdaptor {
 
     /// @notice Pendle PT adaptor storage
     mapping(address => AdaptorData) public adaptorData;
+
+    /// ERRORS ///
+
+    error PendlePrincipalTokenAdaptor__AssetIsNotSupported();
+    error PendlePrincipalTokenAdaptor__WrongMarket();
+    error PendlePrincipalTokenAdaptor__WrongQuote();
+    error PendlePrincipalTokenAdaptor__TwapDurationIsLessThanMinimum();
+    error PendlePrincipalTokenAdaptor__CallIncreaseCardinality();
+    error PendlePrincipalTokenAdaptor__OldestObservationIsNotSatisfied();
+    error PendlePrincipalTokenAdaptor__QuoteAssetIsNotSupported();
 
     /// CONSTRUCTOR ///
 
@@ -65,10 +74,9 @@ contract PendlePrincipalTokenAdaptor is BaseOracleAdaptor {
         bool inUSD,
         bool getLower
     ) external view override returns (PriceReturnData memory pData) {
-        require(
-            isSupportedAsset[asset],
-            "PendlePrincipalTokenAdaptor: asset not supported"
-        );
+        if (!isSupportedAsset[asset]) {
+            revert PendlePrincipalTokenAdaptor__AssetIsNotSupported();
+        }
 
         AdaptorData memory data = adaptorData[asset];
         pData.inUSD = inUSD;
@@ -80,16 +88,11 @@ contract PendlePrincipalTokenAdaptor is BaseOracleAdaptor {
 
         if (errorCode > 0) {
             pData.hadError = true;
-            // If error code is BAD_SOURCE we can't use this price at all so return.
-            if (errorCode == BAD_SOURCE) {
-                return pData;
-            }
+            return pData;
         }
 
         // Multiply the quote asset price by the ptRate to get the Principal Token fair value.
-        pData.price = uint240(
-            (price * ptRate) / 10 ** data.quoteAssetDecimals
-        );
+        pData.price = uint240((price * ptRate) / PRECISION);
     }
 
     /// @notice Add a Pendle Principal Token as an asset.
@@ -105,21 +108,19 @@ contract PendlePrincipalTokenAdaptor is BaseOracleAdaptor {
             .market
             .readTokens();
 
-        require(
-            address(pt) == asset,
-            "PendlePrincipalTokenAdaptor: wrong market"
-        );
+        if (address(pt) != asset) {
+            revert PendlePrincipalTokenAdaptor__WrongMarket();
+        }
+
         // Make sure quote asset is the same as SY `assetInfo.assetAddress`
         (, address assetAddress, ) = sy.assetInfo();
-        require(
-            assetAddress == data.quoteAsset,
-            "PendlePrincipalTokenAdaptor: wrong quote"
-        );
+        if (assetAddress != data.quoteAsset) {
+            revert PendlePrincipalTokenAdaptor__WrongQuote();
+        }
 
-        require(
-            data.twapDuration >= MINIMUM_TWAP_DURATION,
-            "PendlePrincipalTokenAdaptor: minimum twap duration not met"
-        );
+        if (data.twapDuration < MINIMUM_TWAP_DURATION) {
+            revert PendlePrincipalTokenAdaptor__TwapDurationIsLessThanMinimum();
+        }
 
         (
             bool increaseCardinalityRequired,
@@ -127,20 +128,19 @@ contract PendlePrincipalTokenAdaptor is BaseOracleAdaptor {
             bool oldestObservationSatisfied
         ) = ptOracle.getOracleState(address(data.market), data.twapDuration);
 
-        require(
-            !increaseCardinalityRequired,
-            "PendlePrincipalTokenAdaptor: call increase observations cardinality"
-        );
-        require(
-            oldestObservationSatisfied,
-            "PendlePrincipalTokenAdaptor: oldest observation not satisfied"
-        );
-        require(
-            IPriceRouter(centralRegistry.priceRouter()).isSupportedAsset(
+        if (increaseCardinalityRequired) {
+            revert PendlePrincipalTokenAdaptor__CallIncreaseCardinality();
+        }
+        if (!oldestObservationSatisfied) {
+            revert PendlePrincipalTokenAdaptor__OldestObservationIsNotSatisfied();
+        }
+        if (
+            !IPriceRouter(centralRegistry.priceRouter()).isSupportedAsset(
                 data.quoteAsset
-            ),
-            "PendlePrincipalTokenAdaptor: quote asset not supported"
-        );
+            )
+        ) {
+            revert PendlePrincipalTokenAdaptor__QuoteAssetIsNotSupported();
+        }
 
         // Write to extension storage.
         adaptorData[asset] = AdaptorData({
@@ -155,10 +155,9 @@ contract PendlePrincipalTokenAdaptor is BaseOracleAdaptor {
     /// @dev Calls back into price router to notify it of its removal
     /// @param asset The address of the asset to be removed.
     function removeAsset(address asset) external override onlyDaoPermissions {
-        require(
-            isSupportedAsset[asset],
-            "PendlePrincipalTokenAdaptor: asset not supported"
-        );
+        if (!isSupportedAsset[asset]) {
+            revert PendlePrincipalTokenAdaptor__AssetIsNotSupported();
+        }
 
         // Notify the adaptor to stop supporting the asset
         delete isSupportedAsset[asset];
@@ -167,7 +166,6 @@ contract PendlePrincipalTokenAdaptor is BaseOracleAdaptor {
         delete adaptorData[asset];
 
         ///Notify the price router that we are going to stop supporting the asset
-        IPriceRouter(centralRegistry.priceRouter())
-            .notifyAssetPriceFeedRemoval(asset);
+        IPriceRouter(centralRegistry.priceRouter()).notifyFeedRemoval(asset);
     }
 }

@@ -13,9 +13,9 @@ contract CombineLocksTest is TestBaseVeCVE {
         deal(address(cve), address(this), 100e18);
         cve.approve(address(veCVE), 100e18);
 
-        veCVE.lock(30e18, false, address(this), rewardsData, "", 0);
-        veCVE.lock(30e18, true, address(this), rewardsData, "", 0);
-        veCVE.lock(30e18, false, address(this), rewardsData, "", 0);
+        veCVE.createLock(30e18, false, rewardsData, "", 0);
+        veCVE.createLock(30e18, true, rewardsData, "", 0);
+        veCVE.createLock(30e18, false, rewardsData, "", 0);
 
         lockIndexes.push(0);
         lockIndexes.push(1);
@@ -30,15 +30,8 @@ contract CombineLocksTest is TestBaseVeCVE {
         lockIndexes.pop();
         lockIndexes.pop();
 
-        vm.expectRevert(VeCVE.VeCVE_InvalidLock.selector);
-        veCVE.combineLocks(
-            lockIndexes,
-            false,
-            address(this),
-            rewardsData,
-            "",
-            0
-        );
+        vm.expectRevert(VeCVE.VeCVE__InvalidLock.selector);
+        veCVE.combineLocks(lockIndexes, false, rewardsData, "", 0);
     }
 
     function test_combineLocks_fail_whenLockIndexesLengthExceeds(
@@ -48,15 +41,8 @@ contract CombineLocksTest is TestBaseVeCVE {
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
         lockIndexes.push(3);
 
-        vm.expectRevert(VeCVE.VeCVE_InvalidLock.selector);
-        veCVE.combineLocks(
-            lockIndexes,
-            false,
-            address(this),
-            rewardsData,
-            "",
-            0
-        );
+        vm.expectRevert(VeCVE.VeCVE__InvalidLock.selector);
+        veCVE.combineLocks(lockIndexes, false, rewardsData, "", 0);
     }
 
     function test_combineLocks_fail_whenLockIndexesAreNotSorted(
@@ -67,15 +53,8 @@ contract CombineLocksTest is TestBaseVeCVE {
         lockIndexes[1] = 2;
         lockIndexes[2] = 1;
 
-        vm.expectRevert("VeCVE: lockIndexes misconfigured");
-        veCVE.combineLocks(
-            lockIndexes,
-            false,
-            address(this),
-            rewardsData,
-            "",
-            0
-        );
+        vm.expectRevert(VeCVE.VeCVE__ParametersAreInvalid.selector);
+        veCVE.combineLocks(lockIndexes, false, rewardsData, "", 0);
     }
 
     function test_combineLocks_success_withContinuousLock(
@@ -88,28 +67,21 @@ contract CombineLocksTest is TestBaseVeCVE {
             2
         );
 
-        assertEq(veCVE.chainTokenPoints(), 120e18);
-        assertEq(veCVE.userTokenPoints(address(this)), 120e18);
+        assertEq(veCVE.chainPoints(), 120e18);
+        assertEq(veCVE.userPoints(address(this)), 120e18);
         assertEq(
             veCVE.chainUnlocksByEpoch(veCVE.currentEpoch(unlockTime)),
             60e18
         );
         assertEq(
-            veCVE.userTokenUnlocksByEpoch(
+            veCVE.userUnlocksByEpoch(
                 address(this),
                 veCVE.currentEpoch(unlockTime)
             ),
             60e18
         );
 
-        veCVE.combineLocks(
-            lockIndexes,
-            true,
-            address(this),
-            rewardsData,
-            "",
-            0
-        );
+        veCVE.combineLocks(lockIndexes, true, rewardsData, "", 0);
 
         vm.expectRevert();
         veCVE.userLocks(address(this), 1);
@@ -118,11 +90,11 @@ contract CombineLocksTest is TestBaseVeCVE {
 
         assertEq(lockAmount, 90e18);
         assertEq(unlockTime, veCVE.CONTINUOUS_LOCK_VALUE());
-        assertEq(veCVE.chainTokenPoints(), 180e18);
-        assertEq(veCVE.userTokenPoints(address(this)), 180e18);
+        assertEq(veCVE.chainPoints(), 180e18);
+        assertEq(veCVE.userPoints(address(this)), 180e18);
         assertEq(veCVE.chainUnlocksByEpoch(veCVE.currentEpoch(unlockTime)), 0);
         assertEq(
-            veCVE.userTokenUnlocksByEpoch(
+            veCVE.userUnlocksByEpoch(
                 address(this),
                 veCVE.currentEpoch(unlockTime)
             ),
@@ -140,28 +112,21 @@ contract CombineLocksTest is TestBaseVeCVE {
             2
         );
 
-        assertEq(veCVE.chainTokenPoints(), 120e18);
-        assertEq(veCVE.userTokenPoints(address(this)), 120e18);
+        assertEq(veCVE.chainPoints(), 120e18);
+        assertEq(veCVE.userPoints(address(this)), 120e18);
         assertEq(
             veCVE.chainUnlocksByEpoch(veCVE.currentEpoch(unlockTime)),
             60e18
         );
         assertEq(
-            veCVE.userTokenUnlocksByEpoch(
+            veCVE.userUnlocksByEpoch(
                 address(this),
                 veCVE.currentEpoch(unlockTime)
             ),
             60e18
         );
 
-        veCVE.combineLocks(
-            lockIndexes,
-            false,
-            address(this),
-            rewardsData,
-            "",
-            0
-        );
+        veCVE.combineLocks(lockIndexes, false, rewardsData, "", 0);
 
         vm.expectRevert();
         veCVE.userLocks(address(this), 1);
@@ -170,14 +135,14 @@ contract CombineLocksTest is TestBaseVeCVE {
 
         assertEq(lockAmount, 90e18);
         assertEq(unlockTime, veCVE.freshLockTimestamp());
-        assertEq(veCVE.chainTokenPoints(), 90e18);
-        assertEq(veCVE.userTokenPoints(address(this)), 90e18);
+        assertEq(veCVE.chainPoints(), 90e18);
+        assertEq(veCVE.userPoints(address(this)), 90e18);
         assertEq(
             veCVE.chainUnlocksByEpoch(veCVE.currentEpoch(unlockTime)),
             90e18
         );
         assertEq(
-            veCVE.userTokenUnlocksByEpoch(
+            veCVE.userUnlocksByEpoch(
                 address(this),
                 veCVE.currentEpoch(unlockTime)
             ),

@@ -18,8 +18,6 @@ import { PoolData } from "contracts/interfaces/IProtocolMessagingHub.sol";
 contract ProtocolMessagingHub is ReentrancyGuard {
     /// CONSTANTS ///
 
-    /// @notice Scalar for math
-    uint256 public constant DENOMINATOR = 10000;
     /// @notice CVE contract address
     ICVE public immutable CVE;
     /// @notice Address of fee token
@@ -34,36 +32,39 @@ contract ProtocolMessagingHub is ReentrancyGuard {
 
     /// ERRORS ///
 
+    error ProtocolMessagingHub__Unauthorized();
+    error ProtocolMessagingHub__InvalidCentralRegistry();
     error ProtocolMessagingHub__FeeTokenIsZeroAddress();
     error ProtocolMessagingHub__StargateRouterIsZeroAddress();
-    error ProtocolMessagingHub__CallerIsNotStargateRouter();
-    error ProtocolMessagingHub__ConfigurationError();
+    error ProtocolMessagingHub__ChainIsNotSupported();
+    error ProtocolMessagingHub__OperatorIsNotAuthorized(
+        address to,
+        uint256 gethChainId
+    );
+    error ProtocolMessagingHub__MessagingChainIdIsNotDstChainId(
+        uint256 messagingChainId,
+        uint256 dstChainId
+    );
+    error ProtocolMessagingHub__GETHChainIdIsNotSupported(uint256 gethChainId);
     error ProtocolMessagingHub__InsufficientGasToken();
+    error ProtocolMessagingHub__InvalidMsgValue();
 
     /// MODIFIERS ///
 
     modifier onlyAuthorized() {
-        require(
-            centralRegistry.isHarvester(msg.sender) ||
-                msg.sender == centralRegistry.feeAccumulator(),
-            "ProtocolMessagingHub: UNAUTHORIZED"
-        );
+        if (
+            !centralRegistry.isHarvester(msg.sender) &&
+            msg.sender != centralRegistry.feeAccumulator()
+        ) {
+            revert ProtocolMessagingHub__Unauthorized();
+        }
         _;
     }
 
     modifier onlyDaoPermissions() {
-        require(
-            centralRegistry.hasDaoPermissions(msg.sender),
-            "ProtocolMessagingHub: UNAUTHORIZED"
-        );
-        _;
-    }
-
-    modifier onlyLayerZero() {
-        require(
-            msg.sender == centralRegistry.CVE(),
-            "ProtocolMessagingHub: UNAUTHORIZED"
-        );
+        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
+            revert ProtocolMessagingHub__Unauthorized();
+        }
         _;
     }
 
@@ -82,7 +83,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
                 type(ICentralRegistry).interfaceId
             )
         ) {
-            revert ProtocolMessagingHub__ConfigurationError();
+            revert ProtocolMessagingHub__InvalidCentralRegistry();
         }
         if (feeToken_ == address(0)) {
             revert ProtocolMessagingHub__FeeTokenIsZeroAddress();
@@ -101,7 +102,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
 
     /// @notice Set Stargate router destination address to route fees
     function setStargateAddress(
-        address payable newStargateRouter
+        address newStargateRouter
     ) external onlyDaoPermissions {
         if (newStargateRouter == address(0)) {
             revert ProtocolMessagingHub__StargateRouterIsZeroAddress();
@@ -122,12 +123,14 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         bytes memory /* payload */
     ) external payable {
         if (msg.sender != stargateRouter) {
-            revert ProtocolMessagingHub__CallerIsNotStargateRouter();
+            revert ProtocolMessagingHub__Unauthorized();
         }
 
-        SafeTransferLib.safeTransfer(
-            token,
-            centralRegistry.feeAccumulator(),
+        address locker = centralRegistry.cveLocker();
+
+        SafeTransferLib.safeTransfer(token, locker, amountLD);
+
+        IFeeAccumulator(centralRegistry.feeAccumulator()).recordEpochRewards(
             amountLD
         );
     }
@@ -139,7 +142,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     /// @param payload The payload data that is sent along with the message
     /// @param dstGasForCall The amount of gas that should be provided for
     ///                      the call on the destination chain
-    /// @param callParams AdditionalParameters for the call, as LzCallParams
+    /// @param callParams Additional parameters for the call, as LzCallParams
     /// @dev We redundantly pass adapterParams & callParams so we do not
     ///      need to coerce data in the function, calls with this function will
     ///      have messageType = 3
@@ -158,7 +161,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
                 )
                 .isSupported < 2
         ) {
-            revert ProtocolMessagingHub__ConfigurationError();
+            revert ProtocolMessagingHub__ChainIsNotSupported();
         }
         CVE.sendAndCall{
             value: CVE.estimateSendAndCallFee(
@@ -196,30 +199,36 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     ) external onlyAuthorized {
         {
             // Avoid stack too deep
-            uint256 GETHChainId = centralRegistry.messagingToGETHChainId(
+            uint256 gethChainId = centralRegistry.messagingToGETHChainId(
                 poolData.dstChainId
             );
-            OmnichainData memory operator = centralRegistry.omnichainOperators(
-                to,
-                GETHChainId
-            );
+            OmnichainData memory operator = centralRegistry
+                .getOmnichainOperators(to, gethChainId);
 
             // Validate that the operator is authorized
             if (operator.isAuthorized < 2) {
-                revert ProtocolMessagingHub__ConfigurationError();
+                revert ProtocolMessagingHub__OperatorIsNotAuthorized(
+                    to,
+                    gethChainId
+                );
             }
 
             // Validate that the operator messaging chain matches
             // the destination chain id
             if (operator.messagingChainId != poolData.dstChainId) {
-                revert ProtocolMessagingHub__ConfigurationError();
+                revert ProtocolMessagingHub__MessagingChainIdIsNotDstChainId(
+                    operator.messagingChainId,
+                    poolData.dstChainId
+                );
             }
 
             // Validate that we are aiming for a supported chain
             if (
-                centralRegistry.supportedChainData(GETHChainId).isSupported < 2
+                centralRegistry.supportedChainData(gethChainId).isSupported < 2
             ) {
-                revert ProtocolMessagingHub__ConfigurationError();
+                revert ProtocolMessagingHub__GETHChainIdIsNotSupported(
+                    gethChainId
+                );
             }
         }
 
@@ -290,8 +299,13 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         bytes32 from,
         uint256, // amount
         bytes calldata payload
-    ) external onlyLayerZero {
-        OmnichainData memory operator = centralRegistry.omnichainOperators(
+    ) external {
+        // Validate caller is CVE itself
+        if (msg.sender != centralRegistry.CVE()) {
+            revert ProtocolMessagingHub__Unauthorized();
+        }
+
+        OmnichainData memory operator = centralRegistry.getOmnichainOperators(
             address(uint160(uint256(from))),
             centralRegistry.messagingToGETHChainId(srcChainId)
         );
@@ -351,23 +365,20 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         if (messageType == 2) {
             IFeeAccumulator(centralRegistry.feeAccumulator())
                 .receiveExecutableLockData(chainLockedAmount);
+            return;
         }
 
         // Message Type 3+: update gauge emissions for all gauge controllers on
         //                  this chain
         {
             // Use scoping for stack too deep logic
-            uint256 lockBoostMultiplier = centralRegistry.lockBoostValue();
             uint256 numPools = gaugePools.length;
             GaugeController gaugePool;
 
             for (uint256 i; i < numPools; ) {
                 gaugePool = GaugeController(gaugePools[i]);
                 // Mint epoch gauge emissions to the gauge pool
-                CVE.mintGaugeEmissions(
-                    (lockBoostMultiplier * emissionTotals[i]) / DENOMINATOR,
-                    address(gaugePool)
-                );
+                CVE.mintGaugeEmissions(address(gaugePool), emissionTotals[i]);
                 // Set upcoming epoch emissions for the voted configuration
                 gaugePool.setEmissionRates(
                     gaugePool.currentEpoch() + 1,
@@ -442,7 +453,11 @@ contract ProtocolMessagingHub is ReentrancyGuard {
                 )
                 .isSupported < 2
         ) {
-            revert ProtocolMessagingHub__ConfigurationError();
+            revert ProtocolMessagingHub__ChainIsNotSupported();
+        }
+
+        if (msg.value != etherValue) {
+            revert ProtocolMessagingHub__InvalidMsgValue();
         }
 
         CVE.sendAndCall{ value: etherValue }(

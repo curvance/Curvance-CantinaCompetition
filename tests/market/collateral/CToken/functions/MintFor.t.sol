@@ -4,12 +4,15 @@ pragma solidity 0.8.17;
 import { TestBaseCToken } from "../TestBaseCToken.sol";
 import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
 import { IMToken } from "contracts/interfaces/market/IMToken.sol";
+import { BasePositionVault } from "contracts/deposits/adaptors/BasePositionVault.sol";
 
 contract CTokenMintForTest is TestBaseCToken {
     event Transfer(address indexed from, address indexed to, uint256 amount);
 
     function test_cTokenMintFor_fail_whenTransferZeroAmount() public {
-        vm.expectRevert("BasePositionVault: ZERO_SHARES");
+        vm.expectRevert(
+            BasePositionVault.BasePositionVault__ZeroShares.selector
+        );
         cBALRETH.mintFor(0, user1);
     }
 

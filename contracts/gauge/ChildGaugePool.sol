@@ -48,6 +48,8 @@ contract ChildGaugePool is ReentrancyGuard {
     mapping(address => PoolInfo) public poolInfo;
     // token => user => info
     mapping(address => mapping(address => UserInfo)) public userInfo;
+    uint256 public firstDeposit;
+    uint256 public unallocatedRewards;
 
     /// MODIFIERS ///
 
@@ -59,10 +61,9 @@ contract ChildGaugePool is ReentrancyGuard {
     }
 
     modifier onlyDaoPermissions() {
-        require(
-            centralRegistry.hasDaoPermissions(msg.sender),
-            "ChildGaugePool: UNAUTHORIZED"
-        );
+        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
+            revert GaugeErrors.Unauthorized();
+        }
         _;
     }
 
@@ -210,6 +211,18 @@ contract ChildGaugePool is ReentrancyGuard {
         _updatePool(token, UserAction.DEPOSIT, amount);
 
         _calcPending(user, token, UserAction.DEPOSIT, amount);
+
+        if (firstDeposit == 0) {
+            // if first deposit, the new rewards from gauge start to this point will be unallocated rewards
+            firstDeposit = block.timestamp;
+            _updatePool(token, UserAction.DEPOSIT, 0);
+            SafeTransferLib.safeTransfer(
+                rewardToken,
+                centralRegistry.daoAddress(),
+                (poolInfo[token].accRewardPerShare *
+                    gaugeController.totalSupply(token)) / PRECISION
+            );
+        }
 
         _calcDebt(user, token);
     }

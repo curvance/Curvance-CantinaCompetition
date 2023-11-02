@@ -26,7 +26,7 @@ contract DTokenSetInterestRateModelTest is TestBaseDToken {
     {
         vm.prank(address(1));
 
-        vm.expectRevert("DToken: UNAUTHORIZED");
+        vm.expectRevert(DToken.DToken__Unauthorized.selector);
         dUSDC.setInterestRateModel(address(newInterestRateModel));
     }
 

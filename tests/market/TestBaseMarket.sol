@@ -6,6 +6,8 @@ import { CVE } from "contracts/token/CVE.sol";
 import { VeCVE } from "contracts/token/VeCVE.sol";
 import { CVELocker } from "contracts/architecture/CVELocker.sol";
 import { CentralRegistry } from "contracts/architecture/CentralRegistry.sol";
+import { FeeAccumulator } from "contracts/architecture/FeeAccumulator.sol";
+import { ProtocolMessagingHub } from "contracts/architecture/ProtocolMessagingHub.sol";
 import { AuraPositionVault } from "contracts/deposits/adaptors/AuraPositionVault.sol";
 import { DToken } from "contracts/market/collateral/DToken.sol";
 import { CToken } from "contracts/market/collateral/CToken.sol";
@@ -62,11 +64,17 @@ contract TestBaseMarket is TestBase {
         0xA57b8d98dAE62B26Ec3bcC4a365338157060B234;
     address internal constant _REWARDER =
         0xDd1fE5AD401D4777cE89959b7fa587e569Bf125D;
+    address internal constant _LZ_ENDPOINT =
+        0x66A71Dcef29A0fFBDBE3c6a460a3B5BC225Cd675;
+    address internal constant _STARGATE_ROUTER =
+        0x8731d54E9D02c286767d56ac03e8037C07e01e98;
 
     CVE public cve;
     VeCVE public veCVE;
     CVELocker public cveLocker;
     CentralRegistry public centralRegistry;
+    FeeAccumulator public feeAccumulator;
+    ProtocolMessagingHub public protocolMessagingHub;
     BalancerStablePoolAdaptor public balRETHAdapter;
     ChainlinkAdaptor public chainlinkAdaptor;
     ChainlinkAdaptor public dualChainlinkAdaptor;
@@ -85,7 +93,7 @@ contract TestBaseMarket is TestBase {
     MockToken public rewardToken;
     GaugePool public gaugePool;
 
-    address public protocolMessagingHub = address(999999);
+    address public harvester;
     address public randomUser = address(1000000);
     address public user1 = address(1000001);
     address public user2 = address(1000002);
@@ -107,6 +115,8 @@ contract TestBaseMarket is TestBase {
         _deployCentralRegistry();
         _deployCVE();
         _deployCVELocker();
+        _deployProtocolMessagingHub();
+        _deployFeeAccumulator();
         _deployVeCVE();
         _deployPriceRouter();
         _deployChainlinkAdaptors();
@@ -131,7 +141,8 @@ contract TestBaseMarket is TestBase {
             _ZERO_ADDRESS,
             _ZERO_ADDRESS,
             _ZERO_ADDRESS,
-            0
+            0,
+            address(0)
         );
         centralRegistry.transferEmergencyCouncil(address(this));
         centralRegistry.setLockBoostValue(lockBoostValue);
@@ -142,7 +153,7 @@ contract TestBaseMarket is TestBase {
             "Curvance",
             "CVE",
             18,
-            address(0),
+            _LZ_ENDPOINT,
             ICentralRegistry(address(centralRegistry)),
             address(0),
             10000 ether,
@@ -151,6 +162,9 @@ contract TestBaseMarket is TestBase {
             10000 ether
         );
         centralRegistry.setCVE(address(cve));
+
+        cve.setTrustedRemoteAddress(110, abi.encodePacked(address(1)));
+        cve.setUseCustomAdapterParams(true);
     }
 
     function _deployCVELocker() internal {
@@ -178,7 +192,28 @@ contract TestBaseMarket is TestBase {
         );
 
         centralRegistry.setPriceRouter(address(priceRouter));
-        centralRegistry.setProtocolMessagingHub(protocolMessagingHub);
+    }
+
+    function _deployProtocolMessagingHub() internal {
+        protocolMessagingHub = new ProtocolMessagingHub(
+            ICentralRegistry(address(centralRegistry)),
+            _USDC_ADDRESS,
+            _STARGATE_ROUTER
+        );
+        centralRegistry.setProtocolMessagingHub(address(protocolMessagingHub));
+    }
+
+    function _deployFeeAccumulator() internal {
+        harvester = makeAddr("harvester");
+        centralRegistry.addHarvester(harvester);
+
+        feeAccumulator = new FeeAccumulator(
+            ICentralRegistry(address(centralRegistry)),
+            _USDC_ADDRESS,
+            1e9,
+            1e9
+        );
+        centralRegistry.setFeeAccumulator(address(feeAccumulator));
     }
 
     function _deployChainlinkAdaptors() internal {

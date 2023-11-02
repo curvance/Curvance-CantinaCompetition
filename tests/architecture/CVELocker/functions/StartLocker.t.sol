@@ -18,14 +18,14 @@ contract StartLockerTest is TestBaseCVELocker {
     function test_startLocker_fail_whenCallerIsNotAuthorized() public {
         vm.prank(address(1));
 
-        vm.expectRevert("CVELocker: UNAUTHORIZED");
+        vm.expectRevert(CVELocker.CVELocker__Unauthorized.selector);
         cveLocker.startLocker();
     }
 
     function test_startLocker_fail_whenLockerIsAlreadyStarted() public {
         cveLocker.startLocker();
 
-        vm.expectRevert("CVELocker: locker already started");
+        vm.expectRevert(CVELocker.CVELocker__LockerIsAlreadyStarted.selector);
         cveLocker.startLocker();
     }
 

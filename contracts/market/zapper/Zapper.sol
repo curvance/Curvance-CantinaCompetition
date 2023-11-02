@@ -14,6 +14,7 @@ import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 import { IWETH } from "contracts/interfaces/IWETH.sol";
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+import { IVeloPair } from "contracts/interfaces/external/velodrome/IVeloPair.sol";
 
 contract Zapper is ReentrancyGuard {
     /// TYPES ///
@@ -28,15 +29,19 @@ contract Zapper is ReentrancyGuard {
 
     /// CONSTANTS ///
 
-    // `bytes4(keccak256(bytes("Zapper__FailedETHTransfer()")))`
-    uint256 internal constant _FAILED_ETH_TRANSFER_SELECTOR = 0xefade630;
     ILendtroller public immutable lendtroller; // Lendtroller linked
     address public immutable WETH; // Address of WETH
     ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
 
     /// ERRORS ///
 
-    error Zapper__FailedETHTransfer();
+    error Zapper__ExecutionError();
+    error Zapper__InvalidCentralRegistry();
+    error Zapper__LendtrollerIsNotLendingMarket();
+    error Zapper__CTokenUnderlyingIsNotLPToken();
+    error Zapper__Unauthorized();
+    error Zapper__SlippageError();
+    error Zapper__InvalidSwapper(uint256 index, address invalidSwapper);
 
     /// CONSTRUCTOR ///
 
@@ -47,20 +52,20 @@ contract Zapper is ReentrancyGuard {
         address lendtroller_,
         address WETH_
     ) {
-        require(
-            ERC165Checker.supportsInterface(
+        if (
+            !ERC165Checker.supportsInterface(
                 address(centralRegistry_),
                 type(ICentralRegistry).interfaceId
-            ),
-            "Zapper: invalid central registry"
-        );
+            )
+        ) {
+            revert Zapper__InvalidCentralRegistry();
+        }
 
         centralRegistry = centralRegistry_;
 
-        require(
-            centralRegistry.isLendingMarket(lendtroller_),
-            "Zapper: lendtroller is invalid"
-        );
+        if (!centralRegistry.isLendingMarket(lendtroller_)) {
+            revert Zapper__LendtrollerIsNotLendingMarket();
+        }
 
         lendtroller = ILendtroller(lendtroller_);
         WETH = WETH_;
@@ -136,16 +141,19 @@ contract Zapper is ReentrancyGuard {
         uint256 numTokenSwaps = tokenSwaps.length;
         // prepare tokens to mint LP
         for (uint256 i; i < numTokenSwaps; ) {
+            if (!centralRegistry.isSwapper(tokenSwaps[i].target)) {
+                revert Zapper__InvalidSwapper(i, tokenSwaps[i].target);
+            }
+
             unchecked {
                 SwapperLib.swap(tokenSwaps[i++]);
             }
         }
 
         outAmount = CommonLib.getTokenBalance(zapData.outputToken);
-        require(
-            outAmount >= zapData.minimumOut,
-            "Zapper: received less than minOutAmount"
-        );
+        if (outAmount < zapData.minimumOut) {
+            revert Zapper__SlippageError();
+        }
 
         // transfer token back to user
         _transferOut(zapData.outputToken, recipient, outAmount);
@@ -224,16 +232,19 @@ contract Zapper is ReentrancyGuard {
         uint256 numTokenSwaps = tokenSwaps.length;
         // prepare tokens to mint LP
         for (uint256 i; i < numTokenSwaps; ) {
+            if (!centralRegistry.isSwapper(tokenSwaps[i].target)) {
+                revert Zapper__InvalidSwapper(i, tokenSwaps[i].target);
+            }
+
             unchecked {
                 SwapperLib.swap(tokenSwaps[i++]);
             }
         }
 
         outAmount = CommonLib.getTokenBalance(zapData.outputToken);
-        require(
-            outAmount >= zapData.minimumOut,
-            "Zapper: received less than minOutAmount"
-        );
+        if (outAmount < zapData.minimumOut) {
+            revert Zapper__SlippageError();
+        }
 
         // transfer token back to user
         _transferOut(zapData.outputToken, recipient, outAmount);
@@ -262,20 +273,20 @@ contract Zapper is ReentrancyGuard {
             tokenSwaps,
             zapData.depositInputAsWETH
         );
-
         // enter velodrome
-        uint256 lpOutAmount = VelodromeLib.enterVelodrome(
+        cTokenOutAmount = VelodromeLib.enterVelodrome(
             router,
             factory,
             zapData.outputToken,
+            CommonLib.getTokenBalance(IVeloPair(zapData.outputToken).token0()),
+            CommonLib.getTokenBalance(IVeloPair(zapData.outputToken).token1()),
             zapData.minimumOut
         );
-
         // enter curvance
         cTokenOutAmount = _enterCurvance(
             cToken,
             zapData.outputToken,
-            lpOutAmount,
+            cTokenOutAmount,
             recipient
         );
     }
@@ -301,16 +312,19 @@ contract Zapper is ReentrancyGuard {
         uint256 numTokenSwaps = tokenSwaps.length;
         // prepare tokens to mint LP
         for (uint256 i; i < numTokenSwaps; ) {
+            if (!centralRegistry.isSwapper(tokenSwaps[i].target)) {
+                revert Zapper__InvalidSwapper(i, tokenSwaps[i].target);
+            }
+
             unchecked {
                 SwapperLib.swap(tokenSwaps[i++]);
             }
         }
 
         outAmount = CommonLib.getTokenBalance(zapData.outputToken);
-        require(
-            outAmount >= zapData.minimumOut,
-            "Zapper: received less than minOutAmount"
-        );
+        if (outAmount < zapData.minimumOut) {
+            revert Zapper__SlippageError();
+        }
 
         // transfer token back to user
         _transferOut(zapData.outputToken, recipient, outAmount);
@@ -329,7 +343,9 @@ contract Zapper is ReentrancyGuard {
         bool depositInputAsWETH
     ) private {
         if (CommonLib.isETH(inputToken)) {
-            require(inputAmount == msg.value, "Zapper: invalid amount");
+            if (inputAmount != msg.value) {
+                revert Zapper__ExecutionError();
+            }
             if (depositInputAsWETH) {
                 IWETH(WETH).deposit{ value: inputAmount }();
             }
@@ -346,6 +362,10 @@ contract Zapper is ReentrancyGuard {
 
         // prepare tokens to mint LP
         for (uint256 i; i < numTokenSwaps; ) {
+            if (!centralRegistry.isSwapper(tokenSwaps[i].target)) {
+                revert Zapper__InvalidSwapper(i, tokenSwaps[i].target);
+            }
+
             unchecked {
                 SwapperLib.swap(tokenSwaps[i++]);
             }
@@ -356,8 +376,8 @@ contract Zapper is ReentrancyGuard {
     /// @param cToken The curvance deposit token address
     /// @param lpToken The Curve LP token address
     /// @param amount The amount to deposit
-    /// @param recipient The recipient adress
-    /// @return out The output amount
+    /// @param recipient The recipient address
+    /// @return The output amount
     function _enterCurvance(
         address cToken,
         address lpToken,
@@ -371,12 +391,14 @@ contract Zapper is ReentrancyGuard {
         }
 
         // check valid cToken
-        require(lendtroller.isListed(cToken), "PositionFolding: UNAUTHORIZED");
+        if (!lendtroller.isListed(cToken)) {
+            revert Zapper__Unauthorized();
+        }
+
         // check cToken underlying
-        require(
-            CToken(cToken).underlying() == lpToken,
-            "Zapper: invalid lp address"
-        );
+        if (CToken(cToken).underlying() != lpToken) {
+            revert Zapper__CTokenUnderlyingIsNotLPToken();
+        }
 
         // approve lp token
         SwapperLib.approveTokenIfNeeded(lpToken, cToken, amount);
@@ -384,10 +406,10 @@ contract Zapper is ReentrancyGuard {
         uint256 priorBalance = IERC20(cToken).balanceOf(recipient);
 
         // enter curvance
-        require(
-            CToken(cToken).mintFor(amount, recipient),
-            "Zapper: error joining Curvance"
-        );
+        if (!CToken(cToken).mintFor(amount, recipient)) {
+            revert Zapper__ExecutionError();
+        }
+
         return IERC20(cToken).balanceOf(recipient) - priorBalance;
     }
 
@@ -397,17 +419,7 @@ contract Zapper is ReentrancyGuard {
         uint256 amount
     ) internal {
         if (CommonLib.isETH(token)) {
-            assembly {
-                // Transfer the Ether, reverts on failure
-                // Had to add NonReentrant to all doTransferOut calls to prevent .call reentry
-                if iszero(
-                    call(gas(), recipient, amount, 0x00, 0x00, 0x00, 0x00)
-                ) {
-                    mstore(0x00, _FAILED_ETH_TRANSFER_SELECTOR)
-                    // return bytes 29-32 for the selector
-                    revert(0x1c, 0x04)
-                }
-            }
+            SafeTransferLib.forceSafeTransferETH(recipient, amount);
         } else {
             SafeTransferLib.safeTransfer(token, recipient, amount);
         }
