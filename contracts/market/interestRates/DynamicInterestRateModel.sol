@@ -46,17 +46,13 @@ contract DynamicInterestRateModel {
 
     DynamicRatesData public currentInterestRateInfo;
 
-    uint256 public baseRate; // Rate interest grows
-    uint256 public vertexRate; // boosted rate interest grows
-    // Utilization rate point when jump multiplier kicks in
-    uint256 public vertexStart;
-
     /// EVENTS ///
 
     event NewDynamicInterestRateModel(
         uint256 baseRate,
         uint256 vertexRate,
-        uint256 vertexUtilizationStart
+        uint256 vertexUtilizationStart,
+        uint256 vertexAdjustmentRate
     );
 
     /// ERRORS ///
@@ -123,7 +119,8 @@ contract DynamicInterestRateModel {
         emit NewDynamicInterestRateModel(
             currentInterestRateInfo.baseInterestRate,
             currentInterestRateInfo.vertexInterestRate,
-            currentInterestRateInfo.vertexStartingPoint
+            currentInterestRateInfo.vertexStartingPoint,
+            currentInterestRateInfo.vertexAdjustmentRate
         );
     }
 
@@ -153,7 +150,8 @@ contract DynamicInterestRateModel {
         emit NewDynamicInterestRateModel(
             currentInterestRateInfo.baseInterestRate,
             currentInterestRateInfo.vertexInterestRate,
-            currentInterestRateInfo.vertexStartingPoint
+            currentInterestRateInfo.vertexStartingPoint,
+            currentInterestRateInfo.vertexAdjustmentRate
         );
     }
 
