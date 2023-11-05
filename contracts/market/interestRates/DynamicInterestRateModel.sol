@@ -20,10 +20,16 @@ contract DynamicInterestRateModel {
         uint256 vertexStartingPoint;
         // @notice The rate at which the vertex multiplier is adjusted, in seconds
         uint256 vertexAdjustmentRate;
-        // @notice The utilization rate at which the vertex multiplier will increase
+        // @notice Rate at which the vertex multiplier will decay per update, in EXP_SCALE
+        uint256 vertexDecayRate;
+        // @notice The utilization rate at which the vertex multiplier will begin to increase
         uint256 vertexIncreaseThreshold;
-        // @notice The utilization rate at which the vertex multiplier will decrease
+        // @notice The utilization rate at which the vertex multiplier positive velocity will max out
+        uint256 vertexIncreaseThresholdMax;
+        // @notice The utilization rate at which the vertex multiplier will begin to decrease
         uint256 vertexDecreaseThreshold;
+        // @notice The utilization rate at which the vertex multiplier negative velocity will max out
+        uint256 vertexDecreaseThresholdMax;
     }
 
     /// CONSTANTS ///
@@ -33,6 +39,8 @@ contract DynamicInterestRateModel {
     uint256 internal constant SECONDS_PER_YEAR = 31536000;
     /// @notice Rate at which interest is compounded, in seconds
     uint256 internal constant INTEREST_COMPOUND_RATE = 600;
+    // @notice Maximum Rate at which the vertex multiplier will decay per update, in EXP_SCALE
+    uint256 internal constant MAX_VERTEX_DECAY_RATE = .05e18; // 5%
     /// @notice The minimum frequency in which the vertex can have between adjustments
     uint256 internal constant MIN_VERTEX_ADJUSTMENT_RATE = 4 hours;
     /// @notice The maximum frequency in which the vertex can have between adjustments
@@ -44,19 +52,25 @@ contract DynamicInterestRateModel {
 
     /// STORAGE ///
 
-    DynamicRatesData public currentInterestRateInfo;
+    DynamicRatesData public currentRateInfo;
 
     /// EVENTS ///
 
     event NewDynamicInterestRateModel(
-        uint256 baseRate,
-        uint256 vertexRate,
-        uint256 vertexUtilizationStart,
-        uint256 vertexAdjustmentRate
+        uint256 baseInterestRate,
+        uint256 vertexInterestRate,
+        uint256 vertexStartingPoint,
+        uint256 vertexAdjustmentRate,
+        uint256 vertexDecayRate,
+        uint256 vertexIncreaseThreshold,
+        uint256 vertexIncreaseThresholdMax,
+        uint256 vertexDecreaseThreshold,
+        uint256 vertexDecreaseThresholdMax
     );
 
     /// ERRORS ///
 
+    error DynamicInterestRateModel__InvalidDecayRate();
     error DynamicInterestRateModel__InvalidAdjustmentRate();
     error DynamicInterestRateModel__Unauthorized();
     error DynamicInterestRateModel__InvalidCentralRegistry();
@@ -86,12 +100,9 @@ contract DynamicInterestRateModel {
         uint256 baseRatePerYear,
         uint256 vertexRatePerYear,
         uint256 vertexUtilizationStart,
-        uint256 vertexAdjustmentRate
+        uint256 vertexAdjustmentRate,
+        uint256 vertexDecayRate
     ) {
-
-        if (vertexAdjustmentRate > MAX_VERTEX_ADJUSTMENT_RATE || vertexAdjustmentRate < MIN_VERTEX_ADJUSTMENT_RATE) {
-            revert DynamicInterestRateModel__InvalidAdjustmentRate();
-        }
 
         if (
             !ERC165Checker.supportsInterface(
@@ -104,23 +115,12 @@ contract DynamicInterestRateModel {
 
         centralRegistry = centralRegistry_;
 
-        currentInterestRateInfo.baseInterestRate =
-            (INTEREST_COMPOUND_RATE * baseRatePerYear * EXP_SCALE) /
-            (SECONDS_PER_YEAR * vertexUtilizationStart);
-        currentInterestRateInfo.vertexInterestRate =
-            (INTEREST_COMPOUND_RATE * vertexRatePerYear) /
-            SECONDS_PER_YEAR;
-        currentInterestRateInfo.vertexStartingPoint = vertexUtilizationStart;
-        currentInterestRateInfo.vertexAdjustmentRate = vertexAdjustmentRate;
-        currentInterestRateInfo.nextUpdateTimestamp = 
-            uint128(block.timestamp + currentInterestRateInfo.vertexAdjustmentRate);
-        currentInterestRateInfo.currentVertexMultiplier = uint128(EXP_SCALE);
-
-        emit NewDynamicInterestRateModel(
-            currentInterestRateInfo.baseInterestRate,
-            currentInterestRateInfo.vertexInterestRate,
-            currentInterestRateInfo.vertexStartingPoint,
-            currentInterestRateInfo.vertexAdjustmentRate
+        _updateDynamicInterestRateModel(
+            baseRatePerYear,
+            vertexRatePerYear,
+            vertexUtilizationStart,
+            vertexAdjustmentRate,
+            vertexDecayRate
         );
     }
 
@@ -137,21 +137,16 @@ contract DynamicInterestRateModel {
     function updateDynamicInterestRateModel(
         uint256 baseRatePerYear,
         uint256 vertexRatePerYear,
-        uint256 vertexUtilizationStart
+        uint256 vertexUtilizationStart,
+        uint256 vertexAdjustmentRate,
+        uint256 vertexDecayRate
     ) external onlyElevatedPermissions {
-        currentInterestRateInfo.baseInterestRate =
-            (INTEREST_COMPOUND_RATE * baseRatePerYear * EXP_SCALE) /
-            (SECONDS_PER_YEAR * vertexUtilizationStart);
-        currentInterestRateInfo.vertexInterestRate =
-            (INTEREST_COMPOUND_RATE * vertexRatePerYear) /
-            SECONDS_PER_YEAR;
-        currentInterestRateInfo.vertexStartingPoint = vertexUtilizationStart;
-
-        emit NewDynamicInterestRateModel(
-            currentInterestRateInfo.baseInterestRate,
-            currentInterestRateInfo.vertexInterestRate,
-            currentInterestRateInfo.vertexStartingPoint,
-            currentInterestRateInfo.vertexAdjustmentRate
+        _updateDynamicInterestRateModel(
+            baseRatePerYear,
+            vertexRatePerYear,
+            vertexUtilizationStart,
+            vertexAdjustmentRate,
+            vertexDecayRate
         );
     }
 
@@ -187,7 +182,7 @@ contract DynamicInterestRateModel {
         uint256 reserves
     ) public view returns (uint256) {
         uint256 util = utilizationRate(cash, borrows, reserves);
-        uint256 vertexPoint = currentInterestRateInfo.vertexStartingPoint;
+        uint256 vertexPoint = currentRateInfo.vertexStartingPoint;
 
         if (util <= vertexPoint) {
             unchecked {
@@ -268,7 +263,7 @@ contract DynamicInterestRateModel {
     function getNormalInterestRate(
         uint256 util
     ) internal view returns (uint256) {
-        return (util * currentInterestRateInfo.baseInterestRate) / EXP_SCALE;
+        return (util * currentRateInfo.baseInterestRate) / EXP_SCALE;
     }
 
     /// @notice Calculates the interest rate under `jump` conditions E.G. `util` > `vertex ` based on market utilization
@@ -277,6 +272,56 @@ contract DynamicInterestRateModel {
     function getVertexInterestRate(
         uint256 util
     ) internal view returns (uint256) {
-        return (util * currentInterestRateInfo.vertexInterestRate) / EXP_SCALE;
+        return (util * currentRateInfo.vertexInterestRate) / EXP_SCALE;
+    }
+
+    function _updateDynamicInterestRateModel(
+        uint256 baseRatePerYear,
+        uint256 vertexRatePerYear,
+        uint256 vertexUtilizationStart,
+        uint256 vertexAdjustmentRate,
+        uint256 vertexDecayRate
+    ) internal {
+
+        if (vertexAdjustmentRate > MAX_VERTEX_ADJUSTMENT_RATE || vertexAdjustmentRate < MIN_VERTEX_ADJUSTMENT_RATE) {
+            revert DynamicInterestRateModel__InvalidAdjustmentRate();
+        }
+
+        if (vertexDecayRate > MAX_VERTEX_DECAY_RATE) {
+            revert DynamicInterestRateModel__InvalidDecayRate();
+        }
+
+        currentRateInfo.baseInterestRate =
+            (INTEREST_COMPOUND_RATE * baseRatePerYear * EXP_SCALE) /
+            (SECONDS_PER_YEAR * vertexUtilizationStart);
+        currentRateInfo.vertexInterestRate =
+            (INTEREST_COMPOUND_RATE * vertexRatePerYear) /
+            SECONDS_PER_YEAR;
+
+        currentRateInfo.vertexStartingPoint = vertexUtilizationStart;
+        currentRateInfo.vertexAdjustmentRate = vertexAdjustmentRate;
+        currentRateInfo.nextUpdateTimestamp = 
+            uint128(block.timestamp + currentRateInfo.vertexAdjustmentRate);
+        currentRateInfo.currentVertexMultiplier = uint128(EXP_SCALE);
+        currentRateInfo.vertexDecayRate = vertexDecayRate;
+
+        uint256 thresholdLength = (EXP_SCALE - vertexUtilizationStart) / 2;
+        currentRateInfo.vertexIncreaseThreshold = vertexUtilizationStart + thresholdLength;
+        currentRateInfo.vertexIncreaseThresholdMax = EXP_SCALE;
+
+        currentRateInfo.vertexDecreaseThreshold = vertexUtilizationStart;
+        currentRateInfo.vertexDecreaseThresholdMax = vertexUtilizationStart - thresholdLength;
+
+        emit NewDynamicInterestRateModel(
+            currentRateInfo.baseInterestRate,
+            currentRateInfo.vertexInterestRate,
+            currentRateInfo.vertexStartingPoint,
+            currentRateInfo.vertexAdjustmentRate,
+            currentRateInfo.vertexDecayRate,
+            currentRateInfo.vertexIncreaseThreshold,
+            currentRateInfo.vertexIncreaseThresholdMax,
+            currentRateInfo.vertexDecreaseThreshold,
+            currentRateInfo.vertexDecreaseThresholdMax
+        );
     }
 }
