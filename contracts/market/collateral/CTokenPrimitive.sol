@@ -65,14 +65,13 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
     /// ERRORS ///
 
     error CTokenPrimitive__Unauthorized();
+    error CTokenPrimitive__VaultNotActive();
+    error CTokenPrimitive__VaultIsActive();
     error CTokenPrimitive__InvalidCentralRegistry();
     error CTokenPrimitive__RedeemMoreThanMax();
     error CTokenPrimitive__WithdrawMoreThanMax();
-    error CTokenPrimitive__VaultNotActive();
-    error CTokenPrimitive__VaultIsActive();
     error CTokenPrimitive__ZeroShares();
     error CTokenPrimitive__ZeroAssets();
-    error CTokenPrimitive__TransferError();
     error CTokenPrimitive__UnderlyingAssetTotalSupplyExceedsMaximum();
     error CTokenPrimitive__LendtrollerIsNotLendingMarket();
 
@@ -269,7 +268,7 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
             SafeTransferLib.forceSafeTransferETH(daoOperator, amount);
         } else {
             if (token == asset()) {
-                revert CTokenPrimitive__TransferError();
+                revert CTokenPrimitive__Unauthorized();
             }
 
             if (amount == 0) {

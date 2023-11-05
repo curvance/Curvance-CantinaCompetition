@@ -105,16 +105,15 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
 
     /// ERRORS ///
 
-    error CTokenCompoundingBase__InvalidVestPeriod();
     error CTokenCompoundingBase__Unauthorized();
+    error CTokenCompoundingBase__VaultNotActive();
+    error CTokenCompoundingBase__VaultIsActive();
+    error CTokenCompoundingBase__InvalidVestPeriod();
     error CTokenCompoundingBase__InvalidCentralRegistry();
     error CTokenCompoundingBase__RedeemMoreThanMax();
     error CTokenCompoundingBase__WithdrawMoreThanMax();
-    error CTokenCompoundingBase__VaultNotActive();
-    error CTokenCompoundingBase__VaultIsActive();
     error CTokenCompoundingBase__ZeroShares();
     error CTokenCompoundingBase__ZeroAssets();
-    error CTokenCompoundingBase__TransferError();
     error CTokenCompoundingBase__UnderlyingAssetTotalSupplyExceedsMaximum();
     error CTokenCompoundingBase__LendtrollerIsNotLendingMarket();
 
@@ -353,7 +352,7 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
             SafeTransferLib.forceSafeTransferETH(daoOperator, amount);
         } else {
             if (token == asset()) {
-                revert CTokenCompoundingBase__TransferError();
+                revert CTokenCompoundingBase__Unauthorized();
             }
 
             if (amount == 0) {
