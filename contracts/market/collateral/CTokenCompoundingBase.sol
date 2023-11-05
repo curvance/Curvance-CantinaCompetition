@@ -201,6 +201,8 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
             log3(0x00, 0x40, _DEPOSIT_EVENT_SIGNATURE, and(m, market), and(m, market))
         }
 
+        _afterDeposit(assets, shares);
+
         _vaultIsActive = 2;
         emit vaultStatusChanged(false);
 
@@ -715,15 +717,6 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
 
         _mint(to, shares);
 
-        /// @solidity memory-safe-assembly
-        assembly {
-            // Emit the {Deposit} event.
-            mstore(0x00, assets)
-            mstore(0x20, shares)
-            let m := shr(96, not(0))
-            log3(0x00, 0x40, _DEPOSIT_EVENT_SIGNATURE, and(m, by), and(m, to))
-        }
-
         // Add the users newly deposited assets
         unchecked {
             // We know that this will not overflow as rewards are part vested and assets added and hasnt overflown from those operations
@@ -735,6 +728,15 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
             _vestRewards(ta);
         } else {
             _totalAssets = ta;
+        }
+
+        /// @solidity memory-safe-assembly
+        assembly {
+            // Emit the {Deposit} event.
+            mstore(0x00, assets)
+            mstore(0x20, shares)
+            let m := shr(96, not(0))
+            log3(0x00, 0x40, _DEPOSIT_EVENT_SIGNATURE, and(m, by), and(m, to))
         }
 
         _afterDeposit(assets, shares);
