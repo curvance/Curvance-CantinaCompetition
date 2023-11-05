@@ -716,20 +716,20 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
             assets
         );
 
-        _mint(to, shares);
-
-        // Add the users newly deposited assets
         unchecked {
-            // We know that this will not overflow as rewards are part vested and assets added and hasnt overflown from those operations
+            // We know that this will not overflow as rewards are part vested,
+            // and assets added and hasnt overflown from those operations
             ta = ta + assets;
         }
 
-        // Vest rewards, if there are any
+        // Vest rewards, if there are any, then update asset invariant
         if (pending > 0) {
             _vestRewards(ta);
         } else {
             _totalAssets = ta;
         }
+
+        _mint(to, shares);
 
         /// @solidity memory-safe-assembly
         assembly {
@@ -761,18 +761,21 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
             }
         }
 
-        // Remove the users withdrawn assets
+        // Burn the owners shares
+        _burn(owner, shares);
         ta = ta - assets;
 
-        // Vest rewards, if there are any
+        // Vest rewards, if there are any, then update asset invariant
         if (pending > 0) {
             _vestRewards(ta);
         } else {
             _totalAssets = ta;
         }
 
+        // Prepare underlying assets
         _beforeWithdraw(assets, shares);
-        _burn(owner, shares);
+        // Transfer the underlying assets
+        SafeTransferLib.safeTransfer(asset(), to, assets);
 
         /// @solidity memory-safe-assembly
         assembly {
@@ -789,8 +792,6 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
                 and(m, owner)
             )
         }
-
-        SafeTransferLib.safeTransfer(asset(), to, assets);
 
     }
 

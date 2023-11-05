@@ -623,6 +623,12 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
             assets
         );
 
+        // update asset invariant
+        unchecked {
+            _totalAssets = ta + assets;
+        }
+
+        // Mint the users shares
         _mint(to, shares);
 
         /// @solidity memory-safe-assembly
@@ -633,13 +639,6 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
             let m := shr(96, not(0))
             log3(0x00, 0x40, _DEPOSIT_EVENT_SIGNATURE, and(m, by), and(m, to))
         }
-
-        // Add the users newly deposited assets
-        unchecked {
-            _totalAssets = ta + assets;
-        }
-
-        _afterDeposit(assets, shares);
     }
 
     function _withdraw(
@@ -659,9 +658,12 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
             }
         }
 
-        // Remove the users withdrawn assets
-        _totalAssets = ta - assets;
+        // Burn the owners shares
         _burn(owner, shares);
+        // Update asset invariant
+        _totalAssets = ta - assets;
+        // Transfer the underlying assets
+        SafeTransferLib.safeTransfer(asset(), to, assets);
 
         /// @solidity memory-safe-assembly
         assembly {
@@ -678,8 +680,6 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
                 and(m, owner)
             )
         }
-
-        SafeTransferLib.safeTransfer(asset(), to, assets);
 
     }
 
