@@ -31,10 +31,16 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
         uint64 lastVestClaim; // Last time vesting rewards were claimed
     }
 
+    struct NewVestingData {
+        bool updateNeeded;
+        uint248 newVestPeriod;
+    }
+
     /// CONSTANTS ///
 
     // Period harvested rewards are vested over
-    uint256 public constant vestPeriod = 1 days;
+    uint256 public vestPeriod = 1 days;
+    NewVestingData public pendingVestUpdate;
     ERC20 private immutable _asset; // underlying asset for the vault
     
     uint8 private immutable _decimals; // vault assets decimals of precision
@@ -241,6 +247,11 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
     }
 
     // PERMISSIONED FUNCTIONS
+
+    function setVestingPeriod (uint256 newVestingPeriod) external onlyDaoPermissions {
+        pendingVestUpdate.updateNeeded = true;
+        pendingVestUpdate.newVestPeriod = uint248(newVestingPeriod);
+    }
 
     /// @notice Shuts down the vault
     /// @dev Used in an emergency or if the vault has been deprecated

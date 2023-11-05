@@ -199,6 +199,12 @@ contract AuraCToken is CTokenCompoundingBase {
 
         // can only harvest once previous reward period is done
         if (_checkVestStatus(_vaultData)) {
+
+            if (pendingVestUpdate.updateNeeded) {
+                vestPeriod = pendingVestUpdate.newVestPeriod;
+                pendingVestUpdate.updateNeeded = false;
+            }
+            
             // cache strategy data
             StrategyData memory sd = strategyData;
 
