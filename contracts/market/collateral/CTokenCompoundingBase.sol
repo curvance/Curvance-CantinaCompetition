@@ -258,6 +258,7 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
     /// @dev Allows for reconfiguration of cToken attached to vault
     function liftShutdown() external onlyElevatedPermissions {
         if (_vaultIsActive == 2) {
+            // revert with "CTokenCompoundingBase__VaultIsActive"
             _revert(0x3a2c4eed);
         }
 
@@ -493,7 +494,7 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
 
         // We use a modified version of maxWithdraw with newly vested assets
         if (assets > _convertToAssets(balanceOf(owner), ta)){
-            // `bytes4(keccak256(bytes(CTokenCompoundingBase__WithdrawMoreThanMax())))`
+            // revert with "CTokenCompoundingBase__WithdrawMoreThanMax"
             _revert(0x2735eaab);
         } 
 
@@ -525,7 +526,7 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
 
         // We use a modified version of maxWithdraw with newly vested assets
         if (assets > _convertToAssets(balanceOf(owner), ta)){
-            // `bytes4(keccak256(bytes(CTokenCompoundingBase__WithdrawMoreThanMax())))`
+            // revert with "CTokenCompoundingBase__WithdrawMoreThanMax"
             _revert(0x2735eaab);
         } 
 
@@ -553,7 +554,7 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
         address owner
     ) public override nonReentrant returns (uint256 assets) {
         if (shares > maxRedeem(owner)){
-            // `bytes4(keccak256(bytes(CTokenCompoundingBase__RedeemMoreThanMax())))`
+            // revert with "CTokenCompoundingBase__RedeemMoreThanMax"
             _revert(0x682b852f);
         } 
 
@@ -589,7 +590,7 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
         // Fails if borrower = liquidator
         assembly {
             if eq(borrower, liquidator) {
-                // revert with CTokenCompoundingBase__Unauthorized()
+                // revert with "CTokenCompoundingBase__Unauthorized"
                 mstore(0x00, 0x3d6b2189)
                 revert(0x1c, 0x04)
             }
