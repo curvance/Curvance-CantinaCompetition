@@ -17,31 +17,17 @@ import { EXP_SCALE } from "contracts/libraries/Constants.sol";
 /// @notice Vault Positions must have all assets ready for withdraw,
 ///         IE assets can NOT be locked.
 ///         This way assets can be easily liquidated when loans default.
-/// @dev The CToken vaults run must be a LOSSLESS position, since totalAssets
-///      is not actually using the balances stored in the position,
-///      rather it only uses an internal balance.
-abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
+contract CTokenPrimitive is ERC4626, ReentrancyGuard {
     using Math for uint256;
-
-    /// TYPES ///
-
-    struct VaultData {
-        uint128 rewardRate; // The rate that the vault vests fresh rewards
-        uint64 vestingPeriodEnd; // When the current vesting period ends
-        uint64 lastVestClaim; // Last time vesting rewards were claimed
-    }
 
     /// CONSTANTS ///
 
-    // Period harvested rewards are vested over
-    uint256 public constant vestPeriod = 1 days;
     ERC20 private immutable _asset; // underlying asset for the vault
-    
     uint8 private immutable _decimals; // vault assets decimals of precision
     ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
 
-    // `bytes4(keccak256(bytes("CTokenCompoundingBase__VaultNotActive()")))`
-    uint256 internal constant VAULT_NOT_ACTIVE_SELECTOR = 0xe4247f94;
+    /// `bytes4(keccak256(bytes("CTokenPrimitive__VaultNotActive()")))`
+    uint256 internal constant VAULT_NOT_ACTIVE_SELECTOR = 0x665f0f11;
     /// `keccak256(bytes("Deposit(address,address,uint256,uint256)"))`.
     uint256 private constant _DEPOSIT_EVENT_SIGNATURE =
         0xdcbc1c05240f31ff3ad067ef1ee35ce4997762752e3a095284754544f4c709d7;
@@ -59,21 +45,6 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
     /// ```
     uint256 private constant _BALANCE_SLOT_SEED = 0x87a211a2;
 
-    // Mask of reward rate entry in packed vault data
-    uint256 private constant _BITMASK_REWARD_RATE = (1 << 128) - 1;
-
-    // Mask of a timestamp entry in packed vault data
-    uint256 private constant _BITMASK_TIMESTAMP = (1 << 64) - 1;
-
-    // Mask of all bits in packed vault data except the 64 bits for `lastVestClaim`
-    uint256 private constant _BITMASK_LAST_CLAIM_COMPLEMENT = (1 << 192) - 1;
-
-    // The bit position of `vestingPeriodEnd` in packed vault data
-    uint256 private constant _BITPOS_VEST_END = 128;
-
-    // The bit position of `lastVestClaim` in packed vault data
-    uint256 private constant _BITPOS_LAST_VEST = 192;
-
     /// STORAGE ///
 
     /// @notice Current lending market controller
@@ -83,12 +54,6 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
     string internal _name;
     /// @notice token symbol metadata
     string internal _symbol;
-    // Internal stored vault accounting
-    // Bits Layout:
-    // - [0..127]    `rewardRate`
-    // - [128..191]  `vestingPeriodEnd`
-    // - [192..255] `lastVestClaim`
-    uint256 internal _vaultData; // Packed vault data
     uint256 internal _totalAssets; // total vault assets minus vesting
     uint256 internal _vaultIsActive; // Vault Status: 2 = active; 0 or 1 = inactive
 
@@ -99,30 +64,30 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
 
     /// ERRORS ///
 
-    error CTokenCompoundingBase__Unauthorized();
-    error CTokenCompoundingBase__InvalidCentralRegistry();
-    error CTokenCompoundingBase__RedeemMoreThanMax();
-    error CTokenCompoundingBase__WithdrawMoreThanMax();
-    error CTokenCompoundingBase__VaultNotActive();
-    error CTokenCompoundingBase__VaultIsActive();
-    error CTokenCompoundingBase__ZeroShares();
-    error CTokenCompoundingBase__ZeroAssets();
-    error CTokenCompoundingBase__TransferError();
-    error CTokenCompoundingBase__UnderlyingAssetTotalSupplyExceedsMaximum();
-    error CTokenCompoundingBase__LendtrollerIsNotLendingMarket();
+    error CTokenPrimitive__Unauthorized();
+    error CTokenPrimitive__InvalidCentralRegistry();
+    error CTokenPrimitive__RedeemMoreThanMax();
+    error CTokenPrimitive__WithdrawMoreThanMax();
+    error CTokenPrimitive__VaultNotActive();
+    error CTokenPrimitive__VaultIsActive();
+    error CTokenPrimitive__ZeroShares();
+    error CTokenPrimitive__ZeroAssets();
+    error CTokenPrimitive__TransferError();
+    error CTokenPrimitive__UnderlyingAssetTotalSupplyExceedsMaximum();
+    error CTokenPrimitive__LendtrollerIsNotLendingMarket();
 
     /// MODIFIERS ///
 
     modifier onlyDaoPermissions() {
         if (!centralRegistry.hasDaoPermissions(msg.sender)) {
-            revert CTokenCompoundingBase__Unauthorized();
+            revert CTokenPrimitive__Unauthorized();
         }
         _;
     }
 
     modifier onlyElevatedPermissions() {
         if (!centralRegistry.hasElevatedPermissions(msg.sender)) {
-            revert CTokenCompoundingBase__Unauthorized();
+            revert CTokenPrimitive__Unauthorized();
         }
         _;
     }
@@ -148,7 +113,7 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
                 type(ICentralRegistry).interfaceId
             )
         ) {
-            revert CTokenCompoundingBase__InvalidCentralRegistry();
+            revert CTokenPrimitive__InvalidCentralRegistry();
         }
 
         centralRegistry = centralRegistry_;
@@ -158,7 +123,7 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
         // Sanity check underlying so that we know users will not need to
         // mint anywhere close to exchange rate of 1e18
         if (asset_.totalSupply() >= type(uint232).max) {
-            revert CTokenCompoundingBase__UnderlyingAssetTotalSupplyExceedsMaximum();
+            revert CTokenPrimitive__UnderlyingAssetTotalSupplyExceedsMaximum();
         }
     }
 
@@ -173,7 +138,7 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
         address by
     ) external nonReentrant returns (bool) {
         if (msg.sender != address(lendtroller)) {
-            revert CTokenCompoundingBase__Unauthorized();
+            revert CTokenPrimitive__Unauthorized();
         }
 
         uint256 assets = 42069;
@@ -201,43 +166,10 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
             log3(0x00, 0x40, _DEPOSIT_EVENT_SIGNATURE, and(m, market), and(m, market))
         }
 
-        _afterDeposit(assets, shares);
-
         _vaultIsActive = 2;
         emit vaultStatusChanged(false);
 
         return true;
-    }
-
-    /// @notice Returns current position vault yield information in the form:
-    ///         rewardRate: Yield per second in underlying asset
-    ///         vestingPeriodEnd: When the current vesting period ends and a new harvest can execute
-    ///         lastVestClaim: Last time pending vested yield was claimed
-    function getVaultYieldStatus() external view returns (VaultData memory) {
-        return _unpackedVaultData(_vaultData);
-    }
-
-    /// @notice Vault compound fee is in basis point form
-    /// @dev Returns the vaults current amount of yield used
-    ///      for compounding rewards
-    ///      Used for frontend data query only
-    function vaultCompoundFee() external view returns (uint256) {
-        return centralRegistry.protocolCompoundFee();
-    }
-
-    /// @notice Vault yield fee is in basis point form
-    /// @dev Returns the vaults current protocol fee for compounding rewards
-    ///      Used for frontend data query only
-    function vaultYieldFee() external view returns (uint256) {
-        return centralRegistry.protocolYieldFee();
-    }
-
-    /// @notice Vault harvest fee is in basis point form
-    /// @dev Returns the vaults current harvest fee for compounding rewards
-    ///      that pays for yield and compound fees
-    ///      Used for frontend data query only
-    function vaultHarvestFee() external view returns (uint256) {
-        return centralRegistry.protocolHarvestFee();
     }
 
     // PERMISSIONED FUNCTIONS
@@ -258,7 +190,8 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
     /// @dev Allows for reconfiguration of cToken attached to vault
     function liftShutdown() external onlyElevatedPermissions {
         if (_vaultIsActive == 2) {
-            _revert(0x3a2c4eed);
+            // revert with "CTokenPrimitive__VaultIsActive()"
+            _revert(0x8bdb4dfb);
         }
 
         _vaultIsActive = 2;
@@ -336,7 +269,7 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
             SafeTransferLib.forceSafeTransferETH(daoOperator, amount);
         } else {
             if (token == asset()) {
-                revert CTokenCompoundingBase__TransferError();
+                revert CTokenPrimitive__TransferError();
             }
 
             if (amount == 0) {
@@ -346,10 +279,6 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
             SafeTransferLib.safeTransfer(token, daoOperator, amount);
         }
     }
-
-    // EXTERNAL POSITION LOGIC TO OVERRIDE
-
-    function harvest(bytes calldata) external virtual returns (uint256 yield);
 
     /// PUBLIC FUNCTIONS ///
 
@@ -444,16 +373,15 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
         // Fail if deposit not allowed
         lendtroller.canMint(address(this));
 
-        // Save _totalAssets and pendingRewards to memory
-        uint256 pending = _calculatePendingRewards();
-        uint256 ta = _totalAssets + pending;
+        // Save _totalAssets to memory
+        uint256 ta = _totalAssets;
 
         // Check for rounding error since we round down in previewDeposit
         if ((shares = _previewDeposit(assets, ta)) == 0) {
-            revert CTokenCompoundingBase__ZeroShares();
+            revert CTokenPrimitive__ZeroShares();
         }
 
-        _deposit(msg.sender, receiver, assets, shares, ta, pending);
+        _deposit(msg.sender, receiver, assets, shares, ta);
         // emit events on gauge pool
         _gaugePool().deposit(address(this), receiver, shares);
     }
@@ -469,14 +397,13 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
         // Fail if mint not allowed
         lendtroller.canMint(address(this));
 
-        // Save _totalAssets and pendingRewards to memory
-        uint256 pending = _calculatePendingRewards();
-        uint256 ta = _totalAssets + pending;
+        // Save _totalAssets to memory
+        uint256 ta = _totalAssets;
 
         // No need to check for rounding error, previewMint rounds up
         assets = _previewMint(shares, ta);
 
-        _deposit(msg.sender, receiver, assets, shares, ta, pending);
+        _deposit(msg.sender, receiver, assets, shares, ta);
         // emit events on gauge pool
         _gaugePool().deposit(address(this), receiver, shares);
     }
@@ -487,14 +414,13 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
         address owner
     ) public override nonReentrant returns (uint256 shares) {
 
-        // Save _totalAssets and pendingRewards to memory
-        uint256 pending = _calculatePendingRewards();
-        uint256 ta = _totalAssets + pending;
+        // Save _totalAssets to memory
+        uint256 ta = _totalAssets;
 
         // We use a modified version of maxWithdraw with newly vested assets
         if (assets > _convertToAssets(balanceOf(owner), ta)){
-            // `bytes4(keccak256(bytes(CTokenCompoundingBase__WithdrawMoreThanMax())))`
-            _revert(0x2735eaab);
+            // revert with "CTokenPrimitive__WithdrawMoreThanMax"
+            _revert(0xc6e63cc0);
         } 
 
         // No need to check for rounding error, previewWithdraw rounds up
@@ -503,7 +429,7 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
 
         // emit events on gauge pool
         _gaugePool().withdraw(address(this), owner, shares);
-        _withdraw(msg.sender, receiver, owner, assets, shares, ta, pending);
+        _withdraw(msg.sender, receiver, owner, assets, shares, ta);
     }
 
     /// @notice Helper function for Position Folding contract to
@@ -516,17 +442,16 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
         bytes calldata params
     ) external nonReentrant {
         if (msg.sender != lendtroller.positionFolding()) {
-            revert CTokenCompoundingBase__Unauthorized();
+            revert CTokenPrimitive__Unauthorized();
         }
 
-        // Save _totalAssets and pendingRewards to memory
-        uint256 pending = _calculatePendingRewards();
-        uint256 ta = _totalAssets + pending;
+        // Save _totalAssets to memory
+        uint256 ta = _totalAssets;
 
         // We use a modified version of maxWithdraw with newly vested assets
         if (assets > _convertToAssets(balanceOf(owner), ta)){
-            // `bytes4(keccak256(bytes(CTokenCompoundingBase__WithdrawMoreThanMax())))`
-            _revert(0x2735eaab);
+            // revert with "CTokenPrimitive__WithdrawMoreThanMax"
+            _revert(0xc6e63cc0);
         } 
 
         // No need to check for rounding error, previewWithdraw rounds up
@@ -534,7 +459,7 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
 
         // emit events on gauge pool
         _gaugePool().withdraw(address(this), owner, shares);
-        _withdraw(msg.sender, msg.sender, owner, assets, shares, ta, pending);
+        _withdraw(msg.sender, msg.sender, owner, assets, shares, ta);
 
         IPositionFolding(msg.sender).onRedeem(
             address(this),
@@ -553,24 +478,23 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
         address owner
     ) public override nonReentrant returns (uint256 assets) {
         if (shares > maxRedeem(owner)){
-            // `bytes4(keccak256(bytes(CTokenCompoundingBase__RedeemMoreThanMax())))`
-            _revert(0x682b852f);
+            // revert with "CTokenPrimitive__RedeemMoreThanMax"
+            _revert(0xb1652d68);
         } 
 
         lendtroller.canRedeem(address(this), owner, shares);
 
-        // Save _totalAssets and pendingRewards to memory
-        uint256 pending = _calculatePendingRewards();
-        uint256 ta = _totalAssets + pending;
+        // Save _totalAssets to memory
+        uint256 ta = _totalAssets;
 
         // Check for rounding error since we round down in previewRedeem
         if ((assets = _previewRedeem(shares, ta)) == 0) {
-            revert CTokenCompoundingBase__ZeroAssets();
+            revert CTokenPrimitive__ZeroAssets();
         }
 
         // emit events on gauge pool
         _gaugePool().withdraw(address(this), owner, shares);
-        _withdraw(msg.sender, receiver, owner, assets, shares, ta, pending);
+        _withdraw(msg.sender, receiver, owner, assets, shares, ta);
     }
 
     /// @notice Transfers collateral tokens (this market) to the liquidator.
@@ -589,8 +513,8 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
         // Fails if borrower = liquidator
         assembly {
             if eq(borrower, liquidator) {
-                // revert with CTokenCompoundingBase__Unauthorized()
-                mstore(0x00, 0x3d6b2189)
+                // revert with "CTokenPrimitive__Unauthorized()"
+                mstore(0x00, 0xcb4ea030)
                 revert(0x1c, 0x04)
             }
         }
@@ -627,30 +551,15 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
 
     // ACCOUNTING LOGIC
 
-    /// @notice Returns the current per second yield of the vault
-    function rewardRate() public view returns (uint256) {
-        return _vaultData & _BITMASK_REWARD_RATE;
-    }
-
-    /// @notice Returns the timestamp when the current vesting period ends
-    function vestingPeriodEnd() public view returns (uint256) {
-        return (_vaultData >> _BITPOS_VEST_END) & _BITMASK_TIMESTAMP;
-    }
-
-    /// @notice Returns the timestamp of the last claim during the current vesting period
-    function lastVestClaim() public view returns (uint256) {
-        return uint64(_vaultData >> _BITPOS_LAST_VEST);
-    }
-
     function totalAssetsSafe() public nonReentrant returns (uint256) {
-        // Returns stored internal balance + pending rewards that are vested.
+        // Returns stored internal balance.
         // Has added re-entry lock for protocols building ontop of us to have confidence in data quality
-        return _totalAssets + _calculatePendingRewards();
+        return _totalAssets;
     }
 
     function totalAssets() public view override returns (uint256) {
-        // Returns stored internal balance + pending rewards that are vested.
-        return _totalAssets + _calculatePendingRewards();
+        // Returns stored internal balance.
+        return _totalAssets;
     }
 
     function convertToShares(
@@ -703,8 +612,7 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
         address to, 
         uint256 assets, 
         uint256 shares, 
-        uint256 ta, 
-        uint256 pending
+        uint256 ta
     ) internal {
 
         // Need to transfer before minting or ERC777s could reenter
@@ -717,19 +625,6 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
 
         _mint(to, shares);
 
-        // Add the users newly deposited assets
-        unchecked {
-            // We know that this will not overflow as rewards are part vested and assets added and hasnt overflown from those operations
-            ta = ta + assets;
-        }
-
-        // Vest rewards, if there are any
-        if (pending > 0) {
-            _vestRewards(ta);
-        } else {
-            _totalAssets = ta;
-        }
-
         /// @solidity memory-safe-assembly
         assembly {
             // Emit the {Deposit} event.
@@ -737,6 +632,11 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
             mstore(0x20, shares)
             let m := shr(96, not(0))
             log3(0x00, 0x40, _DEPOSIT_EVENT_SIGNATURE, and(m, by), and(m, to))
+        }
+
+        // Add the users newly deposited assets
+        unchecked {
+            _totalAssets = ta + assets;
         }
 
         _afterDeposit(assets, shares);
@@ -748,8 +648,7 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
         address owner,
         uint256 assets,
         uint256 shares,
-        uint256 ta, 
-        uint256 pending
+        uint256 ta
     ) internal {
 
         if (msg.sender != owner) {
@@ -761,16 +660,7 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
         }
 
         // Remove the users withdrawn assets
-        ta = ta - assets;
-
-        // Vest rewards, if there are any
-        if (pending > 0) {
-            _vestRewards(ta);
-        } else {
-            _totalAssets = ta;
-        }
-
-        _beforeWithdraw(assets, shares);
+        _totalAssets = ta - assets;
         _burn(owner, shares);
 
         /// @solidity memory-safe-assembly
@@ -826,7 +716,7 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
     function _setLendtroller(address newLendtroller) internal {
         // Ensure that lendtroller parameter is a lendtroller
         if (!centralRegistry.isLendingMarket(newLendtroller)) {
-            revert CTokenCompoundingBase__LendtrollerIsNotLendingMarket();
+            revert CTokenPrimitive__LendtrollerIsNotLendingMarket();
         }
 
         // Cache the current lendtroller to save gas
@@ -838,113 +728,9 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
         emit NewLendtroller(oldLendtroller, newLendtroller);
     }
 
-
-    /// @notice Packs parameters together with current block timestamp to calculate the new packed vault data value
-    /// @param newRewardRate The new rate per second that the vault vests fresh rewards
-    /// @param newVestPeriod The timestamp of when the new vesting period ends, which is block.timestamp + vestPeriod
-    function _packVaultData(
-        uint256 newRewardRate,
-        uint256 newVestPeriod
-    ) internal view returns (uint256 result) {
-        assembly {
-            // Mask `newRewardRate` to the lower 128 bits, in case the upper bits somehow aren't clean
-            newRewardRate := and(newRewardRate, _BITMASK_REWARD_RATE)
-            // `newRewardRate | (newVestPeriod << _BITPOS_VEST_END) | block.timestamp`
-            result := or(
-                newRewardRate,
-                or(
-                    shl(_BITPOS_VEST_END, newVestPeriod),
-                    shl(_BITPOS_LAST_VEST, timestamp())
-                )
-            )
-        }
-    }
-
-    /// @notice Returns the unpacked `VaultData` struct from `packedVaultData`
-    /// @param packedVaultData The current packed vault data value
-    /// @return vault Current vault data value but unpacked into a VaultData struct
-    function _unpackedVaultData(
-        uint256 packedVaultData
-    ) internal pure returns (VaultData memory vault) {
-        vault.rewardRate = uint128(packedVaultData);
-        vault.vestingPeriodEnd = uint64(packedVaultData >> _BITPOS_VEST_END);
-        vault.lastVestClaim = uint64(packedVaultData >> _BITPOS_LAST_VEST);
-    }
-
-    /// @notice Returns whether the current vesting period has ended based on the last vest timestamp
-    /// @param packedVaultData Current packed vault data value
-    function _checkVestStatus(
-        uint256 packedVaultData
-    ) internal pure returns (bool) {
-        return
-            uint64(packedVaultData >> _BITPOS_LAST_VEST) >=
-            uint64(packedVaultData >> _BITPOS_VEST_END);
-    }
-
-    /// @notice Sets the last vest claim data for the vault
-    /// @param newVestClaim The new timestamp to record as the last vesting claim
-    function _setlastVestClaim(uint64 newVestClaim) internal {
-        uint256 packedVaultData = _vaultData;
-        uint256 lastVestClaimCasted;
-        // Cast `newVestClaim` with assembly to avoid redundant masking
-        assembly {
-            lastVestClaimCasted := newVestClaim
-        }
-        packedVaultData =
-            (packedVaultData & _BITMASK_LAST_CLAIM_COMPLEMENT) |
-            (lastVestClaimCasted << _BITPOS_LAST_VEST);
-        _vaultData = packedVaultData;
-    }
-
     /// @dev Returns the decimals of the underlying asset
     function _underlyingDecimals() internal view override returns (uint8) {
         return _decimals;
-    }
-
-    // REWARD AND HARVESTING LOGIC
-
-    /// @notice Calculates the pending rewards
-    /// @dev If there are no pending rewards or the vesting period has ended,
-    ///      it returns 0
-    /// @return pendingRewards The calculated pending rewards
-    function _calculatePendingRewards()
-        internal
-        view
-        returns (uint256 pendingRewards)
-    {
-        VaultData memory vaultData = _unpackedVaultData(_vaultData);
-        if (
-            vaultData.rewardRate > 0 &&
-            vaultData.lastVestClaim < vaultData.vestingPeriodEnd
-        ) {
-            // If the vesting period has not ended:
-            // pendingRewards = rewardRate * (block.timestamp - lastTimeVestClaimed)
-            // If the vesting period has ended:
-            // rewardRate * (vestingPeriodEnd - lastTimeVestClaimed))
-            // Divide the pending rewards by EXP_SCALE
-            pendingRewards =
-                (
-                    block.timestamp < vaultData.vestingPeriodEnd
-                        ? (vaultData.rewardRate *
-                            (block.timestamp - vaultData.lastVestClaim))
-                        : (vaultData.rewardRate *
-                            (vaultData.vestingPeriodEnd -
-                                vaultData.lastVestClaim))
-                ) /
-                EXP_SCALE;
-        }
-        // else there are no pending rewards
-    }
-
-    /// @notice Vests the pending rewards, updates vault data
-    ///         and share price high watermark
-    /// @param currentAssets The current assets of the vault
-    function _vestRewards(uint256 currentAssets) internal {
-        // Update the lastVestClaim timestamp
-        _setlastVestClaim(uint64(block.timestamp));
-
-        // Set internal balance equal to totalAssets value
-        _totalAssets = currentAssets;
     }
 
     function _convertToShares(
@@ -1006,8 +792,4 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
     function _gaugePool() internal view returns (GaugePool) {
         return lendtroller.gaugePool();
     }
-
-    /// INTERNAL POSITION LOGIC TO OVERRIDE
-
-    function _getRealPositionBalance() internal view virtual returns (uint256);
 }
