@@ -105,6 +105,7 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
 
     /// ERRORS ///
 
+    error CTokenCompoundingBase__InvalidVestPeriod();
     error CTokenCompoundingBase__Unauthorized();
     error CTokenCompoundingBase__InvalidCentralRegistry();
     error CTokenCompoundingBase__RedeemMoreThanMax();
@@ -248,7 +249,11 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
 
     // PERMISSIONED FUNCTIONS
 
-    function setVestingPeriod (uint256 newVestingPeriod) external onlyDaoPermissions {
+    function setVestingPeriod(uint256 newVestingPeriod) external onlyDaoPermissions {
+        if (newVestingPeriod > 7 days) {
+            revert CTokenCompoundingBase__InvalidVestPeriod();
+        }
+        
         pendingVestUpdate.updateNeeded = true;
         pendingVestUpdate.newVestPeriod = uint248(newVestingPeriod);
     }
