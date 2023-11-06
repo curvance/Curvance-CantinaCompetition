@@ -210,7 +210,7 @@ contract DynamicInterestRateModel {
             
             // If the vertex multiplier is already at its minimum,
             // and would decrease more, can break here
-            if (rateInfo.vertexMultiplier == WAD && belowVertex) {
+            if (rateInfo.vertexMultiplier == WAD && util < rateInfo.vertexIncreaseThreshold) {
                 rateInfo.nextUpdateTimestamp = uint128(block.timestamp);
                 return borrowRate;
             }
@@ -333,23 +333,74 @@ contract DynamicInterestRateModel {
     /// INTERNAL FUNCTIONS ///
 
     function _updateRateBelowVertex(DynamicRatesData storage rateInfo, uint256 util) internal {
-        // Apply decay rate
+        uint256 newRate;
+        // Calculate decay rate
         uint256 decay = rateInfo.vertexMultiplier * rateInfo.vertexDecayRate;
 
         if (util <= rateInfo.vertexDecreaseThresholdMax) {
-            uint256 newRate = (rateInfo.vertexMultiplier / rateInfo.vertexAdjustmentVelocity) - decay;
+            newRate = (rateInfo.vertexMultiplier / rateInfo.vertexAdjustmentVelocity) - decay;
             if (newRate < WAD) {
                 rateInfo.vertexMultiplier = uint128(WAD);
                 return;
             }
+
+            // Update and return with decay rate applied.
+            rateInfo.vertexMultiplier = uint128(newRate);
+            return;
         }
+
+        newRate = rateInfo.vertexMultiplier * 
+        ((rateInfo.vertexAdjustmentVelocity / 
+        _calculateNegativeCurveValue(
+            util, 
+            rateInfo.vertexIncreaseThreshold, 
+            rateInfo.vertexIncreaseThresholdMax
+        )) / WAD) - decay;
+
+        if (newRate < WAD) {
+            rateInfo.vertexMultiplier = uint128(WAD);
+            return;
+        }
+
+        // Update and return with adjustment and decay rate applied.
+        rateInfo.vertexMultiplier = uint128(newRate);
     }
 
     function _updateRateAboveVertex(DynamicRatesData storage rateInfo, uint256 util) internal {
-        // Apply decay rate
+        uint256 newRate;
+        // Calculate decay rate
         uint256 decay = rateInfo.vertexMultiplier * rateInfo.vertexDecayRate;
 
+        if (util < rateInfo.vertexIncreaseThreshold) {
+            newRate = rateInfo.vertexMultiplier - decay;
+            // Check if decay rate sends new rate below 1.
+            if (newRate < WAD) {
+                rateInfo.vertexMultiplier = uint128(WAD);
+                return;
+            }
+
+            // Update and return with decay rate applied.
+            rateInfo.vertexMultiplier = uint128(newRate);
+            return;
+        }
+
+        newRate = rateInfo.vertexMultiplier * 
+        ((rateInfo.vertexAdjustmentVelocity * 
+        _calculatePositiveCurveValue(
+            util, 
+            rateInfo.vertexIncreaseThreshold, 
+            rateInfo.vertexIncreaseThresholdMax
+        )) / WAD) - decay;
+
+        // Its theorectically possible for the new rate to be below 1 due to decay,
+        // so we still need to check.
+        if (newRate < WAD) {
+            rateInfo.vertexMultiplier = uint128(WAD);
+            return;
+        }
         
+        // Update and return with adjustment and decay rate applied.
+        rateInfo.vertexMultiplier = uint128(newRate);
     }
 
     function _calculatePositiveCurveValue(uint256 current, uint256 start, uint256 end) internal pure returns (uint256) {
