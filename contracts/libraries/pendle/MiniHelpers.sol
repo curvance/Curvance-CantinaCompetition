@@ -6,7 +6,10 @@ library MiniHelpers {
         return (expiry <= block.timestamp);
     }
 
-    function isExpired(uint256 expiry, uint256 blockTime) internal pure returns (bool) {
+    function isExpired(
+        uint256 expiry,
+        uint256 blockTime
+    ) internal pure returns (bool) {
         return (expiry <= blockTime);
     }
 
