@@ -11,7 +11,7 @@ contract DynamicInterestRateModel {
         // @notice The timestamp when the vertex multiplier will next be updated
         uint128 nextUpdateTimestamp;
         // @notice The current rate at which vertexInterestRate is multiplied, in EXP_SCALE
-        uint128 currentVertexMultiplier;
+        uint128 vertexMultiplier;
         // @notice Base rate at which interest is accumulated, per compound
         uint256 baseInterestRate;
         // @notice Vertex rate at which interest is accumulated, per compound
@@ -171,6 +171,49 @@ contract DynamicInterestRateModel {
         return (borrows * EXP_SCALE) / (cash + borrows - reserves);
     }
 
+    function getBorrowRateWithUpdate(
+        uint256 cash,
+        uint256 borrows,
+        uint256 reserves
+    ) public returns (uint256 borrowRate) {
+        uint256 util = utilizationRate(cash, borrows, reserves);
+        uint256 vertexPoint = currentRateInfo.vertexStartingPoint;
+        bool belowVertex = (util <= vertexPoint);
+
+        if (belowVertex) {
+            unchecked {
+                borrowRate = getNormalInterestRate(util);
+            }
+        } else {
+            /// We know this will not underflow or overflow because of Interest Rate Model configurations
+            unchecked {
+                borrowRate = (getVertexInterestRate(util - vertexPoint) +
+                    getNormalInterestRate(vertexPoint));
+            }
+        }
+
+        DynamicRatesData storage rateInfo = currentRateInfo;
+
+        if (block.timestamp >= rateInfo.nextUpdateTimestamp){
+            
+            // If the vertex multiplier is already at its minimum,
+            // and would decrease more, can break here
+            if (rateInfo.vertexMultiplier == EXP_SCALE && belowVertex) {
+                rateInfo.nextUpdateTimestamp = uint128(block.timestamp);
+                return borrowRate;
+            }
+
+            if (belowVertex){
+                _updateRateBelowVertex(rateInfo);
+                rateInfo.nextUpdateTimestamp = uint128(block.timestamp);
+                return borrowRate;
+            }
+
+            _updateRateAboveVertex(rateInfo);
+            rateInfo.nextUpdateTimestamp = uint128(block.timestamp);
+        }
+    }
+
     /// @notice Calculates the current borrow rate per compound
     /// @param cash The amount of cash in the market
     /// @param borrows The amount of borrows in the market
@@ -275,6 +318,25 @@ contract DynamicInterestRateModel {
         return (util * currentRateInfo.vertexInterestRate) / EXP_SCALE;
     }
 
+    /// INTERNAL FUNCTIONS ///
+
+    function _updateRateBelowVertex(DynamicRatesData storage rateInfo) internal {
+        // Apply decay rate
+        uint256 decay = rateInfo.vertexMultiplier * rateInfo.vertexDecayRate;
+    }
+
+    function _updateRateAboveVertex(DynamicRatesData storage rateInfo) internal {
+        // Apply decay rate
+        uint256 decay = rateInfo.vertexMultiplier * rateInfo.vertexDecayRate;
+    }
+
+    /// @dev Internal helper function for easily converting between scalars
+    function _bpToWad(uint256 value) internal pure returns (uint256 result) {
+        assembly {
+            result := mul(value, 100000000000000)
+        }
+    }
+
     function _updateDynamicInterestRateModel(
         uint256 baseRatePerYear,
         uint256 vertexRatePerYear,
@@ -282,6 +344,15 @@ contract DynamicInterestRateModel {
         uint256 vertexAdjustmentRate,
         uint256 vertexDecayRate
     ) internal {
+
+        // Convert the parameters from basis points to `EXP_SCALE` format,
+        // while inefficient we want to minimize potential human error
+        // as much as possible, even if it costs a bit extra gas on config
+        baseRatePerYear = _bpToWad(baseRatePerYear);
+        vertexRatePerYear = _bpToWad(vertexRatePerYear);
+        vertexUtilizationStart = _bpToWad(vertexUtilizationStart);
+        vertexAdjustmentRate = _bpToWad(vertexAdjustmentRate);
+        vertexDecayRate = _bpToWad(vertexDecayRate);
 
         if (vertexAdjustmentRate > MAX_VERTEX_ADJUSTMENT_RATE || vertexAdjustmentRate < MIN_VERTEX_ADJUSTMENT_RATE) {
             revert DynamicInterestRateModel__InvalidAdjustmentRate();
@@ -302,7 +373,7 @@ contract DynamicInterestRateModel {
         currentRateInfo.vertexAdjustmentRate = vertexAdjustmentRate;
         currentRateInfo.nextUpdateTimestamp = 
             uint128(block.timestamp + currentRateInfo.vertexAdjustmentRate);
-        currentRateInfo.currentVertexMultiplier = uint128(EXP_SCALE);
+        currentRateInfo.vertexMultiplier = uint128(EXP_SCALE);
         currentRateInfo.vertexDecayRate = vertexDecayRate;
 
         uint256 thresholdLength = (EXP_SCALE - vertexUtilizationStart) / 2;

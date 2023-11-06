@@ -254,10 +254,10 @@ contract CentralRegistry is ERC165 {
         // CompoundFee is represented in 1e16 format
         // So we need to multiply by 1e14 to format properly
         // from basis points to %
-        protocolCompoundFee = value * 1e14;
+        protocolCompoundFee = _bpToWad(value);
 
         // Update vault harvest fee with new yield fee
-        protocolHarvestFee = protocolYieldFee + (value * 1e14);
+        protocolHarvestFee = protocolYieldFee + _bpToWad(value);
     }
 
     /// @notice Sets the fee taken by Curvance DAO on all generated
@@ -273,10 +273,10 @@ contract CentralRegistry is ERC165 {
         // YieldFee is represented in 1e16 format
         // So we need to multiply by 1e14 to format properly
         // from basis points to %
-        protocolYieldFee = value * 1e14;
+        protocolYieldFee = _bpToWad(value);
 
         // Update vault harvest fee with new yield fee
-        protocolHarvestFee = (value * 1e14) + protocolCompoundFee;
+        protocolHarvestFee = _bpToWad(value) + protocolCompoundFee;
     }
 
     /// @notice Sets the fee taken by Curvance DAO on leverage/deleverage
@@ -310,7 +310,7 @@ contract CentralRegistry is ERC165 {
         // Interest Rate fee is represented as 1e16 format
         // So we need to multiply by 1e14 to format properly
         // from basis points to %
-        protocolInterestFactor[market] = value * 1e14;
+        protocolInterestFactor[market] = _bpToWad(value);
     }
 
     /// @notice Sets the early unlock penalty value for when users want to
@@ -644,7 +644,7 @@ contract CentralRegistry is ERC165 {
         }
 
         isLendingMarket[newLendingMarket] = true;
-        protocolInterestFactor[newLendingMarket] = marketInterestFactor * 1e14;
+        protocolInterestFactor[newLendingMarket] = _bpToWad(marketInterestFactor);
 
         emit NewCurvanceContract("Lending Market", newLendingMarket);
     }
@@ -702,6 +702,13 @@ contract CentralRegistry is ERC165 {
         uint256 chainID
     ) external view returns (OmnichainData memory) {
         return omnichainOperators[_address][chainID];
+    }
+
+    /// @dev Internal helper function for easily converting between scalars
+    function _bpToWad(uint256 value) internal pure returns (uint256 result) {
+        assembly {
+            result := mul(value, 100000000000000)
+        }
     }
 
     /// @dev Internal helper for reverting efficiently.

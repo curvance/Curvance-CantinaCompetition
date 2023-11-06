@@ -481,7 +481,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         uint256 newCloseFactor
     ) external onlyElevatedPermissions {
         // Convert parameter from basis points to `EXP_SCALE`
-        newCloseFactor = newCloseFactor * 1e14;
+        newCloseFactor = _bpToWad(newCloseFactor);
 
         // 100% e.g close entire position
         if (newCloseFactor > EXP_SCALE) {
@@ -557,11 +557,13 @@ contract Lendtroller is ILendtroller, ERC165 {
         }
 
         // Convert the parameters from basis points to `EXP_SCALE` format
-        liqInc = liqInc * 1e14;
-        liqFee = liqFee * 1e14;
-        collReqA = collReqA * 1e14;
-        collReqB = collReqB * 1e14;
-        collRatio = collRatio * 1e14;
+        // while inefficient we want to minimize potential human error
+        // as much as possible, even if it costs a bit extra gas on config
+        liqInc = _bpToWad(liqInc);
+        liqFee = _bpToWad(liqFee);
+        collReqA = _bpToWad(collReqA);
+        collReqB = _bpToWad(collReqB);
+        collRatio = _bpToWad(collRatio);
 
         // Validate liquidation incentive is not above the maximum allowed
         if (liqInc > _MAX_LIQUIDATION_INCENTIVE) {
@@ -1321,6 +1323,13 @@ contract Lendtroller is ILendtroller, ERC165 {
         uint256 decimals
     ) internal pure returns (uint256) {
         return (amount * price) / (10 ** decimals);
+    }
+
+    /// @dev Internal helper function for easily converting between scalars
+    function _bpToWad(uint256 value) internal pure returns (uint256 result) {
+        assembly {
+            result := mul(value, 100000000000000)
+        }
     }
 
     /// @dev Internal helper for reverting efficiently.
