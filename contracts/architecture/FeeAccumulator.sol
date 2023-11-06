@@ -16,7 +16,7 @@ import { IProtocolMessagingHub, PoolData } from "contracts/interfaces/IProtocolM
 import { LzTxObj } from "contracts/interfaces/layerzero/IStargateRouter.sol";
 import { EpochRolloverData } from "contracts/interfaces/IFeeAccumulator.sol";
 import { ICentralRegistry, ChainData } from "contracts/interfaces/ICentralRegistry.sol";
-import { EXP_SCALE } from "contracts/libraries/Constants.sol";
+import { WAD } from "contracts/libraries/Constants.sol";
 
 contract FeeAccumulator is ReentrancyGuard {
     /// TYPES ///
@@ -851,7 +851,7 @@ contract FeeAccumulator is ReentrancyGuard {
         feeTokenBalanceForChain =
             (feeTokenBalance * lockedTokens) /
             totalLockedTokens;
-        uint256 epochRewardsPerCVE = (feeTokenBalance * EXP_SCALE) /
+        uint256 epochRewardsPerCVE = (feeTokenBalance * WAD) /
             totalLockedTokens;
 
         address locker = centralRegistry.cveLocker();

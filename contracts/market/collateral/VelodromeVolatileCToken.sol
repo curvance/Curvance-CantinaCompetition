@@ -10,7 +10,7 @@ import { IVeloRouter } from "contracts/interfaces/external/velodrome/IVeloRouter
 import { IVeloPair } from "contracts/interfaces/external/velodrome/IVeloPair.sol";
 import { IVeloPairFactory } from "contracts/interfaces/external/velodrome/IVeloPairFactory.sol";
 import { IVeloPool } from "contracts/interfaces/external/velodrome/IVeloPool.sol";
-import { EXP_SCALE } from "contracts/libraries/Constants.sol";
+import { WAD } from "contracts/libraries/Constants.sol";
 
 contract VelodromeVolatileCToken is CTokenCompoundingBase {
     using Math for uint256;
@@ -230,7 +230,7 @@ contract VelodromeVolatileCToken is CTokenCompoundingBase {
             // Cache vest period so we do not need to load it twice
             uint256 _vestPeriod = vestPeriod;
             _vaultData = _packVaultData(
-                yield.mulDivDown(EXP_SCALE, _vestPeriod),
+                yield.mulDivDown(WAD, _vestPeriod),
                 block.timestamp + _vestPeriod
             );
 

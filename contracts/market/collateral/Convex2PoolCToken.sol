@@ -9,7 +9,7 @@ import { IBooster } from "contracts/interfaces/external/convex/IBooster.sol";
 import { IBaseRewardPool } from "contracts/interfaces/external/convex/IBaseRewardPool.sol";
 import { IRewards } from "contracts/interfaces/external/convex/IRewards.sol";
 import { ICurveFi } from "contracts/interfaces/external/curve/ICurveFi.sol";
-import { EXP_SCALE } from "contracts/libraries/Constants.sol";
+import { WAD } from "contracts/libraries/Constants.sol";
 
 contract Convex2PoolCToken is CTokenCompoundingBase {
     using Math for uint256;
@@ -242,7 +242,7 @@ contract Convex2PoolCToken is CTokenCompoundingBase {
             // Cache vest period so we do not need to load it twice
             uint256 _vestPeriod = vestPeriod;
             _vaultData = _packVaultData(
-                yield.mulDivDown(EXP_SCALE, _vestPeriod),
+                yield.mulDivDown(WAD, _vestPeriod),
                 block.timestamp + _vestPeriod
             );
 

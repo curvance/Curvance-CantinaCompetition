@@ -8,7 +8,7 @@ import { ERC20 } from "contracts/libraries/ERC20.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { EXP_SCALE } from "contracts/libraries/Constants.sol";
+import { WAD } from "contracts/libraries/Constants.sol";
 
 contract OCVE is ERC20 {
     /// CONSTANTS ///
@@ -228,7 +228,7 @@ contract OCVE is ERC20 {
             revert OCVE__CannotExercise();
         }
 
-        uint256 optionExerciseCost = (amount * paymentTokenPerCVE) / EXP_SCALE;
+        uint256 optionExerciseCost = (amount * paymentTokenPerCVE) / WAD;
 
         // Take their strike price payment
         if (paymentToken == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE) {

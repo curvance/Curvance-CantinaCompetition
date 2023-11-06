@@ -10,7 +10,7 @@ import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.s
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
-import { EXP_SCALE } from "contracts/libraries/Constants.sol";
+import { WAD } from "contracts/libraries/Constants.sol";
 
 /// @title Curvance Lendtroller
 /// @notice Manages risk within the lending markets
@@ -30,21 +30,21 @@ contract Lendtroller is ILendtroller, ERC165 {
         /// @dev    false = unlisted; true = listed
         bool isListed;
         /// @notice The collateral requirement where dipping below this will cause a soft liquidation.
-        /// @dev    in `EXP_SCALE` format, with 1.2e18 = 120% collateral vs debt value
+        /// @dev    in `WAD` format, with 1.2e18 = 120% collateral vs debt value
         uint256 collReqA;
         /// @notice The collateral requirement where dipping below this will cause a hard liquidation.
-        /// @dev    in `EXP_SCALE` format, with 1.2e18 = 120% collateral vs debt value
+        /// @dev    in `WAD` format, with 1.2e18 = 120% collateral vs debt value
         uint256 collReqB;
         /// @notice The ratio at which this token can be collateralized.
-        /// @dev    in `EXP_SCALE` format, with 0.8e18 = 80% collateral value
+        /// @dev    in `WAD` format, with 0.8e18 = 80% collateral value
         uint256 collRatio;
         /// @notice The ratio at which this token will be compensated on liquidation.
-        /// @dev    In `EXP_SCALE` format, stored as (Incentive + EXP_SCALE)
+        /// @dev    In `WAD` format, stored as (Incentive + WAD)
         ///         e.g 1.05e18 = 5% incentive, this saves gas for liquidation calculations
         uint256 liqInc;
         /// @notice The protocol fee that will be taken on liquidation for this token.
-        /// @dev    In `EXP_SCALE` format, 0.01e18 = 1%
-        ///         Note: this is stored as (Fee * EXP_SCALE) / `liqInc`
+        /// @dev    In `WAD` format, 0.01e18 = 1%
+        ///         Note: this is stored as (Fee * WAD) / `liqInc`
         ///         in order to save gas for liquidation calculations
         uint256 liqFee;
         /// @notice Mapping that indicates whether an account is activate in a market.
@@ -90,7 +90,7 @@ contract Lendtroller is ILendtroller, ERC165 {
     mapping(address => uint256) public collateralCaps;
 
     /// @notice Maximum % that a liquidator can repay when liquidating a user,
-    /// @dev    In `EXP_SCALE` format, default 50%
+    /// @dev    In `WAD` format, default 50%
     uint256 public closeFactor = 0.5e18;
     /// @notice PositionFolding contract address.
     address public positionFolding;
@@ -480,11 +480,11 @@ contract Lendtroller is ILendtroller, ERC165 {
     function setCloseFactor(
         uint256 newCloseFactor
     ) external onlyElevatedPermissions {
-        // Convert parameter from basis points to `EXP_SCALE`
+        // Convert parameter from basis points to `WAD`
         newCloseFactor = _bpToWad(newCloseFactor);
 
         // 100% e.g close entire position
-        if (newCloseFactor > EXP_SCALE) {
+        if (newCloseFactor > WAD) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
         // Cache the current value for event log and gas savings
@@ -556,7 +556,7 @@ contract Lendtroller is ILendtroller, ERC165 {
             revert Lendtroller__TokenNotListed();
         }
 
-        // Convert the parameters from basis points to `EXP_SCALE` format
+        // Convert the parameters from basis points to `WAD` format
         // while inefficient we want to minimize potential human error
         // as much as possible, even if it costs a bit extra gas on config
         liqInc = _bpToWad(liqInc);
@@ -591,7 +591,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         }
 
         // Validate the soft liquidation collateral premium is not more strict than the asset's CR
-        if (collRatio > (EXP_SCALE * EXP_SCALE) / (EXP_SCALE + collReqA)) {
+        if (collRatio > (WAD * WAD) / (WAD + collReqA)) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
@@ -614,16 +614,16 @@ contract Lendtroller is ILendtroller, ERC165 {
         }
 
         // We use the value as a premium in `calculateLiquidatedTokens` so it needs to be 1 + incentive
-        marketToken.liqInc = EXP_SCALE + liqInc;
+        marketToken.liqInc = WAD + liqInc;
 
         // Store protocol liquidation fee divided by the liquidation incentive offset,
         // that way we can directly multiply later instead of needing extra calculations
-        marketToken.liqFee = (EXP_SCALE * liqFee) / (EXP_SCALE + liqInc);
+        marketToken.liqFee = (WAD * liqFee) / (WAD + liqInc);
 
-        // Store the collateral requirement as a premium above `EXP_SCALE`,
+        // Store the collateral requirement as a premium above `WAD`,
         // that way we can calculate solvency via division easily in _getStatusForLiquidation
-        marketToken.collReqA = collReqA + EXP_SCALE;
-        marketToken.collReqB = collReqB + EXP_SCALE;
+        marketToken.collReqA = collReqA + WAD;
+        marketToken.collReqB = collReqB + WAD;
 
         // Assign new collateralization ratio
         // Note that a collateralization ratio of 0 corresponds to
@@ -879,7 +879,7 @@ contract Lendtroller is ILendtroller, ERC165 {
                 // If the asset has a CR increment their collateral and max borrow value
                 if (!(mTokenData[snapshot.asset].collRatio == 0)) {
                     uint256 assetValue = _getAssetValue(
-                        (snapshot.balance * snapshot.exchangeRate) / EXP_SCALE,
+                        (snapshot.balance * snapshot.exchangeRate) / WAD,
                         underlyingPrices[i],
                         snapshot.decimals
                     );
@@ -887,7 +887,7 @@ contract Lendtroller is ILendtroller, ERC165 {
                     sumCollateral += assetValue;
                     maxBorrow +=
                         (assetValue * mTokenData[snapshot.asset].collRatio) /
-                        EXP_SCALE;
+                        WAD;
                 }
             } else {
                 // If they have a debt balance we need to document it
@@ -1045,7 +1045,7 @@ contract Lendtroller is ILendtroller, ERC165 {
             }
         }
         uint256 maxLiquidationAmount = (closeFactor *
-            IMToken(debtToken).debtBalanceStored(borrower)) / EXP_SCALE;
+            IMToken(debtToken).debtBalanceStored(borrower)) / WAD;
 
         // Calculate the maximum amount of collateral that can be liquidated
         return (maxLiquidationAmount, debtTokenPrice, collateralTokenPrice);
@@ -1072,7 +1072,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         // Get the exchange rate and calculate the number of collateral tokens to seize:
         uint256 debtToCollateralRatio = (mToken.liqInc *
             debtTokenPrice *
-            EXP_SCALE) /
+            WAD) /
             (collateralTokenPrice *
                 IMToken(collateralToken).exchangeRateStored());
 
@@ -1080,11 +1080,11 @@ contract Lendtroller is ILendtroller, ERC165 {
             (10 ** IERC20(collateralToken).decimals())) /
             (10 ** IERC20(debtToken).decimals());
         uint256 liquidatedTokens = (amountAdjusted * debtToCollateralRatio) /
-            EXP_SCALE;
+            WAD;
 
         return (
             liquidatedTokens,
-            (liquidatedTokens * mToken.liqFee) / EXP_SCALE
+            (liquidatedTokens * mToken.liqFee) / WAD
         );
     }
 
@@ -1124,7 +1124,7 @@ contract Lendtroller is ILendtroller, ERC165 {
                 // If the asset has a CR increment their collateral and max borrow value
                 if (!(mTokenData[snapshot.asset].collRatio == 0)) {
                     uint256 assetValue = _getAssetValue(
-                        (snapshot.balance * snapshot.exchangeRate) / EXP_SCALE,
+                        (snapshot.balance * snapshot.exchangeRate) / WAD,
                         underlyingPrices[i],
                         snapshot.decimals
                     );
@@ -1132,7 +1132,7 @@ contract Lendtroller is ILendtroller, ERC165 {
                     sumCollateral += assetValue;
                     maxBorrow +=
                         (assetValue * mTokenData[snapshot.asset].collRatio) /
-                        EXP_SCALE;
+                        WAD;
                 }
             } else {
                 // If they have a borrow balance we need to document it
@@ -1153,14 +1153,14 @@ contract Lendtroller is ILendtroller, ERC165 {
                 if (snapshot.isCToken) {
                     if (!(mTokenData[snapshot.asset].collRatio == 0)) {
                         uint256 collateralValue = _getAssetValue(
-                            (redeemTokens * snapshot.exchangeRate) / EXP_SCALE,
+                            (redeemTokens * snapshot.exchangeRate) / WAD,
                             underlyingPrices[i],
                             snapshot.decimals
                         );
 
                         // hypothetical redemption
                         newDebt += ((collateralValue *
-                            mTokenData[snapshot.asset].collRatio) / EXP_SCALE);
+                            mTokenData[snapshot.asset].collRatio) / WAD);
                     }
                 } else {
                     // hypothetical borrow
@@ -1255,10 +1255,10 @@ contract Lendtroller is ILendtroller, ERC165 {
                     totalCollateral +=
                         (_getAssetValue(
                             (snapshot.balance * snapshot.exchangeRate) /
-                                EXP_SCALE,
+                                WAD,
                             underlyingPrices[i],
                             snapshot.decimals
-                        ) * EXP_SCALE) /
+                        ) * WAD) /
                         mTokenData[snapshot.asset].collReqA;
                 }
             } else {

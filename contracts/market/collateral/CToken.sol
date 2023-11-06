@@ -13,7 +13,7 @@ import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.s
 import { BasePositionVault } from "contracts/deposits/adaptors/BasePositionVault.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.sol";
-import { EXP_SCALE } from "contracts/libraries/Constants.sol";
+import { WAD } from "contracts/libraries/Constants.sol";
 
 /// @title Curvance's Collateral Token Contract
 contract CToken is ERC165, ReentrancyGuard {
@@ -251,7 +251,7 @@ contract CToken is ERC165, ReentrancyGuard {
         _redeem(
             user,
             msg.sender,
-            (underlyingAmount * EXP_SCALE) / exchangeRateStored()
+            (underlyingAmount * WAD) / exchangeRateStored()
         );
 
         IPositionFolding(msg.sender).onRedeem(
@@ -316,7 +316,7 @@ contract CToken is ERC165, ReentrancyGuard {
     /// @param account The address of the account to query
     /// @return The amount of underlying owned by `account`
     function balanceOfUnderlying(address account) external returns (uint256) {
-        return ((exchangeRateCurrent() * balanceOf[account]) / EXP_SCALE);
+        return ((exchangeRateCurrent() * balanceOf[account]) / WAD);
     }
 
     /// @notice Get a snapshot of the account's balances,
@@ -398,7 +398,7 @@ contract CToken is ERC165, ReentrancyGuard {
     function exchangeRateStored() public view returns (uint256) {
         // If the vault is empty this will default to 1e18 which is what we want,
         // plus when we list a market we mint a small amount ourselves
-        return vault.convertToAssets(EXP_SCALE);
+        return vault.convertToAssets(WAD);
     }
 
     /// @inheritdoc ERC165

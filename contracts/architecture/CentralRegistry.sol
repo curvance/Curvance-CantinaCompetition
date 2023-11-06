@@ -40,7 +40,7 @@ contract CentralRegistry is ERC165 {
     address public zroAddress; // ZRO contract address for layerzero
     address public feeAccumulator; // Fee Accumulator contract address
 
-    /// PROTOCOL VALUES in `EXP_SCALE` set in `DENOMINATOR`
+    /// PROTOCOL VALUES in `WAD` set in `DENOMINATOR`
     uint256 public protocolCompoundFee = 100 * 1e14; // Fee for compounding position vaults
     uint256 public protocolYieldFee = 1500 * 1e14; // Fee on yield in position vaults
     /// Joint fee value so that we can perform one less external call in position vault contracts
@@ -50,7 +50,7 @@ contract CentralRegistry is ERC165 {
     uint256 public voteBoostValue; // Voting power bonus for Continuous Lock Mode
     uint256 public lockBoostValue; // Rewards bonus for locking gauge emissions
 
-    /// PROTOCOL VALUES DATA `EXP_SCALE` set in `DENOMINATOR`
+    /// PROTOCOL VALUES DATA `WAD` set in `DENOMINATOR`
     /// @notice Lending Market => Protocol Reserve Factor on interest generated
     mapping(address => uint256) public protocolInterestFactor;
 

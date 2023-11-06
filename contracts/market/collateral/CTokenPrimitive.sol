@@ -12,7 +12,7 @@ import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.sol";
 import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.sol";
-import { EXP_SCALE } from "contracts/libraries/Constants.sol";
+import { WAD } from "contracts/libraries/Constants.sol";
 
 /// @notice Vault Positions must have all assets ready for withdraw,
 ///         IE assets can NOT be locked.
@@ -210,14 +210,14 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
     /// @param account The address of the account to query
     /// @return The amount of underlying owned by `account`
     function balanceOfUnderlyingSafe(address account) external returns (uint256) {
-        return ((convertToAssetsSafe(EXP_SCALE) * balanceOf(account)) / EXP_SCALE);
+        return ((convertToAssetsSafe(WAD) * balanceOf(account)) / WAD);
     }
 
     /// @notice Get the underlying balance of the `account`
     /// @param account The address of the account to query
     /// @return The amount of underlying owned by `account`
     function balanceOfUnderlying(address account) external view returns (uint256) {
-        return ((convertToAssets(EXP_SCALE) * balanceOf(account)) / EXP_SCALE);
+        return ((convertToAssets(WAD) * balanceOf(account)) / WAD);
     }
 
     /// @notice Get a snapshot of the account's balances,
@@ -230,7 +230,7 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
     function getSnapshot(
         address account
     ) external view returns (uint256, uint256, uint256) {
-        return (balanceOf(account), 0, convertToAssets(EXP_SCALE));
+        return (balanceOf(account), 0, convertToAssets(WAD));
     }
 
     /// @notice Get a snapshot of the cToken and `account` data
@@ -246,7 +246,7 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
                 decimals: decimals(),
                 balance: balanceOf(account),
                 debtBalance: 0,
-                exchangeRate: convertToAssets(EXP_SCALE)
+                exchangeRate: convertToAssets(WAD)
             })
         );
     }

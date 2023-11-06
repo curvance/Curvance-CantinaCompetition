@@ -10,7 +10,7 @@ import { IRewards } from "contracts/interfaces/external/convex/IRewards.sol";
 import { IBalancerVault } from "contracts/interfaces/external/balancer/IBalancerVault.sol";
 import { IBalancerPool } from "contracts/interfaces/external/balancer/IBalancerPool.sol";
 import { IStashWrapper } from "contracts/interfaces/external/aura/IStashWrapper.sol";
-import { EXP_SCALE } from "contracts/libraries/Constants.sol";
+import { WAD } from "contracts/libraries/Constants.sol";
 
 contract AuraCToken is CTokenCompoundingBase {
     using Math for uint256;
@@ -307,7 +307,7 @@ contract AuraCToken is CTokenCompoundingBase {
 
             // update vesting info
             _vaultData = _packVaultData(
-                yield.mulDivDown(EXP_SCALE, vestPeriod),
+                yield.mulDivDown(WAD, vestPeriod),
                 block.timestamp + vestPeriod
             );
 

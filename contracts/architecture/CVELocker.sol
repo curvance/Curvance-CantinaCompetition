@@ -10,7 +10,7 @@ import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { IVeCVE } from "contracts/interfaces/IVeCVE.sol";
 import { RewardsData } from "contracts/interfaces/ICVELocker.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { EXP_SCALE } from "contracts/libraries/Constants.sol";
+import { WAD } from "contracts/libraries/Constants.sol";
 
 contract CVELocker is ReentrancyGuard {
     /// CONSTANTS ///
@@ -51,7 +51,7 @@ contract CVELocker is ReentrancyGuard {
     // Epoch # => Total Tokens Locked across all chains
     mapping(uint256 => uint256) public tokensLockedByEpoch;
 
-    // Epoch # => Rewards per CVE multiplied by `EXP_SCALE`
+    // Epoch # => Rewards per CVE multiplied by `WAD`
     mapping(uint256 => uint256) public epochRewardsPerCVE;
 
     /// EVENTS ///
@@ -368,7 +368,7 @@ contract CVELocker is ReentrancyGuard {
         unchecked {
             userNextClaimIndex[user] += epochs;
             // Removes the 1e18 offset for proper reward value
-            rewards = rewards / EXP_SCALE;
+            rewards = rewards / WAD;
         }
 
         uint256 rewardAmount = _processRewards(

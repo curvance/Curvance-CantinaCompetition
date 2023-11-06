@@ -13,7 +13,7 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.sol";
-import { EXP_SCALE } from "contracts/libraries/Constants.sol";
+import { WAD } from "contracts/libraries/Constants.sol";
 
 /// @title Curvance's Debt Token Contract
 contract DToken is ERC165, ReentrancyGuard {
@@ -157,7 +157,7 @@ contract DToken is ERC165, ReentrancyGuard {
 
         // Initialize timestamp and borrow index
         borrowExchangeRate.lastTimestampUpdated = uint32(block.timestamp);
-        borrowExchangeRate.exchangeRate = uint224(EXP_SCALE);
+        borrowExchangeRate.exchangeRate = uint224(WAD);
 
         _setInterestRateModel(interestRateModel_);
 
@@ -413,7 +413,7 @@ contract DToken is ERC165, ReentrancyGuard {
             msg.sender,
             msg.sender,
             amount,
-            (exchangeRateStored() * amount) / EXP_SCALE
+            (exchangeRateStored() * amount) / WAD
         );
     }
 
@@ -435,7 +435,7 @@ contract DToken is ERC165, ReentrancyGuard {
         _redeem(
             user,
             msg.sender,
-            (underlyingAmount * EXP_SCALE) / exchangeRateStored(),
+            (underlyingAmount * WAD) / exchangeRateStored(),
             underlyingAmount
         );
 
@@ -485,7 +485,7 @@ contract DToken is ERC165, ReentrancyGuard {
         accrueInterest();
 
         // Calculate asset -> shares exchange rate
-        uint256 tokens = (amount * EXP_SCALE) / exchangeRateStored();
+        uint256 tokens = (amount * WAD) / exchangeRateStored();
 
         // On success, the market will deposit `amount` to the market
         SafeTransferLib.safeTransferFrom(
@@ -519,7 +519,7 @@ contract DToken is ERC165, ReentrancyGuard {
             revert DToken__CashNotAvailable();
         }
 
-        uint256 tokens = (amount * EXP_SCALE) / exchangeRateStored();
+        uint256 tokens = (amount * WAD) / exchangeRateStored();
 
         // Update reserves with underflow check
         totalReserves = totalReserves - tokens;
@@ -608,7 +608,7 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @param account The address of the account to query
     /// @return The amount of underlying owned by `account`
     function balanceOfUnderlying(address account) external returns (uint256) {
-        return ((exchangeRateCurrent() * balanceOf[account]) / EXP_SCALE);
+        return ((exchangeRateCurrent() * balanceOf[account]) / WAD);
     }
 
     /// @notice Get a snapshot of the account's balances, and the cached exchange rate
@@ -616,7 +616,7 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @param account Address of the account to snapshot
     /// @return Account token balance
     /// @return Account debt balance
-    /// @return Token => Underlying exchange rate scaled by `EXP_SCALE`
+    /// @return Token => Underlying exchange rate scaled by `WAD`
     function getSnapshot(
         address account
     ) external view returns (uint256, uint256, uint256) {
@@ -646,7 +646,7 @@ contract DToken is ERC165, ReentrancyGuard {
     }
 
     /// @notice Calculates the current dToken utilization rate
-    /// @return The utilization rate scaled by `EXP_SCALE`
+    /// @return The utilization rate scaled by `WAD`
     function utilizationRate() external view returns (uint256) {
         return
             interestRateModel.utilizationRate(
@@ -657,7 +657,7 @@ contract DToken is ERC165, ReentrancyGuard {
     }
 
     /// @notice Returns the current dToken borrow interest rate per year
-    /// @return The borrow interest rate per year, scaled by `EXP_SCALE`
+    /// @return The borrow interest rate per year, scaled by `WAD`
     function borrowRatePerYear() external view returns (uint256) {
         return
             interestRateModel.getBorrowRatePerYear(
@@ -668,7 +668,7 @@ contract DToken is ERC165, ReentrancyGuard {
     }
 
     /// @notice Returns the current dToken supply interest rate per year
-    /// @return The supply interest rate per year, scaled by `EXP_SCALE`
+    /// @return The supply interest rate per year, scaled by `WAD`
     function supplyRatePerYear() external view returns (uint256) {
         return
             interestRateModel.getSupplyRatePerYear(
@@ -737,20 +737,20 @@ contract DToken is ERC165, ReentrancyGuard {
     }
 
     /// @notice Accrues interest then return the up-to-date exchange rate
-    /// @return Calculated exchange rate, scaled by `EXP_SCALE`
+    /// @return Calculated exchange rate, scaled by `WAD`
     function exchangeRateCurrent() public nonReentrant returns (uint256) {
         accrueInterest();
         return exchangeRateStored();
     }
 
     /// @notice Calculates the exchange rate from the underlying to the dToken
-    /// @return Cached exchange rate, scaled by `EXP_SCALE`
+    /// @return Cached exchange rate, scaled by `WAD`
     function exchangeRateStored() public view returns (uint256) {
         // We do not need to check for totalSupply = 0,
         // when we list a market we mint a small amount ourselves
         // exchangeRate = (totalCash + totalBorrows - totalReserves) / totalSupply
         return
-            ((getCash() + totalBorrows - totalReserves) * EXP_SCALE) /
+            ((getCash() + totalBorrows - totalReserves) * WAD) /
             totalSupply;
     }
 
@@ -796,10 +796,10 @@ contract DToken is ERC165, ReentrancyGuard {
             borrowData.lastTimestampUpdated) / borrowData.compoundRate;
         uint256 interestAccumulated = borrowRate * interestCompounds;
         uint256 debtAccumulated = (interestAccumulated * borrowsPrior) /
-            EXP_SCALE;
+            WAD;
         uint256 totalBorrowsNew = debtAccumulated + borrowsPrior;
         uint256 exchangeRateNew = ((interestAccumulated * exchangeRatePrior) /
-            EXP_SCALE) + exchangeRatePrior;
+            WAD) + exchangeRatePrior;
 
         // Update storage data
         borrowExchangeRate.lastTimestampUpdated = uint32(
@@ -810,7 +810,7 @@ contract DToken is ERC165, ReentrancyGuard {
         totalBorrows = totalBorrowsNew;
 
         // Check whether the market takes interest and debt has been accumulated
-        uint256 newReserves = ((interestFactor * debtAccumulated) / EXP_SCALE);
+        uint256 newReserves = ((interestFactor * debtAccumulated) / WAD);
         if (newReserves > 0) {
             totalReserves = newReserves + reservesPrior;
 
@@ -879,7 +879,7 @@ contract DToken is ERC165, ReentrancyGuard {
 
         uint256 oldInterestFactor = interestFactor;
 
-        /// The Interest Rate Factor is in `EXP_SCALE` format
+        /// The Interest Rate Factor is in `WAD` format
         /// So we need to multiply by 1e14 to format properly
         /// from basis points to %
         interestFactor = newInterestFactor * 1e14;
@@ -950,7 +950,7 @@ contract DToken is ERC165, ReentrancyGuard {
         );
 
         // Calculate dTokens to be minted
-        uint256 tokens = (amount * EXP_SCALE) / er;
+        uint256 tokens = (amount * WAD) / er;
 
         unchecked {
             totalSupply = totalSupply + tokens;

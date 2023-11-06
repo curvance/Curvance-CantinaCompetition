@@ -3,7 +3,7 @@ pragma solidity ^0.8.17;
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
-import { EXP_SCALE } from "contracts/libraries/Constants.sol";
+import { WAD } from "contracts/libraries/Constants.sol";
 
 contract InterestRateModel {
     /// CONSTANTS ///
@@ -51,7 +51,7 @@ contract InterestRateModel {
 
     /// @notice Construct an interest rate model
     /// @param baseRatePerYear The rate of increase in interest rate by
-    ///                        utilization rate (scaled by EXP_SCALE)
+    ///                        utilization rate (scaled by WAD)
     /// @param vertexRatePerYear The multiplierPerSecond after hitting
     ///                              `vertex_` utilization rate
     /// @param vertexUtilizationStart The utilization point at which the vertex rate
@@ -74,7 +74,7 @@ contract InterestRateModel {
         centralRegistry = centralRegistry_;
 
         baseRate =
-            (INTEREST_COMPOUND_RATE * baseRatePerYear * EXP_SCALE) /
+            (INTEREST_COMPOUND_RATE * baseRatePerYear * WAD) /
             (SECONDS_PER_YEAR * vertexUtilizationStart);
         vertexRate =
             (INTEREST_COMPOUND_RATE * vertexRatePerYear) /
@@ -93,7 +93,7 @@ contract InterestRateModel {
     /// @notice Update the parameters of the interest rate model
     ///         (only callable by Curvance DAO elevated permissions, i.e. Timelock)
     /// @param baseRatePerYear The rate of increase in interest rate by
-    ///                          utilization rate (scaled by EXP_SCALE)
+    ///                          utilization rate (scaled by WAD)
     /// @param vertexRatePerYear The multiplierPerSecond after hitting
     ///                              `vertex` utilization rate
     /// @param vertexUtilizationStart The utilization point at which the jump multiplier
@@ -104,7 +104,7 @@ contract InterestRateModel {
         uint256 vertexUtilizationStart
     ) external onlyElevatedPermissions {
         baseRate =
-            (INTEREST_COMPOUND_RATE * baseRatePerYear * EXP_SCALE) /
+            (INTEREST_COMPOUND_RATE * baseRatePerYear * WAD) /
             (SECONDS_PER_YEAR * vertexUtilizationStart);
         vertexRate =
             (INTEREST_COMPOUND_RATE * vertexRatePerYear) /
@@ -125,7 +125,7 @@ contract InterestRateModel {
     /// @param cash The amount of cash in the market
     /// @param borrows The amount of borrows in the market
     /// @param reserves The amount of reserves in the market
-    /// @return The utilization rate between [0, EXP_SCALE]
+    /// @return The utilization rate between [0, WAD]
     function utilizationRate(
         uint256 cash,
         uint256 borrows,
@@ -136,7 +136,7 @@ contract InterestRateModel {
             return 0;
         }
 
-        return (borrows * EXP_SCALE) / (cash + borrows - reserves);
+        return (borrows * WAD) / (cash + borrows - reserves);
     }
 
     /// @notice Calculates the current borrow rate per compound
@@ -176,14 +176,14 @@ contract InterestRateModel {
         uint256 reserves,
         uint256 interestFee
     ) public view returns (uint256) {
-        /// RateToPool = (borrowRate * oneMinusReserveFactor) / EXP_SCALE;
+        /// RateToPool = (borrowRate * oneMinusReserveFactor) / WAD;
         uint256 rateToPool = (getBorrowRate(cash, borrows, reserves) *
-            (EXP_SCALE - interestFee)) / EXP_SCALE;
+            (WAD - interestFee)) / WAD;
 
-        /// Supply Rate = (utilizationRate * rateToPool) / EXP_SCALE;
+        /// Supply Rate = (utilizationRate * rateToPool) / WAD;
         return
             (utilizationRate(cash, borrows, reserves) * rateToPool) /
-            EXP_SCALE;
+            WAD;
     }
 
     /// @notice Calculates the current borrow rate per year
@@ -230,7 +230,7 @@ contract InterestRateModel {
     function getNormalInterestRate(
         uint256 util
     ) internal view returns (uint256) {
-        return (util * baseRate) / EXP_SCALE;
+        return (util * baseRate) / WAD;
     }
 
     /// @notice Calculates the interest rate under `jump` conditions E.G. `util` > `vertex ` based on market utilization
@@ -239,6 +239,6 @@ contract InterestRateModel {
     function getVertexInterestRate(
         uint256 util
     ) internal view returns (uint256) {
-        return (util * vertexRate) / EXP_SCALE;
+        return (util * vertexRate) / WAD;
     }
 }
