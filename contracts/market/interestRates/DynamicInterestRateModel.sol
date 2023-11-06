@@ -338,7 +338,7 @@ contract DynamicInterestRateModel {
         uint256 decay = rateInfo.vertexMultiplier * rateInfo.vertexDecayRate;
 
         if (util <= rateInfo.vertexDecreaseThresholdMax) {
-            newRate = (rateInfo.vertexMultiplier / rateInfo.vertexAdjustmentVelocity) - decay;
+            newRate = ((rateInfo.vertexMultiplier * WAD) / rateInfo.vertexAdjustmentVelocity) - decay;
             if (newRate < WAD) {
                 rateInfo.vertexMultiplier = uint128(WAD);
                 return;
@@ -349,13 +349,13 @@ contract DynamicInterestRateModel {
             return;
         }
 
-        newRate = rateInfo.vertexMultiplier * 
-        ((rateInfo.vertexAdjustmentVelocity / 
+        newRate = (rateInfo.vertexMultiplier * 
+        ((rateInfo.vertexAdjustmentVelocity * WAD) / 
         _calculateNegativeCurveValue(
             util, 
             rateInfo.vertexIncreaseThreshold, 
             rateInfo.vertexIncreaseThresholdMax
-        )) / WAD) - decay;
+        ))) - decay;
 
         if (newRate < WAD) {
             rateInfo.vertexMultiplier = uint128(WAD);
@@ -384,8 +384,8 @@ contract DynamicInterestRateModel {
             return;
         }
 
-        newRate = rateInfo.vertexMultiplier * 
-        ((rateInfo.vertexAdjustmentVelocity * 
+        newRate = (rateInfo.vertexMultiplier * 
+        (rateInfo.vertexAdjustmentVelocity * 
         _calculatePositiveCurveValue(
             util, 
             rateInfo.vertexIncreaseThreshold, 
