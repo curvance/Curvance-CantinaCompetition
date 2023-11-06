@@ -67,6 +67,8 @@ contract DToken is ERC165, ReentrancyGuard {
     mapping(address => uint256) public balanceOf;
     /// @notice account => spender => approved amount
     mapping(address => mapping(address => uint256)) public allowance;
+    /// @notice account => spender => can borrow on behalf
+    mapping(address => mapping(address => bool)) public borrowAllowance;
     /// @notice account => BorrowSnapshot (Principal Borrowed, User Interest Index)
     mapping(address => DebtData) internal _debtOf;
 
@@ -77,6 +79,11 @@ contract DToken is ERC165, ReentrancyGuard {
         address indexed owner,
         address indexed spender,
         uint256 value
+    );
+    event BorrowApproval(
+        address indexed owner,
+        address indexed spender,
+        bool isApproved
     );
     event InterestAccrued(
         uint256 debtAccumulated,
@@ -239,7 +246,7 @@ contract DToken is ERC165, ReentrancyGuard {
         return true;
     }
 
-    /// @notice Sender borrows assets from the protocol to their own address
+    /// @notice Allows a user to borrow assets from the protocol
     /// @dev    Updates interest before executing the borrow
     /// @param amount The amount of the underlying asset to borrow
     function borrow(uint256 amount) external nonReentrant {
@@ -249,6 +256,24 @@ contract DToken is ERC165, ReentrancyGuard {
         lendtroller.canBorrowWithNotify(address(this), msg.sender, amount);
 
         _borrow(msg.sender, amount, msg.sender);
+    }
+
+    /// @notice Allows a user to borrow assets from the protocol on behalf of someone else
+    /// @dev    Updates interest before executing the borrow
+    /// @param user The user who will have their assets borrowed against
+    /// @param amount The amount of the underlying asset to borrow
+    function borrowFor(address user, uint256 amount) external nonReentrant {
+
+        if (!borrowAllowance[user][msg.sender]) {
+            revert DToken__Unauthorized();
+        }
+
+        accrueInterest();
+
+        // Reverts if borrow not allowed
+        lendtroller.canBorrowWithNotify(address(this), user, amount);
+
+        _borrow(user, amount, msg.sender);
     }
 
     /// @notice Position folding borrows from the protocol for `user`
@@ -539,6 +564,15 @@ contract DToken is ERC165, ReentrancyGuard {
         allowance[msg.sender][spender] = amount;
 
         emit Approval(msg.sender, spender, amount);
+        return true;
+    }
+
+    /// @dev Sets `amount` as the allowance of `spender` over the caller's tokens.
+    /// Emits a {Approval} event.
+    function approveBorrowing(address spender, bool isApproved) external returns (bool) {
+        borrowAllowance[msg.sender][spender] = isApproved;
+
+        emit BorrowApproval(msg.sender, spender, isApproved);
         return true;
     }
 

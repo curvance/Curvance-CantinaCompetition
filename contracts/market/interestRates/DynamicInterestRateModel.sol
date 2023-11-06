@@ -321,7 +321,8 @@ contract DynamicInterestRateModel {
         return (util * currentRateInfo.baseInterestRate) / WAD;
     }
 
-    /// @notice Calculates the interest rate under `jump` conditions E.G. `util` > `vertex ` based on market utilization
+    /// @notice Calculates the interest rate under `jump` conditions,
+    ///         e.g. `util` > `vertex ` based on market utilization
     /// @param util The utilization rate of the market above `vertex`
     /// @return Returns the calculated excess interest rate
     function getVertexInterestRate(
