@@ -34,7 +34,10 @@ interface IPMarket is IERC20Metadata, IPGauge {
         uint256 netSyToReserve
     );
 
-    event UpdateImpliedRate(uint256 indexed timestamp, uint256 lnLastImpliedRate);
+    event UpdateImpliedRate(
+        uint256 indexed timestamp,
+        uint256 lnLastImpliedRate
+    );
 
     event IncreaseObservationCardinalityNext(
         uint16 observationCardinalityNextOld,
@@ -45,7 +48,9 @@ interface IPMarket is IERC20Metadata, IPGauge {
         address receiver,
         uint256 netSyDesired,
         uint256 netPtDesired
-    ) external returns (uint256 netLpOut, uint256 netSyUsed, uint256 netPtUsed);
+    )
+        external
+        returns (uint256 netLpOut, uint256 netSyUsed, uint256 netPtUsed);
 
     function burn(
         address receiverSy,
@@ -67,18 +72,26 @@ interface IPMarket is IERC20Metadata, IPGauge {
 
     function redeemRewards(address user) external returns (uint256[] memory);
 
-    function readState(address router) external view returns (MarketState memory market);
+    function readState(
+        address router
+    ) external view returns (MarketState memory market);
 
     function observe(
         uint32[] memory secondsAgos
     ) external view returns (uint216[] memory lnImpliedRateCumulative);
 
-    function increaseObservationsCardinalityNext(uint16 cardinalityNext) external;
+    function increaseObservationsCardinalityNext(
+        uint16 cardinalityNext
+    ) external;
 
     function readTokens()
         external
         view
-        returns (IStandardizedYield _SY, IPPrincipalToken _PT, IPYieldToken _YT);
+        returns (
+            IStandardizedYield _SY,
+            IPPrincipalToken _PT,
+            IPYieldToken _YT
+        );
 
     function getRewardTokens() external view returns (address[] memory);
 
@@ -91,7 +104,11 @@ interface IPMarket is IERC20Metadata, IPGauge {
     )
         external
         view
-        returns (uint32 blockTimestamp, uint216 lnImpliedRateCumulative, bool initialized);
+        returns (
+            uint32 blockTimestamp,
+            uint216 lnImpliedRateCumulative,
+            bool initialized
+        );
 
     function _storage()
         external
