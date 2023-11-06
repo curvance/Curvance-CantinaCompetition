@@ -336,9 +336,13 @@ contract DynamicInterestRateModel {
         // Apply decay rate
         uint256 decay = rateInfo.vertexMultiplier * rateInfo.vertexDecayRate;
 
-        // if (util <= rateInfo.vertexDecreaseThresholdMax) {
-        //     (rateInfo.vertexMultiplier - WAD)
-        // }
+        if (util <= rateInfo.vertexDecreaseThresholdMax) {
+            uint256 newRate = (rateInfo.vertexMultiplier / rateInfo.vertexAdjustmentVelocity) - decay;
+            if (newRate < WAD) {
+                rateInfo.vertexMultiplier = uint128(WAD);
+                return;
+            }
+        }
     }
 
     function _updateRateAboveVertex(DynamicRatesData storage rateInfo, uint256 util) internal {
@@ -349,10 +353,34 @@ contract DynamicInterestRateModel {
     }
 
     function _calculatePositiveCurveValue(uint256 current, uint256 start, uint256 end) internal pure returns (uint256) {
+        if (current >= end) {
+            return WAD;
+        }
+
+        // Because slope values should be between [1, WAD],
+        // we know multiplying by WAD again will not cause overflows
+        unchecked {
+            current = current * WAD;
+            start = start * WAD;
+            end = end * WAD;
+        }
+    
         return (current - start) / (end - start);
     }
 
     function _calculateNegativeCurveValue(uint256 current, uint256 start, uint256 end) internal pure returns (uint256) {
+        if (current <= end) {
+            return WAD;
+        }
+
+        // Because slope values should be between [1, WAD],
+        // we know multiplying by WAD again will not cause overflows
+        unchecked{
+            current = current * WAD;
+            start = start * WAD;
+            end = end * WAD;
+        }
+        
         return (start - current) / (start - end);
     }
 
