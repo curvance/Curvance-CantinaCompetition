@@ -20,6 +20,8 @@ contract DynamicInterestRateModel {
         uint256 vertexStartingPoint;
         // @notice The rate at which the vertex multiplier is adjusted, in seconds
         uint256 vertexAdjustmentRate;
+        // @notice The maximum rate at with the vertex multiplier is adjusted, in WAD
+        uint256 vertexAdjustmentVelocity;
         // @notice Rate at which the vertex multiplier will decay per update, in WAD
         uint256 vertexDecayRate;
         // @notice The utilization rate at which the vertex multiplier will begin to increase
@@ -45,6 +47,8 @@ contract DynamicInterestRateModel {
     uint256 internal constant MIN_VERTEX_ADJUSTMENT_RATE = 4 hours;
     /// @notice The maximum frequency in which the vertex can have between adjustments
     uint256 internal constant MAX_VERTEX_ADJUSTMENT_RATE = 3 days;
+    // @notice The maximum rate at with the vertex multiplier is adjusted, in WAD on top of base rate (1 WAD)
+    uint256 internal constant MAX_VERTEX_ADJUSTMENT_VELOCITY = 3 * WAD; // triples per adjustment rate
     /// @notice For external contract's to call for validation
     bool public constant IS_INTEREST_RATE_MODEL = true;
     /// @notice Curvance DAO hub
@@ -70,10 +74,12 @@ contract DynamicInterestRateModel {
 
     /// ERRORS ///
 
-    error DynamicInterestRateModel__InvalidDecayRate();
-    error DynamicInterestRateModel__InvalidAdjustmentRate();
     error DynamicInterestRateModel__Unauthorized();
     error DynamicInterestRateModel__InvalidCentralRegistry();
+    error DynamicInterestRateModel__InvalidAdjustmentRate();
+    error DynamicInterestRateModel__InvalidAdjustmentVelocity();
+    error DynamicInterestRateModel__InvalidDecayRate();
+    
 
     /// MODIFIERS ///
 
@@ -88,19 +94,22 @@ contract DynamicInterestRateModel {
 
     /// @notice Construct an interest rate model
     /// @param baseRatePerYear The rate of increase in interest rate by
-    ///                        utilization rate (scaled by WAD)
+    ///                        utilization rate (in basis points)
     /// @param vertexRatePerYear The multiplierPerSecond after hitting
-    ///                          `vertex_` utilization rate
+    ///                          `vertexUtilizationStart` utilization rate
     /// @param vertexUtilizationStart The utilization point at which the vertex rate
     ///                               is applied
     /// @param vertexAdjustmentRate The rate at which the vertex multiplier is adjusted, 
     ///                             in seconds
+    /// @param vertexAdjustmentVelocity The maximum rate at with the vertex multiplier is adjusted, 
+    ///                                 in basis points
     constructor(
         ICentralRegistry centralRegistry_,
         uint256 baseRatePerYear,
         uint256 vertexRatePerYear,
         uint256 vertexUtilizationStart,
         uint256 vertexAdjustmentRate,
+        uint256 vertexAdjustmentVelocity,
         uint256 vertexDecayRate
     ) {
 
@@ -120,6 +129,7 @@ contract DynamicInterestRateModel {
             vertexRatePerYear,
             vertexUtilizationStart,
             vertexAdjustmentRate,
+            vertexAdjustmentVelocity,
             vertexDecayRate
         );
     }
@@ -139,6 +149,7 @@ contract DynamicInterestRateModel {
         uint256 vertexRatePerYear,
         uint256 vertexUtilizationStart,
         uint256 vertexAdjustmentRate,
+        uint256 vertexAdjustmentVelocity,
         uint256 vertexDecayRate
     ) external onlyElevatedPermissions {
         _updateDynamicInterestRateModel(
@@ -146,6 +157,7 @@ contract DynamicInterestRateModel {
             vertexRatePerYear,
             vertexUtilizationStart,
             vertexAdjustmentRate,
+            vertexAdjustmentVelocity,
             vertexDecayRate
         );
     }
@@ -204,12 +216,12 @@ contract DynamicInterestRateModel {
             }
 
             if (belowVertex){
-                _updateRateBelowVertex(rateInfo);
+                _updateRateBelowVertex(rateInfo, util);
                 rateInfo.nextUpdateTimestamp = uint128(block.timestamp);
                 return borrowRate;
             }
 
-            _updateRateAboveVertex(rateInfo);
+            _updateRateAboveVertex(rateInfo, util);
             rateInfo.nextUpdateTimestamp = uint128(block.timestamp);
         }
     }
@@ -320,14 +332,28 @@ contract DynamicInterestRateModel {
 
     /// INTERNAL FUNCTIONS ///
 
-    function _updateRateBelowVertex(DynamicRatesData storage rateInfo) internal {
+    function _updateRateBelowVertex(DynamicRatesData storage rateInfo, uint256 util) internal {
         // Apply decay rate
         uint256 decay = rateInfo.vertexMultiplier * rateInfo.vertexDecayRate;
+
+        // if (util <= rateInfo.vertexDecreaseThresholdMax) {
+        //     (rateInfo.vertexMultiplier - WAD)
+        // }
     }
 
-    function _updateRateAboveVertex(DynamicRatesData storage rateInfo) internal {
+    function _updateRateAboveVertex(DynamicRatesData storage rateInfo, uint256 util) internal {
         // Apply decay rate
         uint256 decay = rateInfo.vertexMultiplier * rateInfo.vertexDecayRate;
+
+        
+    }
+
+    function _calculatePositiveCurveValue(uint256 current, uint256 start, uint256 end) internal pure returns (uint256) {
+        return (current - start) / (end - start);
+    }
+
+    function _calculateNegativeCurveValue(uint256 current, uint256 start, uint256 end) internal pure returns (uint256) {
+        return (start - current) / (start - end);
     }
 
     /// @dev Internal helper function for easily converting between scalars
@@ -342,6 +368,7 @@ contract DynamicInterestRateModel {
         uint256 vertexRatePerYear,
         uint256 vertexUtilizationStart,
         uint256 vertexAdjustmentRate,
+        uint256 vertexAdjustmentVelocity,
         uint256 vertexDecayRate
     ) internal {
 
@@ -352,7 +379,13 @@ contract DynamicInterestRateModel {
         vertexRatePerYear = _bpToWad(vertexRatePerYear);
         vertexUtilizationStart = _bpToWad(vertexUtilizationStart);
         vertexAdjustmentRate = _bpToWad(vertexAdjustmentRate);
+        // This is a multiplier/divisor so it needs to be on top of the base value (WAD)
+        vertexAdjustmentVelocity = _bpToWad(vertexAdjustmentVelocity) + WAD;
         vertexDecayRate = _bpToWad(vertexDecayRate);
+
+        if (vertexAdjustmentVelocity > MAX_VERTEX_ADJUSTMENT_VELOCITY) {
+            revert DynamicInterestRateModel__InvalidAdjustmentVelocity();
+        }
 
         if (vertexAdjustmentRate > MAX_VERTEX_ADJUSTMENT_RATE || vertexAdjustmentRate < MIN_VERTEX_ADJUSTMENT_RATE) {
             revert DynamicInterestRateModel__InvalidAdjustmentRate();
