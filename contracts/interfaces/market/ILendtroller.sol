@@ -55,11 +55,11 @@ interface ILendtroller {
 
     function isListed(address mToken) external view returns (bool);
 
-    function getMTokenData(
+    function getTokenData(
         address mToken
     ) external view returns (bool, uint256, uint256);
 
-    function getAccountMembership(
+    function hasPosition(
         address mToken,
         address user
     ) external view returns (bool);

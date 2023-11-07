@@ -68,7 +68,7 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @notice account => spender => approved amount
     mapping(address => mapping(address => uint256)) public allowance;
     /// @notice account => spender => can borrow on behalf
-    mapping(address => mapping(address => bool)) public borrowAllowance;
+    mapping(address => mapping(address => bool)) public isApprovedToBorrow;
     /// @notice account => BorrowSnapshot (Principal Borrowed, User Interest Index)
     mapping(address => DebtData) internal _debtOf;
 
@@ -261,19 +261,22 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @notice Allows a user to borrow assets from the protocol on behalf of someone else
     /// @dev    Updates interest before executing the borrow
     /// @param user The user who will have their assets borrowed against
+    /// @param recipient The user who will receive the borrowed assets
     /// @param amount The amount of the underlying asset to borrow
-    function borrowFor(address user, uint256 amount) external nonReentrant {
+    function borrowFor(address user, address recipient, uint256 amount) external nonReentrant {
 
-        if (!borrowAllowance[user][msg.sender]) {
+        if (!isApprovedToBorrow[user][msg.sender]) {
             revert DToken__Unauthorized();
         }
 
         accrueInterest();
 
         // Reverts if borrow not allowed
+        // Note: Be careful who you approve here!
+        // Not only can they take borrowed funds, but they can delay repayment through notify
         lendtroller.canBorrowWithNotify(address(this), user, amount);
 
-        _borrow(user, amount, msg.sender);
+        _borrow(user, amount, recipient);
     }
 
     /// @notice Position folding borrows from the protocol for `user`
@@ -569,8 +572,8 @@ contract DToken is ERC165, ReentrancyGuard {
 
     /// @dev Sets `amount` as the allowance of `spender` over the caller's tokens.
     /// Emits a {Approval} event.
-    function approveBorrowing(address spender, bool isApproved) external returns (bool) {
-        borrowAllowance[msg.sender][spender] = isApproved;
+    function setBorrowApproval(address spender, bool isApproved) external returns (bool) {
+        isApprovedToBorrow[msg.sender][spender] = isApproved;
 
         emit BorrowApproval(msg.sender, spender, isApproved);
         return true;
