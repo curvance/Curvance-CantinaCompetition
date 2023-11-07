@@ -2,7 +2,10 @@
 pragma solidity 0.8.17;
 
 interface IPendlePTOracle {
-    function getOracleState(address market, uint32 duration)
+    function getOracleState(
+        address market,
+        uint32 duration
+    )
         external
         view
         returns (
@@ -11,13 +14,13 @@ interface IPendlePTOracle {
             bool oldestObservationSatisfied
         );
 
-    function getPtToAssetRate(address market, uint32 duration)
-        external
-        view
-        returns (uint256 ptToAssetRate);
+    function getPtToAssetRate(
+        address market,
+        uint32 duration
+    ) external view returns (uint256 ptToAssetRate);
 
-    function getLpToAssetRate(address market, uint32 duration)
-        external
-        view
-        returns (uint256 ptToAssetRate);
+    function getLpToAssetRate(
+        address market,
+        uint32 duration
+    ) external view returns (uint256 ptToAssetRate);
 }
