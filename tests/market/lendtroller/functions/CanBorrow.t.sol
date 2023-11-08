@@ -12,6 +12,7 @@ contract CanBorrowTest is TestBaseLendtroller {
         super.setUp();
 
         lendtroller.listToken(address(dUSDC));
+        skip(gaugePool.startTime() - block.timestamp);
     }
 
     function test_canBorrow_fail_whenBorrowPaused() public {
@@ -42,9 +43,18 @@ contract CanBorrowTest is TestBaseLendtroller {
     }
 
     function test_canBorrow_fail_whenInsufficientLiquidity() public {
-        skip(gaugePool.startTime() - block.timestamp);
-        chainlinkUsdcUsd.updateRoundData(0, 1e8, block.timestamp, block.timestamp);
-        chainlinkUsdcEth.updateRoundData(0, 1e18, block.timestamp, block.timestamp);
+        chainlinkUsdcUsd.updateRoundData(
+            0,
+            1e8,
+            block.timestamp,
+            block.timestamp
+        );
+        chainlinkUsdcEth.updateRoundData(
+            0,
+            1e18,
+            block.timestamp,
+            block.timestamp
+        );
 
         address[] memory tokens = new address[](1);
         tokens[0] = address(dUSDC);
@@ -52,18 +62,41 @@ contract CanBorrowTest is TestBaseLendtroller {
         vm.prank(user1);
         lendtroller.enterMarkets(tokens);
 
-        vm.expectRevert(Lendtroller.Lendtroller__InsufficientLiquidity.selector);
+        vm.expectRevert(
+            Lendtroller.Lendtroller__InsufficientLiquidity.selector
+        );
         lendtroller.canBorrow(address(dUSDC), user1, 100e6);
     }
 
     function test_canBorrow_success_whenSufficientLiquidity() public {
-        skip(gaugePool.startTime() - block.timestamp);
-        chainlinkEthUsd.updateRoundData(0, 1500e8, block.timestamp, block.timestamp);
-        chainlinkUsdcUsd.updateRoundData(0, 1e8, block.timestamp, block.timestamp);
-        chainlinkUsdcEth.updateRoundData(0, 1500e18, block.timestamp, block.timestamp);
+        chainlinkEthUsd.updateRoundData(
+            0,
+            1500e8,
+            block.timestamp,
+            block.timestamp
+        );
+        chainlinkUsdcUsd.updateRoundData(
+            0,
+            1e8,
+            block.timestamp,
+            block.timestamp
+        );
+        chainlinkUsdcEth.updateRoundData(
+            0,
+            1500e18,
+            block.timestamp,
+            block.timestamp
+        );
 
         lendtroller.listMarketToken(address(cBALRETH));
-        lendtroller.updateCollateralToken(IMToken(address(cBALRETH)), 2000, 100, 3000, 3000, 7000);
+        lendtroller.updateCollateralToken(
+            IMToken(address(cBALRETH)),
+            2000,
+            100,
+            3000,
+            3000,
+            7000
+        );
         address[] memory tokens = new address[](2);
         tokens[0] = address(dUSDC);
         tokens[1] = address(cBALRETH);
@@ -80,26 +113,44 @@ contract CanBorrowTest is TestBaseLendtroller {
         lendtroller.canBorrow(address(dUSDC), user1, 100e6);
 
         AccountSnapshot memory snapshot = cBALRETH.getSnapshotPacked(user1);
-        (uint256 price,) = priceRouter.getPrice(cBALRETH.underlying(), true, true);
-        (,,uint256 collRatio) = lendtroller.getMTokenData(address(cBALRETH));
-        uint256 assetValue = price * (snapshot.balance * snapshot.exchangeRate / 1e18) / 10 ** cBALRETH.decimals();
-        uint256 maxBorrow = assetValue * collRatio / 1e18;
+        (uint256 price, ) = priceRouter.getPrice(
+            cBALRETH.underlying(),
+            true,
+            true
+        );
+        (, , uint256 collRatio) = lendtroller.getMTokenData(address(cBALRETH));
+        uint256 assetValue = (price *
+            ((snapshot.balance * snapshot.exchangeRate) / 1e18)) /
+            10 ** cBALRETH.decimals();
+        uint256 maxBorrow = (assetValue * collRatio) / 1e18;
 
         // max amount of USDC that can be borrowed based on provided collateral in cBALRETH
-        uint256 borrowInUSDC = maxBorrow / 10 ** cBALRETH.decimals() * 10 ** dUSDC.decimals();
+        uint256 borrowInUSDC = (maxBorrow / 10 ** cBALRETH.decimals()) *
+            10 ** dUSDC.decimals();
         vm.prank(address(dUSDC));
         lendtroller.canBorrow(address(dUSDC), user1, borrowInUSDC);
 
         // should fail when borrowing more than is allowed by provided collateral
-        vm.expectRevert(Lendtroller.Lendtroller__InsufficientLiquidity.selector);
+        vm.expectRevert(
+            Lendtroller.Lendtroller__InsufficientLiquidity.selector
+        );
         vm.prank(address(dUSDC));
         lendtroller.canBorrow(address(dUSDC), user1, borrowInUSDC + 1e6);
     }
 
     function test_canBorrow_fail_entersUserInMarket() external {
-        skip(gaugePool.startTime() - block.timestamp);
-        chainlinkUsdcUsd.updateRoundData(0, 1e8, block.timestamp, block.timestamp);
-        chainlinkUsdcEth.updateRoundData(0, 1e18, block.timestamp, block.timestamp);
+        chainlinkUsdcUsd.updateRoundData(
+            0,
+            1e8,
+            block.timestamp,
+            block.timestamp
+        );
+        chainlinkUsdcEth.updateRoundData(
+            0,
+            1e18,
+            block.timestamp,
+            block.timestamp
+        );
 
         address[] memory tokens = new address[](1);
         tokens[0] = address(dUSDC);
@@ -109,9 +160,18 @@ contract CanBorrowTest is TestBaseLendtroller {
     }
 
     function test_canBorrow_success_entersUserInMarket() external {
-        skip(gaugePool.startTime() - block.timestamp);
-        chainlinkUsdcUsd.updateRoundData(0, 1e8, block.timestamp, block.timestamp);
-        chainlinkUsdcEth.updateRoundData(0, 1e18, block.timestamp, block.timestamp);
+        chainlinkUsdcUsd.updateRoundData(
+            0,
+            1e8,
+            block.timestamp,
+            block.timestamp
+        );
+        chainlinkUsdcEth.updateRoundData(
+            0,
+            1e18,
+            block.timestamp,
+            block.timestamp
+        );
 
         assertFalse(lendtroller.getAccountMembership(address(dUSDC), user1));
         IMToken[] memory accountAssets = lendtroller.getAccountAssets(user1);
@@ -128,9 +188,18 @@ contract CanBorrowTest is TestBaseLendtroller {
     }
 
     function test_canBorrow_fail_whenExceedsBorrowCap() external {
-        skip(gaugePool.startTime() - block.timestamp);
-        chainlinkUsdcUsd.updateRoundData(0, 1e8, block.timestamp, block.timestamp);
-        chainlinkUsdcEth.updateRoundData(0, 1e18, block.timestamp, block.timestamp);
+        chainlinkUsdcUsd.updateRoundData(
+            0,
+            1e8,
+            block.timestamp,
+            block.timestamp
+        );
+        chainlinkUsdcEth.updateRoundData(
+            0,
+            1e18,
+            block.timestamp,
+            block.timestamp
+        );
 
         IMToken[] memory mTokens = new IMToken[](1);
         uint256[] memory borrowCaps = new uint256[](1);
@@ -146,9 +215,18 @@ contract CanBorrowTest is TestBaseLendtroller {
     }
 
     function test_canBorrow_success_whenCapNotExceeded() external {
-        skip(gaugePool.startTime() - block.timestamp);
-        chainlinkUsdcUsd.updateRoundData(0, 1e8, block.timestamp, block.timestamp);
-        chainlinkUsdcEth.updateRoundData(0, 1e18, block.timestamp, block.timestamp);
+        chainlinkUsdcUsd.updateRoundData(
+            0,
+            1e8,
+            block.timestamp,
+            block.timestamp
+        );
+        chainlinkUsdcEth.updateRoundData(
+            0,
+            1e18,
+            block.timestamp,
+            block.timestamp
+        );
 
         IMToken[] memory mTokens = new IMToken[](1);
         uint256[] memory borrowCaps = new uint256[](1);
