@@ -7,9 +7,12 @@ import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.so
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { CurveAdaptor } from "contracts/oracles/adaptors/curve/CurveAdaptor.sol";
 import { CurveReentrancyCheck } from "contracts/oracles/adaptors/curve/CurveReentrancyCheck.sol";
+import { IBaseRewardPool } from "contracts/interfaces/external/convex/IBaseRewardPool.sol";
 import "tests/market/TestBaseMarket.sol";
 
 contract ConvexLPCollateral is TestBaseMarket {
+    event Repay(address payer, address borrower, uint256 repayAmount);
+
     address internal constant _STETH_ADDRESS =
         0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
     // Curve internally uses this address to represent the address for native ETH
@@ -25,6 +28,7 @@ contract ConvexLPCollateral is TestBaseMarket {
 
     ConvexPositionVault positionVault;
     CToken public cSTETH;
+    MockV3Aggregator public chainlinkStethUsd;
 
     function setUp() public override {
         super.setUp();
@@ -69,12 +73,7 @@ contract ConvexLPCollateral is TestBaseMarket {
         );
         chainlinkAdaptor.addAsset(ETH_ADDRESS, address(chainlinkEthUsd), true);
         priceRouter.addAssetPriceFeed(ETH_ADDRESS, address(chainlinkAdaptor));
-        MockV3Aggregator chainlinkStethUsd = new MockV3Aggregator(
-            8,
-            1500e8,
-            3000e12,
-            1000e6
-        );
+        chainlinkStethUsd = new MockV3Aggregator(8, 1500e8, 3000e12, 1000e6);
         chainlinkAdaptor.addAsset(
             _STETH_ADDRESS,
             address(chainlinkStethUsd),
@@ -139,7 +138,24 @@ contract ConvexLPCollateral is TestBaseMarket {
             address(cSTETH),
             1_000e18
         );
+
+        IBaseRewardPool rewarder = IBaseRewardPool(CONVEX_STETH_ETH_REWARD);
+
+        assertEq(
+            rewarder.balanceOf(address(positionVault)),
+            42069,
+            "Rewarder must have balance equal to the initial mint"
+        );
+        assertEq(rewarder.earned(address(positionVault)), 0);
+
         cSTETH.mint(1_000e18);
+
+        assertEq(
+            rewarder.balanceOf(address(positionVault)),
+            1000000000000000042069,
+            "Convex LP Tokens must be deposited into Rewarder"
+        );
+        assertEq(rewarder.earned(address(positionVault)), 0);
         assertEq(cSTETH.balanceOf(user1), 1_000e18);
 
         dUSDC.borrow(10_000e6);
@@ -160,5 +176,71 @@ contract ConvexLPCollateral is TestBaseMarket {
             10_000e6,
             "There must be a total amount of 10,000 USDC borrowed"
         );
+    }
+
+    function testConvexLPCollateralRepayDebt() public {
+        testBorrowWithConvexLPCollateral();
+        uint256 prevBalance = usdc.balanceOf(address(dUSDC));
+        uint256 debtWithInterest = 10000005707;
+
+        // User1 needs more funds to be able to repay debt with interest
+        usdc.transfer(user1, 1000e6);
+
+        vm.startPrank(user1);
+        usdc.approve(address(dUSDC), type(uint256).max);
+        vm.expectRevert(Lendtroller.Lendtroller__MinimumHoldPeriod.selector);
+        dUSDC.repay(0);
+
+        // Must hold for a minimum of 15 minutes before debt can be repaid
+        skip(15 minutes);
+        // Pay off full debt including interest
+        vm.expectEmit(true, true, true, true, address(dUSDC));
+        emit Repay(user1, user1, debtWithInterest);
+        dUSDC.repay(0);
+        vm.stopPrank();
+
+        assertEq(dUSDC.totalBorrows(), 0, "No borrows must be left");
+        assertEq(
+            dUSDC.debtBalanceStored(user1),
+            0,
+            "User must have settled debt"
+        );
+        assertEq(
+            usdc.balanceOf(address(dUSDC)),
+            debtWithInterest + prevBalance,
+            "DToken's balance must include repaid debt plus interest"
+        );
+    }
+
+    function testConvexLPCollateralRedemption() public {
+        testConvexLPCollateralRepayDebt();
+        ERC20 cvxPool = ERC20(CONVEX_STETH_ETH_POOL);
+        assertEq(cvxPool.balanceOf(user1), 9_000e18);
+
+        vm.startPrank(user1);
+        skip(128 days);
+        chainlinkStethUsd.updateRoundData(
+            0,
+            1500e8,
+            block.timestamp,
+            block.timestamp
+        );
+        chainlinkEthUsd.updateRoundData(
+            0,
+            1500e8,
+            block.timestamp,
+            block.timestamp
+        );
+        chainlinkUsdcUsd.updateRoundData(
+            0,
+            1e8,
+            block.timestamp,
+            block.timestamp
+        );
+        cSTETH.redeem(cSTETH.balanceOf(user1));
+        vm.stopPrank();
+
+        assertEq(cSTETH.balanceOf(user1), 0);
+        assertEq(cvxPool.balanceOf(user1), 10_000e18);
     }
 }
