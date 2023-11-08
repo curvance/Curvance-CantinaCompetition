@@ -11,7 +11,7 @@ contract CanBorrowWithNotifyTest is TestBaseLendtroller {
     function setUp() public override {
         super.setUp();
 
-        lendtroller.listMarketToken(address(dUSDC));
+        lendtroller.listToken(address(dUSDC));
     }
 
     function test_canBorrowWithNotify_fail_whenCallerIsNotMToken() public {
@@ -47,7 +47,7 @@ contract CanBorrowWithNotifyTest is TestBaseLendtroller {
     function test_canBorrowWithNotify_fail_whenCallerIsNotMTokenAndBorrowerNotInMarket()
         public
     {
-        lendtroller.listMarketToken(address(dDAI));
+        lendtroller.listToken(address(dDAI));
 
         vm.prank(address(dUSDC));
 

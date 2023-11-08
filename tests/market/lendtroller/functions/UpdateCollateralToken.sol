@@ -61,7 +61,7 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
 
     function test_updateCollateralToken_success() public {
         balRETH.approve(address(cBALRETH), 1e18);
-        lendtroller.listMarketToken(address(cBALRETH));
+        lendtroller.listToken(address(cBALRETH));
 
         vm.expectEmit(true, true, true, true, address(lendtroller));
         emit CollateralTokenUpdated(

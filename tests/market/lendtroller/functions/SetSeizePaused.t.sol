@@ -19,8 +19,8 @@ contract SetSeizePausedTest is TestBaseLendtroller {
         vm.expectRevert(Lendtroller.Lendtroller__TokenNotListed.selector);
         lendtroller.canSeize(address(cBALRETH), address(dUSDC));
 
-        lendtroller.listMarketToken(address(cBALRETH));
-        lendtroller.listMarketToken(address(dUSDC));
+        lendtroller.listToken(address(cBALRETH));
+        lendtroller.listToken(address(dUSDC));
 
         lendtroller.canSeize(address(cBALRETH), address(dUSDC));
 

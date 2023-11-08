@@ -67,7 +67,7 @@ contract TestChildGaugePool is TestBaseMarket {
 
             // support market
             dai.approve(address(tokens[i]), 200000e18);
-            lendtroller.listMarketToken(tokens[i]);
+            lendtroller.listToken(tokens[i]);
 
             // add MToken support on price router
             priceRouter.addMTokenSupport(tokens[i]);

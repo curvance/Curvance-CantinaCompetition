@@ -81,7 +81,7 @@ contract TestPositionFolding is TestBaseMarket {
             // support market
             _prepareDAI(owner, 200000e18);
             dai.approve(address(dDAI), 200000e18);
-            lendtroller.listMarketToken(address(dDAI));
+            lendtroller.listToken(address(dDAI));
             // add MToken support on price router
             priceRouter.addMTokenSupport(address(dDAI));
             vm.prank(user);
@@ -101,7 +101,7 @@ contract TestPositionFolding is TestBaseMarket {
             // support market
             _prepareBALRETH(owner, 1 ether);
             balRETH.approve(address(cBALRETH), 1 ether);
-            lendtroller.listMarketToken(address(cBALRETH));
+            lendtroller.listToken(address(cBALRETH));
             // add MToken support on price router
             priceRouter.addMTokenSupport(address(cBALRETH));
             // set collateral factor

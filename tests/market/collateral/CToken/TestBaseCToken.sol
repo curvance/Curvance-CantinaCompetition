@@ -61,6 +61,6 @@ contract TestBaseCToken is TestBaseMarket {
             address(cBALRETH),
             _ONE
         );
-        lendtroller.listMarketToken(address(cBALRETH));
+        lendtroller.listToken(address(cBALRETH));
     }
 }

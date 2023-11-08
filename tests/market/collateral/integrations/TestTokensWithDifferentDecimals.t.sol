@@ -62,7 +62,7 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
             // support market
             _prepareUSDC(owner, 200000e6);
             usdc.approve(address(dUSDC), 200000e6);
-            lendtroller.listMarketToken(address(dUSDC));
+            lendtroller.listToken(address(dUSDC));
             // add MToken support on price router
             priceRouter.addMTokenSupport(address(dUSDC));
             address[] memory markets = new address[](1);
@@ -81,7 +81,7 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
             // support market
             _prepareBALRETH(owner, 1 ether);
             balRETH.approve(address(cBALRETH), 1 ether);
-            lendtroller.listMarketToken(address(cBALRETH));
+            lendtroller.listToken(address(cBALRETH));
             // add MToken support on price router
             priceRouter.addMTokenSupport(address(cBALRETH));
             // set collateral token configuration

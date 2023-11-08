@@ -60,7 +60,7 @@ contract TestBaseDToken is TestBaseMarket {
         usdc.approve(address(dUSDC), _ONE);
 
         usdc.approve(address(dUSDC), _ONE);
-        lendtroller.listMarketToken(address(dUSDC));
+        lendtroller.listToken(address(dUSDC));
 
         address[] memory markets = new address[](1);
         markets[0] = address(dUSDC);
@@ -72,7 +72,7 @@ contract TestBaseDToken is TestBaseMarket {
         _prepareBALRETH(address(this), 10e18);
         balRETH.approve(address(cBALRETH), 10e18);
 
-        lendtroller.listMarketToken(address(cBALRETH));
+        lendtroller.listToken(address(cBALRETH));
         lendtroller.updateCollateralToken(
             IMToken(address(cBALRETH)),
             200,

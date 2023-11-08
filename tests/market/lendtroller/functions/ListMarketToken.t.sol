@@ -4,29 +4,29 @@ pragma solidity 0.8.17;
 import { TestBaseLendtroller } from "../TestBaseLendtroller.sol";
 import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
 
-contract ListMarketTokenTest is TestBaseLendtroller {
+contract listTokenTest is TestBaseLendtroller {
     event MarketListed(address mToken);
 
-    function test_listMarketToken_fail_whenCallerIsNotAuthorized() public {
+    function test_listToken_fail_whenCallerIsNotAuthorized() public {
         vm.prank(address(1));
 
         vm.expectRevert(Lendtroller.Lendtroller__Unauthorized.selector);
-        lendtroller.listMarketToken(address(dUSDC));
+        lendtroller.listToken(address(dUSDC));
     }
 
-    function test_listMarketToken_fail_whenMTokenIsAlreadyListed() public {
-        lendtroller.listMarketToken(address(dUSDC));
+    function test_listToken_fail_whenMTokenIsAlreadyListed() public {
+        lendtroller.listToken(address(dUSDC));
 
         vm.expectRevert(Lendtroller.Lendtroller__TokenAlreadyListed.selector);
-        lendtroller.listMarketToken(address(dUSDC));
+        lendtroller.listToken(address(dUSDC));
     }
 
-    function test_listMarketToken_fail_whenMTokenIsInvalid() public {
+    function test_listToken_fail_whenMTokenIsInvalid() public {
         vm.expectRevert();
-        lendtroller.listMarketToken(address(1));
+        lendtroller.listToken(address(1));
     }
 
-    function test_listMarketToken_success() public {
+    function test_listToken_success() public {
         (bool isListed, , uint256 collateralizationRatio) = lendtroller
             .getMTokenData(address(dUSDC));
         assertFalse(isListed);
@@ -35,7 +35,7 @@ contract ListMarketTokenTest is TestBaseLendtroller {
         vm.expectEmit(true, true, true, true, address(lendtroller));
         emit MarketListed(address(dUSDC));
 
-        lendtroller.listMarketToken(address(dUSDC));
+        lendtroller.listToken(address(dUSDC));
 
         (isListed, , collateralizationRatio) = lendtroller.getMTokenData(
             address(dUSDC)
