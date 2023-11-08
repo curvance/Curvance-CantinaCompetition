@@ -204,7 +204,7 @@ contract Lendtroller is ILendtroller, ERC165 {
 
     /// @notice Post collateral in some cToken for borrowing inside this market
     /// @param mToken The address of the mToken to post collateral for
-    function postCollateral(address mToken, uint256 amount) public {
+    function postCollateral(address mToken, uint256 tokens) public {
         AccountMetadata storage accountData = tokenData[mToken].accountData[msg.sender];
 
         if (!tokenData[mToken].isListed) {
@@ -215,29 +215,16 @@ contract Lendtroller is ILendtroller, ERC165 {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
-        if (accountData.collateralPosted + amount >= IMToken(mToken).balanceOf(msg.sender)) {
+        if (accountData.collateralPosted + tokens >= IMToken(mToken).balanceOf(msg.sender)) {
             revert Lendtroller__InsufficientCollateral();
         }
 
-        if (collateralPosted[mToken] + amount > collateralCaps[mToken]) {
-            revert Lendtroller__CollateralCapReached();
-        }
-
-        collateralPosted[mToken] = collateralPosted[mToken] + amount;
-        accountData.collateralPosted = accountData.collateralPosted + amount;
-        emit CollateralPosted(msg.sender, mToken, amount);
-
-        if (accountData.activePosition != 2) {
-            accountData.activePosition = 2;
-            accountAssets[msg.sender].assets.push(IMToken(mToken));
-
-            emit TokenPositionCreated(mToken, msg.sender);
-        }
+        _postCollateral(msg.sender, accountData, mToken, tokens);
     }
 
     /// @notice Post collateral in some cToken for borrowing inside this market
     /// @param mToken The address of the mToken to post collateral for
-    function removeCollateral(address mToken, uint256 amount) public {
+    function removeCollateral(address mToken, uint256 tokens, bool closePositionIfPossible) public {
         AccountMetadata storage accountData = tokenData[mToken].accountData[msg.sender];
 
         // We can check this instead of .isListed,
@@ -251,110 +238,56 @@ contract Lendtroller is ILendtroller, ERC165 {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
-        if (accountData.collateralPosted < amount) {
+        if (accountData.collateralPosted < tokens) {
             revert Lendtroller__InsufficientCollateral();
         }
 
-        // Fail if the sender is not permitted to redeem `amount`
-        // note: amount is in shares/tokens
-        _canRedeem(mToken, msg.sender, amount);
-
-        collateralPosted[mToken] = collateralPosted[mToken] - amount;
-        emit CollateralRemoved(msg.sender, mToken, amount);
-
-        if (accountData.collateralPosted == amount) {
-            // Remove active position flag
-            accountData.activePosition = 1;
-
-            // Delete mToken from the account’s list of assets
-            IMToken[] memory userAssetList = accountAssets[msg.sender].assets;
-
-            // Cache asset list
-            uint256 numUserAssets = userAssetList.length;
-            uint256 assetIndex = numUserAssets;
-
-            for (uint256 i; i < numUserAssets; ++i) {
-                if (userAssetList[i] == IMToken(mToken)) {
-                    assetIndex = i;
-                    break;
-                }
-            }
-
-            // Validate we found the asset and remove 1 from numUserAssets
-            // so it corresponds to last element index now starting at index 0
-            if (assetIndex >= numUserAssets--) {
-                revert Lendtroller__InvariantError();
-            }
-
-            // copy last item in list to location of item to be removed
-            IMToken[] storage storedList = accountAssets[msg.sender].assets;
-            // copy the last market index slot to assetIndex
-            storedList[assetIndex] = storedList[numUserAssets];
-            // remove the last element
-            storedList.pop();
-
-            emit TokenPositionClosed(mToken, msg.sender);
-        }
- 
+        // Fail if the sender is not permitted to redeem `tokens`
+        // note: tokens is in shares
+        _canRedeem(mToken, msg.sender, tokens);
+        _removeCollateral(msg.sender, accountData, mToken, tokens, closePositionIfPossible);
     }
 
     /// @notice Removes an asset from an account's liquidity calculation
     /// @dev Sender must not have an outstanding borrow balance in the asset,
     ///      or be providing necessary collateral for an outstanding borrow.
-    /// @param mTokenAddress The address of the asset to be removed
-    function exitMarket(address mTokenAddress) external {
-        IMToken mToken = IMToken(mTokenAddress);
-        // Get sender tokensHeld and amountOwed underlying from the mToken
-        (uint256 tokens, uint256 amountOwed, ) = mToken.getSnapshot(
-            msg.sender
-        );
-
-        // Do not let them leave if they owe a balance
-        if (amountOwed != 0) {
-            revert Lendtroller__HasActiveLoan();
-        }
-
-        MarketToken storage marketToExit = tokenData[mTokenAddress];
+    /// @param mToken The address of the asset to be removed
+    function closePosition(address mToken) external {
+        IMToken token = IMToken(mToken);
+        AccountMetadata storage accountData = tokenData[mToken].accountData[msg.sender];
 
         // We do not need to update any values if the account is not ‘in’ the market
-        if (marketToExit.accountData[msg.sender].activePosition < 2) {
+        if (accountData.activePosition < 2) {
+            revert Lendtroller__InvalidParameter();
+        }
+ 
+        if (!token.isCToken()) {
+            // Get sender tokens and debt underlying from the mToken
+            (, uint256 debt, ) = token.getSnapshot(msg.sender);
+
+            // Do not let them leave if they owe a balance
+            if (debt != 0) {
+                revert Lendtroller__HasActiveLoan();
+            }
+
+            _closePosition(msg.sender, accountData, token); 
+            return;
+        }
+        
+        if (accountData.collateralPosted != 0) {
+            // Fail if the sender is not permitted to redeem all of their tokens
+            _canRedeem(mToken, msg.sender, accountData.collateralPosted);
+            // We use collateral posted here instead of their snapshot, 
+            // since its possible they have not posted all their tokens as collateral
+            _removeCollateral(msg.sender, accountData, mToken, accountData.collateralPosted, true);
             return;
         }
 
-        // Fail if the sender is not permitted to redeem all of their tokens
-        _canRedeem(mTokenAddress, msg.sender, tokens);
-
-        // Remove mToken account membership to `mTokenAddress`
-        marketToExit.accountData[msg.sender].activePosition = 1;
-
-        // Delete mToken from the account’s list of assets
-        IMToken[] memory userAssetList = accountAssets[msg.sender].assets;
-
-        // Cache asset list
-        uint256 numUserAssets = userAssetList.length;
-        uint256 assetIndex = numUserAssets;
-
-        for (uint256 i; i < numUserAssets; ++i) {
-            if (userAssetList[i] == mToken) {
-                assetIndex = i;
-                break;
-            }
-        }
-
-        // Validate we found the asset and remove 1 from numUserAssets
-        // so it corresponds to last element index now starting at index 0
-        if (assetIndex >= numUserAssets--) {
-            revert Lendtroller__InvariantError();
-        }
-
-        // copy last item in list to location of item to be removed
-        IMToken[] storage storedList = accountAssets[msg.sender].assets;
-        // copy the last market index slot to assetIndex
-        storedList[assetIndex] = storedList[numUserAssets];
-        // remove the last element
-        storedList.pop();
-
-        emit TokenPositionClosed(mTokenAddress, msg.sender);
+        // Its possible they have a position without collateral posted if:
+        // They were liquidated 
+        // They removed all their collateral but did not use `closePositionIfPossible`
+        // So we need to still close their position here
+        _closePosition(msg.sender, accountData, token);  
     }
 
     /// @notice Checks if the account should be allowed to mint tokens
@@ -1012,6 +945,84 @@ contract Lendtroller is ILendtroller, ERC165 {
     }
 
     /// INTERNAL FUNCTIONS ///
+
+    function _postCollateral(
+        address user, 
+        AccountMetadata storage accountData, 
+        address mToken, 
+        uint256 amount
+    ) internal {
+
+        if (collateralPosted[mToken] + amount > collateralCaps[mToken]) {
+            revert Lendtroller__CollateralCapReached();
+        }
+
+        collateralPosted[mToken] = collateralPosted[mToken] + amount;
+        accountData.collateralPosted = accountData.collateralPosted + amount;
+        emit CollateralPosted(user, mToken, amount);
+
+        // If the user does not have a position in this token, open one
+        if (accountData.activePosition != 2) {
+            accountData.activePosition = 2;
+            accountAssets[user].assets.push(IMToken(mToken));
+
+            emit TokenPositionCreated(mToken, user);
+        }
+    }
+
+    function _removeCollateral(
+        address user, 
+        AccountMetadata storage accountData, 
+        address mToken, 
+        uint256 amount, 
+        bool closePositionIfPossible
+    ) internal {
+        accountData.collateralPosted = accountData.collateralPosted - amount;
+        collateralPosted[mToken] = collateralPosted[mToken] - amount;
+        emit CollateralRemoved(user, mToken, amount);
+
+        if (accountData.collateralPosted == 0 && closePositionIfPossible) {
+            _closePosition(user, accountData, IMToken(mToken)); 
+        }
+    }
+
+    function _closePosition(
+        address user, 
+        AccountMetadata storage accountData, 
+        IMToken token
+    ) internal {
+        // Remove `token` account position flag
+        accountData.activePosition = 1;
+
+        // Delete token from the account’s list of assets
+        IMToken[] memory userAssetList = accountAssets[user].assets;
+
+        // Cache asset list
+        uint256 numUserAssets = userAssetList.length;
+        uint256 assetIndex = numUserAssets;
+
+        for (uint256 i; i < numUserAssets; ++i) {
+            if (userAssetList[i] == token) {
+                assetIndex = i;
+                break;
+            }
+        }
+
+        // Validate we found the asset and remove 1 from numUserAssets
+        // so it corresponds to last element index now starting at index 0
+        if (assetIndex >= numUserAssets--) {
+            revert Lendtroller__InvariantError();
+        }
+
+        // copy last item in list to location of item to be removed
+        IMToken[] storage storedList = accountAssets[user].assets;
+        // copy the last market index slot to assetIndex
+        storedList[assetIndex] = storedList[numUserAssets];
+        // remove the last element to remove `token` from user asset list
+        storedList.pop();
+
+        emit TokenPositionClosed(address(token), user);
+    }
 
     /// @notice Checks if the account should be allowed to redeem tokens
     ///         in the given market
