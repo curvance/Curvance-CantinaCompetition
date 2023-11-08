@@ -25,6 +25,14 @@ contract CanRedeemTest is TestBaseLendtroller {
         lendtroller.canRedeem(address(dUSDC), user1, 100e6);
     }
 
+    function test_canRedeem_success_whenPastMinimumHoldPeriod() public {
+        vm.prank(address(dUSDC));
+        lendtroller.notifyBorrow(user1);
+
+        skip(15 minutes);
+        lendtroller.canRedeem(address(dUSDC), user1, 100e6);
+    }
+
     function test_canRedeem_success_whenRedeemerNotInMarket() public {
         assertFalse(lendtroller.getAccountMembership(address(dUSDC), user1));
 
