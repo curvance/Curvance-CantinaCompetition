@@ -69,7 +69,8 @@ contract DynamicInterestRateModel {
         uint256 vertexIncreaseThreshold,
         uint256 vertexIncreaseThresholdMax,
         uint256 vertexDecreaseThreshold,
-        uint256 vertexDecreaseThresholdMax
+        uint256 vertexDecreaseThresholdMax,
+        bool vertexReset
     );
 
     /// ERRORS ///
@@ -130,7 +131,8 @@ contract DynamicInterestRateModel {
             vertexUtilizationStart,
             vertexAdjustmentRate,
             vertexAdjustmentVelocity,
-            vertexDecayRate
+            vertexDecayRate,
+            true
         );
     }
 
@@ -150,7 +152,8 @@ contract DynamicInterestRateModel {
         uint256 vertexUtilizationStart,
         uint256 vertexAdjustmentRate,
         uint256 vertexAdjustmentVelocity,
-        uint256 vertexDecayRate
+        uint256 vertexDecayRate,
+        bool vertexReset
     ) external onlyElevatedPermissions {
         _updateDynamicInterestRateModel(
             baseRatePerYear,
@@ -158,7 +161,8 @@ contract DynamicInterestRateModel {
             vertexUtilizationStart,
             vertexAdjustmentRate,
             vertexAdjustmentVelocity,
-            vertexDecayRate
+            vertexDecayRate,
+            vertexReset
         );
     }
 
@@ -449,7 +453,8 @@ contract DynamicInterestRateModel {
         uint256 vertexUtilizationStart,
         uint256 vertexAdjustmentRate,
         uint256 vertexAdjustmentVelocity,
-        uint256 vertexDecayRate
+        uint256 vertexDecayRate,
+        bool vertexReset
     ) internal {
 
         // Convert the parameters from basis points to `WAD` format,
@@ -486,7 +491,9 @@ contract DynamicInterestRateModel {
         currentRateInfo.vertexAdjustmentRate = vertexAdjustmentRate;
         currentRateInfo.nextUpdateTimestamp = 
             uint128(block.timestamp + currentRateInfo.vertexAdjustmentRate);
-        currentRateInfo.vertexMultiplier = uint128(WAD);
+        if (vertexReset) {
+            currentRateInfo.vertexMultiplier = uint128(WAD);
+        }
         currentRateInfo.vertexDecayRate = vertexDecayRate;
 
         uint256 thresholdLength = (WAD - vertexUtilizationStart) / 2;
@@ -505,7 +512,8 @@ contract DynamicInterestRateModel {
             currentRateInfo.vertexIncreaseThreshold,
             currentRateInfo.vertexIncreaseThresholdMax,
             currentRateInfo.vertexDecreaseThreshold,
-            currentRateInfo.vertexDecreaseThresholdMax
+            currentRateInfo.vertexDecreaseThresholdMax,
+            vertexReset
         );
     }
 }
