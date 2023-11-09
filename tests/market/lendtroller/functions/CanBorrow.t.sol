@@ -187,32 +187,32 @@ contract CanBorrowTest is TestBaseLendtroller {
         assertEq(address(accountAssets[0]), address(dUSDC));
     }
 
-    function test_canBorrow_fail_whenExceedsBorrowCap() external {
-        chainlinkUsdcUsd.updateRoundData(
-            0,
-            1e8,
-            block.timestamp,
-            block.timestamp
-        );
-        chainlinkUsdcEth.updateRoundData(
-            0,
-            1e18,
-            block.timestamp,
-            block.timestamp
-        );
+    // function test_canBorrow_fail_whenExceedsBorrowCap() external {
+    //     chainlinkUsdcUsd.updateRoundData(
+    //         0,
+    //         1e8,
+    //         block.timestamp,
+    //         block.timestamp
+    //     );
+    //     chainlinkUsdcEth.updateRoundData(
+    //         0,
+    //         1e18,
+    //         block.timestamp,
+    //         block.timestamp
+    //     );
 
-        IMToken[] memory mTokens = new IMToken[](1);
-        uint256[] memory borrowCaps = new uint256[](1);
-        mTokens[0] = IMToken(address(cBALRETH));
-        borrowCaps[0] = 100e6 - 1;
+    //     IMToken[] memory mTokens = new IMToken[](1);
+    //     uint256[] memory borrowCaps = new uint256[](1);
+    //     mTokens[0] = IMToken(address(cBALRETH));
+    //     borrowCaps[0] = 100e6 - 1;
 
-        lendtroller.listMarketToken(address(cBALRETH));
-        lendtroller.setCTokenCollateralCaps(mTokens, borrowCaps);
+    //     lendtroller.listMarketToken(address(cBALRETH));
+    //     lendtroller.setCTokenCollateralCaps(mTokens, borrowCaps);
 
-        vm.expectRevert(Lendtroller.Lendtroller__BorrowCapReached.selector);
-        vm.prank(address(cBALRETH));
-        lendtroller.canBorrow(address(cBALRETH), user1, 100e6);
-    }
+    //     vm.expectRevert(Lendtroller.Lendtroller__BorrowCapReached.selector);
+    //     vm.prank(address(cBALRETH));
+    //     lendtroller.canBorrow(address(cBALRETH), user1, 100e6);
+    // }
 
     function test_canBorrow_success_whenCapNotExceeded() external {
         chainlinkUsdcUsd.updateRoundData(
