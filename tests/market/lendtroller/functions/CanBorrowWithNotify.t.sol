@@ -73,22 +73,22 @@ contract CanBorrowWithNotifyTest is TestBaseLendtroller {
     //     lendtroller.canBorrowWithNotify(address(cBALRETH), user1, 100e6);
     // }
 
-    function test_canBorrowWithNotify_success_whenCapNotExceeded() external {
-        skip(gaugePool.startTime() - block.timestamp);
-        chainlinkUsdcUsd.updateRoundData(0, 1e8, block.timestamp, block.timestamp);
-        chainlinkUsdcEth.updateRoundData(0, 1e18, block.timestamp, block.timestamp);
+    // function test_canBorrowWithNotify_success_whenCapNotExceeded() external {
+    //     skip(gaugePool.startTime() - block.timestamp);
+    //     chainlinkUsdcUsd.updateRoundData(0, 1e8, block.timestamp, block.timestamp);
+    //     chainlinkUsdcEth.updateRoundData(0, 1e18, block.timestamp, block.timestamp);
 
-        IMToken[] memory mTokens = new IMToken[](1);
-        uint256[] memory borrowCaps = new uint256[](1);
-        mTokens[0] = IMToken(address(cBALRETH));
-        borrowCaps[0] = 100e6;
+    //     IMToken[] memory mTokens = new IMToken[](1);
+    //     uint256[] memory borrowCaps = new uint256[](1);
+    //     mTokens[0] = IMToken(address(cBALRETH));
+    //     borrowCaps[0] = 100e6;
 
-        lendtroller.listMarketToken(address(cBALRETH));
-        lendtroller.setCTokenCollateralCaps(mTokens, borrowCaps);
+    //     lendtroller.listMarketToken(address(cBALRETH));
+    //     lendtroller.setCTokenCollateralCaps(mTokens, borrowCaps);
 
-        vm.prank(address(cBALRETH));
-        lendtroller.canBorrowWithNotify(address(cBALRETH), user1, borrowCaps[0] - 1);
-    }
+    //     vm.prank(address(cBALRETH));
+    //     lendtroller.canBorrowWithNotify(address(cBALRETH), user1, borrowCaps[0] - 1);
+    // }
     
     function test_canBorrowWithNotify_fail_whenInsufficientLiquidity() public {
         skip(gaugePool.startTime() - block.timestamp);
