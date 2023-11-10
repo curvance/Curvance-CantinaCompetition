@@ -98,7 +98,7 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @notice Token => Collateral Cap
     mapping(address => uint256) public collateralCaps;
 
-    /// @notice Maximum % that a liquidator can repay when liquidating a user,
+    /// @notice Maximum % that a liquidator can repay when liquidating an account,
     /// @dev    In `WAD` format, default 50%
     uint256 public closeFactor = 0.5e18;
     /// @notice PositionFolding contract address.
@@ -691,14 +691,14 @@ contract Lendtroller is ILendtroller, ERC165 {
         );
     }
 
-    /// @notice Returns if user joined market
+    /// @notice Returns if an account has an active position in `mToken`
     /// @param mToken market token address
-    /// @param user user address
+    /// @param account account address
     function hasPosition(
         address mToken,
-        address user
+        address account
     ) external view override returns (bool) {
-        return tokenData[mToken].accountData[user].activePosition == 2;
+        return tokenData[mToken].accountData[account].activePosition == 2;
     }
 
     /// @notice Admin function to set market mint paused
@@ -816,7 +816,7 @@ contract Lendtroller is ILendtroller, ERC165 {
                 revert Lendtroller__Unauthorized();
             }
 
-            // The user is not in the market yet, so make them enter
+            // The account is not in the market yet, so make them enter
             tokenData[mToken].accountData[borrower].activePosition = 2;
             accountAssets[borrower].assets.push(IMToken(mToken));
 
@@ -843,9 +843,9 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @notice Determine `account`'s current status between collateral,
     ///         debt, and additional liquidity
     /// @param account The account to determine liquidity for
-    /// @return sumCollateral total collateral amount of user
-    /// @return maxBorrow max borrow amount of user
-    /// @return currentDebt total borrow amount of user
+    /// @return sumCollateral total collateral amount of account
+    /// @return maxBorrow max borrow amount of account
+    /// @return currentDebt total borrow amount of account
     function getStatus(
         address account
     )
@@ -947,7 +947,7 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// INTERNAL FUNCTIONS ///
 
     function _postCollateral(
-        address user, 
+        address account, 
         AccountMetadata storage accountData, 
         address mToken, 
         uint256 amount
@@ -959,19 +959,19 @@ contract Lendtroller is ILendtroller, ERC165 {
 
         collateralPosted[mToken] = collateralPosted[mToken] + amount;
         accountData.collateralPosted = accountData.collateralPosted + amount;
-        emit CollateralPosted(user, mToken, amount);
+        emit CollateralPosted(account, mToken, amount);
 
-        // If the user does not have a position in this token, open one
+        // If the account does not have a position in this token, open one
         if (accountData.activePosition != 2) {
             accountData.activePosition = 2;
-            accountAssets[user].assets.push(IMToken(mToken));
+            accountAssets[account].assets.push(IMToken(mToken));
 
-            emit TokenPositionCreated(mToken, user);
+            emit TokenPositionCreated(mToken, account);
         }
     }
 
     function _removeCollateral(
-        address user, 
+        address account, 
         AccountMetadata storage accountData, 
         address mToken, 
         uint256 amount, 
@@ -979,15 +979,15 @@ contract Lendtroller is ILendtroller, ERC165 {
     ) internal {
         accountData.collateralPosted = accountData.collateralPosted - amount;
         collateralPosted[mToken] = collateralPosted[mToken] - amount;
-        emit CollateralRemoved(user, mToken, amount);
+        emit CollateralRemoved(account, mToken, amount);
 
         if (accountData.collateralPosted == 0 && closePositionIfPossible) {
-            _closePosition(user, accountData, IMToken(mToken)); 
+            _closePosition(account, accountData, IMToken(mToken)); 
         }
     }
 
     function _closePosition(
-        address user, 
+        address account, 
         AccountMetadata storage accountData, 
         IMToken token
     ) internal {
@@ -995,7 +995,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         accountData.activePosition = 1;
 
         // Delete token from the account’s list of assets
-        IMToken[] memory userAssetList = accountAssets[user].assets;
+        IMToken[] memory userAssetList = accountAssets[account].assets;
 
         // Cache asset list
         uint256 numUserAssets = userAssetList.length;
@@ -1015,13 +1015,13 @@ contract Lendtroller is ILendtroller, ERC165 {
         }
 
         // copy last item in list to location of item to be removed
-        IMToken[] storage storedList = accountAssets[user].assets;
+        IMToken[] storage storedList = accountAssets[account].assets;
         // copy the last market index slot to assetIndex
         storedList[assetIndex] = storedList[numUserAssets];
-        // remove the last element to remove `token` from user asset list
+        // remove the last element to remove `token` from account asset list
         storedList.pop();
 
-        emit TokenPositionClosed(address(token), user);
+        emit TokenPositionClosed(address(token), account);
     }
 
     /// @notice Checks if the account should be allowed to redeem tokens
@@ -1389,6 +1389,26 @@ contract Lendtroller is ILendtroller, ERC165 {
         uint256 decimals
     ) internal pure returns (uint256) {
         return (amount * price) / (10 ** decimals);
+    }
+
+    function _reduceCollateralIfNecessary(
+        address account, 
+        address mToken, 
+        uint256 balance, 
+        uint256 amount, 
+        bool forceReduce
+    ) internal {
+        AccountMetadata storage accountData = tokenData[mToken].accountData[account];
+        if (forceReduce) {
+            _removeCollateral(account, accountData, mToken, amount, false);
+            return;
+        }
+
+        uint256 balanceRequired = accountData.collateralPosted + amount;
+
+        if (balance < balanceRequired) {
+            _removeCollateral(account, accountData, mToken, balanceRequired - balance, false);
+        }
     }
 
     /// @dev Internal helper function for easily converting between scalars
