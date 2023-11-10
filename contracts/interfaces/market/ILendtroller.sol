@@ -55,10 +55,6 @@ interface ILendtroller {
 
     function isListed(address mToken) external view returns (bool);
 
-    function getTokenData(
-        address mToken
-    ) external view returns (bool, uint256, uint256);
-
     function hasPosition(
         address mToken,
         address user
