@@ -104,8 +104,8 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @notice PositionFolding contract address.
     address public positionFolding;
 
-    /// @notice A list of all markets for frontend.
-    IMToken[] public allMarkets;
+    /// @notice A list of all tokens inside this market for the frontend.
+    IMToken[] public tokensListed;
 
     /// @notice Market Token => isListed, Token Characteristics, Account Data.
     mapping(address => MarketToken) public tokenData;
@@ -492,36 +492,36 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @notice Add the market token to the market and set it as listed
     /// @dev Admin function to set isListed and add support for the market
     /// @param mToken The address of the market (token) to list
-    function listToken(address mToken) external onlyElevatedPermissions {
-        if (tokenData[mToken].isListed) {
+    function listToken(IMToken token) external onlyElevatedPermissions {
+        if (tokenData[address(token)].isListed) {
             revert Lendtroller__TokenAlreadyListed();
         }
 
-        IMToken(mToken).isCToken(); // Sanity check to make sure its really a mToken
+        token.isCToken(); // Sanity check to make sure its really a mToken
 
-        MarketToken storage market = tokenData[mToken];
+        MarketToken storage market = tokenData[address(token)];
         market.isListed = true;
         market.collRatio = 0;
 
-        uint256 numMarkets = allMarkets.length;
+        uint256 numTokens = tokensListed.length;
 
-        for (uint256 i; i < numMarkets; ) {
+        for (uint256 i; i < numTokens; ) {
             unchecked {
-                if (allMarkets[i++] == IMToken(mToken)) {
+                if (tokensListed[i++] == token) {
                     revert Lendtroller__TokenAlreadyListed();
                 }
             }
         }
-        allMarkets.push(IMToken(mToken));
+        tokensListed.push(token);
 
         // Start the market if necessary
-        if (IMToken(mToken).totalSupply() == 0) {
-            if (!IMToken(mToken).startMarket(msg.sender)) {
+        if (token.totalSupply() == 0) {
+            if (!token.startMarket(msg.sender)) {
                 revert Lendtroller__InvariantError();
             }
         }
 
-        emit TokenListed(mToken);
+        emit TokenListed(address(token));
     }
 
     /// @notice Sets the collRatio for a market token

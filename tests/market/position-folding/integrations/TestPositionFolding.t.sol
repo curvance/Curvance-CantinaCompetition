@@ -250,7 +250,8 @@ contract TestPositionFolding is TestBaseMarket {
 
     function testDeLeverage() public {
         testLeverage();
-        vm.warp(block.timestamp + 15 minutes);
+        // Warp until collateral posting wait time ends
+        vm.warp(block.timestamp + 20 minutes);
         dDAI.accrueInterest();
 
         vm.startPrank(user);
