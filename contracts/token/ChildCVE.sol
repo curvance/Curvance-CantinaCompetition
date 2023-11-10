@@ -35,7 +35,7 @@ contract CVE is OFTV2 {
     /// @notice Mints CVE to the calling gauge pool to fund the users lock boost
     /// @param amount The amount of tokens to be minted
     function mintLockBoost(uint256 amount) external {
-        if (centralRegistry.isGaugeController(msg.sender)) {
+        if (!centralRegistry.isGaugeController(msg.sender)) {
             revert CVE__Unauthorized();
         }
 
