@@ -96,7 +96,7 @@ contract PriceRouter {
 
     /// CONSTRUCTOR ///
 
-    constructor(ICentralRegistry centralRegistry_, address ETH_USDFEED) {
+    constructor(ICentralRegistry centralRegistry_, address ethUsdFeed) {
         if (
             !ERC165Checker.supportsInterface(
                 address(centralRegistry_),
@@ -106,13 +106,13 @@ contract PriceRouter {
             _revert(INVALID_PARAMETER_SELECTOR);
         }
 
-        if (ETH_USDFEED == address(0)) {
+        if (ethUsdFeed == address(0)) {
             _revert(INVALID_PARAMETER_SELECTOR);
         }
 
         centralRegistry = centralRegistry_;
         // Save the USD-ETH price feed because it is a widely used pricing path.
-        CHAINLINK_ETH_USD = ETH_USDFEED; // 0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419 on mainnet
+        CHAINLINK_ETH_USD = ethUsdFeed; // 0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419 on mainnet
         CHAINLINK_DECIMALS = 10 ** IChainlink(CHAINLINK_ETH_USD).decimals();
     }
 
