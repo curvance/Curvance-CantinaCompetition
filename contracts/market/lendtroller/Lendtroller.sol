@@ -912,7 +912,7 @@ contract Lendtroller is ILendtroller, ERC165 {
 
     /// @notice Determine what the account liquidity would be if
     ///         the given amounts were redeemed/borrowed
-    /// @param mTokenModify The market to hypothetically redeem/borrow in
+    /// @param mTokenModified The market to hypothetically redeem/borrow in
     /// @param account The account to determine liquidity for
     /// @param redeemTokens The number of tokens to hypothetically redeem
     /// @param borrowAmount The amount of underlying to hypothetically borrow
@@ -921,14 +921,14 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @return uint256 hypothetical account shortfall below collateral requirements)
     function getHypotheticalLiquidity(
         address account,
-        address mTokenModify,
-        uint256 redeemTokens,
-        uint256 borrowAmount
+        address mTokenModified,
+        uint256 redeemTokens, // in shares
+        uint256 borrowAmount // in assets
     ) public view returns (uint256, uint256) {
         return
             _getHypotheticalLiquidity(
                 account,
-                IMToken(mTokenModify),
+                IMToken(mTokenModified),
                 redeemTokens,
                 borrowAmount,
                 2
@@ -957,6 +957,9 @@ contract Lendtroller is ILendtroller, ERC165 {
             revert Lendtroller__CollateralCapReached();
         }
 
+        // On collateral posting: 
+        // we need to flip their cooldown flag to prevent any flashloan attempts
+        accountAssets[account].cooldownTimestamp = block.timestamp;
         collateralPosted[mToken] = collateralPosted[mToken] + amount;
         accountData.collateralPosted = accountData.collateralPosted + amount;
         emit CollateralPosted(account, mToken, amount);
@@ -1156,7 +1159,7 @@ contract Lendtroller is ILendtroller, ERC165 {
 
     /// @notice Determine what the account status if an action were done (redeem/borrow)
     /// @param account The account to determine hypothetical status for
-    /// @param mTokenModify The market to hypothetically redeem/borrow in
+    /// @param mTokenModified The market to hypothetically redeem/borrow in
     /// @param redeemTokens The number of tokens to hypothetically redeem
     /// @param borrowAmount The amount of underlying to hypothetically borrow
     /// @param errorCodeBreakpoint The error code that will cause liquidity operations to revert
@@ -1167,9 +1170,9 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @return newDebt The new debt of `account` after the hypothetical action
     function _getHypotheticalStatus(
         address account,
-        IMToken mTokenModify,
-        uint256 redeemTokens,
-        uint256 borrowAmount,
+        IMToken mTokenModified,
+        uint256 redeemTokens, // in shares
+        uint256 borrowAmount, // in assets
         uint256 errorCodeBreakpoint
     )
         internal
@@ -1211,8 +1214,8 @@ contract Lendtroller is ILendtroller, ERC165 {
                 }
             }
 
-            // Calculate effects of interacting with mTokenModify
-            if (IMToken(snapshot.asset) == mTokenModify) {
+            // Calculate effects of interacting with mTokenModified
+            if (IMToken(snapshot.asset) == mTokenModified) {
                 // If its a CToken our only option is to redeem it since it cant be borrowed
                 // If its a DToken we can redeem it but it will not have any effect on borrow amount
                 // since DToken have a collateral value of 0
@@ -1245,9 +1248,9 @@ contract Lendtroller is ILendtroller, ERC165 {
     }
 
     /// @notice Determine what `account`'s liquidity would be if
-    ///         `mTokenModify` were redeemed or borrowed.
+    ///         `mTokenModified` were redeemed or borrowed.
     /// @param account The account to determine liquidity for.
-    /// @param mTokenModify The mToken to hypothetically redeem/borrow.
+    /// @param mTokenModified The mToken to hypothetically redeem/borrow.
     /// @param redeemTokens The number of tokens to hypothetically redeem.
     /// @param borrowAmount The amount of underlying to hypothetically borrow.
     /// @param errorCodeBreakpoint The error code that will cause liquidity operations to revert.
@@ -1257,14 +1260,14 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @return uint256 Hypothetical `account` shortfall below collateral requirements.
     function _getHypotheticalLiquidity(
         address account,
-        IMToken mTokenModify,
-        uint256 redeemTokens,
-        uint256 borrowAmount,
+        IMToken mTokenModified,
+        uint256 redeemTokens, // in shares
+        uint256 borrowAmount, // in assets
         uint256 errorCodeBreakpoint
     ) internal view returns (uint256, uint256) {
         (, uint256 maxBorrow, uint256 newDebt) = _getHypotheticalStatus(
             account,
-            mTokenModify,
+            mTokenModified,
             redeemTokens,
             borrowAmount,
             errorCodeBreakpoint
