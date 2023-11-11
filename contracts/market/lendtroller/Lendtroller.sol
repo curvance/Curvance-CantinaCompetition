@@ -914,7 +914,7 @@ contract Lendtroller is ILendtroller, ERC165 {
                 // If the asset has a CR increment their collateral and max borrow value
                 if (!(tokenData[snapshot.asset].collRatio == 0)) {
                     uint256 assetValue = _getAssetValue(
-                        (snapshot.balance * snapshot.exchangeRate) / WAD,
+                        ((tokenData[snapshot.asset].accountData[account].collateralPosted * snapshot.exchangeRate) / WAD),
                         underlyingPrices[i],
                         snapshot.decimals
                     );
@@ -1234,7 +1234,7 @@ contract Lendtroller is ILendtroller, ERC165 {
                 // increment their collateral and max borrow value
                 if (!(tokenData[snapshot.asset].collRatio == 0)) {
                     uint256 assetValue = _getAssetValue(
-                        (snapshot.balance * snapshot.exchangeRate) / WAD,
+                        ((tokenData[snapshot.asset].accountData[account].collateralPosted * snapshot.exchangeRate) / WAD),
                         underlyingPrices[i],
                         snapshot.decimals
                     );
@@ -1364,8 +1364,7 @@ contract Lendtroller is ILendtroller, ERC165 {
                 if (!(tokenData[snapshot.asset].collRatio == 0)) {
                     totalCollateral +=
                         (_getAssetValue(
-                            (snapshot.balance * snapshot.exchangeRate) /
-                                WAD,
+                            ((tokenData[snapshot.asset].accountData[account].collateralPosted * snapshot.exchangeRate) / WAD),
                             underlyingPrices[i],
                             snapshot.decimals
                         ) * WAD) /

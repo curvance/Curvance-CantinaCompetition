@@ -669,6 +669,7 @@ contract DToken is ERC165, ReentrancyGuard {
 
     /// @notice Get a snapshot of the dToken and `account` data
     /// @dev This is used by lendtroller to more efficiently perform liquidity checks
+    /// NOTE: Exchange Rate returns 0 to save gas in lendtroller since its unused
     /// @param account Address of the account to snapshot
     function getSnapshotPacked(
         address account
@@ -678,9 +679,8 @@ contract DToken is ERC165, ReentrancyGuard {
                 asset: address(this),
                 isCToken: false,
                 decimals: decimals(),
-                balance: balanceOf[account],
                 debtBalance: debtBalanceStored(account),
-                exchangeRate: exchangeRateStored()
+                exchangeRate: 0 // Unused in lendtroller
             })
         );
     }

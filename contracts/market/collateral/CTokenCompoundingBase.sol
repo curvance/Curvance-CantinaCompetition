@@ -434,8 +434,7 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
                 asset: address(this),
                 isCToken: true,
                 decimals: decimals(),
-                balance: balanceOf(account),
-                debtBalance: 0,
+                debtBalance: 0, // This is a cToken so always 0
                 exchangeRate: convertToAssets(WAD)
             })
         );

@@ -340,6 +340,8 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
 
     /// @notice Get a snapshot of the cToken and `account` data
     /// @dev This is used by lendtroller to more efficiently perform liquidity checks
+    /// NOTE: Posted Debt Balance always return 0 to save gas in lendtroller
+    ///       since it is unused
     /// @param account Address of the account to snapshot
     function getSnapshotPacked(
         address account
@@ -349,8 +351,7 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
                 asset: address(this),
                 isCToken: true,
                 decimals: decimals(),
-                balance: balanceOf(account),
-                debtBalance: 0,
+                debtBalance: 0, // This is a cToken so always 0
                 exchangeRate: convertToAssets(WAD)
             })
         );
