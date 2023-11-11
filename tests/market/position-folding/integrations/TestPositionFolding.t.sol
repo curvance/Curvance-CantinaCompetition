@@ -75,43 +75,30 @@ contract TestPositionFolding is TestBaseMarket {
         mockWethFeed.setMockUpdatedAt(block.timestamp);
         mockRethFeed.setMockUpdatedAt(block.timestamp);
 
-        // deploy dDAI
+        // setup dDAI
         {
-            _deployDDAI();
-            // support market
             _prepareDAI(owner, 200000e18);
             dai.approve(address(dDAI), 200000e18);
             lendtroller.listToken(address(dDAI));
             // add MToken support on price router
             priceRouter.addMTokenSupport(address(dDAI));
-            // approve
-            vm.prank(user);
-            dai.approve(address(dDAI), 200000e18);
         }
 
-        // deploy CBALRETH
+        // setup CBALRETH
         {
-            // deploy aura position vault
-            _deployCBALRETH();
-
             // support market
             _prepareBALRETH(owner, 1 ether);
             balRETH.approve(address(cBALRETH), 1 ether);
             lendtroller.listToken(address(cBALRETH));
-            // add MToken support on price router
-            priceRouter.addMTokenSupport(address(cBALRETH));
             // set collateral factor
             lendtroller.updateCollateralToken(
                 IMToken(address(cBALRETH)),
                 200,
-                0,
-                1200,
-                1000,
-                5000
+                100,
+                4000, // liquidate at 71%
+                3000,
+                7000
             );
-            // approve
-            vm.prank(user);
-            dai.approve(address(cBALRETH), 200000e18);
         }
 
         // set position folding
@@ -140,7 +127,7 @@ contract TestPositionFolding is TestBaseMarket {
     }
 
     function provideEnoughLiquidityForLeverage() internal {
-        address liquidityProvider = address(new User());
+        address liquidityProvider = makeAddr("liquidityProvider");
         _prepareDAI(liquidityProvider, 200000e18);
         _prepareBALRETH(liquidityProvider, 10 ether);
         // mint dDAI
@@ -169,6 +156,7 @@ contract TestPositionFolding is TestBaseMarket {
 
         // mint
         assertTrue(cBALRETH.mint(1 ether));
+        lendtroller.postCollateral(address(cBALRETH), 1 ether - 1);
         assertEq(cBALRETH.balanceOf(user), 1 ether);
 
         uint256 balanceBeforeBorrow = dai.balanceOf(user);

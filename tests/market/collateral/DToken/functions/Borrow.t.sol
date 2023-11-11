@@ -26,8 +26,9 @@ contract DTokenBorrowTest is TestBaseDToken {
     }
 
     function test_dTokenBorrow_success() public {
-        vm.prank(user1);
-        dUSDC.mintFor(100e6, address(this));
+        deal(_USDC_ADDRESS, address(dUSDC), 2000e6);
+
+        lendtroller.postCollateral(address(cBALRETH), 1e18 - 1);
 
         uint256 underlyingBalance = usdc.balanceOf(address(this));
         uint256 balance = dUSDC.balanceOf(address(this));

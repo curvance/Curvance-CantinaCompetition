@@ -3,7 +3,6 @@ pragma solidity ^0.8.13;
 
 import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.sol";
 import { MockDataFeed } from "contracts/mocks/MockDataFeed.sol";
-
 import "tests/market/TestBaseMarket.sol";
 
 contract TestDTokenReserves is TestBaseMarket {
@@ -61,28 +60,20 @@ contract TestDTokenReserves is TestBaseMarket {
 
         // deploy dDAI
         {
-            _deployDDAI();
             // support market
             _prepareDAI(owner, 200000e18);
             dai.approve(address(dDAI), 200000e18);
             lendtroller.listToken(address(dDAI));
             // add MToken support on price router
             priceRouter.addMTokenSupport(address(dDAI));
-            address[] memory markets = new address[](1);
-            markets[0] = address(dDAI);
         }
 
         // deploy CBALRETH
         {
-            // deploy aura position vault
-            _deployCBALRETH();
-
             // support market
             _prepareBALRETH(owner, 1 ether);
             balRETH.approve(address(cBALRETH), 1 ether);
             lendtroller.listToken(address(cBALRETH));
-            // add MToken support on price router
-            priceRouter.addMTokenSupport(address(cBALRETH));
             // set collateral factor
             lendtroller.updateCollateralToken(
                 IMToken(address(cBALRETH)),
@@ -92,8 +83,6 @@ contract TestDTokenReserves is TestBaseMarket {
                 1200,
                 5000
             );
-            address[] memory markets = new address[](1);
-            markets[0] = address(cBALRETH);
         }
 
         centralRegistry.addSwapper(_UNISWAP_V2_ROUTER);
@@ -123,6 +112,7 @@ contract TestDTokenReserves is TestBaseMarket {
         vm.startPrank(user1);
         balRETH.approve(address(cBALRETH), 1 ether);
         cBALRETH.mint(1 ether);
+        lendtroller.postCollateral(address(cBALRETH), 1 ether - 1);
         vm.stopPrank();
 
         // try borrow()

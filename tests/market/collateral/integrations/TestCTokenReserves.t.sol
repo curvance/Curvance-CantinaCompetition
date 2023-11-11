@@ -3,7 +3,6 @@ pragma solidity ^0.8.13;
 
 import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.sol";
 import { MockDataFeed } from "contracts/mocks/MockDataFeed.sol";
-
 import "tests/market/TestBaseMarket.sol";
 
 contract TestCTokenReserves is TestBaseMarket {
@@ -59,30 +58,21 @@ contract TestCTokenReserves is TestBaseMarket {
         mockWethFeed.setMockUpdatedAt(block.timestamp);
         mockRethFeed.setMockUpdatedAt(block.timestamp);
 
-        // deploy dDAI
+        // setup dDAI
         {
-            _deployDDAI();
-            // support market
             _prepareDAI(owner, 200000e18);
             dai.approve(address(dDAI), 200000e18);
             lendtroller.listToken(address(dDAI));
             // add MToken support on price router
             priceRouter.addMTokenSupport(address(dDAI));
-            address[] memory markets = new address[](1);
-            markets[0] = address(dDAI);
         }
 
-        // deploy CBALRETH
+        // setup CBALRETH
         {
-            // deploy aura position vault
-            _deployCBALRETH();
-
             // support market
             _prepareBALRETH(owner, 1 ether);
             balRETH.approve(address(cBALRETH), 1 ether);
             lendtroller.listToken(address(cBALRETH));
-            // add MToken support on price router
-            priceRouter.addMTokenSupport(address(cBALRETH));
             // set collateral factor
             lendtroller.updateCollateralToken(
                 IMToken(address(cBALRETH)),
@@ -92,8 +82,6 @@ contract TestCTokenReserves is TestBaseMarket {
                 3000,
                 7000
             );
-            address[] memory markets = new address[](1);
-            markets[0] = address(cBALRETH);
         }
 
         // provide enough liquidity
@@ -127,6 +115,7 @@ contract TestCTokenReserves is TestBaseMarket {
         vm.startPrank(user1);
         balRETH.approve(address(cBALRETH), 1 ether);
         cBALRETH.mint(1 ether);
+        lendtroller.postCollateral(address(cBALRETH), 1 ether - 1);
         vm.stopPrank();
 
         // try borrow()
@@ -135,7 +124,7 @@ contract TestCTokenReserves is TestBaseMarket {
         vm.stopPrank();
 
         // skip min hold period
-        skip(900);
+        skip(20 minutes);
 
         mockDaiFeed.setMockAnswer(200000000);
 

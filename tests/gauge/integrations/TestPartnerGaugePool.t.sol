@@ -75,10 +75,6 @@ contract TestPartnerGaugePool is TestBaseMarket {
             for (uint256 j = 0; j < 10; j++) {
                 address user = users[j];
 
-                vm.prank(user);
-                address[] memory markets = new address[](1);
-                markets[0] = address(tokens[i]);
-
                 // approve
                 vm.prank(user);
                 dai.approve(address(tokens[i]), 200000e18);

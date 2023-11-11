@@ -105,6 +105,11 @@ contract ConvexLPCollateral is TestBaseMarket {
             block.timestamp,
             block.timestamp
         );
+        IMToken[] memory tokens = new IMToken[](1);
+        tokens[0] = IMToken(address(cSTETH));
+        uint256[] memory caps = new uint256[](1);
+        caps[0] = 100_000e18;
+        lendtroller.setCTokenCollateralCaps(tokens, caps);
 
         // Need funds for initial mint when listing market token
         deal(address(CONVEX_STETH_ETH_POOL), address(this), 1 ether);
@@ -125,9 +130,6 @@ contract ConvexLPCollateral is TestBaseMarket {
             3000,
             7000
         );
-        address[] memory tokens = new address[](2);
-        tokens[0] = address(dUSDC);
-        tokens[1] = address(cSTETH);
 
         // User mints cSTETH with cvxStethEth LP tokens and then uses the cSTETH as collateral to borrow 10,000 dUSDC
         deal(_USDC_ADDRESS, address(dUSDC), 100_000e6);
@@ -148,6 +150,7 @@ contract ConvexLPCollateral is TestBaseMarket {
         assertEq(rewarder.earned(address(positionVault)), 0);
 
         cSTETH.mint(1_000e18);
+        lendtroller.postCollateral(address(cSTETH), 1_000e18 - 1);
 
         assertEq(
             rewarder.balanceOf(address(positionVault)),
@@ -180,8 +183,6 @@ contract ConvexLPCollateral is TestBaseMarket {
     function testConvexLPCollateralRepayDebt() public {
         testBorrowWithConvexLPCollateral();
         uint256 prevBalance = usdc.balanceOf(address(dUSDC));
-        uint256 debtWithInterest = 10000005707;
-
         // User1 needs more funds to be able to repay debt with interest
         usdc.transfer(user1, 1000e6);
 
@@ -190,9 +191,11 @@ contract ConvexLPCollateral is TestBaseMarket {
         vm.expectRevert(Lendtroller.Lendtroller__MinimumHoldPeriod.selector);
         dUSDC.repay(0);
 
-        // Must hold for a minimum of 15 minutes before debt can be repaid
-        skip(15 minutes);
+        // Must hold for a minimum of 20 minutes before debt can be repaid
+        skip(20 minutes);
         // Pay off full debt including interest
+        dUSDC.accrueInterest();
+        uint256 debtWithInterest = dUSDC.debtBalanceStored(user1);
         vm.expectEmit(true, true, true, true, address(dUSDC));
         emit Repay(user1, user1, debtWithInterest);
         dUSDC.repay(0);

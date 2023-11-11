@@ -62,11 +62,7 @@ contract TestBaseDToken is TestBaseMarket {
         usdc.approve(address(dUSDC), _ONE);
         lendtroller.listToken(address(dUSDC));
 
-        address[] memory markets = new address[](1);
-        markets[0] = address(dUSDC);
-
         dUSDC.depositReserves(1000e6);
-
         _prepareBALRETH(address(this), 10e18);
         balRETH.approve(address(cBALRETH), 10e18);
 
@@ -80,7 +76,6 @@ contract TestBaseDToken is TestBaseMarket {
             5000
         );
 
-        markets[0] = address(cBALRETH);
         cBALRETH.mint(1e18);
     }
 }
