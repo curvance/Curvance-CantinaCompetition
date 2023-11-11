@@ -67,7 +67,6 @@ contract TestGaugePool is TestBaseMarket {
                 vm.prank(user);
                 address[] memory markets = new address[](1);
                 markets[0] = address(tokens[i]);
-                lendtroller.enterMarkets(markets);
 
                 // approve
                 vm.prank(user);

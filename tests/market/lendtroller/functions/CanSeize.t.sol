@@ -19,22 +19,22 @@ contract CanSeizeTest is TestBaseLendtroller {
     }
 
     function test_canSeize_fail_whenDTokenNotListed() public {
-        lendtroller.listMarketToken(address(cBALRETH));
+        lendtroller.listToken(address(cBALRETH));
 
         vm.expectRevert(Lendtroller.Lendtroller__TokenNotListed.selector);
         lendtroller.canSeize(address(cBALRETH), address(dUSDC));
     }
 
     function test_canSeize_success() public {
-        lendtroller.listMarketToken(address(cBALRETH));
-        lendtroller.listMarketToken(address(dUSDC));
+        lendtroller.listToken(address(cBALRETH));
+        lendtroller.listToken(address(dUSDC));
 
         lendtroller.canSeize(address(cBALRETH), address(dUSDC));
     }
 
     function test_canSeize_fail_whenLendtrollersMismatch() public {
-        lendtroller.listMarketToken(address(cBALRETH));
-        lendtroller.listMarketToken(address(dUSDC));
+        lendtroller.listToken(address(cBALRETH));
+        lendtroller.listToken(address(dUSDC));
 
         Lendtroller newLendtroller = new Lendtroller(
             ICentralRegistry(address(centralRegistry)),

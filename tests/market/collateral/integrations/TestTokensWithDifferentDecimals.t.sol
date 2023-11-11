@@ -67,10 +67,6 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
             priceRouter.addMTokenSupport(address(dUSDC));
             address[] memory markets = new address[](1);
             markets[0] = address(dUSDC);
-            vm.prank(user1);
-            lendtroller.enterMarkets(markets);
-            vm.prank(user2);
-            lendtroller.enterMarkets(markets);
         }
 
         // deploy CBALRETH
@@ -95,10 +91,6 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
             );
             address[] memory markets = new address[](1);
             markets[0] = address(cBALRETH);
-            vm.prank(user1);
-            lendtroller.enterMarkets(markets);
-            vm.prank(user2);
-            lendtroller.enterMarkets(markets);
         }
 
         // provide enough liquidity

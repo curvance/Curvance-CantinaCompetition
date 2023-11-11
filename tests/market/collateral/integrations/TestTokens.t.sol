@@ -67,10 +67,6 @@ contract TestTokens is TestBaseMarket {
             priceRouter.addMTokenSupport(address(dDAI));
             address[] memory markets = new address[](1);
             markets[0] = address(dDAI);
-            vm.prank(user1);
-            lendtroller.enterMarkets(markets);
-            vm.prank(user2);
-            lendtroller.enterMarkets(markets);
         }
 
         // deploy CBALRETH
@@ -95,10 +91,6 @@ contract TestTokens is TestBaseMarket {
             );
             address[] memory markets = new address[](1);
             markets[0] = address(cBALRETH);
-            vm.prank(user1);
-            lendtroller.enterMarkets(markets);
-            vm.prank(user2);
-            lendtroller.enterMarkets(markets);
         }
 
         // provide enough liquidity

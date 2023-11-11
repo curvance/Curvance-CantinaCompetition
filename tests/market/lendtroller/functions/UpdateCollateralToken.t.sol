@@ -27,7 +27,9 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
         );
     }
 
-    function test_updateCollateralToken_fail_whenCallerIsNotAuthorized() public {
+    function test_updateCollateralToken_fail_whenCallerIsNotAuthorized()
+        public
+    {
         vm.prank(address(1));
 
         vm.expectRevert(Lendtroller.Lendtroller__Unauthorized.selector);
@@ -41,9 +43,11 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
         );
     }
 
-    function test_updateCollateralToken_fail_whenLiqIncentiveExceedsMax() public {
+    function test_updateCollateralToken_fail_whenLiqIncentiveExceedsMax()
+        public
+    {
         // when liqInc > _MAX_LIQUIDATION_INCENTIVE
-        lendtroller.listMarketToken(address(cBALRETH));
+        lendtroller.listToken(address(cBALRETH));
         vm.expectRevert(Lendtroller.Lendtroller__InvalidParameter.selector);
         lendtroller.updateCollateralToken(
             IMToken(address(cBALRETH)),
@@ -57,7 +61,7 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
 
     function test_updateCollateralToken_fail_whenLiqFeeExceedsMax() public {
         // when liqFee > _MAX_LIQUIDATION_FEE
-        lendtroller.listMarketToken(address(cBALRETH));
+        lendtroller.listToken(address(cBALRETH));
         vm.expectRevert(Lendtroller.Lendtroller__InvalidParameter.selector);
         lendtroller.updateCollateralToken(
             IMToken(address(cBALRETH)),
@@ -71,7 +75,7 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
 
     function test_updateCollateralToken_fail_whenCollReqAExceedsMax() public {
         // when collReqA > _MAX_COLLATERAL_REQUIREMENT
-        lendtroller.listMarketToken(address(cBALRETH));
+        lendtroller.listToken(address(cBALRETH));
         vm.expectRevert(Lendtroller.Lendtroller__InvalidParameter.selector);
         lendtroller.updateCollateralToken(
             IMToken(address(cBALRETH)),
@@ -83,9 +87,11 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
         );
     }
 
-    function test_updateCollateralToken_fail_whenHardCollReqExceedsSoftCollReq() public {
+    function test_updateCollateralToken_fail_whenHardCollReqExceedsSoftCollReq()
+        public
+    {
         // when collReqB > collReqA
-        lendtroller.listMarketToken(address(cBALRETH));
+        lendtroller.listToken(address(cBALRETH));
         vm.expectRevert(Lendtroller.Lendtroller__InvalidParameter.selector);
         lendtroller.updateCollateralToken(
             IMToken(address(cBALRETH)),
@@ -99,7 +105,7 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
 
     function test_updateCollateralToken_fail_whenCollRatioExceedsMax() public {
         // when collRatio > _MAX_COLLATERALIZATION_RATIO
-        lendtroller.listMarketToken(address(cBALRETH));
+        lendtroller.listToken(address(cBALRETH));
         vm.expectRevert(Lendtroller.Lendtroller__InvalidParameter.selector);
         lendtroller.updateCollateralToken(
             IMToken(address(cBALRETH)),
@@ -111,9 +117,11 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
         );
     }
 
-    function test_updateCollateralToken_fail_whenCollRatioExceedsPremium() public {
+    function test_updateCollateralToken_fail_whenCollRatioExceedsPremium()
+        public
+    {
         // when collRatio > (EXP_SCALE * EXP_SCALE) / (EXP_SCALE + collReqA)
-        lendtroller.listMarketToken(address(cBALRETH));
+        lendtroller.listToken(address(cBALRETH));
         vm.expectRevert(Lendtroller.Lendtroller__InvalidParameter.selector);
         lendtroller.updateCollateralToken(
             IMToken(address(cBALRETH)),
@@ -125,9 +133,11 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
         );
     }
 
-    function test_updateCollateralToken_fail_whenLiqIncExceedsHardLiquidationRequirement() public {
+    function test_updateCollateralToken_fail_whenLiqIncExceedsHardLiquidationRequirement()
+        public
+    {
         // when liqInc > collReqB
-        lendtroller.listMarketToken(address(cBALRETH));
+        lendtroller.listToken(address(cBALRETH));
         vm.expectRevert(Lendtroller.Lendtroller__InvalidParameter.selector);
         lendtroller.updateCollateralToken(
             IMToken(address(cBALRETH)),
@@ -141,12 +151,12 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
 
     function test_updateCollateralToken_fail_whenLiqIncNotEnough() public {
         // when (liqInc - liqFee) < _MIN_LIQUIDATION_INCENTIVE
-        lendtroller.listMarketToken(address(cBALRETH));
+        lendtroller.listToken(address(cBALRETH));
         vm.expectRevert(Lendtroller.Lendtroller__InvalidParameter.selector);
         lendtroller.updateCollateralToken(
             IMToken(address(cBALRETH)),
-            550,  // liqInc
-            500,  // liqFee
+            550, // liqInc
+            500, // liqFee
             4000,
             2900,
             7000
@@ -169,7 +179,7 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
         // Set Oracle timestamp to 0 to make price stale
         chainlinkEthUsd.updateRoundData(0, 1e8, 0, 0);
 
-        lendtroller.listMarketToken(address(cBALRETH));
+        lendtroller.listToken(address(cBALRETH));
         vm.expectRevert(Lendtroller.Lendtroller__PriceError.selector);
         lendtroller.updateCollateralToken(
             IMToken(address(cBALRETH)),
@@ -183,7 +193,7 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
 
     function test_updateCollateralToken_success() public {
         balRETH.approve(address(cBALRETH), 1e18);
-        lendtroller.listMarketToken(address(cBALRETH));
+        lendtroller.listToken(address(cBALRETH));
 
         vm.expectEmit(true, true, true, true, address(lendtroller));
         emit CollateralTokenUpdated(
@@ -204,7 +214,7 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
             9000
         );
 
-        (, , uint256 collateralizationRatio) = lendtroller.getMTokenData(
+        (, , uint256 collateralizationRatio) = lendtroller.getTokenData(
             address(cBALRETH)
         );
         assertEq(collateralizationRatio, 0.9e18);

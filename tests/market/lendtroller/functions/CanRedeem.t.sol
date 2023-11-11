@@ -9,7 +9,7 @@ contract CanRedeemTest is TestBaseLendtroller {
     function setUp() public override {
         super.setUp();
 
-        lendtroller.listMarketToken(address(dUSDC));
+        lendtroller.listToken(address(dUSDC));
     }
 
     function test_canRedeem_fail_whenTokenNotListed() public {
@@ -34,24 +34,19 @@ contract CanRedeemTest is TestBaseLendtroller {
     }
 
     function test_canRedeem_success_whenRedeemerNotInMarket() public {
-        assertFalse(lendtroller.getAccountMembership(address(dUSDC), user1));
+        assertFalse(lendtroller.hasPosition(address(dUSDC), user1));
 
         lendtroller.canRedeem(address(dUSDC), user1, 100e6);
     }
 
     function test_canRedeem_success_DTokenCanAlwaysBeRedeemed() public {
-        address[] memory tokens = new address[](1);
-        tokens[0] = address(dUSDC);
-        vm.prank(user1);
-        lendtroller.enterMarkets(tokens);
-
         assertFalse(dUSDC.isCToken());
-        assertTrue(lendtroller.getAccountMembership(address(dUSDC), user1));
+        assertTrue(lendtroller.hasPosition(address(dUSDC), user1));
         lendtroller.canRedeem(address(dUSDC), user1, 100e6);
     }
 
     function test_canRedeem_fail_WhenCTokenInsufficientLiquidity() public {
-        lendtroller.listMarketToken(address(cBALRETH));
+        lendtroller.listToken(address(cBALRETH));
         lendtroller.updateCollateralToken(
             IMToken(address(cBALRETH)),
             2000,
@@ -60,13 +55,9 @@ contract CanRedeemTest is TestBaseLendtroller {
             3000,
             7000
         );
-        address[] memory tokens = new address[](1);
-        tokens[0] = address(cBALRETH);
-        vm.prank(user1);
-        lendtroller.enterMarkets(tokens);
 
         assertTrue(cBALRETH.isCToken());
-        assertTrue(lendtroller.getAccountMembership(address(cBALRETH), user1));
+        assertTrue(lendtroller.hasPosition(address(cBALRETH), user1));
         vm.expectRevert(
             Lendtroller.Lendtroller__InsufficientLiquidity.selector
         );

@@ -70,10 +70,6 @@ contract TestDTokenReserves is TestBaseMarket {
             priceRouter.addMTokenSupport(address(dDAI));
             address[] memory markets = new address[](1);
             markets[0] = address(dDAI);
-            vm.prank(user1);
-            lendtroller.enterMarkets(markets);
-            vm.prank(user2);
-            lendtroller.enterMarkets(markets);
         }
 
         // deploy CBALRETH
@@ -98,10 +94,6 @@ contract TestDTokenReserves is TestBaseMarket {
             );
             address[] memory markets = new address[](1);
             markets[0] = address(cBALRETH);
-            vm.prank(user1);
-            lendtroller.enterMarkets(markets);
-            vm.prank(user2);
-            lendtroller.enterMarkets(markets);
         }
 
         centralRegistry.addSwapper(_UNISWAP_V2_ROUTER);

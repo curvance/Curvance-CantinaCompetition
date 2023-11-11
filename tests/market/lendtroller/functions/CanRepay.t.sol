@@ -12,7 +12,7 @@ contract CanRepayTest is TestBaseLendtroller {
     }
 
     // function test_canRepay_fail_withinMinimumHoldPeriod() public {
-    //     lendtroller.listMarketToken(address(dUSDC));
+    //     lendtroller.listToken(address(dUSDC));
     //     lendtroller.notifyBorrow(user1);
 
     //     vm.expectRevert(Lendtroller.Lendtroller__MinimumHoldPeriod.selector);
@@ -20,7 +20,7 @@ contract CanRepayTest is TestBaseLendtroller {
     // }
 
     function test_canRepay_success_whenPastMinimumHoldPeriod() public {
-        lendtroller.listMarketToken(address(dUSDC));
+        lendtroller.listToken(address(dUSDC));
         vm.prank(address(dUSDC));
         lendtroller.notifyBorrow(user1);
 
@@ -29,7 +29,7 @@ contract CanRepayTest is TestBaseLendtroller {
     }
 
     function test_canRepay_success() public {
-        lendtroller.listMarketToken(address(dUSDC));
+        lendtroller.listToken(address(dUSDC));
         lendtroller.canRepay(address(dUSDC), user1);
     }
 }

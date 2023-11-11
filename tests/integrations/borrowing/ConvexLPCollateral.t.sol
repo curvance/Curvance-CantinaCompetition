@@ -114,9 +114,9 @@ contract ConvexLPCollateral is TestBaseMarket {
             1 ether
         );
         deal(_USDC_ADDRESS, address(this), 1 ether);
-        lendtroller.listMarketToken(address(cSTETH));
+        lendtroller.listToken(address(cSTETH));
         SafeTransferLib.safeApprove(_USDC_ADDRESS, address(dUSDC), 1 ether);
-        lendtroller.listMarketToken(address(dUSDC));
+        lendtroller.listToken(address(dUSDC));
         lendtroller.updateCollateralToken(
             IMToken(address(cSTETH)),
             2000,
@@ -133,7 +133,6 @@ contract ConvexLPCollateral is TestBaseMarket {
         deal(_USDC_ADDRESS, address(dUSDC), 100_000e6);
         deal(address(CONVEX_STETH_ETH_POOL), user1, 10_000e18);
         vm.startPrank(user1);
-        lendtroller.enterMarkets(tokens);
         IERC20(address(CONVEX_STETH_ETH_POOL)).approve(
             address(cSTETH),
             1_000e18

@@ -38,7 +38,7 @@ contract CanBorrowTest is TestBaseLendtroller {
 
         vm.prank(address(dUSDC));
 
-        vm.expectRevert(Lendtroller.Lendtroller__AddressUnauthorized.selector);
+        vm.expectRevert(Lendtroller.Lendtroller__Unauthorized.selector);
         lendtroller.canBorrow(address(dDAI), user1, 100e6);
     }
 
@@ -60,7 +60,6 @@ contract CanBorrowTest is TestBaseLendtroller {
         tokens[0] = address(dUSDC);
 
         vm.prank(user1);
-        lendtroller.enterMarkets(tokens);
 
         vm.expectRevert(
             Lendtroller.Lendtroller__InsufficientLiquidity.selector
@@ -88,7 +87,7 @@ contract CanBorrowTest is TestBaseLendtroller {
             block.timestamp
         );
 
-        lendtroller.listMarketToken(address(cBALRETH));
+        lendtroller.listToken(address(cBALRETH));
         lendtroller.updateCollateralToken(
             IMToken(address(cBALRETH)),
             2000,
@@ -104,7 +103,6 @@ contract CanBorrowTest is TestBaseLendtroller {
         // Need some CTokens/collateral to have enough liquidity for borrowing
         deal(address(balRETH), user1, 10_000e18);
         vm.startPrank(user1);
-        lendtroller.enterMarkets(tokens);
         balRETH.approve(address(cBALRETH), 1_000e18);
         cBALRETH.mint(1_000e18);
         vm.stopPrank();
@@ -118,7 +116,7 @@ contract CanBorrowTest is TestBaseLendtroller {
             true,
             true
         );
-        (, , uint256 collRatio) = lendtroller.getMTokenData(address(cBALRETH));
+        (, , uint256 collRatio) = lendtroller.getTokenData(address(cBALRETH));
         uint256 assetValue = (price *
             ((snapshot.balance * snapshot.exchangeRate) / 1e18)) /
             10 ** cBALRETH.decimals();
@@ -155,7 +153,7 @@ contract CanBorrowTest is TestBaseLendtroller {
         address[] memory tokens = new address[](1);
         tokens[0] = address(dUSDC);
 
-        vm.expectRevert(Lendtroller.Lendtroller__AddressUnauthorized.selector);
+        vm.expectRevert(Lendtroller.Lendtroller__Unauthorized.selector);
         lendtroller.canBorrow(address(dUSDC), user1, 0);
     }
 
@@ -173,14 +171,14 @@ contract CanBorrowTest is TestBaseLendtroller {
             block.timestamp
         );
 
-        assertFalse(lendtroller.getAccountMembership(address(dUSDC), user1));
+        assertFalse(lendtroller.hasPosition(address(dUSDC), user1));
         IMToken[] memory accountAssets = lendtroller.getAccountAssets(user1);
         assertEq(accountAssets.length, 0);
 
         vm.prank(address(dUSDC));
         lendtroller.canBorrow(address(dUSDC), user1, 0);
 
-        assertTrue(lendtroller.getAccountMembership(address(dUSDC), user1));
+        assertTrue(lendtroller.hasPosition(address(dUSDC), user1));
 
         accountAssets = lendtroller.getAccountAssets(user1);
         assertEq(accountAssets.length, 1);
@@ -206,7 +204,7 @@ contract CanBorrowTest is TestBaseLendtroller {
     //     mTokens[0] = IMToken(address(cBALRETH));
     //     borrowCaps[0] = 100e6 - 1;
 
-    //     lendtroller.listMarketToken(address(cBALRETH));
+    //     lendtroller.listToken(address(cBALRETH));
     //     lendtroller.setCTokenCollateralCaps(mTokens, borrowCaps);
 
     //     vm.expectRevert(Lendtroller.Lendtroller__BorrowCapReached.selector);
@@ -233,7 +231,7 @@ contract CanBorrowTest is TestBaseLendtroller {
     //     mTokens[0] = IMToken(address(cBALRETH));
     //     borrowCaps[0] = 100e6;
 
-    //     lendtroller.listMarketToken(address(cBALRETH));
+    //     lendtroller.listToken(address(cBALRETH));
     //     lendtroller.setCTokenCollateralCaps(mTokens, borrowCaps);
 
     //     vm.prank(address(cBALRETH));

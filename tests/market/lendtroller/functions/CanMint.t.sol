@@ -7,7 +7,7 @@ import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 
 contract CanMintTest is TestBaseLendtroller {
     function test_canMint_fail_whenMintPaused() public {
-        lendtroller.listMarketToken(address(dUSDC));
+        lendtroller.listToken(address(dUSDC));
 
         lendtroller.setMintPaused(IMToken(address(dUSDC)), true);
         vm.expectRevert(Lendtroller.Lendtroller__Paused.selector);
@@ -20,7 +20,7 @@ contract CanMintTest is TestBaseLendtroller {
     }
 
     function test_canMint_success() public {
-        lendtroller.listMarketToken(address(dUSDC));
+        lendtroller.listToken(address(dUSDC));
         lendtroller.canMint(address(dUSDC));
     }
 }
