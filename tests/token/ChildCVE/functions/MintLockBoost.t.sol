@@ -6,6 +6,7 @@ import { CVE } from "contracts/token/ChildCVE.sol";
 
 contract MintLockBoostTest is TestBaseChildCVE {
     function test_mintLockBoost_fail_whenUnauthorized() public {
+        vm.prank(address(0));
         vm.expectRevert(CVE.CVE__Unauthorized.selector);
         childCVE.mintLockBoost(1000);
     }
