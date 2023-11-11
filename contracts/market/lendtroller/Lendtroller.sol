@@ -560,11 +560,12 @@ contract Lendtroller is ILendtroller, ERC165 {
         // Convert the parameters from basis points to `WAD` format
         // while inefficient we want to minimize potential human error
         // as much as possible, even if it costs a bit extra gas on config
-        liqIncA = _bpToWad(liqIncA);
-        liqFee = _bpToWad(liqFee);
+        collRatio = _bpToWad(collRatio);
         collReqA = _bpToWad(collReqA);
         collReqB = _bpToWad(collReqB);
-        collRatio = _bpToWad(collRatio);
+        liqIncA = _bpToWad(liqIncA);
+        liqIncB = _bpToWad(liqIncB);
+        liqFee = _bpToWad(liqFee);
 
         // Validate collateralization ratio is not above the maximum allowed
         if (collRatio > _MAX_COLLATERALIZATION_RATIO) {
@@ -1198,7 +1199,8 @@ contract Lendtroller is ILendtroller, ERC165 {
             snapshot = snapshots[i];
 
             if (snapshot.isCToken) {
-                // If the asset has a CR increment their collateral and max borrow value
+                // If the asset has a Collateral Ratio,
+                // increment their collateral and max borrow value
                 if (!(tokenData[snapshot.asset].collRatio == 0)) {
                     uint256 assetValue = _getAssetValue(
                         (snapshot.balance * snapshot.exchangeRate) / WAD,
@@ -1400,6 +1402,22 @@ contract Lendtroller is ILendtroller, ERC165 {
         uint256 decimals
     ) internal pure returns (uint256) {
         return (amount * price) / (10 ** decimals);
+    }
+
+    function _calculateNegativeCurveValue(uint256 current, uint256 start, uint256 end) internal pure returns (uint256) {
+        if (current <= end) {
+            return WAD;
+        }
+
+        // Because slope values should be between [1, WAD],
+        // we know multiplying by WAD again will not cause overflows
+        unchecked{
+            current = current * WAD;
+            start = start * WAD;
+            end = end * WAD;
+        }
+        
+        return (start - current) / (start - end);
     }
 
     function _reduceCollateralIfNecessary(

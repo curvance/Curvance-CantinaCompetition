@@ -60,7 +60,7 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
     /// EVENTS ///
 
     event NewLendtroller(address oldLendtroller, address newLendtroller);
-    event vaultStatusChanged(bool isShutdown);
+    event VaultStatusChanged(bool isShutdown);
 
     /// ERRORS ///
 
@@ -166,7 +166,7 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
         }
 
         _vaultIsActive = 2;
-        emit vaultStatusChanged(false);
+        emit VaultStatusChanged(false);
 
         return true;
     }
@@ -182,7 +182,7 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
 
         _vaultIsActive = 1;
 
-        emit vaultStatusChanged(true);
+        emit VaultStatusChanged(true);
     }
 
     /// @notice Reactivate the vault
@@ -194,7 +194,7 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
         }
 
         _vaultIsActive = 2;
-        emit vaultStatusChanged(false);
+        emit VaultStatusChanged(false);
     }
 
     /// @notice Sets a new lendtroller for the market
