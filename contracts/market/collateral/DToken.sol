@@ -347,40 +347,12 @@ contract DToken is ERC165, ReentrancyGuard {
         uint256 amount,
         IMToken collateralToken
     ) external nonReentrant {
-        accrueInterest();
-
-        // Fail if account = liquidator
-        assembly {
-            if eq(account, caller()) {
-                // revert with DToken__Unauthorized()
-                mstore(0x00, 0xefeae624)
-                revert(0x1c, 0x04)
-            }
-        }
-
-        // The MToken must be a collateral token
-        if (!collateralToken.isCToken()) {
-            revert DToken__ValidationFailed();
-        }
-
-        // Fail if liquidate not allowed,
-        // trying to pay too much debt with excessive `amount` will revert
-        (uint256 liquidatedTokens, uint256 protocolTokens) = lendtroller
-            .canLiquidateWithExecution(
-                address(this),
-                address(collateralToken),
-                account,
-                amount,
-                true
-            );
-
         _liquidate(
             msg.sender,
             account,
             amount,
             collateralToken,
-            liquidatedTokens,
-            protocolTokens
+            true
         );
     }
 
@@ -393,42 +365,12 @@ contract DToken is ERC165, ReentrancyGuard {
         address account,
         IMToken collateralToken
     ) external nonReentrant {
-        accrueInterest();
-
-        // Fail if account = liquidator
-        assembly {
-            if eq(account, caller()) {
-                // revert with DToken__Unauthorized()
-                mstore(0x00, 0xefeae624)
-                revert(0x1c, 0x04)
-            }
-        }
-
-        // The MToken must be a collateral token
-        if (!collateralToken.isCToken()) {
-            revert DToken__ValidationFailed();
-        }
-
-        // Fail if liquidate not allowed
-        (
-            uint256 amount,
-            uint256 liquidatedTokens,
-            uint256 protocolTokens
-        ) = lendtroller.canLiquidateWithExecution(
-                address(this),
-                address(collateralToken),
-                account,
-                0,
-                false
-            );
-
         _liquidate(
             msg.sender,
             account,
-            amount,
+            0,
             collateralToken,
-            liquidatedTokens,
-            protocolTokens
+            false
         );
     }
 
@@ -486,8 +428,6 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @param mintAmount The amount of the underlying asset to supply
     /// @return bool true=success
     function mint(uint256 mintAmount) external nonReentrant returns (bool) {
-        accrueInterest();
-
         _mint(msg.sender, msg.sender, mintAmount);
         return true;
     }
@@ -501,8 +441,6 @@ contract DToken is ERC165, ReentrancyGuard {
         uint256 mintAmount,
         address recipient
     ) external nonReentrant returns (bool) {
-        accrueInterest();
-
         _mint(msg.sender, recipient, mintAmount);
         return true;
     }
@@ -913,6 +851,7 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @notice Updates the interest factor value
     /// @param newInterestFactor the new interest factor
     function _setInterestFactor(uint256 newInterestFactor) internal {
+        // The DAO cannot take more than 50% of interest collected
         if (newInterestFactor > 5000) {
             revert DToken__ExcessiveValue();
         }
@@ -975,6 +914,9 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @param recipient The address of the account which will receive dToken
     /// @param amount The amount of the underlying asset to supply
     function _mint(address account, address recipient, uint256 amount) internal {
+        // Accrue interest if necessary
+        accrueInterest();
+        
         // Fail if mint not allowed
         lendtroller.canMint(address(this));
 
@@ -1078,7 +1020,7 @@ contract DToken is ERC165, ReentrancyGuard {
         // Cache how much the account has to save gas
         uint256 accountDebt = debtBalanceStored(account);
 
-        // If amount == uint max, amount = accountBorrows
+        // If amount == 0, amount = accountBorrows
         amount = amount == 0 ? accountDebt : amount;
 
         SafeTransferLib.safeTransferFrom(
@@ -1103,16 +1045,47 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @param liquidator The address repaying the borrow and seizing collateral
     /// @param amount The amount of the underlying borrowed asset to repay
     /// @param collateralToken The market in which to seize collateral from the account
-    /// @param liquidatedTokens The number of `collateralToken` tokens to be seized in a liquidation
-    /// @param protocolTokens The number of `collateralToken` tokens to be seized for the protocol
+    /// @param exactAmount Whether a specific amount of debt token assets should be liquidated
+    ///                    inputting false will attempt to liquidate the maximum amount possible
     function _liquidate(
         address liquidator,
         address account,
         uint256 amount,
         IMToken collateralToken,
-        uint256 liquidatedTokens,
-        uint256 protocolTokens
+        bool exactAmount
     ) internal {
+        // Update interest funding if necessary
+        accrueInterest();
+
+        // Fail if account = liquidator
+        assembly {
+            if eq(account, caller()) {
+                // revert with DToken__Unauthorized()
+                mstore(0x00, 0xefeae624)
+                revert(0x1c, 0x04)
+            }
+        }
+
+        // The MToken must be a collateral token
+        if (!collateralToken.isCToken()) {
+            revert DToken__ValidationFailed();
+        }
+
+        uint256 liquidatedTokens;
+        uint256 protocolTokens;
+
+        // Fail if liquidate not allowed,
+        // trying to pay too much debt with excessive `amount` will revert
+        (amount, liquidatedTokens, protocolTokens) = lendtroller
+            .canLiquidateWithExecution(
+                address(this),
+                address(collateralToken),
+                account,
+                amount,
+                exactAmount
+            );
+
+
         // calculates DTokens to repay for liquidation, reverts if repay fails
         uint256 repayAmount = _repay(liquidator, account, amount);
 
