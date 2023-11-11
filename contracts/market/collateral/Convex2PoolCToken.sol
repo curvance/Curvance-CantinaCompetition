@@ -168,19 +168,13 @@ contract Convex2PoolCToken is CTokenCompoundingBase {
             _revert(VAULT_NOT_ACTIVE_SELECTOR);
         }
 
-        uint256 pending = _calculatePendingRewards();
-        if (pending > 0) {
-            // claim vested rewards
-            _vestRewards(_totalAssets + pending);
-        }
+        // Vest pending rewards if there are any
+        _vestIfNeeded();
 
         // can only harvest once previous reward period is done
         if (_checkVestStatus(_vaultData)) {
 
-            if (pendingVestUpdate.updateNeeded) {
-                vestPeriod = pendingVestUpdate.newVestPeriod;
-                pendingVestUpdate.updateNeeded = false;
-            }
+            _updateVestingPeriodIfNeeded();
             
             // cache strategy data
             StrategyData memory sd = strategyData;

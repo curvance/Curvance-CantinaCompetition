@@ -1204,6 +1204,21 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
         return lendtroller.gaugePool();
     }
 
+    function _vestIfNeeded() internal {
+        uint256 pending = _calculatePendingRewards();
+        if (pending > 0) {
+            // vest pending rewards
+            _vestRewards(_totalAssets + pending);
+        }
+    }
+
+    function _updateVestingPeriodIfNeeded() internal {
+        if (pendingVestUpdate.updateNeeded) {
+            vestPeriod = pendingVestUpdate.newVestPeriod;
+            pendingVestUpdate.updateNeeded = false;
+        }
+    }
+
     /// INTERNAL POSITION LOGIC TO OVERRIDE
 
     function _getRealPositionBalance() internal view virtual returns (uint256);
