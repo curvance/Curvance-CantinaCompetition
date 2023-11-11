@@ -164,6 +164,10 @@ contract Convex4PoolCToken is CTokenCompoundingBase {
             revert Convex4PoolCToken__Unauthorized();
         }
 
+        if (_vaultStatus != 2) {
+            _revert(VAULT_NOT_ACTIVE_SELECTOR);
+        }
+
         uint256 pending = _calculatePendingRewards();
         if (pending > 0) {
             // claim vested rewards

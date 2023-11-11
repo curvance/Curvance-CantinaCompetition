@@ -185,7 +185,7 @@ contract AuraCToken is CTokenCompoundingBase {
             revert AuraCToken__Unauthorized();
         }
 
-        if (_vaultIsActive != 2) {
+        if (_vaultStatus != 2) {
             _revert(VAULT_NOT_ACTIVE_SELECTOR);
         }
 

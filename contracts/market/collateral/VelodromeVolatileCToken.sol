@@ -117,7 +117,7 @@ contract VelodromeVolatileCToken is CTokenCompoundingBase {
             revert VelodromeVolatileCToken__Unauthorized();
         }
 
-        if (_vaultIsActive == 1) {
+        if (_vaultStatus != 2) {
             _revert(VAULT_NOT_ACTIVE_SELECTOR);
         }
 

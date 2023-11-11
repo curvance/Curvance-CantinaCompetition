@@ -55,7 +55,7 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
     /// @notice token symbol metadata
     string internal _symbol;
     uint256 internal _totalAssets; // total vault assets minus vesting
-    uint256 internal _vaultIsActive; // Vault Status: 2 = active; 0 or 1 = inactive
+    uint256 internal _vaultStatus; // Vault Status: 2 = active; 0 or 1 = inactive
 
     /// EVENTS ///
 
@@ -165,7 +165,7 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
             log3(0x00, 0x40, _DEPOSIT_EVENT_SIGNATURE, and(m, market), and(m, market))
         }
 
-        _vaultIsActive = 2;
+        _vaultStatus = 2;
         emit VaultStatusChanged(false);
 
         return true;
@@ -176,11 +176,11 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
     /// @notice Shuts down the vault
     /// @dev Used in an emergency or if the vault has been deprecated
     function initiateShutdown() external onlyDaoPermissions {
-        if (_vaultIsActive != 2) {
+        if (_vaultStatus != 2) {
             _revert(VAULT_NOT_ACTIVE_SELECTOR);
         }
 
-        _vaultIsActive = 1;
+        _vaultStatus = 1;
 
         emit VaultStatusChanged(true);
     }
@@ -188,12 +188,12 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
     /// @notice Reactivate the vault
     /// @dev Allows for reconfiguration of cToken attached to vault
     function liftShutdown() external onlyElevatedPermissions {
-        if (_vaultIsActive == 2) {
+        if (_vaultStatus == 2) {
             // revert with "CTokenPrimitive__VaultIsActive()"
             _revert(0x8bdb4dfb);
         }
 
-        _vaultIsActive = 2;
+        _vaultStatus = 2;
         emit VaultStatusChanged(false);
     }
 
@@ -300,19 +300,19 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
 
     /// @notice Returns the position vaults current status
     function vaultStatus() public view returns (string memory) {
-        return _vaultIsActive == 2 ? "Active" : "Inactive";
+        return _vaultStatus == 2 ? "Active" : "Inactive";
     }
 
     function maxDeposit(
         address to
     ) public view override returns (uint256 maxAssets) {
-        maxAssets = _vaultIsActive == 2 ? super.maxDeposit(to) : 0;
+        maxAssets = _vaultStatus == 2 ? super.maxDeposit(to) : 0;
     }
 
     function maxMint(
         address to
     ) public view override returns (uint256 maxShares) {
-        maxShares = _vaultIsActive == 2 ? super.maxMint(to) : 0;
+        maxShares = _vaultStatus == 2 ? super.maxMint(to) : 0;
     }
 
     // TOKEN ACTION FUNCTIONS
@@ -361,16 +361,10 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
         return true;
     }
 
-    function depositAsCollateral(
-        uint256 assets,
-        address receiver
-    ) public nonReentrant returns (uint256 shares) {
-        shares = deposit(assets, receiver);
-        if (msg.sender == receiver || msg.sender != lendtroller.positionFolding()) {
-            lendtroller.postCollateral(receiver, address(this), shares);
-        }
-    }
-
+    /// @notice Caller deposits assets into the market and receives shares
+    /// @param assets The amount of the underlying asset to supply
+    /// @param receiver The account that should receive the cToken shares
+    /// @return shares the amount of cToken shares received by `receiver`
     function deposit(
         uint256 assets,
         address receiver
@@ -395,16 +389,25 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
         _gaugePool().deposit(address(this), receiver, shares);
     }
 
-    function mintAsCollateral(
-        uint256 shares,
+    /// @notice Caller deposits assets into the market, receives shares, 
+    ///         and turns on collateralization of the assets
+    /// @param assets The amount of the underlying asset to supply
+    /// @param receiver The account that should receive the cToken shares
+    /// @return shares the amount of cToken shares received by `receiver`
+    function depositAsCollateral(
+        uint256 assets,
         address receiver
-    ) public nonReentrant returns (uint256 assets) {
-        assets = mint(shares, receiver);
-        if (msg.sender == receiver || msg.sender != lendtroller.positionFolding()) {
+    ) public nonReentrant returns (uint256 shares) {
+        shares = deposit(assets, receiver);
+        if (msg.sender == receiver || msg.sender == lendtroller.positionFolding()) {
             lendtroller.postCollateral(receiver, address(this), shares);
         }
     }
 
+    /// @notice Caller deposits assets into the market and receives shares
+    /// @param shares The amount of the underlying assets quoted in shares to supply
+    /// @param receiver The account that should receive the cToken shares
+    /// @return assets the amount of cToken shares quoted in assets received by `receiver`
     function mint(
         uint256 shares,
         address receiver
@@ -427,6 +430,26 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
         _gaugePool().deposit(address(this), receiver, shares);
     }
 
+    /// @notice Caller deposits assets into the market, receives cTokens
+    ///         as shares, and turns on collateralization of the assets
+    /// @param shares The amount of the underlying assets quoted in shares to supply
+    /// @param receiver The account that should receive the cToken shares
+    /// @return assets the amount of cToken shares quoted in assets received by `receiver`
+    function mintAsCollateral(
+        uint256 shares,
+        address receiver
+    ) public nonReentrant returns (uint256 assets) {
+        assets = mint(shares, receiver);
+        if (msg.sender == receiver || msg.sender == lendtroller.positionFolding()) {
+            lendtroller.postCollateral(receiver, address(this), shares);
+        }
+    }
+
+    /// @notice Caller withdraws assets from the market and burns their shares
+    /// @param assets The amount of the underlying asset to withdraw
+    /// @param receiver The account that should receive the assets
+    /// @param owner The account that will burn their cTokens to withdraw assets
+    /// @return shares the amount of cToken shares redeemed by `owner`
     function withdraw(
         uint256 assets,
         address receiver,
@@ -452,9 +475,9 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
     }
 
     /// @notice Helper function for Position Folding contract to
-    ///         redeem underlying tokens
+    ///         redeem assets
     /// @param owner The owner address of assets to redeem
-    /// @param assets The amount of the underlying asset to redeem
+    /// @param assets The amount of the underlying assets to redeem
     function withdrawByPositionFolding(
         address owner,
         uint256 assets,
@@ -491,6 +514,11 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
         lendtroller.canRedeem(address(this), owner, 0);
     }
 
+    /// @notice Caller withdraws assets from the market and burns their shares
+    /// @param shares The amount of shares to burn to withdraw assets
+    /// @param receiver The account that should receive the assets
+    /// @param owner The account that will burn their cTokens to withdraw assets
+    /// @return assets the amount of assets received by `receiver`
     function redeem(
         uint256 shares,
         address receiver,
@@ -581,47 +609,72 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
         return _totalAssets;
     }
 
+    /// @notice Returns the amount of shares that would be exchanged
+    ///         by the vault for `assets` provided.
     function convertToShares(
         uint256 assets
     ) public view override returns (uint256) {
         return _convertToShares(assets, totalAssets());
     }
 
-    /// @notice Pull up-to-date exchange rate from the underlying to
-    ///         the CToken with reEntry lock
-    /// @return Calculated exchange rate scaled by 1e18
-    function convertToAssetsSafe(uint256 shares) public nonReentrant returns (uint256) {
-        return _convertToAssets(shares, totalAssets());
+    /// @notice Returns the amount of shares that would be exchanged
+    ///         by the vault for `assets` provided.
+    /// @dev    Has added re-entry lock for protocols building ontop of us
+    ///         to have confidence in data quality
+    function convertToSharesSafe(
+        uint256 assets
+    ) public nonReentrant returns (uint256) {
+        return _convertToShares(assets, totalAssets());
     }
 
+    /// @notice Returns the amount of assets that would be exchanged
+    ///         by the vault for `shares` provided.
     function convertToAssets(
         uint256 shares
     ) public view override returns (uint256) {
         return _convertToAssets(shares, totalAssets());
     }
 
+    /// @notice Returns the amount of assets that would be exchanged
+    ///         by the vault for `shares` provided.
+    /// @dev    Has added re-entry lock for protocols building ontop of us
+    ///         to have confidence in data quality
+    function convertToAssetsSafe(
+        uint256 shares
+    ) public nonReentrant returns (uint256) {
+        return _convertToAssets(shares, totalAssets());
+    }
+
+    /// @notice Allows users to simulate the effects of their deposit at the current block.
+    /// @return The shares received for depositing `assets`.
     function previewDeposit(
         uint256 assets
     ) public view override returns (uint256) {
-        return convertToShares(assets);
+        return _previewDeposit(assets, totalAssets());
     }
 
+    /// @notice Allows users to simulate the effects of their mint at the current block.
+    /// @return The shares received quoted as assets for depositing `shares`.
     function previewMint(
         uint256 shares
     ) public view override returns (uint256) {
         return _previewMint(shares, totalAssets());
     }
 
+    /// @notice Allows users to simulate the effects of their withdraw at the current block.
+    /// @return The assets received quoted as shares for withdrawing `assets`.
     function previewWithdraw(
         uint256 assets
     ) public view override returns (uint256) {
         return _previewWithdraw(assets, totalAssets());
     }
 
+    /// @notice Allows users to simulate the effects of their redeem at the current block.
+    /// @return The assets received for withdrawing `shares`.
     function previewRedeem(
         uint256 shares
     ) public view override returns (uint256) {
-        return convertToAssets(shares);
+        return _previewRedeem(shares, totalAssets());
     }
 
     /// INTERNAL FUNCTIONS ///
@@ -702,6 +755,11 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
 
     }
 
+    /// @notice Transfers `amount` tokens from `from` to `to` without checking allowances
+    /// @dev    Only used on liquidation in order to bypass any allowance checks
+    /// @param from The user to transfer `amount` tokens from
+    /// @param to The user to transfer `amount` tokens to
+    /// @param amount The amount of tokens to transfer
     function _transferFromWithoutAllowance(address from, address to, uint256 amount) internal {
         /// @solidity memory-safe-assembly
         assembly {
