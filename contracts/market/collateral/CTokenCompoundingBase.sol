@@ -449,6 +449,16 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
         return true;
     }
 
+    function depositAsCollateral(
+        uint256 assets,
+        address receiver
+    ) public nonReentrant returns (uint256 shares) {
+        shares = deposit(assets, receiver);
+        if (msg.sender == receiver || msg.sender != lendtroller.positionFolding()) {
+            lendtroller.postCollateral(receiver, address(this), shares);
+        }
+    }
+
     function deposit(
         uint256 assets,
         address receiver
@@ -472,6 +482,16 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
         _deposit(msg.sender, receiver, assets, shares, ta, pending);
         // emit events on gauge pool
         _gaugePool().deposit(address(this), receiver, shares);
+    }
+
+    function mintAsCollateral(
+        uint256 shares,
+        address receiver
+    ) public nonReentrant returns (uint256 assets) {
+        assets = mint(shares, receiver);
+        if (msg.sender == receiver || msg.sender != lendtroller.positionFolding()) {
+            lendtroller.postCollateral(receiver, address(this), shares);
+        }
     }
 
     function mint(

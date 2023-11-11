@@ -209,7 +209,7 @@ contract Lendtroller is ILendtroller, ERC165 {
 
     /// @notice Post collateral in some cToken for borrowing inside this market
     /// @param mToken The address of the mToken to post collateral for
-    function postCollateral(address mToken, uint256 tokens) public {
+    function postCollateral(address account, address mToken, uint256 tokens) public {
         AccountMetadata storage accountData = tokenData[mToken].accountData[msg.sender];
 
         if (!tokenData[mToken].isListed) {
@@ -218,6 +218,14 @@ contract Lendtroller is ILendtroller, ERC165 {
 
         if (!IMToken(mToken).isCToken()) {
             _revert(_INVALID_PARAMETER_SELECTOR);
+        }
+
+        // If you are trying to post collateral for someone else, 
+        // make sure it is done via the mToken contract itself
+        if (msg.sender != account) {
+            if (msg.sender != mToken) {
+                revert Lendtroller__Unauthorized();
+            }
         }
 
         if (accountData.collateralPosted + tokens >= IMToken(mToken).balanceOf(msg.sender)) {
@@ -621,6 +629,17 @@ contract Lendtroller is ILendtroller, ERC165 {
             revert Lendtroller__PriceError();
         }
 
+        // Assign new collateralization ratio
+        // Note that a collateralization ratio of 0 corresponds to
+        // no collateralization of the mToken
+        marketToken.collRatio = collRatio;
+
+        // Store the collateral requirement as a premium above `WAD`,
+        // that way we can calculate solvency via division
+        // easily in _getStatusForLiquidation
+        marketToken.collReqA = collReqA + WAD;
+        marketToken.collReqB = collReqB + WAD;
+
         // We use the liquidation incentive values as a premium in
         // `calculateLiquidatedTokens`, so it needs to be 1 + incentive
         marketToken.liqIncA = WAD + liqIncA;
@@ -632,17 +651,6 @@ contract Lendtroller is ILendtroller, ERC165 {
         // to increase with the liquidation engine, as we want to offload
         // risk as quickly as possible by increasing the liquidators incentive
         marketToken.liqFee = (WAD * liqFee) / (WAD + liqIncA);
-
-        // Store the collateral requirement as a premium above `WAD`,
-        // that way we can calculate solvency via division
-        // easily in _getStatusForLiquidation
-        marketToken.collReqA = collReqA + WAD;
-        marketToken.collReqB = collReqB + WAD;
-
-        // Assign new collateralization ratio
-        // Note that a collateralization ratio of 0 corresponds to
-        // no collateralization of the mToken
-        marketToken.collRatio = collRatio;
 
         emit CollateralTokenUpdated(
             mToken,
@@ -668,10 +676,10 @@ contract Lendtroller is ILendtroller, ERC165 {
             revert Lendtroller__Unauthorized();
         }
 
-        uint256 numMarkets = mTokens.length;
+        uint256 numTokens = mTokens.length;
 
         assembly {
-            if iszero(numMarkets) {
+            if iszero(numTokens) {
                 // store the error selector to location 0x0
                 mstore(0x0, _INVALID_PARAMETER_SELECTOR)
                 // return bytes 29-32 for the selector
@@ -679,11 +687,11 @@ contract Lendtroller is ILendtroller, ERC165 {
             }
         }
 
-        if (numMarkets != newCollateralCaps.length) {
+        if (numTokens != newCollateralCaps.length) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
-        for (uint256 i; i < numMarkets; ++i) {
+        for (uint256 i; i < numTokens; ++i) {
             // Make sure the mToken is a cToken
             if (!mTokens[i].isCToken()) {
                 _revert(_INVALID_PARAMETER_SELECTOR);

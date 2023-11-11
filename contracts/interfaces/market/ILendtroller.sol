@@ -5,6 +5,13 @@ import { GaugePool } from "contracts/gauge/GaugePool.sol";
 import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 
 interface ILendtroller {
+
+    function postCollateral(
+        address account, 
+        address mToken, 
+        uint256 tokens
+    ) external;
+    
     function canMint(address mToken) external;
 
     function canRedeem(
