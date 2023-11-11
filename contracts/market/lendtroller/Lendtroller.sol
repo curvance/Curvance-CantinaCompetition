@@ -90,7 +90,7 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// STORAGE ///
 
     /// @notice A list of all tokens inside this market for the frontend.
-    IMToken[] public tokensListed;
+    address[] public tokensListed;
 
     /// @notice Maximum % that a liquidator can repay when liquidating an account,
     /// @dev    In `WAD` format, default 50%
@@ -356,7 +356,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         }
 
         _canRedeem(mToken, redeemer, amount);
-        _reduceCollateralIfNecessary(redeemer, mToken, balance, amount, forceReduce);
+        _reduceCollateralIfNecessary(redeemer, mToken, balance, amount, forceRedeemCollateral);
     }
 
     /// @notice Checks if the account should be allowed to borrow
@@ -401,69 +401,55 @@ contract Lendtroller is ILendtroller, ERC165 {
 
     /// @notice Checks if the liquidation should be allowed to occur,
     ///         and returns how many collateral tokens should be seized on liquidation
-    /// @param debtToken Asset which was borrowed by the borrower
-    /// @param collateralToken Asset which was used as collateral and will be seized
-    /// @param borrower The address of the borrower
+    /// @param dToken Debt token to repay which is borrowed by `account`
+    /// @param cToken Collateral token which was used as collateral and will be seized
+    /// @param account The address of the account to be liquidated
     /// @param amount The amount of `debtToken` underlying being repaid
+    /// @param liquidateExact Whether the liquidator desires a specific liquidation amount
+    /// @return The amount of `debtToken` underlying to be repaid on liquidation
     /// @return The number of `collateralToken` tokens to be seized in a liquidation
     /// @return The number of `collateralToken` tokens to be seized for the protocol
-    function canLiquidateExact(
-        address debtToken,
-        address collateralToken,
-        address borrower,
-        uint256 amount
-    ) external view override returns (uint256, uint256) {
-        (
-            uint256 liquidationLimit,
-            uint256 debtTokenPrice,
-            uint256 collateralTokenPrice
-        ) = _canLiquidate(debtToken, collateralToken, borrower);
-
-        if (amount > liquidationLimit) {
-            _revert(_INVALID_PARAMETER_SELECTOR);
+    function canLiquidateWithExecution(
+        address dToken,
+        address cToken,
+        address account,
+        uint256 amount,
+        bool liquidateExact
+    ) external override returns (uint256, uint256, uint256) {
+        if (msg.sender != dToken) {
+            revert Lendtroller__Unauthorized();
         }
 
-        return
-            _getLiquidatedTokens(
-                collateralToken,
-                amount,
-                debtToken,
-                debtTokenPrice,
-                collateralTokenPrice
-            );
+        (
+            uint256 dTokenRepaid,
+            uint256 cTokenLiquidated,
+            uint256 protocolTokens
+        ) = _canLiquidate(dToken, cToken, account, amount, liquidateExact);
+
+        // We can pass balance = 0 here since we are forcing collateral closure
+        // and balance will never be lower than collateral posted
+        _reduceCollateralIfNecessary(account, cToken, 0, cTokenLiquidated, true);
+        return (dTokenRepaid, cTokenLiquidated, protocolTokens);   
     }
 
     /// @notice Checks if the liquidation should be allowed to occur,
     ///         and returns how many collateral tokens should be seized on liquidation
-    /// @param debtToken Asset which was borrowed by the borrower
-    /// @param collateralToken Asset which was used as collateral and will be seized
-    /// @param borrower The address of the borrower
+    /// @param dToken Debt token to repay which is borrowed by `account`
+    /// @param cToken Collateral token collateralized by `account` and will be seized
+    /// @param account The address of the account to be liquidated
+    /// @param amount The amount of `debtToken` underlying being repaid
+    /// @param liquidateExact Whether the liquidator desires a specific liquidation amount
     /// @return The amount of `debtToken` underlying to be repaid on liquidation
     /// @return The number of `collateralToken` tokens to be seized in a liquidation
     /// @return The number of `collateralToken` tokens to be seized for the protocol
     function canLiquidate(
-        address debtToken,
-        address collateralToken,
-        address borrower
-    ) external view override returns (uint256, uint256, uint256) {
-        (
-            uint256 amount,
-            uint256 debtTokenPrice,
-            uint256 collateralTokenPrice
-        ) = _canLiquidate(debtToken, collateralToken, borrower);
-
-        (
-            uint256 liquidatedTokens,
-            uint256 protocolTokens
-        ) = _getLiquidatedTokens(
-                collateralToken,
-                amount,
-                debtToken,
-                debtTokenPrice,
-                collateralTokenPrice
-            );
-
-        return (amount, liquidatedTokens, protocolTokens);
+        address dToken,
+        address cToken,
+        address account,
+        uint256 amount,
+        bool liquidateExact
+    ) external view returns (uint256, uint256, uint256) {
+        return _canLiquidate(dToken, cToken, account, amount, liquidateExact);
     }
 
     /// @notice Checks if the seizing of assets should be allowed to occur
@@ -535,16 +521,16 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @notice Add the market token to the market and set it as listed
     /// @dev Admin function to set isListed and add support for the market
     /// @param mToken The address of the market (token) to list
-    function listToken(IMToken mToken) external onlyElevatedPermissions {
-        if (tokenData[address(mToken)].isListed) {
+    function listToken(address mToken) external onlyElevatedPermissions {
+        if (tokenData[mToken].isListed) {
             revert Lendtroller__TokenAlreadyListed();
         }
 
-        mToken.isCToken(); // Sanity check to make sure its really a mToken
+        IMToken(mToken).isCToken(); // Sanity check to make sure its really a mToken
 
-        MarketToken storage market = tokenData[address(mToken)];
-        market.isListed = true;
-        market.collRatio = 0;
+        MarketToken storage token = tokenData[mToken];
+        token.isListed = true;
+        token.collRatio = 0;
 
         uint256 numTokens = tokensListed.length;
 
@@ -558,13 +544,13 @@ contract Lendtroller is ILendtroller, ERC165 {
         tokensListed.push(mToken);
 
         // Start the market if necessary
-        if (mToken.totalSupply() == 0) {
-            if (!mToken.startMarket(msg.sender)) {
+        if (IMToken(mToken).totalSupply() == 0) {
+            if (!IMToken(mToken).startMarket(msg.sender)) {
                 revert Lendtroller__InvariantError();
             }
         }
 
-        emit TokenListed(address(mToken));
+        emit TokenListed(mToken);
     }
 
     /// @notice Sets the collRatio for a market token
@@ -1137,25 +1123,29 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @notice Checks if the liquidation should be allowed to occur
     /// @param debtToken Asset which was borrowed by the borrower
     /// @param collateralToken Asset which was used as collateral and will be seized
-    /// @param borrower The address of the borrower
+    /// @param account The address of the account to be liquidated
     /// @return The maximum amount of `debtToken` that can be repaid during liquidation
     /// @return Current price for `debtToken`
     /// @return Current price for `collateralToken`
     function _canLiquidate(
         address debtToken,
         address collateralToken,
-        address borrower
+        address account,
+        uint256 amount,
+        bool liquidateExact
     ) internal view returns (uint256, uint256, uint256) {
         if (!tokenData[debtToken].isListed) {
             revert Lendtroller__TokenNotListed();
         }
 
-        if (!tokenData[collateralToken].isListed) {
+        MarketToken storage cToken = tokenData[collateralToken];
+
+        if (!cToken.isListed) {
             revert Lendtroller__TokenNotListed();
         }
 
         // Do not let people liquidate 0 collateralization ratio assets
-        if (tokenData[collateralToken].collRatio == 0) {
+        if (cToken.collRatio == 0) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
@@ -1164,7 +1154,7 @@ contract Lendtroller is ILendtroller, ERC165 {
             uint256 shortfall,
             uint256 debtTokenPrice,
             uint256 collateralTokenPrice
-        ) = _getStatusForLiquidation(borrower, debtToken, collateralToken);
+        ) = _getStatusForLiquidation(account, debtToken, collateralToken);
 
         assembly {
             if iszero(shortfall) {
@@ -1174,33 +1164,23 @@ contract Lendtroller is ILendtroller, ERC165 {
                 revert(0x1c, 0x04)
             }
         }
-        uint256 maxLiquidationAmount = (closeFactor *
-            IMToken(debtToken).debtBalanceStored(borrower)) / WAD;
+        uint256 maxAmount = (closeFactor *
+            IMToken(debtToken).debtBalanceStored(account)) / WAD;
 
-        // Calculate the maximum amount of collateral that can be liquidated
-        return (maxLiquidationAmount, debtTokenPrice, collateralTokenPrice);
-    }
-
-    /// @notice Calculate number of `collateralToken` to
-    ///         seize given an underlying amount
-    /// @param collateralToken The address of the collateral mToken
-    /// @param amount The amount of debtToken underlying to repay
-    /// @param debtToken The address of the debt token
-    /// @param debtTokenPrice Current price for the debtToken
-    /// @param collateralTokenPrice Current price for `collateralToken`
-    /// @return uint256 The number of `collateralToken` tokens to be seized in a liquidation
-    /// @return uint256 The number of `collateralToken` tokens to be seized for the protocol
-    function _getLiquidatedTokens(
-        address collateralToken,
-        uint256 amount,
-        address debtToken,
-        uint256 debtTokenPrice,
-        uint256 collateralTokenPrice
-    ) internal view returns (uint256, uint256) {
-        MarketToken storage mToken = tokenData[collateralToken];
+        if (liquidateExact) {
+            // Make sure that the  liquidation limit and collateral posted >= amount
+            if (amount > maxAmount || 
+                amount > tokenData[collateralToken].accountData[account].collateralPosted
+            ) {
+                _revert(_INVALID_PARAMETER_SELECTOR);
+            }
+        } else {
+            uint256 collateralAvailable = tokenData[collateralToken].accountData[account].collateralPosted;
+            amount = maxAmount > collateralAvailable ? collateralAvailable : maxAmount;
+        }
 
         // Get the exchange rate and calculate the number of collateral tokens to seize:
-        uint256 debtToCollateralRatio = (mToken.liqIncA *
+        uint256 debtToCollateralRatio = (cToken.liqIncA *
             debtTokenPrice *
             WAD) /
             (collateralTokenPrice *
@@ -1212,10 +1192,9 @@ contract Lendtroller is ILendtroller, ERC165 {
         uint256 liquidatedTokens = (amountAdjusted * debtToCollateralRatio) /
             WAD;
 
-        return (
-            liquidatedTokens,
-            (liquidatedTokens * mToken.liqFee) / WAD
-        );
+        // Calculate the maximum amount of debt that can be liquidated
+        // and what collateral will be received
+        return (amount, liquidatedTokens, (liquidatedTokens * cToken.liqFee) / WAD);
     }
 
     /// @notice Determine what the account status if an action were done (redeem/borrow)

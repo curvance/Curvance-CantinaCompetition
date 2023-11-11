@@ -42,17 +42,12 @@ interface ILendtroller {
 
     function canRepay(address mToken, address borrower) external;
 
-    function canLiquidateExact(
-        address mTokenBorrowed,
-        address mTokenCollateral,
+    function canLiquidateWithExecution(
+        address debtToken,
+        address collateralToken,
         address borrower,
-        uint256 amount
-    ) external returns (uint256, uint256);
-
-    function canLiquidate(
-        address mTokenBorrowed,
-        address mTokenCollateral,
-        address borrower
+        uint256 amount,
+        bool liquidateExact
     ) external returns (uint256, uint256, uint256);
 
     function canSeize(

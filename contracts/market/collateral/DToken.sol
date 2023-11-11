@@ -22,7 +22,7 @@ contract DToken is ERC165, ReentrancyGuard {
     struct DebtData {
         /// @notice principal total balance (with accrued interest)
         uint256 principal;
-        /// @notice current exchange rate for user
+        /// @notice current exchange rate for account
         uint256 interestIndex;
     }
 
@@ -90,11 +90,11 @@ contract DToken is ERC165, ReentrancyGuard {
         uint256 exchangeRate,
         uint256 totalBorrows
     );
-    event Borrow(address borrower, uint256 amount);
-    event Repay(address payer, address borrower, uint256 amount);
+    event Borrow(address account, uint256 amount);
+    event Repay(address payer, address account, uint256 amount);
     event Liquidated(
         address liquidator,
-        address borrower,
+        address account,
         uint256 amount,
         address cTokenCollateral,
         uint256 seizeTokens
@@ -246,7 +246,7 @@ contract DToken is ERC165, ReentrancyGuard {
         return true;
     }
 
-    /// @notice Allows a user to borrow assets from the protocol
+    /// @notice Allows a account to borrow assets from the protocol
     /// @dev    Updates interest before executing the borrow
     /// @param amount The amount of the underlying asset to borrow
     function borrow(uint256 amount) external nonReentrant {
@@ -258,14 +258,14 @@ contract DToken is ERC165, ReentrancyGuard {
         _borrow(msg.sender, amount, msg.sender);
     }
 
-    /// @notice Allows a user to borrow assets from the protocol on behalf of someone else
+    /// @notice Allows a account to borrow assets from the protocol on behalf of someone else
     /// @dev    Updates interest before executing the borrow
-    /// @param user The user who will have their assets borrowed against
-    /// @param recipient The user who will receive the borrowed assets
+    /// @param account The account who will have their assets borrowed against
+    /// @param recipient The account who will receive the borrowed assets
     /// @param amount The amount of the underlying asset to borrow
-    function borrowFor(address user, address recipient, uint256 amount) external nonReentrant {
+    function borrowFor(address account, address recipient, uint256 amount) external nonReentrant {
 
-        if (!isApprovedToBorrow[user][msg.sender]) {
+        if (!isApprovedToBorrow[account][msg.sender]) {
             revert DToken__Unauthorized();
         }
 
@@ -274,18 +274,18 @@ contract DToken is ERC165, ReentrancyGuard {
         // Reverts if borrow not allowed
         // Note: Be careful who you approve here!
         // Not only can they take borrowed funds, but they can delay repayment through notify
-        lendtroller.canBorrowWithNotify(address(this), user, amount);
+        lendtroller.canBorrowWithNotify(address(this), account, amount);
 
-        _borrow(user, amount, recipient);
+        _borrow(account, amount, recipient);
     }
 
-    /// @notice Position folding borrows from the protocol for `user`
+    /// @notice Position folding borrows from the protocol for `account`
     /// @dev Only Position folding contract can call this function,
     ///      updates interest before executing the borrow
-    /// @param user The user address
+    /// @param account The account address
     /// @param amount The amount of the underlying asset to borrow
     function borrowForPositionFolding(
-        address user,
+        address account,
         uint256 amount,
         bytes calldata params
     ) external nonReentrant {
@@ -294,20 +294,20 @@ contract DToken is ERC165, ReentrancyGuard {
         }
 
         accrueInterest();
-        // Record that the user borrowed before everything else is updated
-        lendtroller.notifyBorrow(address(this), user);
+        // Record that the account borrowed before everything else is updated
+        lendtroller.notifyBorrow(address(this), account);
 
-        _borrow(user, amount, msg.sender);
+        _borrow(account, amount, msg.sender);
 
         IPositionFolding(msg.sender).onBorrow(
             address(this),
-            user,
+            account,
             amount,
             params
         );
 
         // Fail if position is not allowed, after position folding has re-invested
-        lendtroller.canBorrow(address(this), user, 0);
+        lendtroller.canBorrow(address(this), account, 0);
     }
 
     /// @notice Sender repays their own borrow
@@ -319,12 +319,12 @@ contract DToken is ERC165, ReentrancyGuard {
         _repay(msg.sender, msg.sender, amount);
     }
 
-    /// @notice Position folding repays `user`'s borrow
+    /// @notice Position folding repays `account`'s borrow
     /// @dev Only Position folding contract can call this function,
     ///      updates interest before executing the repay
     /// @param amount The amount to repay, or 0 for the full outstanding amount
     function repayForPositionFolding(
-        address user,
+        address account,
         uint256 amount
     ) external nonReentrant {
         if (msg.sender != lendtroller.positionFolding()) {
@@ -333,25 +333,25 @@ contract DToken is ERC165, ReentrancyGuard {
 
         accrueInterest();
 
-        _repay(msg.sender, user, amount);
+        _repay(msg.sender, account, amount);
     }
 
-    /// @notice Liquidates `borrower`'s collateral by repaying `amount` debt and
+    /// @notice Liquidates `account`'s collateral by repaying `amount` debt and
     ///         transferring the liquidated collateral to the liquidator
     /// @dev    Updates interest before executing the liquidation
-    /// @param borrower The address of the borrower to be liquidated
+    /// @param account The address of the account to be liquidated
     /// @param amount The amount of underlying asset the liquidator wishes to repay
-    /// @param collateralToken The market in which to seize collateral from the borrower
+    /// @param collateralToken The market in which to seize collateral from the account
     function liquidateExact(
-        address borrower,
+        address account,
         uint256 amount,
         IMToken collateralToken
     ) external nonReentrant {
         accrueInterest();
 
-        // Fail if borrower = liquidator
+        // Fail if account = liquidator
         assembly {
-            if eq(borrower, caller()) {
+            if eq(account, caller()) {
                 // revert with DToken__Unauthorized()
                 mstore(0x00, 0xefeae624)
                 revert(0x1c, 0x04)
@@ -366,16 +366,17 @@ contract DToken is ERC165, ReentrancyGuard {
         // Fail if liquidate not allowed,
         // trying to pay too much debt with excessive `amount` will revert
         (uint256 liquidatedTokens, uint256 protocolTokens) = lendtroller
-            .canLiquidateExact(
+            .canLiquidateWithExecution(
                 address(this),
                 address(collateralToken),
-                borrower,
-                amount
+                account,
+                amount,
+                true
             );
 
         _liquidate(
             msg.sender,
-            borrower,
+            account,
             amount,
             collateralToken,
             liquidatedTokens,
@@ -383,20 +384,20 @@ contract DToken is ERC165, ReentrancyGuard {
         );
     }
 
-    /// @notice Liquidates `borrower`'s collateral by repaying debt and
+    /// @notice Liquidates `account`'s collateral by repaying debt and
     ///         transferring the liquidated collateral to the liquidator
     /// @dev    Updates interest before executing the liquidation
-    /// @param borrower The address of the borrower to be liquidated
-    /// @param collateralToken The market in which to seize collateral from the borrower
+    /// @param account The address of the account to be liquidated
+    /// @param collateralToken The market in which to seize collateral from the account
     function liquidate(
-        address borrower,
+        address account,
         IMToken collateralToken
     ) external nonReentrant {
         accrueInterest();
 
-        // Fail if borrower = liquidator
+        // Fail if account = liquidator
         assembly {
-            if eq(borrower, caller()) {
+            if eq(account, caller()) {
                 // revert with DToken__Unauthorized()
                 mstore(0x00, 0xefeae624)
                 revert(0x1c, 0x04)
@@ -413,15 +414,17 @@ contract DToken is ERC165, ReentrancyGuard {
             uint256 amount,
             uint256 liquidatedTokens,
             uint256 protocolTokens
-        ) = lendtroller.canLiquidate(
+        ) = lendtroller.canLiquidateWithExecution(
                 address(this),
                 address(collateralToken),
-                borrower
+                account,
+                0,
+                false
             );
 
         _liquidate(
             msg.sender,
-            borrower,
+            account,
             amount,
             collateralToken,
             liquidatedTokens,
@@ -447,10 +450,10 @@ contract DToken is ERC165, ReentrancyGuard {
 
     /// @notice Helper function for Position Folding contract to redeem underlying tokens
     /// @dev    Updates interest before executing the redemption
-    /// @param user The user address
+    /// @param account The account address
     /// @param underlyingAmount The amount of the underlying asset to redeem
     function redeemUnderlyingForPositionFolding(
-        address user,
+        address account,
         uint256 underlyingAmount,
         bytes calldata params
     ) external nonReentrant {
@@ -461,7 +464,7 @@ contract DToken is ERC165, ReentrancyGuard {
         accrueInterest();
 
         _redeem(
-            user,
+            account,
             msg.sender,
             (underlyingAmount * WAD) / exchangeRateStored(),
             underlyingAmount
@@ -469,13 +472,13 @@ contract DToken is ERC165, ReentrancyGuard {
 
         IPositionFolding(msg.sender).onRedeem(
             address(this),
-            user,
+            account,
             underlyingAmount,
             params
         );
 
         // Fail if redeem not allowed, position folding has re-invested
-        lendtroller.canRedeem(address(this), user, 0);
+        lendtroller.canRedeem(address(this), account, 0);
     }
 
     /// @notice Sender supplies assets into the market and receives dTokens in exchange
@@ -968,10 +971,10 @@ contract DToken is ERC165, ReentrancyGuard {
 
     /// @notice User supplies assets into the market and receives dTokens in exchange
     /// @dev Assumes interest has already been accrued up to the current timestamp
-    /// @param user The address of the account which is supplying the assets
+    /// @param account The address of the account which is supplying the assets
     /// @param recipient The address of the account which will receive dToken
     /// @param amount The amount of the underlying asset to supply
-    function _mint(address user, address recipient, uint256 amount) internal {
+    function _mint(address account, address recipient, uint256 amount) internal {
         // Fail if mint not allowed
         lendtroller.canMint(address(this));
 
@@ -981,7 +984,7 @@ contract DToken is ERC165, ReentrancyGuard {
         // Transfer underlying in
         SafeTransferLib.safeTransferFrom(
             underlying,
-            user,
+            account,
             address(this),
             amount
         );
@@ -1019,7 +1022,7 @@ contract DToken is ERC165, ReentrancyGuard {
         }
 
         balanceOf[redeemer] = balanceOf[redeemer] - tokens;
-        // We have user underflow check above so we do not need a redundant check here
+        // We have account underflow check above so we do not need a redundant check here
         unchecked {
             totalSupply = totalSupply - tokens;
         }
@@ -1033,11 +1036,11 @@ contract DToken is ERC165, ReentrancyGuard {
     }
 
     /// @notice Users borrow assets from the protocol
-    /// @param borrower The user borrowing the assets
+    /// @param account The account borrowing the assets
     /// @param amount The amount of the underlying asset to borrow
-    /// @param recipient The user receiving the borrwed assets
+    /// @param recipient The account receiving the borrwed assets
     function _borrow(
-        address borrower,
+        address account,
         uint256 amount,
         address recipient
     ) internal {
@@ -1046,34 +1049,34 @@ contract DToken is ERC165, ReentrancyGuard {
             revert DToken__CashNotAvailable();
         }
 
-        // We calculate the new borrower and total borrow balances, failing on overflow:
-        _debtOf[borrower].principal = debtBalanceStored(borrower) + amount;
-        _debtOf[borrower].interestIndex = borrowExchangeRate.exchangeRate;
+        // We calculate the new account and total borrow balances, failing on overflow:
+        _debtOf[account].principal = debtBalanceStored(account) + amount;
+        _debtOf[account].interestIndex = borrowExchangeRate.exchangeRate;
         totalBorrows = totalBorrows + amount;
 
         SafeTransferLib.safeTransfer(underlying, recipient, amount);
 
-        emit Borrow(borrower, amount);
+        emit Borrow(account, amount);
     }
 
-    /// @notice Allows a payer to repay a loan on behalf of the borrower, usually themselves
+    /// @notice Allows a payer to repay a loan on behalf of the account, usually themselves
     /// @dev First validates that the payer is allowed to repay the loan, then repays
     ///      the loan by transferring in the repay amount. Emits a repay event on
     ///      successful repayment.
     /// @param payer The address paying off the borrow
-    /// @param borrower The account with the debt being paid off
+    /// @param account The account with the debt being paid off
     /// @param amount The amount the payer wishes to repay, or 0 for the full outstanding amount
     /// @return The actual amount repaid
     function _repay(
         address payer,
-        address borrower,
+        address account,
         uint256 amount
     ) internal returns (uint256) {
         // Validate that the payer is allowed to repay the loan
-        lendtroller.canRepay(address(this), borrower);
+        lendtroller.canRepay(address(this), account);
 
-        // Cache how much the borrower has to save gas
-        uint256 accountDebt = debtBalanceStored(borrower);
+        // Cache how much the account has to save gas
+        uint256 accountDebt = debtBalanceStored(account);
 
         // If amount == uint max, amount = accountBorrows
         amount = amount == 0 ? accountDebt : amount;
@@ -1085,52 +1088,47 @@ contract DToken is ERC165, ReentrancyGuard {
             amount
         );
 
-        // We calculate the new borrower and total borrow balances, failing on underflow:
-        _debtOf[borrower].principal = accountDebt - amount;
-        _debtOf[borrower].interestIndex = borrowExchangeRate.exchangeRate;
+        // We calculate the new account and total borrow balances, failing on underflow:
+        _debtOf[account].principal = accountDebt - amount;
+        _debtOf[account].interestIndex = borrowExchangeRate.exchangeRate;
         totalBorrows -= amount;
 
-        emit Repay(payer, borrower, amount);
+        emit Repay(payer, account, amount);
         return amount;
     }
 
     /// @notice The liquidator liquidates the borrowers collateral.
     ///  The collateral seized is transferred to the liquidator.
-    /// @param borrower The borrower of this dToken to be liquidated
+    /// @param account The account of this dToken to be liquidated
     /// @param liquidator The address repaying the borrow and seizing collateral
     /// @param amount The amount of the underlying borrowed asset to repay
-    /// @param collateralToken The market in which to seize collateral from the borrower
+    /// @param collateralToken The market in which to seize collateral from the account
     /// @param liquidatedTokens The number of `collateralToken` tokens to be seized in a liquidation
     /// @param protocolTokens The number of `collateralToken` tokens to be seized for the protocol
     function _liquidate(
         address liquidator,
-        address borrower,
+        address account,
         uint256 amount,
         IMToken collateralToken,
         uint256 liquidatedTokens,
         uint256 protocolTokens
     ) internal {
         // calculates DTokens to repay for liquidation, reverts if repay fails
-        uint256 repayAmount = _repay(liquidator, borrower, amount);
-
-        // Revert if borrower does not have enough collateral
-        if (collateralToken.balanceOf(borrower) < liquidatedTokens) {
-            revert DToken__ExcessiveValue();
-        }
+        uint256 repayAmount = _repay(liquidator, account, amount);
 
         // We check above that the mToken must be a collateral token,
         // so we cant seize this mToken as it is a debt token,
         // so there is no reEntry risk
         collateralToken.seize(
             liquidator,
-            borrower,
+            account,
             liquidatedTokens,
             protocolTokens
         );
 
         emit Liquidated(
             liquidator,
-            borrower,
+            account,
             repayAmount,
             address(collateralToken),
             liquidatedTokens
