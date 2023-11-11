@@ -64,6 +64,12 @@ contract Lendtroller is ILendtroller, ERC165 {
         mapping(address => AccountMetadata) accountData;
     }
 
+    struct LiquidationCall {
+        address account;
+        address debtToken;
+        address collateralToken;
+    }
+
     /// CONSTANTS ///
 
     /// @notice Maximum collateral requirement to avoid liquidation. 40%
@@ -950,10 +956,10 @@ contract Lendtroller is ILendtroller, ERC165 {
         address account
     ) internal view returns (bool) {
         (uint256 shortfall, , ) = _getStatusForLiquidation(
-            account,
-            address(0),
-            address(0)
-        );
+            LiquidationCall({account: account,
+            debtToken: address(0),
+            collateralToken: address(0)
+        }));
         return shortfall > 0;
     }
 
@@ -1154,7 +1160,11 @@ contract Lendtroller is ILendtroller, ERC165 {
             uint256 shortfall,
             uint256 debtTokenPrice,
             uint256 collateralTokenPrice
-        ) = _getStatusForLiquidation(account, debtToken, collateralToken);
+        ) = _getStatusForLiquidation(LiquidationCall({
+            account: account,
+            debtToken: debtToken,
+            collateralToken: collateralToken
+        }));
 
         assembly {
             if iszero(shortfall) {
@@ -1233,16 +1243,13 @@ contract Lendtroller is ILendtroller, ERC165 {
                 // If the asset has a Collateral Ratio,
                 // increment their collateral and max borrow value
                 if (!(tokenData[snapshot.asset].collRatio == 0)) {
-                    uint256 assetValue = _getAssetValue(
-                        ((tokenData[snapshot.asset].accountData[account].collateralPosted * snapshot.exchangeRate) / WAD),
-                        underlyingPrices[i],
-                        snapshot.decimals
+                    (sumCollateral, maxBorrow) = _addCollateralValue(
+                        snapshot, 
+                        account, 
+                        underlyingPrices[i], 
+                        sumCollateral, 
+                        maxBorrow
                     );
-
-                    sumCollateral += assetValue;
-                    maxBorrow +=
-                        (assetValue * tokenData[snapshot.asset].collRatio) /
-                        WAD;
                 }
             } else {
                 // If they have a borrow balance we need to document it
@@ -1330,22 +1337,21 @@ contract Lendtroller is ILendtroller, ERC165 {
     ///         the given amounts were redeemed/borrowed
     /// @dev Note that we calculate the exchangeRateStored for each collateral
     ///           mToken using stored data, without calculating accumulated interest.
-    /// @param account The account to determine liquidity for
-    /// @param debtToken The dToken to be repaid during liquidation
-    /// @param collateralToken The cToken to be seized during liquidation
+    /// @param liqConfig Containing:
+    ///                  account The account to determine liquidity for
+    ///                  debtToken The dToken to be repaid during liquidation
+    ///                  collateralToken The cToken to be seized during liquidation
     /// @return Current shortfall versus liquidation threshold
     /// @return Current price for `debtToken`
     /// @return Current price for `collateralToken`
     function _getStatusForLiquidation(
-        address account,
-        address debtToken,
-        address collateralToken
+        LiquidationCall memory liqConfig
     ) internal view returns (uint256, uint256, uint256) {
         (
             AccountSnapshot[] memory snapshots,
             uint256[] memory underlyingPrices,
             uint256 numAssets
-        ) = _getAssetData(account, 2);
+        ) = _getAssetData(liqConfig.account, 2);
         AccountSnapshot memory snapshot;
         uint256 totalCollateral;
         uint256 totalDebt;
@@ -1356,22 +1362,18 @@ contract Lendtroller is ILendtroller, ERC165 {
             snapshot = snapshots[i];
 
             if (snapshot.isCToken) {
-                if (snapshot.asset == collateralToken) {
+                if (snapshot.asset == liqConfig.collateralToken) {
                     collateralTokenPrice = underlyingPrices[i];
                 }
 
                 // If the asset has a CR increment their collateral
                 if (!(tokenData[snapshot.asset].collRatio == 0)) {
-                    totalCollateral +=
-                        (_getAssetValue(
-                            ((tokenData[snapshot.asset].accountData[account].collateralPosted * snapshot.exchangeRate) / WAD),
-                            underlyingPrices[i],
-                            snapshot.decimals
-                        ) * WAD) /
-                        tokenData[snapshot.asset].collReqA;
+                    {
+                        totalCollateral += _calculateCollateralValues(snapshot, liqConfig.account, underlyingPrices[i]);
+                    }
                 }
             } else {
-                if (snapshot.asset == debtToken) {
+                if (snapshot.asset == liqConfig.debtToken) {
                     debtTokenPrice = underlyingPrices[i];
                 }
 
@@ -1432,6 +1434,36 @@ contract Lendtroller is ILendtroller, ERC165 {
         uint256 decimals
     ) internal pure returns (uint256) {
         return (amount * price) / (10 ** decimals);
+    }
+
+    function _calculateCollateralValues(
+        AccountSnapshot memory snapshot,
+        address account,
+        uint256 price
+    ) internal view returns (uint256) {
+        return _getAssetValue(
+                            ((tokenData[snapshot.asset].accountData[account].collateralPosted * snapshot.exchangeRate) / WAD),
+                            price,
+                            snapshot.decimals
+                        ) * WAD
+                        
+                         /
+                        tokenData[snapshot.asset].collReqA;
+    }
+
+    function _addCollateralValue(
+        AccountSnapshot memory snapshot,
+        address account,
+        uint256 price,
+        uint256 previousCollateral,
+        uint256 previousBorrow
+    ) internal view returns (uint256, uint256) {
+        uint256  assetValue = _getAssetValue((
+            (tokenData[snapshot.asset].accountData[account].collateralPosted * snapshot.exchangeRate) / WAD), 
+            price, 
+            snapshot.decimals
+            );
+        return (previousCollateral + assetValue, previousBorrow  + (assetValue * tokenData[snapshot.asset].collRatio) / WAD);
     }
 
     function _calculateNegativeCurveValue(uint256 current, uint256 start, uint256 end) internal pure returns (uint256) {
