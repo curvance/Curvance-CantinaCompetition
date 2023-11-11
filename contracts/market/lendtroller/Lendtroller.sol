@@ -89,6 +89,16 @@ contract Lendtroller is ILendtroller, ERC165 {
 
     /// STORAGE ///
 
+    /// @notice A list of all tokens inside this market for the frontend.
+    IMToken[] public tokensListed;
+
+    /// @notice Maximum % that a liquidator can repay when liquidating an account,
+    /// @dev    In `WAD` format, default 50%
+    uint256 public closeFactor = 0.5e18;
+    /// @notice PositionFolding contract address.
+    address public positionFolding;
+
+    /// MARKET STATE
     /// @dev 1 = unpaused; 2 = paused
     uint256 public transferPaused = 1;
     /// @dev 1 = unpaused; 2 = paused
@@ -97,24 +107,18 @@ contract Lendtroller is ILendtroller, ERC165 {
     mapping(address => uint256) public mintPaused;
     /// @dev Token => 0 or 1 = unpaused; 2 = paused
     mapping(address => uint256) public borrowPaused;
-    /// @notice Token => Collateral Posted
-    mapping(address => uint256) public collateralPosted;
-    /// @notice Token => Collateral Cap
-    mapping(address => uint256) public collateralCaps;
 
-    /// @notice Maximum % that a liquidator can repay when liquidating an account,
-    /// @dev    In `WAD` format, default 50%
-    uint256 public closeFactor = 0.5e18;
-    /// @notice PositionFolding contract address.
-    address public positionFolding;
-
-    /// @notice A list of all tokens inside this market for the frontend.
-    IMToken[] public tokensListed;
-
+    /// MARKET DATA
     /// @notice Market Token => isListed, Token Characteristics, Account Data.
     mapping(address => MarketToken) public tokenData;
     /// @notice Account => Assets, cooldownTimestamp.
     mapping(address => AccountData) public accountAssets;
+
+    /// COLLATERAL CONSTRAINTS
+    /// @notice Token => Collateral Posted
+    mapping(address => uint256) public collateralPosted;
+    /// @notice Token => Collateral Cap
+    mapping(address => uint256) public collateralCaps;
 
     /// EVENTS ///
 
@@ -330,9 +334,35 @@ contract Lendtroller is ILendtroller, ERC165 {
         _canRedeem(mToken, redeemer, amount);
     }
 
+    /// @notice Checks if the account should be allowed to redeem tokens
+    ///         in the given market, and then redeems
+    /// @dev    This can only be called by the mToken itself, 
+    ///         this will only be cTokens calling, dTokens are never collateral
+    /// @param mToken The market to verify the redeem against
+    /// @param redeemer The account which would redeem the tokens
+    /// @param balance The current mTokens balance of `redeemer`
+    /// @param amount The number of mTokens to exchange
+    ///               for the underlying asset in the market
+    /// @param forceReduce Whether the collateral should be always reduced 
+    function canRedeemWithCollateralRemoval(
+        address mToken,
+        address redeemer,
+        uint256 balance, 
+        uint256 amount,
+        bool forceReduce
+    ) external override {
+        if (msg.sender != mToken) {
+            revert Lendtroller__Unauthorized();
+        }
+
+        _canRedeem(mToken, redeemer, amount);
+        _reduceCollateralIfNecessary(redeemer, mToken, balance, amount, forceReduce);
+    }
+
     /// @notice Checks if the account should be allowed to borrow
     ///         the underlying asset of the given market,
     ///         and notifies the market of the borrow
+    /// @dev    This can only be called by the market itself 
     /// @param mToken The market to verify the borrow against
     /// @param borrower The account which would borrow the asset
     /// @param amount The amount of underlying the account would borrow

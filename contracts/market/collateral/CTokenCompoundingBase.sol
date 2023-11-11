@@ -170,6 +170,138 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
 
     /// EXTERNAL FUNCTIONS ///
 
+    /// @notice Caller deposits assets into the market, receives shares, 
+    ///         and turns on collateralization of the assets
+    /// @param assets The amount of the underlying asset to supply
+    /// @param receiver The account that should receive the cToken shares
+    /// @return shares the amount of cToken shares received by `receiver`
+    function depositAsCollateral(
+        uint256 assets,
+        address receiver
+    ) external nonReentrant returns (uint256 shares) {
+        shares = _deposit(assets, receiver);
+        if (msg.sender == receiver || msg.sender != lendtroller.positionFolding()) {
+            lendtroller.postCollateral(receiver, address(this), shares);
+        }
+    }
+
+    /// @notice Caller deposits assets into the market, receives cTokens
+    ///         as shares, and turns on collateralization of the assets
+    /// @param shares The amount of the underlying assets quoted in shares to supply
+    /// @param receiver The account that should receive the cToken shares
+    /// @return assets the amount of cToken shares quoted in assets received by `receiver`
+    function mintAsCollateral(
+        uint256 shares,
+        address receiver
+    ) external nonReentrant returns (uint256 assets) {
+        assets = _mint(shares, receiver);
+        if (msg.sender == receiver || msg.sender != lendtroller.positionFolding()) {
+            lendtroller.postCollateral(receiver, address(this), shares);
+        }
+    }
+
+    /// @notice Caller withdraws assets from the market and burns their shares
+    /// @dev   Forces collateral to be withdrawn
+    /// @param assets The amount of the underlying asset to withdraw
+    /// @param receiver The account that should receive the assets
+    /// @param owner The account that will burn their shares to withdraw assets
+    /// @return shares the amount of cToken shares redeemed by `owner`
+    function withdrawCollateral(
+        uint256 assets,
+        address receiver,
+        address owner
+    ) external nonReentrant returns (uint256 shares) {
+        shares = _withdraw(assets, receiver, owner, true);
+    }
+
+    /// @notice Helper function for Position Folding contract to
+    ///         redeem assets
+    /// @param owner The owner address of assets to redeem
+    /// @param assets The amount of the underlying assets to redeem
+    function withdrawByPositionFolding(
+        address owner,
+        uint256 assets,
+        bytes calldata params
+    ) external nonReentrant {
+        if (msg.sender != lendtroller.positionFolding()) {
+            revert CTokenCompoundingBase__Unauthorized();
+        }
+
+        // Save _totalAssets and pendingRewards to memory
+        uint256 pending = _calculatePendingRewards();
+        uint256 ta = _totalAssets + pending;
+
+        // We use a modified version of maxWithdraw with newly vested assets
+        if (assets > _convertToAssets(balanceOf(owner), ta)){
+            // revert with "CTokenCompoundingBase__WithdrawMoreThanMax"
+            _revert(0x2735eaab);
+        } 
+
+        // No need to check for rounding error, previewWithdraw rounds up
+        uint256 shares = _previewWithdraw(assets, ta);
+
+        // emit events on gauge pool
+        _gaugePool().withdraw(address(this), owner, shares);
+        _processWithdraw(msg.sender, msg.sender, owner, assets, shares, ta, pending);
+
+        IPositionFolding(msg.sender).onRedeem(
+            address(this),
+            owner,
+            assets,
+            params
+        );
+
+        // Fail if redeem not allowed
+        lendtroller.canRedeem(address(this), owner, 0);
+    }
+
+    /// @notice Caller withdraws assets from the market and burns their shares
+    /// @dev   Forces collateral to be withdrawn
+    /// @param shares The amount of shares to redeemed
+    /// @param receiver The account that should receive the assets
+    /// @param owner The account that will burn their shares to withdraw assets
+    /// @return assets the amount of assets redeemed by `owner`
+    function redeemCollateral(
+        uint256 shares,
+        address receiver,
+        address owner
+    ) external nonReentrant returns (uint256 assets) {
+        assets = _redeem(shares, receiver, owner, true);
+    }
+
+    /// @notice Returns current position vault yield information in the form:
+    ///         rewardRate: Yield per second in underlying asset
+    ///         vestingPeriodEnd: When the current vesting period ends and a new harvest can execute
+    ///         lastVestClaim: Last time pending vested yield was claimed
+    function getVaultYieldStatus() external view returns (VaultData memory) {
+        return _unpackedVaultData(_vaultData);
+    }
+
+    /// @notice Vault compound fee is in basis point form
+    /// @dev Returns the vaults current amount of yield used
+    ///      for compounding rewards
+    ///      Used for frontend data query only
+    function vaultCompoundFee() external view returns (uint256) {
+        return centralRegistry.protocolCompoundFee();
+    }
+
+    /// @notice Vault yield fee is in basis point form
+    /// @dev Returns the vaults current protocol fee for compounding rewards
+    ///      Used for frontend data query only
+    function vaultYieldFee() external view returns (uint256) {
+        return centralRegistry.protocolYieldFee();
+    }
+
+    /// @notice Vault harvest fee is in basis point form
+    /// @dev Returns the vaults current harvest fee for compounding rewards
+    ///      that pays for yield and compound fees
+    ///      Used for frontend data query only
+    function vaultHarvestFee() external view returns (uint256) {
+        return centralRegistry.protocolHarvestFee();
+    }
+
+    // PERMISSIONED FUNCTIONS
+
     /// @notice Used to start a CToken market, executed via lendtroller
     /// @dev this initial mint is a failsafe against the empty market exploit
     ///      although we protect against it in many ways,
@@ -214,39 +346,6 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
 
         return true;
     }
-
-    /// @notice Returns current position vault yield information in the form:
-    ///         rewardRate: Yield per second in underlying asset
-    ///         vestingPeriodEnd: When the current vesting period ends and a new harvest can execute
-    ///         lastVestClaim: Last time pending vested yield was claimed
-    function getVaultYieldStatus() external view returns (VaultData memory) {
-        return _unpackedVaultData(_vaultData);
-    }
-
-    /// @notice Vault compound fee is in basis point form
-    /// @dev Returns the vaults current amount of yield used
-    ///      for compounding rewards
-    ///      Used for frontend data query only
-    function vaultCompoundFee() external view returns (uint256) {
-        return centralRegistry.protocolCompoundFee();
-    }
-
-    /// @notice Vault yield fee is in basis point form
-    /// @dev Returns the vaults current protocol fee for compounding rewards
-    ///      Used for frontend data query only
-    function vaultYieldFee() external view returns (uint256) {
-        return centralRegistry.protocolYieldFee();
-    }
-
-    /// @notice Vault harvest fee is in basis point form
-    /// @dev Returns the vaults current harvest fee for compounding rewards
-    ///      that pays for yield and compound fees
-    ///      Used for frontend data query only
-    function vaultHarvestFee() external view returns (uint256) {
-        return centralRegistry.protocolHarvestFee();
-    }
-
-    // PERMISSIONED FUNCTIONS
 
     function setVestingPeriod(uint256 newVestingPeriod) external onlyDaoPermissions {
         if (newVestingPeriod > 7 days) {
@@ -457,40 +556,7 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
         uint256 assets,
         address receiver
     ) public override nonReentrant returns (uint256 shares) {
-        if (assets == 0 || assets > maxDeposit(receiver)) {
-            _revert(VAULT_NOT_ACTIVE_SELECTOR);
-        }
-
-        // Fail if deposit not allowed
-        lendtroller.canMint(address(this));
-
-        // Save _totalAssets and pendingRewards to memory
-        uint256 pending = _calculatePendingRewards();
-        uint256 ta = _totalAssets + pending;
-
-        // Check for rounding error since we round down in previewDeposit
-        if ((shares = _previewDeposit(assets, ta)) == 0) {
-            revert CTokenCompoundingBase__ZeroShares();
-        }
-
-        _deposit(msg.sender, receiver, assets, shares, ta, pending);
-        // emit events on gauge pool
-        _gaugePool().deposit(address(this), receiver, shares);
-    }
-
-    /// @notice Caller deposits assets into the market, receives shares, 
-    ///         and turns on collateralization of the assets
-    /// @param assets The amount of the underlying asset to supply
-    /// @param receiver The account that should receive the cToken shares
-    /// @return shares the amount of cToken shares received by `receiver`
-    function depositAsCollateral(
-        uint256 assets,
-        address receiver
-    ) public nonReentrant returns (uint256 shares) {
-        shares = deposit(assets, receiver);
-        if (msg.sender == receiver || msg.sender != lendtroller.positionFolding()) {
-            lendtroller.postCollateral(receiver, address(this), shares);
-        }
+        shares = _deposit(assets, receiver);
     }
 
     /// @notice Caller deposits assets into the market and receives shares
@@ -501,41 +567,11 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
         uint256 shares,
         address receiver
     ) public override nonReentrant returns (uint256 assets) {
-        if (assets == 0 || assets > maxMint(receiver)) {
-            _revert(VAULT_NOT_ACTIVE_SELECTOR);
-        }
-
-        // Fail if mint not allowed
-        lendtroller.canMint(address(this));
-
-        // Save _totalAssets and pendingRewards to memory
-        uint256 pending = _calculatePendingRewards();
-        uint256 ta = _totalAssets + pending;
-
-        // No need to check for rounding error, previewMint rounds up
-        assets = _previewMint(shares, ta);
-
-        _deposit(msg.sender, receiver, assets, shares, ta, pending);
-        // emit events on gauge pool
-        _gaugePool().deposit(address(this), receiver, shares);
-    }
-
-    /// @notice Caller deposits assets into the market, receives cTokens
-    ///         as shares, and turns on collateralization of the assets
-    /// @param shares The amount of the underlying assets quoted in shares to supply
-    /// @param receiver The account that should receive the cToken shares
-    /// @return assets the amount of cToken shares quoted in assets received by `receiver`
-    function mintAsCollateral(
-        uint256 shares,
-        address receiver
-    ) public nonReentrant returns (uint256 assets) {
-        assets = mint(shares, receiver);
-        if (msg.sender == receiver || msg.sender != lendtroller.positionFolding()) {
-            lendtroller.postCollateral(receiver, address(this), shares);
-        }
+        assets = _mint(shares, receiver);
     }
 
     /// @notice Caller withdraws assets from the market and burns their shares
+    /// @dev   Does not force collateral to be withdrawn
     /// @param assets The amount of the underlying asset to withdraw
     /// @param receiver The account that should receive the assets
     /// @param owner The account that will burn their cTokens to withdraw assets
@@ -545,91 +581,21 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
         address receiver,
         address owner
     ) public override nonReentrant returns (uint256 shares) {
-
-        // Save _totalAssets and pendingRewards to memory
-        uint256 pending = _calculatePendingRewards();
-        uint256 ta = _totalAssets + pending;
-
-        // We use a modified version of maxWithdraw with newly vested assets
-        if (assets > _convertToAssets(balanceOf(owner), ta)){
-            // revert with "CTokenCompoundingBase__WithdrawMoreThanMax"
-            _revert(0x2735eaab);
-        } 
-
-        // No need to check for rounding error, previewWithdraw rounds up
-        shares = _previewWithdraw(assets, ta);
-        lendtroller.canRedeem(address(this), owner, shares);
-
-        // emit events on gauge pool
-        _gaugePool().withdraw(address(this), owner, shares);
-        _withdraw(msg.sender, receiver, owner, assets, shares, ta, pending);
+        shares = _withdraw(assets, receiver, owner, false);
     }
 
-    /// @notice Helper function for Position Folding contract to
-    ///         redeem assets
-    /// @param owner The owner address of assets to redeem
-    /// @param assets The amount of the underlying assets to redeem
-    function withdrawByPositionFolding(
-        address owner,
-        uint256 assets,
-        bytes calldata params
-    ) external nonReentrant {
-        if (msg.sender != lendtroller.positionFolding()) {
-            revert CTokenCompoundingBase__Unauthorized();
-        }
-
-        // Save _totalAssets and pendingRewards to memory
-        uint256 pending = _calculatePendingRewards();
-        uint256 ta = _totalAssets + pending;
-
-        // We use a modified version of maxWithdraw with newly vested assets
-        if (assets > _convertToAssets(balanceOf(owner), ta)){
-            // revert with "CTokenCompoundingBase__WithdrawMoreThanMax"
-            _revert(0x2735eaab);
-        } 
-
-        // No need to check for rounding error, previewWithdraw rounds up
-        uint256 shares = _previewWithdraw(assets, ta);
-
-        // emit events on gauge pool
-        _gaugePool().withdraw(address(this), owner, shares);
-        _withdraw(msg.sender, msg.sender, owner, assets, shares, ta, pending);
-
-        IPositionFolding(msg.sender).onRedeem(
-            address(this),
-            owner,
-            assets,
-            params
-        );
-
-        // Fail if redeem not allowed
-        lendtroller.canRedeem(address(this), owner, 0);
-    }
-
+    /// @notice Caller withdraws assets from the market and burns their shares
+    /// @dev   Does not force collateral to be withdrawn
+    /// @param shares The amount of shares to redeemed
+    /// @param receiver The account that should receive the assets
+    /// @param owner The account that will burn their shares to withdraw assets
+    /// @return assets the amount of assets redeemed by `owner`
     function redeem(
         uint256 shares,
         address receiver,
         address owner
     ) public override nonReentrant returns (uint256 assets) {
-        if (shares > maxRedeem(owner)){
-            // revert with "CTokenCompoundingBase__RedeemMoreThanMax"
-            _revert(0x682b852f);
-        } 
-
-        lendtroller.canRedeem(address(this), owner, shares);
-
-        // Save _totalAssets and pendingRewards to memory
-        uint256 pending = _calculatePendingRewards();
-        uint256 ta = _totalAssets + pending;
-
-        // Check for rounding error since we round down in previewRedeem
-        if ((assets = _previewRedeem(shares, ta)) == 0) {
-            revert CTokenCompoundingBase__ZeroAssets();
-        }
-
-        // emit events on gauge pool
-        _gaugePool().withdraw(address(this), owner, shares);
-        _withdraw(msg.sender, receiver, owner, assets, shares, ta, pending);
+        assets = _redeem(shares, receiver, owner, false);
     }
 
     /// @notice Transfers collateral tokens (this market) to the liquidator.
@@ -785,7 +751,126 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
 
     /// INTERNAL FUNCTIONS ///
 
+    /// @notice Caller deposits assets into the market and receives shares
+    /// @param assets The amount of the underlying asset to supply
+    /// @param receiver The account that should receive the cToken shares
+    /// @return shares the amount of cToken shares received by `receiver`
     function _deposit(
+        uint256 assets,
+        address receiver
+    ) internal returns (uint256 shares) {
+        if (assets == 0 || assets > maxDeposit(receiver)) {
+            _revert(VAULT_NOT_ACTIVE_SELECTOR);
+        }
+
+        // Fail if deposit not allowed
+        lendtroller.canMint(address(this));
+
+        // Save _totalAssets and pendingRewards to memory
+        uint256 pending = _calculatePendingRewards();
+        uint256 ta = _totalAssets + pending;
+
+        // Check for rounding error since we round down in previewDeposit
+        if ((shares = _previewDeposit(assets, ta)) == 0) {
+            revert CTokenCompoundingBase__ZeroShares();
+        }
+
+        _processDeposit(msg.sender, receiver, assets, shares, ta, pending);
+        // emit events on gauge pool
+        _gaugePool().deposit(address(this), receiver, shares);
+    }
+
+    /// @notice Caller deposits assets into the market and receives shares
+    /// @param shares The amount of the underlying assets quoted in shares to supply
+    /// @param receiver The account that should receive the cToken shares
+    /// @return assets the amount of cToken shares quoted in assets received by `receiver`
+    function _mint(
+        uint256 shares,
+        address receiver
+    ) internal returns (uint256 assets) {
+        if (assets == 0 || assets > maxMint(receiver)) {
+            _revert(VAULT_NOT_ACTIVE_SELECTOR);
+        }
+
+        // Fail if mint not allowed
+        lendtroller.canMint(address(this));
+
+        // Save _totalAssets and pendingRewards to memory
+        uint256 pending = _calculatePendingRewards();
+        uint256 ta = _totalAssets + pending;
+
+        // No need to check for rounding error, previewMint rounds up
+        assets = _previewMint(shares, ta);
+
+        _processDeposit(msg.sender, receiver, assets, shares, ta, pending);
+        // emit events on gauge pool
+        _gaugePool().deposit(address(this), receiver, shares);
+    }
+
+    /// @notice Caller withdraws assets from the market and burns their shares
+    /// @param assets The amount of the underlying asset to withdraw
+    /// @param receiver The account that should receive the assets
+    /// @param owner The account that will burn their cTokens to withdraw assets
+    /// @return shares the amount of cToken shares redeemed by `owner`
+    function _withdraw(
+        uint256 assets,
+        address receiver,
+        address owner,
+        bool forceWithdrawCollateral
+    ) internal returns (uint256 shares) {
+        // Save _totalAssets and pendingRewards to memory
+        uint256 pending = _calculatePendingRewards();
+        uint256 ta = _totalAssets + pending;
+
+        // We use a modified version of maxWithdraw with newly vested assets
+        if (assets > _convertToAssets(balanceOf(owner), ta)){
+            // revert with "CTokenCompoundingBase__WithdrawMoreThanMax"
+            _revert(0x2735eaab);
+        } 
+
+        // No need to check for rounding error, previewWithdraw rounds up
+        shares = _previewWithdraw(assets, ta);
+        lendtroller.canRedeem(address(this), owner, shares);
+
+        // emit events on gauge pool
+        _gaugePool().withdraw(address(this), owner, shares);
+        _processWithdraw(msg.sender, receiver, owner, assets, shares, ta, pending);
+    }
+
+    /// @notice Caller withdraws assets from the market and burns their shares
+    /// @param shares The amount of shares to burn to withdraw assets
+    /// @param receiver The account that should receive the assets
+    /// @param owner The account that will burn their cTokens to withdraw assets
+    /// @return assets the amount of assets received by `receiver`
+    function _redeem(
+        uint256 shares,
+        address receiver,
+        address owner,
+        bool forceRedeemCollateral
+    ) internal returns (uint256 assets) {
+        if (shares > maxRedeem(owner)){
+            // revert with "CTokenCompoundingBase__RedeemMoreThanMax"
+            _revert(0x682b852f);
+        } 
+
+        //uint256 balance = balanceOf(owner);
+        //lendtroller.canRedeemWithCollateralRemoval(address(this), owner, balance, shares);
+
+        // Save _totalAssets and pendingRewards to memory
+        uint256 pending = _calculatePendingRewards();
+        uint256 ta = _totalAssets + pending;
+
+        // Check for rounding error since we round down in previewRedeem
+        if ((assets = _previewRedeem(shares, ta)) == 0) {
+            revert CTokenCompoundingBase__ZeroAssets();
+        }
+
+        // emit events on gauge pool
+        _gaugePool().withdraw(address(this), owner, shares);
+        _processWithdraw(msg.sender, receiver, owner, assets, shares, ta, pending);
+    }
+
+    function _processDeposit(
         address by,
         address to, 
         uint256 assets, 
@@ -829,7 +914,7 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
         _afterDeposit(assets, shares);
     }
 
-    function _withdraw(
+    function _processWithdraw(
         address by,
         address to,
         address owner,

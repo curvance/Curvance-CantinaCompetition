@@ -11,7 +11,7 @@ interface ILendtroller {
         address mToken, 
         uint256 tokens
     ) external;
-    
+
     function canMint(address mToken) external;
 
     function canRedeem(
@@ -20,13 +20,21 @@ interface ILendtroller {
         uint256 amount
     ) external;
 
-    function canBorrowWithNotify(
+    function canRedeemWithCollateralRemoval(
+        address mToken,
+        address redeemer,
+        uint256 balance, 
+        uint256 amount,
+        bool forceReduce
+    ) external;
+
+    function canBorrow(
         address mToken,
         address borrower,
         uint256 amount
     ) external;
 
-    function canBorrow(
+    function canBorrowWithNotify(
         address mToken,
         address borrower,
         uint256 amount
