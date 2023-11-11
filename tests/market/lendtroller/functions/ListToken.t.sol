@@ -5,7 +5,7 @@ import { TestBaseLendtroller } from "../TestBaseLendtroller.sol";
 import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
 
 contract listTokenTest is TestBaseLendtroller {
-    event MarketListed(address mToken);
+    event TokenListed(address mToken);
 
     function test_listToken_fail_whenCallerIsNotAuthorized() public {
         vm.prank(address(1));
@@ -33,7 +33,7 @@ contract listTokenTest is TestBaseLendtroller {
         assertEq(collateralizationRatio, 0);
 
         vm.expectEmit(true, true, true, true, address(lendtroller));
-        emit MarketListed(address(dUSDC));
+        emit TokenListed(address(dUSDC));
 
         lendtroller.listToken(address(dUSDC));
 

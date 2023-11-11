@@ -6,7 +6,7 @@ import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
 import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 
 contract SetMintPausedTest is TestBaseLendtroller {
-    event ActionPaused(IMToken mToken, string action, bool pauseState);
+    event TokenActionPaused(IMToken mToken, string action, bool pauseState);
 
     function test_setMintPaused_fail_whenCallerIsNotAuthorized() public {
         vm.prank(address(1));
@@ -31,7 +31,7 @@ contract SetMintPausedTest is TestBaseLendtroller {
         assertEq(lendtroller.mintPaused(address(dUSDC)), 0);
 
         vm.expectEmit(true, true, true, true, address(lendtroller));
-        emit ActionPaused(IMToken(address(dUSDC)), "Mint Paused", true);
+        emit TokenActionPaused(IMToken(address(dUSDC)), "Mint Paused", true);
 
         lendtroller.setMintPaused(IMToken(address(dUSDC)), true);
 
@@ -41,7 +41,7 @@ contract SetMintPausedTest is TestBaseLendtroller {
         assertEq(lendtroller.mintPaused(address(dUSDC)), 2);
 
         vm.expectEmit(true, true, true, true, address(lendtroller));
-        emit ActionPaused(IMToken(address(dUSDC)), "Mint Paused", false);
+        emit TokenActionPaused(IMToken(address(dUSDC)), "Mint Paused", false);
 
         lendtroller.setMintPaused(IMToken(address(dUSDC)), false);
 

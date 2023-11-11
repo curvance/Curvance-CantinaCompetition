@@ -56,14 +56,10 @@ contract CanBorrowTest is TestBaseLendtroller {
             block.timestamp
         );
 
-        address[] memory tokens = new address[](1);
-        tokens[0] = address(dUSDC);
-
-        vm.prank(user1);
-
         vm.expectRevert(
             Lendtroller.Lendtroller__InsufficientLiquidity.selector
         );
+        vm.prank(address(dUSDC));
         lendtroller.canBorrow(address(dUSDC), user1, 100e6);
     }
 
@@ -96,15 +92,13 @@ contract CanBorrowTest is TestBaseLendtroller {
             3000,
             7000
         );
-        address[] memory tokens = new address[](2);
-        tokens[0] = address(dUSDC);
-        tokens[1] = address(cBALRETH);
 
         // Need some CTokens/collateral to have enough liquidity for borrowing
         deal(address(balRETH), user1, 10_000e18);
         vm.startPrank(user1);
         balRETH.approve(address(cBALRETH), 1_000e18);
         cBALRETH.mint(1_000e18);
+        lendtroller.postCollateral(address(cBALRETH), 999e18);
         vm.stopPrank();
 
         vm.prank(address(dUSDC));
@@ -149,9 +143,6 @@ contract CanBorrowTest is TestBaseLendtroller {
             block.timestamp,
             block.timestamp
         );
-
-        address[] memory tokens = new address[](1);
-        tokens[0] = address(dUSDC);
 
         vm.expectRevert(Lendtroller.Lendtroller__Unauthorized.selector);
         lendtroller.canBorrow(address(dUSDC), user1, 0);

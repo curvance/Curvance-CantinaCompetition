@@ -11,20 +11,21 @@ contract CanRepayTest is TestBaseLendtroller {
         lendtroller.canRepay(address(dUSDC), user1);
     }
 
-    // function test_canRepay_fail_withinMinimumHoldPeriod() public {
-    //     lendtroller.listToken(address(dUSDC));
-    //     lendtroller.notifyBorrow(user1);
+    function test_canRepay_fail_withinMinimumHoldPeriod() public {
+        lendtroller.listToken(address(dUSDC));
+        vm.prank(address(dUSDC));
+        lendtroller.notifyBorrow(user1);
 
-    //     vm.expectRevert(Lendtroller.Lendtroller__MinimumHoldPeriod.selector);
-    //     lendtroller.canRepay(address(dUSDC), user1);
-    // }
+        vm.expectRevert(Lendtroller.Lendtroller__MinimumHoldPeriod.selector);
+        lendtroller.canRepay(address(dUSDC), user1);
+    }
 
     function test_canRepay_success_whenPastMinimumHoldPeriod() public {
         lendtroller.listToken(address(dUSDC));
         vm.prank(address(dUSDC));
         lendtroller.notifyBorrow(user1);
 
-        skip(15 minutes);
+        skip(20 minutes);
         lendtroller.canRepay(address(dUSDC), user1);
     }
 

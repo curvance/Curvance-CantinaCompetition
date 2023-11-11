@@ -27,6 +27,7 @@ import { GaugePool } from "contracts/gauge/GaugePool.sol";
 import { ERC20 } from "contracts/libraries/ERC20.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { ERC20 } from "contracts/libraries/ERC20.sol";
+import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 
 contract TestBaseMarket is TestBase {
     address internal constant _WETH_ADDRESS =
@@ -143,6 +144,13 @@ contract TestBaseMarket is TestBase {
 
         priceRouter.addMTokenSupport(address(dUSDC));
         priceRouter.addMTokenSupport(address(cBALRETH));
+
+        // Set default collateral cap for cBALRETH at 100_000e18
+        IMToken[] memory tokens = new IMToken[](1);
+        tokens[0] = IMToken(address(cBALRETH));
+        uint256[] memory caps = new uint256[](1);
+        caps[0] = 100_000e18;
+        lendtroller.setCTokenCollateralCaps(tokens, caps);
     }
 
     function _deployCentralRegistry() internal {
@@ -235,12 +243,36 @@ contract TestBaseMarket is TestBase {
         chainlinkAdaptor = new ChainlinkAdaptor(
             ICentralRegistry(address(centralRegistry))
         );
-        chainlinkAdaptor.addAsset(_WETH_ADDRESS, address(chainlinkEthUsd), true);
-        chainlinkAdaptor.addAsset(_USDC_ADDRESS, address(chainlinkUsdcUsd), true);
-        chainlinkAdaptor.addAsset(_USDC_ADDRESS, address(chainlinkUsdcEth), false);
-        chainlinkAdaptor.addAsset(_DAI_ADDRESS, address(chainlinkDaiUsd), true);
-        chainlinkAdaptor.addAsset(_DAI_ADDRESS, address(chainlinkDaiEth), false);
-        chainlinkAdaptor.addAsset(_RETH_ADDRESS, address(chainlinkRethEth), false);
+        chainlinkAdaptor.addAsset(
+            _WETH_ADDRESS,
+            address(chainlinkEthUsd),
+            true
+        );
+        chainlinkAdaptor.addAsset(
+            _USDC_ADDRESS,
+            address(chainlinkUsdcUsd),
+            true
+        );
+        chainlinkAdaptor.addAsset(
+            _USDC_ADDRESS,
+            address(chainlinkUsdcEth),
+            false
+        );
+        chainlinkAdaptor.addAsset(
+            _DAI_ADDRESS,
+            address(chainlinkDaiUsd),
+            true
+        );
+        chainlinkAdaptor.addAsset(
+            _DAI_ADDRESS,
+            address(chainlinkDaiEth),
+            false
+        );
+        chainlinkAdaptor.addAsset(
+            _RETH_ADDRESS,
+            address(chainlinkRethEth),
+            false
+        );
 
         priceRouter.addApprovedAdaptor(address(chainlinkAdaptor));
         priceRouter.addAssetPriceFeed(
@@ -261,7 +293,11 @@ contract TestBaseMarket is TestBase {
             ICentralRegistry(address(centralRegistry))
         );
 
-        dualChainlinkAdaptor.addAsset(_WETH_ADDRESS, address(chainlinkEthUsd), true);
+        dualChainlinkAdaptor.addAsset(
+            _WETH_ADDRESS,
+            address(chainlinkEthUsd),
+            true
+        );
 
         dualChainlinkAdaptor.addAsset(
             _USDC_ADDRESS,
@@ -274,8 +310,16 @@ contract TestBaseMarket is TestBase {
             address(chainlinkUsdcEth),
             false
         );
-        dualChainlinkAdaptor.addAsset(_DAI_ADDRESS, address(chainlinkDaiUsd), true);
-        dualChainlinkAdaptor.addAsset(_DAI_ADDRESS, address(chainlinkDaiEth), false);
+        dualChainlinkAdaptor.addAsset(
+            _DAI_ADDRESS,
+            address(chainlinkDaiUsd),
+            true
+        );
+        dualChainlinkAdaptor.addAsset(
+            _DAI_ADDRESS,
+            address(chainlinkDaiEth),
+            false
+        );
         dualChainlinkAdaptor.addAsset(
             _RETH_ADDRESS,
             address(chainlinkRethEth),
