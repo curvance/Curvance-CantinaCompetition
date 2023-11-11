@@ -230,9 +230,10 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
         // Save _totalAssets and pendingRewards to memory
         uint256 pending = _calculatePendingRewards();
         uint256 ta = _totalAssets + pending;
+        uint256 balancePrior = balanceOf(owner);
 
         // We use a modified version of maxWithdraw with newly vested assets
-        if (assets > _convertToAssets(balanceOf(owner), ta)){
+        if (assets > _convertToAssets(balancePrior, ta)){
             // revert with "CTokenCompoundingBase__WithdrawMoreThanMax"
             _revert(0x2735eaab);
         } 
@@ -252,6 +253,12 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
         );
 
         // Fail if redeem not allowed
+        lendtroller.reduceCollateralIfNecessary(
+            owner, 
+            address(this), 
+            balancePrior, 
+            shares
+        );
         lendtroller.canRedeem(address(this), owner, 0);
     }
 
@@ -810,13 +817,14 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
     /// @notice Caller withdraws assets from the market and burns their shares
     /// @param assets The amount of the underlying asset to withdraw
     /// @param receiver The account that should receive the assets
-    /// @param owner The account that will burn their cTokens to withdraw assets
-    /// @return shares the amount of cToken shares redeemed by `owner`
+    /// @param owner The account that will burn their shares to withdraw assets
+    /// @param forceRedeemCollateral Whether the collateral should be always reduced 
+    /// @return shares The amount of shares redeemed by `owner`
     function _withdraw(
         uint256 assets,
         address receiver,
         address owner,
-        bool forceWithdrawCollateral
+        bool forceRedeemCollateral
     ) internal returns (uint256 shares) {
         // Save _totalAssets and pendingRewards to memory
         uint256 pending = _calculatePendingRewards();
@@ -830,7 +838,13 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
 
         // No need to check for rounding error, previewWithdraw rounds up
         shares = _previewWithdraw(assets, ta);
-        lendtroller.canRedeem(address(this), owner, shares);
+        lendtroller.canRedeemWithCollateralRemoval(
+            address(this), 
+            owner, 
+            balanceOf(owner), 
+            shares, 
+            forceRedeemCollateral
+        );
 
         // emit events on gauge pool
         _gaugePool().withdraw(address(this), owner, shares);
@@ -840,8 +854,9 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
     /// @notice Caller withdraws assets from the market and burns their shares
     /// @param shares The amount of shares to burn to withdraw assets
     /// @param receiver The account that should receive the assets
-    /// @param owner The account that will burn their cTokens to withdraw assets
-    /// @return assets the amount of assets received by `receiver`
+    /// @param owner The account that will burn their shares to withdraw assets
+    /// @param forceRedeemCollateral Whether the collateral should be always reduced 
+    /// @return assets The amount of assets received by `receiver`
     function _redeem(
         uint256 shares,
         address receiver,
@@ -853,8 +868,13 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
             _revert(0x682b852f);
         } 
 
-        //uint256 balance = balanceOf(owner);
-        //lendtroller.canRedeemWithCollateralRemoval(address(this), owner, balance, shares);
+        lendtroller.canRedeemWithCollateralRemoval(
+            address(this), 
+            owner, 
+            balanceOf(owner), 
+            shares, 
+            forceRedeemCollateral
+        );
 
         // Save _totalAssets and pendingRewards to memory
         uint256 pending = _calculatePendingRewards();

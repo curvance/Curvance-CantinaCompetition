@@ -295,7 +295,7 @@ contract DToken is ERC165, ReentrancyGuard {
 
         accrueInterest();
         // Record that the user borrowed before everything else is updated
-        lendtroller.notifyBorrow(user);
+        lendtroller.notifyBorrow(address(this), user);
 
         _borrow(user, amount, msg.sender);
 

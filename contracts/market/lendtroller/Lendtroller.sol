@@ -343,13 +343,13 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @param balance The current mTokens balance of `redeemer`
     /// @param amount The number of mTokens to exchange
     ///               for the underlying asset in the market
-    /// @param forceReduce Whether the collateral should be always reduced 
+    /// @param forceRedeemCollateral Whether the collateral should be always reduced 
     function canRedeemWithCollateralRemoval(
         address mToken,
         address redeemer,
         uint256 balance, 
         uint256 amount,
-        bool forceReduce
+        bool forceRedeemCollateral
     ) external override {
         if (msg.sender != mToken) {
             revert Lendtroller__Unauthorized();
@@ -826,12 +826,26 @@ contract Lendtroller is ILendtroller, ERC165 {
         );
     }
 
+    function reduceCollateralIfNecessary(
+        address account, 
+        address mToken, 
+        uint256 balance, 
+        uint256 amount
+    ) external override {
+        if (msg.sender != mToken) {
+            revert Lendtroller__Unauthorized();
+        }
+
+        _reduceCollateralIfNecessary(account, mToken, balance, amount, false);
+    }
+
     /// @notice Updates `borrower` cooldownTimestamp to the current block timestamp
     /// @dev The caller must be a listed MToken in the `markets` mapping
+    /// @param mToken   The address of the dToken that the account is borrowing
     /// @param borrower The address of the account that has just borrowed
-    function notifyBorrow(address borrower) external override {
-        if (!tokenData[msg.sender].isListed) {
-            revert Lendtroller__TokenNotListed();
+    function notifyBorrow(address mToken, address borrower) external override {
+        if (msg.sender != mToken) {
+            revert Lendtroller__Unauthorized();
         }
 
         accountAssets[borrower].cooldownTimestamp = block.timestamp;

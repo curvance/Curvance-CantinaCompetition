@@ -66,7 +66,14 @@ interface ILendtroller {
         uint256 amount
     ) external;
 
-    function notifyBorrow(address account) external;
+    function reduceCollateralIfNecessary(
+        address account, 
+        address mToken, 
+        uint256 balance, 
+        uint256 amount
+    ) external;
+
+    function notifyBorrow(address mToken, address account) external;
 
     function isListed(address mToken) external view returns (bool);
 
