@@ -6,9 +6,13 @@ import { BaseOracleAdaptor } from "contracts/oracles/adaptors/BaseOracleAdaptor.
 import { IVault } from "contracts/interfaces/external/balancer/IVault.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
-abstract contract BalancerPoolAdaptor is BaseOracleAdaptor {
+/// Kudos to Balancer for researching gas limit values for Vault Reentrancy
+abstract contract BalancerBaseAdaptor is BaseOracleAdaptor {
     
     /// CONSTANTS ///
+
+    /// @notice Gas limit allowed for reentrancy check
+    uint256 public constant GAS_LIMIT = 10000;
 
     /// @notice The Balancer Vault
     IVault public immutable balancerVault;
@@ -16,7 +20,7 @@ abstract contract BalancerPoolAdaptor is BaseOracleAdaptor {
     /// ERRORS ///
 
     /// @notice Attempted to price BPTs while in the Balancer Vault.
-    error BalancerPoolAdaptor__Reentrancy();
+    error BalancerBaseAdaptor__Reentrancy();
 
     /// CONSTRUCTOR ///
 
@@ -70,7 +74,7 @@ abstract contract BalancerPoolAdaptor is BaseOracleAdaptor {
         // but we need to make sure it didn't fail due to a re-entrancy attack
         // This might just look like an issue in foundry.
         // Running a testnet test does not use an insane amount of gas.
-        (, bytes memory revertData) = address(vault).staticcall{ gas: 10_000 }(
+        (, bytes memory revertData) = address(vault).staticcall{ gas: GAS_LIMIT }(
             abi.encodeWithSelector(
                 vault.manageUserBalance.selector,
                 new address[](0)
@@ -78,6 +82,6 @@ abstract contract BalancerPoolAdaptor is BaseOracleAdaptor {
         );
 
         if (keccak256(revertData) == REENTRANCY_ERROR_HASH)
-            revert BalancerPoolAdaptor__Reentrancy();
+            revert BalancerBaseAdaptor__Reentrancy();
     }
 }

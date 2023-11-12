@@ -42,6 +42,15 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
     /// @notice Balancer Stable Pool Adaptor Storage
     mapping(address => AdaptorData) public adaptorData;
 
+    /// EVENTS ///
+
+    event BalancerStablePoolAssetAdded(
+        address asset,
+        AdaptorData assetConfig
+    );
+
+    event BalancerStablePoolAssetRemoved(address asset);
+
     /// ERRORS ///
 
     error BalancerStablePoolAdaptor__AssetIsNotSupported();
@@ -169,6 +178,7 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
         // Save values in Adaptor storage.
         adaptorData[asset] = data;
         isSupportedAsset[asset] = true;
+        emit BalancerStablePoolAssetAdded(asset, data);
     }
 
     /// @notice Removes a supported asset from the adaptor.
@@ -185,5 +195,6 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
 
         // Notify the price router that we are going to stop supporting the asset
         IPriceRouter(centralRegistry.priceRouter()).notifyFeedRemoval(asset);
+        emit BalancerStablePoolAssetRemoved(asset);
     }
 }

@@ -3,7 +3,7 @@ pragma solidity 0.8.17;
 
 import { TestBasePriceRouter } from "../TestBasePriceRouter.sol";
 import { BalancerStablePoolAdaptor } from "contracts/oracles/adaptors/balancer/BalancerStablePoolAdaptor.sol";
-import { IVault } from "contracts/oracles/adaptors/balancer/BalancerPoolAdaptor.sol";
+import { IVault } from "contracts/oracles/adaptors/balancer/BalancerBaseAdaptor.sol";
 import { ChainlinkAdaptor } from "contracts/oracles/adaptors/chainlink/ChainlinkAdaptor.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { PriceRouter } from "contracts/oracles/PriceRouter.sol";

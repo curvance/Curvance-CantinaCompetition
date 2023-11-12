@@ -42,6 +42,15 @@ contract PendlePrincipalTokenAdaptor is BaseOracleAdaptor {
     /// @notice Pendle PT adaptor storage
     mapping(address => AdaptorData) public adaptorData;
 
+    /// EVENTS ///
+
+    event PendleLPAssetAdded(
+        address asset,
+        AdaptorData assetConfig
+    );
+
+    event PendleLPAssetRemoved(address asset);
+
     /// ERRORS ///
 
     error PendlePrincipalTokenAdaptor__AssetIsNotSupported();
@@ -149,6 +158,7 @@ contract PendlePrincipalTokenAdaptor is BaseOracleAdaptor {
             quoteAsset: data.quoteAsset,
             quoteAssetDecimals: data.quoteAssetDecimals
         });
+        emit PendlePTAssetAdded(asset, data);
     }
 
     /// @notice Removes a supported asset from the adaptor.
@@ -167,5 +177,6 @@ contract PendlePrincipalTokenAdaptor is BaseOracleAdaptor {
 
         ///Notify the price router that we are going to stop supporting the asset
         IPriceRouter(centralRegistry.priceRouter()).notifyFeedRemoval(asset);
+        emit PendlePTAssetRemoved(asset);
     }
 }

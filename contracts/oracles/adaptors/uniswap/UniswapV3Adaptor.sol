@@ -42,6 +42,15 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
     /// @notice Uniswap adaptor storage
     mapping(address => AdaptorData) public adaptorData;
 
+    /// EVENTS ///
+
+    event UniswapV3AssetAdded(
+        address asset,
+        AdaptorData assetConfig
+    );
+
+    event UniswapV3AssetRemoved(address asset);
+
     /// ERRORS ///
 
     error UniswapV3Adaptor__AssetIsNotSupported();
@@ -197,29 +206,30 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
 
     function addAsset(
         address asset,
-        AdaptorData memory parameters
+        AdaptorData memory data
     ) external onlyElevatedPermissions {
         // Verify seconds ago is reasonable.
-        if (parameters.secondsAgo < MINIMUM_SECONDS_AGO) {
+        if (data.secondsAgo < MINIMUM_SECONDS_AGO) {
             revert UniswapV3Adaptor__SecondsAgoIsLessThanMinimum();
         }
 
-        UniswapV3Pool pool = UniswapV3Pool(parameters.priceSource);
+        UniswapV3Pool pool = UniswapV3Pool(data.priceSource);
 
         address token0 = pool.token0();
         address token1 = pool.token1();
         if (token0 == asset) {
-            parameters.baseDecimals = ERC20(asset).decimals();
-            parameters.quoteDecimals = ERC20(token1).decimals();
-            parameters.quoteToken = token1;
+            data.baseDecimals = ERC20(asset).decimals();
+            data.quoteDecimals = ERC20(token1).decimals();
+            data.quoteToken = token1;
         } else if (token1 == asset) {
-            parameters.baseDecimals = ERC20(asset).decimals();
-            parameters.quoteDecimals = ERC20(token0).decimals();
-            parameters.quoteToken = token0;
+            data.baseDecimals = ERC20(asset).decimals();
+            data.quoteDecimals = ERC20(token0).decimals();
+            data.quoteToken = token0;
         } else revert("UniswapV3Adaptor: twap asset not in pool");
 
-        adaptorData[asset] = parameters;
+        adaptorData[asset] = data;
         isSupportedAsset[asset] = true;
+        emit UniswapV3AssetAdded(asset, data);
     }
 
     /// @notice Removes a supported asset from the adaptor.
@@ -239,5 +249,6 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
         // Notify the price router that we are going
         // to stop supporting the asset
         IPriceRouter(centralRegistry.priceRouter()).notifyFeedRemoval(asset);
+        emit UniswapV3AssetRemoved(asset);
     }
 }

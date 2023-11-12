@@ -41,6 +41,15 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
     /// @notice Pendle LP adaptor storage
     mapping(address => AdaptorData) public adaptorData;
 
+    /// EVENTS ///
+
+    event PendleLPAssetAdded(
+        address asset,
+        AdaptorData assetConfig
+    );
+
+    event PendleLPAssetRemoved(address asset);
+
     /// ERRORS ///
 
     error PendleLPTokenAdaptor__AssetIsNotSupported();
@@ -142,6 +151,7 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
             pt: data.pt,
             quoteAssetDecimals: data.quoteAssetDecimals
         });
+        emit PendleLPAssetAdded(asset, data);
     }
 
     /// @notice Removes a supported asset from the adaptor.
@@ -160,6 +170,7 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
 
         // Notify the price router that we are going to stop supporting the asset
         IPriceRouter(centralRegistry.priceRouter()).notifyFeedRemoval(asset);
+        emit PendleLPAssetRemoved(asset);
     }
 
     /// INTERNAL FUNCTIONS ///

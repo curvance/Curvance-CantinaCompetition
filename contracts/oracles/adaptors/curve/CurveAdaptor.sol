@@ -1,15 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.17;
 
-import { BaseOracleAdaptor } from "contracts/oracles/adaptors/BaseOracleAdaptor.sol";
-import { CurveReentrancyCheck } from "contracts/oracles/adaptors/curve/CurveReentrancyCheck.sol";
+import { CurveBaseAdaptor } from "contracts/oracles/adaptors/curve/CurveBaseAdaptor.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 import { ICurvePool } from "contracts/interfaces/external/curve/ICurvePool.sol";
 
-contract CurveAdaptor is BaseOracleAdaptor, CurveReentrancyCheck {
+contract CurveAdaptor is CurveBaseAdaptor {
     /// TYPES ///
 
     struct AdaptorData {
@@ -29,6 +28,15 @@ contract CurveAdaptor is BaseOracleAdaptor, CurveReentrancyCheck {
     /// @notice Curve Pool Adaptor Storage
     mapping(address => AdaptorData) public adaptorData;
 
+    /// EVENTS ///
+
+    event CurvePoolAssetAdded(
+        address asset,
+        AdaptorData assetConfig
+    );
+
+    event CurvePoolAssetRemoved(address asset);
+
     /// ERRORS ///
 
     error CurveAdaptor__UnsupportedPool();
@@ -41,17 +49,18 @@ contract CurveAdaptor is BaseOracleAdaptor, CurveReentrancyCheck {
 
     constructor(
         ICentralRegistry centralRegistry_
-    ) BaseOracleAdaptor(centralRegistry_) {}
+    ) CurveBaseAdaptor(centralRegistry_) {}
 
     /// EXTERNAL FUNCTIONS ///
 
-    /// @inheritdoc CurveReentrancyCheck
+    /// @notice Sets or updates a Curve pool configuration for the reentrancy check
+    /// @param coinsLength The number of coins (from .coinsLength) on the Curve pool
+    /// @param gasLimit The gas limit to be set on the check
     function setReentrancyVerificationConfig(
-        address _pool,
-        uint128 _gasLimit,
-        CurveReentrancyCheck.N_COINS _nCoins
-    ) external override onlyElevatedPermissions {
-        _setReentrancyVerificationConfig(_pool, _gasLimit, _nCoins);
+        uint256 coinsLength,
+        uint256 gasLimit
+    ) external onlyElevatedPermissions {
+        _setReentrancyVerificationConfig(coinsLength, gasLimit);
     }
 
     /// @notice Retrieves the price of a given asset.
@@ -72,18 +81,18 @@ contract CurveAdaptor is BaseOracleAdaptor, CurveReentrancyCheck {
         pData.inUSD = inUSD;
 
         AdaptorData memory adapter = adaptorData[asset];
-        if (isLocked(adapter.pool)) {
+        ICurvePool pool = ICurvePool(adapter.pool);
+
+        uint256 coinsLength = adapter.coinsLength;
+        if (isLocked(asset, coinsLength)) {
             revert CurveAdaptor__Reentrant();
         }
 
-        IPriceRouter priceRouter = IPriceRouter(centralRegistry.priceRouter());
-        ICurvePool pool = ICurvePool(adapter.pool);
-
-        uint256 coins = adapter.coinsLength;
         uint256 virtualPrice = pool.get_virtual_price();
         uint256 minPrice = type(uint256).max;
+        IPriceRouter priceRouter = IPriceRouter(centralRegistry.priceRouter());
 
-        for (uint256 i; i < coins; ) {
+        for (uint256 i; i < coinsLength; ) {
             (uint256 price, uint256 errorCode) = priceRouter.getPrice(
                 adapter.coins[i],
                 inUSD,
@@ -138,15 +147,22 @@ contract CurveAdaptor is BaseOracleAdaptor, CurveReentrancyCheck {
             }
         }
 
+        // Make sure that the asset being added has the proper input
+        // via this sanity check
+        if (isLocked(asset, coinsLength)){
+            revert CurveAdaptor__UnsupportedPool();
+        }
+
         AdaptorData storage newAsset = adaptorData[asset];
 
-        // Save values in Adaptor storage.
+        // Save configuration values in adaptorData
         newAsset.coinsLength = coinsLength;
         newAsset.coins = coins;
         newAsset.pool = pool;
 
         // Notify the adaptor to support the asset
         isSupportedAsset[asset] = true;
+        emit CurvePoolAssetAdded(asset, newAsset);
     }
 
     /// @notice Removes a supported asset from the adaptor.
@@ -163,5 +179,6 @@ contract CurveAdaptor is BaseOracleAdaptor, CurveReentrancyCheck {
 
         // Notify the price router that we are going to stop supporting the asset
         IPriceRouter(centralRegistry.priceRouter()).notifyFeedRemoval(asset);
+        emit CurvePoolAssetRemoved(asset);
     }
 }

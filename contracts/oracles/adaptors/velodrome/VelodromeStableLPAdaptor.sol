@@ -30,6 +30,15 @@ contract VelodromeStableLPAdaptor is BaseOracleAdaptor {
     /// @notice Balancer Stable Pool Adaptor Storage
     mapping(address => AdaptorData) public adaptorData;
 
+    /// EVENTS ///
+
+    event VelodromeStableLPAssetAdded(
+        address asset,
+        AdaptorData assetConfig
+    );
+
+    event VelodromeStableLPAssetRemoved(address asset);
+
     /// ERRORS ///
 
     error VelodromeStableLPAdaptor__AssetIsNotSupported();
@@ -122,6 +131,7 @@ contract VelodromeStableLPAdaptor is BaseOracleAdaptor {
         // Save values in Adaptor storage.
         adaptorData[asset] = data;
         isSupportedAsset[asset] = true;
+        emit VelodromeStableLPAssetAdded(asset, data);
     }
 
     /// @notice Removes a supported asset from the adaptor.
@@ -138,6 +148,7 @@ contract VelodromeStableLPAdaptor is BaseOracleAdaptor {
 
         // Notify the price router that we are going to stop supporting the asset
         IPriceRouter(centralRegistry.priceRouter()).notifyFeedRemoval(asset);
+        emit VelodromeStableLPAssetRemoved(asset);
     }
 
     /// INTERNAL FUNCTIONS ///
