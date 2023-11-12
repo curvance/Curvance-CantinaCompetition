@@ -61,7 +61,7 @@ contract DynamicInterestRateModel {
     /// STORAGE ///
 
     DynamicRatesData public currentRates;
-    RatesConfiguration public rateConfig;
+    RatesConfiguration public ratesConfig;
 
     /// EVENTS ///
 
@@ -70,6 +70,7 @@ contract DynamicInterestRateModel {
         uint256 vertexInterestRate,
         uint256 vertexStartingPoint,
         uint256 adjustmentRate,
+        uint256 adjustmentVelocity,
         uint256 decayRate,
         uint256 increaseThreshold,
         uint256 increaseThresholdMax,
@@ -198,7 +199,9 @@ contract DynamicInterestRateModel {
         uint256 reserves
     ) public returns (uint256 borrowRate) {
         uint256 util = utilizationRate(cash, borrows, reserves);
-        uint256 vertexPoint = currentRates.vertexStartingPoint;
+        RatesConfiguration memory config = ratesConfig;
+        uint256 vertexPoint = config.vertexStartingPoint;
+
         bool belowVertex = (util <= vertexPoint);
 
         if (belowVertex) {
@@ -213,25 +216,25 @@ contract DynamicInterestRateModel {
             }
         }
 
-        DynamicRatesData storage rateInfo = currentRates;
+        DynamicRatesData storage currentInfo = currentRates;
 
-        if (block.timestamp >= rateInfo.nextUpdateTimestamp){
+        if (block.timestamp >= currentInfo.nextUpdateTimestamp){
             
             // If the vertex multiplier is already at its minimum,
             // and would decrease more, can break here
-            if (rateInfo.vertexMultiplier == WAD && util < rateInfo.increaseThreshold) {
-                rateInfo.nextUpdateTimestamp = uint128(block.timestamp);
+            if (currentInfo.vertexMultiplier == WAD && util < config.increaseThreshold) {
+                currentInfo.nextUpdateTimestamp = uint128(block.timestamp);
                 return borrowRate;
             }
 
             if (belowVertex){
-                _updateRateBelowVertex(rateInfo, util);
-                rateInfo.nextUpdateTimestamp = uint128(block.timestamp);
+                _updateRatesBelowVertex(currentInfo, config, util);
+                currentInfo.nextUpdateTimestamp = uint128(block.timestamp);
                 return borrowRate;
             }
 
-            _updateRateAboveVertex(rateInfo, util);
-            rateInfo.nextUpdateTimestamp = uint128(block.timestamp);
+            _updateRatesAboveVertex(currentInfo, config, util);
+            currentInfo.nextUpdateTimestamp = uint128(block.timestamp);
         }
     }
 
@@ -246,7 +249,7 @@ contract DynamicInterestRateModel {
         uint256 reserves
     ) public view returns (uint256) {
         uint256 util = utilizationRate(cash, borrows, reserves);
-        uint256 vertexPoint = currentRates.vertexStartingPoint;
+        uint256 vertexPoint = ratesConfig.vertexStartingPoint;
 
         if (util <= vertexPoint) {
             unchecked {
@@ -327,7 +330,7 @@ contract DynamicInterestRateModel {
     function getNormalInterestRate(
         uint256 util
     ) internal view returns (uint256) {
-        return (util * currentRates.baseInterestRate) / WAD;
+        return (util * ratesConfig.baseInterestRate) / WAD;
     }
 
     /// @notice Calculates the interest rate under `jump` conditions,
@@ -337,80 +340,88 @@ contract DynamicInterestRateModel {
     function getVertexInterestRate(
         uint256 util
     ) internal view returns (uint256) {
-        return (util * currentRates.vertexInterestRate) / WAD;
+        return (util * ratesConfig.vertexInterestRate) / WAD;
     }
 
     /// INTERNAL FUNCTIONS ///
 
-    function _updateRateBelowVertex(DynamicRatesData storage rateInfo, uint256 util) internal {
+    function _updateRatesBelowVertex(
+        DynamicRatesData storage currentInfo, 
+        RatesConfiguration memory config,
+        uint256 util
+    ) internal {
         uint256 newRate;
         // Calculate decay rate
-        uint256 decay = rateInfo.vertexMultiplier * rateInfo.decayRate;
+        uint256 decay = currentInfo.vertexMultiplier * config.decayRate;
 
-        if (util <= rateInfo.decreaseThresholdMax) {
-            newRate = ((rateInfo.vertexMultiplier * WAD) / rateInfo.adjustmentVelocity) - decay;
+        if (util <= config.decreaseThresholdMax) {
+            newRate = ((currentInfo.vertexMultiplier * WAD) / config.adjustmentVelocity) - decay;
             if (newRate < WAD) {
-                rateInfo.vertexMultiplier = uint128(WAD);
+                currentInfo.vertexMultiplier = uint128(WAD);
                 return;
             }
 
             // Update and return with decay rate applied.
-            rateInfo.vertexMultiplier = uint128(newRate);
+            currentInfo.vertexMultiplier = uint128(newRate);
             return;
         }
 
-        newRate = (rateInfo.vertexMultiplier * 
-        ((rateInfo.adjustmentVelocity * WAD) / 
+        newRate = (currentInfo.vertexMultiplier * 
+        ((config.adjustmentVelocity * WAD) / 
         _calculateNegativeCurveValue(
             util, 
-            rateInfo.increaseThreshold, 
-            rateInfo.increaseThresholdMax
+            config.increaseThreshold, 
+            config.increaseThresholdMax
         ))) - decay;
 
         if (newRate < WAD) {
-            rateInfo.vertexMultiplier = uint128(WAD);
+            currentInfo.vertexMultiplier = uint128(WAD);
             return;
         }
 
         // Update and return with adjustment and decay rate applied.
-        rateInfo.vertexMultiplier = uint128(newRate);
+        currentInfo.vertexMultiplier = uint128(newRate);
     }
 
-    function _updateRateAboveVertex(DynamicRatesData storage rateInfo, uint256 util) internal {
+    function _updateRatesAboveVertex(
+        DynamicRatesData storage currentInfo, 
+        RatesConfiguration memory config,
+        uint256 util
+    ) internal {
         uint256 newRate;
         // Calculate decay rate
-        uint256 decay = rateInfo.vertexMultiplier * rateInfo.decayRate;
+        uint256 decay = currentInfo.vertexMultiplier * config.decayRate;
 
-        if (util < rateInfo.increaseThreshold) {
-            newRate = rateInfo.vertexMultiplier - decay;
+        if (util < config.increaseThreshold) {
+            newRate = currentInfo.vertexMultiplier - decay;
             // Check if decay rate sends new rate below 1.
             if (newRate < WAD) {
-                rateInfo.vertexMultiplier = uint128(WAD);
+                currentInfo.vertexMultiplier = uint128(WAD);
                 return;
             }
 
             // Update and return with decay rate applied.
-            rateInfo.vertexMultiplier = uint128(newRate);
+            currentInfo.vertexMultiplier = uint128(newRate);
             return;
         }
 
-        newRate = (rateInfo.vertexMultiplier * 
-        (rateInfo.adjustmentVelocity * 
+        newRate = (currentInfo.vertexMultiplier * 
+        (config.adjustmentVelocity * 
         _calculatePositiveCurveValue(
             util, 
-            rateInfo.increaseThreshold, 
-            rateInfo.increaseThresholdMax
+            config.increaseThreshold, 
+            config.increaseThresholdMax
         )) / WAD) - decay;
 
         // Its theorectically possible for the new rate to be below 1 due to decay,
         // so we still need to check.
         if (newRate < WAD) {
-            rateInfo.vertexMultiplier = uint128(WAD);
+            currentInfo.vertexMultiplier = uint128(WAD);
             return;
         }
         
         // Update and return with adjustment and decay rate applied.
-        rateInfo.vertexMultiplier = uint128(newRate);
+        currentInfo.vertexMultiplier = uint128(newRate);
     }
 
     function _calculatePositiveCurveValue(uint256 current, uint256 start, uint256 end) internal pure returns (uint256) {
@@ -485,40 +496,45 @@ contract DynamicInterestRateModel {
             revert DynamicInterestRateModel__InvalidDecayRate();
         }
 
-        currentRates.baseInterestRate =
+        DynamicRatesData storage currentInfo = currentRates;
+        RatesConfiguration storage config = ratesConfig;
+
+        config.baseInterestRate =
             (INTEREST_COMPOUND_RATE * baseRatePerYear * WAD) /
             (SECONDS_PER_YEAR * vertexUtilizationStart);
-        currentRates.vertexInterestRate =
+        config.vertexInterestRate =
             (INTEREST_COMPOUND_RATE * vertexRatePerYear) /
             SECONDS_PER_YEAR;
 
-        currentRates.vertexStartingPoint = vertexUtilizationStart;
-        currentRates.adjustmentRate = adjustmentRate;
-        currentRates.nextUpdateTimestamp = 
-            uint128(block.timestamp + currentRates.adjustmentRate);
+        config.vertexStartingPoint = vertexUtilizationStart;
+        config.adjustmentRate = adjustmentRate;
+        currentInfo.nextUpdateTimestamp =  uint128(block.timestamp + config.adjustmentRate);
         if (vertexReset) {
-            currentRates.vertexMultiplier = uint128(WAD);
+            currentInfo.vertexMultiplier = uint128(WAD);
         }
-        currentRates.decayRate = decayRate;
+        config.decayRate = decayRate;
 
         uint256 thresholdLength = (WAD - vertexUtilizationStart) / 2;
-        currentRates.increaseThreshold = vertexUtilizationStart + thresholdLength;
-        currentRates.increaseThresholdMax = WAD;
+        config.increaseThreshold = vertexUtilizationStart + thresholdLength;
+        config.increaseThresholdMax = WAD;
 
-        currentRates.decreaseThreshold = vertexUtilizationStart;
-        currentRates.decreaseThresholdMax = vertexUtilizationStart - thresholdLength;
+        config.decreaseThreshold = vertexUtilizationStart;
+        config.decreaseThresholdMax = vertexUtilizationStart - thresholdLength;
+
+        RatesConfiguration memory cachedConfig = config;
 
         emit NewDynamicInterestRateModel(
-            currentRates.baseInterestRate,
-            currentRates.vertexInterestRate,
-            currentRates.vertexStartingPoint,
-            currentRates.adjustmentRate,
-            currentRates.decayRate,
-            currentRates.increaseThreshold,
-            currentRates.increaseThresholdMax,
-            currentRates.decreaseThreshold,
-            currentRates.decreaseThresholdMax,
-            vertexReset
+            cachedConfig.baseInterestRate, // base rate
+            cachedConfig.vertexInterestRate, // vertex base rate
+            vertexUtilizationStart, // Vertex utilization rate start
+            adjustmentRate, // Adjustment rate
+            adjustmentVelocity, // Adjustment velocity 
+            decayRate, // Decay rate
+            cachedConfig.increaseThreshold, // Vertex increase threshold
+            WAD, // Vertex increase threshold max
+            cachedConfig.decreaseThreshold, // Vertex decrease threshold
+            cachedConfig.decreaseThresholdMax, // // Vertex decrease threshold max
+            vertexReset // Was vertex multiplier reset
         );
     }
 }

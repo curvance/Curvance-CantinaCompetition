@@ -1047,7 +1047,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         collateralPosted[mToken] = collateralPosted[mToken] - amount;
         emit CollateralRemoved(account, mToken, amount);
 
-        if (accountData.collateralPosted == 0 && closePositionIfPossible) {
+        if (closePositionIfPossible && accountData.collateralPosted == 0) {
             _closePosition(account, accountData, IMToken(mToken)); 
         }
     }

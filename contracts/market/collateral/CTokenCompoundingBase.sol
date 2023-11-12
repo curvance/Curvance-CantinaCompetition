@@ -1215,7 +1215,7 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
     function _updateVestingPeriodIfNeeded() internal {
         if (pendingVestUpdate.updateNeeded) {
             vestPeriod = pendingVestUpdate.newVestPeriod;
-            pendingVestUpdate.updateNeeded = false;
+            delete pendingVestUpdate.updateNeeded;
         }
     }
 
