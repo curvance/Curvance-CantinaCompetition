@@ -108,17 +108,18 @@ contract DynamicInterestRateModel {
     /// CONSTRUCTOR ///
 
     /// @param baseRatePerYear The rate of increase in interest rate by
-    ///                        utilization rate (in basis points)
-    /// @param vertexRatePerYear The multiplierPerSecond after hitting
-    ///                          `vertexUtilizationStart` utilization rate
+    ///                        utilization rate, in `basis points`
+    /// @param vertexRatePerYear The rate of increase in interest rate by
+    ///                          utilization rate after `vertexUtilizationStart`,
+    ///                          in `basis points`
     /// @param vertexUtilizationStart The utilization point at which the vertex 
-    ///                               rate is applied
+    ///                               rate is applied, in `basis points`
     /// @param adjustmentRate The rate at which the vertex multiplier is adjusted, 
-    ///                             in seconds
+    ///                             in `seconds`
     /// @param adjustmentVelocity The maximum rate at with the vertex multiplier 
     ///                           is adjusted, in `basis points`
     /// @param decayRate Rate at which the vertex multiplier will decay per update, 
-        ///              in `WAD`
+    ///                  in `basis points`
     constructor(
         ICentralRegistry centralRegistry_,
         uint256 baseRatePerYear,
@@ -153,22 +154,21 @@ contract DynamicInterestRateModel {
 
     /// EXTERNAL FUNCTIONS ///
 
-    /// @notice Update the parameters of the interest rate model
-    ///         (only callable by Curvance DAO elevated permissions, i.e. Timelock)
     /// @param baseRatePerYear The rate of increase in interest rate by
-    ///                        utilization rate (in basis points)
-    /// @param vertexRatePerYear The multiplierPerSecond after hitting
-    ///                          `vertexUtilizationStart` utilization rate
+    ///                        utilization rate, in `basis points`
+    /// @param vertexRatePerYear The rate of increase in interest rate by
+    ///                          utilization rate after `vertexUtilizationStart`,
+    ///                          in `basis points`
     /// @param vertexUtilizationStart The utilization point at which the vertex 
-    ///                               rate is applied
+    ///                               rate is applied, in `basis points`
     /// @param adjustmentRate The rate at which the vertex multiplier is adjusted, 
-    ///                             in seconds
+    ///                             in `seconds`
     /// @param adjustmentVelocity The maximum rate at with the vertex multiplier 
     ///                           is adjusted, in `basis points`
     /// @param decayRate Rate at which the vertex multiplier will decay per update, 
-    ///                  in `WAD`
-    /// @param vertexReset Whether the vertex multiplier should be reset back to 1,
-    ///                    in `WAD`
+    ///                  in `basis points`
+    /// @param vertexReset Whether the vertex multiplier should be reset back to 
+    ///                    its default value
     function updateDynamicInterestRateModel(
         uint256 baseRatePerYear,
         uint256 vertexRatePerYear,
@@ -394,8 +394,6 @@ contract DynamicInterestRateModel {
     ) internal view returns (uint256) {
         return (util * vertexMultiplier() * ratesConfig.vertexInterestRate);
     }
-
-    /// INTERNAL FUNCTIONS ///
 
     /// @notice Calculates and returns the updated multiplier for scenarios 
     ///         where the utilization rate is below the vertex.
