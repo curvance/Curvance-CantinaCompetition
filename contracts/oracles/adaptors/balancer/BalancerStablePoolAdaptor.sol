@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { BalancerPoolAdaptor, IVault } from "./BalancerPoolAdaptor.sol";
+import { BalancerBaseAdaptor, IVault } from "contracts/oracles/adaptors/balancer/BalancerBaseAdaptor.sol";
 
 import { IBalancerPool } from "contracts/interfaces/external/balancer/IBalancerPool.sol";
 import { IRateProvider } from "contracts/interfaces/external/balancer/IRateProvider.sol";
@@ -9,7 +9,7 @@ import { PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 
-contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
+contract BalancerStablePoolAdaptor is BalancerBaseAdaptor {
     /// TYPES ///
 
     /// @notice Adaptor storage
@@ -61,7 +61,7 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
     constructor(
         ICentralRegistry centralRegistry_,
         IVault balancerVault_
-    ) BalancerPoolAdaptor(centralRegistry_, balancerVault_) {}
+    ) BalancerBaseAdaptor(centralRegistry_, balancerVault_) {}
 
     /// EXTERNAL FUNCTIONS ///
 
