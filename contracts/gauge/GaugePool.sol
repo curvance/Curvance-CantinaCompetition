@@ -3,7 +3,7 @@ pragma solidity ^0.8.17;
 
 import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { GaugeController, GaugeErrors } from "contracts/gauge/GaugeController.sol";
-import { ChildGaugePool } from "contracts/gauge/ChildGaugePool.sol";
+import { PartnerGaugePool } from "contracts/gauge/PartnerGaugePool.sol";
 
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
@@ -37,8 +37,8 @@ contract GaugePool is GaugeController, ReentrancyGuard {
 
     /// STORAGE ///
 
-    // Current child gauges attached to this gauge pool
-    ChildGaugePool[] public childGauges;
+    // Current partner gauges attached to this gauge pool
+    PartnerGaugePool[] public partnerGauges;
     mapping(address => PoolInfo) public poolInfo; // token => pool info
     mapping(address => mapping(address => UserInfo)) public userInfo; // token => user => info
     uint256 public firstDeposit;
@@ -46,8 +46,8 @@ contract GaugePool is GaugeController, ReentrancyGuard {
 
     /// EVENTS ///
 
-    event AddChildGauge(address childGauge);
-    event RemoveChildGauge(address childGauge);
+    event AddPartnerGauge(address childGauge);
+    event RemovePartnerGauge(address childGauge);
     event Deposit(address user, address token, uint256 amount);
     event Withdraw(address user, address token, uint256 amount);
     event Claim(address user, address token, uint256 amount);
@@ -84,42 +84,42 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         lendtroller = lendtroller_;
     }
 
-    /// @notice Adds a new child gauge to the gauge system
-    /// @param childGauge The address of the child gauge to be added
-    function addChildGauge(address childGauge) external onlyDaoPermissions {
+    /// @notice Adds a new partner gauge to the gauge system
+    /// @param childGauge The address of the partner gauge to be added
+    function addPartnerGauge(address childGauge) external onlyDaoPermissions {
         if (childGauge == address(0)) {
             revert GaugeErrors.InvalidAddress();
         }
 
-        if (ChildGaugePool(childGauge).activationTime() != 0) {
+        if (PartnerGaugePool(childGauge).activationTime() != 0) {
             revert GaugeErrors.InvalidAddress();
         }
 
-        childGauges.push(ChildGaugePool(childGauge));
-        ChildGaugePool(childGauge).activate();
+        partnerGauges.push(PartnerGaugePool(childGauge));
+        PartnerGaugePool(childGauge).activate();
 
-        emit AddChildGauge(childGauge);
+        emit AddPartnerGauge(childGauge);
     }
 
-    /// @notice Removes a child gauge from the gauge system
-    /// @param index The index of the child gauge
-    /// @param childGauge The address of the child gauge to be removed
-    function removeChildGauge(
+    /// @notice Removes a partner gauge from the gauge system
+    /// @param index The index of the partner gauge
+    /// @param childGauge The address of the partner gauge to be removed
+    function removePartnerGauge(
         uint256 index,
         address childGauge
     ) external onlyDaoPermissions {
-        if (childGauge != address(childGauges[index])) {
+        if (childGauge != address(partnerGauges[index])) {
             revert GaugeErrors.InvalidAddress();
         }
 
-        // If the child gauge is not the last one in the array,
+        // If the partner gauge is not the last one in the array,
         // copy its data down and then pop
-        if (index != (childGauges.length - 1)) {
-            childGauges[index] = childGauges[childGauges.length - 1];
+        if (index != (partnerGauges.length - 1)) {
+            partnerGauges[index] = partnerGauges[partnerGauges.length - 1];
         }
-        childGauges.pop();
+        partnerGauges.pop();
 
-        emit RemoveChildGauge(childGauge);
+        emit RemovePartnerGauge(childGauge);
     }
 
     function balanceOf(
@@ -231,11 +231,11 @@ contract GaugePool is GaugeController, ReentrancyGuard {
 
         _calcDebt(user, token);
 
-        uint256 numChildGauges = childGauges.length;
+        uint256 numPartnerGauges = partnerGauges.length;
 
-        for (uint256 i; i < numChildGauges; ) {
-            if (address(childGauges[i]) != address(0)) {
-                childGauges[i].deposit(token, user, amount);
+        for (uint256 i; i < numPartnerGauges; ) {
+            if (address(partnerGauges[i]) != address(0)) {
+                partnerGauges[i].deposit(token, user, amount);
             }
 
             unchecked {
@@ -281,11 +281,11 @@ contract GaugePool is GaugeController, ReentrancyGuard {
 
         _calcDebt(user, token);
 
-        uint256 numChildGauges = childGauges.length;
+        uint256 numPartnerGauges = partnerGauges.length;
 
-        for (uint256 i; i < numChildGauges; ) {
-            if (address(childGauges[i]) != address(0)) {
-                childGauges[i].withdraw(token, user, amount);
+        for (uint256 i; i < numPartnerGauges; ) {
+            if (address(partnerGauges[i]) != address(0)) {
+                partnerGauges[i].withdraw(token, user, amount);
             }
 
             unchecked {

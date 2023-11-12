@@ -5,21 +5,21 @@ import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 import { GaugePool } from "contracts/gauge/GaugePool.sol";
-import { ChildGaugePool } from "contracts/gauge/ChildGaugePool.sol";
+import { PartnerGaugePool } from "contracts/gauge/PartnerGaugePool.sol";
 import { MockToken } from "contracts/mocks/MockToken.sol";
 import { MockDataFeed } from "contracts/mocks/MockDataFeed.sol";
 import { TestBaseMarket } from "tests/market/TestBaseMarket.sol";
 
 contract User {}
 
-contract TestChildGaugePool is TestBaseMarket {
+contract TestPartnerGaugePool is TestBaseMarket {
     address public owner;
     address[] public tokens;
     address[] public users;
 
     uint256 constant CHILD_GAUGE_COUNT = 5;
-    ChildGaugePool[CHILD_GAUGE_COUNT] public childGauges;
-    address[CHILD_GAUGE_COUNT] public childRewardTokens;
+    PartnerGaugePool[CHILD_GAUGE_COUNT] public partnerGauges;
+    address[CHILD_GAUGE_COUNT] public partnerRewardTokens;
 
     MockDataFeed public mockDaiFeed;
 
@@ -89,29 +89,29 @@ contract TestChildGaugePool is TestBaseMarket {
         vm.warp(gaugePool.startTime());
         vm.roll(block.number + 1000);
 
-        // add child gauges
+        // add partner gauges
         for (uint256 i = 0; i < CHILD_GAUGE_COUNT; i++) {
-            childRewardTokens[i] = address(
+            partnerRewardTokens[i] = address(
                 new MockToken("Reward Token", "RT", 18)
             );
-            childGauges[i] = new ChildGaugePool(
+            partnerGauges[i] = new PartnerGaugePool(
                 address(gaugePool),
-                childRewardTokens[i],
+                partnerRewardTokens[i],
                 ICentralRegistry(address(centralRegistry))
             );
-            MockToken(childRewardTokens[i]).approve(
-                address(childGauges[i]),
+            MockToken(partnerRewardTokens[i]).approve(
+                address(partnerGauges[i]),
                 1000 ether
             );
 
-            gaugePool.addChildGauge(address(childGauges[i]));
+            gaugePool.addPartnerGauge(address(partnerGauges[i]));
         }
 
         mockDaiFeed = new MockDataFeed(_CHAINLINK_DAI_USD);
         chainlinkAdaptor.addAsset(_DAI_ADDRESS, address(mockDaiFeed), true);
     }
 
-    function testChildGaugesRewardRatioOfDifferentPools() public {
+    function testPartnerGaugesRewardRatioOfDifferentPools() public {
         // set gauge weights
         address[] memory tokensParam = new address[](2);
         tokensParam[0] = tokens[0];
@@ -125,7 +125,7 @@ contract TestChildGaugePool is TestBaseMarket {
         cve.mintGaugeEmissions(address(gaugePool), 300 * 2 weeks);
 
         for (uint256 i = 0; i < CHILD_GAUGE_COUNT; i++) {
-            childGauges[i].setRewardPerSec(1, 300);
+            partnerGauges[i].setRewardPerSec(1, 300);
         }
 
         vm.warp(gaugePool.startTime() + 1 * 2 weeks);
@@ -145,11 +145,11 @@ contract TestChildGaugePool is TestBaseMarket {
         assertEq(gaugePool.pendingRewards(tokens[1], users[2]), 20000);
         for (uint256 i = 0; i < CHILD_GAUGE_COUNT; i++) {
             assertEq(
-                childGauges[i].pendingRewards(tokens[0], users[0]),
+                partnerGauges[i].pendingRewards(tokens[0], users[0]),
                 10000
             );
             assertEq(
-                childGauges[i].pendingRewards(tokens[1], users[2]),
+                partnerGauges[i].pendingRewards(tokens[1], users[2]),
                 20000
             );
         }
@@ -170,16 +170,16 @@ contract TestChildGaugePool is TestBaseMarket {
         assertEq(gaugePool.pendingRewards(tokens[1], users[3]), 16000);
         for (uint256 i = 0; i < CHILD_GAUGE_COUNT; i++) {
             assertEq(
-                childGauges[i].pendingRewards(tokens[0], users[0]),
+                partnerGauges[i].pendingRewards(tokens[0], users[0]),
                 12000
             );
-            assertEq(childGauges[i].pendingRewards(tokens[0], users[1]), 8000);
+            assertEq(partnerGauges[i].pendingRewards(tokens[0], users[1]), 8000);
             assertEq(
-                childGauges[i].pendingRewards(tokens[1], users[2]),
+                partnerGauges[i].pendingRewards(tokens[1], users[2]),
                 24000
             );
             assertEq(
-                childGauges[i].pendingRewards(tokens[1], users[3]),
+                partnerGauges[i].pendingRewards(tokens[1], users[3]),
                 16000
             );
         }
@@ -191,19 +191,19 @@ contract TestChildGaugePool is TestBaseMarket {
         gaugePool.claim(tokens[1]);
         for (uint256 i = 0; i < CHILD_GAUGE_COUNT; i++) {
             vm.prank(users[0]);
-            childGauges[i].claim(tokens[0]);
+            partnerGauges[i].claim(tokens[0]);
             vm.prank(users[3]);
-            childGauges[i].claim(tokens[1]);
+            partnerGauges[i].claim(tokens[1]);
         }
         assertEq(cve.balanceOf(users[0]), 12000);
         assertEq(cve.balanceOf(users[3]), 16000);
         for (uint256 i = 0; i < CHILD_GAUGE_COUNT; i++) {
             assertEq(
-                MockToken(childRewardTokens[i]).balanceOf(users[0]),
+                MockToken(partnerRewardTokens[i]).balanceOf(users[0]),
                 12000
             );
             assertEq(
-                MockToken(childRewardTokens[i]).balanceOf(users[3]),
+                MockToken(partnerRewardTokens[i]).balanceOf(users[3]),
                 16000
             );
         }
@@ -215,17 +215,17 @@ contract TestChildGaugePool is TestBaseMarket {
         assertEq(gaugePool.pendingRewards(tokens[1], users[2]), 28000);
         assertEq(gaugePool.pendingRewards(tokens[1], users[3]), 16000);
         for (uint256 i = 0; i < CHILD_GAUGE_COUNT; i++) {
-            assertEq(childGauges[i].pendingRewards(tokens[0], users[0]), 2000);
+            assertEq(partnerGauges[i].pendingRewards(tokens[0], users[0]), 2000);
             assertEq(
-                childGauges[i].pendingRewards(tokens[0], users[1]),
+                partnerGauges[i].pendingRewards(tokens[0], users[1]),
                 16000
             );
             assertEq(
-                childGauges[i].pendingRewards(tokens[1], users[2]),
+                partnerGauges[i].pendingRewards(tokens[1], users[2]),
                 28000
             );
             assertEq(
-                childGauges[i].pendingRewards(tokens[1], users[3]),
+                partnerGauges[i].pendingRewards(tokens[1], users[3]),
                 16000
             );
         }
@@ -245,17 +245,17 @@ contract TestChildGaugePool is TestBaseMarket {
         assertEq(gaugePool.pendingRewards(tokens[1], users[2]), 34666);
         assertEq(gaugePool.pendingRewards(tokens[1], users[3]), 29333);
         for (uint256 i = 0; i < CHILD_GAUGE_COUNT; i++) {
-            assertEq(childGauges[i].pendingRewards(tokens[0], users[0]), 3111);
+            assertEq(partnerGauges[i].pendingRewards(tokens[0], users[0]), 3111);
             assertEq(
-                childGauges[i].pendingRewards(tokens[0], users[1]),
+                partnerGauges[i].pendingRewards(tokens[0], users[1]),
                 24888
             );
             assertEq(
-                childGauges[i].pendingRewards(tokens[1], users[2]),
+                partnerGauges[i].pendingRewards(tokens[1], users[2]),
                 34666
             );
             assertEq(
-                childGauges[i].pendingRewards(tokens[1], users[3]),
+                partnerGauges[i].pendingRewards(tokens[1], users[3]),
                 29333
             );
         }
@@ -271,13 +271,13 @@ contract TestChildGaugePool is TestBaseMarket {
         gaugePool.claim(tokens[1]);
         for (uint256 i = 0; i < CHILD_GAUGE_COUNT; i++) {
             vm.prank(users[0]);
-            childGauges[i].claim(tokens[0]);
+            partnerGauges[i].claim(tokens[0]);
             vm.prank(users[1]);
-            childGauges[i].claim(tokens[0]);
+            partnerGauges[i].claim(tokens[0]);
             vm.prank(users[2]);
-            childGauges[i].claim(tokens[1]);
+            partnerGauges[i].claim(tokens[1]);
             vm.prank(users[3]);
-            childGauges[i].claim(tokens[1]);
+            partnerGauges[i].claim(tokens[1]);
         }
         assertEq(cve.balanceOf(users[0]), 15111);
         assertEq(cve.balanceOf(users[1]), 24888);
@@ -285,19 +285,19 @@ contract TestChildGaugePool is TestBaseMarket {
         assertEq(cve.balanceOf(users[3]), 45333);
         for (uint256 i = 0; i < CHILD_GAUGE_COUNT; i++) {
             assertEq(
-                MockToken(childRewardTokens[i]).balanceOf(users[0]),
+                MockToken(partnerRewardTokens[i]).balanceOf(users[0]),
                 15111
             );
             assertEq(
-                MockToken(childRewardTokens[i]).balanceOf(users[1]),
+                MockToken(partnerRewardTokens[i]).balanceOf(users[1]),
                 24888
             );
             assertEq(
-                MockToken(childRewardTokens[i]).balanceOf(users[2]),
+                MockToken(partnerRewardTokens[i]).balanceOf(users[2]),
                 34666
             );
             assertEq(
-                MockToken(childRewardTokens[i]).balanceOf(users[3]),
+                MockToken(partnerRewardTokens[i]).balanceOf(users[3]),
                 45333
             );
         }
@@ -309,17 +309,17 @@ contract TestChildGaugePool is TestBaseMarket {
         assertEq(gaugePool.pendingRewards(tokens[1], users[2]), 6667);
         assertEq(gaugePool.pendingRewards(tokens[1], users[3]), 13333);
         for (uint256 i = 0; i < CHILD_GAUGE_COUNT; i++) {
-            assertEq(childGauges[i].pendingRewards(tokens[0], users[0]), 1111);
-            assertEq(childGauges[i].pendingRewards(tokens[0], users[1]), 8889);
-            assertEq(childGauges[i].pendingRewards(tokens[1], users[2]), 6667);
+            assertEq(partnerGauges[i].pendingRewards(tokens[0], users[0]), 1111);
+            assertEq(partnerGauges[i].pendingRewards(tokens[0], users[1]), 8889);
+            assertEq(partnerGauges[i].pendingRewards(tokens[1], users[2]), 6667);
             assertEq(
-                childGauges[i].pendingRewards(tokens[1], users[3]),
+                partnerGauges[i].pendingRewards(tokens[1], users[3]),
                 13333
             );
         }
     }
 
-    function testChildGaugesRewardCalculationWithDifferentEpoch() public {
+    function testPartnerGaugesRewardCalculationWithDifferentEpoch() public {
         // set gauge weights
         address[] memory tokensParam = new address[](2);
         tokensParam[0] = tokens[0];
@@ -333,7 +333,7 @@ contract TestChildGaugePool is TestBaseMarket {
         cve.mintGaugeEmissions(address(gaugePool), 300 * 2 weeks);
 
         for (uint256 i = 0; i < CHILD_GAUGE_COUNT; i++) {
-            childGauges[i].setRewardPerSec(1, 300);
+            partnerGauges[i].setRewardPerSec(1, 300);
         }
 
         vm.warp(gaugePool.startTime() + 1 * 2 weeks);
@@ -353,18 +353,18 @@ contract TestChildGaugePool is TestBaseMarket {
         assertEq(gaugePool.pendingRewards(tokens[1], users[1]), 20000);
         for (uint256 i = 0; i < CHILD_GAUGE_COUNT; i++) {
             assertEq(
-                childGauges[i].pendingRewards(tokens[0], users[0]),
+                partnerGauges[i].pendingRewards(tokens[0], users[0]),
                 10000
             );
             assertEq(
-                childGauges[i].pendingRewards(tokens[1], users[1]),
+                partnerGauges[i].pendingRewards(tokens[1], users[1]),
                 20000
             );
         }
 
         // set next epoch reward per second
         for (uint256 i = 0; i < CHILD_GAUGE_COUNT; i++) {
-            childGauges[i].setRewardPerSec(2, 400);
+            partnerGauges[i].setRewardPerSec(2, 400);
         }
 
         // set gauge weights
@@ -390,11 +390,11 @@ contract TestChildGaugePool is TestBaseMarket {
         );
         for (uint256 i = 0; i < CHILD_GAUGE_COUNT; i++) {
             assertEq(
-                childGauges[i].pendingRewards(tokens[0], users[0]),
+                partnerGauges[i].pendingRewards(tokens[0], users[0]),
                 2 weeks * 100 + 100 * 200
             );
             assertEq(
-                childGauges[i].pendingRewards(tokens[1], users[1]),
+                partnerGauges[i].pendingRewards(tokens[1], users[1]),
                 2 weeks * 200 + 100 * 200
             );
         }
@@ -406,9 +406,9 @@ contract TestChildGaugePool is TestBaseMarket {
         gaugePool.claim(tokens[1]);
         for (uint256 i = 0; i < CHILD_GAUGE_COUNT; i++) {
             vm.prank(users[0]);
-            childGauges[i].claim(tokens[0]);
+            partnerGauges[i].claim(tokens[0]);
             vm.prank(users[1]);
-            childGauges[i].claim(tokens[1]);
+            partnerGauges[i].claim(tokens[1]);
         }
 
         assertEq(cve.balanceOf(users[0]), 2 weeks * 100 + 100 * 200);
@@ -417,15 +417,15 @@ contract TestChildGaugePool is TestBaseMarket {
         assertEq(gaugePool.pendingRewards(tokens[1], users[1]), 0);
         for (uint256 i = 0; i < CHILD_GAUGE_COUNT; i++) {
             assertEq(
-                MockToken(childRewardTokens[i]).balanceOf(users[0]),
+                MockToken(partnerRewardTokens[i]).balanceOf(users[0]),
                 2 weeks * 100 + 100 * 200
             );
             assertEq(
-                MockToken(childRewardTokens[i]).balanceOf(users[1]),
+                MockToken(partnerRewardTokens[i]).balanceOf(users[1]),
                 2 weeks * 200 + 100 * 200
             );
-            assertEq(childGauges[i].pendingRewards(tokens[0], users[0]), 0);
-            assertEq(childGauges[i].pendingRewards(tokens[1], users[1]), 0);
+            assertEq(partnerGauges[i].pendingRewards(tokens[0], users[0]), 0);
+            assertEq(partnerGauges[i].pendingRewards(tokens[1], users[1]), 0);
         }
     }
 }

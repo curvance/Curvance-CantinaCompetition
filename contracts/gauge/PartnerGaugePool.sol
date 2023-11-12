@@ -9,7 +9,7 @@ import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
-contract ChildGaugePool is ReentrancyGuard {
+contract PartnerGaugePool is ReentrancyGuard {
     /// TYPES ///
 
     struct PoolInfo {
@@ -35,12 +35,12 @@ contract ChildGaugePool is ReentrancyGuard {
     uint256 public constant EPOCH_WINDOW = 2 weeks; // VeCVE epoch length
     uint256 public constant PRECISION = 1e36; // Scalar for math
     GaugePool public immutable gaugeController; // Gauge Controller linked
-    address public immutable rewardToken; // Token child gauge rewards in
+    address public immutable rewardToken; // Token partner gauge rewards in
     ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
 
     /// STORAGE ///
 
-    uint256 public activationTime; // Child gauge emission start time
+    uint256 public activationTime; // Partner gauge emission start time
 
     // epoch => rewardPerSec
     mapping(uint256 => uint256) public epochRewardPerSec;
@@ -95,7 +95,7 @@ contract ChildGaugePool is ReentrancyGuard {
 
     /// EXTERNAL FUNCTIONS ///
 
-    /// @notice Start the Child Gauge at the start of the Gauge Controller's next epoch
+    /// @notice Start the Partner Gauge at the start of the Gauge Controller's next epoch
     function activate() external onlyGaugeController {
         activationTime = gaugeController.epochStartTime(
             gaugeController.currentEpoch() + 1

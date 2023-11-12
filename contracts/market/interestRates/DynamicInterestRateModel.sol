@@ -43,14 +43,14 @@ contract DynamicInterestRateModel {
 
     /// Unix time has 31,536,000 seconds per year
     /// All my homies hate leap seconds and leap years
-    uint256 internal constant SECONDS_PER_YEAR = 31536000;
+    uint256 internal constant SECONDS_PER_YEAR = 31_536_000;
     /// @notice Rate at which interest is compounded, in seconds
     uint256 internal constant INTEREST_COMPOUND_RATE = 600;
     /// @notice Maximum Rate at which the vertex multiplier will 
     ///         decay per adjustment, in `WAD`
     uint256 internal constant MAX_VERTEX_DECAY_RATE = .05e18; // 5%
     /// @notice The minimum frequency in which the vertex can have between adjustments
-    uint256 internal constant MIN_VERTEX_ADJUSTMENT_RATE = 4 hours;
+    uint256 internal constant MIN_VERTEX_ADJUSTMENT_RATE = 3 hours;
     /// @notice The maximum frequency in which the vertex can have between adjustments
     uint256 internal constant MAX_VERTEX_ADJUSTMENT_RATE = 3 days;
     /// @notice The maximum rate at with the vertex multiplier is adjusted, 
@@ -628,9 +628,12 @@ contract DynamicInterestRateModel {
         config.decayRate = decayRate;
 
         uint256 thresholdLength = (WAD - vertexUtilizationStart) / 2;
+
+        // Dynamic rates start increase halfway between desired utilization and 100%
         config.increaseThreshold = vertexUtilizationStart + thresholdLength;
         config.increaseThresholdMax = WAD;
 
+        // Dynamic rates start decreasing as soon as we are below desired utilization
         config.decreaseThreshold = vertexUtilizationStart;
         config.decreaseThresholdMax = vertexUtilizationStart - thresholdLength;
 

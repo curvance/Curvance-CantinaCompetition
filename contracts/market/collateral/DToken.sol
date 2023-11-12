@@ -23,7 +23,7 @@ contract DToken is ERC165, ReentrancyGuard {
         /// @notice principal total balance (with accrued interest)
         uint256 principal;
         /// @notice current exchange rate for account
-        uint256 interestIndex;
+        uint256 accountExchangeRate;
     }
 
     struct ExchangeRateData {
@@ -59,7 +59,7 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @notice Total number of tokens in circulation
     uint256 public totalSupply;
     /// @notice Information corresponding to borrow exchange rate
-    ExchangeRateData public borrowExchangeRate;
+    ExchangeRateData public marketExchangeRate;
     /// @notice Interest rate reserve factor
     uint256 public interestFactor;
 
@@ -163,8 +163,8 @@ contract DToken is ERC165, ReentrancyGuard {
         _setLendtroller(lendtroller_);
 
         // Initialize timestamp and borrow index
-        borrowExchangeRate.lastTimestampUpdated = uint32(block.timestamp);
-        borrowExchangeRate.exchangeRate = uint224(WAD);
+        marketExchangeRate.lastTimestampUpdated = uint32(block.timestamp);
+        marketExchangeRate.exchangeRate = uint224(WAD);
 
         _setInterestRateModel(interestRateModel_);
 
@@ -341,7 +341,7 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @dev    Updates interest before executing the liquidation
     /// @param account The address of the account to be liquidated
     /// @param amount The amount of underlying asset the liquidator wishes to repay
-    /// @param collateralToken The market in which to seize collateral from the account
+    /// @param collateralToken The market in which to seize collateral from `account`
     function liquidateExact(
         address account,
         uint256 amount,
@@ -356,11 +356,12 @@ contract DToken is ERC165, ReentrancyGuard {
         );
     }
 
-    /// @notice Liquidates `account`'s collateral by repaying debt and
-    ///         transferring the liquidated collateral to the liquidator
+    /// @notice Liquidates `account`'s as much collateral as possible by 
+    ///         repaying debt and transferring the liquidated collateral
+    ///         to the liquidator    
     /// @dev    Updates interest before executing the liquidation
     /// @param account The address of the account to be liquidated
-    /// @param collateralToken The market in which to seize collateral from the account
+    /// @param collateralToken The market in which to seize collateral from `account`
     function liquidate(
         address account,
         IMToken collateralToken
@@ -368,7 +369,7 @@ contract DToken is ERC165, ReentrancyGuard {
         _liquidate(
             msg.sender,
             account,
-            0,
+            0, // Amount = 0 is passed since the max amount possible will be liquidated
             collateralToken,
             false
         );
@@ -689,10 +690,10 @@ contract DToken is ERC165, ReentrancyGuard {
         }
 
         // Calculate debt balance using the interest index:
-        // debtBalanceStored = account.principal * DToken.borrowIndex / account.interestIndex
+        // debtBalanceStored = account.principal * DToken.borrowIndex / account.accountExchangeRate
         return
-            (debtSnapshot.principal * borrowExchangeRate.exchangeRate) /
-            debtSnapshot.interestIndex;
+            (debtSnapshot.principal * marketExchangeRate.exchangeRate) /
+            debtSnapshot.accountExchangeRate;
     }
 
     /// @notice Returns the decimals of the token
@@ -746,7 +747,7 @@ contract DToken is ERC165, ReentrancyGuard {
     ///      up to the latest available checkpoint.
     function accrueInterest() public {
         // Pull current exchange rate data
-        ExchangeRateData memory borrowData = borrowExchangeRate;
+        ExchangeRateData memory borrowData = marketExchangeRate;
 
         // If we are up to date there is no reason to continue
         if (
@@ -780,11 +781,11 @@ contract DToken is ERC165, ReentrancyGuard {
             WAD) + exchangeRatePrior;
 
         // Update storage data
-        borrowExchangeRate.lastTimestampUpdated = uint32(
+        marketExchangeRate.lastTimestampUpdated = uint32(
             borrowData.lastTimestampUpdated +
                 (interestCompounds * borrowData.compoundRate)
         );
-        borrowExchangeRate.exchangeRate = uint224(exchangeRateNew);
+        marketExchangeRate.exchangeRate = uint224(exchangeRateNew);
         totalBorrows = totalBorrowsNew;
 
         // Check whether the market takes interest and debt has been accumulated
@@ -837,14 +838,14 @@ contract DToken is ERC165, ReentrancyGuard {
 
         // Set new interest rate model and compound rate
         interestRateModel = InterestRateModel(newInterestRateModel);
-        borrowExchangeRate.compoundRate = InterestRateModel(
+        marketExchangeRate.compoundRate = InterestRateModel(
             newInterestRateModel
         ).compoundRate();
 
         emit NewMarketInterestRateModel(
             oldInterestRateModel,
             newInterestRateModel,
-            borrowExchangeRate.compoundRate
+            marketExchangeRate.compoundRate
         );
     }
 
@@ -993,7 +994,7 @@ contract DToken is ERC165, ReentrancyGuard {
 
         // We calculate the new account and total borrow balances, failing on overflow:
         _debtOf[account].principal = debtBalanceStored(account) + amount;
-        _debtOf[account].interestIndex = borrowExchangeRate.exchangeRate;
+        _debtOf[account].accountExchangeRate = marketExchangeRate.exchangeRate;
         totalBorrows = totalBorrows + amount;
 
         SafeTransferLib.safeTransfer(underlying, recipient, amount);
@@ -1032,7 +1033,7 @@ contract DToken is ERC165, ReentrancyGuard {
 
         // We calculate the new account and total borrow balances, failing on underflow:
         _debtOf[account].principal = accountDebt - amount;
-        _debtOf[account].interestIndex = borrowExchangeRate.exchangeRate;
+        _debtOf[account].accountExchangeRate = marketExchangeRate.exchangeRate;
         totalBorrows -= amount;
 
         emit Repay(payer, account, amount);
