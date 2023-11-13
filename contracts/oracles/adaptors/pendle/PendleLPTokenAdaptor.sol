@@ -29,7 +29,7 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
     /// CONSTANTS ///
 
     /// @notice The minimum acceptable twap duration when pricing
-    uint32 public constant MINIMUM_TWAP_DURATION = 3600;
+    uint32 public constant MINIMUM_TWAP_DURATION = 12;
     /// @notice Token amount to check uniswap twap price against
     uint128 public constant PRECISION = 1e18;
     /// @notice Current networks ptOracle
@@ -50,6 +50,7 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
     error PendleLPTokenAdaptor__QuoteAssetIsNotSupported();
     error PendleLPTokenAdaptor__CallIncreaseCardinality();
     error PendleLPTokenAdaptor__OldestObservationIsNotSatisfied();
+    error PendleLPTokenAdaptor__ConfigurationError();
 
     /// CONSTRUCTOR ///
 
@@ -75,7 +76,7 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
     ) external view override returns (PriceReturnData memory pData) {
         AdaptorData memory data = adaptorData[asset];
 
-        _checkPtTwap(data.pt, data.twapDuration);
+        _checkPtTwap(asset, data.twapDuration);
 
         if (!isSupportedAsset[asset]) {
             revert PendleLPTokenAdaptor__AssetIsNotSupported();
@@ -106,6 +107,10 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
         address asset,
         AdaptorData memory data
     ) external onlyElevatedPermissions {
+        if (isSupportedAsset[asset]) {
+            revert PendleLPTokenAdaptor__ConfigurationError();
+        }
+
         // Make sure pt and market match.
         (IStandardizedYield sy, IPPrincipalToken pt, ) = IPMarket(asset)
             .readTokens();
@@ -125,7 +130,7 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
         }
 
         // Make sure the underlying PT TWAP is working.
-        _checkPtTwap(data.pt, data.twapDuration);
+        _checkPtTwap(asset, data.twapDuration);
 
         if (
             !IPriceRouter(centralRegistry.priceRouter()).isSupportedAsset(
@@ -142,6 +147,7 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
             pt: data.pt,
             quoteAssetDecimals: data.quoteAssetDecimals
         });
+        isSupportedAsset[asset] = true;
     }
 
     /// @notice Removes a supported asset from the adaptor.
@@ -165,14 +171,14 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
     /// INTERNAL FUNCTIONS ///
 
     /// @notice Check whether the underlying PT TWAP is working.
-    /// @param pt the address of the Pendle PT associated with LP.
+    /// @param market the address of the Pendle LP.
     /// @param twapDuration the twap duration to use when pricing
-    function _checkPtTwap(address pt, uint32 twapDuration) internal view {
+    function _checkPtTwap(address market, uint32 twapDuration) internal view {
         (
             bool increaseCardinalityRequired,
             ,
             bool oldestObservationSatisfied
-        ) = ptOracle.getOracleState(pt, twapDuration);
+        ) = ptOracle.getOracleState(market, twapDuration);
 
         if (increaseCardinalityRequired) {
             revert PendleLPTokenAdaptor__CallIncreaseCardinality();
