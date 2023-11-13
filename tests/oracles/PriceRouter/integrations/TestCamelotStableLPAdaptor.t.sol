@@ -1,32 +1,29 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.17;
 
-import { VelodromeStableLPAdaptor } from "contracts/oracles/adaptors/velodrome/VelodromeStableLPAdaptor.sol";
+import { CamelotStableLPAdaptor } from "contracts/oracles/adaptors/camelot/CamelotStableLPAdaptor.sol";
 import { ChainlinkAdaptor } from "contracts/oracles/adaptors/chainlink/ChainlinkAdaptor.sol";
 import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { VelodromeLib } from "contracts/market/zapper/protocols/VelodromeLib.sol";
-import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { TestBasePriceRouter } from "../TestBasePriceRouter.sol";
 
-contract TestVelodromeStableLPAdapter is TestBasePriceRouter {
+contract TestCamelotStableLPAdapter is TestBasePriceRouter {
     address private DAI = 0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1;
-    address private USDC = 0x7F5c764cBc14f9669B88837ca1490cCa17c31607;
+    address private USDC = 0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8;
 
     address private CHAINLINK_PRICE_FEED_ETH =
-        0x13e3Ee699D1909E989722E753853AE30b17e08c5;
+        0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612;
     address private CHAINLINK_PRICE_FEED_DAI =
-        0x8dBa75e83DA73cc766A7e5a0ee71F656BAb470d6;
+        0xc5C8E77B397E531B8EC06BFb0048328B30E9eCfB;
     address private CHAINLINK_PRICE_FEED_USDC =
-        0x16a9FA2FDa030272Ce99B29CF780dFA30361E0f3;
+        0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3;
 
-    address private veloRouter = 0xa062aE8A9c5e11aaA026fc2670B0D65cCc8B2858;
-    address private DAI_USDC = 0x19715771E30c93915A5bbDa134d782b81A820076;
+    address private DAI_USDC = 0x01efEd58B534d7a7464359A6F8d14D986125816B;
 
-    VelodromeStableLPAdaptor adapter;
+    CamelotStableLPAdaptor public adapter;
 
     function setUp() public override {
-        _fork("ETH_NODE_URI_OPTIMISM", 110333246);
+        _fork("ETH_NODE_URI_ARBITRUM", 148061500);
 
         _deployCentralRegistry();
 
@@ -36,7 +33,7 @@ contract TestVelodromeStableLPAdapter is TestBasePriceRouter {
         );
         centralRegistry.setPriceRouter(address(priceRouter));
 
-        adapter = new VelodromeStableLPAdaptor(
+        adapter = new CamelotStableLPAdaptor(
             ICentralRegistry(address(centralRegistry))
         );
         adapter.addAsset(DAI_USDC);
@@ -75,42 +72,5 @@ contract TestVelodromeStableLPAdapter is TestBasePriceRouter {
         adapter.removeAsset(DAI_USDC);
         vm.expectRevert(PriceRouter.PriceRouter__NotSupported.selector);
         priceRouter.getPrice(DAI_USDC, true, false);
-    }
-
-    function testPriceDoesNotChangeAfterLargeSwap() public {
-        chainlinkAdaptor = new ChainlinkAdaptor(
-            ICentralRegistry(address(centralRegistry))
-        );
-        chainlinkAdaptor.addAsset(USDC, CHAINLINK_PRICE_FEED_USDC, true);
-        chainlinkAdaptor.addAsset(DAI, CHAINLINK_PRICE_FEED_DAI, true);
-        priceRouter.addApprovedAdaptor(address(chainlinkAdaptor));
-        priceRouter.addAssetPriceFeed(USDC, address(chainlinkAdaptor));
-        priceRouter.addAssetPriceFeed(DAI, address(chainlinkAdaptor));
-
-        uint256 errorCode;
-        uint256 priceBefore;
-        (priceBefore, errorCode) = priceRouter.getPrice(DAI_USDC, true, false);
-        assertEq(errorCode, 0);
-        assertGt(priceBefore, 0);
-
-        // try large swap (500K USDC)
-        uint256 amount = 500000e6;
-        deal(USDC, address(this), amount);
-        VelodromeLib._swapExactTokensForTokens(
-            veloRouter,
-            DAI_USDC,
-            USDC,
-            DAI,
-            amount,
-            true
-        );
-
-        assertEq(IERC20(USDC).balanceOf(address(this)), 0);
-        assertGt(IERC20(DAI).balanceOf(address(this)), 0);
-
-        uint256 priceAfter;
-        (priceAfter, errorCode) = priceRouter.getPrice(DAI_USDC, true, false);
-        assertEq(errorCode, 0);
-        assertApproxEqRel(priceBefore, priceAfter, 100000);
     }
 }
