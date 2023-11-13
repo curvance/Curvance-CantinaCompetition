@@ -46,8 +46,8 @@ contract GaugePool is GaugeController, ReentrancyGuard {
 
     /// EVENTS ///
 
-    event AddPartnerGauge(address childGauge);
-    event RemovePartnerGauge(address childGauge);
+    event AddPartnerGauge(address partnerGauge);
+    event RemovePartnerGauge(address partnerGauge);
     event Deposit(address user, address token, uint256 amount);
     event Withdraw(address user, address token, uint256 amount);
     event Claim(address user, address token, uint256 amount);
@@ -85,30 +85,30 @@ contract GaugePool is GaugeController, ReentrancyGuard {
     }
 
     /// @notice Adds a new partner gauge to the gauge system
-    /// @param childGauge The address of the partner gauge to be added
-    function addPartnerGauge(address childGauge) external onlyDaoPermissions {
-        if (childGauge == address(0)) {
+    /// @param partnerGauge The address of the partner gauge to be added
+    function addPartnerGauge(address partnerGauge) external onlyDaoPermissions {
+        if (partnerGauge == address(0)) {
             revert GaugeErrors.InvalidAddress();
         }
 
-        if (PartnerGaugePool(childGauge).activationTime() != 0) {
+        if (PartnerGaugePool(partnerGauge).activationTime() != 0) {
             revert GaugeErrors.InvalidAddress();
         }
 
-        partnerGauges.push(PartnerGaugePool(childGauge));
-        PartnerGaugePool(childGauge).activate();
+        partnerGauges.push(PartnerGaugePool(partnerGauge));
+        PartnerGaugePool(partnerGauge).activate();
 
-        emit AddPartnerGauge(childGauge);
+        emit AddPartnerGauge(partnerGauge);
     }
 
     /// @notice Removes a partner gauge from the gauge system
     /// @param index The index of the partner gauge
-    /// @param childGauge The address of the partner gauge to be removed
+    /// @param partnerGauge The address of the partner gauge to be removed
     function removePartnerGauge(
         uint256 index,
-        address childGauge
+        address partnerGauge
     ) external onlyDaoPermissions {
-        if (childGauge != address(partnerGauges[index])) {
+        if (partnerGauge != address(partnerGauges[index])) {
             revert GaugeErrors.InvalidAddress();
         }
 
@@ -119,7 +119,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         }
         partnerGauges.pop();
 
-        emit RemovePartnerGauge(childGauge);
+        emit RemovePartnerGauge(partnerGauge);
     }
 
     function balanceOf(

@@ -9,7 +9,7 @@ import { IPMarket } from "contracts/interfaces/external/pendle/IPMarket.sol";
 import { IPPrincipalToken } from "contracts/interfaces/external/pendle/IPPrincipalToken.sol";
 import { IPYieldToken } from "contracts/interfaces/external/pendle/IPYieldToken.sol";
 import { IStandardizedYield } from "contracts/interfaces/external/pendle/IStandardizedYield.sol";
-import { EXP_SCALE } from "contracts/libraries/Constants.sol";
+import { WAD } from "contracts/libraries/Constants.sol";
 
 contract PendleLPPositionVault is BasePositionVault {
     using Math for uint256;
@@ -241,7 +241,7 @@ contract PendleLPPositionVault is BasePositionVault {
 
             // update vesting info
             _vaultData = _packVaultData(
-                yield.mulDivDown(EXP_SCALE, vestPeriod),
+                yield.mulDivDown(WAD, vestPeriod),
                 block.timestamp + vestPeriod
             );
 
