@@ -431,7 +431,7 @@ contract DynamicInterestRateModel {
 
         newMultiplier = (currentMultiplier * 
         ((config.adjustmentVelocity * WAD) / 
-        _calculateNegativeCurveValue(
+        _getNegativeCurveResult(
             util, 
             config.increaseThreshold, 
             config.increaseThresholdMax
@@ -477,7 +477,7 @@ contract DynamicInterestRateModel {
 
         newMultiplier = (currentMultiplier * 
         (config.adjustmentVelocity * 
-        _calculatePositiveCurveValue(
+        _getPositiveCurveResult(
             util, 
             config.increaseThreshold, 
             config.increaseThresholdMax
@@ -503,7 +503,7 @@ contract DynamicInterestRateModel {
     ///            calculation range.
     /// @return The calculated positive curve value, a proportion between 
     ///         the start and end points.
-    function _calculatePositiveCurveValue(
+    function _getPositiveCurveResult(
         uint256 current, 
         uint256 start, 
         uint256 end
@@ -538,7 +538,7 @@ contract DynamicInterestRateModel {
     ///            calculation range.
     /// @return The calculated negative curve value, a proportion between
     ///         the start and end points.
-    function _calculateNegativeCurveValue(
+    function _getNegativeCurveResult(
         uint256 current, 
         uint256 start, 
         uint256 end

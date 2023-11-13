@@ -47,32 +47,33 @@ contract Lendtroller is ILendtroller, ERC165 {
         /// @notice The collateral requirement where dipping below this will cause a hard liquidation.
         /// @dev    in `WAD` format, with 1.2e18 = 120% collateral vs debt value
         uint256 collReqB;
-        /// @notice The ratio at which this token will be compensated on soft liquidation.
+        /// @notice The base ratio at which this token will be compensated on soft liquidation.
         /// @dev    In `WAD` format, stored as (Incentive + WAD)
         ///         e.g 1.05e18 = 5% incentive, this saves gas for liquidation calculations
-        uint256 liqIncA;
-        /// @notice The ratio at which this token will be compensated on hard liquidation.
-        /// @dev    In `WAD` format, stored as (Incentive + WAD)
-        ///         e.g 1.05e18 = 5% incentive, this saves gas for liquidation calculations
-        uint256 liqIncB;
+        uint256 liqBaseIncentive;
+        /// @notice The liquidation incentive curve length between soft liquidation to hard liquidation.
+        ///         e.g. 5% base incentive with 8% curve length results in 13% liquidation incentive
+        ///         on hard liquidation.
+        /// @dev    In `WAD` format.
+        ///         e.g 05e18 = 5% maximum additional incentive
+        uint256 liqCurve;
         /// @notice The protocol fee that will be taken on liquidation for this token.
         /// @dev    In `WAD` format, 0.01e18 = 1%
         ///         Note: this is stored as (Fee * WAD) / `liqIncA`
         ///         in order to save gas for liquidation calculations
         uint256 liqFee;
+        /// @notice Maximum % that a liquidator can repay when soft liquidating an account,
+        /// @dev    In `WAD` format.
+        uint256 baseCFactor;
+        /// @notice cFactor curve length between soft liquidation and hard liquidation,
+        /// @dev    In `WAD` format.
+        uint256 cFactorCurve;
         /// @notice Mapping that stores account information like token positions and collateral posted.
         mapping(address => AccountMetadata) accountData;
     }
 
-    struct LiquidationCall {
-        address account;
-        address debtToken;
-        address collateralToken;
-    }
-
-    struct LiquidationMatrix {
+    struct LiqData {
         uint256 lFactor;
-        uint256 shortfall;
         uint256 debtTokenPrice;
         uint256 collateralTokenPrice;
     }
@@ -93,8 +94,6 @@ contract Lendtroller is ILendtroller, ERC165 {
     uint256 internal constant _MAX_LIQUIDATION_FEE = .05e18;
     /// `bytes4(keccak256(bytes("Lendtroller__InvalidParameter()")))`
     uint256 internal constant _INVALID_PARAMETER_SELECTOR = 0x31765827;
-    /// `bytes4(keccak256(bytes("Lendtroller__InsufficientShortfall()")))`
-    uint256 internal constant _INSUFFICIENT_SHORTFALL_SELECTOR = 0x751bba8d;
     /// @notice Curvance DAO hub
     ICentralRegistry public immutable centralRegistry;
     /// @notice gaugePool contract address.
@@ -105,9 +104,6 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @notice A list of all tokens inside this market for the frontend.
     address[] public tokensListed;
 
-    /// @notice Maximum % that a liquidator can repay when liquidating an account,
-    /// @dev    In `WAD` format, default 50%
-    uint256 public closeFactor = 0.5e18;
     /// @notice PositionFolding contract address.
     address public positionFolding;
 
@@ -148,7 +144,8 @@ contract Lendtroller is ILendtroller, ERC165 {
         uint256 collReqB,
         uint256 liqIncA,
         uint256 liqIncB,
-        uint256 liqFee
+        uint256 liqFee,
+        uint256 baseCFactor
     );
     event ActionPaused(string action, bool pauseState);
     event TokenActionPaused(address mToken, string action, bool pauseState);
@@ -163,7 +160,7 @@ contract Lendtroller is ILendtroller, ERC165 {
     error Lendtroller__Paused();
     error Lendtroller__InsufficientCollateral();
     error Lendtroller__InsufficientLiquidity();
-    error Lendtroller__InsufficientShortfall();
+    error Lendtroller__NoLiquidationAvailable();
     error Lendtroller__PriceError();
     error Lendtroller__HasActiveLoan();
     error Lendtroller__CollateralCapReached();
@@ -510,27 +507,6 @@ contract Lendtroller is ILendtroller, ERC165 {
         _canRedeem(mToken, from, amount);
     }
 
-    /// @notice Sets the closeFactor used when liquidating borrows
-    /// @dev Admin function to set closeFactor
-    /// @param newCloseFactor New close factor in basis points
-    function setCloseFactor(
-        uint256 newCloseFactor
-    ) external onlyElevatedPermissions {
-        // Convert parameter from basis points to `WAD`
-        newCloseFactor = _bpToWad(newCloseFactor);
-
-        // 100% e.g close entire position
-        if (newCloseFactor > WAD) {
-            _revert(_INVALID_PARAMETER_SELECTOR);
-        }
-        // Cache the current value for event log and gas savings
-        uint256 oldCloseFactor = closeFactor;
-        // Assign new closeFactor
-        closeFactor = newCloseFactor;
-
-        emit NewCloseFactor(oldCloseFactor, newCloseFactor);
-    }
-
     /// @notice Add the market token to the market and set it as listed
     /// @dev Admin function to set isListed and add support for the market
     /// @param mToken The address of the market (token) to list
@@ -582,7 +558,8 @@ contract Lendtroller is ILendtroller, ERC165 {
         uint256 collReqB,
         uint256 liqIncA,
         uint256 liqIncB,
-        uint256 liqFee
+        uint256 liqFee,
+        uint256 baseCFactor
     ) external onlyElevatedPermissions {
         if (!IMToken(mToken).isCToken()) {
             _revert(_INVALID_PARAMETER_SELECTOR);
@@ -603,9 +580,15 @@ contract Lendtroller is ILendtroller, ERC165 {
         liqIncA = _bpToWad(liqIncA);
         liqIncB = _bpToWad(liqIncB);
         liqFee = _bpToWad(liqFee);
+        baseCFactor = _bpToWad(baseCFactor);
 
         // Validate collateralization ratio is not above the maximum allowed
         if (collRatio > _MAX_COLLATERALIZATION_RATIO) {
+            _revert(_INVALID_PARAMETER_SELECTOR);
+        }
+
+        // Validate that soft liquidation does not lead to full or zero liquidation
+        if (baseCFactor > WAD || baseCFactor == 0) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
@@ -669,10 +652,19 @@ contract Lendtroller is ILendtroller, ERC165 {
         marketToken.collReqA = collReqA + WAD;
         marketToken.collReqB = collReqB + WAD;
 
+        // Store the distance between liquidation incentive A & B,
+        // that way we can quickly scale between [base, 100%] based on lFactor
+        marketToken.liqCurve = liqIncB - liqIncA;
         // We use the liquidation incentive values as a premium in
         // `calculateLiquidatedTokens`, so it needs to be 1 + incentive
-        marketToken.liqIncA = WAD + liqIncA;
-        marketToken.liqIncB = WAD + liqIncB;
+        marketToken.liqBaseIncentive = WAD + liqIncA;
+
+        // Assign the base cFactor
+        marketToken.baseCFactor = baseCFactor;
+        // Store the distance between base cFactor and 100%,
+        // that way we can quickly scale between [base, 100%] based on lFactor
+        marketToken.cFactorCurve = WAD - baseCFactor;
+        
 
         // We store protocol liquidation fee divided by the soft liquidation
         // incentive offset, that way we can directly multiply later instead
@@ -688,7 +680,8 @@ contract Lendtroller is ILendtroller, ERC165 {
             collReqB,
             liqIncA,
             liqIncB,
-            liqFee  
+            liqFee,
+            baseCFactor
         );
     }
 
@@ -889,9 +882,9 @@ contract Lendtroller is ILendtroller, ERC165 {
             emit TokenPositionCreated(mToken, borrower);
         }
 
-        // We call hypothetical account liquidity as normal but with
-        // heavier error code restriction on borrow
-        (, uint256 shortfall) = _getHypotheticalLiquidity(
+        // Check if the user has sufficient liquidity to borrow,
+        // with heavier error code scrutiny
+        (, uint256 liquidityDeficit) = _getHypotheticalLiquidity(
             borrower,
             IMToken(mToken),
             0,
@@ -899,7 +892,7 @@ contract Lendtroller is ILendtroller, ERC165 {
             1
         );
 
-        if (shortfall > 0) {
+        if (liquidityDeficit > 0) {
             revert Lendtroller__InsufficientLiquidity();
         }
     }
@@ -909,15 +902,15 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @notice Determine `account`'s current status between collateral,
     ///         debt, and additional liquidity
     /// @param account The account to determine liquidity for
-    /// @return sumCollateral total collateral amount of account
-    /// @return maxBorrow max borrow amount of account
+    /// @return accountCollateral total collateral amount of account
+    /// @return maxDebt max borrow amount of account
     /// @return currentDebt total borrow amount of account
     function getStatus(
         address account
     )
         public
         view
-        returns (uint256 sumCollateral, uint256 maxBorrow, uint256 currentDebt)
+        returns (uint256 accountCollateral, uint256 maxDebt, uint256 currentDebt)
     {
         (
             AccountSnapshot[] memory snapshots,
@@ -932,12 +925,12 @@ contract Lendtroller is ILendtroller, ERC165 {
             if (snapshot.isCToken) {
                 // If the asset has a CR increment their collateral and max borrow value
                 if (!(tokenData[snapshot.asset].collRatio == 0)) {
-                    (sumCollateral, maxBorrow) = _addCollateralValue(
+                    (accountCollateral, maxDebt) = _addCollateralValue(
                         snapshot, 
                         account, 
                         underlyingPrices[i], 
-                        sumCollateral, 
-                        maxBorrow
+                        accountCollateral, 
+                        maxDebt
                     );
                 }
             } else {
@@ -965,12 +958,8 @@ contract Lendtroller is ILendtroller, ERC165 {
     function flaggedForLiquidation(
         address account
     ) internal view returns (bool) {
-        (uint256 shortfall, , ) = _getStatusForLiquidation(
-            LiquidationCall({account: account,
-            debtToken: address(0),
-            collateralToken: address(0)
-        }));
-        return shortfall > 0;
+        LiqData memory data = _getStatusForLiquidation(account, address(0), address(0));
+        return data.lFactor > 0;
     }
 
     /// @notice Determine what the account liquidity would be if
@@ -979,9 +968,8 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @param account The account to determine liquidity for
     /// @param redeemTokens The number of tokens to hypothetically redeem
     /// @param borrowAmount The amount of underlying to hypothetically borrow
-    /// @return uint256 hypothetical account liquidity in excess
-    ///              of collateral requirements,
-    /// @return uint256 hypothetical account shortfall below collateral requirements)
+    /// @return uint256 hypothetical account liquidity in excess of collateral requirements
+    /// @return uint256 hypothetical account liquidity deficit below collateral requirements
     function getHypotheticalLiquidity(
         address account,
         address mTokenModified,
@@ -1121,9 +1109,8 @@ contract Lendtroller is ILendtroller, ERC165 {
             return;
         }
 
-        // Otherwise, perform a hypothetical liquidity check to guard against
-        // shortfall
-        (, uint256 shortfall) = _getHypotheticalLiquidity(
+        // Check account liquidity with hypothetical redemption
+        (, uint256 liquidityDeficit) = _getHypotheticalLiquidity(
             redeemer,
             IMToken(mToken),
             amount,
@@ -1131,7 +1118,7 @@ contract Lendtroller is ILendtroller, ERC165 {
             2
         );
 
-        if (shortfall > 0) {
+        if (liquidityDeficit > 0) {
             revert Lendtroller__InsufficientLiquidity();
         }
     }
@@ -1165,27 +1152,16 @@ contract Lendtroller is ILendtroller, ERC165 {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
-        // The borrower must have shortfall CURRENTLY in order to be liquidatable
-        (
-            uint256 shortfall,
-            uint256 debtTokenPrice,
-            uint256 collateralTokenPrice
-        ) = _getStatusForLiquidation(LiquidationCall({
-            account: account,
-            debtToken: debtToken,
-            collateralToken: collateralToken
-        }));
+        // Calculate the users lFactor
+        LiqData memory data = _getStatusForLiquidation(account, debtToken, collateralToken);
 
-        assembly {
-            if iszero(shortfall) {
-                // store the error selector to location 0x0
-                mstore(0x0, _INSUFFICIENT_SHORTFALL_SELECTOR)
-                // return bytes 29-32 for the selector
-                revert(0x1c, 0x04)
-            }
+        if (data.lFactor == 0) {
+            revert Lendtroller__NoLiquidationAvailable();
         }
-        uint256 maxAmount = (closeFactor *
-            IMToken(debtToken).debtBalanceStored(account)) / WAD;
+
+        uint256 cFactor = cToken.baseCFactor + ((cToken.cFactorCurve * data.lFactor) / WAD);
+        uint256 incentive = cToken.liqBaseIncentive + ((cToken.liqCurve * data.lFactor) / WAD);
+        uint256 maxAmount = (cFactor * IMToken(debtToken).debtBalanceStored(account)) / WAD;
 
         if (liquidateExact) {
             // Make sure that the  liquidation limit and collateral posted >= amount
@@ -1200,10 +1176,10 @@ contract Lendtroller is ILendtroller, ERC165 {
         }
 
         // Get the exchange rate and calculate the number of collateral tokens to seize:
-        uint256 debtToCollateralRatio = (cToken.liqIncA *
-            debtTokenPrice *
+        uint256 debtToCollateralRatio = (incentive *
+            data.debtTokenPrice *
             WAD) /
-            (collateralTokenPrice *
+            (data.collateralTokenPrice *
                 IMToken(collateralToken).exchangeRateStored());
 
         uint256 amountAdjusted = (amount *
@@ -1225,8 +1201,8 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @param errorCodeBreakpoint The error code that will cause liquidity operations to revert
     /// @dev Note that we calculate the exchangeRateStored for each collateral
     ///           mToken using stored data, without calculating accumulated interest.
-    /// @return sumCollateral The total market value of `account`'s collateral
-    /// @return maxBorrow Maximum amount `account` can borrow versus current collateral
+    /// @return accountCollateral The total market value of `account`'s collateral
+    /// @return maxDebt Maximum amount `account` can borrow versus current collateral
     /// @return newDebt The new debt of `account` after the hypothetical action
     function _getHypotheticalStatus(
         address account,
@@ -1237,7 +1213,7 @@ contract Lendtroller is ILendtroller, ERC165 {
     )
         internal
         view
-        returns (uint256 sumCollateral, uint256 maxBorrow, uint256 newDebt)
+        returns (uint256 accountCollateral, uint256 maxDebt, uint256 newDebt)
     {
         (
             AccountSnapshot[] memory snapshots,
@@ -1253,12 +1229,12 @@ contract Lendtroller is ILendtroller, ERC165 {
                 // If the asset has a Collateral Ratio,
                 // increment their collateral and max borrow value
                 if (!(tokenData[snapshot.asset].collRatio == 0)) {
-                    (sumCollateral, maxBorrow) = _addCollateralValue(
+                    (accountCollateral, maxDebt) = _addCollateralValue(
                         snapshot, 
                         account, 
                         underlyingPrices[i], 
-                        sumCollateral, 
-                        maxBorrow
+                        accountCollateral, 
+                        maxDebt
                     );
                 }
             } else {
@@ -1315,7 +1291,7 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @dev Note that we calculate the exchangeRateStored for each collateral
     ///           mToken using stored data, without calculating accumulated interest.
     /// @return uint256 Hypothetical `account` excess liquidity versus collateral requirements.
-    /// @return uint256 Hypothetical `account` shortfall below collateral requirements.
+    /// @return uint256 Hypothetical `account` liquidity deficit below collateral requirements.
     function _getHypotheticalLiquidity(
         address account,
         IMToken mTokenModified,
@@ -1323,7 +1299,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         uint256 borrowAmount, // in assets
         uint256 errorCodeBreakpoint
     ) internal view returns (uint256, uint256) {
-        (, uint256 maxBorrow, uint256 newDebt) = _getHypotheticalStatus(
+        (, uint256 maxDebt, uint256 newDebt) = _getHypotheticalStatus(
             account,
             mTokenModified,
             redeemTokens,
@@ -1332,65 +1308,72 @@ contract Lendtroller is ILendtroller, ERC165 {
         );
 
         // These will not underflow/overflow as condition is checked prior
-        if (maxBorrow > newDebt) {
+        if (maxDebt > newDebt) {
             unchecked {
-                return (maxBorrow - newDebt, 0);
+                return (maxDebt - newDebt, 0);
             }
         }
 
         unchecked {
-            return (0, newDebt - maxBorrow);
+            return (0, newDebt - maxDebt);
         }
     }
 
-    /// @notice Determine what the account liquidity would be if
-    ///         the given amounts were redeemed/borrowed
-    /// @dev Note that we calculate the exchangeRateStored for each collateral
-    ///           mToken using stored data, without calculating accumulated interest.
-    /// @param liqConfig Containing:
-    ///                  account The account to determine liquidity for
-    ///                  debtToken The dToken to be repaid during liquidation
-    ///                  collateralToken The cToken to be seized during liquidation
-    /// @return Current shortfall versus liquidation threshold
-    /// @return Current price for `debtToken`
-    /// @return Current price for `collateralToken`
+    /// @notice Determine whether `account` can be liquidated, 
+    ///         by calculating their lFactor, based on their 
+    ///         collateral versus outstanding debt
+    /// @param account The account to check liquidation status for
+    /// @param debtToken The dToken to be repaid during potential liquidation
+    /// @param collateralToken The cToken to be seized during potential liquidation                
+    /// @return result Containing values:
+    ///                Current `account` lFactor
+    ///                Current price for `debtToken`
+    ///                Current price for `collateralToken`
     function _getStatusForLiquidation(
-        LiquidationCall memory liqConfig
-    ) internal view returns (uint256, uint256, uint256) {
+        address account,
+        address debtToken,
+        address collateralToken
+    ) internal view returns (LiqData memory result) {
         (
             AccountSnapshot[] memory snapshots,
             uint256[] memory underlyingPrices,
             uint256 numAssets
-        ) = _getAssetData(liqConfig.account, 2);
+        ) = _getAssetData(account, 2);
         AccountSnapshot memory snapshot;
-        uint256 totalCollateral;
-        uint256 totalDebt;
-        uint256 debtTokenPrice;
-        uint256 collateralTokenPrice;
+        // Collateral value for soft liquidation level
+        uint256 accountCollateralA;
+        // Collateral value for hard liquidation level
+        uint256 accountCollateralB;
+        // Current outstanding account debt
+        uint256 accountDebt;
 
         for (uint256 i; i < numAssets; ) {
             snapshot = snapshots[i];
 
             if (snapshot.isCToken) {
-                if (snapshot.asset == liqConfig.collateralToken) {
-                    collateralTokenPrice = underlyingPrices[i];
+                if (snapshot.asset == collateralToken) {
+                    result.collateralTokenPrice = underlyingPrices[i];
                 }
 
                 // If the asset has a CR increment their collateral
                 if (!(tokenData[snapshot.asset].collRatio == 0)) {
-                    {
-                        totalCollateral += _calculateCollateralValues(snapshot, liqConfig.account, underlyingPrices[i]);
-                    }
+                    (accountCollateralA, accountCollateralB) = _addLiquidationValues(
+                        snapshot, 
+                        account, 
+                        underlyingPrices[i], 
+                        accountCollateralA, 
+                        accountCollateralB
+                    );
                 }
             } else {
-                if (snapshot.asset == liqConfig.debtToken) {
-                    debtTokenPrice = underlyingPrices[i];
+                if (snapshot.asset == debtToken) {
+                    result.debtTokenPrice = underlyingPrices[i];
                 }
 
                 // If they have a debt balance,
                 // we need to document collateral requirements
                 if (snapshot.debtBalance > 0) {
-                    totalDebt += _getAssetValue(
+                    accountDebt += _getAssetValue(
                         snapshot.debtBalance,
                         underlyingPrices[i],
                         snapshot.decimals
@@ -1403,24 +1386,19 @@ contract Lendtroller is ILendtroller, ERC165 {
             }
         }
 
-        if (totalCollateral >= totalDebt) {
-            return (0, debtTokenPrice, collateralTokenPrice);
+        if (accountCollateralA >= accountDebt) {
+            return result;
         }
 
-        unchecked {
-            return (
-                totalDebt - totalCollateral,
-                debtTokenPrice,
-                collateralTokenPrice
-            );
-        }
+        result.lFactor = _getNegativeCurveResult(accountDebt, accountCollateralA, accountCollateralB);
+        return result;
     }
 
     /// @notice Retrieves the prices and account data of multiple assets inside this market.
     /// @param account The account to retrieve data for.
     /// @param errorCodeBreakpoint The error code that will cause liquidity operations to revert.
-    /// @return AccountSnapshot[] Contains `assets` data for `account`
-    /// @return uint256[] Contains prices for `assets`.
+    /// @return AccountSnapshot[] Contains assets data for `account`.
+    /// @return uint256[] Contains prices for `account` assets.
     /// @return uint256 The number of assets `account` is in.
     function _getAssetData(
         address account,
@@ -1446,19 +1424,23 @@ contract Lendtroller is ILendtroller, ERC165 {
         return (amount * price) / (10 ** decimals);
     }
 
-    function _calculateCollateralValues(
+    function _addLiquidationValues(
         AccountSnapshot memory snapshot,
         address account,
-        uint256 price
-    ) internal view returns (uint256) {
-        return _getAssetValue(
-                            ((tokenData[snapshot.asset].accountData[account].collateralPosted * snapshot.exchangeRate) / WAD),
-                            price,
-                            snapshot.decimals
-                        ) * WAD
-                        
-                         /
-                        tokenData[snapshot.asset].collReqA;
+        uint256 price,
+        uint256 softLiquidationSumPrior,
+        uint256 hardLiquidationSumPrior
+    ) internal view returns (uint256, uint256) {
+        uint256 assetValue = _getAssetValue(
+                                ((tokenData[snapshot.asset].accountData[account].collateralPosted * snapshot.exchangeRate) / WAD),
+                                price,
+                                snapshot.decimals
+                             ) * WAD;
+
+        return (
+            softLiquidationSumPrior + (assetValue / tokenData[snapshot.asset].collReqA), 
+            hardLiquidationSumPrior + (assetValue / tokenData[snapshot.asset].collReqB)
+        );
     }
 
     function _addCollateralValue(
@@ -1476,14 +1458,33 @@ contract Lendtroller is ILendtroller, ERC165 {
         return (previousCollateral + assetValue, previousBorrow  + (assetValue * tokenData[snapshot.asset].collRatio) / WAD);
     }
 
-    function _calculateNegativeCurveValue(uint256 current, uint256 start, uint256 end) internal pure returns (uint256) {
+    /// @notice Calculates a negative curve value based on `current`, 
+    ///         `start`, and `end` values.
+    /// @dev The function scales current, start, and end values by WAD 
+    ///      to maintain precision. It returns 1, (`in WAD`) if the 
+    ///      current value is less than or equal to `end`. The formula 
+    ///      used is (start - current) / (start - end), ensuring the result 
+    ///      is scaled properly.
+    /// @param current The current value, representing a point on the curve.
+    /// @param start The start value of the curve, marking the beginning of 
+    ///              the calculation range.
+    /// @param end The end value of the curve, marking the end of the 
+    ///            calculation range.
+    /// @return The calculated negative curve value, a proportion between
+    ///         the start and end points.
+    function _getNegativeCurveResult(
+        uint256 current, 
+        uint256 start, 
+        uint256 end
+    ) internal pure returns (uint256) {
         if (current <= end) {
             return WAD;
         }
 
-        // Because slope values should be between [1, WAD],
-        // we know multiplying by WAD again will not cause overflows
-        unchecked{
+        // We need to multiply by WAD so we do not lose precision
+        unchecked {
+            // Because slope values should be between [1, WAD],
+            // we know multiplying by WAD again will not cause overflows
             current = current * WAD;
             start = start * WAD;
             end = end * WAD;
