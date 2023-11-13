@@ -188,7 +188,7 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
     ///         as shares, and turns on collateralization of the assets
     /// @param shares The amount of the underlying assets quoted in shares to supply
     /// @param receiver The account that should receive the cToken shares
-    /// @return assets The amount of cToken shares quoted in assets received by `receiver`
+    /// @return assets the amount of cToken shares quoted in assets received by `receiver`
     function mintAsCollateral(
         uint256 shares,
         address receiver
@@ -204,7 +204,7 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
     /// @param assets The amount of the underlying asset to withdraw
     /// @param receiver The account that should receive the assets
     /// @param owner The account that will burn their shares to withdraw assets
-    /// @return shares The amount of cToken shares redeemed by `owner`
+    /// @return shares the amount of cToken shares redeemed by `owner`
     function withdrawCollateral(
         uint256 assets,
         address receiver,
@@ -266,7 +266,7 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
     /// @param shares The amount of shares to redeemed
     /// @param receiver The account that should receive the assets
     /// @param owner The account that will burn their shares to withdraw assets
-    /// @return assets The amount of assets redeemed by `owner`
+    /// @return assets the amount of assets redeemed by `owner`
     function redeemCollateral(
         uint256 shares,
         address receiver,
@@ -283,7 +283,7 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
         return _unpackedVaultData(_vaultData);
     }
 
-    /// @notice Vault compound fee, in `WAD`
+    /// @notice Vault compound fee is in basis point form
     /// @dev Returns the vaults current amount of yield used
     ///      for compounding rewards
     ///      Used for frontend data query only
@@ -291,17 +291,17 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
         return centralRegistry.protocolCompoundFee();
     }
 
-    /// @notice Vault yield fee, in `WAD`
+    /// @notice Vault yield fee is in basis point form
     /// @dev Returns the vaults current protocol fee for compounding rewards
     ///      Used for frontend data query only
     function vaultYieldFee() external view returns (uint256) {
         return centralRegistry.protocolYieldFee();
     }
 
-    /// @notice Vault harvest fee, in `WAD`
+    /// @notice Vault harvest fee is in basis point form
     /// @dev Returns the vaults current harvest fee for compounding rewards
-    ///      that pays for yield and compound fees.
-    ///      NOTE: Used for frontend data query only
+    ///      that pays for yield and compound fees
+    ///      Used for frontend data query only
     function vaultHarvestFee() external view returns (uint256) {
         return centralRegistry.protocolHarvestFee();
     }
@@ -309,10 +309,10 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
     // PERMISSIONED FUNCTIONS
 
     /// @notice Used to start a CToken market, executed via lendtroller
-    /// @dev This initial mint is a failsafe against the empty market exploit
+    /// @dev this initial mint is a failsafe against the empty market exploit
     ///      although we protect against it in many ways,
     ///      better safe than sorry
-    /// @param by The account initializing the market
+    /// @param by the account initializing the market
     function startMarket(
         address by
     ) external nonReentrant returns (bool) {
@@ -413,9 +413,9 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
     ///         and the cached exchange rate
     /// @dev This is used by lendtroller to more efficiently perform liquidity checks
     /// @param account Address of the account to snapshot
-    /// @return tokenBalance Current account shares balance
-    /// @return borrowBalance Current account borrow balance (will always be 0, kept for composability)
-    /// @return exchangeRate Current exchange rate between assets and shares, in `WAD`
+    /// @return tokenBalance
+    /// @return borrowBalance
+    /// @return exchangeRate scaled 1e18
     function getSnapshot(
         address account
     ) external view returns (uint256, uint256, uint256) {
@@ -424,9 +424,8 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
 
     /// @notice Get a snapshot of the cToken and `account` data
     /// @dev This is used by lendtroller to more efficiently perform liquidity checks
-    /// @param account Address of the account to snapshot
     function getSnapshotPacked(
-        address account
+        address
     ) external view returns (AccountSnapshot memory) {
         return (
             AccountSnapshot({
@@ -440,8 +439,8 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
     }
 
     /// @notice Rescue any token sent by mistake
-    /// @param token The token to rescue
-    /// @param amount Amount of `token` to rescue, 0 indicates to rescue all
+    /// @param token token to rescue
+    /// @param amount amount of `token` to rescue, 0 indicates to rescue all
     function rescueToken(
         address token,
         uint256 amount

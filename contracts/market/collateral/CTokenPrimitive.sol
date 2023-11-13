@@ -341,9 +341,8 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
     /// @dev This is used by lendtroller to more efficiently perform liquidity checks
     /// NOTE: Posted Debt Balance always return 0 to save gas in lendtroller
     ///       since it is unused
-    /// @param account Address of the account to snapshot
     function getSnapshotPacked(
-        address account
+        address
     ) external view returns (AccountSnapshot memory) {
         return (
             AccountSnapshot({
