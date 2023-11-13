@@ -30,14 +30,19 @@ library PendleLpOracleLib {
             // 1 PT = 1 Asset post-expiry
             totalHypotheticalAsset = state.totalPt + comp.totalAsset;
         } else {
-            (int256 rateOracle, int256 rateHypTrade) = _getPtRates(market, state, duration);
+            (int256 rateOracle, int256 rateHypTrade) = _getPtRates(
+                market,
+                state,
+                duration
+            );
             int256 cParam = LogExpMath.exp(
                 comp.rateScalar.mulDown((rateOracle - comp.rateAnchor))
             );
 
-            int256 tradeSize = (cParam.mulDown(comp.totalAsset) - state.totalPt).divDown(
-                Math.IONE + cParam.divDown(rateHypTrade)
-            );
+            int256 tradeSize = (cParam.mulDown(comp.totalAsset) -
+                state.totalPt).divDown(
+                    Math.IONE + cParam.divDown(rateHypTrade)
+                );
 
             totalHypotheticalAsset =
                 comp.totalAsset -
@@ -45,21 +50,31 @@ library PendleLpOracleLib {
                 (state.totalPt + tradeSize).divDown(rateOracle);
         }
 
-        lpToAssetRate = _calcLpPrice(totalHypotheticalAsset, state.totalLp).Uint();
+        lpToAssetRate = _calcLpPrice(totalHypotheticalAsset, state.totalLp)
+            .Uint();
     }
 
     function _getMarketPreCompute(
         IPMarket market,
         MarketState memory state
     ) private view returns (MarketPreCompute memory) {
-        return state.getMarketPreCompute(_getPYIndexCurrent(market), block.timestamp);
+        return
+            state.getMarketPreCompute(
+                _getPYIndexCurrent(market),
+                block.timestamp
+            );
     }
 
-    function _getPYIndexCurrent(IPMarket market) private view returns (PYIndex) {
+    function _getPYIndexCurrent(
+        IPMarket market
+    ) private view returns (PYIndex) {
         (IStandardizedYield SY, , IPYieldToken YT) = market.readTokens();
         uint256 ytIndex = YT.pyIndexStored();
         uint256 pyIndexCurrent;
-        if (YT.doCacheIndexSameBlock() && YT.pyIndexLastUpdatedBlock() == block.number) {
+        if (
+            YT.doCacheIndexSameBlock() &&
+            YT.pyIndexLastUpdatedBlock() == block.number
+        ) {
             pyIndexCurrent = ytIndex;
         } else {
             uint256 syIndex = SY.exchangeRate();
@@ -73,7 +88,9 @@ library PendleLpOracleLib {
         MarketState memory state,
         uint32 duration
     ) private view returns (int256 rateOracle, int256 rateHypTrade) {
-        rateOracle = Math.IONE.divDown(market.getPtToAssetRate(duration).Int());
+        rateOracle = Math.IONE.divDown(
+            market.getPtToAssetRate(duration).Int()
+        );
         int256 rateLastTrade = MarketMathCore._getExchangeRateFromImpliedRate(
             state.lastLnImpliedRate,
             state.expiry - block.timestamp

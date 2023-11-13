@@ -29,7 +29,7 @@ contract PendlePrincipalTokenAdaptor is BaseOracleAdaptor {
     /// CONSTANTS ///
 
     /// @notice The minimum acceptable twap duration when pricing
-    uint32 public constant MINIMUM_TWAP_DURATION = 3600;
+    uint32 public constant MINIMUM_TWAP_DURATION = 12;
     /// @notice Token amount to check uniswap twap price against
     uint128 public constant PRECISION = 1e18;
 
@@ -60,6 +60,7 @@ contract PendlePrincipalTokenAdaptor is BaseOracleAdaptor {
     error PendlePrincipalTokenAdaptor__CallIncreaseCardinality();
     error PendlePrincipalTokenAdaptor__OldestObservationIsNotSatisfied();
     error PendlePrincipalTokenAdaptor__QuoteAssetIsNotSupported();
+    error PendlePrincipalTokenAdaptor__ConfigurationError();
 
     /// CONSTRUCTOR ///
 
@@ -112,6 +113,10 @@ contract PendlePrincipalTokenAdaptor is BaseOracleAdaptor {
         address asset,
         AdaptorData memory data
     ) external onlyElevatedPermissions {
+        if (isSupportedAsset[asset]) {
+            revert PendlePrincipalTokenAdaptor__ConfigurationError();
+        }
+
         // Make sure pt and market match.
         (IStandardizedYield sy, IPPrincipalToken pt, ) = data
             .market
@@ -158,6 +163,8 @@ contract PendlePrincipalTokenAdaptor is BaseOracleAdaptor {
             quoteAsset: data.quoteAsset,
             quoteAssetDecimals: data.quoteAssetDecimals
         });
+
+        isSupportedAsset[asset] = true;
         emit PendlePTAssetAdded(asset, data);
     }
 
