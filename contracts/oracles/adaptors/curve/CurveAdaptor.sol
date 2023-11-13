@@ -56,11 +56,11 @@ contract CurveAdaptor is CurveBaseAdaptor {
     /// @notice Sets or updates a Curve pool configuration for the reentrancy check
     /// @param coinsLength The number of coins (from .coinsLength) on the Curve pool
     /// @param gasLimit The gas limit to be set on the check
-    function setReentrancyVerificationConfig(
+    function setReentrancyConfig(
         uint256 coinsLength,
         uint256 gasLimit
     ) external onlyElevatedPermissions {
-        _setReentrancyVerificationConfig(coinsLength, gasLimit);
+        _setReentrancyConfig(coinsLength, gasLimit);
     }
 
     /// @notice Retrieves the price of a given asset.

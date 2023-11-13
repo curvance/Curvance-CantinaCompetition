@@ -95,11 +95,11 @@ abstract contract CurveBaseAdaptor is BaseOracleAdaptor {
     /// @notice Sets or updates a Curve pool configuration for the reentrancy check
     /// @param coinsLength The number of coins (from .coinsLength) on the Curve pool
     /// @param gasLimit The gas limit to be set on the check
-    function _setReentrancyVerificationConfig(
+    function _setReentrancyConfig(
         uint256 coinsLength,
         uint256 gasLimit
     ) internal {
-        // Make sure the gas limit assigned is low enough for the pool
+        // Make sure the gas limit assigned is above the minimum for the pool
         if (gasLimit < MIN_GAS_LIMIT){
             revert CurveBaseAdaptor__InvalidConfiguration();
         }

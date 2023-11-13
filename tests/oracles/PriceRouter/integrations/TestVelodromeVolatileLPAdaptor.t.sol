@@ -9,7 +9,7 @@ import { VelodromeLib } from "contracts/market/zapper/protocols/VelodromeLib.sol
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { TestBasePriceRouter } from "../TestBasePriceRouter.sol";
 
-contract TestVelodromeVolatileLPAdapter is TestBasePriceRouter {
+contract TestVelodromeVolatileLPAdaptor is TestBasePriceRouter {
     address private WETH = address(0x4200000000000000000000000000000000000006);
     address private USDC = address(0x7F5c764cBc14f9669B88837ca1490cCa17c31607);
 
@@ -23,7 +23,7 @@ contract TestVelodromeVolatileLPAdapter is TestBasePriceRouter {
     address private WETH_USDC =
         address(0x0493Bf8b6DBB159Ce2Db2E0E8403E753Abd1235b);
 
-    VelodromeVolatileLPAdaptor adapter;
+    VelodromeVolatileLPAdaptor adaptor;
 
     function setUp() public override {
         _fork("ETH_NODE_URI_OPTIMISM", 110333246);
@@ -35,13 +35,13 @@ contract TestVelodromeVolatileLPAdapter is TestBasePriceRouter {
         );
         centralRegistry.setPriceRouter(address(priceRouter));
 
-        adapter = new VelodromeVolatileLPAdaptor(
+        adaptor = new VelodromeVolatileLPAdaptor(
             ICentralRegistry(address(centralRegistry))
         );
-        adapter.addAsset(WETH_USDC);
+        adaptor.addAsset(WETH_USDC);
 
-        priceRouter.addApprovedAdaptor(address(adapter));
-        priceRouter.addAssetPriceFeed(WETH_USDC, address(adapter));
+        priceRouter.addApprovedAdaptor(address(adaptor));
+        priceRouter.addAssetPriceFeed(WETH_USDC, address(adaptor));
     }
 
     function testRevertWhenUnderlyingChainAssetPriceNotSet() public {
@@ -71,7 +71,7 @@ contract TestVelodromeVolatileLPAdapter is TestBasePriceRouter {
     function testRevertAfterAssetRemove() public {
         testReturnsCorrectPrice();
 
-        adapter.removeAsset(WETH_USDC);
+        adaptor.removeAsset(WETH_USDC);
         vm.expectRevert(PriceRouter.PriceRouter__NotSupported.selector);
         priceRouter.getPrice(WETH_USDC, true, false);
     }

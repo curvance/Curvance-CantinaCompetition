@@ -125,7 +125,7 @@ contract TestPriceRouter is TestBasePriceRouter {
         assertEq(dUSDCPrice, usdcPrice);
     }
 
-    function testRevertWhenAdapterNotApproved() public {
+    function testRevertWhenAdaptorNotApproved() public {
         priceRouter.removeApprovedAdaptor(address(adapter));
 
         vm.expectRevert(

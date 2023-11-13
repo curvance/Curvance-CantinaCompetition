@@ -18,7 +18,7 @@ contract TestCurveAdaptor is TestBasePriceRouter {
     address private ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
     address private STETH = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
 
-    CurveAdaptor adapter;
+    CurveAdaptor adaptor;
 
     function setUp() public override {
         _fork();
@@ -26,17 +26,16 @@ contract TestCurveAdaptor is TestBasePriceRouter {
         _deployCentralRegistry();
         _deployPriceRouter();
 
-        adapter = new CurveAdaptor(ICentralRegistry(address(centralRegistry)));
+        adaptor = new CurveAdaptor(ICentralRegistry(address(centralRegistry)));
 
-        adapter.setReentrancyVerificationConfig(
-            ETH_STETH,
-            24000,
-            CurveReentrancyCheck.N_COINS.TWO_COINS
+        adaptor.setReentrancyConfig(
+            2
+            10000
         );
     }
 
     function testRevertWhenUnderlyingAssetPriceNotSet() public {
-        adapter.addAsset(ETH_STETH, ETH_STETH);
+        adaptor.addAsset(ETH_STETH, ETH_STETH);
 
         vm.expectRevert(PriceRouter.PriceRouter__NotSupported.selector);
         priceRouter.getPrice(ETH_STETH, true, false);
@@ -52,10 +51,10 @@ contract TestCurveAdaptor is TestBasePriceRouter {
         priceRouter.addAssetPriceFeed(ETH, address(chainlinkAdaptor));
         priceRouter.addAssetPriceFeed(STETH, address(chainlinkAdaptor));
 
-        adapter.addAsset(ETH_STETH, ETH_STETH);
+        adaptor.addAsset(ETH_STETH, ETH_STETH);
 
-        priceRouter.addApprovedAdaptor(address(adapter));
-        priceRouter.addAssetPriceFeed(ETH_STETH, address(adapter));
+        priceRouter.addApprovedAdaptor(address(adaptor));
+        priceRouter.addAssetPriceFeed(ETH_STETH, address(adaptor));
         (uint256 ethPrice, ) = priceRouter.getPrice(ETH, true, false);
 
         (uint256 price, uint256 errorCode) = priceRouter.getPrice(
@@ -69,7 +68,7 @@ contract TestCurveAdaptor is TestBasePriceRouter {
 
     function testRevertAfterAssetRemove() public {
         testReturnsCorrectPrice();
-        adapter.removeAsset(ETH_STETH);
+        adaptor.removeAsset(ETH_STETH);
 
         vm.expectRevert(PriceRouter.PriceRouter__NotSupported.selector);
         priceRouter.getPrice(ETH_STETH, true, false);
