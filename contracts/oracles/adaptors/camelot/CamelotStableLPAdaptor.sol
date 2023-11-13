@@ -10,10 +10,7 @@ import { ICamelotPair } from "contracts/interfaces/external/camelot/ICamelotPair
 contract CamelotStableLPAdaptor is BaseStableLPAdaptor {
     /// EVENTS ///
 
-    event CamelotStableLPAssetAdded(
-        address asset,
-        AdaptorData assetConfig
-    );
+    event CamelotStableLPAssetAdded(address asset, AdaptorData assetConfig);
 
     event CamelotStableLPAssetRemoved(address asset);
 

@@ -87,7 +87,7 @@ contract TestPositionFolding is TestBaseMarket {
             vm.prank(user);
             address[] memory markets = new address[](1);
             markets[0] = address(dDAI);
-            lendtroller.enterMarkets(markets);
+            // lendtroller.enterMarkets(markets);
             // approve
             vm.prank(user);
             dai.approve(address(dDAI), 200000e18);
@@ -107,16 +107,18 @@ contract TestPositionFolding is TestBaseMarket {
             // set collateral factor
             lendtroller.updateCollateralToken(
                 IMToken(address(cBALRETH)),
-                200,
-                0,
+                5000,
                 1200,
                 1000,
-                5000
+                200,
+                400,
+                0,
+                200
             );
             vm.prank(user);
             address[] memory markets = new address[](1);
             markets[0] = address(cBALRETH);
-            lendtroller.enterMarkets(markets);
+            // lendtroller.enterMarkets(markets);
             // approve
             vm.prank(user);
             dai.approve(address(cBALRETH), 200000e18);

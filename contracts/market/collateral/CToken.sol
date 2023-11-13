@@ -343,7 +343,6 @@ contract CToken is ERC165, ReentrancyGuard {
                 asset: address(this),
                 isCToken: true,
                 decimals: decimals(),
-                balance: balanceOf[account],
                 debtBalance: 0,
                 exchangeRate: exchangeRateStored()
             })

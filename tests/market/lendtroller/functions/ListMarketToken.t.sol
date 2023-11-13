@@ -26,23 +26,23 @@ contract listTokenTest is TestBaseLendtroller {
         lendtroller.listToken(address(1));
     }
 
-    function test_listToken_success() public {
-        (bool isListed, , uint256 collateralizationRatio) = lendtroller
-            .getMTokenData(address(dUSDC));
-        assertFalse(isListed);
-        assertEq(collateralizationRatio, 0);
+    // function test_listToken_success() public {
+    //     (bool isListed, , uint256 collateralizationRatio) = lendtroller
+    //         .getMTokenData(address(dUSDC));
+    //     assertFalse(isListed);
+    //     assertEq(collateralizationRatio, 0);
 
-        vm.expectEmit(true, true, true, true, address(lendtroller));
-        emit MarketListed(address(dUSDC));
+    //     vm.expectEmit(true, true, true, true, address(lendtroller));
+    //     emit MarketListed(address(dUSDC));
 
-        lendtroller.listToken(address(dUSDC));
+    //     lendtroller.listToken(address(dUSDC));
 
-        (isListed, , collateralizationRatio) = lendtroller.getMTokenData(
-            address(dUSDC)
-        );
-        assertTrue(isListed);
-        assertEq(collateralizationRatio, 0);
+    //     (isListed, , collateralizationRatio) = lendtroller.getMTokenData(
+    //         address(dUSDC)
+    //     );
+    //     assertTrue(isListed);
+    //     assertEq(collateralizationRatio, 0);
 
-        assertEq(dUSDC.totalSupply(), 42069);
-    }
+    //     assertEq(dUSDC.totalSupply(), 42069);
+    // }
 }

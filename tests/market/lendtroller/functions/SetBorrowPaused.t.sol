@@ -12,12 +12,12 @@ contract SetBorrowPausedTest is TestBaseLendtroller {
         vm.prank(address(1));
 
         vm.expectRevert(Lendtroller.Lendtroller__Unauthorized.selector);
-        lendtroller.setBorrowPaused(IMToken(address(dUSDC)), true);
+        lendtroller.setBorrowPaused((address(dUSDC)), true);
     }
 
     function test_setBorrowPaused_fail_whenMTokenIsNotListed() public {
         vm.expectRevert(Lendtroller.Lendtroller__TokenNotListed.selector);
-        lendtroller.setBorrowPaused(IMToken(address(dUSDC)), true);
+        lendtroller.setBorrowPaused((address(dUSDC)), true);
     }
 
     function test_setBorrowPaused_success() public {
@@ -28,14 +28,14 @@ contract SetBorrowPausedTest is TestBaseLendtroller {
         vm.expectEmit(true, true, true, true, address(lendtroller));
         emit ActionPaused(IMToken(address(dUSDC)), "Borrow Paused", true);
 
-        lendtroller.setBorrowPaused(IMToken(address(dUSDC)), true);
+        lendtroller.setBorrowPaused((address(dUSDC)), true);
 
         assertEq(lendtroller.borrowPaused(address(dUSDC)), 2);
 
         vm.expectEmit(true, true, true, true, address(lendtroller));
         emit ActionPaused(IMToken(address(dUSDC)), "Borrow Paused", false);
 
-        lendtroller.setBorrowPaused(IMToken(address(dUSDC)), false);
+        lendtroller.setBorrowPaused((address(dUSDC)), false);
 
         assertEq(lendtroller.borrowPaused(address(dUSDC)), 1);
     }

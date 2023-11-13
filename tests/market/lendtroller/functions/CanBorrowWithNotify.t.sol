@@ -15,7 +15,7 @@ contract CanBorrowWithNotifyTest is TestBaseLendtroller {
     }
 
     function test_canBorrowWithNotify_fail_whenCallerIsNotMToken() public {
-        vm.expectRevert(Lendtroller.Lendtroller__AddressUnauthorized.selector);
+        vm.expectRevert(Lendtroller.Lendtroller__Unauthorized.selector);
         lendtroller.canBorrowWithNotify(address(dUSDC), user1, 100e6);
     }
 
@@ -29,7 +29,7 @@ contract CanBorrowWithNotifyTest is TestBaseLendtroller {
     }
 
     function test_canBorrowWithNotify_fail_whenBorrowPaused() public {
-        lendtroller.setBorrowPaused(IMToken(address(dUSDC)), true);
+        lendtroller.setBorrowPaused((address(dUSDC)), true);
 
         vm.prank(address(dUSDC));
 
@@ -40,7 +40,7 @@ contract CanBorrowWithNotifyTest is TestBaseLendtroller {
     function test_canBorrowWithNotify_fail_whenMTokenIsNotListed() public {
         vm.prank(address(dUSDC));
 
-        vm.expectRevert(Lendtroller.Lendtroller__AddressUnauthorized.selector);
+        vm.expectRevert(Lendtroller.Lendtroller__Unauthorized.selector);
         lendtroller.canBorrowWithNotify(address(dDAI), user1, 100e6);
     }
 
@@ -51,7 +51,7 @@ contract CanBorrowWithNotifyTest is TestBaseLendtroller {
 
         vm.prank(address(dUSDC));
 
-        vm.expectRevert(Lendtroller.Lendtroller__AddressUnauthorized.selector);
+        vm.expectRevert(Lendtroller.Lendtroller__Unauthorized.selector);
         lendtroller.canBorrowWithNotify(address(dDAI), user1, 100e6);
     }
 

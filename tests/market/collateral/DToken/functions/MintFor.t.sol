@@ -15,7 +15,7 @@ contract DTokenMintForTest is TestBaseDToken {
     }
 
     function test_dTokenMintFor_fail_whenMintIsNotAllowed() public {
-        lendtroller.setMintPaused(IMToken(address(dUSDC)), true);
+        lendtroller.setMintPaused((address(dUSDC)), true);
 
         vm.expectRevert(Lendtroller.Lendtroller__Paused.selector);
         dUSDC.mintFor(100e6, user1);

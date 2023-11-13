@@ -12,7 +12,7 @@ contract SetMintPausedTest is TestBaseLendtroller {
         vm.prank(address(1));
 
         vm.expectRevert(Lendtroller.Lendtroller__Unauthorized.selector);
-        lendtroller.setMintPaused(IMToken(address(dUSDC)), true);
+        lendtroller.setMintPaused((address(dUSDC)), true);
     }
 
     function test_setMintPaused_fail_whenMTokenIsNotListed() public {
@@ -20,7 +20,7 @@ contract SetMintPausedTest is TestBaseLendtroller {
         lendtroller.canMint(address(dUSDC));
 
         vm.expectRevert(Lendtroller.Lendtroller__TokenNotListed.selector);
-        lendtroller.setMintPaused(IMToken(address(dUSDC)), true);
+        lendtroller.setMintPaused((address(dUSDC)), true);
     }
 
     function test_setMintPaused_success() public {
@@ -33,7 +33,7 @@ contract SetMintPausedTest is TestBaseLendtroller {
         vm.expectEmit(true, true, true, true, address(lendtroller));
         emit ActionPaused(IMToken(address(dUSDC)), "Mint Paused", true);
 
-        lendtroller.setMintPaused(IMToken(address(dUSDC)), true);
+        lendtroller.setMintPaused((address(dUSDC)), true);
 
         vm.expectRevert(Lendtroller.Lendtroller__Paused.selector);
         lendtroller.canMint(address(dUSDC));
@@ -43,7 +43,7 @@ contract SetMintPausedTest is TestBaseLendtroller {
         vm.expectEmit(true, true, true, true, address(lendtroller));
         emit ActionPaused(IMToken(address(dUSDC)), "Mint Paused", false);
 
-        lendtroller.setMintPaused(IMToken(address(dUSDC)), false);
+        lendtroller.setMintPaused((address(dUSDC)), false);
 
         assertEq(lendtroller.mintPaused(address(dUSDC)), 1);
     }

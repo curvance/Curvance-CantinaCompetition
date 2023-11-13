@@ -78,7 +78,7 @@ contract TestPartnerGaugePool is TestBaseMarket {
                 vm.prank(user);
                 address[] memory markets = new address[](1);
                 markets[0] = address(tokens[i]);
-                lendtroller.enterMarkets(markets);
+                // lendtroller.enterMarkets(markets);
 
                 // approve
                 vm.prank(user);
@@ -173,7 +173,10 @@ contract TestPartnerGaugePool is TestBaseMarket {
                 partnerGauges[i].pendingRewards(tokens[0], users[0]),
                 12000
             );
-            assertEq(partnerGauges[i].pendingRewards(tokens[0], users[1]), 8000);
+            assertEq(
+                partnerGauges[i].pendingRewards(tokens[0], users[1]),
+                8000
+            );
             assertEq(
                 partnerGauges[i].pendingRewards(tokens[1], users[2]),
                 24000
@@ -215,7 +218,10 @@ contract TestPartnerGaugePool is TestBaseMarket {
         assertEq(gaugePool.pendingRewards(tokens[1], users[2]), 28000);
         assertEq(gaugePool.pendingRewards(tokens[1], users[3]), 16000);
         for (uint256 i = 0; i < CHILD_GAUGE_COUNT; i++) {
-            assertEq(partnerGauges[i].pendingRewards(tokens[0], users[0]), 2000);
+            assertEq(
+                partnerGauges[i].pendingRewards(tokens[0], users[0]),
+                2000
+            );
             assertEq(
                 partnerGauges[i].pendingRewards(tokens[0], users[1]),
                 16000
@@ -245,7 +251,10 @@ contract TestPartnerGaugePool is TestBaseMarket {
         assertEq(gaugePool.pendingRewards(tokens[1], users[2]), 34666);
         assertEq(gaugePool.pendingRewards(tokens[1], users[3]), 29333);
         for (uint256 i = 0; i < CHILD_GAUGE_COUNT; i++) {
-            assertEq(partnerGauges[i].pendingRewards(tokens[0], users[0]), 3111);
+            assertEq(
+                partnerGauges[i].pendingRewards(tokens[0], users[0]),
+                3111
+            );
             assertEq(
                 partnerGauges[i].pendingRewards(tokens[0], users[1]),
                 24888
@@ -309,9 +318,18 @@ contract TestPartnerGaugePool is TestBaseMarket {
         assertEq(gaugePool.pendingRewards(tokens[1], users[2]), 6667);
         assertEq(gaugePool.pendingRewards(tokens[1], users[3]), 13333);
         for (uint256 i = 0; i < CHILD_GAUGE_COUNT; i++) {
-            assertEq(partnerGauges[i].pendingRewards(tokens[0], users[0]), 1111);
-            assertEq(partnerGauges[i].pendingRewards(tokens[0], users[1]), 8889);
-            assertEq(partnerGauges[i].pendingRewards(tokens[1], users[2]), 6667);
+            assertEq(
+                partnerGauges[i].pendingRewards(tokens[0], users[0]),
+                1111
+            );
+            assertEq(
+                partnerGauges[i].pendingRewards(tokens[0], users[1]),
+                8889
+            );
+            assertEq(
+                partnerGauges[i].pendingRewards(tokens[1], users[2]),
+                6667
+            );
             assertEq(
                 partnerGauges[i].pendingRewards(tokens[1], users[3]),
                 13333

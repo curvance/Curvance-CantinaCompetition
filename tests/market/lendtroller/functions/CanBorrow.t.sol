@@ -15,7 +15,7 @@ contract CanBorrowTest is TestBaseLendtroller {
     }
 
     function test_canBorrow_fail_whenBorrowPaused() public {
-        lendtroller.setBorrowPaused(IMToken(address(dUSDC)), true);
+        lendtroller.setBorrowPaused((address(dUSDC)), true);
 
         vm.prank(address(dUSDC));
 
@@ -37,7 +37,7 @@ contract CanBorrowTest is TestBaseLendtroller {
 
         vm.prank(address(dUSDC));
 
-        vm.expectRevert(Lendtroller.Lendtroller__AddressUnauthorized.selector);
+        vm.expectRevert(Lendtroller.Lendtroller__Unauthorized.selector);
         lendtroller.canBorrow(address(dDAI), user1, 100e6);
     }
 

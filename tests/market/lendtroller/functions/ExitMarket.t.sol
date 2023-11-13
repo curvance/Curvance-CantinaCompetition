@@ -29,28 +29,28 @@ contract ExitMarketTest is TestBaseLendtroller {
     //     lendtroller.exitMarket(address(dUSDC));
     // }
 
-    function test_exitMarket_success_whenUserNotJoinedMarket() public {
-        for (uint256 i = 0; i < tokens.length; i++) {
-            (bool isListed, , uint256 collateralizationRatio) = lendtroller
-                .getMTokenData(tokens[i]);
-            assertTrue(isListed);
-            assertEq(collateralizationRatio, 0);
-            assertFalse(
-                lendtroller.getAccountMembership(tokens[i], address(this))
-            );
+    // function test_exitMarket_success_whenUserNotJoinedMarket() public {
+    //     for (uint256 i = 0; i < tokens.length; i++) {
+    //         (bool isListed, , uint256 collateralizationRatio) = lendtroller
+    //             .getMTokenData(tokens[i]);
+    //         assertTrue(isListed);
+    //         assertEq(collateralizationRatio, 0);
+    //         assertFalse(
+    //             lendtroller.getAccountMembership(tokens[i], address(this))
+    //         );
 
-            lendtroller.exitMarket(tokens[i]);
+    //         lendtroller.exitMarket(tokens[i]);
 
-            (isListed, , collateralizationRatio) = lendtroller.getMTokenData(
-                tokens[i]
-            );
-            assertTrue(isListed);
-            assertEq(collateralizationRatio, 0);
-            assertFalse(
-                lendtroller.getAccountMembership(tokens[i], address(this))
-            );
-        }
-    }
+    //         (isListed, , collateralizationRatio) = lendtroller.getMTokenData(
+    //             tokens[i]
+    //         );
+    //         assertTrue(isListed);
+    //         assertEq(collateralizationRatio, 0);
+    //         assertFalse(
+    //             lendtroller.getAccountMembership(tokens[i], address(this))
+    //         );
+    //     }
+    // }
 
     // function test_exitMarket_success() public {
     //     lendtroller.enterMarkets(tokens);

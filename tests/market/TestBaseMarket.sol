@@ -25,7 +25,6 @@ import { MockToken } from "contracts/mocks/MockToken.sol";
 import { GaugePool } from "contracts/gauge/GaugePool.sol";
 import { ERC20 } from "contracts/libraries/ERC20.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
-import { ERC20 } from "contracts/libraries/ERC20.sol";
 
 contract TestBaseMarket is TestBase {
     address internal constant _WETH_ADDRESS =

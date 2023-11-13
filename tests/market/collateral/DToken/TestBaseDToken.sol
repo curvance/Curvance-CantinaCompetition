@@ -65,7 +65,7 @@ contract TestBaseDToken is TestBaseMarket {
         address[] memory markets = new address[](1);
         markets[0] = address(dUSDC);
 
-        lendtroller.enterMarkets(markets);
+        // lendtroller.enterMarkets(markets);
 
         dUSDC.depositReserves(1000e6);
 
@@ -75,16 +75,18 @@ contract TestBaseDToken is TestBaseMarket {
         lendtroller.listToken(address(cBALRETH));
         lendtroller.updateCollateralToken(
             IMToken(address(cBALRETH)),
-            200,
-            0,
+            5000,
             1200,
             1000,
-            5000
+            200,
+            400,
+            0,
+            200
         );
 
         markets[0] = address(cBALRETH);
 
-        lendtroller.enterMarkets(markets);
+        // lendtroller.enterMarkets(markets);
 
         cBALRETH.mint(1e18);
     }

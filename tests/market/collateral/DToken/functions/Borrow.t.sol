@@ -10,7 +10,7 @@ contract DTokenBorrowTest is TestBaseDToken {
     event Borrow(address borrower, uint256 borrowAmount);
 
     function test_dTokenBorrow_fail_whenBorrowIsNotAllowed() public {
-        lendtroller.setBorrowPaused(IMToken(address(dUSDC)), true);
+        lendtroller.setBorrowPaused((address(dUSDC)), true);
 
         vm.expectRevert();
         dUSDC.borrow(100e6);

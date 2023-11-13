@@ -223,8 +223,14 @@ contract Lendtroller is ILendtroller, ERC165 {
 
     /// @notice Post collateral in some cToken for borrowing inside this market
     /// @param mToken The address of the mToken to post collateral for
-    function postCollateral(address account, address mToken, uint256 tokens) public {
-        AccountMetadata storage accountData = tokenData[mToken].accountData[msg.sender];
+    function postCollateral(
+        address account,
+        address mToken,
+        uint256 tokens
+    ) public {
+        AccountMetadata storage accountData = tokenData[mToken].accountData[
+            msg.sender
+        ];
 
         if (!tokenData[mToken].isListed) {
             revert Lendtroller__TokenNotListed();
@@ -234,7 +240,7 @@ contract Lendtroller is ILendtroller, ERC165 {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
-        // If you are trying to post collateral for someone else, 
+        // If you are trying to post collateral for someone else,
         // make sure it is done via the mToken contract itself
         if (msg.sender != account) {
             if (msg.sender != mToken) {
@@ -242,7 +248,10 @@ contract Lendtroller is ILendtroller, ERC165 {
             }
         }
 
-        if (accountData.collateralPosted + tokens >= IMToken(mToken).balanceOf(msg.sender)) {
+        if (
+            accountData.collateralPosted + tokens >=
+            IMToken(mToken).balanceOf(msg.sender)
+        ) {
             revert Lendtroller__InsufficientCollateral();
         }
 
@@ -251,12 +260,18 @@ contract Lendtroller is ILendtroller, ERC165 {
 
     /// @notice Post collateral in some cToken for borrowing inside this market
     /// @param mToken The address of the mToken to post collateral for
-    function removeCollateral(address mToken, uint256 tokens, bool closePositionIfPossible) public {
-        AccountMetadata storage accountData = tokenData[mToken].accountData[msg.sender];
+    function removeCollateral(
+        address mToken,
+        uint256 tokens,
+        bool closePositionIfPossible
+    ) public {
+        AccountMetadata storage accountData = tokenData[mToken].accountData[
+            msg.sender
+        ];
 
         // We can check this instead of .isListed,
         // since any non-listed token will always have activePosition == 0,
-        // and this lets us check for any invariant errors 
+        // and this lets us check for any invariant errors
         if (accountData.activePosition != 2) {
             revert Lendtroller__InvariantError();
         }
@@ -272,7 +287,13 @@ contract Lendtroller is ILendtroller, ERC165 {
         // Fail if the sender is not permitted to redeem `tokens`
         // note: tokens is in shares
         _canRedeem(mToken, msg.sender, tokens);
-        _removeCollateral(msg.sender, accountData, mToken, tokens, closePositionIfPossible);
+        _removeCollateral(
+            msg.sender,
+            accountData,
+            mToken,
+            tokens,
+            closePositionIfPossible
+        );
     }
 
     /// @notice Removes an asset from an account's liquidity calculation
@@ -281,13 +302,15 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @param mToken The address of the asset to be removed
     function closePosition(address mToken) external {
         IMToken token = IMToken(mToken);
-        AccountMetadata storage accountData = tokenData[mToken].accountData[msg.sender];
+        AccountMetadata storage accountData = tokenData[mToken].accountData[
+            msg.sender
+        ];
 
         // We do not need to update any values if the account is not ‘in’ the market
         if (accountData.activePosition < 2) {
             revert Lendtroller__InvalidParameter();
         }
- 
+
         if (!token.isCToken()) {
             // Get sender tokens and debt underlying from the mToken
             (, uint256 debt, ) = token.getSnapshot(msg.sender);
@@ -297,24 +320,30 @@ contract Lendtroller is ILendtroller, ERC165 {
                 revert Lendtroller__HasActiveLoan();
             }
 
-            _closePosition(msg.sender, accountData, token); 
+            _closePosition(msg.sender, accountData, token);
             return;
         }
-        
+
         if (accountData.collateralPosted != 0) {
             // Fail if the sender is not permitted to redeem all of their tokens
             _canRedeem(mToken, msg.sender, accountData.collateralPosted);
-            // We use collateral posted here instead of their snapshot, 
+            // We use collateral posted here instead of their snapshot,
             // since its possible they have not posted all their tokens as collateral
-            _removeCollateral(msg.sender, accountData, mToken, accountData.collateralPosted, true);
+            _removeCollateral(
+                msg.sender,
+                accountData,
+                mToken,
+                accountData.collateralPosted,
+                true
+            );
             return;
         }
 
         // Its possible they have a position without collateral posted if:
-        // They were liquidated 
+        // They were liquidated
         // They removed all their collateral but did not use `closePositionIfPossible`
         // So we need to still close their position here
-        _closePosition(msg.sender, accountData, token);  
+        _closePosition(msg.sender, accountData, token);
     }
 
     /// @notice Checks if the account should be allowed to mint tokens
@@ -346,18 +375,18 @@ contract Lendtroller is ILendtroller, ERC165 {
 
     /// @notice Checks if the account should be allowed to redeem tokens
     ///         in the given market, and then redeems
-    /// @dev    This can only be called by the mToken itself, 
+    /// @dev    This can only be called by the mToken itself,
     ///         this will only be cTokens calling, dTokens are never collateral
     /// @param mToken The market to verify the redeem against
     /// @param redeemer The account which would redeem the tokens
     /// @param balance The current mTokens balance of `redeemer`
     /// @param amount The number of mTokens to exchange
     ///               for the underlying asset in the market
-    /// @param forceRedeemCollateral Whether the collateral should be always reduced 
+    /// @param forceRedeemCollateral Whether the collateral should be always reduced
     function canRedeemWithCollateralRemoval(
         address mToken,
         address redeemer,
-        uint256 balance, 
+        uint256 balance,
         uint256 amount,
         bool forceRedeemCollateral
     ) external override {
@@ -366,13 +395,19 @@ contract Lendtroller is ILendtroller, ERC165 {
         }
 
         _canRedeem(mToken, redeemer, amount);
-        _reduceCollateralIfNecessary(redeemer, mToken, balance, amount, forceRedeemCollateral);
+        _reduceCollateralIfNecessary(
+            redeemer,
+            mToken,
+            balance,
+            amount,
+            forceRedeemCollateral
+        );
     }
 
     /// @notice Checks if the account should be allowed to borrow
     ///         the underlying asset of the given market,
     ///         and notifies the market of the borrow
-    /// @dev    This can only be called by the market itself 
+    /// @dev    This can only be called by the market itself
     /// @param mToken The market to verify the borrow against
     /// @param borrower The account which would borrow the asset
     /// @param amount The amount of underlying the account would borrow
@@ -438,8 +473,14 @@ contract Lendtroller is ILendtroller, ERC165 {
 
         // We can pass balance = 0 here since we are forcing collateral closure
         // and balance will never be lower than collateral posted
-        _reduceCollateralIfNecessary(account, cToken, 0, cTokenLiquidated, true);
-        return (dTokenRepaid, cTokenLiquidated, protocolTokens);   
+        _reduceCollateralIfNecessary(
+            account,
+            cToken,
+            0,
+            cTokenLiquidated,
+            true
+        );
+        return (dTokenRepaid, cTokenLiquidated, protocolTokens);
     }
 
     /// @notice Checks if the liquidation should be allowed to occur,
@@ -664,7 +705,6 @@ contract Lendtroller is ILendtroller, ERC165 {
         // Store the distance between base cFactor and 100%,
         // that way we can quickly scale between [base, 100%] based on lFactor
         marketToken.cFactorCurve = WAD - baseCFactor;
-        
 
         // We store protocol liquidation fee divided by the soft liquidation
         // incentive offset, that way we can directly multiply later instead
@@ -825,9 +865,9 @@ contract Lendtroller is ILendtroller, ERC165 {
     }
 
     function reduceCollateralIfNecessary(
-        address account, 
-        address mToken, 
-        uint256 balance, 
+        address account,
+        address mToken,
+        uint256 balance,
         uint256 amount
     ) external override {
         if (msg.sender != mToken) {
@@ -910,7 +950,11 @@ contract Lendtroller is ILendtroller, ERC165 {
     )
         public
         view
-        returns (uint256 accountCollateral, uint256 maxDebt, uint256 currentDebt)
+        returns (
+            uint256 accountCollateral,
+            uint256 maxDebt,
+            uint256 currentDebt
+        )
     {
         (
             AccountSnapshot[] memory snapshots,
@@ -926,10 +970,10 @@ contract Lendtroller is ILendtroller, ERC165 {
                 // If the asset has a CR increment their collateral and max borrow value
                 if (!(tokenData[snapshot.asset].collRatio == 0)) {
                     (accountCollateral, maxDebt) = _addCollateralValue(
-                        snapshot, 
-                        account, 
-                        underlyingPrices[i], 
-                        accountCollateral, 
+                        snapshot,
+                        account,
+                        underlyingPrices[i],
+                        accountCollateral,
                         maxDebt
                     );
                 }
@@ -958,7 +1002,11 @@ contract Lendtroller is ILendtroller, ERC165 {
     function flaggedForLiquidation(
         address account
     ) internal view returns (bool) {
-        LiqData memory data = _getStatusForLiquidation(account, address(0), address(0));
+        LiqData memory data = _getStatusForLiquidation(
+            account,
+            address(0),
+            address(0)
+        );
         return data.lFactor > 0;
     }
 
@@ -998,17 +1046,16 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// INTERNAL FUNCTIONS ///
 
     function _postCollateral(
-        address account, 
-        AccountMetadata storage accountData, 
-        address mToken, 
+        address account,
+        AccountMetadata storage accountData,
+        address mToken,
         uint256 amount
     ) internal {
-
         if (collateralPosted[mToken] + amount > collateralCaps[mToken]) {
             revert Lendtroller__CollateralCapReached();
         }
 
-        // On collateral posting: 
+        // On collateral posting:
         // we need to flip their cooldown flag to prevent any flashloan attempts
         accountAssets[account].cooldownTimestamp = block.timestamp;
         collateralPosted[mToken] = collateralPosted[mToken] + amount;
@@ -1025,10 +1072,10 @@ contract Lendtroller is ILendtroller, ERC165 {
     }
 
     function _removeCollateral(
-        address account, 
-        AccountMetadata storage accountData, 
-        address mToken, 
-        uint256 amount, 
+        address account,
+        AccountMetadata storage accountData,
+        address mToken,
+        uint256 amount,
         bool closePositionIfPossible
     ) internal {
         accountData.collateralPosted = accountData.collateralPosted - amount;
@@ -1036,13 +1083,13 @@ contract Lendtroller is ILendtroller, ERC165 {
         emit CollateralRemoved(account, mToken, amount);
 
         if (closePositionIfPossible && accountData.collateralPosted == 0) {
-            _closePosition(account, accountData, IMToken(mToken)); 
+            _closePosition(account, accountData, IMToken(mToken));
         }
     }
 
     function _closePosition(
-        address account, 
-        AccountMetadata storage accountData, 
+        address account,
+        AccountMetadata storage accountData,
         IMToken token
     ) internal {
         // Remove `token` account position flag
@@ -1103,7 +1150,7 @@ contract Lendtroller is ILendtroller, ERC165 {
             revert Lendtroller__MinimumHoldPeriod();
         }
 
-        // If the redeemer does not have an active position in the token, 
+        // If the redeemer does not have an active position in the token,
         // then we can bypass the liquidity check
         if (tokenData[mToken].accountData[redeemer].activePosition < 2) {
             return;
@@ -1153,26 +1200,41 @@ contract Lendtroller is ILendtroller, ERC165 {
         }
 
         // Calculate the users lFactor
-        LiqData memory data = _getStatusForLiquidation(account, debtToken, collateralToken);
+        LiqData memory data = _getStatusForLiquidation(
+            account,
+            debtToken,
+            collateralToken
+        );
 
         if (data.lFactor == 0) {
             revert Lendtroller__NoLiquidationAvailable();
         }
 
-        uint256 cFactor = cToken.baseCFactor + ((cToken.cFactorCurve * data.lFactor) / WAD);
-        uint256 incentive = cToken.liqBaseIncentive + ((cToken.liqCurve * data.lFactor) / WAD);
-        uint256 maxAmount = (cFactor * IMToken(debtToken).debtBalanceStored(account)) / WAD;
+        uint256 cFactor = cToken.baseCFactor +
+            ((cToken.cFactorCurve * data.lFactor) / WAD);
+        uint256 incentive = cToken.liqBaseIncentive +
+            ((cToken.liqCurve * data.lFactor) / WAD);
+        uint256 maxAmount = (cFactor *
+            IMToken(debtToken).debtBalanceStored(account)) / WAD;
 
         if (liquidateExact) {
             // Make sure that the  liquidation limit and collateral posted >= amount
-            if (amount > maxAmount || 
-                amount > tokenData[collateralToken].accountData[account].collateralPosted
+            if (
+                amount > maxAmount ||
+                amount >
+                tokenData[collateralToken]
+                    .accountData[account]
+                    .collateralPosted
             ) {
                 _revert(_INVALID_PARAMETER_SELECTOR);
             }
         } else {
-            uint256 collateralAvailable = tokenData[collateralToken].accountData[account].collateralPosted;
-            amount = maxAmount > collateralAvailable ? collateralAvailable : maxAmount;
+            uint256 collateralAvailable = tokenData[collateralToken]
+                .accountData[account]
+                .collateralPosted;
+            amount = maxAmount > collateralAvailable
+                ? collateralAvailable
+                : maxAmount;
         }
 
         // Get the exchange rate and calculate the number of collateral tokens to seize:
@@ -1190,7 +1252,11 @@ contract Lendtroller is ILendtroller, ERC165 {
 
         // Calculate the maximum amount of debt that can be liquidated
         // and what collateral will be received
-        return (amount, liquidatedTokens, (liquidatedTokens * cToken.liqFee) / WAD);
+        return (
+            amount,
+            liquidatedTokens,
+            (liquidatedTokens * cToken.liqFee) / WAD
+        );
     }
 
     /// @notice Determine what the account status if an action were done (redeem/borrow)
@@ -1230,10 +1296,10 @@ contract Lendtroller is ILendtroller, ERC165 {
                 // increment their collateral and max borrow value
                 if (!(tokenData[snapshot.asset].collRatio == 0)) {
                     (accountCollateral, maxDebt) = _addCollateralValue(
-                        snapshot, 
-                        account, 
-                        underlyingPrices[i], 
-                        accountCollateral, 
+                        snapshot,
+                        account,
+                        underlyingPrices[i],
+                        accountCollateral,
                         maxDebt
                     );
                 }
@@ -1319,12 +1385,12 @@ contract Lendtroller is ILendtroller, ERC165 {
         }
     }
 
-    /// @notice Determine whether `account` can be liquidated, 
-    ///         by calculating their lFactor, based on their 
+    /// @notice Determine whether `account` can be liquidated,
+    ///         by calculating their lFactor, based on their
     ///         collateral versus outstanding debt
     /// @param account The account to check liquidation status for
     /// @param debtToken The dToken to be repaid during potential liquidation
-    /// @param collateralToken The cToken to be seized during potential liquidation                
+    /// @param collateralToken The cToken to be seized during potential liquidation
     /// @return result Containing values:
     ///                Current `account` lFactor
     ///                Current price for `debtToken`
@@ -1357,11 +1423,14 @@ contract Lendtroller is ILendtroller, ERC165 {
 
                 // If the asset has a CR increment their collateral
                 if (!(tokenData[snapshot.asset].collRatio == 0)) {
-                    (accountCollateralA, accountCollateralB) = _addLiquidationValues(
-                        snapshot, 
-                        account, 
-                        underlyingPrices[i], 
-                        accountCollateralA, 
+                    (
+                        accountCollateralA,
+                        accountCollateralB
+                    ) = _addLiquidationValues(
+                        snapshot,
+                        account,
+                        underlyingPrices[i],
+                        accountCollateralA,
                         accountCollateralB
                     );
                 }
@@ -1390,7 +1459,11 @@ contract Lendtroller is ILendtroller, ERC165 {
             return result;
         }
 
-        result.lFactor = _getNegativeCurveResult(accountDebt, accountCollateralA, accountCollateralB);
+        result.lFactor = _getNegativeCurveResult(
+            accountDebt,
+            accountCollateralA,
+            accountCollateralB
+        );
     }
 
     /// @notice Retrieves the prices and account data of multiple assets inside this market.
@@ -1431,14 +1504,17 @@ contract Lendtroller is ILendtroller, ERC165 {
         uint256 hardLiquidationSumPrior
     ) internal view returns (uint256, uint256) {
         uint256 assetValue = _getAssetValue(
-                                ((tokenData[snapshot.asset].accountData[account].collateralPosted * snapshot.exchangeRate) / WAD),
-                                price,
-                                snapshot.decimals
-                             ) * WAD;
+            ((tokenData[snapshot.asset].accountData[account].collateralPosted *
+                snapshot.exchangeRate) / WAD),
+            price,
+            snapshot.decimals
+        ) * WAD;
 
         return (
-            softLiquidationSumPrior + (assetValue / tokenData[snapshot.asset].collReqA), 
-            hardLiquidationSumPrior + (assetValue / tokenData[snapshot.asset].collReqB)
+            softLiquidationSumPrior +
+                (assetValue / tokenData[snapshot.asset].collReqA),
+            hardLiquidationSumPrior +
+                (assetValue / tokenData[snapshot.asset].collReqB)
         );
     }
 
@@ -1449,31 +1525,37 @@ contract Lendtroller is ILendtroller, ERC165 {
         uint256 previousCollateral,
         uint256 previousBorrow
     ) internal view returns (uint256, uint256) {
-        uint256 assetValue = _getAssetValue((
-            (tokenData[snapshot.asset].accountData[account].collateralPosted * snapshot.exchangeRate) / WAD), 
-            price, 
+        uint256 assetValue = _getAssetValue(
+            ((tokenData[snapshot.asset].accountData[account].collateralPosted *
+                snapshot.exchangeRate) / WAD),
+            price,
             snapshot.decimals
-            );
-        return (previousCollateral + assetValue, previousBorrow  + (assetValue * tokenData[snapshot.asset].collRatio) / WAD);
+        );
+        return (
+            previousCollateral + assetValue,
+            previousBorrow +
+                (assetValue * tokenData[snapshot.asset].collRatio) /
+                WAD
+        );
     }
 
-    /// @notice Calculates a negative curve value based on `current`, 
+    /// @notice Calculates a negative curve value based on `current`,
     ///         `start`, and `end` values.
-    /// @dev The function scales current, start, and end values by WAD 
-    ///      to maintain precision. It returns 1, (`in WAD`) if the 
-    ///      current value is less than or equal to `end`. The formula 
-    ///      used is (start - current) / (start - end), ensuring the result 
+    /// @dev The function scales current, start, and end values by WAD
+    ///      to maintain precision. It returns 1, (`in WAD`) if the
+    ///      current value is less than or equal to `end`. The formula
+    ///      used is (start - current) / (start - end), ensuring the result
     ///      is scaled properly.
     /// @param current The current value, representing a point on the curve.
-    /// @param start The start value of the curve, marking the beginning of 
+    /// @param start The start value of the curve, marking the beginning of
     ///              the calculation range.
-    /// @param end The end value of the curve, marking the end of the 
+    /// @param end The end value of the curve, marking the end of the
     ///            calculation range.
     /// @return The calculated negative curve value, a proportion between
     ///         the start and end points.
     function _getNegativeCurveResult(
-        uint256 current, 
-        uint256 start, 
+        uint256 current,
+        uint256 start,
         uint256 end
     ) internal pure returns (uint256) {
         if (current <= end) {
@@ -1488,18 +1570,20 @@ contract Lendtroller is ILendtroller, ERC165 {
             start = start * WAD;
             end = end * WAD;
         }
-        
+
         return (start - current) / (start - end);
     }
 
     function _reduceCollateralIfNecessary(
-        address account, 
-        address mToken, 
-        uint256 balance, 
-        uint256 amount, 
+        address account,
+        address mToken,
+        uint256 balance,
+        uint256 amount,
         bool forceReduce
     ) internal {
-        AccountMetadata storage accountData = tokenData[mToken].accountData[account];
+        AccountMetadata storage accountData = tokenData[mToken].accountData[
+            account
+        ];
         if (forceReduce) {
             _removeCollateral(account, accountData, mToken, amount, false);
             return;
@@ -1508,7 +1592,13 @@ contract Lendtroller is ILendtroller, ERC165 {
         uint256 balanceRequired = accountData.collateralPosted + amount;
 
         if (balance < balanceRequired) {
-            _removeCollateral(account, accountData, mToken, balanceRequired - balance, false);
+            _removeCollateral(
+                account,
+                accountData,
+                mToken,
+                balanceRequired - balance,
+                false
+            );
         }
     }
 

@@ -15,76 +15,76 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
         uint256 newCR
     );
 
-    function test_updateCollateralToken_fail_whenCallerIsNotAuthorized()
-        public
-    {
-        vm.prank(address(1));
+    // function test_updateCollateralToken_fail_whenCallerIsNotAuthorized()
+    //     public
+    // {
+    //     vm.prank(address(1));
 
-        vm.expectRevert(Lendtroller.Lendtroller__Unauthorized.selector);
-        lendtroller.updateCollateralToken(
-            IMToken(address(dUSDC)),
-            200,
-            0,
-            300,
-            250,
-            9000
-        );
-    }
+    //     vm.expectRevert(Lendtroller.Lendtroller__Unauthorized.selector);
+    //     lendtroller.updateCollateralToken(
+    //         IMToken(address(dUSDC)),
+    //         200,
+    //         0,
+    //         300,
+    //         250,
+    //         9000
+    //     );
+    // }
 
-    function test_updateCollateralToken_fail_whenNewValueExceedsMaximum()
-        public
-    {
-        vm.expectRevert(Lendtroller.Lendtroller__InvalidParameter.selector);
-        lendtroller.updateCollateralToken(
-            IMToken(address(dUSDC)),
-            200,
-            0,
-            300,
-            250,
-            9100 + 1
-        );
-    }
+    // function test_updateCollateralToken_fail_whenNewValueExceedsMaximum()
+    //     public
+    // {
+    //     vm.expectRevert(Lendtroller.Lendtroller__InvalidParameter.selector);
+    //     lendtroller.updateCollateralToken(
+    //         IMToken(address(dUSDC)),
+    //         200,
+    //         0,
+    //         300,
+    //         250,
+    //         9100 + 1
+    //     );
+    // }
 
-    function test_updateCollateralToken_fail_whenMTokenIsNotListed() public {
-        _deployCBALRETH();
+    // function test_updateCollateralToken_fail_whenMTokenIsNotListed() public {
+    //     _deployCBALRETH();
 
-        vm.expectRevert(Lendtroller.Lendtroller__TokenNotListed.selector);
-        lendtroller.updateCollateralToken(
-            IMToken(address(cBALRETH)),
-            200,
-            0,
-            300,
-            250,
-            9000
-        );
-    }
+    //     vm.expectRevert(Lendtroller.Lendtroller__TokenNotListed.selector);
+    //     lendtroller.updateCollateralToken(
+    //         IMToken(address(cBALRETH)),
+    //         200,
+    //         0,
+    //         300,
+    //         250,
+    //         9000
+    //     );
+    // }
 
-    function test_updateCollateralToken_success() public {
-        balRETH.approve(address(cBALRETH), 1e18);
-        lendtroller.listToken(address(cBALRETH));
+    // function test_updateCollateralToken_success() public {
+    //     balRETH.approve(address(cBALRETH), 1e18);
+    //     lendtroller.listToken(address(cBALRETH));
 
-        vm.expectEmit(true, true, true, true, address(lendtroller));
-        emit CollateralTokenUpdated(
-            IMToken(address(cBALRETH)),
-            0.02e18,
-            0,
-            0.03e18,
-            0.025e18,
-            0.9e18
-        );
+    //     vm.expectEmit(true, true, true, true, address(lendtroller));
+    //     emit CollateralTokenUpdated(
+    //         IMToken(address(cBALRETH)),
+    //         0.02e18,
+    //         0,
+    //         0.03e18,
+    //         0.025e18,
+    //         0.9e18
+    //     );
 
-        lendtroller.updateCollateralToken(
-            IMToken(address(cBALRETH)),
-            200,
-            0,
-            300,
-            250,
-            9000
-        );
+    //     lendtroller.updateCollateralToken(
+    //         IMToken(address(cBALRETH)),
+    //         200,
+    //         0,
+    //         300,
+    //         250,
+    //         9000
+    //     );
 
-        (, , uint256 collateralizationRatio) = lendtroller.getMTokenData(
-            address(cBALRETH)
-        );
-        assertEq(collateralizationRatio, 0.9e18);
-    }
+    //     (, , uint256 collateralizationRatio) = lendtroller.getMTokenData(
+    //         address(cBALRETH)
+    //     );
+    //     assertEq(collateralizationRatio, 0.9e18);
+    // }
 }

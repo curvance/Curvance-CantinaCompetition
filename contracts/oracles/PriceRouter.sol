@@ -166,12 +166,6 @@ contract PriceRouter {
             _revert(INVALID_PARAMETER_SELECTOR);
         }
 
-        if (
-            !ERC165Checker.supportsInterface(mToken, type(IMToken).interfaceId)
-        ) {
-            _revert(INVALID_PARAMETER_SELECTOR);
-        }
-
         mTokenAssets[mToken].isMToken = true;
         mTokenAssets[mToken].underlying = IMToken(mToken).underlying();
     }

@@ -48,7 +48,7 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
 
     /// @notice Current lending market controller
     ILendtroller public lendtroller;
-    
+
     /// @notice token name metadata
     string internal _name;
     /// @notice token symbol metadata
@@ -94,17 +94,14 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
 
     constructor(
         ICentralRegistry centralRegistry_,
-        ERC20 asset_, 
+        ERC20 asset_,
         address lendtroller_
     ) {
         _asset = asset_;
-        _name = string.concat(
-            "Curvance collateralized ",
-            asset_.name()
-        );
+        _name = string.concat("Curvance collateralized ", asset_.name());
         _symbol = string.concat("c", asset_.symbol());
         _decimals = asset_.decimals();
-        
+
         if (
             !ERC165Checker.supportsInterface(
                 address(centralRegistry_),
@@ -127,7 +124,7 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
 
     /// EXTERNAL FUNCTIONS ///
 
-    /// @notice Caller deposits assets into the market, receives shares, 
+    /// @notice Caller deposits assets into the market, receives shares,
     ///         and turns on collateralization of the assets
     /// @param assets The amount of the underlying asset to supply
     /// @param receiver The account that should receive the cToken shares
@@ -137,7 +134,10 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
         address receiver
     ) external nonReentrant returns (uint256 shares) {
         shares = _deposit(assets, receiver);
-        if (msg.sender == receiver || msg.sender != lendtroller.positionFolding()) {
+        if (
+            msg.sender == receiver ||
+            msg.sender != lendtroller.positionFolding()
+        ) {
             lendtroller.postCollateral(receiver, address(this), shares);
         }
     }
@@ -152,7 +152,10 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
         address receiver
     ) external nonReentrant returns (uint256 assets) {
         assets = _mint(shares, receiver);
-        if (msg.sender == receiver || msg.sender != lendtroller.positionFolding()) {
+        if (
+            msg.sender == receiver ||
+            msg.sender != lendtroller.positionFolding()
+        ) {
             lendtroller.postCollateral(receiver, address(this), shares);
         }
     }
@@ -189,10 +192,10 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
         uint256 balancePrior = balanceOf(owner);
 
         // We use a modified version of maxWithdraw with newly vested assets
-        if (assets > _convertToAssets(balancePrior, ta)){
+        if (assets > _convertToAssets(balancePrior, ta)) {
             // revert with "CTokenPrimitive__WithdrawMoreThanMax"
             _revert(0xc6e63cc0);
-        } 
+        }
 
         // No need to check for rounding error, previewWithdraw rounds up
         uint256 shares = _previewWithdraw(assets, ta);
@@ -210,9 +213,9 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
 
         // Fail if redeem not allowed
         lendtroller.reduceCollateralIfNecessary(
-            owner, 
-            address(this), 
-            balancePrior, 
+            owner,
+            address(this),
+            balancePrior,
             shares
         );
         lendtroller.canRedeem(address(this), owner, 0);
@@ -239,9 +242,7 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
     ///      although we protect against it in many ways,
     ///      better safe than sorry
     /// @param by The account initializing the market
-    function startMarket(
-        address by
-    ) external nonReentrant returns (bool) {
+    function startMarket(address by) external nonReentrant returns (bool) {
         if (msg.sender != address(lendtroller)) {
             revert CTokenPrimitive__Unauthorized();
         }
@@ -249,14 +250,9 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
         uint256 assets = 42069;
         address market = address(this);
 
-        SafeTransferLib.safeTransferFrom(
-            asset(),
-            by,
-            market,
-            assets
-        );
+        SafeTransferLib.safeTransferFrom(asset(), by, market, assets);
 
-        // Because nobody can deposit into the market before startMarket() is called, 
+        // Because nobody can deposit into the market before startMarket() is called,
         // this will always be the initial call
         uint256 shares = _initialConvertToShares(assets);
 
@@ -268,7 +264,13 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
             mstore(0x00, assets)
             mstore(0x20, shares)
             let m := shr(96, not(0))
-            log3(0x00, 0x40, _DEPOSIT_EVENT_SIGNATURE, and(m, market), and(m, market))
+            log3(
+                0x00,
+                0x40,
+                _DEPOSIT_EVENT_SIGNATURE,
+                and(m, market),
+                and(m, market)
+            )
         }
 
         _vaultStatus = 2;
@@ -313,14 +315,18 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
     /// @notice Get the underlying balance of the `account`
     /// @param account The address of the account to query
     /// @return The amount of underlying owned by `account`
-    function balanceOfUnderlyingSafe(address account) external returns (uint256) {
+    function balanceOfUnderlyingSafe(
+        address account
+    ) external returns (uint256) {
         return ((convertToAssetsSafe(WAD) * balanceOf(account)) / WAD);
     }
 
     /// @notice Get the underlying balance of the `account`
     /// @param account The address of the account to query
     /// @return The amount of underlying owned by `account`
-    function balanceOfUnderlying(address account) external view returns (uint256) {
+    function balanceOfUnderlying(
+        address account
+    ) external view returns (uint256) {
         return ((convertToAssets(WAD) * balanceOf(account)) / WAD);
     }
 
@@ -402,6 +408,10 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
         return address(_asset);
     }
 
+    function underlying() external view returns (address) {
+        return address(_asset);
+    }
+
     /// @notice Returns the position vaults current status
     function vaultStatus() public view returns (string memory) {
         return _vaultStatus == 2 ? "Active" : "Inactive";
@@ -431,7 +441,7 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
     ) public override nonReentrant returns (bool) {
         // Fails if transfer not allowed
         lendtroller.canTransfer(address(this), msg.sender, amount);
-    
+
         // emit events on gauge pool
         GaugePool gaugePool = _gaugePool();
         gaugePool.withdraw(address(this), msg.sender, amount);
@@ -548,10 +558,13 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
 
         if (protocolTokens > 0) {
             address daoAddress = centralRegistry.daoAddress();
-            _transferFromWithoutAllowance(borrower, daoAddress, protocolTokens);
+            _transferFromWithoutAllowance(
+                borrower,
+                daoAddress,
+                protocolTokens
+            );
             gaugePool.deposit(address(this), daoAddress, protocolTokens);
         }
-
     }
 
     /// @notice Returns whether the MToken is a cToken
@@ -559,9 +572,7 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
         return true;
     }
 
-    function supportsInterface(
-        bytes4 interfaceId
-    ) public pure returns (bool) {
+    function supportsInterface(bytes4 interfaceId) public pure returns (bool) {
         return interfaceId == type(IMToken).interfaceId;
     }
 
@@ -648,7 +659,7 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
 
     /// INTERNAL FUNCTIONS ///
 
-        /// @notice Caller deposits assets into the market and receives shares
+    /// @notice Caller deposits assets into the market and receives shares
     /// @param assets The amount of the underlying asset to supply
     /// @param receiver The account that should receive the cToken shares
     /// @return shares the amount of cToken shares received by `receiver`
@@ -706,7 +717,7 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
     /// @param assets The amount of the underlying asset to withdraw
     /// @param receiver The account that should receive the assets
     /// @param owner The account that will burn their shares to withdraw assets
-    /// @param forceRedeemCollateral Whether the collateral should be always reduced 
+    /// @param forceRedeemCollateral Whether the collateral should be always reduced
     /// @return shares The amount of cToken shares redeemed by `owner`
     function _withdraw(
         uint256 assets,
@@ -718,18 +729,18 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
         uint256 ta = _totalAssets;
 
         // We use a modified version of maxWithdraw with newly vested assets
-        if (assets > _convertToAssets(balanceOf(owner), ta)){
+        if (assets > _convertToAssets(balanceOf(owner), ta)) {
             // revert with "CTokenPrimitive__WithdrawMoreThanMax"
             _revert(0xc6e63cc0);
-        } 
+        }
 
         // No need to check for rounding error, previewWithdraw rounds up
         shares = _previewWithdraw(assets, ta);
         lendtroller.canRedeemWithCollateralRemoval(
-            address(this), 
-            owner, 
-            balanceOf(owner), 
-            shares, 
+            address(this),
+            owner,
+            balanceOf(owner),
+            shares,
             forceRedeemCollateral
         );
 
@@ -742,7 +753,7 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
     /// @param shares The amount of shares to burn to withdraw assets
     /// @param receiver The account that should receive the assets
     /// @param owner The account that will burn their shares to withdraw assets
-    /// @param forceRedeemCollateral Whether the collateral should be always reduced 
+    /// @param forceRedeemCollateral Whether the collateral should be always reduced
     /// @return assets The amount of assets received by `receiver`
     function _redeem(
         uint256 shares,
@@ -750,16 +761,16 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
         address owner,
         bool forceRedeemCollateral
     ) internal returns (uint256 assets) {
-        if (shares > maxRedeem(owner)){
+        if (shares > maxRedeem(owner)) {
             // revert with "CTokenPrimitive__RedeemMoreThanMax"
             _revert(0xb1652d68);
-        } 
+        }
 
         lendtroller.canRedeemWithCollateralRemoval(
-            address(this), 
-            owner, 
-            balanceOf(owner), 
-            shares, 
+            address(this),
+            owner,
+            balanceOf(owner),
+            shares,
             forceRedeemCollateral
         );
 
@@ -778,19 +789,13 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
 
     function _processDeposit(
         address by,
-        address to, 
-        uint256 assets, 
-        uint256 shares, 
+        address to,
+        uint256 assets,
+        uint256 shares,
         uint256 ta
     ) internal {
-
         // Need to transfer before minting or ERC777s could reenter
-        SafeTransferLib.safeTransferFrom(
-            asset(),
-            by,
-            address(this),
-            assets
-        );
+        SafeTransferLib.safeTransferFrom(asset(), by, address(this), assets);
 
         // update asset invariant
         unchecked {
@@ -818,7 +823,6 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
         uint256 shares,
         uint256 ta
     ) internal {
-
         if (msg.sender != owner) {
             uint256 allowed = allowance(owner, by);
 
@@ -849,10 +853,13 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
                 and(m, owner)
             )
         }
-
     }
 
-    function _transferFromWithoutAllowance(address from, address to, uint256 amount) internal {
+    function _transferFromWithoutAllowance(
+        address from,
+        address to,
+        uint256 amount
+    ) internal {
         /// @solidity memory-safe-assembly
         assembly {
             let from_ := shl(96, from)
@@ -876,7 +883,13 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
             sstore(toBalanceSlot, add(sload(toBalanceSlot), amount))
             // Emit the {Transfer} event.
             mstore(0x20, amount)
-            log3(0x20, 0x20, _TRANSFER_EVENT_SIGNATURE, shr(96, from_), shr(96, mload(0x0c)))
+            log3(
+                0x20,
+                0x20,
+                _TRANSFER_EVENT_SIGNATURE,
+                shr(96, from_),
+                shr(96, mload(0x0c))
+            )
         }
     }
 
