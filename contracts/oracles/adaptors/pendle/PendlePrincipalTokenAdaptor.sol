@@ -44,12 +44,12 @@ contract PendlePrincipalTokenAdaptor is BaseOracleAdaptor {
 
     /// EVENTS ///
 
-    event PendleLPAssetAdded(
+    event PendlePTAssetAdded(
         address asset,
         AdaptorData assetConfig
     );
 
-    event PendleLPAssetRemoved(address asset);
+    event PendlePTAssetRemoved(address asset);
 
     /// ERRORS ///
 

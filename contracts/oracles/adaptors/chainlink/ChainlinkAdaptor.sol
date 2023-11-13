@@ -215,7 +215,7 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
     /// @notice Parses the chainlink feed data for pricing of an asset.
     /// @dev Calls latestRoundData() from Chainlink to get the latest data
     ///      for pricing and staleness.
-    /// @param feed Chainlink feed details.
+    /// @param data Chainlink feed details.
     /// @param inUSD A boolean to denote if the price is in USD.
     /// @return A structure containing the price, error status,
     ///         and the currency of the price.
