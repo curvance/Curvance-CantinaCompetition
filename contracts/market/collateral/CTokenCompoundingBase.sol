@@ -174,7 +174,7 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
     ///         and turns on collateralization of the assets
     /// @param assets The amount of the underlying asset to supply
     /// @param receiver The account that should receive the cToken shares
-    /// @return shares the amount of cToken shares received by `receiver`
+    /// @return shares The amount of cToken shares received by `receiver`
     function depositAsCollateral(
         uint256 assets,
         address receiver
@@ -189,7 +189,7 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
     ///         as shares, and turns on collateralization of the assets
     /// @param shares The amount of the underlying assets quoted in shares to supply
     /// @param receiver The account that should receive the cToken shares
-    /// @return assets the amount of cToken shares quoted in assets received by `receiver`
+    /// @return assets The amount of cToken shares quoted in assets received by `receiver`
     function mintAsCollateral(
         uint256 shares,
         address receiver
@@ -205,7 +205,7 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
     /// @param assets The amount of the underlying asset to withdraw
     /// @param receiver The account that should receive the assets
     /// @param owner The account that will burn their shares to withdraw assets
-    /// @return shares the amount of cToken shares redeemed by `owner`
+    /// @return shares The amount of cToken shares redeemed by `owner`
     function withdrawCollateral(
         uint256 assets,
         address receiver,
