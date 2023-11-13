@@ -9,21 +9,19 @@ import { VelodromeLib } from "contracts/market/zapper/protocols/VelodromeLib.sol
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { TestBasePriceRouter } from "../TestBasePriceRouter.sol";
 
-contract TestVelodromeStableLPAdaptor is TestBasePriceRouter {
-    address private DAI = address(0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1);
-    address private USDC = address(0x7F5c764cBc14f9669B88837ca1490cCa17c31607);
+contract TestVelodromeStableLPAdapter is TestBasePriceRouter {
+    address private DAI = 0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1;
+    address private USDC = 0x7F5c764cBc14f9669B88837ca1490cCa17c31607;
 
     address private CHAINLINK_PRICE_FEED_ETH =
-        0xb7B9A39CC63f856b90B364911CC324dC46aC1770;
+        0x13e3Ee699D1909E989722E753853AE30b17e08c5;
     address private CHAINLINK_PRICE_FEED_DAI =
         0x8dBa75e83DA73cc766A7e5a0ee71F656BAb470d6;
     address private CHAINLINK_PRICE_FEED_USDC =
         0x16a9FA2FDa030272Ce99B29CF780dFA30361E0f3;
 
-    address private veloRouter =
-        address(0xa062aE8A9c5e11aaA026fc2670B0D65cCc8B2858);
-    address private DAI_USDC =
-        address(0x19715771E30c93915A5bbDa134d782b81A820076);
+    address private veloRouter = 0xa062aE8A9c5e11aaA026fc2670B0D65cCc8B2858;
+    address private DAI_USDC = 0x19715771E30c93915A5bbDa134d782b81A820076;
 
     VelodromeStableLPAdaptor adaptor;
 

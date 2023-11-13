@@ -9,19 +9,17 @@ import { VelodromeLib } from "contracts/market/zapper/protocols/VelodromeLib.sol
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { TestBasePriceRouter } from "../TestBasePriceRouter.sol";
 
-contract TestVelodromeVolatileLPAdaptor is TestBasePriceRouter {
-    address private WETH = address(0x4200000000000000000000000000000000000006);
-    address private USDC = address(0x7F5c764cBc14f9669B88837ca1490cCa17c31607);
+contract TestVelodromeVolatileLPAdapter is TestBasePriceRouter {
+    address private WETH = 0x4200000000000000000000000000000000000006;
+    address private USDC = 0x7F5c764cBc14f9669B88837ca1490cCa17c31607;
 
     address private CHAINLINK_PRICE_FEED_ETH =
-        0xb7B9A39CC63f856b90B364911CC324dC46aC1770;
+        0x13e3Ee699D1909E989722E753853AE30b17e08c5;
     address private CHAINLINK_PRICE_FEED_USDC =
         0x16a9FA2FDa030272Ce99B29CF780dFA30361E0f3;
 
-    address private veloRouter =
-        address(0xa062aE8A9c5e11aaA026fc2670B0D65cCc8B2858);
-    address private WETH_USDC =
-        address(0x0493Bf8b6DBB159Ce2Db2E0E8403E753Abd1235b);
+    address private veloRouter = 0xa062aE8A9c5e11aaA026fc2670B0D65cCc8B2858;
+    address private WETH_USDC = 0x0493Bf8b6DBB159Ce2Db2E0E8403E753Abd1235b;
 
     VelodromeVolatileLPAdaptor adaptor;
 

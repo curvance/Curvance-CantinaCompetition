@@ -5,24 +5,14 @@ import { BaseStableLPAdaptor } from "contracts/oracles/adaptors/utils/BaseStable
 
 import { PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { IVeloPool } from "contracts/interfaces/external/velodrome/IVeloPool.sol";
+import { ICamelotPair } from "contracts/interfaces/external/camelot/ICamelotPair.sol";
 
-contract VelodromeStableLPAdaptor is BaseStableLPAdaptor {
-
-    /// EVENTS ///
-
-    event VelodromeStableLPAssetAdded(
-        address asset,
-        AdaptorData assetConfig
-    );
-
-    event VelodromeStableLPAssetRemoved(address asset);
-
+contract CamelotStableLPAdaptor is BaseStableLPAdaptor {
     /// ERRORS ///
 
-    error VelodromeStableLPAdaptor__AssetIsNotSupported();
-    error VelodromeStableLPAdaptor__AssetIsAlreadyAdded();
-    error VelodromeStableLPAdaptor__AssetIsNotStableLP();
+    error CamelotStableLPAdaptor__AssetIsNotSupported();
+    error CamelotStableLPAdaptor__AssetIsAlreadyAdded();
+    error CamelotStableLPAdaptor__AssetIsNotStableLP();
 
     /// CONSTRUCTOR ///
 
@@ -44,7 +34,7 @@ contract VelodromeStableLPAdaptor is BaseStableLPAdaptor {
         bool getLower
     ) external view override returns (PriceReturnData memory) {
         if (!isSupportedAsset[asset]) {
-            revert VelodromeStableLPAdaptor__AssetIsNotSupported();
+            revert CamelotStableLPAdaptor__AssetIsNotSupported();
         }
 
         return _getPrice(asset, inUSD, getLower);
@@ -57,24 +47,22 @@ contract VelodromeStableLPAdaptor is BaseStableLPAdaptor {
         address asset
     ) external override onlyElevatedPermissions {
         if (isSupportedAsset[asset]) {
-            revert VelodromeStableLPAdaptor__AssetIsAlreadyAdded();
+            revert CamelotStableLPAdaptor__AssetIsAlreadyAdded();
         }
-        if (!IVeloPool(asset).stable()) {
-            revert VelodromeStableLPAdaptor__AssetIsNotStableLP();
+        if (!ICamelotPair(asset).stableSwap()) {
+            revert CamelotStableLPAdaptor__AssetIsNotStableLP();
         }
-        
+
         _addAsset(asset);
-        emit VelodromeStableLPAssetAdded(asset, data);
     }
 
     /// @notice Removes a supported asset from the adaptor.
     /// @dev Calls back into price router to notify it of its removal
     function removeAsset(address asset) external override onlyDaoPermissions {
         if (!isSupportedAsset[asset]) {
-            revert VelodromeStableLPAdaptor__AssetIsNotSupported();
+            revert CamelotStableLPAdaptor__AssetIsNotSupported();
         }
 
         _removeAsset(asset);
-        emit VelodromeStableLPAssetRemoved(asset);
     }
 }
