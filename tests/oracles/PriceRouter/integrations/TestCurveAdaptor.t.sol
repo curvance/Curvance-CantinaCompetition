@@ -28,10 +28,7 @@ contract TestCurveAdaptor is TestBasePriceRouter {
 
         adaptor = new CurveAdaptor(ICentralRegistry(address(centralRegistry)));
 
-        adaptor.setReentrancyConfig(
-            2
-            10000
-        );
+        adaptor.setReentrancyConfig(2, 10000);
     }
 
     function testRevertWhenUnderlyingAssetPriceNotSet() public {
