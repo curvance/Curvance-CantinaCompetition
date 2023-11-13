@@ -720,7 +720,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
             _revert(_INVALID_LOCK_SELECTOR);
         }
 
-        uint256 penalty = centralRegistry.earlyUnlockPenaltyValue();
+        uint256 penalty = centralRegistry.earlyUnlockPenaltyMultiplier();
 
         if (penalty == 0) {
             _revert(_INVALID_LOCK_SELECTOR);
@@ -852,7 +852,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
             return 0;
         }
 
-        uint256 currentLockBoost = centralRegistry.voteBoostValue();
+        uint256 currentLockBoost = centralRegistry.voteBoostMultiplier();
         uint256 votes;
 
         for (uint256 i; i < numLocks; ) {
@@ -886,7 +886,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
         }
 
         uint256 timestamp = genesisEpoch + (EPOCH_DURATION * epoch);
-        uint256 currentLockBoost = centralRegistry.voteBoostValue();
+        uint256 currentLockBoost = centralRegistry.voteBoostMultiplier();
         uint256 votes;
 
         for (uint256 i; i < numLocks; ) {
@@ -953,7 +953,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
             return 0;
         }
 
-        uint256 penalty = centralRegistry.earlyUnlockPenaltyValue();
+        uint256 penalty = centralRegistry.earlyUnlockPenaltyMultiplier();
 
         if (penalty == 0) {
             return 0;

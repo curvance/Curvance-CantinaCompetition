@@ -40,15 +40,19 @@ contract CentralRegistry is ERC165 {
     address public zroAddress; // ZRO contract address for layerzero
     address public feeAccumulator; // Fee Accumulator contract address
 
-    /// PROTOCOL VALUES in `WAD` set in `DENOMINATOR`
+    /// PROTOCOL VALUES
+    /// Values are always set in `Basis Points`, 
+    /// any fees are converted to `WAD`, while multipliers stay in `DENOMINATOR`
+    /// Fees:
     uint256 public protocolCompoundFee = 100 * 1e14; // Fee for compounding position vaults
     uint256 public protocolYieldFee = 1500 * 1e14; // Fee on yield in position vaults
     /// Joint fee value so that we can perform one less external call in position vault contracts
     uint256 public protocolHarvestFee = protocolCompoundFee + protocolYieldFee;
     uint256 public protocolLeverageFee; // Protocol Fee on leveraging
-    uint256 public earlyUnlockPenaltyValue; // Penalty Fee for unlocking from veCVE early
-    uint256 public voteBoostValue; // Voting power bonus for Continuous Lock Mode
-    uint256 public lockBoostValue; // Rewards bonus for locking gauge emissions
+    /// Multipliers:
+    uint256 public earlyUnlockPenaltyMultiplier; // Penalty multiplier for unlocking a veCVE lock early
+    uint256 public voteBoostMultiplier; // Voting power multiplier for Continuous Lock Mode
+    uint256 public lockBoostMultiplier; // Gauge rewards multiplier for locking gauge emissions
 
     /// PROTOCOL VALUES DATA `WAD` set in `DENOMINATOR`
     /// @notice Lending Market => Protocol Reserve Factor on interest generated
@@ -251,9 +255,9 @@ contract CentralRegistry is ERC165 {
         if (value > 500) {
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
-        // CompoundFee is represented in 1e16 format
-        // So we need to multiply by 1e14 to format properly
-        // from basis points to %
+        // Convert the parameters from basis points to `WAD` format
+        // while inefficient we want to minimize potential human error
+        // as much as possible, even if it costs a bit extra gas on config
         protocolCompoundFee = _bpToWad(value);
 
         // Update vault harvest fee with new yield fee
@@ -270,9 +274,9 @@ contract CentralRegistry is ERC165 {
         if (value > 2000) {
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
-        // YieldFee is represented in 1e16 format
-        // So we need to multiply by 1e14 to format properly
-        // from basis points to %
+        // Convert the parameters from basis points to `WAD` format
+        // while inefficient we want to minimize potential human error
+        // as much as possible, even if it costs a bit extra gas on config
         protocolYieldFee = _bpToWad(value);
 
         // Update vault harvest fee with new yield fee
@@ -282,14 +286,17 @@ contract CentralRegistry is ERC165 {
     /// @notice Sets the fee taken by Curvance DAO on leverage/deleverage
     ///         via position folding
     /// @dev Only callable on a 7 day delay or by the Emergency Council,
-    ///      can only have a maximum value of 1%
+    ///      can only have a maximum value of 2%
     function setProtocolLeverageFee(
         uint256 value
     ) external onlyElevatedPermissions {
-        if (value > 100) {
+        if (value > 200) {
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
-        protocolLeverageFee = value;
+        // Convert the parameters from basis points to `WAD` format
+        // while inefficient we want to minimize potential human error
+        // as much as possible, even if it costs a bit extra gas on config
+        protocolLeverageFee = _bpToWad(value);
     }
 
     /// @notice Sets the fee taken by Curvance DAO from interest generated
@@ -307,9 +314,9 @@ contract CentralRegistry is ERC165 {
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
-        // Interest Rate fee is represented as 1e16 format
-        // So we need to multiply by 1e14 to format properly
-        // from basis points to %
+        // Convert the parameters from basis points to `WAD` format
+        // while inefficient we want to minimize potential human error
+        // as much as possible, even if it costs a bit extra gas on config
         protocolInterestFactor[market] = _bpToWad(value);
     }
 
@@ -323,7 +330,7 @@ contract CentralRegistry is ERC165 {
         if ((value > 9000 || value < 3000) && value != 0) {
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
-        earlyUnlockPenaltyValue = value;
+        earlyUnlockPenaltyMultiplier = value;
     }
 
     /// @notice Sets the voting power boost received by locks using
@@ -336,7 +343,7 @@ contract CentralRegistry is ERC165 {
         if (value < DENOMINATOR && value != 0) {
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
-        voteBoostValue = value;
+        voteBoostMultiplier = value;
     }
 
     /// @notice Sets the emissions boost received by choosing
@@ -349,7 +356,7 @@ contract CentralRegistry is ERC165 {
         if (value < DENOMINATOR && value != 0) {
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
-        lockBoostValue = value;
+        lockBoostMultiplier = value;
     }
 
     /// OWNERSHIP LOGIC

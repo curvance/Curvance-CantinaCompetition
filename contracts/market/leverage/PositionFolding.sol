@@ -14,7 +14,7 @@ import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.sol";
-import { DENOMINATOR } from "contracts/libraries/Constants.sol";
+import { DENOMINATOR, WAD } from "contracts/libraries/Constants.sol";
 
 contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
     /// TYPES ///
@@ -168,7 +168,7 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
         }
 
         // take protocol fee
-        uint256 fee = (borrowAmount * getProtocolLeverageFee()) / 10000;
+        uint256 fee = (borrowAmount * getProtocolLeverageFee()) / WAD;
         if (fee > 0) {
             SafeTransferLib.safeTransfer(
                 borrowUnderlying,

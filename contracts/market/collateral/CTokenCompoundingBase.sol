@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { ERC165 } from "contracts/libraries/ERC165.sol";
 import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { ERC4626, SafeTransferLib, ERC20 } from "contracts/libraries/ERC4626.sol";
 import { Math } from "contracts/libraries/Math.sol";
@@ -267,7 +266,7 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
     /// @param shares The amount of shares to redeemed
     /// @param receiver The account that should receive the assets
     /// @param owner The account that will burn their shares to withdraw assets
-    /// @return assets the amount of assets redeemed by `owner`
+    /// @return assets The amount of assets redeemed by `owner`
     function redeemCollateral(
         uint256 shares,
         address receiver,
@@ -284,7 +283,7 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
         return _unpackedVaultData(_vaultData);
     }
 
-    /// @notice Vault compound fee is in basis point form
+    /// @notice Vault compound fee, in `WAD`
     /// @dev Returns the vaults current amount of yield used
     ///      for compounding rewards
     ///      Used for frontend data query only
@@ -292,17 +291,17 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
         return centralRegistry.protocolCompoundFee();
     }
 
-    /// @notice Vault yield fee is in basis point form
+    /// @notice Vault yield fee, in `WAD`
     /// @dev Returns the vaults current protocol fee for compounding rewards
     ///      Used for frontend data query only
     function vaultYieldFee() external view returns (uint256) {
         return centralRegistry.protocolYieldFee();
     }
 
-    /// @notice Vault harvest fee is in basis point form
+    /// @notice Vault harvest fee, in `WAD`
     /// @dev Returns the vaults current harvest fee for compounding rewards
-    ///      that pays for yield and compound fees
-    ///      Used for frontend data query only
+    ///      that pays for yield and compound fees.
+    ///      NOTE: Used for frontend data query only
     function vaultHarvestFee() external view returns (uint256) {
         return centralRegistry.protocolHarvestFee();
     }
@@ -310,10 +309,10 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
     // PERMISSIONED FUNCTIONS
 
     /// @notice Used to start a CToken market, executed via lendtroller
-    /// @dev this initial mint is a failsafe against the empty market exploit
+    /// @dev This initial mint is a failsafe against the empty market exploit
     ///      although we protect against it in many ways,
     ///      better safe than sorry
-    /// @param by the account initializing the market
+    /// @param by The account initializing the market
     function startMarket(
         address by
     ) external nonReentrant returns (bool) {
@@ -414,9 +413,9 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
     ///         and the cached exchange rate
     /// @dev This is used by lendtroller to more efficiently perform liquidity checks
     /// @param account Address of the account to snapshot
-    /// @return tokenBalance
-    /// @return borrowBalance
-    /// @return exchangeRate scaled 1e18
+    /// @return tokenBalance Current account shares balance
+    /// @return borrowBalance Current account borrow balance (will always be 0, kept for composability)
+    /// @return exchangeRate Current exchange rate between assets and shares, in `WAD`
     function getSnapshot(
         address account
     ) external view returns (uint256, uint256, uint256) {
@@ -441,8 +440,8 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
     }
 
     /// @notice Rescue any token sent by mistake
-    /// @param token token to rescue
-    /// @param amount amount of `token` to rescue, 0 indicates to rescue all
+    /// @param token The token to rescue
+    /// @param amount Amount of `token` to rescue, 0 indicates to rescue all
     function rescueToken(
         address token,
         uint256 amount

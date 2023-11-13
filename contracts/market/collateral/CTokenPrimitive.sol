@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { ERC165 } from "contracts/libraries/ERC165.sol";
 import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { ERC4626, SafeTransferLib, ERC20 } from "contracts/libraries/ERC4626.sol";
 import { Math } from "contracts/libraries/Math.sol";
@@ -132,7 +131,7 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
     ///         and turns on collateralization of the assets
     /// @param assets The amount of the underlying asset to supply
     /// @param receiver The account that should receive the cToken shares
-    /// @return shares the amount of cToken shares received by `receiver`
+    /// @return shares The amount of cToken shares received by `receiver`
     function depositAsCollateral(
         uint256 assets,
         address receiver
@@ -147,7 +146,7 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
     ///         as shares, and turns on collateralization of the assets
     /// @param shares The amount of the underlying assets quoted in shares to supply
     /// @param receiver The account that should receive the cToken shares
-    /// @return assets the amount of cToken shares quoted in assets received by `receiver`
+    /// @return assets The amount of cToken shares quoted in assets received by `receiver`
     function mintAsCollateral(
         uint256 shares,
         address receiver
@@ -163,7 +162,7 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
     /// @param assets The amount of the underlying asset to withdraw
     /// @param receiver The account that should receive the assets
     /// @param owner The account that will burn their shares to withdraw assets
-    /// @return shares the amount of cToken shares redeemed by `owner`
+    /// @return shares The amount of cToken shares redeemed by `owner`
     function withdrawCollateral(
         uint256 assets,
         address receiver,
@@ -224,7 +223,7 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
     /// @param shares The amount of shares to redeemed
     /// @param receiver The account that should receive the assets
     /// @param owner The account that will burn their shares to withdraw assets
-    /// @return assets the amount of assets redeemed by `owner`
+    /// @return assets The amount of assets redeemed by `owner`
     function redeemCollateral(
         uint256 shares,
         address receiver,
@@ -236,10 +235,10 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
     // PERMISSIONED FUNCTIONS
 
     /// @notice Used to start a CToken market, executed via lendtroller
-    /// @dev this initial mint is a failsafe against the empty market exploit
+    /// @dev This initial mint is a failsafe against the empty market exploit
     ///      although we protect against it in many ways,
     ///      better safe than sorry
-    /// @param by the account initializing the market
+    /// @param by The account initializing the market
     function startMarket(
         address by
     ) external nonReentrant returns (bool) {
@@ -329,9 +328,9 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
     ///         and the cached exchange rate
     /// @dev This is used by lendtroller to more efficiently perform liquidity checks
     /// @param account Address of the account to snapshot
-    /// @return tokenBalance
-    /// @return borrowBalance
-    /// @return exchangeRate scaled 1e18
+    /// @return tokenBalance Current account shares balance
+    /// @return borrowBalance Current account borrow balance (will always be 0, kept for composability)
+    /// @return exchangeRate Current exchange rate between assets and shares, in `WAD`
     function getSnapshot(
         address account
     ) external view returns (uint256, uint256, uint256) {
@@ -358,8 +357,8 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
     }
 
     /// @notice Rescue any token sent by mistake
-    /// @param token token to rescue
-    /// @param amount amount of `token` to rescue, 0 indicates to rescue all
+    /// @param token The token to rescue
+    /// @param amount Amount of `token` to rescue, 0 indicates to rescue all
     function rescueToken(
         address token,
         uint256 amount

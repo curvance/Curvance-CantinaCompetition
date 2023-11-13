@@ -65,16 +65,16 @@ interface ICentralRegistry {
     /// @notice Returns feeAccumulator Address
     function feeAccumulator() external view returns (address);
 
-    /// @notice Returns protocolCompoundFee Address
+    /// @notice Returns protocolCompoundFee, in `WAD`
     function protocolCompoundFee() external view returns (uint256);
 
-    /// @notice Returns protocolYieldFee Address
+    /// @notice Returns protocolYieldFee, in `WAD`
     function protocolYieldFee() external view returns (uint256);
 
-    /// @notice Returns protocolHarvestFee Address
+    /// @notice Returns protocolHarvestFee, in `WAD`
     function protocolHarvestFee() external view returns (uint256);
 
-    /// @notice Returns protocolLeverageFee Address
+    /// @notice Returns protocolLeverageFee, in `WAD`
     function protocolLeverageFee() external view returns (uint256);
 
     /// @notice Lending Market => Protocol Reserve Factor on interest generated
@@ -82,14 +82,14 @@ interface ICentralRegistry {
         address market
     ) external view returns (uint256);
 
-    /// @notice Returns earlyUnlockPenaltyValue value in basis point form
-    function earlyUnlockPenaltyValue() external view returns (uint256);
+    /// @notice Returns earlyUnlockPenaltyMultiplier value, in `Basis Points`
+    function earlyUnlockPenaltyMultiplier() external view returns (uint256);
 
-    /// @notice Returns voteBoostValue value in basis point form
-    function voteBoostValue() external view returns (uint256);
+    /// @notice Returns voteBoostMultiplier value, in `Basis Points`
+    function voteBoostMultiplier() external view returns (uint256);
 
-    /// @notice Returns lockBoostValue value in basis point form
-    function lockBoostValue() external view returns (uint256);
+    /// @notice Returns lockBoostMultiplier value, in `Basis Points`
+    function lockBoostMultiplier() external view returns (uint256);
 
     /// @notice Returns how many other chains are supported
     function supportedChains() external view returns (uint256);

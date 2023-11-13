@@ -343,7 +343,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
 
         userInfo[token][msg.sender].rewardPending = 0;
 
-        uint256 currentLockBoost = centralRegistry.lockBoostValue();
+        uint256 currentLockBoost = centralRegistry.lockBoostMultiplier();
         // If theres a current lock boost, recognize their bonus rewards
         if (currentLockBoost > 0) {
             uint256 boostedRewards = (rewards * currentLockBoost) /
@@ -391,7 +391,7 @@ contract GaugePool is GaugeController, ReentrancyGuard {
 
         userInfo[token][msg.sender].rewardPending = 0;
 
-        uint256 currentLockBoost = centralRegistry.lockBoostValue();
+        uint256 currentLockBoost = centralRegistry.lockBoostMultiplier();
         // If theres a current lock boost, recognize their bonus rewards
         if (currentLockBoost > 0) {
             uint256 boostedRewards = (rewards * currentLockBoost) /
