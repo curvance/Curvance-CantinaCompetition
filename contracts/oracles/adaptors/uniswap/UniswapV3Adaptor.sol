@@ -87,9 +87,9 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
             revert UniswapV3Adaptor__AssetIsNotSupported();
         }
 
-        AdaptorData memory uniswapFeed = adaptorData[asset];
+        AdaptorData memory data = adaptorData[asset];
         address[] memory pools = new address[](1);
-        pools[0] = uniswapFeed.priceSource;
+        pools[0] = data.priceSource;
         uint256 twapPrice;
 
         (bool success, bytes memory returnData) = address(uniswapOracleRouter)
@@ -99,11 +99,11 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
                         .quoteSpecificPoolsWithTimePeriod
                         .selector,
                     abi.encode(
-                        10 ** uniswapFeed.baseDecimals,
+                        10 ** data.baseDecimals,
                         asset,
-                        uniswapFeed.quoteToken,
+                        data.quoteToken,
                         pools,
-                        uniswapFeed.secondsAgo
+                        data.secondsAgo
                     )
                 )
             );
@@ -122,7 +122,7 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
         // so find out the price of the quote token in USD then divide
         // so its in USD
         if (inUSD) {
-            if (!PriceRouter.isSupportedAsset(uniswapFeed.quoteToken)) {
+            if (!PriceRouter.isSupportedAsset(data.quoteToken)) {
                 // Our price router does not know how to value this quote token
                 // so we cant use the TWAP data
                 return
@@ -134,7 +134,7 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
             }
 
             (uint256 quoteTokenDenominator, uint256 errorCode) = PriceRouter
-                .getPrice(uniswapFeed.quoteToken, true, getLower);
+                .getPrice(data.quoteToken, true, getLower);
 
             // Make sure that if the Price Router had an error,
             // it was not catastrophic
@@ -153,15 +153,15 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
                 PriceReturnData({
                     price: uint240(
                         (twapPrice * quoteTokenDenominator) /
-                            uniswapFeed.quoteDecimals
+                            data.quoteDecimals
                     ),
                     hadError: false,
                     inUSD: true
                 });
         }
 
-        if (uniswapFeed.quoteToken != WETH) {
-            if (!PriceRouter.isSupportedAsset(uniswapFeed.quoteToken)) {
+        if (data.quoteToken != WETH) {
+            if (!PriceRouter.isSupportedAsset(data.quoteToken)) {
                 // Our price router does not know how to value this quote
                 // token so we cant use the TWAP data
                 return
@@ -173,7 +173,7 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
             }
 
             (uint256 quoteTokenDenominator, uint256 errorCode) = PriceRouter
-                .getPrice(uniswapFeed.quoteToken, false, getLower);
+                .getPrice(data.quoteToken, false, getLower);
 
             // Make sure that if the Price Router had an error,
             // it was not catastrophic
