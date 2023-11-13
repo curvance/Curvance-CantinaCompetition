@@ -10,10 +10,10 @@ import { DENOMINATOR } from "contracts/libraries/Constants.sol";
 contract CentralRegistry is ERC165 {
     /// CONSTANTS ///
 
-    /// `bytes4(keccak256(bytes("CentralRegistry_ParametersMisconfigured()")))`
-    uint256 internal constant _PARAMETERS_MISCONFIGURED_SELECTOR = 0x6fc38aea;
-    /// `bytes4(keccak256(bytes("CentralRegistry_Unauthorized()")))`
-    uint256 internal constant _UNAUTHORIZED_SELECTOR = 0x88f093e;
+    /// `bytes4(keccak256(bytes("CentralRegistry__ParametersMisconfigured()")))`
+    uint256 internal constant _PARAMETERS_MISCONFIGURED_SELECTOR = 0xa5bb570d;
+    /// `bytes4(keccak256(bytes("CentralRegistry__Unauthorized()")))`
+    uint256 internal constant _UNAUTHORIZED_SELECTOR = 0xe675838a;
 
     /// @notice Genesis Epoch timestamp
     uint256 public immutable genesisEpoch;
@@ -107,8 +107,8 @@ contract CentralRegistry is ERC165 {
 
     /// ERRORS ///
 
-    error CentralRegistry_ParametersMisconfigured();
-    error CentralRegistry_Unauthorized();
+    error CentralRegistry__ParametersMisconfigured();
+    error CentralRegistry__Unauthorized();
 
     /// MODIFIERS ///
 

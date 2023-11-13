@@ -1391,7 +1391,6 @@ contract Lendtroller is ILendtroller, ERC165 {
         }
 
         result.lFactor = _getNegativeCurveResult(accountDebt, accountCollateralA, accountCollateralB);
-        return result;
     }
 
     /// @notice Retrieves the prices and account data of multiple assets inside this market.
