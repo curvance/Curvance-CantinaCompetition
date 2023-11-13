@@ -8,6 +8,15 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { ICamelotPair } from "contracts/interfaces/external/camelot/ICamelotPair.sol";
 
 contract CamelotVolatileLPAdaptor is BaseVolatileLPAdaptor {
+    /// EVENTS ///
+
+    event CamelotVolatileLPAssetAdded(
+        address asset,
+        AdaptorData assetConfig
+    );
+
+    event CamelotVolatileLPAssetRemoved(address asset);
+
     /// ERRORS ///
 
     error CamelotVolatileLPAdaptor__AssetIsNotSupported();
@@ -53,7 +62,8 @@ contract CamelotVolatileLPAdaptor is BaseVolatileLPAdaptor {
             revert CamelotVolatileLPAdaptor__AssetIsNotVolatileLP();
         }
 
-        _addAsset(asset);
+        AdaptorData memory data = _addAsset(asset);
+        emit CamelotVolatileLPAssetAdded(asset, data);
     }
 
     /// @notice Removes a supported asset from the adaptor.
@@ -66,5 +76,6 @@ contract CamelotVolatileLPAdaptor is BaseVolatileLPAdaptor {
         }
 
         _removeAsset(asset);
+        emit CamelotVolatileLPAssetRemoved(asset);
     }
 }

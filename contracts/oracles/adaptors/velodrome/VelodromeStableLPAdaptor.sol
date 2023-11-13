@@ -8,7 +8,6 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IVeloPool } from "contracts/interfaces/external/velodrome/IVeloPool.sol";
 
 contract VelodromeStableLPAdaptor is BaseStableLPAdaptor {
-
     /// EVENTS ///
 
     event VelodromeStableLPAssetAdded(
@@ -63,7 +62,7 @@ contract VelodromeStableLPAdaptor is BaseStableLPAdaptor {
             revert VelodromeStableLPAdaptor__AssetIsNotStableLP();
         }
         
-        _addAsset(asset);
+        AdaptorData memory data = _addAsset(asset);
         emit VelodromeStableLPAssetAdded(asset, data);
     }
 

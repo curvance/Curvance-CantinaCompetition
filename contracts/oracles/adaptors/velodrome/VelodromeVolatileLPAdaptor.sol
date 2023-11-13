@@ -8,6 +8,7 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IVeloPool } from "contracts/interfaces/external/velodrome/IVeloPool.sol";
 
 contract VelodromeVolatileLPAdaptor is BaseVolatileLPAdaptor {
+    /// EVENTS ///
 
     event VelodromeVolatileLPAssetAdded(
         address asset,
@@ -61,7 +62,7 @@ contract VelodromeVolatileLPAdaptor is BaseVolatileLPAdaptor {
             revert VelodromeVolatileLPAdaptor__AssetIsNotVolatileLP();
         }
 
-        _addAsset(asset);
+        AdaptorData memory data = _addAsset(asset);
         emit VelodromeVolatileLPAssetAdded(asset, data);
     }
 
