@@ -1489,7 +1489,7 @@ contract Lendtroller is ILendtroller, ERC165 {
             end = end * WAD;
         }
         
-        return (start - current) / (start - end);
+        return (current - start) / (current - end);
     }
 
     function _reduceCollateralIfNecessary(
