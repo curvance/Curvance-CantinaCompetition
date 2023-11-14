@@ -815,7 +815,7 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
         uint256 shares,
         address receiver
     ) internal returns (uint256 assets) {
-        if (assets == 0 || assets > maxMint(receiver)) {
+        if (shares == 0 || shares > maxMint(receiver)) {
             _revert(VAULT_NOT_ACTIVE_SELECTOR);
         }
 
