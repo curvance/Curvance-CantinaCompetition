@@ -25,7 +25,7 @@ contract AddLendingMarketTest is TestBaseMarket {
 
     function test_addLendingMarket_fail_whenUnauthorized() public {
         vm.startPrank(address(0));
-        vm.expectRevert(CentralRegistry.CentralRegistry_Unauthorized.selector);
+        vm.expectRevert(CentralRegistry.CentralRegistry__Unauthorized.selector);
         centralRegistry.addLendingMarket(newMarket, 5000);
         vm.stopPrank();
     }
@@ -33,21 +33,21 @@ contract AddLendingMarketTest is TestBaseMarket {
     function test_addLendingMarket_fail_whenMarketAlreadyAdded() public {
         centralRegistry.addLendingMarket(newMarket, 5000);
         vm.expectRevert(
-            CentralRegistry.CentralRegistry_ParametersMisconfigured.selector
+            CentralRegistry.CentralRegistry__ParametersMisconfigured.selector
         );
         centralRegistry.addLendingMarket(newMarket, 5000);
     }
 
     function test_addLendingMarket_fail_whenNoSupportForERC165() public {
         vm.expectRevert(
-            CentralRegistry.CentralRegistry_ParametersMisconfigured.selector
+            CentralRegistry.CentralRegistry__ParametersMisconfigured.selector
         );
         centralRegistry.addLendingMarket(user1, 5000);
     }
 
     function test_addLendingMarket_fail_whenFeeTooHigh() public {
         vm.expectRevert(
-            CentralRegistry.CentralRegistry_ParametersMisconfigured.selector
+            CentralRegistry.CentralRegistry__ParametersMisconfigured.selector
         );
         centralRegistry.addLendingMarket(newMarket, 5001);
     }

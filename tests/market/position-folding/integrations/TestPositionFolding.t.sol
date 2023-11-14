@@ -93,11 +93,13 @@ contract TestPositionFolding is TestBaseMarket {
             // set collateral factor
             lendtroller.updateCollateralToken(
                 IMToken(address(cBALRETH)),
-                200,
-                100,
+                7000,
                 4000, // liquidate at 71%
                 3000,
-                7000
+                200,
+                200,
+                100,
+                1000
             );
         }
 
@@ -156,7 +158,7 @@ contract TestPositionFolding is TestBaseMarket {
 
         // mint
         assertTrue(cBALRETH.mint(1 ether));
-        lendtroller.postCollateral(address(cBALRETH), 1 ether - 1);
+        lendtroller.postCollateral(user, address(cBALRETH), 1 ether - 1);
         assertEq(cBALRETH.balanceOf(user), 1 ether);
 
         uint256 balanceBeforeBorrow = dai.balanceOf(user);

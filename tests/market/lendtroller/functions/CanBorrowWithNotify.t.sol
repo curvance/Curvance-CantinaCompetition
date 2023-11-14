@@ -29,7 +29,7 @@ contract CanBorrowWithNotifyTest is TestBaseLendtroller {
     }
 
     function test_canBorrowWithNotify_fail_whenBorrowPaused() public {
-        lendtroller.setBorrowPaused(IMToken(address(dUSDC)), true);
+        lendtroller.setBorrowPaused(address(dUSDC), true);
 
         vm.prank(address(dUSDC));
 
@@ -138,15 +138,17 @@ contract CanBorrowWithNotifyTest is TestBaseLendtroller {
         lendtroller.listToken(address(cBALRETH));
         lendtroller.updateCollateralToken(
             IMToken(address(cBALRETH)),
+            7000,
+            3000,
+            3000,
+            2000,
             2000,
             100,
-            3000,
-            3000,
-            7000
+            1000
         );
 
-        IMToken[] memory tokens = new IMToken[](1);
-        tokens[0] = IMToken(address(cBALRETH));
+        address[] memory tokens = new address[](1);
+        tokens[0] = address(cBALRETH);
         uint256[] memory caps = new uint256[](1);
         caps[0] = 100_000e18;
         lendtroller.setCTokenCollateralCaps(tokens, caps);
@@ -156,7 +158,7 @@ contract CanBorrowWithNotifyTest is TestBaseLendtroller {
         vm.startPrank(user1);
         balRETH.approve(address(cBALRETH), 1_000e18);
         cBALRETH.mint(1_000e18);
-        lendtroller.postCollateral(address(cBALRETH), 999e18);
+        lendtroller.postCollateral(user1, address(cBALRETH), 999e18);
         vm.stopPrank();
 
         vm.prank(address(dUSDC));
@@ -170,9 +172,9 @@ contract CanBorrowWithNotifyTest is TestBaseLendtroller {
             true,
             true
         );
-        (, , uint256 collRatio) = lendtroller.getTokenData(address(cBALRETH));
+        (, uint256 collRatio,,,,,,,) = lendtroller.tokenData(address(cBALRETH));
         uint256 assetValue = (price *
-            ((snapshot.balance * snapshot.exchangeRate) / 1e18)) /
+            ((cBALRETH.balanceOf(user1) * snapshot.exchangeRate) / 1e18)) /
             10 ** cBALRETH.decimals();
         uint256 maxBorrow = (assetValue * collRatio) / 1e18;
 

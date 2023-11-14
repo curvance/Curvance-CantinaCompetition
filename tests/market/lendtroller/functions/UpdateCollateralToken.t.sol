@@ -19,11 +19,13 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
         vm.expectRevert(Lendtroller.Lendtroller__InvalidParameter.selector);
         lendtroller.updateCollateralToken(
             IMToken(address(dUSDC)),
+            9100 + 1,
             200,
-            0,
             300,
             250,
-            9100 + 1
+            250,
+            0,
+            1000
         );
     }
 
@@ -35,11 +37,13 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
         vm.expectRevert(Lendtroller.Lendtroller__Unauthorized.selector);
         lendtroller.updateCollateralToken(
             IMToken(address(dUSDC)),
+            9000,
             200,
-            0,
             300,
             250,
-            9000
+            250,
+            0,
+            1000
         );
     }
 
@@ -51,11 +55,13 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
         vm.expectRevert(Lendtroller.Lendtroller__InvalidParameter.selector);
         lendtroller.updateCollateralToken(
             IMToken(address(cBALRETH)),
-            3100, // liqInc
-            0,
+            9000,
+            200,
             300,
+            3100, // liqIncA
             250,
-            9100 + 1
+            0,
+            1000
         );
     }
 
@@ -65,11 +71,13 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
         vm.expectRevert(Lendtroller.Lendtroller__InvalidParameter.selector);
         lendtroller.updateCollateralToken(
             IMToken(address(cBALRETH)),
-            3000,
-            600, // liqFee
+            9000,
+            200,
             300,
             250,
-            9100 + 1
+            250,
+            600, // liqFee
+            1000
         );
     }
 
@@ -79,11 +87,13 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
         vm.expectRevert(Lendtroller.Lendtroller__InvalidParameter.selector);
         lendtroller.updateCollateralToken(
             IMToken(address(cBALRETH)),
-            3000,
-            500,
+            9000,
             4100, // collReqA
+            300,
             250,
-            9100 + 1
+            250,
+            0, 
+            1000
         );
     }
 
@@ -95,11 +105,13 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
         vm.expectRevert(Lendtroller.Lendtroller__InvalidParameter.selector);
         lendtroller.updateCollateralToken(
             IMToken(address(cBALRETH)),
-            3000,
-            500,
+            9000,
             4000, // collReqA - soft liquidation requirement
-            4100, // collReqB - hard liquidation requirement
-            9100 + 1
+            4100,
+            250,
+            250,
+            0,
+            1000
         );
     }
 
@@ -109,11 +121,13 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
         vm.expectRevert(Lendtroller.Lendtroller__InvalidParameter.selector);
         lendtroller.updateCollateralToken(
             IMToken(address(cBALRETH)),
-            3000,
-            500,
-            4000,
-            3000,
-            9100 + 1 // collRatio
+            9101, // collRatio
+            200,
+            300,
+            250,
+            250,
+            0,
+            1000
         );
     }
 
@@ -125,11 +139,13 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
         vm.expectRevert(Lendtroller.Lendtroller__InvalidParameter.selector);
         lendtroller.updateCollateralToken(
             IMToken(address(cBALRETH)),
-            3000,
-            500,
+            9100, // collRatio
             4000,
             3000,
-            9100 // collRatio
+            250,
+            250,
+            0,
+            1000
         );
     }
 
@@ -141,11 +157,13 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
         vm.expectRevert(Lendtroller.Lendtroller__InvalidParameter.selector);
         lendtroller.updateCollateralToken(
             IMToken(address(cBALRETH)),
-            3000, // liqInc
-            500,
-            4000,
-            2900, // collReqB
-            7000
+            7000,
+            200,
+            2900,
+            3000,
+            250,
+            0,
+            1000
         );
     }
 
@@ -155,11 +173,13 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
         vm.expectRevert(Lendtroller.Lendtroller__InvalidParameter.selector);
         lendtroller.updateCollateralToken(
             IMToken(address(cBALRETH)),
-            550, // liqInc
+            9100,
+            200,
+            300,
+            550, // liqIncA
+            500, // liqIncB
             500, // liqFee
-            4000,
-            2900,
-            7000
+            1000
         );
     }
 
@@ -167,11 +187,13 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
         vm.expectRevert(Lendtroller.Lendtroller__TokenNotListed.selector);
         lendtroller.updateCollateralToken(
             IMToken(address(cBALRETH)),
+            9100,
             200,
-            0,
             300,
             250,
-            9000
+            250,
+            0,
+            1000
         );
     }
 
@@ -183,11 +205,13 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
         vm.expectRevert(Lendtroller.Lendtroller__PriceError.selector);
         lendtroller.updateCollateralToken(
             IMToken(address(cBALRETH)),
-            3000,
-            500,
-            4000,
-            3000,
-            7000
+            9100, // collRatio
+            200,
+            300,
+            250,
+            250,
+            0,
+            1000
         );
     }
 
@@ -207,16 +231,16 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
 
         lendtroller.updateCollateralToken(
             IMToken(address(cBALRETH)),
+            9000,
             200,
-            0,
             300,
             250,
-            9000
+            0,
+            0,
+            1000
         );
 
-        (, , uint256 collateralizationRatio) = lendtroller.getTokenData(
-            address(cBALRETH)
-        );
-        assertEq(collateralizationRatio, 0.9e18);
+        (, uint256 collRatio,,,,,,,) = lendtroller.tokenData(address(cBALRETH));
+        assertEq(collRatio, 0.9e18);
     }
 }

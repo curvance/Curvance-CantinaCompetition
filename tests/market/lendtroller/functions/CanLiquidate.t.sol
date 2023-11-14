@@ -11,13 +11,13 @@ import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 contract CanLiquidateTest is TestBaseLendtroller {
     function test_canLiquidate_fail_whenDTokenNotListed() public {
         vm.expectRevert(Lendtroller.Lendtroller__TokenNotListed.selector);
-        lendtroller.canLiquidate(address(dUSDC), address(cBALRETH), user1);
+        lendtroller.canLiquidate(address(dUSDC), address(cBALRETH), user1, 1000, false);
     }
 
     function test_canLiquidate_fail_whenCTokenNotListed() public {
         lendtroller.listToken(address(dUSDC));
         vm.expectRevert(Lendtroller.Lendtroller__TokenNotListed.selector);
-        lendtroller.canLiquidate(address(dUSDC), address(cBALRETH), user1);
+        lendtroller.canLiquidate(address(dUSDC), address(cBALRETH), user1, 1000, false);
     }
 
     function test_canLiquidate_fail_whenCollRatioZero() public {
@@ -25,7 +25,7 @@ contract CanLiquidateTest is TestBaseLendtroller {
         lendtroller.listToken(address(cBALRETH));
 
         vm.expectRevert(Lendtroller.Lendtroller__InvalidParameter.selector);
-        lendtroller.canLiquidate(address(dUSDC), address(cBALRETH), user1);
+        lendtroller.canLiquidate(address(dUSDC), address(cBALRETH), user1, 1000, false);
     }
 
     function test_canLiquidate_fail_whenUserHasNotEnteredAnyMarket() public {
@@ -33,15 +33,17 @@ contract CanLiquidateTest is TestBaseLendtroller {
         lendtroller.listToken(address(cBALRETH));
         lendtroller.updateCollateralToken(
             IMToken(address(cBALRETH)),
+            7000,
+            3000,
+            3000,
+            2000,
             2000,
             100,
-            3000,
-            3000,
-            7000
+            1000
         );
 
         vm.expectRevert(PriceRouter.PriceRouter__InvalidParameter.selector);
-        lendtroller.canLiquidate(address(dUSDC), address(cBALRETH), user1);
+        lendtroller.canLiquidate(address(dUSDC), address(cBALRETH), user1, 1000, false);
     }
 
     function test_canLiquidate_fail_whenAccountHasNoBorrowsAndCollateralPosted()
@@ -51,15 +53,17 @@ contract CanLiquidateTest is TestBaseLendtroller {
         lendtroller.listToken(address(cBALRETH));
         lendtroller.updateCollateralToken(
             IMToken(address(cBALRETH)),
+            7000,
+            3000,
+            3000,
+            2000,
             2000,
             100,
-            3000,
-            3000,
-            7000
+            1000
         );
 
         vm.expectRevert(PriceRouter.PriceRouter__InvalidParameter.selector);
-        lendtroller.canLiquidate(address(dUSDC), address(cBALRETH), user1);
+        lendtroller.canLiquidate(address(dUSDC), address(cBALRETH), user1, 1000, false);
     }
 
     function test_canLiquidate_fail_whenShortfallInsufficient() public {
@@ -86,14 +90,16 @@ contract CanLiquidateTest is TestBaseLendtroller {
         lendtroller.listToken(address(cBALRETH));
         lendtroller.updateCollateralToken(
             IMToken(address(cBALRETH)),
+            7000,
+            3000,
+            3000,
+            2000,
             2000,
             100,
-            3000,
-            3000,
-            7000
+            1000
         );
-        IMToken[] memory tokens = new IMToken[](1);
-        tokens[0] = IMToken(address(cBALRETH));
+        address[] memory tokens = new address[](1);
+        tokens[0] = address(cBALRETH);
         uint256[] memory caps = new uint256[](1);
         caps[0] = 100_000e18;
         lendtroller.setCTokenCollateralCaps(tokens, caps);
@@ -102,13 +108,13 @@ contract CanLiquidateTest is TestBaseLendtroller {
         vm.startPrank(user1);
         balRETH.approve(address(cBALRETH), 1_000e18);
         cBALRETH.mint(1_000e18);
-        lendtroller.postCollateral(address(cBALRETH), 999e18);
+        lendtroller.postCollateral(user1, address(cBALRETH), 999e18);
         vm.stopPrank();
 
         vm.expectRevert(
-            Lendtroller.Lendtroller__InsufficientShortfall.selector
+            Lendtroller.Lendtroller__NoLiquidationAvailable.selector
         );
-        lendtroller.canLiquidate(address(dUSDC), address(cBALRETH), user1);
+        lendtroller.canLiquidate(address(dUSDC), address(cBALRETH), user1, 1000, false);
     }
 
     function test_canLiquidate_success() public {
@@ -116,14 +122,16 @@ contract CanLiquidateTest is TestBaseLendtroller {
         lendtroller.listToken(address(cBALRETH));
         lendtroller.updateCollateralToken(
             IMToken(address(cBALRETH)),
+            7000, // 70% collateral ratio
+            3000,
+            3000,
+            2000,
             2000,
             100,
-            3000,
-            3000,
-            7000 // 70% collateral ratio
+            1000
         );
-        IMToken[] memory tokens = new IMToken[](1);
-        tokens[0] = IMToken(address(cBALRETH));
+        address[] memory tokens = new address[](1);
+        tokens[0] = address(cBALRETH);
         uint256[] memory caps = new uint256[](1);
         caps[0] = 100_000e18;
         lendtroller.setCTokenCollateralCaps(tokens, caps);
@@ -147,7 +155,7 @@ contract CanLiquidateTest is TestBaseLendtroller {
         vm.startPrank(user1);
         balRETH.approve(address(cBALRETH), 1_000e18);
         cBALRETH.mint(1e18);
-        lendtroller.postCollateral(address(cBALRETH), 1e18 - 1);
+        lendtroller.postCollateral(user1, address(cBALRETH), 1e18 - 1);
 
         // Borrow dUSDC with cBALRETH as collateral
         deal(_USDC_ADDRESS, address(dUSDC), 100_000e6);
@@ -158,9 +166,9 @@ contract CanLiquidateTest is TestBaseLendtroller {
 
         // Can not liquidate yet while collateral is above required collateral ratio
         vm.expectRevert(
-            Lendtroller.Lendtroller__InsufficientShortfall.selector
+            Lendtroller.Lendtroller__NoLiquidationAvailable.selector
         );
-        lendtroller.canLiquidate(address(dUSDC), address(cBALRETH), user1);
+        lendtroller.canLiquidate(address(dUSDC), address(cBALRETH), user1, 1000e6, false);
 
         // Price of ETH drops and balRETH collateral goes below required collateral ratio
         // and can now liquidate
@@ -176,10 +184,11 @@ contract CanLiquidateTest is TestBaseLendtroller {
             uint256 liqAmount,
             uint256 liquidatedTokens,
             uint256 protocolTokens
-        ) = lendtroller.canLiquidate(address(dUSDC), address(cBALRETH), user1);
+        ) = lendtroller.canLiquidate(address(dUSDC), address(cBALRETH), user1, 1000e6, false);
 
-        uint256 expectedLiqAmount = (lendtroller.closeFactor() *
-            dUSDC.debtBalanceStored(user1)) / WAD;
+        (,,,,,,, uint256 baseCFactor, uint256 cFactorCurve) = lendtroller.tokenData(address(cBALRETH));
+        uint256 cFactor = baseCFactor + ((cFactorCurve * WAD) / WAD);
+        uint256 expectedLiqAmount = (cFactor * dUSDC.debtBalanceStored(user1)) / WAD;
 
         assertEq(
             liqAmount,
@@ -193,9 +202,9 @@ contract CanLiquidateTest is TestBaseLendtroller {
             true
         );
 
-        (, uint256 liqInc, ) = lendtroller.getTokenData(address(cBALRETH));
+        (,,,, uint256 liqBaseIncentive,,,,) = lendtroller.tokenData(address(cBALRETH));
         uint256 debtTokenPrice = 1e18; // USDC price
-        uint256 debtToCollateralRatio = (liqInc * debtTokenPrice * WAD) /
+        uint256 debtToCollateralRatio = (liqBaseIncentive * debtTokenPrice * WAD) /
             (data.price * cBALRETH.exchangeRateStored());
 
         uint256 amountAdjusted = (liqAmount * (10 ** cBALRETH.decimals())) /
@@ -210,7 +219,7 @@ contract CanLiquidateTest is TestBaseLendtroller {
             "canLiquidate() returns the amount of CTokens to be seized in liquidation"
         );
 
-        uint256 liqFee = (WAD * (100 * 1e14)) / liqInc;
+        uint256 liqFee = (WAD * (100 * 1e14)) / liqBaseIncentive;
         uint256 expectedProtocolTokens = (expectedLiquidatedTokens * liqFee) /
             WAD;
 

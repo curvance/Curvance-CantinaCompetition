@@ -77,11 +77,13 @@ contract TestDTokenReserves is TestBaseMarket {
             // set collateral factor
             lendtroller.updateCollateralToken(
                 IMToken(address(cBALRETH)),
-                200,
-                0,
+                5000,
                 1500,
                 1200,
-                5000
+                200,
+                200,
+                0,
+                1000
             );
         }
 
@@ -112,7 +114,7 @@ contract TestDTokenReserves is TestBaseMarket {
         vm.startPrank(user1);
         balRETH.approve(address(cBALRETH), 1 ether);
         cBALRETH.mint(1 ether);
-        lendtroller.postCollateral(address(cBALRETH), 1 ether - 1);
+        lendtroller.postCollateral(user1, address(cBALRETH), 1 ether - 1);
         vm.stopPrank();
 
         // try borrow()
@@ -149,7 +151,7 @@ contract TestDTokenReserves is TestBaseMarket {
 
             // check borrower debt increased
             AccountSnapshot memory snapshot = dDAI.getSnapshotPacked(user1);
-            assertEq(snapshot.balance, 0);
+            assertEq(dDAI.balanceOf(user1), 0);
             assertEq(snapshot.debtBalance, debtBalanceBefore + debt);
             assertGt(snapshot.exchangeRate, exchangeRateBefore);
 
@@ -190,7 +192,7 @@ contract TestDTokenReserves is TestBaseMarket {
 
             // check borrower debt increased
             AccountSnapshot memory snapshot = dDAI.getSnapshotPacked(user1);
-            assertEq(snapshot.balance, 0);
+            assertEq(dDAI.balanceOf(user1), 0);
             assertApproxEqRel(
                 snapshot.debtBalance,
                 debtBalanceBefore + debt,

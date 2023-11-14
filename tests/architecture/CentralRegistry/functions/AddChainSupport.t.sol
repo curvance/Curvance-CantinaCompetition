@@ -9,7 +9,7 @@ contract AddChainSupportTest is TestBaseMarket {
 
     function test_addChainSupport_fail_whenUnauthorized() public {
         vm.startPrank(address(0));
-        vm.expectRevert(CentralRegistry.CentralRegistry_Unauthorized.selector);
+        vm.expectRevert(CentralRegistry.CentralRegistry__Unauthorized.selector);
         centralRegistry.addChainSupport(
             address(this),
             address(this),
@@ -33,7 +33,7 @@ contract AddChainSupportTest is TestBaseMarket {
             42161
         );
         vm.expectRevert(
-            CentralRegistry.CentralRegistry_ParametersMisconfigured.selector
+            CentralRegistry.CentralRegistry__ParametersMisconfigured.selector
         );
         centralRegistry.addChainSupport(
             address(this),
@@ -57,7 +57,7 @@ contract AddChainSupportTest is TestBaseMarket {
             42161
         );
         vm.expectRevert(
-            CentralRegistry.CentralRegistry_ParametersMisconfigured.selector
+            CentralRegistry.CentralRegistry__ParametersMisconfigured.selector
         );
         centralRegistry.addChainSupport(
             user1,

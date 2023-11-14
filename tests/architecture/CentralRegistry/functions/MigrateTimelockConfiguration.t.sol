@@ -14,7 +14,7 @@ contract MigrateTimelockConfigurationTest is TestBaseMarket {
 
     function test_migrateTimelockConfiguration_fail_whenUnauthorized() public {
         vm.startPrank(address(0));
-        vm.expectRevert(CentralRegistry.CentralRegistry_Unauthorized.selector);
+        vm.expectRevert(CentralRegistry.CentralRegistry__Unauthorized.selector);
         centralRegistry.migrateTimelockConfiguration(newTimelock);
         vm.stopPrank();
     }

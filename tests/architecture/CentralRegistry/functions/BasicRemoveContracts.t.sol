@@ -65,7 +65,7 @@ contract BasicRemoveContractsTest is TestBaseMarket {
             assertFalse(success);
             assertEq(
                 bytes32(data),
-                bytes32(CentralRegistry.CentralRegistry_Unauthorized.selector)
+                bytes32(CentralRegistry.CentralRegistry__Unauthorized.selector)
             );
             vm.stopPrank();
         }
@@ -84,7 +84,7 @@ contract BasicRemoveContractsTest is TestBaseMarket {
                 bytes32(data),
                 bytes32(
                     CentralRegistry
-                        .CentralRegistry_ParametersMisconfigured
+                        .CentralRegistry__ParametersMisconfigured
                         .selector
                 )
             );

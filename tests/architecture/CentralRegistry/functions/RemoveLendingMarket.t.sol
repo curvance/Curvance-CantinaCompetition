@@ -28,7 +28,7 @@ contract RemoveLendingMarketTest is TestBaseMarket {
 
     function test_removeLendingMarket_fail_whenUnauthorized() public {
         vm.startPrank(address(0));
-        vm.expectRevert(CentralRegistry.CentralRegistry_Unauthorized.selector);
+        vm.expectRevert(CentralRegistry.CentralRegistry__Unauthorized.selector);
         centralRegistry.removeLendingMarket(user1);
         vm.stopPrank();
     }
@@ -37,7 +37,7 @@ contract RemoveLendingMarketTest is TestBaseMarket {
         public
     {
         vm.expectRevert(
-            CentralRegistry.CentralRegistry_ParametersMisconfigured.selector
+            CentralRegistry.CentralRegistry__ParametersMisconfigured.selector
         );
         centralRegistry.removeLendingMarket(user1);
     }

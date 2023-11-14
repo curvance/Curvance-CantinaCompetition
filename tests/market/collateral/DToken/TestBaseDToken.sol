@@ -69,11 +69,13 @@ contract TestBaseDToken is TestBaseMarket {
         lendtroller.listToken(address(cBALRETH));
         lendtroller.updateCollateralToken(
             IMToken(address(cBALRETH)),
-            200,
-            0,
+            5000,
             1200,
             1000,
-            5000
+            200,
+            200,
+            0,
+            1000
         );
 
         cBALRETH.mint(1e18);

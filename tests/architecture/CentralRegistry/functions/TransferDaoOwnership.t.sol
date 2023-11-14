@@ -14,7 +14,7 @@ contract TransferDaoOwnershipTest is TestBaseMarket {
 
     function test_transferDaoOwnership_fail_whenUnauthorized() public {
         vm.startPrank(address(0));
-        vm.expectRevert(CentralRegistry.CentralRegistry_Unauthorized.selector);
+        vm.expectRevert(CentralRegistry.CentralRegistry__Unauthorized.selector);
         centralRegistry.transferDaoOwnership(newDaoAddress);
         vm.stopPrank();
     }

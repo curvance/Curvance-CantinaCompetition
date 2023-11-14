@@ -2,21 +2,20 @@
 pragma solidity 0.8.17;
 
 import { TestBaseLendtroller } from "../TestBaseLendtroller.sol";
-import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
 
 contract SetCTokenCollateralCapsTest is TestBaseLendtroller {
-    IMToken[] public mTokens;
+    address[] public mTokens;
     uint256[] public collateralCaps;
 
-    event NewCollateralCap(IMToken mToken, uint256 newCollateralCap);
+    event NewCollateralCap(address mToken, uint256 newCollateralCap);
 
     function setUp() public override {
         super.setUp();
 
-        mTokens.push(IMToken(address(dUSDC)));
-        mTokens.push(IMToken(address(dDAI)));
-        mTokens.push(IMToken(address(cBALRETH)));
+        mTokens.push(address(dUSDC));
+        mTokens.push(address(dDAI));
+        mTokens.push(address(cBALRETH));
         collateralCaps.push(100e6);
         collateralCaps.push(100e18);
         collateralCaps.push(100e18);
@@ -30,11 +29,11 @@ contract SetCTokenCollateralCapsTest is TestBaseLendtroller {
 
     function test_setCTokenCollateralCaps_fail_whenMTokenLengthIsZero() public {
         vm.expectRevert(Lendtroller.Lendtroller__InvalidParameter.selector);
-        lendtroller.setCTokenCollateralCaps(new IMToken[](0), collateralCaps);
+        lendtroller.setCTokenCollateralCaps(new address[](0), collateralCaps);
     }
 
     function test_setCTokenCollateralCaps_fail_whenMTokenAndCapsLengthsMismatch() public {
-        mTokens.push(IMToken(address(dUSDC)));
+        mTokens.push(address(dUSDC));
         assertNotEq(mTokens.length, collateralCaps.length);
         vm.expectRevert(Lendtroller.Lendtroller__InvalidParameter.selector);
         lendtroller.setCTokenCollateralCaps(mTokens, collateralCaps);
@@ -48,9 +47,9 @@ contract SetCTokenCollateralCapsTest is TestBaseLendtroller {
     }
 
     function test_setCTokenCollateralCaps_success() public {
-        IMToken[] memory validMTokens = new IMToken[](2);
-        validMTokens[0] = IMToken(address(cBALRETH));
-        validMTokens[1] = IMToken(address(cBALRETH));
+        address[] memory validMTokens = new address[](2);
+        validMTokens[0] = address(cBALRETH);
+        validMTokens[1] = address(cBALRETH);
         uint256[] memory validCollateralCaps = new uint256[](2);
         validCollateralCaps[0] = 100e18;
         validCollateralCaps[1] = 10e18;

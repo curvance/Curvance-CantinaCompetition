@@ -6,7 +6,6 @@ import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.sol";
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { CurveAdaptor } from "contracts/oracles/adaptors/curve/CurveAdaptor.sol";
-import { CurveReentrancyCheck } from "contracts/oracles/adaptors/curve/CurveReentrancyCheck.sol";
 import { IBaseRewardPool } from "contracts/interfaces/external/convex/IBaseRewardPool.sol";
 import "tests/market/TestBaseMarket.sol";
 
@@ -61,11 +60,7 @@ contract ConvexLPCollateral is TestBaseMarket {
             address(CONVEX_STETH_ETH_POOL),
             address(CONVEX_STETH_ETH_POOL)
         );
-        crvAdaptor.setReentrancyVerificationConfig(
-            address(CONVEX_STETH_ETH_POOL),
-            6500,
-            CurveReentrancyCheck.N_COINS.TWO_COINS
-        );
+        crvAdaptor.setReentrancyConfig(2, 6500);
         priceRouter.addApprovedAdaptor(address(crvAdaptor));
         priceRouter.addAssetPriceFeed(
             address(CONVEX_STETH_ETH_POOL),
@@ -105,8 +100,8 @@ contract ConvexLPCollateral is TestBaseMarket {
             block.timestamp,
             block.timestamp
         );
-        IMToken[] memory tokens = new IMToken[](1);
-        tokens[0] = IMToken(address(cSTETH));
+        address[] memory tokens = new address[](1);
+        tokens[0] = address(cSTETH);
         uint256[] memory caps = new uint256[](1);
         caps[0] = 100_000e18;
         lendtroller.setCTokenCollateralCaps(tokens, caps);
@@ -124,11 +119,13 @@ contract ConvexLPCollateral is TestBaseMarket {
         lendtroller.listToken(address(dUSDC));
         lendtroller.updateCollateralToken(
             IMToken(address(cSTETH)),
+            7000,
+            3000,
+            3000,
+            2000,
             2000,
             100,
-            3000,
-            3000,
-            7000
+            1000
         );
 
         // User mints cSTETH with cvxStethEth LP tokens and then uses the cSTETH as collateral to borrow 10,000 dUSDC
@@ -150,7 +147,7 @@ contract ConvexLPCollateral is TestBaseMarket {
         assertEq(rewarder.earned(address(positionVault)), 0);
 
         cSTETH.mint(1_000e18);
-        lendtroller.postCollateral(address(cSTETH), 1_000e18 - 1);
+        lendtroller.postCollateral(user1, address(cSTETH), 1_000e18 - 1);
 
         assertEq(
             rewarder.balanceOf(address(positionVault)),

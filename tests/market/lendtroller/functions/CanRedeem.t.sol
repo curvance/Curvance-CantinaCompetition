@@ -19,7 +19,7 @@ contract CanRedeemTest is TestBaseLendtroller {
 
     function test_canRedeem_fail_whenWithinMinimumHoldPeriod() public {
         vm.prank(address(dUSDC));
-        lendtroller.notifyBorrow(user1);
+        lendtroller.notifyBorrow(address(dUSDC), user1);
 
         vm.expectRevert(Lendtroller.Lendtroller__MinimumHoldPeriod.selector);
         lendtroller.canRedeem(address(dUSDC), user1, 100e6);
@@ -27,7 +27,7 @@ contract CanRedeemTest is TestBaseLendtroller {
 
     function test_canRedeem_success_whenPastMinimumHoldPeriod() public {
         vm.prank(address(dUSDC));
-        lendtroller.notifyBorrow(user1);
+        lendtroller.notifyBorrow(address(dUSDC), user1);
 
         skip(20 minutes);
         lendtroller.canRedeem(address(dUSDC), user1, 100e6);
@@ -66,11 +66,13 @@ contract CanRedeemTest is TestBaseLendtroller {
         lendtroller.listToken(address(cBALRETH));
         lendtroller.updateCollateralToken(
             IMToken(address(cBALRETH)),
+            7000,
+            3000,
+            3000,
+            2000,
             2000,
             100,
-            3000,
-            3000,
-            7000
+            1000
         );
 
         assertTrue(cBALRETH.isCToken());
@@ -78,7 +80,7 @@ contract CanRedeemTest is TestBaseLendtroller {
         vm.startPrank(user1);
         balRETH.approve(address(cBALRETH), 1_000e18);
         cBALRETH.mint(1e18);
-        lendtroller.postCollateral(address(cBALRETH), 9e17);
+        lendtroller.postCollateral(user1, address(cBALRETH), 9e17);
         vm.stopPrank();
 
         assertTrue(lendtroller.hasPosition(address(cBALRETH), user1));

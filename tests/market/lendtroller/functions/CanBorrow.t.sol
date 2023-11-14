@@ -16,7 +16,7 @@ contract CanBorrowTest is TestBaseLendtroller {
     }
 
     function test_canBorrow_fail_whenBorrowPaused() public {
-        lendtroller.setBorrowPaused(IMToken(address(dUSDC)), true);
+        lendtroller.setBorrowPaused(address(dUSDC), true);
 
         vm.prank(address(dUSDC));
 
@@ -86,11 +86,13 @@ contract CanBorrowTest is TestBaseLendtroller {
         lendtroller.listToken(address(cBALRETH));
         lendtroller.updateCollateralToken(
             IMToken(address(cBALRETH)),
+            7000,
+            3000,
+            3000,
+            2000,
             2000,
             100,
-            3000,
-            3000,
-            7000
+            1000
         );
 
         // Need some CTokens/collateral to have enough liquidity for borrowing
@@ -98,7 +100,7 @@ contract CanBorrowTest is TestBaseLendtroller {
         vm.startPrank(user1);
         balRETH.approve(address(cBALRETH), 1_000e18);
         cBALRETH.mint(1_000e18);
-        lendtroller.postCollateral(address(cBALRETH), 999e18);
+        lendtroller.postCollateral(user1, address(cBALRETH), 999e18);
         vm.stopPrank();
 
         vm.prank(address(dUSDC));
@@ -110,9 +112,9 @@ contract CanBorrowTest is TestBaseLendtroller {
             true,
             true
         );
-        (, , uint256 collRatio) = lendtroller.getTokenData(address(cBALRETH));
+        (, uint256 collRatio,,,,,,,) = lendtroller.tokenData(address(cBALRETH));
         uint256 assetValue = (price *
-            ((snapshot.balance * snapshot.exchangeRate) / 1e18)) /
+            ((cBALRETH.balanceOf(user1) * snapshot.exchangeRate) / 1e18)) /
             10 ** cBALRETH.decimals();
         uint256 maxBorrow = (assetValue * collRatio) / 1e18;
 

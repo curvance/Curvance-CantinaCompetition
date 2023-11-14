@@ -27,21 +27,18 @@ contract listTokenTest is TestBaseLendtroller {
     }
 
     function test_listToken_success() public {
-        (bool isListed, , uint256 collateralizationRatio) = lendtroller
-            .getTokenData(address(dUSDC));
+        (bool isListed, uint256 collRatio,,,,,,,) = lendtroller.tokenData(address(dUSDC));
         assertFalse(isListed);
-        assertEq(collateralizationRatio, 0);
+        assertEq(collRatio, 0);
 
         vm.expectEmit(true, true, true, true, address(lendtroller));
         emit TokenListed(address(dUSDC));
 
         lendtroller.listToken(address(dUSDC));
 
-        (isListed, , collateralizationRatio) = lendtroller.getTokenData(
-            address(dUSDC)
-        );
+        (isListed, collRatio,,,,,,,) = lendtroller.tokenData(address(dUSDC));
         assertTrue(isListed);
-        assertEq(collateralizationRatio, 0);
+        assertEq(collRatio, 0);
 
         assertEq(dUSDC.totalSupply(), 42069);
     }

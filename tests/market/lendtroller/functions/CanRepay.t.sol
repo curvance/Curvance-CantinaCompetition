@@ -14,7 +14,7 @@ contract CanRepayTest is TestBaseLendtroller {
     function test_canRepay_fail_withinMinimumHoldPeriod() public {
         lendtroller.listToken(address(dUSDC));
         vm.prank(address(dUSDC));
-        lendtroller.notifyBorrow(user1);
+        lendtroller.notifyBorrow(address(dUSDC), user1);
 
         vm.expectRevert(Lendtroller.Lendtroller__MinimumHoldPeriod.selector);
         lendtroller.canRepay(address(dUSDC), user1);
@@ -23,7 +23,7 @@ contract CanRepayTest is TestBaseLendtroller {
     function test_canRepay_success_whenPastMinimumHoldPeriod() public {
         lendtroller.listToken(address(dUSDC));
         vm.prank(address(dUSDC));
-        lendtroller.notifyBorrow(user1);
+        lendtroller.notifyBorrow(address(dUSDC), user1);
 
         skip(20 minutes);
         lendtroller.canRepay(address(dUSDC), user1);
