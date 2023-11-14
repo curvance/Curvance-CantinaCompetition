@@ -25,6 +25,8 @@ contract DTokenBorrowTest is TestBaseDToken {
     }
 
     function test_dTokenBorrow_success() public {
+        _setCbalRETHCollateralCaps(100_000e18);
+
         deal(_USDC_ADDRESS, address(dUSDC), 2000e6);
 
         lendtroller.postCollateral(address(this), address(cBALRETH), 1e18 - 1);

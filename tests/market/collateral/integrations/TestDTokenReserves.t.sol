@@ -85,6 +85,11 @@ contract TestDTokenReserves is TestBaseMarket {
                 0,
                 1000
             );
+            address[] memory tokens = new address[](1);
+            tokens[0] = address(cBALRETH);
+            uint256[] memory caps = new uint256[](1);
+            caps[0] = 100_000e18;
+            lendtroller.setCTokenCollateralCaps(tokens, caps);
         }
 
         centralRegistry.addSwapper(_UNISWAP_V2_ROUTER);

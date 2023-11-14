@@ -19,7 +19,7 @@ contract TestPendleLPTokenAdapter is TestBasePriceRouter {
     PendleLPTokenAdaptor adapter;
 
     function setUp() public override {
-        _fork();
+        _fork(18031848);
 
         _deployCentralRegistry();
         _deployPriceRouter();

@@ -172,9 +172,11 @@ contract CanBorrowWithNotifyTest is TestBaseLendtroller {
             true,
             true
         );
-        (, uint256 collRatio,,,,,,,) = lendtroller.tokenData(address(cBALRETH));
+        (, uint256 collRatio, , , , , , , ) = lendtroller.tokenData(
+            address(cBALRETH)
+        );
         uint256 assetValue = (price *
-            ((cBALRETH.balanceOf(user1) * snapshot.exchangeRate) / 1e18)) /
+            ((999e18 * snapshot.exchangeRate) / 1e18)) /
             10 ** cBALRETH.decimals();
         uint256 maxBorrow = (assetValue * collRatio) / 1e18;
 

@@ -11,13 +11,25 @@ import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 contract CanLiquidateTest is TestBaseLendtroller {
     function test_canLiquidate_fail_whenDTokenNotListed() public {
         vm.expectRevert(Lendtroller.Lendtroller__TokenNotListed.selector);
-        lendtroller.canLiquidate(address(dUSDC), address(cBALRETH), user1, 1000, false);
+        lendtroller.canLiquidate(
+            address(dUSDC),
+            address(cBALRETH),
+            user1,
+            1000,
+            false
+        );
     }
 
     function test_canLiquidate_fail_whenCTokenNotListed() public {
         lendtroller.listToken(address(dUSDC));
         vm.expectRevert(Lendtroller.Lendtroller__TokenNotListed.selector);
-        lendtroller.canLiquidate(address(dUSDC), address(cBALRETH), user1, 1000, false);
+        lendtroller.canLiquidate(
+            address(dUSDC),
+            address(cBALRETH),
+            user1,
+            1000,
+            false
+        );
     }
 
     function test_canLiquidate_fail_whenCollRatioZero() public {
@@ -25,7 +37,13 @@ contract CanLiquidateTest is TestBaseLendtroller {
         lendtroller.listToken(address(cBALRETH));
 
         vm.expectRevert(Lendtroller.Lendtroller__InvalidParameter.selector);
-        lendtroller.canLiquidate(address(dUSDC), address(cBALRETH), user1, 1000, false);
+        lendtroller.canLiquidate(
+            address(dUSDC),
+            address(cBALRETH),
+            user1,
+            1000,
+            false
+        );
     }
 
     function test_canLiquidate_fail_whenUserHasNotEnteredAnyMarket() public {
@@ -43,7 +61,13 @@ contract CanLiquidateTest is TestBaseLendtroller {
         );
 
         vm.expectRevert(PriceRouter.PriceRouter__InvalidParameter.selector);
-        lendtroller.canLiquidate(address(dUSDC), address(cBALRETH), user1, 1000, false);
+        lendtroller.canLiquidate(
+            address(dUSDC),
+            address(cBALRETH),
+            user1,
+            1000,
+            false
+        );
     }
 
     function test_canLiquidate_fail_whenAccountHasNoBorrowsAndCollateralPosted()
@@ -63,7 +87,13 @@ contract CanLiquidateTest is TestBaseLendtroller {
         );
 
         vm.expectRevert(PriceRouter.PriceRouter__InvalidParameter.selector);
-        lendtroller.canLiquidate(address(dUSDC), address(cBALRETH), user1, 1000, false);
+        lendtroller.canLiquidate(
+            address(dUSDC),
+            address(cBALRETH),
+            user1,
+            1000,
+            false
+        );
     }
 
     function test_canLiquidate_fail_whenShortfallInsufficient() public {
@@ -114,7 +144,13 @@ contract CanLiquidateTest is TestBaseLendtroller {
         vm.expectRevert(
             Lendtroller.Lendtroller__NoLiquidationAvailable.selector
         );
-        lendtroller.canLiquidate(address(dUSDC), address(cBALRETH), user1, 1000, false);
+        lendtroller.canLiquidate(
+            address(dUSDC),
+            address(cBALRETH),
+            user1,
+            1000,
+            false
+        );
     }
 
     function test_canLiquidate_success() public {
@@ -168,7 +204,13 @@ contract CanLiquidateTest is TestBaseLendtroller {
         vm.expectRevert(
             Lendtroller.Lendtroller__NoLiquidationAvailable.selector
         );
-        lendtroller.canLiquidate(address(dUSDC), address(cBALRETH), user1, 1000e6, false);
+        lendtroller.canLiquidate(
+            address(dUSDC),
+            address(cBALRETH),
+            user1,
+            1000e6,
+            false
+        );
 
         // Price of ETH drops and balRETH collateral goes below required collateral ratio
         // and can now liquidate
@@ -184,11 +226,19 @@ contract CanLiquidateTest is TestBaseLendtroller {
             uint256 liqAmount,
             uint256 liquidatedTokens,
             uint256 protocolTokens
-        ) = lendtroller.canLiquidate(address(dUSDC), address(cBALRETH), user1, 1000e6, false);
+        ) = lendtroller.canLiquidate(
+                address(dUSDC),
+                address(cBALRETH),
+                user1,
+                1000e6,
+                false
+            );
 
-        (,,,,,,, uint256 baseCFactor, uint256 cFactorCurve) = lendtroller.tokenData(address(cBALRETH));
-        uint256 cFactor = baseCFactor + ((cFactorCurve * WAD) / WAD);
-        uint256 expectedLiqAmount = (cFactor * dUSDC.debtBalanceStored(user1)) / WAD;
+        (, , , , , , , uint256 baseCFactor, uint256 cFactorCurve) = lendtroller
+            .tokenData(address(cBALRETH));
+        uint256 cFactor = baseCFactor + ((cFactorCurve * 1) / WAD);
+        uint256 expectedLiqAmount = (cFactor *
+            dUSDC.debtBalanceStored(user1)) / WAD;
 
         assertEq(
             liqAmount,
@@ -202,10 +252,13 @@ contract CanLiquidateTest is TestBaseLendtroller {
             true
         );
 
-        (,,,, uint256 liqBaseIncentive,,,,) = lendtroller.tokenData(address(cBALRETH));
+        (, , , , uint256 liqBaseIncentive, , , , ) = lendtroller.tokenData(
+            address(cBALRETH)
+        );
         uint256 debtTokenPrice = 1e18; // USDC price
-        uint256 debtToCollateralRatio = (liqBaseIncentive * debtTokenPrice * WAD) /
-            (data.price * cBALRETH.exchangeRateStored());
+        uint256 debtToCollateralRatio = (liqBaseIncentive *
+            debtTokenPrice *
+            WAD) / (data.price * cBALRETH.exchangeRateStored());
 
         uint256 amountAdjusted = (liqAmount * (10 ** cBALRETH.decimals())) /
             (10 ** dUSDC.decimals());

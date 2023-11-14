@@ -32,7 +32,7 @@ contract TestBasePriceRouter is TestBase {
     MockDataFeed public sequencer;
 
     function setUp() public virtual {
-        _fork();
+        _fork(18031848);
 
         _deployCentralRegistry();
         _deployPriceRouter();

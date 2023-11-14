@@ -20,13 +20,13 @@ contract SetProtocolLeverageFeeTest is TestBaseMarket {
         vm.expectRevert(
             CentralRegistry.CentralRegistry__ParametersMisconfigured.selector
         );
-        centralRegistry.setProtocolLeverageFee(101);
+        centralRegistry.setProtocolLeverageFee(201);
 
-        centralRegistry.setProtocolLeverageFee(100);
+        centralRegistry.setProtocolLeverageFee(200);
     }
 
     function test_setProtocolLeverageFee_success() public {
         centralRegistry.setProtocolLeverageFee(100);
-        assertEq(centralRegistry.protocolLeverageFee(), 100);
+        assertEq(centralRegistry.protocolLeverageFee(), 100 * 1e14);
     }
 }

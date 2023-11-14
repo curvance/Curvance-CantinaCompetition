@@ -94,6 +94,11 @@ contract CanBorrowTest is TestBaseLendtroller {
             100,
             1000
         );
+        address[] memory tokens = new address[](1);
+        tokens[0] = address(cBALRETH);
+        uint256[] memory caps = new uint256[](1);
+        caps[0] = 100_000e18;
+        lendtroller.setCTokenCollateralCaps(tokens, caps);
 
         // Need some CTokens/collateral to have enough liquidity for borrowing
         deal(address(balRETH), user1, 10_000e18);
@@ -112,9 +117,11 @@ contract CanBorrowTest is TestBaseLendtroller {
             true,
             true
         );
-        (, uint256 collRatio,,,,,,,) = lendtroller.tokenData(address(cBALRETH));
+        (, uint256 collRatio, , , , , , , ) = lendtroller.tokenData(
+            address(cBALRETH)
+        );
         uint256 assetValue = (price *
-            ((cBALRETH.balanceOf(user1) * snapshot.exchangeRate) / 1e18)) /
+            ((999e18 * snapshot.exchangeRate) / 1e18)) /
             10 ** cBALRETH.decimals();
         uint256 maxBorrow = (assetValue * collRatio) / 1e18;
 

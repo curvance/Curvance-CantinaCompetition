@@ -101,6 +101,11 @@ contract TestPositionFolding is TestBaseMarket {
                 100,
                 1000
             );
+            address[] memory tokens = new address[](1);
+            tokens[0] = address(cBALRETH);
+            uint256[] memory caps = new uint256[](1);
+            caps[0] = 100_000e18;
+            lendtroller.setCTokenCollateralCaps(tokens, caps);
         }
 
         // set position folding

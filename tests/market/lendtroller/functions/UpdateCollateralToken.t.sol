@@ -8,11 +8,13 @@ import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 contract UpdateCollateralTokenTest is TestBaseLendtroller {
     event CollateralTokenUpdated(
         IMToken mToken,
-        uint256 newLI,
-        uint256 newLF,
-        uint256 newCR_A,
-        uint256 newCR_B,
-        uint256 newCR
+        uint256 collRatio,
+        uint256 collReqA,
+        uint256 collReqB,
+        uint256 liqIncA,
+        uint256 liqIncB,
+        uint256 liqFee,
+        uint256 baseCFactor
     );
 
     function test_updateCollateralToken_fail_whenNotCToken() public {
@@ -92,7 +94,7 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
             300,
             250,
             250,
-            0, 
+            0,
             1000
         );
     }
@@ -188,10 +190,10 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
         lendtroller.updateCollateralToken(
             IMToken(address(cBALRETH)),
             9100,
-            200,
             300,
-            250,
-            250,
+            200,
+            200,
+            150,
             0,
             1000
         );
@@ -206,9 +208,9 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
         lendtroller.updateCollateralToken(
             IMToken(address(cBALRETH)),
             9100, // collRatio
-            200,
             300,
-            250,
+            200,
+            200,
             250,
             0,
             1000
@@ -222,25 +224,29 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
         vm.expectEmit(true, true, true, true, address(lendtroller));
         emit CollateralTokenUpdated(
             IMToken(address(cBALRETH)),
-            0.02e18,
-            0,
+            0.91e18,
             0.03e18,
+            0.02e18,
+            0.02e18,
             0.025e18,
-            0.9e18
+            0,
+            0.1e18
         );
 
         lendtroller.updateCollateralToken(
             IMToken(address(cBALRETH)),
-            9000,
-            200,
+            9100,
             300,
+            200,
+            200,
             250,
-            0,
             0,
             1000
         );
 
-        (, uint256 collRatio,,,,,,,) = lendtroller.tokenData(address(cBALRETH));
-        assertEq(collRatio, 0.9e18);
+        (, uint256 collRatio, , , , , , , ) = lendtroller.tokenData(
+            address(cBALRETH)
+        );
+        assertEq(collRatio, 0.91e18);
     }
 }

@@ -56,11 +56,11 @@ contract ConvexLPCollateral is TestBaseMarket {
         CurveAdaptor crvAdaptor = new CurveAdaptor(
             ICentralRegistry(address(centralRegistry))
         );
+        crvAdaptor.setReentrancyConfig(2, 50_000);
         crvAdaptor.addAsset(
             address(CONVEX_STETH_ETH_POOL),
             address(CONVEX_STETH_ETH_POOL)
         );
-        crvAdaptor.setReentrancyConfig(2, 6500);
         priceRouter.addApprovedAdaptor(address(crvAdaptor));
         priceRouter.addAssetPriceFeed(
             address(CONVEX_STETH_ETH_POOL),
@@ -100,11 +100,6 @@ contract ConvexLPCollateral is TestBaseMarket {
             block.timestamp,
             block.timestamp
         );
-        address[] memory tokens = new address[](1);
-        tokens[0] = address(cSTETH);
-        uint256[] memory caps = new uint256[](1);
-        caps[0] = 100_000e18;
-        lendtroller.setCTokenCollateralCaps(tokens, caps);
 
         // Need funds for initial mint when listing market token
         deal(address(CONVEX_STETH_ETH_POOL), address(this), 1 ether);
@@ -127,6 +122,11 @@ contract ConvexLPCollateral is TestBaseMarket {
             100,
             1000
         );
+        address[] memory tokens = new address[](1);
+        tokens[0] = address(cSTETH);
+        uint256[] memory caps = new uint256[](1);
+        caps[0] = 100_000e18;
+        lendtroller.setCTokenCollateralCaps(tokens, caps);
 
         // User mints cSTETH with cvxStethEth LP tokens and then uses the cSTETH as collateral to borrow 10,000 dUSDC
         deal(_USDC_ADDRESS, address(dUSDC), 100_000e6);

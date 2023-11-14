@@ -21,14 +21,10 @@ contract SetLockBoostMultiplierTest is TestBaseMarket {
         vm.expectRevert(
             CentralRegistry.CentralRegistry__ParametersMisconfigured.selector
         );
-        centralRegistry.setLockBoostMultiplier(DENOMINATOR);
+        centralRegistry.setLockBoostMultiplier(DENOMINATOR - 1);
 
-        vm.expectRevert(
-            CentralRegistry.CentralRegistry__ParametersMisconfigured.selector
-        );
         centralRegistry.setLockBoostMultiplier(0);
-
-        centralRegistry.setLockBoostMultiplier(DENOMINATOR + 1);
+        centralRegistry.setLockBoostMultiplier(DENOMINATOR);
     }
 
     function test_setLockBoostMultiplier_success() public {

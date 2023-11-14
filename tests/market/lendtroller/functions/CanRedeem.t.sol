@@ -64,16 +64,7 @@ contract CanRedeemTest is TestBaseLendtroller {
             block.timestamp
         );
         lendtroller.listToken(address(cBALRETH));
-        lendtroller.updateCollateralToken(
-            IMToken(address(cBALRETH)),
-            7000,
-            3000,
-            3000,
-            2000,
-            2000,
-            100,
-            1000
-        );
+        _setCbalRETHCollateralCaps(100_000e18);
 
         assertTrue(cBALRETH.isCToken());
         deal(address(balRETH), user1, 10_000e18);
@@ -85,6 +76,7 @@ contract CanRedeemTest is TestBaseLendtroller {
 
         assertTrue(lendtroller.hasPosition(address(cBALRETH), user1));
 
+        skip(20 minutes);
         vm.expectRevert(
             Lendtroller.Lendtroller__InsufficientLiquidity.selector
         );

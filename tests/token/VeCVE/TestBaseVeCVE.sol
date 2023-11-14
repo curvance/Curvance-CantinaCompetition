@@ -37,7 +37,7 @@ contract TestBaseVeCVE is TestBase {
     }
 
     function setUp() public virtual {
-        _fork();
+        _fork(18031848);
 
         _deployCentralRegistry();
         _deployCVE();

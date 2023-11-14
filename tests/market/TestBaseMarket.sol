@@ -27,6 +27,7 @@ import { GaugePool } from "contracts/gauge/GaugePool.sol";
 import { ERC20 } from "contracts/libraries/ERC20.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { ERC20 } from "contracts/libraries/ERC20.sol";
+import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 
 contract TestBaseMarket is TestBase {
     address internal constant _WETH_ADDRESS =
@@ -143,13 +144,6 @@ contract TestBaseMarket is TestBase {
 
         priceRouter.addMTokenSupport(address(dUSDC));
         priceRouter.addMTokenSupport(address(cBALRETH));
-
-        // Set default collateral cap for cBALRETH at 100_000e18
-        address[] memory tokens = new address[](1);
-        tokens[0] = address(cBALRETH);
-        uint256[] memory caps = new uint256[](1);
-        caps[0] = 100_000e18;
-        lendtroller.setCTokenCollateralCaps(tokens, caps);
     }
 
     function _deployCentralRegistry() internal {
@@ -477,5 +471,23 @@ contract TestBaseMarket is TestBase {
 
     function _prepareBALRETH(address user, uint256 amount) internal {
         deal(_BALANCER_WETH_RETH, user, amount);
+    }
+
+    function _setCbalRETHCollateralCaps(uint256 cap) internal {
+        lendtroller.updateCollateralToken(
+            IMToken(address(cBALRETH)),
+            7000,
+            3000,
+            3000,
+            2000,
+            2000,
+            100,
+            1000
+        );
+        address[] memory tokens = new address[](1);
+        tokens[0] = address(cBALRETH);
+        uint256[] memory caps = new uint256[](1);
+        caps[0] = cap;
+        lendtroller.setCTokenCollateralCaps(tokens, caps);
     }
 }

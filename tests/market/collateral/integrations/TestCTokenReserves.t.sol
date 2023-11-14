@@ -84,6 +84,11 @@ contract TestCTokenReserves is TestBaseMarket {
                 100,
                 1000
             );
+            address[] memory tokens = new address[](1);
+            tokens[0] = address(cBALRETH);
+            uint256[] memory caps = new uint256[](1);
+            caps[0] = 100_000e18;
+            lendtroller.setCTokenCollateralCaps(tokens, caps);
         }
 
         // provide enough liquidity
@@ -130,14 +135,16 @@ contract TestCTokenReserves is TestBaseMarket {
 
         mockDaiFeed.setMockAnswer(200000000);
 
-        uint256 repayAmount = 250 ether;
-        (,uint256 liquidatedTokens, uint256 protocolTokens) = 
-            lendtroller.canLiquidate(
+        (
+            uint256 repayAmount,
+            uint256 liquidatedTokens,
+            uint256 protocolTokens
+        ) = lendtroller.canLiquidate(
                 address(dDAI),
                 address(cBALRETH),
                 user1,
-                repayAmount,
-                true
+                0,
+                false
             );
         uint256 daoBalanceBefore = cBALRETH.balanceOf(dao);
 
