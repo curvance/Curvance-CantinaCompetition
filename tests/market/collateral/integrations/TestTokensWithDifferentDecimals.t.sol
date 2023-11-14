@@ -127,6 +127,9 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
         assertEq(cBALRETH.balanceOf(user1), 1 ether);
         assertEq(cBALRETH.balanceOf(user2), 1 ether);
 
+        // skip some period
+        skip(20 minutes);
+
         // try redeem()
         vm.startPrank(user1);
         cBALRETH.redeem(1 ether);
@@ -209,7 +212,7 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
         assertGt(snapshot.exchangeRate, exchangeRateBefore);
 
         // skip some period
-        skip(1200);
+        skip(20 minutes);
 
         // try repay full
         (, borrowBalanceBefore, exchangeRateBefore) = dUSDC.getSnapshot(user1);
