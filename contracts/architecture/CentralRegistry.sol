@@ -41,7 +41,7 @@ contract CentralRegistry is ERC165 {
     address public feeAccumulator; // Fee Accumulator contract address
 
     /// PROTOCOL VALUES
-    /// Values are always set in `Basis Points`, 
+    /// Values are always set in `Basis Points`,
     /// any fees are converted to `WAD`, while multipliers stay in `DENOMINATOR`
     /// Fees:
     uint256 public protocolCompoundFee = 100 * 1e14; // Fee for compounding position vaults
@@ -651,7 +651,9 @@ contract CentralRegistry is ERC165 {
         }
 
         isLendingMarket[newLendingMarket] = true;
-        protocolInterestFactor[newLendingMarket] = _bpToWad(marketInterestFactor);
+        protocolInterestFactor[newLendingMarket] = _bpToWad(
+            marketInterestFactor
+        );
 
         emit NewCurvanceContract("Lending Market", newLendingMarket);
     }

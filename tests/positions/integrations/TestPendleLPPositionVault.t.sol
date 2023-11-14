@@ -43,7 +43,7 @@ contract TestPendleLPPositionVault is TestBaseMarket {
     }
 
     function setUp() public override {
-        _fork();
+        _fork(18031848);
 
         _deployCentralRegistry();
         _deployGaugePool();

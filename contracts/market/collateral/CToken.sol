@@ -338,16 +338,14 @@ contract CToken is ERC165, ReentrancyGuard {
     function getSnapshotPacked(
         address account
     ) external view returns (AccountSnapshot memory) {
-        return (
+        return
             AccountSnapshot({
                 asset: address(this),
                 isCToken: true,
                 decimals: decimals(),
-                balance: balanceOf[account],
                 debtBalance: 0,
                 exchangeRate: exchangeRateStored()
-            })
-        );
+            });
     }
 
     /// @notice Transfers collateral tokens (this market) to the liquidator.

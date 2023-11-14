@@ -14,22 +14,13 @@ contract NotifyBorrowTest is TestBaseLendtroller {
     }
 
     function test_notifyBorrow_fail_whenCallerIsNotMToken() public {
-        vm.expectRevert(Lendtroller.Lendtroller__TokenNotListed.selector);
-        lendtroller.notifyBorrow(user1);
-    }
-
-    function test_notifyBorrow_fail_whenCallerMTokenIsNotListed()
-        public
-    {
-        vm.prank(address(dDAI));
-
-        vm.expectRevert(Lendtroller.Lendtroller__TokenNotListed.selector);
-        lendtroller.notifyBorrow(user1);
+        vm.expectRevert(Lendtroller.Lendtroller__Unauthorized.selector);
+        lendtroller.notifyBorrow(address(dUSDC), user1);
     }
 
     function test_notifyBorrow_success() public {
         vm.prank(address(dUSDC));
-        lendtroller.notifyBorrow(user1);
+        lendtroller.notifyBorrow(address(dUSDC), user1);
 
         assertEq(lendtroller.accountAssets(user1), block.timestamp);
     }

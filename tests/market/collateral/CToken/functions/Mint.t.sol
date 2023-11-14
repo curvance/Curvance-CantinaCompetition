@@ -3,7 +3,6 @@ pragma solidity 0.8.17;
 
 import { TestBaseCToken } from "../TestBaseCToken.sol";
 import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
-import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 import { BasePositionVault } from "contracts/deposits/adaptors/BasePositionVault.sol";
 
 contract CTokenMintTest is TestBaseCToken {
@@ -17,7 +16,7 @@ contract CTokenMintTest is TestBaseCToken {
     }
 
     function test_cTokenMint_fail_whenMintIsNotAllowed() public {
-        lendtroller.setMintPaused(IMToken(address(cBALRETH)), true);
+        lendtroller.setMintPaused(address(cBALRETH), true);
 
         vm.expectRevert(Lendtroller.Lendtroller__Paused.selector);
         cBALRETH.mint(100);

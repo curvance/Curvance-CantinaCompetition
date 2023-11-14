@@ -6,8 +6,6 @@ import { MockDataFeed } from "contracts/mocks/MockDataFeed.sol";
 
 import "tests/market/TestBaseMarket.sol";
 
-contract User {}
-
 contract TestTokens is TestBaseMarket {
     address public owner;
 
@@ -56,49 +54,37 @@ contract TestTokens is TestBaseMarket {
         mockWethFeed.setMockUpdatedAt(block.timestamp);
         mockRethFeed.setMockUpdatedAt(block.timestamp);
 
-        // deploy dDAI
+        // setup dDAI
         {
-            _deployDDAI();
-            // support market
             _prepareDAI(owner, 200000e18);
             dai.approve(address(dDAI), 200000e18);
             lendtroller.listToken(address(dDAI));
             // add MToken support on price router
             priceRouter.addMTokenSupport(address(dDAI));
-            address[] memory markets = new address[](1);
-            markets[0] = address(dDAI);
-            vm.prank(user1);
-            lendtroller.enterMarkets(markets);
-            vm.prank(user2);
-            lendtroller.enterMarkets(markets);
         }
 
-        // deploy CBALRETH
+        // setup CBALRETH
         {
-            // deploy aura position vault
-            _deployCBALRETH();
-
             // support market
             _prepareBALRETH(owner, 1 ether);
             balRETH.approve(address(cBALRETH), 1 ether);
             lendtroller.listToken(address(cBALRETH));
-            // add MToken support on price router
-            priceRouter.addMTokenSupport(address(cBALRETH));
-            // set collateral token configuration
+            // set collateral factor
             lendtroller.updateCollateralToken(
                 IMToken(address(cBALRETH)),
-                200, // 2% liq incentive
-                0,
-                4000, // liquidate at 71%
+                7000,
+                4000,
                 3000,
-                7000
+                200,
+                200,
+                100,
+                1000
             );
-            address[] memory markets = new address[](1);
-            markets[0] = address(cBALRETH);
-            vm.prank(user1);
-            lendtroller.enterMarkets(markets);
-            vm.prank(user2);
-            lendtroller.enterMarkets(markets);
+            address[] memory tokens = new address[](1);
+            tokens[0] = address(cBALRETH);
+            uint256[] memory caps = new uint256[](1);
+            caps[0] = 100_000e18;
+            lendtroller.setCTokenCollateralCaps(tokens, caps);
         }
 
         // provide enough liquidity
@@ -106,7 +92,7 @@ contract TestTokens is TestBaseMarket {
     }
 
     function provideEnoughLiquidityForLeverage() internal {
-        address liquidityProvider = address(new User());
+        address liquidityProvider = makeAddr("liquidityProvider");
         _prepareDAI(liquidityProvider, 200000e18);
         _prepareBALRETH(liquidityProvider, 10 ether);
         // mint dDAI
@@ -181,9 +167,10 @@ contract TestTokens is TestBaseMarket {
         vm.startPrank(user1);
         balRETH.approve(address(cBALRETH), 1 ether);
         cBALRETH.mint(1 ether);
+        lendtroller.postCollateral(user1, address(cBALRETH), 1 ether - 1);
         vm.stopPrank();
         AccountSnapshot memory snapshot = cBALRETH.getSnapshotPacked(user1);
-        assertEq(snapshot.balance, 1 ether);
+        assertEq(cBALRETH.balanceOf(user1), 1 ether);
         assertEq(snapshot.debtBalance, 0);
         assertEq(snapshot.exchangeRate, 1 ether);
 
@@ -192,7 +179,7 @@ contract TestTokens is TestBaseMarket {
         dDAI.borrow(500 ether);
         vm.stopPrank();
         snapshot = dDAI.getSnapshotPacked(user1);
-        assertEq(snapshot.balance, 0);
+        assertEq(dDAI.balanceOf(user1), 0);
         assertEq(snapshot.debtBalance, 500 ether);
         assertEq(snapshot.exchangeRate, 1 ether);
 
@@ -202,12 +189,12 @@ contract TestTokens is TestBaseMarket {
         dDAI.borrow(100 ether);
         vm.stopPrank();
         snapshot = dDAI.getSnapshotPacked(user1);
-        assertEq(snapshot.balance, 0);
+        assertEq(dDAI.balanceOf(user1), 0);
         assertGt(snapshot.debtBalance, 600 ether);
         assertGt(snapshot.exchangeRate, 1 ether);
 
         // skip min hold period
-        skip(900);
+        skip(20 minutes);
 
         // try partial repay
         (, uint256 borrowBalanceBefore, uint256 exchangeRateBefore) = dDAI
@@ -218,7 +205,7 @@ contract TestTokens is TestBaseMarket {
         dDAI.repay(200 ether);
         vm.stopPrank();
         snapshot = dDAI.getSnapshotPacked(user1);
-        assertEq(snapshot.balance, 0);
+        assertEq(dDAI.balanceOf(user1), 0);
         assertGt(snapshot.debtBalance, borrowBalanceBefore - 200 ether);
         assertGt(snapshot.exchangeRate, exchangeRateBefore);
 
@@ -233,7 +220,7 @@ contract TestTokens is TestBaseMarket {
         dDAI.repay(borrowBalanceBefore);
         vm.stopPrank();
         snapshot = dDAI.getSnapshotPacked(user1);
-        assertEq(snapshot.balance, 0);
+        assertEq(dDAI.balanceOf(user1), 0);
         assertGt(snapshot.debtBalance, 0);
         assertGt(snapshot.exchangeRate, exchangeRateBefore);
     }
@@ -245,6 +232,7 @@ contract TestTokens is TestBaseMarket {
         vm.startPrank(user1);
         balRETH.approve(address(cBALRETH), 1 ether);
         cBALRETH.mint(1 ether);
+        lendtroller.postCollateral(user1, address(cBALRETH), 1 ether - 1);
         vm.stopPrank();
 
         // try borrow()
@@ -253,7 +241,7 @@ contract TestTokens is TestBaseMarket {
         vm.stopPrank();
 
         // skip min hold period
-        skip(900);
+        skip(20 minutes);
 
         // can't redeem full
         vm.startPrank(user1);
@@ -268,7 +256,7 @@ contract TestTokens is TestBaseMarket {
         cBALRETH.redeem(0.2 ether);
         vm.stopPrank();
         AccountSnapshot memory snapshot = cBALRETH.getSnapshotPacked(user1);
-        assertEq(snapshot.balance, 0.8 ether);
+        assertEq(cBALRETH.balanceOf(user1), 0.8 ether);
         assertEq(snapshot.debtBalance, 0 ether);
         assertEq(snapshot.exchangeRate, 1 ether);
     }
@@ -279,6 +267,7 @@ contract TestTokens is TestBaseMarket {
         vm.startPrank(user1);
         balRETH.approve(address(cBALRETH), 1 ether);
         cBALRETH.mint(1 ether);
+        lendtroller.postCollateral(user1, address(cBALRETH), 1 ether - 1);
         vm.stopPrank();
 
         // try mint()
@@ -294,7 +283,7 @@ contract TestTokens is TestBaseMarket {
         vm.stopPrank();
 
         // skip min hold period
-        skip(900);
+        skip(20 minutes);
 
         // can redeem fully
         vm.startPrank(user1);
@@ -302,12 +291,12 @@ contract TestTokens is TestBaseMarket {
         vm.stopPrank();
 
         AccountSnapshot memory snapshot = cBALRETH.getSnapshotPacked(user1);
-        assertEq(snapshot.balance, 1 ether);
+        assertEq(cBALRETH.balanceOf(user1), 1 ether);
         assertEq(snapshot.debtBalance, 0);
         assertEq(snapshot.exchangeRate, 1 ether);
 
         snapshot = dDAI.getSnapshotPacked(user1);
-        assertEq(snapshot.balance, 0);
+        assertEq(dDAI.balanceOf(user1), 0);
         assertGt(snapshot.debtBalance, 500 ether);
         assertGt(snapshot.exchangeRate, 1 ether);
     }
@@ -319,6 +308,7 @@ contract TestTokens is TestBaseMarket {
         vm.startPrank(user1);
         balRETH.approve(address(cBALRETH), 1 ether);
         cBALRETH.mint(1 ether);
+        lendtroller.postCollateral(user1, address(cBALRETH), 1 ether - 1);
         vm.stopPrank();
 
         // try borrow()
@@ -327,7 +317,7 @@ contract TestTokens is TestBaseMarket {
         vm.stopPrank();
 
         // skip min hold period
-        skip(900);
+        skip(20 minutes);
 
         // can't transfer full
         vm.startPrank(user1);
@@ -342,11 +332,11 @@ contract TestTokens is TestBaseMarket {
         cBALRETH.transfer(user2, 0.2 ether);
         vm.stopPrank();
         AccountSnapshot memory snapshot = cBALRETH.getSnapshotPacked(user1);
-        assertEq(snapshot.balance, 0.8 ether);
+        assertEq(cBALRETH.balanceOf(user1), 0.8 ether);
         assertEq(snapshot.debtBalance, 0 ether);
         assertEq(snapshot.exchangeRate, 1 ether);
         snapshot = cBALRETH.getSnapshotPacked(user2);
-        assertEq(snapshot.balance, 0.2 ether);
+        assertEq(cBALRETH.balanceOf(user2), 0.2 ether);
         assertEq(snapshot.debtBalance, 0 ether);
         assertEq(snapshot.exchangeRate, 1 ether);
     }
@@ -357,6 +347,7 @@ contract TestTokens is TestBaseMarket {
         vm.startPrank(user1);
         balRETH.approve(address(cBALRETH), 1 ether);
         cBALRETH.mint(1 ether);
+        lendtroller.postCollateral(user1, address(cBALRETH), 1 ether - 1);
         vm.stopPrank();
 
         // try mint()
@@ -372,7 +363,7 @@ contract TestTokens is TestBaseMarket {
         vm.stopPrank();
 
         // skip min hold period
-        skip(900);
+        skip(20 minutes);
 
         // try full transfer
         vm.startPrank(user1);
@@ -380,17 +371,17 @@ contract TestTokens is TestBaseMarket {
         vm.stopPrank();
 
         AccountSnapshot memory snapshot = cBALRETH.getSnapshotPacked(user1);
-        assertEq(snapshot.balance, 1 ether);
+        assertEq(cBALRETH.balanceOf(user1), 1 ether);
         assertEq(snapshot.debtBalance, 0);
         assertEq(snapshot.exchangeRate, 1 ether);
 
         snapshot = dDAI.getSnapshotPacked(user1);
-        assertEq(snapshot.balance, 0);
+        assertEq(dDAI.balanceOf(user1), 0);
         assertEq(snapshot.debtBalance, 500 ether);
         assertEq(snapshot.exchangeRate, 1 ether);
 
         snapshot = dDAI.getSnapshotPacked(user2);
-        assertEq(snapshot.balance, 1000 ether);
+        assertEq(dDAI.balanceOf(user1), 1000 ether);
         assertEq(snapshot.debtBalance, 0 ether);
         assertEq(snapshot.exchangeRate, 1 ether);
     }
@@ -402,6 +393,7 @@ contract TestTokens is TestBaseMarket {
         vm.startPrank(user1);
         balRETH.approve(address(cBALRETH), 1 ether);
         cBALRETH.mint(1 ether);
+        lendtroller.postCollateral(user1, address(cBALRETH), 1 ether - 1);
         vm.stopPrank();
 
         // try borrow()
@@ -410,7 +402,7 @@ contract TestTokens is TestBaseMarket {
         vm.stopPrank();
 
         // skip min hold period
-        skip(900);
+        skip(20 minutes);
 
         (uint256 balRETHPrice, ) = priceRouter.getPrice(
             address(balRETH),
@@ -429,7 +421,7 @@ contract TestTokens is TestBaseMarket {
 
         AccountSnapshot memory snapshot = cBALRETH.getSnapshotPacked(user1);
         assertApproxEqRel(
-            snapshot.balance,
+            cBALRETH.balanceOf(user1),
             1 ether - (500 ether * 1 ether) / balRETHPrice,
             0.01e18
         );
@@ -437,7 +429,7 @@ contract TestTokens is TestBaseMarket {
         assertEq(snapshot.exchangeRate, 1 ether);
 
         snapshot = dDAI.getSnapshotPacked(user1);
-        assertEq(snapshot.balance, 0);
+        assertEq(dDAI.balanceOf(user1), 0);
         assertApproxEqRel(snapshot.debtBalance, 750 ether, 0.01e18);
         assertApproxEqRel(snapshot.exchangeRate, 1 ether, 0.01e18);
     }
@@ -449,6 +441,7 @@ contract TestTokens is TestBaseMarket {
         vm.startPrank(user1);
         balRETH.approve(address(cBALRETH), 1 ether);
         cBALRETH.mint(1 ether);
+        lendtroller.postCollateral(user1, address(cBALRETH), 1 ether - 1);
         vm.stopPrank();
 
         // try borrow()
@@ -457,7 +450,7 @@ contract TestTokens is TestBaseMarket {
         vm.stopPrank();
 
         // skip min hold period
-        skip(900);
+        skip(20 minutes);
 
         (uint256 balRETHPrice, ) = priceRouter.getPrice(
             address(balRETH),
@@ -476,7 +469,7 @@ contract TestTokens is TestBaseMarket {
 
         AccountSnapshot memory snapshot = cBALRETH.getSnapshotPacked(user1);
         assertApproxEqRel(
-            snapshot.balance,
+            cBALRETH.balanceOf(user1),
             1 ether - (1000 ether * 1 ether) / balRETHPrice,
             0.03e18
         );
@@ -484,7 +477,7 @@ contract TestTokens is TestBaseMarket {
         assertEq(snapshot.exchangeRate, 1 ether);
 
         snapshot = dDAI.getSnapshotPacked(user1);
-        assertEq(snapshot.balance, 0);
+        assertEq(dDAI.balanceOf(user1), 0);
         assertApproxEqRel(snapshot.debtBalance, 500 ether, 0.01e18);
         assertApproxEqRel(snapshot.exchangeRate, 1 ether, 0.01e18);
     }

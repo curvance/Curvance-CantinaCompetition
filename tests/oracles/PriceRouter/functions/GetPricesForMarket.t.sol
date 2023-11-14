@@ -79,9 +79,12 @@ contract GetPricesForMarket is TestBasePriceRouter {
             assertEq(snapshots[i].asset, address(mUSDC));
             assertFalse(snapshots[i].isCToken);
             assertEq(snapshots[i].decimals, IERC20(_USDC_ADDRESS).decimals());
-            assertEq(snapshots[i].balance, mUSDC.balanceOf(address(this)));
+            assertEq(
+                assets[i].balanceOf(address(this)),
+                mUSDC.balanceOf(address(this))
+            );
             assertEq(snapshots[i].debtBalance, 0);
-            assertEq(snapshots[i].exchangeRate, 1e18);
+            assertEq(snapshots[i].exchangeRate, 0);
         }
     }
 }

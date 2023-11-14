@@ -5,7 +5,7 @@ import { TestBaseLendtroller } from "../TestBaseLendtroller.sol";
 import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
 
 contract listTokenTest is TestBaseLendtroller {
-    event MarketListed(address mToken);
+    event TokenListed(address mToken);
 
     function test_listToken_fail_whenCallerIsNotAuthorized() public {
         vm.prank(address(1));
@@ -27,21 +27,18 @@ contract listTokenTest is TestBaseLendtroller {
     }
 
     function test_listToken_success() public {
-        (bool isListed, , uint256 collateralizationRatio) = lendtroller
-            .getMTokenData(address(dUSDC));
+        (bool isListed, uint256 collRatio,,,,,,,) = lendtroller.tokenData(address(dUSDC));
         assertFalse(isListed);
-        assertEq(collateralizationRatio, 0);
+        assertEq(collRatio, 0);
 
         vm.expectEmit(true, true, true, true, address(lendtroller));
-        emit MarketListed(address(dUSDC));
+        emit TokenListed(address(dUSDC));
 
         lendtroller.listToken(address(dUSDC));
 
-        (isListed, , collateralizationRatio) = lendtroller.getMTokenData(
-            address(dUSDC)
-        );
+        (isListed, collRatio,,,,,,,) = lendtroller.tokenData(address(dUSDC));
         assertTrue(isListed);
-        assertEq(collateralizationRatio, 0);
+        assertEq(collRatio, 0);
 
         assertEq(dUSDC.totalSupply(), 42069);
     }

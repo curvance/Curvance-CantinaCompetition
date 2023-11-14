@@ -72,7 +72,7 @@ contract BaseVolatileLPAdaptor is BaseOracleAdaptor {
     /// @notice Add a Balancer Stable Pool Bpt as an asset.
     /// @dev Should be called before `PriceRotuer:addAssetPriceFeed` is called.
     /// @param asset The address of the bpt to add
-    function _addAsset(address asset) internal {
+    function _addAsset(address asset) internal returns (AdaptorData memory) {
         IUniswapV2Pair pool = IUniswapV2Pair(asset);
         AdaptorData memory data;
         data.token0 = pool.token0();
@@ -83,6 +83,7 @@ contract BaseVolatileLPAdaptor is BaseOracleAdaptor {
         // Save values in Adaptor storage.
         adaptorData[asset] = data;
         isSupportedAsset[asset] = true;
+        return data;
     }
 
     /// @notice Removes a supported asset from the adaptor.
