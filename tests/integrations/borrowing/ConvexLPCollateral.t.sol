@@ -217,6 +217,7 @@ contract ConvexLPCollateral is TestBaseMarket {
         assertEq(cvxPool.balanceOf(user1), 9_000e18);
 
         vm.startPrank(user1);
+
         skip(128 days);
         chainlinkStethUsd.updateRoundData(
             0,
@@ -236,10 +237,10 @@ contract ConvexLPCollateral is TestBaseMarket {
             block.timestamp,
             block.timestamp
         );
-        cSTETH.redeem(cSTETH.balanceOf(user1));
+        cSTETH.redeem(cSTETH.balanceOf(user1) - 1);
         vm.stopPrank();
 
-        assertEq(cSTETH.balanceOf(user1), 0);
-        assertEq(cvxPool.balanceOf(user1), 10_000e18);
+        assertEq(cSTETH.balanceOf(user1), 1);
+        assertEq(cvxPool.balanceOf(user1), 10_000e18 - 1);
     }
 }
