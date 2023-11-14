@@ -60,8 +60,11 @@ contract TestCTokenForPendlePT is TestBaseMarket {
             true
         );
         mockStethFeed = new MockDataFeed(_CHAINLINK_ETH_USD);
-        chainlinkAdaptor.addAsset(_STETH, address(mockStethFeed), false);
+        chainlinkAdaptor.addAsset(_STETH, address(mockStethFeed), true);
         dualChainlinkAdaptor.addAsset(_STETH, address(mockStethFeed), true);
+
+        priceRouter.addAssetPriceFeed(_STETH, address(chainlinkAdaptor));
+        priceRouter.addAssetPriceFeed(_STETH, address(dualChainlinkAdaptor));
 
         adapter = new PendlePrincipalTokenAdaptor(
             ICentralRegistry(address(centralRegistry)),
@@ -143,7 +146,6 @@ contract TestCTokenForPendlePT is TestBaseMarket {
 
     function _preparePT(address user, uint256 amount) internal {
         deal(_PT_STETH, user, amount);
-        console.log("PT balance", ERC20(_PT_STETH).balanceOf(user));
     }
 
     function provideEnoughLiquidityForLeverage() internal {

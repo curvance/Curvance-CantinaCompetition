@@ -144,7 +144,7 @@ contract TestBaseMarket is TestBase {
             address(0)
         );
         centralRegistry.transferEmergencyCouncil(address(this));
-        centralRegistry.setLockBoostValue(lockBoostValue);
+        centralRegistry.setLockBoostMultiplier(lockBoostValue);
     }
 
     function _deployCVE() internal {
@@ -180,7 +180,7 @@ contract TestBaseMarket is TestBase {
             clPointMultiplier
         );
         centralRegistry.setVeCVE(address(veCVE));
-        centralRegistry.setVoteBoostValue(voteBoostValue);
+        centralRegistry.setVoteBoostMultiplier(voteBoostValue);
         cveLocker.startLocker();
     }
 

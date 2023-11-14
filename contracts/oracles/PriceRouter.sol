@@ -273,7 +273,7 @@ contract PriceRouter {
             data[0] = _getPriceFromFeed(asset, 0, inUSD, true);
             data[1] = _getPriceFromFeed(asset, 0, inUSD, false);
             if (isMToken) {
-                uint256 exchangeRate = IMToken(asset).exchangeRateStored();
+                uint256 exchangeRate = IMToken(asset).exchangeRate();
                 data[0].price = uint240((data[0].price * exchangeRate) / 1e18);
                 data[1].price = uint240((data[1].price * exchangeRate) / 1e18);
             }
@@ -289,7 +289,7 @@ contract PriceRouter {
         data[3] = _getPriceFromFeed(asset, 1, inUSD, false);
 
         if (isMToken) {
-            uint256 exchangeRate = IMToken(asset).exchangeRateStored();
+            uint256 exchangeRate = IMToken(asset).exchangeRate();
             data[0].price = uint240((data[0].price * exchangeRate) / 1e18);
             data[1].price = uint240((data[1].price * exchangeRate) / 1e18);
             data[2].price = uint240((data[2].price * exchangeRate) / 1e18);
@@ -359,7 +359,7 @@ contract PriceRouter {
         }
 
         if (mAsset != address(0)) {
-            uint256 exchangeRate = IMToken(mAsset).exchangeRateStored();
+            uint256 exchangeRate = IMToken(mAsset).exchangeRate();
             price = (price * exchangeRate) / 1e18;
         }
     }

@@ -330,6 +330,12 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
         return ((convertToAssets(WAD) * balanceOf(account)) / WAD);
     }
 
+    /// @notice Get exchange rate
+    /// @dev Price router tries to calculate CToken price from this exchange rate
+    function exchangeRate() external view returns (uint256) {
+        return convertToAssets(WAD);
+    }
+
     /// @notice Get a snapshot of the account's balances,
     ///         and the cached exchange rate
     /// @dev This is used by lendtroller to more efficiently perform liquidity checks
@@ -695,7 +701,7 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
         uint256 shares,
         address receiver
     ) internal returns (uint256 assets) {
-        if (assets == 0 || assets > maxMint(receiver)) {
+        if (shares == 0 || shares > maxMint(receiver)) {
             _revert(VAULT_NOT_ACTIVE_SELECTOR);
         }
 

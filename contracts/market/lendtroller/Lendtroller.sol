@@ -1242,7 +1242,7 @@ contract Lendtroller is ILendtroller, ERC165 {
             data.debtTokenPrice *
             WAD) /
             (data.collateralTokenPrice *
-                IMToken(collateralToken).exchangeRateStored());
+                IMToken(collateralToken).exchangeRate());
 
         uint256 amountAdjusted = (amount *
             (10 ** IERC20(collateralToken).decimals())) /
