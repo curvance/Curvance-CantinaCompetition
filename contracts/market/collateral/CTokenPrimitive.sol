@@ -332,7 +332,7 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
 
     /// @notice Get exchange rate
     /// @dev Price router tries to calculate CToken price from this exchange rate
-    function exchangeRate() external view returns (uint256) {
+    function exchangeRateStored() external view returns (uint256) {
         return convertToAssets(WAD);
     }
 

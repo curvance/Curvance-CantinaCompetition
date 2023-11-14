@@ -50,7 +50,7 @@ interface IMToken {
 
     function lendtroller() external view returns (ILendtroller);
 
-    function exchangeRate() external view returns (uint256);
+    function exchangeRateStored() external view returns (uint256);
 
     function startMarket(address initializer) external returns (bool);
 

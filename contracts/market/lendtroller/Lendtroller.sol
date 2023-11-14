@@ -249,7 +249,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         }
 
         if (
-            accountData.collateralPosted + tokens >=
+            accountData.collateralPosted + tokens >
             IMToken(mToken).balanceOf(msg.sender)
         ) {
             revert Lendtroller__InsufficientCollateral();
@@ -1242,7 +1242,7 @@ contract Lendtroller is ILendtroller, ERC165 {
             data.debtTokenPrice *
             WAD) /
             (data.collateralTokenPrice *
-                IMToken(collateralToken).exchangeRate());
+                IMToken(collateralToken).exchangeRateStored());
 
         uint256 amountAdjusted = (amount *
             (10 ** IERC20(collateralToken).decimals())) /

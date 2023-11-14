@@ -132,8 +132,15 @@ contract TestCTokenForPendlePT is TestBaseMarket {
                 0,
                 200
             );
-            address[] memory markets = new address[](1);
-            markets[0] = address(cPendlePT);
+
+            address[] memory mTokens = new address[](1);
+            mTokens[0] = address(cPendlePT);
+            uint256[] memory caps = new uint256[](1);
+            caps[0] = 100 ether;
+            lendtroller.setCTokenCollateralCaps(mTokens, caps);
+
+            // address[] memory markets = new address[](1);
+            // markets[0] = address(cPendlePT);
             // vm.prank(user1);
             // lendtroller.enterMarkets(markets);
             // vm.prank(user2);
@@ -192,251 +199,253 @@ contract TestCTokenForPendlePT is TestBaseMarket {
         assertEq(cPendlePT.balanceOf(user1), 0);
     }
 
-    // function testDTokenMintRedeem() public {
-    //     _prepareUSDC(user1, 2e6);
+    function testDTokenMintRedeem() public {
+        _prepareUSDC(user1, 2e6);
 
-    //     // try mint()
-    //     vm.startPrank(user1);
-    //     usdc.approve(address(dUSDC), 1e6);
-    //     dUSDC.mint(1e6);
-    //     vm.stopPrank();
-    //     assertEq(dUSDC.balanceOf(user1), 1e6);
+        // try mint()
+        vm.startPrank(user1);
+        usdc.approve(address(dUSDC), 1e6);
+        dUSDC.mint(1e6);
+        vm.stopPrank();
+        assertEq(dUSDC.balanceOf(user1), 1e6);
 
-    //     // try mintFor()
-    //     vm.startPrank(user1);
-    //     usdc.approve(address(dUSDC), 1e6);
-    //     dUSDC.mintFor(1e6, user2);
-    //     vm.stopPrank();
-    //     assertEq(dUSDC.balanceOf(user1), 1e6);
-    //     assertEq(dUSDC.balanceOf(user2), 1e6);
+        // try mintFor()
+        vm.startPrank(user1);
+        usdc.approve(address(dUSDC), 1e6);
+        dUSDC.mintFor(1e6, user2);
+        vm.stopPrank();
+        assertEq(dUSDC.balanceOf(user1), 1e6);
+        assertEq(dUSDC.balanceOf(user2), 1e6);
 
-    //     // try redeem()
-    //     vm.startPrank(user1);
-    //     dUSDC.redeem(1e6);
-    //     vm.stopPrank();
-    //     assertEq(dUSDC.balanceOf(user1), 0);
-    // }
+        // try redeem()
+        vm.startPrank(user1);
+        dUSDC.redeem(1e6);
+        vm.stopPrank();
+        assertEq(dUSDC.balanceOf(user1), 0);
+    }
 
-    // function testDTokenBorrowRepay() public {
-    //     _preparePT(user1, 1 ether);
+    function testDTokenBorrowRepay() public {
+        _preparePT(user1, 1 ether);
 
-    //     // try mint()
-    //     vm.startPrank(user1);
-    //     pendlePT.approve(address(cPendlePT), 1 ether);
-    //     cPendlePT.mint(1 ether, user1);
-    //     vm.stopPrank();
-    //     AccountSnapshot memory snapshot = cPendlePT.getSnapshotPacked(user1);
-    //     // assertEq(snapshot.balance, 1 ether);
-    //     assertEq(snapshot.debtBalance, 0);
-    //     assertEq(snapshot.exchangeRate, 1 ether);
+        // try mint()
+        vm.startPrank(user1);
+        pendlePT.approve(address(cPendlePT), 1 ether);
+        cPendlePT.mint(1 ether, user1);
+        vm.stopPrank();
+        AccountSnapshot memory snapshot = cPendlePT.getSnapshotPacked(user1);
+        assertEq(cPendlePT.balanceOf(user1), 1 ether);
+        assertEq(snapshot.debtBalance, 0);
+        assertEq(snapshot.exchangeRate, 1 ether);
 
-    //     // try borrow()
-    //     vm.startPrank(user1);
-    //     dUSDC.borrow(500e6);
-    //     vm.stopPrank();
-    //     snapshot = dUSDC.getSnapshotPacked(user1);
-    //     // assertEq(snapshot.balance, 0);
-    //     assertEq(snapshot.debtBalance, 500e6);
-    //     assertEq(snapshot.exchangeRate, 1 ether);
+        vm.startPrank(user1);
+        lendtroller.postCollateral(user1, address(cPendlePT), 1 ether);
+        vm.stopPrank();
 
-    //     // try borrow()
-    //     skip(1200);
-    //     vm.startPrank(user1);
-    //     dUSDC.borrow(100e6);
-    //     vm.stopPrank();
-    //     snapshot = dUSDC.getSnapshotPacked(user1);
-    //     // assertEq(snapshot.balance, 0);
-    //     assertGt(snapshot.debtBalance, 600e6);
-    //     assertGt(snapshot.exchangeRate, 1 ether);
+        // try borrow()
+        vm.startPrank(user1);
+        dUSDC.borrow(500e6);
+        vm.stopPrank();
+        assertEq(dUSDC.balanceOf(user1), 0);
+        assertEq(dUSDC.debtBalanceStored(user1), 500e6);
+        assertEq(dUSDC.exchangeRateStored(), 1 ether);
 
-    //     // skip min hold period
-    //     skip(900);
+        // try borrow()
+        skip(1200);
+        vm.startPrank(user1);
+        dUSDC.borrow(100e6);
+        vm.stopPrank();
+        assertEq(dUSDC.balanceOf(user1), 0);
+        assertGt(dUSDC.debtBalanceStored(user1), 600e6);
+        assertGt(dUSDC.exchangeRateStored(), 1 ether);
 
-    //     // try partial repay
-    //     (, uint256 borrowBalanceBefore, uint256 exchangeRateBefore) = dUSDC
-    //         .getSnapshot(user1);
-    //     _prepareUSDC(user1, 200e6);
-    //     vm.startPrank(user1);
-    //     usdc.approve(address(dUSDC), 200e6);
-    //     dUSDC.repay(200e6);
-    //     vm.stopPrank();
-    //     snapshot = dUSDC.getSnapshotPacked(user1);
-    //     // assertEq(snapshot.balance, 0);
-    //     assertGt(snapshot.debtBalance, borrowBalanceBefore - 200e6);
-    //     assertGt(snapshot.exchangeRate, exchangeRateBefore);
+        // skip min hold period
+        skip(20 minutes);
 
-    //     // skip some period
-    //     skip(1200);
+        // try partial repay
+        (, uint256 borrowBalanceBefore, uint256 exchangeRateBefore) = dUSDC
+            .getSnapshot(user1);
+        _prepareUSDC(user1, 200e6);
+        vm.startPrank(user1);
+        usdc.approve(address(dUSDC), 200e6);
+        dUSDC.repay(200e6);
+        vm.stopPrank();
+        assertEq(dUSDC.balanceOf(user1), 0);
+        assertGt(dUSDC.debtBalanceStored(user1), borrowBalanceBefore - 200e6);
+        assertGt(dUSDC.exchangeRateStored(), exchangeRateBefore);
 
-    //     // try repay full
-    //     (, borrowBalanceBefore, exchangeRateBefore) = dUSDC.getSnapshot(user1);
-    //     _prepareUSDC(user1, borrowBalanceBefore);
-    //     vm.startPrank(user1);
-    //     usdc.approve(address(dUSDC), borrowBalanceBefore);
-    //     dUSDC.repay(borrowBalanceBefore);
-    //     vm.stopPrank();
-    //     snapshot = dUSDC.getSnapshotPacked(user1);
-    //     // assertEq(snapshot.balance, 0);
-    //     assertGt(snapshot.debtBalance, 0);
-    //     assertGt(snapshot.exchangeRate, exchangeRateBefore);
-    // }
+        // skip some period
+        skip(1200);
 
-    // function testCTokenRedeemOnBorrow() public {
-    //     _preparePT(user1, 1 ether);
+        // try repay full
+        (, borrowBalanceBefore, exchangeRateBefore) = dUSDC.getSnapshot(user1);
+        _prepareUSDC(user1, borrowBalanceBefore);
+        vm.startPrank(user1);
+        usdc.approve(address(dUSDC), borrowBalanceBefore);
+        dUSDC.repay(borrowBalanceBefore);
+        vm.stopPrank();
+        assertEq(dUSDC.balanceOf(user1), 0);
+        assertGt(dUSDC.debtBalanceStored(user1), 0);
+        assertGt(dUSDC.exchangeRateStored(), exchangeRateBefore);
+    }
 
-    //     // try mint()
-    //     vm.startPrank(user1);
-    //     pendlePT.approve(address(cPendlePT), 1 ether);
-    //     cPendlePT.mint(1 ether, user1);
-    //     vm.stopPrank();
+    function testCTokenRedeemOnBorrow() public {
+        _preparePT(user1, 1 ether);
 
-    //     // try borrow()
-    //     vm.startPrank(user1);
-    //     dUSDC.borrow(500e6);
-    //     vm.stopPrank();
+        // try mint()
+        vm.startPrank(user1);
+        pendlePT.approve(address(cPendlePT), 1 ether);
+        cPendlePT.mint(1 ether, user1);
+        vm.stopPrank();
 
-    //     // skip min hold period
-    //     skip(900);
+        vm.startPrank(user1);
+        lendtroller.postCollateral(user1, address(cPendlePT), 1 ether);
+        vm.stopPrank();
 
-    //     // can't redeem full
-    //     vm.startPrank(user1);
-    //     vm.expectRevert(
-    //         bytes4(keccak256("Lendtroller__InsufficientLiquidity()"))
-    //     );
-    //     cPendlePT.redeem(1 ether, user1, user1);
-    //     vm.stopPrank();
+        // try borrow()
+        vm.startPrank(user1);
+        dUSDC.borrow(500e6);
+        vm.stopPrank();
 
-    //     // can redeem partially
-    //     vm.startPrank(user1);
-    //     cPendlePT.redeem(0.2 ether, user1, user1);
-    //     vm.stopPrank();
-    //     AccountSnapshot memory snapshot = cPendlePT.getSnapshotPacked(user1);
-    //     // assertEq(snapshot.balance, 0.8 ether);
-    //     assertEq(snapshot.debtBalance, 0 ether);
-    //     assertEq(snapshot.exchangeRate, 1 ether);
-    // }
+        // skip min hold period
+        skip(20 minutes);
 
-    // function testDTokenRedeemOnBorrow() public {
-    //     // try mint()
-    //     _preparePT(user1, 1 ether);
-    //     vm.startPrank(user1);
-    //     pendlePT.approve(address(cPendlePT), 1 ether);
-    //     cPendlePT.mint(1 ether, user1);
-    //     vm.stopPrank();
+        // can't redeem full
+        vm.startPrank(user1);
+        vm.expectRevert(
+            bytes4(keccak256("Lendtroller__InsufficientLiquidity()"))
+        );
+        cPendlePT.redeem(1 ether, user1, user1);
+        vm.stopPrank();
 
-    //     // try mint()
-    //     _prepareUSDC(user1, 1000e6);
-    //     vm.startPrank(user1);
-    //     usdc.approve(address(dUSDC), 1000e6);
-    //     dUSDC.mint(1000e6);
-    //     vm.stopPrank();
+        // can redeem partially
+        vm.startPrank(user1);
+        cPendlePT.redeem(0.2 ether, user1, user1);
+        vm.stopPrank();
+        assertEq(cPendlePT.balanceOf(user1), 0.8 ether);
+        assertEq(cPendlePT.exchangeRateStored(), 1 ether);
+    }
 
-    //     // try borrow()
-    //     vm.startPrank(user1);
-    //     dUSDC.borrow(500e6);
-    //     vm.stopPrank();
+    function testDTokenRedeemOnBorrow() public {
+        // try mint()
+        _preparePT(user1, 1 ether);
+        vm.startPrank(user1);
+        pendlePT.approve(address(cPendlePT), 1 ether);
+        cPendlePT.mint(1 ether, user1);
+        vm.stopPrank();
 
-    //     // skip min hold period
-    //     skip(900);
+        vm.startPrank(user1);
+        lendtroller.postCollateral(user1, address(cPendlePT), 1 ether);
+        vm.stopPrank();
 
-    //     // can redeem fully
-    //     vm.startPrank(user1);
-    //     dUSDC.redeem(1000e6);
-    //     vm.stopPrank();
+        // try mint()
+        _prepareUSDC(user1, 1000e6);
+        vm.startPrank(user1);
+        usdc.approve(address(dUSDC), 1000e6);
+        dUSDC.mint(1000e6);
+        vm.stopPrank();
 
-    //     AccountSnapshot memory snapshot = cPendlePT.getSnapshotPacked(user1);
-    //     // assertEq(snapshot.balance, 1 ether);
-    //     assertEq(snapshot.debtBalance, 0);
-    //     assertEq(snapshot.exchangeRate, 1 ether);
+        // try borrow()
+        vm.startPrank(user1);
+        dUSDC.borrow(500e6);
+        vm.stopPrank();
 
-    //     snapshot = dUSDC.getSnapshotPacked(user1);
-    //     // assertEq(snapshot.balance, 0);
-    //     assertGt(snapshot.debtBalance, 500e6);
-    //     assertGt(snapshot.exchangeRate, 1 ether);
-    // }
+        // skip min hold period
+        skip(20 minutes);
 
-    // function testCTokenTransferOnBorrow() public {
-    //     _preparePT(user1, 1 ether);
+        // can redeem fully
+        vm.startPrank(user1);
+        dUSDC.redeem(1000e6);
+        vm.stopPrank();
 
-    //     // try mint()
-    //     vm.startPrank(user1);
-    //     pendlePT.approve(address(cPendlePT), 1 ether);
-    //     cPendlePT.mint(1 ether, user1);
-    //     vm.stopPrank();
+        assertEq(cPendlePT.balanceOf(user1), 1 ether);
+        assertEq(cPendlePT.exchangeRateStored(), 1 ether);
 
-    //     // try borrow()
-    //     vm.startPrank(user1);
-    //     dUSDC.borrow(500e6);
-    //     vm.stopPrank();
+        assertEq(dUSDC.balanceOf(user1), 0);
+        assertGt(dUSDC.debtBalanceStored(user1), 500e6);
+        assertGt(dUSDC.exchangeRateStored(), 1 ether);
+    }
 
-    //     // skip min hold period
-    //     skip(900);
+    function testCTokenTransferOnBorrow() public {
+        _preparePT(user1, 1 ether);
 
-    //     // can't transfer full
-    //     vm.startPrank(user1);
-    //     vm.expectRevert(
-    //         bytes4(keccak256("Lendtroller__InsufficientLiquidity()"))
-    //     );
-    //     cPendlePT.transfer(user2, 1 ether);
-    //     vm.stopPrank();
+        // try mint()
+        vm.startPrank(user1);
+        pendlePT.approve(address(cPendlePT), 1 ether);
+        cPendlePT.mint(1 ether, user1);
+        vm.stopPrank();
 
-    //     // can redeem partially
-    //     vm.startPrank(user1);
-    //     cPendlePT.transfer(user2, 0.2 ether);
-    //     vm.stopPrank();
-    //     AccountSnapshot memory snapshot = cPendlePT.getSnapshotPacked(user1);
-    //     // assertEq(snapshot.balance, 0.8 ether);
-    //     assertEq(snapshot.debtBalance, 0 ether);
-    //     assertEq(snapshot.exchangeRate, 1 ether);
-    //     snapshot = cPendlePT.getSnapshotPacked(user2);
-    //     // assertEq(snapshot.balance, 0.2 ether);
-    //     assertEq(snapshot.debtBalance, 0 ether);
-    //     assertEq(snapshot.exchangeRate, 1 ether);
-    // }
+        vm.startPrank(user1);
+        lendtroller.postCollateral(user1, address(cPendlePT), 1 ether);
+        vm.stopPrank();
 
-    // function testDTokenTransferOnBorrow() public {
-    //     // try mint()
-    //     _preparePT(user1, 1 ether);
-    //     vm.startPrank(user1);
-    //     pendlePT.approve(address(cPendlePT), 1 ether);
-    //     cPendlePT.mint(1 ether, user1);
-    //     vm.stopPrank();
+        // try borrow()
+        vm.startPrank(user1);
+        dUSDC.borrow(500e6);
+        vm.stopPrank();
 
-    //     // try mint()
-    //     _prepareUSDC(user1, 1000e6);
-    //     vm.startPrank(user1);
-    //     usdc.approve(address(dUSDC), 1000e6);
-    //     dUSDC.mint(1000e6);
-    //     vm.stopPrank();
+        // skip min hold period
+        skip(20 minutes);
 
-    //     // try borrow()
-    //     vm.startPrank(user1);
-    //     dUSDC.borrow(500e6);
-    //     vm.stopPrank();
+        // can't transfer full
+        vm.startPrank(user1);
+        vm.expectRevert(
+            bytes4(keccak256("Lendtroller__InsufficientLiquidity()"))
+        );
+        cPendlePT.transfer(user2, 1 ether);
+        vm.stopPrank();
 
-    //     // skip min hold period
-    //     skip(900);
+        // can redeem partially
+        vm.startPrank(user1);
+        cPendlePT.transfer(user2, 0.2 ether);
+        vm.stopPrank();
 
-    //     // try full transfer
-    //     vm.startPrank(user1);
-    //     dUSDC.transfer(user2, 1000e6);
-    //     vm.stopPrank();
+        assertEq(cPendlePT.balanceOf(user1), 0.8 ether);
+        assertEq(cPendlePT.balanceOf(user2), 0.2 ether);
+        assertEq(cPendlePT.exchangeRateStored(), 1 ether);
+    }
 
-    //     AccountSnapshot memory snapshot = cPendlePT.getSnapshotPacked(user1);
-    //     // assertEq(snapshot.balance, 1 ether);
-    //     assertEq(snapshot.debtBalance, 0);
-    //     assertEq(snapshot.exchangeRate, 1 ether);
+    function testDTokenTransferOnBorrow() public {
+        // try mint()
+        _preparePT(user1, 1 ether);
+        vm.startPrank(user1);
+        pendlePT.approve(address(cPendlePT), 1 ether);
+        cPendlePT.mint(1 ether, user1);
+        vm.stopPrank();
 
-    //     snapshot = dUSDC.getSnapshotPacked(user1);
-    //     // assertEq(snapshot.balance, 0);
-    //     assertEq(snapshot.debtBalance, 500e6);
-    //     assertEq(snapshot.exchangeRate, 1 ether);
+        vm.startPrank(user1);
+        lendtroller.postCollateral(user1, address(cPendlePT), 1 ether);
+        vm.stopPrank();
 
-    //     snapshot = dUSDC.getSnapshotPacked(user2);
-    //     // assertEq(snapshot.balance, 1000e6);
-    //     assertEq(snapshot.debtBalance, 0);
-    //     assertEq(snapshot.exchangeRate, 1 ether);
-    // }
+        // try mint()
+        _prepareUSDC(user1, 1000e6);
+        vm.startPrank(user1);
+        usdc.approve(address(dUSDC), 1000e6);
+        dUSDC.mint(1000e6);
+        vm.stopPrank();
+
+        // try borrow()
+        vm.startPrank(user1);
+        dUSDC.borrow(500e6);
+        vm.stopPrank();
+
+        // skip min hold period
+        skip(20 minutes);
+
+        // try full transfer
+        vm.startPrank(user1);
+        dUSDC.transfer(user2, 1000e6);
+        vm.stopPrank();
+
+        assertEq(cPendlePT.balanceOf(user1), 1 ether);
+        assertEq(cPendlePT.exchangeRateStored(), 1 ether);
+
+        assertEq(dUSDC.balanceOf(user1), 0);
+        assertEq(dUSDC.debtBalanceStored(user1), 500e6);
+
+        assertEq(dUSDC.balanceOf(user2), 1000e6);
+        assertEq(dUSDC.debtBalanceStored(user2), 0);
+        assertEq(dUSDC.exchangeRateStored(), 1 ether);
+    }
 
     // function testLiquidationExact() public {
     //     _preparePT(user1, 1 ether);
@@ -445,6 +454,10 @@ contract TestCTokenForPendlePT is TestBaseMarket {
     //     vm.startPrank(user1);
     //     pendlePT.approve(address(cPendlePT), 1 ether);
     //     cPendlePT.mint(1 ether, user1);
+    //     vm.stopPrank();
+
+    //     vm.startPrank(user1);
+    //     lendtroller.postCollateral(user1, address(cPendlePT), 1 ether);
     //     vm.stopPrank();
 
     //     // try borrow()
@@ -470,19 +483,16 @@ contract TestCTokenForPendlePT is TestBaseMarket {
     //     dUSDC.liquidateExact(user1, 250e6, IMToken(address(cPendlePT)));
     //     vm.stopPrank();
 
-    //     AccountSnapshot memory snapshot = cPendlePT.getSnapshotPacked(user1);
-    //     // assertApproxEqRel(
-    //     //     snapshot.balance,
-    //     //     1 ether - (500 ether * 1 ether) / pendlePTPrice,
-    //     //     0.01e18
-    //     // );
-    //     assertEq(snapshot.debtBalance, 0);
-    //     assertEq(snapshot.exchangeRate, 1 ether);
+    //     assertApproxEqRel(
+    //         cPendlePT.balanceOf(user1),
+    //         1 ether - (500 ether * 1 ether) / pendlePTPrice,
+    //         0.01e18
+    //     );
+    //     assertEq(cPendlePT.exchangeRateStored(), 1 ether);
 
-    //     snapshot = dUSDC.getSnapshotPacked(user1);
-    //     // assertEq(snapshot.balance, 0);
-    //     assertApproxEqRel(snapshot.debtBalance, 750e6, 0.01e18);
-    //     assertApproxEqRel(snapshot.exchangeRate, 1 ether, 0.01e18);
+    //     assertEq(dUSDC.balanceOf(user1), 0);
+    //     assertApproxEqRel(dUSDC.debtBalanceStored(user1), 750e6, 0.01e18);
+    //     assertApproxEqRel(dUSDC.exchangeRateStored(), 1 ether, 0.01e18);
     // }
 
     // function testLiquidation() public {
