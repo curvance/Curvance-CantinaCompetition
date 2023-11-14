@@ -27,7 +27,6 @@ import { GaugePool } from "contracts/gauge/GaugePool.sol";
 import { ERC20 } from "contracts/libraries/ERC20.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { ERC20 } from "contracts/libraries/ERC20.sol";
-import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 
 contract TestBaseMarket is TestBase {
     address internal constant _WETH_ADDRESS =
@@ -108,8 +107,8 @@ contract TestBaseMarket is TestBase {
     address public user2 = address(1000002);
     address public liquidator = address(1000003);
     uint256 public clPointMultiplier = 11000; // 110%
-    uint256 public voteBoostValue = 11000;
-    uint256 public lockBoostValue = 10000; // 100%
+    uint256 public voteBoostMultiplier = 11000; // 110%
+    uint256 public lockBoostMultiplier = 11000; // 110%
     uint256 public marketInterestFactor = 1000; // 10%
 
     Zapper public zapper;
@@ -146,8 +145,8 @@ contract TestBaseMarket is TestBase {
         priceRouter.addMTokenSupport(address(cBALRETH));
 
         // Set default collateral cap for cBALRETH at 100_000e18
-        IMToken[] memory tokens = new IMToken[](1);
-        tokens[0] = IMToken(address(cBALRETH));
+        address[] memory tokens = new address[](1);
+        tokens[0] = address(cBALRETH);
         uint256[] memory caps = new uint256[](1);
         caps[0] = 100_000e18;
         lendtroller.setCTokenCollateralCaps(tokens, caps);
@@ -162,7 +161,7 @@ contract TestBaseMarket is TestBase {
             address(0)
         );
         centralRegistry.transferEmergencyCouncil(address(this));
-        centralRegistry.setLockBoostValue(lockBoostValue);
+        centralRegistry.setLockBoostMultiplier(lockBoostMultiplier);
     }
 
     function _deployCVE() internal {
@@ -198,7 +197,7 @@ contract TestBaseMarket is TestBase {
             clPointMultiplier
         );
         centralRegistry.setVeCVE(address(veCVE));
-        centralRegistry.setVoteBoostValue(voteBoostValue);
+        centralRegistry.setVoteBoostMultiplier(voteBoostMultiplier);
         cveLocker.startLocker();
     }
 
