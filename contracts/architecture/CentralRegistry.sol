@@ -324,7 +324,7 @@ contract CentralRegistry is ERC165 {
     ///         unlock their veCVE early
     /// @dev Only callable on a 7 day delay or by the Emergency Council,
     ///      must be between 30% and 90%
-    function setEarlyUnlockPenaltyValue(
+    function setEarlyUnlockPenaltyMultiplier(
         uint256 value
     ) external onlyElevatedPermissions {
         if ((value > 9000 || value < 3000) && value != 0) {
@@ -337,7 +337,7 @@ contract CentralRegistry is ERC165 {
     ///         Continuous Lock mode
     /// @dev Only callable on a 7 day delay or by the Emergency Council,
     ///      must be a positive boost i.e. > 1.01 or greater multiplier
-    function setVoteBoostValue(
+    function setVoteBoostMultiplier(
         uint256 value
     ) external onlyElevatedPermissions {
         if (value < DENOMINATOR && value != 0) {
@@ -350,7 +350,7 @@ contract CentralRegistry is ERC165 {
     ///         to lock emissions at veCVE
     /// @dev Only callable on a 7 day delay or by the Emergency Council,
     ///      must be a positive boost i.e. > 1.01 or greater multiplier
-    function setLockBoostValue(
+    function setLockBoostMultiplier(
         uint256 value
     ) external onlyElevatedPermissions {
         if (value < DENOMINATOR && value != 0) {
