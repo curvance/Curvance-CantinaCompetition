@@ -3,7 +3,7 @@ pragma solidity ^0.8.13;
 
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { VelodromeStableCToken, IVeloGauge, IVeloRouter, IVeloPairFactory, ERC20 } from "contracts/deposits/adaptors/VelodromeStableCToken.sol";
+import { VelodromeStableCToken, IVeloGauge, IVeloRouter, IVeloPairFactory, ERC20 } from "contracts/market/collateral/VelodromeStableCToken.sol";
 
 import "tests/market/TestBaseMarket.sol";
 

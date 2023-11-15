@@ -5,7 +5,7 @@ import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IUniswapV3Router } from "contracts/interfaces/external/uniswap/IUniswapV3Router.sol";
 import { IPendleRouter, ApproxParams } from "contracts/interfaces/external/pendle/IPendleRouter.sol";
-import { PendleLPCToken, ERC20 } from "contracts/deposits/adaptors/PendleLPCToken.sol";
+import { PendleLPCToken, ERC20 } from "contracts/market/collateral/PendleLPCToken.sol";
 
 import "tests/market/TestBaseMarket.sol";
 

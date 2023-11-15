@@ -3,7 +3,7 @@ pragma solidity ^0.8.13;
 
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { Convex2PoolCToken, ERC20 } from "contracts/deposits/adaptors/Convex2PoolCToken.sol";
+import { Convex2PoolCToken, ERC20 } from "contracts/market/collateral/Convex2PoolCToken.sol";
 
 import "tests/market/TestBaseMarket.sol";
 
