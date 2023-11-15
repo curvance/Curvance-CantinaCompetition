@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.17;
+pragma solidity ^0.8.17;
 
 import { MockToken } from "contracts/mocks/MockToken.sol";
 import { MockV3Aggregator } from "contracts/mocks/MockV3Aggregator.sol";

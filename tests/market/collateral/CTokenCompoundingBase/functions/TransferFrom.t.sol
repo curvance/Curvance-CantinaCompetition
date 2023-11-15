@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.17;
+pragma solidity ^0.8.17;
 
 import { TestBaseCTokenCompoundingBase } from "../TestBaseCTokenCompoundingBase.sol";
 import { GaugeErrors } from "contracts/gauge/GaugeErrors.sol";
 import { CTokenCompoundingBase } from "contracts/market/collateral/CTokenCompoundingBase.sol";
 import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
 
-contract CTokenCompoundingBase_TransferFromTest is TestBaseCTokenCompoundingBase_ {
+contract CTokenCompoundingBase_TransferFromTest is TestBaseCTokenCompoundingBase {
     event Transfer(address indexed from, address indexed to, uint256 amount);
 
     function test_CTokenCompoundingBase_TransferFrom_fail_whenSenderAndReceiverAreSame()

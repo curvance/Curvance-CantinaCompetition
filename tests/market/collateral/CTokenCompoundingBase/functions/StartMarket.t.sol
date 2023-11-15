@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.17;
+pragma solidity ^0.8.17;
 
 import { TestBaseCTokenCompoundingBase } from "../TestBaseCTokenCompoundingBase.sol";
 import { CTokenCompoundingBase } from "contracts/market/collateral/CTokenCompoundingBase.sol";
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 
-contract CTokenCompoundingBase_StartMarketTest is TestBaseCTokenCompoundingBase_ {
+contract CTokenCompoundingBase_StartMarketTest is TestBaseCTokenCompoundingBase {
     function test_CTokenCompoundingBase_StartMarket_fail_whenCallerIsNotLendtroller() public {
         vm.expectRevert(CTokenCompoundingBase.CTokenCompoundingBase__Unauthorized.selector);
 
