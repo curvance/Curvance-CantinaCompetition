@@ -30,7 +30,7 @@ contract TestPriceRouter is TestBasePriceRouter {
 
         _deployCentralRegistry();
         _deployLendtroller();
-        _deployInterestRateModel();
+        _deployDynamicInterestRateModel();
 
         priceRouter = new PriceRouter(
             ICentralRegistry(address(centralRegistry)),
@@ -99,7 +99,7 @@ contract TestPriceRouter is TestBasePriceRouter {
             ICentralRegistry(address(centralRegistry)),
             USDC,
             address(lendtroller),
-            address(jumpRateModel)
+            address(InterestRateModel)
         );
         // support market
         deal(USDC, address(this), 200000e6);
