@@ -22,7 +22,7 @@ contract CTokenCompoundingBase_StartMarketTest is TestBaseCTokenCompoundingBase 
     }
 
     function test_CTokenCompoundingBase_StartMarket_fail_whenVaultIsNotActive() public {
-        vault.initiateShutdown();
+        cBALRETH.initiateShutdown();
 
         vm.prank(user1);
         SafeTransferLib.safeApprove(
