@@ -22,8 +22,7 @@ contract TestConvex2PoolCToken is TestBaseMarket {
         0x6B27D7BC63F1999D14fF9bA900069ee516669ee8;
     address public CONVEX_BOOSTER = 0xF403C135812408BFbE8713b5A23a04b3D48AAE31;
 
-    Convex2PoolCToken cToken;
-    CToken public cSTETH;
+    Convex2PoolCToken public cSTETH;
 
     /*
     LP token address	0xf5f5B97624542D72A9E06f04804Bf81baA15e2B4
@@ -37,7 +36,7 @@ contract TestConvex2PoolCToken is TestBaseMarket {
 
     fallback() external payable {}
 
-    // this is to use address(this) as mock CToken address
+    // this is to use address(this) as mock Convex2PoolCToken address
     function tokenType() external pure returns (uint256) {
         return 1;
     }
@@ -52,21 +51,15 @@ contract TestConvex2PoolCToken is TestBaseMarket {
         centralRegistry.addHarvester(address(this));
         centralRegistry.setFeeAccumulator(address(this));
 
-        cToken = new Convex2PoolCToken(
-            CONVEX_STETH_ETH_POOL,
+        cSTETH = new Convex2PoolCToken(
             ICentralRegistry(address(centralRegistry)),
+            address(CONVEX_STETH_ETH_POOL),
+            address(lendtroller),
             CONVEX_STETH_ETH_POOL_ID,
             CONVEX_STETH_ETH_REWARD,
             CONVEX_BOOSTER
         );
 
-        cSTETH = new CToken(
-            ICentralRegistry(address(centralRegistry)),
-            address(CONVEX_STETH_ETH_POOL),
-            address(lendtroller),
-            address(cToken)
-        );
-        cToken.initiateVault(address(cSTETH));
     }
 
     function testConvexStethEthPool() public {
@@ -74,13 +67,13 @@ contract TestConvex2PoolCToken is TestBaseMarket {
         deal(address(CONVEX_STETH_ETH_POOL), address(cSTETH), assets);
 
         vm.prank(address(cSTETH));
-        CONVEX_STETH_ETH_POOL.approve(address(cToken), assets);
+        CONVEX_STETH_ETH_POOL.approve(address(cSTETH), assets);
 
         vm.prank(address(cSTETH));
-        cToken.deposit(assets, address(this));
+        cSTETH.deposit(assets, address(this));
 
         assertEq(
-            cToken.totalAssets(),
+            cSTETH.totalAssets(),
             assets,
             "Total Assets should equal user deposit."
         );
@@ -89,14 +82,14 @@ contract TestConvex2PoolCToken is TestBaseMarket {
         vm.warp(block.timestamp + 3 days);
 
         // Mint some extra rewards for Vault.
-        deal(address(CRV), address(cToken), 100e18);
-        deal(address(CVX), address(cToken), 100e18);
-        deal(address(cToken), 1 ether);
+        deal(address(CRV), address(cSTETH), 100e18);
+        deal(address(CVX), address(cSTETH), 100e18);
+        deal(address(cSTETH), 1 ether);
 
-        cToken.harvest(abi.encode(new SwapperLib.Swap[](0)));
+        cSTETH.harvest(abi.encode(new SwapperLib.Swap[](0)));
 
         assertEq(
-            cToken.totalAssets(),
+            cSTETH.totalAssets(),
             assets,
             "Total Assets should equal user deposit."
         );
@@ -104,13 +97,13 @@ contract TestConvex2PoolCToken is TestBaseMarket {
         vm.warp(block.timestamp + 8 days);
 
         // Mint some extra rewards for Vault.
-        deal(address(CRV), address(cToken), 100e18);
-        deal(address(CVX), address(cToken), 100e18);
-        deal(address(cToken), 1 ether);
-        cToken.harvest(abi.encode(new SwapperLib.Swap[](0)));
+        deal(address(CRV), address(cSTETH), 100e18);
+        deal(address(CVX), address(cSTETH), 100e18);
+        deal(address(cSTETH), 1 ether);
+        cSTETH.harvest(abi.encode(new SwapperLib.Swap[](0)));
         vm.warp(block.timestamp + 7 days);
 
-        uint256 totalAssets = cToken.totalAssets();
+        uint256 totalAssets = cSTETH.totalAssets();
 
         assertGt(
             totalAssets,
@@ -119,6 +112,6 @@ contract TestConvex2PoolCToken is TestBaseMarket {
         );
 
         vm.prank(address(cSTETH));
-        cToken.withdraw(totalAssets, address(this), address(this));
+        cSTETH.withdraw(totalAssets, address(this), address(this));
     }
 }

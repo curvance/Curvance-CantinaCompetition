@@ -25,8 +25,7 @@ contract ConvexLPCollateral is TestBaseMarket {
         0x6B27D7BC63F1999D14fF9bA900069ee516669ee8;
     address public CONVEX_BOOSTER = 0xF403C135812408BFbE8713b5A23a04b3D48AAE31;
 
-    Convex2PoolCToken cToken;
-    CToken public cSTETH;
+    Convex2PoolCToken cSTETH;
     MockV3Aggregator public chainlinkStethUsd;
 
     function setUp() public override {
@@ -34,22 +33,15 @@ contract ConvexLPCollateral is TestBaseMarket {
 
         gaugePool.start(address(lendtroller));
 
-        cToken = new Convex2PoolCToken(
-            CONVEX_STETH_ETH_POOL,
+        cSTETH = new Convex2PoolCToken(
             ICentralRegistry(address(centralRegistry)),
+            address(CONVEX_STETH_ETH_POOL),
+            address(lendtroller),
             CONVEX_STETH_ETH_POOL_ID,
             CONVEX_STETH_ETH_REWARD,
             CONVEX_BOOSTER
         );
 
-        cSTETH = new CToken(
-            ICentralRegistry(address(centralRegistry)),
-            address(CONVEX_STETH_ETH_POOL),
-            address(lendtroller),
-            address(cToken)
-        );
-
-        cToken.initiateVault(address(cSTETH));
     }
 
     function testBorrowWithConvexLPCollateral() public {
@@ -140,21 +132,21 @@ contract ConvexLPCollateral is TestBaseMarket {
         IBaseRewardPool rewarder = IBaseRewardPool(CONVEX_STETH_ETH_REWARD);
 
         assertEq(
-            rewarder.balanceOf(address(cToken)),
+            rewarder.balanceOf(address(cSTETH)),
             42069,
             "Rewarder must have balance equal to the initial mint"
         );
-        assertEq(rewarder.earned(address(cToken)), 0);
+        assertEq(rewarder.earned(address(cSTETH)), 0);
 
         cSTETH.mint(1_000e18);
         lendtroller.postCollateral(user1, address(cSTETH), 1_000e18 - 1);
 
         assertEq(
-            rewarder.balanceOf(address(cToken)),
+            rewarder.balanceOf(address(cSTETH)),
             1000000000000000042069,
             "Convex LP Tokens must be deposited into Rewarder"
         );
-        assertEq(rewarder.earned(address(cToken)), 0);
+        assertEq(rewarder.earned(address(cSTETH)), 0);
         assertEq(cSTETH.balanceOf(user1), 1_000e18);
 
         dUSDC.borrow(10_000e6);

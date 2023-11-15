@@ -24,8 +24,7 @@ contract TestVelodromeVolatileCToken is TestBaseMarket {
     IVeloGauge public gauge =
         IVeloGauge(0xE7630c9560C59CCBf5EEd8f33dd0ccA2E67a3981);
 
-    VelodromeVolatileCToken cToken;
-    CToken public cWETHUSDC;
+    VelodromeVolatileCToken cWETHUSDC;
 
     receive() external payable {}
 
@@ -47,21 +46,15 @@ contract TestVelodromeVolatileCToken is TestBaseMarket {
         centralRegistry.setFeeAccumulator(address(this));
         centralRegistry.addSwapper(address(veloRouter));
 
-        cToken = new VelodromeVolatileCToken(
-            WETH_USDC,
+        cWETHUSDC = new VelodromeVolatileCToken(
             ICentralRegistry(address(centralRegistry)),
+            address(WETH_USDC),
+            address(lendtroller),
             gauge,
             veloPairFactory,
             veloRouter
         );
 
-        cWETHUSDC = new CToken(
-            ICentralRegistry(address(centralRegistry)),
-            address(WETH_USDC),
-            address(lendtroller),
-            address(cToken)
-        );
-        cToken.initiateVault(address(cWETHUSDC));
     }
 
     function testWethUsdcVolatilePool() public {
@@ -69,13 +62,13 @@ contract TestVelodromeVolatileCToken is TestBaseMarket {
         deal(address(WETH_USDC), address(cWETHUSDC), assets);
 
         vm.prank(address(cWETHUSDC));
-        WETH_USDC.approve(address(cToken), assets);
+        WETH_USDC.approve(address(cWETHUSDC), assets);
 
         vm.prank(address(cWETHUSDC));
-        cToken.deposit(assets, address(this));
+        cWETHUSDC.deposit(assets, address(this));
 
         assertEq(
-            cToken.totalAssets(),
+            cWETHUSDC.totalAssets(),
             assets,
             "Total Assets should equal user deposit."
         );
@@ -84,7 +77,7 @@ contract TestVelodromeVolatileCToken is TestBaseMarket {
         vm.warp(block.timestamp + 1 days);
 
         // Mint some extra rewards for Vault.
-        uint256 earned = gauge.earned(address(cToken));
+        uint256 earned = gauge.earned(address(cWETHUSDC));
         uint256 amount = (earned * 84) / 100;
         SwapperLib.Swap memory swapData;
         swapData.inputToken = address(VELO);
@@ -101,14 +94,14 @@ contract TestVelodromeVolatileCToken is TestBaseMarket {
             amount,
             0,
             routes,
-            address(cToken),
+            address(cWETHUSDC),
             type(uint256).max
         );
 
-        cToken.harvest(abi.encode(swapData));
+        cWETHUSDC.harvest(abi.encode(swapData));
 
         assertEq(
-            cToken.totalAssets(),
+            cWETHUSDC.totalAssets(),
             assets,
             "Total Assets should equal user deposit."
         );
@@ -116,7 +109,7 @@ contract TestVelodromeVolatileCToken is TestBaseMarket {
         vm.warp(block.timestamp + 8 days);
 
         // Mint some extra rewards for Vault.
-        earned = gauge.earned(address(cToken));
+        earned = gauge.earned(address(cWETHUSDC));
         amount = (earned * 84) / 100;
         swapData.inputAmount = amount;
         swapData.call = abi.encodeWithSelector(
@@ -124,13 +117,13 @@ contract TestVelodromeVolatileCToken is TestBaseMarket {
             amount,
             0,
             routes,
-            address(cToken),
+            address(cWETHUSDC),
             type(uint256).max
         );
-        cToken.harvest(abi.encode(swapData));
+        cWETHUSDC.harvest(abi.encode(swapData));
         vm.warp(block.timestamp + 7 days);
 
-        uint256 totalAssets = cToken.totalAssets();
+        uint256 totalAssets = cWETHUSDC.totalAssets();
 
         assertGt(
             totalAssets,
@@ -139,6 +132,6 @@ contract TestVelodromeVolatileCToken is TestBaseMarket {
         );
 
         vm.prank(address(cWETHUSDC));
-        cToken.withdraw(totalAssets, address(this), address(this));
+        cWETHUSDC.withdraw(totalAssets, address(this), address(this));
     }
 }

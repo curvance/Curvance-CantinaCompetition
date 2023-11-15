@@ -84,7 +84,7 @@ contract TestBaseMarket is TestBase {
     Lendtroller public lendtroller;
     PositionFolding public positionFolding;
     PriceRouter public priceRouter;
-    AuraCToken public cToken;
+    AuraCToken public auraCToken;
     DToken public dUSDC;
     DToken public dDAI;
     CTokenCompoundingBase public cBALRETH;
@@ -132,7 +132,6 @@ contract TestBaseMarket is TestBase {
         _deployChainlinkAdaptors();
         _deployGaugePool();
 
-        _deployAuraCToken();
         _deployLendtroller();
         _deployDynamicInterestRateModel();
         _deployDUSDC();
@@ -402,26 +401,17 @@ contract TestBaseMarket is TestBase {
             );
     }
 
-    function _deployAuraCToken() internal {
-        cToken = new AuraCToken(
-            ERC20(_BALANCER_WETH_RETH),
-            ICentralRegistry(address(centralRegistry)),
-            109,
-            _REWARDER,
-            _AURA_BOOSTER
-        );
-    }
-
     function _deployCBALRETH() internal returns (CTokenCompoundingBase) {
-        _deployAuraCToken();
 
         cBALRETH = new CTokenCompoundingBase(
             ICentralRegistry(address(centralRegistry)),
             _BALANCER_WETH_RETH,
             address(lendtroller),
-            address(cToken)
+            109,
+            _REWARDER,
+            _AURA_BOOSTER
         );
-        cToken.initiateVault(address(cBALRETH));
+        auraCToken.initiateVault(address(cBALRETH));
         return cBALRETH;
     }
 
