@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import { ConvexPositionVault } from "contracts/deposits/adaptors/Convex2PoolPositionVault.sol";
+import { Convex2PoolCToken } from "contracts/deposits/adaptors/Convex2PoolCToken.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.sol";
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
@@ -25,7 +25,7 @@ contract ConvexLPCollateral is TestBaseMarket {
         0x6B27D7BC63F1999D14fF9bA900069ee516669ee8;
     address public CONVEX_BOOSTER = 0xF403C135812408BFbE8713b5A23a04b3D48AAE31;
 
-    ConvexPositionVault positionVault;
+    Convex2PoolCToken cToken;
     CToken public cSTETH;
     MockV3Aggregator public chainlinkStethUsd;
 
@@ -34,7 +34,7 @@ contract ConvexLPCollateral is TestBaseMarket {
 
         gaugePool.start(address(lendtroller));
 
-        positionVault = new ConvexPositionVault(
+        cToken = new Convex2PoolCToken(
             CONVEX_STETH_ETH_POOL,
             ICentralRegistry(address(centralRegistry)),
             CONVEX_STETH_ETH_POOL_ID,
@@ -46,10 +46,10 @@ contract ConvexLPCollateral is TestBaseMarket {
             ICentralRegistry(address(centralRegistry)),
             address(CONVEX_STETH_ETH_POOL),
             address(lendtroller),
-            address(positionVault)
+            address(cToken)
         );
 
-        positionVault.initiateVault(address(cSTETH));
+        cToken.initiateVault(address(cSTETH));
     }
 
     function testBorrowWithConvexLPCollateral() public {
@@ -140,21 +140,21 @@ contract ConvexLPCollateral is TestBaseMarket {
         IBaseRewardPool rewarder = IBaseRewardPool(CONVEX_STETH_ETH_REWARD);
 
         assertEq(
-            rewarder.balanceOf(address(positionVault)),
+            rewarder.balanceOf(address(cToken)),
             42069,
             "Rewarder must have balance equal to the initial mint"
         );
-        assertEq(rewarder.earned(address(positionVault)), 0);
+        assertEq(rewarder.earned(address(cToken)), 0);
 
         cSTETH.mint(1_000e18);
         lendtroller.postCollateral(user1, address(cSTETH), 1_000e18 - 1);
 
         assertEq(
-            rewarder.balanceOf(address(positionVault)),
+            rewarder.balanceOf(address(cToken)),
             1000000000000000042069,
             "Convex LP Tokens must be deposited into Rewarder"
         );
-        assertEq(rewarder.earned(address(positionVault)), 0);
+        assertEq(rewarder.earned(address(cToken)), 0);
         assertEq(cSTETH.balanceOf(user1), 1_000e18);
 
         dUSDC.borrow(10_000e6);

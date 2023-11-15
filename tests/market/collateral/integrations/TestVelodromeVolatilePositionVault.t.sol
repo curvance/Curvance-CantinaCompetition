@@ -2,14 +2,12 @@
 pragma solidity ^0.8.13;
 
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
-import { ERC20 } from "contracts/deposits/adaptors/BasePositionVault.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { VelodromeVolatilePositionVault, IVeloGauge, IVeloRouter, IVeloPairFactory } from "contracts/deposits/adaptors/VelodromeVolatilePositionVault.sol";
-import { CToken } from "contracts/market/collateral/CToken.sol";
+import { VelodromeVolatileCToken, IVeloGauge, IVeloRouter, IVeloPairFactory, ERC20 } from "contracts/deposits/adaptors/VelodromeVolatileCToken.sol";
 
 import "tests/market/TestBaseMarket.sol";
 
-contract TestVelodromeVolatilePositionVault is TestBaseMarket {
+contract TestVelodromeVolatileCToken is TestBaseMarket {
     address internal constant _UNISWAP_V2_ROUTER =
         0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
 
@@ -26,7 +24,7 @@ contract TestVelodromeVolatilePositionVault is TestBaseMarket {
     IVeloGauge public gauge =
         IVeloGauge(0xE7630c9560C59CCBf5EEd8f33dd0ccA2E67a3981);
 
-    VelodromeVolatilePositionVault positionVault;
+    VelodromeVolatileCToken positionVault;
     CToken public cWETHUSDC;
 
     receive() external payable {}
@@ -49,7 +47,7 @@ contract TestVelodromeVolatilePositionVault is TestBaseMarket {
         centralRegistry.setFeeAccumulator(address(this));
         centralRegistry.addSwapper(address(veloRouter));
 
-        positionVault = new VelodromeVolatilePositionVault(
+        positionVault = new VelodromeVolatileCToken(
             WETH_USDC,
             ICentralRegistry(address(centralRegistry)),
             gauge,

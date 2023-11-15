@@ -2,16 +2,14 @@
 pragma solidity ^0.8.13;
 
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
-import { ERC20 } from "contracts/deposits/adaptors/BasePositionVault.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IUniswapV3Router } from "contracts/interfaces/external/uniswap/IUniswapV3Router.sol";
 import { IPendleRouter, ApproxParams } from "contracts/interfaces/external/pendle/IPendleRouter.sol";
-import { PendleLPPositionVault } from "contracts/deposits/adaptors/PendleLPPositionVault.sol";
-import { CToken } from "contracts/market/collateral/CToken.sol";
+import { PendleLPCToken, ERC20 } from "contracts/deposits/adaptors/PendleLPCToken.sol";
 
 import "tests/market/TestBaseMarket.sol";
 
-contract TestPendleLPPositionVault is TestBaseMarket {
+contract TestPendleLPCToken is TestBaseMarket {
     address private _UNISWAP_V3_SWAP_ROUTER =
         0xE592427A0AEce92De3Edee1F18E0157C05861564;
     IPendleRouter private _ROUTER =
@@ -22,7 +20,7 @@ contract TestPendleLPPositionVault is TestBaseMarket {
     ERC20 private _LP_STETH =
         ERC20(0xD0354D4e7bCf345fB117cabe41aCaDb724eccCa2); // PT-stETH-26DEC24/SY-stETH Market
 
-    PendleLPPositionVault positionVault;
+    PendleLPCToken positionVault;
     CToken public cSTETH;
 
     /*
@@ -52,7 +50,7 @@ contract TestPendleLPPositionVault is TestBaseMarket {
         centralRegistry.addHarvester(address(this));
         centralRegistry.setFeeAccumulator(address(this));
 
-        positionVault = new PendleLPPositionVault(
+        positionVault = new PendleLPCToken(
             _LP_STETH,
             ICentralRegistry(address(centralRegistry)),
             _ROUTER

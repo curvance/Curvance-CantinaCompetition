@@ -2,14 +2,12 @@
 pragma solidity ^0.8.13;
 
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
-import { ERC20 } from "contracts/deposits/adaptors/BasePositionVault.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { ConvexPositionVault } from "contracts/deposits/adaptors/Convex2PoolPositionVault.sol";
-import { CToken } from "contracts/market/collateral/CToken.sol";
+import { Convex3PoolCToken, ERC20 } from "contracts/deposits/adaptors/Convex3PoolCToken.sol";
 
 import "tests/market/TestBaseMarket.sol";
 
-contract TestConvexPositionVault is TestBaseMarket {
+contract TestConvex3PoolCToken is TestBaseMarket {
     address internal constant _UNISWAP_V2_ROUTER =
         0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
 
@@ -24,7 +22,7 @@ contract TestConvexPositionVault is TestBaseMarket {
         0x6B27D7BC63F1999D14fF9bA900069ee516669ee8;
     address public CONVEX_BOOSTER = 0xF403C135812408BFbE8713b5A23a04b3D48AAE31;
 
-    ConvexPositionVault positionVault;
+    Convex3PoolCToken positionVault;
     CToken public cSTETH;
 
     /*
@@ -54,7 +52,7 @@ contract TestConvexPositionVault is TestBaseMarket {
         centralRegistry.addHarvester(address(this));
         centralRegistry.setFeeAccumulator(address(this));
 
-        positionVault = new ConvexPositionVault(
+        positionVault = new Convex3PoolCToken(
             CONVEX_STETH_ETH_POOL,
             ICentralRegistry(address(centralRegistry)),
             CONVEX_STETH_ETH_POOL_ID,

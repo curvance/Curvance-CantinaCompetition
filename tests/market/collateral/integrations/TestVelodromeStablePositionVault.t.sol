@@ -2,14 +2,12 @@
 pragma solidity ^0.8.13;
 
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
-import { ERC20 } from "contracts/deposits/adaptors/BasePositionVault.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { VelodromeStablePositionVault, IVeloGauge, IVeloRouter, IVeloPairFactory } from "contracts/deposits/adaptors/VelodromeStablePositionVault.sol";
-import { CToken } from "contracts/market/collateral/CToken.sol";
+import { VelodromeStableCToken, IVeloGauge, IVeloRouter, IVeloPairFactory, ERC20 } from "contracts/deposits/adaptors/VelodromeStableCToken.sol";
 
 import "tests/market/TestBaseMarket.sol";
 
-contract TestVelodromeStablePositionVault is TestBaseMarket {
+contract TestVelodromeStableCToken is TestBaseMarket {
     address internal constant _UNISWAP_V2_ROUTER =
         0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
 
@@ -25,7 +23,7 @@ contract TestVelodromeStablePositionVault is TestBaseMarket {
         IVeloRouter(0xa062aE8A9c5e11aaA026fc2670B0D65cCc8B2858);
     address public optiSwap = 0x6108FeAA628155b073150F408D0b390eC3121834;
 
-    VelodromeStablePositionVault positionVault;
+    VelodromeStableCToken positionVault;
     CToken public cUSDCDAI;
 
     receive() external payable {}
@@ -48,7 +46,7 @@ contract TestVelodromeStablePositionVault is TestBaseMarket {
         centralRegistry.setFeeAccumulator(address(this));
         centralRegistry.addSwapper(address(veloRouter));
 
-        positionVault = new VelodromeStablePositionVault(
+        positionVault = new VelodromeStableCToken(
             USDC_DAI,
             ICentralRegistry(address(centralRegistry)),
             gauge,
