@@ -447,7 +447,55 @@ contract TestCTokenForPendlePT is TestBaseMarket {
         assertEq(dUSDC.exchangeRateStored(), 1 ether);
     }
 
-    // function testLiquidationExact() public {
+    function testLiquidationExact() public {
+        _preparePT(user1, 1 ether);
+
+        // try mint()
+        vm.startPrank(user1);
+        pendlePT.approve(address(cPendlePT), 1 ether);
+        cPendlePT.mint(1 ether, user1);
+        vm.stopPrank();
+
+        vm.startPrank(user1);
+        lendtroller.postCollateral(user1, address(cPendlePT), 1 ether);
+        vm.stopPrank();
+
+        // try borrow()
+        vm.startPrank(user1);
+        dUSDC.borrow(1000e6);
+        vm.stopPrank();
+
+        // skip min hold period
+        skip(20 minutes);
+
+        (uint256 pendlePTPrice, ) = priceRouter.getPrice(
+            address(pendlePT),
+            true,
+            true
+        );
+
+        mockUsdcFeed.setMockAnswer(200000000);
+
+        // try liquidate half
+        _prepareUSDC(user2, 250e6);
+        vm.startPrank(user2);
+        usdc.approve(address(dUSDC), 250e6);
+        dUSDC.liquidateExact(user1, 250e6, IMToken(address(cPendlePT)));
+        vm.stopPrank();
+
+        assertApproxEqRel(
+            cPendlePT.balanceOf(user1),
+            1 ether - (500 ether * 1 ether) / pendlePTPrice,
+            0.02e18
+        );
+        assertEq(cPendlePT.exchangeRateStored(), 1 ether);
+
+        assertEq(dUSDC.balanceOf(user1), 0);
+        assertApproxEqRel(dUSDC.debtBalanceStored(user1), 750e6, 0.01e18);
+        assertApproxEqRel(dUSDC.exchangeRateStored(), 1 ether, 0.01e18);
+    }
+
+    // function testLiquidationFull() public {
     //     _preparePT(user1, 1 ether);
 
     //     // try mint()
@@ -466,51 +514,7 @@ contract TestCTokenForPendlePT is TestBaseMarket {
     //     vm.stopPrank();
 
     //     // skip min hold period
-    //     skip(900);
-
-    //     (uint256 pendlePTPrice, ) = priceRouter.getPrice(
-    //         address(pendlePT),
-    //         true,
-    //         true
-    //     );
-
-    //     mockUsdcFeed.setMockAnswer(200000000);
-
-    //     // try liquidate half
-    //     _prepareUSDC(user2, 250e6);
-    //     vm.startPrank(user2);
-    //     usdc.approve(address(dUSDC), 250e6);
-    //     dUSDC.liquidateExact(user1, 250e6, IMToken(address(cPendlePT)));
-    //     vm.stopPrank();
-
-    //     assertApproxEqRel(
-    //         cPendlePT.balanceOf(user1),
-    //         1 ether - (500 ether * 1 ether) / pendlePTPrice,
-    //         0.01e18
-    //     );
-    //     assertEq(cPendlePT.exchangeRateStored(), 1 ether);
-
-    //     assertEq(dUSDC.balanceOf(user1), 0);
-    //     assertApproxEqRel(dUSDC.debtBalanceStored(user1), 750e6, 0.01e18);
-    //     assertApproxEqRel(dUSDC.exchangeRateStored(), 1 ether, 0.01e18);
-    // }
-
-    // function testLiquidation() public {
-    //     _preparePT(user1, 1 ether);
-
-    //     // try mint()
-    //     vm.startPrank(user1);
-    //     pendlePT.approve(address(cPendlePT), 1 ether);
-    //     cPendlePT.mint(1 ether, user1);
-    //     vm.stopPrank();
-
-    //     // try borrow()
-    //     vm.startPrank(user1);
-    //     dUSDC.borrow(1000e6);
-    //     vm.stopPrank();
-
-    //     // skip min hold period
-    //     skip(900);
+    //     skip(20 minutes);
 
     //     (uint256 pendlePTPrice, ) = priceRouter.getPrice(
     //         address(pendlePT),
@@ -528,16 +532,16 @@ contract TestCTokenForPendlePT is TestBaseMarket {
     //     vm.stopPrank();
 
     //     AccountSnapshot memory snapshot = cPendlePT.getSnapshotPacked(user1);
-    //     // assertApproxEqRel(
-    //     //     snapshot.balance,
-    //     //     1 ether - (1000 ether * 1 ether) / pendlePTPrice,
-    //     //     0.03e18
-    //     // );
+    //     assertApproxEqRel(
+    //         cPendlePT.balanceOf(user1),
+    //         1 ether - (1000 ether * 1 ether) / pendlePTPrice,
+    //         0.03e18
+    //     );
     //     assertEq(snapshot.debtBalance, 0);
     //     assertEq(snapshot.exchangeRate, 1 ether);
 
     //     snapshot = dUSDC.getSnapshotPacked(user1);
-    //     // assertEq(snapshot.balance, 0);
+    //     assertEq(dUSDC.balanceOf(user1), 0);
     //     assertApproxEqRel(snapshot.debtBalance, 500e6, 0.01e18);
     //     assertApproxEqRel(snapshot.exchangeRate, 1 ether, 0.01e18);
     // }

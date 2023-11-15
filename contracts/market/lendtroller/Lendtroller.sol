@@ -1557,21 +1557,12 @@ contract Lendtroller is ILendtroller, ERC165 {
         uint256 current,
         uint256 start,
         uint256 end
-    ) internal pure returns (uint256) {
-        if (current <= end) {
+    ) internal view returns (uint256) {
+        if (current > end) {
             return WAD;
         }
 
-        // We need to multiply by WAD so we do not lose precision
-        unchecked {
-            // Because slope values should be between [1, WAD],
-            // we know multiplying by WAD again will not cause overflows
-            current = current * WAD;
-            start = start * WAD;
-            end = end * WAD;
-        }
-
-        return (start - current) / (start - end);
+        return ((current - start) * WAD) / (end - start);
     }
 
     function _reduceCollateralIfNecessary(
