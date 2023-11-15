@@ -9,6 +9,11 @@ test = 'tests'
 # The artifact directory
 out = 'artifacts'
 
+# The fs permission
+fs_permissions = [
+  { access = "read-write", path = "./" },
+]
+
 # Sets the concrete solc version to use
 # This overrides the `auto_detect_solc` value
 solc_version = '0.8.17'
