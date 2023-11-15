@@ -36,7 +36,7 @@ contract TestConvex4PoolCToken is TestBaseMarket {
 
     fallback() external payable {}
 
-    // this is to use address(this) as mock CToken address
+    // this is to use address(this) as mock cToken address
     function tokenType() external pure returns (uint256) {
         return 1;
     }
@@ -51,7 +51,7 @@ contract TestConvex4PoolCToken is TestBaseMarket {
         centralRegistry.addHarvester(address(this));
         centralRegistry.setFeeAccumulator(address(this));
 
-        cSTETH = new CToken(
+        cSTETH = new Convex4PoolCToken(
             ICentralRegistry(address(centralRegistry)),
             address(CONVEX_STETH_ETH_POOL),
             address(lendtroller),

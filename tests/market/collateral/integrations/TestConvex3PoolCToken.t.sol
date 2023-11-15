@@ -36,7 +36,7 @@ contract TestConvex3PoolCToken is TestBaseMarket {
 
     fallback() external payable {}
 
-    // this is to use address(this) as mock Convex3PoolCToken address
+    // this is to use address(this) as mock cToken address
     function tokenType() external pure returns (uint256) {
         return 1;
     }

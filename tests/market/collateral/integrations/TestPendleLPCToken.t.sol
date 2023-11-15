@@ -34,7 +34,7 @@ contract TestPendleLPCToken is TestBaseMarket {
 
     fallback() external payable {}
 
-    // this is to use address(this) as mock CToken address
+    // this is to use address(this) as mock cToken address
     function tokenType() external pure returns (uint256) {
         return 1;
     }
