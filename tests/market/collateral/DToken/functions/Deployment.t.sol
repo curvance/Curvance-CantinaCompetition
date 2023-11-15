@@ -18,7 +18,7 @@ contract DTokenDeploymentTest is TestBaseDToken {
             ICentralRegistry(address(0)),
             _USDC_ADDRESS,
             address(lendtroller),
-            address(jumpRateModel)
+            address(InterestRateModel)
         );
     }
 
@@ -28,7 +28,7 @@ contract DTokenDeploymentTest is TestBaseDToken {
             ICentralRegistry(address(centralRegistry)),
             _USDC_ADDRESS,
             address(1),
-            address(jumpRateModel)
+            address(InterestRateModel)
         );
     }
 
@@ -59,7 +59,7 @@ contract DTokenDeploymentTest is TestBaseDToken {
             ICentralRegistry(address(centralRegistry)),
             _USDC_ADDRESS,
             address(lendtroller),
-            address(jumpRateModel)
+            address(InterestRateModel)
         );
     }
 
@@ -71,12 +71,12 @@ contract DTokenDeploymentTest is TestBaseDToken {
             ICentralRegistry(address(centralRegistry)),
             _USDC_ADDRESS,
             address(lendtroller),
-            address(jumpRateModel)
+            address(InterestRateModel)
         );
 
         assertEq(address(dUSDC.centralRegistry()), address(centralRegistry));
         assertEq(dUSDC.underlying(), _USDC_ADDRESS);
-        assertEq(address(dUSDC.interestRateModel()), address(jumpRateModel));
+        assertEq(address(dUSDC.interestRateModel()), address(InterestRateModel));
         assertEq(address(dUSDC.lendtroller()), address(lendtroller));
     }
 }
