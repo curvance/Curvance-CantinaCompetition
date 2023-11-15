@@ -3,14 +3,14 @@ pragma solidity 0.8.17;
 
 import { TestBaseCTokenCompoundingBase } from "../TestBaseCTokenCompoundingBase.sol";
 import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
-import { BasePositionVault } from "contracts/deposits/adaptors/BasePositionVault.sol";
+import { CTokenCompoundingBase } from "contracts/deposits/adaptors/CTokenCompoundingBase.sol";
 
 contract CTokenCompoundingBase_MintForTest is TestBaseCTokenCompoundingBase {
     event Transfer(address indexed from, address indexed to, uint256 amount);
 
     function test_CTokenCompoundingBase_MintFor_fail_whenTransferZeroAmount() public {
         vm.expectRevert(
-            BasePositionVault.BasePositionVault__ZeroShares.selector
+            CTokenCompoundingBase.CTokenCompoundingBase__ZeroShares.selector
         );
         cBALRETH.mintFor(0, user1);
     }

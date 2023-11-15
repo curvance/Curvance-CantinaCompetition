@@ -8,11 +8,10 @@ import { CVELocker } from "contracts/architecture/CVELocker.sol";
 import { CentralRegistry } from "contracts/architecture/CentralRegistry.sol";
 import { FeeAccumulator } from "contracts/architecture/FeeAccumulator.sol";
 import { ProtocolMessagingHub } from "contracts/architecture/ProtocolMessagingHub.sol";
-import { AuraPositionVault } from "contracts/deposits/adaptors/AuraPositionVault.sol";
 import { DToken } from "contracts/market/collateral/DToken.sol";
 import { CToken } from "contracts/market/collateral/CToken.sol";
-import { AuraPositionVault } from "contracts/deposits/adaptors/AuraPositionVault.sol";
-import { InterestRateModel } from "contracts/market/interestRates/InterestRateModel.sol";
+import { AuraCToken } from "contracts/market/collateral/AuraCToken.sol";
+import { DynamicInterestRateModel } from "contracts/market/interestRates/DynamicInterestRateModel.sol";
 import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
 import { Zapper } from "contracts/market/zapper/Zapper.sol";
 import { PositionFolding } from "contracts/market/leverage/PositionFolding.sol";
@@ -80,7 +79,7 @@ contract TestBaseMarket is TestBase {
     BalancerStablePoolAdaptor public balRETHAdapter;
     ChainlinkAdaptor public chainlinkAdaptor;
     ChainlinkAdaptor public dualChainlinkAdaptor;
-    InterestRateModel public jumpRateModel;
+    DynamicInterestRateModel public InterestRateModel;
     Lendtroller public lendtroller;
     PositionFolding public positionFolding;
     PriceRouter public priceRouter;
@@ -134,7 +133,7 @@ contract TestBaseMarket is TestBase {
 
         _deployAuraPositionVault();
         _deployLendtroller();
-        _deployInterestRateModel();
+        _deployDynamicInterestRateModel();
         _deployDUSDC();
         _deployDDAI();
         _deployCBALRETH();
@@ -373,8 +372,8 @@ contract TestBaseMarket is TestBase {
         );
     }
 
-    function _deployInterestRateModel() internal {
-        jumpRateModel = new InterestRateModel(
+    function _deployDynamicInterestRateModel() internal {
+        InterestRateModel = new DynamicInterestRateModel(
             ICentralRegistry(address(centralRegistry)),
             0.1e18,
             0.1e18,
@@ -398,7 +397,7 @@ contract TestBaseMarket is TestBase {
                 ICentralRegistry(address(centralRegistry)),
                 token,
                 address(lendtroller),
-                address(jumpRateModel)
+                address(InterestRateModel)
             );
     }
 

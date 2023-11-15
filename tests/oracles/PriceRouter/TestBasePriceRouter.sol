@@ -5,7 +5,7 @@ import { TestBase } from "tests/utils/TestBase.sol";
 import { CentralRegistry } from "contracts/architecture/CentralRegistry.sol";
 import { GaugePool } from "contracts/gauge/GaugePool.sol";
 import { DToken } from "contracts/market/collateral/DToken.sol";
-import { InterestRateModel } from "contracts/market/interestRates/InterestRateModel.sol";
+import { DynamicInterestRateModel } from "contracts/market/interestRates/DynamicInterestRateModel.sol";
 import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { ChainlinkAdaptor } from "contracts/oracles/adaptors/chainlink/ChainlinkAdaptor.sol";
@@ -25,7 +25,7 @@ contract TestBasePriceRouter is TestBase {
     CentralRegistry public centralRegistry;
     ChainlinkAdaptor public chainlinkAdaptor;
     ChainlinkAdaptor public dualChainlinkAdaptor;
-    InterestRateModel public jumpRateModel;
+    DynamicInterestRateModel public InterestRateModel;
     Lendtroller public lendtroller;
     PriceRouter public priceRouter;
     DToken public mUSDC;
@@ -39,7 +39,7 @@ contract TestBasePriceRouter is TestBase {
         _deployChainlinkAdaptors();
 
         _deployLendtroller();
-        _deployInterestRateModel();
+        _deployDynamicInterestRateModel();
         _deployMUSDC();
     }
 
@@ -99,8 +99,8 @@ contract TestBasePriceRouter is TestBase {
         centralRegistry.addLendingMarket(address(lendtroller), 0);
     }
 
-    function _deployInterestRateModel() internal {
-        jumpRateModel = new InterestRateModel(
+    function _deployDynamicInterestRateModel() internal {
+        InterestRateModel = new DynamicInterestRateModel(
             ICentralRegistry(address(centralRegistry)),
             0.1e18,
             0.1e18,
@@ -113,7 +113,7 @@ contract TestBasePriceRouter is TestBase {
             ICentralRegistry(address(centralRegistry)),
             _USDC_ADDRESS,
             address(lendtroller),
-            address(jumpRateModel)
+            address(InterestRateModel)
         );
     }
 

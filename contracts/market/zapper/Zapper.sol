@@ -8,7 +8,7 @@ import { BalancerLib } from "contracts/market/zapper/protocols/BalancerLib.sol";
 import { VelodromeLib } from "contracts/market/zapper/protocols/VelodromeLib.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
-import { CToken, IERC20 } from "contracts/market/collateral/CToken.sol";
+import { CTokenPrimitive, IERC20 } from "contracts/market/collateral/CTokenPrimitive.sol";
 import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 
 import { IWETH } from "contracts/interfaces/IWETH.sol";
@@ -396,7 +396,7 @@ contract Zapper is ReentrancyGuard {
         }
 
         // check cToken underlying
-        if (CToken(cToken).underlying() != lpToken) {
+        if (CTokenPrimitive(cToken).underlying() != lpToken) {
             revert Zapper__CTokenUnderlyingIsNotLPToken();
         }
 
@@ -406,7 +406,7 @@ contract Zapper is ReentrancyGuard {
         uint256 priorBalance = IERC20(cToken).balanceOf(recipient);
 
         // enter curvance
-        if (!CToken(cToken).mintFor(amount, recipient)) {
+        if (!CTokenPrimitive(cToken).mintFor(amount, recipient)) {
             revert Zapper__ExecutionError();
         }
 

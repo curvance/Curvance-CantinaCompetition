@@ -2,9 +2,8 @@
 pragma solidity 0.8.17;
 
 import { TestBaseCTokenCompoundingBase } from "../TestBaseCTokenCompoundingBase.sol";
-import { BasePositionVault } from "contracts/deposits/adaptors/BasePositionVault.sol";
-import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { CTokenCompoundingBase } from "contracts/market/collateral/CTokenCompoundingBase.sol";
+import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 
 contract CTokenCompoundingBase_StartMarketTest is TestBaseCTokenCompoundingBase_ {
     function test_CTokenCompoundingBase_StartMarket_fail_whenCallerIsNotLendtroller() public {
@@ -33,7 +32,7 @@ contract CTokenCompoundingBase_StartMarketTest is TestBaseCTokenCompoundingBase_
         );
 
         vm.expectRevert(
-            BasePositionVault.BasePositionVault__VaultNotActive.selector
+            CTokenCompoundingBase.CTokenCompoundingBase__VaultNotActive.selector
         );
 
         vm.prank(address(lendtroller));
