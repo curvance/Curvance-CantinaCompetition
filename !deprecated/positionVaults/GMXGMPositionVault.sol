@@ -43,6 +43,8 @@ contract GMXGMPositionVault is BasePositionVault {
     /// First element is long token and second one is short token.
     address[] public underlyingTokens;
 
+    mapping(bytes32 => bool) internal _isDepositKey;
+
     /// EVENTS ///
 
     event Harvest(uint256 yield);
@@ -52,6 +54,7 @@ contract GMXGMPositionVault is BasePositionVault {
     error GMXPositionVault__ChainIsNotSupported();
     error GMXPositionVault__MarketIsInvalid();
     error GMXPositionVault__CallerIsNotGMXDepositHandler();
+    error GMXPositionVault__InvalidDepositKey();
 
     /// CONSTRUCTOR ///
 
@@ -160,20 +163,23 @@ contract GMXGMPositionVault is BasePositionVault {
                 )
             );
 
-            IGMXExchangeRouter(GMX_EXCHANGE_ROUTER).multicall{
-                value: 0.01e18
-            }(data);
+            bytes[] memory results = IGMXExchangeRouter(GMX_EXCHANGE_ROUTER)
+                .multicall{ value: 0.01e18 }(data);
+            _isDepositKey[bytes32(results[3])] = true;
         }
     }
 
     // @dev Called by GMX deposit handler after a deposit execution.
     function afterDepositExecution(
-        bytes32,
+        bytes32 key,
         IGMXDeposit.Props memory,
         IGMXEventUtils.EventLogData memory eventData
     ) external {
         if (msg.sender != GMX_DEPOSIT_HANDLER) {
             revert GMXPositionVault__CallerIsNotGMXDepositHandler();
+        }
+        if (!_isDepositKey[key]) {
+            revert GMXPositionVault__InvalidDepositKey();
         }
 
         uint256 yield = eventData.uintItems.items[0].value;
@@ -187,6 +193,8 @@ contract GMXGMPositionVault is BasePositionVault {
             yield.mulDivDown(EXP_SCALE, _vestPeriod),
             block.timestamp + _vestPeriod
         );
+
+        delete _isDepositKey[key];
 
         emit Harvest(yield);
     }
