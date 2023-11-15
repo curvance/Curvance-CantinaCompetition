@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.17;
 
+import { MockToken } from "contracts/mocks/MockToken.sol";
+import { MockV3Aggregator } from "contracts/mocks/MockV3Aggregator.sol";
 import { TestBase } from "tests/utils/TestBase.sol";
+
 import { CVE } from "contracts/token/CVE.sol";
 import { VeCVE } from "contracts/token/VeCVE.sol";
 import { CVELocker } from "contracts/architecture/CVELocker.sol";
@@ -15,18 +18,16 @@ import { DynamicInterestRateModel } from "contracts/market/interestRates/Dynamic
 import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
 import { Zapper } from "contracts/market/zapper/Zapper.sol";
 import { PositionFolding } from "contracts/market/leverage/PositionFolding.sol";
-import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { ChainlinkAdaptor } from "contracts/oracles/adaptors/chainlink/ChainlinkAdaptor.sol";
 import { IVault } from "contracts/oracles/adaptors/balancer/BalancerBaseAdaptor.sol";
 import { BalancerStablePoolAdaptor } from "contracts/oracles/adaptors/balancer/BalancerStablePoolAdaptor.sol";
 import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
-import { MockToken } from "contracts/mocks/MockToken.sol";
-import { MockV3Aggregator } from "contracts/mocks/MockV3Aggregator.sol";
 import { GaugePool } from "contracts/gauge/GaugePool.sol";
 import { ERC20 } from "contracts/libraries/ERC20.sol";
+
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
-import { ERC20 } from "contracts/libraries/ERC20.sol";
 import { IMToken } from "contracts/interfaces/market/IMToken.sol";
+import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 contract TestBaseMarket is TestBase {
     address internal constant _WETH_ADDRESS =

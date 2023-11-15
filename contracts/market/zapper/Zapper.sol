@@ -8,10 +8,11 @@ import { BalancerLib } from "contracts/market/zapper/protocols/BalancerLib.sol";
 import { VelodromeLib } from "contracts/market/zapper/protocols/VelodromeLib.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
-import { CTokenPrimitive, IERC20 } from "contracts/market/collateral/CTokenPrimitive.sol";
+import { CTokenPrimitive } from "contracts/market/collateral/CTokenPrimitive.sol";
 import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 
 import { IWETH } from "contracts/interfaces/IWETH.sol";
+import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IVeloPair } from "contracts/interfaces/external/velodrome/IVeloPair.sol";
