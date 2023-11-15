@@ -1390,7 +1390,7 @@ contract Lendtroller is ILendtroller, ERC165 {
             return result;
         }
 
-        result.lFactor = _getNegativeCurveResult(accountDebt, accountCollateralA, accountCollateralB);
+        result.lFactor = _getNegativeCurveResult(accountDebt, accountCollateralB, accountCollateralA);
     }
 
     /// @notice Retrieves the prices and account data of multiple assets inside this market.
@@ -1480,16 +1480,7 @@ contract Lendtroller is ILendtroller, ERC165 {
             return WAD;
         }
 
-        // We need to multiply by WAD so we do not lose precision
-        unchecked {
-            // Because slope values should be between [1, WAD],
-            // we know multiplying by WAD again will not cause overflows
-            current = current * WAD;
-            start = start * WAD;
-            end = end * WAD;
-        }
-        
-        return (start - current) / (start - end);
+        return ((start - current) * WAD) / (start - end);
     }
 
     function _reduceCollateralIfNecessary(
