@@ -27,9 +27,9 @@ contract CTokenCompoundingBase_RescueTokenTest is TestBaseCTokenCompoundingBase 
         cBALRETH.rescueToken(address(0), balance + 1);
     }
 
-    function test_CTokenCompoundingBase_RescueToken_fail_whenTokenIsVaultToken() public {
+    function test_CTokenCompoundingBase_RescueToken_fail_whenTokenIsUnderlyingToken() public {
         vm.expectRevert(CTokenCompoundingBase.CTokenCompoundingBase__TransferError.selector);
-        cBALRETH.rescueToken(address(vault), 100);
+        cBALRETH.rescueToken(cBALRETH.asset(), 100);
     }
 
     function test_CTokenCompoundingBase_RescueToken_fail_whenTokenAmountExceedsBalance()
