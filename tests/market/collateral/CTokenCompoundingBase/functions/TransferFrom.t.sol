@@ -1,27 +1,27 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.17;
 
-import { TestBaseCToken } from "../TestBaseCToken.sol";
+import { TestBaseCTokenCompoundingBase } from "../TestBaseCTokenCompoundingBase.sol";
 import { GaugeErrors } from "contracts/gauge/GaugeErrors.sol";
-import { CToken } from "contracts/market/collateral/CToken.sol";
+import { CTokenCompoundingBase } from "contracts/market/collateral/CTokenCompoundingBase.sol";
 import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
 
-contract CTokenTransferFromTest is TestBaseCToken {
+contract CTokenCompoundingBase_TransferFromTest is TestBaseCTokenCompoundingBase_ {
     event Transfer(address indexed from, address indexed to, uint256 amount);
 
-    function test_cTokenTransferFrom_fail_whenSenderAndReceiverAreSame()
+    function test_CTokenCompoundingBase_TransferFrom_fail_whenSenderAndReceiverAreSame()
         public
     {
-        vm.expectRevert(CToken.CToken__TransferError.selector);
+        vm.expectRevert(CTokenCompoundingBase.CTokenCompoundingBase__TransferError.selector);
         cBALRETH.transferFrom(address(this), address(this), 1e18);
     }
 
-    function test_cTokenTransferFrom_fail_whenTransferZeroAmount() public {
+    function test_CTokenCompoundingBase_TransferFrom_fail_whenTransferZeroAmount() public {
         vm.expectRevert(GaugeErrors.InvalidAmount.selector);
         cBALRETH.transferFrom(address(this), user1, 0);
     }
 
-    function test_cTokenTransferFrom_fail_whenAllowanceIsInvalid() public {
+    function test_CTokenCompoundingBase_TransferFrom_fail_whenAllowanceIsInvalid() public {
         vm.expectRevert();
         cBALRETH.transferFrom(user1, address(this), 100);
     }
@@ -33,7 +33,7 @@ contract CTokenTransferFromTest is TestBaseCToken {
         cBALRETH.transferFrom(address(this), user1, 100);
     }
 
-    function test_cTokenTransferFrom_success() public {
+    function test_CTokenCompoundingBase_TransferFrom_success() public {
         cBALRETH.mint(100);
 
         uint256 balance = cBALRETH.balanceOf(address(this));

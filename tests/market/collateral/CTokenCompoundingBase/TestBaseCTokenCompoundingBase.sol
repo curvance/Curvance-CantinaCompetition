@@ -5,7 +5,7 @@ import { MockDataFeed } from "contracts/mocks/MockDataFeed.sol";
 import { TestBaseMarket } from "tests/market/TestBaseMarket.sol";
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 
-contract TestBaseCToken is TestBaseMarket {
+contract TestBaseCTokenCompoundingBase is TestBaseMarket {
     MockDataFeed public mockUsdcFeed;
     MockDataFeed public mockDaiFeed;
     MockDataFeed public mockWethFeed;

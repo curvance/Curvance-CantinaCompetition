@@ -20,7 +20,7 @@ contract TestPendleLPCToken is TestBaseMarket {
     ERC20 private _LP_STETH =
         ERC20(0xD0354D4e7bCf345fB117cabe41aCaDb724eccCa2); // PT-stETH-26DEC24/SY-stETH Market
 
-    PendleLPCToken positionVault;
+    PendleLPCToken cToken;
     CToken public cSTETH;
 
     /*
@@ -50,7 +50,7 @@ contract TestPendleLPCToken is TestBaseMarket {
         centralRegistry.addHarvester(address(this));
         centralRegistry.setFeeAccumulator(address(this));
 
-        positionVault = new PendleLPCToken(
+        cToken = new PendleLPCToken(
             _LP_STETH,
             ICentralRegistry(address(centralRegistry)),
             _ROUTER
@@ -60,9 +60,9 @@ contract TestPendleLPCToken is TestBaseMarket {
             ICentralRegistry(address(centralRegistry)),
             address(_LP_STETH),
             address(lendtroller),
-            address(positionVault)
+            address(cToken)
         );
-        positionVault.initiateVault(address(cSTETH));
+        cToken.initiateVault(address(cSTETH));
 
         centralRegistry.addSwapper(_UNISWAP_V3_SWAP_ROUTER);
     }
@@ -72,13 +72,13 @@ contract TestPendleLPCToken is TestBaseMarket {
         deal(address(_LP_STETH), address(cSTETH), assets);
 
         vm.prank(address(cSTETH));
-        _LP_STETH.approve(address(positionVault), assets);
+        _LP_STETH.approve(address(cToken), assets);
 
         vm.prank(address(cSTETH));
-        positionVault.deposit(assets, address(this));
+        cToken.deposit(assets, address(this));
 
         assertEq(
-            positionVault.totalAssets(),
+            cToken.totalAssets(),
             assets,
             "Total Assets should equal user deposit."
         );
@@ -87,7 +87,7 @@ contract TestPendleLPCToken is TestBaseMarket {
         vm.warp(block.timestamp + 3 days);
 
         // Mint some extra rewards for Vault.
-        deal(address(_PENDLE), address(positionVault), 100e18);
+        deal(address(_PENDLE), address(cToken), 100e18);
 
         uint256 rewardAmount = (100e18 * 84) / 100; // 16% for protocol harvest fee;
         SwapperLib.Swap[] memory swaps = new SwapperLib.Swap[](1);
@@ -99,7 +99,7 @@ contract TestPendleLPCToken is TestBaseMarket {
         params.tokenIn = _PENDLE;
         params.tokenOut = _WETH_ADDRESS;
         params.fee = 3000;
-        params.recipient = address(positionVault);
+        params.recipient = address(cToken);
         params.deadline = block.timestamp;
         params.amountIn = rewardAmount;
         params.amountOutMinimum = 0;
@@ -116,11 +116,11 @@ contract TestPendleLPCToken is TestBaseMarket {
         approx.maxIteration = 200;
         approx.eps = 1e18;
 
-        positionVault.harvest(abi.encode(swaps, 0, approx));
+        cToken.harvest(abi.encode(swaps, 0, approx));
 
         vm.warp(block.timestamp + 8 days);
 
-        uint256 totalAssets = positionVault.totalAssets();
+        uint256 totalAssets = cToken.totalAssets();
         assertGt(
             totalAssets,
             assets,
@@ -128,6 +128,6 @@ contract TestPendleLPCToken is TestBaseMarket {
         );
 
         vm.prank(address(cSTETH));
-        positionVault.withdraw(totalAssets, address(this), address(this));
+        cToken.withdraw(totalAssets, address(this), address(this));
     }
 }

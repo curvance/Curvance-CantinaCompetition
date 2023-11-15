@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.17;
 
-import { TestBaseCToken } from "../TestBaseCToken.sol";
-import { CToken } from "contracts/market/collateral/CToken.sol";
+import { TestBaseCTokenCompoundingBase } from "../TestBaseCTokenCompoundingBase.sol";
+import { CTokenCompoundingBase } from "contracts/market/collateral/CTokenCompoundingBase.sol";
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 
-contract CTokenRescueTokenTest is TestBaseCToken {
+contract CTokenCompoundingBase_RescueTokenTest is TestBaseCTokenCompoundingBase {
     function setUp() public override {
         super.setUp();
 
@@ -13,26 +13,26 @@ contract CTokenRescueTokenTest is TestBaseCToken {
         deal(_USDC_ADDRESS, address(cBALRETH), 1e6);
     }
 
-    function test_cTokenRescueToken_fail_whenCallerIsNotAuthorized() public {
+    function test_CTokenCompoundingBase_RescueToken_fail_whenCallerIsNotAuthorized() public {
         vm.prank(address(1));
 
-        vm.expectRevert(CToken.CToken__Unauthorized.selector);
+        vm.expectRevert(CTokenCompoundingBase.CTokenCompoundingBase__Unauthorized.selector);
         cBALRETH.rescueToken(_USDC_ADDRESS, 100);
     }
 
-    function test_cTokenRescueToken_fail_whenETHAmountExceedsBalance() public {
+    function test_CTokenCompoundingBase_RescueToken_fail_whenETHAmountExceedsBalance() public {
         uint256 balance = address(cBALRETH).balance;
 
         vm.expectRevert(SafeTransferLib.ETHTransferFailed.selector);
         cBALRETH.rescueToken(address(0), balance + 1);
     }
 
-    function test_cTokenRescueToken_fail_whenTokenIsVaultToken() public {
-        vm.expectRevert(CToken.CToken__TransferError.selector);
+    function test_CTokenCompoundingBase_RescueToken_fail_whenTokenIsVaultToken() public {
+        vm.expectRevert(CTokenCompoundingBase.CTokenCompoundingBase__TransferError.selector);
         cBALRETH.rescueToken(address(vault), 100);
     }
 
-    function test_cTokenRescueToken_fail_whenTokenAmountExceedsBalance()
+    function test_CTokenCompoundingBase_RescueToken_fail_whenTokenAmountExceedsBalance()
         public
     {
         uint256 balance = usdc.balanceOf(address(cBALRETH));
@@ -41,7 +41,7 @@ contract CTokenRescueTokenTest is TestBaseCToken {
         cBALRETH.rescueToken(_USDC_ADDRESS, balance + 1);
     }
 
-    function test_cTokenRescueToken_success() public {
+    function test_CTokenCompoundingBase_RescueToken_success() public {
         address daoOperator = centralRegistry.daoAddress();
 
         uint256 ethBalance = address(cBALRETH).balance;

@@ -2,19 +2,19 @@
 pragma solidity 0.8.17;
 
 import "forge-std/StdStorage.sol";
-import { TestBaseCToken } from "../TestBaseCToken.sol";
-import { CToken } from "contracts/market/collateral/CToken.sol";
+import { TestBaseCTokenCompoundingBase } from "../TestBaseCTokenCompoundingBase.sol";
+import { CTokenCompoundingBase } from "contracts/market/collateral/CTokenCompoundingBase.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 
-contract CTokenDeploymentTest is TestBaseCToken {
+contract CTokenCompoundingBase_DeploymentTest is TestBaseCTokenCompoundingBase {
     using stdStorage for StdStorage;
 
     event NewLendtroller(address oldLendtroller, address newLendtroller);
 
-    function test_cTokenDeployment_fail_whenCentralRegistryIsInvalid() public {
-        vm.expectRevert(CToken.CToken__InvalidCentralRegistry.selector);
-        new CToken(
+    function test_CTokenCompoundingBaseDeployment_fail_whenCentralRegistryIsInvalid() public {
+        vm.expectRevert(CTokenCompoundingBase.CTokenCompoundingBase__InvalidCentralRegistry.selector);
+        new CTokenCompoundingBase(
             ICentralRegistry(address(0)),
             _BALANCER_WETH_RETH,
             address(lendtroller),
@@ -22,9 +22,9 @@ contract CTokenDeploymentTest is TestBaseCToken {
         );
     }
 
-    function test_cTokenDeployment_fail_whenLendtrollerIsNotSet() public {
-        vm.expectRevert(CToken.CToken__LendtrollerIsNotLendingMarket.selector);
-        new CToken(
+    function test_CTokenCompoundingBaseDeployment_fail_whenLendtrollerIsNotSet() public {
+        vm.expectRevert(CTokenCompoundingBase.CTokenCompoundingBase__LendtrollerIsNotLendingMarket.selector);
+        new CTokenCompoundingBase(
             ICentralRegistry(address(centralRegistry)),
             _BALANCER_WETH_RETH,
             address(1),
@@ -32,7 +32,7 @@ contract CTokenDeploymentTest is TestBaseCToken {
         );
     }
 
-    function test_cTokenDeployment_fail_whenUnderlyingTotalSupplyExceedsMaximum()
+    function test_CTokenCompoundingBaseDeployment_fail_whenUnderlyingTotalSupplyExceedsMaximum()
         public
     {
         stdstore
@@ -41,9 +41,9 @@ contract CTokenDeploymentTest is TestBaseCToken {
             .checked_write(type(uint232).max);
 
         vm.expectRevert(
-            CToken.CToken__UnderlyingAssetTotalSupplyExceedsMaximum.selector
+            CTokenCompoundingBase.CTokenCompoundingBase__UnderlyingAssetTotalSupplyExceedsMaximum.selector
         );
-        new CToken(
+        new CTokenCompoundingBase(
             ICentralRegistry(address(centralRegistry)),
             _BALANCER_WETH_RETH,
             address(lendtroller),
@@ -51,11 +51,11 @@ contract CTokenDeploymentTest is TestBaseCToken {
         );
     }
 
-    function test_cTokenDeployment_success() public {
+    function test_CTokenCompoundingBaseDeployment_success() public {
         vm.expectEmit(true, true, true, true);
         emit NewLendtroller(address(0), address(lendtroller));
 
-        cBALRETH = new CToken(
+        cBALRETH = new CTokenCompoundingBase(
             ICentralRegistry(address(centralRegistry)),
             _BALANCER_WETH_RETH,
             address(lendtroller),

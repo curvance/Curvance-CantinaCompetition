@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.17;
 
-import { TestBaseCToken } from "../TestBaseCToken.sol";
+import { TestBaseCTokenCompoundingBase } from "../TestBaseCTokenCompoundingBase.sol";
 import { BasePositionVault } from "contracts/deposits/adaptors/BasePositionVault.sol";
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
-import { CToken } from "contracts/market/collateral/CToken.sol";
+import { CTokenCompoundingBase } from "contracts/market/collateral/CTokenCompoundingBase.sol";
 
-contract CTokenStartMarketTest is TestBaseCToken {
-    function test_cTokenStartMarket_fail_whenCallerIsNotLendtroller() public {
-        vm.expectRevert(CToken.CToken__Unauthorized.selector);
+contract CTokenCompoundingBase_StartMarketTest is TestBaseCTokenCompoundingBase_ {
+    function test_CTokenCompoundingBase_StartMarket_fail_whenCallerIsNotLendtroller() public {
+        vm.expectRevert(CTokenCompoundingBase.CTokenCompoundingBase__Unauthorized.selector);
 
         cBALRETH.startMarket(address(0));
     }
 
-    function test_cTokenStartMarket_fail_whenInitializerIsZeroAddress()
+    function test_CTokenCompoundingBase_StartMarket_fail_whenInitializerIsZeroAddress()
         public
     {
         vm.expectRevert(SafeTransferLib.TransferFromFailed.selector);
@@ -22,7 +22,7 @@ contract CTokenStartMarketTest is TestBaseCToken {
         cBALRETH.startMarket(address(0));
     }
 
-    function test_cTokenStartMarket_fail_whenVaultIsNotActive() public {
+    function test_CTokenCompoundingBase_StartMarket_fail_whenVaultIsNotActive() public {
         vault.initiateShutdown();
 
         vm.prank(user1);
@@ -40,7 +40,7 @@ contract CTokenStartMarketTest is TestBaseCToken {
         cBALRETH.startMarket(user1);
     }
 
-    function test_cTokenStartMarket_success() public {
+    function test_CTokenCompoundingBase_StartMarket_success() public {
         vm.prank(user1);
         SafeTransferLib.safeApprove(
             _BALANCER_WETH_RETH,

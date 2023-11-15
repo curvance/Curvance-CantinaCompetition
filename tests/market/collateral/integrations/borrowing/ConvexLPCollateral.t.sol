@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import { Convex2PoolCToken } from "contracts/deposits/adaptors/Convex2PoolCToken.sol";
+import { Convex2PoolCToken } from "contracts/market/collateral/Convex2PoolCToken.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.sol";
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";

@@ -1,28 +1,28 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.17;
 
-import { TestBaseCToken } from "../TestBaseCToken.sol";
+import { TestBaseCTokenCompoundingBase } from "../TestBaseCTokenCompoundingBase.sol";
 import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
 import { BasePositionVault } from "contracts/deposits/adaptors/BasePositionVault.sol";
 
-contract CTokenMintForTest is TestBaseCToken {
+contract CTokenCompoundingBase_MintForTest is TestBaseCTokenCompoundingBase {
     event Transfer(address indexed from, address indexed to, uint256 amount);
 
-    function test_cTokenMintFor_fail_whenTransferZeroAmount() public {
+    function test_CTokenCompoundingBase_MintFor_fail_whenTransferZeroAmount() public {
         vm.expectRevert(
             BasePositionVault.BasePositionVault__ZeroShares.selector
         );
         cBALRETH.mintFor(0, user1);
     }
 
-    function test_cTokenMintFor_fail_whenMintIsNotAllowed() public {
+    function test_CTokenCompoundingBase_MintFor_fail_whenMintIsNotAllowed() public {
         lendtroller.setMintPaused(address(cBALRETH), true);
 
         vm.expectRevert(Lendtroller.Lendtroller__Paused.selector);
         cBALRETH.mintFor(100, user1);
     }
 
-    function test_cTokenMintFor_success() public {
+    function test_CTokenCompoundingBase_MintFor_success() public {
         uint256 underlyingBalance = balRETH.balanceOf(address(this));
         uint256 balance = cBALRETH.balanceOf(address(this));
         uint256 user1Balance = cBALRETH.balanceOf(user1);

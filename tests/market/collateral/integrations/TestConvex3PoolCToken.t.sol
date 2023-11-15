@@ -22,7 +22,7 @@ contract TestConvex3PoolCToken is TestBaseMarket {
         0x6B27D7BC63F1999D14fF9bA900069ee516669ee8;
     address public CONVEX_BOOSTER = 0xF403C135812408BFbE8713b5A23a04b3D48AAE31;
 
-    Convex3PoolCToken positionVault;
+    Convex3PoolCToken cToken;
     CToken public cSTETH;
 
     /*
@@ -52,7 +52,7 @@ contract TestConvex3PoolCToken is TestBaseMarket {
         centralRegistry.addHarvester(address(this));
         centralRegistry.setFeeAccumulator(address(this));
 
-        positionVault = new Convex3PoolCToken(
+        cToken = new Convex3PoolCToken(
             CONVEX_STETH_ETH_POOL,
             ICentralRegistry(address(centralRegistry)),
             CONVEX_STETH_ETH_POOL_ID,
@@ -64,9 +64,9 @@ contract TestConvex3PoolCToken is TestBaseMarket {
             ICentralRegistry(address(centralRegistry)),
             address(CONVEX_STETH_ETH_POOL),
             address(lendtroller),
-            address(positionVault)
+            address(cToken)
         );
-        positionVault.initiateVault(address(cSTETH));
+        cToken.initiateVault(address(cSTETH));
     }
 
     function testConvexStethEthPool() public {
@@ -74,13 +74,13 @@ contract TestConvex3PoolCToken is TestBaseMarket {
         deal(address(CONVEX_STETH_ETH_POOL), address(cSTETH), assets);
 
         vm.prank(address(cSTETH));
-        CONVEX_STETH_ETH_POOL.approve(address(positionVault), assets);
+        CONVEX_STETH_ETH_POOL.approve(address(cToken), assets);
 
         vm.prank(address(cSTETH));
-        positionVault.deposit(assets, address(this));
+        cToken.deposit(assets, address(this));
 
         assertEq(
-            positionVault.totalAssets(),
+            cToken.totalAssets(),
             assets,
             "Total Assets should equal user deposit."
         );
@@ -89,14 +89,14 @@ contract TestConvex3PoolCToken is TestBaseMarket {
         vm.warp(block.timestamp + 3 days);
 
         // Mint some extra rewards for Vault.
-        deal(address(CRV), address(positionVault), 100e18);
-        deal(address(CVX), address(positionVault), 100e18);
-        deal(address(positionVault), 1 ether);
+        deal(address(CRV), address(cToken), 100e18);
+        deal(address(CVX), address(cToken), 100e18);
+        deal(address(cToken), 1 ether);
 
-        positionVault.harvest(abi.encode(new SwapperLib.Swap[](0)));
+        cToken.harvest(abi.encode(new SwapperLib.Swap[](0)));
 
         assertEq(
-            positionVault.totalAssets(),
+            cToken.totalAssets(),
             assets,
             "Total Assets should equal user deposit."
         );
@@ -104,13 +104,13 @@ contract TestConvex3PoolCToken is TestBaseMarket {
         vm.warp(block.timestamp + 8 days);
 
         // Mint some extra rewards for Vault.
-        deal(address(CRV), address(positionVault), 100e18);
-        deal(address(CVX), address(positionVault), 100e18);
-        deal(address(positionVault), 1 ether);
-        positionVault.harvest(abi.encode(new SwapperLib.Swap[](0)));
+        deal(address(CRV), address(cToken), 100e18);
+        deal(address(CVX), address(cToken), 100e18);
+        deal(address(cToken), 1 ether);
+        cToken.harvest(abi.encode(new SwapperLib.Swap[](0)));
         vm.warp(block.timestamp + 7 days);
 
-        uint256 totalAssets = positionVault.totalAssets();
+        uint256 totalAssets = cToken.totalAssets();
 
         assertGt(
             totalAssets,
@@ -119,6 +119,6 @@ contract TestConvex3PoolCToken is TestBaseMarket {
         );
 
         vm.prank(address(cSTETH));
-        positionVault.withdraw(totalAssets, address(this), address(this));
+        cToken.withdraw(totalAssets, address(this), address(this));
     }
 }
