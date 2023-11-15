@@ -3,7 +3,7 @@ pragma solidity 0.8.17;
 
 import { TestBaseCTokenCompoundingBase } from "../TestBaseCTokenCompoundingBase.sol";
 import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
-import { CTokenCompoundingBase } from "contracts/deposits/adaptors/CTokenCompoundingBase.sol";
+import { CTokenCompoundingBase } from "contracts/market/collateral/CTokenCompoundingBase.sol";
 
 contract CTokenCompoundingBase_MintForTest is TestBaseCTokenCompoundingBase {
     event Transfer(address indexed from, address indexed to, uint256 amount);

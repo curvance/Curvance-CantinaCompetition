@@ -9,7 +9,7 @@ import { CentralRegistry } from "contracts/architecture/CentralRegistry.sol";
 import { FeeAccumulator } from "contracts/architecture/FeeAccumulator.sol";
 import { ProtocolMessagingHub } from "contracts/architecture/ProtocolMessagingHub.sol";
 import { DToken } from "contracts/market/collateral/DToken.sol";
-import { CToken } from "contracts/market/collateral/CToken.sol";
+import { CTokenCompoundingBase } from "contracts/market/collateral/CTokenCompoundingBase.sol";
 import { AuraCToken } from "contracts/market/collateral/AuraCToken.sol";
 import { DynamicInterestRateModel } from "contracts/market/interestRates/DynamicInterestRateModel.sol";
 import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
@@ -86,7 +86,7 @@ contract TestBaseMarket is TestBase {
     AuraPositionVault public vault;
     DToken public dUSDC;
     DToken public dDAI;
-    CToken public cBALRETH;
+    CTokenCompoundingBase public cBALRETH;
     IERC20 public usdc;
     IERC20 public dai;
     IERC20 public balRETH;
@@ -411,10 +411,10 @@ contract TestBaseMarket is TestBase {
         );
     }
 
-    function _deployCBALRETH() internal returns (CToken) {
+    function _deployCBALRETH() internal returns (CTokenCompoundingBase) {
         _deployAuraPositionVault();
 
-        cBALRETH = new CToken(
+        cBALRETH = new CTokenCompoundingBase(
             ICentralRegistry(address(centralRegistry)),
             _BALANCER_WETH_RETH,
             address(lendtroller),
