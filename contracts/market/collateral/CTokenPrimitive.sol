@@ -673,7 +673,11 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
         uint256 assets,
         address receiver
     ) internal returns (uint256 shares) {
-        if (assets == 0 || assets > maxDeposit(receiver)) {
+        if (assets == 0) {
+            revert CTokenPrimitive__ZeroAssets();
+        }
+
+        if (assets > maxDeposit(receiver)) {
             _revert(VAULT_NOT_ACTIVE_SELECTOR);
         }
 
@@ -701,7 +705,11 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
         uint256 shares,
         address receiver
     ) internal returns (uint256 assets) {
-        if (shares == 0 || shares > maxMint(receiver)) {
+        if (shares == 0) {
+            revert CTokenPrimitive__ZeroShares();
+        }
+
+        if (shares > maxMint(receiver)) {
             _revert(VAULT_NOT_ACTIVE_SELECTOR);
         }
 

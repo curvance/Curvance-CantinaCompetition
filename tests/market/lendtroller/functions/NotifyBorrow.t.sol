@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.17;
+pragma solidity ^0.8.17;
 
 import { TestBaseLendtroller } from "../TestBaseLendtroller.sol";
 import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
@@ -14,14 +14,7 @@ contract NotifyBorrowTest is TestBaseLendtroller {
     }
 
     function test_notifyBorrow_fail_whenCallerIsNotMToken() public {
-        vm.expectRevert(Lendtroller.Lendtroller__TokenNotListed.selector);
-        lendtroller.notifyBorrow(address(dUSDC), user1);
-    }
-
-    function test_notifyBorrow_fail_whenCallerMTokenIsNotListed() public {
-        vm.prank(address(dDAI));
-
-        vm.expectRevert(Lendtroller.Lendtroller__TokenNotListed.selector);
+        vm.expectRevert(Lendtroller.Lendtroller__Unauthorized.selector);
         lendtroller.notifyBorrow(address(dUSDC), user1);
     }
 

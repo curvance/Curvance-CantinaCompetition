@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.17;
 
 import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.sol";
 import { MockDataFeed } from "contracts/mocks/MockDataFeed.sol";
-
 import "tests/market/TestBaseMarket.sol";
 
 contract TestCTokenReserves is TestBaseMarket {
@@ -59,51 +58,37 @@ contract TestCTokenReserves is TestBaseMarket {
         mockWethFeed.setMockUpdatedAt(block.timestamp);
         mockRethFeed.setMockUpdatedAt(block.timestamp);
 
-        // deploy dDAI
+        // setup dDAI
         {
-            _deployDDAI();
-            // support market
             _prepareDAI(owner, 200000e18);
             dai.approve(address(dDAI), 200000e18);
             lendtroller.listToken(address(dDAI));
             // add MToken support on price router
             priceRouter.addMTokenSupport(address(dDAI));
-            address[] memory markets = new address[](1);
-            markets[0] = address(dDAI);
-            vm.prank(user1);
-            // lendtroller.enterMarkets(markets);
-            vm.prank(user2);
-            // lendtroller.enterMarkets(markets);
         }
 
-        // deploy CBALRETH
+        // setup CBALRETH
         {
-            // deploy aura position vault
-            _deployCBALRETH();
-
             // support market
             _prepareBALRETH(owner, 1 ether);
             balRETH.approve(address(cBALRETH), 1 ether);
             lendtroller.listToken(address(cBALRETH));
-            // add MToken support on price router
-            priceRouter.addMTokenSupport(address(cBALRETH));
             // set collateral factor
             lendtroller.updateCollateralToken(
                 IMToken(address(cBALRETH)),
                 7000,
-                4000, // liquidate at 71%
+                4000,
                 3000,
                 200,
-                400,
+                200,
                 100,
-                200
+                1000
             );
-            address[] memory markets = new address[](1);
-            markets[0] = address(cBALRETH);
-            vm.prank(user1);
-            // lendtroller.enterMarkets(markets);
-            vm.prank(user2);
-            // lendtroller.enterMarkets(markets);
+            address[] memory tokens = new address[](1);
+            tokens[0] = address(cBALRETH);
+            uint256[] memory caps = new uint256[](1);
+            caps[0] = 100_000e18;
+            lendtroller.setCTokenCollateralCaps(tokens, caps);
         }
 
         // provide enough liquidity
@@ -122,7 +107,7 @@ contract TestCTokenReserves is TestBaseMarket {
         dDAI.mint(200000 ether);
         // mint cBALETH
         balRETH.approve(address(cBALRETH), 10 ether);
-        cBALRETH.mint(10 ether);
+        cBALRETH.mint(10 ether, liquidityProvider);
         vm.stopPrank();
     }
 
@@ -136,7 +121,8 @@ contract TestCTokenReserves is TestBaseMarket {
         // try mint()
         vm.startPrank(user1);
         balRETH.approve(address(cBALRETH), 1 ether);
-        cBALRETH.mint(1 ether);
+        cBALRETH.mint(1 ether, user1);
+        lendtroller.postCollateral(user1, address(cBALRETH), 1 ether - 1);
         vm.stopPrank();
 
         // try borrow()
@@ -145,18 +131,20 @@ contract TestCTokenReserves is TestBaseMarket {
         vm.stopPrank();
 
         // skip min hold period
-        skip(900);
+        skip(20 minutes);
 
         mockDaiFeed.setMockAnswer(200000000);
 
-        uint256 repayAmount = 250 ether;
-        (, uint256 liquidatedTokens, uint256 protocolTokens) = lendtroller
-            .canLiquidateWithExecution(
+        (
+            uint256 repayAmount,
+            uint256 liquidatedTokens,
+            uint256 protocolTokens
+        ) = lendtroller.canLiquidate(
                 address(dDAI),
                 address(cBALRETH),
                 user1,
-                repayAmount,
-                true
+                0,
+                false
             );
         uint256 daoBalanceBefore = cBALRETH.balanceOf(dao);
 
@@ -177,7 +165,7 @@ contract TestCTokenReserves is TestBaseMarket {
         assertEq(snapshot.exchangeRate, 1 ether);
 
         snapshot = dDAI.getSnapshotPacked(user1);
-        // assertEq(snapshot.balance, 0);
+        assertEq(cBALRETH.balanceOf(user1), 0);
         assertApproxEqRel(snapshot.debtBalance, 750 ether, 0.01e18);
         assertApproxEqRel(snapshot.exchangeRate, 1 ether, 0.01e18);
 
@@ -195,7 +183,7 @@ contract TestCTokenReserves is TestBaseMarket {
         uint256 daoBalanceBefore = balRETH.balanceOf(dao);
 
         vm.startPrank(dao);
-        cBALRETH.redeem(amountToRedeem);
+        cBALRETH.redeem(amountToRedeem, dao, dao);
         vm.stopPrank();
 
         assertEq(cBALRETH.balanceOf(dao), 0);

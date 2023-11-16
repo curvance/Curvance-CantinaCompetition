@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.17;
+pragma solidity ^0.8.17;
 
 import { TestBaseDToken } from "../TestBaseDToken.sol";
 import { GaugeErrors } from "contracts/gauge/GaugeErrors.sol";

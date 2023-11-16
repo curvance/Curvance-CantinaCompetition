@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.17;
+pragma solidity ^0.8.17;
 
 import { VelodromeVolatileLPAdaptor } from "contracts/oracles/adaptors/velodrome/VelodromeVolatileLPAdaptor.sol";
 import { ChainlinkAdaptor } from "contracts/oracles/adaptors/chainlink/ChainlinkAdaptor.sol";
@@ -30,7 +30,7 @@ contract TestPriceRouter is TestBasePriceRouter {
 
         _deployCentralRegistry();
         _deployLendtroller();
-        _deployInterestRateModel();
+        _deployDynamicInterestRateModel();
 
         priceRouter = new PriceRouter(
             ICentralRegistry(address(centralRegistry)),
@@ -99,7 +99,7 @@ contract TestPriceRouter is TestBasePriceRouter {
             ICentralRegistry(address(centralRegistry)),
             USDC,
             address(lendtroller),
-            address(jumpRateModel)
+            address(InterestRateModel)
         );
         // support market
         deal(USDC, address(this), 200000e6);

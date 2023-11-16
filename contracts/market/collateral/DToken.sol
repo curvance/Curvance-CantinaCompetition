@@ -6,7 +6,7 @@ import { ERC165 } from "contracts/libraries/ERC165.sol";
 import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 import { GaugePool } from "contracts/gauge/GaugePool.sol";
-import { InterestRateModel } from "contracts/market/interestRates/InterestRateModel.sol";
+import { DynamicInterestRateModel } from "contracts/market/interestRates/DynamicInterestRateModel.sol";
 
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
@@ -51,7 +51,7 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @notice Current lending market controller
     ILendtroller public lendtroller;
     /// @notice Current Interest Rate Model
-    InterestRateModel public interestRateModel;
+    DynamicInterestRateModel public interestRateModel;
     /// @notice Total outstanding borrows of underlying
     uint256 public totalBorrows;
     /// @notice Total protocol reserves of underlying
@@ -166,7 +166,7 @@ contract DToken is ERC165, ReentrancyGuard {
         marketExchangeRate.lastTimestampUpdated = uint32(block.timestamp);
         marketExchangeRate.exchangeRate = uint224(WAD);
 
-        _setInterestRateModel(interestRateModel_);
+        _setInterestRateModel(DynamicInterestRateModel(interestRateModel_));
 
         uint256 newInterestFactor = centralRegistry.protocolInterestFactor(
             lendtroller_
@@ -568,7 +568,7 @@ contract DToken is ERC165, ReentrancyGuard {
     ) external onlyElevatedPermissions {
         accrueInterest();
 
-        _setInterestRateModel(newInterestRateModel);
+        _setInterestRateModel(DynamicInterestRateModel(newInterestRateModel));
     }
 
     /// @notice Accrues interest and updates the interest factor
@@ -762,7 +762,7 @@ contract DToken is ERC165, ReentrancyGuard {
         uint256 exchangeRatePrior = borrowData.exchangeRate;
 
         // Calculate the current borrow interest rate
-        uint256 borrowRate = interestRateModel.getBorrowRate(
+        uint256 borrowRate = interestRateModel.getBorrowRateWithUpdate(
             getCash(),
             borrowsPrior,
             reservesPrior
@@ -827,22 +827,20 @@ contract DToken is ERC165, ReentrancyGuard {
 
     /// @notice Updates the interest rate model
     /// @param newInterestRateModel the new interest rate model to use
-    function _setInterestRateModel(address newInterestRateModel) internal {
+    function _setInterestRateModel(DynamicInterestRateModel newInterestRateModel) internal {
         // Ensure we are switching to an actual Interest Rate Model
-        InterestRateModel(newInterestRateModel).IS_INTEREST_RATE_MODEL();
+        newInterestRateModel.IS_INTEREST_RATE_MODEL();
 
         // Cache the current interest rate model to save gas
         address oldInterestRateModel = address(interestRateModel);
 
         // Set new interest rate model and compound rate
-        interestRateModel = InterestRateModel(newInterestRateModel);
-        marketExchangeRate.compoundRate = InterestRateModel(
-            newInterestRateModel
-        ).compoundRate();
+        interestRateModel = newInterestRateModel;
+        marketExchangeRate.compoundRate = newInterestRateModel.compoundRate();
 
         emit NewMarketInterestRateModel(
             oldInterestRateModel,
-            newInterestRateModel,
+            address(newInterestRateModel),
             marketExchangeRate.compoundRate
         );
     }

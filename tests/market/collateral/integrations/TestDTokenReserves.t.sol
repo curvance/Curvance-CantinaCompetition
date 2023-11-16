@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.17;
 
 import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.sol";
 import { MockDataFeed } from "contracts/mocks/MockDataFeed.sol";
-
 import "tests/market/TestBaseMarket.sol";
 
 contract TestDTokenReserves is TestBaseMarket {
@@ -61,32 +60,20 @@ contract TestDTokenReserves is TestBaseMarket {
 
         // deploy dDAI
         {
-            _deployDDAI();
             // support market
             _prepareDAI(owner, 200000e18);
             dai.approve(address(dDAI), 200000e18);
             lendtroller.listToken(address(dDAI));
             // add MToken support on price router
             priceRouter.addMTokenSupport(address(dDAI));
-            address[] memory markets = new address[](1);
-            markets[0] = address(dDAI);
-            vm.prank(user1);
-            // lendtroller.enterMarkets(markets);
-            vm.prank(user2);
-            // lendtroller.enterMarkets(markets);
         }
 
         // deploy CBALRETH
         {
-            // deploy aura position vault
-            _deployCBALRETH();
-
             // support market
             _prepareBALRETH(owner, 1 ether);
             balRETH.approve(address(cBALRETH), 1 ether);
             lendtroller.listToken(address(cBALRETH));
-            // add MToken support on price router
-            priceRouter.addMTokenSupport(address(cBALRETH));
             // set collateral factor
             lendtroller.updateCollateralToken(
                 IMToken(address(cBALRETH)),
@@ -94,16 +81,15 @@ contract TestDTokenReserves is TestBaseMarket {
                 1500,
                 1200,
                 200,
-                400,
+                200,
                 0,
-                200
+                1000
             );
-            address[] memory markets = new address[](1);
-            markets[0] = address(cBALRETH);
-            vm.prank(user1);
-            // lendtroller.enterMarkets(markets);
-            vm.prank(user2);
-            // lendtroller.enterMarkets(markets);
+            address[] memory tokens = new address[](1);
+            tokens[0] = address(cBALRETH);
+            uint256[] memory caps = new uint256[](1);
+            caps[0] = 100_000e18;
+            lendtroller.setCTokenCollateralCaps(tokens, caps);
         }
 
         centralRegistry.addSwapper(_UNISWAP_V2_ROUTER);
@@ -133,6 +119,7 @@ contract TestDTokenReserves is TestBaseMarket {
         vm.startPrank(user1);
         balRETH.approve(address(cBALRETH), 1 ether);
         cBALRETH.mint(1 ether);
+        lendtroller.postCollateral(user1, address(cBALRETH), 1 ether - 1);
         vm.stopPrank();
 
         // try borrow()
@@ -169,7 +156,7 @@ contract TestDTokenReserves is TestBaseMarket {
 
             // check borrower debt increased
             AccountSnapshot memory snapshot = dDAI.getSnapshotPacked(user1);
-            // assertEq(snapshot.balance, 0);
+            assertEq(dDAI.balanceOf(user1), 0);
             assertEq(snapshot.debtBalance, debtBalanceBefore + debt);
             assertGt(snapshot.exchangeRate, exchangeRateBefore);
 
@@ -210,7 +197,7 @@ contract TestDTokenReserves is TestBaseMarket {
 
             // check borrower debt increased
             AccountSnapshot memory snapshot = dDAI.getSnapshotPacked(user1);
-            // assertEq(snapshot.balance, 0);
+            assertEq(dDAI.balanceOf(user1), 0);
             assertApproxEqRel(
                 snapshot.debtBalance,
                 debtBalanceBefore + debt,

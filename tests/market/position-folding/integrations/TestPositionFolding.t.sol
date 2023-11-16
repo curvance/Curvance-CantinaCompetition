@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.17;
 
 import { MockDataFeed } from "contracts/mocks/MockDataFeed.sol";
 import { IMToken } from "contracts/interfaces/market/IMToken.sol";
@@ -75,53 +75,37 @@ contract TestPositionFolding is TestBaseMarket {
         mockWethFeed.setMockUpdatedAt(block.timestamp);
         mockRethFeed.setMockUpdatedAt(block.timestamp);
 
-        // deploy dDAI
+        // setup dDAI
         {
-            _deployDDAI();
-            // support market
             _prepareDAI(owner, 200000e18);
             dai.approve(address(dDAI), 200000e18);
             lendtroller.listToken(address(dDAI));
             // add MToken support on price router
             priceRouter.addMTokenSupport(address(dDAI));
-            vm.prank(user);
-            address[] memory markets = new address[](1);
-            markets[0] = address(dDAI);
-            // lendtroller.enterMarkets(markets);
-            // approve
-            vm.prank(user);
-            dai.approve(address(dDAI), 200000e18);
         }
 
-        // deploy CBALRETH
+        // setup CBALRETH
         {
-            // deploy aura position vault
-            _deployCBALRETH();
-
             // support market
             _prepareBALRETH(owner, 1 ether);
             balRETH.approve(address(cBALRETH), 1 ether);
             lendtroller.listToken(address(cBALRETH));
-            // add MToken support on price router
-            priceRouter.addMTokenSupport(address(cBALRETH));
             // set collateral factor
             lendtroller.updateCollateralToken(
                 IMToken(address(cBALRETH)),
-                5000,
-                1200,
-                1000,
+                7000,
+                4000, // liquidate at 71%
+                3000,
                 200,
-                400,
-                0,
-                200
+                200,
+                100,
+                1000
             );
-            vm.prank(user);
-            address[] memory markets = new address[](1);
-            markets[0] = address(cBALRETH);
-            // lendtroller.enterMarkets(markets);
-            // approve
-            vm.prank(user);
-            dai.approve(address(cBALRETH), 200000e18);
+            address[] memory tokens = new address[](1);
+            tokens[0] = address(cBALRETH);
+            uint256[] memory caps = new uint256[](1);
+            caps[0] = 100_000e18;
+            lendtroller.setCTokenCollateralCaps(tokens, caps);
         }
 
         // set position folding
@@ -150,7 +134,7 @@ contract TestPositionFolding is TestBaseMarket {
     }
 
     function provideEnoughLiquidityForLeverage() internal {
-        address liquidityProvider = address(new User());
+        address liquidityProvider = makeAddr("liquidityProvider");
         _prepareDAI(liquidityProvider, 200000e18);
         _prepareBALRETH(liquidityProvider, 10 ether);
         // mint dDAI
@@ -179,6 +163,7 @@ contract TestPositionFolding is TestBaseMarket {
 
         // mint
         assertTrue(cBALRETH.mint(1 ether));
+        lendtroller.postCollateral(user, address(cBALRETH), 1 ether - 1);
         assertEq(cBALRETH.balanceOf(user), 1 ether);
 
         uint256 balanceBeforeBorrow = dai.balanceOf(user);

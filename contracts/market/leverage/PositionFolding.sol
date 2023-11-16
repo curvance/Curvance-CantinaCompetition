@@ -6,7 +6,7 @@ import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
-import { CToken } from "contracts/market/collateral/CToken.sol";
+import { CTokenPrimitive } from "contracts/market/collateral/CTokenPrimitive.sol";
 import { DToken } from "contracts/market/collateral/DToken.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
@@ -22,7 +22,7 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
     struct LeverageStruct {
         DToken borrowToken;
         uint256 borrowAmount;
-        CToken collateralToken;
+        CTokenPrimitive collateralToken;
         // borrow underlying -> zapper input token
         SwapperLib.Swap swapData;
         // zapper input token -> enter curvance
@@ -30,7 +30,7 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
     }
 
     struct DeleverageStruct {
-        CToken collateralToken;
+        CTokenPrimitive collateralToken;
         uint256 collateralAmount;
         DToken borrowToken;
         // collateral underlying to a single token (can be borrow underlying)
@@ -161,7 +161,7 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
             revert PositionFolding__InvalidParam();
         }
 
-        address borrowUnderlying = CToken(borrowToken).underlying();
+        address borrowUnderlying = CTokenPrimitive(borrowToken).underlying();
 
         if (IERC20(borrowUnderlying).balanceOf(address(this)) < borrowAmount) {
             revert PositionFolding__InvalidAmount();
@@ -253,7 +253,8 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
         }
 
         // swap collateral token to borrow token
-        address collateralUnderlying = CToken(collateralToken).underlying();
+        address collateralUnderlying = CTokenPrimitive(collateralToken)
+            .underlying();
 
         if (
             IERC20(collateralUnderlying).balanceOf(address(this)) <
@@ -405,10 +406,10 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
 
     function _deleverage(DeleverageStruct memory deleverageData) internal {
         bytes memory params = abi.encode(deleverageData);
-        CToken collateralToken = deleverageData.collateralToken;
+        CTokenPrimitive collateralToken = deleverageData.collateralToken;
         uint256 collateralAmount = deleverageData.collateralAmount;
 
-        CToken(address(collateralToken)).redeemUnderlyingForPositionFolding(
+        CTokenPrimitive(address(collateralToken)).withdrawByPositionFolding(
             payable(msg.sender),
             collateralAmount,
             params

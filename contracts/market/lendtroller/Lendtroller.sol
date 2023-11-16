@@ -1461,8 +1461,8 @@ contract Lendtroller is ILendtroller, ERC165 {
 
         result.lFactor = _getNegativeCurveResult(
             accountDebt,
-            accountCollateralA,
-            accountCollateralB
+            accountCollateralB,
+            accountCollateralA
         );
     }
 
@@ -1558,11 +1558,11 @@ contract Lendtroller is ILendtroller, ERC165 {
         uint256 start,
         uint256 end
     ) internal view returns (uint256) {
-        if (current > end) {
+        if (current >= start) {
             return WAD;
         }
 
-        return ((current - start) * WAD) / (end - start);
+        return ((current - end) * WAD) / (start - end);
     }
 
     function _reduceCollateralIfNecessary(

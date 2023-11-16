@@ -84,6 +84,7 @@ contract BaseVolatileLPAdaptor is BaseOracleAdaptor {
         // Save values in Adaptor storage.
         adaptorData[asset] = data;
         isSupportedAsset[asset] = true;
+        return data;
     }
 
     /// @notice Removes a supported asset from the adaptor.
