@@ -70,7 +70,7 @@ contract CanRedeemTest is TestBaseLendtroller {
         deal(address(balRETH), user1, 10_000e18);
         vm.startPrank(user1);
         balRETH.approve(address(cBALRETH), 1_000e18);
-        cBALRETH.mint(1e18);
+        cBALRETH.deposit(1e18, user1);
         lendtroller.postCollateral(user1, address(cBALRETH), 9e17);
         vm.stopPrank();
 

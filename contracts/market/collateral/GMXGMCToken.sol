@@ -92,9 +92,7 @@ contract GMXGMPositionVault is CTokenCompoundingBase {
     /// @notice Harvests and compounds outstanding vault rewards and
     ///         vests pending rewards.
     /// @dev Only callable by Gelato Network bot.
-    function harvest(
-        bytes calldata
-    ) external override returns (uint256) {
+    function harvest(bytes calldata) external override returns (uint256) {
         if (!centralRegistry.isHarvester(msg.sender)) {
             revert GMXGMCToken__Unauthorized();
         }
@@ -108,7 +106,6 @@ contract GMXGMPositionVault is CTokenCompoundingBase {
 
         // Can only harvest once previous reward period is done.
         if (_checkVestStatus(_vaultData)) {
-
             _updateVestingPeriodIfNeeded();
 
             // Claim GM pool rewards.

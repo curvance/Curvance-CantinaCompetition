@@ -375,12 +375,12 @@ contract TestBaseMarket is TestBase {
     function _deployDynamicInterestRateModel() internal {
         InterestRateModel = new DynamicInterestRateModel(
             ICentralRegistry(address(centralRegistry)),
-            0.1e18,
-            0.1e18,
-            0.5e18,
-            0,
-            0,
-            0
+            0.1e18, // baseRatePerYear
+            0.1e18, // vertexRatePerYear
+            0.5e18, // vertexUtilizationStart
+            12 hours, // adjustmentRate
+            0.5e18, // adjustmentVelocity
+            0.1e18 // decayRate
         );
     }
 

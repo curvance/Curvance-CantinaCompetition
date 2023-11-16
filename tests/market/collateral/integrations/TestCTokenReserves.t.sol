@@ -107,7 +107,7 @@ contract TestCTokenReserves is TestBaseMarket {
         dDAI.mint(200000 ether);
         // mint cBALETH
         balRETH.approve(address(cBALRETH), 10 ether);
-        cBALRETH.mint(10 ether, liquidityProvider);
+        cBALRETH.deposit(10 ether, liquidityProvider);
         vm.stopPrank();
     }
 
@@ -121,7 +121,7 @@ contract TestCTokenReserves is TestBaseMarket {
         // try mint()
         vm.startPrank(user1);
         balRETH.approve(address(cBALRETH), 1 ether);
-        cBALRETH.mint(1 ether, user1);
+        cBALRETH.deposit(1 ether, user1);
         lendtroller.postCollateral(user1, address(cBALRETH), 1 ether - 1);
         vm.stopPrank();
 

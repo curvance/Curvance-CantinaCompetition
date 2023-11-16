@@ -1557,7 +1557,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         uint256 current,
         uint256 start,
         uint256 end
-    ) internal view returns (uint256) {
+    ) internal pure returns (uint256) {
         if (current >= start) {
             return WAD;
         }
