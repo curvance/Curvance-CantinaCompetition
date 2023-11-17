@@ -53,13 +53,12 @@ contract TestConvex2PoolCToken is TestBaseMarket {
 
         cSTETH = new Convex2PoolCToken(
             ICentralRegistry(address(centralRegistry)),
-            address(CONVEX_STETH_ETH_POOL),
+            CONVEX_STETH_ETH_POOL,
             address(lendtroller),
             CONVEX_STETH_ETH_POOL_ID,
             CONVEX_STETH_ETH_REWARD,
             CONVEX_BOOSTER
         );
-
     }
 
     function testConvexStethEthPool() public {

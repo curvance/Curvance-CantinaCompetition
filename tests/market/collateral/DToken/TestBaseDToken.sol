@@ -78,6 +78,6 @@ contract TestBaseDToken is TestBaseMarket {
             1000
         );
 
-        cBALRETH.mint(1e18);
+        cBALRETH.mint(1e18, address(this));
     }
 }

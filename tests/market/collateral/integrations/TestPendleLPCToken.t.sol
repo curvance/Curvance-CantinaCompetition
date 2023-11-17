@@ -51,7 +51,7 @@ contract TestPendleLPCToken is TestBaseMarket {
 
         cSTETH = new PendleLPCToken(
             ICentralRegistry(address(centralRegistry)),
-            address(_LP_STETH),
+            _LP_STETH,
             address(lendtroller),
             _ROUTER
         );

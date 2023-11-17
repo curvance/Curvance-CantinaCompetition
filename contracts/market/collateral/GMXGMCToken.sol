@@ -9,7 +9,7 @@ import { IGMXDeposit } from "contracts/interfaces/external/gmx/IGMXDeposit.sol";
 import { IGMXEventUtils } from "contracts/interfaces/external/gmx/IGMXEventUtils.sol";
 import { IGMXExchangeRouter } from "contracts/interfaces/external/gmx/IGMXExchangeRouter.sol";
 
-contract GMXGMPositionVault is CTokenCompoundingBase {
+contract GMXGMCToken is CTokenCompoundingBase {
     using Math for uint256;
 
     /// CONSTANTS ///

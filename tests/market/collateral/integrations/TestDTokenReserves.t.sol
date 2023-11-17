@@ -118,7 +118,7 @@ contract TestDTokenReserves is TestBaseMarket {
         // try mint()
         vm.startPrank(user1);
         balRETH.approve(address(cBALRETH), 1 ether);
-        cBALRETH.mint(1 ether);
+        cBALRETH.deposit(1 ether, user1);
         lendtroller.postCollateral(user1, address(cBALRETH), 1 ether - 1);
         vm.stopPrank();
 

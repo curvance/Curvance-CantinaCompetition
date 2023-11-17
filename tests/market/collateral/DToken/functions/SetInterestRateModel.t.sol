@@ -15,9 +15,12 @@ contract DTokenSetDynamicInterestRateModelTest is TestBaseDToken {
 
         newDynamicInterestRateModel = new DynamicInterestRateModel(
             ICentralRegistry(address(centralRegistry)),
-            0.1e18,
-            0.1e18,
-            0.5e18
+            1000, // baseRatePerYear
+            1000, // vertexRatePerYear
+            5000, // vertexUtilizationStart
+            12 hours, // adjustmentRate
+            5000, // adjustmentVelocity
+            100 // decayRate
         );
     }
 
@@ -27,20 +30,23 @@ contract DTokenSetDynamicInterestRateModelTest is TestBaseDToken {
         vm.prank(address(1));
 
         vm.expectRevert(DToken.DToken__Unauthorized.selector);
-        dUSDC.setDynamicInterestRateModel(address(newDynamicInterestRateModel));
+        dUSDC.setInterestRateModel(address(newDynamicInterestRateModel));
     }
 
     function test_dTokenSetDynamicInterestRateModel_fail_whenInvalidDynamicInterestRateModel()
         public
     {
         vm.expectRevert();
-        dUSDC.setDynamicInterestRateModel(address(1));
+        dUSDC.setInterestRateModel(address(1));
     }
 
     function test_dTokenSetDynamicInterestRateModel_success() public {
-        assertEq(address(dUSDC.interestRateModel()), address(InterestRateModel));
+        assertEq(
+            address(dUSDC.interestRateModel()),
+            address(InterestRateModel)
+        );
 
-        dUSDC.setDynamicInterestRateModel(address(newDynamicInterestRateModel));
+        dUSDC.setInterestRateModel(address(newDynamicInterestRateModel));
 
         assertEq(
             address(dUSDC.interestRateModel()),

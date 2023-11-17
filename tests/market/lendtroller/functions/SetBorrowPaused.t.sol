@@ -32,11 +32,7 @@ contract SetBorrowPausedTest is TestBaseLendtroller {
         assertEq(lendtroller.borrowPaused(address(dUSDC)), 2);
 
         vm.expectEmit(true, true, true, true, address(lendtroller));
-        emit TokenActionPaused(
-            address(dUSDC),
-            "Borrow Paused",
-            false
-        );
+        emit TokenActionPaused(address(dUSDC), "Borrow Paused", false);
 
         lendtroller.setBorrowPaused(address(dUSDC), false);
 

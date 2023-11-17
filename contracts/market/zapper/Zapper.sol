@@ -407,7 +407,7 @@ contract Zapper is ReentrancyGuard {
         uint256 priorBalance = IERC20(cToken).balanceOf(recipient);
 
         // enter curvance
-        if (!CTokenPrimitive(cToken).mintFor(amount, recipient)) {
+        if (CTokenPrimitive(cToken).deposit(amount, recipient) == 0) {
             revert Zapper__ExecutionError();
         }
 

@@ -35,13 +35,12 @@ contract ConvexLPCollateral is TestBaseMarket {
 
         cSTETH = new Convex2PoolCToken(
             ICentralRegistry(address(centralRegistry)),
-            address(CONVEX_STETH_ETH_POOL),
+            CONVEX_STETH_ETH_POOL,
             address(lendtroller),
             CONVEX_STETH_ETH_POOL_ID,
             CONVEX_STETH_ETH_REWARD,
             CONVEX_BOOSTER
         );
-
     }
 
     function testBorrowWithConvexLPCollateral() public {
@@ -138,7 +137,7 @@ contract ConvexLPCollateral is TestBaseMarket {
         );
         assertEq(rewarder.earned(address(cSTETH)), 0);
 
-        cSTETH.mint(1_000e18);
+        cSTETH.deposit(1_000e18, user1);
         lendtroller.postCollateral(user1, address(cSTETH), 1_000e18 - 1);
 
         assertEq(
@@ -229,7 +228,7 @@ contract ConvexLPCollateral is TestBaseMarket {
             block.timestamp,
             block.timestamp
         );
-        cSTETH.redeem(cSTETH.balanceOf(user1) - 1);
+        cSTETH.redeem(cSTETH.balanceOf(user1) - 1, user1, user1);
         vm.stopPrank();
 
         assertEq(cSTETH.balanceOf(user1), 1);

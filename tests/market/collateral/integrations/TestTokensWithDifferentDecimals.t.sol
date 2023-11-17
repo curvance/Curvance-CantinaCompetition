@@ -99,7 +99,7 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
         dUSDC.mint(200000e6);
         // mint cBALETH
         balRETH.approve(address(cBALRETH), 10 ether);
-        cBALRETH.mint(10 ether);
+        cBALRETH.deposit(10 ether, liquidityProvider);
         vm.stopPrank();
     }
 
@@ -114,7 +114,7 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
         // try mint()
         vm.startPrank(user1);
         balRETH.approve(address(cBALRETH), 1 ether);
-        cBALRETH.mint(1 ether);
+        cBALRETH.deposit(1 ether, user1);
         lendtroller.postCollateral(user1, address(cBALRETH), 1 ether - 1);
         vm.stopPrank();
         assertEq(cBALRETH.balanceOf(user1), 1 ether);
@@ -122,7 +122,7 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
         // try mintFor()
         vm.startPrank(user1);
         balRETH.approve(address(cBALRETH), 1 ether);
-        cBALRETH.mintFor(1 ether, user2);
+        cBALRETH.deposit(1 ether, user2);
         vm.stopPrank();
         assertEq(cBALRETH.balanceOf(user1), 1 ether);
         assertEq(cBALRETH.balanceOf(user2), 1 ether);
@@ -132,7 +132,7 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
 
         // try redeem()
         vm.startPrank(user1);
-        cBALRETH.redeem(1 ether);
+        cBALRETH.redeem(1 ether, user1, user1);
         vm.stopPrank();
         assertEq(cBALRETH.balanceOf(user1), 0);
     }
@@ -168,7 +168,7 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
         // try mint()
         vm.startPrank(user1);
         balRETH.approve(address(cBALRETH), 1 ether);
-        cBALRETH.mint(1 ether);
+        cBALRETH.deposit(1 ether, user1);
         lendtroller.postCollateral(user1, address(cBALRETH), 1 ether - 1);
         vm.stopPrank();
         AccountSnapshot memory snapshot = cBALRETH.getSnapshotPacked(user1);
@@ -233,7 +233,7 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
         // try mint()
         vm.startPrank(user1);
         balRETH.approve(address(cBALRETH), 1 ether);
-        cBALRETH.mint(1 ether);
+        cBALRETH.deposit(1 ether, user1);
         lendtroller.postCollateral(user1, address(cBALRETH), 1 ether - 1);
         vm.stopPrank();
 
@@ -250,12 +250,12 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
         vm.expectRevert(
             bytes4(keccak256("Lendtroller__InsufficientLiquidity()"))
         );
-        cBALRETH.redeem(1 ether);
+        cBALRETH.redeem(1 ether, user1, user1);
         vm.stopPrank();
 
         // can redeem partially
         vm.startPrank(user1);
-        cBALRETH.redeem(0.2 ether);
+        cBALRETH.redeem(0.2 ether, user1, user1);
         vm.stopPrank();
         AccountSnapshot memory snapshot = cBALRETH.getSnapshotPacked(user1);
         assertEq(cBALRETH.balanceOf(user1), 0.8 ether);
@@ -268,7 +268,7 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
         _prepareBALRETH(user1, 1 ether);
         vm.startPrank(user1);
         balRETH.approve(address(cBALRETH), 1 ether);
-        cBALRETH.mint(1 ether);
+        cBALRETH.deposit(1 ether, user1);
         lendtroller.postCollateral(user1, address(cBALRETH), 1 ether - 1);
         vm.stopPrank();
 
@@ -309,7 +309,7 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
         // try mint()
         vm.startPrank(user1);
         balRETH.approve(address(cBALRETH), 1 ether);
-        cBALRETH.mint(1 ether);
+        cBALRETH.deposit(1 ether, user1);
         lendtroller.postCollateral(user1, address(cBALRETH), 1 ether - 1);
         vm.stopPrank();
 
@@ -348,7 +348,7 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
         _prepareBALRETH(user1, 1 ether);
         vm.startPrank(user1);
         balRETH.approve(address(cBALRETH), 1 ether);
-        cBALRETH.mint(1 ether);
+        cBALRETH.deposit(1 ether, user1);
         lendtroller.postCollateral(user1, address(cBALRETH), 1 ether - 1);
         vm.stopPrank();
 
@@ -394,7 +394,7 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
         // try mint()
         vm.startPrank(user1);
         balRETH.approve(address(cBALRETH), 1 ether);
-        cBALRETH.mint(1 ether);
+        cBALRETH.deposit(1 ether, user1);
         lendtroller.postCollateral(user1, address(cBALRETH), 1 ether - 1);
         vm.stopPrank();
 
@@ -442,7 +442,7 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
         // try mint()
         vm.startPrank(user1);
         balRETH.approve(address(cBALRETH), 1 ether);
-        cBALRETH.mint(1 ether);
+        cBALRETH.deposit(1 ether, user1);
         lendtroller.postCollateral(user1, address(cBALRETH), 1 ether - 1);
         vm.stopPrank();
 

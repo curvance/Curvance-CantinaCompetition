@@ -5,6 +5,7 @@ import { MockDataFeed } from "contracts/mocks/MockDataFeed.sol";
 import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 import { IUniswapV2Router } from "contracts/interfaces/external/uniswap/IUniswapV2Router.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
+import { CTokenPrimitive } from "contracts/market/collateral/CTokenPrimitive.sol";
 
 import "tests/market/TestBaseMarket.sol";
 
@@ -143,7 +144,7 @@ contract TestPositionFolding is TestBaseMarket {
         dDAI.mint(200000 ether);
         // mint cBALETH
         balRETH.approve(address(cBALRETH), 10 ether);
-        cBALRETH.mint(10 ether);
+        cBALRETH.deposit(10 ether, liquidityProvider);
         vm.stopPrank();
     }
 
@@ -162,7 +163,7 @@ contract TestPositionFolding is TestBaseMarket {
         balRETH.approve(address(cBALRETH), 1 ether);
 
         // mint
-        assertTrue(cBALRETH.mint(1 ether));
+        assertGt(cBALRETH.deposit(1 ether, user1), 0);
         lendtroller.postCollateral(user, address(cBALRETH), 1 ether - 1);
         assertEq(cBALRETH.balanceOf(user), 1 ether);
 
@@ -179,7 +180,7 @@ contract TestPositionFolding is TestBaseMarket {
         PositionFolding.LeverageStruct memory leverageData;
         leverageData.borrowToken = dDAI;
         leverageData.borrowAmount = amountForLeverage;
-        leverageData.collateralToken = cBALRETH;
+        leverageData.collateralToken = CTokenPrimitive(address(cBALRETH));
         leverageData.swapData.inputToken = address(dai);
         leverageData.swapData.inputAmount = amountForLeverage;
         leverageData.swapData.outputToken = _WETH_ADDRESS;
@@ -248,7 +249,7 @@ contract TestPositionFolding is TestBaseMarket {
         (, uint256 dDAIBorrowedBefore, ) = dDAI.getSnapshot(user);
         (uint256 cBALRETHBalanceBefore, , ) = cBALRETH.getSnapshot(user);
 
-        deleverageData.collateralToken = cBALRETH;
+        deleverageData.collateralToken = CTokenPrimitive(address(cBALRETH));
         deleverageData.collateralAmount = 0.3 ether;
         deleverageData.borrowToken = dDAI;
 

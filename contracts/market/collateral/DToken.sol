@@ -263,8 +263,11 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @param account The account who will have their assets borrowed against
     /// @param recipient The account who will receive the borrowed assets
     /// @param amount The amount of the underlying asset to borrow
-    function borrowFor(address account, address recipient, uint256 amount) external nonReentrant {
-
+    function borrowFor(
+        address account,
+        address recipient,
+        uint256 amount
+    ) external nonReentrant {
         if (!isApprovedToBorrow[account][msg.sender]) {
             revert DToken__Unauthorized();
         }
@@ -347,18 +350,12 @@ contract DToken is ERC165, ReentrancyGuard {
         uint256 amount,
         IMToken collateralToken
     ) external nonReentrant {
-        _liquidate(
-            msg.sender,
-            account,
-            amount,
-            collateralToken,
-            true
-        );
+        _liquidate(msg.sender, account, amount, collateralToken, true);
     }
 
-    /// @notice Liquidates `account`'s as much collateral as possible by 
+    /// @notice Liquidates `account`'s as much collateral as possible by
     ///         repaying debt and transferring the liquidated collateral
-    ///         to the liquidator    
+    ///         to the liquidator
     /// @dev    Updates interest before executing the liquidation
     /// @param account The address of the account to be liquidated
     /// @param collateralToken The market in which to seize collateral from `account`
@@ -514,7 +511,10 @@ contract DToken is ERC165, ReentrancyGuard {
 
     /// @dev Sets `amount` as the allowance of `spender` over the caller's tokens.
     /// Emits a {Approval} event.
-    function setBorrowApproval(address spender, bool isApproved) external returns (bool) {
+    function setBorrowApproval(
+        address spender,
+        bool isApproved
+    ) external returns (bool) {
         isApprovedToBorrow[msg.sender][spender] = isApproved;
 
         emit BorrowApproval(msg.sender, spender, isApproved);
@@ -729,8 +729,7 @@ contract DToken is ERC165, ReentrancyGuard {
         // when we list a market we mint a small amount ourselves
         // exchangeRate = (totalCash + totalBorrows - totalReserves) / totalSupply
         return
-            ((getCash() + totalBorrows - totalReserves) * WAD) /
-            totalSupply;
+            ((getCash() + totalBorrows - totalReserves) * WAD) / totalSupply;
     }
 
     /// @inheritdoc ERC165
@@ -774,8 +773,7 @@ contract DToken is ERC165, ReentrancyGuard {
         uint256 interestCompounds = (block.timestamp -
             borrowData.lastTimestampUpdated) / borrowData.compoundRate;
         uint256 interestAccumulated = borrowRate * interestCompounds;
-        uint256 debtAccumulated = (interestAccumulated * borrowsPrior) /
-            WAD;
+        uint256 debtAccumulated = (interestAccumulated * borrowsPrior) / WAD;
         uint256 totalBorrowsNew = debtAccumulated + borrowsPrior;
         uint256 exchangeRateNew = ((interestAccumulated * exchangeRatePrior) /
             WAD) + exchangeRatePrior;
@@ -829,7 +827,9 @@ contract DToken is ERC165, ReentrancyGuard {
 
     /// @notice Updates the interest rate model
     /// @param newInterestRateModel the new interest rate model to use
-    function _setInterestRateModel(DynamicInterestRateModel newInterestRateModel) internal {
+    function _setInterestRateModel(
+        DynamicInterestRateModel newInterestRateModel
+    ) internal {
         // Ensure we are switching to an actual Interest Rate Model
         newInterestRateModel.IS_INTEREST_RATE_MODEL();
 
@@ -912,10 +912,14 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @param account The address of the account which is supplying the assets
     /// @param recipient The address of the account which will receive dToken
     /// @param amount The amount of the underlying asset to supply
-    function _mint(address account, address recipient, uint256 amount) internal {
+    function _mint(
+        address account,
+        address recipient,
+        uint256 amount
+    ) internal {
         // Accrue interest if necessary
         accrueInterest();
-        
+
         // Fail if mint not allowed
         lendtroller.canMint(address(this));
 
@@ -1083,7 +1087,6 @@ contract DToken is ERC165, ReentrancyGuard {
                 amount,
                 exactAmount
             );
-
 
         // calculates DTokens to repay for liquidation, reverts if repay fails
         uint256 repayAmount = _repay(liquidator, account, amount);

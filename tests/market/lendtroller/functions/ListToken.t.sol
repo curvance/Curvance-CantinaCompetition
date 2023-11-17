@@ -27,7 +27,8 @@ contract listTokenTest is TestBaseLendtroller {
     }
 
     function test_listToken_success() public {
-        (bool isListed, uint256 collRatio,,,,,,,) = lendtroller.tokenData(address(dUSDC));
+        (bool isListed, uint256 collRatio, , , , , , , ) = lendtroller
+            .tokenData(address(dUSDC));
         assertFalse(isListed);
         assertEq(collRatio, 0);
 
@@ -36,7 +37,9 @@ contract listTokenTest is TestBaseLendtroller {
 
         lendtroller.listToken(address(dUSDC));
 
-        (isListed, collRatio,,,,,,,) = lendtroller.tokenData(address(dUSDC));
+        (isListed, collRatio, , , , , , , ) = lendtroller.tokenData(
+            address(dUSDC)
+        );
         assertTrue(isListed);
         assertEq(collRatio, 0);
 

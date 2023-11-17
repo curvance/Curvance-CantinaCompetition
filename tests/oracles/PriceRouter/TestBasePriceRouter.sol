@@ -102,9 +102,12 @@ contract TestBasePriceRouter is TestBase {
     function _deployDynamicInterestRateModel() internal {
         InterestRateModel = new DynamicInterestRateModel(
             ICentralRegistry(address(centralRegistry)),
-            0.1e18,
-            0.1e18,
-            0.5e18
+            1000, // baseRatePerYear
+            1000, // vertexRatePerYear
+            5000, // vertexUtilizationStart
+            12 hours, // adjustmentRate
+            5000, // adjustmentVelocity
+            100 // decayRate
         );
     }
 

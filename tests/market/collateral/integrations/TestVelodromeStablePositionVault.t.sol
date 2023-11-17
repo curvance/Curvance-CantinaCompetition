@@ -47,13 +47,12 @@ contract TestVelodromeStableCToken is TestBaseMarket {
 
         cUSDCDAI = new VelodromeStableCToken(
             ICentralRegistry(address(centralRegistry)),
-            address(USDC_DAI),
+            USDC_DAI,
             address(lendtroller),
             gauge,
             veloPairFactory,
             veloRouter
         );
-
     }
 
     function testUsdcDaiStablePool() public {

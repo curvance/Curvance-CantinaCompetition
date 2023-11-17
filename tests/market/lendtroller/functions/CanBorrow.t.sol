@@ -104,7 +104,7 @@ contract CanBorrowTest is TestBaseLendtroller {
         deal(address(balRETH), user1, 10_000e18);
         vm.startPrank(user1);
         balRETH.approve(address(cBALRETH), 1_000e18);
-        cBALRETH.mint(1_000e18);
+        cBALRETH.deposit(1_000e18, user1);
         lendtroller.postCollateral(user1, address(cBALRETH), 999e18);
         vm.stopPrank();
 
@@ -112,11 +112,7 @@ contract CanBorrowTest is TestBaseLendtroller {
         lendtroller.canBorrow(address(dUSDC), user1, 100e6);
 
         AccountSnapshot memory snapshot = cBALRETH.getSnapshotPacked(user1);
-        (uint256 price, ) = priceRouter.getPrice(
-            cBALRETH.underlying(),
-            true,
-            true
-        );
+        (uint256 price, ) = priceRouter.getPrice(cBALRETH.asset(), true, true);
         (, uint256 collRatio, , , , , , , ) = lendtroller.tokenData(
             address(cBALRETH)
         );

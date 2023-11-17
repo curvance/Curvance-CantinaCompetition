@@ -48,13 +48,12 @@ contract TestVelodromeVolatileCToken is TestBaseMarket {
 
         cWETHUSDC = new VelodromeVolatileCToken(
             ICentralRegistry(address(centralRegistry)),
-            address(WETH_USDC),
+            WETH_USDC,
             address(lendtroller),
             gauge,
             veloPairFactory,
             veloRouter
         );
-
     }
 
     function testWethUsdcVolatilePool() public {
