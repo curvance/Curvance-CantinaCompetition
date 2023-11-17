@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-// import { ERC20 } from "contracts/deposits/adaptors/BasePositionVault.sol";
 // import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-// import { GMXGMPositionVault } from "contracts/deposits/adaptors/GMXGMPositionVault.sol";
-// import { CToken } from "contracts/market/collateral/CToken.sol";
+// import { GMXGMCToken, ERC20 } from "contracts/market/collateral/GMXGMCToken.sol";
 
 // import "tests/market/TestBaseMarket.sol";
 
@@ -30,7 +28,7 @@ pragma solidity ^0.8.17;
 //     }
 // }
 
-// contract TestGMXGMPositionVault is TestBaseMarket {
+// contract TestGMXGMCToken is TestBaseMarket {
 //     address private _ARB_SYS = 0x0000000000000000000000000000000000000064;
 //     address private _GMX_ORDER_KEEPER =
 //         0xf1e1B2F4796d984CCb8485d43db0c64B83C1FA6d;
@@ -42,7 +40,7 @@ pragma solidity ^0.8.17;
 //     // GM pool token holder.
 //     address private _DEPOSITOR = 0x7575d9eb64CCe0DF0D570Ae88049382Ce6fB0D31;
 
-//     GMXGMPositionVault public positionVault;
+//     GMXGMCToken public positionVault;
 //     CToken public cGM;
 //     ERC20 public gmxGM;
 
@@ -69,11 +67,11 @@ pragma solidity ^0.8.17;
 
 //         // Deploy position vault to the existing depositor address.
 //         deployCodeTo(
-//             "GMXGMPositionVault.sol",
+//             "GMXGMCToken.sol",
 //             abi.encode(gmxGM, ICentralRegistry(address(centralRegistry))),
 //             _DEPOSITOR
 //         );
-//         positionVault = GMXGMPositionVault(payable(_DEPOSITOR));
+//         positionVault = GMXGMCToken(payable(_DEPOSITOR));
 
 //         cGM = new CToken(
 //             ICentralRegistry(address(centralRegistry)),

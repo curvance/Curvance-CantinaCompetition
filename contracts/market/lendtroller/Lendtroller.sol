@@ -1243,17 +1243,15 @@ contract Lendtroller is ILendtroller, ERC165 {
             .collateralPosted;
         if (liquidateExact) {
             if (amount > maxAmount || liquidatedTokens > collateralAvailable) {
-                // Make sure that the  liquidation limit and collateral posted >= amount
+                // Make sure that the liquidation limit is within cFactor,
+                // and posted collateral constraints.
                 _revert(_INVALID_PARAMETER_SELECTOR);
             }
         } else {
             if (liquidatedTokens > collateralAvailable) {
-                amount =
-                    (amount * cToken.accountData[account].collateralPosted) /
-                    liquidatedTokens;
-                liquidatedTokens = cToken
-                    .accountData[account]
-                    .collateralPosted;
+                // Reduce `amount` liquidated to only their posted collateral.
+                amount = (amount * collateralAvailable) / liquidatedTokens;
+                liquidatedTokens = collateralAvailable;
             }
         }
 
