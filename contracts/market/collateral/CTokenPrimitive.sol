@@ -414,6 +414,7 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
         return address(_asset);
     }
 
+    /// @notice Returns the address of the underlying asset
     function underlying() external view returns (address) {
         return address(_asset);
     }

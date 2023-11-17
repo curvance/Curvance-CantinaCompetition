@@ -511,6 +511,11 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
         return address(_asset);
     }
 
+    /// @notice Returns the address of the underlying asset
+    function underlying() external view returns (address) {
+        return address(_asset);
+    }
+
     /// @notice Returns the position vaults current status
     function vaultStatus() public view returns (string memory) {
         return _vaultStatus == 2 ? "Active" : "Inactive";

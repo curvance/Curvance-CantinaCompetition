@@ -1210,45 +1210,52 @@ contract Lendtroller is ILendtroller, ERC165 {
             revert Lendtroller__NoLiquidationAvailable();
         }
 
-        uint256 cFactor = cToken.baseCFactor +
-            ((cToken.cFactorCurve * data.lFactor) / WAD);
-        uint256 incentive = cToken.liqBaseIncentive +
-            ((cToken.liqCurve * data.lFactor) / WAD);
-        uint256 maxAmount = (cFactor *
-            IMToken(debtToken).debtBalanceStored(account)) / WAD;
+        uint256 maxAmount;
+        uint256 debtToCollateralRatio;
+        {
+            uint256 cFactor = cToken.baseCFactor +
+                ((cToken.cFactorCurve * data.lFactor) / WAD);
+            uint256 incentive = cToken.liqBaseIncentive +
+                ((cToken.liqCurve * data.lFactor) / WAD);
+            maxAmount =
+                (cFactor * IMToken(debtToken).debtBalanceStored(account)) /
+                WAD;
 
-        if (liquidateExact) {
-            // Make sure that the  liquidation limit and collateral posted >= amount
-            if (
-                amount > maxAmount ||
-                amount >
-                tokenData[collateralToken]
-                    .accountData[account]
-                    .collateralPosted
-            ) {
-                _revert(_INVALID_PARAMETER_SELECTOR);
-            }
-        } else {
-            uint256 collateralAvailable = tokenData[collateralToken]
-                .accountData[account]
-                .collateralPosted;
-            amount = maxAmount > collateralAvailable
-                ? collateralAvailable
-                : maxAmount;
+            // Get the exchange rate and calculate the number of collateral tokens to seize:
+            debtToCollateralRatio =
+                (incentive * data.debtTokenPrice * WAD) /
+                (data.collateralTokenPrice *
+                    IMToken(collateralToken).exchangeRateStored());
         }
 
-        // Get the exchange rate and calculate the number of collateral tokens to seize:
-        uint256 debtToCollateralRatio = (incentive *
-            data.debtTokenPrice *
-            WAD) /
-            (data.collateralTokenPrice *
-                IMToken(collateralToken).exchangeRateStored());
+        if (!liquidateExact) {
+            amount = maxAmount;
+        }
 
         uint256 amountAdjusted = (amount *
             (10 ** IERC20(collateralToken).decimals())) /
             (10 ** IERC20(debtToken).decimals());
         uint256 liquidatedTokens = (amountAdjusted * debtToCollateralRatio) /
             WAD;
+
+        uint256 collateralAvailable = cToken
+            .accountData[account]
+            .collateralPosted;
+        if (liquidateExact) {
+            if (amount > maxAmount || liquidatedTokens > collateralAvailable) {
+                // Make sure that the  liquidation limit and collateral posted >= amount
+                _revert(_INVALID_PARAMETER_SELECTOR);
+            }
+        } else {
+            if (liquidatedTokens > collateralAvailable) {
+                amount =
+                    (amount * cToken.accountData[account].collateralPosted) /
+                    liquidatedTokens;
+                liquidatedTokens = cToken
+                    .accountData[account]
+                    .collateralPosted;
+            }
+        }
 
         // Calculate the maximum amount of debt that can be liquidated
         // and what collateral will be received

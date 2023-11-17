@@ -827,7 +827,9 @@ contract DToken is ERC165, ReentrancyGuard {
 
     /// @notice Updates the interest rate model
     /// @param newInterestRateModel the new interest rate model to use
-    function _setInterestRateModel(DynamicInterestRateModel newInterestRateModel) internal {
+    function _setInterestRateModel(
+        DynamicInterestRateModel newInterestRateModel
+    ) internal {
         // Ensure we are switching to an actual Interest Rate Model
         newInterestRateModel.IS_INTEREST_RATE_MODEL();
 
