@@ -83,15 +83,15 @@ contract TestCVEPublicSale is TestBaseMarket {
 
         assertEq(publicSale.startTime(), block.timestamp);
         assertEq(publicSale.cveAmountForSale(), cveAmountForSale);
-        assertEq(publicSale.payToken(), _WETH_ADDRESS);
+        assertEq(publicSale.paymentToken(), _WETH_ADDRESS);
         assertApproxEqRel(
             publicSale.softCap(),
-            (cveAmountForSale * softPrice) / publicSale.payTokenPrice(),
+            (cveAmountForSale * softPrice) / publicSale.paymentTokenPrice(),
             0.0001e18
         );
         assertApproxEqRel(
             publicSale.hardCap(),
-            (cveAmountForSale * hardPrice) / publicSale.payTokenPrice(),
+            (cveAmountForSale * hardPrice) / publicSale.paymentTokenPrice(),
             0.0001e18
         );
     }
@@ -123,7 +123,7 @@ contract TestCVEPublicSale is TestBaseMarket {
         publicSale.commit(commitAmount);
         assertEq(publicSale.saleCommitted(), commitAmount);
         assertEq(publicSale.userCommitted(address(this)), commitAmount);
-        assertEq(publicSale.currentPrice(), publicSale.softPriceInPayToken());
+        assertEq(publicSale.currentPrice(), publicSale.softPriceInpaymentToken());
 
         // before hardcap
         commitAmount = publicSale.hardCap();
@@ -131,7 +131,7 @@ contract TestCVEPublicSale is TestBaseMarket {
         publicSale.commit(commitAmount);
         assertEq(publicSale.saleCommitted(), commitAmount);
         assertEq(publicSale.userCommitted(address(this)), commitAmount);
-        assertEq(publicSale.currentPrice(), publicSale.hardPriceInPayToken());
+        assertEq(publicSale.currentPrice(), publicSale.hardPriceInpaymentToken());
     }
 
     function testClaimRevertWhenPubliSaleNotStarted() public {
@@ -155,7 +155,7 @@ contract TestCVEPublicSale is TestBaseMarket {
 
         skip(publicSale.SALE_PERIOD() + 1);
 
-        assertEq(publicSale.currentPrice(), publicSale.softPriceInPayToken());
+        assertEq(publicSale.currentPrice(), publicSale.softPriceInpaymentToken());
 
         publicSale.claim();
 

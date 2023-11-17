@@ -1228,6 +1228,8 @@ contract Lendtroller is ILendtroller, ERC165 {
                     IMToken(collateralToken).exchangeRateStored());
         }
 
+        // If we are not trying to liquidate an exact amount, 
+        // try to liquidate the maximum
         if (!liquidateExact) {
             amount = maxAmount;
         }
