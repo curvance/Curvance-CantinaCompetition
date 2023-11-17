@@ -1228,8 +1228,6 @@ contract Lendtroller is ILendtroller, ERC165 {
                     IMToken(collateralToken).exchangeRateStored());
         }
 
-        // If we are not trying to liquidate an exact amount, 
-        // try to liquidate the maximum
         if (!liquidateExact) {
             amount = maxAmount;
         }
@@ -1245,14 +1243,14 @@ contract Lendtroller is ILendtroller, ERC165 {
             .collateralPosted;
         if (liquidateExact) {
             if (amount > maxAmount || liquidatedTokens > collateralAvailable) {
-                // Make sure that the liquidation limit is within cFactor,
-                // and posted collateral constraints.
+                // Make sure that the liquidation limit and collateral posted >= amount
                 _revert(_INVALID_PARAMETER_SELECTOR);
             }
         } else {
             if (liquidatedTokens > collateralAvailable) {
-                // Reduce `amount` liquidated to only their posted collateral.
-                amount = (amount * collateralAvailable) / liquidatedTokens;
+                amount =
+                    (amount * collateralAvailable) /
+                    liquidatedTokens;
                 liquidatedTokens = collateralAvailable;
             }
         }
@@ -1466,10 +1464,10 @@ contract Lendtroller is ILendtroller, ERC165 {
             return result;
         }
 
-        result.lFactor = _getNegativeCurveResult(
+        result.lFactor = _getPositiveCurveResult(
             accountDebt,
-            accountCollateralB,
-            accountCollateralA
+            accountCollateralA,
+            accountCollateralB
         );
     }
 
@@ -1546,30 +1544,29 @@ contract Lendtroller is ILendtroller, ERC165 {
         );
     }
 
-    /// @notice Calculates a negative curve value based on `current`,
+    /// @notice Calculates a positive curve value based on `current`,
     ///         `start`, and `end` values.
-    /// @dev The function scales current, start, and end values by WAD
-    ///      to maintain precision. It returns 1, (`in WAD`) if the
-    ///      current value is less than or equal to `end`. The formula
-    ///      used is (start - current) / (start - end), ensuring the result
+    /// @dev The function scales current, start, and end values by `WAD`
+    ///      to maintain precision. It returns 1, (in `WAD`) if the
+    ///      current value is greater than or equal to `end`. The formula
+    ///      used is (current - start) / (end - start), ensuring the result
     ///      is scaled properly.
     /// @param current The current value, representing a point on the curve.
     /// @param start The start value of the curve, marking the beginning of
     ///              the calculation range.
     /// @param end The end value of the curve, marking the end of the
     ///            calculation range.
-    /// @return The calculated negative curve value, a proportion between
+    /// @return The calculated positive curve value, a proportion between
     ///         the start and end points.
-    function _getNegativeCurveResult(
+    function _getPositiveCurveResult(
         uint256 current,
         uint256 start,
         uint256 end
     ) internal pure returns (uint256) {
-        if (current >= start) {
+        if (current >= end) {
             return WAD;
         }
-
-        return ((current - end) * WAD) / (start - end);
+        return ((current - start) * WAD) / (end - start);
     }
 
     function _reduceCollateralIfNecessary(
