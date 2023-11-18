@@ -44,13 +44,13 @@ interface IMToken {
     function totalBorrows() external view returns (uint256);
 
     /// @notice Return the borrow balance of account based on stored data
-    function debtBalanceStored(
+    function debtBalanceCached(
         address account
     ) external view returns (uint256);
 
     function lendtroller() external view returns (ILendtroller);
 
-    function exchangeRateStored() external view returns (uint256);
+    function exchangeRateCached() external view returns (uint256);
 
     function startMarket(address initializer) external returns (bool);
 

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.17;
 
 // import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-// import { GMXGMCToken, ERC20 } from "contracts/market/collateral/GMXGMCToken.sol";
+// import { GMCToken, ERC20 } from "contracts/market/collateral/GMCToken.sol";
 
 // import "tests/market/TestBaseMarket.sol";
 
@@ -28,7 +28,7 @@ pragma solidity ^0.8.17;
 //     }
 // }
 
-// contract TestGMXGMCToken is TestBaseMarket {
+// contract TestGMCToken is TestBaseMarket {
 //     address private _ARB_SYS = 0x0000000000000000000000000000000000000064;
 //     address private _GMX_ORDER_KEEPER =
 //         0xf1e1B2F4796d984CCb8485d43db0c64B83C1FA6d;
@@ -40,7 +40,7 @@ pragma solidity ^0.8.17;
 //     // GM pool token holder.
 //     address private _DEPOSITOR = 0x7575d9eb64CCe0DF0D570Ae88049382Ce6fB0D31;
 
-//     GMXGMCToken public positionVault;
+//     GMCToken public cToken;
 //     CToken public cGM;
 //     ERC20 public gmxGM;
 
@@ -67,19 +67,19 @@ pragma solidity ^0.8.17;
 
 //         // Deploy position vault to the existing depositor address.
 //         deployCodeTo(
-//             "GMXGMCToken.sol",
+//             "GMCToken.sol",
 //             abi.encode(gmxGM, ICentralRegistry(address(centralRegistry))),
 //             _DEPOSITOR
 //         );
-//         positionVault = GMXGMCToken(payable(_DEPOSITOR));
+//         cToken = GMCToken(payable(_DEPOSITOR));
 
 //         cGM = new CToken(
 //             ICentralRegistry(address(centralRegistry)),
 //             _GMX_GM_WETH_USDC_POOL,
 //             address(lendtroller),
-//             address(positionVault)
+//             address(cToken)
 //         );
-//         positionVault.initiateVault(address(cGM));
+//         cToken.initiateVault(address(cGM));
 
 //         // Update code on existing ArbSys contract with mock contract.
 //         vm.etch(_ARB_SYS, address(new MockArbSys()).code);
@@ -88,16 +88,16 @@ pragma solidity ^0.8.17;
 //     function testGmxGMWethUsdcPool() public {
 //         uint256 assets = 100e18;
 //         deal(_GMX_GM_WETH_USDC_POOL, address(cGM), assets);
-//         deal(address(positionVault), _ONE);
+//         deal(address(cToken), _ONE);
 
 //         vm.prank(address(cGM));
-//         gmxGM.approve(address(positionVault), assets);
+//         gmxGM.approve(address(cToken), assets);
 
 //         vm.prank(address(cGM));
-//         positionVault.deposit(assets, address(this));
+//         cToken.deposit(assets, address(this));
 
 //         assertEq(
-//             positionVault.totalAssets(),
+//             cToken.totalAssets(),
 //             assets,
 //             "Total Assets should equal user deposit."
 //         );
@@ -106,7 +106,7 @@ pragma solidity ^0.8.17;
 //         vm.roll(150368146);
 
 //         bytes memory data;
-//         positionVault.harvest(data);
+//         cToken.harvest(data);
 
 //         vm.roll(150368158);
 
@@ -117,7 +117,7 @@ pragma solidity ^0.8.17;
 
 //         skip(8 days);
 
-//         uint256 totalAssets = positionVault.totalAssets();
+//         uint256 totalAssets = cToken.totalAssets();
 //         assertGt(
 //             totalAssets,
 //             assets,
@@ -125,6 +125,6 @@ pragma solidity ^0.8.17;
 //         );
 
 //         vm.prank(address(cGM));
-//         positionVault.withdraw(totalAssets, address(this), address(this));
+//         cToken.withdraw(totalAssets, address(this), address(this));
 //     }
 // }
