@@ -238,7 +238,7 @@ contract CanLiquidateTest is TestBaseLendtroller {
             .tokenData(address(cBALRETH));
         uint256 cFactor = baseCFactor + ((cFactorCurve * 1) / WAD);
         uint256 expectedLiqAmount = (cFactor *
-            dUSDC.debtBalanceStored(user1)) / WAD;
+            dUSDC.debtBalanceCached(user1)) / WAD;
 
         assertEq(
             liqAmount,
@@ -258,7 +258,7 @@ contract CanLiquidateTest is TestBaseLendtroller {
         uint256 debtTokenPrice = 1e18; // USDC price
         uint256 debtToCollateralRatio = (liqBaseIncentive *
             debtTokenPrice *
-            WAD) / (data.price * cBALRETH.exchangeRateStored());
+            WAD) / (data.price * cBALRETH.exchangeRateCached());
 
         uint256 amountAdjusted = (liqAmount * (10 ** cBALRETH.decimals())) /
             (10 ** dUSDC.decimals());
