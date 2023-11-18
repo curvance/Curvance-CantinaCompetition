@@ -80,24 +80,6 @@ contract VeCVE is ERC20, ReentrancyGuard {
     error VeCVE__VeCVEShutdown();
     error VeCVE__ParametersAreInvalid();
 
-    /// MODIFIERS ///
-
-    modifier canLock(uint256 amount) {
-        assembly {
-            if iszero(amount) {
-                mstore(0x0, _INVALID_LOCK_SELECTOR)
-                // return bytes 29-32 for the selector
-                revert(0x1c, 0x04)
-            }
-        }
-
-        if (isShutdown == 2) {
-            _revert(_VECVE_SHUTDOWN_SELECTOR);
-        }
-
-        _;
-    }
-
     /// CONSTRUCTOR ///
 
     constructor(
@@ -183,7 +165,9 @@ contract VeCVE is ERC20, ReentrancyGuard {
         RewardsData calldata rewardsData,
         bytes calldata params,
         uint256 aux
-    ) external canLock(amount) nonReentrant {
+    ) external nonReentrant {
+        _canLock(amount);
+
         SafeTransferLib.safeTransferFrom(
             cve,
             msg.sender,
@@ -214,7 +198,9 @@ contract VeCVE is ERC20, ReentrancyGuard {
         RewardsData calldata rewardsData,
         bytes calldata params,
         uint256 aux
-    ) external canLock(amount) nonReentrant {
+    ) external nonReentrant {
+        _canLock(amount);
+        
         if (
             !centralRegistry.isVeCVELocker(msg.sender) &&
             !centralRegistry.isGaugeController(msg.sender)
@@ -315,7 +301,9 @@ contract VeCVE is ERC20, ReentrancyGuard {
         RewardsData calldata rewardsData,
         bytes calldata params,
         uint256 aux
-    ) external canLock(amount) nonReentrant {
+    ) external nonReentrant {
+        _canLock(amount);
+        
         SafeTransferLib.safeTransferFrom(
             cve,
             msg.sender,
@@ -352,7 +340,9 @@ contract VeCVE is ERC20, ReentrancyGuard {
         RewardsData calldata rewardsData,
         bytes calldata params,
         uint256 aux
-    ) external canLock(amount) nonReentrant {
+    ) external nonReentrant {
+        _canLock(amount);
+        
         if (
             !centralRegistry.isVeCVELocker(msg.sender) &&
             !centralRegistry.isGaugeController(msg.sender)
@@ -1314,6 +1304,21 @@ contract VeCVE is ERC20, ReentrancyGuard {
         assembly {
             mstore(0x00, s)
             revert(0x1c, 0x04)
+        }
+    }
+
+    /// @dev Internal helper for checking whether a lock is allowed.
+    function _canLock(uint256 amount) internal view {
+        assembly {
+            if iszero(amount) {
+                mstore(0x0, _INVALID_LOCK_SELECTOR)
+                // return bytes 29-32 for the selector
+                revert(0x1c, 0x04)
+            }
+        }
+
+        if (isShutdown == 2) {
+            _revert(_VECVE_SHUTDOWN_SELECTOR);
         }
     }
 }

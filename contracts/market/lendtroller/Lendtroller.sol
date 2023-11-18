@@ -169,28 +169,6 @@ contract Lendtroller is ILendtroller, ERC165 {
     error Lendtroller__MinimumHoldPeriod();
     error Lendtroller__InvariantError();
 
-    /// MODIFIERS ///
-
-    modifier onlyElevatedPermissions() {
-        if (!centralRegistry.hasElevatedPermissions(msg.sender)) {
-            revert Lendtroller__Unauthorized();
-        }
-        _;
-    }
-
-    modifier onlyAuthorizedPermissions(bool state) {
-        if (state) {
-            if (!centralRegistry.hasDaoPermissions(msg.sender)) {
-                revert Lendtroller__Unauthorized();
-            }
-        } else {
-            if (!centralRegistry.hasElevatedPermissions(msg.sender)) {
-                revert Lendtroller__Unauthorized();
-            }
-        }
-        _;
-    }
-
     /// CONSTRUCTOR ///
 
     constructor(ICentralRegistry centralRegistry_, address gaugePool_) {
@@ -551,7 +529,9 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @notice Add the market token to the market and set it as listed
     /// @dev Admin function to set isListed and add support for the market
     /// @param mToken The address of the market (token) to list
-    function listToken(address mToken) external onlyElevatedPermissions {
+    function listToken(address mToken) external {
+        _checkElevatedPermissions();
+
         if (tokenData[mToken].isListed) {
             revert Lendtroller__TokenAlreadyListed();
         }
@@ -601,7 +581,9 @@ contract Lendtroller is ILendtroller, ERC165 {
         uint256 liqIncB,
         uint256 liqFee,
         uint256 baseCFactor
-    ) external onlyElevatedPermissions {
+    ) external {
+        _checkElevatedPermissions();
+
         if (!IMToken(mToken).isCToken()) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
@@ -793,7 +775,9 @@ contract Lendtroller is ILendtroller, ERC165 {
     function setMintPaused(
         address mToken,
         bool state
-    ) external onlyAuthorizedPermissions(state) {
+    ) external {
+        _checkAuthorizedPermissions(state);
+
         if (!tokenData[mToken].isListed) {
             revert Lendtroller__TokenNotListed();
         }
@@ -809,7 +793,9 @@ contract Lendtroller is ILendtroller, ERC165 {
     function setBorrowPaused(
         address mToken,
         bool state
-    ) external onlyAuthorizedPermissions(state) {
+    ) external {
+        _checkAuthorizedPermissions(state);
+        
         if (!tokenData[mToken].isListed) {
             revert Lendtroller__TokenNotListed();
         }
@@ -823,7 +809,9 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @param state pause or unpause
     function setTransferPaused(
         bool state
-    ) external onlyAuthorizedPermissions(state) {
+    ) external {
+        _checkAuthorizedPermissions(state);
+        
         transferPaused = state ? 2 : 1;
         emit ActionPaused("Transfer Paused", state);
     }
@@ -833,7 +821,9 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @param state pause or unpause
     function setSeizePaused(
         bool state
-    ) external onlyAuthorizedPermissions(state) {
+    ) external {
+        _checkAuthorizedPermissions(state);
+        
         seizePaused = state ? 2 : 1;
         emit ActionPaused("Seize Paused", state);
     }
@@ -842,7 +832,9 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @param newPositionFolding new position folding address
     function setPositionFolding(
         address newPositionFolding
-    ) external onlyElevatedPermissions {
+    ) external {
+        _checkElevatedPermissions();
+
         if (
             !ERC165Checker.supportsInterface(
                 newPositionFolding,
@@ -1614,6 +1606,28 @@ contract Lendtroller is ILendtroller, ERC165 {
         assembly {
             mstore(0x00, s)
             revert(0x1c, 0x04)
+        }
+    }
+
+    /// @dev Checks whether the caller has sufficient permissions
+    function _checkElevatedPermissions() internal view {
+        if (!centralRegistry.hasElevatedPermissions(msg.sender)) {
+            revert Lendtroller__Unauthorized();
+        }
+    }
+
+    /// @dev Checks whether the caller has sufficient permissions based on `state`,
+    /// turning something off is less "risky" than enabling something, 
+    /// so `state` = true has reduced permissioning compared to `state` = false.
+    function _checkAuthorizedPermissions(bool state) internal view {
+        if (state) {
+            if (!centralRegistry.hasDaoPermissions(msg.sender)) {
+                revert Lendtroller__Unauthorized();
+            }
+        } else {
+            if (!centralRegistry.hasElevatedPermissions(msg.sender)) {
+                revert Lendtroller__Unauthorized();
+            }
         }
     }
 }

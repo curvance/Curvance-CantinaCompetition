@@ -157,7 +157,7 @@ contract ConvexLPCollateral is TestBaseMarket {
             "User must have borrowed 10,000 USDC"
         );
         assertEq(
-            dUSDC.debtBalanceStored(user1),
+            dUSDC.debtBalanceCached(user1),
             10_000e6,
             "User must have a debt balance of 10,000 USDC"
         );
@@ -183,7 +183,7 @@ contract ConvexLPCollateral is TestBaseMarket {
         skip(20 minutes);
         // Pay off full debt including interest
         dUSDC.accrueInterest();
-        uint256 debtWithInterest = dUSDC.debtBalanceStored(user1);
+        uint256 debtWithInterest = dUSDC.debtBalanceCached(user1);
         vm.expectEmit(true, true, true, true, address(dUSDC));
         emit Repay(user1, user1, debtWithInterest);
         dUSDC.repay(0);
@@ -191,7 +191,7 @@ contract ConvexLPCollateral is TestBaseMarket {
 
         assertEq(dUSDC.totalBorrows(), 0, "No borrows must be left");
         assertEq(
-            dUSDC.debtBalanceStored(user1),
+            dUSDC.debtBalanceCached(user1),
             0,
             "User must have settled debt"
         );
