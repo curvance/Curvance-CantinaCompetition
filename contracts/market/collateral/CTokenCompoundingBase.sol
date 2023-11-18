@@ -407,7 +407,7 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
         _setLendtroller(newLendtroller);
     }
 
-    /// @notice Get the underlying balance of the `account`
+    /// @notice Get the underlying balance of the `account` with lock
     /// @param account The address of the account to query
     /// @return The amount of underlying owned by `account`
     function balanceOfUnderlyingSafe(
@@ -425,9 +425,15 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
         return ((convertToAssets(WAD) * balanceOf(account)) / WAD);
     }
 
+    /// @notice Get exchange rate with lock
+    /// @dev Price router tries to calculate CToken price from this exchange rate
+    function exchangeRateSafe() external returns (uint256) {
+        return convertToAssetsSafe(WAD);
+    }
+
     /// @notice Get exchange rate
     /// @dev Price router tries to calculate CToken price from this exchange rate
-    function exchangeRateStored() external view returns (uint256) {
+    function exchangeRateCached() external view returns (uint256) {
         return convertToAssets(WAD);
     }
 
