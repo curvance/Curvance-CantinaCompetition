@@ -1174,6 +1174,10 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @param debtToken Asset which was borrowed by the borrower
     /// @param collateralToken Asset which was used as collateral and will be seized
     /// @param account The address of the account to be liquidated
+    /// @param debtAmount The amount of `debtToken` desired to liquidate, 
+    ///                   0 means maximum liquidation allowed will be executed
+    /// @param liquidateExact Whether the liquidator wants to liquidate a specific amount of debt,
+    ///                       used in conjunction with `debtAmount`. 
     /// @return The maximum amount of `debtToken` that can be repaid during liquidation
     /// @return Current price for `debtToken`
     /// @return Current price for `collateralToken`
@@ -1181,7 +1185,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         address debtToken,
         address collateralToken,
         address account,
-        uint256 amount,
+        uint256 debtAmount,
         bool liquidateExact
     ) internal view returns (uint256, uint256, uint256) {
         if (!tokenData[debtToken].isListed) {
@@ -1229,10 +1233,10 @@ contract Lendtroller is ILendtroller, ERC165 {
         }
 
         if (!liquidateExact) {
-            amount = maxAmount;
+            debtAmount = maxAmount;
         }
 
-        uint256 amountAdjusted = (amount *
+        uint256 amountAdjusted = (debtAmount *
             (10 ** IERC20(collateralToken).decimals())) /
             (10 ** IERC20(debtToken).decimals());
         uint256 liquidatedTokens = (amountAdjusted * debtToCollateralRatio) /
@@ -1242,14 +1246,14 @@ contract Lendtroller is ILendtroller, ERC165 {
             .accountData[account]
             .collateralPosted;
         if (liquidateExact) {
-            if (amount > maxAmount || liquidatedTokens > collateralAvailable) {
+            if (debtAmount > maxAmount || liquidatedTokens > collateralAvailable) {
                 // Make sure that the liquidation limit and collateral posted >= amount
                 _revert(_INVALID_PARAMETER_SELECTOR);
             }
         } else {
             if (liquidatedTokens > collateralAvailable) {
-                amount =
-                    (amount * collateralAvailable) /
+                debtAmount =
+                    (debtAmount * collateralAvailable) /
                     liquidatedTokens;
                 liquidatedTokens = collateralAvailable;
             }
@@ -1258,7 +1262,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         // Calculate the maximum amount of debt that can be liquidated
         // and what collateral will be received
         return (
-            amount,
+            debtAmount,
             liquidatedTokens,
             (liquidatedTokens * cToken.liqFee) / WAD
         );
