@@ -16,7 +16,7 @@ contract DTokenBorrowTest is TestBaseDToken {
     }
 
     function test_dTokenBorrow_fail_whenBorrowAmountExceedsCash() public {
-        uint256 cash = dUSDC.getCash();
+        uint256 cash = dUSDC.marketUnderlyingHeld();
 
         vm.expectRevert(
             Lendtroller.Lendtroller__InsufficientLiquidity.selector
