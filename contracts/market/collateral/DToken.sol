@@ -114,7 +114,7 @@ contract DToken is ERC165, ReentrancyGuard {
     error DToken__Unauthorized();
     error DToken__ExcessiveValue();
     error DToken__TransferError();
-    error DToken__InsufficientUnderlyingHeld()();
+    error DToken__InsufficientUnderlyingHeld();
     error DToken__ValidationFailed();
     error DToken__InvalidCentralRegistry();
     error DToken__UnderlyingAssetTotalSupplyExceedsMaximum();
@@ -483,7 +483,7 @@ contract DToken is ERC165, ReentrancyGuard {
 
         // Make sure we have enough underlying held to cover withdrawal
         if (marketUnderlyingHeld() < amount) {
-            revert DToken__InsufficientUnderlyingHeld()();
+            revert DToken__InsufficientUnderlyingHeld();
         }
 
         uint256 tokens = (amount * WAD) / exchangeRateCached();
@@ -963,7 +963,7 @@ contract DToken is ERC165, ReentrancyGuard {
     ) internal {
         // Check if we have enough underlying held to support the redemption
         if (marketUnderlyingHeld() < amount) {
-            revert DToken__InsufficientUnderlyingHeld()();
+            revert DToken__InsufficientUnderlyingHeld();
         }
 
         balanceOf[redeemer] = balanceOf[redeemer] - tokens;
@@ -991,7 +991,7 @@ contract DToken is ERC165, ReentrancyGuard {
     ) internal {
         // Check if we have enough underlying held to support the borrow
         if (marketUnderlyingHeld() - totalReserves < amount) {
-            revert DToken__InsufficientUnderlyingHeld()();
+            revert DToken__InsufficientUnderlyingHeld();
         }
 
         // We calculate the new account and total borrow balances, failing on overflow:

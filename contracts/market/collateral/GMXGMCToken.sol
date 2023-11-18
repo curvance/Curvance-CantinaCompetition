@@ -94,7 +94,7 @@ contract GMXGMCToken is CTokenCompoundingBase {
     /// @dev Only callable by Gelato Network bot.
     function harvest(
         bytes calldata
-    ) external override returns (uint256) {
+    ) external override returns (uint256 yield) {
         if (!centralRegistry.isHarvester(msg.sender)) {
             revert GMXGMCToken__Unauthorized();
         }
@@ -108,7 +108,6 @@ contract GMXGMCToken is CTokenCompoundingBase {
 
         // Can only harvest once previous reward period is done.
         if (_checkVestStatus(_vaultData)) {
-
             _updateVestingPeriodIfNeeded();
 
             // Claim GM pool rewards.
@@ -173,6 +172,8 @@ contract GMXGMCToken is CTokenCompoundingBase {
             bytes[] memory results = IGMXExchangeRouter(GMX_EXCHANGE_ROUTER)
                 .multicall{ value: 0.01e18 }(data);
             _isDepositKey[bytes32(results[3])] = true;
+            // Return a 1 for harvester to recognize success
+            yield = 1;
         }
     }
 
