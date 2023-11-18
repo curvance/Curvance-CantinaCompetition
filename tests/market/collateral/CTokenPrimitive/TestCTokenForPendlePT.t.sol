@@ -246,8 +246,8 @@ contract TestCTokenForPendlePT is TestBaseMarket {
         dUSDC.borrow(500e6);
         vm.stopPrank();
         assertEq(dUSDC.balanceOf(user1), 0);
-        assertEq(dUSDC.debtBalanceStored(user1), 500e6);
-        assertEq(dUSDC.exchangeRateStored(), 1 ether);
+        assertEq(dUSDC.debtBalanceCached(user1), 500e6);
+        assertEq(dUSDC.exchangeRateCached(), 1 ether);
 
         // try borrow()
         skip(1200);
@@ -255,8 +255,8 @@ contract TestCTokenForPendlePT is TestBaseMarket {
         dUSDC.borrow(100e6);
         vm.stopPrank();
         assertEq(dUSDC.balanceOf(user1), 0);
-        assertGt(dUSDC.debtBalanceStored(user1), 600e6);
-        assertGt(dUSDC.exchangeRateStored(), 1 ether);
+        assertGt(dUSDC.debtBalanceCached(user1), 600e6);
+        assertGt(dUSDC.exchangeRateCached(), 1 ether);
 
         // skip min hold period
         skip(20 minutes);
@@ -270,8 +270,8 @@ contract TestCTokenForPendlePT is TestBaseMarket {
         dUSDC.repay(200e6);
         vm.stopPrank();
         assertEq(dUSDC.balanceOf(user1), 0);
-        assertGt(dUSDC.debtBalanceStored(user1), borrowBalanceBefore - 200e6);
-        assertGt(dUSDC.exchangeRateStored(), exchangeRateBefore);
+        assertGt(dUSDC.debtBalanceCached(user1), borrowBalanceBefore - 200e6);
+        assertGt(dUSDC.exchangeRateCached(), exchangeRateBefore);
 
         // skip some period
         skip(1200);
@@ -284,8 +284,8 @@ contract TestCTokenForPendlePT is TestBaseMarket {
         dUSDC.repay(borrowBalanceBefore);
         vm.stopPrank();
         assertEq(dUSDC.balanceOf(user1), 0);
-        assertGt(dUSDC.debtBalanceStored(user1), 0);
-        assertGt(dUSDC.exchangeRateStored(), exchangeRateBefore);
+        assertGt(dUSDC.debtBalanceCached(user1), 0);
+        assertGt(dUSDC.exchangeRateCached(), exchangeRateBefore);
     }
 
     function testCTokenRedeemOnBorrow() public {
@@ -322,7 +322,7 @@ contract TestCTokenForPendlePT is TestBaseMarket {
         cPendlePT.redeem(0.2 ether, user1, user1);
         vm.stopPrank();
         assertEq(cPendlePT.balanceOf(user1), 0.8 ether);
-        assertEq(cPendlePT.exchangeRateStored(), 1 ether);
+        assertEq(cPendlePT.exchangeRateCached(), 1 ether);
     }
 
     function testDTokenRedeemOnBorrow() public {
@@ -358,11 +358,11 @@ contract TestCTokenForPendlePT is TestBaseMarket {
         vm.stopPrank();
 
         assertEq(cPendlePT.balanceOf(user1), 1 ether);
-        assertEq(cPendlePT.exchangeRateStored(), 1 ether);
+        assertEq(cPendlePT.exchangeRateCached(), 1 ether);
 
         assertEq(dUSDC.balanceOf(user1), 0);
-        assertGt(dUSDC.debtBalanceStored(user1), 500e6);
-        assertGt(dUSDC.exchangeRateStored(), 1 ether);
+        assertGt(dUSDC.debtBalanceCached(user1), 500e6);
+        assertGt(dUSDC.exchangeRateCached(), 1 ether);
     }
 
     function testCTokenTransferOnBorrow() public {
@@ -401,7 +401,7 @@ contract TestCTokenForPendlePT is TestBaseMarket {
 
         assertEq(cPendlePT.balanceOf(user1), 0.8 ether);
         assertEq(cPendlePT.balanceOf(user2), 0.2 ether);
-        assertEq(cPendlePT.exchangeRateStored(), 1 ether);
+        assertEq(cPendlePT.exchangeRateCached(), 1 ether);
     }
 
     function testDTokenTransferOnBorrow() public {
@@ -437,14 +437,14 @@ contract TestCTokenForPendlePT is TestBaseMarket {
         vm.stopPrank();
 
         assertEq(cPendlePT.balanceOf(user1), 1 ether);
-        assertEq(cPendlePT.exchangeRateStored(), 1 ether);
+        assertEq(cPendlePT.exchangeRateCached(), 1 ether);
 
         assertEq(dUSDC.balanceOf(user1), 0);
-        assertEq(dUSDC.debtBalanceStored(user1), 500e6);
+        assertEq(dUSDC.debtBalanceCached(user1), 500e6);
 
         assertEq(dUSDC.balanceOf(user2), 1000e6);
-        assertEq(dUSDC.debtBalanceStored(user2), 0);
-        assertEq(dUSDC.exchangeRateStored(), 1 ether);
+        assertEq(dUSDC.debtBalanceCached(user2), 0);
+        assertEq(dUSDC.exchangeRateCached(), 1 ether);
     }
 
     function testLiquidationExact() public {
@@ -488,11 +488,11 @@ contract TestCTokenForPendlePT is TestBaseMarket {
             1 ether - (500 ether * 1 ether) / pendlePTPrice,
             0.02e18
         );
-        assertEq(cPendlePT.exchangeRateStored(), 1 ether);
+        assertEq(cPendlePT.exchangeRateCached(), 1 ether);
 
         assertEq(dUSDC.balanceOf(user1), 0);
-        assertApproxEqRel(dUSDC.debtBalanceStored(user1), 750e6, 0.01e18);
-        assertApproxEqRel(dUSDC.exchangeRateStored(), 1 ether, 0.01e18);
+        assertApproxEqRel(dUSDC.debtBalanceCached(user1), 750e6, 0.01e18);
+        assertApproxEqRel(dUSDC.exchangeRateCached(), 1 ether, 0.01e18);
     }
 
     function testLiquidationFull() public {
@@ -544,10 +544,10 @@ contract TestCTokenForPendlePT is TestBaseMarket {
 
         assertEq(dUSDC.balanceOf(user1), 0);
         assertApproxEqRel(
-            dUSDC.debtBalanceStored(user1),
+            dUSDC.debtBalanceCached(user1),
             1000e6 - liquidatedAmount,
             0.01e18
         );
-        assertApproxEqRel(dUSDC.exchangeRateStored(), 1 ether, 0.01e18);
+        assertApproxEqRel(dUSDC.exchangeRateCached(), 1 ether, 0.01e18);
     }
 }

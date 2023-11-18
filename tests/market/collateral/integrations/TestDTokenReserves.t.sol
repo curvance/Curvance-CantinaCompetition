@@ -129,7 +129,7 @@ contract TestDTokenReserves is TestBaseMarket {
 
         {
             // check accrue interest after 1 day
-            uint256 exchangeRateBefore = dDAI.exchangeRateStored();
+            uint256 exchangeRateBefore = dDAI.exchangeRateCached();
             uint256 totalReserves = dDAI.totalReserves();
             assertEq(totalReserves, 0);
             uint256 totalBorrowsBefore = dDAI.totalBorrows();
@@ -139,7 +139,7 @@ contract TestDTokenReserves is TestBaseMarket {
                 address(dDAI),
                 dao
             );
-            uint256 debtBalanceBefore = dDAI.debtBalanceStored(user1);
+            uint256 debtBalanceBefore = dDAI.debtBalanceCached(user1);
 
             // skip 1 day
             skip(24 hours);
@@ -172,7 +172,7 @@ contract TestDTokenReserves is TestBaseMarket {
 
         {
             // check accrue interest after another day
-            uint256 exchangeRateBefore = dDAI.exchangeRateStored();
+            uint256 exchangeRateBefore = dDAI.exchangeRateCached();
             uint256 totalReserves = dDAI.totalReserves();
             uint256 totalBorrowsBefore = dDAI.totalBorrows();
             uint256 daoBalanceBefore = dDAI.balanceOf(dao);
@@ -180,7 +180,7 @@ contract TestDTokenReserves is TestBaseMarket {
                 address(dDAI),
                 dao
             );
-            uint256 debtBalanceBefore = dDAI.debtBalanceStored(user1);
+            uint256 debtBalanceBefore = dDAI.debtBalanceCached(user1);
 
             // skip 1 day
             skip(24 hours);
@@ -219,7 +219,7 @@ contract TestDTokenReserves is TestBaseMarket {
     function testDaoDepositReserves() public {
         testDaoInterestFromDToken();
 
-        uint256 exchangeRate = dDAI.exchangeRateStored();
+        uint256 exchangeRate = dDAI.exchangeRateCached();
         uint256 totalReservesBefore = dDAI.totalReserves();
         uint256 gaugeBalanceBefore = gaugePool.balanceOf(address(dDAI), dao);
 
@@ -245,7 +245,7 @@ contract TestDTokenReserves is TestBaseMarket {
 
         {
             // withdraw half
-            uint256 exchangeRate = dDAI.exchangeRateStored();
+            uint256 exchangeRate = dDAI.exchangeRateCached();
             uint256 totalReservesBefore = dDAI.totalReserves();
             uint256 daiBalanceBefore = dai.balanceOf(dao);
             uint256 gaugeBalanceBefore = gaugePool.balanceOf(
@@ -272,7 +272,7 @@ contract TestDTokenReserves is TestBaseMarket {
 
         {
             // withdraw half
-            uint256 exchangeRate = dDAI.exchangeRateStored();
+            uint256 exchangeRate = dDAI.exchangeRateCached();
             uint256 totalReservesBefore = dDAI.totalReserves();
             uint256 daiBalanceBefore = dai.balanceOf(dao);
 
