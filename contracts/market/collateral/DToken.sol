@@ -26,7 +26,7 @@ contract DToken is ERC165, ReentrancyGuard {
         uint256 accountExchangeRate;
     }
 
-    struct ExchangeRateData {
+    struct MarketData {
         /// @notice Timestamp interest was last update
         uint32 lastTimestampUpdated;
         /// @notice Borrow exchange rate at `lastTimestampUpdated`
@@ -59,7 +59,7 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @notice Total number of tokens in circulation
     uint256 public totalSupply;
     /// @notice Information corresponding to borrow exchange rate
-    ExchangeRateData public marketExchangeRate;
+    MarketData public marketData;
     /// @notice Interest rate reserve factor
     uint256 public interestFactor;
 
@@ -114,7 +114,7 @@ contract DToken is ERC165, ReentrancyGuard {
     error DToken__Unauthorized();
     error DToken__ExcessiveValue();
     error DToken__TransferError();
-    error DToken__CashNotAvailable();
+    error DToken__InsufficientUnderlyingHeld()();
     error DToken__ValidationFailed();
     error DToken__InvalidCentralRegistry();
     error DToken__UnderlyingAssetTotalSupplyExceedsMaximum();
@@ -163,8 +163,8 @@ contract DToken is ERC165, ReentrancyGuard {
         _setLendtroller(lendtroller_);
 
         // Initialize timestamp and borrow index
-        marketExchangeRate.lastTimestampUpdated = uint32(block.timestamp);
-        marketExchangeRate.exchangeRate = uint224(WAD);
+        marketData.lastTimestampUpdated = uint32(block.timestamp);
+        marketData.exchangeRate = uint224(WAD);
 
         _setInterestRateModel(DynamicInterestRateModel(interestRateModel_));
 
@@ -384,7 +384,7 @@ contract DToken is ERC165, ReentrancyGuard {
             msg.sender,
             msg.sender,
             amount,
-            (exchangeRateStored() * amount) / WAD
+            (exchangeRateCached() * amount) / WAD
         );
     }
 
@@ -406,7 +406,7 @@ contract DToken is ERC165, ReentrancyGuard {
         _redeem(
             account,
             msg.sender,
-            (underlyingAmount * WAD) / exchangeRateStored(),
+            (underlyingAmount * WAD) / exchangeRateCached(),
             underlyingAmount
         );
 
@@ -452,7 +452,7 @@ contract DToken is ERC165, ReentrancyGuard {
         accrueInterest();
 
         // Calculate asset -> shares exchange rate
-        uint256 tokens = (amount * WAD) / exchangeRateStored();
+        uint256 tokens = (amount * WAD) / exchangeRateCached();
 
         // On success, the market will deposit `amount` to the market
         SafeTransferLib.safeTransferFrom(
@@ -481,12 +481,12 @@ contract DToken is ERC165, ReentrancyGuard {
     ) external nonReentrant onlyDaoPermissions {
         accrueInterest();
 
-        // Make sure we have enough cash to cover withdrawal
-        if (getCash() < amount) {
-            revert DToken__CashNotAvailable();
+        // Make sure we have enough underlying held to cover withdrawal
+        if (marketUnderlyingHeld() < amount) {
+            revert DToken__InsufficientUnderlyingHeld()();
         }
 
-        uint256 tokens = (amount * WAD) / exchangeRateStored();
+        uint256 tokens = (amount * WAD) / exchangeRateCached();
 
         // Update reserves with underflow check
         totalReserves = totalReserves - tokens;
@@ -587,7 +587,7 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @param account The address of the account to query
     /// @return The amount of underlying owned by `account`
     function balanceOfUnderlying(address account) external returns (uint256) {
-        return ((exchangeRateCurrent() * balanceOf[account]) / WAD);
+        return ((exchangeRateWithUpdate() * balanceOf[account]) / WAD);
     }
 
     /// @notice Get a snapshot of the account's balances, and the cached exchange rate
@@ -601,8 +601,8 @@ contract DToken is ERC165, ReentrancyGuard {
     ) external view returns (uint256, uint256, uint256) {
         return (
             balanceOf[account],
-            debtBalanceStored(account),
-            exchangeRateStored()
+            debtBalanceCached(account),
+            exchangeRateCached()
         );
     }
 
@@ -618,7 +618,7 @@ contract DToken is ERC165, ReentrancyGuard {
                 asset: address(this),
                 isCToken: false,
                 decimals: decimals(),
-                debtBalance: debtBalanceStored(account),
+                debtBalance: debtBalanceCached(account),
                 exchangeRate: 0 // Unused in lendtroller
             })
         );
@@ -629,7 +629,7 @@ contract DToken is ERC165, ReentrancyGuard {
     function utilizationRate() external view returns (uint256) {
         return
             interestRateModel.utilizationRate(
-                getCash(),
+                marketUnderlyingHeld(),
                 totalBorrows,
                 totalReserves
             );
@@ -640,7 +640,7 @@ contract DToken is ERC165, ReentrancyGuard {
     function borrowRatePerYear() external view returns (uint256) {
         return
             interestRateModel.getBorrowRatePerYear(
-                getCash(),
+                marketUnderlyingHeld(),
                 totalBorrows,
                 totalReserves
             );
@@ -651,7 +651,7 @@ contract DToken is ERC165, ReentrancyGuard {
     function supplyRatePerYear() external view returns (uint256) {
         return
             interestRateModel.getSupplyRatePerYear(
-                getCash(),
+                marketUnderlyingHeld(),
                 totalBorrows,
                 totalReserves,
                 interestFactor
@@ -660,7 +660,7 @@ contract DToken is ERC165, ReentrancyGuard {
 
     /// @notice Accrues interest and then returns the current total borrows
     /// @return The total borrows with interest
-    function totalBorrowsCurrent() external nonReentrant returns (uint256) {
+    function totalBorrowsWithUpdate() external nonReentrant returns (uint256) {
         accrueInterest();
         return totalBorrows;
     }
@@ -668,11 +668,11 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @notice Accrues interest and then returns the current debt balance for `account`
     /// @param account The address whose balance should be calculated after updating borrowIndex
     /// @return `account`'s current balance index
-    function debtBalanceCurrent(
+    function debtBalanceWithUpdate(
         address account
     ) external nonReentrant returns (uint256) {
         accrueInterest();
-        return debtBalanceStored(account);
+        return debtBalanceCached(account);
     }
 
     /// PUBLIC FUNCTIONS ///
@@ -680,20 +680,20 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @notice Return the debt balance of account based on stored data
     /// @param account The address whose balance should be calculated
     /// @return `account`'s cached balance index
-    function debtBalanceStored(address account) public view returns (uint256) {
+    function debtBalanceCached(address account) public view returns (uint256) {
         // Cache borrow data to save gas
-        DebtData storage debtSnapshot = _debtOf[account];
+        DebtData storage userDebtData = _debtOf[account];
 
         // If debtBalance = 0 then borrowIndex is likely also 0
-        if (debtSnapshot.principal == 0) {
+        if (userDebtData.principal == 0) {
             return 0;
         }
 
         // Calculate debt balance using the interest index:
-        // debtBalanceStored = account.principal * DToken.borrowIndex / account.accountExchangeRate
+        // debtBalanceCached = account.principal * DToken.borrowIndex / account.accountExchangeRate
         return
-            (debtSnapshot.principal * marketExchangeRate.exchangeRate) /
-            debtSnapshot.accountExchangeRate;
+            (userDebtData.principal * marketData.exchangeRate) /
+            userDebtData.accountExchangeRate;
     }
 
     /// @notice Returns the decimals of the token
@@ -705,8 +705,8 @@ contract DToken is ERC165, ReentrancyGuard {
 
     /// @notice Gets balance of this contract in terms of the underlying
     /// @dev This excludes changes in underlying token balance by the current transaction, if any
-    /// @return The quantity of underlying tokens owned by this contract
-    function getCash() public view returns (uint256) {
+    /// @return The quantity of underlying tokens owned by the market
+    function marketUnderlyingHeld() public view returns (uint256) {
         return IERC20(underlying).balanceOf(address(this));
     }
 
@@ -717,19 +717,19 @@ contract DToken is ERC165, ReentrancyGuard {
 
     /// @notice Accrues interest then return the up-to-date exchange rate
     /// @return Calculated exchange rate, scaled by `WAD`
-    function exchangeRateCurrent() public nonReentrant returns (uint256) {
+    function exchangeRateWithUpdate() public nonReentrant returns (uint256) {
         accrueInterest();
-        return exchangeRateStored();
+        return exchangeRateCached();
     }
 
     /// @notice Calculates the exchange rate from the underlying to the dToken
     /// @return Cached exchange rate, scaled by `WAD`
-    function exchangeRateStored() public view returns (uint256) {
+    function exchangeRateCached() public view returns (uint256) {
         // We do not need to check for totalSupply = 0,
         // when we list a market we mint a small amount ourselves
-        // exchangeRate = (totalCash + totalBorrows - totalReserves) / totalSupply
+        // exchangeRate = (total underlying held + totalBorrows - totalReserves) / totalSupply
         return
-            ((getCash() + totalBorrows - totalReserves) * WAD) / totalSupply;
+            ((marketUnderlyingHeld() + totalBorrows - totalReserves) * WAD) / totalSupply;
     }
 
     /// @inheritdoc ERC165
@@ -746,11 +746,11 @@ contract DToken is ERC165, ReentrancyGuard {
     ///      up to the latest available checkpoint.
     function accrueInterest() public {
         // Pull current exchange rate data
-        ExchangeRateData memory borrowData = marketExchangeRate;
+        MarketData memory cachedData = marketData;
 
         // If we are up to date there is no reason to continue
         if (
-            borrowData.lastTimestampUpdated + borrowData.compoundRate >
+            cachedData.lastTimestampUpdated + cachedData.compoundRate >
             block.timestamp
         ) {
             return;
@@ -759,11 +759,11 @@ contract DToken is ERC165, ReentrancyGuard {
         // Cache current values to save gas
         uint256 borrowsPrior = totalBorrows;
         uint256 reservesPrior = totalReserves;
-        uint256 exchangeRatePrior = borrowData.exchangeRate;
+        uint256 exchangeRatePrior = cachedData.exchangeRate;
 
         // Calculate the current borrow interest rate
         uint256 borrowRate = interestRateModel.getBorrowRateWithUpdate(
-            getCash(),
+            marketUnderlyingHeld(),
             borrowsPrior,
             reservesPrior
         );
@@ -771,7 +771,7 @@ contract DToken is ERC165, ReentrancyGuard {
         // Calculate the interest compounds to update, in `interestCompoundRate`
         // Calculate the interest accumulated into borrows and reserves and the new exchange rate:
         uint256 interestCompounds = (block.timestamp -
-            borrowData.lastTimestampUpdated) / borrowData.compoundRate;
+            cachedData.lastTimestampUpdated) / cachedData.compoundRate;
         uint256 interestAccumulated = borrowRate * interestCompounds;
         uint256 debtAccumulated = (interestAccumulated * borrowsPrior) / WAD;
         uint256 totalBorrowsNew = debtAccumulated + borrowsPrior;
@@ -779,11 +779,11 @@ contract DToken is ERC165, ReentrancyGuard {
             WAD) + exchangeRatePrior;
 
         // Update storage data
-        marketExchangeRate.lastTimestampUpdated = uint32(
-            borrowData.lastTimestampUpdated +
-                (interestCompounds * borrowData.compoundRate)
+        marketData.lastTimestampUpdated = uint32(
+            cachedData.lastTimestampUpdated +
+                (interestCompounds * cachedData.compoundRate)
         );
-        marketExchangeRate.exchangeRate = uint224(exchangeRateNew);
+        marketData.exchangeRate = uint224(exchangeRateNew);
         totalBorrows = totalBorrowsNew;
 
         // Check whether the market takes interest and debt has been accumulated
@@ -838,12 +838,12 @@ contract DToken is ERC165, ReentrancyGuard {
 
         // Set new interest rate model and compound rate
         interestRateModel = newInterestRateModel;
-        marketExchangeRate.compoundRate = newInterestRateModel.compoundRate();
+        marketData.compoundRate = newInterestRateModel.compoundRate();
 
         emit NewMarketInterestRateModel(
             oldInterestRateModel,
             address(newInterestRateModel),
-            marketExchangeRate.compoundRate
+            marketData.compoundRate
         );
     }
 
@@ -924,7 +924,7 @@ contract DToken is ERC165, ReentrancyGuard {
         lendtroller.canMint(address(this));
 
         // Get exchange rate before transfer
-        uint256 er = exchangeRateStored();
+        uint256 er = exchangeRateCached();
 
         // Transfer underlying in
         SafeTransferLib.safeTransferFrom(
@@ -961,9 +961,9 @@ contract DToken is ERC165, ReentrancyGuard {
         uint256 tokens,
         uint256 amount
     ) internal {
-        // Check if we have enough cash to support the redeem
-        if (getCash() < amount) {
-            revert DToken__CashNotAvailable();
+        // Check if we have enough underlying held to support the redemption
+        if (marketUnderlyingHeld() < amount) {
+            revert DToken__InsufficientUnderlyingHeld()();
         }
 
         balanceOf[redeemer] = balanceOf[redeemer] - tokens;
@@ -989,14 +989,14 @@ contract DToken is ERC165, ReentrancyGuard {
         uint256 amount,
         address recipient
     ) internal {
-        // Check if we have enough cash to support the borrow
-        if (getCash() - totalReserves < amount) {
-            revert DToken__CashNotAvailable();
+        // Check if we have enough underlying held to support the borrow
+        if (marketUnderlyingHeld() - totalReserves < amount) {
+            revert DToken__InsufficientUnderlyingHeld()();
         }
 
         // We calculate the new account and total borrow balances, failing on overflow:
-        _debtOf[account].principal = debtBalanceStored(account) + amount;
-        _debtOf[account].accountExchangeRate = marketExchangeRate.exchangeRate;
+        _debtOf[account].principal = debtBalanceCached(account) + amount;
+        _debtOf[account].accountExchangeRate = marketData.exchangeRate;
         totalBorrows = totalBorrows + amount;
 
         SafeTransferLib.safeTransfer(underlying, recipient, amount);
@@ -1021,7 +1021,7 @@ contract DToken is ERC165, ReentrancyGuard {
         lendtroller.canRepay(address(this), account);
 
         // Cache how much the account has to save gas
-        uint256 accountDebt = debtBalanceStored(account);
+        uint256 accountDebt = debtBalanceCached(account);
 
         // If amount == 0, amount = accountBorrows
         amount = amount == 0 ? accountDebt : amount;
@@ -1035,7 +1035,7 @@ contract DToken is ERC165, ReentrancyGuard {
 
         // We calculate the new account and total borrow balances, failing on underflow:
         _debtOf[account].principal = accountDebt - amount;
-        _debtOf[account].accountExchangeRate = marketExchangeRate.exchangeRate;
+        _debtOf[account].accountExchangeRate = marketData.exchangeRate;
         totalBorrows -= amount;
 
         emit Repay(payer, account, amount);

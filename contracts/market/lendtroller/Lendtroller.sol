@@ -996,7 +996,7 @@ contract Lendtroller is ILendtroller, ERC165 {
 
     /// @notice Determine whether `account` can currently be liquidated in this market
     /// @param account The account to check for liquidation flag
-    /// @dev Note that we calculate the exchangeRateStored for each collateral
+    /// @dev Note that we calculate the exchangeRateCached for each collateral
     ///           mToken using stored data, without calculating accumulated interest.
     /// @return Whether `account` can be liquidated currently
     function flaggedForLiquidation(
@@ -1218,14 +1218,14 @@ contract Lendtroller is ILendtroller, ERC165 {
             uint256 incentive = cToken.liqBaseIncentive +
                 ((cToken.liqCurve * data.lFactor) / WAD);
             maxAmount =
-                (cFactor * IMToken(debtToken).debtBalanceStored(account)) /
+                (cFactor * IMToken(debtToken).debtBalanceCached(account)) /
                 WAD;
 
             // Get the exchange rate and calculate the number of collateral tokens to seize:
             debtToCollateralRatio =
                 (incentive * data.debtTokenPrice * WAD) /
                 (data.collateralTokenPrice *
-                    IMToken(collateralToken).exchangeRateStored());
+                    IMToken(collateralToken).exchangeRateCached());
         }
 
         if (!liquidateExact) {
@@ -1270,7 +1270,7 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @param redeemTokens The number of tokens to hypothetically redeem
     /// @param borrowAmount The amount of underlying to hypothetically borrow
     /// @param errorCodeBreakpoint The error code that will cause liquidity operations to revert
-    /// @dev Note that we calculate the exchangeRateStored for each collateral
+    /// @dev Note that we calculate the exchangeRateCached for each collateral
     ///           mToken using stored data, without calculating accumulated interest.
     /// @return accountCollateral The total market value of `account`'s collateral
     /// @return maxDebt Maximum amount `account` can borrow versus current collateral
@@ -1359,7 +1359,7 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @param redeemTokens The number of tokens to hypothetically redeem.
     /// @param borrowAmount The amount of underlying to hypothetically borrow.
     /// @param errorCodeBreakpoint The error code that will cause liquidity operations to revert.
-    /// @dev Note that we calculate the exchangeRateStored for each collateral
+    /// @dev Note that we calculate the exchangeRateCached for each collateral
     ///           mToken using stored data, without calculating accumulated interest.
     /// @return uint256 Hypothetical `account` excess liquidity versus collateral requirements.
     /// @return uint256 Hypothetical `account` liquidity deficit below collateral requirements.
