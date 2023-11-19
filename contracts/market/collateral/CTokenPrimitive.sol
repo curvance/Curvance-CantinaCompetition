@@ -1,17 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
+import { GaugePool } from "contracts/gauge/GaugePool.sol";
 import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { ERC4626, SafeTransferLib, ERC20 } from "contracts/libraries/ERC4626.sol";
 import { Math } from "contracts/libraries/Math.sol";
 import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
-import { GaugePool } from "contracts/gauge/GaugePool.sol";
+import { WAD } from "contracts/libraries/Constants.sol";
 
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.sol";
 import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.sol";
-import { WAD } from "contracts/libraries/Constants.sol";
+
 
 /// @notice Vault Positions must have all assets ready for withdraw,
 ///         IE assets can NOT be locked.
@@ -26,7 +27,7 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
     ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
 
     /// `bytes4(keccak256(bytes("CTokenPrimitive__VaultNotActive()")))`
-    uint256 internal constant VAULT_NOT_ACTIVE_SELECTOR = 0x665f0f11;
+    uint256 internal constant _VAULT_NOT_ACTIVE_SELECTOR = 0x665f0f11;
     /// `keccak256(bytes("Deposit(address,address,uint256,uint256)"))`.
     uint256 private constant _DEPOSIT_EVENT_SIGNATURE =
         0xdcbc1c05240f31ff3ad067ef1ee35ce4997762752e3a095284754544f4c709d7;
@@ -269,7 +270,7 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
         _checkDaoPermissions();
         
         if (_vaultStatus != 2) {
-            _revert(VAULT_NOT_ACTIVE_SELECTOR);
+            _revert(_VAULT_NOT_ACTIVE_SELECTOR);
         }
 
         _vaultStatus = 1;
@@ -677,7 +678,7 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
         }
 
         if (assets > maxDeposit(receiver)) {
-            _revert(VAULT_NOT_ACTIVE_SELECTOR);
+            _revert(_VAULT_NOT_ACTIVE_SELECTOR);
         }
 
         // Fail if deposit not allowed
@@ -709,7 +710,7 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
         }
 
         if (shares > maxMint(receiver)) {
-            _revert(VAULT_NOT_ACTIVE_SELECTOR);
+            _revert(_VAULT_NOT_ACTIVE_SELECTOR);
         }
 
         // Fail if mint not allowed

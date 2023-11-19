@@ -3,6 +3,7 @@ pragma solidity 0.8.17;
 
 import { CTokenCompoundingBase, SafeTransferLib, ERC20, Math, ICentralRegistry } from "contracts/market/collateral/CTokenCompoundingBase.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
+import { WAD } from "contracts/libraries/Constants.sol";
 
 import { IBooster } from "contracts/interfaces/external/convex/IBooster.sol";
 import { IBaseRewardPool } from "contracts/interfaces/external/convex/IBaseRewardPool.sol";
@@ -10,7 +11,6 @@ import { IRewards } from "contracts/interfaces/external/convex/IRewards.sol";
 import { IBalancerVault } from "contracts/interfaces/external/balancer/IBalancerVault.sol";
 import { IBalancerPool } from "contracts/interfaces/external/balancer/IBalancerPool.sol";
 import { IStashWrapper } from "contracts/interfaces/external/aura/IStashWrapper.sol";
-import { WAD } from "contracts/libraries/Constants.sol";
 
 contract AuraCToken is CTokenCompoundingBase {
     using Math for uint256;
@@ -186,7 +186,7 @@ contract AuraCToken is CTokenCompoundingBase {
         }
 
         if (_vaultStatus != 2) {
-            _revert(VAULT_NOT_ACTIVE_SELECTOR);
+            _revert(_VAULT_NOT_ACTIVE_SELECTOR);
         }
 
         // Vest pending rewards if there are any

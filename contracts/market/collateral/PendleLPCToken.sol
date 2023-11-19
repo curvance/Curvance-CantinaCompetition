@@ -3,13 +3,14 @@ pragma solidity 0.8.17;
 
 import { CTokenCompoundingBase, SafeTransferLib, ERC20, Math, ICentralRegistry } from "contracts/market/collateral/CTokenCompoundingBase.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
+import { WAD } from "contracts/libraries/Constants.sol";
 
 import { IPendleRouter, ApproxParams } from "contracts/interfaces/external/pendle/IPendleRouter.sol";
 import { IPMarket } from "contracts/interfaces/external/pendle/IPMarket.sol";
 import { IPPrincipalToken } from "contracts/interfaces/external/pendle/IPPrincipalToken.sol";
 import { IPYieldToken } from "contracts/interfaces/external/pendle/IPYieldToken.sol";
 import { IStandardizedYield } from "contracts/interfaces/external/pendle/IStandardizedYield.sol";
-import { WAD } from "contracts/libraries/Constants.sol";
+
 
 contract PendleLPCToken is CTokenCompoundingBase {
     using Math for uint256;
@@ -117,7 +118,7 @@ contract PendleLPCToken is CTokenCompoundingBase {
         }
 
         if (_vaultStatus != 2) {
-            _revert(VAULT_NOT_ACTIVE_SELECTOR);
+            _revert(_VAULT_NOT_ACTIVE_SELECTOR);
         }
 
         // Vest pending rewards if there are any

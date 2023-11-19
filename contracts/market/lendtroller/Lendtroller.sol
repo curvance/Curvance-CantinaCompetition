@@ -1,16 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
+import { GaugePool } from "contracts/gauge/GaugePool.sol";
 import { ERC165 } from "contracts/libraries/ERC165.sol";
 import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
-import { GaugePool } from "contracts/gauge/GaugePool.sol";
+import { WAD } from "contracts/libraries/Constants.sol";
+
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.sol";
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
-import { WAD } from "contracts/libraries/Constants.sol";
 
 /// @title Curvance Lendtroller
 /// @notice Manages risk within the lending markets

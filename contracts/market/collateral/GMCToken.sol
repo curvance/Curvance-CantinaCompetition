@@ -100,7 +100,7 @@ contract GMCToken is CTokenCompoundingBase {
         }
 
         if (_vaultStatus != 2) {
-            _revert(VAULT_NOT_ACTIVE_SELECTOR);
+            _revert(_VAULT_NOT_ACTIVE_SELECTOR);
         }
 
         // Vest pending rewards if there are any

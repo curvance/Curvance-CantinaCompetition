@@ -1,20 +1,20 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
+import { CTokenPrimitive } from "contracts/market/collateral/CTokenPrimitive.sol";
+import { DToken } from "contracts/market/collateral/DToken.sol";
 import { ERC165 } from "contracts/libraries/ERC165.sol";
 import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
-import { CTokenPrimitive } from "contracts/market/collateral/CTokenPrimitive.sol";
-import { DToken } from "contracts/market/collateral/DToken.sol";
+import { DENOMINATOR, WAD } from "contracts/libraries/Constants.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.sol";
-import { DENOMINATOR, WAD } from "contracts/libraries/Constants.sol";
 
 contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
     /// TYPES ///
