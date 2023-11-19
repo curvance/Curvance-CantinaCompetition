@@ -41,6 +41,8 @@ contract DToken is ERC165, ReentrancyGuard {
     address public immutable underlying;
     /// @notice Curvance DAO hub
     ICentralRegistry public immutable centralRegistry;
+    /// `bytes4(keccak256(bytes("DToken__Unauthorized()")))`
+    uint256 internal constant _UNAUTHORIZED_SELECTOR = 0xefeae624;
 
     /// STORAGE ///
 
@@ -98,6 +100,11 @@ contract DToken is ERC165, ReentrancyGuard {
         uint256 amount,
         address cTokenCollateral,
         uint256 seizeTokens
+    );
+    event BadDebtRecognized(
+        address liquidator,
+        address account,
+        uint256 amount
     );
     event NewLendtroller(address oldLendtroller, address newLendtroller);
     event NewMarketInterestRateModel(
@@ -183,7 +190,7 @@ contract DToken is ERC165, ReentrancyGuard {
         address initializer
     ) external nonReentrant returns (bool) {
         if (msg.sender != address(lendtroller)) {
-            revert DToken__Unauthorized();
+            _revert(_UNAUTHORIZED_SELECTOR);
         }
 
         uint256 amount = 42069;
@@ -253,7 +260,7 @@ contract DToken is ERC165, ReentrancyGuard {
         uint256 amount
     ) external nonReentrant {
         if (!isApprovedToBorrow[account][msg.sender]) {
-            revert DToken__Unauthorized();
+            _revert(_UNAUTHORIZED_SELECTOR);
         }
 
         accrueInterest();
@@ -277,7 +284,7 @@ contract DToken is ERC165, ReentrancyGuard {
         bytes calldata params
     ) external nonReentrant {
         if (msg.sender != lendtroller.positionFolding()) {
-            revert DToken__Unauthorized();
+            _revert(_UNAUTHORIZED_SELECTOR);
         }
 
         accrueInterest();
@@ -297,7 +304,7 @@ contract DToken is ERC165, ReentrancyGuard {
         lendtroller.canBorrow(address(this), account, 0);
     }
 
-    /// @notice Sender repays their own borrow
+    /// @notice Caller repays their own debt
     /// @dev    Updates interest before executing the repayment
     /// @param amount The amount to repay, or 0 for the full outstanding amount
     function repay(uint256 amount) external nonReentrant {
@@ -306,7 +313,7 @@ contract DToken is ERC165, ReentrancyGuard {
         _repay(msg.sender, msg.sender, amount);
     }
 
-    /// @notice Position folding repays `account`'s borrow
+    /// @notice Position folding repays `account`'s debt
     /// @dev Only Position folding contract can call this function,
     ///      updates interest before executing the repay
     /// @param amount The amount to repay, or 0 for the full outstanding amount
@@ -315,12 +322,51 @@ contract DToken is ERC165, ReentrancyGuard {
         uint256 amount
     ) external nonReentrant {
         if (msg.sender != lendtroller.positionFolding()) {
-            revert DToken__Unauthorized();
+            _revert(_UNAUTHORIZED_SELECTOR);
         }
 
         accrueInterest();
 
         _repay(msg.sender, account, amount);
+    }
+
+    function repayWithBadDebt(
+        address liquidator, 
+        address account, 
+        uint256 repayRatio
+    ) external nonReentrant {
+        // We check self liquidation in lendtroller before 
+        // this call so we do not need to check here
+
+        // Make sure the lendtroller itself is calling since 
+        // then we know all liquidity checks have passed
+        if (msg.sender != address(lendtroller)) {
+            _revert(_UNAUTHORIZED_SELECTOR);
+        }
+
+        accrueInterest();
+
+        // Cache how much the account has to save gas
+        uint256 accountDebt = debtBalanceCached(account);
+        uint256 repayAmount = (accountDebt * repayRatio) / WAD;
+
+        // We do not need to check for listing here as we are
+        // coming directly from the lendtroller itself
+
+        SafeTransferLib.safeTransferFrom(
+            underlying,
+            liquidator,
+            address(this),
+            repayAmount
+        );
+
+        // Wipe out the accounts debt since we are recognizing
+        // unpaid debt as bad debt
+        delete _debtOf[account].principal;
+        totalBorrows -= accountDebt;
+
+        emit Repay(liquidator, account, repayAmount);
+        emit BadDebtRecognized(liquidator, account, accountDebt - repayAmount);
     }
 
     /// @notice Liquidates `account`'s collateral by repaying `amount` debt and
@@ -382,7 +428,7 @@ contract DToken is ERC165, ReentrancyGuard {
         bytes calldata params
     ) external nonReentrant {
         if (msg.sender != lendtroller.positionFolding()) {
-            revert DToken__Unauthorized();
+            _revert(_UNAUTHORIZED_SELECTOR);
         }
 
         accrueInterest();
@@ -1081,8 +1127,29 @@ contract DToken is ERC165, ReentrancyGuard {
                 exactAmount
             );
 
-        // calculates DTokens to repay for liquidation, reverts if repay fails
-        uint256 repayAmount = _repay(liquidator, account, amount);
+        // Validate that the token is listed inside the market
+        if (!lendtroller.isListed(address(this))) {
+            revert DToken__ValidationFailed();
+        }
+
+        // Cache how much the account has to save gas
+        uint256 accountDebt = debtBalanceCached(account);
+
+        // Repay `account`'s debt
+        SafeTransferLib.safeTransferFrom(
+            underlying,
+            liquidator,
+            address(this),
+            amount
+        );
+
+        // We calculate the new `account` and total borrow balances, 
+        // failing on underflow:
+        _debtOf[account].principal = accountDebt - amount;
+        _debtOf[account].accountExchangeRate = marketData.exchangeRate;
+        totalBorrows -= amount;
+
+        emit Repay(liquidator, account, amount);
 
         // We check above that the mToken must be a collateral token,
         // so we cant seize this mToken as it is a debt token,
@@ -1097,7 +1164,7 @@ contract DToken is ERC165, ReentrancyGuard {
         emit Liquidated(
             liquidator,
             account,
-            repayAmount,
+            amount,
             address(collateralToken),
             liquidatedTokens
         );
@@ -1109,17 +1176,26 @@ contract DToken is ERC165, ReentrancyGuard {
         return lendtroller.gaugePool();
     }
 
+    /// @dev Internal helper for reverting efficiently.
+    function _revert(uint256 s) internal pure {
+        /// @solidity memory-safe-assembly
+        assembly {
+            mstore(0x00, s)
+            revert(0x1c, 0x04)
+        }
+    }
+
     /// @dev Checks whether the caller has sufficient permissioning
     function _checkDaoPermissions() internal view {
         if (!centralRegistry.hasDaoPermissions(msg.sender)) {
-            revert DToken__Unauthorized();
+            _revert(_UNAUTHORIZED_SELECTOR);
         }
     }
 
     /// @dev Checks whether the caller has sufficient permissioning
     function _checkElevatedPermissions() internal view {
         if (!centralRegistry.hasElevatedPermissions(msg.sender)) {
-            revert DToken__Unauthorized();
+            _revert(_UNAUTHORIZED_SELECTOR);
         }
     }
 
