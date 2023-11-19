@@ -54,7 +54,9 @@ contract VelodromeVolatileLPAdaptor is BaseVolatileLPAdaptor {
     /// @param asset The address of the bpt to add
     function addAsset(
         address asset
-    ) external override onlyElevatedPermissions {
+    ) external override {
+        _checkElevatedPermissions();
+        
         if (isSupportedAsset[asset]) {
             revert VelodromeVolatileLPAdaptor__AssetIsAlreadyAdded();
         }
@@ -70,7 +72,9 @@ contract VelodromeVolatileLPAdaptor is BaseVolatileLPAdaptor {
     /// @dev Calls back into price router to notify it of its removal
     function removeAsset(
         address asset
-    ) external virtual override onlyDaoPermissions {
+    ) external virtual override {
+        _checkElevatedPermissions();
+
         if (!isSupportedAsset[asset]) {
             revert VelodromeVolatileLPAdaptor__AssetIsNotSupported();
         }

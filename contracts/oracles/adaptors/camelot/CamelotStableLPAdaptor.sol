@@ -51,7 +51,9 @@ contract CamelotStableLPAdaptor is BaseStableLPAdaptor {
     /// @param asset The address of the bpt to add
     function addAsset(
         address asset
-    ) external override onlyElevatedPermissions {
+    ) external override {
+        _checkElevatedPermissions();
+
         if (isSupportedAsset[asset]) {
             revert CamelotStableLPAdaptor__AssetIsAlreadyAdded();
         }
@@ -65,7 +67,9 @@ contract CamelotStableLPAdaptor is BaseStableLPAdaptor {
 
     /// @notice Removes a supported asset from the adaptor.
     /// @dev Calls back into price router to notify it of its removal
-    function removeAsset(address asset) external override onlyDaoPermissions {
+    function removeAsset(address asset) external override {
+        _checkElevatedPermissions();
+
         if (!isSupportedAsset[asset]) {
             revert CamelotStableLPAdaptor__AssetIsNotSupported();
         }

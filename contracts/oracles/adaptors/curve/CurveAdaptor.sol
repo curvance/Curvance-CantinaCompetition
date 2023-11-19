@@ -59,7 +59,8 @@ contract CurveAdaptor is CurveBaseAdaptor {
     function setReentrancyConfig(
         uint256 coinsLength,
         uint256 gasLimit
-    ) external onlyElevatedPermissions {
+    ) external {
+        _checkElevatedPermissions();
         _setReentrancyConfig(coinsLength, gasLimit);
     }
 
@@ -119,7 +120,9 @@ contract CurveAdaptor is CurveBaseAdaptor {
     function addAsset(
         address asset,
         address pool
-    ) external onlyElevatedPermissions {
+    ) external {
+        _checkElevatedPermissions();
+
         if (isSupportedAsset[asset]) {
             revert CurveAdaptor__AssetIsAlreadyAdded();
         }
@@ -167,7 +170,9 @@ contract CurveAdaptor is CurveBaseAdaptor {
 
     /// @notice Removes a supported asset from the adaptor.
     /// @dev Calls back into price router to notify it of its removal
-    function removeAsset(address asset) external override onlyDaoPermissions {
+    function removeAsset(address asset) external override {
+        _checkElevatedPermissions();
+
         if (!isSupportedAsset[asset]) {
             revert CurveAdaptor__AssetIsNotSupported();
         }

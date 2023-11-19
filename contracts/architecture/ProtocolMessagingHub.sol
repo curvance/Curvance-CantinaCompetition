@@ -49,25 +49,6 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     error ProtocolMessagingHub__InsufficientGasToken();
     error ProtocolMessagingHub__InvalidMsgValue();
 
-    /// MODIFIERS ///
-
-    modifier onlyAuthorized() {
-        if (
-            !centralRegistry.isHarvester(msg.sender) &&
-            msg.sender != centralRegistry.feeAccumulator()
-        ) {
-            revert ProtocolMessagingHub__Unauthorized();
-        }
-        _;
-    }
-
-    modifier onlyDaoPermissions() {
-        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
-            revert ProtocolMessagingHub__Unauthorized();
-        }
-        _;
-    }
-
     receive() external payable {}
 
     /// CONSTRUCTOR ///
@@ -103,7 +84,11 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     /// @notice Set Stargate router destination address to route fees
     function setStargateAddress(
         address newStargateRouter
-    ) external onlyDaoPermissions {
+    ) external {
+        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
+            revert ProtocolMessagingHub__Unauthorized();
+        }
+
         if (newStargateRouter == address(0)) {
             revert ProtocolMessagingHub__StargateRouterIsZeroAddress();
         }
@@ -152,7 +137,9 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         bytes calldata payload,
         uint64 dstGasForCall,
         LzCallParams calldata callParams
-    ) external onlyAuthorized {
+    ) external {
+        _checkPermissions();
+
         // Validate that we are aiming for a supported chain
         if (
             centralRegistry
@@ -196,7 +183,9 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         PoolData calldata poolData,
         LzTxObj calldata lzTxParams,
         bytes calldata payload
-    ) external onlyAuthorized {
+    ) external {
+        _checkPermissions();
+        
         {
             // Avoid stack too deep
             uint256 gethChainId = centralRegistry.messagingToGETHChainId(
@@ -415,7 +404,11 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     ///         Stargate to FeeAccumulator
     /// @dev This is for if we ever need to depreciate this
     ///      ProtocolMessagingHub for another
-    function returnReimbursedFees() external onlyDaoPermissions {
+    function returnReimbursedFees() external {
+        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
+            revert ProtocolMessagingHub__Unauthorized();
+        }
+
         SafeTransferLib.safeTransfer(
             feeToken,
             centralRegistry.feeAccumulator(),
@@ -444,7 +437,9 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         uint64 dstGasForCall,
         LzCallParams calldata callParams,
         uint256 etherValue
-    ) public payable onlyAuthorized {
+    ) public payable {
+        _checkPermissions();
+        
         // Validate that we are aiming for a supported chain
         if (
             centralRegistry
@@ -489,5 +484,15 @@ contract ProtocolMessagingHub is ReentrancyGuard {
                 transferAndCallPayload,
                 lzTxParams
             );
+    }
+
+    /// @dev Checks whether the caller has sufficient permissioning.
+    function _checkPermissions() internal view {
+        if (
+            !centralRegistry.isHarvester(msg.sender) &&
+            msg.sender != centralRegistry.feeAccumulator()
+        ) {
+            revert ProtocolMessagingHub__Unauthorized();
+        }
     }
 }

@@ -55,7 +55,8 @@ contract BaseVolatileLPAdaptor is BaseOracleAdaptor {
     /// @notice Add a Balancer Stable Pool Bpt as an asset.
     /// @dev Should be called before `PriceRotuer:addAssetPriceFeed` is called.
     /// @param asset The address of the bpt to add
-    function addAsset(address asset) external virtual onlyElevatedPermissions {
+    function addAsset(address asset) external virtual {
+        _checkElevatedPermissions();
         _addAsset(asset);
     }
 
@@ -63,7 +64,8 @@ contract BaseVolatileLPAdaptor is BaseOracleAdaptor {
     /// @dev Calls back into price router to notify it of its removal
     function removeAsset(
         address asset
-    ) external virtual override onlyDaoPermissions {
+    ) external virtual override {
+        _checkElevatedPermissions();
         _removeAsset(asset);
     }
 

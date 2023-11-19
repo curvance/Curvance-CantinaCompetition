@@ -112,7 +112,9 @@ contract PendlePrincipalTokenAdaptor is BaseOracleAdaptor {
     function addAsset(
         address asset,
         AdaptorData memory data
-    ) external onlyElevatedPermissions {
+    ) external {
+        _checkElevatedPermissions();
+
         if (isSupportedAsset[asset]) {
             revert PendlePrincipalTokenAdaptor__ConfigurationError();
         }
@@ -171,7 +173,9 @@ contract PendlePrincipalTokenAdaptor is BaseOracleAdaptor {
     /// @notice Removes a supported asset from the adaptor.
     /// @dev Calls back into price router to notify it of its removal
     /// @param asset The address of the asset to be removed.
-    function removeAsset(address asset) external override onlyDaoPermissions {
+    function removeAsset(address asset) external override {
+        _checkElevatedPermissions();
+
         if (!isSupportedAsset[asset]) {
             revert PendlePrincipalTokenAdaptor__AssetIsNotSupported();
         }

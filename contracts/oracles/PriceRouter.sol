@@ -78,22 +78,6 @@ contract PriceRouter {
     error PriceRouter__ErrorCodeFlagged();
     error PriceRouter__AdaptorIsNotApproved();
 
-    /// MODIFIERS ///
-
-    modifier onlyDaoPermissions() {
-        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
-            revert PriceRouter__Unauthorized();
-        }
-        _;
-    }
-
-    modifier onlyElevatedPermissions() {
-        if (!centralRegistry.hasElevatedPermissions(msg.sender)) {
-            revert PriceRouter__Unauthorized();
-        }
-        _;
-    }
-
     /// CONSTRUCTOR ///
 
     constructor(ICentralRegistry centralRegistry_, address ethUsdFeed) {
@@ -126,7 +110,9 @@ contract PriceRouter {
     function addAssetPriceFeed(
         address asset,
         address feed
-    ) external onlyElevatedPermissions {
+    ) external {
+        _checkElevatedPermissions();
+
         if (!isApprovedAdaptor[feed]) {
             _revert(INVALID_PARAMETER_SELECTOR);
         }
@@ -155,13 +141,16 @@ contract PriceRouter {
     function removeAssetPriceFeed(
         address asset,
         address feed
-    ) external onlyDaoPermissions {
+    ) external {
+        _checkElevatedPermissions();
         _removeFeed(asset, feed);
     }
 
     function addMTokenSupport(
         address mToken
-    ) external onlyElevatedPermissions {
+    ) external {
+        _checkElevatedPermissions();
+
         if (mTokenAssets[mToken].isMToken) {
             _revert(INVALID_PARAMETER_SELECTOR);
         }
@@ -170,7 +159,9 @@ contract PriceRouter {
         mTokenAssets[mToken].underlying = IMToken(mToken).underlying();
     }
 
-    function removeMTokenSupport(address mToken) external onlyDaoPermissions {
+    function removeMTokenSupport(address mToken) external {
+        _checkElevatedPermissions();
+
         if (!mTokenAssets[mToken].isMToken) {
             _revert(INVALID_PARAMETER_SELECTOR);
         }
@@ -191,7 +182,9 @@ contract PriceRouter {
     /// @param _adaptor The address of the adaptor to approve.
     function addApprovedAdaptor(
         address _adaptor
-    ) external onlyElevatedPermissions {
+    ) external {
+        _checkElevatedPermissions();
+
         if (isApprovedAdaptor[_adaptor]) {
             _revert(INVALID_PARAMETER_SELECTOR);
         }
@@ -204,7 +197,9 @@ contract PriceRouter {
     /// @param _adaptor The address of the adaptor to remove.
     function removeApprovedAdaptor(
         address _adaptor
-    ) external onlyDaoPermissions {
+    ) external {
+        _checkElevatedPermissions();
+        
         if (!isApprovedAdaptor[_adaptor]) {
             _revert(INVALID_PARAMETER_SELECTOR);
         }
@@ -218,7 +213,9 @@ contract PriceRouter {
     /// @param maxDivergence The new maximum divergence.
     function setPriceFeedMaxDivergence(
         uint256 maxDivergence
-    ) external onlyElevatedPermissions {
+    ) external {
+        _checkElevatedPermissions();
+
         if (maxDivergence < 10200 || maxDivergence > 12000) {
             _revert(INVALID_PARAMETER_SELECTOR);
         }
@@ -232,7 +229,9 @@ contract PriceRouter {
     /// @param delay The new maximum delay in seconds.
     function setChainlinkDelay(
         uint256 delay
-    ) external onlyElevatedPermissions {
+    ) external {
+        _checkElevatedPermissions();
+
         if (delay < 1 hours || delay > 1 days) {
             _revert(INVALID_PARAMETER_SELECTOR);
         }
@@ -772,6 +771,13 @@ contract PriceRouter {
         assembly {
             mstore(0x00, s)
             revert(0x1c, 0x04)
+        }
+    }
+
+    /// @dev Checks whether the caller has sufficient permissioning.
+    function _checkElevatedPermissions() internal view {
+        if (!centralRegistry.hasElevatedPermissions(msg.sender)) {
+            revert PriceRouter__Unauthorized();
         }
     }
 }

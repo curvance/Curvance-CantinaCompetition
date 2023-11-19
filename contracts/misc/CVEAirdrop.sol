@@ -42,15 +42,6 @@ contract CVEAirdrop is ReentrancyGuard {
     error CVEAirdrop__TransferError();
     error CVEAirdrop__NotEligible();
 
-    /// MODIFIERS ///
-
-    modifier onlyDaoPermissions() {
-        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
-            revert CVEAirdrop__Unauthorized();
-        }
-        _;
-    }
-
     constructor(ICentralRegistry centralRegistry_, uint256 maxClaim_) {
         if (
             !ERC165Checker.supportsInterface(
@@ -119,6 +110,113 @@ contract CVEAirdrop is ReentrancyGuard {
         emit AirdropClaimed(msg.sender, amount);
     }
 
+    /// @notice Check whether a user has CVE tokens to claim
+    /// @param user address of the user to check
+    /// @param amount amount to claim
+    /// @param proof array containing the merkle proof
+    function canClaimAirdrop(
+        address user,
+        uint256 amount,
+        bytes32[] calldata proof
+    ) external view returns (bool) {
+        if (amount > maxClaim) {
+            return false;
+        }
+
+        if (!airdropClaimed[user]) {
+            if (block.timestamp < endClaimTimestamp) {
+                // Compute the leaf and verify the merkle proof
+                return
+                    verify(
+                        proof,
+                        merkleRoot,
+                        keccak256(abi.encodePacked(user, amount))
+                    );
+            }
+        }
+
+        return false;
+    }
+
+    /// @dev rescue any token sent by mistake
+    /// @param token token to rescue
+    /// @param amount amount of `token` to rescue, 0 indicates to rescue all
+    function rescueToken(
+        address token,
+        uint256 amount
+    ) external {
+        _checkDaoPermissions();
+        address daoOperator = centralRegistry.daoAddress();
+
+        if (token == address(0)) {
+            if (amount == 0) {
+                amount = address(this).balance;
+            }
+
+            SafeTransferLib.forceSafeTransferETH(daoOperator, amount);
+        } else {
+            if (token == centralRegistry.oCVE()) {
+                revert CVEAirdrop__TransferError();
+            }
+
+            if (amount == 0) {
+                amount = IERC20(token).balanceOf(address(this));
+            }
+
+            SafeTransferLib.safeTransfer(token, daoOperator, amount);
+        }
+    }
+
+    /// @notice Withdraws unclaimed airdrop tokens to contract Owner after airdrop claim period has ended
+    function withdrawRemainingAirdropTokens() external {
+        _checkDaoPermissions();
+
+        if (block.timestamp < endClaimTimestamp) {
+            revert CVEAirdrop__TransferError();
+        }
+
+        address oCVE = centralRegistry.oCVE();
+        uint256 amount = IERC20(oCVE).balanceOf(address(this));
+        SafeTransferLib.safeTransfer(oCVE, msg.sender, amount);
+
+        emit RemainingOptionsWithdrawn(amount);
+    }
+
+    /// @notice Set merkleRoot for airdrop validation
+    /// @param newRoot new merkle root
+    function setMerkleRoot(bytes32 newRoot) external {
+        _checkDaoPermissions();
+        
+        if (newRoot == bytes32(0)) {
+            revert CVEAirdrop__ParametersAreInvalid();
+        }
+
+        if (merkleRoot == bytes32(0)) {
+            if (!centralRegistry.hasElevatedPermissions(msg.sender)) {
+                revert CVEAirdrop__Unauthorized();
+            }
+        }
+
+        merkleRoot = newRoot;
+    }
+
+    /// @notice Set isPaused state
+    /// @param state new pause state
+    function setPauseState(bool state) external {
+        _checkDaoPermissions();
+        
+        uint256 currentState = isPaused;
+        isPaused = state ? 2 : 1;
+
+        // If it was paused prior,
+        // you need to provide users 3 months to claim their airdrop
+        if (isPaused == 1 && currentState == 2) {
+            endClaimTimestamp = block.timestamp + (12 weeks);
+        }
+    }
+
+    /// INTERNAL FUNCTIONS ///
+
     /// @dev Returns whether `leaf` exists in the Merkle tree with `root`, given `proof`.
     function verify(
         bytes32[] memory proof,
@@ -157,101 +255,10 @@ contract CVEAirdrop is ReentrancyGuard {
         }
     }
 
-    /// @notice Check whether a user has CVE tokens to claim
-    /// @param user address of the user to check
-    /// @param amount amount to claim
-    /// @param proof array containing the merkle proof
-    function canClaimAirdrop(
-        address user,
-        uint256 amount,
-        bytes32[] calldata proof
-    ) external view returns (bool) {
-        if (amount > maxClaim) {
-            return false;
-        }
-
-        if (!airdropClaimed[user]) {
-            if (block.timestamp < endClaimTimestamp) {
-                // Compute the leaf and verify the merkle proof
-                return
-                    verify(
-                        proof,
-                        merkleRoot,
-                        keccak256(abi.encodePacked(user, amount))
-                    );
-            }
-        }
-
-        return false;
-    }
-
-    /// @dev rescue any token sent by mistake
-    /// @param token token to rescue
-    /// @param amount amount of `token` to rescue, 0 indicates to rescue all
-    function rescueToken(
-        address token,
-        uint256 amount
-    ) external onlyDaoPermissions {
-        address daoOperator = centralRegistry.daoAddress();
-
-        if (token == address(0)) {
-            if (amount == 0) {
-                amount = address(this).balance;
-            }
-
-            SafeTransferLib.forceSafeTransferETH(daoOperator, amount);
-        } else {
-            if (token == centralRegistry.oCVE()) {
-                revert CVEAirdrop__TransferError();
-            }
-
-            if (amount == 0) {
-                amount = IERC20(token).balanceOf(address(this));
-            }
-
-            SafeTransferLib.safeTransfer(token, daoOperator, amount);
-        }
-    }
-
-    /// @notice Withdraws unclaimed airdrop tokens to contract Owner after airdrop claim period has ended
-    function withdrawRemainingAirdropTokens() external onlyDaoPermissions {
-        if (block.timestamp < endClaimTimestamp) {
-            revert CVEAirdrop__TransferError();
-        }
-
-        address oCVE = centralRegistry.oCVE();
-        uint256 amount = IERC20(oCVE).balanceOf(address(this));
-        SafeTransferLib.safeTransfer(oCVE, msg.sender, amount);
-
-        emit RemainingOptionsWithdrawn(amount);
-    }
-
-    /// @notice Set merkleRoot for airdrop validation
-    /// @param newRoot new merkle root
-    function setMerkleRoot(bytes32 newRoot) external onlyDaoPermissions {
-        if (newRoot == bytes32(0)) {
-            revert CVEAirdrop__ParametersAreInvalid();
-        }
-
-        if (merkleRoot == bytes32(0)) {
-            if (!centralRegistry.hasElevatedPermissions(msg.sender)) {
-                revert CVEAirdrop__Unauthorized();
-            }
-        }
-
-        merkleRoot = newRoot;
-    }
-
-    /// @notice Set isPaused state
-    /// @param state new pause state
-    function setPauseState(bool state) external onlyDaoPermissions {
-        uint256 currentState = isPaused;
-        isPaused = state ? 2 : 1;
-
-        // If it was paused prior,
-        // you need to provide users 3 months to claim their airdrop
-        if (isPaused == 1 && currentState == 2) {
-            endClaimTimestamp = block.timestamp + (12 weeks);
+    /// @dev Checks whether the caller has sufficient permissioning
+    function _checkDaoPermissions() internal view {
+        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
+            revert CVEAirdrop__Unauthorized();
         }
     }
 }

@@ -63,13 +63,6 @@ contract CVEPublicSale {
         cve = centralRegistry.CVE();
     }
 
-    modifier onlyDaoPermissions() {
-        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
-            revert CVEPublicSale__Unauthorized();
-        }
-        _;
-    }
-
     /// @notice start public sale
     /// @param _startTime public sale start timestamp (in seconds)
     /// @param _softPriceInUSD public sale base token price (in USD)
@@ -82,7 +75,11 @@ contract CVEPublicSale {
         uint256 _hardPriceInUSD,
         uint256 _cveAmountForSale,
         address _paymentToken
-    ) external onlyDaoPermissions {
+    ) external {
+        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
+            revert CVEPublicSale__Unauthorized();
+        }
+
         if (startTime != 0) {
             revert CVEPublicSale__AlreadyStarted();
         }
@@ -212,7 +209,11 @@ contract CVEPublicSale {
     /// @notice withdraw funds
     /// @dev (only dao permissions)
     ///      this function is only available when the public sale is over
-    function withdrawFunds() external onlyDaoPermissions {
+    function withdrawFunds() external {
+        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
+            revert CVEPublicSale__Unauthorized();
+        }
+
         SaleStatus saleStatus = currentStatus();
         if (saleStatus == SaleStatus.NotStarted) {
             revert CVEPublicSale__NotStarted();

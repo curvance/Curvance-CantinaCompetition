@@ -104,7 +104,9 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
         address asset,
         address aggregator,
         bool inUSD
-    ) external onlyElevatedPermissions {
+    ) external {
+        _checkElevatedPermissions();
+
         // Use Chainlink to get the min and max of the asset.
         IChainlink feedAggregator = IChainlink(
             IChainlink(aggregator).aggregator()
@@ -165,7 +167,9 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
 
     /// @notice Removes a supported asset from the adaptor.
     /// @dev Calls back into price router to notify it of its removal
-    function removeAsset(address asset) external override onlyDaoPermissions {
+    function removeAsset(address asset) external override {
+        _checkElevatedPermissions();
+
         if (!isSupportedAsset[asset]) {
             revert ChainlinkAdaptor__AssetIsNotSupported();
         }

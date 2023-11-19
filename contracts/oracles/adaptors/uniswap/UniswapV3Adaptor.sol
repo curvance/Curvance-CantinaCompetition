@@ -207,7 +207,9 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
     function addAsset(
         address asset,
         AdaptorData memory data
-    ) external onlyElevatedPermissions {
+    ) external {
+        _checkElevatedPermissions();
+
         // Verify seconds ago is reasonable.
         if (data.secondsAgo < MINIMUM_SECONDS_AGO) {
             revert UniswapV3Adaptor__SecondsAgoIsLessThanMinimum();
@@ -235,7 +237,9 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
     /// @notice Removes a supported asset from the adaptor.
     /// @dev Calls back into price router to notify it of its removal
     /// @param asset The address of the asset to be removed.
-    function removeAsset(address asset) external override onlyDaoPermissions {
+    function removeAsset(address asset) external override {
+        _checkElevatedPermissions();
+
         if (!isSupportedAsset[asset]) {
             revert UniswapV3Adaptor__AssetIsNotSupported();
         }

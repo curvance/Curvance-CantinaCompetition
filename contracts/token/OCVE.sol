@@ -52,15 +52,6 @@ contract OCVE is ERC20 {
     error OCVE__TransferError();
     error OCVE__Unauthorized();
 
-    /// MODIFIERS ///
-
-    modifier onlyDaoPermissions() {
-        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
-            revert OCVE__Unauthorized();
-        }
-        _;
-    }
-
     /// CONSTRUCTOR ///
 
     /// @param paymentToken_ The token used for payment when exercising options.
@@ -98,7 +89,8 @@ contract OCVE is ERC20 {
     function rescueToken(
         address token,
         uint256 amount
-    ) external onlyDaoPermissions {
+    ) external {
+        _checkDaoPermissions();
         address daoOperator = centralRegistry.daoAddress();
 
         if (token == address(0)) {
@@ -122,7 +114,9 @@ contract OCVE is ERC20 {
 
     /// @notice Withdraws CVE from unexercised CVE call options to DAO
     ///         after exercising period has ended
-    function withdrawRemainingAirdropTokens() external onlyDaoPermissions {
+    function withdrawRemainingAirdropTokens() external {
+        _checkDaoPermissions();
+
         if (block.timestamp < optionsEndTimestamp) {
             revert OCVE__TransferError();
         }
@@ -143,7 +137,9 @@ contract OCVE is ERC20 {
     function setOptionsTerms(
         uint256 timestampStart,
         uint256 strikePrice
-    ) external onlyDaoPermissions {
+    ) external {
+        _checkDaoPermissions();
+
         if (timestampStart < block.timestamp) {
             revert OCVE__ParametersAreInvalid();
         }
@@ -252,4 +248,14 @@ contract OCVE is ERC20 {
 
         emit OptionsExercised(msg.sender, amount);
     }
+
+    /// INTERNAL FUNCTIONS ///
+
+    /// @dev Checks whether the caller has sufficient permissioning.
+    function _checkDaoPermissions() internal view {
+        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
+            revert OCVE__Unauthorized();
+        }
+    }
+
 }

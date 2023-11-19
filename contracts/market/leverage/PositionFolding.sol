@@ -66,13 +66,6 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
 
     /// MODIFIERS ///
 
-    modifier onlyDaoPermissions() {
-        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
-            revert PositionFolding__Unauthorized();
-        }
-        _;
-    }
-
     modifier checkSlippage(address user, uint256 slippage) {
         (uint256 sumCollateralBefore, , uint256 sumBorrowBefore) = lendtroller
             .getStatus(user);
@@ -116,11 +109,7 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
     }
 
     function getProtocolLeverageFee() public view returns (uint256) {
-        return ICentralRegistry(centralRegistry).protocolLeverageFee();
-    }
-
-    function getDaoAddress() public view returns (address) {
-        return ICentralRegistry(centralRegistry).daoAddress();
+        return centralRegistry.protocolLeverageFee();
     }
 
     /// EXTERNAL FUNCTIONS ///
@@ -172,7 +161,7 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
         if (fee > 0) {
             SafeTransferLib.safeTransfer(
                 borrowUnderlying,
-                getDaoAddress(),
+                centralRegistry.daoAddress(),
                 fee
             );
         }
@@ -269,7 +258,7 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
             collateralAmount -= fee;
             SafeTransferLib.safeTransfer(
                 collateralUnderlying,
-                getDaoAddress(),
+                centralRegistry.daoAddress(),
                 fee
             );
         }

@@ -133,7 +133,9 @@ contract GMAdaptor is BaseOracleAdaptor {
 
     /// @notice Add a GMX GM Token as an asset.
     /// @param asset The address of the token to add pricing for.
-    function addAsset(address asset) external onlyElevatedPermissions {
+    function addAsset(address asset) external {
+        _checkElevatedPermissions();
+
         if (isSupportedAsset[asset]) {
             revert GMAdaptor__AssetIsAlreadySupported();
         }
@@ -167,7 +169,9 @@ contract GMAdaptor is BaseOracleAdaptor {
     /// @notice Removes a supported asset from the adaptor.
     /// @dev Calls back into price router to notify it of its removal.
     /// @param asset The address of the token to remove.
-    function removeAsset(address asset) external override onlyDaoPermissions {
+    function removeAsset(address asset) external override {
+        _checkElevatedPermissions();
+
         if (!isSupportedAsset[asset]) {
             revert GMAdaptor__AssetIsNotSupported();
         }

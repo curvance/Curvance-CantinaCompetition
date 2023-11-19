@@ -132,7 +132,9 @@ contract BalancerStablePoolAdaptor is BalancerBaseAdaptor {
     function addAsset(
         address asset,
         AdaptorData memory data
-    ) external onlyElevatedPermissions {
+    ) external {
+        _checkElevatedPermissions();
+
         if (isSupportedAsset[asset]) {
             revert BalancerStablePoolAdaptor__ConfigurationError();
         }
@@ -183,7 +185,9 @@ contract BalancerStablePoolAdaptor is BalancerBaseAdaptor {
 
     /// @notice Removes a supported asset from the adaptor.
     /// @dev Calls back into price router to notify it of its removal
-    function removeAsset(address asset) external override onlyDaoPermissions {
+    function removeAsset(address asset) external override {
+        _checkElevatedPermissions();
+
         if (!isSupportedAsset[asset]) {
             revert BalancerStablePoolAdaptor__AssetIsNotSupported();
         }
