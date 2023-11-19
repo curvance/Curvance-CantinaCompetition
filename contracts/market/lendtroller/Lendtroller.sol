@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { LiquidityManager, IPriceRouter, IMToken, AccountSnapshot, WAD } from "contracts/market/lendtroller/LiquidityManager.sol";
+import { LiquidityManager, IPriceRouter, IMToken, WAD } from "contracts/market/lendtroller/LiquidityManager.sol";
 import { GaugePool } from "contracts/gauge/GaugePool.sol";
 import { ERC165 } from "contracts/libraries/ERC165.sol";
 import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
@@ -557,6 +557,64 @@ contract Lendtroller is LiquidityManager, ERC165 {
         _canRedeem(mToken, from, amount);
     }
 
+    /// @notice Liquidates an entire account by partially paying down debts,
+    ///         distributing all `account` collateral and recognize remaining
+    ///         debt as bad debt
+    /// @param account The address to liquidate completely
+    function liquidateAccount(address account) external { 
+        // Make sure they are not trying to liquidate themselves
+        if (msg.sender == account) {
+            revert Lendtroller__Unauthorized();
+        }
+
+        if (seizePaused == 2) {
+            revert Lendtroller__Paused();
+        }
+
+        (
+            uint256 totalCollateral, 
+            uint256 debtToPay, 
+            uint256 totalDebt
+        ) =_BadDebtTermsOf(account);
+
+        // If an account has no positions or debt this will revert
+        if (totalCollateral >= totalDebt) {
+            revert Lendtroller__NoLiquidationAvailable();
+        }
+
+        uint256 repayRatio = (debtToPay * WAD) / totalDebt;
+        IMToken[] memory accountAssets = accountAssets[account].assets;
+        uint256 numAssets = accountAssets.length;
+        IMToken mToken;
+        uint256 collateral;
+
+        // Repay `account`'s debt and recognize bad debt
+        for (uint256 i; i < numAssets; ++i) {
+            mToken = accountAssets[i];
+            if (!mToken.isCToken()) {
+                mToken.repayWithBadDebt(account, repayRatio);
+            }
+        }
+
+        // Seize `account`'s collateral and remove posted collateral
+        for (uint256 i = 0; i < numAssets; ++i) {
+            mToken = accountAssets[i];
+            if (mToken.isCToken()) {
+                AccountMetadata storage data = tokenData[address(mToken)].accountData[account];
+                collateral = data.collateralPosted;
+
+                // Remove `account` posted collateral
+                delete data.collateralPosted;
+                collateralPosted[address(mToken)] = collateralPosted[address(mToken)] - collateral;
+                emit CollateralRemoved(account, address(mToken), collateral);
+                // Seize `account`'s collateral
+                mToken.seizeAccountLiquidation(account, collateral);
+            }
+        }
+    }
+
+    /// PERMISSIONED EXTERNAL FUNCTIONS ///
+
     /// @notice Add the market token to the market and set it as listed
     /// @dev Admin function to set isListed and add support for the market
     /// @param mToken The address of the market (token) to list
@@ -782,8 +840,6 @@ contract Lendtroller is LiquidityManager, ERC165 {
             emit NewCollateralCap(mTokens[i], newCollateralCaps[i]);
         }
     }
-
-    /// PERMISSIONED EXTERNAL FUNCTIONS ///
 
     /// @notice Admin function to set market mint paused
     /// @dev requires timelock authority if unpausing

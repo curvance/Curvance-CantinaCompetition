@@ -106,9 +106,10 @@ abstract contract LiquidityManager {
     /// @notice Determine `account`'s current status between collateral,
     ///         debt, and additional liquidity
     /// @param account The account to determine liquidity for
-    /// @return accountCollateral total collateral amount of account
-    /// @return maxDebt max borrow amount of account
-    /// @return accountDebt total borrow amount of account
+    /// @return accountCollateral Total value of `account` collateral
+    /// @return maxDebt The maximum amount of debt `account` 
+    ///                 could take on based on `accountCollateral`
+    /// @return accountDebt Total value of `account` debt
     function _statusOf(
         address account
     )
@@ -133,7 +134,7 @@ abstract contract LiquidityManager {
             if (snapshot.isCToken) {
                 // If the asset has a CR increment their collateral and max borrow value
                 if (!(tokenData[snapshot.asset].collRatio == 0)) {
-                    (accountCollateral, maxDebt) = _addCollateralValue(
+                    (accountCollateral, maxDebt) = _addCollateralValues(
                         snapshot,
                         account,
                         underlyingPrices[i],
@@ -194,7 +195,7 @@ abstract contract LiquidityManager {
                 // If the asset has a Collateral Ratio,
                 // increment their collateral and max borrow value
                 if (!(tokenData[snapshot.asset].collRatio == 0)) {
-                    (accountCollateral, maxDebt) = _addCollateralValue(
+                    (accountCollateral, maxDebt) = _addCollateralValues(
                         snapshot,
                         account,
                         underlyingPrices[i],
@@ -309,7 +310,7 @@ abstract contract LiquidityManager {
                                             snapshot.exchangeRate) / WAD),
                                             underlyingPrices[i],
                                             snapshot.decimals
-                                         ) * WAD;
+                                         );
 
                 }
             } else {
@@ -410,6 +411,61 @@ abstract contract LiquidityManager {
         );
     } 
 
+    /// @notice Determine `account`'s current status between collateral,
+    ///         debt, and additional liquidity
+    /// @param account The account to determine liquidity for
+    /// @return accountCollateral Total value of `account` collateral
+    /// @return accountDebtToPay The amount of debt to repay to receive `accountCollateral`
+    /// @return accountDebt Total value of `account` debt
+    function _BadDebtTermsOf(
+        address account
+    )
+        internal
+        view
+        returns (
+            uint256 accountCollateral,
+            uint256 accountDebtToPay,
+            uint256 accountDebt
+        )
+    {
+        (
+            AccountSnapshot[] memory snapshots,
+            uint256[] memory underlyingPrices,
+            uint256 numAssets
+        ) = _assetDataOf(account, 2);
+        AccountSnapshot memory snapshot;
+
+        for (uint256 i; i < numAssets; ) {
+            snapshot = snapshots[i];
+
+            if (snapshot.isCToken) {
+                // If the asset has a CR increment their collateral and debt to pay
+                if (!(tokenData[snapshot.asset].collRatio == 0)) {
+                    (accountCollateral, accountDebtToPay) = _addValuesForBadDebt(
+                        snapshot,
+                        account,
+                        underlyingPrices[i],
+                        accountCollateral,
+                        accountDebtToPay
+                    );
+                }
+            } else {
+                // If they have a debt balance, increment their debt
+                if (snapshot.debtBalance > 0) {
+                    accountDebt += _getAssetValue(
+                        snapshot.debtBalance,
+                        underlyingPrices[i],
+                        snapshot.decimals
+                    );
+                }
+            }
+
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
     /// @notice Retrieves the prices and account data of multiple assets inside this market.
     /// @param account The account to retrieve data for.
     /// @param errorCodeBreakpoint The error code that will cause liquidity operations to revert.
@@ -462,7 +518,7 @@ abstract contract LiquidityManager {
         );
     }
 
-    function _addCollateralValue(
+    function _addCollateralValues(
         AccountSnapshot memory snapshot,
         address account,
         uint256 price,
@@ -480,6 +536,27 @@ abstract contract LiquidityManager {
             previousBorrow +
                 (assetValue * tokenData[snapshot.asset].collRatio) /
                 WAD
+        );
+    }
+
+    function _addValuesForBadDebt(
+        AccountSnapshot memory snapshot,
+        address account,
+        uint256 price,
+        uint256 previousCollateral,
+        uint256 previousDebtToPay
+    ) internal view returns (uint256, uint256) {
+        uint256 assetValue = _getAssetValue(
+            ((tokenData[snapshot.asset].accountData[account].collateralPosted *
+                snapshot.exchangeRate) / WAD),
+            price,
+            snapshot.decimals
+        );
+        return (
+            previousCollateral + assetValue,
+            previousDebtToPay +
+                (assetValue * WAD) /
+                tokenData[snapshot.asset].liqBaseIncentive
         );
     } 
 

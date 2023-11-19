@@ -27,6 +27,10 @@ interface IMToken {
         uint256 protocolTokens
     ) external;
 
+    function repayWithBadDebt(address account, uint256 repayRatio) external;
+
+    function seizeAccountLiquidation(address account, uint256 shares) external;
+
     /// @notice Get a snapshot of the account's balances, and the cached exchange rate
     function getSnapshot(
         address account
