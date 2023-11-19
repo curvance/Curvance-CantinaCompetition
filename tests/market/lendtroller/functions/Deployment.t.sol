@@ -9,7 +9,8 @@ contract LendtrollerDeploymentTest is TestBaseLendtroller {
     function test_lendtrollerDeployment_fail_whenCentralRegistryIsInvalid()
         public
     {
-        vm.expectRevert(Lendtroller.Lendtroller__InvalidParameter.selector);
+        // revert LiquidityManager__InvalidParameter()
+        vm.expectRevert(0x78eefdcc);
         new Lendtroller(ICentralRegistry(address(0)), address(gaugePool));
     }
 

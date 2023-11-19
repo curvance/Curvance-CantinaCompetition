@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
+import { LiquidityManager, IPriceRouter, IMToken, AccountSnapshot, WAD } from "contracts/market/lendtroller/LiquidityManager.sol";
+import { GaugePool } from "contracts/gauge/GaugePool.sol";
 import { ERC165 } from "contracts/libraries/ERC165.sol";
 import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
-import { GaugePool } from "contracts/gauge/GaugePool.sol";
+
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
-import { LiquidityManager, IPriceRouter, IMToken, AccountSnapshot, WAD } from "contracts/market/lendtroller/LiquidityManager.sol";
 
 /// @title Curvance Lendtroller
 /// @notice Manages risk within the lending markets
@@ -121,13 +122,91 @@ contract Lendtroller is LiquidityManager, ERC165 {
         return accountAssets[account].assets;
     }
 
+    /// @notice Returns whether `mToken` is listed in the lending market
+    /// @param mToken market token address
+    function isListed(address mToken) external view returns (bool) {
+        return (tokenData[mToken].isListed);
+    }
+
+    /// @notice Returns if an account has an active position in `mToken`
+    /// @param mToken market token address
+    /// @param account account address
+    function hasPosition(
+        address mToken,
+        address account
+    ) external view returns (bool) {
+        return tokenData[mToken].accountData[account].activePosition == 2;
+    }
+
+    /// ACCOUNT LIQUIDITY FUNCTIONS ///
+
+    /// @notice Determine `account`'s current status between collateral,
+    ///         debt, and additional liquidity
+    /// @param account The account to determine liquidity for
+    /// @return accountCollateral total collateral amount of account
+    /// @return maxDebt max borrow amount of account
+    /// @return accountDebt total borrow amount of account
+    function statusOf(
+        address account
+    ) external view returns (uint256, uint256,uint256){
+        return _statusOf(account);
+    }
+
+    /// @notice Determine `account`'s current collateral and debt values in the market
+    /// @param account The account to check bad debt status for
+    /// @return The total market value of `account`'s collateral
+    /// @return The total outstanding debt value of `account`
+    function solvencyOf(address account) external view returns (uint256, uint256) {
+        return _solvencyOf(account);
+    }
+
+    /// @notice Determine whether `account` can currently be liquidated in this market
+    /// @param account The account to check for liquidation flag
+    /// @dev Note that we calculate the exchangeRateCached for each collateral
+    ///           mToken using stored data, without calculating accumulated interest.
+    /// @return Whether `account` can be liquidated currently
+    function flaggedForLiquidation(
+        address account
+    ) external view returns (bool) {
+        LiqData memory data = _LiquidationStatusOf(
+            account,
+            address(0),
+            address(0)
+        );
+        return data.lFactor > 0;
+    }
+
+    /// @notice Determine what the account liquidity would be if
+    ///         the given amounts were redeemed/borrowed
+    /// @param account The account to determine liquidity for
+    /// @param mTokenModified The market to hypothetically redeem/borrow in
+    /// @param redeemTokens The number of tokens to hypothetically redeem
+    /// @param borrowAmount The amount of underlying to hypothetically borrow
+    /// @return uint256 hypothetical account liquidity in excess of collateral requirements
+    /// @return uint256 hypothetical account liquidity deficit below collateral requirements
+    function hypotheticalLiquidityOf(
+        address account,
+        address mTokenModified,
+        uint256 redeemTokens, // in shares
+        uint256 borrowAmount // in assets
+    ) external view returns (uint256, uint256) {
+        return
+            _hypotheticalLiquidityOf(
+                account,
+                IMToken(mTokenModified),
+                redeemTokens,
+                borrowAmount,
+                2
+            );
+    }
+
     /// @notice Post collateral in some cToken for borrowing inside this market
     /// @param mToken The address of the mToken to post collateral for
     function postCollateral(
         address account,
         address mToken,
         uint256 tokens
-    ) public {
+    ) external {
         AccountMetadata storage accountData = tokenData[mToken].accountData[
             msg.sender
         ];
@@ -164,7 +243,7 @@ contract Lendtroller is LiquidityManager, ERC165 {
         address mToken,
         uint256 tokens,
         bool closePositionIfPossible
-    ) public {
+    ) external {
         AccountMetadata storage accountData = tokenData[mToken].accountData[
             msg.sender
         ];
@@ -194,6 +273,24 @@ contract Lendtroller is LiquidityManager, ERC165 {
             tokens,
             closePositionIfPossible
         );
+    }
+
+    /// @notice Reduces `accounts`'s posted collateral if necessary for their desired action
+    /// @param account The account to potential reduce posted collateral for
+    /// @param mToken The address of the mToken to potentially reduce collateral for
+    /// @param balance The cToken share balance of `account`
+    /// @param amount The maximum amount of shares that could be removed as collateral
+    function reduceCollateralIfNecessary(
+        address account,
+        address mToken,
+        uint256 balance,
+        uint256 amount
+    ) external {
+        if (msg.sender != mToken) {
+            revert Lendtroller__Unauthorized();
+        }
+
+        _reduceCollateralIfNecessary(account, mToken, balance, amount, false);
     }
 
     /// @notice Removes an asset from an account's liquidity calculation
@@ -324,6 +421,18 @@ contract Lendtroller is LiquidityManager, ERC165 {
         canBorrow(mToken, borrower, amount);
     }
 
+    /// @notice Updates `borrower` cooldownTimestamp to the current block timestamp
+    /// @dev The caller must be a listed MToken in the `markets` mapping
+    /// @param mToken   The address of the dToken that the account is borrowing
+    /// @param borrower The address of the account that has just borrowed
+    function notifyBorrow(address mToken, address borrower) external {
+        if (msg.sender != mToken) {
+            revert Lendtroller__Unauthorized();
+        }
+
+        accountAssets[borrower].cooldownTimestamp = block.timestamp;
+    }
+
     /// @notice Checks if the account should be allowed to repay a borrow
     ///         in the given market
     /// @param mToken The market to verify the repay against
@@ -342,6 +451,26 @@ contract Lendtroller is LiquidityManager, ERC165 {
         ) {
             revert Lendtroller__MinimumHoldPeriod();
         }
+    }
+
+    /// @notice Checks if the liquidation should be allowed to occur,
+    ///         and returns how many collateral tokens should be seized on liquidation
+    /// @param dToken Debt token to repay which is borrowed by `account`
+    /// @param cToken Collateral token collateralized by `account` and will be seized
+    /// @param account The address of the account to be liquidated
+    /// @param amount The amount of `debtToken` underlying being repaid
+    /// @param liquidateExact Whether the liquidator desires a specific liquidation amount
+    /// @return The amount of `debtToken` underlying to be repaid on liquidation
+    /// @return The number of `collateralToken` tokens to be seized in a liquidation
+    /// @return The number of `collateralToken` tokens to be seized for the protocol
+    function canLiquidate(
+        address dToken,
+        address cToken,
+        address account,
+        uint256 amount,
+        bool liquidateExact
+    ) external view returns (uint256, uint256, uint256) {
+        return _canLiquidate(dToken, cToken, account, amount, liquidateExact);
     }
 
     /// @notice Checks if the liquidation should be allowed to occur,
@@ -381,26 +510,6 @@ contract Lendtroller is LiquidityManager, ERC165 {
             true
         );
         return (dTokenRepaid, cTokenLiquidated, protocolTokens);
-    }
-
-    /// @notice Checks if the liquidation should be allowed to occur,
-    ///         and returns how many collateral tokens should be seized on liquidation
-    /// @param dToken Debt token to repay which is borrowed by `account`
-    /// @param cToken Collateral token collateralized by `account` and will be seized
-    /// @param account The address of the account to be liquidated
-    /// @param amount The amount of `debtToken` underlying being repaid
-    /// @param liquidateExact Whether the liquidator desires a specific liquidation amount
-    /// @return The amount of `debtToken` underlying to be repaid on liquidation
-    /// @return The number of `collateralToken` tokens to be seized in a liquidation
-    /// @return The number of `collateralToken` tokens to be seized for the protocol
-    function canLiquidate(
-        address dToken,
-        address cToken,
-        address account,
-        uint256 amount,
-        bool liquidateExact
-    ) external view returns (uint256, uint256, uint256) {
-        return _canLiquidate(dToken, cToken, account, amount, liquidateExact);
     }
 
     /// @notice Checks if the seizing of assets should be allowed to occur
@@ -674,21 +783,7 @@ contract Lendtroller is LiquidityManager, ERC165 {
         }
     }
 
-    /// @notice Returns whether `mToken` is listed in the lending market
-    /// @param mToken market token address
-    function isListed(address mToken) external view returns (bool) {
-        return (tokenData[mToken].isListed);
-    }
-
-    /// @notice Returns if an account has an active position in `mToken`
-    /// @param mToken market token address
-    /// @param account account address
-    function hasPosition(
-        address mToken,
-        address account
-    ) external view returns (bool) {
-        return tokenData[mToken].accountData[account].activePosition == 2;
-    }
+    /// PERMISSIONED EXTERNAL FUNCTIONS ///
 
     /// @notice Admin function to set market mint paused
     /// @dev requires timelock authority if unpausing
@@ -769,31 +864,6 @@ contract Lendtroller is LiquidityManager, ERC165 {
         );
     }
 
-    function reduceCollateralIfNecessary(
-        address account,
-        address mToken,
-        uint256 balance,
-        uint256 amount
-    ) external {
-        if (msg.sender != mToken) {
-            revert Lendtroller__Unauthorized();
-        }
-
-        _reduceCollateralIfNecessary(account, mToken, balance, amount, false);
-    }
-
-    /// @notice Updates `borrower` cooldownTimestamp to the current block timestamp
-    /// @dev The caller must be a listed MToken in the `markets` mapping
-    /// @param mToken   The address of the dToken that the account is borrowing
-    /// @param borrower The address of the account that has just borrowed
-    function notifyBorrow(address mToken, address borrower) external {
-        if (msg.sender != mToken) {
-            revert Lendtroller__Unauthorized();
-        }
-
-        accountAssets[borrower].cooldownTimestamp = block.timestamp;
-    }
-
     /// PUBLIC FUNCTIONS ///
 
     /// @notice Checks if the account should be allowed to borrow
@@ -840,68 +910,6 @@ contract Lendtroller is LiquidityManager, ERC165 {
         if (liquidityDeficit > 0) {
             revert Lendtroller__InsufficientLiquidity();
         }
-    }
-
-    /// Liquidity/Liquidation Calculations
-
-    /// @notice Determine `account`'s current status between collateral,
-    ///         debt, and additional liquidity
-    /// @param account The account to determine liquidity for
-    /// @return accountCollateral total collateral amount of account
-    /// @return maxDebt max borrow amount of account
-    /// @return accountDebt total borrow amount of account
-    function statusOf(
-        address account
-    ) public view returns (uint256, uint256,uint256){
-        return _statusOf(account);
-    }
-
-    /// @notice Determine `account`'s current collateral and debt values in the market
-    /// @param account The account to check bad debt status for
-    /// @return The total market value of `account`'s collateral
-    /// @return The total outstanding debt value of `account`
-    function solvencyOf(address account) public view returns (uint256, uint256) {
-        return _solvencyOf(account);
-    }
-
-    /// @notice Determine whether `account` can currently be liquidated in this market
-    /// @param account The account to check for liquidation flag
-    /// @dev Note that we calculate the exchangeRateCached for each collateral
-    ///           mToken using stored data, without calculating accumulated interest.
-    /// @return Whether `account` can be liquidated currently
-    function flaggedForLiquidation(
-        address account
-    ) internal view returns (bool) {
-        LiqData memory data = _LiquidationStatusOf(
-            account,
-            address(0),
-            address(0)
-        );
-        return data.lFactor > 0;
-    }
-
-    /// @notice Determine what the account liquidity would be if
-    ///         the given amounts were redeemed/borrowed
-    /// @param account The account to determine liquidity for
-    /// @param mTokenModified The market to hypothetically redeem/borrow in
-    /// @param redeemTokens The number of tokens to hypothetically redeem
-    /// @param borrowAmount The amount of underlying to hypothetically borrow
-    /// @return uint256 hypothetical account liquidity in excess of collateral requirements
-    /// @return uint256 hypothetical account liquidity deficit below collateral requirements
-    function hypotheticalLiquidityOf(
-        address account,
-        address mTokenModified,
-        uint256 redeemTokens, // in shares
-        uint256 borrowAmount // in assets
-    ) public view returns (uint256, uint256) {
-        return
-            _hypotheticalLiquidityOf(
-                account,
-                IMToken(mTokenModified),
-                redeemTokens,
-                borrowAmount,
-                2
-            );
     }
 
     /// @inheritdoc ERC165
@@ -1138,6 +1146,12 @@ contract Lendtroller is LiquidityManager, ERC165 {
         );
     }
 
+    /// @notice Reduces `accounts`'s posted collateral if necessary for their desired action
+    /// @param account The account to potential reduce posted collateral for
+    /// @param mToken The address of the mToken to potentially reduce collateral for
+    /// @param balance The cToken share balance of `account`
+    /// @param amount The maximum amount of shares that could be removed as collateral
+    /// @param forceReduce Whether to force reduce `account`'s collateral for not
     function _reduceCollateralIfNecessary(
         address account,
         address mToken,
