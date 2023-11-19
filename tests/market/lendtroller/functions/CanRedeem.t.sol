@@ -78,7 +78,7 @@ contract CanRedeemTest is TestBaseLendtroller {
 
         skip(20 minutes);
         vm.expectRevert(
-            Lendtroller.Lendtroller__InsufficientLiquidity.selector
+            Lendtroller.Lendtroller__InsufficientCollateral.selector
         );
         lendtroller.canRedeem(address(cBALRETH), user1, 100e18);
     }

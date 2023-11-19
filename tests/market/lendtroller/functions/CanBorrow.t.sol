@@ -57,7 +57,7 @@ contract CanBorrowTest is TestBaseLendtroller {
         );
 
         vm.expectRevert(
-            Lendtroller.Lendtroller__InsufficientLiquidity.selector
+            Lendtroller.Lendtroller__InsufficientCollateral.selector
         );
         vm.prank(address(dUSDC));
         lendtroller.canBorrow(address(dUSDC), user1, 100e6);
@@ -129,7 +129,7 @@ contract CanBorrowTest is TestBaseLendtroller {
 
         // should fail when borrowing more than is allowed by provided collateral
         vm.expectRevert(
-            Lendtroller.Lendtroller__InsufficientLiquidity.selector
+            Lendtroller.Lendtroller__InsufficientCollateral.selector
         );
         vm.prank(address(dUSDC));
         lendtroller.canBorrow(address(dUSDC), user1, borrowInUSDC + 1e6);

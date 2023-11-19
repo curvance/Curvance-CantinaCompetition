@@ -65,7 +65,6 @@ contract Lendtroller is LiquidityManager, ERC165 {
     event CollateralRemoved(address account, address cToken, uint256 amount);
     event TokenPositionCreated(address mToken, address account);
     event TokenPositionClosed(address mToken, address account);
-    event NewCloseFactor(uint256 oldCloseFactor, uint256 newCloseFactor);
     event CollateralTokenUpdated(
         IMToken mToken,
         uint256 collRatio,
@@ -88,10 +87,8 @@ contract Lendtroller is LiquidityManager, ERC165 {
     error Lendtroller__TokenAlreadyListed();
     error Lendtroller__Paused();
     error Lendtroller__InsufficientCollateral();
-    error Lendtroller__InsufficientLiquidity();
     error Lendtroller__NoLiquidationAvailable();
     error Lendtroller__PriceError();
-    error Lendtroller__HasActiveLoan();
     error Lendtroller__CollateralCapReached();
     error Lendtroller__LendtrollerMismatch();
     error Lendtroller__InvalidParameter();
@@ -317,9 +314,10 @@ contract Lendtroller is LiquidityManager, ERC165 {
             // Get sender tokens and debt underlying from the mToken
             (, uint256 debt, ) = token.getSnapshot(msg.sender);
 
-            // Do not let them leave if they owe a balance
+            // Caller is unauthorized to close their dToken position
+            // if they owe a balance
             if (debt != 0) {
-                revert Lendtroller__HasActiveLoan();
+                revert Lendtroller__Unauthorized();
             }
 
             _closePosition(msg.sender, accountData, token);
@@ -969,7 +967,7 @@ contract Lendtroller is LiquidityManager, ERC165 {
         );
 
         if (liquidityDeficit > 0) {
-            revert Lendtroller__InsufficientLiquidity();
+            revert Lendtroller__InsufficientCollateral();
         }
     }
 
@@ -1105,7 +1103,7 @@ contract Lendtroller is LiquidityManager, ERC165 {
         );
 
         if (liquidityDeficit > 0) {
-            revert Lendtroller__InsufficientLiquidity();
+            revert Lendtroller__InsufficientCollateral();
         }
     }
 
