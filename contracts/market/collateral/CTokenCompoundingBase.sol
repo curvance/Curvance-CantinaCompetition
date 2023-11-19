@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { GaugePool } from "contracts/gauge/GaugePool.sol";
 import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { ERC4626, SafeTransferLib, ERC20 } from "contracts/libraries/ERC4626.sol";
 import { Math } from "contracts/libraries/Math.sol";
 import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 import { WAD } from "contracts/libraries/Constants.sol";
 
+import { IGaugePool } from "contracts/interfaces/IGaugePool.sol";
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.sol";
@@ -46,7 +46,7 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
     ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
 
     // `bytes4(keccak256(bytes("CTokenCompoundingBase__VaultNotActive()")))`
-    uint256 internal constant _VAULT_NOT_ACTIVE_SELECTOR = 0xe4247f94;
+    uint256 internal constant VAULT_NOT_ACTIVE_SELECTOR = 0xe4247f94;
     /// `keccak256(bytes("Deposit(address,address,uint256,uint256)"))`.
     uint256 private constant _DEPOSIT_EVENT_SIGNATURE =
         0xdcbc1c05240f31ff3ad067ef1ee35ce4997762752e3a095284754544f4c709d7;
@@ -366,7 +366,7 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
         _checkDaoPermissions();
 
         if (_vaultStatus != 2) {
-            _revert(_VAULT_NOT_ACTIVE_SELECTOR);
+            _revert(VAULT_NOT_ACTIVE_SELECTOR);
         }
 
         _vaultStatus = 1;
@@ -544,7 +544,7 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
         lendtroller.canTransfer(address(this), msg.sender, amount);
 
         // emit events on gauge pool
-        GaugePool gaugePool = _gaugePool();
+        IGaugePool gaugePool = _gaugePool();
         gaugePool.withdraw(address(this), msg.sender, amount);
 
         super.transfer(to, amount);
@@ -567,7 +567,7 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
         lendtroller.canTransfer(address(this), from, amount);
 
         // emit events on gauge pool
-        GaugePool gaugePool = _gaugePool();
+        IGaugePool gaugePool = _gaugePool();
         gaugePool.withdraw(address(this), from, amount);
 
         super.transferFrom(from, to, amount);
@@ -653,7 +653,7 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
         uint256 liquidatorTokens = liquidatedTokens - protocolTokens;
 
         // emit events on gauge pool
-        GaugePool gaugePool = _gaugePool();
+        IGaugePool gaugePool = _gaugePool();
         gaugePool.withdraw(address(this), borrower, liquidatedTokens);
 
         _transferFromWithoutAllowance(borrower, liquidator, liquidatorTokens);
@@ -793,7 +793,7 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
         }
 
         if (assets > maxDeposit(receiver)) {
-            _revert(_VAULT_NOT_ACTIVE_SELECTOR);
+            _revert(VAULT_NOT_ACTIVE_SELECTOR);
         }
 
         // Fail if deposit not allowed
@@ -826,7 +826,7 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
         }
 
         if (shares > maxMint(receiver)) {
-            _revert(_VAULT_NOT_ACTIVE_SELECTOR);
+            _revert(VAULT_NOT_ACTIVE_SELECTOR);
         }
 
         // Fail if mint not allowed
@@ -1248,7 +1248,7 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
 
     /// @notice Returns gauge pool contract address
     /// @return The gauge controller contract address
-    function _gaugePool() internal view returns (GaugePool) {
+    function _gaugePool() internal view returns (IGaugePool) {
         return lendtroller.gaugePool();
     }
 

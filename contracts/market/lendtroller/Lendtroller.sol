@@ -2,10 +2,10 @@
 pragma solidity ^0.8.17;
 
 import { LiquidityManager, IPriceRouter, IMToken, WAD } from "contracts/market/lendtroller/LiquidityManager.sol";
-import { GaugePool } from "contracts/gauge/GaugePool.sol";
 import { ERC165 } from "contracts/libraries/ERC165.sol";
 import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 
+import { IGaugePool } from "contracts/interfaces/IGaugePool.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.sol";
@@ -32,7 +32,7 @@ contract Lendtroller is LiquidityManager, ERC165 {
     /// `bytes4(keccak256(bytes("Lendtroller__InvalidParameter()")))`
     uint256 internal constant _INVALID_PARAMETER_SELECTOR = 0x31765827;
     /// @notice gaugePool contract address.
-    GaugePool public immutable gaugePool;
+    IGaugePool public immutable gaugePool;
 
     /// STORAGE ///
 
@@ -104,11 +104,16 @@ contract Lendtroller is LiquidityManager, ERC165 {
         ICentralRegistry centralRegistry_, 
         address gaugePool_
     ) LiquidityManager(centralRegistry_) {
-        if (gaugePool_ == address(0)) {
+        if (
+            !ERC165Checker.supportsInterface(
+                address(gaugePool_),
+                type(IGaugePool).interfaceId
+            )
+        ) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
-        gaugePool = GaugePool(gaugePool_);
+        gaugePool = IGaugePool(gaugePool_);
     }
 
     /// EXTERNAL FUNCTIONS ///
@@ -305,7 +310,7 @@ contract Lendtroller is LiquidityManager, ERC165 {
 
         // We do not need to update any values if the account is not ‘in’ the market
         if (accountData.activePosition < 2) {
-            revert Lendtroller__InvalidParameter();
+            _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
         if (!token.isCToken()) {

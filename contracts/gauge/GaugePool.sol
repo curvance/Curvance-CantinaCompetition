@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
-import { GaugeController, GaugeErrors } from "contracts/gauge/GaugeController.sol";
-import { PartnerGaugePool } from "contracts/gauge/PartnerGaugePool.sol";
 
+import { GaugeController, GaugeErrors, IGaugePool } from "contracts/gauge/GaugeController.sol";
+import { PartnerGaugePool } from "contracts/gauge/PartnerGaugePool.sol";
+import { ERC165 } from "contracts/libraries/ERC165.sol";
+import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 
@@ -14,7 +15,7 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { ICVE } from "contracts/interfaces/ICVE.sol";
 import { DENOMINATOR } from "contracts/libraries/Constants.sol";
 
-contract GaugePool is GaugeController, ReentrancyGuard {
+contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
     /// TYPES ///
 
     struct PoolInfo {
@@ -482,6 +483,15 @@ contract GaugePool is GaugeController, ReentrancyGuard {
         // update pool storage
         poolInfo[token].lastRewardTimestamp = block.timestamp;
         poolInfo[token].accRewardPerShare = accRewardPerShare;
+    }
+
+    /// @inheritdoc ERC165
+    function supportsInterface(
+        bytes4 interfaceId
+    ) public view override returns (bool) {
+        return
+            interfaceId == type(IGaugePool).interfaceId ||
+            super.supportsInterface(interfaceId);
     }
 
     /// INTERNAL FUNCTIONS ///
