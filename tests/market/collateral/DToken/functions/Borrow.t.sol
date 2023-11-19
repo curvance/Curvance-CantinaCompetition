@@ -19,7 +19,7 @@ contract DTokenBorrowTest is TestBaseDToken {
         uint256 cash = dUSDC.marketUnderlyingHeld();
 
         vm.expectRevert(
-            Lendtroller.Lendtroller__InsufficientLiquidity.selector
+            Lendtroller.Lendtroller__InsufficientCollateral.selector
         );
         dUSDC.borrow(cash + 1);
     }

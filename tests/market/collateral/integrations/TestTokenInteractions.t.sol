@@ -246,7 +246,7 @@ contract TestTokens is TestBaseMarket {
         // can't redeem full
         vm.startPrank(user1);
         vm.expectRevert(
-            bytes4(keccak256("Lendtroller__InsufficientLiquidity()"))
+            bytes4(keccak256("Lendtroller__InsufficientCollateral()"))
         );
         cBALRETH.redeem(1 ether, user1, user1);
         vm.stopPrank();
@@ -322,7 +322,7 @@ contract TestTokens is TestBaseMarket {
         // can't transfer full
         vm.startPrank(user1);
         vm.expectRevert(
-            bytes4(keccak256("Lendtroller__InsufficientLiquidity()"))
+            bytes4(keccak256("Lendtroller__InsufficientCollateral()"))
         );
         cBALRETH.transfer(user2, 1 ether);
         vm.stopPrank();
