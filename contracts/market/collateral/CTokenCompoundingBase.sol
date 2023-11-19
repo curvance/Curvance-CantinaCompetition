@@ -46,7 +46,7 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
     ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
 
     // `bytes4(keccak256(bytes("CTokenCompoundingBase__VaultNotActive()")))`
-    uint256 internal constant VAULT_NOT_ACTIVE_SELECTOR = 0xe4247f94;
+    uint256 internal constant _VAULT_NOT_ACTIVE_SELECTOR = 0xe4247f94;
     /// `keccak256(bytes("Deposit(address,address,uint256,uint256)"))`.
     uint256 private constant _DEPOSIT_EVENT_SIGNATURE =
         0xdcbc1c05240f31ff3ad067ef1ee35ce4997762752e3a095284754544f4c709d7;
@@ -366,7 +366,7 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
         _checkDaoPermissions();
 
         if (_vaultStatus != 2) {
-            _revert(VAULT_NOT_ACTIVE_SELECTOR);
+            _revert(_VAULT_NOT_ACTIVE_SELECTOR);
         }
 
         _vaultStatus = 1;
@@ -793,7 +793,7 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
         }
 
         if (assets > maxDeposit(receiver)) {
-            _revert(VAULT_NOT_ACTIVE_SELECTOR);
+            _revert(_VAULT_NOT_ACTIVE_SELECTOR);
         }
 
         // Fail if deposit not allowed
@@ -826,7 +826,7 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
         }
 
         if (shares > maxMint(receiver)) {
-            _revert(VAULT_NOT_ACTIVE_SELECTOR);
+            _revert(_VAULT_NOT_ACTIVE_SELECTOR);
         }
 
         // Fail if mint not allowed
