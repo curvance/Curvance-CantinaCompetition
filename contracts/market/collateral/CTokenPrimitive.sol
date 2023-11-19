@@ -74,22 +74,6 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
     error CTokenPrimitive__UnderlyingAssetTotalSupplyExceedsMaximum();
     error CTokenPrimitive__LendtrollerIsNotLendingMarket();
 
-    /// MODIFIERS ///
-
-    modifier onlyDaoPermissions() {
-        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
-            revert CTokenPrimitive__Unauthorized();
-        }
-        _;
-    }
-
-    modifier onlyElevatedPermissions() {
-        if (!centralRegistry.hasElevatedPermissions(msg.sender)) {
-            revert CTokenPrimitive__Unauthorized();
-        }
-        _;
-    }
-
     /// CONSTRUCTOR ///
 
     constructor(
@@ -281,7 +265,9 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
 
     /// @notice Shuts down the vault
     /// @dev Used in an emergency or if the vault has been deprecated
-    function initiateShutdown() external onlyDaoPermissions {
+    function initiateShutdown() external {
+        _checkDaoPermissions();
+        
         if (_vaultStatus != 2) {
             _revert(VAULT_NOT_ACTIVE_SELECTOR);
         }
@@ -293,7 +279,10 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
 
     /// @notice Reactivate the vault
     /// @dev Allows for reconfiguration of cToken attached to vault
-    function liftShutdown() external onlyElevatedPermissions {
+    function liftShutdown() external {
+        /// Reactivating the vault requires heavier permissioning than deactivating
+        _checkElevatedPermissions();
+        
         if (_vaultStatus == 2) {
             // revert with "CTokenPrimitive__VaultIsActive()"
             _revert(0x8bdb4dfb);
@@ -308,7 +297,9 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
     /// @param newLendtroller New lendtroller address
     function setLendtroller(
         address newLendtroller
-    ) external onlyElevatedPermissions {
+    ) external {
+        _checkElevatedPermissions();
+        
         _setLendtroller(newLendtroller);
     }
 
@@ -379,7 +370,8 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
     function rescueToken(
         address token,
         uint256 amount
-    ) external onlyDaoPermissions {
+    ) external {
+        _checkDaoPermissions();
         address daoOperator = centralRegistry.daoAddress();
 
         if (token == address(0)) {
@@ -994,5 +986,19 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
     /// @return The gauge controller contract address
     function _gaugePool() internal view returns (GaugePool) {
         return lendtroller.gaugePool();
+    }
+
+    /// @dev Checks whether the caller has sufficient permissioning
+    function _checkDaoPermissions() internal view {
+        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
+            revert CTokenPrimitive__Unauthorized();
+        }
+    }
+
+    /// @dev Checks whether the caller has sufficient permissioning
+    function _checkElevatedPermissions() internal view {
+        if (!centralRegistry.hasElevatedPermissions(msg.sender)) {
+            revert CTokenPrimitive__Unauthorized();
+        }
     }
 }

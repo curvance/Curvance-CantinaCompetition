@@ -110,29 +110,6 @@ contract CentralRegistry is ERC165 {
     error CentralRegistry__ParametersMisconfigured();
     error CentralRegistry__Unauthorized();
 
-    /// MODIFIERS ///
-
-    modifier onlyEmergencyCouncil() {
-        if (msg.sender != emergencyCouncil) {
-            _revert(_UNAUTHORIZED_SELECTOR);
-        }
-        _;
-    }
-
-    modifier onlyDaoPermissions() {
-        if (!hasDaoPermissions[msg.sender]) {
-            _revert(_UNAUTHORIZED_SELECTOR);
-        }
-        _;
-    }
-
-    modifier onlyElevatedPermissions() {
-        if (!hasElevatedPermissions[msg.sender]) {
-            _revert(_UNAUTHORIZED_SELECTOR);
-        }
-        _;
-    }
-
     /// CONSTRUCTOR ///
 
     constructor(
@@ -178,21 +155,29 @@ contract CentralRegistry is ERC165 {
 
     /// @notice Sets a new CVE contract address
     /// @dev Only callable on a 7 day delay or by the Emergency Council
-    function setCVE(address newCVE) external onlyElevatedPermissions {
+    function setCVE(address newCVE) external {
+        _checkElevatedPermissions();
+
         CVE = newCVE;
         emit CoreContractSet("CVE", newCVE);
     }
 
     /// @notice Sets a new veCVE contract address
     /// @dev Only callable on a 7 day delay or by the Emergency Council
-    function setVeCVE(address newVeCVE) external onlyElevatedPermissions {
+    function setVeCVE(address newVeCVE) external {
+        _checkElevatedPermissions();
+
         veCVE = newVeCVE;
         emit CoreContractSet("VeCVE", newVeCVE);
     }
 
     /// @notice Sets a new CVE contract address
     /// @dev Only callable by the DAO
-    function setOCVE(address newOCVE) external onlyDaoPermissions {
+    function setOCVE(address newOCVE) external {
+        // Lower permissioning on call option CVE,
+        // since its only used initially in Curvance
+        _checkDaoPermissions();
+
         oCVE = newOCVE;
         emit CoreContractSet("oCVE", newOCVE);
     }
@@ -201,7 +186,9 @@ contract CentralRegistry is ERC165 {
     /// @dev Only callable on a 7 day delay or by the Emergency Council
     function setCVELocker(
         address newCVELocker
-    ) external onlyElevatedPermissions {
+    ) external {
+        _checkElevatedPermissions();
+
         cveLocker = newCVELocker;
         emit CoreContractSet("CVE Locker", newCVELocker);
     }
@@ -210,7 +197,9 @@ contract CentralRegistry is ERC165 {
     /// @dev Only callable on a 7 day delay or by the Emergency Council
     function setProtocolMessagingHub(
         address newProtocolMessagingHub
-    ) external onlyElevatedPermissions {
+    ) external {
+        _checkElevatedPermissions();
+
         protocolMessagingHub = newProtocolMessagingHub;
         emit CoreContractSet(
             "Protocol Messaging Hub",
@@ -222,7 +211,9 @@ contract CentralRegistry is ERC165 {
     /// @dev Only callable on a 7 day delay or by the Emergency Council
     function setPriceRouter(
         address newPriceRouter
-    ) external onlyElevatedPermissions {
+    ) external {
+        _checkElevatedPermissions();
+
         priceRouter = newPriceRouter;
         emit CoreContractSet("Price Router", newPriceRouter);
     }
@@ -231,7 +222,9 @@ contract CentralRegistry is ERC165 {
     /// @dev Only callable on a 7 day delay or by the Emergency Council
     function setZroAddress(
         address newZroAddress
-    ) external onlyElevatedPermissions {
+    ) external {
+        _checkElevatedPermissions();
+
         zroAddress = newZroAddress;
         emit CoreContractSet("ZRO", newZroAddress);
     }
@@ -240,7 +233,9 @@ contract CentralRegistry is ERC165 {
     /// @dev Only callable on a 7 day delay or by the Emergency Council
     function setFeeAccumulator(
         address newFeeAccumulator
-    ) external onlyElevatedPermissions {
+    ) external {
+        _checkElevatedPermissions();
+
         feeAccumulator = newFeeAccumulator;
         emit CoreContractSet("Fee Accumulator", newFeeAccumulator);
     }
@@ -251,7 +246,9 @@ contract CentralRegistry is ERC165 {
     ///      can only have a maximum value of 5%
     function setProtocolCompoundFee(
         uint256 value
-    ) external onlyElevatedPermissions {
+    ) external {
+        _checkElevatedPermissions();
+
         if (value > 500) {
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
@@ -270,7 +267,9 @@ contract CentralRegistry is ERC165 {
     ///      can only have a maximum value of 20%
     function setProtocolYieldFee(
         uint256 value
-    ) external onlyElevatedPermissions {
+    ) external {
+        _checkElevatedPermissions();
+
         if (value > 2000) {
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
@@ -289,7 +288,9 @@ contract CentralRegistry is ERC165 {
     ///      can only have a maximum value of 2%
     function setProtocolLeverageFee(
         uint256 value
-    ) external onlyElevatedPermissions {
+    ) external {
+        _checkElevatedPermissions();
+
         if (value > 200) {
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
@@ -305,7 +306,9 @@ contract CentralRegistry is ERC165 {
     function setProtocolInterestRateFee(
         address market,
         uint256 value
-    ) external onlyElevatedPermissions {
+    ) external {
+        _checkElevatedPermissions();
+
         if (value > 5000) {
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
@@ -326,7 +329,9 @@ contract CentralRegistry is ERC165 {
     ///      must be between 30% and 90%
     function setEarlyUnlockPenaltyMultiplier(
         uint256 value
-    ) external onlyElevatedPermissions {
+    ) external {
+        _checkElevatedPermissions();
+
         if ((value > 9000 || value < 3000) && value != 0) {
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
@@ -339,7 +344,9 @@ contract CentralRegistry is ERC165 {
     ///      must be a positive boost i.e. > 1.01 or greater multiplier
     function setVoteBoostMultiplier(
         uint256 value
-    ) external onlyElevatedPermissions {
+    ) external {
+        _checkElevatedPermissions();
+
         if (value < DENOMINATOR && value != 0) {
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
@@ -352,7 +359,9 @@ contract CentralRegistry is ERC165 {
     ///      must be a positive boost i.e. > 1.01 or greater multiplier
     function setLockBoostMultiplier(
         uint256 value
-    ) external onlyElevatedPermissions {
+    ) external {
+        _checkElevatedPermissions();
+
         if (value < DENOMINATOR && value != 0) {
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
@@ -363,7 +372,9 @@ contract CentralRegistry is ERC165 {
 
     function transferDaoOwnership(
         address newDaoAddress
-    ) external onlyElevatedPermissions {
+    ) external {
+        _checkElevatedPermissions();
+
         address previousDaoAddress = daoAddress;
         daoAddress = newDaoAddress;
 
@@ -376,7 +387,9 @@ contract CentralRegistry is ERC165 {
 
     function migrateTimelockConfiguration(
         address newTimelock
-    ) external onlyEmergencyCouncil {
+    ) external {
+        _checkEmergencyCouncilPermissions();
+
         address previousTimelock = timelock;
         timelock = newTimelock;
 
@@ -393,7 +406,9 @@ contract CentralRegistry is ERC165 {
 
     function transferEmergencyCouncil(
         address newEmergencyCouncil
-    ) external onlyEmergencyCouncil {
+    ) external {
+        _checkEmergencyCouncilPermissions();
+
         address previousEmergencyCouncil = emergencyCouncil;
         emergencyCouncil = newEmergencyCouncil;
 
@@ -421,7 +436,9 @@ contract CentralRegistry is ERC165 {
         uint256 sourceAux,
         uint256 destinationAux,
         uint256 messagingChainId
-    ) external onlyElevatedPermissions {
+    ) external {
+        _checkElevatedPermissions();
+
         if (
             omnichainOperators[newOmnichainOperator][chainId].isAuthorized == 2
         ) {
@@ -458,7 +475,11 @@ contract CentralRegistry is ERC165 {
     function removeChainSupport(
         address currentOmnichainOperator,
         uint256 chainId
-    ) external onlyDaoPermissions {
+    ) external {
+        // Lower permissioning on removing chains as it only
+        // mitigates risk to the system
+        _checkDaoPermissions();
+
         OmnichainData storage operatorToRemove = omnichainOperators[
             currentOmnichainOperator
         ][chainId];
@@ -492,7 +513,9 @@ contract CentralRegistry is ERC165 {
 
     /// CONTRACT MAPPING LOGIC
 
-    function addZapper(address newZapper) external onlyElevatedPermissions {
+    function addZapper(address newZapper) external {
+        _checkElevatedPermissions();
+
         if (isZapper[newZapper]) {
             // Zapper already added
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
@@ -505,7 +528,9 @@ contract CentralRegistry is ERC165 {
 
     function removeZapper(
         address currentZapper
-    ) external onlyElevatedPermissions {
+    ) external {
+        _checkElevatedPermissions();
+
         if (!isZapper[currentZapper]) {
             // Not a Zapper
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
@@ -516,7 +541,9 @@ contract CentralRegistry is ERC165 {
         emit RemovedCurvanceContract("Zapper", currentZapper);
     }
 
-    function addSwapper(address newSwapper) external onlyElevatedPermissions {
+    function addSwapper(address newSwapper) external {
+        _checkElevatedPermissions();
+
         if (isSwapper[newSwapper]) {
             // Swapper already added
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
@@ -529,7 +556,9 @@ contract CentralRegistry is ERC165 {
 
     function removeSwapper(
         address currentSwapper
-    ) external onlyElevatedPermissions {
+    ) external {
+        _checkElevatedPermissions();
+
         if (!isSwapper[currentSwapper]) {
             // Not a Swapper
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
@@ -542,7 +571,9 @@ contract CentralRegistry is ERC165 {
 
     function addVeCVELocker(
         address newVeCVELocker
-    ) external onlyElevatedPermissions {
+    ) external {
+        _checkElevatedPermissions();
+
         if (isVeCVELocker[newVeCVELocker]) {
             // VeCVE locker already added
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
@@ -555,7 +586,9 @@ contract CentralRegistry is ERC165 {
 
     function removeVeCVELocker(
         address currentVeCVELocker
-    ) external onlyElevatedPermissions {
+    ) external {
+        _checkElevatedPermissions();
+
         if (!isVeCVELocker[currentVeCVELocker]) {
             // Not a VeCVE locker
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
@@ -568,7 +601,9 @@ contract CentralRegistry is ERC165 {
 
     function addGaugeController(
         address newGaugeController
-    ) external onlyElevatedPermissions {
+    ) external {
+        _checkElevatedPermissions();
+
         if (isGaugeController[newGaugeController]) {
             // Gauge Controller already added
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
@@ -581,7 +616,9 @@ contract CentralRegistry is ERC165 {
 
     function removeGaugeController(
         address currentGaugeController
-    ) external onlyElevatedPermissions {
+    ) external {
+        _checkElevatedPermissions();
+
         if (!isGaugeController[currentGaugeController]) {
             // Not a Gauge Controller
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
@@ -597,7 +634,9 @@ contract CentralRegistry is ERC165 {
 
     function addHarvester(
         address newHarvester
-    ) external onlyElevatedPermissions {
+    ) external {
+        _checkElevatedPermissions();
+
         if (isHarvester[newHarvester]) {
             // Harvestor already added
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
@@ -610,7 +649,9 @@ contract CentralRegistry is ERC165 {
 
     function removeHarvester(
         address currentHarvester
-    ) external onlyElevatedPermissions {
+    ) external {
+        _checkElevatedPermissions();
+
         if (!isHarvester[currentHarvester]) {
             // Not a Harvestor
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
@@ -629,7 +670,9 @@ contract CentralRegistry is ERC165 {
     function addLendingMarket(
         address newLendingMarket,
         uint256 marketInterestFactor
-    ) external onlyElevatedPermissions {
+    ) external {
+        _checkElevatedPermissions();
+
         if (isLendingMarket[newLendingMarket]) {
             // Lending market already added
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
@@ -663,7 +706,9 @@ contract CentralRegistry is ERC165 {
     /// @param currentLendingMarket The address of the lending market to be removed.
     function removeLendingMarket(
         address currentLendingMarket
-    ) external onlyElevatedPermissions {
+    ) external {
+        _checkElevatedPermissions();
+
         if (!isLendingMarket[currentLendingMarket]) {
             // Not a Lending market
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
@@ -679,7 +724,9 @@ contract CentralRegistry is ERC165 {
     /// @param newEndpoint The address of the new crosschain endpoint to be added.
     function addEndpoint(
         address newEndpoint
-    ) external onlyElevatedPermissions {
+    ) external {
+        _checkElevatedPermissions();
+
         if (isEndpoint[newEndpoint]) {
             // Endpoint already added
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
@@ -695,7 +742,9 @@ contract CentralRegistry is ERC165 {
     /// @param currentEndpoint The address of the crosschain endpoint to be removed.
     function removeEndpoint(
         address currentEndpoint
-    ) external onlyElevatedPermissions {
+    ) external {
+        _checkElevatedPermissions();
+
         if (!isEndpoint[currentEndpoint]) {
             // Not an Endpoint
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
@@ -713,6 +762,19 @@ contract CentralRegistry is ERC165 {
         return omnichainOperators[_address][chainID];
     }
 
+    /// PUBLIC FUNCTIONS ///
+
+    /// @inheritdoc ERC165
+    function supportsInterface(
+        bytes4 interfaceId
+    ) public view override returns (bool) {
+        return
+            interfaceId == type(ICentralRegistry).interfaceId ||
+            super.supportsInterface(interfaceId);
+    }
+
+    /// INTERNAL FUNCTIONS ///
+
     /// @dev Internal helper function for easily converting between scalars
     function _bpToWad(uint256 value) internal pure returns (uint256 result) {
         assembly {
@@ -729,12 +791,26 @@ contract CentralRegistry is ERC165 {
         }
     }
 
-    /// @inheritdoc ERC165
-    function supportsInterface(
-        bytes4 interfaceId
-    ) public view override returns (bool) {
-        return
-            interfaceId == type(ICentralRegistry).interfaceId ||
-            super.supportsInterface(interfaceId);
+    /// @dev Checks whether the caller has sufficient permissioning.
+    function _checkEmergencyCouncilPermissions() internal view {
+        if (msg.sender != emergencyCouncil) {
+            _revert(_UNAUTHORIZED_SELECTOR);
+        }
     }
+
+    /// @dev Checks whether the caller has sufficient permissioning.
+    function _checkDaoPermissions() internal view {
+        if (!hasDaoPermissions[msg.sender]) {
+            _revert(_UNAUTHORIZED_SELECTOR);
+        }
+    }
+
+    /// @dev Checks whether the caller has sufficient permissioning.
+    function _checkElevatedPermissions() internal view {
+        if (!hasElevatedPermissions[msg.sender]) {
+            _revert(_UNAUTHORIZED_SELECTOR);
+        }
+    }
+
+    
 }

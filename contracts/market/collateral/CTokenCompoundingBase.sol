@@ -116,22 +116,6 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
     error CTokenCompoundingBase__UnderlyingAssetTotalSupplyExceedsMaximum();
     error CTokenCompoundingBase__LendtrollerIsNotLendingMarket();
 
-    /// MODIFIERS ///
-
-    modifier onlyDaoPermissions() {
-        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
-            revert CTokenCompoundingBase__Unauthorized();
-        }
-        _;
-    }
-
-    modifier onlyElevatedPermissions() {
-        if (!centralRegistry.hasElevatedPermissions(msg.sender)) {
-            revert CTokenCompoundingBase__Unauthorized();
-        }
-        _;
-    }
-
     /// CONSTRUCTOR ///
 
     constructor(
@@ -365,7 +349,9 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
 
     function setVestingPeriod(
         uint256 newVestingPeriod
-    ) external onlyDaoPermissions {
+    ) external {
+        _checkDaoPermissions();
+
         if (newVestingPeriod > 7 days) {
             revert CTokenCompoundingBase__InvalidVestPeriod();
         }
@@ -375,8 +361,10 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
     }
 
     /// @notice Shuts down the vault
-    /// @dev Used in an emergency or if the vault has been deprecated
-    function initiateShutdown() external onlyDaoPermissions {
+    /// @dev Used in an emergency or if the cToken has been deprecated
+    function initiateShutdown() external {
+        _checkDaoPermissions();
+
         if (_vaultStatus != 2) {
             _revert(VAULT_NOT_ACTIVE_SELECTOR);
         }
@@ -387,8 +375,9 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
     }
 
     /// @notice Reactivate the vault
-    /// @dev Allows for reconfiguration of cToken attached to vault
-    function liftShutdown() external onlyElevatedPermissions {
+    function liftShutdown() external {
+        _checkElevatedPermissions();
+
         if (_vaultStatus == 2) {
             // revert with "CTokenCompoundingBase__VaultIsActive"
             _revert(0x3a2c4eed);
@@ -403,7 +392,8 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
     /// @param newLendtroller New lendtroller address
     function setLendtroller(
         address newLendtroller
-    ) external onlyElevatedPermissions {
+    ) external {
+        _checkElevatedPermissions();
         _setLendtroller(newLendtroller);
     }
 
@@ -441,9 +431,9 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
     ///         and the cached exchange rate
     /// @dev This is used by lendtroller to more efficiently perform liquidity checks
     /// @param account Address of the account to snapshot
-    /// @return tokenBalance
-    /// @return borrowBalance
-    /// @return exchangeRate scaled 1e18
+    /// @return tokenBalance Current account shares balance
+    /// @return borrowBalance Current account borrow balance (will always be 0, kept for composability)
+    /// @return exchangeRate Current exchange rate between assets and shares, in `WAD`
     function getSnapshot(
         address account
     ) external view returns (uint256, uint256, uint256) {
@@ -472,7 +462,8 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
     function rescueToken(
         address token,
         uint256 amount
-    ) external onlyDaoPermissions {
+    ) external {
+        _checkDaoPermissions();
         address daoOperator = centralRegistry.daoAddress();
 
         if (token == address(0)) {
@@ -1273,6 +1264,20 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
         if (pendingVestUpdate.updateNeeded) {
             vestPeriod = pendingVestUpdate.newVestPeriod;
             delete pendingVestUpdate.updateNeeded;
+        }
+    }
+
+    /// @dev Checks whether the caller has sufficient permissioning
+    function _checkDaoPermissions() internal view {
+        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
+            revert CTokenCompoundingBase__Unauthorized();
+        }
+    }
+
+    /// @dev Checks whether the caller has sufficient permissioning
+    function _checkElevatedPermissions() internal view {
+        if (!centralRegistry.hasElevatedPermissions(msg.sender)) {
+            revert CTokenCompoundingBase__Unauthorized();
         }
     }
 

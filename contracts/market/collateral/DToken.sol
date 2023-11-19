@@ -120,22 +120,6 @@ contract DToken is ERC165, ReentrancyGuard {
     error DToken__UnderlyingAssetTotalSupplyExceedsMaximum();
     error DToken__LendtrollerIsNotLendingMarket();
 
-    /// MODIFIERS ///
-
-    modifier onlyDaoPermissions() {
-        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
-            revert DToken__Unauthorized();
-        }
-        _;
-    }
-
-    modifier onlyElevatedPermissions() {
-        if (!centralRegistry.hasElevatedPermissions(msg.sender)) {
-            revert DToken__Unauthorized();
-        }
-        _;
-    }
-
     /// CONSTRUCTOR ///
 
     /// @param centralRegistry_ The address of Curvances Central Registry
@@ -448,7 +432,9 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @param amount The amount of underlying token to add as reserves measured in assets
     function depositReserves(
         uint256 amount
-    ) external nonReentrant onlyDaoPermissions {
+    ) external nonReentrant {
+        _checkDaoPermissions();
+
         accrueInterest();
 
         // Calculate asset -> shares exchange rate
@@ -478,7 +464,9 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @param amount Amount of reserves to withdraw measured in assets
     function withdrawReserves(
         uint256 amount
-    ) external nonReentrant onlyDaoPermissions {
+    ) external nonReentrant {
+        _checkDaoPermissions();
+        
         accrueInterest();
 
         // Make sure we have enough underlying held to cover withdrawal
@@ -529,7 +517,8 @@ contract DToken is ERC165, ReentrancyGuard {
     function rescueToken(
         address token,
         uint256 amount
-    ) external onlyDaoPermissions {
+    ) external {
+        _checkDaoPermissions();
         address daoOperator = centralRegistry.daoAddress();
 
         if (token == address(0)) {
@@ -556,7 +545,8 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @param newLendtroller New lendtroller address
     function setLendtroller(
         address newLendtroller
-    ) external onlyElevatedPermissions {
+    ) external {
+        _checkElevatedPermissions();
         _setLendtroller(newLendtroller);
     }
 
@@ -565,7 +555,8 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @param newInterestRateModel the new interest rate model to use
     function setInterestRateModel(
         address newInterestRateModel
-    ) external onlyElevatedPermissions {
+    ) external {
+        _checkElevatedPermissions();
         accrueInterest();
 
         _setInterestRateModel(DynamicInterestRateModel(newInterestRateModel));
@@ -576,7 +567,8 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @param newInterestFactor the new interest factor to use
     function setInterestFactor(
         uint256 newInterestFactor
-    ) external onlyElevatedPermissions {
+    ) external {
+        _checkElevatedPermissions();
         accrueInterest();
 
         _setInterestFactor(newInterestFactor);
@@ -1023,7 +1015,7 @@ contract DToken is ERC165, ReentrancyGuard {
         // Cache how much the account has to save gas
         uint256 accountDebt = debtBalanceCached(account);
 
-        // If amount == 0, amount = accountBorrows
+        // If amount == 0, amount = accountDebt
         amount = amount == 0 ? accountDebt : amount;
 
         SafeTransferLib.safeTransferFrom(
@@ -1033,7 +1025,8 @@ contract DToken is ERC165, ReentrancyGuard {
             amount
         );
 
-        // We calculate the new account and total borrow balances, failing on underflow:
+        // We calculate the new account and total borrow balances, 
+        // failing on underflow:
         _debtOf[account].principal = accountDebt - amount;
         _debtOf[account].accountExchangeRate = marketData.exchangeRate;
         totalBorrows -= amount;
@@ -1115,4 +1108,19 @@ contract DToken is ERC165, ReentrancyGuard {
     function _gaugePool() internal view returns (GaugePool) {
         return lendtroller.gaugePool();
     }
+
+    /// @dev Checks whether the caller has sufficient permissioning
+    function _checkDaoPermissions() internal view {
+        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
+            revert DToken__Unauthorized();
+        }
+    }
+
+    /// @dev Checks whether the caller has sufficient permissioning
+    function _checkElevatedPermissions() internal view {
+        if (!centralRegistry.hasElevatedPermissions(msg.sender)) {
+            revert DToken__Unauthorized();
+        }
+    }
+
 }
