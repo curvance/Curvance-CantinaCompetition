@@ -193,7 +193,7 @@ contract Lendtroller is LiquidityManager, ERC165 {
         return
             _hypotheticalLiquidityOf(
                 account,
-                IMToken(mTokenModified),
+                mTokenModified,
                 redeemTokens,
                 borrowAmount,
                 2
@@ -957,7 +957,7 @@ contract Lendtroller is LiquidityManager, ERC165 {
         // with heavier error code scrutiny
         (, uint256 liquidityDeficit) = _hypotheticalLiquidityOf(
             borrower,
-            IMToken(mToken),
+            mToken,
             0,
             amount,
             1
@@ -1093,7 +1093,7 @@ contract Lendtroller is LiquidityManager, ERC165 {
         // Check account liquidity with hypothetical redemption
         (, uint256 liquidityDeficit) = _hypotheticalLiquidityOf(
             redeemer,
-            IMToken(mToken),
+            mToken,
             amount,
             0,
             2

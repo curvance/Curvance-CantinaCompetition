@@ -134,13 +134,14 @@ abstract contract LiquidityManager {
             if (snapshot.isCToken) {
                 // If the asset has a CR increment their collateral and max borrow value
                 if (!(tokenData[snapshot.asset].collRatio == 0)) {
-                    (accountCollateral, maxDebt) = _addCollateralValues(
-                        snapshot,
-                        account,
-                        underlyingPrices[i],
-                        accountCollateral,
-                        maxDebt
-                    );
+                    uint256 collateralValue = _getAssetValue(
+                                                ((tokenData[snapshot.asset].accountData[account].collateralPosted *
+                                                    snapshot.exchangeRate) / WAD),
+                                                underlyingPrices[i],
+                                                snapshot.decimals
+                                              );
+                    accountCollateral += collateralValue;
+                    maxDebt = (collateralValue * tokenData[snapshot.asset].collRatio) / WAD;
                 }
             } else {
                 // If they have a debt balance, increment their debt
@@ -159,34 +160,32 @@ abstract contract LiquidityManager {
         }
     }
 
-    /// @notice Determine what the account status if an action were done (redeem/borrow)
-    /// @param account The account to determine hypothetical status for
-    /// @param mTokenModified The market to hypothetically redeem/borrow in
-    /// @param redeemTokens The number of tokens to hypothetically redeem
-    /// @param borrowAmount The amount of underlying to hypothetically borrow
-    /// @param errorCodeBreakpoint The error code that will cause liquidity operations to revert
+    /// @notice Determine what `account`'s liquidity would be if
+    ///         `mTokenModified` were redeemed or borrowed.
+    /// @param account The account to determine liquidity for.
+    /// @param mTokenModified The mToken to hypothetically redeem/borrow.
+    /// @param redeemTokens The number of tokens to hypothetically redeem.
+    /// @param borrowAmount The amount of underlying to hypothetically borrow.
+    /// @param errorCodeBreakpoint The error code that will cause liquidity operations to revert.
     /// @dev Note that we calculate the exchangeRateCached for each collateral
     ///           mToken using stored data, without calculating accumulated interest.
-    /// @return accountCollateral The total market value of `account`'s collateral
-    /// @return maxDebt Maximum amount `account` can borrow versus current collateral
-    /// @return newDebt The new debt of `account` after the hypothetical action
-    function _hypotheticalStatusOf(
+    /// @return uint256 Hypothetical `account` excess liquidity versus collateral requirements.
+    /// @return uint256 Hypothetical `account` liquidity deficit below collateral requirements.
+    function _hypotheticalLiquidityOf(
         address account,
-        IMToken mTokenModified,
+        address mTokenModified,
         uint256 redeemTokens, // in shares
         uint256 borrowAmount, // in assets
         uint256 errorCodeBreakpoint
-    )
-        internal
-        view
-        returns (uint256 accountCollateral, uint256 maxDebt, uint256 newDebt)
-    {
+    ) internal view returns (uint256, uint256) {
         (
             AccountSnapshot[] memory snapshots,
             uint256[] memory underlyingPrices,
             uint256 numAssets
         ) = _assetDataOf(account, errorCodeBreakpoint);
         AccountSnapshot memory snapshot;
+        uint256 maxDebt;
+        uint256 newDebt;
 
         for (uint256 i; i < numAssets; ) {
             snapshot = snapshots[i];
@@ -195,11 +194,10 @@ abstract contract LiquidityManager {
                 // If the asset has a Collateral Ratio,
                 // increment their collateral and max borrow value
                 if (!(tokenData[snapshot.asset].collRatio == 0)) {
-                    (accountCollateral, maxDebt) = _addCollateralValues(
+                    maxDebt = _getLiquidityValue(
                         snapshot,
                         account,
                         underlyingPrices[i],
-                        accountCollateral,
                         maxDebt
                     );
                 }
@@ -215,7 +213,7 @@ abstract contract LiquidityManager {
             }
 
             // Calculate effects of interacting with mTokenModified
-            if (IMToken(snapshot.asset) == mTokenModified) {
+            if (snapshot.asset == mTokenModified) {
                 // If its a CToken our only option is to redeem it since it cant be borrowed
                 // If its a DToken we can redeem it but it will not have any effect on borrow amount
                 // since DToken have a collateral value of 0
@@ -245,33 +243,6 @@ abstract contract LiquidityManager {
                 ++i;
             }
         }
-    }
-
-    /// @notice Determine what `account`'s liquidity would be if
-    ///         `mTokenModified` were redeemed or borrowed.
-    /// @param account The account to determine liquidity for.
-    /// @param mTokenModified The mToken to hypothetically redeem/borrow.
-    /// @param redeemTokens The number of tokens to hypothetically redeem.
-    /// @param borrowAmount The amount of underlying to hypothetically borrow.
-    /// @param errorCodeBreakpoint The error code that will cause liquidity operations to revert.
-    /// @dev Note that we calculate the exchangeRateCached for each collateral
-    ///           mToken using stored data, without calculating accumulated interest.
-    /// @return uint256 Hypothetical `account` excess liquidity versus collateral requirements.
-    /// @return uint256 Hypothetical `account` liquidity deficit below collateral requirements.
-    function _hypotheticalLiquidityOf(
-        address account,
-        IMToken mTokenModified,
-        uint256 redeemTokens, // in shares
-        uint256 borrowAmount, // in assets
-        uint256 errorCodeBreakpoint
-    ) internal view returns (uint256, uint256) {
-        (, uint256 maxDebt, uint256 newDebt) = _hypotheticalStatusOf(
-            account,
-            mTokenModified,
-            redeemTokens,
-            borrowAmount,
-            errorCodeBreakpoint
-        );
 
         // These will not underflow/overflow as condition is checked prior
         if (maxDebt > newDebt) {
@@ -404,11 +375,13 @@ abstract contract LiquidityManager {
             return result;
         }
 
-        result.lFactor = _getPositiveCurveResult(
-            accountDebt,
-            accountCollateralA,
-            accountCollateralB
-        );
+        if (accountDebt >= accountCollateralB) {
+            result.lFactor = WAD;
+        }
+
+        result.lFactor = ((accountDebt - accountCollateralA) * WAD) 
+                         / (accountCollateralB - accountCollateralA);
+
     } 
 
     /// @notice Determine `account`'s current status between collateral,
@@ -441,13 +414,14 @@ abstract contract LiquidityManager {
             if (snapshot.isCToken) {
                 // If the asset has a CR increment their collateral and debt to pay
                 if (!(tokenData[snapshot.asset].collRatio == 0)) {
-                    (accountCollateral, accountDebtToPay) = _addValuesForBadDebt(
-                        snapshot,
-                        account,
-                        underlyingPrices[i],
-                        accountCollateral,
-                        accountDebtToPay
-                    );
+                    uint256 collateralValue = _getAssetValue(
+                                                ((tokenData[snapshot.asset].accountData[account].collateralPosted *
+                                                    snapshot.exchangeRate) / WAD),
+                                                underlyingPrices[i],
+                                                snapshot.decimals
+                                              );
+                    accountCollateral += collateralValue;
+                    accountDebtToPay += (collateralValue * WAD) / tokenData[snapshot.asset].liqBaseIncentive;
                 }
             } else {
                 // If they have a debt balance, increment their debt
@@ -500,8 +474,8 @@ abstract contract LiquidityManager {
         AccountSnapshot memory snapshot,
         address account,
         uint256 price,
-        uint256 softLiquidationSumPrior,
-        uint256 hardLiquidationSumPrior
+        uint256 aSumPrior,
+        uint256 bSumPrior
     ) internal view returns (uint256, uint256) {
         uint256 assetValue = _getAssetValue(
             ((tokenData[snapshot.asset].accountData[account].collateralPosted *
@@ -511,78 +485,27 @@ abstract contract LiquidityManager {
         ) * WAD;
 
         return (
-            softLiquidationSumPrior +
-                (assetValue / tokenData[snapshot.asset].collReqA),
-            hardLiquidationSumPrior +
-                (assetValue / tokenData[snapshot.asset].collReqB)
+            aSumPrior + (assetValue / tokenData[snapshot.asset].collReqA),
+            bSumPrior + (assetValue / tokenData[snapshot.asset].collReqB)
         );
     }
 
-    function _addCollateralValues(
+    function _getLiquidityValue(
         AccountSnapshot memory snapshot,
         address account,
         uint256 price,
-        uint256 previousCollateral,
         uint256 previousBorrow
-    ) internal view returns (uint256, uint256) {
+    ) internal view returns (uint256) {
         uint256 assetValue = _getAssetValue(
             ((tokenData[snapshot.asset].accountData[account].collateralPosted *
                 snapshot.exchangeRate) / WAD),
             price,
             snapshot.decimals
         );
-        return (
-            previousCollateral + assetValue,
-            previousBorrow +
+        return (previousBorrow +
                 (assetValue * tokenData[snapshot.asset].collRatio) /
                 WAD
         );
-    }
-
-    function _addValuesForBadDebt(
-        AccountSnapshot memory snapshot,
-        address account,
-        uint256 price,
-        uint256 previousCollateral,
-        uint256 previousDebtToPay
-    ) internal view returns (uint256, uint256) {
-        uint256 assetValue = _getAssetValue(
-            ((tokenData[snapshot.asset].accountData[account].collateralPosted *
-                snapshot.exchangeRate) / WAD),
-            price,
-            snapshot.decimals
-        );
-        return (
-            previousCollateral + assetValue,
-            previousDebtToPay +
-                (assetValue * WAD) /
-                tokenData[snapshot.asset].liqBaseIncentive
-        );
-    } 
-
-    /// @notice Calculates a positive curve value based on `current`,
-    ///         `start`, and `end` values.
-    /// @dev The function scales current, start, and end values by `WAD`
-    ///      to maintain precision. It returns 1, (in `WAD`) if the
-    ///      current value is greater than or equal to `end`. The formula
-    ///      used is (current - start) / (end - start), ensuring the result
-    ///      is scaled properly.
-    /// @param current The current value, representing a point on the curve.
-    /// @param start The start value of the curve, marking the beginning of
-    ///              the calculation range.
-    /// @param end The end value of the curve, marking the end of the
-    ///            calculation range.
-    /// @return The calculated positive curve value, a proportion between
-    ///         the start and end points.
-    function _getPositiveCurveResult(
-        uint256 current,
-        uint256 start,
-        uint256 end
-    ) internal pure returns (uint256) {
-        if (current >= end) {
-            return WAD;
-        }
-        return ((current - start) * WAD) / (end - start);
     }
 
     /// @dev Internal helper for reverting efficiently.
