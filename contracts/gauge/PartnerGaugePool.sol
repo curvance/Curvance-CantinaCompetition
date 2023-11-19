@@ -51,22 +51,6 @@ contract PartnerGaugePool is ReentrancyGuard {
     uint256 public firstDeposit;
     uint256 public unallocatedRewards;
 
-    /// MODIFIERS ///
-
-    modifier onlyGaugeController() {
-        if (msg.sender != address(gaugeController)) {
-            revert GaugeErrors.Unauthorized();
-        }
-        _;
-    }
-
-    modifier onlyDaoPermissions() {
-        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
-            revert GaugeErrors.Unauthorized();
-        }
-        _;
-    }
-
     /// CONSTRUCTOR ///
 
     constructor(
@@ -96,7 +80,9 @@ contract PartnerGaugePool is ReentrancyGuard {
     /// EXTERNAL FUNCTIONS ///
 
     /// @notice Start the Partner Gauge at the start of the Gauge Controller's next epoch
-    function activate() external onlyGaugeController {
+    function activate() external {
+        _checkIsGaugeController();
+
         activationTime = gaugeController.epochStartTime(
             gaugeController.currentEpoch() + 1
         );
@@ -105,7 +91,11 @@ contract PartnerGaugePool is ReentrancyGuard {
     function setRewardPerSec(
         uint256 epoch,
         uint256 newRewardPerSec
-    ) external onlyDaoPermissions {
+    ) external {
+        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
+            revert GaugeErrors.Unauthorized();
+        }
+
         if (!(epoch == 0 && startTime() == 0) && epoch != currentEpoch() + 1) {
             revert GaugeErrors.InvalidEpoch();
         }
@@ -207,7 +197,9 @@ contract PartnerGaugePool is ReentrancyGuard {
         address token,
         address user,
         uint256 amount
-    ) external nonReentrant onlyGaugeController {
+    ) external nonReentrant {
+        _checkIsGaugeController();
+        
         _updatePool(token, UserAction.DEPOSIT, amount);
 
         _calcPending(user, token, UserAction.DEPOSIT, amount);
@@ -231,7 +223,9 @@ contract PartnerGaugePool is ReentrancyGuard {
         address token,
         address user,
         uint256 amount
-    ) external nonReentrant onlyGaugeController {
+    ) external nonReentrant {
+        _checkIsGaugeController();
+        
         _updatePool(token, UserAction.WITHDRAW, amount);
 
         _calcPending(user, token, UserAction.WITHDRAW, amount);
@@ -373,5 +367,12 @@ contract PartnerGaugePool is ReentrancyGuard {
         // update pool storage
         _pool.lastRewardTimestamp = block.timestamp;
         _pool.accRewardPerShare = accRewardPerShare;
+    }
+
+    /// @dev Checks whether the caller has sufficient permissioning
+    function _checkIsGaugeController() internal view {
+        if (msg.sender != address(gaugeController)) {
+            revert GaugeErrors.Unauthorized();
+        }
     }
 }

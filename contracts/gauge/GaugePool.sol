@@ -61,7 +61,9 @@ contract GaugePool is GaugeController, ReentrancyGuard {
     /// @notice Initializes the gauge with a starting time based on the next epoch
     /// @dev    Can only be called once, to start the gauge system
     /// @param lendtroller_ The address to be configured as a lending market
-    function start(address lendtroller_) external onlyDaoPermissions {
+    function start(address lendtroller_) external {
+        _checkDaoPermissions();
+
         if (startTime != 0) {
             revert GaugeErrors.AlreadyStarted();
         }
@@ -86,7 +88,9 @@ contract GaugePool is GaugeController, ReentrancyGuard {
 
     /// @notice Adds a new partner gauge to the gauge system
     /// @param partnerGauge The address of the partner gauge to be added
-    function addPartnerGauge(address partnerGauge) external onlyDaoPermissions {
+    function addPartnerGauge(address partnerGauge) external {
+        _checkDaoPermissions();
+        
         if (partnerGauge == address(0)) {
             revert GaugeErrors.InvalidAddress();
         }
@@ -107,7 +111,9 @@ contract GaugePool is GaugeController, ReentrancyGuard {
     function removePartnerGauge(
         uint256 index,
         address partnerGauge
-    ) external onlyDaoPermissions {
+    ) external {
+        _checkDaoPermissions();
+        
         if (partnerGauge != address(partnerGauges[index])) {
             revert GaugeErrors.InvalidAddress();
         }
