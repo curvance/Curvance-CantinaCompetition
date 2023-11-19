@@ -18,7 +18,6 @@ interface IFeeAccumulator {
     /// @notice Record rewards for epoch
     function recordEpochRewards(uint256 amount) external;
 
-    /// @notice Moves fee token approval to new messaging hub
-    function requeryMessagingHub() external;
-
+    /// @notice Updates to new messaging hub and moves fee token approval
+    function notifyUpdatedMessagingHub() external;
 }

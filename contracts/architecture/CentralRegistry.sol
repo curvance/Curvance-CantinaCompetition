@@ -206,7 +206,7 @@ contract CentralRegistry is ERC165 {
         // If the feeAccumulator is already set up, 
         // notify it that the messaging hub has been updated
         if (feeAccumulator != address(0)) {
-            IFeeAccumulator(feeAccumulator).requeryMessagingHub();
+            IFeeAccumulator(feeAccumulator).notifyUpdatedMessagingHub();
         }
 
         emit CoreContractSet(

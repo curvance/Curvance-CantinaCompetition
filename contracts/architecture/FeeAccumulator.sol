@@ -22,7 +22,9 @@ contract FeeAccumulator is ReentrancyGuard {
     /// TYPES ///
 
     struct RewardToken {
-        uint256 isRewardToken; // 2 = yes; 0 or 1 = no
+        // @notice 2 = yes; 0 or 1 = no
+        uint256 isRewardToken;
+        // @notice 2 = yes; 0 or 1 = no
         uint256 forOTC;
     }
 
@@ -38,10 +40,10 @@ contract FeeAccumulator is ReentrancyGuard {
     uint256 public constant SLIPPAGE_DENOMINATOR = 10000;
     /// @notice Address of fee token
     address public immutable feeToken;
-    /// @notice Fee token decimal unit
-    uint256 internal immutable _feeTokenUnit;
     /// @notice Curvance DAO hub
     ICentralRegistry public immutable centralRegistry;
+    /// @notice Fee token decimal unit
+    uint256 internal immutable _feeTokenUnit;
 
     /// STORAGE ///
 
@@ -57,8 +59,9 @@ contract FeeAccumulator is ReentrancyGuard {
     ///      Used for Gelato Network bots to check what tokens to swap
     address[] public rewardTokens;
 
+    /// @dev Token Address => RewardToken data
     mapping(address => RewardToken) public rewardTokenInfo;
-    /// @dev 2 = yes;
+    /// @dev ChainID => Epoch => 2 = yes; 0 = no;
     mapping(uint16 => mapping(uint256 => uint256)) public lockedTokenDataSent;
 
     /// ERRORS ///
@@ -584,8 +587,13 @@ contract FeeAccumulator is ReentrancyGuard {
 
     /// @notice Moves fee token approval to new messaging hub
     /// @dev Removes prior messaging hub approval for maximum safety
-    function requeryMessagingHub() external {
+    function notifyUpdatedMessagingHub() external {
+        if (msg.sender != address(centralRegistry)) {
+            revert FeeAccumulator__Unauthorized();
+        }
+
         address messagingHub = centralRegistry.protocolMessagingHub();
+
         if (messagingHub == _messagingHubStored) {
             revert FeeAccumulator__MessagingHubHasNotChanged();
         }
