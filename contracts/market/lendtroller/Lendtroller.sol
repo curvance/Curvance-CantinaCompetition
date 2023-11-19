@@ -1,21 +1,20 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { GaugePool } from "contracts/gauge/GaugePool.sol";
 import { ERC165 } from "contracts/libraries/ERC165.sol";
 import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
-import { WAD } from "contracts/libraries/Constants.sol";
-
+import { GaugePool } from "contracts/gauge/GaugePool.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.sol";
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
+import { WAD } from "contracts/libraries/Constants.sol";
 
 /// @title Curvance Lendtroller
 /// @notice Manages risk within the lending markets
-contract Lendtroller is ILendtroller, ERC165 {
+contract Lendtroller is ERC165 {
     /// TYPES ///
 
     struct AccountData {
@@ -194,9 +193,9 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @notice Returns the assets an account has entered
     /// @param account The address of the account to pull assets for
     /// @return A dynamic list with the assets the account has entered
-    function getAccountAssets(
+    function assetsOf(
         address account
-    ) external view override returns (IMToken[] memory) {
+    ) external view returns (IMToken[] memory) {
         return accountAssets[account].assets;
     }
 
@@ -328,7 +327,7 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @notice Checks if the account should be allowed to mint tokens
     ///         in the given market
     /// @param mToken The token to verify mints against
-    function canMint(address mToken) external view override {
+    function canMint(address mToken) external view {
         if (mintPaused[mToken] == 2) {
             revert Lendtroller__Paused();
         }
@@ -348,7 +347,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         address mToken,
         address redeemer,
         uint256 amount
-    ) external view override {
+    ) external view {
         _canRedeem(mToken, redeemer, amount);
     }
 
@@ -368,7 +367,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         uint256 balance,
         uint256 amount,
         bool forceRedeemCollateral
-    ) external override {
+    ) external {
         if (msg.sender != mToken) {
             revert Lendtroller__Unauthorized();
         }
@@ -394,7 +393,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         address mToken,
         address borrower,
         uint256 amount
-    ) external override {
+    ) external {
         if (msg.sender != mToken) {
             revert Lendtroller__Unauthorized();
         }
@@ -407,7 +406,7 @@ contract Lendtroller is ILendtroller, ERC165 {
     ///         in the given market
     /// @param mToken The market to verify the repay against
     /// @param account The account who will have their loan repaid
-    function canRepay(address mToken, address account) external view override {
+    function canRepay(address mToken, address account) external view {
         if (!tokenData[mToken].isListed) {
             revert Lendtroller__TokenNotListed();
         }
@@ -439,7 +438,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         address account,
         uint256 amount,
         bool liquidateExact
-    ) external override returns (uint256, uint256, uint256) {
+    ) external returns (uint256, uint256, uint256) {
         if (msg.sender != dToken) {
             revert Lendtroller__Unauthorized();
         }
@@ -489,7 +488,7 @@ contract Lendtroller is ILendtroller, ERC165 {
     function canSeize(
         address collateralToken,
         address debtToken
-    ) external view override {
+    ) external view {
         if (seizePaused == 2) {
             revert Lendtroller__Paused();
         }
@@ -519,7 +518,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         address mToken,
         address from,
         uint256 amount
-    ) external view override {
+    ) external view {
         if (transferPaused == 2) {
             revert Lendtroller__Paused();
         }
@@ -755,7 +754,7 @@ contract Lendtroller is ILendtroller, ERC165 {
 
     /// @notice Returns whether `mToken` is listed in the lending market
     /// @param mToken market token address
-    function isListed(address mToken) external view override returns (bool) {
+    function isListed(address mToken) external view returns (bool) {
         return (tokenData[mToken].isListed);
     }
 
@@ -765,7 +764,7 @@ contract Lendtroller is ILendtroller, ERC165 {
     function hasPosition(
         address mToken,
         address account
-    ) external view override returns (bool) {
+    ) external view returns (bool) {
         return tokenData[mToken].accountData[account].activePosition == 2;
     }
 
@@ -791,10 +790,7 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @dev requires timelock authority if unpausing
     /// @param mToken market token address
     /// @param state pause or unpause
-    function setBorrowPaused(
-        address mToken,
-        bool state
-    ) external {
+    function setBorrowPaused(address mToken, bool state) external {
         _checkAuthorizedPermissions(state);
         
         if (!tokenData[mToken].isListed) {
@@ -808,9 +804,7 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @notice Admin function to set transfer paused
     /// @dev requires timelock authority if unpausing
     /// @param state pause or unpause
-    function setTransferPaused(
-        bool state
-    ) external {
+    function setTransferPaused(bool state) external {
         _checkAuthorizedPermissions(state);
         
         transferPaused = state ? 2 : 1;
@@ -820,9 +814,7 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @notice Admin function to set seize paused
     /// @dev requires timelock authority if unpausing
     /// @param state pause or unpause
-    function setSeizePaused(
-        bool state
-    ) external {
+    function setSeizePaused(bool state) external {
         _checkAuthorizedPermissions(state);
         
         seizePaused = state ? 2 : 1;
@@ -831,9 +823,7 @@ contract Lendtroller is ILendtroller, ERC165 {
 
     /// @notice Admin function to set position folding address
     /// @param newPositionFolding new position folding address
-    function setPositionFolding(
-        address newPositionFolding
-    ) external {
+    function setPositionFolding(address newPositionFolding) external {
         _checkElevatedPermissions();
 
         if (
@@ -862,7 +852,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         address mToken,
         uint256 balance,
         uint256 amount
-    ) external override {
+    ) external {
         if (msg.sender != mToken) {
             revert Lendtroller__Unauthorized();
         }
@@ -874,7 +864,7 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @dev The caller must be a listed MToken in the `markets` mapping
     /// @param mToken   The address of the dToken that the account is borrowing
     /// @param borrower The address of the account that has just borrowed
-    function notifyBorrow(address mToken, address borrower) external override {
+    function notifyBorrow(address mToken, address borrower) external {
         if (msg.sender != mToken) {
             revert Lendtroller__Unauthorized();
         }
@@ -893,7 +883,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         address mToken,
         address borrower,
         uint256 amount
-    ) public override {
+    ) public {
         if (borrowPaused[mToken] == 2) {
             revert Lendtroller__Paused();
         }
@@ -917,7 +907,7 @@ contract Lendtroller is ILendtroller, ERC165 {
 
         // Check if the user has sufficient liquidity to borrow,
         // with heavier error code scrutiny
-        (, uint256 liquidityDeficit) = _getHypotheticalLiquidity(
+        (, uint256 liquidityDeficit) = _hypotheticalLiquidityOf(
             borrower,
             IMToken(mToken),
             0,
@@ -937,8 +927,8 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @param account The account to determine liquidity for
     /// @return accountCollateral total collateral amount of account
     /// @return maxDebt max borrow amount of account
-    /// @return currentDebt total borrow amount of account
-    function getStatus(
+    /// @return accountDebt total borrow amount of account
+    function statusOf(
         address account
     )
         public
@@ -946,14 +936,14 @@ contract Lendtroller is ILendtroller, ERC165 {
         returns (
             uint256 accountCollateral,
             uint256 maxDebt,
-            uint256 currentDebt
+            uint256 accountDebt
         )
     {
         (
             AccountSnapshot[] memory snapshots,
             uint256[] memory underlyingPrices,
             uint256 numAssets
-        ) = _getAssetData(account, 2);
+        ) = _assetDataOf(account, 2);
         AccountSnapshot memory snapshot;
 
         for (uint256 i; i < numAssets; ) {
@@ -971,9 +961,9 @@ contract Lendtroller is ILendtroller, ERC165 {
                     );
                 }
             } else {
-                // If they have a debt balance we need to document it
+                // If they have a debt balance, increment their debt
                 if (snapshot.debtBalance > 0) {
-                    currentDebt += _getAssetValue(
+                    accountDebt += _getAssetValue(
                         snapshot.debtBalance,
                         underlyingPrices[i],
                         snapshot.decimals
@@ -987,6 +977,14 @@ contract Lendtroller is ILendtroller, ERC165 {
         }
     }
 
+    /// @notice Determine `account`'s current collateral and debt values in the market
+    /// @param account The account to check bad debt status for
+    /// @return The total market value of `account`'s collateral
+    /// @return The total outstanding debt value of `account`
+    function solvencyOf(address account) public view returns (uint256, uint256) {
+        return _solvencyOf(account);
+    }
+
     /// @notice Determine whether `account` can currently be liquidated in this market
     /// @param account The account to check for liquidation flag
     /// @dev Note that we calculate the exchangeRateCached for each collateral
@@ -995,7 +993,7 @@ contract Lendtroller is ILendtroller, ERC165 {
     function flaggedForLiquidation(
         address account
     ) internal view returns (bool) {
-        LiqData memory data = _getStatusForLiquidation(
+        LiqData memory data = _LiquidationStatusOf(
             account,
             address(0),
             address(0)
@@ -1005,20 +1003,20 @@ contract Lendtroller is ILendtroller, ERC165 {
 
     /// @notice Determine what the account liquidity would be if
     ///         the given amounts were redeemed/borrowed
-    /// @param mTokenModified The market to hypothetically redeem/borrow in
     /// @param account The account to determine liquidity for
+    /// @param mTokenModified The market to hypothetically redeem/borrow in
     /// @param redeemTokens The number of tokens to hypothetically redeem
     /// @param borrowAmount The amount of underlying to hypothetically borrow
     /// @return uint256 hypothetical account liquidity in excess of collateral requirements
     /// @return uint256 hypothetical account liquidity deficit below collateral requirements
-    function getHypotheticalLiquidity(
+    function hypotheticalLiquidityOf(
         address account,
         address mTokenModified,
         uint256 redeemTokens, // in shares
         uint256 borrowAmount // in assets
     ) public view returns (uint256, uint256) {
         return
-            _getHypotheticalLiquidity(
+            _hypotheticalLiquidityOf(
                 account,
                 IMToken(mTokenModified),
                 redeemTokens,
@@ -1150,7 +1148,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         }
 
         // Check account liquidity with hypothetical redemption
-        (, uint256 liquidityDeficit) = _getHypotheticalLiquidity(
+        (, uint256 liquidityDeficit) = _hypotheticalLiquidityOf(
             redeemer,
             IMToken(mToken),
             amount,
@@ -1197,7 +1195,7 @@ contract Lendtroller is ILendtroller, ERC165 {
         }
 
         // Calculate the users lFactor
-        LiqData memory data = _getStatusForLiquidation(
+        LiqData memory data = _LiquidationStatusOf(
             account,
             debtToken,
             collateralToken
@@ -1272,7 +1270,7 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @return accountCollateral The total market value of `account`'s collateral
     /// @return maxDebt Maximum amount `account` can borrow versus current collateral
     /// @return newDebt The new debt of `account` after the hypothetical action
-    function _getHypotheticalStatus(
+    function _hypotheticalStatusOf(
         address account,
         IMToken mTokenModified,
         uint256 redeemTokens, // in shares
@@ -1287,7 +1285,7 @@ contract Lendtroller is ILendtroller, ERC165 {
             AccountSnapshot[] memory snapshots,
             uint256[] memory underlyingPrices,
             uint256 numAssets
-        ) = _getAssetData(account, errorCodeBreakpoint);
+        ) = _assetDataOf(account, errorCodeBreakpoint);
         AccountSnapshot memory snapshot;
 
         for (uint256 i; i < numAssets; ) {
@@ -1306,7 +1304,7 @@ contract Lendtroller is ILendtroller, ERC165 {
                     );
                 }
             } else {
-                // If they have a borrow balance we need to document it
+                // If they have a debt balance, increment their debt
                 if (snapshot.debtBalance > 0) {
                     newDebt += _getAssetValue(
                         snapshot.debtBalance,
@@ -1360,14 +1358,14 @@ contract Lendtroller is ILendtroller, ERC165 {
     ///           mToken using stored data, without calculating accumulated interest.
     /// @return uint256 Hypothetical `account` excess liquidity versus collateral requirements.
     /// @return uint256 Hypothetical `account` liquidity deficit below collateral requirements.
-    function _getHypotheticalLiquidity(
+    function _hypotheticalLiquidityOf(
         address account,
         IMToken mTokenModified,
         uint256 redeemTokens, // in shares
         uint256 borrowAmount, // in assets
         uint256 errorCodeBreakpoint
     ) internal view returns (uint256, uint256) {
-        (, uint256 maxDebt, uint256 newDebt) = _getHypotheticalStatus(
+        (, uint256 maxDebt, uint256 newDebt) = _hypotheticalStatusOf(
             account,
             mTokenModified,
             redeemTokens,
@@ -1387,6 +1385,51 @@ contract Lendtroller is ILendtroller, ERC165 {
         }
     }
 
+    /// @notice Determine `account`'s current collateral and debt values in the market
+    /// @param account The account to check bad debt status for
+    /// @return accountCollateral The total market value of `account`'s collateral
+    /// @return accountDebt The total outstanding debt value of `account`
+    function _solvencyOf(
+        address account
+    ) internal view returns (uint256 accountCollateral, uint256 accountDebt) {
+        (
+            AccountSnapshot[] memory snapshots,
+            uint256[] memory underlyingPrices,
+            uint256 numAssets
+        ) = _assetDataOf(account, 2);
+        AccountSnapshot memory snapshot;
+
+        for (uint256 i; i < numAssets; ) {
+            snapshot = snapshots[i];
+
+            if (snapshot.isCToken) {
+                // If the asset has a CR increment their collateral
+                if (!(tokenData[snapshot.asset].collRatio == 0)) {
+                    accountCollateral += _getAssetValue(
+                                         ((tokenData[snapshot.asset].accountData[account].collateralPosted *
+                                            snapshot.exchangeRate) / WAD),
+                                            underlyingPrices[i],
+                                            snapshot.decimals
+                                         ) * WAD;
+
+                }
+            } else {
+                // If they have a debt balance, increment their debt
+                if (snapshot.debtBalance > 0) {
+                    accountDebt += _getAssetValue(
+                        snapshot.debtBalance,
+                        underlyingPrices[i],
+                        snapshot.decimals
+                    );
+                }
+            }
+
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
     /// @notice Determine whether `account` can be liquidated,
     ///         by calculating their lFactor, based on their
     ///         collateral versus outstanding debt
@@ -1397,7 +1440,7 @@ contract Lendtroller is ILendtroller, ERC165 {
     ///                Current `account` lFactor
     ///                Current price for `debtToken`
     ///                Current price for `collateralToken`
-    function _getStatusForLiquidation(
+    function _LiquidationStatusOf(
         address account,
         address debtToken,
         address collateralToken
@@ -1406,7 +1449,7 @@ contract Lendtroller is ILendtroller, ERC165 {
             AccountSnapshot[] memory snapshots,
             uint256[] memory underlyingPrices,
             uint256 numAssets
-        ) = _getAssetData(account, 2);
+        ) = _assetDataOf(account, 2);
         AccountSnapshot memory snapshot;
         // Collateral value for soft liquidation level
         uint256 accountCollateralA;
@@ -1466,7 +1509,7 @@ contract Lendtroller is ILendtroller, ERC165 {
             accountCollateralA,
             accountCollateralB
         );
-    }
+    } 
 
     /// @notice Retrieves the prices and account data of multiple assets inside this market.
     /// @param account The account to retrieve data for.
@@ -1474,7 +1517,7 @@ contract Lendtroller is ILendtroller, ERC165 {
     /// @return AccountSnapshot[] Contains assets data for `account`.
     /// @return uint256[] Contains prices for `account` assets.
     /// @return uint256 The number of assets `account` is in.
-    function _getAssetData(
+    function _assetDataOf(
         address account,
         uint256 errorCodeBreakpoint
     )

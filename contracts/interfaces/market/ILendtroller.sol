@@ -77,7 +77,7 @@ interface ILendtroller {
         address user
     ) external view returns (bool);
 
-    function getAccountAssets(
+    function assetsOf(
         address mToken
     ) external view returns (IMToken[] memory);
 
@@ -85,7 +85,11 @@ interface ILendtroller {
 
     function gaugePool() external view returns (GaugePool);
 
-    function getStatus(
+    function statusOf(
         address account
     ) external view returns (uint256, uint256, uint256);
+
+    function solvencyOf(
+        address account
+    ) external view returns (uint256, uint256);
 }

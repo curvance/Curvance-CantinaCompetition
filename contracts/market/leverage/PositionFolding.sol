@@ -67,21 +67,21 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
     /// MODIFIERS ///
 
     modifier checkSlippage(address user, uint256 slippage) {
-        (uint256 sumCollateralBefore, , uint256 sumBorrowBefore) = lendtroller
-            .getStatus(user);
-        uint256 userValueBefore = sumCollateralBefore - sumBorrowBefore;
+        (uint256 collateralBefore, uint256 debtBefore) = lendtroller
+            .solvencyOf(user);
+        uint256 liquidityBefore = collateralBefore - debtBefore;
 
         _;
 
-        (uint256 sumCollateral, , uint256 sumBorrow) = lendtroller.getStatus(
+        (uint256 sumCollateral, uint256 sumDebt) = lendtroller.solvencyOf(
             user
         );
-        uint256 userValue = sumCollateral - sumBorrow;
+        uint256 liquidityAfter = sumCollateral - sumDebt;
 
-        uint256 diff = userValue > userValueBefore
-            ? userValue - userValueBefore
-            : userValueBefore - userValue;
-        if (diff >= (userValueBefore * slippage) / DENOMINATOR) {
+        uint256 diff = liquidityAfter > liquidityBefore
+            ? liquidityAfter - liquidityBefore
+            : liquidityBefore - liquidityAfter;
+        if (diff >= (liquidityBefore * slippage) / DENOMINATOR) {
             revert PositionFolding__InvalidSlippage();
         }
     }
@@ -337,13 +337,13 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
     ) public view returns (uint256) {
         (
             uint256 sumCollateral,
-            uint256 maxBorrow,
-            uint256 sumBorrow
-        ) = lendtroller.getStatus(user);
-        uint256 maxLeverage = ((sumCollateral - sumBorrow) *
+            uint256 maxDebt,
+            uint256 sumDebt
+        ) = lendtroller.statusOf(user);
+        uint256 maxLeverage = ((sumCollateral - sumDebt) *
             MAX_LEVERAGE *
             sumCollateral) /
-            (sumCollateral - maxBorrow) /
+            (sumCollateral - maxDebt) /
             DENOMINATOR -
             sumCollateral;
 
@@ -355,7 +355,7 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
             revert PositionFolding__InvalidTokenPrice();
         }
 
-        return ((maxLeverage - sumBorrow) * 1e18) / price;
+        return ((maxLeverage - sumDebt) * 1e18) / price;
     }
 
     /// @inheritdoc ERC165
