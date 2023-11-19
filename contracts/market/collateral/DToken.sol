@@ -42,7 +42,7 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @notice Curvance DAO hub
     ICentralRegistry public immutable centralRegistry;
     /// `bytes4(keccak256(bytes("DToken__Unauthorized()")))`
-    uint256 internal constant _UNAUTHORIZED_SELECTOR = 0xefeae624;
+    uint256 internal constant _UNAUTHORIZED_SELECTOR = 0xef419be2;
 
     /// STORAGE ///
 
@@ -1198,5 +1198,4 @@ contract DToken is ERC165, ReentrancyGuard {
             _revert(_UNAUTHORIZED_SELECTOR);
         }
     }
-
 }
