@@ -2,6 +2,7 @@
 pragma solidity ^0.8.17;
 
 import { IChainlink } from "contracts/interfaces/external/chainlink/IChainlink.sol";
+import { WAD } from "contracts/libraries/Constants.sol";
 
 abstract contract BaseWrappedAggregator is IChainlink {
     function aggregator() external view returns (address) {
@@ -17,7 +18,7 @@ abstract contract BaseWrappedAggregator is IChainlink {
             )
         );
 
-        max = (max * getWrappedAssetWeight()) / 1e18;
+        max = (max * getWrappedAssetWeight()) / WAD;
         if (max > uint192(type(int192).max)) {
             return type(int192).max;
         }
@@ -34,7 +35,7 @@ abstract contract BaseWrappedAggregator is IChainlink {
             )
         );
 
-        min = (min * getWrappedAssetWeight()) / 1e18;
+        min = (min * getWrappedAssetWeight()) / WAD;
         if (min > uint192(type(int192).min)) {
             return type(int192).min;
         }
@@ -61,7 +62,7 @@ abstract contract BaseWrappedAggregator is IChainlink {
             underlyingAssetAggregator()
         ).latestRoundData();
 
-        answer = int256((uint256(answer) * getWrappedAssetWeight()) / 1e18);
+        answer = int256((uint256(answer) * getWrappedAssetWeight()) / WAD);
     }
 
     function underlyingAssetAggregator()

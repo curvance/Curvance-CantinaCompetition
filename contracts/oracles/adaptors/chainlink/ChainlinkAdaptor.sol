@@ -7,6 +7,7 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 import { PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
 import { IChainlink } from "contracts/interfaces/external/chainlink/IChainlink.sol";
+import { WAD } from "contracts/libraries/Constants.sol";
 
 contract ChainlinkAdaptor is BaseOracleAdaptor {
     /// TYPES ///
@@ -122,8 +123,8 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
         // Add a ~10% buffer to minimum and maximum price from Chainlink
         // because Chainlink can stop updating its price before/above
         // the min/max price.
-        uint256 bufferedMaxPrice = (maxFromChainlink * 0.9e18) / 1e18;
-        uint256 bufferedMinPrice = (minFromChainklink * 1.1e18) / 1e18;
+        uint256 bufferedMaxPrice = (maxFromChainlink * 0.9e18) / WAD;
+        uint256 bufferedMinPrice = (minFromChainklink * 1.1e18) / WAD;
 
         AdaptorData storage adaptorData;
 
@@ -233,7 +234,7 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
 
         (, int256 price, , uint256 updatedAt, ) = IChainlink(data.aggregator)
             .latestRoundData();
-        uint256 newPrice = (uint256(price) * 1e18) / (10 ** data.decimals);
+        uint256 newPrice = (uint256(price) * WAD) / (10 ** data.decimals);
 
         return (
             PriceReturnData({

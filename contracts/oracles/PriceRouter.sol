@@ -7,7 +7,7 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.sol";
 import { IChainlink } from "contracts/interfaces/external/chainlink/IChainlink.sol";
 import { IOracleAdaptor, PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
-import { DENOMINATOR } from "contracts/libraries/Constants.sol";
+import { WAD, DENOMINATOR } from "contracts/libraries/Constants.sol";
 
 /// @title Curvance Dual Oracle Price Router
 /// @notice Provides a universal interface allowing Curvance contracts
@@ -273,8 +273,8 @@ contract PriceRouter {
             data[1] = _getPriceFromFeed(asset, 0, inUSD, false);
             if (isMToken) {
                 uint256 exchangeRate = IMToken(asset).exchangeRateCached();
-                data[0].price = uint240((data[0].price * exchangeRate) / 1e18);
-                data[1].price = uint240((data[1].price * exchangeRate) / 1e18);
+                data[0].price = uint240((data[0].price * exchangeRate) / WAD);
+                data[1].price = uint240((data[1].price * exchangeRate) / WAD);
             }
 
             return data;
@@ -289,10 +289,10 @@ contract PriceRouter {
 
         if (isMToken) {
             uint256 exchangeRate = IMToken(asset).exchangeRateCached();
-            data[0].price = uint240((data[0].price * exchangeRate) / 1e18);
-            data[1].price = uint240((data[1].price * exchangeRate) / 1e18);
-            data[2].price = uint240((data[2].price * exchangeRate) / 1e18);
-            data[3].price = uint240((data[3].price * exchangeRate) / 1e18);
+            data[0].price = uint240((data[0].price * exchangeRate) / WAD);
+            data[1].price = uint240((data[1].price * exchangeRate) / WAD);
+            data[2].price = uint240((data[2].price * exchangeRate) / WAD);
+            data[3].price = uint240((data[3].price * exchangeRate) / WAD);
         }
 
         return data;
@@ -359,7 +359,7 @@ contract PriceRouter {
 
         if (mAsset != address(0)) {
             uint256 exchangeRate = IMToken(mAsset).exchangeRateCached();
-            price = (price * exchangeRate) / 1e18;
+            price = (price * exchangeRate) / WAD;
         }
     }
 
