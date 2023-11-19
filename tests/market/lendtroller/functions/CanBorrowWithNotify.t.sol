@@ -212,7 +212,7 @@ contract CanBorrowWithNotifyTest is TestBaseLendtroller {
         );
 
         assertFalse(lendtroller.hasPosition(address(dUSDC), user1));
-        IMToken[] memory accountAssets = lendtroller.getAccountAssets(user1);
+        IMToken[] memory accountAssets = lendtroller.assetsOf(user1);
         assertEq(accountAssets.length, 0);
 
         vm.prank(address(dUSDC));
@@ -220,7 +220,7 @@ contract CanBorrowWithNotifyTest is TestBaseLendtroller {
 
         assertTrue(lendtroller.hasPosition(address(dUSDC), user1));
 
-        accountAssets = lendtroller.getAccountAssets(user1);
+        accountAssets = lendtroller.assetsOf(user1);
         assertEq(accountAssets.length, 1);
         assertEq(address(accountAssets[0]), address(dUSDC));
     }
