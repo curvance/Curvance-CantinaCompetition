@@ -22,14 +22,22 @@ interface IMToken {
 
     function seize(
         address liquidator,
-        address borrower,
+        address account,
         uint256 liquidatedTokens,
         uint256 protocolTokens
     ) external;
 
-    function repayWithBadDebt(address account, uint256 repayRatio) external;
+    function repayWithBadDebt(
+        address liquidator, 
+        address account, 
+        uint256 repayRatio
+    ) external;
 
-    function seizeAccountLiquidation(address account, uint256 shares) external;
+    function seizeAccountLiquidation(
+        address liquidator, 
+        address account, 
+        uint256 shares
+    ) external;
 
     /// @notice Get a snapshot of the account's balances, and the cached exchange rate
     function getSnapshot(

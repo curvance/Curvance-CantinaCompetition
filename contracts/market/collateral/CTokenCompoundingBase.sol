@@ -45,7 +45,9 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
     uint8 private immutable _decimals; // vault assets decimals of precision
     ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
 
-    // `bytes4(keccak256(bytes("CTokenCompoundingBase__VaultNotActive()")))`
+    /// `bytes4(keccak256(bytes("CTokenCompoundingBase__Unauthorized()")))`
+    uint256 internal constant _UNAUTHORIZED_SELECTOR = 0x3d6b2189;
+    /// `bytes4(keccak256(bytes("CTokenCompoundingBase__VaultNotActive()")))`
     uint256 internal constant _VAULT_NOT_ACTIVE_SELECTOR = 0xe4247f94;
     /// `keccak256(bytes("Deposit(address,address,uint256,uint256)"))`.
     uint256 private constant _DEPOSIT_EVENT_SIGNATURE =
@@ -210,7 +212,7 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
         bytes calldata params
     ) external nonReentrant {
         if (msg.sender != lendtroller.positionFolding()) {
-            revert CTokenCompoundingBase__Unauthorized();
+            _revert(_UNAUTHORIZED_SELECTOR);
         }
 
         // Save _totalAssets and pendingRewards to memory
@@ -310,7 +312,7 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
     /// @param by the account initializing the market
     function startMarket(address by) external nonReentrant returns (bool) {
         if (msg.sender != address(lendtroller)) {
-            revert CTokenCompoundingBase__Unauthorized();
+            _revert(_UNAUTHORIZED_SELECTOR);
         }
 
         uint256 assets = 42069;
@@ -474,7 +476,7 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
             SafeTransferLib.forceSafeTransferETH(daoOperator, amount);
         } else {
             if (token == asset()) {
-                revert CTokenCompoundingBase__Unauthorized();
+                _revert(_UNAUTHORIZED_SELECTOR);
             }
 
             if (amount == 0) {
@@ -630,20 +632,20 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
     /// @dev Will fail unless called by another cToken during the process
     ///      of liquidation.
     /// @param liquidator The account receiving seized collateral
-    /// @param borrower The account having collateral seized
+    /// @param account The account having collateral seized
     /// @param liquidatedTokens The total number of cTokens to seize
     /// @param protocolTokens The number of cTokens to seize for protocol
     function seize(
         address liquidator,
-        address borrower,
+        address account,
         uint256 liquidatedTokens,
         uint256 protocolTokens
     ) external nonReentrant {
         // Fails if borrower = liquidator
         assembly {
-            if eq(borrower, liquidator) {
+            if eq(liquidator, account) {
                 // revert with "CTokenCompoundingBase__Unauthorized"
-                mstore(0x00, 0x3d6b2189)
+                mstore(0x00, _UNAUTHORIZED_SELECTOR)
                 revert(0x1c, 0x04)
             }
         }
@@ -654,20 +656,50 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
 
         // emit events on gauge pool
         IGaugePool gaugePool = _gaugePool();
-        gaugePool.withdraw(address(this), borrower, liquidatedTokens);
+        gaugePool.withdraw(address(this), account, liquidatedTokens);
 
-        _transferFromWithoutAllowance(borrower, liquidator, liquidatorTokens);
+        _transferFromWithoutAllowance(account, liquidator, liquidatorTokens);
         gaugePool.deposit(address(this), liquidator, liquidatorTokens);
 
         if (protocolTokens > 0) {
             address daoAddress = centralRegistry.daoAddress();
             _transferFromWithoutAllowance(
-                borrower,
+                account,
                 daoAddress,
                 protocolTokens
             );
             gaugePool.deposit(address(this), daoAddress, protocolTokens);
         }
+    }
+
+    /// @notice Transfers collateral tokens (this market) to the liquidator.
+    /// @dev Will fail unless called by the lendtroller itself during the process
+    ///      of liquidation.
+    ///      NOTE: The protocol never takes a fee on account liquidation
+    ///            as lenders already are bearing a burden.
+    /// @param liquidator The account receiving seized collateral
+    /// @param account The account having collateral seized
+    /// @param shares The total number of cTokens to seize
+    function seizeAccountLiquidation(
+        address liquidator, 
+        address account, 
+        uint256 shares
+    ) external nonReentrant {
+        // We check self liquidation in lendtroller before 
+        // this call so we do not need to check here
+
+        // Make sure the lendtroller itself is calling since 
+        // then we know all liquidity checks have passed
+        if (msg.sender != address(lendtroller)) {
+            _revert(_UNAUTHORIZED_SELECTOR);
+        }
+        // emit events on gauge pool
+        IGaugePool gaugePool = _gaugePool();
+        gaugePool.withdraw(address(this), account, shares);
+
+        // Transfer collateral over and deposit in gauge
+        _transferFromWithoutAllowance(account, liquidator, shares);
+        gaugePool.deposit(address(this), liquidator, shares);
     }
 
     /// @notice Returns whether the MToken is a cToken
@@ -1270,14 +1302,14 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
     /// @dev Checks whether the caller has sufficient permissioning
     function _checkDaoPermissions() internal view {
         if (!centralRegistry.hasDaoPermissions(msg.sender)) {
-            revert CTokenCompoundingBase__Unauthorized();
+            _revert(_UNAUTHORIZED_SELECTOR);
         }
     }
 
     /// @dev Checks whether the caller has sufficient permissioning
     function _checkElevatedPermissions() internal view {
         if (!centralRegistry.hasElevatedPermissions(msg.sender)) {
-            revert CTokenCompoundingBase__Unauthorized();
+            _revert(_UNAUTHORIZED_SELECTOR);
         }
     }
 

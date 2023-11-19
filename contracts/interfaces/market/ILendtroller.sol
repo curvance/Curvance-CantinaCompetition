@@ -16,13 +16,13 @@ interface ILendtroller {
 
     function canRedeem(
         address mToken,
-        address redeemer,
+        address account,
         uint256 amount
     ) external;
 
     function canRedeemWithCollateralRemoval(
         address mToken,
-        address redeemer,
+        address account,
         uint256 balance, 
         uint256 amount,
         bool forceReduce
@@ -30,13 +30,13 @@ interface ILendtroller {
 
     function canBorrow(
         address mToken,
-        address borrower,
+        address account,
         uint256 amount
     ) external;
 
     function canBorrowWithNotify(
         address mToken,
-        address borrower,
+        address account,
         uint256 amount
     ) external;
 
@@ -45,7 +45,7 @@ interface ILendtroller {
     function canLiquidateWithExecution(
         address debtToken,
         address collateralToken,
-        address borrower,
+        address account,
         uint256 amount,
         bool liquidateExact
     ) external returns (uint256, uint256, uint256);
