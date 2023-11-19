@@ -11,16 +11,16 @@ import { DENOMINATOR } from "contracts/libraries/Constants.sol";
 contract CentralRegistry is ERC165 {
     /// CONSTANTS ///
 
-    /// `bytes4(keccak256(bytes("CentralRegistry__ParametersMisconfigured()")))`
-    uint256 internal constant _PARAMETERS_MISCONFIGURED_SELECTOR = 0xa5bb570d;
-    /// `bytes4(keccak256(bytes("CentralRegistry__Unauthorized()")))`
-    uint256 internal constant _UNAUTHORIZED_SELECTOR = 0xe675838a;
-
     /// @notice Genesis Epoch timestamp
     uint256 public immutable genesisEpoch;
 
     /// @notice Sequencer Uptime Feed address for L2.
     address public immutable sequencer;
+
+    /// `bytes4(keccak256(bytes("CentralRegistry__ParametersMisconfigured()")))`
+    uint256 internal constant _PARAMETERS_MISCONFIGURED_SELECTOR = 0xa5bb570d;
+    /// `bytes4(keccak256(bytes("CentralRegistry__Unauthorized()")))`
+    uint256 internal constant _UNAUTHORIZED_SELECTOR = 0xe675838a;
 
     /// STORAGE ///
 
