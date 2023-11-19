@@ -47,7 +47,7 @@ contract FeeAccumulator is ReentrancyGuard {
 
     /// @notice Address of Gelato 1Balance
     IGelatoOneBalance public gelatoOneBalance;
-    address internal _previousMessagingHub;
+    address internal _messagingHubStored;
     uint256 internal _gasForCalldata;
     uint256 internal _gasForCrosschain;
 
@@ -103,22 +103,7 @@ contract FeeAccumulator is ReentrancyGuard {
     error FeeAccumulator__TokenLengthIsZero();
     error FeeAccumulator__RemovalTokenIsNotRewardToken();
     error FeeAccumulator__RemovalTokenDoesNotExist();
-
-    /// MODIFIERS ///
-
-    modifier onlyDaoPermissions() {
-        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
-            revert FeeAccumulator__Unauthorized();
-        }
-        _;
-    }
-
-    modifier onlyMessagingHub() {
-        if (msg.sender != _previousMessagingHub) {
-            revert FeeAccumulator__Unauthorized();
-        }
-        _;
-    }
+    error FeeAccumulator__MessagingHubHasNotChanged();
 
     /// CONSTRUCTOR ///
 
@@ -148,7 +133,7 @@ contract FeeAccumulator is ReentrancyGuard {
 
         // We document this incase we ever need to update messaging hub
         // and want to revoke
-        _previousMessagingHub = centralRegistry.protocolMessagingHub();
+        _messagingHubStored = centralRegistry.protocolMessagingHub();
 
         // We set oneBalance address initially to DAO,
         // incase direct deposits to Gelato Network are not supported.
@@ -166,7 +151,7 @@ contract FeeAccumulator is ReentrancyGuard {
         // can drag funds to proper chain
         SafeTransferLib.safeApprove(
             feeToken,
-            _previousMessagingHub,
+            _messagingHubStored,
             type(uint256).max
         );
     }
@@ -261,7 +246,9 @@ contract FeeAccumulator is ReentrancyGuard {
     function executeOTC(
         address tokenToOTC,
         uint256 amountToOTC
-    ) external onlyDaoPermissions nonReentrant {
+    ) external nonReentrant {
+        _checkDaoPermissions();
+        
         // Validate that the token is earmarked for OTC
         if (rewardTokenInfo[tokenToOTC].forOTC < 2) {
             revert FeeAccumulator__TokenIsNotEarmarked();
@@ -557,7 +544,9 @@ contract FeeAccumulator is ReentrancyGuard {
     ///         fund compounders
     function setOneBalanceAddress(
         address newGelatoOneBalance
-    ) external onlyDaoPermissions {
+    ) external {
+        _checkDaoPermissions();
+
         // Revoke previous approval
         SafeTransferLib.safeApprove(feeToken, address(gelatoOneBalance), 0);
 
@@ -577,31 +566,38 @@ contract FeeAccumulator is ReentrancyGuard {
     function setEarmarked(
         address token,
         bool state
-    ) external onlyDaoPermissions {
+    ) external {
+        _checkDaoPermissions();
+
         rewardTokenInfo[token].forOTC = state ? 2 : 1;
     }
 
     function setGasParameters(
         uint256 gasForCalldata,
         uint256 gasForCrosschain
-    ) external onlyDaoPermissions {
+    ) external {
+        _checkDaoPermissions();
+
         _gasForCalldata = gasForCalldata;
         _gasForCrosschain = gasForCrosschain;
     }
 
     /// @notice Moves fee token approval to new messaging hub
     /// @dev Removes prior messaging hub approval for maximum safety
-    function requeryMessagingHub() external onlyDaoPermissions {
-        // Revoke previous approval
-        SafeTransferLib.safeApprove(feeToken, _previousMessagingHub, 0);
-
+    function requeryMessagingHub() external {
         address messagingHub = centralRegistry.protocolMessagingHub();
+        if (messagingHub == _messagingHubStored) {
+            revert FeeAccumulator__MessagingHubHasNotChanged();
+        }
+
+        // Revoke previous approval
+        SafeTransferLib.safeApprove(feeToken, _messagingHubStored, 0);
 
         // We infinite approve fee token so that protocol messaging hub can
         // drag funds to proper chain
         SafeTransferLib.safeApprove(feeToken, messagingHub, type(uint256).max);
 
-        _previousMessagingHub = messagingHub;
+        _messagingHubStored = messagingHub;
     }
 
     /// @notice Adds multiple reward tokens to the contract for Gelato Network
@@ -610,7 +606,9 @@ contract FeeAccumulator is ReentrancyGuard {
     /// @param newTokens Array of token addresses to be added as reward tokens
     function addRewardTokens(
         address[] calldata newTokens
-    ) external onlyDaoPermissions {
+    ) external {
+        _checkDaoPermissions();
+
         uint256 numTokens = newTokens.length;
         if (numTokens == 0) {
             revert FeeAccumulator__TokenLengthIsZero();
@@ -633,7 +631,9 @@ contract FeeAccumulator is ReentrancyGuard {
     /// @param rewardTokenToRemove The address of the token to be removed
     function removeRewardToken(
         address rewardTokenToRemove
-    ) external onlyDaoPermissions {
+    ) external {
+        _checkDaoPermissions();
+
         RewardToken storage tokenToRemove = rewardTokenInfo[
             rewardTokenToRemove
         ];
@@ -675,7 +675,12 @@ contract FeeAccumulator is ReentrancyGuard {
     }
 
     /// @notice Record rewards for epoch
-    function recordEpochRewards(uint256 amount) external onlyMessagingHub {
+    function recordEpochRewards(uint256 amount) external {
+        // Make sure the caller recording epoch rewards is the Messaging Hub
+        if (msg.sender != _messagingHubStored) {
+            revert FeeAccumulator__Unauthorized();
+        }
+
         ICVELocker locker = ICVELocker(centralRegistry.cveLocker());
         locker.recordEpochRewards(locker.nextEpochToDeliver(), amount);
     }
@@ -865,4 +870,12 @@ contract FeeAccumulator is ReentrancyGuard {
 
         return epochRewardsPerCVE;
     }
+
+    /// @dev Checks whether the caller has sufficient permissioning.
+    function _checkDaoPermissions() internal view {
+        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
+            revert FeeAccumulator__Unauthorized();
+        }
+    }
+
 }

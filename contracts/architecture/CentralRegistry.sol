@@ -5,6 +5,7 @@ import { ERC165 } from "contracts/libraries/ERC165.sol";
 import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { ICentralRegistry, ChainData, OmnichainData } from "contracts/interfaces/ICentralRegistry.sol";
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
+import { IFeeAccumulator } from "contracts/interfaces/IFeeAccumulator.sol";
 import { DENOMINATOR } from "contracts/libraries/Constants.sol";
 
 contract CentralRegistry is ERC165 {
@@ -201,6 +202,13 @@ contract CentralRegistry is ERC165 {
         _checkElevatedPermissions();
 
         protocolMessagingHub = newProtocolMessagingHub;
+
+        // If the feeAccumulator is already set up, 
+        // notify it that the messaging hub has been updated
+        if (feeAccumulator != address(0)) {
+            IFeeAccumulator(feeAccumulator).requeryMessagingHub();
+        }
+
         emit CoreContractSet(
             "Protocol Messaging Hub",
             newProtocolMessagingHub
@@ -811,6 +819,4 @@ contract CentralRegistry is ERC165 {
             _revert(_UNAUTHORIZED_SELECTOR);
         }
     }
-
-    
 }

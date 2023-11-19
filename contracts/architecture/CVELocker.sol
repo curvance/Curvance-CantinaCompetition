@@ -18,9 +18,9 @@ contract CVELocker is ReentrancyGuard {
     /// @notice Protocol epoch length
     uint256 public constant EPOCH_DURATION = 2 weeks;
     /// `bytes4(keccak256(bytes("CVELocker__Unauthorized()")))`
-    uint256 internal constant CVELOCKER_UNAUTHORIZED_SELECTOR = 0x82274acf;
+    uint256 internal constant _UNAUTHORIZED_SELECTOR = 0x82274acf;
     /// `bytes4(keccak256(bytes("CVELocker__NoEpochRewards()")))`
-    uint256 internal constant NO_EPOCH_REWARDS_SELECTOR = 0x95721ba7;
+    uint256 internal constant _NO_EPOCH_REWARDS_SELECTOR = 0x95721ba7;
     /// @notice CVE contract address
     address public immutable cve;
     /// @notice Curvance DAO hub
@@ -71,41 +71,6 @@ contract CVELocker is ReentrancyGuard {
     error CVELocker__TransferError();
     error CVELocker__LockerIsAlreadyStarted();
 
-    /// MODIFIERS ///
-
-    modifier onlyDaoPermissions() {
-        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
-            _revert(CVELOCKER_UNAUTHORIZED_SELECTOR);
-        }
-        _;
-    }
-
-    modifier onlyElevatedPermissions() {
-        if (!centralRegistry.hasElevatedPermissions(msg.sender)) {
-            _revert(CVELOCKER_UNAUTHORIZED_SELECTOR);
-        }
-        _;
-    }
-
-    modifier onlyVeCVE() {
-        address _veCVE = address(veCVE);
-        assembly {
-            if iszero(eq(caller(), _veCVE)) {
-                mstore(0x00, CVELOCKER_UNAUTHORIZED_SELECTOR)
-                // return bytes 29-32 for the selector
-                revert(0x1c, 0x04)
-            }
-        }
-        _;
-    }
-
-    modifier onlyFeeAccumulator() {
-        if (msg.sender != centralRegistry.feeAccumulator()) {
-            _revert(CVELOCKER_UNAUTHORIZED_SELECTOR);
-        }
-        _;
-    }
-
     receive() external payable {}
 
     /// CONSTRUCTOR ///
@@ -135,7 +100,12 @@ contract CVELocker is ReentrancyGuard {
     function recordEpochRewards(
         uint256 epoch,
         uint256 rewardsPerCVE
-    ) external onlyFeeAccumulator {
+    ) external {
+        // Make sure the caller reporting epoch data is the fee accumulator itself
+        if (msg.sender != centralRegistry.feeAccumulator()) {
+            _revert(_UNAUTHORIZED_SELECTOR);
+        }
+
         if (epoch != nextEpochToDeliver) {
             revert CVELocker__WrongEpochRewardSubmission();
         }
@@ -149,7 +119,9 @@ contract CVELocker is ReentrancyGuard {
         }
     }
 
-    function startLocker() external onlyDaoPermissions {
+    function startLocker() external {
+        _checkDaoPermissions();
+
         if (lockerStarted == 2) {
             revert CVELocker__LockerIsAlreadyStarted();
         }
@@ -164,7 +136,8 @@ contract CVELocker is ReentrancyGuard {
     function rescueToken(
         address token,
         uint256 amount
-    ) external onlyDaoPermissions {
+    ) external {
+        _checkDaoPermissions();
         address daoOperator = centralRegistry.daoAddress();
 
         if (token == address(0)) {
@@ -175,7 +148,7 @@ contract CVELocker is ReentrancyGuard {
             SafeTransferLib.forceSafeTransferETH(daoOperator, amount);
         } else {
             if (token == rewardToken) {
-                _revert(CVELOCKER_UNAUTHORIZED_SELECTOR);
+                _revert(_UNAUTHORIZED_SELECTOR);
             }
 
             if (amount == 0) {
@@ -191,7 +164,9 @@ contract CVELocker is ReentrancyGuard {
     /// @param token The address of the token to authorize.
     function addAuthorizedRewardToken(
         address token
-    ) external onlyElevatedPermissions {
+    ) external {
+        _checkElevatedPermissions();
+
         if (token == address(0)) {
             revert CVELocker__RewardTokenIsZeroAddress();
         }
@@ -208,7 +183,9 @@ contract CVELocker is ReentrancyGuard {
     /// @param token The address of the token to deauthorize.
     function removeAuthorizedRewardToken(
         address token
-    ) external onlyDaoPermissions {
+    ) external {
+        _checkDaoPermissions();
+
         if (token == address(0)) {
             revert CVELocker__RewardTokenIsZeroAddress();
         }
@@ -225,7 +202,7 @@ contract CVELocker is ReentrancyGuard {
             msg.sender != address(veCVE) &&
             !centralRegistry.hasElevatedPermissions(msg.sender)
         ) {
-            _revert(CVELOCKER_UNAUTHORIZED_SELECTOR);
+            _revert(_UNAUTHORIZED_SELECTOR);
         }
 
         isShutdown = 2;
@@ -270,7 +247,8 @@ contract CVELocker is ReentrancyGuard {
     function updateUserClaimIndex(
         address user,
         uint256 index
-    ) external onlyVeCVE {
+    ) external {
+        _checkIsVeCVE();
         userNextClaimIndex[user] = index;
     }
 
@@ -278,7 +256,8 @@ contract CVELocker is ReentrancyGuard {
     /// @dev Deletes the claim index of a user.
     ///      Can only be called by the VeCVE contract.
     /// @param user The address of the user.
-    function resetUserClaimIndex(address user) external onlyVeCVE {
+    function resetUserClaimIndex(address user) external {
+        _checkIsVeCVE();
         delete userNextClaimIndex[user];
     }
 
@@ -298,7 +277,7 @@ contract CVELocker is ReentrancyGuard {
         // If there are no epoch rewards to claim, revert
         assembly {
             if iszero(epochs) {
-                mstore(0x00, NO_EPOCH_REWARDS_SELECTOR)
+                mstore(0x00, _NO_EPOCH_REWARDS_SELECTOR)
                 // return bytes 29-32 for the selector
                 revert(0x1c, 0x04)
             }
@@ -319,7 +298,8 @@ contract CVELocker is ReentrancyGuard {
         RewardsData calldata rewardsData,
         bytes calldata params,
         uint256 aux
-    ) external onlyVeCVE nonReentrant {
+    ) external nonReentrant {
+        _checkIsVeCVE();
         // We check whether there are epochs to claim in veCVE
         // so we do not need to check here like in claimRewards
         _claimRewards(user, epochs, rewardsData, params, aux);
@@ -553,6 +533,32 @@ contract CVELocker is ReentrancyGuard {
         assembly {
             mstore(0x00, s)
             revert(0x1c, 0x04)
+        }
+    }
+
+    /// @dev Checks whether the caller has sufficient permissioning.
+    function _checkDaoPermissions() internal view {
+        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
+            _revert(_UNAUTHORIZED_SELECTOR);
+        }
+    }
+
+    /// @dev Checks whether the caller has sufficient permissioning.
+    function _checkElevatedPermissions() internal view {
+        if (!centralRegistry.hasElevatedPermissions(msg.sender)) {
+            _revert(_UNAUTHORIZED_SELECTOR);
+        }
+    }
+
+    /// @dev Checks whether the caller is the veCVE contract.
+    function _checkIsVeCVE() internal view {
+        address _veCVE = address(veCVE);
+        assembly {
+            if iszero(eq(caller(), _veCVE)) {
+                mstore(0x00, _UNAUTHORIZED_SELECTOR)
+                // return bytes 29-32 for the selector
+                revert(0x1c, 0x04)
+            }
         }
     }
 }
