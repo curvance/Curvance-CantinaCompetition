@@ -155,10 +155,9 @@ contract TestDTokenReserves is TestBaseMarket {
             );
 
             // check borrower debt increased
-            AccountSnapshot memory snapshot = dDAI.getSnapshotPacked(user1);
             assertEq(dDAI.balanceOf(user1), 0);
-            assertEq(snapshot.debtBalance, debtBalanceBefore + debt);
-            assertGt(snapshot.exchangeRate, exchangeRateBefore);
+            assertEq(dDAI.debtBalanceCached(user1), debtBalanceBefore + debt);
+            assertGt(dDAI.exchangeRateCached(), exchangeRateBefore);
 
             // dao dDAI balance doesn't increase
             assertEq(dDAI.balanceOf(dao), daoBalanceBefore);
@@ -196,14 +195,13 @@ contract TestDTokenReserves is TestBaseMarket {
             );
 
             // check borrower debt increased
-            AccountSnapshot memory snapshot = dDAI.getSnapshotPacked(user1);
             assertEq(dDAI.balanceOf(user1), 0);
             assertApproxEqRel(
-                snapshot.debtBalance,
+                dDAI.debtBalanceCached(user1),
                 debtBalanceBefore + debt,
                 10000
             );
-            assertGt(snapshot.exchangeRate, exchangeRateBefore);
+            assertGt(dDAI.exchangeRateCached(), exchangeRateBefore);
 
             // dao dDAI balance doesn't increase
             assertEq(dDAI.balanceOf(dao), daoBalanceBefore);
