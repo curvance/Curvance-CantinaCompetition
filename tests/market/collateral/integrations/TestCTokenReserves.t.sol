@@ -80,9 +80,9 @@ contract TestCTokenReserves is TestBaseMarket {
                 4000, // liquidate at 71%
                 3000,
                 200, // 2% liq incentive
-                400,
-                0,
-                200
+                200,
+                100,
+                1000
             );
             address[] memory tokens = new address[](1);
             tokens[0] = address(cBALRETH);
@@ -199,7 +199,7 @@ contract TestCTokenReserves is TestBaseMarket {
 
         address user = makeAddr("user");
         vm.startPrank(dao);
-        cBALRETH.transferFrom(dao, user, amountToTransfer);
+        cBALRETH.transfer(user, amountToTransfer);
         vm.stopPrank();
 
         assertEq(cBALRETH.balanceOf(dao), 0);
