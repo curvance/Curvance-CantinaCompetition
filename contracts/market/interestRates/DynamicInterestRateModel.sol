@@ -394,9 +394,8 @@ contract DynamicInterestRateModel {
         uint256 util
     ) internal view returns (uint256) {
         return
-            (util * vertexMultiplier() * ratesConfig.vertexInterestRate) /
-            WAD /
-            WAD;
+            (((util * vertexMultiplier()) / WAD) *
+                ratesConfig.vertexInterestRate) / WAD;
     }
 
     /// @notice Calculates and returns the updated multiplier for scenarios
