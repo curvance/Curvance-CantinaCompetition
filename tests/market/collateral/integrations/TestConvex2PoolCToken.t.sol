@@ -42,14 +42,15 @@ contract TestConvex2PoolCToken is TestBaseMarket {
     }
 
     function setUp() public override {
-        _fork(18031848);
-
-        _deployCentralRegistry();
-        _deployGaugePool();
-        _deployLendtroller();
+        super.setUp();
 
         centralRegistry.addHarvester(address(this));
         centralRegistry.setFeeAccumulator(address(this));
+
+        // start epoch
+        gaugePool.start(address(lendtroller));
+        vm.warp(gaugePool.startTime());
+        vm.roll(block.number + 1000);
 
         cSTETH = new Convex2PoolCToken(
             ICentralRegistry(address(centralRegistry)),
@@ -59,21 +60,26 @@ contract TestConvex2PoolCToken is TestBaseMarket {
             CONVEX_STETH_ETH_REWARD,
             CONVEX_BOOSTER
         );
+
+        address owner = address(this);
+        deal(address(CONVEX_STETH_ETH_POOL), address(owner), 1 ether);
+        CONVEX_STETH_ETH_POOL.approve(address(cSTETH), 1 ether);
+        lendtroller.listToken(address(cSTETH));
     }
 
     function testConvexStethEthPool() public {
         uint256 assets = 100e18;
-        deal(address(CONVEX_STETH_ETH_POOL), address(cSTETH), assets);
+        deal(address(CONVEX_STETH_ETH_POOL), address(user1), assets);
 
-        vm.prank(address(cSTETH));
+        vm.prank(address(user1));
         CONVEX_STETH_ETH_POOL.approve(address(cSTETH), assets);
 
-        vm.prank(address(cSTETH));
-        cSTETH.deposit(assets, address(this));
+        vm.prank(address(user1));
+        cSTETH.deposit(assets, user1);
 
         assertEq(
             cSTETH.totalAssets(),
-            assets,
+            assets + 42069,
             "Total Assets should equal user deposit."
         );
 
@@ -89,7 +95,7 @@ contract TestConvex2PoolCToken is TestBaseMarket {
 
         assertEq(
             cSTETH.totalAssets(),
-            assets,
+            assets + 42069,
             "Total Assets should equal user deposit."
         );
 
@@ -106,11 +112,12 @@ contract TestConvex2PoolCToken is TestBaseMarket {
 
         assertGt(
             totalAssets,
-            assets,
+            assets + 42069,
             "Total Assets should greater than original deposit."
         );
 
-        vm.prank(address(cSTETH));
-        cSTETH.withdraw(totalAssets, address(this), address(this));
+        vm.startPrank(address(user1));
+        cSTETH.withdraw(cSTETH.balanceOf(user1), user1, user1);
+        vm.stopPrank();
     }
 }
