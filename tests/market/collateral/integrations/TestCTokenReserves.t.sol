@@ -77,12 +77,12 @@ contract TestCTokenReserves is TestBaseMarket {
             lendtroller.updateCollateralToken(
                 IMToken(address(cBALRETH)),
                 7000,
-                4000,
+                4000, // liquidate at 71%
                 3000,
-                200,
-                200,
-                100,
-                1000
+                200, // 2% liq incentive
+                400,
+                0,
+                200
             );
             address[] memory tokens = new address[](1);
             tokens[0] = address(cBALRETH);
@@ -133,7 +133,7 @@ contract TestCTokenReserves is TestBaseMarket {
         // skip min hold period
         skip(20 minutes);
 
-        mockDaiFeed.setMockAnswer(200000000);
+        mockDaiFeed.setMockAnswer(130000000);
 
         (
             uint256 repayAmount,
@@ -155,19 +155,20 @@ contract TestCTokenReserves is TestBaseMarket {
         dDAI.liquidateExact(user1, repayAmount, IMToken(address(cBALRETH)));
         vm.stopPrank();
 
-        AccountSnapshot memory snapshot = cBALRETH.getSnapshotPacked(user1);
         assertApproxEqRel(
             cBALRETH.balanceOf(user1),
             1 ether - liquidatedTokens,
             0.01e18
         );
-        assertEq(snapshot.debtBalance, 0);
-        assertEq(snapshot.exchangeRate, 1 ether);
+        assertEq(cBALRETH.exchangeRateCached(), 1 ether);
 
-        snapshot = dDAI.getSnapshotPacked(user1);
-        assertEq(cBALRETH.balanceOf(user1), 0);
-        assertApproxEqRel(snapshot.debtBalance, 750 ether, 0.01e18);
-        assertApproxEqRel(snapshot.exchangeRate, 1 ether, 0.01e18);
+        assertEq(dDAI.balanceOf(user1), 0);
+        assertApproxEqRel(
+            dDAI.debtBalanceCached(user1),
+            1000e18 - repayAmount,
+            0.01e18
+        );
+        assertApproxEqRel(dDAI.exchangeRateCached(), 1 ether, 0.01e18);
 
         assertEq(cBALRETH.balanceOf(dao), daoBalanceBefore + protocolTokens);
         assertEq(
