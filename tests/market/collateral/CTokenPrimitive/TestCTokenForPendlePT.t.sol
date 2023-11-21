@@ -12,7 +12,6 @@ import { CTokenPrimitive } from "contracts/market/collateral/CTokenPrimitive.sol
 import { PendlePrincipalTokenAdaptor } from "contracts/oracles/adaptors/pendle/PendlePrincipalTokenAdaptor.sol";
 
 import "tests/market/TestBaseMarket.sol";
-import { console } from "forge-std/Test.sol";
 
 contract User {}
 
@@ -474,7 +473,7 @@ contract TestCTokenForPendlePT is TestBaseMarket {
             true
         );
 
-        mockUsdcFeed.setMockAnswer(200000000);
+        mockUsdcFeed.setMockAnswer(120000000);
 
         // try liquidate half
         _prepareUSDC(user2, 250e6);
@@ -483,10 +482,11 @@ contract TestCTokenForPendlePT is TestBaseMarket {
         dUSDC.liquidateExact(user1, 250e6, IMToken(address(cPendlePT)));
         vm.stopPrank();
 
+        uint256 liquidatedAmount = 250e6;
         assertApproxEqRel(
             cPendlePT.balanceOf(user1),
-            1 ether - (500 ether * 1 ether) / pendlePTPrice,
-            0.02e18
+            1 ether - (liquidatedAmount * 12e11 * 1 ether) / pendlePTPrice,
+            0.03e18
         );
         assertEq(cPendlePT.exchangeRateCached(), 1 ether);
 

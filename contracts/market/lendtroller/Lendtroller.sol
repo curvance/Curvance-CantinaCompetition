@@ -14,7 +14,6 @@ import { IERC20 } from "contracts/interfaces/IERC20.sol";
 /// @title Curvance Lendtroller
 /// @notice Manages risk within the lending markets
 contract Lendtroller is LiquidityManager, ERC165 {
-
     /// CONSTANTS ///
 
     /// @notice Maximum collateral requirement to avoid liquidation. 40%
@@ -98,7 +97,7 @@ contract Lendtroller is LiquidityManager, ERC165 {
     /// CONSTRUCTOR ///
 
     constructor(
-        ICentralRegistry centralRegistry_, 
+        ICentralRegistry centralRegistry_,
         address gaugePool_
     ) LiquidityManager(centralRegistry_) {
         if (
@@ -150,7 +149,7 @@ contract Lendtroller is LiquidityManager, ERC165 {
     /// @return accountDebt total borrow amount of account
     function statusOf(
         address account
-    ) external view returns (uint256, uint256,uint256){
+    ) external view returns (uint256, uint256, uint256) {
         return _statusOf(account);
     }
 
@@ -158,7 +157,9 @@ contract Lendtroller is LiquidityManager, ERC165 {
     /// @param account The account to check bad debt status for
     /// @return The total market value of `account`'s collateral
     /// @return The total outstanding debt value of `account`
-    function solvencyOf(address account) external view returns (uint256, uint256) {
+    function solvencyOf(
+        address account
+    ) external view returns (uint256, uint256) {
         return _solvencyOf(account);
     }
 
@@ -564,7 +565,7 @@ contract Lendtroller is LiquidityManager, ERC165 {
     ///         distributing all `account` collateral and recognize remaining
     ///         debt as bad debt
     /// @param account The address to liquidate completely
-    function liquidateAccount(address account) external { 
+    function liquidateAccount(address account) external {
         // Make sure they are not trying to liquidate themselves
         if (msg.sender == account) {
             revert Lendtroller__Unauthorized();
@@ -575,10 +576,10 @@ contract Lendtroller is LiquidityManager, ERC165 {
         }
 
         (
-            uint256 totalCollateral, 
-            uint256 debtToPay, 
+            uint256 totalCollateral,
+            uint256 debtToPay,
             uint256 totalDebt
-        ) =_BadDebtTermsOf(account);
+        ) = _BadDebtTermsOf(account);
 
         // If an account has no positions or debt this will revert
         if (totalCollateral >= totalDebt) {
@@ -603,15 +604,22 @@ contract Lendtroller is LiquidityManager, ERC165 {
         for (uint256 i = 0; i < numAssets; ++i) {
             mToken = accountAssets[i];
             if (mToken.isCToken()) {
-                AccountMetadata storage data = tokenData[address(mToken)].accountData[account];
+                AccountMetadata storage data = tokenData[address(mToken)]
+                    .accountData[account];
                 collateral = data.collateralPosted;
 
                 // Remove `account` posted collateral
                 delete data.collateralPosted;
-                collateralPosted[address(mToken)] = collateralPosted[address(mToken)] - collateral;
+                collateralPosted[address(mToken)] =
+                    collateralPosted[address(mToken)] -
+                    collateral;
                 emit CollateralRemoved(account, address(mToken), collateral);
                 // Seize `account`'s collateral
-                mToken.seizeAccountLiquidation(msg.sender, account, collateral);
+                mToken.seizeAccountLiquidation(
+                    msg.sender,
+                    account,
+                    collateral
+                );
             }
         }
     }
@@ -848,10 +856,7 @@ contract Lendtroller is LiquidityManager, ERC165 {
     /// @dev requires timelock authority if unpausing
     /// @param mToken market token address
     /// @param state pause or unpause
-    function setMintPaused(
-        address mToken,
-        bool state
-    ) external {
+    function setMintPaused(address mToken, bool state) external {
         _checkAuthorizedPermissions(state);
 
         if (!tokenData[mToken].isListed) {
@@ -868,7 +873,7 @@ contract Lendtroller is LiquidityManager, ERC165 {
     /// @param state pause or unpause
     function setBorrowPaused(address mToken, bool state) external {
         _checkAuthorizedPermissions(state);
-        
+
         if (!tokenData[mToken].isListed) {
             revert Lendtroller__TokenNotListed();
         }
@@ -882,7 +887,7 @@ contract Lendtroller is LiquidityManager, ERC165 {
     /// @param state pause or unpause
     function setTransferPaused(bool state) external {
         _checkAuthorizedPermissions(state);
-        
+
         transferPaused = state ? 2 : 1;
         emit ActionPaused("Transfer Paused", state);
     }
@@ -892,7 +897,7 @@ contract Lendtroller is LiquidityManager, ERC165 {
     /// @param state pause or unpause
     function setSeizePaused(bool state) external {
         _checkAuthorizedPermissions(state);
-        
+
         seizePaused = state ? 2 : 1;
         emit ActionPaused("Seize Paused", state);
     }
@@ -1111,10 +1116,10 @@ contract Lendtroller is LiquidityManager, ERC165 {
     /// @param debtToken Asset which was borrowed by the borrower
     /// @param collateralToken Asset which was used as collateral and will be seized
     /// @param account The address of the account to be liquidated
-    /// @param debtAmount The amount of `debtToken` desired to liquidate, 
+    /// @param debtAmount The amount of `debtToken` desired to liquidate,
     ///                   0 means maximum liquidation allowed will be executed
     /// @param liquidateExact Whether the liquidator wants to liquidate a specific amount of debt,
-    ///                       used in conjunction with `debtAmount`. 
+    ///                       used in conjunction with `debtAmount`.
     /// @return The maximum amount of `debtToken` that can be repaid during liquidation
     /// @return Current price for `debtToken`
     /// @return Current price for `collateralToken`
@@ -1183,7 +1188,10 @@ contract Lendtroller is LiquidityManager, ERC165 {
             .accountData[account]
             .collateralPosted;
         if (liquidateExact) {
-            if (debtAmount > maxAmount || liquidatedTokens > collateralAvailable) {
+            if (
+                debtAmount > maxAmount ||
+                liquidatedTokens > collateralAvailable
+            ) {
                 // Make sure that the liquidation limit and collateral posted >= amount
                 _revert(_INVALID_PARAMETER_SELECTOR);
             }
@@ -1254,7 +1262,7 @@ contract Lendtroller is LiquidityManager, ERC165 {
     }
 
     /// @dev Checks whether the caller has sufficient permissions based on `state`,
-    /// turning something off is less "risky" than enabling something, 
+    /// turning something off is less "risky" than enabling something,
     /// so `state` = true has reduced permissioning compared to `state` = false.
     function _checkAuthorizedPermissions(bool state) internal view {
         if (state) {
