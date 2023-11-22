@@ -236,15 +236,9 @@ contract CanLiquidateTest is TestBaseLendtroller {
 
         (, , , , , , , uint256 baseCFactor, uint256 cFactorCurve) = lendtroller
             .tokenData(address(cBALRETH));
-        uint256 cFactor = baseCFactor + ((cFactorCurve * 1) / WAD);
-        uint256 expectedLiqAmount = (cFactor *
-            dUSDC.debtBalanceCached(user1)) / WAD;
 
-        assertEq(
-            liqAmount,
-            expectedLiqAmount,
-            "canLiquidate() returns the max liquidation amount based on close factor"
-        );
+        uint256 cFactor = baseCFactor + ((cFactorCurve * 1e18) / WAD);
+        uint256 debtAmount = (cFactor * dUSDC.debtBalanceCached(user1)) / WAD;
 
         PriceReturnData memory data = balRETHAdapter.getPrice(
             _BALANCER_WETH_RETH,
@@ -252,29 +246,40 @@ contract CanLiquidateTest is TestBaseLendtroller {
             true
         );
 
-        (, , , , uint256 liqBaseIncentive, , , , ) = lendtroller.tokenData(
-            address(cBALRETH)
+        uint256 collateralAvailable = 1e18 - 1;
+        uint256 expectedLiqAmount;
+        uint256 expectedProtocolTokens;
+        {
+            (, , , , uint256 liqBaseIncentive, , , , ) = lendtroller.tokenData(
+                address(cBALRETH)
+            );
+
+            uint256 debtTokenPrice = 1e18; // USDC price
+            uint256 debtToCollateralRatio = (liqBaseIncentive *
+                debtTokenPrice *
+                WAD) / (data.price * cBALRETH.exchangeRateCached());
+            uint256 amountAdjusted = (debtAmount *
+                (10 ** cBALRETH.decimals())) / (10 ** dUSDC.decimals());
+            uint256 expectedLiquidatedTokens = (amountAdjusted *
+                debtToCollateralRatio) / WAD;
+            expectedLiqAmount =
+                (debtAmount * collateralAvailable) /
+                expectedLiquidatedTokens;
+            uint256 liqFee = (WAD * (100 * 1e14)) / liqBaseIncentive;
+            expectedProtocolTokens = (collateralAvailable * liqFee) / WAD;
+        }
+
+        assertEq(
+            liqAmount,
+            expectedLiqAmount,
+            "canLiquidate() returns the max liquidation amount based on close factor"
         );
-        uint256 debtTokenPrice = 1e18; // USDC price
-        uint256 debtToCollateralRatio = (liqBaseIncentive *
-            debtTokenPrice *
-            WAD) / (data.price * cBALRETH.exchangeRateCached());
-
-        uint256 amountAdjusted = (liqAmount * (10 ** cBALRETH.decimals())) /
-            (10 ** dUSDC.decimals());
-
-        uint256 expectedLiquidatedTokens = (amountAdjusted *
-            debtToCollateralRatio) / WAD;
 
         assertEq(
             liquidatedTokens,
-            expectedLiquidatedTokens,
+            collateralAvailable,
             "canLiquidate() returns the amount of CTokens to be seized in liquidation"
         );
-
-        uint256 liqFee = (WAD * (100 * 1e14)) / liqBaseIncentive;
-        uint256 expectedProtocolTokens = (expectedLiquidatedTokens * liqFee) /
-            WAD;
 
         assertEq(
             protocolTokens,

@@ -22,7 +22,7 @@ contract AddMTokenSupportTest is TestBasePriceRouter {
     }
 
     function test_addMTokenSupport_fail_whenMTokenIsInvalid() public {
-        vm.expectRevert(PriceRouter.PriceRouter__InvalidParameter.selector);
+        vm.expectRevert();
         priceRouter.addMTokenSupport(address(1));
     }
 

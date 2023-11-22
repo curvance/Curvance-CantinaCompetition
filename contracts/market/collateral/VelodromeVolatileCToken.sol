@@ -12,7 +12,6 @@ import { IVeloPair } from "contracts/interfaces/external/velodrome/IVeloPair.sol
 import { IVeloPairFactory } from "contracts/interfaces/external/velodrome/IVeloPairFactory.sol";
 import { IVeloPool } from "contracts/interfaces/external/velodrome/IVeloPool.sol";
 
-
 contract VelodromeVolatileCToken is CTokenCompoundingBase {
     using Math for uint256;
 
@@ -53,9 +52,7 @@ contract VelodromeVolatileCToken is CTokenCompoundingBase {
     );
     error VelodromeVolatileCToken__AssetIsNotStable();
     error VelodromeVolatileCToken__SlippageError();
-    error VelodromeVolatileCToken__InvalidSwapper(
-        address invalidSwapper
-    );
+    error VelodromeVolatileCToken__InvalidSwapper(address invalidSwapper);
 
     /// CONSTRUCTOR ///
 
@@ -127,9 +124,8 @@ contract VelodromeVolatileCToken is CTokenCompoundingBase {
 
         // can only harvest once previous reward period is done
         if (_checkVestStatus(_vaultData)) {
-
             _updateVestingPeriodIfNeeded();
-            
+
             // cache strategy data
             StrategyData memory sd = strategyData;
 
@@ -261,5 +257,4 @@ contract VelodromeVolatileCToken is CTokenCompoundingBase {
     {
         return strategyData.gauge.balanceOf(address(this));
     }
-
 }

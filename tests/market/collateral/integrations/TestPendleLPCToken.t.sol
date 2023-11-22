@@ -43,6 +43,9 @@ contract TestPendleLPCToken is TestBaseMarket {
         _fork(18031848);
 
         _deployCentralRegistry();
+        _deployCVE();
+        _deployCVELocker();
+        _deployVeCVE();
         _deployGaugePool();
         _deployLendtroller();
 
@@ -57,22 +60,29 @@ contract TestPendleLPCToken is TestBaseMarket {
         );
 
         centralRegistry.addSwapper(_UNISWAP_V3_SWAP_ROUTER);
+
+        gaugePool.start(address(lendtroller));
+        vm.warp(veCVE.nextEpochStartTime());
     }
 
     function testPendleStethLP() public {
         uint256 assets = 100e18;
-        deal(address(_LP_STETH), address(cSTETH), assets);
+        deal(address(_LP_STETH), user1, assets);
+        deal(address(_LP_STETH), address(this), 42069);
 
-        vm.prank(address(cSTETH));
+        _LP_STETH.approve(address(cSTETH), 42069);
+        lendtroller.listToken(address(cSTETH));
+
+        vm.prank(user1);
         _LP_STETH.approve(address(cSTETH), assets);
 
-        vm.prank(address(cSTETH));
-        cSTETH.deposit(assets, address(this));
+        vm.prank(user1);
+        cSTETH.deposit(assets, user1);
 
         assertEq(
             cSTETH.totalAssets(),
-            assets,
-            "Total Assets should equal user deposit."
+            assets + 42069,
+            "Total Assets should equal user deposit plus initial mint."
         );
 
         // Advance time to earn CRV and CVX rewards
@@ -115,11 +125,11 @@ contract TestPendleLPCToken is TestBaseMarket {
         uint256 totalAssets = cSTETH.totalAssets();
         assertGt(
             totalAssets,
-            assets,
-            "Total Assets should equal user deposit."
+            assets + 42069,
+            "Total Assets should equal user deposit plus initial mint."
         );
 
-        vm.prank(address(cSTETH));
-        cSTETH.withdraw(totalAssets, address(this), address(this));
+        vm.prank(user1);
+        cSTETH.withdraw(assets, user1, user1);
     }
 }

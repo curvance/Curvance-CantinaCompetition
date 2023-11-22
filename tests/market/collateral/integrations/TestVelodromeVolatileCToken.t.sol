@@ -3,27 +3,28 @@ pragma solidity ^0.8.17;
 
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { VelodromeStableCToken, IVeloGauge, IVeloRouter, IVeloPairFactory, ERC20 } from "contracts/market/collateral/VelodromeStableCToken.sol";
+import { VelodromeVolatileCToken, IVeloGauge, IVeloRouter, IVeloPairFactory, ERC20 } from "contracts/market/collateral/VelodromeVolatileCToken.sol";
 
 import "tests/market/TestBaseMarket.sol";
 
-contract TestVelodromeStableCToken is TestBaseMarket {
+contract TestVelodromeVolatileCToken is TestBaseMarket {
     address internal constant _UNISWAP_V2_ROUTER =
         0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
 
+    ERC20 public WETH = ERC20(0x4200000000000000000000000000000000000006);
     ERC20 public USDC = ERC20(0x7F5c764cBc14f9669B88837ca1490cCa17c31607);
-    ERC20 public DAI = ERC20(0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1);
     ERC20 public VELO = ERC20(0x9560e827aF36c94D2Ac33a39bCE1Fe78631088Db);
-    ERC20 public USDC_DAI = ERC20(0x19715771E30c93915A5bbDa134d782b81A820076);
-    IVeloGauge public gauge =
-        IVeloGauge(0x6998089F6bDd9c74C7D8d01b99d7e379ccCcb02D);
+    ERC20 public WETH_USDC = ERC20(0x0493Bf8b6DBB159Ce2Db2E0E8403E753Abd1235b);
+
     IVeloPairFactory public veloPairFactory =
         IVeloPairFactory(0xF1046053aa5682b4F9a81b5481394DA16BE5FF5a);
     IVeloRouter public veloRouter =
         IVeloRouter(0xa062aE8A9c5e11aaA026fc2670B0D65cCc8B2858);
     address public optiSwap = 0x6108FeAA628155b073150F408D0b390eC3121834;
+    IVeloGauge public gauge =
+        IVeloGauge(0xE7630c9560C59CCBf5EEd8f33dd0ccA2E67a3981);
 
-    VelodromeStableCToken cUSDCDAI;
+    VelodromeVolatileCToken cWETHUSDC;
 
     receive() external payable {}
 
@@ -38,6 +39,9 @@ contract TestVelodromeStableCToken is TestBaseMarket {
         _fork("ETH_NODE_URI_OPTIMISM", 109095500);
 
         _deployCentralRegistry();
+        _deployCVE();
+        _deployCVELocker();
+        _deployVeCVE();
         _deployGaugePool();
         _deployLendtroller();
 
@@ -45,46 +49,58 @@ contract TestVelodromeStableCToken is TestBaseMarket {
         centralRegistry.setFeeAccumulator(address(this));
         centralRegistry.addSwapper(address(veloRouter));
 
-        cUSDCDAI = new VelodromeStableCToken(
+        cWETHUSDC = new VelodromeVolatileCToken(
             ICentralRegistry(address(centralRegistry)),
-            USDC_DAI,
+            WETH_USDC,
             address(lendtroller),
             gauge,
             veloPairFactory,
             veloRouter
         );
+
+        gaugePool.start(address(lendtroller));
+        vm.warp(veCVE.nextEpochStartTime());
     }
 
-    function testUsdcDaiStablePool() public {
-        uint256 assets = 100e18;
-        deal(address(USDC_DAI), address(cUSDCDAI), assets);
+    function testWethUsdcVolatilePool() public {
+        uint256 assets = 0.0001e18;
+        deal(address(WETH_USDC), user1, assets);
+        deal(address(WETH_USDC), address(this), 42069);
 
-        vm.prank(address(cUSDCDAI));
-        USDC_DAI.approve(address(cUSDCDAI), assets);
+        WETH_USDC.approve(address(cWETHUSDC), 42069);
+        lendtroller.listToken(address(cWETHUSDC));
 
-        vm.prank(address(cUSDCDAI));
-        cUSDCDAI.deposit(assets, address(this));
+        vm.prank(user1);
+        WETH_USDC.approve(address(cWETHUSDC), assets);
+
+        vm.prank(user1);
+        cWETHUSDC.deposit(assets, user1);
 
         assertEq(
-            cUSDCDAI.totalAssets(),
-            assets,
-            "Total Assets should equal user deposit."
+            cWETHUSDC.totalAssets(),
+            assets + 42069,
+            "Total Assets should equal user deposit plus initial mint."
         );
+
+        vm.startPrank(gauge.voter());
+        VELO.approve(address(gauge), 10e18);
+        gauge.notifyRewardAmount(10e18);
+        vm.stopPrank();
 
         // Advance time to earn CRV and CVX rewards
         vm.warp(block.timestamp + 1 days);
 
         // Mint some extra rewards for Vault.
-        uint256 earned = gauge.earned(address(cUSDCDAI));
+        uint256 earned = gauge.earned(address(cWETHUSDC));
         uint256 amount = (earned * 84) / 100;
         SwapperLib.Swap memory swapData;
         swapData.inputToken = address(VELO);
         swapData.inputAmount = amount;
-        swapData.outputToken = address(USDC);
+        swapData.outputToken = address(WETH);
         swapData.target = address(veloRouter);
         IVeloRouter.Route[] memory routes = new IVeloRouter.Route[](1);
         routes[0].from = address(VELO);
-        routes[0].to = address(USDC);
+        routes[0].to = address(WETH);
         routes[0].stable = false;
         routes[0].factory = address(veloPairFactory);
         swapData.call = abi.encodeWithSelector(
@@ -92,22 +108,22 @@ contract TestVelodromeStableCToken is TestBaseMarket {
             amount,
             0,
             routes,
-            address(cUSDCDAI),
+            address(cWETHUSDC),
             type(uint256).max
         );
 
-        cUSDCDAI.harvest(abi.encode(swapData));
+        cWETHUSDC.harvest(abi.encode(swapData));
 
         assertEq(
-            cUSDCDAI.totalAssets(),
-            assets,
-            "Total Assets should equal user deposit."
+            cWETHUSDC.totalAssets(),
+            assets + 42069,
+            "Total Assets should equal user deposit plus initial mint."
         );
 
         vm.warp(block.timestamp + 8 days);
 
         // Mint some extra rewards for Vault.
-        earned = gauge.earned(address(cUSDCDAI));
+        earned = gauge.earned(address(cWETHUSDC));
         amount = (earned * 84) / 100;
         swapData.inputAmount = amount;
         swapData.call = abi.encodeWithSelector(
@@ -115,21 +131,20 @@ contract TestVelodromeStableCToken is TestBaseMarket {
             amount,
             0,
             routes,
-            address(cUSDCDAI),
+            address(cWETHUSDC),
             type(uint256).max
         );
-        cUSDCDAI.harvest(abi.encode(swapData));
+        cWETHUSDC.harvest(abi.encode(swapData));
+
         vm.warp(block.timestamp + 7 days);
 
-        uint256 totalAssets = cUSDCDAI.totalAssets();
-
         assertGt(
-            totalAssets,
-            assets,
-            "Total Assets should greater than original deposit."
+            cWETHUSDC.totalAssets(),
+            assets + 42069,
+            "Total Assets should greater than original deposit plus initial mint."
         );
 
-        vm.prank(address(cUSDCDAI));
-        cUSDCDAI.withdraw(totalAssets, address(this), address(this));
+        vm.prank(user1);
+        cWETHUSDC.withdraw(assets, user1, user1);
     }
 }

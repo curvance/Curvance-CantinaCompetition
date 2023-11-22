@@ -19,4 +19,6 @@ interface IVeloGauge {
     function deposit(uint256 amount) external;
 
     function withdraw(uint256 amount) external;
+
+    function voter() external view returns (address);
 }
