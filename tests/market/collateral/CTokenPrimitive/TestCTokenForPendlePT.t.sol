@@ -12,7 +12,6 @@ import { CTokenPrimitive } from "contracts/market/collateral/CTokenPrimitive.sol
 import { PendlePrincipalTokenAdaptor } from "contracts/oracles/adaptors/pendle/PendlePrincipalTokenAdaptor.sol";
 
 import "tests/market/TestBaseMarket.sol";
-import { console } from "forge-std/Test.sol";
 
 contract User {}
 
