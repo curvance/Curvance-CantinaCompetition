@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.sol";
+import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 import { MockDataFeed } from "contracts/mocks/MockDataFeed.sol";
 import "tests/market/TestBaseMarket.sol";
 
@@ -115,7 +115,7 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
         vm.startPrank(user1);
         balRETH.approve(address(cBALRETH), 1 ether);
         cBALRETH.deposit(1 ether, user1);
-        lendtroller.postCollateral(user1, address(cBALRETH), 1 ether - 1);
+        lendtroller.postCollateral(user1, address(cBALRETH), 1 ether);
         vm.stopPrank();
         assertEq(cBALRETH.balanceOf(user1), 1 ether);
 
@@ -169,62 +169,62 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
         vm.startPrank(user1);
         balRETH.approve(address(cBALRETH), 1 ether);
         cBALRETH.deposit(1 ether, user1);
-        lendtroller.postCollateral(user1, address(cBALRETH), 1 ether - 1);
+        lendtroller.postCollateral(user1, address(cBALRETH), 1 ether);
         vm.stopPrank();
-        AccountSnapshot memory snapshot = cBALRETH.getSnapshotPacked(user1);
+
         assertEq(cBALRETH.balanceOf(user1), 1 ether);
-        assertEq(snapshot.debtBalance, 0);
-        assertEq(snapshot.exchangeRate, 1 ether);
+        assertEq(cBALRETH.exchangeRateCached(), 1 ether);
 
         // try borrow()
         vm.startPrank(user1);
         dUSDC.borrow(500e6);
         vm.stopPrank();
-        snapshot = dUSDC.getSnapshotPacked(user1);
+
         assertEq(dUSDC.balanceOf(user1), 0);
-        assertEq(snapshot.debtBalance, 500e6);
-        assertEq(snapshot.exchangeRate, 1 ether);
+        assertEq(dUSDC.debtBalanceCached(user1), 500e6);
+        assertEq(dUSDC.exchangeRateCached(), 1 ether);
 
         // try borrow()
         skip(1200);
         vm.startPrank(user1);
         dUSDC.borrow(100e6);
         vm.stopPrank();
-        snapshot = dUSDC.getSnapshotPacked(user1);
+
         assertEq(dUSDC.balanceOf(user1), 0);
-        assertGt(snapshot.debtBalance, 600e6);
-        assertGt(snapshot.exchangeRate, 1 ether);
+        assertGt(dUSDC.debtBalanceCached(user1), 600e6);
+        assertGt(dUSDC.exchangeRateCached(), 1 ether);
 
         // skip min hold period
         skip(20 minutes);
 
         // try partial repay
-        (, uint256 borrowBalanceBefore, uint256 exchangeRateBefore) = dUSDC
-            .getSnapshot(user1);
+        uint256 borrowBalanceBefore = dUSDC.debtBalanceCached(user1);
+        uint256 exchangeRateBefore = dUSDC.exchangeRateCached();
         _prepareUSDC(user1, 200e6);
         vm.startPrank(user1);
         usdc.approve(address(dUSDC), 200e6);
         dUSDC.repay(200e6);
         vm.stopPrank();
-        snapshot = dUSDC.getSnapshotPacked(user1);
+
         assertEq(dUSDC.balanceOf(user1), 0);
-        assertGt(snapshot.debtBalance, borrowBalanceBefore - 200e6);
-        assertGt(snapshot.exchangeRate, exchangeRateBefore);
+        assertGt(dUSDC.debtBalanceCached(user1), borrowBalanceBefore - 200e6);
+        assertGt(dUSDC.exchangeRateCached(), exchangeRateBefore);
 
         // skip some period
         skip(20 minutes);
 
         // try repay full
-        (, borrowBalanceBefore, exchangeRateBefore) = dUSDC.getSnapshot(user1);
+        borrowBalanceBefore = dUSDC.debtBalanceCached(user1);
+        exchangeRateBefore = dUSDC.exchangeRateCached();
         _prepareUSDC(user1, borrowBalanceBefore);
         vm.startPrank(user1);
         usdc.approve(address(dUSDC), borrowBalanceBefore);
         dUSDC.repay(borrowBalanceBefore);
         vm.stopPrank();
-        snapshot = dUSDC.getSnapshotPacked(user1);
+
         assertEq(dUSDC.balanceOf(user1), 0);
-        assertGt(snapshot.debtBalance, 0);
-        assertGt(snapshot.exchangeRate, exchangeRateBefore);
+        assertGt(dUSDC.debtBalanceCached(user1), 0);
+        assertGt(dUSDC.exchangeRateCached(), exchangeRateBefore);
     }
 
     function testCTokenRedeemOnBorrow() public {
@@ -234,7 +234,7 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
         vm.startPrank(user1);
         balRETH.approve(address(cBALRETH), 1 ether);
         cBALRETH.deposit(1 ether, user1);
-        lendtroller.postCollateral(user1, address(cBALRETH), 1 ether - 1);
+        lendtroller.postCollateral(user1, address(cBALRETH), 1 ether);
         vm.stopPrank();
 
         // try borrow()
@@ -257,10 +257,9 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
         vm.startPrank(user1);
         cBALRETH.redeem(0.2 ether, user1, user1);
         vm.stopPrank();
-        AccountSnapshot memory snapshot = cBALRETH.getSnapshotPacked(user1);
+
         assertEq(cBALRETH.balanceOf(user1), 0.8 ether);
-        assertEq(snapshot.debtBalance, 0 ether);
-        assertEq(snapshot.exchangeRate, 1 ether);
+        assertEq(cBALRETH.exchangeRateCached(), 1 ether);
     }
 
     function testDTokenRedeemOnBorrow() public {
@@ -269,7 +268,7 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
         vm.startPrank(user1);
         balRETH.approve(address(cBALRETH), 1 ether);
         cBALRETH.deposit(1 ether, user1);
-        lendtroller.postCollateral(user1, address(cBALRETH), 1 ether - 1);
+        lendtroller.postCollateral(user1, address(cBALRETH), 1 ether);
         vm.stopPrank();
 
         // try mint()
@@ -292,15 +291,12 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
         dUSDC.redeem(1000e6);
         vm.stopPrank();
 
-        AccountSnapshot memory snapshot = cBALRETH.getSnapshotPacked(user1);
         assertEq(cBALRETH.balanceOf(user1), 1 ether);
-        assertEq(snapshot.debtBalance, 0);
-        assertEq(snapshot.exchangeRate, 1 ether);
+        assertEq(cBALRETH.exchangeRateCached(), 1 ether);
 
-        snapshot = dUSDC.getSnapshotPacked(user1);
         assertEq(dUSDC.balanceOf(user1), 0);
-        assertGt(snapshot.debtBalance, 500e6);
-        assertGt(snapshot.exchangeRate, 1 ether);
+        assertGt(dUSDC.debtBalanceCached(user1), 500e6);
+        assertGt(dUSDC.exchangeRateCached(), 1 ether);
     }
 
     function testCTokenTransferOnBorrow() public {
@@ -310,7 +306,7 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
         vm.startPrank(user1);
         balRETH.approve(address(cBALRETH), 1 ether);
         cBALRETH.deposit(1 ether, user1);
-        lendtroller.postCollateral(user1, address(cBALRETH), 1 ether - 1);
+        lendtroller.postCollateral(user1, address(cBALRETH), 1 ether);
         vm.stopPrank();
 
         // try borrow()
@@ -333,14 +329,10 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
         vm.startPrank(user1);
         cBALRETH.transfer(user2, 0.2 ether);
         vm.stopPrank();
-        AccountSnapshot memory snapshot = cBALRETH.getSnapshotPacked(user1);
+
         assertEq(cBALRETH.balanceOf(user1), 0.8 ether);
-        assertEq(snapshot.debtBalance, 0 ether);
-        assertEq(snapshot.exchangeRate, 1 ether);
-        snapshot = cBALRETH.getSnapshotPacked(user2);
         assertEq(cBALRETH.balanceOf(user2), 0.2 ether);
-        assertEq(snapshot.debtBalance, 0 ether);
-        assertEq(snapshot.exchangeRate, 1 ether);
+        assertEq(cBALRETH.exchangeRateCached(), 1 ether);
     }
 
     function testDTokenTransferOnBorrow() public {
@@ -349,7 +341,7 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
         vm.startPrank(user1);
         balRETH.approve(address(cBALRETH), 1 ether);
         cBALRETH.deposit(1 ether, user1);
-        lendtroller.postCollateral(user1, address(cBALRETH), 1 ether - 1);
+        lendtroller.postCollateral(user1, address(cBALRETH), 1 ether);
         vm.stopPrank();
 
         // try mint()
@@ -372,20 +364,16 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
         dUSDC.transfer(user2, 1000e6);
         vm.stopPrank();
 
-        AccountSnapshot memory snapshot = cBALRETH.getSnapshotPacked(user1);
         assertEq(cBALRETH.balanceOf(user1), 1 ether);
-        assertEq(snapshot.debtBalance, 0);
-        assertEq(snapshot.exchangeRate, 1 ether);
+        assertEq(cBALRETH.exchangeRateCached(), 1 ether);
 
-        snapshot = dUSDC.getSnapshotPacked(user1);
         assertEq(dUSDC.balanceOf(user1), 0);
-        assertEq(snapshot.debtBalance, 500e6);
-        assertEq(snapshot.exchangeRate, 1 ether);
+        assertEq(dUSDC.debtBalanceCached(user1), 500e6);
+        assertEq(dUSDC.exchangeRateCached(), 1 ether);
 
-        snapshot = dUSDC.getSnapshotPacked(user2);
         assertEq(dUSDC.balanceOf(user2), 1000e6);
-        assertEq(snapshot.debtBalance, 0);
-        assertEq(snapshot.exchangeRate, 1 ether);
+        assertEq(dUSDC.debtBalanceCached(user2), 0);
+        assertEq(dUSDC.exchangeRateCached(), 1 ether);
     }
 
     function testLiquidationExact() public {
@@ -395,7 +383,7 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
         vm.startPrank(user1);
         balRETH.approve(address(cBALRETH), 1 ether);
         cBALRETH.deposit(1 ether, user1);
-        lendtroller.postCollateral(user1, address(cBALRETH), 1 ether - 1);
+        lendtroller.postCollateral(user1, address(cBALRETH), 1 ether);
         vm.stopPrank();
 
         // try borrow()
@@ -421,19 +409,16 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
         dUSDC.liquidateExact(user1, 250e6, IMToken(address(cBALRETH)));
         vm.stopPrank();
 
-        AccountSnapshot memory snapshot = cBALRETH.getSnapshotPacked(user1);
         assertApproxEqRel(
             cBALRETH.balanceOf(user1),
             1 ether - (500 ether * 1 ether) / balRETHPrice,
             0.01e18
         );
-        assertEq(snapshot.debtBalance, 0);
-        assertEq(snapshot.exchangeRate, 1 ether);
+        assertEq(cBALRETH.exchangeRateCached(), 1 ether);
 
-        snapshot = dUSDC.getSnapshotPacked(user1);
         assertEq(dUSDC.balanceOf(user1), 0);
-        assertApproxEqRel(snapshot.debtBalance, 750e6, 0.01e18);
-        assertApproxEqRel(snapshot.exchangeRate, 1 ether, 0.01e18);
+        assertApproxEqRel(dUSDC.debtBalanceCached(user1), 750e6, 0.01e18);
+        assertApproxEqRel(dUSDC.exchangeRateCached(), 1 ether, 0.01e18);
     }
 
     function testLiquidation() public {
@@ -443,7 +428,7 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
         vm.startPrank(user1);
         balRETH.approve(address(cBALRETH), 1 ether);
         cBALRETH.deposit(1 ether, user1);
-        lendtroller.postCollateral(user1, address(cBALRETH), 1 ether - 1);
+        lendtroller.postCollateral(user1, address(cBALRETH), 1 ether);
         vm.stopPrank();
 
         // try borrow()
@@ -460,27 +445,24 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
             true
         );
 
-        mockUsdcFeed.setMockAnswer(200000000);
+        mockUsdcFeed.setMockAnswer(150000000);
 
         // try liquidate
-        _prepareUSDC(user2, 600e6);
+        _prepareUSDC(user2, 10000e6);
         vm.startPrank(user2);
-        usdc.approve(address(dUSDC), 600e6);
+        usdc.approve(address(dUSDC), 10000e6);
         dUSDC.liquidate(user1, IMToken(address(cBALRETH)));
         vm.stopPrank();
 
-        AccountSnapshot memory snapshot = cBALRETH.getSnapshotPacked(user1);
         assertApproxEqRel(
             cBALRETH.balanceOf(user1),
-            1 ether - (1000 ether * 1 ether) / balRETHPrice,
+            1 ether - (1530 ether * 1e18) / balRETHPrice,
             0.03e18
         );
-        assertEq(snapshot.debtBalance, 0);
-        assertEq(snapshot.exchangeRate, 1 ether);
+        assertEq(cBALRETH.exchangeRateCached(), 1 ether);
 
-        snapshot = dUSDC.getSnapshotPacked(user1);
         assertEq(dUSDC.balanceOf(user1), 0);
-        assertApproxEqRel(snapshot.debtBalance, 500e6, 0.01e18);
-        assertApproxEqRel(snapshot.exchangeRate, 1 ether, 0.01e18);
+        assertEq(dUSDC.debtBalanceCached(user1), 0);
+        assertApproxEqRel(dUSDC.exchangeRateCached(), 1 ether, 0.01e18);
     }
 }

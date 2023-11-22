@@ -349,9 +349,7 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
         return true;
     }
 
-    function setVestingPeriod(
-        uint256 newVestingPeriod
-    ) external {
+    function setVestingPeriod(uint256 newVestingPeriod) external {
         _checkDaoPermissions();
 
         if (newVestingPeriod > 7 days) {
@@ -392,9 +390,7 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
     /// @notice Sets a new lendtroller for the market
     /// @dev Admin function to set a new lendtroller
     /// @param newLendtroller New lendtroller address
-    function setLendtroller(
-        address newLendtroller
-    ) external {
+    function setLendtroller(address newLendtroller) external {
         _checkElevatedPermissions();
         _setLendtroller(newLendtroller);
     }
@@ -461,10 +457,7 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
     /// @notice Rescue any token sent by mistake
     /// @param token token to rescue
     /// @param amount amount of `token` to rescue, 0 indicates to rescue all
-    function rescueToken(
-        address token,
-        uint256 amount
-    ) external {
+    function rescueToken(address token, uint256 amount) external {
         _checkDaoPermissions();
         address daoOperator = centralRegistry.daoAddress();
 
@@ -663,11 +656,7 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
 
         if (protocolTokens > 0) {
             address daoAddress = centralRegistry.daoAddress();
-            _transferFromWithoutAllowance(
-                account,
-                daoAddress,
-                protocolTokens
-            );
+            _transferFromWithoutAllowance(account, daoAddress, protocolTokens);
             gaugePool.deposit(address(this), daoAddress, protocolTokens);
         }
     }
@@ -681,14 +670,14 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
     /// @param account The account having collateral seized
     /// @param shares The total number of cTokens to seize
     function seizeAccountLiquidation(
-        address liquidator, 
-        address account, 
+        address liquidator,
+        address account,
         uint256 shares
     ) external nonReentrant {
-        // We check self liquidation in lendtroller before 
+        // We check self liquidation in lendtroller before
         // this call so we do not need to check here
 
-        // Make sure the lendtroller itself is calling since 
+        // Make sure the lendtroller itself is calling since
         // then we know all liquidity checks have passed
         if (msg.sender != address(lendtroller)) {
             _revert(_UNAUTHORIZED_SELECTOR);

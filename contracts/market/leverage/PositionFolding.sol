@@ -76,11 +76,14 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
         (uint256 sumCollateral, uint256 sumDebt) = lendtroller.solvencyOf(
             user
         );
-        
+
         uint256 liquidityAfter = sumCollateral - sumDebt;
         // If there was slippage, make sure its within slippage tolerance
         if (liquidityBefore > liquidityAfter) {
-            if (liquidityBefore - liquidityAfter >= (liquidityBefore * slippage) / DENOMINATOR) {
+            if (
+                liquidityBefore - liquidityAfter >=
+                (liquidityBefore * slippage) / DENOMINATOR
+            ) {
                 revert PositionFolding__InvalidSlippage();
             }
         }
@@ -335,11 +338,8 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
         address user,
         address borrowToken
     ) public view returns (uint256) {
-        (
-            uint256 sumCollateral,
-            uint256 maxDebt,
-            uint256 sumDebt
-        ) = lendtroller.statusOf(user);
+        (uint256 sumCollateral, uint256 maxDebt, uint256 sumDebt) = lendtroller
+            .statusOf(user);
         uint256 maxLeverage = ((sumCollateral - sumDebt) *
             MAX_LEVERAGE *
             sumCollateral) /

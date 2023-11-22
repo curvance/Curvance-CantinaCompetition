@@ -107,7 +107,7 @@ abstract contract LiquidityManager {
     ///         debt, and additional liquidity
     /// @param account The account to determine liquidity for
     /// @return accountCollateral Total value of `account` collateral
-    /// @return maxDebt The maximum amount of debt `account` 
+    /// @return maxDebt The maximum amount of debt `account`
     ///                 could take on based on `accountCollateral`
     /// @return accountDebt Total value of `account` debt
     function _statusOf(
@@ -135,13 +135,17 @@ abstract contract LiquidityManager {
                 // If the asset has a CR increment their collateral and max borrow value
                 if (!(tokenData[snapshot.asset].collRatio == 0)) {
                     uint256 collateralValue = _getAssetValue(
-                                                ((tokenData[snapshot.asset].accountData[account].collateralPosted *
-                                                    snapshot.exchangeRate) / WAD),
-                                                underlyingPrices[i],
-                                                snapshot.decimals
-                                              );
+                        ((tokenData[snapshot.asset]
+                            .accountData[account]
+                            .collateralPosted * snapshot.exchangeRate) / WAD),
+                        underlyingPrices[i],
+                        snapshot.decimals
+                    );
                     accountCollateral += collateralValue;
-                    maxDebt = (collateralValue * tokenData[snapshot.asset].collRatio) / WAD;
+                    maxDebt =
+                        (collateralValue *
+                            tokenData[snapshot.asset].collRatio) /
+                        WAD;
                 }
             } else {
                 // If they have a debt balance, increment their debt
@@ -277,12 +281,12 @@ abstract contract LiquidityManager {
                 // If the asset has a CR increment their collateral
                 if (!(tokenData[snapshot.asset].collRatio == 0)) {
                     accountCollateral += _getAssetValue(
-                                         ((tokenData[snapshot.asset].accountData[account].collateralPosted *
-                                            snapshot.exchangeRate) / WAD),
-                                            underlyingPrices[i],
-                                            snapshot.decimals
-                                         );
-
+                        ((tokenData[snapshot.asset]
+                            .accountData[account]
+                            .collateralPosted * snapshot.exchangeRate) / WAD),
+                        underlyingPrices[i],
+                        snapshot.decimals
+                    );
                 }
             } else {
                 // If they have a debt balance, increment their debt
@@ -377,12 +381,12 @@ abstract contract LiquidityManager {
 
         if (accountDebt >= accountCollateralB) {
             result.lFactor = WAD;
+        } else {
+            result.lFactor =
+                ((accountDebt - accountCollateralA) * WAD) /
+                (accountCollateralB - accountCollateralA);
         }
-
-        result.lFactor = ((accountDebt - accountCollateralA) * WAD) 
-                         / (accountCollateralB - accountCollateralA);
-
-    } 
+    }
 
     /// @notice Determine `account`'s current status between collateral,
     ///         debt, and additional liquidity
@@ -415,13 +419,16 @@ abstract contract LiquidityManager {
                 // If the asset has a CR increment their collateral and debt to pay
                 if (!(tokenData[snapshot.asset].collRatio == 0)) {
                     uint256 collateralValue = _getAssetValue(
-                                                ((tokenData[snapshot.asset].accountData[account].collateralPosted *
-                                                    snapshot.exchangeRate) / WAD),
-                                                underlyingPrices[i],
-                                                snapshot.decimals
-                                              );
+                        ((tokenData[snapshot.asset]
+                            .accountData[account]
+                            .collateralPosted * snapshot.exchangeRate) / WAD),
+                        underlyingPrices[i],
+                        snapshot.decimals
+                    );
                     accountCollateral += collateralValue;
-                    accountDebtToPay += (collateralValue * WAD) / tokenData[snapshot.asset].liqBaseIncentive;
+                    accountDebtToPay +=
+                        (collateralValue * WAD) /
+                        tokenData[snapshot.asset].liqBaseIncentive;
                 }
             } else {
                 // If they have a debt balance, increment their debt
@@ -503,9 +510,8 @@ abstract contract LiquidityManager {
             snapshot.decimals
         );
         return (previousBorrow +
-                (assetValue * tokenData[snapshot.asset].collRatio) /
-                WAD
-        );
+            (assetValue * tokenData[snapshot.asset].collRatio) /
+            WAD);
     }
 
     /// @dev Internal helper for reverting efficiently.
@@ -516,5 +522,4 @@ abstract contract LiquidityManager {
             revert(0x1c, 0x04)
         }
     }
-
 }
