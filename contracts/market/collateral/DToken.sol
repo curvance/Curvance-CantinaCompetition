@@ -331,14 +331,14 @@ contract DToken is ERC165, ReentrancyGuard {
     }
 
     function repayWithBadDebt(
-        address liquidator, 
-        address account, 
+        address liquidator,
+        address account,
         uint256 repayRatio
     ) external nonReentrant {
-        // We check self liquidation in lendtroller before 
+        // We check self liquidation in lendtroller before
         // this call so we do not need to check here
 
-        // Make sure the lendtroller itself is calling since 
+        // Make sure the lendtroller itself is calling since
         // then we know all liquidity checks have passed
         if (msg.sender != address(lendtroller)) {
             _revert(_UNAUTHORIZED_SELECTOR);
@@ -476,9 +476,7 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @notice Adds reserves by transferring from Curvance DAO to the market and depositing to the gauge
     /// @dev    Updates interest before executing the reserve deposit
     /// @param amount The amount of underlying token to add as reserves measured in assets
-    function depositReserves(
-        uint256 amount
-    ) external nonReentrant {
+    function depositReserves(uint256 amount) external nonReentrant {
         _checkDaoPermissions();
 
         accrueInterest();
@@ -508,11 +506,9 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @dev If daoAddress is going to be moved all reserves should be withdrawn first,
     ///      updates interest before executing the reserve withdrawal
     /// @param amount Amount of reserves to withdraw measured in assets
-    function withdrawReserves(
-        uint256 amount
-    ) external nonReentrant {
+    function withdrawReserves(uint256 amount) external nonReentrant {
         _checkDaoPermissions();
-        
+
         accrueInterest();
 
         // Make sure we have enough underlying held to cover withdrawal
@@ -560,10 +556,7 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @notice Rescue any token sent by mistake
     /// @param token token to rescue
     /// @param amount amount of `token` to rescue, 0 indicates to rescue all
-    function rescueToken(
-        address token,
-        uint256 amount
-    ) external {
+    function rescueToken(address token, uint256 amount) external {
         _checkDaoPermissions();
         address daoOperator = centralRegistry.daoAddress();
 
@@ -589,9 +582,7 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @notice Sets a new lendtroller for the market
     /// @dev Admin function to set a new lendtroller
     /// @param newLendtroller New lendtroller address
-    function setLendtroller(
-        address newLendtroller
-    ) external {
+    function setLendtroller(address newLendtroller) external {
         _checkElevatedPermissions();
         _setLendtroller(newLendtroller);
     }
@@ -599,9 +590,7 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @notice Accrues interest and updates the interest rate model
     /// @dev Admin function to update the interest rate model
     /// @param newInterestRateModel the new interest rate model to use
-    function setInterestRateModel(
-        address newInterestRateModel
-    ) external {
+    function setInterestRateModel(address newInterestRateModel) external {
         _checkElevatedPermissions();
         accrueInterest();
 
@@ -611,9 +600,7 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @notice Accrues interest and updates the interest factor
     /// @dev Admin function to update the interest factor value
     /// @param newInterestFactor the new interest factor to use
-    function setInterestFactor(
-        uint256 newInterestFactor
-    ) external {
+    function setInterestFactor(uint256 newInterestFactor) external {
         _checkElevatedPermissions();
         accrueInterest();
 
@@ -767,7 +754,8 @@ contract DToken is ERC165, ReentrancyGuard {
         // when we list a market we mint a small amount ourselves
         // exchangeRate = (total underlying held + totalBorrows - totalReserves) / totalSupply
         return
-            ((marketUnderlyingHeld() + totalBorrows - totalReserves) * WAD) / totalSupply;
+            ((marketUnderlyingHeld() + totalBorrows - totalReserves) * WAD) /
+            totalSupply;
     }
 
     /// @inheritdoc ERC165
@@ -1071,7 +1059,7 @@ contract DToken is ERC165, ReentrancyGuard {
             amount
         );
 
-        // We calculate the new account and total borrow balances, 
+        // We calculate the new account and total borrow balances,
         // failing on underflow:
         _debtOf[account].principal = accountDebt - amount;
         _debtOf[account].accountExchangeRate = marketData.exchangeRate;
@@ -1143,7 +1131,7 @@ contract DToken is ERC165, ReentrancyGuard {
             amount
         );
 
-        // We calculate the new `account` and total borrow balances, 
+        // We calculate the new `account` and total borrow balances,
         // failing on underflow:
         _debtOf[account].principal = accountDebt - amount;
         _debtOf[account].accountExchangeRate = marketData.exchangeRate;

@@ -47,10 +47,7 @@ contract AuraCToken is CTokenCompoundingBase {
 
     error AuraCToken__Unauthorized();
     error AuraCToken__InvalidVaultConfig();
-    error AuraCToken__InvalidSwapper(
-        uint256 index,
-        address invalidSwapper
-    );
+    error AuraCToken__InvalidSwapper(uint256 index, address invalidSwapper);
 
     /// CONSTRUCTOR ///
 
@@ -194,9 +191,8 @@ contract AuraCToken is CTokenCompoundingBase {
 
         // can only harvest once previous reward period is done
         if (_checkVestStatus(_vaultData)) {
-
             _updateVestingPeriodIfNeeded();
-            
+
             // cache strategy data
             StrategyData memory sd = strategyData;
 
@@ -334,5 +330,4 @@ contract AuraCToken is CTokenCompoundingBase {
     {
         return strategyData.rewarder.balanceOf(address(this));
     }
-
 }

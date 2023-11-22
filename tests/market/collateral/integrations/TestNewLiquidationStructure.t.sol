@@ -175,18 +175,15 @@ contract TestNewLiquidationStructure is TestBaseMarket {
         dDAI.liquidateExact(user1, 250 ether, IMToken(address(cBALRETH)));
         vm.stopPrank();
 
-        AccountSnapshot memory snapshot = cBALRETH.getSnapshotPacked(user1);
         assertApproxEqRel(
             cBALRETH.balanceOf(user1),
             1 ether - (500 ether * 1 ether) / balRETHPrice,
             0.01e18
         );
-        assertEq(snapshot.debtBalance, 0);
-        assertEq(snapshot.exchangeRate, 1 ether);
+        assertEq(cBALRETH.exchangeRateCached(), 1 ether);
 
-        snapshot = dDAI.getSnapshotPacked(user1);
-        assertEq(cBALRETH.balanceOf(user1), 0);
-        assertApproxEqRel(snapshot.debtBalance, 750 ether, 0.01e18);
-        assertApproxEqRel(snapshot.exchangeRate, 1 ether, 0.01e18);
+        assertEq(dDAI.balanceOf(user1), 0);
+        assertApproxEqRel(dDAI.debtBalanceCached(user1), 750 ether, 0.01e18);
+        assertApproxEqRel(dDAI.exchangeRateCached(), 1 ether, 0.01e18);
     }
 }
