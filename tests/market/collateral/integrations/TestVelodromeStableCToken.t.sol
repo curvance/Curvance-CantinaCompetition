@@ -63,17 +63,17 @@ contract TestVelodromeStableCToken is TestBaseMarket {
 
     function testUsdcDaiStablePool() public {
         uint256 assets = 100e18;
-        deal(address(USDC_DAI), address(user1), assets);
+        deal(address(USDC_DAI), user1, assets);
         deal(address(USDC_DAI), address(this), 42069);
 
         USDC_DAI.approve(address(cUSDCDAI), 42069);
         lendtroller.listToken(address(cUSDCDAI));
 
-        vm.prank(address(user1));
+        vm.prank(user1);
         USDC_DAI.approve(address(cUSDCDAI), assets);
 
-        vm.prank(address(user1));
-        cUSDCDAI.deposit(assets, address(user1));
+        vm.prank(user1);
+        cUSDCDAI.deposit(assets, user1);
 
         assertEq(
             cUSDCDAI.totalAssets(),
@@ -143,7 +143,7 @@ contract TestVelodromeStableCToken is TestBaseMarket {
             "Total Assets should greater than original deposit plus initial mint."
         );
 
-        vm.prank(address(user1));
-        cUSDCDAI.withdraw(assets, address(user1), address(user1));
+        vm.prank(user1);
+        cUSDCDAI.withdraw(assets, user1, user1);
     }
 }

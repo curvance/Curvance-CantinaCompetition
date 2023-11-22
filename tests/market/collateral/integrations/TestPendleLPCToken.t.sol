@@ -67,17 +67,17 @@ contract TestPendleLPCToken is TestBaseMarket {
 
     function testPendleStethLP() public {
         uint256 assets = 100e18;
-        deal(address(_LP_STETH), address(user1), assets);
+        deal(address(_LP_STETH), user1, assets);
         deal(address(_LP_STETH), address(this), 42069);
 
         _LP_STETH.approve(address(cSTETH), 42069);
         lendtroller.listToken(address(cSTETH));
 
-        vm.prank(address(user1));
+        vm.prank(user1);
         _LP_STETH.approve(address(cSTETH), assets);
 
-        vm.prank(address(user1));
-        cSTETH.deposit(assets, address(user1));
+        vm.prank(user1);
+        cSTETH.deposit(assets, user1);
 
         assertEq(
             cSTETH.totalAssets(),
@@ -129,7 +129,7 @@ contract TestPendleLPCToken is TestBaseMarket {
             "Total Assets should equal user deposit plus initial mint."
         );
 
-        vm.prank(address(user1));
-        cSTETH.withdraw(assets, address(user1), address(user1));
+        vm.prank(user1);
+        cSTETH.withdraw(assets, user1, user1);
     }
 }

@@ -64,17 +64,17 @@ contract TestVelodromeVolatileCToken is TestBaseMarket {
 
     function testWethUsdcVolatilePool() public {
         uint256 assets = 0.0001e18;
-        deal(address(WETH_USDC), address(user1), assets);
+        deal(address(WETH_USDC), user1, assets);
         deal(address(WETH_USDC), address(this), 42069);
 
         WETH_USDC.approve(address(cWETHUSDC), 42069);
         lendtroller.listToken(address(cWETHUSDC));
 
-        vm.prank(address(user1));
+        vm.prank(user1);
         WETH_USDC.approve(address(cWETHUSDC), assets);
 
-        vm.prank(address(user1));
-        cWETHUSDC.deposit(assets, address(user1));
+        vm.prank(user1);
+        cWETHUSDC.deposit(assets, user1);
 
         assertEq(
             cWETHUSDC.totalAssets(),
@@ -144,7 +144,7 @@ contract TestVelodromeVolatileCToken is TestBaseMarket {
             "Total Assets should greater than original deposit plus initial mint."
         );
 
-        vm.prank(address(user1));
-        cWETHUSDC.withdraw(assets, address(user1), address(user1));
+        vm.prank(user1);
+        cWETHUSDC.withdraw(assets, user1, user1);
     }
 }
