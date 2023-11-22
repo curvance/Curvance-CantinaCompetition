@@ -164,7 +164,7 @@ abstract contract CTokenCompoundingBase is ERC4626, ReentrancyGuard {
         shares = _deposit(assets, receiver);
         if (
             msg.sender == receiver ||
-            msg.sender != lendtroller.positionFolding()
+            msg.sender == lendtroller.positionFolding()
         ) {
             lendtroller.postCollateral(receiver, address(this), shares);
         }

@@ -122,7 +122,7 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
         shares = _deposit(assets, receiver);
         if (
             msg.sender == receiver ||
-            msg.sender != lendtroller.positionFolding()
+            msg.sender == lendtroller.positionFolding()
         ) {
             lendtroller.postCollateral(receiver, address(this), shares);
         }
@@ -269,7 +269,7 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
     /// @dev Used in an emergency or if the vault has been deprecated
     function initiateShutdown() external {
         _checkDaoPermissions();
-        
+
         if (_vaultStatus != 2) {
             _revert(_VAULT_NOT_ACTIVE_SELECTOR);
         }
@@ -284,7 +284,7 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
     function liftShutdown() external {
         /// Reactivating the vault requires heavier permissioning than deactivating
         _checkElevatedPermissions();
-        
+
         if (_vaultStatus == 2) {
             // revert with "CTokenPrimitive__VaultIsActive()"
             _revert(0x8bdb4dfb);
@@ -297,11 +297,9 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
     /// @notice Sets a new lendtroller for the market
     /// @dev Admin function to set a new lendtroller
     /// @param newLendtroller New lendtroller address
-    function setLendtroller(
-        address newLendtroller
-    ) external {
+    function setLendtroller(address newLendtroller) external {
         _checkElevatedPermissions();
-        
+
         _setLendtroller(newLendtroller);
     }
 
@@ -369,10 +367,7 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
     /// @notice Rescue any token sent by mistake
     /// @param token The token to rescue
     /// @param amount Amount of `token` to rescue, 0 indicates to rescue all
-    function rescueToken(
-        address token,
-        uint256 amount
-    ) external {
+    function rescueToken(address token, uint256 amount) external {
         _checkDaoPermissions();
         address daoOperator = centralRegistry.daoAddress();
 
@@ -565,11 +560,7 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
 
         if (protocolTokens > 0) {
             address daoAddress = centralRegistry.daoAddress();
-            _transferFromWithoutAllowance(
-                account,
-                daoAddress,
-                protocolTokens
-            );
+            _transferFromWithoutAllowance(account, daoAddress, protocolTokens);
             gaugePool.deposit(address(this), daoAddress, protocolTokens);
         }
     }
@@ -583,14 +574,14 @@ contract CTokenPrimitive is ERC4626, ReentrancyGuard {
     /// @param account The account having collateral seized
     /// @param shares The total number of cTokens to seize
     function seizeAccountLiquidation(
-        address liquidator, 
-        address account, 
+        address liquidator,
+        address account,
         uint256 shares
     ) external nonReentrant {
-        // We check self liquidation in lendtroller before 
+        // We check self liquidation in lendtroller before
         // this call so we do not need to check here
 
-        // Make sure the lendtroller itself is calling since 
+        // Make sure the lendtroller itself is calling since
         // then we know all liquidity checks have passed
         if (msg.sender != address(lendtroller)) {
             _revert(_UNAUTHORIZED_SELECTOR);

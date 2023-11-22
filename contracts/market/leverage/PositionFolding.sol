@@ -180,7 +180,7 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
             SwapperLib.swap(leverageData.swapData);
         }
 
-        // enter curvance
+        // prepare LP
         SwapperLib.ZapperCall memory zapperCall = leverageData.zapperCall;
 
         if (zapperCall.call.length > 0) {
@@ -192,6 +192,18 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
 
             SwapperLib.zap(zapperCall);
         }
+
+        // enter curvance
+        address collateralUnderlying = leverageData
+            .collateralToken
+            .underlying();
+        uint256 amount = IERC20(collateralUnderlying).balanceOf(address(this));
+        SwapperLib.approveTokenIfNeeded(
+            collateralUnderlying,
+            address(leverageData.collateralToken),
+            amount
+        );
+        leverageData.collateralToken.depositAsCollateral(amount, borrower);
 
         // transfer remaining zapper input token back to the user
         uint256 remaining = IERC20(zapperCall.inputToken).balanceOf(

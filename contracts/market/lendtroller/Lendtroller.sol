@@ -232,12 +232,12 @@ contract Lendtroller is LiquidityManager, ERC165 {
 
         if (
             accountData.collateralPosted + tokens >
-            IMToken(mToken).balanceOf(msg.sender)
+            IMToken(mToken).balanceOf(account)
         ) {
             revert Lendtroller__InsufficientCollateral();
         }
 
-        _postCollateral(msg.sender, accountData, mToken, tokens);
+        _postCollateral(account, accountData, mToken, tokens);
     }
 
     /// @notice Post collateral in some cToken for borrowing inside this market

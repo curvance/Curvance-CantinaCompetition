@@ -164,7 +164,7 @@ contract TestPositionFolding is TestBaseMarket {
 
         // mint
         assertGt(cBALRETH.deposit(1 ether, user1), 0);
-        lendtroller.postCollateral(user, address(cBALRETH), 1 ether - 1);
+        lendtroller.postCollateral(user, address(cBALRETH), 1 ether);
         assertEq(cBALRETH.balanceOf(user), 1 ether);
 
         uint256 balanceBeforeBorrow = dai.balanceOf(user);
@@ -172,9 +172,9 @@ contract TestPositionFolding is TestBaseMarket {
         dDAI.borrow(100 ether);
         assertEq(balanceBeforeBorrow + 100 ether, dai.balanceOf(user));
 
-        // try leverage with 80% of max
+        // try leverage with 50% of max
         uint256 amountForLeverage = (positionFolding
-            .queryAmountToBorrowForLeverageMax(user, address(dDAI)) * 80) /
+            .queryAmountToBorrowForLeverageMax(user, address(dDAI)) * 50) /
             100;
 
         PositionFolding.LeverageStruct memory leverageData;
@@ -207,7 +207,7 @@ contract TestPositionFolding is TestBaseMarket {
         leverageData.zapperCall.target = address(zapper);
         leverageData.zapperCall.call = abi.encodeWithSelector(
             Zapper.balancerIn.selector,
-            address(cBALRETH),
+            address(0),
             Zapper.ZapperData(
                 _WETH_ADDRESS,
                 leverageData.zapperCall.inputAmount,
@@ -219,7 +219,7 @@ contract TestPositionFolding is TestBaseMarket {
             _BALANCER_VAULT,
             _BAL_WETH_RETH_POOLID,
             tokens,
-            user
+            address(positionFolding)
         );
 
         positionFolding.leverage(leverageData, 500);
@@ -299,6 +299,7 @@ contract TestPositionFolding is TestBaseMarket {
             .getAmountsOut(amountForDeleverage, path);
         deleverageData.repayAmount = amountsOut[1];
 
+        cBALRETH.approve(address(positionFolding), type(uint256).max);
         positionFolding.deleverage(deleverageData, 500);
 
         (uint256 dDAIBalance, uint256 dDAIBorrowed, ) = dDAI.getSnapshot(user);
