@@ -210,10 +210,6 @@ contract Lendtroller is LiquidityManager, ERC165 {
         address mToken,
         uint256 tokens
     ) external {
-        AccountMetadata storage accountData = tokenData[mToken].accountData[
-            account
-        ];
-
         if (!tokenData[mToken].isListed) {
             revert Lendtroller__TokenNotListed();
         }
@@ -229,6 +225,10 @@ contract Lendtroller is LiquidityManager, ERC165 {
                 revert Lendtroller__Unauthorized();
             }
         }
+
+        AccountMetadata storage accountData = tokenData[mToken].accountData[
+            account
+        ];
 
         if (
             accountData.collateralPosted + tokens >
