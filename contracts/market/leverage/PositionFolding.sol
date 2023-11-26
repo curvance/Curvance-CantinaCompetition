@@ -198,7 +198,7 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
             .collateralToken
             .underlying();
         uint256 amount = IERC20(collateralUnderlying).balanceOf(address(this));
-        SwapperLib.approveTokenIfNeeded(
+        SwapperLib._approveTokenIfNeeded(
             collateralUnderlying,
             address(leverageData.collateralToken),
             amount
@@ -228,6 +228,11 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
                 remaining
             );
         }
+
+        SwapperLib._removeApprovalIfNeeded(
+            borrowUnderlying,
+            address(borrowToken)
+        );
     }
 
     function onRedeem(
@@ -312,7 +317,7 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
         uint256 remaining = IERC20(borrowUnderlying).balanceOf(address(this)) -
             repayAmount;
 
-        SwapperLib.approveTokenIfNeeded(
+        SwapperLib._approveTokenIfNeeded(
             borrowUnderlying,
             address(borrowToken),
             repayAmount
@@ -342,6 +347,11 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
                 remaining
             );
         }
+
+        SwapperLib._removeApprovalIfNeeded(
+            borrowUnderlying,
+            address(borrowToken)
+        );
     }
 
     /// PUBLIC FUNCTIONS ///

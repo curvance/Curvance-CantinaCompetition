@@ -402,7 +402,7 @@ contract Zapper is ReentrancyGuard {
         }
 
         // approve lp token
-        SwapperLib.approveTokenIfNeeded(lpToken, cToken, amount);
+        SwapperLib._approveTokenIfNeeded(lpToken, cToken, amount);
 
         uint256 priorBalance = IERC20(cToken).balanceOf(recipient);
 
@@ -410,6 +410,8 @@ contract Zapper is ReentrancyGuard {
         if (CTokenPrimitive(cToken).deposit(amount, recipient) == 0) {
             revert Zapper__ExecutionError();
         }
+
+        SwapperLib._removeApprovalIfNeeded(lpToken, cToken);
 
         return IERC20(cToken).balanceOf(recipient) - priorBalance;
     }
