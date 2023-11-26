@@ -12,7 +12,7 @@ import { CentralRegistry } from "contracts/architecture/CentralRegistry.sol";
 import { FeeAccumulator } from "contracts/architecture/FeeAccumulator.sol";
 import { ProtocolMessagingHub } from "contracts/architecture/ProtocolMessagingHub.sol";
 import { DToken } from "contracts/market/collateral/DToken.sol";
-import { CTokenCompoundingBase } from "contracts/market/collateral/CTokenCompoundingBase.sol";
+import { CTokenCompounding } from "contracts/market/collateral/CTokenCompounding.sol";
 import { AuraCToken } from "contracts/market/collateral/AuraCToken.sol";
 import { DynamicInterestRateModel } from "contracts/market/interestRates/DynamicInterestRateModel.sol";
 import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";

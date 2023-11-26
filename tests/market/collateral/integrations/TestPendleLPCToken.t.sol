@@ -5,7 +5,7 @@ import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IUniswapV3Router } from "contracts/interfaces/external/uniswap/IUniswapV3Router.sol";
 import { IPendleRouter, ApproxParams } from "contracts/interfaces/external/pendle/IPendleRouter.sol";
-import { PendleLPCToken, ERC20 } from "contracts/market/collateral/PendleLPCToken.sol";
+import { PendleLPCToken, IERC20 } from "contracts/market/collateral/PendleLPCToken.sol";
 
 import "tests/market/TestBaseMarket.sol";
 
@@ -17,8 +17,8 @@ contract TestPendleLPCToken is TestBaseMarket {
     address private _STETH = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
     address private _PT_STETH = 0x7758896b6AC966BbABcf143eFA963030f17D3EdF; // PT-stETH-26DEC24
     address private _PENDLE = 0x808507121B80c02388fAd14726482e061B8da827;
-    ERC20 private _LP_STETH =
-        ERC20(0xD0354D4e7bCf345fB117cabe41aCaDb724eccCa2); // PT-stETH-26DEC24/SY-stETH Market
+    IERC20 private _LP_STETH =
+        IERC20(0xD0354D4e7bCf345fB117cabe41aCaDb724eccCa2); // PT-stETH-26DEC24/SY-stETH Market
 
     PendleLPCToken cSTETH;
 

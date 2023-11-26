@@ -2,7 +2,7 @@
 pragma solidity ^0.8.17;
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { GMCToken, ERC20 } from "contracts/market/collateral/GMCToken.sol";
+import { GMCToken, IERC20 } from "contracts/market/collateral/GMCToken.sol";
 
 import "tests/market/TestBaseMarket.sol";
 
@@ -41,7 +41,7 @@ contract TestGMCToken is TestBaseMarket {
     address private _DEPOSITOR = 0x7575d9eb64CCe0DF0D570Ae88049382Ce6fB0D31;
 
     GMCToken public cGM;
-    ERC20 public gmxGM;
+    IERC20 public gmxGM;
 
     receive() external payable {}
 
@@ -66,7 +66,7 @@ contract TestGMCToken is TestBaseMarket {
         centralRegistry.addHarvester(address(this));
         centralRegistry.setFeeAccumulator(address(this));
 
-        gmxGM = ERC20(_GMX_GM_WETH_USDC_POOL);
+        gmxGM = IERC20(_GMX_GM_WETH_USDC_POOL);
 
         // Deploy position vault to the existing depositor address.
         deployCodeTo(

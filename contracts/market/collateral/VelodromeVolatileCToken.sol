@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { CTokenCompoundingBase, SafeTransferLib, ERC20, Math, ICentralRegistry } from "contracts/market/collateral/CTokenCompoundingBase.sol";
+import { CTokenCompounding, SafeTransferLib, IERC20, Math, ICentralRegistry } from "contracts/market/collateral/CTokenCompounding.sol";
 import { VelodromeLib } from "contracts/market/zapper/protocols/VelodromeLib.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { WAD } from "contracts/libraries/Constants.sol";
@@ -12,7 +12,7 @@ import { IVeloPair } from "contracts/interfaces/external/velodrome/IVeloPair.sol
 import { IVeloPairFactory } from "contracts/interfaces/external/velodrome/IVeloPairFactory.sol";
 import { IVeloPool } from "contracts/interfaces/external/velodrome/IVeloPool.sol";
 
-contract VelodromeVolatileCToken is CTokenCompoundingBase {
+contract VelodromeVolatileCToken is CTokenCompounding {
     using Math for uint256;
 
     /// TYPES ///
@@ -28,8 +28,8 @@ contract VelodromeVolatileCToken is CTokenCompoundingBase {
     /// CONSTANTS ///
 
     // Optimism VELO contract address
-    ERC20 public constant rewardToken =
-        ERC20(0x9560e827aF36c94D2Ac33a39bCE1Fe78631088Db);
+    IERC20 public constant rewardToken =
+        IERC20(0x9560e827aF36c94D2Ac33a39bCE1Fe78631088Db);
     // Whether VELO is an underlying token of the pair
     bool public immutable rewardTokenIsUnderlying;
 
@@ -58,12 +58,12 @@ contract VelodromeVolatileCToken is CTokenCompoundingBase {
 
     constructor(
         ICentralRegistry centralRegistry_,
-        ERC20 asset_,
+        IERC20 asset_,
         address lendtroller_,
         IVeloGauge gauge,
         IVeloPairFactory pairFactory,
         IVeloRouter router
-    ) CTokenCompoundingBase(centralRegistry_, asset_, lendtroller_) {
+    ) CTokenCompounding(centralRegistry_, asset_, lendtroller_) {
         // Cache assigned asset address
         address _asset = asset();
         // Validate that we have the proper gauge linked with the proper LP
@@ -167,7 +167,7 @@ contract VelodromeVolatileCToken is CTokenCompoundingBase {
 
             // token0 is VELO of one of underlying tokens is VELO
             // swap token0 to LP Token underlying tokens
-            uint256 totalAmountA = ERC20(sd.token0).balanceOf(address(this));
+            uint256 totalAmountA = IERC20(sd.token0).balanceOf(address(this));
             if (totalAmountA == 0) {
                 revert VelodromeVolatileCToken__SlippageError();
             }
@@ -209,7 +209,7 @@ contract VelodromeVolatileCToken is CTokenCompoundingBase {
                 sd.token1,
                 false,
                 totalAmountA,
-                ERC20(sd.token1).balanceOf(address(this)), // totalAmountB
+                IERC20(sd.token1).balanceOf(address(this)), // totalAmountB
                 VelodromeLib.VELODROME_ADD_LIQUIDITY_SLIPPAGE
             );
 

@@ -3,7 +3,7 @@ pragma solidity ^0.8.17;
 
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { VelodromeVolatileCToken, IVeloGauge, IVeloRouter, IVeloPairFactory, ERC20 } from "contracts/market/collateral/VelodromeVolatileCToken.sol";
+import { VelodromeVolatileCToken, IVeloGauge, IVeloRouter, IVeloPairFactory, IERC20 } from "contracts/market/collateral/VelodromeVolatileCToken.sol";
 
 import "tests/market/TestBaseMarket.sol";
 
@@ -11,10 +11,10 @@ contract TestVelodromeVolatileCToken is TestBaseMarket {
     address internal constant _UNISWAP_V2_ROUTER =
         0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
 
-    ERC20 public WETH = ERC20(0x4200000000000000000000000000000000000006);
-    ERC20 public USDC = ERC20(0x7F5c764cBc14f9669B88837ca1490cCa17c31607);
-    ERC20 public VELO = ERC20(0x9560e827aF36c94D2Ac33a39bCE1Fe78631088Db);
-    ERC20 public WETH_USDC = ERC20(0x0493Bf8b6DBB159Ce2Db2E0E8403E753Abd1235b);
+    IERC20 public WETH = IERC20(0x4200000000000000000000000000000000000006);
+    IERC20 public USDC = IERC20(0x7F5c764cBc14f9669B88837ca1490cCa17c31607);
+    IERC20 public VELO = IERC20(0x9560e827aF36c94D2Ac33a39bCE1Fe78631088Db);
+    IERC20 public WETH_USDC = IERC20(0x0493Bf8b6DBB159Ce2Db2E0E8403E753Abd1235b);
 
     IVeloPairFactory public veloPairFactory =
         IVeloPairFactory(0xF1046053aa5682b4F9a81b5481394DA16BE5FF5a);

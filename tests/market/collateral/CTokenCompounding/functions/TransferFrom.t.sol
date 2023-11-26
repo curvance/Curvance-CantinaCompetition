@@ -1,27 +1,27 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-// import { TestBaseCTokenCompoundingBase } from "../TestBaseCTokenCompoundingBase.sol";
+// import { TestBaseCTokenCompounding } from "../TestBaseCTokenCompounding.sol";
 // import { GaugeErrors } from "contracts/gauge/GaugeErrors.sol";
-// import { CTokenCompoundingBase } from "contracts/market/collateral/CTokenCompoundingBase.sol";
+// import { CTokenCompounding } from "contracts/market/collateral/CTokenCompounding.sol";
 // import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
 
-// contract CTokenCompoundingBase_TransferFromTest is TestBaseCTokenCompoundingBase {
+// contract CTokenCompounding_TransferFromTest is TestBaseCTokenCompounding {
 //     event Transfer(address indexed from, address indexed to, uint256 amount);
 
-//     function test_CTokenCompoundingBase_TransferFrom_fail_whenSenderAndReceiverAreSame()
+//     function test_CTokenCompounding_TransferFrom_fail_whenSenderAndReceiverAreSame()
 //         public
 //     {
-//         vm.expectRevert(CTokenCompoundingBase.CTokenCompoundingBase__TransferError.selector);
+//         vm.expectRevert(CTokenCompounding.CTokenCompounding__TransferError.selector);
 //         cBALRETH.transferFrom(address(this), address(this), 1e18);
 //     }
 
-//     function test_CTokenCompoundingBase_TransferFrom_fail_whenTransferZeroAmount() public {
+//     function test_CTokenCompounding_TransferFrom_fail_whenTransferZeroAmount() public {
 //         vm.expectRevert(GaugeErrors.InvalidAmount.selector);
 //         cBALRETH.transferFrom(address(this), user1, 0);
 //     }
 
-//     function test_CTokenCompoundingBase_TransferFrom_fail_whenAllowanceIsInvalid() public {
+//     function test_CTokenCompounding_TransferFrom_fail_whenAllowanceIsInvalid() public {
 //         vm.expectRevert();
 //         cBALRETH.transferFrom(user1, address(this), 100);
 //     }
@@ -33,7 +33,7 @@ pragma solidity ^0.8.17;
 //         cBALRETH.transferFrom(address(this), user1, 100);
 //     }
 
-//     function test_CTokenCompoundingBase_TransferFrom_success() public {
+//     function test_CTokenCompounding_TransferFrom_success() public {
 //         cBALRETH.mint(100);
 
 //         uint256 balance = cBALRETH.balanceOf(address(this));

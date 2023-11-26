@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-import { CTokenCompoundingBase, SafeTransferLib, ERC20, Math, ICentralRegistry } from "contracts/market/collateral/CTokenCompoundingBase.sol";
+import { CTokenCompounding, SafeTransferLib, IERC20, Math, ICentralRegistry } from "contracts/market/collateral/CTokenCompounding.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { WAD } from "contracts/libraries/Constants.sol";
 
@@ -12,7 +12,7 @@ import { IPYieldToken } from "contracts/interfaces/external/pendle/IPYieldToken.
 import { IStandardizedYield } from "contracts/interfaces/external/pendle/IStandardizedYield.sol";
 
 
-contract PendleLPCToken is CTokenCompoundingBase {
+contract PendleLPCToken is CTokenCompounding {
     using Math for uint256;
 
     /// TYPES ///
@@ -51,10 +51,10 @@ contract PendleLPCToken is CTokenCompoundingBase {
 
     constructor(
         ICentralRegistry centralRegistry_,
-        ERC20 asset_,
+        IERC20 asset_,
         address lendtroller_,
         IPendleRouter router_
-    ) CTokenCompoundingBase(centralRegistry_, asset_, lendtroller_){
+    ) CTokenCompounding(centralRegistry_, asset_, lendtroller_){
         strategyData.router = router_;
         strategyData.lp = IPMarket(address(asset_));
         (strategyData.sy, strategyData.pt, strategyData.yt) = strategyData
@@ -153,7 +153,7 @@ contract PendleLPCToken is CTokenCompoundingBase {
 
                 for (uint256 i; i < numRewardTokens; ++i) {
                     rewardToken = sd.rewardTokens[i];
-                    rewardAmount = ERC20(rewardToken).balanceOf(address(this));
+                    rewardAmount = IERC20(rewardToken).balanceOf(address(this));
 
                     if (rewardAmount == 0) {
                         continue;
@@ -203,7 +203,7 @@ contract PendleLPCToken is CTokenCompoundingBase {
                             );
                         }
                     } else {
-                        balance = ERC20(underlyingToken).balanceOf(
+                        balance = IERC20(underlyingToken).balanceOf(
                             address(this)
                         );
                         if (balance > 0) {
@@ -263,7 +263,7 @@ contract PendleLPCToken is CTokenCompoundingBase {
         override
         returns (uint256)
     {
-        return ERC20(asset()).balanceOf(address(this));
+        return IERC20(asset()).balanceOf(address(this));
     }
 
 }

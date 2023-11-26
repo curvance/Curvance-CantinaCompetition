@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { CTokenCompoundingBase, SafeTransferLib, ERC20, Math, ICentralRegistry } from "contracts/market/collateral/CTokenCompoundingBase.sol";
+import { CTokenCompounding, SafeTransferLib, IERC20, Math, ICentralRegistry } from "contracts/market/collateral/CTokenCompounding.sol";
 import { WAD } from "contracts/libraries/Constants.sol";
 
 import { IReader } from "contracts/interfaces/external/gmx/IReader.sol";
@@ -9,7 +9,7 @@ import { IGMXDeposit } from "contracts/interfaces/external/gmx/IGMXDeposit.sol";
 import { IGMXEventUtils } from "contracts/interfaces/external/gmx/IGMXEventUtils.sol";
 import { IGMXExchangeRouter } from "contracts/interfaces/external/gmx/IGMXExchangeRouter.sol";
 
-contract GMCToken is CTokenCompoundingBase {
+contract GMCToken is CTokenCompounding {
     using Math for uint256;
 
     /// CONSTANTS ///
@@ -61,9 +61,9 @@ contract GMCToken is CTokenCompoundingBase {
 
     constructor(
         ICentralRegistry centralRegistry_,
-        ERC20 asset_,
+        IERC20 asset_,
         address lendtroller_
-    ) CTokenCompoundingBase(centralRegistry_, asset_, lendtroller_) {
+    ) CTokenCompounding(centralRegistry_, asset_, lendtroller_) {
         if (block.chainid != 42161) {
             revert GMXGMCToken__ChainIsNotSupported();
         }
@@ -217,7 +217,7 @@ contract GMCToken is CTokenCompoundingBase {
         override
         returns (uint256)
     {
-        return ERC20(asset()).balanceOf(address(this));
+        return IERC20(asset()).balanceOf(address(this));
     }
 
     /// @notice Claim rewards from GM pool.

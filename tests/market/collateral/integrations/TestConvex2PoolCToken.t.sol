@@ -3,7 +3,7 @@ pragma solidity ^0.8.17;
 
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { Convex2PoolCToken, ERC20 } from "contracts/market/collateral/Convex2PoolCToken.sol";
+import { Convex2PoolCToken, IERC20 } from "contracts/market/collateral/Convex2PoolCToken.sol";
 
 import "tests/market/TestBaseMarket.sol";
 
@@ -11,12 +11,12 @@ contract TestConvex2PoolCToken is TestBaseMarket {
     address internal constant _UNISWAP_V2_ROUTER =
         0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
 
-    ERC20 public constant CVX =
-        ERC20(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
-    ERC20 public constant CRV =
-        ERC20(0xD533a949740bb3306d119CC777fa900bA034cd52);
-    ERC20 public CONVEX_STETH_ETH_POOL =
-        ERC20(0x21E27a5E5513D6e65C4f830167390997aA84843a);
+    IERC20 public constant CVX =
+        IERC20(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
+    IERC20 public constant CRV =
+        IERC20(0xD533a949740bb3306d119CC777fa900bA034cd52);
+    IERC20 public CONVEX_STETH_ETH_POOL =
+        IERC20(0x21E27a5E5513D6e65C4f830167390997aA84843a);
     uint256 public CONVEX_STETH_ETH_POOL_ID = 177;
     address public CONVEX_STETH_ETH_REWARD =
         0x6B27D7BC63F1999D14fF9bA900069ee516669ee8;

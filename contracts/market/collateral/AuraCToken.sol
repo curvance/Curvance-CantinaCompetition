@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-import { CTokenCompoundingBase, SafeTransferLib, ERC20, Math, ICentralRegistry } from "contracts/market/collateral/CTokenCompoundingBase.sol";
+import { CTokenCompounding, SafeTransferLib, IERC20, Math, ICentralRegistry } from "contracts/market/collateral/CTokenCompounding.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { WAD } from "contracts/libraries/Constants.sol";
 
@@ -12,7 +12,7 @@ import { IBalancerVault } from "contracts/interfaces/external/balancer/IBalancer
 import { IBalancerPool } from "contracts/interfaces/external/balancer/IBalancerPool.sol";
 import { IStashWrapper } from "contracts/interfaces/external/aura/IStashWrapper.sol";
 
-contract AuraCToken is CTokenCompoundingBase {
+contract AuraCToken is CTokenCompounding {
     using Math for uint256;
 
     /// TYPES ///
@@ -53,12 +53,12 @@ contract AuraCToken is CTokenCompoundingBase {
 
     constructor(
         ICentralRegistry centralRegistry_,
-        ERC20 asset_,
+        IERC20 asset_,
         address lendtroller_,
         uint256 pid_,
         address rewarder_,
         address booster_
-    ) CTokenCompoundingBase(centralRegistry_, asset_, lendtroller_) {
+    ) CTokenCompounding(centralRegistry_, asset_, lendtroller_) {
         strategyData.pid = pid_;
         strategyData.booster = IBooster(booster_);
 
@@ -214,7 +214,7 @@ contract AuraCToken is CTokenCompoundingBase {
 
                 for (uint256 i; i < numRewardTokens; ++i) {
                     rewardToken = sd.rewardTokens[i];
-                    rewardAmount = ERC20(rewardToken).balanceOf(address(this));
+                    rewardAmount = IERC20(rewardToken).balanceOf(address(this));
 
                     if (rewardAmount == 0) {
                         continue;
@@ -258,7 +258,7 @@ contract AuraCToken is CTokenCompoundingBase {
                 for (uint256 i; i < numUnderlyingTokens; ++i) {
                     underlyingToken = sd.underlyingTokens[i];
                     assets[i] = underlyingToken;
-                    maxAmountsIn[i] = ERC20(underlyingToken).balanceOf(
+                    maxAmountsIn[i] = IERC20(underlyingToken).balanceOf(
                         address(this)
                     );
 
@@ -290,7 +290,7 @@ contract AuraCToken is CTokenCompoundingBase {
             }
 
             // deposit assets into aura
-            yield = ERC20(asset()).balanceOf(address(this));
+            yield = IERC20(asset()).balanceOf(address(this));
             _afterDeposit(yield, 0);
 
             // update vesting info

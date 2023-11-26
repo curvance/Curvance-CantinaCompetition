@@ -2,49 +2,49 @@
 pragma solidity ^0.8.17;
 
 // import "forge-std/StdStorage.sol";
-// import { TestBaseCTokenCompoundingBase } from "../TestBaseCTokenCompoundingBase.sol";
-// import { CTokenCompoundingBase } from "contracts/market/collateral/CTokenCompoundingBase.sol";
+// import { TestBaseCTokenCompounding } from "../TestBaseCTokenCompounding.sol";
+// import { CTokenCompounding } from "contracts/market/collateral/CTokenCompounding.sol";
 // import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 // import { IERC20 } from "contracts/interfaces/IERC20.sol";
 
-// contract CTokenCompoundingBase_DeploymentTest is
-//     TestBaseCTokenCompoundingBase
+// contract CTokenCompounding_DeploymentTest is
+//     TestBaseCTokenCompounding
 // {
 //     using stdStorage for StdStorage;
 
 //     event NewLendtroller(address oldLendtroller, address newLendtroller);
 
-//     function test_CTokenCompoundingBaseDeployment_fail_whenCentralRegistryIsInvalid()
+//     function test_CTokenCompoundingDeployment_fail_whenCentralRegistryIsInvalid()
 //         public
 //     {
 //         vm.expectRevert(
-//             CTokenCompoundingBase
-//                 .CTokenCompoundingBase__InvalidCentralRegistry
+//             CTokenCompounding
+//                 .CTokenCompounding__InvalidCentralRegistry
 //                 .selector
 //         );
-//         new CTokenCompoundingBase(
+//         new CTokenCompounding(
 //             ICentralRegistry(address(0)),
 //             _BALANCER_WETH_RETH,
 //             address(lendtroller)
 //         );
 //     }
 
-//     function test_CTokenCompoundingBaseDeployment_fail_whenLendtrollerIsNotSet()
+//     function test_CTokenCompoundingDeployment_fail_whenLendtrollerIsNotSet()
 //         public
 //     {
 //         vm.expectRevert(
-//             CTokenCompoundingBase
-//                 .CTokenCompoundingBase__LendtrollerIsNotLendingMarket
+//             CTokenCompounding
+//                 .CTokenCompounding__LendtrollerIsNotLendingMarket
 //                 .selector
 //         );
-//         new CTokenCompoundingBase(
+//         new CTokenCompounding(
 //             ICentralRegistry(address(centralRegistry)),
 //             _BALANCER_WETH_RETH,
 //             address(1)
 //         );
 //     }
 
-//     function test_CTokenCompoundingBaseDeployment_fail_whenUnderlyingTotalSupplyExceedsMaximum()
+//     function test_CTokenCompoundingDeployment_fail_whenUnderlyingTotalSupplyExceedsMaximum()
 //         public
 //     {
 //         stdstore
@@ -53,22 +53,22 @@ pragma solidity ^0.8.17;
 //             .checked_write(type(uint232).max);
 
 //         vm.expectRevert(
-//             CTokenCompoundingBase
-//                 .CTokenCompoundingBase__UnderlyingAssetTotalSupplyExceedsMaximum
+//             CTokenCompounding
+//                 .CTokenCompounding__UnderlyingAssetTotalSupplyExceedsMaximum
 //                 .selector
 //         );
-//         new CTokenCompoundingBase(
+//         new CTokenCompounding(
 //             ICentralRegistry(address(centralRegistry)),
 //             _BALANCER_WETH_RETH,
 //             address(lendtroller)
 //         );
 //     }
 
-//     function test_CTokenCompoundingBaseDeployment_success() public {
+//     function test_CTokenCompoundingDeployment_success() public {
 //         vm.expectEmit(true, true, true, true);
 //         emit NewLendtroller(address(0), address(lendtroller));
 
-//         cBALRETH = new CTokenCompoundingBase(
+//         cBALRETH = new CTokenCompounding(
 //             ICentralRegistry(address(centralRegistry)),
 //             _BALANCER_WETH_RETH,
 //             address(lendtroller)

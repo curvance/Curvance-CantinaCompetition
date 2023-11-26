@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { CTokenCompoundingBase, SafeTransferLib, ERC20, Math, ICentralRegistry } from "contracts/market/collateral/CTokenCompoundingBase.sol";
+import { CTokenCompounding, SafeTransferLib, IERC20, Math, ICentralRegistry } from "contracts/market/collateral/CTokenCompounding.sol";
 import { CommonLib } from "contracts/market/zapper/protocols/CommonLib.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { WAD } from "contracts/libraries/Constants.sol";
@@ -11,7 +11,7 @@ import { IBaseRewardPool } from "contracts/interfaces/external/convex/IBaseRewar
 import { IRewards } from "contracts/interfaces/external/convex/IRewards.sol";
 import { ICurveFi } from "contracts/interfaces/external/curve/ICurveFi.sol";
 
-contract Convex3PoolCToken is CTokenCompoundingBase {
+contract Convex3PoolCToken is CTokenCompounding {
     using Math for uint256;
 
     /// TYPES ///
@@ -56,12 +56,12 @@ contract Convex3PoolCToken is CTokenCompoundingBase {
 
     constructor(
         ICentralRegistry centralRegistry_,
-        ERC20 asset_,
+        IERC20 asset_,
         address lendtroller_,
         uint256 pid_,
         address rewarder_,
         address booster_
-    ) CTokenCompoundingBase(centralRegistry_, asset_, lendtroller_) {
+    ) CTokenCompounding(centralRegistry_, asset_, lendtroller_) {
         // we only support Curves new ng pools with read only reentry protection
         if (pid_ <= 176) {
             revert Convex3PoolCToken__UnsafePool();
@@ -197,7 +197,7 @@ contract Convex3PoolCToken is CTokenCompoundingBase {
 
                 for (uint256 i; i < numRewardTokens; ++i) {
                     rewardToken = sd.rewardTokens[i];
-                    rewardAmount = ERC20(rewardToken).balanceOf(address(this));
+                    rewardAmount = IERC20(rewardToken).balanceOf(address(this));
 
                     if (rewardAmount == 0) {
                         continue;
@@ -230,7 +230,7 @@ contract Convex3PoolCToken is CTokenCompoundingBase {
             _addLiquidityToCurve(minLPAmount);
 
             // deposit assets into convex
-            yield = ERC20(asset()).balanceOf(address(this));
+            yield = IERC20(asset()).balanceOf(address(this));
             if (yield == 0) {
                 revert Convex3PoolCToken__NoYield();
             }

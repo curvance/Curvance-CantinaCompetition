@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-// import { TestBaseCTokenCompoundingBase } from "../TestBaseCTokenCompoundingBase.sol";
-// import { CTokenCompoundingBase } from "contracts/market/collateral/CTokenCompoundingBase.sol";
+// import { TestBaseCTokenCompounding } from "../TestBaseCTokenCompounding.sol";
+// import { CTokenCompounding } from "contracts/market/collateral/CTokenCompounding.sol";
 // import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
 // import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
-// contract CTokenCompoundingBase_SetLendtrollerTest is TestBaseCTokenCompoundingBase {
+// contract CTokenCompounding_SetLendtrollerTest is TestBaseCTokenCompounding {
 //     Lendtroller public newLendtroller;
 
 //     function setUp() public override {
@@ -18,21 +18,21 @@ pragma solidity ^0.8.17;
 //         );
 //     }
 
-//     function test_CTokenCompoundingBase_SetLendtroller_fail_whenCallerIsNotAuthorized()
+//     function test_CTokenCompounding_SetLendtroller_fail_whenCallerIsNotAuthorized()
 //         public
 //     {
 //         vm.prank(address(1));
 
-//         vm.expectRevert(CTokenCompoundingBase.CTokenCompoundingBase__Unauthorized.selector);
+//         vm.expectRevert(CTokenCompounding.CTokenCompounding__Unauthorized.selector);
 //         cBALRETH.setLendtroller(address(newLendtroller));
 //     }
 
-//     function test_CTokenCompoundingBase_SetLendtroller_fail_whenLendtrollerIsInvalid() public {
-//         vm.expectRevert(CTokenCompoundingBase.CTokenCompoundingBase__LendtrollerIsNotLendingMarket.selector);
+//     function test_CTokenCompounding_SetLendtroller_fail_whenLendtrollerIsInvalid() public {
+//         vm.expectRevert(CTokenCompounding.CTokenCompounding__LendtrollerIsNotLendingMarket.selector);
 //         cBALRETH.setLendtroller(address(1));
 //     }
 
-//     function test_CTokenCompoundingBase_SetLendtroller_success() public {
+//     function test_CTokenCompounding_SetLendtroller_success() public {
 //         centralRegistry.addLendingMarket(address(newLendtroller), 0);
 
 //         assertEq(address(cBALRETH.lendtroller()), address(lendtroller));

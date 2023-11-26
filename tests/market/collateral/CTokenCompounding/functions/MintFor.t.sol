@@ -1,23 +1,23 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-// import { TestBaseCTokenCompoundingBase } from "../TestBaseCTokenCompoundingBase.sol";
+// import { TestBaseCTokenCompounding } from "../TestBaseCTokenCompounding.sol";
 // import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
-// import { CTokenCompoundingBase } from "contracts/market/collateral/CTokenCompoundingBase.sol";
+// import { CTokenCompounding } from "contracts/market/collateral/CTokenCompounding.sol";
 
-// contract CTokenCompoundingBase_MintForTest is TestBaseCTokenCompoundingBase {
+// contract CTokenCompounding_MintForTest is TestBaseCTokenCompounding {
 //     event Transfer(address indexed from, address indexed to, uint256 amount);
 
-//     function test_CTokenCompoundingBase_MintFor_fail_whenTransferZeroAmount()
+//     function test_CTokenCompounding_MintFor_fail_whenTransferZeroAmount()
 //         public
 //     {
 //         vm.expectRevert(
-//             CTokenCompoundingBase.CTokenCompoundingBase__ZeroShares.selector
+//             CTokenCompounding.CTokenCompounding__ZeroShares.selector
 //         );
 //         cBALRETH.mintFor(0, user1);
 //     }
 
-//     function test_CTokenCompoundingBase_MintFor_fail_whenMintIsNotAllowed()
+//     function test_CTokenCompounding_MintFor_fail_whenMintIsNotAllowed()
 //         public
 //     {
 //         lendtroller.setMintPaused(address(cBALRETH), true);
@@ -26,7 +26,7 @@ pragma solidity ^0.8.17;
 //         cBALRETH.mintFor(100, user1);
 //     }
 
-//     function test_CTokenCompoundingBase_MintFor_success() public {
+//     function test_CTokenCompounding_MintFor_success() public {
 //         uint256 underlyingBalance = balRETH.balanceOf(address(this));
 //         uint256 balance = cBALRETH.balanceOf(address(this));
 //         uint256 user1Balance = cBALRETH.balanceOf(user1);

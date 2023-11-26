@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-// import { TestBaseCTokenCompoundingBase } from "../TestBaseCTokenCompoundingBase.sol";
-// import { CTokenCompoundingBase } from "contracts/market/collateral/CTokenCompoundingBase.sol";
+// import { TestBaseCTokenCompounding } from "../TestBaseCTokenCompounding.sol";
+// import { CTokenCompounding } from "contracts/market/collateral/CTokenCompounding.sol";
 // import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 
-// contract CTokenCompoundingBase_RescueTokenTest is TestBaseCTokenCompoundingBase {
+// contract CTokenCompounding_RescueTokenTest is TestBaseCTokenCompounding {
 //     function setUp() public override {
 //         super.setUp();
 
@@ -13,26 +13,26 @@ pragma solidity ^0.8.17;
 //         deal(_USDC_ADDRESS, address(cBALRETH), 1e6);
 //     }
 
-//     function test_CTokenCompoundingBase_RescueToken_fail_whenCallerIsNotAuthorized() public {
+//     function test_CTokenCompounding_RescueToken_fail_whenCallerIsNotAuthorized() public {
 //         vm.prank(address(1));
 
-//         vm.expectRevert(CTokenCompoundingBase.CTokenCompoundingBase__Unauthorized.selector);
+//         vm.expectRevert(CTokenCompounding.CTokenCompounding__Unauthorized.selector);
 //         cBALRETH.rescueToken(_USDC_ADDRESS, 100);
 //     }
 
-//     function test_CTokenCompoundingBase_RescueToken_fail_whenETHAmountExceedsBalance() public {
+//     function test_CTokenCompounding_RescueToken_fail_whenETHAmountExceedsBalance() public {
 //         uint256 balance = address(cBALRETH).balance;
 
 //         vm.expectRevert(SafeTransferLib.ETHTransferFailed.selector);
 //         cBALRETH.rescueToken(address(0), balance + 1);
 //     }
 
-//     function test_CTokenCompoundingBase_RescueToken_fail_whenTokenIsUnderlyingToken() public {
-//         vm.expectRevert(CTokenCompoundingBase.CTokenCompoundingBase__TransferError.selector);
+//     function test_CTokenCompounding_RescueToken_fail_whenTokenIsUnderlyingToken() public {
+//         vm.expectRevert(CTokenCompounding.CTokenCompounding__TransferError.selector);
 //         cBALRETH.rescueToken(cBALRETH.asset(), 100);
 //     }
 
-//     function test_CTokenCompoundingBase_RescueToken_fail_whenTokenAmountExceedsBalance()
+//     function test_CTokenCompounding_RescueToken_fail_whenTokenAmountExceedsBalance()
 //         public
 //     {
 //         uint256 balance = usdc.balanceOf(address(cBALRETH));
@@ -41,7 +41,7 @@ pragma solidity ^0.8.17;
 //         cBALRETH.rescueToken(_USDC_ADDRESS, balance + 1);
 //     }
 
-//     function test_CTokenCompoundingBase_RescueToken_success() public {
+//     function test_CTokenCompounding_RescueToken_success() public {
 //         address daoOperator = centralRegistry.daoAddress();
 
 //         uint256 ethBalance = address(cBALRETH).balance;
