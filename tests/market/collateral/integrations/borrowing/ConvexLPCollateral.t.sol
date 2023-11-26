@@ -17,8 +17,8 @@ contract ConvexLPCollateral is TestBaseMarket {
     address internal constant ETH_ADDRESS =
         0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
 
-    ERC20 public CONVEX_STETH_ETH_POOL =
-        ERC20(0x21E27a5E5513D6e65C4f830167390997aA84843a);
+    IERC20 public CONVEX_STETH_ETH_POOL =
+        IERC20(0x21E27a5E5513D6e65C4f830167390997aA84843a);
     uint256 public CONVEX_STETH_ETH_POOL_ID = 177;
     address public CONVEX_STETH_ETH_REWARD =
         0x6B27D7BC63F1999D14fF9bA900069ee516669ee8;
@@ -122,7 +122,7 @@ contract ConvexLPCollateral is TestBaseMarket {
         deal(_USDC_ADDRESS, address(dUSDC), 100_000e6);
         deal(address(CONVEX_STETH_ETH_POOL), user1, 10_000e18);
         vm.startPrank(user1);
-        IERC20(address(CONVEX_STETH_ETH_POOL)).approve(
+        CONVEX_STETH_ETH_POOL.approve(
             address(cSTETH),
             1_000e18
         );
@@ -203,7 +203,7 @@ contract ConvexLPCollateral is TestBaseMarket {
 
     function testConvexLPCollateralRedemption() public {
         testConvexLPCollateralRepayDebt();
-        ERC20 cvxPool = ERC20(CONVEX_STETH_ETH_POOL);
+        IERC20 cvxPool = CONVEX_STETH_ETH_POOL;
         assertEq(cvxPool.balanceOf(user1), 9_000e18);
 
         vm.startPrank(user1);

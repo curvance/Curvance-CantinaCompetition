@@ -6,9 +6,8 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IPendlePTOracle } from "contracts/interfaces/external/pendle/IPendlePtOracle.sol";
 import { IPMarket } from "contracts/interfaces/external/pendle/IPMarket.sol";
 import { MockDataFeed } from "contracts/mocks/MockDataFeed.sol";
-import { ERC20 } from "contracts/libraries/ERC20.sol";
 
-import { CTokenPrimitive } from "contracts/market/collateral/CTokenPrimitive.sol";
+import { CTokenPrimitive, IERC20 } from "contracts/market/collateral/CTokenPrimitive.sol";
 import { PendlePrincipalTokenAdaptor } from "contracts/oracles/adaptors/pendle/PendlePrincipalTokenAdaptor.sol";
 
 import "tests/market/TestBaseMarket.sol";
@@ -36,7 +35,7 @@ contract TestCTokenForPendlePT is TestBaseMarket {
     MockDataFeed public mockStethFeed;
 
     CTokenPrimitive cPendlePT;
-    ERC20 pendlePT = ERC20(_PT_STETH);
+    IERC20 pendlePT = IERC20(_PT_STETH);
 
     function setUp() public override {
         super.setUp();
@@ -110,7 +109,7 @@ contract TestCTokenForPendlePT is TestBaseMarket {
             // deploy aura position vault
             cPendlePT = new CTokenPrimitive(
                 ICentralRegistry(address(centralRegistry)),
-                ERC20(_PT_STETH),
+                pendlePT,
                 address(lendtroller)
             );
 

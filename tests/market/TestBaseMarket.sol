@@ -407,7 +407,7 @@ contract TestBaseMarket is TestBase {
     function _deployCBALRETH() internal returns (AuraCToken) {
         cBALRETH = new AuraCToken(
             ICentralRegistry(address(centralRegistry)),
-            ERC20(_BALANCER_WETH_RETH),
+            IERC20(_BALANCER_WETH_RETH),
             address(lendtroller),
             109,
             _REWARDER,
