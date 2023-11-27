@@ -173,9 +173,8 @@ contract Convex4PoolCToken is CTokenCompounding {
 
         // can only harvest once previous reward period is done
         if (_checkVestStatus(_vaultData)) {
-
             _updateVestingPeriodIfNeeded();
-            
+
             // cache strategy data
             StrategyData memory sd = strategyData;
 
@@ -197,7 +196,9 @@ contract Convex4PoolCToken is CTokenCompounding {
 
                 for (uint256 i; i < numRewardTokens; ++i) {
                     rewardToken = sd.rewardTokens[i];
-                    rewardAmount = IERC20(rewardToken).balanceOf(address(this));
+                    rewardAmount = IERC20(rewardToken).balanceOf(
+                        address(this)
+                    );
 
                     if (rewardAmount == 0) {
                         continue;
@@ -293,7 +294,7 @@ contract Convex4PoolCToken is CTokenCompounding {
                 value = amounts[i];
             }
 
-            SwapperLib.approveTokenIfNeeded(
+            SwapperLib._approveTokenIfNeeded(
                 underlyingToken,
                 address(strategyData.curvePool),
                 amounts[i]
@@ -311,5 +312,4 @@ contract Convex4PoolCToken is CTokenCompounding {
             );
         }
     }
-
 }

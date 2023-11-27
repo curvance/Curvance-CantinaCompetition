@@ -75,7 +75,7 @@ abstract contract CTokenCompounding is CTokenBase {
         ICentralRegistry centralRegistry_,
         IERC20 asset_,
         address lendtroller_
-    ) CTokenBase(centralRegistry_,  asset_, lendtroller_) {}
+    ) CTokenBase(centralRegistry_, asset_, lendtroller_) {}
 
     /// EXTERNAL FUNCTIONS ///
 
@@ -168,8 +168,11 @@ abstract contract CTokenCompounding is CTokenBase {
 
     // PERMISSIONED FUNCTIONS
 
-    function startMarket(address by) external nonReentrant override returns (bool) {
+    function startMarket(
+        address by
+    ) external override nonReentrant returns (bool) {
         _startMarket(by);
+        _afterDeposit(42069, 42069);
         _setlastVestClaim(uint64(block.timestamp));
         return true;
     }
@@ -212,7 +215,7 @@ abstract contract CTokenCompounding is CTokenBase {
     ///         including pending rewards that are vested.
     /// @dev    Has added re-entry lock for protocols building ontop of us
     ///         to have confidence in data quality
-    function totalAssetsSafe() public nonReentrant override returns (uint256) {
+    function totalAssetsSafe() public override nonReentrant returns (uint256) {
         return _totalAssets + _calculatePendingRewards();
     }
 

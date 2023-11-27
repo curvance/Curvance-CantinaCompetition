@@ -122,10 +122,7 @@ contract ConvexLPCollateral is TestBaseMarket {
         deal(_USDC_ADDRESS, address(dUSDC), 100_000e6);
         deal(address(CONVEX_STETH_ETH_POOL), user1, 10_000e18);
         vm.startPrank(user1);
-        CONVEX_STETH_ETH_POOL.approve(
-            address(cSTETH),
-            1_000e18
-        );
+        CONVEX_STETH_ETH_POOL.approve(address(cSTETH), 1_000e18);
 
         IBaseRewardPool rewarder = IBaseRewardPool(CONVEX_STETH_ETH_REWARD);
 
