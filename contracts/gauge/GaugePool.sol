@@ -427,7 +427,7 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
     /// @notice Update reward variables of the given pool to be up-to-date
     /// @param token Pool token address
     function updatePool(address token) public override {
-        if (block.timestamp <= startTime) {
+        if (block.timestamp < startTime) {
             revert GaugeErrors.NotStarted();
         }
 
@@ -436,7 +436,10 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
             lastRewardTimestamp = startTime;
         }
 
-        if (block.timestamp <= lastRewardTimestamp) {
+        if (
+            block.timestamp <= lastRewardTimestamp ||
+            block.timestamp == startTime
+        ) {
             return;
         }
 
