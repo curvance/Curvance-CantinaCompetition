@@ -11,7 +11,6 @@ import { IPPrincipalToken } from "contracts/interfaces/external/pendle/IPPrincip
 import { IPYieldToken } from "contracts/interfaces/external/pendle/IPYieldToken.sol";
 import { IStandardizedYield } from "contracts/interfaces/external/pendle/IStandardizedYield.sol";
 
-
 contract PendleLPCToken is CTokenCompounding {
     using Math for uint256;
 
@@ -54,7 +53,7 @@ contract PendleLPCToken is CTokenCompounding {
         IERC20 asset_,
         address lendtroller_,
         IPendleRouter router_
-    ) CTokenCompounding(centralRegistry_, asset_, lendtroller_){
+    ) CTokenCompounding(centralRegistry_, asset_, lendtroller_) {
         strategyData.router = router_;
         strategyData.lp = IPMarket(address(asset_));
         (strategyData.sy, strategyData.pt, strategyData.yt) = strategyData
@@ -126,7 +125,6 @@ contract PendleLPCToken is CTokenCompounding {
 
         // can only harvest once previous reward period is done
         if (_checkVestStatus(_vaultData)) {
-
             _updateVestingPeriodIfNeeded();
 
             // cache strategy data
@@ -153,7 +151,9 @@ contract PendleLPCToken is CTokenCompounding {
 
                 for (uint256 i; i < numRewardTokens; ++i) {
                     rewardToken = sd.rewardTokens[i];
-                    rewardAmount = IERC20(rewardToken).balanceOf(address(this));
+                    rewardAmount = IERC20(rewardToken).balanceOf(
+                        address(this)
+                    );
 
                     if (rewardAmount == 0) {
                         continue;
@@ -207,7 +207,7 @@ contract PendleLPCToken is CTokenCompounding {
                             address(this)
                         );
                         if (balance > 0) {
-                            SwapperLib.approveTokenIfNeeded(
+                            SwapperLib._approveTokenIfNeeded(
                                 underlyingToken,
                                 address(sd.sy),
                                 balance
@@ -226,7 +226,7 @@ contract PendleLPCToken is CTokenCompounding {
             // add liquidity with SY
             {
                 uint256 balance = sd.sy.balanceOf(address(this));
-                SwapperLib.approveTokenIfNeeded(
+                SwapperLib._approveTokenIfNeeded(
                     address(sd.sy),
                     address(sd.router),
                     balance
@@ -265,5 +265,4 @@ contract PendleLPCToken is CTokenCompounding {
     {
         return IERC20(asset()).balanceOf(address(this));
     }
-
 }

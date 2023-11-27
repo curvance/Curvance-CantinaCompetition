@@ -214,7 +214,9 @@ contract AuraCToken is CTokenCompounding {
 
                 for (uint256 i; i < numRewardTokens; ++i) {
                     rewardToken = sd.rewardTokens[i];
-                    rewardAmount = IERC20(rewardToken).balanceOf(address(this));
+                    rewardAmount = IERC20(rewardToken).balanceOf(
+                        address(this)
+                    );
 
                     if (rewardAmount == 0) {
                         continue;
@@ -262,7 +264,7 @@ contract AuraCToken is CTokenCompounding {
                         address(this)
                     );
 
-                    SwapperLib.approveTokenIfNeeded(
+                    SwapperLib._approveTokenIfNeeded(
                         underlyingToken,
                         address(sd.balancerVault),
                         maxAmountsIn[i]

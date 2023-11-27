@@ -82,9 +82,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     /// EXTERNAL FUNCTIONS ///
 
     /// @notice Set Stargate router destination address to route fees
-    function setStargateAddress(
-        address newStargateRouter
-    ) external {
+    function setStargateAddress(address newStargateRouter) external {
         if (!centralRegistry.hasDaoPermissions(msg.sender)) {
             revert ProtocolMessagingHub__Unauthorized();
         }
@@ -185,7 +183,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         bytes calldata payload
     ) external {
         _checkPermissions();
-        
+
         {
             // Avoid stack too deep
             uint256 gethChainId = centralRegistry.messagingToGETHChainId(
@@ -249,7 +247,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
             poolData.amountLD
         );
 
-        SwapperLib.approveTokenIfNeeded(
+        SwapperLib._approveTokenIfNeeded(
             feeToken,
             stargateRouter,
             poolData.amountLD
@@ -439,7 +437,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         uint256 etherValue
     ) public payable {
         _checkPermissions();
-        
+
         // Validate that we are aiming for a supported chain
         if (
             centralRegistry
