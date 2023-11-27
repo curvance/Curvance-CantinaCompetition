@@ -87,15 +87,13 @@ abstract contract GaugeController is IGaugePool {
         }
 
         Epoch storage info = _epochInfo[epoch];
+        address priorAddress;
         for (uint256 i; i < numTokens; ) {
-            for (uint256 j; j < numTokens; ) {
-                if (i != j && tokens[i] == tokens[j]) {
-                    revert GaugeErrors.InvalidToken();
-                }
 
-                unchecked {
-                    ++j;
-                }
+            /// We sort the token addresses offchain
+            /// from smallest to largest to validate there are no duplicates
+            if (priorAddress > tokens[i]) {
+                revert GaugeErrors.InvalidToken();
             }
 
             info.totalWeights =
@@ -103,10 +101,11 @@ abstract contract GaugeController is IGaugePool {
                 poolWeights[i] -
                 info.poolWeights[tokens[i]];
             info.poolWeights[tokens[i]] = poolWeights[i];
-
             unchecked {
-                ++i;
+                /// update prior to current token then increment i
+                priorAddress = tokens[i++];
             }
+
         }
     }
 
@@ -116,6 +115,7 @@ abstract contract GaugeController is IGaugePool {
         uint256 numTokens = tokens.length;
         for (uint256 i; i < numTokens; ) {
             unchecked {
+                /// update pool for current token then increment i
                 updatePool(tokens[i++]);
             }
         }
