@@ -340,9 +340,14 @@ contract CentralRegistry is ERC165 {
     ) external {
         _checkElevatedPermissions();
 
-        if ((value > 9000 || value < 3000) && value != 0) {
+        if (value > 9000) {
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
+
+        if (value < 3000 && value != 0) {
+            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
+        }
+        
         earlyUnlockPenaltyMultiplier = value;
     }
 
