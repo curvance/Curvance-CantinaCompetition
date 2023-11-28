@@ -36,12 +36,14 @@ contract DeployK2Lending is
         configurationPath = string.concat(root, "/config/ethereum.json");
     }
 
+    function setDeploymentPath() internal {
+        string memory root = vm.projectRoot();
+        deploymentPath = string.concat(root, "/deployments/ethereum.json");
+    }
+
     function run() external {
         setConfigurationPath();
-        saveDeployedContracts(
-            "rubic",
-            0x0000000000000000000000000000000000000001
-        );
+        setDeploymentPath();
 
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         address deployer = vm.addr(deployerPrivateKey);
@@ -50,9 +52,9 @@ contract DeployK2Lending is
         vm.startBroadcast(deployerPrivateKey);
 
         deployCentralRegistry(
-            readConfigAddress(".centralRegistry.daoAddress"),
-            readConfigAddress(".centralRegistry.timelock"),
-            readConfigAddress(".centralRegistry.emergencyCouncil"),
+            deployer,
+            deployer,
+            deployer,
             readConfigUint256(".centralRegistry.genesisEpoch"),
             readConfigAddress(".centralRegistry.sequencer")
         );
@@ -62,6 +64,7 @@ contract DeployK2Lending is
         CentralRegistryDeployer.addHarvester(
             readConfigAddress(".centralRegistry.harvester")
         );
+        saveDeployedContracts("centralRegistry", centralRegistry);
 
         deployCve(
             readConfigAddress(".cve.lzEndpoint"),
@@ -73,6 +76,7 @@ contract DeployK2Lending is
             readConfigUint256(".cve.initialTokenMint")
         );
         CentralRegistryDeployer.setCVE(cve);
+        saveDeployedContracts("cve", cve);
         // TODO: set some params for cross-chain
 
         deployCveLocker(
@@ -80,6 +84,7 @@ contract DeployK2Lending is
             readConfigAddress(".cveLocker.rewardToken")
         );
         CentralRegistryDeployer.setCVELocker(cveLocker);
+        saveDeployedContracts("cveLocker", cveLocker);
 
         deployProtocolMessagingHub(
             centralRegistry,
@@ -87,6 +92,7 @@ contract DeployK2Lending is
             readConfigAddress(".protocolMessagingHub.stargateRouter")
         );
         CentralRegistryDeployer.setProtocolMessagingHub(protocolMessagingHub);
+        saveDeployedContracts("protocolMessagingHub", protocolMessagingHub);
 
         deployFeeAccumulator(
             centralRegistry,
@@ -95,24 +101,25 @@ contract DeployK2Lending is
             readConfigUint256(".feeAccumulator.gasForCrosschain")
         );
         CentralRegistryDeployer.setFeeAccumulator(feeAccumulator);
+        saveDeployedContracts("feeAccumulator", feeAccumulator);
 
         deployVeCve(
             centralRegistry,
             readConfigUint256(".veCve.clPointMultiplier")
         );
         CentralRegistryDeployer.setVeCVE(veCve);
-        CentralRegistryDeployer.setVoteBoostMultiplier(
-            readConfigUint256(".veCve.voteBoostMultiplier")
-        );
+        saveDeployedContracts("veCve", veCve);
 
         deployGaugePool(centralRegistry);
         CentralRegistryDeployer.addGaugeController(gaugePool);
+        saveDeployedContracts("gaugePool", gaugePool);
 
         deployLendtroller(centralRegistry, gaugePool);
         CentralRegistryDeployer.addLendingMarket(
             lendtroller,
             readConfigUint256(".lendtroller.marketInterestFactor")
         );
+        saveDeployedContracts("gaugePool", gaugePool);
 
         deployZapper(
             centralRegistry,
@@ -120,9 +127,13 @@ contract DeployK2Lending is
             readConfigAddress(".zapper.weth")
         );
         CentralRegistryDeployer.addZapper(zapper);
+        saveDeployedContracts("zapper", zapper);
 
         deployPositionFolding(centralRegistry, lendtroller);
+        saveDeployedContracts("positionFolding", positionFolding);
 
         vm.stopBroadcast();
+
+        // TODO: transfer dao, timelock, emergency council
     }
 }

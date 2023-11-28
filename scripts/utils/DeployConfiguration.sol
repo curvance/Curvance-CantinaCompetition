@@ -7,6 +7,7 @@ contract DeployConfiguration is Script {
     using stdJson for string;
 
     string configurationPath;
+    string deploymentPath;
 
     function readConfigUint256(
         string memory jsonPath
@@ -32,34 +33,35 @@ contract DeployConfiguration is Script {
         return abi.decode(json.parseRaw(jsonPath), (address));
     }
 
-    function getDeployedContracts(
+    function getDeployedContract(
         string memory name
     ) internal view returns (address) {
-        require(
-            bytes(configurationPath).length != 0,
-            "Set the configurationPath!"
-        );
+        require(bytes(deploymentPath).length != 0, "Set the deploymentPath!");
 
         string memory json = vm.readFile(configurationPath);
-        string memory jsonPath = string.concat(".contracts.", name);
-        return abi.decode(json.parseRaw(jsonPath), (address));
+        return abi.decode(json.parseRaw(string.concat(".", name)), (address));
     }
 
     function saveDeployedContracts(
         string memory name,
-        address contractAddress
+        address deployed
     ) internal {
-        require(
-            bytes(configurationPath).length != 0,
-            "Set the configurationPath!"
-        );
-        string memory jsonPath = string.concat(".contracts.", name);
+        require(bytes(deploymentPath).length != 0, "Set the deploymentPath!");
 
-        console.log(string(abi.encodePacked(contractAddress)));
+        try vm.readFile(deploymentPath) returns (string memory json) {
+            string[] memory names = vm.parseJsonKeys(json, "$");
+            for (uint256 i = 0; i < names.length; i++) {
+                try
+                    vm.parseJsonAddress(json, string.concat(".", names[i]))
+                returns (address addr) {
+                    vm.serializeAddress("Deployments", names[i], addr);
+                } catch {}
+            }
+        } catch {}
+
         vm.writeJson(
-            vm.toString(contractAddress),
-            configurationPath,
-            jsonPath
+            vm.serializeAddress("Deployments", name, deployed),
+            deploymentPath
         );
     }
 }
