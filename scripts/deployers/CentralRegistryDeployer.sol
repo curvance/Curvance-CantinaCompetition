@@ -112,4 +112,26 @@ contract CentralRegistryDeployer is Script {
         );
         console.log("setVoteBoostMultiplier: ", voteBoostMultiplier);
     }
+
+    function addGaugeController(address gaugePool) internal {
+        require(centralRegistry != address(0), "Set the centralRegistry!");
+        require(gaugePool != address(0), "Set the gaugePool!");
+
+        CentralRegistry(centralRegistry).addGaugeController(gaugePool);
+        console.log("addGaugeController: ", gaugePool);
+    }
+
+    function addLendingMarket(
+        address lendtroller,
+        uint256 marketInterestFactor
+    ) internal {
+        require(centralRegistry != address(0), "Set the centralRegistry!");
+        require(lendtroller != address(0), "Set the lendtroller!");
+
+        CentralRegistry(centralRegistry).addLendingMarket(
+            lendtroller,
+            marketInterestFactor
+        );
+        console.log("addLendingMarket: ", lendtroller);
+    }
 }
