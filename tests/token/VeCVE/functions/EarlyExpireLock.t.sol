@@ -52,4 +52,20 @@ contract EarlyExpireLockTest is TestBaseVeCVE {
 
         veCVE.earlyExpireLock(0, rewardsData, "", 0);
     }
+
+    function test_earlyExpireLock_fail_expired(
+        bool shouldLock,
+        bool isFreshLock,
+        bool isFreshLockContinuous
+    ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
+        (, uint40 unlockTime) = veCVE.userLocks(
+            address(this),
+            0
+        );
+        vm.warp(unlockTime);
+
+        // cannot early expire expired lock
+        vm.expectRevert(VeCVE.VeCVE__InvalidLock.selector);
+        veCVE.earlyExpireLock(0, rewardsData, "", 0);
+    }
 }
