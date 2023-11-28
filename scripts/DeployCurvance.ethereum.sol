@@ -12,6 +12,8 @@ import { FeeAccumulatorDeployer } from "./deployers/FeeAccumulatorDeployer.sol";
 import { VeCveDeployer } from "./deployers/VeCveDeployer.sol";
 import { GuagePoolDeployer } from "./deployers/GuagePoolDeployer.sol";
 import { LendtrollerDeployer } from "./deployers/LendtrollerDeployer.sol";
+import { ZapperDeployer } from "./deployers/ZapperDeployer.sol";
+import { PositionFoldingDeployer } from "./deployers/PositionFoldingDeployer.sol";
 
 contract DeployK2Lending is
     Script,
@@ -23,7 +25,9 @@ contract DeployK2Lending is
     FeeAccumulatorDeployer,
     VeCveDeployer,
     GuagePoolDeployer,
-    LendtrollerDeployer
+    LendtrollerDeployer,
+    ZapperDeployer,
+    PositionFoldingDeployer
 {
     using stdJson for string;
 
@@ -33,11 +37,15 @@ contract DeployK2Lending is
     }
 
     function run() external {
+        setConfigurationPath();
+        saveDeployedContracts(
+            "rubic",
+            0x0000000000000000000000000000000000000001
+        );
+
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         address deployer = vm.addr(deployerPrivateKey);
         console.log("Deployer: ", deployer);
-
-        setConfigurationPath();
 
         vm.startBroadcast(deployerPrivateKey);
 
@@ -105,6 +113,15 @@ contract DeployK2Lending is
             lendtroller,
             readConfigUint256(".lendtroller.marketInterestFactor")
         );
+
+        deployZapper(
+            centralRegistry,
+            lendtroller,
+            readConfigAddress(".zapper.weth")
+        );
+        CentralRegistryDeployer.addZapper(zapper);
+
+        deployPositionFolding(centralRegistry, lendtroller);
 
         vm.stopBroadcast();
     }

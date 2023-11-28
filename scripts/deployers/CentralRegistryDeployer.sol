@@ -134,4 +134,12 @@ contract CentralRegistryDeployer is Script {
         );
         console.log("addLendingMarket: ", lendtroller);
     }
+
+    function addZapper(address zapper) internal {
+        require(centralRegistry != address(0), "Set the centralRegistry!");
+        require(zapper != address(0), "Set the zapper!");
+
+        CentralRegistry(centralRegistry).addZapper(zapper);
+        console.log("addZapper: ", zapper);
+    }
 }
