@@ -10,6 +10,8 @@ import { CveLockerDeployer } from "./deployers/CveLockerDeployer.sol";
 import { ProtocolMessagingHubDeployer } from "./deployers/ProtocolMessagingHubDeployer.sol";
 import { FeeAccumulatorDeployer } from "./deployers/FeeAccumulatorDeployer.sol";
 import { VeCveDeployer } from "./deployers/VeCveDeployer.sol";
+import { GuagePoolDeployer } from "./deployers/GuagePoolDeployer.sol";
+import { LendtrollerDeployer } from "./deployers/LendtrollerDeployer.sol";
 
 contract DeployK2Lending is
     Script,
@@ -19,7 +21,9 @@ contract DeployK2Lending is
     CveLockerDeployer,
     ProtocolMessagingHubDeployer,
     FeeAccumulatorDeployer,
-    VeCveDeployer
+    VeCveDeployer,
+    GuagePoolDeployer,
+    LendtrollerDeployer
 {
     using stdJson for string;
 
@@ -91,6 +95,15 @@ contract DeployK2Lending is
         CentralRegistryDeployer.setVeCVE(veCve);
         CentralRegistryDeployer.setVoteBoostMultiplier(
             readConfigUint256(".veCve.voteBoostMultiplier")
+        );
+
+        deployGaugePool(centralRegistry);
+        CentralRegistryDeployer.addGaugeController(gaugePool);
+
+        deployLendtroller(centralRegistry, gaugePool);
+        CentralRegistryDeployer.addLendingMarket(
+            lendtroller,
+            readConfigUint256(".lendtroller.marketInterestFactor")
         );
 
         vm.stopBroadcast();
