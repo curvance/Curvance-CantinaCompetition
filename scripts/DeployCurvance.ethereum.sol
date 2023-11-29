@@ -15,7 +15,7 @@ import { LendtrollerDeployer } from "./deployers/LendtrollerDeployer.sol";
 import { ZapperDeployer } from "./deployers/ZapperDeployer.sol";
 import { PositionFoldingDeployer } from "./deployers/PositionFoldingDeployer.sol";
 
-contract DeployK2Lending is
+contract DeployCurvanceEthereum is
     Script,
     DeployConfiguration,
     CentralRegistryDeployer,
