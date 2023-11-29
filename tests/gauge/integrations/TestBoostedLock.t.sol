@@ -68,6 +68,15 @@ contract TestBoostedLock is TestBaseMarket {
                 vm.prank(user);
                 dai.approve(address(tokens[i]), 200000e18);
             }
+
+            // sort token addresses
+            for (uint256 j = i; j > 0; j--) {
+                if (tokens[j] < tokens[j - 1]) {
+                    address temp = tokens[j];
+                    tokens[j] = tokens[j - 1];
+                    tokens[j - 1] = temp;
+                }
+            }
         }
 
         vm.warp(gaugePool.startTime());
