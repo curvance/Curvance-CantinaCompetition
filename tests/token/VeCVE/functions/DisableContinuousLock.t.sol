@@ -14,11 +14,8 @@ contract DisableContinuousLockTest is TestBaseVeCVE {
         veCVE.createLock(50e18, true, rewardsData, "", 0);
     }
 
-    function test_disableContinuousLock_fail_whenLockIndexIsInvalid(
-        bool shouldLock,
-        bool isFreshLock,
-        bool isFreshLockContinuous
-    ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
+    function test_disableContinuousLock_fail_whenLockIndexIsInvalid() public {
+        // no need to set rewardsData because it will not be called
         vm.expectRevert(VeCVE.VeCVE__InvalidLock.selector);
         veCVE.disableContinuousLock(1, rewardsData, "", 0);
     }
@@ -39,6 +36,7 @@ contract DisableContinuousLockTest is TestBaseVeCVE {
         bool isFreshLock,
         bool isFreshLockContinuous
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
+        // @todo set cveLocker to use rewardsData
         (, uint40 unlockTime) = veCVE.userLocks(address(this), 0);
 
         assertEq(veCVE.chainPoints(), 100e18);

@@ -17,11 +17,8 @@ contract ProcessExpiredLockTest is TestBaseVeCVE {
         veCVE.createLock(30e18, false, rewardsData, "", 0);
     }
 
-    function test_processExpiredLock_fail_whenLockIndexExceeds(
-        bool shouldLock,
-        bool isFreshLock,
-        bool isFreshLockContinuous
-    ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
+    function test_processExpiredLock_fail_whenLockIndexExceeds() public {
+        // no need to set rewardsData because it will revert before
         vm.expectRevert(VeCVE.VeCVE__InvalidLock.selector);
         veCVE.processExpiredLock(
             1,
@@ -33,11 +30,8 @@ contract ProcessExpiredLockTest is TestBaseVeCVE {
         );
     }
 
-    function test_processExpiredLock_fail_whenLockIsNotExpired(
-        bool shouldLock,
-        bool isFreshLock,
-        bool isFreshLockContinuous
-    ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
+    function test_processExpiredLock_fail_whenLockIsNotExpired() public {
+        // no need to set rewardsData because it will revert before
         vm.expectRevert(VeCVE.VeCVE__InvalidLock.selector);
         veCVE.processExpiredLock(
             0,

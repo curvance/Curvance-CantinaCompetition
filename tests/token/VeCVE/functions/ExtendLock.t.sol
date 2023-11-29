@@ -14,31 +14,22 @@ contract ExtendLockTest is TestBaseVeCVE {
         veCVE.createLock(50e18, false, rewardsData, "", 0);
     }
 
-    function test_extendLock_fail_whenVeCVEShutdown(
-        bool shouldLock,
-        bool isFreshLock,
-        bool isFreshLockContinuous
-    ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
+    function test_extendLock_fail_whenVeCVEShutdown() public {
+        // no need to set rewardsData because it will not be called
         veCVE.shutdown();
 
         vm.expectRevert(VeCVE.VeCVE__VeCVEShutdown.selector);
         veCVE.extendLock(0, true, rewardsData, "", 0);
     }
 
-    function test_extendLock_fail_whenLockIndexIsInvalid(
-        bool shouldLock,
-        bool isFreshLock,
-        bool isFreshLockContinuous
-    ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
+    function test_extendLock_fail_whenLockIndexIsInvalid() public {
+        // no need to set rewardsData because it will not be called
         vm.expectRevert(VeCVE.VeCVE__InvalidLock.selector);
         veCVE.extendLock(1, true, rewardsData, "", 0);
     }
 
-    function test_extendLock_fail_whenUnlockTimestampIsExpired(
-        bool shouldLock,
-        bool isFreshLock,
-        bool isFreshLockContinuous
-    ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
+    function test_extendLock_fail_whenUnlockTimestampIsExpired() public {
+        // no need to set rewardsData because it will not be called
         (, uint40 unlockTime) = veCVE.userLocks(address(this), 0);
         vm.warp(unlockTime + 1);
 
@@ -46,11 +37,8 @@ contract ExtendLockTest is TestBaseVeCVE {
         veCVE.extendLock(0, true, rewardsData, "", 0);
     }
 
-    function test_extendLock_fail_whenContinuousLock(
-        bool shouldLock,
-        bool isFreshLock,
-        bool isFreshLockContinuous
-    ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
+    function test_extendLock_fail_whenContinuousLock() public {
+        // no need to set rewardsData because it will not be called
         veCVE.createLock(10e18, true, rewardsData, "", 0);
 
         vm.expectRevert(VeCVE.VeCVE__LockTypeMismatch.selector);
@@ -62,6 +50,7 @@ contract ExtendLockTest is TestBaseVeCVE {
         bool isFreshLock,
         bool isFreshLockContinuous
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
+        // @todo set cveLocker to use rewardsData
         veCVE.extendLock(0, true, rewardsData, "", 0);
 
         (, uint40 unlockTime) = veCVE.userLocks(address(this), 0);
@@ -73,6 +62,7 @@ contract ExtendLockTest is TestBaseVeCVE {
         bool isFreshLock,
         bool isFreshLockContinuous
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
+        // @todo set cveLocker to use rewardsData
         veCVE.extendLock(0, false, rewardsData, "", 0);
 
         (, uint40 unlockTime) = veCVE.userLocks(address(this), 0);
