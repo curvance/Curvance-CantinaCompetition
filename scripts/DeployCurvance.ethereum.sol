@@ -132,8 +132,17 @@ contract DeployK2Lending is
         deployPositionFolding(centralRegistry, lendtroller);
         saveDeployedContracts("positionFolding", positionFolding);
 
-        vm.stopBroadcast();
+        // transfer dao, timelock, emergency council
+        CentralRegistryDeployer.transferDaoOwnership(
+            readConfigAddress(".centralRegistry.daoAddress")
+        );
+        CentralRegistryDeployer.migrateTimelockConfiguration(
+            readConfigAddress(".centralRegistry.timelock")
+        );
+        CentralRegistryDeployer.transferEmergencyCouncil(
+            readConfigAddress(".centralRegistry.emergencyCouncil")
+        );
 
-        // TODO: transfer dao, timelock, emergency council
+        vm.stopBroadcast();
     }
 }

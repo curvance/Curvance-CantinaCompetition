@@ -33,22 +33,16 @@ contract CentralRegistryDeployer is Script {
         console.log("centralRegistry: ", centralRegistry);
     }
 
-    function transferEmergencyCouncil(address newEmergencyCouncil) internal {
-        require(centralRegistry != address(0), "Set the centralRegistry!");
-
-        CentralRegistry(centralRegistry).transferEmergencyCouncil(
-            newEmergencyCouncil
-        );
-        console.log("transferEmergencyCouncil: ", newEmergencyCouncil);
-    }
-
     function setLockBoostMultiplier(uint256 lockBoostMultiplier) internal {
         require(centralRegistry != address(0), "Set the centralRegistry!");
 
         CentralRegistry(centralRegistry).setLockBoostMultiplier(
             lockBoostMultiplier
         );
-        console.log("setLockBoostMultiplier: ", lockBoostMultiplier);
+        console.log(
+            "centralRegistry.setLockBoostMultiplier: ",
+            lockBoostMultiplier
+        );
     }
 
     function addHarvester(address harvester) internal {
@@ -56,7 +50,7 @@ contract CentralRegistryDeployer is Script {
         require(harvester != address(0), "Set the harvester!");
 
         CentralRegistry(centralRegistry).addHarvester(harvester);
-        console.log("addHarvester: ", harvester);
+        console.log("centralRegistry.addHarvester: ", harvester);
     }
 
     function setCVE(address cve) internal {
@@ -64,7 +58,7 @@ contract CentralRegistryDeployer is Script {
         require(cve != address(0), "Set the cve!");
 
         CentralRegistry(centralRegistry).setCVE(cve);
-        console.log("setCVE: ", cve);
+        console.log("centralRegistry.setCVE: ", cve);
     }
 
     function setCVELocker(address cveLocker) internal {
@@ -72,7 +66,7 @@ contract CentralRegistryDeployer is Script {
         require(cveLocker != address(0), "Set the cveLocker!");
 
         CentralRegistry(centralRegistry).setCVELocker(cveLocker);
-        console.log("setCVELocker: ", cveLocker);
+        console.log("centralRegistry.setCVELocker: ", cveLocker);
     }
 
     function setProtocolMessagingHub(address protocolMessagingHub) internal {
@@ -85,7 +79,10 @@ contract CentralRegistryDeployer is Script {
         CentralRegistry(centralRegistry).setProtocolMessagingHub(
             protocolMessagingHub
         );
-        console.log("setProtocolMessagingHub: ", protocolMessagingHub);
+        console.log(
+            "centralRegistry.setProtocolMessagingHub: ",
+            protocolMessagingHub
+        );
     }
 
     function setFeeAccumulator(address feeAccumulator) internal {
@@ -93,7 +90,7 @@ contract CentralRegistryDeployer is Script {
         require(feeAccumulator != address(0), "Set the feeAccumulator!");
 
         CentralRegistry(centralRegistry).setFeeAccumulator(feeAccumulator);
-        console.log("setFeeAccumulator: ", feeAccumulator);
+        console.log("centralRegistry.setFeeAccumulator: ", feeAccumulator);
     }
 
     function setVeCVE(address veCve) internal {
@@ -101,7 +98,7 @@ contract CentralRegistryDeployer is Script {
         require(veCve != address(0), "Set the veCve!");
 
         CentralRegistry(centralRegistry).setVeCVE(veCve);
-        console.log("setVeCVE: ", veCve);
+        console.log("centralRegistry.setVeCVE: ", veCve);
     }
 
     function setVoteBoostMultiplier(uint256 voteBoostMultiplier) internal {
@@ -110,7 +107,10 @@ contract CentralRegistryDeployer is Script {
         CentralRegistry(centralRegistry).setVoteBoostMultiplier(
             voteBoostMultiplier
         );
-        console.log("setVoteBoostMultiplier: ", voteBoostMultiplier);
+        console.log(
+            "centralRegistry.setVoteBoostMultiplier: ",
+            voteBoostMultiplier
+        );
     }
 
     function addGaugeController(address gaugePool) internal {
@@ -118,7 +118,7 @@ contract CentralRegistryDeployer is Script {
         require(gaugePool != address(0), "Set the gaugePool!");
 
         CentralRegistry(centralRegistry).addGaugeController(gaugePool);
-        console.log("addGaugeController: ", gaugePool);
+        console.log("centralRegistry.addGaugeController: ", gaugePool);
     }
 
     function addLendingMarket(
@@ -132,7 +132,7 @@ contract CentralRegistryDeployer is Script {
             lendtroller,
             marketInterestFactor
         );
-        console.log("addLendingMarket: ", lendtroller);
+        console.log("centralRegistry.addLendingMarket: ", lendtroller);
     }
 
     function addZapper(address zapper) internal {
@@ -140,6 +140,40 @@ contract CentralRegistryDeployer is Script {
         require(zapper != address(0), "Set the zapper!");
 
         CentralRegistry(centralRegistry).addZapper(zapper);
-        console.log("addZapper: ", zapper);
+        console.log("centralRegistry.addZapper: ", zapper);
+    }
+
+    function transferDaoOwnership(address daoAddress) internal {
+        require(centralRegistry != address(0), "Set the centralRegistry!");
+        require(daoAddress != address(0), "Set the daoAddress!");
+
+        CentralRegistry(centralRegistry).transferDaoOwnership(daoAddress);
+        console.log("centralRegistry.transferDaoOwnership: ", daoAddress);
+    }
+
+    function migrateTimelockConfiguration(address timelock) internal {
+        require(centralRegistry != address(0), "Set the centralRegistry!");
+        require(timelock != address(0), "Set the timelock!");
+
+        CentralRegistry(centralRegistry).migrateTimelockConfiguration(
+            timelock
+        );
+        console.log(
+            "centralRegistry.migrateTimelockConfiguration: ",
+            timelock
+        );
+    }
+
+    function transferEmergencyCouncil(address emergencyCouncil) internal {
+        require(centralRegistry != address(0), "Set the centralRegistry!");
+        require(emergencyCouncil != address(0), "Set the emergencyCouncil!");
+
+        CentralRegistry(centralRegistry).transferEmergencyCouncil(
+            emergencyCouncil
+        );
+        console.log(
+            "centralRegistry.transferEmergencyCouncil: ",
+            emergencyCouncil
+        );
     }
 }
