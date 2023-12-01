@@ -366,18 +366,14 @@ contract FeeAccumulator is ReentrancyGuard {
     /// @notice Receives and records the epoch rewards for CVE from
     ///         the protocol messaging hub
     /// @param epochRewardsPerCVE The rewards per CVE for the previous epoch
-    function receiveExecutableLockData(uint256 epochRewardsPerCVE) external {
+    function receiveExecutableLockData(uint256 amount) external {
         if (msg.sender != centralRegistry.protocolMessagingHub()) {
             revert FeeAccumulator__Unauthorized();
         }
 
-        ICVELocker locker = ICVELocker(centralRegistry.cveLocker());
         // We validate nextEpochToDeliver in receiveCrossChainLockData on
         // the chain calculating values
-        locker.recordEpochRewards(
-            locker.nextEpochToDeliver(),
-            epochRewardsPerCVE
-        );
+        ICVELocker(centralRegistry.cveLocker()).recordEpochRewards(amount);
     }
 
     /// @notice Receives and processes cross-chain lock data for
@@ -689,8 +685,7 @@ contract FeeAccumulator is ReentrancyGuard {
             revert FeeAccumulator__Unauthorized();
         }
 
-        ICVELocker locker = ICVELocker(centralRegistry.cveLocker());
-        locker.recordEpochRewards(locker.nextEpochToDeliver(), amount);
+        ICVELocker(centralRegistry.cveLocker()).recordEpochRewards(amount);
     }
 
     /// @notice Retrieves the balances of all reward tokens currently held by
@@ -874,7 +869,7 @@ contract FeeAccumulator is ReentrancyGuard {
             locker,
             feeTokenBalanceForChain
         );
-        ICVELocker(locker).recordEpochRewards(epoch, epochRewardsPerCVE);
+        ICVELocker(locker).recordEpochRewards(epochRewardsPerCVE);
 
         return epochRewardsPerCVE;
     }

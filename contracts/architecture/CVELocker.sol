@@ -97,26 +97,15 @@ contract CVELocker is ReentrancyGuard {
 
     /// EXTERNAL FUNCTIONS ///
 
-    function recordEpochRewards(
-        uint256 epoch,
-        uint256 rewardsPerCVE
-    ) external {
-        // Make sure the caller reporting epoch data is the fee accumulator itself
+    function recordEpochRewards(uint256 rewardsPerCVE) external {
+        // Validate the caller reporting epoch data is the fee accumulator
         if (msg.sender != centralRegistry.feeAccumulator()) {
             _revert(_UNAUTHORIZED_SELECTOR);
         }
 
-        if (epoch != nextEpochToDeliver) {
-            revert CVELocker__WrongEpochRewardSubmission();
-        }
-
         // Record rewards per CVE for the epoch
-        epochRewardsPerCVE[epoch] = rewardsPerCVE;
-
-        // Update nextEpochToDeliver invariant
-        unchecked {
-            ++nextEpochToDeliver;
-        }
+        // then update nextEpochToDeliver invariant
+        epochRewardsPerCVE[nextEpochToDeliver++] = rewardsPerCVE;
     }
 
     function startLocker() external {
@@ -312,7 +301,7 @@ contract CVELocker is ReentrancyGuard {
     ///      in 0 points, we want their data updated so data is properly
     ///      adjusted on unlock
     /// @param user The address of the user to check for reward claims.
-    /// @return A boolean value indicating if the user has any rewards to claim.
+    /// @return A value indicating if the user has any rewards to claim.
     function epochsToClaim(address user) public view returns (uint256) {
         if (
             nextEpochToDeliver > userNextClaimIndex[user] &&

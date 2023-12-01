@@ -403,7 +403,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
         _incrementTokenUnlocks(msg.sender, epoch, amount);
     }
 
-    /// @notice Combines all locks into a single lock,
+    /// @notice Combines `lockIndexes` into a single lock,
     ///         and processes any pending locker rewards
     /// @param continuousLock Whether the combined lock should be continuous
     ///                       or not
