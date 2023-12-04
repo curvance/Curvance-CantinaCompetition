@@ -5,8 +5,9 @@ import "forge-std/Script.sol";
 
 import { GaugePool } from "contracts/gauge/GaugePool.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+import { DeployConfiguration } from "../utils/DeployConfiguration.sol";
 
-contract GuagePoolDeployer is Script {
+contract GuagePoolDeployer is DeployConfiguration {
     address gaugePool;
 
     function deployGaugePool(address centralRegistry) internal {
@@ -15,5 +16,6 @@ contract GuagePoolDeployer is Script {
         gaugePool = address(new GaugePool(ICentralRegistry(centralRegistry)));
 
         console.log("gaugePool: ", gaugePool);
+        saveDeployedContracts("gaugePool", gaugePool);
     }
 }

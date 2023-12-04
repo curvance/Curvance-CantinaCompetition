@@ -5,8 +5,9 @@ import "forge-std/Script.sol";
 
 import { PositionFolding } from "contracts/market/leverage/PositionFolding.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+import { DeployConfiguration } from "../utils/DeployConfiguration.sol";
 
-contract PositionFoldingDeployer is Script {
+contract PositionFoldingDeployer is DeployConfiguration {
     address positionFolding;
 
     function deployPositionFolding(
@@ -21,5 +22,6 @@ contract PositionFoldingDeployer is Script {
         );
 
         console.log("positionFolding: ", positionFolding);
+        saveDeployedContracts("positionFolding", positionFolding);
     }
 }

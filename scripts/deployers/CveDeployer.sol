@@ -5,8 +5,9 @@ import "forge-std/Script.sol";
 
 import { CVE } from "contracts/token/CVE.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+import { DeployConfiguration } from "../utils/DeployConfiguration.sol";
 
-contract CveDeployer is Script {
+contract CveDeployer is DeployConfiguration {
     address cve;
 
     function deployCve(
@@ -38,5 +39,6 @@ contract CveDeployer is Script {
         );
 
         console.log("cve: ", cve);
+        saveDeployedContracts("cve", cve);
     }
 }

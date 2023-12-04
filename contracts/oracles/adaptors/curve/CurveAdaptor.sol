@@ -30,10 +30,7 @@ contract CurveAdaptor is CurveBaseAdaptor {
 
     /// EVENTS ///
 
-    event CurvePoolAssetAdded(
-        address asset,
-        AdaptorData assetConfig
-    );
+    event CurvePoolAssetAdded(address asset, AdaptorData assetConfig);
 
     event CurvePoolAssetRemoved(address asset);
 
@@ -117,10 +114,7 @@ contract CurveAdaptor is CurveBaseAdaptor {
     /// @notice Adds a Curve LP as an asset.
     /// @dev Should be called before `PriceRouter:addAssetPriceFeed` is called.
     /// @param asset the address of the lp to add
-    function addAsset(
-        address asset,
-        address pool
-    ) external {
+    function addAsset(address asset, address pool) external {
         _checkElevatedPermissions();
 
         if (isSupportedAsset[asset]) {
@@ -152,7 +146,7 @@ contract CurveAdaptor is CurveBaseAdaptor {
 
         // Make sure that the asset being added has the proper input
         // via this sanity check
-        if (isLocked(asset, coinsLength)){
+        if (isLocked(asset, coinsLength)) {
             revert CurveAdaptor__UnsupportedPool();
         }
 

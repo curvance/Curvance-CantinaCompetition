@@ -4,8 +4,9 @@ pragma solidity ^0.8.17;
 import "forge-std/Script.sol";
 
 import { CentralRegistry } from "contracts/architecture/CentralRegistry.sol";
+import { DeployConfiguration } from "../utils/DeployConfiguration.sol";
 
-contract CentralRegistryDeployer is Script {
+contract CentralRegistryDeployer is DeployConfiguration {
     address centralRegistry;
 
     function deployCentralRegistry(
@@ -31,6 +32,7 @@ contract CentralRegistryDeployer is Script {
         );
 
         console.log("centralRegistry: ", centralRegistry);
+        saveDeployedContracts("centralRegistry", centralRegistry);
     }
 
     function setLockBoostMultiplier(uint256 lockBoostMultiplier) internal {
@@ -175,5 +177,13 @@ contract CentralRegistryDeployer is Script {
             "centralRegistry.transferEmergencyCouncil: ",
             emergencyCouncil
         );
+    }
+
+    function setPriceRouter(address priceRouter) internal {
+        require(centralRegistry != address(0), "Set the centralRegistry!");
+        require(priceRouter != address(0), "Set the priceRouter!");
+
+        CentralRegistry(centralRegistry).setPriceRouter(priceRouter);
+        console.log("centralRegistry.setPriceRouter: ", priceRouter);
     }
 }

@@ -5,8 +5,9 @@ import "forge-std/Script.sol";
 
 import { CVELocker } from "contracts/architecture/CVELocker.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+import { DeployConfiguration } from "../utils/DeployConfiguration.sol";
 
-contract CveLockerDeployer is Script {
+contract CveLockerDeployer is DeployConfiguration {
     address cveLocker;
 
     function deployCveLocker(
@@ -21,5 +22,6 @@ contract CveLockerDeployer is Script {
         );
 
         console.log("cveLocker: ", cveLocker);
+        saveDeployedContracts("cveLocker", cveLocker);
     }
 }

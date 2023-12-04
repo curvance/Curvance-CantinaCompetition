@@ -5,8 +5,9 @@ import "forge-std/Script.sol";
 
 import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+import { DeployConfiguration } from "../utils/DeployConfiguration.sol";
 
-contract LendtrollerDeployer is Script {
+contract LendtrollerDeployer is DeployConfiguration {
     address lendtroller;
 
     function deployLendtroller(
@@ -21,5 +22,6 @@ contract LendtrollerDeployer is Script {
         );
 
         console.log("lendtroller: ", lendtroller);
+        saveDeployedContracts("lendtroller", lendtroller);
     }
 }

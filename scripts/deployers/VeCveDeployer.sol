@@ -5,8 +5,9 @@ import "forge-std/Script.sol";
 
 import { VeCVE } from "contracts/token/VeCVE.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+import { DeployConfiguration } from "../utils/DeployConfiguration.sol";
 
-contract VeCveDeployer is Script {
+contract VeCveDeployer is DeployConfiguration {
     address veCve;
 
     function deployVeCve(
@@ -20,5 +21,6 @@ contract VeCveDeployer is Script {
         );
 
         console.log("veCve: ", veCve);
+        saveDeployedContracts("veCve", veCve);
     }
 }

@@ -6,10 +6,9 @@ import { BaseOracleAdaptor } from "contracts/oracles/adaptors/BaseOracleAdaptor.
 import { ICurveRemoveLiquidity } from "contracts/interfaces/external/curve/ICurveReentrancy.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
-/// Kudos to Curve/Silo/Chain Security for researching 
+/// Kudos to Curve/Silo/Chain Security for researching
 /// specific gas limit values for Pool Reentrancy
 abstract contract CurveBaseAdaptor is BaseOracleAdaptor {
-
     /// CONSTANTS ///
 
     /// @notice Minimum gas limit allowed for reentrancy check configuration
@@ -42,11 +41,11 @@ abstract contract CurveBaseAdaptor is BaseOracleAdaptor {
 
     /// @notice Verifies if the reentry lock is active on the Curve pool,
     ///         this is done by calling remove_liquidity and making sure
-    ///         that there was not excess gas remaining on the call, as that 
-    ///         means they currently are in the remove liquidity context and 
+    ///         that there was not excess gas remaining on the call, as that
+    ///         means they currently are in the remove liquidity context and
     ///         are manipulating the virtual price.
     function isLocked(
-        address asset, 
+        address asset,
         uint256 coinsLength
     ) public view returns (bool) {
         uint256 gasLimit = reentrancyConfig[coinsLength];
@@ -61,22 +60,22 @@ abstract contract CurveBaseAdaptor is BaseOracleAdaptor {
 
         if (coinsLength == 2) {
             uint256[2] memory amounts;
-            try
-                pool.remove_liquidity{ gas: gasLimit }(0, amounts)
-            {} catch (bytes memory) {}
+            try pool.remove_liquidity{ gas: gasLimit }(0, amounts) {} catch (
+                bytes memory
+            ) {}
         } else if (coinsLength == 3) {
             uint256[3] memory amounts;
-            try
-                pool.remove_liquidity{ gas: gasLimit }(0, amounts)
-            {} catch (bytes memory) {}
+            try pool.remove_liquidity{ gas: gasLimit }(0, amounts) {} catch (
+                bytes memory
+            ) {}
         }
         if (coinsLength == 4) {
             uint256[4] memory amounts;
-            try
-                pool.remove_liquidity{ gas: gasLimit }(0, amounts)
-            {} catch (bytes memory) {}
-        } 
-        
+            try pool.remove_liquidity{ gas: gasLimit }(0, amounts) {} catch (
+                bytes memory
+            ) {}
+        }
+
         uint256 gasSpent;
         // `gasStart` will be always > `gasleft()`
         unchecked {
@@ -99,7 +98,7 @@ abstract contract CurveBaseAdaptor is BaseOracleAdaptor {
         uint256 gasLimit
     ) internal {
         // Make sure the gas limit assigned is above the minimum for the pool
-        if (gasLimit < MIN_GAS_LIMIT){
+        if (gasLimit < MIN_GAS_LIMIT) {
             revert CurveBaseAdaptor__InvalidConfiguration();
         }
 
@@ -111,5 +110,4 @@ abstract contract CurveBaseAdaptor is BaseOracleAdaptor {
         reentrancyConfig[coinsLength] = gasLimit;
         emit UpdatedReentrancyConfiguration(coinsLength, gasLimit);
     }
-
 }

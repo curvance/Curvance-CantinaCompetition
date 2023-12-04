@@ -5,8 +5,9 @@ import "forge-std/Script.sol";
 
 import { Zapper } from "contracts/market/zapper/Zapper.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+import { DeployConfiguration } from "../utils/DeployConfiguration.sol";
 
-contract ZapperDeployer is Script {
+contract ZapperDeployer is DeployConfiguration {
     address zapper;
 
     function deployZapper(
@@ -23,5 +24,6 @@ contract ZapperDeployer is Script {
         );
 
         console.log("zapper: ", zapper);
+        saveDeployedContracts("zapper", zapper);
     }
 }

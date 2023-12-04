@@ -38,8 +38,12 @@ contract DeployConfiguration is Script {
     ) internal view returns (address) {
         require(bytes(deploymentPath).length != 0, "Set the deploymentPath!");
 
-        string memory json = vm.readFile(configurationPath);
-        return abi.decode(json.parseRaw(string.concat(".", name)), (address));
+        string memory json = vm.readFile(deploymentPath);
+        bytes memory data = json.parseRaw(string.concat(".", name));
+        if (data.length > 0) {
+            return abi.decode(data, (address));
+        }
+        return address(0);
     }
 
     function saveDeployedContracts(

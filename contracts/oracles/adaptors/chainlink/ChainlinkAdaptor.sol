@@ -48,10 +48,7 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
 
     /// EVENTS ///
 
-    event ChainlinkAssetAdded(
-        address asset,
-        AdaptorData assetConfig
-    );
+    event ChainlinkAssetAdded(address asset, AdaptorData assetConfig);
 
     event ChainlinkAssetRemoved(address asset);
 
@@ -101,11 +98,7 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
     /// @param aggregator Chainlink aggregator to use for pricing `asset`
     /// @param inUSD Whether the price feed is in USD (inUSD = true)
     ///              or ETH (inUSD = false)
-    function addAsset(
-        address asset,
-        address aggregator,
-        bool inUSD
-    ) external {
+    function addAsset(address asset, address aggregator, bool inUSD) external {
         _checkElevatedPermissions();
 
         // Use Chainlink to get the min and max of the asset.

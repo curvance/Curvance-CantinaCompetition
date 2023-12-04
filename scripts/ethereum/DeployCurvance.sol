@@ -3,20 +3,20 @@ pragma solidity ^0.8.17;
 
 import "forge-std/Script.sol";
 
-import { DeployConfiguration } from "./utils/DeployConfiguration.sol";
-import { CentralRegistryDeployer } from "./deployers/CentralRegistryDeployer.sol";
-import { CveDeployer } from "./deployers/CveDeployer.sol";
-import { CveLockerDeployer } from "./deployers/CveLockerDeployer.sol";
-import { ProtocolMessagingHubDeployer } from "./deployers/ProtocolMessagingHubDeployer.sol";
-import { FeeAccumulatorDeployer } from "./deployers/FeeAccumulatorDeployer.sol";
-import { VeCveDeployer } from "./deployers/VeCveDeployer.sol";
-import { GuagePoolDeployer } from "./deployers/GuagePoolDeployer.sol";
-import { LendtrollerDeployer } from "./deployers/LendtrollerDeployer.sol";
-import { ZapperDeployer } from "./deployers/ZapperDeployer.sol";
-import { PositionFoldingDeployer } from "./deployers/PositionFoldingDeployer.sol";
+import { DeployConfiguration } from "../utils/DeployConfiguration.sol";
+import { CentralRegistryDeployer } from "../deployers/CentralRegistryDeployer.sol";
+import { CveDeployer } from "../deployers/CveDeployer.sol";
+import { CveLockerDeployer } from "../deployers/CveLockerDeployer.sol";
+import { ProtocolMessagingHubDeployer } from "../deployers/ProtocolMessagingHubDeployer.sol";
+import { FeeAccumulatorDeployer } from "../deployers/FeeAccumulatorDeployer.sol";
+import { VeCveDeployer } from "../deployers/VeCveDeployer.sol";
+import { GuagePoolDeployer } from "../deployers/GuagePoolDeployer.sol";
+import { LendtrollerDeployer } from "../deployers/LendtrollerDeployer.sol";
+import { ZapperDeployer } from "../deployers/ZapperDeployer.sol";
+import { PositionFoldingDeployer } from "../deployers/PositionFoldingDeployer.sol";
+import { PriceRouterDeployer } from "../deployers/PriceRouterDeployer.sol";
 
 contract DeployCurvanceEthereum is
-    Script,
     DeployConfiguration,
     CentralRegistryDeployer,
     CveDeployer,
@@ -27,7 +27,8 @@ contract DeployCurvanceEthereum is
     GuagePoolDeployer,
     LendtrollerDeployer,
     ZapperDeployer,
-    PositionFoldingDeployer
+    PositionFoldingDeployer,
+    PriceRouterDeployer
 {
     using stdJson for string;
 
@@ -64,7 +65,6 @@ contract DeployCurvanceEthereum is
         CentralRegistryDeployer.addHarvester(
             readConfigAddress(".centralRegistry.harvester")
         );
-        saveDeployedContracts("centralRegistry", centralRegistry);
 
         deployCve(
             readConfigAddress(".cve.lzEndpoint"),
@@ -76,7 +76,6 @@ contract DeployCurvanceEthereum is
             readConfigUint256(".cve.initialTokenMint")
         );
         CentralRegistryDeployer.setCVE(cve);
-        saveDeployedContracts("cve", cve);
         // TODO: set some params for cross-chain
 
         deployCveLocker(
@@ -84,7 +83,6 @@ contract DeployCurvanceEthereum is
             readConfigAddress(".cveLocker.rewardToken")
         );
         CentralRegistryDeployer.setCVELocker(cveLocker);
-        saveDeployedContracts("cveLocker", cveLocker);
 
         deployProtocolMessagingHub(
             centralRegistry,
@@ -92,7 +90,6 @@ contract DeployCurvanceEthereum is
             readConfigAddress(".protocolMessagingHub.stargateRouter")
         );
         CentralRegistryDeployer.setProtocolMessagingHub(protocolMessagingHub);
-        saveDeployedContracts("protocolMessagingHub", protocolMessagingHub);
 
         deployFeeAccumulator(
             centralRegistry,
@@ -101,25 +98,21 @@ contract DeployCurvanceEthereum is
             readConfigUint256(".feeAccumulator.gasForCrosschain")
         );
         CentralRegistryDeployer.setFeeAccumulator(feeAccumulator);
-        saveDeployedContracts("feeAccumulator", feeAccumulator);
 
         deployVeCve(
             centralRegistry,
             readConfigUint256(".veCve.clPointMultiplier")
         );
         CentralRegistryDeployer.setVeCVE(veCve);
-        saveDeployedContracts("veCve", veCve);
 
         deployGaugePool(centralRegistry);
         CentralRegistryDeployer.addGaugeController(gaugePool);
-        saveDeployedContracts("gaugePool", gaugePool);
 
         deployLendtroller(centralRegistry, gaugePool);
         CentralRegistryDeployer.addLendingMarket(
             lendtroller,
             readConfigUint256(".lendtroller.marketInterestFactor")
         );
-        saveDeployedContracts("gaugePool", gaugePool);
 
         deployZapper(
             centralRegistry,
@@ -127,21 +120,25 @@ contract DeployCurvanceEthereum is
             readConfigAddress(".zapper.weth")
         );
         CentralRegistryDeployer.addZapper(zapper);
-        saveDeployedContracts("zapper", zapper);
 
         deployPositionFolding(centralRegistry, lendtroller);
-        saveDeployedContracts("positionFolding", positionFolding);
+
+        deployPriceRouter(
+            centralRegistry,
+            readConfigAddress(".priceRouter.chainlinkEthUsd")
+        );
+        CentralRegistryDeployer.setPriceRouter(priceRouter);
 
         // transfer dao, timelock, emergency council
-        CentralRegistryDeployer.transferDaoOwnership(
-            readConfigAddress(".centralRegistry.daoAddress")
-        );
-        CentralRegistryDeployer.migrateTimelockConfiguration(
-            readConfigAddress(".centralRegistry.timelock")
-        );
-        CentralRegistryDeployer.transferEmergencyCouncil(
-            readConfigAddress(".centralRegistry.emergencyCouncil")
-        );
+        // CentralRegistryDeployer.transferDaoOwnership(
+        //     readConfigAddress(".centralRegistry.daoAddress")
+        // );
+        // CentralRegistryDeployer.migrateTimelockConfiguration(
+        //     readConfigAddress(".centralRegistry.timelock")
+        // );
+        // CentralRegistryDeployer.transferEmergencyCouncil(
+        //     readConfigAddress(".centralRegistry.emergencyCouncil")
+        // );
 
         vm.stopBroadcast();
     }

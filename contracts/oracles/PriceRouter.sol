@@ -107,10 +107,7 @@ contract PriceRouter {
     ///      and that the asset doesn't already have two feeds.
     /// @param asset The address of the asset.
     /// @param feed The address of the new feed.
-    function addAssetPriceFeed(
-        address asset,
-        address feed
-    ) external {
+    function addAssetPriceFeed(address asset, address feed) external {
         _checkElevatedPermissions();
 
         if (!isApprovedAdaptor[feed]) {
@@ -138,17 +135,12 @@ contract PriceRouter {
     /// @dev Requires that the feed exists for the asset.
     /// @param asset The address of the asset.
     /// @param feed The address of the feed to be removed.
-    function removeAssetPriceFeed(
-        address asset,
-        address feed
-    ) external {
+    function removeAssetPriceFeed(address asset, address feed) external {
         _checkElevatedPermissions();
         _removeFeed(asset, feed);
     }
 
-    function addMTokenSupport(
-        address mToken
-    ) external {
+    function addMTokenSupport(address mToken) external {
         _checkElevatedPermissions();
 
         if (mTokenAssets[mToken].isMToken) {
@@ -180,9 +172,7 @@ contract PriceRouter {
     /// @notice Adds a new approved adaptor.
     /// @dev Requires that the adaptor isn't already approved.
     /// @param _adaptor The address of the adaptor to approve.
-    function addApprovedAdaptor(
-        address _adaptor
-    ) external {
+    function addApprovedAdaptor(address _adaptor) external {
         _checkElevatedPermissions();
 
         if (isApprovedAdaptor[_adaptor]) {
@@ -195,11 +185,9 @@ contract PriceRouter {
     /// @notice Removes an approved adaptor.
     /// @dev Requires that the adaptor is currently approved.
     /// @param _adaptor The address of the adaptor to remove.
-    function removeApprovedAdaptor(
-        address _adaptor
-    ) external {
+    function removeApprovedAdaptor(address _adaptor) external {
         _checkElevatedPermissions();
-        
+
         if (!isApprovedAdaptor[_adaptor]) {
             _revert(INVALID_PARAMETER_SELECTOR);
         }
@@ -211,9 +199,7 @@ contract PriceRouter {
     /// @dev Requires that the new divergence is greater than
     ///      or equal to 10200 aka 2% and less than or equal to 12000 aka 20%.
     /// @param maxDivergence The new maximum divergence.
-    function setPriceFeedMaxDivergence(
-        uint256 maxDivergence
-    ) external {
+    function setPriceFeedMaxDivergence(uint256 maxDivergence) external {
         _checkElevatedPermissions();
 
         if (maxDivergence < 10200 || maxDivergence > 12000) {
@@ -227,9 +213,7 @@ contract PriceRouter {
     /// @dev Requires that the new delay is less than 1 day and more than 1 hour.
     ///      Only callable by the DaoManager.
     /// @param delay The new maximum delay in seconds.
-    function setChainlinkDelay(
-        uint256 delay
-    ) external {
+    function setChainlinkDelay(uint256 delay) external {
         _checkElevatedPermissions();
 
         if (delay < 1 hours || delay > 1 days) {

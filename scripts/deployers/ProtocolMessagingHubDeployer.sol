@@ -5,8 +5,9 @@ import "forge-std/Script.sol";
 
 import { ProtocolMessagingHub } from "contracts/architecture/ProtocolMessagingHub.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+import { DeployConfiguration } from "../utils/DeployConfiguration.sol";
 
-contract ProtocolMessagingHubDeployer is Script {
+contract ProtocolMessagingHubDeployer is DeployConfiguration {
     address protocolMessagingHub;
 
     function deployProtocolMessagingHub(
@@ -27,5 +28,6 @@ contract ProtocolMessagingHubDeployer is Script {
         );
 
         console.log("protocolMessagingHub: ", protocolMessagingHub);
+        saveDeployedContracts("protocolMessagingHub", protocolMessagingHub);
     }
 }
