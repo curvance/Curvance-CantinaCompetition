@@ -135,7 +135,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
                 (uint8, bytes32, uint256)
             );
 
-            if (address(bytes20(token)) == feeToken) {
+            if (address(uint160(uint256(token))) == feeToken) {
                 address locker = centralRegistry.cveLocker();
                 SafeTransferLib.safeTransfer(feeToken, locker, amount);
 
@@ -150,7 +150,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
 
             OmnichainData memory operator = centralRegistry
                 .getOmnichainOperators(
-                    address(bytes20(srcAddress)),
+                    address(uint160(uint256(srcAddress))),
                     centralRegistry.messagingToGETHChainId(srcChainId)
                 );
 
