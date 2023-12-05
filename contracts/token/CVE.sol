@@ -48,7 +48,7 @@ contract CVE is ERC20 {
     modifier onlyDaoPermissions() {
         require(
             centralRegistry.hasDaoPermissions(msg.sender),
-            "CentralRegistry: UNAUTHORIZED"
+            "CVE: UNAUTHORIZED"
         );
         _;
     }
@@ -56,7 +56,7 @@ contract CVE is ERC20 {
     modifier onlyElevatedPermissions() {
         require(
             centralRegistry.hasElevatedPermissions(msg.sender),
-            "CentralRegistry: UNAUTHORIZED"
+            "CVE: UNAUTHORIZED"
         );
         _;
     }
