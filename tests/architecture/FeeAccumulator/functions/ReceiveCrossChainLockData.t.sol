@@ -12,7 +12,7 @@ contract ReceiveCrossChainLockDataTest is TestBaseFeeAccumulator {
         vm.expectRevert(FeeAccumulator.FeeAccumulator__Unauthorized.selector);
         feeAccumulator.receiveCrossChainLockData(
             EpochRolloverData({
-                chainId: 110,
+                chainId: 23,
                 value: _ONE,
                 numChainData: 1,
                 epoch: 0
@@ -28,18 +28,18 @@ contract ReceiveCrossChainLockDataTest is TestBaseFeeAccumulator {
         centralRegistry.addChainSupport(
             address(this),
             address(this),
-            abi.encodePacked(address(cve)),
-            110,
+            address(cve),
+            23,
             1,
             1,
-            110
+            23
         );
 
         // Todo: Should figure out the issue
         // vm.prank(address(protocolMessagingHub));
         // feeAccumulator.receiveCrossChainLockData(
         //     EpochRolloverData({
-        //         chainId: 110,
+        //         chainId: 23,
         //         value: _ONE,
         //         numChainData: 1,
         //         epoch: 0

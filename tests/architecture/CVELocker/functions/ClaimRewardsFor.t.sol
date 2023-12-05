@@ -56,10 +56,8 @@ contract ClaimRewardsForTest is TestBaseCVELocker {
         cveLocker.updateUserClaimIndex(user1, 1);
 
         for (uint256 i = 0; i < 2; i++) {
-            uint256 nextEpochToDeliver = cveLocker.nextEpochToDeliver();
-
             vm.prank(centralRegistry.feeAccumulator());
-            cveLocker.recordEpochRewards(nextEpochToDeliver, _ONE);
+            cveLocker.recordEpochRewards(_ONE);
         }
 
         uint256 epochs = cveLocker.epochsToClaim(user1);
@@ -90,10 +88,8 @@ contract ClaimRewardsForTest is TestBaseCVELocker {
         cveLocker.updateUserClaimIndex(user1, 1);
 
         for (uint256 i = 0; i < 2; i++) {
-            uint256 nextEpochToDeliver = cveLocker.nextEpochToDeliver();
-
             vm.prank(centralRegistry.feeAccumulator());
-            cveLocker.recordEpochRewards(nextEpochToDeliver, _ONE);
+            cveLocker.recordEpochRewards(_ONE);
         }
 
         uint256 epochs = cveLocker.epochsToClaim(user1);
@@ -130,10 +126,8 @@ contract ClaimRewardsForTest is TestBaseCVELocker {
         cveLocker.updateUserClaimIndex(user1, 1);
 
         for (uint256 i = 0; i < 2; i++) {
-            uint256 nextEpochToDeliver = cveLocker.nextEpochToDeliver();
-
             vm.prank(centralRegistry.feeAccumulator());
-            cveLocker.recordEpochRewards(nextEpochToDeliver, _ONE);
+            cveLocker.recordEpochRewards(_ONE);
         }
 
         deal(_USDC_ADDRESS, address(cveLocker), amount);

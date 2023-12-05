@@ -7,7 +7,7 @@ import { FeeAccumulator } from "contracts/architecture/FeeAccumulator.sol";
 contract SendLockedTokenDataTest is TestBaseFeeAccumulator {
     function test_sendLockedTokenData_fail_whenCallerIsNotAuthorized() public {
         vm.expectRevert(FeeAccumulator.FeeAccumulator__Unauthorized.selector);
-        feeAccumulator.sendLockedTokenData(42161, bytes32(bytes20(user1)));
+        feeAccumulator.sendLockedTokenData(42161, user1);
     }
 
     function test_sendLockedTokenData_fail_whenChainIsNotSupported() public {
@@ -16,7 +16,7 @@ contract SendLockedTokenDataTest is TestBaseFeeAccumulator {
         );
 
         vm.prank(harvester);
-        feeAccumulator.sendLockedTokenData(42161, bytes32(bytes20(user1)));
+        feeAccumulator.sendLockedTokenData(42161, user1);
     }
 
     function test_sendLockedTokenData_fail_whenAddressIsNotCVEAddress()
@@ -25,8 +25,8 @@ contract SendLockedTokenDataTest is TestBaseFeeAccumulator {
         centralRegistry.addChainSupport(
             address(this),
             address(this),
-            abi.encodePacked(address(1)),
-            110,
+            address(1),
+            23,
             1,
             1,
             42161
@@ -37,16 +37,13 @@ contract SendLockedTokenDataTest is TestBaseFeeAccumulator {
                 FeeAccumulator
                     .FeeAccumulator__CVEAddressIsNotToAddress
                     .selector,
-                bytes32(bytes20(address(1))),
-                bytes32(bytes20(address(cve)))
+                address(1),
+                address(cve)
             )
         );
 
         vm.prank(harvester);
-        feeAccumulator.sendLockedTokenData(
-            110,
-            bytes32(bytes20(address(cve)))
-        );
+        feeAccumulator.sendLockedTokenData(23, address(cve));
     }
 
     function test_sendLockedTokenData_fail_whenHasNoEnoughNativeAssetForGas()
@@ -55,8 +52,8 @@ contract SendLockedTokenDataTest is TestBaseFeeAccumulator {
         centralRegistry.addChainSupport(
             address(this),
             address(this),
-            abi.encodePacked(address(cve)),
-            110,
+            address(cve),
+            23,
             1,
             1,
             42161
@@ -65,9 +62,6 @@ contract SendLockedTokenDataTest is TestBaseFeeAccumulator {
         vm.expectRevert();
 
         vm.prank(harvester);
-        feeAccumulator.sendLockedTokenData(
-            110,
-            bytes32(bytes20(address(cve)))
-        );
+        feeAccumulator.sendLockedTokenData(23, address(cve));
     }
 }

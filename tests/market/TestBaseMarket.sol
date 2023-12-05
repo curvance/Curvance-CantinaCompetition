@@ -66,10 +66,12 @@ contract TestBaseMarket is TestBase {
         0xA57b8d98dAE62B26Ec3bcC4a365338157060B234;
     address internal constant _REWARDER =
         0xDd1fE5AD401D4777cE89959b7fa587e569Bf125D;
-    address internal constant _LZ_ENDPOINT =
-        0x66A71Dcef29A0fFBDBE3c6a460a3B5BC225Cd675;
-    address internal constant _STARGATE_ROUTER =
-        0x8731d54E9D02c286767d56ac03e8037C07e01e98;
+    address internal constant _WORMHOLE =
+        0x98f3c9e6E3fAce36bAAd05FE09d375Ef1464288B;
+    address internal constant _WORMHOLE_RELAYER =
+        0x27428DD2d3DD32A4D7f7C497eAaa23130d894911;
+    address internal constant _CIRCLE_RELAYER =
+        0x4cb69FaE7e7Af841e44E1A1c30Af640739378bb2;
 
     CVE public cve;
     VeCVE public veCVE;
@@ -159,10 +161,6 @@ contract TestBaseMarket is TestBase {
 
     function _deployCVE() internal {
         cve = new CVE(
-            "Curvance",
-            "CVE",
-            18,
-            _LZ_ENDPOINT,
             ICentralRegistry(address(centralRegistry)),
             address(0),
             10000 ether,
@@ -171,9 +169,6 @@ contract TestBaseMarket is TestBase {
             10000 ether
         );
         centralRegistry.setCVE(address(cve));
-
-        cve.setTrustedRemoteAddress(110, abi.encodePacked(address(1)));
-        cve.setUseCustomAdapterParams(true);
     }
 
     function _deployCVELocker() internal {
@@ -207,7 +202,9 @@ contract TestBaseMarket is TestBase {
         protocolMessagingHub = new ProtocolMessagingHub(
             ICentralRegistry(address(centralRegistry)),
             _USDC_ADDRESS,
-            _STARGATE_ROUTER
+            _WORMHOLE,
+            _WORMHOLE_RELAYER,
+            _CIRCLE_RELAYER
         );
         centralRegistry.setProtocolMessagingHub(address(protocolMessagingHub));
     }

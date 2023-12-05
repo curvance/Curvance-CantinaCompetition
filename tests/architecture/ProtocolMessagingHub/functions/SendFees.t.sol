@@ -3,30 +3,13 @@ pragma solidity 0.8.17;
 
 import { TestBaseProtocolMessagingHub } from "../TestBaseProtocolMessagingHub.sol";
 import { ProtocolMessagingHub } from "contracts/architecture/ProtocolMessagingHub.sol";
-import { PoolData } from "contracts/interfaces/IProtocolMessagingHub.sol";
-import { LzTxObj } from "contracts/interfaces/layerzero/IStargateRouter.sol";
 
 contract SendFeesTest is TestBaseProtocolMessagingHub {
     function test_sendFees_fail_whenCallerIsNotAuthorized() public {
         vm.expectRevert(
             ProtocolMessagingHub.ProtocolMessagingHub__Unauthorized.selector
         );
-        protocolMessagingHub.sendFees(
-            address(this),
-            PoolData({
-                dstChainId: 110,
-                srcPoolId: 1,
-                dstPoolId: 1,
-                amountLD: 10e6,
-                minAmountLD: 9e6
-            }),
-            LzTxObj({
-                dstGasForCall: 0,
-                dstNativeAmount: 0,
-                dstNativeAddr: ""
-            }),
-            ""
-        );
+        protocolMessagingHub.sendFees(23, address(this), 10e6);
     }
 
     function test_sendFees_fail_whenOperatorIsNotAuthorized() public {
@@ -41,22 +24,7 @@ contract SendFeesTest is TestBaseProtocolMessagingHub {
         );
 
         vm.prank(address(feeAccumulator));
-        protocolMessagingHub.sendFees(
-            address(this),
-            PoolData({
-                dstChainId: 110,
-                srcPoolId: 1,
-                dstPoolId: 1,
-                amountLD: 10e6,
-                minAmountLD: 9e6
-            }),
-            LzTxObj({
-                dstGasForCall: 0,
-                dstNativeAmount: 0,
-                dstNativeAddr: ""
-            }),
-            ""
-        );
+        protocolMessagingHub.sendFees(23, address(this), 10e6);
     }
 
     function test_sendFees_fail_whenHasNoEnoughNativeAssetForMessageFee()
@@ -65,11 +33,11 @@ contract SendFeesTest is TestBaseProtocolMessagingHub {
         centralRegistry.addChainSupport(
             address(this),
             address(this),
-            abi.encodePacked(address(cve)),
-            110,
+            address(cve),
+            23,
             1,
             1,
-            110
+            23
         );
 
         vm.expectRevert(
@@ -79,22 +47,7 @@ contract SendFeesTest is TestBaseProtocolMessagingHub {
         );
 
         vm.prank(address(feeAccumulator));
-        protocolMessagingHub.sendFees(
-            address(this),
-            PoolData({
-                dstChainId: 110,
-                srcPoolId: 1,
-                dstPoolId: 1,
-                amountLD: 10e6,
-                minAmountLD: 9e6
-            }),
-            LzTxObj({
-                dstGasForCall: 0,
-                dstNativeAmount: 0,
-                dstNativeAddr: ""
-            }),
-            ""
-        );
+        protocolMessagingHub.sendFees(23, address(this), 10e6);
     }
 
     function test_sendFees_fail_whenHasNoEnoughFeeToken() public {
@@ -103,32 +56,17 @@ contract SendFeesTest is TestBaseProtocolMessagingHub {
         centralRegistry.addChainSupport(
             address(this),
             address(this),
-            abi.encodePacked(address(cve)),
-            110,
+            address(cve),
+            23,
             1,
             1,
-            110
+            23
         );
 
         vm.expectRevert(bytes4(keccak256("TransferFromFailed()")));
 
         vm.prank(address(feeAccumulator));
-        protocolMessagingHub.sendFees(
-            address(this),
-            PoolData({
-                dstChainId: 110,
-                srcPoolId: 1,
-                dstPoolId: 1,
-                amountLD: 10e6,
-                minAmountLD: 9e6
-            }),
-            LzTxObj({
-                dstGasForCall: 0,
-                dstNativeAmount: 0,
-                dstNativeAddr: ""
-            }),
-            ""
-        );
+        protocolMessagingHub.sendFees(23, address(this), 10e6);
     }
 
     function test_sendFees_success() public {
@@ -138,32 +76,17 @@ contract SendFeesTest is TestBaseProtocolMessagingHub {
         centralRegistry.addChainSupport(
             address(this),
             address(this),
-            abi.encodePacked(address(cve)),
-            110,
+            address(cve),
+            23,
             1,
             1,
-            110
+            23
         );
 
         assertEq(usdc.balanceOf(address(feeAccumulator)), _ONE);
 
         vm.prank(address(feeAccumulator));
-        protocolMessagingHub.sendFees(
-            address(this),
-            PoolData({
-                dstChainId: 110,
-                srcPoolId: 1,
-                dstPoolId: 1,
-                amountLD: 10e6,
-                minAmountLD: 9e6
-            }),
-            LzTxObj({
-                dstGasForCall: 0,
-                dstNativeAmount: 0,
-                dstNativeAddr: ""
-            }),
-            ""
-        );
+        protocolMessagingHub.sendFees(23, address(this), 10e6);
 
         assertEq(usdc.balanceOf(address(feeAccumulator)), _ONE - 10e6);
     }
