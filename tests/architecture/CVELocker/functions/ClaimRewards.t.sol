@@ -57,7 +57,7 @@ contract ClaimRewardsTest is TestBaseCVELocker {
             uint256 nextEpochToDeliver = cveLocker.nextEpochToDeliver();
 
             vm.prank(centralRegistry.feeAccumulator());
-            cveLocker.recordEpochRewards(nextEpochToDeliver, _ONE);
+            cveLocker.recordEpochRewards(_ONE);
         }
 
         vm.expectRevert(
@@ -78,7 +78,7 @@ contract ClaimRewardsTest is TestBaseCVELocker {
             uint256 nextEpochToDeliver = cveLocker.nextEpochToDeliver();
 
             vm.prank(centralRegistry.feeAccumulator());
-            cveLocker.recordEpochRewards(nextEpochToDeliver, _ONE);
+            cveLocker.recordEpochRewards(_ONE);
         }
 
         vm.expectRevert(CVELocker.CVELocker__NoEpochRewards.selector);
@@ -108,7 +108,7 @@ contract ClaimRewardsTest is TestBaseCVELocker {
             uint256 nextEpochToDeliver = cveLocker.nextEpochToDeliver();
 
             vm.prank(centralRegistry.feeAccumulator());
-            cveLocker.recordEpochRewards(nextEpochToDeliver, _ONE);
+            cveLocker.recordEpochRewards(_ONE);
         }
 
         deal(_USDC_ADDRESS, address(cveLocker), amount);

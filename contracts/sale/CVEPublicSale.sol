@@ -28,6 +28,7 @@ contract CVEPublicSale {
     uint256 public hardPriceInpaymentToken; // price in WETH (18 decimals)
     uint256 public cveAmountForSale;
     address public paymentToken; // ideally WETH
+    uint8 public paymentTokenDecimals; // ideally WETH
     uint256 public paymentTokenPrice;
 
     uint256 public saleCommitted;
@@ -107,6 +108,11 @@ contract CVEPublicSale {
         hardPriceInpaymentToken = (_hardPriceInUSD * 1e18) / paymentTokenPrice;
         cveAmountForSale = _cveAmountForSale;
         paymentToken = _paymentToken;
+        if (_paymentToken == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE) {
+            paymentTokenDecimals = 18;
+        } else {
+            paymentTokenDecimals = IERC20(_paymentToken).decimals();
+        }
 
         emit PublicSaleStarted(_startTime);
     }
@@ -132,7 +138,7 @@ contract CVEPublicSale {
             paymentToken,
             msg.sender,
             address(this),
-            payAmount
+            (payAmount * (10 ** paymentTokenDecimals)) / 1e18 // adjust decimals
         );
 
         userCommitted[msg.sender] += payAmount;
@@ -172,7 +178,9 @@ contract CVEPublicSale {
     }
 
     /// @notice return sale price from sale committed
-    function priceAt(uint256 _saleCommitted) public view returns (uint256) {
+    function priceAt(
+        uint256 _saleCommitted
+    ) public view returns (uint256 price) {
         uint256 _softCap = softCap();
         if (_saleCommitted < _softCap) {
             return softPriceInpaymentToken;
@@ -182,7 +190,10 @@ contract CVEPublicSale {
             return hardPriceInpaymentToken;
         }
 
-        return (_saleCommitted * 1e18) / cveAmountForSale;
+        // round up price calculation
+        return
+            ((_saleCommitted * 1e18) + cveAmountForSale / 2) /
+            cveAmountForSale;
     }
 
     /// @notice return current sale price
@@ -223,6 +234,10 @@ contract CVEPublicSale {
         }
 
         uint256 balance = IERC20(paymentToken).balanceOf(address(this));
-        SafeTransferLib.safeTransfer(paymentToken, centralRegistry.daoAddress(), balance);
+        SafeTransferLib.safeTransfer(
+            paymentToken,
+            centralRegistry.daoAddress(),
+            balance
+        );
     }
 }

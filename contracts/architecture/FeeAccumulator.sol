@@ -251,7 +251,7 @@ contract FeeAccumulator is ReentrancyGuard {
         uint256 amountToOTC
     ) external nonReentrant {
         _checkDaoPermissions();
-        
+
         // Validate that the token is earmarked for OTC
         if (rewardTokenInfo[tokenToOTC].forOTC < 2) {
             revert FeeAccumulator__TokenIsNotEarmarked();
@@ -541,9 +541,7 @@ contract FeeAccumulator is ReentrancyGuard {
 
     /// @notice Set Gelato Network one balance destination address to
     ///         fund compounders
-    function setOneBalanceAddress(
-        address newGelatoOneBalance
-    ) external {
+    function setOneBalanceAddress(address newGelatoOneBalance) external {
         _checkDaoPermissions();
 
         // Revoke previous approval
@@ -562,10 +560,7 @@ contract FeeAccumulator is ReentrancyGuard {
 
     /// @notice Set status on whether a token should be earmarked to OTC
     /// @param state 2 = earmarked; 0 or 1 = not earmarked
-    function setEarmarked(
-        address token,
-        bool state
-    ) external {
+    function setEarmarked(address token, bool state) external {
         _checkDaoPermissions();
 
         rewardTokenInfo[token].forOTC = state ? 2 : 1;
@@ -608,9 +603,7 @@ contract FeeAccumulator is ReentrancyGuard {
     ///         to read.
     /// @dev Does not fail on duplicate token, merely skips it and continues
     /// @param newTokens Array of token addresses to be added as reward tokens
-    function addRewardTokens(
-        address[] calldata newTokens
-    ) external {
+    function addRewardTokens(address[] calldata newTokens) external {
         _checkDaoPermissions();
 
         uint256 numTokens = newTokens.length;
@@ -633,9 +626,7 @@ contract FeeAccumulator is ReentrancyGuard {
     ///         Gelato Network reads
     /// @dev    Will revert on unsupported token address
     /// @param rewardTokenToRemove The address of the token to be removed
-    function removeRewardToken(
-        address rewardTokenToRemove
-    ) external {
+    function removeRewardToken(address rewardTokenToRemove) external {
         _checkDaoPermissions();
 
         RewardToken storage tokenToRemove = rewardTokenInfo[
@@ -880,5 +871,4 @@ contract FeeAccumulator is ReentrancyGuard {
             revert FeeAccumulator__Unauthorized();
         }
     }
-
 }

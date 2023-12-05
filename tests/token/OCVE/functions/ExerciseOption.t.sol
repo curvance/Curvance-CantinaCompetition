@@ -129,7 +129,7 @@ contract ExerciseOptionTest is TestBaseOCVE {
         uint256 usdcBalance = usdc.balanceOf(address(this));
         uint256 oCVEUSDCBalance = usdc.balanceOf(address(oCVE));
 
-        usdc.approve(address(oCVE), amount);
+        usdc.approve(address(oCVE), amount / 1e12);
 
         vm.expectEmit(true, true, true, true, address(oCVE));
         emit OptionsExercised(address(this), amount);
@@ -138,7 +138,10 @@ contract ExerciseOptionTest is TestBaseOCVE {
 
         oCVE.exerciseOption(amount);
 
-        assertEq(usdc.balanceOf(address(this)), usdcBalance - amount);
-        assertEq(usdc.balanceOf(address(oCVE)), oCVEUSDCBalance + amount);
+        assertEq(usdc.balanceOf(address(this)), usdcBalance - amount / 1e12);
+        assertEq(
+            usdc.balanceOf(address(oCVE)),
+            oCVEUSDCBalance + amount / 1e12
+        );
     }
 }

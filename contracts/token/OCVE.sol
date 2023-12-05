@@ -19,6 +19,8 @@ contract OCVE is ERC20 {
     /// @notice Token exercisers pay in
     address public immutable paymentToken;
 
+    uint8 public paymentTokenDecimals;
+
     /// @notice token name metadata
     bytes32 private immutable _name;
 
@@ -75,6 +77,11 @@ contract OCVE is ERC20 {
 
         centralRegistry = centralRegistry_;
         paymentToken = paymentToken_;
+        if (paymentToken_ == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE) {
+            paymentTokenDecimals = 18;
+        } else {
+            paymentTokenDecimals = ERC20(paymentToken_).decimals();
+        }
         cve = centralRegistry.CVE();
 
         // total call option allocation for airdrops
@@ -86,10 +93,7 @@ contract OCVE is ERC20 {
     /// @notice Rescue any token sent by mistake
     /// @param token token to rescue
     /// @param amount amount of `token` to rescue, 0 indicates to rescue all
-    function rescueToken(
-        address token,
-        uint256 amount
-    ) external {
+    function rescueToken(address token, uint256 amount) external {
         _checkDaoPermissions();
         address daoOperator = centralRegistry.daoAddress();
 
@@ -236,7 +240,7 @@ contract OCVE is ERC20 {
                 paymentToken,
                 msg.sender,
                 address(this),
-                optionExerciseCost
+                (optionExerciseCost * (10 ** paymentTokenDecimals)) / 1e18 // adjust decimals
             );
         }
 
@@ -257,5 +261,4 @@ contract OCVE is ERC20 {
             revert OCVE__Unauthorized();
         }
     }
-
 }

@@ -137,7 +137,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         assets = _mint(shares, receiver);
         if (
             msg.sender == receiver ||
-            msg.sender != lendtroller.positionFolding()
+            msg.sender == lendtroller.positionFolding()
         ) {
             lendtroller.postCollateral(receiver, address(this), shares);
         }
@@ -513,20 +513,23 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         return true;
     }
 
-    function supportsInterface(bytes4 interfaceId) public pure virtual returns (bool) {
-        return interfaceId == type(IMToken).interfaceId || 
+    function supportsInterface(
+        bytes4 interfaceId
+    ) public pure virtual returns (bool) {
+        return
+            interfaceId == type(IMToken).interfaceId ||
             interfaceId == type(ERC4626).interfaceId;
     }
 
     // ACCOUNTING LOGIC
 
-    function totalAssetsSafe() public nonReentrant virtual returns (uint256) {
+    function totalAssetsSafe() public virtual nonReentrant returns (uint256) {
         // Returns stored internal balance.
         // Has added re-entry lock for protocols building ontop of us to have confidence in data quality
         return _totalAssets;
     }
 
-    function totalAssets() public view override virtual returns (uint256) {
+    function totalAssets() public view virtual override returns (uint256) {
         // Returns stored internal balance.
         return _totalAssets;
     }
@@ -820,5 +823,4 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         address owner,
         bool forceRedeemCollateral
     ) internal virtual returns (uint256 assets) {}
-
 }

@@ -17,25 +17,14 @@ contract RecordEpochRewardsTest is TestBaseCVELocker {
         public
     {
         vm.expectRevert(CVELocker.CVELocker__Unauthorized.selector);
-        cveLocker.recordEpochRewards(nextEpochToDeliver, _ONE);
-    }
-
-    function test_recordEpochRewards_fail_whenEpochIsNotNextEpochToDeliver()
-        public
-    {
-        vm.prank(centralRegistry.feeAccumulator());
-
-        vm.expectRevert(
-            CVELocker.CVELocker__WrongEpochRewardSubmission.selector
-        );
-        cveLocker.recordEpochRewards(nextEpochToDeliver + 1, _ONE);
+        cveLocker.recordEpochRewards(_ONE);
     }
 
     function test_recordEpochRewards_success() public {
         assertEq(cveLocker.epochRewardsPerCVE(nextEpochToDeliver), 0);
 
         vm.prank(centralRegistry.feeAccumulator());
-        cveLocker.recordEpochRewards(nextEpochToDeliver, _ONE);
+        cveLocker.recordEpochRewards(_ONE);
 
         assertEq(cveLocker.epochRewardsPerCVE(nextEpochToDeliver), _ONE);
         assertEq(cveLocker.nextEpochToDeliver(), nextEpochToDeliver + 1);

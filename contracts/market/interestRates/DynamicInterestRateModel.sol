@@ -6,6 +6,8 @@ import { WAD } from "contracts/libraries/Constants.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
+import "forge-std/Test.sol";
+
 contract DynamicInterestRateModel {
     /// TYPES ///
 
@@ -428,7 +430,7 @@ contract DynamicInterestRateModel {
     ) internal view returns (uint256) {
         uint256 currentMultiplier = vertexMultiplier();
         // Calculate decay rate
-        uint256 decay = currentMultiplier * config.decayRate;
+        uint256 decay = (currentMultiplier * config.decayRate) / WAD;
         uint256 newMultiplier;
 
         if (util <= config.decreaseThresholdMax) {
@@ -442,7 +444,7 @@ contract DynamicInterestRateModel {
 
         newMultiplier =
             (currentMultiplier *
-                ((config.adjustmentVelocity * WAD) /
+                ((config.adjustmentVelocity) /
                     _getNegativeCurveResult(
                         util,
                         config.increaseThreshold,
@@ -478,7 +480,7 @@ contract DynamicInterestRateModel {
     ) internal view returns (uint256) {
         uint256 currentMultiplier = vertexMultiplier();
         // Calculate decay rate
-        uint256 decay = currentMultiplier * config.decayRate;
+        uint256 decay = (currentMultiplier * config.decayRate) / WAD;
         uint256 newMultiplier;
 
         if (util < config.increaseThreshold) {
@@ -495,7 +497,9 @@ contract DynamicInterestRateModel {
                         util,
                         config.increaseThreshold,
                         config.increaseThresholdMax
-                    ))) / WAD) -
+                    ))) /
+                WAD /
+                WAD) -
             decay;
 
         // Update and return with adjustment and decay rate applied.
