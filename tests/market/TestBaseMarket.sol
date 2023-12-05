@@ -202,7 +202,6 @@ contract TestBaseMarket is TestBase {
         protocolMessagingHub = new ProtocolMessagingHub(
             ICentralRegistry(address(centralRegistry)),
             _USDC_ADDRESS,
-            _WORMHOLE,
             _WORMHOLE_RELAYER,
             _CIRCLE_RELAYER
         );

@@ -46,7 +46,6 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     error ProtocolMessagingHub__Unauthorized();
     error ProtocolMessagingHub__InvalidCentralRegistry();
     error ProtocolMessagingHub__FeeTokenIsZeroAddress();
-    error ProtocolMessagingHub__WormholeIsZeroAddress();
     error ProtocolMessagingHub__WormholeRelayerIsZeroAddress();
     error ProtocolMessagingHub__CircleRelayerIsZeroAddress();
     error ProtocolMessagingHub__ChainIsNotSupported();
@@ -69,7 +68,6 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     constructor(
         ICentralRegistry centralRegistry_,
         address feeToken_,
-        address wormhole_,
         address wormholeRelayer_,
         address circleRelayer_
     ) {
@@ -84,9 +82,6 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         if (feeToken_ == address(0)) {
             revert ProtocolMessagingHub__FeeTokenIsZeroAddress();
         }
-        if (wormhole_ == address(0)) {
-            revert ProtocolMessagingHub__WormholeIsZeroAddress();
-        }
         if (wormholeRelayer_ == address(0)) {
             revert ProtocolMessagingHub__WormholeRelayerIsZeroAddress();
         }
@@ -97,9 +92,9 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         centralRegistry = centralRegistry_;
         cve = ICVE(centralRegistry.cve());
         feeToken = feeToken_;
-        wormhole = IWormhole(wormhole_);
         wormholeRelayer = IWormholeRelayer(wormholeRelayer_);
         circleRelayer = ICircleRelayer(circleRelayer_);
+        wormhole = ICircleRelayer(circleRelayer_).wormhole();
     }
 
     /// EXTERNAL FUNCTIONS ///
