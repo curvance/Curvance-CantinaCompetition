@@ -398,9 +398,10 @@ contract DynamicInterestRateModel {
     function getVertexInterestRate(
         uint256 util
     ) internal view returns (uint256) {
+        // We divide by 1e36 since we need to divide by WAD twice for proper
+        // precision and can optimize by multiplying prior
         return
-            (((util * vertexMultiplier()) / WAD) *
-                ratesConfig.vertexInterestRate) / WAD;
+            (util * ratesConfig.vertexInterestRate * vertexMultiplier()) / 1e36;
     }
 
     /// @notice Calculates and returns the updated multiplier for scenarios
