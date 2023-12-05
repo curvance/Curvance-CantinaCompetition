@@ -6,8 +6,6 @@ import { WAD } from "contracts/libraries/Constants.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
-import "forge-std/Test.sol";
-
 contract DynamicInterestRateModel {
     /// TYPES ///
 
