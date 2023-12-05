@@ -43,6 +43,12 @@ contract SendLockedTokenDataTest is TestBaseProtocolMessagingHub {
     }
 
     function test_sendLockedTokenData_success() public {
+        (uint256 messageFee, ) = protocolMessagingHub.quoteWormholeFee(
+            23,
+            false
+        );
+        deal(address(feeAccumulator), messageFee);
+
         centralRegistry.addChainSupport(
             address(this),
             address(this),
@@ -54,11 +60,11 @@ contract SendLockedTokenDataTest is TestBaseProtocolMessagingHub {
         );
 
         vm.prank(address(feeAccumulator));
-        protocolMessagingHub.sendLockedTokenData{ value: _ONE }(
+        protocolMessagingHub.sendLockedTokenData{ value: messageFee }(
             23,
             address(this),
             "",
-            _ONE
+            messageFee
         );
     }
 }
