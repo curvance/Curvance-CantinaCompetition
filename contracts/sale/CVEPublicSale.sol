@@ -61,7 +61,7 @@ contract CVEPublicSale {
         }
 
         centralRegistry = centralRegistry_;
-        cve = centralRegistry.CVE();
+        cve = centralRegistry.cve();
     }
 
     /// @notice start public sale

@@ -1,13 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import "../layerzero/OFTV2.sol";
+import { ERC20 } from "contracts/libraries/ERC20.sol";
+import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 
-contract CVE is OFTV2 {
+contract CVE is ERC20 {
     /// CONSTANTS ///
 
-    // Seconds in a month based on 365.2425 days
+    // Seconds in a month based on 365.2425 days.
     uint256 public constant MONTH = 2_629_746;
+
+    /// @notice Curvance DAO hub.
+    ICentralRegistry public immutable centralRegistry;
+
     // Timestamp when token was created
     uint256 public immutable tokenGenerationEventTimestamp;
 
@@ -19,12 +25,16 @@ contract CVE is OFTV2 {
 
     /// STORAGE ///
 
-    address public teamAddress; // Team operating address
-    // Number of DAO treasury tokens minted
+    /// @notice Team operating address.
+    address public teamAddress;
+
+    /// @notice Number of DAO treasury tokens minted.
     uint256 public daoTreasuryMinted;
-    // Number of Team allocation tokens minted
+
+    /// @notice Number of Team allocation tokens minted.
     uint256 public teamAllocationMinted;
-    // Number of Call Option reserved tokens minted
+
+    /// @notice Number of Call Option reserved tokens minted.
     uint256 public callOptionsMinted;
 
     /// ERRORS ///
@@ -33,40 +43,64 @@ contract CVE is OFTV2 {
     error CVE__InsufficientCVEAllocation();
     error CVE__ParametersAreInvalid();
 
+    /// MODIFIERS ///
+
+    modifier onlyDaoPermissions() {
+        require(
+            centralRegistry.hasDaoPermissions(msg.sender),
+            "CentralRegistry: UNAUTHORIZED"
+        );
+        _;
+    }
+
+    modifier onlyElevatedPermissions() {
+        require(
+            centralRegistry.hasElevatedPermissions(msg.sender),
+            "CentralRegistry: UNAUTHORIZED"
+        );
+        _;
+    }
+
     /// CONSTRUCTOR ///
 
     constructor(
-        string memory name_,
-        string memory symbol_,
-        uint8 sharedDecimals_,
-        address lzEndpoint_,
         ICentralRegistry centralRegistry_,
         address team_,
         uint256 daoTreasuryAllocation_,
         uint256 callOptionAllocation_,
         uint256 teamAllocation_,
         uint256 initialTokenMint_
-    ) OFTV2(name_, symbol_, sharedDecimals_, lzEndpoint_, centralRegistry_) {
-        tokenGenerationEventTimestamp = block.timestamp;
+    ) {
+        require(
+            ERC165Checker.supportsInterface(
+                address(centralRegistry_),
+                type(ICentralRegistry).interfaceId
+            ),
+            "lzApp: invalid central registry"
+        );
 
         if (team_ == address(0)) {
             team_ = msg.sender;
         }
 
+        centralRegistry = centralRegistry_;
+        tokenGenerationEventTimestamp = block.timestamp;
         teamAddress = team_;
         daoTreasuryAllocation = daoTreasuryAllocation_;
         callOptionAllocation = callOptionAllocation_;
         teamAllocation = teamAllocation_;
-        teamAllocationPerMonth = teamAllocation_ / 48; // Team Vesting is for 4 years and unlocked monthly
+        // Team Vesting is for 4 years and unlocked monthly.
+        teamAllocationPerMonth = teamAllocation_ / 48;
 
         _mint(msg.sender, initialTokenMint_);
     }
 
     /// EXTERNAL FUNCTIONS ///
 
-    /// @notice Mints gauge emissions for the desired gauge pool
+    /// @notice Mints gauge emissions for the desired gauge pool.
     /// @dev Allows the VotingHub to mint new gauge emissions.
-    /// @param gaugePool The address of the gauge pool where emissions will be configured
+    /// @param gaugePool The address of the gauge pool where emissions will be
+    ///                  configured.
     /// @param amount The amount of gauge emissions to be minted
     function mintGaugeEmissions(address gaugePool, uint256 amount) external {
         if (msg.sender != centralRegistry.protocolMessagingHub()) {
@@ -76,8 +110,9 @@ contract CVE is OFTV2 {
         _mint(gaugePool, amount);
     }
 
-    /// @notice Mints CVE to the calling gauge pool to fund the users lock boost
-    /// @param amount The amount of tokens to be minted
+    /// @notice Mints CVE to the calling gauge pool to fund the users
+    ///         lock boost.
+    /// @param amount The amount of tokens to be minted.
     function mintLockBoost(uint256 amount) external {
         if (!centralRegistry.isGaugeController(msg.sender)) {
             revert CVE__Unauthorized();
@@ -86,9 +121,10 @@ contract CVE is OFTV2 {
         _mint(msg.sender, amount);
     }
 
-    /// @notice Mint CVE for the DAO treasury
+    /// @notice Mint CVE for the DAO treasury.
     /// @param amount The amount of treasury tokens to be minted.
-    /// The number of tokens to mint cannot not exceed the available treasury allocation.
+    ///               The number of tokens to mint cannot not exceed
+    ///               the available treasury allocation.
     function mintTreasuryTokens(
         uint256 amount
     ) external onlyElevatedPermissions {
@@ -101,9 +137,10 @@ contract CVE is OFTV2 {
         _mint(msg.sender, amount);
     }
 
-    /// @notice Mint CVE for deposit into callOptionCVE contract
+    /// @notice Mint CVE for deposit into callOptionCVE contract.
     /// @param amount The amount of call option tokens to be minted.
-    /// The number of tokens to mint cannot not exceed the available call option allocation.
+    ///               The number of tokens to mint cannot not exceed
+    ///               the available call option allocation.
     function mintCallOptionTokens(uint256 amount) external onlyDaoPermissions {
         uint256 _callOptionsMinted = callOptionsMinted;
         if (callOptionAllocation < _callOptionsMinted + amount) {
@@ -114,9 +151,10 @@ contract CVE is OFTV2 {
         _mint(msg.sender, amount);
     }
 
-    /// @notice Mint CVE from team allocation
+    /// @notice Mint CVE from team allocation.
     /// @dev Allows the DAO Manager to mint new tokens for the team allocation.
-    /// @dev The amount of tokens minted is calculated based on the time passed since the Token Generation Event.
+    /// @dev The amount of tokens minted is calculated based on the time passed
+    ///      since the Token Generation Event.
     /// @dev The number of tokens minted is capped by the total team allocation.
     function mintTeamTokens() external {
         if (msg.sender != teamAddress) {
@@ -159,27 +197,13 @@ contract CVE is OFTV2 {
 
     /// PUBLIC FUNCTIONS ///
 
-    function sendAndCall(
-        address from,
-        uint16 dstChainId,
-        bytes32 toAddress,
-        uint256 amount,
-        bytes calldata payload,
-        uint64 dstGasForCall,
-        LzCallParams calldata callParams
-    ) public payable override {
-        if (msg.sender != centralRegistry.protocolMessagingHub()) {
-            revert CVE__Unauthorized();
-        }
+    /// @dev Returns the name of the token.
+    function name() public pure override returns (string memory) {
+        return "Curvance";
+    }
 
-        super.sendAndCall(
-            from,
-            dstChainId,
-            toAddress,
-            amount,
-            payload,
-            dstGasForCall,
-            callParams
-        );
+    /// @dev Returns the symbol of the token.
+    function symbol() public pure override returns (string memory) {
+        return "CVE";
     }
 }

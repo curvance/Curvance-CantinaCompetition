@@ -1,28 +1,40 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import "contracts/layerzero/OFTV2.sol";
+import { ERC20 } from "contracts/libraries/ERC20.sol";
+import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 
-contract CVE is OFTV2 {
+contract CVE is ERC20 {
+    /// CONSTANTS ///
+
+    /// @notice Curvance DAO hub.
+    ICentralRegistry public immutable centralRegistry;
+
     /// ERRORS ///
 
     error CVE__Unauthorized();
 
     /// CONSTRUCTOR ///
 
-    constructor(
-        string memory name_,
-        string memory symbol_,
-        uint8 sharedDecimals_,
-        address lzEndpoint_,
-        ICentralRegistry centralRegistry_
-    ) OFTV2(name_, symbol_, sharedDecimals_, lzEndpoint_, centralRegistry_) {}
+    constructor(ICentralRegistry centralRegistry_) {
+        require(
+            ERC165Checker.supportsInterface(
+                address(centralRegistry_),
+                type(ICentralRegistry).interfaceId
+            ),
+            "lzApp: invalid central registry"
+        );
+
+        centralRegistry = centralRegistry_;
+    }
 
     /// EXTERNAL FUNCTIONIS ///
 
     /// @notice Mints gauge emissions for the desired gauge pool
     /// @dev Allows the VotingHub to mint new gauge emissions.
-    /// @param gaugePool The address of the gauge pool where emissions will be configured
+    /// @param gaugePool The address of the gauge pool where emissions will be
+    ///                  configured.
     /// @param amount The amount of gauge emissions to be minted
     function mintGaugeEmissions(address gaugePool, uint256 amount) external {
         if (msg.sender != centralRegistry.protocolMessagingHub()) {
@@ -32,7 +44,8 @@ contract CVE is OFTV2 {
         _mint(gaugePool, amount);
     }
 
-    /// @notice Mints CVE to the calling gauge pool to fund the users lock boost
+    /// @notice Mints CVE to the calling gauge pool to fund the users
+    ///         lock boost.
     /// @param amount The amount of tokens to be minted
     function mintLockBoost(uint256 amount) external {
         if (!centralRegistry.isGaugeController(msg.sender)) {
@@ -44,27 +57,13 @@ contract CVE is OFTV2 {
 
     /// PUBLIC FUNCTIONS ///
 
-    function sendAndCall(
-        address from,
-        uint16 dstChainId,
-        bytes32 toAddress,
-        uint256 amount,
-        bytes calldata payload,
-        uint64 dstGasForCall,
-        LzCallParams calldata callParams
-    ) public payable override {
-        if (msg.sender != centralRegistry.protocolMessagingHub()) {
-            revert CVE__Unauthorized();
-        }
+    /// @dev Returns the name of the token.
+    function name() public pure override returns (string memory) {
+        return "Child Curvance";
+    }
 
-        super.sendAndCall(
-            from,
-            dstChainId,
-            toAddress,
-            amount,
-            payload,
-            dstGasForCall,
-            callParams
-        );
+    /// @dev Returns the symbol of the token.
+    function symbol() public pure override returns (string memory) {
+        return "ChildCVE";
     }
 }
