@@ -100,7 +100,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
 
         centralRegistry = centralRegistry_;
         genesisEpoch = centralRegistry.genesisEpoch();
-        cve = centralRegistry.CVE();
+        cve = centralRegistry.cve();
         cveLocker = ICVELocker(centralRegistry.cveLocker());
 
         if (clPointMultiplier_ <= DENOMINATOR) {
@@ -200,7 +200,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
         uint256 aux
     ) external nonReentrant {
         _canLock(amount);
-        
+
         if (
             !centralRegistry.isVeCVELocker(msg.sender) &&
             !centralRegistry.isGaugeController(msg.sender)
@@ -303,7 +303,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
         uint256 aux
     ) external nonReentrant {
         _canLock(amount);
-        
+
         SafeTransferLib.safeTransferFrom(
             cve,
             msg.sender,
@@ -342,7 +342,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
         uint256 aux
     ) external nonReentrant {
         _canLock(amount);
-        
+
         if (
             !centralRegistry.isVeCVELocker(msg.sender) &&
             !centralRegistry.isGaugeController(msg.sender)

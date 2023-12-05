@@ -75,7 +75,7 @@ contract OCVE is ERC20 {
 
         centralRegistry = centralRegistry_;
         paymentToken = paymentToken_;
-        cve = centralRegistry.CVE();
+        cve = centralRegistry.cve();
 
         // total call option allocation for airdrops
         _mint(msg.sender, 15750002.59 ether);
@@ -86,10 +86,7 @@ contract OCVE is ERC20 {
     /// @notice Rescue any token sent by mistake
     /// @param token token to rescue
     /// @param amount amount of `token` to rescue, 0 indicates to rescue all
-    function rescueToken(
-        address token,
-        uint256 amount
-    ) external {
+    function rescueToken(address token, uint256 amount) external {
         _checkDaoPermissions();
         address daoOperator = centralRegistry.daoAddress();
 
@@ -257,5 +254,4 @@ contract OCVE is ERC20 {
             revert OCVE__Unauthorized();
         }
     }
-
 }

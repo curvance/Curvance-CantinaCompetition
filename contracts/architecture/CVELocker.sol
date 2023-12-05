@@ -92,7 +92,7 @@ contract CVELocker is ReentrancyGuard {
         centralRegistry = centralRegistry_;
         genesisEpoch = centralRegistry.genesisEpoch();
         rewardToken = rewardToken_;
-        cve = centralRegistry.CVE();
+        cve = centralRegistry.cve();
     }
 
     /// EXTERNAL FUNCTIONS ///
@@ -122,10 +122,7 @@ contract CVELocker is ReentrancyGuard {
     /// @notice Rescue any token sent by mistake
     /// @param token token to rescue
     /// @param amount amount of `token` to rescue, 0 indicates to rescue all
-    function rescueToken(
-        address token,
-        uint256 amount
-    ) external {
+    function rescueToken(address token, uint256 amount) external {
         _checkDaoPermissions();
         address daoOperator = centralRegistry.daoAddress();
 
@@ -151,9 +148,7 @@ contract CVELocker is ReentrancyGuard {
     /// @notice Authorizes a new reward token.
     /// @dev Can only be called by the DAO manager.
     /// @param token The address of the token to authorize.
-    function addAuthorizedRewardToken(
-        address token
-    ) external {
+    function addAuthorizedRewardToken(address token) external {
         _checkElevatedPermissions();
 
         if (token == address(0)) {
@@ -170,9 +165,7 @@ contract CVELocker is ReentrancyGuard {
     /// @notice Removes an authorized reward token.
     /// @dev Can only be called by the DAO manager.
     /// @param token The address of the token to deauthorize.
-    function removeAuthorizedRewardToken(
-        address token
-    ) external {
+    function removeAuthorizedRewardToken(address token) external {
         _checkDaoPermissions();
 
         if (token == address(0)) {
@@ -233,10 +226,7 @@ contract CVELocker is ReentrancyGuard {
     ///      Can only be called by the VeCVE contract.
     /// @param user The address of the user.
     /// @param index The new claim index.
-    function updateUserClaimIndex(
-        address user,
-        uint256 index
-    ) external {
+    function updateUserClaimIndex(address user, uint256 index) external {
         _checkIsVeCVE();
         userNextClaimIndex[user] = index;
     }

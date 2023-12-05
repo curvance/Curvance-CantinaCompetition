@@ -60,7 +60,7 @@ contract CVEPublicSale {
         }
 
         centralRegistry = centralRegistry_;
-        cve = centralRegistry.CVE();
+        cve = centralRegistry.cve();
     }
 
     /// @notice start public sale
@@ -223,6 +223,10 @@ contract CVEPublicSale {
         }
 
         uint256 balance = IERC20(paymentToken).balanceOf(address(this));
-        SafeTransferLib.safeTransfer(paymentToken, centralRegistry.daoAddress(), balance);
+        SafeTransferLib.safeTransfer(
+            paymentToken,
+            centralRegistry.daoAddress(),
+            balance
+        );
     }
 }
