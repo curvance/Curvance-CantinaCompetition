@@ -2,8 +2,7 @@
 pragma solidity ^0.8.17;
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { VeCVE } from "contracts/token/VeCVE.sol";
-import { TestBaseVeCVE } from "../TestBaseVeCVE.sol";
+import { TestBaseVeCVE, VeCVE } from "../TestBaseVeCVE.sol";
 
 contract VeCVEDeploymentTest is TestBaseVeCVE {
     function test_veCVEDeployment_fail_whenCentralRegistryIsInvalid() public {

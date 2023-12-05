@@ -6,7 +6,6 @@ import { VeCVE } from "contracts/token/VeCVE.sol";
 import "forge-std/console.sol";
 
 contract CombineAllLocksTest is TestBaseVeCVE {
-
     uint256 internal constant _INITIAL_AMOUNT = 30e18;
 
     function setUp() public override {

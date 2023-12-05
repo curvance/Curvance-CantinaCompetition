@@ -137,4 +137,33 @@ contract ProcessExpiredLockTest is TestBaseVeCVE {
             0
         );
     }
+
+    // cover L1117
+    function test_processExpiredLock_sucess_withoutRelock_notLastIndex() public {
+        (, uint40 unlockTime) = veCVE.userLocks(address(this), 0);
+        vm.warp(unlockTime);
+
+        veCVE.createLock(30e18, false, rewardsData, "", 0);
+        (, uint40 unlockTime2) = veCVE.userLocks(address(this), 1);
+        assertGt(unlockTime2, unlockTime);
+
+        vm.expectEmit(true, true, true, true, address(veCVE));
+        emit Unlocked(address(this), 30e18);
+
+        veCVE.processExpiredLock(
+            0,
+            false,
+            false,
+            rewardsData,
+            "",
+            0
+        );
+
+        (, unlockTime) = veCVE.userLocks(address(this), 0);
+        assertEq(unlockTime, unlockTime2);
+
+        // except revert for invalid index because expired lock is removed
+        vm.expectRevert();
+        (, unlockTime) = veCVE.userLocks(address(this), 1);
+    }
 }

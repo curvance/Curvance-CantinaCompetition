@@ -50,7 +50,6 @@ contract ExtendLockTest is TestBaseVeCVE {
         bool isFreshLock,
         bool isFreshLockContinuous
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
-        // @todo set cveLocker to use rewardsData
         veCVE.extendLock(0, true, rewardsData, "", 0);
 
         (, uint40 unlockTime) = veCVE.userLocks(address(this), 0);
@@ -62,7 +61,6 @@ contract ExtendLockTest is TestBaseVeCVE {
         bool isFreshLock,
         bool isFreshLockContinuous
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
-        // @todo set cveLocker to use rewardsData
         veCVE.extendLock(0, false, rewardsData, "", 0);
 
         (, uint40 unlockTime) = veCVE.userLocks(address(this), 0);

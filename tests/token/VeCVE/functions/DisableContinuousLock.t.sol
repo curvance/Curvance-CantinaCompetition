@@ -5,6 +5,8 @@ import { TestBaseVeCVE } from "../TestBaseVeCVE.sol";
 import { VeCVE } from "contracts/token/VeCVE.sol";
 
 contract DisableContinuousLockTest is TestBaseVeCVE {
+    event RewardPaid(address user, address rewardToken, uint256 amount);
+
     function setUp() public override {
         super.setUp();
 
@@ -36,7 +38,6 @@ contract DisableContinuousLockTest is TestBaseVeCVE {
         bool isFreshLock,
         bool isFreshLockContinuous
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
-        // @todo set cveLocker to use rewardsData
         (, uint40 unlockTime) = veCVE.userLocks(address(this), 0);
 
         assertEq(veCVE.chainPoints(), 100e18);
@@ -50,6 +51,9 @@ contract DisableContinuousLockTest is TestBaseVeCVE {
             0
         );
 
+        // verify that rewards are delivered
+        vm.expectEmit(true, true, true, true, address(cveLocker));
+        emit RewardPaid(address(this), _USDC_ADDRESS, 100e18);
         veCVE.disableContinuousLock(0, rewardsData, "", 0);
 
         (, unlockTime) = veCVE.userLocks(address(this), 0);

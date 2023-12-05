@@ -6,7 +6,7 @@ import { SafeTransferLib } from "contracts/libraries/external/SafeTransferLib.so
 import { VeCVE } from "contracts/token/VeCVE.sol";
 import { TestBaseVeCVE } from "../TestBaseVeCVE.sol";
 
-contract rescueTokenTest is TestBaseVeCVE {
+contract RescueTokenTest is TestBaseVeCVE {
     function setUp() public override {
         super.setUp();
 
@@ -59,5 +59,29 @@ contract rescueTokenTest is TestBaseVeCVE {
 
         assertEq(usdc.balanceOf(address(veCVE)), balance - amount);
         assertEq(usdc.balanceOf(address(this)), holding + amount);
+    }
+
+    function test_resuceToken_native() public {
+        uint256 holding = address(this).balance;
+        uint256 amount = 1e18;
+        vm.deal(address(veCVE), amount);
+        assertEq(address(veCVE).balance, amount);
+
+        veCVE.rescueToken(address(0), amount);
+
+        assertEq(address(veCVE).balance, 0);
+        assertEq(address(this).balance, holding + amount);
+    }
+
+    function test_resuceToken_nativeAmountZero() public {
+        uint256 holding = address(this).balance;
+        uint256 amount = 1e18;
+        vm.deal(address(veCVE), amount);
+        assertEq(address(veCVE).balance, amount);
+
+        veCVE.rescueToken(address(0), 0);
+
+        assertEq(address(veCVE).balance, 0);
+        assertEq(address(this).balance, holding + amount);
     }
 }

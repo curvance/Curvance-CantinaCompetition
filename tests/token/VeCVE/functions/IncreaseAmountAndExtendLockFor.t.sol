@@ -25,11 +25,7 @@ contract IncreaseAmountAndExtendLockForTest is TestBaseVeCVE {
         centralRegistry.removeVeCVELocker(address(this));
     }
 
-    function test_increaseAmountAndExtendLockFor_fail_whenVeCVEShutdown(
-        bool shouldLock,
-        bool isFreshLock,
-        bool isFreshLockContinuous
-    ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
+    function test_increaseAmountAndExtendLockFor_fail_whenVeCVEShutdown() public {
         veCVE.shutdown();
 
         vm.expectRevert(VeCVE.VeCVE__VeCVEShutdown.selector);
@@ -44,11 +40,7 @@ contract IncreaseAmountAndExtendLockForTest is TestBaseVeCVE {
         );
     }
 
-    function test_increaseAmountAndExtendLockFor_fail_whenAmountIsZero(
-        bool shouldLock,
-        bool isFreshLock,
-        bool isFreshLockContinuous
-    ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
+    function test_increaseAmountAndExtendLockFor_fail_whenAmountIsZero() public {
         vm.expectRevert(VeCVE.VeCVE__InvalidLock.selector);
         veCVE.increaseAmountAndExtendLockFor(
             address(1),
@@ -61,11 +53,7 @@ contract IncreaseAmountAndExtendLockForTest is TestBaseVeCVE {
         );
     }
 
-    function test_lockFor_fail_whenLockerIsNotApproved(
-        bool shouldLock,
-        bool isFreshLock,
-        bool isFreshLockContinuous
-    ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
+    function test_lockFor_fail_whenLockerIsNotApproved() public {
         vm.expectRevert(VeCVE.VeCVE__InvalidLock.selector);
         veCVE.increaseAmountAndExtendLockFor(
             address(1),
@@ -159,5 +147,61 @@ contract IncreaseAmountAndExtendLockForTest is TestBaseVeCVE {
 
         (, uint40 unlockTime) = veCVE.userLocks(address(1), 0);
         assertEq(unlockTime, veCVE.freshLockTimestamp());
+    }
+
+    function test_increaseAmountAndExtendLockFor_fail_startContinuousLock() public {
+        centralRegistry.addVeCVELocker(address(this));
+
+        veCVE.createLockFor(
+            address(2),
+            10e18,
+            true,
+            rewardsData,
+            "",
+            0
+        );
+
+        // cannot extned a continuous lock with a non-continuous lock
+        vm.expectRevert(VeCVE.VeCVE__InvalidLock.selector);
+        veCVE.increaseAmountAndExtendLockFor(
+            address(2),
+            1e18,
+            0,
+            false,
+            rewardsData,
+            "",
+            0
+        );
+    }
+
+    // cover L1059
+    function test_increaseAmountAndExtendLockFor_success_startContinuousLock() public {
+        centralRegistry.addVeCVELocker(address(this));
+
+        veCVE.createLockFor(
+            address(2),
+            10e18,
+            true,
+            rewardsData,
+            "",
+            0
+        );
+
+        veCVE.increaseAmountAndExtendLockFor(
+            address(2),
+            1e18,
+            0,
+            true,
+            rewardsData,
+            "",
+            0
+        );
+
+        (uint256 lockAmount, uint40 unlockTime) = veCVE.userLocks(address(2), 0);
+        assertEq(lockAmount, 11e18);
+        assertEq(unlockTime, veCVE.CONTINUOUS_LOCK_VALUE());
+
+        // user points are multiplied by 2
+        assertEq(veCVE.userPoints(address(2)), 22e18);
     }
 }

@@ -35,6 +35,10 @@ contract TestBaseVeCVE is TestBase {
             isFreshLock,
             isFreshLockContinuous
         );
+        // define the epoch to deliver rewards
+        vm.startPrank(centralRegistry.feeAccumulator());
+        cveLocker.recordEpochRewards(cveLocker.nextEpochToDeliver(), _ONE);
+        vm.stopPrank();
         _;
     }
 
@@ -49,6 +53,7 @@ contract TestBaseVeCVE is TestBase {
 
         usdc = IERC20(_USDC_ADDRESS);
         rewardsData = RewardsData(_USDC_ADDRESS, true, true, true);
+        deal(_USDC_ADDRESS, address(cveLocker), _MAX_FUZZ_AMOUNT);
     }
 
     function _deployCentralRegistry() internal {
@@ -56,7 +61,7 @@ contract TestBaseVeCVE is TestBase {
             _ZERO_ADDRESS,
             _ZERO_ADDRESS,
             _ZERO_ADDRESS,
-            0,
+            block.timestamp,
             address(0)
         );
     }
