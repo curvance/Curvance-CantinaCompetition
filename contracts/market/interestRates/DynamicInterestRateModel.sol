@@ -23,6 +23,8 @@ contract DynamicInterestRateModel {
         /// @notice The maximum rate at with the vertex multiplier is adjusted,
         ///         in WAD
         uint256 adjustmentVelocity;
+        /// @notice The maximum value that vertexMultiplier can be
+        uint256 vertexMultiplierMax;
         /// @notice Rate at which the vertex multiplier will decay per update,
         ///         in WAD
         uint256 decayRate;
@@ -119,6 +121,7 @@ contract DynamicInterestRateModel {
     ///                             in `seconds`
     /// @param adjustmentVelocity The maximum rate at with the vertex multiplier
     ///                           is adjusted, in `basis points`
+    /// @param vertexMultiplierMax The maximum value that vertexMultiplier can be
     /// @param decayRate Rate at which the vertex multiplier will decay per update,
     ///                  in `basis points`
     constructor(
@@ -128,6 +131,7 @@ contract DynamicInterestRateModel {
         uint256 vertexUtilizationStart,
         uint256 adjustmentRate,
         uint256 adjustmentVelocity,
+        uint256 vertexMultiplierMax,
         uint256 decayRate
     ) {
         if (
@@ -147,6 +151,7 @@ contract DynamicInterestRateModel {
             vertexUtilizationStart,
             adjustmentRate,
             adjustmentVelocity,
+            vertexMultiplierMax,
             decayRate,
             true
         );

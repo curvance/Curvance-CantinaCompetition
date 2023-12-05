@@ -365,7 +365,7 @@ contract FeeAccumulator is ReentrancyGuard {
 
     /// @notice Receives and records the epoch rewards for CVE from
     ///         the protocol messaging hub
-    /// @param epochRewardsPerCVE The rewards per CVE for the previous epoch
+    /// @param amount The rewards per CVE for the previous epoch
     function receiveExecutableLockData(uint256 amount) external {
         if (msg.sender != centralRegistry.protocolMessagingHub()) {
             revert FeeAccumulator__Unauthorized();
