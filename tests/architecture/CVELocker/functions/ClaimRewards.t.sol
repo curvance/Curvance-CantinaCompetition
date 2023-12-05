@@ -54,8 +54,6 @@ contract ClaimRewardsTest is TestBaseCVELocker {
         cveLocker.updateUserClaimIndex(user1, 1);
 
         for (uint256 i = 0; i < 2; i++) {
-            uint256 nextEpochToDeliver = cveLocker.nextEpochToDeliver();
-
             vm.prank(centralRegistry.feeAccumulator());
             cveLocker.recordEpochRewards(_ONE);
         }
@@ -75,8 +73,6 @@ contract ClaimRewardsTest is TestBaseCVELocker {
         cveLocker.updateUserClaimIndex(user1, 1);
 
         for (uint256 i = 0; i < 2; i++) {
-            uint256 nextEpochToDeliver = cveLocker.nextEpochToDeliver();
-
             vm.prank(centralRegistry.feeAccumulator());
             cveLocker.recordEpochRewards(_ONE);
         }
@@ -105,8 +101,6 @@ contract ClaimRewardsTest is TestBaseCVELocker {
         cveLocker.updateUserClaimIndex(user1, 1);
 
         for (uint256 i = 0; i < 2; i++) {
-            uint256 nextEpochToDeliver = cveLocker.nextEpochToDeliver();
-
             vm.prank(centralRegistry.feeAccumulator());
             cveLocker.recordEpochRewards(_ONE);
         }
