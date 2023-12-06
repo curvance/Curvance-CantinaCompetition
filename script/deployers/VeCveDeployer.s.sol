@@ -10,7 +10,7 @@ import { DeployConfiguration } from "../utils/DeployConfiguration.sol";
 contract VeCveDeployer is DeployConfiguration {
     address veCve;
 
-    function deployVeCve(
+    function _deployVeCve(
         address centralRegistry,
         uint256 clPointMultiplier
     ) internal {

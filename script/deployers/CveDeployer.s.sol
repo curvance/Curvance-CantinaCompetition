@@ -10,7 +10,7 @@ import { DeployConfiguration } from "../utils/DeployConfiguration.sol";
 contract CveDeployer is DeployConfiguration {
     address cve;
 
-    function deployCve(
+    function _deployCve(
         address centralRegistry,
         address team,
         uint256 daoTreasuryAllocation,

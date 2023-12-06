@@ -10,7 +10,7 @@ import { DeployConfiguration } from "../utils/DeployConfiguration.sol";
 contract CveLockerDeployer is DeployConfiguration {
     address cveLocker;
 
-    function deployCveLocker(
+    function _deployCveLocker(
         address centralRegistry,
         address rewardToken
     ) internal {

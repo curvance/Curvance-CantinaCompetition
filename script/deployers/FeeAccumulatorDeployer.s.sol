@@ -10,7 +10,7 @@ import { DeployConfiguration } from "../utils/DeployConfiguration.sol";
 contract FeeAccumulatorDeployer is DeployConfiguration {
     address feeAccumulator;
 
-    function deployFeeAccumulator(
+    function _deployFeeAccumulator(
         address centralRegistry,
         address feeToken,
         uint256 gasForCalldata,

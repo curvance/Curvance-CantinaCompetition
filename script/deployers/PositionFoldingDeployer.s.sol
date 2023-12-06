@@ -10,7 +10,7 @@ import { DeployConfiguration } from "../utils/DeployConfiguration.sol";
 contract PositionFoldingDeployer is DeployConfiguration {
     address positionFolding;
 
-    function deployPositionFolding(
+    function _deployPositionFolding(
         address centralRegistry,
         address lendtroller
     ) internal {

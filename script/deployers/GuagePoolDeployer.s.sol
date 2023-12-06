@@ -10,7 +10,7 @@ import { DeployConfiguration } from "../utils/DeployConfiguration.sol";
 contract GuagePoolDeployer is DeployConfiguration {
     address gaugePool;
 
-    function deployGaugePool(address centralRegistry) internal {
+    function _deployGaugePool(address centralRegistry) internal {
         require(centralRegistry != address(0), "Set the centralRegistry!");
 
         gaugePool = address(new GaugePool(ICentralRegistry(centralRegistry)));

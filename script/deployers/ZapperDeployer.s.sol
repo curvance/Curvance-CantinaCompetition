@@ -10,7 +10,7 @@ import { DeployConfiguration } from "../utils/DeployConfiguration.sol";
 contract ZapperDeployer is DeployConfiguration {
     address zapper;
 
-    function deployZapper(
+    function _deployZapper(
         address centralRegistry,
         address lendtroller,
         address weth

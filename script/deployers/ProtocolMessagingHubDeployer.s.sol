@@ -10,7 +10,7 @@ import { DeployConfiguration } from "../utils/DeployConfiguration.sol";
 contract ProtocolMessagingHubDeployer is DeployConfiguration {
     address protocolMessagingHub;
 
-    function deployProtocolMessagingHub(
+    function _deployProtocolMessagingHub(
         address centralRegistry,
         address feeToken,
         address wormholeRelayer,

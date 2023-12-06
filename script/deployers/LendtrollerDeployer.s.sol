@@ -10,7 +10,7 @@ import { DeployConfiguration } from "../utils/DeployConfiguration.sol";
 contract LendtrollerDeployer is DeployConfiguration {
     address lendtroller;
 
-    function deployLendtroller(
+    function _deployLendtroller(
         address centralRegistry,
         address gaugePool
     ) internal {
