@@ -44,10 +44,7 @@ contract BalancerStablePoolAdaptor is BalancerBaseAdaptor {
 
     /// EVENTS ///
 
-    event BalancerStablePoolAssetAdded(
-        address asset,
-        AdaptorData assetConfig
-    );
+    event BalancerStablePoolAssetAdded(address asset, AdaptorData assetConfig);
 
     event BalancerStablePoolAssetRemoved(address asset);
 
@@ -129,10 +126,7 @@ contract BalancerStablePoolAdaptor is BalancerBaseAdaptor {
     /// @dev Should be called before `PriceRotuer:addAssetPriceFeed` is called.
     /// @param asset the address of the bpt to add
     /// @param data AdaptorData needed to add `asset`
-    function addAsset(
-        address asset,
-        AdaptorData memory data
-    ) external {
+    function addAsset(address asset, AdaptorData memory data) external {
         _checkElevatedPermissions();
 
         if (isSupportedAsset[asset]) {

@@ -62,6 +62,40 @@
           }
         ]
       }
+    },
+    "aura": {
+      "AURA-RETH-WETH-109": {
+        "asset": "0x1E19CF2D73a72Ef1332C882F20534B6519Be0276",
+        "booster": "0xA57b8d98dAE62B26Ec3bcC4a365338157060B234",
+        "pid": 109,
+        "rewarder": "0xDd1fE5AD401D4777cE89959b7fa587e569Bf125D",
+        "underlyings": [
+          {
+            "asset": "0xae78736Cd615f374D3085123A210448E74Fc6393",
+            "chainlinkEth": "0x536218f9E9Eb48863970252233c8F271f554C2d0",
+            "chainlinkUsd": "0x0000000000000000000000000000000000000000"
+          },
+          {
+            "asset": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            "chainlinkEth": "0x0000000000000000000000000000000000000000",
+            "chainlinkUsd": "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419"
+          }
+        ],
+        "adaptorData": {
+          "poolDecimals": 18,
+          "poolId": "0x1e19cf2d73a72ef1332c882f20534b6519be0276000200000000000000000112",
+          "rateProviderDecimals": [
+            18
+          ],
+          "rateProviders": [
+            "0x1a8F81c256aee9C640e14bB0453ce247ea0DFE6F"
+          ],
+          "underlyingOrConstituent": [
+            "0xae78736Cd615f374D3085123A210448E74Fc6393",
+            "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
+          ]
+        }
+      }
     }
   }
 }

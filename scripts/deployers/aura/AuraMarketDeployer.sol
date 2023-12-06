@@ -5,33 +5,42 @@ import "forge-std/Script.sol";
 
 import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
 import { ChainlinkAdaptor } from "contracts/oracles/adaptors/chainlink/ChainlinkAdaptor.sol";
-import { CurveAdaptor } from "contracts/oracles/adaptors/curve/CurveAdaptor.sol";
-import { Convex2PoolCToken } from "contracts/market/collateral/Convex2PoolCToken.sol";
-import { Convex3PoolCToken } from "contracts/market/collateral/Convex3PoolCToken.sol";
-import { Convex4PoolCToken } from "contracts/market/collateral/Convex4PoolCToken.sol";
+import { BalancerStablePoolAdaptor } from "contracts/oracles/adaptors/balancer/BalancerStablePoolAdaptor.sol";
+import { IVault } from "contracts/oracles/adaptors/balancer/BalancerBaseAdaptor.sol";
+import { AuraCToken } from "contracts/market/collateral/AuraCToken.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 
 import { DeployConfiguration } from "../../utils/DeployConfiguration.sol";
 
-contract ConvexMarketDeployer is DeployConfiguration {
-    struct ConvexUnderlyingParam {
+contract AuraMarketDeployer is DeployConfiguration {
+    struct AdaptorData {
+        uint8 poolDecimals;
+        bytes32 poolId;
+        uint8[] rateProviderDecimals;
+        address[] rateProviders;
+        address[] underlyingOrConstituent;
+    }
+    struct AuraUnderlyingParam {
         address asset;
         address chainlinkEth;
         address chainlinkUsd;
     }
-    struct ConvexMarketParam {
+    struct AuraMarketParam {
+        AdaptorData adaptorData;
         address asset;
         address booster;
         uint256 pid;
-        address pool;
         address rewarder;
-        ConvexUnderlyingParam[] underlyings;
+        AuraUnderlyingParam[] underlyings;
     }
 
-    function deployConvexMarket(
+    address internal constant _BALANCER_VAULT =
+        0xBA12222222228d8Ba445958a75a0704d566BF2C8;
+
+    function deployAuraMarket(
         string memory name,
-        ConvexMarketParam memory param
+        AuraMarketParam memory param
     ) internal {
         address centralRegistry = getDeployedContract("centralRegistry");
         console.log("centralRegistry =", centralRegistry);
@@ -51,23 +60,21 @@ contract ConvexMarketDeployer is DeployConfiguration {
             console.log("chainlinkAdaptor: ", chainlinkAdaptor);
             saveDeployedContracts("chainlinkAdaptor", chainlinkAdaptor);
         }
-        address curveAdaptor = getDeployedContract("curveAdaptor");
-        if (curveAdaptor == address(0)) {
-            curveAdaptor = address(
-                new CurveAdaptor(ICentralRegistry(centralRegistry))
+        address balancerAdaptor = getDeployedContract("balancerAdaptor");
+        if (balancerAdaptor == address(0)) {
+            balancerAdaptor = address(
+                new BalancerStablePoolAdaptor(
+                    ICentralRegistry(centralRegistry),
+                    IVault(_BALANCER_VAULT)
+                )
             );
-            console.log("curveAdaptor: ", curveAdaptor);
-            saveDeployedContracts("curveAdaptor", curveAdaptor);
-            CurveAdaptor(curveAdaptor).setReentrancyConfig(2, 50_000);
-            CurveAdaptor(curveAdaptor).setReentrancyConfig(3, 50_000);
-            CurveAdaptor(curveAdaptor).setReentrancyConfig(4, 50_000);
+            console.log("balancerAdaptor: ", balancerAdaptor);
+            saveDeployedContracts("balancerAdaptor", balancerAdaptor);
         }
 
         // Setup underlying chainlink adapters
         for (uint256 i = 0; i < param.underlyings.length; i++) {
-            ConvexUnderlyingParam memory underlyingParam = param.underlyings[
-                i
-            ];
+            AuraUnderlyingParam memory underlyingParam = param.underlyings[i];
 
             if (
                 !ChainlinkAdaptor(chainlinkAdaptor).isSupportedAsset(
@@ -118,21 +125,60 @@ contract ConvexMarketDeployer is DeployConfiguration {
             }
         }
 
-        // Deploy Curve adapter
-        if (!PriceRouter(priceRouter).isApprovedAdaptor(curveAdaptor)) {
-            PriceRouter(priceRouter).addApprovedAdaptor(curveAdaptor);
-            console.log("priceRouter.addApprovedAdaptor: ", curveAdaptor);
+        // Deploy Balancer adapter
+        if (!PriceRouter(priceRouter).isApprovedAdaptor(balancerAdaptor)) {
+            PriceRouter(priceRouter).addApprovedAdaptor(balancerAdaptor);
+            console.log("priceRouter.addApprovedAdaptor: ", balancerAdaptor);
         }
-        if (!CurveAdaptor(curveAdaptor).isSupportedAsset(param.asset)) {
-            CurveAdaptor(curveAdaptor).addAsset(param.asset, param.pool);
-            console.log("curveAdaptor.addAsset");
+        if (
+            !BalancerStablePoolAdaptor(balancerAdaptor).isSupportedAsset(
+                param.asset
+            )
+        ) {
+            BalancerStablePoolAdaptor.AdaptorData memory adaptorData;
+            adaptorData.poolId = param.adaptorData.poolId;
+            adaptorData.poolDecimals = param.adaptorData.poolDecimals;
+            for (
+                uint256 i = 0;
+                i < param.adaptorData.rateProviderDecimals.length;
+                ++i
+            ) {
+                adaptorData.rateProviderDecimals[i] = param
+                    .adaptorData
+                    .rateProviderDecimals[i];
+            }
+            for (
+                uint256 i = 0;
+                i < param.adaptorData.rateProviders.length;
+                ++i
+            ) {
+                adaptorData.rateProviders[i] = param.adaptorData.rateProviders[
+                    i
+                ];
+            }
+            for (
+                uint256 i = 0;
+                i < param.adaptorData.underlyingOrConstituent.length;
+                ++i
+            ) {
+                adaptorData.underlyingOrConstituent[i] = param
+                    .adaptorData
+                    .underlyingOrConstituent[i];
+            }
+
+            BalancerStablePoolAdaptor(balancerAdaptor).addAsset(
+                param.asset,
+                adaptorData
+            );
+            console.log("balancerAdaptor.addAsset");
         }
+
         try PriceRouter(priceRouter).assetPriceFeeds(param.asset, 0) returns (
             address feed
         ) {} catch {
             PriceRouter(priceRouter).addAssetPriceFeed(
                 param.asset,
-                curveAdaptor
+                balancerAdaptor
             );
             console.log("priceRouter.addAssetPriceFeed: ", param.asset);
         }
@@ -140,40 +186,17 @@ contract ConvexMarketDeployer is DeployConfiguration {
         // Deploy CToken
         address cToken = getDeployedContract(name);
         if (cToken == address(0)) {
-            if (param.underlyings.length == 2) {
-                cToken = address(
-                    new Convex2PoolCToken(
-                        ICentralRegistry(centralRegistry),
-                        IERC20(param.asset),
-                        lendtroller,
-                        param.pid,
-                        param.rewarder,
-                        param.booster
-                    )
-                );
-            } else if (param.underlyings.length == 3) {
-                cToken = address(
-                    new Convex2PoolCToken(
-                        ICentralRegistry(centralRegistry),
-                        IERC20(param.asset),
-                        lendtroller,
-                        param.pid,
-                        param.rewarder,
-                        param.booster
-                    )
-                );
-            } else if (param.underlyings.length == 4) {
-                cToken = address(
-                    new Convex2PoolCToken(
-                        ICentralRegistry(centralRegistry),
-                        IERC20(param.asset),
-                        lendtroller,
-                        param.pid,
-                        param.rewarder,
-                        param.booster
-                    )
-                );
-            }
+            cToken = address(
+                new AuraCToken(
+                    ICentralRegistry(centralRegistry),
+                    IERC20(param.asset),
+                    lendtroller,
+                    param.pid,
+                    param.rewarder,
+                    param.booster
+                )
+            );
+
             console.log("cToken: ", cToken);
             saveDeployedContracts(name, cToken);
         }
