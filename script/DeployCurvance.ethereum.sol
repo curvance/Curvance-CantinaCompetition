@@ -29,21 +29,17 @@ contract DeployCurvanceEthereum is
     PositionFoldingDeployer,
     PriceRouterDeployer
 {
-    using stdJson for string;
-
-    function setConfigurationPath() internal {
-        string memory root = vm.projectRoot();
-        configurationPath = string.concat(root, "/config/ethereum.json");
-    }
-
-    function setDeploymentPath() internal {
-        string memory root = vm.projectRoot();
-        deploymentPath = string.concat(root, "/deployments/ethereum.json");
-    }
-
     function run() external {
-        setConfigurationPath();
-        setDeploymentPath();
+        _deploy("ethereum");
+    }
+
+    function run(string memory network) external {
+        _deploy(network);
+    }
+
+    function _deploy(string memory network) internal {
+        _setConfigurationPath(network);
+        _setDeploymentPath(network);
 
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         address deployer = vm.addr(deployerPrivateKey);
@@ -140,5 +136,20 @@ contract DeployCurvanceEthereum is
         // );
 
         vm.stopBroadcast();
+    }
+
+    function _setConfigurationPath(string memory network) internal {
+        string memory root = vm.projectRoot();
+        configurationPath = string.concat(root, "/config/", network, ".json");
+    }
+
+    function _setDeploymentPath(string memory network) internal {
+        string memory root = vm.projectRoot();
+        deploymentPath = string.concat(
+            root,
+            "/deployments/",
+            network,
+            ".json"
+        );
     }
 }
