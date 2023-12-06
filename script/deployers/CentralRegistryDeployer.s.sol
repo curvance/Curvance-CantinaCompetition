@@ -8,7 +8,7 @@ import { CentralRegistry } from "contracts/architecture/CentralRegistry.sol";
 contract CentralRegistryDeployer is Script {
     address centralRegistry;
 
-    function deployCentralRegistry(
+    function _deployCentralRegistry(
         address daoAddress,
         address timelock,
         address emergencyCouncil,
@@ -33,7 +33,7 @@ contract CentralRegistryDeployer is Script {
         console.log("centralRegistry: ", centralRegistry);
     }
 
-    function setLockBoostMultiplier(uint256 lockBoostMultiplier) internal {
+    function _setLockBoostMultiplier(uint256 lockBoostMultiplier) internal {
         require(centralRegistry != address(0), "Set the centralRegistry!");
 
         CentralRegistry(centralRegistry).setLockBoostMultiplier(
@@ -45,7 +45,7 @@ contract CentralRegistryDeployer is Script {
         );
     }
 
-    function addHarvester(address harvester) internal {
+    function _addHarvester(address harvester) internal {
         require(centralRegistry != address(0), "Set the centralRegistry!");
         require(harvester != address(0), "Set the harvester!");
 
@@ -53,7 +53,7 @@ contract CentralRegistryDeployer is Script {
         console.log("centralRegistry.addHarvester: ", harvester);
     }
 
-    function setCVE(address cve) internal {
+    function _setCVE(address cve) internal {
         require(centralRegistry != address(0), "Set the centralRegistry!");
         require(cve != address(0), "Set the cve!");
 
@@ -61,7 +61,7 @@ contract CentralRegistryDeployer is Script {
         console.log("centralRegistry.setCVE: ", cve);
     }
 
-    function setCVELocker(address cveLocker) internal {
+    function _setCVELocker(address cveLocker) internal {
         require(centralRegistry != address(0), "Set the centralRegistry!");
         require(cveLocker != address(0), "Set the cveLocker!");
 
@@ -69,7 +69,7 @@ contract CentralRegistryDeployer is Script {
         console.log("centralRegistry.setCVELocker: ", cveLocker);
     }
 
-    function setProtocolMessagingHub(address protocolMessagingHub) internal {
+    function _setProtocolMessagingHub(address protocolMessagingHub) internal {
         require(centralRegistry != address(0), "Set the centralRegistry!");
         require(
             protocolMessagingHub != address(0),
@@ -85,7 +85,7 @@ contract CentralRegistryDeployer is Script {
         );
     }
 
-    function setFeeAccumulator(address feeAccumulator) internal {
+    function _setFeeAccumulator(address feeAccumulator) internal {
         require(centralRegistry != address(0), "Set the centralRegistry!");
         require(feeAccumulator != address(0), "Set the feeAccumulator!");
 
@@ -93,7 +93,7 @@ contract CentralRegistryDeployer is Script {
         console.log("centralRegistry.setFeeAccumulator: ", feeAccumulator);
     }
 
-    function setVeCVE(address veCve) internal {
+    function _setVeCVE(address veCve) internal {
         require(centralRegistry != address(0), "Set the centralRegistry!");
         require(veCve != address(0), "Set the veCve!");
 
@@ -101,7 +101,7 @@ contract CentralRegistryDeployer is Script {
         console.log("centralRegistry.setVeCVE: ", veCve);
     }
 
-    function setVoteBoostMultiplier(uint256 voteBoostMultiplier) internal {
+    function _setVoteBoostMultiplier(uint256 voteBoostMultiplier) internal {
         require(centralRegistry != address(0), "Set the centralRegistry!");
 
         CentralRegistry(centralRegistry).setVoteBoostMultiplier(
@@ -113,7 +113,7 @@ contract CentralRegistryDeployer is Script {
         );
     }
 
-    function addGaugeController(address gaugePool) internal {
+    function _addGaugeController(address gaugePool) internal {
         require(centralRegistry != address(0), "Set the centralRegistry!");
         require(gaugePool != address(0), "Set the gaugePool!");
 
@@ -121,7 +121,7 @@ contract CentralRegistryDeployer is Script {
         console.log("centralRegistry.addGaugeController: ", gaugePool);
     }
 
-    function addLendingMarket(
+    function _addLendingMarket(
         address lendtroller,
         uint256 marketInterestFactor
     ) internal {
@@ -135,7 +135,7 @@ contract CentralRegistryDeployer is Script {
         console.log("centralRegistry.addLendingMarket: ", lendtroller);
     }
 
-    function addZapper(address zapper) internal {
+    function _addZapper(address zapper) internal {
         require(centralRegistry != address(0), "Set the centralRegistry!");
         require(zapper != address(0), "Set the zapper!");
 
@@ -143,7 +143,7 @@ contract CentralRegistryDeployer is Script {
         console.log("centralRegistry.addZapper: ", zapper);
     }
 
-    function transferDaoOwnership(address daoAddress) internal {
+    function _transferDaoOwnership(address daoAddress) internal {
         require(centralRegistry != address(0), "Set the centralRegistry!");
         require(daoAddress != address(0), "Set the daoAddress!");
 
@@ -151,7 +151,7 @@ contract CentralRegistryDeployer is Script {
         console.log("centralRegistry.transferDaoOwnership: ", daoAddress);
     }
 
-    function migrateTimelockConfiguration(address timelock) internal {
+    function _migrateTimelockConfiguration(address timelock) internal {
         require(centralRegistry != address(0), "Set the centralRegistry!");
         require(timelock != address(0), "Set the timelock!");
 
@@ -164,7 +164,7 @@ contract CentralRegistryDeployer is Script {
         );
     }
 
-    function transferEmergencyCouncil(address emergencyCouncil) internal {
+    function _transferEmergencyCouncil(address emergencyCouncil) internal {
         require(centralRegistry != address(0), "Set the centralRegistry!");
         require(emergencyCouncil != address(0), "Set the emergencyCouncil!");
 

@@ -9,7 +9,7 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 contract VeCveDeployer is Script {
     address veCve;
 
-    function deployVeCve(
+    function _deployVeCve(
         address centralRegistry,
         uint256 clPointMultiplier
     ) internal {

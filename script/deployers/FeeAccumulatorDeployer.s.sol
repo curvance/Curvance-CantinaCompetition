@@ -9,7 +9,7 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 contract FeeAccumulatorDeployer is Script {
     address feeAccumulator;
 
-    function deployFeeAccumulator(
+    function _deployFeeAccumulator(
         address centralRegistry,
         address feeToken,
         uint256 gasForCalldata,

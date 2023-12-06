@@ -9,7 +9,7 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 contract PositionFoldingDeployer is Script {
     address positionFolding;
 
-    function deployPositionFolding(
+    function _deployPositionFolding(
         address centralRegistry,
         address lendtroller
     ) internal {

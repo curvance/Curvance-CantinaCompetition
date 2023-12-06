@@ -9,7 +9,7 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 contract CveDeployer is Script {
     address cve;
 
-    function deployCve(
+    function _deployCve(
         address centralRegistry,
         address team,
         uint256 daoTreasuryAllocation,

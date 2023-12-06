@@ -9,7 +9,7 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 contract CveLockerDeployer is Script {
     address cveLocker;
 
-    function deployCveLocker(
+    function _deployCveLocker(
         address centralRegistry,
         address rewardToken
     ) internal {

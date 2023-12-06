@@ -9,7 +9,7 @@ contract DeployConfiguration is Script {
     string configurationPath;
     string deploymentPath;
 
-    function readConfigUint256(
+    function _readConfigUint256(
         string memory jsonPath
     ) internal view returns (uint256) {
         require(
@@ -21,7 +21,7 @@ contract DeployConfiguration is Script {
         return abi.decode(json.parseRaw(jsonPath), (uint256));
     }
 
-    function readConfigAddress(
+    function _readConfigAddress(
         string memory jsonPath
     ) internal view returns (address) {
         require(
@@ -33,7 +33,7 @@ contract DeployConfiguration is Script {
         return abi.decode(json.parseRaw(jsonPath), (address));
     }
 
-    function getDeployedContract(
+    function _getDeployedContract(
         string memory name
     ) internal view returns (address) {
         require(bytes(deploymentPath).length != 0, "Set the deploymentPath!");
@@ -42,7 +42,7 @@ contract DeployConfiguration is Script {
         return abi.decode(json.parseRaw(string.concat(".", name)), (address));
     }
 
-    function saveDeployedContracts(
+    function _saveDeployedContracts(
         string memory name,
         address deployed
     ) internal {

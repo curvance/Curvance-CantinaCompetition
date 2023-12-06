@@ -9,7 +9,7 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 contract ZapperDeployer is Script {
     address zapper;
 
-    function deployZapper(
+    function _deployZapper(
         address centralRegistry,
         address lendtroller,
         address weth

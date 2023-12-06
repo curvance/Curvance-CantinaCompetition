@@ -46,96 +46,94 @@ contract DeployCurvance is
 
         vm.startBroadcast(deployerPrivateKey);
 
-        deployCentralRegistry(
+        _deployCentralRegistry(
             deployer,
             deployer,
             deployer,
-            readConfigUint256(".centralRegistry.genesisEpoch"),
-            readConfigAddress(".centralRegistry.sequencer")
+            _readConfigUint256(".centralRegistry.genesisEpoch"),
+            _readConfigAddress(".centralRegistry.sequencer")
         );
-        CentralRegistryDeployer.setLockBoostMultiplier(
-            readConfigUint256(".centralRegistry.lockBoostMultiplier")
+        _setLockBoostMultiplier(
+            _readConfigUint256(".centralRegistry.lockBoostMultiplier")
         );
-        CentralRegistryDeployer.addHarvester(
-            readConfigAddress(".centralRegistry.harvester")
-        );
-        saveDeployedContracts("centralRegistry", centralRegistry);
+        _addHarvester(_readConfigAddress(".centralRegistry.harvester"));
+        _saveDeployedContracts("centralRegistry", centralRegistry);
 
-        deployCve(
+        _deployCve(
             centralRegistry,
-            readConfigAddress(".cve.teamAddress"),
-            readConfigUint256(".cve.daoTreasuryAllocation"),
-            readConfigUint256(".cve.callOptionAllocation"),
-            readConfigUint256(".cve.teamAllocation"),
-            readConfigUint256(".cve.initialTokenMint")
+            _readConfigAddress(".cve.teamAddress"),
+            _readConfigUint256(".cve.daoTreasuryAllocation"),
+            _readConfigUint256(".cve.callOptionAllocation"),
+            _readConfigUint256(".cve.teamAllocation"),
+            _readConfigUint256(".cve.initialTokenMint")
         );
-        CentralRegistryDeployer.setCVE(cve);
-        saveDeployedContracts("cve", cve);
+        _setCVE(cve);
+        _saveDeployedContracts("cve", cve);
         // TODO: set some params for cross-chain
 
-        deployCveLocker(
+        _deployCveLocker(
             centralRegistry,
-            readConfigAddress(".cveLocker.rewardToken")
+            _readConfigAddress(".cveLocker.rewardToken")
         );
-        CentralRegistryDeployer.setCVELocker(cveLocker);
-        saveDeployedContracts("cveLocker", cveLocker);
+        _setCVELocker(cveLocker);
+        _saveDeployedContracts("cveLocker", cveLocker);
 
-        deployProtocolMessagingHub(
+        _deployProtocolMessagingHub(
             centralRegistry,
-            readConfigAddress(".protocolMessagingHub.feeToken"),
-            readConfigAddress(".protocolMessagingHub.wormholeRelayer"),
-            readConfigAddress(".protocolMessagingHub.circleRelayer")
+            _readConfigAddress(".protocolMessagingHub.feeToken"),
+            _readConfigAddress(".protocolMessagingHub.wormholeRelayer"),
+            _readConfigAddress(".protocolMessagingHub.circleRelayer")
         );
-        CentralRegistryDeployer.setProtocolMessagingHub(protocolMessagingHub);
-        saveDeployedContracts("protocolMessagingHub", protocolMessagingHub);
+        _setProtocolMessagingHub(protocolMessagingHub);
+        _saveDeployedContracts("protocolMessagingHub", protocolMessagingHub);
 
-        deployFeeAccumulator(
+        _deployFeeAccumulator(
             centralRegistry,
-            readConfigAddress(".feeAccumulator.feeToken"),
-            readConfigUint256(".feeAccumulator.gasForCalldata"),
-            readConfigUint256(".feeAccumulator.gasForCrosschain")
+            _readConfigAddress(".feeAccumulator.feeToken"),
+            _readConfigUint256(".feeAccumulator.gasForCalldata"),
+            _readConfigUint256(".feeAccumulator.gasForCrosschain")
         );
-        CentralRegistryDeployer.setFeeAccumulator(feeAccumulator);
-        saveDeployedContracts("feeAccumulator", feeAccumulator);
+        _setFeeAccumulator(feeAccumulator);
+        _saveDeployedContracts("feeAccumulator", feeAccumulator);
 
-        deployVeCve(
+        _deployVeCve(
             centralRegistry,
-            readConfigUint256(".veCve.clPointMultiplier")
+            _readConfigUint256(".veCve.clPointMultiplier")
         );
-        CentralRegistryDeployer.setVeCVE(veCve);
-        saveDeployedContracts("veCve", veCve);
+        _setVeCVE(veCve);
+        _saveDeployedContracts("veCve", veCve);
 
-        deployGaugePool(centralRegistry);
-        CentralRegistryDeployer.addGaugeController(gaugePool);
-        saveDeployedContracts("gaugePool", gaugePool);
+        _deployGaugePool(centralRegistry);
+        _addGaugeController(gaugePool);
+        _saveDeployedContracts("gaugePool", gaugePool);
 
-        deployLendtroller(centralRegistry, gaugePool);
-        CentralRegistryDeployer.addLendingMarket(
+        _deployLendtroller(centralRegistry, gaugePool);
+        _addLendingMarket(
             lendtroller,
-            readConfigUint256(".lendtroller.marketInterestFactor")
+            _readConfigUint256(".lendtroller.marketInterestFactor")
         );
-        saveDeployedContracts("gaugePool", gaugePool);
+        _saveDeployedContracts("gaugePool", gaugePool);
 
-        deployZapper(
+        _deployZapper(
             centralRegistry,
             lendtroller,
-            readConfigAddress(".zapper.weth")
+            _readConfigAddress(".zapper.weth")
         );
-        CentralRegistryDeployer.addZapper(zapper);
-        saveDeployedContracts("zapper", zapper);
+        _addZapper(zapper);
+        _saveDeployedContracts("zapper", zapper);
 
-        deployPositionFolding(centralRegistry, lendtroller);
-        saveDeployedContracts("positionFolding", positionFolding);
+        _deployPositionFolding(centralRegistry, lendtroller);
+        _saveDeployedContracts("positionFolding", positionFolding);
 
         // transfer dao, timelock, emergency council
-        CentralRegistryDeployer.transferDaoOwnership(
-            readConfigAddress(".centralRegistry.daoAddress")
+        _transferDaoOwnership(
+            _readConfigAddress(".centralRegistry.daoAddress")
         );
-        CentralRegistryDeployer.migrateTimelockConfiguration(
-            readConfigAddress(".centralRegistry.timelock")
+        _migrateTimelockConfiguration(
+            _readConfigAddress(".centralRegistry.timelock")
         );
-        CentralRegistryDeployer.transferEmergencyCouncil(
-            readConfigAddress(".centralRegistry.emergencyCouncil")
+        _transferEmergencyCouncil(
+            _readConfigAddress(".centralRegistry.emergencyCouncil")
         );
 
         vm.stopBroadcast();

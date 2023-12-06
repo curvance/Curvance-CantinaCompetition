@@ -9,7 +9,7 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 contract LendtrollerDeployer is Script {
     address lendtroller;
 
-    function deployLendtroller(
+    function _deployLendtroller(
         address centralRegistry,
         address gaugePool
     ) internal {

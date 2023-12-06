@@ -9,7 +9,7 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 contract ProtocolMessagingHubDeployer is Script {
     address protocolMessagingHub;
 
-    function deployProtocolMessagingHub(
+    function _deployProtocolMessagingHub(
         address centralRegistry,
         address feeToken,
         address wormholeRelayer,

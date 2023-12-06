@@ -9,7 +9,7 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 contract GuagePoolDeployer is Script {
     address gaugePool;
 
-    function deployGaugePool(address centralRegistry) internal {
+    function _deployGaugePool(address centralRegistry) internal {
         require(centralRegistry != address(0), "Set the centralRegistry!");
 
         gaugePool = address(new GaugePool(ICentralRegistry(centralRegistry)));
