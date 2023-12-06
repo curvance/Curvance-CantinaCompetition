@@ -4,16 +4,16 @@ pragma solidity ^0.8.17;
 import "forge-std/Script.sol";
 
 import { DeployConfiguration } from "./utils/DeployConfiguration.sol";
-import { CentralRegistryDeployer } from "./deployers/CentralRegistryDeployer.sol";
-import { CveDeployer } from "./deployers/CveDeployer.sol";
-import { CveLockerDeployer } from "./deployers/CveLockerDeployer.sol";
-import { ProtocolMessagingHubDeployer } from "./deployers/ProtocolMessagingHubDeployer.sol";
-import { FeeAccumulatorDeployer } from "./deployers/FeeAccumulatorDeployer.sol";
-import { VeCveDeployer } from "./deployers/VeCveDeployer.sol";
-import { GuagePoolDeployer } from "./deployers/GuagePoolDeployer.sol";
-import { LendtrollerDeployer } from "./deployers/LendtrollerDeployer.sol";
-import { ZapperDeployer } from "./deployers/ZapperDeployer.sol";
-import { PositionFoldingDeployer } from "./deployers/PositionFoldingDeployer.sol";
+import { CentralRegistryDeployer } from "./deployers/CentralRegistryDeployer.s.sol";
+import { CveDeployer } from "./deployers/CveDeployer.s.sol";
+import { CveLockerDeployer } from "./deployers/CveLockerDeployer.s.sol";
+import { ProtocolMessagingHubDeployer } from "./deployers/ProtocolMessagingHubDeployer.s.sol";
+import { FeeAccumulatorDeployer } from "./deployers/FeeAccumulatorDeployer.s.sol";
+import { VeCveDeployer } from "./deployers/VeCveDeployer.s.sol";
+import { GuagePoolDeployer } from "./deployers/GuagePoolDeployer.s.sol";
+import { LendtrollerDeployer } from "./deployers/LendtrollerDeployer.s.sol";
+import { ZapperDeployer } from "./deployers/ZapperDeployer.s.sol";
+import { PositionFoldingDeployer } from "./deployers/PositionFoldingDeployer.s.sol";
 
 contract DeployCurvanceEthereum is
     Script,
@@ -67,7 +67,6 @@ contract DeployCurvanceEthereum is
         saveDeployedContracts("centralRegistry", centralRegistry);
 
         deployCve(
-            readConfigAddress(".cve.lzEndpoint"),
             centralRegistry,
             readConfigAddress(".cve.teamAddress"),
             readConfigUint256(".cve.daoTreasuryAllocation"),
@@ -89,7 +88,8 @@ contract DeployCurvanceEthereum is
         deployProtocolMessagingHub(
             centralRegistry,
             readConfigAddress(".protocolMessagingHub.feeToken"),
-            readConfigAddress(".protocolMessagingHub.stargateRouter")
+            readConfigAddress(".protocolMessagingHub.wormholeRelayer"),
+            readConfigAddress(".protocolMessagingHub.circleRelayer")
         );
         CentralRegistryDeployer.setProtocolMessagingHub(protocolMessagingHub);
         saveDeployedContracts("protocolMessagingHub", protocolMessagingHub);

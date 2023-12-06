@@ -10,7 +10,6 @@ contract CveDeployer is Script {
     address cve;
 
     function deployCve(
-        address lzEndpoint,
         address centralRegistry,
         address team,
         uint256 daoTreasuryAllocation,
@@ -18,16 +17,11 @@ contract CveDeployer is Script {
         uint256 teamAllocation,
         uint256 initialTokenMint
     ) internal {
-        require(lzEndpoint != address(0), "Set the lzEndpoint!");
         require(centralRegistry != address(0), "Set the centralRegistry!");
         require(team != address(0), "Set the team!");
 
         cve = address(
             new CVE(
-                "Curvance",
-                "CVE",
-                18,
-                lzEndpoint,
                 ICentralRegistry(centralRegistry),
                 team,
                 daoTreasuryAllocation,
