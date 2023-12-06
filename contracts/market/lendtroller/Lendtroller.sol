@@ -1248,10 +1248,8 @@ contract Lendtroller is LiquidityManager, ERC165 {
     }
 
     /// @dev Internal helper function for easily converting between scalars
-    function _bpToWad(uint256 value) internal pure returns (uint256 result) {
-        assembly {
-            result := mul(value, 100000000000000)
-        }
+    function _bpToWad(uint256 value) internal pure returns (uint256) {
+        return value * 100000000000000;
     }
 
     /// @dev Checks whether the caller has sufficient permissions

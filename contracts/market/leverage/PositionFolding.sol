@@ -137,7 +137,7 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
         uint256 borrowAmount,
         bytes calldata params
     ) external override {
-        if (!lendtroller.isListed(borrowToken) && msg.sender == borrowToken) {
+        if (!lendtroller.isListed(borrowToken) && msg.sender != borrowToken) {
             revert PositionFolding__Unauthorized();
         }
 
