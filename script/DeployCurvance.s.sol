@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import "forge-std/Script.sol";
+import "forge-std/console.sol";
 
 import { DeployConfiguration } from "./utils/DeployConfiguration.sol";
 import { CentralRegistryDeployer } from "./deployers/CentralRegistryDeployer.s.sol";
@@ -15,7 +15,7 @@ import { LendtrollerDeployer } from "./deployers/LendtrollerDeployer.s.sol";
 import { ZapperDeployer } from "./deployers/ZapperDeployer.s.sol";
 import { PositionFoldingDeployer } from "./deployers/PositionFoldingDeployer.s.sol";
 
-contract DeployCurvanceEthereum is
+contract DeployCurvance is
     DeployConfiguration,
     CentralRegistryDeployer,
     CveDeployer,
