@@ -46,6 +46,8 @@ contract DeployCurvance is
 
         vm.startBroadcast(deployerPrivateKey);
 
+        // Deploy CentralRegistry
+
         _deployCentralRegistry(
             deployer,
             deployer,
@@ -59,6 +61,8 @@ contract DeployCurvance is
         _addHarvester(_readConfigAddress(".centralRegistry.harvester"));
         _saveDeployedContracts("centralRegistry", centralRegistry);
 
+        // Deploy CVE
+
         _deployCve(
             centralRegistry,
             _readConfigAddress(".cve.teamAddress"),
@@ -71,12 +75,16 @@ contract DeployCurvance is
         _saveDeployedContracts("cve", cve);
         // TODO: set some params for cross-chain
 
+        // Deploy CveLocker
+
         _deployCveLocker(
             centralRegistry,
             _readConfigAddress(".cveLocker.rewardToken")
         );
         _setCVELocker(cveLocker);
         _saveDeployedContracts("cveLocker", cveLocker);
+
+        // Deploy ProtocolMessagingHub
 
         _deployProtocolMessagingHub(
             centralRegistry,
@@ -87,6 +95,8 @@ contract DeployCurvance is
         _setProtocolMessagingHub(protocolMessagingHub);
         _saveDeployedContracts("protocolMessagingHub", protocolMessagingHub);
 
+        // Deploy FeeAccumulator
+
         _deployFeeAccumulator(
             centralRegistry,
             _readConfigAddress(".feeAccumulator.feeToken"),
@@ -96,6 +106,8 @@ contract DeployCurvance is
         _setFeeAccumulator(feeAccumulator);
         _saveDeployedContracts("feeAccumulator", feeAccumulator);
 
+        // Deploy VeCVE
+
         _deployVeCve(
             centralRegistry,
             _readConfigUint256(".veCve.clPointMultiplier")
@@ -103,9 +115,13 @@ contract DeployCurvance is
         _setVeCVE(veCve);
         _saveDeployedContracts("veCve", veCve);
 
+        // Deploy GaugePool
+
         _deployGaugePool(centralRegistry);
         _addGaugeController(gaugePool);
         _saveDeployedContracts("gaugePool", gaugePool);
+
+        // Deploy Lendtroller
 
         _deployLendtroller(centralRegistry, gaugePool);
         _addLendingMarket(
@@ -114,6 +130,8 @@ contract DeployCurvance is
         );
         _saveDeployedContracts("gaugePool", gaugePool);
 
+        // Deploy Zapper
+
         _deployZapper(
             centralRegistry,
             lendtroller,
@@ -121,6 +139,8 @@ contract DeployCurvance is
         );
         _addZapper(zapper);
         _saveDeployedContracts("zapper", zapper);
+
+        // Deploy PositionFolding
 
         _deployPositionFolding(centralRegistry, lendtroller);
         _saveDeployedContracts("positionFolding", positionFolding);
