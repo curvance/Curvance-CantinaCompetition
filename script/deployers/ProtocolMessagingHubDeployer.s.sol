@@ -13,17 +13,20 @@ contract ProtocolMessagingHubDeployer is DeployConfiguration {
     function deployProtocolMessagingHub(
         address centralRegistry,
         address feeToken,
-        address stargateRouter
+        address wormholeRelayer,
+        address circleRelayer
     ) internal {
         require(centralRegistry != address(0), "Set the centralRegistry!");
         require(feeToken != address(0), "Set the feeToken!");
-        require(stargateRouter != address(0), "Set the stargateRouter!");
+        require(wormholeRelayer != address(0), "Set the wormholeRelayer!");
+        require(circleRelayer != address(0), "Set the circleRelayer!");
 
         protocolMessagingHub = address(
             new ProtocolMessagingHub(
                 ICentralRegistry(centralRegistry),
                 feeToken,
-                stargateRouter
+                wormholeRelayer,
+                circleRelayer
             )
         );
 
