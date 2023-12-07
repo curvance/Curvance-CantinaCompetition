@@ -21,6 +21,7 @@ contract CTokenCompounding_StartMarketTest is TestBaseCTokenCompounding {
         cBALRETH.startMarket(address(0));
     }
 
+    // there is no CTokenBase__VaultNotActive in start market
     // function test_CTokenCompounding_StartMarket_fail_whenVaultIsNotActive() public {
     //     cBALRETH.initiateShutdown();
 
