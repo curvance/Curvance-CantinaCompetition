@@ -153,7 +153,6 @@ contract DynamicInterestRateModel {
             vertexUtilizationStart,
             adjustmentRate,
             adjustmentVelocity,
-            vertexMultiplierMax,
             decayRate,
             true
         );
@@ -406,7 +405,8 @@ contract DynamicInterestRateModel {
         // We divide by 1e36 since we need to divide by WAD twice for proper
         // precision and can optimize by multiplying prior
         return
-            (util * ratesConfig.vertexInterestRate * vertexMultiplier()) / 1e36;
+            (util * ratesConfig.vertexInterestRate * vertexMultiplier()) /
+            1e36;
     }
 
     /// @notice Calculates and returns the updated multiplier for scenarios
