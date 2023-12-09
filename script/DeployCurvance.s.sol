@@ -10,10 +10,11 @@ import { CveLockerDeployer } from "./deployers/CveLockerDeployer.s.sol";
 import { ProtocolMessagingHubDeployer } from "./deployers/ProtocolMessagingHubDeployer.s.sol";
 import { FeeAccumulatorDeployer } from "./deployers/FeeAccumulatorDeployer.s.sol";
 import { VeCveDeployer } from "./deployers/VeCveDeployer.s.sol";
-import { GuagePoolDeployer } from "./deployers/GuagePoolDeployer.s.sol";
+import { GaugePoolDeployer } from "./deployers/GaugePoolDeployer.s.sol";
 import { LendtrollerDeployer } from "./deployers/LendtrollerDeployer.s.sol";
 import { ZapperDeployer } from "./deployers/ZapperDeployer.s.sol";
 import { PositionFoldingDeployer } from "./deployers/PositionFoldingDeployer.s.sol";
+import { PriceRouterDeployer } from "./deployers/PriceRouterDeployer.s.sol";
 
 contract DeployCurvance is
     DeployConfiguration,
@@ -23,7 +24,7 @@ contract DeployCurvance is
     ProtocolMessagingHubDeployer,
     FeeAccumulatorDeployer,
     VeCveDeployer,
-    GuagePoolDeployer,
+    GaugePoolDeployer,
     LendtrollerDeployer,
     ZapperDeployer,
     PositionFoldingDeployer,

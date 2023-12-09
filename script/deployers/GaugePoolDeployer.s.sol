@@ -7,7 +7,7 @@ import { GaugePool } from "contracts/gauge/GaugePool.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { DeployConfiguration } from "../utils/DeployConfiguration.sol";
 
-contract GuagePoolDeployer is DeployConfiguration {
+contract GaugePoolDeployer is DeployConfiguration {
     address gaugePool;
 
     function _deployGaugePool(address centralRegistry) internal {

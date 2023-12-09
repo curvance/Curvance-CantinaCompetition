@@ -10,7 +10,7 @@ import { CveLockerDeployer } from "../deployers/CveLockerDeployer.sol";
 import { ProtocolMessagingHubDeployer } from "../deployers/ProtocolMessagingHubDeployer.sol";
 import { FeeAccumulatorDeployer } from "../deployers/FeeAccumulatorDeployer.sol";
 import { VeCveDeployer } from "../deployers/VeCveDeployer.sol";
-import { GuagePoolDeployer } from "../deployers/GuagePoolDeployer.sol";
+import { GaugePoolDeployer } from "../deployers/GaugePoolDeployer.sol";
 import { LendtrollerDeployer } from "../deployers/LendtrollerDeployer.sol";
 import { ZapperDeployer } from "../deployers/ZapperDeployer.sol";
 import { PositionFoldingDeployer } from "../deployers/PositionFoldingDeployer.sol";
@@ -24,7 +24,7 @@ contract DeployCurvanceEthereum is
     ProtocolMessagingHubDeployer,
     FeeAccumulatorDeployer,
     VeCveDeployer,
-    GuagePoolDeployer,
+    GaugePoolDeployer,
     LendtrollerDeployer,
     ZapperDeployer,
     PositionFoldingDeployer,
