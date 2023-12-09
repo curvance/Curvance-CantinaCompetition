@@ -23,6 +23,9 @@ contract CVE is ERC20 {
     // 3% as veCVE immediately, 10.5% over 4 years
     uint256 public immutable teamAllocationPerMonth;
 
+    /// `bytes4(keccak256(bytes("CVE__Unauthorized()")))`
+    uint256 internal constant _UNAUTHORIZED_SELECTOR = 0x15f37077;
+
     /// STORAGE ///
 
     /// @notice Team operating address.
@@ -43,24 +46,6 @@ contract CVE is ERC20 {
     error CVE__InsufficientCVEAllocation();
     error CVE__ParametersAreInvalid();
 
-    /// MODIFIERS ///
-
-    modifier onlyDaoPermissions() {
-        require(
-            centralRegistry.hasDaoPermissions(msg.sender),
-            "CVE: UNAUTHORIZED"
-        );
-        _;
-    }
-
-    modifier onlyElevatedPermissions() {
-        require(
-            centralRegistry.hasElevatedPermissions(msg.sender),
-            "CVE: UNAUTHORIZED"
-        );
-        _;
-    }
-
     /// CONSTRUCTOR ///
 
     constructor(
@@ -71,13 +56,12 @@ contract CVE is ERC20 {
         uint256 teamAllocation_,
         uint256 initialTokenMint_
     ) {
-        require(
-            ERC165Checker.supportsInterface(
+        if (!ERC165Checker.supportsInterface(
                 address(centralRegistry_),
                 type(ICentralRegistry).interfaceId
-            ),
-            "lzApp: invalid central registry"
-        );
+            )) {
+            revert CVE__ParametersAreInvalid();
+        }
 
         if (team_ == address(0)) {
             team_ = msg.sender;
@@ -104,7 +88,7 @@ contract CVE is ERC20 {
     /// @param amount The amount of gauge emissions to be minted
     function mintGaugeEmissions(address gaugePool, uint256 amount) external {
         if (msg.sender != centralRegistry.protocolMessagingHub()) {
-            revert CVE__Unauthorized();
+            _revert(_UNAUTHORIZED_SELECTOR);
         }
 
         _mint(gaugePool, amount);
@@ -115,7 +99,7 @@ contract CVE is ERC20 {
     /// @param amount The amount of tokens to be minted.
     function mintLockBoost(uint256 amount) external {
         if (!centralRegistry.isGaugeController(msg.sender)) {
-            revert CVE__Unauthorized();
+            _revert(_UNAUTHORIZED_SELECTOR);
         }
 
         _mint(msg.sender, amount);
@@ -128,6 +112,8 @@ contract CVE is ERC20 {
     function mintTreasuryTokens(
         uint256 amount
     ) external onlyElevatedPermissions {
+        _checkElevatedPermissions();
+
         uint256 _daoTreasuryMinted = daoTreasuryMinted;
         if (daoTreasuryAllocation < _daoTreasuryMinted + amount) {
             revert CVE__InsufficientCVEAllocation();
@@ -141,7 +127,9 @@ contract CVE is ERC20 {
     /// @param amount The amount of call option tokens to be minted.
     ///               The number of tokens to mint cannot not exceed
     ///               the available call option allocation.
-    function mintCallOptionTokens(uint256 amount) external onlyDaoPermissions {
+    function mintCallOptionTokens(uint256 amount) external {
+        _checkDaoPermissions();
+
         uint256 _callOptionsMinted = callOptionsMinted;
         if (callOptionAllocation < _callOptionsMinted + amount) {
             revert CVE__InsufficientCVEAllocation();
@@ -158,7 +146,7 @@ contract CVE is ERC20 {
     /// @dev The number of tokens minted is capped by the total team allocation.
     function mintTeamTokens() external {
         if (msg.sender != teamAddress) {
-            revert CVE__Unauthorized();
+            _revert(_UNAUTHORIZED_SELECTOR);
         }
 
         uint256 timeSinceTGE = block.timestamp - tokenGenerationEventTimestamp;
@@ -185,7 +173,7 @@ contract CVE is ERC20 {
     /// @param _address The new address for the team.
     function setTeamAddress(address _address) external {
         if (msg.sender != teamAddress) {
-            revert CVE__Unauthorized();
+            _revert(_UNAUTHORIZED_SELECTOR);
         }
 
         if (_address == address(0)) {
@@ -205,5 +193,30 @@ contract CVE is ERC20 {
     /// @dev Returns the symbol of the token.
     function symbol() public pure override returns (string memory) {
         return "CVE";
+    }
+
+    /// INTERNAL FUNCTIONS ///
+
+    /// @dev Internal helper for reverting efficiently.
+    function _revert(uint256 s) internal pure {
+        /// @solidity memory-safe-assembly
+        assembly {
+            mstore(0x00, s)
+            revert(0x1c, 0x04)
+        }
+    }
+
+    /// @dev Checks whether the caller has sufficient permissioning.
+    function _checkDaoPermissions() internal view {
+        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
+            _revert(_UNAUTHORIZED_SELECTOR);
+        }
+    }
+
+    /// @dev Checks whether the caller has sufficient permissioning.
+    function _checkElevatedPermissions() internal view {
+        if (!centralRegistry.hasElevatedPermissions(msg.sender)) {
+            _revert(_UNAUTHORIZED_SELECTOR);
+        }
     }
 }
