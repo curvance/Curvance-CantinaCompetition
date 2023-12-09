@@ -41,6 +41,10 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     /// @notice Address of Wormhole Circle Relayer.
     ICircleRelayer public immutable circleRelayer;
 
+    /// STORAGE ///
+
+    uint256 isPaused; // 0 or 1 = activate; 2 = paused
+
     /// ERRORS ///
 
     error ProtocolMessagingHub__Unauthorized();
@@ -60,6 +64,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     error ProtocolMessagingHub__GETHChainIdIsNotSupported(uint256 gethChainId);
     error ProtocolMessagingHub__InsufficientGasToken();
     error ProtocolMessagingHub__InvalidMsgValue();
+    error ProtocolMessagingHub__MessagingHubPaused();
 
     receive() external payable {}
 
@@ -118,6 +123,8 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         uint16 srcChainId,
         bytes32 /* deliveryHash */
     ) external payable {
+        _checkMessagingHubStatus();
+
         if (msg.sender != address(wormholeRelayer)) {
             revert ProtocolMessagingHub__Unauthorized();
         }
@@ -247,6 +254,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         address toAddress,
         bytes calldata payload
     ) external {
+        _checkMessagingHubStatus();
         _checkPermissions();
 
         // Validate that we are aiming for a supported chain
@@ -276,6 +284,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     /// @param to The address of Messaging Hub on `dstChainId`.
     /// @param amount The amount of token to transfer.
     function sendFees(uint16 dstChainId, address to, uint256 amount) external {
+        _checkMessagingHubStatus();
         _checkPermissions();
 
         {
@@ -359,14 +368,36 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         return _quoteWormholeFee(dstChainId, transferToken);
     }
 
+
+    /// PERMISSIONED EXTERNAL FUNCTIONS /// 
+
+    /// @notice Permissioned function that flips the pause status of the 
+    ///         Messaging Hub.
+    function flipMessagingHubStatus() external {
+        // If the messaging hub is currently paused,
+        // then we are turning pause state off
+        bool state = isPaused == 2 ? false : true; 
+        _checkAuthorizedPermissions(state);
+
+        // Possible outcomes:
+        // If pause state is being turned off aka false,
+        // then we are turning the messaging hub back on which means isPaused will be = 1
+        //
+        // If pause state is being turned on aka true,
+        // then we are turning the messaging hub off which means isPaused will be = 2
+        isPaused = state ? 1 : 2;
+    }
+
     /// @notice Permissioned function for returning fees reimbursed from
-    ///         Stargate to FeeAccumulator.
+    ///         wormhole to FeeAccumulator.
     /// @dev This is for if we ever need to depreciate this
     ///      ProtocolMessagingHub for another.
+    /// NOTE: This does not allow any loss of funds as authorized perms are
+    ///       required to change fee accumulator, meaning in order to steal
+    ///       funds a malicious actor would have had to compromise the whole
+    ///       system already. Thus, we only need to check for DAO perms here.
     function returnReimbursedFees() external {
-        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
-            revert ProtocolMessagingHub__Unauthorized();
-        }
+        _checkAuthorizedPermissions(true);
 
         SafeTransferLib.safeTransfer(
             feeToken,
@@ -388,6 +419,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         bytes calldata payload,
         uint256 etherValue
     ) external payable {
+        _checkMessagingHubStatus();
         _checkPermissions();
 
         // Validate that we are aiming for a supported chain.
@@ -448,6 +480,28 @@ contract ProtocolMessagingHub is ReentrancyGuard {
             msg.sender != centralRegistry.feeAccumulator()
         ) {
             revert ProtocolMessagingHub__Unauthorized();
+        }
+    }
+
+    /// @dev Checks whether the Messaging Hub is paused or not.
+    function _checkMessagingHubStatus() internal view {
+        if (isPaused == 2) {
+            revert ProtocolMessagingHub__MessagingHubPaused();
+        }
+    }
+
+    /// @dev Checks whether the caller has sufficient permissions based on `state`,
+    /// turning something off is less "risky" than enabling something,
+    /// so `state` = true has reduced permissioning compared to `state` = false.
+    function _checkAuthorizedPermissions(bool state) internal view {
+        if (state) {
+            if (!centralRegistry.hasDaoPermissions(msg.sender)) {
+                revert Lendtroller__Unauthorized();
+            }
+        } else {
+            if (!centralRegistry.hasElevatedPermissions(msg.sender)) {
+                revert Lendtroller__Unauthorized();
+            }
         }
     }
 }
