@@ -16,12 +16,13 @@ import { DeployConfiguration } from "../../utils/DeployConfiguration.sol";
 
 contract DTokenDeployer is DeployConfiguration {
     struct DTokenInterestRateParam {
-        uint256 adjustmentRate;
-        uint256 adjustmentVelocity;
         uint256 baseRatePerYear;
-        uint256 decayRate;
         uint256 vertexRatePerYear;
         uint256 vertexUtilizationStart;
+        uint256 adjustmentRate;
+        uint256 adjustmentVelocity;
+        uint256 vertexMultiplierMax;
+        uint256 decayRate;
     }
     struct DTokenParam {
         address asset;
@@ -100,6 +101,7 @@ contract DTokenDeployer is DeployConfiguration {
                     param.interestRateParam.vertexUtilizationStart,
                     param.interestRateParam.adjustmentRate,
                     param.interestRateParam.adjustmentVelocity,
+                    param.interestRateParam.vertexMultiplierMax,
                     param.interestRateParam.decayRate
                 )
             );
