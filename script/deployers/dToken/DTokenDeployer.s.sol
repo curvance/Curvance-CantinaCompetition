@@ -34,23 +34,23 @@ contract DTokenDeployer is DeployConfiguration {
         string memory name,
         DTokenParam memory param
     ) internal {
-        address centralRegistry = getDeployedContract("centralRegistry");
+        address centralRegistry = _getDeployedContract("centralRegistry");
         console.log("centralRegistry =", centralRegistry);
         require(centralRegistry != address(0), "Set the centralRegistry!");
-        address lendtroller = getDeployedContract("lendtroller");
+        address lendtroller = _getDeployedContract("lendtroller");
         console.log("lendtroller =", lendtroller);
         require(lendtroller != address(0), "Set the lendtroller!");
-        address priceRouter = getDeployedContract("priceRouter");
+        address priceRouter = _getDeployedContract("priceRouter");
         console.log("priceRouter =", priceRouter);
         require(priceRouter != address(0), "Set the priceRouter!");
 
-        address chainlinkAdaptor = getDeployedContract("chainlinkAdaptor");
+        address chainlinkAdaptor = _getDeployedContract("chainlinkAdaptor");
         if (chainlinkAdaptor == address(0)) {
             chainlinkAdaptor = address(
                 new ChainlinkAdaptor(ICentralRegistry(centralRegistry))
             );
             console.log("chainlinkAdaptor: ", chainlinkAdaptor);
-            saveDeployedContracts("chainlinkAdaptor", chainlinkAdaptor);
+            _saveDeployedContracts("chainlinkAdaptor", chainlinkAdaptor);
         }
 
         // Setup chainlink adapters
@@ -90,7 +90,7 @@ contract DTokenDeployer is DeployConfiguration {
         }
 
         // Deploy DToken
-        address dToken = getDeployedContract(name);
+        address dToken = _getDeployedContract(name);
         if (dToken == address(0)) {
             address interestRateModel = address(
                 new DynamicInterestRateModel(
@@ -114,7 +114,7 @@ contract DTokenDeployer is DeployConfiguration {
             );
 
             console.log("dToken: ", dToken);
-            saveDeployedContracts(name, dToken);
+            _saveDeployedContracts(name, dToken);
 
             if (!PriceRouter(priceRouter).isSupportedAsset(dToken)) {
                 PriceRouter(priceRouter).addMTokenSupport(dToken);

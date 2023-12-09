@@ -33,31 +33,31 @@ contract ConvexMarketDeployer is DeployConfiguration {
         string memory name,
         ConvexMarketParam memory param
     ) internal {
-        address centralRegistry = getDeployedContract("centralRegistry");
+        address centralRegistry = _getDeployedContract("centralRegistry");
         console.log("centralRegistry =", centralRegistry);
         require(centralRegistry != address(0), "Set the centralRegistry!");
-        address lendtroller = getDeployedContract("lendtroller");
+        address lendtroller = _getDeployedContract("lendtroller");
         console.log("lendtroller =", lendtroller);
         require(lendtroller != address(0), "Set the lendtroller!");
-        address priceRouter = getDeployedContract("priceRouter");
+        address priceRouter = _getDeployedContract("priceRouter");
         console.log("priceRouter =", priceRouter);
         require(priceRouter != address(0), "Set the priceRouter!");
 
-        address chainlinkAdaptor = getDeployedContract("chainlinkAdaptor");
+        address chainlinkAdaptor = _getDeployedContract("chainlinkAdaptor");
         if (chainlinkAdaptor == address(0)) {
             chainlinkAdaptor = address(
                 new ChainlinkAdaptor(ICentralRegistry(centralRegistry))
             );
             console.log("chainlinkAdaptor: ", chainlinkAdaptor);
-            saveDeployedContracts("chainlinkAdaptor", chainlinkAdaptor);
+            _saveDeployedContracts("chainlinkAdaptor", chainlinkAdaptor);
         }
-        address curveAdaptor = getDeployedContract("curveAdaptor");
+        address curveAdaptor = _getDeployedContract("curveAdaptor");
         if (curveAdaptor == address(0)) {
             curveAdaptor = address(
                 new CurveAdaptor(ICentralRegistry(centralRegistry))
             );
             console.log("curveAdaptor: ", curveAdaptor);
-            saveDeployedContracts("curveAdaptor", curveAdaptor);
+            _saveDeployedContracts("curveAdaptor", curveAdaptor);
             CurveAdaptor(curveAdaptor).setReentrancyConfig(2, 50_000);
             CurveAdaptor(curveAdaptor).setReentrancyConfig(3, 50_000);
             CurveAdaptor(curveAdaptor).setReentrancyConfig(4, 50_000);
@@ -138,7 +138,7 @@ contract ConvexMarketDeployer is DeployConfiguration {
         }
 
         // Deploy CToken
-        address cToken = getDeployedContract(name);
+        address cToken = _getDeployedContract(name);
         if (cToken == address(0)) {
             if (param.underlyings.length == 2) {
                 cToken = address(
@@ -175,7 +175,7 @@ contract ConvexMarketDeployer is DeployConfiguration {
                 );
             }
             console.log("cToken: ", cToken);
-            saveDeployedContracts(name, cToken);
+            _saveDeployedContracts(name, cToken);
         }
 
         // followings should be done separate because it requires dust amount deposits

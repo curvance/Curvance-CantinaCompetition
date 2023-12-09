@@ -42,25 +42,25 @@ contract AuraMarketDeployer is DeployConfiguration {
         string memory name,
         AuraMarketParam memory param
     ) internal {
-        address centralRegistry = getDeployedContract("centralRegistry");
+        address centralRegistry = _getDeployedContract("centralRegistry");
         console.log("centralRegistry =", centralRegistry);
         require(centralRegistry != address(0), "Set the centralRegistry!");
-        address lendtroller = getDeployedContract("lendtroller");
+        address lendtroller = _getDeployedContract("lendtroller");
         console.log("lendtroller =", lendtroller);
         require(lendtroller != address(0), "Set the lendtroller!");
-        address priceRouter = getDeployedContract("priceRouter");
+        address priceRouter = _getDeployedContract("priceRouter");
         console.log("priceRouter =", priceRouter);
         require(priceRouter != address(0), "Set the priceRouter!");
 
-        address chainlinkAdaptor = getDeployedContract("chainlinkAdaptor");
+        address chainlinkAdaptor = _getDeployedContract("chainlinkAdaptor");
         if (chainlinkAdaptor == address(0)) {
             chainlinkAdaptor = address(
                 new ChainlinkAdaptor(ICentralRegistry(centralRegistry))
             );
             console.log("chainlinkAdaptor: ", chainlinkAdaptor);
-            saveDeployedContracts("chainlinkAdaptor", chainlinkAdaptor);
+            _saveDeployedContracts("chainlinkAdaptor", chainlinkAdaptor);
         }
-        address balancerAdaptor = getDeployedContract("balancerAdaptor");
+        address balancerAdaptor = _getDeployedContract("balancerAdaptor");
         if (balancerAdaptor == address(0)) {
             balancerAdaptor = address(
                 new BalancerStablePoolAdaptor(
@@ -69,7 +69,7 @@ contract AuraMarketDeployer is DeployConfiguration {
                 )
             );
             console.log("balancerAdaptor: ", balancerAdaptor);
-            saveDeployedContracts("balancerAdaptor", balancerAdaptor);
+            _saveDeployedContracts("balancerAdaptor", balancerAdaptor);
         }
 
         // Setup underlying chainlink adapters
@@ -184,7 +184,7 @@ contract AuraMarketDeployer is DeployConfiguration {
         }
 
         // Deploy CToken
-        address cToken = getDeployedContract(name);
+        address cToken = _getDeployedContract(name);
         if (cToken == address(0)) {
             cToken = address(
                 new AuraCToken(
@@ -198,7 +198,7 @@ contract AuraMarketDeployer is DeployConfiguration {
             );
 
             console.log("cToken: ", cToken);
-            saveDeployedContracts(name, cToken);
+            _saveDeployedContracts(name, cToken);
         }
 
         // followings should be done separate because it requires dust amount deposits
