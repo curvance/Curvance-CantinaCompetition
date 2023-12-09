@@ -20,6 +20,7 @@ contract DTokenSetDynamicInterestRateModelTest is TestBaseDToken {
             5000, // vertexUtilizationStart
             12 hours, // adjustmentRate
             5000, // adjustmentVelocity
+            100000000, // 1000x maximum vertex multiplier
             100 // decayRate
         );
     }

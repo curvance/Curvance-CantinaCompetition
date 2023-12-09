@@ -92,6 +92,7 @@ contract DynamicInterestRateModel {
         uint256 vertexStartingPoint,
         uint256 adjustmentRate,
         uint256 adjustmentVelocity,
+        uint256 vertexMultiplierMax,
         uint256 decayRate,
         uint256 increaseThreshold,
         uint256 increaseThresholdMax,
@@ -107,6 +108,7 @@ contract DynamicInterestRateModel {
     error DynamicInterestRateModel__InvalidAdjustmentRate();
     error DynamicInterestRateModel__InvalidAdjustmentVelocity();
     error DynamicInterestRateModel__InvalidDecayRate();
+    error DynamicInterestRateModel__InvalidMultiplierMax();
 
     /// CONSTRUCTOR ///
 
@@ -170,6 +172,7 @@ contract DynamicInterestRateModel {
     ///                             in `seconds`
     /// @param adjustmentVelocity The maximum rate at with the vertex multiplier
     ///                           is adjusted, in `basis points`
+    /// @param vertexMultiplierMax The maximum value that vertexMultiplier can be
     /// @param decayRate Rate at which the vertex multiplier will decay per update,
     ///                  in `basis points`
     /// @param vertexReset Whether the vertex multiplier should be reset back to
@@ -180,6 +183,7 @@ contract DynamicInterestRateModel {
         uint256 vertexUtilizationStart,
         uint256 adjustmentRate,
         uint256 adjustmentVelocity,
+        uint256 vertexMultiplierMax,
         uint256 decayRate,
         bool vertexReset
     ) external {
@@ -193,6 +197,7 @@ contract DynamicInterestRateModel {
             vertexUtilizationStart,
             adjustmentRate,
             adjustmentVelocity,
+            vertexMultiplierMax,
             decayRate,
             vertexReset
         );
@@ -503,7 +508,12 @@ contract DynamicInterestRateModel {
         // Update and return with adjustment and decay rate applied.
         // Its theorectically possible for the multiplier to be below 1
         // due to decay, so we need to check like in below vertex.
-        return newMultiplier < WAD ? WAD : newMultiplier;
+        if (newMultiplier < WAD) {
+            return WAD;
+        }
+
+        // Make sure we are not above the vertex multiplier maximum
+        return newMultiplier < config.vertexMultiplierMax ? config.vertexMultiplierMax : newMultiplier;
     }
 
     /// @notice Calculates a positive curve value based on `current`,
@@ -570,6 +580,7 @@ contract DynamicInterestRateModel {
     ///                               utilization, in `basis points`.
     /// @param adjustmentRate The rate at which the interest model adjusts.
     /// @param adjustmentVelocity The velocity of adjustment for the interest model.
+    /// @param vertexMultiplierMax The maximum value that vertexMultiplier can be
     /// @param decayRate The decay rate applied to the interest model.
     /// @param vertexReset A boolean flag indicating whether the vertex multiplier
     ///                    should be reset.
@@ -579,6 +590,7 @@ contract DynamicInterestRateModel {
         uint256 vertexUtilizationStart,
         uint256 adjustmentRate,
         uint256 adjustmentVelocity,
+        uint256 vertexMultiplierMax,
         uint256 decayRate,
         bool vertexReset
     ) internal {
@@ -588,10 +600,10 @@ contract DynamicInterestRateModel {
         baseRatePerYear = _bpToWad(baseRatePerYear);
         vertexRatePerYear = _bpToWad(vertexRatePerYear);
         vertexUtilizationStart = _bpToWad(vertexUtilizationStart);
-
         // This is a multiplier/divisor so it needs to be on top
         // of the base value (WAD)
         adjustmentVelocity = _bpToWad(adjustmentVelocity) + WAD;
+        vertexMultiplierMax = _bpToWad(vertexMultiplierMax);
         decayRate = _bpToWad(decayRate);
 
         if (adjustmentVelocity > MAX_VERTEX_ADJUSTMENT_VELOCITY) {
@@ -609,6 +621,12 @@ contract DynamicInterestRateModel {
             revert DynamicInterestRateModel__InvalidDecayRate();
         }
 
+        // Validate that if the model is at the theoretical maximum multiplier
+        // no overflow will be created via bitshifting
+        if (vertexMultiplierMax * vertexRatePerYear > type(uint192).max) {
+            revert DynamicInterestRateModel__InvalidMultiplierMax();
+        }
+
         RatesConfiguration storage config = ratesConfig;
 
         config.baseInterestRate =
@@ -622,9 +640,11 @@ contract DynamicInterestRateModel {
         config.adjustmentRate = adjustmentRate;
         config.adjustmentVelocity = adjustmentVelocity;
 
-        uint256 newMultiplier = vertexReset ? WAD : vertexMultiplier();
-        _packRatesData(newMultiplier, block.timestamp + config.adjustmentRate);
-
+        { // Scoping to avoid stack too deep
+            uint256 newMultiplier = vertexReset ? WAD : vertexMultiplier();
+            _packRatesData(newMultiplier, block.timestamp + config.adjustmentRate);
+        }
+        
         config.decayRate = decayRate;
 
         uint256 thresholdLength = (WAD - vertexUtilizationStart) / 2;
@@ -645,6 +665,7 @@ contract DynamicInterestRateModel {
             vertexUtilizationStart, // Vertex utilization rate start
             adjustmentRate, // Adjustment rate
             adjustmentVelocity, // Adjustment velocity
+            vertexMultiplierMax, // Vertex multiplier max
             decayRate, // Decay rate
             cachedConfig.increaseThreshold, // Vertex increase threshold
             WAD, // Vertex increase threshold max
@@ -697,9 +718,8 @@ contract DynamicInterestRateModel {
     }
 
     /// @dev Internal helper function for easily converting between scalars
-    function _bpToWad(uint256 value) internal pure returns (uint256 result) {
-        assembly {
-            result := mul(value, 100000000000000)
-        }
+    function _bpToWad(uint256 value) internal pure returns (uint256) {
+        // multiplies by 1e14 to convert from basis points to WAD
+        return value * 100000000000000;
     }
 }

@@ -1249,6 +1249,7 @@ contract Lendtroller is LiquidityManager, ERC165 {
 
     /// @dev Internal helper function for easily converting between scalars
     function _bpToWad(uint256 value) internal pure returns (uint256) {
+        // multiplies by 1e14 to convert from basis points to WAD
         return value * 100000000000000;
     }
 

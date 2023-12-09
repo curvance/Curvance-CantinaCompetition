@@ -209,9 +209,9 @@ contract CVEAirdrop is ReentrancyGuard {
         isPaused = state ? 2 : 1;
 
         // If it was paused prior,
-        // you need to provide users 3 months to claim their airdrop
+        // you need to provide users 6 weeks to claim their airdrop
         if (isPaused == 1 && currentState == 2) {
-            endClaimTimestamp = block.timestamp + (12 weeks);
+            endClaimTimestamp = block.timestamp + (6 weeks);
         }
     }
 
