@@ -11,20 +11,23 @@ contract CVE is ERC20 {
     /// @notice Curvance DAO hub.
     ICentralRegistry public immutable centralRegistry;
 
+    /// `bytes4(keccak256(bytes("CVE__Unauthorized()")))`
+    uint256 internal constant _UNAUTHORIZED_SELECTOR = 0x15f37077;
+
     /// ERRORS ///
 
     error CVE__Unauthorized();
+    error CVE__ParametersAreInvalid();
 
     /// CONSTRUCTOR ///
 
     constructor(ICentralRegistry centralRegistry_) {
-        require(
-            ERC165Checker.supportsInterface(
+        if (!ERC165Checker.supportsInterface(
                 address(centralRegistry_),
                 type(ICentralRegistry).interfaceId
-            ),
-            "lzApp: invalid central registry"
-        );
+            )) {
+            revert CVE__ParametersAreInvalid();
+        }
 
         centralRegistry = centralRegistry_;
     }
@@ -38,7 +41,7 @@ contract CVE is ERC20 {
     /// @param amount The amount of gauge emissions to be minted
     function mintGaugeEmissions(address gaugePool, uint256 amount) external {
         if (msg.sender != centralRegistry.protocolMessagingHub()) {
-            revert CVE__Unauthorized();
+            _revert(_UNAUTHORIZED_SELECTOR);
         }
 
         _mint(gaugePool, amount);
@@ -49,7 +52,7 @@ contract CVE is ERC20 {
     /// @param amount The amount of tokens to be minted
     function mintLockBoost(uint256 amount) external {
         if (!centralRegistry.isGaugeController(msg.sender)) {
-            revert CVE__Unauthorized();
+            _revert(_UNAUTHORIZED_SELECTOR);
         }
 
         _mint(msg.sender, amount);
@@ -59,11 +62,22 @@ contract CVE is ERC20 {
 
     /// @dev Returns the name of the token.
     function name() public pure override returns (string memory) {
-        return "Child Curvance";
+        return "Curvance";
     }
 
     /// @dev Returns the symbol of the token.
     function symbol() public pure override returns (string memory) {
-        return "ChildCVE";
+        return "CVE";
+    }
+
+    /// INTERNAL FUNCTIONS ///
+
+    /// @dev Internal helper for reverting efficiently.
+    function _revert(uint256 s) internal pure {
+        /// @solidity memory-safe-assembly
+        assembly {
+            mstore(0x00, s)
+            revert(0x1c, 0x04)
+        }
     }
 }
