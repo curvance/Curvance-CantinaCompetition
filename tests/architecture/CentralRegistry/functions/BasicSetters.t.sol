@@ -25,7 +25,7 @@ contract BasicSettersTest is TestBaseMarket {
             "setFeeAccumulator(address)"
         ];
         getters = [
-            "CVE()",
+            "cve()",
             "veCVE()",
             "oCVE()",
             "cveLocker()",
@@ -35,7 +35,7 @@ contract BasicSettersTest is TestBaseMarket {
             "feeAccumulator()"
         ];
         expectedLogs = [
-            "CVE",
+            "cve",
             "VeCVE",
             "oCVE",
             "CVE Locker",
