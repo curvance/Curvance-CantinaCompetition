@@ -35,7 +35,7 @@ contract BasicSettersTest is TestBaseMarket {
             "feeAccumulator()"
         ];
         expectedLogs = [
-            "cve",
+            "CVE",
             "VeCVE",
             "oCVE",
             "CVE Locker",
