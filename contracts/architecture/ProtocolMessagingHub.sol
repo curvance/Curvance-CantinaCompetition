@@ -41,6 +41,9 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     /// @notice Address of Wormhole Circle Relayer.
     ICircleRelayer public immutable circleRelayer;
 
+    /// `bytes4(keccak256(bytes("ProtocolMessagingHub__Unauthorized()")))`
+    uint256 internal constant _UNAUTHORIZED_SELECTOR = 0xc70c67ab;
+
     /// STORAGE ///
 
     uint256 isPaused; // 0 or 1 = activate; 2 = paused
@@ -473,13 +476,12 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         tokenFee = circleRelayer.relayerFee(dstChainId, feeToken);
     }
 
-    /// @dev Checks whether the caller has sufficient permissioning.
-    function _checkPermissions() internal view {
-        if (
-            !centralRegistry.isHarvester(msg.sender) &&
-            msg.sender != centralRegistry.feeAccumulator()
-        ) {
-            revert ProtocolMessagingHub__Unauthorized();
+    /// @dev Internal helper for reverting efficiently.
+    function _revert(uint256 s) internal pure {
+        /// @solidity memory-safe-assembly
+        assembly {
+            mstore(0x00, s)
+            revert(0x1c, 0x04)
         }
     }
 
@@ -490,17 +492,27 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         }
     }
 
+    /// @dev Checks whether the caller has sufficient permissioning.
+    function _checkPermissions() internal view {
+        if (
+            !centralRegistry.isHarvester(msg.sender) &&
+            msg.sender != centralRegistry.feeAccumulator()
+        ) {
+            _revert(_UNAUTHORIZED_SELECTOR);
+        }
+    }
+
     /// @dev Checks whether the caller has sufficient permissions based on `state`,
     /// turning something off is less "risky" than enabling something,
     /// so `state` = true has reduced permissioning compared to `state` = false.
     function _checkAuthorizedPermissions(bool state) internal view {
         if (state) {
             if (!centralRegistry.hasDaoPermissions(msg.sender)) {
-                revert Lendtroller__Unauthorized();
+                _revert(_UNAUTHORIZED_SELECTOR);
             }
         } else {
             if (!centralRegistry.hasElevatedPermissions(msg.sender)) {
-                revert Lendtroller__Unauthorized();
+                _revert(_UNAUTHORIZED_SELECTOR);
             }
         }
     }
