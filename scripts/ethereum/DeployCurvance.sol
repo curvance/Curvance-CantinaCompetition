@@ -4,17 +4,17 @@ pragma solidity ^0.8.17;
 import "forge-std/Script.sol";
 
 import { DeployConfiguration } from "../utils/DeployConfiguration.sol";
-import { CentralRegistryDeployer } from "../deployers/CentralRegistryDeployer.sol";
-import { CveDeployer } from "../deployers/CveDeployer.sol";
-import { CveLockerDeployer } from "../deployers/CveLockerDeployer.sol";
-import { ProtocolMessagingHubDeployer } from "../deployers/ProtocolMessagingHubDeployer.sol";
-import { FeeAccumulatorDeployer } from "../deployers/FeeAccumulatorDeployer.sol";
-import { VeCveDeployer } from "../deployers/VeCveDeployer.sol";
-import { GuagePoolDeployer } from "../deployers/GuagePoolDeployer.sol";
-import { LendtrollerDeployer } from "../deployers/LendtrollerDeployer.sol";
-import { ZapperDeployer } from "../deployers/ZapperDeployer.sol";
-import { PositionFoldingDeployer } from "../deployers/PositionFoldingDeployer.sol";
-import { PriceRouterDeployer } from "../deployers/PriceRouterDeployer.sol";
+import { CentralRegistryDeployer } from "../deployers/CentralRegistryDeployer.s.sol";
+import { CveDeployer } from "../deployers/CveDeployer.s.sol";
+import { CveLockerDeployer } from "../deployers/CveLockerDeployer.s.sol";
+import { ProtocolMessagingHubDeployer } from "../deployers/ProtocolMessagingHubDeployer.s.sol";
+import { FeeAccumulatorDeployer } from "../deployers/FeeAccumulatorDeployer.s.sol";
+import { VeCveDeployer } from "../deployers/VeCveDeployer.s.sol";
+import { GaugePoolDeployer } from "../deployers/GaugePoolDeployer.s.sol";
+import { LendtrollerDeployer } from "../deployers/LendtrollerDeployer.s.sol";
+import { ZapperDeployer } from "../deployers/ZapperDeployer.s.sol";
+import { PositionFoldingDeployer } from "../deployers/PositionFoldingDeployer.s.sol";
+import { PriceRouterDeployer } from "../deployers/PriceRouterDeployer.s.sol";
 
 contract DeployCurvanceEthereum is
     DeployConfiguration,
@@ -24,7 +24,7 @@ contract DeployCurvanceEthereum is
     ProtocolMessagingHubDeployer,
     FeeAccumulatorDeployer,
     VeCveDeployer,
-    GuagePoolDeployer,
+    GaugePoolDeployer,
     LendtrollerDeployer,
     ZapperDeployer,
     PositionFoldingDeployer,

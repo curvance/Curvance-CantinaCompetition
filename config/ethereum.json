@@ -9,7 +9,6 @@
     "harvester": "0x0000000000000000000000000000000000000001"
   },
   "cve": {
-    "lzEndpoint": "0x66A71Dcef29A0fFBDBE3c6a460a3B5BC225Cd675",
     "teamAddress": "0x0000000000000000000000000000000000000001",
     "daoTreasuryAllocation": 1000e18,
     "callOptionAllocation": 1000e18,
@@ -25,7 +24,8 @@
   },
   "protocolMessagingHub": {
     "feeToken": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-    "stargateRouter": "0x8731d54E9D02c286767d56ac03e8037C07e01e98"
+    "wormholeRelayer": "0x27428DD2d3DD32A4D7f7C497eAaa23130d894911",
+    "circleRelayer": "0x4cb69FaE7e7Af841e44E1A1c30Af640739378bb2"
   },
   "feeAccumulator": {
     "feeToken": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",

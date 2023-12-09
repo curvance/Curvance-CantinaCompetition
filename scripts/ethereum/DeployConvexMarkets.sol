@@ -4,7 +4,7 @@ pragma solidity ^0.8.17;
 import "forge-std/Script.sol";
 
 import { DeployConfiguration } from "../utils/DeployConfiguration.sol";
-import { ConvexMarketDeployer } from "../deployers/convex/ConvexMarketDeployer.sol";
+import { ConvexMarketDeployer } from "../deployers/convex/ConvexMarketDeployer.s.sol";
 
 contract DeployConvexMarkets is
     Script,

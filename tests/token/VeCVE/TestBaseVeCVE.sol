@@ -61,10 +61,6 @@ contract TestBaseVeCVE is TestBase {
 
     function _deployCVE() internal {
         cve = new CVE(
-            "cve",
-            "CVE",
-            8,
-            _ZERO_ADDRESS,
             ICentralRegistry(address(centralRegistry)),
             _ZERO_ADDRESS,
             0,

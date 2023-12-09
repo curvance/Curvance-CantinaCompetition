@@ -4,7 +4,7 @@ pragma solidity ^0.8.17;
 import "forge-std/Script.sol";
 
 import { DeployConfiguration } from "../utils/DeployConfiguration.sol";
-import { AuraMarketDeployer } from "../deployers/aura/AuraMarketDeployer.sol";
+import { AuraMarketDeployer } from "../deployers/aura/AuraMarketDeployer.s.sol";
 
 contract DeployAuraMarkets is Script, DeployConfiguration, AuraMarketDeployer {
     using stdJson for string;

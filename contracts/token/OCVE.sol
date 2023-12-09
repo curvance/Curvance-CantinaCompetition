@@ -82,7 +82,7 @@ contract OCVE is ERC20 {
         } else {
             paymentTokenDecimals = ERC20(paymentToken_).decimals();
         }
-        cve = centralRegistry.CVE();
+        cve = centralRegistry.cve();
 
         // total call option allocation for airdrops
         _mint(msg.sender, 15750002.59 ether);

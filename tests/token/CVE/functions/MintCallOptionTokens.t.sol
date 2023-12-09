@@ -7,7 +7,7 @@ import { CVE } from "contracts/token/CVE.sol";
 contract MintCallOptionTokensTest is TestBaseMarket {
     function test_mintCallOptionTokens_fail_whenUnauthorized() public {
         vm.prank(address(0));
-        vm.expectRevert("centralRegistry: UNAUTHORIZED");
+        vm.expectRevert(CVE.CVE__Unauthorized.selector);
         cve.mintCallOptionTokens(1000);
     }
 
