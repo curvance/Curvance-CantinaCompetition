@@ -21,6 +21,6 @@ contract VeCveDeployer is DeployConfiguration {
         );
 
         console.log("veCve: ", veCve);
-        saveDeployedContracts("veCve", veCve);
+        _saveDeployedContracts("veCve", veCve);
     }
 }

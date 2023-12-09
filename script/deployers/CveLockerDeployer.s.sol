@@ -22,6 +22,6 @@ contract CveLockerDeployer is DeployConfiguration {
         );
 
         console.log("cveLocker: ", cveLocker);
-        saveDeployedContracts("cveLocker", cveLocker);
+        _saveDeployedContracts("cveLocker", cveLocker);
     }
 }

@@ -22,6 +22,6 @@ contract LendtrollerDeployer is DeployConfiguration {
         );
 
         console.log("lendtroller: ", lendtroller);
-        saveDeployedContracts("lendtroller", lendtroller);
+        _saveDeployedContracts("lendtroller", lendtroller);
     }
 }

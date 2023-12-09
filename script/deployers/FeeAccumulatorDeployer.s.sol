@@ -29,6 +29,6 @@ contract FeeAccumulatorDeployer is DeployConfiguration {
         );
 
         console.log("feeAccumulator: ", feeAccumulator);
-        saveDeployedContracts("feeAccumulator", feeAccumulator);
+        _saveDeployedContracts("feeAccumulator", feeAccumulator);
     }
 }

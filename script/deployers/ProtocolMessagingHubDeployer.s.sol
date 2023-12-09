@@ -31,6 +31,6 @@ contract ProtocolMessagingHubDeployer is DeployConfiguration {
         );
 
         console.log("protocolMessagingHub: ", protocolMessagingHub);
-        saveDeployedContracts("protocolMessagingHub", protocolMessagingHub);
+        _saveDeployedContracts("protocolMessagingHub", protocolMessagingHub);
     }
 }

@@ -22,6 +22,6 @@ contract PriceRouterDeployer is DeployConfiguration {
         );
 
         console.log("priceRouter: ", priceRouter);
-        saveDeployedContracts("priceRouter", priceRouter);
+        _saveDeployedContracts("priceRouter", priceRouter);
     }
 }

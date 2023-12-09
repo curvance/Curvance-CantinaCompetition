@@ -16,6 +16,6 @@ contract GuagePoolDeployer is DeployConfiguration {
         gaugePool = address(new GaugePool(ICentralRegistry(centralRegistry)));
 
         console.log("gaugePool: ", gaugePool);
-        saveDeployedContracts("gaugePool", gaugePool);
+        _saveDeployedContracts("gaugePool", gaugePool);
     }
 }

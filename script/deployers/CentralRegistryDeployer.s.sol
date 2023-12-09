@@ -32,7 +32,7 @@ contract CentralRegistryDeployer is DeployConfiguration {
         );
 
         console.log("centralRegistry: ", centralRegistry);
-        saveDeployedContracts("centralRegistry", centralRegistry);
+        _saveDeployedContracts("centralRegistry", centralRegistry);
     }
 
     function _setLockBoostMultiplier(uint256 lockBoostMultiplier) internal {

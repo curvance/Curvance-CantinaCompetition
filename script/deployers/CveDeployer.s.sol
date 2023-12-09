@@ -33,6 +33,6 @@ contract CveDeployer is DeployConfiguration {
         );
 
         console.log("cve: ", cve);
-        saveDeployedContracts("cve", cve);
+        _saveDeployedContracts("cve", cve);
     }
 }

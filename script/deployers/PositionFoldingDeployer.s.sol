@@ -22,6 +22,6 @@ contract PositionFoldingDeployer is DeployConfiguration {
         );
 
         console.log("positionFolding: ", positionFolding);
-        saveDeployedContracts("positionFolding", positionFolding);
+        _saveDeployedContracts("positionFolding", positionFolding);
     }
 }

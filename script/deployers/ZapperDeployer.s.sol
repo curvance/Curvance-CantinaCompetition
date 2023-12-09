@@ -24,6 +24,6 @@ contract ZapperDeployer is DeployConfiguration {
         );
 
         console.log("zapper: ", zapper);
-        saveDeployedContracts("zapper", zapper);
+        _saveDeployedContracts("zapper", zapper);
     }
 }
