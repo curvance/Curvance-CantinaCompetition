@@ -38,7 +38,7 @@ contract AuraMarketDeployer is DeployConfiguration {
     address internal constant _BALANCER_VAULT =
         0xBA12222222228d8Ba445958a75a0704d566BF2C8;
 
-    function deployAuraMarket(
+    function _deployAuraMarket(
         string memory name,
         AuraMarketParam memory param
     ) internal {

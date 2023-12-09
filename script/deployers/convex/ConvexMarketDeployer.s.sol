@@ -29,7 +29,7 @@ contract ConvexMarketDeployer is DeployConfiguration {
         ConvexUnderlyingParam[] underlyings;
     }
 
-    function deployConvexMarket(
+    function _deployConvexMarket(
         string memory name,
         ConvexMarketParam memory param
     ) internal {

@@ -4,7 +4,7 @@ pragma solidity ^0.8.17;
 import "forge-std/Script.sol";
 
 import { DeployConfiguration } from "../utils/DeployConfiguration.sol";
-import { DTokenDeployer } from "../deployers/dToken/DTokenDeployer.sol";
+import { DTokenDeployer } from "../deployers/dToken/DTokenDeployer.s.sol";
 
 contract DeployDToken is Script, DeployConfiguration, DTokenDeployer {
     using stdJson for string;

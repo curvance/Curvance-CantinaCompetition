@@ -30,7 +30,7 @@ contract DTokenDeployer is DeployConfiguration {
         DTokenInterestRateParam interestRateParam;
     }
 
-    function deployDToken(
+    function _deployDToken(
         string memory name,
         DTokenParam memory param
     ) internal {
