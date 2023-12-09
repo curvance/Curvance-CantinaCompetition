@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.17;
+pragma solidity ^0.8.17;
 
 interface ICVE {
     /// @notice Used by protocol messaging hub to mint gauge emissions for

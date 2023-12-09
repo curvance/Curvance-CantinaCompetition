@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.17;
+pragma solidity ^0.8.17;
 
-import { IERC20 } from "./IERC20.sol";
+import {IERC20} from "contracts/interfaces/IERC20.sol";
 
 interface IGelatoOneBalance {
     function depositToken(

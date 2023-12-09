@@ -5,6 +5,7 @@ import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
+import { WAD } from "contracts/libraries/Constants.sol";
 
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 import { ICVELocker } from "contracts/interfaces/ICVELocker.sol";
@@ -14,7 +15,6 @@ import { IVeCVE } from "contracts/interfaces/IVeCVE.sol";
 import { IProtocolMessagingHub } from "contracts/interfaces/IProtocolMessagingHub.sol";
 import { EpochRolloverData } from "contracts/interfaces/IFeeAccumulator.sol";
 import { ICentralRegistry, ChainData } from "contracts/interfaces/ICentralRegistry.sol";
-import { WAD } from "contracts/libraries/Constants.sol";
 
 contract FeeAccumulator is ReentrancyGuard {
     /// TYPES ///

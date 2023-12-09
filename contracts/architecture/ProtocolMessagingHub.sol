@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
+import { GaugeController } from "contracts/gauge/GaugeController.sol";
+
 import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 
-import { GaugeController } from "contracts/gauge/GaugeController.sol";
-
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
+import { IERC20Metadata } from "contracts/interfaces/IERC20Metadata.sol";
 import { ICVE } from "contracts/interfaces/ICVE.sol";
-import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IFeeAccumulator, EpochRolloverData } from "contracts/interfaces/IFeeAccumulator.sol";
 import { ICentralRegistry, OmnichainData } from "contracts/interfaces/ICentralRegistry.sol";
 import { IWormhole } from "contracts/interfaces/wormhole/IWormhole.sol";
