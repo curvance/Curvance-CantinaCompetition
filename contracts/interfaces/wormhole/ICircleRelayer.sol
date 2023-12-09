@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { IWormhole } from "./IWormhole.sol";
-import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { IWormhole } from "contracts/interfaces/wormhole/IWormhole.sol";
+import { IERC20Metadata } from "contracts/interfaces/IERC20Metadata.sol";
 
 interface ICircleRelayer {
     /// @notice Calls Wormhole's Circle Integration contract
