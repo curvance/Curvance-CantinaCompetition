@@ -109,9 +109,7 @@ contract CVE is ERC20 {
     /// @param amount The amount of treasury tokens to be minted.
     ///               The number of tokens to mint cannot not exceed
     ///               the available treasury allocation.
-    function mintTreasuryTokens(
-        uint256 amount
-    ) external onlyElevatedPermissions {
+    function mintTreasuryTokens(uint256 amount) external {
         _checkElevatedPermissions();
 
         uint256 _daoTreasuryMinted = daoTreasuryMinted;
