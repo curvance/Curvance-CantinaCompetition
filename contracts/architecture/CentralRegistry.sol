@@ -58,9 +58,6 @@ contract CentralRegistry is ERC165 {
     /// @notice Price Router contract address.
     address public priceRouter;
 
-    /// @notice ZRO contract address for layerzero.
-    address public zroAddress;
-
     /// @notice Fee Accumulator contract address.
     address public feeAccumulator;
 
@@ -262,15 +259,6 @@ contract CentralRegistry is ERC165 {
 
         priceRouter = newPriceRouter;
         emit CoreContractSet("Price Router", newPriceRouter);
-    }
-
-    /// @notice Sets a new ZRO contract address
-    /// @dev Only callable on a 7 day delay or by the Emergency Council
-    function setZroAddress(address newZroAddress) external {
-        _checkElevatedPermissions();
-
-        zroAddress = newZroAddress;
-        emit CoreContractSet("ZRO", newZroAddress);
     }
 
     /// @notice Sets a new fee hub contract address
