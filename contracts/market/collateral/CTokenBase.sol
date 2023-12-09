@@ -125,24 +125,6 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         }
     }
 
-    /// @notice Caller deposits assets into the market, receives cTokens
-    ///         as shares, and turns on collateralization of the assets
-    /// @param shares The amount of the underlying assets quoted in shares to supply
-    /// @param receiver The account that should receive the cToken shares
-    /// @return assets the amount of cToken shares quoted in assets received by `receiver`
-    function mintAsCollateral(
-        uint256 shares,
-        address receiver
-    ) external nonReentrant returns (uint256 assets) {
-        assets = _mint(shares, receiver);
-        if (
-            msg.sender == receiver ||
-            msg.sender == lendtroller.positionFolding()
-        ) {
-            lendtroller.postCollateral(receiver, address(this), shares);
-        }
-    }
-
     /// @notice Caller withdraws assets from the market and burns their shares
     /// @dev   Forces collateral to be withdrawn
     /// @param assets The amount of the underlying asset to withdraw

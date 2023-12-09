@@ -757,6 +757,91 @@ contract VeCVE is ERC20, ReentrancyGuard {
         }
     }
 
+    /// @notice Updates user points by reducing the amount that gets unlocked
+    ///         in a specific epoch
+    /// @param user The address of the user whose points are to be updated
+    /// @param epoch The epoch from which the unlock amount will be reduced
+    /// @dev This function is only called when
+    ///      userUnlocksByEpoch[user][epoch] > 0
+    ///      so do not need to check here
+    function updateUserPoints(address user, uint256 epoch) external {
+        address _cveLocker = address(cveLocker);
+        assembly {
+            if iszero(eq(caller(), _cveLocker)) {
+                mstore(0x00, _UNAUTHORIZED_SELECTOR)
+                revert(0x1c, 0x04)
+            }
+        }
+
+        unchecked {
+            userPoints[user] =
+                userPoints[user] -
+                userUnlocksByEpoch[user][epoch];
+        }
+    }
+
+    /// @notice Calculates the total votes for a user based on their current locks
+    /// @param user The address of the user to calculate votes for
+    /// @return The total number of votes for the user
+    function getVotes(address user) external view returns (uint256) {
+        uint256 numLocks = userLocks[user].length;
+
+        if (numLocks == 0) {
+            return 0;
+        }
+
+        uint256 currentLockBoost = centralRegistry.voteBoostMultiplier();
+        uint256 votes;
+
+        for (uint256 i; i < numLocks; ) {
+            // Based on CVE maximum supply this cannot overflow
+            unchecked {
+                votes += getVotesForSingleLockForTime(
+                    user,
+                    i++,
+                    block.timestamp,
+                    currentLockBoost
+                );
+            }
+        }
+
+        return votes;
+    }
+
+    /// @notice Calculates the total votes for a user based
+    ///         on their locks at a specific epoch
+    /// @param user The address of the user to calculate votes for
+    /// @param epoch The epoch for which the votes are calculated
+    /// @return The total number of votes for the user at the specified epoch
+    function getVotesForEpoch(
+        address user,
+        uint256 epoch
+    ) external view returns (uint256) {
+        uint256 numLocks = userLocks[user].length;
+
+        if (numLocks == 0) {
+            return 0;
+        }
+
+        uint256 timestamp = genesisEpoch + (EPOCH_DURATION * epoch);
+        uint256 currentLockBoost = centralRegistry.voteBoostMultiplier();
+        uint256 votes;
+
+        for (uint256 i; i < numLocks; ) {
+            // Based on CVE maximum supply this cannot overflow
+            unchecked {
+                votes += getVotesForSingleLockForTime(
+                    user,
+                    i++,
+                    timestamp,
+                    currentLockBoost
+                );
+            }
+        }
+
+        return votes;
+    }
+
     /// PUBLIC FUNCTIONS ///
 
     /// @dev Returns the name of the token
@@ -807,92 +892,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
             );
     }
 
-    /// @notice Updates user points by reducing the amount that gets unlocked
-    ///         in a specific epoch
-    /// @param user The address of the user whose points are to be updated
-    /// @param epoch The epoch from which the unlock amount will be reduced
-    /// @dev This function is only called when
-    ///      userUnlocksByEpoch[user][epoch] > 0
-    ///      so do not need to check here
-    function updateUserPoints(address user, uint256 epoch) public {
-        address _cveLocker = address(cveLocker);
-        assembly {
-            if iszero(eq(caller(), _cveLocker)) {
-                mstore(0x00, _UNAUTHORIZED_SELECTOR)
-                revert(0x1c, 0x04)
-            }
-        }
-
-        unchecked {
-            userPoints[user] =
-                userPoints[user] -
-                userUnlocksByEpoch[user][epoch];
-        }
-    }
-
     /// View Functions ///
-
-    /// @notice Calculates the total votes for a user based on their current locks
-    /// @param user The address of the user to calculate votes for
-    /// @return The total number of votes for the user
-    function getVotes(address user) public view returns (uint256) {
-        uint256 numLocks = userLocks[user].length;
-
-        if (numLocks == 0) {
-            return 0;
-        }
-
-        uint256 currentLockBoost = centralRegistry.voteBoostMultiplier();
-        uint256 votes;
-
-        for (uint256 i; i < numLocks; ) {
-            // Based on CVE maximum supply this cannot overflow
-            unchecked {
-                votes += getVotesForSingleLockForTime(
-                    user,
-                    i++,
-                    block.timestamp,
-                    currentLockBoost
-                );
-            }
-        }
-
-        return votes;
-    }
-
-    /// @notice Calculates the total votes for a user based
-    ///         on their locks at a specific epoch
-    /// @param user The address of the user to calculate votes for
-    /// @param epoch The epoch for which the votes are calculated
-    /// @return The total number of votes for the user at the specified epoch
-    function getVotesForEpoch(
-        address user,
-        uint256 epoch
-    ) public view returns (uint256) {
-        uint256 numLocks = userLocks[user].length;
-
-        if (numLocks == 0) {
-            return 0;
-        }
-
-        uint256 timestamp = genesisEpoch + (EPOCH_DURATION * epoch);
-        uint256 currentLockBoost = centralRegistry.voteBoostMultiplier();
-        uint256 votes;
-
-        for (uint256 i; i < numLocks; ) {
-            // Based on CVE maximum supply this cannot overflow
-            unchecked {
-                votes += getVotesForSingleLockForTime(
-                    user,
-                    i++,
-                    timestamp,
-                    currentLockBoost
-                );
-            }
-        }
-
-        return votes;
-    }
 
     /// @notice Calculates the votes for a single lock of a user based
     ///         on a specific timestamp
