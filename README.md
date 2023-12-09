@@ -19,15 +19,16 @@ Main dependencies:
 
 ## Internal code guidelines
 ### Smart contract order
-1. Constants at the top of the contract
-2. Storage
-3. Events
-4. Errors
-5. Constructor
-6. External
-7. Public
-8. Internal
-9. Private as the end of the contract
+1. Types at the top of the contract
+2. Constants
+3. Storage
+4. Events
+5. Errors
+6. Constructor
+7. External
+8. Public
+9. Internal
+10. Private as the end of the contract
 
 ### Linting
 - Prettier is set to have `printWidth` of 79 however comments sometimes do not take this, but are enforced in code review. Please ensure your commented lines do not exceed 79 characters.
