@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.8.17;
-import { IERC20Metadata } from "contracts/interfaces/IERC20Metadata.sol";
 
-import "./IRewardManager.sol";
-import "./IPInterestManagerYT.sol";
+import { IRewardManager } from "contracts/interfaces/external/pendle/IRewardManager.sol";
+import { IPInterestManagerYT } from "contracts/interfaces/external/pendle/IPInterestManagerYT.sol";
+import { IERC20Metadata } from "contracts/interfaces/IERC20Metadata.sol";
 
 interface IPYieldToken is IERC20Metadata, IRewardManager, IPInterestManagerYT {
     event NewInterestIndex(uint256 indexed newIndex);
