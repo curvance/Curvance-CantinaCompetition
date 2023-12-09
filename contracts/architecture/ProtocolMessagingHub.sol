@@ -241,9 +241,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     ///                   sent.
     /// @param toAddress The destination address specified by `dstChainId`.
     /// @param payload The payload data that is sent along with the message.
-    /// @dev We redundantly pass adapterParams so we do not need to coerce data
-    ///      in the function, calls with this function will have
-    ///      messageType = 3
+    /// @dev Calls with this function will have messageType = 3.
     function sendGaugeEmissions(
         uint16 dstChainId,
         address toAddress,
@@ -362,9 +360,9 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     }
 
     /// @notice Permissioned function for returning fees reimbursed from
-    ///         Stargate to FeeAccumulator
+    ///         Stargate to FeeAccumulator.
     /// @dev This is for if we ever need to depreciate this
-    ///      ProtocolMessagingHub for another
+    ///      ProtocolMessagingHub for another.
     function returnReimbursedFees() external {
         if (!centralRegistry.hasDaoPermissions(msg.sender)) {
             revert ProtocolMessagingHub__Unauthorized();
@@ -383,9 +381,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     /// @param toAddress The destination address specified by `dstChainId`.
     /// @param payload The payload data that is sent along with the message.
     /// @param etherValue How much ether to attach to the transaction.
-    /// @dev We redundantly pass adapterParams so we do not need to coerce data
-    ///      in the function, calls with this function will have
-    ///      messageType = 1 or messageType = 2
+    /// @dev Calls with this function will have messageType = 1 or messageType = 2
     function sendLockedTokenData(
         uint16 dstChainId,
         address toAddress,
