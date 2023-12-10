@@ -51,7 +51,6 @@ contract GMCToken is CTokenCompounding {
 
     /// ERRORS ///
 
-    error GMXGMCToken__Unauthorized();
     error GMXGMCToken__ChainIsNotSupported();
     error GMXGMCToken__MarketIsInvalid();
     error GMXGMCToken__CallerIsNotGMXDepositHandler();
@@ -96,11 +95,11 @@ contract GMCToken is CTokenCompounding {
         bytes calldata
     ) external override returns (uint256 yield) {
         if (!centralRegistry.isHarvester(msg.sender)) {
-            revert GMXGMCToken__Unauthorized();
+            _revert(_UNAUTHORIZED_SELECTOR);
         }
 
-        if (_vaultStatus != 2) {
-            _revert(_VAULT_NOT_ACTIVE_SELECTOR);
+        if (compoundingPaused != 2) {
+            revert CTokenCompounding__CompoundingPaused();
         }
 
         // Vest pending rewards if there are any

@@ -40,7 +40,6 @@ contract PendleLPCToken is CTokenCompounding {
 
     /// ERRORS ///
 
-    error PendleLPCToken__Unauthorized();
     error PendleLPCToken__InvalidSwapper(
         uint256 index,
         address invalidSwapper
@@ -113,11 +112,11 @@ contract PendleLPCToken is CTokenCompounding {
         bytes calldata data
     ) external override returns (uint256 yield) {
         if (!centralRegistry.isHarvester(msg.sender)) {
-            revert PendleLPCToken__Unauthorized();
+            _revert(_UNAUTHORIZED_SELECTOR);
         }
 
-        if (_vaultStatus != 2) {
-            _revert(_VAULT_NOT_ACTIVE_SELECTOR);
+        if (compoundingPaused != 2) {
+            revert CTokenCompounding__CompoundingPaused();
         }
 
         // Vest pending rewards if there are any

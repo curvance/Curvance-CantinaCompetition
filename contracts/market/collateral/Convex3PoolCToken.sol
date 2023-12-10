@@ -42,7 +42,6 @@ contract Convex3PoolCToken is CTokenCompounding {
 
     /// ERRORS ///
 
-    error Convex3PoolCToken__Unauthorized();
     error Convex3PoolCToken__UnsafePool();
     error Convex3PoolCToken__InvalidVaultConfig();
     error Convex3PoolCToken__InvalidCoinLength();
@@ -161,11 +160,11 @@ contract Convex3PoolCToken is CTokenCompounding {
         bytes calldata data
     ) external override returns (uint256 yield) {
         if (!centralRegistry.isHarvester(msg.sender)) {
-            revert Convex3PoolCToken__Unauthorized();
+            _revert(_UNAUTHORIZED_SELECTOR);
         }
 
-        if (_vaultStatus != 2) {
-            _revert(_VAULT_NOT_ACTIVE_SELECTOR);
+        if (compoundingPaused != 2) {
+            revert CTokenCompounding__CompoundingPaused();
         }
 
         // Vest pending rewards if there are any

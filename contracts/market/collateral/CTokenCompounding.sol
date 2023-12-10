@@ -33,10 +33,6 @@ abstract contract CTokenCompounding is CTokenBase {
 
     /// CONSTANTS ///
 
-    // Period harvested rewards are vested over
-    uint256 public vestPeriod = 1 days;
-    NewVestingData public pendingVestUpdate;
-
     // Mask of reward rate entry in packed vault data
     uint256 private constant _BITMASK_REWARD_RATE = (1 << 128) - 1;
 
@@ -54,6 +50,12 @@ abstract contract CTokenCompounding is CTokenBase {
 
     /// STORAGE ///
 
+    // Period harvested rewards are vested over
+    uint256 public vestPeriod = 1 days;
+    NewVestingData public pendingVestUpdate;
+    /// @dev 1 = unpaused; 2 = paused
+    uint256 public compoundingPaused = 1;
+
     // Internal stored vault accounting
     // Bits Layout:
     // - [0..127]    `rewardRate`
@@ -61,9 +63,14 @@ abstract contract CTokenCompounding is CTokenBase {
     // - [192..255] `lastVestClaim`
     uint256 internal _vaultData; // Packed vault data
 
+    /// EVENTS ///
+
+    event CompoundingPaused(bool pauseState);
+
     /// ERRORS ///
 
     error CTokenCompounding__InvalidVestPeriod();
+    error CTokenCompounding__CompoundingPaused();
     error CTokenCompounding__DepositMoreThanMax();
     error CTokenCompounding__MintMoreThanMax();
     error CTokenCompounding__RedeemMoreThanMax();
@@ -188,6 +195,20 @@ abstract contract CTokenCompounding is CTokenBase {
 
         pendingVestUpdate.updateNeeded = true;
         pendingVestUpdate.newVestPeriod = uint248(newVestingPeriod);
+    }
+
+    /// @notice Admin function to set compounding paused
+    /// @dev requires timelock authority if unpausing
+    /// @param state pause or unpause
+    function setCompoundingPaused(bool state) external {
+        if (state) {
+            _checkDaoPermissions();
+        } else {
+            _checkElevatedPermissions();
+        }
+
+        compoundingPaused = state ? 2 : 1;
+        emit CompoundingPaused(state);
     }
 
     // EXTERNAL POSITION LOGIC TO OVERRIDE

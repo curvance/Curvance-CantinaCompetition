@@ -48,7 +48,6 @@ contract VelodromeStableCToken is CTokenCompounding {
 
     /// ERRORS ///
 
-    error VelodromeStableCToken__Unauthorized();
     error VelodromeStableCToken__StakingTokenIsNotAsset(
         address stakingToken
     );
@@ -117,11 +116,11 @@ contract VelodromeStableCToken is CTokenCompounding {
         bytes calldata data
     ) external override returns (uint256 yield) {
         if (!centralRegistry.isHarvester(msg.sender)) {
-            revert VelodromeStableCToken__Unauthorized();
+            _revert(_UNAUTHORIZED_SELECTOR);
         }
 
-        if (_vaultStatus != 2) {
-            _revert(_VAULT_NOT_ACTIVE_SELECTOR);
+        if (compoundingPaused != 2) {
+            revert CTokenCompounding__CompoundingPaused();
         }
 
         // Vest pending rewards if there are any
