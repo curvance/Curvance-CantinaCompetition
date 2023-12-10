@@ -597,8 +597,18 @@ abstract contract CTokenCompounding is CTokenBase {
         // else there are no pending rewards
     }
 
-    /// @notice Vests the pending rewards, updates vault data
-    ///         and share price high watermark
+    /// @notice Checks if the caller can compound the vaults rewards
+    function _canCompound() internal {
+        if (!centralRegistry.isHarvester(msg.sender)) {
+            _revert(_UNAUTHORIZED_SELECTOR);
+        }
+
+        if (compoundingPaused == 2) {
+            revert CTokenCompounding__CompoundingPaused();
+        }
+    }
+
+    /// @notice Vests the pending rewards, and updates vault data
     /// @param currentAssets The current assets of the vault
     function _vestRewards(uint256 currentAssets) internal {
         // Update the lastVestClaim timestamp
@@ -608,6 +618,7 @@ abstract contract CTokenCompounding is CTokenBase {
         _totalAssets = currentAssets;
     }
 
+    /// @notice Vests the pending rewards, and updates vault data if needed
     function _vestIfNeeded() internal {
         uint256 pending = _calculatePendingRewards();
         if (pending > 0) {
@@ -616,6 +627,9 @@ abstract contract CTokenCompounding is CTokenBase {
         }
     }
 
+    /// @notice Updates the vesting period if needed
+    /// @dev If there a pending vesting update,
+    ///      and prior vest is done then `vestPeriod` is updated
     function _updateVestingPeriodIfNeeded() internal {
         if (pendingVestUpdate.updateNeeded) {
             vestPeriod = pendingVestUpdate.newVestPeriod;

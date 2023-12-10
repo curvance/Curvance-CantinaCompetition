@@ -111,13 +111,8 @@ contract PendleLPCToken is CTokenCompounding {
     function harvest(
         bytes calldata data
     ) external override returns (uint256 yield) {
-        if (!centralRegistry.isHarvester(msg.sender)) {
-            _revert(_UNAUTHORIZED_SELECTOR);
-        }
-
-        if (compoundingPaused != 2) {
-            revert CTokenCompounding__CompoundingPaused();
-        }
+        // Checks whether the caller can compound the vault yield
+        _canCompound();
 
         // Vest pending rewards if there are any
         _vestIfNeeded();
