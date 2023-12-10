@@ -41,6 +41,8 @@ contract DToken is ERC165, ReentrancyGuard {
     address public immutable underlying;
     /// @notice Curvance DAO hub
     ICentralRegistry public immutable centralRegistry;
+    /// @notice Lending Market controller
+    ILendtroller public immutable lendtroller;
     /// `bytes4(keccak256(bytes("DToken__Unauthorized()")))`
     uint256 internal constant _UNAUTHORIZED_SELECTOR = 0xef419be2;
 
@@ -50,8 +52,6 @@ contract DToken is ERC165, ReentrancyGuard {
     string public name;
     /// @notice token symbol metadata
     string public symbol;
-    /// @notice Current lending market controller
-    ILendtroller public lendtroller;
     /// @notice Current Interest Rate Model
     DynamicInterestRateModel public interestRateModel;
     /// @notice Total outstanding borrows of underlying
@@ -106,7 +106,6 @@ contract DToken is ERC165, ReentrancyGuard {
         address account,
         uint256 amount
     );
-    event NewLendtroller(address oldLendtroller, address newLendtroller);
     event NewMarketInterestRateModel(
         address oldInterestRateModel,
         address newInterestRateModel,
@@ -151,7 +150,13 @@ contract DToken is ERC165, ReentrancyGuard {
         centralRegistry = centralRegistry_;
 
         // Set the lendtroller after consulting Central Registry
-        _setLendtroller(lendtroller_);
+        // Ensure that lendtroller parameter is a lendtroller
+        if (!centralRegistry.isLendingMarket(lendtroller_)) {
+            revert DToken__LendtrollerIsNotLendingMarket();
+        }
+
+        // Set new lendtroller
+        lendtroller = ILendtroller(lendtroller_);
 
         // Initialize timestamp and borrow index
         marketData.lastTimestampUpdated = uint32(block.timestamp);
@@ -183,12 +188,10 @@ contract DToken is ERC165, ReentrancyGuard {
     /// EXTERNAL FUNCTIONS ///
 
     /// @notice Used to start a DToken market, executed via lendtroller
-    /// @dev  this initial mint is a failsafe against the empty market exploit
-    ///       although we protect against it in many ways, better safe than sorry
-    /// @param initializer the account initializing the market
-    function startMarket(
-        address initializer
-    ) external nonReentrant returns (bool) {
+    /// @dev This initial mint is a failsafe against rounding exploits,
+    ///       although, we protect against it in many ways, better safe than sorry
+    /// @param by the account initializing the market
+    function startMarket(address by) external nonReentrant returns (bool) {
         if (msg.sender != address(lendtroller)) {
             _revert(_UNAUTHORIZED_SELECTOR);
         }
@@ -196,13 +199,13 @@ contract DToken is ERC165, ReentrancyGuard {
         uint256 amount = 42069;
         SafeTransferLib.safeTransferFrom(
             underlying,
-            initializer,
+            by,
             address(this),
             amount
         );
 
         // We do not need to calculate exchange rate here,
-        // `initializer` will always be the first depositor with totalSupply = 0
+        // `by` will always be the first depositor with totalSupply = 0
         // These values should always be zero but we will add them just incase
         totalSupply = totalSupply + amount;
         balanceOf[address(this)] = balanceOf[address(this)] + amount;
@@ -579,14 +582,6 @@ contract DToken is ERC165, ReentrancyGuard {
         }
     }
 
-    /// @notice Sets a new lendtroller for the market
-    /// @dev Admin function to set a new lendtroller
-    /// @param newLendtroller New lendtroller address
-    function setLendtroller(address newLendtroller) external {
-        _checkElevatedPermissions();
-        _setLendtroller(newLendtroller);
-    }
-
     /// @notice Accrues interest and updates the interest rate model
     /// @dev Admin function to update the interest rate model
     /// @param newInterestRateModel the new interest rate model to use
@@ -833,23 +828,6 @@ contract DToken is ERC165, ReentrancyGuard {
     }
 
     /// INTERNAL FUNCTIONS ///
-
-    /// @notice Sets a new lendtroller for the market
-    /// @param newLendtroller New lendtroller address
-    function _setLendtroller(address newLendtroller) internal {
-        // Ensure that lendtroller parameter is a lendtroller
-        if (!centralRegistry.isLendingMarket(newLendtroller)) {
-            revert DToken__LendtrollerIsNotLendingMarket();
-        }
-
-        // Cache the current lendtroller to save gas
-        address oldLendtroller = address(lendtroller);
-
-        // Set new lendtroller
-        lendtroller = ILendtroller(newLendtroller);
-
-        emit NewLendtroller(oldLendtroller, newLendtroller);
-    }
 
     /// @notice Updates the interest rate model
     /// @param newInterestRateModel the new interest rate model to use

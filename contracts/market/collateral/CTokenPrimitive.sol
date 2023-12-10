@@ -17,6 +17,8 @@ contract CTokenPrimitive is CTokenBase {
 
     /// ERRORS ///
 
+    error CTokenPrimitive__DepositMoreThanMax();
+    error CTokenPrimitive__MintMoreThanMax();
     error CTokenPrimitive__RedeemMoreThanMax();
     error CTokenPrimitive__WithdrawMoreThanMax();
     error CTokenPrimitive__ZeroShares();
@@ -106,7 +108,8 @@ contract CTokenPrimitive is CTokenBase {
         }
 
         if (assets > maxDeposit(receiver)) {
-            _revert(_VAULT_NOT_ACTIVE_SELECTOR);
+            // revert with "CTokenPrimitive__DepositMoreThanMax"
+            _revert(0xc4c35f89);
         }
 
         // Fail if deposit not allowed
@@ -138,7 +141,8 @@ contract CTokenPrimitive is CTokenBase {
         }
 
         if (shares > maxMint(receiver)) {
-            _revert(_VAULT_NOT_ACTIVE_SELECTOR);
+            // revert with "CTokenPrimitive__MintMoreThanMax"
+            _revert(0xb03d0ce7);
         }
 
         // Fail if mint not allowed

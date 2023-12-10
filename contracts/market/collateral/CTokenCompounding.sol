@@ -64,6 +64,8 @@ abstract contract CTokenCompounding is CTokenBase {
     /// ERRORS ///
 
     error CTokenCompounding__InvalidVestPeriod();
+    error CTokenCompounding__DepositMoreThanMax();
+    error CTokenCompounding__MintMoreThanMax();
     error CTokenCompounding__RedeemMoreThanMax();
     error CTokenCompounding__WithdrawMoreThanMax();
     error CTokenCompounding__ZeroShares();
@@ -240,7 +242,8 @@ abstract contract CTokenCompounding is CTokenBase {
         }
 
         if (assets > maxDeposit(receiver)) {
-            _revert(_VAULT_NOT_ACTIVE_SELECTOR);
+            // revert with "CTokenCompounding__DepositMoreThanMax"
+            _revert(0x6be8191);
         }
 
         // Fail if deposit not allowed
@@ -273,7 +276,8 @@ abstract contract CTokenCompounding is CTokenBase {
         }
 
         if (shares > maxMint(receiver)) {
-            _revert(_VAULT_NOT_ACTIVE_SELECTOR);
+            // revert with "CTokenCompounding__MintMoreThanMax"
+            _revert(0x178b829b);
         }
 
         // Fail if mint not allowed

@@ -28,8 +28,6 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
 
     /// `bytes4(keccak256(bytes("CTokenBase__Unauthorized()")))`
     uint256 internal constant _UNAUTHORIZED_SELECTOR = 0xbf98a75b;
-    /// `bytes4(keccak256(bytes("CTokenBase__VaultNotActive()")))`
-    uint256 internal constant _VAULT_NOT_ACTIVE_SELECTOR = 0x41d536c9;
     /// `keccak256(bytes("Deposit(address,address,uint256,uint256)"))`.
     uint256 internal constant _DEPOSIT_EVENT_SIGNATURE =
         0xdcbc1c05240f31ff3ad067ef1ee35ce4997762752e3a095284754544f4c709d7;
@@ -49,8 +47,8 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
 
     /// STORAGE ///
 
-    /// @notice Current lending market controller
-    ILendtroller public lendtroller;
+    /// @notice Lending Market controller
+    ILendtroller public immutable lendtroller;
 
     /// @notice token name metadata
     string internal _name;
@@ -59,16 +57,9 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
     uint256 internal _totalAssets; // total vault assets minus vesting
     uint256 internal _vaultStatus; // Vault Status: 2 = active; 0 or 1 = inactive
 
-    /// EVENTS ///
-
-    event NewLendtroller(address oldLendtroller, address newLendtroller);
-    event VaultStatusChanged(bool isShutdown);
-
     /// ERRORS ///
 
     error CTokenBase__Unauthorized();
-    error CTokenBase__VaultNotActive();
-    error CTokenBase__VaultIsActive();
     error CTokenBase__InvalidCentralRegistry();
     error CTokenBase__LendtrollerIsNotLendingMarket();
     error CTokenBase__UnderlyingAssetTotalSupplyExceedsMaximum();
@@ -95,8 +86,15 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         }
 
         centralRegistry = centralRegistry_;
+
         // Set the lendtroller after consulting Central Registry
-        _setLendtroller(lendtroller_);
+        // Ensure that lendtroller parameter is a lendtroller
+        if (!centralRegistry.isLendingMarket(lendtroller_)) {
+            revert CTokenBase__LendtrollerIsNotLendingMarket();
+        }
+
+        // Set lendtroller
+        lendtroller = ILendtroller(lendtroller_);
 
         // Sanity check underlying so that we know users will not need to
         // mint anywhere close to exchange rate of 1e18
@@ -152,49 +150,6 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
     ) external nonReentrant returns (uint256 assets) {
         assets = _redeem(shares, receiver, owner, true);
     }
-
-    // PERMISSIONED FUNCTIONS
-
-    /// @notice Shuts down the vault
-    /// @dev Used in an emergency or if the vault has been deprecated
-    function initiateShutdown() external {
-        _checkDaoPermissions();
-
-        if (_vaultStatus != 2) {
-            _revert(_VAULT_NOT_ACTIVE_SELECTOR);
-        }
-
-        _vaultStatus = 1;
-
-        emit VaultStatusChanged(true);
-    }
-
-    /// @notice Reactivate the vault
-    /// @dev Allows for reconfiguration of cToken attached to vault
-    function liftShutdown() external {
-        /// Reactivating the vault requires heavier permissioning than deactivating
-        _checkElevatedPermissions();
-
-        if (_vaultStatus == 2) {
-            // revert with "CTokenBase__VaultIsActive()"
-            _revert(0x8bdb4dfb);
-        }
-
-        _vaultStatus = 2;
-        emit VaultStatusChanged(false);
-    }
-
-    /// @notice Sets a new lendtroller for the market
-    /// @dev Admin function to set a new lendtroller
-    /// @param newLendtroller New lendtroller address
-    function setLendtroller(address newLendtroller) external {
-        _checkElevatedPermissions();
-
-        _setLendtroller(newLendtroller);
-    }
-
-    /// INTERNAL CTOKEN START LOGIC TO OVERRIDE
-    function startMarket(address by) external virtual returns (bool) {}
 
     /// @notice Get the underlying balance of the `account`
     /// @param account The address of the account to query
@@ -282,6 +237,9 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
             SafeTransferLib.safeTransfer(token, daoOperator, amount);
         }
     }
+
+    /// CTOKEN MARKET START LOGIC TO OVERRIDE
+    function startMarket(address by) external virtual returns (bool) {}
 
     /// PUBLIC FUNCTIONS ///
 
@@ -624,26 +582,9 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         }
     }
 
-    /// @notice Sets a new lendtroller for the market
-    /// @param newLendtroller New lendtroller address
-    function _setLendtroller(address newLendtroller) internal {
-        // Ensure that lendtroller parameter is a lendtroller
-        if (!centralRegistry.isLendingMarket(newLendtroller)) {
-            revert CTokenBase__LendtrollerIsNotLendingMarket();
-        }
-
-        // Cache the current lendtroller to save gas
-        address oldLendtroller = address(lendtroller);
-
-        // Set new lendtroller
-        lendtroller = ILendtroller(newLendtroller);
-
-        emit NewLendtroller(oldLendtroller, newLendtroller);
-    }
-
     /// @notice Used to start a CToken market, executed via lendtroller
-    /// @dev This initial mint is a failsafe against the empty market exploit
-    ///      although we protect against it in many ways,
+    /// @dev This initial mint is a failsafe against rounding exploits,
+    ///      although, we protect against it in many ways,
     ///      better safe than sorry
     /// @param by The account initializing the market
     function _startMarket(address by) internal {
@@ -676,9 +617,6 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
                 and(m, market)
             )
         }
-
-        _vaultStatus = 2;
-        emit VaultStatusChanged(false);
     }
 
     /// @dev Returns the decimals of the underlying asset

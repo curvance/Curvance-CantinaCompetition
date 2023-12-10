@@ -53,6 +53,8 @@ contract Lendtroller is LiquidityManager, ERC165 {
     uint256 public transferPaused = 1;
     /// @dev 1 = unpaused; 2 = paused
     uint256 public seizePaused = 1;
+    /// @dev 1 = unpaused; 2 = paused
+    uint256 public redeemPaused = 1;
     /// @dev Token => 0 or 1 = unpaused; 2 = paused
     mapping(address => uint256) public mintPaused;
     /// @dev Token => 0 or 1 = unpaused; 2 = paused
@@ -643,7 +645,13 @@ contract Lendtroller is LiquidityManager, ERC165 {
             revert Lendtroller__TokenAlreadyListed();
         }
 
-        IMToken(mToken).isCToken(); // Sanity check to make sure its really a mToken
+        // Sanity check to make sure its really a mToken
+        IMToken(mToken).isCToken();
+
+        // Immediately deposit into the market to prevent any rounding exploits
+        if (!IMToken(mToken).startMarket(msg.sender)) {
+            revert Lendtroller__InvariantError();
+        }
 
         MarketToken storage token = tokenData[mToken];
         token.isListed = true;
@@ -658,15 +666,8 @@ contract Lendtroller is LiquidityManager, ERC165 {
                 }
             }
         }
+        
         tokensListed.push(mToken);
-
-        // Start the market if necessary
-        if (IMToken(mToken).totalSupply() == 0) {
-            if (!IMToken(mToken).startMarket(msg.sender)) {
-                revert Lendtroller__InvariantError();
-            }
-        }
-
         emit TokenListed(mToken);
     }
 
@@ -889,6 +890,16 @@ contract Lendtroller is LiquidityManager, ERC165 {
         emit TokenActionPaused(mToken, "Borrow Paused", state);
     }
 
+    /// @notice Admin function to set redemption paused
+    /// @dev requires timelock authority if unpausing
+    /// @param state pause or unpause
+    function setRedeemPaused(bool state) external {
+        _checkAuthorizedPermissions(state);
+
+        redeemPaused = state ? 2 : 1;
+        emit ActionPaused("Redeem Paused", state);
+    }
+
     /// @notice Admin function to set transfer paused
     /// @dev requires timelock authority if unpausing
     /// @param state pause or unpause
@@ -1085,6 +1096,10 @@ contract Lendtroller is LiquidityManager, ERC165 {
         address account,
         uint256 amount
     ) internal view {
+        if (redeemPaused == 2) {
+            _revert(_PAUSED_SELECTOR);
+        }
+
         if (!tokenData[mToken].isListed) {
             _revert(_TOKEN_NOT_LISTED_SELECTOR);
         }
