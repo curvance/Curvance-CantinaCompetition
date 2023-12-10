@@ -177,6 +177,11 @@ abstract contract CTokenCompounding is CTokenBase {
 
     // PERMISSIONED FUNCTIONS
 
+    /// @notice Used to start a CToken market, executed via lendtroller
+    /// @dev This initial mint is a failsafe against rounding exploits,
+    ///      although, we protect against them in many ways,
+    ///      better safe than sorry
+    /// @param by The account initializing the market
     function startMarket(
         address by
     ) external override nonReentrant returns (bool) {
@@ -186,6 +191,10 @@ abstract contract CTokenCompounding is CTokenBase {
         return true;
     }
 
+    /// @notice Admin function to set a new compounding vesting period
+    /// @dev Requires dao authority, 
+    ///      and vesting period cannot be longer than a week
+    /// @param newVestingPeriod New vesting period in seconds
     function setVestingPeriod(uint256 newVestingPeriod) external {
         _checkDaoPermissions();
 

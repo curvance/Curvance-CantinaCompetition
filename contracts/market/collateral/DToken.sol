@@ -189,8 +189,9 @@ contract DToken is ERC165, ReentrancyGuard {
 
     /// @notice Used to start a DToken market, executed via lendtroller
     /// @dev This initial mint is a failsafe against rounding exploits,
-    ///       although, we protect against it in many ways, better safe than sorry
-    /// @param by the account initializing the market
+    ///      although, we protect against them in many ways,
+    ///      better safe than sorry
+    /// @param by The account initializing the market
     function startMarket(address by) external nonReentrant returns (bool) {
         if (msg.sender != address(lendtroller)) {
             _revert(_UNAUTHORIZED_SELECTOR);

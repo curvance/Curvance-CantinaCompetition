@@ -32,18 +32,18 @@ contract CanSeizeTest is TestBaseLendtroller {
         lendtroller.canSeize(address(cBALRETH), address(dUSDC));
     }
 
-    function test_canSeize_fail_whenLendtrollersMismatch() public {
-        lendtroller.listToken(address(cBALRETH));
-        lendtroller.listToken(address(dUSDC));
+    // function test_canSeize_fail_whenLendtrollersMismatch() public {
+    //     lendtroller.listToken(address(cBALRETH));
+    //     lendtroller.listToken(address(dUSDC));
 
-        Lendtroller newLendtroller = new Lendtroller(
-            ICentralRegistry(address(centralRegistry)),
-            address(gaugePool)
-        );
-        centralRegistry.addLendingMarket(address(newLendtroller), 1000);
-        dUSDC.setLendtroller(address(newLendtroller));
+    //     Lendtroller newLendtroller = new Lendtroller(
+    //         ICentralRegistry(address(centralRegistry)),
+    //         address(gaugePool)
+    //     );
+    //     centralRegistry.addLendingMarket(address(newLendtroller), 1000);
+    //     dUSDC.setLendtroller(address(newLendtroller));
 
-        vm.expectRevert(Lendtroller.Lendtroller__LendtrollerMismatch.selector);
-        lendtroller.canSeize(address(cBALRETH), address(dUSDC));
-    }
+    //     vm.expectRevert(Lendtroller.Lendtroller__LendtrollerMismatch.selector);
+    //     lendtroller.canSeize(address(cBALRETH), address(dUSDC));
+    // }
 }

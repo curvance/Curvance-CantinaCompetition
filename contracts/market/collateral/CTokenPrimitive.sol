@@ -84,8 +84,8 @@ contract CTokenPrimitive is CTokenBase {
     // PERMISSIONED FUNCTIONS
 
     /// @notice Used to start a CToken market, executed via lendtroller
-    /// @dev This initial mint is a failsafe against the empty market exploit
-    ///      although we protect against it in many ways,
+    /// @dev This initial mint is a failsafe against rounding exploits,
+    ///      although, we protect against them in many ways,
     ///      better safe than sorry
     /// @param by The account initializing the market
     function startMarket(address by) external nonReentrant override returns (bool) {
