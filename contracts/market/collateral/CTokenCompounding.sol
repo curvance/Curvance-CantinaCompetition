@@ -54,7 +54,7 @@ abstract contract CTokenCompounding is CTokenBase {
     uint256 public vestPeriod = 1 days;
     NewVestingData public pendingVestUpdate;
     /// @dev 1 = unpaused; 2 = paused
-    uint256 public compoundingPaused = 1;
+    uint256 public compoundingPaused = 2; // Starts paused until market started
 
     // Internal stored vault accounting
     // Bits Layout:
@@ -188,6 +188,7 @@ abstract contract CTokenCompounding is CTokenBase {
         _startMarket(by);
         _afterDeposit(42069, 42069);
         _setlastVestClaim(uint64(block.timestamp));
+        compoundingPaused = 1;
         return true;
     }
 
@@ -210,6 +211,11 @@ abstract contract CTokenCompounding is CTokenBase {
     /// @dev requires timelock authority if unpausing
     /// @param state pause or unpause
     function setCompoundingPaused(bool state) external {
+        // If the market has not been started do not allow compounding changes
+        if (lastVestClaim() == 0) {
+            _revert(_UNAUTHORIZED_SELECTOR);
+        }
+
         if (state) {
             _checkDaoPermissions();
         } else {
