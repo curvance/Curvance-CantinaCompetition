@@ -9,8 +9,10 @@ import { IERC20 } from "contracts/interfaces/IERC20.sol";
 
 contract DTokenDeploymentTest is TestBaseDToken {
     using stdStorage for StdStorage;
-
-    event NewLendtroller(address oldLendtroller, address newLendtroller);
+    event NewInterestFactor(
+        uint256 oldInterestFactor,
+        uint256 newInterestFactor
+    );
 
     function test_dTokenDeployment_fail_whenCentralRegistryIsInvalid() public {
         vm.expectRevert(DToken.DToken__InvalidCentralRegistry.selector);
@@ -65,7 +67,10 @@ contract DTokenDeploymentTest is TestBaseDToken {
 
     function test_dTokenDeployment_success() public {
         vm.expectEmit(true, true, true, true);
-        emit NewLendtroller(address(0), address(lendtroller));
+        uint256 newInterestFactor = centralRegistry.protocolInterestFactor(
+            address(lendtroller)
+        );
+        emit NewInterestFactor(0, newInterestFactor);
 
         dUSDC = new DToken(
             ICentralRegistry(address(centralRegistry)),
