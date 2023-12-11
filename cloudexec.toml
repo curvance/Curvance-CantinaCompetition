@@ -49,4 +49,4 @@ forge --version
 
 # This command is run from the input directory
 # after the setup script completes.
-run = "source /.bashrc && forge --version && forge build && slither tests/fuzzing/EchidnaBaseMarket.sol && echidna tests/fuzzing/EchidnaBaseMarket.sol --contract EchidnaBaseMarket --config tests/fuzzing/cloud.yaml"
+run = "source /.bashrc && forge --version && make echidna-cloud"

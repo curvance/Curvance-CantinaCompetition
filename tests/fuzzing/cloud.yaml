@@ -1,5 +1,6 @@
 testMode: exploration
-testLimit: 10000000
+# testLimit: 1000000
+testLimit: 100000000000000
 coverage: true 
-corpusDir: "corpus"
+corpusDir: "echidna-corpus"
 cryticArgs: ["--ignore-compile"]

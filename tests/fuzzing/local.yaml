@@ -1,7 +1,6 @@
-# testMode: assertion
-testMode: exploration
+testMode: assertion
 coverage: true 
-corpusDir: "corpus"
+corpusDir: "echidna-corpus"
 cryticArgs: ["--ignore-compile"]
 testMaxGas: 1250000000
 codeSize: 0xfffffffffff

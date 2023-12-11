@@ -15,7 +15,8 @@
 **/dist
 **/node_modules
 **/out
-**/corpus
+**/echidna-corpus
+**/medusa-corpus
 **/crytic-export
 
 # files

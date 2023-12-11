@@ -5,7 +5,7 @@
 		"timeout": 0,
 		"testLimit": 0,
 		"callSequenceLength": 100,
-		"corpusDirectory": "",
+		"corpusDirectory": "medusa-corpus",
 		"coverageEnabled": true,
 		"deploymentOrder": [
 			"EchidnaBaseMarket"
