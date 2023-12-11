@@ -1,0 +1,8 @@
+# testMode: assertion
+testMode: exploration
+coverage: true 
+corpusDir: "corpus"
+cryticArgs: ["--ignore-compile"]
+testMaxGas: 1250000000
+codeSize: 0xfffffffffff
+testLimit: 500000

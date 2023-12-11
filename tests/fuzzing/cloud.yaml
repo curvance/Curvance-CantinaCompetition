@@ -1,0 +1,5 @@
+testMode: exploration
+testLimit: 10000000
+coverage: true 
+corpusDir: "corpus"
+cryticArgs: ["--ignore-compile"]
