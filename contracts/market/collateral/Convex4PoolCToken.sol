@@ -36,7 +36,7 @@ contract Convex4PoolCToken is CTokenCompounding {
     /// @notice StrategyData packed configuration data
     StrategyData public strategyData;
 
-    /// @notice Token => underlying token of the Curve 2Pool LP or not
+    /// @notice Token => underlying token of the Curve 4Pool LP or not
     mapping(address => bool) public isUnderlyingToken;
 
     /// EVENTS ///
@@ -99,7 +99,7 @@ contract Convex4PoolCToken is CTokenCompounding {
             }
         }
 
-        // validate that the liquidity pool is actually a 2Pool
+        // validate that the liquidity pool is actually a 4Pool
         if (coinsLength != 4) {
             revert Convex4PoolCToken__InvalidCoinLength();
         }
@@ -276,7 +276,7 @@ contract Convex4PoolCToken is CTokenCompounding {
         return strategyData.rewarder.balanceOf(address(this));
     }
 
-    /// @notice Adds underlying tokens to the vaults Curve 2Pool LP
+    /// @notice Adds underlying tokens to the vaults Curve 4Pool LP
     function _addLiquidityToCurve(uint256 minLPAmount) internal {
         address underlyingToken;
         uint256[4] memory amounts;

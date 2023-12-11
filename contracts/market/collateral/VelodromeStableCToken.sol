@@ -49,6 +49,7 @@ contract VelodromeStableCToken is CTokenCompounding {
 
     /// ERRORS ///
 
+    error VelodromeStableCToken__ChainIsNotSupported();
     error VelodromeStableCToken__StakingTokenIsNotAsset(
         address stakingToken
     );
@@ -66,6 +67,10 @@ contract VelodromeStableCToken is CTokenCompounding {
         IVeloPairFactory pairFactory,
         IVeloRouter router
     ) CTokenCompounding(centralRegistry_, asset_, lendtroller_) {
+        if (block.chainid != 10) {
+            revert VelodromeStableCToken__ChainIsNotSupported();
+        }
+
         // Cache assigned asset address
         address _asset = asset();
         // Validate that we have the proper gauge linked with the proper LP
