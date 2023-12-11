@@ -27,7 +27,7 @@ contract VelodromeVolatileCToken is CTokenCompounding {
 
     /// CONSTANTS ///
 
-    /// @notice Optimism VELO contract address
+    /// @notice VELO contract address
     IERC20 public constant rewardToken =
         IERC20(0x9560e827aF36c94D2Ac33a39bCE1Fe78631088Db);
     /// @notice Whether VELO is an underlying token of the pair

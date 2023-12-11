@@ -12,27 +12,25 @@ import { IVeloPair } from "contracts/interfaces/external/velodrome/IVeloPair.sol
 import { IVeloPairFactory } from "contracts/interfaces/external/velodrome/IVeloPairFactory.sol";
 import { IVeloPool } from "contracts/interfaces/external/velodrome/IVeloPool.sol";
 
-contract VelodromeStableCToken is CTokenCompounding {
+contract AerodromeVolatileCToken is CTokenCompounding {
     using Math for uint256;
 
     /// TYPES ///
 
     struct StrategyData {
-        IVeloGauge gauge; // Velodrome Gauge contract
-        IVeloPairFactory pairFactory; // Velodrome Pair Factory contract
-        IVeloRouter router; // Velodrome Router contract
+        IVeloGauge gauge; // Aerodrome Gauge contract
+        IVeloPairFactory pairFactory; // Aerodrome Pair Factory contract
+        IVeloRouter router; // Aerodrome Router contract
         address token0; // LP first token address
         address token1; // LP second token address
-        uint256 decimalsA; // token0 decimals
-        uint256 decimalsB; // token1 decimals
     }
 
     /// CONSTANTS ///
 
-    /// @notice VELO contract address
+    /// @notice AERO contract address
     IERC20 public constant rewardToken =
-        IERC20(0x9560e827aF36c94D2Ac33a39bCE1Fe78631088Db);
-    /// @notice Whether VELO is an underlying token of the pair
+        IERC20(0x940181a94A35A4569E4529A3CDfB74e38FD98631);
+    /// @notice Whether AERO is an underlying token of the pair
     bool public immutable rewardTokenIsUnderlying;
 
     /// STORAGE ///
@@ -40,7 +38,7 @@ contract VelodromeStableCToken is CTokenCompounding {
     /// @notice StrategyData packed configuration data
     StrategyData public strategyData;
 
-    /// @notice Token => underlying token of the sAMM LP or not
+    /// @notice Token => underlying token of the vAMM LP or not
     mapping(address => bool) public isUnderlyingToken;
 
     /// EVENTS ///
@@ -49,13 +47,13 @@ contract VelodromeStableCToken is CTokenCompounding {
 
     /// ERRORS ///
 
-    error VelodromeStableCToken__ChainIsNotSupported();
-    error VelodromeStableCToken__StakingTokenIsNotAsset(
+    error AerodromeVolatileCToken__ChainIsNotSupported();
+    error AerodromeVolatileCToken__StakingTokenIsNotAsset(
         address stakingToken
     );
-    error VelodromeStableCToken__AssetIsNotStable();
-    error VelodromeStableCToken__SlippageError();
-    error VelodromeStableCToken__InvalidSwapper(address invalidSwapper);
+    error AerodromeVolatileCToken__AssetIsNotStable();
+    error AerodromeVolatileCToken__SlippageError();
+    error AerodromeVolatileCToken__InvalidSwapper(address invalidSwapper);
 
     /// CONSTRUCTOR ///
 
@@ -67,8 +65,8 @@ contract VelodromeStableCToken is CTokenCompounding {
         IVeloPairFactory pairFactory,
         IVeloRouter router
     ) CTokenCompounding(centralRegistry_, asset_, lendtroller_) {
-        if (block.chainid != 10) {
-            revert VelodromeStableCToken__ChainIsNotSupported();
+        if (block.chainid != 8453) {
+            revert AerodromeVolatileCToken__ChainIsNotSupported();
         }
 
         // Cache assigned asset address
@@ -76,27 +74,24 @@ contract VelodromeStableCToken is CTokenCompounding {
         // Validate that we have the proper gauge linked with the proper LP
         // and pair factory
         if (gauge.stakingToken() != _asset) {
-            revert VelodromeStableCToken__StakingTokenIsNotAsset(
+            revert AerodromeVolatileCToken__StakingTokenIsNotAsset(
                 gauge.stakingToken()
             );
         }
 
-        if (!IVeloPool(_asset).stable()) {
-            revert VelodromeStableCToken__AssetIsNotStable();
+        if (IVeloPool(_asset).stable()) {
+            revert AerodromeVolatileCToken__AssetIsNotStable();
         }
 
         // Query underlying token data from the pool
         strategyData.token0 = IVeloPool(_asset).token0();
         strategyData.token1 = IVeloPool(_asset).token1();
-        // make sure token0 is VELO if one of underlying tokens is VELO
+        // make sure token0 is AERO if one of underlying tokens is AERO
         // so that it can be used properly in harvest function.
         if (strategyData.token1 == address(rewardToken)) {
             strategyData.token1 = strategyData.token0;
             strategyData.token0 = address(rewardToken);
         }
-        strategyData.decimalsA = 10 ** IERC20(strategyData.token0).decimals();
-        strategyData.decimalsB = 10 ** IERC20(strategyData.token1).decimals();
-
         strategyData.gauge = gauge;
         strategyData.router = router;
         strategyData.pairFactory = pairFactory;
@@ -129,13 +124,12 @@ contract VelodromeStableCToken is CTokenCompounding {
 
         // can only harvest once previous reward period is done
         if (_checkVestStatus(_vaultData)) {
-
             _updateVestingPeriodIfNeeded();
-            
+
             // cache strategy data
             StrategyData memory sd = strategyData;
 
-            // claim velodrome rewards
+            // claim aerodrome rewards
             sd.gauge.getReward(address(this));
 
             {
@@ -153,7 +147,7 @@ contract VelodromeStableCToken is CTokenCompounding {
                         protocolFee
                     );
 
-                    // swap from VELO to underlying LP token if necessary
+                    // swap from AERO to underlying LP token if necessary
                     if (!rewardTokenIsUnderlying) {
                         SwapperLib.Swap memory swapData = abi.decode(
                             data,
@@ -161,7 +155,7 @@ contract VelodromeStableCToken is CTokenCompounding {
                         );
 
                         if (!centralRegistry.isSwapper(swapData.target)) {
-                            revert VelodromeStableCToken__InvalidSwapper(
+                            revert AerodromeVolatileCToken__InvalidSwapper(
                                 swapData.target
                             );
                         }
@@ -171,55 +165,55 @@ contract VelodromeStableCToken is CTokenCompounding {
                 }
             }
 
-            // token0 is VELO of one of underlying tokens is VELO
+            // One of underlying tokens is AERO
             // swap token0 to LP Token underlying tokens
             uint256 totalAmountA = IERC20(sd.token0).balanceOf(address(this));
-
             if (totalAmountA == 0) {
-                revert VelodromeStableCToken__SlippageError();
+                revert AerodromeVolatileCToken__SlippageError();
             }
 
             // Cache asset so we don't need to pay gas multiple times
             address _asset = asset();
             (uint256 r0, uint256 r1, ) = IVeloPair(_asset).getReserves();
-            (uint256 reserveA, uint256 reserveB) = sd.token0 ==
-                IVeloPair(_asset).token0()
-                ? (r0, r1)
-                : (r1, r0);
-            // Feed library pair factory, lpToken, and stable = true, plus calculated data
+            uint256 reserveA = sd.token0 == IVeloPair(_asset).token0()
+                ? r0
+                : r1;
+
+            // On Volatile Pair we only need to input factory, lptoken, amountA, reserveA, stable = false
+            // Decimals are unused and amountB is unused so we can pass 0
             uint256 swapAmount = VelodromeLib._optimalDeposit(
                 address(sd.pairFactory),
                 _asset,
                 totalAmountA,
                 reserveA,
-                reserveB,
-                sd.decimalsA,
-                sd.decimalsB,
-                true
+                0,
+                0,
+                0,
+                false
             );
-            // Query router and feed calculated data, and stable = true
+            // Can pass as normal with stable = false
             VelodromeLib._swapExactTokensForTokens(
                 address(sd.router),
                 _asset,
                 sd.token0,
                 sd.token1,
                 swapAmount,
-                true
+                false
             );
             totalAmountA -= swapAmount;
 
-            // add liquidity to velodrome lp with stable params
+            // add liquidity to aerodrome lp with stable = false
             yield = VelodromeLib._addLiquidity(
                 address(sd.router),
                 sd.token0,
                 sd.token1,
-                true,
+                false,
                 totalAmountA,
                 IERC20(sd.token1).balanceOf(address(this)), // totalAmountB
                 VelodromeLib.VELODROME_ADD_LIQUIDITY_SLIPPAGE
             );
 
-            // deposit assets into velodrome gauge
+            // deposit assets into aerodrome gauge
             _afterDeposit(yield, 0);
 
             // update vesting info
@@ -239,7 +233,7 @@ contract VelodromeStableCToken is CTokenCompounding {
 
     // INTERNAL POSITION LOGIC
 
-    /// @notice Deposits specified amount of assets into velodrome gauge pool
+    /// @notice Deposits specified amount of assets into aerodrome gauge pool
     /// @param assets The amount of assets to deposit
     function _afterDeposit(uint256 assets, uint256) internal override {
         IVeloGauge gauge = strategyData.gauge;
@@ -247,13 +241,13 @@ contract VelodromeStableCToken is CTokenCompounding {
         gauge.deposit(assets);
     }
 
-    /// @notice Withdraws specified amount of assets from velodrome gauge pool
+    /// @notice Withdraws specified amount of assets from aerodrome gauge pool
     /// @param assets The amount of assets to withdraw
     function _beforeWithdraw(uint256 assets, uint256) internal override {
         strategyData.gauge.withdraw(assets);
     }
 
-    /// @notice Gets the balance of assets inside velodrome gauge pool
+    /// @notice Gets the balance of assets inside aerodrome gauge pool
     /// @return The current balance of assets
     function _getRealPositionBalance()
         internal
@@ -263,5 +257,4 @@ contract VelodromeStableCToken is CTokenCompounding {
     {
         return strategyData.gauge.balanceOf(address(this));
     }
-
 }
