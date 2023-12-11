@@ -17,8 +17,6 @@ contract CTokenPrimitive is CTokenBase {
 
     /// ERRORS ///
 
-    error CTokenPrimitive__DepositMoreThanMax();
-    error CTokenPrimitive__MintMoreThanMax();
     error CTokenPrimitive__RedeemMoreThanMax();
     error CTokenPrimitive__WithdrawMoreThanMax();
     error CTokenPrimitive__ZeroShares();
@@ -107,15 +105,8 @@ contract CTokenPrimitive is CTokenBase {
             revert CTokenPrimitive__ZeroAssets();
         }
 
-        // We already check isListed and mintPaused != 2 in canMint call below
-        // so we can bypass these checks with a super. call to avoid redundant
-        // checks and minimize gas
-        if (assets > super.maxDeposit(receiver)) {
-            // revert with "CTokenPrimitive__DepositMoreThanMax"
-            _revert(0xc4c35f89);
-        }
-
-        // Fail if deposit not allowed
+        // Fail if deposit not allowed, this stands in for a maxDeposit
+        // check reviewing isListed and mintPaused != 2
         lendtroller.canMint(address(this));
 
         // Save _totalAssets to memory
@@ -143,15 +134,8 @@ contract CTokenPrimitive is CTokenBase {
             revert CTokenPrimitive__ZeroShares();
         }
 
-        // We already check isListed and mintPaused != 2 in canMint call below
-        // so we can bypass these checks with a super. call to avoid redundant
-        // checks and minimize gas
-        if (shares > super.maxMint(receiver)) {
-            // revert with "CTokenPrimitive__MintMoreThanMax"
-            _revert(0xb03d0ce7);
-        }
-
-        // Fail if mint not allowed
+        // Fail if mint not allowed, this stands in for a maxMint
+        // check reviewing isListed and mintPaused != 2
         lendtroller.canMint(address(this));
 
         // Save _totalAssets to memory

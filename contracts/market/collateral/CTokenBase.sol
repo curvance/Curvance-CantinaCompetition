@@ -273,7 +273,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         if (!lendtroller.isListed(address(this)) || lendtroller.mintPaused(address(this)) == 2) {
             // We do not need to set maxAssets here since its initialized
             // as 0 so we can just return.
-            return;
+            return maxAssets;
         }
         maxAssets = super.maxDeposit(to);
     }
@@ -286,7 +286,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         if (!lendtroller.isListed(address(this)) || lendtroller.mintPaused(address(this)) == 2) {
             // We do not need to set maxShares here since its initialized
             // as 0 so we can just return.
-            return;
+            return maxShares;
         }
         maxShares = super.maxMint(to);
     }

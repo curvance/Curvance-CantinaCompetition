@@ -71,8 +71,6 @@ abstract contract CTokenCompounding is CTokenBase {
 
     error CTokenCompounding__InvalidVestPeriod();
     error CTokenCompounding__CompoundingPaused();
-    error CTokenCompounding__DepositMoreThanMax();
-    error CTokenCompounding__MintMoreThanMax();
     error CTokenCompounding__RedeemMoreThanMax();
     error CTokenCompounding__WithdrawMoreThanMax();
     error CTokenCompounding__ZeroShares();
@@ -277,15 +275,8 @@ abstract contract CTokenCompounding is CTokenBase {
             revert CTokenCompounding__ZeroAssets();
         }
 
-        // We already check isListed and mintPaused != 2 in canMint call below
-        // so we can bypass these checks with a super. call to avoid redundant
-        // checks and minimize gas
-        if (assets > super.maxDeposit(receiver)) {
-            // revert with "CTokenCompounding__DepositMoreThanMax"
-            _revert(0x6be8191);
-        }
-
-        // Fail if deposit not allowed
+        // Fail if deposit not allowed, this stands in for a maxDeposit
+        // check reviewing isListed and mintPaused != 2
         lendtroller.canMint(address(this));
 
         // Save _totalAssets and pendingRewards to memory
@@ -314,15 +305,8 @@ abstract contract CTokenCompounding is CTokenBase {
             revert CTokenCompounding__ZeroShares();
         }
 
-        // We already check isListed and mintPaused != 2 in canMint call below
-        // so we can bypass these checks with a super. call to avoid redundant
-        // checks and minimize gas
-        if (shares > super.maxMint(receiver)) {
-            // revert with "CTokenCompounding__MintMoreThanMax"
-            _revert(0x178b829b);
-        }
-
-        // Fail if mint not allowed
+        // Fail if mint not allowed, this stands in for a maxMint
+        // check reviewing isListed and mintPaused != 2
         lendtroller.canMint(address(this));
 
         // Save _totalAssets and pendingRewards to memory
