@@ -27,17 +27,18 @@ contract VelodromeVolatileCToken is CTokenCompounding {
 
     /// CONSTANTS ///
 
-    // Optimism VELO contract address
+    /// @notice Optimism VELO contract address
     IERC20 public constant rewardToken =
         IERC20(0x9560e827aF36c94D2Ac33a39bCE1Fe78631088Db);
-    // Whether VELO is an underlying token of the pair
+    /// @notice Whether VELO is an underlying token of the pair
     bool public immutable rewardTokenIsUnderlying;
 
     /// STORAGE ///
 
-    StrategyData public strategyData; // position vault packed configuration
+    /// @notice StrategyData packed configuration data
+    StrategyData public strategyData;
 
-    /// Token => underlying token of the vAMM LP or not
+    /// @notice Token => underlying token of the vAMM LP or not
     mapping(address => bool) public isUnderlyingToken;
 
     /// EVENTS ///

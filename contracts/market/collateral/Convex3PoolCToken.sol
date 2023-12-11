@@ -27,13 +27,16 @@ contract Convex3PoolCToken is CTokenCompounding {
 
     /// CONSTANTS ///
 
+    /// @notice This address is for ethereum mainnet so make sure to update
+    ///         it if curve/convex is being supported on another chain
     address private constant _CRV = 0xD533a949740bb3306d119CC777fa900bA034cd52;
 
     /// STORAGE ///
 
-    StrategyData public strategyData; // position vault packed configuration
+    /// @notice StrategyData packed configuration data
+    StrategyData public strategyData;
 
-    /// Token => underlying token of the Curve 2Pool LP or not
+    /// @notice Token => underlying token of the Curve 2Pool LP or not
     mapping(address => bool) public isUnderlyingToken;
 
     /// EVENTS ///

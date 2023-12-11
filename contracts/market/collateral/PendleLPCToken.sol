@@ -30,9 +30,11 @@ contract PendleLPCToken is CTokenCompounding {
 
     /// STORAGE ///
 
-    StrategyData public strategyData; // position vault packed configuration
+    /// @notice StrategyData packed configuration data
+    StrategyData public strategyData;
 
-    mapping(address => bool) public isUnderlyingToken; // token => is underlying token
+    /// @notice token => is underlying token
+    mapping(address => bool) public isUnderlyingToken;
 
     /// EVENTS ///
 

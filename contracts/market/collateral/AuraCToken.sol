@@ -29,14 +29,17 @@ contract AuraCToken is CTokenCompounding {
 
     /// CONSTANTS ///
 
+    /// @notice These addresses are for ethereum mainnet so make sure to update
+    ///         them if balancer/aura is being supported on another chain
     address private constant BAL = 0xba100000625a3754423978a60c9317c58a424e3D;
     address private constant AURA = 0xC0c293ce456fF0ED870ADd98a0828Dd4d2903DBF;
 
     /// STORAGE ///
 
-    StrategyData public strategyData; // position vault packed configuration
+    /// @notice StrategyData packed configuration data
+    StrategyData public strategyData; 
 
-    /// Token => underlying token of the BPT or not
+    /// @notice Token => underlying token of the BPT or not
     mapping(address => bool) public isUnderlyingToken;
 
     /// EVENTS ///
@@ -136,7 +139,7 @@ contract AuraCToken is CTokenCompounding {
                     IRewards(rewarder.extraRewards(i++)).rewardToken()
                 ).baseToken();
 
-                if (rewardToken != AURA) {
+                if (rewardToken != AURA && rewardToken != BAL) {
                     strategyData.rewardTokens.push() = rewardToken;
                 }
             }

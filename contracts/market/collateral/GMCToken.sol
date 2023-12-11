@@ -51,10 +51,10 @@ contract GMCToken is CTokenCompounding {
 
     /// ERRORS ///
 
-    error GMXGMCToken__ChainIsNotSupported();
-    error GMXGMCToken__MarketIsInvalid();
-    error GMXGMCToken__CallerIsNotGMXDepositHandler();
-    error GMXGMCToken__InvalidDepositKey();
+    error GMCToken__ChainIsNotSupported();
+    error GMCToken__MarketIsInvalid();
+    error GMCToken__CallerIsNotGMXDepositHandler();
+    error GMCToken__InvalidDepositKey();
 
     /// CONSTRUCTOR ///
 
@@ -64,7 +64,7 @@ contract GMCToken is CTokenCompounding {
         address lendtroller_
     ) CTokenCompounding(centralRegistry_, asset_, lendtroller_) {
         if (block.chainid != 42161) {
-            revert GMXGMCToken__ChainIsNotSupported();
+            revert GMCToken__ChainIsNotSupported();
         }
 
         IReader.MarketProps memory market = IReader(GMX_READER).getMarket(
@@ -75,7 +75,7 @@ contract GMCToken is CTokenCompounding {
         if (
             market.longToken == address(0) && market.shortToken == address(0)
         ) {
-            revert GMXGMCToken__MarketIsInvalid();
+            revert GMCToken__MarketIsInvalid();
         }
 
         underlyingTokens.push(market.longToken);
@@ -178,10 +178,10 @@ contract GMCToken is CTokenCompounding {
         IGMXEventUtils.EventLogData memory eventData
     ) external {
         if (msg.sender != GMX_DEPOSIT_HANDLER) {
-            revert GMXGMCToken__CallerIsNotGMXDepositHandler();
+            revert GMCToken__CallerIsNotGMXDepositHandler();
         }
         if (!_isDepositKey[key]) {
-            revert GMXGMCToken__InvalidDepositKey();
+            revert GMCToken__InvalidDepositKey();
         }
 
         uint256 yield = eventData.uintItems.items[0].value;
