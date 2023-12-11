@@ -55,7 +55,6 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
     /// @notice token symbol metadata
     string internal _symbol;
     uint256 internal _totalAssets; // total vault assets minus vesting
-    uint256 internal _vaultStatus; // Vault Status: 2 = active; 0 or 1 = inactive
 
     /// ERRORS ///
 
@@ -239,55 +238,65 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
     }
 
     /// CTOKEN MARKET START LOGIC TO OVERRIDE
+
     function startMarket(address by) external virtual returns (bool) {}
 
     /// PUBLIC FUNCTIONS ///
 
     // VAULT DATA FUNCTIONS
 
-    /// @notice Returns the name of the token
+    /// @notice Returns the name of the token.
     function name() public view override returns (string memory) {
         return _name;
     }
 
-    /// @notice Returns the symbol of the token
+    /// @notice Returns the symbol of the token.
     function symbol() public view override returns (string memory) {
         return _symbol;
     }
 
-    /// @notice Returns the address of the underlying asset
+    /// @notice Returns the address of the underlying asset.
     function asset() public view override returns (address) {
         return address(_asset);
     }
 
-    /// @notice Returns the address of the underlying asset
+    /// @notice Returns the address of the underlying asset.
     function underlying() external view returns (address) {
         return address(_asset);
-    }
-
-    /// @notice Returns the position vaults current status
-    function vaultStatus() public view returns (string memory) {
-        return _vaultStatus == 2 ? "Active" : "Inactive";
     }
 
     function maxDeposit(
         address to
     ) public view override returns (uint256 maxAssets) {
-        maxAssets = _vaultStatus == 2 ? super.maxDeposit(to) : 0;
+        // If depositing is disabled maxAssets should be equal to 0
+        // according to ERC4626 format.
+        if (!lendtroller.isListed(address(this)) || lendtroller.mintPaused(address(this)) == 2) {
+            // We do not need to set maxAssets here since its initialized
+            // as 0 so we can just return.
+            return;
+        }
+        maxAssets = super.maxDeposit(to);
     }
 
     function maxMint(
         address to
     ) public view override returns (uint256 maxShares) {
-        maxShares = _vaultStatus == 2 ? super.maxMint(to) : 0;
+        // If depositing is disabled maxAssets should be equal to 0
+        // according to ERC4626 format.
+        if (!lendtroller.isListed(address(this)) || lendtroller.mintPaused(address(this)) == 2) {
+            // We do not need to set maxShares here since its initialized
+            // as 0 so we can just return.
+            return;
+        }
+        maxShares = super.maxMint(to);
     }
 
-    // TOKEN ACTION FUNCTIONS
+    /// TOKEN ACTION FUNCTIONS ///
 
-    /// @notice Caller deposits assets into the market and receives shares
-    /// @param assets The amount of the underlying asset to supply
-    /// @param receiver The account that should receive the cToken shares
-    /// @return shares the amount of cToken shares received by `receiver`
+    /// @notice Caller deposits assets into the market and receives shares.
+    /// @param assets The amount of the underlying asset to supply.
+    /// @param receiver The account that should receive the cToken shares.
+    /// @return shares the amount of cToken shares received by `receiver`.
     function deposit(
         uint256 assets,
         address receiver
@@ -295,10 +304,10 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         shares = _deposit(assets, receiver);
     }
 
-    /// @notice Caller deposits assets into the market and receives shares
-    /// @param shares The amount of the underlying assets quoted in shares to supply
-    /// @param receiver The account that should receive the cToken shares
-    /// @return assets the amount of cToken shares quoted in assets received by `receiver`
+    /// @notice Caller deposits assets into the market and receives shares.
+    /// @param shares The amount of the underlying assets quoted in shares to supply.
+    /// @param receiver The account that should receive the cToken shares.
+    /// @return assets the amount of cToken shares quoted in assets received by `receiver`.
     function mint(
         uint256 shares,
         address receiver

@@ -107,7 +107,10 @@ contract CTokenPrimitive is CTokenBase {
             revert CTokenPrimitive__ZeroAssets();
         }
 
-        if (assets > maxDeposit(receiver)) {
+        // We already check isListed and mintPaused != 2 in canMint call below
+        // so we can bypass these checks with a super. call to avoid redundant
+        // checks and minimize gas
+        if (assets > super.maxDeposit(receiver)) {
             // revert with "CTokenPrimitive__DepositMoreThanMax"
             _revert(0xc4c35f89);
         }
@@ -140,7 +143,10 @@ contract CTokenPrimitive is CTokenBase {
             revert CTokenPrimitive__ZeroShares();
         }
 
-        if (shares > maxMint(receiver)) {
+        // We already check isListed and mintPaused != 2 in canMint call below
+        // so we can bypass these checks with a super. call to avoid redundant
+        // checks and minimize gas
+        if (shares > super.maxMint(receiver)) {
             // revert with "CTokenPrimitive__MintMoreThanMax"
             _revert(0xb03d0ce7);
         }

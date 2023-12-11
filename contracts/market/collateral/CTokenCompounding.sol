@@ -277,7 +277,10 @@ abstract contract CTokenCompounding is CTokenBase {
             revert CTokenCompounding__ZeroAssets();
         }
 
-        if (assets > maxDeposit(receiver)) {
+        // We already check isListed and mintPaused != 2 in canMint call below
+        // so we can bypass these checks with a super. call to avoid redundant
+        // checks and minimize gas
+        if (assets > super.maxDeposit(receiver)) {
             // revert with "CTokenCompounding__DepositMoreThanMax"
             _revert(0x6be8191);
         }
@@ -311,7 +314,10 @@ abstract contract CTokenCompounding is CTokenBase {
             revert CTokenCompounding__ZeroShares();
         }
 
-        if (shares > maxMint(receiver)) {
+        // We already check isListed and mintPaused != 2 in canMint call below
+        // so we can bypass these checks with a super. call to avoid redundant
+        // checks and minimize gas
+        if (shares > super.maxMint(receiver)) {
             // revert with "CTokenCompounding__MintMoreThanMax"
             _revert(0x178b829b);
         }
