@@ -6,6 +6,8 @@ import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 
 interface ILendtroller {
 
+    function mintPaused(address account) external view returns (uint256);
+
     function postCollateral(
         address account, 
         address mToken, 
