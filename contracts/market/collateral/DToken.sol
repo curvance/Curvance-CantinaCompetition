@@ -54,14 +54,14 @@ contract DToken is ERC165, ReentrancyGuard {
     string public symbol;
     /// @notice Current Interest Rate Model
     DynamicInterestRateModel public interestRateModel;
+    /// @notice Information corresponding to borrow exchange rate
+    MarketData public marketData;
+    /// @notice Total number of tokens in circulation
+    uint256 public totalSupply;
     /// @notice Total outstanding borrows of underlying
     uint256 public totalBorrows;
     /// @notice Total protocol reserves of underlying
     uint256 public totalReserves;
-    /// @notice Total number of tokens in circulation
-    uint256 public totalSupply;
-    /// @notice Information corresponding to borrow exchange rate
-    MarketData public marketData;
     /// @notice Interest rate reserve factor
     uint256 public interestFactor;
 
@@ -71,7 +71,7 @@ contract DToken is ERC165, ReentrancyGuard {
     mapping(address => mapping(address => uint256)) public allowance;
     /// @notice account => spender => can borrow on behalf
     mapping(address => mapping(address => bool)) public isApprovedToBorrow;
-    /// @notice account => BorrowSnapshot (Principal Borrowed, User Interest Index)
+    /// @notice account => DebtData (Principal Borrowed, Cached Account Exchange Rate)
     mapping(address => DebtData) internal _debtOf;
 
     /// EVENTS ///
@@ -253,7 +253,8 @@ contract DToken is ERC165, ReentrancyGuard {
         _borrow(msg.sender, amount, msg.sender);
     }
 
-    /// @notice Allows a account to borrow assets from the protocol on behalf of someone else
+    /// @notice Allows a account to borrow assets from the protocol
+    ///         on behalf of someone else
     /// @dev    Updates interest before executing the borrow
     /// @param account The account who will have their assets borrowed against
     /// @param recipient The account who will receive the borrowed assets
@@ -271,7 +272,8 @@ contract DToken is ERC165, ReentrancyGuard {
 
         // Reverts if borrow not allowed
         // Note: Be careful who you approve here!
-        // Not only can they take borrowed funds, but they can delay repayment through notify
+        // Not only can they take borrowed funds, 
+        // but they can delay repayment through notify
         lendtroller.canBorrowWithNotify(address(this), account, amount);
 
         _borrow(account, amount, recipient);
@@ -304,7 +306,8 @@ contract DToken is ERC165, ReentrancyGuard {
             params
         );
 
-        // Fail if position is not allowed, after position folding has re-invested
+        // Fail if position is not allowed, 
+        // after position folding has re-invested
         lendtroller.canBorrow(address(this), account, 0);
     }
 
@@ -455,31 +458,33 @@ contract DToken is ERC165, ReentrancyGuard {
         lendtroller.canRedeem(address(this), account, 0);
     }
 
-    /// @notice Sender supplies assets into the market and receives dTokens in exchange
+    /// @notice Sender supplies assets into the market and receives dTokens
     /// @dev    Updates interest before executing the mint
-    /// @param mintAmount The amount of the underlying asset to supply
-    /// @return bool true=success
-    function mint(uint256 mintAmount) external nonReentrant returns (bool) {
-        _mint(msg.sender, msg.sender, mintAmount);
+    /// @param amount The amount of the underlying asset to supply
+    /// @return bool true = successful mint
+    function mint(uint256 amount) external nonReentrant returns (bool) {
+        _mint(msg.sender, msg.sender, amount);
         return true;
     }
 
-    /// @notice Sender supplies assets into the market and receives dTokens in exchange
+    /// @notice Sender supplies assets into the market and `recipient`
+    ///         receives dTokens
     /// @dev    Updates interest before executing the mint
     /// @param recipient The recipient address
-    /// @param mintAmount The amount of the underlying asset to supply
-    /// @return bool true = success
+    /// @param amount The amount of the underlying asset to supply
+    /// @return bool true = successful mint
     function mintFor(
-        uint256 mintAmount,
+        uint256 amount,
         address recipient
     ) external nonReentrant returns (bool) {
-        _mint(msg.sender, recipient, mintAmount);
+        _mint(msg.sender, recipient, amount);
         return true;
     }
 
-    /// @notice Adds reserves by transferring from Curvance DAO to the market and depositing to the gauge
+    /// @notice Adds reserves by transferring from Curvance DAO
+    ///         to the market and depositing to the gauge
     /// @dev    Updates interest before executing the reserve deposit
-    /// @param amount The amount of underlying token to add as reserves measured in assets
+    /// @param amount The amount of underlying token to add as reserves, in assets
     function depositReserves(uint256 amount) external nonReentrant {
         _checkDaoPermissions();
 
@@ -506,10 +511,12 @@ contract DToken is ERC165, ReentrancyGuard {
         totalReserves = totalReserves + tokens;
     }
 
-    /// @notice Reduces reserves by withdrawing from the gauge and transferring to Curvance DAO
-    /// @dev If daoAddress is going to be moved all reserves should be withdrawn first,
-    ///      updates interest before executing the reserve withdrawal
-    /// @param amount Amount of reserves to withdraw measured in assets
+    /// @notice Reduces reserves by withdrawing from the gauge
+    ///         and transferring to Curvance DAO
+    /// @dev If daoAddress is going to be moved all reserves should be 
+    ///      withdrawn first, updates interest before executing the reserve
+    ///      withdrawal
+    /// @param amount Amount of reserves to withdraw, in assets
     function withdrawReserves(uint256 amount) external nonReentrant {
         _checkDaoPermissions();
 
@@ -543,8 +550,9 @@ contract DToken is ERC165, ReentrancyGuard {
         return true;
     }
 
-    /// @dev Sets `amount` as the allowance of `spender` over the caller's tokens.
-    /// Emits a {Approval} event.
+    /// @dev Approve or restricts `spender`'s authority to borrow
+    //       on the caller's behalf.
+    /// Emits a {BorrowApproval} event.
     function setBorrowApproval(
         address spender,
         bool isApproved
