@@ -10,7 +10,7 @@ jobs:
       - name: "Assign Team"
         uses: rowi1de/auto-assign-review-teams@v1.0.1
         with:
-          repo-token: ${{ secrets.BUTLER_PAT }}
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
           org: "curvance"
           teams: "smart-contract-team" # only works for GitHub Organisation/Teams
           include-draft: false # Draft PRs will be skipped (default: false)
