@@ -72,6 +72,8 @@ contract TestBaseMarket is TestBase {
         0x27428DD2d3DD32A4D7f7C497eAaa23130d894911;
     address internal constant _CIRCLE_RELAYER =
         0x4cb69FaE7e7Af841e44E1A1c30Af640739378bb2;
+    address internal constant _TOKEN_BRIDGE_RELAYER =
+        0xCafd2f0A35A4459fA40C0517e17e6fA2939441CA;
 
     CVE public cve;
     VeCVE public veCVE;
@@ -162,6 +164,7 @@ contract TestBaseMarket is TestBase {
     function _deployCVE() internal {
         cve = new CVE(
             ICentralRegistry(address(centralRegistry)),
+            _TOKEN_BRIDGE_RELAYER,
             address(0),
             10000 ether,
             10000 ether,

@@ -11,6 +11,9 @@ contract TestBaseChildCVE is TestBaseMarket {
     function setUp() public virtual override {
         super.setUp();
 
-        childCVE = new CVE(ICentralRegistry(address(centralRegistry)));
+        childCVE = new CVE(
+            ICentralRegistry(address(centralRegistry)),
+            _TOKEN_BRIDGE_RELAYER
+        );
     }
 }
