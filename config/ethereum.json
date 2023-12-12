@@ -53,6 +53,7 @@
           "vertexUtilizationStart": 5000,
           "adjustmentRate": 43200,
           "adjustmentVelocity": 5000,
+          "vertexMultiplierMax": 1000,
           "decayRate": 100
         }
       },
@@ -66,6 +67,7 @@
           "vertexUtilizationStart": 5000,
           "adjustmentRate": 43200,
           "adjustmentVelocity": 5000,
+          "vertexMultiplierMax": 1000,
           "decayRate": 100
         }
       },
@@ -79,6 +81,7 @@
           "vertexUtilizationStart": 5000,
           "adjustmentRate": 43200,
           "adjustmentVelocity": 5000,
+          "vertexMultiplierMax": 1000,
           "decayRate": 100
         }
       }

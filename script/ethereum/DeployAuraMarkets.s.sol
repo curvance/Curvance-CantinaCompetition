@@ -4,9 +4,9 @@ pragma solidity ^0.8.17;
 import "forge-std/Script.sol";
 
 import { DeployConfiguration } from "../utils/DeployConfiguration.sol";
-import { PendleLPDeployer } from "../deployers/pendle/PendleLPDeployer.sol";
+import { AuraMarketDeployer } from "../deployers/aura/AuraMarketDeployer.s.sol";
 
-contract DeployPendleMarkets is Script, DeployConfiguration, PendleLPDeployer {
+contract DeployAuraMarkets is Script, DeployConfiguration, AuraMarketDeployer {
     using stdJson for string;
 
     function setConfigurationPath() internal {
@@ -31,13 +31,11 @@ contract DeployPendleMarkets is Script, DeployConfiguration, PendleLPDeployer {
 
         vm.startBroadcast(deployerPrivateKey);
 
-        deployPendleLP(
-            "C-PendleLP-stETH-26DEC24",
+        _deployAuraMarket(
+            "C-AURA-RETH-WETH-109",
             abi.decode(
-                configurationJson.parseRaw(
-                    ".markets.pendle.PendleLP-stETH-26DEC24"
-                ),
-                (PendleLPDeployer.PendleLPParam)
+                configurationJson.parseRaw(".markets.aura.AURA-RETH-WETH-109"),
+                (AuraMarketDeployer.AuraMarketParam)
             )
         );
 

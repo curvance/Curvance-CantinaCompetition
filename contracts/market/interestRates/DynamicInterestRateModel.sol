@@ -153,6 +153,7 @@ contract DynamicInterestRateModel {
             vertexUtilizationStart,
             adjustmentRate,
             adjustmentVelocity,
+            vertexMultiplierMax,
             decayRate,
             true
         );
@@ -513,7 +514,10 @@ contract DynamicInterestRateModel {
         }
 
         // Make sure we are not above the vertex multiplier maximum
-        return newMultiplier < config.vertexMultiplierMax ? config.vertexMultiplierMax : newMultiplier;
+        return
+            newMultiplier < config.vertexMultiplierMax
+                ? config.vertexMultiplierMax
+                : newMultiplier;
     }
 
     /// @notice Calculates a positive curve value based on `current`,
@@ -640,11 +644,15 @@ contract DynamicInterestRateModel {
         config.adjustmentRate = adjustmentRate;
         config.adjustmentVelocity = adjustmentVelocity;
 
-        { // Scoping to avoid stack too deep
+        {
+            // Scoping to avoid stack too deep
             uint256 newMultiplier = vertexReset ? WAD : vertexMultiplier();
-            _packRatesData(newMultiplier, block.timestamp + config.adjustmentRate);
+            _packRatesData(
+                newMultiplier,
+                block.timestamp + config.adjustmentRate
+            );
         }
-        
+
         config.decayRate = decayRate;
 
         uint256 thresholdLength = (WAD - vertexUtilizationStart) / 2;

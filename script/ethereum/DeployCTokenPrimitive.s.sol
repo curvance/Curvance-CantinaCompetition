@@ -4,7 +4,7 @@ pragma solidity ^0.8.17;
 import "forge-std/Script.sol";
 
 import { DeployConfiguration } from "../utils/DeployConfiguration.sol";
-import { PendlePTDeployer } from "../deployers/cToken/PendlePTDeployer.sol";
+import { PendlePTDeployer } from "../deployers/cToken/PendlePTDeployer.s.sol";
 
 contract DeployCTokenPrimitive is
     Script,
@@ -35,7 +35,7 @@ contract DeployCTokenPrimitive is
 
         vm.startBroadcast(deployerPrivateKey);
 
-        deployPendlePT(
+        _deployPendlePT(
             "C-PendlePT-stETH-26DEC24",
             abi.decode(
                 configurationJson.parseRaw(

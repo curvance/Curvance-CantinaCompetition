@@ -4,9 +4,13 @@ pragma solidity ^0.8.17;
 import "forge-std/Script.sol";
 
 import { DeployConfiguration } from "../utils/DeployConfiguration.sol";
-import { AuraMarketDeployer } from "../deployers/aura/AuraMarketDeployer.s.sol";
+import { ConvexMarketDeployer } from "../deployers/convex/ConvexMarketDeployer.s.sol";
 
-contract DeployAuraMarkets is Script, DeployConfiguration, AuraMarketDeployer {
+contract DeployConvexMarkets is
+    Script,
+    DeployConfiguration,
+    ConvexMarketDeployer
+{
     using stdJson for string;
 
     function setConfigurationPath() internal {
@@ -31,11 +35,13 @@ contract DeployAuraMarkets is Script, DeployConfiguration, AuraMarketDeployer {
 
         vm.startBroadcast(deployerPrivateKey);
 
-        deployAuraMarket(
-            "C-AURA-RETH-WETH-109",
+        _deployConvexMarket(
+            "C-CONVEX-STETH-ETH-177",
             abi.decode(
-                configurationJson.parseRaw(".markets.aura.AURA-RETH-WETH-109"),
-                (AuraMarketDeployer.AuraMarketParam)
+                configurationJson.parseRaw(
+                    ".markets.convex.CONVEX-STETH-ETH-177"
+                ),
+                (ConvexMarketDeployer.ConvexMarketParam)
             )
         );
 

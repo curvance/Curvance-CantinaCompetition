@@ -61,7 +61,6 @@ contract DeployCurvance is
             _readConfigUint256(".centralRegistry.lockBoostMultiplier")
         );
         _addHarvester(_readConfigAddress(".centralRegistry.harvester"));
-        _saveDeployedContracts("centralRegistry", centralRegistry);
 
         // Deploy CVE
 
@@ -74,7 +73,6 @@ contract DeployCurvance is
             _readConfigUint256(".cve.initialTokenMint")
         );
         _setCVE(cve);
-        _saveDeployedContracts("cve", cve);
         // TODO: set some params for cross-chain
 
         // Deploy CveLocker
@@ -84,7 +82,6 @@ contract DeployCurvance is
             _readConfigAddress(".cveLocker.rewardToken")
         );
         _setCVELocker(cveLocker);
-        _saveDeployedContracts("cveLocker", cveLocker);
 
         // Deploy ProtocolMessagingHub
 
@@ -95,7 +92,6 @@ contract DeployCurvance is
             _readConfigAddress(".protocolMessagingHub.circleRelayer")
         );
         _setProtocolMessagingHub(protocolMessagingHub);
-        _saveDeployedContracts("protocolMessagingHub", protocolMessagingHub);
 
         // Deploy FeeAccumulator
 
@@ -106,7 +102,6 @@ contract DeployCurvance is
             _readConfigUint256(".feeAccumulator.gasForCrosschain")
         );
         _setFeeAccumulator(feeAccumulator);
-        _saveDeployedContracts("feeAccumulator", feeAccumulator);
 
         // Deploy VeCVE
 
@@ -115,13 +110,11 @@ contract DeployCurvance is
             _readConfigUint256(".veCve.clPointMultiplier")
         );
         _setVeCVE(veCve);
-        _saveDeployedContracts("veCve", veCve);
 
         // Deploy GaugePool
 
         _deployGaugePool(centralRegistry);
         _addGaugeController(gaugePool);
-        _saveDeployedContracts("gaugePool", gaugePool);
 
         // Deploy Lendtroller
 
@@ -130,7 +123,6 @@ contract DeployCurvance is
             lendtroller,
             _readConfigUint256(".lendtroller.marketInterestFactor")
         );
-        _saveDeployedContracts("gaugePool", gaugePool);
 
         // Deploy Zapper
 
@@ -140,23 +132,27 @@ contract DeployCurvance is
             _readConfigAddress(".zapper.weth")
         );
         _addZapper(zapper);
-        _saveDeployedContracts("zapper", zapper);
 
         // Deploy PositionFolding
 
         _deployPositionFolding(centralRegistry, lendtroller);
-        _saveDeployedContracts("positionFolding", positionFolding);
+
+        deployPriceRouter(
+            centralRegistry,
+            _readConfigAddress(".priceRouter.chainlinkEthUsd")
+        );
+        CentralRegistryDeployer.setPriceRouter(priceRouter);
 
         // transfer dao, timelock, emergency council
-        _transferDaoOwnership(
-            _readConfigAddress(".centralRegistry.daoAddress")
-        );
-        _migrateTimelockConfiguration(
-            _readConfigAddress(".centralRegistry.timelock")
-        );
-        _transferEmergencyCouncil(
-            _readConfigAddress(".centralRegistry.emergencyCouncil")
-        );
+        // _transferDaoOwnership(
+        //     _readConfigAddress(".centralRegistry.daoAddress")
+        // );
+        // _migrateTimelockConfiguration(
+        //     _readConfigAddress(".centralRegistry.timelock")
+        // );
+        // _transferEmergencyCouncil(
+        //     _readConfigAddress(".centralRegistry.emergencyCouncil")
+        // );
 
         vm.stopBroadcast();
     }

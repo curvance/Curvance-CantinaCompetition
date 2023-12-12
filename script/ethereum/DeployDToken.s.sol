@@ -31,21 +31,21 @@ contract DeployDToken is Script, DeployConfiguration, DTokenDeployer {
 
         vm.startBroadcast(deployerPrivateKey);
 
-        deployDToken(
+        _deployDToken(
             "D-USDC",
             abi.decode(
                 configurationJson.parseRaw(".markets.dTokens.USDC"),
                 (DTokenDeployer.DTokenParam)
             )
         );
-        deployDToken(
+        _deployDToken(
             "D-DAI",
             abi.decode(
                 configurationJson.parseRaw(".markets.dTokens.DAI"),
                 (DTokenDeployer.DTokenParam)
             )
         );
-        deployDToken(
+        _deployDToken(
             "D-USDT",
             abi.decode(
                 configurationJson.parseRaw(".markets.dTokens.USDT"),

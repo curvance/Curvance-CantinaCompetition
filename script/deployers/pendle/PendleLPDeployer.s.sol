@@ -34,27 +34,27 @@ contract PendleLPDeployer is DeployConfiguration {
         PendleLPUnderlyingParam[] underlyings;
     }
 
-    function deployPendleLP(
+    function _deployPendleLP(
         string memory name,
         PendleLPParam memory param
     ) internal {
-        address centralRegistry = getDeployedContract("centralRegistry");
+        address centralRegistry = _getDeployedContract("centralRegistry");
         console.log("centralRegistry =", centralRegistry);
         require(centralRegistry != address(0), "Set the centralRegistry!");
-        address lendtroller = getDeployedContract("lendtroller");
+        address lendtroller = _getDeployedContract("lendtroller");
         console.log("lendtroller =", lendtroller);
         require(lendtroller != address(0), "Set the lendtroller!");
-        address priceRouter = getDeployedContract("priceRouter");
+        address priceRouter = _getDeployedContract("priceRouter");
         console.log("priceRouter =", priceRouter);
         require(priceRouter != address(0), "Set the priceRouter!");
 
-        address chainlinkAdaptor = getDeployedContract("chainlinkAdaptor");
+        address chainlinkAdaptor = _getDeployedContract("chainlinkAdaptor");
         if (chainlinkAdaptor == address(0)) {
             chainlinkAdaptor = address(
                 new ChainlinkAdaptor(ICentralRegistry(centralRegistry))
             );
             console.log("chainlinkAdaptor: ", chainlinkAdaptor);
-            saveDeployedContracts("chainlinkAdaptor", chainlinkAdaptor);
+            _saveDeployedContracts("chainlinkAdaptor", chainlinkAdaptor);
         }
 
         // Setup underlying chainlink adapters
@@ -114,7 +114,7 @@ contract PendleLPDeployer is DeployConfiguration {
 
         // Deploy Pendle LP Adapter
         {
-            address pendleLpAdapter = getDeployedContract("pendleLpAdapter");
+            address pendleLpAdapter = _getDeployedContract("pendleLpAdapter");
             if (pendleLpAdapter == address(0)) {
                 pendleLpAdapter = address(
                     new PendleLPTokenAdaptor(
@@ -123,7 +123,7 @@ contract PendleLPDeployer is DeployConfiguration {
                     )
                 );
                 console.log("pendleLpAdapter: ", pendleLpAdapter);
-                saveDeployedContracts("pendleLpAdapter", pendleLpAdapter);
+                _saveDeployedContracts("pendleLpAdapter", pendleLpAdapter);
             }
 
             if (
@@ -163,7 +163,7 @@ contract PendleLPDeployer is DeployConfiguration {
         }
 
         // Deploy CToken
-        address cToken = getDeployedContract(name);
+        address cToken = _getDeployedContract(name);
         if (cToken == address(0)) {
             cToken = address(
                 new PendleLPCToken(
@@ -175,7 +175,7 @@ contract PendleLPDeployer is DeployConfiguration {
             );
 
             console.log("cToken: ", cToken);
-            saveDeployedContracts(name, cToken);
+            _saveDeployedContracts(name, cToken);
 
             if (!PriceRouter(priceRouter).isSupportedAsset(cToken)) {
                 PriceRouter(priceRouter).addMTokenSupport(cToken);

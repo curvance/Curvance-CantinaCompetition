@@ -4,13 +4,9 @@ pragma solidity ^0.8.17;
 import "forge-std/Script.sol";
 
 import { DeployConfiguration } from "../utils/DeployConfiguration.sol";
-import { ConvexMarketDeployer } from "../deployers/convex/ConvexMarketDeployer.s.sol";
+import { PendleLPDeployer } from "../deployers/pendle/PendleLPDeployer.s.sol";
 
-contract DeployConvexMarkets is
-    Script,
-    DeployConfiguration,
-    ConvexMarketDeployer
-{
+contract DeployPendleMarkets is Script, DeployConfiguration, PendleLPDeployer {
     using stdJson for string;
 
     function setConfigurationPath() internal {
@@ -35,13 +31,13 @@ contract DeployConvexMarkets is
 
         vm.startBroadcast(deployerPrivateKey);
 
-        deployConvexMarket(
-            "C-CONVEX-STETH-ETH-177",
+        _deployPendleLP(
+            "C-PendleLP-stETH-26DEC24",
             abi.decode(
                 configurationJson.parseRaw(
-                    ".markets.convex.CONVEX-STETH-ETH-177"
+                    ".markets.pendle.PendleLP-stETH-26DEC24"
                 ),
-                (ConvexMarketDeployer.ConvexMarketParam)
+                (PendleLPDeployer.PendleLPParam)
             )
         );
 
