@@ -68,4 +68,19 @@ contract DeployConfiguration is Script {
             deploymentPath
         );
     }
+
+    function _setConfigurationPath(string memory network) internal {
+        string memory root = vm.projectRoot();
+        configurationPath = string.concat(root, "/config/", network, ".json");
+    }
+
+    function _setDeploymentPath(string memory network) internal {
+        string memory root = vm.projectRoot();
+        deploymentPath = string.concat(
+            root,
+            "/deployments/",
+            network,
+            ".json"
+        );
+    }
 }
