@@ -49,4 +49,4 @@ forge --version
 
 # This command is run from the input directory
 # after the setup script completes.
-run = "source /.bashrc && forge --version && make echidna-cloud"
+run = "source /.bashrc && forge --version && make echidna-cloud && make medusa-local"

@@ -35,40 +35,11 @@ import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 contract EchidnaBaseMarket is PropertiesAsserts {
     address internal _WETH_ADDRESS;
     address internal _USDC_ADDRESS;
-    address internal constant _USDT_ADDRESS =
-        0xdAC17F958D2ee523a2206206994597C13D831ec7;
     address internal _RETH_ADDRESS;
     address internal _BALANCER_WETH_RETH;
     address internal _DAI_ADDRESS;
-    address internal constant _WBTC_ADDRESS =
-        0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
-    address internal constant _FRAX_ADDRESS =
-        0x853d955aCEf822Db058eb8505911ED77F175b99e;
-    address internal constant _CHAINLINK_ETH_USD =
-        0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
-    address internal constant _CHAINLINK_USDC_USD =
-        0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6;
-    address internal constant _CHAINLINK_USDC_ETH =
-        0x986b5E1e1755e3C2440e960477f25201B0a8bbD4;
-    address internal constant _CHAINLINK_DAI_USD =
-        0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9;
-    address internal constant _CHAINLINK_DAI_ETH =
-        0x773616E4d11A78F511299002da57A0a94577F1f4;
-    address internal constant _CHAINLINK_RETH_ETH =
-        0x536218f9E9Eb48863970252233c8F271f554C2d0;
-    address internal constant _BALANCER_VAULT =
-        0xBA12222222228d8Ba445958a75a0704d566BF2C8;
-    bytes32 internal constant _BAL_WETH_RETH_POOLID =
-        0x1e19cf2d73a72ef1332c882f20534b6519be0276000200000000000000000112;
-    address internal constant _AURA_BOOSTER =
-        0xA57b8d98dAE62B26Ec3bcC4a365338157060B234;
-    address internal constant _REWARDER =
-        0xDd1fE5AD401D4777cE89959b7fa587e569Bf125D;
-    address internal constant _WORMHOLE =
-        0x98f3c9e6E3fAce36bAAd05FE09d375Ef1464288B;
-    address internal constant _WORMHOLE_RELAYER =
-        0x27428DD2d3DD32A4D7f7C497eAaa23130d894911;
     address internal _CIRCLE_RELAYER;
+    address internal _WORMHOLE_RELAYER;
 
     CVE public cve;
     VeCVE public veCVE;
@@ -126,24 +97,25 @@ contract EchidnaBaseMarket is PropertiesAsserts {
         _BALANCER_WETH_RETH = address(balRETH);
 
         _CIRCLE_RELAYER = address(new MockCircleRelayer(10));
+        _WORMHOLE_RELAYER = address(0x1);
 
         emit LogString("DEPLOYED: centralRegistry");
         _deployCentralRegistry();
         emit LogString("DEPLOYED: CVE");
-        _deployCVE(); // CoreContractSet(@0x3f85D0b6119B38b7E6B119F7550290fec4BE0e3c) from: 0x7c276dcaab99bd16163c1bcce671cad6a1ec0945
+        _deployCVE();
         emit LogString("DEPLOYED: CVELocker");
-        _deployCVELocker(); //CoreContractSet(@0xd5F051401ca478B34C80D0B5A119e437Dc6D9df5) from: 0x7c276dcaab99bd16163c1bcce671cad6a1ec0945
+        _deployCVELocker();
         emit LogString("DEPLOYED: ProtocolMessagingHub");
         _deployProtocolMessagingHub();
         emit LogString("DEPLOYED: FeeAccumulator");
-        _deployFeeAccumulator(); //CoreContractSet(@0x492934308E98b590A626666B703A6dDf2120e85e) from: 0x7c276dcaab99bd16163c1bcce671cad6a1ec0945
+        _deployFeeAccumulator();
 
         emit LogString("DEPLOYED: VECVE");
-        _deployVeCVE(); //CoreContractSet(@0x0A64DF94bc0E039474DB42bb52FEca0c1d540402) from: 0x7c276dcaab99bd16163c1bcce671cad6a1ec0945
+        _deployVeCVE();
         emit LogString("DEPLOYED: Mock Chainlink V3 Aggregator");
         chainlinkEthUsd = new MockV3Aggregator(8, 1500e8, 1e50, 1e6);
         emit LogString("DEPLOYED: PriceRouter");
-        _deployPriceRouter(); //CoreContractSet(@0x26C8d09E5C0B423E2827844c770F61c9af2870E7) from: 0x7c276dcaab99bd16163c1bcce671cad6a1ec0945
+        _deployPriceRouter();
         // _deployChainlinkAdaptors();
         emit LogString("DEPLOYED: GaugePool");
         _deployGaugePool();
@@ -351,26 +323,6 @@ contract EchidnaBaseMarket is PropertiesAsserts {
             _RETH_ADDRESS,
             address(dualChainlinkAdaptor)
         );
-
-        balRETHAdapter = new BalancerStablePoolAdaptor(
-            ICentralRegistry(address(centralRegistry)),
-            IVault(_BALANCER_VAULT)
-        );
-        BalancerStablePoolAdaptor.AdaptorData memory adapterData;
-        adapterData.poolId = _BAL_WETH_RETH_POOLID;
-        adapterData.poolDecimals = 18;
-        adapterData.rateProviderDecimals[0] = 18;
-        adapterData.rateProviders[
-            0
-        ] = 0x1a8F81c256aee9C640e14bB0453ce247ea0DFE6F;
-        adapterData.underlyingOrConstituent[0] = _RETH_ADDRESS;
-        adapterData.underlyingOrConstituent[1] = _WETH_ADDRESS;
-        balRETHAdapter.addAsset(_BALANCER_WETH_RETH, adapterData);
-        priceRouter.addApprovedAdaptor(address(balRETHAdapter));
-        priceRouter.addAssetPriceFeed(
-            _BALANCER_WETH_RETH,
-            address(balRETHAdapter)
-        );
     }
 
     function _deployGaugePool() internal {
@@ -422,28 +374,6 @@ contract EchidnaBaseMarket is PropertiesAsserts {
             );
     }
 
-    function _deployCBALRETH() internal returns (AuraCToken) {
-        cBALRETH = new AuraCToken(
-            ICentralRegistry(address(centralRegistry)),
-            IERC20(_BALANCER_WETH_RETH),
-            address(lendtroller),
-            109,
-            _REWARDER,
-            _AURA_BOOSTER
-        );
-        return cBALRETH;
-    }
-
-    function _deployZapper() internal returns (Zapper) {
-        zapper = new Zapper(
-            ICentralRegistry(address(centralRegistry)),
-            address(lendtroller),
-            _WETH_ADDRESS
-        );
-        centralRegistry.addZapper(address(zapper));
-        return zapper;
-    }
-
     function _deployPositionFolding() internal returns (PositionFolding) {
         positionFolding = new PositionFolding(
             ICentralRegistry(address(centralRegistry)),
@@ -468,39 +398,5 @@ contract EchidnaBaseMarket is PropertiesAsserts {
             _USDC_ADDRESS,
             address(dualChainlinkAdaptor)
         );
-    }
-
-    function _prepareUSDC(address user, uint256 amount) internal {
-        // deal(_USDC_ADDRESS, user, amount);
-    }
-
-    function _prepareDAI(address user, uint256 amount) internal {
-        // deal(_DAI_ADDRESS, user, amount);
-    }
-
-    function _prepareBALRETH(address user, uint256 amount) internal {
-        // deal(_BALANCER_WETH_RETH, user, amount);
-    }
-
-    function _setCbalRETHCollateralCaps(uint256 cap) internal {
-        lendtroller.updateCollateralToken(
-            IMToken(address(cBALRETH)),
-            7000,
-            3000,
-            3000,
-            2000,
-            2000,
-            100,
-            1000
-        );
-        address[] memory tokens = new address[](1);
-        tokens[0] = address(cBALRETH);
-        uint256[] memory caps = new uint256[](1);
-        caps[0] = cap;
-        lendtroller.setCTokenCollateralCaps(tokens, caps);
-    }
-
-    function test_assert() public {
-        assert(false);
     }
 }

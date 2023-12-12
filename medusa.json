@@ -8,7 +8,7 @@
 		"corpusDirectory": "medusa-corpus",
 		"coverageEnabled": true,
 		"deploymentOrder": [
-			"EchidnaBaseMarket"
+			"TestDeployments"
 		],
 		"constructorArgs": {},
 		"deployerAddress": "0x30000",
@@ -67,7 +67,7 @@
 	"compilation": {
 		"platform": "crytic-compile",
 		"platformConfig": {
-			"target": "./tests/fuzzing/EchidnaBaseMarket.sol",
+			"target": "./tests/fuzzing/TestDeployments.sol",
 			"solcVersion": "",
 			"exportDirectory": "",
 			"args": []

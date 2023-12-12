@@ -10,3 +10,7 @@ echidna-cloud:
 
 medusa-local: 
 	medusa fuzz
+
+medusa-cov: 
+	medusa fuzz
+	open medusa-corpus/coverage_report.html
