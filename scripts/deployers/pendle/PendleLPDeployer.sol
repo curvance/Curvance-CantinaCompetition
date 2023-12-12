@@ -7,34 +7,36 @@ import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
 import { ChainlinkAdaptor } from "contracts/oracles/adaptors/chainlink/ChainlinkAdaptor.sol";
 import { BalancerStablePoolAdaptor } from "contracts/oracles/adaptors/balancer/BalancerStablePoolAdaptor.sol";
 import { IVault } from "contracts/oracles/adaptors/balancer/BalancerBaseAdaptor.sol";
-import { CTokenPrimitive } from "contracts/market/collateral/CTokenPrimitive.sol";
-import { PendlePrincipalTokenAdaptor } from "contracts/oracles/adaptors/pendle/PendlePrincipalTokenAdaptor.sol";
+import { PendleLPCToken } from "contracts/market/collateral/PendleLPCToken.sol";
+import { PendleLPTokenAdaptor } from "contracts/oracles/adaptors/pendle/PendleLPTokenAdaptor.sol";
 import { IPendlePTOracle } from "contracts/interfaces/external/pendle/IPendlePtOracle.sol";
+import { IPendleRouter } from "contracts/interfaces/external/pendle/IPendleRouter.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IPMarket } from "contracts/interfaces/external/pendle/IPMarket.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 
 import { DeployConfiguration } from "../../utils/DeployConfiguration.sol";
 
-contract PendlePTDeployer is DeployConfiguration {
-    struct PendlePtUnderlyingParam {
+contract PendleLPDeployer is DeployConfiguration {
+    struct PendleLPUnderlyingParam {
         address asset;
         address chainlinkEth;
         address chainlinkUsd;
     }
-    struct PendlePTParam {
+    struct PendleLPParam {
         address asset;
-        address market;
+        address pt;
         address ptOracle;
+        address router;
         uint32 twapDuration;
         address underlyingAsset;
         uint8 underlyingDecimals;
-        PendlePtUnderlyingParam[] underlyings;
+        PendleLPUnderlyingParam[] underlyings;
     }
 
-    function deployPendlePT(
+    function deployPendleLP(
         string memory name,
-        PendlePTParam memory param
+        PendleLPParam memory param
     ) internal {
         address centralRegistry = getDeployedContract("centralRegistry");
         console.log("centralRegistry =", centralRegistry);
@@ -57,7 +59,7 @@ contract PendlePTDeployer is DeployConfiguration {
 
         // Setup underlying chainlink adapters
         for (uint256 i = 0; i < param.underlyings.length; i++) {
-            PendlePtUnderlyingParam memory underlyingParam = param.underlyings[
+            PendleLPUnderlyingParam memory underlyingParam = param.underlyings[
                 i
             ];
 
@@ -110,42 +112,42 @@ contract PendlePTDeployer is DeployConfiguration {
             }
         }
 
-        // Deploy Pendle PT Adapter
+        // Deploy Pendle LP Adapter
         {
-            address pendlePtAdapter = getDeployedContract("pendlePtAdapter");
-            if (pendlePtAdapter == address(0)) {
-                pendlePtAdapter = address(
-                    new PendlePrincipalTokenAdaptor(
+            address pendleLpAdapter = getDeployedContract("pendleLpAdapter");
+            if (pendleLpAdapter == address(0)) {
+                pendleLpAdapter = address(
+                    new PendleLPTokenAdaptor(
                         ICentralRegistry(address(centralRegistry)),
                         IPendlePTOracle(param.ptOracle)
                     )
                 );
-                console.log("pendlePtAdapter: ", pendlePtAdapter);
-                saveDeployedContracts("pendlePtAdapter", pendlePtAdapter);
+                console.log("pendleLpAdapter: ", pendleLpAdapter);
+                saveDeployedContracts("pendleLpAdapter", pendleLpAdapter);
             }
 
             if (
-                !PendlePrincipalTokenAdaptor(pendlePtAdapter).isSupportedAsset(
+                !PendleLPTokenAdaptor(pendleLpAdapter).isSupportedAsset(
                     param.asset
                 )
             ) {
-                PendlePrincipalTokenAdaptor.AdaptorData memory adapterData;
-                adapterData.market = IPMarket(param.market);
+                PendleLPTokenAdaptor.AdaptorData memory adapterData;
                 adapterData.twapDuration = param.twapDuration;
+                adapterData.pt = param.pt;
                 adapterData.quoteAsset = param.underlyingAsset;
                 adapterData.quoteAssetDecimals = param.underlyingDecimals;
-                PendlePrincipalTokenAdaptor(pendlePtAdapter).addAsset(
+                PendleLPTokenAdaptor(pendleLpAdapter).addAsset(
                     param.asset,
                     adapterData
                 );
-                console.log("pendlePtAdapter.addAsset");
+                console.log("pendleLpAdapter.addAsset");
             }
 
-            if (!PriceRouter(priceRouter).isApprovedAdaptor(pendlePtAdapter)) {
-                PriceRouter(priceRouter).addApprovedAdaptor(pendlePtAdapter);
+            if (!PriceRouter(priceRouter).isApprovedAdaptor(pendleLpAdapter)) {
+                PriceRouter(priceRouter).addApprovedAdaptor(pendleLpAdapter);
                 console.log(
                     "priceRouter.addApprovedAdaptor: ",
-                    pendlePtAdapter
+                    pendleLpAdapter
                 );
             }
 
@@ -154,7 +156,7 @@ contract PendlePTDeployer is DeployConfiguration {
             returns (address feed) {} catch {
                 PriceRouter(priceRouter).addAssetPriceFeed(
                     param.asset,
-                    pendlePtAdapter
+                    pendleLpAdapter
                 );
                 console.log("priceRouter.addAssetPriceFeed: ", param.asset);
             }
@@ -164,10 +166,11 @@ contract PendlePTDeployer is DeployConfiguration {
         address cToken = getDeployedContract(name);
         if (cToken == address(0)) {
             cToken = address(
-                new CTokenPrimitive(
+                new PendleLPCToken(
                     ICentralRegistry(address(centralRegistry)),
                     IERC20(param.asset),
-                    lendtroller
+                    lendtroller,
+                    IPendleRouter(param.router)
                 )
             );
 

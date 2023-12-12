@@ -100,6 +100,24 @@
         ]
       }
     },
+    "pendle": {
+      "PendleLP-stETH-26DEC24": {
+        "asset": "0xD0354D4e7bCf345fB117cabe41aCaDb724eccCa2",
+        "pt": "0x7758896b6AC966BbABcf143eFA963030f17D3EdF",
+        "ptOracle": "0x14030836AEc15B2ad48bB097bd57032559339c92",
+        "router": "0x0000000001E4ef00d069e71d6bA041b0A16F7eA0",
+        "twapDuration": 12,
+        "underlyingAsset": "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84",
+        "underlyingDecimals": 18,
+        "underlyings": [
+          {
+            "asset": "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84",
+            "chainlinkEth": "0x86392dC19c0b719886221c78AB11eb8Cf5c52812",
+            "chainlinkUsd": "0xCfE54B5cD566aB89272946F602D76Ea879CAb4a8"
+          }
+        ]
+      }
+    },
     "convex": {
       "CONVEX-STETH-ETH-177": {
         "asset": "0x21E27a5E5513D6e65C4f830167390997aA84843a",
