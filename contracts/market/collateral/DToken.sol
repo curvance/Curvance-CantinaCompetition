@@ -272,7 +272,7 @@ contract DToken is ERC165, ReentrancyGuard {
 
         // Reverts if borrow not allowed
         // Note: Be careful who you approve here!
-        // Not only can they take borrowed funds, 
+        // Not only can they take borrowed funds,
         // but they can delay repayment through notify
         lendtroller.canBorrowWithNotify(address(this), account, amount);
 
@@ -306,7 +306,7 @@ contract DToken is ERC165, ReentrancyGuard {
             params
         );
 
-        // Fail if position is not allowed, 
+        // Fail if position is not allowed,
         // after position folding has re-invested
         lendtroller.canBorrow(address(this), account, 0);
     }
@@ -324,14 +324,7 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @dev Only Position folding contract can call this function,
     ///      updates interest before executing the repay
     /// @param amount The amount to repay, or 0 for the full outstanding amount
-    function repayForPositionFolding(
-        address account,
-        uint256 amount
-    ) external nonReentrant {
-        if (msg.sender != lendtroller.positionFolding()) {
-            _revert(_UNAUTHORIZED_SELECTOR);
-        }
-
+    function repayFor(address account, uint256 amount) external nonReentrant {
         accrueInterest();
 
         _repay(msg.sender, account, amount);
@@ -513,7 +506,7 @@ contract DToken is ERC165, ReentrancyGuard {
 
     /// @notice Reduces reserves by withdrawing from the gauge
     ///         and transferring to Curvance DAO
-    /// @dev If daoAddress is going to be moved all reserves should be 
+    /// @dev If daoAddress is going to be moved all reserves should be
     ///      withdrawn first, updates interest before executing the reserve
     ///      withdrawal
     /// @param amount Amount of reserves to withdraw, in assets

@@ -323,10 +323,7 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
             repayAmount
         );
 
-        DToken(address(borrowToken)).repayForPositionFolding(
-            redeemer,
-            repayAmount
-        );
+        DToken(address(borrowToken)).repayFor(redeemer, repayAmount);
 
         if (remaining > 0) {
             // remaining borrow underlying back to user
