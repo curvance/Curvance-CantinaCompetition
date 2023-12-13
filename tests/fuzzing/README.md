@@ -1,3 +1,24 @@
+# Invariants being Tested 
+
+# FuzzVECVE.sol
+
+| Invariant ID | Function Name                            | Invariant                                                                               | Input Ranges                                                     |
+| ------------ | ---------------------------------------- | --------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| 1            | create_lock_with_zero_should_fail        | Lock creation should not accept zero amount                                             | Amount: 0                                                        |
+| 2            | create_continuous_lock_when_not_shutdown | Continuous lock can be created if not shutdown                                          | Amount: clamp beween 1 and `type(uint32).max`                    |
+| 3            | extend_lock_should_fail_if_shutdown      | Lock extension should fail if already shutdown                                          | `lockIndex` not specified, ContinuousLock: Depends on test setup |
+| 4            | shutdown_success_if_elevated_permission  | Shutdown should succeed if operation is executed by an entity with elevated permissions | Not applicable. No input variables in function                   |
+
+# TestStatefulDeployments.sol
+
+| Invariant ID | Function Name                         | Invariant                                                                       | Input Ranges                                   |
+| ------------ | ------------------------------------- | ------------------------------------------------------------------------------- | ---------------------------------------------- |
+| 5            | CentralRegistry_is_deployed_and_setup | Central Registry contract has been successfully deployed and setup              | Not applicable. No input variables in function |
+| 6            | CentralRegistry_is_setup              | Central Registry contract has been successfully setup with correct dependencies | Not applicable. No input variables in function |
+| 7            | CVE_is_deployed                       | CVE contract has been successfully deployed and setup with correct dependencies | Not applicable. No input variables in function |
+
+Each test is designed to check the post-deployment state of the Central Registry and CVE contracts. The invariants are determined by the conditions set in the `assertWithMsg` statements, similar to the previous explanation.
+
 ## Installation Requirements
 
 1. Slither 

@@ -12,7 +12,7 @@ contract FuzzVECVE is StatefulBaseMarket {
     }
     CreateLockData defaultContinuous;
 
-    constructor() public {
+    constructor() {
         defaultContinuous = CreateLockData(
             true,
             RewardsData(address(usdc), false, false, false),
@@ -25,9 +25,7 @@ contract FuzzVECVE is StatefulBaseMarket {
         require(veCVE.isShutdown() != 2);
         uint256 amount = 0;
 
-        try cve.approve(address(veCVE), amount) {} catch (
-            bytes memory reason
-        ) {
+        try cve.approve(address(veCVE), amount) {} catch {
             assertWithMsg(
                 false,
                 "VE_CVE - createLock call failed on cve token approval for ZERO"
@@ -47,12 +45,12 @@ contract FuzzVECVE is StatefulBaseMarket {
                 false,
                 "VE_CVE - createLock should have failed for ZERO amount"
             );
-        } catch (bytes memory reason) {
-            uint256 errorSelector = extractErrorSelector(reason);
+        } catch (bytes memory revertData) {
+            uint256 errorSelector = extractErrorSelector(revertData);
 
             assertWithMsg(
                 errorSelector == veCVE._INVALID_LOCK_SELECTOR(),
-                "VE_CVE - extendLock() should error with INVALID_LOCK_SELECTOR for ZERO amount"
+                "VE_CVE - createLock() should fail when creating with 0"
             );
         }
     }
@@ -63,11 +61,9 @@ contract FuzzVECVE is StatefulBaseMarket {
         // save balance of VECVE
         uint256 preLockCVEBalance = cve.balanceOf(address(this));
         emit LogUint256("cve balance", preLockCVEBalance);
-        uint256 preLockUSDCBalance = usdc.balanceOf(address(this));
+        uint256 preLockVECVEBalance = veCVE.balanceOf(address(this));
 
-        try cve.approve(address(veCVE), amount) {} catch (
-            bytes memory reason
-        ) {
+        try cve.approve(address(veCVE), amount) {} catch {
             assertWithMsg(
                 false,
                 "VE_CVE - createLock call failed on cve token approval bound [1, type(uint32).max]"
@@ -87,10 +83,20 @@ contract FuzzVECVE is StatefulBaseMarket {
             assertEq(
                 preLockCVEBalance,
                 postLockCVEBalance + amount,
+                "VE_CVE - createLock CVE token transferred to contract"
+            );
+
+            uint256 postLockVECVEBalance = veCVE.balanceOf(address(this));
+            assertEq(
+                preLockVECVEBalance + amount,
+                postLockVECVEBalance,
                 "VE_CVE - createLock VE_CVE token minted"
             );
         } catch (bytes memory reason) {
-            assertWithMsg(false, "VE_CVE - createLock call failed");
+            assertWithMsg(
+                false,
+                "VE_CVE - createLock call failed unexpectedly"
+            );
         }
     }
 
@@ -113,12 +119,12 @@ contract FuzzVECVE is StatefulBaseMarket {
                 false,
                 "VE_CVE - extendLock() should not be successful"
             );
-        } catch (bytes memory reason) {
-            uint256 errorSelector = extractErrorSelector(reason);
+        } catch (bytes memory revertData) {
+            uint256 errorSelector = extractErrorSelector(revertData);
 
             assertWithMsg(
                 errorSelector == veCVE._VECVE_SHUTDOWN_SELECTOR(),
-                "VE_CVE - extendLock() should error with VECVE_SHUTDOWN_SELECTOR"
+                "VE_CVE - extendLock() failed unexpectedly"
             );
         }
     }

@@ -449,22 +449,19 @@ abstract contract PropertiesAsserts {
     }
 
     function extractErrorSelector(
-        string memory revertString
-    ) public pure returns (uint256) {
-        bytes memory revertData = bytes(revertString);
-        return extractErrorSelector(revertData);
-    }
-
-    function extractErrorSelector(
         bytes memory revertData
-    ) public pure returns (uint256) {
-        require(revertData.length >= 32, "Revert data too short!"); // Updated requirement to 32 bytes
-
-        uint256 errorSelector;
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            errorSelector := mload(add(revertData, 0x40)) // Shifted reading position by a word (32 bytes / 256 bits)
+    ) public returns (uint256) {
+        if (revertData.length < 4) {
+            emit LogString("Return data too short.");
+            return 0;
         }
+
+        uint256 errorSelector = uint256(
+            (uint256(uint8(revertData[0])) << 24) |
+                (uint256(uint8(revertData[1])) << 16) |
+                (uint256(uint8(revertData[2])) << 8) |
+                uint256(uint8(revertData[3]))
+        );
 
         return errorSelector;
     }
