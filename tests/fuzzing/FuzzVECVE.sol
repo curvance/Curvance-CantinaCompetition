@@ -4,15 +4,100 @@ import { StatefulBaseMarket } from "tests/fuzzing/StatefulBaseMarket.sol";
 import { RewardsData } from "contracts/interfaces/ICVELocker.sol";
 
 contract FuzzVECVE is StatefulBaseMarket {
+    struct CreateLockData {
+        bool continuousLock;
+        RewardsData rewardsData;
+        bytes param;
+        uint256 aux;
+    }
+    CreateLockData defaultContinuous;
+
+    constructor() public {
+        defaultContinuous = CreateLockData(
+            true,
+            RewardsData(address(usdc), false, false, false),
+            bytes(""),
+            0
+        );
+    }
+
+    function create_lock_with_zero_should_fail() public {
+        require(veCVE.isShutdown() != 2);
+        uint256 amount = 0;
+
+        try cve.approve(address(veCVE), amount) {} catch (
+            bytes memory reason
+        ) {
+            assertWithMsg(
+                false,
+                "VE_CVE - createLock call failed on cve token approval for ZERO"
+            );
+        }
+
+        try
+            veCVE.createLock(
+                amount,
+                defaultContinuous.continuousLock,
+                defaultContinuous.rewardsData,
+                defaultContinuous.param,
+                defaultContinuous.aux
+            )
+        {
+            assertWithMsg(
+                false,
+                "VE_CVE - createLock should have failed for ZERO amount"
+            );
+        } catch (bytes memory reason) {
+            uint256 errorSelector = extractErrorSelector(reason);
+
+            assertWithMsg(
+                errorSelector == veCVE._INVALID_LOCK_SELECTOR(),
+                "VE_CVE - extendLock() should error with INVALID_LOCK_SELECTOR for ZERO amount"
+            );
+        }
+    }
+
+    function create_continuous_lock_when_not_shutdown(uint256 amount) public {
+        require(veCVE.isShutdown() != 2);
+        amount = clampBetween(amount, 1, type(uint32).max);
+        // save balance of VECVE
+        uint256 preLockCVEBalance = cve.balanceOf(address(this));
+        emit LogUint256("cve balance", preLockCVEBalance);
+        uint256 preLockUSDCBalance = usdc.balanceOf(address(this));
+
+        try cve.approve(address(veCVE), amount) {} catch (
+            bytes memory reason
+        ) {
+            assertWithMsg(
+                false,
+                "VE_CVE - createLock call failed on cve token approval bound [1, type(uint32).max]"
+            );
+        }
+
+        try
+            veCVE.createLock(
+                amount,
+                defaultContinuous.continuousLock,
+                defaultContinuous.rewardsData,
+                defaultContinuous.param,
+                defaultContinuous.aux
+            )
+        {
+            uint256 postLockCVEBalance = cve.balanceOf(address(this));
+            assertEq(
+                preLockCVEBalance,
+                postLockCVEBalance + amount,
+                "VE_CVE - createLock VE_CVE token minted"
+            );
+        } catch (bytes memory reason) {
+            assertWithMsg(false, "VE_CVE - createLock call failed");
+        }
+    }
+
     function extend_lock_should_fail_if_shutdown(
         uint256 lockIndex,
         bool continuousLock
     ) public {
-        // if CVE is not already shut down
-        if (veCVE.isShutdown() != 2) {
-            // attempt to shut it down
-            shutdown_success_if_elevated_permission();
-        }
         require(veCVE.isShutdown() == 2);
 
         try
@@ -41,6 +126,8 @@ contract FuzzVECVE is StatefulBaseMarket {
     function shutdown_success_if_elevated_permission() public {
         // should be true on setup unless revoked
         require(centralRegistry.hasElevatedPermissions(address(this)));
+        // should not be shut down already
+        require(veCVE.isShutdown() != 2);
         emit LogAddress("msg.sender from call", address(this));
         // call central registry from addr(this)
         try veCVE.shutdown() {
