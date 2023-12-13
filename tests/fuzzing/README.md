@@ -2,22 +2,24 @@
 
 # FuzzVECVE.sol
 
-| Invariant ID | Function Name                            | Invariant                                                                               | Input Ranges                                                     |
-| ------------ | ---------------------------------------- | --------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| 1            | create_lock_with_zero_should_fail        | Lock creation should not accept zero amount                                             | Amount: 0                                                        |
-| 2            | create_continuous_lock_when_not_shutdown | Continuous lock can be created if not shutdown                                          | Amount: clamp beween 1 and `type(uint32).max`                    |
-| 3            | extend_lock_should_fail_if_shutdown      | Lock extension should fail if already shutdown                                          | `lockIndex` not specified, ContinuousLock: Depends on test setup |
-| 4            | shutdown_success_if_elevated_permission  | Shutdown should succeed if operation is executed by an entity with elevated permissions | Not applicable. No input variables in function                   |
+
+| Function                                   | Test Case                                              | Test Purpose                                                                                 | Expected Behaviour                                                                  |
+| :----------------------------------------- | :----------------------------------------------------- | :------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------- |
+| `create_lock_with_zero_should_fail`        | `amount = 0`                                           | A lock shouldn't be able to be created with 0 amount, it should fail instead.                | Error with `_INVALID_LOCK_SELECTOR`                                                 |
+| `create_continuous_lock_when_not_shutdown` | `amount` is within `[1, type(uint32).max]`             | Checks success case for creating a lock. Amount is clamped within the lower and upper bound. | Successful transfer of specified CVE tokens and equivalent minting of VE-CVE tokens |
+| `extend_lock_should_fail_if_shutdown`      | `veCVE.isShutdown() = 2`                               | Extension of lock should fail if shutdown is in progress                                     | Error with `_VECVE_SHUTDOWN_SELECTOR`                                               |
+| `shutdown_success_if_elevated_permission`  | An elevated permission is available, not yet shut down | The function should successfully shutdown if called by an address with elevated permissions  | Shutdown state successfully set, no error                                           |
 
 # TestStatefulDeployments.sol
 
-| Invariant ID | Function Name                         | Invariant                                                                       | Input Ranges                                   |
-| ------------ | ------------------------------------- | ------------------------------------------------------------------------------- | ---------------------------------------------- |
-| 5            | CentralRegistry_is_deployed_and_setup | Central Registry contract has been successfully deployed and setup              | Not applicable. No input variables in function |
-| 6            | CentralRegistry_is_setup              | Central Registry contract has been successfully setup with correct dependencies | Not applicable. No input variables in function |
-| 7            | CVE_is_deployed                       | CVE contract has been successfully deployed and setup with correct dependencies | Not applicable. No input variables in function |
 
-Each test is designed to check the post-deployment state of the Central Registry and CVE contracts. The invariants are determined by the conditions set in the `assertWithMsg` statements, similar to the previous explanation.
+| Function Name                           | Test Case            | Test Purpose                                                                       | Expected Behaviour                                                        |
+| --------------------------------------- | -------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `CentralRegistry_is_deployed_and_setup` | (No input variables) | Check whether Central Registry contract has been successfully deployed and setup   | Successful deployment and setup of Central Registry contract              |
+| `CentralRegistry_is_setup`              | (No input variables) | Verify if Central Registry contract has been correctly setup with dependencies     | Successful setup of Central Registry with correct dependencies            |
+| `CVE_is_deployed`                       | (No input variables) | Ensure the CVE contract has been successfully deployed and setup with dependencies | Successful deployment and setup of CVE contract with correct dependencies |
+
+As per the original table, there are no concrete test cases defined, as these functions directly check the setup of different contracts. The expected behaviour is based on the necessary outcomes for a successful deployment and setup of the contracts.
 
 ## Installation Requirements
 
