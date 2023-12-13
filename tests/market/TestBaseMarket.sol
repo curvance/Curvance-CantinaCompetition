@@ -12,7 +12,6 @@ import { CentralRegistry } from "contracts/architecture/CentralRegistry.sol";
 import { FeeAccumulator } from "contracts/architecture/FeeAccumulator.sol";
 import { ProtocolMessagingHub } from "contracts/architecture/ProtocolMessagingHub.sol";
 import { DToken } from "contracts/market/collateral/DToken.sol";
-import { CTokenCompounding } from "contracts/market/collateral/CTokenCompounding.sol";
 import { AuraCToken } from "contracts/market/collateral/AuraCToken.sol";
 import { DynamicInterestRateModel } from "contracts/market/interestRates/DynamicInterestRateModel.sol";
 import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
@@ -23,8 +22,7 @@ import { IVault } from "contracts/oracles/adaptors/balancer/BalancerBaseAdaptor.
 import { BalancerStablePoolAdaptor } from "contracts/oracles/adaptors/balancer/BalancerStablePoolAdaptor.sol";
 import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
 import { GaugePool } from "contracts/gauge/GaugePool.sol";
-import { ERC20 } from "contracts/libraries/ERC20.sol";
-
+import { MockTokenBridgeRelayer } from "contracts/mocks/MockTokenBridgeRelayer.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
@@ -162,6 +160,15 @@ contract TestBaseMarket is TestBase {
     }
 
     function _deployCVE() internal {
+        // If TokenBridgeRelayer doesn't exist on the address,
+        // deploy mock TokenBridgeRelayer on the address.
+        if (_TOKEN_BRIDGE_RELAYER.code.length == 0) {
+            vm.etch(
+                _TOKEN_BRIDGE_RELAYER,
+                address(new MockTokenBridgeRelayer()).code
+            );
+        }
+
         cve = new CVE(
             ICentralRegistry(address(centralRegistry)),
             _TOKEN_BRIDGE_RELAYER,

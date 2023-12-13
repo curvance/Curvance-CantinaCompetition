@@ -4,8 +4,7 @@ pragma solidity ^0.8.17;
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { VelodromeStableCToken, IVeloGauge, IVeloRouter, IVeloPairFactory, IERC20 } from "contracts/market/collateral/VelodromeStableCToken.sol";
-
-import "tests/market/TestBaseMarket.sol";
+import { TestBaseMarket } from "tests/market/TestBaseMarket.sol";
 
 contract TestVelodromeStableCToken is TestBaseMarket {
     address internal constant _UNISWAP_V2_ROUTER =
@@ -14,7 +13,8 @@ contract TestVelodromeStableCToken is TestBaseMarket {
     IERC20 public USDC = IERC20(0x7F5c764cBc14f9669B88837ca1490cCa17c31607);
     IERC20 public DAI = IERC20(0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1);
     IERC20 public VELO = IERC20(0x9560e827aF36c94D2Ac33a39bCE1Fe78631088Db);
-    IERC20 public USDC_DAI = IERC20(0x19715771E30c93915A5bbDa134d782b81A820076);
+    IERC20 public USDC_DAI =
+        IERC20(0x19715771E30c93915A5bbDa134d782b81A820076);
     IVeloGauge public gauge =
         IVeloGauge(0x6998089F6bDd9c74C7D8d01b99d7e379ccCcb02D);
     IVeloPairFactory public veloPairFactory =
