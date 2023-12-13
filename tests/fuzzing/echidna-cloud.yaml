@@ -1,4 +1,4 @@
-testMode: assertion
+testMode: exploration
 testLimit: 1000000
 coverage: true 
 corpusDir: "output/echidna-corpus"

@@ -9,8 +9,7 @@ echidna-cloud:
 	echidna tests/fuzzing/FuzzingSuite.sol --contract FuzzingSuite --config tests/fuzzing/cloud.yaml	
 
 medusa-local: 
-	medusa fuzz
+	medusa fuzz --config medusa-local.json
 
-medusa-cov: 
-	medusa fuzz
-	open medusa-corpus/coverage_report.html
+medusa-cloud: 
+	medusa fuzz --config medusa-cloud.json
