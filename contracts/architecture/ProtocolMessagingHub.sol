@@ -247,8 +247,8 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     }
 
     /// @notice Sends gauge emission information to multiple destination chains
-    /// @param dstChainId Destination chain ID where the message data should be
-    ///                   sent.
+    /// @param dstChainId Wormhole specific destination chain ID where
+    ///                   the message data should be sent.
     /// @param toAddress The destination address specified by `dstChainId`.
     /// @param payload The payload data that is sent along with the message.
     /// @dev Calls with this function will have messageType = 3.
@@ -371,15 +371,14 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         return _quoteWormholeFee(dstChainId, transferToken);
     }
 
+    /// PERMISSIONED EXTERNAL FUNCTIONS ///
 
-    /// PERMISSIONED EXTERNAL FUNCTIONS /// 
-
-    /// @notice Permissioned function that flips the pause status of the 
+    /// @notice Permissioned function that flips the pause status of the
     ///         Messaging Hub.
     function flipMessagingHubStatus() external {
         // If the messaging hub is currently paused,
         // then we are turning pause state off
-        bool state = isPaused == 2 ? false : true; 
+        bool state = isPaused == 2 ? false : true;
         _checkAuthorizedPermissions(state);
 
         // Possible outcomes:
@@ -410,8 +409,8 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     }
 
     /// @notice Sends veCVE locked token data to destination chain.
-    /// @param dstChainId Destination chain ID where the message data should be
-    ///                   sent.
+    /// @param dstChainId Wormhole specific destination chain ID where
+    ///                   the message data should be sent.
     /// @param toAddress The destination address specified by `dstChainId`.
     /// @param payload The payload data that is sent along with the message.
     /// @param etherValue How much ether to attach to the transaction.

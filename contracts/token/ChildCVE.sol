@@ -4,6 +4,8 @@ pragma solidity ^0.8.17;
 import { ERC20 } from "contracts/libraries/ERC20.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
+import { IWormhole } from "contracts/interfaces/wormhole/IWormhole.sol";
+import { ITokenBridgeRelayer } from "contracts/interfaces/wormhole/ITokenBridgeRelayer.sol";
 
 contract CVE is ERC20 {
     /// CONSTANTS ///
@@ -11,25 +13,47 @@ contract CVE is ERC20 {
     /// @notice Curvance DAO hub.
     ICentralRegistry public immutable centralRegistry;
 
+    /// @notice Wormhole TokenBridgeRelayer.
+    ITokenBridgeRelayer public immutable tokenBridgeRelayer;
+
+    /// @notice Address of Wormhole core contract.
+    IWormhole public immutable wormhole;
+
     /// `bytes4(keccak256(bytes("CVE__Unauthorized()")))`
     uint256 internal constant _UNAUTHORIZED_SELECTOR = 0x15f37077;
+
+    /// STORAGE ///
+
+    /// @notice Wormhole specific chain ID for evm chain ID.
+    mapping(uint256 => uint16) public wormholeChainId;
 
     /// ERRORS ///
 
     error CVE__Unauthorized();
     error CVE__ParametersAreInvalid();
+    error CVE__TokenBridgeRelayerIsZeroAddress();
 
     /// CONSTRUCTOR ///
 
-    constructor(ICentralRegistry centralRegistry_) {
-        if (!ERC165Checker.supportsInterface(
+    constructor(
+        ICentralRegistry centralRegistry_,
+        address tokenBridgeRelayer_
+    ) {
+        if (
+            !ERC165Checker.supportsInterface(
                 address(centralRegistry_),
                 type(ICentralRegistry).interfaceId
-            )) {
+            )
+        ) {
             revert CVE__ParametersAreInvalid();
+        }
+        if (tokenBridgeRelayer_ == address(0)) {
+            revert CVE__TokenBridgeRelayerIsZeroAddress();
         }
 
         centralRegistry = centralRegistry_;
+        tokenBridgeRelayer = ITokenBridgeRelayer(tokenBridgeRelayer_);
+        wormhole = ITokenBridgeRelayer(tokenBridgeRelayer_).wormhole();
     }
 
     /// EXTERNAL FUNCTIONIS ///
@@ -58,6 +82,64 @@ contract CVE is ERC20 {
         _mint(msg.sender, amount);
     }
 
+    /// @notice Register wormhole specific chain IDs for evm chain IDs.
+    /// @param chainIds EVM chain IDs.
+    /// @param wormholeChainIds Wormhole specific chain IDs.
+    function registerWormholeChainIDs(
+        uint256[] calldata chainIds,
+        uint16[] calldata wormholeChainIds
+    ) external {
+        _checkDaoPermissions();
+
+        uint256 numChainIds = chainIds.length;
+
+        for (uint256 i = 0; i < numChainIds; ++i) {
+            wormholeChainId[chainIds[i]] = wormholeChainIds[i];
+        }
+    }
+
+    /// @param dstChainId Chain ID of the target blockchain.
+    /// @param recipient The address of recipient on destination chain.
+    /// @param amount The amount of token to bridge.
+    /// @return Wormhole sequence for emitted TransferTokensWithRelay message.
+    function bridge(
+        uint256 dstChainId,
+        address recipient,
+        uint256 amount
+    ) external payable returns (uint64) {
+        _burn(msg.sender, amount);
+        _mint(address(this), amount);
+        _approve(address(this), address(tokenBridgeRelayer), amount);
+
+        return
+            tokenBridgeRelayer.transferTokensWithRelay{ value: msg.value }(
+                address(this),
+                amount,
+                0,
+                wormholeChainId[dstChainId],
+                bytes32(uint256(uint160(recipient))),
+                0
+            );
+    }
+
+    /// @notice Returns required amount of token for relayer fee.
+    /// @param dstChainId Chain ID of the target blockchain.
+    /// @return Required fee.
+    function relayerFee(uint256 dstChainId) external view returns (uint256) {
+        return
+            tokenBridgeRelayer.calculateRelayerFee(
+                wormholeChainId[dstChainId],
+                address(this),
+                18
+            );
+    }
+
+    /// @notice Returns required amount of native asset for message fee.
+    /// @return Required fee.
+    function bridgeFee() external view returns (uint256) {
+        return wormhole.messageFee();
+    }
+
     /// PUBLIC FUNCTIONS ///
 
     /// @dev Returns the name of the token.
@@ -78,6 +160,13 @@ contract CVE is ERC20 {
         assembly {
             mstore(0x00, s)
             revert(0x1c, 0x04)
+        }
+    }
+
+    /// @dev Checks whether the caller has sufficient permissioning.
+    function _checkDaoPermissions() internal view {
+        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
+            _revert(_UNAUTHORIZED_SELECTOR);
         }
     }
 }

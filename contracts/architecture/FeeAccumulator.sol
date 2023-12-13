@@ -301,6 +301,10 @@ contract FeeAccumulator is ReentrancyGuard {
         SafeTransferLib.safeTransfer(tokenToOTC, daoAddress, amountToOTC);
     }
 
+    /// @notice Sends veCVE locked token data to destination chain.
+    /// @param dstChainId Wormhole specific destination chain ID where
+    ///                   the message data should be sent.
+    /// @param toAddress The destination address specified by `dstChainId`.
     function sendLockedTokenData(
         uint16 dstChainId,
         address toAddress
