@@ -34,6 +34,7 @@ contract GMXMarketDeployer is DeployConfiguration {
             console.log("chainlinkAdaptor: ", chainlinkAdaptor);
             _saveDeployedContracts("chainlinkAdaptor", chainlinkAdaptor);
         }
+
         address gmAdaptor = _getDeployedContract("gmAdaptor");
         if (gmAdaptor == address(0)) {
             gmAdaptor = address(
@@ -45,6 +46,27 @@ contract GMXMarketDeployer is DeployConfiguration {
             );
             console.log("gmAdaptor: ", gmAdaptor);
             _saveDeployedContracts("gmAdaptor", gmAdaptor);
+        }
+
+        if (!PriceRouter(priceRouter).isApprovedAdaptor(chainlinkAdaptor)) {
+            PriceRouter(priceRouter).addApprovedAdaptor(chainlinkAdaptor);
+            console.log("priceRouter.addApprovedAdaptor: ", chainlinkAdaptor);
+        }
+
+        if (!PriceRouter(priceRouter).isApprovedAdaptor(gmAdaptor)) {
+            PriceRouter(priceRouter).addApprovedAdaptor(gmAdaptor);
+            console.log("priceRouter.addApprovedAdaptor: ", gmAdaptor);
+        }
+
+        if (!GMAdaptor(gmAdaptor).isSupportedAsset(asset)) {
+            GMAdaptor(gmAdaptor).addAsset(asset);
+        }
+
+        try PriceRouter(priceRouter).assetPriceFeeds(asset, 0) returns (
+            address
+        ) {} catch {
+            PriceRouter(priceRouter).addAssetPriceFeed(asset, gmAdaptor);
+            console.log("priceRouter.addAssetPriceFeed: ", asset);
         }
 
         // Deploy CToken
