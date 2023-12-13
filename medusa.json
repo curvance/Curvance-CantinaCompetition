@@ -8,7 +8,7 @@
 		"corpusDirectory": "medusa-corpus",
 		"coverageEnabled": true,
 		"deploymentOrder": [
-			"TestDeployments"
+			"FuzzingSuite"
 		],
 		"constructorArgs": {},
 		"deployerAddress": "0x30000",
@@ -67,7 +67,7 @@
 	"compilation": {
 		"platform": "crytic-compile",
 		"platformConfig": {
-			"target": "./tests/fuzzing/TestDeployments.sol",
+			"target": "./tests/fuzzing/FuzzingSuite.sol",
 			"solcVersion": "",
 			"exportDirectory": "",
 			"args": []

@@ -447,6 +447,27 @@ abstract contract PropertiesAsserts {
         }
         return a;
     }
+
+    function extractErrorSelector(
+        string memory revertString
+    ) public pure returns (uint256) {
+        bytes memory revertData = bytes(revertString);
+        return extractErrorSelector(revertData);
+    }
+
+    function extractErrorSelector(
+        bytes memory revertData
+    ) public pure returns (uint256) {
+        require(revertData.length >= 32, "Revert data too short!"); // Updated requirement to 32 bytes
+
+        uint256 errorSelector;
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            errorSelector := mload(add(revertData, 0x40)) // Shifted reading position by a word (32 bytes / 256 bits)
+        }
+
+        return errorSelector;
+    }
 }
 
 /// @notice Efficient library for creating string representations of integers.

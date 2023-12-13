@@ -32,7 +32,7 @@ import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 
-contract EchidnaBaseMarket is PropertiesAsserts {
+contract StatefulBaseMarket is PropertiesAsserts {
     address internal _WETH_ADDRESS;
     address internal _USDC_ADDRESS;
     address internal _RETH_ADDRESS;

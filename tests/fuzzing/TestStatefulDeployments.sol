@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
-import { EchidnaBaseMarket } from "tests/fuzzing/EchidnaBaseMarket.sol";
+import { StatefulBaseMarket } from "tests/fuzzing/StatefulBaseMarket.sol";
 
-contract TestDeployments is EchidnaBaseMarket {
+contract TestStatefulDeployments is StatefulBaseMarket {
     function CentralRegistry_is_deployed_and_setup() public {
         assertWithMsg(
             centralRegistry.daoAddress() == address(this),
