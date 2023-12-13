@@ -15,9 +15,7 @@
 **/dist
 **/node_modules
 **/out
-**/echidna-corpus
-**/medusa-corpus
-**/crytic-export
+**/output
 
 # files
 **/.DS_Store
