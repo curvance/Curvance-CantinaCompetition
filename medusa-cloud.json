@@ -2,7 +2,7 @@
 	"fuzzing": {
 		"workers": 10,
 		"workerResetLimit": 50,
-		"timeout": 20000,
+		"timeout": 57600,
 		"testLimit": 0,
 		"callSequenceLength": 100,
 		"corpusDirectory": "output/medusa-corpus",
