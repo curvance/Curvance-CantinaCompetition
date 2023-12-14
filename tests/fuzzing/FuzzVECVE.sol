@@ -69,7 +69,7 @@ contract FuzzVECVE is StatefulBaseMarket {
         }
     }
 
-    function create_lock_with_zero_should_fail() public {
+    function create_lock_with_zero_amount_should_fail() public {
         require(veCVE.isShutdown() != 2);
         uint256 amount = 0;
 
@@ -87,6 +87,7 @@ contract FuzzVECVE is StatefulBaseMarket {
                 defaultContinuous.aux
             )
         {
+            // VE_CVE.createLock() with zero amount is expected to fail
             assertWithMsg(
                 false,
                 "VE_CVE - createLock should have failed for ZERO amount"
@@ -108,6 +109,14 @@ contract FuzzVECVE is StatefulBaseMarket {
         require(veCVE.isShutdown() != 2);
         uint256 lockIndex = get_existing_lock(seed);
 
+        uint256 preExtendLockTime = veCVE.getUnlockTime(
+            address(this),
+            lockIndex
+        );
+        emit LogUint256("preextended lock time", preExtendLockTime);
+        require(preExtendLockTime > block.timestamp);
+        require(preExtendLockTime != veCVE.CONTINUOUS_LOCK_VALUE());
+
         try
             veCVE.extendLock(
                 lockIndex,
@@ -116,10 +125,23 @@ contract FuzzVECVE is StatefulBaseMarket {
                 bytes(""),
                 defaultContinuous.aux
             )
-        {} catch {}
+        {
+            if (continuousLock) {
+                assertWithMsg(
+                    veCVE.getUnlockTime(address(this), lockIndex) ==
+                        veCVE.CONTINUOUS_LOCK_VALUE(),
+                    "VE_CVE - extendLock() should set veCVE.userPoints(address(this))[index].unlockTime to CONTINUOUS"
+                );
+            } else {
+                uint256 postExtendLockTime = veCVE.getUnlockTime(
+                    address(this),
+                    lockIndex
+                );
+            }
+        } catch {}
     }
 
-    function extend_lock_should_fail_if_continuous(
+    function extend_lock_should_fail_if_already_continuous(
         uint256 seed,
         bool continuousLock
     ) public {
@@ -140,6 +162,7 @@ contract FuzzVECVE is StatefulBaseMarket {
                 0
             )
         {
+            // VECVE.extendLock() is expected to fail if a lock is already continuous
             assertWithMsg(
                 false,
                 "VE_CVE - extendLock() should not be successful"
@@ -169,6 +192,7 @@ contract FuzzVECVE is StatefulBaseMarket {
                 0
             )
         {
+            // VECVE.extendLock() should fail if the system is shut down
             assertWithMsg(
                 false,
                 "VE_CVE - extendLock() should not be successful"
