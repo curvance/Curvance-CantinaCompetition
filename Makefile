@@ -1,4 +1,4 @@
-echidna-local, ec: 
+echidna-local, el: 
 	rm -rf crytic-export
 	forge clean
 	echidna tests/fuzzing/FuzzingSuite.sol --contract FuzzingSuite --config tests/fuzzing/echidna-local.yaml

@@ -31,11 +31,15 @@ As per the original table, there are no concrete test cases defined, as these fu
 see: 
 https://github.com/curvance/curvance-contracts/blob/1ec341b7e3c2408abf3f3853a5a8145fc6bd67c3/cloudexec.toml#L8
 
-## Running 
+## Running Echidna
 There are two flavours of the config provided in this code. See below for their differences 
 
-### Local 
-Run `make echidna-local`
+### Echidna – Locally
+
+```bash
+make echidna-local 
+```
+
 ```yaml 
 testMode: assertion # run in assertion mode for a quicker test 
 coverage: true # saving coverage  
@@ -46,8 +50,13 @@ codeSize: 0xfffffffffff
 testLimit: 500000 # smaller test limit to sanity check quick 
 ```
 
-### Cloud 
-Run `make echidna-cloud`
+The main difference here is the shortened number of runs, so we can run a quick sanity check. 
+
+### Echidna – Cloud 
+```bash
+make echidna-cloud
+```
+
 ```yaml
 testMode: exploration # run in exploration mode to increase coverage 
 testLimit: 10000000 # number may change, but will increase according to coverage   
@@ -55,6 +64,24 @@ coverage: true  # save coverage
 corpusDir: "output/echidna-corpus" #save in echidna-corpus directory 
 cryticArgs: ["--ignore-compile"] # the contracts do not need to be re-compiled 
 ```
+The above may not always represent the exact config being used, as we may fine-tune it to run longer on weekends, etc. 
+
+### Medusa – Locally 
+
+```bash 
+make medusa-local
+```
+Notable differences: 
+- # of seconds to run Medusa: 2 minutes 
+
+### Medusa – Cloud 
+
+```bash 
+make medusa-cloud
+```
+Notable differences: 
+- # of seconds to run Medusa: 16 hours 
+
 
 We use [cloudexec](https://github.com/crytic/cloudexec/tree/hotfix) to run this fuzzing suite on the server. As the release has not been cut yet, see below for installation: 
 ```bash
