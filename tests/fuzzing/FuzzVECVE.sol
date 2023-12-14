@@ -742,10 +742,10 @@ contract FuzzVECVE is StatefulBaseMarket {
     }
 
     // Helper Functions
+    uint256[] epochs;
+    uint256[] previousAmounts;
 
-    function get_all_user_lock_epochs(
-        address addr
-    ) private view returns (uint256[] epochs, uint256[] previousAmounts) {
+    function get_all_user_lock_epochs() private {
         for (uint i = 0; i < numLocks; i++) {
             (uint216 amount, uint40 unlockTime) = veCVE.userLocks(
                 address(this),
@@ -753,6 +753,29 @@ contract FuzzVECVE is StatefulBaseMarket {
             );
             epochs.push(veCVE.currentEpoch(unlockTime));
             previousAmounts.push(amount);
+        }
+    }
+
+    function get_all_user_lock_info(
+        address addr
+    )
+        private
+        view
+        returns (
+            uint256 newLockAmount,
+            uint256 numberOfExistingContinuousLocks
+        )
+    {
+        for (uint i = 0; i < numLocks; i++) {
+            (uint216 amount, uint40 unlockTime) = veCVE.userLocks(
+                address(this),
+                i
+            );
+            newLockAmount += amount;
+
+            if (unlockTime == veCVE.CONTINUOUS_LOCK_VALUE()) {
+                numberOfExistingContinuousLocks++;
+            }
         }
     }
 
