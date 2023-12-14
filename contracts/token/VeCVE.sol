@@ -36,11 +36,11 @@ contract VeCVE is ERC20, ReentrancyGuard {
     uint256 public constant CL_POINT_MULTIPLIER = 2;
 
     /// @dev `bytes4(keccak256(bytes("VeCVE__Unauthorized()")))`
-    uint256 public constant _UNAUTHORIZED_SELECTOR = 0x32c4d25d;
+    uint256 internal constant _UNAUTHORIZED_SELECTOR = 0x32c4d25d;
     /// @dev `bytes4(keccak256(bytes("VeCVE__InvalidLock()")))`
-    uint256 public constant _INVALID_LOCK_SELECTOR = 0x21d223d9;
+    uint256 internal constant _INVALID_LOCK_SELECTOR = 0x21d223d9;
     /// @dev `bytes4(keccak256(bytes("VeCVE__VeCVEShutdown()")))`
-    uint256 public constant _VECVE_SHUTDOWN_SELECTOR = 0x3ad2450b;
+    uint256 internal constant _VECVE_SHUTDOWN_SELECTOR = 0x3ad2450b;
 
     /// @notice token name metadata.
     bytes32 private immutable _name;
@@ -1209,5 +1209,12 @@ contract VeCVE is ERC20, ReentrancyGuard {
         if (isShutdown == 2) {
             _revert(_VECVE_SHUTDOWN_SELECTOR);
         }
+    }
+
+    function getUnlockTime(
+        address _addr,
+        uint _index
+    ) public view returns (uint40) {
+        return userLocks[_addr][_index].unlockTime;
     }
 }

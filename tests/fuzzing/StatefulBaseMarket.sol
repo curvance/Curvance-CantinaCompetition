@@ -2,6 +2,7 @@
 pragma solidity ^0.8.17;
 
 import { PropertiesAsserts } from "tests/fuzzing/PropertiesHelper.sol";
+import { ErrorConstants } from "tests/fuzzing/ErrorConstants.sol";
 
 import { MockToken } from "contracts/mocks/MockToken.sol";
 import { MockV3Aggregator } from "contracts/mocks/MockV3Aggregator.sol";
@@ -32,7 +33,7 @@ import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 
-contract StatefulBaseMarket is PropertiesAsserts {
+contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
     address internal _WETH_ADDRESS;
     address internal _USDC_ADDRESS;
     address internal _RETH_ADDRESS;

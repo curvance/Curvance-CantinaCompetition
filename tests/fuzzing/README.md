@@ -72,7 +72,7 @@ The above may not always represent the exact config being used, as we may fine-t
 make medusa-local
 ```
 Notable differences: 
-- # of seconds to run Medusa: 2 minutes 
+- `timeout(# of seconds to run Medusa)`: 2 minutes 
 
 ### Medusa – Cloud 
 
@@ -80,8 +80,10 @@ Notable differences:
 make medusa-cloud
 ```
 Notable differences: 
-- # of seconds to run Medusa: 16 hours 
+- `timeout (# of seconds to run Medusa)`: 16 hours 
 
+
+### Running on Cloud
 
 We use [cloudexec](https://github.com/crytic/cloudexec/tree/hotfix) to run this fuzzing suite on the server. As the release has not been cut yet, see below for installation: 
 ```bash

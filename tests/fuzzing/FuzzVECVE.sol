@@ -95,18 +95,18 @@ contract FuzzVECVE is StatefulBaseMarket {
             uint256 errorSelector = extractErrorSelector(revertData);
 
             assertWithMsg(
-                errorSelector == veCVE._INVALID_LOCK_SELECTOR(),
+                errorSelector == vecve_invalidLockSelectorHash,
                 "VE_CVE - createLock() should fail when creating with 0"
             );
         }
     }
 
     function extendLock_should_succeed_if_not_shutdown(
-        uint256 randomNumber,
+        uint256 seed,
         bool continuousLock
     ) public {
         require(veCVE.isShutdown() != 2);
-        uint256 lockIndex = get_existing_lock(randomNumber);
+        uint256 lockIndex = get_existing_lock(seed);
 
         try
             veCVE.extendLock(
@@ -117,6 +117,41 @@ contract FuzzVECVE is StatefulBaseMarket {
                 defaultContinuous.aux
             )
         {} catch {}
+    }
+
+    function extend_lock_should_fail_if_continuous(
+        uint256 seed,
+        bool continuousLock
+    ) public {
+        require(veCVE.isShutdown() != 2);
+        uint256 lockIndex = get_existing_lock(seed);
+
+        require(
+            veCVE.getUnlockTime(address(this), lockIndex) ==
+                veCVE.CONTINUOUS_LOCK_VALUE()
+        );
+
+        try
+            veCVE.extendLock(
+                lockIndex,
+                continuousLock,
+                RewardsData(address(0), true, true, true),
+                bytes(""),
+                0
+            )
+        {
+            assertWithMsg(
+                false,
+                "VE_CVE - extendLock() should not be successful"
+            );
+        } catch (bytes memory revertData) {
+            uint256 errorSelector = extractErrorSelector(revertData);
+
+            assertWithMsg(
+                errorSelector == vecve_lockTypeMismatchHash,
+                "VE_CVE - extendLock() failed unexpectedly"
+            );
+        }
     }
 
     function extend_lock_should_fail_if_shutdown(
@@ -142,7 +177,7 @@ contract FuzzVECVE is StatefulBaseMarket {
             uint256 errorSelector = extractErrorSelector(revertData);
 
             assertWithMsg(
-                errorSelector == veCVE._VECVE_SHUTDOWN_SELECTOR(),
+                errorSelector == vecve_shutdownSelectorHash,
                 "VE_CVE - extendLock() failed unexpectedly"
             );
         }
@@ -186,6 +221,7 @@ contract FuzzVECVE is StatefulBaseMarket {
     }
 
     function processExpiredLock_should_succeed(uint256 seed) public {
+        require(veCVE.isShutdown() != 2);
         uint256 lockIndex = get_existing_lock(seed);
         try
             veCVE.processExpiredLock(
@@ -198,6 +234,31 @@ contract FuzzVECVE is StatefulBaseMarket {
             )
         {} catch {}
     }
+
+    function processExpiredLock_should_fail_if_lock_index_exceeds_length(
+        uint256 seed
+    ) public {
+        uint256 lockIndex = clampBetween(seed, numLocks, type(uint256).max);
+        try
+            veCVE.processExpiredLock(
+                lockIndex,
+                false,
+                defaultContinuous.continuousLock,
+                defaultContinuous.rewardsData,
+                defaultContinuous.param,
+                defaultContinuous.aux
+            )
+        {} catch (bytes memory revertData) {
+            uint256 errorSelector = extractErrorSelector(revertData);
+
+            assertWithMsg(
+                errorSelector == vecve_invalidLockSelectorHash,
+                "VE_CVE - createLock() should fail when creating with 0"
+            );
+        }
+    }
+
+    // function processExpiredLock_should_fail_
 
     function disableContinuousLock_should_succeed_if_lock_exists(
         uint256 number
@@ -237,7 +298,7 @@ contract FuzzVECVE is StatefulBaseMarket {
             uint256 errorSelector = extractErrorSelector(reason);
 
             assertWithMsg(
-                errorSelector == veCVE._UNAUTHORIZED_SELECTOR(),
+                errorSelector == vecve_unauthorizedSelectorHash,
                 "VE_CVE - shutdown() by elevated permission failed unexpectedly"
             );
         }
@@ -290,14 +351,12 @@ contract FuzzVECVE is StatefulBaseMarket {
     }
 
     // Helper Functions
-    function get_existing_lock(
-        uint256 randomNumber
-    ) private returns (uint256) {
+    function get_existing_lock(uint256 seed) private returns (uint256) {
         if (numLocks == 0) {
-            create_continuous_lock_when_not_shutdown(randomNumber, true);
+            create_continuous_lock_when_not_shutdown(seed, true);
             return 0;
         }
-        return clampBetween(randomNumber, 0, numLocks);
+        return clampBetween(seed, 0, numLocks);
     }
 
     function approve_cve(uint256 amount, string memory error) private {
