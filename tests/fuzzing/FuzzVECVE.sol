@@ -58,9 +58,9 @@ contract FuzzVECVE is StatefulBaseMarket {
     function create_continuous_lock_when_not_shutdown(uint256 amount) public {
         require(veCVE.isShutdown() != 2);
         amount = clampBetween(amount, 1, type(uint32).max);
-        // save balance of VECVE
+        // save balance of CVE
         uint256 preLockCVEBalance = cve.balanceOf(address(this));
-        emit LogUint256("cve balance", preLockCVEBalance);
+        // save balance of VE_CVE
         uint256 preLockVECVEBalance = veCVE.balanceOf(address(this));
 
         try cve.approve(address(veCVE), amount) {} catch {
