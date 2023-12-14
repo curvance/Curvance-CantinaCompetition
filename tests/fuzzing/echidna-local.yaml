@@ -4,3 +4,4 @@ corpusDir: "output/echidna-corpus"
 cryticArgs: ["--ignore-compile"]
 testMaxGas: 1250000000
 codeSize: 0xfffffffffff
+testLimit: 100000
