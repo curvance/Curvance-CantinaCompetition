@@ -1,5 +1,6 @@
 testMode: assertion
-testLimit: 100000000000
+testLimit: 1000000000
 coverage: true 
 corpusDir: "output/echidna-corpus"
 cryticArgs: ["--ignore-compile"]
+workers: 10 
