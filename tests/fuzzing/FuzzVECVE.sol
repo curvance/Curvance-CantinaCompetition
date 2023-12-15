@@ -233,12 +233,23 @@ contract FuzzVECVE is StatefulBaseMarket {
         }
     }
 
-    function increaseAmountAndExtendLock_should_succeed(
+    function increaseAmountAndExtendLock_should_succeed_if_continuous(
         uint256 amount,
         uint256 number
     ) public {
+        bool continuousLock = true;
+        require(veCVE.isShutdown() != 2);
         uint256 lockIndex = get_existing_lock(number);
+
         amount = clampBetween(amount, 1, type(uint32).max);
+        require(
+            veCVE.getUnlockTime(address(this), lockIndex) ==
+                veCVE.CONTINUOUS_LOCK_VALUE()
+        );
+        // save balance of CVE
+        uint256 preLockCVEBalance = cve.balanceOf(address(this));
+        // save balance of VE_CVE
+        uint256 preLockVECVEBalance = veCVE.balanceOf(address(this));
 
         approve_cve(
             amount,
@@ -249,12 +260,85 @@ contract FuzzVECVE is StatefulBaseMarket {
             veCVE.increaseAmountAndExtendLock(
                 amount,
                 lockIndex,
-                defaultContinuous.continuousLock,
+                continuousLock,
                 defaultContinuous.rewardsData,
                 defaultContinuous.param,
                 defaultContinuous.aux
             )
-        {} catch {}
+        {
+            uint256 postLockCVEBalance = cve.balanceOf(address(this));
+            assertEq(
+                preLockCVEBalance,
+                postLockCVEBalance + amount,
+                "VE_CVE - increaseAmountAndExtendLock CVE transferred to contract"
+            );
+
+            uint256 postLockVECVEBalance = veCVE.balanceOf(address(this));
+            assertEq(
+                preLockVECVEBalance + amount,
+                postLockVECVEBalance,
+                "VE_CVE - increaseAmountAndExtendLock VE_CVE token minted"
+            );
+        } catch {
+            assertWithMsg(
+                false,
+                "VE_CVE - increaseAmountAndExtendLock() failed unexpectedly"
+            );
+        }
+    }
+
+    function increaseAmountAndExtendLock_should_succeed_if_non_continuous(
+        uint256 amount,
+        uint256 number
+    ) public {
+        bool continuousLock = false;
+        require(veCVE.isShutdown() != 2);
+        uint256 lockIndex = get_existing_lock(number);
+
+        amount = clampBetween(amount, 1, type(uint32).max);
+        require(
+            veCVE.getUnlockTime(address(this), lockIndex) !=
+                veCVE.CONTINUOUS_LOCK_VALUE()
+        );
+        // save balance of CVE
+        uint256 preLockCVEBalance = cve.balanceOf(address(this));
+        // save balance of VE_CVE
+        uint256 preLockVECVEBalance = veCVE.balanceOf(address(this));
+
+        approve_cve(
+            amount,
+            "VE_CVE - increaseAmountAndExtendLock() failed on approve cve"
+        );
+
+        try
+            veCVE.increaseAmountAndExtendLock(
+                amount,
+                lockIndex,
+                continuousLock,
+                defaultContinuous.rewardsData,
+                defaultContinuous.param,
+                defaultContinuous.aux
+            )
+        {
+            uint256 postLockCVEBalance = cve.balanceOf(address(this));
+            assertEq(
+                preLockCVEBalance,
+                postLockCVEBalance + amount,
+                "VE_CVE - increaseAmountAndExtendLock CVE transferred to contract"
+            );
+
+            uint256 postLockVECVEBalance = veCVE.balanceOf(address(this));
+            assertEq(
+                preLockVECVEBalance + amount,
+                postLockVECVEBalance,
+                "VE_CVE - increaseAmountAndExtendLock VE_CVE token minted"
+            );
+        } catch {
+            assertWithMsg(
+                false,
+                "VE_CVE - increaseAmountAndExtendLock() failed unexpectedly"
+            );
+        }
     }
 
     function combineAllLocks_should_succeed(bool continuous) public {
@@ -401,6 +485,7 @@ contract FuzzVECVE is StatefulBaseMarket {
     }
 
     // Helper Functions
+
     function get_existing_lock(uint256 seed) private returns (uint256) {
         if (numLocks == 0) {
             create_continuous_lock_when_not_shutdown(seed, true);
