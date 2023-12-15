@@ -137,6 +137,32 @@ contract FuzzVECVE is StatefulBaseMarket {
                     address(this),
                     lockIndex
                 );
+                emit LogUint256(
+                    "pre extend epoch",
+                    veCVE.currentEpoch(preExtendLockTime)
+                );
+                emit LogUint256(
+                    "post extend epoch",
+                    veCVE.currentEpoch(postExtendLockTime)
+                );
+                emit LogUint256("preExtendLockTime", preExtendLockTime);
+                emit LogUint256("postExtendLockTime", postExtendLockTime);
+                if (
+                    veCVE.currentEpoch(preExtendLockTime) ==
+                    veCVE.currentEpoch(postExtendLockTime)
+                ) {
+                    assertEq(
+                        preExtendLockTime,
+                        postExtendLockTime,
+                        "VE_CVE - extendLock() when extend is called in same epoch should be the same"
+                    );
+                } else {
+                    assertGt(
+                        postExtendLockTime,
+                        preExtendLockTime,
+                        "VE_CVE - extendLock() when called in later epoch should increase unlock time"
+                    );
+                }
             }
         } catch {}
     }
