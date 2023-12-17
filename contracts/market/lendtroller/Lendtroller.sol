@@ -572,16 +572,31 @@ contract Lendtroller is LiquidityManager, ERC165 {
 
     /// @notice Liquidates an entire account by partially paying down debts,
     ///         distributing all `account` collateral and recognize remaining
-    ///         debt as bad debt
-    /// @param account The address to liquidate completely
+    ///         debt as bad debt.
+    /// @dev    Updates `account` DToken interest before solvency is checked.
+    /// @param account The address to liquidate completely.
     function liquidateAccount(address account) external {
-        // Make sure they are not trying to liquidate themselves
+        // Make sure `account` is not trying to liquidate themselves
         if (msg.sender == account) {
             _revert(_UNAUTHORIZED_SELECTOR);
         }
 
+        // Make sure liquidations are not paused
         if (seizePaused == 2) {
             _revert(_PAUSED_SELECTOR);
+        }
+
+        IMToken[] memory accountAssets = accountAssets[account].assets;
+        uint256 numAssets = accountAssets.length;
+        IMToken mToken;
+
+        // Update pending interest in markets 
+        for (uint256 i = 0; i < numAssets; ) {
+            // Cache `account` mToken then increment i
+            mToken = accountAssets[i++];
+            if (!mToken.isCToken()) {
+                mToken.accrueInterest();
+            }
         }
 
         (
@@ -596,34 +611,45 @@ contract Lendtroller is LiquidityManager, ERC165 {
         }
 
         uint256 repayRatio = (debtToPay * WAD) / totalDebt;
-        IMToken[] memory accountAssets = accountAssets[account].assets;
-        uint256 numAssets = accountAssets.length;
-        IMToken mToken;
-        uint256 collateral;
-
+        
         // Repay `account`'s debt and recognize bad debt
-        for (uint256 i; i < numAssets; ++i) {
-            mToken = accountAssets[i];
+        for (uint256 i = 0; i < numAssets; ) {
+            // Cache `account` mToken then increment i
+            mToken = accountAssets[i++];
             if (!mToken.isCToken()) {
+                // Repay `account`'s debt where:
+                // debtToPay = totalCollateral / (1 - liquidationPenalty)
+                // badDebt = totalDebt - debtToPay
+                // Thus:
+                // totalDebt = debtToPay + badDebt
+                // where debtToPay is what caller repays to receive collateral
+                // badDebt is loss to lenders by offsetting
+                // totalBorrows (total estimated outstanding debt)
                 mToken.repayWithBadDebt(msg.sender, account, repayRatio);
             }
         }
 
+        uint256 collateral;
+
         // Seize `account`'s collateral and remove posted collateral
-        for (uint256 i = 0; i < numAssets; ++i) {
-            mToken = accountAssets[i];
+        for (uint256 i = 0; i < numAssets; ) {
+            // Cache `account` mToken then increment i
+            mToken = accountAssets[i++];
             if (mToken.isCToken()) {
                 AccountMetadata storage data = tokenData[address(mToken)]
                     .accountData[account];
+                // Cache `account` collateral posted
                 collateral = data.collateralPosted;
 
-                // Remove `account` posted collateral
+                // Remove `account` posted collateral,
+                // as their account is completely closed out
                 delete data.collateralPosted;
+                // Update collateralPosted invariant
                 collateralPosted[address(mToken)] =
                     collateralPosted[address(mToken)] -
                     collateral;
                 emit CollateralRemoved(account, address(mToken), collateral);
-                // Seize `account`'s collateral
+                // Seize `account`'s collateral and give to caller
                 mToken.seizeAccountLiquidation(
                     msg.sender,
                     account,

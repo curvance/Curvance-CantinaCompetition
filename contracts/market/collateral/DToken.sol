@@ -344,7 +344,8 @@ contract DToken is ERC165, ReentrancyGuard {
             _revert(_UNAUTHORIZED_SELECTOR);
         }
 
-        accrueInterest();
+        // We do not need to check for interest accrual here since its done
+        // at the top of liquidateAccount that calls this function.
 
         // Cache how much the account has to save gas
         uint256 accountDebt = debtBalanceCached(account);

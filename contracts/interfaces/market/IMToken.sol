@@ -17,6 +17,8 @@ interface IMToken {
     /// @notice Returns whether the market token is a collateral token
     function isCToken() external view returns (bool);
 
+    function accrueInterest() external;
+
     /// @notice Get the token balance of the `owner`
     function balanceOf(address owner) external view returns (uint256);
 
