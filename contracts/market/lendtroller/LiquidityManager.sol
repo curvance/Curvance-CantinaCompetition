@@ -33,31 +33,31 @@ abstract contract LiquidityManager {
 
     struct MarketToken {
         /// @notice Whether or not this market token is listed.
-        /// @dev    false = unlisted; true = listed
+        /// @dev    false = unlisted; true = listed.
         bool isListed;
         /// @notice The ratio at which this token can be collateralized.
-        /// @dev    in `WAD` format, with 0.8e18 = 80% collateral value
+        /// @dev    in `WAD` format, with 0.8e18 = 80% collateral value.
         uint256 collRatio;
         /// @notice The collateral requirement where dipping below this will cause a soft liquidation.
-        /// @dev    in `WAD` format, with 1.2e18 = 120% collateral vs debt value
+        /// @dev    in `WAD` format, with 1.2e18 = 120% collateral vs debt value.
         uint256 collReqA;
         /// @notice The collateral requirement where dipping below this will cause a hard liquidation.
-        /// @dev    in `WAD` format, with 1.2e18 = 120% collateral vs debt value
+        /// @dev    in `WAD` format, with 1.2e18 = 120% collateral vs debt value.
         uint256 collReqB;
         /// @notice The base ratio at which this token will be compensated on soft liquidation.
         /// @dev    In `WAD` format, stored as (Incentive + WAD)
-        ///         e.g 1.05e18 = 5% incentive, this saves gas for liquidation calculations
+        ///         e.g 1.05e18 = 5% incentive, this saves gas for liquidation calculations.
         uint256 liqBaseIncentive;
         /// @notice The liquidation incentive curve length between soft liquidation to hard liquidation.
         ///         e.g. 5% base incentive with 8% curve length results in 13% liquidation incentive
         ///         on hard liquidation.
         /// @dev    In `WAD` format.
-        ///         e.g 05e18 = 5% maximum additional incentive
+        ///         e.g 05e18 = 5% maximum additional incentive.
         uint256 liqCurve;
         /// @notice The protocol fee that will be taken on liquidation for this token.
-        /// @dev    In `WAD` format, 0.01e18 = 1%
+        /// @dev    In `WAD` format, 0.01e18 = 1%.
         ///         Note: this is stored as (Fee * WAD) / `liqIncA`
-        ///         in order to save gas for liquidation calculations
+        ///         in order to save gas for liquidation calculations.
         uint256 liqFee;
         /// @notice Maximum % that a liquidator can repay when soft liquidating an account,
         /// @dev    In `WAD` format.
@@ -77,7 +77,7 @@ abstract contract LiquidityManager {
 
     /// STORAGE ///
 
-    /// @notice Curvance DAO hub
+    /// @notice Curvance DAO hub.
     ICentralRegistry public immutable centralRegistry;
 
     /// @notice Market Token => isListed, Token Characteristics, Account Data.
@@ -104,12 +104,12 @@ abstract contract LiquidityManager {
     }
 
     /// @notice Determine `account`'s current status between collateral,
-    ///         debt, and additional liquidity
-    /// @param account The account to determine liquidity for
-    /// @return accountCollateral Total value of `account` collateral
+    ///         debt, and additional liquidity.
+    /// @param account The account to determine liquidity for.
+    /// @return accountCollateral Total value of `account` collateral.
     /// @return maxDebt The maximum amount of debt `account`
-    ///                 could take on based on `accountCollateral`
-    /// @return accountDebt Total value of `account` debt
+    ///                 could take on based on `accountCollateral`.
+    /// @return accountDebt Total value of `account` debt.
     function _statusOf(
         address account
     )
@@ -260,10 +260,10 @@ abstract contract LiquidityManager {
         }
     }
 
-    /// @notice Determine `account`'s current collateral and debt values in the market
-    /// @param account The account to check bad debt status for
-    /// @return accountCollateral The total market value of `account`'s collateral
-    /// @return accountDebt The total outstanding debt value of `account`
+    /// @notice Determine `account`'s current collateral and debt values in the market.
+    /// @param account The account to check bad debt status for.
+    /// @return accountCollateral The total market value of `account`'s collateral.
+    /// @return accountDebt The total outstanding debt value of `account`.
     function _solvencyOf(
         address account
     ) internal view returns (uint256 accountCollateral, uint256 accountDebt) {
@@ -307,14 +307,14 @@ abstract contract LiquidityManager {
 
     /// @notice Determine whether `account` can be liquidated,
     ///         by calculating their lFactor, based on their
-    ///         collateral versus outstanding debt
-    /// @param account The account to check liquidation status for
-    /// @param debtToken The dToken to be repaid during potential liquidation
-    /// @param collateralToken The cToken to be seized during potential liquidation
+    ///         collateral versus outstanding debt.
+    /// @param account The account to check liquidation status for.
+    /// @param debtToken The dToken to be repaid during potential liquidation.
+    /// @param collateralToken The cToken to be seized during potential liquidation.
     /// @return result Containing values:
-    ///                Current `account` lFactor
-    ///                Current price for `debtToken`
-    ///                Current price for `collateralToken`
+    ///                Current `account` lFactor.
+    ///                Current price for `debtToken`.
+    ///                Current price for `collateralToken`.
     function _LiquidationStatusOf(
         address account,
         address debtToken,
@@ -389,11 +389,11 @@ abstract contract LiquidityManager {
     }
 
     /// @notice Determine `account`'s current status between collateral,
-    ///         debt, and additional liquidity
-    /// @param account The account to determine liquidity for
-    /// @return accountCollateral Total value of `account` collateral
-    /// @return accountDebtToPay The amount of debt to repay to receive `accountCollateral`
-    /// @return accountDebt Total value of `account` debt
+    ///         debt, and additional liquidity.
+    /// @param account The account to determine liquidity for.
+    /// @return accountCollateral Total value of `account` collateral.
+    /// @return accountDebtToPay The amount of debt to repay to receive `accountCollateral`.
+    /// @return accountDebt Total value of `account` debt.
     function _BadDebtTermsOf(
         address account
     )

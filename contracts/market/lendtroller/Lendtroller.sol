@@ -31,13 +31,14 @@ contract Lendtroller is LiquidityManager, ERC165 {
     uint256 internal constant _MIN_LIQUIDATION_INCENTIVE = .01e18;
     /// @notice The maximum liquidation incentive. 5%
     uint256 internal constant _MAX_LIQUIDATION_FEE = .05e18;
-    /// `bytes4(keccak256(bytes("Lendtroller__InvalidParameter()")))`
+    
+    /// @dev `bytes4(keccak256(bytes("Lendtroller__InvalidParameter()")))`
     uint256 internal constant _INVALID_PARAMETER_SELECTOR = 0x31765827;
-    /// `bytes4(keccak256(bytes("Lendtroller__Unauthorized()")))`
+    /// @dev `bytes4(keccak256(bytes("Lendtroller__Unauthorized()")))`
     uint256 internal constant _UNAUTHORIZED_SELECTOR = 0x5254e575;
-    /// `bytes4(keccak256(bytes("Lendtroller__TokenNotListed()")))`
+    /// @dev `bytes4(keccak256(bytes("Lendtroller__TokenNotListed()")))`
     uint256 internal constant _TOKEN_NOT_LISTED_SELECTOR = 0xf3e41c92;
-    /// `bytes4(keccak256(bytes("Lendtroller__Paused()")))`
+    /// @dev `bytes4(keccak256(bytes("Lendtroller__Paused()")))`
     uint256 internal constant _PAUSED_SELECTOR = 0xe192eaaf;
     
     /// STORAGE ///
@@ -49,21 +50,21 @@ contract Lendtroller is LiquidityManager, ERC165 {
     address public positionFolding;
 
     /// MARKET STATE
-    /// @dev 1 = unpaused; 2 = paused
+    /// @notice 1 = unpaused; 2 = paused.
     uint256 public transferPaused = 1;
-    /// @dev 1 = unpaused; 2 = paused
+    /// @notice 1 = unpaused; 2 = paused.
     uint256 public seizePaused = 1;
-    /// @dev 1 = unpaused; 2 = paused
+    /// @notice 1 = unpaused; 2 = paused.
     uint256 public redeemPaused = 1;
-    /// @dev Token => 0 or 1 = unpaused; 2 = paused
+    /// @notice Token => 0 or 1 = unpaused; 2 = paused.
     mapping(address => uint256) public mintPaused;
-    /// @dev Token => 0 or 1 = unpaused; 2 = paused
+    /// @notice Token => 0 or 1 = unpaused; 2 = paused.
     mapping(address => uint256) public borrowPaused;
 
     /// COLLATERAL CONSTRAINTS
-    /// @notice Token => Collateral Posted
+    /// @notice Token => Collateral Posted.
     mapping(address => uint256) public collateralPosted;
-    /// @notice Token => Collateral Cap
+    /// @notice Token => Collateral Cap.
     mapping(address => uint256) public collateralCaps;
 
     /// EVENTS ///
@@ -228,7 +229,7 @@ contract Lendtroller is LiquidityManager, ERC165 {
         }
 
         // If you are trying to post collateral for someone else,
-        // make sure it is done via the mToken contract itself
+        // make sure it is done via the mToken contract itself.
         if (msg.sender != account) {
             if (msg.sender != mToken) {
                 _revert(_UNAUTHORIZED_SELECTOR);
@@ -239,6 +240,7 @@ contract Lendtroller is LiquidityManager, ERC165 {
             account
         ];
 
+        // Precondition invariant check.
         if (
             accountData.collateralPosted + tokens >
             IMToken(mToken).balanceOf(account)
@@ -595,6 +597,7 @@ contract Lendtroller is LiquidityManager, ERC165 {
             // Cache `account` mToken then increment i
             mToken = accountAssets[i++];
             if (!mToken.isCToken()) {
+                // Update DToken interest if necessary
                 mToken.accrueInterest();
             }
         }
