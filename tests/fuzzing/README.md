@@ -36,10 +36,11 @@ As per the original table, there are no concrete test cases defined, as these fu
 
 ## Installation Requirements
 
-1. Slither 
+1. Slither/crytic-compile
 2. Echidna 
 3. Medusa 
 4. Foundry 
+5. Cloudexec
    
 see: 
 https://github.com/curvance/curvance-contracts/blob/1ec341b7e3c2408abf3f3853a5a8145fc6bd67c3/cloudexec.toml#L8
@@ -53,15 +54,7 @@ There are two flavours of the config provided in this code. See below for their 
 make echidna-local 
 ```
 
-```yaml 
-testMode: assertion # run in assertion mode for a quicker test 
-coverage: true # saving coverage  
-corpusDir: "output/echidna-corpus" # saving coverage in a directory 
-cryticArgs: ["--ignore-compile"] # the contracts do not need to be re-compiled 
-testMaxGas: 1250000000  # in preparation for future potentially gas-consuming operations 
-codeSize: 0xfffffffffff 
-testLimit: 500000 # smaller test limit to sanity check quick 
-```
+See [./tests/fuzzing/echidna-local.yaml](./tests/fuzzing/echidna-local.yaml) for yaml.
 
 The main difference here is the shortened number of runs, so we can run a quick sanity check. 
 
