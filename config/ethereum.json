@@ -4,7 +4,6 @@
     "timelock": "0x0000000000000000000000000000000000000001",
     "emergencyCouncil": "0x0000000000000000000000000000000000000001",
     "genesisEpoch": 0,
-    "sequencer": "0x0000000000000000000000000000000000000001",
     "lockBoostMultiplier": 10000,
     "harvester": "0x0000000000000000000000000000000000000001"
   },
@@ -164,8 +163,12 @@
         "adaptorData": {
           "poolDecimals": 18,
           "poolId": "0x1e19cf2d73a72ef1332c882f20534b6519be0276000200000000000000000112",
-          "rateProviderDecimals": [18],
-          "rateProviders": ["0x1a8F81c256aee9C640e14bB0453ce247ea0DFE6F"],
+          "rateProviderDecimals": [
+            18
+          ],
+          "rateProviders": [
+            "0x1a8F81c256aee9C640e14bB0453ce247ea0DFE6F"
+          ],
           "underlyingOrConstituent": [
             "0xae78736Cd615f374D3085123A210448E74Fc6393",
             "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"

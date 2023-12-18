@@ -19,7 +19,6 @@ contract CentralRegistryDeployer is DeployConfiguration {
         require(daoAddress != address(0), "Set the daoAddress!");
         require(timelock != address(0), "Set the timelock!");
         require(emergencyCouncil != address(0), "Set the emergencyCouncil!");
-        require(sequencer != address(0), "Set the sequencer!");
 
         centralRegistry = address(
             new CentralRegistry(

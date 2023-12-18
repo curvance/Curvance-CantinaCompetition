@@ -3,7 +3,7 @@ pragma solidity ^0.8.17;
 
 import { stdJson } from "forge-std/StdJson.sol";
 import { console } from "forge-std/console.sol";
-import { GMXMarketDeployer } from "./deployers/gmx/GMXMarketDeployer.s.sol";
+import { GMXMarketDeployer } from "../deployers/gmx/GMXMarketDeployer.s.sol";
 
 contract DeployGMXMarkets is GMXMarketDeployer {
     using stdJson for string;
