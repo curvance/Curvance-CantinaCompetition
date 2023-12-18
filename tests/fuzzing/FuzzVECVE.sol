@@ -343,12 +343,13 @@ contract FuzzVECVE is StatefulBaseMarket {
         }
     }
 
-    function combineAllLocks_should_succeed(bool continuous) public {
+    function combineAllLocks_should_succeed_to_continuous_terminal() public {
+        bool continuous = true;
         require(numLocks >= 2);
         uint256 lockIndex = 0;
 
         uint256 newLockAmount = 0;
-        bool isCurrentListAllContinuous = true;
+        uint256 numberOfExistingContinuousLocks = 0;
         uint256 userPointsAdjustmentForContinuous;
         uint256 preCombineUserPoints = veCVE.userPoints(address(this));
 
@@ -357,19 +358,113 @@ contract FuzzVECVE is StatefulBaseMarket {
                 address(this),
                 i
             );
-            emit LogUint256("amount added", amount);
             newLockAmount += amount;
 
-            if (unlockTime != veCVE.CONTINUOUS_LOCK_VALUE()) {
-                isCurrentListAllContinuous = false;
-            } else {
+            if (unlockTime == veCVE.CONTINUOUS_LOCK_VALUE()) {
+                numberOfExistingContinuousLocks++;
                 userPointsAdjustmentForContinuous +=
                     (amount * veCVE.clPointMultiplier()) /
                     DENOMINATOR -
                     amount;
             }
+            emit LogUint256(
+                "adjustment amount:",
+                userPointsAdjustmentForContinuous
+            );
+        }
 
-            emit LogUint256("current new lock amount", newLockAmount);
+        try
+            veCVE.combineAllLocks(
+                continuous,
+                defaultContinuous.rewardsData,
+                defaultContinuous.param,
+                defaultContinuous.aux
+            )
+        {
+            // userLocks.amount must sum to the individual amounts for each lock
+            (uint216 combinedAmount, uint40 combinedUnlockTime) = veCVE
+                .userLocks(address(this), 0);
+
+            assertEq(
+                combinedAmount,
+                newLockAmount,
+                "VE_CVE - combineAllLocks() expected amount sum of new lock to equal calculated"
+            );
+            uint256 postCombineUserPoints = veCVE.userPoints(address(this));
+            // If the existing locks that the user had were all continuous
+            if (numberOfExistingContinuousLocks == numLocks) {
+                uint256 current_adjustment_for_cl = (combinedAmount *
+                    veCVE.clPointMultiplier()) /
+                    DENOMINATOR -
+                    combinedAmount;
+                emit LogUint256(
+                    "currentadjustment for cl",
+                    current_adjustment_for_cl
+                );
+                emit LogUint256(
+                    "userPointsAdjustmentForContinuous",
+                    userPointsAdjustmentForContinuous
+                );
+                // And a user wants to convert it to a single continuous lock
+                // Ensure that the user points before and after the combine are identical
+                assertEq(
+                    preCombineUserPoints,
+                    postCombineUserPoints,
+                    "VE_CVE - combineAllLocks() - all prior continuous => continuous failed"
+                );
+            }
+            // if there were continuous locks
+            else if (numberOfExistingContinuousLocks > 0) {
+                // preCombineUserPoints - userPointsAdjustment = userPoints
+                assertLt(
+                    preCombineUserPoints,
+                    postCombineUserPoints,
+                    "VE_CVE - combineAllLocks() - some prior continuous => continuous failed"
+                );
+            }
+            // if there were 0 continuous locks
+            else {
+                assertLt(
+                    preCombineUserPoints,
+                    postCombineUserPoints,
+                    "VE_CVE - combineAllLocks() - no prior continuous => continuous failed "
+                );
+            }
+            numLocks = 1;
+        } catch {
+            assertWithMsg(
+                false,
+                "VE_CVE - combineAllLocks() failed unexpectedly with correct preconditions"
+            );
+        }
+    }
+
+    function combineAllLocks_should_succeed_to_non_continuous_terminal()
+        public
+    {
+        bool continuous = false;
+        require(numLocks >= 2);
+        uint256 lockIndex = 0;
+
+        uint256 newLockAmount = 0;
+        uint256 numberOfExistingContinuousLocks = 0;
+        uint256 userPointsAdjustmentForContinuous;
+        uint256 preCombineUserPoints = veCVE.userPoints(address(this));
+
+        for (uint i = 0; i < numLocks; i++) {
+            (uint216 amount, uint40 unlockTime) = veCVE.userLocks(
+                address(this),
+                i
+            );
+            newLockAmount += amount;
+
+            if (unlockTime == veCVE.CONTINUOUS_LOCK_VALUE()) {
+                numberOfExistingContinuousLocks++;
+                userPointsAdjustmentForContinuous +=
+                    (amount * veCVE.clPointMultiplier()) /
+                    DENOMINATOR -
+                    amount;
+            }
         }
 
         try
@@ -391,26 +486,37 @@ contract FuzzVECVE is StatefulBaseMarket {
                 "VE_CVE - combineAllLocks() expected amount sum of new lock to equal calculated"
             );
             uint256 postCombineUserPoints = veCVE.userPoints(address(this));
-            if (isCurrentListAllContinuous) {
-                // If the existing locks that the user had were all continuous
-                if (continuous) {
-                    // And a user wants to convert it to a single continuous lock
-                    // Ensure that the user points before and after the combine are identical
-                    assertEq(
-                        preCombineUserPoints,
-                        postCombineUserPoints,
-                        "VE_CVE - combineAllLocks() - if all locks prior continuous => combine into continuous failed"
-                    );
-                } else {
-                    // A user wants to convert it into a non-continuous lock
-                    assertEq( // Ensure that the previous all-combined user points - merged points is equivalent to the-
-                        preCombineUserPoints -
-                            userPointsAdjustmentForContinuous,
-                        postCombineUserPoints,
-                        "VE_CVE - combineAllLocks() - if all locks prior continuous => combine into !continuous failed"
-                    );
-                }
-            } else {}
+            // If the existing locks that the user had were all continuous
+            if (numberOfExistingContinuousLocks > 0) {
+                // A user wants to convert it into a non-continuous lock
+                assertEq( // Ensure that the previous all-combined user points - merged points is equivalent to the-
+                    preCombineUserPoints - userPointsAdjustmentForContinuous,
+                    postCombineUserPoints,
+                    "VE_CVE - combineAllLocks() - ALL continuous => !continuous failed"
+                );
+            }
+            // if some locks that the user had were continuous
+            // else if (numberOfExistingContinuousLocks > 0) {
+            //     // emit LogUint256(
+            //     //     "adjust for continuous",
+            //     //     userPointsAdjustmentForContinuous
+            //     // );
+            //     // if (userPointsAdjustmentForContinuous > 0) {
+            //     assertGt(
+            //         preCombineUserPoints,
+            //         postCombineUserPoints,
+            //         "VE_CVE() - combineAllLocks - SOME continuous => !continuous failed"
+            //     );
+            //     // }
+            // }
+            // no locks prior were continuous
+            else {
+                assertEq(
+                    preCombineUserPoints,
+                    postCombineUserPoints,
+                    "VE_CVE - combineAllLocks() NO continuous locks -> !continuous failed"
+                );
+            }
         } catch {
             assertWithMsg(
                 false,
