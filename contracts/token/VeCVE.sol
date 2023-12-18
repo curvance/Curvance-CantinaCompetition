@@ -9,7 +9,7 @@ import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { ICVELocker, RewardsData } from "contracts/interfaces/ICVELocker.sol";
-import { DENOMINATOR } from "contracts/libraries/Constants.sol";
+import { DENOMINATOR, WAD } from "contracts/libraries/Constants.sol";
 
 contract VeCVE is ERC20, ReentrancyGuard {
     /// TYPES ///
@@ -471,10 +471,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
             }
         }
 
-        // Remove the users excess points from their continuous locks, if any
-        if (excessPoints > 0) {
-            _reducePoints(msg.sender, excessPoints);
-        }
+        
         // Remove the users locks
         delete userLocks[msg.sender];
 
@@ -485,8 +482,15 @@ contract VeCVE is ERC20, ReentrancyGuard {
                     unlockTime: CONTINUOUS_LOCK_VALUE
                 })
             );
-            // Give the user extra token points from continuous lock being enabled
-            _incrementPoints(msg.sender, _getCLPoints(amount) - amount);
+
+            uint256 clBoostedPoints = _getCLPoints(amount) - amount;
+
+            // If not all locks combined were continuous, we will need to
+            // reduce points by the difference between the terminal boosted
+            // points minus current ExcessPoints
+            if (excessPoints > clBoostedPoints) {
+                _reducePoints(msg.sender, clBoostedPoints - excessPoints);
+            }
         } else {
             userLocks[msg.sender].push(
                 Lock({
@@ -494,6 +498,11 @@ contract VeCVE is ERC20, ReentrancyGuard {
                     unlockTime: freshLockTimestamp()
                 })
             );
+
+            // Remove caller excess points from their continuous locks, if any
+            if (excessPoints > 0) {
+                _reducePoints(msg.sender, _getCLPoints(amount) - amount);
+            }
             // Record the new unlock data
             _incrementTokenUnlocks(msg.sender, freshLockEpoch(), amount);
         }
@@ -1194,9 +1203,10 @@ contract VeCVE is ERC20, ReentrancyGuard {
     }
 
     /// @dev Internal helper for checking whether a lock is allowed.
+    ///      Requires a minimum lock size of 1 CVE, in `WAD`.
     function _canLock(uint256 amount) internal view {
         assembly {
-            if iszero(amount) {
+            if lt(amount, WAD) {
                 mstore(0x0, _INVALID_LOCK_SELECTOR)
                 // return bytes 29-32 for the selector
                 revert(0x1c, 0x04)
