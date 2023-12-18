@@ -67,21 +67,34 @@ contract CombineAllLocksTest is TestBaseVeCVE {
         );
     }
 
-    function test_medusa_exploit(
+    function test_combineAllLocks_correct_user_point_value_with_continuous_lock(
         bool shouldLock,
         bool isFreshLock,
         bool isFreshLockContinuous
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
-        veCVE.createLock(1595215587, true, rewardsData, "", 0);
+        veCVE.createLock(2455281833, true, rewardsData, "", 0);
         veCVE.createLock(4266047049, true, rewardsData, "", 0);
         uint256 preCombine = (veCVE.userPoints(address(this)));
 
         veCVE.combineAllLocks(false, rewardsData, "", 0);
 
         uint256 postCombine = (veCVE.userPoints(address(this)));
-        // console.log(preCombine);
-        // console.log(postCombine);
         assertEq(preCombine, postCombine);
+    }
+
+    function test_combineAllLocks_some_continuous_to_continuous_lock(
+        bool shouldLock,
+        bool isFreshLock,
+        bool isFreshLockContinuous
+    ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
+        veCVE.createLock(1, true, rewardsData, "", 0);
+        veCVE.createLock(4, false, rewardsData, "", 31449600);
+        uint256 preCombine = (veCVE.userPoints(address(this)));
+
+        veCVE.combineAllLocks(false, rewardsData, "", 0);
+
+        uint256 postCombine = (veCVE.userPoints(address(this)));
+        assertLt(preCombine, postCombine);
     }
 
     function test_combineAllLocks_success_withDiscontinuousLock(

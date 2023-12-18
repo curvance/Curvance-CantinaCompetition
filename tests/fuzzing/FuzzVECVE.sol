@@ -343,7 +343,9 @@ contract FuzzVECVE is StatefulBaseMarket {
         }
     }
 
-    function combineAllLocks_should_succeed_to_continuous_terminal() public {
+    function combineAllLocks_for_all_continuous_to_continuous_terminal_should_succeed()
+        public
+    {
         bool continuous = true;
         require(numLocks >= 2);
         uint256 lockIndex = 0;
@@ -397,24 +399,82 @@ contract FuzzVECVE is StatefulBaseMarket {
                     veCVE.clPointMultiplier()) /
                     DENOMINATOR -
                     combinedAmount;
-                emit LogUint256(
-                    "currentadjustment for cl",
-                    current_adjustment_for_cl
-                );
-                emit LogUint256(
-                    "userPointsAdjustmentForContinuous",
-                    userPointsAdjustmentForContinuous
+                assertEq(
+                    current_adjustment_for_cl,
+                    userPointsAdjustmentForContinuous,
+                    "VE_CVE - combineLocks() - cl point adjustment should be the same for [all continuous] => continuous failed"
                 );
                 // And a user wants to convert it to a single continuous lock
                 // Ensure that the user points before and after the combine are identical
                 assertEq(
                     preCombineUserPoints,
                     postCombineUserPoints,
-                    "VE_CVE - combineAllLocks() - all prior continuous => continuous failed"
+                    "VE_CVE - combineAllLocks() - user points should be same for all prior continuous => continuous failed"
                 );
             }
-            // if there were continuous locks
-            else if (numberOfExistingContinuousLocks > 0) {
+            numLocks = 1;
+        } catch {
+            assertWithMsg(
+                false,
+                "VE_CVE - combineAllLocks() failed unexpectedly with correct preconditions"
+            );
+        }
+    }
+
+    function combineAllLocks_non_continuous_to_continuous_terminals_should_succeed()
+        public
+    {
+        bool continuous = true;
+        require(numLocks >= 2);
+        uint256 lockIndex = 0;
+
+        uint256 newLockAmount = 0;
+        uint256 numberOfExistingContinuousLocks = 0;
+        uint256 userPointsAdjustmentForContinuous;
+        uint256 preCombineUserPoints = veCVE.userPoints(address(this));
+
+        for (uint i = 0; i < numLocks; i++) {
+            (uint216 amount, uint40 unlockTime) = veCVE.userLocks(
+                address(this),
+                i
+            );
+            newLockAmount += amount;
+
+            if (unlockTime == veCVE.CONTINUOUS_LOCK_VALUE()) {
+                numberOfExistingContinuousLocks++;
+                userPointsAdjustmentForContinuous +=
+                    (amount * veCVE.clPointMultiplier()) /
+                    DENOMINATOR -
+                    amount;
+            }
+            emit LogUint256(
+                "adjustment amount:",
+                userPointsAdjustmentForContinuous
+            );
+        }
+
+        try
+            veCVE.combineAllLocks(
+                continuous,
+                defaultContinuous.rewardsData,
+                defaultContinuous.param,
+                defaultContinuous.aux
+            )
+        {
+            // userLocks.amount must sum to the individual amounts for each lock
+            (uint216 combinedAmount, uint40 combinedUnlockTime) = veCVE
+                .userLocks(address(this), 0);
+
+            assertEq(
+                combinedAmount,
+                newLockAmount,
+                "VE_CVE - combineAllLocks() expected amount sum of new lock to equal calculated"
+            );
+            uint256 postCombineUserPoints = veCVE.userPoints(address(this));
+            // If the existing locks that the user had were all continuous
+            if (numberOfExistingContinuousLocks == numLocks) {} else if (
+                numberOfExistingContinuousLocks > 0
+            ) {
                 // preCombineUserPoints - userPointsAdjustment = userPoints
                 assertLt(
                     preCombineUserPoints,
