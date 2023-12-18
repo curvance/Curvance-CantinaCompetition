@@ -475,19 +475,23 @@ contract FuzzVECVE is StatefulBaseMarket {
             if (numberOfExistingContinuousLocks == numLocks) {} else if (
                 numberOfExistingContinuousLocks > 0
             ) {
-                // preCombineUserPoints - userPointsAdjustment = userPoints
-                assertLt(
-                    preCombineUserPoints,
+                assertEq(
+                    preCombineUserPoints - userPointsAdjustmentForContinuous,
                     postCombineUserPoints,
                     "VE_CVE - combineAllLocks() - some prior continuous => continuous failed"
                 );
             }
             // if there were 0 continuous locks
             else {
+                assertEq(
+                    userPointsAdjustmentForContinuous,
+                    0,
+                    "VE_CVE - combineAllLocks() - no prior continuous => continuous, adjustment non-zero"
+                );
                 assertLt(
                     preCombineUserPoints,
                     postCombineUserPoints,
-                    "VE_CVE - combineAllLocks() - no prior continuous => continuous failed "
+                    "VE_CVE - combineAllLocks() - no prior continuous => continuous, pre user point < post user point"
                 );
             }
             numLocks = 1;
@@ -555,20 +559,6 @@ contract FuzzVECVE is StatefulBaseMarket {
                     "VE_CVE - combineAllLocks() - ALL continuous => !continuous failed"
                 );
             }
-            // if some locks that the user had were continuous
-            // else if (numberOfExistingContinuousLocks > 0) {
-            //     // emit LogUint256(
-            //     //     "adjust for continuous",
-            //     //     userPointsAdjustmentForContinuous
-            //     // );
-            //     // if (userPointsAdjustmentForContinuous > 0) {
-            //     assertGt(
-            //         preCombineUserPoints,
-            //         postCombineUserPoints,
-            //         "VE_CVE() - combineAllLocks - SOME continuous => !continuous failed"
-            //     );
-            //     // }
-            // }
             // no locks prior were continuous
             else {
                 assertEq(
