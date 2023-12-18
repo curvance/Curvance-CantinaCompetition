@@ -208,6 +208,41 @@ contract FuzzVECVE is StatefulBaseMarket {
         }
     }
 
+    function extend_lock_should_fail_if_continuous(
+        uint256 seed,
+        bool continuousLock
+    ) public {
+        require(veCVE.isShutdown() != 2);
+        uint256 lockIndex = get_existing_lock(seed);
+
+        require(
+            veCVE.getUnlockTime(address(this), lockIndex) ==
+                veCVE.CONTINUOUS_LOCK_VALUE()
+        );
+
+        try
+            veCVE.extendLock(
+                lockIndex,
+                continuousLock,
+                RewardsData(address(0), true, true, true),
+                bytes(""),
+                0
+            )
+        {
+            assertWithMsg(
+                false,
+                "VE_CVE - extendLock() should not be successful"
+            );
+        } catch (bytes memory revertData) {
+            uint256 errorSelector = extractErrorSelector(revertData);
+
+            assertWithMsg(
+                errorSelector == vecve_lockTypeMismatchHash,
+                "VE_CVE - extendLock() failed unexpectedly"
+            );
+        }
+    }
+
     function extend_lock_should_fail_if_shutdown(
         uint256 lockIndex,
         bool continuousLock
