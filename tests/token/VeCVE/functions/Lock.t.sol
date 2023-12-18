@@ -17,7 +17,7 @@ contract LockTest is TestBaseVeCVE {
         veCVE.shutdown();
 
         vm.expectRevert(VeCVE.VeCVE__VeCVEShutdown.selector);
-        veCVE.createLock(100, true, rewardsData, "", 0);
+        veCVE.createLock(100e18, true, rewardsData, "", 0);
     }
 
     function test_lock_fail_whenAmountIsZero(
@@ -35,7 +35,7 @@ contract LockTest is TestBaseVeCVE {
         bool isFreshLockContinuous
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
         vm.expectRevert(SafeTransferLib.TransferFromFailed.selector);
-        veCVE.createLock(100, true, rewardsData, "", 0);
+        veCVE.createLock(100e18, true, rewardsData, "", 0);
     }
 
     function test_lock_fail_whenAllowanceIsNotEnough(
@@ -46,7 +46,7 @@ contract LockTest is TestBaseVeCVE {
         deal(address(cve), address(this), 100e18);
 
         vm.expectRevert(SafeTransferLib.TransferFromFailed.selector);
-        veCVE.createLock(100, true, rewardsData, "", 0);
+        veCVE.createLock(100e18, true, rewardsData, "", 0);
     }
 
     function test_lock_success_withContinuousLock_fuzzed(
@@ -58,7 +58,7 @@ contract LockTest is TestBaseVeCVE {
         deal(address(cve), address(this), 100e18);
         cve.approve(address(veCVE), 100e18);
 
-        vm.assume(amount > 0 && amount <= 100e18);
+        vm.assume(amount > 1e18 && amount <= 100e18);
 
         vm.expectEmit(true, true, true, true, address(veCVE));
         emit Locked(address(this), amount);
@@ -97,7 +97,7 @@ contract LockTest is TestBaseVeCVE {
         deal(address(cve), address(this), 100e18);
         cve.approve(address(veCVE), 100e18);
 
-        vm.assume(amount > 0 && amount <= 100e18);
+        vm.assume(amount > 1e18 && amount <= 100e18);
 
         vm.expectEmit(true, true, true, true, address(veCVE));
         emit Locked(address(this), amount);

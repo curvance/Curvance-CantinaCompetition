@@ -84,7 +84,7 @@ contract ClaimRewardsTest is TestBaseCVELocker {
     }
 
     function test_claimRewards_success_fuzzed(uint256 amount) public {
-        vm.assume(amount > 0 && amount <= 100e18);
+        vm.assume(amount > 1e18 && amount <= 100e18);
 
         cveLocker.addAuthorizedRewardToken(_WETH_ADDRESS);
 

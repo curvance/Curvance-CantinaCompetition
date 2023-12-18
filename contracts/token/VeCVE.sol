@@ -486,7 +486,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
             uint256 clBoostedPoints = _getCLPoints(amount) - amount;
 
             // If not all locks combined were continuous, we will need to
-            // reduce points by the difference between the terminal boosted
+            // increment points by the difference between the terminal boosted
             // points minus current ExcessPoints
             if (clBoostedPoints > excessPoints) {
                 _incrementPoints(msg.sender, clBoostedPoints - excessPoints);

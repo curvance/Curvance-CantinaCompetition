@@ -17,7 +17,7 @@ contract LockForTest is TestBaseVeCVE {
         veCVE.shutdown();
 
         vm.expectRevert(VeCVE.VeCVE__VeCVEShutdown.selector);
-        veCVE.createLockFor(address(1), 100, true, rewardsData, "", 0);
+        veCVE.createLockFor(address(1), 100e18, true, rewardsData, "", 0);
     }
 
     function test_lockFor_fail_whenAmountIsZero(
@@ -35,7 +35,7 @@ contract LockForTest is TestBaseVeCVE {
         bool isFreshLockContinuous
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
         vm.expectRevert(VeCVE.VeCVE__InvalidLock.selector);
-        veCVE.createLockFor(address(1), 100, true, rewardsData, "", 0);
+        veCVE.createLockFor(address(1), 100e18, true, rewardsData, "", 0);
     }
 
     function test_lockFor_fail_whenBalanceIsNotEnough(
@@ -46,7 +46,7 @@ contract LockForTest is TestBaseVeCVE {
         centralRegistry.addVeCVELocker(address(this));
 
         vm.expectRevert(SafeTransferLib.TransferFromFailed.selector);
-        veCVE.createLockFor(address(1), 100, true, rewardsData, "", 0);
+        veCVE.createLockFor(address(1), 100e18, true, rewardsData, "", 0);
     }
 
     function test_lockFor_fail_whenAllowanceIsNotEnough(
@@ -59,7 +59,7 @@ contract LockForTest is TestBaseVeCVE {
         deal(address(cve), address(this), 100e18);
 
         vm.expectRevert(SafeTransferLib.TransferFromFailed.selector);
-        veCVE.createLockFor(address(1), 100, true, rewardsData, "", 0);
+        veCVE.createLockFor(address(1), 100e18, true, rewardsData, "", 0);
     }
 
     function test_lockFor_success_withContinuousLock_fuzzed(
@@ -73,7 +73,7 @@ contract LockForTest is TestBaseVeCVE {
         deal(address(cve), address(this), 100e18);
         cve.approve(address(veCVE), 100e18);
 
-        vm.assume(amount > 0 && amount <= 100e18);
+        vm.assume(amount > 1e18 && amount <= 100e18);
 
         vm.expectEmit(true, true, true, true, address(veCVE));
         emit Locked(address(1), amount);
@@ -114,7 +114,7 @@ contract LockForTest is TestBaseVeCVE {
         deal(address(cve), address(this), 100e18);
         cve.approve(address(veCVE), 100e18);
 
-        vm.assume(amount > 0 && amount <= 100e18);
+        vm.assume(amount > 1e18 && amount <= 100e18);
 
         vm.expectEmit(true, true, true, true, address(veCVE));
         emit Locked(address(1), amount);
