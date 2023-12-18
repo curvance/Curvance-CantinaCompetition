@@ -1,7 +1,8 @@
-testMode: assertion
-coverage: true 
-corpusDir: "output/echidna-corpus"
-cryticArgs: ["--ignore-compile"]
-testMaxGas: 1250000000
-codeSize: 0xfffffffffff
-testLimit: 100000
+testMode: assertion # run to detect failed assertions 
+coverage: true  # turns coverage saving "on" 
+corpusDir: "output/echidna-corpus" # saves coverage into ./output/echidna-corpus
+cryticArgs: ["--ignore-compile"] # do not recompile the contracts when echidna runs 
+testMaxGas: 1250000000 # increases test max gas for future complex operations 
+codeSize: 0xfffffffffff # increase the code size 
+testLimit: 100000 # this is the # of iterations Echidna will attempt before it shuts down
+workers: 5 # increases the # of workers/threads to run 
