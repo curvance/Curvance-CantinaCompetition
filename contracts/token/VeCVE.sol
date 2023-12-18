@@ -488,8 +488,8 @@ contract VeCVE is ERC20, ReentrancyGuard {
             // If not all locks combined were continuous, we will need to
             // reduce points by the difference between the terminal boosted
             // points minus current ExcessPoints
-            if (excessPoints > clBoostedPoints) {
-                _reducePoints(msg.sender, clBoostedPoints - excessPoints);
+            if (clBoostedPoints > excessPoints) {
+                _incrementPoints(msg.sender, clBoostedPoints - excessPoints);
             }
         } else {
             userLocks[msg.sender].push(
