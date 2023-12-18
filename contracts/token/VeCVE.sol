@@ -501,7 +501,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
 
             // Remove caller excess points from their continuous locks, if any
             if (excessPoints > 0) {
-                _reducePoints(msg.sender, _getCLPoints(amount) - amount);
+                _reducePoints(msg.sender, excessPoints);
             }
             // Record the new unlock data
             _incrementTokenUnlocks(msg.sender, freshLockEpoch(), amount);
