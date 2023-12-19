@@ -78,7 +78,7 @@ contract FuzzVECVE is StatefulBaseMarket {
         uint256 amount
     ) public {
         require(veCVE.isShutdown() != 2);
-        uint256 amount = clampBetween(amount, 1, WAD - 1);
+        amount = clampBetween(amount, 1, WAD - 1);
 
         approve_cve(
             amount,
@@ -420,30 +420,11 @@ contract FuzzVECVE is StatefulBaseMarket {
         require(numLocks >= 2);
         uint256 lockIndex = 0;
 
-        uint256 newLockAmount = 0;
-        uint256 numberOfExistingContinuousLocks = 0;
-        uint256 userPointsAdjustmentForContinuous;
         uint256 preCombineUserPoints = veCVE.userPoints(address(this));
-
-        for (uint i = 0; i < numLocks; i++) {
-            (uint216 amount, uint40 unlockTime) = veCVE.userLocks(
-                address(this),
-                i
-            );
-            newLockAmount += amount;
-
-            if (unlockTime == veCVE.CONTINUOUS_LOCK_VALUE()) {
-                numberOfExistingContinuousLocks++;
-                userPointsAdjustmentForContinuous +=
-                    (amount * veCVE.clPointMultiplier()) /
-                    DENOMINATOR -
-                    amount;
-            }
-            emit LogUint256(
-                "adjustment amount:",
-                userPointsAdjustmentForContinuous
-            );
-        }
+        (
+            uint256 newLockAmount,
+            uint256 numberOfExistingContinuousLocks
+        ) = get_all_user_lock_info(address(this));
 
         try
             veCVE.combineAllLocks(
@@ -457,42 +438,29 @@ contract FuzzVECVE is StatefulBaseMarket {
             (uint216 combinedAmount, uint40 combinedUnlockTime) = veCVE
                 .userLocks(address(this), 0);
 
-            assertEq(
-                combinedAmount,
-                newLockAmount,
-                "VE_CVE - combineAllLocks() expected amount sum of new lock to equal calculated"
-            );
             uint256 postCombineUserPoints = veCVE.userPoints(address(this));
             // If the existing locks that the user had were all continuous
             if (numberOfExistingContinuousLocks == numLocks) {
-                uint256 boosted = (combinedAmount *
-                    veCVE.clPointMultiplier()) /
-                    DENOMINATOR -
-                    combinedAmount;
-                // TODO check if following precondition is correct
-                // assertEq(
-                //     current_adjustment_for_cl,
-                //     userPointsAdjustmentForContinuous,
-                //     "VE_CVE - combineLocks() - cl point adjustment should be the same for [all continuous] => continuous failed"
-                // );
                 // And a user wants to convert it to a single continuous lock
                 // Ensure that the user points before and after the combine are identical
-                if (boosted > userPointsAdjustmentForContinuous) {
-                    assertEq(
-                        preCombineUserPoints +
-                            boosted -
-                            userPointsAdjustmentForContinuous,
-                        postCombineUserPoints,
-                        "VE_CVE - combineAllLocks() - user points should only increase if diff(boosted, user points)>0"
-                    );
-                } else {
-                    assertEq(
-                        preCombineUserPoints,
-                        postCombineUserPoints,
-                        "VE_CVE - combineAllLocks() - user points should be same for all prior continuous => continuous failed"
-                    );
-                }
+                // [continuous, continuous] => continuous terminal; preCombine == postCombine
+                assertEq(
+                    preCombineUserPoints,
+                    postCombineUserPoints,
+                    "VE_CVE - combineAllLocks() - user points should be same for all prior continuous => continuous failed"
+                );
             }
+            emit LogUint256(
+                "post combine user points:",
+                (postCombineUserPoints * veCVE.clPointMultiplier()) /
+                    DENOMINATOR
+            );
+            assertGte(
+                postCombineUserPoints,
+                (veCVE.balanceOf(address(this)) * veCVE.clPointMultiplier()) /
+                    DENOMINATOR,
+                "VE_CVE - combineALlLocks() veCVE balance = userPoints * multiplier/DENOMINATOR failed for all continuous => continuous"
+            );
             numLocks = 1;
         } catch {
             assertWithMsg(
@@ -502,18 +470,16 @@ contract FuzzVECVE is StatefulBaseMarket {
         }
     }
 
-    function combineAllLocks_non_continuous_to_continuous_terminals_should_succeed()
-        public
+    function get_all_user_lock_info(
+        address addr
+    )
+        private
+        view
+        returns (
+            uint256 newLockAmount,
+            uint256 numberOfExistingContinuousLocks
+        )
     {
-        bool continuous = true;
-        require(numLocks >= 2);
-        uint256 lockIndex = 0;
-
-        uint256 newLockAmount = 0;
-        uint256 numberOfExistingContinuousLocks = 0;
-        uint256 userPointsAdjustmentForContinuous;
-        uint256 preCombineUserPoints = veCVE.userPoints(address(this));
-
         for (uint i = 0; i < numLocks; i++) {
             (uint216 amount, uint40 unlockTime) = veCVE.userLocks(
                 address(this),
@@ -523,16 +489,22 @@ contract FuzzVECVE is StatefulBaseMarket {
 
             if (unlockTime == veCVE.CONTINUOUS_LOCK_VALUE()) {
                 numberOfExistingContinuousLocks++;
-                userPointsAdjustmentForContinuous +=
-                    (amount * veCVE.clPointMultiplier()) /
-                    DENOMINATOR -
-                    amount;
             }
-            emit LogUint256(
-                "adjustment amount:",
-                userPointsAdjustmentForContinuous
-            );
         }
+    }
+
+    function combineAllLocks_non_continuous_to_continuous_terminals_should_succeed()
+        public
+    {
+        bool continuous = true;
+        require(numLocks >= 2);
+
+        uint256 preCombineUserPoints = veCVE.userPoints(address(this));
+
+        (
+            uint256 newLockAmount,
+            uint256 numberOfExistingContinuousLocks
+        ) = get_all_user_lock_info(address(this));
 
         try
             veCVE.combineAllLocks(
@@ -553,60 +525,18 @@ contract FuzzVECVE is StatefulBaseMarket {
             );
             uint256 postCombineUserPoints = veCVE.userPoints(address(this));
             // If the existing locks that the user had were all continuous
-            if (numberOfExistingContinuousLocks == numLocks) {} else if (
-                numberOfExistingContinuousLocks > 0
-            ) {
-                uint256 boostedPoints = (combinedAmount *
-                    veCVE.clPointMultiplier()) /
-                    DENOMINATOR -
-                    combinedAmount;
-                uint256 differenceBoostedAndExcess = boostedPoints -
-                    userPointsAdjustmentForContinuous;
-
-                emit LogUint256("boosted", boostedPoints);
-                emit LogUint256(
-                    "calculated adjustment",
-                    userPointsAdjustmentForContinuous
-                );
-                emit LogUint256(
-                    "difference",
-                    boostedPoints - userPointsAdjustmentForContinuous
-                );
-                if (boostedPoints > userPointsAdjustmentForContinuous) {
-                    assertEq(
-                        preCombineUserPoints +
-                            boostedPoints -
-                            userPointsAdjustmentForContinuous,
-                        postCombineUserPoints,
-                        "VE_CVE - combineAllLocks() - user points should only increase if not all locks were continuous"
-                    );
-                } else {
-                    assertEq(
-                        preCombineUserPoints,
-                        postCombineUserPoints,
-                        "VE_CVE - combineAllLocks() - user points should be same for some prior continuous => continuous failed"
-                    );
-                }
-
-                assertLt(
-                    preCombineUserPoints,
-                    postCombineUserPoints,
-                    "VE_CVE - combineAllLocks() - some prior continuous => continuous failed"
-                );
-            }
-            // if there were 0 continuous locks
-            else {
-                assertEq(
-                    userPointsAdjustmentForContinuous,
-                    0,
-                    "VE_CVE - combineAllLocks() - no prior continuous => continuous, adjustment non-zero"
-                );
-                assertLt(
-                    preCombineUserPoints,
-                    postCombineUserPoints,
-                    "VE_CVE - combineAllLocks() - no prior continuous => continuous, pre user point < post user point"
-                );
-            }
+            // [some continuous locks] -> continuous terminal; preCombine < postCombine
+            assertLt(
+                preCombineUserPoints,
+                postCombineUserPoints,
+                "VE_CVE - combineAllLocks() - some or no prior continuous => continuous failed"
+            );
+            assertGte(
+                postCombineUserPoints,
+                (veCVE.balanceOf(address(this)) * veCVE.clPointMultiplier()) /
+                    DENOMINATOR,
+                "VE_CVE - combineALlLocks() veCVE balance = userPoints * multiplier/DENOMINATOR failed for all continuous => continuous"
+            );
             numLocks = 1;
         } catch {
             assertWithMsg(
@@ -621,28 +551,12 @@ contract FuzzVECVE is StatefulBaseMarket {
     {
         bool continuous = false;
         require(numLocks >= 2);
-        uint256 lockIndex = 0;
 
-        uint256 newLockAmount = 0;
-        uint256 numberOfExistingContinuousLocks = 0;
-        uint256 userPointsAdjustmentForContinuous;
         uint256 preCombineUserPoints = veCVE.userPoints(address(this));
-
-        for (uint i = 0; i < numLocks; i++) {
-            (uint216 amount, uint40 unlockTime) = veCVE.userLocks(
-                address(this),
-                i
-            );
-            newLockAmount += amount;
-
-            if (unlockTime == veCVE.CONTINUOUS_LOCK_VALUE()) {
-                numberOfExistingContinuousLocks++;
-                userPointsAdjustmentForContinuous +=
-                    (amount * veCVE.clPointMultiplier()) /
-                    DENOMINATOR -
-                    amount;
-            }
-        }
+        (
+            uint256 newLockAmount,
+            uint256 numberOfExistingContinuousLocks
+        ) = get_all_user_lock_info(address(this));
 
         try
             veCVE.combineAllLocks(
@@ -663,11 +577,11 @@ contract FuzzVECVE is StatefulBaseMarket {
                 "VE_CVE - combineAllLocks() expected amount sum of new lock to equal calculated"
             );
             uint256 postCombineUserPoints = veCVE.userPoints(address(this));
-            // If the existing locks that the user had were all continuous
+
             if (numberOfExistingContinuousLocks > 0) {
-                // A user wants to convert it into a non-continuous lock
-                assertEq( // Ensure that the previous all-combined user points - merged points is equivalent to the-
-                    preCombineUserPoints - userPointsAdjustmentForContinuous,
+                // // [some continuous] -> non-continuous terminal
+                assertGt(
+                    preCombineUserPoints,
                     postCombineUserPoints,
                     "VE_CVE - combineAllLocks() - ALL continuous => !continuous failed"
                 );
@@ -680,6 +594,14 @@ contract FuzzVECVE is StatefulBaseMarket {
                     "VE_CVE - combineAllLocks() NO continuous locks -> !continuous failed"
                 );
             }
+            assertEq(
+                veCVE.balanceOf(address(this)),
+                postCombineUserPoints,
+                "VE_CVE"
+            );
+
+            //
+            // balance veCVE = userPoints for continuous
         } catch {
             assertWithMsg(
                 false,
@@ -816,6 +738,25 @@ contract FuzzVECVE is StatefulBaseMarket {
 
     function getVotes_correct_calculation(address user) public {
         uint256 votes = veCVE.getVotes(user);
+    }
+
+    // Stateful
+
+    // precondition: userlock is non-continuous
+    // for each user lock, amount += lock.amount
+    // assert(veCVE.balanceOf(this)== lock.amount)
+
+    function balance_must_equal_lock_amount_for_non_continuous() public {
+        (
+            uint256 lockAmountSum,
+            uint256 numberOfExistingContinuousLocks
+        ) = get_all_user_lock_info(address(this));
+        require(numberOfExistingContinuousLocks == numLocks);
+        assertEq(
+            veCVE.balanceOf(address(this)),
+            lockAmountSum,
+            "VE_CVE - balance = lock.amount for all non-continuous objects"
+        );
     }
 
     // Helper Functions
