@@ -89,8 +89,8 @@ contract TestBoostedLock is TestBaseMarket {
         tokensParam[0] = tokens[0];
         tokensParam[1] = tokens[1];
         uint256[] memory poolWeights = new uint256[](2);
-        poolWeights[0] = 100 * 2 weeks;
-        poolWeights[1] = 200 * 2 weeks;
+        poolWeights[0] = 100e18 * 2 weeks;
+        poolWeights[1] = 200e18 * 2 weeks;
         vm.prank(address(protocolMessagingHub));
         gaugePool.setEmissionRates(1, tokensParam, poolWeights);
         vm.prank(address(protocolMessagingHub));
