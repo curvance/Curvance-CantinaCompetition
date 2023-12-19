@@ -35,7 +35,7 @@ contract IncreaseAmountAndExtendLockForTest is TestBaseVeCVE {
         vm.expectRevert(VeCVE.VeCVE__VeCVEShutdown.selector);
         veCVE.increaseAmountAndExtendLockFor(
             address(1),
-            100e18,
+            30e18,
             0,
             true,
             rewardsData,
@@ -69,7 +69,7 @@ contract IncreaseAmountAndExtendLockForTest is TestBaseVeCVE {
         vm.expectRevert(VeCVE.VeCVE__InvalidLock.selector);
         veCVE.increaseAmountAndExtendLockFor(
             address(1),
-            100e18,
+            30e18,
             0,
             true,
             rewardsData,
@@ -88,7 +88,7 @@ contract IncreaseAmountAndExtendLockForTest is TestBaseVeCVE {
         vm.expectRevert(VeCVE.VeCVE__InvalidLock.selector);
         veCVE.increaseAmountAndExtendLockFor(
             address(1),
-            100e18,
+            30e18,
             1,
             true,
             rewardsData,
@@ -110,7 +110,7 @@ contract IncreaseAmountAndExtendLockForTest is TestBaseVeCVE {
         vm.expectRevert(VeCVE.VeCVE__InvalidLock.selector);
         veCVE.increaseAmountAndExtendLockFor(
             address(1),
-            100e18,
+            30e18,
             0,
             true,
             rewardsData,
@@ -128,7 +128,7 @@ contract IncreaseAmountAndExtendLockForTest is TestBaseVeCVE {
 
         veCVE.increaseAmountAndExtendLockFor(
             address(1),
-            100e18,
+            30e18,
             0,
             true,
             rewardsData,
@@ -149,7 +149,7 @@ contract IncreaseAmountAndExtendLockForTest is TestBaseVeCVE {
 
         veCVE.increaseAmountAndExtendLockFor(
             address(1),
-            100e18,
+            30e18,
             0,
             false,
             rewardsData,

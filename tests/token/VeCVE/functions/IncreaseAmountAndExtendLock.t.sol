@@ -23,7 +23,7 @@ contract IncreaseAmountAndExtendLockTest is TestBaseVeCVE {
 
         vm.expectRevert(VeCVE.VeCVE__VeCVEShutdown.selector);
         veCVE.increaseAmountAndExtendLock(
-            100e18,
+            30e18,
             0,
             true,
             rewardsData,
@@ -55,7 +55,7 @@ contract IncreaseAmountAndExtendLockTest is TestBaseVeCVE {
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
         vm.expectRevert(VeCVE.VeCVE__InvalidLock.selector);
         veCVE.increaseAmountAndExtendLock(
-            100e18,
+            30e18,
             1,
             true,
             rewardsData,
@@ -74,7 +74,7 @@ contract IncreaseAmountAndExtendLockTest is TestBaseVeCVE {
 
         vm.expectRevert(VeCVE.VeCVE__InvalidLock.selector);
         veCVE.increaseAmountAndExtendLock(
-            100e18,
+            30e18,
             0,
             true,
             rewardsData,
@@ -89,7 +89,7 @@ contract IncreaseAmountAndExtendLockTest is TestBaseVeCVE {
         bool isFreshLockContinuous
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
         veCVE.increaseAmountAndExtendLock(
-            100e18,
+            30e18,
             0,
             true,
             rewardsData,
@@ -107,7 +107,7 @@ contract IncreaseAmountAndExtendLockTest is TestBaseVeCVE {
         bool isFreshLockContinuous
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
         veCVE.increaseAmountAndExtendLock(
-            100e18,
+            30e18,
             0,
             false,
             rewardsData,
