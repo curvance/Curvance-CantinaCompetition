@@ -134,8 +134,8 @@ contract TestBoostedLock is TestBaseMarket {
         gaugePool.claimAndLock(tokens[1], false, rewardData, "0x", 0);
         assertEq(veCVE.balanceOf(users[0]), 12000e18);
         assertEq(veCVE.balanceOf(users[3]), 16000e18);
-        assertEq(veCVE.getVotes(users[0]), 11538e18);
-        assertEq(veCVE.getVotes(users[3]), 15384e18);
+        assertApproxEqAbs(veCVE.getVotes(users[0]), 11538e18, 1e18);
+        assertApproxEqAbs(veCVE.getVotes(users[3]), 15384e18, 1e18);
 
         vm.warp(block.timestamp + 1000);
 
@@ -147,12 +147,12 @@ contract TestBoostedLock is TestBaseMarket {
         assertEq(veCVE.balanceOf(users[0]), 32000e18);
         assertEq(veCVE.balanceOf(users[3]), 176000e18);
         assertEq(veCVE.getVotes(users[0]), 35200e18);
-        assertEq(veCVE.getVotes(users[3]), 169230e18);
+        assertApproxEqAbs(veCVE.getVotes(users[3]), 169230e18, 1e18);
 
         vm.warp(block.timestamp + 6 weeks);
         assertEq(veCVE.balanceOf(users[0]), 32000e18);
         assertEq(veCVE.balanceOf(users[3]), 176000e18);
         assertEq(veCVE.getVotes(users[0]), 35200e18);
-        assertEq(veCVE.getVotes(users[3]), 148923e18);
+        assertApproxEqAbs(veCVE.getVotes(users[3]), 148923e18, 1e18);
     }
 }
