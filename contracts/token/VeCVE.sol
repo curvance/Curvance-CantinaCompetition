@@ -116,6 +116,9 @@ contract VeCVE is ERC20, ReentrancyGuard {
         genesisEpoch = centralRegistry.genesisEpoch();
         cve = centralRegistry.cve();
         cveLocker = ICVELocker(centralRegistry.cveLocker());
+        // multiplies `clPointMultiplier_` 1e14 to convert from
+        // basis points parameter to WAD storage value
+        clPointMultiplier_ = clPointMultiplier_ * 100000000000000;
 
         if (clPointMultiplier_ <= WAD) {
             revert VeCVE__ParametersAreInvalid();
@@ -486,8 +489,8 @@ contract VeCVE is ERC20, ReentrancyGuard {
             uint256 clBoostedPoints = _getCLPoints(amount) - amount;
 
             // If not all locks combined were continuous, we will need to
-            // reduce points by the difference between the terminal boosted
-            // points minus current ExcessPoints
+            // increment points by the difference between the terminal boosted
+            // points minus current `priorCLPoints`
             if (priorCLPoints > 0) {
                 priorCLPoints = _getCLPoints(priorCLPoints) - priorCLPoints;
                 if (clBoostedPoints > priorCLPoints) {
@@ -503,7 +506,8 @@ contract VeCVE is ERC20, ReentrancyGuard {
                 })
             );
 
-            // Remove caller excess points from their continuous locks, if any
+            // Remove caller `priorCLPoints` from their continuous locks, 
+            // if any
             if (priorCLPoints > 0) {
                 priorCLPoints = _getCLPoints(priorCLPoints) - priorCLPoints;
                 _reducePoints(msg.sender, priorCLPoints);
