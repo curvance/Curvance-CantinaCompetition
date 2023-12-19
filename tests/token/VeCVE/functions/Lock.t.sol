@@ -4,7 +4,7 @@ pragma solidity ^0.8.17;
 import { TestBaseVeCVE } from "../TestBaseVeCVE.sol";
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { VeCVE } from "contracts/token/VeCVE.sol";
-import { DENOMINATOR } from "contracts/libraries/Constants.sol";
+import { WAD } from "contracts/libraries/Constants.sol";
 
 contract LockTest is TestBaseVeCVE {
     event Locked(address indexed user, uint256 amount);
@@ -72,11 +72,11 @@ contract LockTest is TestBaseVeCVE {
 
         assertEq(
             veCVE.chainPoints(),
-            (amount * veCVE.clPointMultiplier()) / DENOMINATOR
+            (amount * veCVE.clPointMultiplier()) / WAD
         );
         assertEq(
             veCVE.userPoints(address(this)),
-            (amount * veCVE.clPointMultiplier()) / DENOMINATOR
+            (amount * veCVE.clPointMultiplier()) / WAD
         );
         assertEq(veCVE.chainUnlocksByEpoch(veCVE.currentEpoch(unlockTime)), 0);
         assertEq(
