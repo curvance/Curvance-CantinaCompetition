@@ -458,8 +458,8 @@ contract FuzzVECVE is StatefulBaseMarket {
             );
             assertGte(
                 postCombineUserPoints,
-                (veCVE.balanceOf(address(this)) * veCVE.clPointMultiplier()) /
-                    DENOMINATOR,
+                ((veCVE.balanceOf(address(this)) * veCVE.clPointMultiplier()) /
+                    DENOMINATOR) / WAD,
                 "VE_CVE - combineALlLocks() veCVE balance = userPoints * multiplier/DENOMINATOR failed for all continuous => continuous"
             );
             numLocks = 1;
@@ -512,8 +512,8 @@ contract FuzzVECVE is StatefulBaseMarket {
             );
             assertGte(
                 postCombineUserPoints,
-                (veCVE.balanceOf(address(this)) * veCVE.clPointMultiplier()) /
-                    DENOMINATOR,
+                ((veCVE.balanceOf(address(this)) * veCVE.clPointMultiplier()) /
+                    DENOMINATOR) / WAD,
                 "VE_CVE - combineALlLocks() veCVE balance = userPoints * multiplier/DENOMINATOR failed for all continuous => continuous"
             );
             numLocks = 1;
@@ -576,7 +576,7 @@ contract FuzzVECVE is StatefulBaseMarket {
             assertEq(
                 veCVE.balanceOf(address(this)),
                 postCombineUserPoints,
-                "VE_CVE"
+                "VE_CVE - combineAllLocks() balance should equal post combine user points"
             );
 
             //
