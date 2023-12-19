@@ -18,15 +18,13 @@ interface IProtocolMessagingHub {
     ///                   sent.
     /// @param toAddress The destination address specified by `dstChainId`.
     /// @param payload The payload data that is sent along with the message.
-    /// @param etherValue How much ether to attach to the transaction.
     /// @dev We redundantly pass adapterParams so we do not need to coerce data
     ///      in the function, calls with this function will have
-    ///      messageType = 1 or messageType = 2
+    ///      messageType = 1, 2 or 3
     function sendLockedTokenData(
         uint16 dstChainId,
         address toAddress,
-        bytes calldata payload,
-        uint256 etherValue
+        bytes calldata payload
     ) external payable;
 
     /// @notice Sends fee tokens to the Messaging Hub on `dstChainId`.

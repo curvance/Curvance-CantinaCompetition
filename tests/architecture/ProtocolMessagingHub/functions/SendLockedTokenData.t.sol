@@ -9,7 +9,7 @@ contract SendLockedTokenDataTest is TestBaseProtocolMessagingHub {
         vm.expectRevert(
             ProtocolMessagingHub.ProtocolMessagingHub__Unauthorized.selector
         );
-        protocolMessagingHub.sendLockedTokenData(23, address(this), "", 0);
+        protocolMessagingHub.sendLockedTokenData(23, address(this), "");
     }
 
     function test_sendLockedTokenData_fail_whenChainIsNotSupported() public {
@@ -20,10 +20,12 @@ contract SendLockedTokenDataTest is TestBaseProtocolMessagingHub {
         );
 
         vm.prank(address(feeAccumulator));
-        protocolMessagingHub.sendLockedTokenData(23, address(this), "", 0);
+        protocolMessagingHub.sendLockedTokenData(23, address(this), "");
     }
 
-    function test_sendLockedTokenData_fail_whenMsgValueIsInvalid() public {
+    function test_sendLockedTokenData_fail_whenNativeAssetIsNotEnough()
+        public
+    {
         centralRegistry.addChainSupport(
             address(this),
             address(this),
@@ -34,12 +36,10 @@ contract SendLockedTokenDataTest is TestBaseProtocolMessagingHub {
             23
         );
 
-        vm.expectRevert(
-            ProtocolMessagingHub.ProtocolMessagingHub__InvalidMsgValue.selector
-        );
+        vm.expectRevert();
 
         vm.prank(address(feeAccumulator));
-        protocolMessagingHub.sendLockedTokenData(23, address(this), "", 1);
+        protocolMessagingHub.sendLockedTokenData(23, address(this), "");
     }
 
     function test_sendLockedTokenData_success() public {
@@ -63,8 +63,7 @@ contract SendLockedTokenDataTest is TestBaseProtocolMessagingHub {
         protocolMessagingHub.sendLockedTokenData{ value: messageFee }(
             23,
             address(this),
-            "",
-            messageFee
+            ""
         );
     }
 }

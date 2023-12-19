@@ -69,7 +69,6 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     );
     error ProtocolMessagingHub__GETHChainIdIsNotSupported(uint256 gethChainId);
     error ProtocolMessagingHub__InsufficientGasToken();
-    error ProtocolMessagingHub__InvalidMsgValue();
     error ProtocolMessagingHub__MessagingHubPaused();
     error ProtocolMessagingHub__MessageHashIsAlreadyDelivered(
         bytes32 messageHash
@@ -268,42 +267,6 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         }
     }
 
-    /// @notice Sends gauge emission information to multiple destination chains
-    /// @param dstChainId Wormhole specific destination chain ID where
-    ///                   the message data should be sent.
-    /// @param toAddress The destination address specified by `dstChainId`.
-    /// @param payload The payload data that is sent along with the message.
-    /// @dev Calls with this function will have messageType = 3.
-    function sendGaugeEmissions(
-        uint16 dstChainId,
-        address toAddress,
-        bytes calldata payload
-    ) external {
-        _checkMessagingHubStatus();
-        _checkPermissions();
-
-        // Validate that we are aiming for a supported chain
-        if (
-            centralRegistry
-                .supportedChainData(
-                    centralRegistry.messagingToGETHChainId(dstChainId)
-                )
-                .isSupported < 2
-        ) {
-            revert ProtocolMessagingHub__ChainIsNotSupported();
-        }
-
-        (uint256 messageFee, ) = _quoteWormholeFee(dstChainId, false);
-
-        wormholeRelayer.sendPayloadToEvm{ value: messageFee }(
-            dstChainId,
-            toAddress,
-            abi.encode(uint8(4), payload), // payload
-            0, // no receiver value needed since we're just passing a message
-            _GAS_LIMIT
-        );
-    }
-
     /// @notice Sends fee tokens to the Messaging Hub on `dstChainId`.
     /// @param dstChainId Wormhole specific destination chain ID .
     /// @param to The address of Messaging Hub on `dstChainId`.
@@ -431,17 +394,14 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     }
 
     /// @notice Sends veCVE locked token data to destination chain.
-    /// @dev Calls with this function will have messageType = 1 or 2
     /// @param dstChainId Wormhole specific destination chain ID where
     ///                   the message data should be sent.
     /// @param toAddress The destination address specified by `dstChainId`.
     /// @param payload The payload data that is sent along with the message.
-    /// @param etherValue How much ether to attach to the transaction.
     function sendLockedTokenData(
         uint16 dstChainId,
         address toAddress,
-        bytes calldata payload,
-        uint256 etherValue
+        bytes calldata payload
     ) external payable {
         _checkMessagingHubStatus();
         _checkPermissions();
@@ -457,11 +417,9 @@ contract ProtocolMessagingHub is ReentrancyGuard {
             revert ProtocolMessagingHub__ChainIsNotSupported();
         }
 
-        if (msg.value != etherValue) {
-            revert ProtocolMessagingHub__InvalidMsgValue();
-        }
+        (uint256 messageFee, ) = _quoteWormholeFee(dstChainId, false);
 
-        wormholeRelayer.sendPayloadToEvm{ value: etherValue }(
+        wormholeRelayer.sendPayloadToEvm{ value: messageFee }(
             dstChainId,
             toAddress,
             abi.encode(uint8(4), payload), // payload

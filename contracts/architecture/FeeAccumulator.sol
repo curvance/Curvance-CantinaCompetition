@@ -355,8 +355,7 @@ contract FeeAccumulator is ReentrancyGuard {
         messagingHub.sendLockedTokenData{ value: gas }(
             dstChainId,
             toAddress,
-            payload,
-            gas
+            payload
         );
     }
 
@@ -464,8 +463,7 @@ contract FeeAccumulator is ReentrancyGuard {
                 messagingHub.sendLockedTokenData{ value: gas }(
                     messagingChainId,
                     chainData.messagingHub,
-                    abi.encode(epochRewardsPerCVE),
-                    gas
+                    abi.encode(epochRewardsPerCVE)
                 );
 
                 unchecked {
