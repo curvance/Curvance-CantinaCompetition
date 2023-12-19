@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import "forge-std/console.sol";
-
 import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { ERC20 } from "contracts/libraries/ERC20.sol";
@@ -38,11 +36,11 @@ contract VeCVE is ERC20, ReentrancyGuard {
     uint256 public constant CL_POINT_MULTIPLIER = 2;
 
     /// @dev `bytes4(keccak256(bytes("VeCVE__Unauthorized()")))`
-    uint256 internal constant _UNAUTHORIZED_SELECTOR = 0x32c4d25d;
+    uint256 public constant _UNAUTHORIZED_SELECTOR = 0x32c4d25d;
     /// @dev `bytes4(keccak256(bytes("VeCVE__InvalidLock()")))`
-    uint256 internal constant _INVALID_LOCK_SELECTOR = 0x21d223d9;
+    uint256 public constant _INVALID_LOCK_SELECTOR = 0x21d223d9;
     /// @dev `bytes4(keccak256(bytes("VeCVE__VeCVEShutdown()")))`
-    uint256 internal constant _VECVE_SHUTDOWN_SELECTOR = 0x3ad2450b;
+    uint256 public constant _VECVE_SHUTDOWN_SELECTOR = 0x3ad2450b;
 
     /// @notice token name metadata.
     bytes32 private immutable _name;
@@ -410,8 +408,6 @@ contract VeCVE is ERC20, ReentrancyGuard {
         _incrementTokenUnlocks(msg.sender, epoch, amount);
     }
 
-    event LogUint(string msg, uint256 value);
-
     /// @notice Combines all locks into a single lock,
     ///         and processes any pending locker rewards.
     /// @param continuousLock Whether the combined lock should be continuous
@@ -460,10 +456,8 @@ contract VeCVE is ERC20, ReentrancyGuard {
             unchecked {
                 // Should never overflow as the total amount of tokens a user
                 // could ever lock is equal to the entire token supply
-                emit LogUint("   adding to amount", locks[i].amount);
                 amount += locks[i++].amount;
             }
-            emit LogUint("current amount", amount);
         }
 
         // Remove the users locks
