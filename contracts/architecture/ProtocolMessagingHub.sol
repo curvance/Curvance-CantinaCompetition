@@ -46,7 +46,10 @@ contract ProtocolMessagingHub is ReentrancyGuard {
 
     /// STORAGE ///
 
-    uint256 isPaused; // 0 or 1 = activate; 2 = paused
+    uint256 public isPaused; // 0 or 1 = activate; 2 = paused
+
+    /// @notice Status of message hash whether it's delivered or not.
+    mapping(bytes32 => bool) public isDeliveredMessageHash;
 
     /// ERRORS ///
 
@@ -68,6 +71,9 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     error ProtocolMessagingHub__InsufficientGasToken();
     error ProtocolMessagingHub__InvalidMsgValue();
     error ProtocolMessagingHub__MessagingHubPaused();
+    error ProtocolMessagingHub__MessageHashIsAlreadyDelivered(
+        bytes32 messageHash
+    );
 
     receive() external payable {}
 
@@ -119,14 +125,23 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     /// @param srcAddress The (wormhole format) address on the sending chain
     ///                   which requested this delivery.
     /// @param srcChainId The wormhole chain ID where delivery was requested.
+    /// @param deliveryHash The VAA hash of the deliveryVAA.
     function receiveWormholeMessages(
         bytes memory payload,
         bytes[] memory /* additionalMessages */,
         bytes32 srcAddress,
         uint16 srcChainId,
-        bytes32 /* deliveryHash */
+        bytes32 deliveryHash
     ) external payable {
         _checkMessagingHubStatus();
+
+        if (isDeliveredMessageHash[deliveryHash]) {
+            revert ProtocolMessagingHub__MessageHashIsAlreadyDelivered(
+                deliveryHash
+            );
+        }
+
+        isDeliveredMessageHash[deliveryHash] = true;
 
         if (msg.sender != address(wormholeRelayer)) {
             revert ProtocolMessagingHub__Unauthorized();
@@ -382,11 +397,11 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         _checkAuthorizedPermissions(state);
 
         // Possible outcomes:
-        // If pause state is being turned off aka false,
-        // then we are turning the messaging hub back on which means isPaused will be = 1
+        // If pause state is being turned off aka false, then we are turning
+        // the messaging hub back on which means isPaused will be = 1
         //
-        // If pause state is being turned on aka true,
-        // then we are turning the messaging hub off which means isPaused will be = 2
+        // If pause state is being turned on aka true, then we are turning
+        // the messaging hub off which means isPaused will be = 2
         isPaused = state ? 1 : 2;
     }
 
@@ -409,12 +424,12 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     }
 
     /// @notice Sends veCVE locked token data to destination chain.
+    /// @dev Calls with this function will have messageType = 1 or 2
     /// @param dstChainId Wormhole specific destination chain ID where
     ///                   the message data should be sent.
     /// @param toAddress The destination address specified by `dstChainId`.
     /// @param payload The payload data that is sent along with the message.
     /// @param etherValue How much ether to attach to the transaction.
-    /// @dev Calls with this function will have messageType = 1 or messageType = 2
     function sendLockedTokenData(
         uint16 dstChainId,
         address toAddress,
@@ -501,9 +516,10 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         }
     }
 
-    /// @dev Checks whether the caller has sufficient permissions based on `state`,
-    /// turning something off is less "risky" than enabling something,
-    /// so `state` = true has reduced permissioning compared to `state` = false.
+    /// @dev Checks whether the caller has sufficient permissions
+    ///      based on `state`, turning something off is less "risky" than
+    ///      enabling something, so `state` = true has reduced permissioning
+    ///      compared to `state` = false.
     function _checkAuthorizedPermissions(bool state) internal view {
         if (state) {
             if (!centralRegistry.hasDaoPermissions(msg.sender)) {
