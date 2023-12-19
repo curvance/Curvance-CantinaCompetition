@@ -36,6 +36,13 @@
 
 As per the original table, there are no concrete test cases defined, as these functions directly check the setup of different contracts. The expected behaviour is based on the necessary outcomes for a successful deployment and setup of the contracts.
 
+## So you found a failure? 
+
+Tips and tricks: 
+- Use Echidna as the primary fuzzer 
+- Medusa works really well to test coverage and to debug the correct behaviour of functions 
+- If Echidna or Medusa find an exploit, write a unit test with the same numbers. This can help you sanity check it. Add this unit test to the maintained unit tests. 
+
 ## Installation Requirements
 
 1. Slither/crytic-compile

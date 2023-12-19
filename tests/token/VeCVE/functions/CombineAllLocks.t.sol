@@ -3,6 +3,7 @@ pragma solidity ^0.8.17;
 
 import { TestBaseVeCVE } from "../TestBaseVeCVE.sol";
 import { VeCVE } from "contracts/token/VeCVE.sol";
+import "forge-std/console.sol";
 
 contract CombineAllLocksTest is TestBaseVeCVE {
     function setUp() public override {
@@ -67,7 +68,7 @@ contract CombineAllLocksTest is TestBaseVeCVE {
         );
     }
 
-    function test_combineAllLocks_correct_user_point_value_with_continuous_lock(
+    function test_combineAllLocks_all_continuous_to_continuous_lock(
         bool shouldLock,
         bool isFreshLock,
         bool isFreshLockContinuous

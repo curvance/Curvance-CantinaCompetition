@@ -425,6 +425,7 @@ contract FuzzVECVE is StatefulBaseMarket {
             uint256 newLockAmount,
             uint256 numberOfExistingContinuousLocks
         ) = get_all_user_lock_info(address(this));
+        require(numberOfExistingContinuousLocks == numLocks);
 
         try
             veCVE.combineAllLocks(
@@ -470,29 +471,6 @@ contract FuzzVECVE is StatefulBaseMarket {
         }
     }
 
-    function get_all_user_lock_info(
-        address addr
-    )
-        private
-        view
-        returns (
-            uint256 newLockAmount,
-            uint256 numberOfExistingContinuousLocks
-        )
-    {
-        for (uint i = 0; i < numLocks; i++) {
-            (uint216 amount, uint40 unlockTime) = veCVE.userLocks(
-                address(this),
-                i
-            );
-            newLockAmount += amount;
-
-            if (unlockTime == veCVE.CONTINUOUS_LOCK_VALUE()) {
-                numberOfExistingContinuousLocks++;
-            }
-        }
-    }
-
     function combineAllLocks_non_continuous_to_continuous_terminals_should_succeed()
         public
     {
@@ -505,6 +483,7 @@ contract FuzzVECVE is StatefulBaseMarket {
             uint256 newLockAmount,
             uint256 numberOfExistingContinuousLocks
         ) = get_all_user_lock_info(address(this));
+        require(numberOfExistingContinuousLocks < numLocks);
 
         try
             veCVE.combineAllLocks(
@@ -760,6 +739,29 @@ contract FuzzVECVE is StatefulBaseMarket {
     }
 
     // Helper Functions
+
+    function get_all_user_lock_info(
+        address addr
+    )
+        private
+        view
+        returns (
+            uint256 newLockAmount,
+            uint256 numberOfExistingContinuousLocks
+        )
+    {
+        for (uint i = 0; i < numLocks; i++) {
+            (uint216 amount, uint40 unlockTime) = veCVE.userLocks(
+                address(this),
+                i
+            );
+            newLockAmount += amount;
+
+            if (unlockTime == veCVE.CONTINUOUS_LOCK_VALUE()) {
+                numberOfExistingContinuousLocks++;
+            }
+        }
+    }
 
     function get_associated_lock(
         address addr,
