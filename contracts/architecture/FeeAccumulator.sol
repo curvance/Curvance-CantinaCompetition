@@ -96,7 +96,7 @@ contract FeeAccumulator is ReentrancyGuard {
     );
     error FeeAccumulator__TokenIsNotEarmarked();
     error FeeAccumulator__ChainIsNotSupported();
-    error FeeAccumulator__CVEAddressIsNotToAddress(
+    error FeeAccumulator__ToAddressIsNotMessagingHub(
         address cveAddress,
         address toAddress
     );
@@ -330,9 +330,9 @@ contract FeeAccumulator is ReentrancyGuard {
             revert FeeAccumulator__ChainIsNotSupported();
         }
 
-        if (chainData.cveAddress != toAddress) {
-            revert FeeAccumulator__CVEAddressIsNotToAddress(
-                chainData.cveAddress,
+        if (chainData.messagingHub != toAddress) {
+            revert FeeAccumulator__ToAddressIsNotMessagingHub(
+                chainData.messagingHub,
                 toAddress
             );
         }
@@ -351,7 +351,7 @@ contract FeeAccumulator is ReentrancyGuard {
 
         messagingHub.sendLockedTokenData{ value: gas }(
             dstChainId,
-            chainData.cveAddress,
+            toAddress,
             payload,
             gas
         );
@@ -460,7 +460,7 @@ contract FeeAccumulator is ReentrancyGuard {
 
                 messagingHub.sendLockedTokenData{ value: gas }(
                     messagingChainId,
-                    chainData.cveAddress,
+                    chainData.messagingHub,
                     abi.encode(epochRewardsPerCVE),
                     gas
                 );

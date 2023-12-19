@@ -7,7 +7,10 @@ import { FeeAccumulator } from "contracts/architecture/FeeAccumulator.sol";
 contract SendLockedTokenDataTest is TestBaseFeeAccumulator {
     function test_sendLockedTokenData_fail_whenCallerIsNotAuthorized() public {
         vm.expectRevert(FeeAccumulator.FeeAccumulator__Unauthorized.selector);
-        feeAccumulator.sendLockedTokenData(42161, user1);
+        feeAccumulator.sendLockedTokenData(
+            42161,
+            address(protocolMessagingHub)
+        );
     }
 
     function test_sendLockedTokenData_fail_whenChainIsNotSupported() public {
@@ -16,7 +19,10 @@ contract SendLockedTokenDataTest is TestBaseFeeAccumulator {
         );
 
         vm.prank(harvester);
-        feeAccumulator.sendLockedTokenData(42161, user1);
+        feeAccumulator.sendLockedTokenData(
+            42161,
+            address(protocolMessagingHub)
+        );
     }
 
     function test_sendLockedTokenData_fail_whenAddressIsNotCVEAddress()
@@ -24,8 +30,8 @@ contract SendLockedTokenDataTest is TestBaseFeeAccumulator {
     {
         centralRegistry.addChainSupport(
             address(this),
-            address(this),
             address(1),
+            address(cve),
             23,
             1,
             1,
@@ -35,15 +41,15 @@ contract SendLockedTokenDataTest is TestBaseFeeAccumulator {
         vm.expectRevert(
             abi.encodeWithSelector(
                 FeeAccumulator
-                    .FeeAccumulator__CVEAddressIsNotToAddress
+                    .FeeAccumulator__ToAddressIsNotMessagingHub
                     .selector,
                 address(1),
-                address(cve)
+                address(protocolMessagingHub)
             )
         );
 
         vm.prank(harvester);
-        feeAccumulator.sendLockedTokenData(23, address(cve));
+        feeAccumulator.sendLockedTokenData(23, address(protocolMessagingHub));
     }
 
     function test_sendLockedTokenData_fail_whenHasNoEnoughNativeAssetForGas()
@@ -51,7 +57,7 @@ contract SendLockedTokenDataTest is TestBaseFeeAccumulator {
     {
         centralRegistry.addChainSupport(
             address(this),
-            address(this),
+            address(protocolMessagingHub),
             address(cve),
             23,
             1,
@@ -62,6 +68,6 @@ contract SendLockedTokenDataTest is TestBaseFeeAccumulator {
         vm.expectRevert();
 
         vm.prank(harvester);
-        feeAccumulator.sendLockedTokenData(23, address(cve));
+        feeAccumulator.sendLockedTokenData(23, address(protocolMessagingHub));
     }
 }
