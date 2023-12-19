@@ -877,6 +877,29 @@ contract FuzzVECVE is StatefulBaseMarket {
         }
     }
 
+    function get_all_user_lock_info(
+        address addr
+    )
+        private
+        view
+        returns (
+            uint256 newLockAmount,
+            uint256 numberOfExistingContinuousLocks
+        )
+    {
+        for (uint i = 0; i < numLocks; i++) {
+            (uint216 amount, uint40 unlockTime) = veCVE.userLocks(
+                address(this),
+                i
+            );
+            newLockAmount += amount;
+
+            if (unlockTime == veCVE.CONTINUOUS_LOCK_VALUE()) {
+                numberOfExistingContinuousLocks++;
+            }
+        }
+    }
+
     function get_associated_lock(
         address addr,
         uint256 lockIndex
