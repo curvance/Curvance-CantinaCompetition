@@ -28,7 +28,7 @@ contract SendLockedTokenDataTest is TestBaseProtocolMessagingHub {
             address(this),
             address(this),
             address(1),
-            23,
+            42161,
             1,
             1,
             23
@@ -53,7 +53,7 @@ contract SendLockedTokenDataTest is TestBaseProtocolMessagingHub {
             address(this),
             address(this),
             address(1),
-            23,
+            42161,
             1,
             1,
             23

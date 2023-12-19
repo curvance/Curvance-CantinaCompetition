@@ -12,7 +12,7 @@ contract ReceiveCrossChainLockDataTest is TestBaseFeeAccumulator {
         vm.expectRevert(FeeAccumulator.FeeAccumulator__Unauthorized.selector);
         feeAccumulator.receiveCrossChainLockData(
             EpochRolloverData({
-                chainId: 23,
+                chainId: 42161,
                 value: _ONE,
                 numChainData: 1,
                 epoch: 0
@@ -29,7 +29,7 @@ contract ReceiveCrossChainLockDataTest is TestBaseFeeAccumulator {
             address(this),
             address(this),
             address(cve),
-            23,
+            42161,
             1,
             1,
             23

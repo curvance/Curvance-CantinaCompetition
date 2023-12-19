@@ -147,6 +147,36 @@ contract ProtocolMessagingHub is ReentrancyGuard {
             revert ProtocolMessagingHub__Unauthorized();
         }
 
+        uint256 gethChainId = centralRegistry.messagingToGETHChainId(
+            srcChainId
+        );
+        address srcAddr = address(uint160(uint256(srcAddress)));
+
+        OmnichainData memory operator = centralRegistry.getOmnichainOperators(
+            srcAddr,
+            gethChainId
+        );
+
+        // Validate message came directly from MessagingHub on the source chain
+        if (
+            centralRegistry.supportedChainData(gethChainId).messagingHub !=
+            srcAddr
+        ) {
+            return;
+        }
+
+        // Validate the operator is authorized
+        if (operator.isAuthorized < 2) {
+            return;
+        }
+
+        // If the operator is correct but the source chain Id
+        // is invalid, ignore the message
+        // Validate the source chainId is correct for the operator
+        if (operator.messagingChainId != srcChainId) {
+            return;
+        }
+
         uint8 payloadId = abi.decode(payload, (uint8));
 
         if (payloadId == 1) {
@@ -163,33 +193,10 @@ contract ProtocolMessagingHub is ReentrancyGuard {
                     .recordEpochRewards(amount);
             }
         } else if (payloadId == 4) {
-            (, address srcCVE, bytes memory emissionData) = abi.decode(
+            (, bytes memory emissionData) = abi.decode(
                 payload,
-                (uint8, address, bytes)
+                (uint8, bytes)
             );
-
-            OmnichainData memory operator = centralRegistry
-                .getOmnichainOperators(
-                    address(uint160(uint256(srcAddress))),
-                    centralRegistry.messagingToGETHChainId(srcChainId)
-                );
-
-            // Validate the operator is authorized
-            if (operator.isAuthorized < 2) {
-                return;
-            }
-
-            // If the operator is correct but the source chain Id
-            // is invalid, ignore the message
-            // Validate the source chainId is correct for the operator
-            if (operator.messagingChainId != srcChainId) {
-                return;
-            }
-
-            // Validate message came directly from CVE on the source chain
-            if (operator.cveAddress != srcCVE) {
-                return;
-            }
 
             (
                 address[] memory gaugePools,
@@ -291,7 +298,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         wormholeRelayer.sendPayloadToEvm{ value: messageFee }(
             dstChainId,
             toAddress,
-            abi.encode(uint8(4), cve, payload), // payload
+            abi.encode(uint8(4), payload), // payload
             0, // no receiver value needed since we're just passing a message
             _GAS_LIMIT
         );
@@ -457,7 +464,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         wormholeRelayer.sendPayloadToEvm{ value: etherValue }(
             dstChainId,
             toAddress,
-            abi.encode(uint8(4), cve, payload), // payload
+            abi.encode(uint8(4), payload), // payload
             0, // no receiver value needed since we're just passing a message
             _GAS_LIMIT
         );

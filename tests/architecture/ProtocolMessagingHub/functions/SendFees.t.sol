@@ -34,7 +34,7 @@ contract SendFeesTest is TestBaseProtocolMessagingHub {
             address(this),
             address(this),
             address(cve),
-            23,
+            42161,
             1,
             1,
             23
@@ -57,7 +57,7 @@ contract SendFeesTest is TestBaseProtocolMessagingHub {
             address(this),
             address(this),
             address(cve),
-            23,
+            42161,
             1,
             1,
             23
@@ -77,7 +77,7 @@ contract SendFeesTest is TestBaseProtocolMessagingHub {
             address(this),
             address(this),
             address(cve),
-            23,
+            42161,
             1,
             1,
             23

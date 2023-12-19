@@ -30,7 +30,7 @@ contract SendGaugeEmissionsTest is TestBaseProtocolMessagingHub {
             address(this),
             address(this),
             address(1),
-            23,
+            42161,
             1,
             1,
             23
@@ -49,7 +49,7 @@ contract SendGaugeEmissionsTest is TestBaseProtocolMessagingHub {
             address(this),
             address(this),
             address(1),
-            23,
+            42161,
             1,
             1,
             23

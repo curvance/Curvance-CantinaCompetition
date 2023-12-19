@@ -32,10 +32,10 @@ contract SendLockedTokenDataTest is TestBaseFeeAccumulator {
             address(this),
             address(1),
             address(cve),
-            23,
+            42161,
             1,
             1,
-            42161
+            23
         );
 
         vm.expectRevert(
@@ -59,10 +59,10 @@ contract SendLockedTokenDataTest is TestBaseFeeAccumulator {
             address(this),
             address(protocolMessagingHub),
             address(cve),
-            23,
+            42161,
             1,
             1,
-            42161
+            23
         );
 
         vm.expectRevert();

@@ -16,10 +16,10 @@ contract AddChainSupportTest is TestBaseMarket {
             address(this),
             address(this),
             address(1),
-            23,
+            42161,
             1,
             1,
-            42161
+            23
         );
         vm.stopPrank();
     }
@@ -29,10 +29,10 @@ contract AddChainSupportTest is TestBaseMarket {
             address(this),
             address(this),
             address(1),
-            23,
+            42161,
             1,
             1,
-            42161
+            23
         );
         vm.expectRevert(
             CentralRegistry.CentralRegistry__ParametersMisconfigured.selector
@@ -41,10 +41,10 @@ contract AddChainSupportTest is TestBaseMarket {
             address(this),
             address(this),
             address(1),
-            23,
+            42161,
             1,
             1,
-            42161
+            23
         );
     }
 
@@ -53,10 +53,10 @@ contract AddChainSupportTest is TestBaseMarket {
             address(this),
             address(this),
             address(1),
-            23,
+            42161,
             1,
             1,
-            42161
+            23
         );
         vm.expectRevert(
             CentralRegistry.CentralRegistry__ParametersMisconfigured.selector
@@ -65,10 +65,10 @@ contract AddChainSupportTest is TestBaseMarket {
             user1,
             address(this),
             address(1),
-            23,
+            42161,
             1,
             1,
-            42161
+            23
         );
     }
 
@@ -78,15 +78,15 @@ contract AddChainSupportTest is TestBaseMarket {
         uint256 prevSupportedChains = centralRegistry.supportedChains();
 
         vm.expectEmit(true, true, true, true);
-        emit NewChainAdded(23, user1);
+        emit NewChainAdded(42161, user1);
         centralRegistry.addChainSupport(
             user1,
             address(this),
             address(1),
-            23,
+            42161,
             1,
             1,
-            42161
+            23
         );
 
         (
@@ -95,7 +95,7 @@ contract AddChainSupportTest is TestBaseMarket {
             uint256 asSourceAux,
             uint256 asDestinationAux,
             address cveAddress
-        ) = centralRegistry.supportedChainData(23);
+        ) = centralRegistry.supportedChainData(42161);
         assertEq(isSupported, 2);
         assertEq(messagingHub, address(this));
         assertEq(asSourceAux, 1);
@@ -107,14 +107,14 @@ contract AddChainSupportTest is TestBaseMarket {
             uint256 chainId,
             uint256 messagingChainId,
             address cveAddress_
-        ) = centralRegistry.omnichainOperators(user1, 23);
+        ) = centralRegistry.omnichainOperators(user1, 42161);
         assertEq(isAuthorized, 2);
-        assertEq(chainId, 23);
-        assertEq(messagingChainId, 42161);
+        assertEq(chainId, 42161);
+        assertEq(messagingChainId, 23);
         assertEq(cveAddress_, address(1));
 
-        assertEq(centralRegistry.messagingToGETHChainId(42161), 23);
-        assertEq(centralRegistry.GETHToMessagingChainId(23), 42161);
+        assertEq(centralRegistry.messagingToGETHChainId(23), 42161);
+        assertEq(centralRegistry.GETHToMessagingChainId(42161), 23);
         assertEq(prevSupportedChains + 1, centralRegistry.supportedChains());
     }
 }

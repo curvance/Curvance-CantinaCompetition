@@ -322,8 +322,11 @@ contract FeeAccumulator is ReentrancyGuard {
 
         lockedTokenDataSent[dstChainId][epoch] = 2;
 
-        ChainData memory chainData = centralRegistry.supportedChainData(
+        uint256 gethChainId = centralRegistry.messagingToGETHChainId(
             dstChainId
+        );
+        ChainData memory chainData = centralRegistry.supportedChainData(
+            gethChainId
         );
 
         if (chainData.isSupported < 2) {

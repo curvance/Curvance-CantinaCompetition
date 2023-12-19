@@ -5,6 +5,24 @@ import { TestBaseProtocolMessagingHub } from "../TestBaseProtocolMessagingHub.so
 import { ProtocolMessagingHub } from "contracts/architecture/ProtocolMessagingHub.sol";
 
 contract ReceiveWormholeMessagesTest is TestBaseProtocolMessagingHub {
+    address public srcMessagingHub;
+
+    function setUp() public override {
+        super.setUp();
+
+        srcMessagingHub = makeAddr("SrcMessagingHub");
+
+        centralRegistry.addChainSupport(
+            address(srcMessagingHub),
+            address(srcMessagingHub),
+            address(cve),
+            42161,
+            1,
+            1,
+            23
+        );
+    }
+
     function test_receiveWormholeMessages_fail_whenCallerIsNotWormholeRelayer()
         public
     {
@@ -14,8 +32,8 @@ contract ReceiveWormholeMessagesTest is TestBaseProtocolMessagingHub {
         protocolMessagingHub.receiveWormholeMessages(
             abi.encode(1, bytes32(uint256(uint160(_USDC_ADDRESS))), 100e6),
             new bytes[](0),
-            bytes32(uint256(uint160(address(this)))),
-            2,
+            bytes32(uint256(uint160(address(srcMessagingHub)))),
+            23,
             bytes32("0x01")
         );
     }
@@ -27,8 +45,8 @@ contract ReceiveWormholeMessagesTest is TestBaseProtocolMessagingHub {
         protocolMessagingHub.receiveWormholeMessages(
             abi.encode(1, bytes32(uint256(uint160(_USDC_ADDRESS))), 100e6),
             new bytes[](0),
-            bytes32(uint256(uint160(address(this)))),
-            2,
+            bytes32(uint256(uint160(address(srcMessagingHub)))),
+            23,
             bytes32("0x01")
         );
     }
@@ -42,8 +60,8 @@ contract ReceiveWormholeMessagesTest is TestBaseProtocolMessagingHub {
         protocolMessagingHub.receiveWormholeMessages(
             abi.encode(1, bytes32(uint256(uint160(_USDC_ADDRESS))), 100e6),
             new bytes[](0),
-            bytes32(uint256(uint160(address(this)))),
-            2,
+            bytes32(uint256(uint160(address(srcMessagingHub)))),
+            23,
             bytes32("0x01")
         );
 
@@ -60,8 +78,8 @@ contract ReceiveWormholeMessagesTest is TestBaseProtocolMessagingHub {
         protocolMessagingHub.receiveWormholeMessages(
             abi.encode(1, bytes32(uint256(uint160(_USDC_ADDRESS))), 100e6),
             new bytes[](0),
-            bytes32(uint256(uint160(address(this)))),
-            2,
+            bytes32(uint256(uint160(address(srcMessagingHub)))),
+            23,
             bytes32("0x01")
         );
     }
@@ -76,8 +94,8 @@ contract ReceiveWormholeMessagesTest is TestBaseProtocolMessagingHub {
         protocolMessagingHub.receiveWormholeMessages(
             abi.encode(1, bytes32(uint256(uint160(_USDC_ADDRESS))), 100e6),
             new bytes[](0),
-            bytes32(uint256(uint160(address(this)))),
-            2,
+            bytes32(uint256(uint160(address(srcMessagingHub)))),
+            23,
             bytes32("0x01")
         );
 
