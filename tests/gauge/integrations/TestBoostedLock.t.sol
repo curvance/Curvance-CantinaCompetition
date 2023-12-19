@@ -94,7 +94,7 @@ contract TestBoostedLock is TestBaseMarket {
         vm.prank(address(protocolMessagingHub));
         gaugePool.setEmissionRates(1, tokensParam, poolWeights);
         vm.prank(address(protocolMessagingHub));
-        cve.mintGaugeEmissions(address(gaugePool), 300 * 2 weeks);
+        cve.mintGaugeEmissions(address(gaugePool), 300e18 * 2 weeks);
 
         vm.warp(gaugePool.startTime() + 1 * 2 weeks);
 
@@ -108,8 +108,8 @@ contract TestBoostedLock is TestBaseMarket {
 
         // check pending rewards after 100 seconds
         vm.warp(block.timestamp + 100);
-        assertEq(gaugePool.pendingRewards(tokens[0], users[0]), 10000);
-        assertEq(gaugePool.pendingRewards(tokens[1], users[2]), 20000);
+        assertEq(gaugePool.pendingRewards(tokens[0], users[0]), 10000e18);
+        assertEq(gaugePool.pendingRewards(tokens[1], users[2]), 20000e18);
 
         // user1 deposit 400 token0
         vm.prank(users[1]);
@@ -121,10 +121,10 @@ contract TestBoostedLock is TestBaseMarket {
 
         // check pending rewards after 100 seconds
         vm.warp(block.timestamp + 100);
-        assertEq(gaugePool.pendingRewards(tokens[0], users[0]), 12000);
-        assertEq(gaugePool.pendingRewards(tokens[0], users[1]), 8000);
-        assertEq(gaugePool.pendingRewards(tokens[1], users[2]), 24000);
-        assertEq(gaugePool.pendingRewards(tokens[1], users[3]), 16000);
+        assertEq(gaugePool.pendingRewards(tokens[0], users[0]), 12000e18);
+        assertEq(gaugePool.pendingRewards(tokens[0], users[1]), 8000e18);
+        assertEq(gaugePool.pendingRewards(tokens[1], users[2]), 24000e18);
+        assertEq(gaugePool.pendingRewards(tokens[1], users[3]), 16000e18);
 
         // user0, user3 claims
         RewardsData memory rewardData;
@@ -132,10 +132,10 @@ contract TestBoostedLock is TestBaseMarket {
         gaugePool.claimAndLock(tokens[0], false, rewardData, "0x", 0);
         vm.prank(users[3]);
         gaugePool.claimAndLock(tokens[1], false, rewardData, "0x", 0);
-        assertEq(veCVE.balanceOf(users[0]), 12000);
-        assertEq(veCVE.balanceOf(users[3]), 16000);
-        assertEq(veCVE.getVotes(users[0]), 11538);
-        assertEq(veCVE.getVotes(users[3]), 15384);
+        assertEq(veCVE.balanceOf(users[0]), 12000e18);
+        assertEq(veCVE.balanceOf(users[3]), 16000e18);
+        assertEq(veCVE.getVotes(users[0]), 11538e18);
+        assertEq(veCVE.getVotes(users[3]), 15384e18);
 
         vm.warp(block.timestamp + 1000);
 
@@ -144,15 +144,15 @@ contract TestBoostedLock is TestBaseMarket {
         gaugePool.claimAndExtendLock(tokens[0], 0, true, rewardData, "0x", 0);
         vm.prank(users[3]);
         gaugePool.claimAndExtendLock(tokens[1], 0, false, rewardData, "0x", 0);
-        assertEq(veCVE.balanceOf(users[0]), 32000);
-        assertEq(veCVE.balanceOf(users[3]), 176000);
-        assertEq(veCVE.getVotes(users[0]), 35200);
-        assertEq(veCVE.getVotes(users[3]), 169230);
+        assertEq(veCVE.balanceOf(users[0]), 32000e18);
+        assertEq(veCVE.balanceOf(users[3]), 176000e18);
+        assertEq(veCVE.getVotes(users[0]), 35200e18);
+        assertEq(veCVE.getVotes(users[3]), 169230e18);
 
         vm.warp(block.timestamp + 6 weeks);
-        assertEq(veCVE.balanceOf(users[0]), 32000);
-        assertEq(veCVE.balanceOf(users[3]), 176000);
-        assertEq(veCVE.getVotes(users[0]), 35200);
-        assertEq(veCVE.getVotes(users[3]), 148923);
+        assertEq(veCVE.balanceOf(users[0]), 32000e18);
+        assertEq(veCVE.balanceOf(users[3]), 176000e18);
+        assertEq(veCVE.getVotes(users[0]), 35200e18);
+        assertEq(veCVE.getVotes(users[3]), 148923e18);
     }
 }
