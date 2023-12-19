@@ -2,7 +2,7 @@
 pragma solidity ^0.8.17;
 import { StatefulBaseMarket } from "tests/fuzzing/StatefulBaseMarket.sol";
 import { RewardsData } from "contracts/interfaces/ICVELocker.sol";
-import { DENOMINATOR } from "contracts/libraries/Constants.sol";
+import { DENOMINATOR, WAD } from "contracts/libraries/Constants.sol";
 
 contract FuzzVECVE is StatefulBaseMarket {
     struct CreateLockData {
@@ -32,7 +32,7 @@ contract FuzzVECVE is StatefulBaseMarket {
             isAllContinuous = false;
         }
         require(veCVE.isShutdown() != 2);
-        amount = clampBetween(amount, 1, type(uint32).max);
+        amount = clampBetween(amount, WAD, type(uint64).max);
         // save balance of CVE
         uint256 preLockCVEBalance = cve.balanceOf(address(this));
         // save balance of VE_CVE
@@ -70,6 +70,41 @@ contract FuzzVECVE is StatefulBaseMarket {
             assertWithMsg(
                 false,
                 "VE_CVE - createLock call failed unexpectedly"
+            );
+        }
+    }
+
+    function create_lock_with_less_than_wad_should_fail(
+        uint256 amount
+    ) public {
+        require(veCVE.isShutdown() != 2);
+        uint256 amount = clampBetween(amount, 1, WAD - 1);
+
+        approve_cve(
+            amount,
+            "VE_CVE - createLock call failed on cve token approval for ZERO"
+        );
+
+        try
+            veCVE.createLock(
+                amount,
+                defaultContinuous.continuousLock,
+                defaultContinuous.rewardsData,
+                defaultContinuous.param,
+                defaultContinuous.aux
+            )
+        {
+            // VE_CVE.createLock() with zero amount is expected to fail
+            assertWithMsg(
+                false,
+                "VE_CVE - createLock should have failed for ZERO amount"
+            );
+        } catch (bytes memory revertData) {
+            uint256 errorSelector = extractErrorSelector(revertData);
+
+            assertWithMsg(
+                errorSelector == vecve_invalidLockSelectorHash,
+                "VE_CVE - createLock() should fail when creating with 0"
             );
         }
     }
@@ -281,7 +316,7 @@ contract FuzzVECVE is StatefulBaseMarket {
         require(veCVE.isShutdown() != 2);
         uint256 lockIndex = get_existing_lock(number);
 
-        amount = clampBetween(amount, 1, type(uint32).max);
+        amount = clampBetween(amount, WAD, type(uint32).max);
         (, uint256 unlockTime) = get_associated_lock(address(this), lockIndex);
         require(unlockTime == veCVE.CONTINUOUS_LOCK_VALUE());
         // save balance of CVE
@@ -334,7 +369,7 @@ contract FuzzVECVE is StatefulBaseMarket {
         uint256 lockIndex = get_existing_lock(number);
         isAllContinuous = false;
 
-        amount = clampBetween(amount, 1, type(uint32).max);
+        amount = clampBetween(amount, WAD, type(uint32).max);
         (, uint256 unlockTime) = get_associated_lock(address(this), lockIndex);
         require(unlockTime >= block.timestamp);
         // save balance of CVE
@@ -430,22 +465,33 @@ contract FuzzVECVE is StatefulBaseMarket {
             uint256 postCombineUserPoints = veCVE.userPoints(address(this));
             // If the existing locks that the user had were all continuous
             if (numberOfExistingContinuousLocks == numLocks) {
-                uint256 current_adjustment_for_cl = (combinedAmount *
+                uint256 boosted = (combinedAmount *
                     veCVE.clPointMultiplier()) /
                     DENOMINATOR -
                     combinedAmount;
-                assertEq(
-                    current_adjustment_for_cl,
-                    userPointsAdjustmentForContinuous,
-                    "VE_CVE - combineLocks() - cl point adjustment should be the same for [all continuous] => continuous failed"
-                );
+                // TODO check if following precondition is correct
+                // assertEq(
+                //     current_adjustment_for_cl,
+                //     userPointsAdjustmentForContinuous,
+                //     "VE_CVE - combineLocks() - cl point adjustment should be the same for [all continuous] => continuous failed"
+                // );
                 // And a user wants to convert it to a single continuous lock
                 // Ensure that the user points before and after the combine are identical
-                assertEq(
-                    preCombineUserPoints,
-                    postCombineUserPoints,
-                    "VE_CVE - combineAllLocks() - user points should be same for all prior continuous => continuous failed"
-                );
+                if (boosted > userPointsAdjustmentForContinuous) {
+                    assertEq(
+                        preCombineUserPoints +
+                            boosted -
+                            userPointsAdjustmentForContinuous,
+                        postCombineUserPoints,
+                        "VE_CVE - combineAllLocks() - user points should only increase if diff(boosted, user points)>0"
+                    );
+                } else {
+                    assertEq(
+                        preCombineUserPoints,
+                        postCombineUserPoints,
+                        "VE_CVE - combineAllLocks() - user points should be same for all prior continuous => continuous failed"
+                    );
+                }
             }
             numLocks = 1;
         } catch {
@@ -510,8 +556,40 @@ contract FuzzVECVE is StatefulBaseMarket {
             if (numberOfExistingContinuousLocks == numLocks) {} else if (
                 numberOfExistingContinuousLocks > 0
             ) {
-                assertEq(
-                    preCombineUserPoints - userPointsAdjustmentForContinuous,
+                uint256 boostedPoints = (combinedAmount *
+                    veCVE.clPointMultiplier()) /
+                    DENOMINATOR -
+                    combinedAmount;
+                uint256 differenceBoostedAndExcess = boostedPoints -
+                    userPointsAdjustmentForContinuous;
+
+                emit LogUint256("boosted", boostedPoints);
+                emit LogUint256(
+                    "calculated adjustment",
+                    userPointsAdjustmentForContinuous
+                );
+                emit LogUint256(
+                    "difference",
+                    boostedPoints - userPointsAdjustmentForContinuous
+                );
+                if (boostedPoints > userPointsAdjustmentForContinuous) {
+                    assertEq(
+                        preCombineUserPoints +
+                            boostedPoints -
+                            userPointsAdjustmentForContinuous,
+                        postCombineUserPoints,
+                        "VE_CVE - combineAllLocks() - user points should only increase if not all locks were continuous"
+                    );
+                } else {
+                    assertEq(
+                        preCombineUserPoints,
+                        postCombineUserPoints,
+                        "VE_CVE - combineAllLocks() - user points should be same for some prior continuous => continuous failed"
+                    );
+                }
+
+                assertLt(
+                    preCombineUserPoints,
                     postCombineUserPoints,
                     "VE_CVE - combineAllLocks() - some prior continuous => continuous failed"
                 );

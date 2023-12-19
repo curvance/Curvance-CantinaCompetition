@@ -7,6 +7,7 @@ import { ErrorConstants } from "tests/fuzzing/ErrorConstants.sol";
 import { MockToken } from "contracts/mocks/MockToken.sol";
 import { MockV3Aggregator } from "contracts/mocks/MockV3Aggregator.sol";
 import { MockCircleRelayer, MockWormhole } from "contracts/mocks/MockCircleRelayer.sol";
+import { MockTokenBridgeRelayer } from "contracts/mocks/MockTokenBridgeRelayer.sol";
 
 import { CVE } from "contracts/token/CVE.sol";
 import { VeCVE } from "contracts/token/VeCVE.sol";
@@ -63,6 +64,7 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
     MockToken public dai;
     MockToken public WETH;
     MockToken public balRETH;
+    MockTokenBridgeRelayer public bridgeRelayer;
 
     MockV3Aggregator public chainlinkUsdcUsd;
     MockV3Aggregator public chainlinkUsdcEth;
@@ -153,8 +155,10 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
     }
 
     function _deployCVE() internal {
+        bridgeRelayer = new MockTokenBridgeRelayer();
         cve = new CVE(
             ICentralRegistry(address(centralRegistry)),
+            address(bridgeRelayer),
             address(this),
             10000 ether,
             10000 ether,
