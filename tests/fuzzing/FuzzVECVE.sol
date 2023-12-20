@@ -526,8 +526,8 @@ contract FuzzVECVE is StatefulBaseMarket {
             // for each existing lock
             // ensure that the post user unlock value for that epoch is < pre user unlock
             // ensure that the post chain unlock for epoch < pre chain unlock
-            for (uint i = 0; i < individualEpochs.length; i++) {
-                uint256 unlockEpoch = individualEpochs[i];
+            for (uint i = 0; i < uniqueEpochs.length; i++) {
+                uint256 unlockEpoch = uniqueEpochs[i];
                 assertGte(
                     epochBalances[unlockEpoch].userUnlocksByEpoch,
                     veCVE.userUnlocksByEpoch(address(this), unlockEpoch),
@@ -764,7 +764,7 @@ contract FuzzVECVE is StatefulBaseMarket {
             uint256 numberOfExistingContinuousLocks
         ) = get_all_user_lock_info(address(this));
         require(numberOfExistingContinuousLocks == numLocks);
-        for (uint i = 0; i < individualEpochs.length; i++) {
+        for (uint i = 0; i < uniqueEpochs.length; i++) {
             (, uint40 unlockTime) = veCVE.userLocks(address(this), i);
             uint256 epoch = veCVE.currentEpoch(unlockTime);
             if (unlockTime != veCVE.CONTINUOUS_LOCK_VALUE()) {
@@ -789,7 +789,7 @@ contract FuzzVECVE is StatefulBaseMarket {
             uint256 numberOfExistingContinuousLocks
         ) = get_all_user_lock_info(address(this));
 
-        for (uint i = 0; i < individualEpochs.length; i++) {
+        for (uint i = 0; i < uniqueEpochs.length; i++) {
             (, uint40 unlockTime) = veCVE.userLocks(address(this), i);
             uint256 epoch = veCVE.currentEpoch(unlockTime);
             if (unlockTime != veCVE.CONTINUOUS_LOCK_VALUE()) {
@@ -809,19 +809,18 @@ contract FuzzVECVE is StatefulBaseMarket {
     }
 
     function sum_of_all_user_unlock_epochs_is_equal_to_user_points() public {
+        save_epoch_unlock_values();
         uint256 sumUserUnlockEpochs;
 
         emit LogUint256("numlocks", numLocks);
+        emit LogUint256("uniqueEpochs", uniqueEpochs.length);
 
-        for (uint256 i = 0; i < numLocks; i++) {
+        for (uint256 i = 0; i < uniqueEpochs.length; i++) {
             (, uint40 unlockTime) = veCVE.userLocks(address(this), i);
 
             uint256 epoch = veCVE.currentEpoch(unlockTime);
-            uint256 userUnlocksByEpoch = veCVE.userUnlocksByEpoch(
-                address(this),
-                epoch
-            );
-            sumUserUnlockEpochs += userUnlocksByEpoch;
+
+            sumUserUnlockEpochs += epochBalances[epoch].userUnlocksByEpoch;
         }
         assertLte(
             sumUserUnlockEpochs,
@@ -848,7 +847,7 @@ contract FuzzVECVE is StatefulBaseMarket {
     }
 
     // Helper Functions
-    uint256[] individualEpochs;
+    uint256[] uniqueEpochs;
     mapping(uint256 => CombineBalance) epochBalances;
     struct CombineBalance {
         uint256 chainUnlocksByEpoch;
@@ -856,18 +855,27 @@ contract FuzzVECVE is StatefulBaseMarket {
     }
 
     function save_epoch_unlock_values() private {
-        for (uint i = 0; i < numLocks; i++) {
+        for (uint i = 0; i < uniqueEpochs.length; i++) {
             (uint216 amount, uint40 unlockTime) = veCVE.userLocks(
                 address(this),
                 i
             );
             uint256 epoch = veCVE.currentEpoch(unlockTime);
-            individualEpochs.push(epoch);
+            if (!has_epoch_been_added(epoch)) {
+                uniqueEpochs.push(epoch);
+            }
             epochBalances[epoch].chainUnlocksByEpoch += veCVE
                 .chainUnlocksByEpoch(epoch);
             epochBalances[epoch].userUnlocksByEpoch += veCVE
                 .userUnlocksByEpoch(address(this), epoch);
         }
+    }
+
+    function has_epoch_been_added(uint _value) private returns (bool) {
+        for (uint i = 0; i < uniqueEpochs.length; i++) {
+            if (uniqueEpochs[i] == _value) return true;
+        }
+        return false;
     }
 
     function get_all_user_lock_info(
@@ -896,7 +904,7 @@ contract FuzzVECVE is StatefulBaseMarket {
     function get_associated_lock(
         address addr,
         uint256 lockIndex
-    ) private returns (uint216, uint40) {
+    ) private view returns (uint216, uint40) {
         (uint216 amount, uint40 unlockTime) = veCVE.userLocks(addr, lockIndex);
     }
 
