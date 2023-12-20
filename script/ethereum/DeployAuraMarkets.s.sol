@@ -9,19 +9,9 @@ import { AuraMarketDeployer } from "../deployers/aura/AuraMarketDeployer.s.sol";
 contract DeployAuraMarkets is Script, DeployConfiguration, AuraMarketDeployer {
     using stdJson for string;
 
-    function setConfigurationPath() internal {
-        string memory root = vm.projectRoot();
-        configurationPath = string.concat(root, "/config/ethereum.json");
-    }
-
-    function setDeploymentPath() internal {
-        string memory root = vm.projectRoot();
-        deploymentPath = string.concat(root, "/deployments/ethereum.json");
-    }
-
     function run() external {
-        setConfigurationPath();
-        setDeploymentPath();
+        _setConfigurationPath("ethereum");
+        _setDeploymentPath("ethereum");
 
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         address deployer = vm.addr(deployerPrivateKey);
@@ -34,7 +24,9 @@ contract DeployAuraMarkets is Script, DeployConfiguration, AuraMarketDeployer {
         _deployAuraMarket(
             "C-AURA-RETH-WETH-109",
             abi.decode(
-                configurationJson.parseRaw(".markets.aura.AURA-RETH-WETH-109"),
+                configurationJson.parseRaw(
+                    ".markets.cTokens.AURA-RETH-WETH-109"
+                ),
                 (AuraMarketDeployer.AuraMarketParam)
             )
         );

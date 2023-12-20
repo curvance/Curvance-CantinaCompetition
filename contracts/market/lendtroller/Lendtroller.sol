@@ -40,7 +40,7 @@ contract Lendtroller is LiquidityManager, ERC165 {
     uint256 internal constant _TOKEN_NOT_LISTED_SELECTOR = 0xf3e41c92;
     /// @dev `bytes4(keccak256(bytes("Lendtroller__Paused()")))`
     uint256 internal constant _PAUSED_SELECTOR = 0xe192eaaf;
-    
+
     /// STORAGE ///
 
     /// @notice A list of all tokens inside this market for the frontend.
@@ -695,7 +695,7 @@ contract Lendtroller is LiquidityManager, ERC165 {
                 }
             }
         }
-        
+
         tokensListed.push(mToken);
         emit TokenListed(mToken);
     }

@@ -100,10 +100,18 @@
             "chainlinkEth": "0x86392dC19c0b719886221c78AB11eb8Cf5c52812",
             "chainlinkUsd": "0xCfE54B5cD566aB89272946F602D76Ea879CAb4a8"
           }
-        ]
-      }
-    },
-    "pendle": {
+        ],
+        "collateralConfig": {
+          "collRatio": 1000,
+          "collReqA": 1000,
+          "collReqB": 1000,
+          "liqIncA": 1000,
+          "liqIncB": 1000,
+          "liqFee": 1000,
+          "baseCFactor": 1000,
+          "collateralCaps": 100000000000000000000
+        }
+      },
       "PendleLP-stETH-26DEC24": {
         "asset": "0xD0354D4e7bCf345fB117cabe41aCaDb724eccCa2",
         "pt": "0x7758896b6AC966BbABcf143eFA963030f17D3EdF",
@@ -119,9 +127,7 @@
             "chainlinkUsd": "0xCfE54B5cD566aB89272946F602D76Ea879CAb4a8"
           }
         ]
-      }
-    },
-    "convex": {
+      },
       "CONVEX-STETH-ETH-177": {
         "asset": "0x21E27a5E5513D6e65C4f830167390997aA84843a",
         "pool": "0x21E27a5E5513D6e65C4f830167390997aA84843a",
@@ -140,9 +146,7 @@
             "chainlinkUsd": "0xCfE54B5cD566aB89272946F602D76Ea879CAb4a8"
           }
         ]
-      }
-    },
-    "aura": {
+      },
       "AURA-RETH-WETH-109": {
         "asset": "0x1E19CF2D73a72Ef1332C882F20534B6519Be0276",
         "booster": "0xA57b8d98dAE62B26Ec3bcC4a365338157060B234",

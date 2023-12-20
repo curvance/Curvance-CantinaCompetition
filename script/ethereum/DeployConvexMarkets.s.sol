@@ -13,19 +13,9 @@ contract DeployConvexMarkets is
 {
     using stdJson for string;
 
-    function setConfigurationPath() internal {
-        string memory root = vm.projectRoot();
-        configurationPath = string.concat(root, "/config/ethereum.json");
-    }
-
-    function setDeploymentPath() internal {
-        string memory root = vm.projectRoot();
-        deploymentPath = string.concat(root, "/deployments/ethereum.json");
-    }
-
     function run() external {
-        setConfigurationPath();
-        setDeploymentPath();
+        _setConfigurationPath("ethereum");
+        _setDeploymentPath("ethereum");
 
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         address deployer = vm.addr(deployerPrivateKey);
@@ -39,7 +29,7 @@ contract DeployConvexMarkets is
             "C-CONVEX-STETH-ETH-177",
             abi.decode(
                 configurationJson.parseRaw(
-                    ".markets.convex.CONVEX-STETH-ETH-177"
+                    ".markets.cTokens.CONVEX-STETH-ETH-177"
                 ),
                 (ConvexMarketDeployer.ConvexMarketParam)
             )

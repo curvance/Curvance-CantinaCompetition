@@ -3,8 +3,8 @@ pragma solidity ^0.8.17;
 
 import "forge-std/Script.sol";
 
-import { DeployConfiguration } from "../utils/DeployConfiguration.sol";
-import { PendlePTDeployer } from "../deployers/cToken/PendlePTDeployer.s.sol";
+import { DeployConfiguration } from "./utils/DeployConfiguration.sol";
+import { PendlePTDeployer } from "./deployers/cToken/PendlePTDeployer.s.sol";
 
 contract DeployCTokenPrimitive is
     Script,
@@ -13,19 +13,17 @@ contract DeployCTokenPrimitive is
 {
     using stdJson for string;
 
-    function setConfigurationPath() internal {
-        string memory root = vm.projectRoot();
-        configurationPath = string.concat(root, "/config/ethereum.json");
+    function run(string memory name) external {
+        _deploy("ethereum", name);
     }
 
-    function setDeploymentPath() internal {
-        string memory root = vm.projectRoot();
-        deploymentPath = string.concat(root, "/deployments/ethereum.json");
+    function run(string memory network, string memory name) external {
+        _deploy(network, name);
     }
 
-    function run() external {
-        setConfigurationPath();
-        setDeploymentPath();
+    function _deploy(string memory network, string memory name) internal {
+        _setConfigurationPath(network);
+        _setDeploymentPath(network);
 
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         address deployer = vm.addr(deployerPrivateKey);
@@ -36,10 +34,10 @@ contract DeployCTokenPrimitive is
         vm.startBroadcast(deployerPrivateKey);
 
         _deployPendlePT(
-            "C-PendlePT-stETH-26DEC24",
+            string.concat("C-", name),
             abi.decode(
                 configurationJson.parseRaw(
-                    ".markets.cTokens.PendlePT-stETH-26DEC24"
+                    string.concat(".markets.cTokens.", name)
                 ),
                 (PendlePTDeployer.PendlePTParam)
             )
