@@ -52,7 +52,6 @@ contract VeCVE is ERC20, ReentrancyGuard {
     ICVELocker public immutable cveLocker;
     /// @notice Genesis Epoch timestamp.
     uint256 public immutable genesisEpoch;
-
     /// @notice Curvance DAO hub.
     ICentralRegistry public immutable centralRegistry;
 
