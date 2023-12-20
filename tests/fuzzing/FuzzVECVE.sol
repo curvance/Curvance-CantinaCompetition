@@ -607,8 +607,7 @@ contract FuzzVECVE is StatefulBaseMarket {
                 "VE_CVE - combineAllLocks() balance should equal post combine user points"
             );
 
-            //
-            // balance veCVE = userPoints for continuous
+            numLocks = 1;
         } catch {
             assertWithMsg(
                 false,
@@ -811,6 +810,8 @@ contract FuzzVECVE is StatefulBaseMarket {
 
     function sum_of_all_user_unlock_epochs_is_equal_to_user_points() public {
         uint256 sumUserUnlockEpochs;
+
+        emit LogUint256("numlocks", numLocks);
 
         for (uint256 i = 0; i < numLocks; i++) {
             (, uint40 unlockTime) = veCVE.userLocks(address(this), i);
