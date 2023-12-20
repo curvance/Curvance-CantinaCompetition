@@ -8,11 +8,11 @@ import { TestBaseVeCVE } from "../TestBaseVeCVE.sol";
 contract VeCVEDeploymentTest is TestBaseVeCVE {
     function test_veCVEDeployment_fail_whenCentralRegistryIsInvalid() public {
         vm.expectRevert(VeCVE.VeCVE__ParametersAreInvalid.selector);
-        new VeCVE(ICentralRegistry(address(1)), 0);
+        new VeCVE(ICentralRegistry(address(1)));
     }
 
     function test_veCVEDeployment_success() public {
-        veCVE = new VeCVE(ICentralRegistry(address(centralRegistry)), 11000);
+        veCVE = new VeCVE(ICentralRegistry(address(centralRegistry)));
 
         assertEq(
             veCVE.name(),
@@ -23,6 +23,6 @@ contract VeCVEDeploymentTest is TestBaseVeCVE {
         assertEq(veCVE.genesisEpoch(), centralRegistry.genesisEpoch());
         assertEq(veCVE.cve(), centralRegistry.cve());
         assertEq(address(veCVE.cveLocker()), centralRegistry.cveLocker());
-        assertEq(veCVE.clPointMultiplier(), 11000);
+        assertEq(veCVE.clPointMultiplier(), 2);
     }
 }

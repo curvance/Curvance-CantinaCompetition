@@ -83,7 +83,7 @@ contract TestBaseVeCVE is TestBase {
     }
 
     function _deployVeCVE() internal {
-        veCVE = new VeCVE(ICentralRegistry(address(centralRegistry)), 20000);
+        veCVE = new VeCVE(ICentralRegistry(address(centralRegistry)));
 
         centralRegistry.setVeCVE(address(veCVE));
         cveLocker.startLocker();

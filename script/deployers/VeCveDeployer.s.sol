@@ -11,13 +11,12 @@ contract VeCveDeployer is DeployConfiguration {
     address veCve;
 
     function _deployVeCve(
-        address centralRegistry,
-        uint256 clPointMultiplier
+        address centralRegistry
     ) internal {
         require(centralRegistry != address(0), "Set the centralRegistry!");
 
         veCve = address(
-            new VeCVE(ICentralRegistry(centralRegistry), clPointMultiplier)
+            new VeCVE(ICentralRegistry(centralRegistry))
         );
 
         console.log("veCve: ", veCve);
