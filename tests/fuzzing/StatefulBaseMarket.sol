@@ -177,10 +177,7 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
     }
 
     function _deployVeCVE() internal {
-        veCVE = new VeCVE(
-            ICentralRegistry(address(centralRegistry)),
-            clPointMultiplier
-        );
+        veCVE = new VeCVE(ICentralRegistry(address(centralRegistry)));
         centralRegistry.setVeCVE(address(veCVE));
         centralRegistry.setVoteBoostMultiplier(voteBoostMultiplier);
         cveLocker.startLocker();

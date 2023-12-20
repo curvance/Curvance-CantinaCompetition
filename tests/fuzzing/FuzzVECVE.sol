@@ -488,13 +488,14 @@ contract FuzzVECVE is StatefulBaseMarket {
             }
             emit LogUint256(
                 "post combine user points:",
-                (postCombineUserPoints * veCVE.clPointMultiplier()) /
-                    DENOMINATOR
+                (postCombineUserPoints * veCVE.CL_POINT_MULTIPLIER())
             );
             assertGte(
                 postCombineUserPoints,
-                ((veCVE.balanceOf(address(this)) * veCVE.clPointMultiplier()) /
-                    DENOMINATOR) / WAD,
+                (
+                    (veCVE.balanceOf(address(this)) *
+                        veCVE.CL_POINT_MULTIPLIER())
+                ) / WAD,
                 "VE_CVE - combineALlLocks() veCVE balance = userPoints * multiplier/DENOMINATOR failed for all continuous => continuous"
             );
             numLocks = 1;
@@ -547,8 +548,10 @@ contract FuzzVECVE is StatefulBaseMarket {
             );
             assertGte(
                 postCombineUserPoints,
-                ((veCVE.balanceOf(address(this)) * veCVE.clPointMultiplier()) /
-                    DENOMINATOR) / WAD,
+                (
+                    (veCVE.balanceOf(address(this)) *
+                        veCVE.CL_POINT_MULTIPLIER())
+                ) / WAD,
                 "VE_CVE - combineALlLocks() veCVE balance = userPoints * multiplier/DENOMINATOR failed for all continuous => continuous"
             );
             numLocks = 1;
@@ -785,11 +788,15 @@ contract FuzzVECVE is StatefulBaseMarket {
             uint256 numberOfExistingContinuousLocks
         )
     {
+        //     uint256[] epochs,
+        //     uint256[] previousAmounts
+        // )
         for (uint i = 0; i < numLocks; i++) {
             (uint216 amount, uint40 unlockTime) = veCVE.userLocks(
                 address(this),
                 i
             );
+            // epochs.push(veCVE.currentEpoch(unlockTime));
             newLockAmount += amount;
 
             if (unlockTime == veCVE.CONTINUOUS_LOCK_VALUE()) {
