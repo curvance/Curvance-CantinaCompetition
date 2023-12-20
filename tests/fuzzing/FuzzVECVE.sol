@@ -425,7 +425,6 @@ contract FuzzVECVE is StatefulBaseMarket {
             uint256 newLockAmount,
             uint256 numberOfExistingContinuousLocks
         ) = get_all_user_lock_info(address(this));
-        get_all_user_lock_epochs();
         require(numberOfExistingContinuousLocks == numLocks);
 
         try
@@ -464,6 +463,9 @@ contract FuzzVECVE is StatefulBaseMarket {
                 ) / WAD,
                 "VE_CVE - combineALlLocks() veCVE balance = userPoints * multiplier/DENOMINATOR failed for all continuous => continuous"
             );
+            assert_continuous_locks_has_no_user_or_chain_unlocks(
+                combinedUnlockTime
+            );
             numLocks = 1;
         } catch {
             assertWithMsg(
@@ -478,6 +480,7 @@ contract FuzzVECVE is StatefulBaseMarket {
     {
         bool continuous = true;
         require(numLocks >= 2);
+        save_epoch_unlock_values();
 
         uint256 preCombineUserPoints = veCVE.userPoints(address(this));
 
@@ -519,6 +522,25 @@ contract FuzzVECVE is StatefulBaseMarket {
                         veCVE.CL_POINT_MULTIPLIER())
                 ) / WAD,
                 "VE_CVE - combineALlLocks() veCVE balance = userPoints * multiplier/DENOMINATOR failed for all continuous => continuous"
+            );
+            // for each existing lock
+            // ensure that the post user unlock value for that epoch is < pre user unlock
+            // ensure that the post chain unlock for epoch < pre chain unlock
+            for (uint i = 0; i < individualEpochs.length; i++) {
+                uint256 unlockEpoch = individualEpochs[i];
+                assertGt(
+                    epochBalances[unlockEpoch].userUnlocksByEpoch,
+                    veCVE.userUnlocksByEpoch(address(this), unlockEpoch),
+                    "VE_CVE - pre userUnlockByEpoch must exceed post userUnlockByEpoch after noncontinuous -> continuous terminal"
+                );
+                assertGt(
+                    epochBalances[unlockEpoch].chainUnlocksByEpoch,
+                    veCVE.chainUnlocksByEpoch(unlockEpoch),
+                    "VE_CVE - pre- chainUnlockByEpoch must exceed post chainUnlockByEpoch after noncontinuous -> continuous terminal"
+                );
+            }
+            assert_continuous_locks_has_no_user_or_chain_unlocks(
+                combinedUnlockTime
             );
             numLocks = 1;
         } catch {
@@ -734,7 +756,7 @@ contract FuzzVECVE is StatefulBaseMarket {
             uint256 lockAmountSum,
             uint256 numberOfExistingContinuousLocks
         ) = get_all_user_lock_info(address(this));
-        require(numberOfExistingContinuousLocks == numLocks);
+        require(numberOfExistingContinuousLocks != numLocks);
         assertEq(
             veCVE.balanceOf(address(this)),
             lockAmountSum,
@@ -742,18 +764,81 @@ contract FuzzVECVE is StatefulBaseMarket {
         );
     }
 
-    // Helper Functions
-    uint256[] epochs;
-    uint256[] previousAmounts;
+    function user_unlock_for_epoch_for_continuous_locks_should_be_zero()
+        public
+    {
+        (
+            uint256 lockAmountSum,
+            uint256 numberOfExistingContinuousLocks
+        ) = get_all_user_lock_info(address(this));
+        require(numberOfExistingContinuousLocks == numLocks);
+        for (uint i = 0; i < individualEpochs.length; i++) {
+            (, uint40 unlockTime) = veCVE.userLocks(address(this), i);
+            uint256 epoch = veCVE.currentEpoch(unlockTime);
+            assertEq(
+                veCVE.userUnlocksByEpoch(address(this), epoch),
+                0,
+                "VE_CVE - user_unlock_for_epoch_for_continuous_locks_should_be_zero"
+            );
+        }
+    }
 
-    function get_all_user_lock_epochs() private {
+    function chain_unlock_for_epoch_for_continuous_locks_should_be_zero()
+        public
+    {
+        (
+            uint256 lockAmountSum,
+            uint256 numberOfExistingContinuousLocks
+        ) = get_all_user_lock_info(address(this));
+        require(numberOfExistingContinuousLocks == numLocks);
+        for (uint i = 0; i < individualEpochs.length; i++) {
+            (, uint40 unlockTime) = veCVE.userLocks(address(this), i);
+            uint256 epoch = veCVE.currentEpoch(unlockTime);
+            assertEq(
+                veCVE.chainUnlocksByEpoch(epoch),
+                0,
+                "VE_CVE - combineAllLocks - chain_unlock_for_epoch_for_continuous_locks_should_be_zero"
+            );
+        }
+    }
+
+    function assert_continuous_locks_has_no_user_or_chain_unlocks(
+        uint256 combinedUnlockTime
+    ) private {
+        uint256 epoch = veCVE.currentEpoch(combinedUnlockTime);
+
+        assertEq(
+            veCVE.chainUnlocksByEpoch(epoch),
+            0,
+            "VE_CVE - combineAllLocks - chain unlocks by epoch should be zero for continuous terminal"
+        );
+        assertEq(
+            veCVE.userUnlocksByEpoch(address(this), epoch),
+            0,
+            "VE_CVE - combineAllLocks - user unlocks by epoch should be zero for continuous terminal"
+        );
+    }
+
+    // Helper Functions
+    uint256[] individualEpochs;
+    mapping(uint256 => CombineBalance) epochBalances;
+    struct CombineBalance {
+        uint256 chainUnlocksByEpoch;
+        uint256 userUnlocksByEpoch;
+    }
+
+    function save_epoch_unlock_values() private {
         for (uint i = 0; i < numLocks; i++) {
             (uint216 amount, uint40 unlockTime) = veCVE.userLocks(
                 address(this),
                 i
             );
-            epochs.push(veCVE.currentEpoch(unlockTime));
-            previousAmounts.push(amount);
+            uint256 epoch = veCVE.currentEpoch(unlockTime);
+            individualEpochs.push(epoch);
+            epochBalances[epoch].chainUnlocksByEpoch += veCVE
+                .chainUnlocksByEpoch(epoch);
+            epochBalances[epoch].userUnlocksByEpoch += veCVE
+                .userUnlocksByEpoch(address(this), epoch);
         }
     }
 
