@@ -425,6 +425,7 @@ contract FuzzVECVE is StatefulBaseMarket {
             uint256 newLockAmount,
             uint256 numberOfExistingContinuousLocks
         ) = get_all_user_lock_info(address(this));
+        get_all_user_lock_epochs();
         require(numberOfExistingContinuousLocks == numLocks);
 
         try
@@ -441,16 +442,16 @@ contract FuzzVECVE is StatefulBaseMarket {
 
             uint256 postCombineUserPoints = veCVE.userPoints(address(this));
             // If the existing locks that the user had were all continuous
-            if (numberOfExistingContinuousLocks == numLocks) {
-                // And a user wants to convert it to a single continuous lock
-                // Ensure that the user points before and after the combine are identical
-                // [continuous, continuous] => continuous terminal; preCombine == postCombine
-                assertEq(
-                    preCombineUserPoints,
-                    postCombineUserPoints,
-                    "VE_CVE - combineAllLocks() - user points should be same for all prior continuous => continuous failed"
-                );
-            }
+
+            // And a user wants to convert it to a single continuous lock
+            // Ensure that the user points before and after the combine are identical
+            // [continuous, continuous] => continuous terminal; preCombine == postCombine
+            assertEq(
+                preCombineUserPoints,
+                postCombineUserPoints,
+                "VE_CVE - combineAllLocks() - user points should be same for all prior continuous => continuous failed"
+            );
+
             emit LogUint256(
                 "post combine user points:",
                 (postCombineUserPoints * veCVE.CL_POINT_MULTIPLIER())
@@ -753,29 +754,6 @@ contract FuzzVECVE is StatefulBaseMarket {
             );
             epochs.push(veCVE.currentEpoch(unlockTime));
             previousAmounts.push(amount);
-        }
-    }
-
-    function get_all_user_lock_info(
-        address addr
-    )
-        private
-        view
-        returns (
-            uint256 newLockAmount,
-            uint256 numberOfExistingContinuousLocks
-        )
-    {
-        for (uint i = 0; i < numLocks; i++) {
-            (uint216 amount, uint40 unlockTime) = veCVE.userLocks(
-                address(this),
-                i
-            );
-            newLockAmount += amount;
-
-            if (unlockTime == veCVE.CONTINUOUS_LOCK_VALUE()) {
-                numberOfExistingContinuousLocks++;
-            }
         }
     }
 
