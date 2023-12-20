@@ -659,9 +659,6 @@ contract FuzzVECVE is StatefulBaseMarket {
         uint256 number
     ) public {
         uint256 lockIndex = get_existing_lock(number);
-        // require(
-        //     veCVE.locks(lockIndex).unlockTime == veCVE.CONTINUOUS_LOCK_VALUE()
-        // );
 
         try
             veCVE.disableContinuousLock(

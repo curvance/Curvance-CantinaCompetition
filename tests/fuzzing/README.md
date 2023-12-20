@@ -50,6 +50,7 @@ Tips and tricks:
 - Input ranges on creation of lock does not test full range of input – would benefit from additional coverage 
 - increaseAmountAndExtendLock is lacking coverage (or as of currently, fuzzer has not yet reached the state to call)
 - Postcondition checks on adding non-continuous locks (i.e: that the lock of the previous values decrease, and new lock values increase)
+- Postconditions on additional functions, such as disableContinuousLock, processExpiredLock
 - Additional stateful functions can be added, including: 
   - Chainpoints 
     - equal to user's (CVE locked as non continuous) + (CVE locked * continuousLock point multiplier)
