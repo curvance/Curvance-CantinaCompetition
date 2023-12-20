@@ -32,6 +32,8 @@ contract VeCVE is ERC20, ReentrancyGuard {
     uint256 public constant LOCK_DURATION_EPOCHS = 26;
     /// @notice in # of seconds.
     uint256 public constant LOCK_DURATION = 52 weeks;
+    /// @notice Point multiplier for a continuous lock. 2 = 200%.
+    uint256 public constant CL_POINT_MULTIPLIER = 2;
 
     /// @dev `bytes4(keccak256(bytes("VeCVE__Unauthorized()")))`
     uint256 internal constant _UNAUTHORIZED_SELECTOR = 0x32c4d25d;
@@ -50,8 +52,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
     ICVELocker public immutable cveLocker;
     /// @notice Genesis Epoch timestamp.
     uint256 public immutable genesisEpoch;
-    /// @notice Point multiplier for a continuous lock.
-    uint256 public immutable clPointMultiplier;
+    
     /// @notice Curvance DAO hub.
     ICentralRegistry public immutable centralRegistry;
 
@@ -97,8 +98,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
     /// CONSTRUCTOR ///
 
     constructor(
-        ICentralRegistry centralRegistry_,
-        uint256 clPointMultiplier_
+        ICentralRegistry centralRegistry_
     ) {
         _name = "Vote Escrowed CVE";
         _symbol = "VeCVE";
@@ -116,15 +116,6 @@ contract VeCVE is ERC20, ReentrancyGuard {
         genesisEpoch = centralRegistry.genesisEpoch();
         cve = centralRegistry.cve();
         cveLocker = ICVELocker(centralRegistry.cveLocker());
-        // multiplies `clPointMultiplier_` 1e14 to convert from
-        // basis points parameter to WAD storage value
-        clPointMultiplier_ = clPointMultiplier_ * 100000000000000;
-
-        if (clPointMultiplier_ <= WAD) {
-            revert VeCVE__ParametersAreInvalid();
-        }
-
-        clPointMultiplier = clPointMultiplier_;
     }
 
     /// EXTERNAL FUNCTIONS ///
@@ -460,13 +451,11 @@ contract VeCVE is ERC20, ReentrancyGuard {
                     lock.amount
                 );
             } else {
+                // Sums how much veCVE is continuous locked
                 unchecked {
                     priorCLPoints += lock.amount;
                 }
-                // calculate and sum how many additional points they got
-                // from their continuous lock
             }
-
             unchecked {
                 // Should never overflow as the total amount of tokens a user
                 // could ever lock is equal to the entire token supply
@@ -474,7 +463,6 @@ contract VeCVE is ERC20, ReentrancyGuard {
             }
         }
 
-        
         // Remove the users locks
         delete userLocks[msg.sender];
 
@@ -486,15 +474,14 @@ contract VeCVE is ERC20, ReentrancyGuard {
                 })
             );
 
-            uint256 clBoostedPoints = _getCLPoints(amount) - amount;
-
             // If not all locks combined were continuous, we will need to
             // increment points by the difference between the terminal boosted
-            // points minus current `priorCLPoints`
+            // points minus current `priorCLPoints`, because continuous lock 
+            // bonus is 100%, we can use amount as the excess points to be 
+            // received from continuous lock
             if (priorCLPoints > 0) {
-                priorCLPoints = _getCLPoints(priorCLPoints) - priorCLPoints;
-                if (clBoostedPoints > priorCLPoints) {
-                    _incrementPoints(msg.sender, clBoostedPoints - priorCLPoints);
+                if (amount > priorCLPoints) {
+                    _incrementPoints(msg.sender, amount - priorCLPoints);
                 }   
             }
 
@@ -509,7 +496,6 @@ contract VeCVE is ERC20, ReentrancyGuard {
             // Remove caller `priorCLPoints` from their continuous locks, 
             // if any
             if (priorCLPoints > 0) {
-                priorCLPoints = _getCLPoints(priorCLPoints) - priorCLPoints;
                 _reducePoints(msg.sender, priorCLPoints);
             }
             // Record the new unlock data
@@ -1176,9 +1162,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
     /// @param basePoints The token points to be used in the calculation.
     /// @return The calculated continuous lock token point value.
     function _getCLPoints(uint256 basePoints) internal view returns (uint256) {
-        unchecked {
-            return ((basePoints * clPointMultiplier) / WAD);
-        }
+        return CL_POINT_MULTIPLIER * basePoints;
     }
 
     /// @notice Calculates the current unlock penalty for early unlocking
