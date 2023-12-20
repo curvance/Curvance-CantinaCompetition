@@ -4,28 +4,30 @@ pragma solidity 0.8.17;
 import { TestBaseFeeAccumulator } from "../TestBaseFeeAccumulator.sol";
 import { FeeAccumulator } from "contracts/architecture/FeeAccumulator.sol";
 
-contract SendLockedTokenDataTest is TestBaseFeeAccumulator {
-    function test_sendLockedTokenData_fail_whenCallerIsNotAuthorized() public {
+contract SendWormholeMessagesTest is TestBaseFeeAccumulator {
+    function test_sendWormholeMessages_fail_whenCallerIsNotAuthorized()
+        public
+    {
         vm.expectRevert(FeeAccumulator.FeeAccumulator__Unauthorized.selector);
-        feeAccumulator.sendLockedTokenData(
+        feeAccumulator.sendWormholeMessages(
             42161,
             address(protocolMessagingHub)
         );
     }
 
-    function test_sendLockedTokenData_fail_whenChainIsNotSupported() public {
+    function test_sendWormholeMessages_fail_whenChainIsNotSupported() public {
         vm.expectRevert(
             FeeAccumulator.FeeAccumulator__ChainIsNotSupported.selector
         );
 
         vm.prank(harvester);
-        feeAccumulator.sendLockedTokenData(
+        feeAccumulator.sendWormholeMessages(
             42161,
             address(protocolMessagingHub)
         );
     }
 
-    function test_sendLockedTokenData_fail_whenAddressIsNotCVEAddress()
+    function test_sendWormholeMessages_fail_whenAddressIsNotCVEAddress()
         public
     {
         centralRegistry.addChainSupport(
@@ -49,10 +51,10 @@ contract SendLockedTokenDataTest is TestBaseFeeAccumulator {
         );
 
         vm.prank(harvester);
-        feeAccumulator.sendLockedTokenData(23, address(protocolMessagingHub));
+        feeAccumulator.sendWormholeMessages(23, address(protocolMessagingHub));
     }
 
-    function test_sendLockedTokenData_fail_whenHasNoEnoughNativeAssetForGas()
+    function test_sendWormholeMessages_fail_whenHasNoEnoughNativeAssetForGas()
         public
     {
         centralRegistry.addChainSupport(
@@ -68,6 +70,6 @@ contract SendLockedTokenDataTest is TestBaseFeeAccumulator {
         vm.expectRevert();
 
         vm.prank(harvester);
-        feeAccumulator.sendLockedTokenData(23, address(protocolMessagingHub));
+        feeAccumulator.sendWormholeMessages(23, address(protocolMessagingHub));
     }
 }

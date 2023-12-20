@@ -398,7 +398,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     ///                   the message data should be sent.
     /// @param toAddress The destination address specified by `dstChainId`.
     /// @param payload The payload data that is sent along with the message.
-    function sendLockedTokenData(
+    function sendWormholeMessages(
         uint16 dstChainId,
         address toAddress,
         bytes calldata payload

@@ -21,7 +21,7 @@ interface IProtocolMessagingHub {
     /// @dev We redundantly pass adapterParams so we do not need to coerce data
     ///      in the function, calls with this function will have
     ///      messageType = 1, 2 or 3
-    function sendLockedTokenData(
+    function sendWormholeMessages(
         uint16 dstChainId,
         address toAddress,
         bytes calldata payload

@@ -305,7 +305,7 @@ contract FeeAccumulator is ReentrancyGuard {
     /// @param dstChainId Wormhole specific destination chain ID where
     ///                   the message data should be sent.
     /// @param toAddress The destination address specified by `dstChainId`.
-    function sendLockedTokenData(
+    function sendWormholeMessages(
         uint16 dstChainId,
         address toAddress
     ) external {
@@ -352,7 +352,7 @@ contract FeeAccumulator is ReentrancyGuard {
 
         (uint256 gas, ) = messagingHub.quoteWormholeFee(dstChainId, false);
 
-        messagingHub.sendLockedTokenData{ value: gas }(
+        messagingHub.sendWormholeMessages{ value: gas }(
             dstChainId,
             toAddress,
             payload
@@ -460,7 +460,7 @@ contract FeeAccumulator is ReentrancyGuard {
                     false
                 );
 
-                messagingHub.sendLockedTokenData{ value: gas }(
+                messagingHub.sendWormholeMessages{ value: gas }(
                     messagingChainId,
                     chainData.messagingHub,
                     abi.encode(epochRewardsPerCVE)

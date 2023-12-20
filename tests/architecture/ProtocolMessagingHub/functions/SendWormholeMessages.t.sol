@@ -4,15 +4,17 @@ pragma solidity 0.8.17;
 import { TestBaseProtocolMessagingHub } from "../TestBaseProtocolMessagingHub.sol";
 import { ProtocolMessagingHub } from "contracts/architecture/ProtocolMessagingHub.sol";
 
-contract SendLockedTokenDataTest is TestBaseProtocolMessagingHub {
-    function test_sendLockedTokenData_fail_whenCallerIsNotAuthorized() public {
+contract SendWormholeMessagesTest is TestBaseProtocolMessagingHub {
+    function test_sendWormholeMessages_fail_whenCallerIsNotAuthorized()
+        public
+    {
         vm.expectRevert(
             ProtocolMessagingHub.ProtocolMessagingHub__Unauthorized.selector
         );
-        protocolMessagingHub.sendLockedTokenData(23, address(this), "");
+        protocolMessagingHub.sendWormholeMessages(23, address(this), "");
     }
 
-    function test_sendLockedTokenData_fail_whenChainIsNotSupported() public {
+    function test_sendWormholeMessages_fail_whenChainIsNotSupported() public {
         vm.expectRevert(
             ProtocolMessagingHub
                 .ProtocolMessagingHub__ChainIsNotSupported
@@ -20,10 +22,10 @@ contract SendLockedTokenDataTest is TestBaseProtocolMessagingHub {
         );
 
         vm.prank(address(feeAccumulator));
-        protocolMessagingHub.sendLockedTokenData(23, address(this), "");
+        protocolMessagingHub.sendWormholeMessages(23, address(this), "");
     }
 
-    function test_sendLockedTokenData_fail_whenNativeAssetIsNotEnough()
+    function test_sendWormholeMessages_fail_whenNativeAssetIsNotEnough()
         public
     {
         centralRegistry.addChainSupport(
@@ -39,10 +41,10 @@ contract SendLockedTokenDataTest is TestBaseProtocolMessagingHub {
         vm.expectRevert();
 
         vm.prank(address(feeAccumulator));
-        protocolMessagingHub.sendLockedTokenData(23, address(this), "");
+        protocolMessagingHub.sendWormholeMessages(23, address(this), "");
     }
 
-    function test_sendLockedTokenData_success() public {
+    function test_sendWormholeMessages_success() public {
         (uint256 messageFee, ) = protocolMessagingHub.quoteWormholeFee(
             23,
             false
@@ -60,7 +62,7 @@ contract SendLockedTokenDataTest is TestBaseProtocolMessagingHub {
         );
 
         vm.prank(address(feeAccumulator));
-        protocolMessagingHub.sendLockedTokenData{ value: messageFee }(
+        protocolMessagingHub.sendWormholeMessages{ value: messageFee }(
             23,
             address(this),
             ""
