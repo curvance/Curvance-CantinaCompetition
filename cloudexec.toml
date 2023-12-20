@@ -1,0 +1,52 @@
+
+# Set the directory to upload to the droplet.
+[input]
+directory = "."
+timeout = "48h"
+
+[commands]
+setup = '''
+if ! command -v slither >/dev/null 2>&1; then
+  echo "Installing solc and slither..."
+  python3 -m venv ~/venv
+  source ~/venv/bin/activate
+  pip3 install solc-select slither-analyzer crytic-compile
+  solc-select install 0.8.17
+  solc-select use 0.8.17
+fi
+
+if ! command -v echidna >/dev/null 2>&1; then
+  echo "Downloading echidna..."
+  curl -fsSL -o /tmp/echidna.zip https://github.com/crytic/echidna/releases/download/v2.2.1/echidna-2.2.1-Linux.zip
+  echo "Extracting echidna..."
+  unzip /tmp/echidna.zip -d /tmp
+  tar -xzf /tmp/echidna.tar.gz -C /tmp
+  echo "Installing echidna..."
+  mv /tmp/echidna /usr/local/bin
+  rm /tmp/echidna.tar.gz
+fi
+
+if ! command -v medusa >/dev/null 2>&1; then
+  echo "Downloading medusa..."
+  sudo apt-get update; sudo apt-get install -y unzip
+  curl -fsSL https://github.com/crytic/medusa/releases/download/v0.1.0/medusa-linux-x64.zip -o medusa.zip
+  unzip medusa.zip
+  chmod +x medusa
+  sudo mv medusa /usr/local/bin
+fi
+
+if ! command -v forge >/dev/null 2>&1; then
+  echo "Installing foundry..." 
+  curl -L https://foundry.paradigm.xyz | bash
+  source /.bashrc
+  foundryup
+fi
+
+echo "Prerequisites installed successfully!"
+echo "Forge version:"
+forge --version
+'''
+
+# This command is run from the input directory
+# after the setup script completes.
+run = "source /.bashrc && forge --version && make echidna-cloud && make medusa-local"

@@ -15,6 +15,7 @@
 **/dist
 **/node_modules
 **/out
+**/output
 
 # files
 **/.DS_Store

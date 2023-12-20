@@ -52,7 +52,6 @@ contract VeCVE is ERC20, ReentrancyGuard {
     ICVELocker public immutable cveLocker;
     /// @notice Genesis Epoch timestamp.
     uint256 public immutable genesisEpoch;
-    
     /// @notice Curvance DAO hub.
     ICentralRegistry public immutable centralRegistry;
 
@@ -474,8 +473,8 @@ contract VeCVE is ERC20, ReentrancyGuard {
 
             // If not all locks combined were continuous, we will need to
             // increment points by the difference between the terminal boosted
-            // points minus current `priorCLPoints`, because continuous lock 
-            // bonus is 100%, we can use amount as the excess points to be 
+            // points minus current `priorCLPoints`, because continuous lock
+            // bonus is 100%, we can use amount as the excess points to be
             // received from continuous lock
             uint256 netIncrease = amount - priorCLPoints;
             if (netIncrease > 0) {
@@ -489,7 +488,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
                 })
             );
 
-            // Remove caller `priorCLPoints` from their continuous locks, 
+            // Remove caller `priorCLPoints` from their continuous locks,
             // if any
             if (priorCLPoints > 0) {
                 _reducePoints(msg.sender, priorCLPoints);
@@ -1205,5 +1204,12 @@ contract VeCVE is ERC20, ReentrancyGuard {
         if (isShutdown == 2) {
             _revert(_VECVE_SHUTDOWN_SELECTOR);
         }
+    }
+
+    function getUnlockTime(
+        address _addr,
+        uint _index
+    ) public view returns (uint40) {
+        return userLocks[_addr][_index].unlockTime;
     }
 }

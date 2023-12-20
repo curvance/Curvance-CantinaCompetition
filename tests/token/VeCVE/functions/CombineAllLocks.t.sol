@@ -3,6 +3,7 @@ pragma solidity ^0.8.17;
 
 import { TestBaseVeCVE } from "../TestBaseVeCVE.sol";
 import { VeCVE } from "contracts/token/VeCVE.sol";
+import "forge-std/console.sol";
 
 contract CombineAllLocksTest is TestBaseVeCVE {
     function setUp() public override {
@@ -65,6 +66,36 @@ contract CombineAllLocksTest is TestBaseVeCVE {
             ),
             0
         );
+    }
+
+    function test_combineAllLocks_all_continuous_to_continuous_lock(
+        bool shouldLock,
+        bool isFreshLock,
+        bool isFreshLockContinuous
+    ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
+        veCVE.createLock(1000000000000013658, true, rewardsData, "", 0);
+        veCVE.createLock(1524395970892188412, true, rewardsData, "", 0);
+        uint256 preCombine = (veCVE.userPoints(address(this)));
+
+        veCVE.combineAllLocks(true, rewardsData, "", 0);
+
+        uint256 postCombine = (veCVE.userPoints(address(this)));
+        assertEq(preCombine, postCombine);
+    }
+
+    function test_combineAllLocks_some_continuous_to_continuous_lock(
+        bool shouldLock,
+        bool isFreshLock,
+        bool isFreshLockContinuous
+    ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
+        veCVE.createLock(1, true, rewardsData, "", 0);
+        veCVE.createLock(4, false, rewardsData, "", 31449600);
+        uint256 preCombine = (veCVE.userPoints(address(this)));
+
+        veCVE.combineAllLocks(false, rewardsData, "", 0);
+
+        uint256 postCombine = (veCVE.userPoints(address(this)));
+        assertLt(preCombine, postCombine);
     }
 
     function test_combineAllLocks_success_withDiscontinuousLock(
