@@ -476,10 +476,9 @@ contract VeCVE is ERC20, ReentrancyGuard {
             // points minus current `priorCLPoints`, because continuous lock
             // bonus is 100%, we can use amount as the excess points to be
             // received from continuous lock
-            if (priorCLPoints > 0) {
-                if (amount > priorCLPoints) {
-                    _incrementPoints(msg.sender, amount - priorCLPoints);
-                }
+            uint256 netIncrease = amount - priorCLPoints;
+            if (netIncrease > 0) {
+                _incrementPoints(msg.sender, netIncrease);
             }
         } else {
             userLocks[msg.sender].push(
@@ -1157,7 +1156,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
     /// @notice Calculates the continuous lock token point value for basePoints.
     /// @param basePoints The token points to be used in the calculation.
     /// @return The calculated continuous lock token point value.
-    function _getCLPoints(uint256 basePoints) internal view returns (uint256) {
+    function _getCLPoints(uint256 basePoints) internal pure returns (uint256) {
         return CL_POINT_MULTIPLIER * basePoints;
     }
 

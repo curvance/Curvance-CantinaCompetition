@@ -127,7 +127,10 @@ contract FuzzVECVE is StatefulBaseMarket {
                 defaultContinuous.aux
             )
         {
+<<<<<<< HEAD
             // VE_CVE.createLock() with zero amount is expected to fail
+=======
+>>>>>>> e1e615a5 (Increased hit coverage on VeCVE to 67%)
             assertWithMsg(
                 false,
                 "VE_CVE - createLock should have failed for ZERO amount"
@@ -308,6 +311,7 @@ contract FuzzVECVE is StatefulBaseMarket {
         }
     }
 
+<<<<<<< HEAD
     function increaseAmountAndExtendLock_should_succeed_if_continuous(
         uint256 amount,
         uint256 number
@@ -323,6 +327,14 @@ contract FuzzVECVE is StatefulBaseMarket {
         uint256 preLockCVEBalance = cve.balanceOf(address(this));
         // save balance of VE_CVE
         uint256 preLockVECVEBalance = veCVE.balanceOf(address(this));
+=======
+    function increaseAmountAndExtendLock_should_succeed(
+        uint256 amount,
+        uint256 number
+    ) public {
+        uint256 lockIndex = get_existing_lock(number);
+        amount = clampBetween(amount, 1, type(uint32).max);
+>>>>>>> e1e615a5 (Increased hit coverage on VeCVE to 67%)
 
         approve_cve(
             amount,
