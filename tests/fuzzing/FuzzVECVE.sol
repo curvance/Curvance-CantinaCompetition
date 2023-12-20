@@ -556,6 +556,7 @@ contract FuzzVECVE is StatefulBaseMarket {
     {
         bool continuous = false;
         require(numLocks >= 2);
+        save_epoch_unlock_values();
 
         uint256 preCombineUserPoints = veCVE.userPoints(address(this));
         (
@@ -593,6 +594,7 @@ contract FuzzVECVE is StatefulBaseMarket {
             }
             // no locks prior were continuous
             else {
+                // CAN ADD: Post-condition check on the epoch balances
                 assertEq(
                     preCombineUserPoints,
                     postCombineUserPoints,
@@ -653,8 +655,6 @@ contract FuzzVECVE is StatefulBaseMarket {
         }
     }
 
-    // function processExpiredLock_should_fail_
-
     function disableContinuousLock_should_succeed_if_lock_exists(
         uint256 number
     ) public {
@@ -670,7 +670,9 @@ contract FuzzVECVE is StatefulBaseMarket {
                 bytes(""),
                 0
             )
-        {} catch {}
+        {} catch {
+            // CAN ADD: Postconditions on disabling a continuous lock
+        }
     }
 
     function shutdown_success_if_elevated_permission() public {
@@ -747,10 +749,6 @@ contract FuzzVECVE is StatefulBaseMarket {
 
     // Stateful
 
-    // precondition: userlock is non-continuous
-    // for each user lock, amount += lock.amount
-    // assert(veCVE.balanceOf(this)== lock.amount)
-
     function balance_must_equal_lock_amount_for_non_continuous() public {
         (
             uint256 lockAmountSum,
@@ -812,6 +810,26 @@ contract FuzzVECVE is StatefulBaseMarket {
                 );
             }
         }
+    }
+
+    function sum_of_all_user_unlock_epochs_is_equal_to_user_points() public {
+        uint256 sumUserUnlockEpochs;
+
+        for (uint256 i = 0; i < numLocks; i++) {
+            (, uint40 unlockTime) = veCVE.userLocks(address(this), i);
+
+            uint256 epoch = veCVE.currentEpoch(unlockTime);
+            uint256 userUnlocksByEpoch = veCVE.userUnlocksByEpoch(
+                address(this),
+                epoch
+            );
+            sumUserUnlockEpochs += userUnlocksByEpoch;
+        }
+        assertLte(
+            sumUserUnlockEpochs,
+            veCVE.userPoints(address(this)),
+            "VE_CVE - sum_of_all_user_unlock_epochs_is_equal_to_user_points"
+        );
     }
 
     function assert_continuous_locks_has_no_user_or_chain_unlocks(

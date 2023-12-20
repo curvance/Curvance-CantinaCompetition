@@ -47,6 +47,16 @@ Tips and tricks:
 
 ### VECVE 
 
+- Input ranges on creation of lock does not test full range of input – would benefit from additional coverage 
+- increaseAmountAndExtendLock is lacking coverage (or as of currently, fuzzer has not yet reached the state to call)
+- Postcondition checks on adding non-continuous locks (i.e: that the lock of the previous values decrease, and new lock values increase)
+- Additional stateful functions can be added, including: 
+  - Chainpoints 
+    - equal to user's (CVE locked as non continuous) + (CVE locked * continuousLock point multiplier)
+  - ChainUnlocksByEpoch 
+    - The sum of all chainUnlocksByEpoch map values should always be <= chainPoints
+    - The sum of all userPoints should be equal to chainPoints
+    - The sum of all chainUnlocksByEpoch maps should be equal to the sum of all userUnlocksByEpoch maps.
 
 
 --- 
