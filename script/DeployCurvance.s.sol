@@ -106,10 +106,7 @@ contract DeployCurvance is
 
         // Deploy VeCVE
 
-        _deployVeCve(
-            centralRegistry,
-            _readConfigUint256(".veCve.clPointMultiplier")
-        );
+        _deployVeCve(centralRegistry);
         _setVeCVE(veCve);
 
         // Deploy GaugePool
