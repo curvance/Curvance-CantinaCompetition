@@ -72,11 +72,11 @@ contract LockTest is TestBaseVeCVE {
 
         assertEq(
             veCVE.chainPoints(),
-            (amount * veCVE.clPointMultiplier()) / WAD
+            amount * veCVE.CL_POINT_MULTIPLIER()
         );
         assertEq(
             veCVE.userPoints(address(this)),
-            (amount * veCVE.clPointMultiplier()) / WAD
+            amount * veCVE.CL_POINT_MULTIPLIER()
         );
         assertEq(veCVE.chainUnlocksByEpoch(veCVE.currentEpoch(unlockTime)), 0);
         assertEq(
