@@ -73,6 +73,7 @@ contract CombineAllLocksTest is TestBaseVeCVE {
         bool isFreshLock,
         bool isFreshLockContinuous
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
+        veCVE.extendLock(0, true, rewardsData, "", 0);
         veCVE.createLock(1000000000000013658, true, rewardsData, "", 0);
         veCVE.createLock(1524395970892188412, true, rewardsData, "", 0);
         uint256 preCombine = (veCVE.userPoints(address(this)));
