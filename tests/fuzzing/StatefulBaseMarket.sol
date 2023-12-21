@@ -5,6 +5,7 @@ import { PropertiesAsserts } from "tests/fuzzing/PropertiesHelper.sol";
 import { ErrorConstants } from "tests/fuzzing/ErrorConstants.sol";
 
 import { MockToken } from "contracts/mocks/MockToken.sol";
+import { MockCToken } from "contracts/mocks/MockCToken.sol";
 import { MockV3Aggregator } from "contracts/mocks/MockV3Aggregator.sol";
 import { MockCircleRelayer, MockWormhole } from "contracts/mocks/MockCircleRelayer.sol";
 import { MockTokenBridgeRelayer } from "contracts/mocks/MockTokenBridgeRelayer.sol";
@@ -56,7 +57,7 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
     Lendtroller public lendtroller;
     PositionFolding public positionFolding;
     PriceRouter public priceRouter;
-    AuraCToken public auraCToken;
+    MockCToken public cToken;
     DToken public dUSDC;
     DToken public dDAI;
     AuraCToken public cBALRETH;
@@ -98,6 +99,7 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
         _DAI_ADDRESS = address(dai);
         balRETH = new MockToken("balWethReth", "balWethReth", 18);
         _BALANCER_WETH_RETH = address(balRETH);
+        cToken = new MockCToken(_USDC_ADDRESS, "CTOKEN", "CTOKEN", 18);
 
         _CIRCLE_RELAYER = address(new MockCircleRelayer(10));
         _WORMHOLE_RELAYER = address(0x1);
