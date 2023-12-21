@@ -794,7 +794,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
 
         if (lock.unlockTime == CONTINUOUS_LOCK_VALUE) {
             unchecked {
-                return ((lock.amount * currentLockBoost) / WAD);
+                return ((lock.amount * currentLockBoost) / 10000);
             }
         }
 
