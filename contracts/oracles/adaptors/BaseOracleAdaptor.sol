@@ -21,29 +21,6 @@ abstract contract BaseOracleAdaptor {
     error BaseOracleAdaptor__Unauthorized();
     error BaseOracleAdaptor__InvalidCentralRegistry();
 
-    /// MODIFIERS ///
-
-    modifier onlyPriceRouter() {
-        if (msg.sender != centralRegistry.priceRouter()) {
-            revert BaseOracleAdaptor__Unauthorized();
-        }
-        _;
-    }
-
-    modifier onlyDaoPermissions() {
-        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
-            revert BaseOracleAdaptor__Unauthorized();
-        }
-        _;
-    }
-
-    modifier onlyElevatedPermissions() {
-        if (!centralRegistry.hasElevatedPermissions(msg.sender)) {
-            revert BaseOracleAdaptor__Unauthorized();
-        }
-        _;
-    }
-
     /// CONSTRUCTOR ///
 
     constructor(ICentralRegistry centralRegistry_) {
@@ -67,6 +44,30 @@ abstract contract BaseOracleAdaptor {
         bool inUSD,
         bool getLower
     ) external view virtual returns (PriceReturnData memory);
+
+    /// INTERNAL FUNCTIONS ///
+
+    /// @dev Checks whether the caller has sufficient permissioning.
+    function _checkDaoPermissions() internal view {
+        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
+            revert BaseOracleAdaptor__Unauthorized();
+        }
+    }
+
+    /// @dev Checks whether the caller has sufficient permissioning.
+    function _checkElevatedPermissions() internal view {
+        if (!centralRegistry.hasElevatedPermissions(msg.sender)) {
+            revert BaseOracleAdaptor__Unauthorized();
+        }
+    }
+
+    function _checkIsPriceRouter() internal view {
+        if (msg.sender != centralRegistry.priceRouter()) {
+            revert BaseOracleAdaptor__Unauthorized();
+        }
+    }
+
+    /// FUNCTIONS TO OVERRIDE ///
 
     /// @notice Removes a supported asset from the adaptor.
     function removeAsset(address asset) external virtual;

@@ -42,6 +42,15 @@ contract PendlePrincipalTokenAdaptor is BaseOracleAdaptor {
     /// @notice Pendle PT adaptor storage
     mapping(address => AdaptorData) public adaptorData;
 
+    /// EVENTS ///
+
+    event PendlePTAssetAdded(
+        address asset,
+        AdaptorData assetConfig
+    );
+
+    event PendlePTAssetRemoved(address asset);
+
     /// ERRORS ///
 
     error PendlePrincipalTokenAdaptor__AssetIsNotSupported();
@@ -103,7 +112,9 @@ contract PendlePrincipalTokenAdaptor is BaseOracleAdaptor {
     function addAsset(
         address asset,
         AdaptorData memory data
-    ) external onlyElevatedPermissions {
+    ) external {
+        _checkElevatedPermissions();
+
         if (isSupportedAsset[asset]) {
             revert PendlePrincipalTokenAdaptor__ConfigurationError();
         }
@@ -154,13 +165,17 @@ contract PendlePrincipalTokenAdaptor is BaseOracleAdaptor {
             quoteAsset: data.quoteAsset,
             quoteAssetDecimals: data.quoteAssetDecimals
         });
+
         isSupportedAsset[asset] = true;
+        emit PendlePTAssetAdded(asset, data);
     }
 
     /// @notice Removes a supported asset from the adaptor.
     /// @dev Calls back into price router to notify it of its removal
     /// @param asset The address of the asset to be removed.
-    function removeAsset(address asset) external override onlyDaoPermissions {
+    function removeAsset(address asset) external override {
+        _checkElevatedPermissions();
+
         if (!isSupportedAsset[asset]) {
             revert PendlePrincipalTokenAdaptor__AssetIsNotSupported();
         }
@@ -173,5 +188,6 @@ contract PendlePrincipalTokenAdaptor is BaseOracleAdaptor {
 
         ///Notify the price router that we are going to stop supporting the asset
         IPriceRouter(centralRegistry.priceRouter()).notifyFeedRemoval(asset);
+        emit PendlePTAssetRemoved(asset);
     }
 }

@@ -18,7 +18,7 @@ struct RewardsData {
 interface ICVELocker {
 
     /// @notice Called by Fee Accumulator to record an epochs rewards
-    function recordEpochRewards(uint256 epoch, uint256 rewardsPerCVE) external;
+    function recordEpochRewards(uint256 rewardsPerCVE) external;
 
     /// @notice Returns the current epoch for `time`
     function currentEpoch(uint256 time) external view returns (uint256);

@@ -8,7 +8,7 @@ import { ERC20 } from "contracts/libraries/ERC20.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { EXP_SCALE } from "contracts/libraries/Constants.sol";
+import { WAD } from "contracts/libraries/Constants.sol";
 
 contract OCVE is ERC20 {
     /// CONSTANTS ///
@@ -18,6 +18,8 @@ contract OCVE is ERC20 {
 
     /// @notice Token exercisers pay in
     address public immutable paymentToken;
+
+    uint8 public paymentTokenDecimals;
 
     /// @notice token name metadata
     bytes32 private immutable _name;
@@ -52,15 +54,6 @@ contract OCVE is ERC20 {
     error OCVE__TransferError();
     error OCVE__Unauthorized();
 
-    /// MODIFIERS ///
-
-    modifier onlyDaoPermissions() {
-        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
-            revert OCVE__Unauthorized();
-        }
-        _;
-    }
-
     /// CONSTRUCTOR ///
 
     /// @param paymentToken_ The token used for payment when exercising options.
@@ -84,7 +77,12 @@ contract OCVE is ERC20 {
 
         centralRegistry = centralRegistry_;
         paymentToken = paymentToken_;
-        cve = centralRegistry.CVE();
+        if (paymentToken_ == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE) {
+            paymentTokenDecimals = 18;
+        } else {
+            paymentTokenDecimals = ERC20(paymentToken_).decimals();
+        }
+        cve = centralRegistry.cve();
 
         // total call option allocation for airdrops
         _mint(msg.sender, 15750002.59 ether);
@@ -95,10 +93,8 @@ contract OCVE is ERC20 {
     /// @notice Rescue any token sent by mistake
     /// @param token token to rescue
     /// @param amount amount of `token` to rescue, 0 indicates to rescue all
-    function rescueToken(
-        address token,
-        uint256 amount
-    ) external onlyDaoPermissions {
+    function rescueToken(address token, uint256 amount) external {
+        _checkDaoPermissions();
         address daoOperator = centralRegistry.daoAddress();
 
         if (token == address(0)) {
@@ -122,7 +118,9 @@ contract OCVE is ERC20 {
 
     /// @notice Withdraws CVE from unexercised CVE call options to DAO
     ///         after exercising period has ended
-    function withdrawRemainingAirdropTokens() external onlyDaoPermissions {
+    function withdrawRemainingAirdropTokens() external {
+        _checkDaoPermissions();
+
         if (block.timestamp < optionsEndTimestamp) {
             revert OCVE__TransferError();
         }
@@ -143,7 +141,9 @@ contract OCVE is ERC20 {
     function setOptionsTerms(
         uint256 timestampStart,
         uint256 strikePrice
-    ) external onlyDaoPermissions {
+    ) external {
+        _checkDaoPermissions();
+
         if (timestampStart < block.timestamp) {
             revert OCVE__ParametersAreInvalid();
         }
@@ -228,7 +228,7 @@ contract OCVE is ERC20 {
             revert OCVE__CannotExercise();
         }
 
-        uint256 optionExerciseCost = (amount * paymentTokenPerCVE) / EXP_SCALE;
+        uint256 optionExerciseCost = (amount * paymentTokenPerCVE) / WAD;
 
         // Take their strike price payment
         if (paymentToken == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE) {
@@ -240,7 +240,7 @@ contract OCVE is ERC20 {
                 paymentToken,
                 msg.sender,
                 address(this),
-                optionExerciseCost
+                (optionExerciseCost * (10 ** paymentTokenDecimals)) / 1e18 // adjust decimals
             );
         }
 
@@ -251,5 +251,14 @@ contract OCVE is ERC20 {
         SafeTransferLib.safeTransfer(cve, msg.sender, amount);
 
         emit OptionsExercised(msg.sender, amount);
+    }
+
+    /// INTERNAL FUNCTIONS ///
+
+    /// @dev Checks whether the caller has sufficient permissioning.
+    function _checkDaoPermissions() internal view {
+        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
+            revert OCVE__Unauthorized();
+        }
     }
 }

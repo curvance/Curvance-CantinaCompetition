@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-pragma solidity 0.8.17;
-
-import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "./IPPrincipalToken.sol";
-import "./IPYieldToken.sol";
-import "./IStandardizedYield.sol";
-import "./IPGauge.sol";
+pragma solidity ^0.8.17;
 
 import "contracts/libraries/pendle/MarketMathCore.sol";
+
+import { IPPrincipalToken } from "contracts/interfaces/external/pendle/IPPrincipalToken.sol";
+import { IPYieldToken } from "contracts/interfaces/external/pendle/IPYieldToken.sol";
+import { IStandardizedYield } from "contracts/interfaces/external/pendle/IStandardizedYield.sol";
+import { IPGauge } from "contracts/interfaces/external/pendle/IPGauge.sol";
+import { IERC20Metadata } from "contracts/interfaces/IERC20Metadata.sol";
 
 interface IPMarket is IERC20Metadata, IPGauge {
     event Mint(

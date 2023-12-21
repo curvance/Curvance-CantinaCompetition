@@ -7,7 +7,6 @@ struct AccountSnapshot {
     address asset;
     bool isCToken;
     uint8 decimals;
-    uint256 balance;
     uint256 debtBalance;
     uint256 exchangeRate;
 }
@@ -18,14 +17,28 @@ interface IMToken {
     /// @notice Returns whether the market token is a collateral token
     function isCToken() external view returns (bool);
 
+    function accrueInterest() external;
+
     /// @notice Get the token balance of the `owner`
     function balanceOf(address owner) external view returns (uint256);
 
     function seize(
         address liquidator,
-        address borrower,
+        address account,
         uint256 liquidatedTokens,
         uint256 protocolTokens
+    ) external;
+
+    function repayWithBadDebt(
+        address liquidator, 
+        address account, 
+        uint256 repayRatio
+    ) external;
+
+    function seizeAccountLiquidation(
+        address liquidator, 
+        address account, 
+        uint256 shares
     ) external;
 
     /// @notice Get a snapshot of the account's balances, and the cached exchange rate
@@ -45,13 +58,13 @@ interface IMToken {
     function totalBorrows() external view returns (uint256);
 
     /// @notice Return the borrow balance of account based on stored data
-    function debtBalanceStored(
+    function debtBalanceCached(
         address account
     ) external view returns (uint256);
 
     function lendtroller() external view returns (ILendtroller);
 
-    function exchangeRateStored() external view returns (uint256);
+    function exchangeRateCached() external view returns (uint256);
 
     function startMarket(address initializer) external returns (bool);
 

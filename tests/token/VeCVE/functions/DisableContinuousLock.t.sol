@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.17;
+pragma solidity ^0.8.17;
 
 import { TestBaseVeCVE } from "../TestBaseVeCVE.sol";
 import { VeCVE } from "contracts/token/VeCVE.sol";
@@ -28,7 +28,7 @@ contract DisableContinuousLockTest is TestBaseVeCVE {
         bool isFreshLock,
         bool isFreshLockContinuous
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
-        veCVE.createLock(100, false, rewardsData, "", 0);
+        veCVE.createLock(30e18, false, rewardsData, "", 0);
 
         vm.expectRevert(VeCVE.VeCVE__LockTypeMismatch.selector);
         veCVE.disableContinuousLock(1, rewardsData, "", 0);

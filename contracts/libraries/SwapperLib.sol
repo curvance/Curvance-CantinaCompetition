@@ -33,29 +33,30 @@ library SwapperLib {
     /// @param swapData The swap data
     /// @return Swapped amount of token
     function swap(Swap memory swapData) internal returns (uint256) {
-        approveTokenIfNeeded(
+        _approveTokenIfNeeded(
             swapData.inputToken,
             swapData.target,
             swapData.inputAmount
         );
 
         address outputToken = swapData.outputToken;
-
         uint256 balance = CommonLib.getTokenBalance(outputToken);
 
         uint256 value = CommonLib.isETH(swapData.inputToken)
             ? swapData.inputAmount
             : 0;
 
-        (bool success, bytes memory retData) = swapData.target.call{
+        (bool success, bytes memory auxData) = swapData.target.call{
             value: value
         }(swapData.call);
 
-        propagateError(success, retData, "SwapperLib: swap");
+        propagateError(success, auxData, "SwapperLib: swap");
 
         if (!success) {
             revert SwapperLib__SwapError();
         }
+
+        _removeApprovalIfNeeded(swapData.inputToken, swapData.target);
 
         return CommonLib.getTokenBalance(outputToken) - balance;
     }
@@ -72,7 +73,7 @@ library SwapperLib {
     ///                   the calldata for the `zap` function,
     ///                         the input token address and the input amount.
     function zap(ZapperCall memory zapperCall) internal {
-        SwapperLib.approveTokenIfNeeded(
+        SwapperLib._approveTokenIfNeeded(
             zapperCall.inputToken,
             zapperCall.target,
             zapperCall.inputAmount
@@ -81,27 +82,35 @@ library SwapperLib {
         if (CommonLib.isETH(zapperCall.inputToken)) {
             value = zapperCall.inputAmount;
         }
-        (bool success, bytes memory retData) = zapperCall.target.call{
+        (bool success, bytes memory auxData) = zapperCall.target.call{
             value: value
         }(zapperCall.call);
-        SwapperLib.propagateError(success, retData, "SwapperLib: zapper");
+        SwapperLib.propagateError(success, auxData, "SwapperLib: zapper");
     }
 
-    /// @dev Approve token if needed
+    /// @notice Approve `token` spending allowance if needed
     /// @param token The token address
     /// @param spender The spender address
     /// @param amount The approve amount
-    function approveTokenIfNeeded(
+    function _approveTokenIfNeeded(
         address token,
         address spender,
         uint256 amount
     ) internal {
+        if (!CommonLib.isETH(token)) {
+            SafeTransferLib.safeApprove(token, spender, amount);
+        }
+    }
+
+    /// @notice Remove `token` spending allowance if needed
+    /// @param token The token address
+    /// @param spender The spender address
+    function _removeApprovalIfNeeded(address token, address spender) internal {
         if (
             !CommonLib.isETH(token) &&
-            IERC20(token).allowance(address(this), spender) < amount
+            IERC20(token).allowance(address(this), spender) > 0
         ) {
             SafeTransferLib.safeApprove(token, spender, 0);
-            SafeTransferLib.safeApprove(token, spender, amount);
         }
     }
 

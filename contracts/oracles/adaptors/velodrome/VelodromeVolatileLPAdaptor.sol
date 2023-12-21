@@ -8,6 +8,15 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IVeloPool } from "contracts/interfaces/external/velodrome/IVeloPool.sol";
 
 contract VelodromeVolatileLPAdaptor is BaseVolatileLPAdaptor {
+    /// EVENTS ///
+
+    event VelodromeVolatileLPAssetAdded(
+        address asset,
+        AdaptorData assetConfig
+    );
+
+    event VelodromeVolatileLPAssetRemoved(address asset);
+
     /// ERRORS ///
 
     error VelodromeVolatileLPAdaptor__AssetIsNotSupported();
@@ -45,7 +54,9 @@ contract VelodromeVolatileLPAdaptor is BaseVolatileLPAdaptor {
     /// @param asset The address of the bpt to add
     function addAsset(
         address asset
-    ) external override onlyElevatedPermissions {
+    ) external override {
+        _checkElevatedPermissions();
+        
         if (isSupportedAsset[asset]) {
             revert VelodromeVolatileLPAdaptor__AssetIsAlreadyAdded();
         }
@@ -53,18 +64,22 @@ contract VelodromeVolatileLPAdaptor is BaseVolatileLPAdaptor {
             revert VelodromeVolatileLPAdaptor__AssetIsNotVolatileLP();
         }
 
-        _addAsset(asset);
+        AdaptorData memory data = _addAsset(asset);
+        emit VelodromeVolatileLPAssetAdded(asset, data);
     }
 
     /// @notice Removes a supported asset from the adaptor.
     /// @dev Calls back into price router to notify it of its removal
     function removeAsset(
         address asset
-    ) external virtual override onlyDaoPermissions {
+    ) external virtual override {
+        _checkElevatedPermissions();
+
         if (!isSupportedAsset[asset]) {
             revert VelodromeVolatileLPAdaptor__AssetIsNotSupported();
         }
-
+        
         _removeAsset(asset);
+        emit VelodromeVolatileLPAssetRemoved(asset);
     }
 }

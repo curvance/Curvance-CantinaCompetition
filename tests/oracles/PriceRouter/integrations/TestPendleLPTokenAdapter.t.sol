@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.17;
+pragma solidity ^0.8.17;
 
 import { TestBasePriceRouter } from "../TestBasePriceRouter.sol";
 import { PendleLPTokenAdaptor } from "contracts/oracles/adaptors/pendle/PendleLPTokenAdaptor.sol";
@@ -19,7 +19,7 @@ contract TestPendleLPTokenAdapter is TestBasePriceRouter {
     PendleLPTokenAdaptor adapter;
 
     function setUp() public override {
-        _fork();
+        _fork(18031848);
 
         _deployCentralRegistry();
         _deployPriceRouter();

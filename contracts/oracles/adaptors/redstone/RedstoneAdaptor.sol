@@ -71,13 +71,16 @@ contract RedstoneAdaptor is RedstoneConsumerNumericBase, BaseOracleAdaptor {
         address asset,
         address aggregator,
         bool inUSD
-    ) external onlyDaoPermissions {
+    ) external {
+        _checkElevatedPermissions();
         isSupportedAsset[asset] = true;
     }
 
     /// @notice Removes a supported asset from the adaptor.
     /// @dev Calls back into price router to notify it of its removal
-    function removeAsset(address asset) external override onlyDaoPermissions {
+    function removeAsset(address asset) external override {
+        _checkElevatedPermissions();
+ 
         if (!isSupportedAsset[asset]) {
             revert RedstoneAdaptor__AssetIsNotSupported();
         }

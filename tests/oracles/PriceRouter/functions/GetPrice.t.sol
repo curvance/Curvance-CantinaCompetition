@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.17;
+pragma solidity ^0.8.17;
 
 import { TestBasePriceRouter } from "../TestBasePriceRouter.sol";
 import { IChainlink } from "contracts/interfaces/external/chainlink/IChainlink.sol";

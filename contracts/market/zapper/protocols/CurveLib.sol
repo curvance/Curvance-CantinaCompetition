@@ -35,7 +35,7 @@ library CurveLib {
         // approve tokens
         for (uint256 i; i < numTokens; ) {
             balances[i] = CommonLib.getTokenBalance(tokens[i]);
-            SwapperLib.approveTokenIfNeeded(tokens[i], lpMinter, balances[i]);
+            SwapperLib._approveTokenIfNeeded(tokens[i], lpMinter, balances[i]);
 
             if (CommonLib.isETH(tokens[i])) {
                 value = balances[i];
@@ -92,7 +92,7 @@ library CurveLib {
         uint256 singleAssetIndex
     ) internal {
         // approve lp token
-        SwapperLib.approveTokenIfNeeded(lpToken, lpMinter, lpAmount);
+        SwapperLib._approveTokenIfNeeded(lpToken, lpMinter, lpAmount);
 
         uint256 numTokens = tokens.length;
         if (singleAssetWithdraw == 0) {

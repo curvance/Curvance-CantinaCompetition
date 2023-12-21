@@ -8,6 +8,7 @@ import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 import { IReader } from "contracts/interfaces/external/gmx/IReader.sol";
+import { WAD } from "contracts/libraries/Constants.sol";
 
 contract GMAdaptor is BaseOracleAdaptor {
     /// TYPES ///
@@ -133,7 +134,9 @@ contract GMAdaptor is BaseOracleAdaptor {
 
     /// @notice Add a GMX GM Token as an asset.
     /// @param asset The address of the token to add pricing for.
-    function addAsset(address asset) external onlyElevatedPermissions {
+    function addAsset(address asset) external {
+        _checkElevatedPermissions();
+
         if (isSupportedAsset[asset]) {
             revert GMAdaptor__AssetIsAlreadySupported();
         }
@@ -155,7 +158,7 @@ contract GMAdaptor is BaseOracleAdaptor {
             }
 
             if (_priceUnit[token] == 0) {
-                _priceUnit[token] = 1e18 * 10 ** IERC20(token).decimals();
+                _priceUnit[token] = WAD * 10 ** IERC20(token).decimals();
             }
 
             marketData[asset].push(token);
@@ -167,7 +170,9 @@ contract GMAdaptor is BaseOracleAdaptor {
     /// @notice Removes a supported asset from the adaptor.
     /// @dev Calls back into price router to notify it of its removal.
     /// @param asset The address of the token to remove.
-    function removeAsset(address asset) external override onlyDaoPermissions {
+    function removeAsset(address asset) external override {
+        _checkElevatedPermissions();
+
         if (!isSupportedAsset[asset]) {
             revert GMAdaptor__AssetIsNotSupported();
         }
@@ -186,11 +191,12 @@ contract GMAdaptor is BaseOracleAdaptor {
     /// @param assets The struct array of the synthetic assets to register.
     function registerSyntheticAssets(
         SyntheticAsset[] memory assets
-    ) external onlyDaoPermissions {
+    ) external {
+        _checkElevatedPermissions();
         uint256 numAssets = assets.length;
 
-        for (uint256 i = 0; i < numAssets; ++i) {
-            _priceUnit[assets[i].asset] = 1e18 * 10 ** assets[i].decimals;
+        for (uint256 i; i < numAssets; ++i) {
+            _priceUnit[assets[i].asset] = WAD * 10 ** assets[i].decimals;
         }
     }
 
@@ -198,10 +204,11 @@ contract GMAdaptor is BaseOracleAdaptor {
     /// @param assets The struct array of the synthetic assets to unregister.
     function unregisterSyntheticAssets(
         address[] memory assets
-    ) external onlyDaoPermissions {
+    ) external {
+        _checkElevatedPermissions();
         uint256 numAssets = assets.length;
 
-        for (uint256 i = 0; i < numAssets; ++i) {
+        for (uint256 i; i < numAssets; ++i) {
             _priceUnit[assets[i]] = 0;
         }
     }

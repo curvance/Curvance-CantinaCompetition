@@ -2,7 +2,7 @@
 pragma solidity ^0.8.17;
 
 /// @dev Scalar for math
-uint256 constant EXP_SCALE = 1e18;
+uint256 constant WAD = 1e18;
 
 /// @dev Scalar for math
 uint256 constant DENOMINATOR = 1e4;

@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.17;
 
 import { MockDataFeed } from "contracts/mocks/MockDataFeed.sol";
 import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 import { IUniswapV2Router } from "contracts/interfaces/external/uniswap/IUniswapV2Router.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
+import { CTokenPrimitive } from "contracts/market/collateral/CTokenPrimitive.sol";
 
 import "tests/market/TestBaseMarket.sol";
 
@@ -75,51 +76,37 @@ contract TestPositionFolding is TestBaseMarket {
         mockWethFeed.setMockUpdatedAt(block.timestamp);
         mockRethFeed.setMockUpdatedAt(block.timestamp);
 
-        // deploy dDAI
+        // setup dDAI
         {
-            _deployDDAI();
-            // support market
             _prepareDAI(owner, 200000e18);
             dai.approve(address(dDAI), 200000e18);
-            lendtroller.listMarketToken(address(dDAI));
+            lendtroller.listToken(address(dDAI));
             // add MToken support on price router
             priceRouter.addMTokenSupport(address(dDAI));
-            vm.prank(user);
-            address[] memory markets = new address[](1);
-            markets[0] = address(dDAI);
-            lendtroller.enterMarkets(markets);
-            // approve
-            vm.prank(user);
-            dai.approve(address(dDAI), 200000e18);
         }
 
-        // deploy CBALRETH
+        // setup CBALRETH
         {
-            // deploy aura position vault
-            _deployCBALRETH();
-
             // support market
             _prepareBALRETH(owner, 1 ether);
             balRETH.approve(address(cBALRETH), 1 ether);
-            lendtroller.listMarketToken(address(cBALRETH));
-            // add MToken support on price router
-            priceRouter.addMTokenSupport(address(cBALRETH));
+            lendtroller.listToken(address(cBALRETH));
             // set collateral factor
             lendtroller.updateCollateralToken(
                 IMToken(address(cBALRETH)),
+                7000,
+                4000, // liquidate at 71%
+                3000,
                 200,
-                0,
-                1200,
-                1000,
-                5000
+                200,
+                100,
+                1000
             );
-            vm.prank(user);
-            address[] memory markets = new address[](1);
-            markets[0] = address(cBALRETH);
-            lendtroller.enterMarkets(markets);
-            // approve
-            vm.prank(user);
-            dai.approve(address(cBALRETH), 200000e18);
+            address[] memory tokens = new address[](1);
+            tokens[0] = address(cBALRETH);
+            uint256[] memory caps = new uint256[](1);
+            caps[0] = 100_000e18;
+            lendtroller.setCTokenCollateralCaps(tokens, caps);
         }
 
         // set position folding
@@ -148,7 +135,7 @@ contract TestPositionFolding is TestBaseMarket {
     }
 
     function provideEnoughLiquidityForLeverage() internal {
-        address liquidityProvider = address(new User());
+        address liquidityProvider = makeAddr("liquidityProvider");
         _prepareDAI(liquidityProvider, 200000e18);
         _prepareBALRETH(liquidityProvider, 10 ether);
         // mint dDAI
@@ -157,7 +144,7 @@ contract TestPositionFolding is TestBaseMarket {
         dDAI.mint(200000 ether);
         // mint cBALETH
         balRETH.approve(address(cBALRETH), 10 ether);
-        cBALRETH.mint(10 ether);
+        cBALRETH.deposit(10 ether, liquidityProvider);
         vm.stopPrank();
     }
 
@@ -176,7 +163,8 @@ contract TestPositionFolding is TestBaseMarket {
         balRETH.approve(address(cBALRETH), 1 ether);
 
         // mint
-        assertTrue(cBALRETH.mint(1 ether));
+        assertGt(cBALRETH.deposit(1 ether, user1), 0);
+        lendtroller.postCollateral(user, address(cBALRETH), 1 ether);
         assertEq(cBALRETH.balanceOf(user), 1 ether);
 
         uint256 balanceBeforeBorrow = dai.balanceOf(user);
@@ -184,15 +172,15 @@ contract TestPositionFolding is TestBaseMarket {
         dDAI.borrow(100 ether);
         assertEq(balanceBeforeBorrow + 100 ether, dai.balanceOf(user));
 
-        // try leverage with 80% of max
+        // try leverage with 50% of max
         uint256 amountForLeverage = (positionFolding
-            .queryAmountToBorrowForLeverageMax(user, address(dDAI)) * 80) /
+            .queryAmountToBorrowForLeverageMax(user, address(dDAI)) * 50) /
             100;
 
         PositionFolding.LeverageStruct memory leverageData;
         leverageData.borrowToken = dDAI;
         leverageData.borrowAmount = amountForLeverage;
-        leverageData.collateralToken = cBALRETH;
+        leverageData.collateralToken = CTokenPrimitive(address(cBALRETH));
         leverageData.swapData.inputToken = address(dai);
         leverageData.swapData.inputAmount = amountForLeverage;
         leverageData.swapData.outputToken = _WETH_ADDRESS;
@@ -219,7 +207,7 @@ contract TestPositionFolding is TestBaseMarket {
         leverageData.zapperCall.target = address(zapper);
         leverageData.zapperCall.call = abi.encodeWithSelector(
             Zapper.balancerIn.selector,
-            address(cBALRETH),
+            address(0),
             Zapper.ZapperData(
                 _WETH_ADDRESS,
                 leverageData.zapperCall.inputAmount,
@@ -231,7 +219,7 @@ contract TestPositionFolding is TestBaseMarket {
             _BALANCER_VAULT,
             _BAL_WETH_RETH_POOLID,
             tokens,
-            user
+            address(positionFolding)
         );
 
         positionFolding.leverage(leverageData, 500);
@@ -250,7 +238,8 @@ contract TestPositionFolding is TestBaseMarket {
 
     function testDeLeverage() public {
         testLeverage();
-        vm.warp(block.timestamp + 15 minutes);
+        // Warp until collateral posting wait time ends
+        vm.warp(block.timestamp + 20 minutes);
         dDAI.accrueInterest();
 
         vm.startPrank(user);
@@ -260,7 +249,7 @@ contract TestPositionFolding is TestBaseMarket {
         (, uint256 dDAIBorrowedBefore, ) = dDAI.getSnapshot(user);
         (uint256 cBALRETHBalanceBefore, , ) = cBALRETH.getSnapshot(user);
 
-        deleverageData.collateralToken = cBALRETH;
+        deleverageData.collateralToken = CTokenPrimitive(address(cBALRETH));
         deleverageData.collateralAmount = 0.3 ether;
         deleverageData.borrowToken = dDAI;
 
@@ -310,6 +299,7 @@ contract TestPositionFolding is TestBaseMarket {
             .getAmountsOut(amountForDeleverage, path);
         deleverageData.repayAmount = amountsOut[1];
 
+        cBALRETH.approve(address(positionFolding), type(uint256).max);
         positionFolding.deleverage(deleverageData, 500);
 
         (uint256 dDAIBalance, uint256 dDAIBorrowed, ) = dDAI.getSnapshot(user);

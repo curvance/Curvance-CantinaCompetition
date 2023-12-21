@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.17;
+pragma solidity ^0.8.17;
 
 import { TestBaseLendtroller } from "../TestBaseLendtroller.sol";
 import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
@@ -15,7 +15,7 @@ contract SetTransferPausedTest is TestBaseLendtroller {
     }
 
     function test_setTransferPaused_success() public {
-        lendtroller.listMarketToken(address(dUSDC));
+        lendtroller.listToken(address(dUSDC));
 
         lendtroller.canTransfer(address(dUSDC), address(this), 1);
 

@@ -28,29 +28,6 @@ abstract contract GaugeController is IGaugePool {
     uint256 public startTime; // Gauge emission start time
     mapping(uint256 => Epoch) internal _epochInfo;
 
-    /// MODIFIERS ///
-
-    modifier onlyDaoPermissions() {
-        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
-            revert GaugeErrors.Unauthorized();
-        }
-        _;
-    }
-
-    modifier onlyMessagingHub() {
-        if (msg.sender != centralRegistry.protocolMessagingHub()) {
-            revert GaugeErrors.Unauthorized();
-        }
-        _;
-    }
-
-    modifier whenGaugeStarted() {
-        if (startTime == 0) {
-            revert GaugeErrors.NotStarted();
-        }
-        _;
-    }
-
     /// CONSTRUCTOR ///
 
     constructor(ICentralRegistry centralRegistry_) {
@@ -63,7 +40,7 @@ abstract contract GaugeController is IGaugePool {
             revert GaugeErrors.InvalidAddress();
         }
         centralRegistry = centralRegistry_;
-        cve = centralRegistry.CVE();
+        cve = centralRegistry.cve();
         veCVE = IVeCVE(centralRegistry.veCVE());
     }
 
@@ -91,7 +68,11 @@ abstract contract GaugeController is IGaugePool {
         uint256 epoch,
         address[] calldata tokens,
         uint256[] calldata poolWeights
-    ) external override onlyMessagingHub {
+    ) external override {
+        if (msg.sender != centralRegistry.protocolMessagingHub()) {
+            revert GaugeErrors.Unauthorized();
+        }
+
         if (
             !(epoch == 0 && (startTime == 0 || block.timestamp < startTime)) &&
             epoch != currentEpoch() + 1
@@ -106,15 +87,12 @@ abstract contract GaugeController is IGaugePool {
         }
 
         Epoch storage info = _epochInfo[epoch];
+        address priorAddress;
         for (uint256 i; i < numTokens; ) {
-            for (uint256 j; j < numTokens; ) {
-                if (i != j && tokens[i] == tokens[j]) {
-                    revert GaugeErrors.InvalidToken();
-                }
-
-                unchecked {
-                    ++j;
-                }
+            /// We sort the token addresses offchain
+            /// from smallest to largest to validate there are no duplicates
+            if (priorAddress > tokens[i]) {
+                revert GaugeErrors.InvalidToken();
             }
 
             info.totalWeights =
@@ -122,9 +100,21 @@ abstract contract GaugeController is IGaugePool {
                 poolWeights[i] -
                 info.poolWeights[tokens[i]];
             info.poolWeights[tokens[i]] = poolWeights[i];
-
             unchecked {
-                ++i;
+                /// update prior to current token then increment i
+                priorAddress = tokens[i++];
+            }
+        }
+    }
+
+    /// @notice Update reward variables for all pools
+    /// @dev Be careful of gas spending!
+    function massUpdatePools(address[] calldata tokens) external {
+        uint256 numTokens = tokens.length;
+        for (uint256 i; i < numTokens; ) {
+            unchecked {
+                /// update pool for current token then increment i
+                updatePool(tokens[i++]);
             }
         }
     }
@@ -140,23 +130,22 @@ abstract contract GaugeController is IGaugePool {
     /// @param timestamp Timestamp in seconds
     function epochOfTimestamp(
         uint256 timestamp
-    ) public view whenGaugeStarted returns (uint256) {
+    ) public view returns (uint256) {
+        _verifyGaugeHasStarted();
         return (timestamp - startTime) / EPOCH_WINDOW;
     }
 
     /// @notice Returns start time of given epoch
     /// @param epoch Epoch number
-    function epochStartTime(
-        uint256 epoch
-    ) public view whenGaugeStarted returns (uint256) {
+    function epochStartTime(uint256 epoch) public view returns (uint256) {
+        _verifyGaugeHasStarted();
         return startTime + epoch * EPOCH_WINDOW;
     }
 
     /// @notice Returns end time of given epoch
     /// @param epoch Epoch number
-    function epochEndTime(
-        uint256 epoch
-    ) public view whenGaugeStarted returns (uint256) {
+    function epochEndTime(uint256 epoch) public view returns (uint256) {
+        _verifyGaugeHasStarted();
         return startTime + (epoch + 1) * EPOCH_WINDOW;
     }
 
@@ -170,16 +159,23 @@ abstract contract GaugeController is IGaugePool {
         return _epochInfo[epoch].poolWeights[token] > 0;
     }
 
-    /// @notice Update reward variables for all pools
-    /// @dev Be careful of gas spending!
-    function massUpdatePools(address[] calldata tokens) external {
-        uint256 numTokens = tokens.length;
-        for (uint256 i; i < numTokens; ) {
-            unchecked {
-                updatePool(tokens[i++]);
-            }
+    /// INTERNAL FUNCTIONS ///
+
+    /// @dev Checks whether the caller has sufficient permissioning
+    function _checkDaoPermissions() internal view {
+        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
+            revert GaugeErrors.Unauthorized();
         }
     }
+
+    /// @dev Checks whether the caller has sufficient permissioning
+    function _verifyGaugeHasStarted() internal view {
+        if (startTime == 0) {
+            revert GaugeErrors.NotStarted();
+        }
+    }
+
+    /// FUNCTIONS TO OVERRIDE ///
 
     /// @notice Update reward variables of the given pool to be up-to-date
     /// @param token Pool token address

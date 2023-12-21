@@ -42,6 +42,15 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
     /// @notice Uniswap adaptor storage
     mapping(address => AdaptorData) public adaptorData;
 
+    /// EVENTS ///
+
+    event UniswapV3AssetAdded(
+        address asset,
+        AdaptorData assetConfig
+    );
+
+    event UniswapV3AssetRemoved(address asset);
+
     /// ERRORS ///
 
     error UniswapV3Adaptor__AssetIsNotSupported();
@@ -78,9 +87,9 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
             revert UniswapV3Adaptor__AssetIsNotSupported();
         }
 
-        AdaptorData memory uniswapFeed = adaptorData[asset];
+        AdaptorData memory data = adaptorData[asset];
         address[] memory pools = new address[](1);
-        pools[0] = uniswapFeed.priceSource;
+        pools[0] = data.priceSource;
         uint256 twapPrice;
 
         (bool success, bytes memory returnData) = address(uniswapOracleRouter)
@@ -90,11 +99,11 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
                         .quoteSpecificPoolsWithTimePeriod
                         .selector,
                     abi.encode(
-                        10 ** uniswapFeed.baseDecimals,
+                        10 ** data.baseDecimals,
                         asset,
-                        uniswapFeed.quoteToken,
+                        data.quoteToken,
                         pools,
-                        uniswapFeed.secondsAgo
+                        data.secondsAgo
                     )
                 )
             );
@@ -113,7 +122,7 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
         // so find out the price of the quote token in USD then divide
         // so its in USD
         if (inUSD) {
-            if (!PriceRouter.isSupportedAsset(uniswapFeed.quoteToken)) {
+            if (!PriceRouter.isSupportedAsset(data.quoteToken)) {
                 // Our price router does not know how to value this quote token
                 // so we cant use the TWAP data
                 return
@@ -125,7 +134,7 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
             }
 
             (uint256 quoteTokenDenominator, uint256 errorCode) = PriceRouter
-                .getPrice(uniswapFeed.quoteToken, true, getLower);
+                .getPrice(data.quoteToken, true, getLower);
 
             // Make sure that if the Price Router had an error,
             // it was not catastrophic
@@ -144,15 +153,15 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
                 PriceReturnData({
                     price: uint240(
                         (twapPrice * quoteTokenDenominator) /
-                            uniswapFeed.quoteDecimals
+                            data.quoteDecimals
                     ),
                     hadError: false,
                     inUSD: true
                 });
         }
 
-        if (uniswapFeed.quoteToken != WETH) {
-            if (!PriceRouter.isSupportedAsset(uniswapFeed.quoteToken)) {
+        if (data.quoteToken != WETH) {
+            if (!PriceRouter.isSupportedAsset(data.quoteToken)) {
                 // Our price router does not know how to value this quote
                 // token so we cant use the TWAP data
                 return
@@ -164,7 +173,7 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
             }
 
             (uint256 quoteTokenDenominator, uint256 errorCode) = PriceRouter
-                .getPrice(uniswapFeed.quoteToken, false, getLower);
+                .getPrice(data.quoteToken, false, getLower);
 
             // Make sure that if the Price Router had an error,
             // it was not catastrophic
@@ -197,35 +206,40 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
 
     function addAsset(
         address asset,
-        AdaptorData memory parameters
-    ) external onlyElevatedPermissions {
+        AdaptorData memory data
+    ) external {
+        _checkElevatedPermissions();
+
         // Verify seconds ago is reasonable.
-        if (parameters.secondsAgo < MINIMUM_SECONDS_AGO) {
+        if (data.secondsAgo < MINIMUM_SECONDS_AGO) {
             revert UniswapV3Adaptor__SecondsAgoIsLessThanMinimum();
         }
 
-        UniswapV3Pool pool = UniswapV3Pool(parameters.priceSource);
+        UniswapV3Pool pool = UniswapV3Pool(data.priceSource);
 
         address token0 = pool.token0();
         address token1 = pool.token1();
         if (token0 == asset) {
-            parameters.baseDecimals = ERC20(asset).decimals();
-            parameters.quoteDecimals = ERC20(token1).decimals();
-            parameters.quoteToken = token1;
+            data.baseDecimals = ERC20(asset).decimals();
+            data.quoteDecimals = ERC20(token1).decimals();
+            data.quoteToken = token1;
         } else if (token1 == asset) {
-            parameters.baseDecimals = ERC20(asset).decimals();
-            parameters.quoteDecimals = ERC20(token0).decimals();
-            parameters.quoteToken = token0;
+            data.baseDecimals = ERC20(asset).decimals();
+            data.quoteDecimals = ERC20(token0).decimals();
+            data.quoteToken = token0;
         } else revert("UniswapV3Adaptor: twap asset not in pool");
 
-        adaptorData[asset] = parameters;
+        adaptorData[asset] = data;
         isSupportedAsset[asset] = true;
+        emit UniswapV3AssetAdded(asset, data);
     }
 
     /// @notice Removes a supported asset from the adaptor.
     /// @dev Calls back into price router to notify it of its removal
     /// @param asset The address of the asset to be removed.
-    function removeAsset(address asset) external override onlyDaoPermissions {
+    function removeAsset(address asset) external override {
+        _checkElevatedPermissions();
+
         if (!isSupportedAsset[asset]) {
             revert UniswapV3Adaptor__AssetIsNotSupported();
         }
@@ -239,5 +253,6 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
         // Notify the price router that we are going
         // to stop supporting the asset
         IPriceRouter(centralRegistry.priceRouter()).notifyFeedRemoval(asset);
+        emit UniswapV3AssetRemoved(asset);
     }
 }

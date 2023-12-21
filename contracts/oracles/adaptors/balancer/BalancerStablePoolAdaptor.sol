@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { BalancerPoolAdaptor, IVault } from "./BalancerPoolAdaptor.sol";
+import { BalancerBaseAdaptor, IVault } from "contracts/oracles/adaptors/balancer/BalancerBaseAdaptor.sol";
 
 import { IBalancerPool } from "contracts/interfaces/external/balancer/IBalancerPool.sol";
 import { IRateProvider } from "contracts/interfaces/external/balancer/IRateProvider.sol";
@@ -9,7 +9,7 @@ import { PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 
-contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
+contract BalancerStablePoolAdaptor is BalancerBaseAdaptor {
     /// TYPES ///
 
     /// @notice Adaptor storage
@@ -42,6 +42,12 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
     /// @notice Balancer Stable Pool Adaptor Storage
     mapping(address => AdaptorData) public adaptorData;
 
+    /// EVENTS ///
+
+    event BalancerStablePoolAssetAdded(address asset, AdaptorData assetConfig);
+
+    event BalancerStablePoolAssetRemoved(address asset);
+
     /// ERRORS ///
 
     error BalancerStablePoolAdaptor__AssetIsNotSupported();
@@ -52,7 +58,7 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
     constructor(
         ICentralRegistry centralRegistry_,
         IVault balancerVault_
-    ) BalancerPoolAdaptor(centralRegistry_, balancerVault_) {}
+    ) BalancerBaseAdaptor(centralRegistry_, balancerVault_) {}
 
     /// EXTERNAL FUNCTIONS ///
 
@@ -120,10 +126,9 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
     /// @dev Should be called before `PriceRotuer:addAssetPriceFeed` is called.
     /// @param asset the address of the bpt to add
     /// @param data AdaptorData needed to add `asset`
-    function addAsset(
-        address asset,
-        AdaptorData memory data
-    ) external onlyElevatedPermissions {
+    function addAsset(address asset, AdaptorData memory data) external {
+        _checkElevatedPermissions();
+
         if (isSupportedAsset[asset]) {
             revert BalancerStablePoolAdaptor__ConfigurationError();
         }
@@ -169,11 +174,14 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
         // Save values in Adaptor storage.
         adaptorData[asset] = data;
         isSupportedAsset[asset] = true;
+        emit BalancerStablePoolAssetAdded(asset, data);
     }
 
     /// @notice Removes a supported asset from the adaptor.
     /// @dev Calls back into price router to notify it of its removal
-    function removeAsset(address asset) external override onlyDaoPermissions {
+    function removeAsset(address asset) external override {
+        _checkElevatedPermissions();
+
         if (!isSupportedAsset[asset]) {
             revert BalancerStablePoolAdaptor__AssetIsNotSupported();
         }
@@ -185,5 +193,6 @@ contract BalancerStablePoolAdaptor is BalancerPoolAdaptor {
 
         // Notify the price router that we are going to stop supporting the asset
         IPriceRouter(centralRegistry.priceRouter()).notifyFeedRemoval(asset);
+        emit BalancerStablePoolAssetRemoved(asset);
     }
 }

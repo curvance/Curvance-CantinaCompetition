@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.17;
+pragma solidity ^0.8.17;
 
 interface ICurveFi {
     function get_virtual_price() external view returns (uint256);

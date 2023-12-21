@@ -7,7 +7,7 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.sol";
 import { IChainlink } from "contracts/interfaces/external/chainlink/IChainlink.sol";
 import { IOracleAdaptor, PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
-import { DENOMINATOR } from "contracts/libraries/Constants.sol";
+import { WAD, DENOMINATOR } from "contracts/libraries/Constants.sol";
 
 /// @title Curvance Dual Oracle Price Router
 /// @notice Provides a universal interface allowing Curvance contracts
@@ -50,16 +50,20 @@ contract PriceRouter {
     uint256 public constant GRACE_PERIOD_TIME = 3600;
 
     // `bytes4(keccak256(bytes("PriceRouter__NotSupported()")))`
-    uint256 internal constant NOT_SUPPORTED_SELECTOR = 0xe4558fac;
+    uint256 internal constant _NOT_SUPPORTED_SELECTOR = 0xe4558fac;
     // `bytes4(keccak256(bytes("PriceRouter__InvalidParameter()")))`
-    uint256 internal constant INVALID_PARAMETER_SELECTOR = 0xebd2e1ff;
+    uint256 internal constant _INVALID_PARAMETER_SELECTOR = 0xebd2e1ff;
     // `bytes4(keccak256(bytes("PriceRouter__ErrorCodeFlagged()")))`
-    uint256 internal constant ERROR_CODE_FLAGGED_SELECTOR = 0x891531fb;
+    uint256 internal constant _ERROR_CODE_FLAGGED_SELECTOR = 0x891531fb;
 
     /// STORAGE ///
 
-    /// @notice The maximum allowed divergence between prices in `DENOMINATOR`
-    uint256 public MAXIMUM_DIVERGENCE = 11000; // 10%
+    /// @notice The maximum allowed divergence between prices
+    ///         before CAUTION is flipped, in `DENOMINATOR`
+    uint256 public cautionDivergenceFlag = 10500; // 5%
+    /// @notice The maximum allowed divergence between prices
+    ///         before BAD_SOURCE is flipped, in `DENOMINATOR`
+    uint256 public badSourceDivergenceFlag = 11000; // 10%
     /// @notice The maximum delay accepted between answers from chainlink
     uint256 public CHAINLINK_MAX_DELAY = 1 days;
 
@@ -78,22 +82,6 @@ contract PriceRouter {
     error PriceRouter__ErrorCodeFlagged();
     error PriceRouter__AdaptorIsNotApproved();
 
-    /// MODIFIERS ///
-
-    modifier onlyDaoPermissions() {
-        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
-            revert PriceRouter__Unauthorized();
-        }
-        _;
-    }
-
-    modifier onlyElevatedPermissions() {
-        if (!centralRegistry.hasElevatedPermissions(msg.sender)) {
-            revert PriceRouter__Unauthorized();
-        }
-        _;
-    }
-
     /// CONSTRUCTOR ///
 
     constructor(ICentralRegistry centralRegistry_, address ethUsdFeed) {
@@ -103,11 +91,11 @@ contract PriceRouter {
                 type(ICentralRegistry).interfaceId
             )
         ) {
-            _revert(INVALID_PARAMETER_SELECTOR);
+            _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
         if (ethUsdFeed == address(0)) {
-            _revert(INVALID_PARAMETER_SELECTOR);
+            _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
         centralRegistry = centralRegistry_;
@@ -123,26 +111,25 @@ contract PriceRouter {
     ///      and that the asset doesn't already have two feeds.
     /// @param asset The address of the asset.
     /// @param feed The address of the new feed.
-    function addAssetPriceFeed(
-        address asset,
-        address feed
-    ) external onlyElevatedPermissions {
+    function addAssetPriceFeed(address asset, address feed) external {
+        _checkElevatedPermissions();
+
         if (!isApprovedAdaptor[feed]) {
-            _revert(INVALID_PARAMETER_SELECTOR);
+            _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
         if (!IOracleAdaptor(feed).isSupportedAsset(asset)) {
-            _revert(INVALID_PARAMETER_SELECTOR);
+            _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
         uint256 numPriceFeeds = assetPriceFeeds[asset].length;
 
         if (numPriceFeeds >= 2) {
-            _revert(INVALID_PARAMETER_SELECTOR);
+            _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
         if (numPriceFeeds != 0 && assetPriceFeeds[asset][0] == feed) {
-            _revert(INVALID_PARAMETER_SELECTOR);
+            _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
         assetPriceFeeds[asset].push(feed);
@@ -152,33 +139,27 @@ contract PriceRouter {
     /// @dev Requires that the feed exists for the asset.
     /// @param asset The address of the asset.
     /// @param feed The address of the feed to be removed.
-    function removeAssetPriceFeed(
-        address asset,
-        address feed
-    ) external onlyDaoPermissions {
+    function removeAssetPriceFeed(address asset, address feed) external {
+        _checkElevatedPermissions();
         _removeFeed(asset, feed);
     }
 
-    function addMTokenSupport(
-        address mToken
-    ) external onlyElevatedPermissions {
-        if (mTokenAssets[mToken].isMToken) {
-            _revert(INVALID_PARAMETER_SELECTOR);
-        }
+    function addMTokenSupport(address mToken) external {
+        _checkElevatedPermissions();
 
-        if (
-            !ERC165Checker.supportsInterface(mToken, type(IMToken).interfaceId)
-        ) {
-            _revert(INVALID_PARAMETER_SELECTOR);
+        if (mTokenAssets[mToken].isMToken) {
+            _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
         mTokenAssets[mToken].isMToken = true;
         mTokenAssets[mToken].underlying = IMToken(mToken).underlying();
     }
 
-    function removeMTokenSupport(address mToken) external onlyDaoPermissions {
+    function removeMTokenSupport(address mToken) external {
+        _checkElevatedPermissions();
+
         if (!mTokenAssets[mToken].isMToken) {
-            _revert(INVALID_PARAMETER_SELECTOR);
+            _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
         delete mTokenAssets[mToken];
@@ -195,11 +176,11 @@ contract PriceRouter {
     /// @notice Adds a new approved adaptor.
     /// @dev Requires that the adaptor isn't already approved.
     /// @param _adaptor The address of the adaptor to approve.
-    function addApprovedAdaptor(
-        address _adaptor
-    ) external onlyElevatedPermissions {
+    function addApprovedAdaptor(address _adaptor) external {
+        _checkElevatedPermissions();
+
         if (isApprovedAdaptor[_adaptor]) {
-            _revert(INVALID_PARAMETER_SELECTOR);
+            _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
         isApprovedAdaptor[_adaptor] = true;
@@ -208,39 +189,55 @@ contract PriceRouter {
     /// @notice Removes an approved adaptor.
     /// @dev Requires that the adaptor is currently approved.
     /// @param _adaptor The address of the adaptor to remove.
-    function removeApprovedAdaptor(
-        address _adaptor
-    ) external onlyDaoPermissions {
+    function removeApprovedAdaptor(address _adaptor) external {
+        _checkElevatedPermissions();
+
         if (!isApprovedAdaptor[_adaptor]) {
-            _revert(INVALID_PARAMETER_SELECTOR);
+            _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
         delete isApprovedAdaptor[_adaptor];
     }
 
-    /// @notice Sets a new maximum divergence for price feeds.
+    /// @notice Sets a new maximum divergence for price feeds
+    ///         before CAUTION is activated.
     /// @dev Requires that the new divergence is greater than
     ///      or equal to 10200 aka 2% and less than or equal to 12000 aka 20%.
     /// @param maxDivergence The new maximum divergence.
-    function setPriceFeedMaxDivergence(
-        uint256 maxDivergence
-    ) external onlyElevatedPermissions {
+    function setCautionDivergenceFlag(uint256 maxDivergence) external {
+        _checkElevatedPermissions();
+
         if (maxDivergence < 10200 || maxDivergence > 12000) {
-            _revert(INVALID_PARAMETER_SELECTOR);
+            _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
-        MAXIMUM_DIVERGENCE = maxDivergence;
+        cautionDivergenceFlag = maxDivergence;
+    }
+
+    /// @notice Sets a new maximum divergence for price feeds
+    ///         before BAD_SOURCE is activated.
+    /// @dev Requires that the new divergence is greater than
+    ///      or equal to 10200 aka 2% and less than or equal to 12000 aka 20%.
+    /// @param maxDivergence The new maximum divergence.
+    function setBadSourceDivergenceFlag(uint256 maxDivergence) external {
+        _checkElevatedPermissions();
+
+        if (maxDivergence < 10200 || maxDivergence > 12000) {
+            _revert(_INVALID_PARAMETER_SELECTOR);
+        }
+
+        badSourceDivergenceFlag = maxDivergence;
     }
 
     /// @notice Sets a new maximum delay for Chainlink price feed.
     /// @dev Requires that the new delay is less than 1 day and more than 1 hour.
     ///      Only callable by the DaoManager.
     /// @param delay The new maximum delay in seconds.
-    function setChainlinkDelay(
-        uint256 delay
-    ) external onlyElevatedPermissions {
+    function setChainlinkDelay(uint256 delay) external {
+        _checkElevatedPermissions();
+
         if (delay < 1 hours || delay > 1 days) {
-            _revert(INVALID_PARAMETER_SELECTOR);
+            _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
         CHAINLINK_MAX_DELAY = delay;
@@ -268,7 +265,7 @@ contract PriceRouter {
 
         uint256 numFeeds = assetPriceFeeds[asset].length;
         if (numFeeds == 0) {
-            _revert(NOT_SUPPORTED_SELECTOR);
+            _revert(_NOT_SUPPORTED_SELECTOR);
         }
 
         FeedData[] memory data = new FeedData[](numFeeds * 2);
@@ -279,9 +276,9 @@ contract PriceRouter {
             data[0] = _getPriceFromFeed(asset, 0, inUSD, true);
             data[1] = _getPriceFromFeed(asset, 0, inUSD, false);
             if (isMToken) {
-                uint256 exchangeRate = IMToken(asset).exchangeRateStored();
-                data[0].price = uint240((data[0].price * exchangeRate) / 1e18);
-                data[1].price = uint240((data[1].price * exchangeRate) / 1e18);
+                uint256 exchangeRate = IMToken(asset).exchangeRateCached();
+                data[0].price = uint240((data[0].price * exchangeRate) / WAD);
+                data[1].price = uint240((data[1].price * exchangeRate) / WAD);
             }
 
             return data;
@@ -295,11 +292,11 @@ contract PriceRouter {
         data[3] = _getPriceFromFeed(asset, 1, inUSD, false);
 
         if (isMToken) {
-            uint256 exchangeRate = IMToken(asset).exchangeRateStored();
-            data[0].price = uint240((data[0].price * exchangeRate) / 1e18);
-            data[1].price = uint240((data[1].price * exchangeRate) / 1e18);
-            data[2].price = uint240((data[2].price * exchangeRate) / 1e18);
-            data[3].price = uint240((data[3].price * exchangeRate) / 1e18);
+            uint256 exchangeRate = IMToken(asset).exchangeRateCached();
+            data[0].price = uint240((data[0].price * exchangeRate) / WAD);
+            data[1].price = uint240((data[1].price * exchangeRate) / WAD);
+            data[2].price = uint240((data[2].price * exchangeRate) / WAD);
+            data[3].price = uint240((data[3].price * exchangeRate) / WAD);
         }
 
         return data;
@@ -350,7 +347,7 @@ contract PriceRouter {
 
         uint256 numFeeds = assetPriceFeeds[asset].length;
         if (numFeeds == 0) {
-            _revert(NOT_SUPPORTED_SELECTOR);
+            _revert(_NOT_SUPPORTED_SELECTOR);
         }
 
         if (numFeeds < 2) {
@@ -365,8 +362,8 @@ contract PriceRouter {
         }
 
         if (mAsset != address(0)) {
-            uint256 exchangeRate = IMToken(mAsset).exchangeRateStored();
-            price = (price * exchangeRate) / 1e18;
+            uint256 exchangeRate = IMToken(mAsset).exchangeRateCached();
+            price = (price * exchangeRate) / WAD;
         }
     }
 
@@ -385,11 +382,11 @@ contract PriceRouter {
     ) external view returns (uint256[] memory, uint256[] memory) {
         uint256 numAssets = assets.length;
         if (numAssets == 0) {
-            _revert(INVALID_PARAMETER_SELECTOR);
+            _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
         if (numAssets != inUSD.length || numAssets != getLower.length) {
-            _revert(INVALID_PARAMETER_SELECTOR);
+            _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
         uint256[] memory prices = new uint256[](numAssets);
@@ -428,7 +425,7 @@ contract PriceRouter {
     {
         uint256 numAssets = assets.length;
         if (numAssets == 0) {
-            _revert(INVALID_PARAMETER_SELECTOR);
+            _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
         AccountSnapshot[] memory snapshots = new AccountSnapshot[](numAssets);
@@ -444,7 +441,7 @@ contract PriceRouter {
             );
 
             if (hadError >= errorCodeBreakpoint) {
-                _revert(ERROR_CODE_FLAGGED_SELECTOR);
+                _revert(_ERROR_CODE_FLAGGED_SELECTOR);
             }
 
             unchecked {
@@ -464,7 +461,7 @@ contract PriceRouter {
     function _removeFeed(address asset, address feed) internal {
         uint256 numFeeds = assetPriceFeeds[asset].length;
         if (numFeeds == 0) {
-            _revert(NOT_SUPPORTED_SELECTOR);
+            _revert(_NOT_SUPPORTED_SELECTOR);
         }
 
         if (numFeeds > 1) {
@@ -472,7 +469,7 @@ contract PriceRouter {
                 assetPriceFeeds[asset][0] != feed &&
                 assetPriceFeeds[asset][1] != feed
             ) {
-                _revert(NOT_SUPPORTED_SELECTOR);
+                _revert(_NOT_SUPPORTED_SELECTOR);
             }
 
             // we want to remove the first feed of two,
@@ -482,7 +479,7 @@ contract PriceRouter {
             }
         } else {
             if (assetPriceFeeds[asset][0] != feed) {
-                _revert(NOT_SUPPORTED_SELECTOR);
+                _revert(_NOT_SUPPORTED_SELECTOR);
             }
         }
         // we know the feed exists, cant use isApprovedAdaptor as
@@ -701,23 +698,41 @@ contract PriceRouter {
         uint256 b
     ) internal view returns (uint256, uint256) {
         if (a <= b) {
-            // Check if both feeds are within MAXIMUM_DIVERGENCE
+            // Check if both feeds are within `cautionDivergenceFlag`
             // of each other
-            if (((a * MAXIMUM_DIVERGENCE) / DENOMINATOR) < b) {
-                // Return the price but notify that the price should be taken with caution
-                // because we are outside the accepted range of divergence
+            if (((a * cautionDivergenceFlag) / DENOMINATOR) < b) {
+                // Return the price, but, notify that the price is dangerous
+                // and to treat data as a bad source because we are outside
+                // the accepted range of divergence.
+                if (((a * badSourceDivergenceFlag) / DENOMINATOR) < b) {
+                    return (a, BAD_SOURCE);
+                }
+
+                // Return the price, but, notify that the price should be
+                // taken with caution because we are outside
+                // the accepted range of divergence.
                 return (a, CAUTION);
             }
+            
             return (a, NO_ERROR);
         }
 
-        // Check if both feeds are within MAXIMUM_DIVERGENCE
+        // Check if both feeds are within `cautionDivergenceFlag`
         // of each other
-        if (((b * MAXIMUM_DIVERGENCE) / DENOMINATOR) < a) {
-            // Return the price but notify that the price should be taken with caution
-            // because we are outside the accepted range of divergence
+        if (((b * cautionDivergenceFlag) / DENOMINATOR) < a) {
+            // Return the price, but, notify that the price is dangerous
+            // and to treat data as a bad source because we are outside
+            // the accepted range of divergence.
+            if (((b * badSourceDivergenceFlag) / DENOMINATOR) < a) {
+                return (b, BAD_SOURCE);
+            }
+
+            // Return the price, but, notify that the price should be
+            // taken with caution because we are outside
+            // the accepted range of divergence.
             return (b, CAUTION);
         }
+
         return (b, NO_ERROR);
     }
 
@@ -734,23 +749,41 @@ contract PriceRouter {
         uint256 b
     ) internal view returns (uint256, uint256) {
         if (a >= b) {
-            // Check if both feeds are within MAXIMUM_DIVERGENCE
+            // Check if both feeds are within `cautionDivergenceFlag`
             // of each other
-            if (((b * MAXIMUM_DIVERGENCE) / DENOMINATOR) < a) {
-                // Return the price but notify that the price should be taken with caution
-                // because we are outside the accepted range of divergence
+            if (((b * cautionDivergenceFlag) / DENOMINATOR) < a) {
+                // Return the price, but, notify that the price is dangerous
+                // and to treat data as a bad source because we are outside
+                // the accepted range of divergence.
+                if (((b * badSourceDivergenceFlag) / DENOMINATOR) < a) {
+                    return (a, BAD_SOURCE);
+                }
+
+                // Return the price, but, notify that the price should be
+                // taken with caution because we are outside
+                // the accepted range of divergence.
                 return (a, CAUTION);
             }
+
             return (a, NO_ERROR);
         }
 
-        // Check if both feeds are within MAXIMUM_DIVERGENCE
+        // Check if both feeds are within `cautionDivergenceFlag`
         // of each other
-        if (((a * MAXIMUM_DIVERGENCE) / DENOMINATOR) < b) {
-            // Return the price but notify that the price should be taken with caution
-            // because we are outside the accepted range of divergence
+        if (((a * cautionDivergenceFlag) / DENOMINATOR) < b) {
+            // Return the price, but, notify that the price is dangerous
+            // and to treat data as a bad source because we are outside
+            // the accepted range of divergence.
+            if (((a * badSourceDivergenceFlag) / DENOMINATOR) < b) {
+                return (b, BAD_SOURCE);
+            }
+            
+            // Return the price, but, notify that the price should be
+            // taken with caution because we are outside
+            // the accepted range of divergence.
             return (b, CAUTION);
         }
+
         return (b, NO_ERROR);
     }
 
@@ -778,6 +811,13 @@ contract PriceRouter {
         assembly {
             mstore(0x00, s)
             revert(0x1c, 0x04)
+        }
+    }
+
+    /// @dev Checks whether the caller has sufficient permissioning.
+    function _checkElevatedPermissions() internal view {
+        if (!centralRegistry.hasElevatedPermissions(msg.sender)) {
+            revert PriceRouter__Unauthorized();
         }
     }
 }

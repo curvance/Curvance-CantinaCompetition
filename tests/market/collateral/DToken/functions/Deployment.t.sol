@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.17;
+pragma solidity ^0.8.17;
 
 import "forge-std/StdStorage.sol";
 import { TestBaseDToken } from "../TestBaseDToken.sol";
@@ -9,8 +9,10 @@ import { IERC20 } from "contracts/interfaces/IERC20.sol";
 
 contract DTokenDeploymentTest is TestBaseDToken {
     using stdStorage for StdStorage;
-
-    event NewLendtroller(address oldLendtroller, address newLendtroller);
+    event NewInterestFactor(
+        uint256 oldInterestFactor,
+        uint256 newInterestFactor
+    );
 
     function test_dTokenDeployment_fail_whenCentralRegistryIsInvalid() public {
         vm.expectRevert(DToken.DToken__InvalidCentralRegistry.selector);
@@ -18,7 +20,7 @@ contract DTokenDeploymentTest is TestBaseDToken {
             ICentralRegistry(address(0)),
             _USDC_ADDRESS,
             address(lendtroller),
-            address(jumpRateModel)
+            address(InterestRateModel)
         );
     }
 
@@ -28,7 +30,7 @@ contract DTokenDeploymentTest is TestBaseDToken {
             ICentralRegistry(address(centralRegistry)),
             _USDC_ADDRESS,
             address(1),
-            address(jumpRateModel)
+            address(InterestRateModel)
         );
     }
 
@@ -59,24 +61,27 @@ contract DTokenDeploymentTest is TestBaseDToken {
             ICentralRegistry(address(centralRegistry)),
             _USDC_ADDRESS,
             address(lendtroller),
-            address(jumpRateModel)
+            address(InterestRateModel)
         );
     }
 
     function test_dTokenDeployment_success() public {
         vm.expectEmit(true, true, true, true);
-        emit NewLendtroller(address(0), address(lendtroller));
+        uint256 newInterestFactor = centralRegistry.protocolInterestFactor(
+            address(lendtroller)
+        );
+        emit NewInterestFactor(0, newInterestFactor);
 
         dUSDC = new DToken(
             ICentralRegistry(address(centralRegistry)),
             _USDC_ADDRESS,
             address(lendtroller),
-            address(jumpRateModel)
+            address(InterestRateModel)
         );
 
         assertEq(address(dUSDC.centralRegistry()), address(centralRegistry));
         assertEq(dUSDC.underlying(), _USDC_ADDRESS);
-        assertEq(address(dUSDC.interestRateModel()), address(jumpRateModel));
+        assertEq(address(dUSDC.interestRateModel()), address(InterestRateModel));
         assertEq(address(dUSDC.lendtroller()), address(lendtroller));
     }
 }

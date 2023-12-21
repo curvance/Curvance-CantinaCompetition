@@ -21,8 +21,8 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  */
 
-pragma solidity 0.8.17;
-import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+pragma solidity ^0.8.17;
+import { IERC20Metadata } from "contracts/interfaces/IERC20Metadata.sol";
 
 interface IStandardizedYield is IERC20Metadata {
     /// @dev Emitted when any base tokens is deposited to mint shares

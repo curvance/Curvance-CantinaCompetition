@@ -8,6 +8,15 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { ICamelotPair } from "contracts/interfaces/external/camelot/ICamelotPair.sol";
 
 contract CamelotVolatileLPAdaptor is BaseVolatileLPAdaptor {
+    /// EVENTS ///
+
+    event CamelotVolatileLPAssetAdded(
+        address asset,
+        AdaptorData assetConfig
+    );
+
+    event CamelotVolatileLPAssetRemoved(address asset);
+
     /// ERRORS ///
 
     error CamelotVolatileLPAdaptor__AssetIsNotSupported();
@@ -45,7 +54,9 @@ contract CamelotVolatileLPAdaptor is BaseVolatileLPAdaptor {
     /// @param asset The address of the bpt to add
     function addAsset(
         address asset
-    ) external override onlyElevatedPermissions {
+    ) external override {
+        _checkElevatedPermissions();
+
         if (isSupportedAsset[asset]) {
             revert CamelotVolatileLPAdaptor__AssetIsAlreadyAdded();
         }
@@ -53,18 +64,22 @@ contract CamelotVolatileLPAdaptor is BaseVolatileLPAdaptor {
             revert CamelotVolatileLPAdaptor__AssetIsNotVolatileLP();
         }
 
-        _addAsset(asset);
+        AdaptorData memory data = _addAsset(asset);
+        emit CamelotVolatileLPAssetAdded(asset, data);
     }
 
     /// @notice Removes a supported asset from the adaptor.
     /// @dev Calls back into price router to notify it of its removal
     function removeAsset(
         address asset
-    ) external virtual override onlyDaoPermissions {
+    ) external virtual override {
+        _checkElevatedPermissions();
+
         if (!isSupportedAsset[asset]) {
             revert CamelotVolatileLPAdaptor__AssetIsNotSupported();
         }
 
         _removeAsset(asset);
+        emit CamelotVolatileLPAssetRemoved(asset);
     }
 }

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.17;
+pragma solidity ^0.8.17;
 
 import { TestBaseLendtroller } from "../TestBaseLendtroller.sol";
 import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
@@ -9,7 +9,8 @@ contract LendtrollerDeploymentTest is TestBaseLendtroller {
     function test_lendtrollerDeployment_fail_whenCentralRegistryIsInvalid()
         public
     {
-        vm.expectRevert(Lendtroller.Lendtroller__InvalidParameter.selector);
+        // revert LiquidityManager__InvalidParameter()
+        vm.expectRevert(0x78eefdcc);
         new Lendtroller(ICentralRegistry(address(0)), address(gaugePool));
     }
 

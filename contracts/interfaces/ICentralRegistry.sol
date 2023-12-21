@@ -1,25 +1,37 @@
 // SPDX-License-Identifier: MIT
-
-pragma solidity >=0.8.17;
+pragma solidity ^0.8.17;
 
 /// TYPES ///
 
+/// @param isAuthorized Whether the contract is supported or not.
+///                     2 = yes
+///                     0 or 1 = no
+/// @dev We will need to make sure SALTs are different crosschain
+///      so that we do not accidently deploy the same contract address
+///      across multiple chains.
+/// @param chainId chainId where this address authorized.
+/// @param messagingChainId messaging chainId where this address authorized.
+/// @param cveAddress CVE Address on the chain.
 struct OmnichainData {
-    uint256 isAuthorized; // Whether the contract is supported or not; 2 = yes; 0 or 1 = no
-    // @dev We will need to make sure SALTs are different crosschain
-    //      so that we do not accidently deploy the same contract address
-    //      across multiple chains
-    uint256 chainId; // chainId where this address authorized
-    uint256 messagingChainId; // messaging chainId where this address authorized
-    bytes cveAddress; // CVE Address on the chain as bytes array
+    uint256 isAuthorized;
+    uint256 chainId;
+    uint16 messagingChainId;
+    address cveAddress;
 }
 
+/// @param isSupported Whether the chain is supported or not.
+///                    2 = yes
+///                    0 or 1 = no
+/// @param messagingHub Contract address for destination chains Messaging Hub.
+/// @param asSourceAux Auxilliary data when chain is source.
+/// @param asDestinationAux Auxilliary data when chain is destination.
+/// @param cveAddress CVE Address on the chain.
 struct ChainData {
-    uint256 isSupported; // Whether the chain is supported or not; 2 = yes; 0 or 1 = no
-    address messagingHub; // Contract address for destination chains Messaging Hub
-    uint256 asSourceAux; // Auxilliary data when chain is source
-    uint256 asDestinationAux; // Auxilliary data when chain is destination
-    bytes32 cveAddress; // CVE Address on the chain as bytes32
+    uint256 isSupported;
+    address messagingHub;
+    uint256 asSourceAux;
+    uint256 asDestinationAux;
+    address cveAddress;
 }
 
 interface ICentralRegistry {
@@ -45,7 +57,7 @@ interface ICentralRegistry {
     function cveLocker() external view returns (address);
 
     /// @notice Returns CVE Address
-    function CVE() external view returns (address);
+    function cve() external view returns (address);
 
     /// @notice Returns veCVE Address
     function veCVE() external view returns (address);
@@ -65,16 +77,16 @@ interface ICentralRegistry {
     /// @notice Returns feeAccumulator Address
     function feeAccumulator() external view returns (address);
 
-    /// @notice Returns protocolCompoundFee Address
+    /// @notice Returns protocolCompoundFee, in `WAD`
     function protocolCompoundFee() external view returns (uint256);
 
-    /// @notice Returns protocolYieldFee Address
+    /// @notice Returns protocolYieldFee, in `WAD`
     function protocolYieldFee() external view returns (uint256);
 
-    /// @notice Returns protocolHarvestFee Address
+    /// @notice Returns protocolHarvestFee, in `WAD`
     function protocolHarvestFee() external view returns (uint256);
 
-    /// @notice Returns protocolLeverageFee Address
+    /// @notice Returns protocolLeverageFee, in `WAD`
     function protocolLeverageFee() external view returns (uint256);
 
     /// @notice Lending Market => Protocol Reserve Factor on interest generated
@@ -82,14 +94,14 @@ interface ICentralRegistry {
         address market
     ) external view returns (uint256);
 
-    /// @notice Returns earlyUnlockPenaltyValue value in basis point form
-    function earlyUnlockPenaltyValue() external view returns (uint256);
+    /// @notice Returns earlyUnlockPenaltyMultiplier value, in `Basis Points`
+    function earlyUnlockPenaltyMultiplier() external view returns (uint256);
 
-    /// @notice Returns voteBoostValue value in basis point form
-    function voteBoostValue() external view returns (uint256);
+    /// @notice Returns voteBoostMultiplier value, in `Basis Points`
+    function voteBoostMultiplier() external view returns (uint256);
 
-    /// @notice Returns lockBoostValue value in basis point form
-    function lockBoostValue() external view returns (uint256);
+    /// @notice Returns lockBoostMultiplier value, in `Basis Points`
+    function lockBoostMultiplier() external view returns (uint256);
 
     /// @notice Returns how many other chains are supported
     function supportedChains() external view returns (uint256);
@@ -108,13 +120,13 @@ interface ICentralRegistry {
 
     // Messaging specific ChainId => GETH comparable ChainId
     function messagingToGETHChainId(
-        uint256 chainId
+        uint16 chainId
     ) external view returns (uint256);
 
     // GETH comparable ChainId => Messaging specific ChainId
     function GETHToMessagingChainId(
         uint256 chainId
-    ) external view returns (uint256);
+    ) external view returns (uint16);
 
     /// @notice Returns whether the inputted address is an approved zapper
     function isZapper(address _address) external view returns (bool);

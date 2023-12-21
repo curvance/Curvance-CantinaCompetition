@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.17;
+pragma solidity ^0.8.17;
 
 import { TestBase } from "tests/utils/TestBase.sol";
 import { CentralRegistry } from "contracts/architecture/CentralRegistry.sol";
@@ -13,6 +13,8 @@ import { IERC20 } from "contracts/interfaces/IERC20.sol";
 contract TestBaseVeCVE is TestBase {
     address internal constant _USDC_ADDRESS =
         0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+    address internal constant _TOKEN_BRIDGE_RELAYER =
+        0xCafd2f0A35A4459fA40C0517e17e6fA2939441CA;
 
     CentralRegistry public centralRegistry;
     CVE public cve;
@@ -37,7 +39,7 @@ contract TestBaseVeCVE is TestBase {
     }
 
     function setUp() public virtual {
-        _fork();
+        _fork(18031848);
 
         _deployCentralRegistry();
         _deployCVE();
@@ -61,11 +63,8 @@ contract TestBaseVeCVE is TestBase {
 
     function _deployCVE() internal {
         cve = new CVE(
-            "cve",
-            "CVE",
-            8,
-            _ZERO_ADDRESS,
             ICentralRegistry(address(centralRegistry)),
+            _TOKEN_BRIDGE_RELAYER,
             _ZERO_ADDRESS,
             0,
             0,
@@ -84,7 +83,7 @@ contract TestBaseVeCVE is TestBase {
     }
 
     function _deployVeCVE() internal {
-        veCVE = new VeCVE(ICentralRegistry(address(centralRegistry)), 20000);
+        veCVE = new VeCVE(ICentralRegistry(address(centralRegistry)));
 
         centralRegistry.setVeCVE(address(veCVE));
         cveLocker.startLocker();

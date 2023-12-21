@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.17;
+pragma solidity ^0.8.17;
 
 import { TestBaseVeCVE } from "../TestBaseVeCVE.sol";
 import { VeCVE } from "contracts/token/VeCVE.sol";
@@ -35,7 +35,7 @@ contract IncreaseAmountAndExtendLockForTest is TestBaseVeCVE {
         vm.expectRevert(VeCVE.VeCVE__VeCVEShutdown.selector);
         veCVE.increaseAmountAndExtendLockFor(
             address(1),
-            100,
+            30e18,
             0,
             true,
             rewardsData,
@@ -69,7 +69,7 @@ contract IncreaseAmountAndExtendLockForTest is TestBaseVeCVE {
         vm.expectRevert(VeCVE.VeCVE__InvalidLock.selector);
         veCVE.increaseAmountAndExtendLockFor(
             address(1),
-            100,
+            30e18,
             0,
             true,
             rewardsData,
@@ -88,7 +88,7 @@ contract IncreaseAmountAndExtendLockForTest is TestBaseVeCVE {
         vm.expectRevert(VeCVE.VeCVE__InvalidLock.selector);
         veCVE.increaseAmountAndExtendLockFor(
             address(1),
-            100,
+            30e18,
             1,
             true,
             rewardsData,
@@ -110,7 +110,7 @@ contract IncreaseAmountAndExtendLockForTest is TestBaseVeCVE {
         vm.expectRevert(VeCVE.VeCVE__InvalidLock.selector);
         veCVE.increaseAmountAndExtendLockFor(
             address(1),
-            100,
+            30e18,
             0,
             true,
             rewardsData,
@@ -128,7 +128,7 @@ contract IncreaseAmountAndExtendLockForTest is TestBaseVeCVE {
 
         veCVE.increaseAmountAndExtendLockFor(
             address(1),
-            100,
+            30e18,
             0,
             true,
             rewardsData,
@@ -149,7 +149,7 @@ contract IncreaseAmountAndExtendLockForTest is TestBaseVeCVE {
 
         veCVE.increaseAmountAndExtendLockFor(
             address(1),
-            100,
+            30e18,
             0,
             false,
             rewardsData,

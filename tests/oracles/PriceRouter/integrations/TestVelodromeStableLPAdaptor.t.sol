@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.17;
+pragma solidity ^0.8.17;
 
 import { VelodromeStableLPAdaptor } from "contracts/oracles/adaptors/velodrome/VelodromeStableLPAdaptor.sol";
 import { ChainlinkAdaptor } from "contracts/oracles/adaptors/chainlink/ChainlinkAdaptor.sol";
@@ -23,7 +23,7 @@ contract TestVelodromeStableLPAdapter is TestBasePriceRouter {
     address private veloRouter = 0xa062aE8A9c5e11aaA026fc2670B0D65cCc8B2858;
     address private DAI_USDC = 0x19715771E30c93915A5bbDa134d782b81A820076;
 
-    VelodromeStableLPAdaptor adapter;
+    VelodromeStableLPAdaptor adaptor;
 
     function setUp() public override {
         _fork("ETH_NODE_URI_OPTIMISM", 110333246);
@@ -36,13 +36,13 @@ contract TestVelodromeStableLPAdapter is TestBasePriceRouter {
         );
         centralRegistry.setPriceRouter(address(priceRouter));
 
-        adapter = new VelodromeStableLPAdaptor(
+        adaptor = new VelodromeStableLPAdaptor(
             ICentralRegistry(address(centralRegistry))
         );
-        adapter.addAsset(DAI_USDC);
+        adaptor.addAsset(DAI_USDC);
 
-        priceRouter.addApprovedAdaptor(address(adapter));
-        priceRouter.addAssetPriceFeed(DAI_USDC, address(adapter));
+        priceRouter.addApprovedAdaptor(address(adaptor));
+        priceRouter.addAssetPriceFeed(DAI_USDC, address(adaptor));
     }
 
     function testRevertWhenUnderlyingChainAssetPriceNotSet() public {
@@ -72,7 +72,7 @@ contract TestVelodromeStableLPAdapter is TestBasePriceRouter {
     function testRevertAfterAssetRemove() public {
         testReturnsCorrectPrice();
 
-        adapter.removeAsset(DAI_USDC);
+        adaptor.removeAsset(DAI_USDC);
         vm.expectRevert(PriceRouter.PriceRouter__NotSupported.selector);
         priceRouter.getPrice(DAI_USDC, true, false);
     }

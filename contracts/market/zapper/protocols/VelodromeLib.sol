@@ -136,7 +136,7 @@ library VelodromeLib {
         address token1 = IVeloPair(lpToken).token1();
         bool stable = IVeloPool(lpToken).stable();
 
-        SwapperLib.approveTokenIfNeeded(lpToken, router, lpAmount);
+        SwapperLib._approveTokenIfNeeded(lpToken, router, lpAmount);
         IVeloRouter(router).removeLiquidity(
             token0,
             token1,
@@ -166,8 +166,8 @@ library VelodromeLib {
         uint256 amount1,
         uint256 slippage
     ) internal returns (uint256 liquidity) {
-        SwapperLib.approveTokenIfNeeded(token0, router, amount0);
-        SwapperLib.approveTokenIfNeeded(token1, router, amount1);
+        SwapperLib._approveTokenIfNeeded(token0, router, amount0);
+        SwapperLib._approveTokenIfNeeded(token1, router, amount1);
         (, , liquidity) = IVeloRouter(router).addLiquidity(
             token0,
             token1,
@@ -236,7 +236,7 @@ library VelodromeLib {
         uint256 amount,
         bool stable
     ) internal returns (uint256) {
-        SwapperLib.approveTokenIfNeeded(tokenIn, router, amount);
+        SwapperLib._approveTokenIfNeeded(tokenIn, router, amount);
 
         IVeloRouter.Route[] memory routes = new IVeloRouter.Route[](1);
         routes[0].from = tokenIn;

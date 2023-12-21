@@ -17,7 +17,8 @@ contract ProtocolMessagingHubDeploymentTest is TestBaseProtocolMessagingHub {
         new ProtocolMessagingHub(
             ICentralRegistry(address(0)),
             _USDC_ADDRESS,
-            _STARGATE_ROUTER
+            _WORMHOLE_RELAYER,
+            _CIRCLE_RELAYER
         );
     }
 
@@ -32,21 +33,39 @@ contract ProtocolMessagingHubDeploymentTest is TestBaseProtocolMessagingHub {
         new ProtocolMessagingHub(
             ICentralRegistry(address(centralRegistry)),
             address(0),
-            _STARGATE_ROUTER
+            _WORMHOLE_RELAYER,
+            _CIRCLE_RELAYER
         );
     }
 
-    function test_protocolMessagingHubDeployment_fail_whenStargateRouterIsZeroAddress()
+    function test_protocolMessagingHubDeployment_fail_whenWormholeRelayerIsZeroAddress()
         public
     {
         vm.expectRevert(
             ProtocolMessagingHub
-                .ProtocolMessagingHub__StargateRouterIsZeroAddress
+                .ProtocolMessagingHub__WormholeRelayerIsZeroAddress
                 .selector
         );
         new ProtocolMessagingHub(
             ICentralRegistry(address(centralRegistry)),
             _USDC_ADDRESS,
+            address(0),
+            _CIRCLE_RELAYER
+        );
+    }
+
+    function test_protocolMessagingHubDeployment_fail_whenCircleRelayerIsZeroAddress()
+        public
+    {
+        vm.expectRevert(
+            ProtocolMessagingHub
+                .ProtocolMessagingHub__CircleRelayerIsZeroAddress
+                .selector
+        );
+        new ProtocolMessagingHub(
+            ICentralRegistry(address(centralRegistry)),
+            _USDC_ADDRESS,
+            _WORMHOLE_RELAYER,
             address(0)
         );
     }
@@ -55,7 +74,8 @@ contract ProtocolMessagingHubDeploymentTest is TestBaseProtocolMessagingHub {
         protocolMessagingHub = new ProtocolMessagingHub(
             ICentralRegistry(address(centralRegistry)),
             _USDC_ADDRESS,
-            _STARGATE_ROUTER
+            _WORMHOLE_RELAYER,
+            _CIRCLE_RELAYER
         );
 
         assertEq(
@@ -63,10 +83,18 @@ contract ProtocolMessagingHubDeploymentTest is TestBaseProtocolMessagingHub {
             address(centralRegistry)
         );
         assertEq(
-            address(protocolMessagingHub.CVE()),
-            address(centralRegistry.CVE())
+            address(protocolMessagingHub.cve()),
+            address(centralRegistry.cve())
         );
         assertEq(protocolMessagingHub.feeToken(), _USDC_ADDRESS);
-        assertEq(protocolMessagingHub.stargateRouter(), _STARGATE_ROUTER);
+        assertEq(address(protocolMessagingHub.wormhole()), _WORMHOLE);
+        assertEq(
+            address(protocolMessagingHub.wormholeRelayer()),
+            _WORMHOLE_RELAYER
+        );
+        assertEq(
+            address(protocolMessagingHub.circleRelayer()),
+            _CIRCLE_RELAYER
+        );
     }
 }

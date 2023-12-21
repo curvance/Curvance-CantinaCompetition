@@ -1,20 +1,20 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
+import { CTokenPrimitive } from "contracts/market/collateral/CTokenPrimitive.sol";
+import { DToken } from "contracts/market/collateral/DToken.sol";
 import { ERC165 } from "contracts/libraries/ERC165.sol";
 import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
-import { CToken } from "contracts/market/collateral/CToken.sol";
-import { DToken } from "contracts/market/collateral/DToken.sol";
+import { DENOMINATOR, WAD } from "contracts/libraries/Constants.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.sol";
-import { DENOMINATOR } from "contracts/libraries/Constants.sol";
 
 contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
     /// TYPES ///
@@ -22,7 +22,7 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
     struct LeverageStruct {
         DToken borrowToken;
         uint256 borrowAmount;
-        CToken collateralToken;
+        CTokenPrimitive collateralToken;
         // borrow underlying -> zapper input token
         SwapperLib.Swap swapData;
         // zapper input token -> enter curvance
@@ -30,7 +30,7 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
     }
 
     struct DeleverageStruct {
-        CToken collateralToken;
+        CTokenPrimitive collateralToken;
         uint256 collateralAmount;
         DToken borrowToken;
         // collateral underlying to a single token (can be borrow underlying)
@@ -66,30 +66,26 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
 
     /// MODIFIERS ///
 
-    modifier onlyDaoPermissions() {
-        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
-            revert PositionFolding__Unauthorized();
-        }
-        _;
-    }
-
     modifier checkSlippage(address user, uint256 slippage) {
-        (uint256 sumCollateralBefore, , uint256 sumBorrowBefore) = lendtroller
-            .getStatus(user);
-        uint256 userValueBefore = sumCollateralBefore - sumBorrowBefore;
+        (uint256 collateralBefore, uint256 debtBefore) = lendtroller
+            .solvencyOf(user);
+        uint256 liquidityBefore = collateralBefore - debtBefore;
 
         _;
 
-        (uint256 sumCollateral, , uint256 sumBorrow) = lendtroller.getStatus(
+        (uint256 sumCollateral, uint256 sumDebt) = lendtroller.solvencyOf(
             user
         );
-        uint256 userValue = sumCollateral - sumBorrow;
 
-        uint256 diff = userValue > userValueBefore
-            ? userValue - userValueBefore
-            : userValueBefore - userValue;
-        if (diff >= (userValueBefore * slippage) / DENOMINATOR) {
-            revert PositionFolding__InvalidSlippage();
+        uint256 liquidityAfter = sumCollateral - sumDebt;
+        // If there was slippage, make sure its within slippage tolerance
+        if (liquidityBefore > liquidityAfter) {
+            if (
+                liquidityBefore - liquidityAfter >=
+                (liquidityBefore * slippage) / DENOMINATOR
+            ) {
+                revert PositionFolding__InvalidSlippage();
+            }
         }
     }
 
@@ -116,11 +112,7 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
     }
 
     function getProtocolLeverageFee() public view returns (uint256) {
-        return ICentralRegistry(centralRegistry).protocolLeverageFee();
-    }
-
-    function getDaoAddress() public view returns (address) {
-        return ICentralRegistry(centralRegistry).daoAddress();
+        return centralRegistry.protocolLeverageFee();
     }
 
     /// EXTERNAL FUNCTIONS ///
@@ -145,7 +137,7 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
         uint256 borrowAmount,
         bytes calldata params
     ) external override {
-        if (!lendtroller.isListed(borrowToken) && msg.sender == borrowToken) {
+        if (!lendtroller.isListed(borrowToken) && msg.sender != borrowToken) {
             revert PositionFolding__Unauthorized();
         }
 
@@ -161,18 +153,18 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
             revert PositionFolding__InvalidParam();
         }
 
-        address borrowUnderlying = CToken(borrowToken).underlying();
+        address borrowUnderlying = CTokenPrimitive(borrowToken).underlying();
 
         if (IERC20(borrowUnderlying).balanceOf(address(this)) < borrowAmount) {
             revert PositionFolding__InvalidAmount();
         }
 
         // take protocol fee
-        uint256 fee = (borrowAmount * getProtocolLeverageFee()) / 10000;
+        uint256 fee = (borrowAmount * getProtocolLeverageFee()) / WAD;
         if (fee > 0) {
             SafeTransferLib.safeTransfer(
                 borrowUnderlying,
-                getDaoAddress(),
+                centralRegistry.daoAddress(),
                 fee
             );
         }
@@ -188,7 +180,7 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
             SwapperLib.swap(leverageData.swapData);
         }
 
-        // enter curvance
+        // prepare LP
         SwapperLib.ZapperCall memory zapperCall = leverageData.zapperCall;
 
         if (zapperCall.call.length > 0) {
@@ -200,6 +192,18 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
 
             SwapperLib.zap(zapperCall);
         }
+
+        // enter curvance
+        address collateralUnderlying = leverageData
+            .collateralToken
+            .underlying();
+        uint256 amount = IERC20(collateralUnderlying).balanceOf(address(this));
+        SwapperLib._approveTokenIfNeeded(
+            collateralUnderlying,
+            address(leverageData.collateralToken),
+            amount
+        );
+        leverageData.collateralToken.depositAsCollateral(amount, borrower);
 
         // transfer remaining zapper input token back to the user
         uint256 remaining = IERC20(zapperCall.inputToken).balanceOf(
@@ -224,6 +228,11 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
                 remaining
             );
         }
+
+        SwapperLib._removeApprovalIfNeeded(
+            borrowUnderlying,
+            address(borrowToken)
+        );
     }
 
     function onRedeem(
@@ -253,7 +262,8 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
         }
 
         // swap collateral token to borrow token
-        address collateralUnderlying = CToken(collateralToken).underlying();
+        address collateralUnderlying = CTokenPrimitive(collateralToken)
+            .underlying();
 
         if (
             IERC20(collateralUnderlying).balanceOf(address(this)) <
@@ -268,7 +278,7 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
             collateralAmount -= fee;
             SafeTransferLib.safeTransfer(
                 collateralUnderlying,
-                getDaoAddress(),
+                centralRegistry.daoAddress(),
                 fee
             );
         }
@@ -307,16 +317,13 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
         uint256 remaining = IERC20(borrowUnderlying).balanceOf(address(this)) -
             repayAmount;
 
-        SwapperLib.approveTokenIfNeeded(
+        SwapperLib._approveTokenIfNeeded(
             borrowUnderlying,
             address(borrowToken),
             repayAmount
         );
 
-        DToken(address(borrowToken)).repayForPositionFolding(
-            redeemer,
-            repayAmount
-        );
+        DToken(address(borrowToken)).repayFor(redeemer, repayAmount);
 
         if (remaining > 0) {
             // remaining borrow underlying back to user
@@ -337,6 +344,11 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
                 remaining
             );
         }
+
+        SwapperLib._removeApprovalIfNeeded(
+            borrowUnderlying,
+            address(borrowToken)
+        );
     }
 
     /// PUBLIC FUNCTIONS ///
@@ -345,15 +357,12 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
         address user,
         address borrowToken
     ) public view returns (uint256) {
-        (
-            uint256 sumCollateral,
-            uint256 maxBorrow,
-            uint256 sumBorrow
-        ) = lendtroller.getStatus(user);
-        uint256 maxLeverage = ((sumCollateral - sumBorrow) *
+        (uint256 sumCollateral, uint256 maxDebt, uint256 sumDebt) = lendtroller
+            .statusOf(user);
+        uint256 maxLeverage = ((sumCollateral - sumDebt) *
             MAX_LEVERAGE *
             sumCollateral) /
-            (sumCollateral - maxBorrow) /
+            (sumCollateral - maxDebt) /
             DENOMINATOR -
             sumCollateral;
 
@@ -365,7 +374,7 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
             revert PositionFolding__InvalidTokenPrice();
         }
 
-        return ((maxLeverage - sumBorrow) * 1e18) / price;
+        return ((maxLeverage - sumDebt) * 1e18) / price;
     }
 
     /// @inheritdoc ERC165
@@ -405,10 +414,10 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
 
     function _deleverage(DeleverageStruct memory deleverageData) internal {
         bytes memory params = abi.encode(deleverageData);
-        CToken collateralToken = deleverageData.collateralToken;
+        CTokenPrimitive collateralToken = deleverageData.collateralToken;
         uint256 collateralAmount = deleverageData.collateralAmount;
 
-        CToken(address(collateralToken)).redeemUnderlyingForPositionFolding(
+        CTokenPrimitive(address(collateralToken)).withdrawByPositionFolding(
             payable(msg.sender),
             collateralAmount,
             params

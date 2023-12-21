@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.17;
+pragma solidity ^0.8.17;
 
 import { TestBaseOCVE } from "../TestBaseOCVE.sol";
 import { OCVE } from "contracts/token/OCVE.sol";
@@ -29,7 +29,7 @@ contract OCVEDeploymentTest is TestBaseOCVE {
         assertEq(oCVE.symbol(), string(abi.encodePacked(bytes32("oCVE"))));
         assertEq(address(oCVE.centralRegistry()), address(centralRegistry));
         assertEq(oCVE.paymentToken(), _USDC_ADDRESS);
-        assertEq(address(oCVE.cve()), address(centralRegistry.CVE()));
+        assertEq(address(oCVE.cve()), address(centralRegistry.cve()));
         assertEq(oCVE.totalSupply(), 15750002.59 ether);
     }
 }

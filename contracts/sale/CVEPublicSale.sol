@@ -24,11 +24,12 @@ contract CVEPublicSale {
     /// @notice Public sale configurations
     uint256 public constant SALE_PERIOD = 3 days;
     uint256 public startTime;
-    uint256 public softPriceInPayToken; // price in WETH (18 decimals)
-    uint256 public hardPriceInPayToken; // price in WETH (18 decimals)
+    uint256 public softPriceInpaymentToken; // price in WETH (18 decimals)
+    uint256 public hardPriceInpaymentToken; // price in WETH (18 decimals)
     uint256 public cveAmountForSale;
-    address public payToken; // ideally WETH
-    uint256 public payTokenPrice;
+    address public paymentToken; // ideally WETH
+    uint8 public paymentTokenDecimals; // ideally WETH
+    uint256 public paymentTokenPrice;
 
     uint256 public saleCommitted;
     mapping(address => uint256) public userCommitted;
@@ -60,14 +61,7 @@ contract CVEPublicSale {
         }
 
         centralRegistry = centralRegistry_;
-        cve = centralRegistry.CVE();
-    }
-
-    modifier onlyDaoPermissions() {
-        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
-            revert CVEPublicSale__Unauthorized();
-        }
-        _;
+        cve = centralRegistry.cve();
     }
 
     /// @notice start public sale
@@ -75,14 +69,18 @@ contract CVEPublicSale {
     /// @param _softPriceInUSD public sale base token price (in USD)
     /// @param _hardPriceInUSD public sale hard token price (in USD)
     /// @param _cveAmountForSale public sale CVE amount base cap
-    /// @param _payToken public sale pay token address
+    /// @param _paymentToken public sale pay token address
     function start(
         uint256 _startTime,
         uint256 _softPriceInUSD,
         uint256 _hardPriceInUSD,
         uint256 _cveAmountForSale,
-        address _payToken
-    ) external onlyDaoPermissions {
+        address _paymentToken
+    ) external {
+        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
+            revert CVEPublicSale__Unauthorized();
+        }
+
         if (startTime != 0) {
             revert CVEPublicSale__AlreadyStarted();
         }
@@ -96,8 +94,8 @@ contract CVEPublicSale {
         }
 
         uint256 err;
-        (payTokenPrice, err) = IPriceRouter(centralRegistry.priceRouter())
-            .getPrice(_payToken, true, true);
+        (paymentTokenPrice, err) = IPriceRouter(centralRegistry.priceRouter())
+            .getPrice(_paymentToken, true, true);
 
         // Make sure that we didnt have a catastrophic error when pricing
         // the payment token
@@ -106,10 +104,15 @@ contract CVEPublicSale {
         }
 
         startTime = _startTime;
-        softPriceInPayToken = (_softPriceInUSD * 1e18) / payTokenPrice;
-        hardPriceInPayToken = (_hardPriceInUSD * 1e18) / payTokenPrice;
+        softPriceInpaymentToken = (_softPriceInUSD * 1e18) / paymentTokenPrice;
+        hardPriceInpaymentToken = (_hardPriceInUSD * 1e18) / paymentTokenPrice;
         cveAmountForSale = _cveAmountForSale;
-        payToken = _payToken;
+        paymentToken = _paymentToken;
+        if (_paymentToken == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE) {
+            paymentTokenDecimals = 18;
+        } else {
+            paymentTokenDecimals = IERC20(_paymentToken).decimals();
+        }
 
         emit PublicSaleStarted(_startTime);
     }
@@ -132,10 +135,10 @@ contract CVEPublicSale {
         }
 
         SafeTransferLib.safeTransferFrom(
-            payToken,
+            paymentToken,
             msg.sender,
             address(this),
-            payAmount
+            (payAmount * (10 ** paymentTokenDecimals)) / 1e18 // adjust decimals
         );
 
         userCommitted[msg.sender] += payAmount;
@@ -166,26 +169,31 @@ contract CVEPublicSale {
 
     /// @notice return sale soft cap
     function softCap() public view returns (uint256) {
-        return (softPriceInPayToken * cveAmountForSale) / 1e18;
+        return (softPriceInpaymentToken * cveAmountForSale) / 1e18;
     }
 
     /// @notice return sale hard cap
     function hardCap() public view returns (uint256) {
-        return (hardPriceInPayToken * cveAmountForSale) / 1e18;
+        return (hardPriceInpaymentToken * cveAmountForSale) / 1e18;
     }
 
     /// @notice return sale price from sale committed
-    function priceAt(uint256 _saleCommitted) public view returns (uint256) {
+    function priceAt(
+        uint256 _saleCommitted
+    ) public view returns (uint256 price) {
         uint256 _softCap = softCap();
         if (_saleCommitted < _softCap) {
-            return softPriceInPayToken;
+            return softPriceInpaymentToken;
         }
         uint256 _hardCap = hardCap();
         if (_saleCommitted >= _hardCap) {
-            return hardPriceInPayToken;
+            return hardPriceInpaymentToken;
         }
 
-        return (_saleCommitted * 1e18) / cveAmountForSale;
+        // round up price calculation
+        return
+            ((_saleCommitted * 1e18) + cveAmountForSale / 2) /
+            cveAmountForSale;
     }
 
     /// @notice return current sale price
@@ -209,10 +217,14 @@ contract CVEPublicSale {
         return SaleStatus.Closed;
     }
 
-    /// @notice withdraw Fund
+    /// @notice withdraw funds
     /// @dev (only dao permissions)
     ///      this function is only available when the public sale is over
-    function withdrawFund() external onlyDaoPermissions {
+    function withdrawFunds() external {
+        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
+            revert CVEPublicSale__Unauthorized();
+        }
+
         SaleStatus saleStatus = currentStatus();
         if (saleStatus == SaleStatus.NotStarted) {
             revert CVEPublicSale__NotStarted();
@@ -221,7 +233,11 @@ contract CVEPublicSale {
             revert CVEPublicSale__InSale();
         }
 
-        uint256 balance = IERC20(payToken).balanceOf(address(this));
-        SafeTransferLib.safeTransfer(payToken, msg.sender, balance);
+        uint256 balance = IERC20(paymentToken).balanceOf(address(this));
+        SafeTransferLib.safeTransfer(
+            paymentToken,
+            centralRegistry.daoAddress(),
+            balance
+        );
     }
 }

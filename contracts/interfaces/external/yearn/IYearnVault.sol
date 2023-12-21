@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.17;
+pragma solidity ^0.8.17;
 
 interface IYearnVault {
     function deposit(uint256 _amount) external returns (uint256);

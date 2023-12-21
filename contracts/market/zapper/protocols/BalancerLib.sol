@@ -36,7 +36,7 @@ library BalancerLib {
         // approve tokens
         for (uint256 i; i < numTokens; ) {
             balances[i] = CommonLib.getTokenBalance(tokens[i]);
-            SwapperLib.approveTokenIfNeeded(
+            SwapperLib._approveTokenIfNeeded(
                 tokens[i],
                 balancerVault,
                 balances[i]
@@ -93,7 +93,7 @@ library BalancerLib {
         uint256 singleAssetIndex
     ) internal {
         // approve lp token
-        SwapperLib.approveTokenIfNeeded(lpToken, balancerVault, lpAmount);
+        SwapperLib._approveTokenIfNeeded(lpToken, balancerVault, lpAmount);
 
         uint256 numTokens = tokens.length;
         uint256[] memory balances = new uint256[](numTokens);

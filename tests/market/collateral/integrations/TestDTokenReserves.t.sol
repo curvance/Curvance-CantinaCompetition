@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.17;
 
 import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.sol";
 import { MockDataFeed } from "contracts/mocks/MockDataFeed.sol";
-
 import "tests/market/TestBaseMarket.sol";
 
 contract TestDTokenReserves is TestBaseMarket {
@@ -61,47 +60,36 @@ contract TestDTokenReserves is TestBaseMarket {
 
         // deploy dDAI
         {
-            _deployDDAI();
             // support market
             _prepareDAI(owner, 200000e18);
             dai.approve(address(dDAI), 200000e18);
-            lendtroller.listMarketToken(address(dDAI));
+            lendtroller.listToken(address(dDAI));
             // add MToken support on price router
             priceRouter.addMTokenSupport(address(dDAI));
-            address[] memory markets = new address[](1);
-            markets[0] = address(dDAI);
-            vm.prank(user1);
-            lendtroller.enterMarkets(markets);
-            vm.prank(user2);
-            lendtroller.enterMarkets(markets);
         }
 
         // deploy CBALRETH
         {
-            // deploy aura position vault
-            _deployCBALRETH();
-
             // support market
             _prepareBALRETH(owner, 1 ether);
             balRETH.approve(address(cBALRETH), 1 ether);
-            lendtroller.listMarketToken(address(cBALRETH));
-            // add MToken support on price router
-            priceRouter.addMTokenSupport(address(cBALRETH));
+            lendtroller.listToken(address(cBALRETH));
             // set collateral factor
             lendtroller.updateCollateralToken(
                 IMToken(address(cBALRETH)),
-                200,
-                0,
+                5000,
                 1500,
                 1200,
-                5000
+                200,
+                200,
+                0,
+                1000
             );
-            address[] memory markets = new address[](1);
-            markets[0] = address(cBALRETH);
-            vm.prank(user1);
-            lendtroller.enterMarkets(markets);
-            vm.prank(user2);
-            lendtroller.enterMarkets(markets);
+            address[] memory tokens = new address[](1);
+            tokens[0] = address(cBALRETH);
+            uint256[] memory caps = new uint256[](1);
+            caps[0] = 100_000e18;
+            lendtroller.setCTokenCollateralCaps(tokens, caps);
         }
 
         centralRegistry.addSwapper(_UNISWAP_V2_ROUTER);
@@ -130,7 +118,8 @@ contract TestDTokenReserves is TestBaseMarket {
         // try mint()
         vm.startPrank(user1);
         balRETH.approve(address(cBALRETH), 1 ether);
-        cBALRETH.mint(1 ether);
+        cBALRETH.deposit(1 ether, user1);
+        lendtroller.postCollateral(user1, address(cBALRETH), 1 ether - 1);
         vm.stopPrank();
 
         // try borrow()
@@ -140,7 +129,7 @@ contract TestDTokenReserves is TestBaseMarket {
 
         {
             // check accrue interest after 1 day
-            uint256 exchangeRateBefore = dDAI.exchangeRateStored();
+            uint256 exchangeRateBefore = dDAI.exchangeRateCached();
             uint256 totalReserves = dDAI.totalReserves();
             assertEq(totalReserves, 0);
             uint256 totalBorrowsBefore = dDAI.totalBorrows();
@@ -150,7 +139,7 @@ contract TestDTokenReserves is TestBaseMarket {
                 address(dDAI),
                 dao
             );
-            uint256 debtBalanceBefore = dDAI.debtBalanceStored(user1);
+            uint256 debtBalanceBefore = dDAI.debtBalanceCached(user1);
 
             // skip 1 day
             skip(24 hours);
@@ -166,10 +155,9 @@ contract TestDTokenReserves is TestBaseMarket {
             );
 
             // check borrower debt increased
-            AccountSnapshot memory snapshot = dDAI.getSnapshotPacked(user1);
-            assertEq(snapshot.balance, 0);
-            assertEq(snapshot.debtBalance, debtBalanceBefore + debt);
-            assertGt(snapshot.exchangeRate, exchangeRateBefore);
+            assertEq(dDAI.balanceOf(user1), 0);
+            assertEq(dDAI.debtBalanceCached(user1), debtBalanceBefore + debt);
+            assertGt(dDAI.exchangeRateCached(), exchangeRateBefore);
 
             // dao dDAI balance doesn't increase
             assertEq(dDAI.balanceOf(dao), daoBalanceBefore);
@@ -183,7 +171,7 @@ contract TestDTokenReserves is TestBaseMarket {
 
         {
             // check accrue interest after another day
-            uint256 exchangeRateBefore = dDAI.exchangeRateStored();
+            uint256 exchangeRateBefore = dDAI.exchangeRateCached();
             uint256 totalReserves = dDAI.totalReserves();
             uint256 totalBorrowsBefore = dDAI.totalBorrows();
             uint256 daoBalanceBefore = dDAI.balanceOf(dao);
@@ -191,7 +179,7 @@ contract TestDTokenReserves is TestBaseMarket {
                 address(dDAI),
                 dao
             );
-            uint256 debtBalanceBefore = dDAI.debtBalanceStored(user1);
+            uint256 debtBalanceBefore = dDAI.debtBalanceCached(user1);
 
             // skip 1 day
             skip(24 hours);
@@ -207,14 +195,13 @@ contract TestDTokenReserves is TestBaseMarket {
             );
 
             // check borrower debt increased
-            AccountSnapshot memory snapshot = dDAI.getSnapshotPacked(user1);
-            assertEq(snapshot.balance, 0);
+            assertEq(dDAI.balanceOf(user1), 0);
             assertApproxEqRel(
-                snapshot.debtBalance,
+                dDAI.debtBalanceCached(user1),
                 debtBalanceBefore + debt,
                 10000
             );
-            assertGt(snapshot.exchangeRate, exchangeRateBefore);
+            assertGt(dDAI.exchangeRateCached(), exchangeRateBefore);
 
             // dao dDAI balance doesn't increase
             assertEq(dDAI.balanceOf(dao), daoBalanceBefore);
@@ -230,7 +217,7 @@ contract TestDTokenReserves is TestBaseMarket {
     function testDaoDepositReserves() public {
         testDaoInterestFromDToken();
 
-        uint256 exchangeRate = dDAI.exchangeRateStored();
+        uint256 exchangeRate = dDAI.exchangeRateCached();
         uint256 totalReservesBefore = dDAI.totalReserves();
         uint256 gaugeBalanceBefore = gaugePool.balanceOf(address(dDAI), dao);
 
@@ -256,7 +243,7 @@ contract TestDTokenReserves is TestBaseMarket {
 
         {
             // withdraw half
-            uint256 exchangeRate = dDAI.exchangeRateStored();
+            uint256 exchangeRate = dDAI.exchangeRateCached();
             uint256 totalReservesBefore = dDAI.totalReserves();
             uint256 daiBalanceBefore = dai.balanceOf(dao);
             uint256 gaugeBalanceBefore = gaugePool.balanceOf(
@@ -283,7 +270,7 @@ contract TestDTokenReserves is TestBaseMarket {
 
         {
             // withdraw half
-            uint256 exchangeRate = dDAI.exchangeRateStored();
+            uint256 exchangeRate = dDAI.exchangeRateCached();
             uint256 totalReservesBefore = dDAI.totalReserves();
             uint256 daiBalanceBefore = dai.balanceOf(dao);
 

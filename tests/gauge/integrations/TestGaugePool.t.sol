@@ -56,7 +56,7 @@ contract TestGaugePool is TestBaseMarket {
 
             // support market
             dai.approve(address(tokens[i]), 200000e18);
-            lendtroller.listMarketToken(tokens[i]);
+            lendtroller.listToken(tokens[i]);
 
             // add MToken support on price router
             priceRouter.addMTokenSupport(tokens[i]);
@@ -64,14 +64,18 @@ contract TestGaugePool is TestBaseMarket {
             for (uint256 j = 0; j < 10; j++) {
                 address user = users[j];
 
-                vm.prank(user);
-                address[] memory markets = new address[](1);
-                markets[0] = address(tokens[i]);
-                lendtroller.enterMarkets(markets);
-
                 // approve
                 vm.prank(user);
                 dai.approve(address(tokens[i]), 200000e18);
+            }
+
+            // sort token addresses
+            for (uint256 j = i; j > 0; j--) {
+                if (tokens[j] < tokens[j - 1]) {
+                    address temp = tokens[j];
+                    tokens[j] = tokens[j - 1];
+                    tokens[j - 1] = temp;
+                }
             }
         }
 

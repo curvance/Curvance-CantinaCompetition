@@ -10,17 +10,13 @@ import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { IVeCVE } from "contracts/interfaces/IVeCVE.sol";
 import { RewardsData } from "contracts/interfaces/ICVELocker.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { EXP_SCALE } from "contracts/libraries/Constants.sol";
+import { WAD } from "contracts/libraries/Constants.sol";
 
 contract CVELocker is ReentrancyGuard {
     /// CONSTANTS ///
 
     /// @notice Protocol epoch length
     uint256 public constant EPOCH_DURATION = 2 weeks;
-    /// `bytes4(keccak256(bytes("CVELocker__Unauthorized()")))`
-    uint256 internal constant CVELOCKER_UNAUTHORIZED_SELECTOR = 0x82274acf;
-    /// `bytes4(keccak256(bytes("CVELocker__NoEpochRewards()")))`
-    uint256 internal constant NO_EPOCH_REWARDS_SELECTOR = 0x95721ba7;
     /// @notice CVE contract address
     address public immutable cve;
     /// @notice Curvance DAO hub
@@ -29,6 +25,10 @@ contract CVELocker is ReentrancyGuard {
     address public immutable rewardToken;
     /// @notice Genesis Epoch timestamp
     uint256 public immutable genesisEpoch;
+    /// `bytes4(keccak256(bytes("CVELocker__Unauthorized()")))`
+    uint256 internal constant _UNAUTHORIZED_SELECTOR = 0x82274acf;
+    /// `bytes4(keccak256(bytes("CVELocker__NoEpochRewards()")))`
+    uint256 internal constant _NO_EPOCH_REWARDS_SELECTOR = 0x95721ba7;
 
     /// STORAGE ///
 
@@ -51,7 +51,7 @@ contract CVELocker is ReentrancyGuard {
     // Epoch # => Total Tokens Locked across all chains
     mapping(uint256 => uint256) public tokensLockedByEpoch;
 
-    // Epoch # => Rewards per CVE multiplied by `EXP_SCALE`
+    // Epoch # => Rewards per CVE multiplied by `WAD`
     mapping(uint256 => uint256) public epochRewardsPerCVE;
 
     /// EVENTS ///
@@ -70,41 +70,6 @@ contract CVELocker is ReentrancyGuard {
     error CVELocker__WrongEpochRewardSubmission();
     error CVELocker__TransferError();
     error CVELocker__LockerIsAlreadyStarted();
-
-    /// MODIFIERS ///
-
-    modifier onlyDaoPermissions() {
-        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
-            _revert(CVELOCKER_UNAUTHORIZED_SELECTOR);
-        }
-        _;
-    }
-
-    modifier onlyElevatedPermissions() {
-        if (!centralRegistry.hasElevatedPermissions(msg.sender)) {
-            _revert(CVELOCKER_UNAUTHORIZED_SELECTOR);
-        }
-        _;
-    }
-
-    modifier onlyVeCVE() {
-        address _veCVE = address(veCVE);
-        assembly {
-            if iszero(eq(caller(), _veCVE)) {
-                mstore(0x00, CVELOCKER_UNAUTHORIZED_SELECTOR)
-                // return bytes 29-32 for the selector
-                revert(0x1c, 0x04)
-            }
-        }
-        _;
-    }
-
-    modifier onlyFeeAccumulator() {
-        if (msg.sender != centralRegistry.feeAccumulator()) {
-            _revert(CVELOCKER_UNAUTHORIZED_SELECTOR);
-        }
-        _;
-    }
 
     receive() external payable {}
 
@@ -127,29 +92,25 @@ contract CVELocker is ReentrancyGuard {
         centralRegistry = centralRegistry_;
         genesisEpoch = centralRegistry.genesisEpoch();
         rewardToken = rewardToken_;
-        cve = centralRegistry.CVE();
+        cve = centralRegistry.cve();
     }
 
     /// EXTERNAL FUNCTIONS ///
 
-    function recordEpochRewards(
-        uint256 epoch,
-        uint256 rewardsPerCVE
-    ) external onlyFeeAccumulator {
-        if (epoch != nextEpochToDeliver) {
-            revert CVELocker__WrongEpochRewardSubmission();
+    function recordEpochRewards(uint256 rewardsPerCVE) external {
+        // Validate the caller reporting epoch data is the fee accumulator
+        if (msg.sender != centralRegistry.feeAccumulator()) {
+            _revert(_UNAUTHORIZED_SELECTOR);
         }
 
         // Record rewards per CVE for the epoch
-        epochRewardsPerCVE[epoch] = rewardsPerCVE;
-
-        // Update nextEpochToDeliver invariant
-        unchecked {
-            ++nextEpochToDeliver;
-        }
+        // then update nextEpochToDeliver invariant
+        epochRewardsPerCVE[nextEpochToDeliver++] = rewardsPerCVE;
     }
 
-    function startLocker() external onlyDaoPermissions {
+    function startLocker() external {
+        _checkDaoPermissions();
+
         if (lockerStarted == 2) {
             revert CVELocker__LockerIsAlreadyStarted();
         }
@@ -161,10 +122,8 @@ contract CVELocker is ReentrancyGuard {
     /// @notice Rescue any token sent by mistake
     /// @param token token to rescue
     /// @param amount amount of `token` to rescue, 0 indicates to rescue all
-    function rescueToken(
-        address token,
-        uint256 amount
-    ) external onlyDaoPermissions {
+    function rescueToken(address token, uint256 amount) external {
+        _checkDaoPermissions();
         address daoOperator = centralRegistry.daoAddress();
 
         if (token == address(0)) {
@@ -175,7 +134,7 @@ contract CVELocker is ReentrancyGuard {
             SafeTransferLib.forceSafeTransferETH(daoOperator, amount);
         } else {
             if (token == rewardToken) {
-                _revert(CVELOCKER_UNAUTHORIZED_SELECTOR);
+                _revert(_UNAUTHORIZED_SELECTOR);
             }
 
             if (amount == 0) {
@@ -189,9 +148,9 @@ contract CVELocker is ReentrancyGuard {
     /// @notice Authorizes a new reward token.
     /// @dev Can only be called by the DAO manager.
     /// @param token The address of the token to authorize.
-    function addAuthorizedRewardToken(
-        address token
-    ) external onlyElevatedPermissions {
+    function addAuthorizedRewardToken(address token) external {
+        _checkElevatedPermissions();
+
         if (token == address(0)) {
             revert CVELocker__RewardTokenIsZeroAddress();
         }
@@ -206,9 +165,9 @@ contract CVELocker is ReentrancyGuard {
     /// @notice Removes an authorized reward token.
     /// @dev Can only be called by the DAO manager.
     /// @param token The address of the token to deauthorize.
-    function removeAuthorizedRewardToken(
-        address token
-    ) external onlyDaoPermissions {
+    function removeAuthorizedRewardToken(address token) external {
+        _checkDaoPermissions();
+
         if (token == address(0)) {
             revert CVELocker__RewardTokenIsZeroAddress();
         }
@@ -225,7 +184,7 @@ contract CVELocker is ReentrancyGuard {
             msg.sender != address(veCVE) &&
             !centralRegistry.hasElevatedPermissions(msg.sender)
         ) {
-            _revert(CVELOCKER_UNAUTHORIZED_SELECTOR);
+            _revert(_UNAUTHORIZED_SELECTOR);
         }
 
         isShutdown = 2;
@@ -267,10 +226,8 @@ contract CVELocker is ReentrancyGuard {
     ///      Can only be called by the VeCVE contract.
     /// @param user The address of the user.
     /// @param index The new claim index.
-    function updateUserClaimIndex(
-        address user,
-        uint256 index
-    ) external onlyVeCVE {
+    function updateUserClaimIndex(address user, uint256 index) external {
+        _checkIsVeCVE();
         userNextClaimIndex[user] = index;
     }
 
@@ -278,7 +235,8 @@ contract CVELocker is ReentrancyGuard {
     /// @dev Deletes the claim index of a user.
     ///      Can only be called by the VeCVE contract.
     /// @param user The address of the user.
-    function resetUserClaimIndex(address user) external onlyVeCVE {
+    function resetUserClaimIndex(address user) external {
+        _checkIsVeCVE();
         delete userNextClaimIndex[user];
     }
 
@@ -298,7 +256,7 @@ contract CVELocker is ReentrancyGuard {
         // If there are no epoch rewards to claim, revert
         assembly {
             if iszero(epochs) {
-                mstore(0x00, NO_EPOCH_REWARDS_SELECTOR)
+                mstore(0x00, _NO_EPOCH_REWARDS_SELECTOR)
                 // return bytes 29-32 for the selector
                 revert(0x1c, 0x04)
             }
@@ -319,7 +277,8 @@ contract CVELocker is ReentrancyGuard {
         RewardsData calldata rewardsData,
         bytes calldata params,
         uint256 aux
-    ) external onlyVeCVE nonReentrant {
+    ) external nonReentrant {
+        _checkIsVeCVE();
         // We check whether there are epochs to claim in veCVE
         // so we do not need to check here like in claimRewards
         _claimRewards(user, epochs, rewardsData, params, aux);
@@ -332,7 +291,7 @@ contract CVELocker is ReentrancyGuard {
     ///      in 0 points, we want their data updated so data is properly
     ///      adjusted on unlock
     /// @param user The address of the user to check for reward claims.
-    /// @return A boolean value indicating if the user has any rewards to claim.
+    /// @return A value indicating if the user has any rewards to claim.
     function epochsToClaim(address user) public view returns (uint256) {
         if (
             nextEpochToDeliver > userNextClaimIndex[user] &&
@@ -368,7 +327,7 @@ contract CVELocker is ReentrancyGuard {
         unchecked {
             userNextClaimIndex[user] += epochs;
             // Removes the 1e18 offset for proper reward value
-            rewards = rewards / EXP_SCALE;
+            rewards = rewards / WAD;
         }
 
         uint256 rewardAmount = _processRewards(
@@ -553,6 +512,32 @@ contract CVELocker is ReentrancyGuard {
         assembly {
             mstore(0x00, s)
             revert(0x1c, 0x04)
+        }
+    }
+
+    /// @dev Checks whether the caller has sufficient permissioning.
+    function _checkDaoPermissions() internal view {
+        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
+            _revert(_UNAUTHORIZED_SELECTOR);
+        }
+    }
+
+    /// @dev Checks whether the caller has sufficient permissioning.
+    function _checkElevatedPermissions() internal view {
+        if (!centralRegistry.hasElevatedPermissions(msg.sender)) {
+            _revert(_UNAUTHORIZED_SELECTOR);
+        }
+    }
+
+    /// @dev Checks whether the caller is the veCVE contract.
+    function _checkIsVeCVE() internal view {
+        address _veCVE = address(veCVE);
+        assembly {
+            if iszero(eq(caller(), _veCVE)) {
+                mstore(0x00, _UNAUTHORIZED_SELECTOR)
+                // return bytes 29-32 for the selector
+                revert(0x1c, 0x04)
+            }
         }
     }
 }

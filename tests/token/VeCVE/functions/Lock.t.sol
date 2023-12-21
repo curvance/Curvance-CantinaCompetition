@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.17;
+pragma solidity ^0.8.17;
 
 import { TestBaseVeCVE } from "../TestBaseVeCVE.sol";
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { VeCVE } from "contracts/token/VeCVE.sol";
-import { DENOMINATOR } from "contracts/libraries/Constants.sol";
+import { WAD } from "contracts/libraries/Constants.sol";
 
 contract LockTest is TestBaseVeCVE {
     event Locked(address indexed user, uint256 amount);
@@ -17,7 +17,7 @@ contract LockTest is TestBaseVeCVE {
         veCVE.shutdown();
 
         vm.expectRevert(VeCVE.VeCVE__VeCVEShutdown.selector);
-        veCVE.createLock(100, true, rewardsData, "", 0);
+        veCVE.createLock(100e18, true, rewardsData, "", 0);
     }
 
     function test_lock_fail_whenAmountIsZero(
@@ -35,7 +35,7 @@ contract LockTest is TestBaseVeCVE {
         bool isFreshLockContinuous
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
         vm.expectRevert(SafeTransferLib.TransferFromFailed.selector);
-        veCVE.createLock(100, true, rewardsData, "", 0);
+        veCVE.createLock(100e18, true, rewardsData, "", 0);
     }
 
     function test_lock_fail_whenAllowanceIsNotEnough(
@@ -46,7 +46,7 @@ contract LockTest is TestBaseVeCVE {
         deal(address(cve), address(this), 100e18);
 
         vm.expectRevert(SafeTransferLib.TransferFromFailed.selector);
-        veCVE.createLock(100, true, rewardsData, "", 0);
+        veCVE.createLock(100e18, true, rewardsData, "", 0);
     }
 
     function test_lock_success_withContinuousLock_fuzzed(
@@ -58,7 +58,7 @@ contract LockTest is TestBaseVeCVE {
         deal(address(cve), address(this), 100e18);
         cve.approve(address(veCVE), 100e18);
 
-        vm.assume(amount > 0 && amount <= 100e18);
+        vm.assume(amount > 1e18 && amount <= 100e18);
 
         vm.expectEmit(true, true, true, true, address(veCVE));
         emit Locked(address(this), amount);
@@ -72,11 +72,11 @@ contract LockTest is TestBaseVeCVE {
 
         assertEq(
             veCVE.chainPoints(),
-            (amount * veCVE.clPointMultiplier()) / DENOMINATOR
+            amount * veCVE.CL_POINT_MULTIPLIER()
         );
         assertEq(
             veCVE.userPoints(address(this)),
-            (amount * veCVE.clPointMultiplier()) / DENOMINATOR
+            amount * veCVE.CL_POINT_MULTIPLIER()
         );
         assertEq(veCVE.chainUnlocksByEpoch(veCVE.currentEpoch(unlockTime)), 0);
         assertEq(
@@ -97,7 +97,7 @@ contract LockTest is TestBaseVeCVE {
         deal(address(cve), address(this), 100e18);
         cve.approve(address(veCVE), 100e18);
 
-        vm.assume(amount > 0 && amount <= 100e18);
+        vm.assume(amount > 1e18 && amount <= 100e18);
 
         vm.expectEmit(true, true, true, true, address(veCVE));
         emit Locked(address(this), amount);

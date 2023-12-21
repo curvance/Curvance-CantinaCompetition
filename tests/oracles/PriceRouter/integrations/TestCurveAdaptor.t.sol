@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.17;
+pragma solidity ^0.8.17;
 
 import { TestBasePriceRouter } from "../TestBasePriceRouter.sol";
 import { CurveAdaptor } from "contracts/oracles/adaptors/curve/CurveAdaptor.sol";
-import { CurveReentrancyCheck } from "contracts/oracles/adaptors/curve/CurveReentrancyCheck.sol";
+import { CurveBaseAdaptor } from "contracts/oracles/adaptors/curve/CurveBaseAdaptor.sol";
 import { ChainlinkAdaptor } from "contracts/oracles/adaptors/chainlink/ChainlinkAdaptor.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
@@ -18,25 +18,21 @@ contract TestCurveAdaptor is TestBasePriceRouter {
     address private ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
     address private STETH = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
 
-    CurveAdaptor adapter;
+    CurveAdaptor adaptor;
 
     function setUp() public override {
-        _fork();
+        _fork(18031848);
 
         _deployCentralRegistry();
         _deployPriceRouter();
 
-        adapter = new CurveAdaptor(ICentralRegistry(address(centralRegistry)));
+        adaptor = new CurveAdaptor(ICentralRegistry(address(centralRegistry)));
 
-        adapter.setReentrancyVerificationConfig(
-            ETH_STETH,
-            24000,
-            CurveReentrancyCheck.N_COINS.TWO_COINS
-        );
+        adaptor.setReentrancyConfig(2, 10000);
     }
 
     function testRevertWhenUnderlyingAssetPriceNotSet() public {
-        adapter.addAsset(ETH_STETH, ETH_STETH);
+        adaptor.addAsset(ETH_STETH, ETH_STETH);
 
         vm.expectRevert(PriceRouter.PriceRouter__NotSupported.selector);
         priceRouter.getPrice(ETH_STETH, true, false);
@@ -52,10 +48,10 @@ contract TestCurveAdaptor is TestBasePriceRouter {
         priceRouter.addAssetPriceFeed(ETH, address(chainlinkAdaptor));
         priceRouter.addAssetPriceFeed(STETH, address(chainlinkAdaptor));
 
-        adapter.addAsset(ETH_STETH, ETH_STETH);
+        adaptor.addAsset(ETH_STETH, ETH_STETH);
 
-        priceRouter.addApprovedAdaptor(address(adapter));
-        priceRouter.addAssetPriceFeed(ETH_STETH, address(adapter));
+        priceRouter.addApprovedAdaptor(address(adaptor));
+        priceRouter.addAssetPriceFeed(ETH_STETH, address(adaptor));
         (uint256 ethPrice, ) = priceRouter.getPrice(ETH, true, false);
 
         (uint256 price, uint256 errorCode) = priceRouter.getPrice(
@@ -69,7 +65,7 @@ contract TestCurveAdaptor is TestBasePriceRouter {
 
     function testRevertAfterAssetRemove() public {
         testReturnsCorrectPrice();
-        adapter.removeAsset(ETH_STETH);
+        adaptor.removeAsset(ETH_STETH);
 
         vm.expectRevert(PriceRouter.PriceRouter__NotSupported.selector);
         priceRouter.getPrice(ETH_STETH, true, false);

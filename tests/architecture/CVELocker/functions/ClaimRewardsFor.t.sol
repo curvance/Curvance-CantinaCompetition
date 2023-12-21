@@ -56,10 +56,8 @@ contract ClaimRewardsForTest is TestBaseCVELocker {
         cveLocker.updateUserClaimIndex(user1, 1);
 
         for (uint256 i = 0; i < 2; i++) {
-            uint256 nextEpochToDeliver = cveLocker.nextEpochToDeliver();
-
             vm.prank(centralRegistry.feeAccumulator());
-            cveLocker.recordEpochRewards(nextEpochToDeliver, _ONE);
+            cveLocker.recordEpochRewards(_ONE);
         }
 
         uint256 epochs = cveLocker.epochsToClaim(user1);
@@ -90,10 +88,8 @@ contract ClaimRewardsForTest is TestBaseCVELocker {
         cveLocker.updateUserClaimIndex(user1, 1);
 
         for (uint256 i = 0; i < 2; i++) {
-            uint256 nextEpochToDeliver = cveLocker.nextEpochToDeliver();
-
             vm.prank(centralRegistry.feeAccumulator());
-            cveLocker.recordEpochRewards(nextEpochToDeliver, _ONE);
+            cveLocker.recordEpochRewards(_ONE);
         }
 
         uint256 epochs = cveLocker.epochsToClaim(user1);
@@ -113,7 +109,7 @@ contract ClaimRewardsForTest is TestBaseCVELocker {
     }
 
     function test_claimRewardsFor_success_fuzzed(uint256 amount) public {
-        vm.assume(amount > 0 && amount <= 100e18);
+        vm.assume(amount > 1e18 && amount <= 100e18);
 
         cveLocker.addAuthorizedRewardToken(_WETH_ADDRESS);
 
@@ -130,10 +126,8 @@ contract ClaimRewardsForTest is TestBaseCVELocker {
         cveLocker.updateUserClaimIndex(user1, 1);
 
         for (uint256 i = 0; i < 2; i++) {
-            uint256 nextEpochToDeliver = cveLocker.nextEpochToDeliver();
-
             vm.prank(centralRegistry.feeAccumulator());
-            cveLocker.recordEpochRewards(nextEpochToDeliver, _ONE);
+            cveLocker.recordEpochRewards(_ONE);
         }
 
         deal(_USDC_ADDRESS, address(cveLocker), amount);

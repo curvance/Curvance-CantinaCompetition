@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.17;
+pragma solidity ^0.8.17;
 
 import { TestBasePriceRouter } from "../TestBasePriceRouter.sol";
 import { BalancerStablePoolAdaptor } from "contracts/oracles/adaptors/balancer/BalancerStablePoolAdaptor.sol";
-import { IVault } from "contracts/oracles/adaptors/balancer/BalancerPoolAdaptor.sol";
+import { IVault } from "contracts/oracles/adaptors/balancer/BalancerBaseAdaptor.sol";
 import { ChainlinkAdaptor } from "contracts/oracles/adaptors/chainlink/ChainlinkAdaptor.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
 
-contract TestBalancerStablePoolAdapter is TestBasePriceRouter {
+contract TestBalancerStablePoolAdaptor is TestBasePriceRouter {
     address internal constant _BALANCER_VAULT =
         0xBA12222222228d8Ba445958a75a0704d566BF2C8;
 
@@ -24,15 +24,15 @@ contract TestBalancerStablePoolAdapter is TestBasePriceRouter {
     bytes32 private WETH_RETH_POOLID =
         0x1e19cf2d73a72ef1332c882f20534b6519be0276000200000000000000000112;
 
-    BalancerStablePoolAdaptor adapter;
+    BalancerStablePoolAdaptor adaptor;
 
     function setUp() public override {
-        _fork();
+        _fork(18031848);
 
         _deployCentralRegistry();
         _deployPriceRouter();
 
-        adapter = new BalancerStablePoolAdaptor(
+        adaptor = new BalancerStablePoolAdaptor(
             ICentralRegistry(address(centralRegistry)),
             IVault(_BALANCER_VAULT)
         );
@@ -53,7 +53,7 @@ contract TestBalancerStablePoolAdapter is TestBasePriceRouter {
                 .BalancerStablePoolAdaptor__ConfigurationError
                 .selector
         );
-        adapter.addAsset(WETH_RETH, adapterData);
+        adaptor.addAsset(WETH_RETH, adapterData);
     }
 
     function testReturnsCorrectPrice() public {
@@ -75,10 +75,10 @@ contract TestBalancerStablePoolAdapter is TestBasePriceRouter {
         ] = 0x1a8F81c256aee9C640e14bB0453ce247ea0DFE6F;
         adapterData.underlyingOrConstituent[0] = RETH;
         adapterData.underlyingOrConstituent[1] = WETH;
-        adapter.addAsset(WETH_RETH, adapterData);
+        adaptor.addAsset(WETH_RETH, adapterData);
 
-        priceRouter.addApprovedAdaptor(address(adapter));
-        priceRouter.addAssetPriceFeed(WETH_RETH, address(adapter));
+        priceRouter.addApprovedAdaptor(address(adaptor));
+        priceRouter.addAssetPriceFeed(WETH_RETH, address(adaptor));
 
         (uint256 price, uint256 errorCode) = priceRouter.getPrice(
             WETH_RETH,
@@ -92,7 +92,7 @@ contract TestBalancerStablePoolAdapter is TestBasePriceRouter {
     function testRevertAfterAssetRemove() public {
         testReturnsCorrectPrice();
 
-        adapter.removeAsset(WETH_RETH);
+        adaptor.removeAsset(WETH_RETH);
         vm.expectRevert(PriceRouter.PriceRouter__NotSupported.selector);
         priceRouter.getPrice(WETH_RETH, true, false);
     }

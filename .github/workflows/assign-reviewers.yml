@@ -7,12 +7,14 @@ jobs:
   assign-reviewers:
     runs-on: ubuntu-latest
     steps:
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20.x'
       - name: "Assign Team"
         uses: rowi1de/auto-assign-review-teams@v1.0.1
         with:
-          repo-token: ${{ secrets.BUTLER_PAT }}
-          org: "curvance"
-          teams: "smart-contract-team" # only works for GitHub Organisation/Teams
+          repo-token: ${{ secrets.AUSTIN_PERSONAL_API_KEY }}
+          teams: "smart-contract-cr" # only works for GitHub Organisation/Teams
           include-draft: false # Draft PRs will be skipped (default: false)
           skip-with-manual-reviewers: 2 # Skip this action, if the number of reviwers was already assigned (default: 0)
-          pick-one-from-persons-or-team: false # Will pick out one reviewer from persons and/or the first Github team (default: false)

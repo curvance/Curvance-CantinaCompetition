@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.17;
+pragma solidity ^0.8.17;
 
 interface IVeloGauge {
     function notifyRewardAmount(uint amount) external;
@@ -19,4 +19,6 @@ interface IVeloGauge {
     function deposit(uint256 amount) external;
 
     function withdraw(uint256 amount) external;
+
+    function voter() external view returns (address);
 }

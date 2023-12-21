@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.17;
+pragma solidity ^0.8.17;
 
 struct EpochRolloverData {
     uint256 chainId;
@@ -17,4 +17,7 @@ interface IFeeAccumulator {
 
     /// @notice Record rewards for epoch
     function recordEpochRewards(uint256 amount) external;
+
+    /// @notice Updates to new messaging hub and moves fee token approval
+    function notifyUpdatedMessagingHub() external;
 }

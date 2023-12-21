@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.17;
+pragma solidity ^0.8.17;
 
 import { TestBaseDToken } from "../TestBaseDToken.sol";
 import { GaugeErrors } from "contracts/gauge/GaugeErrors.sol";
 import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
-import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 
 contract DTokenMintTest is TestBaseDToken {
     event Transfer(address indexed from, address indexed to, uint256 amount);
@@ -15,7 +14,7 @@ contract DTokenMintTest is TestBaseDToken {
     }
 
     function test_dTokenMint_fail_whenMintIsNotAllowed() public {
-        lendtroller.setMintPaused(IMToken(address(dUSDC)), true);
+        lendtroller.setMintPaused(address(dUSDC), true);
 
         vm.expectRevert(Lendtroller.Lendtroller__Paused.selector);
         dUSDC.mint(100e6);

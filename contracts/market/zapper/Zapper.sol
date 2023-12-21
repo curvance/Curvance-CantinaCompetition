@@ -1,17 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
+import { CTokenPrimitive } from "contracts/market/collateral/CTokenPrimitive.sol";
 import { CommonLib } from "contracts/market/zapper/protocols/CommonLib.sol";
 import { CurveLib } from "contracts/market/zapper/protocols/CurveLib.sol";
 import { BalancerLib } from "contracts/market/zapper/protocols/BalancerLib.sol";
 import { VelodromeLib } from "contracts/market/zapper/protocols/VelodromeLib.sol";
+import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
-import { CToken, IERC20 } from "contracts/market/collateral/CToken.sol";
 import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 
 import { IWETH } from "contracts/interfaces/IWETH.sol";
+import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IVeloPair } from "contracts/interfaces/external/velodrome/IVeloPair.sol";
@@ -396,19 +397,21 @@ contract Zapper is ReentrancyGuard {
         }
 
         // check cToken underlying
-        if (CToken(cToken).underlying() != lpToken) {
+        if (CTokenPrimitive(cToken).underlying() != lpToken) {
             revert Zapper__CTokenUnderlyingIsNotLPToken();
         }
 
         // approve lp token
-        SwapperLib.approveTokenIfNeeded(lpToken, cToken, amount);
+        SwapperLib._approveTokenIfNeeded(lpToken, cToken, amount);
 
         uint256 priorBalance = IERC20(cToken).balanceOf(recipient);
 
         // enter curvance
-        if (!CToken(cToken).mintFor(amount, recipient)) {
+        if (CTokenPrimitive(cToken).deposit(amount, recipient) == 0) {
             revert Zapper__ExecutionError();
         }
+
+        SwapperLib._removeApprovalIfNeeded(lpToken, cToken);
 
         return IERC20(cToken).balanceOf(recipient) - priorBalance;
     }

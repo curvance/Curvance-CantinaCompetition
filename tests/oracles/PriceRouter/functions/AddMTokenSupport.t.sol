@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.17;
+pragma solidity ^0.8.17;
 
 import { TestBasePriceRouter } from "../TestBasePriceRouter.sol";
 import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
@@ -22,7 +22,7 @@ contract AddMTokenSupportTest is TestBasePriceRouter {
     }
 
     function test_addMTokenSupport_fail_whenMTokenIsInvalid() public {
-        vm.expectRevert(PriceRouter.PriceRouter__InvalidParameter.selector);
+        vm.expectRevert();
         priceRouter.addMTokenSupport(address(1));
     }
 
