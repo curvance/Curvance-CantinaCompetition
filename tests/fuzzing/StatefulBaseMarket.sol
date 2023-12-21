@@ -96,6 +96,7 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
         _DAI_ADDRESS = address(dai);
         balRETH = new MockToken("balWethReth", "balWethReth", 18);
         _BALANCER_WETH_RETH = address(balRETH);
+        cToken = new MockCToken(_USDC_ADDRESS, "CTOKEN", "CTOKEN", 18);
 
         emit LogString("DEPLOYED: centralRegistry");
         _deployCentralRegistry();
