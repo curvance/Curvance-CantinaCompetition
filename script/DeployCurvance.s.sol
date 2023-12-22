@@ -90,7 +90,8 @@ contract DeployCurvance is
             centralRegistry,
             _readConfigAddress(".protocolMessagingHub.feeToken"),
             _readConfigAddress(".protocolMessagingHub.wormholeRelayer"),
-            _readConfigAddress(".protocolMessagingHub.circleRelayer")
+            _readConfigAddress(".protocolMessagingHub.circleRelayer"),
+            _readConfigAddress(".protocolMessagingHub.tokenBridgeRelayer")
         );
         _setProtocolMessagingHub(protocolMessagingHub);
 
