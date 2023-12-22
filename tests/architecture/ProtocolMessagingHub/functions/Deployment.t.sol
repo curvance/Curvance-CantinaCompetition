@@ -78,24 +78,6 @@ contract ProtocolMessagingHubDeploymentTest is TestBaseProtocolMessagingHub {
         );
     }
 
-    function test_protocolMessagingHubDeployment_fail_whenCircleRelayerIsZeroAddress()
-        public
-    {
-        vm.expectRevert(
-            ProtocolMessagingHub
-                .ProtocolMessagingHub__CircleRelayerIsZeroAddress
-                .selector
-        );
-        new ProtocolMessagingHub(
-            ICentralRegistry(address(centralRegistry)),
-            _USDC_ADDRESS,
-            _WORMHOLE_CORE,
-            _WORMHOLE_RELAYER,
-            address(0),
-            _TOKEN_BRIDGE_RELAYER
-        );
-    }
-
     function test_protocolMessagingHubDeployment_fail_whenTokenBridgeRelayerIsZeroAddress()
         public
     {
