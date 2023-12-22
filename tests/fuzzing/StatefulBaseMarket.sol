@@ -41,6 +41,7 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
     address internal _BALANCER_WETH_RETH;
     address internal _DAI_ADDRESS;
     address internal _CIRCLE_RELAYER;
+    address internal _TOKEN_BRIDGE_RELAYER;
     address internal _WORMHOLE_RELAYER;
 
     CVE public cve;
@@ -197,7 +198,8 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
             ICentralRegistry(address(centralRegistry)),
             _USDC_ADDRESS,
             _WORMHOLE_RELAYER,
-            _CIRCLE_RELAYER
+            _CIRCLE_RELAYER,
+            _TOKEN_BRIDGE_RELAYER
         );
         centralRegistry.setProtocolMessagingHub(address(protocolMessagingHub));
     }
