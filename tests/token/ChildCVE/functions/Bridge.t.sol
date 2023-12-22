@@ -15,12 +15,18 @@ contract BridgeTest is TestBaseChildCVE {
     function setUp() public override {
         super.setUp();
 
+        centralRegistry.setCVE(address(childCVE));
+        _deployProtocolMessagingHub();
+
         chainIDs.push(1);
         wormholeChainIDs.push(2);
         chainIDs.push(137);
         wormholeChainIDs.push(5);
 
-        childCVE.registerWormholeChainIDs(chainIDs, wormholeChainIDs);
+        protocolMessagingHub.registerWormholeChainIDs(
+            chainIDs,
+            wormholeChainIDs
+        );
 
         ITokenBridgeRelayer.SwapRateUpdate[]
             memory swapRateUpdate = new ITokenBridgeRelayer.SwapRateUpdate[](
