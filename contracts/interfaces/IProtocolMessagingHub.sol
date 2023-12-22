@@ -32,4 +32,19 @@ interface IProtocolMessagingHub {
     /// @param to The address of Messaging Hub on `dstChainId`.
     /// @param amount The amount of token to transfer.
     function sendFees(uint16 dstChainId, address to, uint256 amount) external;
+
+    /// @notice Bridge CVE to destination chain.
+    /// @param dstChainId Chain ID of the target blockchain.
+    /// @param recipient The address of recipient on destination chain.
+    /// @param amount The amount of token to bridge.
+    /// @return Wormhole sequence for emitted TransferTokensWithRelay message.
+    function bridgeCVE(
+        uint256 dstChainId,
+        address recipient,
+        uint256 amount
+    ) external payable returns (uint64);
+
+    /// @notice Returns wormhole specific chain ID for evm chain ID.
+    /// @param chainId Evm chain ID.
+    function wormholeChainId(uint256 chainId) external view returns (uint16);
 }

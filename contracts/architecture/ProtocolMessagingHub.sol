@@ -16,6 +16,7 @@ import { ICentralRegistry, OmnichainData } from "contracts/interfaces/ICentralRe
 import { IWormhole } from "contracts/interfaces/wormhole/IWormhole.sol";
 import { IWormholeRelayer } from "contracts/interfaces/wormhole/IWormholeRelayer.sol";
 import { ICircleRelayer } from "contracts/interfaces/wormhole/ICircleRelayer.sol";
+import { ITokenBridgeRelayer } from "contracts/interfaces/wormhole/ITokenBridgeRelayer.sol";
 
 contract ProtocolMessagingHub is ReentrancyGuard {
     /// CONSTANTS ///
@@ -41,6 +42,12 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     /// @notice Address of Wormhole Circle Relayer.
     ICircleRelayer public immutable circleRelayer;
 
+    /// @notice Wormhole TokenBridgeRelayer.
+    ITokenBridgeRelayer public immutable tokenBridgeRelayer;
+
+    /// @notice Wormhole specific chain ID for evm chain ID.
+    mapping(uint256 => uint16) public wormholeChainId;
+
     /// `bytes4(keccak256(bytes("ProtocolMessagingHub__Unauthorized()")))`
     uint256 internal constant _UNAUTHORIZED_SELECTOR = 0xc70c67ab;
 
@@ -58,6 +65,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     error ProtocolMessagingHub__FeeTokenIsZeroAddress();
     error ProtocolMessagingHub__WormholeRelayerIsZeroAddress();
     error ProtocolMessagingHub__CircleRelayerIsZeroAddress();
+    error ProtocolMessagingHub__TokenBridgeRelayerIsZeroAddress();
     error ProtocolMessagingHub__ChainIsNotSupported();
     error ProtocolMessagingHub__OperatorIsNotAuthorized(
         address to,
@@ -82,7 +90,8 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         ICentralRegistry centralRegistry_,
         address feeToken_,
         address wormholeRelayer_,
-        address circleRelayer_
+        address circleRelayer_,
+        address tokenBridgeRelayer_
     ) {
         if (
             !ERC165Checker.supportsInterface(
@@ -101,12 +110,16 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         if (circleRelayer_ == address(0)) {
             revert ProtocolMessagingHub__CircleRelayerIsZeroAddress();
         }
+        if (tokenBridgeRelayer_ == address(0)) {
+            revert ProtocolMessagingHub__TokenBridgeRelayerIsZeroAddress();
+        }
 
         centralRegistry = centralRegistry_;
         cve = ICVE(centralRegistry.cve());
         feeToken = feeToken_;
         wormholeRelayer = IWormholeRelayer(wormholeRelayer_);
         circleRelayer = ICircleRelayer(circleRelayer_);
+        tokenBridgeRelayer = ITokenBridgeRelayer(tokenBridgeRelayer_);
         wormhole = ICircleRelayer(circleRelayer_).wormhole();
     }
 
@@ -143,7 +156,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         isDeliveredMessageHash[deliveryHash] = true;
 
         if (msg.sender != address(wormholeRelayer)) {
-            revert ProtocolMessagingHub__Unauthorized();
+            _revert(_UNAUTHORIZED_SELECTOR);
         }
 
         uint256 gethChainId = centralRegistry.messagingToGETHChainId(
@@ -343,6 +356,22 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         );
     }
 
+    /// @notice Register wormhole specific chain IDs for evm chain IDs.
+    /// @param chainIds EVM chain IDs.
+    /// @param wormholeChainIds Wormhole specific chain IDs.
+    function registerWormholeChainIDs(
+        uint256[] calldata chainIds,
+        uint16[] calldata wormholeChainIds
+    ) external {
+        _checkAuthorizedPermissions(true);
+
+        uint256 numChainIds = chainIds.length;
+
+        for (uint256 i = 0; i < numChainIds; ++i) {
+            wormholeChainId[chainIds[i]] = wormholeChainIds[i];
+        }
+    }
+
     /// @notice Quotes gas cost and token fee for executing crosschain
     ///         wormhole deposit and messaging.
     /// @param dstChainId Wormhole specific destination chain ID.
@@ -354,6 +383,32 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         bool transferToken
     ) external view returns (uint256, uint256) {
         return _quoteWormholeFee(dstChainId, transferToken);
+    }
+
+    /// @param dstChainId Chain ID of the target blockchain.
+    /// @param recipient The address of recipient on destination chain.
+    /// @param amount The amount of token to bridge.
+    /// @return Wormhole sequence for emitted TransferTokensWithRelay message.
+    function bridgeCVE(
+        uint256 dstChainId,
+        address recipient,
+        uint256 amount
+    ) external payable returns (uint64) {
+        if (msg.sender != address(cve)) {
+            _revert(_UNAUTHORIZED_SELECTOR);
+        }
+
+        cve.approve(address(tokenBridgeRelayer), amount);
+
+        return
+            tokenBridgeRelayer.transferTokensWithRelay{ value: msg.value }(
+                address(cve),
+                amount,
+                0,
+                wormholeChainId[dstChainId],
+                bytes32(uint256(uint160(recipient))),
+                0
+            );
     }
 
     /// PERMISSIONED EXTERNAL FUNCTIONS ///
