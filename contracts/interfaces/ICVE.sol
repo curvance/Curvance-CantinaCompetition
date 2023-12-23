@@ -8,4 +8,7 @@ interface ICVE {
 
     /// @notice Used by gauge pools to mint CVE for a users lock boost
     function mintLockBoost(uint256 amount) external;
+
+    /// @notice Sets allowance of `spender` over the caller's tokens.
+    function approve(address spender, uint256 amount) external returns (bool);
 }

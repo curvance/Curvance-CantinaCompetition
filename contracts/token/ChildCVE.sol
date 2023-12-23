@@ -6,6 +6,7 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { IWormhole } from "contracts/interfaces/wormhole/IWormhole.sol";
 import { ITokenBridgeRelayer } from "contracts/interfaces/wormhole/ITokenBridgeRelayer.sol";
+import { IProtocolMessagingHub } from "contracts/interfaces/IProtocolMessagingHub.sol";
 
 contract CVE is ERC20 {
     /// CONSTANTS ///
@@ -21,11 +22,6 @@ contract CVE is ERC20 {
 
     /// `bytes4(keccak256(bytes("CVE__Unauthorized()")))`
     uint256 internal constant _UNAUTHORIZED_SELECTOR = 0x15f37077;
-
-    /// STORAGE ///
-
-    /// @notice Wormhole specific chain ID for evm chain ID.
-    mapping(uint256 => uint16) public wormholeChainId;
 
     /// ERRORS ///
 
@@ -82,22 +78,6 @@ contract CVE is ERC20 {
         _mint(msg.sender, amount);
     }
 
-    /// @notice Register wormhole specific chain IDs for evm chain IDs.
-    /// @param chainIds EVM chain IDs.
-    /// @param wormholeChainIds Wormhole specific chain IDs.
-    function registerWormholeChainIDs(
-        uint256[] calldata chainIds,
-        uint16[] calldata wormholeChainIds
-    ) external {
-        _checkDaoPermissions();
-
-        uint256 numChainIds = chainIds.length;
-
-        for (uint256 i = 0; i < numChainIds; ++i) {
-            wormholeChainId[chainIds[i]] = wormholeChainIds[i];
-        }
-    }
-
     /// @param dstChainId Chain ID of the target blockchain.
     /// @param recipient The address of recipient on destination chain.
     /// @param amount The amount of token to bridge.
@@ -107,18 +87,15 @@ contract CVE is ERC20 {
         address recipient,
         uint256 amount
     ) external payable returns (uint64) {
+        address messagingHub = centralRegistry.protocolMessagingHub();
         _burn(msg.sender, amount);
-        _mint(address(this), amount);
-        _approve(address(this), address(tokenBridgeRelayer), amount);
+        _mint(messagingHub, amount);
 
         return
-            tokenBridgeRelayer.transferTokensWithRelay{ value: msg.value }(
-                address(this),
-                amount,
-                0,
-                wormholeChainId[dstChainId],
-                bytes32(uint256(uint160(recipient))),
-                0
+            IProtocolMessagingHub(messagingHub).bridgeCVE{ value: msg.value }(
+                dstChainId,
+                recipient,
+                amount
             );
     }
 
@@ -128,7 +105,8 @@ contract CVE is ERC20 {
     function relayerFee(uint256 dstChainId) external view returns (uint256) {
         return
             tokenBridgeRelayer.calculateRelayerFee(
-                wormholeChainId[dstChainId],
+                IProtocolMessagingHub(centralRegistry.protocolMessagingHub())
+                    .wormholeChainId(dstChainId),
                 address(this),
                 18
             );

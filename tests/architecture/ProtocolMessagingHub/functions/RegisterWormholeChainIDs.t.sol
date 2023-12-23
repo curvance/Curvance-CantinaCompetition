@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import { TestBaseChildCVE } from "../TestBaseChildCVE.sol";
-import { CVE } from "contracts/token/CVE.sol";
+import { TestBaseProtocolMessagingHub } from "../TestBaseProtocolMessagingHub.sol";
+import { ProtocolMessagingHub } from "contracts/architecture/ProtocolMessagingHub.sol";
 
-contract registerWormholeChainIDsTest is TestBaseChildCVE {
+contract registerWormholeChainIDsTest is TestBaseProtocolMessagingHub {
     uint256[] public chainIDs;
     uint16[] public wormholeChainIDs;
 
@@ -22,16 +22,24 @@ contract registerWormholeChainIDsTest is TestBaseChildCVE {
     function test_registerWormholeChainIDs_fail_whenUnauthorized() public {
         vm.prank(address(0));
 
-        vm.expectRevert(CVE.CVE__Unauthorized.selector);
-        childCVE.registerWormholeChainIDs(chainIDs, wormholeChainIDs);
+        vm.expectRevert(
+            ProtocolMessagingHub.ProtocolMessagingHub__Unauthorized.selector
+        );
+        protocolMessagingHub.registerWormholeChainIDs(
+            chainIDs,
+            wormholeChainIDs
+        );
     }
 
     function test_registerWormholeChainIDs_success() public {
-        childCVE.registerWormholeChainIDs(chainIDs, wormholeChainIDs);
+        protocolMessagingHub.registerWormholeChainIDs(
+            chainIDs,
+            wormholeChainIDs
+        );
 
         for (uint256 i = 0; i < chainIDs.length; i++) {
             assertEq(
-                childCVE.wormholeChainId(chainIDs[i]),
+                protocolMessagingHub.wormholeChainId(chainIDs[i]),
                 wormholeChainIDs[i]
             );
         }
