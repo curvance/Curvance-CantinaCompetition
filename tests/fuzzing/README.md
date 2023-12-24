@@ -58,6 +58,12 @@ Tips and tricks:
     - The sum of all chainUnlocksByEpoch map values should always be <= chainPoints
     - The sum of all userPoints should be equal to chainPoints
     - The sum of all chainUnlocksByEpoch maps should be equal to the sum of all userUnlocksByEpoch maps.
+- `createLockfor` and `increaseAmountAndExtendLockFor`
+
+## Lendtroller 
+
+- current debt > max allowed debt after folding
+- 
 
 
 --- 

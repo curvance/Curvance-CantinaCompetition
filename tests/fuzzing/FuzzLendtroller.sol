@@ -75,6 +75,36 @@ contract FuzzLendtroller is StatefulBaseMarket {
         {} catch {}
     }
 
+    function canBorrow_should_succeed(
+        address mToken,
+        address account,
+        uint256 amount
+    ) public {
+        require(lendtroller.borrowPaused(mToken) != 2);
+        require(lendtroller.isListed(mToken));
+        try lendtroller.canBorrow(mToken, address(this), amount) {} catch {}
+    }
+
+    function canBorrow_should_fail_when_borrow_is_paused(
+        address mToken,
+        address account,
+        uint256 amount
+    ) public {
+        require(lendtroller.borrowPaused(mToken) == 2);
+        require(lendtroller.isListed(mToken));
+        try lendtroller.canBorrow(mToken, address(this), amount) {} catch {}
+    }
+
+    function canBorrow_should_fail_when_token_is_unlisted(
+        address mToken,
+        address account,
+        uint256 amount
+    ) public {
+        require(lendtroller.borrowPaused(mToken) != 2);
+        require(!lendtroller.isListed(mToken));
+        try lendtroller.canBorrow(mToken, address(this), amount) {} catch {}
+    }
+
     function canBorrowWithNotify_should_succeed(
         address mToken,
         address account,
@@ -171,13 +201,22 @@ contract FuzzLendtroller is StatefulBaseMarket {
             "LENDTROLLER - cTokenBalance must exceed collateral posted"
         );
     }
-    // Should always be <= a user's balanceOf() as you can only post collateral up to which you actually have inside the market.
-    // CHECK: accountdata[address].collateralPosted <= marketToken.balanceOf(user)
 
     // Market collateral posted should always be <= caps, as all values are recorded in shares rather than # of tokens
     // accountdata[address].collateralPosted <= collateral caps per token
+    function collateralPosted_lte_collateralCaps(address token) public {
+        uint256 collateralPosted = lendtroller.collateralPosted(token);
 
-    //
+        uint256 collateralCaps = lendtroller.collateralCaps(token);
+
+        assertLte(
+            collateralPosted,
+            collateralCaps,
+            "LENDTROLLER - collateralPosted must be <= collateralCaps"
+        );
+    }
+
+    // current debt > max allowed debt after folding
 
     // Helper Functions
 }
