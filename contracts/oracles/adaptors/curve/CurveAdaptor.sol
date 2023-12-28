@@ -87,7 +87,7 @@ contract CurveAdaptor is CurveBaseAdaptor {
         }
 
         uint256 virtualPrice = pool.get_virtual_price();
-        uint256 minPrice = type(uint256).max;
+        uint256 minPrice = getLower ? type(uint256).max : 0;
         IPriceRouter priceRouter = IPriceRouter(centralRegistry.priceRouter());
 
         for (uint256 i; i < coinsLength; ) {
@@ -101,7 +101,11 @@ contract CurveAdaptor is CurveBaseAdaptor {
                 return pData;
             }
 
-            minPrice = minPrice < price ? minPrice : price;
+            if (getLower) {
+                minPrice = minPrice < price ? minPrice : price;
+            } else {
+                minPrice = minPrice > price ? minPrice : price;
+            }
 
             unchecked {
                 ++i;
