@@ -44,10 +44,7 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
 
     /// EVENTS ///
 
-    event UniswapV3AssetAdded(
-        address asset,
-        AdaptorData assetConfig
-    );
+    event UniswapV3AssetAdded(address asset, AdaptorData assetConfig);
 
     event UniswapV3AssetRemoved(address asset);
 
@@ -190,7 +187,10 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
             // the quote token price to ETH and return
             return
                 PriceReturnData({
-                    price: uint240(twapPrice / quoteTokenDenominator),
+                    price: uint240(
+                        (twapPrice * quoteTokenDenominator) /
+                            data.quoteDecimals
+                    ),
                     hadError: false,
                     inUSD: false
                 });
@@ -204,10 +204,7 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
             });
     }
 
-    function addAsset(
-        address asset,
-        AdaptorData memory data
-    ) external {
+    function addAsset(address asset, AdaptorData memory data) external {
         _checkElevatedPermissions();
 
         // Verify seconds ago is reasonable.
