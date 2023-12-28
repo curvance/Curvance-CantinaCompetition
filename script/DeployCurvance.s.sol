@@ -84,26 +84,31 @@ contract DeployCurvance is
         );
         _setCVELocker(cveLocker);
 
-        // Deploy ProtocolMessagingHub
+        if (
+            _readConfigAddress(".protocolMessagingHub.wormholeRelayer") !=
+            address(0)
+        ) {
+            // Deploy ProtocolMessagingHub
 
-        _deployProtocolMessagingHub(
-            centralRegistry,
-            _readConfigAddress(".protocolMessagingHub.feeToken"),
-            _readConfigAddress(".protocolMessagingHub.wormholeRelayer"),
-            _readConfigAddress(".protocolMessagingHub.circleRelayer"),
-            _readConfigAddress(".protocolMessagingHub.tokenBridgeRelayer")
-        );
-        _setProtocolMessagingHub(protocolMessagingHub);
+            _deployProtocolMessagingHub(
+                centralRegistry,
+                _readConfigAddress(".protocolMessagingHub.feeToken"),
+                _readConfigAddress(".protocolMessagingHub.wormholeRelayer"),
+                _readConfigAddress(".protocolMessagingHub.circleRelayer"),
+                _readConfigAddress(".protocolMessagingHub.tokenBridgeRelayer")
+            );
+            _setProtocolMessagingHub(protocolMessagingHub);
 
-        // Deploy FeeAccumulator
+            // Deploy FeeAccumulator
 
-        _deployFeeAccumulator(
-            centralRegistry,
-            _readConfigAddress(".feeAccumulator.feeToken"),
-            _readConfigUint256(".feeAccumulator.gasForCalldata"),
-            _readConfigUint256(".feeAccumulator.gasForCrosschain")
-        );
-        _setFeeAccumulator(feeAccumulator);
+            _deployFeeAccumulator(
+                centralRegistry,
+                _readConfigAddress(".feeAccumulator.feeToken"),
+                _readConfigUint256(".feeAccumulator.gasForCalldata"),
+                _readConfigUint256(".feeAccumulator.gasForCrosschain")
+            );
+            _setFeeAccumulator(feeAccumulator);
+        }
 
         // Deploy VeCVE
 

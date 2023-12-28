@@ -4,9 +4,13 @@ pragma solidity ^0.8.17;
 import "forge-std/Script.sol";
 
 import { DeployConfiguration } from "./utils/DeployConfiguration.sol";
-import { CTokenDeployer } from "./deployers/cToken/CTokenDeployer.s.sol";
+import { PendlePTDeployer } from "./deployers/cToken/PendlePTDeployer.s.sol";
 
-contract DeployCTokenPrimitive is Script, DeployConfiguration, CTokenDeployer {
+contract DeployCTokenPrimitive is
+    Script,
+    DeployConfiguration,
+    PendlePTDeployer
+{
     using stdJson for string;
 
     function run(string memory name) external {
@@ -29,13 +33,13 @@ contract DeployCTokenPrimitive is Script, DeployConfiguration, CTokenDeployer {
 
         vm.startBroadcast(deployerPrivateKey);
 
-        _deployCToken(
+        _deployPendlePT(
             string.concat("C-", name),
             abi.decode(
                 configurationJson.parseRaw(
                     string.concat(".markets.cTokens.", name)
                 ),
-                (CTokenDeployer.CTokenParam)
+                (PendlePTDeployer.PendlePTParam)
             )
         );
 
