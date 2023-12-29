@@ -5,7 +5,8 @@
     "emergencyCouncil": "0x28553EadE22d3C044350b611bfE71cfb81aB7717",
     "genesisEpoch": 0,
     "lockBoostMultiplier": 10000,
-    "harvester": "0x28553EadE22d3C044350b611bfE71cfb81aB7717"
+    "harvester": "0x28553EadE22d3C044350b611bfE71cfb81aB7717",
+    "sequencer": "0x0000000000000000000000000000000000000000"
   },
   "cve": {
     "tokenBridgeRelayer": "0x0000000000000000000000000000000000000000",
@@ -47,14 +48,14 @@
       "USDC": {
         "asset": "0x5f02510c29bEa0EF858Ad802b6205a26B66Bf26A",
         "chainlinkEth": "0x0000000000000000000000000000000000000000",
-        "chainlinkUsd": "0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6",
+        "chainlinkUsd": "0xA2F78ab2355fe2f984D808B5CeE7FD0A93D5270E",
         "interestRateParam": {
           "baseRatePerYear": 1000,
           "vertexRatePerYear": 1000,
           "vertexUtilizationStart": 5000,
           "adjustmentRate": 43200,
           "adjustmentVelocity": 5000,
-          "vertexMultiplierMax": 1000,
+          "vertexMultiplierMax": 100000000,
           "decayRate": 100
         }
       },
@@ -68,7 +69,7 @@
           "vertexUtilizationStart": 5000,
           "adjustmentRate": 43200,
           "adjustmentVelocity": 5000,
-          "vertexMultiplierMax": 1000,
+          "vertexMultiplierMax": 100000000,
           "decayRate": 100
         }
       }
