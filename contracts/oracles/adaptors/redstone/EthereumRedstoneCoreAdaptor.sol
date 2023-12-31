@@ -2,14 +2,14 @@
 
 pragma solidity ^0.8.17;
 
-import "./RedstoneConsumerNumericBase.sol";
+import "contracts/libraries/redstone/PrimaryProdDataServiceConsumerBase.sol";
 
 import { BaseOracleAdaptor } from "contracts/oracles/adaptors/BaseOracleAdaptor.sol";
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 import { PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
-contract RedstoneAdaptor is RedstoneConsumerNumericBase, BaseOracleAdaptor {
+contract EthereumRedstoneCoreAdaptor is PrimaryProdDataServiceConsumerBase, BaseOracleAdaptor {
     /// TYPES ///
 
     /// @notice Stores configuration data for Redstone price sources.
@@ -97,27 +97,9 @@ contract RedstoneAdaptor is RedstoneConsumerNumericBase, BaseOracleAdaptor {
 
     /// PUBLIC FUNCTIONS ///
 
-    function getDataServiceId()
-        public
-        view
-        virtual
-        override
-        returns (string memory)
-    {
-        return "redstone-main-demo";
-    }
-
+    // This can be modified to increase/decrease required signers, max 4.
     function getUniqueSignersThreshold() public pure override returns (uint8) {
         return 3;
     }
 
-    function getAuthorisedSignerIndex(
-        address signerAddress
-    ) public view virtual override returns (uint8) {
-        if (signerAddress == 0x0C39486f770B26F5527BBBf942726537986Cd7eb) {
-            return 0;
-        } else {
-            revert SignerNotAuthorised(signerAddress);
-        }
-    }
 }
