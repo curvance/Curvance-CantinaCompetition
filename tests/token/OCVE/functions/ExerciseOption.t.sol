@@ -52,7 +52,7 @@ contract ExerciseOptionTest is TestBaseOCVE {
     }
 
     function test_exerciseOption_fail_whenMsgValueIsInvalid() public {
-        chainlinkAdaptor.addAsset(_E_ADDRESS, _CHAINLINK_ETH_USD, true);
+        chainlinkAdaptor.addAsset(_E_ADDRESS, _CHAINLINK_ETH_USD, 0, true);
         priceRouter.addAssetPriceFeed(_E_ADDRESS, address(chainlinkAdaptor));
 
         oCVE = new OCVE(
@@ -83,7 +83,7 @@ contract ExerciseOptionTest is TestBaseOCVE {
     ) public {
         vm.assume(amount > 0 && amount < 1_000_000_000e18);
 
-        chainlinkAdaptor.addAsset(_E_ADDRESS, _CHAINLINK_ETH_USD, true);
+        chainlinkAdaptor.addAsset(_E_ADDRESS, _CHAINLINK_ETH_USD, 0, true);
         priceRouter.addAssetPriceFeed(_E_ADDRESS, address(chainlinkAdaptor));
 
         oCVE = new OCVE(

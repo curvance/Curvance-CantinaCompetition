@@ -236,10 +236,6 @@ contract Api3Adaptor is BaseOracleAdaptor {
         AdaptorData memory data,
         bool inUSD
     ) internal view returns (PriceReturnData memory) {
-        if (!IPriceRouter(centralRegistry.priceRouter()).isSequencerValid()) {
-            return PriceReturnData({ price: 0, hadError: true, inUSD: inUSD });
-        }
-
         (int256 price, uint256 updatedAt) = data.proxyFeed.read();
 
         // API3 always has decimals = 18 so we do not need to do
