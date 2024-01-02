@@ -112,7 +112,7 @@ contract TestPartnerGaugePool is TestBaseMarket {
         }
 
         mockDaiFeed = new MockDataFeed(_CHAINLINK_DAI_USD);
-        chainlinkAdaptor.addAsset(_DAI_ADDRESS, address(mockDaiFeed), true);
+        chainlinkAdaptor.addAsset(_DAI_ADDRESS, address(mockDaiFeed), 0, true);
     }
 
     function testPartnerGaugesRewardRatioOfDifferentPools() public {

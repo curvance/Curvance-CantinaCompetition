@@ -72,6 +72,7 @@ contract PendleLPDeployer is DeployConfiguration {
                     ChainlinkAdaptor(chainlinkAdaptor).addAsset(
                         underlyingParam.asset,
                         underlyingParam.chainlinkEth,
+                        0,
                         false
                     );
                 }
@@ -79,6 +80,7 @@ contract PendleLPDeployer is DeployConfiguration {
                     ChainlinkAdaptor(chainlinkAdaptor).addAsset(
                         underlyingParam.asset,
                         underlyingParam.chainlinkUsd,
+                        0,
                         true
                     );
                 }

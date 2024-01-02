@@ -85,6 +85,7 @@ contract AuraMarketDeployer is DeployConfiguration {
                     ChainlinkAdaptor(chainlinkAdaptor).addAsset(
                         underlyingParam.asset,
                         underlyingParam.chainlinkEth,
+                        0,
                         false
                     );
                 }
@@ -92,6 +93,7 @@ contract AuraMarketDeployer is DeployConfiguration {
                     ChainlinkAdaptor(chainlinkAdaptor).addAsset(
                         underlyingParam.asset,
                         underlyingParam.chainlinkUsd,
+                        0,
                         true
                     );
                 }

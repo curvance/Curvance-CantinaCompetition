@@ -83,7 +83,7 @@ contract TestGaugePool is TestBaseMarket {
         vm.roll(block.number + 1000);
 
         mockDaiFeed = new MockDataFeed(_CHAINLINK_DAI_USD);
-        chainlinkAdaptor.addAsset(_DAI_ADDRESS, address(mockDaiFeed), true);
+        chainlinkAdaptor.addAsset(_DAI_ADDRESS, address(mockDaiFeed), 0, true);
     }
 
     function testManageEmissionRatesOfEachEpoch() public {

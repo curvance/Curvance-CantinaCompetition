@@ -62,6 +62,7 @@ contract DTokenDeployer is DeployConfiguration {
                 ChainlinkAdaptor(chainlinkAdaptor).addAsset(
                     param.asset,
                     param.chainlinkEth,
+                    0,
                     false
                 );
             }
@@ -69,6 +70,7 @@ contract DTokenDeployer is DeployConfiguration {
                 ChainlinkAdaptor(chainlinkAdaptor).addAsset(
                     param.asset,
                     param.chainlinkUsd,
+                    0,
                     true
                 );
             }

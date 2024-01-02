@@ -231,31 +231,37 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
         chainlinkAdaptor.addAsset(
             _WETH_ADDRESS,
             address(chainlinkEthUsd),
+            0,
             true
         );
         chainlinkAdaptor.addAsset(
             _USDC_ADDRESS,
             address(chainlinkUsdcUsd),
+            0,
             true
         );
         chainlinkAdaptor.addAsset(
             _USDC_ADDRESS,
             address(chainlinkUsdcEth),
+            0,
             false
         );
         chainlinkAdaptor.addAsset(
             _DAI_ADDRESS,
             address(chainlinkDaiUsd),
+            0,
             true
         );
         chainlinkAdaptor.addAsset(
             _DAI_ADDRESS,
             address(chainlinkDaiEth),
+            0,
             false
         );
         chainlinkAdaptor.addAsset(
             _RETH_ADDRESS,
             address(chainlinkRethEth),
+            0,
             false
         );
 
@@ -281,33 +287,39 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
         dualChainlinkAdaptor.addAsset(
             _WETH_ADDRESS,
             address(chainlinkEthUsd),
+            0,
             true
         );
 
         dualChainlinkAdaptor.addAsset(
             _USDC_ADDRESS,
             address(chainlinkUsdcUsd),
+            0,
             true
         );
 
         dualChainlinkAdaptor.addAsset(
             _USDC_ADDRESS,
             address(chainlinkUsdcEth),
+            0,
             false
         );
         dualChainlinkAdaptor.addAsset(
             _DAI_ADDRESS,
             address(chainlinkDaiUsd),
+            0,
             true
         );
         dualChainlinkAdaptor.addAsset(
             _DAI_ADDRESS,
             address(chainlinkDaiEth),
+            0,
             false
         );
         dualChainlinkAdaptor.addAsset(
             _RETH_ADDRESS,
             address(chainlinkRethEth),
+            0,
             false
         );
         priceRouter.addApprovedAdaptor(address(dualChainlinkAdaptor));
