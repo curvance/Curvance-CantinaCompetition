@@ -1,12 +1,97 @@
 pragma solidity 0.8.17;
 import { StatefulBaseMarket } from "tests/fuzzing/StatefulBaseMarket.sol";
 import { MockCToken } from "contracts/mocks/MockCToken.sol";
+import { IERC20 } from "contracts/interfaces/IERC20.sol";
+import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
+import { MockToken } from "contracts/mocks/MockToken.sol";
 
 contract FuzzLendtroller is StatefulBaseMarket {
+    constructor() {
+        SafeTransferLib.safeApprove(
+            _USDC_ADDRESS,
+            address(dUSDC),
+            type(uint256).max
+        );
+        SafeTransferLib.safeApprove(
+            _DAI_ADDRESS,
+            address(dDAI),
+            type(uint256).max
+        );
+        SafeTransferLib.safeApprove(
+            _USDC_ADDRESS,
+            address(cUSDC),
+            type(uint256).max
+        );
+        SafeTransferLib.safeApprove(
+            _DAI_ADDRESS,
+            address(cDAI),
+            type(uint256).max
+        );
+    }
+
+    function list_token_should_succeed(address mtoken) public {
+        uint256 amount = 42069;
+        // require the token is not already listed into the lendtroller
+        require(!lendtroller.isListed(mtoken));
+
+        require(mtoken == address(cDAI) || mtoken == address(cUSDC));
+        address underlyingAddress = MockCToken(mtoken).underlying();
+        IERC20 underlying = IERC20(underlyingAddress);
+
+        try lendtroller.listToken(mtoken) {
+            assertWithMsg(
+                lendtroller.isListed(mtoken),
+                "LENDTROLLER - lendtroller.listToken() should succeed"
+            );
+        } catch {
+            assertWithMsg(false, "LENDTROLLER - failed to list token");
+        }
+    }
+
+    function c_token_deposit(address mtoken, uint256 amount) public {
+        amount = clampBetween(amount, 1, type(uint64).max);
+        // require gauge pool has been started at a previous timestamp
+        require(gaugePool.startTime() < block.timestamp);
+        require(mtoken == address(cDAI) || mtoken == address(cUSDC));
+        require(lendtroller.isListed(mtoken));
+
+        address underlyingAddress = MockCToken(mtoken).underlying();
+        // mint ME enough tokens to cover deposit
+        try MockToken(underlyingAddress).mint(amount) {} catch {
+            assertWithMsg(
+                false,
+                "LENDTROLLER - mint underlying amount should succeed before deposit"
+            );
+        }
+        // approve sufficient underlying tokens prior to calling deposit
+        try MockToken(underlyingAddress).approve(mtoken, amount) {} catch {
+            assertWithMsg(
+                false,
+                "LENDTROLLER - approve underlying amount should succeed before deposit"
+            );
+        }
+
+        // This step should mint associated shares for the user
+        try MockCToken(mtoken).deposit(amount, address(this)) {} catch (
+            bytes memory revertData
+        ) {
+            emit LogAddress("msg.sender", msg.sender);
+            uint256 errorSelector = extractErrorSelector(revertData);
+
+            emit LogUint256("error selector: ", errorSelector);
+            assertWithMsg(
+                false,
+                "LENDTROLLER - expected mtoken.deposit() to be successful"
+            );
+        }
+    }
+
     function post_collateral_should_succeed(
         address mtoken,
         uint256 tokens
     ) public {
+        // require gauge pool has been started
+        require(gaugePool.startTime() < block.timestamp);
         try
             lendtroller.postCollateral(address(this), mtoken, tokens)
         {} catch {}
@@ -159,7 +244,7 @@ contract FuzzLendtroller is StatefulBaseMarket {
 
     // ctoken.balanceOf(user) >= collateral posted
     function cToken_balance_gte_collateral_posted(address ctoken) public {
-        uint256 cTokenBalance = MockCToken(cToken).balanceOf(address(this));
+        uint256 cTokenBalance = MockCToken(ctoken).balanceOf(address(this));
 
         uint256 collateralPostedForAddress = lendtroller.collateralPosted(
             address(this)

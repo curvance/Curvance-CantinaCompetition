@@ -78,6 +78,7 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
 
     MockToken public rewardToken;
     GaugePool public gaugePool;
+    PartnerGaugePool public partnerGaugePool;
 
     address public harvester;
     uint256 public voteBoostMultiplier = 10001; // 110%
@@ -96,7 +97,6 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
         _DAI_ADDRESS = address(dai);
         balRETH = new MockToken("balWethReth", "balWethReth", 18);
         _BALANCER_WETH_RETH = address(balRETH);
-        cToken = new MockCToken(_USDC_ADDRESS, "CTOKEN", "CTOKEN", 18);
 
         emit LogString("DEPLOYED: centralRegistry");
         _deployCentralRegistry();
@@ -337,6 +337,14 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
     function _deployGaugePool() internal {
         gaugePool = new GaugePool(ICentralRegistry(address(centralRegistry)));
         centralRegistry.addGaugeController(address(gaugePool));
+
+        // Additional logic for partner gauge pool fuzzing logic
+        // partnerGaugePool = new PartnerGaugePool(
+        //     address(gaugePool),
+        //     address(usdc),
+        //     ICentralRegistry(address(centralRegistry))
+        // );
+        // gaugePool.addPartnerGauge(address(partnerGaugePool));
     }
 
     function _deployMarketManager() internal {
