@@ -60,8 +60,8 @@ contract TestBalancerStablePoolAdaptor is TestBasePriceRouter {
         chainlinkAdaptor = new ChainlinkAdaptor(
             ICentralRegistry(address(centralRegistry))
         );
-        chainlinkAdaptor.addAsset(WETH, CHAINLINK_PRICE_FEED_ETH, true);
-        chainlinkAdaptor.addAsset(RETH, CHAINLINK_PRICE_FEED_RETH_ETH, false);
+        chainlinkAdaptor.addAsset(WETH, CHAINLINK_PRICE_FEED_ETH, 0, true);
+        chainlinkAdaptor.addAsset(RETH, CHAINLINK_PRICE_FEED_RETH_ETH, 0, false);
         priceRouter.addApprovedAdaptor(address(chainlinkAdaptor));
         priceRouter.addAssetPriceFeed(WETH, address(chainlinkAdaptor));
         priceRouter.addAssetPriceFeed(RETH, address(chainlinkAdaptor));

@@ -42,8 +42,8 @@ contract TestCurveAdaptor is TestBasePriceRouter {
         chainlinkAdaptor = new ChainlinkAdaptor(
             ICentralRegistry(address(centralRegistry))
         );
-        chainlinkAdaptor.addAsset(ETH, CHAINLINK_PRICE_FEED_ETH, true);
-        chainlinkAdaptor.addAsset(STETH, CHAINLINK_PRICE_FEED_STETH, true);
+        chainlinkAdaptor.addAsset(ETH, CHAINLINK_PRICE_FEED_ETH, 0, true);
+        chainlinkAdaptor.addAsset(STETH, CHAINLINK_PRICE_FEED_STETH, 0, true);
         priceRouter.addApprovedAdaptor(address(chainlinkAdaptor));
         priceRouter.addAssetPriceFeed(ETH, address(chainlinkAdaptor));
         priceRouter.addAssetPriceFeed(STETH, address(chainlinkAdaptor));

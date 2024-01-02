@@ -51,9 +51,9 @@ contract TestGMAdaptor is TestBasePriceRouter {
         priceRouter.addApprovedAdaptor(address(adapter));
         priceRouter.addApprovedAdaptor(address(chainlinkAdaptor));
 
-        chainlinkAdaptor.addAsset(BTC, CHAINLINK_PRICE_FEED_BTC, true);
-        chainlinkAdaptor.addAsset(WBTC, CHAINLINK_PRICE_FEED_WBTC, true);
-        chainlinkAdaptor.addAsset(USDC, CHAINLINK_PRICE_FEED_USDC, true);
+        chainlinkAdaptor.addAsset(BTC, CHAINLINK_PRICE_FEED_BTC, 0, true);
+        chainlinkAdaptor.addAsset(WBTC, CHAINLINK_PRICE_FEED_WBTC, 0, true);
+        chainlinkAdaptor.addAsset(USDC, CHAINLINK_PRICE_FEED_USDC, 0, true);
 
         priceRouter.addAssetPriceFeed(BTC, address(chainlinkAdaptor));
         priceRouter.addAssetPriceFeed(WBTC, address(chainlinkAdaptor));

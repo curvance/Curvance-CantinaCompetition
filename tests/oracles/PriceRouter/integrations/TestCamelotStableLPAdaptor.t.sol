@@ -51,8 +51,8 @@ contract TestCamelotStableLPAdapter is TestBasePriceRouter {
         chainlinkAdaptor = new ChainlinkAdaptor(
             ICentralRegistry(address(centralRegistry))
         );
-        chainlinkAdaptor.addAsset(USDC, CHAINLINK_PRICE_FEED_USDC, true);
-        chainlinkAdaptor.addAsset(DAI, CHAINLINK_PRICE_FEED_DAI, true);
+        chainlinkAdaptor.addAsset(USDC, CHAINLINK_PRICE_FEED_USDC, 0, true);
+        chainlinkAdaptor.addAsset(DAI, CHAINLINK_PRICE_FEED_DAI, 0, true);
         priceRouter.addApprovedAdaptor(address(chainlinkAdaptor));
         priceRouter.addAssetPriceFeed(USDC, address(chainlinkAdaptor));
         priceRouter.addAssetPriceFeed(DAI, address(chainlinkAdaptor));

@@ -49,7 +49,7 @@ contract TestPendlePTTokenAdapter is TestBasePriceRouter {
         chainlinkAdaptor = new ChainlinkAdaptor(
             ICentralRegistry(address(centralRegistry))
         );
-        chainlinkAdaptor.addAsset(_STETH, _CHAINLINK_ETH_USD, true);
+        chainlinkAdaptor.addAsset(_STETH, _CHAINLINK_ETH_USD, 0, true);
         priceRouter.addApprovedAdaptor(address(chainlinkAdaptor));
         priceRouter.addAssetPriceFeed(_STETH, address(chainlinkAdaptor));
 

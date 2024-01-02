@@ -73,17 +73,19 @@ contract TestBasePriceRouter is TestBase {
             ICentralRegistry(address(centralRegistry))
         );
 
-        chainlinkAdaptor.addAsset(_USDC_ADDRESS, _CHAINLINK_USDC_USD, true);
-        chainlinkAdaptor.addAsset(_USDC_ADDRESS, _CHAINLINK_USDC_ETH, false);
+        chainlinkAdaptor.addAsset(_USDC_ADDRESS, _CHAINLINK_USDC_USD, 0, true);
+        chainlinkAdaptor.addAsset(_USDC_ADDRESS, _CHAINLINK_USDC_ETH, 0, false);
 
         dualChainlinkAdaptor.addAsset(
             _USDC_ADDRESS,
             _CHAINLINK_USDC_USD,
+            0,
             true
         );
         dualChainlinkAdaptor.addAsset(
             _USDC_ADDRESS,
             _CHAINLINK_USDC_ETH,
+            0,
             false
         );
     }
