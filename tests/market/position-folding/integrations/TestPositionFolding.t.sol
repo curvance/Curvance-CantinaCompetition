@@ -38,6 +38,7 @@ contract TestPositionFolding is TestBaseMarket {
         dualChainlinkAdaptor.addAsset(
             _USDC_ADDRESS,
             address(mockUsdcFeed),
+            0,
             true
         );
         mockDaiFeed = new MockDataFeed(_CHAINLINK_DAI_USD);
