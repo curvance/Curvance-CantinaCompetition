@@ -17,7 +17,6 @@ import { CentralRegistry } from "contracts/architecture/CentralRegistry.sol";
 import { FeeAccumulator } from "contracts/architecture/FeeAccumulator.sol";
 import { ProtocolMessagingHub } from "contracts/architecture/ProtocolMessagingHub.sol";
 import { DToken } from "contracts/market/collateral/DToken.sol";
-import { CTokenCompounding } from "contracts/market/collateral/CTokenCompounding.sol";
 import { AuraCToken } from "contracts/market/collateral/AuraCToken.sol";
 import { DynamicInterestRateModel } from "contracts/market/interestRates/DynamicInterestRateModel.sol";
 import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
@@ -28,6 +27,7 @@ import { IVault } from "contracts/oracles/adaptors/balancer/BalancerBaseAdaptor.
 import { BalancerStablePoolAdaptor } from "contracts/oracles/adaptors/balancer/BalancerStablePoolAdaptor.sol";
 import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
 import { GaugePool } from "contracts/gauge/GaugePool.sol";
+import { PartnerGaugePool } from "contracts/gauge/PartnerGaugePool.sol";
 import { ERC20 } from "contracts/libraries/ERC20.sol";
 
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
@@ -57,7 +57,8 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
     Lendtroller public lendtroller;
     PositionFolding public positionFolding;
     PriceRouter public priceRouter;
-    MockCToken public cToken;
+    MockCToken public cUSDC;
+    MockCToken public cDAI;
     DToken public dUSDC;
     DToken public dDAI;
     AuraCToken public cBALRETH;
@@ -76,6 +77,7 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
 
     MockToken public rewardToken;
     GaugePool public gaugePool;
+    PartnerGaugePool public partnerGaugePool;
 
     address public harvester;
     address public randomUser = address(1000000);
@@ -99,7 +101,6 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
         _DAI_ADDRESS = address(dai);
         balRETH = new MockToken("balWethReth", "balWethReth", 18);
         _BALANCER_WETH_RETH = address(balRETH);
-        cToken = new MockCToken(_USDC_ADDRESS, "CTOKEN", "CTOKEN", 18);
 
         _CIRCLE_RELAYER = address(new MockCircleRelayer(10));
         _WORMHOLE_RELAYER = address(0x1);
@@ -132,8 +133,10 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
         _deployDUSDC();
         emit LogString("DEPLOYED: DDAI");
         _deployDDAI();
-        // emit LogString("DEPLOYED: CBALRETH");
-        // _deployCBALRETH();
+        emit LogString("DEPLOYED: CUSDC");
+        _deployCUSDC();
+        emit LogString("DEPLOYED: DAI");
+        _deployCDAI();
         // emit LogString("DEPLOYED: ZAPPER");
         // _deployZapper();
         emit LogString("DEPLOYED: PositionFolding");
@@ -332,6 +335,14 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
     function _deployGaugePool() internal {
         gaugePool = new GaugePool(ICentralRegistry(address(centralRegistry)));
         centralRegistry.addGaugeController(address(gaugePool));
+
+        // Additional logic for partner gauge pool fuzzing logic
+        // partnerGaugePool = new PartnerGaugePool(
+        //     address(gaugePool),
+        //     address(usdc),
+        //     ICentralRegistry(address(centralRegistry))
+        // );
+        // gaugePool.addPartnerGauge(address(partnerGaugePool));
     }
 
     function _deployLendtroller() internal {
@@ -343,6 +354,9 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
             address(lendtroller),
             marketInterestFactor
         );
+        try gaugePool.start(address(lendtroller)) {} catch {
+            assertWithMsg(false, "start gauge pool failed");
+        }
     }
 
     function _deployDynamicInterestRateModel() internal {
@@ -366,6 +380,24 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
     function _deployDDAI() internal returns (DToken) {
         dDAI = _deployDToken(_DAI_ADDRESS);
         return dDAI;
+    }
+
+    function _deployCUSDC() internal returns (MockCToken) {
+        cUSDC = new MockCToken(
+            ICentralRegistry(address(centralRegistry)),
+            IERC20(address(usdc)),
+            address(lendtroller)
+        );
+        return cUSDC;
+    }
+
+    function _deployCDAI() internal returns (MockCToken) {
+        cDAI = new MockCToken(
+            ICentralRegistry(address(centralRegistry)),
+            IERC20(address(dai)),
+            address(lendtroller)
+        );
+        return cDAI;
     }
 
     function _deployDToken(address token) internal returns (DToken) {

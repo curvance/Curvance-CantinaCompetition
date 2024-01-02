@@ -63,7 +63,7 @@ Tips and tricks:
 ## Lendtroller 
 
 - current debt > max allowed debt after folding
-- 
+- partner gauges 
 
 
 --- 
