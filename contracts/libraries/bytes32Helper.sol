@@ -11,16 +11,31 @@ library BytesLib {
 
     /// INTERNAL FUNCTIONS ///
 
+    /// @notice Converts `tokenAddress` to bytes32 based on its ERC20 symbol.
+    /// @param tokenAddress Address of desired token to pull ERC20 symbol from.
+    function _toBytes32(address tokenAddress) internal view returns (bytes32) {
+        string memory concatString = string.concat(_getSymbol(tokenAddress));
+        return _stringToBytes32(concatString);
+    }
+
+    /// @notice Converts `tokenAddress` to bytes32 based on its ERC20 symbol,
+    ///         and "/ETH" appended.
+    /// @param tokenAddress Address of desired token to pull ERC20 symbol from.
     function _toBytes32WithETH(address tokenAddress) internal view returns (bytes32) {
         string memory concatString = string.concat(_getSymbol(tokenAddress), "/ETH");
         return _stringToBytes32(concatString);
     }
 
+    /// @notice Converts `tokenAddress` to bytes32 based on its ERC20 symbol,
+    ///         and "/USD" appended.
+    /// @param tokenAddress Address of desired token to pull ERC20 symbol from.
     function _toBytes32WithUSD(address tokenAddress) internal view returns (bytes32) {
         string memory concatString = string.concat(_getSymbol(tokenAddress), "/USD");
         return _stringToBytes32(concatString);
     }
 
+    /// @notice Returns `tokenAddress`'s ERC20 symbol as a string.
+    /// @param tokenAddress Address of desired token to pull ERC20 symbol from.
     function _getSymbol(address tokenAddress) internal view returns (string memory) {
         return IERC20(tokenAddress).symbol();
     }
