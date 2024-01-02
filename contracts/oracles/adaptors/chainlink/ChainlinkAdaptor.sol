@@ -36,7 +36,7 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
 
     /// @notice If zero is specified for a Chainlink asset heartbeat,
     ///         this value is used instead.
-    uint24 public constant DEFAULT_HEART_BEAT = 1 days;
+    uint256 public constant DEFAULT_HEART_BEAT = 1 days;
 
     /// STORAGE ///
 
@@ -54,6 +54,7 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
     /// ERRORS ///
 
     error ChainlinkAdaptor__AssetIsNotSupported();
+    error ChainlinkAdaptor__InvalidHeartbeat();
     error ChainlinkAdaptor__InvalidMinPrice();
     error ChainlinkAdaptor__InvalidMaxPrice();
     error ChainlinkAdaptor__InvalidMinMaxConfig();
@@ -95,10 +96,23 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
     /// @dev Should be called before `PriceRouter:addAssetPriceFeed` is called.
     /// @param asset The address of the token to add pricing for
     /// @param aggregator Chainlink aggregator to use for pricing `asset`
+    /// @param heartbeat Chainlink heartbeat to use when validating prices
+    ///                  for `asset`. 0 = `DEFAULT_HEART_BEAT`.
     /// @param inUSD Whether the price feed is in USD (inUSD = true)
-    ///              or ETH (inUSD = false)
-    function addAsset(address asset, address aggregator, bool inUSD) external {
+    ///              or ETH (inUSD = false).
+    function addAsset(
+        address asset, 
+        address aggregator, 
+        uint256 heartbeat, 
+        bool inUSD
+    ) external {
         _checkElevatedPermissions();
+
+        if (heartbeat != 0) {
+            if (heartbeat > DEFAULT_HEART_BEAT) {
+                revert ChainlinkAdaptor__InvalidHeartbeat();
+            }
+        }
 
         // Use Chainlink to get the min and max of the asset.
         IChainlink feedAggregator = IChainlink(
@@ -148,8 +162,8 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
             revert ChainlinkAdaptor__InvalidMinMaxConfig();
 
         adaptorData.decimals = feedAggregator.decimals();
-        adaptorData.heartbeat = adaptorData.heartbeat != 0
-            ? adaptorData.heartbeat
+        adaptorData.heartbeat = heartbeat != 0
+            ? heartbeat
             : DEFAULT_HEART_BEAT;
 
         adaptorData.aggregator = IChainlink(aggregator);

@@ -3,11 +3,11 @@ pragma solidity ^0.8.17;
 
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 
-library BytesLib {
+library Bytes32Helper {
 
     /// ERRORS ///
 
-    error BytesLib__ZeroLengthString();
+    error Bytes32Helper__ZeroLengthString();
 
     /// INTERNAL FUNCTIONS ///
 
@@ -45,7 +45,7 @@ library BytesLib {
     function _stringToBytes32(string memory stringData) public pure returns (bytes32 result) {
         bytes memory bytesData = bytes(stringData);
         if (bytesData.length == 0) {
-            revert BytesLib__ZeroLengthString();
+            revert Bytes32Helper__ZeroLengthString();
         }
 
         /// @solidity memory-safe-assembly

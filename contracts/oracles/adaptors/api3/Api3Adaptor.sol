@@ -2,61 +2,60 @@
 pragma solidity ^0.8.17;
 
 import { BaseOracleAdaptor } from "contracts/oracles/adaptors/BaseOracleAdaptor.sol";
+import { Bytes32Helper } from "contracts/libraries/Bytes32Helper.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 import { PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
-import { IChainlink } from "contracts/interfaces/external/chainlink/IChainlink.sol";
+import { IProxy } from "contracts/interfaces/external/api3/IProxy.sol";
 import { WAD } from "contracts/libraries/Constants.sol";
 
-contract ChainlinkAdaptor is BaseOracleAdaptor {
+contract Api3Adaptor is BaseOracleAdaptor {
     /// TYPES ///
 
-    /// @notice Stores configuration data for Chainlink price sources.
+    /// @notice Stores configuration data for API3 price sources.
     struct AdaptorData {
-        /// @notice The current phase's aggregator address.
-        IChainlink aggregator;
+        /// @notice The current proxy's feed address.
+        IProxy proxyFeed;
+        /// @notice The bytes32 encoded name hash of the price feed.
+        bytes32 dapiNameHash;
         /// @notice Whether the asset is configured or not.
-        /// @dev    false = unconfigured; true = configured
+        /// @dev    false = unconfigured; true = configured.
         bool isConfigured;
-        /// @notice Returns the number of decimals the aggregator responses with.
-        uint8 decimals;
-        /// @notice heartbeat the max amount of time between price updates
-        /// @dev    0 defaults to using DEFAULT_HEART_BEAT
+        /// @notice heartbeat the max amount of time between price updates.
+        /// @dev    0 defaults to using DEFAULT_HEART_BEAT.
         uint256 heartbeat;
-        /// @notice max the max valid price of the asset
-        /// @dev    0 defaults to use aggregators max price reduced by ~10%
+        /// @notice max the max valid price of the asset.
+        /// @dev    0 defaults to use proxy max price reduced by ~10%.
         uint256 max;
-        /// @notice min the min valid price of the asset
-        /// @dev    0 defaults to use aggregators min price increased by ~10%
-        uint256 min;
     }
 
     /// CONSTANTS ///
 
-    /// @notice If zero is specified for a Chainlink asset heartbeat,
+    /// @notice If zero is specified for an Api3 asset heartbeat,
     ///         this value is used instead.
-    uint24 public constant DEFAULT_HEART_BEAT = 1 days;
+    uint256 public constant DEFAULT_HEART_BEAT = 1 days;
 
     /// STORAGE ///
 
-    /// @notice Chainlink Adaptor Data for pricing in ETH
+    /// @notice Api3 Adaptor Data for pricing in ETH.
     mapping(address => AdaptorData) public adaptorDataNonUSD;
 
-    /// @notice Chainlink Adaptor Data for pricing in USD
+    /// @notice Api3 Adaptor Data for pricing in USD.
     mapping(address => AdaptorData) public adaptorDataUSD;
 
     /// EVENTS ///
 
-    event ChainlinkAssetAdded(address asset, AdaptorData assetConfig);
-    event ChainlinkAssetRemoved(address asset);
+    event Api3AssetAdded(address asset, AdaptorData assetConfig);
+    event Api3AssetRemoved(address asset);
 
     /// ERRORS ///
 
-    error ChainlinkAdaptor__AssetIsNotSupported();
-    error ChainlinkAdaptor__InvalidMinPrice();
-    error ChainlinkAdaptor__InvalidMaxPrice();
-    error ChainlinkAdaptor__InvalidMinMaxConfig();
+    error Api3Adaptor__AssetIsNotSupported();
+    error Api3Adaptor__DAPINameHashError();
+    error Api3Adaptor__InvalidMaxPrice();
+    error Api3Adaptor__InvalidMinMaxConfig();
+    error Api3Adaptor__InvalidHeartbeat();
 
     /// CONSTRUCTOR ///
 
@@ -68,7 +67,7 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
     /// EXTERNAL FUNCTIONS ///
 
     /// @notice Retrieves the price of a given asset.
-    /// @dev Uses Chainlink oracles to fetch the price data.
+    /// @dev Uses Api3 oracles to fetch the price data.
     ///      Price is returned in USD or ETH depending on 'inUSD' parameter.
     /// @param asset The address of the asset for which the price is needed.
     /// @param inUSD A boolean to determine if the price should be returned in
@@ -81,7 +80,7 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
         bool
     ) external view override returns (PriceReturnData memory) {
         if (!isSupportedAsset[asset]) {
-            revert ChainlinkAdaptor__AssetIsNotSupported();
+            revert Api3Adaptor__AssetIsNotSupported();
         }
 
         if (inUSD) {
@@ -91,32 +90,56 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
         return _getPriceinETH(asset);
     }
 
-    /// @notice Add a Chainlink Price Feed as an asset.
+    /// @notice Add a Api3 Price Feed as an asset.
     /// @dev Should be called before `PriceRouter:addAssetPriceFeed` is called.
-    /// @param asset The address of the token to add pricing for
-    /// @param aggregator Chainlink aggregator to use for pricing `asset`
+    /// @param asset The address of the token to add pricing for.
+    /// @param proxyFeed Api3 proxy feed to use for pricing `asset`.
+    /// @param heartbeat Api3 heartbeat to use when validating prices
+    ///                  for `asset`. 0 = `DEFAULT_HEART_BEAT`.
     /// @param inUSD Whether the price feed is in USD (inUSD = true)
-    ///              or ETH (inUSD = false)
-    function addAsset(address asset, address aggregator, bool inUSD) external {
+    ///              or ETH (inUSD = false).
+    function addAsset(
+        address asset, 
+        address proxyFeed, 
+        uint256 heartbeat, 
+        bool inUSD
+    ) external {
         _checkElevatedPermissions();
 
-        // Use Chainlink to get the min and max of the asset.
-        IChainlink feedAggregator = IChainlink(
-            IChainlink(aggregator).aggregator()
-        );
+        if (heartbeat != 0) {
+            if (heartbeat > DEFAULT_HEART_BEAT) {
+                revert Api3Adaptor__InvalidHeartbeat();
+            }
+        }
 
-        uint256 maxFromChainlink = uint256(
-            uint192(feedAggregator.maxAnswer())
-        );
-        uint256 minFromChainklink = uint256(
-            uint192(feedAggregator.minAnswer())
-        );
+        bytes32 dapiName;
+        if (inUSD) {
+            // API3 appends "/USD" at the end of USD denominated feeds,
+            // so we use toBytes32WithUSD here.
+            dapiName = Bytes32Helper._toBytes32WithUSD(asset);
+        } else {
+            // API3 appends "/ETH" at the end of ETH denominated feeds,
+            // so we use toBytes32WithETH here.
+            dapiName = Bytes32Helper._toBytes32WithETH(asset);
+        }
+        bytes32 dapiNameHash = keccak256(abi.encodePacked(dapiName));
 
-        // Add a ~10% buffer to minimum and maximum price from Chainlink
-        // because Chainlink can stop updating its price before/above
+        // Validate that the dAPI name and corresponding hash generated off
+        // the symbol and denomation match the proxyFeed documented form.
+        if (dapiNameHash != IProxy(proxyFeed).dapiNameHash()) {
+            revert Api3Adaptor__DAPINameHashError();
+        }
+
+        // Add a ~10% buffer to maximum price from Api3
+        // because Api3 can stop updating its price before/above
         // the min/max price.
-        uint256 bufferedMaxPrice = (maxFromChainlink * 0.9e18) / WAD;
-        uint256 bufferedMinPrice = (minFromChainklink * 1.1e18) / WAD;
+        uint256 bufferedMaxPrice = (uint256(int256(type(int224).max)) * 0.9e18) / WAD;
+        // We expect to never get a negative price here, 
+        // and a value of 0 would generally indicate no data. 
+        // So, we set the minimum intentionally here to 1, 
+        // which is denominated in `WAD` form, 
+        // meaning a minimum price of 1 / 1e18 in real terms.
+        uint256 bufferedMinPrice = 1;
 
         AdaptorData storage adaptorData;
 
@@ -126,57 +149,50 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
             adaptorData = adaptorDataNonUSD[asset];
         }
 
-        if (adaptorData.min == 0) {
-            adaptorData.min = bufferedMinPrice;
-        } else {
-            if (adaptorData.min < bufferedMinPrice) {
-                revert ChainlinkAdaptor__InvalidMinPrice();
-            }
-            adaptorData.min = bufferedMinPrice;
-        }
-
         if (adaptorData.max == 0) {
             adaptorData.max = bufferedMaxPrice;
         } else {
             if (adaptorData.max > bufferedMaxPrice) {
-                revert ChainlinkAdaptor__InvalidMaxPrice();
+                revert Api3Adaptor__InvalidMaxPrice();
             }
             adaptorData.max = bufferedMaxPrice;
         }
 
-        if (minFromChainklink >= maxFromChainlink)
-            revert ChainlinkAdaptor__InvalidMinMaxConfig();
+        if (bufferedMinPrice >= bufferedMaxPrice)
+            revert Api3Adaptor__InvalidMinMaxConfig();
 
-        adaptorData.decimals = feedAggregator.decimals();
-        adaptorData.heartbeat = adaptorData.heartbeat != 0
-            ? adaptorData.heartbeat
+        adaptorData.heartbeat = heartbeat != 0
+            ? heartbeat
             : DEFAULT_HEART_BEAT;
 
-        adaptorData.aggregator = IChainlink(aggregator);
+        adaptorData.dapiNameHash = dapiNameHash;
+        adaptorData.proxyFeed = IProxy(proxyFeed);
         adaptorData.isConfigured = true;
         isSupportedAsset[asset] = true;
-        emit ChainlinkAssetAdded(asset, adaptorData);
+
+        emit Api3AssetAdded(asset, adaptorData);
     }
 
     /// @notice Removes a supported asset from the adaptor.
-    /// @dev Calls back into price router to notify it of its removal
+    /// @dev Calls back into price router to notify it of its removal.
     function removeAsset(address asset) external override {
         _checkElevatedPermissions();
 
         if (!isSupportedAsset[asset]) {
-            revert ChainlinkAdaptor__AssetIsNotSupported();
+            revert Api3Adaptor__AssetIsNotSupported();
         }
 
-        // Notify the adaptor to stop supporting the asset
+        // Notify the adaptor to stop supporting the asset.
         delete isSupportedAsset[asset];
 
-        // Wipe config mapping entries for a gas refund
+        // Wipe config mapping entries for a gas refund.
         delete adaptorDataUSD[asset];
         delete adaptorDataNonUSD[asset];
 
-        // Notify the price router that we are going to stop supporting the asset
+        // Notify the price router that we are going to stop supporting the asset.
         IPriceRouter(centralRegistry.priceRouter()).notifyFeedRemoval(asset);
-        emit ChainlinkAssetRemoved(asset);
+        
+        emit Api3AssetRemoved(asset);
     }
 
     /// INTERNAL FUNCTIONS ///
@@ -209,10 +225,10 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
         return _parseData(adaptorDataUSD[asset], true);
     }
 
-    /// @notice Parses the chainlink feed data for pricing of an asset.
-    /// @dev Calls latestRoundData() from Chainlink to get the latest data
+    /// @notice Parses the api3 feed data for pricing of an asset.
+    /// @dev Calls read() from Api3 to get the latest data
     ///      for pricing and staleness.
-    /// @param data Chainlink feed details.
+    /// @param data Api3 feed details.
     /// @param inUSD A boolean to denote if the price is in USD.
     /// @return A structure containing the price, error status,
     ///         and the currency of the price.
@@ -224,18 +240,17 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
             return PriceReturnData({ price: 0, hadError: true, inUSD: inUSD });
         }
 
-        (, int256 price, , uint256 updatedAt, ) = IChainlink(data.aggregator)
-            .latestRoundData();
-        uint256 newPrice = (uint256(price) * WAD) / (10 ** data.decimals);
+        (int256 price, uint256 updatedAt) = data.proxyFeed.read();
 
+        // API3 always has decimals = 18 so we do not need to do
+        // any decimal adjustment here.
         return (
             PriceReturnData({
-                price: uint240(newPrice),
+                price: uint240(uint256(price)),
                 hadError: _verifyData(
                     uint256(price),
                     updatedAt,
                     data.max,
-                    data.min,
                     data.heartbeat
                 ),
                 inUSD: inUSD
@@ -249,7 +264,6 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
     /// @param value The value that is retrieved from the feed data.
     /// @param timestamp The time at which the value was last updated.
     /// @param max The maximum limit of the value.
-    /// @param min The minimum limit of the value.
     /// @param heartbeat The maximum allowed time difference between
     ///                  current time and 'timestamp'.
     /// @return A boolean indicating whether the feed data had an error
@@ -258,10 +272,14 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
         uint256 value,
         uint256 timestamp,
         uint256 max,
-        uint256 min,
         uint256 heartbeat
     ) internal view returns (bool) {
-        if (value < min) {
+        // We expect to never get a negative price here, 
+        // and a value of 0 would generally indicate no data. 
+        // So, we set the minimum intentionally here to 1, 
+        // which is denominated in `WAD` form, 
+        // meaning a minimum price of 1 / 1e18 in real terms.
+        if (value < 1) {
             return true;
         }
 
