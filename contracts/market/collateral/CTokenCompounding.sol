@@ -594,7 +594,7 @@ abstract contract CTokenCompounding is CTokenBase {
     }
 
     /// @notice Checks if the caller can compound the vaults rewards
-    function _canCompound() internal {
+    function _canCompound() internal view {
         if (!centralRegistry.isHarvester(msg.sender)) {
             _revert(_UNAUTHORIZED_SELECTOR);
         }

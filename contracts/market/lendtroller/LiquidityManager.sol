@@ -24,10 +24,10 @@ abstract contract LiquidityManager {
 
     struct AccountMetadata {
         /// @notice Value that indicates whether an account has an active position in the token.
-        /// @dev    0 or 1 for no; 2 for yes
+        /// @dev    0 or 1 for no; 2 for yes.
         uint256 activePosition;
         /// @notice The amount of collateral an account has posted.
-        /// @dev    Only relevant for cTokens not dTokens
+        /// @dev    Only relevant for cTokens not dTokens.
         uint256 collateralPosted;
     }
 
@@ -96,7 +96,7 @@ abstract contract LiquidityManager {
                 type(ICentralRegistry).interfaceId
             )
         ) {
-            // bytes4(keccak256(bytes("LiquidityManager__InvalidParameter()")))
+            // bytes4(keccak256(bytes("LiquidityManager__InvalidParameter()"))).
             _revert(0x78eefdcc);
         }
 
@@ -132,7 +132,7 @@ abstract contract LiquidityManager {
             snapshot = snapshots[i];
 
             if (snapshot.isCToken) {
-                // If the asset has a CR increment their collateral and max borrow value
+                // If the asset has a CR increment their collateral and max borrow value.
                 if (!(tokenData[snapshot.asset].collRatio == 0)) {
                     uint256 collateralValue = _getAssetValue(
                         ((tokenData[snapshot.asset]
@@ -148,7 +148,7 @@ abstract contract LiquidityManager {
                         WAD;
                 }
             } else {
-                // If they have a debt balance, increment their debt
+                // If they have a debt balance, increment their debt.
                 if (snapshot.debtBalance > 0) {
                     accountDebt += _getAssetValue(
                         snapshot.debtBalance,
@@ -196,7 +196,7 @@ abstract contract LiquidityManager {
 
             if (snapshot.isCToken) {
                 // If the asset has a Collateral Ratio,
-                // increment their collateral and max borrow value
+                // increment their collateral and max borrow value.
                 if (!(tokenData[snapshot.asset].collRatio == 0)) {
                     maxDebt = _getLiquidityValue(
                         snapshot,
@@ -206,7 +206,7 @@ abstract contract LiquidityManager {
                     );
                 }
             } else {
-                // If they have a debt balance, increment their debt
+                // If they have a debt balance, increment their debt.
                 if (snapshot.debtBalance > 0) {
                     newDebt += _getAssetValue(
                         snapshot.debtBalance,
@@ -216,11 +216,11 @@ abstract contract LiquidityManager {
                 }
             }
 
-            // Calculate effects of interacting with mTokenModified
+            // Calculate effects of interacting with mTokenModified.
             if (snapshot.asset == mTokenModified) {
-                // If its a CToken our only option is to redeem it since it cant be borrowed
+                // If its a CToken our only option is to redeem it since it cant be borrowed.
                 // If its a DToken we can redeem it but it will not have any effect on borrow amount
-                // since DToken have a collateral value of 0
+                // since DToken have a collateral value of 0.
                 if (snapshot.isCToken) {
                     if (!(tokenData[snapshot.asset].collRatio == 0)) {
                         uint256 collateralValue = _getAssetValue(
@@ -229,12 +229,12 @@ abstract contract LiquidityManager {
                             snapshot.decimals
                         );
 
-                        // hypothetical redemption
+                        // hypothetical redemption.
                         newDebt += ((collateralValue *
                             tokenData[snapshot.asset].collRatio) / WAD);
                     }
                 } else {
-                    // hypothetical borrow
+                    // hypothetical borrow.
                     newDebt += _getAssetValue(
                         borrowAmount,
                         underlyingPrices[i],
@@ -248,7 +248,7 @@ abstract contract LiquidityManager {
             }
         }
 
-        // These will not underflow/overflow as condition is checked prior
+        // These will not underflow/overflow as condition is checked prior.
         if (maxDebt > newDebt) {
             unchecked {
                 return (maxDebt - newDebt, 0);
@@ -278,7 +278,7 @@ abstract contract LiquidityManager {
             snapshot = snapshots[i];
 
             if (snapshot.isCToken) {
-                // If the asset has a CR increment their collateral
+                // If the asset has a CR increment their collateral.
                 if (!(tokenData[snapshot.asset].collRatio == 0)) {
                     accountCollateral += _getAssetValue(
                         ((tokenData[snapshot.asset]
@@ -289,7 +289,7 @@ abstract contract LiquidityManager {
                     );
                 }
             } else {
-                // If they have a debt balance, increment their debt
+                // If they have a debt balance, increment their debt.
                 if (snapshot.debtBalance > 0) {
                     accountDebt += _getAssetValue(
                         snapshot.debtBalance,
@@ -326,11 +326,11 @@ abstract contract LiquidityManager {
             uint256 numAssets
         ) = _assetDataOf(account, 2);
         AccountSnapshot memory snapshot;
-        // Collateral value for soft liquidation level
+        // Collateral value for soft liquidation level.
         uint256 accountCollateralA;
-        // Collateral value for hard liquidation level
+        // Collateral value for hard liquidation level.
         uint256 accountCollateralB;
-        // Current outstanding account debt
+        // Current outstanding account debt.
         uint256 accountDebt;
 
         for (uint256 i; i < numAssets; ) {
@@ -341,7 +341,7 @@ abstract contract LiquidityManager {
                     result.collateralTokenPrice = underlyingPrices[i];
                 }
 
-                // If the asset has a CR increment their collateral
+                // If the asset has a CR increment their collateral.
                 if (!(tokenData[snapshot.asset].collRatio == 0)) {
                     (
                         accountCollateralA,
@@ -360,7 +360,7 @@ abstract contract LiquidityManager {
                 }
 
                 // If they have a debt balance,
-                // we need to document collateral requirements
+                // we need to document collateral requirements.
                 if (snapshot.debtBalance > 0) {
                     accountDebt += _getAssetValue(
                         snapshot.debtBalance,
@@ -416,7 +416,7 @@ abstract contract LiquidityManager {
             snapshot = snapshots[i];
 
             if (snapshot.isCToken) {
-                // If the asset has a CR increment their collateral and debt to pay
+                // If the asset has a CR increment their collateral and debt to pay.
                 if (!(tokenData[snapshot.asset].collRatio == 0)) {
                     uint256 collateralValue = _getAssetValue(
                         ((tokenData[snapshot.asset]
@@ -431,7 +431,7 @@ abstract contract LiquidityManager {
                         tokenData[snapshot.asset].liqBaseIncentive;
                 }
             } else {
-                // If they have a debt balance, increment their debt
+                // If they have a debt balance, increment their debt.
                 if (snapshot.debtBalance > 0) {
                     accountDebt += _getAssetValue(
                         snapshot.debtBalance,
