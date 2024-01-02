@@ -459,7 +459,7 @@ abstract contract CTokenCompounding is CTokenBase {
         uint256 shares,
         uint256 ta,
         uint256 pending
-    ) internal {
+    ) internal virtual {
         if (msg.sender != owner) {
             uint256 allowed = allowance(owner, by);
 
