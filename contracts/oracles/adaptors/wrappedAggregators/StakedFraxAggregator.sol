@@ -15,6 +15,7 @@ contract StakedFraxAggregator is BaseWrappedAggregator {
         fraxAggregator = _fraxAggregator;
     }
 
+    /// @notice Returns the underlying aggregator address.
     function underlyingAssetAggregator()
         public
         view
@@ -24,6 +25,8 @@ contract StakedFraxAggregator is BaseWrappedAggregator {
         return fraxAggregator;
     }
 
+    /// @notice Returns the current exchange rate between the wrapped asset
+    ///         and the underlying aggregator, in `WAD`.
     function getWrappedAssetWeight() public view override returns (uint256) {
         // Staked Frax contract returns naturally in 1e18 format,
         // so no adjustment needed to return decimals.

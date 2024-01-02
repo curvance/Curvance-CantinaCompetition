@@ -23,7 +23,7 @@ interface GemLike {
     ) external returns (bool);
 }
 
-interface IVatLike {
+interface VatLike {
     function dai(address) external view returns (uint256);
 
     function hope(address) external;

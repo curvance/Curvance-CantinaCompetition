@@ -15,6 +15,7 @@ contract WstETHAggregator is BaseWrappedAggregator {
         stETHAggregator = _stETHAggregator;
     }
 
+    /// @notice Returns the underlying aggregator address.
     function underlyingAssetAggregator()
         public
         view
@@ -24,6 +25,8 @@ contract WstETHAggregator is BaseWrappedAggregator {
         return stETHAggregator;
     }
 
+    /// @notice Returns the current exchange rate between the wrapped asset
+    ///         and the underlying aggregator, in `WAD`.
     function getWrappedAssetWeight() public view override returns (uint256) {
         // get pricing in 1e18 format directly to minimize calculations.
         return IWstETH(wstETH).getStETHByWstETH(1e18);
