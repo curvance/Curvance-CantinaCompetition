@@ -2,7 +2,6 @@
 pragma solidity ^0.8.17;
 
 import { BaseWrappedAggregator } from "./BaseWrappedAggregator.sol";
-import { IChainlink } from "contracts/interfaces/external/chainlink/IChainlink.sol";
 import { IWstETH } from "contracts/interfaces/external/wsteth/IWstETH.sol";
 
 contract WstETHAggregator is BaseWrappedAggregator {
@@ -26,6 +25,7 @@ contract WstETHAggregator is BaseWrappedAggregator {
     }
 
     function getWrappedAssetWeight() public view override returns (uint256) {
+        // get pricing in 1e18 format directly to minimize calculations.
         return IWstETH(wstETH).getStETHByWstETH(1e18);
     }
 }

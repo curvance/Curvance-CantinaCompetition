@@ -56,12 +56,13 @@ contract ConvexLPCollateral is TestBaseMarket {
             address(CONVEX_STETH_ETH_POOL),
             address(crvAdaptor)
         );
-        chainlinkAdaptor.addAsset(ETH_ADDRESS, address(chainlinkEthUsd), true);
+        chainlinkAdaptor.addAsset(ETH_ADDRESS, address(chainlinkEthUsd), 0, true);
         priceRouter.addAssetPriceFeed(ETH_ADDRESS, address(chainlinkAdaptor));
         chainlinkStethUsd = new MockV3Aggregator(8, 1500e8, 3000e12, 1000e6);
         chainlinkAdaptor.addAsset(
             _STETH_ADDRESS,
             address(chainlinkStethUsd),
+            0,
             true
         );
         priceRouter.addAssetPriceFeed(

@@ -28,24 +28,27 @@ contract TestDTokenReserves is TestBaseMarket {
 
         // use mock pricing for testing
         mockDaiFeed = new MockDataFeed(_CHAINLINK_DAI_USD);
-        chainlinkAdaptor.addAsset(_DAI_ADDRESS, address(mockDaiFeed), true);
+        chainlinkAdaptor.addAsset(_DAI_ADDRESS, address(mockDaiFeed), 0, true);
         dualChainlinkAdaptor.addAsset(
             _DAI_ADDRESS,
             address(mockDaiFeed),
+            0,
             true
         );
         mockWethFeed = new MockDataFeed(_CHAINLINK_ETH_USD);
-        chainlinkAdaptor.addAsset(_WETH_ADDRESS, address(mockWethFeed), true);
+        chainlinkAdaptor.addAsset(_WETH_ADDRESS, address(mockWethFeed), 0, true);
         dualChainlinkAdaptor.addAsset(
             _WETH_ADDRESS,
             address(mockWethFeed),
+            0,
             true
         );
         mockRethFeed = new MockDataFeed(_CHAINLINK_RETH_ETH);
-        chainlinkAdaptor.addAsset(_RETH_ADDRESS, address(mockRethFeed), false);
+        chainlinkAdaptor.addAsset(_RETH_ADDRESS, address(mockRethFeed), 0, false);
         dualChainlinkAdaptor.addAsset(
             _RETH_ADDRESS,
             address(mockRethFeed),
+            0,
             true
         );
 

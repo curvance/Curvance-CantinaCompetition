@@ -23,24 +23,27 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
 
         // use mock pricing for testing
         mockUsdcFeed = new MockDataFeed(_CHAINLINK_USDC_USD);
-        chainlinkAdaptor.addAsset(_USDC_ADDRESS, address(mockUsdcFeed), true);
+        chainlinkAdaptor.addAsset(_USDC_ADDRESS, address(mockUsdcFeed), 0, true);
         dualChainlinkAdaptor.addAsset(
             _USDC_ADDRESS,
             address(mockUsdcFeed),
+            0,
             true
         );
         mockWethFeed = new MockDataFeed(_CHAINLINK_ETH_USD);
-        chainlinkAdaptor.addAsset(_WETH_ADDRESS, address(mockWethFeed), true);
+        chainlinkAdaptor.addAsset(_WETH_ADDRESS, address(mockWethFeed), 0, true);
         dualChainlinkAdaptor.addAsset(
             _WETH_ADDRESS,
             address(mockWethFeed),
+            0,
             true
         );
         mockRethFeed = new MockDataFeed(_CHAINLINK_RETH_ETH);
-        chainlinkAdaptor.addAsset(_RETH_ADDRESS, address(mockRethFeed), false);
+        chainlinkAdaptor.addAsset(_RETH_ADDRESS, address(mockRethFeed), 0, false);
         dualChainlinkAdaptor.addAsset(
             _RETH_ADDRESS,
             address(mockRethFeed),
+            0,
             true
         );
 

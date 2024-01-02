@@ -44,22 +44,24 @@ contract TestCTokenForPendlePT is TestBaseMarket {
 
         // use mock pricing for testing
         mockUsdcFeed = new MockDataFeed(_CHAINLINK_USDC_USD);
-        chainlinkAdaptor.addAsset(_USDC_ADDRESS, address(mockUsdcFeed), true);
+        chainlinkAdaptor.addAsset(_USDC_ADDRESS, address(mockUsdcFeed), 0, true);
         dualChainlinkAdaptor.addAsset(
             _USDC_ADDRESS,
             address(mockUsdcFeed),
+            0,
             true
         );
         mockWethFeed = new MockDataFeed(_CHAINLINK_ETH_USD);
-        chainlinkAdaptor.addAsset(_WETH_ADDRESS, address(mockWethFeed), true);
+        chainlinkAdaptor.addAsset(_WETH_ADDRESS, address(mockWethFeed), 0, true);
         dualChainlinkAdaptor.addAsset(
             _WETH_ADDRESS,
             address(mockWethFeed),
+            0,
             true
         );
         mockStethFeed = new MockDataFeed(_CHAINLINK_ETH_USD);
-        chainlinkAdaptor.addAsset(_STETH, address(mockStethFeed), true);
-        dualChainlinkAdaptor.addAsset(_STETH, address(mockStethFeed), true);
+        chainlinkAdaptor.addAsset(_STETH, address(mockStethFeed), 0, true);
+        dualChainlinkAdaptor.addAsset(_STETH, address(mockStethFeed), 0, true);
 
         priceRouter.addAssetPriceFeed(_STETH, address(chainlinkAdaptor));
         priceRouter.addAssetPriceFeed(_STETH, address(dualChainlinkAdaptor));
