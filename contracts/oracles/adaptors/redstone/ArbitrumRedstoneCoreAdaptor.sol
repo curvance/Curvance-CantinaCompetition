@@ -2,25 +2,25 @@
 pragma solidity ^0.8.17;
 
 import { BaseRedstoneCoreAdaptor } from "contracts/oracles/adaptors/redstone/BaseRedstoneCoreAdaptor.sol";
-import { PrimaryProdDataServiceConsumerBase } from "contracts/libraries/redstone/PrimaryProdDataServiceConsumerBase.sol";
+import { PrimaryProdDataServiceConsumerBase } from "contracts/libraries/redstone/ArbitrumProdDataServiceConsumerBase.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
-contract EthereumRedstoneCoreAdaptor is BaseRedstoneCoreAdaptor, PrimaryProdDataServiceConsumerBase {
+contract ArbitrumRedstoneCoreAdaptor is BaseRedstoneCoreAdaptor, ArbitrumProdDataServiceConsumerBase {
 
     /// ERRORS ///
 
-    error EthereumRedstoneCoreAdaptor__ChainIsNotSupported();
+    error ArbitrumRedstoneCoreAdaptor__ChainIsNotSupported();
 
     /// CONSTRUCTOR ///
 
     constructor(
         ICentralRegistry centralRegistry_
     ) BaseRedstoneCoreAdaptor(centralRegistry_) {
-        // `redstone-primary-prod` that this oracle adaptor 
-        // is configured for should only be on Ethereum mainnet.
-        if (block.chainid != 1) {
-            revert EthereumRedstoneCoreAdaptor__ChainIsNotSupported();
+        // `redstone-arbitrum-prod` that this oracle adaptor 
+        // is configured for should only be on Arbitrum mainnet.
+        if (block.chainid != 42161) {
+            revert ArbitrumRedstoneCoreAdaptor__ChainIsNotSupported();
         }
     }
 

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MIT
+
 pragma solidity ^0.8.17;
 
 import { BaseOracleAdaptor } from "contracts/oracles/adaptors/BaseOracleAdaptor.sol";
@@ -7,57 +8,48 @@ import { Bytes32Helper } from "contracts/libraries/Bytes32Helper.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 import { PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
-import { IProxy } from "contracts/interfaces/external/api3/IProxy.sol";
-import { WAD } from "contracts/libraries/Constants.sol";
 
-contract Api3Adaptor is BaseOracleAdaptor {
+abstract contract EthereumRedstoneCoreAdaptor is BaseOracleAdaptor {
     /// TYPES ///
 
-    /// @notice Stores configuration data for API3 price sources.
+    /// @notice Stores configuration data for Redstone price sources.
     struct AdaptorData {
-        /// @notice The current proxy's feed address.
-        IProxy proxyFeed;
-        /// @notice The bytes32 encoded name hash of the price feed.
-        bytes32 dapiNameHash;
         /// @notice Whether the asset is configured or not.
         /// @dev    false = unconfigured; true = configured.
         bool isConfigured;
-        /// @notice heartbeat the max amount of time between price updates.
-        /// @dev    0 defaults to using DEFAULT_HEART_BEAT.
-        uint256 heartbeat;
-        /// @notice max the max valid price of the asset.
-        /// @dev    0 defaults to use proxy max price reduced by ~10%.
+        /// @notice The bytes32 encoded hash of the price feed.
+        bytes32 symbolHash;
+        /// @param max the max valid price of the asset.
         uint256 max;
+        /// @param min the min valid price of the asset.
+        uint256 min;
     }
 
     /// CONSTANTS ///
-
-    /// @notice If zero is specified for an Api3 asset heartbeat,
+    
+    /// @notice If zero is specified for a Redstone Core asset heartbeat,
     ///         this value is used instead.
     uint256 public constant DEFAULT_HEART_BEAT = 1 days;
 
     /// STORAGE ///
 
-    /// @notice Api3 Adaptor Data for pricing in ETH.
+    /// @notice Redstone Adaptor Data for pricing in ETH
     mapping(address => AdaptorData) public adaptorDataNonUSD;
 
-    /// @notice Api3 Adaptor Data for pricing in USD.
+    /// @notice Redstone Adaptor Data for pricing in USD
     mapping(address => AdaptorData) public adaptorDataUSD;
 
     /// EVENTS ///
 
-    event Api3AssetAdded(address asset, AdaptorData assetConfig);
-    event Api3AssetRemoved(address asset);
+    event RedstoneCoreAssetAdded(address asset, AdaptorData assetConfig);
+    event RedstoneCoreAssetRemoved(address asset);
 
     /// ERRORS ///
 
-    error Api3Adaptor__AssetIsNotSupported();
-    error Api3Adaptor__DAPINameHashError();
-    error Api3Adaptor__InvalidHeartbeat();
-
+    error BaseRedstoneCoreAdaptor__AssetIsNotSupported();
+    error BaseRedstoneCoreAdaptor__SymbolHashError();
     /// CONSTRUCTOR ///
 
-    /// @param centralRegistry_ The address of central registry.
     constructor(
         ICentralRegistry centralRegistry_
     ) BaseOracleAdaptor(centralRegistry_) {}
@@ -65,7 +57,7 @@ contract Api3Adaptor is BaseOracleAdaptor {
     /// EXTERNAL FUNCTIONS ///
 
     /// @notice Retrieves the price of a given asset.
-    /// @dev Uses Api3 oracles to fetch the price data.
+    /// @dev Uses Redstone Core oracles to fetch the price data.
     ///      Price is returned in USD or ETH depending on 'inUSD' parameter.
     /// @param asset The address of the asset for which the price is needed.
     /// @param inUSD A boolean to determine if the price should be returned in
@@ -78,7 +70,7 @@ contract Api3Adaptor is BaseOracleAdaptor {
         bool
     ) external view override returns (PriceReturnData memory) {
         if (!isSupportedAsset[asset]) {
-            revert Api3Adaptor__AssetIsNotSupported();
+            revert BaseRedstoneCoreAdaptor__AssetIsNotSupported();
         }
 
         if (inUSD) {
@@ -88,44 +80,26 @@ contract Api3Adaptor is BaseOracleAdaptor {
         return _getPriceinETH(asset);
     }
 
-    /// @notice Add a Api3 Price Feed as an asset.
+    /// @notice Add a Redstone Core Price Feed as an asset.
     /// @dev Should be called before `PriceRouter:addAssetPriceFeed` is called.
     /// @param asset The address of the token to add pricing for.
-    /// @param proxyFeed Api3 proxy feed to use for pricing `asset`.
-    /// @param heartbeat Api3 heartbeat to use when validating prices
-    ///                  for `asset`. 0 = `DEFAULT_HEART_BEAT`.
     /// @param inUSD Whether the price feed is in USD (inUSD = true)
     ///              or ETH (inUSD = false).
     function addAsset(
         address asset, 
-        address proxyFeed, 
-        uint256 heartbeat, 
         bool inUSD
     ) external {
         _checkElevatedPermissions();
 
-        if (heartbeat != 0) {
-            if (heartbeat > DEFAULT_HEART_BEAT) {
-                revert Api3Adaptor__InvalidHeartbeat();
-            }
-        }
-
-        bytes32 dapiName;
+        bytes32 symbolHash;
         if (inUSD) {
-            // API3 appends "/USD" at the end of USD denominated feeds,
-            // so we use toBytes32WithUSD here.
-            dapiName = Bytes32Helper._toBytes32WithUSD(asset);
+            // Redstone Core does not append anything at the end of USD denominated feeds,
+            // so we use toBytes32 here.
+            symbolHash = Bytes32Helper._toBytes32(asset);
         } else {
-            // API3 appends "/ETH" at the end of ETH denominated feeds,
+            // Redstone Core appends "/ETH" at the end of ETH denominated feeds,
             // so we use toBytes32WithETH here.
-            dapiName = Bytes32Helper._toBytes32WithETH(asset);
-        }
-        bytes32 dapiNameHash = keccak256(abi.encodePacked(dapiName));
-
-        // Validate that the dAPI name and corresponding hash generated off
-        // the symbol and denomation match the proxyFeed documented form.
-        if (dapiNameHash != IProxy(proxyFeed).dapiNameHash()) {
-            revert Api3Adaptor__DAPINameHashError();
+            symbolHash = Bytes32Helper._toBytes32WithETH(asset);
         }
 
         AdaptorData storage adaptorData;
@@ -136,20 +110,15 @@ contract Api3Adaptor is BaseOracleAdaptor {
             adaptorData = adaptorDataNonUSD[asset];
         }
 
-        adaptorData.heartbeat = heartbeat != 0
-            ? heartbeat
-            : DEFAULT_HEART_BEAT;
-
-        // Add a ~10% buffer to maximum price from Api3
-        // because Api3 can stop updating its price before/above
-        // the min/max price.
-        adaptorData.max = (uint256(int256(type(int224).max)) * 0.9e18) / WAD;
-        adaptorData.dapiNameHash = dapiNameHash;
-        adaptorData.proxyFeed = IProxy(proxyFeed);
+        // We use a maximum buffered price of 2^216 - 1 since redstone core reports pricing 
+        // in 8 decimal format, requiring multiplication by 10e10 to standardize to 18 decimal
+        // format, which overflows soon after 2^216 - 1.
+        adaptorData.max = type(uint216).max;
+        adaptorData.symbolHash = symbolHash;
         adaptorData.isConfigured = true;
         isSupportedAsset[asset] = true;
 
-        emit Api3AssetAdded(asset, adaptorData);
+        emit RedstoneCoreAssetAdded(asset, adaptorData);
     }
 
     /// @notice Removes a supported asset from the adaptor.
@@ -158,7 +127,7 @@ contract Api3Adaptor is BaseOracleAdaptor {
         _checkElevatedPermissions();
 
         if (!isSupportedAsset[asset]) {
-            revert Api3Adaptor__AssetIsNotSupported();
+            revert BaseRedstoneCoreAdaptor__AssetIsNotSupported();
         }
 
         // Notify the adaptor to stop supporting the asset.
@@ -171,7 +140,7 @@ contract Api3Adaptor is BaseOracleAdaptor {
         // Notify the price router that we are going to stop supporting the asset.
         IPriceRouter(centralRegistry.priceRouter()).notifyFeedRemoval(asset);
         
-        emit Api3AssetRemoved(asset);
+        emit RedstoneCoreAssetRemoved(asset);
     }
 
     /// INTERNAL FUNCTIONS ///
@@ -205,9 +174,9 @@ contract Api3Adaptor is BaseOracleAdaptor {
     }
 
     /// @notice Parses the api3 feed data for pricing of an asset.
-    /// @dev Calls read() from Api3 to get the latest data
+    /// @dev Calls read() from Redstone Core to get the latest data
     ///      for pricing and staleness.
-    /// @param data Api3 feed details.
+    /// @param data Redstone Core feed details.
     /// @param inUSD A boolean to denote if the price is in USD.
     /// @return A structure containing the price, error status,
     ///         and the currency of the price.
@@ -215,18 +184,18 @@ contract Api3Adaptor is BaseOracleAdaptor {
         AdaptorData memory data,
         bool inUSD
     ) internal view returns (PriceReturnData memory) {
-        (int256 price, uint256 updatedAt) = data.proxyFeed.read();
+        uint256 price = _extractPrice(data.symbolHash);
 
-        // API3 always has decimals = 18 so we do not need to do
-        // any decimal adjustment here.
+        // Redstone Core always has decimals = 8 so we need to
+        // adjust back to decimals = 18.
+        uint256 newPrice = uint256(price) * (10 ** 10);
+
         return (
             PriceReturnData({
-                price: uint240(uint256(price)),
+                price: uint240(newPrice),
                 hadError: _verifyData(
                     uint256(price),
-                    updatedAt,
-                    data.max,
-                    data.heartbeat
+                    data.max
                 ),
                 inUSD: inUSD
             })
@@ -237,18 +206,13 @@ contract Api3Adaptor is BaseOracleAdaptor {
     /// @dev Checks if the value is within a specific range
     ///      and if the data is not outdated.
     /// @param value The value that is retrieved from the feed data.
-    /// @param timestamp The time at which the value was last updated.
     /// @param max The maximum limit of the value.
-    /// @param heartbeat The maximum allowed time difference between
-    ///                  current time and 'timestamp'.
     /// @return A boolean indicating whether the feed data had an error
     ///         (true = error, false = no error).
     function _verifyData(
         uint256 value,
-        uint256 timestamp,
-        uint256 max,
-        uint256 heartbeat
-    ) internal view returns (bool) {
+        uint256 max
+    ) internal pure returns (bool) {
         // We expect to never get a negative price here, 
         // and a value of 0 would generally indicate no data. 
         // So, we set the minimum intentionally here to 1, 
@@ -262,10 +226,14 @@ contract Api3Adaptor is BaseOracleAdaptor {
             return true;
         }
 
-        if (block.timestamp - timestamp > heartbeat) {
-            return true;
-        }
+        // We typically check for feed data staleness through a heartbeat check, 
+        // but redstone naturally checks timestamp through its msg.data read, 
+        // so we do not need to check again here.
 
         return false;
     }
+
+    /// INTERNAL FUNCTIONS TO OVERRIDE ///
+    function  _extractPrice(bytes32 symbolHash) internal virtual view returns (uint256);
+
 }
