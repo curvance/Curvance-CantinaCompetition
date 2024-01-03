@@ -1,11 +1,17 @@
 pragma solidity 0.8.17;
 import { StatefulBaseMarket } from "tests/fuzzing/StatefulBaseMarket.sol";
 import { MockCToken } from "contracts/mocks/MockCToken.sol";
+import { MockDataFeed } from "contracts/mocks/MockDataFeed.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { MockToken } from "contracts/mocks/MockToken.sol";
+import { IMToken } from "contracts/market/lendtroller/LiquidityManager.sol";
 
 contract FuzzLendtroller is StatefulBaseMarket {
+    MockDataFeed public mockUsdcFeed;
+    MockDataFeed public mockDaiFeed;
+    bool feedsSetup;
+
     constructor() {
         SafeTransferLib.safeApprove(
             _USDC_ADDRESS,
@@ -49,11 +55,13 @@ contract FuzzLendtroller is StatefulBaseMarket {
     }
 
     function c_token_deposit(address mtoken, uint256 amount) public {
-        amount = clampBetween(amount, 1, type(uint64).max);
+        amount = clampBetween(amount, 1, type(uint32).max);
         // require gauge pool has been started at a previous timestamp
         require(gaugePool.startTime() < block.timestamp);
         require(mtoken == address(cDAI) || mtoken == address(cUSDC));
-        require(lendtroller.isListed(mtoken));
+        if (!lendtroller.isListed(mtoken)) {
+            list_token_should_succeed(mtoken);
+        }
 
         address underlyingAddress = MockCToken(mtoken).underlying();
         // mint ME enough tokens to cover deposit
@@ -70,11 +78,22 @@ contract FuzzLendtroller is StatefulBaseMarket {
                 "LENDTROLLER - approve underlying amount should succeed before deposit"
             );
         }
+        uint256 preCTokenBalanceThis = MockCToken(mtoken).balanceOf(
+            address(this)
+        );
 
         // This step should mint associated shares for the user
-        try MockCToken(mtoken).deposit(amount, address(this)) {} catch (
-            bytes memory revertData
-        ) {
+        try MockCToken(mtoken).deposit(amount, address(this)) {
+            uint256 postCTokenBalanceThis = MockCToken(mtoken).balanceOf(
+                address(this)
+            );
+
+            assertLt(
+                preCTokenBalanceThis,
+                postCTokenBalanceThis,
+                "LENDTROLLER - pre and post ctoken balance should increase"
+            );
+        } catch (bytes memory revertData) {
             emit LogAddress("msg.sender", msg.sender);
             uint256 errorSelector = extractErrorSelector(revertData);
 
@@ -86,15 +105,132 @@ contract FuzzLendtroller is StatefulBaseMarket {
         }
     }
 
+    function setUpFeeds() public {
+        require(gaugePool.startTime() < block.timestamp);
+        // use mock pricing for testing
+        mockUsdcFeed = new MockDataFeed(_CHAINLINK_USDC_USD);
+        chainlinkAdaptor.addAsset(_USDC_ADDRESS, address(mockUsdcFeed), true);
+        dualChainlinkAdaptor.addAsset(
+            _USDC_ADDRESS,
+            address(mockUsdcFeed),
+            true
+        );
+        mockDaiFeed = new MockDataFeed(_CHAINLINK_DAI_USD);
+        chainlinkAdaptor.addAsset(_DAI_ADDRESS, address(mockDaiFeed), true);
+        dualChainlinkAdaptor.addAsset(
+            _DAI_ADDRESS,
+            address(mockDaiFeed),
+            true
+        );
+
+        mockUsdcFeed.setMockUpdatedAt(block.timestamp);
+        mockDaiFeed.setMockUpdatedAt(block.timestamp);
+        priceRouter.addMTokenSupport(address(cDAI));
+        priceRouter.addMTokenSupport(address(cUSDC));
+        feedsSetup = true;
+    }
+
+    function setCTokenCollateralCaps_should_succeed(
+        address mtoken,
+        uint256 cap
+    ) public {
+        require(feedsSetup);
+        require(centralRegistry.hasDaoPermissions(address(this)));
+        cap = clampBetween(cap, 1, type(uint256).max);
+        // require the token is not already listed into the lendtroller
+        if (!lendtroller.isListed(mtoken)) {
+            list_token_should_succeed(mtoken);
+        }
+        require(mtoken == address(cDAI) || mtoken == address(cUSDC));
+
+        address[] memory tokens = new address[](1);
+        tokens[0] = mtoken;
+        uint256[] memory caps = new uint256[](1);
+        caps[0] = cap;
+
+        // adjust the following to acount for dynamic numbers here instead
+        try
+            lendtroller.updateCollateralToken(
+                IMToken(address(mtoken)),
+                7000,
+                3000,
+                3000,
+                2000,
+                2000,
+                100,
+                1000
+            )
+        {} catch {
+            assertWithMsg(
+                false,
+                "LENDTROLLER - updateCollateralToken should succeed"
+            );
+        }
+
+        try lendtroller.setCTokenCollateralCaps(tokens, caps) {
+            assertGt(
+                lendtroller.collateralCaps(mtoken),
+                0,
+                "LENDTROLLER - collateral caps for token should be >0"
+            );
+        } catch {
+            assertWithMsg(
+                false,
+                "LENDTROLLER - expected setCTokenCollateralCaps to succeed"
+            );
+        }
+    }
+
     function post_collateral_should_succeed(
         address mtoken,
         uint256 tokens
     ) public {
         // require gauge pool has been started
         require(gaugePool.startTime() < block.timestamp);
+        require(feedsSetup);
+        if (!lendtroller.isListed(mtoken)) {
+            list_token_should_succeed(mtoken);
+        }
+        require(mtoken == address(cDAI) || mtoken == address(cUSDC));
+        uint256 mtokenBalance = MockCToken(mtoken).balanceOf(address(this));
+
+        require(mtokenBalance > 0);
+        require(lendtroller.collateralCaps(mtoken) > 0);
+
+        // (uint256 accountCollateral, , ) = lendtroller.statusOf(address(this));
+        uint256 accountCollateral;
+        try lendtroller.statusOf(address(this)) returns (
+            uint256 accountCollat,
+            uint256 accountDebt,
+            uint256 debt
+        ) {
+            accountCollateral = accountCollat;
+        } catch {
+            accountCollateral = 0;
+        }
+
+        uint256 min;
+        uint256 max;
+        if (accountCollateral > mtokenBalance) {
+            min = mtokenBalance;
+            max = accountCollateral;
+        } else {
+            min = accountCollateral;
+            max = mtokenBalance;
+        }
+        if (min == 0) {
+            min = 1;
+        }
+        tokens = clampBetween(tokens, min, max);
+
         try
             lendtroller.postCollateral(address(this), mtoken, tokens)
-        {} catch {}
+        {} catch {
+            assertWithMsg(
+                false,
+                "LENDTROLLER - expected postCollateral to pass with preconditions"
+            );
+        }
     }
 
     function remove_collateral_should_succeed(
