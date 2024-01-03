@@ -172,7 +172,7 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
         return _parseData(adaptorDataUSD[asset], true);
     }
 
-    /// @notice Parses the api3 feed data for pricing of an asset.
+    /// @notice Extracts the redstone core feed data for pricing of an asset.
     /// @dev Calls read() from Redstone Core to get the latest data
     ///      for pricing and staleness.
     /// @param data Redstone Core feed details.
