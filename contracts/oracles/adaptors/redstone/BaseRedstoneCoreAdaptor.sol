@@ -21,8 +21,6 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
         bytes32 symbolHash;
         /// @param max the max valid price of the asset.
         uint256 max;
-        /// @param min the min valid price of the asset.
-        uint256 min;
     }
 
     /// CONSTANTS ///
