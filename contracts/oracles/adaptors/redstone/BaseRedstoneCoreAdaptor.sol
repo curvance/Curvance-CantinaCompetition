@@ -9,7 +9,7 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 import { PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
 
-abstract contract EthereumRedstoneCoreAdaptor is BaseOracleAdaptor {
+abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
     /// TYPES ///
 
     /// @notice Stores configuration data for Redstone price sources.
