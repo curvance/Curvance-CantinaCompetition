@@ -431,11 +431,9 @@ contract FuzzLendtroller is StatefulBaseMarket {
                 "LENDTROLLER - canMint() should have reverted when token is not listed but did not"
             );
         } catch {}
-    } x
+    }
 
-    function canMint_should_revert_when_mint_is_paused(
-        address mToken
-    ) public {
+    function canMint_should_revert_when_mint_is_paused(address mToken) public {
         uint256 mintPaused = lendtroller.mintPaused(mToken);
         bool isListed = lendtroller.isListed(mToken);
 
@@ -450,12 +448,34 @@ contract FuzzLendtroller is StatefulBaseMarket {
         } catch {}
     }
 
-    function canRedeem(
+    function canRedeem_should_revert_when_redeem_is_paused(
         address mToken,
         address account,
         uint256 amount
     ) public {
-        try lendtroller.canRedeem(mToken, account, amount) {} catch {}
+        require(lendtroller.redeemPaused() == 2);
+        require(lendtroller.isListed(mToken));
+        try lendtroller.canRedeem(mToken, account, amount) {
+            assertWithMsg(
+                false,
+                "LENDTROLLER - canRedeem expected to revert when redeem is paused"
+            );
+        } catch {}
+    }
+
+    function canRedeem_should_revert_token_not_listed(
+        address mToken,
+        address account,
+        uint256 amount
+    ) public {
+        require(lendtroller.redeemPaused() != 2);
+        require(!lendtroller.isListed(mToken));
+        try lendtroller.canRedeem(mToken, account, amount) {
+            assertWithMsg(
+                false,
+                "LENDTROLLER - canRedeem expected to revert token is not listed"
+            );
+        } catch {}
     }
 
     function canRedeemWithCollateralRemoval_should_succeed(
