@@ -177,17 +177,13 @@ contract ProtocolMessagingHub is ReentrancyGuard {
             return;
         }
 
-        // Validate the operator is authorized
+        // Validate the operator is authorized.
         if (operator.isAuthorized < 2) {
             return;
         }
 
-        // If the operator is correct but the source chain Id
-        // is invalid, ignore the message
-        // Validate the source chainId is correct for the operator
-        if (operator.messagingChainId != srcChainId) {
-            return;
-        }
+        // We can skip validating the source chainId is correct for the
+        // operator, due to fetching from (srcAddress, srcChainID) mapping.
 
         uint8 payloadId = abi.decode(payload, (uint8));
 
