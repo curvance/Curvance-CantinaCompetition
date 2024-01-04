@@ -55,6 +55,77 @@ contract FuzzLendtroller is StatefulBaseMarket {
         }
     }
 
+    function list_token_should_fail_if_already_listed(address mtoken) public {
+        uint256 amount = 42069;
+        // require the token is not already listed into the lendtroller
+        require(lendtroller.isListed(mtoken));
+
+        require(mtoken == address(cDAI) || mtoken == address(cUSDC));
+        address underlyingAddress = MockCToken(mtoken).underlying();
+        IERC20 underlying = IERC20(underlyingAddress);
+
+        try lendtroller.listToken(mtoken) {
+            assertWithMsg(
+                false,
+                "LENDTROLLER - listToken for duplicate token should not be possible"
+            );
+        } catch {}
+    }
+
+    // function c_token_depositAsCollateral(
+    //     address mtoken,
+    //     uint256 amount
+    // ) public {
+    //     amount = clampBetween(amount, 1, type(uint32).max);
+    //     // require gauge pool has been started at a previous timestamp
+    //     require(gaugePool.startTime() < block.timestamp);
+    //     require(mtoken == address(cDAI) || mtoken == address(cUSDC));
+    //     if (!lendtroller.isListed(mtoken)) {
+    //         list_token_should_succeed(mtoken);
+    //     }
+
+    //     address underlyingAddress = MockCToken(mtoken).underlying();
+    //     // mint ME enough tokens to cover deposit
+    //     try MockToken(underlyingAddress).mint(amount) {} catch {
+    //         assertWithMsg(
+    //             false,
+    //             "LENDTROLLER - mint underlying amount should succeed before deposit"
+    //         );
+    //     }
+    //     // approve sufficient underlying tokens prior to calling deposit
+    //     try MockToken(underlyingAddress).approve(mtoken, amount) {} catch {
+    //         assertWithMsg(
+    //             false,
+    //             "LENDTROLLER - approve underlying amount should succeed before deposit"
+    //         );
+    //     }
+    //     uint256 preCTokenBalanceThis = MockCToken(mtoken).balanceOf(
+    //         address(this)
+    //     );
+
+    //     // This step should mint associated shares for the user
+    //     try MockCToken(mtoken).depositAsCollateral(amount, address(this)) {
+    //         uint256 postCTokenBalanceThis = MockCToken(mtoken).balanceOf(
+    //             address(this)
+    //         );
+
+    //         assertLt(
+    //             preCTokenBalanceThis,
+    //             postCTokenBalanceThis,
+    //             "LENDTROLLER - pre and post ctoken balance should increase"
+    //         );
+    //     } catch (bytes memory revertData) {
+    //         emit LogAddress("msg.sender", msg.sender);
+    //         uint256 errorSelector = extractErrorSelector(revertData);
+
+    //         emit LogUint256("error selector: ", errorSelector);
+    //         assertWithMsg(
+    //             false,
+    //             "LENDTROLLER - expected mtoken.deposit() to be successful"
+    //         );
+    //     }
+    // }
+
     function c_token_deposit(address mtoken, uint256 amount) public {
         amount = clampBetween(amount, 1, type(uint32).max);
         // require gauge pool has been started at a previous timestamp
@@ -225,40 +296,65 @@ contract FuzzLendtroller is StatefulBaseMarket {
             setCTokenCollateralCaps_should_succeed(mtoken, tokens);
         }
 
-        // (uint256 accountCollateral, , ) = lendtroller.statusOf(address(this));
-        uint256 accountCollateral;
+        uint256 oldCollateral;
         try lendtroller.statusOf(address(this)) returns (
             uint256 accountCollat,
             uint256 accountDebt,
             uint256 debt
         ) {
-            accountCollateral = accountCollat;
+            oldCollateral = accountCollat;
         } catch {
-            accountCollateral = 0;
+            oldCollateral = 0;
         }
 
         uint256 min;
         uint256 max;
-        if (accountCollateral > mtokenBalance) {
+        if (oldCollateral > mtokenBalance) {
             min = mtokenBalance;
-            max = accountCollateral;
+            max = oldCollateral;
         } else {
-            min = accountCollateral;
+            min = oldCollateral;
             max = mtokenBalance;
         }
         if (min == 0) {
             min = 1;
         }
         tokens = clampBetween(tokens, min, max);
+        uint256 oldCollateralPosted = lendtroller.collateralPosted(mtoken);
 
-        try
-            lendtroller.postCollateral(address(this), mtoken, tokens)
-        {} catch {
+        (bool success, bytes memory rd) = address(lendtroller).call(
+            abi.encodeWithSignature(
+                "postCollateral(address,address,uint256)",
+                address(this),
+                mtoken,
+                tokens
+            )
+        );
+        if (!success) {
             assertWithMsg(
                 false,
                 "LENDTROLLER - expected postCollateral to pass with preconditions"
             );
         }
+        // ensure account collateral has incresaed by # of tokens
+        (uint256 newCollateral, , ) = lendtroller.statusOf(address(this));
+        assertEq(
+            newCollateral,
+            oldCollateral + tokens,
+            "LENDTROLLER - new collateral must collateral+tokens"
+        );
+        // ensure that a user has a position after posting
+        assertWithMsg(
+            lendtroller.hasPosition(mtoken, address(this)),
+            "LENDTROLLER - addr(this) must have position after posting"
+        );
+        // ensure collateralPosted increases by tokens
+        uint256 newCollateralPosted = lendtroller.collateralPosted(mtoken);
+        assertEq(
+            newCollateralPosted,
+            oldCollateralPosted + tokens,
+            "LENDTROLLER - global collateral posted should increase"
+        );
     }
 
     function remove_collateral_should_succeed(
@@ -266,6 +362,10 @@ contract FuzzLendtroller is StatefulBaseMarket {
         uint256 tokens,
         bool closePositionIfPossible
     ) public {
+        require(lendtroller.hasPosition(mtoken, address(this)));
+        require(mtoken == address(cDAI) || mtoken == address(cUSDC));
+        (uint256 oldCollateral, , ) = lendtroller.statusOf(address(this));
+        tokens = clampBetween(tokens, oldCollateral, type(uint64).max);
         try
             lendtroller.removeCollateral(
                 mtoken,
@@ -275,7 +375,7 @@ contract FuzzLendtroller is StatefulBaseMarket {
         {} catch {}
     }
 
-    function removeCollateralIfNecessary_should_succeed(
+    function removeCollateralIfNecessary_should_fail_with_wrong_caller(
         address mToken,
         uint256 balance,
         uint256 amount
@@ -291,11 +391,63 @@ contract FuzzLendtroller is StatefulBaseMarket {
     }
 
     function closePosition_should_succeed(address mToken) public {
-        try lendtroller.closePosition(mToken) {} catch {}
+        require(lendtroller.hasPosition(mToken, address(this)));
+
+        (bool success, bytes memory rd) = address(lendtroller).call(
+            abi.encodeWithSignature("closePosition(address)", mToken)
+        );
+        if (!success) {}
     }
 
-    function canMint_should_succeed(address mToken) public {
-        try lendtroller.canMint(mToken) {} catch {}
+    function canMint_should_not_revert_when_mint_not_paused_and_is_listed(
+        address mToken
+    ) public {
+        uint256 mintPaused = lendtroller.mintPaused(mToken);
+        bool isListed = lendtroller.isListed(mToken);
+
+        require(mintPaused != 2);
+        require(isListed);
+
+        try lendtroller.canMint(mToken) {} catch {
+            assertWithMsg(
+                false,
+                "LENDTROLLER - canMint() should have not reverted"
+            );
+        }
+    }
+
+    function canMint_should_revert_when_token_is_not_listed(
+        address mToken
+    ) public {
+        uint256 mintPaused = lendtroller.mintPaused(mToken);
+        bool isListed = lendtroller.isListed(mToken);
+
+        require(mintPaused != 2);
+        require(!isListed);
+
+        try lendtroller.canMint(mToken) {
+            assertWithMsg(
+                false,
+                "LENDTROLLER - canMint() should have reverted when token is not listed but did not"
+            );
+        } catch {}
+    } x
+
+    function canMint_should_revert_when_mint_is_paused(
+        address mToken
+    ) public {
+        uint256 mintPaused = lendtroller.mintPaused(mToken);
+        bool isListed = lendtroller.isListed(mToken);
+
+        require(mintPaused == 2);
+        require(isListed);
+
+        try lendtroller.canMint(mToken) {
+            assertWithMsg(
+                false,
+                "LENDTROLLER - canMint() should have reverted when mint is paused but did not"
+            );
+        } catch {}
     }
 
     function canRedeem(
