@@ -27,6 +27,9 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     /// @notice CVE contract address.
     ICVE public immutable cve;
 
+    /// @notice veCVE contract address.
+    address public immutable veCVE;
+
     /// @notice Address of fee token.
     address public immutable feeToken;
 
@@ -116,7 +119,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
 
         centralRegistry = centralRegistry_;
         cve = ICVE(centralRegistry.cve());
-        veCVE = ICVE(centralRegistry.veCVE());
+        veCVE = centralRegistry.veCVE();
         feeToken = feeToken_;
         wormholeRelayer = IWormholeRelayer(wormholeRelayer_);
         circleRelayer = ICircleRelayer(circleRelayer_);
@@ -417,7 +420,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         address recipient,
         uint256 amount
     ) external payable returns (uint64) {
-        if (msg.sender != address(veCVE)) {
+        if (msg.sender != veCVE) {
             _revert(_UNAUTHORIZED_SELECTOR);
         }
 
