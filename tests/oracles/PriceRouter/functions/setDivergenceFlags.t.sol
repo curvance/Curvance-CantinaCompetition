@@ -4,7 +4,7 @@ pragma solidity ^0.8.17;
 import { TestBasePriceRouter } from "../TestBasePriceRouter.sol";
 import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
 
-contract SetPriceFeedMaxDivergenceTest is TestBasePriceRouter {
+contract SetDivergenceFlagsTest is TestBasePriceRouter {
     function test_setCautionDivergenceFlag_fail_whenCallerIsNotAuthorized()
         public
     {
@@ -62,9 +62,9 @@ contract SetPriceFeedMaxDivergenceTest is TestBasePriceRouter {
     function test_setBadSourceDivergenceFlag_success() public {
         assertEq(priceRouter.badSourceDivergenceFlag(), 11000);
 
-        priceRouter.setDivergenceFlags(11000, 10200);
+        priceRouter.setDivergenceFlags(10500, 10800);
 
-        assertEq(priceRouter.badSourceDivergenceFlag(), 10200);
+        assertEq(priceRouter.badSourceDivergenceFlag(), 10800);
     }
 
     function test_setDivergenceFlags_fail_whenCautionEqualToBadSource()

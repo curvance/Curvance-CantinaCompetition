@@ -105,9 +105,9 @@ contract BalancerStablePoolAdaptor is BalancerBaseAdaptor {
                 inUSD,
                 getLower
             );
-            // If error code is BAD_SOURCE we can't use this price so continue.
+            // If error code is BAD_SOURCE we can't use this price.
             if (errorCode == BAD_SOURCE) {
-                continue;
+                pData.hadError = true;
             }
 
             averagePrice += price;
