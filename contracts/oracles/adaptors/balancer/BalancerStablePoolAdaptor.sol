@@ -2,6 +2,7 @@
 pragma solidity ^0.8.17;
 
 import { BalancerBaseAdaptor, IVault } from "contracts/oracles/adaptors/balancer/BalancerBaseAdaptor.sol";
+import { WAD, BAD_SOURCE } from "contracts/libraries/Constants.sol";
 
 import { IBalancerPool } from "contracts/interfaces/external/balancer/IBalancerPool.sol";
 import { IRateProvider } from "contracts/interfaces/external/balancer/IRateProvider.sol";
@@ -29,13 +30,6 @@ contract BalancerStablePoolAdaptor is BalancerBaseAdaptor {
         address[8] rateProviders;
         address[8] underlyingOrConstituent;
     }
-
-    /// CONSTANTS ///
-
-    /// @notice Token amount to check uniswap twap price against
-    uint128 public constant PRECISION = 1e18;
-    /// @notice Error code for bad source.
-    uint256 public constant BAD_SOURCE = 2;
 
     /// STORAGE ///
 
@@ -117,8 +111,14 @@ contract BalancerStablePoolAdaptor is BalancerBaseAdaptor {
         if (averagePrice == 0) {
             pData.hadError = true;
         } else {
-            averagePrice = averagePrice / availablePriceCount;
-            pData.price = uint240((price * pool.getRate()) / PRECISION);
+            averagePrice = ((averagePrice / availablePriceCount) * pool.getRate()) / WAD;
+            
+            if (_checkOracleOverflow(averagePrice)) {
+                pData.hadError = true;
+                return pData;
+            }
+
+            pData.price = uint240(averagePrice);
         }
     }
 

@@ -211,32 +211,6 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         );
     }
 
-    /// @notice Rescue any token sent by mistake
-    /// @param token The token to rescue
-    /// @param amount Amount of `token` to rescue, 0 indicates to rescue all
-    function rescueToken(address token, uint256 amount) external {
-        _checkDaoPermissions();
-        address daoOperator = centralRegistry.daoAddress();
-
-        if (token == address(0)) {
-            if (amount == 0) {
-                amount = address(this).balance;
-            }
-
-            SafeTransferLib.forceSafeTransferETH(daoOperator, amount);
-        } else {
-            if (token == asset()) {
-                _revert(_UNAUTHORIZED_SELECTOR);
-            }
-
-            if (amount == 0) {
-                amount = IERC20(token).balanceOf(address(this));
-            }
-
-            SafeTransferLib.safeTransfer(token, daoOperator, amount);
-        }
-    }
-
     /// CTOKEN MARKET START LOGIC TO OVERRIDE
 
     function startMarket(address by) external virtual returns (bool) {}

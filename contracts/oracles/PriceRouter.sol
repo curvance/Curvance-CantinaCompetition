@@ -7,7 +7,7 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.sol";
 import { IChainlink } from "contracts/interfaces/external/chainlink/IChainlink.sol";
 import { IOracleAdaptor, PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
-import { WAD, DENOMINATOR } from "contracts/libraries/Constants.sol";
+import { WAD, DENOMINATOR, NO_ERROR, CAUTION, BAD_SOURCE } from "contracts/libraries/Constants.sol";
 
 /// @title Curvance Dual Oracle Price Router
 /// @notice Provides a universal interface allowing Curvance contracts
@@ -27,22 +27,13 @@ contract PriceRouter {
 
     /// CONSTANTS ///
 
-    /// @notice Return value indicating no price error
-    uint256 public constant NO_ERROR = 0;
-
-    /// @notice Return value indicating price divergence or 1 missing price
-    uint256 public constant CAUTION = 1;
-
-    /// @notice Return value indicating no price returned at all
-    uint256 public constant BAD_SOURCE = 2;
-
-    /// @notice The address of the chainlink feed to convert ETH -> USD
+    /// @notice The address of the chainlink feed to convert ETH -> USD.
     address public immutable CHAINLINK_ETH_USD;
 
     /// @notice The number of decimals the aggregator responses with.
     uint256 public immutable CHAINLINK_DECIMALS;
 
-    /// @notice Curvance DAO hub
+    /// @notice Curvance DAO hub.
     ICentralRegistry public immutable centralRegistry;
 
     /// @notice Time to pass before accepting answers when sequencer
@@ -59,12 +50,12 @@ contract PriceRouter {
     /// STORAGE ///
 
     /// @notice The maximum allowed divergence between prices
-    ///         before CAUTION is flipped, in `DENOMINATOR`
+    ///         before CAUTION is flipped, in `DENOMINATOR`.
     uint256 public cautionDivergenceFlag = 10500; // 5%
     /// @notice The maximum allowed divergence between prices
-    ///         before BAD_SOURCE is flipped, in `DENOMINATOR`
+    ///         before BAD_SOURCE is flipped, in `DENOMINATOR`.
     uint256 public badSourceDivergenceFlag = 11000; // 10%
-    /// @notice The maximum delay accepted between answers from chainlink
+    /// @notice The maximum delay accepted between answers from chainlink.
     uint256 public CHAINLINK_MAX_DELAY = 1 days;
 
     // Address => Adaptor approval status
