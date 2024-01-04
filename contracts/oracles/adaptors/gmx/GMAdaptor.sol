@@ -124,9 +124,16 @@ contract GMAdaptor is BaseOracleAdaptor {
             return pData;
         }
 
+        uint256 newPrice = uint256(price) / 1e12;
+
+        if (_checkOracleOverflow(newPrice)) {
+            pData.hadError = true;
+            return pData;
+        }
+
         return
             PriceReturnData({
-                price: uint240(uint256(price) / 1e12),
+                price: uint240(newPrice),
                 hadError: false,
                 inUSD: true
             });

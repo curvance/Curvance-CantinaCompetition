@@ -2,7 +2,9 @@
 pragma solidity ^0.8.17;
 
 import { BaseOracleAdaptor } from "contracts/oracles/adaptors/BaseOracleAdaptor.sol";
+
 import { PendlePtOracleLib } from "contracts/libraries/pendle/PendlePtOracleLib.sol";
+import { WAD } from "contracts/libraries/Constants.sol";
 
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 import { IPMarket, IPPrincipalToken, IStandardizedYield } from "contracts/interfaces/external/pendle/IPMarket.sol";
@@ -30,8 +32,6 @@ contract PendlePrincipalTokenAdaptor is BaseOracleAdaptor {
 
     /// @notice The minimum acceptable twap duration when pricing
     uint32 public constant MINIMUM_TWAP_DURATION = 12;
-    /// @notice Token amount to check uniswap twap price against
-    uint128 public constant PRECISION = 1e18;
 
     /// @notice Current networks ptOracle
     /// @dev for mainnet use 0x414d3C8A26157085f286abE3BC6E1bb010733602
@@ -101,8 +101,18 @@ contract PendlePrincipalTokenAdaptor is BaseOracleAdaptor {
             return pData;
         }
 
-        // Multiply the quote asset price by the ptRate to get the Principal Token fair value.
-        pData.price = uint240((price * ptRate) / PRECISION);
+        // Multiply the quote asset price by the ptRate
+        // to get the Principal Token fair value.
+        price = (price * ptRate) / WAD;
+
+        if (_checkOracleOverflow(price)) {
+            pData.hadError = true;
+            return pData;
+        }
+
+        // Multiply the quote asset price by the ptRate
+        // to get the Principal Token fair value.
+        pData.price = uint240(price);
     }
 
     /// @notice Add a Pendle Principal Token as an asset.

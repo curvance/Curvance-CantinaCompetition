@@ -152,10 +152,15 @@ contract BaseStableLPAdaptor is BaseOracleAdaptor {
             return pData;
         }
 
+        uint256 finalPrice = _getFairPrice(reserve0, reserve1, price0, price1, totalSupply);
+
+        if (_checkOracleOverflow(finalPrice)) {
+            pData.hadError = true;
+            return pData;
+        }
+
         pData.inUSD = inUSD;
-        pData.price = uint240(
-            _getFairPrice(reserve0, reserve1, price0, price1, totalSupply)
-        );
+        pData.price = uint240(finalPrice);
     }
 
     function _getFairPrice(

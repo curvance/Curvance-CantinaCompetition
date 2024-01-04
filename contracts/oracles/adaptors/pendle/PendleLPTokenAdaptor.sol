@@ -2,7 +2,9 @@
 pragma solidity ^0.8.17;
 
 import { BaseOracleAdaptor } from "contracts/oracles/adaptors/BaseOracleAdaptor.sol";
+
 import { PendleLpOracleLib } from "contracts/libraries/pendle/PendleLpOracleLib.sol";
+import { WAD } from "contracts/libraries/Constants.sol";
 
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
@@ -30,8 +32,6 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
 
     /// @notice The minimum acceptable twap duration when pricing
     uint32 public constant MINIMUM_TWAP_DURATION = 12;
-    /// @notice Token amount to check uniswap twap price against
-    uint128 public constant PRECISION = 1e18;
     /// @notice Current networks ptOracle
     /// @dev for mainnet use 0x414d3C8A26157085f286abE3BC6E1bb010733602
     IPendlePTOracle public immutable ptOracle;
@@ -105,7 +105,14 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
 
         // Multiply the quote asset price by the lpRate
         // to get the Lp Token fair value.
-        pData.price = uint240((price * lpRate) / PRECISION);
+        price = (price * lpRate) / WAD;
+
+        if (_checkOracleOverflow(price)) {
+            pData.hadError = true;
+            return pData;
+        }
+
+        pData.price = uint240(price);
     }
 
     /// @notice Add a Pendle Market as an asset.

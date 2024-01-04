@@ -7,9 +7,6 @@ uint256 constant WAD = 1e18;
 /// @dev Scalar for math.
 uint256 constant DENOMINATOR = 1e4;
 
-/// @dev Maximum Oracle Price Allowed.
-uint256 constant ORACLE_OVERFLOW = type(uint240).max;
-
 /// @dev Return value indicating no price error.
 uint256 public constant NO_ERROR = 0;
 

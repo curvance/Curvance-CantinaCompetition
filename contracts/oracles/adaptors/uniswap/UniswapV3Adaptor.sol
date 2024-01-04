@@ -195,14 +195,34 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
                     });
             }
 
+            twapPrice = twapPrice / quoteTokenDenominator;
+
+            if (_checkOracleOverflow(twapPrice)) {
+                return
+                    PriceReturnData({
+                        price: 0,
+                        hadError: true,
+                        inUSD: true
+                    });
+            }
+
             // We have a route to ETH pricing so we can convert
             // the quote token price to ETH and return
             return
                 PriceReturnData({
-                    price: uint240(twapPrice / quoteTokenDenominator),
+                    price: uint240(twapPrice),
                     hadError: false,
                     inUSD: false
                 });
+        }
+
+        if (_checkOracleOverflow(twapPrice)) {
+                return
+                    PriceReturnData({
+                        price: 0,
+                        hadError: true,
+                        inUSD: true
+                    });
         }
 
         return

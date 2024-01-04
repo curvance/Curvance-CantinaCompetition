@@ -151,10 +151,16 @@ contract BaseVolatileLPAdaptor is BaseOracleAdaptor {
             pData.hadError = true;
             return pData;
         }
-        uint256 sqrtPrice = Math.sqrt(price0 * price1);
 
-        // price = 2 * sqrt(reserve0 * reserve1) * sqrt(price0 * price1) / totalSupply
+        // price = 2 * sqrt(reserve0 * reserve1) * sqrt(price0 * price1) / totalSupply.
+        uint256 finalPrice = (2 * sqrtReserve * Math.sqrt(price0 * price1)) / totalSupply;
+
+        if (_checkOracleOverflow(finalPrice)) {
+            pData.hadError = true;
+            return pData;
+        }
+
         pData.inUSD = inUSD;
-        pData.price = uint240((2 * sqrtReserve * sqrtPrice) / totalSupply);
+        pData.price = uint240(finalPrice);
     }
 }

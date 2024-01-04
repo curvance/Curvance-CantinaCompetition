@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-ORACLE_OVERFLOW
-import { ORACLE_OVERFLOW } from "contracts/libraries/Constants.sol";
 import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
@@ -50,7 +48,7 @@ abstract contract BaseOracleAdaptor {
     /// INTERNAL FUNCTIONS ///
 
     function _checkOracleOverflow(uint256 price) internal view returns (bool) {
-        return price > ORACLE_OVERFLOW;
+        return price > type(uint240).max;
     }
 
     /// @dev Checks whether the caller has sufficient permissioning.
