@@ -267,9 +267,8 @@ contract PriceRouter {
         address asset,
         bool inUSD
     ) external view returns (FeedData[] memory) {
-        bool isMToken;
-        if (mTokenAssets[asset].isMToken) {
-            isMToken = mTokenAssets[asset].isMToken;
+        bool isMToken = mTokenAssets[asset].isMToken;
+        if (isMToken) {
             asset = mTokenAssets[asset].underlying;
         }
 

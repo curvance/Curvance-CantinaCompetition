@@ -148,13 +148,21 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
             }
 
             // We have a route to USD pricing so we can convert
-            // the quote token price to USD and return
+            // the quote token price to USD and return.
+            uint256 newPrice = (twapPrice * quoteTokenDenominator) /
+                            data.quoteDecimals;
+            if (newPrice > type(uint240).max) {
+                return
+                    PriceReturnData({
+                        price: 0,
+                        hadError: true,
+                        inUSD: true
+                    });
+            }
+
             return
                 PriceReturnData({
-                    price: uint240(
-                        (twapPrice * quoteTokenDenominator) /
-                            data.quoteDecimals
-                    ),
+                    price: uint240(newPrice),
                     hadError: false,
                     inUSD: true
                 });
@@ -163,7 +171,7 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
         if (data.quoteToken != WETH) {
             if (!PriceRouter.isSupportedAsset(data.quoteToken)) {
                 // Our price router does not know how to value this quote
-                // token so we cant use the TWAP data
+                // token so we cant use the TWAP data.
                 return
                     PriceReturnData({
                         price: 0,
@@ -176,7 +184,7 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
                 .getPrice(data.quoteToken, false, getLower);
 
             // Make sure that if the Price Router had an error,
-            // it was not catastrophic
+            // it was not catastrophic.
             if (errorCode > 1) {
                 return
                     PriceReturnData({
@@ -227,7 +235,7 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
             data.baseDecimals = ERC20(asset).decimals();
             data.quoteDecimals = ERC20(token0).decimals();
             data.quoteToken = token0;
-        } else revert("UniswapV3Adaptor: twap asset not in pool");
+        } else revert UniswapV3Adaptor__AssetIsNotSupported();
 
         adaptorData[asset] = data;
         isSupportedAsset[asset] = true;
