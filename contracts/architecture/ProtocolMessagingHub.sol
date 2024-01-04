@@ -116,6 +116,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
 
         centralRegistry = centralRegistry_;
         cve = ICVE(centralRegistry.cve());
+        veCVE = ICVE(centralRegistry.veCVE());
         feeToken = feeToken_;
         wormholeRelayer = IWormholeRelayer(wormholeRelayer_);
         circleRelayer = ICircleRelayer(circleRelayer_);
@@ -292,7 +293,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
             OmnichainData memory operator = centralRegistry
                 .getOmnichainOperators(to, gethChainId);
 
-            // Validate that the operator is authorized
+            // Validate that the operator is authorized.
             if (operator.isAuthorized < 2) {
                 revert ProtocolMessagingHub__OperatorIsNotAuthorized(
                     to,
@@ -300,8 +301,8 @@ contract ProtocolMessagingHub is ReentrancyGuard {
                 );
             }
 
-            // Validate that the operator messaging chain matches
-            // the destination chain id
+            // Validate that the operator messaging chain matches.
+            // the destination chain id.
             if (operator.messagingChainId != dstChainId) {
                 revert ProtocolMessagingHub__MessagingChainIdIsNotDstChainId(
                     operator.messagingChainId,
@@ -309,7 +310,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
                 );
             }
 
-            // Validate that we are aiming for a supported chain
+            // Validate that we are aiming for a supported chain.
             if (
                 centralRegistry.supportedChainData(gethChainId).isSupported < 2
             ) {
@@ -321,14 +322,14 @@ contract ProtocolMessagingHub is ReentrancyGuard {
 
         (uint256 messageFee, ) = _quoteWormholeFee(dstChainId, true);
 
-        // Validate that we have sufficient fees to send crosschain
+        // Validate that we have sufficient fees to send crosschain.
         if (address(this).balance < messageFee) {
             revert ProtocolMessagingHub__InsufficientGasToken();
         }
 
-        // Pull the fee token from the fee accumulator
+        // Pull the fee token from the fee accumulator.
         // This will revert if we've misconfigured fee token contract supply
-        // by `amountLD`
+        // by `amount`.
         SafeTransferLib.safeTransferFrom(
             feeToken,
             centralRegistry.feeAccumulator(),
@@ -363,7 +364,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
 
         uint256 numChainIds = chainIds.length;
 
-        for (uint256 i = 0; i < numChainIds; ++i) {
+        for (uint256 i; i < numChainIds; ++i) {
             wormholeChainId[chainIds[i]] = wormholeChainIds[i];
         }
     }
@@ -405,6 +406,33 @@ contract ProtocolMessagingHub is ReentrancyGuard {
                 bytes32(uint256(uint160(recipient))),
                 0
             );
+    }
+
+    /// @param dstChainId Chain ID of the target blockchain.
+    /// @param recipient The address of recipient on destination chain.
+    /// @param amount The amount of token to bridge.
+    /// @return Wormhole sequence for emitted TransferTokensWithRelay message.
+    function bridgeVeCVELock(
+        uint256 dstChainId,
+        address recipient,
+        uint256 amount
+    ) external payable returns (uint64) {
+        if (msg.sender != address(veCVE)) {
+            _revert(_UNAUTHORIZED_SELECTOR);
+        }
+
+        cve.approve(address(tokenBridgeRelayer), amount);
+
+        // Sather can insert lock migration logic here.
+        // return
+        //     tokenBridgeRelayer.transferTokensWithRelay{ value: msg.value }(
+        //         address(cve),
+        //         amount,
+        //         0,
+        //         wormholeChainId[dstChainId],
+        //         bytes32(uint256(uint160(recipient))),
+        //         0
+        //     );
     }
 
     /// PERMISSIONED EXTERNAL FUNCTIONS ///

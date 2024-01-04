@@ -44,7 +44,19 @@ interface IProtocolMessagingHub {
         uint256 amount
     ) external payable returns (uint64);
 
+    /// @notice Bridge VeCVE lock to destination chain.
+    /// @param dstChainId Chain ID of the target blockchain.
+    /// @param recipient The address of recipient on destination chain.
+    /// @param amount The amount of token to bridge.
+    /// @return Wormhole sequence for emitted TransferTokensWithRelay message.
+    function bridgeVeCVELock(
+        uint256 dstChainId,
+        address recipient,
+        uint256 amount
+    ) external payable returns (uint64);
+
     /// @notice Returns wormhole specific chain ID for evm chain ID.
     /// @param chainId Evm chain ID.
     function wormholeChainId(uint256 chainId) external view returns (uint16);
+
 }

@@ -5,11 +5,12 @@ import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { ERC20 } from "contracts/libraries/ERC20.sol";
 import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
+import { WAD } from "contracts/libraries/Constants.sol";
 
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { ICVELocker, RewardsData } from "contracts/interfaces/ICVELocker.sol";
-import { WAD } from "contracts/libraries/Constants.sol";
+import { IProtocolMessagingHub } from "contracts/interfaces/IProtocolMessagingHub.sol";
 
 contract VeCVE is ERC20, ReentrancyGuard {
     /// TYPES ///
@@ -559,6 +560,63 @@ contract VeCVE is ERC20, ReentrancyGuard {
             if (locks.length == 0 && isShutdown != 2) {
                 cveLocker.resetUserClaimIndex(msg.sender);
             }
+        }
+    }
+
+    /// @notice Processes an active lock as if its expired, for a penalty,
+    ///         and processes any pending locker rewards.
+    /// @param lockIndex The index of the lock to process.
+    /// @param rewardsData Rewards data for CVE rewards locker.
+    /// @param params Parameters for rewards claim function.
+    /// @param aux Auxiliary data.
+    function bridgeVeCVELock(
+        uint256 lockIndex,
+        uint256 dstChainId,
+        RewardsData calldata rewardsData,
+        bytes calldata params,
+        uint256 aux
+    ) external payable nonReentrant returns (uint64 sequence) {
+        Lock[] storage locks = userLocks[msg.sender];
+
+        // Length is index + 1 so has to be less than array length
+        if (lockIndex >= locks.length) {
+            _revert(_INVALID_LOCK_SELECTOR);
+        }
+
+        // Check if the user is trying to early expire an expired lock
+        if (block.timestamp >= locks[lockIndex].unlockTime) {
+            _revert(_INVALID_LOCK_SELECTOR);
+        }
+
+        // Claim pending locker rewards
+        _claimRewards(msg.sender, rewardsData, params, aux);
+
+        Lock memory lock = locks[lockIndex];
+        uint256 amount = lock.amount;
+
+        // Update their points to reflect the removed lock
+        _updateDataFromEarlyUnlock(msg.sender, amount, lock.unlockTime);
+
+        // Burn their VeCVE and remove their lock
+        _burn(msg.sender, amount);
+        _removeLock(locks, lockIndex);
+
+        address messagingHub = centralRegistry.protocolMessagingHub();
+
+        // Transfer the CVE amount to Protocol Messaging Hub.
+        SafeTransferLib.safeTransfer(cve, messagingHub, amount);
+
+        sequence = IProtocolMessagingHub(messagingHub).bridgeVeCVELock{ value: msg.value }(
+                dstChainId,
+                msg.sender,
+                amount
+            );
+
+        // Check whether the user has no remaining locks and reset their index,
+        // that way if in the future they create a new lock, they do not need to claim
+        // a bunch of epochs they have no rewards for
+        if (locks.length == 0 && isShutdown != 2) {
+            cveLocker.resetUserClaimIndex(msg.sender);
         }
     }
 
