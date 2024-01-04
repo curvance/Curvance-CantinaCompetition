@@ -8,7 +8,7 @@ import { IWormhole } from "contracts/interfaces/wormhole/IWormhole.sol";
 import { ITokenBridgeRelayer } from "contracts/interfaces/wormhole/ITokenBridgeRelayer.sol";
 import { IProtocolMessagingHub } from "contracts/interfaces/IProtocolMessagingHub.sol";
 
-contract CVE is ERC20 {
+contract CVETestnet is ERC20 {
     /// CONSTANTS ///
 
     // Seconds in a month based on 365.2425 days.
@@ -18,10 +18,10 @@ contract CVE is ERC20 {
     ICentralRegistry public immutable centralRegistry;
 
     /// @notice Wormhole TokenBridgeRelayer.
-    ITokenBridgeRelayer public immutable tokenBridgeRelayer;
+    ITokenBridgeRelayer public tokenBridgeRelayer;
 
     /// @notice Address of Wormhole core contract.
-    IWormhole public immutable wormhole;
+    IWormhole public wormhole;
 
     // Timestamp when token was created
     uint256 public immutable tokenGenerationEventTimestamp;
@@ -75,17 +75,16 @@ contract CVE is ERC20 {
         ) {
             revert CVE__ParametersAreInvalid();
         }
-        if (tokenBridgeRelayer_ == address(0)) {
-            revert CVE__TokenBridgeRelayerIsZeroAddress();
-        }
 
         if (team_ == address(0)) {
             team_ = msg.sender;
         }
 
         centralRegistry = centralRegistry_;
-        tokenBridgeRelayer = ITokenBridgeRelayer(tokenBridgeRelayer_);
-        wormhole = ITokenBridgeRelayer(tokenBridgeRelayer_).wormhole();
+        if (tokenBridgeRelayer_ != address(0)) {
+            tokenBridgeRelayer = ITokenBridgeRelayer(tokenBridgeRelayer_);
+            wormhole = ITokenBridgeRelayer(tokenBridgeRelayer_).wormhole();
+        }
         tokenGenerationEventTimestamp = block.timestamp;
         teamAddress = team_;
         daoTreasuryAllocation = daoTreasuryAllocation_;
@@ -98,6 +97,19 @@ contract CVE is ERC20 {
     }
 
     /// EXTERNAL FUNCTIONS ///
+
+    /// @notice Set token bridge relayer.
+    /// @param tokenBridgeRelayer_ wormbole token bridge relayer address.
+    function setTokenBridgeRelayer(address tokenBridgeRelayer_) external {
+        _checkElevatedPermissions();
+
+        if (tokenBridgeRelayer_ == address(0)) {
+            revert CVE__TokenBridgeRelayerIsZeroAddress();
+        }
+
+        tokenBridgeRelayer = ITokenBridgeRelayer(tokenBridgeRelayer_);
+        wormhole = ITokenBridgeRelayer(tokenBridgeRelayer_).wormhole();
+    }
 
     /// @notice Mints gauge emissions for the desired gauge pool.
     /// @dev Allows the VotingHub to mint new gauge emissions.
