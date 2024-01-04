@@ -76,13 +76,13 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
     ///              in USD or ETH.
     /// @param getLower A boolean to determine if lower of two oracle prices
     ///                 should be retrieved.
-    /// @return PriceReturnData A structure containing the price, error status,
-    ///                         and the quote format of the price.
+    /// @return pData A structure containing the price, error status,
+    ///               and the quote format of the price.
     function getPrice(
         address asset,
         bool inUSD,
         bool getLower
-    ) external view override returns (PriceReturnData memory) {
+    ) external view override returns (PriceReturnData memory pData) {
         if (!isSupportedAsset[asset]) {
             revert UniswapV3Adaptor__AssetIsNotSupported();
         }
@@ -91,6 +91,7 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
         address[] memory pools = new address[](1);
         pools[0] = data.priceSource;
         uint256 twapPrice;
+        pData.inUSD = inUSD;
 
         (bool success, bytes memory returnData) = address(uniswapOracleRouter)
             .staticcall(
@@ -113,7 +114,8 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
         } else {
             // Uniswap TWAP check reverted, notify the price router
             // that we had an error
-            return PriceReturnData({ price: 0, hadError: true, inUSD: inUSD });
+            pData.hadError = true;
+            return pData;
         }
 
         IPriceRouter PriceRouter = IPriceRouter(centralRegistry.priceRouter());
@@ -125,12 +127,8 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
             if (!PriceRouter.isSupportedAsset(data.quoteToken)) {
                 // Our price router does not know how to value this quote token
                 // so we cant use the TWAP data
-                return
-                    PriceReturnData({
-                        price: 0,
-                        hadError: true,
-                        inUSD: inUSD
-                    });
+                pData.hadError = true;
+                return pData;
             }
 
             (uint256 quoteTokenDenominator, uint256 errorCode) = PriceRouter
@@ -139,12 +137,8 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
             // Make sure that if the Price Router had an error,
             // it was not catastrophic
             if (errorCode > 1) {
-                return
-                    PriceReturnData({
-                        price: 0,
-                        hadError: true,
-                        inUSD: inUSD
-                    });
+                pData.hadError = true;
+                return pData;
             }
 
             // We have a route to USD pricing so we can convert
@@ -153,32 +147,20 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
                             data.quoteDecimals;
 
             if (_checkOracleOverflow(newPrice)) {
-                return
-                    PriceReturnData({
-                        price: 0,
-                        hadError: true,
-                        inUSD: true
-                    });
+                pData.hadError = true;
+                return pData;
             }
 
-            return
-                PriceReturnData({
-                    price: uint240(newPrice),
-                    hadError: false,
-                    inUSD: true
-                });
+            pData.price = uint240(newPrice);
+            return pData;
         }
 
         if (data.quoteToken != WETH) {
             if (!PriceRouter.isSupportedAsset(data.quoteToken)) {
                 // Our price router does not know how to value this quote
                 // token so we cant use the TWAP data.
-                return
-                    PriceReturnData({
-                        price: 0,
-                        hadError: true,
-                        inUSD: inUSD
-                    });
+                pData.hadError = true;
+                return pData;
             }
 
             (uint256 quoteTokenDenominator, uint256 errorCode) = PriceRouter
@@ -187,50 +169,29 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
             // Make sure that if the Price Router had an error,
             // it was not catastrophic.
             if (errorCode > 1) {
-                return
-                    PriceReturnData({
-                        price: 0,
-                        hadError: true,
-                        inUSD: inUSD
-                    });
+                pData.hadError = true;
+                return pData;
             }
 
             twapPrice = twapPrice / quoteTokenDenominator;
 
             if (_checkOracleOverflow(twapPrice)) {
-                return
-                    PriceReturnData({
-                        price: 0,
-                        hadError: true,
-                        inUSD: true
-                    });
+                pData.hadError = true;
+                return pData;
             }
 
             // We have a route to ETH pricing so we can convert
-            // the quote token price to ETH and return
-            return
-                PriceReturnData({
-                    price: uint240(twapPrice),
-                    hadError: false,
-                    inUSD: false
-                });
+            // the quote token price to ETH and return.
+            pData.price = uint240(twapPrice);
+            return pData;
         }
 
         if (_checkOracleOverflow(twapPrice)) {
-                return
-                    PriceReturnData({
-                        price: 0,
-                        hadError: true,
-                        inUSD: true
-                    });
+            pData.hadError = true;
+            return pData;
         }
 
-        return
-            PriceReturnData({
-                price: uint240(twapPrice),
-                hadError: false,
-                inUSD: false
-            });
+        pData.price = uint240(twapPrice);
     }
 
     function addAsset(

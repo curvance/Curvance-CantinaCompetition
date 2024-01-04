@@ -47,7 +47,7 @@ abstract contract BaseOracleAdaptor {
 
     /// INTERNAL FUNCTIONS ///
 
-    function _checkOracleOverflow(uint256 price) internal view returns (bool) {
+    function _checkOracleOverflow(uint256 price) internal pure returns (bool) {
         return price > type(uint240).max;
     }
 
