@@ -11,6 +11,7 @@ contract FuzzLendtroller is StatefulBaseMarket {
     MockDataFeed public mockUsdcFeed;
     MockDataFeed public mockDaiFeed;
     bool feedsSetup;
+    uint256 lastRoundUpdate;
 
     constructor() {
         SafeTransferLib.safeApprove(
@@ -106,34 +107,57 @@ contract FuzzLendtroller is StatefulBaseMarket {
     }
 
     function setUpFeeds() public {
+        require(centralRegistry.hasElevatedPermissions(address(this)));
         require(gaugePool.startTime() < block.timestamp);
         // use mock pricing for testing
-        mockUsdcFeed = new MockDataFeed(_CHAINLINK_USDC_USD);
-        chainlinkAdaptor.addAsset(_USDC_ADDRESS, address(mockUsdcFeed), true);
+        // StatefulBaseMarket - chainlinkAdaptor - usdc, dai
+        mockUsdcFeed = new MockDataFeed(address(chainlinkUsdcUsd));
+        chainlinkAdaptor.addAsset(address(cUSDC), address(mockUsdcFeed), true);
         dualChainlinkAdaptor.addAsset(
-            _USDC_ADDRESS,
+            address(cUSDC),
             address(mockUsdcFeed),
             true
         );
-        mockDaiFeed = new MockDataFeed(_CHAINLINK_DAI_USD);
-        chainlinkAdaptor.addAsset(_DAI_ADDRESS, address(mockDaiFeed), true);
+        mockDaiFeed = new MockDataFeed(address(chainlinkDaiUsd));
+        chainlinkAdaptor.addAsset(address(cDAI), address(mockDaiFeed), true);
         dualChainlinkAdaptor.addAsset(
-            _DAI_ADDRESS,
+            address(cDAI),
             address(mockDaiFeed),
             true
         );
 
         mockUsdcFeed.setMockUpdatedAt(block.timestamp);
         mockDaiFeed.setMockUpdatedAt(block.timestamp);
+        mockUsdcFeed.setMockAnswer(1e8);
+        mockDaiFeed.setMockAnswer(1e18);
+        chainlinkUsdcUsd.updateRoundData(
+            0,
+            1e8,
+            block.timestamp,
+            block.timestamp
+        );
+        chainlinkDaiUsd.updateRoundData(
+            0,
+            1e8,
+            block.timestamp,
+            block.timestamp
+        );
         priceRouter.addMTokenSupport(address(cDAI));
         priceRouter.addMTokenSupport(address(cUSDC));
+
         feedsSetup = true;
+        lastRoundUpdate = block.timestamp;
     }
 
+    // create a version to account for stale data
     function setCTokenCollateralCaps_should_succeed(
         address mtoken,
         uint256 cap
     ) public {
+        if (lastRoundUpdate > block.timestamp) {
+            lastRoundUpdate = block.timestamp;
+        }
+        require(block.timestamp - lastRoundUpdate <= 24 hours);
         require(feedsSetup);
         require(centralRegistry.hasDaoPermissions(address(this)));
         cap = clampBetween(cap, 1, type(uint256).max);
@@ -194,8 +218,12 @@ contract FuzzLendtroller is StatefulBaseMarket {
         require(mtoken == address(cDAI) || mtoken == address(cUSDC));
         uint256 mtokenBalance = MockCToken(mtoken).balanceOf(address(this));
 
-        require(mtokenBalance > 0);
-        require(lendtroller.collateralCaps(mtoken) > 0);
+        if (mtokenBalance == 0) {
+            c_token_deposit(mtoken, tokens);
+        }
+        if (lendtroller.collateralCaps(mtoken) == 0) {
+            setCTokenCollateralCaps_should_succeed(mtoken, tokens);
+        }
 
         // (uint256 accountCollateral, , ) = lendtroller.statusOf(address(this));
         uint256 accountCollateral;

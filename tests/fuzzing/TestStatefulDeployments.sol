@@ -21,8 +21,8 @@ contract TestStatefulDeployments is StatefulBaseMarket {
             "CENTRAL_REGISTRY DEPLOY FAILED: CentralRegistry.genesisEpoch() == 0 failed"
         );
         assertWithMsg(
-            centralRegistry.sequencer() == address(this),
-            "CENTRAL_REGISTRY DEPLOY FAILED: CentralRegistry.sequencer == address(this) failed"
+            centralRegistry.sequencer() == address(0),
+            "CENTRAL_REGISTRY DEPLOY FAILED: CentralRegistry.sequencer == address(0) failed"
         );
         assertWithMsg(
             centralRegistry.hasDaoPermissions(address(this)),
