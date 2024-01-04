@@ -3,7 +3,7 @@ pragma solidity ^0.8.17;
 
 import { TestBasePriceRouter } from "../TestBasePriceRouter.sol";
 import { IChainlink } from "contracts/interfaces/external/chainlink/IChainlink.sol";
-import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
+import { PriceRouter, BAD_SOURCE } from "contracts/oracles/PriceRouter.sol";
 
 contract GetPriceTest is TestBasePriceRouter {
     function test_getPrice_fail_whenNoFeedsAvailable() public {
@@ -23,7 +23,7 @@ contract GetPriceTest is TestBasePriceRouter {
             true
         );
         assertEq(price, 0);
-        assertEq(errorCode, priceRouter.BAD_SOURCE());
+        assertEq(errorCode, BAD_SOURCE);
     }
 
     function test_getPrice_fail_withBadSourceErrorCode_whenGracePeriodNotOver()
@@ -38,7 +38,7 @@ contract GetPriceTest is TestBasePriceRouter {
             true
         );
         assertEq(price, 0);
-        assertEq(errorCode, priceRouter.BAD_SOURCE());
+        assertEq(errorCode, BAD_SOURCE);
     }
 
     function test_getPrice_success() public {
