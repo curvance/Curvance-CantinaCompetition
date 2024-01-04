@@ -114,20 +114,25 @@ contract PriceRouter {
     function addAssetPriceFeed(address asset, address feed) external {
         _checkElevatedPermissions();
 
+        // Validate that the proposed feed is approved for usage.
         if (!isApprovedAdaptor[feed]) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
+        // Validate that the feed supports the proposed asset.
         if (!IOracleAdaptor(feed).isSupportedAsset(asset)) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
         uint256 numPriceFeeds = assetPriceFeeds[asset].length;
 
+        // Validate that we do not already have 2 or more feeds for `asset`.
         if (numPriceFeeds >= 2) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
+        // Validate that the feed proposed is not a duplicate
+        // of a supported feed for `asset`.
         if (numPriceFeeds != 0 && assetPriceFeeds[asset][0] == feed) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
@@ -236,6 +241,8 @@ contract PriceRouter {
     function setChainlinkDelay(uint256 delay) external {
         _checkElevatedPermissions();
 
+        // Validate that the suggested heartbeat is 1 hour or more,
+        // but, less than or equal to 24 hours.
         if (delay < 1 hours || delay > 1 days) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
@@ -340,27 +347,32 @@ contract PriceRouter {
         bool getLower
     ) public view returns (uint256 price, uint256 errorCode) {
         address mAsset;
+        // Check whether asset is an mToken.
         if (mTokenAssets[asset].isMToken) {
             mAsset = asset;
             asset = mTokenAssets[asset].underlying;
         }
 
         uint256 numFeeds = assetPriceFeeds[asset].length;
+        // Validate we have a feed or feeds to price `asset`.
         if (numFeeds == 0) {
             _revert(_NOT_SUPPORTED_SELECTOR);
         }
 
+        // Route pricing to a single feed source or dual feed source.
         if (numFeeds < 2) {
             (price, errorCode) = _getPriceSingleFeed(asset, inUSD, getLower);
         } else {
             (price, errorCode) = _getPriceDualFeed(asset, inUSD, getLower);
         }
 
-        /// If somehow a feed returns a price of 0 make sure we trigger the BAD_SOURCE flag
+        // If somehow a feed returns a price of 0,
+        // make sure we trigger the BAD_SOURCE flag.
         if (price == 0 && errorCode < BAD_SOURCE) {
             errorCode = BAD_SOURCE;
         }
 
+        // Query the exchange rate for underlying token vs mToken and offset.
         if (mAsset != address(0)) {
             uint256 exchangeRate = IMToken(mAsset).exchangeRateCached();
             price = (price * exchangeRate) / WAD;
@@ -381,10 +393,12 @@ contract PriceRouter {
         bool[] calldata getLower
     ) external view returns (uint256[] memory, uint256[] memory) {
         uint256 numAssets = assets.length;
+        // Validate we are not trying to price zero assets.
         if (numAssets == 0) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
+        // Validate that each array is properly structured.
         if (numAssets != inUSD.length || numAssets != getLower.length) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
@@ -424,6 +438,7 @@ contract PriceRouter {
         returns (AccountSnapshot[] memory, uint256[] memory, uint256)
     {
         uint256 numAssets = assets.length;
+        // Validate we are not trying to price zero assets.
         if (numAssets == 0) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
@@ -460,11 +475,15 @@ contract PriceRouter {
     /// @param feed The address of the feed to be removed.
     function _removeFeed(address asset, address feed) internal {
         uint256 numFeeds = assetPriceFeeds[asset].length;
+        // Validate that there is a feed to remove.
         if (numFeeds == 0) {
             _revert(_NOT_SUPPORTED_SELECTOR);
         }
 
+        // If theres two feeds, figure out which to remove, 
+        // otherwise we know the feed to remove is the first entry.
         if (numFeeds > 1) {
+            // Check whether `feed` is a currently supported feed for `asset`.
             if (
                 assetPriceFeeds[asset][0] != feed &&
                 assetPriceFeeds[asset][1] != feed
@@ -472,8 +491,8 @@ contract PriceRouter {
                 _revert(_NOT_SUPPORTED_SELECTOR);
             }
 
-            // we want to remove the first feed of two,
-            // so move the second feed to slot one
+            // We want to remove the first feed of two,
+            // so move the second feed to slot one.
             if (assetPriceFeeds[asset][0] == feed) {
                 assetPriceFeeds[asset][0] = assetPriceFeeds[asset][1];
             }
@@ -509,10 +528,10 @@ contract PriceRouter {
         FeedData memory feed1 = _getPriceFromFeed(asset, 1, inUSD, getLower);
 
         // Check if we had any working price feeds,
-        // if not we need to block any market operations
+        // if not we need to block any market operations.
         if (feed0.hadError && feed1.hadError) return (0, BAD_SOURCE);
 
-        // Check if we had an error in either price that should limit borrowing
+        // Check if we had an error in either price that should block borrowing.
         if (feed0.hadError || feed1.hadError) {
             return (_getWorkingPrice(feed0, feed1), CAUTION);
         }
@@ -547,10 +566,12 @@ contract PriceRouter {
             inUSD,
             getLower
         );
+        // If we had an error pricing the asset, bubble up we had a error.
         if (data.hadError) {
             return (0, BAD_SOURCE);
         }
 
+        // If the feed denomination is not in the proper form, modify it.
         if (data.inUSD != inUSD) {
             uint256 newPrice;
             (newPrice, data.hadError) = _getETHUSD();
@@ -595,10 +616,12 @@ contract PriceRouter {
             inUSD,
             getLower
         );
+        // If we had an error pricing the asset, bubble up we had a error.
         if (data.hadError) {
             return FeedData({ price: 0, hadError: true });
         }
 
+        // If the feed denomination is not in the proper form, modify it.
         if (data.inUSD != inUSD) {
             uint256 newPrice;
             (newPrice, data.hadError) = _getETHUSD();
@@ -630,7 +653,7 @@ contract PriceRouter {
             CHAINLINK_ETH_USD
         ).latestRoundData();
 
-        // If data is stale or negative we have a problem to relay back
+        // If data is stale or negative we have a problem to bubble up.
         if (
             answer <= 0 || (block.timestamp - updatedAt > CHAINLINK_MAX_DELAY)
         ) {
@@ -649,7 +672,7 @@ contract PriceRouter {
             (, int256 answer, uint256 startedAt, , ) = IChainlink(sequencer)
                 .latestRoundData();
 
-            // Answer == 0: Sequencer is up
+            // Answer == 0: Sequencer is up.
             // Check that the sequencer is up or the grace period has passed
             // after the sequencer is back up.
             if (
@@ -678,7 +701,7 @@ contract PriceRouter {
         bool currentFormatInUSD
     ) internal view returns (uint256) {
         if (!currentFormatInUSD) {
-            // current format is in ETH and we want USD
+            // The price denomination is in ETH and we want USD.
             return (currentPrice * conversionRate) / CHAINLINK_DECIMALS;
         }
 
@@ -699,7 +722,7 @@ contract PriceRouter {
     ) internal view returns (uint256, uint256) {
         if (a <= b) {
             // Check if both feeds are within `cautionDivergenceFlag`
-            // of each other
+            // of each other.
             if (((a * cautionDivergenceFlag) / DENOMINATOR) < b) {
                 // Return the price, but, notify that the price is dangerous
                 // and to treat data as a bad source because we are outside
@@ -718,7 +741,7 @@ contract PriceRouter {
         }
 
         // Check if both feeds are within `cautionDivergenceFlag`
-        // of each other
+        // of each other.
         if (((b * cautionDivergenceFlag) / DENOMINATOR) < a) {
             // Return the price, but, notify that the price is dangerous
             // and to treat data as a bad source because we are outside
@@ -750,7 +773,7 @@ contract PriceRouter {
     ) internal view returns (uint256, uint256) {
         if (a >= b) {
             // Check if both feeds are within `cautionDivergenceFlag`
-            // of each other
+            // of each other.
             if (((b * cautionDivergenceFlag) / DENOMINATOR) < a) {
                 // Return the price, but, notify that the price is dangerous
                 // and to treat data as a bad source because we are outside
@@ -769,7 +792,7 @@ contract PriceRouter {
         }
 
         // Check if both feeds are within `cautionDivergenceFlag`
-        // of each other
+        // of each other.
         if (((a * cautionDivergenceFlag) / DENOMINATOR) < b) {
             // Return the price, but, notify that the price is dangerous
             // and to treat data as a bad source because we are outside
@@ -797,9 +820,9 @@ contract PriceRouter {
         FeedData memory feed0,
         FeedData memory feed1
     ) internal pure returns (uint256) {
-        // We know based on context of when this function is called that one
-        // but not both feeds have an error.
-        // So if feed0 had the error, feed1 is okay, and vice versa
+        // We know based on context of when this function is called that
+        // one but not both feeds have an error.
+        // So, if feed0 had the error, feed1 is okay, and vice versa.
         if (feed0.hadError) return feed1.price;
         return feed0.price;
     }
