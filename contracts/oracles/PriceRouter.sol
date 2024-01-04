@@ -205,33 +205,36 @@ contract PriceRouter {
     }
 
     /// @notice Sets a new maximum divergence for price feeds
-    ///         before CAUTION is activated.
-    /// @dev Requires that the new divergence is greater than
+    ///         before CAUTION or BAD_SOURCE is activated.
+    /// @dev Requires that the new divergences is greater than
     ///      or equal to 10200 aka 2% and less than or equal to 12000 aka 20%.
-    /// @param maxDivergence The new maximum divergence.
-    function setCautionDivergenceFlag(uint256 maxDivergence) external {
+    /// @param maxCautionDivergence The new maximum divergence 
+    ///                             for a caution flag to be returned.
+    /// @param maxBadSourceDivergence The new maximum divergence
+    ///                               for a bad source flag to be returned.
+    function setDivergenceFlags(
+        uint256 maxCautionDivergence, 
+        uint256 maxBadSourceDivergence
+    ) external {
         _checkElevatedPermissions();
 
-        if (maxDivergence < 10200 || maxDivergence > 12000) {
+        // Validate that the caution divergence flag does not occur after
+        // the bad source divergence flag as bad source is a more 
+        // significant error than caution.
+        if (maxCautionDivergence >= maxBadSourceDivergence) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
-        cautionDivergenceFlag = maxDivergence;
-    }
-
-    /// @notice Sets a new maximum divergence for price feeds
-    ///         before BAD_SOURCE is activated.
-    /// @dev Requires that the new divergence is greater than
-    ///      or equal to 10200 aka 2% and less than or equal to 12000 aka 20%.
-    /// @param maxDivergence The new maximum divergence.
-    function setBadSourceDivergenceFlag(uint256 maxDivergence) external {
-        _checkElevatedPermissions();
-
-        if (maxDivergence < 10200 || maxDivergence > 12000) {
+        if (maxCautionDivergence < 10200 || maxCautionDivergence > 12000) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
-        badSourceDivergenceFlag = maxDivergence;
+        if (maxBadSourceDivergence < 10200 || maxBadSourceDivergence > 12000) {
+            _revert(_INVALID_PARAMETER_SELECTOR);
+        }
+
+        cautionDivergenceFlag = maxCautionDivergence;
+        badSourceDivergenceFlag = maxBadSourceDivergence;
     }
 
     /// @notice Sets a new maximum delay for Chainlink price feed.
