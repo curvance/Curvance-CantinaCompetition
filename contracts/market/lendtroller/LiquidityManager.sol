@@ -9,8 +9,9 @@ import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.so
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 
 /// @title Curvance Liquidity Manager
-/// @notice Calculates liquidity of an account in various positions
-/// @dev NOTE: Only use this as an abstract contract as no account data is written here
+/// @notice Calculates liquidity of an account in various positions.
+/// @dev NOTE: Only use this as an abstract contract as no account
+///            data is written here.
 abstract contract LiquidityManager {
     /// TYPES ///
 
@@ -23,7 +24,8 @@ abstract contract LiquidityManager {
     }
 
     struct AccountMetadata {
-        /// @notice Value that indicates whether an account has an active position in the token.
+        /// @notice Value that indicates whether an account has an active
+        ///         position in the token.
         /// @dev    0 or 1 for no; 2 for yes.
         uint256 activePosition;
         /// @notice The amount of collateral an account has posted.
@@ -38,19 +40,24 @@ abstract contract LiquidityManager {
         /// @notice The ratio at which this token can be collateralized.
         /// @dev    in `WAD` format, with 0.8e18 = 80% collateral value.
         uint256 collRatio;
-        /// @notice The collateral requirement where dipping below this will cause a soft liquidation.
+        /// @notice The collateral requirement where dipping below this will 
+        ///         cause a soft liquidation.
         /// @dev    in `WAD` format, with 1.2e18 = 120% collateral vs debt value.
-        uint256 collReqA;
-        /// @notice The collateral requirement where dipping below this will cause a hard liquidation.
+        uint256 collReqSoft;
+        /// @notice The collateral requirement where dipping below this will 
+        ///         cause a hard liquidation.
         /// @dev    in `WAD` format, with 1.2e18 = 120% collateral vs debt value.
-        uint256 collReqB;
-        /// @notice The base ratio at which this token will be compensated on soft liquidation.
+        uint256 collReqHard;
+        /// @notice The base ratio at which this token will be compensated on
+        ///         soft liquidation.
         /// @dev    In `WAD` format, stored as (Incentive + WAD)
-        ///         e.g 1.05e18 = 5% incentive, this saves gas for liquidation calculations.
+        ///         e.g 1.05e18 = 5% incentive, this saves gas for liquidation
+        ///         calculations.
         uint256 liqBaseIncentive;
-        /// @notice The liquidation incentive curve length between soft liquidation to hard liquidation.
-        ///         e.g. 5% base incentive with 8% curve length results in 13% liquidation incentive
-        ///         on hard liquidation.
+        /// @notice The liquidation incentive curve length between 
+        ///         soft liquidation to hard liquidation.
+        ///         e.g. 5% base incentive with 8% curve length results 
+        ///         in 13% liquidation incentive on hard liquidation.
         /// @dev    In `WAD` format.
         ///         e.g 05e18 = 5% maximum additional incentive.
         uint256 liqCurve;
@@ -59,13 +66,16 @@ abstract contract LiquidityManager {
         ///         Note: this is stored as (Fee * WAD) / `liqIncA`
         ///         in order to save gas for liquidation calculations.
         uint256 liqFee;
-        /// @notice Maximum % that a liquidator can repay when soft liquidating an account,
+        /// @notice Maximum % that a liquidator can repay when
+        ///         soft liquidating an account.
         /// @dev    In `WAD` format.
         uint256 baseCFactor;
-        /// @notice cFactor curve length between soft liquidation and hard liquidation,
+        /// @notice cFactor curve length between soft liquidation
+        ///         and hard liquidation.
         /// @dev    In `WAD` format.
         uint256 cFactorCurve;
-        /// @notice Mapping that stores account information like token positions and collateral posted.
+        /// @notice Mapping that stores account information like token
+        ///         positions and collateral posted.
         mapping(address => AccountMetadata) accountData;
     }
 
@@ -132,7 +142,8 @@ abstract contract LiquidityManager {
             snapshot = snapshots[i];
 
             if (snapshot.isCToken) {
-                // If the asset has a CR increment their collateral and max borrow value.
+                // If the asset has a CR increment their collateral
+                // and max borrow value.
                 if (!(tokenData[snapshot.asset].collRatio == 0)) {
                     uint256 collateralValue = _getAssetValue(
                         ((tokenData[snapshot.asset]
@@ -170,11 +181,15 @@ abstract contract LiquidityManager {
     /// @param mTokenModified The mToken to hypothetically redeem/borrow.
     /// @param redeemTokens The number of tokens to hypothetically redeem.
     /// @param borrowAmount The amount of underlying to hypothetically borrow.
-    /// @param errorCodeBreakpoint The error code that will cause liquidity operations to revert.
+    /// @param errorCodeBreakpoint The error code that will cause liquidity
+    ///                            operations to revert.
     /// @dev Note that we calculate the exchangeRateCached for each collateral
-    ///           mToken using stored data, without calculating accumulated interest.
-    /// @return uint256 Hypothetical `account` excess liquidity versus collateral requirements.
-    /// @return uint256 Hypothetical `account` liquidity deficit below collateral requirements.
+    ///           mToken using stored data, without calculating accumulated
+    ///           interest.
+    /// @return uint256 Hypothetical `account` excess liquidity versus
+    ///         collateral requirements.
+    /// @return uint256 Hypothetical `account` liquidity deficit below
+    ///         collateral requirements.
     function _hypotheticalLiquidityOf(
         address account,
         address mTokenModified,
@@ -218,9 +233,11 @@ abstract contract LiquidityManager {
 
             // Calculate effects of interacting with mTokenModified.
             if (snapshot.asset == mTokenModified) {
-                // If its a CToken our only option is to redeem it since it cant be borrowed.
-                // If its a DToken we can redeem it but it will not have any effect on borrow amount
-                // since DToken have a collateral value of 0.
+                // If its a CToken our only option is to redeem it since
+                // it cant be borrowed.
+                // If its a DToken we can redeem it but it will not have
+                // any effect on borrow amount since DToken have a collateral
+                // value of 0.
                 if (snapshot.isCToken) {
                     if (!(tokenData[snapshot.asset].collRatio == 0)) {
                         uint256 collateralValue = _getAssetValue(
@@ -260,9 +277,11 @@ abstract contract LiquidityManager {
         }
     }
 
-    /// @notice Determine `account`'s current collateral and debt values in the market.
+    /// @notice Determine `account`'s current collateral and debt values
+    ///        in the market.
     /// @param account The account to check bad debt status for.
-    /// @return accountCollateral The total market value of `account`'s collateral.
+    /// @return accountCollateral The total market value of
+    ///                           `account`'s collateral.
     /// @return accountDebt The total outstanding debt value of `account`.
     function _solvencyOf(
         address account
@@ -310,7 +329,8 @@ abstract contract LiquidityManager {
     ///         collateral versus outstanding debt.
     /// @param account The account to check liquidation status for.
     /// @param debtToken The dToken to be repaid during potential liquidation.
-    /// @param collateralToken The cToken to be seized during potential liquidation.
+    /// @param collateralToken The cToken to be seized during potential
+    ///                        liquidation.
     /// @return result Containing values:
     ///                Current `account` lFactor.
     ///                Current price for `debtToken`.
@@ -327,9 +347,9 @@ abstract contract LiquidityManager {
         ) = _assetDataOf(account, 2);
         AccountSnapshot memory snapshot;
         // Collateral value for soft liquidation level.
-        uint256 accountCollateralA;
+        uint256 accountCollateralSoft;
         // Collateral value for hard liquidation level.
-        uint256 accountCollateralB;
+        uint256 accountCollateralHard;
         // Current outstanding account debt.
         uint256 accountDebt;
 
@@ -344,14 +364,14 @@ abstract contract LiquidityManager {
                 // If the asset has a CR increment their collateral.
                 if (!(tokenData[snapshot.asset].collRatio == 0)) {
                     (
-                        accountCollateralA,
-                        accountCollateralB
+                        accountCollateralSoft,
+                        accountCollateralHard
                     ) = _addLiquidationValues(
                         snapshot,
                         account,
                         underlyingPrices[i],
-                        accountCollateralA,
-                        accountCollateralB
+                        accountCollateralSoft,
+                        accountCollateralHard
                     );
                 }
             } else {
@@ -375,16 +395,16 @@ abstract contract LiquidityManager {
             }
         }
 
-        if (accountCollateralA >= accountDebt) {
+        if (accountCollateralSoft >= accountDebt) {
             return result;
         }
 
-        if (accountDebt >= accountCollateralB) {
+        if (accountDebt >= accountCollateralHard) {
             result.lFactor = WAD;
         } else {
             result.lFactor =
-                ((accountDebt - accountCollateralA) * WAD) /
-                (accountCollateralB - accountCollateralA);
+                ((accountDebt - accountCollateralSoft) * WAD) /
+                (accountCollateralHard - accountCollateralSoft);
         }
     }
 
@@ -481,8 +501,8 @@ abstract contract LiquidityManager {
         AccountSnapshot memory snapshot,
         address account,
         uint256 price,
-        uint256 aSumPrior,
-        uint256 bSumPrior
+        uint256 softSumPrior,
+        uint256 hardSumPrior
     ) internal view returns (uint256, uint256) {
         uint256 assetValue = _getAssetValue(
             ((tokenData[snapshot.asset].accountData[account].collateralPosted *
@@ -492,8 +512,8 @@ abstract contract LiquidityManager {
         ) * WAD;
 
         return (
-            aSumPrior + (assetValue / tokenData[snapshot.asset].collReqA),
-            bSumPrior + (assetValue / tokenData[snapshot.asset].collReqB)
+            softSumPrior + (assetValue / tokenData[snapshot.asset].collReqSoft),
+            hardSumPrior + (assetValue / tokenData[snapshot.asset].collReqHard)
         );
     }
 

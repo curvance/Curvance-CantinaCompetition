@@ -20,17 +20,24 @@ contract Lendtroller is LiquidityManager, ERC165 {
     IGaugePool public immutable gaugePool;
 
     /// @notice Maximum collateral requirement to avoid liquidation. 40%
-    uint256 internal constant _MAX_COLLATERAL_REQUIREMENT = 0.4e18;
+    uint256 public constant MAX_COLLATERAL_REQUIREMENT = 0.4e18;
+    /// @notice Minimum excess collateral requirement 
+    ///         on top of liquidation incentive. 0.5%
+    uint256 public constant MIN_EXCESS_COLLATERAL_REQUIREMENT = 0.005e18;
     /// @notice Maximum collateralization ratio. 91%
-    uint256 internal constant _MAX_COLLATERALIZATION_RATIO = 0.91e18;
+    uint256 public constant MAX_COLLATERALIZATION_RATIO = 0.91e18;
+    /// @notice The maximum liquidation incentive. 30%
+    uint256 public constant MAX_LIQUIDATION_INCENTIVE = .3e18;
+    /// @notice The minimum liquidation incentive. 1%
+    uint256 public constant MIN_LIQUIDATION_INCENTIVE = .01e18;
+    /// @notice The maximum liquidation incentive. 5%
+    uint256 public constant MAX_LIQUIDATION_FEE = .05e18;
+    /// @notice The maximum base cFactor. 50%
+    uint256 public constant MAX_BASE_CFACTOR = .5e18;
+    /// @notice The minimum base cFactor. 10%
+    uint256 public constant MIN_BASE_CFACTOR = .1e18;
     /// @notice Minimum hold time to prevent oracle price attacks.
     uint256 internal constant _MIN_HOLD_PERIOD = 20 minutes;
-    /// @notice The maximum liquidation incentive. 30%
-    uint256 internal constant _MAX_LIQUIDATION_INCENTIVE = .3e18;
-    /// @notice The minimum liquidation incentive. 1%
-    uint256 internal constant _MIN_LIQUIDATION_INCENTIVE = .01e18;
-    /// @notice The maximum liquidation incentive. 5%
-    uint256 internal constant _MAX_LIQUIDATION_FEE = .05e18;
     
     /// @dev `bytes4(keccak256(bytes("Lendtroller__InvalidParameter()")))`
     uint256 internal constant _INVALID_PARAMETER_SELECTOR = 0x31765827;
@@ -77,10 +84,10 @@ contract Lendtroller is LiquidityManager, ERC165 {
     event CollateralTokenUpdated(
         IMToken mToken,
         uint256 collRatio,
-        uint256 collReqA,
-        uint256 collReqB,
-        uint256 liqIncA,
-        uint256 liqIncB,
+        uint256 collReqSoft,
+        uint256 collReqHard,
+        uint256 liqIncSoft,
+        uint256 liqIncHard,
         uint256 liqFee,
         uint256 baseCFactor
     );
@@ -700,22 +707,27 @@ contract Lendtroller is LiquidityManager, ERC165 {
         emit TokenListed(mToken);
     }
 
-    /// @notice Sets the collRatio for a market token
-    /// @param mToken The market to set the collateralization ratio on
-    /// @param collRatio The ratio at which $1 of collateral can be borrowed against,
-    ///                               for `mToken`, in basis points
-    /// @param collReqA The premium of excess collateral required to avoid soft liquidation, in basis points
-    /// @param collReqB The premium of excess collateral required to avoid hard liquidation, in basis points
-    /// @param liqIncA The soft liquidation incentive for `mToken`, in basis points
-    /// @param liqIncB The hard liquidation incentive for `mToken`, in basis points
-    /// @param liqFee The protocol liquidation fee for `mToken`, in basis points
+    /// @notice Sets the collRatio for a market token.
+    /// @param mToken The market to set the collateralization ratio on.
+    /// @param collRatio The ratio at which $1 of collateral can be borrowed
+    ///                  against, for `mToken`, in basis points.
+    /// @param collReqSoft The premium of excess collateral required to 
+    ///                    avoid soft liquidation, in basis points.
+    /// @param collReqHard The premium of excess collateral required to 
+    ///                    avoid hard liquidation, in basis points.
+    /// @param liqIncSoft The soft liquidation incentive for `mToken`, 
+    ///                   in basis points.
+    /// @param liqIncHard The hard liquidation incentive for `mToken`, 
+    ///                   in basis points.
+    /// @param liqFee The protocol liquidation fee for `mToken`, 
+    ///               in basis points.
     function updateCollateralToken(
         IMToken mToken,
         uint256 collRatio,
-        uint256 collReqA,
-        uint256 collReqB,
-        uint256 liqIncA,
-        uint256 liqIncB,
+        uint256 collReqSoft,
+        uint256 collReqHard,
+        uint256 liqIncSoft,
+        uint256 liqIncHard,
         uint256 liqFee,
         uint256 baseCFactor
     ) external {
@@ -725,20 +737,20 @@ contract Lendtroller is LiquidityManager, ERC165 {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
-        // Verify mToken is listed
+        // Verify mToken is listed.
         MarketToken storage marketToken = tokenData[address(mToken)];
         if (!marketToken.isListed) {
             _revert(_TOKEN_NOT_LISTED_SELECTOR);
         }
 
-        // Convert the parameters from basis points to `WAD` format
-        // while inefficient we want to minimize potential human error
-        // as much as possible, even if it costs a bit extra gas on config
+        // Convert the parameters from basis points to `WAD` format.
+        // While inefficient, we want to minimize potential human error
+        // as much as possible, even if it costs a bit extra gas on config.
         collRatio = _bpToWad(collRatio);
-        collReqA = _bpToWad(collReqA);
-        collReqB = _bpToWad(collReqB);
-        liqIncA = _bpToWad(liqIncA);
-        liqIncB = _bpToWad(liqIncB);
+        collReqSoft = _bpToWad(collReqSoft);
+        collReqHard = _bpToWad(collReqHard);
+        liqIncSoft = _bpToWad(liqIncSoft);
+        liqIncHard = _bpToWad(liqIncHard);
         liqFee = _bpToWad(liqFee);
         baseCFactor = _bpToWad(baseCFactor);
 
@@ -747,35 +759,37 @@ contract Lendtroller is LiquidityManager, ERC165 {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
-        // Validate that soft liquidation does not lead to full or zero liquidation.
-        if (baseCFactor > WAD || baseCFactor == 0) {
+        // Validate soft liquidation collateral requirement is
+        // not above the maximum allowed.
+        if (collReqSoft > _MAX_COLLATERAL_REQUIREMENT) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
-        // Validate collateral requirement is not above the maximum allowed.
-        if (collReqA > _MAX_COLLATERAL_REQUIREMENT) {
+        // Validate hard liquidation incentive is 
+        // not above the maximum allowed.
+        if (liqIncHard > _MAX_LIQUIDATION_INCENTIVE) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
-        // Validate hard liquidation requirement is not above
-        // the soft liquidation requirement.
-        if (collReqB > collReqA) {
+        // Validate hard liquidation collateral requirement is not above
+        // the soft liquidation requirement. Liquidations occur when 
+        // collateral dries up so hard liquidation should be less collateral
+        // than soft liquidation.
+        if (collReqHard >= collReqSoft) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
-        // Validate the soft liquidation collateral premium
-        // is not more strict than the asset's CR.
-        if (collRatio > (WAD * WAD) / (WAD + collReqA)) {
+        // Validate hard liquidation incentive is 
+        // higher than the soft liquidation incentive. Give heavier incentives
+        // when collateral is running out to reduce delta exposure.
+        if (liqIncSoft >= liqIncHard) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
-        // Validate hard liquidation incentive is not above the maximum allowed.
-        if (liqIncB > _MAX_LIQUIDATION_INCENTIVE) {
-            _revert(_INVALID_PARAMETER_SELECTOR);
-        }
-
-        // Validate hard liquidation incentive is higher than the soft liquidation incentive.
-        if (liqIncA > liqIncB) {
+        // Validate collateral requirement is larger
+        // than the liquidation incentive. We cannot give more incentives
+        // than are available.
+        if (liqIncSoft + MIN_EXCESS_COLLATERAL_REQUIREMENT > collReqHard) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
@@ -784,14 +798,20 @@ contract Lendtroller is LiquidityManager, ERC165 {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
-        // Validate collateral requirement is larger than the liquidation incentive.
-        if (liqIncA > collReqB) {
+        // We need to make sure that the liquidation incentive is sufficient
+        // for both the protocol and the users.
+        if ((liqIncSoft - liqFee) < _MIN_LIQUIDATION_INCENTIVE) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
-        // We need to make sure that the liquidation incentive is sufficient
-        // for both the protocol and the users.
-        if ((liqIncA - liqFee) < _MIN_LIQUIDATION_INCENTIVE) {
+        // Validate that soft liquidation is within acceptable bounds.
+        if (baseCFactor > MAX_BASE_CFACTOR || baseCFactor < MIN_BASE_CFACTOR) {
+            _revert(_INVALID_PARAMETER_SELECTOR);
+        }
+
+        // Validate the soft liquidation collateral premium
+        // is not more strict than the asset's CR.
+        if (collRatio > (WAD * WAD) / (WAD + collReqSoft)) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
@@ -811,15 +831,15 @@ contract Lendtroller is LiquidityManager, ERC165 {
         // Store the collateral requirement as a premium above `WAD`,
         // that way we can calculate solvency via division
         // efficiently in _liquidationStatusOf.
-        marketToken.collReqA = collReqA + WAD;
-        marketToken.collReqB = collReqB + WAD;
+        marketToken.collReqSoft = collReqSoft + WAD;
+        marketToken.collReqHard = collReqHard + WAD;
 
         // Store the distance between liquidation incentive A & B,
-        // that way we can quickly scale between [base, 100%] based on lFactor.
-        marketToken.liqCurve = liqIncB - liqIncA;
+        // so we can quickly scale between [base, 100%] based on lFactor.
+        marketToken.liqCurve = liqIncHard - liqIncSoft;
         // We use the liquidation incentive values as a premium in
         // `calculateLiquidatedTokens`, so it needs to be 1 + incentive.
-        marketToken.liqBaseIncentive = WAD + liqIncA;
+        marketToken.liqBaseIncentive = WAD + liqIncSoft;
 
         // Assign the base cFactor
         marketToken.baseCFactor = baseCFactor;
@@ -831,16 +851,16 @@ contract Lendtroller is LiquidityManager, ERC165 {
         // incentive offset, that way we can directly multiply later instead
         // of needing extra calculations, we do not want the liquidation fee
         // to increase with the liquidation engine, as we want to offload
-        // risk as quickly as possible by increasing the liquidators incentive.
-        marketToken.liqFee = (WAD * liqFee) / (WAD + liqIncA);
+        // risk as quickly as possible by increasing the incentives.
+        marketToken.liqFee = (WAD * liqFee) / (WAD + liqIncSoft);
 
         emit CollateralTokenUpdated(
             mToken,
             collRatio,
-            collReqA,
-            collReqB,
-            liqIncA,
-            liqIncB,
+            collReqSoft,
+            collReqHard,
+            liqIncSoft,
+            liqIncHard,
             liqFee,
             baseCFactor
         );
