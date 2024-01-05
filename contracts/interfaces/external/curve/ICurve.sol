@@ -8,17 +8,22 @@ interface ICurveSwap {
 
     function add_liquidity(
         uint256[4] calldata amounts,
-        uint256 min_mint_amount
+        uint256 min_amounts
     ) external payable;
 
     function add_liquidity(
         uint256[3] calldata amounts,
-        uint256 min_mint_amount
+        uint256 min_amounts
     ) external payable;
 
     function add_liquidity(
         uint256[2] calldata amounts,
-        uint256 min_mint_amount
+        uint256 min_amounts
+    ) external payable;
+
+    function add_liquidity(
+        uint256[] calldata amounts,
+        uint256 min_amounts
     ) external payable;
 
     function remove_liquidity(
