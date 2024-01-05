@@ -13,3 +13,21 @@ forge script ./script/mocks/DeployMockV3Aggregator.s.sol $network $name $decimal
 ```
 
 * here name is not token name or symbol, use something like `USDC-Aggregator`
+
+## Deploy Curvance core contracts
+
+```
+forge script ./script/DeployCurvance.s.sol $network --sig "run(string)" --rpc-url $rpc --broadcast
+```
+
+## Deploy DToken
+
+```
+forge script ./script/DeployDToken.s.sol $network $symbol --sig "run(string,string)" --rpc-url $rpc --broadcast
+```
+
+## Deploy CTokenPrimitive
+
+```
+forge script ./script/DeployCTokenPrimitive.s.sol $network $symbol --sig "run(string,string)" --rpc-url $rpc --broadcast
+```
