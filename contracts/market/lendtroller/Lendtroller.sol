@@ -755,19 +755,19 @@ contract Lendtroller is LiquidityManager, ERC165 {
         baseCFactor = _bpToWad(baseCFactor);
 
         // Validate collateralization ratio is not above the maximum allowed.
-        if (collRatio > _MAX_COLLATERALIZATION_RATIO) {
+        if (collRatio > MAX_COLLATERALIZATION_RATIO) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
         // Validate soft liquidation collateral requirement is
         // not above the maximum allowed.
-        if (collReqSoft > _MAX_COLLATERAL_REQUIREMENT) {
+        if (collReqSoft > MAX_COLLATERAL_REQUIREMENT) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
         // Validate hard liquidation incentive is 
         // not above the maximum allowed.
-        if (liqIncHard > _MAX_LIQUIDATION_INCENTIVE) {
+        if (liqIncHard > MAX_LIQUIDATION_INCENTIVE) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
@@ -794,13 +794,13 @@ contract Lendtroller is LiquidityManager, ERC165 {
         }
 
         // Validate protocol liquidation fee is not above the maximum allowed.
-        if (liqFee > _MAX_LIQUIDATION_FEE) {
+        if (liqFee > MAX_LIQUIDATION_FEE) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
         // We need to make sure that the liquidation incentive is sufficient
         // for both the protocol and the users.
-        if ((liqIncSoft - liqFee) < _MIN_LIQUIDATION_INCENTIVE) {
+        if ((liqIncSoft - liqFee) < MIN_LIQUIDATION_INCENTIVE) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
