@@ -1,11 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IChainlink } from "contracts/interfaces/external/chainlink/IChainlink.sol";
 import { WAD } from "contracts/libraries/Constants.sol";
 
 abstract contract BaseWrappedAggregator is IChainlink {
+
+    /// ERRORS ///
+
+    error BaseWrappedAggregator__UintToIntError();
+
+    /// EXTERNAL FUNCTIONS ///
+
     function aggregator() external view returns (address) {
         return address(this);
     }
@@ -16,7 +22,7 @@ abstract contract BaseWrappedAggregator is IChainlink {
                 .maxAnswer()
         );
 
-        max = (max * getWrappedAssetWeight()) / SafeCast.toInt256(WAD);
+        max = (max * getWrappedAssetWeight()) / _toInt256(WAD);
         if (max > type(int192).max) {
             return type(int192).max;
         }
@@ -24,7 +30,7 @@ abstract contract BaseWrappedAggregator is IChainlink {
             return type(int192).min;
         }
 
-        return SafeCast.toInt192(max);
+        return _toInt192(max);
     }
 
     function minAnswer() external view returns (int192) {
@@ -33,7 +39,7 @@ abstract contract BaseWrappedAggregator is IChainlink {
                 .minAnswer()
         );
 
-        min = (min * getWrappedAssetWeight()) / SafeCast.toInt256(WAD);
+        min = (min * getWrappedAssetWeight()) / _toInt256(WAD);
         if (min > type(int192).max) {
             return type(int192).max;
         }
@@ -41,7 +47,7 @@ abstract contract BaseWrappedAggregator is IChainlink {
             return type(int192).min;
         }
 
-        return SafeCast.toInt192(min);
+        return _toInt192(min);
     }
 
     function decimals() external view returns (uint8) {
@@ -63,8 +69,10 @@ abstract contract BaseWrappedAggregator is IChainlink {
             underlyingAssetAggregator()
         ).latestRoundData();
 
-        answer = (answer * getWrappedAssetWeight()) / SafeCast.toInt256(WAD);
+        answer = (answer * getWrappedAssetWeight()) / _toInt256(WAD);
     }
+
+    /// PUBLIC FUNCTIONS TO OVERRIDE ///
 
     function underlyingAssetAggregator()
         public
@@ -74,4 +82,26 @@ abstract contract BaseWrappedAggregator is IChainlink {
     {}
 
     function getWrappedAssetWeight() public view virtual returns (int256) {}
+
+    /// INTERNAl FUNCTIONS /// 
+
+    /// @dev Returns the downcasted int192 from int256, reverting on
+    ///      overflow (when the input is less than smallest int192 or
+    ///      greater than largest int192).
+    function _toInt192(int256 value) internal pure returns (int192 downcasted) {
+        downcasted = int192(value);
+        if (downcasted != value) {
+            revert BaseWrappedAggregator__UintToIntError();
+        }
+    }
+
+    /// @dev Converts an unsigned uint256 into a signed int256.
+    function _toInt256(uint256 value) internal pure returns (int256) {
+        // Note: Unsafe cast below is okay because `type(int256).max`
+        //       is guaranteed to be positive
+        if (value > uint256(type(int256).max)) {
+            revert BaseWrappedAggregator__UintToIntError();
+        }
+        return int256(value);
+    }
 }
