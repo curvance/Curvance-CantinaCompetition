@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 
-contract CVETestnet is Ownable {
+contract Faucet is Ownable {
     using ECDSA for bytes32;
 
     address private signer;
