@@ -103,6 +103,8 @@ contract CentralRegistry is ERC165 {
 
     /// @notice How many other chains are supported.
     uint256 public supportedChains;
+    /// @notice Address array for all Curvance markets on this chain.
+    address[] public supportedMarkets;
 
     /// @notice ChainId => 2 = supported; 1 = unsupported.
     mapping(uint256 => ChainData) public supportedChainData;
@@ -675,12 +677,12 @@ contract CentralRegistry is ERC165 {
     ) external {
         _checkElevatedPermissions();
 
+        // Validate that `newLendingMarket` is not already added.
         if (isLendingMarket[newLendingMarket]) {
-            // Lending market already added
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
-        // Ensure that lending market parameter is a lending market
+        // Ensure that lending market parameter is a lending market.
         if (
             !ERC165Checker.supportsInterface(
                 newLendingMarket,
@@ -690,12 +692,15 @@ contract CentralRegistry is ERC165 {
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
+        // Validate that desired interest factored is within
+        // acceptable bounds.
         if (marketInterestFactor > 5000) {
-            /// Fee too high
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
         isLendingMarket[newLendingMarket] = true;
+        // We store supported markets semi redundantly for offchain querying.
+        supportedMarkets.push(newLendingMarket);
         protocolInterestFactor[newLendingMarket] = _bpToWad(
             marketInterestFactor
         );
@@ -710,12 +715,36 @@ contract CentralRegistry is ERC165 {
     function removeLendingMarket(address currentLendingMarket) external {
         _checkElevatedPermissions();
 
+        // Validate that `newLendingMarket` is currently supported.
         if (!isLendingMarket[currentLendingMarket]) {
-            // Not a Lending market
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
         delete isLendingMarket[currentLendingMarket];
+
+        // Cache market list.
+        uint256 numMarkets = supportedMarkets.length;
+        uint256 marketIndex = numMarkets;
+
+        for (uint256 i; i < numMarkets; ++i) {
+            if (supportedMarkets[i] == currentLendingMarket) {
+                marketIndex = i;
+                break;
+            }
+        }
+
+        // Validate we found the market and remove 1 from numMarkets
+        // so it corresponds to last element index now (starting at index 0).
+        // This is an additional runtime invariant check for extra security.
+        if (marketIndex >= numMarkets--) {
+            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
+        }
+
+        // Copy last `supportedMarkets` slot to `marketIndex` slot.
+        supportedMarkets[marketIndex] = supportedMarkets[numMarkets];
+        // Remove the last element to remove `currentLendingMarket`
+        // from supportedMarkets list.
+        supportedMarkets.pop();
 
         emit RemovedCurvanceContract("Lending Market", currentLendingMarket);
     }

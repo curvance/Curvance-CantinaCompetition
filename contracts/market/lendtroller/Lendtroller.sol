@@ -1103,13 +1103,13 @@ contract Lendtroller is LiquidityManager, ERC165 {
         AccountMetadata storage accountData,
         IMToken token
     ) internal {
-        // Remove `token` account position flag
+        // Remove `token` account position flag.
         accountData.activePosition = 1;
 
-        // Delete token from the account’s list of assets
+        // Delete token from the account’s list of assets.
         IMToken[] memory userAssetList = accountAssets[account].assets;
 
-        // Cache asset list
+        // Cache asset list.
         uint256 numUserAssets = userAssetList.length;
         uint256 assetIndex = numUserAssets;
 
@@ -1121,16 +1121,17 @@ contract Lendtroller is LiquidityManager, ERC165 {
         }
 
         // Validate we found the asset and remove 1 from numUserAssets
-        // so it corresponds to last element index now starting at index 0
+        // so it corresponds to last element index now starting at index 0.
+        // This is an additional runtime invariant check for extra security.
         if (assetIndex >= numUserAssets--) {
             revert Lendtroller__InvariantError();
         }
 
-        // copy last item in list to location of item to be removed
+        // Copy last item in list to location of item to be removed.
         IMToken[] storage storedList = accountAssets[account].assets;
-        // copy the last market index slot to assetIndex
+        // Copy the last market index slot to assetIndex.
         storedList[assetIndex] = storedList[numUserAssets];
-        // remove the last element to remove `token` from account asset list
+        // Remove the last element to remove `token` from account asset list.
         storedList.pop();
 
         emit TokenPositionClosed(address(token), account);
