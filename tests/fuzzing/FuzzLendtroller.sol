@@ -145,13 +145,17 @@ contract FuzzLendtroller is StatefulBaseMarket {
         if (!lendtroller.isListed(mtoken)) {
             list_token_should_succeed(mtoken);
         }
-        uint256 currentSupply = IMToken(mtoken).totalSupply();
-        // will not overflow
-        require(currentSupply + amount > currentSupply);
 
         address underlyingAddress = MockCToken(mtoken).underlying();
         // mint ME enough tokens to cover deposit
         try MockToken(underlyingAddress).mint(amount) {} catch {
+            uint256 currentSupply = MockToken(underlyingAddress).totalSupply();
+
+            // if the total supply overflowed, then this is actually expected to revert
+            if (currentSupply + amount < currentSupply) {
+                return;
+            }
+
             assertWithMsg(
                 false,
                 "LENDTROLLER - mint underlying amount should succeed before deposit"
@@ -386,9 +390,7 @@ contract FuzzLendtroller is StatefulBaseMarket {
         }
         uint256 mtokenBalance = MockCToken(mtoken).balanceOf(address(this));
 
-        if (mtokenBalance == 0) {
-            c_token_deposit(mtoken, tokens);
-        }
+        require(mtokenBalance > 0);
         require(lendtroller.collateralCaps(mtoken) > 0);
 
         uint256 oldCollateral;
