@@ -13,6 +13,15 @@ contract FuzzLendtroller is StatefulBaseMarket {
     MockDataFeed public mockDaiFeed;
     bool feedsSetup;
     uint256 lastRoundUpdate;
+    // mapping (mtoken address => State enum)
+    mapping(address => State) marketTokenState;
+
+    enum State {
+        TOKEN_UNLISTED,
+        TOKEN_LISTED,
+        C_TOKEN_DEPOSITED,
+        ADDED_COLLATERAL_CAPS
+    }
 
     constructor() {
         SafeTransferLib.safeApprove(
@@ -54,6 +63,7 @@ contract FuzzLendtroller is StatefulBaseMarket {
         } catch {
             assertWithMsg(false, "LENDTROLLER - failed to list token");
         }
+        marketTokenState[mtoken] = State.TOKEN_LISTED;
     }
 
     function list_token_should_fail_if_already_listed(address mtoken) public {
@@ -128,13 +138,16 @@ contract FuzzLendtroller is StatefulBaseMarket {
     // }
 
     function c_token_deposit(address mtoken, uint256 amount) public {
-        amount = clampBetween(amount, 1, type(uint32).max);
+        amount = clampBetween(amount, 1, type(uint16).max);
         // require gauge pool has been started at a previous timestamp
         require(gaugePool.startTime() < block.timestamp);
         require(mtoken == address(cDAI) || mtoken == address(cUSDC));
         if (!lendtroller.isListed(mtoken)) {
             list_token_should_succeed(mtoken);
         }
+        uint256 currentSupply = IMToken(mtoken).totalSupply();
+        // will not overflow
+        require(currentSupply + amount > currentSupply);
 
         address underlyingAddress = MockCToken(mtoken).underlying();
         // mint ME enough tokens to cover deposit
@@ -176,6 +189,7 @@ contract FuzzLendtroller is StatefulBaseMarket {
                 "LENDTROLLER - expected mtoken.deposit() to be successful"
             );
         }
+        marketTokenState[mtoken] = State.C_TOKEN_DEPOSITED;
     }
 
     function setUpFeeds() public {
@@ -221,87 +235,6 @@ contract FuzzLendtroller is StatefulBaseMarket {
         lastRoundUpdate = block.timestamp;
     }
 
-    struct TokenCollateralBounds {
-        uint256 collRatio;
-        uint256 collReqSoft;
-        uint256 collReqHard;
-        uint256 liqIncSoft;
-        uint256 liqIncHard;
-        uint256 liqFee;
-        uint256 baseCFactor;
-    }
-
-    function get_safe_update_collateral_bounds(
-        uint256 collRatio,
-        uint256 collReqSoft,
-        uint256 collReqHard,
-        uint256 liqIncSoft,
-        uint256 liqIncHard,
-        uint256 liqFee,
-        uint256 baseCFactor
-    ) private returns (TokenCollateralBounds memory bounds) {
-        bounds.collRatio = clampBetween(
-            collRatio,
-            0,
-            lendtroller.MAX_COLLATERALIZATION_RATIO() / 1e14
-            // uint256(
-            //     (WAD * WAD) /
-            //         (WAD + lendtroller.MAX_COLLATERALIZATION_RATIO() / 1e14)
-            // )
-        );
-        bounds.baseCFactor = clampBetween(baseCFactor, 1, 1e18 / 1e14);
-        emit LogUint256("base c factor clamped", bounds.baseCFactor);
-
-        // liquidationTotal - liqIncSoft+liqFee never less than min; max liquidation Fee + max liq fee
-        // soft liqA; hard coll req b; ensure 1.5%∆ is available
-
-        // "B" is the hard liqudation; "A" is soft liquidation
-        // liquidity incentive soft -> hard goes up
-        uint256 liquidationTotal = clampBetween(
-            liqIncSoft,
-            lendtroller.MIN_LIQUIDATION_INCENTIVE() / 1e14,
-            (lendtroller.MAX_LIQUIDATION_FEE() / 1e14) +
-                (lendtroller.MAX_LIQUIDATION_INCENTIVE() / 1e14) -
-                1
-        );
-        emit LogUint256("liquidation total clamped", liquidationTotal);
-        bounds.liqFee = clampBetween(
-            liqFee,
-            0,
-            lendtroller.MAX_LIQUIDATION_FEE() / 1e14
-        );
-        emit LogUint256("liq fee clamped:", bounds.liqFee);
-        bounds.liqIncSoft = clampBetween(
-            liqIncSoft,
-            0,
-            liquidationTotal - bounds.liqFee
-        ); // can be clamped
-        emit LogUint256("liqIncSoft clamped", bounds.liqIncSoft);
-
-        // collReq A > collReqHard
-        // collateral requirement soft -> hard goes down
-        bounds.collReqHard = clampBetween(
-            collReqHard,
-            0,
-            lendtroller.MAX_COLLATERAL_REQUIREMENT() / 1e14 - 1
-        );
-        emit LogUint256("colLReqHard clamped:", bounds.collReqHard);
-
-        bounds.collReqSoft = clampBetween(
-            collReqSoft,
-            bounds.collReqHard + 1,
-            lendtroller.MAX_COLLATERAL_REQUIREMENT() / 1e14
-        ); // theoretical max, may need to adjust for rounding
-        emit LogUint256("colLReqSoft clamped:", bounds.collReqSoft);
-
-        bounds.liqIncHard = clampBetween(
-            liqIncHard,
-            bounds.liqIncSoft, // liqIncHard can be equal
-            lendtroller.MAX_LIQUIDATION_INCENTIVE() / 1e14
-        );
-        emit LogUint256("liqincHard clamped:", bounds.liqIncHard);
-    }
-
     // create a version to account for stale data
     function setCTokenCollateralCaps_should_succeed(
         address mtoken,
@@ -342,6 +275,10 @@ contract FuzzLendtroller is StatefulBaseMarket {
                 liqFee,
                 baseCFactor
             );
+        emit LogUint256(
+            "exchange rate for mtoken",
+            IMToken(mtoken).exchangeRateCached()
+        );
         // adjust the following to acount for dynamic numbers here instead
         try
             lendtroller.updateCollateralToken(
@@ -373,16 +310,24 @@ contract FuzzLendtroller is StatefulBaseMarket {
                 "LENDTROLLER - expected setCTokenCollateralCaps to succeed"
             );
         }
+        marketTokenState[mtoken] = State.ADDED_COLLATERAL_CAPS;
     }
 
-    function setCTokenCollateralCaps_default_data(
+    function updateCollateralToken_should_revert_if_price_feed_out_of_date(
         address mtoken,
+        uint256 collRatio,
+        uint256 collReqSoft,
+        uint256 collReqHard,
+        uint256 liqIncSoft,
+        uint256 liqIncHard,
+        uint256 liqFee,
+        uint256 baseCFactor,
         uint256 cap
     ) public {
         if (lastRoundUpdate > block.timestamp) {
             lastRoundUpdate = block.timestamp;
         }
-        require(block.timestamp - lastRoundUpdate <= 24 hours);
+        require(block.timestamp - lastRoundUpdate > 24 hours);
         require(feedsSetup);
         require(centralRegistry.hasDaoPermissions(address(this)));
         cap = clampBetween(cap, 1, type(uint256).max);
@@ -397,49 +342,48 @@ contract FuzzLendtroller is StatefulBaseMarket {
         uint256[] memory caps = new uint256[](1);
         caps[0] = cap;
 
+        TokenCollateralBounds
+            memory bounds = get_safe_update_collateral_bounds(
+                collRatio,
+                collReqSoft,
+                collReqHard,
+                liqIncSoft,
+                liqIncHard,
+                liqFee,
+                baseCFactor
+            );
         // adjust the following to acount for dynamic numbers here instead
         try
             lendtroller.updateCollateralToken(
                 IMToken(address(mtoken)),
-                7000, // coll ratio
-                3000, // collateral requirement soft
-                3000, //collateral requirement hard
-                2000, //liquidity incentive soft
-                2000, //liquidity incentive hard
-                100, //liquidity fee
-                1000 //base c factor
+                bounds.collRatio,
+                bounds.collReqSoft,
+                bounds.collReqHard,
+                bounds.liqIncSoft,
+                bounds.liqIncHard,
+                bounds.liqFee,
+                bounds.baseCFactor
             )
-        {} catch {
+        {
             assertWithMsg(
                 false,
-                "LENDTROLLER - updateCollateralToken should succeed"
+                "LENDTROLLER - updateCollateralToken should not have succeeded with out of date price feeds"
             );
-        }
-        try lendtroller.setCTokenCollateralCaps(tokens, caps) {
-            assertGt(
-                lendtroller.collateralCaps(mtoken),
-                0,
-                "LENDTROLLER - collateral caps for token should be >0"
-            );
-        } catch {
-            assertWithMsg(
-                false,
-                "LENDTROLLER - expected setCTokenCollateralCaps to succeed"
-            );
-        }
+        } catch {}
     }
 
     function post_collateral_should_succeed(
         address mtoken,
-        uint256 tokens
+        uint256 tokens,
+        uint256 seed
     ) public {
         // require gauge pool has been started
         require(gaugePool.startTime() < block.timestamp);
         require(feedsSetup);
+        require(mtoken == address(cDAI) || mtoken == address(cUSDC));
         if (!lendtroller.isListed(mtoken)) {
             list_token_should_succeed(mtoken);
         }
-        require(mtoken == address(cDAI) || mtoken == address(cUSDC));
         uint256 mtokenBalance = MockCToken(mtoken).balanceOf(address(this));
 
         if (mtokenBalance == 0) {
@@ -488,7 +432,11 @@ contract FuzzLendtroller is StatefulBaseMarket {
             );
         }
         // ensure account collateral has incresaed by # of tokens
-        (uint256 newCollateral, , ) = lendtroller.statusOf(address(this));
+        uint256 newCollateral = lendtroller.collateralPostedFor(
+            mtoken,
+            address(this)
+        );
+
         assertEq(
             newCollateral,
             oldCollateral + tokens,
@@ -796,4 +744,101 @@ contract FuzzLendtroller is StatefulBaseMarket {
     // current debt > max allowed debt after folding
 
     // Helper Functions
+
+    struct TokenCollateralBounds {
+        uint256 collRatio;
+        uint256 collReqSoft;
+        uint256 collReqHard;
+        uint256 liqIncSoft;
+        uint256 liqIncHard;
+        uint256 liqFee;
+        uint256 baseCFactor;
+    }
+
+    function get_safe_update_collateral_bounds(
+        uint256 collRatio,
+        uint256 collReqSoft,
+        uint256 collReqHard,
+        uint256 liqIncSoft,
+        uint256 liqIncHard,
+        uint256 liqFee,
+        uint256 baseCFactor
+    ) private returns (TokenCollateralBounds memory bounds) {
+        // TODO: incorrect for new rebase (min: 10%, max: 50%)
+        bounds.baseCFactor = clampBetween(baseCFactor, 1, 1e18 / 1e14);
+        emit LogUint256("base c factor clamped", bounds.baseCFactor);
+
+        // liquidationTotal - liqIncSoft+liqFee never less than min; max liquidation Fee + max liq fee
+        // soft liqA; hard coll req b; ensure 1.5%∆ is available
+
+        // "B" is the hard liqudation; "A" is soft liquidation
+        // liquidity incentive soft -> hard goes up
+        bounds.liqFee = clampBetween(
+            liqFee,
+            0,
+            lendtroller.MAX_LIQUIDATION_FEE() / 1e14
+        );
+        emit LogUint256("liq fee clamped:", bounds.liqFee);
+
+        bounds.liqIncSoft = clampBetween(
+            liqIncSoft,
+            lendtroller.MIN_LIQUIDATION_INCENTIVE() / 1e14 + bounds.liqFee, // needed to be bumped from 0
+            lendtroller.MAX_LIQUIDATION_INCENTIVE() / 1e14 - 1
+        );
+        emit LogUint256("liqIncSoft clamped", bounds.liqIncSoft);
+
+        bounds.liqIncHard = clampBetween(
+            liqIncHard,
+            bounds.liqIncSoft + 1, // for changes in rebase
+            lendtroller.MAX_LIQUIDATION_INCENTIVE() / 1e14
+        );
+        emit LogUint256("liqincHard clamped:", bounds.liqIncHard);
+
+        // collReq A > collReqHard
+        // collateral requirement soft -> hard goes down
+        bounds.collReqHard = clampBetween(
+            collReqHard,
+            bounds.liqIncHard, // account for MIN_EXCESS_COLLATERAL_REQUIREMENT  on rebase
+            lendtroller.MAX_COLLATERAL_REQUIREMENT() / 1e14 - 1
+        );
+        emit LogUint256("colLReqHard clamped:", bounds.collReqHard);
+
+        bounds.collReqSoft = clampBetween(
+            collReqSoft,
+            bounds.collReqHard + 1,
+            lendtroller.MAX_COLLATERAL_REQUIREMENT() / 1e14
+        );
+        emit LogUint256("colLReqSoft clamped:", bounds.collReqSoft);
+
+        uint256 collatPremium = uint256(
+            ((WAD * WAD) / (WAD + (bounds.collReqSoft * 1e14)))
+        );
+        emit LogUint256("collateral premium:", collatPremium);
+
+        // max collateralization ratio is in wad already; collatpremium has just been calculated in reference to wad
+        // thus no conversion to 1e14
+
+        // 91% > 75%;
+        if (lendtroller.MAX_COLLATERALIZATION_RATIO() > collatPremium) {
+            bounds.collRatio = clampBetween(
+                collRatio,
+                0,
+                (collatPremium / 1e14) // collat ratio is going to be *1e14, so make sure that it will not overflow
+            );
+            emit LogUint256(
+                "collateral ratio clamped to collateralization premium:",
+                bounds.collRatio
+            );
+        } else {
+            bounds.collRatio = clampBetween(
+                collRatio,
+                0,
+                lendtroller.MAX_COLLATERALIZATION_RATIO() / 1e14
+            );
+            emit LogUint256(
+                "collateral ratio clamped to max collateralization ratio:",
+                bounds.collRatio
+            );
+        }
+    }
 }
