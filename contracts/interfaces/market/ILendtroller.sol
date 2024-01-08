@@ -94,4 +94,6 @@ interface ILendtroller {
     function solvencyOf(
         address account
     ) external view returns (uint256, uint256);
+
+    function tokensListed() external view returns (address[] memory);
 }

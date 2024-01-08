@@ -14,7 +14,7 @@ struct AccountSnapshot {
 interface IMToken {
     function underlying() external view returns (address);
 
-    /// @notice Returns whether the market token is a collateral token
+    /// @notice Returns whether the market token is a collateral token.
     function isCToken() external view returns (bool);
 
     function accrueInterest() external;
@@ -41,23 +41,26 @@ interface IMToken {
         uint256 shares
     ) external;
 
-    /// @notice Get a snapshot of the account's balances, and the cached exchange rate
+    /// @notice Get a snapshot of the account's balances, 
+    ///         and the cached exchange rate.
     function getSnapshot(
         address account
     ) external view returns (uint256, uint256, uint256);
 
-    /// @notice Get a snapshot of the account's balances, and the cached exchange rate
+    /// @notice Get a snapshot of the account's balances, 
+    ///         and the cached exchange rate.
     function getSnapshotPacked(
         address account
     ) external view returns (AccountSnapshot memory);
 
-    /// @notice Returns the total amount of MToken
+    /// @notice Returns the total amount of MToken.
     function totalSupply() external view returns (uint256);
 
-    /// @notice Returns total amount of outstanding borrows of the underlying in this market
+    /// @notice Returns total amount of outstanding borrows of the
+    ///         underlying in this market.
     function totalBorrows() external view returns (uint256);
 
-    /// @notice Return the borrow balance of account based on stored data
+    /// @notice Return the borrow balance of account based on stored data.
     function debtBalanceCached(
         address account
     ) external view returns (uint256);
