@@ -786,10 +786,11 @@ contract Lendtroller is LiquidityManager, ERC165 {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
-        // Validate collateral requirement is larger
-        // than the liquidation incentive. We cannot give more incentives
-        // than are available.
-        if (liqIncSoft + MIN_EXCESS_COLLATERAL_REQUIREMENT > collReqHard) {
+        // Validate hard liquidation collateral requirement is larger
+        // than the hard liquidation incentive. We cannot give more incentives
+        // than are available. We do not need to check soft liquidation as the
+        // restrictions are thinner than this case.
+        if (liqIncHard + MIN_EXCESS_COLLATERAL_REQUIREMENT > collReqHard) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
