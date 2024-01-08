@@ -6,6 +6,7 @@ import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { MockToken } from "contracts/mocks/MockToken.sol";
 import { IMToken } from "contracts/market/lendtroller/LiquidityManager.sol";
+import { WAD } from "contracts/libraries/Constants.sol";
 
 contract FuzzLendtroller is StatefulBaseMarket {
     MockDataFeed public mockUsdcFeed;
@@ -220,8 +221,161 @@ contract FuzzLendtroller is StatefulBaseMarket {
         lastRoundUpdate = block.timestamp;
     }
 
+    struct TokenCollateralBounds {
+        uint256 collRatio;
+        uint256 collReqSoft;
+        uint256 collReqHard;
+        uint256 liqIncSoft;
+        uint256 liqIncHard;
+        uint256 liqFee;
+        uint256 baseCFactor;
+    }
+
+    function get_safe_update_collateral_bounds(
+        uint256 collRatio,
+        uint256 collReqSoft,
+        uint256 collReqHard,
+        uint256 liqIncSoft,
+        uint256 liqIncHard,
+        uint256 liqFee,
+        uint256 baseCFactor
+    ) private returns (TokenCollateralBounds memory bounds) {
+        bounds.collRatio = clampBetween(
+            collRatio,
+            0,
+            lendtroller.MAX_COLLATERALIZATION_RATIO() / 1e14
+            // uint256(
+            //     (WAD * WAD) /
+            //         (WAD + lendtroller.MAX_COLLATERALIZATION_RATIO() / 1e14)
+            // )
+        );
+        bounds.baseCFactor = clampBetween(baseCFactor, 1, 1e18 / 1e14);
+        emit LogUint256("base c factor clamped", bounds.baseCFactor);
+
+        // liquidationTotal - liqIncSoft+liqFee never less than min; max liquidation Fee + max liq fee
+        // soft liqA; hard coll req b; ensure 1.5%∆ is available
+
+        // "B" is the hard liqudation; "A" is soft liquidation
+        // liquidity incentive soft -> hard goes up
+        uint256 liquidationTotal = clampBetween(
+            liqIncSoft,
+            lendtroller.MIN_LIQUIDATION_INCENTIVE() / 1e14,
+            (lendtroller.MAX_LIQUIDATION_FEE() / 1e14) +
+                (lendtroller.MAX_LIQUIDATION_INCENTIVE() / 1e14) -
+                1
+        );
+        emit LogUint256("liquidation total clamped", liquidationTotal);
+        bounds.liqFee = clampBetween(
+            liqFee,
+            0,
+            lendtroller.MAX_LIQUIDATION_FEE() / 1e14
+        );
+        emit LogUint256("liq fee clamped:", bounds.liqFee);
+        bounds.liqIncSoft = clampBetween(
+            liqIncSoft,
+            0,
+            liquidationTotal - bounds.liqFee
+        ); // can be clamped
+        emit LogUint256("liqIncSoft clamped", bounds.liqIncSoft);
+
+        // collReq A > collReqHard
+        // collateral requirement soft -> hard goes down
+        bounds.collReqHard = clampBetween(
+            collReqHard,
+            0,
+            lendtroller.MAX_COLLATERAL_REQUIREMENT() / 1e14 - 1
+        );
+        emit LogUint256("colLReqHard clamped:", bounds.collReqHard);
+
+        bounds.collReqSoft = clampBetween(
+            collReqSoft,
+            bounds.collReqHard + 1,
+            lendtroller.MAX_COLLATERAL_REQUIREMENT() / 1e14
+        ); // theoretical max, may need to adjust for rounding
+        emit LogUint256("colLReqSoft clamped:", bounds.collReqSoft);
+
+        bounds.liqIncHard = clampBetween(
+            liqIncHard,
+            bounds.liqIncSoft, // liqIncHard can be equal
+            lendtroller.MAX_LIQUIDATION_INCENTIVE() / 1e14
+        );
+        emit LogUint256("liqincHard clamped:", bounds.liqIncHard);
+    }
+
     // create a version to account for stale data
     function setCTokenCollateralCaps_should_succeed(
+        address mtoken,
+        uint256 collRatio,
+        uint256 collReqSoft,
+        uint256 collReqHard,
+        uint256 liqIncSoft,
+        uint256 liqIncHard,
+        uint256 liqFee,
+        uint256 baseCFactor,
+        uint256 cap
+    ) public {
+        if (lastRoundUpdate > block.timestamp) {
+            lastRoundUpdate = block.timestamp;
+        }
+        require(block.timestamp - lastRoundUpdate <= 24 hours);
+        require(feedsSetup);
+        require(centralRegistry.hasDaoPermissions(address(this)));
+        cap = clampBetween(cap, 1, type(uint256).max);
+        // require the token is not already listed into the lendtroller
+        if (!lendtroller.isListed(mtoken)) {
+            list_token_should_succeed(mtoken);
+        }
+        require(mtoken == address(cDAI) || mtoken == address(cUSDC));
+
+        address[] memory tokens = new address[](1);
+        tokens[0] = mtoken;
+        uint256[] memory caps = new uint256[](1);
+        caps[0] = cap;
+
+        TokenCollateralBounds
+            memory bounds = get_safe_update_collateral_bounds(
+                collRatio,
+                collReqSoft,
+                collReqHard,
+                liqIncSoft,
+                liqIncHard,
+                liqFee,
+                baseCFactor
+            );
+        // adjust the following to acount for dynamic numbers here instead
+        try
+            lendtroller.updateCollateralToken(
+                IMToken(address(mtoken)),
+                bounds.collRatio,
+                bounds.collReqSoft,
+                bounds.collReqHard,
+                bounds.liqIncSoft,
+                bounds.liqIncHard,
+                bounds.liqFee,
+                bounds.baseCFactor
+            )
+        {} catch {
+            assertWithMsg(
+                false,
+                "LENDTROLLER - updateCollateralToken should succeed"
+            );
+        }
+
+        try lendtroller.setCTokenCollateralCaps(tokens, caps) {
+            assertGt(
+                lendtroller.collateralCaps(mtoken),
+                0,
+                "LENDTROLLER - collateral caps for token should be >0"
+            );
+        } catch {
+            assertWithMsg(
+                false,
+                "LENDTROLLER - expected setCTokenCollateralCaps to succeed"
+            );
+        }
+    }
+
+    function setCTokenCollateralCaps_default_data(
         address mtoken,
         uint256 cap
     ) public {
@@ -247,13 +401,13 @@ contract FuzzLendtroller is StatefulBaseMarket {
         try
             lendtroller.updateCollateralToken(
                 IMToken(address(mtoken)),
-                7000,
-                3000,
-                3000,
-                2000,
-                2000,
-                100,
-                1000
+                7000, // coll ratio
+                3000, // collateral requirement soft
+                3000, //collateral requirement hard
+                2000, //liquidity incentive soft
+                2000, //liquidity incentive hard
+                100, //liquidity fee
+                1000 //base c factor
             )
         {} catch {
             assertWithMsg(
@@ -261,7 +415,6 @@ contract FuzzLendtroller is StatefulBaseMarket {
                 "LENDTROLLER - updateCollateralToken should succeed"
             );
         }
-
         try lendtroller.setCTokenCollateralCaps(tokens, caps) {
             assertGt(
                 lendtroller.collateralCaps(mtoken),
@@ -292,9 +445,7 @@ contract FuzzLendtroller is StatefulBaseMarket {
         if (mtokenBalance == 0) {
             c_token_deposit(mtoken, tokens);
         }
-        if (lendtroller.collateralCaps(mtoken) == 0) {
-            setCTokenCollateralCaps_should_succeed(mtoken, tokens);
-        }
+        require(lendtroller.collateralCaps(mtoken) > 0);
 
         uint256 oldCollateral;
         try lendtroller.statusOf(address(this)) returns (
@@ -478,7 +629,7 @@ contract FuzzLendtroller is StatefulBaseMarket {
         } catch {}
     }
 
-    function canRedeemWithCollateralRemoval_should_succeed(
+    function canRedeemWithCollateralRemoval_should_fail(
         address account,
         address mToken,
         uint256 balance,
@@ -493,7 +644,12 @@ contract FuzzLendtroller is StatefulBaseMarket {
                 amount,
                 forceRedeemCollateral
             )
-        {} catch {}
+        {
+            assertWithMsg(
+                false,
+                "LENDTROLLER - canRedeemWithCollateralRemoval should only be callable by mtoken"
+            );
+        } catch {}
     }
 
     function canBorrow_should_succeed(

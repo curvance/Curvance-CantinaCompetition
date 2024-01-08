@@ -20,18 +20,18 @@ contract Lendtroller is LiquidityManager, ERC165 {
     IGaugePool public immutable gaugePool;
 
     /// @notice Maximum collateral requirement to avoid liquidation. 40%
-    uint256 internal constant _MAX_COLLATERAL_REQUIREMENT = 0.4e18;
+    uint256 public constant MAX_COLLATERAL_REQUIREMENT = 0.4e18;
     /// @notice Maximum collateralization ratio. 91%
-    uint256 internal constant _MAX_COLLATERALIZATION_RATIO = 0.91e18;
+    uint256 public constant MAX_COLLATERALIZATION_RATIO = 0.91e18;
     /// @notice Minimum hold time to prevent oracle price attacks.
-    uint256 internal constant _MIN_HOLD_PERIOD = 20 minutes;
+    uint256 public constant MIN_HOLD_PERIOD = 20 minutes;
     /// @notice The maximum liquidation incentive. 30%
-    uint256 internal constant _MAX_LIQUIDATION_INCENTIVE = .3e18;
+    uint256 public constant MAX_LIQUIDATION_INCENTIVE = .3e18;
     /// @notice The minimum liquidation incentive. 1%
-    uint256 internal constant _MIN_LIQUIDATION_INCENTIVE = .01e18;
+    uint256 public constant MIN_LIQUIDATION_INCENTIVE = .01e18;
     /// @notice The maximum liquidation incentive. 5%
-    uint256 internal constant _MAX_LIQUIDATION_FEE = .05e18;
-    
+    uint256 public constant MAX_LIQUIDATION_FEE = .05e18;
+
     /// @dev `bytes4(keccak256(bytes("Lendtroller__InvalidParameter()")))`
     uint256 internal constant _INVALID_PARAMETER_SELECTOR = 0x31765827;
     /// @dev `bytes4(keccak256(bytes("Lendtroller__Unauthorized()")))`
@@ -461,7 +461,7 @@ contract Lendtroller is LiquidityManager, ERC165 {
         // as well as short term price manipulations if the dynamic dual oracle
         // fails to protect the market somehow
         if (
-            accountAssets[account].cooldownTimestamp + _MIN_HOLD_PERIOD >
+            accountAssets[account].cooldownTimestamp + MIN_HOLD_PERIOD >
             block.timestamp
         ) {
             revert Lendtroller__MinimumHoldPeriod();
@@ -592,7 +592,7 @@ contract Lendtroller is LiquidityManager, ERC165 {
         uint256 numAssets = accountAssets.length;
         IMToken mToken;
 
-        // Update pending interest in markets 
+        // Update pending interest in markets
         for (uint256 i = 0; i < numAssets; ) {
             // Cache `account` mToken then increment i
             mToken = accountAssets[i++];
@@ -614,7 +614,7 @@ contract Lendtroller is LiquidityManager, ERC165 {
         }
 
         uint256 repayRatio = (debtToPay * WAD) / totalDebt;
-        
+
         // Repay `account`'s debt and recognize bad debt
         for (uint256 i = 0; i < numAssets; ) {
             // Cache `account` mToken then increment i
@@ -743,7 +743,7 @@ contract Lendtroller is LiquidityManager, ERC165 {
         baseCFactor = _bpToWad(baseCFactor);
 
         // Validate collateralization ratio is not above the maximum allowed
-        if (collRatio > _MAX_COLLATERALIZATION_RATIO) {
+        if (collRatio > MAX_COLLATERALIZATION_RATIO) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
@@ -753,7 +753,7 @@ contract Lendtroller is LiquidityManager, ERC165 {
         }
 
         // Validate collateral requirement is not above the maximum allowed
-        if (collReqA > _MAX_COLLATERAL_REQUIREMENT) {
+        if (collReqA > MAX_COLLATERAL_REQUIREMENT) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
@@ -768,7 +768,7 @@ contract Lendtroller is LiquidityManager, ERC165 {
         }
 
         // Validate liquidation incentive is not above the maximum allowed
-        if (liqIncA > _MAX_LIQUIDATION_INCENTIVE) {
+        if (liqIncB > MAX_LIQUIDATION_INCENTIVE) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
@@ -778,7 +778,7 @@ contract Lendtroller is LiquidityManager, ERC165 {
         }
 
         // Validate protocol liquidation fee is not above the maximum allowed
-        if (liqFee > _MAX_LIQUIDATION_FEE) {
+        if (liqFee > MAX_LIQUIDATION_FEE) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
@@ -789,7 +789,7 @@ contract Lendtroller is LiquidityManager, ERC165 {
 
         // We need to make sure that the liquidation incentive is sufficient
         // for both the protocol and the users
-        if ((liqIncA - liqFee) < _MIN_LIQUIDATION_INCENTIVE) {
+        if ((liqIncA - liqFee) < MIN_LIQUIDATION_INCENTIVE) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
@@ -1137,7 +1137,7 @@ contract Lendtroller is LiquidityManager, ERC165 {
         // as well as short term price manipulations if the dynamic dual oracle
         // fails to protect the market somehow
         if (
-            accountAssets[account].cooldownTimestamp + _MIN_HOLD_PERIOD >
+            accountAssets[account].cooldownTimestamp + MIN_HOLD_PERIOD >
             block.timestamp
         ) {
             revert Lendtroller__MinimumHoldPeriod();
