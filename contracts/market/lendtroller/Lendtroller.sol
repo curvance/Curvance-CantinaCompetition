@@ -19,22 +19,22 @@ contract Lendtroller is LiquidityManager, ERC165 {
     /// @notice gaugePool contract address.
     IGaugePool public immutable gaugePool;
 
-    /// @notice Maximum collateral requirement to avoid liquidation. 40%
+    /// @notice Maximum collateral requirement to avoid liquidation. 40%.
     uint256 public constant MAX_COLLATERAL_REQUIREMENT = 0.4e18;
     /// @notice Minimum excess collateral requirement 
-    ///         on top of liquidation incentive. 0.5%
-    uint256 public constant MIN_EXCESS_COLLATERAL_REQUIREMENT = 0.005e18;
-    /// @notice Maximum collateralization ratio. 91%
+    ///         on top of liquidation incentive. 1.5%.
+    uint256 public constant MIN_EXCESS_COLLATERAL_REQUIREMENT = 0.015e18;
+    /// @notice Maximum collateralization ratio. 91%.
     uint256 public constant MAX_COLLATERALIZATION_RATIO = 0.91e18;
-    /// @notice The maximum liquidation incentive. 30%
+    /// @notice The maximum liquidation incentive. 30%.
     uint256 public constant MAX_LIQUIDATION_INCENTIVE = .3e18;
-    /// @notice The minimum liquidation incentive. 1%
+    /// @notice The minimum liquidation incentive. 1%.
     uint256 public constant MIN_LIQUIDATION_INCENTIVE = .01e18;
-    /// @notice The maximum liquidation incentive. 5%
+    /// @notice The maximum liquidation incentive. 5%.
     uint256 public constant MAX_LIQUIDATION_FEE = .05e18;
-    /// @notice The maximum base cFactor. 50%
+    /// @notice The maximum base cFactor. 50%.
     uint256 public constant MAX_BASE_CFACTOR = .5e18;
-    /// @notice The minimum base cFactor. 10%
+    /// @notice The minimum base cFactor. 10%.
     uint256 public constant MIN_BASE_CFACTOR = .1e18;
     /// @notice Minimum hold time to prevent oracle price attacks.
     uint256 internal constant _MIN_HOLD_PERIOD = 20 minutes;
