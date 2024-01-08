@@ -142,7 +142,7 @@ contract FuzzLendtroller is StatefulBaseMarket {
         try lendtroller.canRedeem(mToken, account, amount) {} catch {}
     }
 
-    function canRedeemWithCollateralRemoval_should_succeed(
+    function canRedeemWithCollateralRemoval_should_fail(
         address account,
         address mToken,
         uint256 balance,
@@ -157,7 +157,12 @@ contract FuzzLendtroller is StatefulBaseMarket {
                 amount,
                 forceRedeemCollateral
             )
-        {} catch {}
+        {
+            assertWithMsg(
+                false,
+                "LENDTROLLER - canRedeemWithCollateralRemoval should only be callable by mtoken"
+            );
+        } catch {}
     }
 
     function canBorrowWithNotify_should_succeed(
