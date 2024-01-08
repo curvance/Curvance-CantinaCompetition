@@ -106,6 +106,9 @@ interface ICentralRegistry {
     /// @notice Returns how many other chains are supported
     function supportedChains() external view returns (uint256);
 
+    /// @notice Address array for all Curvance markets on this chain.
+    function supportedMarkets() external view returns (address[] memory);
+
     /// @notice Returns whether a particular GETH chainId is supported
     /// ChainId => messagingHub address, 2 = supported; 1 = unsupported
     function supportedChainData(
