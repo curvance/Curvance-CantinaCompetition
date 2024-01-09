@@ -4,7 +4,9 @@ pragma solidity ^0.8.17;
 import "forge-std/Script.sol";
 
 import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
+
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+
 import { DeployConfiguration } from "../utils/DeployConfiguration.sol";
 
 contract PriceRouterDeployer is DeployConfiguration {

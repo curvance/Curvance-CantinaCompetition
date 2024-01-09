@@ -2,7 +2,7 @@
 pragma solidity ^0.8.17;
 
 import { TestBaseMarket } from "tests/market/TestBaseMarket.sol";
-import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
+import { SafeTransferLib } from "contracts/libraries/external/SafeTransferLib.sol";
 import { MockDataFeed } from "contracts/mocks/MockDataFeed.sol";
 
 contract TestBaseLendtroller is TestBaseMarket {

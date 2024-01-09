@@ -4,7 +4,9 @@ pragma solidity ^0.8.17;
 import "forge-std/Script.sol";
 
 import { FeeAccumulator } from "contracts/architecture/FeeAccumulator.sol";
+
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+
 import { DeployConfiguration } from "../utils/DeployConfiguration.sol";
 
 contract FeeAccumulatorDeployer is DeployConfiguration {

@@ -3,8 +3,9 @@ pragma solidity ^0.8.17;
 
 import "forge-std/console.sol";
 
-import { DeployConfiguration } from "../utils/DeployConfiguration.sol";
 import { MockV3Aggregator } from "contracts/mocks/MockV3Aggregator.sol";
+
+import { DeployConfiguration } from "../utils/DeployConfiguration.sol";
 
 contract DeployMockV3Aggregator is DeployConfiguration {
     function run(

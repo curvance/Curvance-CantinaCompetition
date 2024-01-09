@@ -3,9 +3,11 @@ pragma solidity ^0.8.17;
 
 import "forge-std/Script.sol";
 
-import { DeployConfiguration } from "./utils/DeployConfiguration.sol";
 import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
+
 import { IMToken } from "contracts/interfaces/market/IMToken.sol";
+
+import { DeployConfiguration } from "./utils/DeployConfiguration.sol";
 
 contract UpdateCTokenConfig is Script, DeployConfiguration {
     using stdJson for string;

@@ -3,8 +3,9 @@ pragma solidity ^0.8.17;
 
 import "forge-std/console.sol";
 
-import { DeployConfiguration } from "../utils/DeployConfiguration.sol";
 import { MockToken } from "contracts/mocks/MockToken.sol";
+
+import { DeployConfiguration } from "../utils/DeployConfiguration.sol";
 
 contract DeployMockToken is DeployConfiguration {
     function run(

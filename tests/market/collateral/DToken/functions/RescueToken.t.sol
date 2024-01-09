@@ -3,7 +3,7 @@ pragma solidity ^0.8.17;
 
 import { TestBaseDToken } from "../TestBaseDToken.sol";
 import { DToken } from "contracts/market/collateral/DToken.sol";
-import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
+import { SafeTransferLib } from "contracts/libraries/external/SafeTransferLib.sol";
 
 contract DTokenRescueTokenTest is TestBaseDToken {
     function setUp() public override {

@@ -4,6 +4,7 @@ pragma solidity ^0.8.17;
 import "forge-std/Script.sol";
 
 import { CentralRegistry } from "contracts/architecture/CentralRegistry.sol";
+
 import { DeployConfiguration } from "../utils/DeployConfiguration.sol";
 
 contract CentralRegistryDeployer is DeployConfiguration {

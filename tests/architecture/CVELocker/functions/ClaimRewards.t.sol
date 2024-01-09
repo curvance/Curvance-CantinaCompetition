@@ -2,10 +2,12 @@
 pragma solidity 0.8.17;
 
 import { TestBaseCVELocker } from "../TestBaseCVELocker.sol";
+
 import { CVELocker } from "contracts/architecture/CVELocker.sol";
+import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
+
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { RewardsData } from "contracts/interfaces/ICVELocker.sol";
-import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { IUniswapV2Router } from "contracts/interfaces/external/uniswap/IUniswapV2Router.sol";
 
 contract ClaimRewardsTest is TestBaseCVELocker {

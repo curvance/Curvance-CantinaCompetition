@@ -3,11 +3,12 @@ pragma solidity ^0.8.17;
 
 import "forge-std/Script.sol";
 
+import { AuraCToken } from "contracts/market/collateral/AuraCToken.sol";
 import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
 import { ChainlinkAdaptor } from "contracts/oracles/adaptors/chainlink/ChainlinkAdaptor.sol";
 import { BalancerStablePoolAdaptor } from "contracts/oracles/adaptors/balancer/BalancerStablePoolAdaptor.sol";
 import { IVault } from "contracts/oracles/adaptors/balancer/BalancerBaseAdaptor.sol";
-import { AuraCToken } from "contracts/market/collateral/AuraCToken.sol";
+
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 

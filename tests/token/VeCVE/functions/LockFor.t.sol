@@ -2,7 +2,7 @@
 pragma solidity ^0.8.17;
 
 import { TestBaseVeCVE } from "../TestBaseVeCVE.sol";
-import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
+import { SafeTransferLib } from "contracts/libraries/external/SafeTransferLib.sol";
 import { VeCVE } from "contracts/token/VeCVE.sol";
 import { WAD } from "contracts/libraries/Constants.sol";
 
