@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.8.17;
 
-import { ERC20 } from "contracts/libraries/ERC20.sol";
+import { ERC20 } from "contracts/libraries/external/ERC20.sol";
 
 // mock CVE for testing
 contract MockCve is ERC20 {
