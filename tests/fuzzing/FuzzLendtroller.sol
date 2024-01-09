@@ -13,15 +13,9 @@ contract FuzzLendtroller is StatefulBaseMarket {
     MockDataFeed public mockDaiFeed;
     bool feedsSetup;
     uint256 lastRoundUpdate;
-    // mapping (mtoken address => State enum)
-    mapping(address => State) marketTokenState;
-
-    enum State {
-        TOKEN_UNLISTED,
-        TOKEN_LISTED,
-        C_TOKEN_DEPOSITED,
-        ADDED_COLLATERAL_CAPS
-    }
+    mapping(address => bool) collateralCapsUpdated;
+    mapping(address => bool) postedCollateral;
+    mapping(address => uint256) postedCollateralAt;
 
     constructor() {
         SafeTransferLib.safeApprove(
@@ -46,6 +40,7 @@ contract FuzzLendtroller is StatefulBaseMarket {
         );
     }
 
+    // Test Property: calling listToken for a token should succeed
     function list_token_should_succeed(address mtoken) public {
         uint256 amount = 42069;
         // require the token is not already listed into the lendtroller
@@ -63,9 +58,9 @@ contract FuzzLendtroller is StatefulBaseMarket {
         } catch {
             assertWithMsg(false, "LENDTROLLER - failed to list token");
         }
-        marketTokenState[mtoken] = State.TOKEN_LISTED;
     }
 
+    // Test Property: calling listToken() for a token that already exists should fail
     function list_token_should_fail_if_already_listed(address mtoken) public {
         uint256 amount = 42069;
         // require the token is not already listed into the lendtroller
@@ -137,6 +132,7 @@ contract FuzzLendtroller is StatefulBaseMarket {
     //     }
     // }
 
+    // Test Property: After depositing, the ctoken balance should increase
     function c_token_deposit(address mtoken, uint256 amount) public {
         amount = clampBetween(amount, 1, type(uint16).max);
         // require gauge pool has been started at a previous timestamp
@@ -193,7 +189,6 @@ contract FuzzLendtroller is StatefulBaseMarket {
                 "LENDTROLLER - expected mtoken.deposit() to be successful"
             );
         }
-        marketTokenState[mtoken] = State.C_TOKEN_DEPOSITED;
     }
 
     function setUpFeeds() public {
@@ -314,9 +309,10 @@ contract FuzzLendtroller is StatefulBaseMarket {
                 "LENDTROLLER - expected setCTokenCollateralCaps to succeed"
             );
         }
-        marketTokenState[mtoken] = State.ADDED_COLLATERAL_CAPS;
+        collateralCapsUpdated[mtoken] = true;
     }
 
+    // Test Property: updateCollateralToken should revert if the price feed is out of date
     function updateCollateralToken_should_revert_if_price_feed_out_of_date(
         address mtoken,
         uint256 collRatio,
@@ -335,7 +331,6 @@ contract FuzzLendtroller is StatefulBaseMarket {
         require(feedsSetup);
         require(centralRegistry.hasDaoPermissions(address(this)));
         cap = clampBetween(cap, 1, type(uint256).max);
-        // require the token is not already listed into the lendtroller
         if (!lendtroller.isListed(mtoken)) {
             list_token_should_succeed(mtoken);
         }
@@ -356,7 +351,6 @@ contract FuzzLendtroller is StatefulBaseMarket {
                 liqFee,
                 baseCFactor
             );
-        // adjust the following to acount for dynamic numbers here instead
         try
             lendtroller.updateCollateralToken(
                 IMToken(address(mtoken)),
@@ -376,86 +370,76 @@ contract FuzzLendtroller is StatefulBaseMarket {
         } catch {}
     }
 
+    // Test Property: Ensure account collateral has increased by # of tokens
+    // Test Property: Ensure usre has a valid position after posting
+    // Test Property: Ensure collateralPosted (for mtoken) has increased by # of tokens
     function post_collateral_should_succeed(
         address mtoken,
-        uint256 tokens,
-        uint256 seed
+        uint256 tokens
     ) public {
-        // require gauge pool has been started
-        require(gaugePool.startTime() < block.timestamp);
-        require(feedsSetup);
-        require(mtoken == address(cDAI) || mtoken == address(cUSDC));
-        if (!lendtroller.isListed(mtoken)) {
-            list_token_should_succeed(mtoken);
-        }
-        uint256 mtokenBalance = MockCToken(mtoken).balanceOf(address(this));
+        require(collateralCapsUpdated[mtoken]);
+        require(block.timestamp - lastRoundUpdate > 24 hours);
 
+        uint256 oldCollateralForUser;
+        uint256 oldCollateralPosted;
+        uint256 mtokenBalance;
+        if (IMToken(mtoken).balanceOf(address(this)) == 0) {
+            c_token_deposit(mtoken, tokens * IMToken(mtoken).decimals());
+        }
+        mtokenBalance = IMToken(mtoken).balanceOf(address(this));
         require(mtokenBalance > 0);
-        require(lendtroller.collateralCaps(mtoken) > 0);
 
-        uint256 oldCollateral;
-        try lendtroller.statusOf(address(this)) returns (
-            uint256 accountCollat,
-            uint256 accountDebt,
-            uint256 debt
-        ) {
-            oldCollateral = accountCollat;
-        } catch {
-            oldCollateral = 0;
-        }
-
-        uint256 min;
-        uint256 max;
-        if (oldCollateral > mtokenBalance) {
-            min = mtokenBalance;
-            max = oldCollateral;
-        } else {
-            min = oldCollateral;
-            max = mtokenBalance;
-        }
-        if (min == 0) {
-            min = 1;
-        }
-        tokens = clampBetween(tokens, min, max);
-        uint256 oldCollateralPosted = lendtroller.collateralPosted(mtoken);
-
-        (bool success, bytes memory rd) = address(lendtroller).call(
-            abi.encodeWithSignature(
-                "postCollateral(address,address,uint256)",
-                address(this),
-                mtoken,
-                tokens
-            )
-        );
-        if (!success) {
-            assertWithMsg(
-                false,
-                "LENDTROLLER - expected postCollateral to pass with preconditions"
-            );
-        }
-        // ensure account collateral has incresaed by # of tokens
-        uint256 newCollateral = lendtroller.collateralPostedFor(
+        oldCollateralForUser = lendtroller.collateralPostedFor(
             mtoken,
             address(this)
         );
 
-        assertEq(
-            newCollateral,
-            oldCollateral + tokens,
-            "LENDTROLLER - new collateral must collateral+tokens"
-        );
-        // ensure that a user has a position after posting
-        assertWithMsg(
-            lendtroller.hasPosition(mtoken, address(this)),
-            "LENDTROLLER - addr(this) must have position after posting"
-        );
-        // ensure collateralPosted increases by tokens
-        uint256 newCollateralPosted = lendtroller.collateralPosted(mtoken);
-        assertEq(
-            newCollateralPosted,
-            oldCollateralPosted + tokens,
-            "LENDTROLLER - global collateral posted should increase"
-        );
+        tokens = clampBetween(tokens, 1, mtokenBalance);
+        emit LogUint256("tokens:", tokens);
+
+        oldCollateralPosted = lendtroller.collateralPosted(mtoken);
+
+        {
+            (bool success, bytes memory rd) = address(lendtroller).call(
+                abi.encodeWithSignature(
+                    "postCollateral(address,address,uint256)",
+                    address(this),
+                    mtoken,
+                    tokens
+                )
+            );
+            if (!success) {
+                assertWithMsg(
+                    false,
+                    "LENDTROLLER - expected postCollateral to pass with preconditions"
+                );
+            }
+            // ensure account collateral has increased by # of tokens
+            uint256 newCollateral = lendtroller.collateralPostedFor(
+                mtoken,
+                address(this)
+            );
+
+            assertEq(
+                newCollateral,
+                oldCollateralForUser + tokens,
+                "LENDTROLLER - new collateral must collateral+tokens"
+            );
+            // ensure that a user has a position after posting
+            assertWithMsg(
+                lendtroller.hasPosition(mtoken, address(this)),
+                "LENDTROLLER - addr(this) must have position after posting"
+            );
+            // ensure collateralPosted increases by tokens
+            uint256 newCollateralPosted = lendtroller.collateralPosted(mtoken);
+            assertEq(
+                newCollateralPosted,
+                oldCollateralPosted + tokens,
+                "LENDTROLLER - global collateral posted should increase"
+            );
+        }
+        postedCollateral[mtoken] = true;
+        postedCollateralAt[mtoken] = block.timestamp;
     }
 
     function remove_collateral_should_succeed(
@@ -463,17 +447,32 @@ contract FuzzLendtroller is StatefulBaseMarket {
         uint256 tokens,
         bool closePositionIfPossible
     ) public {
-        require(lendtroller.hasPosition(mtoken, address(this)));
+        require(postedCollateral[mtoken]);
+        require(
+            block.timestamp >
+                postedCollateralAt[mtoken] + lendtroller.MIN_HOLD_PERIOD()
+        );
         require(mtoken == address(cDAI) || mtoken == address(cUSDC));
-        (uint256 oldCollateral, , ) = lendtroller.statusOf(address(this));
+        uint256 oldCollateral = lendtroller.collateralPostedFor(
+            mtoken,
+            address(this)
+        );
         tokens = clampBetween(tokens, oldCollateral, type(uint64).max);
+        uint256 oldCollateralPosted = lendtroller.collateralPosted(mtoken);
         try
             lendtroller.removeCollateral(
                 mtoken,
                 tokens,
                 closePositionIfPossible
             )
-        {} catch {}
+        {
+            uint256 newCollateralPosted = lendtroller.collateralPosted(mtoken);
+            assertEq(
+                newCollateralPosted,
+                oldCollateralPosted - tokens,
+                "LENDTROLLER - global collateral posted should increase"
+            );
+        } catch {}
     }
 
     function removeCollateralIfNecessary_should_fail_with_wrong_caller(

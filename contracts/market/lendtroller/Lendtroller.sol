@@ -149,6 +149,16 @@ contract Lendtroller is LiquidityManager, ERC165 {
         return tokenData[mToken].accountData[account].activePosition == 2;
     }
 
+    /// @notice Returns if an account has an active position in `mToken`
+    /// @param mToken market token address
+    /// @param account account address
+    function collateralPostedFor(
+        address mToken,
+        address account
+    ) external view returns (uint256) {
+        return tokenData[mToken].accountData[account].collateralPosted;
+    }
+
     /// ACCOUNT LIQUIDITY FUNCTIONS ///
 
     /// @notice Determine `account`'s current status between collateral,
@@ -783,7 +793,7 @@ contract Lendtroller is LiquidityManager, ERC165 {
         }
 
         // Validate collateral requirement is larger than the liquidation incentive
-        if (liqIncA > collReqB) {
+        if (liqIncB > collReqB) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
