@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { IChainlink } from "contracts/interfaces/external/chainlink/IChainlink.sol";
 import { WAD } from "contracts/libraries/Constants.sol";
+
+import { IChainlink } from "contracts/interfaces/external/chainlink/IChainlink.sol";
 
 abstract contract BaseWrappedAggregator is IChainlink {
 

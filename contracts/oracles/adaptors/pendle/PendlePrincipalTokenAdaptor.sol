@@ -3,7 +3,7 @@ pragma solidity ^0.8.17;
 
 import { BaseOracleAdaptor } from "contracts/oracles/adaptors/BaseOracleAdaptor.sol";
 
-import { PendlePtOracleLib } from "contracts/libraries/pendle/PendlePtOracleLib.sol";
+import { PendlePtOracleLib } from "contracts/libraries/external/pendle/PendlePtOracleLib.sol";
 import { WAD } from "contracts/libraries/Constants.sol";
 
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";

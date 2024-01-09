@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
+import { WAD, DENOMINATOR, NO_ERROR, CAUTION, BAD_SOURCE } from "contracts/libraries/Constants.sol";
+import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.sol";
 import { IChainlink } from "contracts/interfaces/external/chainlink/IChainlink.sol";
 import { IOracleAdaptor, PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
-import { WAD, DENOMINATOR, NO_ERROR, CAUTION, BAD_SOURCE } from "contracts/libraries/Constants.sol";
 
 /// @title Curvance Dual Oracle Price Router
 /// @notice Provides a universal interface allowing Curvance contracts

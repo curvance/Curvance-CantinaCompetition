@@ -2,7 +2,7 @@
 pragma solidity ^0.8.17;
 
 import { BaseRedstoneCoreAdaptor } from "contracts/oracles/adaptors/redstone/BaseRedstoneCoreAdaptor.sol";
-import { PrimaryProdDataServiceConsumerBase } from "contracts/libraries/redstone/PrimaryProdDataServiceConsumerBase.sol";
+import { PrimaryProdDataServiceConsumerBase } from "contracts/libraries/external/redstone/PrimaryProdDataServiceConsumerBase.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 

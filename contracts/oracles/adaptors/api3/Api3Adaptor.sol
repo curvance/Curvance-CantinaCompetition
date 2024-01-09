@@ -3,12 +3,12 @@ pragma solidity ^0.8.17;
 
 import { BaseOracleAdaptor } from "contracts/oracles/adaptors/BaseOracleAdaptor.sol";
 import { Bytes32Helper } from "contracts/libraries/Bytes32Helper.sol";
+import { WAD } from "contracts/libraries/Constants.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 import { PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
 import { IProxy } from "contracts/interfaces/external/api3/IProxy.sol";
-import { WAD } from "contracts/libraries/Constants.sol";
 
 contract Api3Adaptor is BaseOracleAdaptor {
     /// TYPES ///

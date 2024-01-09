@@ -2,12 +2,12 @@
 pragma solidity ^0.8.17;
 
 import { BaseOracleAdaptor } from "contracts/oracles/adaptors/BaseOracleAdaptor.sol";
+import { WAD } from "contracts/libraries/Constants.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 import { PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
 import { IChainlink } from "contracts/interfaces/external/chainlink/IChainlink.sol";
-import { WAD } from "contracts/libraries/Constants.sol";
 
 contract ChainlinkAdaptor is BaseOracleAdaptor {
     /// TYPES ///

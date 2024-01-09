@@ -2,7 +2,7 @@
 pragma solidity ^0.8.17;
 
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import { BaseWrappedAggregator } from "./BaseWrappedAggregator.sol";
+import { BaseWrappedAggregator } from "contracts/oracles/wrappedAggregators/BaseWrappedAggregator.sol";
 import { IPotLike } from "contracts/interfaces/external/maker/IPotLike.sol";
 
 contract SavingsDaiAggregator is BaseWrappedAggregator {

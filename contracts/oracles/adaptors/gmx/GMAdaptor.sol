@@ -2,13 +2,13 @@
 pragma solidity ^0.8.17;
 
 import { BaseOracleAdaptor } from "contracts/oracles/adaptors/BaseOracleAdaptor.sol";
+import { WAD } from "contracts/libraries/Constants.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 import { IReader } from "contracts/interfaces/external/gmx/IReader.sol";
-import { WAD } from "contracts/libraries/Constants.sol";
 
 contract GMAdaptor is BaseOracleAdaptor {
     /// TYPES ///
