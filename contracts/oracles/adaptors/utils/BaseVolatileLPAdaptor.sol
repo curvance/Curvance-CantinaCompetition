@@ -2,7 +2,7 @@
 pragma solidity ^0.8.17;
 
 import { BaseOracleAdaptor } from "contracts/oracles/adaptors/BaseOracleAdaptor.sol";
-import { Math } from "contracts/libraries/external/Math.sol";
+import { FixedPointMathLib } from "contracts/libraries/external/FixedPointMathLib.sol";
 
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
@@ -126,7 +126,7 @@ contract BaseVolatileLPAdaptor is BaseOracleAdaptor {
         reserve1 = (reserve1 * 1e18) / (10 ** data.decimals1);
 
         // sqrt(reserve0 * reserve1).
-        uint256 sqrtReserve = Math.sqrt(reserve0 * reserve1);
+        uint256 sqrtReserve = FixedPointMathLib.sqrt(reserve0 * reserve1);
 
         // sqrt(price0 * price1).
         uint256 price0;
@@ -153,7 +153,7 @@ contract BaseVolatileLPAdaptor is BaseOracleAdaptor {
         }
 
         // price = 2 * sqrt(reserve0 * reserve1) * sqrt(price0 * price1) / totalSupply.
-        uint256 finalPrice = (2 * sqrtReserve * Math.sqrt(price0 * price1)) / totalSupply;
+        uint256 finalPrice = (2 * sqrtReserve * FixedPointMathLib.sqrt(price0 * price1)) / totalSupply;
 
         if (_checkOracleOverflow(finalPrice)) {
             pData.hadError = true;

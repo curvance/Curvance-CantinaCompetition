@@ -9,8 +9,8 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
     event CollateralTokenUpdated(
         IMToken mToken,
         uint256 collRatio,
-        uint256 collReqA,
-        uint256 collReqB,
+        uint256 CollReqSoft,
+        uint256 CollReqHard,
         uint256 liqIncA,
         uint256 liqIncB,
         uint256 liqFee,
@@ -83,14 +83,14 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
         );
     }
 
-    function test_updateCollateralToken_fail_whenCollReqAExceedsMax() public {
-        // when collReqA > _MAX_COLLATERAL_REQUIREMENT
+    function test_updateCollateralToken_fail_whenCollReqSoftExceedsMax() public {
+        // when CollReqSoft > _MAX_COLLATERAL_REQUIREMENT
         lendtroller.listToken(address(cBALRETH));
         vm.expectRevert(Lendtroller.Lendtroller__InvalidParameter.selector);
         lendtroller.updateCollateralToken(
             IMToken(address(cBALRETH)),
             9000,
-            4100, // collReqA
+            23500, // collReqSoft
             300,
             250,
             250,
@@ -102,13 +102,13 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
     function test_updateCollateralToken_fail_whenHardCollReqExceedsSoftCollReq()
         public
     {
-        // when collReqB > collReqA
+        // when CollReqHard > CollReqSoft
         lendtroller.listToken(address(cBALRETH));
         vm.expectRevert(Lendtroller.Lendtroller__InvalidParameter.selector);
         lendtroller.updateCollateralToken(
             IMToken(address(cBALRETH)),
             9000,
-            4000, // collReqA - soft liquidation requirement
+            4000, // CollReqSoft - soft liquidation requirement
             4100,
             250,
             250,
@@ -136,7 +136,7 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
     function test_updateCollateralToken_fail_whenCollRatioExceedsPremium()
         public
     {
-        // when collRatio > (EXP_SCALE * EXP_SCALE) / (EXP_SCALE + collReqA)
+        // when collRatio > (EXP_SCALE * EXP_SCALE) / (EXP_SCALE + CollReqSoft)
         lendtroller.listToken(address(cBALRETH));
         vm.expectRevert(Lendtroller.Lendtroller__InvalidParameter.selector);
         lendtroller.updateCollateralToken(
@@ -154,7 +154,7 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
     function test_updateCollateralToken_fail_whenLiqIncExceedsHardLiquidationRequirement()
         public
     {
-        // when liqInc > collReqB
+        // when liqInc > CollReqHard
         lendtroller.listToken(address(cBALRETH));
         vm.expectRevert(Lendtroller.Lendtroller__InvalidParameter.selector);
         lendtroller.updateCollateralToken(

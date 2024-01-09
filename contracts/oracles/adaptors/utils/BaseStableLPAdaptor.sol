@@ -2,7 +2,7 @@
 pragma solidity ^0.8.17;
 
 import { BaseOracleAdaptor } from "contracts/oracles/adaptors/BaseOracleAdaptor.sol";
-import { Math } from "contracts/libraries/external/Math.sol";
+import { FixedPointMathLib } from "contracts/libraries/external/FixedPointMathLib.sol";
 
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
@@ -171,13 +171,13 @@ contract BaseStableLPAdaptor is BaseOracleAdaptor {
         uint256 totalSupply
     ) internal pure returns (uint256 fairReserve) {
         // constant product = x^3 * y + x * y^3.
-        uint256 sqrtReserve = Math.sqrt(
-            Math.sqrt(reserve0 * reserve1) *
-                Math.sqrt(reserve0 * reserve0 + reserve1 * reserve1)
+        uint256 sqrtReserve = FixedPointMathLib.sqrt(
+            FixedPointMathLib.sqrt(reserve0 * reserve1) *
+                FixedPointMathLib.sqrt(reserve0 * reserve0 + reserve1 * reserve1)
         );
         uint256 ratio = ((1e18) * price0) / price1;
-        uint256 sqrtPrice = Math.sqrt(
-            Math.sqrt((1e18) * ratio) * Math.sqrt(1e36 + ratio * ratio)
+        uint256 sqrtPrice = FixedPointMathLib.sqrt(
+            FixedPointMathLib.sqrt((1e18) * ratio) * FixedPointMathLib.sqrt(1e36 + ratio * ratio)
         );
         return
             ((((1e18) * sqrtReserve) / sqrtPrice) * price0 * 2) / totalSupply;
