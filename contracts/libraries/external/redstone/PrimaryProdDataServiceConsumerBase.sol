@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.4;
 
-import "contracts/libraries/redstone/RedstoneConsumerNumericBase.sol";
+import "contracts/libraries/external/redstone/RedstoneConsumerNumericBase.sol";
 
 contract PrimaryProdDataServiceConsumerBase is RedstoneConsumerNumericBase {
   function getDataServiceId() public view virtual override returns (string memory) {

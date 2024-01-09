@@ -27,12 +27,12 @@ import { IVault } from "contracts/oracles/adaptors/balancer/BalancerBaseAdaptor.
 import { BalancerStablePoolAdaptor } from "contracts/oracles/adaptors/balancer/BalancerStablePoolAdaptor.sol";
 import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
 import { GaugePool } from "contracts/gauge/GaugePool.sol";
-import { ERC20 } from "contracts/libraries/ERC20.sol";
+import { ERC20 } from "contracts/libraries/external/ERC20.sol";
 
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
+import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 
 contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
     address internal _WETH_ADDRESS;

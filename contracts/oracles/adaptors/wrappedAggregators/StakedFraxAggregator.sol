@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import { BaseWrappedAggregator } from "contracts/oracles/wrappedAggregators/BaseWrappedAggregator.sol";
+import { BaseWrappedAggregator } from "contracts/oracles/adaptors/wrappedAggregators/BaseWrappedAggregator.sol";
 
 import { IStakedFrax } from "contracts/interfaces/external/frax/IStakedFrax.sol";
 
@@ -32,6 +31,6 @@ contract StakedFraxAggregator is BaseWrappedAggregator {
     function getWrappedAssetWeight() public view override returns (int256) {
         // Staked Frax contract returns naturally in 1e18 format,
         // so no adjustment needed to return decimals.
-        return SafeCast.toInt256(IStakedFrax(sFrax).pricePerShare());
+        return _toInt256(IStakedFrax(sFrax).pricePerShare());
     }
 }

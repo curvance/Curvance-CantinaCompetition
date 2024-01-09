@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import { BaseWrappedAggregator } from "contracts/oracles/wrappedAggregators/BaseWrappedAggregator.sol";
+import { BaseWrappedAggregator } from "contracts/oracles/adaptors/wrappedAggregators/BaseWrappedAggregator.sol";
 import { IPotLike } from "contracts/interfaces/external/maker/IPotLike.sol";
 
 contract SavingsDaiAggregator is BaseWrappedAggregator {
@@ -31,6 +30,6 @@ contract SavingsDaiAggregator is BaseWrappedAggregator {
     function getWrappedAssetWeight() public view override returns (int256) {
         // We divide by 1e9 since chi returns in 1e27 format,
         // so we need to offset by 1e9 to get to standard 1e18 format.
-        return SafeCast.toInt256(IPotLike(sDai).chi()) / 1e9;
+        return _toInt256(IPotLike(sDai).chi()) / 1e9;
     }
 }

@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import { BaseWrappedAggregator } from "contracts/oracles/wrappedAggregators/BaseWrappedAggregator.sol";
+import { BaseWrappedAggregator } from "contracts/oracles/adaptors/wrappedAggregators/BaseWrappedAggregator.sol";
 
 import { IWstETH } from "contracts/interfaces/external/wsteth/IWstETH.sol";
 
@@ -31,6 +30,6 @@ contract WstETHAggregator is BaseWrappedAggregator {
     ///         and the underlying aggregator, in `WAD`.
     function getWrappedAssetWeight() public view override returns (int256) {
         // get pricing in 1e18 format directly to minimize calculations.
-        return SafeCast.toInt256(IWstETH(wstETH).getStETHByWstETH(1e18));
+        return _toInt256(IWstETH(wstETH).getStETHByWstETH(1e18));
     }
 }

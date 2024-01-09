@@ -5,12 +5,12 @@ import { Zapper } from "contracts/market/zapper/Zapper.sol";
 import { CTokenPrimitive } from "contracts/market/collateral/CTokenPrimitive.sol";
 import { DToken } from "contracts/market/collateral/DToken.sol";
 
+import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { CommonLib } from "contracts/libraries/CommonLib.sol";
 import { CurveLib } from "contracts/libraries/CurveLib.sol";
 import { BalancerLib } from "contracts/libraries/BalancerLib.sol";
 import { VelodromeLib } from "contracts/libraries/VelodromeLib.sol";
 import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
-import { SwapperLib } from "contracts/libraries/external/SwapperLib.sol";
 import { SafeTransferLib } from "contracts/libraries/external/SafeTransferLib.sol";
 import { ReentrancyGuard } from "contracts/libraries/external/ReentrancyGuard.sol";
 

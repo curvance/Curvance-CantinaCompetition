@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.4;
 
-import "contracts/libraries/redstone/RedstoneConsumerBase.sol";
+import "contracts/libraries/external/redstone/RedstoneConsumerBase.sol";
 
 /**
  * @title The base contract for Redstone consumers' contracts that allows to
