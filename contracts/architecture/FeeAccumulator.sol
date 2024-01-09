@@ -762,7 +762,8 @@ contract FeeAccumulator is ReentrancyGuard {
         SafeTransferLib.safeTransfer(
             feeToken,
             oneBalanceFeeManager,
-            feeTokenBalance / 16
+            (feeTokenBalance * vaultCompoundFee()) /
+                centralRegistry.protocolHarvestFee()
         );
 
         feeTokenBalance = IERC20(feeToken).balanceOf(address(this));
