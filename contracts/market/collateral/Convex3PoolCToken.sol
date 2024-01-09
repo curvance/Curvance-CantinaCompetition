@@ -2,7 +2,8 @@
 pragma solidity ^0.8.17;
 
 import { CTokenCompounding, SafeTransferLib, IERC20, Math, ICentralRegistry } from "contracts/market/collateral/CTokenCompounding.sol";
-import { CommonLib } from "contracts/market/zapper/protocols/CommonLib.sol";
+
+import { CommonLib } from "contracts/libraries/CommonLib.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { WAD } from "contracts/libraries/Constants.sol";
 

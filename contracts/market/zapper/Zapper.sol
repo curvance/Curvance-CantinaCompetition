@@ -2,14 +2,15 @@
 pragma solidity ^0.8.17;
 
 import { CTokenPrimitive } from "contracts/market/collateral/CTokenPrimitive.sol";
-import { CommonLib } from "contracts/market/zapper/protocols/CommonLib.sol";
-import { CurveLib } from "contracts/market/zapper/protocols/CurveLib.sol";
-import { BalancerLib } from "contracts/market/zapper/protocols/BalancerLib.sol";
-import { VelodromeLib } from "contracts/market/zapper/protocols/VelodromeLib.sol";
-import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
+
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
-import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
-import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
+import { CommonLib } from "contracts/libraries/CommonLib.sol";
+import { CurveLib } from "contracts/libraries/CurveLib.sol";
+import { BalancerLib } from "contracts/libraries/BalancerLib.sol";
+import { VelodromeLib } from "contracts/libraries/VelodromeLib.sol";
+import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
+import { SafeTransferLib } from "contracts/libraries/external/SafeTransferLib.sol";
+import { ReentrancyGuard } from "contracts/libraries/external/ReentrancyGuard.sol";
 
 import { IWETH } from "contracts/interfaces/IWETH.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";

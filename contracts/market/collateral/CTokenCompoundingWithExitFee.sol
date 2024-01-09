@@ -2,7 +2,8 @@
 pragma solidity ^0.8.17;
 
 import { CTokenCompounding, ICentralRegistry, IERC20 } from "contracts/market/collateral/CTokenCompounding.sol";
-import { FixedPointMathLib } from "contracts/libraries/FixedPointMathLib.sol";
+
+import { FixedPointMathLib } from "contracts/libraries/external/FixedPointMathLib.sol";
 
 /// @notice Vault Positions must have all assets ready for withdraw,
 ///         IE assets can NOT be locked.

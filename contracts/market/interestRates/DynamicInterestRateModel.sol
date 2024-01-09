@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { WAD } from "contracts/libraries/Constants.sol";
+import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
@@ -10,78 +10,79 @@ contract DynamicInterestRateModel {
     /// TYPES ///
 
     struct RatesConfiguration {
-        /// @notice Base rate at which interest is accumulated, per compound
+        /// @notice Base rate at which interest is accumulated, per compound.
         uint256 baseInterestRate;
-        /// @notice Vertex rate at which interest is accumulated, per compound
+        /// @notice Vertex rate at which interest is accumulated, per compound.
         uint256 vertexInterestRate;
         /// @notice Utilization rate point where vertex rate is used,
-        ///         instead of base rate
+        ///         instead of base rate.
         uint256 vertexStartingPoint;
         /// @notice The rate at which the vertex multiplier is adjusted,
-        ///         in seconds
+        ///         in seconds.
         uint256 adjustmentRate;
         /// @notice The maximum rate at with the vertex multiplier is adjusted,
-        ///         in WAD
+        ///         in `WAD`.
         uint256 adjustmentVelocity;
-        /// @notice The maximum value that vertexMultiplier can be
+        /// @notice The maximum value that vertexMultiplier can be.
         uint256 vertexMultiplierMax;
         /// @notice Rate at which the vertex multiplier will decay per update,
-        ///         in WAD
+        ///         in `WAD`.
         uint256 decayRate;
         /// @notice The utilization rate at which the vertex multiplier
-        ///         will begin to increase
+        ///         will begin to increase.
         uint256 increaseThreshold;
         /// @notice The utilization rate at which the vertex multiplier
-        ///         positive velocity will max out
+        ///         positive velocity will max out.
         uint256 increaseThresholdMax;
         /// @notice The utilization rate at which the vertex multiplier
-        ///         will begin to decrease
+        ///         will begin to decrease.
         uint256 decreaseThreshold;
         /// @notice The utilization rate at which the vertex multiplier
-        ///         negative velocity will max out
+        ///         negative velocity will max out.
         uint256 decreaseThresholdMax;
     }
 
     /// CONSTANTS ///
 
-    /// Unix time has 31,536,000 seconds per year
-    /// All my homies hate leap seconds and leap years
-    uint256 internal constant SECONDS_PER_YEAR = 31_536_000;
-    /// @notice Rate at which interest is compounded, in seconds
-    uint256 internal constant INTEREST_COMPOUND_RATE = 600;
+    /// @notice Rate at which interest is compounded, in seconds.
+    uint256 public constant INTEREST_COMPOUND_RATE = 600;
     /// @notice Maximum Rate at which the vertex multiplier will
-    ///         decay per adjustment, in `WAD`
-    uint256 internal constant MAX_VERTEX_DECAY_RATE = .05e18; // 5%
-    /// @notice The minimum frequency in which the vertex can have between adjustments
-    uint256 internal constant MIN_VERTEX_ADJUSTMENT_RATE = 3 hours;
-    /// @notice The maximum frequency in which the vertex can have between adjustments
-    uint256 internal constant MAX_VERTEX_ADJUSTMENT_RATE = 3 days;
+    ///         decay per adjustment, in `WAD`.
+    uint256 public constant MAX_VERTEX_DECAY_RATE = .05e18; // 5%.
+    /// @notice The minimum frequency in which the vertex can have
+    ///         between adjustments.
+    uint256 public constant MIN_VERTEX_ADJUSTMENT_RATE = 3 hours;
+    /// @notice The maximum frequency in which the vertex can have
+    ///         between adjustments.
+    uint256 public constant MAX_VERTEX_ADJUSTMENT_RATE = 3 days;
     /// @notice The maximum rate at with the vertex multiplier is adjusted,
-    ///         in WAD on top of base rate (1 WAD)
-    ///         3 * WAD = // triples vertex interest rate per adjustment at 100% util
-    uint256 internal constant MAX_VERTEX_ADJUSTMENT_VELOCITY = 3 * WAD;
-
-    /// @notice Mask of `vertexMultiplier` in `_currentRates`
+    ///         in WAD on top of base rate (1 `WAD`).
+    ///         E.g. 3 * WAD = triples vertex interest rate per adjustment
+    ///         at 100% util.
+    uint256 public constant MAX_VERTEX_ADJUSTMENT_VELOCITY = 3 * WAD;
+    /// Unix time has 31,536,000 seconds per year.
+    /// All my homies hate leap seconds and leap years.
+    uint256 internal constant _SECONDS_PER_YEAR = 31_536_000;
+    /// @notice Mask of `vertexMultiplier` in `_currentRates`.
     uint256 private constant _BITMASK_VERTEX_MULTIPLIER = (1 << 192) - 1;
-
-    /// @notice Mask of `nextUpdateTimestamp` in `_currentRates`
+    /// @notice Mask of `nextUpdateTimestamp` in `_currentRates`.
     uint256 private constant _BITMASK_UPDATE_TIMESTAMP = (1 << 64) - 1;
-
-    /// @notice The bit position of `nextUpdateTimestamp` in `_currentRates`
+    /// @notice The bit position of `nextUpdateTimestamp` in `_currentRates`.
     uint256 private constant _BITPOS_UPDATE_TIMESTAMP = 192;
 
-    /// @notice For external contract's to call for validation
+    /// @notice For external contract's to call for validation.
     bool public constant IS_INTEREST_RATE_MODEL = true;
-    /// @notice Curvance DAO hub
+
+    /// @notice Curvance DAO hub.
     ICentralRegistry public immutable centralRegistry;
 
     /// STORAGE ///
 
     RatesConfiguration public ratesConfig;
-    /// Internal stored rates data
+    /// Internal stored rates data.
     /// Bits Layout:
-    /// - [0..191]    `vertexMultiplier`
-    /// - [192..255] `nextUpdateTimestamp`
+    /// - [0..191]    `vertexMultiplier`.
+    /// - [192..255] `nextUpdateTimestamp`.
     uint256 internal _currentRates;
 
     /// EVENTS ///
@@ -113,19 +114,19 @@ contract DynamicInterestRateModel {
     /// CONSTRUCTOR ///
 
     /// @param baseRatePerYear The rate of increase in interest rate by
-    ///                        utilization rate, in `basis points`
+    ///                        utilization rate, in `basis points`.
     /// @param vertexRatePerYear The rate of increase in interest rate by
     ///                          utilization rate after `vertexUtilizationStart`,
-    ///                          in `basis points`
+    ///                          in `basis points`.
     /// @param vertexUtilizationStart The utilization point at which the vertex
-    ///                               rate is applied, in `basis points`
+    ///                               rate is applied, in `basis points`.
     /// @param adjustmentRate The rate at which the vertex multiplier is adjusted,
-    ///                             in `seconds`
+    ///                             in `seconds`.
     /// @param adjustmentVelocity The maximum rate at with the vertex multiplier
-    ///                           is adjusted, in `basis points`
-    /// @param vertexMultiplierMax The maximum value that vertexMultiplier can be
+    ///                           is adjusted, in `basis points`.
+    /// @param vertexMultiplierMax The maximum value that vertexMultiplier can be.
     /// @param decayRate Rate at which the vertex multiplier will decay per update,
-    ///                  in `basis points`
+    ///                  in `basis points`.
     constructor(
         ICentralRegistry centralRegistry_,
         uint256 baseRatePerYear,
@@ -162,21 +163,21 @@ contract DynamicInterestRateModel {
     /// EXTERNAL FUNCTIONS ///
 
     /// @param baseRatePerYear The rate of increase in interest rate by
-    ///                        utilization rate, in `basis points`
+    ///                        utilization rate, in `basis points`.
     /// @param vertexRatePerYear The rate of increase in interest rate by
     ///                          utilization rate after `vertexUtilizationStart`,
-    ///                          in `basis points`
+    ///                          in `basis points`.
     /// @param vertexUtilizationStart The utilization point at which the vertex
-    ///                               rate is applied, in `basis points`
+    ///                               rate is applied, in `basis points`.
     /// @param adjustmentRate The rate at which the vertex multiplier is adjusted,
-    ///                             in `seconds`
+    ///                             in `seconds`.
     /// @param adjustmentVelocity The maximum rate at with the vertex multiplier
-    ///                           is adjusted, in `basis points`
-    /// @param vertexMultiplierMax The maximum value that vertexMultiplier can be
+    ///                           is adjusted, in `basis points`.
+    /// @param vertexMultiplierMax The maximum value that vertexMultiplier can be.
     /// @param decayRate Rate at which the vertex multiplier will decay per update,
-    ///                  in `basis points`
+    ///                  in `basis points`.
     /// @param vertexReset Whether the vertex multiplier should be reset back to
-    ///                    its default value
+    ///                    its default value.
     function updateDynamicInterestRateModel(
         uint256 baseRatePerYear,
         uint256 vertexRatePerYear,
@@ -203,28 +204,28 @@ contract DynamicInterestRateModel {
         );
     }
 
-    /// @notice Calculates the current borrow rate per year
-    /// @param cash The amount of cash in the market
-    /// @param borrows The amount of borrows in the market
-    /// @param reserves The amount of reserves in the market
-    /// @return The borrow rate percentage per year, in `WAD`
+    /// @notice Calculates the current borrow rate per year.
+    /// @param cash The amount of cash in the market.
+    /// @param borrows The amount of borrows in the market.
+    /// @param reserves The amount of reserves in the market.
+    /// @return The borrow rate percentage per year, in `WAD`.
     function getBorrowRatePerYear(
         uint256 cash,
         uint256 borrows,
         uint256 reserves
     ) external view returns (uint256) {
         return
-            SECONDS_PER_YEAR *
+            _SECONDS_PER_YEAR *
             (getBorrowRate(cash, borrows, reserves) / INTEREST_COMPOUND_RATE);
     }
 
-    /// @notice Calculates the current supply rate per year
-    /// @param cash The amount of cash in the market
-    /// @param borrows The amount of borrows in the market
-    /// @param reserves The amount of reserves in the market
+    /// @notice Calculates the current supply rate per year.
+    /// @param cash The amount of cash in the market.
+    /// @param borrows The amount of borrows in the market.
+    /// @param reserves The amount of reserves in the market.
     /// @param interestFee The current interest rate reserve factor
-    ///                    for the market
-    /// @return The supply rate percentage per year, in `WAD`
+    ///                    for the market.
+    /// @return The supply rate percentage per year, in `WAD`.
     function getSupplyRatePerYear(
         uint256 cash,
         uint256 borrows,
@@ -232,18 +233,19 @@ contract DynamicInterestRateModel {
         uint256 interestFee
     ) external view returns (uint256) {
         return
-            SECONDS_PER_YEAR *
+            _SECONDS_PER_YEAR *
             (getSupplyRate(cash, borrows, reserves, interestFee) /
                 INTEREST_COMPOUND_RATE);
     }
 
-    /// @notice Returns the rate at which interest compounds, in seconds
+    /// @notice Returns the rate at which interest compounds, in seconds.
     function compoundRate() external pure returns (uint256) {
         return INTEREST_COMPOUND_RATE;
     }
 
-    /// @notice Returns the unpacked `DynamicRatesData` struct from `_currentRates`
-    /// @return rates Current rates data in unpacked `DynamicRatesData` struct
+    /// @notice Returns the unpacked `DynamicRatesData` struct 
+    ///         from `_currentRates`.
+    /// @return Current rates data in unpacked `DynamicRatesData` struct.
     function currentRatesData() external view returns (uint256, uint256) {
         uint256 currentRates = _currentRates;
         return (
@@ -255,17 +257,17 @@ contract DynamicInterestRateModel {
     /// PUBLIC FUNCTIONS ///
 
     /// @notice Calculates the utilization rate of the market:
-    ///         `borrows / (cash + borrows - reserves)`
-    /// @param cash The amount of cash in the market
-    /// @param borrows The amount of borrows in the market
-    /// @param reserves The amount of reserves in the market
-    /// @return The utilization rate between [0, WAD]
+    ///         `borrows / (cash + borrows - reserves)`.
+    /// @param cash The amount of cash in the market.
+    /// @param borrows The amount of borrows in the market.
+    /// @param reserves The amount of reserves in the market.
+    /// @return The utilization rate between [0, WAD].
     function utilizationRate(
         uint256 cash,
         uint256 borrows,
         uint256 reserves
     ) public pure returns (uint256) {
-        // Utilization rate is 0 when there are no borrows
+        // Utilization rate is 0 when there are no borrows.
         if (borrows == 0) {
             return 0;
         }
@@ -274,11 +276,11 @@ contract DynamicInterestRateModel {
     }
 
     /// @notice Calculates the current borrow rate per compound,
-    ///          and updates the vertex multiplier if necessary
-    /// @param cash The amount of cash in the market
-    /// @param borrows The amount of borrows in the market
-    /// @param reserves The amount of reserves in the market
-    /// @return borrowRate The borrow rate percentage per compound, in `WAD`
+    ///          and updates the vertex multiplier if necessary.
+    /// @param cash The amount of cash in the market.
+    /// @param borrows The amount of borrows in the market.
+    /// @param reserves The amount of reserves in the market.
+    /// @return borrowRate The borrow rate percentage per compound, in `WAD`.
     function getBorrowRateWithUpdate(
         uint256 cash,
         uint256 borrows,
@@ -296,7 +298,7 @@ contract DynamicInterestRateModel {
             }
         } else {
             /// We know this will not underflow or overflow,
-            /// because of Interest Rate Model configurations
+            /// because of Interest Rate Model configurations.
             unchecked {
                 borrowRate = (getVertexInterestRate(util - vertexPoint) +
                     getBaseInterestRate(vertexPoint));
@@ -304,7 +306,7 @@ contract DynamicInterestRateModel {
         }
         if (block.timestamp >= updateTimestamp()) {
             // If the vertex multiplier is already at its minimum,
-            // and would decrease more, can break here
+            // and would decrease more, can break here.
             if (vertexMultiplier() == WAD && util < config.increaseThreshold) {
                 _setUpdateTimestamp(
                     uint64(block.timestamp + config.adjustmentRate)
@@ -327,11 +329,11 @@ contract DynamicInterestRateModel {
         }
     }
 
-    /// @notice Calculates the current borrow rate per compound
-    /// @param cash The amount of cash in the market
-    /// @param borrows The amount of borrows in the market
-    /// @param reserves The amount of reserves in the market
-    /// @return The borrow rate percentage per compound, in `WAD`
+    /// @notice Calculates the current borrow rate, per compound.
+    /// @param cash The amount of cash in the market.
+    /// @param borrows The amount of borrows in the market.
+    /// @param reserves The amount of reserves in the market.
+    /// @return The borrow rate percentage, per compound, in `WAD`.
     function getBorrowRate(
         uint256 cash,
         uint256 borrows,
@@ -347,27 +349,27 @@ contract DynamicInterestRateModel {
         }
 
         /// We know this will not underflow or overflow,
-        /// because of Interest Rate Model configurations
+        /// because of Interest Rate Model configurations.
         unchecked {
             return (getVertexInterestRate(util - vertexPoint) +
                 getBaseInterestRate(vertexPoint));
         }
     }
 
-    /// @notice Calculates the current supply rate per compound
-    /// @param cash The amount of cash in the market
-    /// @param borrows The amount of borrows in the market
-    /// @param reserves The amount of reserves in the market
+    /// @notice Calculates the current supply rate, per compound.
+    /// @param cash The amount of cash in the market.
+    /// @param borrows The amount of borrows in the market.
+    /// @param reserves The amount of reserves in the market.
     /// @param interestFee The current interest rate reserve factor
-    ///                    for the market
-    /// @return The supply rate percentage per compound, in `WAD`
+    ///                    for the market.
+    /// @return The supply rate percentage, per compound, in `WAD`.
     function getSupplyRate(
         uint256 cash,
         uint256 borrows,
         uint256 reserves,
         uint256 interestFee
     ) public view returns (uint256) {
-        /// RateToPool = (borrowRate * oneMinusReserveFactor) / WAD;
+        /// RateToPool = (borrowRate * oneMinusReserveFactor) / WAD.
         uint256 rateToPool = (getBorrowRate(cash, borrows, reserves) *
             (WAD - interestFee)) / WAD;
 
@@ -375,21 +377,23 @@ contract DynamicInterestRateModel {
         return (utilizationRate(cash, borrows, reserves) * rateToPool) / WAD;
     }
 
-    /// @notice Returns the multiplier applied to the vertex interest rate, in `WAD`
+    /// @notice Returns the multiplier applied to the vertex interest rate,
+    ///         in `WAD`.
     function vertexMultiplier() public view returns (uint256) {
         return _currentRates & _BITMASK_VERTEX_MULTIPLIER;
     }
 
-    /// @notice Returns the next timestamp when `vertexMultiplier` will be updated
+    /// @notice Returns the next timestamp when `vertexMultiplier` 
+    ///        will be updated.
     function updateTimestamp() public view returns (uint256) {
         return uint64(_currentRates >> _BITPOS_UPDATE_TIMESTAMP);
     }
 
     /// INTERNAL FUNCTIONS ///
 
-    /// @notice Calculates the interest rate for `util` market utilization
-    /// @param util The utilization rate of the market
-    /// @return Returns the calculated interest rate, in `WAD`
+    /// @notice Calculates the interest rate for `util` market utilization.
+    /// @param util The utilization rate of the market.
+    /// @return Returns the calculated interest rate, in `WAD`.
     function getBaseInterestRate(
         uint256 util
     ) internal view returns (uint256) {
@@ -397,14 +401,14 @@ contract DynamicInterestRateModel {
     }
 
     /// @notice Calculates the interest rate under `vertexInterestRate`
-    ///         conditions, e.g. `util` > `vertex ` based on market utilization
-    /// @param util The utilization rate of the market above `vertexStartingPoint`
-    /// @return Returns the calculated interest rate, in `WAD`
+    ///         conditions, e.g. `util` > `vertex ` based on market utilization.
+    /// @param util The utilization rate of the market above `vertexStartingPoint`.
+    /// @return Returns the calculated interest rate, in `WAD`.
     function getVertexInterestRate(
         uint256 util
     ) internal view returns (uint256) {
         // We divide by 1e36 since we need to divide by WAD twice for proper
-        // precision and can optimize by multiplying prior
+        // precision and can optimize by multiplying prior.
         return
             (util * ratesConfig.vertexInterestRate * vertexMultiplier()) /
             1e36;
@@ -513,7 +517,7 @@ contract DynamicInterestRateModel {
             return WAD;
         }
 
-        // Make sure we are not above the vertex multiplier maximum
+        // Make sure we are not above the vertex multiplier maximum.
         return
             newMultiplier < config.vertexMultiplierMax
                 ? config.vertexMultiplierMax
@@ -598,14 +602,14 @@ contract DynamicInterestRateModel {
         uint256 decayRate,
         bool vertexReset
     ) internal {
-        // Convert the parameters from basis points to `WAD` format,
-        // while inefficient we want to minimize potential human error
-        // as much as possible, even if it costs a bit extra gas on config
+        // Convert the parameters from basis points to `WAD` format.
+        // While inefficient, we want to minimize potential human error
+        // as much as possible, even if it costs a bit extra gas on config.
         baseRatePerYear = _bpToWad(baseRatePerYear);
         vertexRatePerYear = _bpToWad(vertexRatePerYear);
         vertexUtilizationStart = _bpToWad(vertexUtilizationStart);
         // This is a multiplier/divisor so it needs to be on top
-        // of the base value (WAD)
+        // of the base value (1 `WAD`).
         adjustmentVelocity = _bpToWad(adjustmentVelocity) + WAD;
         vertexMultiplierMax = _bpToWad(vertexMultiplierMax);
         decayRate = _bpToWad(decayRate);
@@ -626,7 +630,7 @@ contract DynamicInterestRateModel {
         }
 
         // Validate that if the model is at the theoretical maximum multiplier
-        // no overflow will be created via bitshifting
+        // no overflow will be created via bitshifting.
         if (vertexMultiplierMax * vertexRatePerYear > type(uint192).max) {
             revert DynamicInterestRateModel__InvalidMultiplierMax();
         }
@@ -635,17 +639,17 @@ contract DynamicInterestRateModel {
 
         config.baseInterestRate =
             (INTEREST_COMPOUND_RATE * baseRatePerYear * WAD) /
-            (SECONDS_PER_YEAR * vertexUtilizationStart);
+            (_SECONDS_PER_YEAR * vertexUtilizationStart);
         config.vertexInterestRate =
             (INTEREST_COMPOUND_RATE * vertexRatePerYear) /
-            SECONDS_PER_YEAR;
+            _SECONDS_PER_YEAR;
 
         config.vertexStartingPoint = vertexUtilizationStart;
         config.adjustmentRate = adjustmentRate;
         config.adjustmentVelocity = adjustmentVelocity;
 
         {
-            // Scoping to avoid stack too deep
+            // Scoping to avoid stack too deep.
             uint256 newMultiplier = vertexReset ? WAD : vertexMultiplier();
             _packRatesData(
                 newMultiplier,
@@ -657,50 +661,52 @@ contract DynamicInterestRateModel {
 
         uint256 thresholdLength = (WAD - vertexUtilizationStart) / 2;
 
-        // Dynamic rates start increase halfway between desired utilization and 100%
+        // Dynamic rates start increase halfway between desired utilization
+        // and 100%.
         config.increaseThreshold = vertexUtilizationStart + thresholdLength;
         config.increaseThresholdMax = WAD;
 
-        // Dynamic rates start decreasing as soon as we are below desired utilization
+        // Dynamic rates start decreasing as soon as we are below desired
+        // utilization.
         config.decreaseThreshold = vertexUtilizationStart;
         config.decreaseThresholdMax = vertexUtilizationStart - thresholdLength;
 
         RatesConfiguration memory cachedConfig = config;
 
         emit NewDynamicInterestRateModel(
-            cachedConfig.baseInterestRate, // base rate
-            cachedConfig.vertexInterestRate, // vertex base rate
-            vertexUtilizationStart, // Vertex utilization rate start
-            adjustmentRate, // Adjustment rate
-            adjustmentVelocity, // Adjustment velocity
-            vertexMultiplierMax, // Vertex multiplier max
-            decayRate, // Decay rate
-            cachedConfig.increaseThreshold, // Vertex increase threshold
-            WAD, // Vertex increase threshold max
-            cachedConfig.decreaseThreshold, // Vertex decrease threshold
-            cachedConfig.decreaseThresholdMax, // Vertex decrease threshold max
-            vertexReset // Was vertex multiplier reset
+            cachedConfig.baseInterestRate, // base rate.
+            cachedConfig.vertexInterestRate, // vertex base rate.
+            vertexUtilizationStart, // Vertex utilization rate start.
+            adjustmentRate, // Adjustment rate.
+            adjustmentVelocity, // Adjustment velocity.
+            vertexMultiplierMax, // Vertex multiplier max.
+            decayRate, // Decay rate.
+            cachedConfig.increaseThreshold, // Vertex increase threshold.
+            WAD, // Vertex increase threshold max.
+            cachedConfig.decreaseThreshold, // Vertex decrease threshold.
+            cachedConfig.decreaseThresholdMax, // Vertex decrease threshold max.
+            vertexReset // Was vertex multiplier reset.
         );
     }
 
     /// @notice Packs `newVertexMultiplier` together with `newTimestamp`,
-    ///         to create new packed `_currentRates` value
+    ///         to create new packed `_currentRates` value.
     /// @param newVertexMultiplier The new rate at which vertexInterestRate
-    ///                            is multiplied, in `WAD`
+    ///                            is multiplied, in `WAD`.
     /// @param newTimestamp The new timestamp when the vertex multiplier
-    ///                     will be updated
+    ///                     will be updated.
     function _packRatesData(
         uint256 newVertexMultiplier,
         uint256 newTimestamp
     ) internal pure returns (uint256 result) {
         assembly {
-            // Mask `newVertexMultiplier` to the lower 192 bits,
+            // Mask `newVertexMultiplier` to the lower 192 b.its,
             // in case the upper bits somehow aren't clean
             newVertexMultiplier := and(
                 newVertexMultiplier,
                 _BITMASK_VERTEX_MULTIPLIER
             )
-            // `newVertexMultiplier | block.timestamp`
+            // `newVertexMultiplier | block.timestamp`.
             result := or(
                 newVertexMultiplier,
                 shl(_BITPOS_UPDATE_TIMESTAMP, newTimestamp)
@@ -709,13 +715,13 @@ contract DynamicInterestRateModel {
     }
 
     /// @notice Packs `newTimestamp` with the current vertex multiplier,
-    ///         to create new packed `_currentRates` value
+    ///         to create new packed `_currentRates` value.
     /// @param newTimestamp The new timestamp when the vertex multiplier
-    ///                     will be updated
+    ///                     will be updated.
     function _setUpdateTimestamp(uint64 newTimestamp) internal {
         uint256 packedRatesData = _currentRates;
         uint256 timestampCasted;
-        // Cast `timestampCasted` with assembly to avoid redundant masking
+        // Cast `timestampCasted` with assembly to avoid redundant masking.
         assembly {
             timestampCasted := newTimestamp
         }
@@ -725,9 +731,9 @@ contract DynamicInterestRateModel {
         _currentRates = packedRatesData;
     }
 
-    /// @dev Internal helper function for easily converting between scalars
+    /// @dev Internal helper function for easily converting between scalars.
     function _bpToWad(uint256 value) internal pure returns (uint256) {
-        // multiplies by 1e14 to convert from basis points to WAD
+        // multiplies by 1e14 to convert from `basis points` to `WAD`.
         return value * 100000000000000;
     }
 }

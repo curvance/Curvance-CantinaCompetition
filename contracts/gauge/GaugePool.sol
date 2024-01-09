@@ -4,16 +4,17 @@ pragma solidity ^0.8.17;
 
 import { GaugeController, GaugeErrors, IGaugePool } from "contracts/gauge/GaugeController.sol";
 import { PartnerGaugePool } from "contracts/gauge/PartnerGaugePool.sol";
-import { ERC165 } from "contracts/libraries/ERC165.sol";
-import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
-import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
-import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
+
+import { DENOMINATOR } from "contracts/libraries/Constants.sol";
+import { ERC165 } from "contracts/libraries/external/ERC165.sol";
+import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
+import { SafeTransferLib } from "contracts/libraries/external/SafeTransferLib.sol";
+import { ReentrancyGuard } from "contracts/libraries/external/ReentrancyGuard.sol";
 
 import { RewardsData } from "contracts/interfaces/ICVELocker.sol";
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { ICVE } from "contracts/interfaces/ICVE.sol";
-import { DENOMINATOR } from "contracts/libraries/Constants.sol";
 
 contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
     /// TYPES ///

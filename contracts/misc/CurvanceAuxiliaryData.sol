@@ -4,8 +4,8 @@ pragma solidity ^0.8.17;
 import { CTokenCompounding } from "contracts/market/collateral/CTokenCompounding.sol";
 import { DToken } from "contracts/market/collateral/DToken.sol";
 
-import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { WAD, DENOMINATOR } from "contracts/libraries/Constants.sol";
+import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { IMToken } from "contracts/interfaces/market/IMToken.sol";

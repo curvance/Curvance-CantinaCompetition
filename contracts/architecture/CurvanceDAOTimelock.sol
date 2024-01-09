@@ -3,7 +3,7 @@ pragma solidity ^0.8.17;
 
 import { TimelockController } from "@openzeppelin/contracts/governance/TimelockController.sol";
 
-import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
+import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 contract Timelock is TimelockController {

@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { WAD } from "contracts/libraries/Constants.sol";
+import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.sol";
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 
-/// @title Curvance Liquidity Manager
+/// @title Curvance Liquidity Manager.
 /// @notice Calculates liquidity of an account in various positions.
 /// @dev NOTE: Only use this as an abstract contract as no account
 ///            data is written here.
@@ -47,6 +47,7 @@ abstract contract LiquidityManager {
         /// @notice The collateral requirement where dipping below this will 
         ///         cause a hard liquidation.
         /// @dev    in `WAD` format, with 1.2e18 = 120% collateral vs debt value.
+        ///         NOTE: Should ALWAYS be less than `collReqSoft`.
         uint256 collReqHard;
         /// @notice The base ratio at which this token will be compensated on
         ///         soft liquidation.

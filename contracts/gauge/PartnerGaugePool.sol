@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
 import { GaugePool } from "contracts/gauge/GaugePool.sol";
 import { GaugeErrors } from "contracts/gauge/GaugeController.sol";
 
-import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
-import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
+import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
+import { SafeTransferLib } from "contracts/libraries/external/SafeTransferLib.sol";
+import { ReentrancyGuard } from "contracts/libraries/external/ReentrancyGuard.sol";
+
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 contract PartnerGaugePool is ReentrancyGuard {

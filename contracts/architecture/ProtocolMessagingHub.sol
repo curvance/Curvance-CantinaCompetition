@@ -3,10 +3,10 @@ pragma solidity ^0.8.17;
 
 import { GaugeController } from "contracts/gauge/GaugeController.sol";
 
-import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
-import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
-import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
+import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
+import { ReentrancyGuard } from "contracts/libraries/external/ReentrancyGuard.sol";
+import { SafeTransferLib } from "contracts/libraries/external/SafeTransferLib.sol";
 
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { IERC20Metadata } from "contracts/interfaces/IERC20Metadata.sol";

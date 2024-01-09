@@ -3,11 +3,12 @@ pragma solidity ^0.8.17;
 
 import { DynamicInterestRateModel } from "contracts/market/interestRates/DynamicInterestRateModel.sol";
 import { GaugePool } from "contracts/gauge/GaugePool.sol";
-import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
-import { ERC165 } from "contracts/libraries/ERC165.sol";
-import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
-import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
+
 import { WAD } from "contracts/libraries/Constants.sol";
+import { SafeTransferLib } from "contracts/libraries/external/SafeTransferLib.sol";
+import { ERC165 } from "contracts/libraries/external/ERC165.sol";
+import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
+import { ReentrancyGuard } from "contracts/libraries/external/ReentrancyGuard.sol";
 
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
@@ -15,7 +16,7 @@ import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.s
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.sol";
 
-/// @title Curvance's Debt Token Contract
+/// @title Curvance's Debt Token Contract.
 contract DToken is ERC165, ReentrancyGuard {
     /// TYPES ///
 

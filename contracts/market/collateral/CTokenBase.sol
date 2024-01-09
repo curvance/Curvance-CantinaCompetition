@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
-import { ERC4626, SafeTransferLib } from "contracts/libraries/ERC4626.sol";
-import { Math } from "contracts/libraries/Math.sol";
-import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 import { WAD } from "contracts/libraries/Constants.sol";
+import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
+import { ERC4626, SafeTransferLib } from "contracts/libraries/external/ERC4626.sol";
+import { Math } from "contracts/libraries/external/Math.sol";
+import { ReentrancyGuard } from "contracts/libraries/external/ReentrancyGuard.sol";
 
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { IGaugePool } from "contracts/interfaces/IGaugePool.sol";
