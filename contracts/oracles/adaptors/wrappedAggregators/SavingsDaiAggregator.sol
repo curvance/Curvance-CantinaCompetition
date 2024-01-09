@@ -27,9 +27,9 @@ contract SavingsDaiAggregator is BaseWrappedAggregator {
 
     /// @notice Returns the current exchange rate between the wrapped asset
     ///         and the underlying aggregator, in `WAD`.
-    function getWrappedAssetWeight() public view override returns (int256) {
+    function getWrappedAssetWeight() public view override returns (uint256) {
         // We divide by 1e9 since chi returns in 1e27 format,
         // so we need to offset by 1e9 to get to standard 1e18 format.
-        return _toInt256(IPotLike(sDai).chi()) / 1e9;
+        return IPotLike(sDai).chi() / 1e9;
     }
 }

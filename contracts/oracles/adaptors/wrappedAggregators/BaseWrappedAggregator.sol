@@ -2,6 +2,7 @@
 pragma solidity ^0.8.17;
 
 import { WAD } from "contracts/libraries/Constants.sol";
+import { FixedPointMathLib } from "contracts/libraries/external/FixedPointMathLib.sol";
 
 import { IChainlink } from "contracts/interfaces/external/chainlink/IChainlink.sol";
 
@@ -10,6 +11,7 @@ abstract contract BaseWrappedAggregator is IChainlink {
     /// ERRORS ///
 
     error BaseWrappedAggregator__UintToIntError();
+    error BaseWrappedAggregator__intToUIntError();
 
     /// EXTERNAL FUNCTIONS ///
 
@@ -18,37 +20,42 @@ abstract contract BaseWrappedAggregator is IChainlink {
     }
 
     function maxAnswer() external view returns (int192) {
-        int256 max = int256(
-            IChainlink(IChainlink(underlyingAssetAggregator()).aggregator())
+        uint256 max = uint256(
+            uint192(IChainlink(IChainlink(underlyingAssetAggregator()).aggregator())
                 .maxAnswer()
+            )
         );
 
-        max = (max * getWrappedAssetWeight()) / _toInt256(WAD);
-        if (max > type(int192).max) {
+        max = FixedPointMathLib.fullMulDiv(max, getWrappedAssetWeight(), WAD);
+        int256 intMax = _toInt256(max);
+        if (intMax > type(int192).max) {
             return type(int192).max;
         }
-        if (max < type(int192).min) {
+        if (intMax < type(int192).min) {
             return type(int192).min;
         }
 
-        return _toInt192(max);
+        return _toInt192(intMax);
     }
 
     function minAnswer() external view returns (int192) {
-        int256 min = int256(
-            IChainlink(IChainlink(underlyingAssetAggregator()).aggregator())
+        uint256 min = uint256(
+            uint192(IChainlink(IChainlink(underlyingAssetAggregator()).aggregator())
                 .minAnswer()
+            )
         );
 
-        min = (min * getWrappedAssetWeight()) / _toInt256(WAD);
-        if (min > type(int192).max) {
+        min = FixedPointMathLib.fullMulDiv(min, getWrappedAssetWeight(), WAD);
+        int256 intMin = _toInt256(min);
+
+        if (intMin > type(int192).max) {
             return type(int192).max;
         }
-        if (min < type(int192).min) {
+        if (intMin < type(int192).min) {
             return type(int192).min;
         }
 
-        return _toInt192(min);
+        return _toInt192(intMin);
     }
 
     function decimals() external view returns (uint8) {
@@ -70,7 +77,7 @@ abstract contract BaseWrappedAggregator is IChainlink {
             underlyingAssetAggregator()
         ).latestRoundData();
 
-        answer = (answer * getWrappedAssetWeight()) / _toInt256(WAD);
+        answer = (answer * _toInt256(getWrappedAssetWeight())) / _toInt256(WAD);
     }
 
     /// PUBLIC FUNCTIONS TO OVERRIDE ///
@@ -82,7 +89,7 @@ abstract contract BaseWrappedAggregator is IChainlink {
         returns (address)
     {}
 
-    function getWrappedAssetWeight() public view virtual returns (int256) {}
+    function getWrappedAssetWeight() public view virtual returns (uint256) {}
 
     /// INTERNAl FUNCTIONS /// 
 
@@ -104,5 +111,13 @@ abstract contract BaseWrappedAggregator is IChainlink {
             revert BaseWrappedAggregator__UintToIntError();
         }
         return int256(value);
+    }
+
+    /// @dev Converts a signed int256 into an unsigned uint256.
+    function _toUInt256(int256 value) internal pure returns (uint256) {
+        if (value < 0) {
+            revert BaseWrappedAggregator__intToUIntError();
+        }
+        return uint256(value);
     }
 }

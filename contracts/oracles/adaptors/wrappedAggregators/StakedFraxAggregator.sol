@@ -28,9 +28,9 @@ contract StakedFraxAggregator is BaseWrappedAggregator {
 
     /// @notice Returns the current exchange rate between the wrapped asset
     ///         and the underlying aggregator, in `WAD`.
-    function getWrappedAssetWeight() public view override returns (int256) {
+    function getWrappedAssetWeight() public view override returns (uint256) {
         // Staked Frax contract returns naturally in 1e18 format,
         // so no adjustment needed to return decimals.
-        return _toInt256(IStakedFrax(sFrax).pricePerShare());
+        return IStakedFrax(sFrax).pricePerShare();
     }
 }
