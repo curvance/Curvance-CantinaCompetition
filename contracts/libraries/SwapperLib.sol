@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
-import { CommonLib } from "contracts/market/zapper/protocols/CommonLib.sol";
+import { SafeTransferLib } from "contracts/libraries/external/SafeTransferLib.sol";
+import { CommonLib } from "contracts/libraries/CommonLib.sol";
 
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 

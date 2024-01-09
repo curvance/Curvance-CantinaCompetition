@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { CommonLib, IERC20 } from "contracts/market/zapper/protocols/CommonLib.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
+import { CommonLib, IERC20 } from "contracts/libraries/CommonLib.sol";
 
 import { IBalancerVault } from "contracts/interfaces/external/balancer/IBalancerVault.sol";
 

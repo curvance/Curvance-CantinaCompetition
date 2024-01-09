@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { CommonLib } from "contracts/market/zapper/protocols/CommonLib.sol";
-import { Math } from "contracts/libraries/Math.sol";
-import { ERC20 } from "contracts/libraries/ERC20.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
+import { CommonLib } from "contracts/libraries/CommonLib.sol";
+import { Math } from "contracts/libraries/external/Math.sol";
+import { ERC20 } from "contracts/libraries/external/ERC20.sol";
 
 import { IVeloRouter } from "contracts/interfaces/external/velodrome/IVeloRouter.sol";
 import { IVeloPair } from "contracts/interfaces/external/velodrome/IVeloPair.sol";
