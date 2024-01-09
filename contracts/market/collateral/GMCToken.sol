@@ -81,7 +81,7 @@ contract GMCToken is CTokenCompounding {
         );
 
         if (
-            market.longToken == address(0) && market.shortToken == address(0)
+            market.longToken == address(0) || market.shortToken == address(0)
         ) {
             revert GMCToken__MarketIsInvalid();
         }
@@ -208,32 +208,37 @@ contract GMCToken is CTokenCompounding {
     }
 
     /// @notice Set GMX Deposit Vault address
-    function setGMXDepositVault(address newDepositVault) internal {
+    function setGMXDepositVault(address newDepositVault) external {
         _checkDaoPermissions();
+
         _setGMXDepositVault(newDepositVault);
     }
 
     /// @notice Set GMX Exchange Router address
-    function setGMXExchangeRouter(address newExchangeRouter) internal {
+    function setGMXExchangeRouter(address newExchangeRouter) external {
         _checkDaoPermissions();
+
         _setGMXExchangeRouter(newExchangeRouter);
     }
 
     /// @notice Set GMX Router address
-    function setGMXRouter(address newRouter) internal {
+    function setGMXRouter(address newRouter) external {
         _checkDaoPermissions();
+
         _setGMXRouter(newRouter);
     }
 
     /// @notice Set GMX DataStore address
-    function setGMXDataStore(address newDataStore) internal {
+    function setGMXDataStore(address newDataStore) external {
         _checkDaoPermissions();
+
         _setGMXDataStore(newDataStore);
     }
 
     /// @notice Set GMX Deposit Handler address
-    function setGMXDepositHandler(address newDepositHandler) internal {
+    function setGMXDepositHandler(address newDepositHandler) external {
         _checkDaoPermissions();
+
         _setGMXDepositHandler(newDepositHandler);
     }
 
