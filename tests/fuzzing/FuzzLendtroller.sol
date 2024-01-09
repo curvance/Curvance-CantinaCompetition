@@ -29,6 +29,7 @@ contract FuzzLendtroller is StatefulBaseMarket {
         );
     }
 
+    // Test Property: calling listToken for a token should succeed
     function list_token_should_succeed(address mtoken) public {
         uint256 amount = 42069;
         // require the token is not already listed into the lendtroller
@@ -86,6 +87,9 @@ contract FuzzLendtroller is StatefulBaseMarket {
         }
     }
 
+    // Test Property: Ensure account collateral has increased by # of tokens
+    // Test Property: Ensure usre has a valid position after posting
+    // Test Property: Ensure collateralPosted (for mtoken) has increased by # of tokens
     function post_collateral_should_succeed(
         address mtoken,
         uint256 tokens
@@ -108,7 +112,14 @@ contract FuzzLendtroller is StatefulBaseMarket {
                 tokens,
                 closePositionIfPossible
             )
-        {} catch {}
+        {
+            uint256 newCollateralPosted = lendtroller.collateralPosted(mtoken);
+            assertEq(
+                newCollateralPosted,
+                oldCollateralPosted - tokens,
+                "LENDTROLLER - global collateral posted should increase"
+            );
+        } catch {}
     }
 
     function removeCollateralIfNecessary_should_succeed(
