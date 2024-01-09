@@ -94,6 +94,10 @@ contract GMAdaptor is BaseOracleAdaptor {
         for (uint256 i = 0; i < 3; ++i) {
             token = tokens[i];
 
+            if (i == 0 && token == address(0)) {
+                continue;
+            }
+
             (prices[i], errorCode) = priceRouter.getPrice(token, true, false);
             if (errorCode > 0) {
                 pData.hadError = true;
@@ -157,12 +161,14 @@ contract GMAdaptor is BaseOracleAdaptor {
         for (uint256 i = 0; i < 3; ++i) {
             token = tokens[i];
 
-            if (!priceRouter.isSupportedAsset(token)) {
-                revert GMAdaptor__MarketTokenIsNotSupported(token);
-            }
+            if (i != 0 || token != address(0)) {
+                if (!priceRouter.isSupportedAsset(token)) {
+                    revert GMAdaptor__MarketTokenIsNotSupported(token);
+                }
 
-            if (_priceUnit[token] == 0) {
-                _priceUnit[token] = WAD * 10 ** IERC20(token).decimals();
+                if (_priceUnit[token] == 0) {
+                    _priceUnit[token] = WAD * 10 ** IERC20(token).decimals();
+                }
             }
 
             marketData[asset].push(token);
