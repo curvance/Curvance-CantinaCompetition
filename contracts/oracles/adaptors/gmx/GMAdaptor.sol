@@ -26,13 +26,13 @@ contract GMAdaptor is BaseOracleAdaptor {
     bytes32 public constant PNL_FACTOR_TYPE =
         0xab15365d3aa743e766355e2557c230d8f943e195dc84d9b2b05928a07b635ee1;
 
+    /// STORAGE ///
+
     /// @notice GMX Reader address
-    IReader public immutable reader;
+    IReader public gmxReader;
 
     /// @notice GMX DataStore address
-    address public immutable dataStore;
-
-    /// STORAGE ///
+    address public gmxDataStore;
 
     /// @notice GMX GM Token Market Data in array
     /// @dev [indexToken, longToken, shortToken]
@@ -44,8 +44,8 @@ contract GMAdaptor is BaseOracleAdaptor {
     /// ERRORS ///
 
     error GMAdaptor__ChainIsNotSupported();
-    error GMAdaptor__ReaderIsZeroAddress();
-    error GMAdaptor__DataStoreIsZeroAddress();
+    error GMAdaptor__GMXReaderIsZeroAddress();
+    error GMAdaptor__GMXDataStoreIsZeroAddress();
     error GMAdaptor__AssetIsAlreadySupported();
     error GMAdaptor__AssetIsNotSupported();
     error GMAdaptor__MarketTokenIsNotSupported(address token);
@@ -53,25 +53,19 @@ contract GMAdaptor is BaseOracleAdaptor {
     /// CONSTRUCTOR ///
 
     /// @param centralRegistry_ The address of central registry.
-    /// @param reader_ The address of GMX Reader.
-    /// @param dataStore_ The address of GMX DataStore.
+    /// @param gmxReader_ The address of GMX Reader.
+    /// @param gmxDataStore_ The address of GMX DataStore.
     constructor(
         ICentralRegistry centralRegistry_,
-        address reader_,
-        address dataStore_
+        address gmxReader_,
+        address gmxDataStore_
     ) BaseOracleAdaptor(centralRegistry_) {
         if (block.chainid != 42161) {
             revert GMAdaptor__ChainIsNotSupported();
         }
-        if (reader_ == address(0)) {
-            revert GMAdaptor__ReaderIsZeroAddress();
-        }
-        if (dataStore_ == address(0)) {
-            revert GMAdaptor__DataStoreIsZeroAddress();
-        }
 
-        reader = IReader(reader_);
-        dataStore = dataStore_;
+        _setGMXReader(gmxReader_);
+        _setGMXDataStore(gmxDataStore_);
     }
 
     /// EXTERNAL FUNCTIONS ///
@@ -109,8 +103,8 @@ contract GMAdaptor is BaseOracleAdaptor {
             prices[i] = (prices[i] * 1e30) / _priceUnit[token];
         }
 
-        (int256 price, ) = reader.getMarketTokenPrice(
-            dataStore,
+        (int256 price, ) = gmxReader.getMarketTokenPrice(
+            gmxDataStore,
             IReader.MarketProps(asset, tokens[0], tokens[1], tokens[2]),
             IReader.PriceProps(prices[0], prices[0]),
             IReader.PriceProps(prices[1], prices[1]),
@@ -148,7 +142,10 @@ contract GMAdaptor is BaseOracleAdaptor {
             revert GMAdaptor__AssetIsAlreadySupported();
         }
 
-        IReader.MarketProps memory market = reader.getMarket(dataStore, asset);
+        IReader.MarketProps memory market = gmxReader.getMarket(
+            gmxDataStore,
+            asset
+        );
         IPriceRouter priceRouter = IPriceRouter(centralRegistry.priceRouter());
 
         address[] memory tokens = new address[](3);
@@ -196,9 +193,7 @@ contract GMAdaptor is BaseOracleAdaptor {
 
     /// @notice Register synthetic assets and decimals.
     /// @param assets The struct array of the synthetic assets to register.
-    function registerSyntheticAssets(
-        SyntheticAsset[] memory assets
-    ) external {
+    function registerSyntheticAssets(SyntheticAsset[] memory assets) external {
         _checkElevatedPermissions();
         uint256 numAssets = assets.length;
 
@@ -209,14 +204,44 @@ contract GMAdaptor is BaseOracleAdaptor {
 
     /// @notice Unregister synthetic assets and decimals.
     /// @param assets The struct array of the synthetic assets to unregister.
-    function unregisterSyntheticAssets(
-        address[] memory assets
-    ) external {
+    function unregisterSyntheticAssets(address[] memory assets) external {
         _checkElevatedPermissions();
         uint256 numAssets = assets.length;
 
         for (uint256 i; i < numAssets; ++i) {
             _priceUnit[assets[i]] = 0;
         }
+    }
+
+    /// @notice Set GMX Reader address
+    function setGMXReader(address newReader) internal {
+        _checkDaoPermissions();
+        _setGMXReader(newReader);
+    }
+
+    /// @notice Set GMX DataStore address
+    function setGMXDataStore(address newDataStore) internal {
+        _checkDaoPermissions();
+        _setGMXDataStore(newDataStore);
+    }
+
+    /// INTERNAL FUNCTIONS ///
+
+    /// @notice Set GMX Reader address
+    function _setGMXReader(address newReader) internal {
+        if (newReader == address(0)) {
+            revert GMAdaptor__GMXReaderIsZeroAddress();
+        }
+
+        gmxReader = IReader(newReader);
+    }
+
+    /// @notice Set GMX DataStore address
+    function _setGMXDataStore(address newDataStore) internal {
+        if (newDataStore == address(0)) {
+            revert GMAdaptor__GMXDataStoreIsZeroAddress();
+        }
+
+        gmxDataStore = newDataStore;
     }
 }

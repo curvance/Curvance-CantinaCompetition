@@ -79,7 +79,7 @@ contract TestGMAdaptor is TestBasePriceRouter {
     }
 
     function testDeploymentRevertWhenReaderIsZeroAddress() public {
-        vm.expectRevert(GMAdaptor.GMAdaptor__ReaderIsZeroAddress.selector);
+        vm.expectRevert(GMAdaptor.GMAdaptor__GMXReaderIsZeroAddress.selector);
         new GMAdaptor(
             ICentralRegistry(address(centralRegistry)),
             address(0),
@@ -88,7 +88,9 @@ contract TestGMAdaptor is TestBasePriceRouter {
     }
 
     function testDeploymentRevertWhenDataStoreIsZeroAddress() public {
-        vm.expectRevert(GMAdaptor.GMAdaptor__DataStoreIsZeroAddress.selector);
+        vm.expectRevert(
+            GMAdaptor.GMAdaptor__GMXDataStoreIsZeroAddress.selector
+        );
         new GMAdaptor(
             ICentralRegistry(address(centralRegistry)),
             GMX_READER,
