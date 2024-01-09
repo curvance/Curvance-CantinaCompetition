@@ -93,7 +93,7 @@ contract PendleLPCToken is CTokenCompounding {
         }
 
         strategyData.underlyingTokens = strategyData.sy.getTokensIn();
-        uint256 numUnderlyingTokens = strategyData.underlyingTokens.length;
+        numUnderlyingTokens = strategyData.underlyingTokens.length;
 
         for (uint256 i = 0; i < numUnderlyingTokens; ) {
             unchecked {
