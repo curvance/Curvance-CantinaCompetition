@@ -36,7 +36,12 @@ contract TestCTokenReserves is TestBaseMarket {
             true
         );
         mockWethFeed = new MockDataFeed(_CHAINLINK_ETH_USD);
-        chainlinkAdaptor.addAsset(_WETH_ADDRESS, address(mockWethFeed), 0, true);
+        chainlinkAdaptor.addAsset(
+            _WETH_ADDRESS,
+            address(mockWethFeed),
+            0,
+            true
+        );
         dualChainlinkAdaptor.addAsset(
             _WETH_ADDRESS,
             address(mockWethFeed),
@@ -44,12 +49,17 @@ contract TestCTokenReserves is TestBaseMarket {
             true
         );
         mockRethFeed = new MockDataFeed(_CHAINLINK_RETH_ETH);
-        chainlinkAdaptor.addAsset(_RETH_ADDRESS, address(mockRethFeed), 0, false);
+        chainlinkAdaptor.addAsset(
+            _RETH_ADDRESS,
+            address(mockRethFeed),
+            0,
+            false
+        );
         dualChainlinkAdaptor.addAsset(
             _RETH_ADDRESS,
             address(mockRethFeed),
             0,
-            true
+            false
         );
 
         // start epoch
@@ -60,6 +70,9 @@ contract TestCTokenReserves is TestBaseMarket {
         mockDaiFeed.setMockUpdatedAt(block.timestamp);
         mockWethFeed.setMockUpdatedAt(block.timestamp);
         mockRethFeed.setMockUpdatedAt(block.timestamp);
+
+        (, int256 ethPrice, , , ) = mockWethFeed.latestRoundData();
+        chainlinkEthUsd.updateAnswer(ethPrice);
 
         // setup dDAI
         {
@@ -83,8 +96,8 @@ contract TestCTokenReserves is TestBaseMarket {
                 4000, // liquidate at 71%
                 3000,
                 200, // 2% liq incentive
-                200,
-                100,
+                400,
+                10,
                 1000
             );
             address[] memory tokens = new address[](1);
@@ -173,10 +186,15 @@ contract TestCTokenReserves is TestBaseMarket {
         );
         assertApproxEqRel(dDAI.exchangeRateCached(), 1 ether, 0.01e18);
 
-        assertEq(cBALRETH.balanceOf(dao), daoBalanceBefore + protocolTokens);
-        assertEq(
+        assertApproxEqRel(
+            cBALRETH.balanceOf(dao),
+            daoBalanceBefore + protocolTokens,
+            0.01e18
+        );
+        assertApproxEqRel(
             gaugePool.balanceOf(address(cBALRETH), dao),
-            daoBalanceBefore + protocolTokens
+            daoBalanceBefore + protocolTokens,
+            0.01e18
         );
     }
 

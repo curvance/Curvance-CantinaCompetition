@@ -52,11 +52,11 @@ contract CanLiquidateTest is TestBaseLendtroller {
         lendtroller.updateCollateralToken(
             IMToken(address(cBALRETH)),
             7000,
+            4000,
             3000,
-            3000,
-            2000,
-            2000,
-            100,
+            200,
+            400,
+            10,
             1000
         );
 
@@ -78,11 +78,11 @@ contract CanLiquidateTest is TestBaseLendtroller {
         lendtroller.updateCollateralToken(
             IMToken(address(cBALRETH)),
             7000,
+            4000,
             3000,
-            3000,
-            2000,
-            2000,
-            100,
+            200,
+            400,
+            10,
             1000
         );
 
@@ -98,6 +98,9 @@ contract CanLiquidateTest is TestBaseLendtroller {
 
     function test_canLiquidate_fail_whenShortfallInsufficient() public {
         skip(gaugePool.startTime() - block.timestamp);
+
+        mockWethFeed.setMockUpdatedAt(block.timestamp);
+        mockRethFeed.setMockUpdatedAt(block.timestamp);
         chainlinkEthUsd.updateRoundData(
             0,
             1500e8,
@@ -121,11 +124,11 @@ contract CanLiquidateTest is TestBaseLendtroller {
         lendtroller.updateCollateralToken(
             IMToken(address(cBALRETH)),
             7000,
+            4000,
             3000,
-            3000,
-            2000,
-            2000,
-            100,
+            200,
+            400,
+            10,
             1000
         );
         address[] memory tokens = new address[](1);
@@ -158,12 +161,12 @@ contract CanLiquidateTest is TestBaseLendtroller {
         lendtroller.listToken(address(cBALRETH));
         lendtroller.updateCollateralToken(
             IMToken(address(cBALRETH)),
-            7000, // 70% collateral ratio
+            7000,
+            4000,
             3000,
-            3000,
-            2000,
-            2000,
-            100,
+            200,
+            400,
+            10,
             1000
         );
         address[] memory tokens = new address[](1);
@@ -173,12 +176,9 @@ contract CanLiquidateTest is TestBaseLendtroller {
         lendtroller.setCTokenCollateralCaps(tokens, caps);
 
         skip(gaugePool.startTime() - block.timestamp);
-        chainlinkEthUsd.updateRoundData(
-            0,
-            1500e8,
-            block.timestamp,
-            block.timestamp
-        );
+
+        mockWethFeed.setMockUpdatedAt(block.timestamp);
+        mockRethFeed.setMockUpdatedAt(block.timestamp);
         chainlinkUsdcUsd.updateRoundData(
             0,
             1e8,
@@ -214,12 +214,8 @@ contract CanLiquidateTest is TestBaseLendtroller {
 
         // Price of ETH drops and balRETH collateral goes below required collateral ratio
         // and can now liquidate
-        chainlinkEthUsd.updateRoundData(
-            0,
-            1000e8,
-            block.timestamp,
-            block.timestamp
-        );
+        mockWethFeed.setMockAnswer(1000e8);
+        mockRethFeed.setMockAnswer(1000e8);
 
         // =================== RESULTS ==================
         (
@@ -250,12 +246,21 @@ contract CanLiquidateTest is TestBaseLendtroller {
         uint256 expectedLiqAmount;
         uint256 expectedProtocolTokens;
         {
-            (, , , , uint256 liqBaseIncentive, , , , ) = lendtroller.tokenData(
-                address(cBALRETH)
-            );
+            (
+                ,
+                ,
+                ,
+                ,
+                uint256 liqBaseIncentive,
+                uint256 liqCurve,
+                ,
+                ,
+
+            ) = lendtroller.tokenData(address(cBALRETH));
 
             uint256 debtTokenPrice = 1e18; // USDC price
-            uint256 debtToCollateralRatio = (liqBaseIncentive *
+            uint256 incentive = liqBaseIncentive + liqCurve;
+            uint256 debtToCollateralRatio = (incentive *
                 debtTokenPrice *
                 WAD) / (data.price * cBALRETH.exchangeRateCached());
             uint256 amountAdjusted = (debtAmount *
@@ -265,7 +270,7 @@ contract CanLiquidateTest is TestBaseLendtroller {
             expectedLiqAmount =
                 (debtAmount * collateralAvailable) /
                 expectedLiquidatedTokens;
-            uint256 liqFee = (WAD * (100 * 1e14)) / liqBaseIncentive;
+            uint256 liqFee = (WAD * (10 * 1e14)) / liqBaseIncentive;
             expectedProtocolTokens = (collateralAvailable * liqFee) / WAD;
         }
 

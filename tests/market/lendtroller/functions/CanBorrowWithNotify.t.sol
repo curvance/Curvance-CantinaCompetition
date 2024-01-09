@@ -116,6 +116,10 @@ contract CanBorrowWithNotifyTest is TestBaseLendtroller {
         public
     {
         skip(gaugePool.startTime() - block.timestamp);
+
+        mockWethFeed.setMockUpdatedAt(block.timestamp);
+        mockRethFeed.setMockUpdatedAt(block.timestamp);
+
         chainlinkEthUsd.updateRoundData(
             0,
             1500e8,
@@ -139,11 +143,11 @@ contract CanBorrowWithNotifyTest is TestBaseLendtroller {
         lendtroller.updateCollateralToken(
             IMToken(address(cBALRETH)),
             7000,
+            4000,
             3000,
-            3000,
-            2000,
-            2000,
-            100,
+            200,
+            400,
+            10,
             1000
         );
 

@@ -13,6 +13,9 @@ contract CanBorrowTest is TestBaseLendtroller {
 
         lendtroller.listToken(address(dUSDC));
         skip(gaugePool.startTime() - block.timestamp);
+
+        mockWethFeed.setMockUpdatedAt(block.timestamp);
+        mockRethFeed.setMockUpdatedAt(block.timestamp);
     }
 
     function test_canBorrow_fail_whenBorrowPaused() public {
@@ -87,11 +90,11 @@ contract CanBorrowTest is TestBaseLendtroller {
         lendtroller.updateCollateralToken(
             IMToken(address(cBALRETH)),
             7000,
+            4000,
             3000,
-            3000,
-            2000,
-            2000,
-            100,
+            200,
+            400,
+            10,
             1000
         );
         address[] memory tokens = new address[](1);

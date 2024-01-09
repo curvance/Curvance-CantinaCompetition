@@ -44,7 +44,12 @@ contract TestCTokenForPendlePT is TestBaseMarket {
 
         // use mock pricing for testing
         mockUsdcFeed = new MockDataFeed(_CHAINLINK_USDC_USD);
-        chainlinkAdaptor.addAsset(_USDC_ADDRESS, address(mockUsdcFeed), 0, true);
+        chainlinkAdaptor.addAsset(
+            _USDC_ADDRESS,
+            address(mockUsdcFeed),
+            0,
+            true
+        );
         dualChainlinkAdaptor.addAsset(
             _USDC_ADDRESS,
             address(mockUsdcFeed),
@@ -52,7 +57,12 @@ contract TestCTokenForPendlePT is TestBaseMarket {
             true
         );
         mockWethFeed = new MockDataFeed(_CHAINLINK_ETH_USD);
-        chainlinkAdaptor.addAsset(_WETH_ADDRESS, address(mockWethFeed), 0, true);
+        chainlinkAdaptor.addAsset(
+            _WETH_ADDRESS,
+            address(mockWethFeed),
+            0,
+            true
+        );
         dualChainlinkAdaptor.addAsset(
             _WETH_ADDRESS,
             address(mockWethFeed),
@@ -130,7 +140,7 @@ contract TestCTokenForPendlePT is TestBaseMarket {
                 200, // 2% liq incentive
                 400,
                 0,
-                200
+                1000
             );
 
             address[] memory mTokens = new address[](1);
@@ -532,7 +542,7 @@ contract TestCTokenForPendlePT is TestBaseMarket {
         dUSDC.liquidate(user1, IMToken(address(cPendlePT)));
         vm.stopPrank();
 
-        uint256 liquidatedAmount = 550e6;
+        uint256 liquidatedAmount = 590e6;
 
         AccountSnapshot memory snapshot = cPendlePT.getSnapshotPacked(user1);
         assertApproxEqRel(

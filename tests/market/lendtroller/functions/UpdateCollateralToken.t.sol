@@ -201,18 +201,18 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
 
     function test_updateCollateralToken_fail_whenPriceRouterFails() public {
         // Set Oracle timestamp to 0 to make price stale
-        chainlinkEthUsd.updateRoundData(0, 1e8, 0, 0);
+        mockRethFeed.setMockUpdatedAt(1);
 
         lendtroller.listToken(address(cBALRETH));
         vm.expectRevert(Lendtroller.Lendtroller__PriceError.selector);
         lendtroller.updateCollateralToken(
             IMToken(address(cBALRETH)),
-            9100, // collRatio
-            300,
+            7000, // collRatio
+            4000,
+            3000,
             200,
-            200,
-            250,
-            0,
+            400,
+            10,
             1000
         );
     }
@@ -224,29 +224,29 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
         vm.expectEmit(true, true, true, true, address(lendtroller));
         emit CollateralTokenUpdated(
             IMToken(address(cBALRETH)),
-            0.91e18,
-            0.03e18,
+            0.7e18,
+            0.4e18,
+            0.3e18,
             0.02e18,
-            0.02e18,
-            0.025e18,
-            0,
+            0.04e18,
+            0.001e18,
             0.1e18
         );
 
         lendtroller.updateCollateralToken(
             IMToken(address(cBALRETH)),
-            9100,
-            300,
+            7000, // collRatio
+            4000,
+            3000,
             200,
-            200,
-            250,
-            0,
+            400,
+            10,
             1000
         );
 
         (, uint256 collRatio, , , , , , , ) = lendtroller.tokenData(
             address(cBALRETH)
         );
-        assertEq(collRatio, 0.91e18);
+        assertEq(collRatio, 0.7e18);
     }
 }

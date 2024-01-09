@@ -45,6 +45,9 @@ contract CanRedeemTest is TestBaseLendtroller {
 
     function test_canRedeem_fail_WhenCTokenInsufficientLiquidity() public {
         skip(gaugePool.startTime() - block.timestamp);
+
+        mockWethFeed.setMockUpdatedAt(block.timestamp);
+        mockRethFeed.setMockUpdatedAt(block.timestamp);
         chainlinkEthUsd.updateRoundData(
             0,
             1500e8,

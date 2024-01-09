@@ -3,8 +3,12 @@ pragma solidity ^0.8.17;
 
 import { TestBaseMarket } from "tests/market/TestBaseMarket.sol";
 import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
+import { MockDataFeed } from "contracts/mocks/MockDataFeed.sol";
 
 contract TestBaseLendtroller is TestBaseMarket {
+    MockDataFeed public mockWethFeed;
+    MockDataFeed public mockRethFeed;
+
     function setUp() public virtual override {
         super.setUp();
 
@@ -22,6 +26,33 @@ contract TestBaseLendtroller is TestBaseMarket {
             _BALANCER_WETH_RETH,
             address(cBALRETH),
             _ONE
+        );
+
+        mockWethFeed = new MockDataFeed(_CHAINLINK_ETH_USD);
+        chainlinkAdaptor.addAsset(
+            _WETH_ADDRESS,
+            address(mockWethFeed),
+            0,
+            true
+        );
+        dualChainlinkAdaptor.addAsset(
+            _WETH_ADDRESS,
+            address(mockWethFeed),
+            0,
+            true
+        );
+        mockRethFeed = new MockDataFeed(_CHAINLINK_ETH_USD);
+        chainlinkAdaptor.addAsset(
+            _RETH_ADDRESS,
+            address(mockRethFeed),
+            0,
+            true
+        );
+        dualChainlinkAdaptor.addAsset(
+            _RETH_ADDRESS,
+            address(mockRethFeed),
+            0,
+            true
         );
     }
 }

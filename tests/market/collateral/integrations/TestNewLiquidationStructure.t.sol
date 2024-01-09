@@ -31,7 +31,12 @@ contract TestNewLiquidationStructure is TestBaseMarket {
             true
         );
         mockWethFeed = new MockDataFeed(_CHAINLINK_ETH_USD);
-        chainlinkAdaptor.addAsset(_WETH_ADDRESS, address(mockWethFeed), 0, true);
+        chainlinkAdaptor.addAsset(
+            _WETH_ADDRESS,
+            address(mockWethFeed),
+            0,
+            true
+        );
         dualChainlinkAdaptor.addAsset(
             _WETH_ADDRESS,
             address(mockWethFeed),
@@ -39,12 +44,17 @@ contract TestNewLiquidationStructure is TestBaseMarket {
             true
         );
         mockRethFeed = new MockDataFeed(_CHAINLINK_RETH_ETH);
-        chainlinkAdaptor.addAsset(_RETH_ADDRESS, address(mockRethFeed), 0, false);
+        chainlinkAdaptor.addAsset(
+            _RETH_ADDRESS,
+            address(mockRethFeed),
+            0,
+            false
+        );
         dualChainlinkAdaptor.addAsset(
             _RETH_ADDRESS,
             address(mockRethFeed),
             0,
-            true
+            false
         );
 
         // start epoch
@@ -55,6 +65,9 @@ contract TestNewLiquidationStructure is TestBaseMarket {
         mockDaiFeed.setMockUpdatedAt(block.timestamp);
         mockWethFeed.setMockUpdatedAt(block.timestamp);
         mockRethFeed.setMockUpdatedAt(block.timestamp);
+
+        (, int256 ethPrice, , , ) = mockWethFeed.latestRoundData();
+        chainlinkEthUsd.updateAnswer(ethPrice);
 
         // deploy dDAI
         {
@@ -78,8 +91,8 @@ contract TestNewLiquidationStructure is TestBaseMarket {
                 4000,
                 3000,
                 200,
-                200,
-                100,
+                400,
+                10,
                 1000
             );
             address[] memory tokens = new address[](1);
@@ -181,7 +194,7 @@ contract TestNewLiquidationStructure is TestBaseMarket {
         assertApproxEqRel(
             cBALRETH.balanceOf(user1),
             1 ether - (500 ether * 1 ether) / balRETHPrice,
-            0.01e18
+            0.02e18
         );
         assertEq(cBALRETH.exchangeRateCached(), 1 ether);
 

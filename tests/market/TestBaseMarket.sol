@@ -484,11 +484,11 @@ contract TestBaseMarket is TestBase {
         lendtroller.updateCollateralToken(
             IMToken(address(cBALRETH)),
             7000,
+            4000,
             3000,
-            3000,
-            2000,
-            2000,
-            100,
+            200, // 2% liq incentive
+            400,
+            0,
             1000
         );
         address[] memory tokens = new address[](1);

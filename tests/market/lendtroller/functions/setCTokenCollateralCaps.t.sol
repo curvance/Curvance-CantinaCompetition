@@ -63,8 +63,8 @@ contract SetCTokenCollateralCapsTest is TestBaseLendtroller {
             4000,
             3000,
             200,
-            200,
-            100,
+            400,
+            10,
             1000
         );
 

@@ -34,7 +34,12 @@ contract TestPositionFolding is TestBaseMarket {
 
         // use mock pricing for testing
         mockUsdcFeed = new MockDataFeed(_CHAINLINK_USDC_USD);
-        chainlinkAdaptor.addAsset(_USDC_ADDRESS, address(mockUsdcFeed), 0, true);
+        chainlinkAdaptor.addAsset(
+            _USDC_ADDRESS,
+            address(mockUsdcFeed),
+            0,
+            true
+        );
         dualChainlinkAdaptor.addAsset(
             _USDC_ADDRESS,
             address(mockUsdcFeed),
@@ -50,7 +55,12 @@ contract TestPositionFolding is TestBaseMarket {
             true
         );
         mockWethFeed = new MockDataFeed(_CHAINLINK_ETH_USD);
-        chainlinkAdaptor.addAsset(_WETH_ADDRESS, address(mockWethFeed), 0, true);
+        chainlinkAdaptor.addAsset(
+            _WETH_ADDRESS,
+            address(mockWethFeed),
+            0,
+            true
+        );
         dualChainlinkAdaptor.addAsset(
             _WETH_ADDRESS,
             address(mockWethFeed),
@@ -58,12 +68,17 @@ contract TestPositionFolding is TestBaseMarket {
             true
         );
         mockRethFeed = new MockDataFeed(_CHAINLINK_RETH_ETH);
-        chainlinkAdaptor.addAsset(_RETH_ADDRESS, address(mockRethFeed), 0, false);
+        chainlinkAdaptor.addAsset(
+            _RETH_ADDRESS,
+            address(mockRethFeed),
+            0,
+            false
+        );
         dualChainlinkAdaptor.addAsset(
             _RETH_ADDRESS,
             address(mockRethFeed),
             0,
-            true
+            false
         );
 
         _prepareUSDC(user, 200000e6);
@@ -79,6 +94,9 @@ contract TestPositionFolding is TestBaseMarket {
         mockDaiFeed.setMockUpdatedAt(block.timestamp);
         mockWethFeed.setMockUpdatedAt(block.timestamp);
         mockRethFeed.setMockUpdatedAt(block.timestamp);
+
+        (, int256 ethPrice, , , ) = mockWethFeed.latestRoundData();
+        chainlinkEthUsd.updateAnswer(ethPrice);
 
         // setup dDAI
         {
@@ -99,11 +117,11 @@ contract TestPositionFolding is TestBaseMarket {
             lendtroller.updateCollateralToken(
                 IMToken(address(cBALRETH)),
                 7000,
-                4000, // liquidate at 71%
+                4000,
                 3000,
                 200,
-                200,
-                100,
+                400,
+                10,
                 1000
             );
             address[] memory tokens = new address[](1);

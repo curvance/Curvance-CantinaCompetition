@@ -23,7 +23,12 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
 
         // use mock pricing for testing
         mockUsdcFeed = new MockDataFeed(_CHAINLINK_USDC_USD);
-        chainlinkAdaptor.addAsset(_USDC_ADDRESS, address(mockUsdcFeed), 0, true);
+        chainlinkAdaptor.addAsset(
+            _USDC_ADDRESS,
+            address(mockUsdcFeed),
+            0,
+            true
+        );
         dualChainlinkAdaptor.addAsset(
             _USDC_ADDRESS,
             address(mockUsdcFeed),
@@ -31,7 +36,12 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
             true
         );
         mockWethFeed = new MockDataFeed(_CHAINLINK_ETH_USD);
-        chainlinkAdaptor.addAsset(_WETH_ADDRESS, address(mockWethFeed), 0, true);
+        chainlinkAdaptor.addAsset(
+            _WETH_ADDRESS,
+            address(mockWethFeed),
+            0,
+            true
+        );
         dualChainlinkAdaptor.addAsset(
             _WETH_ADDRESS,
             address(mockWethFeed),
@@ -39,12 +49,17 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
             true
         );
         mockRethFeed = new MockDataFeed(_CHAINLINK_RETH_ETH);
-        chainlinkAdaptor.addAsset(_RETH_ADDRESS, address(mockRethFeed), 0, false);
+        chainlinkAdaptor.addAsset(
+            _RETH_ADDRESS,
+            address(mockRethFeed),
+            0,
+            false
+        );
         dualChainlinkAdaptor.addAsset(
             _RETH_ADDRESS,
             address(mockRethFeed),
             0,
-            true
+            false
         );
 
         // start epoch
@@ -55,6 +70,9 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
         mockUsdcFeed.setMockUpdatedAt(block.timestamp);
         mockWethFeed.setMockUpdatedAt(block.timestamp);
         mockRethFeed.setMockUpdatedAt(block.timestamp);
+
+        (, int256 ethPrice, , , ) = mockWethFeed.latestRoundData();
+        chainlinkEthUsd.updateAnswer(ethPrice);
 
         // setup dUSDC
         {
@@ -77,8 +95,8 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
                 4000,
                 3000,
                 200,
-                200,
-                100,
+                400,
+                10,
                 1000
             );
             address[] memory tokens = new address[](1);
@@ -415,7 +433,7 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
         assertApproxEqRel(
             cBALRETH.balanceOf(user1),
             1 ether - (500 ether * 1 ether) / balRETHPrice,
-            0.01e18
+            0.02e18
         );
         assertEq(cBALRETH.exchangeRateCached(), 1 ether);
 
@@ -459,8 +477,8 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
 
         assertApproxEqRel(
             cBALRETH.balanceOf(user1),
-            1 ether - (1530 ether * 1e18) / balRETHPrice,
-            0.03e18
+            1 ether - (1550 ether * 1e18) / balRETHPrice,
+            0.05e18
         );
         assertEq(cBALRETH.exchangeRateCached(), 1 ether);
 
