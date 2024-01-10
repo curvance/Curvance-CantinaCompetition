@@ -59,7 +59,7 @@ contract MockTokenBridgeRelayer {
     /// @param token Address of the token.
     function registerToken(uint16 chainId, address token) external {}
 
-    function wormhole() external view returns (IWormhole) {
+    function wormhole() external pure returns (IWormhole) {
         return IWormhole(_WORMHOLE);
     }
 

@@ -41,7 +41,7 @@ library Bytes32Helper {
     }
 
     /// @dev This will trim the output value to 32 bytes,
-    ///      even if the bytes value is > 32 bytes
+    ///      even if the bytes value is > 32 bytes.
     function _stringToBytes32(string memory stringData) public pure returns (bytes32 result) {
         bytes memory bytesData = bytes(stringData);
         if (bytesData.length == 0) {

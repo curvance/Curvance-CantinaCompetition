@@ -21,15 +21,16 @@ library VelodromeLib {
 
     /// CONSTANTS ///
 
-    uint256 public constant VELODROME_ADD_LIQUIDITY_SLIPPAGE = 100; // 1%
+    /// @notice Maximum slippage allowed for velodrome add liquidity call. 1%.
+    uint256 public constant VELODROME_ADD_LIQUIDITY_SLIPPAGE = 100;
 
     /// FUNCTIONS ///
 
-    /// @dev Enter Velodrome
-    /// @param router The velodrome router address
-    /// @param factory The velodrome factory address
-    /// @param lpToken The LP token address
-    /// @param lpMinOutAmount The minimum output amount
+    /// @notice Enter a Velodrome position.
+    /// @param router The velodrome router address.
+    /// @param factory The velodrome factory address.
+    /// @param lpToken The LP token address.
+    /// @param lpMinOutAmount The minimum output amount.
     function enterVelodrome(
         address router,
         address factory,
@@ -123,10 +124,10 @@ library VelodromeLib {
         }
     }
 
-    /// @dev Exit velodrome
-    /// @param router The velodrome router address
-    /// @param lpToken The LP token address
-    /// @param lpAmount The LP amount to exit
+    /// @dev Exit a velodrome position.
+    /// @param router The velodrome router address.
+    /// @param lpToken The LP token address.
+    /// @param lpAmount The LP amount to exit.
     function exitVelodrome(
         address router,
         address lpToken,
@@ -149,14 +150,14 @@ library VelodromeLib {
         );
     }
 
-    /// @notice Adds `token0` and `token1` into a velodrome LP
-    /// @param router The velodrome router address
-    /// @param token0 The first token of the pair
-    /// @param token1 The second token of the pair
-    /// @param amount0 The amount of the `token0`
-    /// @param amount1 The amount of the `token1`
-    /// @param slippage The slippage percent, 10000 for 100%
-    /// @return liquidity The amount of LP tokens received
+    /// @notice Adds `token0` and `token1` into a velodrome LP.
+    /// @param router The velodrome router address.
+    /// @param token0 The first token of the pair.
+    /// @param token1 The second token of the pair.
+    /// @param amount0 The amount of the `token0`.
+    /// @param amount1 The amount of the `token1`.
+    /// @param slippage The slippage percent, in `basis points`.
+    /// @return liquidity The amount of LP tokens received.
     function _addLiquidity(
         address router,
         address token0,
@@ -182,13 +183,13 @@ library VelodromeLib {
     }
 
     /// @notice Calculates the optimal amount of TokenA to swap to TokenB
-    ///         for a perfect LP deposit for a stable pair
-    /// @param amountA The amount of `token0` this vault has currently
-    /// @param reserveA The amount of `token0` the LP has in reserve
-    /// @param reserveB The amount of `token1` the LP has in reserve
-    /// @param decimalsA The decimals of `token0`
-    /// @param decimalsB The decimals of `token1`
-    /// @return The optimal amount of TokenA to swap
+    ///         for a perfect LP deposit for a stable pair.
+    /// @param amountA The amount of `token0` this vault has currently.
+    /// @param reserveA The amount of `token0` the LP has in reserve.
+    /// @param reserveB The amount of `token1` the LP has in reserve.
+    /// @param decimalsA The decimals of `token0`.
+    /// @param decimalsB The decimals of `token1`.
+    /// @return The optimal amount of TokenA to swap.
     function _optimalDeposit(
         address factory,
         address lpToken,
@@ -224,10 +225,10 @@ library VelodromeLib {
         }
     }
 
-    /// @notice Swaps an exact amount of `tokenIn` for `tokenOut`
-    /// @param tokenIn The token to be swapped from
-    /// @param tokenOut The token to be swapped into
-    /// @param amount The amount of `tokenIn` to be swapped
+    /// @notice Swaps an exact amount of `tokenIn` for `tokenOut`.
+    /// @param tokenIn The token to be swapped from.
+    /// @param tokenOut The token to be swapped into.
+    /// @param amount The amount of `tokenIn` to be swapped.
     function _swapExactTokensForTokens(
         address router,
         address lpToken,

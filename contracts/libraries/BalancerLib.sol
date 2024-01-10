@@ -16,12 +16,12 @@ library BalancerLib {
 
     /// FUNCTIONS ///
 
-    /// @dev Enter Balancer
-    /// @param balancerVault The balancer vault address
-    /// @param balancerPoolId The balancer pool ID
-    /// @param lpToken The Curve LP token address
-    /// @param tokens The underlying coin addresses of Curve LP
-    /// @param lpMinOutAmount The minimum output amount
+    /// @notice Enter a balancer position.
+    /// @param balancerVault The balancer vault address.
+    /// @param balancerPoolId The balancer pool ID.
+    /// @param lpToken The Curve LP token address.
+    /// @param tokens The underlying coin addresses of Curve LP.
+    /// @param lpMinOutAmount The minimum output amount.
     function enterBalancer(
         address balancerVault,
         bytes32 balancerPoolId,
@@ -77,12 +77,12 @@ library BalancerLib {
         }
     }
 
-    /// @dev Exit balancer
-    /// @param balancerVault The balancer vault address
-    /// @param balancerPoolId The balancer pool ID
-    /// @param lpToken The Curve LP token address
-    /// @param tokens The underlying coin addresses of Curve LP
-    /// @param lpAmount The LP amount to exit
+    /// @dev Exit a balancer position.
+    /// @param balancerVault The balancer vault address.
+    /// @param balancerPoolId The balancer pool ID.
+    /// @param lpToken The Balancer BPT token address.
+    /// @param tokens The underlying coin addresses of Balancer BPT.
+    /// @param lpAmount The LP amount to exit.
     function exitBalancer(
         address balancerVault,
         bytes32 balancerPoolId,

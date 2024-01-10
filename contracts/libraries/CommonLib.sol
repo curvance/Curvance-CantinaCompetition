@@ -10,8 +10,8 @@ library CommonLib {
             token == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
     }
 
-    /// @dev Get token balance of this contract
-    /// @param token The token address
+    /// @notice Returns balance of `token` for this contract.
+    /// @param token The token address.
     function getTokenBalance(address token) internal view returns (uint256) {
         if (isETH(token)) {
             return address(this).balance;
