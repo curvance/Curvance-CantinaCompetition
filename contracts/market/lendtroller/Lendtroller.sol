@@ -53,7 +53,8 @@ contract Lendtroller is LiquidityManager, ERC165 {
 
     /// STORAGE ///
 
-    /// @notice A list of all tokens inside this market for the frontend.
+    /// @notice A list of all tokens inside this market for
+    ///         offchain querying.
     address[] public tokensListed;
 
     /// @notice PositionFolding contract address.
@@ -162,32 +163,34 @@ contract Lendtroller is LiquidityManager, ERC165 {
     /// ACCOUNT LIQUIDITY FUNCTIONS ///
 
     /// @notice Determine `account`'s current status between collateral,
-    ///         debt, and additional liquidity
-    /// @param account The account to determine liquidity for
-    /// @return accountCollateral total collateral amount of account
-    /// @return maxDebt max borrow amount of account
-    /// @return accountDebt total borrow amount of account
+    ///         debt, and additional liquidity.
+    /// @param account The account to determine liquidity for.
+    /// @return accountCollateral total collateral amount of account.
+    /// @return maxDebt max borrow amount of account.
+    /// @return accountDebt total borrow amount of account.
     function statusOf(
         address account
     ) external view returns (uint256, uint256, uint256) {
         return _statusOf(account);
     }
 
-    /// @notice Determine `account`'s current collateral and debt values in the market
-    /// @param account The account to check bad debt status for
-    /// @return The total market value of `account`'s collateral
-    /// @return The total outstanding debt value of `account`
+    /// @notice Determine `account`'s current collateral and debt values
+    ///         in the market.
+    /// @param account The account to check bad debt status for.
+    /// @return The total market value of `account`'s collateral.
+    /// @return The total outstanding debt value of `account`.
     function solvencyOf(
         address account
     ) external view returns (uint256, uint256) {
         return _solvencyOf(account);
     }
 
-    /// @notice Determine whether `account` can currently be liquidated in this market
-    /// @param account The account to check for liquidation flag
-    /// @dev Note that we calculate the exchangeRateCached for each collateral
-    ///           mToken using stored data, without calculating accumulated interest.
-    /// @return Whether `account` can be liquidated currently
+    /// @notice Determine whether `account` can currently be liquidated
+    ///         in this market.
+    /// @param account The account to check for liquidation flag.
+    /// @dev Note: Liquidation flag uses cached exchange rates for each mToken.
+    ///            Thus, accumulated but unrecognized interest is not included.
+    /// @return Whether `account` can be liquidated currently.
     function flaggedForLiquidation(
         address account
     ) external view returns (bool) {
@@ -200,13 +203,15 @@ contract Lendtroller is LiquidityManager, ERC165 {
     }
 
     /// @notice Determine what the account liquidity would be if
-    ///         the given amounts were redeemed/borrowed
-    /// @param account The account to determine liquidity for
-    /// @param mTokenModified The market to hypothetically redeem/borrow in
-    /// @param redeemTokens The number of tokens to hypothetically redeem
-    /// @param borrowAmount The amount of underlying to hypothetically borrow
-    /// @return uint256 hypothetical account liquidity in excess of collateral requirements
-    /// @return uint256 hypothetical account liquidity deficit below collateral requirements
+    ///         the given amounts were redeemed/borrowed.
+    /// @param account The account to determine liquidity for.
+    /// @param mTokenModified The market to hypothetically redeem/borrow in.
+    /// @param redeemTokens The number of tokens to hypothetically redeem.
+    /// @param borrowAmount The amount of underlying to hypothetically borrow.
+    /// @return Hypothetical account liquidity in excess of collateral
+    ///         requirements.
+    /// @return Hypothetical account liquidity deficit below collateral
+    ///         requirements.
     function hypotheticalLiquidityOf(
         address account,
         address mTokenModified,
@@ -261,25 +266,31 @@ contract Lendtroller is LiquidityManager, ERC165 {
         _postCollateral(account, accountData, mToken, tokens);
     }
 
-    /// @notice Remove collateral posted for `mToken` inside this market.
-    /// @param mToken The address of the mToken to post collateral for.
+    /// @notice Remove collateral posted for `cToken` inside this market.
+    /// @param cToken The address of the cToken to post collateral for.
+    /// @param tokens The number of tokens that are posted of collateral
+    ///               that should be removed.
+    /// @param closePositionIfPossible Whether the user's position should be
+    ///                                forceably closed. Only possible if
+    ///                                postedCollateral in `cToken` becomes
+    ///                                0 after this action.
     function removeCollateral(
-        address mToken,
+        address cToken,
         uint256 tokens,
         bool closePositionIfPossible
     ) external {
-        AccountMetadata storage accountData = tokenData[mToken].accountData[
+        AccountMetadata storage accountData = tokenData[cToken].accountData[
             msg.sender
         ];
 
-        // We can check this instead of .isListed,
-        // since any non-listed token will always have activePosition == 0,
-        // and this lets us check for any invariant errors
+        // We can check this instead of .isListed because any unlisted token
+        // will always have activePosition == 0,
+        // and this lets us check for any invariant errors.
         if (accountData.activePosition != 2) {
             revert Lendtroller__InvariantError();
         }
 
-        if (!IMToken(mToken).isCToken()) {
+        if (!IMToken(cToken).isCToken()) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
@@ -287,57 +298,60 @@ contract Lendtroller is LiquidityManager, ERC165 {
             revert Lendtroller__InsufficientCollateral();
         }
 
-        // Fail if the sender is not permitted to redeem `tokens`
-        // note: tokens is in shares
-        _canRedeem(mToken, msg.sender, tokens);
+        // Fail if the sender is not permitted to redeem `tokens`.
+        // Note: `tokens` is in shares.
+        _canRedeem(cToken, msg.sender, tokens);
         _removeCollateral(
             msg.sender,
             accountData,
-            mToken,
+            cToken,
             tokens,
             closePositionIfPossible
         );
     }
 
-    /// @notice Reduces `accounts`'s posted collateral if necessary for their desired action
-    /// @param account The account to potential reduce posted collateral for
-    /// @param mToken The address of the mToken to potentially reduce collateral for
-    /// @param balance The cToken share balance of `account`
-    /// @param amount The maximum amount of shares that could be removed as collateral
+    /// @notice Reduces `accounts`'s posted collateral if necessary for their
+    ///         desired action.
+    /// @param account The account to potential reduce posted collateral for.
+    /// @param cToken The cToken address to potentially reduce collateral for.
+    /// @param balance The cToken share balance of `account`.
+    /// @param amount The maximum amount of shares that could be removed as
+    ///               collateral.
     function reduceCollateralIfNecessary(
         address account,
-        address mToken,
+        address cToken,
         uint256 balance,
         uint256 amount
     ) external {
-        if (msg.sender != mToken) {
+        if (msg.sender != cToken) {
             _revert(_UNAUTHORIZED_SELECTOR);
         }
 
-        _reduceCollateralIfNecessary(account, mToken, balance, amount, false);
+        _reduceCollateralIfNecessary(account, cToken, balance, amount, false);
     }
 
-    /// @notice Removes an asset from an account's liquidity calculation
+    /// @notice Removes an asset from an account's liquidity calculation.
     /// @dev Sender must not have an outstanding borrow balance in the asset,
     ///      or be providing necessary collateral for an outstanding borrow.
-    /// @param mToken The address of the asset to be removed
+    /// @param mToken The address of the asset to be removed.
     function closePosition(address mToken) external {
         IMToken token = IMToken(mToken);
         AccountMetadata storage accountData = tokenData[mToken].accountData[
             msg.sender
         ];
 
-        // We do not need to update any values if the account is not ‘in’ the market
+        // We do not need to update any values if the account is not 
+        // "in" the market.
         if (accountData.activePosition < 2) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
         if (!token.isCToken()) {
-            // Get sender tokens and debt underlying from the mToken
+            // Get sender tokens and debt underlying from the mToken.
             (, uint256 debt, ) = token.getSnapshot(msg.sender);
 
             // Caller is unauthorized to close their dToken position
-            // if they owe a balance
+            // if they owe a balance.
             if (debt != 0) {
                 _revert(_UNAUTHORIZED_SELECTOR);
             }
@@ -347,10 +361,11 @@ contract Lendtroller is LiquidityManager, ERC165 {
         }
 
         if (accountData.collateralPosted != 0) {
-            // Fail if the sender is not permitted to redeem all of their tokens
+            // Fail if the sender is not permitted to redeem all of their tokens.
             _canRedeem(mToken, msg.sender, accountData.collateralPosted);
             // We use collateral posted here instead of their snapshot,
-            // since its possible they have not posted all their tokens as collateral
+            // since its possible they have not posted all their tokens as 
+            // collateral inside the market.
             _removeCollateral(
                 msg.sender,
                 accountData,
@@ -362,15 +377,16 @@ contract Lendtroller is LiquidityManager, ERC165 {
         }
 
         // Its possible they have a position without collateral posted if:
-        // They were liquidated
-        // They removed all their collateral but did not use `closePositionIfPossible`
-        // So we need to still close their position here
+        // 1. They were liquidated.
+        // 2. They removed all their collateral but did not use 
+        //    `closePositionIfPossible`.
+        // 3. So we need to still close their position here.
         _closePosition(msg.sender, accountData, token);
     }
 
     /// @notice Checks if the account should be allowed to mint tokens
-    ///         in the given market
-    /// @param mToken The token to verify mints against
+    ///         in the given market.
+    /// @param mToken The token to verify mints against.
     function canMint(address mToken) external view {
         if (mintPaused[mToken] == 2) {
             _revert(_PAUSED_SELECTOR);
@@ -382,11 +398,11 @@ contract Lendtroller is LiquidityManager, ERC165 {
     }
 
     /// @notice Checks if the account should be allowed to redeem tokens
-    ///         in the given market
-    /// @param mToken The market to verify the redeem against
-    /// @param account The account which would redeem the tokens
+    ///         in the given market.
+    /// @param mToken The market to verify the redeem against.
+    /// @param account The account which would redeem the tokens.
     /// @param amount The number of mTokens to exchange
-    ///               for the underlying asset in the market
+    ///               for the underlying asset in the market.
     function canRedeem(
         address mToken,
         address account,
@@ -396,15 +412,16 @@ contract Lendtroller is LiquidityManager, ERC165 {
     }
 
     /// @notice Checks if the account should be allowed to redeem tokens
-    ///         in the given market, and then redeems
-    /// @dev    This can only be called by the mToken itself,
-    ///         this will only be cTokens calling, dTokens are never collateral
-    /// @param mToken The market to verify the redeem against
-    /// @param account The account which would redeem the tokens
-    /// @param balance The current mTokens balance of `account`
+    ///         in the given market, and then redeems.
+    /// @dev    This can only be called by the mToken itself 
+    ///         (specifically cTokens, because dTokens are never collateral).
+    /// @param mToken The market to verify the redeem against.
+    /// @param account The account which would redeem the tokens.
+    /// @param balance The current mTokens balance of `account`.
     /// @param amount The number of mTokens to exchange
-    ///               for the underlying asset in the market
-    /// @param forceRedeemCollateral Whether the collateral should be always reduced
+    ///               for the underlying asset in the market.
+    /// @param forceRedeemCollateral Whether the collateral should be always
+    ///                              reduced.
     function canRedeemWithCollateralRemoval(
         address mToken,
         address account,
@@ -428,11 +445,11 @@ contract Lendtroller is LiquidityManager, ERC165 {
 
     /// @notice Checks if the account should be allowed to borrow
     ///         the underlying asset of the given market,
-    ///         and notifies the market of the borrow
-    /// @dev    This can only be called by the market itself
-    /// @param mToken The market to verify the borrow against
-    /// @param account The account which would borrow the asset
-    /// @param amount The amount of underlying the account would borrow
+    ///         and notifies the market of the borrow.
+    /// @dev    This can only be called by the market itself.
+    /// @param mToken The market to verify the borrow against.
+    /// @param account The account which would borrow the asset.
+    /// @param amount The amount of underlying the account would borrow.
     function canBorrowWithNotify(
         address mToken,
         address account,
@@ -446,10 +463,10 @@ contract Lendtroller is LiquidityManager, ERC165 {
         canBorrow(mToken, account, amount);
     }
 
-    /// @notice Updates `account` cooldownTimestamp to the current block timestamp
-    /// @dev The caller must be a listed MToken in the `markets` mapping
-    /// @param mToken   The address of the dToken that the account is borrowing
-    /// @param account The address of the account that has just borrowed
+    /// @notice Updates `account` cooldownTimestamp to the current block timestamp.
+    /// @dev The caller must be a listed MToken in the `markets` mapping.
+    /// @param mToken   The address of the dToken that the account is borrowing.
+    /// @param account The address of the account that has just borrowed.
     function notifyBorrow(address mToken, address account) external {
         if (msg.sender != mToken) {
             _revert(_UNAUTHORIZED_SELECTOR);
@@ -459,9 +476,9 @@ contract Lendtroller is LiquidityManager, ERC165 {
     }
 
     /// @notice Checks if the account should be allowed to repay a borrow
-    ///         in the given market
-    /// @param mToken The market to verify the repay against
-    /// @param account The account who will have their loan repaid
+    ///         in the given market.
+    /// @param mToken The market to verify the repay against.
+    /// @param account The account who will have their loan repaid.
     function canRepay(address mToken, address account) external view {
         if (!tokenData[mToken].isListed) {
             _revert(_TOKEN_NOT_LISTED_SELECTOR);
@@ -469,7 +486,7 @@ contract Lendtroller is LiquidityManager, ERC165 {
 
         // We require a `minimumHoldPeriod` to break flashloan manipulations attempts
         // as well as short term price manipulations if the dynamic dual oracle
-        // fails to protect the market somehow
+        // fails to protect the market somehow.
         if (
             accountAssets[account].cooldownTimestamp + _MIN_HOLD_PERIOD >
             block.timestamp
@@ -479,15 +496,18 @@ contract Lendtroller is LiquidityManager, ERC165 {
     }
 
     /// @notice Checks if the liquidation should be allowed to occur,
-    ///         and returns how many collateral tokens should be seized on liquidation
-    /// @param dToken Debt token to repay which is borrowed by `account`
-    /// @param cToken Collateral token collateralized by `account` and will be seized
-    /// @param account The address of the account to be liquidated
-    /// @param amount The amount of `debtToken` underlying being repaid
-    /// @param liquidateExact Whether the liquidator desires a specific liquidation amount
-    /// @return The amount of `debtToken` underlying to be repaid on liquidation
-    /// @return The number of `collateralToken` tokens to be seized in a liquidation
-    /// @return The number of `collateralToken` tokens to be seized for the protocol
+    ///         and returns how many collateral tokens should be seized
+    ///         on liquidation.
+    /// @param dToken Debt token to repay which is borrowed by `account`.
+    /// @param cToken Collateral token collateralized by `account` and will
+    ///               be seized.
+    /// @param account The address of the account to be liquidated.
+    /// @param amount The amount of `debtToken` underlying being repaid.
+    /// @param liquidateExact Whether the liquidator desires a specific
+    ///                       liquidation amount.
+    /// @return The amount of `debtToken` underlying to be repaid on liquidation.
+    /// @return The number of `collateralToken` tokens to be seized in a liquidation.
+    /// @return The number of `collateralToken` tokens to be seized for the protocol.
     function canLiquidate(
         address dToken,
         address cToken,
@@ -499,15 +519,18 @@ contract Lendtroller is LiquidityManager, ERC165 {
     }
 
     /// @notice Checks if the liquidation should be allowed to occur,
-    ///         and returns how many collateral tokens should be seized on liquidation
-    /// @param dToken Debt token to repay which is borrowed by `account`
-    /// @param cToken Collateral token which was used as collateral and will be seized
-    /// @param account The address of the account to be liquidated
-    /// @param amount The amount of `debtToken` underlying being repaid
-    /// @param liquidateExact Whether the liquidator desires a specific liquidation amount
-    /// @return The amount of `debtToken` underlying to be repaid on liquidation
-    /// @return The number of `collateralToken` tokens to be seized in a liquidation
-    /// @return The number of `collateralToken` tokens to be seized for the protocol
+    ///         and returns how many collateral tokens should be seized
+    ///         on liquidation.
+    /// @param dToken Debt token to repay which is borrowed by `account`.
+    /// @param cToken Collateral token which was used as collateral and will
+    ///        be seized.
+    /// @param account The address of the account to be liquidated.
+    /// @param amount The amount of `debtToken` underlying being repaid.
+    /// @param liquidateExact Whether the liquidator desires a specific
+    ///                       liquidation amount.
+    /// @return The amount of `debtToken` underlying to be repaid on liquidation.
+    /// @return The number of `collateralToken` tokens to be seized in a liquidation.
+    /// @return The number of `collateralToken` tokens to be seized for the protocol.
     function canLiquidateWithExecution(
         address dToken,
         address cToken,
@@ -526,7 +549,7 @@ contract Lendtroller is LiquidityManager, ERC165 {
         ) = _canLiquidate(dToken, cToken, account, amount, liquidateExact);
 
         // We can pass balance = 0 here since we are forcing collateral closure
-        // and balance will never be lower than collateral posted
+        // and balance will never be lower than collateral posted.
         _reduceCollateralIfNecessary(
             account,
             cToken,
@@ -537,10 +560,10 @@ contract Lendtroller is LiquidityManager, ERC165 {
         return (dTokenRepaid, cTokenLiquidated, protocolTokens);
     }
 
-    /// @notice Checks if the seizing of assets should be allowed to occur
+    /// @notice Checks if the seizing of assets should be allowed to occur.
     /// @param collateralToken Asset which was used as collateral
-    ///                        and will be seized
-    /// @param debtToken Asset which was borrowed by the account
+    ///                        and will be seized.
+    /// @param debtToken Asset which was borrowed by the account.
     function canSeize(
         address collateralToken,
         address debtToken
@@ -566,10 +589,10 @@ contract Lendtroller is LiquidityManager, ERC165 {
     }
 
     /// @notice Checks if the account should be allowed to transfer tokens
-    ///         in the given market
-    /// @param mToken The market to verify the transfer against
-    /// @param from The account which sources the tokens
-    /// @param amount The number of mTokens to transfer
+    ///         in the given market.
+    /// @param mToken The market to verify the transfer against.
+    /// @param from The account which sources the tokens.
+    /// @param amount The number of mTokens to transfer.
     function canTransfer(
         address mToken,
         address from,
@@ -588,12 +611,12 @@ contract Lendtroller is LiquidityManager, ERC165 {
     /// @dev    Updates `account` DToken interest before solvency is checked.
     /// @param account The address to liquidate completely.
     function liquidateAccount(address account) external {
-        // Make sure `account` is not trying to liquidate themselves
+        // Make sure `account` is not trying to liquidate themselves.
         if (msg.sender == account) {
             _revert(_UNAUTHORIZED_SELECTOR);
         }
 
-        // Make sure liquidations are not paused
+        // Make sure liquidations are not paused.
         if (seizePaused == 2) {
             _revert(_PAUSED_SELECTOR);
         }
@@ -602,12 +625,12 @@ contract Lendtroller is LiquidityManager, ERC165 {
         uint256 numAssets = accountAssets.length;
         IMToken mToken;
 
-        // Update pending interest in markets 
+        // Update pending interest in markets.
         for (uint256 i = 0; i < numAssets; ) {
-            // Cache `account` mToken then increment i
+            // Cache `account` mToken then increment i.
             mToken = accountAssets[i++];
             if (!mToken.isCToken()) {
-                // Update DToken interest if necessary
+                // Update DToken interest if necessary.
                 mToken.accrueInterest();
             }
         }
@@ -618,16 +641,16 @@ contract Lendtroller is LiquidityManager, ERC165 {
             uint256 totalDebt
         ) = _BadDebtTermsOf(account);
 
-        // If an account has no positions or debt this will revert
+        // If an account has no positions or debt this will revert.
         if (totalCollateral >= totalDebt) {
             revert Lendtroller__NoLiquidationAvailable();
         }
 
         uint256 repayRatio = (debtToPay * WAD) / totalDebt;
         
-        // Repay `account`'s debt and recognize bad debt
+        // Repay `account`'s debt and recognize bad debt.
         for (uint256 i = 0; i < numAssets; ) {
-            // Cache `account` mToken then increment i
+            // Cache `account` mToken then increment i.
             mToken = accountAssets[i++];
             if (!mToken.isCToken()) {
                 // Repay `account`'s debt where:
@@ -644,25 +667,25 @@ contract Lendtroller is LiquidityManager, ERC165 {
 
         uint256 collateral;
 
-        // Seize `account`'s collateral and remove posted collateral
+        // Seize `account`'s collateral and remove posted collateral.
         for (uint256 i = 0; i < numAssets; ) {
-            // Cache `account` mToken then increment i
+            // Cache `account` mToken then increment i.
             mToken = accountAssets[i++];
             if (mToken.isCToken()) {
                 AccountMetadata storage data = tokenData[address(mToken)]
                     .accountData[account];
-                // Cache `account` collateral posted
+                // Cache `account` collateral posted.
                 collateral = data.collateralPosted;
 
                 // Remove `account` posted collateral,
-                // as their account is completely closed out
+                // as their account is completely closed out.
                 delete data.collateralPosted;
-                // Update collateralPosted invariant
+                // Update collateralPosted invariant.
                 collateralPosted[address(mToken)] =
                     collateralPosted[address(mToken)] -
                     collateral;
                 emit CollateralRemoved(account, address(mToken), collateral);
-                // Seize `account`'s collateral and give to caller
+                // Seize `account`'s collateral and give to caller.
                 mToken.seizeAccountLiquidation(
                     msg.sender,
                     account,
@@ -674,9 +697,9 @@ contract Lendtroller is LiquidityManager, ERC165 {
 
     /// PERMISSIONED EXTERNAL FUNCTIONS ///
 
-    /// @notice Add the market token to the market and set it as listed
-    /// @dev Admin function to set isListed and add support for the market
-    /// @param mToken The address of the market (token) to list
+    /// @notice Add the market token to the market and set it as listed.
+    /// @dev Admin function to set isListed and add support for the market.
+    /// @param mToken The address of the market (token) to list.
     function listToken(address mToken) external {
         _checkElevatedPermissions();
 
@@ -684,10 +707,11 @@ contract Lendtroller is LiquidityManager, ERC165 {
             revert Lendtroller__TokenAlreadyListed();
         }
 
-        // Sanity check to make sure its really a mToken
+        // Sanity check to make sure its really a mToken.
         IMToken(mToken).isCToken();
 
-        // Immediately deposit into the market to prevent any rounding exploits
+        // Immediately deposit into the market to prevent any rounding
+        // exploits.
         if (!IMToken(mToken).startMarket(msg.sender)) {
             revert Lendtroller__InvariantError();
         }

@@ -56,7 +56,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
 
     /// STORAGE ///
 
-    /// @notice 0 or 1 = activate; 2 = paused
+    /// @notice 0 or 1 = activate; 2 = paused.
     uint256 public isPaused; 
     /// @notice Status of message hash whether it's delivered or not.
     mapping(bytes32 => bool) public isDeliveredMessageHash;
