@@ -22,23 +22,23 @@ contract GMAdaptor is BaseOracleAdaptor {
 
     /// CONSTANTS ///
 
-    /// @notice keccak256(abi.encode("MAX_PNL_FACTOR_FOR_TRADERS"));
+    /// keccak256(abi.encode("MAX_PNL_FACTOR_FOR_TRADERS"));
     bytes32 public constant PNL_FACTOR_TYPE =
         0xab15365d3aa743e766355e2557c230d8f943e195dc84d9b2b05928a07b635ee1;
 
     /// STORAGE ///
 
-    /// @notice GMX Reader address
+    /// @notice GMX Reader address.
     IReader public gmxReader;
 
-    /// @notice GMX DataStore address
+    /// @notice GMX DataStore address.
     address public gmxDataStore;
 
-    /// @notice GMX GM Token Market Data in array
-    /// @dev [indexToken, longToken, shortToken]
+    /// @notice GMX GM Token Market Data in array.
+    /// @dev [indexToken, longToken, shortToken].
     mapping(address => address[]) public marketData;
 
-    /// @notice Price unit for token on GMX Reader
+    /// @notice Price unit for token on GMX Reader.
     mapping(address => uint256) internal _priceUnit;
 
     /// ERRORS ///
@@ -187,13 +187,13 @@ contract GMAdaptor is BaseOracleAdaptor {
             revert GMAdaptor__AssetIsNotSupported();
         }
 
-        // Notify the adaptor to stop supporting the asset
+        // Notify the adaptor to stop supporting the asset.
         delete isSupportedAsset[asset];
 
-        // Wipe config mapping entries for a gas refund
+        // Wipe config mapping entries for a gas refund.
         delete marketData[asset];
 
-        // Notify the price router that we are going to stop supporting the asset
+        // Notify the price router that we are going to stop supporting the asset.
         IPriceRouter(centralRegistry.priceRouter()).notifyFeedRemoval(asset);
     }
 
@@ -201,6 +201,7 @@ contract GMAdaptor is BaseOracleAdaptor {
     /// @param assets The struct array of the synthetic assets to register.
     function registerSyntheticAssets(SyntheticAsset[] memory assets) external {
         _checkElevatedPermissions();
+
         uint256 numAssets = assets.length;
 
         for (uint256 i; i < numAssets; ++i) {
@@ -212,6 +213,7 @@ contract GMAdaptor is BaseOracleAdaptor {
     /// @param assets The struct array of the synthetic assets to unregister.
     function unregisterSyntheticAssets(address[] memory assets) external {
         _checkElevatedPermissions();
+        
         uint256 numAssets = assets.length;
 
         for (uint256 i; i < numAssets; ++i) {
@@ -219,21 +221,23 @@ contract GMAdaptor is BaseOracleAdaptor {
         }
     }
 
-    /// @notice Set GMX Reader address
-    function setGMXReader(address newReader) internal {
+    /// @notice Set GMX Reader address.
+    function setGMXReader(address newReader) external {
         _checkDaoPermissions();
+
         _setGMXReader(newReader);
     }
 
-    /// @notice Set GMX DataStore address
-    function setGMXDataStore(address newDataStore) internal {
+    /// @notice Set GMX DataStore address.
+    function setGMXDataStore(address newDataStore) external {
         _checkDaoPermissions();
+
         _setGMXDataStore(newDataStore);
     }
 
     /// INTERNAL FUNCTIONS ///
 
-    /// @notice Set GMX Reader address
+    /// @notice Set GMX Reader address.
     function _setGMXReader(address newReader) internal {
         if (newReader == address(0)) {
             revert GMAdaptor__GMXReaderIsZeroAddress();
@@ -242,7 +246,7 @@ contract GMAdaptor is BaseOracleAdaptor {
         gmxReader = IReader(newReader);
     }
 
-    /// @notice Set GMX DataStore address
+    /// @notice Set GMX DataStore address.
     function _setGMXDataStore(address newDataStore) internal {
         if (newDataStore == address(0)) {
             revert GMAdaptor__GMXDataStoreIsZeroAddress();
