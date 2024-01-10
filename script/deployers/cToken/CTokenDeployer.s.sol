@@ -46,21 +46,27 @@ contract CTokenDeployer is DeployConfiguration {
             _saveDeployedContracts("chainlinkAdaptor", chainlinkAdaptor);
         }
 
-        // Setup underlying chainlink adapters
+        // Setup underlying chainlink adapters.
         if (
             !ChainlinkAdaptor(chainlinkAdaptor).isSupportedAsset(param.asset)
         ) {
+            // TO-DO: Have a lookup table here for param assets for whether
+            // there are special heartbeats smaller than 24 hours.
             if (param.chainlinkEth != address(0)) {
                 ChainlinkAdaptor(chainlinkAdaptor).addAsset(
                     param.asset,
                     param.chainlinkEth,
+                    0,
                     false
                 );
             }
+            // TO-DO: Have a lookup table here for param assets for whether
+            // there are special heartbeats smaller than 24 hours.
             if (param.chainlinkUsd != address(0)) {
                 ChainlinkAdaptor(chainlinkAdaptor).addAsset(
                     param.asset,
                     param.chainlinkUsd,
+                    0,
                     true
                 );
             }
