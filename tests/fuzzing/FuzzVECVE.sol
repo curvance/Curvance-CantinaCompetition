@@ -654,11 +654,9 @@ contract FuzzVECVE is StatefulBaseMarket {
         }
     }
 
-    function disableContinuousLock_should_succeed_if_lock_exists(
-        uint256 number
-    ) public {
-        uint256 lockIndex = get_existing_lock(number);
-
+    function disableContinuousLock_should_succeed_if_lock_exists() public {
+        uint256 lockIndex = get_continuous_lock();
+        uint256 preuserPoints = veCVE.userPoints(address(this));
         try
             veCVE.disableContinuousLock(
                 lockIndex,
@@ -666,7 +664,14 @@ contract FuzzVECVE is StatefulBaseMarket {
                 bytes(""),
                 0
             )
-        {} catch {
+        {
+            uint256 postUserPoints = veCVE.userPoints((address(this)));
+            assertGt(
+                preuserPoints,
+                postUserPoints,
+                "VE_CVE - disableContinuousLock() - userPoints invariant failed"
+            );
+        } catch {
             // CAN ADD: Postconditions on disabling a continuous lock
         }
     }
@@ -914,6 +919,15 @@ contract FuzzVECVE is StatefulBaseMarket {
             return 0;
         }
         return clampBetween(seed, 0, numLocks);
+    }
+
+    function get_continuous_lock() private view returns (uint256) {
+        for (uint i = 0; i < numLocks; i++) {
+            (, uint40 unlockTime) = veCVE.userLocks(address(this), i);
+            if (unlockTime == veCVE.CONTINUOUS_LOCK_VALUE()) {
+                return i;
+            }
+        }
     }
 
     function approve_cve(uint256 amount, string memory error) private {
