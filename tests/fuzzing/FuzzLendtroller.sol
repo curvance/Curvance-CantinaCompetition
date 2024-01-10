@@ -41,6 +41,8 @@ contract FuzzLendtroller is StatefulBaseMarket {
     }
 
     // Test Property: calling listToken for a token should succeed
+    // Test Precondition: mtoken must not already be listed
+    // Test Precondition: mtoken must be one of: cDAI, cUSDC
     function list_token_should_succeed(address mtoken) public {
         uint256 amount = 42069;
         // require the token is not already listed into the lendtroller
@@ -61,6 +63,8 @@ contract FuzzLendtroller is StatefulBaseMarket {
     }
 
     // Test Property: calling listToken() for a token that already exists should fail
+    // Test Precondition: mtoken must already be listed
+    // Test Precondition: mtoken must be one of: cDAI, cUSDC
     function list_token_should_fail_if_already_listed(address mtoken) public {
         uint256 amount = 42069;
         // require the token is not already listed into the lendtroller
@@ -133,6 +137,10 @@ contract FuzzLendtroller is StatefulBaseMarket {
     // }
 
     // Test Property: After depositing, the ctoken balance should increase
+    // Test Precondition: amount bound between [1, uint16.max], inclusively
+    // Test Precondition: GaugePool must have been started before block.timestamp
+    // Test Precondition: mtoken must be one of: cDAI, cUSDC
+    // Test Precondition: mtoken must be listed in Lendtroller
     function c_token_deposit(address mtoken, uint256 amount) public {
         amount = clampBetween(amount, 1, type(uint16).max);
         // require gauge pool has been started at a previous timestamp
@@ -214,7 +222,7 @@ contract FuzzLendtroller is StatefulBaseMarket {
         mockUsdcFeed.setMockUpdatedAt(block.timestamp);
         mockDaiFeed.setMockUpdatedAt(block.timestamp);
         mockUsdcFeed.setMockAnswer(1e8);
-        mockDaiFeed.setMockAnswer(1e18);
+        mockDaiFeed.setMockAnswer(1e8);
         chainlinkUsdcUsd.updateRoundData(
             0,
             1e8,
@@ -234,7 +242,13 @@ contract FuzzLendtroller is StatefulBaseMarket {
         lastRoundUpdate = block.timestamp;
     }
 
-    // create a version to account for stale data
+    // Test Property: collateralCaps[mtoken] after calling setCTokenCollateralCaps is updated
+    // Test Precondition: price feed must be recent
+    // Test Precondition: price feed must be setup
+    // Test Precondition: address(this) must have dao permissions
+    // Test Precondition: cap is bound between [1, uint256.max], inclusive
+    // Test Precondition: mtoken must be listed in the Lendtroller
+    // Test Precondition: get_safe_update_collateral_bounds must be in correct bounds
     function setCTokenCollateralCaps_should_succeed(
         address mtoken,
         uint256 collRatio,
@@ -250,6 +264,7 @@ contract FuzzLendtroller is StatefulBaseMarket {
             lastRoundUpdate = block.timestamp;
         }
         require(block.timestamp - lastRoundUpdate <= 24 hours);
+
         require(feedsSetup);
         require(centralRegistry.hasDaoPermissions(address(this)));
         cap = clampBetween(cap, 1, type(uint256).max);
@@ -274,11 +289,6 @@ contract FuzzLendtroller is StatefulBaseMarket {
                 liqFee,
                 baseCFactor
             );
-        emit LogUint256(
-            "exchange rate for mtoken",
-            IMToken(mtoken).exchangeRateCached()
-        );
-        // adjust the following to acount for dynamic numbers here instead
         try
             lendtroller.updateCollateralToken(
                 IMToken(address(mtoken)),
@@ -313,6 +323,10 @@ contract FuzzLendtroller is StatefulBaseMarket {
     }
 
     // Test Property: updateCollateralToken should revert if the price feed is out of date
+    // Test Precondition: price feed is out of date
+    // Test Precondition: cap is bound between [1, uint256.max], inclusive
+    // Test Precondition: mtoken must be listed in Lendtroller
+    // Test Precondition: mtoken must be one of: cDAI, cUSDC
     function updateCollateralToken_should_revert_if_price_feed_out_of_date(
         address mtoken,
         uint256 collRatio,
@@ -371,33 +385,33 @@ contract FuzzLendtroller is StatefulBaseMarket {
     }
 
     // Test Property: Ensure account collateral has increased by # of tokens
-    // Test Property: Ensure usre has a valid position after posting
+    // Test Property: Ensure user has a valid position after posting
     // Test Property: Ensure collateralPosted (for mtoken) has increased by # of tokens
+    // Test Precondition: price feed is up to date
+    // Test Precondition: address(this) must have a balance of mtoken
+    // Test Precondition: `tokens` to be posted is bound between [1, mtoken balance], inclusive
+    // Test Precondition: msg.sender for postCollateral = address(this)
     function post_collateral_should_succeed(
         address mtoken,
         uint256 tokens
     ) public {
         require(collateralCapsUpdated[mtoken]);
-        require(block.timestamp - lastRoundUpdate > 24 hours);
+        check_price_feed();
 
-        uint256 oldCollateralForUser;
-        uint256 oldCollateralPosted;
-        uint256 mtokenBalance;
         if (IMToken(mtoken).balanceOf(address(this)) == 0) {
             c_token_deposit(mtoken, tokens * IMToken(mtoken).decimals());
         }
-        mtokenBalance = IMToken(mtoken).balanceOf(address(this));
+        uint256 mtokenBalance = IMToken(mtoken).balanceOf(address(this));
         require(mtokenBalance > 0);
 
-        oldCollateralForUser = lendtroller.collateralPostedFor(
+        uint256 oldCollateralForUser = lendtroller.collateralPostedFor(
             mtoken,
             address(this)
         );
 
         tokens = clampBetween(tokens, 1, mtokenBalance);
-        emit LogUint256("tokens:", tokens);
 
-        oldCollateralPosted = lendtroller.collateralPosted(mtoken);
+        uint256 oldCollateralForToken = lendtroller.collateralPosted(mtoken);
 
         {
             (bool success, bytes memory rd) = address(lendtroller).call(
@@ -415,13 +429,13 @@ contract FuzzLendtroller is StatefulBaseMarket {
                 );
             }
             // ensure account collateral has increased by # of tokens
-            uint256 newCollateral = lendtroller.collateralPostedFor(
+            uint256 newCollateralForUser = lendtroller.collateralPostedFor(
                 mtoken,
                 address(this)
             );
 
             assertEq(
-                newCollateral,
+                newCollateralForUser,
                 oldCollateralForUser + tokens,
                 "LENDTROLLER - new collateral must collateral+tokens"
             );
@@ -431,10 +445,12 @@ contract FuzzLendtroller is StatefulBaseMarket {
                 "LENDTROLLER - addr(this) must have position after posting"
             );
             // ensure collateralPosted increases by tokens
-            uint256 newCollateralPosted = lendtroller.collateralPosted(mtoken);
+            uint256 newCollateralForToken = lendtroller.collateralPosted(
+                mtoken
+            );
             assertEq(
-                newCollateralPosted,
-                oldCollateralPosted + tokens,
+                newCollateralForToken,
+                oldCollateralForToken + tokens,
                 "LENDTROLLER - global collateral posted should increase"
             );
         }
@@ -442,37 +458,91 @@ contract FuzzLendtroller is StatefulBaseMarket {
         postedCollateralAt[mtoken] = block.timestamp;
     }
 
+    // Test Property: Global posted collateral for the token should decrease by removed amount
+    // Test Property: User posted collateral for token should decrease by removed amount
+    // Test Property: If there is a shortfall, the removeCollateral call should fail
+    // Test Property: If there is no shortfall, the removeCollateral call should succeed
+    // Test Preconditions: price feed must be recent
+    // Test Preconditions: mtoken is one of: cDAI, cUSDC
+    // Test Preconditions: mtoken must be listed in the Lendtroller
+    // Test Preconditions: current timestamp must exceed the MIN_HOLD_PERIOD from postCollateral timestamp
+    // Test Preconditions: token is clamped between [1, collateralForUser]
     function remove_collateral_should_succeed(
         address mtoken,
         uint256 tokens,
         bool closePositionIfPossible
     ) public {
+        require(mtoken == address(cDAI) || mtoken == address(cUSDC));
         require(postedCollateral[mtoken]);
+        require(lendtroller.isListed(mtoken));
+        check_price_feed();
+
         require(
             block.timestamp >
                 postedCollateralAt[mtoken] + lendtroller.MIN_HOLD_PERIOD()
         );
-        require(mtoken == address(cDAI) || mtoken == address(cUSDC));
-        uint256 oldCollateral = lendtroller.collateralPostedFor(
+        require(lendtroller.hasPosition(mtoken, address(this)));
+
+        uint256 oldCollateralForUser = lendtroller.collateralPostedFor(
             mtoken,
             address(this)
         );
-        tokens = clampBetween(tokens, oldCollateral, type(uint64).max);
-        uint256 oldCollateralPosted = lendtroller.collateralPosted(mtoken);
-        try
-            lendtroller.removeCollateral(
-                mtoken,
-                tokens,
-                closePositionIfPossible
-            )
-        {
-            uint256 newCollateralPosted = lendtroller.collateralPosted(mtoken);
-            assertEq(
-                newCollateralPosted,
-                oldCollateralPosted - tokens,
-                "LENDTROLLER - global collateral posted should increase"
+        tokens = clampBetween(tokens, 1, oldCollateralForUser);
+
+        uint256 oldCollateralPostedForToken = lendtroller.collateralPosted(
+            mtoken
+        );
+        (, uint256 shortfall) = lendtroller.hypotheticalLiquidityOf(
+            address(this),
+            mtoken,
+            tokens,
+            0
+        );
+
+        if (shortfall > 0) {
+            (bool success, bytes memory rd) = address(lendtroller).call(
+                abi.encodeWithSignature(
+                    "removeCollateral(address,uint256,bool)",
+                    mtoken,
+                    tokens,
+                    closePositionIfPossible
+                )
             );
-        } catch {}
+            // If there is a shortfall, expect remove
+            assertWithMsg(
+                !success,
+                "LENDTROLLER - removeCollateral expected to be fail"
+            );
+        } else {
+            (bool success, bytes memory rd) = address(lendtroller).call(
+                abi.encodeWithSignature(
+                    "removeCollateral(address,uint256,bool)",
+                    mtoken,
+                    tokens,
+                    closePositionIfPossible
+                )
+            );
+            // Collateral posted for the mtoken should decrease
+            uint256 newCollateralPostedForToken = lendtroller.collateralPosted(
+                mtoken
+            );
+            assertEq(
+                newCollateralPostedForToken,
+                oldCollateralPostedForToken - tokens,
+                "LENDTROLLER - global collateral posted should decrease"
+            );
+
+            // Collateral posted for the user should decrease
+            uint256 newCollateralForUser = lendtroller.collateralPostedFor(
+                mtoken,
+                address(this)
+            );
+            assertEq(
+                newCollateralForUser,
+                oldCollateralForUser - tokens,
+                "LENDTROLLER - user collateral posted should decrease"
+            );
+        }
     }
 
     function removeCollateralIfNecessary_should_fail_with_wrong_caller(
@@ -756,6 +826,17 @@ contract FuzzLendtroller is StatefulBaseMarket {
         uint256 baseCFactor;
     }
 
+    // Bounds the specific variables required to call updateCollateralBounds
+    // Variables are generated in basis points, and converted to WAD (by multiplying by 1e14)
+    // Assume ALL bounds below are inclusive, on both ends
+    // baseCFactor: [1, WAD/1e14]
+    // liqFee: [0, MAX_LIQUIDATION_FEE/1e14]
+    // liqIncSoft: [MIN_LIQUIDATION_INCENTIVE() / 1e14 + liqFee, MAX_LIQUIDATION_INCENTIVE()/1e14-1]
+    // liqIncHard: [liqIncSoft+1, MAX_LIQUIDATION_INCENTIVE/1e14]
+    // inherently from above, liqIncSoft < liqIncHard
+    // collReqHard = [liqIncHard, MAX_COLLATERAL_REQUIREMENT()/1e14-1]
+    // collReqSoft = [collReqHard+1, MAX_COLLATERAL_REQUIREMENT()/1e14]
+    // collateralRatio = [0, min(MAX_COLLATERALIZATION_RATIO/1e14, (WAD*WAD)/(WAD+collReqSoft*1e14))]
     function get_safe_update_collateral_bounds(
         uint256 collRatio,
         uint256 collReqSoft,
@@ -767,59 +848,43 @@ contract FuzzLendtroller is StatefulBaseMarket {
     ) private returns (TokenCollateralBounds memory bounds) {
         // TODO: incorrect for new rebase (min: 10%, max: 50%)
         bounds.baseCFactor = clampBetween(baseCFactor, 1, 1e18 / 1e14);
-        emit LogUint256("base c factor clamped", bounds.baseCFactor);
 
-        // liquidationTotal - liqIncSoft+liqFee never less than min; max liquidation Fee + max liq fee
-        // soft liqA; hard coll req b; ensure 1.5%∆ is available
-
-        // "B" is the hard liqudation; "A" is soft liquidation
         // liquidity incentive soft -> hard goes up
         bounds.liqFee = clampBetween(
             liqFee,
             0,
             lendtroller.MAX_LIQUIDATION_FEE() / 1e14
         );
-        emit LogUint256("liq fee clamped:", bounds.liqFee);
 
         bounds.liqIncSoft = clampBetween(
             liqIncSoft,
-            lendtroller.MIN_LIQUIDATION_INCENTIVE() / 1e14 + bounds.liqFee, // needed to be bumped from 0
+            lendtroller.MIN_LIQUIDATION_INCENTIVE() / 1e14 + bounds.liqFee,
             lendtroller.MAX_LIQUIDATION_INCENTIVE() / 1e14 - 1
         );
-        emit LogUint256("liqIncSoft clamped", bounds.liqIncSoft);
 
         bounds.liqIncHard = clampBetween(
             liqIncHard,
-            bounds.liqIncSoft + 1, // for changes in rebase
+            bounds.liqIncSoft + 1, // TODO expected changes in rebase
             lendtroller.MAX_LIQUIDATION_INCENTIVE() / 1e14
         );
-        emit LogUint256("liqincHard clamped:", bounds.liqIncHard);
 
-        // collReq A > collReqHard
         // collateral requirement soft -> hard goes down
         bounds.collReqHard = clampBetween(
             collReqHard,
             bounds.liqIncHard, // account for MIN_EXCESS_COLLATERAL_REQUIREMENT  on rebase
             lendtroller.MAX_COLLATERAL_REQUIREMENT() / 1e14 - 1
         );
-        emit LogUint256("colLReqHard clamped:", bounds.collReqHard);
 
         bounds.collReqSoft = clampBetween(
             collReqSoft,
             bounds.collReqHard + 1,
             lendtroller.MAX_COLLATERAL_REQUIREMENT() / 1e14
         );
-        emit LogUint256("colLReqSoft clamped:", bounds.collReqSoft);
 
         uint256 collatPremium = uint256(
             ((WAD * WAD) / (WAD + (bounds.collReqSoft * 1e14)))
         );
-        emit LogUint256("collateral premium:", collatPremium);
 
-        // max collateralization ratio is in wad already; collatpremium has just been calculated in reference to wad
-        // thus no conversion to 1e14
-
-        // 91% > 75%;
         if (lendtroller.MAX_COLLATERALIZATION_RATIO() > collatPremium) {
             bounds.collRatio = clampBetween(
                 collRatio,
@@ -841,5 +906,31 @@ contract FuzzLendtroller is StatefulBaseMarket {
                 bounds.collRatio
             );
         }
+    }
+
+    // If the price is stale, update the round data and update lastRoundUpdate
+    function check_price_feed() public {
+        // if lastRoundUpdate timestamp is stale
+        if (lastRoundUpdate > block.timestamp) {
+            lastRoundUpdate = block.timestamp;
+        }
+        if (block.timestamp - lastRoundUpdate > 24 hours) {
+            // TODO: Change this to a loop to loop over lendtroller.assetsOf()
+            // Save a mapping of assets -> chainlink oracle
+            // call updateRoundData on each oracle
+            chainlinkUsdcUsd.updateRoundData(
+                0,
+                1e8,
+                block.timestamp,
+                block.timestamp
+            );
+            chainlinkDaiUsd.updateRoundData(
+                0,
+                1e8,
+                block.timestamp,
+                block.timestamp
+            );
+        }
+        lastRoundUpdate = block.timestamp;
     }
 }
