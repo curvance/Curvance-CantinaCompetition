@@ -87,7 +87,7 @@ contract CurveAdaptor is CurveBaseAdaptor {
         }
 
         uint256 virtualPrice = pool.get_virtual_price();
-        uint256 minPrice = type(uint256).max;
+        uint256 edgePrice = getLower ? type(uint256).max : 0;
         IPriceRouter priceRouter = IPriceRouter(centralRegistry.priceRouter());
 
         for (uint256 i; i < coinsLength; ) {
@@ -101,14 +101,18 @@ contract CurveAdaptor is CurveBaseAdaptor {
                 return pData;
             }
 
-            minPrice = minPrice < price ? minPrice : price;
+            if (getLower) {
+                edgePrice = edgePrice < price ? edgePrice : price;
+            } else {
+                edgePrice = edgePrice > price ? edgePrice : price;
+            }
 
             unchecked {
                 ++i;
             }
         }
 
-        pData.price = uint240((minPrice * virtualPrice) / 1e18);
+        pData.price = uint240((edgePrice * virtualPrice) / 1e18);
     }
 
     /// @notice Adds a Curve LP as an asset.

@@ -44,10 +44,7 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
 
     /// EVENTS ///
 
-    event UniswapV3AssetAdded(
-        address asset,
-        AdaptorData assetConfig
-    );
+    event UniswapV3AssetAdded(address asset, AdaptorData assetConfig);
 
     event UniswapV3AssetRemoved(address asset);
 
@@ -194,10 +191,7 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
         pData.price = uint240(twapPrice);
     }
 
-    function addAsset(
-        address asset,
-        AdaptorData memory data
-    ) external {
+    function addAsset(address asset, AdaptorData memory data) external {
         _checkElevatedPermissions();
 
         // Verify seconds ago is reasonable.

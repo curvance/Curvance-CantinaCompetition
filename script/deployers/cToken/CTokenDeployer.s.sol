@@ -7,34 +7,25 @@ import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
 import { ChainlinkAdaptor } from "contracts/oracles/adaptors/chainlink/ChainlinkAdaptor.sol";
 import { BalancerStablePoolAdaptor } from "contracts/oracles/adaptors/balancer/BalancerStablePoolAdaptor.sol";
 import { IVault } from "contracts/oracles/adaptors/balancer/BalancerBaseAdaptor.sol";
-import { DToken } from "contracts/market/collateral/DToken.sol";
-import { DynamicInterestRateModel } from "contracts/market/interestRates/DynamicInterestRateModel.sol";
-
+import { CTokenPrimitive } from "contracts/market/collateral/CTokenPrimitive.sol";
+import { PendlePrincipalTokenAdaptor } from "contracts/oracles/adaptors/pendle/PendlePrincipalTokenAdaptor.sol";
+import { IPendlePTOracle } from "contracts/interfaces/external/pendle/IPendlePtOracle.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+import { IPMarket } from "contracts/interfaces/external/pendle/IPMarket.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 
 import { DeployConfiguration } from "../../utils/DeployConfiguration.sol";
 
-contract DTokenDeployer is DeployConfiguration {
-    struct DTokenInterestRateParam {
-        uint256 adjustmentRate;
-        uint256 adjustmentVelocity;
-        uint256 baseRatePerYear;
-        uint256 decayRate;
-        uint256 vertexMultiplierMax;
-        uint256 vertexRatePerYear;
-        uint256 vertexUtilizationStart;
-    }
-    struct DTokenParam {
+contract CTokenDeployer is DeployConfiguration {
+    struct CTokenParam {
         address asset;
         address chainlinkEth;
         address chainlinkUsd;
-        DTokenInterestRateParam interestRateParam;
     }
 
-    function _deployDToken(
+    function _deployCToken(
         string memory name,
-        DTokenParam memory param
+        CTokenParam memory param
     ) internal {
         address centralRegistry = _getDeployedContract("centralRegistry");
         console.log("centralRegistry =", centralRegistry);
@@ -55,7 +46,7 @@ contract DTokenDeployer is DeployConfiguration {
             _saveDeployedContracts("chainlinkAdaptor", chainlinkAdaptor);
         }
 
-        // Setup chainlink adapters
+        // Setup underlying chainlink adapters
         if (
             !ChainlinkAdaptor(chainlinkAdaptor).isSupportedAsset(param.asset)
         ) {
@@ -63,7 +54,6 @@ contract DTokenDeployer is DeployConfiguration {
                 ChainlinkAdaptor(chainlinkAdaptor).addAsset(
                     param.asset,
                     param.chainlinkEth,
-                    0,
                     false
                 );
             }
@@ -71,7 +61,6 @@ contract DTokenDeployer is DeployConfiguration {
                 ChainlinkAdaptor(chainlinkAdaptor).addAsset(
                     param.asset,
                     param.chainlinkUsd,
-                    0,
                     true
                 );
             }
@@ -93,41 +82,28 @@ contract DTokenDeployer is DeployConfiguration {
             console.log("priceRouter.addAssetPriceFeed: ", param.asset);
         }
 
-        // Deploy DToken
-        address dToken = _getDeployedContract(name);
-        if (dToken == address(0)) {
-            address interestRateModel = address(
-                new DynamicInterestRateModel(
-                    ICentralRegistry(centralRegistry),
-                    param.interestRateParam.baseRatePerYear,
-                    param.interestRateParam.vertexRatePerYear,
-                    param.interestRateParam.vertexUtilizationStart,
-                    param.interestRateParam.adjustmentRate,
-                    param.interestRateParam.adjustmentVelocity,
-                    param.interestRateParam.vertexMultiplierMax,
-                    param.interestRateParam.decayRate
-                )
-            );
-            console.log("interestRateModel: ", interestRateModel);
-
-            dToken = address(
-                new DToken(
+        // Deploy CToken
+        address cToken = _getDeployedContract(name);
+        if (cToken == address(0)) {
+            cToken = address(
+                new CTokenPrimitive(
                     ICentralRegistry(address(centralRegistry)),
-                    param.asset,
-                    lendtroller,
-                    interestRateModel
+                    IERC20(param.asset),
+                    lendtroller
                 )
             );
 
-            console.log("dToken: ", dToken);
-            _saveDeployedContracts(name, dToken);
+            console.log("cToken: ", cToken);
+            _saveDeployedContracts(name, cToken);
 
-            if (!PriceRouter(priceRouter).isSupportedAsset(dToken)) {
-                PriceRouter(priceRouter).addMTokenSupport(dToken);
+            if (!PriceRouter(priceRouter).isSupportedAsset(cToken)) {
+                PriceRouter(priceRouter).addMTokenSupport(cToken);
             }
         }
 
         // followings should be done separate because it requires dust amount deposits
         // lendtroller.listToken;
+        // lendtroller.updateCollateralToken
+        // lendtroller.setCTokenCollateralCaps
     }
 }

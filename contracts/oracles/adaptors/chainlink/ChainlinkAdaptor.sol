@@ -158,9 +158,10 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
             adaptorData.max = bufferedMaxPrice;
         }
 
-        if ((bufferedMinPrice >= bufferedMaxPrice))
+        if (bufferedMinPrice >= bufferedMaxPrice) {
             revert ChainlinkAdaptor__InvalidMinMaxConfig();
-
+        }
+       
         adaptorData.decimals = feedAggregator.decimals();
         adaptorData.heartbeat = heartbeat != 0
             ? heartbeat
