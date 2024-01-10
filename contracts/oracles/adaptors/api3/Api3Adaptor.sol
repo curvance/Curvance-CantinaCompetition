@@ -142,10 +142,8 @@ contract Api3Adaptor is BaseOracleAdaptor {
 
         // Add a ~10% buffer to maximum price allowed from Api3 can stop 
         // updating its price before/above the min/max price. We use a maximum
-        // buffered price of 2^224 - 1, since api3 reports pricing in 18
-        // decimal format, requiring multiplication by 10e10 to standardize to
-        // 18 decimal format, which could overflow when trying to save the
-        // final value into an uint240.
+        // buffered price of 2^224 - 1, which could overflow when trying to
+        // save the final value into an uint240.
         adaptorData.max = (uint256(int256(type(int224).max)) * 9) / 10;
         adaptorData.dapiNameHash = dapiNameHash;
         adaptorData.proxyFeed = IProxy(proxyFeed);
