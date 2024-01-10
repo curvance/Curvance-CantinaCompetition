@@ -18,6 +18,8 @@ abstract contract BaseWrappedAggregator is IChainlink {
             )
         );
 
+        // getWrappedAssetWeight() won't exceed uint64.max in most cases
+        // we will revert if max * getWrappedAssetWeight() execeeds uint256.max
         max = (max * getWrappedAssetWeight()) / WAD;
         if (max > uint192(type(int192).max)) {
             return type(int192).max;
@@ -35,6 +37,8 @@ abstract contract BaseWrappedAggregator is IChainlink {
             )
         );
 
+        // getWrappedAssetWeight() won't exceed uint64.max in most cases
+        // we will revert if min * getWrappedAssetWeight() execeeds uint256.max
         min = (min * getWrappedAssetWeight()) / WAD;
         if (min > uint192(type(int192).min)) {
             return type(int192).min;
@@ -62,6 +66,8 @@ abstract contract BaseWrappedAggregator is IChainlink {
             underlyingAssetAggregator()
         ).latestRoundData();
 
+        // getWrappedAssetWeight() won't exceed uint64.max in most cases
+        // we will revert if answer * getWrappedAssetWeight() execeeds uint256.max
         answer = int256((uint256(answer) * getWrappedAssetWeight()) / WAD);
     }
 
