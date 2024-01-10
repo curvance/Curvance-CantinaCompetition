@@ -347,14 +347,23 @@ contract FuzzLendtroller is StatefulBaseMarket {
             lastRoundUpdate = block.timestamp;
         }
         require(block.timestamp - lastRoundUpdate > 24 hours);
+        if (mtoken == address(cDAI)) {
+            require(
+                block.timestamp - chainlinkDaiUsd.latestTimestamp() > 24 hours
+            );
+        } else if (mtoken == address(cUSDC)) {
+            require(
+                block.timestamp - chainlinkUsdcUsd.latestTimestamp() > 24 hours
+            );
+        } else {
+            return;
+        }
         require(feedsSetup);
         require(centralRegistry.hasDaoPermissions(address(this)));
         cap = clampBetween(cap, 1, type(uint256).max);
         if (!lendtroller.isListed(mtoken)) {
             list_token_should_succeed(mtoken);
         }
-        require(mtoken == address(cDAI) || mtoken == address(cUSDC));
-
         address[] memory tokens = new address[](1);
         tokens[0] = mtoken;
         uint256[] memory caps = new uint256[](1);
@@ -407,14 +416,15 @@ contract FuzzLendtroller is StatefulBaseMarket {
             c_token_deposit(mtoken, tokens * IMToken(mtoken).decimals());
         }
         uint256 mtokenBalance = IMToken(mtoken).balanceOf(address(this));
-        require(mtokenBalance > 0);
 
         uint256 oldCollateralForUser = lendtroller.collateralPostedFor(
             mtoken,
             address(this)
         );
 
-        tokens = clampBetween(tokens, 1, mtokenBalance);
+        // collateralPosted + tokens <= mtoken.balanceOf(address(this))
+        // tokens <= mtoken.balanceOf(address(this)) - collateralPosted
+        tokens = clampBetween(tokens, 1, mtokenBalance - oldCollateralForUser);
 
         uint256 oldCollateralForToken = lendtroller.collateralPosted(mtoken);
 
@@ -465,6 +475,52 @@ contract FuzzLendtroller is StatefulBaseMarket {
         }
         postedCollateral[mtoken] = true;
         postedCollateralAt[mtoken] = block.timestamp;
+    }
+
+    // Test Property: postCollateral with token bounded too large should fail
+    // Test Precondition: collateral caps for the token are >0
+    // Test Precondition: price feed must be out of date
+    // Test Precondition: user must have mtoken balance
+    function post_collateral_should_fail_too_many_tokens(
+        address mtoken,
+        uint256 tokens
+    ) public {
+        require(collateralCapsUpdated[mtoken]);
+        check_price_feed();
+
+        if (IMToken(mtoken).balanceOf(address(this)) == 0) {
+            c_token_deposit(mtoken, tokens * IMToken(mtoken).decimals());
+        }
+        uint256 mtokenBalance = IMToken(mtoken).balanceOf(address(this));
+
+        uint256 oldCollateralForUser = lendtroller.collateralPostedFor(
+            mtoken,
+            address(this)
+        );
+
+        // collateralPosted + tokens <= mtoken.balanceOf(address(this))
+        // tokens <= mtoken.balanceOf(address(this)) - collateralPosted
+        tokens = clampBetween(
+            tokens,
+            mtokenBalance - oldCollateralForUser + 1,
+            type(uint64).max
+        );
+
+        uint256 oldCollateralForToken = lendtroller.collateralPosted(mtoken);
+
+        (bool success, bytes memory revertData) = address(lendtroller).call(
+            abi.encodeWithSignature(
+                "postCollateral(address,address,uint256)",
+                address(this),
+                mtoken,
+                tokens
+            )
+        );
+
+        assertWithMsg(
+            !success,
+            "LENDTROLLER - postCollateral() with too many tokens should fail"
+        );
     }
 
     // Test Property: Global posted collateral for the token should decrease by removed amount
@@ -557,6 +613,12 @@ contract FuzzLendtroller is StatefulBaseMarket {
                 oldCollateralForUser - tokens,
                 "LENDTROLLER - user collateral posted should decrease"
             );
+            if (newCollateralForUser == 0 && closePositionIfPossible) {
+                assertWithMsg(
+                    !lendtroller.hasPosition(mtoken, address(this)),
+                    "LENDTROLLER - closePositionIfPossible flag set should remove a user's position"
+                );
+            }
         }
     }
 
@@ -674,13 +736,35 @@ contract FuzzLendtroller is StatefulBaseMarket {
         }
     }
 
-    function closePosition_should_succeed(address mToken) public {
-        require(lendtroller.hasPosition(mToken, address(this)));
+    function closePosition_should_succeed(address mtoken) public {
+        require(lendtroller.hasPosition(mtoken, address(this)));
+        require(mtoken == address(cDAI) || mtoken == address(cUSDC));
+        uint256 collateralPostedForUser = lendtroller.collateralPostedFor(
+            address(mtoken),
+            address(this)
+        );
+        IMToken[] memory preAssetsOf = lendtroller.assetsOf(address(this));
 
         (bool success, bytes memory rd) = address(lendtroller).call(
-            abi.encodeWithSignature("closePosition(address)", mToken)
+            abi.encodeWithSignature("closePosition(address)", mtoken)
         );
-        if (!success) {}
+        if (!success) {} else {
+            assertWithMsg(
+                !lendtroller.hasPosition(mtoken, address(this)),
+                "LENDTROLLER - closePosition should remove position in mtoken if successful"
+            );
+            assertWithMsg(
+                lendtroller.collateralPostedFor(mtoken, address(this)) == 0,
+                "LENDTROLLER - closePosition should reduce collateralPosted for user to 0"
+            );
+            IMToken[] memory postAssetsOf = lendtroller.assetsOf(
+                address(this)
+            );
+            assertWithMsg(
+                preAssetsOf.length - 1 == postAssetsOf.length,
+                "LENDTROLLER - closePosition expected to remove asset from assetOf"
+            );
+        }
     }
 
     function canMint_should_not_revert_when_mint_not_paused_and_is_listed(
@@ -764,15 +848,16 @@ contract FuzzLendtroller is StatefulBaseMarket {
 
     function canRedeemWithCollateralRemoval_should_fail(
         address account,
-        address mToken,
+        address mtoken,
         uint256 balance,
         uint256 amount,
         bool forceRedeemCollateral
     ) public {
+        require(msg.sender != mtoken);
         try
             lendtroller.canRedeemWithCollateralRemoval(
                 account,
-                mToken,
+                mtoken,
                 balance,
                 amount,
                 forceRedeemCollateral

@@ -217,8 +217,8 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
     }
 
     function _deployChainlinkAdaptors() internal {
-        chainlinkUsdcUsd = new MockV3Aggregator(8, 1e8, 1e11, 1e6);
-        chainlinkDaiUsd = new MockV3Aggregator(8, 1e8, 1e11, 1e6);
+        chainlinkUsdcUsd = new MockV3Aggregator(8, 1e8, 1e24, 1e6);
+        chainlinkDaiUsd = new MockV3Aggregator(8, 1e8, 1e24, 1e6);
         chainlinkUsdcEth = new MockV3Aggregator(18, 1e18, 1e24, 1e13);
         chainlinkRethEth = new MockV3Aggregator(18, 1e18, 1e24, 1e13);
         chainlinkDaiEth = new MockV3Aggregator(18, 1e18, 1e24, 1e13);
