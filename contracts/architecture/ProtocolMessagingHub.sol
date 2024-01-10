@@ -51,13 +51,13 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     /// @notice Wormhole specific chain ID for evm chain ID.
     mapping(uint256 => uint16) public wormholeChainId;
 
-    /// `bytes4(keccak256(bytes("ProtocolMessagingHub__Unauthorized()")))`
+    /// `bytes4(keccak256(bytes("ProtocolMessagingHub__Unauthorized()")))`.
     uint256 internal constant _UNAUTHORIZED_SELECTOR = 0xc70c67ab;
 
     /// STORAGE ///
 
-    uint256 public isPaused; // 0 or 1 = activate; 2 = paused
-
+    /// @notice 0 or 1 = activate; 2 = paused
+    uint256 public isPaused; 
     /// @notice Status of message hash whether it's delivered or not.
     mapping(bytes32 => bool) public isDeliveredMessageHash;
 
@@ -137,7 +137,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     /// @param payload An arbitrary message which was included in the delivery
     ///                by the requester. This message's signature will already
     ///                have been verified (as long as msg.sender is
-    ///                the Wormhole Relayer contract)
+    ///                the Wormhole Relayer contract).
     /// @param srcAddress The (wormhole format) address on the sending chain
     ///                   which requested this delivery.
     /// @param srcChainId The wormhole chain ID where delivery was requested.
@@ -173,7 +173,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
             gethChainId
         );
 
-        // Validate message came directly from MessagingHub on the source chain
+        // Validate message came directly from MessagingHub on the source chain.
         if (
             centralRegistry.supportedChainData(gethChainId).messagingHub !=
             srcAddr
@@ -346,7 +346,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
             amount
         );
 
-        // Sends funds to feeAccumulator on another chain
+        // Sends funds to feeAccumulator on another chain.
         circleRelayer.transferTokensWithRelay{ value: messageFee }(
             IERC20Metadata(feeToken),
             amount,
@@ -504,8 +504,8 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         wormholeRelayer.sendPayloadToEvm{ value: messageFee }(
             dstChainId,
             toAddress,
-            abi.encode(uint8(4), payload), // payload
-            0, // no receiver value needed since we're just passing a message
+            abi.encode(uint8(4), payload), // payload.
+            0, // no receiver value needed since we're just passing a message.
             _GAS_LIMIT
         );
     }

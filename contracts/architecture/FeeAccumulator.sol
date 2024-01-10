@@ -19,8 +19,8 @@ import { ICentralRegistry, ChainData } from "contracts/interfaces/ICentralRegist
 contract FeeAccumulator is ReentrancyGuard {
     /// TYPES ///
 
-    /// @param isRewardToken 2 = yes; 0 or 1 = no
-    /// @param forOTC 2 = yes; 0 or 1 = no
+    /// @param isRewardToken 2 = yes; 0 or 1 = no.
+    /// @param forOTC 2 = yes; 0 or 1 = no.
     struct RewardToken {
         uint256 isRewardToken;
         uint256 forOTC;
@@ -48,7 +48,7 @@ contract FeeAccumulator is ReentrancyGuard {
 
     /// STORAGE ///
 
-    /// @notice Address of Gelato 1Balance
+    /// @notice Address of Gelato OneBalance.
     IGelatoOneBalance public gelatoOneBalance;
     address internal _messagingHubStored;
     uint256 internal _gasForCalldata;
@@ -56,15 +56,15 @@ contract FeeAccumulator is ReentrancyGuard {
 
     LockData[] public crossChainLockData;
 
-    /// @dev We store token data semi redundantly to save gas
-    ///      on daily operations and to help with gelato network structure
-    ///      Used for Gelato Network bots to check what tokens to swap
+    /// @notice We store token data semi redundantly to save gas
+    ///         on daily operations and to help with gelato network structure
+    ///         Used for Gelato Network bots to check what tokens to swap.
     address[] public rewardTokens;
 
-    /// @dev Token Address => RewardToken data
+    /// @notice Token Address => RewardToken data.
     mapping(address => RewardToken) public rewardTokenInfo;
 
-    /// @dev ChainID => Epoch => 2 = yes; 0 = no;
+    /// @notice ChainID => Epoch => 2 = yes; 0 = no.
     mapping(uint16 => mapping(uint256 => uint256)) public lockedTokenDataSent;
 
     /// ERRORS ///
@@ -138,7 +138,7 @@ contract FeeAccumulator is ReentrancyGuard {
         _gasForCrosschain = gasForCrosschain_;
 
         // We document this incase we ever need to update messaging hub
-        // and want to revoke
+        // and want to revoke.
         _messagingHubStored = centralRegistry.protocolMessagingHub();
 
         // We set oneBalance address initially to DAO,
@@ -146,7 +146,7 @@ contract FeeAccumulator is ReentrancyGuard {
         gelatoOneBalance = IGelatoOneBalance(centralRegistry.daoAddress());
 
         // We infinite approve fee token so that gelato one balance
-        // can drag funds to proper chain
+        // can drag funds to proper chain.
         SafeTransferLib.safeApprove(
             feeToken,
             address(gelatoOneBalance),
@@ -154,7 +154,7 @@ contract FeeAccumulator is ReentrancyGuard {
         );
 
         // We infinite approve fee token so that protocol messaging hub
-        // can drag funds to proper chain
+        // can drag funds to proper chain.
         SafeTransferLib.safeApprove(
             feeToken,
             _messagingHubStored,
@@ -164,11 +164,11 @@ contract FeeAccumulator is ReentrancyGuard {
 
     /// EXTERNAL FUNCTIONS ///
 
-    /// @dev Performs multiple token swaps in a single transaction, converting
-    ///      the provided tokens to fee token on behalf of Curvance DAO
-    /// @param data Encoded swap data containing the details of each swap
+    /// @notice Performs multiple token swaps in a single transaction, converting
+    ///      the provided tokens to fee token on behalf of Curvance DAO.
+    /// @param data Encoded swap data containing the details of each swap.
     /// @param tokens An array of token addresses corresponding to
-    ///               the swap data, specifying the tokens to be swapped
+    ///               the swap data, specifying the tokens to be swapped.
     function multiSwap(
         bytes calldata data,
         address[] calldata tokens
@@ -193,7 +193,7 @@ contract FeeAccumulator is ReentrancyGuard {
 
         for (uint256 i; i < numTokens; ++i) {
             currentToken = tokens[i];
-            // Make sure we are not earmarking this token for DAO OTC
+            // Make sure we are not earmarking this token for DAO OTC.
             if (rewardTokenInfo[currentToken].forOTC == 2) {
                 continue;
             }
@@ -224,16 +224,16 @@ contract FeeAccumulator is ReentrancyGuard {
                 );
             }
 
-            // Swap from token to output token (fee token)
+            // Swap from token to output token (fee token).
             // Note: Because this is ran directly from Gelato Network we know
-            //       we will not have a malicious actor on swap routing
+            //       we will not have a malicious actor on swap routing.
             //       We route liquidity to 1Inch with tight slippage
             //       requirement, meaning we do not need to separately check
             //       for slippage here.
             SwapperLib.swap(swapDataArray[i]);
         }
 
-        // Transfer fees to Gelato Network One Balance or equivalent
+        // Transfer fees to Gelato Network One Balance or equivalent.
         gelatoOneBalance.depositToken(
             address(this),
             IERC20(feeToken),
@@ -278,7 +278,7 @@ contract FeeAccumulator is ReentrancyGuard {
 
         address daoAddress = centralRegistry.daoAddress();
         // Price Router always returns in 1e18 format based on decimals,
-        // so we only need to worry about decimal differences here
+        // so we only need to worry about decimal differences here.
         uint256 feeTokenRequiredForOTC = (
             ((priceSwap * amountToOTC * _feeTokenUnit) / priceFeeToken)
         ) / 10 ** IERC20(tokenToOTC).decimals();
@@ -290,7 +290,7 @@ contract FeeAccumulator is ReentrancyGuard {
             feeTokenRequiredForOTC
         );
 
-        // Transfer fees to Gelato Network One Balance or equivalent
+        // Transfer fees to Gelato Network One Balance or equivalent.
         gelatoOneBalance.depositToken(
             address(this),
             IERC20(feeToken),
@@ -368,15 +368,15 @@ contract FeeAccumulator is ReentrancyGuard {
         }
 
         // We validate nextEpochToDeliver in receiveCrossChainLockData on
-        // the chain calculating values
+        // the chain calculating values.
         ICVELocker(centralRegistry.cveLocker()).recordEpochRewards(amount);
     }
 
     /// @notice Receives and processes cross-chain lock data for
-    ///         the next undelivered epoch
+    ///         the next undelivered epoch.
     /// @param data Struct containing ChainID and value, with extra room for
-    ///             epoch, and number of chains
-    ///             This is to avoid stack too deep issues in the function
+    ///             epoch, and number of chains.
+    ///             This is to avoid stack too deep issues in the function.
     /// @dev This function handles cross-chain communication and
     ///      the coordination of fee routing, as well as recording and
     ///      reporting epoch rewards on those fees.
@@ -429,9 +429,9 @@ contract FeeAccumulator is ReentrancyGuard {
         uint256 numChainData = crossChainLockData.length;
 
         // If we have sufficient chains reported,
-        // time to execute epoch fee routing
+        // time to execute epoch fee routing.
         if ((++numChainData) == centralRegistry.supportedChains()) {
-            // Execute Fee Routing to each chain
+            // Execute Fee Routing to each chain.
             uint256 epochRewardsPerCVE = _executeEpochFeeRouter(
                 chainData,
                 numChainData,
@@ -445,7 +445,7 @@ contract FeeAccumulator is ReentrancyGuard {
             uint256 gas;
             uint16 messagingChainId;
 
-            // Notify the other chains of the per epoch rewards
+            // Notify the other chains of the per epoch rewards.
             for (uint256 i; i < numChainData; ) {
                 lockData = crossChainLockData[i];
                 chainData = centralRegistry.supportedChainData(
@@ -475,10 +475,10 @@ contract FeeAccumulator is ReentrancyGuard {
         }
     }
 
-    /// @notice Sends all left over fees to new fee accumulator
+    /// @notice Sends all left over fees to new fee accumulator.
     /// @dev This does not need to be permissioned as it pulls data
     ///      directly from the Central Registry meaning a malicious actor
-    ///      cannot abuse this
+    ///      cannot abuse this.
     function migrateFeeAccumulator() external {
         address newFeeAccumulator = centralRegistry.feeAccumulator();
         if (newFeeAccumulator == address(this)) {
@@ -489,7 +489,7 @@ contract FeeAccumulator is ReentrancyGuard {
         uint256 numTokens = currentRewardTokens.length;
         uint256 tokenBalance;
 
-        // Send remaining fee tokens to new fee accumulator, if any
+        // Send remaining fee tokens to new fee accumulator, if any.
         for (uint256 i; i < numTokens; ) {
             tokenBalance = IERC20(currentRewardTokens[i]).balanceOf(
                 address(this)
@@ -510,7 +510,7 @@ contract FeeAccumulator is ReentrancyGuard {
 
         tokenBalance = IERC20(feeToken).balanceOf(address(this));
 
-        // Send remaining fee token to new fee accumulator, if any
+        // Send remaining fee token to new fee accumulator, if any.
         if (tokenBalance > 0) {
             SafeTransferLib.safeTransfer(
                 feeToken,
@@ -521,17 +521,17 @@ contract FeeAccumulator is ReentrancyGuard {
     }
 
     /// @notice Set Gelato Network one balance destination address to
-    ///         fund compounders
+    ///         fund compounders.
     function setOneBalanceAddress(address newGelatoOneBalance) external {
         _checkDaoPermissions();
 
-        // Revoke previous approval
+        // Revoke previous approval.
         SafeTransferLib.safeApprove(feeToken, address(gelatoOneBalance), 0);
 
         gelatoOneBalance = IGelatoOneBalance(newGelatoOneBalance);
 
         // We infinite approve fee token so that gelato one balance
-        // can drag funds to proper chain
+        // can drag funds to proper chain.
         SafeTransferLib.safeApprove(
             feeToken,
             newGelatoOneBalance,
@@ -539,8 +539,8 @@ contract FeeAccumulator is ReentrancyGuard {
         );
     }
 
-    /// @notice Set status on whether a token should be earmarked to OTC
-    /// @param state 2 = earmarked; 0 or 1 = not earmarked
+    /// @notice Set status on whether a token should be earmarked to OTC.
+    /// @param state 2 = earmarked; 0 or 1 = not earmarked.
     function setEarmarked(address token, bool state) external {
         _checkDaoPermissions();
 
@@ -557,8 +557,8 @@ contract FeeAccumulator is ReentrancyGuard {
         _gasForCrosschain = gasForCrosschain;
     }
 
-    /// @notice Moves fee token approval to new messaging hub
-    /// @dev Removes prior messaging hub approval for maximum safety
+    /// @notice Moves fee token approval to new messaging hub.
+    /// @dev Removes prior messaging hub approval for maximum safety.
     function notifyUpdatedMessagingHub() external {
         if (msg.sender != address(centralRegistry)) {
             revert FeeAccumulator__Unauthorized();
@@ -570,11 +570,11 @@ contract FeeAccumulator is ReentrancyGuard {
             revert FeeAccumulator__MessagingHubHasNotChanged();
         }
 
-        // Revoke previous approval
+        // Revoke previous approval.
         SafeTransferLib.safeApprove(feeToken, _messagingHubStored, 0);
 
         // We infinite approve fee token so that protocol messaging hub can
-        // drag funds to proper chain
+        // drag funds to proper chain.
         SafeTransferLib.safeApprove(feeToken, messagingHub, type(uint256).max);
 
         _messagingHubStored = messagingHub;
@@ -582,8 +582,8 @@ contract FeeAccumulator is ReentrancyGuard {
 
     /// @notice Adds multiple reward tokens to the contract for Gelato Network
     ///         to read.
-    /// @dev Does not fail on duplicate token, merely skips it and continues
-    /// @param newTokens Array of token addresses to be added as reward tokens
+    /// @dev Does not fail on duplicate token, merely skips it and continues.
+    /// @param newTokens Array of token addresses to be added as reward tokens.
     function addRewardTokens(address[] calldata newTokens) external {
         _checkDaoPermissions();
 
@@ -593,20 +593,20 @@ contract FeeAccumulator is ReentrancyGuard {
         }
 
         for (uint256 i; i < numTokens; ++i) {
-            // If we already support the token just skip it
+            // If we already support the token just skip it.
             if (rewardTokenInfo[newTokens[i]].isRewardToken == 2) {
                 continue;
             }
 
-            // Add reward token data to both rewardTokenInfo & rewardTokenData
+            // Add reward token data to both rewardTokenInfo & rewardTokenData.
             _addRewardToken(newTokens[i]);
         }
     }
 
     /// @notice Removes a reward token from the contract data that
-    ///         Gelato Network reads
-    /// @dev    Will revert on unsupported token address
-    /// @param rewardTokenToRemove The address of the token to be removed
+    ///         Gelato Network reads.
+    /// @dev    Will revert on unsupported token address.
+    /// @param rewardTokenToRemove The address of the token to be removed.
     function removeRewardToken(address rewardTokenToRemove) external {
         _checkDaoPermissions();
 
@@ -623,7 +623,7 @@ contract FeeAccumulator is ReentrancyGuard {
 
         for (uint256 i; i < numTokens; ) {
             if (currentTokens[i] == rewardTokenToRemove) {
-                // We found the token so break out of loop
+                // We found the token so break out of loop.
                 tokenIndex = i;
                 break;
             }
@@ -632,27 +632,27 @@ contract FeeAccumulator is ReentrancyGuard {
             }
         }
 
-        // subtract 1 from numTokens so we properly have the end index
+        // subtract 1 from numTokens so we properly have the end index.
         if (tokenIndex == numTokens--) {
             // we were unable to find the token in the array,
-            // so something is wrong and we need to revert
+            // so something is wrong and we need to revert.
             revert FeeAccumulator__RemovalTokenDoesNotExist();
         }
 
-        // copy last item in list to location of item to be removed
+        // copy last item in list to location of item to be removed.
         address[] storage currentList = rewardTokens;
-        // copy the last token index slot to tokenIndex
+        // copy the last token index slot to tokenIndex.
         currentList[tokenIndex] = currentList[numTokens];
         // remove the last element
         currentList.pop();
 
-        // Now delete the reward token support flag from mapping
+        // Now delete the reward token support flag from mapping.
         tokenToRemove.isRewardToken = 1;
     }
 
-    /// @notice Record rewards for epoch
+    /// @notice Record rewards for epoch.
     function recordEpochRewards(uint256 amount) external {
-        // Make sure the caller recording epoch rewards is the Messaging Hub
+        // Make sure the caller recording epoch rewards is the Messaging Hub.
         if (msg.sender != _messagingHubStored) {
             revert FeeAccumulator__Unauthorized();
         }
@@ -661,9 +661,9 @@ contract FeeAccumulator is ReentrancyGuard {
     }
 
     /// @notice Retrieves the balances of all reward tokens currently held by
-    ///         the Fee Accumulator
+    ///         the Fee Accumulator.
     /// @return tokenBalances An array of uint256 values,
-    ///         representing the current balances of each reward token
+    ///         representing the current balances of each reward token.
     function getRewardTokenBalances()
         external
         view
@@ -688,15 +688,15 @@ contract FeeAccumulator is ReentrancyGuard {
 
     /// PUBLIC FUNCTIONS ///
 
-    /// @notice Fetches the current price router from the central registry
-    /// @return Current PriceRouter interface address
+    /// @notice Fetches the current price router from the central registry.
+    /// @return Current PriceRouter interface address.
     function getPriceRouter() public view returns (IPriceRouter) {
         return IPriceRouter(centralRegistry.priceRouter());
     }
 
-    /// @notice Vault compound fee is in basis point form
+    /// @notice Vault compound fee is in basis point form.
     /// @dev Returns the vaults current amount of yield used
-    ///      for compounding rewards
+    ///      for compounding rewards.
     function vaultCompoundFee() public view returns (uint256) {
         return centralRegistry.protocolCompoundFee();
     }
@@ -711,12 +711,12 @@ contract FeeAccumulator is ReentrancyGuard {
 
     /// @notice Adds `newToken` to `rewardTokens` array and
     ///         rewardTokenInfo mapping so gelato network knows a new token
-    ///         has been added
+    ///         has been added.
     function _addRewardToken(address newToken) internal {
         rewardTokens.push() = newToken;
         // Configure for isRewardToken = true and forOTC = false,
         // if the DAO wants to accumulate reward tokens it will need to be
-        // passed by protocol governance
+        // passed by protocol governance.
         rewardTokenInfo[newToken] = RewardToken({
             isRewardToken: 2,
             forOTC: 1
@@ -724,15 +724,14 @@ contract FeeAccumulator is ReentrancyGuard {
     }
 
     /// @notice Validates the inbound chain data and records it in the
-    ///         crossChainLockData
-    /// @param value The locked amount value to record
-    /// @param chainId The ID of the chain where the data is coming from
-    /// @param numChainData Number of data entries in the crossChainLockData
-    /// @param epoch The current epoch number
+    ///         crossChainLockData.
+    /// @param value The locked amount value to record.
+    /// @param chainId The ID of the chain where the data is coming from.
+    /// @param numChainData Number of data entries in the crossChainLockData.
+    /// @param epoch The current epoch number.
     /// @dev This function also serves the purpose of validating that
-    ///      the current data structure
-    ///      If the data is stale or a repeat of the same chain, it resets and
-    ///      starts over.
+    ///      the current data structure. If the data is stale or a repeat
+    ///      of the same chain, it resets and starts over.
     function _validateAndRecordChainData(
         uint256 value,
         uint256 chainId,
@@ -742,7 +741,7 @@ contract FeeAccumulator is ReentrancyGuard {
         if (numChainData > 0) {
             for (uint256 i; i < numChainData; ) {
                 // If somehow the data is stale or we are repeat adding
-                // the same chain, reset and start over
+                // the same chain, reset and start over.
                 if (
                     crossChainLockData[i].epoch < epoch ||
                     crossChainLockData[i].chainId == chainId
@@ -757,7 +756,7 @@ contract FeeAccumulator is ReentrancyGuard {
             }
         }
 
-        // Add the new chain recorded data
+        // Add the new chain recorded data.
         crossChainLockData.push() = LockData({
             lockAmount: uint224(value),
             epoch: uint16(epoch),
@@ -781,7 +780,7 @@ contract FeeAccumulator is ReentrancyGuard {
         uint256 totalLockedTokens = lockedTokens;
 
         // Record this chains reward data and prep remaining data for
-        // other chains
+        // other chains.
         for (uint256 i; i < numChains; ) {
             totalLockedTokens += crossChainLockData[i].lockAmount;
 
@@ -796,7 +795,7 @@ contract FeeAccumulator is ReentrancyGuard {
         uint256 feeTokenBalanceForChain;
 
         // Messaging Hub can pull fee token directly so we do not
-        // need to queue up any safe transfers
+        // need to queue up any safe transfers.
         for (uint256 i; i < numChains; ) {
             chainId = crossChainLockData[i].chainId;
             chainData = centralRegistry.supportedChainData(chainId);
