@@ -39,10 +39,8 @@ contract FeeAccumulator is ReentrancyGuard {
 
     /// @notice Address of fee token.
     address public immutable feeToken;
-
     /// @notice Curvance DAO hub.
     ICentralRegistry public immutable centralRegistry;
-
     /// @notice Fee token decimal unit.
     uint256 internal immutable _feeTokenUnit;
 
@@ -50,12 +48,12 @@ contract FeeAccumulator is ReentrancyGuard {
 
     /// @notice Address of Gelato OneBalance.
     IGelatoOneBalance public gelatoOneBalance;
+
     address internal _messagingHubStored;
     uint256 internal _gasForCalldata;
     uint256 internal _gasForCrosschain;
 
     LockData[] public crossChainLockData;
-
     /// @notice We store token data semi redundantly to save gas
     ///         on daily operations and to help with gelato network structure
     ///         Used for Gelato Network bots to check what tokens to swap.

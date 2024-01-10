@@ -108,11 +108,13 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
             adaptorData = adaptorDataNonUSD[asset];
         }
 
+        // Add a ~10% buffer to maximum price allowed from redstone can stop 
+        // updating its price before/above the min/max price.
         // We use a maximum buffered price of 2^192 - 1 since redstone core
         // reports pricing in 8 decimal format, requiring multiplication by
         // 10e10 to standardize to 18 decimal format, which could overflow 
         // when trying to save the final value into an uint240.
-        adaptorData.max = type(uint192).max;
+        adaptorData.max = (type(uint192).max * 9) / 10;
         adaptorData.symbolHash = symbolHash;
         adaptorData.isConfigured = true;
         isSupportedAsset[asset] = true;

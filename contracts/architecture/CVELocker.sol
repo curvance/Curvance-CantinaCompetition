@@ -35,9 +35,9 @@ contract CVELocker is ReentrancyGuard {
 
     /// @notice veCVE contract address.
     IVeCVE public veCVE;
-    // 2 = yes; 1 = no.
+    /// @notice 2 = yes; 1 = no.
     uint256 public lockerStarted = 1;
-    // 2 = yes; 1 = no.
+    /// @notice 2 = yes; 1 = no.
     uint256 public isShutdown = 1;
 
     /// @notice The next undelivered epoch index.
@@ -50,10 +50,10 @@ contract CVELocker is ReentrancyGuard {
     /// @notice RewardToken => 2 = yes; 0 or 1 = no.
     mapping(address => uint256) public authorizedRewardToken;
 
-    /// @notice  Epoch # => Total Tokens Locked across all chains.
+    /// @notice Epoch # => Total Tokens Locked across all chains.
     mapping(uint256 => uint256) public tokensLockedByEpoch;
 
-    /// @notice  Epoch # => Rewards per CVE, in `WAD`.
+    /// @notice Epoch # => Rewards per CVE, in `WAD`.
     mapping(uint256 => uint256) public epochRewardsPerCVE;
 
     /// EVENTS ///

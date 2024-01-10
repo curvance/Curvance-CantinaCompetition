@@ -129,8 +129,8 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
         // Add a ~10% buffer to minimum and maximum price from Chainlink
         // because Chainlink can stop updating its price before/above
         // the min/max price.
-        uint256 bufferedMaxPrice = (maxFromChainlink * 0.9e18) / WAD;
-        uint256 bufferedMinPrice = (minFromChainklink * 1.1e18) / WAD;
+        uint256 bufferedMaxPrice = (maxFromChainlink * 9) / 10;
+        uint256 bufferedMinPrice = (minFromChainklink * 11) / 10;
 
         AdaptorData storage adaptorData;
 
