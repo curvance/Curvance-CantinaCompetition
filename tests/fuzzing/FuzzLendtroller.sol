@@ -79,7 +79,14 @@ contract FuzzLendtroller is StatefulBaseMarket {
                 false,
                 "LENDTROLLER - listToken for duplicate token should not be possible"
             );
-        } catch {}
+        } catch (bytes memory revertData) {
+            uint256 errorSelector = extractErrorSelector(revertData);
+
+            assertWithMsg(
+                errorSelector == lendtroller_tokenAlreadyListedSelectorHash,
+                "LENDTROLLER - listToken() expected TokenAlreadyListed selector hash on failure"
+            );
+        }
     }
 
     // function c_token_depositAsCollateral(
@@ -188,7 +195,6 @@ contract FuzzLendtroller is StatefulBaseMarket {
                 "LENDTROLLER - pre and post ctoken balance should increase"
             );
         } catch (bytes memory revertData) {
-            emit LogAddress("msg.sender", msg.sender);
             uint256 errorSelector = extractErrorSelector(revertData);
 
             emit LogUint256("error selector: ", errorSelector);
@@ -268,7 +274,6 @@ contract FuzzLendtroller is StatefulBaseMarket {
         require(feedsSetup);
         require(centralRegistry.hasDaoPermissions(address(this)));
         cap = clampBetween(cap, 1, type(uint256).max);
-        // require the token is not already listed into the lendtroller
         if (!lendtroller.isListed(mtoken)) {
             list_token_should_succeed(mtoken);
         }
@@ -414,15 +419,19 @@ contract FuzzLendtroller is StatefulBaseMarket {
         uint256 oldCollateralForToken = lendtroller.collateralPosted(mtoken);
 
         {
-            (bool success, bytes memory rd) = address(lendtroller).call(
-                abi.encodeWithSignature(
-                    "postCollateral(address,address,uint256)",
-                    address(this),
-                    mtoken,
-                    tokens
-                )
-            );
+            (bool success, bytes memory revertData) = address(lendtroller)
+                .call(
+                    abi.encodeWithSignature(
+                        "postCollateral(address,address,uint256)",
+                        address(this),
+                        mtoken,
+                        tokens
+                    )
+                );
             if (!success) {
+                uint256 errorSelector = extractErrorSelector(revertData);
+                emit LogUint256("error selector: ", errorSelector);
+
                 assertWithMsg(
                     false,
                     "LENDTROLLER - expected postCollateral to pass with preconditions"
@@ -500,19 +509,25 @@ contract FuzzLendtroller is StatefulBaseMarket {
         );
 
         if (shortfall > 0) {
-            (bool success, bytes memory rd) = address(lendtroller).call(
-                abi.encodeWithSignature(
-                    "removeCollateral(address,uint256,bool)",
-                    mtoken,
-                    tokens,
-                    closePositionIfPossible
-                )
-            );
-            // If there is a shortfall, expect remove
-            assertWithMsg(
-                !success,
-                "LENDTROLLER - removeCollateral expected to be fail"
-            );
+            (bool success, bytes memory revertData) = address(lendtroller)
+                .call(
+                    abi.encodeWithSignature(
+                        "removeCollateral(address,uint256,bool)",
+                        mtoken,
+                        tokens,
+                        closePositionIfPossible
+                    )
+                );
+            // If the call failed, ensure that the revert message is insufficient collateral
+            if (!success) {
+                uint256 errorSelector = extractErrorSelector(revertData);
+
+                assertWithMsg(
+                    errorSelector ==
+                        lendtroller_insufficientCollateralSelectorHash,
+                    "LENDTROLLER - reduceCollateralIfNecessary expected to revert with insufficientCollateral"
+                );
+            }
         } else {
             (bool success, bytes memory rd) = address(lendtroller).call(
                 abi.encodeWithSignature(
@@ -545,19 +560,118 @@ contract FuzzLendtroller is StatefulBaseMarket {
         }
     }
 
-    function removeCollateralIfNecessary_should_fail_with_wrong_caller(
-        address mToken,
-        uint256 balance,
+    // Test Property: removeCollateral should REVERT when no position exists
+    // Test Precondition: mtoken is either of: cDAI or cUSDC
+    // Test Precondition: token must be listed in Lendtroller
+    // Test Precondition: price feed must be up to date
+    // Test Precondition: user must NOT have an existing position
+    function removeCollateral_should_fail_with_non_existent_position(
+        address mtoken,
+        uint256 tokens
+    ) public {
+        require(mtoken == address(cDAI) || mtoken == address(cUSDC));
+        require(lendtroller.isListed(mtoken));
+        check_price_feed();
+        require(!lendtroller.hasPosition(mtoken, address(this)));
+
+        (bool success, bytes memory revertData) = address(lendtroller).call(
+            abi.encodeWithSignature(
+                "removeCollateral(address,uint256,bool)",
+                mtoken,
+                tokens,
+                false
+            )
+        );
+
+        if (success) {
+            assertWithMsg(
+                false,
+                "LENDTROLLER - removeCollateral should fail with non existent position"
+            );
+        } else {
+            // expectation is that this should fail
+            uint256 errorSelector = extractErrorSelector(revertData);
+
+            assertWithMsg(
+                errorSelector == lendtroller_invariantErrorSelectorHash,
+                "LENDTROLLER - expected removeCollateral to revert with InvariantError"
+            );
+        }
+    }
+
+    // Test Property: removeCollateral should REVERT when trying to remove too much
+    // Test Precondition: mtoken is either of: cDAI or cUSDC
+    // Test Precondition: token must be listed in Lendtroller
+    // Test Precondition: price feed must be up to date
+    // Test Precondition: user must have an existing position
+    // Test Precondition: tokens to remove is bound between [existingCollateral+1, uint32.max]
+    function removeCollateral_should_fail_with_removing_too_many_tokens(
+        address mtoken,
+        uint256 tokens
+    ) public {
+        require(mtoken == address(cDAI) || mtoken == address(cUSDC));
+        require(lendtroller.isListed(mtoken));
+        check_price_feed();
+        require(lendtroller.hasPosition(mtoken, address(this)));
+        uint256 oldCollateralForUser = lendtroller.collateralPostedFor(
+            mtoken,
+            address(this)
+        );
+
+        tokens = clampBetween(
+            tokens,
+            oldCollateralForUser + 1,
+            type(uint32).max
+        );
+
+        (bool success, bytes memory revertData) = address(lendtroller).call(
+            abi.encodeWithSignature(
+                "removeCollateral(address,uint256,bool)",
+                mtoken,
+                tokens,
+                false
+            )
+        );
+
+        if (success) {
+            assertWithMsg(
+                false,
+                "LENDTROLLER - removeCollateral should fail insufficient collateral"
+            );
+        } else {
+            // expectation is that this should fail
+            uint256 errorSelector = extractErrorSelector(revertData);
+
+            assertWithMsg(
+                errorSelector ==
+                    lendtroller_insufficientCollateralSelectorHash,
+                "LENDTROLLER - expected removeCollateral to revert with InsufficientCollateral when attempting to remove too much"
+            );
+        }
+    }
+
+    // Test Property: reduceCollateralIfNecessary should revert with unauthorized if called directly
+    // Test Precondition: msg.sender != mtoken
+    function reduceCollateralIfNecessary_should_fail_with_wrong_caller(
+        address mtoken,
         uint256 amount
     ) public {
+        require(msg.sender != mtoken);
         try
             lendtroller.reduceCollateralIfNecessary(
                 address(this),
-                mToken,
-                balance,
+                mtoken,
+                IMToken(mtoken).balanceOf(address(this)),
                 amount
             )
-        {} catch {}
+        {} catch (bytes memory revertData) {
+            uint256 errorSelector = extractErrorSelector(revertData);
+
+            assertWithMsg(
+                errorSelector == lendtroller_unauthorizedSelectorHash,
+                "LENDTROLLER - reduceCollateralIfNecessary expected to revert"
+            );
+        }
     }
 
     function closePosition_should_succeed(address mToken) public {
