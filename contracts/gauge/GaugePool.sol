@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-
 import { GaugeController, GaugeErrors, IGaugePool } from "contracts/gauge/GaugeController.sol";
 import { PartnerGaugePool } from "contracts/gauge/PartnerGaugePool.sol";
 
@@ -44,7 +43,6 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
     mapping(address => PoolInfo) public poolInfo; // token => pool info
     mapping(address => mapping(address => UserInfo)) public userInfo; // token => user => info
     uint256 public firstDeposit;
-    uint256 public unallocatedRewards;
 
     /// EVENTS ///
 
@@ -92,7 +90,7 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
     /// @param partnerGauge The address of the partner gauge to be added
     function addPartnerGauge(address partnerGauge) external {
         _checkDaoPermissions();
-        
+
         if (partnerGauge == address(0)) {
             revert GaugeErrors.InvalidAddress();
         }
@@ -110,12 +108,9 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
     /// @notice Removes a partner gauge from the gauge system
     /// @param index The index of the partner gauge
     /// @param partnerGauge The address of the partner gauge to be removed
-    function removePartnerGauge(
-        uint256 index,
-        address partnerGauge
-    ) external {
+    function removePartnerGauge(uint256 index, address partnerGauge) external {
         _checkDaoPermissions();
-        
+
         if (partnerGauge != address(partnerGauges[index])) {
             revert GaugeErrors.InvalidAddress();
         }
@@ -208,9 +203,6 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
         if (amount == 0) {
             revert GaugeErrors.InvalidAmount();
         }
-        if (block.timestamp < startTime) {
-            revert GaugeErrors.NotStarted();
-        }
 
         if (
             msg.sender != token || !ILendtroller(lendtroller).isListed(token)
@@ -229,12 +221,16 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
             // if first deposit, the new rewards from gauge start to this point will be unallocated rewards
             firstDeposit = block.timestamp;
             updatePool(token);
-            SafeTransferLib.safeTransfer(
-                cve,
-                centralRegistry.daoAddress(),
-                (poolInfo[token].accRewardPerShare *
-                    poolInfo[token].totalAmount) / PRECISION
-            );
+
+            uint256 unallocatedRewards = (poolInfo[token].accRewardPerShare *
+                poolInfo[token].totalAmount) / PRECISION;
+            if (unallocatedRewards > 0) {
+                SafeTransferLib.safeTransfer(
+                    cve,
+                    centralRegistry.daoAddress(),
+                    unallocatedRewards
+                );
+            }
         }
 
         _calcDebt(user, token);
@@ -428,8 +424,8 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
     /// @notice Update reward variables of the given pool to be up-to-date
     /// @param token Pool token address
     function updatePool(address token) public override {
-        if (block.timestamp < startTime) {
-            revert GaugeErrors.NotStarted();
+        if (block.timestamp <= startTime) {
+            return;
         }
 
         uint256 lastRewardTimestamp = poolInfo[token].lastRewardTimestamp;
@@ -437,10 +433,7 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
             lastRewardTimestamp = startTime;
         }
 
-        if (
-            block.timestamp <= lastRewardTimestamp ||
-            block.timestamp == startTime
-        ) {
+        if (block.timestamp <= lastRewardTimestamp) {
             return;
         }
 

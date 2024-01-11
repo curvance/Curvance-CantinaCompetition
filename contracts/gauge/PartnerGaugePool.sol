@@ -50,7 +50,6 @@ contract PartnerGaugePool is ReentrancyGuard {
     // token => user => info
     mapping(address => mapping(address => UserInfo)) public userInfo;
     uint256 public firstDeposit;
-    uint256 public unallocatedRewards;
 
     /// CONSTRUCTOR ///
 
@@ -89,10 +88,7 @@ contract PartnerGaugePool is ReentrancyGuard {
         );
     }
 
-    function setRewardPerSec(
-        uint256 epoch,
-        uint256 newRewardPerSec
-    ) external {
+    function setRewardPerSec(uint256 epoch, uint256 newRewardPerSec) external {
         if (!centralRegistry.hasDaoPermissions(msg.sender)) {
             revert GaugeErrors.Unauthorized();
         }
@@ -200,7 +196,7 @@ contract PartnerGaugePool is ReentrancyGuard {
         uint256 amount
     ) external nonReentrant {
         _checkIsGaugeController();
-        
+
         _updatePool(token, UserAction.DEPOSIT, amount);
 
         _calcPending(user, token, UserAction.DEPOSIT, amount);
@@ -226,7 +222,7 @@ contract PartnerGaugePool is ReentrancyGuard {
         uint256 amount
     ) external nonReentrant {
         _checkIsGaugeController();
-        
+
         _updatePool(token, UserAction.WITHDRAW, amount);
 
         _calcPending(user, token, UserAction.WITHDRAW, amount);
