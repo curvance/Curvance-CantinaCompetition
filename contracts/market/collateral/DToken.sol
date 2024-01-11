@@ -479,7 +479,7 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @notice Adds reserves by transferring from Curvance DAO
     ///         to the market and depositing to the gauge.
     /// @dev    Updates interest before executing the reserve deposit.
-    /// @param amount The amount of underlying token to add as reserves, 
+    /// @param amount The amount of underlying token to add as reserves,
     ///               in assets.
     function depositReserves(uint256 amount) external nonReentrant {
         _checkDaoPermissions();
@@ -734,7 +734,7 @@ contract DToken is ERC165, ReentrancyGuard {
     }
 
     /// @notice Gets balance of this contract in terms of the underlying.
-    /// @dev This excludes changes in underlying token balance by the 
+    /// @dev This excludes changes in underlying token balance by the
     ///      current transaction, if any.
     /// @return The quantity of underlying tokens owned by the market.
     function marketUnderlyingHeld() public view returns (uint256) {
@@ -801,9 +801,9 @@ contract DToken is ERC165, ReentrancyGuard {
             reservesPrior
         );
 
-        // Calculate the interest compounds to update, 
+        // Calculate the interest compounds to update,
         // in `interestCompoundRate`.
-        // Calculate the interest accumulated into borrows, reserves, 
+        // Calculate the interest accumulated into borrows, reserves,
         // and the new exchange rate.
         uint256 interestCompounds = (block.timestamp -
             cachedData.lastTimestampUpdated) / cachedData.compoundRate;
@@ -914,7 +914,7 @@ contract DToken is ERC165, ReentrancyGuard {
 
         // Update token balances
         balanceOf[from] = balanceOf[from] - tokens;
-        // We know that from balance wont overflow 
+        // We know that from balance wont overflow
         // due to underflow check above.
         unchecked {
             balanceOf[to] = balanceOf[to] + tokens;
@@ -976,7 +976,7 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @notice User redeems dTokens in exchange for the underlying asset.
     /// @dev Assumes interest has already been accrued up to
     ///      the current timestamp.
-    /// @param redeemer The address of the account which is 
+    /// @param redeemer The address of the account which is
     ///                 redeeming the tokens.
     /// @param recipient The recipient address.
     /// @param tokens The number of dTokens to redeem into underlying.
@@ -1022,7 +1022,7 @@ contract DToken is ERC165, ReentrancyGuard {
             revert DToken__InsufficientUnderlyingHeld();
         }
 
-        // We calculate the new account and total borrow balances, 
+        // We calculate the new account and total borrow balances,
         // failing on overflow.
         _debtOf[account].principal = debtBalanceCached(account) + amount;
         _debtOf[account].accountExchangeRate = marketData.exchangeRate;
@@ -1033,14 +1033,14 @@ contract DToken is ERC165, ReentrancyGuard {
         emit Borrow(account, amount);
     }
 
-    /// @notice Allows a payer to repay a loan on behalf of the account, 
+    /// @notice Allows a payer to repay a loan on behalf of the account,
     ///         usually themselves.
-    /// @dev First validates that the payer is allowed to repay the loan, 
+    /// @dev First validates that the payer is allowed to repay the loan,
     ///      then repays. the loan by transferring in the repay amount.
     ///      Emits a repay event on successful repayment.
     /// @param payer The address paying off the borrow.
     /// @param account The account with the debt being paid off.
-    /// @param amount The amount the payer wishes to repay, 
+    /// @param amount The amount the payer wishes to repay,
     ///               or 0 for the full outstanding amount.
     /// @return The actual amount repaid.
     function _repay(
