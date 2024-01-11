@@ -658,16 +658,12 @@ contract FuzzVECVE is StatefulBaseMarket {
         uint256 lockIndex = get_continuous_lock();
         uint256 preUserPoints = veCVE.userPoints(address(this));
         uint256 preChainPoints = veCVE.chainPoints();
-        uint256 currentEpoch = veCVE.freshLockEpoch();
-        uint256 preChainUnlockBalance = veCVE.chainUnlocksByEpoch(
-            currentEpoch
-        );
+        uint256 newEpoch = veCVE.freshLockEpoch();
+        uint256 preChainUnlocksByEpoch = veCVE.chainUnlocksByEpoch(newEpoch);
         uint256 preUserUnlocksByEpoch = veCVE.userUnlocksByEpoch(
             address(this),
-            currentEpoch
+            newEpoch
         );
-
-        //save_epoch_unlock_values();
 
         try
             veCVE.disableContinuousLock(
@@ -683,12 +679,12 @@ contract FuzzVECVE is StatefulBaseMarket {
                 address(this),
                 lockIndex
             );
-            uint256 postChainUnlockBalance = veCVE.chainUnlocksByEpoch(
-                currentEpoch
+            uint256 postChainUnlocksByEpoch = veCVE.chainUnlocksByEpoch(
+                newEpoch
             );
             uint256 postUserUnlocksByEpoch = veCVE.userUnlocksByEpoch(
                 address(this),
-                currentEpoch
+                newEpoch
             );
 
             assertGt(
@@ -703,9 +699,9 @@ contract FuzzVECVE is StatefulBaseMarket {
                 "VE_CVE - disableContinuousLock() - chainPoints should have decreased"
             );
             assertEq(
-                preChainUnlockBalance + amount,
-                postChainUnlockBalance,
-                "VE_CVE - disableContinuousLock() - postChainUnlockBalance should be increaded by amount"
+                preChainUnlocksByEpoch + amount,
+                postChainUnlocksByEpoch,
+                "VE_CVE - disableContinuousLock() - postChainUnlocksByEpoch should be increaded by amount"
             );
 
             assertEq(
