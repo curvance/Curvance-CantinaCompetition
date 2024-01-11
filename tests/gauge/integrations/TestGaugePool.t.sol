@@ -79,14 +79,14 @@ contract TestGaugePool is TestBaseMarket {
             }
         }
 
-        vm.warp(gaugePool.startTime());
-        vm.roll(block.number + 1000);
-
         mockDaiFeed = new MockDataFeed(_CHAINLINK_DAI_USD);
         chainlinkAdaptor.addAsset(_DAI_ADDRESS, address(mockDaiFeed), 0, true);
     }
 
     function testManageEmissionRatesOfEachEpoch() public {
+        vm.warp(gaugePool.startTime());
+        vm.roll(block.number + 1000);
+
         assertEq(gaugePool.currentEpoch(), 0);
         assertEq(gaugePool.epochOfTimestamp(block.timestamp + 3 weeks), 1);
         assertEq(gaugePool.epochStartTime(1), block.timestamp + 2 weeks);
@@ -114,6 +114,9 @@ contract TestGaugePool is TestBaseMarket {
     }
 
     function testCanOnlyUpdateEmissionRatesOfNextEpoch() public {
+        vm.warp(gaugePool.startTime());
+        vm.roll(block.number + 1000);
+
         assertEq(gaugePool.currentEpoch(), 0);
         assertEq(gaugePool.epochOfTimestamp(block.timestamp + 3 weeks), 1);
         assertEq(gaugePool.epochStartTime(1), block.timestamp + 2 weeks);
@@ -150,6 +153,17 @@ contract TestGaugePool is TestBaseMarket {
     }
 
     function testRewardRatioOfDifferentPools() public {
+        // user0 deposit 100 token0
+        vm.prank(users[0]);
+        IMToken(tokens[0]).mint(100 ether);
+
+        // user2 deposit 100 token1
+        vm.prank(users[2]);
+        IMToken(tokens[1]).mint(100 ether);
+
+        vm.warp(gaugePool.startTime());
+        vm.roll(block.number + 1000);
+
         // set gauge weights
         address[] memory tokensParam = new address[](2);
         tokensParam[0] = tokens[0];
@@ -164,14 +178,6 @@ contract TestGaugePool is TestBaseMarket {
 
         vm.warp(gaugePool.startTime() + 1 * 2 weeks);
         mockDaiFeed.setMockUpdatedAt(block.timestamp);
-
-        // user0 deposit 100 token0
-        vm.prank(users[0]);
-        IMToken(tokens[0]).mint(100 ether);
-
-        // user2 deposit 100 token1
-        vm.prank(users[2]);
-        IMToken(tokens[1]).mint(100 ether);
 
         // check pending rewards after 100 seconds
         vm.warp(block.timestamp + 100);
@@ -246,6 +252,17 @@ contract TestGaugePool is TestBaseMarket {
     }
 
     function testRewardCalculationWithDifferentEpoch() public {
+        // user0 deposit 100 token0
+        vm.prank(users[0]);
+        IMToken(tokens[0]).mint(100 ether);
+
+        // user1 deposit 100 token1
+        vm.prank(users[1]);
+        IMToken(tokens[1]).mint(100 ether);
+
+        vm.warp(gaugePool.startTime());
+        vm.roll(block.number + 1000);
+
         // set gauge weights
         address[] memory tokensParam = new address[](2);
         tokensParam[0] = tokens[0];
@@ -260,14 +277,6 @@ contract TestGaugePool is TestBaseMarket {
 
         vm.warp(gaugePool.startTime() + 1 * 2 weeks);
         mockDaiFeed.setMockUpdatedAt(block.timestamp);
-
-        // user0 deposit 100 token0
-        vm.prank(users[0]);
-        IMToken(tokens[0]).mint(100 ether);
-
-        // user1 deposit 100 token1
-        vm.prank(users[1]);
-        IMToken(tokens[1]).mint(100 ether);
 
         // check pending rewards after 100 seconds
         vm.warp(block.timestamp + 100);
@@ -309,6 +318,17 @@ contract TestGaugePool is TestBaseMarket {
     }
 
     function testUpdatePoolDoesNotMessUpTheRewardCalculation() public {
+        // user0 deposit 100 token0
+        vm.prank(users[0]);
+        IMToken(tokens[0]).mint(100 ether);
+
+        // user2 deposit 100 token1
+        vm.prank(users[2]);
+        IMToken(tokens[1]).mint(100 ether);
+
+        vm.warp(gaugePool.startTime());
+        vm.roll(block.number + 1000);
+
         // set gauge weights
         address[] memory tokensParam = new address[](2);
         tokensParam[0] = tokens[0];
@@ -323,14 +343,6 @@ contract TestGaugePool is TestBaseMarket {
 
         vm.warp(gaugePool.startTime() + 1 * 2 weeks);
         mockDaiFeed.setMockUpdatedAt(block.timestamp);
-
-        // user0 deposit 100 token0
-        vm.prank(users[0]);
-        IMToken(tokens[0]).mint(100 ether);
-
-        // user2 deposit 100 token1
-        vm.prank(users[2]);
-        IMToken(tokens[1]).mint(100 ether);
 
         // check pending rewards after 100 seconds
         vm.warp(block.timestamp + 100);
