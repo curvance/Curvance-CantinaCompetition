@@ -13,6 +13,7 @@ contract FuzzLendtroller is StatefulBaseMarket {
     MockDataFeed public mockDaiFeed;
     bool feedsSetup;
     uint256 lastRoundUpdate;
+    mapping(address => bool) setCollateralValues;
     mapping(address => bool) collateralCapsUpdated;
     mapping(address => bool) postedCollateral;
     mapping(address => uint256) postedCollateralAt;
@@ -148,14 +149,15 @@ contract FuzzLendtroller is StatefulBaseMarket {
     // Test Precondition: GaugePool must have been started before block.timestamp
     // Test Precondition: mtoken must be one of: cDAI, cUSDC
     // Test Precondition: mtoken must be listed in Lendtroller
+    // Test Precondition: minting must not be paused
     function c_token_deposit(address mtoken, uint256 amount) public {
         amount = clampBetween(amount, 1, type(uint16).max);
-        // require gauge pool has been started at a previous timestamp
         require(gaugePool.startTime() < block.timestamp);
         require(mtoken == address(cDAI) || mtoken == address(cUSDC));
         if (!lendtroller.isListed(mtoken)) {
             list_token_should_succeed(mtoken);
         }
+        require(lendtroller.mintPaused(mtoken) != 2);
 
         address underlyingAddress = MockCToken(mtoken).underlying();
         // mint ME enough tokens to cover deposit
@@ -255,7 +257,7 @@ contract FuzzLendtroller is StatefulBaseMarket {
     // Test Precondition: cap is bound between [1, uint256.max], inclusive
     // Test Precondition: mtoken must be listed in the Lendtroller
     // Test Precondition: get_safe_update_collateral_bounds must be in correct bounds
-    function setCTokenCollateralCaps_should_succeed(
+    function updateCollateralToken_should_succeed(
         address mtoken,
         uint256 collRatio,
         uint256 collReqSoft,
@@ -266,11 +268,6 @@ contract FuzzLendtroller is StatefulBaseMarket {
         uint256 baseCFactor,
         uint256 cap
     ) public {
-        if (lastRoundUpdate > block.timestamp) {
-            lastRoundUpdate = block.timestamp;
-        }
-        require(block.timestamp - lastRoundUpdate <= 24 hours);
-
         require(feedsSetup);
         require(centralRegistry.hasDaoPermissions(address(this)));
         cap = clampBetween(cap, 1, type(uint256).max);
@@ -278,11 +275,6 @@ contract FuzzLendtroller is StatefulBaseMarket {
             list_token_should_succeed(mtoken);
         }
         require(mtoken == address(cDAI) || mtoken == address(cUSDC));
-
-        address[] memory tokens = new address[](1);
-        tokens[0] = mtoken;
-        uint256[] memory caps = new uint256[](1);
-        caps[0] = cap;
 
         TokenCollateralBounds
             memory bounds = get_safe_update_collateral_bounds(
@@ -294,6 +286,7 @@ contract FuzzLendtroller is StatefulBaseMarket {
                 liqFee,
                 baseCFactor
             );
+        check_price_feed();
         try
             lendtroller.updateCollateralToken(
                 IMToken(address(mtoken)),
@@ -311,19 +304,40 @@ contract FuzzLendtroller is StatefulBaseMarket {
                 "LENDTROLLER - updateCollateralToken should succeed"
             );
         }
+        setCollateralValues[mtoken] = true;
+    }
 
-        try lendtroller.setCTokenCollateralCaps(tokens, caps) {
+    function setCToken_should_succeed(address mtoken, uint256 cap) public {
+        require(centralRegistry.hasDaoPermissions(address(this)));
+        require(setCollateralValues[mtoken]);
+        check_price_feed();
+
+        address[] memory tokens = new address[](1);
+        tokens[0] = mtoken;
+        uint256[] memory caps = new uint256[](1);
+        caps[0] = cap;
+
+        (bool success, bytes memory revertData) = address(lendtroller).call(
+            abi.encodeWithSignature(
+                "setCTokenCollateralCaps(address[],uint256[])",
+                tokens,
+                caps
+            )
+        );
+
+        if (success) {
             assertGt(
                 lendtroller.collateralCaps(mtoken),
                 0,
                 "LENDTROLLER - collateral caps for token should be >0"
             );
-        } catch {
+        } else {
             assertWithMsg(
                 false,
                 "LENDTROLLER - expected setCTokenCollateralCaps to succeed"
             );
         }
+
         collateralCapsUpdated[mtoken] = true;
     }
 
@@ -409,7 +423,9 @@ contract FuzzLendtroller is StatefulBaseMarket {
         address mtoken,
         uint256 tokens
     ) public {
-        require(collateralCapsUpdated[mtoken]);
+        if (!collateralCapsUpdated[mtoken]) {
+            setCToken_should_succeed(mtoken, tokens);
+        }
         check_price_feed();
 
         if (IMToken(mtoken).balanceOf(address(this)) == 0) {
@@ -421,12 +437,29 @@ contract FuzzLendtroller is StatefulBaseMarket {
             mtoken,
             address(this)
         );
-
-        // collateralPosted + tokens <= mtoken.balanceOf(address(this))
-        // tokens <= mtoken.balanceOf(address(this)) - collateralPosted
-        tokens = clampBetween(tokens, 1, mtokenBalance - oldCollateralForUser);
+        uint256 collateralCaps = lendtroller.collateralCaps(mtoken);
 
         uint256 oldCollateralForToken = lendtroller.collateralPosted(mtoken);
+        if (
+            mtokenBalance - oldCollateralForUser >
+            collateralCaps - oldCollateralForToken
+        ) {
+            // collateralPosted[mToken] + tokens <= collateralCaps[mToken])
+            // tokens <= collateralCaps[mtoken] - collateralPosted[mtoken]
+            tokens = clampBetween(
+                tokens,
+                1,
+                collateralCaps - oldCollateralForToken
+            );
+        } else {
+            // collateralPosted + tokens <= mtoken.balanceOf(address(this))
+            // tokens <= mtoken.balanceOf(address(this)) - collateralPosted
+            tokens = clampBetween(
+                tokens,
+                1,
+                mtokenBalance - oldCollateralForUser
+            );
+        }
 
         {
             (bool success, bytes memory revertData) = address(lendtroller)
@@ -532,6 +565,7 @@ contract FuzzLendtroller is StatefulBaseMarket {
     // Test Preconditions: mtoken must be listed in the Lendtroller
     // Test Preconditions: current timestamp must exceed the MIN_HOLD_PERIOD from postCollateral timestamp
     // Test Preconditions: token is clamped between [1, collateralForUser]
+    // Test Preconditions: redeemPaused flag must not be set
     function remove_collateral_should_succeed(
         address mtoken,
         uint256 tokens,
@@ -547,6 +581,7 @@ contract FuzzLendtroller is StatefulBaseMarket {
                 postedCollateralAt[mtoken] + lendtroller.MIN_HOLD_PERIOD()
         );
         require(lendtroller.hasPosition(mtoken, address(this)));
+        require(lendtroller.redeemPaused() != 2);
 
         uint256 oldCollateralForUser = lendtroller.collateralPostedFor(
             mtoken,
@@ -737,8 +772,8 @@ contract FuzzLendtroller is StatefulBaseMarket {
     }
 
     function closePosition_should_succeed(address mtoken) public {
-        require(lendtroller.hasPosition(mtoken, address(this)));
         require(mtoken == address(cDAI) || mtoken == address(cUSDC));
+        require(lendtroller.hasPosition(mtoken, address(this)));
         uint256 collateralPostedForUser = lendtroller.collateralPostedFor(
             address(mtoken),
             address(this)
@@ -763,6 +798,49 @@ contract FuzzLendtroller is StatefulBaseMarket {
             assertWithMsg(
                 preAssetsOf.length - 1 == postAssetsOf.length,
                 "LENDTROLLER - closePosition expected to remove asset from assetOf"
+            );
+        }
+    }
+
+    // Test Property: setMintPaused with correct preconditions should not revert
+    // Test Property: setMintPaused should set mintPaused(mtoken) = 2 when state = true
+    // Test Property: setMintPaused should set mintPaused(mtoken) = 1 when state = false
+    // Test Precondition: address(this) is authorized
+    // Test Preconditoin: mtoken is listed
+    function setMintPaused_should_succeed_when_authorized_and_listed(
+        address mtoken,
+        bool state
+    ) public {
+        require(centralRegistry.hasDaoPermissions(address(this)));
+        require(lendtroller.isListed(mtoken));
+
+        (bool success, bytes memory revertData) = address(lendtroller).call(
+            abi.encodeWithSignature(
+                "setMintPaused(address,bool)",
+                mtoken,
+                state
+            )
+        );
+        if (success) {
+            uint256 isMintPaused = lendtroller.mintPaused(mtoken);
+            if (state) {
+                assertWithMsg(
+                    isMintPaused == 2,
+                    "LENDTROLLER - setMintPaused() true succeed set isMintPaused = 2"
+                );
+            } else {
+                assertWithMsg(
+                    isMintPaused == 1,
+                    "LENDTROLLER - setMintPaused() false should set mintPaused[mtoken] to 1"
+                );
+            }
+        } else {
+            uint256 errorSelector = extractErrorSelector(revertData);
+            emit LogUint256("error:", errorSelector);
+
+            assertWithMsg(
+                false,
+                "LENDTROLLER - setMintPaused() expected to be successful with correct preconditions"
             );
         }
     }
@@ -814,6 +892,43 @@ contract FuzzLendtroller is StatefulBaseMarket {
                 "LENDTROLLER - canMint() should have reverted when mint is paused but did not"
             );
         } catch {}
+    }
+
+    // Test Property: setRedeemPaused(true) should set redeemPaused = 2
+    // Test Property: setRedeemPause(false) should set redeemPaused = 1
+    // Test Preconditions: address(this) has dao permissions
+    function setRedeemPaused_should_succeed_with_authorized_permission(
+        bool state
+    ) public {
+        require(centralRegistry.hasDaoPermissions(address(this)));
+
+        (bool success, bytes memory revertData) = address(lendtroller).call(
+            abi.encodeWithSignature("setRedeemPaused(bool)", state)
+        );
+        if (success) {
+            uint256 redeemPaused = lendtroller.redeemPaused();
+            if (state == true) {
+                assertEq(
+                    redeemPaused,
+                    2,
+                    "LENDTROLLER - setRedeemPaused() true expected to set redeemPaused = 2 "
+                );
+            } else {
+                assertEq(
+                    redeemPaused,
+                    1,
+                    "LENDTROLLER - setRedeemPaused false expected to set redeemPaused = 1"
+                );
+            }
+        } else {
+            uint256 errorSelector = extractErrorSelector(revertData);
+            emit LogUint256("error:", errorSelector);
+
+            assertWithMsg(
+                errorSelector == lendtroller_unauthorizedSelectorHash,
+                "LENDTROLLER - setRedeemPaused() expected to be successful with correct preconditions"
+            );
+        }
     }
 
     function canRedeem_should_revert_when_redeem_is_paused(
@@ -870,6 +985,44 @@ contract FuzzLendtroller is StatefulBaseMarket {
         } catch {}
     }
 
+    function setBorrowPaused_should_succeed(
+        address mtoken,
+        bool state
+    ) public {
+        require(centralRegistry.hasDaoPermissions(address(this)));
+        require(lendtroller.isListed(mtoken));
+
+        (bool success, bytes memory revertData) = address(lendtroller).call(
+            abi.encodeWithSignature(
+                "setBorrowPaused(address,bool)",
+                mtoken,
+                state
+            )
+        );
+        if (success) {
+            uint256 isBorrowPaused = lendtroller.borrowPaused(mtoken);
+            if (state) {
+                assertWithMsg(
+                    isBorrowPaused == 2,
+                    "LENDTROLLER - setMintPaused() true succeed set isBorrowPaused = 2"
+                );
+            } else {
+                assertWithMsg(
+                    isBorrowPaused == 1,
+                    "LENDTROLLER - setMintPaused() false should set mintPaused[mtoken] to 1"
+                );
+            }
+        } else {
+            uint256 errorSelector = extractErrorSelector(revertData);
+            emit LogUint256("error:", errorSelector);
+
+            assertWithMsg(
+                false,
+                "LENDTROLLER - setMintPaused() expected to be successful with correct preconditions"
+            );
+        }
+    }
+
     function canBorrow_should_succeed(
         address mToken,
         address account,
@@ -887,7 +1040,16 @@ contract FuzzLendtroller is StatefulBaseMarket {
     ) public {
         require(lendtroller.borrowPaused(mToken) == 2);
         require(lendtroller.isListed(mToken));
-        try lendtroller.canBorrow(mToken, address(this), amount) {} catch {}
+        try lendtroller.canBorrow(mToken, address(this), amount) {} catch (
+            bytes memory revertData
+        ) {
+            uint256 errorSelector = extractErrorSelector(revertData);
+
+            assertWithMsg(
+                errorSelector == lendtroller_pausedSelectorHash,
+                "LENDTROLLER - canBorrow() expected PAUSED selector hash on failure"
+            );
+        }
     }
 
     function canBorrow_should_fail_when_token_is_unlisted(
@@ -897,7 +1059,16 @@ contract FuzzLendtroller is StatefulBaseMarket {
     ) public {
         require(lendtroller.borrowPaused(mToken) != 2);
         require(!lendtroller.isListed(mToken));
-        try lendtroller.canBorrow(mToken, address(this), amount) {} catch {}
+        try lendtroller.canBorrow(mToken, address(this), amount) {} catch (
+            bytes memory revertData
+        ) {
+            uint256 errorSelector = extractErrorSelector(revertData);
+
+            assertWithMsg(
+                errorSelector == lendtroller_tokenNotListedSelectorHash,
+                "LENDTROLLER - canBorrow() expected TOKEN NOT LISTED selector hash on failure"
+            );
+        }
     }
 
     function canBorrowWithNotify_should_succeed(
@@ -919,6 +1090,80 @@ contract FuzzLendtroller is StatefulBaseMarket {
 
     function canRepay_should_succeed(address mToken, address account) public {
         try lendtroller.canRepay(mToken, account) {} catch {}
+    }
+
+    // Test Property: setTransferPaused(true) should set transferPaused = 2
+    // Test Property: setTransferPause(false) should set transferPaused = 1
+    // Test Preconditions: address(this) has dao permissions
+    function setTransferPaused_should_succeed_with_authorized_permission(
+        bool state
+    ) public {
+        require(centralRegistry.hasDaoPermissions(address(this)));
+
+        (bool success, bytes memory revertData) = address(lendtroller).call(
+            abi.encodeWithSignature("setTransferPaused(bool)", state)
+        );
+        if (success) {
+            uint256 transferPaused = lendtroller.transferPaused();
+            if (state == true) {
+                assertEq(
+                    transferPaused,
+                    2,
+                    "LENDTROLLER - setTransferPaused() true expected to set TransferPaused = 2 "
+                );
+            } else {
+                assertEq(
+                    transferPaused,
+                    1,
+                    "LENDTROLLER - setTransferPaused false expected to set TransferPaused = 1"
+                );
+            }
+        } else {
+            uint256 errorSelector = extractErrorSelector(revertData);
+            emit LogUint256("error:", errorSelector);
+
+            assertWithMsg(
+                false,
+                "LENDTROLLER - setTransferPaused() expected to be successful with correct preconditions"
+            );
+        }
+    }
+
+    // Test Property: setSeizePaused(true) should set transferPaused = 2
+    // Test Property: setTransferPause(false) should set transferPaused = 1
+    // Test Preconditions: address(this) has dao permissions
+    function setSeizePaused_should_succeed_with_authorized_permission(
+        bool state
+    ) public {
+        require(centralRegistry.hasDaoPermissions(address(this)));
+
+        (bool success, bytes memory revertData) = address(lendtroller).call(
+            abi.encodeWithSignature("setSeizePaused(bool)", state)
+        );
+        if (success) {
+            uint256 seizePaused = lendtroller.seizePaused();
+            if (state == true) {
+                assertEq(
+                    seizePaused,
+                    2,
+                    "LENDTROLLER - setSeizePaused() true expected to set seizePaused = 2 "
+                );
+            } else {
+                assertEq(
+                    seizePaused,
+                    1,
+                    "LENDTROLLER - setSeizePaused false expected to set seizePaused = 1"
+                );
+            }
+        } else {
+            uint256 errorSelector = extractErrorSelector(revertData);
+            emit LogUint256("error:", errorSelector);
+
+            assertWithMsg(
+                false,
+                "LENDTROLLER - setSeizePaused() expected to be successful with correct preconditions"
+            );
+        }
     }
 
     function canLiquidate_should_succeed(
@@ -1113,7 +1358,12 @@ contract FuzzLendtroller is StatefulBaseMarket {
         if (lastRoundUpdate > block.timestamp) {
             lastRoundUpdate = block.timestamp;
         }
-        if (block.timestamp - lastRoundUpdate > 24 hours) {
+        emit LogUint256("***********last round update: ", lastRoundUpdate);
+        emit LogUint256(
+            "-----------chainlink usdc",
+            chainlinkUsdcUsd.latestTimestamp()
+        );
+        if (block.timestamp - chainlinkUsdcUsd.latestTimestamp() > 24 hours) {
             // TODO: Change this to a loop to loop over lendtroller.assetsOf()
             // Save a mapping of assets -> chainlink oracle
             // call updateRoundData on each oracle
@@ -1130,6 +1380,10 @@ contract FuzzLendtroller is StatefulBaseMarket {
                 block.timestamp
             );
         }
+        mockUsdcFeed.setMockUpdatedAt(block.timestamp);
+        mockDaiFeed.setMockUpdatedAt(block.timestamp);
+        mockUsdcFeed.setMockAnswer(1e8);
+        mockDaiFeed.setMockAnswer(1e8);
         lastRoundUpdate = block.timestamp;
     }
 }
