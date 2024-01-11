@@ -33,12 +33,9 @@ contract ZapperSimple is ReentrancyGuard {
     error ZapperSimple__ExecutionError();
     error ZapperSimple__InvalidCentralRegistry();
     error ZapperSimple__LendtrollerIsNotLendingMarket();
-    error ZapperSimple__CTokenUnderlyingIsNotLPToken();
     error ZapperSimple__Unauthorized();
-    error ZapperSimple__SlippageError();
     error ZapperSimple__InsufficientToRepay();
     error ZapperSimple__InvalidZapper(address invalidZapper);
-    error ZapperSimple__InvalidSwapper(address invalidSwapper);
 
     /// CONSTRUCTOR ///
 
@@ -114,27 +111,6 @@ contract ZapperSimple is ReentrancyGuard {
             // transfer token back to user
             _transferOut(dTokenUnderlying, recipient, balance - repayAmount);
         }
-    }
-
-    function borrowAndBridge(
-        address dToken,
-        uint256 borrowAmount,
-        SwapperLib.Swap memory swapCall,
-        address bridgeAdapter,
-        bytes memory bridgeData
-    ) external {
-        // borrow
-        DToken(dToken).borrowFor(msg.sender, address(this), borrowAmount);
-
-        // swap
-        if (!centralRegistry.isSwapper(swapCall.target)) {
-            revert ZapperSimple__InvalidSwapper(swapCall.target);
-        }
-        unchecked {
-            SwapperLib.swap(swapCall);
-        }
-
-        IBridgeAdapter(bridgeAdapter).bridge(msg.sender, bridgeData);
     }
 
     /// @dev Enter curvance
