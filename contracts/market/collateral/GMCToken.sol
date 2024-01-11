@@ -81,7 +81,9 @@ contract GMCToken is CTokenCompounding {
         );
 
         if (
-            market.longToken == address(0) || market.shortToken == address(0)
+            market.indexToken == address(0) ||
+            market.longToken == address(0) ||
+            market.shortToken == address(0)
         ) {
             revert GMCToken__MarketIsInvalid();
         }

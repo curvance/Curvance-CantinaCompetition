@@ -46,6 +46,7 @@ contract GMAdaptor is BaseOracleAdaptor {
     error GMAdaptor__ChainIsNotSupported();
     error GMAdaptor__GMXReaderIsZeroAddress();
     error GMAdaptor__GMXDataStoreIsZeroAddress();
+    error GMAdaptor__MarketIsInvalid();
     error GMAdaptor__AssetIsAlreadySupported();
     error GMAdaptor__AssetIsNotSupported();
     error GMAdaptor__MarketTokenIsNotSupported(address token);
@@ -93,10 +94,6 @@ contract GMAdaptor is BaseOracleAdaptor {
 
         for (uint256 i = 0; i < 3; ++i) {
             token = tokens[i];
-
-            if (i == 0 && token == address(0)) {
-                continue;
-            }
 
             (prices[i], errorCode) = priceRouter.getPrice(token, true, false);
             if (errorCode > 0) {
@@ -150,6 +147,15 @@ contract GMAdaptor is BaseOracleAdaptor {
             gmxDataStore,
             asset
         );
+
+        if (
+            market.indexToken == address(0) ||
+            market.longToken == address(0) ||
+            market.shortToken == address(0)
+        ) {
+            revert GMAdaptor__MarketIsInvalid();
+        }
+
         IPriceRouter priceRouter = IPriceRouter(centralRegistry.priceRouter());
 
         address[] memory tokens = new address[](3);
@@ -161,14 +167,12 @@ contract GMAdaptor is BaseOracleAdaptor {
         for (uint256 i = 0; i < 3; ++i) {
             token = tokens[i];
 
-            if (i != 0 || token != address(0)) {
-                if (!priceRouter.isSupportedAsset(token)) {
-                    revert GMAdaptor__MarketTokenIsNotSupported(token);
-                }
+            if (!priceRouter.isSupportedAsset(token)) {
+                revert GMAdaptor__MarketTokenIsNotSupported(token);
+            }
 
-                if (_priceUnit[token] == 0) {
-                    _priceUnit[token] = WAD * 10 ** IERC20(token).decimals();
-                }
+            if (_priceUnit[token] == 0) {
+                _priceUnit[token] = WAD * 10 ** IERC20(token).decimals();
             }
 
             marketData[asset].push(token);
@@ -193,7 +197,8 @@ contract GMAdaptor is BaseOracleAdaptor {
         // Wipe config mapping entries for a gas refund.
         delete marketData[asset];
 
-        // Notify the price router that we are going to stop supporting the asset.
+        // Notify the price router that we are going to
+        // stop supporting the asset.
         IPriceRouter(centralRegistry.priceRouter()).notifyFeedRemoval(asset);
     }
 
@@ -213,7 +218,7 @@ contract GMAdaptor is BaseOracleAdaptor {
     /// @param assets The struct array of the synthetic assets to unregister.
     function unregisterSyntheticAssets(address[] memory assets) external {
         _checkElevatedPermissions();
-        
+
         uint256 numAssets = assets.length;
 
         for (uint256 i; i < numAssets; ++i) {
