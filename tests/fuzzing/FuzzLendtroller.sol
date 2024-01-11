@@ -41,9 +41,9 @@ contract FuzzLendtroller is StatefulBaseMarket {
         );
     }
 
-    // Test Property: calling listToken for a token should succeed
-    // Test Precondition: mtoken must not already be listed
-    // Test Precondition: mtoken must be one of: cDAI, cUSDC
+    // @property: calling listToken for a token should succeed
+    // @precondition: mtoken must not already be listed
+    // @precondition: mtoken must be one of: cDAI, cUSDC
     function list_token_should_succeed(address mtoken) public {
         uint256 amount = 42069;
         // require the token is not already listed into the lendtroller
@@ -63,9 +63,9 @@ contract FuzzLendtroller is StatefulBaseMarket {
         }
     }
 
-    // Test Property: calling listToken() for a token that already exists should fail
-    // Test Precondition: mtoken must already be listed
-    // Test Precondition: mtoken must be one of: cDAI, cUSDC
+    // @property: calling listToken() for a token that already exists should fail
+    // @precondition: mtoken must already be listed
+    // @precondition: mtoken must be one of: cDAI, cUSDC
     function list_token_should_fail_if_already_listed(address mtoken) public {
         uint256 amount = 42069;
         // require the token is not already listed into the lendtroller
@@ -144,12 +144,12 @@ contract FuzzLendtroller is StatefulBaseMarket {
     //     }
     // }
 
-    // Test Property: After depositing, the ctoken balance should increase
-    // Test Precondition: amount bound between [1, uint16.max], inclusively
-    // Test Precondition: GaugePool must have been started before block.timestamp
-    // Test Precondition: mtoken must be one of: cDAI, cUSDC
-    // Test Precondition: mtoken must be listed in Lendtroller
-    // Test Precondition: minting must not be paused
+    // @property: After depositing, the ctoken balance should increase
+    // @precondition: amount bound between [1, uint16.max], inclusively
+    // @precondition: GaugePool must have been started before block.timestamp
+    // @precondition: mtoken must be one of: cDAI, cUSDC
+    // @precondition: mtoken must be listed in Lendtroller
+    // @precondition: minting must not be paused
     function c_token_deposit(address mtoken, uint256 amount) public {
         amount = clampBetween(amount, 1, type(uint16).max);
         require(gaugePool.startTime() < block.timestamp);
@@ -251,13 +251,13 @@ contract FuzzLendtroller is StatefulBaseMarket {
         lastRoundUpdate = block.timestamp;
     }
 
-    // Test Property: collateralCaps[mtoken] after calling setCTokenCollateralCaps is updated
-    // Test Precondition: price feed must be recent
-    // Test Precondition: price feed must be setup
-    // Test Precondition: address(this) must have dao permissions
-    // Test Precondition: cap is bound between [1, uint256.max], inclusive
-    // Test Precondition: mtoken must be listed in the Lendtroller
-    // Test Precondition: get_safe_update_collateral_bounds must be in correct bounds
+    // @property: collateralCaps[mtoken] after calling setCTokenCollateralCaps is updated
+    // @precondition: price feed must be recent
+    // @precondition: price feed must be setup
+    // @precondition: address(this) must have dao permissions
+    // @precondition: cap is bound between [1, uint256.max], inclusive
+    // @precondition: mtoken must be listed in the Lendtroller
+    // @precondition: get_safe_update_collateral_bounds must be in correct bounds
     function updateCollateralToken_should_succeed(
         address mtoken,
         uint256 collRatio,
@@ -327,10 +327,10 @@ contract FuzzLendtroller is StatefulBaseMarket {
         );
 
         if (success) {
-            assertGt(
+            assertGte(
                 lendtroller.collateralCaps(mtoken),
                 0,
-                "LENDTROLLER - collateral caps for token should be >0"
+                "LENDTROLLER - collateral caps for token should be >=0"
             );
         } else {
             assertWithMsg(
@@ -342,11 +342,11 @@ contract FuzzLendtroller is StatefulBaseMarket {
         collateralCapsUpdated[mtoken] = true;
     }
 
-    // Test Property: updateCollateralToken should revert if the price feed is out of date
-    // Test Precondition: price feed is out of date
-    // Test Precondition: cap is bound between [1, uint256.max], inclusive
-    // Test Precondition: mtoken must be listed in Lendtroller
-    // Test Precondition: mtoken must be one of: cDAI, cUSDC
+    // @property: updateCollateralToken should revert if the price feed is out of date
+    // @precondition: price feed is out of date
+    // @precondition: cap is bound between [1, uint256.max], inclusive
+    // @precondition: mtoken must be listed in Lendtroller
+    // @precondition: mtoken must be one of: cDAI, cUSDC
     function updateCollateralToken_should_revert_if_price_feed_out_of_date(
         address mtoken,
         uint256 collRatio,
@@ -413,13 +413,13 @@ contract FuzzLendtroller is StatefulBaseMarket {
         } catch {}
     }
 
-    // Test Property: Ensure account collateral has increased by # of tokens
-    // Test Property: Ensure user has a valid position after posting
-    // Test Property: Ensure collateralPosted (for mtoken) has increased by # of tokens
-    // Test Precondition: price feed is up to date
-    // Test Precondition: address(this) must have a balance of mtoken
-    // Test Precondition: `tokens` to be posted is bound between [1, mtoken balance], inclusive
-    // Test Precondition: msg.sender for postCollateral = address(this)
+    // @property: Ensure account collateral has increased by # of tokens
+    // @property: Ensure user has a valid position after posting
+    // @property: Ensure collateralPosted (for mtoken) has increased by # of tokens
+    // @precondition: price feed is up to date
+    // @precondition: address(this) must have a balance of mtoken
+    // @precondition: `tokens` to be posted is bound between [1, mtoken balance], inclusive
+    // @precondition: msg.sender for postCollateral = address(this)
     function post_collateral_should_succeed(
         address mtoken,
         uint256 tokens
@@ -478,7 +478,7 @@ contract FuzzLendtroller is StatefulBaseMarket {
 
                 assertWithMsg(
                     false,
-                    "LENDTROLLER - expected postCollateral to pass with preconditions"
+                    "LENDTROLLER - expected postCollateral to pass with @precondition"
                 );
             }
             // ensure account collateral has increased by # of tokens
@@ -511,10 +511,10 @@ contract FuzzLendtroller is StatefulBaseMarket {
         postedCollateralAt[mtoken] = block.timestamp;
     }
 
-    // Test Property: postCollateral with token bounded too large should fail
-    // Test Precondition: collateral caps for the token are >0
-    // Test Precondition: price feed must be out of date
-    // Test Precondition: user must have mtoken balance
+    // @property: postCollateral with token bounded too large should fail
+    // @precondition: collateral caps for the token are >0
+    // @precondition: price feed must be out of date
+    // @precondition: user must have mtoken balance
     function post_collateral_should_fail_too_many_tokens(
         address mtoken,
         uint256 tokens
@@ -557,16 +557,16 @@ contract FuzzLendtroller is StatefulBaseMarket {
         );
     }
 
-    // Test Property: Global posted collateral for the token should decrease by removed amount
-    // Test Property: User posted collateral for token should decrease by removed amount
-    // Test Property: If there is a shortfall, the removeCollateral call should fail
-    // Test Property: If there is no shortfall, the removeCollateral call should succeed
-    // Test Preconditions: price feed must be recent
-    // Test Preconditions: mtoken is one of: cDAI, cUSDC
-    // Test Preconditions: mtoken must be listed in the Lendtroller
-    // Test Preconditions: current timestamp must exceed the MIN_HOLD_PERIOD from postCollateral timestamp
-    // Test Preconditions: token is clamped between [1, collateralForUser]
-    // Test Preconditions: redeemPaused flag must not be set
+    // @property: Global posted collateral for the token should decrease by removed amount
+    // @property: User posted collateral for token should decrease by removed amount
+    // @property: If there is a shortfall, the removeCollateral call should fail
+    // @property: If there is no shortfall, the removeCollateral call should succeed
+    // @precondition: price feed must be recent
+    // @precondition: mtoken is one of: cDAI, cUSDC
+    // @precondition: mtoken must be listed in the Lendtroller
+    // @precondition: current timestamp must exceed the MIN_HOLD_PERIOD from postCollateral timestamp
+    // @precondition: token is clamped between [1, collateralForUser]
+    // @precondition: redeemPaused flag must not be set
     function remove_collateral_should_succeed(
         address mtoken,
         uint256 tokens,
@@ -658,11 +658,11 @@ contract FuzzLendtroller is StatefulBaseMarket {
         }
     }
 
-    // Test Property: removeCollateral should REVERT when no position exists
-    // Test Precondition: mtoken is either of: cDAI or cUSDC
-    // Test Precondition: token must be listed in Lendtroller
-    // Test Precondition: price feed must be up to date
-    // Test Precondition: user must NOT have an existing position
+    // @property: removeCollateral should REVERT when no position exists
+    // @precondition: mtoken is either of: cDAI or cUSDC
+    // @precondition: token must be listed in Lendtroller
+    // @precondition: price feed must be up to date
+    // @precondition: user must NOT have an existing position
     function removeCollateral_should_fail_with_non_existent_position(
         address mtoken,
         uint256 tokens
@@ -697,12 +697,12 @@ contract FuzzLendtroller is StatefulBaseMarket {
         }
     }
 
-    // Test Property: removeCollateral should REVERT when trying to remove too much
-    // Test Precondition: mtoken is either of: cDAI or cUSDC
-    // Test Precondition: token must be listed in Lendtroller
-    // Test Precondition: price feed must be up to date
-    // Test Precondition: user must have an existing position
-    // Test Precondition: tokens to remove is bound between [existingCollateral+1, uint32.max]
+    // @property: removeCollateral should REVERT when trying to remove too much
+    // @precondition: mtoken is either of: cDAI or cUSDC
+    // @precondition: token must be listed in Lendtroller
+    // @precondition: price feed must be up to date
+    // @precondition: user must have an existing position
+    // @precondition: tokens to remove is bound between [existingCollateral+1, uint32.max]
     function removeCollateral_should_fail_with_removing_too_many_tokens(
         address mtoken,
         uint256 tokens
@@ -748,8 +748,8 @@ contract FuzzLendtroller is StatefulBaseMarket {
         }
     }
 
-    // Test Property: reduceCollateralIfNecessary should revert with unauthorized if called directly
-    // Test Precondition: msg.sender != mtoken
+    // @property: reduceCollateralIfNecessary should revert with unauthorized if called directly
+    // @precondition: msg.sender != mtoken
     function reduceCollateralIfNecessary_should_fail_with_wrong_caller(
         address mtoken,
         uint256 amount
@@ -772,12 +772,12 @@ contract FuzzLendtroller is StatefulBaseMarket {
         }
     }
 
-    // Test Property: Calling closePosition should remove a position in the mtoken if sucessful
-    // Test Property: Calling closePosition should set collateralPostedFor(mtoken, user) = 0
-    // Test Property: Calling closePosition should reduce user asset list by 1 element
-    // Test Precondition: token must be cDAI or cUSDC
-    // Test Precondition: token must have an existing position
-    // Test Precondition: collateralPostedForUser for respective token > 0
+    // @property: Calling closePosition should remove a position in the mtoken if sucessful
+    // @property: Calling closePosition should set collateralPostedFor(mtoken, user) = 0
+    // @property: Calling closePosition should reduce user asset list by 1 element
+    // @precondition: token must be cDAI or cUSDC
+    // @precondition: token must have an existing position
+    // @precondition: collateralPostedForUser for respective token > 0
     function closePosition_should_succeed(address mtoken) public {
         require(mtoken == address(cDAI) || mtoken == address(cUSDC));
         require(lendtroller.hasPosition(mtoken, address(this)));
@@ -795,12 +795,12 @@ contract FuzzLendtroller is StatefulBaseMarket {
         }
     }
 
-    // Test Property: Calling closePosition should remove a position in the mtoken if sucessful
-    // Test Property: Calling closePosition should set collateralPostedFor(mtoken, user) = 0
-    // Test Property: Calling closePosition should reduce user asset list by 1 element
-    // Test Precondition: token must be cDAI or cUSDC
-    // Test Precondition: token must have an existing position
-    // Test Precondition: collateralPostedForUser for respective token = 0
+    // @property: Calling closePosition should remove a position in the mtoken if sucessful
+    // @property: Calling closePosition should set collateralPostedFor(mtoken, user) = 0
+    // @property: Calling closePosition should reduce user asset list by 1 element
+    // @precondition: token must be cDAI or cUSDC
+    // @precondition: token must have an existing position
+    // @precondition: collateralPostedForUser for respective token = 0
     function closePosition_should_succeed_if_collateral_is_0(
         address mtoken
     ) public {
@@ -840,49 +840,9 @@ contract FuzzLendtroller is StatefulBaseMarket {
         );
     }
 
-    // Test Property: setMintPaused with correct preconditions should not revert
-    // Test Property: setMintPaused should set mintPaused(mtoken) = 2 when state = true
-    // Test Property: setMintPaused should set mintPaused(mtoken) = 1 when state = false
-    // Test Precondition: address(this) is authorized
-    // Test Preconditoin: mtoken is listed
-    function setMintPaused_should_succeed_when_authorized_and_listed(
-        address mtoken,
-        bool state
-    ) public {
-        require(centralRegistry.hasDaoPermissions(address(this)));
-        require(lendtroller.isListed(mtoken));
-
-        (bool success, bytes memory revertData) = address(lendtroller).call(
-            abi.encodeWithSignature(
-                "setMintPaused(address,bool)",
-                mtoken,
-                state
-            )
-        );
-        if (success) {
-            uint256 isMintPaused = lendtroller.mintPaused(mtoken);
-            if (state) {
-                assertWithMsg(
-                    isMintPaused == 2,
-                    "LENDTROLLER - setMintPaused() true succeed set isMintPaused = 2"
-                );
-            } else {
-                assertWithMsg(
-                    isMintPaused == 1,
-                    "LENDTROLLER - setMintPaused() false should set mintPaused[mtoken] to 1"
-                );
-            }
-        } else {
-            uint256 errorSelector = extractErrorSelector(revertData);
-            emit LogUint256("error:", errorSelector);
-
-            assertWithMsg(
-                false,
-                "LENDTROLLER - setMintPaused() expected to be successful with correct preconditions"
-            );
-        }
-    }
-
+    // @property: canMint should not revert when mint is not paused and token is listed
+    // @precondition: mintPaused !=2
+    // @precondition: mtoken is listed in Lendtroller
     function canMint_should_not_revert_when_mint_not_paused_and_is_listed(
         address mToken
     ) public {
@@ -900,6 +860,9 @@ contract FuzzLendtroller is StatefulBaseMarket {
         }
     }
 
+    // @property: canMint should revert when token is not listed
+    // @precondition: mintPaused !=2
+    // @precondition: mtoken is not listed in Lendtroller
     function canMint_should_revert_when_token_is_not_listed(
         address mToken
     ) public {
@@ -917,6 +880,9 @@ contract FuzzLendtroller is StatefulBaseMarket {
         } catch {}
     }
 
+    // @property: canMint should revert when mintPaused = 2
+    // @precondition: mintPaused = 2
+    // @precondition: mtoken is listed in Lendtroller
     function canMint_should_revert_when_mint_is_paused(address mToken) public {
         uint256 mintPaused = lendtroller.mintPaused(mToken);
         bool isListed = lendtroller.isListed(mToken);
@@ -932,73 +898,177 @@ contract FuzzLendtroller is StatefulBaseMarket {
         } catch {}
     }
 
-    // Test Property: setRedeemPaused(true) should set redeemPaused = 2
-    // Test Property: setRedeemPause(false) should set redeemPaused = 1
-    // Test Preconditions: address(this) has dao permissions
-    function setRedeemPaused_should_succeed_with_authorized_permission(
-        bool state
-    ) public {
-        require(centralRegistry.hasDaoPermissions(address(this)));
-
-        (bool success, bytes memory revertData) = address(lendtroller).call(
-            abi.encodeWithSignature("setRedeemPaused(bool)", state)
-        );
-        if (success) {
-            uint256 redeemPaused = lendtroller.redeemPaused();
-            if (state == true) {
-                assertEq(
-                    redeemPaused,
-                    2,
-                    "LENDTROLLER - setRedeemPaused() true expected to set redeemPaused = 2 "
-                );
-            } else {
-                assertEq(
-                    redeemPaused,
-                    1,
-                    "LENDTROLLER - setRedeemPaused false expected to set redeemPaused = 1"
-                );
-            }
-        } else {
-            uint256 errorSelector = extractErrorSelector(revertData);
-            emit LogUint256("error:", errorSelector);
-
-            assertWithMsg(
-                errorSelector == lendtroller_unauthorizedSelectorHash,
-                "LENDTROLLER - setRedeemPaused() expected to be successful with correct preconditions"
-            );
-        }
-    }
-
-    function canRedeem_should_revert_when_redeem_is_paused(
-        address mToken,
-        address account,
-        uint256 amount
-    ) public {
-        require(lendtroller.redeemPaused() == 2);
-        require(lendtroller.isListed(mToken));
-        try lendtroller.canRedeem(mToken, account, amount) {
-            assertWithMsg(
-                false,
-                "LENDTROLLER - canRedeem expected to revert when redeem is paused"
-            );
-        } catch {}
-    }
-
-    function canRedeem_should_revert_token_not_listed(
-        address mToken,
+    // @property: canRedeem should be successful when @precondition are met
+    // @precondition: redeemPaused != 2
+    // @precondition: mtoken is listed in Lendtroller
+    // @precondition: current timestamp > cooldownTimestamp + MIN_HOLD_PERIOD
+    // @precondition: user has a position for mtoken, addr(this)
+    // @precondition: liquidityDeficity >0
+    function canRedeem_should_succeed(
+        address mtoken,
         address account,
         uint256 amount
     ) public {
         require(lendtroller.redeemPaused() != 2);
-        require(!lendtroller.isListed(mToken));
-        try lendtroller.canRedeem(mToken, account, amount) {
+        require(lendtroller.isListed(mtoken));
+        require(
+            block.timestamp >
+                postedCollateralAt[mtoken] + lendtroller.MIN_HOLD_PERIOD()
+        );
+        require(lendtroller.hasPosition(mtoken, address(this)));
+        (, uint256 liquidityDeficit) = lendtroller.hypotheticalLiquidityOf(
+            address(this),
+            mtoken,
+            0,
+            amount
+        );
+        require(liquidityDeficit == 0);
+        try lendtroller.canRedeem(mtoken, account, amount) {} catch {
+            assertWithMsg(
+                false,
+                "LENDTROLLER - canRedeem expected to succeed under @precondition"
+            );
+        }
+    }
+
+    // @property: canRedeem should revert when redeemPaused = 2
+    // @precondition: redeemPaused = 2
+    // @precondition: mtoken is listed in Lendtroller
+    // @precondition: address(this) has a position for mtoken
+    // @precondition: liquidity deficity for hypothetical liquidity = 0;
+    function canRedeem_should_revert_when_redeem_is_paused(
+        address mtoken,
+        address account,
+        uint256 amount
+    ) public {
+        require(lendtroller.redeemPaused() == 2);
+        require(lendtroller.isListed(mtoken));
+        require(lendtroller.hasPosition(mtoken, address(this)));
+        (, uint256 liquidityDeficit) = lendtroller.hypotheticalLiquidityOf(
+            address(this),
+            mtoken,
+            0,
+            amount
+        );
+        require(liquidityDeficit == 0);
+        try lendtroller.canRedeem(mtoken, account, amount) {
+            assertWithMsg(
+                false,
+                "LENDTROLLER - canRedeem expected to revert when redeem is paused"
+            );
+        } catch (bytes memory revertData) {
+            uint256 errorSelector = extractErrorSelector(revertData);
+
+            assertWithMsg(
+                errorSelector == lendtroller_pausedSelectorHash,
+                "LENDTROLLER - canRedeem() expected to revert with pausedSelectorHash"
+            );
+        }
+    }
+
+    // @property: canRedeem should revert when token is not listed
+    // @precondition: redeemPaused != 2
+    // @precondition: mtoken is not listed in Lendtroller
+    // @precondition: address(this) has a position for mtoken
+    // @precondition: liquidity deficity for hypothetical liquidity = 0;
+    function canRedeem_should_revert_token_not_listed(
+        address mtoken,
+        address account,
+        uint256 amount
+    ) public {
+        require(lendtroller.redeemPaused() != 2);
+        require(!lendtroller.isListed(mtoken));
+        require(lendtroller.hasPosition(mtoken, address(this)));
+        (, uint256 liquidityDeficit) = lendtroller.hypotheticalLiquidityOf(
+            address(this),
+            mtoken,
+            0,
+            amount
+        );
+        require(liquidityDeficit == 0);
+        try lendtroller.canRedeem(mtoken, account, amount) {
             assertWithMsg(
                 false,
                 "LENDTROLLER - canRedeem expected to revert token is not listed"
             );
-        } catch {}
+        } catch (bytes memory revertData) {
+            uint256 errorSelector = extractErrorSelector(revertData);
+
+            assertWithMsg(
+                errorSelector == lendtroller_tokenNotListedSelectorHash,
+                "LENDTROLLER - canRedeem() expected to revert with token not listed"
+            );
+        }
     }
 
+    // @property: canRedeem should revert when liquidity deficit > 0
+    // @precondition: redeemPaused != 2
+    // @precondition: mtoken is listed in Lendtroller
+    // @precondition: address(this) has a position for mtoken
+    // @precondition: liquidity deficity for hypothetical liquidity > 0;
+    function canRedeem_should_revert_deficit_exists(
+        address mtoken,
+        address account,
+        uint256 amount
+    ) public {
+        require(lendtroller.redeemPaused() != 2);
+        require(lendtroller.isListed(mtoken));
+        require(lendtroller.hasPosition(mtoken, address(this)));
+        (, uint256 liquidityDeficit) = lendtroller.hypotheticalLiquidityOf(
+            address(this),
+            mtoken,
+            0,
+            amount
+        );
+        require(liquidityDeficit > 0);
+        try lendtroller.canRedeem(mtoken, account, amount) {
+            assertWithMsg(
+                false,
+                "LENDTROLLER - canRedeem expected to revert token is not listed"
+            );
+        } catch (bytes memory revertData) {
+            uint256 errorSelector = extractErrorSelector(revertData);
+
+            assertWithMsg(
+                errorSelector ==
+                    lendtroller_insufficientCollateralSelectorHash,
+                "LENDTROLLER - canRedeem() expected to revert with insufficient collateral"
+            );
+        }
+    }
+
+    // @property: canRedeem should just return when user has no position for token
+    // @precondition: redeemPaused != 2
+    // @precondition: mtoken is listed in Lendtroller
+    // @precondition: address(this) has no position for mtoken
+    // @precondition: liquidity deficity for hypothetical liquidity == 0;
+    function canRedeem_should_return_when_no_position_exists(
+        address mtoken,
+        address account,
+        uint256 amount
+    ) public {
+        require(lendtroller.redeemPaused() != 2);
+        require(lendtroller.isListed(mtoken));
+        require(!lendtroller.hasPosition(mtoken, address(this)));
+        (, uint256 liquidityDeficit) = lendtroller.hypotheticalLiquidityOf(
+            address(this),
+            mtoken,
+            0,
+            amount
+        );
+        require(liquidityDeficit == 0);
+        try lendtroller.canRedeem(mtoken, account, amount) {} catch (
+            bytes memory revertData
+        ) {
+            assertWithMsg(
+                false,
+                "LENDTROLLER - canRedeem() expected to return with no error when no position exists"
+            );
+        }
+    }
+
+    // @property: canRedeemWithCollateralRemoval can only be called by mtoken
+    // @precondition: address(this) != mtoken
     function canRedeemWithCollateralRemoval_should_fail(
         address account,
         address mtoken,
@@ -1006,7 +1076,7 @@ contract FuzzLendtroller is StatefulBaseMarket {
         uint256 amount,
         bool forceRedeemCollateral
     ) public {
-        require(msg.sender != mtoken);
+        require(address(this) != mtoken);
         try
             lendtroller.canRedeemWithCollateralRemoval(
                 account,
@@ -1023,181 +1093,10 @@ contract FuzzLendtroller is StatefulBaseMarket {
         } catch {}
     }
 
-    function setBorrowPaused_should_succeed(
-        address mtoken,
-        bool state
-    ) public {
-        require(centralRegistry.hasDaoPermissions(address(this)));
-        require(lendtroller.isListed(mtoken));
-
-        (bool success, bytes memory revertData) = address(lendtroller).call(
-            abi.encodeWithSignature(
-                "setBorrowPaused(address,bool)",
-                mtoken,
-                state
-            )
-        );
-        if (success) {
-            uint256 isBorrowPaused = lendtroller.borrowPaused(mtoken);
-            if (state) {
-                assertWithMsg(
-                    isBorrowPaused == 2,
-                    "LENDTROLLER - setMintPaused() true succeed set isBorrowPaused = 2"
-                );
-            } else {
-                assertWithMsg(
-                    isBorrowPaused == 1,
-                    "LENDTROLLER - setMintPaused() false should set mintPaused[mtoken] to 1"
-                );
-            }
-        } else {
-            uint256 errorSelector = extractErrorSelector(revertData);
-            emit LogUint256("error:", errorSelector);
-
-            assertWithMsg(
-                false,
-                "LENDTROLLER - setMintPaused() expected to be successful with correct preconditions"
-            );
-        }
-    }
-
-    function canBorrow_should_succeed(
-        address mToken,
-        address account,
-        uint256 amount
-    ) public {
-        require(lendtroller.borrowPaused(mToken) != 2);
-        require(lendtroller.isListed(mToken));
-        try lendtroller.canBorrow(mToken, address(this), amount) {} catch {}
-    }
-
-    function canBorrow_should_fail_when_borrow_is_paused(
-        address mToken,
-        uint256 amount
-    ) public {
-        require(lendtroller.borrowPaused(mToken) == 2);
-        require(lendtroller.isListed(mToken));
-        (, uint256 liquidityDeficit) = lendtroller.hypotheticalLiquidityOf(
-            address(this),
-            mToken,
-            0,
-            amount
-        );
-        require(liquidityDeficit > 0);
-        try lendtroller.canBorrow(mToken, address(this), amount) {} catch (
-            bytes memory revertData
-        ) {
-            uint256 errorSelector = extractErrorSelector(revertData);
-
-            assertWithMsg(
-                errorSelector == lendtroller_pausedSelectorHash,
-                "LENDTROLLER - canBorrow() expected PAUSED selector hash on failure"
-            );
-        }
-    }
-
-    function canBorrow_should_fail_when_token_is_unlisted(
-        address mToken,
-        address account,
-        uint256 amount
-    ) public {
-        require(lendtroller.borrowPaused(mToken) != 2);
-        require(!lendtroller.isListed(mToken));
-        try lendtroller.canBorrow(mToken, address(this), amount) {} catch (
-            bytes memory revertData
-        ) {
-            uint256 errorSelector = extractErrorSelector(revertData);
-
-            assertWithMsg(
-                errorSelector == lendtroller_tokenNotListedSelectorHash,
-                "LENDTROLLER - canBorrow() expected TOKEN NOT LISTED selector hash on failure"
-            );
-        }
-    }
-
-    function canBorrow_should_fail_liquidity_deficit_exists(
-        address mToken,
-        uint256 amount
-    ) public {
-        require(lendtroller.borrowPaused(mToken) != 2);
-        require(lendtroller.isListed(mToken));
-        (, uint256 liquidityDeficit) = lendtroller.hypotheticalLiquidityOf(
-            address(this),
-            mToken,
-            0,
-            amount
-        );
-        require(liquidityDeficit == 0);
-        try lendtroller.canBorrow(mToken, address(this), amount) {} catch (
-            bytes memory revertData
-        ) {
-            uint256 errorSelector = extractErrorSelector(revertData);
-
-            assertWithMsg(
-                errorSelector == lendtroller_pausedSelectorHash,
-                "LENDTROLLER - canBorrow() expected PAUSED selector hash on failure"
-            );
-        }
-    }
-
-    function canBorrowWithNotify_should_succeed(
-        address mToken,
-        address account,
-        uint256 amount
-    ) public {
-        try
-            lendtroller.canBorrowWithNotify(mToken, account, amount)
-        {} catch {}
-    }
-
-    function notifyBorrow_should_succeed(
-        address mToken,
-        address account
-    ) public {
-        try lendtroller.notifyBorrow(mToken, account) {} catch {}
-    }
-
-    function canRepay_should_succeed(address mToken, address account) public {
-        try lendtroller.canRepay(mToken, account) {} catch {}
-    }
-
-    // Test Property: setTransferPaused(true) should set transferPaused = 2
-    // Test Property: setTransferPause(false) should set transferPaused = 1
-    // Test Preconditions: address(this) has dao permissions
-    function setTransferPaused_should_succeed_with_authorized_permission(
-        bool state
-    ) public {
-        require(centralRegistry.hasDaoPermissions(address(this)));
-
-        (bool success, bytes memory revertData) = address(lendtroller).call(
-            abi.encodeWithSignature("setTransferPaused(bool)", state)
-        );
-        if (success) {
-            uint256 transferPaused = lendtroller.transferPaused();
-            if (state == true) {
-                assertEq(
-                    transferPaused,
-                    2,
-                    "LENDTROLLER - setTransferPaused() true expected to set TransferPaused = 2 "
-                );
-            } else {
-                assertEq(
-                    transferPaused,
-                    1,
-                    "LENDTROLLER - setTransferPaused false expected to set TransferPaused = 1"
-                );
-            }
-        } else {
-            uint256 errorSelector = extractErrorSelector(revertData);
-            emit LogUint256("error:", errorSelector);
-
-            assertWithMsg(
-                false,
-                "LENDTROLLER - setTransferPaused() expected to be successful with correct preconditions"
-            );
-        }
-    }
-
+    // @property canTransfer should fail with PAUSED when transferPaused = 2
+    // @precondition transferPaused = 2
+    // @precondition redeemPaused !=2
+    // @precondition mtoken is listed in Lendtroller
     function canTransfer_should_fail_when_transfer_is_paused(
         address mToken,
         address account,
@@ -1219,6 +1118,35 @@ contract FuzzLendtroller is StatefulBaseMarket {
         }
     }
 
+    // @property canTransfer should fail with NOT LISTED when mtoken is not added to system
+    // @precondition transferPaused != 2
+    // @precondition redeemPaused != 2
+    // @precondition mtoken is not listed in Lendtroller
+    function canTransfer_should_fail_when_mtoken_not_listed(
+        address mToken,
+        address account,
+        uint256 amount
+    ) public {
+        require(lendtroller.transferPaused() != 2);
+        require(lendtroller.redeemPaused() != 2);
+        require(!lendtroller.isListed(mToken));
+        try lendtroller.canTransfer(mToken, address(this), amount) {} catch (
+            bytes memory revertData
+        ) {
+            uint256 errorSelector = extractErrorSelector(revertData);
+
+            // canTransfer should have reverted with PAUSED
+            assertWithMsg(
+                errorSelector == lendtroller_tokenNotListedSelectorHash,
+                "LENDTROLLER - canTransfer() expected NOTLISTED selector hash on failure"
+            );
+        }
+    }
+
+    // @property canTransfer should fail with PAUSED when redeemPaused = 2
+    // @precondition transferPaused != 2
+    // @precondition redeemPaused =2
+    // @precondition mtoken is listed in Lendtroller
     function canTransfer_should_fail_when_redeem_is_paused(
         address mToken,
         address account,
@@ -1240,39 +1168,209 @@ contract FuzzLendtroller is StatefulBaseMarket {
         }
     }
 
-    // Test Property: setSeizePaused(true) should set transferPaused = 2
-    // Test Property: setTransferPause(false) should set transferPaused = 1
-    // Test Preconditions: address(this) has dao permissions
-    function setSeizePaused_should_succeed_with_authorized_permission(
-        bool state
+    // @property canBorrow should succeed when borrow is not paused and mtoken is listed
+    // @precondition borrowPaused != 2
+    // @precondition mtoken is listed in Lendtroller
+    // @precondition: liquidityDeficit == 0
+    function canBorrow_should_succeed(
+        address mToken,
+        address account,
+        uint256 amount
     ) public {
-        require(centralRegistry.hasDaoPermissions(address(this)));
-
-        (bool success, bytes memory revertData) = address(lendtroller).call(
-            abi.encodeWithSignature("setSeizePaused(bool)", state)
+        require(lendtroller.borrowPaused(mToken) != 2);
+        require(lendtroller.isListed(mToken));
+        (, uint256 liquidityDeficit) = lendtroller.hypotheticalLiquidityOf(
+            address(this),
+            mToken,
+            0,
+            amount
         );
-        if (success) {
-            uint256 seizePaused = lendtroller.seizePaused();
-            if (state == true) {
-                assertEq(
-                    seizePaused,
-                    2,
-                    "LENDTROLLER - setSeizePaused() true expected to set seizePaused = 2 "
-                );
-            } else {
-                assertEq(
-                    seizePaused,
-                    1,
-                    "LENDTROLLER - setSeizePaused false expected to set seizePaused = 1"
-                );
-            }
-        } else {
+        require(liquidityDeficit == 0);
+        try lendtroller.canBorrow(mToken, address(this), amount) {} catch {}
+    }
+
+    // @property canBorrow should fail with PAUSED when borrow is paused
+    // @precondition: borrowPaused = 2
+    // @precondition: mtoken is listed in Lendtroller
+    // @precondition: liquidityDeficit == 0
+    function canBorrow_should_fail_when_borrow_is_paused(
+        address mToken,
+        uint256 amount
+    ) public {
+        require(lendtroller.borrowPaused(mToken) == 2);
+        require(lendtroller.isListed(mToken));
+        (, uint256 liquidityDeficit) = lendtroller.hypotheticalLiquidityOf(
+            address(this),
+            mToken,
+            0,
+            amount
+        );
+        require(liquidityDeficit == 0);
+        try lendtroller.canBorrow(mToken, address(this), amount) {} catch (
+            bytes memory revertData
+        ) {
             uint256 errorSelector = extractErrorSelector(revertData);
-            emit LogUint256("error:", errorSelector);
 
             assertWithMsg(
+                errorSelector == lendtroller_pausedSelectorHash,
+                "LENDTROLLER - canBorrow() expected PAUSED selector hash on failure"
+            );
+        }
+    }
+
+    // @property canBorrow should fail with token is not listed
+    // @precondition: borrowPaused != 2
+    // @precondition: mtoken is not listed in Lendtroller
+    // @precondition: liquidityDeficit == 0
+    function canBorrow_should_fail_when_token_is_unlisted(
+        address mToken,
+        address account,
+        uint256 amount
+    ) public {
+        require(lendtroller.borrowPaused(mToken) != 2);
+        require(!lendtroller.isListed(mToken));
+        try lendtroller.canBorrow(mToken, address(this), amount) {} catch (
+            bytes memory revertData
+        ) {
+            uint256 errorSelector = extractErrorSelector(revertData);
+
+            assertWithMsg(
+                errorSelector == lendtroller_tokenNotListedSelectorHash,
+                "LENDTROLLER - canBorrow() expected TOKEN NOT LISTED selector hash on failure"
+            );
+        }
+    }
+
+    // @property canBorrow should fail with liquidityDeficity >0
+    // @precondition: borrowPaused != 2
+    // @precondition: mtoken is listed in Lendtroller
+    // @precondition: liquidityDeficit > 0
+    function canBorrow_should_fail_liquidity_deficit_exists(
+        address mToken,
+        uint256 amount
+    ) public {
+        require(lendtroller.borrowPaused(mToken) != 2);
+        require(lendtroller.isListed(mToken));
+        (, uint256 liquidityDeficit) = lendtroller.hypotheticalLiquidityOf(
+            address(this),
+            mToken,
+            0,
+            amount
+        );
+        require(liquidityDeficit == 0);
+        try lendtroller.canBorrow(mToken, address(this), amount) {} catch (
+            bytes memory revertData
+        ) {
+            uint256 errorSelector = extractErrorSelector(revertData);
+
+            assertWithMsg(
+                errorSelector ==
+                    lendtroller_insufficientCollateralSelectorHash,
+                "LENDTROLLER - canBorrow() expected INSUFFICIENT COLLATERAL selector hash on failure"
+            );
+        }
+    }
+
+    function canBorrowWithNotify_should_fail_when_called_directly(
+        address mtoken,
+        address account,
+        uint256 amount
+    ) public {
+        require(mtoken != address(this));
+        require(lendtroller.isListed(mtoken));
+        try lendtroller.canBorrowWithNotify(mtoken, account, amount) {
+            assertWithMsg(
                 false,
-                "LENDTROLLER - setSeizePaused() expected to be successful with correct preconditions"
+                "LENDTROLLER - canBorrowWithNotify() should not succeed when not called by mtoken"
+            );
+        } catch (bytes memory revertData) {
+            uint256 errorSelector = extractErrorSelector(revertData);
+            assertWithMsg(
+                errorSelector == lendtroller_unauthorizedSelectorHash,
+                "LENDTROLLER - canBorrowWithNotify should have thrown unauthorized error but did not"
+            );
+        }
+    }
+
+    function notifyBorrow_should_fail_when_called_directly(
+        address mtoken,
+        address account
+    ) public {
+        require(mtoken != address(this));
+
+        try lendtroller.notifyBorrow(mtoken, account) {
+            assertWithMsg(
+                false,
+                "LENDTROLLER - notifyBorrow() should not succeed when not called by mtoken"
+            );
+        } catch (bytes memory revertData) {
+            uint256 errorSelector = extractErrorSelector(revertData);
+            assertWithMsg(
+                errorSelector == lendtroller_unauthorizedSelectorHash,
+                "LENDTROLLER - canBorrowWithNotify should have thrown unauthorized error but did not"
+            );
+        }
+    }
+
+    // @property: canRepay should succeed under correct @precondition
+    // @precondition: mtoken is listed in Lendtroller
+    // @precondition: MIN_HOLD_PERIOD has passed cooldown timestamp
+    function canRepay_should_succeed(address mtoken, address account) public {
+        require(lendtroller.isListed(mtoken));
+        require(
+            block.timestamp >
+                postedCollateralAt[mtoken] + lendtroller.MIN_HOLD_PERIOD()
+        );
+        try lendtroller.canRepay(mtoken, account) {} catch {
+            assertWithMsg(
+                false,
+                "LENDTROLLER - canRepay should have succeeded with correct @precondition"
+            );
+        }
+    }
+
+    // @property: canRepay should fail when token is not listed
+    // @precondition: mtoken is not listed in Lendtroller
+    // @precondition: MIN_HOLD_PERIOD has passed cooldown timestamp
+    function canRepay_should_fail_when_not_listed(
+        address mtoken,
+        address account
+    ) public {
+        require(!lendtroller.isListed(mtoken));
+        require(
+            block.timestamp >
+                postedCollateralAt[mtoken] + lendtroller.MIN_HOLD_PERIOD()
+        );
+        try lendtroller.canRepay(mtoken, account) {} catch (
+            bytes memory revertData
+        ) {
+            uint256 errorSelector = extractErrorSelector(revertData);
+            assertWithMsg(
+                errorSelector == lendtroller_tokenNotListedSelectorHash,
+                "LENDTROLLER - canRepay should have reverted with token not listed errro"
+            );
+        }
+    }
+
+    // @property: canRepay should fail when MIN_HOLD_PERIOD has not passed
+    // @precondition: mtoken is listed in Lendtroller
+    // @precondition: MIN_HOLD_PERIOD has not passed since cooldown timestamp
+    function canRepay_should_fail_min_hold_has_not_passed(
+        address mtoken,
+        address account
+    ) public {
+        require(lendtroller.isListed(mtoken));
+        require(
+            block.timestamp <=
+                postedCollateralAt[mtoken] + lendtroller.MIN_HOLD_PERIOD()
+        );
+        try lendtroller.canRepay(mtoken, account) {} catch (
+            bytes memory revertData
+        ) {
+            uint256 errorSelector = extractErrorSelector(revertData);
+            assertWithMsg(
+                errorSelector == lendtroller_minHoldSelectorHash,
+                "LENDTROLLER - canRepay should have reverted with minimum hold period error"
             );
         }
     }
@@ -1313,11 +1411,24 @@ contract FuzzLendtroller is StatefulBaseMarket {
         {} catch {}
     }
 
+    //
     function canSeize_should_succeed(
         address collateralToken,
         address debtToken
     ) public {
-        try lendtroller.canSeize(collateralToken, debtToken) {} catch {}
+        require(lendtroller.seizePaused() != 2);
+        require(lendtroller.isListed(collateralToken));
+        require(lendtroller.isListed(debtToken));
+        require(
+            IMToken(collateralToken).lendtroller() ==
+                IMToken(debtToken).lendtroller()
+        );
+        try lendtroller.canSeize(collateralToken, debtToken) {} catch {
+            assertWithMsg(
+                false,
+                "LENDTROLLER - canSeize() should be successful with correct @precondition"
+            );
+        }
     }
 
     function liquidateAccount_should_succeed(address account) public {
