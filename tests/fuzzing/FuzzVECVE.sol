@@ -656,7 +656,19 @@ contract FuzzVECVE is StatefulBaseMarket {
 
     function disableContinuousLock_should_succeed_if_lock_exists() public {
         uint256 lockIndex = get_continuous_lock();
-        uint256 preuserPoints = veCVE.userPoints(address(this));
+        uint256 preUserPoints = veCVE.userPoints(address(this));
+        uint256 preChainPoints = veCVE.chainPoints();
+        uint256 currentEpoch = veCVE.freshLockEpoch();
+        uint256 preChainUnlockBalance = veCVE.chainUnlocksByEpoch(
+            currentEpoch
+        );
+        uint256 preUserUnlocksByEpoch = veCVE.userUnlocksByEpoch(
+            address(this),
+            currentEpoch
+        );
+
+        //save_epoch_unlock_values();
+
         try
             veCVE.disableContinuousLock(
                 lockIndex,
@@ -666,13 +678,46 @@ contract FuzzVECVE is StatefulBaseMarket {
             )
         {
             uint256 postUserPoints = veCVE.userPoints((address(this)));
+            uint256 postChainPoints = veCVE.chainPoints();
+            (uint256 amount, uint40 unlockTime) = veCVE.userLocks(
+                address(this),
+                lockIndex
+            );
+            uint256 postChainUnlockBalance = veCVE.chainUnlocksByEpoch(
+                currentEpoch
+            );
+            uint256 postUserUnlocksByEpoch = veCVE.userUnlocksByEpoch(
+                address(this),
+                currentEpoch
+            );
+
             assertGt(
-                preuserPoints,
+                preUserPoints,
                 postUserPoints,
-                "VE_CVE - disableContinuousLock() - userPoints invariant failed"
+                "VE_CVE - disableContinuousLock() - userPoints should have decreased"
+            );
+
+            assertGt(
+                preChainPoints,
+                postChainPoints,
+                "VE_CVE - disableContinuousLock() - chainPoints should have decreased"
+            );
+            assertEq(
+                preChainUnlockBalance + amount,
+                postChainUnlockBalance,
+                "VE_CVE - disableContinuousLock() - postChainUnlockBalance should be increaded by amount"
+            );
+
+            assertEq(
+                preUserUnlocksByEpoch + amount,
+                postUserUnlocksByEpoch,
+                "VE_CVE - disableContinuousLock() - userUnlocksByEpoch should be increased by amount"
             );
         } catch {
-            // CAN ADD: Postconditions on disabling a continuous lock
+            assertWithMsg(
+                false,
+                "VE_CVE - disableContinuousLock() failed unexpectedly"
+            );
         }
     }
 

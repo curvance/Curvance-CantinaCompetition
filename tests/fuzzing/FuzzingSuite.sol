@@ -6,6 +6,6 @@ import { FuzzVECVE } from "tests/fuzzing/FuzzVECVE.sol";
 import { FuzzLendtroller } from "tests/fuzzing/FuzzLendtroller.sol";
 
 //
-contract FuzzingSuite is TestStatefulDeployments, FuzzVECVE {
+contract FuzzingSuite is TestStatefulDeployments, FuzzLendtroller, FuzzVECVE {
 
 }
