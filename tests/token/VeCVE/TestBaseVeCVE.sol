@@ -15,6 +15,8 @@ contract TestBaseVeCVE is TestBase {
         0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address internal constant _TOKEN_BRIDGE_RELAYER =
         0xCafd2f0A35A4459fA40C0517e17e6fA2939441CA;
+    uint256 internal constant _MIN_FUZZ_AMOUNT = 1;
+    uint256 internal constant _MAX_FUZZ_AMOUNT = 420e24;
 
     CentralRegistry public centralRegistry;
     CVE public cve;
@@ -37,7 +39,7 @@ contract TestBaseVeCVE is TestBase {
         );
         // define the epoch to deliver rewards
         vm.startPrank(centralRegistry.feeAccumulator());
-        cveLocker.recordEpochRewards(cveLocker.nextEpochToDeliver(), _ONE);
+        cveLocker.recordEpochRewards(_ONE);
         vm.stopPrank();
         _;
     }

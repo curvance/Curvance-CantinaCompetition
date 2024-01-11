@@ -3,10 +3,12 @@ pragma solidity ^0.8.17;
 
 import { TestBaseCTokenCompounding } from "../TestBaseCTokenCompoundingBase.sol";
 import { CTokenCompounding, CTokenBase } from "contracts/market/collateral/CTokenCompounding.sol";
-import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
+import { SafeTransferLib } from "contracts/libraries/external/SafeTransferLib.sol";
 
 contract CTokenCompounding_StartMarketTest is TestBaseCTokenCompounding {
-    function test_CTokenCompounding_StartMarket_fail_whenCallerIsNotLendtroller() public {
+    function test_CTokenCompounding_StartMarket_fail_whenCallerIsNotLendtroller()
+        public
+    {
         vm.expectRevert(CTokenBase.CTokenBase__Unauthorized.selector);
 
         cBALRETH.startMarket(address(0));
