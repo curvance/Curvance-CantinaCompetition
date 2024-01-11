@@ -186,6 +186,7 @@ contract FuzzLendtroller is StatefulBaseMarket {
         );
 
         // This step should mint associated shares for the user
+        // TODO: investigate 20 min hold period for debt token ()
         try MockCToken(mtoken).deposit(amount, address(this)) {
             uint256 postCTokenBalanceThis = MockCToken(mtoken).balanceOf(
                 address(this)
@@ -771,6 +772,12 @@ contract FuzzLendtroller is StatefulBaseMarket {
         }
     }
 
+    // Test Property: Calling closePosition should remove a position in the mtoken if sucessful
+    // Test Property: Calling closePosition should set collateralPostedFor(mtoken, user) = 0
+    // Test Property: Calling closePosition should reduce user asset list by 1 element
+    // Test Precondition: token must be cDAI or cUSDC
+    // Test Precondition: token must have an existing position
+    // Test Precondition: collateralPostedForUser for respective token > 0
     function closePosition_should_succeed(address mtoken) public {
         require(mtoken == address(cDAI) || mtoken == address(cUSDC));
         require(lendtroller.hasPosition(mtoken, address(this)));
@@ -784,22 +791,53 @@ contract FuzzLendtroller is StatefulBaseMarket {
             abi.encodeWithSignature("closePosition(address)", mtoken)
         );
         if (!success) {} else {
-            assertWithMsg(
-                !lendtroller.hasPosition(mtoken, address(this)),
-                "LENDTROLLER - closePosition should remove position in mtoken if successful"
-            );
-            assertWithMsg(
-                lendtroller.collateralPostedFor(mtoken, address(this)) == 0,
-                "LENDTROLLER - closePosition should reduce collateralPosted for user to 0"
-            );
-            IMToken[] memory postAssetsOf = lendtroller.assetsOf(
-                address(this)
-            );
-            assertWithMsg(
-                preAssetsOf.length - 1 == postAssetsOf.length,
-                "LENDTROLLER - closePosition expected to remove asset from assetOf"
-            );
+            check_close_position_post_conditions(mtoken, preAssetsOf.length);
         }
+    }
+
+    // Test Property: Calling closePosition should remove a position in the mtoken if sucessful
+    // Test Property: Calling closePosition should set collateralPostedFor(mtoken, user) = 0
+    // Test Property: Calling closePosition should reduce user asset list by 1 element
+    // Test Precondition: token must be cDAI or cUSDC
+    // Test Precondition: token must have an existing position
+    // Test Precondition: collateralPostedForUser for respective token = 0
+    function closePosition_should_succeed_if_collateral_is_0(
+        address mtoken
+    ) public {
+        require(mtoken == address(cDAI) || mtoken == address(cUSDC));
+        require(lendtroller.hasPosition(mtoken, address(this)));
+        uint256 collateralPostedForUser = lendtroller.collateralPostedFor(
+            address(mtoken),
+            address(this)
+        );
+        require(collateralPostedForUser == 0);
+        IMToken[] memory preAssetsOf = lendtroller.assetsOf(address(this));
+
+        (bool success, bytes memory rd) = address(lendtroller).call(
+            abi.encodeWithSignature("closePosition(address)", mtoken)
+        );
+        if (!success) {} else {
+            check_close_position_post_conditions(mtoken, preAssetsOf.length);
+        }
+    }
+
+    function check_close_position_post_conditions(
+        address mtoken,
+        uint256 preAssetsOfLength
+    ) private {
+        assertWithMsg(
+            !lendtroller.hasPosition(mtoken, address(this)),
+            "LENDTROLLER - closePosition should remove position in mtoken if successful"
+        );
+        assertWithMsg(
+            lendtroller.collateralPostedFor(mtoken, address(this)) == 0,
+            "LENDTROLLER - closePosition should reduce collateralPosted for user to 0"
+        );
+        IMToken[] memory postAssetsOf = lendtroller.assetsOf(address(this));
+        assertWithMsg(
+            preAssetsOfLength - 1 == postAssetsOf.length,
+            "LENDTROLLER - closePosition expected to remove asset from assetOf"
+        );
     }
 
     // Test Property: setMintPaused with correct preconditions should not revert
@@ -1035,11 +1073,17 @@ contract FuzzLendtroller is StatefulBaseMarket {
 
     function canBorrow_should_fail_when_borrow_is_paused(
         address mToken,
-        address account,
         uint256 amount
     ) public {
         require(lendtroller.borrowPaused(mToken) == 2);
         require(lendtroller.isListed(mToken));
+        (, uint256 liquidityDeficit) = lendtroller.hypotheticalLiquidityOf(
+            address(this),
+            mToken,
+            0,
+            amount
+        );
+        require(liquidityDeficit > 0);
         try lendtroller.canBorrow(mToken, address(this), amount) {} catch (
             bytes memory revertData
         ) {
@@ -1067,6 +1111,31 @@ contract FuzzLendtroller is StatefulBaseMarket {
             assertWithMsg(
                 errorSelector == lendtroller_tokenNotListedSelectorHash,
                 "LENDTROLLER - canBorrow() expected TOKEN NOT LISTED selector hash on failure"
+            );
+        }
+    }
+
+    function canBorrow_should_fail_liquidity_deficit_exists(
+        address mToken,
+        uint256 amount
+    ) public {
+        require(lendtroller.borrowPaused(mToken) != 2);
+        require(lendtroller.isListed(mToken));
+        (, uint256 liquidityDeficit) = lendtroller.hypotheticalLiquidityOf(
+            address(this),
+            mToken,
+            0,
+            amount
+        );
+        require(liquidityDeficit == 0);
+        try lendtroller.canBorrow(mToken, address(this), amount) {} catch (
+            bytes memory revertData
+        ) {
+            uint256 errorSelector = extractErrorSelector(revertData);
+
+            assertWithMsg(
+                errorSelector == lendtroller_pausedSelectorHash,
+                "LENDTROLLER - canBorrow() expected PAUSED selector hash on failure"
             );
         }
     }
@@ -1125,6 +1194,48 @@ contract FuzzLendtroller is StatefulBaseMarket {
             assertWithMsg(
                 false,
                 "LENDTROLLER - setTransferPaused() expected to be successful with correct preconditions"
+            );
+        }
+    }
+
+    function canTransfer_should_fail_when_transfer_is_paused(
+        address mToken,
+        address account,
+        uint256 amount
+    ) public {
+        require(lendtroller.transferPaused() == 2);
+        require(lendtroller.redeemPaused() != 2);
+        require(lendtroller.isListed(mToken));
+        try lendtroller.canTransfer(mToken, address(this), amount) {} catch (
+            bytes memory revertData
+        ) {
+            uint256 errorSelector = extractErrorSelector(revertData);
+
+            // canTransfer should have reverted with PAUSED
+            assertWithMsg(
+                errorSelector == lendtroller_pausedSelectorHash,
+                "LENDTROLLER - canTransfer() expected PAUSED selector hash on failure"
+            );
+        }
+    }
+
+    function canTransfer_should_fail_when_redeem_is_paused(
+        address mToken,
+        address account,
+        uint256 amount
+    ) public {
+        require(lendtroller.transferPaused() != 2);
+        require(lendtroller.redeemPaused() == 2);
+        require(lendtroller.isListed(mToken));
+        try lendtroller.canTransfer(mToken, address(this), amount) {} catch (
+            bytes memory revertData
+        ) {
+            uint256 errorSelector = extractErrorSelector(revertData);
+
+            // canTransfer should have reverted with PAUSED
+            assertWithMsg(
+                errorSelector == lendtroller_pausedSelectorHash,
+                "LENDTROLLER - canTransfer() expected PAUSED selector hash on failure"
             );
         }
     }
@@ -1209,23 +1320,17 @@ contract FuzzLendtroller is StatefulBaseMarket {
         try lendtroller.canSeize(collateralToken, debtToken) {} catch {}
     }
 
-    function canTransfer_should_succeed(
-        address mToken,
-        address from,
-        uint256 amount
-    ) public {
-        try lendtroller.canTransfer(mToken, from, amount) {} catch {}
-    }
-
     function liquidateAccount_should_succeed(address account) public {
         try lendtroller.liquidateAccount(account) {} catch {}
     }
 
-    function listToken_should_succeed(address token) public {
-        try lendtroller.listToken(token) {} catch {}
-    }
-
     // Stateful Functions
+
+    // if closing position with a dtoken, ensure position cannot be created
+    // invariant: for any dtoken, collateralPostedFor(dtoken, addr(this)) = 0
+
+    // system invariant:
+    // should not have an active position in a dtoken if one does not have debt
 
     // ctoken.balanceOf(user) >= collateral posted
     function cToken_balance_gte_collateral_posted(address ctoken) public {
