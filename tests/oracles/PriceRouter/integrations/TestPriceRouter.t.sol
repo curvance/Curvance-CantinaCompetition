@@ -38,14 +38,6 @@ contract TestPriceRouter is TestBasePriceRouter {
         );
         centralRegistry.setPriceRouter(address(priceRouter));
 
-        adapter = new VelodromeVolatileLPAdaptor(
-            ICentralRegistry(address(centralRegistry))
-        );
-        adapter.addAsset(WETH_USDC);
-
-        priceRouter.addApprovedAdaptor(address(adapter));
-        priceRouter.addAssetPriceFeed(WETH_USDC, address(adapter));
-
         chainlinkAdaptor = new ChainlinkAdaptor(
             ICentralRegistry(address(centralRegistry))
         );
@@ -54,6 +46,14 @@ contract TestPriceRouter is TestBasePriceRouter {
         priceRouter.addApprovedAdaptor(address(chainlinkAdaptor));
         priceRouter.addAssetPriceFeed(USDC, address(chainlinkAdaptor));
         priceRouter.addAssetPriceFeed(WETH, address(chainlinkAdaptor));
+
+        adapter = new VelodromeVolatileLPAdaptor(
+            ICentralRegistry(address(centralRegistry))
+        );
+        adapter.addAsset(WETH_USDC);
+
+        priceRouter.addApprovedAdaptor(address(adapter));
+        priceRouter.addAssetPriceFeed(WETH_USDC, address(adapter));
     }
 
     function testReturnsCorrectPrice() public {

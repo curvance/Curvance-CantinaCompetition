@@ -43,19 +43,6 @@ contract ConvexLPCollateral is TestBaseMarket {
     }
 
     function testBorrowWithConvexLPCollateral() public {
-        CurveAdaptor crvAdaptor = new CurveAdaptor(
-            ICentralRegistry(address(centralRegistry))
-        );
-        crvAdaptor.setReentrancyConfig(2, 50_000);
-        crvAdaptor.addAsset(
-            address(CONVEX_STETH_ETH_POOL),
-            address(CONVEX_STETH_ETH_POOL)
-        );
-        priceRouter.addApprovedAdaptor(address(crvAdaptor));
-        priceRouter.addAssetPriceFeed(
-            address(CONVEX_STETH_ETH_POOL),
-            address(crvAdaptor)
-        );
         chainlinkAdaptor.addAsset(
             ETH_ADDRESS,
             address(chainlinkEthUsd),
@@ -73,6 +60,19 @@ contract ConvexLPCollateral is TestBaseMarket {
         priceRouter.addAssetPriceFeed(
             _STETH_ADDRESS,
             address(chainlinkAdaptor)
+        );
+        CurveAdaptor crvAdaptor = new CurveAdaptor(
+            ICentralRegistry(address(centralRegistry))
+        );
+        crvAdaptor.setReentrancyConfig(2, 50_000);
+        crvAdaptor.addAsset(
+            address(CONVEX_STETH_ETH_POOL),
+            address(CONVEX_STETH_ETH_POOL)
+        );
+        priceRouter.addApprovedAdaptor(address(crvAdaptor));
+        priceRouter.addAssetPriceFeed(
+            address(CONVEX_STETH_ETH_POOL),
+            address(crvAdaptor)
         );
         priceRouter.addMTokenSupport(address(cSTETH));
 
