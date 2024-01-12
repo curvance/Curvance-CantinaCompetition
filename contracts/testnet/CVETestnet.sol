@@ -119,10 +119,10 @@ contract CVETestnet is ERC20 {
     }
 
     /// @notice Mints gauge emissions for the desired gauge pool.
-    /// @dev Allows the VotingHub to mint new gauge emissions.
+    /// @dev Only callable by the ProtocolMessagingHub.
     /// @param gaugePool The address of the gauge pool where emissions will be
     ///                  configured.
-    /// @param amount The amount of gauge emissions to be minted
+    /// @param amount The amount of gauge emissions to be minted.
     function mintGaugeEmissions(address gaugePool, uint256 amount) external {
         if (msg.sender != centralRegistry.protocolMessagingHub()) {
             _revert(_UNAUTHORIZED_SELECTOR);

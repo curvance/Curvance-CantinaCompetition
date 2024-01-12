@@ -104,31 +104,19 @@ contract PriceRouter {
     /// @param feed The address of the new feed.
     function addAssetPriceFeed(address asset, address feed) external {
         _checkElevatedPermissions();
+        _addFeed(asset, feed);
+    }
 
-        // Validate that the proposed feed is approved for usage.
-        if (!isApprovedAdaptor[feed]) {
-            _revert(_INVALID_PARAMETER_SELECTOR);
-        }
-
-        // Validate that the feed supports the proposed asset.
-        if (!IOracleAdaptor(feed).isSupportedAsset(asset)) {
-            _revert(_INVALID_PARAMETER_SELECTOR);
-        }
-
-        uint256 numPriceFeeds = assetPriceFeeds[asset].length;
-
-        // Validate that we do not already have 2 or more feeds for `asset`.
-        if (numPriceFeeds >= 2) {
-            _revert(_INVALID_PARAMETER_SELECTOR);
-        }
-
-        // Validate that the feed proposed is not a duplicate
-        // of a supported feed for `asset`.
-        if (numPriceFeeds != 0 && assetPriceFeeds[asset][0] == feed) {
-            _revert(_INVALID_PARAMETER_SELECTOR);
-        }
-
-        assetPriceFeeds[asset].push(feed);
+    /// @notice Replaces one price feed with a new price feed for a specific asset.
+    /// @dev Requires that the feed address is an approved adaptor
+    ///      and that the asset has at least one feed.
+    /// @param asset The address of the asset.
+    /// @param feedToAdd The address of the feed to remove.
+    /// @param feedToAdd The address of the new feed.
+    function replaceAssetPriceFeed(address asset, address feedToRemove, address feedToAdd) external {
+        _checkElevatedPermissions();
+        _removeFeed(asset, feedToRemove);
+        _addFeed(asset, feedToAdd);
     }
 
     /// @notice Removes a price feed for a specific asset.
@@ -140,27 +128,10 @@ contract PriceRouter {
         _removeFeed(asset, feed);
     }
 
-    function addMTokenSupport(address mToken) external {
-        _checkElevatedPermissions();
-
-        if (mTokenAssets[mToken].isMToken) {
-            _revert(_INVALID_PARAMETER_SELECTOR);
-        }
-
-        mTokenAssets[mToken].isMToken = true;
-        mTokenAssets[mToken].underlying = IMToken(mToken).underlying();
-    }
-
-    function removeMTokenSupport(address mToken) external {
-        _checkElevatedPermissions();
-
-        if (!mTokenAssets[mToken].isMToken) {
-            _revert(_INVALID_PARAMETER_SELECTOR);
-        }
-
-        delete mTokenAssets[mToken];
-    }
-
+    /// @notice Removes a price feed for a specific asset 
+    ///         triggered by an adaptors notification.
+    /// @dev Requires that the feed exists for the asset.
+    /// @param asset The address of the asset.
     function notifyFeedRemoval(address asset) external {
         if (!isApprovedAdaptor[msg.sender]) {
             revert PriceRouter__Unauthorized();
@@ -169,30 +140,60 @@ contract PriceRouter {
         _removeFeed(asset, msg.sender);
     }
 
-    /// @notice Adds a new approved adaptor.
-    /// @dev Requires that the adaptor isn't already approved.
-    /// @param _adaptor The address of the adaptor to approve.
-    function addApprovedAdaptor(address _adaptor) external {
+    /// @notice Adds a new mToken to the Price Router.
+    /// @dev Requires that `newMToken` isn't already supported.
+    /// @param newMToken The address of the mToken to support.
+    function addMTokenSupport(address newMToken) external {
         _checkElevatedPermissions();
 
-        if (isApprovedAdaptor[_adaptor]) {
+        if (mTokenAssets[newMToken].isMToken) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
-        isApprovedAdaptor[_adaptor] = true;
+        // We call a Curvance specific MToken function as a sanity check.
+        IMToken(newMToken).isCToken();
+
+        mTokenAssets[newMToken].isMToken = true;
+        mTokenAssets[newMToken].underlying = IMToken(newMToken).underlying();
+    }
+
+    /// @notice Removes an mToken's support in the Price Router.
+    /// @dev Requires that the mToken is supported.
+    /// @param mTokenToRemove The address of the mToken to remove support for.
+    function removeMTokenSupport(address mTokenToRemove) external {
+        _checkElevatedPermissions();
+
+        if (!mTokenAssets[mTokenToRemove].isMToken) {
+            _revert(_INVALID_PARAMETER_SELECTOR);
+        }
+
+        delete mTokenAssets[mTokenToRemove];
+    }
+
+    /// @notice Adds a new approved adaptor.
+    /// @dev Requires that the adaptor isn't already approved.
+    /// @param newAdaptor The address of the adaptor to approve.
+    function addApprovedAdaptor(address newAdaptor) external {
+        _checkElevatedPermissions();
+
+        if (isApprovedAdaptor[newAdaptor]) {
+            _revert(_INVALID_PARAMETER_SELECTOR);
+        }
+
+        isApprovedAdaptor[newAdaptor] = true;
     }
 
     /// @notice Removes an approved adaptor.
     /// @dev Requires that the adaptor is currently approved.
-    /// @param _adaptor The address of the adaptor to remove.
-    function removeApprovedAdaptor(address _adaptor) external {
+    /// @param adaptorToRemove The address of the adaptor to remove.
+    function removeApprovedAdaptor(address adaptorToRemove) external {
         _checkElevatedPermissions();
 
-        if (!isApprovedAdaptor[_adaptor]) {
+        if (!isApprovedAdaptor[adaptorToRemove]) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
-        delete isApprovedAdaptor[_adaptor];
+        delete isApprovedAdaptor[adaptorToRemove];
     }
 
     /// @notice Sets a new maximum divergence for price feeds
@@ -462,8 +463,48 @@ contract PriceRouter {
 
     /// INTERNAL FUNCTIONS ///
 
+    /// @notice Adds a price feed for a specific asset.
+    /// @dev Requires that the feed is not supported for `asset`.
+    /// @param asset The address of the asset.
+    /// @param feed The address of the feed to be added.
+    function _addFeed(address asset, address feed) internal {
+        // Validate that the proposed feed is approved for usage.
+        if (!isApprovedAdaptor[feed]) {
+            _revert(_INVALID_PARAMETER_SELECTOR);
+        }
+
+        // Validate that the feed supports the proposed asset.
+        if (!IOracleAdaptor(feed).isSupportedAsset(asset)) {
+            _revert(_INVALID_PARAMETER_SELECTOR);
+        }
+
+        uint256 numPriceFeeds = assetPriceFeeds[asset].length;
+
+        // Validate that we do not already have 2 or more feeds for `asset`.
+        if (numPriceFeeds >= 2) {
+            _revert(_INVALID_PARAMETER_SELECTOR);
+        }
+
+        // Validate that the feed proposed is not a duplicate
+        // of a supported feed for `asset`.
+        if (numPriceFeeds != 0 && assetPriceFeeds[asset][0] == feed) {
+            _revert(_INVALID_PARAMETER_SELECTOR);
+        }
+
+        // Validate that the feed returns a usable price for us with a sample query.
+        PriceReturnData memory sampleData = IOracleAdaptor(feed).getPrice(
+            asset, true, true
+        );
+
+        if (sampleData.price == 0 || sampleData.hadError) {
+            _revert(_INVALID_PARAMETER_SELECTOR);
+        }
+
+        assetPriceFeeds[asset].push(feed);
+    }
+
     /// @notice Removes a price feed for a specific asset.
-    /// @dev Requires that the feed exists for the asset.
+    /// @dev Requires that the feed exists for `asset`.
     /// @param asset The address of the asset.
     /// @param feed The address of the feed to be removed.
     function _removeFeed(address asset, address feed) internal {
@@ -500,9 +541,8 @@ contract PriceRouter {
         assetPriceFeeds[asset].pop();
     }
 
-    /// @notice Retrieves the price of a specified asset from two specific price feeds.
-    /// @dev This function is internal and not meant to be accessed directly.
-    ///      It fetches the price from up to two feeds available for the asset.
+    /// @notice Retrieves the price of a specified asset from two specific
+    ///         price feeds.
     /// @param asset The address of the asset to retrieve the price for.
     /// @param inUSD Whether the price should be returned in USD or ETH.
     /// @param getLower Whether the lower or higher price should be returned
@@ -536,7 +576,6 @@ contract PriceRouter {
     }
 
     /// @notice Retrieves the price of a specified asset from a single oracle.
-    /// @dev Fetches the price from the first available price feed for the asset.
     /// @param asset The address of the asset to retrieve the price for.
     /// @param inUSD Whether the price should be returned in USD or ETH.
     /// @param getLower Whether the lower or higher price should be returned
@@ -580,7 +619,8 @@ contract PriceRouter {
         return (data.price, NO_ERROR);
     }
 
-    /// @notice Retrieves the price of a specified asset from a specific price feed.
+    /// @notice Retrieves the price of a specified asset from a specific
+    ///         price feed.
     /// @dev Fetches the price from the nth price feed for the asset,
     ///      where n is feedNumber.
     ///      Converts the price to USD if necessary.
@@ -630,7 +670,8 @@ contract PriceRouter {
         return FeedData({ price: data.price, hadError: data.hadError });
     }
 
-    /// @notice Queries the current price of ETH in USD using Chainlink's ETH/USD feed.
+    /// @notice Queries the current price of ETH in USD using Chainlink's
+    ///         ETH/USD feed.
     /// @dev The price is deemed valid if the data from Chainlink is fresh
     ///      and positive.
     /// @return A tuple containing the price of ETH in USD and an error flag.
@@ -684,16 +725,17 @@ contract PriceRouter {
     /// or from USD to ETH (if false) using the provided conversion rate.
     /// @param currentPrice The price to convert.
     /// @param conversionRate The rate to use for the conversion.
-    /// @param currentFormatInUSD Specifies whether the current format of the price is in USD.
-    ///                           If true, it will convert the price from USD to ETH.
-    ///                           If false, it will convert the price from ETH to USD.
+    /// @param currentlyInUSD Specifies whether the current format of the
+    ///                       price is in USD.
+    ///                       If true, it will convert the price from USD to ETH.
+    ///                       If false, it will convert the price from ETH to USD.
     /// @return The converted price.
     function _convertETHUSD(
         uint240 currentPrice,
         uint256 conversionRate,
-        bool currentFormatInUSD
+        bool currentlyInUSD
     ) internal view returns (uint256) {
-        if (!currentFormatInUSD) {
+        if (!currentlyInUSD) {
             // The price denomination is in ETH and we want USD.
             return (currentPrice * conversionRate) / CHAINLINK_DECIMALS;
         }
@@ -706,8 +748,8 @@ contract PriceRouter {
     ///      If the divergence is more than allowed, it returns (0, CAUTION).
     /// @param a The price from the first feed.
     /// @param b The price from the second feed.
-    /// @return A tuple containing the lower of two prices and an error flag (if any).
-    ///         If the prices are within acceptable range,
+    /// @return A tuple containing the lower of two prices and an error flag
+    ///         (if any). If the prices are within acceptable range,
     ///         it returns (min(a,b), NO_ERROR).
     function _calculateLowerPrice(
         uint256 a,
@@ -757,8 +799,8 @@ contract PriceRouter {
     ///      If the divergence is more than allowed, it returns (0, CAUTION).
     /// @param a The price from the first feed.
     /// @param b The price from the second feed.
-    /// @return A tuple containing the higher of two prices and an error flag (if any).
-    ///         If the prices are within acceptable range,
+    /// @return A tuple containing the higher of two prices and an error flag
+    ///         (if any). If the prices are within acceptable range,
     ///         it returns (max(a,b), NO_ERROR).
     function _calculateHigherPrice(
         uint256 a,
