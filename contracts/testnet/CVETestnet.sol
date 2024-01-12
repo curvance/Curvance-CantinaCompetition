@@ -17,10 +17,6 @@ contract CVETestnet is ERC20 {
 
     /// @notice Curvance DAO hub.
     ICentralRegistry public immutable centralRegistry;
-    /// @notice Wormhole TokenBridgeRelayer.
-    ITokenBridgeRelayer public immutable tokenBridgeRelayer;
-    /// @notice Address of Wormhole core contract.
-    IWormhole public immutable wormhole;
     /// @notice Timestamp when token was created
     uint256 public immutable tokenGenerationEventTimestamp;
     /// @notice DAO treasury allocation of CVE, 
@@ -40,6 +36,10 @@ contract CVETestnet is ERC20 {
 
     /// STORAGE ///
 
+    /// @notice Wormhole TokenBridgeRelayer.
+    ITokenBridgeRelayer public tokenBridgeRelayer;
+    /// @notice Address of Wormhole core contract.
+    IWormhole public wormhole;
     /// @notice Builder operating address.
     address public builderAddress;
     /// @notice Number of DAO treasury tokens minted.
