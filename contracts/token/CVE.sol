@@ -95,7 +95,7 @@ contract CVE is ERC20 {
         // 44,100,007.245 tokens (10.5%) vested over 4 years.
         builderAllocation = 44100007245e15;
         // Builder Vesting is for 4 years and unlocked monthly.
-        builderAllocationPerMonth = builderAllocation_ / 48;
+        builderAllocationPerMonth = builderAllocation / 48;
 
         // 50,400,008.285 (12%) minted initially for:
         // 29,400,004.83 (7%) from Capital Raises.
