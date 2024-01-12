@@ -85,6 +85,7 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
     uint256 public marketInterestFactor = 1000; // 10%
 
     Zapper public zapper;
+    mapping(address => uint256) postedCollateralAt;
 
     constructor() {
         // _fork(18031848);
