@@ -34,4 +34,7 @@ contract ErrorConstants {
 
     uint256 lendtroller_pausedSelectorHash =
         uint256(uint32(bytes4(keccak256("Lendtroller__Paused()"))));
+
+    uint256 lendtroller_minHoldSelectorHash =
+        uint256(uint32(bytes4(keccak256("Lendtroller__MinimumHoldPeriod()"))));
 }
