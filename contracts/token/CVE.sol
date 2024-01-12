@@ -101,7 +101,7 @@ contract CVE is ERC20 {
         // 29,400,004.83 (7%) from Capital Raises.
         // 12,600,002.075 (3%) builder veCVE initial allocation.
         // 8,400,001.38 (2%) LBP allocation.
-        uint256 initialTokenMint = 50400008285e15
+        uint256 initialTokenMint = 50400008285e15;
 
         _mint(msg.sender, initialTokenMint);
     }
