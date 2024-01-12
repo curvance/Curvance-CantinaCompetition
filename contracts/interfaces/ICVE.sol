@@ -12,17 +12,17 @@ interface ICVE {
     /// @notice Sets allowance of `spender` over the caller's tokens.
     function approve(address spender, uint256 amount) external returns (bool);
 
-    /// @notice Mint an amount of token for user.
-    /// @dev It will be called by only ProtocolMessagingHub.
-    ///      This function is used only for bridging VeCVE lock.
-    /// @param user The address of user to receive token.
-    /// @param amount The amount of token to mint.
+    /// @notice Mint CVE to msg.sender, 
+    ///         which will always be the VeCVE contract.
+    /// @dev Only callable by the ProtocolMessagingHub.
+    ///      This function is used only for creating a bridged VeCVE lock.
+    /// @param amount The amount of token to mint for the new veCVE lock.
     function mintVeCVELock(uint256 amount) external;
 
-    /// @notice Burn an amount of token for user.
-    /// @dev It will be called by only ProtocolMessagingHub.
+    /// @notice Burn CVE from msg.sender, 
+    ///         which will always be the VeCVE contract.
+    /// @dev Only callable by VeCVE.
     ///      This function is used only for bridging VeCVE lock.
-    /// @param user The address of user to burn token.
-    /// @param amount The amount of token to burn.
+    /// @param amount The amount of token to burn for a bridging veCVE lock.
     function burnVeCVELock(uint256 amount) external;
 }

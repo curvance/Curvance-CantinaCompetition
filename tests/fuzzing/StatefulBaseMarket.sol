@@ -160,11 +160,7 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
         cve = new CVE(
             ICentralRegistry(address(centralRegistry)),
             address(bridgeRelayer),
-            address(this),
-            10000 ether,
-            10000 ether,
-            10000 ether,
-            10000 ether
+            address(this)
         );
         centralRegistry.setCVE(address(cve));
     }
