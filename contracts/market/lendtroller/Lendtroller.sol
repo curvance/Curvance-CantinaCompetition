@@ -1095,13 +1095,13 @@ contract Lendtroller is LiquidityManager, ERC165 {
         }
 
         // On collateral posting:
-        // we need to flip their cooldown flag to prevent flashloan attacks.
+        // We need to flip their cooldown flag to prevent flashloan attacks.
         accountAssets[account].cooldownTimestamp = block.timestamp;
         collateralPosted[mToken] = collateralPosted[mToken] + amount;
         accountData.collateralPosted = accountData.collateralPosted + amount;
         emit CollateralPosted(account, mToken, amount);
 
-        // If the account does not have a position in this token, open one.
+        // If `account` does not have a position in `mToken`, open one.
         if (accountData.activePosition != 2) {
             accountData.activePosition = 2;
             accountAssets[account].assets.push(IMToken(mToken));
