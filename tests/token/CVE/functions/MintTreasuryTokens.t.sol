@@ -8,7 +8,7 @@ contract MintTreasuryTokensTest is TestBaseMarket {
     function test_mintTreasuryTokens_fail_whenUnauthorized() public {
         vm.prank(address(0));
         vm.expectRevert(CVE.CVE__Unauthorized.selector);
-        cve.mintTreasuryTokens(1000);
+        cve.mintTreasury(1000);
     }
 
     function test_mintTreasuryTokens_fail_whenInsufficientCVEAllocation()
@@ -16,13 +16,13 @@ contract MintTreasuryTokensTest is TestBaseMarket {
     {
         uint256 invalidAmount = cve.daoTreasuryAllocation() + 1;
         vm.expectRevert(CVE.CVE__InsufficientCVEAllocation.selector);
-        cve.mintTreasuryTokens(invalidAmount);
+        cve.mintTreasury(invalidAmount);
     }
 
     function test_mintTreasuryTokens_success() public {
         uint256 validAmount = cve.daoTreasuryAllocation();
         uint256 prevBalance = cve.balanceOf(address(this));
-        cve.mintTreasuryTokens(validAmount);
+        cve.mintTreasury(validAmount);
 
         assertEq(cve.daoTreasuryMinted(), validAmount);
         assertEq(cve.balanceOf(address(this)), prevBalance + validAmount);

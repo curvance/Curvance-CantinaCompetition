@@ -62,11 +62,7 @@ contract CVETestnet is ERC20 {
     constructor(
         ICentralRegistry centralRegistry_,
         address tokenBridgeRelayer_,
-        address team_,
-        uint256 daoTreasuryAllocation_,
-        uint256 callOptionAllocation_,
-        uint256 teamAllocation_,
-        uint256 initialTokenMint_
+        address team_
     ) {
         if (
             !ERC165Checker.supportsInterface(
@@ -88,13 +84,24 @@ contract CVETestnet is ERC20 {
         }
         tokenGenerationEventTimestamp = block.timestamp;
         teamAddress = team_;
-        daoTreasuryAllocation = daoTreasuryAllocation_;
-        callOptionAllocation = callOptionAllocation_;
-        teamAllocation = teamAllocation_;
-        // Team Vesting is for 4 years and unlocked monthly.
-        teamAllocationPerMonth = teamAllocation_ / 48;
+        // All allocations and mints are in 18 decimal form to match CVE.
 
-        _mint(msg.sender, initialTokenMint_);
+        // 60,900,010 tokens minted as needed by the DAO.
+        daoTreasuryAllocation = 60900010e18;
+        // 15,750,002.59 tokens (3.75%) minted on conclusion of LBP.
+        initialCommunityAllocation = 1575000259e16;
+        // 44,100,007.245 tokens (10.5%) vested over 4 years.
+        builderAllocation = 44100007245e15;
+        // Builder Vesting is for 4 years and unlocked monthly.
+        builderAllocationPerMonth = builderAllocation_ / 48;
+
+        // 12% minted initially for:
+        // 29,400,004.83 (7%) from Capital Raises.
+        // 12,600,002.075 (3%) builder veCVE initial allocation.
+        // 8,400,001.38 (2%) LBP allocation.
+        uint256 initialTokenMint = 50400008285e15
+
+        _mint(msg.sender, initialTokenMint);
     }
 
     /// EXTERNAL FUNCTIONS ///

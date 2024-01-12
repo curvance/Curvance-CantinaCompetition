@@ -17,12 +17,12 @@ interface ICVE {
     ///      This function is used only for bridging VeCVE lock.
     /// @param user The address of user to receive token.
     /// @param amount The amount of token to mint.
-    function mint(address user, uint256 amount) external;
+    function mintVeCVELock(address user, uint256 amount) external;
 
     /// @notice Burn an amount of token for user.
     /// @dev It will be called by only ProtocolMessagingHub.
     ///      This function is used only for bridging VeCVE lock.
     /// @param user The address of user to burn token.
     /// @param amount The amount of token to burn.
-    function burn(address user, uint256 amount) external;
+    function burnVeCVELock(address user, uint256 amount) external;
 }

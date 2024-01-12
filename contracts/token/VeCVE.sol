@@ -8,6 +8,7 @@ import { ERC20 } from "contracts/libraries/external/ERC20.sol";
 import { ReentrancyGuard } from "contracts/libraries/external/ReentrancyGuard.sol";
 
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
+import { ICVE } from "contracts/interfaces/ICVE.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { ICVELocker, RewardsData } from "contracts/interfaces/ICVELocker.sol";
 import { IProtocolMessagingHub } from "contracts/interfaces/IProtocolMessagingHub.sol";
@@ -559,9 +560,12 @@ contract VeCVE is ERC20, ReentrancyGuard {
         }
     }
 
-    /// @notice Processes an active lock as if its expired, for a penalty,
+    /// @notice Moves a lock from this chain to `dstChainId`,
     ///         and processes any pending locker rewards.
-    /// @param lockIndex The index of the lock to process.
+    /// @param lockIndex The index of the lock to bridge.
+    /// @param dstChainId The Chain ID of the desired destination chain.
+    /// @param continuousLock Whether the bridged lock should be continuous
+    ///                       or not.
     /// @param rewardsData Rewards data for CVE rewards locker.
     /// @param params Parameters for rewards claim function.
     /// @param aux Auxiliary data.
@@ -585,7 +589,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
             _revert(_INVALID_LOCK_SELECTOR);
         }
 
-        // Claim any pending locker rewards..
+        // Claim any pending locker rewards.
         _claimRewards(msg.sender, rewardsData, params, aux);
 
         Lock memory lock = locks[lockIndex];
@@ -594,14 +598,14 @@ contract VeCVE is ERC20, ReentrancyGuard {
         // Update their points to reflect the removed lock.
         _updateDataFromEarlyUnlock(msg.sender, amount, lock.unlockTime);
 
-        // Burn their VeCVE and remove their lock.
+        // Burn their VeCVE.
         _burn(msg.sender, amount);
+        // Remove their lock entry.
         _removeLock(locks, lockIndex);
+        // Burn the CVE for bridged lock.
+        ICVE(cve).burnVeCVELock(amount);
 
         address messagingHub = centralRegistry.protocolMessagingHub();
-
-        // Transfer the CVE amount to Protocol Messaging Hub.
-        SafeTransferLib.safeTransfer(cve, messagingHub, amount);
 
         sequence = IProtocolMessagingHub(messagingHub).bridgeVeCVELock{
             value: msg.value

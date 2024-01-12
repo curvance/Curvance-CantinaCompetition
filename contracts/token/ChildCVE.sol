@@ -9,15 +9,14 @@ import { IWormhole } from "contracts/interfaces/wormhole/IWormhole.sol";
 import { ITokenBridgeRelayer } from "contracts/interfaces/wormhole/ITokenBridgeRelayer.sol";
 import { IProtocolMessagingHub } from "contracts/interfaces/IProtocolMessagingHub.sol";
 
+/// @notice Curvance DAO's Child CVE Contract.
 contract CVE is ERC20 {
     /// CONSTANTS ///
 
     /// @notice Curvance DAO hub.
     ICentralRegistry public immutable centralRegistry;
-
     /// @notice Wormhole TokenBridgeRelayer.
     ITokenBridgeRelayer public immutable tokenBridgeRelayer;
-
     /// @notice Address of Wormhole core contract.
     IWormhole public immutable wormhole;
 
@@ -77,6 +76,32 @@ contract CVE is ERC20 {
         }
 
         _mint(msg.sender, amount);
+    }
+
+    /// @notice Mint CVE to msg.sender, 
+    ///         which will always be the VeCVE contract.
+    /// @dev Only callable by the ProtocolMessagingHub.
+    ///      This function is used only for creating a bridged VeCVE lock.
+    /// @param amount The amount of token to mint for the new veCVE lock.
+    function mintVeCVELock(uint256 amount) external {
+        if (msg.sender != centralRegistry.protocolMessagingHub()) {
+            _revert(_UNAUTHORIZED_SELECTOR);
+        }
+
+        _mint(msg.sender, amount);
+    }
+
+    /// @notice Burn CVE from msg.sender, 
+    ///         which will always be the VeCVE contract.
+    /// @dev Only callable by VeCVE.
+    ///      This function is used only for bridging VeCVE lock.
+    /// @param amount The amount of token to burn for a bridging veCVE lock.
+    function burnVeCVELock(uint256 amount) external {
+        if (msg.sender != centralRegistry.veCVE()) {
+            _revert(_UNAUTHORIZED_SELECTOR);
+        }
+
+        _burn(msg.sender, amount);
     }
 
     /// @param dstChainId Chain ID of the target blockchain.

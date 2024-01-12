@@ -15,25 +15,17 @@ contract CveDeployer is DeployConfiguration {
     function _deployCve(
         address centralRegistry,
         address tokenBridgeRelayer,
-        address team,
-        uint256 daoTreasuryAllocation,
-        uint256 callOptionAllocation,
-        uint256 teamAllocation,
-        uint256 initialTokenMint
+        address team
     ) internal {
         require(centralRegistry != address(0), "Set the centralRegistry!");
-        require(team != address(0), "Set the team!");
+        require(team != address(0), "Set the builder!");
 
         if (tokenBridgeRelayer == address(0)) {
             cve = address(
                 new CVETestnet(
                     ICentralRegistry(centralRegistry),
                     tokenBridgeRelayer,
-                    team,
-                    daoTreasuryAllocation,
-                    callOptionAllocation,
-                    teamAllocation,
-                    initialTokenMint
+                    team
                 )
             );
         } else {
@@ -41,11 +33,7 @@ contract CveDeployer is DeployConfiguration {
                 new CVE(
                     ICentralRegistry(centralRegistry),
                     tokenBridgeRelayer,
-                    team,
-                    daoTreasuryAllocation,
-                    callOptionAllocation,
-                    teamAllocation,
-                    initialTokenMint
+                    team
                 )
             );
         }

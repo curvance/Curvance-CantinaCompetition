@@ -9,46 +9,46 @@ import { IWormhole } from "contracts/interfaces/wormhole/IWormhole.sol";
 import { ITokenBridgeRelayer } from "contracts/interfaces/wormhole/ITokenBridgeRelayer.sol";
 import { IProtocolMessagingHub } from "contracts/interfaces/IProtocolMessagingHub.sol";
 
+/// @notice Curvance DAO's Canonical CVE Contract.
 contract CVE is ERC20 {
     /// CONSTANTS ///
 
-    // Seconds in a month based on 365.2425 days.
+    /// @notice Seconds in a month based on 365.2425 days.
     uint256 public constant MONTH = 2_629_746;
 
     /// @notice Curvance DAO hub.
     ICentralRegistry public immutable centralRegistry;
-
     /// @notice Wormhole TokenBridgeRelayer.
     ITokenBridgeRelayer public immutable tokenBridgeRelayer;
-
     /// @notice Address of Wormhole core contract.
     IWormhole public immutable wormhole;
-
-    // Timestamp when token was created
+    /// @notice Timestamp when token was created
     uint256 public immutable tokenGenerationEventTimestamp;
+    /// @notice DAO treasury allocation of CVE, 
+    ///         can be minted as needed by the DAO. 14.5%.
+    uint256 public immutable daoTreasuryAllocation;
+    /// @notice Initial community allocation of CVE, 
+    ///         can be minted as needed by the DAO. 3.75%.
+    uint256 public immutable initialCommunityAllocation;
+    /// @notice Buildier allocation of CVE, 
+    ///         can be minted on a monthly basis. 13.5%
+    uint256 public immutable builderAllocation;
+    /// @notice 3% as veCVE immediately, 10.5% vested over 4 years.
+    uint256 public immutable builderAllocationPerMonth;
 
-    uint256 public immutable daoTreasuryAllocation; // 14.5%
-    uint256 public immutable callOptionAllocation; // 3.75%
-    uint256 public immutable teamAllocation; // 13.5%
-    // 3% as veCVE immediately, 10.5% over 4 years
-    uint256 public immutable teamAllocationPerMonth;
-
-    /// `bytes4(keccak256(bytes("CVE__Unauthorized()")))`
+    /// @dev `bytes4(keccak256(bytes("CVE__Unauthorized()")))`.
     uint256 internal constant _UNAUTHORIZED_SELECTOR = 0x15f37077;
 
     /// STORAGE ///
 
-    /// @notice Team operating address.
-    address public teamAddress;
-
+    /// @notice Builder operating address.
+    address public builderAddress;
     /// @notice Number of DAO treasury tokens minted.
     uint256 public daoTreasuryMinted;
-
-    /// @notice Number of Team allocation tokens minted.
-    uint256 public teamAllocationMinted;
-
+    /// @notice Number of Builder allocation tokens minted.
+    uint256 public builderAllocationMinted;
     /// @notice Number of Call Option reserved tokens minted.
-    uint256 public callOptionsMinted;
+    uint256 public initialCommunityMinted;
 
     /// ERRORS ///
 
@@ -62,11 +62,7 @@ contract CVE is ERC20 {
     constructor(
         ICentralRegistry centralRegistry_,
         address tokenBridgeRelayer_,
-        address team_,
-        uint256 daoTreasuryAllocation_,
-        uint256 callOptionAllocation_,
-        uint256 teamAllocation_,
-        uint256 initialTokenMint_
+        address builder_
     ) {
         if (
             !ERC165Checker.supportsInterface(
@@ -80,22 +76,34 @@ contract CVE is ERC20 {
             revert CVE__TokenBridgeRelayerIsZeroAddress();
         }
 
-        if (team_ == address(0)) {
-            team_ = msg.sender;
+        if (builder_ == address(0)) {
+            builder_ = msg.sender;
         }
 
         centralRegistry = centralRegistry_;
         tokenBridgeRelayer = ITokenBridgeRelayer(tokenBridgeRelayer_);
         wormhole = ITokenBridgeRelayer(tokenBridgeRelayer_).wormhole();
         tokenGenerationEventTimestamp = block.timestamp;
-        teamAddress = team_;
-        daoTreasuryAllocation = daoTreasuryAllocation_;
-        callOptionAllocation = callOptionAllocation_;
-        teamAllocation = teamAllocation_;
-        // Team Vesting is for 4 years and unlocked monthly.
-        teamAllocationPerMonth = teamAllocation_ / 48;
+        builderAddress = builder_;
 
-        _mint(msg.sender, initialTokenMint_);
+        // All allocations and mints are in 18 decimal form to match CVE.
+
+        // 60,900,010 tokens minted as needed by the DAO.
+        daoTreasuryAllocation = 60900010e18;
+        // 15,750,002.59 tokens (3.75%) minted on conclusion of LBP.
+        initialCommunityAllocation = 1575000259e16;
+        // 44,100,007.245 tokens (10.5%) vested over 4 years.
+        builderAllocation = 44100007245e15;
+        // Builder Vesting is for 4 years and unlocked monthly.
+        builderAllocationPerMonth = builderAllocation_ / 48;
+
+        // 12% minted initially for:
+        // 29,400,004.83 (7%) from Capital Raises.
+        // 12,600,002.075 (3%) builder veCVE initial allocation.
+        // 8,400,001.38 (2%) LBP allocation.
+        uint256 initialTokenMint = 50400008285e15
+
+        _mint(msg.sender, initialTokenMint);
     }
 
     /// EXTERNAL FUNCTIONS ///
@@ -124,11 +132,37 @@ contract CVE is ERC20 {
         _mint(msg.sender, amount);
     }
 
+    /// @notice Mint CVE to msg.sender, 
+    ///         which will always be the VeCVE contract.
+    /// @dev Only callable by the ProtocolMessagingHub.
+    ///      This function is used only for creating a bridged VeCVE lock.
+    /// @param amount The amount of token to mint for the new veCVE lock.
+    function mintVeCVELock(uint256 amount) external {
+        if (msg.sender != centralRegistry.protocolMessagingHub()) {
+            _revert(_UNAUTHORIZED_SELECTOR);
+        }
+
+        _mint(msg.sender, amount);
+    }
+
+    /// @notice Burn CVE from msg.sender, 
+    ///         which will always be the VeCVE contract.
+    /// @dev Only callable by VeCVE.
+    ///      This function is used only for bridging VeCVE lock.
+    /// @param amount The amount of token to burn for a bridging veCVE lock.
+    function burnVeCVELock(uint256 amount) external {
+        if (msg.sender != centralRegistry.veCVE()) {
+            _revert(_UNAUTHORIZED_SELECTOR);
+        }
+
+        _burn(msg.sender, amount);
+    }
+
     /// @notice Mint CVE for the DAO treasury.
     /// @param amount The amount of treasury tokens to be minted.
     ///               The number of tokens to mint cannot not exceed
     ///               the available treasury allocation.
-    function mintTreasuryTokens(uint256 amount) external {
+    function mintTreasury(uint256 amount) external {
         _checkElevatedPermissions();
 
         uint256 _daoTreasuryMinted = daoTreasuryMinted;
@@ -144,62 +178,64 @@ contract CVE is ERC20 {
     /// @param amount The amount of call option tokens to be minted.
     ///               The number of tokens to mint cannot not exceed
     ///               the available call option allocation.
-    function mintCallOptionTokens(uint256 amount) external {
+    function mintCommunityAllocation(uint256 amount) external {
         _checkDaoPermissions();
 
-        uint256 _callOptionsMinted = callOptionsMinted;
-        if (callOptionAllocation < _callOptionsMinted + amount) {
+        uint256 _initialCommunityMinted = initialCommunityMinted;
+        if (initialCommunityAllocation < _initialCommunityMinted + amount) {
             revert CVE__InsufficientCVEAllocation();
         }
 
-        callOptionsMinted = _callOptionsMinted + amount;
+        initialCommunityMinted = _initialCommunityMinted + amount;
         _mint(msg.sender, amount);
     }
 
-    /// @notice Mint CVE from team allocation.
-    /// @dev Allows the DAO Manager to mint new tokens for the team allocation.
+    /// @notice Mint CVE from builder allocation.
+    /// @dev Allows the DAO Manager to mint new tokens for the builder
+    ///      allocation.
     /// @dev The amount of tokens minted is calculated based on the time passed
     ///      since the Token Generation Event.
-    /// @dev The number of tokens minted is capped by the total team allocation.
-    function mintTeamTokens() external {
-        if (msg.sender != teamAddress) {
+    /// @dev The number of tokens minted is capped by the total builder allocation.
+    function mintBuilder() external {
+        if (msg.sender != builderAddress) {
             _revert(_UNAUTHORIZED_SELECTOR);
         }
 
         uint256 timeSinceTGE = block.timestamp - tokenGenerationEventTimestamp;
         uint256 monthsSinceTGE = timeSinceTGE / MONTH;
-        uint256 _teamAllocationMinted = teamAllocationMinted;
+        uint256 _builderAllocationMinted = builderAllocationMinted;
 
-        uint256 amount = (monthsSinceTGE * teamAllocationPerMonth) -
-            _teamAllocationMinted;
+        uint256 amount = (monthsSinceTGE * builderAllocationPerMonth) -
+            _builderAllocationMinted;
 
-        if (teamAllocation <= _teamAllocationMinted + amount) {
-            amount = teamAllocation - teamAllocationMinted;
+        if (builderAllocation <= _builderAllocationMinted + amount) {
+            amount = builderAllocation - builderAllocationMinted;
         }
 
         if (amount == 0) {
             revert CVE__ParametersAreInvalid();
         }
 
-        teamAllocationMinted = _teamAllocationMinted + amount;
+        builderAllocationMinted = _builderAllocationMinted + amount;
         _mint(msg.sender, amount);
     }
 
-    /// @notice Set the team address
-    /// @dev Allows the team to change the team's address.
-    /// @param _address The new address for the team.
-    function setTeamAddress(address _address) external {
-        if (msg.sender != teamAddress) {
+    /// @notice Sets the builder address.
+    /// @dev Allows the builders to change the builder's address.
+    /// @param _address The new address for the builder.
+    function setBuilderAddress(address newAddress) external {
+        if (msg.sender != builderAddress) {
             _revert(_UNAUTHORIZED_SELECTOR);
         }
 
-        if (_address == address(0)) {
+        if (newAddress == address(0)) {
             revert CVE__ParametersAreInvalid();
         }
 
-        teamAddress = _address;
+        builderAddress = newAddress;
     }
 
+    /// @notice Send wormhole message to bridge CVE.
     /// @param dstChainId Chain ID of the target blockchain.
     /// @param recipient The address of recipient on destination chain.
     /// @param amount The amount of token to bridge.
@@ -219,34 +255,6 @@ contract CVE is ERC20 {
                 recipient,
                 amount
             );
-    }
-
-    /// @notice Mint an amount of token for user.
-    /// @dev It will be called by only ProtocolMessagingHub.
-    ///      This function is used only for bridging VeCVE lock.
-    /// @param user The address of user to receive token.
-    /// @param amount The amount of token to mint.
-    function mint(address user, uint256 amount) external {
-        address messagingHub = centralRegistry.protocolMessagingHub();
-        if (msg.sender != messagingHub) {
-            _revert(_UNAUTHORIZED_SELECTOR);
-        }
-
-        _mint(user, amount);
-    }
-
-    /// @notice Burn an amount of token for user.
-    /// @dev It will be called by only ProtocolMessagingHub.
-    ///      This function is used only for bridging VeCVE lock.
-    /// @param user The address of user to burn token.
-    /// @param amount The amount of token to burn.
-    function burn(address user, uint256 amount) external {
-        address messagingHub = centralRegistry.protocolMessagingHub();
-        if (msg.sender != messagingHub) {
-            _revert(_UNAUTHORIZED_SELECTOR);
-        }
-
-        _burn(user, amount);
     }
 
     /// @notice Returns required amount of token for relayer fee.

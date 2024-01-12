@@ -285,11 +285,14 @@ contract ProtocolMessagingHub is ReentrancyGuard {
             (address recipient, uint256 amount, bool continuousLock) = abi
                 .decode(lockData, (address, uint256, bool));
 
-            RewardsData memory rewardData;
-
-            cve.mint(address(this), amount);
+            cve.mintVeCVELock(amount);
             cve.approve(veCVE, amount);
 
+            RewardsData memory rewardData;
+
+            // rewardData is forced to be an empty struct since Curvance does
+            // not how long it has been between lock destruction and creation,
+            // and any dynamic action could have stale characteristics.
             IVeCVE(veCVE).createLockFor(
                 recipient,
                 amount,
@@ -377,35 +380,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         );
     }
 
-    /// @notice Register wormhole specific chain IDs for evm chain IDs.
-    /// @param chainIds EVM chain IDs.
-    /// @param wormholeChainIds Wormhole specific chain IDs.
-    function registerWormholeChainIDs(
-        uint256[] calldata chainIds,
-        uint16[] calldata wormholeChainIds
-    ) external {
-        _checkAuthorizedPermissions(true);
-
-        uint256 numChainIds = chainIds.length;
-
-        for (uint256 i; i < numChainIds; ++i) {
-            wormholeChainId[chainIds[i]] = wormholeChainIds[i];
-        }
-    }
-
-    /// @notice Quotes gas cost and token fee for executing crosschain
-    ///         wormhole deposit and messaging.
-    /// @param dstChainId Wormhole specific destination chain ID.
-    /// @param transferToken Whether deliver token or not.
-    /// @return Total gas cost.
-    /// @return Deliverying fee.
-    function quoteWormholeFee(
-        uint16 dstChainId,
-        bool transferToken
-    ) external view returns (uint256, uint256) {
-        return _quoteWormholeFee(dstChainId, transferToken);
-    }
-
+    /// @notice Send wormhole message to bridge CVE.
     /// @param dstChainId Chain ID of the target blockchain.
     /// @param recipient The address of recipient on destination chain.
     /// @param amount The amount of token to bridge.
@@ -418,6 +393,8 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         if (msg.sender != address(cve)) {
             _revert(_UNAUTHORIZED_SELECTOR);
         }
+
+        _checkMessagingHubStatus();
 
         cve.approve(address(tokenBridgeRelayer), amount);
 
@@ -465,7 +442,54 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         );
     }
 
-    /// PERMISSIONED EXTERNAL FUNCTIONS ///
+    /// @notice Sends veCVE locked token data to destination chain.
+    /// @param dstChainId Wormhole specific destination chain ID where
+    ///                   the message data should be sent.
+    /// @param toAddress The destination address specified by `dstChainId`.
+    /// @param payload The payload data that is sent along with the message.
+    function sendWormholeMessages(
+        uint16 dstChainId,
+        address toAddress,
+        bytes calldata payload
+    ) external payable {
+        _checkMessagingHubStatus();
+        _checkPermissions();
+
+        (uint256 messageFee, ) = _quoteWormholeFee(dstChainId, false);
+
+        _sendWormholeMessages(dstChainId, toAddress, messageFee, 4, payload);
+    }
+
+    /// @notice Quotes gas cost and token fee for executing crosschain
+    ///         wormhole deposit and messaging.
+    /// @param dstChainId Wormhole specific destination chain ID.
+    /// @param transferToken Whether deliver token or not.
+    /// @return Total gas cost.
+    /// @return Deliverying fee.
+    function quoteWormholeFee(
+        uint16 dstChainId,
+        bool transferToken
+    ) external view returns (uint256, uint256) {
+        return _quoteWormholeFee(dstChainId, transferToken);
+    }
+
+    /// DAO PERMISSIONED EXTERNAL FUNCTIONS ///
+
+    /// @notice Register wormhole specific chain IDs for evm chain IDs.
+    /// @param chainIds EVM chain IDs.
+    /// @param wormholeChainIds Wormhole specific chain IDs.
+    function registerWormholeChainIDs(
+        uint256[] calldata chainIds,
+        uint16[] calldata wormholeChainIds
+    ) external {
+        _checkAuthorizedPermissions(true);
+
+        uint256 numChainIds = chainIds.length;
+
+        for (uint256 i; i < numChainIds; ++i) {
+            wormholeChainId[chainIds[i]] = wormholeChainIds[i];
+        }
+    }
 
     /// @notice Permissioned function that flips the pause status of the
     ///         Messaging Hub.
@@ -500,24 +524,6 @@ contract ProtocolMessagingHub is ReentrancyGuard {
             centralRegistry.feeAccumulator(),
             IERC20(feeToken).balanceOf(address(this))
         );
-    }
-
-    /// @notice Sends veCVE locked token data to destination chain.
-    /// @param dstChainId Wormhole specific destination chain ID where
-    ///                   the message data should be sent.
-    /// @param toAddress The destination address specified by `dstChainId`.
-    /// @param payload The payload data that is sent along with the message.
-    function sendWormholeMessages(
-        uint16 dstChainId,
-        address toAddress,
-        bytes calldata payload
-    ) external payable {
-        _checkMessagingHubStatus();
-        _checkPermissions();
-
-        (uint256 messageFee, ) = _quoteWormholeFee(dstChainId, false);
-
-        _sendWormholeMessages(dstChainId, toAddress, messageFee, 4, payload);
     }
 
     /// INTERNAL FUNCTIONS ///
