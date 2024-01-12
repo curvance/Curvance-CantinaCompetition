@@ -426,8 +426,6 @@ contract ProtocolMessagingHub is ReentrancyGuard {
 
         _checkMessagingHubStatus();
 
-        cve.burn(recipient, amount);
-
         address dstMessagingHub = centralRegistry
             .supportedChainData(dstChainId)
             .messagingHub;
