@@ -64,12 +64,12 @@ contract TestStatefulDeployments is StatefulBaseMarket {
             "CVE DEPLOY FAILED: cve.builderAddress() == address(this) failed"
         );
         assertWithMsg(
-            cve.daoTreasuryAllocation() == 10000 ether,
-            "CVE DEPLOY FAILED: CVE.daoTreasuryAllocation == 10000 ether failed"
+            cve.daoTreasuryAllocation() == 60900010 ether,
+            "CVE DEPLOY FAILED: CVE.daoTreasuryAllocation == 60900010 ether failed"
         );
         assertWithMsg(
             cve.builderAllocationPerMonth() > 0,
-            "CVE DEPLOY FAILED: CVE.builderAllocationPerMonth() == 10000 ether/48 failed"
+            "CVE DEPLOY FAILED: CVE.builderAllocationPerMonth() > 0 failed"
         );
     }
 }

@@ -27,7 +27,7 @@ contract MintBuilderTest is TestBaseMarket {
         vm.prank(builderAddress);
         cve.mintBuilder();
 
-        // 2 months worth of team allocation
+        // 2 months worth of builder allocation
         uint256 expectedAmount = 2 * cve.builderAllocationPerMonth();
         assertEq(expectedAmount, cve.builderAllocationMinted());
         assertEq(cve.balanceOf(builderAddress), prevBalance + expectedAmount);
@@ -36,7 +36,7 @@ contract MintBuilderTest is TestBaseMarket {
         vm.prank(builderAddress);
         cve.mintBuilder();
 
-        // 3 months worth of team allocation
+        // 3 months worth of builder allocation
         expectedAmount = cve.builderAllocationPerMonth() * 3;
         assertEq(expectedAmount, cve.builderAllocationMinted());
         assertEq(cve.balanceOf(builderAddress), prevBalance + expectedAmount);
@@ -46,7 +46,7 @@ contract MintBuilderTest is TestBaseMarket {
         vm.prank(builderAddress);
         cve.mintBuilder();
 
-        expectedAmount = cve.teamAllocation();
+        expectedAmount = cve.builderAllocation();
         assertEq(expectedAmount, cve.builderAllocationMinted());
         assertEq(cve.balanceOf(builderAddress), prevBalance + expectedAmount);
     }
