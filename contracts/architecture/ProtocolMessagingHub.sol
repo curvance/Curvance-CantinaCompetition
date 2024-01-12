@@ -13,6 +13,8 @@ import { IERC20Metadata } from "contracts/interfaces/IERC20Metadata.sol";
 import { ICVE } from "contracts/interfaces/ICVE.sol";
 import { IFeeAccumulator, EpochRolloverData } from "contracts/interfaces/IFeeAccumulator.sol";
 import { ICentralRegistry, OmnichainData } from "contracts/interfaces/ICentralRegistry.sol";
+import { IVeCVE } from "contracts/interfaces/IVeCVE.sol";
+import { RewardsData } from "contracts/interfaces/ICVELocker.sol";
 import { IWormhole } from "contracts/interfaces/wormhole/IWormhole.sol";
 import { IWormholeRelayer } from "contracts/interfaces/wormhole/IWormholeRelayer.sol";
 import { ICircleRelayer } from "contracts/interfaces/wormhole/ICircleRelayer.sol";
@@ -57,7 +59,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     /// STORAGE ///
 
     /// @notice 0 or 1 = activate; 2 = paused.
-    uint256 public isPaused; 
+    uint256 public isPaused;
     /// @notice Status of message hash whether it's delivered or not.
     mapping(bytes32 => bool) public isDeliveredMessageHash;
 
@@ -277,6 +279,25 @@ contract ProtocolMessagingHub is ReentrancyGuard {
                     }
                 }
             }
+        } else if (payloadId == 5) {
+            (, bytes memory lockData) = abi.decode(payload, (uint8, bytes));
+
+            (address recipient, uint256 amount, bool continuousLock) = abi
+                .decode(lockData, (address, uint256, bool));
+
+            RewardsData memory rewardData;
+
+            cve.mint(address(this), amount);
+            cve.approve(veCVE, amount);
+
+            IVeCVE(veCVE).createLockFor(
+                recipient,
+                amount,
+                continuousLock,
+                rewardData,
+                "",
+                0
+            );
         }
     }
 
@@ -411,31 +432,37 @@ contract ProtocolMessagingHub is ReentrancyGuard {
             );
     }
 
+    /// @notice Send wormhole message to bridge VeCVE lock.
     /// @param dstChainId Chain ID of the target blockchain.
     /// @param recipient The address of recipient on destination chain.
     /// @param amount The amount of token to bridge.
-    /// @return Wormhole sequence for emitted TransferTokensWithRelay message.
+    /// @param continuousLock Whether the lock should be continuous or not.
     function bridgeVeCVELock(
         uint256 dstChainId,
         address recipient,
-        uint256 amount
-    ) external payable returns (uint64) {
+        uint256 amount,
+        bool continuousLock
+    ) external payable {
         if (msg.sender != veCVE) {
             _revert(_UNAUTHORIZED_SELECTOR);
         }
 
-        cve.approve(address(tokenBridgeRelayer), amount);
+        _checkMessagingHubStatus();
 
-        // Sather can insert lock migration logic here.
-        // return
-        //     tokenBridgeRelayer.transferTokensWithRelay{ value: msg.value }(
-        //         address(cve),
-        //         amount,
-        //         0,
-        //         wormholeChainId[dstChainId],
-        //         bytes32(uint256(uint160(recipient))),
-        //         0
-        //     );
+        cve.burn(recipient, amount);
+
+        address dstMessagingHub = centralRegistry
+            .supportedChainData(dstChainId)
+            .messagingHub;
+        bytes memory payload = abi.encode(recipient, amount, continuousLock);
+
+        _sendWormholeMessages(
+            wormholeChainId[dstChainId],
+            dstMessagingHub,
+            msg.value,
+            5,
+            payload
+        );
     }
 
     /// PERMISSIONED EXTERNAL FUNCTIONS ///
@@ -488,6 +515,26 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         _checkMessagingHubStatus();
         _checkPermissions();
 
+        (uint256 messageFee, ) = _quoteWormholeFee(dstChainId, false);
+
+        _sendWormholeMessages(dstChainId, toAddress, messageFee, 4, payload);
+    }
+
+    /// INTERNAL FUNCTIONS ///
+
+    /// @notice Sends veCVE locked token data to destination chain.
+    /// @param dstChainId Wormhole specific destination chain ID where
+    ///                   the message data should be sent.
+    /// @param toAddress The destination address specified by `dstChainId`.
+    /// @param payloadId The id of payload.
+    /// @param payload The payload data that is sent along with the message.
+    function _sendWormholeMessages(
+        uint16 dstChainId,
+        address toAddress,
+        uint256 messageFee,
+        uint8 payloadId,
+        bytes memory payload
+    ) internal {
         // Validate that we are aiming for a supported chain.
         if (
             centralRegistry
@@ -499,18 +546,14 @@ contract ProtocolMessagingHub is ReentrancyGuard {
             revert ProtocolMessagingHub__ChainIsNotSupported();
         }
 
-        (uint256 messageFee, ) = _quoteWormholeFee(dstChainId, false);
-
         wormholeRelayer.sendPayloadToEvm{ value: messageFee }(
             dstChainId,
             toAddress,
-            abi.encode(uint8(4), payload), // payload.
+            abi.encode(payloadId, payload), // payload.
             0, // no receiver value needed since we're just passing a message.
             _GAS_LIMIT
         );
     }
-
-    /// INTERNAL FUNCTIONS ///
 
     /// @notice Quotes gas cost and token fee for executing crosschain
     ///         wormhole deposit and messaging.

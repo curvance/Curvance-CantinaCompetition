@@ -572,6 +572,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
     function bridgeVeCVELock(
         uint256 lockIndex,
         uint256 dstChainId,
+        bool continuousLock,
         RewardsData calldata rewardsData,
         bytes calldata params,
         uint256 aux
@@ -606,11 +607,9 @@ contract VeCVE is ERC20, ReentrancyGuard {
         // Transfer the CVE amount to Protocol Messaging Hub.
         SafeTransferLib.safeTransfer(cve, messagingHub, amount);
 
-        sequence = IProtocolMessagingHub(messagingHub).bridgeVeCVELock{ value: msg.value }(
-                dstChainId,
-                msg.sender,
-                amount
-            );
+        sequence = IProtocolMessagingHub(messagingHub).bridgeVeCVELock{
+            value: msg.value
+        }(dstChainId, msg.sender, amount, continuousLock);
 
         // Check whether the user has no remaining locks and reset their index,
         // that way if in the future they create a new lock, they do not need to claim

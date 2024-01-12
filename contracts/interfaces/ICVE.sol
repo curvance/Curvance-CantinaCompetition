@@ -11,4 +11,18 @@ interface ICVE {
 
     /// @notice Sets allowance of `spender` over the caller's tokens.
     function approve(address spender, uint256 amount) external returns (bool);
+
+    /// @notice Mint an amount of token for user.
+    /// @dev It will be called by only ProtocolMessagingHub.
+    ///      This function is used only for bridging VeCVE lock.
+    /// @param user The address of user to receive token.
+    /// @param amount The amount of token to mint.
+    function mint(address user, uint256 amount) external;
+
+    /// @notice Burn an amount of token for user.
+    /// @dev It will be called by only ProtocolMessagingHub.
+    ///      This function is used only for bridging VeCVE lock.
+    /// @param user The address of user to burn token.
+    /// @param amount The amount of token to burn.
+    function burn(address user, uint256 amount) external;
 }

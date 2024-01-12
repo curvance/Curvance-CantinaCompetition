@@ -221,6 +221,34 @@ contract CVE is ERC20 {
             );
     }
 
+    /// @notice Mint an amount of token for user.
+    /// @dev It will be called by only ProtocolMessagingHub.
+    ///      This function is used only for bridging VeCVE lock.
+    /// @param user The address of user to receive token.
+    /// @param amount The amount of token to mint.
+    function mint(address user, uint256 amount) external {
+        address messagingHub = centralRegistry.protocolMessagingHub();
+        if (msg.sender != messagingHub) {
+            _revert(_UNAUTHORIZED_SELECTOR);
+        }
+
+        _mint(user, amount);
+    }
+
+    /// @notice Burn an amount of token for user.
+    /// @dev It will be called by only ProtocolMessagingHub.
+    ///      This function is used only for bridging VeCVE lock.
+    /// @param user The address of user to burn token.
+    /// @param amount The amount of token to burn.
+    function burn(address user, uint256 amount) external {
+        address messagingHub = centralRegistry.protocolMessagingHub();
+        if (msg.sender != messagingHub) {
+            _revert(_UNAUTHORIZED_SELECTOR);
+        }
+
+        _burn(user, amount);
+    }
+
     /// @notice Returns required amount of token for relayer fee.
     /// @param dstChainId Chain ID of the target blockchain.
     /// @return Required fee.
