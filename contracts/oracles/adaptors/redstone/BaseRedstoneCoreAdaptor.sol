@@ -173,14 +173,20 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
     ///      for pricing and staleness.
     /// @param data Redstone Core feed details.
     /// @param inUSD A boolean to denote if the price is in USD.
-    /// @return A structure containing the price, error status,
-    ///         and the currency of the price.
+    /// @return pData A structure containing the price, error status,
+    ///               and the currency of the price.
     function _parseData(
         AdaptorData memory data,
         bool inUSD
     ) internal view returns (PriceReturnData memory pData) {
         pData.inUSD = inUSD;
         uint256 price = _extractPrice(data.symbolHash);
+
+        // If we got a price of 0, bubble up an error immediately.
+        if (price == 0) {
+            pData.hadError = true;
+            return pData;
+        }
 
         // Redstone Core always has decimals = 8 so we need to
         // adjust back to decimals = 18.
@@ -201,15 +207,6 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
         uint256 value,
         uint256 max
     ) internal pure returns (bool) {
-        // We expect to never get a negative price here, 
-        // and a value of 0 would generally indicate no data. 
-        // So, we set the minimum intentionally here to 1, 
-        // which is denominated in `WAD` form, 
-        // meaning a minimum price of 1 / 1e18 in real terms.
-        if (value < 1) {
-            return true;
-        }
-
         if (value > max) {
             return true;
         }

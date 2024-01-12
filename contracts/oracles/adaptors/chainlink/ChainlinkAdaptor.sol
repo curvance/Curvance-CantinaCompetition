@@ -229,8 +229,8 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
     ///      for pricing and staleness.
     /// @param data Chainlink feed details.
     /// @param inUSD A boolean to denote if the price is in USD.
-    /// @return A structure containing the price, error status,
-    ///         and the currency of the price.
+    /// @return pData A structure containing the price, error status,
+    ///               and the currency of the price.
     function _parseData(
         AdaptorData memory data,
         bool inUSD
@@ -244,7 +244,8 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
         (, int256 price, , uint256 updatedAt, ) = IChainlink(data.aggregator)
             .latestRoundData();
 
-        if (price < 0) {
+        // If we got a price of 0 or less, bubble up an error immediately.
+        if (price <= 0) {
             pData.hadError = true;
             return pData;
         }

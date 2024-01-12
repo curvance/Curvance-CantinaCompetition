@@ -210,15 +210,16 @@ contract Api3Adaptor is BaseOracleAdaptor {
     ///      for pricing and staleness.
     /// @param data Api3 feed details.
     /// @param inUSD A boolean to denote if the price is in USD.
-    /// @return A structure containing the price, error status,
-    ///         and the currency of the price.
+    /// @return pData A structure containing the price, error status,
+    ///               and the currency of the price.
     function _parseData(
         AdaptorData memory data,
         bool inUSD
     ) internal view returns (PriceReturnData memory pData) {
         (int256 price, uint256 updatedAt) = data.proxyFeed.read();
 
-        if (price < 0) {
+        // If we got a price of 0 or less, bubble up an error immediately.
+        if (price <= 0) {
             pData.hadError = true;
             return pData;
         }
@@ -249,15 +250,6 @@ contract Api3Adaptor is BaseOracleAdaptor {
         uint256 max,
         uint256 heartbeat
     ) internal view returns (bool) {
-        // We expect to never get a negative price here, 
-        // and a value of 0 would generally indicate no data. 
-        // So, we set the minimum intentionally here to 1, 
-        // which is denominated in `WAD` form, 
-        // meaning a minimum price of 1 / 1e18 in real terms.
-        if (value < 1) {
-            return true;
-        }
-
         if (value > max) {
             return true;
         }
