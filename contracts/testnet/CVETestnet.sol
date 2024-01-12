@@ -61,7 +61,7 @@ contract CVETestnet is ERC20 {
     constructor(
         ICentralRegistry centralRegistry_,
         address tokenBridgeRelayer_,
-        address team_
+        address builder_
     ) {
         if (
             !ERC165Checker.supportsInterface(
@@ -72,8 +72,8 @@ contract CVETestnet is ERC20 {
             revert CVE__ParametersAreInvalid();
         }
 
-        if (team_ == address(0)) {
-            team_ = msg.sender;
+        if (builder_ == address(0)) {
+            builder_ = msg.sender;
         }
 
         centralRegistry = centralRegistry_;
@@ -82,7 +82,7 @@ contract CVETestnet is ERC20 {
             wormhole = ITokenBridgeRelayer(tokenBridgeRelayer_).wormhole();
         }
         tokenGenerationEventTimestamp = block.timestamp;
-        teamAddress = team_;
+        builderAddress = builder_;
         // All allocations and mints are in 18 decimal form to match CVE.
 
         // 60,900,010 tokens minted as needed by the DAO.
@@ -92,7 +92,7 @@ contract CVETestnet is ERC20 {
         // 44,100,007.245 tokens (10.5%) vested over 4 years.
         builderAllocation = 44100007245e15;
         // Builder Vesting is for 4 years and unlocked monthly.
-        builderAllocationPerMonth = builderAllocation_ / 48;
+        builderAllocationPerMonth = builderAllocation / 48;
 
         // 50,400,008.285 (12%) minted initially for:
         // 29,400,004.83 (7%) from Capital Raises.
@@ -206,7 +206,7 @@ contract CVETestnet is ERC20 {
 
     /// @notice Sets the builder address.
     /// @dev Allows the builders to change the builder's address.
-    /// @param _address The new address for the builder.
+    /// @param newAddress The new address for the builder.
     function setBuilderAddress(address newAddress) external {
         if (msg.sender != builderAddress) {
             _revert(_UNAUTHORIZED_SELECTOR);

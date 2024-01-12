@@ -222,7 +222,7 @@ contract CVE is ERC20 {
 
     /// @notice Sets the builder address.
     /// @dev Allows the builders to change the builder's address.
-    /// @param _address The new address for the builder.
+    /// @param newAddress The new address for the builder.
     function setBuilderAddress(address newAddress) external {
         if (msg.sender != builderAddress) {
             _revert(_UNAUTHORIZED_SELECTOR);
