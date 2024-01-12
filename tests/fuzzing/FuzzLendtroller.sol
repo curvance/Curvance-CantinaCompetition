@@ -287,6 +287,8 @@ contract FuzzLendtroller is StatefulBaseMarket {
                 liqFee,
                 baseCFactor
             );
+        require(chainlinkUsdcUsd.latestAnswer() > 0);
+        require(chainlinkDaiUsd.latestAnswer() > 0);
         check_price_feed();
         try
             lendtroller.updateCollateralToken(
