@@ -2,7 +2,6 @@
 pragma solidity ^0.8.17;
 
 import { GaugeController, GaugeErrors, IGaugePool } from "contracts/gauge/GaugeController.sol";
-import { PartnerGaugePool } from "contracts/gauge/PartnerGaugePool.sol";
 
 import { DENOMINATOR } from "contracts/libraries/Constants.sol";
 import { ERC165 } from "contracts/libraries/external/ERC165.sol";
@@ -18,14 +17,7 @@ import { ICVE } from "contracts/interfaces/ICVE.sol";
 contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
     /// TYPES ///
 
-    struct PoolInfo {
-        uint256 lastRewardTimestamp;
-        // Accumulated Rewards per share, times 1e12. See below.
-        uint256 accRewardPerShare;
-        uint256 totalAmount;
-    }
-    struct UserInfo {
-        uint256 amount;
+    struct UserRewardInfo {
         uint256 rewardDebt;
         uint256 rewardPending;
     }
@@ -38,23 +30,37 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
 
     /// STORAGE ///
 
-    // Current partner gauges attached to this gauge pool
-    PartnerGaugePool[] public partnerGauges;
-    mapping(address => PoolInfo) public poolInfo; // token => pool info
-    mapping(address => mapping(address => UserInfo)) public userInfo; // token => user => info
     uint256 public firstDeposit;
+    // cToken => total supply
+    mapping(address => uint256) public totalSupply;
+    // cToken => user => balance
+    mapping(address => mapping(address => uint256)) public balanceOf;
+    // cToken => lastRewardTimestamp
+    mapping(address => uint256) public poolLastRewardTimestamp;
+    // Reward tokens attached
+    address[] public rewardTokens;
+    // epoch => rewardToken => rewardPerSec
+    mapping(uint256 => mapping(address => uint256)) private _epochRewardPerSec;
+    // cToken => rewardToken => accRewardPerShare
+    mapping(address => mapping(address => uint256))
+        public poolAccRewardPerShare;
+    // cToken => user => rewardToken => info
+    mapping(address => mapping(address => mapping(address => UserRewardInfo)))
+        public userDebtInfo;
 
     /// EVENTS ///
 
-    event AddPartnerGauge(address partnerGauge);
-    event RemovePartnerGauge(address partnerGauge);
+    event AddExtraReward(address newReward);
+    event RemoveExtraReward(address newReward);
     event Deposit(address user, address token, uint256 amount);
     event Withdraw(address user, address token, uint256 amount);
-    event Claim(address user, address token, uint256 amount);
+    event Claim(address user, address token);
 
     constructor(
         ICentralRegistry centralRegistry_
-    ) GaugeController(centralRegistry_) {}
+    ) GaugeController(centralRegistry_) {
+        rewardTokens.push(cve);
+    }
 
     /// EXTERNAL FUNCTIONS ///
 
@@ -86,67 +92,83 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
         lendtroller = lendtroller_;
     }
 
-    /// @notice Adds a new partner gauge to the gauge system
-    /// @param partnerGauge The address of the partner gauge to be added
-    function addPartnerGauge(address partnerGauge) external {
+    /// @notice Adds a new reward to the gauge system
+    /// @param newReward The address of new reward token to be added
+    function addExtraReward(address newReward) external {
         _checkDaoPermissions();
 
-        if (partnerGauge == address(0)) {
+        if (newReward == address(0)) {
             revert GaugeErrors.InvalidAddress();
         }
 
-        if (PartnerGaugePool(partnerGauge).activationTime() != 0) {
-            revert GaugeErrors.InvalidAddress();
+        for (uint256 i = 0; i < rewardTokens.length; ++i) {
+            if (rewardTokens[i] == newReward) {
+                revert GaugeErrors.InvalidAddress();
+            }
         }
 
-        partnerGauges.push(PartnerGaugePool(partnerGauge));
-        PartnerGaugePool(partnerGauge).activate();
+        rewardTokens.push(newReward);
 
-        emit AddPartnerGauge(partnerGauge);
+        emit AddExtraReward(newReward);
     }
 
-    /// @notice Removes a partner gauge from the gauge system
-    /// @param index The index of the partner gauge
-    /// @param partnerGauge The address of the partner gauge to be removed
-    function removePartnerGauge(uint256 index, address partnerGauge) external {
+    /// @notice Removes an extra reward from the gauge system
+    /// @param index The index of the extra reward
+    /// @param newReward The address of the extra reward to be removed
+    function removeExtraReward(uint256 index, address newReward) external {
+        // Cannot remove CVE
+        if (newReward == cve) {
+            revert GaugeErrors.Unauthorized();
+        }
+
         _checkDaoPermissions();
 
-        if (partnerGauge != address(partnerGauges[index])) {
+        if (newReward != address(rewardTokens[index])) {
             revert GaugeErrors.InvalidAddress();
         }
 
-        // If the partner gauge is not the last one in the array,
+        // If the extra reward is not the last one in the array,
         // copy its data down and then pop
-        if (index != (partnerGauges.length - 1)) {
-            partnerGauges[index] = partnerGauges[partnerGauges.length - 1];
+        if (index != (rewardTokens.length - 1)) {
+            rewardTokens[index] = rewardTokens[rewardTokens.length - 1];
         }
-        partnerGauges.pop();
+        rewardTokens.pop();
 
-        emit RemovePartnerGauge(partnerGauge);
+        emit RemoveExtraReward(newReward);
     }
 
-    function balanceOf(
+    /// @notice Returns reward emissions of a token
+    /// @param token Pool token address
+    /// @param epoch The epoch number
+    /// @param rewardToken The reward token address
+    function rewardAllocation(
         address token,
-        address user
-    ) external view returns (uint256) {
-        return userInfo[token][user].amount;
+        uint256 epoch,
+        address rewardToken
+    ) public view returns (uint256) {
+        if (rewardToken == cve) {
+            return _epochInfo[epoch].poolWeights[token];
+        } else {
+            return
+                (EPOCH_WINDOW *
+                    _epochRewardPerSec[epoch][rewardToken] *
+                    _epochInfo[epoch].poolWeights[token]) /
+                _epochInfo[epoch].totalWeights;
+        }
     }
 
-    function totalSupply(address token) external view returns (uint256) {
-        return poolInfo[token].totalAmount;
-    }
-
-    /// @notice Returns pending rewards of user
+    /// @notice Returns pending reward of user
     /// @param token Pool token address
     /// @param user User address
+    /// @param rewardToken Reward token address
     function pendingRewards(
         address token,
-        address user
-    ) external view returns (uint256) {
-        PoolInfo storage _pool = poolInfo[token];
-        uint256 accRewardPerShare = _pool.accRewardPerShare;
-        uint256 lastRewardTimestamp = _pool.lastRewardTimestamp;
-        uint256 totalDeposited = _pool.totalAmount;
+        address user,
+        address rewardToken
+    ) public view returns (uint256) {
+        uint256 accRewardPerShare = poolAccRewardPerShare[token][rewardToken];
+        uint256 lastRewardTimestamp = poolLastRewardTimestamp[token];
+        uint256 totalDeposited = totalSupply[token];
         if (lastRewardTimestamp == 0) {
             lastRewardTimestamp = startTime;
         }
@@ -161,7 +183,7 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
                 // update rewards from lastRewardTimestamp to endTimestamp
                 reward =
                     ((endTimestamp - lastRewardTimestamp) *
-                        _epochInfo[lastEpoch].poolWeights[token]) /
+                        rewardAllocation(token, lastEpoch, rewardToken)) /
                     EPOCH_WINDOW;
                 accRewardPerShare =
                     accRewardPerShare +
@@ -175,7 +197,7 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
             // update rewards from lastRewardTimestamp to current timestamp
             reward =
                 ((block.timestamp - lastRewardTimestamp) *
-                    _epochInfo[lastEpoch].poolWeights[token]) /
+                    rewardAllocation(token, lastEpoch, rewardToken)) /
                 EPOCH_WINDOW;
             accRewardPerShare =
                 accRewardPerShare +
@@ -183,12 +205,25 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
                 totalDeposited;
         }
 
-        UserInfo memory info = userInfo[token][user];
+        UserRewardInfo memory info = userDebtInfo[token][user][rewardToken];
         return
             info.rewardPending +
-            (info.amount * accRewardPerShare) /
+            (balanceOf[token][user] * accRewardPerShare) /
             (PRECISION) -
             info.rewardDebt;
+    }
+
+    /// @notice Returns pending rewards of user
+    /// @param token Pool token address
+    /// @param user User address
+    function pendingRewards(
+        address token,
+        address user
+    ) external view returns (uint256[] memory results) {
+        results = new uint256[](rewardTokens.length);
+        for (uint256 i = 0; i < rewardTokens.length; ++i) {
+            results[i] = pendingRewards(token, user, rewardTokens[i]);
+        }
     }
 
     /// @notice Deposit into gauge pool
@@ -214,38 +249,30 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
 
         _calcPending(user, token);
 
-        userInfo[token][user].amount += amount;
-        poolInfo[token].totalAmount += amount;
+        balanceOf[token][user] += amount;
+        totalSupply[token] += amount;
 
         if (firstDeposit == 0) {
             // if first deposit, the new rewards from gauge start to this point will be unallocated rewards
             firstDeposit = block.timestamp;
             updatePool(token);
 
-            uint256 unallocatedRewards = (poolInfo[token].accRewardPerShare *
-                poolInfo[token].totalAmount) / PRECISION;
-            if (unallocatedRewards > 0) {
-                SafeTransferLib.safeTransfer(
-                    cve,
-                    centralRegistry.daoAddress(),
-                    unallocatedRewards
-                );
+            for (uint256 i = 0; i < rewardTokens.length; ++i) {
+                address rewardToken = rewardTokens[i];
+                uint256 unallocatedRewards = (poolAccRewardPerShare[token][
+                    rewardToken
+                ] * totalSupply[token]) / PRECISION;
+                if (unallocatedRewards > 0) {
+                    SafeTransferLib.safeTransfer(
+                        rewardToken,
+                        centralRegistry.daoAddress(),
+                        unallocatedRewards
+                    );
+                }
             }
         }
 
         _calcDebt(user, token);
-
-        uint256 numPartnerGauges = partnerGauges.length;
-
-        for (uint256 i; i < numPartnerGauges; ) {
-            if (address(partnerGauges[i]) != address(0)) {
-                partnerGauges[i].deposit(token, user, amount);
-            }
-
-            unchecked {
-                ++i;
-            }
-        }
 
         emit Deposit(user, token, amount);
     }
@@ -272,30 +299,17 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
             revert GaugeErrors.InvalidToken();
         }
 
-        UserInfo storage info = userInfo[token][user];
-        if (info.amount < amount) {
+        if (balanceOf[token][user] < amount) {
             revert GaugeErrors.InvalidAmount();
         }
 
         updatePool(token);
         _calcPending(user, token);
 
-        info.amount -= amount;
-        poolInfo[token].totalAmount -= amount;
+        balanceOf[token][user] -= amount;
+        totalSupply[token] -= amount;
 
         _calcDebt(user, token);
-
-        uint256 numPartnerGauges = partnerGauges.length;
-
-        for (uint256 i; i < numPartnerGauges; ) {
-            if (address(partnerGauges[i]) != address(0)) {
-                partnerGauges[i].withdraw(token, user, amount);
-            }
-
-            unchecked {
-                ++i;
-            }
-        }
 
         emit Withdraw(user, token, amount);
     }
@@ -310,17 +324,25 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
         updatePool(token);
         _calcPending(msg.sender, token);
 
-        uint256 rewards = userInfo[token][msg.sender].rewardPending;
-        if (rewards == 0) {
+        bool hasRewards = false;
+        for (uint256 i = 0; i < rewardTokens.length; ++i) {
+            address rewardToken = rewardTokens[i];
+            uint256 rewards = userDebtInfo[token][msg.sender][rewardToken]
+                .rewardPending;
+            if (rewards > 0) {
+                hasRewards = true;
+                SafeTransferLib.safeTransfer(rewardToken, msg.sender, rewards);
+            }
+
+            userDebtInfo[token][msg.sender][rewardToken].rewardPending = 0;
+        }
+        if (!hasRewards) {
             revert GaugeErrors.NoReward();
         }
-        SafeTransferLib.safeTransfer(cve, msg.sender, rewards);
-
-        userInfo[token][msg.sender].rewardPending = 0;
 
         _calcDebt(msg.sender, token);
 
-        emit Claim(msg.sender, token, rewards);
+        emit Claim(msg.sender, token);
     }
 
     /// @notice Claim rewards from gauge pool
@@ -340,12 +362,12 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
         updatePool(token);
         _calcPending(msg.sender, token);
 
-        uint256 rewards = userInfo[token][msg.sender].rewardPending;
+        uint256 rewards = userDebtInfo[token][msg.sender][cve].rewardPending;
         if (rewards == 0) {
             revert GaugeErrors.NoReward();
         }
 
-        userInfo[token][msg.sender].rewardPending = 0;
+        userDebtInfo[token][msg.sender][cve].rewardPending = 0;
 
         uint256 currentLockBoost = centralRegistry.lockBoostMultiplier();
         // If theres a current lock boost, recognize their bonus rewards
@@ -369,7 +391,7 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
 
         _calcDebt(msg.sender, token);
 
-        emit Claim(msg.sender, token, rewards);
+        emit Claim(msg.sender, token);
     }
 
     /// @notice Claim rewards from gauge pool
@@ -388,12 +410,12 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
         updatePool(token);
         _calcPending(msg.sender, token);
 
-        uint256 rewards = userInfo[token][msg.sender].rewardPending;
+        uint256 rewards = userDebtInfo[token][msg.sender][cve].rewardPending;
         if (rewards == 0) {
             revert GaugeErrors.NoReward();
         }
 
-        userInfo[token][msg.sender].rewardPending = 0;
+        userDebtInfo[token][msg.sender][cve].rewardPending = 0;
 
         uint256 currentLockBoost = centralRegistry.lockBoostMultiplier();
         // If theres a current lock boost, recognize their bonus rewards
@@ -416,7 +438,7 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
 
         _calcDebt(msg.sender, token);
 
-        emit Claim(msg.sender, token, rewards);
+        emit Claim(msg.sender, token);
     }
 
     /// PUBLIC FUNCTIONS ///
@@ -428,7 +450,7 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
             return;
         }
 
-        uint256 lastRewardTimestamp = poolInfo[token].lastRewardTimestamp;
+        uint256 lastRewardTimestamp = poolLastRewardTimestamp[token];
         if (lastRewardTimestamp == 0) {
             lastRewardTimestamp = startTime;
         }
@@ -437,46 +459,52 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
             return;
         }
 
-        uint256 totalDeposited = poolInfo[token].totalAmount;
+        uint256 totalDeposited = totalSupply[token];
         if (totalDeposited == 0) {
             return;
         }
 
-        uint256 accRewardPerShare = poolInfo[token].accRewardPerShare;
-        uint256 lastEpoch = epochOfTimestamp(lastRewardTimestamp);
-        uint256 currentEpoch = currentEpoch();
-        uint256 reward;
+        for (uint256 i = 0; i < rewardTokens.length; ++i) {
+            address rewardToken = rewardTokens[i];
+            uint256 accRewardPerShare = poolAccRewardPerShare[token][
+                rewardToken
+            ];
+            uint256 lastEpoch = epochOfTimestamp(lastRewardTimestamp);
+            uint256 currentEpoch = currentEpoch();
+            uint256 reward;
 
-        while (lastEpoch < currentEpoch) {
-            uint256 endTimestamp = epochEndTime(lastEpoch);
+            while (lastEpoch < currentEpoch) {
+                uint256 endTimestamp = epochEndTime(lastEpoch);
 
-            // update rewards from lastRewardTimestamp to endTimestamp
+                // update rewards from lastRewardTimestamp to endTimestamp
+                reward =
+                    ((endTimestamp - lastRewardTimestamp) *
+                        rewardAllocation(token, lastEpoch, rewardToken)) /
+                    EPOCH_WINDOW;
+                accRewardPerShare =
+                    accRewardPerShare +
+                    (reward * (PRECISION)) /
+                    totalDeposited;
+
+                ++lastEpoch;
+                lastRewardTimestamp = endTimestamp;
+            }
+
+            // update rewards from lastRewardTimestamp to current timestamp
             reward =
-                ((endTimestamp - lastRewardTimestamp) *
-                    _epochInfo[lastEpoch].poolWeights[token]) /
+                ((block.timestamp - lastRewardTimestamp) *
+                    rewardAllocation(token, lastEpoch, rewardToken)) /
                 EPOCH_WINDOW;
             accRewardPerShare =
                 accRewardPerShare +
                 (reward * (PRECISION)) /
                 totalDeposited;
 
-            ++lastEpoch;
-            lastRewardTimestamp = endTimestamp;
+            poolAccRewardPerShare[token][rewardToken] = accRewardPerShare;
         }
 
-        // update rewards from lastRewardTimestamp to current timestamp
-        reward =
-            ((block.timestamp - lastRewardTimestamp) *
-                _epochInfo[lastEpoch].poolWeights[token]) /
-            EPOCH_WINDOW;
-        accRewardPerShare =
-            accRewardPerShare +
-            (reward * (PRECISION)) /
-            totalDeposited;
-
         // update pool storage
-        poolInfo[token].lastRewardTimestamp = block.timestamp;
-        poolInfo[token].accRewardPerShare = accRewardPerShare;
+        poolLastRewardTimestamp[token] = block.timestamp;
     }
 
     /// @inheritdoc ERC165
@@ -492,18 +520,30 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
 
     /// @notice Calculate user's pending rewards
     function _calcPending(address user, address token) internal {
-        UserInfo storage info = userInfo[token][user];
-        info.rewardPending +=
-            (info.amount * poolInfo[token].accRewardPerShare) /
-            (PRECISION) -
-            info.rewardDebt;
+        for (uint256 i = 0; i < rewardTokens.length; ++i) {
+            address rewardToken = rewardTokens[i];
+            UserRewardInfo storage info = userDebtInfo[token][user][
+                rewardToken
+            ];
+            info.rewardPending +=
+                (balanceOf[token][user] *
+                    poolAccRewardPerShare[token][rewardToken]) /
+                (PRECISION) -
+                info.rewardDebt;
+        }
     }
 
     /// @notice Calculate user's debt amount for reward calculation
     function _calcDebt(address user, address token) internal {
-        UserInfo storage info = userInfo[token][user];
-        info.rewardDebt =
-            (info.amount * poolInfo[token].accRewardPerShare) /
-            (PRECISION);
+        for (uint256 i = 0; i < rewardTokens.length; ++i) {
+            address rewardToken = rewardTokens[i];
+            UserRewardInfo storage info = userDebtInfo[token][user][
+                rewardToken
+            ];
+            info.rewardDebt =
+                (balanceOf[token][user] *
+                    poolAccRewardPerShare[token][rewardToken]) /
+                (PRECISION);
+        }
     }
 }
