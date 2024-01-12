@@ -65,11 +65,7 @@ contract TestBaseVeCVE is TestBase {
         cve = new CVE(
             ICentralRegistry(address(centralRegistry)),
             _TOKEN_BRIDGE_RELAYER,
-            _ZERO_ADDRESS,
-            0,
-            0,
-            0,
-            0
+            _ZERO_ADDRESS
         );
         centralRegistry.setCVE(address(cve));
     }
