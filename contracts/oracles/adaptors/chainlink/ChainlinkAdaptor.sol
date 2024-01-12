@@ -86,10 +86,10 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
         }
 
         if (inUSD) {
-            return _getPriceinUSD(asset);
+            return _getPriceInUSD(asset);
         }
 
-        return _getPriceinETH(asset);
+        return _getPriceInETH(asset);
     }
 
     /// @notice Add a Chainlink Price Feed as an asset.
@@ -200,7 +200,7 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
     /// @param asset The address of the asset for which the price is needed.
     /// @return A structure containing the price, error status,
     ///         and the quote format of the price (USD).
-    function _getPriceinUSD(
+    function _getPriceInUSD(
         address asset
     ) internal view returns (PriceReturnData memory) {
         if (adaptorDataUSD[asset].isConfigured) {
@@ -214,7 +214,7 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
     /// @param asset The address of the asset for which the price is needed.
     /// @return A structure containing the price, error status,
     ///         and the quote format of the price (ETH).
-    function _getPriceinETH(
+    function _getPriceInETH(
         address asset
     ) internal view returns (PriceReturnData memory) {
         if (adaptorDataNonUSD[asset].isConfigured) {
@@ -234,28 +234,31 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
     function _parseData(
         AdaptorData memory data,
         bool inUSD
-    ) internal view returns (PriceReturnData memory) {
+    ) internal view returns (PriceReturnData memory pData) {
+        pData.inUSD = inUSD;
         if (!IPriceRouter(centralRegistry.priceRouter()).isSequencerValid()) {
-            return PriceReturnData({ price: 0, hadError: true, inUSD: inUSD });
+            pData.hadError = true;
+            return pData;
         }
 
         (, int256 price, , uint256 updatedAt, ) = IChainlink(data.aggregator)
             .latestRoundData();
+
+        if (price < 0) {
+            pData.hadError = true;
+            return pData;
+        }
+
         uint256 newPrice = (uint256(price) * WAD) / (10 ** data.decimals);
 
-        return (
-            PriceReturnData({
-                price: uint240(newPrice),
-                hadError: _verifyData(
-                    uint256(price),
-                    updatedAt,
-                    data.max,
-                    data.min,
-                    data.heartbeat
-                ),
-                inUSD: inUSD
-            })
-        );
+        pData.price = uint240(newPrice);
+        pData.hadError = _verifyData(
+                        uint256(price),
+                        updatedAt,
+                        data.max,
+                        data.min,
+                        data.heartbeat
+                    );
     }
 
     /// @notice Validates the feed data based on various constraints.

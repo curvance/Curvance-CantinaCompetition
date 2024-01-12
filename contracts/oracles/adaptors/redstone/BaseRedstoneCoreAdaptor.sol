@@ -23,12 +23,6 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
         uint256 max;
     }
 
-    /// CONSTANTS ///
-    
-    /// @notice If zero is specified for a Redstone Core asset heartbeat,
-    ///         this value is used instead.
-    uint256 public constant DEFAULT_HEART_BEAT = 1 days;
-
     /// STORAGE ///
 
     /// @notice Redstone Adaptor Data for pricing in ETH
@@ -72,10 +66,10 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
         }
 
         if (inUSD) {
-            return _getPriceinUSD(asset);
+            return _getPriceInUSD(asset);
         }
 
-        return _getPriceinETH(asset);
+        return _getPriceInETH(asset);
     }
 
     /// @notice Add a Redstone Core Price Feed as an asset.
@@ -150,7 +144,7 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
     /// @param asset The address of the asset for which the price is needed.
     /// @return A structure containing the price, error status,
     ///         and the quote format of the price (USD).
-    function _getPriceinUSD(
+    function _getPriceInUSD(
         address asset
     ) internal view returns (PriceReturnData memory) {
         if (adaptorDataUSD[asset].isConfigured) {
@@ -164,7 +158,7 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
     /// @param asset The address of the asset for which the price is needed.
     /// @return A structure containing the price, error status,
     ///         and the quote format of the price (ETH).
-    function _getPriceinETH(
+    function _getPriceInETH(
         address asset
     ) internal view returns (PriceReturnData memory) {
         if (adaptorDataNonUSD[asset].isConfigured) {
@@ -184,23 +178,16 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
     function _parseData(
         AdaptorData memory data,
         bool inUSD
-    ) internal view returns (PriceReturnData memory) {
+    ) internal view returns (PriceReturnData memory pData) {
+        pData.inUSD = inUSD;
         uint256 price = _extractPrice(data.symbolHash);
 
         // Redstone Core always has decimals = 8 so we need to
         // adjust back to decimals = 18.
-        uint256 newPrice = uint256(price) * (10 ** 10);
+        uint256 newPrice = price * (10 ** 10);
 
-        return (
-            PriceReturnData({
-                price: uint240(newPrice),
-                hadError: _verifyData(
-                    uint256(price),
-                    data.max
-                ),
-                inUSD: inUSD
-            })
-        );
+        pData.price = uint240(newPrice);
+        pData.hadError = _verifyData(price, data.max);
     }
 
     /// @notice Validates the feed data based on various constraints.

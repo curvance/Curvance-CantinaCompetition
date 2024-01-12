@@ -9,42 +9,43 @@ import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.so
 import { IChainlink } from "contracts/interfaces/external/chainlink/IChainlink.sol";
 import { IOracleAdaptor, PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
 
-/// @title Curvance Dual Oracle Price Router
+/// @title Curvance Dual Oracle Price Router.
 /// @notice Provides a universal interface allowing Curvance contracts
 ///         to retrieve secure pricing data based on various price feeds.
 contract PriceRouter {
     /// TYPES ///
 
     struct FeedData {
-        uint240 price; // price of the asset in some asset, either ETH or USD
-        bool hadError; // message return data, true if adaptor couldnt price asset
+        /// @notice price of the asset in some asset, either ETH or USD.
+        uint240 price;
+        /// @notice message return data, true if adaptor couldnt price asset.
+        bool hadError;
     }
 
     struct MTokenData {
-        bool isMToken; // Whether the provided address is an MToken or not
-        address underlying; // Token address of underlying asset for MToken
+        /// @notice Whether the provided address is an MToken or not.
+        bool isMToken;
+        /// @notice Token address of underlying asset for MToken.
+        address underlying;
     }
 
     /// CONSTANTS ///
 
     /// @notice The address of the chainlink feed to convert ETH -> USD.
     address public immutable CHAINLINK_ETH_USD;
-
     /// @notice The number of decimals the aggregator responses with.
     uint256 public immutable CHAINLINK_DECIMALS;
-
     /// @notice Curvance DAO hub.
     ICentralRegistry public immutable centralRegistry;
-
     /// @notice Time to pass before accepting answers when sequencer
     ///         comes back up.
     uint256 public constant GRACE_PERIOD_TIME = 3600;
 
-    // `bytes4(keccak256(bytes("PriceRouter__NotSupported()")))`
+    /// @dev `bytes4(keccak256(bytes("PriceRouter__NotSupported()")))`.
     uint256 internal constant _NOT_SUPPORTED_SELECTOR = 0xe4558fac;
-    // `bytes4(keccak256(bytes("PriceRouter__InvalidParameter()")))`
+    /// @dev `bytes4(keccak256(bytes("PriceRouter__InvalidParameter()")))`.
     uint256 internal constant _INVALID_PARAMETER_SELECTOR = 0xebd2e1ff;
-    // `bytes4(keccak256(bytes("PriceRouter__ErrorCodeFlagged()")))`
+    /// @dev `bytes4(keccak256(bytes("PriceRouter__ErrorCodeFlagged()")))`.
     uint256 internal constant _ERROR_CODE_FLAGGED_SELECTOR = 0x891531fb;
 
     /// STORAGE ///

@@ -110,8 +110,6 @@ contract PendlePrincipalTokenAdaptor is BaseOracleAdaptor {
             return pData;
         }
 
-        // Multiply the quote asset price by the ptRate
-        // to get the Principal Token fair value.
         pData.price = uint240(price);
     }
 
