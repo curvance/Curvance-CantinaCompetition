@@ -137,6 +137,38 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
         emit RemoveExtraReward(newReward);
     }
 
+    function setRewardPerSec(
+        uint256 epoch,
+        address rewardToken,
+        uint256 newRewardPerSec
+    ) external {
+        if (!centralRegistry.hasDaoPermissions(msg.sender)) {
+            revert GaugeErrors.Unauthorized();
+        }
+
+        if (!(epoch == 0 && startTime == 0) && epoch != currentEpoch() + 1) {
+            revert GaugeErrors.InvalidEpoch();
+        }
+
+        uint256 prevRewardPerSec = _epochRewardPerSec[epoch][rewardToken];
+        _epochRewardPerSec[epoch][rewardToken] = newRewardPerSec;
+
+        if (prevRewardPerSec > newRewardPerSec) {
+            SafeTransferLib.safeTransfer(
+                rewardToken,
+                msg.sender,
+                EPOCH_WINDOW * (prevRewardPerSec - newRewardPerSec)
+            );
+        } else {
+            SafeTransferLib.safeTransferFrom(
+                rewardToken,
+                msg.sender,
+                address(this),
+                EPOCH_WINDOW * (newRewardPerSec - prevRewardPerSec)
+            );
+        }
+    }
+
     /// @notice Returns reward emissions of a token
     /// @param token Pool token address
     /// @param epoch The epoch number
@@ -450,12 +482,12 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
             return;
         }
 
-        uint256 lastRewardTimestamp = poolLastRewardTimestamp[token];
-        if (lastRewardTimestamp == 0) {
-            lastRewardTimestamp = startTime;
+        uint256 _lastRewardTimestamp = poolLastRewardTimestamp[token];
+        if (_lastRewardTimestamp == 0) {
+            _lastRewardTimestamp = startTime;
         }
 
-        if (block.timestamp <= lastRewardTimestamp) {
+        if (block.timestamp <= _lastRewardTimestamp) {
             return;
         }
 
@@ -465,6 +497,7 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
         }
 
         for (uint256 i = 0; i < rewardTokens.length; ++i) {
+            uint256 lastRewardTimestamp = _lastRewardTimestamp;
             address rewardToken = rewardTokens[i];
             uint256 accRewardPerShare = poolAccRewardPerShare[token][
                 rewardToken
