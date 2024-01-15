@@ -24,6 +24,10 @@ contract FuzzVECVE is StatefulBaseMarket {
         );
     }
 
+    /// @custom:property  vecve-1 - Creating a lock with a specified amount when the system is not in a shutdown state should succeed, with preLockCVEBalance matching postLockCVEBalance + amount and preLockVECVEBalance + amount matching postLockVECVEBalance.
+    /// @custom:precondition  veCVE contract must not be shut down
+    /// @custom:precondition  amount clamped between [WAD, uint64.max]
+    /// @custom:precondition  CVE token must approve VeCVE token contract
     function create_lock_when_not_shutdown(
         uint256 amount,
         bool continuousLock
@@ -74,6 +78,10 @@ contract FuzzVECVE is StatefulBaseMarket {
         }
     }
 
+    /// @custom:property  vecve-2 – Creating a lock with an amount less than WAD should fail and revert with an error message indicating invalid lock amount.
+    /// @custom:precondition  VeCVE contract is not shut down
+    /// @custom:precondition  amount is clamped between [1, WAD-1]
+    /// @custom:precondition  VeCVE contract is approved for CVE
     function create_lock_with_less_than_wad_should_fail(
         uint256 amount
     ) public {
@@ -109,6 +117,10 @@ contract FuzzVECVE is StatefulBaseMarket {
         }
     }
 
+    ///@custom:property  vecve-3 – Creating a lock with zero amount should fail and revert with an error message indicating an invalid lock amount.
+    /// @custom:precondition  VeCVE contract is not shut down
+    /// @custom:precondition  amount is 0
+    /// @custom:precondition  VeCVE contract is approved for CVE
     function create_lock_with_zero_amount_should_fail() public {
         require(veCVE.isShutdown() != 2);
         uint256 amount = 0;
@@ -142,6 +154,233 @@ contract FuzzVECVE is StatefulBaseMarket {
         }
     }
 
+    /// @custom:property vecve-4 – Combining all continuous locks into a single continuous lock should result in identical user points before and after the operation.
+    /// @custom:property vecve-5 – Combining all continuous locks into a single continuous lock should result in an increase in user points being greater than veCVE balance * MULTIPLIER / WAD.
+    /// @custom:property vecve-6 – Combining all continuous locks into a single continuous lock should result in chainUnlocksByEpoch being equal to 0.
+    /// @custom:property vecve-7 – Combining all continuous locks into a single continuous lock should result in chainUnlocksByEpoch being equal to 0.
+    /// @custom:precondition  User must have more than 2 locks created
+    /// @custom:precondition  All previous locks must be continuous
+    function combineAllLocks_for_all_continuous_to_continuous_terminal_should_succeed()
+        public
+    {
+        bool continuous = true;
+        require(numLocks >= 2);
+        uint256 lockIndex = 0;
+
+        uint256 preCombineUserPoints = veCVE.userPoints(address(this));
+        (
+            uint256 newLockAmount,
+            uint256 numberOfExistingContinuousLocks
+        ) = get_all_user_lock_info(address(this));
+        require(numberOfExistingContinuousLocks == numLocks);
+
+        try
+            veCVE.combineAllLocks(
+                continuous,
+                defaultContinuous.rewardsData,
+                defaultContinuous.param,
+                defaultContinuous.aux
+            )
+        {
+            // userLocks.amount must sum to the individual amounts for each lock
+            (uint216 combinedAmount, uint40 combinedUnlockTime) = veCVE
+                .userLocks(address(this), 0);
+
+            uint256 postCombineUserPoints = veCVE.userPoints(address(this));
+            // If the existing locks that the user had were all continuous
+
+            // And a user wants to convert it to a single continuous lock
+            // Ensure that the user points before and after the combine are identical
+            // [continuous, continuous] => continuous terminal; preCombine == postCombine
+            assertEq(
+                preCombineUserPoints,
+                postCombineUserPoints,
+                "VE_CVE - combineAllLocks() - user points should be same for all prior continuous => continuous failed"
+            );
+
+            emit LogUint256(
+                "post combine user points:",
+                (postCombineUserPoints * veCVE.CL_POINT_MULTIPLIER())
+            );
+            assertGte(
+                postCombineUserPoints,
+                (
+                    (veCVE.balanceOf(address(this)) *
+                        veCVE.CL_POINT_MULTIPLIER())
+                ) / WAD,
+                "VE_CVE - combineALlLocks() veCVE balance = userPoints * multiplier/DENOMINATOR failed for all continuous => continuous"
+            );
+            assert_continuous_locks_has_no_user_or_chain_unlocks(
+                combinedUnlockTime
+            );
+            numLocks = 1;
+        } catch {
+            assertWithMsg(
+                false,
+                "VE_CVE - combineAllLocks() failed unexpectedly with correct preconditions"
+            );
+        }
+    }
+
+    /// @custom:property vecve-8 – Combining all non-continuous locks into a single non-continuous lock should result in the combined lock amount matching the sum of original lock amounts.
+    /// @custom:property vecve-9 – Combining all continuous locks into a single continuous lock should result in resulting user points times the CL_POINT_MULTIPLIER being greater than or equal to the balance of veCVE.
+    /// @custom:property vecve-10 – Combining non-continuous locks into continuous lock terminals should result in increased post combine user points compared to the pre combine user points.
+    /// @custom:property vecve-11 – Combining non-continuous locks into continuous lock terminals should result in the userUnlockByEpoch value decreasing for each respective epoch.
+    /// @custom:property vecve-12 – Combining non-continuous locks into continuous lock terminals should result in chainUnlockByEpoch decreasing for each respective epoch.
+    /// @custom:property vecve-13 – Combining non-continuous locks to continuous locks should result in chainUnlockByEpochs being equal to 0.
+    /// @custom:property vecve-14 – Combining non-continuous locks to continuous locks should result in the userUnlocksByEpoch being equal to 0.
+    /// @custom:precondition  user must have more than 2 existing locks
+    /// @custom:precondition  some of the pre-existing locks must be non-cntinuous
+    function combineAllLocks_non_continuous_to_continuous_terminals_should_succeed()
+        public
+    {
+        bool continuous = true;
+        require(numLocks >= 2);
+        save_epoch_unlock_values();
+
+        uint256 preCombineUserPoints = veCVE.userPoints(address(this));
+
+        (
+            uint256 newLockAmount,
+            uint256 numberOfExistingContinuousLocks
+        ) = get_all_user_lock_info(address(this));
+        require(numberOfExistingContinuousLocks < numLocks);
+
+        try
+            veCVE.combineAllLocks(
+                continuous,
+                defaultContinuous.rewardsData,
+                defaultContinuous.param,
+                defaultContinuous.aux
+            )
+        {
+            (uint216 combinedAmount, uint40 combinedUnlockTime) = veCVE
+                .userLocks(address(this), 0);
+
+            // vecve-8
+            assertEq(
+                combinedAmount,
+                newLockAmount,
+                "VE_CVE - combineAllLocks() expected amount sum of new lock to equal calculated"
+            );
+            uint256 postCombineUserPoints = veCVE.userPoints(address(this));
+            // vecve-9
+            assertLt(
+                preCombineUserPoints,
+                postCombineUserPoints,
+                "VE_CVE - combineAllLocks() - some or no prior continuous => continuous failed"
+            );
+            // vecve-10
+            assertGte(
+                postCombineUserPoints,
+                (
+                    (veCVE.balanceOf(address(this)) *
+                        veCVE.CL_POINT_MULTIPLIER())
+                ) / WAD,
+                "VE_CVE - combineALlLocks() veCVE balance = userPoints * multiplier/DENOMINATOR failed for all continuous => continuous"
+            );
+            // for each existing lock's unique epoch
+            for (uint i = 0; i < uniqueEpochs.length; i++) {
+                uint256 unlockEpoch = uniqueEpochs[i];
+                // vecve-11
+                assertGte(
+                    epochBalances[unlockEpoch].userUnlocksByEpoch,
+                    veCVE.userUnlocksByEpoch(address(this), unlockEpoch),
+                    "VE_CVE - pre userUnlockByEpoch must exceed post userUnlockByEpoch after noncontinuous -> continuous terminal"
+                );
+                // vecve-12
+                assertGte(
+                    epochBalances[unlockEpoch].chainUnlocksByEpoch,
+                    veCVE.chainUnlocksByEpoch(unlockEpoch),
+                    "VE_CVE - pre- chainUnlockByEpoch must exceed post chainUnlockByEpoch after noncontinuous -> continuous terminal"
+                );
+            }
+            // vecve-13, vecve-14
+            assert_continuous_locks_has_no_user_or_chain_unlocks(
+                combinedUnlockTime
+            );
+            numLocks = 1;
+        } catch {
+            assertWithMsg(
+                false,
+                "VE_CVE - combineAllLocks() failed unexpectedly with correct preconditions"
+            );
+        }
+    }
+
+    /// @custom:property vecve-15– Combining any locks to a non continuous terminal should result in the amount for the combined terminal matching the sum of original lock amounts.
+    /// @custom:property vecve-16 – Combining some continuous locks to a non continuous terminal should result in user points decreasing.
+    /// @custom:property vecve-17 – Combining no prior continuous locks to a non continuous terminal should result in no change in user points.
+    /// @custom:property vecve-18 – Combining some prior continuous locks to a non continuous terminal should result in the veCVE balance of a user equaling the user points.
+    /// @custom:precondition  User must have at least 2 existing locks
+    function combineAllLocks_should_succeed_to_non_continuous_terminal()
+        public
+    {
+        bool continuous = false;
+        require(numLocks >= 2);
+        save_epoch_unlock_values();
+
+        uint256 preCombineUserPoints = veCVE.userPoints(address(this));
+        (
+            uint256 newLockAmount,
+            uint256 numberOfExistingContinuousLocks
+        ) = get_all_user_lock_info(address(this));
+
+        try
+            veCVE.combineAllLocks(
+                continuous,
+                defaultContinuous.rewardsData,
+                defaultContinuous.param,
+                defaultContinuous.aux
+            )
+        {
+            numLocks = 1;
+            // userLocks.amount must sum to the individual amounts for each lock
+            (uint216 combinedAmount, uint40 combinedUnlockTime) = veCVE
+                .userLocks(address(this), 0);
+
+            // vecve-15
+            assertEq(
+                combinedAmount,
+                newLockAmount,
+                "VE_CVE - combineAllLocks() expected amount sum of new lock to equal calculated"
+            );
+            uint256 postCombineUserPoints = veCVE.userPoints(address(this));
+
+            if (numberOfExistingContinuousLocks > 0) {
+                // vecve-16
+                assertGt(
+                    preCombineUserPoints,
+                    postCombineUserPoints,
+                    "VE_CVE - combineAllLocks() - ALL continuous => !continuous failed"
+                );
+            }
+            // no locks prior were continuous
+            else {
+                // CAN ADD: Post-condition check on the epoch balances
+                // vecve-17
+                assertEq(
+                    preCombineUserPoints,
+                    postCombineUserPoints,
+                    "VE_CVE - combineAllLocks() NO continuous locks -> !continuous failed"
+                );
+            }
+            //VECVE-18
+            assertEq(
+                veCVE.balanceOf(address(this)),
+                postCombineUserPoints,
+                "VE_CVE - combineAllLocks() balance should equal post combine user points"
+            );
+
+            numLocks = 1;
+        } catch {
+            assertWithMsg(
+                false,
+                "VE_CVE - combineAllLocks() failed unexpectedly with correct preconditions"
+            );
+        }
+    }
+
     function extendLock_should_succeed_if_not_shutdown(
         uint256 seed,
         bool continuousLock
@@ -155,6 +394,7 @@ contract FuzzVECVE is StatefulBaseMarket {
         );
         emit LogUint256("preextended lock time", preExtendLockTime);
         require(preExtendLockTime > block.timestamp);
+        assert(false);
         require(preExtendLockTime != veCVE.CONTINUOUS_LOCK_VALUE());
         if (!continuousLock) {
             isAllContinuous = false;
@@ -209,40 +449,9 @@ contract FuzzVECVE is StatefulBaseMarket {
         } catch {}
     }
 
-    function extend_lock_should_fail_if_already_continuous(
-        uint256 seed,
-        bool continuousLock
-    ) public {
-        require(veCVE.isShutdown() != 2);
-        uint256 lockIndex = get_existing_lock(seed);
-        (, uint256 unlockTime) = get_associated_lock(address(this), lockIndex);
-
-        require(unlockTime == veCVE.CONTINUOUS_LOCK_VALUE());
-
-        try
-            veCVE.extendLock(
-                lockIndex,
-                continuousLock,
-                RewardsData(address(0), true, true, true),
-                bytes(""),
-                0
-            )
-        {
-            // VECVE.extendLock() is expected to fail if a lock is already continuous
-            assertWithMsg(
-                false,
-                "VE_CVE - extendLock() should not be successful"
-            );
-        } catch (bytes memory revertData) {
-            uint256 errorSelector = extractErrorSelector(revertData);
-
-            assertWithMsg(
-                errorSelector == vecve_lockTypeMismatchHash,
-                "VE_CVE - extendLock() failed unexpectedly"
-            );
-        }
-    }
-
+    /// @custom:property VECVCE-24 – Trying to extend a lock that is already continuous should fail and revert with an error message indicating a lock type mismatch.
+    /// @custom:precondition  veCVE is not shut down
+    /// @custom:precondition  unlock time for lock is CONTINUOUS_LOCK_VALUE
     function extend_lock_should_fail_if_continuous(
         uint256 seed,
         bool continuousLock
@@ -278,6 +487,8 @@ contract FuzzVECVE is StatefulBaseMarket {
         }
     }
 
+    /// @custom:property vecve-25 – Trying to extend a lock when the system is in shutdown should fail and revert with an error message indicating that the system is shut down.
+    /// @custom:precondition  system is shut down
     function extend_lock_should_fail_if_shutdown(
         uint256 lockIndex,
         bool continuousLock
@@ -413,209 +624,7 @@ contract FuzzVECVE is StatefulBaseMarket {
         }
     }
 
-    function combineAllLocks_for_all_continuous_to_continuous_terminal_should_succeed()
-        public
-    {
-        bool continuous = true;
-        require(numLocks >= 2);
-        uint256 lockIndex = 0;
-
-        uint256 preCombineUserPoints = veCVE.userPoints(address(this));
-        (
-            uint256 newLockAmount,
-            uint256 numberOfExistingContinuousLocks
-        ) = get_all_user_lock_info(address(this));
-        require(numberOfExistingContinuousLocks == numLocks);
-
-        try
-            veCVE.combineAllLocks(
-                continuous,
-                defaultContinuous.rewardsData,
-                defaultContinuous.param,
-                defaultContinuous.aux
-            )
-        {
-            // userLocks.amount must sum to the individual amounts for each lock
-            (uint216 combinedAmount, uint40 combinedUnlockTime) = veCVE
-                .userLocks(address(this), 0);
-
-            uint256 postCombineUserPoints = veCVE.userPoints(address(this));
-            // If the existing locks that the user had were all continuous
-
-            // And a user wants to convert it to a single continuous lock
-            // Ensure that the user points before and after the combine are identical
-            // [continuous, continuous] => continuous terminal; preCombine == postCombine
-            assertEq(
-                preCombineUserPoints,
-                postCombineUserPoints,
-                "VE_CVE - combineAllLocks() - user points should be same for all prior continuous => continuous failed"
-            );
-
-            emit LogUint256(
-                "post combine user points:",
-                (postCombineUserPoints * veCVE.CL_POINT_MULTIPLIER())
-            );
-            assertGte(
-                postCombineUserPoints,
-                (
-                    (veCVE.balanceOf(address(this)) *
-                        veCVE.CL_POINT_MULTIPLIER())
-                ) / WAD,
-                "VE_CVE - combineALlLocks() veCVE balance = userPoints * multiplier/DENOMINATOR failed for all continuous => continuous"
-            );
-            assert_continuous_locks_has_no_user_or_chain_unlocks(
-                combinedUnlockTime
-            );
-            numLocks = 1;
-        } catch {
-            assertWithMsg(
-                false,
-                "VE_CVE - combineAllLocks() failed unexpectedly with correct preconditions"
-            );
-        }
-    }
-
-    function combineAllLocks_non_continuous_to_continuous_terminals_should_succeed()
-        public
-    {
-        bool continuous = true;
-        require(numLocks >= 2);
-        save_epoch_unlock_values();
-
-        uint256 preCombineUserPoints = veCVE.userPoints(address(this));
-
-        (
-            uint256 newLockAmount,
-            uint256 numberOfExistingContinuousLocks
-        ) = get_all_user_lock_info(address(this));
-        require(numberOfExistingContinuousLocks < numLocks);
-
-        try
-            veCVE.combineAllLocks(
-                continuous,
-                defaultContinuous.rewardsData,
-                defaultContinuous.param,
-                defaultContinuous.aux
-            )
-        {
-            // userLocks.amount must sum to the individual amounts for each lock
-            (uint216 combinedAmount, uint40 combinedUnlockTime) = veCVE
-                .userLocks(address(this), 0);
-
-            assertEq(
-                combinedAmount,
-                newLockAmount,
-                "VE_CVE - combineAllLocks() expected amount sum of new lock to equal calculated"
-            );
-            uint256 postCombineUserPoints = veCVE.userPoints(address(this));
-            // If the existing locks that the user had were all continuous
-            // [some continuous locks] -> continuous terminal; preCombine < postCombine
-            assertLt(
-                preCombineUserPoints,
-                postCombineUserPoints,
-                "VE_CVE - combineAllLocks() - some or no prior continuous => continuous failed"
-            );
-            assertGte(
-                postCombineUserPoints,
-                (
-                    (veCVE.balanceOf(address(this)) *
-                        veCVE.CL_POINT_MULTIPLIER())
-                ) / WAD,
-                "VE_CVE - combineALlLocks() veCVE balance = userPoints * multiplier/DENOMINATOR failed for all continuous => continuous"
-            );
-            // for each existing lock
-            // ensure that the post user unlock value for that epoch is < pre user unlock
-            // ensure that the post chain unlock for epoch < pre chain unlock
-            for (uint i = 0; i < uniqueEpochs.length; i++) {
-                uint256 unlockEpoch = uniqueEpochs[i];
-                assertGte(
-                    epochBalances[unlockEpoch].userUnlocksByEpoch,
-                    veCVE.userUnlocksByEpoch(address(this), unlockEpoch),
-                    "VE_CVE - pre userUnlockByEpoch must exceed post userUnlockByEpoch after noncontinuous -> continuous terminal"
-                );
-                assertGte(
-                    epochBalances[unlockEpoch].chainUnlocksByEpoch,
-                    veCVE.chainUnlocksByEpoch(unlockEpoch),
-                    "VE_CVE - pre- chainUnlockByEpoch must exceed post chainUnlockByEpoch after noncontinuous -> continuous terminal"
-                );
-            }
-            assert_continuous_locks_has_no_user_or_chain_unlocks(
-                combinedUnlockTime
-            );
-            numLocks = 1;
-        } catch {
-            assertWithMsg(
-                false,
-                "VE_CVE - combineAllLocks() failed unexpectedly with correct preconditions"
-            );
-        }
-    }
-
-    function combineAllLocks_should_succeed_to_non_continuous_terminal()
-        public
-    {
-        bool continuous = false;
-        require(numLocks >= 2);
-        save_epoch_unlock_values();
-
-        uint256 preCombineUserPoints = veCVE.userPoints(address(this));
-        (
-            uint256 newLockAmount,
-            uint256 numberOfExistingContinuousLocks
-        ) = get_all_user_lock_info(address(this));
-
-        try
-            veCVE.combineAllLocks(
-                continuous,
-                defaultContinuous.rewardsData,
-                defaultContinuous.param,
-                defaultContinuous.aux
-            )
-        {
-            numLocks = 1;
-            // userLocks.amount must sum to the individual amounts for each lock
-            (uint216 combinedAmount, uint40 combinedUnlockTime) = veCVE
-                .userLocks(address(this), 0);
-
-            assertEq(
-                combinedAmount,
-                newLockAmount,
-                "VE_CVE - combineAllLocks() expected amount sum of new lock to equal calculated"
-            );
-            uint256 postCombineUserPoints = veCVE.userPoints(address(this));
-
-            if (numberOfExistingContinuousLocks > 0) {
-                // // [some continuous] -> non-continuous terminal
-                assertGt(
-                    preCombineUserPoints,
-                    postCombineUserPoints,
-                    "VE_CVE - combineAllLocks() - ALL continuous => !continuous failed"
-                );
-            }
-            // no locks prior were continuous
-            else {
-                // CAN ADD: Post-condition check on the epoch balances
-                assertEq(
-                    preCombineUserPoints,
-                    postCombineUserPoints,
-                    "VE_CVE - combineAllLocks() NO continuous locks -> !continuous failed"
-                );
-            }
-            assertEq(
-                veCVE.balanceOf(address(this)),
-                postCombineUserPoints,
-                "VE_CVE - combineAllLocks() balance should equal post combine user points"
-            );
-
-            numLocks = 1;
-        } catch {
-            assertWithMsg(
-                false,
-                "VE_CVE - combineAllLocks() failed unexpectedly with correct preconditions"
-            );
-        }
-    }
-
+    // TODO: Add additional pre and post conditions on processExpiredLock
     function processExpiredLock_should_succeed(uint256 seed) public {
         require(veCVE.isShutdown() != 2);
         uint256 lockIndex = get_existing_lock(seed);
@@ -631,6 +640,7 @@ contract FuzzVECVE is StatefulBaseMarket {
         {} catch {}
     }
 
+    /// @custom:property vecve-19 – Processing an expired lock should fail when the lock index is incorrect or exceeds the length of created locks.
     function processExpiredLock_should_fail_if_lock_index_exceeds_length(
         uint256 seed
     ) public {
@@ -654,10 +664,21 @@ contract FuzzVECVE is StatefulBaseMarket {
         }
     }
 
-    function disableContinuousLock_should_succeed_if_lock_exists(
-        uint256 number
-    ) public {
-        uint256 lockIndex = get_existing_lock(number);
+    /// @custom:property vecve-20 –  Disabling a continuous lock for a user’s continuous lock results in a decrease of user points.
+    /// @custom:property vecve-21 – Disable continuous lock for a user’s continuous lock results in a decrease of chain points.
+    /// @custom:property vecve-22 – Disable continuous lock for a user’s continuous lock results in preChainUnlocksByEpoch + amount being equal to postChainUnlocksByEpoch
+    /// @custom:property vecve-23 – Disable continuous lock should for a user’s continuous lock results in  preUserUnlocksByEpoch + amount matching postUserUnlocksByEpoch
+    /// @custom:precondition  user has a continuous lock they intend to disable
+    function disableContinuousLock_should_succeed_if_lock_exists() public {
+        uint256 lockIndex = get_continuous_lock();
+        uint256 preUserPoints = veCVE.userPoints(address(this));
+        uint256 preChainPoints = veCVE.chainPoints();
+        uint256 newEpoch = veCVE.freshLockEpoch();
+        uint256 preChainUnlocksByEpoch = veCVE.chainUnlocksByEpoch(newEpoch);
+        uint256 preUserUnlocksByEpoch = veCVE.userUnlocksByEpoch(
+            address(this),
+            newEpoch
+        );
 
         try
             veCVE.disableContinuousLock(
@@ -666,11 +687,61 @@ contract FuzzVECVE is StatefulBaseMarket {
                 bytes(""),
                 0
             )
-        {} catch {
-            // CAN ADD: Postconditions on disabling a continuous lock
+        {
+            uint256 postUserPoints = veCVE.userPoints((address(this)));
+            uint256 postChainPoints = veCVE.chainPoints();
+            (uint256 amount, uint40 unlockTime) = veCVE.userLocks(
+                address(this),
+                lockIndex
+            );
+            uint256 postChainUnlocksByEpoch = veCVE.chainUnlocksByEpoch(
+                newEpoch
+            );
+            uint256 postUserUnlocksByEpoch = veCVE.userUnlocksByEpoch(
+                address(this),
+                newEpoch
+            );
+
+            // vecve-20
+            assertGt(
+                preUserPoints,
+                postUserPoints,
+                "VE_CVE - disableContinuousLock() - userPoints should have decreased"
+            );
+
+            // vecve-21
+            assertGt(
+                preChainPoints,
+                postChainPoints,
+                "VE_CVE - disableContinuousLock() - chainPoints should have decreased"
+            );
+
+            // vecve-22
+            assertEq(
+                preChainUnlocksByEpoch + amount,
+                postChainUnlocksByEpoch,
+                "VE_CVE - disableContinuousLock() - postChainUnlocksByEpoch should be increased by amount"
+            );
+
+            // vecve-23
+            assertEq(
+                preUserUnlocksByEpoch + amount,
+                postUserUnlocksByEpoch,
+                "VE_CVE - disableContinuousLock() - userUnlocksByEpoch should be increased by amount"
+            );
+        } catch {
+            assertWithMsg(
+                false,
+                "VE_CVE - disableContinuousLock() failed unexpectedly"
+            );
         }
     }
 
+    /// @custom:property vecve-26 Shutting down the contract when the caller has elevated permissions should result in the veCVE.isShutdown =2
+    /// @custom:property vecve-27 Shutting down the contract when the caller has elevated permissions should result in the veCVE.isShutdown =2
+    /// @custom:property vecve-28 Shutting down the contract when the caller has elevated permissions, and the system is not already shut down should never revert unexpectedly.
+    /// @custom:precondition address(this) has elevated rights
+    /// @custom:precondition address(this) system is not shut down already
     function shutdown_success_if_elevated_permission() public {
         // should be true on setup unless revoked
         require(centralRegistry.hasElevatedPermissions(address(this)));
@@ -679,19 +750,21 @@ contract FuzzVECVE is StatefulBaseMarket {
         emit LogAddress("msg.sender from call", address(this));
         // call central registry from addr(this)
         try veCVE.shutdown() {
+            // VECVE-26
             assertWithMsg(
                 veCVE.isShutdown() == 2,
                 "VE_CVE - shutdown() did not set isShutdown variable"
             );
+            // VECVE-27
             assertWithMsg(
                 cveLocker.isShutdown() == 2,
                 "VE_CVE - shutdown() should also set cveLocker"
             );
         } catch (bytes memory reason) {
             uint256 errorSelector = extractErrorSelector(reason);
-
+            // VECVE-28
             assertWithMsg(
-                errorSelector == vecve_unauthorizedSelectorHash,
+                false,
                 "VE_CVE - shutdown() by elevated permission failed unexpectedly"
             );
         }
@@ -710,41 +783,8 @@ contract FuzzVECVE is StatefulBaseMarket {
         {} catch {}
     }
 
-    // Getter functions
-
-    function getVotesForEpoch_correct_calculation(uint256 epoch) public {
-        uint256 votesForEpoch = veCVE.getVotesForEpoch(address(this), epoch);
-    }
-
-    function getVotesForSingleLockForTime_correct_calculation(
-        uint256 number,
-        uint256 time,
-        uint256 currentLockBoost
-    ) public {
-        address user = address(this);
-        uint256 lockIndex = get_existing_lock(number);
-
-        uint256 votes = veCVE.getVotesForSingleLockForTime(
-            user,
-            lockIndex,
-            time,
-            currentLockBoost
-        );
-    }
-
-    function getUnlockPenalty_correct_calculation(uint256 number) public {
-        address user = address(this);
-        uint256 lockIndex = get_existing_lock(number);
-
-        uint256 unlockPenalty = veCVE.getUnlockPenalty(user, lockIndex);
-    }
-
-    function getVotes_correct_calculation(address user) public {
-        uint256 votes = veCVE.getVotes(user);
-    }
-
     // Stateful
-
+    /// @custom:property s-vecve-1 Balance of veCVE must equal to the sum of all non-continuous lock amounts.
     function balance_must_equal_lock_amount_for_non_continuous() public {
         (
             uint256 lockAmountSum,
@@ -758,6 +798,8 @@ contract FuzzVECVE is StatefulBaseMarket {
         );
     }
 
+    /// @custom:property s-vecve-2 User unlocks by epoch should be greater than 0 for all non-continuous locks.
+    /// @custom:property s-vecve-3 User unlocks by epoch should be 0 for all continuous locks.
     function user_unlock_for_epoch_for_values_are_correct() public {
         (
             uint256 lockAmountSum,
@@ -783,6 +825,8 @@ contract FuzzVECVE is StatefulBaseMarket {
         }
     }
 
+    /// @custom:property s-vecve-4 Chain unlocks by epoch should be greater than 0 for all non-continuous locks.
+    /// @custom:property s-vecve-5 Chain unlocks by epoch should be 0 for all continuous locks.
     function chain_unlock_for_epoch_for_values_are_correct() public {
         (
             uint256 lockAmountSum,
@@ -808,6 +852,7 @@ contract FuzzVECVE is StatefulBaseMarket {
         }
     }
 
+    /// @custom:property s-vecve-6 The sum of all user unlock epochs for each epoch must be less than or equal to the user points.
     function sum_of_all_user_unlock_epochs_is_equal_to_user_points() public {
         save_epoch_unlock_values();
         uint256 sumUserUnlockEpochs;
@@ -829,6 +874,8 @@ contract FuzzVECVE is StatefulBaseMarket {
         );
     }
 
+    // Helper Functions
+
     function assert_continuous_locks_has_no_user_or_chain_unlocks(
         uint256 combinedUnlockTime
     ) private {
@@ -846,7 +893,6 @@ contract FuzzVECVE is StatefulBaseMarket {
         );
     }
 
-    // Helper Functions
     uint256[] uniqueEpochs;
     mapping(uint256 => CombineBalance) epochBalances;
     struct CombineBalance {
