@@ -125,9 +125,9 @@ contract TestBaseMarket is TestBase {
         _deployCentralRegistry();
         _deployCVE();
         _deployCVELocker();
+        _deployVeCVE();
         _deployProtocolMessagingHub();
         _deployFeeAccumulator();
-        _deployVeCVE();
         chainlinkEthUsd = new MockV3Aggregator(8, 1500e8, 1e50, 1e6);
         _deployPriceRouter();
         _deployChainlinkAdaptors();
