@@ -603,14 +603,17 @@ contract FuzzLendtrollerStateChecks is StatefulBaseMarket {
             IMToken(collateralToken).lendtroller() ==
                 IMToken(debtToken).lendtroller()
         );
-        try lendtroller.canSeize(collateralToken, debtToken) {} catch (
-            bytes memory revertData
-        ) {
+        try lendtroller.canSeize(collateralToken, debtToken) {
+            assertWithMsg(
+                false,
+                "LENDTROLLER - canSeize() should have reverted with seizePaused = 2"
+            );
+        } catch (bytes memory revertData) {
             uint256 errorSelector = extractErrorSelector(revertData);
 
             assertWithMsg(
                 errorSelector == lendtroller_pausedSelectorHash,
-                "LENDTROLLER - canSeize() should be successful with correct @precondition"
+                "LENDTROLLER - canSeize() should revert with paused selector"
             );
         }
     }
@@ -634,10 +637,17 @@ contract FuzzLendtrollerStateChecks is StatefulBaseMarket {
             IMToken(collateralToken).lendtroller() ==
                 IMToken(debtToken).lendtroller()
         );
-        try lendtroller.canSeize(collateralToken, debtToken) {} catch {
+        try lendtroller.canSeize(collateralToken, debtToken) {
             assertWithMsg(
                 false,
-                "LENDTROLLER - canSeize() should be successful with correct @precondition"
+                "LENDTROLLER - seizePaused() should have reverted when token is unlisted"
+            );
+        } catch (bytes memory revertData) {
+            uint256 errorSelector = extractErrorSelector(revertData);
+
+            assertWithMsg(
+                errorSelector == lendtroller_tokenNotListedSelectorHash,
+                "LENDTROLLER - canSeize() should revert with token not listed selector"
             );
         }
     }
@@ -659,10 +669,17 @@ contract FuzzLendtrollerStateChecks is StatefulBaseMarket {
             IMToken(collateralToken).lendtroller() !=
                 IMToken(debtToken).lendtroller()
         );
-        try lendtroller.canSeize(collateralToken, debtToken) {} catch {
+        try lendtroller.canSeize(collateralToken, debtToken) {
             assertWithMsg(
                 false,
-                "LENDTROLLER - canSeize() should be successful with correct @precondition"
+                "LENDTROLLER - seizePaused() should have reverted when lendtroller is not equal"
+            );
+        } catch (bytes memory revertData) {
+            uint256 errorSelector = extractErrorSelector(revertData);
+
+            assertWithMsg(
+                errorSelector == lendtroller_mismatchSelectorHash,
+                "LENDTROLLER - canSeize() should revert with lendtroller mismatch selector hash"
             );
         }
     }

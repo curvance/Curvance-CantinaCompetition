@@ -749,13 +749,19 @@ contract FuzzLendtroller is StatefulBaseMarket {
     /// @custom:precondition token must have an existing position
     /// @custom:precondition collateralPostedForUser for respective token > 0
     function closePosition_should_succeed(address mtoken) public {
+        require(lendtroller.redeemPaused() != 2);
         require(mtoken == address(cDAI) || mtoken == address(cUSDC));
         require(lendtroller.hasPosition(mtoken, address(this)));
+        check_price_feed();
         uint256 collateralPostedForUser = lendtroller.collateralPostedFor(
             address(mtoken),
             address(this)
         );
         require(collateralPostedForUser > 0);
+        require(
+            block.timestamp >
+                postedCollateralAt[mtoken] + lendtroller.MIN_HOLD_PERIOD()
+        );
         IMToken[] memory preAssetsOf = lendtroller.assetsOf(address(this));
 
         (bool success, bytes memory rd) = address(lendtroller).call(
@@ -781,13 +787,19 @@ contract FuzzLendtroller is StatefulBaseMarket {
     function closePosition_should_succeed_if_collateral_is_0(
         address mtoken
     ) public {
+        require(lendtroller.redeemPaused() != 2);
         require(mtoken == address(cDAI) || mtoken == address(cUSDC));
         require(lendtroller.hasPosition(mtoken, address(this)));
+        check_price_feed();
         uint256 collateralPostedForUser = lendtroller.collateralPostedFor(
             address(mtoken),
             address(this)
         );
         require(collateralPostedForUser == 0);
+        require(
+            block.timestamp >
+                postedCollateralAt[mtoken] + lendtroller.MIN_HOLD_PERIOD()
+        );
         IMToken[] memory preAssetsOf = lendtroller.assetsOf(address(this));
 
         (bool success, bytes memory rd) = address(lendtroller).call(
