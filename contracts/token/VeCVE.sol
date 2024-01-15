@@ -552,7 +552,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
             emit Unlocked(msg.sender, amount);
 
             // Check whether the user has no remaining locks and reset their
-            // index, that way if in the future they create a new lock, 
+            // index, that way if in the future they create a new lock,
             // they do not need to claim epochs they have no rewards for.
             if (locks.length == 0 && isShutdown != 2) {
                 cveLocker.resetUserClaimIndex(msg.sender);
@@ -611,8 +611,10 @@ contract VeCVE is ERC20, ReentrancyGuard {
             value: msg.value
         }(dstChainId, msg.sender, amount, continuousLock);
 
+        console.log(locks.length, isShutdown);
+
         // Check whether the user has no remaining locks and reset their
-        // index, that way if in the future they create a new lock, 
+        // index, that way if in the future they create a new lock,
         // they do not need to claim epochs they have no rewards for.
         if (locks.length == 0 && isShutdown != 2) {
             cveLocker.resetUserClaimIndex(msg.sender);

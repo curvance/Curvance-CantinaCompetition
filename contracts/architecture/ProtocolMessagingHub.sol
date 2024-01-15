@@ -414,12 +414,13 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     /// @param recipient The address of recipient on destination chain.
     /// @param amount The amount of token to bridge.
     /// @param continuousLock Whether the lock should be continuous or not.
+    /// @return Wormhole sequence for emitted TransferTokensWithRelay message.
     function bridgeVeCVELock(
         uint256 dstChainId,
         address recipient,
         uint256 amount,
         bool continuousLock
-    ) external payable {
+    ) external payable returns (uint64) {
         if (msg.sender != veCVE) {
             _revert(_UNAUTHORIZED_SELECTOR);
         }
@@ -431,13 +432,14 @@ contract ProtocolMessagingHub is ReentrancyGuard {
             .messagingHub;
         bytes memory payload = abi.encode(recipient, amount, continuousLock);
 
-        _sendWormholeMessages(
-            wormholeChainId[dstChainId],
-            dstMessagingHub,
-            msg.value,
-            5,
-            payload
-        );
+        return
+            _sendWormholeMessages(
+                wormholeChainId[dstChainId],
+                dstMessagingHub,
+                msg.value,
+                5,
+                payload
+            );
     }
 
     /// @notice Sends veCVE locked token data to destination chain.
@@ -445,17 +447,25 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     ///                   the message data should be sent.
     /// @param toAddress The destination address specified by `dstChainId`.
     /// @param payload The payload data that is sent along with the message.
+    /// @return Wormhole sequence for emitted TransferTokensWithRelay message.
     function sendWormholeMessages(
         uint16 dstChainId,
         address toAddress,
         bytes calldata payload
-    ) external payable {
+    ) external payable returns (uint64) {
         _checkMessagingHubStatus();
         _checkPermissions();
 
         (uint256 messageFee, ) = _quoteWormholeFee(dstChainId, false);
 
-        _sendWormholeMessages(dstChainId, toAddress, messageFee, 4, payload);
+        return
+            _sendWormholeMessages(
+                dstChainId,
+                toAddress,
+                messageFee,
+                4,
+                payload
+            );
     }
 
     /// @notice Quotes gas cost and token fee for executing crosschain
@@ -532,13 +542,14 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     /// @param toAddress The destination address specified by `dstChainId`.
     /// @param payloadId The id of payload.
     /// @param payload The payload data that is sent along with the message.
+    /// @return Wormhole sequence for emitted TransferTokensWithRelay message.
     function _sendWormholeMessages(
         uint16 dstChainId,
         address toAddress,
         uint256 messageFee,
         uint8 payloadId,
         bytes memory payload
-    ) internal {
+    ) internal returns (uint64) {
         // Validate that we are aiming for a supported chain.
         if (
             centralRegistry
@@ -550,13 +561,14 @@ contract ProtocolMessagingHub is ReentrancyGuard {
             revert ProtocolMessagingHub__ChainIsNotSupported();
         }
 
-        wormholeRelayer.sendPayloadToEvm{ value: messageFee }(
-            dstChainId,
-            toAddress,
-            abi.encode(payloadId, payload), // payload.
-            0, // no receiver value needed since we're just passing a message.
-            _GAS_LIMIT
-        );
+        return
+            wormholeRelayer.sendPayloadToEvm{ value: messageFee }(
+                dstChainId,
+                toAddress,
+                abi.encode(payloadId, payload), // payload.
+                0, // no receiver value needed since we're just passing a message.
+                _GAS_LIMIT
+            );
     }
 
     /// @notice Quotes gas cost and token fee for executing crosschain
