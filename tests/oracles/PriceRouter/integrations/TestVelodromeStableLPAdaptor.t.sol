@@ -23,12 +23,15 @@ contract TestVelodromeStableLPAdapter is TestBasePriceRouter {
     address private veloRouter = 0xa062aE8A9c5e11aaA026fc2670B0D65cCc8B2858;
     address private DAI_USDC = 0x19715771E30c93915A5bbDa134d782b81A820076;
 
-    VelodromeStableLPAdaptor adaptor;
+    VelodromeStableLPAdaptor public adaptor;
 
     function setUp() public override {
         _fork("ETH_NODE_URI_OPTIMISM", 110333246);
 
         _deployCentralRegistry();
+        chainlinkAdaptor = new ChainlinkAdaptor(
+            ICentralRegistry(address(centralRegistry))
+        );
 
         priceRouter = new PriceRouter(
             ICentralRegistry(address(centralRegistry)),
@@ -41,25 +44,25 @@ contract TestVelodromeStableLPAdapter is TestBasePriceRouter {
         );
         adaptor.addAsset(DAI_USDC);
 
+        chainlinkAdaptor.addAsset(DAI, CHAINLINK_PRICE_FEED_DAI, 0, true);
+        chainlinkAdaptor.addAsset(USDC, CHAINLINK_PRICE_FEED_USDC, 0, true);
+
+        priceRouter.addApprovedAdaptor(address(chainlinkAdaptor));
+        priceRouter.addAssetPriceFeed(DAI, address(chainlinkAdaptor));
+        priceRouter.addAssetPriceFeed(USDC, address(chainlinkAdaptor));
+
         priceRouter.addApprovedAdaptor(address(adaptor));
         priceRouter.addAssetPriceFeed(DAI_USDC, address(adaptor));
     }
 
     function testRevertWhenUnderlyingChainAssetPriceNotSet() public {
+        chainlinkAdaptor.removeAsset(DAI);
+
         vm.expectRevert(PriceRouter.PriceRouter__NotSupported.selector);
         priceRouter.getPrice(DAI_USDC, true, false);
     }
 
     function testReturnsCorrectPrice() public {
-        chainlinkAdaptor = new ChainlinkAdaptor(
-            ICentralRegistry(address(centralRegistry))
-        );
-        chainlinkAdaptor.addAsset(USDC, CHAINLINK_PRICE_FEED_USDC, 0, true);
-        chainlinkAdaptor.addAsset(DAI, CHAINLINK_PRICE_FEED_DAI, 0, true);
-        priceRouter.addApprovedAdaptor(address(chainlinkAdaptor));
-        priceRouter.addAssetPriceFeed(USDC, address(chainlinkAdaptor));
-        priceRouter.addAssetPriceFeed(DAI, address(chainlinkAdaptor));
-
         (uint256 price, uint256 errorCode) = priceRouter.getPrice(
             DAI_USDC,
             true,
@@ -78,15 +81,6 @@ contract TestVelodromeStableLPAdapter is TestBasePriceRouter {
     }
 
     function testPriceDoesNotChangeAfterLargeSwap() public {
-        chainlinkAdaptor = new ChainlinkAdaptor(
-            ICentralRegistry(address(centralRegistry))
-        );
-        chainlinkAdaptor.addAsset(USDC, CHAINLINK_PRICE_FEED_USDC, 0, true);
-        chainlinkAdaptor.addAsset(DAI, CHAINLINK_PRICE_FEED_DAI, 0, true);
-        priceRouter.addApprovedAdaptor(address(chainlinkAdaptor));
-        priceRouter.addAssetPriceFeed(USDC, address(chainlinkAdaptor));
-        priceRouter.addAssetPriceFeed(DAI, address(chainlinkAdaptor));
-
         uint256 errorCode;
         uint256 priceBefore;
         (priceBefore, errorCode) = priceRouter.getPrice(DAI_USDC, true, false);

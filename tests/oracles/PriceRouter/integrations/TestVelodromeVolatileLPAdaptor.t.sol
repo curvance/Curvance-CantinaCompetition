@@ -21,12 +21,16 @@ contract TestVelodromeVolatileLPAdapter is TestBasePriceRouter {
     address private veloRouter = 0xa062aE8A9c5e11aaA026fc2670B0D65cCc8B2858;
     address private WETH_USDC = 0x0493Bf8b6DBB159Ce2Db2E0E8403E753Abd1235b;
 
-    VelodromeVolatileLPAdaptor adaptor;
+    VelodromeVolatileLPAdaptor public adaptor;
 
     function setUp() public override {
         _fork("ETH_NODE_URI_OPTIMISM", 110333246);
 
         _deployCentralRegistry();
+        chainlinkAdaptor = new ChainlinkAdaptor(
+            ICentralRegistry(address(centralRegistry))
+        );
+
         priceRouter = new PriceRouter(
             ICentralRegistry(address(centralRegistry)),
             CHAINLINK_PRICE_FEED_ETH
@@ -38,25 +42,25 @@ contract TestVelodromeVolatileLPAdapter is TestBasePriceRouter {
         );
         adaptor.addAsset(WETH_USDC);
 
+        chainlinkAdaptor.addAsset(WETH, CHAINLINK_PRICE_FEED_ETH, 0, true);
+        chainlinkAdaptor.addAsset(USDC, CHAINLINK_PRICE_FEED_USDC, 0, true);
+
+        priceRouter.addApprovedAdaptor(address(chainlinkAdaptor));
+        priceRouter.addAssetPriceFeed(WETH, address(chainlinkAdaptor));
+        priceRouter.addAssetPriceFeed(USDC, address(chainlinkAdaptor));
+
         priceRouter.addApprovedAdaptor(address(adaptor));
         priceRouter.addAssetPriceFeed(WETH_USDC, address(adaptor));
     }
 
     function testRevertWhenUnderlyingChainAssetPriceNotSet() public {
+        chainlinkAdaptor.removeAsset(WETH);
+
         vm.expectRevert(PriceRouter.PriceRouter__NotSupported.selector);
         priceRouter.getPrice(WETH_USDC, true, false);
     }
 
     function testReturnsCorrectPrice() public {
-        chainlinkAdaptor = new ChainlinkAdaptor(
-            ICentralRegistry(address(centralRegistry))
-        );
-        chainlinkAdaptor.addAsset(USDC, CHAINLINK_PRICE_FEED_USDC, 0, true);
-        chainlinkAdaptor.addAsset(WETH, CHAINLINK_PRICE_FEED_ETH, 0, true);
-        priceRouter.addApprovedAdaptor(address(chainlinkAdaptor));
-        priceRouter.addAssetPriceFeed(USDC, address(chainlinkAdaptor));
-        priceRouter.addAssetPriceFeed(WETH, address(chainlinkAdaptor));
-
         (uint256 price, uint256 errorCode) = priceRouter.getPrice(
             WETH_USDC,
             true,
@@ -75,15 +79,6 @@ contract TestVelodromeVolatileLPAdapter is TestBasePriceRouter {
     }
 
     function testPriceDoesNotChangeAfterLargeSwap() public {
-        chainlinkAdaptor = new ChainlinkAdaptor(
-            ICentralRegistry(address(centralRegistry))
-        );
-        chainlinkAdaptor.addAsset(USDC, CHAINLINK_PRICE_FEED_USDC, 0, true);
-        chainlinkAdaptor.addAsset(WETH, CHAINLINK_PRICE_FEED_ETH, 0, true);
-        priceRouter.addApprovedAdaptor(address(chainlinkAdaptor));
-        priceRouter.addAssetPriceFeed(USDC, address(chainlinkAdaptor));
-        priceRouter.addAssetPriceFeed(WETH, address(chainlinkAdaptor));
-
         uint256 errorCode;
         uint256 priceBefore;
         (priceBefore, errorCode) = priceRouter.getPrice(

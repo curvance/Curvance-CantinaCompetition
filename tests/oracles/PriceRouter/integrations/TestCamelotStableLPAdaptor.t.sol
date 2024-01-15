@@ -26,6 +26,9 @@ contract TestCamelotStableLPAdapter is TestBasePriceRouter {
         _fork("ETH_NODE_URI_ARBITRUM", 148061500);
 
         _deployCentralRegistry();
+        chainlinkAdaptor = new ChainlinkAdaptor(
+            ICentralRegistry(address(centralRegistry))
+        );
 
         priceRouter = new PriceRouter(
             ICentralRegistry(address(centralRegistry)),
@@ -38,25 +41,25 @@ contract TestCamelotStableLPAdapter is TestBasePriceRouter {
         );
         adapter.addAsset(DAI_USDC);
 
+        chainlinkAdaptor.addAsset(DAI, CHAINLINK_PRICE_FEED_DAI, 0, true);
+        chainlinkAdaptor.addAsset(USDC, CHAINLINK_PRICE_FEED_USDC, 0, true);
+
+        priceRouter.addApprovedAdaptor(address(chainlinkAdaptor));
+        priceRouter.addAssetPriceFeed(DAI, address(chainlinkAdaptor));
+        priceRouter.addAssetPriceFeed(USDC, address(chainlinkAdaptor));
+
         priceRouter.addApprovedAdaptor(address(adapter));
         priceRouter.addAssetPriceFeed(DAI_USDC, address(adapter));
     }
 
     function testRevertWhenUnderlyingChainAssetPriceNotSet() public {
+        chainlinkAdaptor.removeAsset(DAI);
+
         vm.expectRevert(PriceRouter.PriceRouter__NotSupported.selector);
         priceRouter.getPrice(DAI_USDC, true, false);
     }
 
     function testReturnsCorrectPrice() public {
-        chainlinkAdaptor = new ChainlinkAdaptor(
-            ICentralRegistry(address(centralRegistry))
-        );
-        chainlinkAdaptor.addAsset(USDC, CHAINLINK_PRICE_FEED_USDC, 0, true);
-        chainlinkAdaptor.addAsset(DAI, CHAINLINK_PRICE_FEED_DAI, 0, true);
-        priceRouter.addApprovedAdaptor(address(chainlinkAdaptor));
-        priceRouter.addAssetPriceFeed(USDC, address(chainlinkAdaptor));
-        priceRouter.addAssetPriceFeed(DAI, address(chainlinkAdaptor));
-
         (uint256 price, uint256 errorCode) = priceRouter.getPrice(
             DAI_USDC,
             true,
