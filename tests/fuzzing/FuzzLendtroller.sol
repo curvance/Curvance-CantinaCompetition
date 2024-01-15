@@ -40,9 +40,9 @@ contract FuzzLendtroller is StatefulBaseMarket {
         );
     }
 
-    // @property: calling listToken for a token should succeed
-    // @precondition: mtoken must not already be listed
-    // @precondition: mtoken must be one of: cDAI, cUSDC
+    /// @custom:property lend-1 Once a new token is listed, lendtroller.isListed(mtoken) should return true.
+    /// @custom:precondition mtoken must not already be listed
+    /// @custom:precondition mtoken must be one of: cDAI, cUSDC
     function list_token_should_succeed(address mtoken) public {
         uint256 amount = 42069;
         // require the token is not already listed into the lendtroller
@@ -62,9 +62,9 @@ contract FuzzLendtroller is StatefulBaseMarket {
         }
     }
 
-    // @property: calling listToken() for a token that already exists should fail
-    // @precondition: mtoken must already be listed
-    // @precondition: mtoken must be one of: cDAI, cUSDC
+    /// @custom:property lend-2 A token already added to the Lendtroller cannot be added again
+    /// @custom:precondition mtoken must already be listed
+    /// @custom:precondition mtoken must be one of: cDAI, cUSDC
     function list_token_should_fail_if_already_listed(address mtoken) public {
         uint256 amount = 42069;
         // require the token is not already listed into the lendtroller
@@ -89,66 +89,13 @@ contract FuzzLendtroller is StatefulBaseMarket {
         }
     }
 
-    // function c_token_depositAsCollateral(
-    //     address mtoken,
-    //     uint256 amount
-    // ) public {
-    //     amount = clampBetween(amount, 1, type(uint32).max);
-    //     // require gauge pool has been started at a previous timestamp
-    //     require(gaugePool.startTime() < block.timestamp);
-    //     require(mtoken == address(cDAI) || mtoken == address(cUSDC));
-    //     if (!lendtroller.isListed(mtoken)) {
-    //         list_token_should_succeed(mtoken);
-    //     }
-
-    //     address underlyingAddress = MockCToken(mtoken).underlying();
-    //     // mint ME enough tokens to cover deposit
-    //     try MockToken(underlyingAddress).mint(amount) {} catch {
-    //         assertWithMsg(
-    //             false,
-    //             "LENDTROLLER - mint underlying amount should succeed before deposit"
-    //         );
-    //     }
-    //     // approve sufficient underlying tokens prior to calling deposit
-    //     try MockToken(underlyingAddress).approve(mtoken, amount) {} catch {
-    //         assertWithMsg(
-    //             false,
-    //             "LENDTROLLER - approve underlying amount should succeed before deposit"
-    //         );
-    //     }
-    //     uint256 preCTokenBalanceThis = MockCToken(mtoken).balanceOf(
-    //         address(this)
-    //     );
-
-    //     // This step should mint associated shares for the user
-    //     try MockCToken(mtoken).depositAsCollateral(amount, address(this)) {
-    //         uint256 postCTokenBalanceThis = MockCToken(mtoken).balanceOf(
-    //             address(this)
-    //         );
-
-    //         assertLt(
-    //             preCTokenBalanceThis,
-    //             postCTokenBalanceThis,
-    //             "LENDTROLLER - pre and post ctoken balance should increase"
-    //         );
-    //     } catch (bytes memory revertData) {
-    //         emit LogAddress("msg.sender", msg.sender);
-    //         uint256 errorSelector = extractErrorSelector(revertData);
-
-    //         emit LogUint256("error selector: ", errorSelector);
-    //         assertWithMsg(
-    //             false,
-    //             "LENDTROLLER - expected mtoken.deposit() to be successful"
-    //         );
-    //     }
-    // }
-
-    // @property: After depositing, the ctoken balance should increase
-    // @precondition: amount bound between [1, uint16.max], inclusively
-    // @precondition: GaugePool must have been started before block.timestamp
-    // @precondition: mtoken must be one of: cDAI, cUSDC
-    // @precondition: mtoken must be listed in Lendtroller
-    // @precondition: minting must not be paused
+    /// @custom:property lend-3 – A user can deposit into an mtoken provided that they have the underlying asset, and they have approved the mtoken contract.
+    /// @custom:property lend-4 – When depositing assets into the mtoken, the wrapped token balance for the user should increase.
+    /// @custom:precondition amount bound between [1, uint16.max], inclusively
+    /// @custom:precondition GaugePool must have been started before block.timestamp
+    /// @custom:precondition mtoken must be one of: cDAI, cUSDC
+    /// @custom:precondition mtoken must be listed in Lendtroller
+    /// @custom:precondition minting must not be paused
     function c_token_deposit(address mtoken, uint256 amount) public {
         amount = clampBetween(amount, 1, type(uint16).max);
         require(gaugePool.startTime() < block.timestamp);
@@ -191,6 +138,7 @@ contract FuzzLendtroller is StatefulBaseMarket {
                 address(this)
             );
 
+            // LEND-4
             assertLt(
                 preCTokenBalanceThis,
                 postCTokenBalanceThis,
@@ -200,6 +148,7 @@ contract FuzzLendtroller is StatefulBaseMarket {
             uint256 errorSelector = extractErrorSelector(revertData);
 
             emit LogUint256("error selector: ", errorSelector);
+            // LEND-3
             assertWithMsg(
                 false,
                 "LENDTROLLER - expected mtoken.deposit() to be successful"
@@ -250,13 +199,13 @@ contract FuzzLendtroller is StatefulBaseMarket {
         lastRoundUpdate = block.timestamp;
     }
 
-    // @property: collateralCaps[mtoken] after calling setCTokenCollateralCaps is updated
-    // @precondition: price feed must be recent
-    // @precondition: price feed must be setup
-    // @precondition: address(this) must have dao permissions
-    // @precondition: cap is bound between [1, uint256.max], inclusive
-    // @precondition: mtoken must be listed in the Lendtroller
-    // @precondition: get_safe_update_collateral_bounds must be in correct bounds
+    /// @custom:property lend-5 – Calling updateCollateralToken with variables in correct bounds should succeed.
+    /// @custom:precondition price feed must be recent
+    /// @custom:precondition price feed must be setup
+    /// @custom:precondition address(this) must have dao permissions
+    /// @custom:precondition cap is bound between [1, uint256.max], inclusive
+    /// @custom:precondition mtoken must be listed in the Lendtroller
+    /// @custom:precondition get_safe_update_collateral_bounds must be in correct bounds
     function updateCollateralToken_should_succeed(
         address mtoken,
         uint256 collRatio,
@@ -301,6 +250,7 @@ contract FuzzLendtroller is StatefulBaseMarket {
                 bounds.baseCFactor
             )
         {} catch {
+            // LEND-5
             assertWithMsg(
                 false,
                 "LENDTROLLER - updateCollateralToken should succeed"
@@ -309,6 +259,10 @@ contract FuzzLendtroller is StatefulBaseMarket {
         setCollateralValues[mtoken] = true;
     }
 
+    /// @custom:property lend-6 – Calling setCTokenCollateralCaps should increase the globally set the collateral caps to the cap provided
+    /// @custom:property lend-7 Setting collateral caps for a token given permissions and collateral values being set should succeed.
+    /// @custom:precondition address(this) has dao permissions
+    /// @custom:precondition collateral values for mtoken must be set
     function setCToken_should_succeed(address mtoken, uint256 cap) public {
         require(centralRegistry.hasDaoPermissions(address(this)));
         require(setCollateralValues[mtoken]);
@@ -328,12 +282,14 @@ contract FuzzLendtroller is StatefulBaseMarket {
         );
 
         if (success) {
-            assertGte(
+            // LEND-6
+            assertEq(
                 lendtroller.collateralCaps(mtoken),
-                0,
+                cap,
                 "LENDTROLLER - collateral caps for token should be >=0"
             );
         } else {
+            // LEND-7
             assertWithMsg(
                 false,
                 "LENDTROLLER - expected setCTokenCollateralCaps to succeed"
@@ -343,11 +299,11 @@ contract FuzzLendtroller is StatefulBaseMarket {
         collateralCapsUpdated[mtoken] = true;
     }
 
-    // @property: updateCollateralToken should revert if the price feed is out of date
-    // @precondition: price feed is out of date
-    // @precondition: cap is bound between [1, uint256.max], inclusive
-    // @precondition: mtoken must be listed in Lendtroller
-    // @precondition: mtoken must be one of: cDAI, cUSDC
+    /// @custom:property lend-8 – updateCollateralToken should revert if the price feed is out of date
+    /// @custom:precondition price feed is out of date
+    /// @custom:precondition cap is bound between [1, uint256.max], inclusive
+    /// @custom:precondition mtoken must be listed in Lendtroller
+    /// @custom:precondition mtoken must be one of: cDAI, cUSDC
     function updateCollateralToken_should_revert_if_price_feed_out_of_date(
         address mtoken,
         uint256 collRatio,
@@ -414,13 +370,14 @@ contract FuzzLendtroller is StatefulBaseMarket {
         } catch {}
     }
 
-    // @property: Ensure account collateral has increased by # of tokens
-    // @property: Ensure user has a valid position after posting
-    // @property: Ensure collateralPosted (for mtoken) has increased by # of tokens
-    // @precondition: price feed is up to date
-    // @precondition: address(this) must have a balance of mtoken
-    // @precondition: `tokens` to be posted is bound between [1, mtoken balance], inclusive
-    // @precondition: msg.sender for postCollateral = address(this)
+    /// @custom:property lend-9 After collateral is posted, the user’s collateral posted position for the respective asset should increase.
+    /// @custom:property lend-10 After collateral is posted, calling hasPosition on the user’s mtoken should return true.
+    /// @custom:property lend-11 After collateral is posted, the global collateral for the mtoken should increase by the amount posted.
+    /// @custom:property lend-12 When price feed is up to date, address(this) has mtoken, tokens are bound correctly, and caller is correct, the  postCollateral call should succeed.
+    /// @custom:precondition price feed is up to date
+    /// @custom:precondition address(this) must have a balance of mtoken
+    /// @custom:precondition `tokens` to be posted is bound between [1, mtoken balance], inclusive
+    /// @custom:precondition msg.sender for postCollateral = address(this)
     function post_collateral_should_succeed(
         address mtoken,
         uint256 tokens
@@ -476,7 +433,7 @@ contract FuzzLendtroller is StatefulBaseMarket {
             if (!success) {
                 uint256 errorSelector = extractErrorSelector(revertData);
                 emit LogUint256("error selector: ", errorSelector);
-
+                // LEND-12
                 assertWithMsg(
                     false,
                     "LENDTROLLER - expected postCollateral to pass with @precondition"
@@ -488,12 +445,13 @@ contract FuzzLendtroller is StatefulBaseMarket {
                 address(this)
             );
 
+            // LEND-9
             assertEq(
                 newCollateralForUser,
                 oldCollateralForUser + tokens,
                 "LENDTROLLER - new collateral must collateral+tokens"
             );
-            // ensure that a user has a position after posting
+            // LEND-10
             assertWithMsg(
                 lendtroller.hasPosition(mtoken, address(this)),
                 "LENDTROLLER - addr(this) must have position after posting"
@@ -502,6 +460,7 @@ contract FuzzLendtroller is StatefulBaseMarket {
             uint256 newCollateralForToken = lendtroller.collateralPosted(
                 mtoken
             );
+            // LEND-11
             assertEq(
                 newCollateralForToken,
                 oldCollateralForToken + tokens,
@@ -512,10 +471,10 @@ contract FuzzLendtroller is StatefulBaseMarket {
         postedCollateralAt[mtoken] = block.timestamp;
     }
 
-    // @property: postCollateral with token bounded too large should fail
-    // @precondition: collateral caps for the token are >0
-    // @precondition: price feed must be out of date
-    // @precondition: user must have mtoken balance
+    /// @custom:property lend-13 – Trying to post too much collateral should revert.
+    /// @custom:precondition collateral caps for the token are >0
+    /// @custom:precondition price feed must be out of date
+    /// @custom:precondition user must have mtoken balance
     function post_collateral_should_fail_too_many_tokens(
         address mtoken,
         uint256 tokens
@@ -558,16 +517,16 @@ contract FuzzLendtroller is StatefulBaseMarket {
         );
     }
 
-    // @property: Global posted collateral for the token should decrease by removed amount
-    // @property: User posted collateral for token should decrease by removed amount
-    // @property: If there is a shortfall, the removeCollateral call should fail
-    // @property: If there is no shortfall, the removeCollateral call should succeed
-    // @precondition: price feed must be recent
-    // @precondition: mtoken is one of: cDAI, cUSDC
-    // @precondition: mtoken must be listed in the Lendtroller
-    // @precondition: current timestamp must exceed the MIN_HOLD_PERIOD from postCollateral timestamp
-    // @precondition: token is clamped between [1, collateralForUser]
-    // @precondition: redeemPaused flag must not be set
+    /// @custom:property lend-14 Removing collateral from the system should decrease the global posted collateral by the removed amount.
+    /// @custom:property lend-15 Removing collateral from the system should reduce the user posted collateral by the removed amount.
+    /// @custom:property lend-16 If the user has a liquidity shortfall, the user should not be permitted to remove collateral (function should fai with insufficient collateral selector hash).
+    /// @custom:property lend-17 If the user does not have a liquidity shortfall and meets expected preconditions, the removeCollateral should be successful.
+    /// @custom:precondition price feed must be recent
+    /// @custom:precondition mtoken is one of: cDAI, cUSDC
+    /// @custom:precondition mtoken must be listed in the Lendtroller
+    /// @custom:precondition current timestamp must exceed the MIN_HOLD_PERIOD from postCollateral timestamp
+    /// @custom:precondition token is clamped between [1, collateralForUser]
+    /// @custom:precondition redeemPaused flag must not be set
     function remove_collateral_should_succeed(
         address mtoken,
         uint256 tokens,
@@ -615,10 +574,11 @@ contract FuzzLendtroller is StatefulBaseMarket {
             if (!success) {
                 uint256 errorSelector = extractErrorSelector(revertData);
 
+                // LEND-16
                 assertWithMsg(
                     errorSelector ==
                         lendtroller_insufficientCollateralSelectorHash,
-                    "LENDTROLLER - reduceCollateralIfNecessary expected to revert with insufficientCollateral"
+                    "LENDTROLLER - removeCollateral expected to revert with insufficientCollateral"
                 );
             }
         } else {
@@ -630,10 +590,16 @@ contract FuzzLendtroller is StatefulBaseMarket {
                     closePositionIfPossible
                 )
             );
+            // LEND-17
+            assertWithMsg(
+                success,
+                "LENDTROLLER - expected removeCollateral expected to be successful with no shortfall"
+            );
             // Collateral posted for the mtoken should decrease
             uint256 newCollateralPostedForToken = lendtroller.collateralPosted(
                 mtoken
             );
+            // LEND-14
             assertEq(
                 newCollateralPostedForToken,
                 oldCollateralPostedForToken - tokens,
@@ -645,6 +611,7 @@ contract FuzzLendtroller is StatefulBaseMarket {
                 mtoken,
                 address(this)
             );
+            // LEND-15
             assertEq(
                 newCollateralForUser,
                 oldCollateralForUser - tokens,
@@ -659,11 +626,11 @@ contract FuzzLendtroller is StatefulBaseMarket {
         }
     }
 
-    // @property: removeCollateral should REVERT when no position exists
-    // @precondition: mtoken is either of: cDAI or cUSDC
-    // @precondition: token must be listed in Lendtroller
-    // @precondition: price feed must be up to date
-    // @precondition: user must NOT have an existing position
+    /// @custom:property lend-18 Removing collateral for a nonexistent position should revert with invariant error hash.
+    /// @custom:precondition mtoken is either of: cDAI or cUSDC
+    /// @custom:precondition token must be listed in Lendtroller
+    /// @custom:precondition price feed must be up to date
+    /// @custom:precondition user must NOT have an existing position
     function removeCollateral_should_fail_with_non_existent_position(
         address mtoken,
         uint256 tokens
@@ -683,6 +650,7 @@ contract FuzzLendtroller is StatefulBaseMarket {
         );
 
         if (success) {
+            // LEND-18
             assertWithMsg(
                 false,
                 "LENDTROLLER - removeCollateral should fail with non existent position"
@@ -698,12 +666,12 @@ contract FuzzLendtroller is StatefulBaseMarket {
         }
     }
 
-    // @property: removeCollateral should REVERT when trying to remove too much
-    // @precondition: mtoken is either of: cDAI or cUSDC
-    // @precondition: token must be listed in Lendtroller
-    // @precondition: price feed must be up to date
-    // @precondition: user must have an existing position
-    // @precondition: tokens to remove is bound between [existingCollateral+1, uint32.max]
+    /// @custom:property lend-19 Removing more tokens than a user has for collateral should revert with insufficient collateral hash.
+    /// @custom:precondition mtoken is either of: cDAI or cUSDC
+    /// @custom:precondition token must be listed in Lendtroller
+    /// @custom:precondition price feed must be up to date
+    /// @custom:precondition user must have an existing position
+    /// @custom:precondition tokens to remove is bound between [existingCollateral+1, uint32.max]
     function removeCollateral_should_fail_with_removing_too_many_tokens(
         address mtoken,
         uint256 tokens
@@ -749,8 +717,8 @@ contract FuzzLendtroller is StatefulBaseMarket {
         }
     }
 
-    // @property: reduceCollateralIfNecessary should revert with unauthorized if called directly
-    // @precondition: msg.sender != mtoken
+    /// @custom:property lend-20 Calling reduceCollateralIfNecessary should fail when not called within the context of the mtoken.
+    /// @custom:precondition msg.sender != mtoken
     function reduceCollateralIfNecessary_should_fail_with_wrong_caller(
         address mtoken,
         uint256 amount
@@ -773,12 +741,13 @@ contract FuzzLendtroller is StatefulBaseMarket {
         }
     }
 
-    // @property: Calling closePosition should remove a position in the mtoken if sucessful
-    // @property: Calling closePosition should set collateralPostedFor(mtoken, user) = 0
-    // @property: Calling closePosition should reduce user asset list by 1 element
-    // @precondition: token must be cDAI or cUSDC
-    // @precondition: token must have an existing position
-    // @precondition: collateralPostedForUser for respective token > 0
+    /// @custom:property lend-21 Calling closePosition with correct preconditions should remove a position in the mtoken, where collateral posted for the user is greater than 0.
+    /// @custom:property lend-22 Calling closePosition with correct preconditions should set collateralPosted for the user’s mtoken to zero, where collateral posted for the user is greater than 0.
+    /// @custom:property lend-23 Calling closePosition with correct preconditions should reduce the user asset list by 1 element, where collateral posted for the user is greater than 0.
+    /// @custom:property lend-24 Calling closePosition with correct preconditions should succeed,where collateral posted for the user is greater than 0.
+    /// @custom:precondition token must be cDAI or cUSDC
+    /// @custom:precondition token must have an existing position
+    /// @custom:precondition collateralPostedForUser for respective token > 0
     function closePosition_should_succeed(address mtoken) public {
         require(mtoken == address(cDAI) || mtoken == address(cUSDC));
         require(lendtroller.hasPosition(mtoken, address(this)));
@@ -786,22 +755,29 @@ contract FuzzLendtroller is StatefulBaseMarket {
             address(mtoken),
             address(this)
         );
+        require(collateralPostedForUser > 0);
         IMToken[] memory preAssetsOf = lendtroller.assetsOf(address(this));
 
         (bool success, bytes memory rd) = address(lendtroller).call(
             abi.encodeWithSignature("closePosition(address)", mtoken)
         );
-        if (!success) {} else {
+        if (!success) {
+            assertWithMsg(
+                false,
+                "LENDTROLLER - closePosition expected to be successful with correct preconditions"
+            );
+        } else {
             check_close_position_post_conditions(mtoken, preAssetsOf.length);
         }
     }
 
-    // @property: Calling closePosition should remove a position in the mtoken if sucessful
-    // @property: Calling closePosition should set collateralPostedFor(mtoken, user) = 0
-    // @property: Calling closePosition should reduce user asset list by 1 element
-    // @precondition: token must be cDAI or cUSDC
-    // @precondition: token must have an existing position
-    // @precondition: collateralPostedForUser for respective token = 0
+    /// @custom:property lend-25 Calling closePosition with correct preconditions should remove a position in the mtoken, where collateral posted for the user is equal to 0.
+    /// @custom:property lend-26 Calling closePosition with correct preconditions should set collateralPosted for the user’s mtoken to zero, where collateral posted for the user is equal to 0.
+    /// @custom:property lend-27 Calling closePosition with correct preconditions should reduce the user asset list by 1 element, where collateral posted for the user is equal to 0.
+    /// @custom:property lend-28 Calling closePosition with correct preconditions should succeed,where collateral posted for the user is equal to 0.
+    /// @custom:precondition token must be cDAI or cUSDC
+    /// @custom:precondition token must have an existing position
+    /// @custom:precondition collateralPostedForUser for respective token = 0
     function closePosition_should_succeed_if_collateral_is_0(
         address mtoken
     ) public {
@@ -853,7 +829,7 @@ contract FuzzLendtroller is StatefulBaseMarket {
     // system invariant:
     // should not have an active position in a dtoken if one does not have debt
 
-    // ctoken.balanceOf(user) >= collateral posted
+    /// @custom:property s-lend-1 A user’s cToken balance must always be greater than the total collateral posted for a ctoken.
     function cToken_balance_gte_collateral_posted(address ctoken) public {
         uint256 cTokenBalance = MockCToken(ctoken).balanceOf(address(this));
 
@@ -868,8 +844,7 @@ contract FuzzLendtroller is StatefulBaseMarket {
         );
     }
 
-    // Market collateral posted should always be <= caps, as all values are recorded in shares rather than # of tokens
-    // accountdata[address].collateralPosted <= collateral caps per token
+    /// @custom:property s-lend-1 Market collateral posted should always be less than or equal to collateralCaps for a token.
     function collateralPosted_lte_collateralCaps(address token) public {
         uint256 collateralPosted = lendtroller.collateralPosted(token);
 
@@ -984,11 +959,6 @@ contract FuzzLendtroller is StatefulBaseMarket {
         if (lastRoundUpdate > block.timestamp) {
             lastRoundUpdate = block.timestamp;
         }
-        emit LogUint256("***********last round update: ", lastRoundUpdate);
-        emit LogUint256(
-            "-----------chainlink usdc",
-            chainlinkUsdcUsd.latestTimestamp()
-        );
         if (block.timestamp - chainlinkUsdcUsd.latestTimestamp() > 24 hours) {
             // TODO: Change this to a loop to loop over lendtroller.assetsOf()
             // Save a mapping of assets -> chainlink oracle
