@@ -102,7 +102,7 @@ abstract contract CurveBaseAdaptor is BaseOracleAdaptor {
             revert CurveBaseAdaptor__InvalidConfiguration();
         }
 
-        // Make sure the pool is not above 4 or below 2underlying tokens, 
+        // Make sure the pool is not above 4 or below 2underlying tokens,
         // we limit pools to 4.
         if (coinsLength < 2 || coinsLength > 4) {
             revert CurveBaseAdaptor__InvalidConfiguration();

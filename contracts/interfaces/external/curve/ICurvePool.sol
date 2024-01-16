@@ -26,4 +26,6 @@ interface ICurvePool {
         uint256 dx,
         uint256 min_dy
     ) external payable returns (uint256);
+
+    function stored_rates() external view returns (uint256[2] memory);
 }
