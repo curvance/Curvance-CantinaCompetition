@@ -63,6 +63,16 @@ contract DeployCurvance is
         _setLockBoostMultiplier(
             _readConfigUint256(".centralRegistry.lockBoostMultiplier")
         );
+        _setWormholeCore(_readConfigAddress(".centralRegistry.wormholeCore"));
+        _setWormholeRelayer(
+            _readConfigAddress(".centralRegistry.wormholeRelayer")
+        );
+        _setCircleRelayer(
+            _readConfigAddress(".centralRegistry.circleRelayer")
+        );
+        _setTokenBridgeRelayer(
+            _readConfigAddress(".centralRegistry.tokenBridgeRelayer")
+        );
         _addHarvester(_readConfigAddress(".centralRegistry.harvester"));
 
         // Deploy CVE

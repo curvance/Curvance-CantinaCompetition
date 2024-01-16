@@ -6,11 +6,12 @@
     "genesisEpoch": 0,
     "lockBoostMultiplier": 10000,
     "harvester": "0x0000000000000000000000000000000000000001",
-<<<<<<< HEAD
-    "sequencer": "0x0000000000000000000000000000000000000001"
-=======
-    "feeToken": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
->>>>>>> 12e7a73 (update deployment scripts)
+    "sequencer": "0x0000000000000000000000000000000000000001",
+    "feeToken": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+    "wormholeCore": "0x98f3c9e6E3fAce36bAAd05FE09d375Ef1464288B",
+    "wormholeRelayer": "0x27428DD2d3DD32A4D7f7C497eAaa23130d894911",
+    "circleRelayer": "0x4cb69FaE7e7Af841e44E1A1c30Af640739378bb2",
+    "tokenBridgeRelayer": "0xCafd2f0A35A4459fA40C0517e17e6fA2939441CA"
   },
   "cve": {
     "teamAddress": "0x0000000000000000000000000000000000000001",
@@ -25,12 +26,6 @@
   },
   "cveLocker": {
     "rewardToken": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
-  },
-  "protocolMessagingHub": {
-    "wormholeCore": "0x98f3c9e6E3fAce36bAAd05FE09d375Ef1464288B",
-    "wormholeRelayer": "0x27428DD2d3DD32A4D7f7C497eAaa23130d894911",
-    "circleRelayer": "0x4cb69FaE7e7Af841e44E1A1c30Af640739378bb2",
-    "tokenBridgeRelayer": "0xCafd2f0A35A4459fA40C0517e17e6fA2939441CA"
   },
   "oneBalanceFeeManager": {
     "gelatoOneBalance": "0x7506C12a824d73D9b08564d5Afc22c949434755e",
@@ -175,12 +170,8 @@
         "adaptorData": {
           "poolDecimals": 18,
           "poolId": "0x1e19cf2d73a72ef1332c882f20534b6519be0276000200000000000000000112",
-          "rateProviderDecimals": [
-            18
-          ],
-          "rateProviders": [
-            "0x1a8F81c256aee9C640e14bB0453ce247ea0DFE6F"
-          ],
+          "rateProviderDecimals": [18],
+          "rateProviders": ["0x1a8F81c256aee9C640e14bB0453ce247ea0DFE6F"],
           "underlyingOrConstituent": [
             "0xae78736Cd615f374D3085123A210448E74Fc6393",
             "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"

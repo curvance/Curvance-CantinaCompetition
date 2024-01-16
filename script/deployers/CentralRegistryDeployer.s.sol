@@ -106,6 +106,41 @@ contract CentralRegistryDeployer is DeployConfiguration {
         console.log("centralRegistry.setVeCVE: ", veCve);
     }
 
+    function _setWormholeCore(address wormholeCore) internal {
+        require(centralRegistry != address(0), "Set the centralRegistry!");
+        require(wormholeCore != address(0), "Set the wormholeCore!");
+
+        CentralRegistry(centralRegistry).setWormholeCore(wormholeCore);
+        console.log("centralRegistry.setWormholeCore: ", wormholeCore);
+    }
+
+    function _setWormholeRelayer(address wormholeRelayer) internal {
+        require(centralRegistry != address(0), "Set the centralRegistry!");
+        require(wormholeRelayer != address(0), "Set the wormholeRelayer!");
+
+        CentralRegistry(centralRegistry).setWormholeRelayer(wormholeRelayer);
+        console.log("centralRegistry.setWormholeRelayer: ", wormholeRelayer);
+    }
+
+    function _setCircleRelayer(address circleRelayer) internal {
+        require(centralRegistry != address(0), "Set the centralRegistry!");
+
+        CentralRegistry(centralRegistry).setCircleRelayer(circleRelayer);
+        console.log("centralRegistry.setCircleRelayer: ", circleRelayer);
+    }
+
+    function _setTokenBridgeRelayer(address tokenBridgeRelayer) internal {
+        require(centralRegistry != address(0), "Set the centralRegistry!");
+
+        CentralRegistry(centralRegistry).setTokenBridgeRelayer(
+            tokenBridgeRelayer
+        );
+        console.log(
+            "centralRegistry.setTokenBridgeRelayer: ",
+            tokenBridgeRelayer
+        );
+    }
+
     function _setVoteBoostMultiplier(uint256 voteBoostMultiplier) internal {
         require(centralRegistry != address(0), "Set the centralRegistry!");
 
