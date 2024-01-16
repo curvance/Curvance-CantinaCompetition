@@ -67,12 +67,7 @@ contract DeployCurvance is
 
         // Deploy CVE
 
-        _deployCve(
-            centralRegistry,
-            _readConfigAddress(".cve.wormholeCore"),
-            _readConfigAddress(".cve.tokenBridgeRelayer"),
-            _readConfigAddress(".cve.teamAddress")
-        );
+        _deployCVE(centralRegistry, _readConfigAddress(".cve.teamAddress"));
         _setCVE(cve);
         // TODO: set some params for cross-chain
 

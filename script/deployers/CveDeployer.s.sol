@@ -12,23 +12,11 @@ import { DeployConfiguration } from "../utils/DeployConfiguration.sol";
 contract CveDeployer is DeployConfiguration {
     address cve;
 
-    function _deployCve(
-        address centralRegistry,
-        address wormholeCore,
-        address tokenBridgeRelayer,
-        address team
-    ) internal {
+    function _deployCVE(address centralRegistry, address team) internal {
         require(centralRegistry != address(0), "Set the centralRegistry!");
         require(team != address(0), "Set the builder!");
 
-        cve = address(
-            new CVE(
-                ICentralRegistry(centralRegistry),
-                wormholeCore,
-                tokenBridgeRelayer,
-                team
-            )
-        );
+        cve = address(new CVE(ICentralRegistry(centralRegistry), team));
 
         console.log("cve: ", cve);
         _saveDeployedContracts("cve", cve);
