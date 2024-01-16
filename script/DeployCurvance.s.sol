@@ -66,6 +66,7 @@ contract DeployCurvance is
 
         _deployCve(
             centralRegistry,
+            _readConfigAddress(".cve.wormholeCore"),
             _readConfigAddress(".cve.tokenBridgeRelayer"),
             _readConfigAddress(".cve.teamAddress")
         );
@@ -89,6 +90,7 @@ contract DeployCurvance is
             _deployProtocolMessagingHub(
                 centralRegistry,
                 _readConfigAddress(".protocolMessagingHub.feeToken"),
+                _readConfigAddress(".protocolMessagingHub.wormholeCore"),
                 _readConfigAddress(".protocolMessagingHub.wormholeRelayer"),
                 _readConfigAddress(".protocolMessagingHub.circleRelayer"),
                 _readConfigAddress(".protocolMessagingHub.tokenBridgeRelayer")

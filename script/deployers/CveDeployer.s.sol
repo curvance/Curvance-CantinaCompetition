@@ -14,29 +14,21 @@ contract CveDeployer is DeployConfiguration {
 
     function _deployCve(
         address centralRegistry,
+        address wormholeCore,
         address tokenBridgeRelayer,
         address team
     ) internal {
         require(centralRegistry != address(0), "Set the centralRegistry!");
         require(team != address(0), "Set the builder!");
 
-        if (tokenBridgeRelayer == address(0)) {
-            cve = address(
-                new CVETestnet(
-                    ICentralRegistry(centralRegistry),
-                    tokenBridgeRelayer,
-                    team
-                )
-            );
-        } else {
-            cve = address(
-                new CVE(
-                    ICentralRegistry(centralRegistry),
-                    tokenBridgeRelayer,
-                    team
-                )
-            );
-        }
+        cve = address(
+            new CVE(
+                ICentralRegistry(centralRegistry),
+                wormholeCore,
+                tokenBridgeRelayer,
+                team
+            )
+        );
 
         console.log("cve: ", cve);
         _saveDeployedContracts("cve", cve);
