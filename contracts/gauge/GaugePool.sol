@@ -321,9 +321,6 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
         if (amount == 0) {
             revert GaugeErrors.InvalidAmount();
         }
-        if (block.timestamp < startTime) {
-            revert GaugeErrors.NotStarted();
-        }
 
         if (
             msg.sender != token || !ILendtroller(lendtroller).isListed(token)
