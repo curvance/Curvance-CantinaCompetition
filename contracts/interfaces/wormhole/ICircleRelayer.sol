@@ -26,8 +26,14 @@ interface ICircleRelayer {
         bytes32 targetRecipient
     ) external payable returns (uint64 messageSequence);
 
+    /// @notice Returns registered circle relayer address on given chain.
+    /// @param targetChain Wormhole specific chain ID of the blockchain.
+    function getRegisteredContract(
+        uint16 targetChain
+    ) external view returns (bytes32);
+
     function relayerFee(
-        uint16 dstChainId,
+        uint16 targetChain,
         address token
     ) external view returns (uint256);
 

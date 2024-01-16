@@ -21,16 +21,17 @@ contract CVE is ERC20 {
     /// @notice Wormhole TokenBridgeRelayer.
     ITokenBridgeRelayer public immutable tokenBridgeRelayer;
     /// @notice Address of Wormhole core contract.
-    IWormhole public immutable wormhole;
-    /// @notice Timestamp when token was created
+    IWormhole public immutable wormholeCore;
+
+    // Timestamp when token was created
     uint256 public immutable tokenGenerationEventTimestamp;
-    /// @notice DAO treasury allocation of CVE, 
+    /// @notice DAO treasury allocation of CVE,
     ///         can be minted as needed by the DAO. 14.5%.
     uint256 public immutable daoTreasuryAllocation;
-    /// @notice Initial community allocation of CVE, 
+    /// @notice Initial community allocation of CVE,
     ///         can be minted as needed by the DAO. 3.75%.
     uint256 public immutable initialCommunityAllocation;
-    /// @notice Buildier allocation of CVE, 
+    /// @notice Buildier allocation of CVE,
     ///         can be minted on a monthly basis. 13.5%
     uint256 public immutable builderAllocation;
     /// @notice 3% as veCVE immediately, 10.5% vested over 4 years.
@@ -55,12 +56,14 @@ contract CVE is ERC20 {
     error CVE__Unauthorized();
     error CVE__InsufficientCVEAllocation();
     error CVE__ParametersAreInvalid();
+    error CVE__WormholeCoreIsZeroAddress();
     error CVE__TokenBridgeRelayerIsZeroAddress();
 
     /// CONSTRUCTOR ///
 
     constructor(
         ICentralRegistry centralRegistry_,
+        address wormholeCore_,
         address tokenBridgeRelayer_,
         address builder_
     ) {
@@ -72,6 +75,9 @@ contract CVE is ERC20 {
         ) {
             revert CVE__ParametersAreInvalid();
         }
+        if (wormholeCore_ == address(0)) {
+            revert CVE__WormholeCoreIsZeroAddress();
+        }
         if (tokenBridgeRelayer_ == address(0)) {
             revert CVE__TokenBridgeRelayerIsZeroAddress();
         }
@@ -82,7 +88,7 @@ contract CVE is ERC20 {
 
         centralRegistry = centralRegistry_;
         tokenBridgeRelayer = ITokenBridgeRelayer(tokenBridgeRelayer_);
-        wormhole = ITokenBridgeRelayer(tokenBridgeRelayer_).wormhole();
+        wormholeCore = IWormhole(wormholeCore_);
         tokenGenerationEventTimestamp = block.timestamp;
         builderAddress = builder_;
 
@@ -132,7 +138,7 @@ contract CVE is ERC20 {
         _mint(msg.sender, amount);
     }
 
-    /// @notice Mint CVE to msg.sender, 
+    /// @notice Mint CVE to msg.sender,
     ///         which will always be the VeCVE contract.
     /// @dev Only callable by the ProtocolMessagingHub.
     ///      This function is used only for creating a bridged VeCVE lock.
@@ -145,7 +151,7 @@ contract CVE is ERC20 {
         _mint(msg.sender, amount);
     }
 
-    /// @notice Burn CVE from msg.sender, 
+    /// @notice Burn CVE from msg.sender,
     ///         which will always be the VeCVE contract.
     /// @dev Only callable by VeCVE.
     ///      This function is used only for bridging VeCVE lock.
@@ -273,7 +279,7 @@ contract CVE is ERC20 {
     /// @notice Returns required amount of native asset for message fee.
     /// @return Required fee.
     function bridgeFee() external view returns (uint256) {
-        return wormhole.messageFee();
+        return wormholeCore.messageFee();
     }
 
     /// PUBLIC FUNCTIONS ///

@@ -30,6 +30,10 @@ contract MockCircleRelayer is ICircleRelayer {
     function wormhole() external view returns (IWormhole) {
         return IWormhole(wormhole_instance);
     }
+
+    function getRegisteredContract(
+        uint16 targetChain
+    ) external view returns (bytes32) {}
 }
 
 contract MockWormhole is IWormhole {
