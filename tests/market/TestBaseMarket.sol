@@ -64,7 +64,7 @@ contract TestBaseMarket is TestBase {
         0xA57b8d98dAE62B26Ec3bcC4a365338157060B234;
     address internal constant _REWARDER =
         0xDd1fE5AD401D4777cE89959b7fa587e569Bf125D;
-    address internal constant _WORMHOLE =
+    address internal constant _WORMHOLE_CORE =
         0x98f3c9e6E3fAce36bAAd05FE09d375Ef1464288B;
     address internal constant _WORMHOLE_RELAYER =
         0x27428DD2d3DD32A4D7f7C497eAaa23130d894911;
@@ -170,6 +170,7 @@ contract TestBaseMarket is TestBase {
 
         cve = new CVE(
             ICentralRegistry(address(centralRegistry)),
+            _WORMHOLE_CORE,
             _TOKEN_BRIDGE_RELAYER,
             address(0)
         );
@@ -204,6 +205,7 @@ contract TestBaseMarket is TestBase {
         protocolMessagingHub = new ProtocolMessagingHub(
             ICentralRegistry(address(centralRegistry)),
             _USDC_ADDRESS,
+            _WORMHOLE_CORE,
             _WORMHOLE_RELAYER,
             _CIRCLE_RELAYER,
             _TOKEN_BRIDGE_RELAYER

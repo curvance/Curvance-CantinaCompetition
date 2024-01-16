@@ -17,6 +17,7 @@ contract ProtocolMessagingHubDeploymentTest is TestBaseProtocolMessagingHub {
         new ProtocolMessagingHub(
             ICentralRegistry(address(0)),
             _USDC_ADDRESS,
+            _WORMHOLE_CORE,
             _WORMHOLE_RELAYER,
             _CIRCLE_RELAYER,
             _TOKEN_BRIDGE_RELAYER
@@ -33,6 +34,25 @@ contract ProtocolMessagingHubDeploymentTest is TestBaseProtocolMessagingHub {
         );
         new ProtocolMessagingHub(
             ICentralRegistry(address(centralRegistry)),
+            address(0),
+            _WORMHOLE_CORE,
+            _WORMHOLE_RELAYER,
+            _CIRCLE_RELAYER,
+            _TOKEN_BRIDGE_RELAYER
+        );
+    }
+
+    function test_protocolMessagingHubDeployment_fail_whenWormholeCoreIsZeroAddress()
+        public
+    {
+        vm.expectRevert(
+            ProtocolMessagingHub
+                .ProtocolMessagingHub__WormholeCoreIsZeroAddress
+                .selector
+        );
+        new ProtocolMessagingHub(
+            ICentralRegistry(address(centralRegistry)),
+            _USDC_ADDRESS,
             address(0),
             _WORMHOLE_RELAYER,
             _CIRCLE_RELAYER,
@@ -51,6 +71,7 @@ contract ProtocolMessagingHubDeploymentTest is TestBaseProtocolMessagingHub {
         new ProtocolMessagingHub(
             ICentralRegistry(address(centralRegistry)),
             _USDC_ADDRESS,
+            _WORMHOLE_CORE,
             address(0),
             _CIRCLE_RELAYER,
             _TOKEN_BRIDGE_RELAYER
@@ -68,6 +89,7 @@ contract ProtocolMessagingHubDeploymentTest is TestBaseProtocolMessagingHub {
         new ProtocolMessagingHub(
             ICentralRegistry(address(centralRegistry)),
             _USDC_ADDRESS,
+            _WORMHOLE_CORE,
             _WORMHOLE_RELAYER,
             address(0),
             _TOKEN_BRIDGE_RELAYER
@@ -85,6 +107,7 @@ contract ProtocolMessagingHubDeploymentTest is TestBaseProtocolMessagingHub {
         new ProtocolMessagingHub(
             ICentralRegistry(address(centralRegistry)),
             _USDC_ADDRESS,
+            _WORMHOLE_CORE,
             _WORMHOLE_RELAYER,
             _CIRCLE_RELAYER,
             address(0)
@@ -95,6 +118,7 @@ contract ProtocolMessagingHubDeploymentTest is TestBaseProtocolMessagingHub {
         protocolMessagingHub = new ProtocolMessagingHub(
             ICentralRegistry(address(centralRegistry)),
             _USDC_ADDRESS,
+            _WORMHOLE_CORE,
             _WORMHOLE_RELAYER,
             _CIRCLE_RELAYER,
             _TOKEN_BRIDGE_RELAYER
@@ -109,7 +133,7 @@ contract ProtocolMessagingHubDeploymentTest is TestBaseProtocolMessagingHub {
             address(centralRegistry.cve())
         );
         assertEq(protocolMessagingHub.feeToken(), _USDC_ADDRESS);
-        assertEq(address(protocolMessagingHub.wormhole()), _WORMHOLE);
+        assertEq(address(protocolMessagingHub.wormholeCore()), _WORMHOLE_CORE);
         assertEq(
             address(protocolMessagingHub.wormholeRelayer()),
             _WORMHOLE_RELAYER

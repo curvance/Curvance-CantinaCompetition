@@ -13,6 +13,7 @@ contract TestBaseChildCVE is TestBaseMarket {
 
         childCVE = new CVE(
             ICentralRegistry(address(centralRegistry)),
+            _WORMHOLE_CORE,
             _TOKEN_BRIDGE_RELAYER
         );
     }

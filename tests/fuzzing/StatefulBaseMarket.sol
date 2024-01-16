@@ -40,6 +40,7 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
     address internal _RETH_ADDRESS;
     address internal _BALANCER_WETH_RETH;
     address internal _DAI_ADDRESS;
+    address internal _WORMHOLE_CORE;
     address internal _CIRCLE_RELAYER;
     address internal _TOKEN_BRIDGE_RELAYER;
     address internal _WORMHOLE_RELAYER;
@@ -100,8 +101,9 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
         balRETH = new MockToken("balWethReth", "balWethReth", 18);
         _BALANCER_WETH_RETH = address(balRETH);
 
+        _WORMHOLE_CORE = address(0x1);
         _CIRCLE_RELAYER = address(new MockCircleRelayer(10));
-        _WORMHOLE_RELAYER = address(0x1);
+        _WORMHOLE_RELAYER = address(0x2);
 
         emit LogString("DEPLOYED: centralRegistry");
         _deployCentralRegistry();
@@ -159,6 +161,7 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
         bridgeRelayer = new MockTokenBridgeRelayer();
         cve = new CVE(
             ICentralRegistry(address(centralRegistry)),
+            _WORMHOLE_CORE,
             address(bridgeRelayer),
             address(this)
         );
@@ -193,6 +196,7 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
         protocolMessagingHub = new ProtocolMessagingHub(
             ICentralRegistry(address(centralRegistry)),
             _USDC_ADDRESS,
+            _WORMHOLE_CORE,
             _WORMHOLE_RELAYER,
             _CIRCLE_RELAYER,
             _TOKEN_BRIDGE_RELAYER
