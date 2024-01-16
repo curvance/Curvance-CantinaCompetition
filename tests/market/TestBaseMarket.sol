@@ -179,12 +179,7 @@ contract TestBaseMarket is TestBase {
             );
         }
 
-        cve = new CVE(
-            ICentralRegistry(address(centralRegistry)),
-            _WORMHOLE_CORE,
-            _TOKEN_BRIDGE_RELAYER,
-            address(0)
-        );
+        cve = new CVE(ICentralRegistry(address(centralRegistry)), address(0));
         centralRegistry.setCVE(address(cve));
     }
 

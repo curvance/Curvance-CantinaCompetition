@@ -40,10 +40,6 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
     address internal _RETH_ADDRESS;
     address internal _BALANCER_WETH_RETH;
     address internal _DAI_ADDRESS;
-    address internal _WORMHOLE_CORE;
-    address internal _CIRCLE_RELAYER;
-    address internal _TOKEN_BRIDGE_RELAYER;
-    address internal _WORMHOLE_RELAYER;
 
     CVE public cve;
     VeCVE public veCVE;
@@ -100,10 +96,6 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
         _DAI_ADDRESS = address(dai);
         balRETH = new MockToken("balWethReth", "balWethReth", 18);
         _BALANCER_WETH_RETH = address(balRETH);
-
-        _WORMHOLE_CORE = address(0x1);
-        _CIRCLE_RELAYER = address(new MockCircleRelayer(10));
-        _WORMHOLE_RELAYER = address(0x2);
 
         emit LogString("DEPLOYED: centralRegistry");
         _deployCentralRegistry();
@@ -162,8 +154,6 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
         bridgeRelayer = new MockTokenBridgeRelayer();
         cve = new CVE(
             ICentralRegistry(address(centralRegistry)),
-            _WORMHOLE_CORE,
-            address(bridgeRelayer),
             address(this)
         );
         centralRegistry.setCVE(address(cve));
