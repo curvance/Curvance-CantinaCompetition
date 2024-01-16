@@ -392,9 +392,7 @@ contract FuzzVECVE is StatefulBaseMarket {
             address(this),
             lockIndex
         );
-        emit LogUint256("preextended lock time", preExtendLockTime);
         require(preExtendLockTime > block.timestamp);
-        assert(false);
         require(preExtendLockTime != veCVE.CONTINUOUS_LOCK_VALUE());
         if (!continuousLock) {
             isAllContinuous = false;
@@ -951,8 +949,8 @@ contract FuzzVECVE is StatefulBaseMarket {
     function get_associated_lock(
         address addr,
         uint256 lockIndex
-    ) private view returns (uint216, uint40) {
-        (uint216 amount, uint40 unlockTime) = veCVE.userLocks(addr, lockIndex);
+    ) private view returns (uint216 amount, uint40 unlockTime) {
+        (amount, unlockTime) = veCVE.userLocks(addr, lockIndex);
     }
 
     function get_existing_lock(uint256 seed) private returns (uint256) {
