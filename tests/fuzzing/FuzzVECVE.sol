@@ -670,7 +670,8 @@ contract FuzzVECVE is StatefulBaseMarket {
     /// @custom:property vecve-23 – Disable continuous lock should for a user’s continuous lock results in  preUserUnlocksByEpoch + amount matching postUserUnlocksByEpoch
     /// @custom:precondition  user has a continuous lock they intend to disable
     function disableContinuousLock_should_succeed_if_lock_exists() public {
-        uint256 lockIndex = get_continuous_lock();
+        (uint256 lockIndex, bool isContinuous) = get_continuous_lock();
+        require(isContinuous);
         uint256 preUserPoints = veCVE.userPoints(address(this));
         uint256 preChainPoints = veCVE.chainPoints();
         uint256 newEpoch = veCVE.freshLockEpoch();
@@ -962,13 +963,17 @@ contract FuzzVECVE is StatefulBaseMarket {
         return clampBetween(seed, 0, numLocks);
     }
 
-    function get_continuous_lock() private view returns (uint256) {
+    function get_continuous_lock()
+        private
+        returns (uint256 index, bool exists)
+    {
         for (uint i = 0; i < numLocks; i++) {
             (, uint40 unlockTime) = veCVE.userLocks(address(this), i);
             if (unlockTime == veCVE.CONTINUOUS_LOCK_VALUE()) {
-                return i;
+                return (i, true);
             }
         }
+        return (0, false);
     }
 
     function approve_cve(uint256 amount, string memory error) private {
