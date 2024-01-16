@@ -417,7 +417,7 @@ contract FeeAccumulator is ReentrancyGuard {
 
         // If we have sufficient chains reported,
         // time to execute epoch fee routing.
-        if ((++numChainData) == centralRegistry.supportedChains()) {
+        if (numChainData == centralRegistry.supportedChains()) {
             // Execute Fee Routing to each chain.
             uint256 epochRewardsPerCVE = _executeEpochFeeRouter(
                 chainData,
