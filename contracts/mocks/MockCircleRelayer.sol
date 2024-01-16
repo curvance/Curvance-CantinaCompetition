@@ -2,8 +2,8 @@
 pragma solidity ^0.8.17;
 
 import { IERC20Metadata } from "contracts/interfaces/IERC20Metadata.sol";
-import { ICircleRelayer } from "contracts/interfaces/wormhole/ICircleRelayer.sol";
-import { IWormhole } from "contracts/interfaces/wormhole/IWormhole.sol";
+import { ICircleRelayer } from "contracts/interfaces/external/wormhole/ICircleRelayer.sol";
+import { IWormhole } from "contracts/interfaces/external/wormhole/IWormhole.sol";
 
 contract MockCircleRelayer is ICircleRelayer {
     uint256 fee;

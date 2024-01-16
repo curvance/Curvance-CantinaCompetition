@@ -5,8 +5,8 @@ import { ERC20 } from "contracts/libraries/external/ERC20.sol";
 import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { IWormhole } from "contracts/interfaces/wormhole/IWormhole.sol";
-import { ITokenBridgeRelayer } from "contracts/interfaces/wormhole/ITokenBridgeRelayer.sol";
+import { IWormhole } from "contracts/interfaces/external/wormhole/IWormhole.sol";
+import { ITokenBridgeRelayer } from "contracts/interfaces/external/wormhole/ITokenBridgeRelayer.sol";
 import { IProtocolMessagingHub } from "contracts/interfaces/IProtocolMessagingHub.sol";
 
 /// @notice Curvance DAO's Canonical CVE Contract.

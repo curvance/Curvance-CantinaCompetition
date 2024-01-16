@@ -5,8 +5,8 @@ import { ERC20 } from "contracts/libraries/external/ERC20.sol";
 import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { IWormhole } from "contracts/interfaces/wormhole/IWormhole.sol";
-import { ITokenBridgeRelayer } from "contracts/interfaces/wormhole/ITokenBridgeRelayer.sol";
+import { IWormhole } from "contracts/interfaces/external/wormhole/IWormhole.sol";
+import { ITokenBridgeRelayer } from "contracts/interfaces/external/wormhole/ITokenBridgeRelayer.sol";
 import { IProtocolMessagingHub } from "contracts/interfaces/IProtocolMessagingHub.sol";
 
 /// @notice Curvance DAO's Child CVE Contract.
@@ -83,7 +83,7 @@ contract CVE is ERC20 {
         _mint(msg.sender, amount);
     }
 
-    /// @notice Mint CVE to msg.sender, 
+    /// @notice Mint CVE to msg.sender,
     ///         which will always be the VeCVE contract.
     /// @dev Only callable by the ProtocolMessagingHub.
     ///      This function is used only for creating a bridged VeCVE lock.
@@ -96,7 +96,7 @@ contract CVE is ERC20 {
         _mint(msg.sender, amount);
     }
 
-    /// @notice Burn CVE from msg.sender, 
+    /// @notice Burn CVE from msg.sender,
     ///         which will always be the VeCVE contract.
     /// @dev Only callable by VeCVE.
     ///      This function is used only for bridging VeCVE lock.

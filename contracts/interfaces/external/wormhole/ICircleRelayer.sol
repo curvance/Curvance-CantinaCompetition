@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { IWormhole } from "contracts/interfaces/wormhole/IWormhole.sol";
+import { IWormhole } from "contracts/interfaces/external/wormhole/IWormhole.sol";
 import { IERC20Metadata } from "contracts/interfaces/IERC20Metadata.sol";
 
 interface ICircleRelayer {

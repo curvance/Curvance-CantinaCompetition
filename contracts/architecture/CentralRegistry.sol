@@ -8,6 +8,10 @@ import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 import { ICentralRegistry, ChainData, OmnichainData } from "contracts/interfaces/ICentralRegistry.sol";
 import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { IFeeAccumulator } from "contracts/interfaces/IFeeAccumulator.sol";
+import { IWormhole } from "contracts/interfaces/external/wormhole/IWormhole.sol";
+import { IWormholeRelayer } from "contracts/interfaces/external/wormhole/IWormholeRelayer.sol";
+import { ICircleRelayer } from "contracts/interfaces/external/wormhole/ICircleRelayer.sol";
+import { ITokenBridgeRelayer } from "contracts/interfaces/external/wormhole/ITokenBridgeRelayer.sol";
 
 contract CentralRegistry is ERC165 {
     /// CONSTANTS ///
@@ -17,6 +21,9 @@ contract CentralRegistry is ERC165 {
 
     /// @notice Sequencer Uptime Feed address for L2.
     address public immutable sequencer;
+
+    /// @notice Address of fee token.
+    address public immutable feeToken;
 
     /// bytes4(keccak256(bytes("CentralRegistry__ParametersMisconfigured()")))
     uint256 internal constant _PARAMETERS_MISCONFIGURED_SELECTOR = 0xa5bb570d;
@@ -62,7 +69,25 @@ contract CentralRegistry is ERC165 {
     /// @notice Fee Accumulator contract address.
     address public feeAccumulator;
 
+    /// @notice Address of Wormhole core contract.
+    IWormhole public wormholeCore;
+
+    /// @notice Address of Wormhole Relayer.
+    IWormholeRelayer public wormholeRelayer;
+
+    /// @notice Address of Wormhole Circle Relayer.
+    ICircleRelayer public circleRelayer;
+
+    /// @notice Wormhole TokenBridgeRelayer.
+    ITokenBridgeRelayer public tokenBridgeRelayer;
+
+    // GELATO ADDRESSES
+
+    /// @notice The address of gelato sponsor.
+    address public gelatoSponsor;
+
     // PROTOCOL VALUES
+
     // Values are always set in `Basis Points`, any fees are converted to `WAD`
     // while multipliers stay in `DENOMINATOR` Fees:
 
@@ -145,11 +170,18 @@ contract CentralRegistry is ERC165 {
         string indexed contractType,
         address removedAddress
     );
+    event FeeTokenSet(address newAddress);
+    event WormholeCoreSet(address newAddress);
+    event WormholeRelayerSet(address newAddress);
+    event CircleRelayerSet(address newAddress);
+    event TokenBridgeRelayerSet(address newAddress);
+    event GelatoSponsorSet(address newAddress);
     event NewChainAdded(uint256 chainId, address operatorAddress);
     event RemovedChain(uint256 chainId, address operatorAddress);
 
     /// ERRORS ///
 
+    error CentralRegistry__InvalidFeeToken();
     error CentralRegistry__ParametersMisconfigured();
     error CentralRegistry__Unauthorized();
 
@@ -160,8 +192,13 @@ contract CentralRegistry is ERC165 {
         address timelock_,
         address emergencyCouncil_,
         uint256 genesisEpoch_,
-        address sequencer_
+        address sequencer_,
+        address feeToken_
     ) {
+        if (feeToken_ == address(0)) {
+            revert CentralRegistry__InvalidFeeToken();
+        }
+
         if (daoAddress_ == address(0)) {
             daoAddress_ = msg.sender;
         }
@@ -188,6 +225,8 @@ contract CentralRegistry is ERC165 {
 
         genesisEpoch = genesisEpoch_;
         sequencer = sequencer_;
+
+        feeToken = feeToken_;
 
         emit OwnershipTransferred(address(0), daoAddress_);
         emit NewTimelockConfiguration(address(0), timelock_);
@@ -271,6 +310,51 @@ contract CentralRegistry is ERC165 {
 
         feeAccumulator = newFeeAccumulator;
         emit CoreContractSet("Fee Accumulator", newFeeAccumulator);
+    }
+
+    /// @notice Sets an address of WormholeCore contract
+    /// @param newWormholeCore The address of WormholeCore
+    function setWormholeCore(address newWormholeCore) external {
+        _checkElevatedPermissions();
+
+        wormholeCore = IWormhole(newWormholeCore);
+        emit WormholeCoreSet(newWormholeCore);
+    }
+
+    /// @notice Sets an address of WormholeRelayer contract
+    /// @param newWormholeRelayer The address of WormholeRelayer
+    function setWormholeRelayer(address newWormholeRelayer) external {
+        _checkElevatedPermissions();
+
+        wormholeRelayer = IWormholeRelayer(newWormholeRelayer);
+        emit WormholeRelayerSet(newWormholeRelayer);
+    }
+
+    /// @notice Sets an address of Wormhole CircleRelayer contract
+    /// @param newCircleRelayer The address of Wormhole CircleRelayer
+    function setCircleRelayer(address newCircleRelayer) external {
+        _checkElevatedPermissions();
+
+        circleRelayer = ICircleRelayer(newCircleRelayer);
+        emit CircleRelayerSet(newCircleRelayer);
+    }
+
+    /// @notice Sets an address of Wormhole TokenBridgeRelayer contract
+    /// @param newTokenBridgeRelayer The address of Wormhole TokenBridgeRelayer
+    function setTokenBridgeRelayer(address newTokenBridgeRelayer) external {
+        _checkElevatedPermissions();
+
+        tokenBridgeRelayer = ITokenBridgeRelayer(newTokenBridgeRelayer);
+        emit TokenBridgeRelayerSet(newTokenBridgeRelayer);
+    }
+
+    /// @notice Sets an address of gelato sponsor
+    /// @param newGelatoSponsor The address of new gelato sponsor
+    function setGelatoSponsor(address newGelatoSponsor) external {
+        _checkElevatedPermissions();
+
+        gelatoSponsor = newGelatoSponsor;
+        emit GelatoSponsorSet(newGelatoSponsor);
     }
 
     /// @notice Sets the fee from yield by Curvance DAO to use as gas
