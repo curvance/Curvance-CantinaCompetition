@@ -78,7 +78,13 @@ contract GMXMarketDeployer is DeployConfiguration {
                 new GMCToken(
                     ICentralRegistry(centralRegistry),
                     IERC20(asset),
-                    lendtroller
+                    lendtroller,
+                    _readConfigAddress(".gmx.depositVault"),
+                    _readConfigAddress(".gmx.exchangeRouter"),
+                    _readConfigAddress(".gmx.router"),
+                    _readConfigAddress(".gmx.reader"),
+                    _readConfigAddress(".gmx.dataStore"),
+                    _readConfigAddress(".gmx.depositHandler")
                 )
             );
 

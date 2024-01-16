@@ -16,6 +16,7 @@ contract CVE is ERC20 {
 
     /// @notice Curvance DAO hub.
     ICentralRegistry public immutable centralRegistry;
+
     // Timestamp when token was created
     uint256 public immutable tokenGenerationEventTimestamp;
     /// @notice DAO treasury allocation of CVE,
