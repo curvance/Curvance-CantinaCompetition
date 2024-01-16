@@ -35,7 +35,6 @@ contract CVE is ERC20 {
         ) {
             revert CVE__ParametersAreInvalid();
         }
-
         centralRegistry = centralRegistry_;
     }
 
