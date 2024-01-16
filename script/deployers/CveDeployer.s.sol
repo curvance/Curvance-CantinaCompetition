@@ -4,7 +4,6 @@ pragma solidity ^0.8.17;
 import "forge-std/Script.sol";
 
 import { CVE } from "contracts/token/CVE.sol";
-import { CVETestnet } from "contracts/testnet/CVETestnet.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 import { DeployConfiguration } from "../utils/DeployConfiguration.sol";
