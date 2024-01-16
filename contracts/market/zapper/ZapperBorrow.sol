@@ -50,11 +50,13 @@ contract ZapperBorrow is ReentrancyGuard {
         DToken(dToken).borrowFor(msg.sender, address(this), borrowAmount);
 
         // swap
-        if (!centralRegistry.isSwapper(swapCall.target)) {
-            revert ZapperBorrow__InvalidSwapper(swapCall.target);
-        }
-        unchecked {
-            SwapperLib.swap(swapCall);
+        if (swapCall.target != address(0)) {
+            if (!centralRegistry.isSwapper(swapCall.target)) {
+                revert ZapperBorrow__InvalidSwapper(swapCall.target);
+            }
+            unchecked {
+                SwapperLib.swap(swapCall);
+            }
         }
 
         IBridgeAdapter(bridgeAdapter).bridge(msg.sender, bridgeData);
