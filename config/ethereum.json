@@ -6,7 +6,11 @@
     "genesisEpoch": 0,
     "lockBoostMultiplier": 10000,
     "harvester": "0x0000000000000000000000000000000000000001",
+<<<<<<< HEAD
     "sequencer": "0x0000000000000000000000000000000000000001"
+=======
+    "feeToken": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+>>>>>>> 12e7a73 (update deployment scripts)
   },
   "cve": {
     "wormholeCore": "0x98f3c9e6E3fAce36bAAd05FE09d375Ef1464288B",
@@ -25,14 +29,16 @@
     "rewardToken": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
   },
   "protocolMessagingHub": {
-    "feeToken": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
     "wormholeCore": "0x98f3c9e6E3fAce36bAAd05FE09d375Ef1464288B",
     "wormholeRelayer": "0x27428DD2d3DD32A4D7f7C497eAaa23130d894911",
     "circleRelayer": "0x4cb69FaE7e7Af841e44E1A1c30Af640739378bb2",
     "tokenBridgeRelayer": "0xCafd2f0A35A4459fA40C0517e17e6fA2939441CA"
   },
+  "oneBalanceFeeManager": {
+    "gelatoOneBalance": "0x7506C12a824d73D9b08564d5Afc22c949434755e",
+    "polygonOneBalanceFeeManager": "0x0000000000000000000000000000000000000001"
+  },
   "feeAccumulator": {
-    "feeToken": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
     "gasForCalldata": 1e9,
     "gasForCrosschain": 1e9
   },

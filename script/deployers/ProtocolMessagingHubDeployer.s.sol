@@ -12,33 +12,11 @@ import { DeployConfiguration } from "../utils/DeployConfiguration.sol";
 contract ProtocolMessagingHubDeployer is DeployConfiguration {
     address protocolMessagingHub;
 
-    function _deployProtocolMessagingHub(
-        address centralRegistry,
-        address feeToken,
-        address wormholeCore,
-        address wormholeRelayer,
-        address circleRelayer,
-        address tokenBridgeRelayer
-    ) internal {
+    function _deployProtocolMessagingHub(address centralRegistry) internal {
         require(centralRegistry != address(0), "Set the centralRegistry!");
-        require(feeToken != address(0), "Set the feeToken!");
-        require(wormholeCore != address(0), "Set the wormholeCore!");
-        require(wormholeRelayer != address(0), "Set the wormholeRelayer!");
-        require(circleRelayer != address(0), "Set the circleRelayer!");
-        require(
-            tokenBridgeRelayer != address(0),
-            "Set the tokenBridgeRelayer!"
-        );
 
         protocolMessagingHub = address(
-            new ProtocolMessagingHub(
-                ICentralRegistry(centralRegistry),
-                feeToken,
-                wormholeCore,
-                wormholeRelayer,
-                circleRelayer,
-                tokenBridgeRelayer
-            )
+            new ProtocolMessagingHub(ICentralRegistry(centralRegistry))
         );
 
         console.log("protocolMessagingHub: ", protocolMessagingHub);
