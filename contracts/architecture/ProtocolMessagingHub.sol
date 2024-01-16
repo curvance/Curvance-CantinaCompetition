@@ -429,6 +429,26 @@ contract ProtocolMessagingHub is FeeTokenBridgingHub {
         return _quoteWormholeFee(dstChainId, transferToken);
     }
 
+    /// @notice Returns required amount of CVE for relayer fee.
+    /// @param dstChainId Chain ID of the target blockchain.
+    /// @return Required fee.
+    function cveRelayerFee(
+        uint256 dstChainId
+    ) external view returns (uint256) {
+        return
+            centralRegistry.tokenBridgeRelayer().calculateRelayerFee(
+                wormholeChainId[dstChainId],
+                address(cve),
+                18
+            );
+    }
+
+    /// @notice Returns required amount of native asset for message fee.
+    /// @return Required fee.
+    function cveBridgeFee() external view returns (uint256) {
+        return centralRegistry.wormholeCore().messageFee();
+    }
+
     /// DAO PERMISSIONED EXTERNAL FUNCTIONS ///
 
     /// @notice Register wormhole specific chain IDs for evm chain IDs.
@@ -446,6 +466,8 @@ contract ProtocolMessagingHub is FeeTokenBridgingHub {
             wormholeChainId[chainIds[i]] = wormholeChainIds[i];
         }
     }
+
+    /// PERMISSIONED EXTERNAL FUNCTIONS ///
 
     /// @notice Permissioned function that flips the pause status of the
     ///         Messaging Hub.
