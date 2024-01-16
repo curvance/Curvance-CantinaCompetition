@@ -4,7 +4,6 @@ pragma solidity ^0.8.17;
 import { TestBaseVeCVE } from "../TestBaseVeCVE.sol";
 import { SafeTransferLib } from "contracts/libraries/external/SafeTransferLib.sol";
 import { VeCVE } from "contracts/token/VeCVE.sol";
-import { WAD } from "contracts/libraries/Constants.sol";
 
 contract LockForTest is TestBaseVeCVE {
     event Locked(address indexed user, uint256 amount);
@@ -85,10 +84,7 @@ contract LockForTest is TestBaseVeCVE {
 
         (, uint40 unlockTime) = veCVE.userLocks(address(1), 0);
 
-        assertEq(
-            veCVE.chainPoints(),
-            amount * veCVE.CL_POINT_MULTIPLIER()
-        );
+        assertEq(veCVE.chainPoints(), amount * veCVE.CL_POINT_MULTIPLIER());
         assertEq(
             veCVE.userPoints(address(1)),
             amount * veCVE.CL_POINT_MULTIPLIER()

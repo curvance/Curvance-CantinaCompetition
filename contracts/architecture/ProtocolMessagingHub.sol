@@ -4,9 +4,6 @@ pragma solidity ^0.8.17;
 import { GaugeController } from "contracts/gauge/GaugeController.sol";
 import { FeeTokenBridgingHub } from "contracts/architecture/FeeTokenBridgingHub.sol";
 
-import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
-import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
-import { ReentrancyGuard } from "contracts/libraries/external/ReentrancyGuard.sol";
 import { SafeTransferLib } from "contracts/libraries/external/SafeTransferLib.sol";
 
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
@@ -15,9 +12,6 @@ import { IFeeAccumulator, EpochRolloverData } from "contracts/interfaces/IFeeAcc
 import { ICentralRegistry, OmnichainData } from "contracts/interfaces/ICentralRegistry.sol";
 import { IVeCVE } from "contracts/interfaces/IVeCVE.sol";
 import { RewardsData } from "contracts/interfaces/ICVELocker.sol";
-import { IWormhole } from "contracts/interfaces/wormhole/IWormhole.sol";
-import { IWormholeRelayer } from "contracts/interfaces/wormhole/IWormholeRelayer.sol";
-import { ICircleRelayer } from "contracts/interfaces/wormhole/ICircleRelayer.sol";
 import { ITokenBridgeRelayer } from "contracts/interfaces/external/wormhole/ITokenBridgeRelayer.sol";
 
 contract ProtocolMessagingHub is FeeTokenBridgingHub {
@@ -28,9 +22,6 @@ contract ProtocolMessagingHub is FeeTokenBridgingHub {
 
     /// @notice veCVE contract address.
     address public immutable veCVE;
-
-    /// @notice Curvance DAO hub.
-    ICentralRegistry public immutable centralRegistry;
 
     /// @notice Wormhole specific chain ID for evm chain ID.
     mapping(uint256 => uint16) public wormholeChainId;
@@ -310,22 +301,6 @@ contract ProtocolMessagingHub is FeeTokenBridgingHub {
         _sendFeeToken(dstChainId, to, amount);
     }
 
-    /// @notice Register wormhole specific chain IDs for evm chain IDs.
-    /// @param chainIds EVM chain IDs.
-    /// @param wormholeChainIds Wormhole specific chain IDs.
-    function registerWormholeChainIDs(
-        uint256[] calldata chainIds,
-        uint16[] calldata wormholeChainIds
-    ) external {
-        _checkAuthorizedPermissions(true);
-
-        uint256 numChainIds = chainIds.length;
-
-        for (uint256 i = 0; i < numChainIds; ++i) {
-            wormholeChainId[chainIds[i]] = wormholeChainIds[i];
-        }
-    }
-
     /// @notice Send wormhole message to bridge CVE.
     /// @param dstChainId Chain ID of the target blockchain.
     /// @param recipient The address of recipient on destination chain.
@@ -405,7 +380,7 @@ contract ProtocolMessagingHub is FeeTokenBridgingHub {
         _checkMessagingHubStatus();
         _checkPermissions();
 
-        (uint256 messageFee, ) = _quoteWormholeFee(dstChainId, false);
+        uint256 messageFee = _quoteWormholeFee(dstChainId, false);
 
         return
             _sendWormholeMessages(
@@ -415,18 +390,6 @@ contract ProtocolMessagingHub is FeeTokenBridgingHub {
                 4,
                 payload
             );
-    }
-
-    /// @notice Quotes gas cost and token fee for executing crosschain
-    ///         wormhole deposit and messaging.
-    /// @param dstChainId Wormhole specific destination chain ID.
-    /// @param transferToken Whether deliver token or not.
-    /// @return Total gas cost.
-    function quoteWormholeFee(
-        uint16 dstChainId,
-        bool transferToken
-    ) external view returns (uint256) {
-        return _quoteWormholeFee(dstChainId, transferToken);
     }
 
     /// @notice Returns required amount of CVE for relayer fee.
@@ -533,20 +496,17 @@ contract ProtocolMessagingHub is FeeTokenBridgingHub {
             revert ProtocolMessagingHub__ChainIsNotSupported();
         }
 
-        uint256 messageFee = _quoteWormholeFee(dstChainId, false);
-
-        centralRegistry.wormholeRelayer().sendPayloadToEvm{
-            value: messageFee
-        }(
-            dstChainId,
-            toAddress,
-            abi.encode(uint8(4), payload), // payload
-            0, // no receiver value needed since we're just passing a message
-            _GAS_LIMIT
-        );
+        return
+            centralRegistry.wormholeRelayer().sendPayloadToEvm{
+                value: messageFee
+            }(
+                dstChainId,
+                toAddress,
+                abi.encode(payloadId, payload), // payload
+                0, // no receiver value needed since we're just passing a message
+                _GAS_LIMIT
+            );
     }
-
-    /// INTERNAL FUNCTIONS ///
 
     /// @dev Internal helper for reverting efficiently.
     function _revert(uint256 s) internal pure {

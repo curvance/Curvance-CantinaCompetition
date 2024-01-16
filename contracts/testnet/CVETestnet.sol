@@ -5,8 +5,8 @@ import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 import { ERC20 } from "contracts/libraries/external/ERC20.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { IWormhole } from "contracts/interfaces/wormhole/IWormhole.sol";
-import { ITokenBridgeRelayer } from "contracts/interfaces/wormhole/ITokenBridgeRelayer.sol";
+import { IWormhole } from "contracts/interfaces/external/wormhole/IWormhole.sol";
+import { ITokenBridgeRelayer } from "contracts/interfaces/external/wormhole/ITokenBridgeRelayer.sol";
 import { IProtocolMessagingHub } from "contracts/interfaces/IProtocolMessagingHub.sol";
 
 contract CVETestnet is ERC20 {
@@ -19,13 +19,13 @@ contract CVETestnet is ERC20 {
     ICentralRegistry public immutable centralRegistry;
     /// @notice Timestamp when token was created
     uint256 public immutable tokenGenerationEventTimestamp;
-    /// @notice DAO treasury allocation of CVE, 
+    /// @notice DAO treasury allocation of CVE,
     ///         can be minted as needed by the DAO. 14.5%.
     uint256 public immutable daoTreasuryAllocation;
-    /// @notice Initial community allocation of CVE, 
+    /// @notice Initial community allocation of CVE,
     ///         can be minted as needed by the DAO. 3.75%.
     uint256 public immutable initialCommunityAllocation;
-    /// @notice Buildier allocation of CVE, 
+    /// @notice Buildier allocation of CVE,
     ///         can be minted on a monthly basis. 13.5%
     uint256 public immutable builderAllocation;
     /// @notice 3% as veCVE immediately, 10.5% vested over 4 years.

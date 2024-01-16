@@ -3,7 +3,7 @@ pragma solidity ^0.8.17;
 
 // import { TestBaseCTokenCompounding } from "../TestBaseCTokenCompounding.sol";
 // import { CTokenCompounding } from "contracts/market/collateral/CTokenCompounding.sol";
-// import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
+// import { SafeTransferLib } from "contracts/libraries/external/SafeTransferLib.sol";
 
 // contract CTokenCompounding_StartMarketTest is TestBaseCTokenCompounding {
 //     function test_CTokenCompounding_StartMarket_fail_whenCallerIsNotLendtroller() public {
