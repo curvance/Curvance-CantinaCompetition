@@ -11,6 +11,7 @@ import { CVELocker } from "contracts/architecture/CVELocker.sol";
 import { CentralRegistry } from "contracts/architecture/CentralRegistry.sol";
 import { FeeAccumulator } from "contracts/architecture/FeeAccumulator.sol";
 import { ProtocolMessagingHub } from "contracts/architecture/ProtocolMessagingHub.sol";
+import { OneBalanceFeeManager } from "contracts/architecture/OneBalanceFeeManager.sol";
 import { DToken } from "contracts/market/collateral/DToken.sol";
 import { AuraCToken } from "contracts/market/collateral/AuraCToken.sol";
 import { DynamicInterestRateModel } from "contracts/market/interestRates/DynamicInterestRateModel.sol";
@@ -72,6 +73,8 @@ contract TestBaseMarket is TestBase {
         0x4cb69FaE7e7Af841e44E1A1c30Af640739378bb2;
     address internal constant _TOKEN_BRIDGE_RELAYER =
         0xCafd2f0A35A4459fA40C0517e17e6fA2939441CA;
+    address internal constant _GELATO_ONE_BALANCE =
+        0x7506C12a824d73D9b08564d5Afc22c949434755e;
 
     CVE public cve;
     VeCVE public veCVE;
@@ -79,6 +82,7 @@ contract TestBaseMarket is TestBase {
     CentralRegistry public centralRegistry;
     FeeAccumulator public feeAccumulator;
     ProtocolMessagingHub public protocolMessagingHub;
+    OneBalanceFeeManager public oneBalanceFeeManager;
     BalancerStablePoolAdaptor public balRETHAdapter;
     ChainlinkAdaptor public chainlinkAdaptor;
     ChainlinkAdaptor public dualChainlinkAdaptor;
@@ -127,6 +131,7 @@ contract TestBaseMarket is TestBase {
         _deployCVELocker();
         _deployVeCVE();
         _deployProtocolMessagingHub();
+        _deployOneBalanceFeeManager();
         _deployFeeAccumulator();
         chainlinkEthUsd = new MockV3Aggregator(8, 1500e8, 1e50, 1e6);
         _deployPriceRouter();
@@ -152,10 +157,16 @@ contract TestBaseMarket is TestBase {
             _ZERO_ADDRESS,
             _ZERO_ADDRESS,
             0,
-            address(0)
+            address(0),
+            _USDC_ADDRESS
         );
         centralRegistry.transferEmergencyCouncil(address(this));
         centralRegistry.setLockBoostMultiplier(lockBoostMultiplier);
+        centralRegistry.setCircleRelayer(_CIRCLE_RELAYER);
+        centralRegistry.setWormholeRelayer(_WORMHOLE_RELAYER);
+        centralRegistry.setWormholeCore(_WORMHOLE_CORE);
+        centralRegistry.setTokenBridgeRelayer(_TOKEN_BRIDGE_RELAYER);
+        centralRegistry.setGelatoSponsor(address(1));
     }
 
     function _deployCVE() internal {
@@ -203,14 +214,17 @@ contract TestBaseMarket is TestBase {
 
     function _deployProtocolMessagingHub() internal {
         protocolMessagingHub = new ProtocolMessagingHub(
-            ICentralRegistry(address(centralRegistry)),
-            _USDC_ADDRESS,
-            _WORMHOLE_CORE,
-            _WORMHOLE_RELAYER,
-            _CIRCLE_RELAYER,
-            _TOKEN_BRIDGE_RELAYER
+            ICentralRegistry(address(centralRegistry))
         );
         centralRegistry.setProtocolMessagingHub(address(protocolMessagingHub));
+    }
+
+    function _deployOneBalanceFeeManager() internal {
+        oneBalanceFeeManager = new OneBalanceFeeManager(
+            ICentralRegistry(address(centralRegistry)),
+            _GELATO_ONE_BALANCE,
+            address(1)
+        );
     }
 
     function _deployFeeAccumulator() internal {
@@ -219,7 +233,7 @@ contract TestBaseMarket is TestBase {
 
         feeAccumulator = new FeeAccumulator(
             ICentralRegistry(address(centralRegistry)),
-            _USDC_ADDRESS,
+            address(oneBalanceFeeManager),
             1e9,
             1e9
         );

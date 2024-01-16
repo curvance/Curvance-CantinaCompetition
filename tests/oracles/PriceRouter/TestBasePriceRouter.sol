@@ -51,7 +51,8 @@ contract TestBasePriceRouter is TestBase {
             _ZERO_ADDRESS,
             _ZERO_ADDRESS,
             0,
-            address(sequencer)
+            address(sequencer),
+            _USDC_ADDRESS
         );
         centralRegistry.transferEmergencyCouncil(address(this));
     }
