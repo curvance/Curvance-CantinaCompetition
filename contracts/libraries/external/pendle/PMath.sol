@@ -12,11 +12,11 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.0;
 
 /* solhint-disable private-vars-leading-underscore, reason-string */
 
-library Math {
+library PMath {
     uint256 internal constant ONE = 1e18; // 18 decimal places
     int256 internal constant IONE = 1e18; // 18 decimal places
 
@@ -81,6 +81,10 @@ library Math {
         return x * x;
     }
 
+    function squareDown(uint256 x) internal pure returns (uint256) {
+        return mulDown(x, x);
+    }
+
     function abs(int256 x) internal pure returns (uint256) {
         return uint256(x > 0 ? x : -x);
     }
@@ -141,6 +145,11 @@ library Math {
         return uint32(x);
     }
 
+    function Uint64(uint256 x) internal pure returns (uint64) {
+        require(x <= type(uint64).max);
+        return uint64(x);
+    }
+
     function Uint112(uint256 x) internal pure returns (uint112) {
         require(x <= type(uint112).max);
         return uint112(x);
@@ -156,27 +165,20 @@ library Math {
         return uint128(x);
     }
 
-    function isAApproxB(
-        uint256 a,
-        uint256 b,
-        uint256 eps
-    ) internal pure returns (bool) {
+    function Uint192(uint256 x) internal pure returns (uint192) {
+        require(x <= type(uint192).max);
+        return uint192(x);
+    }
+
+    function isAApproxB(uint256 a, uint256 b, uint256 eps) internal pure returns (bool) {
         return mulDown(b, ONE - eps) <= a && a <= mulDown(b, ONE + eps);
     }
 
-    function isAGreaterApproxB(
-        uint256 a,
-        uint256 b,
-        uint256 eps
-    ) internal pure returns (bool) {
+    function isAGreaterApproxB(uint256 a, uint256 b, uint256 eps) internal pure returns (bool) {
         return a >= b && a <= mulDown(b, ONE + eps);
     }
 
-    function isASmallerApproxB(
-        uint256 a,
-        uint256 b,
-        uint256 eps
-    ) internal pure returns (bool) {
+    function isASmallerApproxB(uint256 a, uint256 b, uint256 eps) internal pure returns (bool) {
         return a <= b && a >= mulDown(b, ONE - eps);
     }
 }
