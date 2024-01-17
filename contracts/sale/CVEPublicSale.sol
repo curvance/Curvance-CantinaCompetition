@@ -25,7 +25,6 @@ contract CVEPublicSale {
     uint256 public constant SALE_PERIOD = 3 days;
     uint256 public startTime;
     uint256 public softPriceInpaymentToken; // price in WETH (18 decimals)
-    uint256 public hardPriceInpaymentToken; // price in WETH (18 decimals)
     uint256 public cveAmountForSale;
     address public paymentToken; // ideally WETH
     uint8 public paymentTokenDecimals; // ideally WETH
@@ -67,13 +66,11 @@ contract CVEPublicSale {
     /// @notice start public sale
     /// @param _startTime public sale start timestamp (in seconds)
     /// @param _softPriceInUSD public sale base token price (in USD)
-    /// @param _hardPriceInUSD public sale hard token price (in USD)
     /// @param _cveAmountForSale public sale CVE amount base cap
     /// @param _paymentToken public sale pay token address
     function start(
         uint256 _startTime,
         uint256 _softPriceInUSD,
-        uint256 _hardPriceInUSD,
         uint256 _cveAmountForSale,
         address _paymentToken
     ) external {
@@ -89,10 +86,6 @@ contract CVEPublicSale {
             revert CVEPublicSale__InvalidStartTime();
         }
 
-        if (_softPriceInUSD >= _hardPriceInUSD) {
-            revert CVEPublicSale__InvalidPrice();
-        }
-
         uint256 err;
         (paymentTokenPrice, err) = IPriceRouter(centralRegistry.priceRouter())
             .getPrice(_paymentToken, true, true);
@@ -105,7 +98,6 @@ contract CVEPublicSale {
 
         startTime = _startTime;
         softPriceInpaymentToken = (_softPriceInUSD * 1e18) / paymentTokenPrice;
-        hardPriceInpaymentToken = (_hardPriceInUSD * 1e18) / paymentTokenPrice;
         cveAmountForSale = _cveAmountForSale;
         paymentToken = _paymentToken;
         if (_paymentToken == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE) {
@@ -125,13 +117,6 @@ contract CVEPublicSale {
 
         if (saleStatus == SaleStatus.Closed) {
             revert CVEPublicSale__Closed();
-        }
-
-        uint256 remaining = hardCap() - saleCommitted;
-
-        if (payAmount > remaining) {
-            // users can commit for only remaining amount
-            payAmount = remaining;
         }
 
         SafeTransferLib.safeTransferFrom(
@@ -172,11 +157,6 @@ contract CVEPublicSale {
         return (softPriceInpaymentToken * cveAmountForSale) / 1e18;
     }
 
-    /// @notice return sale hard cap
-    function hardCap() public view returns (uint256) {
-        return (hardPriceInpaymentToken * cveAmountForSale) / 1e18;
-    }
-
     /// @notice return sale price from sale committed
     function priceAt(
         uint256 _saleCommitted
@@ -184,10 +164,6 @@ contract CVEPublicSale {
         uint256 _softCap = softCap();
         if (_saleCommitted < _softCap) {
             return softPriceInpaymentToken;
-        }
-        uint256 _hardCap = hardCap();
-        if (_saleCommitted >= _hardCap) {
-            return hardPriceInpaymentToken;
         }
 
         // round up price calculation
@@ -207,10 +183,7 @@ contract CVEPublicSale {
             return SaleStatus.NotStarted;
         }
 
-        if (
-            block.timestamp < startTime + SALE_PERIOD &&
-            saleCommitted < hardCap()
-        ) {
+        if (block.timestamp < startTime + SALE_PERIOD) {
             return SaleStatus.InSale;
         }
 
