@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import { CVEPublicSale } from "contracts/sale/CVEPublicSale.sol";
+import { CurvanceDAOLBP } from "contracts/sale/CurvanceDAOLBP.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 
 import "tests/market/TestBaseMarket.sol";
 
-contract TestCVEPublicSale is TestBaseMarket {
-    CVEPublicSale public publicSale;
+contract TestCurvanceDAOLBP is TestBaseMarket {
+    CurvanceDAOLBP public lbp;
 
     uint256 softPrice = 10e18; // $10
     uint256 cveAmountForSale = 10000e18;
@@ -17,22 +17,22 @@ contract TestCVEPublicSale is TestBaseMarket {
     function setUp() public override {
         super.setUp();
 
-        publicSale = new CVEPublicSale(
+        lbp = new CurvanceDAOLBP(
             ICentralRegistry(address(centralRegistry))
         );
 
-        cve.transfer(address(publicSale), cve.balanceOf(address(this)));
+        cve.transfer(address(lbp), cve.balanceOf(address(this)));
     }
 
     function testInitialize() public {
-        assertEq(publicSale.cve(), address(cve));
+        assertEq(lbp.cve(), address(cve));
     }
 
     function testStartRevertWhenInvalidStartTime() public {
         vm.expectRevert(
-            CVEPublicSale.CVEPublicSale__InvalidStartTime.selector
+            CurvanceDAOLBP.CurvanceDAOLBP__InvalidStartTime.selector
         );
-        publicSale.start(
+        lbp.start(
             block.timestamp - 1,
             softPrice,
             cveAmountForSale,
@@ -41,15 +41,15 @@ contract TestCVEPublicSale is TestBaseMarket {
     }
 
     function testStartRevertWhenAlreadyStarted() public {
-        publicSale.start(
+        lbp.start(
             block.timestamp,
             softPrice,
             cveAmountForSale,
             _WETH_ADDRESS
         );
 
-        vm.expectRevert(CVEPublicSale.CVEPublicSale__AlreadyStarted.selector);
-        publicSale.start(
+        vm.expectRevert(CurvanceDAOLBP.CurvanceDAOLBP__AlreadyStarted.selector);
+        lbp.start(
             block.timestamp,
             softPrice,
             cveAmountForSale,
@@ -58,88 +58,88 @@ contract TestCVEPublicSale is TestBaseMarket {
     }
 
     function testStartSuccess() public {
-        publicSale.start(
+        lbp.start(
             block.timestamp,
             softPrice,
             cveAmountForSale,
             _WETH_ADDRESS
         );
 
-        assertEq(publicSale.startTime(), block.timestamp);
-        assertEq(publicSale.cveAmountForSale(), cveAmountForSale);
-        assertEq(publicSale.paymentToken(), _WETH_ADDRESS);
+        assertEq(lbp.startTime(), block.timestamp);
+        assertEq(lbp.cveAmountForSale(), cveAmountForSale);
+        assertEq(lbp.paymentToken(), _WETH_ADDRESS);
         assertApproxEqRel(
-            publicSale.softCap(),
-            (cveAmountForSale * softPrice) / publicSale.paymentTokenPrice(),
+            lbp.softCap(),
+            (cveAmountForSale * softPrice) / lbp.paymentTokenPrice(),
             0.0001e18
         );
     }
 
-    function testCommitRevertWhenPublicSaleNotStarted() public {
+    function testCommitRevertWhenlbpNotStarted() public {
         _prepareCommit(address(this), 1e18);
 
-        vm.expectRevert(CVEPublicSale.CVEPublicSale__NotStarted.selector);
-        publicSale.commit(1e18);
+        vm.expectRevert(CurvanceDAOLBP.CurvanceDAOLBP__NotStarted.selector);
+        lbp.commit(1e18);
     }
 
-    function testCommitRevertWhenPublicSaleClosed() public {
+    function testCommitRevertWhenlbpClosed() public {
         testStartSuccess();
 
         _prepareCommit(address(this), 1e18);
 
-        skip(publicSale.SALE_PERIOD() + 1);
+        skip(lbp.SALE_PERIOD() + 1);
 
-        vm.expectRevert(CVEPublicSale.CVEPublicSale__Closed.selector);
-        publicSale.commit(1e18);
+        vm.expectRevert(CurvanceDAOLBP.CurvanceDAOLBP__Closed.selector);
+        lbp.commit(1e18);
     }
 
     function testCommitSuccess() public {
         testStartSuccess();
 
         // before softcap
-        uint256 commitAmount = publicSale.softCap();
+        uint256 commitAmount = lbp.softCap();
         _prepareCommit(address(this), commitAmount);
-        publicSale.commit(commitAmount);
-        assertEq(publicSale.saleCommitted(), commitAmount);
-        assertEq(publicSale.userCommitted(address(this)), commitAmount);
+        lbp.commit(commitAmount);
+        assertEq(lbp.saleCommitted(), commitAmount);
+        assertEq(lbp.userCommitted(address(this)), commitAmount);
         assertEq(
-            publicSale.currentPrice(),
-            publicSale.softPriceInpaymentToken()
+            lbp.currentPrice(),
+            lbp.softPriceInpaymentToken()
         );
     }
 
     function testClaimRevertWhenPubliSaleNotStarted() public {
-        vm.expectRevert(CVEPublicSale.CVEPublicSale__NotStarted.selector);
-        publicSale.claim();
+        vm.expectRevert(CurvanceDAOLBP.CurvanceDAOLBP__NotStarted.selector);
+        lbp.claim();
     }
 
     function testClaimRevertWhenPubliSaleInProgress() public {
         testStartSuccess();
 
-        vm.expectRevert(CVEPublicSale.CVEPublicSale__InSale.selector);
-        publicSale.claim();
+        vm.expectRevert(CurvanceDAOLBP.CurvanceDAOLBP__InSale.selector);
+        lbp.claim();
     }
 
     function testClaimSuccess() public {
         testStartSuccess();
 
-        uint256 commitAmount = publicSale.softCap();
+        uint256 commitAmount = lbp.softCap();
         _prepareCommit(address(this), commitAmount);
-        publicSale.commit(commitAmount);
+        lbp.commit(commitAmount);
 
-        skip(publicSale.SALE_PERIOD() + 1);
+        skip(lbp.SALE_PERIOD() + 1);
 
         assertEq(
-            publicSale.currentPrice(),
-            publicSale.softPriceInpaymentToken()
+            lbp.currentPrice(),
+            lbp.softPriceInpaymentToken()
         );
 
-        publicSale.claim();
+        lbp.claim();
 
-        assertEq(publicSale.userCommitted(address(this)), 0);
+        assertEq(lbp.userCommitted(address(this)), 0);
         assertEq(
             cve.balanceOf(address(this)),
-            (commitAmount * 1e18) / publicSale.currentPrice()
+            (commitAmount * 1e18) / lbp.currentPrice()
         );
     }
 
@@ -154,16 +154,16 @@ contract TestCVEPublicSale is TestBaseMarket {
         _prepareCommit(user2, commitAmount);
 
         vm.prank(user1);
-        publicSale.commit(commitAmount);
+        lbp.commit(commitAmount);
         vm.prank(user2);
-        publicSale.commit(commitAmount);
+        lbp.commit(commitAmount);
 
-        skip(publicSale.SALE_PERIOD() + 1);
+        skip(lbp.SALE_PERIOD() + 1);
 
         vm.prank(user1);
-        publicSale.claim();
+        lbp.claim();
         vm.prank(user2);
-        publicSale.claim();
+        lbp.claim();
 
         assertGt(cve.balanceOf(user1), 0);
         assertEq(cve.balanceOf(user1), cve.balanceOf(user2));
@@ -172,7 +172,7 @@ contract TestCVEPublicSale is TestBaseMarket {
     function _prepareCommit(address user, uint256 amount) internal {
         deal(_WETH_ADDRESS, user, amount);
         vm.startPrank(user);
-        IERC20(_WETH_ADDRESS).approve(address(publicSale), amount);
+        IERC20(_WETH_ADDRESS).approve(address(lbp), amount);
         vm.stopPrank();
     }
 }

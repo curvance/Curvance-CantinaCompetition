@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
+import { WAD } from "contracts/libraries/Constants.sol";
 import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 import { SafeTransferLib } from "contracts/libraries/external/SafeTransferLib.sol";
 
@@ -8,7 +9,7 @@ import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IOracleRouter } from "contracts/interfaces/IOracleRouter.sol";
 
-contract CVEPublicSale {
+contract CurvanceDAOLBP {
     enum SaleStatus {
         NotStarted,
         InSale,
@@ -29,20 +30,21 @@ contract CVEPublicSale {
     address public paymentToken; // ideally WETH
     uint8 public paymentTokenDecimals; // ideally WETH
     uint256 public paymentTokenPrice;
+    uint256 public saleDecimalAdjustment; 
 
     uint256 public saleCommitted;
     mapping(address => uint256) public userCommitted;
 
     /// Errors
-    error CVEPublicSale__InvalidCentralRegistry();
-    error CVEPublicSale__Unauthorized();
-    error CVEPublicSale__InvalidStartTime();
-    error CVEPublicSale__InvalidPrice();
-    error CVEPublicSale__InvalidPriceSource();
-    error CVEPublicSale__NotStarted();
-    error CVEPublicSale__AlreadyStarted();
-    error CVEPublicSale__InSale();
-    error CVEPublicSale__Closed();
+    error CurvanceDAOLBP__InvalidCentralRegistry();
+    error CurvanceDAOLBP__Unauthorized();
+    error CurvanceDAOLBP__InvalidStartTime();
+    error CurvanceDAOLBP__InvalidPrice();
+    error CurvanceDAOLBP__InvalidPriceSource();
+    error CurvanceDAOLBP__NotStarted();
+    error CurvanceDAOLBP__AlreadyStarted();
+    error CurvanceDAOLBP__InSale();
+    error CurvanceDAOLBP__Closed();
 
     /// Events
     event PublicSaleStarted(uint256 startTime);
@@ -56,7 +58,7 @@ contract CVEPublicSale {
                 type(ICentralRegistry).interfaceId
             )
         ) {
-            revert CVEPublicSale__InvalidCentralRegistry();
+            revert CurvanceDAOLBP__InvalidCentralRegistry();
         }
 
         centralRegistry = centralRegistry_;
@@ -75,15 +77,15 @@ contract CVEPublicSale {
         address _paymentToken
     ) external {
         if (!centralRegistry.hasDaoPermissions(msg.sender)) {
-            revert CVEPublicSale__Unauthorized();
+            revert CurvanceDAOLBP__Unauthorized();
         }
 
         if (startTime != 0) {
-            revert CVEPublicSale__AlreadyStarted();
+            revert CurvanceDAOLBP__AlreadyStarted();
         }
 
         if (_startTime < block.timestamp) {
-            revert CVEPublicSale__InvalidStartTime();
+            revert CurvanceDAOLBP__InvalidStartTime();
         }
 
         uint256 err;
@@ -93,11 +95,11 @@ contract CVEPublicSale {
         // Make sure that we didnt have a catastrophic error when pricing
         // the payment token
         if (err == 2) {
-            revert CVEPublicSale__InvalidPriceSource();
+            revert CurvanceDAOLBP__InvalidPriceSource();
         }
 
         startTime = _startTime;
-        softPriceInpaymentToken = (_softPriceInUSD * 1e18) / paymentTokenPrice;
+        softPriceInpaymentToken = (_softPriceInUSD * WAD) / paymentTokenPrice;
         cveAmountForSale = _cveAmountForSale;
         paymentToken = _paymentToken;
         if (_paymentToken == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE) {
@@ -109,66 +111,68 @@ contract CVEPublicSale {
         emit PublicSaleStarted(_startTime);
     }
 
-    function commit(uint256 payAmount) external {
+    function commit(uint256 amount) external {
         SaleStatus saleStatus = currentStatus();
         if (saleStatus == SaleStatus.NotStarted) {
-            revert CVEPublicSale__NotStarted();
+            revert CurvanceDAOLBP__NotStarted();
         }
 
         if (saleStatus == SaleStatus.Closed) {
-            revert CVEPublicSale__Closed();
+            revert CurvanceDAOLBP__Closed();
         }
 
         SafeTransferLib.safeTransferFrom(
             paymentToken,
             msg.sender,
             address(this),
-            (payAmount * (10 ** paymentTokenDecimals)) / 1e18 // adjust decimals
+            amount
         );
 
-        userCommitted[msg.sender] += payAmount;
-        saleCommitted += payAmount;
+        userCommitted[msg.sender] += amount;
+        saleCommitted += amount;
 
-        emit Committed(msg.sender, payAmount);
+        emit Committed(msg.sender, amount);
     }
 
-    function claim() external returns (uint256 cveAmount) {
+    function claim() external returns (uint256 amount) {
         SaleStatus saleStatus = currentStatus();
         if (saleStatus == SaleStatus.NotStarted) {
-            revert CVEPublicSale__NotStarted();
+            revert CurvanceDAOLBP__NotStarted();
         }
         if (saleStatus == SaleStatus.InSale) {
-            revert CVEPublicSale__InSale();
+            revert CurvanceDAOLBP__InSale();
         }
 
         uint256 payAmount = userCommitted[msg.sender];
         userCommitted[msg.sender] = 0;
 
         uint256 price = currentPrice();
-        cveAmount = (payAmount * 1e18) / price;
+        amount = (payAmount * WAD) / price;
 
-        SafeTransferLib.safeTransfer(cve, msg.sender, cveAmount);
+        SafeTransferLib.safeTransfer(cve, msg.sender, amount);
 
-        emit Claimed(msg.sender, cveAmount);
+        emit Claimed(msg.sender, amount);
     }
 
     /// @notice return sale soft cap
     function softCap() public view returns (uint256) {
-        return (softPriceInpaymentToken * cveAmountForSale) / 1e18;
+        return (softPriceInpaymentToken * cveAmountForSale) / WAD;
     }
 
     /// @notice return sale price from sale committed
     function priceAt(
-        uint256 _saleCommitted
+        uint256 amount
     ) public view returns (uint256 price) {
         uint256 _softCap = softCap();
-        if (_saleCommitted < _softCap) {
+        if (amount < _softCap) {
             return softPriceInpaymentToken;
         }
 
+        amount = _adjustDecimals(amount, paymentTokenDecimals, 18);
+
         // round up price calculation
         return
-            ((_saleCommitted * 1e18) + cveAmountForSale / 2) /
+            ((amount * WAD) + cveAmountForSale / 2) /
             cveAmountForSale;
     }
 
@@ -195,15 +199,15 @@ contract CVEPublicSale {
     ///      this function is only available when the public sale is over
     function withdrawFunds() external {
         if (!centralRegistry.hasDaoPermissions(msg.sender)) {
-            revert CVEPublicSale__Unauthorized();
+            revert CurvanceDAOLBP__Unauthorized();
         }
 
         SaleStatus saleStatus = currentStatus();
         if (saleStatus == SaleStatus.NotStarted) {
-            revert CVEPublicSale__NotStarted();
+            revert CurvanceDAOLBP__NotStarted();
         }
         if (saleStatus == SaleStatus.InSale) {
-            revert CVEPublicSale__InSale();
+            revert CurvanceDAOLBP__InSale();
         }
 
         uint256 balance = IERC20(paymentToken).balanceOf(address(this));
@@ -212,5 +216,19 @@ contract CVEPublicSale {
             centralRegistry.daoAddress(),
             balance
         );
+    }
+
+    function _adjustDecimals(
+        uint256 amount,
+        uint8 fromDecimals,
+        uint8 toDecimals
+    ) internal pure returns (uint256) {
+        if (fromDecimals == toDecimals) {
+            return amount;
+        } else if (fromDecimals < toDecimals) {
+            return amount * 10 **(toDecimals - fromDecimals);
+        } else {
+            return amount / 10 **(fromDecimals - toDecimals);
+        }
     }
 }
