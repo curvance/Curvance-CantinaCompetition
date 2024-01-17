@@ -49,8 +49,8 @@ contract FeeAccumulatorDeploymentTest is TestBaseFeeAccumulator {
             address(centralRegistry)
         );
         assertEq(
-            address(feeAccumulator.getPriceRouter()),
-            centralRegistry.priceRouter()
+            address(feeAccumulator.getOracleRouter()),
+            centralRegistry.oracleRouter()
         );
         assertEq(
             feeAccumulator.oneBalanceFeeManager(),
