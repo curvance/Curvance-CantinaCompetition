@@ -4,6 +4,7 @@ pragma solidity ^0.8.17;
 import { Zapper } from "contracts/market/zapper/Zapper.sol";
 import { CTokenPrimitive } from "contracts/market/collateral/CTokenPrimitive.sol";
 import { DToken } from "contracts/market/collateral/DToken.sol";
+import { FeeTokenBridgingHub } from "contracts/architecture/FeeTokenBridgingHub.sol";
 
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { CommonLib } from "contracts/libraries/CommonLib.sol";
@@ -12,19 +13,14 @@ import { BalancerLib } from "contracts/libraries/BalancerLib.sol";
 import { VelodromeLib } from "contracts/libraries/VelodromeLib.sol";
 import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 import { SafeTransferLib } from "contracts/libraries/external/SafeTransferLib.sol";
-import { ReentrancyGuard } from "contracts/libraries/external/ReentrancyGuard.sol";
 
 import { IWETH } from "contracts/interfaces/IWETH.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
-import { IBridgeAdapter } from "contracts/interfaces/IBridgeAdapter.sol";
-import { IMarketManager } from "contracts/interfaces/market/IMarketManager.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IVeloPair } from "contracts/interfaces/external/velodrome/IVeloPair.sol";
+import { IProtocolMessagingHub } from "contracts/interfaces/IProtocolMessagingHub.sol";
 
-contract ZapperBorrow is ReentrancyGuard {
-    /// CONSTANTS ///
-    ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
-
+contract ZapperBorrow is FeeTokenBridgingHub {
     /// ERRORS ///
 
     error ZapperBorrow__InvalidSwapper(address invalidSwapper);
@@ -33,19 +29,21 @@ contract ZapperBorrow is ReentrancyGuard {
 
     receive() external payable {}
 
-    constructor(ICentralRegistry centralRegistry_) {
-        centralRegistry = centralRegistry_;
-    }
+    constructor(
+        ICentralRegistry centralRegistry_
+    ) FeeTokenBridgingHub(centralRegistry_) {}
 
     /// EXTERNAL FUNCTIONS ///
 
+    /// @param dstChainId Chain ID of the target blockchain.
     function borrowAndBridge(
         address dToken,
         uint256 borrowAmount,
         SwapperLib.Swap memory swapCall,
-        address bridgeAdapter,
-        bytes memory bridgeData
+        uint256 dstChainId
     ) external {
+        uint256 balance = IERC20(feeToken).balanceOf(address(this));
+
         // borrow
         DToken(dToken).borrowFor(msg.sender, address(this), borrowAmount);
 
@@ -59,6 +57,11 @@ contract ZapperBorrow is ReentrancyGuard {
             }
         }
 
-        IBridgeAdapter(bridgeAdapter).bridge(msg.sender, bridgeData);
+        _sendFeeToken(
+            IProtocolMessagingHub(centralRegistry.protocolMessagingHub())
+                .wormholeChainId(dstChainId),
+            msg.sender,
+            IERC20(feeToken).balanceOf(address(this)) - balance
+        );
     }
 }
