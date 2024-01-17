@@ -12,7 +12,6 @@ contract TestCVEPublicSale is TestBaseMarket {
     CVEPublicSale public publicSale;
 
     uint256 softPrice = 10e18; // $10
-    uint256 hardPrice = 100e18; // $100
     uint256 cveAmountForSale = 10000e18;
 
     function setUp() public override {
@@ -36,18 +35,6 @@ contract TestCVEPublicSale is TestBaseMarket {
         publicSale.start(
             block.timestamp - 1,
             softPrice,
-            hardPrice,
-            cveAmountForSale,
-            _WETH_ADDRESS
-        );
-    }
-
-    function testStartRevertWhenInvalidPrice() public {
-        vm.expectRevert(CVEPublicSale.CVEPublicSale__InvalidPrice.selector);
-        publicSale.start(
-            block.timestamp,
-            hardPrice + 1,
-            hardPrice,
             cveAmountForSale,
             _WETH_ADDRESS
         );
@@ -57,7 +44,6 @@ contract TestCVEPublicSale is TestBaseMarket {
         publicSale.start(
             block.timestamp,
             softPrice,
-            hardPrice,
             cveAmountForSale,
             _WETH_ADDRESS
         );
@@ -66,7 +52,6 @@ contract TestCVEPublicSale is TestBaseMarket {
         publicSale.start(
             block.timestamp,
             softPrice,
-            hardPrice,
             cveAmountForSale,
             _WETH_ADDRESS
         );
@@ -76,7 +61,6 @@ contract TestCVEPublicSale is TestBaseMarket {
         publicSale.start(
             block.timestamp,
             softPrice,
-            hardPrice,
             cveAmountForSale,
             _WETH_ADDRESS
         );
@@ -87,11 +71,6 @@ contract TestCVEPublicSale is TestBaseMarket {
         assertApproxEqRel(
             publicSale.softCap(),
             (cveAmountForSale * softPrice) / publicSale.paymentTokenPrice(),
-            0.0001e18
-        );
-        assertApproxEqRel(
-            publicSale.hardCap(),
-            (cveAmountForSale * hardPrice) / publicSale.paymentTokenPrice(),
             0.0001e18
         );
     }
@@ -123,15 +102,10 @@ contract TestCVEPublicSale is TestBaseMarket {
         publicSale.commit(commitAmount);
         assertEq(publicSale.saleCommitted(), commitAmount);
         assertEq(publicSale.userCommitted(address(this)), commitAmount);
-        assertEq(publicSale.currentPrice(), publicSale.softPriceInpaymentToken());
-
-        // before hardcap
-        commitAmount = publicSale.hardCap();
-        _prepareCommit(address(this), commitAmount);
-        publicSale.commit(commitAmount);
-        assertEq(publicSale.saleCommitted(), commitAmount);
-        assertEq(publicSale.userCommitted(address(this)), commitAmount);
-        assertEq(publicSale.currentPrice(), publicSale.hardPriceInpaymentToken());
+        assertEq(
+            publicSale.currentPrice(),
+            publicSale.softPriceInpaymentToken()
+        );
     }
 
     function testClaimRevertWhenPubliSaleNotStarted() public {
@@ -155,7 +129,10 @@ contract TestCVEPublicSale is TestBaseMarket {
 
         skip(publicSale.SALE_PERIOD() + 1);
 
-        assertEq(publicSale.currentPrice(), publicSale.softPriceInpaymentToken());
+        assertEq(
+            publicSale.currentPrice(),
+            publicSale.softPriceInpaymentToken()
+        );
 
         publicSale.claim();
 
