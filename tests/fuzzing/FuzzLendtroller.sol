@@ -48,7 +48,15 @@ contract FuzzLendtroller is StatefulBaseMarket {
         // require the token is not already listed into the lendtroller
         require(!lendtroller.isListed(mtoken));
 
-        require(mtoken == address(cDAI) || mtoken == address(cUSDC));
+        require(
+            mtoken == address(cDAI) ||
+                mtoken == address(cUSDC) ||
+                mtoken == address(dDAI) ||
+                mtoken == address(dDAI)
+        );
+        require(
+            mint_and_approve(IMToken(mtoken).underlying(), mtoken, amount)
+        );
         address underlyingAddress = MockCToken(mtoken).underlying();
         IERC20 underlying = IERC20(underlyingAddress);
 
@@ -91,13 +99,18 @@ contract FuzzLendtroller is StatefulBaseMarket {
 
     /// @custom:property lend-3 – A user can deposit into an mtoken provided that they have the underlying asset, and they have approved the mtoken contract.
     /// @custom:property lend-4 – When depositing assets into the mtoken, the wrapped token balance for the user should increase.
-    /// @custom:precondition amount bound between [1, uint16.max], inclusively
+    /// @custom:property lend-29 If convertToShares overflows, deposit should revert
+    /// @custom:property lend-30 If totalAssets+amount overflows, deposit should revert
+    /// @custom:property lend-31 If oracle returns price <0, deposit should revert
     /// @custom:precondition GaugePool must have been started before block.timestamp
     /// @custom:precondition mtoken must be one of: cDAI, cUSDC
     /// @custom:precondition mtoken must be listed in Lendtroller
     /// @custom:precondition minting must not be paused
-    function c_token_deposit(address mtoken, uint256 amount) public {
-        amount = clampBetween(amount, 1, type(uint16).max);
+    function c_token_deposit(
+        address mtoken,
+        uint256 amount,
+        bool lower
+    ) public {
         require(gaugePool.startTime() < block.timestamp);
         require(mtoken == address(cDAI) || mtoken == address(cUSDC));
         if (!lendtroller.isListed(mtoken)) {
@@ -106,32 +119,13 @@ contract FuzzLendtroller is StatefulBaseMarket {
         require(lendtroller.mintPaused(mtoken) != 2);
 
         address underlyingAddress = MockCToken(mtoken).underlying();
-        // mint ME enough tokens to cover deposit
-        try MockToken(underlyingAddress).mint(amount) {} catch {
-            uint256 currentSupply = MockToken(underlyingAddress).totalSupply();
-
-            // if the total supply overflowed, then this is actually expected to revert
-            if (currentSupply + amount < currentSupply) {
-                return;
-            }
-
-            assertWithMsg(
-                false,
-                "LENDTROLLER - mint underlying amount should succeed before deposit"
-            );
-        }
-        // approve sufficient underlying tokens prior to calling deposit
-        try MockToken(underlyingAddress).approve(mtoken, amount) {} catch {
-            assertWithMsg(
-                false,
-                "LENDTROLLER - approve underlying amount should succeed before deposit"
-            );
-        }
+        amount = clampBetweenBoundsFromOne(lower, amount);
+        require(mint_and_approve(underlyingAddress, mtoken, amount));
         uint256 preCTokenBalanceThis = MockCToken(mtoken).balanceOf(
             address(this)
         );
+        uint256 preTotalAssets = MockCToken(mtoken).totalAssets();
 
-        // This step should mint associated shares for the user
         // TODO: investigate 20 min hold period for debt token ()
         try MockCToken(mtoken).deposit(amount, address(this)) {
             uint256 postCTokenBalanceThis = MockCToken(mtoken).balanceOf(
@@ -146,13 +140,46 @@ contract FuzzLendtroller is StatefulBaseMarket {
             );
         } catch (bytes memory revertData) {
             uint256 errorSelector = extractErrorSelector(revertData);
+            uint256 totalSupplyMToken = MockCToken(mtoken).totalSupply();
+            bool convertToSharesOverflow;
 
-            emit LogUint256("error selector: ", errorSelector);
-            // LEND-3
-            assertWithMsg(
-                false,
-                "LENDTROLLER - expected mtoken.deposit() to be successful"
+            try MockCToken(mtoken).convertToShares(amount) {} catch (
+                bytes memory convertSharesData
+            ) {
+                uint256 convertSharesError = extractErrorSelector(
+                    convertSharesData
+                );
+                // CTokenBase._convertToShares will revert when `mulDivDown` overflows with `revert(0,0)
+                if (convertSharesError == 0) {
+                    convertToSharesOverflow = true;
+                }
+            }
+
+            bool assetCalc = doesOverflow(
+                preTotalAssets + amount,
+                preTotalAssets
             );
+            // LEND-31
+            bool isPriceNegative;
+            if (mtoken == address(cDAI)) {
+                isPriceNegative = chainlinkDaiUsd.latestAnswer() < 0;
+            } else {
+                isPriceNegative = chainlinkUsdcUsd.latestAnswer() < 0;
+            }
+            // LEND-29, LEND-30
+            if (!lower && (convertToSharesOverflow || assetCalc)) {
+                assertEq(
+                    errorSelector,
+                    0,
+                    "LENDTROLLER - expected mtoken.deposit() to revert with overflow"
+                );
+            } else {
+                // LEND-3
+                assertWithMsg(
+                    false,
+                    "LENDTROLLER - expected mtoken.deposit() to be successful"
+                );
+            }
         }
     }
 
@@ -214,12 +241,10 @@ contract FuzzLendtroller is StatefulBaseMarket {
         uint256 liqIncSoft,
         uint256 liqIncHard,
         uint256 liqFee,
-        uint256 baseCFactor,
-        uint256 cap
+        uint256 baseCFactor
     ) public {
         require(feedsSetup);
         require(centralRegistry.hasDaoPermissions(address(this)));
-        cap = clampBetween(cap, 1, type(uint256).max);
         if (!lendtroller.isListed(mtoken)) {
             list_token_should_succeed(mtoken);
         }
@@ -235,8 +260,6 @@ contract FuzzLendtroller is StatefulBaseMarket {
                 liqFee,
                 baseCFactor
             );
-        require(chainlinkUsdcUsd.latestAnswer() > 0);
-        require(chainlinkDaiUsd.latestAnswer() > 0);
         check_price_feed();
         try
             lendtroller.updateCollateralToken(
@@ -332,7 +355,6 @@ contract FuzzLendtroller is StatefulBaseMarket {
         }
         require(feedsSetup);
         require(centralRegistry.hasDaoPermissions(address(this)));
-        cap = clampBetween(cap, 1, type(uint256).max);
         if (!lendtroller.isListed(mtoken)) {
             list_token_should_succeed(mtoken);
         }
@@ -380,7 +402,8 @@ contract FuzzLendtroller is StatefulBaseMarket {
     /// @custom:precondition msg.sender for postCollateral = address(this)
     function post_collateral_should_succeed(
         address mtoken,
-        uint256 tokens
+        uint256 tokens,
+        bool lower
     ) public {
         if (!collateralCapsUpdated[mtoken]) {
             setCToken_should_succeed(mtoken, tokens);
@@ -388,7 +411,11 @@ contract FuzzLendtroller is StatefulBaseMarket {
         check_price_feed();
 
         if (IMToken(mtoken).balanceOf(address(this)) == 0) {
-            c_token_deposit(mtoken, tokens * IMToken(mtoken).decimals());
+            c_token_deposit(
+                mtoken,
+                tokens * IMToken(mtoken).decimals(),
+                lower
+            );
         }
         uint256 mtokenBalance = IMToken(mtoken).balanceOf(address(this));
 
@@ -477,13 +504,18 @@ contract FuzzLendtroller is StatefulBaseMarket {
     /// @custom:precondition user must have mtoken balance
     function post_collateral_should_fail_too_many_tokens(
         address mtoken,
-        uint256 tokens
+        uint256 tokens,
+        bool lower
     ) public {
         require(collateralCapsUpdated[mtoken]);
         check_price_feed();
 
         if (IMToken(mtoken).balanceOf(address(this)) == 0) {
-            c_token_deposit(mtoken, tokens * IMToken(mtoken).decimals());
+            c_token_deposit(
+                mtoken,
+                tokens * IMToken(mtoken).decimals(),
+                lower
+            );
         }
         uint256 mtokenBalance = IMToken(mtoken).balanceOf(address(this));
 
@@ -497,7 +529,7 @@ contract FuzzLendtroller is StatefulBaseMarket {
         tokens = clampBetween(
             tokens,
             mtokenBalance - oldCollateralForUser + 1,
-            type(uint64).max
+            type(uint256).max
         );
 
         uint256 oldCollateralForToken = lendtroller.collateralPosted(mtoken);
@@ -530,7 +562,8 @@ contract FuzzLendtroller is StatefulBaseMarket {
     function remove_collateral_should_succeed(
         address mtoken,
         uint256 tokens,
-        bool closePositionIfPossible
+        bool closePositionIfPossible,
+        bool lower
     ) public {
         require(mtoken == address(cDAI) || mtoken == address(cUSDC));
         require(postedCollateral[mtoken]);
@@ -548,7 +581,7 @@ contract FuzzLendtroller is StatefulBaseMarket {
             mtoken,
             address(this)
         );
-        tokens = clampBetween(tokens, 1, oldCollateralForUser);
+        tokens = clampBetweenBoundsFromOne(lower, tokens);
 
         uint256 oldCollateralPostedForToken = lendtroller.collateralPosted(
             mtoken
@@ -688,7 +721,7 @@ contract FuzzLendtroller is StatefulBaseMarket {
         tokens = clampBetween(
             tokens,
             oldCollateralForUser + 1,
-            type(uint32).max
+            type(uint256).max
         );
 
         (bool success, bytes memory revertData) = address(lendtroller).call(
@@ -856,7 +889,7 @@ contract FuzzLendtroller is StatefulBaseMarket {
         );
     }
 
-    /// @custom:property s-lend-1 Market collateral posted should always be less than or equal to collateralCaps for a token.
+    /// @custom:property s-lend-2 Market collateral posted should always be less than or equal to collateralCaps for a token.
     function collateralPosted_lte_collateralCaps(address token) public {
         uint256 collateralPosted = lendtroller.collateralPosted(token);
 
@@ -866,6 +899,16 @@ contract FuzzLendtroller is StatefulBaseMarket {
             collateralPosted,
             collateralCaps,
             "LENDTROLLER - collateralPosted must be <= collateralCaps"
+        );
+    }
+
+    // @custom:property s-lend-3 totalSupply should never be zero for any mtoken once added to Lendtroller
+    function totalSupply_of_listed_token_is_never_zero(address mtoken) public {
+        require(lendtroller.isListed(mtoken));
+        assertNeq(
+            IMToken(mtoken).totalSupply(),
+            0,
+            "IMToken - totalSupply should never go down to zero once listed"
         );
     }
 

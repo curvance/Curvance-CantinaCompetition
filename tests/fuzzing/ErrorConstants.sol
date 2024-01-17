@@ -37,4 +37,15 @@ contract ErrorConstants {
 
     uint256 lendtroller_minHoldSelectorHash =
         uint256(uint32(bytes4(keccak256("Lendtroller__MinimumHoldPeriod()"))));
+
+    uint256 lendtroller_mismatchSelectorHash =
+        uint256(
+            uint32(bytes4(keccak256("Lendtroller__LendtrollerMismatch()")))
+        );
+
+    uint256 token_total_supply_overflow =
+        uint256(uint32(bytes4(keccak256("TotalSupplyOverflow()"))));
+
+    uint256 token_allowance_overflow =
+        uint256(uint32(bytes4(keccak256("AllowanceOverflow()"))));
 }
