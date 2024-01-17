@@ -104,7 +104,7 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
             revert PositionFolding__InvalidCentralRegistry();
         }
 
-        if (!centralRegistry_.isLendingMarket(marketManager_)) {
+        if (!centralRegistry_.isMarketManager(marketManager_)) {
             revert PositionFolding__InvalidMarketManager();
         }
 

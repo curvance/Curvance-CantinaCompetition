@@ -669,8 +669,8 @@ contract FeeAccumulator is ReentrancyGuard {
         return centralRegistry.protocolCompoundFee();
     }
 
-    /// @notice Vault yield fee is in basis point form
-    /// @dev Returns the vaults current protocol fee for compounding rewards
+    /// @notice Vault yield fee is in basis point form.
+    /// @dev Returns the vaults current protocol fee for compounding rewards.
     function vaultYieldFee() public view returns (uint256) {
         return centralRegistry.protocolYieldFee();
     }

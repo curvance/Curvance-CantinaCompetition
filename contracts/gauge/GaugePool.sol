@@ -75,7 +75,7 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
         }
 
         // Validate that the marketManager we are setting is actually a lending market
-        if (!centralRegistry.isLendingMarket(marketManager_)) {
+        if (!centralRegistry.isMarketManager(marketManager_)) {
             revert GaugeErrors.InvalidAddress();
         }
 

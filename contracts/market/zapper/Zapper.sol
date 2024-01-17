@@ -65,7 +65,7 @@ contract Zapper is ReentrancyGuard {
 
         centralRegistry = centralRegistry_;
 
-        if (!centralRegistry.isLendingMarket(marketManager_)) {
+        if (!centralRegistry.isMarketManager(marketManager_)) {
             revert Zapper__MarketManagerIsNotLendingMarket();
         }
 
