@@ -116,6 +116,13 @@ contract OracleRouter {
     /// @param feedToAdd The address of the new feed.
     function replaceAssetPriceFeed(address asset, address feedToRemove, address feedToAdd) external {
         _checkElevatedPermissions();
+
+        // Validate that the feeds are not identical as there would be no
+        // point to replace a feed with itself.
+        if (feedToRemove == feedToAdd) {
+            _revert(_INVALID_PARAMETER_SELECTOR);
+        }
+
         _removeFeed(asset, feedToRemove);
         _addFeed(asset, feedToAdd);
     }
@@ -171,25 +178,58 @@ contract OracleRouter {
         delete mTokenAssets[mTokenToRemove];
     }
 
-    /// @notice Adds a new approved adaptor.
+    /// @notice Adds `newAdaptor` as an approved adaptor.
     /// @dev Requires that the adaptor isn't already approved.
-    /// @param newAdaptor The address of the adaptor to approve.
-    function addApprovedAdaptor(address newAdaptor) external {
+    /// @param adaptorToAdd The address of the adaptor to approve.
+    function addApprovedAdaptor(address adaptorToAdd) external {
         _checkElevatedPermissions();
 
-        if (isApprovedAdaptor[newAdaptor]) {
+        // Validate `adaptorToAdd` is not already supported.
+        if (isApprovedAdaptor[adaptorToAdd]) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
-        isApprovedAdaptor[newAdaptor] = true;
+        isApprovedAdaptor[adaptorToAdd] = true;
     }
 
-    /// @notice Removes an approved adaptor.
+    /// @notice Removes adaptor approval for `adaptorToRemove`, then,
+    ///         adds adaptor approval for `adaptorToAdd`.
+    /// @dev Requires that the adaptor isn't already approved.
+    /// @param adaptorToRemove The address of the adaptor to remove approval.
+    /// @param adaptorToAdd The address of the adaptor to approve.
+    function replaceApprovedAdaptor(
+        address adaptorToRemove, 
+        address adaptorToAdd
+    ) external {
+        _checkElevatedPermissions();
+
+        // Validate `adaptorToAdd` is not already supported.
+        if (isApprovedAdaptor[adaptorToAdd]) {
+            _revert(_INVALID_PARAMETER_SELECTOR);
+        }
+
+        // Validate `adaptorToRemove` is currently supported.
+        if (!isApprovedAdaptor[adaptorToRemove]) {
+            _revert(_INVALID_PARAMETER_SELECTOR);
+        }
+
+        // Validate that the adaptors are not identical as there would be no
+        // point to replace an adaptor with itself.
+        if (adaptorToAdd == adaptorToRemove) {
+            _revert(_INVALID_PARAMETER_SELECTOR);
+        }
+
+        delete isApprovedAdaptor[adaptorToRemove];
+        isApprovedAdaptor[adaptorToAdd] = true;
+    }
+
+    /// @notice Removes `adaptorToRemove` as an approved adaptor.
     /// @dev Requires that the adaptor is currently approved.
     /// @param adaptorToRemove The address of the adaptor to remove.
     function removeApprovedAdaptor(address adaptorToRemove) external {
         _checkElevatedPermissions();
 
+        // Validate `adaptorToRemove` is currently supported.
         if (!isApprovedAdaptor[adaptorToRemove]) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
