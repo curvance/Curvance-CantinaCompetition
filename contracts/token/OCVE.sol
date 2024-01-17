@@ -239,16 +239,16 @@ contract OCVE is ERC20 {
         } else {
             // Adjust decimals between paymentTokenDecimals,
             // and default 18 decimals of optionExerciseCost. 
-            uint256 amount = _adjustDecimals(
+            uint256 payAmount = _adjustDecimals(
                 optionExerciseCost, 
                 paymentTokenDecimals, 
                 18
             );
 
             /// Equivalent to `(optionExerciseCost * amount) / WAD` rounded up.
-            amount = FixedPointMathLib.mulWadUp(optionExerciseCost, amount);
+            payAmount = FixedPointMathLib.mulWadUp(optionExerciseCost, payAmount);
 
-            if (amount == 0) {
+            if (payAmount == 0) {
                 revert OCVE__CannotExercise();
             }
 
@@ -256,7 +256,7 @@ contract OCVE is ERC20 {
                 paymentToken,
                 msg.sender,
                 address(this),
-                amount
+                payAmount
             );
         }
 
