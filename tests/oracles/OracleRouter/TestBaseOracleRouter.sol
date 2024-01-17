@@ -99,7 +99,7 @@ contract TestBaseOracleRouter is TestBase {
             ICentralRegistry(address(centralRegistry)),
             address(gaugePool)
         );
-        centralRegistry.addLendingMarket(address(marketManager), 0);
+        centralRegistry.addMarketManager(address(marketManager), 0);
     }
 
     function _deployDynamicInterestRateModel() internal {
