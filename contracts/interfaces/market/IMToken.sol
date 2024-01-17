@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
+import { IMarketManager } from "contracts/interfaces/market/IMarketManager.sol";
 
 struct AccountSnapshot {
     address asset;
@@ -65,7 +65,7 @@ interface IMToken {
         address account
     ) external view returns (uint256);
 
-    function lendtroller() external view returns (ILendtroller);
+    function MarketManager() external view returns (IMarketManager);
 
     function exchangeRateCached() external view returns (uint256);
 

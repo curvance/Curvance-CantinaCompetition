@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { LiquidityManager, IPriceRouter, IMToken, WAD } from "contracts/market/lendtroller/LiquidityManager.sol";
+import { LiquidityManager, IPriceRouter, IMToken, WAD } from "contracts/market/LiquidityManager.sol";
 
 import { ERC165 } from "contracts/libraries/external/ERC165.sol";
 import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
@@ -581,8 +581,8 @@ contract MarketManager is LiquidityManager, ERC165 {
         }
 
         if (
-            IMToken(collateralToken).lendtroller() !=
-            IMToken(debtToken).lendtroller()
+            IMToken(collateralToken).marketManager() !=
+            IMToken(debtToken).marketManager()
         ) {
             revert MarketManager__MarketManagerMismatch();
         }
