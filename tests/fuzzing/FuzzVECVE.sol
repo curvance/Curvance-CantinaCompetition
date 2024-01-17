@@ -596,6 +596,7 @@ contract FuzzVECVE is StatefulBaseMarket {
 
         amount = clampBetween(amount, WAD, type(uint64).max);
         (, uint256 unlockTime) = get_associated_lock(address(this), lockIndex);
+        require(unlockTime != veCVE.CONTINUOUS_LOCK_VALUE());
         require(unlockTime >= block.timestamp);
         // save balance of CVE
         uint256 preLockCVEBalance = cve.balanceOf(address(this));
