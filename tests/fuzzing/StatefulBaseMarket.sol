@@ -6,6 +6,7 @@ import { ErrorConstants } from "tests/fuzzing/helpers/ErrorConstants.sol";
 import { MockDataFeed } from "contracts/mocks/MockDataFeed.sol";
 
 import { MockToken } from "contracts/mocks/MockToken.sol";
+import { MockDataFeed } from "contracts/mocks/MockDataFeed.sol";
 import { MockCToken } from "contracts/mocks/MockCToken.sol";
 import { MockV3Aggregator } from "contracts/mocks/MockV3Aggregator.sol";
 import { MockCircleRelayer, MockWormhole } from "contracts/mocks/MockCircleRelayer.sol";
@@ -520,6 +521,84 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
         }
         if (block.timestamp - chainlinkUsdcUsd.latestTimestamp() > 24 hours) {
             // TODO: Change this to a loop to loop over marketManager.assetsOf()
+            // Save a mapping of assets -> chainlink oracle
+            // call updateRoundData on each oracle
+            chainlinkUsdcUsd.updateRoundData(
+                0,
+                1e8,
+                block.timestamp,
+                block.timestamp
+            );
+            chainlinkDaiUsd.updateRoundData(
+                0,
+                1e8,
+                block.timestamp,
+                block.timestamp
+            );
+        }
+        mockUsdcFeed.setMockUpdatedAt(block.timestamp);
+        mockDaiFeed.setMockUpdatedAt(block.timestamp);
+        mockUsdcFeed.setMockAnswer(1e8);
+        mockDaiFeed.setMockAnswer(1e8);
+        lastRoundUpdate = block.timestamp;
+    }
+
+    MockDataFeed public mockUsdcFeed;
+    MockDataFeed public mockDaiFeed;
+    bool feedsSetup;
+    uint256 lastRoundUpdate;
+
+    function setUpFeeds() public {
+        require(centralRegistry.hasElevatedPermissions(address(this)));
+        require(gaugePool.startTime() < block.timestamp);
+        // use mock pricing for testing
+        // StatefulBaseMarket - chainlinkAdaptor - usdc, dai
+        mockUsdcFeed = new MockDataFeed(address(chainlinkUsdcUsd));
+        chainlinkAdaptor.addAsset(address(cUSDC), address(mockUsdcFeed), true);
+        dualChainlinkAdaptor.addAsset(
+            address(cUSDC),
+            address(mockUsdcFeed),
+            true
+        );
+        mockDaiFeed = new MockDataFeed(address(chainlinkDaiUsd));
+        chainlinkAdaptor.addAsset(address(cDAI), address(mockDaiFeed), true);
+        dualChainlinkAdaptor.addAsset(
+            address(cDAI),
+            address(mockDaiFeed),
+            true
+        );
+
+        mockUsdcFeed.setMockUpdatedAt(block.timestamp);
+        mockDaiFeed.setMockUpdatedAt(block.timestamp);
+        mockUsdcFeed.setMockAnswer(1e8);
+        mockDaiFeed.setMockAnswer(1e8);
+        chainlinkUsdcUsd.updateRoundData(
+            0,
+            1e8,
+            block.timestamp,
+            block.timestamp
+        );
+        chainlinkDaiUsd.updateRoundData(
+            0,
+            1e8,
+            block.timestamp,
+            block.timestamp
+        );
+        priceRouter.addMTokenSupport(address(cDAI));
+        priceRouter.addMTokenSupport(address(cUSDC));
+
+        feedsSetup = true;
+        lastRoundUpdate = block.timestamp;
+    }
+
+    // If the price is stale, update the round data and update lastRoundUpdate
+    function check_price_feed() public {
+        // if lastRoundUpdate timestamp is stale
+        if (lastRoundUpdate > block.timestamp) {
+            lastRoundUpdate = block.timestamp;
+        }
+        if (block.timestamp - chainlinkUsdcUsd.latestTimestamp() > 24 hours) {
+            // TODO: Change this to a loop to loop over lendtroller.assetsOf()
             // Save a mapping of assets -> chainlink oracle
             // call updateRoundData on each oracle
             chainlinkUsdcUsd.updateRoundData(
