@@ -44,7 +44,6 @@ contract Curve2PoolAdaptor is CurveBaseAdaptor {
     error Curve2PoolAdaptor__AssetIsAlreadyAdded();
     error Curve2PoolAdaptor__AssetIsNotSupported();
     error Curve2PoolAdaptor__QuoteAssetIsNotSupported();
-    error Curve2PoolAdaptor_Bounds_Exeeded();
 
     /// CONSTRUCTOR ///
 
@@ -91,7 +90,6 @@ contract Curve2PoolAdaptor is CurveBaseAdaptor {
 
         // Make sure virtualPrice is reasonable.
         uint256 virtualPrice = pool.get_virtual_price();
-        _enforceBounds(virtualPrice, Adaptor.lowerBound, Adaptor.upperBound);
 
         // Get underlying token prices.
         IPriceRouter priceRouter = IPriceRouter(centralRegistry.priceRouter());
@@ -204,22 +202,5 @@ contract Curve2PoolAdaptor is CurveBaseAdaptor {
         // Notify the price router that we are going to stop supporting the asset
         IPriceRouter(centralRegistry.priceRouter()).notifyFeedRemoval(asset);
         emit CurvePoolAssetRemoved(asset);
-    }
-
-    /**
-     * @notice Helper function to check if a provided answer is within a reasonable bound.
-     */
-    function _enforceBounds(
-        uint256 providedAnswer, // decimals 18
-        uint32 lowerBound, // decimals 4
-        uint32 upperBound // decimals 4
-    ) internal view {
-        uint32 providedAnswerConvertedToBoundDecimals = uint32(
-            providedAnswer / 1e14
-        );
-        if (
-            providedAnswerConvertedToBoundDecimals < lowerBound ||
-            providedAnswerConvertedToBoundDecimals > upperBound
-        ) revert Curve2PoolAdaptor_Bounds_Exeeded();
     }
 }
