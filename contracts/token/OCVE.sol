@@ -7,7 +7,7 @@ import { SafeTransferLib } from "contracts/libraries/external/SafeTransferLib.so
 import { ERC20 } from "contracts/libraries/external/ERC20.sol";
 
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
-import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
+import { IOracleRouter } from "contracts/interfaces/IOracleRouter.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 contract OCVE is ERC20 {
@@ -168,8 +168,8 @@ contract OCVE is ERC20 {
         // Get the current price of the payment token from the price router
         // in USD and multiply it by the Strike Price to see how much per CVE
         // they must pay
-        (uint256 currentPrice, uint256 error) = IPriceRouter(
-            centralRegistry.priceRouter()
+        (uint256 currentPrice, uint256 error) = IOracleRouter(
+            centralRegistry.oracleRouter()
         ).getPrice(paymentToken, true, true);
 
         // Make sure that we didnt have a catastrophic error when pricing

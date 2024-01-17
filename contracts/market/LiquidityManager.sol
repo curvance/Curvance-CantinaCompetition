@@ -6,7 +6,7 @@ import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.sol";
-import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
+import { IOracleRouter } from "contracts/interfaces/IOracleRouter.sol";
 
 /// @title Curvance Liquidity Manager.
 /// @notice Calculates liquidity of an account in various positions.
@@ -483,7 +483,7 @@ abstract contract LiquidityManager {
         returns (AccountSnapshot[] memory, uint256[] memory, uint256)
     {
         return
-            IPriceRouter(centralRegistry.priceRouter()).getPricesForMarket(
+            IOracleRouter(centralRegistry.oracleRouter()).getPricesForMarket(
                 account,
                 accountAssets[account].assets,
                 errorCodeBreakpoint

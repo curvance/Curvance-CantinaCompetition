@@ -3,27 +3,27 @@ pragma solidity ^0.8.17;
 
 import "forge-std/Script.sol";
 
-import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
+import { OracleRouter } from "contracts/oracles/OracleRouter.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 import { DeployConfiguration } from "../utils/DeployConfiguration.sol";
 
-contract PriceRouterDeployer is DeployConfiguration {
-    address priceRouter;
+contract OracleRouterDeployer is DeployConfiguration {
+    address oracleRouter;
 
-    function deployPriceRouter(
+    function deployOracleRouter(
         address centralRegistry,
         address ethUsdFeed
     ) internal {
         require(centralRegistry != address(0), "Set the centralRegistry!");
         require(ethUsdFeed != address(0), "Set the ethUsdFeed!");
 
-        priceRouter = address(
-            new PriceRouter(ICentralRegistry(centralRegistry), ethUsdFeed)
+        oracleRouter = address(
+            new OracleRouter(ICentralRegistry(centralRegistry), ethUsdFeed)
         );
 
-        console.log("priceRouter: ", priceRouter);
-        _saveDeployedContracts("priceRouter", priceRouter);
+        console.log("oracleRouter: ", oracleRouter);
+        _saveDeployedContracts("oracleRouter", oracleRouter);
     }
 }

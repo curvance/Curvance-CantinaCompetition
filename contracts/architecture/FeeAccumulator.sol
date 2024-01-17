@@ -7,7 +7,7 @@ import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 import { SafeTransferLib } from "contracts/libraries/external/SafeTransferLib.sol";
 import { ReentrancyGuard } from "contracts/libraries/external/ReentrancyGuard.sol";
 
-import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
+import { IOracleRouter } from "contracts/interfaces/IOracleRouter.sol";
 import { ICVELocker } from "contracts/interfaces/ICVELocker.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { IVeCVE } from "contracts/interfaces/IVeCVE.sol";
@@ -249,14 +249,14 @@ contract FeeAccumulator is ReentrancyGuard {
         }
 
         // Cache router to save gas
-        IPriceRouter priceRouter = IPriceRouter(centralRegistry.priceRouter());
+        IOracleRouter oracleRouter = IOracleRouter(centralRegistry.oracleRouter());
 
-        (uint256 priceSwap, uint256 errorCodeSwap) = priceRouter.getPrice(
+        (uint256 priceSwap, uint256 errorCodeSwap) = oracleRouter.getPrice(
             tokenToOTC,
             true,
             true
         );
-        (uint256 priceFeeToken, uint256 errorCodeFeeToken) = priceRouter
+        (uint256 priceFeeToken, uint256 errorCodeFeeToken) = oracleRouter
             .getPrice(feeToken, true, true);
 
         // Validate we got prices back
@@ -657,9 +657,9 @@ contract FeeAccumulator is ReentrancyGuard {
     /// PUBLIC FUNCTIONS ///
 
     /// @notice Fetches the current price router from the central registry.
-    /// @return Current PriceRouter interface address.
-    function getPriceRouter() public view returns (IPriceRouter) {
-        return IPriceRouter(centralRegistry.priceRouter());
+    /// @return Current OracleRouter interface address.
+    function getOracleRouter() public view returns (IOracleRouter) {
+        return IOracleRouter(centralRegistry.oracleRouter());
     }
 
     /// @notice Vault compound fee is in basis point form.

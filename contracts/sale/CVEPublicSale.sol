@@ -6,7 +6,7 @@ import { SafeTransferLib } from "contracts/libraries/external/SafeTransferLib.so
 
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
+import { IOracleRouter } from "contracts/interfaces/IOracleRouter.sol";
 
 contract CVEPublicSale {
     enum SaleStatus {
@@ -87,7 +87,7 @@ contract CVEPublicSale {
         }
 
         uint256 err;
-        (paymentTokenPrice, err) = IPriceRouter(centralRegistry.priceRouter())
+        (paymentTokenPrice, err) = IOracleRouter(centralRegistry.oracleRouter())
             .getPrice(_paymentToken, true, true);
 
         // Make sure that we didnt have a catastrophic error when pricing

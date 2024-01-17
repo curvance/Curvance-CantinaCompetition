@@ -12,7 +12,7 @@ import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IGaugePool } from "contracts/interfaces/IGaugePool.sol";
 import { IFeeAccumulator } from "contracts/interfaces/IFeeAccumulator.sol";
-import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
+import { IOracleRouter } from "contracts/interfaces/IOracleRouter.sol";
 import { ICVELocker } from "contracts/interfaces/ICVELocker.sol";
 
 
@@ -107,7 +107,7 @@ contract CurvanceAuxiliaryData {
         bool[] calldata inUSD,
         bool[] calldata getLower
     ) external view returns (uint256[] memory, uint256[] memory) {
-        return _getPriceRouter().getPrices(assets, inUSD, getLower);
+        return _getOracleRouter().getPrices(assets, inUSD, getLower);
     }
 
     function hasRewards(address user) external view returns (bool) {
@@ -268,8 +268,8 @@ contract CurvanceAuxiliaryData {
         return ICVELocker(centralRegistry.cveLocker());
     }
 
-    function _getPriceRouter() internal view returns (IPriceRouter) {
-        return IPriceRouter(centralRegistry.priceRouter());
+    function _getOracleRouter() internal view returns (IOracleRouter) {
+        return IOracleRouter(centralRegistry.oracleRouter());
     }
 
     function _getTokenPrice(
@@ -277,7 +277,7 @@ contract CurvanceAuxiliaryData {
         bool getLower
     ) internal view returns (uint256 price) {
         uint256 errorCode;
-        (price, errorCode) = _getPriceRouter().getPrice(mToken, true, getLower);
+        (price, errorCode) = _getOracleRouter().getPrice(mToken, true, getLower);
         // If we could not price the asset, bubble up a price of 0.
         if  (errorCode == 2) {
             price = 0;

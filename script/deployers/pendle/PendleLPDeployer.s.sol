@@ -3,7 +3,7 @@ pragma solidity ^0.8.17;
 
 import "forge-std/Script.sol";
 
-import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
+import { OracleRouter } from "contracts/oracles/OracleRouter.sol";
 import { ChainlinkAdaptor } from "contracts/oracles/adaptors/chainlink/ChainlinkAdaptor.sol";
 import { BalancerStablePoolAdaptor } from "contracts/oracles/adaptors/balancer/BalancerStablePoolAdaptor.sol";
 import { IVault } from "contracts/oracles/adaptors/balancer/BalancerBaseAdaptor.sol";
@@ -44,9 +44,9 @@ contract PendleLPDeployer is DeployConfiguration {
         address marketManager = _getDeployedContract("marketManager");
         console.log("marketManager =", marketManager);
         require(marketManager != address(0), "Set the marketManager!");
-        address priceRouter = _getDeployedContract("priceRouter");
-        console.log("priceRouter =", priceRouter);
-        require(priceRouter != address(0), "Set the priceRouter!");
+        address oracleRouter = _getDeployedContract("oracleRouter");
+        console.log("oracleRouter =", oracleRouter);
+        require(oracleRouter != address(0), "Set the oracleRouter!");
 
         address chainlinkAdaptor = _getDeployedContract("chainlinkAdaptor");
         if (chainlinkAdaptor == address(0)) {
@@ -88,27 +88,27 @@ contract PendleLPDeployer is DeployConfiguration {
             }
 
             if (
-                !PriceRouter(priceRouter).isApprovedAdaptor(chainlinkAdaptor)
+                !OracleRouter(oracleRouter).isApprovedAdaptor(chainlinkAdaptor)
             ) {
-                PriceRouter(priceRouter).addApprovedAdaptor(chainlinkAdaptor);
+                OracleRouter(oracleRouter).addApprovedAdaptor(chainlinkAdaptor);
                 console.log(
-                    "priceRouter.addApprovedAdaptor: ",
+                    "oracleRouter.addApprovedAdaptor: ",
                     chainlinkAdaptor
                 );
             }
 
             try
-                PriceRouter(priceRouter).assetPriceFeeds(
+                OracleRouter(oracleRouter).assetPriceFeeds(
                     underlyingParam.asset,
                     0
                 )
             returns (address feed) {} catch {
-                PriceRouter(priceRouter).addAssetPriceFeed(
+                OracleRouter(oracleRouter).addAssetPriceFeed(
                     underlyingParam.asset,
                     chainlinkAdaptor
                 );
                 console.log(
-                    "priceRouter.addAssetPriceFeed: ",
+                    "oracleRouter.addAssetPriceFeed: ",
                     underlyingParam.asset
                 );
             }
@@ -145,22 +145,22 @@ contract PendleLPDeployer is DeployConfiguration {
                 console.log("pendleLpAdapter.addAsset");
             }
 
-            if (!PriceRouter(priceRouter).isApprovedAdaptor(pendleLpAdapter)) {
-                PriceRouter(priceRouter).addApprovedAdaptor(pendleLpAdapter);
+            if (!OracleRouter(oracleRouter).isApprovedAdaptor(pendleLpAdapter)) {
+                OracleRouter(oracleRouter).addApprovedAdaptor(pendleLpAdapter);
                 console.log(
-                    "priceRouter.addApprovedAdaptor: ",
+                    "oracleRouter.addApprovedAdaptor: ",
                     pendleLpAdapter
                 );
             }
 
             try
-                PriceRouter(priceRouter).assetPriceFeeds(param.asset, 0)
+                OracleRouter(oracleRouter).assetPriceFeeds(param.asset, 0)
             returns (address feed) {} catch {
-                PriceRouter(priceRouter).addAssetPriceFeed(
+                OracleRouter(oracleRouter).addAssetPriceFeed(
                     param.asset,
                     pendleLpAdapter
                 );
-                console.log("priceRouter.addAssetPriceFeed: ", param.asset);
+                console.log("oracleRouter.addAssetPriceFeed: ", param.asset);
             }
         }
 
@@ -179,8 +179,8 @@ contract PendleLPDeployer is DeployConfiguration {
             console.log("cToken: ", cToken);
             _saveDeployedContracts(name, cToken);
 
-            if (!PriceRouter(priceRouter).isSupportedAsset(cToken)) {
-                PriceRouter(priceRouter).addMTokenSupport(cToken);
+            if (!OracleRouter(oracleRouter).isSupportedAsset(cToken)) {
+                OracleRouter(oracleRouter).addMTokenSupport(cToken);
             }
         }
 

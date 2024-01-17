@@ -217,11 +217,11 @@ contract CentralRegistryDeployer is DeployConfiguration {
         );
     }
 
-    function setPriceRouter(address priceRouter) internal {
+    function setOracleRouter(address oracleRouter) internal {
         require(centralRegistry != address(0), "Set the centralRegistry!");
-        require(priceRouter != address(0), "Set the priceRouter!");
+        require(oracleRouter != address(0), "Set the oracleRouter!");
 
-        CentralRegistry(centralRegistry).setPriceRouter(priceRouter);
-        console.log("centralRegistry.setPriceRouter: ", priceRouter);
+        CentralRegistry(centralRegistry).setOracleRouter(oracleRouter);
+        console.log("centralRegistry.setOracleRouter: ", oracleRouter);
     }
 }

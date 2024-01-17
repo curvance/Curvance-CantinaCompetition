@@ -13,7 +13,7 @@ import { ReentrancyGuard } from "contracts/libraries/external/ReentrancyGuard.so
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
-import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
+import { IOracleRouter } from "contracts/interfaces/IOracleRouter.sol";
 import { IMarketManager } from "contracts/interfaces/market/IMarketManager.sol";
 import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.sol";
 
@@ -367,8 +367,8 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
             DENOMINATOR -
             sumCollateral;
 
-        (uint256 price, uint256 errorCode) = IPriceRouter(
-            ICentralRegistry(centralRegistry).priceRouter()
+        (uint256 price, uint256 errorCode) = IOracleRouter(
+            ICentralRegistry(centralRegistry).oracleRouter()
         ).getPrice(address(borrowToken), true, false);
 
         if (errorCode != 0) {

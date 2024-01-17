@@ -4,7 +4,7 @@ pragma solidity ^0.8.17;
 import "forge-std/Script.sol";
 
 import { AuraCToken } from "contracts/market/collateral/AuraCToken.sol";
-import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
+import { OracleRouter } from "contracts/oracles/OracleRouter.sol";
 import { ChainlinkAdaptor } from "contracts/oracles/adaptors/chainlink/ChainlinkAdaptor.sol";
 import { BalancerStablePoolAdaptor } from "contracts/oracles/adaptors/balancer/BalancerStablePoolAdaptor.sol";
 import { IVault } from "contracts/oracles/adaptors/balancer/BalancerBaseAdaptor.sol";
@@ -49,9 +49,9 @@ contract AuraMarketDeployer is DeployConfiguration {
         address marketManager = _getDeployedContract("marketManager");
         console.log("marketManager =", marketManager);
         require(marketManager != address(0), "Set the marketManager!");
-        address priceRouter = _getDeployedContract("priceRouter");
-        console.log("priceRouter =", priceRouter);
-        require(priceRouter != address(0), "Set the priceRouter!");
+        address oracleRouter = _getDeployedContract("oracleRouter");
+        console.log("oracleRouter =", oracleRouter);
+        require(oracleRouter != address(0), "Set the oracleRouter!");
 
         address chainlinkAdaptor = _getDeployedContract("chainlinkAdaptor");
         if (chainlinkAdaptor == address(0)) {
@@ -102,36 +102,36 @@ contract AuraMarketDeployer is DeployConfiguration {
             }
 
             if (
-                !PriceRouter(priceRouter).isApprovedAdaptor(chainlinkAdaptor)
+                !OracleRouter(oracleRouter).isApprovedAdaptor(chainlinkAdaptor)
             ) {
-                PriceRouter(priceRouter).addApprovedAdaptor(chainlinkAdaptor);
+                OracleRouter(oracleRouter).addApprovedAdaptor(chainlinkAdaptor);
                 console.log(
-                    "priceRouter.addApprovedAdaptor: ",
+                    "oracleRouter.addApprovedAdaptor: ",
                     chainlinkAdaptor
                 );
             }
 
             try
-                PriceRouter(priceRouter).assetPriceFeeds(
+                OracleRouter(oracleRouter).assetPriceFeeds(
                     underlyingParam.asset,
                     0
                 )
             returns (address feed) {} catch {
-                PriceRouter(priceRouter).addAssetPriceFeed(
+                OracleRouter(oracleRouter).addAssetPriceFeed(
                     underlyingParam.asset,
                     chainlinkAdaptor
                 );
                 console.log(
-                    "priceRouter.addAssetPriceFeed: ",
+                    "oracleRouter.addAssetPriceFeed: ",
                     underlyingParam.asset
                 );
             }
         }
 
         // Deploy Balancer adapter
-        if (!PriceRouter(priceRouter).isApprovedAdaptor(balancerAdaptor)) {
-            PriceRouter(priceRouter).addApprovedAdaptor(balancerAdaptor);
-            console.log("priceRouter.addApprovedAdaptor: ", balancerAdaptor);
+        if (!OracleRouter(oracleRouter).isApprovedAdaptor(balancerAdaptor)) {
+            OracleRouter(oracleRouter).addApprovedAdaptor(balancerAdaptor);
+            console.log("oracleRouter.addApprovedAdaptor: ", balancerAdaptor);
         }
         if (
             !BalancerStablePoolAdaptor(balancerAdaptor).isSupportedAsset(
@@ -176,14 +176,14 @@ contract AuraMarketDeployer is DeployConfiguration {
             console.log("balancerAdaptor.addAsset");
         }
 
-        try PriceRouter(priceRouter).assetPriceFeeds(param.asset, 0) returns (
+        try OracleRouter(oracleRouter).assetPriceFeeds(param.asset, 0) returns (
             address feed
         ) {} catch {
-            PriceRouter(priceRouter).addAssetPriceFeed(
+            OracleRouter(oracleRouter).addAssetPriceFeed(
                 param.asset,
                 balancerAdaptor
             );
-            console.log("priceRouter.addAssetPriceFeed: ", param.asset);
+            console.log("oracleRouter.addAssetPriceFeed: ", param.asset);
         }
 
         // Deploy CToken

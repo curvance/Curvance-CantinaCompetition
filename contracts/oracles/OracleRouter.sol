@@ -41,12 +41,12 @@ contract OracleRouter {
     ///         comes back up.
     uint256 public constant GRACE_PERIOD_TIME = 3600;
 
-    /// @dev `bytes4(keccak256(bytes("PriceRouter__NotSupported()")))`.
-    uint256 internal constant _NOT_SUPPORTED_SELECTOR = 0xe4558fac;
-    /// @dev `bytes4(keccak256(bytes("PriceRouter__InvalidParameter()")))`.
-    uint256 internal constant _INVALID_PARAMETER_SELECTOR = 0xebd2e1ff;
-    /// @dev `bytes4(keccak256(bytes("PriceRouter__ErrorCodeFlagged()")))`.
-    uint256 internal constant _ERROR_CODE_FLAGGED_SELECTOR = 0x891531fb;
+    /// @dev `bytes4(keccak256(bytes("OracleRouter__NotSupported()")))`.
+    uint256 internal constant _NOT_SUPPORTED_SELECTOR = 0xd2f771ee;
+    /// @dev `bytes4(keccak256(bytes("OracleRouter__InvalidParameter()")))`.
+    uint256 internal constant _INVALID_PARAMETER_SELECTOR = 0xd99be56b;
+    /// @dev `bytes4(keccak256(bytes("OracleRouter__ErrorCodeFlagged()")))`.
+    uint256 internal constant _ERROR_CODE_FLAGGED_SELECTOR = 0x0f86835d;
 
     /// STORAGE ///
 
@@ -68,11 +68,11 @@ contract OracleRouter {
 
     /// ERRORS ///
 
-    error PriceRouter__Unauthorized();
-    error PriceRouter__NotSupported();
-    error PriceRouter__InvalidParameter();
-    error PriceRouter__ErrorCodeFlagged();
-    error PriceRouter__AdaptorIsNotApproved();
+    error OracleRouter__Unauthorized();
+    error OracleRouter__NotSupported();
+    error OracleRouter__InvalidParameter();
+    error OracleRouter__ErrorCodeFlagged();
+    error OracleRouter__AdaptorIsNotApproved();
 
     /// CONSTRUCTOR ///
 
@@ -135,7 +135,7 @@ contract OracleRouter {
     /// @param asset The address of the asset.
     function notifyFeedRemoval(address asset) external {
         if (!isApprovedAdaptor[msg.sender]) {
-            revert PriceRouter__Unauthorized();
+            revert OracleRouter__Unauthorized();
         }
 
         _removeFeed(asset, msg.sender);
@@ -591,7 +591,7 @@ contract OracleRouter {
     ) internal view returns (uint256, uint256) {
         address adapter = assetPriceFeeds[asset][0];
         if (!isApprovedAdaptor[adapter]) {
-            revert PriceRouter__AdaptorIsNotApproved();
+            revert OracleRouter__AdaptorIsNotApproved();
         }
 
         PriceReturnData memory data = IOracleAdaptor(adapter).getPrice(
@@ -642,7 +642,7 @@ contract OracleRouter {
     ) internal view returns (FeedData memory) {
         address adapter = assetPriceFeeds[asset][feedNumber];
         if (!isApprovedAdaptor[adapter]) {
-            revert PriceRouter__AdaptorIsNotApproved();
+            revert OracleRouter__AdaptorIsNotApproved();
         }
 
         PriceReturnData memory data = IOracleAdaptor(adapter).getPrice(
@@ -876,7 +876,7 @@ contract OracleRouter {
     /// @dev Checks whether the caller has sufficient permissioning.
     function _checkElevatedPermissions() internal view {
         if (!centralRegistry.hasElevatedPermissions(msg.sender)) {
-            revert PriceRouter__Unauthorized();
+            revert OracleRouter__Unauthorized();
         }
     }
 }
