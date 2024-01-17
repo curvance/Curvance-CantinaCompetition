@@ -161,14 +161,14 @@ abstract contract GaugeController is IGaugePool {
 
     /// INTERNAL FUNCTIONS ///
 
-    /// @dev Checks whether the caller has sufficient permissioning
+    /// @dev Checks whether the caller has sufficient permissioning.
     function _checkDaoPermissions() internal view {
         if (!centralRegistry.hasDaoPermissions(msg.sender)) {
             revert GaugeErrors.Unauthorized();
         }
     }
 
-    /// @dev Checks whether the caller has sufficient permissioning
+    /// @dev Checks whether the caller has sufficient permissioning.
     function _verifyGaugeHasStarted() internal view {
         if (startTime == 0) {
             revert GaugeErrors.NotStarted();
@@ -177,7 +177,7 @@ abstract contract GaugeController is IGaugePool {
 
     /// FUNCTIONS TO OVERRIDE ///
 
-    /// @notice Update reward variables of the given pool to be up-to-date
-    /// @param token Pool token address
+    /// @notice Update reward variables of the given pool to be up-to-date.
+    /// @param token Pool token address.
     function updatePool(address token) public virtual {}
 }

@@ -731,9 +731,10 @@ contract DynamicInterestRateModel {
         _currentRates = packedRatesData;
     }
 
+    /// @notice Multiplies `value` by 1e14 to convert it from `basis points`
+    ///         to WAD.
     /// @dev Internal helper function for easily converting between scalars.
     function _bpToWad(uint256 value) internal pure returns (uint256) {
-        // multiplies by 1e14 to convert from `basis points` to `WAD`.
         return value * 100000000000000;
     }
 }
