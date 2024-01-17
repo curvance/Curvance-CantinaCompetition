@@ -9,8 +9,8 @@ import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.so
 import { IChainlink } from "contracts/interfaces/external/chainlink/IChainlink.sol";
 import { IOracleAdaptor, PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
 
-/// @title Curvance Dual Oracle Oracle Router.
-/// @notice Provides a universal interface allowing Curvance contracts
+/// @title Curvance Dynamic Pessimistic Dual Oracle Router.
+/// @notice Provides a universal interface allowing contracts
 ///         to retrieve secure pricing data based on various price feeds.
 contract OracleRouter {
     /// TYPES ///

@@ -48,7 +48,7 @@ contract CurvanceDAOLBP {
     error CurvanceDAOLBP__Closed();
 
     /// Events
-    event PublicSaleStarted(uint256 startTime);
+    event LBPStarted(uint256 startTime);
     event Committed(address user, uint256 payAmount);
     event Claimed(address user, uint256 cveAmount);
 
@@ -109,7 +109,7 @@ contract CurvanceDAOLBP {
             paymentTokenDecimals = IERC20(_paymentToken).decimals();
         }
 
-        emit PublicSaleStarted(_startTime);
+        emit LBPStarted(_startTime);
     }
 
     function commit(uint256 amount) external {

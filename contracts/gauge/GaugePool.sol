@@ -3,7 +3,7 @@ pragma solidity ^0.8.17;
 
 import { GaugeController, GaugeErrors, IGaugePool } from "contracts/gauge/GaugeController.sol";
 
-import { DENOMINATOR } from "contracts/libraries/Constants.sol";
+import { DENOMINATOR, WAD_SQUARED } from "contracts/libraries/Constants.sol";
 import { ERC165 } from "contracts/libraries/external/ERC165.sol";
 import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 import { SafeTransferLib } from "contracts/libraries/external/SafeTransferLib.sol";
@@ -22,15 +22,10 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
         uint256 rewardPending;
     }
 
-    /// CONSTANTS ///
-
-    /// @notice Scalar for math.
-    uint256 internal constant PRECISION = 1e36;
-    /// @notice Linked Market Manager.
-    address public marketManager;
-
     /// STORAGE ///
 
+    /// @notice Address of the Market Manager linked to this Gauge Pool.
+    address public marketManager;
     /// @notice Timestamp when the first first deposit occurred.
     uint256 public firstDeposit;
     /// @notice cToken => total supply.
@@ -225,7 +220,7 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
                     EPOCH_WINDOW;
                 accRewardPerShare =
                     accRewardPerShare +
-                    (reward * (PRECISION)) /
+                    (reward * (WAD_SQUARED)) /
                     totalDeposited;
 
                 ++lastEpoch;
@@ -239,7 +234,7 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
                 EPOCH_WINDOW;
             accRewardPerShare =
                 accRewardPerShare +
-                (reward * (PRECISION)) /
+                (reward * (WAD_SQUARED)) /
                 totalDeposited;
         }
 
@@ -247,7 +242,7 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
         return
             info.rewardPending +
             (balanceOf[token][user] * accRewardPerShare) /
-            (PRECISION) -
+            (WAD_SQUARED) -
             info.rewardDebt;
     }
 
@@ -309,7 +304,7 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
                     address rewardToken = rewardTokens[i++];
                     uint256 unallocatedRewards = (poolAccRewardPerShare[token][
                         rewardToken
-                    ] * totalSupply[token]) / PRECISION;
+                    ] * totalSupply[token]) / WAD_SQUARED;
                     if (unallocatedRewards > 0) {
                         SafeTransferLib.safeTransfer(
                             rewardToken,
@@ -538,7 +533,7 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
                     EPOCH_WINDOW;
                 accRewardPerShare =
                     accRewardPerShare +
-                    (reward * (PRECISION)) /
+                    (reward * (WAD_SQUARED)) /
                     totalDeposited;
 
                 ++lastEpoch;
@@ -552,7 +547,7 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
                 EPOCH_WINDOW;
             accRewardPerShare =
                 accRewardPerShare +
-                (reward * (PRECISION)) /
+                (reward * (WAD_SQUARED)) /
                 totalDeposited;
 
             poolAccRewardPerShare[token][rewardToken] = accRewardPerShare;
@@ -586,7 +581,7 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
             info.rewardPending +=
                 (balanceOf[token][user] *
                     poolAccRewardPerShare[token][rewardToken]) /
-                (PRECISION) -
+                (WAD_SQUARED) -
                 info.rewardDebt;
         }
     }
@@ -604,7 +599,7 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
             info.rewardDebt =
                 (balanceOf[token][user] *
                     poolAccRewardPerShare[token][rewardToken]) /
-                (PRECISION);
+                (WAD_SQUARED);
         }
     }
 }

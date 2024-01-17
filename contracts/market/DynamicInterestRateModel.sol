@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { WAD } from "contracts/libraries/Constants.sol";
+import { WAD, WAD_SQUARED } from "contracts/libraries/Constants.sol";
 import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
@@ -63,9 +63,6 @@ contract DynamicInterestRateModel {
     ///         at 100% util.
     uint256 public constant MAX_VERTEX_ADJUSTMENT_VELOCITY = 3 * WAD;
 
-    /// @notice Scalar value for when we need to divide by WAD * WAD 
-    ///         due to curve adjustment velocity multiplier.
-    uint256 internal constant _CURVE_PRECISION = 1e36;
     /// @notice Unix time has 31,536,000 seconds per year.
     ///         All my homies hate leap seconds and leap years.
     uint256 internal constant _SECONDS_PER_YEAR = 31_536_000;
@@ -413,10 +410,10 @@ contract DynamicInterestRateModel {
         uint256 util
     ) internal view returns (uint256) {
         // We divide by 1e36 since we need to divide by WAD twice for proper
-        // precision and can optimize by multiplying prior.
+        // precision and can optimize by using a precalculated constant.
         return
             (util * ratesConfig.vertexInterestRate * vertexMultiplier()) /
-            _CURVE_PRECISION;
+            WAD_SQUARED;
     }
 
     /// @notice Calculates and returns the updated multiplier for scenarios
@@ -517,7 +514,7 @@ contract DynamicInterestRateModel {
                         config.increaseThreshold,
                         config.increaseThresholdMax
                     ))) /
-                _CURVE_PRECISION) -
+                WAD_SQUARED) -
             decay;
 
         // Update and return with adjustment and decay rate applied.
