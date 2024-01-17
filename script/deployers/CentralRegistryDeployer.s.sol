@@ -162,17 +162,17 @@ contract CentralRegistryDeployer is DeployConfiguration {
     }
 
     function _addLendingMarket(
-        address lendtroller,
+        address marketManager,
         uint256 marketInterestFactor
     ) internal {
         require(centralRegistry != address(0), "Set the centralRegistry!");
-        require(lendtroller != address(0), "Set the lendtroller!");
+        require(marketManager != address(0), "Set the marketManager!");
 
         CentralRegistry(centralRegistry).addLendingMarket(
-            lendtroller,
+            marketManager,
             marketInterestFactor
         );
-        console.log("centralRegistry.addLendingMarket: ", lendtroller);
+        console.log("centralRegistry.addLendingMarket: ", marketManager);
     }
 
     function _addZapper(address zapper) internal {

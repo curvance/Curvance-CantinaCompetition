@@ -41,9 +41,9 @@ contract PendleLPDeployer is DeployConfiguration {
         address centralRegistry = _getDeployedContract("centralRegistry");
         console.log("centralRegistry =", centralRegistry);
         require(centralRegistry != address(0), "Set the centralRegistry!");
-        address lendtroller = _getDeployedContract("lendtroller");
-        console.log("lendtroller =", lendtroller);
-        require(lendtroller != address(0), "Set the lendtroller!");
+        address marketManager = _getDeployedContract("marketManager");
+        console.log("marketManager =", marketManager);
+        require(marketManager != address(0), "Set the marketManager!");
         address priceRouter = _getDeployedContract("priceRouter");
         console.log("priceRouter =", priceRouter);
         require(priceRouter != address(0), "Set the priceRouter!");
@@ -171,7 +171,7 @@ contract PendleLPDeployer is DeployConfiguration {
                 new PendleLPCToken(
                     ICentralRegistry(address(centralRegistry)),
                     IERC20(param.asset),
-                    lendtroller,
+                    marketManager,
                     IPendleRouter(param.router)
                 )
             );
@@ -185,8 +185,8 @@ contract PendleLPDeployer is DeployConfiguration {
         }
 
         // followings should be done separate because it requires dust amount deposits
-        // lendtroller.listToken;
-        // lendtroller.updateCollateralToken
-        // lendtroller.setCTokenCollateralCaps
+        // marketManager.listToken;
+        // marketManager.updateCollateralToken
+        // marketManager.setCTokenCollateralCaps
     }
 }

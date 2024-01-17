@@ -19,9 +19,9 @@ contract GMXMarketDeployer is DeployConfiguration {
         console.log("centralRegistry =", centralRegistry);
         require(centralRegistry != address(0), "Set the centralRegistry!");
 
-        address lendtroller = _getDeployedContract("lendtroller");
-        console.log("lendtroller =", lendtroller);
-        require(lendtroller != address(0), "Set the lendtroller!");
+        address marketManager = _getDeployedContract("marketManager");
+        console.log("marketManager =", marketManager);
+        require(marketManager != address(0), "Set the marketManager!");
 
         address priceRouter = _getDeployedContract("priceRouter");
         console.log("priceRouter =", priceRouter);
@@ -78,7 +78,7 @@ contract GMXMarketDeployer is DeployConfiguration {
                 new GMCToken(
                     ICentralRegistry(centralRegistry),
                     IERC20(asset),
-                    lendtroller,
+                    marketManager,
                     _readConfigAddress(".gmx.depositVault"),
                     _readConfigAddress(".gmx.exchangeRouter"),
                     _readConfigAddress(".gmx.router"),

@@ -3,16 +3,16 @@ pragma solidity ^0.8.17;
 
 import "forge-std/Script.sol";
 
-import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
+import { MarketManager } from "contracts/market/MarketManager.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 import { DeployConfiguration } from "../utils/DeployConfiguration.sol";
 
-contract LendtrollerDeployer is DeployConfiguration {
+contract MarketManagerDeployer is DeployConfiguration {
     address lendtroller;
 
-    function _deployLendtroller(
+    function _deployMarketManager(
         address centralRegistry,
         address gaugePool
     ) internal {
@@ -20,7 +20,7 @@ contract LendtrollerDeployer is DeployConfiguration {
         require(gaugePool != address(0), "Set the gaugePool!");
 
         lendtroller = address(
-            new Lendtroller(ICentralRegistry(centralRegistry), gaugePool)
+            new MarketManager(ICentralRegistry(centralRegistry), gaugePool)
         );
 
         console.log("lendtroller: ", lendtroller);

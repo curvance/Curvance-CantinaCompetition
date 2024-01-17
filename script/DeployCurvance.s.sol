@@ -12,7 +12,7 @@ import { OneBalanceFeeManagerDeployer } from "./deployers/OneBalanceFeeManagerDe
 import { FeeAccumulatorDeployer } from "./deployers/FeeAccumulatorDeployer.s.sol";
 import { VeCveDeployer } from "./deployers/VeCveDeployer.s.sol";
 import { GaugePoolDeployer } from "./deployers/GaugePoolDeployer.s.sol";
-import { LendtrollerDeployer } from "./deployers/LendtrollerDeployer.s.sol";
+import { MarketManagerDeployer } from "./deployers/MarketManagerDeployer.s.sol";
 import { ZapperDeployer } from "./deployers/ZapperDeployer.s.sol";
 import { PositionFoldingDeployer } from "./deployers/PositionFoldingDeployer.s.sol";
 import { PriceRouterDeployer } from "./deployers/PriceRouterDeployer.s.sol";
@@ -27,7 +27,7 @@ contract DeployCurvance is
     FeeAccumulatorDeployer,
     VeCveDeployer,
     GaugePoolDeployer,
-    LendtrollerDeployer,
+    MarketManagerDeployer,
     ZapperDeployer,
     PositionFoldingDeployer,
     PriceRouterDeployer
@@ -124,26 +124,26 @@ contract DeployCurvance is
         _deployGaugePool(centralRegistry);
         _addGaugeController(gaugePool);
 
-        // Deploy Lendtroller
+        // Deploy MarketManager
 
-        _deployLendtroller(centralRegistry, gaugePool);
+        _deployMarketManager(centralRegistry, gaugePool);
         _addLendingMarket(
-            lendtroller,
-            _readConfigUint256(".lendtroller.marketInterestFactor")
+            marketManager,
+            _readConfigUint256(".marketManager.marketInterestFactor")
         );
 
         // Deploy Zapper
 
         _deployZapper(
             centralRegistry,
-            lendtroller,
+            marketManager,
             _readConfigAddress(".zapper.weth")
         );
         _addZapper(zapper);
 
         // Deploy PositionFolding
 
-        _deployPositionFolding(centralRegistry, lendtroller);
+        _deployPositionFolding(centralRegistry, marketManager);
 
         deployPriceRouter(
             centralRegistry,
