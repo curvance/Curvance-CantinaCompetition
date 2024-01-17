@@ -651,10 +651,10 @@ contract DynamicInterestRateModel {
         {
             // Scoping to avoid stack too deep.
             uint256 newMultiplier = vertexReset ? WAD : vertexMultiplier();
-            _packRatesData(
-                newMultiplier,
-                block.timestamp + config.adjustmentRate
-            );
+            _currentRates = _packRatesData(
+                    newMultiplier,
+                    uint64(block.timestamp + config.adjustmentRate)
+                );
         }
 
         config.decayRate = decayRate;
