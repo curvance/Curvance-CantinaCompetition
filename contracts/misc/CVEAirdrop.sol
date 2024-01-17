@@ -8,18 +8,20 @@ import { ReentrancyGuard } from "contracts/libraries/external/ReentrancyGuard.so
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IVeCVE } from "contracts/interfaces/IVeCVE.sol";
+import { RewardsData } from "contracts/interfaces/ICVELocker.sol";
 
 contract CVEAirdrop is ReentrancyGuard {
     /// CONSTANTS ///
+
+    /// @notice CVE claim boost for choosing a locked distribution.
+    uint256 public constant lockedClaimMultiplier = 5;
 
     /// @notice CVE contract address.
     address public immutable cve;
     /// @notice VeCVE contract address.
     IVeCVE public immutable veCVE;
-    /// @notice CVE claim boost for choosing a locked distribution.
-    uint256 public immutable lockBoost;
     /// @notice Maximum claim size anyone can receive.
-    uint256 public immutable maxClaim;
+    uint256 public immutable maximumClaimAmount;
     /// @notice Curvance DAO hub.
     ICentralRegistry public immutable centralRegistry;
 
@@ -48,12 +50,11 @@ contract CVEAirdrop is ReentrancyGuard {
     error CVEAirdrop__Unauthorized();
     error CVEAirdrop__TransferError();
     error CVEAirdrop__NotEligible();
-    error CVEAirdrop__InvalidLockBoost();
+    error CVEAirdrop__InvalidlockedClaimMultiplier();
 
     constructor(
         ICentralRegistry centralRegistry_, 
-        uint256 maxClaim_, 
-        uint256 lockBoost_
+        uint256 maximumClaimAmount_
     ) {
         if (
             !ERC165Checker.supportsInterface(
@@ -65,18 +66,17 @@ contract CVEAirdrop is ReentrancyGuard {
         }
         centralRegistry = centralRegistry_;
 
-        // Sanity check that maxClaim and lockBoost are not horribly
-        // misconfigured. A single claim taking the entire community incentive
-        // airdrop would not make any sense, 
+        // Sanity check that maximumClaimAmount and lockedClaimMultiplier
+        // are not horribly misconfigured. A single claim taking the entire
+        // community incentive airdrop would not make any sense, 
         // in practice the values should be significantly smaller.
-        if (maxClaim > 1575000259e16 / lockBoost_) {
-            revert CVEAirdrop__InvalidLockBoost();
+        if (maximumClaimAmount * lockedClaimMultiplier > 1575000259e16) {
+            revert CVEAirdrop__InvalidlockedClaimMultiplier();
         }
 
         cve = centralRegistry.cve();
         veCVE = IVeCVE(centralRegistry.veCVE());
-        maxClaim = maxClaim_;
-        lockBoost = lockBoost_;
+        maximumClaimAmount = maximumClaimAmount_;
     }
 
     /// @notice Claim allocated CVE.
@@ -94,7 +94,7 @@ contract CVEAirdrop is ReentrancyGuard {
         }
 
         // Verify `amount` is not above the maximum claim amount.
-        if (amount > maxClaim) {
+        if (amount > maximumClaimAmount) {
             revert CVEAirdrop__ParametersAreInvalid();
         }
 
@@ -131,7 +131,7 @@ contract CVEAirdrop is ReentrancyGuard {
         // or liquid version.
         if (locked) {
             RewardsData memory emptyData;
-            uint256 boostedAmount = amount * lockBoost;
+            uint256 boostedAmount = amount * lockedClaimMultiplier;
             SafeTransferLib.safeApprove(cve, address(veCVE), boostedAmount);
 
             // Create a boosted continuous lock for the caller.
@@ -165,7 +165,7 @@ contract CVEAirdrop is ReentrancyGuard {
         uint256 amount,
         bytes32[] calldata proof
     ) external view returns (bool) {
-        if (amount > maxClaim) {
+        if (amount > maximumClaimAmount) {
             return false;
         }
 
