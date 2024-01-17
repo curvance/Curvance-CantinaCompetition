@@ -13,6 +13,7 @@ import { ReentrancyGuard } from "contracts/libraries/external/ReentrancyGuard.so
 
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+import { IMarketManager } from "contracts/interfaces/market/IMarketManager.sol";
 
 contract ZapperSimple is ReentrancyGuard {
     /// CONSTANTS ///

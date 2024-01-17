@@ -69,7 +69,7 @@ contract BorrownAndBridgeTest is TestBaseMarket {
         );
 
         // start epoch
-        gaugePool.start(address(lendtroller));
+        gaugePool.start(address(marketManager));
         vm.warp(gaugePool.startTime());
         vm.roll(block.number + 1000);
 
@@ -84,9 +84,9 @@ contract BorrownAndBridgeTest is TestBaseMarket {
         {
             _prepareDAI(owner, 200000e18);
             dai.approve(address(dDAI), 200000e18);
-            lendtroller.listToken(address(dDAI));
+            marketManager.listToken(address(dDAI));
             // add MToken support on price router
-            priceRouter.addMTokenSupport(address(dDAI));
+            oracleRouter.addMTokenSupport(address(dDAI));
         }
 
         // setup CBALRETH
@@ -94,9 +94,9 @@ contract BorrownAndBridgeTest is TestBaseMarket {
             // support market
             _prepareBALRETH(owner, _ONE);
             balRETH.approve(address(cBALRETH), _ONE);
-            lendtroller.listToken(address(cBALRETH));
+            marketManager.listToken(address(cBALRETH));
             // set collateral factor
-            lendtroller.updateCollateralToken(
+            marketManager.updateCollateralToken(
                 IMToken(address(cBALRETH)),
                 7000,
                 4000,
@@ -110,7 +110,7 @@ contract BorrownAndBridgeTest is TestBaseMarket {
             tokens[0] = address(cBALRETH);
             uint256[] memory caps = new uint256[](1);
             caps[0] = 100_000e18;
-            lendtroller.setCTokenCollateralCaps(tokens, caps);
+            marketManager.setCTokenCollateralCaps(tokens, caps);
         }
 
         // provide enough liquidity
@@ -165,7 +165,7 @@ contract BorrownAndBridgeTest is TestBaseMarket {
         vm.startPrank(user1);
         balRETH.approve(address(cBALRETH), _ONE);
         cBALRETH.deposit(_ONE, user1);
-        lendtroller.postCollateral(user1, address(cBALRETH), _ONE);
+        marketManager.postCollateral(user1, address(cBALRETH), _ONE);
         vm.stopPrank();
 
         assertEq(cBALRETH.balanceOf(user1), _ONE);
