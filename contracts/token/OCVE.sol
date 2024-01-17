@@ -251,7 +251,7 @@ contract OCVE is ERC20 {
             if (amount == 0) {
                 revert OCVE__CannotExercise();
             }
-            
+
             SafeTransferLib.safeTransferFrom(
                 paymentToken,
                 msg.sender,
@@ -275,6 +275,20 @@ contract OCVE is ERC20 {
     function _checkDaoPermissions() internal view {
         if (!centralRegistry.hasDaoPermissions(msg.sender)) {
             revert OCVE__Unauthorized();
+        }
+    }
+
+    function _adjustDecimals(
+        uint256 amount,
+        uint8 fromDecimals,
+        uint8 toDecimals
+    ) internal pure returns (uint256) {
+        if (fromDecimals == toDecimals) {
+            return amount;
+        } else if (fromDecimals < toDecimals) {
+            return amount * 10 **(toDecimals - fromDecimals);
+        } else {
+            return amount / 10 **(fromDecimals - toDecimals);
         }
     }
 }
