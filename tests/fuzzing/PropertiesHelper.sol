@@ -448,31 +448,9 @@ abstract contract PropertiesAsserts {
         return a;
     }
 
-    function clampBetweenBoundsFromOne(
-        bool lower,
-        uint256 a
-    ) internal returns (uint256 value) {
-        if (lower) {
-            value = clampBetween(a, 1, type(uint128).max - 1);
-        } else {
-            value = clampBetween(a, type(uint128).max, type(uint256).max);
-        }
-    }
-
-    function clampBetweenBoundsFromZero(
-        bool lower,
-        uint256 a
-    ) internal returns (uint256 value) {
-        if (lower) {
-            value = clampBetween(a, 0, type(uint128).max - 1);
-        } else {
-            value = clampBetween(a, type(uint128).max, type(uint256).max);
-        }
-    }
-
     function extractErrorSelector(
         bytes memory revertData
-    ) internal returns (uint256) {
+    ) public returns (uint256) {
         if (revertData.length < 4) {
             emit LogString("Return data too short.");
             return 0;
@@ -486,16 +464,6 @@ abstract contract PropertiesAsserts {
         );
 
         return errorSelector;
-    }
-
-    function doesOverflow(
-        uint256 term,
-        uint256 bound
-    ) internal returns (bool) {
-        if (term < bound) {
-            return true;
-        }
-        return false;
     }
 }
 

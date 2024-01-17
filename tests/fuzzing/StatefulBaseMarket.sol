@@ -85,7 +85,6 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
     uint256 public marketInterestFactor = 1000; // 10%
 
     Zapper public zapper;
-    mapping(address => uint256) postedCollateralAt;
 
     constructor() {
         // _fork(18031848);
@@ -218,8 +217,8 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
     }
 
     function _deployChainlinkAdaptors() internal {
-        chainlinkUsdcUsd = new MockV3Aggregator(8, 1e8, 1e24, 1e6);
-        chainlinkDaiUsd = new MockV3Aggregator(8, 1e8, 1e24, 1e6);
+        chainlinkUsdcUsd = new MockV3Aggregator(8, 1e8, 1e11, 1e6);
+        chainlinkDaiUsd = new MockV3Aggregator(8, 1e8, 1e11, 1e6);
         chainlinkUsdcEth = new MockV3Aggregator(18, 1e18, 1e24, 1e13);
         chainlinkRethEth = new MockV3Aggregator(18, 1e18, 1e24, 1e13);
         chainlinkDaiEth = new MockV3Aggregator(18, 1e18, 1e24, 1e13);
@@ -430,63 +429,5 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
             _USDC_ADDRESS,
             address(dualChainlinkAdaptor)
         );
-    }
-
-    function mint_and_approve(
-        address underlyingAddress,
-        address mtoken,
-        uint256 amount
-    ) internal returns (bool) {
-        // mint ME enough tokens to cover deposit
-        try MockToken(underlyingAddress).mint(amount) {} catch (
-            bytes memory revertData
-        ) {
-            uint256 currentSupply = MockToken(underlyingAddress).totalSupply();
-            uint256 errorSelector = extractErrorSelector(revertData);
-
-            unchecked {
-                if (doesOverflow(currentSupply + amount, currentSupply)) {
-                    assertWithMsg(
-                        errorSelector == token_total_supply_overflow,
-                        "MToken underlying - mint underlying amount should succeed"
-                    );
-                    return false;
-                } else {
-                    assertWithMsg(
-                        false,
-                        "MToken underlying - mint underlying amount should succeed"
-                    );
-                }
-            }
-        }
-        // approve sufficient underlying tokens prior to calling deposit
-        try MockToken(underlyingAddress).approve(mtoken, amount) {} catch (
-            bytes memory revertData
-        ) {
-            uint256 currentAllowance = MockToken(underlyingAddress).allowance(
-                msg.sender,
-                mtoken
-            );
-
-            uint256 errorSelector = extractErrorSelector(revertData);
-            unchecked {
-                if (
-                    doesOverflow(currentAllowance + amount, currentAllowance)
-                ) {
-                    assertEq(
-                        errorSelector,
-                        token_allowance_overflow,
-                        "MTOKEN underlying - revert expected when underflow"
-                    );
-                    return false;
-                } else {
-                    assertWithMsg(
-                        false,
-                        "MTOKEN underlying - approve underlying amount should succeed"
-                    );
-                }
-            }
-        }
-        return true;
     }
 }

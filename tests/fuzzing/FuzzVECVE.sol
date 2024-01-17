@@ -393,7 +393,6 @@ contract FuzzVECVE is StatefulBaseMarket {
             lockIndex
         );
         require(preExtendLockTime > block.timestamp);
-        assert(false);
         require(preExtendLockTime != veCVE.CONTINUOUS_LOCK_VALUE());
         if (!continuousLock) {
             isAllContinuous = false;
@@ -943,15 +942,6 @@ contract FuzzVECVE is StatefulBaseMarket {
 
             if (unlockTime == veCVE.CONTINUOUS_LOCK_VALUE()) {
                 numberOfExistingContinuousLocks++;
-            }
-        }
-    }
-
-    function get_continuous_lock() private view returns (uint256) {
-        for (uint i = 0; i < numLocks; i++) {
-            (, uint40 unlockTime) = veCVE.userLocks(address(this), i);
-            if (unlockTime == veCVE.CONTINUOUS_LOCK_VALUE()) {
-                return i;
             }
         }
     }
