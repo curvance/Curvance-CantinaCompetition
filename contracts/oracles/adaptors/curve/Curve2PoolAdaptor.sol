@@ -224,28 +224,37 @@ contract Curve2PoolAdaptor is CurveBaseAdaptor {
     ) external {
         _checkElevatedPermissions();
 
-        AdaptorData memory adaptor = adaptorData[asset];
+        // Convert the parameters from `basis points` to `WAD` form,
+        // while inefficient consistently entering parameters in basis points
+        // minimizes potential human error, 
+        // even if it costs a bit extra gas on configuration.
+        newLowerBound = _bpToWad(newLowerBound);
+        newUpperBound = _bpToWad(newUpperBound);
+
+        AdaptorData storage adaptorData = adaptorData[asset];
+        uint256 oldLowerBound = adaptorData.lowerBound;
+        uint256 oldUpperBound = adaptorData.upperBound;
 
         // Validate that the new bounds are higher than the old ones, 
         // since virtual prices only rise overtime, 
         // so they should never be decreased here.
         if (
-            newLowerBound <= adaptor.lowerBound || 
-            newUpperBound <= adaptor.upperBound
+            newLowerBound <= oldLowerBound || 
+            newUpperBound <= oldUpperBound
         ) {
             revert Curve2PoolAdaptor__InvalidBounds();
         }
 
-        if (adaptor.lowerBound + _MAX_BOUND_INCREASE < newLowerBound) {
+        if (oldLowerBound + _MAX_BOUND_INCREASE < newLowerBound) {
             revert Curve2PoolAdaptor__InvalidBounds();
         }
 
-        if (adaptor.upperBound + _MAX_BOUND_INCREASE < newUpperBound) {
+        if (oldUpperBound + _MAX_BOUND_INCREASE < newUpperBound) {
             revert Curve2PoolAdaptor__InvalidBounds();
         }
 
-        adaptor.lowerBound = newLowerBound;
-        adaptor.upperBound = newUpperBound;
+        adaptorData.lowerBound = newLowerBound;
+        adaptorData.upperBound = newUpperBound;
     }
 
     /// @notice Checks if `price` is within a reasonable bound.
@@ -257,5 +266,11 @@ contract Curve2PoolAdaptor is CurveBaseAdaptor {
         if (price < lowerBound || price > upperBound) {
             revert Curve2PoolAdaptor__BoundsExceeded();
         }
+    }
+
+    /// @dev Internal helper function for easily converting between scalars
+    function _bpToWad(uint256 value) internal pure returns (uint256) {
+        // multiplies by 1e14 to convert from basis points to WAD
+        return value * 100000000000000;
     }
 }
