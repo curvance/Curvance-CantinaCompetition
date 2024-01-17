@@ -56,7 +56,7 @@ contract AddMarketManagerTest is TestBaseMarket {
         assertFalse(centralRegistry.isLendingMarket(newMarket));
 
         vm.expectEmit(true, true, true, true);
-        emit NewCurvanceContract("Lending Market", newMarket);
+        emit NewCurvanceContract("Market Manager", newMarket);
         centralRegistry.addMarketManager(newMarket, 5000);
 
         assertTrue(centralRegistry.isLendingMarket(newMarket));

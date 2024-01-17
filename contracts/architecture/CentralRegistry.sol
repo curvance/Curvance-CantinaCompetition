@@ -19,7 +19,7 @@ contract CentralRegistry is ERC165 {
     /// @notice Genesis Epoch timestamp.
     uint256 public immutable genesisEpoch;
 
-    /// @notice Sequencer Uptime Feed address for L2.
+    /// @notice Sequencer Uptime feed address for L2.
     address public immutable sequencer;
 
     /// @notice Address of fee token.
@@ -116,7 +116,7 @@ contract CentralRegistry is ERC165 {
     uint256 public lockBoostMultiplier;
 
     // PROTOCOL VALUES DATA `WAD` set in `DENOMINATOR`.
-    /// @notice Lending Market => Protocol Reserve Factor on interest generated
+    /// @notice Market Manager => Protocol Reserve Factor on interest generated
     mapping(address => uint256) public protocolInterestFactor;
 
     // DAO PERMISSION DATA
@@ -135,7 +135,7 @@ contract CentralRegistry is ERC165 {
     /// @notice ChainId => 2 = supported; 1 = unsupported.
     mapping(uint256 => ChainData) public supportedChainData;
 
-    /// @notice Address => chainID => Curvance identification information
+    /// @notice Address => chainID => Curvance identification information.
     mapping(address => mapping(uint256 => OmnichainData))
         public omnichainOperators;
     mapping(uint16 => uint256) public messagingToGETHChainId;
@@ -750,12 +750,12 @@ contract CentralRegistry is ERC165 {
         emit RemovedCurvanceContract("Harvestor", currentHarvester);
     }
 
-    /// @notice Add a new lending market and associated fee configurations.
+    /// @notice Add a new market manager and associated fee configurations.
     /// @dev Only callable on a 7 day delay or by the Emergency Council,
     ///      and 50% for interest generated.
-    /// @param newMarketManager The address of new lending market to be added.
+    /// @param newMarketManager The address of new market manager to be added.
     /// @param marketInterestFactor The interest factor associated with
-    ///                             the lending market.
+    ///                             the market manager.
     function addMarketManager(
         address newMarketManager,
         uint256 marketInterestFactor
@@ -767,7 +767,7 @@ contract CentralRegistry is ERC165 {
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
-        // Ensure that lending market parameter is a lending market.
+        // Ensure that `newMarketManager` is a market manager.
         if (
             !ERC165Checker.supportsInterface(
                 newMarketManager,
@@ -790,12 +790,12 @@ contract CentralRegistry is ERC165 {
             marketInterestFactor
         );
 
-        emit NewCurvanceContract("Lending Market", newMarketManager);
+        emit NewCurvanceContract("Market Manager", newMarketManager);
     }
 
-    /// @notice Remove a current lending market from Curvance.
+    /// @notice Remove a current market manager from Curvance.
     /// @dev Only callable on a 7 day delay or by the Emergency Council.
-    /// @param currentMarketManager The address of the lending market
+    /// @param currentMarketManager The address of the market manager
     ///                             to be removed.
     function removeMarketManager(address currentMarketManager) external {
         _checkElevatedPermissions();
@@ -831,7 +831,7 @@ contract CentralRegistry is ERC165 {
         // from marketManagers list.
         marketManagers.pop();
 
-        emit RemovedCurvanceContract("Lending Market", currentMarketManager);
+        emit RemovedCurvanceContract("Market Manager", currentMarketManager);
     }
 
     /// @notice Add a new crosschain endpoint.
@@ -841,8 +841,8 @@ contract CentralRegistry is ERC165 {
     function addEndpoint(address newEndpoint) external {
         _checkElevatedPermissions();
 
+        // Validate that `newEndpoint` is not currently supported.
         if (isEndpoint[newEndpoint]) {
-            // Endpoint already added
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
@@ -858,8 +858,8 @@ contract CentralRegistry is ERC165 {
     function removeEndpoint(address currentEndpoint) external {
         _checkElevatedPermissions();
 
+        // Validate that `currentEndpoint` is currently supported.
         if (!isEndpoint[currentEndpoint]) {
-            // Not an Endpoint
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
@@ -888,9 +888,10 @@ contract CentralRegistry is ERC165 {
 
     /// INTERNAL FUNCTIONS ///
 
-    /// @dev Internal helper function for easily converting between scalars
+    /// @notice Multiplies `value` by 1e14 to convert it from `basis points`
+    ///         to WAD.
+    /// @dev Internal helper function for easily converting between scalars.
     function _bpToWad(uint256 value) internal pure returns (uint256) {
-        // multiplies by 1e14 to convert from basis points to WAD
         return value * 100000000000000;
     }
 

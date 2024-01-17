@@ -13,7 +13,7 @@ contract Market {
     }
 }
 
-contract RemoveMarketManagerTest is TestBaseMarket {
+contract RemoveLendingMarketTest is TestBaseMarket {
     address newMarket;
 
     event RemovedCurvanceContract(
@@ -22,31 +22,31 @@ contract RemoveMarketManagerTest is TestBaseMarket {
     );
 
     function setUp() public virtual override {
-        super.setUp();add
+        super.setUp();
         newMarket = address(new Market());
     }
 
-    function test_removeMarketManager_fail_whenUnauthorized() public {
+    function test_removeLendingMarket_fail_whenUnauthorized() public {
         vm.startPrank(address(0));
         vm.expectRevert(CentralRegistry.CentralRegistry__Unauthorized.selector);
-        centralRegistry.removeMarketManager(user1);
+        centralRegistry.removeLendingMarket(user1);
         vm.stopPrank();
     }
 
-    function test_removeMarketManager_fail_whenParametersMisconfigured()
+    function test_removeLendingMarket_fail_whenParametersMisconfigured()
         public
     {
         vm.expectRevert(
             CentralRegistry.CentralRegistry__ParametersMisconfigured.selector
         );
-        centralRegistry.removeMarketManager(user1);
+        centralRegistry.removeLendingMarket(user1);
     }
 
-    function test_removeMarketManager_success() public {
+    function test_removeLendingMarket_success() public {
         centralRegistry.addMarketManager(newMarket, 5000);
         vm.expectEmit(true, true, true, true);
-        emit RemovedCurvanceContract("Lending Market", newMarket);
-        centralRegistry.removeMarketManager(newMarket);
+        emit RemovedCurvanceContract("Market Manager", newMarket);
+        centralRegistry.removeLendingMarket(newMarket);
         assertFalse(centralRegistry.isLendingMarket(newMarket));
     }
 }
