@@ -2,46 +2,49 @@
 pragma solidity ^0.8.17;
 
 import { CurveBaseAdaptor } from "contracts/oracles/adaptors/curve/CurveBaseAdaptor.sol";
+import { FixedPointMathLib } from "contracts/libraries/external/FixedPointMathLib.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
 import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
 import { ICurvePool } from "contracts/interfaces/external/curve/ICurvePool.sol";
 
-contract Curve2PoolAdapter is CurveBaseAdaptor {
+contract Curve2PoolAdaptor is CurveBaseAdaptor {
     /// TYPES ///
 
     struct AdaptorData {
         address pool;
         address underlyingOrConstituent0;
         address underlyingOrConstituent1;
-        bool divideRate0; // If we only have the market price of the underlying, and there is a rate with the underlying, then divide out the rate
-        bool divideRate1; // If we only new the safe price of sDAI, then we need to divide out the rate stored in the curve pool
-        bool isCorrelated; // but if we know the safe market price of DAI then we can just use that.
-        uint32 upperBound; // decimals 4
-        uint32 lowerBound; // decimals 4
+        /// @notice If we only have the market price of the underlying, 
+        ///         and there is a rate with the underlying, 
+        ///         then divide out the rate.
+        bool divideRate0; // 
+        /// @notice If we only new the safe price of constitient assets like sDAI,
+        ///         then we need to divide out the rate stored in the curve pool.
+        bool divideRate1;
+        bool isCorrelated;
     }
 
     /// STORAGE ///
 
-    /// @notice Curve Pool Adaptor Storage
+    /// @notice Curve Pool Adaptor Storage.
     mapping(address => AdaptorData) public adaptorData;
 
     /// EVENTS ///
 
     event CurvePoolAssetAdded(address asset, AdaptorData assetConfig);
-
     event CurvePoolAssetRemoved(address asset);
 
     /// ERRORS ///
 
-    error Curve2PoolAdapter__UnsupportedPool();
-    error Curve2PoolAdapter__DidNotConverge();
-    error Curve2PoolAdapter__Reentrant();
-    error Curve2PoolAdapter__AssetIsAlreadyAdded();
-    error Curve2PoolAdapter__AssetIsNotSupported();
-    error Curve2PoolAdapter__QuoteAssetIsNotSupported();
-    error Curve2PoolAdapter_Bounds_Exeeded();
+    error Curve2PoolAdaptor__UnsupportedPool();
+    error Curve2PoolAdaptor__DidNotConverge();
+    error Curve2PoolAdaptor__Reentrant();
+    error Curve2PoolAdaptor__AssetIsAlreadyAdded();
+    error Curve2PoolAdaptor__AssetIsNotSupported();
+    error Curve2PoolAdaptor__QuoteAssetIsNotSupported();
+    error Curve2PoolAdaptor_Bounds_Exeeded();
 
     /// CONSTRUCTOR ///
 
@@ -51,9 +54,9 @@ contract Curve2PoolAdapter is CurveBaseAdaptor {
 
     /// EXTERNAL FUNCTIONS ///
 
-    /// @notice Sets or updates a Curve pool configuration for the reentrancy check
-    /// @param coinsLength The number of coins (from .coinsLength) on the Curve pool
-    /// @param gasLimit The gas limit to be set on the check
+    /// @notice Sets or updates a Curve pool configuration for the reentrancy check.
+    /// @param coinsLength The number of coins (from .coinsLength) on the Curve pool.
+    /// @param gasLimit The gas limit to be set on the check.
     function setReentrancyConfig(
         uint256 coinsLength,
         uint256 gasLimit
@@ -80,23 +83,23 @@ contract Curve2PoolAdapter is CurveBaseAdaptor {
         pData.inUSD = inUSD;
 
         if (isLocked(asset, 2)) {
-            revert Curve2PoolAdapter__Reentrant();
+            revert Curve2PoolAdaptor__Reentrant();
         }
 
-        AdaptorData memory adapter = adaptorData[asset];
-        ICurvePool pool = ICurvePool(adapter.pool);
+        AdaptorData memory Adaptor = adaptorData[asset];
+        ICurvePool pool = ICurvePool(Adaptor.pool);
 
         // Make sure virtualPrice is reasonable.
         uint256 virtualPrice = pool.get_virtual_price();
-        _enforceBounds(virtualPrice, adapter.lowerBound, adapter.upperBound);
+        _enforceBounds(virtualPrice, Adaptor.lowerBound, Adaptor.upperBound);
 
-        // Get underlying token prices
+        // Get underlying token prices.
         IPriceRouter priceRouter = IPriceRouter(centralRegistry.priceRouter());
         uint256 price0;
         uint256 price1;
         uint256 errorCode;
         (price0, errorCode) = priceRouter.getPrice(
-            adapter.underlyingOrConstituent0,
+            Adaptor.underlyingOrConstituent0,
             inUSD,
             getLower
         );
@@ -105,7 +108,7 @@ contract Curve2PoolAdapter is CurveBaseAdaptor {
             return pData;
         }
         (price1, errorCode) = priceRouter.getPrice(
-            adapter.underlyingOrConstituent1,
+            Adaptor.underlyingOrConstituent1,
             inUSD,
             getLower
         );
@@ -114,16 +117,16 @@ contract Curve2PoolAdapter is CurveBaseAdaptor {
             return pData;
         }
 
-        // Calculate LP token price
+        // Calculate LP token price.
         uint256 price;
-        if (adapter.isCorrelated) {
+        if (Adaptor.isCorrelated) {
             // Handle rates if needed.
-            if (adapter.divideRate0 || adapter.divideRate1) {
+            if (Adaptor.divideRate0 || Adaptor.divideRate1) {
                 uint256[2] memory rates = pool.stored_rates();
-                if (adapter.divideRate0) {
+                if (Adaptor.divideRate0) {
                     price0 = (price0 * 1e18) / rates[0];
                 }
-                if (adapter.divideRate1) {
+                if (Adaptor.divideRate1) {
                     price1 = (price1 * 1e18) / rates[1];
                 }
             }
@@ -138,7 +141,7 @@ contract Curve2PoolAdapter is CurveBaseAdaptor {
                 price = (maxPrice * virtualPrice) / 1e18;
             }
         } else {
-            price = (2 * virtualPrice * _sqrt(price0)) / _sqrt(price1);
+            price = (2 * virtualPrice * FixedPointMathLib.sqrt(price0)) / FixedPointMathLib.sqrt(price1);
             price = (price * price0) / 1e18;
         }
 
@@ -152,13 +155,13 @@ contract Curve2PoolAdapter is CurveBaseAdaptor {
         _checkElevatedPermissions();
 
         if (isSupportedAsset[asset]) {
-            revert Curve2PoolAdapter__AssetIsAlreadyAdded();
+            revert Curve2PoolAdaptor__AssetIsAlreadyAdded();
         }
 
         // Make sure that the asset being added has the proper input
         // via this sanity check
         if (isLocked(asset, 2)) {
-            revert Curve2PoolAdapter__UnsupportedPool();
+            revert Curve2PoolAdaptor__UnsupportedPool();
         }
 
         if (
@@ -166,7 +169,7 @@ contract Curve2PoolAdapter is CurveBaseAdaptor {
                 data.underlyingOrConstituent0
             )
         ) {
-            revert Curve2PoolAdapter__QuoteAssetIsNotSupported();
+            revert Curve2PoolAdaptor__QuoteAssetIsNotSupported();
         }
 
         if (
@@ -174,7 +177,7 @@ contract Curve2PoolAdapter is CurveBaseAdaptor {
                 data.underlyingOrConstituent1
             )
         ) {
-            revert Curve2PoolAdapter__QuoteAssetIsNotSupported();
+            revert Curve2PoolAdaptor__QuoteAssetIsNotSupported();
         }
 
         adaptorData[asset] = data;
@@ -190,7 +193,7 @@ contract Curve2PoolAdapter is CurveBaseAdaptor {
         _checkElevatedPermissions();
 
         if (!isSupportedAsset[asset]) {
-            revert Curve2PoolAdapter__AssetIsNotSupported();
+            revert Curve2PoolAdaptor__AssetIsNotSupported();
         }
 
         // Notify the adaptor to stop supporting the asset
@@ -201,18 +204,6 @@ contract Curve2PoolAdapter is CurveBaseAdaptor {
         // Notify the price router that we are going to stop supporting the asset
         IPriceRouter(centralRegistry.priceRouter()).notifyFeedRemoval(asset);
         emit CurvePoolAssetRemoved(asset);
-    }
-
-    /**
-     * @notice Calculates the square root of the input.
-     */
-    function _sqrt(uint256 _x) internal pure returns (uint256 y) {
-        uint256 z = (_x + 1) / 2;
-        y = _x;
-        while (z < y) {
-            y = z;
-            z = (_x / z + z) / 2;
-        }
     }
 
     /**
@@ -229,6 +220,6 @@ contract Curve2PoolAdapter is CurveBaseAdaptor {
         if (
             providedAnswerConvertedToBoundDecimals < lowerBound ||
             providedAnswerConvertedToBoundDecimals > upperBound
-        ) revert Curve2PoolAdapter_Bounds_Exeeded();
+        ) revert Curve2PoolAdaptor_Bounds_Exeeded();
     }
 }
