@@ -2,13 +2,13 @@
 pragma solidity ^0.8.17;
 
 import { TestBasePriceRouter } from "../TestBasePriceRouter.sol";
-import { Curve2PoolAdapter } from "contracts/oracles/adaptors/curve/Curve2PoolAdapter.sol";
+import { Curve2PoolAdaptor } from "contracts/oracles/adaptors/curve/Curve2PoolAdaptor.sol";
 import { CurveBaseAdaptor } from "contracts/oracles/adaptors/curve/CurveBaseAdaptor.sol";
 import { ChainlinkAdaptor } from "contracts/oracles/adaptors/chainlink/ChainlinkAdaptor.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
 
-contract TestCurve2PoolAdapter is TestBasePriceRouter {
+contract TestCurve2PoolAdaptor is TestBasePriceRouter {
     address private CHAINLINK_PRICE_FEED_ETH =
         0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
     address private CHAINLINK_PRICE_FEED_STETH =
@@ -18,7 +18,7 @@ contract TestCurve2PoolAdapter is TestBasePriceRouter {
     address private ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
     address private STETH = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
 
-    Curve2PoolAdapter adaptor;
+    Curve2PoolAdaptor adaptor;
 
     function setUp() public override {
         _fork(18031848);
@@ -26,7 +26,7 @@ contract TestCurve2PoolAdapter is TestBasePriceRouter {
         _deployCentralRegistry();
         _deployPriceRouter();
 
-        adaptor = new Curve2PoolAdapter(
+        adaptor = new Curve2PoolAdaptor(
             ICentralRegistry(address(centralRegistry))
         );
 
@@ -34,7 +34,7 @@ contract TestCurve2PoolAdapter is TestBasePriceRouter {
     }
 
     function testRevertWhenUnderlyingAssetPriceNotSet() public {
-        Curve2PoolAdapter.AdaptorData memory data;
+        Curve2PoolAdaptor.AdaptorData memory data;
         data.pool = 0x21E27a5E5513D6e65C4f830167390997aA84843a;
         data.underlyingOrConstituent0 = ETH;
         data.underlyingOrConstituent1 = STETH;
@@ -44,8 +44,8 @@ contract TestCurve2PoolAdapter is TestBasePriceRouter {
         data.upperBound = 15000;
         data.lowerBound = 5000;
         vm.expectRevert(
-            Curve2PoolAdapter
-                .Curve2PoolAdapter__QuoteAssetIsNotSupported
+            Curve2PoolAdaptor
+                .Curve2PoolAdaptor__QuoteAssetIsNotSupported
                 .selector
         );
         adaptor.addAsset(ETH_STETH, data);
@@ -61,7 +61,7 @@ contract TestCurve2PoolAdapter is TestBasePriceRouter {
         priceRouter.addAssetPriceFeed(ETH, address(chainlinkAdaptor));
         priceRouter.addAssetPriceFeed(STETH, address(chainlinkAdaptor));
 
-        Curve2PoolAdapter.AdaptorData memory data;
+        Curve2PoolAdaptor.AdaptorData memory data;
         data.pool = 0x21E27a5E5513D6e65C4f830167390997aA84843a;
         data.underlyingOrConstituent0 = ETH;
         data.underlyingOrConstituent1 = STETH;
