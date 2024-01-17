@@ -13,7 +13,7 @@ contract Market {
     }
 }
 
-contract AddLendingMarketTest is TestBaseMarket {
+contract AddMarketManagerTest is TestBaseMarket {
     address newMarket;
 
     event NewCurvanceContract(string indexed contractType, address newAddress);
@@ -23,41 +23,41 @@ contract AddLendingMarketTest is TestBaseMarket {
         newMarket = address(new Market());
     }
 
-    function test_addLendingMarket_fail_whenUnauthorized() public {
+    function test_addMarketManager_fail_whenUnauthorized() public {
         vm.startPrank(address(0));
         vm.expectRevert(CentralRegistry.CentralRegistry__Unauthorized.selector);
-        centralRegistry.addLendingMarket(newMarket, 5000);
+        centralRegistry.addMarketManager(newMarket, 5000);
         vm.stopPrank();
     }
 
-    function test_addLendingMarket_fail_whenMarketAlreadyAdded() public {
-        centralRegistry.addLendingMarket(newMarket, 5000);
+    function test_addMarketManager_fail_whenMarketAlreadyAdded() public {
+        centralRegistry.addMarketManager(newMarket, 5000);
         vm.expectRevert(
             CentralRegistry.CentralRegistry__ParametersMisconfigured.selector
         );
-        centralRegistry.addLendingMarket(newMarket, 5000);
+        centralRegistry.addMarketManager(newMarket, 5000);
     }
 
-    function test_addLendingMarket_fail_whenNoSupportForERC165() public {
+    function test_addMarketManager_fail_whenNoSupportForERC165() public {
         vm.expectRevert(
             CentralRegistry.CentralRegistry__ParametersMisconfigured.selector
         );
-        centralRegistry.addLendingMarket(user1, 5000);
+        centralRegistry.addMarketManager(user1, 5000);
     }
 
-    function test_addLendingMarket_fail_whenFeeTooHigh() public {
+    function test_addMarketManager_fail_whenFeeTooHigh() public {
         vm.expectRevert(
             CentralRegistry.CentralRegistry__ParametersMisconfigured.selector
         );
-        centralRegistry.addLendingMarket(newMarket, 5001);
+        centralRegistry.addMarketManager(newMarket, 5001);
     }
 
-    function test_addLendingMarket_success() public {
+    function test_addMarketManager_success() public {
         assertFalse(centralRegistry.isLendingMarket(newMarket));
 
         vm.expectEmit(true, true, true, true);
         emit NewCurvanceContract("Lending Market", newMarket);
-        centralRegistry.addLendingMarket(newMarket, 5000);
+        centralRegistry.addMarketManager(newMarket, 5000);
 
         assertTrue(centralRegistry.isLendingMarket(newMarket));
         assertEq(

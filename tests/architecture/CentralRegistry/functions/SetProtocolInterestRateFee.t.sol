@@ -45,12 +45,12 @@ contract SetProtocolInterestRateFeeTest is TestBaseMarket {
         );
         centralRegistry.setProtocolInterestRateFee(newMarket, 5000);
 
-        centralRegistry.addLendingMarket(newMarket, 5000);
+        centralRegistry.addMarketManager(newMarket, 5000);
         centralRegistry.setProtocolInterestRateFee(newMarket, 5000);
     }
 
     function test_setProtocolInterestRateFee_success() public {
-        centralRegistry.addLendingMarket(newMarket, 5000);
+        centralRegistry.addMarketManager(newMarket, 5000);
         centralRegistry.setProtocolInterestRateFee(newMarket, 5000);
         assertEq(
             centralRegistry.protocolInterestFactor(newMarket),
