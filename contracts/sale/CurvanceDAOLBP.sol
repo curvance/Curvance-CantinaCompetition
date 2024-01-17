@@ -2,6 +2,7 @@
 pragma solidity ^0.8.17;
 
 import { WAD } from "contracts/libraries/Constants.sol";
+import { FixedPointMathLib } from "contracts/libraries/external/FixedPointMathLib.sol";
 import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 import { SafeTransferLib } from "contracts/libraries/external/SafeTransferLib.sol";
 
@@ -168,12 +169,12 @@ contract CurvanceDAOLBP {
             return softPriceInpaymentToken;
         }
 
+        // Adjust decimals between paymentTokenDecimals,
+        // and default 18 decimals of softCap(). 
         amount = _adjustDecimals(amount, paymentTokenDecimals, 18);
 
-        // round up price calculation
-        return
-            ((amount * WAD) + cveAmountForSale / 2) /
-            cveAmountForSale;
+        // Equivalent to (amount * WAD) / cveAmountForSale rounded up.
+        return FixedPointMathLib.divWadUp(amount, cveAmountForSale);
     }
 
     /// @notice return current sale price
