@@ -44,6 +44,8 @@ contract DynamicInterestRateModel {
 
     /// CONSTANTS ///
 
+    /// @notice For external contract's to call for validation.
+    bool public constant IS_INTEREST_RATE_MODEL = true;
     /// @notice Rate at which interest is compounded, in seconds.
     uint256 public constant INTEREST_COMPOUND_RATE = 600;
     /// @notice Maximum Rate at which the vertex multiplier will
@@ -61,9 +63,11 @@ contract DynamicInterestRateModel {
     ///         at 100% util.
     uint256 public constant MAX_VERTEX_ADJUSTMENT_VELOCITY = 3 * WAD;
 
+    /// @notice Scalar value for when we need to divide by WAD * WAD 
+    ///         due to curve adjustment velocity multiplier.
     uint256 internal constant _CURVE_PRECISION = 1e36;
-    /// Unix time has 31,536,000 seconds per year.
-    /// All my homies hate leap seconds and leap years.
+    /// @notice Unix time has 31,536,000 seconds per year.
+    ///         All my homies hate leap seconds and leap years.
     uint256 internal constant _SECONDS_PER_YEAR = 31_536_000;
     /// @notice Mask of `vertexMultiplier` in `_currentRates`.
     uint256 internal constant _BITMASK_VERTEX_MULTIPLIER = (1 << 192) - 1;
@@ -72,14 +76,13 @@ contract DynamicInterestRateModel {
     /// @notice The bit position of `nextUpdateTimestamp` in `_currentRates`.
     uint256 internal constant _BITPOS_UPDATE_TIMESTAMP = 192;
 
-    /// @notice For external contract's to call for validation.
-    bool public constant IS_INTEREST_RATE_MODEL = true;
-
     /// @notice Curvance DAO hub.
     ICentralRegistry public immutable centralRegistry;
 
     /// STORAGE ///
 
+    /// @notice Struct containing current configuration data for the
+    ///         dynamic interest rate model.
     RatesConfiguration public ratesConfig;
     /// Internal stored rates data.
     /// Bits Layout:
