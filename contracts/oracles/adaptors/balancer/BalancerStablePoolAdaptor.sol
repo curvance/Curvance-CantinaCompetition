@@ -145,7 +145,7 @@ contract BalancerStablePoolAdaptor is BalancerBaseAdaptor {
 
         // Make sure we can price all underlying tokens.
         for (uint256 i; i < numUnderlyingOrConstituent; ++i) {
-            // Break when a zero address is found.
+            // Continue when a zero address is found.
             if (address(data.underlyingOrConstituent[i]) == address(0)) {
                 continue;
             }
