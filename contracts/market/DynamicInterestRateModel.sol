@@ -437,7 +437,7 @@ contract DynamicInterestRateModel {
         uint256 util
     ) internal view returns (uint256) {
         uint256 currentMultiplier = vertexMultiplier();
-        // Calculate decay rate
+        // Calculate decay rate.
         uint256 decay = (currentMultiplier * config.decayRate) / WAD;
         uint256 newMultiplier;
 
@@ -487,7 +487,7 @@ contract DynamicInterestRateModel {
         uint256 util
     ) internal view returns (uint256) {
         uint256 currentMultiplier = vertexMultiplier();
-        // Calculate decay rate
+        // Calculate decay rate.
         uint256 decay = (currentMultiplier * config.decayRate) / WAD;
         uint256 newMultiplier;
 
@@ -520,8 +520,8 @@ contract DynamicInterestRateModel {
         // Make sure we are not above the vertex multiplier maximum.
         return
             newMultiplier < config.vertexMultiplierMax
-                ? config.vertexMultiplierMax
-                : newMultiplier;
+                ? newMultiplier
+                : config.vertexMultiplierMax;
     }
 
     /// @notice Calculates a positive curve value based on `current`,
