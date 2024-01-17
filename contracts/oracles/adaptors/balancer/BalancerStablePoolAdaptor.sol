@@ -8,7 +8,7 @@ import { IBalancerPool } from "contracts/interfaces/external/balancer/IBalancerP
 import { IRateProvider } from "contracts/interfaces/external/balancer/IRateProvider.sol";
 import { PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
+import { IOracleRouter } from "contracts/interfaces/IOracleRouter.sol";
 
 contract BalancerStablePoolAdaptor is BalancerBaseAdaptor {
     /// TYPES ///
@@ -77,7 +77,7 @@ contract BalancerStablePoolAdaptor is BalancerBaseAdaptor {
         IBalancerPool pool = IBalancerPool(asset);
 
         pData.inUSD = inUSD;
-        IPriceRouter priceRouter = IPriceRouter(centralRegistry.priceRouter());
+        IOracleRouter oracleRouter = IOracleRouter(centralRegistry.oracleRouter());
 
         // Find the minimum price of all the pool tokens.
         uint256 numUnderlyingOrConstituent = data
@@ -94,7 +94,7 @@ contract BalancerStablePoolAdaptor is BalancerBaseAdaptor {
                 break;
             }
 
-            (price, errorCode) = priceRouter.getPrice(
+            (price, errorCode) = oracleRouter.getPrice(
                 data.underlyingOrConstituent[i],
                 inUSD,
                 getLower
@@ -151,7 +151,7 @@ contract BalancerStablePoolAdaptor is BalancerBaseAdaptor {
             }
 
             if (
-                !IPriceRouter(centralRegistry.priceRouter()).isSupportedAsset(
+                !IOracleRouter(centralRegistry.oracleRouter()).isSupportedAsset(
                     data.underlyingOrConstituent[i]
                 )
             ) {
@@ -192,7 +192,7 @@ contract BalancerStablePoolAdaptor is BalancerBaseAdaptor {
         delete adaptorData[asset];
 
         // Notify the price router that we are going to stop supporting the asset
-        IPriceRouter(centralRegistry.priceRouter()).notifyFeedRemoval(asset);
+        IOracleRouter(centralRegistry.oracleRouter()).notifyFeedRemoval(asset);
         emit BalancerStablePoolAssetRemoved(asset);
     }
 }

@@ -7,7 +7,7 @@ import { WAD } from "contracts/libraries/Constants.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
-import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
+import { IOracleRouter } from "contracts/interfaces/IOracleRouter.sol";
 import { IReader } from "contracts/interfaces/external/gmx/IReader.sol";
 
 contract GMAdaptor is BaseOracleAdaptor {
@@ -86,7 +86,7 @@ contract GMAdaptor is BaseOracleAdaptor {
             revert GMAdaptor__AssetIsNotSupported();
         }
 
-        IPriceRouter priceRouter = IPriceRouter(centralRegistry.priceRouter());
+        IOracleRouter oracleRouter = IOracleRouter(centralRegistry.oracleRouter());
         uint256[] memory prices = new uint256[](3);
         address[] memory tokens = marketData[asset];
         uint256 errorCode;
@@ -95,7 +95,7 @@ contract GMAdaptor is BaseOracleAdaptor {
         for (uint256 i = 0; i < 3; ++i) {
             token = tokens[i];
 
-            (prices[i], errorCode) = priceRouter.getPrice(token, true, false);
+            (prices[i], errorCode) = oracleRouter.getPrice(token, true, false);
             if (errorCode > 0) {
                 pData.hadError = true;
                 return pData;
@@ -156,7 +156,7 @@ contract GMAdaptor is BaseOracleAdaptor {
             revert GMAdaptor__MarketIsInvalid();
         }
 
-        IPriceRouter priceRouter = IPriceRouter(centralRegistry.priceRouter());
+        IOracleRouter oracleRouter = IOracleRouter(centralRegistry.oracleRouter());
 
         address[] memory tokens = new address[](3);
         address token;
@@ -167,7 +167,7 @@ contract GMAdaptor is BaseOracleAdaptor {
         for (uint256 i = 0; i < 3; ++i) {
             token = tokens[i];
 
-            if (!priceRouter.isSupportedAsset(token)) {
+            if (!oracleRouter.isSupportedAsset(token)) {
                 revert GMAdaptor__MarketTokenIsNotSupported(token);
             }
 
@@ -199,7 +199,7 @@ contract GMAdaptor is BaseOracleAdaptor {
 
         // Notify the price router that we are going to
         // stop supporting the asset.
-        IPriceRouter(centralRegistry.priceRouter()).notifyFeedRemoval(asset);
+        IOracleRouter(centralRegistry.oracleRouter()).notifyFeedRemoval(asset);
     }
 
     /// @notice Register synthetic assets and decimals.

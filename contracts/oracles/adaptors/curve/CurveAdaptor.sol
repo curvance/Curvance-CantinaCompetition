@@ -5,7 +5,7 @@ import { CurveBaseAdaptor } from "contracts/oracles/adaptors/curve/CurveBaseAdap
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
-import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
+import { IOracleRouter } from "contracts/interfaces/IOracleRouter.sol";
 import { ICurvePool } from "contracts/interfaces/external/curve/ICurvePool.sol";
 
 contract CurveAdaptor is CurveBaseAdaptor {
@@ -88,10 +88,10 @@ contract CurveAdaptor is CurveBaseAdaptor {
 
         uint256 virtualPrice = pool.get_virtual_price();
         uint256 edgePrice = getLower ? type(uint256).max : 0;
-        IPriceRouter priceRouter = IPriceRouter(centralRegistry.priceRouter());
+        IOracleRouter oracleRouter = IOracleRouter(centralRegistry.oracleRouter());
 
         for (uint256 i; i < coinsLength; ) {
-            (uint256 price, uint256 errorCode) = priceRouter.getPrice(
+            (uint256 price, uint256 errorCode) = oracleRouter.getPrice(
                 adapter.coins[i],
                 inUSD,
                 getLower
@@ -116,7 +116,7 @@ contract CurveAdaptor is CurveBaseAdaptor {
     }
 
     /// @notice Adds a Curve LP as an asset.
-    /// @dev Should be called before `PriceRouter:addAssetPriceFeed` is called.
+    /// @dev Should be called before `OracleRouter:addAssetPriceFeed` is called.
     /// @param asset the address of the lp to add
     function addAsset(address asset, address pool) external {
         _checkElevatedPermissions();
@@ -181,7 +181,7 @@ contract CurveAdaptor is CurveBaseAdaptor {
         delete adaptorData[asset];
 
         // Notify the price router that we are going to stop supporting the asset
-        IPriceRouter(centralRegistry.priceRouter()).notifyFeedRemoval(asset);
+        IOracleRouter(centralRegistry.oracleRouter()).notifyFeedRemoval(asset);
         emit CurvePoolAssetRemoved(asset);
     }
 }

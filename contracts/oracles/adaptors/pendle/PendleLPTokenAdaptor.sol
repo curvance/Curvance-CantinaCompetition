@@ -6,7 +6,7 @@ import { BaseOracleAdaptor } from "contracts/oracles/adaptors/BaseOracleAdaptor.
 import { PendleLpOracleLib } from "contracts/libraries/external/pendle/PendleLpOracleLib.sol";
 import { WAD } from "contracts/libraries/Constants.sol";
 
-import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
+import { IOracleRouter } from "contracts/interfaces/IOracleRouter.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IPendlePTOracle } from "contracts/interfaces/external/pendle/IPendlePtOracle.sol";
 import { IPMarket, IPPrincipalToken, IStandardizedYield } from "contracts/interfaces/external/pendle/IPMarket.sol";
@@ -94,8 +94,8 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
         uint256 lpRate = IPMarket(asset).getLpToAssetRate(data.twapDuration);
         pData.inUSD = inUSD;
 
-        (uint256 price, uint256 errorCode) = IPriceRouter(
-            centralRegistry.priceRouter()
+        (uint256 price, uint256 errorCode) = IOracleRouter(
+            centralRegistry.oracleRouter()
         ).getPrice(data.quoteAsset, inUSD, getLower);
 
         if (errorCode > 0) {
@@ -151,7 +151,7 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
         _checkPtTwap(asset, data.twapDuration);
 
         if (
-            !IPriceRouter(centralRegistry.priceRouter()).isSupportedAsset(
+            !IOracleRouter(centralRegistry.oracleRouter()).isSupportedAsset(
                 data.quoteAsset
             )
         ) {
@@ -186,7 +186,7 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
         delete adaptorData[asset];
 
         // Notify the price router that we are going to stop supporting the asset
-        IPriceRouter(centralRegistry.priceRouter()).notifyFeedRemoval(asset);
+        IOracleRouter(centralRegistry.oracleRouter()).notifyFeedRemoval(asset);
         emit PendleLPAssetRemoved(asset);
     }
 

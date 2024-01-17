@@ -38,7 +38,7 @@ abstract contract BaseOracleAdaptor {
 
     /// EXTERNAL FUNCTIONS ///
 
-    /// @notice Called by PriceRouter to price an asset.
+    /// @notice Called by OracleRouter to price an asset.
     function getPrice(
         address asset,
         bool inUSD,
@@ -65,8 +65,8 @@ abstract contract BaseOracleAdaptor {
         }
     }
 
-    function _checkIsPriceRouter() internal view {
-        if (msg.sender != centralRegistry.priceRouter()) {
+    function _checkIsOracleRouter() internal view {
+        if (msg.sender != centralRegistry.oracleRouter()) {
             revert BaseOracleAdaptor__Unauthorized();
         }
     }

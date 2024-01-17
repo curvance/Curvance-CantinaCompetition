@@ -48,7 +48,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
     /// STORAGE ///
 
     /// @notice Lending Market controller
-    IMarketManager public immutable MarketManager;
+    IMarketManager public immutable marketManager;
 
     /// @notice token name metadata
     string internal _name;
@@ -86,14 +86,14 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
 
         centralRegistry = centralRegistry_;
 
-        // Set the MarketManager after consulting Central Registry
-        // Ensure that MarketManager parameter is a MarketManager
+        // Set the marketManager after consulting Central Registry
+        // Ensure that marketManager parameter is a marketManager
         if (!centralRegistry.isLendingMarket(MarketManager_)) {
             revert CTokenBase__MarketManagerIsNotLendingMarket();
         }
 
-        // Set MarketManager
-        MarketManager = IMarketManager(MarketManager_);
+        // Set marketManager
+        marketManager = IMarketManager(MarketManager_);
 
         // Sanity check underlying so that we know users will not need to
         // mint anywhere close to exchange rate of 1e18
@@ -116,9 +116,9 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         shares = _deposit(assets, receiver);
         if (
             msg.sender == receiver ||
-            msg.sender == MarketManager.positionFolding()
+            msg.sender == marketManager.positionFolding()
         ) {
-            MarketManager.postCollateral(receiver, address(this), shares);
+            marketManager.postCollateral(receiver, address(this), shares);
         }
     }
 
@@ -244,7 +244,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
     ) public view override returns (uint256 maxAssets) {
         // If depositing is disabled maxAssets should be equal to 0
         // according to ERC4626 format.
-        if (!MarketManager.isListed(address(this)) || MarketManager.mintPaused(address(this)) == 2) {
+        if (!marketManager.isListed(address(this)) || marketManager.mintPaused(address(this)) == 2) {
             // We do not need to set maxAssets here since its initialized
             // as 0 so we can just return.
             return maxAssets;
@@ -257,7 +257,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
     ) public view override returns (uint256 maxShares) {
         // If depositing is disabled maxAssets should be equal to 0
         // according to ERC4626 format.
-        if (!MarketManager.isListed(address(this)) || MarketManager.mintPaused(address(this)) == 2) {
+        if (!marketManager.isListed(address(this)) || marketManager.mintPaused(address(this)) == 2) {
             // We do not need to set maxShares here since its initialized
             // as 0 so we can just return.
             return maxShares;
@@ -326,7 +326,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         uint256 amount
     ) public override nonReentrant returns (bool) {
         // Fails if transfer not allowed
-        MarketManager.canTransfer(address(this), msg.sender, amount);
+        marketManager.canTransfer(address(this), msg.sender, amount);
 
         // emit events on gauge pool
         IGaugePool gaugePool = _gaugePool();
@@ -349,7 +349,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         uint256 amount
     ) public override nonReentrant returns (bool) {
         // Fails if transfer not allowed
-        MarketManager.canTransfer(address(this), from, amount);
+        marketManager.canTransfer(address(this), from, amount);
 
         // emit events on gauge pool
         IGaugePool gaugePool = _gaugePool();
@@ -384,7 +384,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         }
 
         // Fails if seize not allowed
-        MarketManager.canSeize(address(this), msg.sender);
+        marketManager.canSeize(address(this), msg.sender);
         uint256 liquidatorTokens = liquidatedTokens - protocolTokens;
 
         // emit events on gauge pool
@@ -419,7 +419,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
 
         // Make sure the MarketManager itself is calling since
         // then we know all liquidity checks have passed
-        if (msg.sender != address(MarketManager)) {
+        if (msg.sender != address(marketManager)) {
             _revert(_UNAUTHORIZED_SELECTOR);
         }
         // emit events on gauge pool
@@ -565,13 +565,13 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         }
     }
 
-    /// @notice Used to start a CToken market, executed via MarketManager
+    /// @notice Used to start a CToken market, executed via marketManager
     /// @dev This initial mint is a failsafe against rounding exploits,
     ///      although, we protect against it in many ways,
     ///      better safe than sorry
     /// @param by The account initializing the market
     function _startMarket(address by) internal {
-        if (msg.sender != address(MarketManager)) {
+        if (msg.sender != address(marketManager)) {
             _revert(_UNAUTHORIZED_SELECTOR);
         }
 
@@ -664,7 +664,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
     /// @notice Returns gauge pool contract address
     /// @return The gauge controller contract address
     function _gaugePool() internal view returns (IGaugePool) {
-        return MarketManager.gaugePool();
+        return marketManager.gaugePool();
     }
 
     /// @dev Checks whether the caller has sufficient permissioning

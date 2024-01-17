@@ -4,7 +4,7 @@ pragma solidity ^0.8.17;
 import { BaseOracleAdaptor } from "contracts/oracles/adaptors/BaseOracleAdaptor.sol";
 import { ERC20 } from "contracts/libraries/external/ERC20.sol";
 
-import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
+import { IOracleRouter } from "contracts/interfaces/IOracleRouter.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
 import { IStaticOracle } from "contracts/interfaces/external/uniswap/IStaticOracle.sol";
@@ -115,20 +115,20 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
             return pData;
         }
 
-        IPriceRouter PriceRouter = IPriceRouter(centralRegistry.priceRouter());
+        IOracleRouter OracleRouter = IOracleRouter(centralRegistry.oracleRouter());
 
         // We want the asset price in USD which uniswap cant do,
         // so find out the price of the quote token in USD then divide
         // so its in USD
         if (inUSD) {
-            if (!PriceRouter.isSupportedAsset(data.quoteToken)) {
+            if (!OracleRouter.isSupportedAsset(data.quoteToken)) {
                 // Our price router does not know how to value this quote token
                 // so we cant use the TWAP data
                 pData.hadError = true;
                 return pData;
             }
 
-            (uint256 quoteTokenDenominator, uint256 errorCode) = PriceRouter
+            (uint256 quoteTokenDenominator, uint256 errorCode) = OracleRouter
                 .getPrice(data.quoteToken, true, getLower);
 
             // Make sure that if the Price Router had an error,
@@ -153,14 +153,14 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
         }
 
         if (data.quoteToken != WETH) {
-            if (!PriceRouter.isSupportedAsset(data.quoteToken)) {
+            if (!OracleRouter.isSupportedAsset(data.quoteToken)) {
                 // Our price router does not know how to value this quote
                 // token so we cant use the TWAP data.
                 pData.hadError = true;
                 return pData;
             }
 
-            (uint256 quoteTokenDenominator, uint256 errorCode) = PriceRouter
+            (uint256 quoteTokenDenominator, uint256 errorCode) = OracleRouter
                 .getPrice(data.quoteToken, false, getLower);
 
             // Make sure that if the Price Router had an error,
@@ -236,7 +236,7 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
 
         // Notify the price router that we are going
         // to stop supporting the asset
-        IPriceRouter(centralRegistry.priceRouter()).notifyFeedRemoval(asset);
+        IOracleRouter(centralRegistry.oracleRouter()).notifyFeedRemoval(asset);
         emit UniswapV3AssetRemoved(asset);
     }
 }
