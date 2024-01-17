@@ -7,31 +7,38 @@ import { ReentrancyGuard } from "contracts/libraries/external/ReentrancyGuard.so
 
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+import { IVeCVE } from "contracts/interfaces/IVeCVE.sol";
 
 contract CVEAirdrop is ReentrancyGuard {
     /// CONSTANTS ///
 
-    /// @notice Maximum airdrop size any user can receive
+    /// @notice CVE contract address.
+    address public immutable cve;
+    /// @notice VeCVE contract address.
+    IVeCVE public immutable veCVE;
+    /// @notice CVE claim boost for choosing a locked distribution.
+    uint256 public immutable lockBoost;
+    /// @notice Maximum claim size anyone can receive.
     uint256 public immutable maxClaim;
-    /// @notice Curvance DAO hub
+    /// @notice Curvance DAO hub.
     ICentralRegistry public immutable centralRegistry;
 
     /// STORAGE ///
 
-    /// @notice Airdrop Merkle Root to validate claims
+    /// @notice Airdrop Merkle Root to validate claims.
     bytes32 public merkleRoot;
-    /// @notice Airdrop claim state; 1 = unpaused; 2 = paused
+    /// @notice Airdrop claim state; 1 = unpaused; 2 = paused.
     uint256 public isPaused = 2;
-    /// @notice Time by which users must claim their airdrop
+    /// @notice Time by which users must submit a claim by.
     uint256 public endClaimTimestamp;
 
-    /// User => Has Claimed
+    /// @notice User => has claimed.
     mapping(address => bool) public airdropClaimed;
 
     /// EVENTS ///
 
     event AirdropClaimed(address indexed claimer, uint256 amount);
-    event RemainingOptionsWithdrawn(uint256 amount);
+    event RemainingTokensWithdrawn(uint256 amount);
 
     /// ERRORS ///
 
@@ -41,8 +48,13 @@ contract CVEAirdrop is ReentrancyGuard {
     error CVEAirdrop__Unauthorized();
     error CVEAirdrop__TransferError();
     error CVEAirdrop__NotEligible();
+    error CVEAirdrop__InvalidLockBoost();
 
-    constructor(ICentralRegistry centralRegistry_, uint256 maxClaim_) {
+    constructor(
+        ICentralRegistry centralRegistry_, 
+        uint256 maxClaim_, 
+        uint256 lockBoost_
+    ) {
         if (
             !ERC165Checker.supportsInterface(
                 address(centralRegistry_),
@@ -52,41 +64,56 @@ contract CVEAirdrop is ReentrancyGuard {
             revert CVEAirdrop__InvalidCentralRegistry();
         }
         centralRegistry = centralRegistry_;
+
+        // Sanity check that maxClaim and lockBoost are not horribly
+        // misconfigured. A single claim taking the entire community incentive
+        // airdrop would not make any sense, 
+        // in practice the values should be significantly smaller.
+        if (maxClaim > 1575000259e16 / lockBoost_) {
+            revert CVEAirdrop__InvalidLockBoost();
+        }
+
+        cve = centralRegistry.cve();
+        veCVE = IVeCVE(centralRegistry.veCVE());
         maxClaim = maxClaim_;
+        lockBoost = lockBoost_;
     }
 
-    /// @notice Claim CVE Call Option tokens for airdrop
-    /// @param amount Requested CVE amount to claim for the airdrop
-    /// @param proof Bytes32 array containing the merkle proof
+    /// @notice Claim allocated CVE.
+    /// @param amount Requested amount to claim.
+    /// @param locked Whether the claim should be claimed in boosted lock
+    ///               form or not.
+    /// @param proof Bytes32 array containing the merkle proof.
     function claimAirdrop(
         uint256 amount,
+        bool locked,
         bytes32[] calldata proof
     ) external nonReentrant {
         if (isPaused == 2) {
             revert CVEAirdrop__Paused();
         }
 
-        // Verify CVE amount request is not above the maximum claim amount
+        // Verify `amount` is not above the maximum claim amount.
         if (amount > maxClaim) {
             revert CVEAirdrop__ParametersAreInvalid();
         }
 
-        // Verify that the claim merkle root has been configured
+        // Verify that the claim merkle root has been configured.
         if (merkleRoot == bytes32(0)) {
             revert CVEAirdrop__Unauthorized();
         }
 
-        // Verify Claim window has not passed
+        // Verify claim window has not passed.
         if (block.timestamp >= endClaimTimestamp) {
             revert CVEAirdrop__NotEligible();
         }
 
-        // Verify the user has not claimed their airdrop already
+        // Verify the caller has not claimed already.
         if (airdropClaimed[msg.sender]) {
             revert CVEAirdrop__NotEligible();
         }
 
-        // Compute the merkle leaf and verify the merkle proof
+        // Compute the merkle leaf and verify the merkle proof.
         if (
             !verify(
                 proof,
@@ -97,23 +124,42 @@ contract CVEAirdrop is ReentrancyGuard {
             revert CVEAirdrop__NotEligible();
         }
 
-        // Document that airdrop has been claimed
+        // Document that the callers airdrop has been claimed.
         airdropClaimed[msg.sender] = true;
 
-        // Transfer CVE tokens
-        SafeTransferLib.safeTransfer(
-            centralRegistry.oCVE(),
-            msg.sender,
-            amount
-        );
+        // Check whether the claimer prefers a boosted lock version
+        // or liquid version.
+        if (locked) {
+            RewardsData memory emptyData;
+            uint256 boostedAmount = amount * lockBoost;
+            SafeTransferLib.safeApprove(cve, address(veCVE), boostedAmount);
 
+            // Create a boosted continuous lock for the caller.
+            veCVE.createLockFor(
+                msg.sender,
+                boostedAmount,
+                true,
+                emptyData,
+                "",
+                0
+            );
+        } else {
+            // Transfer CVE tokens.
+            SafeTransferLib.safeTransfer(
+                cve,
+                msg.sender,
+                amount
+            );
+        }
+
+        // AirdropClaimed should always emit events based on the base amount.
         emit AirdropClaimed(msg.sender, amount);
     }
 
-    /// @notice Check whether a user has CVE tokens to claim
-    /// @param user address of the user to check
-    /// @param amount amount to claim
-    /// @param proof array containing the merkle proof
+    /// @notice Check whether a user has CVE tokens to claim.
+    /// @param user Address of the user to check.
+    /// @param amount Amount to claim.
+    /// @param proof Array containing the merkle proof.
     function canClaimAirdrop(
         address user,
         uint256 amount,
@@ -125,7 +171,7 @@ contract CVEAirdrop is ReentrancyGuard {
 
         if (!airdropClaimed[user]) {
             if (block.timestamp < endClaimTimestamp) {
-                // Compute the leaf and verify the merkle proof
+                // Compute the leaf and verify the merkle proof.
                 return
                     verify(
                         proof,
@@ -138,9 +184,9 @@ contract CVEAirdrop is ReentrancyGuard {
         return false;
     }
 
-    /// @dev rescue any token sent by mistake
-    /// @param token token to rescue
-    /// @param amount amount of `token` to rescue, 0 indicates to rescue all
+    /// @dev Rescue any token sent by mistake to this contract.
+    /// @param token The token address to rescue.
+    /// @param amount Amount of `token` to rescue, 0 indicates to rescue all.
     function rescueToken(
         address token,
         uint256 amount
@@ -155,7 +201,7 @@ contract CVEAirdrop is ReentrancyGuard {
 
             SafeTransferLib.forceSafeTransferETH(daoOperator, amount);
         } else {
-            if (token == centralRegistry.oCVE()) {
+            if (token == cve) {
                 revert CVEAirdrop__TransferError();
             }
 
@@ -167,23 +213,27 @@ contract CVEAirdrop is ReentrancyGuard {
         }
     }
 
-    /// @notice Withdraws unclaimed airdrop tokens to contract Owner after airdrop claim period has ended
-    function withdrawRemainingAirdropTokens() external {
+    /// @notice Withdraws unclaimed tokens to the DAO after the claim
+    ///         period has ended.
+    function withdrawRemainingTokens() external {
         _checkDaoPermissions();
 
         if (block.timestamp < endClaimTimestamp) {
             revert CVEAirdrop__TransferError();
         }
 
-        address oCVE = centralRegistry.oCVE();
-        uint256 amount = IERC20(oCVE).balanceOf(address(this));
-        SafeTransferLib.safeTransfer(oCVE, msg.sender, amount);
+        uint256 amount = IERC20(cve).balanceOf(address(this));
+        SafeTransferLib.safeTransfer(
+            cve, 
+            centralRegistry.daoAddress(), 
+            amount
+        );
 
-        emit RemainingOptionsWithdrawn(amount);
+        emit RemainingTokensWithdrawn(amount);
     }
 
-    /// @notice Set merkleRoot for airdrop validation
-    /// @param newRoot new merkle root
+    /// @notice Set merkleRoot for airdrop validation.
+    /// @param newRoot New merkle root.
     function setMerkleRoot(bytes32 newRoot) external {
         _checkDaoPermissions();
         
@@ -200,8 +250,8 @@ contract CVEAirdrop is ReentrancyGuard {
         merkleRoot = newRoot;
     }
 
-    /// @notice Set isPaused state
-    /// @param state new pause state
+    /// @notice Set isPaused state.
+    /// @param state New pause state.
     function setPauseState(bool state) external {
         _checkDaoPermissions();
         
@@ -217,7 +267,8 @@ contract CVEAirdrop is ReentrancyGuard {
 
     /// INTERNAL FUNCTIONS ///
 
-    /// @dev Returns whether `leaf` exists in the Merkle tree with `root`, given `proof`.
+    /// @dev Returns whether `leaf` exists in the Merkle tree with `root`,
+    ///      given `proof`.
     function verify(
         bytes32[] memory proof,
         bytes32 root,
@@ -255,7 +306,7 @@ contract CVEAirdrop is ReentrancyGuard {
         }
     }
 
-    /// @dev Checks whether the caller has sufficient permissioning
+    /// @dev Checks whether the caller has sufficient permissioning.
     function _checkDaoPermissions() internal view {
         if (!centralRegistry.hasDaoPermissions(msg.sender)) {
             revert CVEAirdrop__Unauthorized();

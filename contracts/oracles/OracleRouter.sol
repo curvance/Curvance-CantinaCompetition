@@ -148,7 +148,7 @@ contract OracleRouter {
         _removeFeed(asset, msg.sender);
     }
 
-    /// @notice Adds a new mToken to the Price Router.
+    /// @notice Adds a new mToken to the Oracle Router.
     /// @dev Requires that `newMToken` isn't already supported.
     /// @param newMToken The address of the mToken to support.
     function addMTokenSupport(address newMToken) external {
@@ -165,7 +165,7 @@ contract OracleRouter {
         mTokenAssets[newMToken].underlying = IMToken(newMToken).underlying();
     }
 
-    /// @notice Removes an mToken's support in the Price Router.
+    /// @notice Removes a mToken's support in the Oracle Router.
     /// @dev Requires that the mToken is supported.
     /// @param mTokenToRemove The address of the mToken to remove support for.
     function removeMTokenSupport(address mTokenToRemove) external {
@@ -344,7 +344,7 @@ contract OracleRouter {
         return data;
     }
 
-    /// @notice Checks if a given asset is supported by the price router.
+    /// @notice Checks if a given asset is supported by the Oracle Router.
     /// @dev An asset is considered supported if it has one
     ///      or more associated price feeds.
     /// @param asset The address of the asset to check.
