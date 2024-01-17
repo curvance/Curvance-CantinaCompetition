@@ -20,10 +20,7 @@ contract BridgeTest is TestBaseMarket {
         chainIDs.push(137);
         wormholeChainIDs.push(5);
 
-        protocolMessagingHub.registerWormholeChainIDs(
-            chainIDs,
-            wormholeChainIDs
-        );
+        centralRegistry.registerWormholeChainIDs(chainIDs, wormholeChainIDs);
 
         ITokenBridgeRelayer.SwapRateUpdate[]
             memory swapRateUpdate = new ITokenBridgeRelayer.SwapRateUpdate[](

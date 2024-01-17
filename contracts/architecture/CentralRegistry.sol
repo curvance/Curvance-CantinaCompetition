@@ -69,6 +69,8 @@ contract CentralRegistry is ERC165 {
     /// @notice Fee Accumulator contract address.
     address public feeAccumulator;
 
+    // WORMHOLE CONTRACTS DATA
+
     /// @notice Address of Wormhole core contract.
     IWormhole public wormholeCore;
 
@@ -120,6 +122,7 @@ contract CentralRegistry is ERC165 {
     mapping(address => uint256) public protocolInterestFactor;
 
     // DAO PERMISSION DATA
+
     mapping(address => bool) public hasDaoPermissions;
     mapping(address => bool) public hasElevatedPermissions;
 
@@ -141,7 +144,13 @@ contract CentralRegistry is ERC165 {
     mapping(uint16 => uint256) public messagingToGETHChainId;
     mapping(uint256 => uint16) public GETHToMessagingChainId;
 
+    // WORMHOLE CONTRACT MAPPINGS
+
+    /// @notice Wormhole specific chain ID for evm chain ID.
+    mapping(uint256 => uint16) public wormholeChainId;
+
     // DAO CONTRACT MAPPINGS
+
     mapping(address => bool) public isZapper;
     mapping(address => bool) public isSwapper;
     mapping(address => bool) public isVeCVELocker;
@@ -216,13 +225,13 @@ contract CentralRegistry is ERC165 {
         timelock = timelock_;
         emergencyCouncil = emergencyCouncil_;
 
-        // Provide base dao permissioning to `daoAddress`, 
+        // Provide base dao permissioning to `daoAddress`,
         // `timelock`, `emergencyCouncil`.
         hasDaoPermissions[daoAddress] = true;
         hasDaoPermissions[timelock] = true;
         hasDaoPermissions[emergencyCouncil] = true;
 
-        // Provide elevated dao permissioning to `timelock`, 
+        // Provide elevated dao permissioning to `timelock`,
         // `emergencyCouncil`.
         hasElevatedPermissions[timelock] = true;
         hasElevatedPermissions[emergencyCouncil] = true;
@@ -361,6 +370,22 @@ contract CentralRegistry is ERC165 {
 
         tokenBridgeRelayer = ITokenBridgeRelayer(newTokenBridgeRelayer);
         emit TokenBridgeRelayerSet(newTokenBridgeRelayer);
+    }
+
+    /// @notice Register wormhole specific chain IDs for evm chain IDs.
+    /// @param chainIds EVM chain IDs.
+    /// @param wormholeChainIds Wormhole specific chain IDs.
+    function registerWormholeChainIDs(
+        uint256[] calldata chainIds,
+        uint16[] calldata wormholeChainIds
+    ) external {
+        _checkElevatedPermissions();
+
+        uint256 numChainIds = chainIds.length;
+
+        for (uint256 i; i < numChainIds; ++i) {
+            wormholeChainId[chainIds[i]] = wormholeChainIds[i];
+        }
     }
 
     /// @notice Sets an address of gelato sponsor.

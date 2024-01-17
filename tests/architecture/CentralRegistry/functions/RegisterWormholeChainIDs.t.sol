@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import { TestBaseProtocolMessagingHub } from "../TestBaseProtocolMessagingHub.sol";
-import { ProtocolMessagingHub } from "contracts/architecture/ProtocolMessagingHub.sol";
+import { TestBaseMarket } from "tests/market/TestBaseMarket.sol";
+import { CentralRegistry } from "contracts/architecture/CentralRegistry.sol";
 
-contract registerWormholeChainIDsTest is TestBaseProtocolMessagingHub {
+contract registerWormholeChainIDsTest is TestBaseMarket {
     uint256[] public chainIDs;
     uint16[] public wormholeChainIDs;
 
@@ -23,23 +23,17 @@ contract registerWormholeChainIDsTest is TestBaseProtocolMessagingHub {
         vm.prank(address(0));
 
         vm.expectRevert(
-            ProtocolMessagingHub.ProtocolMessagingHub__Unauthorized.selector
+            CentralRegistry.CentralRegistry__Unauthorized.selector
         );
-        protocolMessagingHub.registerWormholeChainIDs(
-            chainIDs,
-            wormholeChainIDs
-        );
+        centralRegistry.registerWormholeChainIDs(chainIDs, wormholeChainIDs);
     }
 
     function test_registerWormholeChainIDs_success() public {
-        protocolMessagingHub.registerWormholeChainIDs(
-            chainIDs,
-            wormholeChainIDs
-        );
+        centralRegistry.registerWormholeChainIDs(chainIDs, wormholeChainIDs);
 
         for (uint256 i = 0; i < chainIDs.length; i++) {
             assertEq(
-                protocolMessagingHub.wormholeChainId(chainIDs[i]),
+                centralRegistry.wormholeChainId(chainIDs[i]),
                 wormholeChainIDs[i]
             );
         }

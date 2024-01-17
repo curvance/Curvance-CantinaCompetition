@@ -23,9 +23,6 @@ contract ProtocolMessagingHub is FeeTokenBridgingHub {
     /// @notice veCVE contract address.
     address public immutable veCVE;
 
-    /// @notice Wormhole specific chain ID for evm chain ID.
-    mapping(uint256 => uint16) public wormholeChainId;
-
     /// @dev `bytes4(keccak256(bytes("ProtocolMessagingHub__Unauthorized()")))`.
     uint256 internal constant _UNAUTHORIZED_SELECTOR = 0xc70c67ab;
 
@@ -327,7 +324,7 @@ contract ProtocolMessagingHub is FeeTokenBridgingHub {
                 address(cve),
                 amount,
                 0,
-                wormholeChainId[dstChainId],
+                centralRegistry.wormholeChainId(dstChainId),
                 bytes32(uint256(uint160(recipient))),
                 0
             );
@@ -358,7 +355,7 @@ contract ProtocolMessagingHub is FeeTokenBridgingHub {
 
         return
             _sendWormholeMessages(
-                wormholeChainId[dstChainId],
+                centralRegistry.wormholeChainId(dstChainId),
                 dstMessagingHub,
                 msg.value,
                 5,
@@ -400,7 +397,7 @@ contract ProtocolMessagingHub is FeeTokenBridgingHub {
     ) external view returns (uint256) {
         return
             centralRegistry.tokenBridgeRelayer().calculateRelayerFee(
-                wormholeChainId[dstChainId],
+                centralRegistry.wormholeChainId(dstChainId),
                 address(cve),
                 18
             );
@@ -410,24 +407,6 @@ contract ProtocolMessagingHub is FeeTokenBridgingHub {
     /// @return Required fee.
     function cveBridgeFee() external view returns (uint256) {
         return centralRegistry.wormholeCore().messageFee();
-    }
-
-    /// DAO PERMISSIONED EXTERNAL FUNCTIONS ///
-
-    /// @notice Register wormhole specific chain IDs for evm chain IDs.
-    /// @param chainIds EVM chain IDs.
-    /// @param wormholeChainIds Wormhole specific chain IDs.
-    function registerWormholeChainIDs(
-        uint256[] calldata chainIds,
-        uint16[] calldata wormholeChainIds
-    ) external {
-        _checkAuthorizedPermissions(true);
-
-        uint256 numChainIds = chainIds.length;
-
-        for (uint256 i; i < numChainIds; ++i) {
-            wormholeChainId[chainIds[i]] = wormholeChainIds[i];
-        }
     }
 
     /// PERMISSIONED EXTERNAL FUNCTIONS ///

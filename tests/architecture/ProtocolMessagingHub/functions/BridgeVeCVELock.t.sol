@@ -30,10 +30,7 @@ contract BridgeVeCVELockTest is TestBaseProtocolMessagingHub {
         chainIDs.push(42161);
         wormholeChainIDs.push(23);
 
-        protocolMessagingHub.registerWormholeChainIDs(
-            chainIDs,
-            wormholeChainIDs
-        );
+        centralRegistry.registerWormholeChainIDs(chainIDs, wormholeChainIDs);
 
         ITokenBridgeRelayer.SwapRateUpdate[]
             memory swapRateUpdate = new ITokenBridgeRelayer.SwapRateUpdate[](

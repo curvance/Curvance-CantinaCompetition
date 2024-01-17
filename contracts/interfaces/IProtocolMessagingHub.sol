@@ -65,8 +65,4 @@ interface IProtocolMessagingHub {
     /// @notice Returns required amount of native asset for message fee.
     /// @return Required fee.
     function cveBridgeFee() external view returns (uint256);
-
-    /// @notice Returns wormhole specific chain ID for evm chain ID.
-    /// @param chainId Evm chain ID.
-    function wormholeChainId(uint256 chainId) external view returns (uint16);
 }

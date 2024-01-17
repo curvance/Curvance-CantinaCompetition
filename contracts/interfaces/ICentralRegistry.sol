@@ -97,6 +97,10 @@ interface ICentralRegistry {
     /// @notice Returns Wormhole TokenBridgeRelayer contract address.
     function tokenBridgeRelayer() external view returns (ITokenBridgeRelayer);
 
+    /// @notice Returns wormhole specific chain ID for evm chain ID.
+    /// @param chainId Evm chain ID.
+    function wormholeChainId(uint256 chainId) external view returns (uint16);
+
     /// @notice Returns Gelato sponsor address.
     function gelatoSponsor() external view returns (address);
 

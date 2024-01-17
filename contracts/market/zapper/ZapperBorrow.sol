@@ -18,7 +18,6 @@ import { IWETH } from "contracts/interfaces/IWETH.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IVeloPair } from "contracts/interfaces/external/velodrome/IVeloPair.sol";
-import { IProtocolMessagingHub } from "contracts/interfaces/IProtocolMessagingHub.sol";
 
 contract ZapperBorrow is FeeTokenBridgingHub {
     /// ERRORS ///
@@ -58,8 +57,7 @@ contract ZapperBorrow is FeeTokenBridgingHub {
         }
 
         _sendFeeToken(
-            IProtocolMessagingHub(centralRegistry.protocolMessagingHub())
-                .wormholeChainId(dstChainId),
+            centralRegistry.wormholeChainId(dstChainId),
             msg.sender,
             IERC20(feeToken).balanceOf(address(this)) - balance
         );
