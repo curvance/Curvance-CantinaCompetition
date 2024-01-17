@@ -9,7 +9,7 @@ contract ReplaceApprovedAdaptorTest is TestBaseOracleRouter {
         vm.prank(address(1));
 
         vm.expectRevert(OracleRouter.OracleRouter__Unauthorized.selector);
-        oracleRouter.replaceApprovedAdaptor(address(chainlinkAdaptor));
+        oracleRouter.replaceApprovedAdaptor(address(chainlinkAdaptor), address(dualChainlinkAdaptor));
     }
 
     function test_replaceApprovedAdaptor_fail_whenAdaptorsAreIdentical()
