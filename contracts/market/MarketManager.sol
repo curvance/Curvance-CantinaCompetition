@@ -43,13 +43,13 @@ contract MarketManager is LiquidityManager, ERC165 {
     uint256 internal constant _MIN_HOLD_PERIOD = 20 minutes;
     
     /// @dev `bytes4(keccak256(bytes("MarketManager__InvalidParameter()")))`
-    uint256 internal constant _INVALID_PARAMETER_SELECTOR = 0x31765827;
+    uint256 internal constant _INVALID_PARAMETER_SELECTOR = 0x65513fc1;
     /// @dev `bytes4(keccak256(bytes("MarketManager__Unauthorized()")))`
-    uint256 internal constant _UNAUTHORIZED_SELECTOR = 0x5254e575;
+    uint256 internal constant _UNAUTHORIZED_SELECTOR = 0x37cf6ad5;
     /// @dev `bytes4(keccak256(bytes("MarketManager__TokenNotListed()")))`
-    uint256 internal constant _TOKEN_NOT_LISTED_SELECTOR = 0xf3e41c92;
+    uint256 internal constant _TOKEN_NOT_LISTED_SELECTOR = 0x4f3013c5;
     /// @dev `bytes4(keccak256(bytes("MarketManager__Paused()")))`
-    uint256 internal constant _PAUSED_SELECTOR = 0xe192eaaf;
+    uint256 internal constant _PAUSED_SELECTOR = 0xf47323f4;
 
     /// STORAGE ///
 
