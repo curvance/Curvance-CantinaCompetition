@@ -47,6 +47,6 @@ contract RemoveLendingMarketTest is TestBaseMarket {
         vm.expectEmit(true, true, true, true);
         emit RemovedCurvanceContract("Market Manager", newMarket);
         centralRegistry.removeLendingMarket(newMarket);
-        assertFalse(centralRegistry.isLendingMarket(newMarket));
+        assertFalse(centralRegistry.isMarketManager(newMarket));
     }
 }

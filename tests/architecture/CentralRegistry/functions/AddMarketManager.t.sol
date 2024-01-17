@@ -53,13 +53,13 @@ contract AddMarketManagerTest is TestBaseMarket {
     }
 
     function test_addMarketManager_success() public {
-        assertFalse(centralRegistry.isLendingMarket(newMarket));
+        assertFalse(centralRegistry.isMarketManager(newMarket));
 
         vm.expectEmit(true, true, true, true);
         emit NewCurvanceContract("Market Manager", newMarket);
         centralRegistry.addMarketManager(newMarket, 5000);
 
-        assertTrue(centralRegistry.isLendingMarket(newMarket));
+        assertTrue(centralRegistry.isMarketManager(newMarket));
         assertEq(
             centralRegistry.protocolInterestFactor(newMarket),
             5000 * 1e14

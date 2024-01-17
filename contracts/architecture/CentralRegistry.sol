@@ -63,7 +63,7 @@ contract CentralRegistry is ERC165 {
     /// @notice This chains Protocol Messaging Hub contract address.
     address public protocolMessagingHub;
 
-    /// @notice Price Router contract address.
+    /// @notice Oracle Router contract address.
     address public oracleRouter;
 
     /// @notice Fee Accumulator contract address.
@@ -216,10 +216,14 @@ contract CentralRegistry is ERC165 {
         timelock = timelock_;
         emergencyCouncil = emergencyCouncil_;
 
+        // Provide base dao permissioning to `daoAddress`, 
+        // `timelock`, `emergencyCouncil`.
         hasDaoPermissions[daoAddress] = true;
         hasDaoPermissions[timelock] = true;
         hasDaoPermissions[emergencyCouncil] = true;
 
+        // Provide elevated dao permissioning to `timelock`, 
+        // `emergencyCouncil`.
         hasElevatedPermissions[timelock] = true;
         hasElevatedPermissions[emergencyCouncil] = true;
 
@@ -235,8 +239,9 @@ contract CentralRegistry is ERC165 {
 
     /// EXTERNAL FUNCTIONS ///
 
-    /// @notice Sets a new CVE contract address
-    /// @dev Only callable on a 7 day delay or by the Emergency Council
+    /// @notice Sets a new CVE contract address.
+    /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    /// @param newCVE The new address of cve.
     function setCVE(address newCVE) external {
         _checkElevatedPermissions();
 
@@ -244,8 +249,9 @@ contract CentralRegistry is ERC165 {
         emit CoreContractSet("CVE", newCVE);
     }
 
-    /// @notice Sets a new veCVE contract address
-    /// @dev Only callable on a 7 day delay or by the Emergency Council
+    /// @notice Sets a new veCVE contract address.
+    /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    /// @param newVeCVE The new address of veCVE.
     function setVeCVE(address newVeCVE) external {
         _checkElevatedPermissions();
 
@@ -253,8 +259,9 @@ contract CentralRegistry is ERC165 {
         emit CoreContractSet("VeCVE", newVeCVE);
     }
 
-    /// @notice Sets a new CVE contract address
-    /// @dev Only callable by the DAO
+    /// @notice Sets a new oCVE contract address.
+    /// @dev Only callable by a call with base DAO permissioning.
+    /// @param newOCVE The new address of oCVE.
     function setOCVE(address newOCVE) external {
         // Lower permissioning on call option CVE,
         // since its only used initially in Curvance
@@ -265,7 +272,8 @@ contract CentralRegistry is ERC165 {
     }
 
     /// @notice Sets a new CVE locker contract address
-    /// @dev Only callable on a 7 day delay or by the Emergency Council
+    /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    /// @param newCVELocker The new address of cveLocker.
     function setCVELocker(address newCVELocker) external {
         _checkElevatedPermissions();
 
@@ -273,8 +281,9 @@ contract CentralRegistry is ERC165 {
         emit CoreContractSet("CVE Locker", newCVELocker);
     }
 
-    /// @notice Sets a new protocol messaging hub contract address
-    /// @dev Only callable on a 7 day delay or by the Emergency Council
+    /// @notice Sets a new protocol messaging hub contract address.
+    /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    /// @param newProtocolMessagingHub The new address of protocolMessagingHub.
     function setProtocolMessagingHub(
         address newProtocolMessagingHub
     ) external {
@@ -283,7 +292,7 @@ contract CentralRegistry is ERC165 {
         protocolMessagingHub = newProtocolMessagingHub;
 
         // If the feeAccumulator is already set up,
-        // notify it that the messaging hub has been updated
+        // notify it that the messaging hub has been updated.
         if (feeAccumulator != address(0)) {
             IFeeAccumulator(feeAccumulator).notifyUpdatedMessagingHub();
         }
@@ -294,17 +303,19 @@ contract CentralRegistry is ERC165 {
         );
     }
 
-    /// @notice Sets a new price router contract address
-    /// @dev Only callable on a 7 day delay or by the Emergency Council
+    /// @notice Sets a new oracle router contract address.
+    /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    /// @param newOracleRouter The new address of oracleRouter.
     function setOracleRouter(address newOracleRouter) external {
         _checkElevatedPermissions();
 
         oracleRouter = newOracleRouter;
-        emit CoreContractSet("Price Router", newOracleRouter);
+        emit CoreContractSet("Oracle Router", newOracleRouter);
     }
 
-    /// @notice Sets a new fee hub contract address
-    /// @dev Only callable on a 7 day delay or by the Emergency Council
+    /// @notice Sets a new fee hub contract address.
+    /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    /// @param newFeeAccumulator The new address of feeAccumulator.
     function setFeeAccumulator(address newFeeAccumulator) external {
         _checkElevatedPermissions();
 
@@ -312,8 +323,9 @@ contract CentralRegistry is ERC165 {
         emit CoreContractSet("Fee Accumulator", newFeeAccumulator);
     }
 
-    /// @notice Sets an address of WormholeCore contract
-    /// @param newWormholeCore The address of WormholeCore
+    /// @notice Sets an address of WormholeCore contract.
+    /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    /// @param newWormholeCore The new address of WormholeCore.
     function setWormholeCore(address newWormholeCore) external {
         _checkElevatedPermissions();
 
@@ -321,8 +333,9 @@ contract CentralRegistry is ERC165 {
         emit WormholeCoreSet(newWormholeCore);
     }
 
-    /// @notice Sets an address of WormholeRelayer contract
-    /// @param newWormholeRelayer The address of WormholeRelayer
+    /// @notice Sets an address of WormholeRelayer contract.
+    /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    /// @param newWormholeRelayer The new address of wormholeRelayer.
     function setWormholeRelayer(address newWormholeRelayer) external {
         _checkElevatedPermissions();
 
@@ -330,8 +343,9 @@ contract CentralRegistry is ERC165 {
         emit WormholeRelayerSet(newWormholeRelayer);
     }
 
-    /// @notice Sets an address of Wormhole CircleRelayer contract
-    /// @param newCircleRelayer The address of Wormhole CircleRelayer
+    /// @notice Sets an address of Wormhole CircleRelayer contract.
+    /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    /// @param newCircleRelayer The new address of Wormhole CircleRelayer.
     function setCircleRelayer(address newCircleRelayer) external {
         _checkElevatedPermissions();
 
@@ -339,8 +353,9 @@ contract CentralRegistry is ERC165 {
         emit CircleRelayerSet(newCircleRelayer);
     }
 
-    /// @notice Sets an address of Wormhole TokenBridgeRelayer contract
-    /// @param newTokenBridgeRelayer The address of Wormhole TokenBridgeRelayer
+    /// @notice Sets an address of Wormhole TokenBridgeRelayer contract.
+    /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    /// @param newTokenBridgeRelayer The new address of Wormhole TokenBridgeRelayer.
     function setTokenBridgeRelayer(address newTokenBridgeRelayer) external {
         _checkElevatedPermissions();
 
@@ -348,8 +363,9 @@ contract CentralRegistry is ERC165 {
         emit TokenBridgeRelayerSet(newTokenBridgeRelayer);
     }
 
-    /// @notice Sets an address of gelato sponsor
-    /// @param newGelatoSponsor The address of new gelato sponsor
+    /// @notice Sets an address of gelato sponsor.
+    /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    /// @param newGelatoSponsor The new address of new gelato sponsor.
     function setGelatoSponsor(address newGelatoSponsor) external {
         _checkElevatedPermissions();
 
@@ -358,9 +374,9 @@ contract CentralRegistry is ERC165 {
     }
 
     /// @notice Sets the fee from yield by Curvance DAO to use as gas
-    ///         to compound rewards for users
+    ///         to compound rewards for users.
     /// @dev Only callable on a 7 day delay or by the Emergency Council,
-    ///      can only have a maximum value of 5%
+    ///      can only have a maximum value of 5%.
     function setProtocolCompoundFee(uint256 value) external {
         _checkElevatedPermissions();
 
@@ -369,7 +385,7 @@ contract CentralRegistry is ERC165 {
         }
         // Convert the parameters from basis points to `WAD` format
         // while inefficient we want to minimize potential human error
-        // as much as possible, even if it costs a bit extra gas on config
+        // as much as possible, even if it costs a bit extra gas on config.
         protocolCompoundFee = _bpToWad(value);
 
         // Update vault harvest fee with new yield fee
