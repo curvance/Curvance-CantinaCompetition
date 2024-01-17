@@ -2,6 +2,7 @@
 pragma solidity ^0.8.17;
 
 import { WAD } from "contracts/libraries/Constants.sol";
+import { FixedPointMathLib } from "contracts/libraries/external/FixedPointMathLib.sol";
 import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 import { SafeTransferLib } from "contracts/libraries/external/SafeTransferLib.sol";
 import { ERC20 } from "contracts/libraries/external/ERC20.sol";
@@ -236,11 +237,26 @@ contract OCVE is ERC20 {
                 revert OCVE__CannotExercise();
             }
         } else {
+            // Adjust decimals between paymentTokenDecimals,
+            // and default 18 decimals of optionExerciseCost. 
+            uint256 amount = _adjustDecimals(
+                optionExerciseCost, 
+                paymentTokenDecimals, 
+                18
+            );
+
+            /// Equivalent to `(optionExerciseCost * amount) / WAD` rounded up.
+            amount = FixedPointMathLib.mulWadUp(optionExerciseCost, amount)
+
+            if (amount == 0) {
+                revert OCVE__CannotExercise();
+            }
+            
             SafeTransferLib.safeTransferFrom(
                 paymentToken,
                 msg.sender,
                 address(this),
-                (optionExerciseCost * (10 ** paymentTokenDecimals)) / 1e18 // adjust decimals
+                amount
             );
         }
 
