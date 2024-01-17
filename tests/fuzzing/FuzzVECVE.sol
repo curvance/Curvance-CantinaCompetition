@@ -381,6 +381,13 @@ contract FuzzVECVE is StatefulBaseMarket {
         }
     }
 
+    /// @custom:property vecve-29 Calling extendLock with continuousLock set to 'true' should set the post extend lock time to CONTINUOUS_LOCK_VALUE
+    /// @custom:property vecve-30 Calling extendLock for noncontinuous extension in the same epoch should not change the unlock epoch
+    /// @custom:property vecve-31 Calling extendLock for noncontinuous extension in a future epoch should increase the unlock time
+    /// @custom:property vecve-32 Calling extendLock with correct preconditions should not revert
+    /// @custom:precondition veCVE is not shut down
+    /// @custom:precondition lock to extend is not already continuous
+    /// @custom:precondition lock must not already be unlocked
     function extendLock_should_succeed_if_not_shutdown(
         uint256 seed,
         bool continuousLock
@@ -411,6 +418,7 @@ contract FuzzVECVE is StatefulBaseMarket {
                 address(this),
                 lockIndex
             );
+            // VECVE-29
             if (continuousLock) {
                 assertWithMsg(
                     postExtendLockTime == veCVE.CONTINUOUS_LOCK_VALUE(),
@@ -431,12 +439,14 @@ contract FuzzVECVE is StatefulBaseMarket {
                     veCVE.currentEpoch(preExtendLockTime) ==
                     veCVE.currentEpoch(postExtendLockTime)
                 ) {
+                    // VECVE-30
                     assertEq(
                         preExtendLockTime,
                         postExtendLockTime,
                         "VE_CVE - extendLock() when extend is called in same epoch should be the same"
                     );
                 } else {
+                    // VECVE-31
                     assertGt(
                         postExtendLockTime,
                         preExtendLockTime,
@@ -444,10 +454,16 @@ contract FuzzVECVE is StatefulBaseMarket {
                     );
                 }
             }
-        } catch {}
+        } catch {
+            // VECVE-32
+            assertWithMsg(
+                false,
+                "VE_CVE - extendLock() with correct preconditions should not revert"
+            );
+        }
     }
 
-    /// @custom:property VECVCE-24 – Trying to extend a lock that is already continuous should fail and revert with an error message indicating a lock type mismatch.
+    /// @custom:property vecve-24 – Trying to extend a lock that is already continuous should fail and revert with an error message indicating a lock type mismatch.
     /// @custom:precondition  veCVE is not shut down
     /// @custom:precondition  unlock time for lock is CONTINUOUS_LOCK_VALUE
     function extend_lock_should_fail_if_continuous(
