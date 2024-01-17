@@ -1,23 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { Zapper } from "contracts/market/zapper/Zapper.sol";
-import { CTokenPrimitive } from "contracts/market/collateral/CTokenPrimitive.sol";
 import { DToken } from "contracts/market/collateral/DToken.sol";
 import { FeeTokenBridgingHub } from "contracts/architecture/FeeTokenBridgingHub.sol";
 
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
-import { CommonLib } from "contracts/libraries/CommonLib.sol";
-import { CurveLib } from "contracts/libraries/CurveLib.sol";
-import { BalancerLib } from "contracts/libraries/BalancerLib.sol";
-import { VelodromeLib } from "contracts/libraries/VelodromeLib.sol";
-import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
-import { SafeTransferLib } from "contracts/libraries/external/SafeTransferLib.sol";
-
-import { IWETH } from "contracts/interfaces/IWETH.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { IVeloPair } from "contracts/interfaces/external/velodrome/IVeloPair.sol";
 
 contract ZapperBorrow is FeeTokenBridgingHub {
     /// ERRORS ///
@@ -38,21 +27,21 @@ contract ZapperBorrow is FeeTokenBridgingHub {
     function borrowAndBridge(
         address dToken,
         uint256 borrowAmount,
-        SwapperLib.Swap memory swapCall,
+        SwapperLib.Swap memory swapData,
         uint256 dstChainId
-    ) external {
+    ) external payable {
         uint256 balance = IERC20(feeToken).balanceOf(address(this));
 
         // borrow
         DToken(dToken).borrowFor(msg.sender, address(this), borrowAmount);
 
         // swap
-        if (swapCall.target != address(0)) {
-            if (!centralRegistry.isSwapper(swapCall.target)) {
-                revert ZapperBorrow__InvalidSwapper(swapCall.target);
+        if (swapData.target != address(0)) {
+            if (!centralRegistry.isSwapper(swapData.target)) {
+                revert ZapperBorrow__InvalidSwapper(swapData.target);
             }
             unchecked {
-                SwapperLib.swap(swapCall);
+                SwapperLib.swap(swapData);
             }
         }
 
