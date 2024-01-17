@@ -2,6 +2,7 @@
 pragma solidity ^0.8.17;
 
 import { CurveBaseAdaptor } from "contracts/oracles/adaptors/curve/CurveBaseAdaptor.sol";
+import { WAD } from "contracts/libraries/Constants.sol";
 import { FixedPointMathLib } from "contracts/libraries/external/FixedPointMathLib.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
@@ -24,7 +25,16 @@ contract Curve2PoolAdaptor is CurveBaseAdaptor {
         ///         then we need to divide out the rate stored in the curve pool.
         bool divideRate1;
         bool isCorrelated;
+        uint256 upperBound;
+        uint256 lowerBound;
     }
+
+    /// CONSTANTS ///
+
+    /// @notice Maximum bound range that can be increased on either side, 
+    ///         this is not meant to be anti tamperproof but,
+    ///         more-so mitigate any human error.
+    uint256 internal constant _MAX_BOUND_INCREASE = .02e18;
 
     /// STORAGE ///
 
@@ -44,6 +54,8 @@ contract Curve2PoolAdaptor is CurveBaseAdaptor {
     error Curve2PoolAdaptor__AssetIsAlreadyAdded();
     error Curve2PoolAdaptor__AssetIsNotSupported();
     error Curve2PoolAdaptor__QuoteAssetIsNotSupported();
+    error Curve2PoolAdaptor__InvalidBounds();
+    error Curve2PoolAdaptor__BoundsExceeded();
 
     /// CONSTRUCTOR ///
 
@@ -90,6 +102,7 @@ contract Curve2PoolAdaptor is CurveBaseAdaptor {
 
         // Make sure virtualPrice is reasonable.
         uint256 virtualPrice = pool.get_virtual_price();
+        _enforceBounds(virtualPrice, Adaptor.lowerBound, Adaptor.upperBound);
 
         // Get underlying token prices.
         IPriceRouter priceRouter = IPriceRouter(centralRegistry.priceRouter());
@@ -122,25 +135,25 @@ contract Curve2PoolAdaptor is CurveBaseAdaptor {
             if (Adaptor.divideRate0 || Adaptor.divideRate1) {
                 uint256[2] memory rates = pool.stored_rates();
                 if (Adaptor.divideRate0) {
-                    price0 = (price0 * 1e18) / rates[0];
+                    price0 = (price0 * WAD) / rates[0];
                 }
                 if (Adaptor.divideRate1) {
-                    price1 = (price1 * 1e18) / rates[1];
+                    price1 = (price1 * WAD) / rates[1];
                 }
             }
 
             if (getLower) {
                 // Find the minimum price of coins.
                 uint256 minPrice = price0 < price1 ? price0 : price1;
-                price = (minPrice * virtualPrice) / 1e18;
+                price = (minPrice * virtualPrice) / WAD;
             } else {
                 // Find the maximum price of coins.
                 uint256 maxPrice = price0 < price1 ? price1 : price0;
-                price = (maxPrice * virtualPrice) / 1e18;
+                price = (maxPrice * virtualPrice) / WAD;
             }
         } else {
             price = (2 * virtualPrice * FixedPointMathLib.sqrt(price0)) / FixedPointMathLib.sqrt(price1);
-            price = (price * price0) / 1e18;
+            price = (price * price0) / WAD;
         }
 
         pData.price = uint240(price);
@@ -202,5 +215,47 @@ contract Curve2PoolAdaptor is CurveBaseAdaptor {
         // Notify the price router that we are going to stop supporting the asset
         IPriceRouter(centralRegistry.priceRouter()).notifyFeedRemoval(asset);
         emit CurvePoolAssetRemoved(asset);
+    }
+
+    function raiseBounds(
+        address asset,
+        uint256 newLowerBound, 
+        uint256 newUpperBound
+    ) external {
+        _checkElevatedPermissions();
+
+        AdaptorData memory adaptor = adaptorData[asset];
+
+        // Validate that the new bounds are higher than the old ones, 
+        // since virtual prices only rise overtime, 
+        // so they should never be decreased here.
+        if (
+            newLowerBound <= adaptor.lowerBound || 
+            newUpperBound <= adaptor.upperBound
+        ) {
+            revert Curve2PoolAdaptor__InvalidBounds();
+        }
+
+        if (adaptor.lowerBound + _MAX_BOUND_INCREASE < newLowerBound) {
+            revert Curve2PoolAdaptor__InvalidBounds();
+        }
+
+        if (adaptor.upperBound + _MAX_BOUND_INCREASE < newUpperBound) {
+            revert Curve2PoolAdaptor__InvalidBounds();
+        }
+
+        adaptor.lowerBound = newLowerBound;
+        adaptor.upperBound = newUpperBound;
+    }
+
+    /// @notice Checks if `price` is within a reasonable bound.
+    function _enforceBounds(
+        uint256 price,
+        uint256 lowerBound,
+        uint256 upperBound
+    ) internal view {
+        if (price < lowerBound || price > upperBound) {
+            revert Curve2PoolAdaptor__BoundsExceeded();
+        }
     }
 }

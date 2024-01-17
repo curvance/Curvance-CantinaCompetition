@@ -41,6 +41,8 @@ contract TestCurve2PoolAdaptor is TestBasePriceRouter {
         data.divideRate0 = true;
         data.divideRate1 = true;
         data.isCorrelated = true;
+        data.upperBound = 15000;
+        data.lowerBound = 5000;
         vm.expectRevert(
             Curve2PoolAdaptor
                 .Curve2PoolAdaptor__QuoteAssetIsNotSupported
@@ -66,6 +68,8 @@ contract TestCurve2PoolAdaptor is TestBasePriceRouter {
         data.divideRate0 = true;
         data.divideRate1 = true;
         data.isCorrelated = true;
+        data.upperBound = 15000;
+        data.lowerBound = 5000;
         adaptor.addAsset(ETH_STETH, data);
 
         priceRouter.addApprovedAdaptor(address(adaptor));
