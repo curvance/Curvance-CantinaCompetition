@@ -219,6 +219,8 @@ contract CurvanceDAOLBP {
         );
     }
 
+    /// @dev Converting `amount` into proper form between potentially two
+    ///      different decimal forms.
     function _adjustDecimals(
         uint256 amount,
         uint8 fromDecimals,
@@ -227,9 +229,9 @@ contract CurvanceDAOLBP {
         if (fromDecimals == toDecimals) {
             return amount;
         } else if (fromDecimals < toDecimals) {
-            return amount * 10 **(toDecimals - fromDecimals);
+            return amount * 10 ** (toDecimals - fromDecimals);
         } else {
-            return amount / 10 **(fromDecimals - toDecimals);
+            return amount / 10 ** (fromDecimals - toDecimals);
         }
     }
 }
