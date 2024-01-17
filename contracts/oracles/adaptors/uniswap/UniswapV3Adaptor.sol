@@ -141,7 +141,7 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
             // We have a route to USD pricing so we can convert
             // the quote token price to USD and return.
             uint256 newPrice = (twapPrice * quoteTokenDenominator) /
-                            data.quoteDecimals;
+                (10 ** data.quoteDecimals);
 
             if (_checkOracleOverflow(newPrice)) {
                 pData.hadError = true;
