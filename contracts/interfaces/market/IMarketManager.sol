@@ -4,7 +4,7 @@ pragma solidity ^0.8.17;
 import { GaugePool } from "contracts/gauge/GaugePool.sol";
 import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 
-interface ILendtroller {
+interface IMarketManager {
 
     function mintPaused(address account) external view returns (uint256);
 

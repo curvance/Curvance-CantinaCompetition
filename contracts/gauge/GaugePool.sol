@@ -10,7 +10,7 @@ import { SafeTransferLib } from "contracts/libraries/external/SafeTransferLib.so
 import { ReentrancyGuard } from "contracts/libraries/external/ReentrancyGuard.sol";
 
 import { RewardsData } from "contracts/interfaces/ICVELocker.sol";
-import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
+import { IMarketManager } from "contracts/interfaces/market/IMarketManager.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { ICVE } from "contracts/interfaces/ICVE.sol";
 
@@ -26,7 +26,7 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
 
     /// @notice Scalar for math
     uint256 internal constant PRECISION = 1e36;
-    address public lendtroller; // Lendtroller linked
+    address public marketManager; // MarketManager linked
 
     /// STORAGE ///
 
@@ -66,30 +66,30 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
 
     /// @notice Initializes the gauge with a starting time based on the next epoch
     /// @dev    Can only be called once, to start the gauge system
-    /// @param lendtroller_ The address to be configured as a lending market
-    function start(address lendtroller_) external {
+    /// @param marketManager_ The address to be configured as a lending market
+    function start(address marketManager_) external {
         _checkDaoPermissions();
 
         if (startTime != 0) {
             revert GaugeErrors.AlreadyStarted();
         }
 
-        // Validate that the lendtroller we are setting is actually a lending market
-        if (!centralRegistry.isLendingMarket(lendtroller_)) {
+        // Validate that the marketManager we are setting is actually a lending market
+        if (!centralRegistry.isLendingMarket(marketManager_)) {
             revert GaugeErrors.InvalidAddress();
         }
 
         if (
             !ERC165Checker.supportsInterface(
-                address(lendtroller_),
-                type(ILendtroller).interfaceId
+                address(marketManager_),
+                type(IMarketManager).interfaceId
             )
         ) {
             revert GaugeErrors.InvalidAddress();
         }
 
         startTime = veCVE.nextEpochStartTime();
-        lendtroller = lendtroller_;
+        marketManager = marketManager_;
     }
 
     /// @notice Adds a new reward to the gauge system
@@ -272,7 +272,7 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
         }
 
         if (
-            msg.sender != token || !ILendtroller(lendtroller).isListed(token)
+            msg.sender != token || !IMarketManager(marketManager).isListed(token)
         ) {
             revert GaugeErrors.InvalidToken();
         }
@@ -323,7 +323,7 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
         }
 
         if (
-            msg.sender != token || !ILendtroller(lendtroller).isListed(token)
+            msg.sender != token || !IMarketManager(marketManager).isListed(token)
         ) {
             revert GaugeErrors.InvalidToken();
         }

@@ -53,9 +53,9 @@ contract PendleLPCToken is CTokenCompounding {
     constructor(
         ICentralRegistry centralRegistry_,
         IERC20 asset_,
-        address lendtroller_,
+        address marketManager_,
         IPendleRouter router_
-    ) CTokenCompounding(centralRegistry_, asset_, lendtroller_) {
+    ) CTokenCompounding(centralRegistry_, asset_, marketManager_) {
         strategyData.router = router_;
         strategyData.lp = IPMarket(address(asset_));
         (strategyData.sy, strategyData.pt, strategyData.yt) = strategyData

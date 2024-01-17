@@ -8,13 +8,13 @@ import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 
 import { IGaugePool } from "contracts/interfaces/IGaugePool.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
+import { IMarketManager } from "contracts/interfaces/market/IMarketManager.sol";
 import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 
-/// @title Curvance Lendtroller
-/// @notice Manages risk within the lending markets
-contract Lendtroller is LiquidityManager, ERC165 {
+/// @title Curvance DAO Market Manager.
+/// @notice Manages risk within the Curvance DAO lending markets.
+contract MarketManager is LiquidityManager, ERC165 {
     /// CONSTANTS ///
 
     /// @notice gaugePool contract address.
@@ -42,13 +42,13 @@ contract Lendtroller is LiquidityManager, ERC165 {
     /// @notice Minimum hold time to prevent oracle price attacks.
     uint256 internal constant _MIN_HOLD_PERIOD = 20 minutes;
     
-    /// @dev `bytes4(keccak256(bytes("Lendtroller__InvalidParameter()")))`
+    /// @dev `bytes4(keccak256(bytes("MarketManager__InvalidParameter()")))`
     uint256 internal constant _INVALID_PARAMETER_SELECTOR = 0x31765827;
-    /// @dev `bytes4(keccak256(bytes("Lendtroller__Unauthorized()")))`
+    /// @dev `bytes4(keccak256(bytes("MarketManager__Unauthorized()")))`
     uint256 internal constant _UNAUTHORIZED_SELECTOR = 0x5254e575;
-    /// @dev `bytes4(keccak256(bytes("Lendtroller__TokenNotListed()")))`
+    /// @dev `bytes4(keccak256(bytes("MarketManager__TokenNotListed()")))`
     uint256 internal constant _TOKEN_NOT_LISTED_SELECTOR = 0xf3e41c92;
-    /// @dev `bytes4(keccak256(bytes("Lendtroller__Paused()")))`
+    /// @dev `bytes4(keccak256(bytes("MarketManager__Paused()")))`
     uint256 internal constant _PAUSED_SELECTOR = 0xe192eaaf;
 
     /// STORAGE ///
@@ -102,18 +102,18 @@ contract Lendtroller is LiquidityManager, ERC165 {
 
     /// ERRORS ///
 
-    error Lendtroller__Unauthorized();
-    error Lendtroller__TokenNotListed();
-    error Lendtroller__TokenAlreadyListed();
-    error Lendtroller__Paused();
-    error Lendtroller__InsufficientCollateral();
-    error Lendtroller__NoLiquidationAvailable();
-    error Lendtroller__PriceError();
-    error Lendtroller__CollateralCapReached();
-    error Lendtroller__LendtrollerMismatch();
-    error Lendtroller__InvalidParameter();
-    error Lendtroller__MinimumHoldPeriod();
-    error Lendtroller__InvariantError();
+    error MarketManager__Unauthorized();
+    error MarketManager__TokenNotListed();
+    error MarketManager__TokenAlreadyListed();
+    error MarketManager__Paused();
+    error MarketManager__InsufficientCollateral();
+    error MarketManager__NoLiquidationAvailable();
+    error MarketManager__PriceError();
+    error MarketManager__CollateralCapReached();
+    error MarketManager__MarketManagerMismatch();
+    error MarketManager__InvalidParameter();
+    error MarketManager__MinimumHoldPeriod();
+    error MarketManager__InvariantError();
 
     /// CONSTRUCTOR ///
 
@@ -260,7 +260,7 @@ contract Lendtroller is LiquidityManager, ERC165 {
             accountData.collateralPosted + tokens >
             IMToken(mToken).balanceOf(account)
         ) {
-            revert Lendtroller__InsufficientCollateral();
+            revert MarketManager__InsufficientCollateral();
         }
 
         _postCollateral(account, accountData, mToken, tokens);
@@ -287,7 +287,7 @@ contract Lendtroller is LiquidityManager, ERC165 {
         // will always have activePosition == 0,
         // and this lets us check for any invariant errors.
         if (accountData.activePosition != 2) {
-            revert Lendtroller__InvariantError();
+            revert MarketManager__InvariantError();
         }
 
         if (!IMToken(cToken).isCToken()) {
@@ -295,7 +295,7 @@ contract Lendtroller is LiquidityManager, ERC165 {
         }
 
         if (accountData.collateralPosted < tokens) {
-            revert Lendtroller__InsufficientCollateral();
+            revert MarketManager__InsufficientCollateral();
         }
 
         // Fail if the sender is not permitted to redeem `tokens`.
@@ -491,7 +491,7 @@ contract Lendtroller is LiquidityManager, ERC165 {
             accountAssets[account].cooldownTimestamp + _MIN_HOLD_PERIOD >
             block.timestamp
         ) {
-            revert Lendtroller__MinimumHoldPeriod();
+            revert MarketManager__MinimumHoldPeriod();
         }
     }
 
@@ -584,7 +584,7 @@ contract Lendtroller is LiquidityManager, ERC165 {
             IMToken(collateralToken).lendtroller() !=
             IMToken(debtToken).lendtroller()
         ) {
-            revert Lendtroller__LendtrollerMismatch();
+            revert MarketManager__MarketManagerMismatch();
         }
     }
 
@@ -643,7 +643,7 @@ contract Lendtroller is LiquidityManager, ERC165 {
 
         // If an account has no positions or debt this will revert.
         if (totalCollateral >= totalDebt) {
-            revert Lendtroller__NoLiquidationAvailable();
+            revert MarketManager__NoLiquidationAvailable();
         }
 
         uint256 repayRatio = (debtToPay * WAD) / totalDebt;
@@ -704,7 +704,7 @@ contract Lendtroller is LiquidityManager, ERC165 {
         _checkElevatedPermissions();
 
         if (tokenData[mToken].isListed) {
-            revert Lendtroller__TokenAlreadyListed();
+            revert MarketManager__TokenAlreadyListed();
         }
 
         // Sanity check to make sure its really a mToken.
@@ -713,7 +713,7 @@ contract Lendtroller is LiquidityManager, ERC165 {
         // Immediately deposit into the market to prevent any rounding
         // exploits.
         if (!IMToken(mToken).startMarket(msg.sender)) {
-            revert Lendtroller__InvariantError();
+            revert MarketManager__InvariantError();
         }
 
         MarketToken storage token = tokenData[mToken];
@@ -725,7 +725,7 @@ contract Lendtroller is LiquidityManager, ERC165 {
         for (uint256 i; i < numTokens; ) {
             unchecked {
                 if (tokensListed[i++] == mToken) {
-                    revert Lendtroller__TokenAlreadyListed();
+                    revert MarketManager__TokenAlreadyListed();
                 }
             }
         }
@@ -848,7 +848,7 @@ contract Lendtroller is LiquidityManager, ERC165 {
 
         // Validate that we get a usable price.
         if (errorCode == 2) {
-            revert Lendtroller__PriceError();
+            revert MarketManager__PriceError();
         }
 
         // Assign new collateralization ratio.
@@ -1069,7 +1069,7 @@ contract Lendtroller is LiquidityManager, ERC165 {
         );
 
         if (liquidityDeficit > 0) {
-            revert Lendtroller__InsufficientCollateral();
+            revert MarketManager__InsufficientCollateral();
         }
     }
 
@@ -1078,7 +1078,7 @@ contract Lendtroller is LiquidityManager, ERC165 {
         bytes4 interfaceId
     ) public view override returns (bool) {
         return
-            interfaceId == type(ILendtroller).interfaceId ||
+            interfaceId == type(IMarketManager).interfaceId ||
             super.supportsInterface(interfaceId);
     }
 
@@ -1091,7 +1091,7 @@ contract Lendtroller is LiquidityManager, ERC165 {
         uint256 amount
     ) internal {
         if (collateralPosted[mToken] + amount > collateralCaps[mToken]) {
-            revert Lendtroller__CollateralCapReached();
+            revert MarketManager__CollateralCapReached();
         }
 
         // On collateral posting:
@@ -1152,7 +1152,7 @@ contract Lendtroller is LiquidityManager, ERC165 {
         // so it corresponds to last element index now starting at index 0.
         // This is an additional runtime invariant check for extra security.
         if (assetIndex >= numUserAssets--) {
-            revert Lendtroller__InvariantError();
+            revert MarketManager__InvariantError();
         }
 
         // Copy last item in list to location of item to be removed.
@@ -1191,7 +1191,7 @@ contract Lendtroller is LiquidityManager, ERC165 {
             accountAssets[account].cooldownTimestamp + _MIN_HOLD_PERIOD >
             block.timestamp
         ) {
-            revert Lendtroller__MinimumHoldPeriod();
+            revert MarketManager__MinimumHoldPeriod();
         }
 
         // If the account does not have an active position in the token,
@@ -1210,7 +1210,7 @@ contract Lendtroller is LiquidityManager, ERC165 {
         );
 
         if (liquidityDeficit > 0) {
-            revert Lendtroller__InsufficientCollateral();
+            revert MarketManager__InsufficientCollateral();
         }
     }
 
@@ -1255,7 +1255,7 @@ contract Lendtroller is LiquidityManager, ERC165 {
         );
 
         if (data.lFactor == 0) {
-            revert Lendtroller__NoLiquidationAvailable();
+            revert MarketManager__NoLiquidationAvailable();
         }
 
         uint256 maxAmount;

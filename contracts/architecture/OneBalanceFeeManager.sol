@@ -12,15 +12,15 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 contract OneBalanceFeeManager is FeeTokenBridgingHub {
     /// CONSTANTS ///
 
-    /// @notice Wormhole specific chain id for polygon.
+    /// @notice Wormhole specific chain id for Polygon.
     uint16 public immutable WORMHOLE_POLYGON_CHAIN_ID = 5;
 
     /// STORAGE ///
 
-    /// @notice Address of Gelato 1Balance on polygon.
+    /// @notice Address of Gelato 1Balance on Polygon.
     IGelatoOneBalance public gelatoOneBalance;
 
-    /// @notice Address of OneBalanceFeeManager on polygon.
+    /// @notice Address of OneBalanceFeeManager on Polygon.
     address public polygonOneBalanceFeeManager;
 
     /// ERRORS ///
@@ -59,8 +59,8 @@ contract OneBalanceFeeManager is FeeTokenBridgingHub {
     /// EXTERNAL FUNCTIONS ///
 
     /// @notice Deposit fee token to Gelato 1Balance.
-    /// @dev If current chain is polygon, it deposits
-    ///      Otherwise, it bridges fee token to polygon to deposit.
+    /// @dev If current chain is Polygon, it deposits
+    ///      Otherwise, it bridges fee token to Polygon to deposit.
     function depositOneBalanceFee() external nonReentrant {
         _checkDaoPermissions();
 

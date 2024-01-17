@@ -6,7 +6,7 @@ import { ERC165 } from "contracts/libraries/external/ERC165.sol";
 import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 
 import { ICentralRegistry, ChainData, OmnichainData } from "contracts/interfaces/ICentralRegistry.sol";
-import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
+import { IMarketManager } from "contracts/interfaces/market/IMarketManager.sol";
 import { IFeeAccumulator } from "contracts/interfaces/IFeeAccumulator.sol";
 import { IWormhole } from "contracts/interfaces/external/wormhole/IWormhole.sol";
 import { IWormholeRelayer } from "contracts/interfaces/external/wormhole/IWormholeRelayer.sol";
@@ -771,7 +771,7 @@ contract CentralRegistry is ERC165 {
         if (
             !ERC165Checker.supportsInterface(
                 newLendingMarket,
-                type(ILendtroller).interfaceId
+                type(IMarketManager).interfaceId
             )
         ) {
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);

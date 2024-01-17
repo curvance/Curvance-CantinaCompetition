@@ -57,14 +57,14 @@ contract GMCToken is CTokenCompounding {
     constructor(
         ICentralRegistry centralRegistry_,
         IERC20 asset_,
-        address lendtroller_,
+        address marketManager_,
         address gmxDepositVault_,
         address gmxExchangeRouter_,
         address gmxRouter_,
         address gmxReader_,
         address gmxDataStore_,
         address gmxDepositHandler_
-    ) CTokenCompounding(centralRegistry_, asset_, lendtroller_) {
+    ) CTokenCompounding(centralRegistry_, asset_, marketManager_) {
         if (block.chainid != 42161) {
             revert GMCToken__ChainIsNotSupported();
         }

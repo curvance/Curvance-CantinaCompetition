@@ -7,7 +7,7 @@ import { DToken } from "contracts/market/collateral/DToken.sol";
 import { WAD, DENOMINATOR } from "contracts/libraries/Constants.sol";
 import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 
-import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
+import { IMarketManager } from "contracts/interfaces/market/IMarketManager.sol";
 import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IGaugePool } from "contracts/interfaces/IGaugePool.sol";
@@ -199,7 +199,7 @@ contract CurvanceAuxiliaryData {
     function getMarketAssets(
         address market
     ) public view returns (address[] memory) {
-        return ILendtroller(market).tokensListed();
+        return IMarketManager(market).tokensListed();
     }
 
     /// @notice Returns listed collateral assets inside `market`.
@@ -207,7 +207,7 @@ contract CurvanceAuxiliaryData {
     function getMarketCollateralAssets(
         address market
     ) public view returns (address[] memory) {
-        address[] memory assets = ILendtroller(market).tokensListed();
+        address[] memory assets = IMarketManager(market).tokensListed();
         uint256 numAssets = assets.length;
 
         address asset;
@@ -237,7 +237,7 @@ contract CurvanceAuxiliaryData {
     function getMarketDebtAssets(
         address market
     ) public view returns (address[] memory) {
-        address[] memory assets = ILendtroller(market).tokensListed();
+        address[] memory assets = IMarketManager(market).tokensListed();
         uint256 numAssets = assets.length;
 
         address asset;
