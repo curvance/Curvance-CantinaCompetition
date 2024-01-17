@@ -7,7 +7,7 @@ import { OracleRouter } from "contracts/oracles/OracleRouter.sol";
 contract ReplaceAssetPriceFeedTest is TestBaseOracleRouter {
     function test_replaceAssetPriceFeed_fail_whenCallerIsNotAuthorized() public {
         _addSinglePriceFeed();
-        
+
         vm.prank(address(1));
 
         vm.expectRevert(OracleRouter.OracleRouter__Unauthorized.selector);
@@ -20,7 +20,6 @@ contract ReplaceAssetPriceFeedTest is TestBaseOracleRouter {
 
     function test_replaceAssetPriceFeed_fail_whenAdaptorIsNotApproved() public {
         _addSinglePriceFeed();
-        oracleRouter.removeApprovedAdaptor(address(dualChainlinkAdaptor));
 
         vm.expectRevert(OracleRouter.OracleRouter__InvalidParameter.selector);
         oracleRouter.replaceAssetPriceFeed(
@@ -56,11 +55,6 @@ contract ReplaceAssetPriceFeedTest is TestBaseOracleRouter {
     function test_replaceAssetPriceFeed_fail_whenAssetIsNotSupported() public {
         _addDualPriceFeed();
 
-        oracleRouter.addAssetPriceFeed(
-            _USDC_ADDRESS,
-            address(chainlinkAdaptor)
-        );
-
         dualChainlinkAdaptor.removeAsset(_USDC_ADDRESS);
 
         vm.expectRevert(OracleRouter.OracleRouter__InvalidParameter.selector);
@@ -86,6 +80,8 @@ contract ReplaceAssetPriceFeedTest is TestBaseOracleRouter {
         );
 
         assertTrue(oracleRouter.isSupportedAsset(_USDC_ADDRESS));
+
+        oracleRouter.addApprovedAdaptor(address(dualChainlinkAdaptor));
 
         oracleRouter.replaceAssetPriceFeed(
             _USDC_ADDRESS,
