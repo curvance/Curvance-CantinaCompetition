@@ -26,15 +26,15 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
     uint8 private immutable _decimals; // vault assets decimals of precision
     ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
 
-    /// `bytes4(keccak256(bytes("CTokenBase__Unauthorized()")))`
+    /// @dev `bytes4(keccak256(bytes("CTokenBase__Unauthorized()")))`
     uint256 internal constant _UNAUTHORIZED_SELECTOR = 0xbf98a75b;
-    /// `keccak256(bytes("Deposit(address,address,uint256,uint256)"))`.
+    /// @dev `keccak256(bytes("Deposit(address,address,uint256,uint256)"))`.
     uint256 internal constant _DEPOSIT_EVENT_SIGNATURE =
         0xdcbc1c05240f31ff3ad067ef1ee35ce4997762752e3a095284754544f4c709d7;
-    /// `keccak256(bytes("Withdraw(address,address,address,uint256,uint256)"))`.
+    /// @dev `keccak256(bytes("Withdraw(address,address,address,uint256,uint256)"))`.
     uint256 internal constant _WITHDRAW_EVENT_SIGNATURE =
         0xfbde797d201c681b91056529119e0b02407c7bb96a4a2c75c01fc9667232c8db;
-    /// `keccak256(bytes("Transfer(address,address,uint256)"))`.
+    /// @dev `keccak256(bytes("Transfer(address,address,uint256)"))`.
     uint256 internal constant _TRANSFER_EVENT_SIGNATURE =
         0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef;
     /// @dev The balance slot of `owner` is given by:

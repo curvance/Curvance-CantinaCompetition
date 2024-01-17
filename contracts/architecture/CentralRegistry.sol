@@ -25,10 +25,10 @@ contract CentralRegistry is ERC165 {
     /// @notice Address of fee token.
     address public immutable feeToken;
 
-    /// bytes4(keccak256(bytes("CentralRegistry__ParametersMisconfigured()")))
+    /// @dev bytes4(keccak256(bytes("CentralRegistry__ParametersMisconfigured()")))
     uint256 internal constant _PARAMETERS_MISCONFIGURED_SELECTOR = 0xa5bb570d;
 
-    /// bytes4(keccak256(bytes("CentralRegistry__Unauthorized()")))
+    /// @dev bytes4(keccak256(bytes("CentralRegistry__Unauthorized()")))
     uint256 internal constant _UNAUTHORIZED_SELECTOR = 0xe675838a;
 
     /// STORAGE ///

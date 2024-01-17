@@ -44,7 +44,7 @@ contract DToken is ERC165, ReentrancyGuard {
     ICentralRegistry public immutable centralRegistry;
     /// @notice Lending Market controller.
     IMarketManager public immutable marketManager;
-    /// `bytes4(keccak256(bytes("DToken__Unauthorized()")))`.
+    /// @dev `bytes4(keccak256(bytes("DToken__Unauthorized()")))`.
     uint256 internal constant _UNAUTHORIZED_SELECTOR = 0xef419be2;
 
     /// STORAGE ///

@@ -26,7 +26,7 @@ contract ProtocolMessagingHub is FeeTokenBridgingHub {
     /// @notice Wormhole specific chain ID for evm chain ID.
     mapping(uint256 => uint16) public wormholeChainId;
 
-    /// `bytes4(keccak256(bytes("ProtocolMessagingHub__Unauthorized()")))`.
+    /// @dev `bytes4(keccak256(bytes("ProtocolMessagingHub__Unauthorized()")))`.
     uint256 internal constant _UNAUTHORIZED_SELECTOR = 0xc70c67ab;
 
     /// STORAGE ///

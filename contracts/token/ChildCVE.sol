@@ -14,7 +14,7 @@ contract CVE is ERC20 {
     /// @notice Curvance DAO hub.
     ICentralRegistry public immutable centralRegistry;
 
-    /// `bytes4(keccak256(bytes("CVE__Unauthorized()")))`
+    /// @dev `bytes4(keccak256(bytes("CVE__Unauthorized()")))`
     uint256 internal constant _UNAUTHORIZED_SELECTOR = 0x15f37077;
 
     /// ERRORS ///
