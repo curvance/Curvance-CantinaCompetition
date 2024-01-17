@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-pragma solidity 0.8.17;
+pragma solidity ^0.8.0;
+
+import "./PMath.sol";
+import "./LogExpMath.sol";
 
 import "./PYIndex.sol";
-import "./Math.sol";
-import "./LogExpMath.sol";
 import "./MiniHelpers.sol";
 import "./Errors.sol";
 
@@ -32,8 +33,8 @@ struct MarketPreCompute {
 
 // solhint-disable ordering
 library MarketMathCore {
-    using Math for uint256;
-    using Math for int256;
+    using PMath for uint256;
+    using PMath for int256;
     using LogExpMath for int256;
     using PYIndexLib for PYIndex;
 
@@ -44,8 +45,8 @@ library MarketMathCore {
 
     int256 internal constant MAX_MARKET_PROPORTION = (1e18 * 96) / 100;
 
-    using Math for uint256;
-    using Math for int256;
+    using PMath for uint256;
+    using PMath for int256;
 
     /*///////////////////////////////////////////////////////////////
                 UINT FUNCTIONS TO PROXY TO CORE FUNCTIONS
@@ -56,27 +57,13 @@ library MarketMathCore {
         uint256 syDesired,
         uint256 ptDesired,
         uint256 blockTime
-    )
-        internal
-        pure
-        returns (
-            uint256 lpToReserve,
-            uint256 lpToAccount,
-            uint256 syUsed,
-            uint256 ptUsed
-        )
-    {
-        (
-            int256 _lpToReserve,
-            int256 _lpToAccount,
-            int256 _syUsed,
-            int256 _ptUsed
-        ) = addLiquidityCore(
-                market,
-                syDesired.Int(),
-                ptDesired.Int(),
-                blockTime
-            );
+    ) internal pure returns (uint256 lpToReserve, uint256 lpToAccount, uint256 syUsed, uint256 ptUsed) {
+        (int256 _lpToReserve, int256 _lpToAccount, int256 _syUsed, int256 _ptUsed) = addLiquidityCore(
+            market,
+            syDesired.Int(),
+            ptDesired.Int(),
+            blockTime
+        );
 
         lpToReserve = _lpToReserve.Uint();
         lpToAccount = _lpToAccount.Uint();
@@ -88,10 +75,7 @@ library MarketMathCore {
         MarketState memory market,
         uint256 lpToRemove
     ) internal pure returns (uint256 netSyToAccount, uint256 netPtToAccount) {
-        (int256 _syToAccount, int256 _ptToAccount) = removeLiquidityCore(
-            market,
-            lpToRemove.Int()
-        );
+        (int256 _syToAccount, int256 _ptToAccount) = removeLiquidityCore(market, lpToRemove.Int());
 
         netSyToAccount = _syToAccount.Uint();
         netPtToAccount = _ptToAccount.Uint();
@@ -102,20 +86,13 @@ library MarketMathCore {
         PYIndex index,
         uint256 exactPtToMarket,
         uint256 blockTime
-    )
-        internal
-        pure
-        returns (
-            uint256 netSyToAccount,
-            uint256 netSyFee,
-            uint256 netSyToReserve
-        )
-    {
-        (
-            int256 _netSyToAccount,
-            int256 _netSyFee,
-            int256 _netSyToReserve
-        ) = executeTradeCore(market, index, exactPtToMarket.neg(), blockTime);
+    ) internal pure returns (uint256 netSyToAccount, uint256 netSyFee, uint256 netSyToReserve) {
+        (int256 _netSyToAccount, int256 _netSyFee, int256 _netSyToReserve) = executeTradeCore(
+            market,
+            index,
+            exactPtToMarket.neg(),
+            blockTime
+        );
 
         netSyToAccount = _netSyToAccount.Uint();
         netSyFee = _netSyFee.Uint();
@@ -127,20 +104,13 @@ library MarketMathCore {
         PYIndex index,
         uint256 exactPtToAccount,
         uint256 blockTime
-    )
-        internal
-        pure
-        returns (
-            uint256 netSyToMarket,
-            uint256 netSyFee,
-            uint256 netSyToReserve
-        )
-    {
-        (
-            int256 _netSyToAccount,
-            int256 _netSyFee,
-            int256 _netSyToReserve
-        ) = executeTradeCore(market, index, exactPtToAccount.Int(), blockTime);
+    ) internal pure returns (uint256 netSyToMarket, uint256 netSyFee, uint256 netSyToReserve) {
+        (int256 _netSyToAccount, int256 _netSyFee, int256 _netSyToReserve) = executeTradeCore(
+            market,
+            index,
+            exactPtToAccount.Int(),
+            blockTime
+        );
 
         netSyToMarket = _netSyToAccount.neg().Uint();
         netSyFee = _netSyFee.Uint();
@@ -156,31 +126,18 @@ library MarketMathCore {
         int256 syDesired,
         int256 ptDesired,
         uint256 blockTime
-    )
-        internal
-        pure
-        returns (
-            int256 lpToReserve,
-            int256 lpToAccount,
-            int256 syUsed,
-            int256 ptUsed
-        )
-    {
+    ) internal pure returns (int256 lpToReserve, int256 lpToAccount, int256 syUsed, int256 ptUsed) {
         /// ------------------------------------------------------------
         /// CHECKS
         /// ------------------------------------------------------------
-        if (syDesired == 0 || ptDesired == 0)
-            revert Errors.MarketZeroAmountsInput();
-        if (MiniHelpers.isExpired(market.expiry, blockTime))
-            revert Errors.MarketExpired();
+        if (syDesired == 0 || ptDesired == 0) revert Errors.MarketZeroAmountsInput();
+        if (MiniHelpers.isExpired(market.expiry, blockTime)) revert Errors.MarketExpired();
 
         /// ------------------------------------------------------------
         /// MATH
         /// ------------------------------------------------------------
         if (market.totalLp == 0) {
-            lpToAccount =
-                Math.sqrt((syDesired * ptDesired).Uint()).Int() -
-                MINIMUM_LIQUIDITY;
+            lpToAccount = PMath.sqrt((syDesired * ptDesired).Uint()).Int() - MINIMUM_LIQUIDITY;
             lpToReserve = MINIMUM_LIQUIDITY;
             syUsed = syDesired;
             ptUsed = ptDesired;
@@ -223,8 +180,7 @@ library MarketMathCore {
         netSyToAccount = (lpToRemove * market.totalSy) / market.totalLp;
         netPtToAccount = (lpToRemove * market.totalPt) / market.totalLp;
 
-        if (netSyToAccount == 0 && netPtToAccount == 0)
-            revert Errors.MarketZeroAmountsOutput();
+        if (netSyToAccount == 0 && netPtToAccount == 0) revert Errors.MarketZeroAmountsOutput();
 
         /// ------------------------------------------------------------
         /// WRITE
@@ -239,50 +195,25 @@ library MarketMathCore {
         PYIndex index,
         int256 netPtToAccount,
         uint256 blockTime
-    )
-        internal
-        pure
-        returns (int256 netSyToAccount, int256 netSyFee, int256 netSyToReserve)
-    {
+    ) internal pure returns (int256 netSyToAccount, int256 netSyFee, int256 netSyToReserve) {
         /// ------------------------------------------------------------
         /// CHECKS
         /// ------------------------------------------------------------
-        if (MiniHelpers.isExpired(market.expiry, blockTime))
-            revert Errors.MarketExpired();
+        if (MiniHelpers.isExpired(market.expiry, blockTime)) revert Errors.MarketExpired();
         if (market.totalPt <= netPtToAccount)
-            revert Errors.MarketInsufficientPtForTrade(
-                market.totalPt,
-                netPtToAccount
-            );
+            revert Errors.MarketInsufficientPtForTrade(market.totalPt, netPtToAccount);
 
         /// ------------------------------------------------------------
         /// MATH
         /// ------------------------------------------------------------
-        MarketPreCompute memory comp = getMarketPreCompute(
-            market,
-            index,
-            blockTime
-        );
+        MarketPreCompute memory comp = getMarketPreCompute(market, index, blockTime);
 
-        (netSyToAccount, netSyFee, netSyToReserve) = calcTrade(
-            market,
-            comp,
-            index,
-            netPtToAccount
-        );
+        (netSyToAccount, netSyFee, netSyToReserve) = calcTrade(market, comp, index, netPtToAccount);
 
         /// ------------------------------------------------------------
         /// WRITE
         /// ------------------------------------------------------------
-        _setNewMarketStateTrade(
-            market,
-            comp,
-            index,
-            netPtToAccount,
-            netSyToAccount,
-            netSyToReserve,
-            blockTime
-        );
+        _setNewMarketStateTrade(market, comp, index, netPtToAccount, netSyToAccount, netSyToReserve, blockTime);
     }
 
     function getMarketPreCompute(
@@ -290,8 +221,7 @@ library MarketMathCore {
         PYIndex index,
         uint256 blockTime
     ) internal pure returns (MarketPreCompute memory res) {
-        if (MiniHelpers.isExpired(market.expiry, blockTime))
-            revert Errors.MarketExpired();
+        if (MiniHelpers.isExpired(market.expiry, blockTime)) revert Errors.MarketExpired();
 
         uint256 timeToExpiry = market.expiry - blockTime;
 
@@ -299,10 +229,7 @@ library MarketMathCore {
         res.totalAsset = index.syToAsset(market.totalSy);
 
         if (market.totalPt == 0 || res.totalAsset == 0)
-            revert Errors.MarketZeroTotalPtOrTotalAsset(
-                market.totalPt,
-                res.totalAsset
-            );
+            revert Errors.MarketZeroTotalPtOrTotalAsset(market.totalPt, res.totalAsset);
 
         res.rateAnchor = _getRateAnchor(
             market.totalPt,
@@ -311,10 +238,7 @@ library MarketMathCore {
             res.rateScalar,
             timeToExpiry
         );
-        res.feeRate = _getExchangeRateFromImpliedRate(
-            market.lnFeeRateRoot,
-            timeToExpiry
-        );
+        res.feeRate = _getExchangeRateFromImpliedRate(market.lnFeeRateRoot, timeToExpiry);
     }
 
     function calcTrade(
@@ -322,11 +246,7 @@ library MarketMathCore {
         MarketPreCompute memory comp,
         PYIndex index,
         int256 netPtToAccount
-    )
-        internal
-        pure
-        returns (int256 netSyToAccount, int256 netSyFee, int256 netSyToReserve)
-    {
+    ) internal pure returns (int256 netSyToAccount, int256 netSyFee, int256 netSyToReserve) {
         int256 preFeeExchangeRate = _getExchangeRate(
             market.totalPt,
             comp.totalAsset,
@@ -335,23 +255,19 @@ library MarketMathCore {
             netPtToAccount
         );
 
-        int256 preFeeAssetToAccount = netPtToAccount
-            .divDown(preFeeExchangeRate)
-            .neg();
+        int256 preFeeAssetToAccount = netPtToAccount.divDown(preFeeExchangeRate).neg();
         int256 fee = comp.feeRate;
 
         if (netPtToAccount > 0) {
             int256 postFeeExchangeRate = preFeeExchangeRate.divDown(fee);
-            if (postFeeExchangeRate < Math.IONE)
-                revert Errors.MarketExchangeRateBelowOne(postFeeExchangeRate);
+            if (postFeeExchangeRate < PMath.IONE) revert Errors.MarketExchangeRateBelowOne(postFeeExchangeRate);
 
-            fee = preFeeAssetToAccount.mulDown(Math.IONE - fee);
+            fee = preFeeAssetToAccount.mulDown(PMath.IONE - fee);
         } else {
-            fee = ((preFeeAssetToAccount * (Math.IONE - fee)) / fee).neg();
+            fee = ((preFeeAssetToAccount * (PMath.IONE - fee)) / fee).neg();
         }
 
-        int256 netAssetToReserve = (fee * market.reserveFeePercent.Int()) /
-            PERCENTAGE_DECIMALS;
+        int256 netAssetToReserve = (fee * market.reserveFeePercent.Int()) / PERCENTAGE_DECIMALS;
         int256 netAssetToAccount = preFeeAssetToAccount - fee;
 
         netSyToAccount = netAssetToAccount < 0
@@ -373,9 +289,7 @@ library MarketMathCore {
         uint256 timeToExpiry = market.expiry - blockTime;
 
         market.totalPt = market.totalPt.subNoNeg(netPtToAccount);
-        market.totalSy = market.totalSy.subNoNeg(
-            netSyToAccount + netSyToReserve
-        );
+        market.totalSy = market.totalSy.subNoNeg(netSyToAccount + netSyToReserve);
 
         market.lastLnImpliedRate = _getLnImpliedRate(
             market.totalPt,
@@ -385,8 +299,7 @@ library MarketMathCore {
             timeToExpiry
         );
 
-        if (market.lastLnImpliedRate == 0)
-            revert Errors.MarketZeroLnImpliedRate();
+        if (market.lastLnImpliedRate == 0) revert Errors.MarketZeroLnImpliedRate();
     }
 
     function _getRateAnchor(
@@ -396,13 +309,9 @@ library MarketMathCore {
         int256 rateScalar,
         uint256 timeToExpiry
     ) internal pure returns (int256 rateAnchor) {
-        int256 newExchangeRate = _getExchangeRateFromImpliedRate(
-            lastLnImpliedRate,
-            timeToExpiry
-        );
+        int256 newExchangeRate = _getExchangeRateFromImpliedRate(lastLnImpliedRate, timeToExpiry);
 
-        if (newExchangeRate < Math.IONE)
-            revert Errors.MarketExchangeRateBelowOne(newExchangeRate);
+        if (newExchangeRate < PMath.IONE) revert Errors.MarketExchangeRateBelowOne(newExchangeRate);
 
         {
             int256 proportion = totalPt.divDown(totalPt + totalAsset);
@@ -422,14 +331,8 @@ library MarketMathCore {
         int256 rateAnchor,
         uint256 timeToExpiry
     ) internal pure returns (uint256 lnImpliedRate) {
-        // This will check for exchange rates < Math.IONE
-        int256 exchangeRate = _getExchangeRate(
-            totalPt,
-            totalAsset,
-            rateScalar,
-            rateAnchor,
-            0
-        );
+        // This will check for exchange rates < PMath.IONE
+        int256 exchangeRate = _getExchangeRate(totalPt, totalAsset, rateScalar, rateAnchor, 0);
 
         // exchangeRate >= 1 so its ln >= 0
         uint256 lnRate = exchangeRate.ln().Uint();
@@ -460,39 +363,26 @@ library MarketMathCore {
         int256 proportion = (numerator.divDown(totalPt + totalAsset));
 
         if (proportion > MAX_MARKET_PROPORTION)
-            revert Errors.MarketProportionTooHigh(
-                proportion,
-                MAX_MARKET_PROPORTION
-            );
+            revert Errors.MarketProportionTooHigh(proportion, MAX_MARKET_PROPORTION);
 
         int256 lnProportion = _logProportion(proportion);
 
         exchangeRate = lnProportion.divDown(rateScalar) + rateAnchor;
 
-        if (exchangeRate < Math.IONE)
-            revert Errors.MarketExchangeRateBelowOne(exchangeRate);
+        if (exchangeRate < PMath.IONE) revert Errors.MarketExchangeRateBelowOne(exchangeRate);
     }
 
-    function _logProportion(
-        int256 proportion
-    ) internal pure returns (int256 res) {
-        if (proportion == Math.IONE)
-            revert Errors.MarketProportionMustNotEqualOne();
+    function _logProportion(int256 proportion) internal pure returns (int256 res) {
+        if (proportion == PMath.IONE) revert Errors.MarketProportionMustNotEqualOne();
 
-        int256 logitP = proportion.divDown(Math.IONE - proportion);
+        int256 logitP = proportion.divDown(PMath.IONE - proportion);
 
         res = logitP.ln();
     }
 
-    function _getRateScalar(
-        MarketState memory market,
-        uint256 timeToExpiry
-    ) internal pure returns (int256 rateScalar) {
-        rateScalar =
-            (market.scalarRoot * IMPLIED_RATE_TIME.Int()) /
-            timeToExpiry.Int();
-        if (rateScalar <= 0)
-            revert Errors.MarketRateScalarBelowZero(rateScalar);
+    function _getRateScalar(MarketState memory market, uint256 timeToExpiry) internal pure returns (int256 rateScalar) {
+        rateScalar = (market.scalarRoot * IMPLIED_RATE_TIME.Int()) / timeToExpiry.Int();
+        if (rateScalar <= 0) revert Errors.MarketRateScalarBelowZero(rateScalar);
     }
 
     function setInitialLnImpliedRate(
@@ -504,8 +394,7 @@ library MarketMathCore {
         /// ------------------------------------------------------------
         /// CHECKS
         /// ------------------------------------------------------------
-        if (MiniHelpers.isExpired(market.expiry, blockTime))
-            revert Errors.MarketExpired();
+        if (MiniHelpers.isExpired(market.expiry, blockTime)) revert Errors.MarketExpired();
 
         /// ------------------------------------------------------------
         /// MATH
