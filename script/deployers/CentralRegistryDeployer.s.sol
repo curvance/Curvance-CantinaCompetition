@@ -161,18 +161,18 @@ contract CentralRegistryDeployer is DeployConfiguration {
         console.log("centralRegistry.addGaugeController: ", gaugePool);
     }
 
-    function _addLendingMarket(
+    function _addMarketManager(
         address marketManager,
         uint256 marketInterestFactor
     ) internal {
         require(centralRegistry != address(0), "Set the centralRegistry!");
         require(marketManager != address(0), "Set the marketManager!");
 
-        CentralRegistry(centralRegistry).addLendingMarket(
+        CentralRegistry(centralRegistry).addMarketManager(
             marketManager,
             marketInterestFactor
         );
-        console.log("centralRegistry.addLendingMarket: ", marketManager);
+        console.log("centralRegistry.addMarketManager: ", marketManager);
     }
 
     function _addZapper(address zapper) internal {

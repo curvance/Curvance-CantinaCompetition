@@ -127,7 +127,7 @@ contract DeployCurvance is
         // Deploy MarketManager
 
         _deployMarketManager(centralRegistry, gaugePool);
-        _addLendingMarket(
+        _addMarketManager(
             marketManager,
             _readConfigUint256(".marketManager.marketInterestFactor")
         );
