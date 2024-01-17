@@ -10,7 +10,7 @@ import { ERC165 } from "contracts/libraries/external/ERC165.sol";
 import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 import { ReentrancyGuard } from "contracts/libraries/external/ReentrancyGuard.sol";
 
-import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
+import { IMarketManager } from "contracts/interfaces/market/IMarketManager.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
@@ -43,7 +43,7 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @notice Curvance DAO hub.
     ICentralRegistry public immutable centralRegistry;
     /// @notice Lending Market controller.
-    ILendtroller public immutable lendtroller;
+    IMarketManager public immutable lendtroller;
     /// `bytes4(keccak256(bytes("DToken__Unauthorized()")))`.
     uint256 internal constant _UNAUTHORIZED_SELECTOR = 0xef419be2;
 
@@ -157,7 +157,7 @@ contract DToken is ERC165, ReentrancyGuard {
         }
 
         // Set new lendtroller.
-        lendtroller = ILendtroller(lendtroller_);
+        lendtroller = IMarketManager(lendtroller_);
 
         // Initialize timestamp and borrow index.
         marketData.lastTimestampUpdated = uint32(block.timestamp);
