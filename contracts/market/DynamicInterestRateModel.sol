@@ -60,15 +60,17 @@ contract DynamicInterestRateModel {
     ///         E.g. 3 * WAD = triples vertex interest rate per adjustment
     ///         at 100% util.
     uint256 public constant MAX_VERTEX_ADJUSTMENT_VELOCITY = 3 * WAD;
+
+    uint256 internal constant _CURVE_PRECISION = 1e36;
     /// Unix time has 31,536,000 seconds per year.
     /// All my homies hate leap seconds and leap years.
     uint256 internal constant _SECONDS_PER_YEAR = 31_536_000;
     /// @notice Mask of `vertexMultiplier` in `_currentRates`.
-    uint256 private constant _BITMASK_VERTEX_MULTIPLIER = (1 << 192) - 1;
+    uint256 internal constant _BITMASK_VERTEX_MULTIPLIER = (1 << 192) - 1;
     /// @notice Mask of `nextUpdateTimestamp` in `_currentRates`.
-    uint256 private constant _BITMASK_UPDATE_TIMESTAMP = (1 << 64) - 1;
+    uint256 internal constant _BITMASK_UPDATE_TIMESTAMP = (1 << 64) - 1;
     /// @notice The bit position of `nextUpdateTimestamp` in `_currentRates`.
-    uint256 private constant _BITPOS_UPDATE_TIMESTAMP = 192;
+    uint256 internal constant _BITPOS_UPDATE_TIMESTAMP = 192;
 
     /// @notice For external contract's to call for validation.
     bool public constant IS_INTEREST_RATE_MODEL = true;
@@ -411,7 +413,7 @@ contract DynamicInterestRateModel {
         // precision and can optimize by multiplying prior.
         return
             (util * ratesConfig.vertexInterestRate * vertexMultiplier()) /
-            1e36;
+            _CURVE_PRECISION;
     }
 
     /// @notice Calculates and returns the updated multiplier for scenarios
@@ -450,15 +452,21 @@ contract DynamicInterestRateModel {
             return newMultiplier < WAD ? WAD : newMultiplier;
         }
 
-        newMultiplier =
-            (currentMultiplier *
-                ((config.adjustmentVelocity) /
-                    _getNegativeCurveResult(
-                        util,
-                        config.increaseThreshold,
-                        config.increaseThresholdMax
-                    ))) -
-            decay;
+        uint256 curveResult = _getNegativeCurveResult(
+            util,
+            config.decreaseThreshold,
+            config.decreaseThresholdMax
+        );
+
+        // If utilization is equal to decrease threshold the curve will
+        // result in 0, causing a divide by 0 error.
+        if (curveResult == 0) {
+            newMultiplier = currentMultiplier - decay;
+            return newMultiplier < WAD ? WAD : newMultiplier;
+        }
+
+        newMultiplier = ((currentMultiplier * WAD) / 
+        (curveResult * config.adjustmentVelocity)) - decay;
 
         // Update and return with adjustment and decay rate applied.
         // But first check if new rate sends multiplier below 1.
@@ -506,8 +514,7 @@ contract DynamicInterestRateModel {
                         config.increaseThreshold,
                         config.increaseThresholdMax
                     ))) /
-                WAD /
-                WAD) -
+                _CURVE_PRECISION) -
             decay;
 
         // Update and return with adjustment and decay rate applied.
