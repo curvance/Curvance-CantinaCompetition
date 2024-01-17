@@ -541,7 +541,7 @@ contract FuzzVECVE is StatefulBaseMarket {
         require(veCVE.isShutdown() != 2);
         uint256 lockIndex = get_existing_lock(number);
 
-        amount = clampBetween(amount, WAD, type(uint32).max);
+        amount = clampBetween(amount, WAD, type(uint64).max);
         (, uint256 unlockTime) = get_associated_lock(address(this), lockIndex);
         require(unlockTime == veCVE.CONTINUOUS_LOCK_VALUE());
         // save balance of CVE
@@ -594,7 +594,7 @@ contract FuzzVECVE is StatefulBaseMarket {
         uint256 lockIndex = get_existing_lock(number);
         isAllContinuous = false;
 
-        amount = clampBetween(amount, WAD, type(uint32).max);
+        amount = clampBetween(amount, WAD, type(uint64).max);
         (, uint256 unlockTime) = get_associated_lock(address(this), lockIndex);
         require(unlockTime >= block.timestamp);
         // save balance of CVE
