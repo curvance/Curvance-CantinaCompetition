@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { LiquidityManager, IPriceRouter, IMToken, WAD } from "contracts/market/LiquidityManager.sol";
+import { LiquidityManager, IOracleRouter, IMToken, WAD } from "contracts/market/LiquidityManager.sol";
 
 import { ERC165 } from "contracts/libraries/external/ERC165.sol";
 import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
@@ -843,7 +843,7 @@ contract MarketManager is LiquidityManager, ERC165 {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
-        (, uint256 errorCode) = IPriceRouter(centralRegistry.priceRouter())
+        (, uint256 errorCode) = IOracleRouter(centralRegistry.oracleRouter())
             .getPrice(address(mToken), true, true);
 
         // Validate that we get a usable price.

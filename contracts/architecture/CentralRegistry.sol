@@ -64,7 +64,7 @@ contract CentralRegistry is ERC165 {
     address public protocolMessagingHub;
 
     /// @notice Price Router contract address.
-    address public priceRouter;
+    address public oracleRouter;
 
     /// @notice Fee Accumulator contract address.
     address public feeAccumulator;
@@ -130,7 +130,7 @@ contract CentralRegistry is ERC165 {
     /// @notice How many other chains are supported.
     uint256 public supportedChains;
     /// @notice Address array for all Curvance markets on this chain.
-    address[] public supportedMarkets;
+    address[] public marketManagers;
 
     /// @notice ChainId => 2 = supported; 1 = unsupported.
     mapping(uint256 => ChainData) public supportedChainData;
@@ -147,7 +147,7 @@ contract CentralRegistry is ERC165 {
     mapping(address => bool) public isVeCVELocker;
     mapping(address => bool) public isGaugeController;
     mapping(address => bool) public isHarvester;
-    mapping(address => bool) public isLendingMarket;
+    mapping(address => bool) public isMarketManager;
     mapping(address => bool) public isEndpoint;
 
     /// EVENTS ///
@@ -296,11 +296,11 @@ contract CentralRegistry is ERC165 {
 
     /// @notice Sets a new price router contract address
     /// @dev Only callable on a 7 day delay or by the Emergency Council
-    function setPriceRouter(address newPriceRouter) external {
+    function setOracleRouter(address newOracleRouter) external {
         _checkElevatedPermissions();
 
-        priceRouter = newPriceRouter;
-        emit CoreContractSet("Price Router", newPriceRouter);
+        oracleRouter = newOracleRouter;
+        emit CoreContractSet("Price Router", newOracleRouter);
     }
 
     /// @notice Sets a new fee hub contract address
@@ -424,7 +424,7 @@ contract CentralRegistry is ERC165 {
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
-        if (!isLendingMarket[market]) {
+        if (!isMarketManager[market]) {
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
@@ -753,24 +753,24 @@ contract CentralRegistry is ERC165 {
     /// @notice Add a new lending market and associated fee configurations.
     /// @dev Only callable on a 7 day delay or by the Emergency Council,
     ///      and 50% for interest generated.
-    /// @param newLendingMarket The address of new lending market to be added.
+    /// @param newMarketManager The address of new lending market to be added.
     /// @param marketInterestFactor The interest factor associated with
     ///                             the lending market.
-    function addLendingMarket(
-        address newLendingMarket,
+    function addMarketManager(
+        address newMarketManager,
         uint256 marketInterestFactor
     ) external {
         _checkElevatedPermissions();
 
-        // Validate that `newLendingMarket` is not already added.
-        if (isLendingMarket[newLendingMarket]) {
+        // Validate that `newMarketManager` is not already added.
+        if (isMarketManager[newMarketManager]) {
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
         // Ensure that lending market parameter is a lending market.
         if (
             !ERC165Checker.supportsInterface(
-                newLendingMarket,
+                newMarketManager,
                 type(IMarketManager).interfaceId
             )
         ) {
@@ -783,36 +783,36 @@ contract CentralRegistry is ERC165 {
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
-        isLendingMarket[newLendingMarket] = true;
+        isMarketManager[newMarketManager] = true;
         // We store supported markets semi redundantly for offchain querying.
-        supportedMarkets.push(newLendingMarket);
-        protocolInterestFactor[newLendingMarket] = _bpToWad(
+        marketManagers.push(newMarketManager);
+        protocolInterestFactor[newMarketManager] = _bpToWad(
             marketInterestFactor
         );
 
-        emit NewCurvanceContract("Lending Market", newLendingMarket);
+        emit NewCurvanceContract("Lending Market", newMarketManager);
     }
 
     /// @notice Remove a current lending market from Curvance.
     /// @dev Only callable on a 7 day delay or by the Emergency Council.
-    /// @param currentLendingMarket The address of the lending market
+    /// @param currentMarketManager The address of the lending market
     ///                             to be removed.
-    function removeLendingMarket(address currentLendingMarket) external {
+    function removeMarketManager(address currentMarketManager) external {
         _checkElevatedPermissions();
 
-        // Validate that `newLendingMarket` is currently supported.
-        if (!isLendingMarket[currentLendingMarket]) {
+        // Validate that `newMarketManager` is currently supported.
+        if (!isMarketManager[currentMarketManager]) {
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
-        delete isLendingMarket[currentLendingMarket];
+        delete isMarketManager[currentMarketManager];
 
         // Cache market list.
-        uint256 numMarkets = supportedMarkets.length;
+        uint256 numMarkets = marketManagers.length;
         uint256 marketIndex = numMarkets;
 
         for (uint256 i; i < numMarkets; ++i) {
-            if (supportedMarkets[i] == currentLendingMarket) {
+            if (marketManagers[i] == currentMarketManager) {
                 marketIndex = i;
                 break;
             }
@@ -825,13 +825,13 @@ contract CentralRegistry is ERC165 {
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
-        // Copy last `supportedMarkets` slot to `marketIndex` slot.
-        supportedMarkets[marketIndex] = supportedMarkets[numMarkets];
-        // Remove the last element to remove `currentLendingMarket`
-        // from supportedMarkets list.
-        supportedMarkets.pop();
+        // Copy last `marketManagers` slot to `marketIndex` slot.
+        marketManagers[marketIndex] = marketManagers[numMarkets];
+        // Remove the last element to remove `currentMarketManager`
+        // from marketManagers list.
+        marketManagers.pop();
 
-        emit RemovedCurvanceContract("Lending Market", currentLendingMarket);
+        emit RemovedCurvanceContract("Lending Market", currentMarketManager);
     }
 
     /// @notice Add a new crosschain endpoint.

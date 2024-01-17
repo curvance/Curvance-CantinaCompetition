@@ -53,7 +53,7 @@ contract CurvanceAuxiliaryData {
     /// @notice Returns the current TVL inside Curvance.
     /// @return result The current TVL inside Curvance, in `WAD`.
     function getTotalTVL() external view returns (uint256 result) {
-        address[] memory markets =  centralRegistry.supportedMarkets();
+        address[] memory markets =  centralRegistry.marketManagers();
         uint256 numMarkets = markets.length;
 
         for (uint256 i; i < numMarkets; ) {
@@ -64,7 +64,7 @@ contract CurvanceAuxiliaryData {
     /// @notice Returns the current collateral TVL inside Curvance.
     /// @return result The current collateral TVL inside Curvance, in `WAD`.
     function getTotalCollateralTVL() external view returns (uint256 result) {
-        address[] memory markets =  centralRegistry.supportedMarkets();
+        address[] memory markets =  centralRegistry.marketManagers();
         uint256 numMarkets = markets.length;
 
         for (uint256 i; i < numMarkets; ) {
@@ -75,7 +75,7 @@ contract CurvanceAuxiliaryData {
     /// @notice Returns the current lending TVL inside Curvance.
     /// @return result The current lending TVL inside Curvance, in `WAD`.
     function getTotalLendingTVL() external view returns (uint256 result) {
-        address[] memory markets =  centralRegistry.supportedMarkets();
+        address[] memory markets =  centralRegistry.marketManagers();
         uint256 numMarkets = markets.length;
 
         for (uint256 i; i < numMarkets; ) {
@@ -86,7 +86,7 @@ contract CurvanceAuxiliaryData {
     /// @notice Returns the current outstanding borrows inside Curvance.
     /// @return result The current outstanding borrows inside Curvance, in `WAD`.
     function getTotalBorrows() external view returns (uint256 result) {
-        address[] memory markets =  centralRegistry.supportedMarkets();
+        address[] memory markets =  centralRegistry.marketManagers();
         uint256 numMarkets = markets.length;
 
         for (uint256 i; i < numMarkets; ) {
