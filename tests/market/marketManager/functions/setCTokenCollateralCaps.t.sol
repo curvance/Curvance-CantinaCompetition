@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import { TestBaseLendtroller } from "../TestBaseLendtroller.sol";
-import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
+import { TestBaseMarketManager } from "../TestBaseMarketManager.sol";
+import { MarketManager } from "contracts/market/MarketManager.sol";
 import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 
-contract SetCTokenCollateralCapsTest is TestBaseLendtroller {
+contract SetCTokenCollateralCapsTest is TestBaseMarketManager {
     address[] public mTokens;
     uint256[] public collateralCaps;
 
@@ -26,15 +26,15 @@ contract SetCTokenCollateralCapsTest is TestBaseLendtroller {
         public
     {
         vm.prank(address(1));
-        vm.expectRevert(Lendtroller.Lendtroller__Unauthorized.selector);
-        lendtroller.setCTokenCollateralCaps(mTokens, collateralCaps);
+        vm.expectRevert(MarketManager.MarketManager__Unauthorized.selector);
+        marketManager.setCTokenCollateralCaps(mTokens, collateralCaps);
     }
 
     function test_setCTokenCollateralCaps_fail_whenMTokenLengthIsZero()
         public
     {
-        vm.expectRevert(Lendtroller.Lendtroller__InvalidParameter.selector);
-        lendtroller.setCTokenCollateralCaps(new address[](0), collateralCaps);
+        vm.expectRevert(MarketManager.MarketManager__InvalidParameter.selector);
+        marketManager.setCTokenCollateralCaps(new address[](0), collateralCaps);
     }
 
     function test_setCTokenCollateralCaps_fail_whenMTokenAndCapsLengthsMismatch()
@@ -42,22 +42,22 @@ contract SetCTokenCollateralCapsTest is TestBaseLendtroller {
     {
         mTokens.push(address(dUSDC));
         assertNotEq(mTokens.length, collateralCaps.length);
-        vm.expectRevert(Lendtroller.Lendtroller__InvalidParameter.selector);
-        lendtroller.setCTokenCollateralCaps(mTokens, collateralCaps);
+        vm.expectRevert(MarketManager.MarketManager__InvalidParameter.selector);
+        marketManager.setCTokenCollateralCaps(mTokens, collateralCaps);
         mTokens.pop();
     }
 
     function test_setCTokenCollateralCaps_fail_whenNotCToken() public {
         assertEq(mTokens.length, collateralCaps.length);
-        vm.expectRevert(Lendtroller.Lendtroller__InvalidParameter.selector);
-        lendtroller.setCTokenCollateralCaps(mTokens, collateralCaps);
+        vm.expectRevert(MarketManager.MarketManager__InvalidParameter.selector);
+        marketManager.setCTokenCollateralCaps(mTokens, collateralCaps);
     }
 
     function test_setCTokenCollateralCaps_success() public {
         deal(_BALANCER_WETH_RETH, address(this), 1 ether);
         balRETH.approve(address(cBALRETH), 1 ether);
-        lendtroller.listToken(address(cBALRETH));
-        lendtroller.updateCollateralToken(
+        marketManager.listToken(address(cBALRETH));
+        marketManager.updateCollateralToken(
             IMToken(address(cBALRETH)),
             7000,
             4000,
@@ -76,14 +76,14 @@ contract SetCTokenCollateralCapsTest is TestBaseLendtroller {
         validCollateralCaps[1] = 10e18;
 
         for (uint256 i = 0; i < validMTokens.length; i++) {
-            vm.expectEmit(address(lendtroller));
+            vm.expectEmit(address(marketManager));
             emit NewCollateralCap(validMTokens[i], validCollateralCaps[i]);
         }
 
-        lendtroller.setCTokenCollateralCaps(validMTokens, validCollateralCaps);
+        marketManager.setCTokenCollateralCaps(validMTokens, validCollateralCaps);
 
         assertEq(
-            lendtroller.collateralCaps(address(cBALRETH)),
+            marketManager.collateralCaps(address(cBALRETH)),
             validCollateralCaps[1]
         );
     }

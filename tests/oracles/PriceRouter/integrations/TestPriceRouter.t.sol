@@ -29,7 +29,7 @@ contract TestPriceRouter is TestBasePriceRouter {
         _fork("ETH_NODE_URI_OPTIMISM", 110333246);
 
         _deployCentralRegistry();
-        _deployLendtroller();
+        _deployMarketManager();
         _deployDynamicInterestRateModel();
 
         priceRouter = new PriceRouter(
@@ -98,13 +98,13 @@ contract TestPriceRouter is TestBasePriceRouter {
         DToken dUSDC = new DToken(
             ICentralRegistry(address(centralRegistry)),
             USDC,
-            address(lendtroller),
+            address(marketManager),
             address(InterestRateModel)
         );
         // support market
         deal(USDC, address(this), 200000e6);
         IERC20(USDC).approve(address(dUSDC), 200000e6);
-        lendtroller.listToken(address(dUSDC));
+        marketManager.listToken(address(dUSDC));
 
         priceRouter.addMTokenSupport(address(dUSDC));
 

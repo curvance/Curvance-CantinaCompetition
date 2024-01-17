@@ -3,8 +3,8 @@ pragma solidity ^0.8.17;
 
 import { TestBaseDToken } from "../TestBaseDToken.sol";
 import { DToken } from "contracts/market/collateral/DToken.sol";
-import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
-import { DynamicInterestRateModel } from "contracts/market/interestRates/DynamicInterestRateModel.sol";
+import { MarketManager } from "contracts/market/MarketManager.sol";
+import { DynamicInterestRateModel } from "contracts/market/DynamicInterestRateModel.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 contract DTokenSetDynamicInterestRateModelTest is TestBaseDToken {

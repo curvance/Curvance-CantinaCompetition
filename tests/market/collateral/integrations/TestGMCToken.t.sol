@@ -47,7 +47,7 @@ contract TestGMCToken is TestBaseMarket {
         _deployCVELocker();
         _deployVeCVE();
         _deployGaugePool();
-        _deployLendtroller();
+        _deployMarketManager();
 
         centralRegistry.addHarvester(address(this));
         centralRegistry.setFeeAccumulator(address(this));
@@ -60,7 +60,7 @@ contract TestGMCToken is TestBaseMarket {
             abi.encode(
                 ICentralRegistry(address(centralRegistry)),
                 gmxGM,
-                address(lendtroller),
+                address(marketManager),
                 _GMX_DEPOSIT_VAULT,
                 _GMX_EXCHANGE_ROUTER,
                 _GMX_ROUTER,
@@ -76,7 +76,7 @@ contract TestGMCToken is TestBaseMarket {
         // Update code on existing ArbSys contract with mock contract.
         vm.etch(_ARB_SYS, address(new MockArbSys()).code);
 
-        gaugePool.start(address(lendtroller));
+        gaugePool.start(address(marketManager));
         skip(2 weeks);
     }
 
@@ -86,7 +86,7 @@ contract TestGMCToken is TestBaseMarket {
         deal(_GMX_GM_WETH_USDC_POOL, address(this), 42069);
 
         gmxGM.approve(address(cGM), 42069);
-        lendtroller.listToken(address(cGM));
+        marketManager.listToken(address(cGM));
 
         vm.prank(user1);
         gmxGM.approve(address(cGM), assets);

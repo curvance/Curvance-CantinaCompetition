@@ -30,11 +30,11 @@ contract TestZapperVelodrome is TestBaseMarket {
         _deployCentralRegistry();
         _deployCVE();
         _deployGaugePool();
-        _deployLendtroller();
+        _deployMarketManager();
 
         zapper = new Zapper(
             ICentralRegistry(address(centralRegistry)),
-            address(lendtroller),
+            address(marketManager),
             _WETH
         );
         centralRegistry.addZapper(address(zapper));
@@ -44,7 +44,7 @@ contract TestZapperVelodrome is TestBaseMarket {
     }
 
     function testInitialize() public {
-        assertEq(address(zapper.lendtroller()), address(lendtroller));
+        assertEq(address(zapper.marketManager()), address(marketManager));
     }
 
     function testVelodromeIn() public {

@@ -49,14 +49,14 @@ contract TestBoostedLock is TestBaseMarket {
         gaugePool.setEmissionRates(0, tokensParam, poolWeights);
 
         // start epoch
-        gaugePool.start(address(lendtroller));
+        gaugePool.start(address(marketManager));
 
         for (uint256 i = 0; i < 10; i++) {
             tokens[i] = address(_deployDDAI());
 
             // support market
             dai.approve(address(tokens[i]), 200000e18);
-            lendtroller.listToken(tokens[i]);
+            marketManager.listToken(tokens[i]);
 
             // add MToken support on price router
             priceRouter.addMTokenSupport(tokens[i]);

@@ -19,13 +19,13 @@ contract DTokenDeploymentTest is TestBaseDToken {
         new DToken(
             ICentralRegistry(address(0)),
             _USDC_ADDRESS,
-            address(lendtroller),
+            address(marketManager),
             address(InterestRateModel)
         );
     }
 
-    function test_dTokenDeployment_fail_whenLendtrollerIsNotSet() public {
-        vm.expectRevert(DToken.DToken__LendtrollerIsNotLendingMarket.selector);
+    function test_dTokenDeployment_fail_whenMarketManagerIsNotSet() public {
+        vm.expectRevert(DToken.DToken__MarketManagerIsNotLendingMarket.selector);
         new DToken(
             ICentralRegistry(address(centralRegistry)),
             _USDC_ADDRESS,
@@ -41,7 +41,7 @@ contract DTokenDeploymentTest is TestBaseDToken {
         new DToken(
             ICentralRegistry(address(centralRegistry)),
             _USDC_ADDRESS,
-            address(lendtroller),
+            address(marketManager),
             address(0)
         );
     }
@@ -60,7 +60,7 @@ contract DTokenDeploymentTest is TestBaseDToken {
         new DToken(
             ICentralRegistry(address(centralRegistry)),
             _USDC_ADDRESS,
-            address(lendtroller),
+            address(marketManager),
             address(InterestRateModel)
         );
     }
@@ -68,20 +68,20 @@ contract DTokenDeploymentTest is TestBaseDToken {
     function test_dTokenDeployment_success() public {
         vm.expectEmit(true, true, true, true);
         uint256 newInterestFactor = centralRegistry.protocolInterestFactor(
-            address(lendtroller)
+            address(marketManager)
         );
         emit NewInterestFactor(0, newInterestFactor);
 
         dUSDC = new DToken(
             ICentralRegistry(address(centralRegistry)),
             _USDC_ADDRESS,
-            address(lendtroller),
+            address(marketManager),
             address(InterestRateModel)
         );
 
         assertEq(address(dUSDC.centralRegistry()), address(centralRegistry));
         assertEq(dUSDC.underlying(), _USDC_ADDRESS);
         assertEq(address(dUSDC.interestRateModel()), address(InterestRateModel));
-        assertEq(address(dUSDC.lendtroller()), address(lendtroller));
+        assertEq(address(dUSDC.marketManager()), address(marketManager));
     }
 }

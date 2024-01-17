@@ -6,7 +6,7 @@ import { CentralRegistry } from "contracts/architecture/CentralRegistry.sol";
 import { GaugePool } from "contracts/gauge/GaugePool.sol";
 import { DToken } from "contracts/market/collateral/DToken.sol";
 import { DynamicInterestRateModel } from "contracts/market/interestRates/DynamicInterestRateModel.sol";
-import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
+import { MarketManager } from "contracts/market/MarketManager.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { ChainlinkAdaptor } from "contracts/oracles/adaptors/chainlink/ChainlinkAdaptor.sol";
 import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
@@ -26,7 +26,7 @@ contract TestBasePriceRouter is TestBase {
     ChainlinkAdaptor public chainlinkAdaptor;
     ChainlinkAdaptor public dualChainlinkAdaptor;
     DynamicInterestRateModel public InterestRateModel;
-    Lendtroller public lendtroller;
+    MarketManager public marketManager;
     PriceRouter public priceRouter;
     DToken public mUSDC;
     MockDataFeed public sequencer;
@@ -38,7 +38,7 @@ contract TestBasePriceRouter is TestBase {
         _deployPriceRouter();
         _deployChainlinkAdaptors();
 
-        _deployLendtroller();
+        _deployMarketManager();
         _deployDynamicInterestRateModel();
         _deployMUSDC();
     }
@@ -91,15 +91,15 @@ contract TestBasePriceRouter is TestBase {
         );
     }
 
-    function _deployLendtroller() internal {
+    function _deployMarketManager() internal {
         GaugePool gaugePool = new GaugePool(
             ICentralRegistry(address(centralRegistry))
         );
-        lendtroller = new Lendtroller(
+        marketManager = new MarketManager(
             ICentralRegistry(address(centralRegistry)),
             address(gaugePool)
         );
-        centralRegistry.addLendingMarket(address(lendtroller), 0);
+        centralRegistry.addLendingMarket(address(marketManager), 0);
     }
 
     function _deployDynamicInterestRateModel() internal {
@@ -119,7 +119,7 @@ contract TestBasePriceRouter is TestBase {
         mUSDC = new DToken(
             ICentralRegistry(address(centralRegistry)),
             _USDC_ADDRESS,
-            address(lendtroller),
+            address(marketManager),
             address(InterestRateModel)
         );
     }

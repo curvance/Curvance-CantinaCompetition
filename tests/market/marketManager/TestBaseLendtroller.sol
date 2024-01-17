@@ -5,14 +5,14 @@ import { TestBaseMarket } from "tests/market/TestBaseMarket.sol";
 import { SafeTransferLib } from "contracts/libraries/external/SafeTransferLib.sol";
 import { MockDataFeed } from "contracts/mocks/MockDataFeed.sol";
 
-contract TestBaseLendtroller is TestBaseMarket {
+contract TestBaseMarketManager is TestBaseMarket {
     MockDataFeed public mockWethFeed;
     MockDataFeed public mockRethFeed;
 
     function setUp() public virtual override {
         super.setUp();
 
-        gaugePool.start(address(lendtroller));
+        gaugePool.start(address(marketManager));
 
         _prepareUSDC(address(this), _ONE);
         _prepareDAI(address(this), _ONE);

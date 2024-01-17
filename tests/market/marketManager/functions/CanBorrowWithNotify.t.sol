@@ -1,22 +1,22 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import { TestBaseLendtroller } from "../TestBaseLendtroller.sol";
-import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
+import { TestBaseMarketManager } from "../TestBaseMarketManager.sol";
+import { MarketManager } from "contracts/market/MarketManager.sol";
 import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.sol";
 
-contract CanBorrowWithNotifyTest is TestBaseLendtroller {
+contract CanBorrowWithNotifyTest is TestBaseMarketManager {
     event MarketEntered(address mToken, address account);
 
     function setUp() public override {
         super.setUp();
 
-        lendtroller.listToken(address(dUSDC));
+        marketManager.listToken(address(dUSDC));
     }
 
     function test_canBorrowWithNotify_fail_whenCallerIsNotMToken() public {
-        vm.expectRevert(Lendtroller.Lendtroller__Unauthorized.selector);
-        lendtroller.canBorrowWithNotify(address(dUSDC), user1, 100e6);
+        vm.expectRevert(MarketManager.MarketManager__Unauthorized.selector);
+        marketManager.canBorrowWithNotify(address(dUSDC), user1, 100e6);
     }
 
     function test_canBorrowWithNotify_fail_whenCallerMTokenIsNotListed()
@@ -24,35 +24,35 @@ contract CanBorrowWithNotifyTest is TestBaseLendtroller {
     {
         vm.prank(address(dDAI));
 
-        vm.expectRevert(Lendtroller.Lendtroller__TokenNotListed.selector);
-        lendtroller.canBorrowWithNotify(address(dDAI), user1, 100e6);
+        vm.expectRevert(MarketManager.MarketManager__TokenNotListed.selector);
+        marketManager.canBorrowWithNotify(address(dDAI), user1, 100e6);
     }
 
     function test_canBorrowWithNotify_fail_whenBorrowPaused() public {
-        lendtroller.setBorrowPaused(address(dUSDC), true);
+        marketManager.setBorrowPaused(address(dUSDC), true);
 
         vm.prank(address(dUSDC));
 
-        vm.expectRevert(Lendtroller.Lendtroller__Paused.selector);
-        lendtroller.canBorrowWithNotify(address(dUSDC), user1, 100e6);
+        vm.expectRevert(MarketManager.MarketManager__Paused.selector);
+        marketManager.canBorrowWithNotify(address(dUSDC), user1, 100e6);
     }
 
     function test_canBorrowWithNotify_fail_whenMTokenIsNotListed() public {
         vm.prank(address(dUSDC));
 
-        vm.expectRevert(Lendtroller.Lendtroller__Unauthorized.selector);
-        lendtroller.canBorrowWithNotify(address(dDAI), user1, 100e6);
+        vm.expectRevert(MarketManager.MarketManager__Unauthorized.selector);
+        marketManager.canBorrowWithNotify(address(dDAI), user1, 100e6);
     }
 
     function test_canBorrowWithNotify_fail_whenCallerIsNotMTokenAndBorrowerNotInMarket()
         public
     {
-        lendtroller.listToken(address(dDAI));
+        marketManager.listToken(address(dDAI));
 
         vm.prank(address(dUSDC));
 
-        vm.expectRevert(Lendtroller.Lendtroller__Unauthorized.selector);
-        lendtroller.canBorrowWithNotify(address(dDAI), user1, 100e6);
+        vm.expectRevert(MarketManager.MarketManager__Unauthorized.selector);
+        marketManager.canBorrowWithNotify(address(dDAI), user1, 100e6);
     }
 
     // function test_canBorrowWithNotify_fail_whenExceedsBorrowCap() external {
@@ -65,12 +65,12 @@ contract CanBorrowWithNotifyTest is TestBaseLendtroller {
     //     mTokens[0] = IMToken(address(cBALRETH));
     //     borrowCaps[0] = 100e6 - 1;
 
-    //     lendtroller.listToken(address(cBALRETH));
-    //     lendtroller.setCTokenCollateralCaps(mTokens, borrowCaps);
+    //     marketManager.listToken(address(cBALRETH));
+    //     marketManager.setCTokenCollateralCaps(mTokens, borrowCaps);
 
-    //     vm.expectRevert(Lendtroller.Lendtroller__BorrowCapReached.selector);
+    //     vm.expectRevert(MarketManager.MarketManager__BorrowCapReached.selector);
     //     vm.prank(address(cBALRETH));
-    //     lendtroller.canBorrowWithNotify(address(cBALRETH), user1, 100e6);
+    //     marketManager.canBorrowWithNotify(address(cBALRETH), user1, 100e6);
     // }
 
     // function test_canBorrowWithNotify_success_whenCapNotExceeded() external {
@@ -83,11 +83,11 @@ contract CanBorrowWithNotifyTest is TestBaseLendtroller {
     //     mTokens[0] = IMToken(address(cBALRETH));
     //     borrowCaps[0] = 100e6;
 
-    //     lendtroller.listToken(address(cBALRETH));
-    //     lendtroller.setCTokenCollateralCaps(mTokens, borrowCaps);
+    //     marketManager.listToken(address(cBALRETH));
+    //     marketManager.setCTokenCollateralCaps(mTokens, borrowCaps);
 
     //     vm.prank(address(cBALRETH));
-    //     lendtroller.canBorrowWithNotify(address(cBALRETH), user1, borrowCaps[0] - 1);
+    //     marketManager.canBorrowWithNotify(address(cBALRETH), user1, borrowCaps[0] - 1);
     // }
 
     function test_canBorrowWithNotify_fail_whenInsufficientLiquidity() public {
@@ -106,10 +106,10 @@ contract CanBorrowWithNotifyTest is TestBaseLendtroller {
         );
 
         vm.expectRevert(
-            Lendtroller.Lendtroller__InsufficientCollateral.selector
+            MarketManager.MarketManager__InsufficientCollateral.selector
         );
         vm.prank(address(dUSDC));
-        lendtroller.canBorrowWithNotify(address(dUSDC), user1, 100e6);
+        marketManager.canBorrowWithNotify(address(dUSDC), user1, 100e6);
     }
 
     function test_canBorrowWithNotify_success_whenSufficientLiquidity()
@@ -139,8 +139,8 @@ contract CanBorrowWithNotifyTest is TestBaseLendtroller {
             block.timestamp
         );
 
-        lendtroller.listToken(address(cBALRETH));
-        lendtroller.updateCollateralToken(
+        marketManager.listToken(address(cBALRETH));
+        marketManager.updateCollateralToken(
             IMToken(address(cBALRETH)),
             7000,
             4000,
@@ -155,24 +155,24 @@ contract CanBorrowWithNotifyTest is TestBaseLendtroller {
         tokens[0] = address(cBALRETH);
         uint256[] memory caps = new uint256[](1);
         caps[0] = 100_000e18;
-        lendtroller.setCTokenCollateralCaps(tokens, caps);
+        marketManager.setCTokenCollateralCaps(tokens, caps);
 
         // Need some CTokens/collateral to have enough liquidity for borrowing
         deal(address(balRETH), user1, 10_000e18);
         vm.startPrank(user1);
         balRETH.approve(address(cBALRETH), 1_000e18);
         cBALRETH.deposit(1_000e18, user1);
-        lendtroller.postCollateral(user1, address(cBALRETH), 999e18);
+        marketManager.postCollateral(user1, address(cBALRETH), 999e18);
         vm.stopPrank();
 
         vm.prank(address(dUSDC));
-        lendtroller.canBorrowWithNotify(address(dUSDC), user1, 100e6);
-        uint256 cooldownTimestamp = lendtroller.accountAssets(user1);
+        marketManager.canBorrowWithNotify(address(dUSDC), user1, 100e6);
+        uint256 cooldownTimestamp = marketManager.accountAssets(user1);
         assertEq(cooldownTimestamp, block.timestamp);
 
         AccountSnapshot memory snapshot = cBALRETH.getSnapshotPacked(user1);
         (uint256 price, ) = priceRouter.getPrice(cBALRETH.asset(), true, true);
-        (, uint256 collRatio, , , , , , , ) = lendtroller.tokenData(
+        (, uint256 collRatio, , , , , , , ) = marketManager.tokenData(
             address(cBALRETH)
         );
         uint256 assetValue = (price *
@@ -184,16 +184,16 @@ contract CanBorrowWithNotifyTest is TestBaseLendtroller {
         uint256 borrowInUSDC = (maxBorrow / 10 ** cBALRETH.decimals()) *
             10 ** dUSDC.decimals();
         vm.prank(address(dUSDC));
-        lendtroller.canBorrowWithNotify(address(dUSDC), user1, borrowInUSDC);
-        cooldownTimestamp = lendtroller.accountAssets(user1);
+        marketManager.canBorrowWithNotify(address(dUSDC), user1, borrowInUSDC);
+        cooldownTimestamp = marketManager.accountAssets(user1);
         assertEq(cooldownTimestamp, block.timestamp);
 
         // should fail when borrowing more than is allowed by provided collateral
         vm.expectRevert(
-            Lendtroller.Lendtroller__InsufficientCollateral.selector
+            MarketManager.MarketManager__InsufficientCollateral.selector
         );
         vm.prank(address(dUSDC));
-        lendtroller.canBorrowWithNotify(
+        marketManager.canBorrowWithNotify(
             address(dUSDC),
             user1,
             borrowInUSDC + 1e6
@@ -215,16 +215,16 @@ contract CanBorrowWithNotifyTest is TestBaseLendtroller {
             block.timestamp
         );
 
-        assertFalse(lendtroller.hasPosition(address(dUSDC), user1));
-        IMToken[] memory accountAssets = lendtroller.assetsOf(user1);
+        assertFalse(marketManager.hasPosition(address(dUSDC), user1));
+        IMToken[] memory accountAssets = marketManager.assetsOf(user1);
         assertEq(accountAssets.length, 0);
 
         vm.prank(address(dUSDC));
-        lendtroller.canBorrowWithNotify(address(dUSDC), user1, 0);
+        marketManager.canBorrowWithNotify(address(dUSDC), user1, 0);
 
-        assertTrue(lendtroller.hasPosition(address(dUSDC), user1));
+        assertTrue(marketManager.hasPosition(address(dUSDC), user1));
 
-        accountAssets = lendtroller.assetsOf(user1);
+        accountAssets = marketManager.assetsOf(user1);
         assertEq(accountAssets.length, 1);
         assertEq(address(accountAssets[0]), address(dUSDC));
     }

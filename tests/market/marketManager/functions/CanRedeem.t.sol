@@ -1,46 +1,46 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import { TestBaseLendtroller } from "../TestBaseLendtroller.sol";
-import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
+import { TestBaseMarketManager } from "../TestBaseMarketManager.sol";
+import { MarketManager } from "contracts/market/MarketManager.sol";
 import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 
-contract CanRedeemTest is TestBaseLendtroller {
+contract CanRedeemTest is TestBaseMarketManager {
     function setUp() public override {
         super.setUp();
 
-        lendtroller.listToken(address(dUSDC));
+        marketManager.listToken(address(dUSDC));
     }
 
     function test_canRedeem_fail_whenTokenNotListed() public {
-        vm.expectRevert(Lendtroller.Lendtroller__TokenNotListed.selector);
-        lendtroller.canRedeem(address(cBALRETH), user1, 100e6);
+        vm.expectRevert(MarketManager.MarketManager__TokenNotListed.selector);
+        marketManager.canRedeem(address(cBALRETH), user1, 100e6);
     }
 
     function test_canRedeem_fail_whenWithinMinimumHoldPeriod() public {
         vm.prank(address(dUSDC));
-        lendtroller.notifyBorrow(address(dUSDC), user1);
+        marketManager.notifyBorrow(address(dUSDC), user1);
 
-        vm.expectRevert(Lendtroller.Lendtroller__MinimumHoldPeriod.selector);
-        lendtroller.canRedeem(address(dUSDC), user1, 100e6);
+        vm.expectRevert(MarketManager.MarketManager__MinimumHoldPeriod.selector);
+        marketManager.canRedeem(address(dUSDC), user1, 100e6);
     }
 
     function test_canRedeem_success_whenPastMinimumHoldPeriod() public {
         vm.prank(address(dUSDC));
-        lendtroller.notifyBorrow(address(dUSDC), user1);
+        marketManager.notifyBorrow(address(dUSDC), user1);
 
         skip(20 minutes);
-        lendtroller.canRedeem(address(dUSDC), user1, 100e6);
+        marketManager.canRedeem(address(dUSDC), user1, 100e6);
     }
 
     function test_canRedeem_success_whenRedeemerNotInMarket() public {
-        assertFalse(lendtroller.hasPosition(address(dUSDC), user1));
-        lendtroller.canRedeem(address(dUSDC), user1, 100e6);
+        assertFalse(marketManager.hasPosition(address(dUSDC), user1));
+        marketManager.canRedeem(address(dUSDC), user1, 100e6);
     }
 
     function test_canRedeem_success_DTokenCanAlwaysBeRedeemed() public {
         assertFalse(dUSDC.isCToken());
-        lendtroller.canRedeem(address(dUSDC), user1, 100e6);
+        marketManager.canRedeem(address(dUSDC), user1, 100e6);
     }
 
     function test_canRedeem_fail_WhenCTokenInsufficientLiquidity() public {
@@ -66,7 +66,7 @@ contract CanRedeemTest is TestBaseLendtroller {
             block.timestamp,
             block.timestamp
         );
-        lendtroller.listToken(address(cBALRETH));
+        marketManager.listToken(address(cBALRETH));
         _setCbalRETHCollateralCaps(100_000e18);
 
         assertTrue(cBALRETH.isCToken());
@@ -74,15 +74,15 @@ contract CanRedeemTest is TestBaseLendtroller {
         vm.startPrank(user1);
         balRETH.approve(address(cBALRETH), 1_000e18);
         cBALRETH.deposit(1e18, user1);
-        lendtroller.postCollateral(user1, address(cBALRETH), 9e17);
+        marketManager.postCollateral(user1, address(cBALRETH), 9e17);
         vm.stopPrank();
 
-        assertTrue(lendtroller.hasPosition(address(cBALRETH), user1));
+        assertTrue(marketManager.hasPosition(address(cBALRETH), user1));
 
         skip(20 minutes);
         vm.expectRevert(
-            Lendtroller.Lendtroller__InsufficientCollateral.selector
+            MarketManager.MarketManager__InsufficientCollateral.selector
         );
-        lendtroller.canRedeem(address(cBALRETH), user1, 100e18);
+        marketManager.canRedeem(address(cBALRETH), user1, 100e18);
     }
 }

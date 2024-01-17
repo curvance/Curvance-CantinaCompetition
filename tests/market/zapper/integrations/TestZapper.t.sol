@@ -31,7 +31,7 @@ contract TestZapper is TestBaseMarket {
     }
 
     function testInitialize() public {
-        assertEq(address(zapper.lendtroller()), address(lendtroller));
+        assertEq(address(zapper.marketManager()), address(marketManager));
     }
 
     function testCurveInWithETH() public {

@@ -32,7 +32,7 @@ contract GetPricesForMarket is TestBasePriceRouter {
         deal(_USDC_ADDRESS, address(this), 1e18);
         vm.prank(address(this));
         IERC20(_USDC_ADDRESS).approve(address(mUSDC), 1e18);
-        vm.prank(address(lendtroller));
+        vm.prank(address(marketManager));
         mUSDC.startMarket(address(this));
 
         vm.expectRevert(PriceRouter.PriceRouter__NotSupported.selector);
@@ -45,7 +45,7 @@ contract GetPricesForMarket is TestBasePriceRouter {
         deal(_USDC_ADDRESS, address(this), 1e18);
         vm.prank(address(this));
         IERC20(_USDC_ADDRESS).approve(address(mUSDC), 1e18);
-        vm.prank(address(lendtroller));
+        vm.prank(address(marketManager));
         mUSDC.startMarket(address(this));
 
         _addSinglePriceFeed();
@@ -58,7 +58,7 @@ contract GetPricesForMarket is TestBasePriceRouter {
         deal(_USDC_ADDRESS, address(this), 1e18);
         vm.prank(address(this));
         IERC20(_USDC_ADDRESS).approve(address(mUSDC), 1e18);
-        vm.prank(address(lendtroller));
+        vm.prank(address(marketManager));
         mUSDC.startMarket(address(this));
 
         _addSinglePriceFeed();

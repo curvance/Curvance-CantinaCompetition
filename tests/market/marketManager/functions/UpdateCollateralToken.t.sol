@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import { TestBaseLendtroller } from "../TestBaseLendtroller.sol";
-import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
+import { TestBaseMarketManager } from "../TestBaseMarketManager.sol";
+import { MarketManager } from "contracts/market/MarketManager.sol";
 import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 
-contract UpdateCollateralTokenTest is TestBaseLendtroller {
+contract UpdateCollateralTokenTest is TestBaseMarketManager {
     event CollateralTokenUpdated(
         IMToken mToken,
         uint256 collRatio,
@@ -18,8 +18,8 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
     );
 
     function test_updateCollateralToken_fail_whenNotCToken() public {
-        vm.expectRevert(Lendtroller.Lendtroller__InvalidParameter.selector);
-        lendtroller.updateCollateralToken(
+        vm.expectRevert(MarketManager.MarketManager__InvalidParameter.selector);
+        marketManager.updateCollateralToken(
             IMToken(address(dUSDC)),
             9100 + 1,
             200,
@@ -36,8 +36,8 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
     {
         vm.prank(address(1));
 
-        vm.expectRevert(Lendtroller.Lendtroller__Unauthorized.selector);
-        lendtroller.updateCollateralToken(
+        vm.expectRevert(MarketManager.MarketManager__Unauthorized.selector);
+        marketManager.updateCollateralToken(
             IMToken(address(dUSDC)),
             9000,
             200,
@@ -53,9 +53,9 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
         public
     {
         // when liqInc > _MAX_LIQUIDATION_INCENTIVE
-        lendtroller.listToken(address(cBALRETH));
-        vm.expectRevert(Lendtroller.Lendtroller__InvalidParameter.selector);
-        lendtroller.updateCollateralToken(
+        marketManager.listToken(address(cBALRETH));
+        vm.expectRevert(MarketManager.MarketManager__InvalidParameter.selector);
+        marketManager.updateCollateralToken(
             IMToken(address(cBALRETH)),
             9000,
             200,
@@ -69,9 +69,9 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
 
     function test_updateCollateralToken_fail_whenLiqFeeExceedsMax() public {
         // when liqFee > _MAX_LIQUIDATION_FEE
-        lendtroller.listToken(address(cBALRETH));
-        vm.expectRevert(Lendtroller.Lendtroller__InvalidParameter.selector);
-        lendtroller.updateCollateralToken(
+        marketManager.listToken(address(cBALRETH));
+        vm.expectRevert(MarketManager.MarketManager__InvalidParameter.selector);
+        marketManager.updateCollateralToken(
             IMToken(address(cBALRETH)),
             9000,
             200,
@@ -85,9 +85,9 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
 
     function test_updateCollateralToken_fail_whenCollReqSoftExceedsMax() public {
         // when CollReqSoft > _MAX_COLLATERAL_REQUIREMENT
-        lendtroller.listToken(address(cBALRETH));
-        vm.expectRevert(Lendtroller.Lendtroller__InvalidParameter.selector);
-        lendtroller.updateCollateralToken(
+        marketManager.listToken(address(cBALRETH));
+        vm.expectRevert(MarketManager.MarketManager__InvalidParameter.selector);
+        marketManager.updateCollateralToken(
             IMToken(address(cBALRETH)),
             9000,
             23500, // collReqSoft
@@ -103,9 +103,9 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
         public
     {
         // when CollReqHard > CollReqSoft
-        lendtroller.listToken(address(cBALRETH));
-        vm.expectRevert(Lendtroller.Lendtroller__InvalidParameter.selector);
-        lendtroller.updateCollateralToken(
+        marketManager.listToken(address(cBALRETH));
+        vm.expectRevert(MarketManager.MarketManager__InvalidParameter.selector);
+        marketManager.updateCollateralToken(
             IMToken(address(cBALRETH)),
             9000,
             4000, // CollReqSoft - soft liquidation requirement
@@ -119,9 +119,9 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
 
     function test_updateCollateralToken_fail_whenCollRatioExceedsMax() public {
         // when collRatio > _MAX_COLLATERALIZATION_RATIO
-        lendtroller.listToken(address(cBALRETH));
-        vm.expectRevert(Lendtroller.Lendtroller__InvalidParameter.selector);
-        lendtroller.updateCollateralToken(
+        marketManager.listToken(address(cBALRETH));
+        vm.expectRevert(MarketManager.MarketManager__InvalidParameter.selector);
+        marketManager.updateCollateralToken(
             IMToken(address(cBALRETH)),
             9101, // collRatio
             200,
@@ -137,9 +137,9 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
         public
     {
         // when collRatio > (EXP_SCALE * EXP_SCALE) / (EXP_SCALE + CollReqSoft)
-        lendtroller.listToken(address(cBALRETH));
-        vm.expectRevert(Lendtroller.Lendtroller__InvalidParameter.selector);
-        lendtroller.updateCollateralToken(
+        marketManager.listToken(address(cBALRETH));
+        vm.expectRevert(MarketManager.MarketManager__InvalidParameter.selector);
+        marketManager.updateCollateralToken(
             IMToken(address(cBALRETH)),
             9100, // collRatio
             4000,
@@ -155,9 +155,9 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
         public
     {
         // when liqInc > CollReqHard
-        lendtroller.listToken(address(cBALRETH));
-        vm.expectRevert(Lendtroller.Lendtroller__InvalidParameter.selector);
-        lendtroller.updateCollateralToken(
+        marketManager.listToken(address(cBALRETH));
+        vm.expectRevert(MarketManager.MarketManager__InvalidParameter.selector);
+        marketManager.updateCollateralToken(
             IMToken(address(cBALRETH)),
             7000,
             200,
@@ -171,9 +171,9 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
 
     function test_updateCollateralToken_fail_whenLiqIncNotEnough() public {
         // when (liqInc - liqFee) < _MIN_LIQUIDATION_INCENTIVE
-        lendtroller.listToken(address(cBALRETH));
-        vm.expectRevert(Lendtroller.Lendtroller__InvalidParameter.selector);
-        lendtroller.updateCollateralToken(
+        marketManager.listToken(address(cBALRETH));
+        vm.expectRevert(MarketManager.MarketManager__InvalidParameter.selector);
+        marketManager.updateCollateralToken(
             IMToken(address(cBALRETH)),
             9100,
             200,
@@ -186,8 +186,8 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
     }
 
     function test_updateCollateralToken_fail_whenMTokenIsNotListed() public {
-        vm.expectRevert(Lendtroller.Lendtroller__TokenNotListed.selector);
-        lendtroller.updateCollateralToken(
+        vm.expectRevert(MarketManager.MarketManager__TokenNotListed.selector);
+        marketManager.updateCollateralToken(
             IMToken(address(cBALRETH)),
             9100,
             300,
@@ -203,9 +203,9 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
         // Set Oracle timestamp to 0 to make price stale
         mockRethFeed.setMockUpdatedAt(1);
 
-        lendtroller.listToken(address(cBALRETH));
-        vm.expectRevert(Lendtroller.Lendtroller__PriceError.selector);
-        lendtroller.updateCollateralToken(
+        marketManager.listToken(address(cBALRETH));
+        vm.expectRevert(MarketManager.MarketManager__PriceError.selector);
+        marketManager.updateCollateralToken(
             IMToken(address(cBALRETH)),
             7000, // collRatio
             4000,
@@ -219,9 +219,9 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
 
     function test_updateCollateralToken_success() public {
         balRETH.approve(address(cBALRETH), 1e18);
-        lendtroller.listToken(address(cBALRETH));
+        marketManager.listToken(address(cBALRETH));
 
-        vm.expectEmit(true, true, true, true, address(lendtroller));
+        vm.expectEmit(true, true, true, true, address(marketManager));
         emit CollateralTokenUpdated(
             IMToken(address(cBALRETH)),
             0.7e18,
@@ -233,7 +233,7 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
             0.1e18
         );
 
-        lendtroller.updateCollateralToken(
+        marketManager.updateCollateralToken(
             IMToken(address(cBALRETH)),
             7000, // collRatio
             4000,
@@ -244,7 +244,7 @@ contract UpdateCollateralTokenTest is TestBaseLendtroller {
             1000
         );
 
-        (, uint256 collRatio, , , , , , , ) = lendtroller.tokenData(
+        (, uint256 collRatio, , , , , , , ) = marketManager.tokenData(
             address(cBALRETH)
         );
         assertEq(collRatio, 0.7e18);

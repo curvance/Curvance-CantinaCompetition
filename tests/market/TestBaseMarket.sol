@@ -15,7 +15,7 @@ import { OneBalanceFeeManager } from "contracts/architecture/OneBalanceFeeManage
 import { DToken } from "contracts/market/collateral/DToken.sol";
 import { AuraCToken } from "contracts/market/collateral/AuraCToken.sol";
 import { DynamicInterestRateModel } from "contracts/market/interestRates/DynamicInterestRateModel.sol";
-import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
+import { MarketManager } from "contracts/market/MarketManager.sol";
 import { Zapper } from "contracts/market/zapper/Zapper.sol";
 import { PositionFolding } from "contracts/market/leverage/PositionFolding.sol";
 import { ChainlinkAdaptor } from "contracts/oracles/adaptors/chainlink/ChainlinkAdaptor.sol";
@@ -87,7 +87,7 @@ contract TestBaseMarket is TestBase {
     ChainlinkAdaptor public chainlinkAdaptor;
     ChainlinkAdaptor public dualChainlinkAdaptor;
     DynamicInterestRateModel public InterestRateModel;
-    Lendtroller public lendtroller;
+    MarketManager public marketManager;
     PositionFolding public positionFolding;
     PriceRouter public priceRouter;
     AuraCToken public auraCToken;
@@ -138,7 +138,7 @@ contract TestBaseMarket is TestBase {
         _deployChainlinkAdaptors();
         _deployGaugePool();
 
-        _deployLendtroller();
+        _deployMarketManager();
         _deployDynamicInterestRateModel();
         _deployDUSDC();
         _deployDDAI();
@@ -383,13 +383,13 @@ contract TestBaseMarket is TestBase {
         centralRegistry.addGaugeController(address(gaugePool));
     }
 
-    function _deployLendtroller() internal {
-        lendtroller = new Lendtroller(
+    function _deployMarketManager() internal {
+        marketManager = new MarketManager(
             ICentralRegistry(address(centralRegistry)),
             address(gaugePool)
         );
         centralRegistry.addLendingMarket(
-            address(lendtroller),
+            address(marketManager),
             marketInterestFactor
         );
     }
@@ -422,7 +422,7 @@ contract TestBaseMarket is TestBase {
             new DToken(
                 ICentralRegistry(address(centralRegistry)),
                 token,
-                address(lendtroller),
+                address(marketManager),
                 address(InterestRateModel)
             );
     }
@@ -431,7 +431,7 @@ contract TestBaseMarket is TestBase {
         cBALRETH = new AuraCToken(
             ICentralRegistry(address(centralRegistry)),
             IERC20(_BALANCER_WETH_RETH),
-            address(lendtroller),
+            address(marketManager),
             109,
             _REWARDER,
             _AURA_BOOSTER
@@ -442,7 +442,7 @@ contract TestBaseMarket is TestBase {
     function _deployZapper() internal returns (Zapper) {
         zapper = new Zapper(
             ICentralRegistry(address(centralRegistry)),
-            address(lendtroller),
+            address(marketManager),
             _WETH_ADDRESS
         );
         centralRegistry.addZapper(address(zapper));
@@ -452,7 +452,7 @@ contract TestBaseMarket is TestBase {
     function _deployPositionFolding() internal returns (PositionFolding) {
         positionFolding = new PositionFolding(
             ICentralRegistry(address(centralRegistry)),
-            address(lendtroller)
+            address(marketManager)
         );
         return positionFolding;
     }
@@ -488,7 +488,7 @@ contract TestBaseMarket is TestBase {
     }
 
     function _setCbalRETHCollateralCaps(uint256 cap) internal {
-        lendtroller.updateCollateralToken(
+        marketManager.updateCollateralToken(
             IMToken(address(cBALRETH)),
             7000,
             4000,
@@ -502,6 +502,6 @@ contract TestBaseMarket is TestBase {
         tokens[0] = address(cBALRETH);
         uint256[] memory caps = new uint256[](1);
         caps[0] = cap;
-        lendtroller.setCTokenCollateralCaps(tokens, caps);
+        marketManager.setCTokenCollateralCaps(tokens, caps);
     }
 }

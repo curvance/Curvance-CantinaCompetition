@@ -19,7 +19,7 @@ import { DToken } from "contracts/market/collateral/DToken.sol";
 import { CTokenCompounding } from "contracts/market/collateral/CTokenCompounding.sol";
 import { AuraCToken } from "contracts/market/collateral/AuraCToken.sol";
 import { DynamicInterestRateModel } from "contracts/market/interestRates/DynamicInterestRateModel.sol";
-import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
+import { MarketManager } from "contracts/market/MarketManager.sol";
 import { Zapper } from "contracts/market/zapper/Zapper.sol";
 import { PositionFolding } from "contracts/market/leverage/PositionFolding.sol";
 import { ChainlinkAdaptor } from "contracts/oracles/adaptors/chainlink/ChainlinkAdaptor.sol";
@@ -51,7 +51,7 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
     ChainlinkAdaptor public chainlinkAdaptor;
     ChainlinkAdaptor public dualChainlinkAdaptor;
     DynamicInterestRateModel public InterestRateModel;
-    Lendtroller public lendtroller;
+    MarketManager public marketManager;
     PositionFolding public positionFolding;
     PriceRouter public priceRouter;
     AuraCToken public auraCToken;
@@ -117,8 +117,8 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
         // _deployChainlinkAdaptors();
         emit LogString("DEPLOYED: GaugePool");
         _deployGaugePool();
-        emit LogString("DEPLOYED: Lendtroller");
-        _deployLendtroller();
+        emit LogString("DEPLOYED: MarketManager");
+        _deployMarketManager();
         emit LogString("DEPLOYED: DynamicInterestRateModel");
         _deployDynamicInterestRateModel();
         emit LogString("DEPLOYED: DUSDC");
@@ -332,13 +332,13 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
         centralRegistry.addGaugeController(address(gaugePool));
     }
 
-    function _deployLendtroller() internal {
-        lendtroller = new Lendtroller(
+    function _deployMarketManager() internal {
+        marketManager = new MarketManager(
             ICentralRegistry(address(centralRegistry)),
             address(gaugePool)
         );
         centralRegistry.addLendingMarket(
-            address(lendtroller),
+            address(marketManager),
             marketInterestFactor
         );
     }
@@ -371,7 +371,7 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
             new DToken(
                 ICentralRegistry(address(centralRegistry)),
                 token,
-                address(lendtroller),
+                address(marketManager),
                 address(InterestRateModel)
             );
     }
@@ -379,7 +379,7 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
     function _deployPositionFolding() internal returns (PositionFolding) {
         positionFolding = new PositionFolding(
             ICentralRegistry(address(centralRegistry)),
-            address(lendtroller)
+            address(marketManager)
         );
         return positionFolding;
     }
