@@ -246,7 +246,7 @@ contract OCVE is ERC20 {
             );
 
             /// Equivalent to `(optionExerciseCost * amount) / WAD` rounded up.
-            amount = FixedPointMathLib.mulWadUp(optionExerciseCost, amount)
+            amount = FixedPointMathLib.mulWadUp(optionExerciseCost, amount);
 
             if (amount == 0) {
                 revert OCVE__CannotExercise();
