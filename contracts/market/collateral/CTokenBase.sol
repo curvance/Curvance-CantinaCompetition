@@ -88,7 +88,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
 
         // Set the marketManager after consulting Central Registry
         // Ensure that marketManager parameter is a marketManager
-        if (!centralRegistry.isLendingMarket(MarketManager_)) {
+        if (!centralRegistry.isMarketManager(MarketManager_)) {
             revert CTokenBase__MarketManagerIsNotLendingMarket();
         }
 
