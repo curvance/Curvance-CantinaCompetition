@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import { TestBasePriceRouter } from "../TestBasePriceRouter.sol";
+import { TestBaseOracleRouter } from "../TestBaseOracleRouter.sol";
 import { IChainlink } from "contracts/interfaces/external/chainlink/IChainlink.sol";
 import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
-import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
+import { OracleRouter } from "contracts/oracles/OracleRouter.sol";
 
-contract GetPricesForMarket is TestBasePriceRouter {
+contract GetPricesForMarket is TestBaseOracleRouter {
     IMToken[] public assets;
 
     function setUp() public override {
@@ -19,13 +19,13 @@ contract GetPricesForMarket is TestBasePriceRouter {
     function test_getPricesForMarket_fail_whenAssetsLengthIsZero() public {
         assets.pop();
 
-        vm.expectRevert(PriceRouter.PriceRouter__InvalidParameter.selector);
-        priceRouter.getPricesForMarket(address(this), assets, 1);
+        vm.expectRevert(OracleRouter.OracleRouter__InvalidParameter.selector);
+        oracleRouter.getPricesForMarket(address(this), assets, 1);
     }
 
     function test_getPricesForMarket_fail_whenMarketNotStarted() public {
         vm.expectRevert();
-        priceRouter.getPricesForMarket(address(this), assets, 1);
+        oracleRouter.getPricesForMarket(address(this), assets, 1);
     }
 
     function test_getPricesForMarket_fail_whenNoFeedsAvailable() public {
@@ -35,8 +35,8 @@ contract GetPricesForMarket is TestBasePriceRouter {
         vm.prank(address(marketManager));
         mUSDC.startMarket(address(this));
 
-        vm.expectRevert(PriceRouter.PriceRouter__NotSupported.selector);
-        priceRouter.getPricesForMarket(address(this), assets, 1);
+        vm.expectRevert(OracleRouter.OracleRouter__NotSupported.selector);
+        oracleRouter.getPricesForMarket(address(this), assets, 1);
     }
 
     function test_getPricesForMarket_fail_whenErrorCodeExceedsBreakpoint()
@@ -50,8 +50,8 @@ contract GetPricesForMarket is TestBasePriceRouter {
 
         _addSinglePriceFeed();
 
-        vm.expectRevert(PriceRouter.PriceRouter__ErrorCodeFlagged.selector);
-        priceRouter.getPricesForMarket(address(this), assets, 0);
+        vm.expectRevert(OracleRouter.OracleRouter__ErrorCodeFlagged.selector);
+        oracleRouter.getPricesForMarket(address(this), assets, 0);
     }
 
     function test_getPricesForMarket_success() public {
@@ -67,7 +67,7 @@ contract GetPricesForMarket is TestBasePriceRouter {
             AccountSnapshot[] memory snapshots,
             uint256[] memory underlyingPrices,
             uint256 numAssets
-        ) = priceRouter.getPricesForMarket(address(this), assets, 1);
+        ) = oracleRouter.getPricesForMarket(address(this), assets, 1);
 
         (, int256 usdcPrice, , , ) = IChainlink(_CHAINLINK_USDC_USD)
             .latestRoundData();

@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import { TestBasePriceRouter } from "../TestBasePriceRouter.sol";
-import { PendleLPTokenAdaptor } from "contracts/oracles/adaptors/pendle/PendleLPTokenAdaptor.sol";
+import { TestBaseOracleRouter } from "../TestBaseOracleRouter.sol";
+import { PendlePrincipalTokenAdaptor } from "contracts/oracles/adaptors/pendle/PendlePrincipalTokenAdaptor.sol";
 import { IPendlePTOracle } from "contracts/interfaces/external/pendle/IPendlePtOracle.sol";
+import { IPMarket } from "contracts/interfaces/external/pendle/IPMarket.sol";
 import { ChainlinkAdaptor } from "contracts/oracles/adaptors/chainlink/ChainlinkAdaptor.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
+import { OracleRouter } from "contracts/oracles/OracleRouter.sol";
 
-contract TestPendleLPTokenAdapter is TestBasePriceRouter {
+contract TestPendlePTTokenAdaptor is TestBaseOracleRouter {
     address internal constant _PT_ORACLE =
         0x14030836AEc15B2ad48bB097bd57032559339c92;
 
@@ -16,32 +17,32 @@ contract TestPendleLPTokenAdapter is TestBasePriceRouter {
     address private _PT_STETH = 0x7758896b6AC966BbABcf143eFA963030f17D3EdF; // PT-stETH-26DEC24
     address private _LP_STETH = 0xD0354D4e7bCf345fB117cabe41aCaDb724eccCa2; // PT-stETH-26DEC24/SY-stETH Market
 
-    PendleLPTokenAdaptor adapter;
+    PendlePrincipalTokenAdaptor adapter;
 
     function setUp() public override {
         _fork(18031848);
 
         _deployCentralRegistry();
-        _deployPriceRouter();
+        _deployOracleRouter();
 
-        adapter = new PendleLPTokenAdaptor(
+        adapter = new PendlePrincipalTokenAdaptor(
             ICentralRegistry(address(centralRegistry)),
             IPendlePTOracle(_PT_ORACLE)
         );
     }
 
     function testRevertWhenUnderlyingAssetPriceNotSet() public {
-        PendleLPTokenAdaptor.AdaptorData memory adapterData;
+        PendlePrincipalTokenAdaptor.AdaptorData memory adapterData;
+        adapterData.market = IPMarket(_LP_STETH);
         adapterData.twapDuration = 12;
         adapterData.quoteAsset = _STETH;
-        adapterData.pt = _PT_STETH;
         adapterData.quoteAssetDecimals = 18;
         vm.expectRevert(
-            PendleLPTokenAdaptor
-                .PendleLPTokenAdaptor__QuoteAssetIsNotSupported
+            PendlePrincipalTokenAdaptor
+                .PendlePrincipalTokenAdaptor__QuoteAssetIsNotSupported
                 .selector
         );
-        adapter.addAsset(_LP_STETH, adapterData);
+        adapter.addAsset(_PT_STETH, adapterData);
     }
 
     function testReturnsCorrectPrice() public {
@@ -49,21 +50,21 @@ contract TestPendleLPTokenAdapter is TestBasePriceRouter {
             ICentralRegistry(address(centralRegistry))
         );
         chainlinkAdaptor.addAsset(_STETH, _CHAINLINK_ETH_USD, 0, true);
-        priceRouter.addApprovedAdaptor(address(chainlinkAdaptor));
-        priceRouter.addAssetPriceFeed(_STETH, address(chainlinkAdaptor));
+        oracleRouter.addApprovedAdaptor(address(chainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(_STETH, address(chainlinkAdaptor));
 
-        PendleLPTokenAdaptor.AdaptorData memory adapterData;
+        PendlePrincipalTokenAdaptor.AdaptorData memory adapterData;
+        adapterData.market = IPMarket(_LP_STETH);
         adapterData.twapDuration = 12;
         adapterData.quoteAsset = _STETH;
-        adapterData.pt = _PT_STETH;
         adapterData.quoteAssetDecimals = 18;
-        adapter.addAsset(_LP_STETH, adapterData);
+        adapter.addAsset(_PT_STETH, adapterData);
 
-        priceRouter.addApprovedAdaptor(address(adapter));
-        priceRouter.addAssetPriceFeed(_LP_STETH, address(adapter));
+        oracleRouter.addApprovedAdaptor(address(adapter));
+        oracleRouter.addAssetPriceFeed(_PT_STETH, address(adapter));
 
-        (uint256 price, uint256 errorCode) = priceRouter.getPrice(
-            _LP_STETH,
+        (uint256 price, uint256 errorCode) = oracleRouter.getPrice(
+            _PT_STETH,
             true,
             false
         );
@@ -74,8 +75,8 @@ contract TestPendleLPTokenAdapter is TestBasePriceRouter {
     function testRevertAfterAssetRemove() public {
         testReturnsCorrectPrice();
 
-        adapter.removeAsset(_LP_STETH);
-        vm.expectRevert(PriceRouter.PriceRouter__NotSupported.selector);
-        priceRouter.getPrice(_LP_STETH, true, false);
+        adapter.removeAsset(_PT_STETH);
+        vm.expectRevert(OracleRouter.OracleRouter__NotSupported.selector);
+        oracleRouter.getPrice(_PT_STETH, true, false);
     }
 }

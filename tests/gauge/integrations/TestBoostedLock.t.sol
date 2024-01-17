@@ -59,7 +59,7 @@ contract TestBoostedLock is TestBaseMarket {
             marketManager.listToken(tokens[i]);
 
             // add MToken support on price router
-            priceRouter.addMTokenSupport(tokens[i]);
+            oracleRouter.addMTokenSupport(tokens[i]);
 
             for (uint256 j = 0; j < 10; j++) {
                 address user = users[j];

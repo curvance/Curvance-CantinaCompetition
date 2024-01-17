@@ -415,7 +415,7 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
         // skip min hold period
         skip(20 minutes);
 
-        (uint256 balRETHPrice, ) = priceRouter.getPrice(
+        (uint256 balRETHPrice, ) = oracleRouter.getPrice(
             address(balRETH),
             true,
             true
@@ -460,7 +460,7 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
         // skip min hold period
         skip(20 minutes);
 
-        (uint256 balRETHPrice, ) = priceRouter.getPrice(
+        (uint256 balRETHPrice, ) = oracleRouter.getPrice(
             address(balRETH),
             true,
             true

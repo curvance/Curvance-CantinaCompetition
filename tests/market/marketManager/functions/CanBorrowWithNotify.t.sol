@@ -171,7 +171,7 @@ contract CanBorrowWithNotifyTest is TestBaseMarketManager {
         assertEq(cooldownTimestamp, block.timestamp);
 
         AccountSnapshot memory snapshot = cBALRETH.getSnapshotPacked(user1);
-        (uint256 price, ) = priceRouter.getPrice(cBALRETH.asset(), true, true);
+        (uint256 price, ) = oracleRouter.getPrice(cBALRETH.asset(), true, true);
         (, uint256 collRatio, , , , , , , ) = marketManager.tokenData(
             address(cBALRETH)
         );

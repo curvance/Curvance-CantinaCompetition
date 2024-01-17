@@ -75,7 +75,7 @@ contract TestDynamicLiquidations is TestBaseMarket {
             dai.approve(address(dDAI), 200000e18);
             marketManager.listToken(address(dDAI));
             // add MToken support on price router
-            priceRouter.addMTokenSupport(address(dDAI));
+            oracleRouter.addMTokenSupport(address(dDAI));
         }
 
         // deploy CBALRETH
@@ -138,7 +138,7 @@ contract TestDynamicLiquidations is TestBaseMarket {
         // skip min hold period
         skip(900);
 
-        (uint256 balRETHPrice, ) = priceRouter.getPrice(
+        (uint256 balRETHPrice, ) = oracleRouter.getPrice(
             address(balRETH),
             true,
             true
@@ -176,7 +176,7 @@ contract TestDynamicLiquidations is TestBaseMarket {
         // skip min hold period
         skip(20 minutes);
 
-        (uint256 balRETHPrice, ) = priceRouter.getPrice(
+        (uint256 balRETHPrice, ) = oracleRouter.getPrice(
             address(balRETH),
             true,
             true

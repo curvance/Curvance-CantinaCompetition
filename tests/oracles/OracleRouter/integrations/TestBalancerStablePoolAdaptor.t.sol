@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import { TestBasePriceRouter } from "../TestBasePriceRouter.sol";
+import { TestBaseOracleRouter } from "../TestBaseOracleRouter.sol";
 import { BalancerStablePoolAdaptor } from "contracts/oracles/adaptors/balancer/BalancerStablePoolAdaptor.sol";
 import { IVault } from "contracts/oracles/adaptors/balancer/BalancerBaseAdaptor.sol";
 import { ChainlinkAdaptor } from "contracts/oracles/adaptors/chainlink/ChainlinkAdaptor.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
+import { OracleRouter } from "contracts/oracles/OracleRouter.sol";
 
-contract TestBalancerStablePoolAdaptor is TestBasePriceRouter {
+contract TestBalancerStablePoolAdaptor is TestBaseOracleRouter {
     address internal constant _BALANCER_VAULT =
         0xBA12222222228d8Ba445958a75a0704d566BF2C8;
 
@@ -30,7 +30,7 @@ contract TestBalancerStablePoolAdaptor is TestBasePriceRouter {
         _fork(18031848);
 
         _deployCentralRegistry();
-        _deployPriceRouter();
+        _deployOracleRouter();
 
         adaptor = new BalancerStablePoolAdaptor(
             ICentralRegistry(address(centralRegistry)),
@@ -62,9 +62,9 @@ contract TestBalancerStablePoolAdaptor is TestBasePriceRouter {
         );
         chainlinkAdaptor.addAsset(WETH, CHAINLINK_PRICE_FEED_ETH, 0, true);
         chainlinkAdaptor.addAsset(RETH, CHAINLINK_PRICE_FEED_RETH_ETH, 0, false);
-        priceRouter.addApprovedAdaptor(address(chainlinkAdaptor));
-        priceRouter.addAssetPriceFeed(WETH, address(chainlinkAdaptor));
-        priceRouter.addAssetPriceFeed(RETH, address(chainlinkAdaptor));
+        oracleRouter.addApprovedAdaptor(address(chainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(WETH, address(chainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(RETH, address(chainlinkAdaptor));
 
         BalancerStablePoolAdaptor.AdaptorData memory adapterData;
         adapterData.poolId = WETH_RETH_POOLID;
@@ -77,10 +77,10 @@ contract TestBalancerStablePoolAdaptor is TestBasePriceRouter {
         adapterData.underlyingOrConstituent[1] = WETH;
         adaptor.addAsset(WETH_RETH, adapterData);
 
-        priceRouter.addApprovedAdaptor(address(adaptor));
-        priceRouter.addAssetPriceFeed(WETH_RETH, address(adaptor));
+        oracleRouter.addApprovedAdaptor(address(adaptor));
+        oracleRouter.addAssetPriceFeed(WETH_RETH, address(adaptor));
 
-        (uint256 price, uint256 errorCode) = priceRouter.getPrice(
+        (uint256 price, uint256 errorCode) = oracleRouter.getPrice(
             WETH_RETH,
             true,
             false
@@ -93,7 +93,7 @@ contract TestBalancerStablePoolAdaptor is TestBasePriceRouter {
         testReturnsCorrectPrice();
 
         adaptor.removeAsset(WETH_RETH);
-        vm.expectRevert(PriceRouter.PriceRouter__NotSupported.selector);
-        priceRouter.getPrice(WETH_RETH, true, false);
+        vm.expectRevert(OracleRouter.OracleRouter__NotSupported.selector);
+        oracleRouter.getPrice(WETH_RETH, true, false);
     }
 }

@@ -18,7 +18,7 @@ contract TestBaseMarketManager is TestBaseMarket {
         _prepareDAI(address(this), _ONE);
         _prepareBALRETH(address(this), _ONE);
 
-        priceRouter.addMTokenSupport(address(dDAI));
+        oracleRouter.addMTokenSupport(address(dDAI));
 
         SafeTransferLib.safeApprove(_USDC_ADDRESS, address(dUSDC), _ONE);
         SafeTransferLib.safeApprove(_DAI_ADDRESS, address(dDAI), _ONE);

@@ -3,11 +3,11 @@ pragma solidity ^0.8.17;
 
 import { CamelotStableLPAdaptor } from "contracts/oracles/adaptors/camelot/CamelotStableLPAdaptor.sol";
 import { ChainlinkAdaptor } from "contracts/oracles/adaptors/chainlink/ChainlinkAdaptor.sol";
-import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
+import { OracleRouter } from "contracts/oracles/OracleRouter.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { TestBasePriceRouter } from "../TestBasePriceRouter.sol";
+import { TestBaseOracleRouter } from "../TestBaseOracleRouter.sol";
 
-contract TestCamelotStableLPAdapter is TestBasePriceRouter {
+contract TestCamelotStableLPAdapter is TestBaseOracleRouter {
     address private DAI = 0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1;
     address private USDC = 0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8;
 
@@ -30,11 +30,11 @@ contract TestCamelotStableLPAdapter is TestBasePriceRouter {
             ICentralRegistry(address(centralRegistry))
         );
 
-        priceRouter = new PriceRouter(
+        oracleRouter = new OracleRouter(
             ICentralRegistry(address(centralRegistry)),
             CHAINLINK_PRICE_FEED_ETH
         );
-        centralRegistry.setPriceRouter(address(priceRouter));
+        centralRegistry.setOracleRouter(address(oracleRouter));
 
         adapter = new CamelotStableLPAdaptor(
             ICentralRegistry(address(centralRegistry))
@@ -44,23 +44,23 @@ contract TestCamelotStableLPAdapter is TestBasePriceRouter {
         chainlinkAdaptor.addAsset(DAI, CHAINLINK_PRICE_FEED_DAI, 0, true);
         chainlinkAdaptor.addAsset(USDC, CHAINLINK_PRICE_FEED_USDC, 0, true);
 
-        priceRouter.addApprovedAdaptor(address(chainlinkAdaptor));
-        priceRouter.addAssetPriceFeed(DAI, address(chainlinkAdaptor));
-        priceRouter.addAssetPriceFeed(USDC, address(chainlinkAdaptor));
+        oracleRouter.addApprovedAdaptor(address(chainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(DAI, address(chainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(USDC, address(chainlinkAdaptor));
 
-        priceRouter.addApprovedAdaptor(address(adapter));
-        priceRouter.addAssetPriceFeed(DAI_USDC, address(adapter));
+        oracleRouter.addApprovedAdaptor(address(adapter));
+        oracleRouter.addAssetPriceFeed(DAI_USDC, address(adapter));
     }
 
     function testRevertWhenUnderlyingChainAssetPriceNotSet() public {
         chainlinkAdaptor.removeAsset(DAI);
 
-        vm.expectRevert(PriceRouter.PriceRouter__NotSupported.selector);
-        priceRouter.getPrice(DAI_USDC, true, false);
+        vm.expectRevert(OracleRouter.OracleRouter__NotSupported.selector);
+        oracleRouter.getPrice(DAI_USDC, true, false);
     }
 
     function testReturnsCorrectPrice() public {
-        (uint256 price, uint256 errorCode) = priceRouter.getPrice(
+        (uint256 price, uint256 errorCode) = oracleRouter.getPrice(
             DAI_USDC,
             true,
             false
@@ -73,7 +73,7 @@ contract TestCamelotStableLPAdapter is TestBasePriceRouter {
         testReturnsCorrectPrice();
 
         adapter.removeAsset(DAI_USDC);
-        vm.expectRevert(PriceRouter.PriceRouter__NotSupported.selector);
-        priceRouter.getPrice(DAI_USDC, true, false);
+        vm.expectRevert(OracleRouter.OracleRouter__NotSupported.selector);
+        oracleRouter.getPrice(DAI_USDC, true, false);
     }
 }

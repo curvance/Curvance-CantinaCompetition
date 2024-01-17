@@ -4,11 +4,11 @@ pragma solidity ^0.8.17;
 import { BaseOracleAdaptor } from "contracts/oracles/adaptors/BaseOracleAdaptor.sol";
 import { ChainlinkAdaptor } from "contracts/oracles/adaptors/chainlink/ChainlinkAdaptor.sol";
 import { GMAdaptor } from "contracts/oracles/adaptors/gmx/GMAdaptor.sol";
-import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
+import { OracleRouter } from "contracts/oracles/OracleRouter.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { TestBasePriceRouter } from "../TestBasePriceRouter.sol";
+import { TestBaseOracleRouter } from "../TestBaseOracleRouter.sol";
 
-contract TestGMAdaptor is TestBasePriceRouter {
+contract TestGMAdaptor is TestBaseOracleRouter {
     address private GMX_READER = 0xf60becbba223EEA9495Da3f606753867eC10d139;
     address private GMX_DATASTORE = 0xFD70de6b91282D8017aA4E741e9Ae325CAb992d8;
     address private GM_BTC_USDC = 0x47c031236e19d024b42f8AE6780E44A573170703;
@@ -33,11 +33,11 @@ contract TestGMAdaptor is TestBasePriceRouter {
 
         _deployCentralRegistry();
 
-        priceRouter = new PriceRouter(
+        oracleRouter = new OracleRouter(
             ICentralRegistry(address(centralRegistry)),
             CHAINLINK_PRICE_FEED_ETH
         );
-        centralRegistry.setPriceRouter(address(priceRouter));
+        centralRegistry.setOracleRouter(address(oracleRouter));
 
         adapter = new GMAdaptor(
             ICentralRegistry(address(centralRegistry)),
@@ -48,16 +48,16 @@ contract TestGMAdaptor is TestBasePriceRouter {
             ICentralRegistry(address(centralRegistry))
         );
 
-        priceRouter.addApprovedAdaptor(address(adapter));
-        priceRouter.addApprovedAdaptor(address(chainlinkAdaptor));
+        oracleRouter.addApprovedAdaptor(address(adapter));
+        oracleRouter.addApprovedAdaptor(address(chainlinkAdaptor));
 
         chainlinkAdaptor.addAsset(BTC, CHAINLINK_PRICE_FEED_BTC, 0, true);
         chainlinkAdaptor.addAsset(WBTC, CHAINLINK_PRICE_FEED_WBTC, 0, true);
         chainlinkAdaptor.addAsset(USDC, CHAINLINK_PRICE_FEED_USDC, 0, true);
 
-        priceRouter.addAssetPriceFeed(BTC, address(chainlinkAdaptor));
-        priceRouter.addAssetPriceFeed(WBTC, address(chainlinkAdaptor));
-        priceRouter.addAssetPriceFeed(USDC, address(chainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(BTC, address(chainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(WBTC, address(chainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(USDC, address(chainlinkAdaptor));
 
         GMAdaptor.SyntheticAsset[]
             memory syntheticAssets = new GMAdaptor.SyntheticAsset[](1);
@@ -66,7 +66,7 @@ contract TestGMAdaptor is TestBasePriceRouter {
         adapter.registerSyntheticAssets(syntheticAssets);
         adapter.addAsset(GM_BTC_USDC);
 
-        priceRouter.addAssetPriceFeed(GM_BTC_USDC, address(adapter));
+        oracleRouter.addAssetPriceFeed(GM_BTC_USDC, address(adapter));
     }
 
     function testDeploymentRevertWhenCentralRegistryIsInvalid() public {
@@ -105,7 +105,7 @@ contract TestGMAdaptor is TestBasePriceRouter {
 
     function testAddAssetRevertWhenIndexTokenIsNotSupported() public {
         adapter.removeAsset(GM_BTC_USDC);
-        priceRouter.removeAssetPriceFeed(BTC, address(chainlinkAdaptor));
+        oracleRouter.removeAssetPriceFeed(BTC, address(chainlinkAdaptor));
 
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -118,7 +118,7 @@ contract TestGMAdaptor is TestBasePriceRouter {
 
     function testAddAssetRevertWhenLongTokenIsNotSupported() public {
         adapter.removeAsset(GM_BTC_USDC);
-        priceRouter.removeAssetPriceFeed(WBTC, address(chainlinkAdaptor));
+        oracleRouter.removeAssetPriceFeed(WBTC, address(chainlinkAdaptor));
 
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -131,7 +131,7 @@ contract TestGMAdaptor is TestBasePriceRouter {
 
     function testAddAssetRevertWhenShortTokenIsNotSupported() public {
         adapter.removeAsset(GM_BTC_USDC);
-        priceRouter.removeAssetPriceFeed(USDC, address(chainlinkAdaptor));
+        oracleRouter.removeAssetPriceFeed(USDC, address(chainlinkAdaptor));
 
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -150,7 +150,7 @@ contract TestGMAdaptor is TestBasePriceRouter {
     }
 
     function testReturnsCorrectPriceInUSD() public {
-        (uint256 price, uint256 errorCode) = priceRouter.getPrice(
+        (uint256 price, uint256 errorCode) = oracleRouter.getPrice(
             GM_BTC_USDC,
             true,
             false
@@ -161,7 +161,7 @@ contract TestGMAdaptor is TestBasePriceRouter {
     }
 
     function testReturnsCorrectPriceInETH() public {
-        (uint256 price, uint256 errorCode) = priceRouter.getPrice(
+        (uint256 price, uint256 errorCode) = oracleRouter.getPrice(
             GM_BTC_USDC,
             false,
             false

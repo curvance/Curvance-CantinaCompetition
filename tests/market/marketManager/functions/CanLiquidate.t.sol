@@ -3,7 +3,7 @@ pragma solidity ^0.8.17;
 
 import { TestBaseMarketManager } from "../TestBaseMarketManager.sol";
 import { MarketManager } from "contracts/market/MarketManager.sol";
-import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
+import { OracleRouter } from "contracts/oracles/OracleRouter.sol";
 import { PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
 import { WAD } from "contracts/libraries/Constants.sol";
 import { IMToken } from "contracts/interfaces/market/IMToken.sol";
@@ -60,7 +60,7 @@ contract CanLiquidateTest is TestBaseMarketManager {
             1000
         );
 
-        vm.expectRevert(PriceRouter.PriceRouter__InvalidParameter.selector);
+        vm.expectRevert(OracleRouter.OracleRouter__InvalidParameter.selector);
         marketManager.canLiquidate(
             address(dUSDC),
             address(cBALRETH),
@@ -86,7 +86,7 @@ contract CanLiquidateTest is TestBaseMarketManager {
             1000
         );
 
-        vm.expectRevert(PriceRouter.PriceRouter__InvalidParameter.selector);
+        vm.expectRevert(OracleRouter.OracleRouter__InvalidParameter.selector);
         marketManager.canLiquidate(
             address(dUSDC),
             address(cBALRETH),

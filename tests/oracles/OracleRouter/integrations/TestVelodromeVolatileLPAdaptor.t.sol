@@ -1,29 +1,27 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import { VelodromeStableLPAdaptor } from "contracts/oracles/adaptors/velodrome/VelodromeStableLPAdaptor.sol";
+import { VelodromeVolatileLPAdaptor } from "contracts/oracles/adaptors/velodrome/VelodromeVolatileLPAdaptor.sol";
 import { ChainlinkAdaptor } from "contracts/oracles/adaptors/chainlink/ChainlinkAdaptor.sol";
-import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
+import { OracleRouter } from "contracts/oracles/OracleRouter.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { VelodromeLib } from "contracts/libraries/VelodromeLib.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
-import { TestBasePriceRouter } from "../TestBasePriceRouter.sol";
+import { TestBaseOracleRouter } from "../TestBaseOracleRouter.sol";
 
-contract TestVelodromeStableLPAdapter is TestBasePriceRouter {
-    address private DAI = 0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1;
+contract TestVelodromeVolatileLPAdapter is TestBaseOracleRouter {
+    address private WETH = 0x4200000000000000000000000000000000000006;
     address private USDC = 0x7F5c764cBc14f9669B88837ca1490cCa17c31607;
 
     address private CHAINLINK_PRICE_FEED_ETH =
         0x13e3Ee699D1909E989722E753853AE30b17e08c5;
-    address private CHAINLINK_PRICE_FEED_DAI =
-        0x8dBa75e83DA73cc766A7e5a0ee71F656BAb470d6;
     address private CHAINLINK_PRICE_FEED_USDC =
         0x16a9FA2FDa030272Ce99B29CF780dFA30361E0f3;
 
     address private veloRouter = 0xa062aE8A9c5e11aaA026fc2670B0D65cCc8B2858;
-    address private DAI_USDC = 0x19715771E30c93915A5bbDa134d782b81A820076;
+    address private WETH_USDC = 0x0493Bf8b6DBB159Ce2Db2E0E8403E753Abd1235b;
 
-    VelodromeStableLPAdaptor public adaptor;
+    VelodromeVolatileLPAdaptor public adaptor;
 
     function setUp() public override {
         _fork("ETH_NODE_URI_OPTIMISM", 110333246);
@@ -33,38 +31,38 @@ contract TestVelodromeStableLPAdapter is TestBasePriceRouter {
             ICentralRegistry(address(centralRegistry))
         );
 
-        priceRouter = new PriceRouter(
+        oracleRouter = new OracleRouter(
             ICentralRegistry(address(centralRegistry)),
             CHAINLINK_PRICE_FEED_ETH
         );
-        centralRegistry.setPriceRouter(address(priceRouter));
+        centralRegistry.setOracleRouter(address(oracleRouter));
 
-        adaptor = new VelodromeStableLPAdaptor(
+        adaptor = new VelodromeVolatileLPAdaptor(
             ICentralRegistry(address(centralRegistry))
         );
-        adaptor.addAsset(DAI_USDC);
+        adaptor.addAsset(WETH_USDC);
 
-        chainlinkAdaptor.addAsset(DAI, CHAINLINK_PRICE_FEED_DAI, 0, true);
+        chainlinkAdaptor.addAsset(WETH, CHAINLINK_PRICE_FEED_ETH, 0, true);
         chainlinkAdaptor.addAsset(USDC, CHAINLINK_PRICE_FEED_USDC, 0, true);
 
-        priceRouter.addApprovedAdaptor(address(chainlinkAdaptor));
-        priceRouter.addAssetPriceFeed(DAI, address(chainlinkAdaptor));
-        priceRouter.addAssetPriceFeed(USDC, address(chainlinkAdaptor));
+        oracleRouter.addApprovedAdaptor(address(chainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(WETH, address(chainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(USDC, address(chainlinkAdaptor));
 
-        priceRouter.addApprovedAdaptor(address(adaptor));
-        priceRouter.addAssetPriceFeed(DAI_USDC, address(adaptor));
+        oracleRouter.addApprovedAdaptor(address(adaptor));
+        oracleRouter.addAssetPriceFeed(WETH_USDC, address(adaptor));
     }
 
     function testRevertWhenUnderlyingChainAssetPriceNotSet() public {
-        chainlinkAdaptor.removeAsset(DAI);
+        chainlinkAdaptor.removeAsset(WETH);
 
-        vm.expectRevert(PriceRouter.PriceRouter__NotSupported.selector);
-        priceRouter.getPrice(DAI_USDC, true, false);
+        vm.expectRevert(OracleRouter.OracleRouter__NotSupported.selector);
+        oracleRouter.getPrice(WETH_USDC, true, false);
     }
 
     function testReturnsCorrectPrice() public {
-        (uint256 price, uint256 errorCode) = priceRouter.getPrice(
-            DAI_USDC,
+        (uint256 price, uint256 errorCode) = oracleRouter.getPrice(
+            WETH_USDC,
             true,
             false
         );
@@ -75,15 +73,19 @@ contract TestVelodromeStableLPAdapter is TestBasePriceRouter {
     function testRevertAfterAssetRemove() public {
         testReturnsCorrectPrice();
 
-        adaptor.removeAsset(DAI_USDC);
-        vm.expectRevert(PriceRouter.PriceRouter__NotSupported.selector);
-        priceRouter.getPrice(DAI_USDC, true, false);
+        adaptor.removeAsset(WETH_USDC);
+        vm.expectRevert(OracleRouter.OracleRouter__NotSupported.selector);
+        oracleRouter.getPrice(WETH_USDC, true, false);
     }
 
     function testPriceDoesNotChangeAfterLargeSwap() public {
         uint256 errorCode;
         uint256 priceBefore;
-        (priceBefore, errorCode) = priceRouter.getPrice(DAI_USDC, true, false);
+        (priceBefore, errorCode) = oracleRouter.getPrice(
+            WETH_USDC,
+            true,
+            false
+        );
         assertEq(errorCode, 0);
         assertGt(priceBefore, 0);
 
@@ -92,18 +94,18 @@ contract TestVelodromeStableLPAdapter is TestBasePriceRouter {
         deal(USDC, address(this), amount);
         VelodromeLib._swapExactTokensForTokens(
             veloRouter,
-            DAI_USDC,
+            WETH_USDC,
             USDC,
-            DAI,
+            WETH,
             amount,
-            true
+            false
         );
 
         assertEq(IERC20(USDC).balanceOf(address(this)), 0);
-        assertGt(IERC20(DAI).balanceOf(address(this)), 0);
+        assertGt(IERC20(WETH).balanceOf(address(this)), 0);
 
         uint256 priceAfter;
-        (priceAfter, errorCode) = priceRouter.getPrice(DAI_USDC, true, false);
+        (priceAfter, errorCode) = oracleRouter.getPrice(WETH_USDC, true, false);
         assertEq(errorCode, 0);
         assertApproxEqRel(priceBefore, priceAfter, 100000);
     }

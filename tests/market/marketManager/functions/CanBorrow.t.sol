@@ -115,7 +115,7 @@ contract CanBorrowTest is TestBaseMarketManager {
         marketManager.canBorrow(address(dUSDC), user1, 100e6);
 
         AccountSnapshot memory snapshot = cBALRETH.getSnapshotPacked(user1);
-        (uint256 price, ) = priceRouter.getPrice(cBALRETH.asset(), true, true);
+        (uint256 price, ) = oracleRouter.getPrice(cBALRETH.asset(), true, true);
         (, uint256 collRatio, , , , , , , ) = marketManager.tokenData(
             address(cBALRETH)
         );

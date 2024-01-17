@@ -1,23 +1,23 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import { TestBasePriceRouter } from "../TestBasePriceRouter.sol";
-import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
+import { TestBaseOracleRouter } from "../TestBaseOracleRouter.sol";
+import { OracleRouter } from "contracts/oracles/OracleRouter.sol";
 
-contract AddAssetPriceFeedTest is TestBasePriceRouter {
+contract AddAssetPriceFeedTest is TestBaseOracleRouter {
     function test_addAssetPriceFeed_fail_whenCallerIsNotAuthorized() public {
         vm.prank(address(1));
 
-        vm.expectRevert(PriceRouter.PriceRouter__Unauthorized.selector);
-        priceRouter.addAssetPriceFeed(
+        vm.expectRevert(OracleRouter.OracleRouter__Unauthorized.selector);
+        oracleRouter.addAssetPriceFeed(
             _USDC_ADDRESS,
             address(chainlinkAdaptor)
         );
     }
 
     function test_addAssetPriceFeed_fail_whenAdaptorIsNotApproved() public {
-        vm.expectRevert(PriceRouter.PriceRouter__InvalidParameter.selector);
-        priceRouter.addAssetPriceFeed(
+        vm.expectRevert(OracleRouter.OracleRouter__InvalidParameter.selector);
+        oracleRouter.addAssetPriceFeed(
             _USDC_ADDRESS,
             address(chainlinkAdaptor)
         );
@@ -28,8 +28,8 @@ contract AddAssetPriceFeedTest is TestBasePriceRouter {
     {
         _addDualPriceFeed();
 
-        vm.expectRevert(PriceRouter.PriceRouter__InvalidParameter.selector);
-        priceRouter.addAssetPriceFeed(
+        vm.expectRevert(OracleRouter.OracleRouter__InvalidParameter.selector);
+        oracleRouter.addAssetPriceFeed(
             _USDC_ADDRESS,
             address(dualChainlinkAdaptor)
         );
@@ -38,8 +38,8 @@ contract AddAssetPriceFeedTest is TestBasePriceRouter {
     function test_addAssetPriceFeed_fail_whenFeedAlreadyAdded() public {
         _addSinglePriceFeed();
 
-        vm.expectRevert(PriceRouter.PriceRouter__InvalidParameter.selector);
-        priceRouter.addAssetPriceFeed(
+        vm.expectRevert(OracleRouter.OracleRouter__InvalidParameter.selector);
+        oracleRouter.addAssetPriceFeed(
             _USDC_ADDRESS,
             address(chainlinkAdaptor)
         );
@@ -50,8 +50,8 @@ contract AddAssetPriceFeedTest is TestBasePriceRouter {
 
         chainlinkAdaptor.removeAsset(_USDC_ADDRESS);
 
-        vm.expectRevert(PriceRouter.PriceRouter__InvalidParameter.selector);
-        priceRouter.addAssetPriceFeed(
+        vm.expectRevert(OracleRouter.OracleRouter__InvalidParameter.selector);
+        oracleRouter.addAssetPriceFeed(
             _USDC_ADDRESS,
             address(chainlinkAdaptor)
         );
@@ -59,22 +59,22 @@ contract AddAssetPriceFeedTest is TestBasePriceRouter {
 
     function test_addAssetPriceFeed_success() public {
         vm.expectRevert();
-        priceRouter.assetPriceFeeds(_USDC_ADDRESS, 0);
+        oracleRouter.assetPriceFeeds(_USDC_ADDRESS, 0);
 
         vm.expectRevert();
-        priceRouter.assetPriceFeeds(_USDC_ADDRESS, 1);
+        oracleRouter.assetPriceFeeds(_USDC_ADDRESS, 1);
 
         _addDualPriceFeed();
 
         assertEq(
-            priceRouter.assetPriceFeeds(_USDC_ADDRESS, 0),
+            oracleRouter.assetPriceFeeds(_USDC_ADDRESS, 0),
             address(chainlinkAdaptor)
         );
         assertEq(
-            priceRouter.assetPriceFeeds(_USDC_ADDRESS, 1),
+            oracleRouter.assetPriceFeeds(_USDC_ADDRESS, 1),
             address(dualChainlinkAdaptor)
         );
 
-        assertTrue(priceRouter.isSupportedAsset(_USDC_ADDRESS));
+        assertTrue(oracleRouter.isSupportedAsset(_USDC_ADDRESS));
     }
 }

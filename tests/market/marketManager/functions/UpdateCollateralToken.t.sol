@@ -199,7 +199,7 @@ contract UpdateCollateralTokenTest is TestBaseMarketManager {
         );
     }
 
-    function test_updateCollateralToken_fail_whenPriceRouterFails() public {
+    function test_updateCollateralToken_fail_whenOracleRouterFails() public {
         // Set Oracle timestamp to 0 to make price stale
         mockRethFeed.setMockUpdatedAt(1);
 

@@ -16,7 +16,7 @@ contract ExerciseOptionTest is TestBaseOCVE {
 
         skip(1000);
 
-        (uint256 paymentTokenCurrentPrice, ) = priceRouter.getPrice(
+        (uint256 paymentTokenCurrentPrice, ) = oracleRouter.getPrice(
             _USDC_ADDRESS,
             true,
             true
@@ -53,7 +53,7 @@ contract ExerciseOptionTest is TestBaseOCVE {
 
     function test_exerciseOption_fail_whenMsgValueIsInvalid() public {
         chainlinkAdaptor.addAsset(_E_ADDRESS, _CHAINLINK_ETH_USD, 0, true);
-        priceRouter.addAssetPriceFeed(_E_ADDRESS, address(chainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(_E_ADDRESS, address(chainlinkAdaptor));
 
         oCVE = new OCVE(
             ICentralRegistry(address(centralRegistry)),
@@ -62,7 +62,7 @@ contract ExerciseOptionTest is TestBaseOCVE {
 
         skip(1000);
 
-        (uint256 paymentTokenCurrentPrice, ) = priceRouter.getPrice(
+        (uint256 paymentTokenCurrentPrice, ) = oracleRouter.getPrice(
             _E_ADDRESS,
             true,
             true
@@ -84,7 +84,7 @@ contract ExerciseOptionTest is TestBaseOCVE {
         vm.assume(amount > 0 && amount < 1_000_000_000e18);
 
         chainlinkAdaptor.addAsset(_E_ADDRESS, _CHAINLINK_ETH_USD, 0, true);
-        priceRouter.addAssetPriceFeed(_E_ADDRESS, address(chainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(_E_ADDRESS, address(chainlinkAdaptor));
 
         oCVE = new OCVE(
             ICentralRegistry(address(centralRegistry)),
@@ -93,7 +93,7 @@ contract ExerciseOptionTest is TestBaseOCVE {
 
         skip(1000);
 
-        (uint256 paymentTokenCurrentPrice, ) = priceRouter.getPrice(
+        (uint256 paymentTokenCurrentPrice, ) = oracleRouter.getPrice(
             _E_ADDRESS,
             true,
             true

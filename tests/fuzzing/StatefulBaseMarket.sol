@@ -25,7 +25,7 @@ import { PositionFolding } from "contracts/market/leverage/PositionFolding.sol";
 import { ChainlinkAdaptor } from "contracts/oracles/adaptors/chainlink/ChainlinkAdaptor.sol";
 import { IVault } from "contracts/oracles/adaptors/balancer/BalancerBaseAdaptor.sol";
 import { BalancerStablePoolAdaptor } from "contracts/oracles/adaptors/balancer/BalancerStablePoolAdaptor.sol";
-import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
+import { OracleRouter } from "contracts/oracles/OracleRouter.sol";
 import { GaugePool } from "contracts/gauge/GaugePool.sol";
 import { ERC20 } from "contracts/libraries/external/ERC20.sol";
 
@@ -53,7 +53,7 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
     DynamicInterestRateModel public InterestRateModel;
     MarketManager public marketManager;
     PositionFolding public positionFolding;
-    PriceRouter public priceRouter;
+    OracleRouter public oracleRouter;
     AuraCToken public auraCToken;
     DToken public dUSDC;
     DToken public dDAI;
@@ -112,8 +112,8 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
         _deployVeCVE();
         emit LogString("DEPLOYED: Mock Chainlink V3 Aggregator");
         chainlinkEthUsd = new MockV3Aggregator(8, 1500e8, 1e50, 1e6);
-        emit LogString("DEPLOYED: PriceRouter");
-        _deployPriceRouter();
+        emit LogString("DEPLOYED: OracleRouter");
+        _deployOracleRouter();
         // _deployChainlinkAdaptors();
         emit LogString("DEPLOYED: GaugePool");
         _deployGaugePool();
@@ -132,9 +132,9 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
         emit LogString("DEPLOYED: PositionFolding");
         _deployPositionFolding();
         emit LogString("DEPLOYED: Adding dUSDC to router");
-        priceRouter.addMTokenSupport(address(dUSDC));
+        oracleRouter.addMTokenSupport(address(dUSDC));
         // emit LogString("DEPLOYED: Adding cBalReth to router");
-        // priceRouter.addMTokenSupport(address(cBALRETH));
+        // oracleRouter.addMTokenSupport(address(cBALRETH));
     }
 
     function _deployCentralRegistry() internal {
@@ -174,13 +174,13 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
         cveLocker.startLocker();
     }
 
-    function _deployPriceRouter() internal {
-        priceRouter = new PriceRouter(
+    function _deployOracleRouter() internal {
+        oracleRouter = new OracleRouter(
             ICentralRegistry(address(centralRegistry)),
             address(chainlinkEthUsd)
         );
 
-        centralRegistry.setPriceRouter(address(priceRouter));
+        centralRegistry.setOracleRouter(address(oracleRouter));
     }
 
     function _deployProtocolMessagingHub() internal {
@@ -251,17 +251,17 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
             false
         );
 
-        priceRouter.addApprovedAdaptor(address(chainlinkAdaptor));
-        priceRouter.addAssetPriceFeed(
+        oracleRouter.addApprovedAdaptor(address(chainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(
             _WETH_ADDRESS,
             address(chainlinkAdaptor)
         );
-        priceRouter.addAssetPriceFeed(
+        oracleRouter.addAssetPriceFeed(
             _USDC_ADDRESS,
             address(chainlinkAdaptor)
         );
-        priceRouter.addAssetPriceFeed(_DAI_ADDRESS, address(chainlinkAdaptor));
-        priceRouter.addAssetPriceFeed(
+        oracleRouter.addAssetPriceFeed(_DAI_ADDRESS, address(chainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(
             _RETH_ADDRESS,
             address(chainlinkAdaptor)
         );
@@ -308,20 +308,20 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
             0,
             false
         );
-        priceRouter.addApprovedAdaptor(address(dualChainlinkAdaptor));
-        priceRouter.addAssetPriceFeed(
+        oracleRouter.addApprovedAdaptor(address(dualChainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(
             _WETH_ADDRESS,
             address(dualChainlinkAdaptor)
         );
-        priceRouter.addAssetPriceFeed(
+        oracleRouter.addAssetPriceFeed(
             _USDC_ADDRESS,
             address(dualChainlinkAdaptor)
         );
-        priceRouter.addAssetPriceFeed(
+        oracleRouter.addAssetPriceFeed(
             _DAI_ADDRESS,
             address(dualChainlinkAdaptor)
         );
-        priceRouter.addAssetPriceFeed(
+        oracleRouter.addAssetPriceFeed(
             _RETH_ADDRESS,
             address(dualChainlinkAdaptor)
         );
@@ -385,8 +385,8 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
     }
 
     function _addSinglePriceFeed() internal {
-        priceRouter.addApprovedAdaptor(address(chainlinkAdaptor));
-        priceRouter.addAssetPriceFeed(
+        oracleRouter.addApprovedAdaptor(address(chainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(
             _USDC_ADDRESS,
             address(chainlinkAdaptor)
         );
@@ -395,8 +395,8 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
     function _addDualPriceFeed() internal {
         _addSinglePriceFeed();
 
-        priceRouter.addApprovedAdaptor(address(dualChainlinkAdaptor));
-        priceRouter.addAssetPriceFeed(
+        oracleRouter.addApprovedAdaptor(address(dualChainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(
             _USDC_ADDRESS,
             address(dualChainlinkAdaptor)
         );

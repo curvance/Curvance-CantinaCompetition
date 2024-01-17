@@ -49,7 +49,7 @@ contract ConvexLPCollateral is TestBaseMarket {
             0,
             true
         );
-        priceRouter.addAssetPriceFeed(ETH_ADDRESS, address(chainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(ETH_ADDRESS, address(chainlinkAdaptor));
         chainlinkStethUsd = new MockV3Aggregator(8, 1500e8, 3000e12, 1000e6);
         chainlinkAdaptor.addAsset(
             _STETH_ADDRESS,
@@ -57,7 +57,7 @@ contract ConvexLPCollateral is TestBaseMarket {
             0,
             true
         );
-        priceRouter.addAssetPriceFeed(
+        oracleRouter.addAssetPriceFeed(
             _STETH_ADDRESS,
             address(chainlinkAdaptor)
         );
@@ -69,12 +69,12 @@ contract ConvexLPCollateral is TestBaseMarket {
             address(CONVEX_STETH_ETH_POOL),
             address(CONVEX_STETH_ETH_POOL)
         );
-        priceRouter.addApprovedAdaptor(address(crvAdaptor));
-        priceRouter.addAssetPriceFeed(
+        oracleRouter.addApprovedAdaptor(address(crvAdaptor));
+        oracleRouter.addAssetPriceFeed(
             address(CONVEX_STETH_ETH_POOL),
             address(crvAdaptor)
         );
-        priceRouter.addMTokenSupport(address(cSTETH));
+        oracleRouter.addMTokenSupport(address(cSTETH));
 
         // Ensure STETH/USD, ETH/USD, and USDC/USD feeds are not stale
         skip(gaugePool.startTime() - block.timestamp);

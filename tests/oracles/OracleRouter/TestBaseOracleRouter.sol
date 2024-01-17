@@ -9,10 +9,10 @@ import { DynamicInterestRateModel } from "contracts/market/DynamicInterestRateMo
 import { MarketManager } from "contracts/market/MarketManager.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { ChainlinkAdaptor } from "contracts/oracles/adaptors/chainlink/ChainlinkAdaptor.sol";
-import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
+import { OracleRouter } from "contracts/oracles/OracleRouter.sol";
 import { MockDataFeed } from "contracts/mocks/MockDataFeed.sol";
 
-contract TestBasePriceRouter is TestBase {
+contract TestBaseOracleRouter is TestBase {
     address internal constant _USDC_ADDRESS =
         0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address internal constant _CHAINLINK_ETH_USD =
@@ -27,7 +27,7 @@ contract TestBasePriceRouter is TestBase {
     ChainlinkAdaptor public dualChainlinkAdaptor;
     DynamicInterestRateModel public InterestRateModel;
     MarketManager public marketManager;
-    PriceRouter public priceRouter;
+    OracleRouter public oracleRouter;
     DToken public mUSDC;
     MockDataFeed public sequencer;
 
@@ -35,7 +35,7 @@ contract TestBasePriceRouter is TestBase {
         _fork(18031848);
 
         _deployCentralRegistry();
-        _deployPriceRouter();
+        _deployOracleRouter();
         _deployChainlinkAdaptors();
 
         _deployMarketManager();
@@ -57,13 +57,13 @@ contract TestBasePriceRouter is TestBase {
         centralRegistry.transferEmergencyCouncil(address(this));
     }
 
-    function _deployPriceRouter() internal {
-        priceRouter = new PriceRouter(
+    function _deployOracleRouter() internal {
+        oracleRouter = new OracleRouter(
             ICentralRegistry(address(centralRegistry)),
             _CHAINLINK_ETH_USD
         );
 
-        centralRegistry.setPriceRouter(address(priceRouter));
+        centralRegistry.setOracleRouter(address(oracleRouter));
     }
 
     function _deployChainlinkAdaptors() internal {
@@ -125,8 +125,8 @@ contract TestBasePriceRouter is TestBase {
     }
 
     function _addSinglePriceFeed() internal {
-        priceRouter.addApprovedAdaptor(address(chainlinkAdaptor));
-        priceRouter.addAssetPriceFeed(
+        oracleRouter.addApprovedAdaptor(address(chainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(
             _USDC_ADDRESS,
             address(chainlinkAdaptor)
         );
@@ -135,8 +135,8 @@ contract TestBasePriceRouter is TestBase {
     function _addDualPriceFeed() internal {
         _addSinglePriceFeed();
 
-        priceRouter.addApprovedAdaptor(address(dualChainlinkAdaptor));
-        priceRouter.addAssetPriceFeed(
+        oracleRouter.addApprovedAdaptor(address(dualChainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(
             _USDC_ADDRESS,
             address(dualChainlinkAdaptor)
         );

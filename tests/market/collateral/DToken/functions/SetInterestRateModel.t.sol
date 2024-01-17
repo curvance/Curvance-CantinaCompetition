@@ -7,7 +7,7 @@ import { MarketManager } from "contracts/market/MarketManager.sol";
 import { DynamicInterestRateModel } from "contracts/market/DynamicInterestRateModel.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
-contract DTokenSetDynamicInterestRateModelTest is TestBaseDToken {
+contract DTokenSetInterestRateModelTest is TestBaseDToken {
     DynamicInterestRateModel public newDynamicInterestRateModel;
 
     function setUp() public override {

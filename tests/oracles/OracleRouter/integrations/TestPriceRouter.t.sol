@@ -3,13 +3,13 @@ pragma solidity ^0.8.17;
 
 import { VelodromeVolatileLPAdaptor } from "contracts/oracles/adaptors/velodrome/VelodromeVolatileLPAdaptor.sol";
 import { ChainlinkAdaptor } from "contracts/oracles/adaptors/chainlink/ChainlinkAdaptor.sol";
-import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
+import { OracleRouter } from "contracts/oracles/OracleRouter.sol";
 import { DToken } from "contracts/market/collateral/DToken.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
-import { TestBasePriceRouter } from "../TestBasePriceRouter.sol";
+import { TestBaseOracleRouter } from "../TestBaseOracleRouter.sol";
 
-contract TestPriceRouter is TestBasePriceRouter {
+contract TestOracleRouter is TestBaseOracleRouter {
     address private WETH = address(0x4200000000000000000000000000000000000006);
     address private USDC = address(0x7F5c764cBc14f9669B88837ca1490cCa17c31607);
 
@@ -32,28 +32,28 @@ contract TestPriceRouter is TestBasePriceRouter {
         _deployMarketManager();
         _deployDynamicInterestRateModel();
 
-        priceRouter = new PriceRouter(
+        oracleRouter = new OracleRouter(
             ICentralRegistry(address(centralRegistry)),
             CHAINLINK_PRICE_FEED_ETH
         );
-        centralRegistry.setPriceRouter(address(priceRouter));
+        centralRegistry.setOracleRouter(address(oracleRouter));
 
         chainlinkAdaptor = new ChainlinkAdaptor(
             ICentralRegistry(address(centralRegistry))
         );
         chainlinkAdaptor.addAsset(USDC, CHAINLINK_PRICE_FEED_USDC, 0, true);
         chainlinkAdaptor.addAsset(WETH, CHAINLINK_PRICE_FEED_ETH, 0, true);
-        priceRouter.addApprovedAdaptor(address(chainlinkAdaptor));
-        priceRouter.addAssetPriceFeed(USDC, address(chainlinkAdaptor));
-        priceRouter.addAssetPriceFeed(WETH, address(chainlinkAdaptor));
+        oracleRouter.addApprovedAdaptor(address(chainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(USDC, address(chainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(WETH, address(chainlinkAdaptor));
 
         adapter = new VelodromeVolatileLPAdaptor(
             ICentralRegistry(address(centralRegistry))
         );
         adapter.addAsset(WETH_USDC);
 
-        priceRouter.addApprovedAdaptor(address(adapter));
-        priceRouter.addAssetPriceFeed(WETH_USDC, address(adapter));
+        oracleRouter.addApprovedAdaptor(address(adapter));
+        oracleRouter.addAssetPriceFeed(WETH_USDC, address(adapter));
     }
 
     function testReturnsCorrectPrice() public {
@@ -61,7 +61,7 @@ contract TestPriceRouter is TestBasePriceRouter {
         uint256 lowerPrice;
         uint256 errorCode;
 
-        (higherPrice, errorCode) = priceRouter.getPrice(
+        (higherPrice, errorCode) = oracleRouter.getPrice(
             WETH_USDC,
             true,
             false
@@ -69,12 +69,12 @@ contract TestPriceRouter is TestBasePriceRouter {
         assertEq(errorCode, 0);
         assertGt(higherPrice, 0);
 
-        (lowerPrice, errorCode) = priceRouter.getPrice(WETH_USDC, true, true);
+        (lowerPrice, errorCode) = oracleRouter.getPrice(WETH_USDC, true, true);
         assertEq(errorCode, 0);
         assertGt(lowerPrice, 0);
         assertEq(higherPrice, lowerPrice);
 
-        (higherPrice, errorCode) = priceRouter.getPrice(
+        (higherPrice, errorCode) = oracleRouter.getPrice(
             WETH_USDC,
             false,
             false
@@ -82,7 +82,7 @@ contract TestPriceRouter is TestBasePriceRouter {
         assertEq(errorCode, 0);
         assertGt(higherPrice, 0);
 
-        (lowerPrice, errorCode) = priceRouter.getPrice(WETH_USDC, false, true);
+        (lowerPrice, errorCode) = oracleRouter.getPrice(WETH_USDC, false, true);
         assertEq(errorCode, 0);
         assertGt(lowerPrice, 0);
         assertEq(higherPrice, lowerPrice);
@@ -90,8 +90,8 @@ contract TestPriceRouter is TestBasePriceRouter {
 
     function testRevertAfterAssetRemove() public {
         adapter.removeAsset(WETH_USDC);
-        vm.expectRevert(PriceRouter.PriceRouter__NotSupported.selector);
-        priceRouter.getPrice(WETH_USDC, true, false);
+        vm.expectRevert(OracleRouter.OracleRouter__NotSupported.selector);
+        oracleRouter.getPrice(WETH_USDC, true, false);
     }
 
     function testReturnsCorrectPriceForMTokens() public {
@@ -106,13 +106,13 @@ contract TestPriceRouter is TestBasePriceRouter {
         IERC20(USDC).approve(address(dUSDC), 200000e6);
         marketManager.listToken(address(dUSDC));
 
-        priceRouter.addMTokenSupport(address(dUSDC));
+        oracleRouter.addMTokenSupport(address(dUSDC));
 
         uint256 dUSDCPrice;
         uint256 usdcPrice;
         uint256 errorCode;
 
-        (dUSDCPrice, errorCode) = priceRouter.getPrice(
+        (dUSDCPrice, errorCode) = oracleRouter.getPrice(
             address(dUSDC),
             true,
             false
@@ -120,17 +120,17 @@ contract TestPriceRouter is TestBasePriceRouter {
         assertEq(errorCode, 0);
         assertApproxEqRel(dUSDCPrice, 1 ether, 0.01 ether);
 
-        (usdcPrice, errorCode) = priceRouter.getPrice(USDC, true, false);
+        (usdcPrice, errorCode) = oracleRouter.getPrice(USDC, true, false);
         assertEq(errorCode, 0);
         assertEq(dUSDCPrice, usdcPrice);
     }
 
     function testRevertWhenAdaptorNotApproved() public {
-        priceRouter.removeApprovedAdaptor(address(adapter));
+        oracleRouter.removeApprovedAdaptor(address(adapter));
 
         vm.expectRevert(
-            PriceRouter.PriceRouter__AdaptorIsNotApproved.selector
+            OracleRouter.OracleRouter__AdaptorIsNotApproved.selector
         );
-        priceRouter.getPrice(WETH_USDC, true, false);
+        oracleRouter.getPrice(WETH_USDC, true, false);
     }
 }

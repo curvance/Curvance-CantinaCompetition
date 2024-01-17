@@ -80,7 +80,7 @@ contract TestCTokenReserves is TestBaseMarket {
             dai.approve(address(dDAI), 200000e18);
             marketManager.listToken(address(dDAI));
             // add MToken support on price router
-            priceRouter.addMTokenSupport(address(dDAI));
+            oracleRouter.addMTokenSupport(address(dDAI));
         }
 
         // setup CBALRETH

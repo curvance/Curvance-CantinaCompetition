@@ -2,10 +2,10 @@
 pragma solidity ^0.8.17;
 
 import { IChainlink } from "contracts/interfaces/external/chainlink/IChainlink.sol";
-import { TestBasePriceRouter } from "../TestBasePriceRouter.sol";
-import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
+import { TestBaseOracleRouter } from "../TestBaseOracleRouter.sol";
+import { OracleRouter } from "contracts/oracles/OracleRouter.sol";
 
-contract GetPricesTest is TestBasePriceRouter {
+contract GetPricesTest is TestBaseOracleRouter {
     address[] public assets;
     bool[] public inUSD;
     bool[] public getLower;
@@ -26,25 +26,25 @@ contract GetPricesTest is TestBasePriceRouter {
         assets.pop();
         assets.pop();
 
-        vm.expectRevert(PriceRouter.PriceRouter__InvalidParameter.selector);
-        priceRouter.getPrices(assets, inUSD, getLower);
+        vm.expectRevert(OracleRouter.OracleRouter__InvalidParameter.selector);
+        oracleRouter.getPrices(assets, inUSD, getLower);
     }
 
     function test_getPrice_fail_whenParameterLengthNotMatch() public {
         assets.pop();
 
-        vm.expectRevert(PriceRouter.PriceRouter__InvalidParameter.selector);
-        priceRouter.getPrices(assets, inUSD, getLower);
+        vm.expectRevert(OracleRouter.OracleRouter__InvalidParameter.selector);
+        oracleRouter.getPrices(assets, inUSD, getLower);
 
         inUSD.pop();
 
-        vm.expectRevert(PriceRouter.PriceRouter__InvalidParameter.selector);
-        priceRouter.getPrices(assets, inUSD, getLower);
+        vm.expectRevert(OracleRouter.OracleRouter__InvalidParameter.selector);
+        oracleRouter.getPrices(assets, inUSD, getLower);
     }
 
     function test_getPrice_fail_whenNoFeedsAvailable() public {
-        vm.expectRevert(PriceRouter.PriceRouter__NotSupported.selector);
-        priceRouter.getPrices(assets, inUSD, getLower);
+        vm.expectRevert(OracleRouter.OracleRouter__NotSupported.selector);
+        oracleRouter.getPrices(assets, inUSD, getLower);
     }
 
     function test_getPrice_success() public {
@@ -55,7 +55,7 @@ contract GetPricesTest is TestBasePriceRouter {
         (, int256 ethPrice, , , ) = IChainlink(_CHAINLINK_USDC_ETH)
             .latestRoundData();
 
-        (uint256[] memory prices, uint256[] memory errorCodes) = priceRouter
+        (uint256[] memory prices, uint256[] memory errorCodes) = oracleRouter
             .getPrices(assets, inUSD, getLower);
 
         assertEq(prices[0], uint256(usdcPrice) * 1e10);
