@@ -21,7 +21,7 @@ import { PositionFolding } from "contracts/market/leverage/PositionFolding.sol";
 import { ChainlinkAdaptor } from "contracts/oracles/adaptors/chainlink/ChainlinkAdaptor.sol";
 import { IVault } from "contracts/oracles/adaptors/balancer/BalancerBaseAdaptor.sol";
 import { BalancerStablePoolAdaptor } from "contracts/oracles/adaptors/balancer/BalancerStablePoolAdaptor.sol";
-import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
+import { OracleRouter } from "contracts/oracles/OracleRouter.sol";
 import { GaugePool } from "contracts/gauge/GaugePool.sol";
 import { MockTokenBridgeRelayer } from "contracts/mocks/MockTokenBridgeRelayer.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
@@ -89,7 +89,7 @@ contract TestBaseMarket is TestBase {
     DynamicInterestRateModel public InterestRateModel;
     MarketManager public marketManager;
     PositionFolding public positionFolding;
-    PriceRouter public priceRouter;
+    OracleRouter public oracleRouter;
     AuraCToken public auraCToken;
     DToken public dUSDC;
     DToken public dDAI;
@@ -134,7 +134,7 @@ contract TestBaseMarket is TestBase {
         _deployOneBalanceFeeManager();
         _deployFeeAccumulator();
         chainlinkEthUsd = new MockV3Aggregator(8, 1500e8, 1e50, 1e6);
-        _deployPriceRouter();
+        _deployOracleRouter();
         _deployChainlinkAdaptors();
         _deployGaugePool();
 
@@ -147,8 +147,8 @@ contract TestBaseMarket is TestBase {
         _deployZapper();
         _deployPositionFolding();
 
-        priceRouter.addMTokenSupport(address(dUSDC));
-        priceRouter.addMTokenSupport(address(cBALRETH));
+        oracleRouter.addMTokenSupport(address(dUSDC));
+        oracleRouter.addMTokenSupport(address(cBALRETH));
     }
 
     function _deployCentralRegistry() internal {
@@ -198,13 +198,13 @@ contract TestBaseMarket is TestBase {
         cveLocker.startLocker();
     }
 
-    function _deployPriceRouter() internal {
-        priceRouter = new PriceRouter(
+    function _deployOracleRouter() internal {
+        oracleRouter = new OracleRouter(
             ICentralRegistry(address(centralRegistry)),
             address(chainlinkEthUsd)
         );
 
-        centralRegistry.setPriceRouter(address(priceRouter));
+        centralRegistry.setOracleRouter(address(oracleRouter));
     }
 
     function _deployProtocolMessagingHub() internal {
@@ -282,17 +282,17 @@ contract TestBaseMarket is TestBase {
             false
         );
 
-        priceRouter.addApprovedAdaptor(address(chainlinkAdaptor));
-        priceRouter.addAssetPriceFeed(
+        oracleRouter.addApprovedAdaptor(address(chainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(
             _WETH_ADDRESS,
             address(chainlinkAdaptor)
         );
-        priceRouter.addAssetPriceFeed(
+        oracleRouter.addAssetPriceFeed(
             _USDC_ADDRESS,
             address(chainlinkAdaptor)
         );
-        priceRouter.addAssetPriceFeed(_DAI_ADDRESS, address(chainlinkAdaptor));
-        priceRouter.addAssetPriceFeed(
+        oracleRouter.addAssetPriceFeed(_DAI_ADDRESS, address(chainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(
             _RETH_ADDRESS,
             address(chainlinkAdaptor)
         );
@@ -339,20 +339,20 @@ contract TestBaseMarket is TestBase {
             0,
             false
         );
-        priceRouter.addApprovedAdaptor(address(dualChainlinkAdaptor));
-        priceRouter.addAssetPriceFeed(
+        oracleRouter.addApprovedAdaptor(address(dualChainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(
             _WETH_ADDRESS,
             address(dualChainlinkAdaptor)
         );
-        priceRouter.addAssetPriceFeed(
+        oracleRouter.addAssetPriceFeed(
             _USDC_ADDRESS,
             address(dualChainlinkAdaptor)
         );
-        priceRouter.addAssetPriceFeed(
+        oracleRouter.addAssetPriceFeed(
             _DAI_ADDRESS,
             address(dualChainlinkAdaptor)
         );
-        priceRouter.addAssetPriceFeed(
+        oracleRouter.addAssetPriceFeed(
             _RETH_ADDRESS,
             address(dualChainlinkAdaptor)
         );
@@ -371,8 +371,8 @@ contract TestBaseMarket is TestBase {
         adapterData.underlyingOrConstituent[0] = _RETH_ADDRESS;
         adapterData.underlyingOrConstituent[1] = _WETH_ADDRESS;
         balRETHAdapter.addAsset(_BALANCER_WETH_RETH, adapterData);
-        priceRouter.addApprovedAdaptor(address(balRETHAdapter));
-        priceRouter.addAssetPriceFeed(
+        oracleRouter.addApprovedAdaptor(address(balRETHAdapter));
+        oracleRouter.addAssetPriceFeed(
             _BALANCER_WETH_RETH,
             address(balRETHAdapter)
         );
@@ -458,8 +458,8 @@ contract TestBaseMarket is TestBase {
     }
 
     function _addSinglePriceFeed() internal {
-        priceRouter.addApprovedAdaptor(address(chainlinkAdaptor));
-        priceRouter.addAssetPriceFeed(
+        oracleRouter.addApprovedAdaptor(address(chainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(
             _USDC_ADDRESS,
             address(chainlinkAdaptor)
         );
@@ -468,8 +468,8 @@ contract TestBaseMarket is TestBase {
     function _addDualPriceFeed() internal {
         _addSinglePriceFeed();
 
-        priceRouter.addApprovedAdaptor(address(dualChainlinkAdaptor));
-        priceRouter.addAssetPriceFeed(
+        oracleRouter.addApprovedAdaptor(address(dualChainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(
             _USDC_ADDRESS,
             address(dualChainlinkAdaptor)
         );

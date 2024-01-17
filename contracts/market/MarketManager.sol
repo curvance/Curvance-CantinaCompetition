@@ -39,8 +39,8 @@ contract MarketManager is LiquidityManager, ERC165 {
     uint256 public constant MAX_BASE_CFACTOR = .5e18;
     /// @notice The minimum base cFactor. 10%.
     uint256 public constant MIN_BASE_CFACTOR = .1e18;
-    /// @notice Minimum hold time to prevent oracle price attacks.
-    uint256 internal constant _MIN_HOLD_PERIOD = 20 minutes;
+    /// @notice Minimum hold time to minimize external risks, in seconds.
+    uint256 public constant MIN_HOLD_PERIOD = 20 minutes;
     
     /// @dev `bytes4(keccak256(bytes("MarketManager__InvalidParameter()")))`
     uint256 internal constant _INVALID_PARAMETER_SELECTOR = 0x65513fc1;
@@ -488,7 +488,7 @@ contract MarketManager is LiquidityManager, ERC165 {
         // as well as short term price manipulations if the dynamic dual oracle
         // fails to protect the market somehow.
         if (
-            accountAssets[account].cooldownTimestamp + _MIN_HOLD_PERIOD >
+            accountAssets[account].cooldownTimestamp + MIN_HOLD_PERIOD >
             block.timestamp
         ) {
             revert MarketManager__MinimumHoldPeriod();
@@ -1188,7 +1188,7 @@ contract MarketManager is LiquidityManager, ERC165 {
         // as well as short term price manipulations if the dynamic dual oracle
         // fails to protect the market somehow.
         if (
-            accountAssets[account].cooldownTimestamp + _MIN_HOLD_PERIOD >
+            accountAssets[account].cooldownTimestamp + MIN_HOLD_PERIOD >
             block.timestamp
         ) {
             revert MarketManager__MinimumHoldPeriod();
