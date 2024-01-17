@@ -10,7 +10,7 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { DeployConfiguration } from "../utils/DeployConfiguration.sol";
 
 contract MarketManagerDeployer is DeployConfiguration {
-    address lendtroller;
+    address marketManager;
 
     function _deployMarketManager(
         address centralRegistry,
@@ -19,11 +19,11 @@ contract MarketManagerDeployer is DeployConfiguration {
         require(centralRegistry != address(0), "Set the centralRegistry!");
         require(gaugePool != address(0), "Set the gaugePool!");
 
-        lendtroller = address(
+        marketManager = address(
             new MarketManager(ICentralRegistry(centralRegistry), gaugePool)
         );
 
-        console.log("lendtroller: ", lendtroller);
-        _saveDeployedContracts("lendtroller", lendtroller);
+        console.log("marketManager: ", marketManager);
+        _saveDeployedContracts("marketManager", marketManager);
     }
 }
