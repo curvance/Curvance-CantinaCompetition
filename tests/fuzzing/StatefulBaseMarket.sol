@@ -337,7 +337,7 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
             ICentralRegistry(address(centralRegistry)),
             address(gaugePool)
         );
-        centralRegistry.addLendingMarket(
+        centralRegistry.addMarketManager(
             address(marketManager),
             marketInterestFactor
         );

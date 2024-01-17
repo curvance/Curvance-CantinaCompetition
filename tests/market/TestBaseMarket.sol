@@ -388,7 +388,7 @@ contract TestBaseMarket is TestBase {
             ICentralRegistry(address(centralRegistry)),
             address(gaugePool)
         );
-        centralRegistry.addLendingMarket(
+        centralRegistry.addMarketManager(
             address(marketManager),
             marketInterestFactor
         );
