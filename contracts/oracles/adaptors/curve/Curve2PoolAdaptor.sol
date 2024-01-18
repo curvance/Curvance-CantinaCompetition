@@ -54,14 +54,13 @@ contract Curve2PoolAdaptor is CurveBaseAdaptor {
 
     /// ERRORS ///
 
-    error Curve2PoolAdaptor__UnsupportedPool();
-    error Curve2PoolAdaptor__DidNotConverge();
     error Curve2PoolAdaptor__Reentrant();
+    error Curve2PoolAdaptor__BoundsExceeded();
+    error Curve2PoolAdaptor__UnsupportedPool();
     error Curve2PoolAdaptor__AssetIsAlreadyAdded();
     error Curve2PoolAdaptor__AssetIsNotSupported();
     error Curve2PoolAdaptor__QuoteAssetIsNotSupported();
     error Curve2PoolAdaptor__InvalidBounds();
-    error Curve2PoolAdaptor__BoundsExceeded();
 
     /// CONSTRUCTOR ///
 
@@ -103,12 +102,12 @@ contract Curve2PoolAdaptor is CurveBaseAdaptor {
             revert Curve2PoolAdaptor__Reentrant();
         }
 
-        AdaptorData memory Adaptor = adaptorData[asset];
-        ICurvePool pool = ICurvePool(Adaptor.pool);
+        AdaptorData memory data = adaptorData[asset];
+        ICurvePool pool = ICurvePool(data.pool);
 
         // Make sure virtualPrice is reasonable.
         uint256 virtualPrice = pool.get_virtual_price();
-        _enforceBounds(virtualPrice, Adaptor.lowerBound, Adaptor.upperBound);
+        _enforceBounds(virtualPrice, data.lowerBound, data.upperBound);
 
         // Get underlying token prices.
         IPriceRouter priceRouter = IPriceRouter(centralRegistry.priceRouter());
@@ -116,7 +115,7 @@ contract Curve2PoolAdaptor is CurveBaseAdaptor {
         uint256 price1;
         uint256 errorCode;
         (price0, errorCode) = priceRouter.getPrice(
-            Adaptor.underlyingOrConstituent0,
+            data.underlyingOrConstituent0,
             inUSD,
             getLower
         );
@@ -125,7 +124,7 @@ contract Curve2PoolAdaptor is CurveBaseAdaptor {
             return pData;
         }
         (price1, errorCode) = priceRouter.getPrice(
-            Adaptor.underlyingOrConstituent1,
+            data.underlyingOrConstituent1,
             inUSD,
             getLower
         );
@@ -136,14 +135,14 @@ contract Curve2PoolAdaptor is CurveBaseAdaptor {
 
         // Calculate LP token price.
         uint256 price;
-        if (Adaptor.isCorrelated) {
+        if (data.isCorrelated) {
             // Handle rates if needed.
-            if (Adaptor.divideRate0 || Adaptor.divideRate1) {
+            if (data.divideRate0 || data.divideRate1) {
                 uint256[2] memory rates = pool.stored_rates();
-                if (Adaptor.divideRate0) {
+                if (data.divideRate0) {
                     price0 = (price0 * WAD) / rates[0];
                 }
-                if (Adaptor.divideRate1) {
+                if (data.divideRate1) {
                     price1 = (price1 * WAD) / rates[1];
                 }
             }
@@ -207,6 +206,32 @@ contract Curve2PoolAdaptor is CurveBaseAdaptor {
         // Validate that the upper bound is greater than the lower bound.
         if (data.lowerBound >= data.upperBound) {
             revert Curve2PoolAdaptor__InvalidBounds();
+        }
+
+        uint256 coinsLength;
+        // Figure out how many tokens are in the curve pool.
+        while (true) {
+            try ICurvePool(data.pool).coins(coinsLength) {
+                ++coinsLength;
+            } catch {
+                break;
+            }
+        }
+        // Only support LPs with 2 underlying assets.
+        if (coinsLength != 2) {
+            revert Curve2PoolAdaptor__UnsupportedPool();
+        }
+
+        address underlying;
+        for (uint256 i; i < coinsLength; ) {
+            underlying = ICurvePool(pool).coins(i++);
+
+            if (
+                underlying != data.underlyingOrConstituent0 && 
+                underlying != data.underlyingOrConstituent1
+            ) {
+                revert Curve2PoolAdaptor__UnsupportedPool();
+            }
         }
 
         // Convert the parameters from `basis points` to `WAD` form,
