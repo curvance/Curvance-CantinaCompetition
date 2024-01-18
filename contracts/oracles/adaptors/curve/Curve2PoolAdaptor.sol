@@ -20,12 +20,15 @@ contract Curve2PoolAdaptor is CurveBaseAdaptor {
         /// @notice If we only have the market price of the underlying, 
         ///         and there is a rate with the underlying, 
         ///         then divide out the rate.
-        bool divideRate0; // 
-        /// @notice If we only new the safe price of constitient assets like sDAI,
-        ///         then we need to divide out the rate stored in the curve pool.
+        bool divideRate0;
+        /// @notice If we only new the safe price of constitient assets
+        ///         like sDAI,then we need to divide out the rate stored
+        ///         in the curve pool.
         bool divideRate1;
         bool isCorrelated;
+        /// @notice Upper bound allowed for an LP token's virtual price.
         uint256 upperBound;
+        /// @notice Lower bound allowed for an LP token's virtual price.
         uint256 lowerBound;
     }
 
@@ -33,8 +36,11 @@ contract Curve2PoolAdaptor is CurveBaseAdaptor {
 
     /// @notice Maximum bound range that can be increased on either side, 
     ///         this is not meant to be anti tamperproof but,
-    ///         more-so mitigate any human error.
+    ///         more-so mitigate any human error. 2%.
     uint256 internal constant _MAX_BOUND_INCREASE = .02e18;
+    /// @notice Maximum difference between lower bound and upper bound, 
+    ///         checked on configuration. 5%.
+    uint256 internal constant _MAX_BOUND_RANGE = .05e18;
 
     /// STORAGE ///
 
@@ -156,6 +162,11 @@ contract Curve2PoolAdaptor is CurveBaseAdaptor {
             price = (price * price0) / WAD;
         }
 
+        if (_checkOracleOverflow(price)) {
+            pData.hadError = true;
+            return pData;
+        }
+
         pData.price = uint240(price);
     }
 
@@ -170,13 +181,15 @@ contract Curve2PoolAdaptor is CurveBaseAdaptor {
         }
 
         // Make sure that the asset being added has the proper input
-        // via this sanity check
+        // via this sanity check.
         if (isLocked(asset, 2)) {
             revert Curve2PoolAdaptor__UnsupportedPool();
         }
 
+        address priceRouter = centralRegistry.priceRouter();
+
         if (
-            !IPriceRouter(centralRegistry.priceRouter()).isSupportedAsset(
+            !IPriceRouter(priceRouter).isSupportedAsset(
                 data.underlyingOrConstituent0
             )
         ) {
@@ -184,11 +197,28 @@ contract Curve2PoolAdaptor is CurveBaseAdaptor {
         }
 
         if (
-            !IPriceRouter(centralRegistry.priceRouter()).isSupportedAsset(
+            !IPriceRouter(priceRouter).isSupportedAsset(
                 data.underlyingOrConstituent1
             )
         ) {
             revert Curve2PoolAdaptor__QuoteAssetIsNotSupported();
+        }
+
+        // Validate that the upper bound is greater than the lower bound.
+        if (data.lowerBound >= data.upperBound) {
+            revert Curve2PoolAdaptor__InvalidBounds();
+        }
+
+        // Convert the parameters from `basis points` to `WAD` form,
+        // while inefficient consistently entering parameters in 
+        // `basis points` minimizes potential human error, 
+        // even if it costs a bit extra gas on configuration.
+        data.lowerBound = _bpToWad(data.lowerBound);
+        data.upperBound = _bpToWad(data.upperBound);
+
+        // Validate that the range between bounds is not too large.
+        if (_MAX_BOUND_RANGE + data.lowerBound < data.upperBound) {
+            revert Curve2PoolAdaptor__InvalidBounds();
         }
 
         adaptorData[asset] = data;
@@ -225,8 +255,8 @@ contract Curve2PoolAdaptor is CurveBaseAdaptor {
         _checkElevatedPermissions();
 
         // Convert the parameters from `basis points` to `WAD` form,
-        // while inefficient consistently entering parameters in basis points
-        // minimizes potential human error, 
+        // while inefficient consistently entering parameters in 
+        // `basis points` minimizes potential human error, 
         // even if it costs a bit extra gas on configuration.
         newLowerBound = _bpToWad(newLowerBound);
         newUpperBound = _bpToWad(newUpperBound);
@@ -234,6 +264,16 @@ contract Curve2PoolAdaptor is CurveBaseAdaptor {
         AdaptorData storage adaptorData = adaptorData[asset];
         uint256 oldLowerBound = adaptorData.lowerBound;
         uint256 oldUpperBound = adaptorData.upperBound;
+
+        // Validate that the upper bound is greater than the lower bound.
+        if (newLowerBound >= newUpperBound) {
+            revert Curve2PoolAdaptor__InvalidBounds();
+        }
+
+        // Validate that the range between bounds is not too large.
+        if (_MAX_BOUND_RANGE + newLowerBound < newUpperBound) {
+            revert Curve2PoolAdaptor__InvalidBounds();
+        }
 
         // Validate that the new bounds are higher than the old ones, 
         // since virtual prices only rise overtime, 
