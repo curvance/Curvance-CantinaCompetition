@@ -131,7 +131,7 @@ contract ExerciseOptionTest is TestBaseOCVE {
 
         uint256 usdcBalance = usdc.balanceOf(address(this));
         uint256 oCVEUSDCBalance = usdc.balanceOf(address(oCVE));
-        uint256 optionExerciseCost = (amount * oCVE.paymentTokenPerCVE) / 1e18;
+        uint256 optionExerciseCost = (amount * oCVE.paymentTokenPerCVE()) / 1e18;
         uint256 payAmount = FixedPointMathLib.mulWadUp(
                 optionExerciseCost, 
                 amount / 1e12

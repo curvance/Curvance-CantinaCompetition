@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import { CurvanceDAOLBP } from "contracts/sale/CurvanceDAOLBP.sol";
+import { CurvanceDAOLBP } from "contracts/misc/CurvanceDAOLBP.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
