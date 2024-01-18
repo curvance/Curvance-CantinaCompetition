@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { LiquidityManager, IOracleRouter, IMToken, WAD } from "contracts/market/LiquidityManager.sol";
+import { LiquidityManager, IOracleRouter, IMToken } from "contracts/market/LiquidityManager.sol";
 
+import { WAD, WAD_SQUARED } from "contracts/libraries/Constants.sol";
 import { ERC165 } from "contracts/libraries/external/ERC165.sol";
 import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 
@@ -839,7 +840,7 @@ contract MarketManager is LiquidityManager, ERC165 {
 
         // Validate the soft liquidation collateral premium
         // is not more strict than the asset's CR.
-        if (collRatio > (WAD * WAD) / (WAD + collReqSoft)) {
+        if (collRatio > (WAD_SQUARED / (WAD + collReqSoft))) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
