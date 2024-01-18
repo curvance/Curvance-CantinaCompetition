@@ -84,7 +84,7 @@ contract ExerciseOptionTest is TestBaseOCVE {
     function test_exerciseOption_success_withETH_fuzzed(
         uint256 amount
     ) public {
-        vm.assume(amount > 0 && amount < 1_000_000_000e18);
+        vm.assume(amount >= 1e18 && amount < 1_000_000_000e18);
 
         chainlinkAdaptor.addAsset(_E_ADDRESS, _CHAINLINK_ETH_USD, 0, true);
         oracleRouter.addAssetPriceFeed(_E_ADDRESS, address(chainlinkAdaptor));
@@ -123,7 +123,7 @@ contract ExerciseOptionTest is TestBaseOCVE {
     function test_exerciseOption_success_withERC20_fuzzed(
         uint256 amount
     ) public {
-        vm.assume(amount > 0 && amount < 1_000_000_000e18);
+        vm.assume(amount >= 1e18 && amount < 1_000_000_000e18);
 
         deal(address(oCVE), address(this), amount);
         deal(address(cve), address(oCVE), amount);

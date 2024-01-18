@@ -208,7 +208,8 @@ contract OCVE is ERC20 {
     /// @notice Exercise CVE call options.
     /// @param amount The amount of options to exercise.
     function exerciseOption(uint256 amount) public payable {
-        if (amount == 0) {
+        // Cannot exercise less than 1 option at a time.
+        if (amount < WAD) {
             revert OCVE__ParametersAreInvalid();
         }
 
