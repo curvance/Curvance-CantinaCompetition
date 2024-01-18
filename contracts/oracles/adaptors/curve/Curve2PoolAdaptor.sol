@@ -246,7 +246,7 @@ contract Curve2PoolAdaptor is CurveBaseAdaptor {
             revert Curve2PoolAdaptor__InvalidBounds();
         }
 
-        CurvePool pool = CurvePool(data.pool);
+        ICurvePool pool = ICurvePool(data.pool);
 
         // Make sure isCorrelated is correct for `pool`.
         if (data.isCorrelated) {
