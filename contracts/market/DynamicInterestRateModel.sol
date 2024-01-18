@@ -465,7 +465,7 @@ contract DynamicInterestRateModel {
             return newMultiplier < WAD ? WAD : newMultiplier;
         }
 
-        newMultiplier = ((currentMultiplier * WAD) / 
+        newMultiplier = ((currentMultiplier * WAD_SQUARED) / 
         (curveResult * config.adjustmentVelocity)) - decay;
 
         // Update and return with adjustment and decay rate applied.

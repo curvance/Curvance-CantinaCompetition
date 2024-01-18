@@ -13,11 +13,11 @@ import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.s
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 
 /// @title Curvance DAO Market Manager.
-/// @notice Manages risk within the Curvance DAO lending markets.
+/// @notice Manages risk within the Curvance DAO markets.
 contract MarketManager is LiquidityManager, ERC165 {
     /// CONSTANTS ///
 
-    /// @notice gaugePool contract address.
+    /// @notice The address of the linked Gauge Pool.
     IGaugePool public immutable gaugePool;
 
     /// @notice Maximum collateral requirement to avoid liquidation. 
