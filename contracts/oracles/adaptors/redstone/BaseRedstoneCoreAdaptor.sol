@@ -19,7 +19,7 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
         bool isConfigured;
         /// @notice The bytes32 encoded hash of the price feed.
         bytes32 symbolHash;
-        /// @param max the max valid price of the asset.
+        /// @notice max the max valid price of the asset.
         uint256 max;
     }
 

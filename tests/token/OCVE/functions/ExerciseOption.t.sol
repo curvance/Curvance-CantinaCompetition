@@ -2,7 +2,10 @@
 pragma solidity ^0.8.17;
 
 import { TestBaseOCVE } from "../TestBaseOCVE.sol";
+
 import { OCVE } from "contracts/token/OCVE.sol";
+import { FixedPointMathLib } from "contracts/libraries/external/FixedPointMathLib.sol";
+
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 contract ExerciseOptionTest is TestBaseOCVE {
@@ -128,20 +131,33 @@ contract ExerciseOptionTest is TestBaseOCVE {
 
         uint256 usdcBalance = usdc.balanceOf(address(this));
         uint256 oCVEUSDCBalance = usdc.balanceOf(address(oCVE));
+        uint256 convertedBalance = _adjustDecimals(amount, usdc.decimals(), 18);
+        uint256 optionExerciseCost = (amount * oCVE.paymentTokenPerCVE) / 1e18;
+        uint256 payAmount = FixedPointMathLib.mulWadUp(
+                optionExerciseCost, 
+                convertedBalance
+            );
 
-        usdc.approve(address(oCVE), amount / 1e12);
+         usdc.approve(address(oCVE), amount / 1e12);
+         usdc.allowance(address(this), address(oCVE));
 
-        vm.expectEmit(true, true, true, true, address(oCVE));
-        emit OptionsExercised(address(this), amount);
+        // We have extra checks here because its possible payAmount 
+        // becomes 0 due to rounding with USDC decimals != 18.
+        if (payAmount == 0) {
+            vm.expectRevert(OCVE.OCVE__CannotExercise.selector);
 
-        usdc.allowance(address(this), address(oCVE));
+            oCVE.exerciseOption(amount);
+        } else {
+            vm.expectEmit(true, true, true, true, address(oCVE));
+            emit OptionsExercised(address(this), amount);
 
-        oCVE.exerciseOption(amount);
+            oCVE.exerciseOption(amount);
 
-        assertEq(usdc.balanceOf(address(this)), usdcBalance - amount / 1e12);
-        assertEq(
-            usdc.balanceOf(address(oCVE)),
-            oCVEUSDCBalance + amount / 1e12
-        );
+            assertEq(usdc.balanceOf(address(this)), usdcBalance - amount / 1e12);
+            assertEq(
+                usdc.balanceOf(address(oCVE)),
+                oCVEUSDCBalance + amount / 1e12
+            );
+        }
     }
 }
