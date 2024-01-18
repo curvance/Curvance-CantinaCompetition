@@ -246,15 +246,38 @@ contract Curve2PoolAdaptor is CurveBaseAdaptor {
             revert Curve2PoolAdaptor__InvalidBounds();
         }
 
+        CurvePool pool = CurvePool(data.pool);
+
+        // Make sure isCorrelated is correct for `pool`.
+        if (data.isCorrelated) {
+            // If assets are correlated, there will not be a lp_price()
+            // function, so this should hit the catch statement.
+            try pool.lp_price() {
+                revert Curve2PoolAdaptor__UnsupportedPool();
+            } catch {}
+        } else {
+            // If assets are not correlated, there will be a lp_price()
+            // function, so this should hit the try statement.
+            try pool.lp_price() {} catch {
+                revert Curve2PoolAdaptor__UnsupportedPool();
+            }
+        }
+        
+        // Validate we can pull a virtual price.
+        uint256 testVirtualPrice = pool.get_virtual_price();
+
+        // Validate the virtualPrice is within the desired bounds.
+        _enforceBounds(testVirtualPrice, data.lowerBound, data.upperBound);
+
         adaptorData[asset] = data;
 
-        // Notify the adaptor to support the asset
+        // Notify the adaptor to support the asset.
         isSupportedAsset[asset] = true;
         emit CurvePoolAssetAdded(asset, data);
     }
 
     /// @notice Removes a supported asset from the adaptor.
-    /// @dev Calls back into price router to notify it of its removal
+    /// @dev Calls back into price router to notify it of its removal.
     function removeAsset(address asset) external override {
         _checkElevatedPermissions();
 
@@ -262,12 +285,13 @@ contract Curve2PoolAdaptor is CurveBaseAdaptor {
             revert Curve2PoolAdaptor__AssetIsNotSupported();
         }
 
-        // Notify the adaptor to stop supporting the asset
+        // Notify the adaptor to stop supporting the asset.
         delete isSupportedAsset[asset];
-        // Wipe config mapping entries for a gas refund
+        // Wipe config mapping entries for a gas refund.
         delete adaptorData[asset];
 
-        // Notify the price router that we are going to stop supporting the asset
+        // Notify the price router that we are going to stop supporting
+        // the asset.
         IPriceRouter(centralRegistry.priceRouter()).notifyFeedRemoval(asset);
         emit CurvePoolAssetRemoved(asset);
     }
