@@ -208,15 +208,17 @@ contract Curve2PoolAdaptor is CurveBaseAdaptor {
             revert Curve2PoolAdaptor__InvalidBounds();
         }
 
+        ICurvePool pool = ICurvePool(data.pool);
         uint256 coinsLength;
         // Figure out how many tokens are in the curve pool.
         while (true) {
-            try ICurvePool(data.pool).coins(coinsLength) {
+            try pool.coins(coinsLength) {
                 ++coinsLength;
             } catch {
                 break;
             }
         }
+
         // Only support LPs with 2 underlying assets.
         if (coinsLength != 2) {
             revert Curve2PoolAdaptor__UnsupportedPool();
@@ -224,7 +226,7 @@ contract Curve2PoolAdaptor is CurveBaseAdaptor {
 
         address underlying;
         for (uint256 i; i < coinsLength; ) {
-            underlying = ICurvePool(data.pool).coins(i++);
+            underlying = pool.coins(i++);
 
             if (
                 underlying != data.underlyingOrConstituent0 && 
@@ -245,8 +247,6 @@ contract Curve2PoolAdaptor is CurveBaseAdaptor {
         if (_MAX_BOUND_RANGE + data.lowerBound < data.upperBound) {
             revert Curve2PoolAdaptor__InvalidBounds();
         }
-
-        ICurvePool pool = ICurvePool(data.pool);
 
         // Make sure isCorrelated is correct for `pool`.
         if (data.isCorrelated) {
@@ -341,6 +341,10 @@ contract Curve2PoolAdaptor is CurveBaseAdaptor {
         if (oldUpperBound + _MAX_BOUND_INCREASE < newUpperBound) {
             revert Curve2PoolAdaptor__InvalidBounds();
         }
+
+        uint256 testVirtualPrice = ICurvePool(data.pool).get_virtual_price();
+        // Validate the virtualPrice is within the desired bounds.
+        _enforceBounds(testVirtualPrice, newLowerBound, newUpperBound);
 
         data.lowerBound = newLowerBound;
         data.upperBound = newUpperBound;
