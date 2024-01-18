@@ -269,11 +269,12 @@ contract CVEInitialDistribution is ReentrancyGuard {
 
     /// @dev Returns whether `leaf` exists in the Merkle tree with `root`,
     ///      given `proof`.
-    function verify(
-        bytes32[] memory proof,
-        bytes32 root,
-        bytes32 leaf
-    ) internal pure returns (bool isValid) {
+    /// @dev Returns whether `leaf` exists in the Merkle tree with `root`, given `proof`.
+    function verify(bytes32[] memory proof, bytes32 root, bytes32 leaf)
+        internal
+        pure
+        returns (bool isValid)
+    {
         /// @solidity memory-safe-assembly
         assembly {
             if mload(proof) {
@@ -282,11 +283,7 @@ contract CVEInitialDistribution is ReentrancyGuard {
                 // Left shift by 5 is equivalent to multiplying by 0x20.
                 let end := add(offset, shl(5, mload(proof)))
                 // Iterate over proof elements to compute root hash.
-                for {
-
-                } 1 {
-
-                } {
+                for {} 1 {} {
                     // Slot of `leaf` in scratch space.
                     // If the condition is true: 0x20, otherwise: 0x00.
                     let scratch := shl(5, gt(leaf, mload(offset)))
@@ -297,9 +294,7 @@ contract CVEInitialDistribution is ReentrancyGuard {
                     // Reuse `leaf` to store the hash to reduce stack operations.
                     leaf := keccak256(0x00, 0x40)
                     offset := add(offset, 0x20)
-                    if iszero(lt(offset, end)) {
-                        break
-                    }
+                    if iszero(lt(offset, end)) { break }
                 }
             }
             isValid := eq(leaf, root)
