@@ -224,7 +224,7 @@ contract Curve2PoolAdaptor is CurveBaseAdaptor {
 
         address underlying;
         for (uint256 i; i < coinsLength; ) {
-            underlying = ICurvePool(pool).coins(i++);
+            underlying = ICurvePool(data.pool).coins(i++);
 
             if (
                 underlying != data.underlyingOrConstituent0 && 
@@ -286,9 +286,9 @@ contract Curve2PoolAdaptor is CurveBaseAdaptor {
         newLowerBound = _bpToWad(newLowerBound);
         newUpperBound = _bpToWad(newUpperBound);
 
-        AdaptorData storage adaptorData = adaptorData[asset];
-        uint256 oldLowerBound = adaptorData.lowerBound;
-        uint256 oldUpperBound = adaptorData.upperBound;
+        AdaptorData storage data = adaptorData[asset];
+        uint256 oldLowerBound = data.lowerBound;
+        uint256 oldUpperBound = data.upperBound;
 
         // Validate that the upper bound is greater than the lower bound.
         if (newLowerBound >= newUpperBound) {
@@ -318,8 +318,8 @@ contract Curve2PoolAdaptor is CurveBaseAdaptor {
             revert Curve2PoolAdaptor__InvalidBounds();
         }
 
-        adaptorData.lowerBound = newLowerBound;
-        adaptorData.upperBound = newUpperBound;
+        data.lowerBound = newLowerBound;
+        data.upperBound = newUpperBound;
     }
 
     /// @notice Checks if `price` is within a reasonable bound.
