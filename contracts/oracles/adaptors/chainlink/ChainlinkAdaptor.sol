@@ -79,7 +79,7 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
     function getPrice(
         address asset,
         bool inUSD,
-        bool
+        bool  /* getLower */
     ) external view override returns (PriceReturnData memory) {
         if (!isSupportedAsset[asset]) {
             revert ChainlinkAdaptor__AssetIsNotSupported();
