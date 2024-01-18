@@ -12,6 +12,7 @@ contract ZapperBorrow is FeeTokenBridgingHub {
     /// ERRORS ///
 
     error ZapperBorrow__InvalidSwapper(address invalidSwapper);
+    error ZapperBorrow__InvalidSwapData();
 
     /// CONSTRUCTOR ///
 
@@ -35,13 +36,28 @@ contract ZapperBorrow is FeeTokenBridgingHub {
         // borrow
         DToken(dToken).borrowFor(msg.sender, address(this), borrowAmount);
 
+        address underlying = DToken(dToken).underlying();
+
         // swap
-        if (swapData.target != address(0)) {
+        if (underlying != feeToken) {
+            if (
+                swapData.target == address(0) ||
+                swapData.inputToken != underlying ||
+                swapData.outputToken != feeToken ||
+                swapData.inputAmount != borrowAmount
+            ) {
+                revert ZapperBorrow__InvalidSwapData();
+            }
+
             if (!centralRegistry.isSwapper(swapData.target)) {
                 revert ZapperBorrow__InvalidSwapper(swapData.target);
             }
             unchecked {
                 SwapperLib.swap(swapData);
+            }
+        } else {
+            if (swapData.target != address(0)) {
+                revert ZapperBorrow__InvalidSwapData();
             }
         }
 

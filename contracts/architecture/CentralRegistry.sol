@@ -69,7 +69,7 @@ contract CentralRegistry is ERC165 {
     /// @notice Fee Accumulator contract address.
     address public feeAccumulator;
 
-    // WORMHOLE CONTRACTS DATA
+    // CROSS-CHAIN MESSAGING DATA
 
     /// @notice Address of Wormhole core contract.
     IWormhole public wormholeCore;
