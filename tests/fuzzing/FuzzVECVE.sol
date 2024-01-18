@@ -587,9 +587,10 @@ contract FuzzVECVE is StatefulBaseMarket {
 
     function increaseAmountAndExtendLock_should_succeed_if_non_continuous(
         uint256 amount,
-        uint256 number
+        uint256 number,
+        bool continuousLock
     ) public {
-        bool continuousLock = false;
+        //bool continuousLock = false;
         require(veCVE.isShutdown() != 2);
         uint256 lockIndex = get_existing_lock(number);
         isAllContinuous = false;
