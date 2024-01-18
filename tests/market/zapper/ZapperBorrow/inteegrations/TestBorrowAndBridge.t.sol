@@ -10,9 +10,11 @@ import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 
 import { ITokenBridgeRelayer } from "contracts/interfaces/external/wormhole/ITokenBridgeRelayer.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { IERC20 } from "contracts/interfaces/IERC20.sol";
+import { IUniswapV3Router } from "contracts/interfaces/external/uniswap/IUniswapV3Router.sol";
 
 contract BorrownAndBridgeTest is TestBaseMarket {
+    address private _UNISWAP_V3_SWAP_ROUTER =
+        0xE592427A0AEce92De3Edee1F18E0157C05861564;
     ITokenBridgeRelayer public tokenBridgeRelayer =
         ITokenBridgeRelayer(_TOKEN_BRIDGE_RELAYER);
 
@@ -158,7 +160,7 @@ contract BorrownAndBridgeTest is TestBaseMarket {
         vm.stopPrank();
     }
 
-    function testDTokenBorrowRepay() public {
+    function testDTokenBorrowAndBridge() public {
         _prepareBALRETH(user1, _ONE);
 
         // try mint()
@@ -171,15 +173,25 @@ contract BorrownAndBridgeTest is TestBaseMarket {
         assertEq(cBALRETH.balanceOf(user1), _ONE);
         assertEq(cBALRETH.exchangeRateCached(), _ONE);
 
-        centralRegistry.addSwapper(address(this));
+        centralRegistry.addSwapper(_UNISWAP_V3_SWAP_ROUTER);
 
         SwapperLib.Swap memory swapData;
-        swapData.inputToken = address(dDAI);
+        swapData.inputToken = _DAI_ADDRESS;
         swapData.inputAmount = 500e18;
         swapData.outputToken = _USDC_ADDRESS;
-        swapData.target = address(this);
+        swapData.target = _UNISWAP_V3_SWAP_ROUTER;
+        IUniswapV3Router.ExactInputSingleParams memory params;
+        params.tokenIn = _DAI_ADDRESS;
+        params.tokenOut = _USDC_ADDRESS;
+        params.fee = 3000;
+        params.recipient = address(zapperBorrow);
+        params.deadline = block.timestamp;
+        params.amountIn = 500e18;
+        params.amountOutMinimum = 0;
+        params.sqrtPriceLimitX96 = 0;
         swapData.call = abi.encodeWithSelector(
-            BorrownAndBridgeTest.mockSwap.selector
+            IUniswapV3Router.exactInputSingle.selector,
+            params
         );
 
         uint256 messageFee = zapperBorrow.quoteWormholeFee(23, false);
@@ -197,11 +209,5 @@ contract BorrownAndBridgeTest is TestBaseMarket {
         dDAI.borrow(500e18);
 
         vm.stopPrank();
-    }
-
-    function mockSwap() external {
-        deal(_USDC_ADDRESS, address(this), 1000e6);
-
-        usdc.transfer(msg.sender, 1000e6);
     }
 }
