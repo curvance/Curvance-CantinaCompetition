@@ -51,20 +51,13 @@ contract TestGMAdaptor is TestBaseOracleRouter {
         oracleRouter.addApprovedAdaptor(address(adapter));
         oracleRouter.addApprovedAdaptor(address(chainlinkAdaptor));
 
-        chainlinkAdaptor.addAsset(BTC, CHAINLINK_PRICE_FEED_BTC, 0, true);
         chainlinkAdaptor.addAsset(WBTC, CHAINLINK_PRICE_FEED_WBTC, 0, true);
         chainlinkAdaptor.addAsset(USDC, CHAINLINK_PRICE_FEED_USDC, 0, true);
 
-        oracleRouter.addAssetPriceFeed(BTC, address(chainlinkAdaptor));
         oracleRouter.addAssetPriceFeed(WBTC, address(chainlinkAdaptor));
         oracleRouter.addAssetPriceFeed(USDC, address(chainlinkAdaptor));
 
-        GMAdaptor.SyntheticAsset[]
-            memory syntheticAssets = new GMAdaptor.SyntheticAsset[](1);
-        syntheticAssets[0] = GMAdaptor.SyntheticAsset(BTC, 8);
-
-        adapter.registerSyntheticAssets(syntheticAssets);
-        adapter.addAsset(GM_BTC_USDC);
+        adapter.addAsset(GM_BTC_USDC, WBTC);
 
         oracleRouter.addAssetPriceFeed(GM_BTC_USDC, address(adapter));
     }
@@ -100,20 +93,14 @@ contract TestGMAdaptor is TestBaseOracleRouter {
 
     function testAddAssetRevertWhenGMTokenIsAlreadySupported() public {
         vm.expectRevert(GMAdaptor.GMAdaptor__AssetIsAlreadySupported.selector);
-        adapter.addAsset(GM_BTC_USDC);
+        adapter.addAsset(GM_BTC_USDC, WBTC);
     }
 
-    function testAddAssetRevertWhenIndexTokenIsNotSupported() public {
+    function testAddAssetRevertWhenAlteredTokenIsInvalid() public {
         adapter.removeAsset(GM_BTC_USDC);
-        oracleRouter.removeAssetPriceFeed(BTC, address(chainlinkAdaptor));
 
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                GMAdaptor.GMAdaptor__MarketTokenIsNotSupported.selector,
-                BTC
-            )
-        );
-        adapter.addAsset(GM_BTC_USDC);
+        vm.expectRevert(GMAdaptor.GMAdaptor__AlteredTokenIsInvalid.selector);
+        adapter.addAsset(GM_BTC_USDC, address(0));
     }
 
     function testAddAssetRevertWhenLongTokenIsNotSupported() public {
@@ -126,7 +113,7 @@ contract TestGMAdaptor is TestBaseOracleRouter {
                 WBTC
             )
         );
-        adapter.addAsset(GM_BTC_USDC);
+        adapter.addAsset(GM_BTC_USDC, WBTC);
     }
 
     function testAddAssetRevertWhenShortTokenIsNotSupported() public {
@@ -139,7 +126,7 @@ contract TestGMAdaptor is TestBaseOracleRouter {
                 USDC
             )
         );
-        adapter.addAsset(GM_BTC_USDC);
+        adapter.addAsset(GM_BTC_USDC, WBTC);
     }
 
     function testRemoveAssetRevertWhenGMTokenIsNotSupported() public {
