@@ -1,12 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { ERC165 } from "contracts/libraries/ERC165.sol";
-import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
-import { ICentralRegistry, ChainData, OmnichainData } from "contracts/interfaces/ICentralRegistry.sol";
-import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
-import { IFeeAccumulator } from "contracts/interfaces/IFeeAccumulator.sol";
 import { DENOMINATOR } from "contracts/libraries/Constants.sol";
+import { ERC165 } from "contracts/libraries/external/ERC165.sol";
+import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
+
+import { ICentralRegistry, ChainData, OmnichainData } from "contracts/interfaces/ICentralRegistry.sol";
+import { IMarketManager } from "contracts/interfaces/market/IMarketManager.sol";
+import { IFeeAccumulator } from "contracts/interfaces/IFeeAccumulator.sol";
+import { IWormhole } from "contracts/interfaces/external/wormhole/IWormhole.sol";
+import { IWormholeRelayer } from "contracts/interfaces/external/wormhole/IWormholeRelayer.sol";
+import { ICircleRelayer } from "contracts/interfaces/external/wormhole/ICircleRelayer.sol";
+import { ITokenBridgeRelayer } from "contracts/interfaces/external/wormhole/ITokenBridgeRelayer.sol";
 
 contract CentralRegistry is ERC165 {
     /// CONSTANTS ///
@@ -14,13 +19,16 @@ contract CentralRegistry is ERC165 {
     /// @notice Genesis Epoch timestamp.
     uint256 public immutable genesisEpoch;
 
-    /// @notice Sequencer Uptime Feed address for L2.
+    /// @notice Sequencer Uptime feed address for L2.
     address public immutable sequencer;
 
-    /// bytes4(keccak256(bytes("CentralRegistry__ParametersMisconfigured()")))
+    /// @notice Address of fee token.
+    address public immutable feeToken;
+
+    /// @dev bytes4(keccak256(bytes("CentralRegistry__ParametersMisconfigured()")))
     uint256 internal constant _PARAMETERS_MISCONFIGURED_SELECTOR = 0xa5bb570d;
 
-    /// bytes4(keccak256(bytes("CentralRegistry__Unauthorized()")))
+    /// @dev bytes4(keccak256(bytes("CentralRegistry__Unauthorized()")))
     uint256 internal constant _UNAUTHORIZED_SELECTOR = 0xe675838a;
 
     /// STORAGE ///
@@ -55,13 +63,33 @@ contract CentralRegistry is ERC165 {
     /// @notice This chains Protocol Messaging Hub contract address.
     address public protocolMessagingHub;
 
-    /// @notice Price Router contract address.
-    address public priceRouter;
+    /// @notice Oracle Router contract address.
+    address public oracleRouter;
 
     /// @notice Fee Accumulator contract address.
     address public feeAccumulator;
 
+    // CROSS-CHAIN MESSAGING DATA
+
+    /// @notice Address of Wormhole core contract.
+    IWormhole public wormholeCore;
+
+    /// @notice Address of Wormhole Relayer.
+    IWormholeRelayer public wormholeRelayer;
+
+    /// @notice Address of Wormhole Circle Relayer.
+    ICircleRelayer public circleRelayer;
+
+    /// @notice Wormhole TokenBridgeRelayer.
+    ITokenBridgeRelayer public tokenBridgeRelayer;
+
+    // GELATO ADDRESSES
+
+    /// @notice The address of gelato sponsor.
+    address public gelatoSponsor;
+
     // PROTOCOL VALUES
+
     // Values are always set in `Basis Points`, any fees are converted to `WAD`
     // while multipliers stay in `DENOMINATOR` Fees:
 
@@ -90,10 +118,11 @@ contract CentralRegistry is ERC165 {
     uint256 public lockBoostMultiplier;
 
     // PROTOCOL VALUES DATA `WAD` set in `DENOMINATOR`.
-    /// @notice Lending Market => Protocol Reserve Factor on interest generated
+    /// @notice Market Manager => Protocol Reserve Factor on interest generated
     mapping(address => uint256) public protocolInterestFactor;
 
     // DAO PERMISSION DATA
+
     mapping(address => bool) public hasDaoPermissions;
     mapping(address => bool) public hasElevatedPermissions;
 
@@ -103,23 +132,31 @@ contract CentralRegistry is ERC165 {
 
     /// @notice How many other chains are supported.
     uint256 public supportedChains;
+    /// @notice Address array for all Curvance markets on this chain.
+    address[] public marketManagers;
 
     /// @notice ChainId => 2 = supported; 1 = unsupported.
     mapping(uint256 => ChainData) public supportedChainData;
 
-    /// @notice Address => chainID => Curvance identification information
+    /// @notice Address => chainID => Curvance identification information.
     mapping(address => mapping(uint256 => OmnichainData))
         public omnichainOperators;
     mapping(uint16 => uint256) public messagingToGETHChainId;
     mapping(uint256 => uint16) public GETHToMessagingChainId;
 
+    // WORMHOLE CONTRACT MAPPINGS
+
+    /// @notice Wormhole specific chain ID for evm chain ID.
+    mapping(uint256 => uint16) public wormholeChainId;
+
     // DAO CONTRACT MAPPINGS
+
     mapping(address => bool) public isZapper;
     mapping(address => bool) public isSwapper;
     mapping(address => bool) public isVeCVELocker;
     mapping(address => bool) public isGaugeController;
     mapping(address => bool) public isHarvester;
-    mapping(address => bool) public isLendingMarket;
+    mapping(address => bool) public isMarketManager;
     mapping(address => bool) public isEndpoint;
 
     /// EVENTS ///
@@ -142,11 +179,18 @@ contract CentralRegistry is ERC165 {
         string indexed contractType,
         address removedAddress
     );
+    event FeeTokenSet(address newAddress);
+    event WormholeCoreSet(address newAddress);
+    event WormholeRelayerSet(address newAddress);
+    event CircleRelayerSet(address newAddress);
+    event TokenBridgeRelayerSet(address newAddress);
+    event GelatoSponsorSet(address newAddress);
     event NewChainAdded(uint256 chainId, address operatorAddress);
     event RemovedChain(uint256 chainId, address operatorAddress);
 
     /// ERRORS ///
 
+    error CentralRegistry__InvalidFeeToken();
     error CentralRegistry__ParametersMisconfigured();
     error CentralRegistry__Unauthorized();
 
@@ -157,8 +201,13 @@ contract CentralRegistry is ERC165 {
         address timelock_,
         address emergencyCouncil_,
         uint256 genesisEpoch_,
-        address sequencer_
+        address sequencer_,
+        address feeToken_
     ) {
+        if (feeToken_ == address(0)) {
+            revert CentralRegistry__InvalidFeeToken();
+        }
+
         if (daoAddress_ == address(0)) {
             daoAddress_ = msg.sender;
         }
@@ -176,15 +225,21 @@ contract CentralRegistry is ERC165 {
         timelock = timelock_;
         emergencyCouncil = emergencyCouncil_;
 
+        // Provide base dao permissioning to `daoAddress`,
+        // `timelock`, `emergencyCouncil`.
         hasDaoPermissions[daoAddress] = true;
         hasDaoPermissions[timelock] = true;
         hasDaoPermissions[emergencyCouncil] = true;
 
+        // Provide elevated dao permissioning to `timelock`,
+        // `emergencyCouncil`.
         hasElevatedPermissions[timelock] = true;
         hasElevatedPermissions[emergencyCouncil] = true;
 
         genesisEpoch = genesisEpoch_;
         sequencer = sequencer_;
+
+        feeToken = feeToken_;
 
         emit OwnershipTransferred(address(0), daoAddress_);
         emit NewTimelockConfiguration(address(0), timelock_);
@@ -193,8 +248,9 @@ contract CentralRegistry is ERC165 {
 
     /// EXTERNAL FUNCTIONS ///
 
-    /// @notice Sets a new CVE contract address
-    /// @dev Only callable on a 7 day delay or by the Emergency Council
+    /// @notice Sets a new CVE contract address.
+    /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    /// @param newCVE The new address of cve.
     function setCVE(address newCVE) external {
         _checkElevatedPermissions();
 
@@ -202,8 +258,9 @@ contract CentralRegistry is ERC165 {
         emit CoreContractSet("CVE", newCVE);
     }
 
-    /// @notice Sets a new veCVE contract address
-    /// @dev Only callable on a 7 day delay or by the Emergency Council
+    /// @notice Sets a new veCVE contract address.
+    /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    /// @param newVeCVE The new address of veCVE.
     function setVeCVE(address newVeCVE) external {
         _checkElevatedPermissions();
 
@@ -211,8 +268,9 @@ contract CentralRegistry is ERC165 {
         emit CoreContractSet("VeCVE", newVeCVE);
     }
 
-    /// @notice Sets a new CVE contract address
-    /// @dev Only callable by the DAO
+    /// @notice Sets a new oCVE contract address.
+    /// @dev Only callable by a call with base DAO permissioning.
+    /// @param newOCVE The new address of oCVE.
     function setOCVE(address newOCVE) external {
         // Lower permissioning on call option CVE,
         // since its only used initially in Curvance
@@ -223,7 +281,8 @@ contract CentralRegistry is ERC165 {
     }
 
     /// @notice Sets a new CVE locker contract address
-    /// @dev Only callable on a 7 day delay or by the Emergency Council
+    /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    /// @param newCVELocker The new address of cveLocker.
     function setCVELocker(address newCVELocker) external {
         _checkElevatedPermissions();
 
@@ -231,8 +290,9 @@ contract CentralRegistry is ERC165 {
         emit CoreContractSet("CVE Locker", newCVELocker);
     }
 
-    /// @notice Sets a new protocol messaging hub contract address
-    /// @dev Only callable on a 7 day delay or by the Emergency Council
+    /// @notice Sets a new protocol messaging hub contract address.
+    /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    /// @param newProtocolMessagingHub The new address of protocolMessagingHub.
     function setProtocolMessagingHub(
         address newProtocolMessagingHub
     ) external {
@@ -241,7 +301,7 @@ contract CentralRegistry is ERC165 {
         protocolMessagingHub = newProtocolMessagingHub;
 
         // If the feeAccumulator is already set up,
-        // notify it that the messaging hub has been updated
+        // notify it that the messaging hub has been updated.
         if (feeAccumulator != address(0)) {
             IFeeAccumulator(feeAccumulator).notifyUpdatedMessagingHub();
         }
@@ -252,17 +312,19 @@ contract CentralRegistry is ERC165 {
         );
     }
 
-    /// @notice Sets a new price router contract address
-    /// @dev Only callable on a 7 day delay or by the Emergency Council
-    function setPriceRouter(address newPriceRouter) external {
+    /// @notice Sets a new oracle router contract address.
+    /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    /// @param newOracleRouter The new address of oracleRouter.
+    function setOracleRouter(address newOracleRouter) external {
         _checkElevatedPermissions();
 
-        priceRouter = newPriceRouter;
-        emit CoreContractSet("Price Router", newPriceRouter);
+        oracleRouter = newOracleRouter;
+        emit CoreContractSet("Oracle Router", newOracleRouter);
     }
 
-    /// @notice Sets a new fee hub contract address
-    /// @dev Only callable on a 7 day delay or by the Emergency Council
+    /// @notice Sets a new fee hub contract address.
+    /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    /// @param newFeeAccumulator The new address of feeAccumulator.
     function setFeeAccumulator(address newFeeAccumulator) external {
         _checkElevatedPermissions();
 
@@ -270,10 +332,76 @@ contract CentralRegistry is ERC165 {
         emit CoreContractSet("Fee Accumulator", newFeeAccumulator);
     }
 
+    /// @notice Sets an address of WormholeCore contract.
+    /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    /// @param newWormholeCore The new address of WormholeCore.
+    function setWormholeCore(address newWormholeCore) external {
+        _checkElevatedPermissions();
+
+        wormholeCore = IWormhole(newWormholeCore);
+        emit WormholeCoreSet(newWormholeCore);
+    }
+
+    /// @notice Sets an address of WormholeRelayer contract.
+    /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    /// @param newWormholeRelayer The new address of wormholeRelayer.
+    function setWormholeRelayer(address newWormholeRelayer) external {
+        _checkElevatedPermissions();
+
+        wormholeRelayer = IWormholeRelayer(newWormholeRelayer);
+        emit WormholeRelayerSet(newWormholeRelayer);
+    }
+
+    /// @notice Sets an address of Wormhole CircleRelayer contract.
+    /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    /// @param newCircleRelayer The new address of Wormhole CircleRelayer.
+    function setCircleRelayer(address newCircleRelayer) external {
+        _checkElevatedPermissions();
+
+        circleRelayer = ICircleRelayer(newCircleRelayer);
+        emit CircleRelayerSet(newCircleRelayer);
+    }
+
+    /// @notice Sets an address of Wormhole TokenBridgeRelayer contract.
+    /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    /// @param newTokenBridgeRelayer The new address of Wormhole TokenBridgeRelayer.
+    function setTokenBridgeRelayer(address newTokenBridgeRelayer) external {
+        _checkElevatedPermissions();
+
+        tokenBridgeRelayer = ITokenBridgeRelayer(newTokenBridgeRelayer);
+        emit TokenBridgeRelayerSet(newTokenBridgeRelayer);
+    }
+
+    /// @notice Register wormhole specific chain IDs for evm chain IDs.
+    /// @param chainIds EVM chain IDs.
+    /// @param wormholeChainIds Wormhole specific chain IDs.
+    function registerWormholeChainIDs(
+        uint256[] calldata chainIds,
+        uint16[] calldata wormholeChainIds
+    ) external {
+        _checkElevatedPermissions();
+
+        uint256 numChainIds = chainIds.length;
+
+        for (uint256 i; i < numChainIds; ++i) {
+            wormholeChainId[chainIds[i]] = wormholeChainIds[i];
+        }
+    }
+
+    /// @notice Sets an address of gelato sponsor.
+    /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    /// @param newGelatoSponsor The new address of new gelato sponsor.
+    function setGelatoSponsor(address newGelatoSponsor) external {
+        _checkElevatedPermissions();
+
+        gelatoSponsor = newGelatoSponsor;
+        emit GelatoSponsorSet(newGelatoSponsor);
+    }
+
     /// @notice Sets the fee from yield by Curvance DAO to use as gas
-    ///         to compound rewards for users
+    ///         to compound rewards for users.
     /// @dev Only callable on a 7 day delay or by the Emergency Council,
-    ///      can only have a maximum value of 5%
+    ///      can only have a maximum value of 5%.
     function setProtocolCompoundFee(uint256 value) external {
         _checkElevatedPermissions();
 
@@ -282,7 +410,7 @@ contract CentralRegistry is ERC165 {
         }
         // Convert the parameters from basis points to `WAD` format
         // while inefficient we want to minimize potential human error
-        // as much as possible, even if it costs a bit extra gas on config
+        // as much as possible, even if it costs a bit extra gas on config.
         protocolCompoundFee = _bpToWad(value);
 
         // Update vault harvest fee with new yield fee
@@ -337,7 +465,7 @@ contract CentralRegistry is ERC165 {
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
-        if (!isLendingMarket[market]) {
+        if (!isMarketManager[market]) {
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
@@ -663,61 +791,88 @@ contract CentralRegistry is ERC165 {
         emit RemovedCurvanceContract("Harvestor", currentHarvester);
     }
 
-    /// @notice Add a new lending market and associated fee configurations.
+    /// @notice Add a new market manager and associated fee configurations.
     /// @dev Only callable on a 7 day delay or by the Emergency Council,
     ///      and 50% for interest generated.
-    /// @param newLendingMarket The address of new lending market to be added.
+    /// @param newMarketManager The address of new market manager to be added.
     /// @param marketInterestFactor The interest factor associated with
-    ///                             the lending market.
-    function addLendingMarket(
-        address newLendingMarket,
+    ///                             the market manager.
+    function addMarketManager(
+        address newMarketManager,
         uint256 marketInterestFactor
     ) external {
         _checkElevatedPermissions();
 
-        if (isLendingMarket[newLendingMarket]) {
-            // Lending market already added
+        // Validate that `newMarketManager` is not already added.
+        if (isMarketManager[newMarketManager]) {
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
-        // Ensure that lending market parameter is a lending market
+        // Ensure that `newMarketManager` is a market manager.
         if (
             !ERC165Checker.supportsInterface(
-                newLendingMarket,
-                type(ILendtroller).interfaceId
+                newMarketManager,
+                type(IMarketManager).interfaceId
             )
         ) {
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
+        // Validate that desired interest factored is within
+        // acceptable bounds.
         if (marketInterestFactor > 5000) {
-            /// Fee too high
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
-        isLendingMarket[newLendingMarket] = true;
-        protocolInterestFactor[newLendingMarket] = _bpToWad(
+        isMarketManager[newMarketManager] = true;
+        // We store supported markets semi redundantly for offchain querying.
+        marketManagers.push(newMarketManager);
+        protocolInterestFactor[newMarketManager] = _bpToWad(
             marketInterestFactor
         );
 
-        emit NewCurvanceContract("Lending Market", newLendingMarket);
+        emit NewCurvanceContract("Market Manager", newMarketManager);
     }
 
-    /// @notice Remove a current lending market from Curvance.
+    /// @notice Remove a current market manager from Curvance.
     /// @dev Only callable on a 7 day delay or by the Emergency Council.
-    /// @param currentLendingMarket The address of the lending market
+    /// @param currentMarketManager The address of the market manager
     ///                             to be removed.
-    function removeLendingMarket(address currentLendingMarket) external {
+    function removeMarketManager(address currentMarketManager) external {
         _checkElevatedPermissions();
 
-        if (!isLendingMarket[currentLendingMarket]) {
-            // Not a Lending market
+        // Validate that `newMarketManager` is currently supported.
+        if (!isMarketManager[currentMarketManager]) {
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
-        delete isLendingMarket[currentLendingMarket];
+        delete isMarketManager[currentMarketManager];
 
-        emit RemovedCurvanceContract("Lending Market", currentLendingMarket);
+        // Cache market list.
+        uint256 numMarkets = marketManagers.length;
+        uint256 marketIndex = numMarkets;
+
+        for (uint256 i; i < numMarkets; ++i) {
+            if (marketManagers[i] == currentMarketManager) {
+                marketIndex = i;
+                break;
+            }
+        }
+
+        // Validate we found the market and remove 1 from numMarkets
+        // so it corresponds to last element index now (starting at index 0).
+        // This is an additional runtime invariant check for extra security.
+        if (marketIndex >= numMarkets--) {
+            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
+        }
+
+        // Copy last `marketManagers` slot to `marketIndex` slot.
+        marketManagers[marketIndex] = marketManagers[numMarkets];
+        // Remove the last element to remove `currentMarketManager`
+        // from marketManagers list.
+        marketManagers.pop();
+
+        emit RemovedCurvanceContract("Market Manager", currentMarketManager);
     }
 
     /// @notice Add a new crosschain endpoint.
@@ -727,8 +882,8 @@ contract CentralRegistry is ERC165 {
     function addEndpoint(address newEndpoint) external {
         _checkElevatedPermissions();
 
+        // Validate that `newEndpoint` is not currently supported.
         if (isEndpoint[newEndpoint]) {
-            // Endpoint already added
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
@@ -744,8 +899,8 @@ contract CentralRegistry is ERC165 {
     function removeEndpoint(address currentEndpoint) external {
         _checkElevatedPermissions();
 
+        // Validate that `currentEndpoint` is currently supported.
         if (!isEndpoint[currentEndpoint]) {
-            // Not an Endpoint
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
@@ -774,9 +929,10 @@ contract CentralRegistry is ERC165 {
 
     /// INTERNAL FUNCTIONS ///
 
-    /// @dev Internal helper function for easily converting between scalars
+    /// @notice Multiplies `value` by 1e14 to convert it from `basis points`
+    ///         to WAD.
+    /// @dev Internal helper function for easily converting between scalars.
     function _bpToWad(uint256 value) internal pure returns (uint256) {
-        // multiplies by 1e14 to convert from basis points to WAD
         return value * 100000000000000;
     }
 

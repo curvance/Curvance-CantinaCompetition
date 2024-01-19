@@ -3,7 +3,7 @@ pragma solidity ^0.8.17;
 
 import { Convex2PoolCToken, IERC20 } from "contracts/market/collateral/Convex2PoolCToken.sol";
 import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.sol";
-import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
+import { SafeTransferLib } from "contracts/libraries/external/SafeTransferLib.sol";
 import { CurveAdaptor } from "contracts/oracles/adaptors/curve/CurveAdaptor.sol";
 import { IBaseRewardPool } from "contracts/interfaces/external/convex/IBaseRewardPool.sol";
 import "tests/market/TestBaseMarket.sol";
@@ -30,12 +30,12 @@ contract ConvexLPCollateral is TestBaseMarket {
     function setUp() public override {
         super.setUp();
 
-        gaugePool.start(address(lendtroller));
+        gaugePool.start(address(marketManager));
 
         cSTETH = new Convex2PoolCToken(
             ICentralRegistry(address(centralRegistry)),
             CONVEX_STETH_ETH_POOL,
-            address(lendtroller),
+            address(marketManager),
             CONVEX_STETH_ETH_POOL_ID,
             CONVEX_STETH_ETH_REWARD,
             CONVEX_BOOSTER
@@ -43,6 +43,24 @@ contract ConvexLPCollateral is TestBaseMarket {
     }
 
     function testBorrowWithConvexLPCollateral() public {
+        chainlinkAdaptor.addAsset(
+            ETH_ADDRESS,
+            address(chainlinkEthUsd),
+            0,
+            true
+        );
+        oracleRouter.addAssetPriceFeed(ETH_ADDRESS, address(chainlinkAdaptor));
+        chainlinkStethUsd = new MockV3Aggregator(8, 1500e8, 3000e12, 1000e6);
+        chainlinkAdaptor.addAsset(
+            _STETH_ADDRESS,
+            address(chainlinkStethUsd),
+            0,
+            true
+        );
+        oracleRouter.addAssetPriceFeed(
+            _STETH_ADDRESS,
+            address(chainlinkAdaptor)
+        );
         CurveAdaptor crvAdaptor = new CurveAdaptor(
             ICentralRegistry(address(centralRegistry))
         );
@@ -51,24 +69,12 @@ contract ConvexLPCollateral is TestBaseMarket {
             address(CONVEX_STETH_ETH_POOL),
             address(CONVEX_STETH_ETH_POOL)
         );
-        priceRouter.addApprovedAdaptor(address(crvAdaptor));
-        priceRouter.addAssetPriceFeed(
+        oracleRouter.addApprovedAdaptor(address(crvAdaptor));
+        oracleRouter.addAssetPriceFeed(
             address(CONVEX_STETH_ETH_POOL),
             address(crvAdaptor)
         );
-        chainlinkAdaptor.addAsset(ETH_ADDRESS, address(chainlinkEthUsd), true);
-        priceRouter.addAssetPriceFeed(ETH_ADDRESS, address(chainlinkAdaptor));
-        chainlinkStethUsd = new MockV3Aggregator(8, 1500e8, 3000e12, 1000e6);
-        chainlinkAdaptor.addAsset(
-            _STETH_ADDRESS,
-            address(chainlinkStethUsd),
-            true
-        );
-        priceRouter.addAssetPriceFeed(
-            _STETH_ADDRESS,
-            address(chainlinkAdaptor)
-        );
-        priceRouter.addMTokenSupport(address(cSTETH));
+        oracleRouter.addMTokenSupport(address(cSTETH));
 
         // Ensure STETH/USD, ETH/USD, and USDC/USD feeds are not stale
         skip(gaugePool.startTime() - block.timestamp);
@@ -99,24 +105,24 @@ contract ConvexLPCollateral is TestBaseMarket {
             1 ether
         );
         deal(_USDC_ADDRESS, address(this), 1 ether);
-        lendtroller.listToken(address(cSTETH));
+        marketManager.listToken(address(cSTETH));
         SafeTransferLib.safeApprove(_USDC_ADDRESS, address(dUSDC), 1 ether);
-        lendtroller.listToken(address(dUSDC));
-        lendtroller.updateCollateralToken(
+        marketManager.listToken(address(dUSDC));
+        marketManager.updateCollateralToken(
             IMToken(address(cSTETH)),
             7000,
+            4000,
             3000,
-            3000,
-            2000,
-            2000,
-            100,
+            200,
+            400,
+            10,
             1000
         );
         address[] memory tokens = new address[](1);
         tokens[0] = address(cSTETH);
         uint256[] memory caps = new uint256[](1);
         caps[0] = 100_000e18;
-        lendtroller.setCTokenCollateralCaps(tokens, caps);
+        marketManager.setCTokenCollateralCaps(tokens, caps);
 
         // User mints cSTETH with cvxStethEth LP tokens and then uses the cSTETH as collateral to borrow 10,000 dUSDC
         deal(_USDC_ADDRESS, address(dUSDC), 100_000e6);
@@ -134,7 +140,7 @@ contract ConvexLPCollateral is TestBaseMarket {
         assertEq(rewarder.earned(address(cSTETH)), 0);
 
         cSTETH.deposit(1_000e18, user1);
-        lendtroller.postCollateral(user1, address(cSTETH), 1_000e18 - 1);
+        marketManager.postCollateral(user1, address(cSTETH), 1_000e18 - 1);
 
         assertEq(
             rewarder.balanceOf(address(cSTETH)),
@@ -172,7 +178,7 @@ contract ConvexLPCollateral is TestBaseMarket {
 
         vm.startPrank(user1);
         usdc.approve(address(dUSDC), type(uint256).max);
-        vm.expectRevert(Lendtroller.Lendtroller__MinimumHoldPeriod.selector);
+        vm.expectRevert(MarketManager.MarketManager__MinimumHoldPeriod.selector);
         dUSDC.repay(0);
 
         // Must hold for a minimum of 20 minutes before debt can be repaid

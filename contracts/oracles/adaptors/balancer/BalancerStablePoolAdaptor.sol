@@ -2,12 +2,13 @@
 pragma solidity ^0.8.17;
 
 import { BalancerBaseAdaptor, IVault } from "contracts/oracles/adaptors/balancer/BalancerBaseAdaptor.sol";
+import { WAD, BAD_SOURCE } from "contracts/libraries/Constants.sol";
 
 import { IBalancerPool } from "contracts/interfaces/external/balancer/IBalancerPool.sol";
 import { IRateProvider } from "contracts/interfaces/external/balancer/IRateProvider.sol";
 import { PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
+import { IOracleRouter } from "contracts/interfaces/IOracleRouter.sol";
 
 contract BalancerStablePoolAdaptor is BalancerBaseAdaptor {
     /// TYPES ///
@@ -29,13 +30,6 @@ contract BalancerStablePoolAdaptor is BalancerBaseAdaptor {
         address[8] rateProviders;
         address[8] underlyingOrConstituent;
     }
-
-    /// CONSTANTS ///
-
-    /// @notice Token amount to check uniswap twap price against
-    uint128 public constant PRECISION = 1e18;
-    /// @notice Error code for bad source.
-    uint256 public constant BAD_SOURCE = 2;
 
     /// STORAGE ///
 
@@ -83,7 +77,7 @@ contract BalancerStablePoolAdaptor is BalancerBaseAdaptor {
         IBalancerPool pool = IBalancerPool(asset);
 
         pData.inUSD = inUSD;
-        IPriceRouter priceRouter = IPriceRouter(centralRegistry.priceRouter());
+        IOracleRouter oracleRouter = IOracleRouter(centralRegistry.oracleRouter());
 
         // Find the minimum price of all the pool tokens.
         uint256 numUnderlyingOrConstituent = data
@@ -100,14 +94,14 @@ contract BalancerStablePoolAdaptor is BalancerBaseAdaptor {
                 break;
             }
 
-            (price, errorCode) = priceRouter.getPrice(
+            (price, errorCode) = oracleRouter.getPrice(
                 data.underlyingOrConstituent[i],
                 inUSD,
                 getLower
             );
-            // If error code is BAD_SOURCE we can't use this price so continue.
+            // If error code is BAD_SOURCE we can't use this price.
             if (errorCode == BAD_SOURCE) {
-                continue;
+                pData.hadError = true;
             }
 
             averagePrice += price;
@@ -117,8 +111,14 @@ contract BalancerStablePoolAdaptor is BalancerBaseAdaptor {
         if (averagePrice == 0) {
             pData.hadError = true;
         } else {
-            averagePrice = averagePrice / availablePriceCount;
-            pData.price = uint240((price * pool.getRate()) / PRECISION);
+            averagePrice = ((averagePrice / availablePriceCount) * pool.getRate()) / WAD;
+            
+            if (_checkOracleOverflow(averagePrice)) {
+                pData.hadError = true;
+                return pData;
+            }
+
+            pData.price = uint240(averagePrice);
         }
     }
 
@@ -145,13 +145,13 @@ contract BalancerStablePoolAdaptor is BalancerBaseAdaptor {
 
         // Make sure we can price all underlying tokens.
         for (uint256 i; i < numUnderlyingOrConstituent; ++i) {
-            // Break when a zero address is found.
+            // Continue when a zero address is found.
             if (address(data.underlyingOrConstituent[i]) == address(0)) {
                 continue;
             }
 
             if (
-                !IPriceRouter(centralRegistry.priceRouter()).isSupportedAsset(
+                !IOracleRouter(centralRegistry.oracleRouter()).isSupportedAsset(
                     data.underlyingOrConstituent[i]
                 )
             ) {
@@ -192,7 +192,7 @@ contract BalancerStablePoolAdaptor is BalancerBaseAdaptor {
         delete adaptorData[asset];
 
         // Notify the price router that we are going to stop supporting the asset
-        IPriceRouter(centralRegistry.priceRouter()).notifyFeedRemoval(asset);
+        IOracleRouter(centralRegistry.oracleRouter()).notifyFeedRemoval(asset);
         emit BalancerStablePoolAssetRemoved(asset);
     }
 }

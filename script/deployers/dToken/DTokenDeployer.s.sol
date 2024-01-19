@@ -3,12 +3,13 @@ pragma solidity ^0.8.17;
 
 import "forge-std/Script.sol";
 
-import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
+import { OracleRouter } from "contracts/oracles/OracleRouter.sol";
 import { ChainlinkAdaptor } from "contracts/oracles/adaptors/chainlink/ChainlinkAdaptor.sol";
 import { BalancerStablePoolAdaptor } from "contracts/oracles/adaptors/balancer/BalancerStablePoolAdaptor.sol";
 import { IVault } from "contracts/oracles/adaptors/balancer/BalancerBaseAdaptor.sol";
 import { DToken } from "contracts/market/collateral/DToken.sol";
-import { DynamicInterestRateModel } from "contracts/market/interestRates/DynamicInterestRateModel.sol";
+import { DynamicInterestRateModel } from "contracts/market/DynamicInterestRateModel.sol";
+
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 
@@ -38,12 +39,12 @@ contract DTokenDeployer is DeployConfiguration {
         address centralRegistry = _getDeployedContract("centralRegistry");
         console.log("centralRegistry =", centralRegistry);
         require(centralRegistry != address(0), "Set the centralRegistry!");
-        address lendtroller = _getDeployedContract("lendtroller");
-        console.log("lendtroller =", lendtroller);
-        require(lendtroller != address(0), "Set the lendtroller!");
-        address priceRouter = _getDeployedContract("priceRouter");
-        console.log("priceRouter =", priceRouter);
-        require(priceRouter != address(0), "Set the priceRouter!");
+        address marketManager = _getDeployedContract("marketManager");
+        console.log("marketManager =", marketManager);
+        require(marketManager != address(0), "Set the marketManager!");
+        address oracleRouter = _getDeployedContract("oracleRouter");
+        console.log("oracleRouter =", oracleRouter);
+        require(oracleRouter != address(0), "Set the oracleRouter!");
 
         address chainlinkAdaptor = _getDeployedContract("chainlinkAdaptor");
         if (chainlinkAdaptor == address(0)) {
@@ -62,6 +63,7 @@ contract DTokenDeployer is DeployConfiguration {
                 ChainlinkAdaptor(chainlinkAdaptor).addAsset(
                     param.asset,
                     param.chainlinkEth,
+                    0,
                     false
                 );
             }
@@ -69,25 +71,26 @@ contract DTokenDeployer is DeployConfiguration {
                 ChainlinkAdaptor(chainlinkAdaptor).addAsset(
                     param.asset,
                     param.chainlinkUsd,
+                    0,
                     true
                 );
             }
             console.log("chainlinkAdaptor.addAsset");
         }
 
-        if (!PriceRouter(priceRouter).isApprovedAdaptor(chainlinkAdaptor)) {
-            PriceRouter(priceRouter).addApprovedAdaptor(chainlinkAdaptor);
-            console.log("priceRouter.addApprovedAdaptor: ", chainlinkAdaptor);
+        if (!OracleRouter(oracleRouter).isApprovedAdaptor(chainlinkAdaptor)) {
+            OracleRouter(oracleRouter).addApprovedAdaptor(chainlinkAdaptor);
+            console.log("oracleRouter.addApprovedAdaptor: ", chainlinkAdaptor);
         }
 
-        try PriceRouter(priceRouter).assetPriceFeeds(param.asset, 0) returns (
+        try OracleRouter(oracleRouter).assetPriceFeeds(param.asset, 0) returns (
             address feed
         ) {} catch {
-            PriceRouter(priceRouter).addAssetPriceFeed(
+            OracleRouter(oracleRouter).addAssetPriceFeed(
                 param.asset,
                 chainlinkAdaptor
             );
-            console.log("priceRouter.addAssetPriceFeed: ", param.asset);
+            console.log("oracleRouter.addAssetPriceFeed: ", param.asset);
         }
 
         // Deploy DToken
@@ -111,7 +114,7 @@ contract DTokenDeployer is DeployConfiguration {
                 new DToken(
                     ICentralRegistry(address(centralRegistry)),
                     param.asset,
-                    lendtroller,
+                    marketManager,
                     interestRateModel
                 )
             );
@@ -119,12 +122,12 @@ contract DTokenDeployer is DeployConfiguration {
             console.log("dToken: ", dToken);
             _saveDeployedContracts(name, dToken);
 
-            if (!PriceRouter(priceRouter).isSupportedAsset(dToken)) {
-                PriceRouter(priceRouter).addMTokenSupport(dToken);
+            if (!OracleRouter(oracleRouter).isSupportedAsset(dToken)) {
+                OracleRouter(oracleRouter).addMTokenSupport(dToken);
             }
         }
 
         // followings should be done separate because it requires dust amount deposits
-        // lendtroller.listToken;
+        // marketManager.listToken;
     }
 }

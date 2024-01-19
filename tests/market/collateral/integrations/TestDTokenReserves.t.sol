@@ -28,29 +28,42 @@ contract TestDTokenReserves is TestBaseMarket {
 
         // use mock pricing for testing
         mockDaiFeed = new MockDataFeed(_CHAINLINK_DAI_USD);
-        chainlinkAdaptor.addAsset(_DAI_ADDRESS, address(mockDaiFeed), true);
+        chainlinkAdaptor.addAsset(_DAI_ADDRESS, address(mockDaiFeed), 0, true);
         dualChainlinkAdaptor.addAsset(
             _DAI_ADDRESS,
             address(mockDaiFeed),
+            0,
             true
         );
         mockWethFeed = new MockDataFeed(_CHAINLINK_ETH_USD);
-        chainlinkAdaptor.addAsset(_WETH_ADDRESS, address(mockWethFeed), true);
+        chainlinkAdaptor.addAsset(
+            _WETH_ADDRESS,
+            address(mockWethFeed),
+            0,
+            true
+        );
         dualChainlinkAdaptor.addAsset(
             _WETH_ADDRESS,
             address(mockWethFeed),
+            0,
             true
         );
         mockRethFeed = new MockDataFeed(_CHAINLINK_RETH_ETH);
-        chainlinkAdaptor.addAsset(_RETH_ADDRESS, address(mockRethFeed), false);
+        chainlinkAdaptor.addAsset(
+            _RETH_ADDRESS,
+            address(mockRethFeed),
+            0,
+            false
+        );
         dualChainlinkAdaptor.addAsset(
             _RETH_ADDRESS,
             address(mockRethFeed),
-            true
+            0,
+            false
         );
 
         // start epoch
-        gaugePool.start(address(lendtroller));
+        gaugePool.start(address(marketManager));
         vm.warp(gaugePool.startTime());
         vm.roll(block.number + 1000);
 
@@ -58,14 +71,17 @@ contract TestDTokenReserves is TestBaseMarket {
         mockWethFeed.setMockUpdatedAt(block.timestamp);
         mockRethFeed.setMockUpdatedAt(block.timestamp);
 
+        (, int256 ethPrice, , , ) = mockWethFeed.latestRoundData();
+        chainlinkEthUsd.updateAnswer(ethPrice);
+
         // deploy dDAI
         {
             // support market
             _prepareDAI(owner, 200000e18);
             dai.approve(address(dDAI), 200000e18);
-            lendtroller.listToken(address(dDAI));
+            marketManager.listToken(address(dDAI));
             // add MToken support on price router
-            priceRouter.addMTokenSupport(address(dDAI));
+            oracleRouter.addMTokenSupport(address(dDAI));
         }
 
         // deploy CBALRETH
@@ -73,23 +89,23 @@ contract TestDTokenReserves is TestBaseMarket {
             // support market
             _prepareBALRETH(owner, 1 ether);
             balRETH.approve(address(cBALRETH), 1 ether);
-            lendtroller.listToken(address(cBALRETH));
+            marketManager.listToken(address(cBALRETH));
             // set collateral factor
-            lendtroller.updateCollateralToken(
+            marketManager.updateCollateralToken(
                 IMToken(address(cBALRETH)),
                 5000,
                 1500,
                 1200,
                 200,
-                200,
-                0,
+                400,
+                10,
                 1000
             );
             address[] memory tokens = new address[](1);
             tokens[0] = address(cBALRETH);
             uint256[] memory caps = new uint256[](1);
             caps[0] = 100_000e18;
-            lendtroller.setCTokenCollateralCaps(tokens, caps);
+            marketManager.setCTokenCollateralCaps(tokens, caps);
         }
 
         centralRegistry.addSwapper(_UNISWAP_V2_ROUTER);
@@ -100,7 +116,7 @@ contract TestDTokenReserves is TestBaseMarket {
         assertEq(dDAI.interestFactor(), (marketInterestFactor * 1e18) / 10000);
         assertEq(
             dDAI.interestFactor(),
-            centralRegistry.protocolInterestFactor(address(lendtroller))
+            centralRegistry.protocolInterestFactor(address(marketManager))
         );
     }
 
@@ -119,7 +135,7 @@ contract TestDTokenReserves is TestBaseMarket {
         vm.startPrank(user1);
         balRETH.approve(address(cBALRETH), 1 ether);
         cBALRETH.deposit(1 ether, user1);
-        lendtroller.postCollateral(user1, address(cBALRETH), 1 ether - 1);
+        marketManager.postCollateral(user1, address(cBALRETH), 1 ether - 1);
         vm.stopPrank();
 
         // try borrow()

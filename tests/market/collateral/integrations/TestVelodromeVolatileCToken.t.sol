@@ -44,7 +44,7 @@ contract TestVelodromeVolatileCToken is TestBaseMarket {
         _deployCVELocker();
         _deployVeCVE();
         _deployGaugePool();
-        _deployLendtroller();
+        _deployMarketManager();
 
         centralRegistry.addHarvester(address(this));
         centralRegistry.setFeeAccumulator(address(this));
@@ -53,13 +53,13 @@ contract TestVelodromeVolatileCToken is TestBaseMarket {
         cWETHUSDC = new VelodromeVolatileCToken(
             ICentralRegistry(address(centralRegistry)),
             WETH_USDC,
-            address(lendtroller),
+            address(marketManager),
             gauge,
             veloPairFactory,
             veloRouter
         );
 
-        gaugePool.start(address(lendtroller));
+        gaugePool.start(address(marketManager));
         vm.warp(veCVE.nextEpochStartTime());
     }
 
@@ -69,7 +69,7 @@ contract TestVelodromeVolatileCToken is TestBaseMarket {
         deal(address(WETH_USDC), address(this), 42069);
 
         WETH_USDC.approve(address(cWETHUSDC), 42069);
-        lendtroller.listToken(address(cWETHUSDC));
+        marketManager.listToken(address(cWETHUSDC));
 
         vm.prank(user1);
         WETH_USDC.approve(address(cWETHUSDC), assets);

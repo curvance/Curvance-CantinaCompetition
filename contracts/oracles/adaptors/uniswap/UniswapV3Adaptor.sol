@@ -2,9 +2,9 @@
 pragma solidity ^0.8.17;
 
 import { BaseOracleAdaptor } from "contracts/oracles/adaptors/BaseOracleAdaptor.sol";
-import { ERC20 } from "contracts/libraries/ERC20.sol";
+import { ERC20 } from "contracts/libraries/external/ERC20.sol";
 
-import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
+import { IOracleRouter } from "contracts/interfaces/IOracleRouter.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
 import { IStaticOracle } from "contracts/interfaces/external/uniswap/IStaticOracle.sol";
@@ -73,13 +73,13 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
     ///              in USD or ETH.
     /// @param getLower A boolean to determine if lower of two oracle prices
     ///                 should be retrieved.
-    /// @return PriceReturnData A structure containing the price, error status,
-    ///                         and the quote format of the price.
+    /// @return pData A structure containing the price, error status,
+    ///               and the quote format of the price.
     function getPrice(
         address asset,
         bool inUSD,
         bool getLower
-    ) external view override returns (PriceReturnData memory) {
+    ) external view override returns (PriceReturnData memory pData) {
         if (!isSupportedAsset[asset]) {
             revert UniswapV3Adaptor__AssetIsNotSupported();
         }
@@ -88,6 +88,7 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
         address[] memory pools = new address[](1);
         pools[0] = data.priceSource;
         uint256 twapPrice;
+        pData.inUSD = inUSD;
 
         (bool success, bytes memory returnData) = address(uniswapOracleRouter)
             .staticcall(
@@ -110,98 +111,84 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
         } else {
             // Uniswap TWAP check reverted, notify the price router
             // that we had an error
-            return PriceReturnData({ price: 0, hadError: true, inUSD: inUSD });
+            pData.hadError = true;
+            return pData;
         }
 
-        IPriceRouter PriceRouter = IPriceRouter(centralRegistry.priceRouter());
+        IOracleRouter OracleRouter = IOracleRouter(centralRegistry.oracleRouter());
 
         // We want the asset price in USD which uniswap cant do,
         // so find out the price of the quote token in USD then divide
         // so its in USD
         if (inUSD) {
-            if (!PriceRouter.isSupportedAsset(data.quoteToken)) {
+            if (!OracleRouter.isSupportedAsset(data.quoteToken)) {
                 // Our price router does not know how to value this quote token
                 // so we cant use the TWAP data
-                return
-                    PriceReturnData({
-                        price: 0,
-                        hadError: true,
-                        inUSD: inUSD
-                    });
+                pData.hadError = true;
+                return pData;
             }
 
-            (uint256 quoteTokenDenominator, uint256 errorCode) = PriceRouter
+            (uint256 quoteTokenDenominator, uint256 errorCode) = OracleRouter
                 .getPrice(data.quoteToken, true, getLower);
 
             // Make sure that if the Price Router had an error,
             // it was not catastrophic
             if (errorCode > 1) {
-                return
-                    PriceReturnData({
-                        price: 0,
-                        hadError: true,
-                        inUSD: inUSD
-                    });
+                pData.hadError = true;
+                return pData;
             }
 
             // We have a route to USD pricing so we can convert
-            // the quote token price to USD and return
-            return
-                PriceReturnData({
-                    price: uint240(
-                        (twapPrice * quoteTokenDenominator) /
-                            data.quoteDecimals
-                    ),
-                    hadError: false,
-                    inUSD: true
-                });
+            // the quote token price to USD and return.
+            uint256 newPrice = (twapPrice * quoteTokenDenominator) /
+                (10 ** data.quoteDecimals);
+
+            if (_checkOracleOverflow(newPrice)) {
+                pData.hadError = true;
+                return pData;
+            }
+
+            pData.price = uint240(newPrice);
+            return pData;
         }
 
         if (data.quoteToken != WETH) {
-            if (!PriceRouter.isSupportedAsset(data.quoteToken)) {
+            if (!OracleRouter.isSupportedAsset(data.quoteToken)) {
                 // Our price router does not know how to value this quote
-                // token so we cant use the TWAP data
-                return
-                    PriceReturnData({
-                        price: 0,
-                        hadError: true,
-                        inUSD: inUSD
-                    });
+                // token so we cant use the TWAP data.
+                pData.hadError = true;
+                return pData;
             }
 
-            (uint256 quoteTokenDenominator, uint256 errorCode) = PriceRouter
+            (uint256 quoteTokenDenominator, uint256 errorCode) = OracleRouter
                 .getPrice(data.quoteToken, false, getLower);
 
             // Make sure that if the Price Router had an error,
-            // it was not catastrophic
+            // it was not catastrophic.
             if (errorCode > 1) {
-                return
-                    PriceReturnData({
-                        price: 0,
-                        hadError: true,
-                        inUSD: inUSD
-                    });
+                pData.hadError = true;
+                return pData;
+            }
+
+            twapPrice = twapPrice / quoteTokenDenominator;
+
+            if (_checkOracleOverflow(twapPrice)) {
+                pData.hadError = true;
+                return pData;
             }
 
             // We have a route to ETH pricing so we can convert
-            // the quote token price to ETH and return
-            return
-                PriceReturnData({
-                    price: uint240(
-                        (twapPrice * quoteTokenDenominator) /
-                            data.quoteDecimals
-                    ),
-                    hadError: false,
-                    inUSD: false
-                });
+            // the quote token price to ETH and return.
+            pData.price = uint240(twapPrice);
+            return pData;
         }
 
-        return
-            PriceReturnData({
-                price: uint240(twapPrice),
-                hadError: false,
-                inUSD: false
-            });
+        if (_checkOracleOverflow(twapPrice)) {
+            pData.hadError = true;
+            return pData;
+        }
+
+        pData.price = uint240(twapPrice);
     }
 
     function addAsset(address asset, AdaptorData memory data) external {
@@ -224,7 +211,7 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
             data.baseDecimals = ERC20(asset).decimals();
             data.quoteDecimals = ERC20(token0).decimals();
             data.quoteToken = token0;
-        } else revert("UniswapV3Adaptor: twap asset not in pool");
+        } else revert UniswapV3Adaptor__AssetIsNotSupported();
 
         adaptorData[asset] = data;
         isSupportedAsset[asset] = true;
@@ -249,7 +236,7 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
 
         // Notify the price router that we are going
         // to stop supporting the asset
-        IPriceRouter(centralRegistry.priceRouter()).notifyFeedRemoval(asset);
+        IOracleRouter(centralRegistry.oracleRouter()).notifyFeedRemoval(asset);
         emit UniswapV3AssetRemoved(asset);
     }
 }

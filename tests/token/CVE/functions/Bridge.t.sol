@@ -2,8 +2,8 @@
 pragma solidity ^0.8.17;
 
 import { TestBaseMarket } from "tests/market/TestBaseMarket.sol";
-import { ITokenBridgeRelayer } from "contracts/interfaces/wormhole/ITokenBridgeRelayer.sol";
-import { ERC20 } from "contracts/libraries/ERC20.sol";
+import { ITokenBridgeRelayer } from "contracts/interfaces/external/wormhole/ITokenBridgeRelayer.sol";
+import { ERC20 } from "contracts/libraries/external/ERC20.sol";
 
 contract BridgeTest is TestBaseMarket {
     ITokenBridgeRelayer public tokenBridgeRelayer =
@@ -20,10 +20,7 @@ contract BridgeTest is TestBaseMarket {
         chainIDs.push(137);
         wormholeChainIDs.push(5);
 
-        protocolMessagingHub.registerWormholeChainIDs(
-            chainIDs,
-            wormholeChainIDs
-        );
+        centralRegistry.registerWormholeChainIDs(chainIDs, wormholeChainIDs);
 
         ITokenBridgeRelayer.SwapRateUpdate[]
             memory swapRateUpdate = new ITokenBridgeRelayer.SwapRateUpdate[](

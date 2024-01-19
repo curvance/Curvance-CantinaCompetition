@@ -2,7 +2,7 @@
 pragma solidity ^0.8.17;
 
 // import { TestBaseCTokenCompounding } from "../TestBaseCTokenCompounding.sol";
-// import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
+// import { MarketManager } from "contracts/market/MarketManager.sol";
 // import { CTokenCompounding } from "contracts/market/collateral/CTokenCompounding.sol";
 
 // contract CTokenCompounding_MintForTest is TestBaseCTokenCompounding {
@@ -22,7 +22,7 @@ pragma solidity ^0.8.17;
 //     {
 //         lendtroller.setMintPaused(address(cBALRETH), true);
 
-//         vm.expectRevert(Lendtroller.Lendtroller__Paused.selector);
+//         vm.expectRevert(MarketManager.MarketManager__Paused.selector);
 //         cBALRETH.mintFor(100, user1);
 //     }
 

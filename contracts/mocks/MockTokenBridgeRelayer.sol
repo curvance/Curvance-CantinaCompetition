@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { IWormhole } from "contracts/interfaces/wormhole/IWormhole.sol";
+import { IWormhole } from "contracts/interfaces/external/wormhole/IWormhole.sol";
 
 contract MockTokenBridgeRelayer {
     /// TYPES ///
@@ -59,7 +59,7 @@ contract MockTokenBridgeRelayer {
     /// @param token Address of the token.
     function registerToken(uint16 chainId, address token) external {}
 
-    function wormhole() external view returns (IWormhole) {
+    function wormhole() external pure returns (IWormhole) {
         return IWormhole(_WORMHOLE);
     }
 

@@ -2,22 +2,22 @@
 pragma solidity ^0.8.17;
 
 import { BaseOracleAdaptor } from "contracts/oracles/adaptors/BaseOracleAdaptor.sol";
+import { FixedPointMathLib } from "contracts/libraries/external/FixedPointMathLib.sol";
 
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
+import { IOracleRouter } from "contracts/interfaces/IOracleRouter.sol";
 import { IUniswapV2Pair } from "contracts/interfaces/external/uniswap/IUniswapV2Pair.sol";
-import { Math } from "contracts/libraries/Math.sol";
 
 contract BaseVolatileLPAdaptor is BaseOracleAdaptor {
     /// TYPES ///
 
-    /// @notice Adaptor storage
-    /// @param token0 token0 address
-    /// @param decimals0 token0 decimals
-    /// @param token1 token1 address
-    /// @param decimals1 token1 decimals
+    /// @notice Adaptor storage.
+    /// @param token0 token0 address.
+    /// @param decimals0 token0 decimals.
+    /// @param token1 token1 address.
+    /// @param decimals1 token1 decimals.
     struct AdaptorData {
         address token0;
         uint8 decimals0;
@@ -27,7 +27,7 @@ contract BaseVolatileLPAdaptor is BaseOracleAdaptor {
 
     /// STORAGE ///
 
-    /// @notice Balancer Stable Pool Adaptor Storage
+    /// @notice Balancer Stable Pool Adaptor Storage.
     mapping(address => AdaptorData) public adaptorData;
 
     /// CONSTRUCTOR ///
@@ -39,11 +39,11 @@ contract BaseVolatileLPAdaptor is BaseOracleAdaptor {
     /// EXTERNAL FUNCTIONS ///
 
     /// @notice Called during pricing operations.
-    /// @param asset The bpt being priced
-    /// @param inUSD Indicates whether we want the price in USD or ETH
+    /// @param asset The bpt being priced.
+    /// @param inUSD Indicates whether we want the price in USD or ETH.
     /// @param getLower Since this adaptor calls back into the price router
     ///                 it needs to know if it should be working with the
-    ///                 upper or lower prices of assets
+    ///                 upper or lower prices of assets.
     function getPrice(
         address asset,
         bool inUSD,
@@ -54,14 +54,14 @@ contract BaseVolatileLPAdaptor is BaseOracleAdaptor {
 
     /// @notice Add a Balancer Stable Pool Bpt as an asset.
     /// @dev Should be called before `PriceRotuer:addAssetPriceFeed` is called.
-    /// @param asset The address of the bpt to add
+    /// @param asset The address of the bpt to add.
     function addAsset(address asset) external virtual {
         _checkElevatedPermissions();
         _addAsset(asset);
     }
 
     /// @notice Removes a supported asset from the adaptor.
-    /// @dev Calls back into price router to notify it of its removal
+    /// @dev Calls back into price router to notify it of its removal.
     function removeAsset(
         address asset
     ) external virtual override {
@@ -73,7 +73,7 @@ contract BaseVolatileLPAdaptor is BaseOracleAdaptor {
 
     /// @notice Add a Balancer Stable Pool Bpt as an asset.
     /// @dev Should be called before `PriceRotuer:addAssetPriceFeed` is called.
-    /// @param asset The address of the bpt to add
+    /// @param asset The address of the bpt to add.
     function _addAsset(
         address asset
     ) internal returns (AdaptorData memory data) {
@@ -90,50 +90,50 @@ contract BaseVolatileLPAdaptor is BaseOracleAdaptor {
     }
 
     /// @notice Removes a supported asset from the adaptor.
-    /// @dev Calls back into price router to notify it of its removal
+    /// @dev Calls back into price router to notify it of its removal.
     function _removeAsset(address asset) internal {
-        // Notify the adaptor to stop supporting the asset
+        // Notify the adaptor to stop supporting the asset.
         delete isSupportedAsset[asset];
-        // Wipe config mapping entries for a gas refund
+        // Wipe config mapping entries for a gas refund.
         delete adaptorData[asset];
 
-        // Notify the price router that we are going to stop supporting the asset
-        IPriceRouter(centralRegistry.priceRouter()).notifyFeedRemoval(asset);
+        // Notify the price router that we are going to stop supporting the asset.
+        IOracleRouter(centralRegistry.oracleRouter()).notifyFeedRemoval(asset);
     }
 
     /// @notice Called during pricing operations.
     /// @dev https://blog.alphaventuredao.io/fair-lp-token-pricing/
-    /// @param asset The bpt being priced
-    /// @param inUSD Indicates whether we want the price in USD or ETH
+    /// @param asset The bpt being priced.
+    /// @param inUSD Indicates whether we want the price in USD or ETH.
     /// @param getLower Since this adaptor calls back into the price router
     ///                 it needs to know if it should be working with the
-    ///                 upper or lower prices of assets
+    ///                 upper or lower prices of assets.
     function _getPrice(
         address asset,
         bool inUSD,
         bool getLower
     ) internal view returns (PriceReturnData memory pData) {
-        // Read Adaptor storage and grab pool tokens
+        // Read Adaptor storage and grab pool tokens.
         AdaptorData memory data = adaptorData[asset];
         IUniswapV2Pair pool = IUniswapV2Pair(asset);
 
-        // LP total supply
+        // LP total supply.
         uint256 totalSupply = pool.totalSupply();
-        // LP reserves
+        // LP reserves.
         (uint256 reserve0, uint256 reserve1, ) = pool.getReserves();
-        // convert to 18 decimals
+        // convert to 18 decimals.
         reserve0 = (reserve0 * 1e18) / (10 ** data.decimals0);
         reserve1 = (reserve1 * 1e18) / (10 ** data.decimals1);
 
-        // sqrt(reserve0 * reserve1)
-        uint256 sqrtReserve = Math.sqrt(reserve0 * reserve1);
+        // sqrt(reserve0 * reserve1).
+        uint256 sqrtReserve = FixedPointMathLib.sqrt(reserve0 * reserve1);
 
-        // sqrt(price0 * price1)
+        // sqrt(price0 * price1).
         uint256 price0;
         uint256 price1;
         uint256 errorCode;
-        IPriceRouter priceRouter = IPriceRouter(centralRegistry.priceRouter());
-        (price0, errorCode) = priceRouter.getPrice(
+        IOracleRouter oracleRouter = IOracleRouter(centralRegistry.oracleRouter());
+        (price0, errorCode) = oracleRouter.getPrice(
             data.token0,
             inUSD,
             getLower
@@ -142,7 +142,7 @@ contract BaseVolatileLPAdaptor is BaseOracleAdaptor {
             pData.hadError = true;
             return pData;
         }
-        (price1, errorCode) = priceRouter.getPrice(
+        (price1, errorCode) = oracleRouter.getPrice(
             data.token1,
             inUSD,
             getLower
@@ -151,10 +151,16 @@ contract BaseVolatileLPAdaptor is BaseOracleAdaptor {
             pData.hadError = true;
             return pData;
         }
-        uint256 sqrtPrice = Math.sqrt(price0 * price1);
 
-        // price = 2 * sqrt(reserve0 * reserve1) * sqrt(price0 * price1) / totalSupply
+        // price = 2 * sqrt(reserve0 * reserve1) * sqrt(price0 * price1) / totalSupply.
+        uint256 finalPrice = (2 * sqrtReserve * FixedPointMathLib.sqrt(price0 * price1)) / totalSupply;
+
+        if (_checkOracleOverflow(finalPrice)) {
+            pData.hadError = true;
+            return pData;
+        }
+
         pData.inUSD = inUSD;
-        pData.price = uint240((2 * sqrtReserve * sqrtPrice) / totalSupply);
+        pData.price = uint240(finalPrice);
     }
 }

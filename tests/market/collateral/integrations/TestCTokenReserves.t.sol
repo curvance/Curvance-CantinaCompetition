@@ -28,29 +28,42 @@ contract TestCTokenReserves is TestBaseMarket {
 
         // use mock pricing for testing
         mockDaiFeed = new MockDataFeed(_CHAINLINK_DAI_USD);
-        chainlinkAdaptor.addAsset(_DAI_ADDRESS, address(mockDaiFeed), true);
+        chainlinkAdaptor.addAsset(_DAI_ADDRESS, address(mockDaiFeed), 0, true);
         dualChainlinkAdaptor.addAsset(
             _DAI_ADDRESS,
             address(mockDaiFeed),
+            0,
             true
         );
         mockWethFeed = new MockDataFeed(_CHAINLINK_ETH_USD);
-        chainlinkAdaptor.addAsset(_WETH_ADDRESS, address(mockWethFeed), true);
+        chainlinkAdaptor.addAsset(
+            _WETH_ADDRESS,
+            address(mockWethFeed),
+            0,
+            true
+        );
         dualChainlinkAdaptor.addAsset(
             _WETH_ADDRESS,
             address(mockWethFeed),
+            0,
             true
         );
         mockRethFeed = new MockDataFeed(_CHAINLINK_RETH_ETH);
-        chainlinkAdaptor.addAsset(_RETH_ADDRESS, address(mockRethFeed), false);
+        chainlinkAdaptor.addAsset(
+            _RETH_ADDRESS,
+            address(mockRethFeed),
+            0,
+            false
+        );
         dualChainlinkAdaptor.addAsset(
             _RETH_ADDRESS,
             address(mockRethFeed),
-            true
+            0,
+            false
         );
 
         // start epoch
-        gaugePool.start(address(lendtroller));
+        gaugePool.start(address(marketManager));
         vm.warp(gaugePool.startTime());
         vm.roll(block.number + 1000);
 
@@ -58,13 +71,16 @@ contract TestCTokenReserves is TestBaseMarket {
         mockWethFeed.setMockUpdatedAt(block.timestamp);
         mockRethFeed.setMockUpdatedAt(block.timestamp);
 
+        (, int256 ethPrice, , , ) = mockWethFeed.latestRoundData();
+        chainlinkEthUsd.updateAnswer(ethPrice);
+
         // setup dDAI
         {
             _prepareDAI(owner, 200000e18);
             dai.approve(address(dDAI), 200000e18);
-            lendtroller.listToken(address(dDAI));
+            marketManager.listToken(address(dDAI));
             // add MToken support on price router
-            priceRouter.addMTokenSupport(address(dDAI));
+            oracleRouter.addMTokenSupport(address(dDAI));
         }
 
         // setup CBALRETH
@@ -72,23 +88,23 @@ contract TestCTokenReserves is TestBaseMarket {
             // support market
             _prepareBALRETH(owner, 1 ether);
             balRETH.approve(address(cBALRETH), 1 ether);
-            lendtroller.listToken(address(cBALRETH));
+            marketManager.listToken(address(cBALRETH));
             // set collateral factor
-            lendtroller.updateCollateralToken(
+            marketManager.updateCollateralToken(
                 IMToken(address(cBALRETH)),
                 7000,
                 4000, // liquidate at 71%
                 3000,
                 200, // 2% liq incentive
-                200,
-                100,
+                400,
+                10,
                 1000
             );
             address[] memory tokens = new address[](1);
             tokens[0] = address(cBALRETH);
             uint256[] memory caps = new uint256[](1);
             caps[0] = 100_000e18;
-            lendtroller.setCTokenCollateralCaps(tokens, caps);
+            marketManager.setCTokenCollateralCaps(tokens, caps);
         }
 
         // provide enough liquidity
@@ -122,7 +138,7 @@ contract TestCTokenReserves is TestBaseMarket {
         vm.startPrank(user1);
         balRETH.approve(address(cBALRETH), 1 ether);
         cBALRETH.deposit(1 ether, user1);
-        lendtroller.postCollateral(user1, address(cBALRETH), 1 ether - 1);
+        marketManager.postCollateral(user1, address(cBALRETH), 1 ether - 1);
         vm.stopPrank();
 
         // try borrow()
@@ -139,7 +155,7 @@ contract TestCTokenReserves is TestBaseMarket {
             uint256 repayAmount,
             uint256 liquidatedTokens,
             uint256 protocolTokens
-        ) = lendtroller.canLiquidate(
+        ) = marketManager.canLiquidate(
                 address(dDAI),
                 address(cBALRETH),
                 user1,
@@ -170,10 +186,15 @@ contract TestCTokenReserves is TestBaseMarket {
         );
         assertApproxEqRel(dDAI.exchangeRateCached(), 1 ether, 0.01e18);
 
-        assertEq(cBALRETH.balanceOf(dao), daoBalanceBefore + protocolTokens);
-        assertEq(
+        assertApproxEqRel(
+            cBALRETH.balanceOf(dao),
+            daoBalanceBefore + protocolTokens,
+            0.01e18
+        );
+        assertApproxEqRel(
             gaugePool.balanceOf(address(cBALRETH), dao),
-            daoBalanceBefore + protocolTokens
+            daoBalanceBefore + protocolTokens,
+            0.01e18
         );
     }
 

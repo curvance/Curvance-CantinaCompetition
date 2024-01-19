@@ -3,12 +3,13 @@ pragma solidity ^0.8.17;
 
 import "forge-std/Script.sol";
 
-import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
+import { OracleRouter } from "contracts/oracles/OracleRouter.sol";
 import { ChainlinkAdaptor } from "contracts/oracles/adaptors/chainlink/ChainlinkAdaptor.sol";
 import { CurveAdaptor } from "contracts/oracles/adaptors/curve/CurveAdaptor.sol";
 import { Convex2PoolCToken } from "contracts/market/collateral/Convex2PoolCToken.sol";
 import { Convex3PoolCToken } from "contracts/market/collateral/Convex3PoolCToken.sol";
 import { Convex4PoolCToken } from "contracts/market/collateral/Convex4PoolCToken.sol";
+
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 
@@ -36,12 +37,12 @@ contract ConvexMarketDeployer is DeployConfiguration {
         address centralRegistry = _getDeployedContract("centralRegistry");
         console.log("centralRegistry =", centralRegistry);
         require(centralRegistry != address(0), "Set the centralRegistry!");
-        address lendtroller = _getDeployedContract("lendtroller");
-        console.log("lendtroller =", lendtroller);
-        require(lendtroller != address(0), "Set the lendtroller!");
-        address priceRouter = _getDeployedContract("priceRouter");
-        console.log("priceRouter =", priceRouter);
-        require(priceRouter != address(0), "Set the priceRouter!");
+        address marketManager = _getDeployedContract("marketManager");
+        console.log("marketManager =", marketManager);
+        require(marketManager != address(0), "Set the marketManager!");
+        address oracleRouter = _getDeployedContract("oracleRouter");
+        console.log("oracleRouter =", oracleRouter);
+        require(oracleRouter != address(0), "Set the oracleRouter!");
 
         address chainlinkAdaptor = _getDeployedContract("chainlinkAdaptor");
         if (chainlinkAdaptor == address(0)) {
@@ -78,6 +79,7 @@ contract ConvexMarketDeployer is DeployConfiguration {
                     ChainlinkAdaptor(chainlinkAdaptor).addAsset(
                         underlyingParam.asset,
                         underlyingParam.chainlinkEth,
+                        0,
                         false
                     );
                 }
@@ -85,6 +87,7 @@ contract ConvexMarketDeployer is DeployConfiguration {
                     ChainlinkAdaptor(chainlinkAdaptor).addAsset(
                         underlyingParam.asset,
                         underlyingParam.chainlinkUsd,
+                        0,
                         true
                     );
                 }
@@ -92,49 +95,49 @@ contract ConvexMarketDeployer is DeployConfiguration {
             }
 
             if (
-                !PriceRouter(priceRouter).isApprovedAdaptor(chainlinkAdaptor)
+                !OracleRouter(oracleRouter).isApprovedAdaptor(chainlinkAdaptor)
             ) {
-                PriceRouter(priceRouter).addApprovedAdaptor(chainlinkAdaptor);
+                OracleRouter(oracleRouter).addApprovedAdaptor(chainlinkAdaptor);
                 console.log(
-                    "priceRouter.addApprovedAdaptor: ",
+                    "oracleRouter.addApprovedAdaptor: ",
                     chainlinkAdaptor
                 );
             }
 
             try
-                PriceRouter(priceRouter).assetPriceFeeds(
+                OracleRouter(oracleRouter).assetPriceFeeds(
                     underlyingParam.asset,
                     0
                 )
             returns (address feed) {} catch {
-                PriceRouter(priceRouter).addAssetPriceFeed(
+                OracleRouter(oracleRouter).addAssetPriceFeed(
                     underlyingParam.asset,
                     chainlinkAdaptor
                 );
                 console.log(
-                    "priceRouter.addAssetPriceFeed: ",
+                    "oracleRouter.addAssetPriceFeed: ",
                     underlyingParam.asset
                 );
             }
         }
 
         // Deploy Curve adapter
-        if (!PriceRouter(priceRouter).isApprovedAdaptor(curveAdaptor)) {
-            PriceRouter(priceRouter).addApprovedAdaptor(curveAdaptor);
-            console.log("priceRouter.addApprovedAdaptor: ", curveAdaptor);
+        if (!OracleRouter(oracleRouter).isApprovedAdaptor(curveAdaptor)) {
+            OracleRouter(oracleRouter).addApprovedAdaptor(curveAdaptor);
+            console.log("oracleRouter.addApprovedAdaptor: ", curveAdaptor);
         }
         if (!CurveAdaptor(curveAdaptor).isSupportedAsset(param.asset)) {
             CurveAdaptor(curveAdaptor).addAsset(param.asset, param.pool);
             console.log("curveAdaptor.addAsset");
         }
-        try PriceRouter(priceRouter).assetPriceFeeds(param.asset, 0) returns (
+        try OracleRouter(oracleRouter).assetPriceFeeds(param.asset, 0) returns (
             address feed
         ) {} catch {
-            PriceRouter(priceRouter).addAssetPriceFeed(
+            OracleRouter(oracleRouter).addAssetPriceFeed(
                 param.asset,
                 curveAdaptor
             );
-            console.log("priceRouter.addAssetPriceFeed: ", param.asset);
+            console.log("oracleRouter.addAssetPriceFeed: ", param.asset);
         }
 
         // Deploy CToken
@@ -145,7 +148,7 @@ contract ConvexMarketDeployer is DeployConfiguration {
                     new Convex2PoolCToken(
                         ICentralRegistry(centralRegistry),
                         IERC20(param.asset),
-                        lendtroller,
+                        marketManager,
                         param.pid,
                         param.rewarder,
                         param.booster
@@ -156,7 +159,7 @@ contract ConvexMarketDeployer is DeployConfiguration {
                     new Convex2PoolCToken(
                         ICentralRegistry(centralRegistry),
                         IERC20(param.asset),
-                        lendtroller,
+                        marketManager,
                         param.pid,
                         param.rewarder,
                         param.booster
@@ -167,7 +170,7 @@ contract ConvexMarketDeployer is DeployConfiguration {
                     new Convex2PoolCToken(
                         ICentralRegistry(centralRegistry),
                         IERC20(param.asset),
-                        lendtroller,
+                        marketManager,
                         param.pid,
                         param.rewarder,
                         param.booster
@@ -179,8 +182,8 @@ contract ConvexMarketDeployer is DeployConfiguration {
         }
 
         // followings should be done separate because it requires dust amount deposits
-        // lendtroller.listToken;
-        // lendtroller.updateCollateralToken
-        // lendtroller.setCTokenCollateralCaps
+        // marketManager.listToken;
+        // marketManager.updateCollateralToken
+        // marketManager.setCTokenCollateralCaps
     }
 }

@@ -11,7 +11,7 @@ contract MockArbSys {
 
     function arbBlockHash(
         uint256 blockNumber
-    ) external view returns (bytes32) {
+    ) external pure returns (bytes32) {
         // Hardcoded values to simulate the deposit execution.
         if (blockNumber == 150368147) {
             return

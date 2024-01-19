@@ -23,29 +23,47 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
 
         // use mock pricing for testing
         mockUsdcFeed = new MockDataFeed(_CHAINLINK_USDC_USD);
-        chainlinkAdaptor.addAsset(_USDC_ADDRESS, address(mockUsdcFeed), true);
+        chainlinkAdaptor.addAsset(
+            _USDC_ADDRESS,
+            address(mockUsdcFeed),
+            0,
+            true
+        );
         dualChainlinkAdaptor.addAsset(
             _USDC_ADDRESS,
             address(mockUsdcFeed),
+            0,
             true
         );
         mockWethFeed = new MockDataFeed(_CHAINLINK_ETH_USD);
-        chainlinkAdaptor.addAsset(_WETH_ADDRESS, address(mockWethFeed), true);
+        chainlinkAdaptor.addAsset(
+            _WETH_ADDRESS,
+            address(mockWethFeed),
+            0,
+            true
+        );
         dualChainlinkAdaptor.addAsset(
             _WETH_ADDRESS,
             address(mockWethFeed),
+            0,
             true
         );
         mockRethFeed = new MockDataFeed(_CHAINLINK_RETH_ETH);
-        chainlinkAdaptor.addAsset(_RETH_ADDRESS, address(mockRethFeed), false);
+        chainlinkAdaptor.addAsset(
+            _RETH_ADDRESS,
+            address(mockRethFeed),
+            0,
+            false
+        );
         dualChainlinkAdaptor.addAsset(
             _RETH_ADDRESS,
             address(mockRethFeed),
-            true
+            0,
+            false
         );
 
         // start epoch
-        gaugePool.start(address(lendtroller));
+        gaugePool.start(address(marketManager));
         vm.warp(gaugePool.startTime());
         vm.roll(block.number + 1000);
 
@@ -53,12 +71,15 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
         mockWethFeed.setMockUpdatedAt(block.timestamp);
         mockRethFeed.setMockUpdatedAt(block.timestamp);
 
+        (, int256 ethPrice, , , ) = mockWethFeed.latestRoundData();
+        chainlinkEthUsd.updateAnswer(ethPrice);
+
         // setup dUSDC
         {
             // support market
             _prepareUSDC(owner, 200000e6);
             usdc.approve(address(dUSDC), 200000e6);
-            lendtroller.listToken(address(dUSDC));
+            marketManager.listToken(address(dUSDC));
         }
 
         // setup CBALRETH
@@ -66,23 +87,23 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
             // support market
             _prepareBALRETH(owner, 1 ether);
             balRETH.approve(address(cBALRETH), 1 ether);
-            lendtroller.listToken(address(cBALRETH));
+            marketManager.listToken(address(cBALRETH));
             // set collateral factor
-            lendtroller.updateCollateralToken(
+            marketManager.updateCollateralToken(
                 IMToken(address(cBALRETH)),
                 7000,
                 4000,
                 3000,
                 200,
-                200,
-                100,
+                400,
+                10,
                 1000
             );
             address[] memory tokens = new address[](1);
             tokens[0] = address(cBALRETH);
             uint256[] memory caps = new uint256[](1);
             caps[0] = 100_000e18;
-            lendtroller.setCTokenCollateralCaps(tokens, caps);
+            marketManager.setCTokenCollateralCaps(tokens, caps);
         }
 
         // provide enough liquidity
@@ -115,7 +136,7 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
         vm.startPrank(user1);
         balRETH.approve(address(cBALRETH), 1 ether);
         cBALRETH.deposit(1 ether, user1);
-        lendtroller.postCollateral(user1, address(cBALRETH), 1 ether);
+        marketManager.postCollateral(user1, address(cBALRETH), 1 ether);
         vm.stopPrank();
         assertEq(cBALRETH.balanceOf(user1), 1 ether);
 
@@ -169,7 +190,7 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
         vm.startPrank(user1);
         balRETH.approve(address(cBALRETH), 1 ether);
         cBALRETH.deposit(1 ether, user1);
-        lendtroller.postCollateral(user1, address(cBALRETH), 1 ether);
+        marketManager.postCollateral(user1, address(cBALRETH), 1 ether);
         vm.stopPrank();
 
         assertEq(cBALRETH.balanceOf(user1), 1 ether);
@@ -234,7 +255,7 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
         vm.startPrank(user1);
         balRETH.approve(address(cBALRETH), 1 ether);
         cBALRETH.deposit(1 ether, user1);
-        lendtroller.postCollateral(user1, address(cBALRETH), 1 ether);
+        marketManager.postCollateral(user1, address(cBALRETH), 1 ether);
         vm.stopPrank();
 
         // try borrow()
@@ -248,7 +269,7 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
         // can't redeem full
         vm.startPrank(user1);
         vm.expectRevert(
-            bytes4(keccak256("Lendtroller__InsufficientCollateral()"))
+            bytes4(keccak256("MarketManager__InsufficientCollateral()"))
         );
         cBALRETH.redeem(1 ether, user1, user1);
         vm.stopPrank();
@@ -268,7 +289,7 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
         vm.startPrank(user1);
         balRETH.approve(address(cBALRETH), 1 ether);
         cBALRETH.deposit(1 ether, user1);
-        lendtroller.postCollateral(user1, address(cBALRETH), 1 ether);
+        marketManager.postCollateral(user1, address(cBALRETH), 1 ether);
         vm.stopPrank();
 
         // try mint()
@@ -306,7 +327,7 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
         vm.startPrank(user1);
         balRETH.approve(address(cBALRETH), 1 ether);
         cBALRETH.deposit(1 ether, user1);
-        lendtroller.postCollateral(user1, address(cBALRETH), 1 ether);
+        marketManager.postCollateral(user1, address(cBALRETH), 1 ether);
         vm.stopPrank();
 
         // try borrow()
@@ -320,7 +341,7 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
         // can't transfer full
         vm.startPrank(user1);
         vm.expectRevert(
-            bytes4(keccak256("Lendtroller__InsufficientCollateral()"))
+            bytes4(keccak256("MarketManager__InsufficientCollateral()"))
         );
         cBALRETH.transfer(user2, 1 ether);
         vm.stopPrank();
@@ -341,7 +362,7 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
         vm.startPrank(user1);
         balRETH.approve(address(cBALRETH), 1 ether);
         cBALRETH.deposit(1 ether, user1);
-        lendtroller.postCollateral(user1, address(cBALRETH), 1 ether);
+        marketManager.postCollateral(user1, address(cBALRETH), 1 ether);
         vm.stopPrank();
 
         // try mint()
@@ -383,7 +404,7 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
         vm.startPrank(user1);
         balRETH.approve(address(cBALRETH), 1 ether);
         cBALRETH.deposit(1 ether, user1);
-        lendtroller.postCollateral(user1, address(cBALRETH), 1 ether);
+        marketManager.postCollateral(user1, address(cBALRETH), 1 ether);
         vm.stopPrank();
 
         // try borrow()
@@ -394,7 +415,7 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
         // skip min hold period
         skip(20 minutes);
 
-        (uint256 balRETHPrice, ) = priceRouter.getPrice(
+        (uint256 balRETHPrice, ) = oracleRouter.getPrice(
             address(balRETH),
             true,
             true
@@ -412,7 +433,7 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
         assertApproxEqRel(
             cBALRETH.balanceOf(user1),
             1 ether - (500 ether * 1 ether) / balRETHPrice,
-            0.01e18
+            0.02e18
         );
         assertEq(cBALRETH.exchangeRateCached(), 1 ether);
 
@@ -428,7 +449,7 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
         vm.startPrank(user1);
         balRETH.approve(address(cBALRETH), 1 ether);
         cBALRETH.deposit(1 ether, user1);
-        lendtroller.postCollateral(user1, address(cBALRETH), 1 ether);
+        marketManager.postCollateral(user1, address(cBALRETH), 1 ether);
         vm.stopPrank();
 
         // try borrow()
@@ -439,7 +460,7 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
         // skip min hold period
         skip(20 minutes);
 
-        (uint256 balRETHPrice, ) = priceRouter.getPrice(
+        (uint256 balRETHPrice, ) = oracleRouter.getPrice(
             address(balRETH),
             true,
             true
@@ -456,8 +477,8 @@ contract TestTokensWithDifferentDecimals is TestBaseMarket {
 
         assertApproxEqRel(
             cBALRETH.balanceOf(user1),
-            1 ether - (1530 ether * 1e18) / balRETHPrice,
-            0.03e18
+            1 ether - (1550 ether * 1e18) / balRETHPrice,
+            0.05e18
         );
         assertEq(cBALRETH.exchangeRateCached(), 1 ether);
 

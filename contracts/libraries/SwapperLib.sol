@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
-import { CommonLib } from "contracts/market/zapper/protocols/CommonLib.sol";
+import { SafeTransferLib } from "contracts/libraries/external/SafeTransferLib.sol";
+import { CommonLib } from "contracts/libraries/CommonLib.sol";
 
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 
@@ -29,9 +29,9 @@ library SwapperLib {
 
     /// FUNCTIONS ///
 
-    /// @dev Swap input token
-    /// @param swapData The swap data
-    /// @return Swapped amount of token
+    /// @notice Swap input token into a desired token.
+    /// @param swapData The swap data.
+    /// @return Swapped amount of token.
     function swap(Swap memory swapData) internal returns (uint256) {
         _approveTokenIfNeeded(
             swapData.inputToken,
@@ -63,15 +63,13 @@ library SwapperLib {
 
     /// @notice Zaps an input token into an output token.
     /// @dev Calls the `zap` function in a specified contract (the zapper).
-    ///      First, it approves the zapper to transfer
-    ///         the required amount of the input token.
-    ///      Then, it calls the zapper and checks
-    ///         if the operation was successful.
-    ///      If the call failed, it reverts with an error message.
-    /// @param zapperCall A `ZapperCall` struct containing
-    ///                         the zapper contract address,
-    ///                   the calldata for the `zap` function,
-    ///                         the input token address and the input amount.
+    ///      1. Approves the zapper to transfer the required amount
+    ///         of the input token.
+    ///      2. Calls the zapper and checks if the operation was successful.
+    ///         If the call failed, it reverts with an error message.
+    /// @param zapperCall A `ZapperCall` struct containing the zapper contract
+    ///                   address, the calldata for the `zap` function,
+    ///                   the input token address and the input amount.
     function zap(ZapperCall memory zapperCall) internal {
         SwapperLib._approveTokenIfNeeded(
             zapperCall.inputToken,
@@ -88,10 +86,10 @@ library SwapperLib {
         SwapperLib.propagateError(success, auxData, "SwapperLib: zapper");
     }
 
-    /// @notice Approve `token` spending allowance if needed
-    /// @param token The token address
-    /// @param spender The spender address
-    /// @param amount The approve amount
+    /// @notice Approve `token` spending allowance if needed.
+    /// @param token The token address.
+    /// @param spender The spender address.
+    /// @param amount The approve amount.
     function _approveTokenIfNeeded(
         address token,
         address spender,
@@ -102,9 +100,9 @@ library SwapperLib {
         }
     }
 
-    /// @notice Remove `token` spending allowance if needed
-    /// @param token The token address
-    /// @param spender The spender address
+    /// @notice Remove `token` spending allowance if needed.
+    /// @param token The token address.
+    /// @param spender The spender address.
     function _removeApprovalIfNeeded(address token, address spender) internal {
         if (
             !CommonLib.isETH(token) &&
@@ -114,10 +112,10 @@ library SwapperLib {
         }
     }
 
-    /// @dev Propagate error message
-    /// @param success If transaction is successful
-    /// @param data The transaction result data
-    /// @param errorMessage The custom error message
+    /// @dev Propagate error message.
+    /// @param success If transaction is successful.
+    /// @param data The transaction result data.
+    /// @param errorMessage The custom error message.
     function propagateError(
         bool success,
         bytes memory data,

@@ -4,6 +4,7 @@ pragma solidity ^0.8.17;
 import "forge-std/Script.sol";
 
 import { CentralRegistry } from "contracts/architecture/CentralRegistry.sol";
+
 import { DeployConfiguration } from "../utils/DeployConfiguration.sol";
 
 contract CentralRegistryDeployer is DeployConfiguration {
@@ -14,11 +15,13 @@ contract CentralRegistryDeployer is DeployConfiguration {
         address timelock,
         address emergencyCouncil,
         uint256 genesisEpoch,
-        address sequencer
+        address sequencer,
+        address feeToken
     ) internal {
         require(daoAddress != address(0), "Set the daoAddress!");
         require(timelock != address(0), "Set the timelock!");
         require(emergencyCouncil != address(0), "Set the emergencyCouncil!");
+        require(feeToken != address(0), "Set the feeToken!");
 
         centralRegistry = address(
             new CentralRegistry(
@@ -26,7 +29,8 @@ contract CentralRegistryDeployer is DeployConfiguration {
                 timelock,
                 emergencyCouncil,
                 genesisEpoch,
-                sequencer
+                sequencer,
+                feeToken
             )
         );
 
@@ -102,6 +106,41 @@ contract CentralRegistryDeployer is DeployConfiguration {
         console.log("centralRegistry.setVeCVE: ", veCve);
     }
 
+    function _setWormholeCore(address wormholeCore) internal {
+        require(centralRegistry != address(0), "Set the centralRegistry!");
+        require(wormholeCore != address(0), "Set the wormholeCore!");
+
+        CentralRegistry(centralRegistry).setWormholeCore(wormholeCore);
+        console.log("centralRegistry.setWormholeCore: ", wormholeCore);
+    }
+
+    function _setWormholeRelayer(address wormholeRelayer) internal {
+        require(centralRegistry != address(0), "Set the centralRegistry!");
+        require(wormholeRelayer != address(0), "Set the wormholeRelayer!");
+
+        CentralRegistry(centralRegistry).setWormholeRelayer(wormholeRelayer);
+        console.log("centralRegistry.setWormholeRelayer: ", wormholeRelayer);
+    }
+
+    function _setCircleRelayer(address circleRelayer) internal {
+        require(centralRegistry != address(0), "Set the centralRegistry!");
+
+        CentralRegistry(centralRegistry).setCircleRelayer(circleRelayer);
+        console.log("centralRegistry.setCircleRelayer: ", circleRelayer);
+    }
+
+    function _setTokenBridgeRelayer(address tokenBridgeRelayer) internal {
+        require(centralRegistry != address(0), "Set the centralRegistry!");
+
+        CentralRegistry(centralRegistry).setTokenBridgeRelayer(
+            tokenBridgeRelayer
+        );
+        console.log(
+            "centralRegistry.setTokenBridgeRelayer: ",
+            tokenBridgeRelayer
+        );
+    }
+
     function _setVoteBoostMultiplier(uint256 voteBoostMultiplier) internal {
         require(centralRegistry != address(0), "Set the centralRegistry!");
 
@@ -122,18 +161,18 @@ contract CentralRegistryDeployer is DeployConfiguration {
         console.log("centralRegistry.addGaugeController: ", gaugePool);
     }
 
-    function _addLendingMarket(
-        address lendtroller,
+    function _addMarketManager(
+        address marketManager,
         uint256 marketInterestFactor
     ) internal {
         require(centralRegistry != address(0), "Set the centralRegistry!");
-        require(lendtroller != address(0), "Set the lendtroller!");
+        require(marketManager != address(0), "Set the marketManager!");
 
-        CentralRegistry(centralRegistry).addLendingMarket(
-            lendtroller,
+        CentralRegistry(centralRegistry).addMarketManager(
+            marketManager,
             marketInterestFactor
         );
-        console.log("centralRegistry.addLendingMarket: ", lendtroller);
+        console.log("centralRegistry.addMarketManager: ", marketManager);
     }
 
     function _addZapper(address zapper) internal {
@@ -178,11 +217,11 @@ contract CentralRegistryDeployer is DeployConfiguration {
         );
     }
 
-    function setPriceRouter(address priceRouter) internal {
+    function setOracleRouter(address oracleRouter) internal {
         require(centralRegistry != address(0), "Set the centralRegistry!");
-        require(priceRouter != address(0), "Set the priceRouter!");
+        require(oracleRouter != address(0), "Set the oracleRouter!");
 
-        CentralRegistry(centralRegistry).setPriceRouter(priceRouter);
-        console.log("centralRegistry.setPriceRouter: ", priceRouter);
+        CentralRegistry(centralRegistry).setOracleRouter(oracleRouter);
+        console.log("centralRegistry.setOracleRouter: ", oracleRouter);
     }
 }

@@ -2,6 +2,7 @@
 pragma solidity 0.8.17;
 
 import { TestBaseProtocolMessagingHub } from "../TestBaseProtocolMessagingHub.sol";
+import { FeeTokenBridgingHub } from "contracts/architecture/FeeTokenBridgingHub.sol";
 import { ProtocolMessagingHub } from "contracts/architecture/ProtocolMessagingHub.sol";
 
 contract SendFeesTest is TestBaseProtocolMessagingHub {
@@ -30,6 +31,8 @@ contract SendFeesTest is TestBaseProtocolMessagingHub {
     function test_sendFees_fail_whenHasNoEnoughNativeAssetForMessageFee()
         public
     {
+        deal(_USDC_ADDRESS, address(feeAccumulator), _ONE);
+
         centralRegistry.addChainSupport(
             address(this),
             address(this),
@@ -41,8 +44,8 @@ contract SendFeesTest is TestBaseProtocolMessagingHub {
         );
 
         vm.expectRevert(
-            ProtocolMessagingHub
-                .ProtocolMessagingHub__InsufficientGasToken
+            FeeTokenBridgingHub
+                .FeeTokenBridgingHub__InsufficientGasToken
                 .selector
         );
 

@@ -2,8 +2,9 @@
 pragma solidity ^0.8.17;
 
 import { CTokenBase, SafeTransferLib, ERC4626 } from "contracts/market/collateral/CTokenBase.sol";
-import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
-import { Math } from "contracts/libraries/Math.sol";
+
+import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
+import { Math } from "contracts/libraries/external/Math.sol";
 
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
@@ -27,8 +28,8 @@ contract CTokenPrimitive is CTokenBase {
     constructor(
         ICentralRegistry centralRegistry_,
         IERC20 asset_,
-        address lendtroller_
-    ) CTokenBase(centralRegistry_,  asset_, lendtroller_) {}
+        address marketManager_
+    ) CTokenBase(centralRegistry_,  asset_, marketManager_) {}
 
     /// EXTERNAL FUNCTIONS ///
 
@@ -41,7 +42,7 @@ contract CTokenPrimitive is CTokenBase {
         uint256 assets,
         bytes calldata params
     ) external nonReentrant {
-        if (msg.sender != lendtroller.positionFolding()) {
+        if (msg.sender != marketManager.positionFolding()) {
             _revert(_UNAUTHORIZED_SELECTOR);
         }
 
@@ -70,18 +71,18 @@ contract CTokenPrimitive is CTokenBase {
         );
 
         // Fail if redeem not allowed
-        lendtroller.reduceCollateralIfNecessary(
+        marketManager.reduceCollateralIfNecessary(
             owner,
             address(this),
             balancePrior,
             shares
         );
-        lendtroller.canRedeem(address(this), owner, 0);
+        marketManager.canRedeem(address(this), owner, 0);
     }
 
     // PERMISSIONED FUNCTIONS
 
-    /// @notice Used to start a CToken market, executed via lendtroller
+    /// @notice Used to start a CToken market, executed via marketManager
     /// @dev This initial mint is a failsafe against rounding exploits,
     ///      although, we protect against them in many ways,
     ///      better safe than sorry
@@ -107,7 +108,7 @@ contract CTokenPrimitive is CTokenBase {
 
         // Fail if deposit not allowed, this stands in for a maxDeposit
         // check reviewing isListed and mintPaused != 2
-        lendtroller.canMint(address(this));
+        marketManager.canMint(address(this));
 
         // Save _totalAssets to memory
         uint256 ta = _totalAssets;
@@ -136,7 +137,7 @@ contract CTokenPrimitive is CTokenBase {
 
         // Fail if mint not allowed, this stands in for a maxMint
         // check reviewing isListed and mintPaused != 2
-        lendtroller.canMint(address(this));
+        marketManager.canMint(address(this));
 
         // Save _totalAssets to memory
         uint256 ta = _totalAssets;
@@ -172,7 +173,7 @@ contract CTokenPrimitive is CTokenBase {
 
         // No need to check for rounding error, previewWithdraw rounds up
         shares = _previewWithdraw(assets, ta);
-        lendtroller.canRedeemWithCollateralRemoval(
+        marketManager.canRedeemWithCollateralRemoval(
             address(this),
             owner,
             balanceOf(owner),
@@ -202,7 +203,7 @@ contract CTokenPrimitive is CTokenBase {
             _revert(0xb1652d68);
         }
 
-        lendtroller.canRedeemWithCollateralRemoval(
+        marketManager.canRedeemWithCollateralRemoval(
             address(this),
             owner,
             balanceOf(owner),

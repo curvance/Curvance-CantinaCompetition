@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
+import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
@@ -9,11 +9,12 @@ import { PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
 abstract contract BaseOracleAdaptor {
     /// CONSTANTS ///
 
-    ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
+    /// @notice Curvance DAO hub.
+    ICentralRegistry public immutable centralRegistry;
 
     /// STORAGE ///
 
-    /// Asset => Supported by adaptor
+    /// @notice Asset => Supported by adaptor.
     mapping(address => bool) public isSupportedAsset;
 
     /// ERRORS ///
@@ -38,7 +39,14 @@ abstract contract BaseOracleAdaptor {
 
     /// EXTERNAL FUNCTIONS ///
 
-    /// @notice Called by PriceRouter to price an asset.
+    /// @notice Called by OracleRouter to price an asset.
+    /// @param asset The address of the asset for which the price is needed.
+    /// @param inUSD A boolean to determine if the price should be returned in
+    ///              USD or not.
+    /// @param getLower A boolean to determine if lower of two oracle prices
+    ///                 should be retrieved.
+    /// @return PriceReturnData A structure containing the price, error status,
+    ///                         and the quote format of the price.
     function getPrice(
         address asset,
         bool inUSD,
@@ -47,22 +55,29 @@ abstract contract BaseOracleAdaptor {
 
     /// INTERNAL FUNCTIONS ///
 
-    /// @dev Checks whether the caller has sufficient permissioning.
+    /// @notice Checks whether `price` would overflow based on a
+    ///         uint240 maximum.
+    function _checkOracleOverflow(uint256 price) internal pure returns (bool) {
+        return price > type(uint240).max;
+    }
+
+    /// @notice Checks whether the caller has sufficient permissioning.
     function _checkDaoPermissions() internal view {
         if (!centralRegistry.hasDaoPermissions(msg.sender)) {
             revert BaseOracleAdaptor__Unauthorized();
         }
     }
 
-    /// @dev Checks whether the caller has sufficient permissioning.
+    /// @notice Checks whether the caller has sufficient permissioning.
     function _checkElevatedPermissions() internal view {
         if (!centralRegistry.hasElevatedPermissions(msg.sender)) {
             revert BaseOracleAdaptor__Unauthorized();
         }
     }
 
-    function _checkIsPriceRouter() internal view {
-        if (msg.sender != centralRegistry.priceRouter()) {
+    /// @notice Checks whether the caller is the Oracle Router.
+    function _checkIsOracleRouter() internal view {
+        if (msg.sender != centralRegistry.oracleRouter()) {
             revert BaseOracleAdaptor__Unauthorized();
         }
     }

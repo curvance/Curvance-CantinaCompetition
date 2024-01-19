@@ -2,18 +2,19 @@
 pragma solidity ^0.8.17;
 
 import { CTokenPrimitive } from "contracts/market/collateral/CTokenPrimitive.sol";
-import { CommonLib } from "contracts/market/zapper/protocols/CommonLib.sol";
-import { CurveLib } from "contracts/market/zapper/protocols/CurveLib.sol";
-import { BalancerLib } from "contracts/market/zapper/protocols/BalancerLib.sol";
-import { VelodromeLib } from "contracts/market/zapper/protocols/VelodromeLib.sol";
-import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
+
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
-import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
-import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
+import { CommonLib } from "contracts/libraries/CommonLib.sol";
+import { CurveLib } from "contracts/libraries/CurveLib.sol";
+import { BalancerLib } from "contracts/libraries/BalancerLib.sol";
+import { VelodromeLib } from "contracts/libraries/VelodromeLib.sol";
+import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
+import { SafeTransferLib } from "contracts/libraries/external/SafeTransferLib.sol";
+import { ReentrancyGuard } from "contracts/libraries/external/ReentrancyGuard.sol";
 
 import { IWETH } from "contracts/interfaces/IWETH.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
-import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
+import { IMarketManager } from "contracts/interfaces/market/IMarketManager.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IVeloPair } from "contracts/interfaces/external/velodrome/IVeloPair.sol";
 
@@ -30,7 +31,7 @@ contract Zapper is ReentrancyGuard {
 
     /// CONSTANTS ///
 
-    ILendtroller public immutable lendtroller; // Lendtroller linked
+    IMarketManager public immutable marketManager; // MarketManager linked
     address public immutable WETH; // Address of WETH
     ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
 
@@ -38,7 +39,7 @@ contract Zapper is ReentrancyGuard {
 
     error Zapper__ExecutionError();
     error Zapper__InvalidCentralRegistry();
-    error Zapper__LendtrollerIsNotLendingMarket();
+    error Zapper__MarketManagerIsNotLendingMarket();
     error Zapper__CTokenUnderlyingIsNotLPToken();
     error Zapper__Unauthorized();
     error Zapper__SlippageError();
@@ -50,7 +51,7 @@ contract Zapper is ReentrancyGuard {
 
     constructor(
         ICentralRegistry centralRegistry_,
-        address lendtroller_,
+        address marketManager_,
         address WETH_
     ) {
         if (
@@ -64,11 +65,11 @@ contract Zapper is ReentrancyGuard {
 
         centralRegistry = centralRegistry_;
 
-        if (!centralRegistry.isLendingMarket(lendtroller_)) {
-            revert Zapper__LendtrollerIsNotLendingMarket();
+        if (!centralRegistry.isMarketManager(marketManager_)) {
+            revert Zapper__MarketManagerIsNotLendingMarket();
         }
 
-        lendtroller = ILendtroller(lendtroller_);
+        marketManager = IMarketManager(marketManager_);
         WETH = WETH_;
     }
 
@@ -392,7 +393,7 @@ contract Zapper is ReentrancyGuard {
         }
 
         // check valid cToken
-        if (!lendtroller.isListed(cToken)) {
+        if (!marketManager.isListed(cToken)) {
             revert Zapper__Unauthorized();
         }
 

@@ -42,7 +42,7 @@ contract TestVelodromeStableCToken is TestBaseMarket {
         _deployCVELocker();
         _deployVeCVE();
         _deployGaugePool();
-        _deployLendtroller();
+        _deployMarketManager();
 
         centralRegistry.addHarvester(address(this));
         centralRegistry.setFeeAccumulator(address(this));
@@ -51,13 +51,13 @@ contract TestVelodromeStableCToken is TestBaseMarket {
         cUSDCDAI = new VelodromeStableCToken(
             ICentralRegistry(address(centralRegistry)),
             USDC_DAI,
-            address(lendtroller),
+            address(marketManager),
             gauge,
             veloPairFactory,
             veloRouter
         );
 
-        gaugePool.start(address(lendtroller));
+        gaugePool.start(address(marketManager));
         vm.warp(veCVE.nextEpochStartTime());
     }
 
@@ -67,7 +67,7 @@ contract TestVelodromeStableCToken is TestBaseMarket {
         deal(address(USDC_DAI), address(this), 42069);
 
         USDC_DAI.approve(address(cUSDCDAI), 42069);
-        lendtroller.listToken(address(cUSDCDAI));
+        marketManager.listToken(address(cUSDCDAI));
 
         vm.prank(user1);
         USDC_DAI.approve(address(cUSDCDAI), assets);

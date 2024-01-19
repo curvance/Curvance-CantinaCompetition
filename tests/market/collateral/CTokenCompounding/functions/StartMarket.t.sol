@@ -3,10 +3,10 @@ pragma solidity ^0.8.17;
 
 // import { TestBaseCTokenCompounding } from "../TestBaseCTokenCompounding.sol";
 // import { CTokenCompounding } from "contracts/market/collateral/CTokenCompounding.sol";
-// import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
+// import { SafeTransferLib } from "contracts/libraries/external/SafeTransferLib.sol";
 
 // contract CTokenCompounding_StartMarketTest is TestBaseCTokenCompounding {
-//     function test_CTokenCompounding_StartMarket_fail_whenCallerIsNotLendtroller() public {
+//     function test_CTokenCompounding_StartMarket_fail_whenCallerIsNotMarketManager() public {
 //         vm.expectRevert(CTokenCompounding.CTokenCompounding__Unauthorized.selector);
 
 //         cBALRETH.startMarket(address(0));
@@ -17,7 +17,7 @@ pragma solidity ^0.8.17;
 //     {
 //         vm.expectRevert(SafeTransferLib.TransferFromFailed.selector);
 
-//         vm.prank(address(lendtroller));
+//         vm.prank(address(marketManager));
 //         cBALRETH.startMarket(address(0));
 //     }
 
@@ -35,7 +35,7 @@ pragma solidity ^0.8.17;
 //             CTokenCompounding.CTokenCompounding__VaultNotActive.selector
 //         );
 
-//         vm.prank(address(lendtroller));
+//         vm.prank(address(marketManager));
 //         cBALRETH.startMarket(user1);
 //     }
 
@@ -49,7 +49,7 @@ pragma solidity ^0.8.17;
 
 //         uint256 totalSupply = cBALRETH.totalSupply();
 
-//         vm.prank(address(lendtroller));
+//         vm.prank(address(marketManager));
 //         cBALRETH.startMarket(user1);
 
 //         assertEq(cBALRETH.totalSupply(), totalSupply + 42069);

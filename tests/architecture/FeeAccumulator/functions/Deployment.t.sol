@@ -12,14 +12,21 @@ contract FeeAccumulatorDeploymentTest is TestBaseFeeAccumulator {
         vm.expectRevert(
             FeeAccumulator.FeeAccumulator__InvalidCentralRegistry.selector
         );
-        new FeeAccumulator(ICentralRegistry(address(0)), _USDC_ADDRESS, 0, 0);
+        new FeeAccumulator(
+            ICentralRegistry(address(0)),
+            address(oneBalanceFeeManager),
+            0,
+            0
+        );
     }
 
-    function test_feeAccumulatorDeployment_fail_whenFeeTokenIsZeroAddress()
+    function test_feeAccumulatorDeployment_fail_whenOneBalanceFeeManagerIsZeroAddress()
         public
     {
         vm.expectRevert(
-            FeeAccumulator.FeeAccumulator__FeeTokenIsZeroAddress.selector
+            FeeAccumulator
+                .FeeAccumulator__OneBalanceFeeManagerIsZeroAddress
+                .selector
         );
         new FeeAccumulator(
             ICentralRegistry(address(centralRegistry)),
@@ -32,7 +39,7 @@ contract FeeAccumulatorDeploymentTest is TestBaseFeeAccumulator {
     function test_feeAccumulatorDeployment_success() public {
         feeAccumulator = new FeeAccumulator(
             ICentralRegistry(address(centralRegistry)),
-            _USDC_ADDRESS,
+            address(oneBalanceFeeManager),
             0,
             0
         );
@@ -42,14 +49,14 @@ contract FeeAccumulatorDeploymentTest is TestBaseFeeAccumulator {
             address(centralRegistry)
         );
         assertEq(
-            address(feeAccumulator.getPriceRouter()),
-            centralRegistry.priceRouter()
+            address(feeAccumulator.getOracleRouter()),
+            centralRegistry.oracleRouter()
+        );
+        assertEq(
+            feeAccumulator.oneBalanceFeeManager(),
+            address(oneBalanceFeeManager)
         );
         assertEq(feeAccumulator.feeToken(), _USDC_ADDRESS);
-        assertEq(
-            address(feeAccumulator.gelatoOneBalance()),
-            centralRegistry.daoAddress()
-        );
         assertEq(
             usdc.allowance(
                 address(feeAccumulator),

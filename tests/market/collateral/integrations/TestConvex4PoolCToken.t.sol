@@ -46,7 +46,7 @@ pragma solidity ^0.8.17;
 
 //         _deployCentralRegistry();
 //         _deployGaugePool();
-//         _deployLendtroller();
+//         _deployMarketManager();
 
 //         centralRegistry.addHarvester(address(this));
 //         centralRegistry.setFeeAccumulator(address(this));
@@ -54,7 +54,7 @@ pragma solidity ^0.8.17;
 //         cSTETH = new Convex4PoolCToken(
 //             ICentralRegistry(address(centralRegistry)),
 //             CONVEX_STETH_ETH_POOL,
-//             address(lendtroller),
+//             address(marketManager),
 //             CONVEX_STETH_ETH_POOL_ID,
 //             CONVEX_STETH_ETH_REWARD,
 //             CONVEX_BOOSTER

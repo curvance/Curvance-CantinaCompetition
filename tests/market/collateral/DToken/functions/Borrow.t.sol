@@ -2,14 +2,14 @@
 pragma solidity ^0.8.17;
 
 import { TestBaseDToken } from "../TestBaseDToken.sol";
-import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
+import { MarketManager } from "contracts/market/MarketManager.sol";
 import { DToken } from "contracts/market/collateral/DToken.sol";
 
 contract DTokenBorrowTest is TestBaseDToken {
     event Borrow(address borrower, uint256 borrowAmount);
 
     function test_dTokenBorrow_fail_whenBorrowIsNotAllowed() public {
-        lendtroller.setBorrowPaused(address(dUSDC), true);
+        marketManager.setBorrowPaused(address(dUSDC), true);
 
         vm.expectRevert();
         dUSDC.borrow(100e6);
@@ -19,7 +19,7 @@ contract DTokenBorrowTest is TestBaseDToken {
         uint256 cash = dUSDC.marketUnderlyingHeld();
 
         vm.expectRevert(
-            Lendtroller.Lendtroller__InsufficientCollateral.selector
+            MarketManager.MarketManager__InsufficientCollateral.selector
         );
         dUSDC.borrow(cash + 1);
     }
@@ -29,7 +29,7 @@ contract DTokenBorrowTest is TestBaseDToken {
 
         deal(_USDC_ADDRESS, address(dUSDC), 2000e6);
 
-        lendtroller.postCollateral(address(this), address(cBALRETH), 1e18 - 1);
+        marketManager.postCollateral(address(this), address(cBALRETH), 1e18 - 1);
 
         uint256 underlyingBalance = usdc.balanceOf(address(this));
         uint256 balance = dUSDC.balanceOf(address(this));

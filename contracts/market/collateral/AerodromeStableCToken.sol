@@ -2,7 +2,7 @@
 pragma solidity ^0.8.17;
 
 import { CTokenCompounding, SafeTransferLib, IERC20, Math, ICentralRegistry } from "contracts/market/collateral/CTokenCompounding.sol";
-import { VelodromeLib } from "contracts/market/zapper/protocols/VelodromeLib.sol";
+import { VelodromeLib } from "contracts/libraries/VelodromeLib.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { WAD } from "contracts/libraries/Constants.sol";
 
@@ -62,11 +62,11 @@ contract AerodromeStableCToken is CTokenCompounding {
     constructor(
         ICentralRegistry centralRegistry_,
         IERC20 asset_,
-        address lendtroller_,
+        address marketManager_,
         IVeloGauge gauge,
         IVeloPairFactory pairFactory,
         IVeloRouter router
-    ) CTokenCompounding(centralRegistry_, asset_, lendtroller_) {
+    ) CTokenCompounding(centralRegistry_, asset_, marketManager_) {
         if (block.chainid != 8453) {
             revert AerodromeStableCToken__ChainIsNotSupported();
         }

@@ -8,13 +8,14 @@ import { CentralRegistryDeployer } from "./deployers/CentralRegistryDeployer.s.s
 import { CveDeployer } from "./deployers/CveDeployer.s.sol";
 import { CveLockerDeployer } from "./deployers/CveLockerDeployer.s.sol";
 import { ProtocolMessagingHubDeployer } from "./deployers/ProtocolMessagingHubDeployer.s.sol";
+import { OneBalanceFeeManagerDeployer } from "./deployers/OneBalanceFeeManagerDeployer.s.sol";
 import { FeeAccumulatorDeployer } from "./deployers/FeeAccumulatorDeployer.s.sol";
 import { VeCveDeployer } from "./deployers/VeCveDeployer.s.sol";
 import { GaugePoolDeployer } from "./deployers/GaugePoolDeployer.s.sol";
-import { LendtrollerDeployer } from "./deployers/LendtrollerDeployer.s.sol";
+import { MarketManagerDeployer } from "./deployers/MarketManagerDeployer.s.sol";
 import { ZapperDeployer } from "./deployers/ZapperDeployer.s.sol";
 import { PositionFoldingDeployer } from "./deployers/PositionFoldingDeployer.s.sol";
-import { PriceRouterDeployer } from "./deployers/PriceRouterDeployer.s.sol";
+import { OracleRouterDeployer } from "./deployers/OracleRouterDeployer.s.sol";
 
 contract DeployCurvance is
     DeployConfiguration,
@@ -22,13 +23,14 @@ contract DeployCurvance is
     CveDeployer,
     CveLockerDeployer,
     ProtocolMessagingHubDeployer,
+    OneBalanceFeeManagerDeployer,
     FeeAccumulatorDeployer,
     VeCveDeployer,
     GaugePoolDeployer,
-    LendtrollerDeployer,
+    MarketManagerDeployer,
     ZapperDeployer,
     PositionFoldingDeployer,
-    PriceRouterDeployer
+    OracleRouterDeployer
 {
     function run() external {
         _deploy("ethereum");
@@ -55,24 +57,27 @@ contract DeployCurvance is
             deployer,
             deployer,
             _readConfigUint256(".centralRegistry.genesisEpoch"),
-            _readConfigAddress(".centralRegistry.sequencer")
+            _readConfigAddress(".centralRegistry.sequencer"),
+            _readConfigAddress(".centralRegistry.feeToken")
         );
         _setLockBoostMultiplier(
             _readConfigUint256(".centralRegistry.lockBoostMultiplier")
+        );
+        _setWormholeCore(_readConfigAddress(".centralRegistry.wormholeCore"));
+        _setWormholeRelayer(
+            _readConfigAddress(".centralRegistry.wormholeRelayer")
+        );
+        _setCircleRelayer(
+            _readConfigAddress(".centralRegistry.circleRelayer")
+        );
+        _setTokenBridgeRelayer(
+            _readConfigAddress(".centralRegistry.tokenBridgeRelayer")
         );
         _addHarvester(_readConfigAddress(".centralRegistry.harvester"));
 
         // Deploy CVE
 
-        _deployCve(
-            centralRegistry,
-            _readConfigAddress(".cve.tokenBridgeRelayer"),
-            _readConfigAddress(".cve.teamAddress"),
-            _readConfigUint256(".cve.daoTreasuryAllocation"),
-            _readConfigUint256(".cve.callOptionAllocation"),
-            _readConfigUint256(".cve.teamAllocation"),
-            _readConfigUint256(".cve.initialTokenMint")
-        );
+        _deployCVE(centralRegistry, _readConfigAddress(".cve.teamAddress"));
         _setCVE(cve);
         // TODO: set some params for cross-chain
 
@@ -84,31 +89,30 @@ contract DeployCurvance is
         );
         _setCVELocker(cveLocker);
 
-        if (
-            _readConfigAddress(".protocolMessagingHub.wormholeRelayer") !=
-            address(0)
-        ) {
-            // Deploy ProtocolMessagingHub
+        // Deploy ProtocolMessagingHub
 
-            _deployProtocolMessagingHub(
-                centralRegistry,
-                _readConfigAddress(".protocolMessagingHub.feeToken"),
-                _readConfigAddress(".protocolMessagingHub.wormholeRelayer"),
-                _readConfigAddress(".protocolMessagingHub.circleRelayer"),
-                _readConfigAddress(".protocolMessagingHub.tokenBridgeRelayer")
-            );
-            _setProtocolMessagingHub(protocolMessagingHub);
+        _deployProtocolMessagingHub(centralRegistry);
+        _setProtocolMessagingHub(protocolMessagingHub);
 
-            // Deploy FeeAccumulator
+        // Deploy OneBalanceFeeManager
 
-            _deployFeeAccumulator(
-                centralRegistry,
-                _readConfigAddress(".feeAccumulator.feeToken"),
-                _readConfigUint256(".feeAccumulator.gasForCalldata"),
-                _readConfigUint256(".feeAccumulator.gasForCrosschain")
-            );
-            _setFeeAccumulator(feeAccumulator);
-        }
+        _deployOneBalanceFeeManager(
+            centralRegistry,
+            _readConfigAddress(".oneBalanceFeeManager.gelatoOneBalance"),
+            _readConfigAddress(
+                ".oneBalanceFeeManager.polygonOneBalanceFeeManager"
+            )
+        );
+
+        // Deploy FeeAccumulator
+
+        _deployFeeAccumulator(
+            centralRegistry,
+            oneBalanceFeeManager,
+            _readConfigUint256(".feeAccumulator.gasForCalldata"),
+            _readConfigUint256(".feeAccumulator.gasForCrosschain")
+        );
+        _setFeeAccumulator(feeAccumulator);
 
         // Deploy VeCVE
 
@@ -120,32 +124,32 @@ contract DeployCurvance is
         _deployGaugePool(centralRegistry);
         _addGaugeController(gaugePool);
 
-        // Deploy Lendtroller
+        // Deploy MarketManager
 
-        _deployLendtroller(centralRegistry, gaugePool);
-        _addLendingMarket(
-            lendtroller,
-            _readConfigUint256(".lendtroller.marketInterestFactor")
+        _deployMarketManager(centralRegistry, gaugePool);
+        _addMarketManager(
+            marketManager,
+            _readConfigUint256(".marketManager.marketInterestFactor")
         );
 
         // Deploy Zapper
 
         _deployZapper(
             centralRegistry,
-            lendtroller,
+            marketManager,
             _readConfigAddress(".zapper.weth")
         );
         _addZapper(zapper);
 
         // Deploy PositionFolding
 
-        _deployPositionFolding(centralRegistry, lendtroller);
+        _deployPositionFolding(centralRegistry, marketManager);
 
-        deployPriceRouter(
+        deployOracleRouter(
             centralRegistry,
-            _readConfigAddress(".priceRouter.chainlinkEthUsd")
+            _readConfigAddress(".oracleRouter.chainlinkEthUsd")
         );
-        CentralRegistryDeployer.setPriceRouter(priceRouter);
+        CentralRegistryDeployer.setOracleRouter(oracleRouter);
 
         // transfer dao, timelock, emergency council
         // _transferDaoOwnership(
