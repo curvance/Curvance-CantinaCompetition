@@ -51,17 +51,24 @@ contract DynamicInterestRateModel {
     /// @notice Maximum Rate at which the vertex multiplier will
     ///         decay per adjustment, in `WAD`.
     uint256 public constant MAX_VERTEX_DECAY_RATE = .05e18; // 5%.
+    /// @notice The maximum frequency in which the vertex can have
+    ///         between adjustments. It is important that this value is not
+    ///         too high as users could in theory borrow a ton of assets
+    ///         right before adjustment shifts, artificially increasing rates.
+    uint256 public constant MAX_VERTEX_ADJUSTMENT_RATE = 12 hours;
     /// @notice The minimum frequency in which the vertex can have
     ///         between adjustments.
-    uint256 public constant MIN_VERTEX_ADJUSTMENT_RATE = 3 hours;
-    /// @notice The maximum frequency in which the vertex can have
-    ///         between adjustments.
-    uint256 public constant MAX_VERTEX_ADJUSTMENT_RATE = 3 days;
+    uint256 public constant MIN_VERTEX_ADJUSTMENT_RATE = 1 hours;
     /// @notice The maximum rate at with the vertex multiplier is adjusted,
     ///         in WAD on top of base rate (1 `WAD`).
     ///         E.g. 3 * WAD = triples vertex interest rate per adjustment
-    ///         at 100% util.
+    ///         at 100% utilization.
     uint256 public constant MAX_VERTEX_ADJUSTMENT_VELOCITY = 3 * WAD;
+    /// @notice The minimum rate at with the vertex multiplier is adjusted,
+    ///         in WAD on top of base rate (1 `WAD`).
+    ///         E.g. 1.5 * WAD = 50% increase to vertex interest rate per
+    ///         adjustment at 100% utilization.
+    uint256 public constant MIN_VERTEX_ADJUSTMENT_VELOCITY = 1.5e18;
 
     /// @notice Unix time has 31,536,000 seconds per year.
     ///         All my homies hate leap seconds and leap years.
@@ -621,7 +628,10 @@ contract DynamicInterestRateModel {
         vertexMultiplierMax = _bpToWad(vertexMultiplierMax);
         decayRate = _bpToWad(decayRate);
 
-        if (adjustmentVelocity > MAX_VERTEX_ADJUSTMENT_VELOCITY) {
+        if (
+            adjustmentVelocity > MAX_VERTEX_ADJUSTMENT_VELOCITY || 
+            adjustmentVelocity < MIN_VERTEX_ADJUSTMENT_VELOCITY
+        ) {
             revert DynamicInterestRateModel__InvalidAdjustmentVelocity();
         }
 
