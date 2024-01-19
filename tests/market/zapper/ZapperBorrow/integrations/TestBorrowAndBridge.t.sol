@@ -12,7 +12,7 @@ import { ITokenBridgeRelayer } from "contracts/interfaces/external/wormhole/ITok
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IUniswapV3Router } from "contracts/interfaces/external/uniswap/IUniswapV3Router.sol";
 
-contract BorrownAndBridgeTest is TestBaseMarket {
+contract TestBorrowAndBridge is TestBaseMarket {
     address private _UNISWAP_V3_SWAP_ROUTER =
         0xE592427A0AEce92De3Edee1F18E0157C05861564;
     ITokenBridgeRelayer public tokenBridgeRelayer =
