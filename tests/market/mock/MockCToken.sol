@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.17;
 
 import {ICentralRegistry} from "contracts/interfaces/ICentralRegistry.sol";
 import {CTokenPrimitive, IERC20} from "contracts/market/collateral/CTokenPrimitive.sol";

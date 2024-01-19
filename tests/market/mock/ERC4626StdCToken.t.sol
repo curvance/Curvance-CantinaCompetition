@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity >=0.8.0 <0.9.0;
+pragma solidity ^0.8.17;
 
-import "erc4626-tests/ERC4626.test.sol";
+import "tests/market/collateral/4626/ERC4626.t.sol";
 import { TestBaseMarket, ICentralRegistry } from "tests/market/TestBaseMarket.sol";
 import { MockERC20Token } from "./MockERC20Token.sol";
 import { MockCToken } from "./MockCToken.sol";
 
-///@dev ERC4626 Property Tests: https://github.com/a16z/erc4626-tests
 contract ERC4626StdCTokenTest is ERC4626Test, TestBaseMarket {
     // @todo check the failing tests: test_maxWithdraw! which reverts
     // test_redeem, test_withdraw have problem with allowance
