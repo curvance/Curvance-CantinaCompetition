@@ -274,6 +274,7 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
             revert GaugeErrors.InvalidAmount();
         }
 
+        // If the gauge has no startTime 
         if (
             msg.sender != token || !IMarketManager(marketManager).isListed(token)
         ) {
@@ -289,7 +290,7 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
 
         // If the gauge has not started yet no need to check whether
         // first deposit has been set.
-        if (block.timestamp < startTime) {
+        if (block.timestamp > startTime) {
             // If first deposit has not occurred we will need to send
             // excess rewards to the DAO.
             if (firstDeposit == 0) {

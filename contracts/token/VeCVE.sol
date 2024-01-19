@@ -44,10 +44,6 @@ contract VeCVE is ERC20, ReentrancyGuard {
     /// @dev `bytes4(keccak256(bytes("VeCVE__VeCVEShutdown()")))`
     uint256 internal constant _VECVE_SHUTDOWN_SELECTOR = 0x3ad2450b;
 
-    /// @notice token name metadata.
-    bytes32 private immutable _name;
-    /// @notice token symbol metadata.
-    bytes32 private immutable _symbol;
     /// @notice CVE contract address.
     address public immutable cve;
     /// @notice CVE Locker contract address.
@@ -56,6 +52,10 @@ contract VeCVE is ERC20, ReentrancyGuard {
     uint256 public immutable genesisEpoch;
     /// @notice Curvance DAO hub.
     ICentralRegistry public immutable centralRegistry;
+    /// @notice token name metadata.
+    bytes32 private immutable _name;
+    /// @notice token symbol metadata.
+    bytes32 private immutable _symbol;
 
     /// STORAGE ///
 
