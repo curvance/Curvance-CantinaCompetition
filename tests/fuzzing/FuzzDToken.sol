@@ -123,12 +123,12 @@ contract FuzzDToken is StatefulBaseMarket {
         is_supported_dtoken(dtoken);
         check_price_feed();
         address underlying = DToken(dtoken).underlying();
+        require(lendtroller.isListed(dtoken));
         require(lendtroller.borrowPaused(dtoken) != 2);
         uint256 upperBound = DToken(dtoken).marketUnderlyingHeld() -
             DToken(dtoken).totalReserves();
         amount = clampBetween(amount, 1, upperBound - 1);
         require(mint_and_approve(DToken(dtoken).underlying(), dtoken, amount));
-        require(lendtroller.isListed(dtoken));
         (, uint256 shortfall) = lendtroller.hypotheticalLiquidityOf(
             address(this),
             dtoken,
@@ -136,13 +136,14 @@ contract FuzzDToken is StatefulBaseMarket {
             0
         );
         require(shortfall == 0);
+        (uint32 lastTimestampUpdated, , uint256 compoundRate) = DToken(dtoken)
+            .marketData();
+        require(lastTimestampUpdated + compoundRate > block.timestamp);
+
         uint256 preTotalBorrows = DToken(dtoken).totalBorrows();
         uint256 preUnderlyingBalance = IERC20(underlying).balanceOf(
             address(this)
         );
-        (uint32 lastTimestampUpdated, , uint256 compoundRate) = DToken(dtoken)
-            .marketData();
-        require(lastTimestampUpdated + compoundRate > block.timestamp);
 
         try DToken(dtoken).borrow(amount) {
             // Interest was not accrued
@@ -160,6 +161,9 @@ contract FuzzDToken is StatefulBaseMarket {
                 preUnderlyingBalance + amount,
                 "DTOKEN - borrow postUnderlyingBalance failed = underlyingBalance + amount"
             );
+            // TODO: Add check for _debtOf[account].principal
+            // TODO: Add check for _debtOf[account].accountExchangeRate
+            postedCollateralAt[dtoken] = block.timestamp;
         } catch {
             assertWithMsg(
                 false,
@@ -168,9 +172,9 @@ contract FuzzDToken is StatefulBaseMarket {
         }
     }
 
-    /// @custom:property dtok-5 borrow should succeed with correct preconditions
-    /// @custom:property dtok-6 totalBorrows if interest has not accrued should increase by amount after borrow is called
-    /// @custom:property dtok-7 underlying balance if interest has not accrued should increase by amount for msg.sender
+    /// @custom:property dtok- borrow should succeed with correct preconditions
+    /// @custom:property dtok- totalBorrows if interest has not accrued should increase by amount after borrow is called
+    /// @custom:property dtok- underlying balance if interest has not accrued should increase by amount for msg.sender
     /// @custom:precondition token to borrow is either dUSDC or dDAI
     /// @custom:precondition amount is bound between [1, marketUnderlyingHeld() - totalReserves]
     /// @custom:precondition borrow is not paused
@@ -196,17 +200,19 @@ contract FuzzDToken is StatefulBaseMarket {
             0
         );
         require(shortfall == 0);
-        uint256 preTotalBorrows = DToken(dtoken).totalBorrows();
-        uint256 preUnderlyingBalance = IERC20(underlying).balanceOf(
-            address(this)
-        );
         (uint32 lastTimestampUpdated, , uint256 compoundRate) = DToken(dtoken)
             .marketData();
         require(lastTimestampUpdated + compoundRate <= block.timestamp);
 
+        uint256 preTotalBorrows = DToken(dtoken).totalBorrows();
+        uint256 preUnderlyingBalance = IERC20(underlying).balanceOf(
+            address(this)
+        );
+
         try DToken(dtoken).borrow(amount) {
-            // Interest was not accrued
-            assertGt(
+            // Interest is accrued
+            //  TODO: determine how much interest should have accrued instead of just Gt.
+            assertGte(
                 DToken(dtoken).totalBorrows(),
                 preTotalBorrows + amount,
                 "DTOKEN - borrow postTotalBorrows failed = preTotalBorrows + amount"
@@ -215,15 +221,62 @@ contract FuzzDToken is StatefulBaseMarket {
                 address(this)
             );
 
-            assertGt(
+            assertGte(
                 postUnderlyingBalance,
                 preUnderlyingBalance + amount,
                 "DTOKEN - borrow postUnderlyingBalance failed = underlyingBalance + amount"
             );
+            // TODO: Add check for _debtOf[account].principal
+            // TODO: Add check for _debtOf[account].accountExchangeRate
+            postedCollateralAt[dtoken] = block.timestamp;
         } catch {
             assertWithMsg(
                 false,
                 "DTOKEN - borrow should succeed with correct preconditions"
+            );
+        }
+    }
+
+    function repay_should_succeed(address dtoken, uint256 amount) public {
+        is_supported_dtoken(dtoken);
+        address underlying = DToken(dtoken).underlying();
+        require(mint_and_approve(underlying, dtoken, amount));
+        require(lendtroller.isListed(dtoken));
+        try lendtroller.canRepay(address(dtoken), address(this)) {} catch {
+            return;
+        }
+        uint256 preTotalBorrows = DToken(dtoken).totalBorrows();
+        uint256 preUnderlyingBalance = IERC20(underlying).balanceOf(
+            address(this)
+        );
+        uint256 accountDebt = DToken(dtoken).debtBalanceCached(address(this));
+
+        try DToken(dtoken).repay(amount) {
+            assertEq(
+                DToken(dtoken).totalBorrows(),
+                preTotalBorrows - amount,
+                "DTOKEN - repay postTotalBorrows failed = preTotalBorrows - amount"
+            );
+            uint256 postUnderlyingBalance = IERC20(underlying).balanceOf(
+                address(this)
+            );
+            if (amount == 0) {
+                assertEq(
+                    postUnderlyingBalance,
+                    preUnderlyingBalance - accountDebt,
+                    "DTOKEN - repay with amount=0 should reduce underlying balance by accountDebt"
+                );
+            } else {
+                assertEq(
+                    postUnderlyingBalance,
+                    preUnderlyingBalance - amount,
+                    "DTOKEN - repay with amount>0 should reduce underlying balance by amount"
+                );
+            }
+        } catch (bytes memory revertData) {
+            assertWithMsg(
+                false,
+                "DTOKEN - repay should succeed with correct preconditions"
             );
         }
     }
