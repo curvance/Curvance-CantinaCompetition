@@ -1,9 +1,10 @@
 
-# Set the directory to upload to the droplet.
+# Set the directory to upload to the droplet .
+# Release Echidna Link: https://github.com/crytic/echidna/releases/download/v2.2.1/echidna-2.2.1-Linux.zip
 [input]
 directory = "."
-timeout = "48h"
-jobName = "echidna vecve corpus 30000000, 14 workers"
+timeout = "96h"
+jobName = "echidna market manager 10000000"
 
 [commands]
 setup = '''
