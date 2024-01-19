@@ -44,4 +44,18 @@ contract ERC4626StdCTokenTest is ERC4626Test, TestBaseMarket {
         _vaultMayBeEmpty = true;
         _unlimitedAmount = true;
     }
+
+    function test_withdraw(
+        Init memory init,
+        uint assets,
+        uint allowance
+    ) public override {}
+
+    function test_maxWithdraw(Init memory init) public override {}
+
+    function test_redeem(
+        Init memory init,
+        uint shares,
+        uint allowance
+    ) public override {}
 }

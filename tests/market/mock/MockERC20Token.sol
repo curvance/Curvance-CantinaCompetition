@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import { ERC20 } from "contracts/libraries/external/ERC20.sol";
+import {ERC20} from "contracts/libraries/external/ERC20.sol";
 
 contract MockERC20Token is ERC20 {
     function name() public pure override returns (string memory) {
