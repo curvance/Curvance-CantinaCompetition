@@ -641,9 +641,13 @@ contract FuzzVECVE is StatefulBaseMarket {
     }
 
     // TODO: Add additional pre and post conditions on processExpiredLock
-    function processExpiredLock_should_succeed(uint256 seed) public {
-        require(veCVE.isShutdown() != 2);
+    function processExpiredLock_should_succeed_if_shutdown(
+        uint256 seed
+    ) public {
+        require(veCVE.isShutdown() == 2);
         uint256 lockIndex = get_existing_lock(seed);
+        (, uint256 unlockTime) = get_associated_lock(address(this), lockIndex);
+
         try
             veCVE.processExpiredLock(
                 lockIndex,
@@ -656,7 +660,26 @@ contract FuzzVECVE is StatefulBaseMarket {
         {} catch {}
     }
 
-    /// @custom:property vecve-19 – Processing an expired lock should fail when the lock index is incorrect or exceeds the length of created locks.
+    function processExpiredLock_should_succeed_if_unlocktime_expired(
+        bool relock
+    ) public {
+        require(veCVE.isShutdown() != 2);
+        (uint256 lockIndex, bool isExpired) = get_expired_lock();
+        require(isExpired);
+
+        try
+            veCVE.processExpiredLock(
+                lockIndex,
+                relock,
+                defaultContinuous.continuousLock,
+                defaultContinuous.rewardsData,
+                defaultContinuous.param,
+                defaultContinuous.aux
+            )
+        {} catch {}
+    }
+
+    // @custom:property vecve-19 – Processing an expired lock should fail when the lock index is incorrect or exceeds the length of created locks.
     function processExpiredLock_should_fail_if_lock_index_exceeds_length(
         uint256 seed
     ) public {
@@ -986,6 +1009,16 @@ contract FuzzVECVE is StatefulBaseMarket {
         for (uint i = 0; i < numLocks; i++) {
             (, uint40 unlockTime) = veCVE.userLocks(address(this), i);
             if (unlockTime == veCVE.CONTINUOUS_LOCK_VALUE()) {
+                return (i, true);
+            }
+        }
+        return (0, false);
+    }
+
+    function get_expired_lock() private returns (uint256 index, bool exists) {
+        for (uint i = 0; i < numLocks; i++) {
+            (, uint40 unlockTime) = veCVE.userLocks(address(this), i);
+            if (unlockTime < block.timestamp) {
                 return (i, true);
             }
         }
