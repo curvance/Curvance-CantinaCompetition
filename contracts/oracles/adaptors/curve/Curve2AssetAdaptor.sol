@@ -125,14 +125,16 @@ contract Curve2AssetAdaptor is CurveBaseAdaptor {
             sample
         );
 
-        uint256 price = (out * (10 ** data.quoteTokenDecimals)) / sample; // in base token decimals
-
-        price = (price * basePrice) / (10 ** data.baseTokenDecimals);
+        uint256 price = (out * WAD * (10 ** data.quoteTokenDecimals)) /
+            sample /
+            (10 ** data.baseTokenDecimals); // in base token decimals
 
         if (_checkOracleOverflow(price)) {
             pData.hadError = true;
             return pData;
         }
+
+        price = (price * basePrice) / WAD;
 
         pData.price = uint240(price);
     }
