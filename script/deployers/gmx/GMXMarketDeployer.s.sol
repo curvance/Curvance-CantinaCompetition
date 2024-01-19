@@ -14,7 +14,11 @@ import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { DeployConfiguration } from "../../utils/DeployConfiguration.sol";
 
 contract GMXMarketDeployer is DeployConfiguration {
-    function _deployGMXMarket(string memory name, address asset) internal {
+    function _deployGMXMarket(
+        string memory name,
+        address asset,
+        address alteredToken
+    ) internal {
         address centralRegistry = _getDeployedContract("centralRegistry");
         console.log("centralRegistry =", centralRegistry);
         require(centralRegistry != address(0), "Set the centralRegistry!");
@@ -60,7 +64,7 @@ contract GMXMarketDeployer is DeployConfiguration {
         }
 
         if (!GMAdaptor(gmAdaptor).isSupportedAsset(asset)) {
-            GMAdaptor(gmAdaptor).addAsset(asset);
+            GMAdaptor(gmAdaptor).addAsset(asset, alteredToken);
         }
 
         try OracleRouter(oracleRouter).assetPriceFeeds(asset, 0) returns (
