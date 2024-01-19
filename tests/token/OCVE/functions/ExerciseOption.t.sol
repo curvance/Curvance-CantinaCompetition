@@ -125,22 +125,21 @@ contract ExerciseOptionTest is TestBaseOCVE {
     ) public {
         vm.assume(amount >= 1e18 && amount < 1_000_000_000e18);
 
+        uint256 oCVEUSDCBalance = usdc.balanceOf(address(oCVE));
+        uint256 optionExerciseCost = (amount * oCVE.paymentTokenPerCVE()) /
+            1e18;
+        uint256 payAmount = FixedPointMathLib.mulWadUp(
+            optionExerciseCost,
+            amount * 1e12
+        );
+
         deal(address(oCVE), address(this), amount);
         deal(address(cve), address(oCVE), amount);
-        deal(_USDC_ADDRESS, address(this), amount);
+        deal(_USDC_ADDRESS, address(this), payAmount * 3);
 
-        uint256 usdcBalance = usdc.balanceOf(address(this));
-        uint256 oCVEUSDCBalance = usdc.balanceOf(address(oCVE));
-        uint256 optionExerciseCost = (amount * oCVE.paymentTokenPerCVE()) / 1e18;
-        uint256 payAmount = FixedPointMathLib.mulWadUp(
-                optionExerciseCost, 
-                amount / 1e12
-            );
+        usdc.approve(address(oCVE), payAmount);
 
-         usdc.approve(address(oCVE), amount / 1e12);
-         usdc.allowance(address(this), address(oCVE));
-
-        // We have extra checks here because its possible payAmount 
+        // We have extra checks here because its possible payAmount
         // becomes 0 due to rounding with USDC decimals != 18.
         if (payAmount == 0) {
             vm.expectRevert(OCVE.OCVE__CannotExercise.selector);
@@ -152,10 +151,10 @@ contract ExerciseOptionTest is TestBaseOCVE {
 
             oCVE.exerciseOption(amount);
 
-            assertEq(usdc.balanceOf(address(this)), usdcBalance - amount / 1e12);
+            assertEq(usdc.balanceOf(address(this)), payAmount * 2);
             assertEq(
                 usdc.balanceOf(address(oCVE)),
-                oCVEUSDCBalance + amount / 1e12
+                oCVEUSDCBalance + payAmount
             );
         }
     }
