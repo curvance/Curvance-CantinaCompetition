@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import { TestBaseMarketManagerEntropy } from "../TestBaseMarketManagerEntropy.sol";
+import "../TestBaseMarketManagerEntropy.sol";
 import { MockCTokenPrimitive } from "contracts/mocks/MockCTokenPrimitive.sol";
 
 import { WAD } from "contracts/libraries/Constants.sol";
