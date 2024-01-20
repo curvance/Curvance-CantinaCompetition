@@ -19,8 +19,12 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
         bool isConfigured;
         /// @notice The bytes32 encoded hash of the price feed.
         bytes32 symbolHash;
-        /// @notice max the max valid price of the asset.
+        /// @notice The max valid price of the asset.
         uint256 max;
+        /// @notice The number of decimals in the redstone price feed.
+        /// @dev We save this as a uint256 so we do not need to convert from
+        ///      uint8 -> uint256 at runtime.
+        uint256 decimals;
     }
 
     /// STORAGE ///
@@ -73,24 +77,28 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
     }
 
     /// @notice Add a Redstone Core Price Feed as an asset.
-    /// @dev Should be called before `OracleRouter:addAssetPriceFeed` is called.
+    /// @dev Should be called before `OracleRouter:addAssetPriceFeed`
+    ///      is called.
     /// @param asset The address of the token to add pricing for.
     /// @param inUSD Whether the price feed is in USD (inUSD = true)
     ///              or ETH (inUSD = false).
+    /// @param decimals The number of decimals the redstone core feed
+    ///                 prices in.
     function addAsset(
         address asset, 
-        bool inUSD
+        bool inUSD,
+        uint8 decimals
     ) external {
         _checkElevatedPermissions();
 
         bytes32 symbolHash;
         if (inUSD) {
-            // Redstone Core does not append anything at the end of USD denominated feeds,
-            // so we use toBytes32 here.
+            // Redstone Core does not append anything at the end of USD
+            // denominated feeds, so we use toBytes32 here.
             symbolHash = Bytes32Helper._toBytes32(asset);
         } else {
-            // Redstone Core appends "/ETH" at the end of ETH denominated feeds,
-            // so we use toBytes32WithETH here.
+            // Redstone Core appends "/ETH" at the end of ETH denominated
+            // feeds, so we use toBytes32WithETH here.
             symbolHash = Bytes32Helper._toBytes32WithETH(asset);
         }
 
@@ -100,6 +108,16 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
             adaptorData = adaptorDataUSD[asset];
         } else {
             adaptorData = adaptorDataNonUSD[asset];
+        }
+
+        // If decimals == 0 we want default 8 decimals that
+        // redstone typically returns in.
+        if (decimals == 0) {
+            adaptorData.decimals = 8;
+        } else {
+            // Otherwise coerce uint8 to uint256 for cheaper
+            // runtime conversion.
+            adaptorData.decimals = uint256(decimals);
         }
 
         // Add a ~10% buffer to maximum price allowed from redstone can stop 
@@ -132,7 +150,8 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
         delete adaptorDataUSD[asset];
         delete adaptorDataNonUSD[asset];
 
-        // Notify the price router that we are going to stop supporting the asset.
+        // Notify the price router that we are going to stop supporting
+        // the asset.
         IOracleRouter(centralRegistry.oracleRouter()).notifyFeedRemoval(asset);
         
         emit RedstoneCoreAssetRemoved(asset);
@@ -188,12 +207,22 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
             return pData;
         }
 
-        // Redstone Core always has decimals = 8 so we need to
-        // adjust back to decimals = 18.
-        uint256 newPrice = price * (10 ** 10);
+        uint256 quoteDecimals = adaptorData.decimals;
+        if (quoteDecimals != 18) {
+            // Decimals are < 18 so we need to multiply up.
+            if (quoteDecimals < 18) {
+                price = price * (10 ** quoteDecimals);
+            } else {
+                // Decimals are > 18 so we need to multiply down.
+                price = price / (10 ** quoteDecimals);
+            }
+        }
 
-        pData.price = uint240(newPrice);
         pData.hadError = _verifyData(price, data.max);
+
+        if (!pData.hadError) {
+            pData.price = uint240(price);
+        }
     }
 
     /// @notice Validates the feed data based on various constraints.
@@ -211,9 +240,9 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
             return true;
         }
 
-        // We typically check for feed data staleness through a heartbeat check, 
-        // but redstone naturally checks timestamp through its msg.data read, 
-        // so we do not need to check again here.
+        // We typically check for feed data staleness through a heartbeat
+        // check, but redstone naturally checks timestamp through its msg.data
+        // read, so we do not need to check again here.
 
         return false;
     }
