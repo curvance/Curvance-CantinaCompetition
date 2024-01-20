@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import {TestBaseVeCVE} from "../TestBaseVeCVE.sol";
-import {VeCVE} from "contracts/token/VeCVE.sol";
+import { TestBaseVeCVE } from "../TestBaseVeCVE.sol";
+import { VeCVE } from "contracts/token/VeCVE.sol";
 
 contract VotesTest is TestBaseVeCVE {
     function test_getVotes_zero() public {
