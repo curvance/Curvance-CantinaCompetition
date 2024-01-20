@@ -6,7 +6,7 @@ import { BaseOracleAdaptor } from "contracts/oracles/adaptors/BaseOracleAdaptor.
 import { Bytes32Helper } from "contracts/libraries/Bytes32Helper.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
+import { IOracleRouter } from "contracts/interfaces/IOracleRouter.sol";
 import { PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
 
 abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
@@ -19,15 +19,9 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
         bool isConfigured;
         /// @notice The bytes32 encoded hash of the price feed.
         bytes32 symbolHash;
-        /// @param max the max valid price of the asset.
+        /// @notice max the max valid price of the asset.
         uint256 max;
     }
-
-    /// CONSTANTS ///
-    
-    /// @notice If zero is specified for a Redstone Core asset heartbeat,
-    ///         this value is used instead.
-    uint256 public constant DEFAULT_HEART_BEAT = 1 days;
 
     /// STORAGE ///
 
@@ -72,14 +66,14 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
         }
 
         if (inUSD) {
-            return _getPriceinUSD(asset);
+            return _getPriceInUSD(asset);
         }
 
-        return _getPriceinETH(asset);
+        return _getPriceInETH(asset);
     }
 
     /// @notice Add a Redstone Core Price Feed as an asset.
-    /// @dev Should be called before `PriceRouter:addAssetPriceFeed` is called.
+    /// @dev Should be called before `OracleRouter:addAssetPriceFeed` is called.
     /// @param asset The address of the token to add pricing for.
     /// @param inUSD Whether the price feed is in USD (inUSD = true)
     ///              or ETH (inUSD = false).
@@ -139,7 +133,7 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
         delete adaptorDataNonUSD[asset];
 
         // Notify the price router that we are going to stop supporting the asset.
-        IPriceRouter(centralRegistry.priceRouter()).notifyFeedRemoval(asset);
+        IOracleRouter(centralRegistry.oracleRouter()).notifyFeedRemoval(asset);
         
         emit RedstoneCoreAssetRemoved(asset);
     }
@@ -150,7 +144,7 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
     /// @param asset The address of the asset for which the price is needed.
     /// @return A structure containing the price, error status,
     ///         and the quote format of the price (USD).
-    function _getPriceinUSD(
+    function _getPriceInUSD(
         address asset
     ) internal view returns (PriceReturnData memory) {
         if (adaptorDataUSD[asset].isConfigured) {
@@ -164,7 +158,7 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
     /// @param asset The address of the asset for which the price is needed.
     /// @return A structure containing the price, error status,
     ///         and the quote format of the price (ETH).
-    function _getPriceinETH(
+    function _getPriceInETH(
         address asset
     ) internal view returns (PriceReturnData memory) {
         if (adaptorDataNonUSD[asset].isConfigured) {
@@ -179,28 +173,27 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
     ///      for pricing and staleness.
     /// @param data Redstone Core feed details.
     /// @param inUSD A boolean to denote if the price is in USD.
-    /// @return A structure containing the price, error status,
-    ///         and the currency of the price.
+    /// @return pData A structure containing the price, error status,
+    ///               and the currency of the price.
     function _parseData(
         AdaptorData memory data,
         bool inUSD
-    ) internal view returns (PriceReturnData memory) {
+    ) internal view returns (PriceReturnData memory pData) {
+        pData.inUSD = inUSD;
         uint256 price = _extractPrice(data.symbolHash);
+
+        // If we got a price of 0, bubble up an error immediately.
+        if (price == 0) {
+            pData.hadError = true;
+            return pData;
+        }
 
         // Redstone Core always has decimals = 8 so we need to
         // adjust back to decimals = 18.
-        uint256 newPrice = uint256(price) * (10 ** 10);
+        uint256 newPrice = price * (10 ** 10);
 
-        return (
-            PriceReturnData({
-                price: uint240(newPrice),
-                hadError: _verifyData(
-                    uint256(price),
-                    data.max
-                ),
-                inUSD: inUSD
-            })
-        );
+        pData.price = uint240(newPrice);
+        pData.hadError = _verifyData(price, data.max);
     }
 
     /// @notice Validates the feed data based on various constraints.
@@ -214,15 +207,6 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
         uint256 value,
         uint256 max
     ) internal pure returns (bool) {
-        // We expect to never get a negative price here, 
-        // and a value of 0 would generally indicate no data. 
-        // So, we set the minimum intentionally here to 1, 
-        // which is denominated in `WAD` form, 
-        // meaning a minimum price of 1 / 1e18 in real terms.
-        if (value < 1) {
-            return true;
-        }
-
         if (value > max) {
             return true;
         }

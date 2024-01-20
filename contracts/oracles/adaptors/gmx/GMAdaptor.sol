@@ -7,7 +7,7 @@ import { WAD } from "contracts/libraries/Constants.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
-import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
+import { IOracleRouter } from "contracts/interfaces/IOracleRouter.sol";
 import { IReader } from "contracts/interfaces/external/gmx/IReader.sol";
 
 contract GMAdaptor is BaseOracleAdaptor {
@@ -22,30 +22,34 @@ contract GMAdaptor is BaseOracleAdaptor {
 
     /// CONSTANTS ///
 
-    /// @notice keccak256(abi.encode("MAX_PNL_FACTOR_FOR_TRADERS"));
+    /// keccak256(abi.encode("MAX_PNL_FACTOR_FOR_TRADERS"));
     bytes32 public constant PNL_FACTOR_TYPE =
         0xab15365d3aa743e766355e2557c230d8f943e195dc84d9b2b05928a07b635ee1;
 
-    /// @notice GMX Reader address
-    IReader public immutable reader;
-
-    /// @notice GMX DataStore address
-    address public immutable dataStore;
-
     /// STORAGE ///
 
-    /// @notice GMX GM Token Market Data in array
-    /// @dev [indexToken, longToken, shortToken]
+    /// @notice GMX Reader address.
+    IReader public gmxReader;
+
+    /// @notice GMX DataStore address.
+    address public gmxDataStore;
+
+    /// @notice GMX GM Token Market Data in array.
+    /// @dev [alteredToken, longToken, shortToken, indexToken].
+    ///      alteredToken is the address of altered token for synthetic token.
+    ///      e.g. WBTC address for BTC.
     mapping(address => address[]) public marketData;
 
-    /// @notice Price unit for token on GMX Reader
+    /// @notice Price unit for token on GMX Reader.
     mapping(address => uint256) internal _priceUnit;
 
     /// ERRORS ///
 
     error GMAdaptor__ChainIsNotSupported();
-    error GMAdaptor__ReaderIsZeroAddress();
-    error GMAdaptor__DataStoreIsZeroAddress();
+    error GMAdaptor__GMXReaderIsZeroAddress();
+    error GMAdaptor__GMXDataStoreIsZeroAddress();
+    error GMAdaptor__MarketIsInvalid();
+    error GMAdaptor__AlteredTokenIsInvalid();
     error GMAdaptor__AssetIsAlreadySupported();
     error GMAdaptor__AssetIsNotSupported();
     error GMAdaptor__MarketTokenIsNotSupported(address token);
@@ -53,25 +57,19 @@ contract GMAdaptor is BaseOracleAdaptor {
     /// CONSTRUCTOR ///
 
     /// @param centralRegistry_ The address of central registry.
-    /// @param reader_ The address of GMX Reader.
-    /// @param dataStore_ The address of GMX DataStore.
+    /// @param gmxReader_ The address of GMX Reader.
+    /// @param gmxDataStore_ The address of GMX DataStore.
     constructor(
         ICentralRegistry centralRegistry_,
-        address reader_,
-        address dataStore_
+        address gmxReader_,
+        address gmxDataStore_
     ) BaseOracleAdaptor(centralRegistry_) {
         if (block.chainid != 42161) {
             revert GMAdaptor__ChainIsNotSupported();
         }
-        if (reader_ == address(0)) {
-            revert GMAdaptor__ReaderIsZeroAddress();
-        }
-        if (dataStore_ == address(0)) {
-            revert GMAdaptor__DataStoreIsZeroAddress();
-        }
 
-        reader = IReader(reader_);
-        dataStore = dataStore_;
+        _setGMXReader(gmxReader_);
+        _setGMXDataStore(gmxDataStore_);
     }
 
     /// EXTERNAL FUNCTIONS ///
@@ -91,7 +89,10 @@ contract GMAdaptor is BaseOracleAdaptor {
             revert GMAdaptor__AssetIsNotSupported();
         }
 
-        IPriceRouter priceRouter = IPriceRouter(centralRegistry.priceRouter());
+        IOracleRouter oracleRouter = IOracleRouter(
+            centralRegistry.oracleRouter()
+        );
+
         uint256[] memory prices = new uint256[](3);
         address[] memory tokens = marketData[asset];
         uint256 errorCode;
@@ -100,7 +101,7 @@ contract GMAdaptor is BaseOracleAdaptor {
         for (uint256 i = 0; i < 3; ++i) {
             token = tokens[i];
 
-            (prices[i], errorCode) = priceRouter.getPrice(token, true, false);
+            (prices[i], errorCode) = oracleRouter.getPrice(token, true, false);
             if (errorCode > 0) {
                 pData.hadError = true;
                 return pData;
@@ -109,9 +110,9 @@ contract GMAdaptor is BaseOracleAdaptor {
             prices[i] = (prices[i] * 1e30) / _priceUnit[token];
         }
 
-        (int256 price, ) = reader.getMarketTokenPrice(
-            dataStore,
-            IReader.MarketProps(asset, tokens[0], tokens[1], tokens[2]),
+        (int256 price, ) = gmxReader.getMarketTokenPrice(
+            gmxDataStore,
+            IReader.MarketProps(asset, tokens[3], tokens[1], tokens[2]),
             IReader.PriceProps(prices[0], prices[0]),
             IReader.PriceProps(prices[1], prices[1]),
             IReader.PriceProps(prices[2], prices[2]),
@@ -141,36 +142,59 @@ contract GMAdaptor is BaseOracleAdaptor {
 
     /// @notice Add a GMX GM Token as an asset.
     /// @param asset The address of the token to add pricing for.
-    function addAsset(address asset) external {
+    function addAsset(address asset, address alteredToken) external {
         _checkElevatedPermissions();
 
         if (isSupportedAsset[asset]) {
             revert GMAdaptor__AssetIsAlreadySupported();
         }
 
-        IReader.MarketProps memory market = reader.getMarket(dataStore, asset);
-        IPriceRouter priceRouter = IPriceRouter(centralRegistry.priceRouter());
+        IReader.MarketProps memory market = gmxReader.getMarket(
+            gmxDataStore,
+            asset
+        );
+        bool isSynthetic = market.indexToken.code.length == 0;
 
-        address[] memory tokens = new address[](3);
-        address token;
-        tokens[0] = market.indexToken;
+        if (
+            market.indexToken == address(0) ||
+            market.longToken == address(0) ||
+            market.shortToken == address(0)
+        ) {
+            revert GMAdaptor__MarketIsInvalid();
+        }
+
+        if (
+            (isSynthetic && alteredToken == address(0)) ||
+            (!isSynthetic && alteredToken != address(0))
+        ) {
+            revert GMAdaptor__AlteredTokenIsInvalid();
+        }
+
+        IOracleRouter oracleRouter = IOracleRouter(
+            centralRegistry.oracleRouter()
+        );
+
+        address[] memory tokens = new address[](4);
+        tokens[0] = isSynthetic ? alteredToken : market.indexToken;
         tokens[1] = market.longToken;
         tokens[2] = market.shortToken;
+        tokens[3] = market.indexToken;
+
+        address token;
 
         for (uint256 i = 0; i < 3; ++i) {
             token = tokens[i];
 
-            if (!priceRouter.isSupportedAsset(token)) {
+            if (!oracleRouter.isSupportedAsset(token)) {
                 revert GMAdaptor__MarketTokenIsNotSupported(token);
             }
 
             if (_priceUnit[token] == 0) {
                 _priceUnit[token] = WAD * 10 ** IERC20(token).decimals();
             }
-
-            marketData[asset].push(token);
         }
 
+        marketData[asset] = tokens;
         isSupportedAsset[asset] = true;
     }
 
@@ -184,39 +208,48 @@ contract GMAdaptor is BaseOracleAdaptor {
             revert GMAdaptor__AssetIsNotSupported();
         }
 
-        // Notify the adaptor to stop supporting the asset
+        // Notify the adaptor to stop supporting the asset.
         delete isSupportedAsset[asset];
 
-        // Wipe config mapping entries for a gas refund
+        // Wipe config mapping entries for a gas refund.
         delete marketData[asset];
 
-        // Notify the price router that we are going to stop supporting the asset
-        IPriceRouter(centralRegistry.priceRouter()).notifyFeedRemoval(asset);
+        // Notify the price router that we are going to
+        // stop supporting the asset.
+        IOracleRouter(centralRegistry.oracleRouter()).notifyFeedRemoval(asset);
     }
 
-    /// @notice Register synthetic assets and decimals.
-    /// @param assets The struct array of the synthetic assets to register.
-    function registerSyntheticAssets(
-        SyntheticAsset[] memory assets
-    ) external {
-        _checkElevatedPermissions();
-        uint256 numAssets = assets.length;
+    /// @notice Set GMX Reader address.
+    function setGMXReader(address newReader) external {
+        _checkDaoPermissions();
 
-        for (uint256 i; i < numAssets; ++i) {
-            _priceUnit[assets[i].asset] = WAD * 10 ** assets[i].decimals;
-        }
+        _setGMXReader(newReader);
     }
 
-    /// @notice Unregister synthetic assets and decimals.
-    /// @param assets The struct array of the synthetic assets to unregister.
-    function unregisterSyntheticAssets(
-        address[] memory assets
-    ) external {
-        _checkElevatedPermissions();
-        uint256 numAssets = assets.length;
+    /// @notice Set GMX DataStore address.
+    function setGMXDataStore(address newDataStore) external {
+        _checkDaoPermissions();
 
-        for (uint256 i; i < numAssets; ++i) {
-            _priceUnit[assets[i]] = 0;
+        _setGMXDataStore(newDataStore);
+    }
+
+    /// INTERNAL FUNCTIONS ///
+
+    /// @notice Set GMX Reader address.
+    function _setGMXReader(address newReader) internal {
+        if (newReader == address(0)) {
+            revert GMAdaptor__GMXReaderIsZeroAddress();
         }
+
+        gmxReader = IReader(newReader);
+    }
+
+    /// @notice Set GMX DataStore address.
+    function _setGMXDataStore(address newDataStore) internal {
+        if (newDataStore == address(0)) {
+            revert GMAdaptor__GMXDataStoreIsZeroAddress();
+        }
+
+        gmxDataStore = newDataStore;
     }
 }

@@ -7,23 +7,18 @@ import { DToken } from "contracts/market/collateral/DToken.sol";
 
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { CommonLib } from "contracts/libraries/CommonLib.sol";
-import { CurveLib } from "contracts/libraries/CurveLib.sol";
-import { BalancerLib } from "contracts/libraries/BalancerLib.sol";
-import { VelodromeLib } from "contracts/libraries/VelodromeLib.sol";
 import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 import { SafeTransferLib } from "contracts/libraries/external/SafeTransferLib.sol";
 import { ReentrancyGuard } from "contracts/libraries/external/ReentrancyGuard.sol";
 
-import { IWETH } from "contracts/interfaces/IWETH.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
-import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { IVeloPair } from "contracts/interfaces/external/velodrome/IVeloPair.sol";
+import { IMarketManager } from "contracts/interfaces/market/IMarketManager.sol";
 
 contract ZapperSimple is ReentrancyGuard {
     /// CONSTANTS ///
 
-    ILendtroller public immutable lendtroller; // Lendtroller linked
+    IMarketManager public immutable marketManager; // MarketManager linked
     address public immutable WETH; // Address of WETH
     ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
 
@@ -31,13 +26,10 @@ contract ZapperSimple is ReentrancyGuard {
 
     error ZapperSimple__ExecutionError();
     error ZapperSimple__InvalidCentralRegistry();
-    error ZapperSimple__LendtrollerIsNotLendingMarket();
-    error ZapperSimple__CTokenUnderlyingIsNotLPToken();
+    error ZapperSimple__MarketManagerIsNotLendingMarket();
     error ZapperSimple__Unauthorized();
-    error ZapperSimple__SlippageError();
     error ZapperSimple__InsufficientToRepay();
     error ZapperSimple__InvalidZapper(address invalidZapper);
-    error ZapperSimple__InvalidSwapper(uint256 index, address invalidSwapper);
 
     /// CONSTRUCTOR ///
 
@@ -45,7 +37,7 @@ contract ZapperSimple is ReentrancyGuard {
 
     constructor(
         ICentralRegistry centralRegistry_,
-        address lendtroller_,
+        address marketManager_,
         address WETH_
     ) {
         if (
@@ -59,11 +51,11 @@ contract ZapperSimple is ReentrancyGuard {
 
         centralRegistry = centralRegistry_;
 
-        if (!centralRegistry.isLendingMarket(lendtroller_)) {
-            revert ZapperSimple__LendtrollerIsNotLendingMarket();
+        if (!centralRegistry.isMarketManager(marketManager_)) {
+            revert ZapperSimple__MarketManagerIsNotLendingMarket();
         }
 
-        lendtroller = ILendtroller(lendtroller_);
+        marketManager = IMarketManager(marketManager_);
         WETH = WETH_;
     }
 
@@ -124,7 +116,7 @@ contract ZapperSimple is ReentrancyGuard {
         address recipient
     ) private returns (uint256) {
         // check valid cToken
-        if (!lendtroller.isListed(cToken)) {
+        if (!marketManager.isListed(cToken)) {
             revert ZapperSimple__Unauthorized();
         }
 

@@ -21,7 +21,7 @@ contract WithdrawRemainingAirdropTokensTest is TestBaseOCVE {
     {
         skip(1000);
 
-        (uint256 paymentTokenCurrentPrice, ) = priceRouter.getPrice(
+        (uint256 paymentTokenCurrentPrice, ) = oracleRouter.getPrice(
             _USDC_ADDRESS,
             true,
             true
@@ -41,7 +41,7 @@ contract WithdrawRemainingAirdropTokensTest is TestBaseOCVE {
     function test_withdrawRemainingAirdropTokens_success() public {
         skip(1000);
 
-        (uint256 paymentTokenCurrentPrice, ) = priceRouter.getPrice(
+        (uint256 paymentTokenCurrentPrice, ) = oracleRouter.getPrice(
             _USDC_ADDRESS,
             true,
             true

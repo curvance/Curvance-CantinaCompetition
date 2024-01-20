@@ -48,15 +48,21 @@ interface IProtocolMessagingHub {
     /// @param dstChainId Chain ID of the target blockchain.
     /// @param recipient The address of recipient on destination chain.
     /// @param amount The amount of token to bridge.
+    /// @param continuousLock Whether the lock should be continuous or not.
     /// @return Wormhole sequence for emitted TransferTokensWithRelay message.
     function bridgeVeCVELock(
         uint256 dstChainId,
         address recipient,
-        uint256 amount
+        uint256 amount,
+        bool continuousLock
     ) external payable returns (uint64);
 
-    /// @notice Returns wormhole specific chain ID for evm chain ID.
-    /// @param chainId Evm chain ID.
-    function wormholeChainId(uint256 chainId) external view returns (uint16);
+    /// @notice Returns required amount of CVE for relayer fee.
+    /// @param dstChainId Chain ID of the target blockchain.
+    /// @return Required fee.
+    function cveRelayerFee(uint256 dstChainId) external view returns (uint256);
 
+    /// @notice Returns required amount of native asset for message fee.
+    /// @return Required fee.
+    function cveBridgeFee() external view returns (uint256);
 }

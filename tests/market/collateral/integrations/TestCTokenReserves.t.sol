@@ -63,7 +63,7 @@ contract TestCTokenReserves is TestBaseMarket {
         );
 
         // start epoch
-        gaugePool.start(address(lendtroller));
+        gaugePool.start(address(marketManager));
         vm.warp(gaugePool.startTime());
         vm.roll(block.number + 1000);
 
@@ -78,9 +78,9 @@ contract TestCTokenReserves is TestBaseMarket {
         {
             _prepareDAI(owner, 200000e18);
             dai.approve(address(dDAI), 200000e18);
-            lendtroller.listToken(address(dDAI));
+            marketManager.listToken(address(dDAI));
             // add MToken support on price router
-            priceRouter.addMTokenSupport(address(dDAI));
+            oracleRouter.addMTokenSupport(address(dDAI));
         }
 
         // setup CBALRETH
@@ -88,9 +88,9 @@ contract TestCTokenReserves is TestBaseMarket {
             // support market
             _prepareBALRETH(owner, 1 ether);
             balRETH.approve(address(cBALRETH), 1 ether);
-            lendtroller.listToken(address(cBALRETH));
+            marketManager.listToken(address(cBALRETH));
             // set collateral factor
-            lendtroller.updateCollateralToken(
+            marketManager.updateCollateralToken(
                 IMToken(address(cBALRETH)),
                 7000,
                 4000, // liquidate at 71%
@@ -104,7 +104,7 @@ contract TestCTokenReserves is TestBaseMarket {
             tokens[0] = address(cBALRETH);
             uint256[] memory caps = new uint256[](1);
             caps[0] = 100_000e18;
-            lendtroller.setCTokenCollateralCaps(tokens, caps);
+            marketManager.setCTokenCollateralCaps(tokens, caps);
         }
 
         // provide enough liquidity
@@ -138,7 +138,7 @@ contract TestCTokenReserves is TestBaseMarket {
         vm.startPrank(user1);
         balRETH.approve(address(cBALRETH), 1 ether);
         cBALRETH.deposit(1 ether, user1);
-        lendtroller.postCollateral(user1, address(cBALRETH), 1 ether - 1);
+        marketManager.postCollateral(user1, address(cBALRETH), 1 ether - 1);
         vm.stopPrank();
 
         // try borrow()
@@ -155,7 +155,7 @@ contract TestCTokenReserves is TestBaseMarket {
             uint256 repayAmount,
             uint256 liquidatedTokens,
             uint256 protocolTokens
-        ) = lendtroller.canLiquidate(
+        ) = marketManager.canLiquidate(
                 address(dDAI),
                 address(cBALRETH),
                 user1,

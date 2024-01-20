@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import { TestBaseCTokenCompounding } from "../TestBaseCTokenCompoundingBase.sol";
+import { TestBaseCTokenCompounding } from "../TestBaseCTokenCompounding.sol";
+import { MarketManager } from "contracts/market/MarketManager.sol";
 import { CTokenCompounding } from "contracts/market/collateral/CTokenCompounding.sol";
-import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
 
 contract CTokenCompounding_MintTest is TestBaseCTokenCompounding {
     event Transfer(address indexed from, address indexed to, uint256 amount);
@@ -20,9 +20,9 @@ contract CTokenCompounding_MintTest is TestBaseCTokenCompounding {
     function test_CTokenCompounding_Mint_fail_whenMintIsNotAllowed()
         public
     {
-        lendtroller.setMintPaused(address(cBALRETH), true);
+        marketManager.setMintPaused(address(cBALRETH), true);
 
-        vm.expectRevert(Lendtroller.Lendtroller__Paused.selector);
+        vm.expectRevert(MarketManager.MarketManager__Paused.selector);
         cBALRETH.mint(100, address(this));
     }
 

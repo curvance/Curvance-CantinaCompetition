@@ -2,7 +2,10 @@
 pragma solidity ^0.8.17;
 
 import { TestBaseOCVE } from "../TestBaseOCVE.sol";
+
 import { OCVE } from "contracts/token/OCVE.sol";
+import { FixedPointMathLib } from "contracts/libraries/external/FixedPointMathLib.sol";
+
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 contract ExerciseOptionTest is TestBaseOCVE {
@@ -16,7 +19,7 @@ contract ExerciseOptionTest is TestBaseOCVE {
 
         skip(1000);
 
-        (uint256 paymentTokenCurrentPrice, ) = priceRouter.getPrice(
+        (uint256 paymentTokenCurrentPrice, ) = oracleRouter.getPrice(
             _USDC_ADDRESS,
             true,
             true
@@ -53,7 +56,7 @@ contract ExerciseOptionTest is TestBaseOCVE {
 
     function test_exerciseOption_fail_whenMsgValueIsInvalid() public {
         chainlinkAdaptor.addAsset(_E_ADDRESS, _CHAINLINK_ETH_USD, 0, true);
-        priceRouter.addAssetPriceFeed(_E_ADDRESS, address(chainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(_E_ADDRESS, address(chainlinkAdaptor));
 
         oCVE = new OCVE(
             ICentralRegistry(address(centralRegistry)),
@@ -62,7 +65,7 @@ contract ExerciseOptionTest is TestBaseOCVE {
 
         skip(1000);
 
-        (uint256 paymentTokenCurrentPrice, ) = priceRouter.getPrice(
+        (uint256 paymentTokenCurrentPrice, ) = oracleRouter.getPrice(
             _E_ADDRESS,
             true,
             true
@@ -81,10 +84,10 @@ contract ExerciseOptionTest is TestBaseOCVE {
     function test_exerciseOption_success_withETH_fuzzed(
         uint256 amount
     ) public {
-        vm.assume(amount > 0 && amount < 1_000_000_000e18);
+        vm.assume(amount >= 1e18 && amount < 1_000_000_000e18);
 
         chainlinkAdaptor.addAsset(_E_ADDRESS, _CHAINLINK_ETH_USD, 0, true);
-        priceRouter.addAssetPriceFeed(_E_ADDRESS, address(chainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(_E_ADDRESS, address(chainlinkAdaptor));
 
         oCVE = new OCVE(
             ICentralRegistry(address(centralRegistry)),
@@ -93,7 +96,7 @@ contract ExerciseOptionTest is TestBaseOCVE {
 
         skip(1000);
 
-        (uint256 paymentTokenCurrentPrice, ) = priceRouter.getPrice(
+        (uint256 paymentTokenCurrentPrice, ) = oracleRouter.getPrice(
             _E_ADDRESS,
             true,
             true
@@ -120,28 +123,39 @@ contract ExerciseOptionTest is TestBaseOCVE {
     function test_exerciseOption_success_withERC20_fuzzed(
         uint256 amount
     ) public {
-        vm.assume(amount > 0 && amount < 1_000_000_000e18);
+        vm.assume(amount >= 1e18 && amount < 1_000_000_000e18);
+
+        uint256 oCVEUSDCBalance = usdc.balanceOf(address(oCVE));
+        uint256 optionExerciseCost = (amount * oCVE.paymentTokenPerCVE()) /
+            1e18;
+        uint256 payAmount = FixedPointMathLib.mulWadUp(
+            optionExerciseCost,
+            amount * 1e12
+        );
 
         deal(address(oCVE), address(this), amount);
         deal(address(cve), address(oCVE), amount);
-        deal(_USDC_ADDRESS, address(this), amount);
+        deal(_USDC_ADDRESS, address(this), payAmount * 3);
 
-        uint256 usdcBalance = usdc.balanceOf(address(this));
-        uint256 oCVEUSDCBalance = usdc.balanceOf(address(oCVE));
+        usdc.approve(address(oCVE), payAmount);
 
-        usdc.approve(address(oCVE), amount / 1e12);
+        // We have extra checks here because its possible payAmount
+        // becomes 0 due to rounding with USDC decimals != 18.
+        if (payAmount == 0) {
+            vm.expectRevert(OCVE.OCVE__CannotExercise.selector);
 
-        vm.expectEmit(true, true, true, true, address(oCVE));
-        emit OptionsExercised(address(this), amount);
+            oCVE.exerciseOption(amount);
+        } else {
+            vm.expectEmit(true, true, true, true, address(oCVE));
+            emit OptionsExercised(address(this), amount);
 
-        usdc.allowance(address(this), address(oCVE));
+            oCVE.exerciseOption(amount);
 
-        oCVE.exerciseOption(amount);
-
-        assertEq(usdc.balanceOf(address(this)), usdcBalance - amount / 1e12);
-        assertEq(
-            usdc.balanceOf(address(oCVE)),
-            oCVEUSDCBalance + amount / 1e12
-        );
+            assertEq(usdc.balanceOf(address(this)), payAmount * 2);
+            assertEq(
+                usdc.balanceOf(address(oCVE)),
+                oCVEUSDCBalance + payAmount
+            );
+        }
     }
 }

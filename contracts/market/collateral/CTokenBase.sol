@@ -9,7 +9,7 @@ import { ReentrancyGuard } from "contracts/libraries/external/ReentrancyGuard.so
 
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { IGaugePool } from "contracts/interfaces/IGaugePool.sol";
-import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
+import { IMarketManager } from "contracts/interfaces/market/IMarketManager.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.sol";
 import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.sol";
@@ -26,15 +26,15 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
     uint8 private immutable _decimals; // vault assets decimals of precision
     ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
 
-    /// `bytes4(keccak256(bytes("CTokenBase__Unauthorized()")))`
+    /// @dev `bytes4(keccak256(bytes("CTokenBase__Unauthorized()")))`
     uint256 internal constant _UNAUTHORIZED_SELECTOR = 0xbf98a75b;
-    /// `keccak256(bytes("Deposit(address,address,uint256,uint256)"))`.
+    /// @dev `keccak256(bytes("Deposit(address,address,uint256,uint256)"))`.
     uint256 internal constant _DEPOSIT_EVENT_SIGNATURE =
         0xdcbc1c05240f31ff3ad067ef1ee35ce4997762752e3a095284754544f4c709d7;
-    /// `keccak256(bytes("Withdraw(address,address,address,uint256,uint256)"))`.
+    /// @dev `keccak256(bytes("Withdraw(address,address,address,uint256,uint256)"))`.
     uint256 internal constant _WITHDRAW_EVENT_SIGNATURE =
         0xfbde797d201c681b91056529119e0b02407c7bb96a4a2c75c01fc9667232c8db;
-    /// `keccak256(bytes("Transfer(address,address,uint256)"))`.
+    /// @dev `keccak256(bytes("Transfer(address,address,uint256)"))`.
     uint256 internal constant _TRANSFER_EVENT_SIGNATURE =
         0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef;
     /// @dev The balance slot of `owner` is given by:
@@ -48,7 +48,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
     /// STORAGE ///
 
     /// @notice Lending Market controller
-    ILendtroller public immutable lendtroller;
+    IMarketManager public immutable marketManager;
 
     /// @notice token name metadata
     string internal _name;
@@ -60,7 +60,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
 
     error CTokenBase__Unauthorized();
     error CTokenBase__InvalidCentralRegistry();
-    error CTokenBase__LendtrollerIsNotLendingMarket();
+    error CTokenBase__MarketManagerIsNotLendingMarket();
     error CTokenBase__UnderlyingAssetTotalSupplyExceedsMaximum();
 
     /// CONSTRUCTOR ///
@@ -68,7 +68,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
     constructor(
         ICentralRegistry centralRegistry_,
         IERC20 asset_,
-        address lendtroller_
+        address MarketManager_
     ) {
         _asset = asset_;
         _name = string.concat("Curvance collateralized ", asset_.name());
@@ -86,14 +86,14 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
 
         centralRegistry = centralRegistry_;
 
-        // Set the lendtroller after consulting Central Registry
-        // Ensure that lendtroller parameter is a lendtroller
-        if (!centralRegistry.isLendingMarket(lendtroller_)) {
-            revert CTokenBase__LendtrollerIsNotLendingMarket();
+        // Set the marketManager after consulting Central Registry
+        // Ensure that marketManager parameter is a marketManager
+        if (!centralRegistry.isMarketManager(MarketManager_)) {
+            revert CTokenBase__MarketManagerIsNotLendingMarket();
         }
 
-        // Set lendtroller
-        lendtroller = ILendtroller(lendtroller_);
+        // Set marketManager
+        marketManager = IMarketManager(MarketManager_);
 
         // Sanity check underlying so that we know users will not need to
         // mint anywhere close to exchange rate of 1e18
@@ -116,9 +116,9 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         shares = _deposit(assets, receiver);
         if (
             msg.sender == receiver ||
-            msg.sender == lendtroller.positionFolding()
+            msg.sender == marketManager.positionFolding()
         ) {
-            lendtroller.postCollateral(receiver, address(this), shares);
+            marketManager.postCollateral(receiver, address(this), shares);
         }
     }
 
@@ -182,7 +182,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
 
     /// @notice Get a snapshot of the account's balances,
     ///         and the cached exchange rate
-    /// @dev This is used by lendtroller to more efficiently perform liquidity checks
+    /// @dev This is used by MarketManager to more efficiently perform liquidity checks
     /// @param account Address of the account to snapshot
     /// @return tokenBalance Current account shares balance
     /// @return borrowBalance Current account borrow balance (will always be 0, kept for composability)
@@ -194,8 +194,8 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
     }
 
     /// @notice Get a snapshot of the cToken and `account` data
-    /// @dev This is used by lendtroller to more efficiently perform liquidity checks
-    /// NOTE: Posted Debt Balance always return 0 to save gas in lendtroller
+    /// @dev This is used by MarketManager to more efficiently perform liquidity checks
+    /// NOTE: Posted Debt Balance always return 0 to save gas in MarketManager
     ///       since it is unused
     function getSnapshotPacked(
         address
@@ -244,7 +244,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
     ) public view override returns (uint256 maxAssets) {
         // If depositing is disabled maxAssets should be equal to 0
         // according to ERC4626 format.
-        if (!lendtroller.isListed(address(this)) || lendtroller.mintPaused(address(this)) == 2) {
+        if (!marketManager.isListed(address(this)) || marketManager.mintPaused(address(this)) == 2) {
             // We do not need to set maxAssets here since its initialized
             // as 0 so we can just return.
             return maxAssets;
@@ -257,7 +257,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
     ) public view override returns (uint256 maxShares) {
         // If depositing is disabled maxAssets should be equal to 0
         // according to ERC4626 format.
-        if (!lendtroller.isListed(address(this)) || lendtroller.mintPaused(address(this)) == 2) {
+        if (!marketManager.isListed(address(this)) || marketManager.mintPaused(address(this)) == 2) {
             // We do not need to set maxShares here since its initialized
             // as 0 so we can just return.
             return maxShares;
@@ -326,7 +326,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         uint256 amount
     ) public override nonReentrant returns (bool) {
         // Fails if transfer not allowed
-        lendtroller.canTransfer(address(this), msg.sender, amount);
+        marketManager.canTransfer(address(this), msg.sender, amount);
 
         // emit events on gauge pool
         IGaugePool gaugePool = _gaugePool();
@@ -349,7 +349,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         uint256 amount
     ) public override nonReentrant returns (bool) {
         // Fails if transfer not allowed
-        lendtroller.canTransfer(address(this), from, amount);
+        marketManager.canTransfer(address(this), from, amount);
 
         // emit events on gauge pool
         IGaugePool gaugePool = _gaugePool();
@@ -384,7 +384,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         }
 
         // Fails if seize not allowed
-        lendtroller.canSeize(address(this), msg.sender);
+        marketManager.canSeize(address(this), msg.sender);
         uint256 liquidatorTokens = liquidatedTokens - protocolTokens;
 
         // emit events on gauge pool
@@ -402,7 +402,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
     }
 
     /// @notice Transfers collateral tokens (this market) to the liquidator.
-    /// @dev Will fail unless called by the lendtroller itself during the process
+    /// @dev Will fail unless called by the MarketManager itself during the process
     ///      of liquidation.
     ///      NOTE: The protocol never takes a fee on account liquidation
     ///            as lenders already are bearing a burden.
@@ -414,12 +414,12 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         address account,
         uint256 shares
     ) external nonReentrant {
-        // We check self liquidation in lendtroller before
+        // We check self liquidation in MarketManager before
         // this call so we do not need to check here
 
-        // Make sure the lendtroller itself is calling since
+        // Make sure the MarketManager itself is calling since
         // then we know all liquidity checks have passed
-        if (msg.sender != address(lendtroller)) {
+        if (msg.sender != address(marketManager)) {
             _revert(_UNAUTHORIZED_SELECTOR);
         }
         // emit events on gauge pool
@@ -565,13 +565,13 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         }
     }
 
-    /// @notice Used to start a CToken market, executed via lendtroller
+    /// @notice Used to start a CToken market, executed via marketManager
     /// @dev This initial mint is a failsafe against rounding exploits,
     ///      although, we protect against it in many ways,
     ///      better safe than sorry
     /// @param by The account initializing the market
     function _startMarket(address by) internal {
-        if (msg.sender != address(lendtroller)) {
+        if (msg.sender != address(marketManager)) {
             _revert(_UNAUTHORIZED_SELECTOR);
         }
 
@@ -664,7 +664,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
     /// @notice Returns gauge pool contract address
     /// @return The gauge controller contract address
     function _gaugePool() internal view returns (IGaugePool) {
-        return lendtroller.gaugePool();
+        return marketManager.gaugePool();
     }
 
     /// @dev Checks whether the caller has sufficient permissioning

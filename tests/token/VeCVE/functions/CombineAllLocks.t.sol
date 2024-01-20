@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import {TestBaseVeCVE} from "../TestBaseVeCVE.sol";
-import {VeCVE} from "contracts/token/VeCVE.sol";
-import "forge-std/console.sol";
+import { TestBaseVeCVE } from "../TestBaseVeCVE.sol";
+import { VeCVE } from "contracts/token/VeCVE.sol";
 
 contract CombineAllLocksTest is TestBaseVeCVE {
     uint256 internal constant _INITIAL_AMOUNT = 30e18;
@@ -88,7 +87,13 @@ contract CombineAllLocksTest is TestBaseVeCVE {
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
         _deal(1000000000000013658 + 1524395970892188412);
         veCVE.createLock(1000000000000013658, true, rewardsData, "", 0);
-        veCVE.createLock(1524395970892188412, false, rewardsData, "", 31449600);
+        veCVE.createLock(
+            1524395970892188412,
+            false,
+            rewardsData,
+            "",
+            31449600
+        );
         uint256 preCombine = (veCVE.userPoints(address(this)));
 
         veCVE.combineAllLocks(true, rewardsData, "", 0);

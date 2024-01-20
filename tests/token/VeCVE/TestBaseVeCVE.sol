@@ -22,6 +22,7 @@ contract TestBaseVeCVE is TestBase {
     VeCVE public veCVE;
     IERC20 public usdc;
 
+contract TestBaseVeCVE is TestBaseMarket {
     RewardsData public rewardsData;
 
     modifier setRewardsData(bool shouldLock, bool isFreshLock, bool isFreshLockContinuous) {
@@ -33,16 +34,9 @@ contract TestBaseVeCVE is TestBase {
         _;
     }
 
-    function setUp() public virtual {
-        _fork(18031848);
+    function setUp() public virtual override {
+        super.setUp();
 
-        _deployCentralRegistry();
-        _deployCVE();
-        _deployCVELocker();
-
-        _deployVeCVE();
-
-        usdc = IERC20(_USDC_ADDRESS);
         rewardsData = RewardsData(_USDC_ADDRESS, true, true, true);
         deal(_USDC_ADDRESS, address(cveLocker), _MAX_FUZZ_AMOUNT);
     }

@@ -86,7 +86,7 @@ contract TestPositionFolding is TestBaseMarket {
         _prepareBALRETH(user, 1 ether);
 
         // start epoch
-        gaugePool.start(address(lendtroller));
+        gaugePool.start(address(marketManager));
         vm.warp(gaugePool.startTime());
         vm.roll(block.number + 1000);
 
@@ -102,9 +102,9 @@ contract TestPositionFolding is TestBaseMarket {
         {
             _prepareDAI(owner, 200000e18);
             dai.approve(address(dDAI), 200000e18);
-            lendtroller.listToken(address(dDAI));
+            marketManager.listToken(address(dDAI));
             // add MToken support on price router
-            priceRouter.addMTokenSupport(address(dDAI));
+            oracleRouter.addMTokenSupport(address(dDAI));
         }
 
         // setup CBALRETH
@@ -112,9 +112,9 @@ contract TestPositionFolding is TestBaseMarket {
             // support market
             _prepareBALRETH(owner, 1 ether);
             balRETH.approve(address(cBALRETH), 1 ether);
-            lendtroller.listToken(address(cBALRETH));
+            marketManager.listToken(address(cBALRETH));
             // set collateral factor
-            lendtroller.updateCollateralToken(
+            marketManager.updateCollateralToken(
                 IMToken(address(cBALRETH)),
                 7000,
                 4000,
@@ -128,11 +128,11 @@ contract TestPositionFolding is TestBaseMarket {
             tokens[0] = address(cBALRETH);
             uint256[] memory caps = new uint256[](1);
             caps[0] = 100_000e18;
-            lendtroller.setCTokenCollateralCaps(tokens, caps);
+            marketManager.setCTokenCollateralCaps(tokens, caps);
         }
 
         // set position folding
-        Lendtroller(lendtroller).setPositionFolding(address(positionFolding));
+        MarketManager(marketManager).setPositionFolding(address(positionFolding));
 
         // vm.warp(gaugePool.startTime());
         // vm.roll(block.number + 1000);
@@ -175,7 +175,7 @@ contract TestPositionFolding is TestBaseMarket {
             address(positionFolding.centralRegistry()),
             address(centralRegistry)
         );
-        assertEq(address(positionFolding.lendtroller()), address(lendtroller));
+        assertEq(address(positionFolding.marketManager()), address(marketManager));
     }
 
     function testLeverage() public {
@@ -186,7 +186,7 @@ contract TestPositionFolding is TestBaseMarket {
 
         // mint
         assertGt(cBALRETH.deposit(1 ether, user1), 0);
-        lendtroller.postCollateral(user, address(cBALRETH), 1 ether);
+        marketManager.postCollateral(user, address(cBALRETH), 1 ether);
         assertEq(cBALRETH.balanceOf(user), 1 ether);
 
         uint256 balanceBeforeBorrow = dai.balanceOf(user);

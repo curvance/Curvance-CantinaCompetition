@@ -18,14 +18,14 @@ import { ProtocolMessagingHub } from "contracts/architecture/ProtocolMessagingHu
 import { DToken } from "contracts/market/collateral/DToken.sol";
 import { CTokenCompounding } from "contracts/market/collateral/CTokenCompounding.sol";
 import { AuraCToken } from "contracts/market/collateral/AuraCToken.sol";
-import { DynamicInterestRateModel } from "contracts/market/interestRates/DynamicInterestRateModel.sol";
-import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
+import { DynamicInterestRateModel } from "contracts/market/DynamicInterestRateModel.sol";
+import { MarketManager } from "contracts/market/MarketManager.sol";
 import { Zapper } from "contracts/market/zapper/Zapper.sol";
 import { PositionFolding } from "contracts/market/leverage/PositionFolding.sol";
 import { ChainlinkAdaptor } from "contracts/oracles/adaptors/chainlink/ChainlinkAdaptor.sol";
 import { IVault } from "contracts/oracles/adaptors/balancer/BalancerBaseAdaptor.sol";
 import { BalancerStablePoolAdaptor } from "contracts/oracles/adaptors/balancer/BalancerStablePoolAdaptor.sol";
-import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
+import { OracleRouter } from "contracts/oracles/OracleRouter.sol";
 import { GaugePool } from "contracts/gauge/GaugePool.sol";
 import { ERC20 } from "contracts/libraries/external/ERC20.sol";
 
@@ -40,9 +40,6 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
     address internal _RETH_ADDRESS;
     address internal _BALANCER_WETH_RETH;
     address internal _DAI_ADDRESS;
-    address internal _CIRCLE_RELAYER;
-    address internal _TOKEN_BRIDGE_RELAYER;
-    address internal _WORMHOLE_RELAYER;
 
     CVE public cve;
     VeCVE public veCVE;
@@ -54,9 +51,9 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
     ChainlinkAdaptor public chainlinkAdaptor;
     ChainlinkAdaptor public dualChainlinkAdaptor;
     DynamicInterestRateModel public InterestRateModel;
-    Lendtroller public lendtroller;
+    MarketManager public marketManager;
     PositionFolding public positionFolding;
-    PriceRouter public priceRouter;
+    OracleRouter public oracleRouter;
     AuraCToken public auraCToken;
     DToken public dUSDC;
     DToken public dDAI;
@@ -100,9 +97,6 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
         balRETH = new MockToken("balWethReth", "balWethReth", 18);
         _BALANCER_WETH_RETH = address(balRETH);
 
-        _CIRCLE_RELAYER = address(new MockCircleRelayer(10));
-        _WORMHOLE_RELAYER = address(0x1);
-
         emit LogString("DEPLOYED: centralRegistry");
         _deployCentralRegistry();
         emit LogString("DEPLOYED: CVE");
@@ -118,13 +112,13 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
         _deployVeCVE();
         emit LogString("DEPLOYED: Mock Chainlink V3 Aggregator");
         chainlinkEthUsd = new MockV3Aggregator(8, 1500e8, 1e50, 1e6);
-        emit LogString("DEPLOYED: PriceRouter");
-        _deployPriceRouter();
+        emit LogString("DEPLOYED: OracleRouter");
+        _deployOracleRouter();
         // _deployChainlinkAdaptors();
         emit LogString("DEPLOYED: GaugePool");
         _deployGaugePool();
-        emit LogString("DEPLOYED: Lendtroller");
-        _deployLendtroller();
+        emit LogString("DEPLOYED: MarketManager");
+        _deployMarketManager();
         emit LogString("DEPLOYED: DynamicInterestRateModel");
         _deployDynamicInterestRateModel();
         emit LogString("DEPLOYED: DUSDC");
@@ -138,9 +132,9 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
         emit LogString("DEPLOYED: PositionFolding");
         _deployPositionFolding();
         emit LogString("DEPLOYED: Adding dUSDC to router");
-        priceRouter.addMTokenSupport(address(dUSDC));
+        oracleRouter.addMTokenSupport(address(dUSDC));
         // emit LogString("DEPLOYED: Adding cBalReth to router");
-        // priceRouter.addMTokenSupport(address(cBALRETH));
+        // oracleRouter.addMTokenSupport(address(cBALRETH));
     }
 
     function _deployCentralRegistry() internal {
@@ -149,6 +143,7 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
             address(this),
             address(this),
             0,
+            address(this),
             address(this)
         );
         centralRegistry.transferEmergencyCouncil(address(this));
@@ -159,12 +154,7 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
         bridgeRelayer = new MockTokenBridgeRelayer();
         cve = new CVE(
             ICentralRegistry(address(centralRegistry)),
-            address(bridgeRelayer),
-            address(this),
-            10000 ether,
-            10000 ether,
-            10000 ether,
-            10000 ether
+            address(this)
         );
         centralRegistry.setCVE(address(cve));
     }
@@ -184,22 +174,18 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
         cveLocker.startLocker();
     }
 
-    function _deployPriceRouter() internal {
-        priceRouter = new PriceRouter(
+    function _deployOracleRouter() internal {
+        oracleRouter = new OracleRouter(
             ICentralRegistry(address(centralRegistry)),
             address(chainlinkEthUsd)
         );
 
-        centralRegistry.setPriceRouter(address(priceRouter));
+        centralRegistry.setOracleRouter(address(oracleRouter));
     }
 
     function _deployProtocolMessagingHub() internal {
         protocolMessagingHub = new ProtocolMessagingHub(
-            ICentralRegistry(address(centralRegistry)),
-            _USDC_ADDRESS,
-            _WORMHOLE_RELAYER,
-            _CIRCLE_RELAYER,
-            _TOKEN_BRIDGE_RELAYER
+            ICentralRegistry(address(centralRegistry))
         );
         centralRegistry.setProtocolMessagingHub(address(protocolMessagingHub));
     }
@@ -265,17 +251,17 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
             false
         );
 
-        priceRouter.addApprovedAdaptor(address(chainlinkAdaptor));
-        priceRouter.addAssetPriceFeed(
+        oracleRouter.addApprovedAdaptor(address(chainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(
             _WETH_ADDRESS,
             address(chainlinkAdaptor)
         );
-        priceRouter.addAssetPriceFeed(
+        oracleRouter.addAssetPriceFeed(
             _USDC_ADDRESS,
             address(chainlinkAdaptor)
         );
-        priceRouter.addAssetPriceFeed(_DAI_ADDRESS, address(chainlinkAdaptor));
-        priceRouter.addAssetPriceFeed(
+        oracleRouter.addAssetPriceFeed(_DAI_ADDRESS, address(chainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(
             _RETH_ADDRESS,
             address(chainlinkAdaptor)
         );
@@ -322,20 +308,20 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
             0,
             false
         );
-        priceRouter.addApprovedAdaptor(address(dualChainlinkAdaptor));
-        priceRouter.addAssetPriceFeed(
+        oracleRouter.addApprovedAdaptor(address(dualChainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(
             _WETH_ADDRESS,
             address(dualChainlinkAdaptor)
         );
-        priceRouter.addAssetPriceFeed(
+        oracleRouter.addAssetPriceFeed(
             _USDC_ADDRESS,
             address(dualChainlinkAdaptor)
         );
-        priceRouter.addAssetPriceFeed(
+        oracleRouter.addAssetPriceFeed(
             _DAI_ADDRESS,
             address(dualChainlinkAdaptor)
         );
-        priceRouter.addAssetPriceFeed(
+        oracleRouter.addAssetPriceFeed(
             _RETH_ADDRESS,
             address(dualChainlinkAdaptor)
         );
@@ -346,13 +332,13 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
         centralRegistry.addGaugeController(address(gaugePool));
     }
 
-    function _deployLendtroller() internal {
-        lendtroller = new Lendtroller(
+    function _deployMarketManager() internal {
+        marketManager = new MarketManager(
             ICentralRegistry(address(centralRegistry)),
             address(gaugePool)
         );
-        centralRegistry.addLendingMarket(
-            address(lendtroller),
+        centralRegistry.addMarketManager(
+            address(marketManager),
             marketInterestFactor
         );
     }
@@ -385,7 +371,7 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
             new DToken(
                 ICentralRegistry(address(centralRegistry)),
                 token,
-                address(lendtroller),
+                address(marketManager),
                 address(InterestRateModel)
             );
     }
@@ -393,14 +379,14 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
     function _deployPositionFolding() internal returns (PositionFolding) {
         positionFolding = new PositionFolding(
             ICentralRegistry(address(centralRegistry)),
-            address(lendtroller)
+            address(marketManager)
         );
         return positionFolding;
     }
 
     function _addSinglePriceFeed() internal {
-        priceRouter.addApprovedAdaptor(address(chainlinkAdaptor));
-        priceRouter.addAssetPriceFeed(
+        oracleRouter.addApprovedAdaptor(address(chainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(
             _USDC_ADDRESS,
             address(chainlinkAdaptor)
         );
@@ -409,8 +395,8 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
     function _addDualPriceFeed() internal {
         _addSinglePriceFeed();
 
-        priceRouter.addApprovedAdaptor(address(dualChainlinkAdaptor));
-        priceRouter.addAssetPriceFeed(
+        oracleRouter.addApprovedAdaptor(address(dualChainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(
             _USDC_ADDRESS,
             address(dualChainlinkAdaptor)
         );

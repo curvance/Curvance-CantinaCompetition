@@ -11,16 +11,17 @@ import { CVELocker } from "contracts/architecture/CVELocker.sol";
 import { CentralRegistry } from "contracts/architecture/CentralRegistry.sol";
 import { FeeAccumulator } from "contracts/architecture/FeeAccumulator.sol";
 import { ProtocolMessagingHub } from "contracts/architecture/ProtocolMessagingHub.sol";
+import { OneBalanceFeeManager } from "contracts/architecture/OneBalanceFeeManager.sol";
 import { DToken } from "contracts/market/collateral/DToken.sol";
 import { AuraCToken } from "contracts/market/collateral/AuraCToken.sol";
-import { DynamicInterestRateModel } from "contracts/market/interestRates/DynamicInterestRateModel.sol";
-import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
+import { DynamicInterestRateModel } from "contracts/market/DynamicInterestRateModel.sol";
+import { MarketManager } from "contracts/market/MarketManager.sol";
 import { Zapper } from "contracts/market/zapper/Zapper.sol";
 import { PositionFolding } from "contracts/market/leverage/PositionFolding.sol";
 import { ChainlinkAdaptor } from "contracts/oracles/adaptors/chainlink/ChainlinkAdaptor.sol";
 import { IVault } from "contracts/oracles/adaptors/balancer/BalancerBaseAdaptor.sol";
 import { BalancerStablePoolAdaptor } from "contracts/oracles/adaptors/balancer/BalancerStablePoolAdaptor.sol";
-import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
+import { OracleRouter } from "contracts/oracles/OracleRouter.sol";
 import { GaugePool } from "contracts/gauge/GaugePool.sol";
 import { MockTokenBridgeRelayer } from "contracts/mocks/MockTokenBridgeRelayer.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
@@ -64,7 +65,7 @@ contract TestBaseMarket is TestBase {
         0xA57b8d98dAE62B26Ec3bcC4a365338157060B234;
     address internal constant _REWARDER =
         0xDd1fE5AD401D4777cE89959b7fa587e569Bf125D;
-    address internal constant _WORMHOLE =
+    address internal constant _WORMHOLE_CORE =
         0x98f3c9e6E3fAce36bAAd05FE09d375Ef1464288B;
     address internal constant _WORMHOLE_RELAYER =
         0x27428DD2d3DD32A4D7f7C497eAaa23130d894911;
@@ -72,6 +73,8 @@ contract TestBaseMarket is TestBase {
         0x4cb69FaE7e7Af841e44E1A1c30Af640739378bb2;
     address internal constant _TOKEN_BRIDGE_RELAYER =
         0xCafd2f0A35A4459fA40C0517e17e6fA2939441CA;
+    address internal constant _GELATO_ONE_BALANCE =
+        0x7506C12a824d73D9b08564d5Afc22c949434755e;
 
     CVE public cve;
     VeCVE public veCVE;
@@ -79,13 +82,14 @@ contract TestBaseMarket is TestBase {
     CentralRegistry public centralRegistry;
     FeeAccumulator public feeAccumulator;
     ProtocolMessagingHub public protocolMessagingHub;
+    OneBalanceFeeManager public oneBalanceFeeManager;
     BalancerStablePoolAdaptor public balRETHAdapter;
     ChainlinkAdaptor public chainlinkAdaptor;
     ChainlinkAdaptor public dualChainlinkAdaptor;
     DynamicInterestRateModel public InterestRateModel;
-    Lendtroller public lendtroller;
+    MarketManager public marketManager;
     PositionFolding public positionFolding;
-    PriceRouter public priceRouter;
+    OracleRouter public oracleRouter;
     AuraCToken public auraCToken;
     DToken public dUSDC;
     DToken public dDAI;
@@ -125,15 +129,16 @@ contract TestBaseMarket is TestBase {
         _deployCentralRegistry();
         _deployCVE();
         _deployCVELocker();
-        _deployProtocolMessagingHub();
-        _deployFeeAccumulator();
         _deployVeCVE();
+        _deployProtocolMessagingHub();
+        _deployOneBalanceFeeManager();
+        _deployFeeAccumulator();
         chainlinkEthUsd = new MockV3Aggregator(8, 1500e8, 1e50, 1e6);
-        _deployPriceRouter();
+        _deployOracleRouter();
         _deployChainlinkAdaptors();
         _deployGaugePool();
 
-        _deployLendtroller();
+        _deployMarketManager();
         _deployDynamicInterestRateModel();
         _deployDUSDC();
         _deployDDAI();
@@ -142,8 +147,8 @@ contract TestBaseMarket is TestBase {
         _deployZapper();
         _deployPositionFolding();
 
-        priceRouter.addMTokenSupport(address(dUSDC));
-        priceRouter.addMTokenSupport(address(cBALRETH));
+        oracleRouter.addMTokenSupport(address(dUSDC));
+        oracleRouter.addMTokenSupport(address(cBALRETH));
     }
 
     function _deployCentralRegistry() internal {
@@ -152,10 +157,16 @@ contract TestBaseMarket is TestBase {
             _ZERO_ADDRESS,
             _ZERO_ADDRESS,
             0,
-            address(0)
+            address(0),
+            _USDC_ADDRESS
         );
         centralRegistry.transferEmergencyCouncil(address(this));
         centralRegistry.setLockBoostMultiplier(lockBoostMultiplier);
+        centralRegistry.setCircleRelayer(_CIRCLE_RELAYER);
+        centralRegistry.setWormholeRelayer(_WORMHOLE_RELAYER);
+        centralRegistry.setWormholeCore(_WORMHOLE_CORE);
+        centralRegistry.setTokenBridgeRelayer(_TOKEN_BRIDGE_RELAYER);
+        centralRegistry.setGelatoSponsor(address(1));
     }
 
     function _deployCVE() internal {
@@ -168,15 +179,7 @@ contract TestBaseMarket is TestBase {
             );
         }
 
-        cve = new CVE(
-            ICentralRegistry(address(centralRegistry)),
-            _TOKEN_BRIDGE_RELAYER,
-            address(0),
-            10000 ether,
-            10000 ether,
-            10000 ether,
-            10000 ether
-        );
+        cve = new CVE(ICentralRegistry(address(centralRegistry)), address(0));
         centralRegistry.setCVE(address(cve));
     }
 
@@ -195,24 +198,28 @@ contract TestBaseMarket is TestBase {
         cveLocker.startLocker();
     }
 
-    function _deployPriceRouter() internal {
-        priceRouter = new PriceRouter(
+    function _deployOracleRouter() internal {
+        oracleRouter = new OracleRouter(
             ICentralRegistry(address(centralRegistry)),
             address(chainlinkEthUsd)
         );
 
-        centralRegistry.setPriceRouter(address(priceRouter));
+        centralRegistry.setOracleRouter(address(oracleRouter));
     }
 
     function _deployProtocolMessagingHub() internal {
         protocolMessagingHub = new ProtocolMessagingHub(
-            ICentralRegistry(address(centralRegistry)),
-            _USDC_ADDRESS,
-            _WORMHOLE_RELAYER,
-            _CIRCLE_RELAYER,
-            _TOKEN_BRIDGE_RELAYER
+            ICentralRegistry(address(centralRegistry))
         );
         centralRegistry.setProtocolMessagingHub(address(protocolMessagingHub));
+    }
+
+    function _deployOneBalanceFeeManager() internal {
+        oneBalanceFeeManager = new OneBalanceFeeManager(
+            ICentralRegistry(address(centralRegistry)),
+            _GELATO_ONE_BALANCE,
+            address(1)
+        );
     }
 
     function _deployFeeAccumulator() internal {
@@ -221,7 +228,7 @@ contract TestBaseMarket is TestBase {
 
         feeAccumulator = new FeeAccumulator(
             ICentralRegistry(address(centralRegistry)),
-            _USDC_ADDRESS,
+            address(oneBalanceFeeManager),
             1e9,
             1e9
         );
@@ -275,17 +282,17 @@ contract TestBaseMarket is TestBase {
             false
         );
 
-        priceRouter.addApprovedAdaptor(address(chainlinkAdaptor));
-        priceRouter.addAssetPriceFeed(
+        oracleRouter.addApprovedAdaptor(address(chainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(
             _WETH_ADDRESS,
             address(chainlinkAdaptor)
         );
-        priceRouter.addAssetPriceFeed(
+        oracleRouter.addAssetPriceFeed(
             _USDC_ADDRESS,
             address(chainlinkAdaptor)
         );
-        priceRouter.addAssetPriceFeed(_DAI_ADDRESS, address(chainlinkAdaptor));
-        priceRouter.addAssetPriceFeed(
+        oracleRouter.addAssetPriceFeed(_DAI_ADDRESS, address(chainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(
             _RETH_ADDRESS,
             address(chainlinkAdaptor)
         );
@@ -332,20 +339,20 @@ contract TestBaseMarket is TestBase {
             0,
             false
         );
-        priceRouter.addApprovedAdaptor(address(dualChainlinkAdaptor));
-        priceRouter.addAssetPriceFeed(
+        oracleRouter.addApprovedAdaptor(address(dualChainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(
             _WETH_ADDRESS,
             address(dualChainlinkAdaptor)
         );
-        priceRouter.addAssetPriceFeed(
+        oracleRouter.addAssetPriceFeed(
             _USDC_ADDRESS,
             address(dualChainlinkAdaptor)
         );
-        priceRouter.addAssetPriceFeed(
+        oracleRouter.addAssetPriceFeed(
             _DAI_ADDRESS,
             address(dualChainlinkAdaptor)
         );
-        priceRouter.addAssetPriceFeed(
+        oracleRouter.addAssetPriceFeed(
             _RETH_ADDRESS,
             address(dualChainlinkAdaptor)
         );
@@ -364,8 +371,8 @@ contract TestBaseMarket is TestBase {
         adapterData.underlyingOrConstituent[0] = _RETH_ADDRESS;
         adapterData.underlyingOrConstituent[1] = _WETH_ADDRESS;
         balRETHAdapter.addAsset(_BALANCER_WETH_RETH, adapterData);
-        priceRouter.addApprovedAdaptor(address(balRETHAdapter));
-        priceRouter.addAssetPriceFeed(
+        oracleRouter.addApprovedAdaptor(address(balRETHAdapter));
+        oracleRouter.addAssetPriceFeed(
             _BALANCER_WETH_RETH,
             address(balRETHAdapter)
         );
@@ -376,13 +383,13 @@ contract TestBaseMarket is TestBase {
         centralRegistry.addGaugeController(address(gaugePool));
     }
 
-    function _deployLendtroller() internal {
-        lendtroller = new Lendtroller(
+    function _deployMarketManager() internal {
+        marketManager = new MarketManager(
             ICentralRegistry(address(centralRegistry)),
             address(gaugePool)
         );
-        centralRegistry.addLendingMarket(
-            address(lendtroller),
+        centralRegistry.addMarketManager(
+            address(marketManager),
             marketInterestFactor
         );
     }
@@ -415,7 +422,7 @@ contract TestBaseMarket is TestBase {
             new DToken(
                 ICentralRegistry(address(centralRegistry)),
                 token,
-                address(lendtroller),
+                address(marketManager),
                 address(InterestRateModel)
             );
     }
@@ -424,7 +431,7 @@ contract TestBaseMarket is TestBase {
         cBALRETH = new AuraCToken(
             ICentralRegistry(address(centralRegistry)),
             IERC20(_BALANCER_WETH_RETH),
-            address(lendtroller),
+            address(marketManager),
             109,
             _REWARDER,
             _AURA_BOOSTER
@@ -435,7 +442,7 @@ contract TestBaseMarket is TestBase {
     function _deployZapper() internal returns (Zapper) {
         zapper = new Zapper(
             ICentralRegistry(address(centralRegistry)),
-            address(lendtroller),
+            address(marketManager),
             _WETH_ADDRESS
         );
         centralRegistry.addZapper(address(zapper));
@@ -445,14 +452,14 @@ contract TestBaseMarket is TestBase {
     function _deployPositionFolding() internal returns (PositionFolding) {
         positionFolding = new PositionFolding(
             ICentralRegistry(address(centralRegistry)),
-            address(lendtroller)
+            address(marketManager)
         );
         return positionFolding;
     }
 
     function _addSinglePriceFeed() internal {
-        priceRouter.addApprovedAdaptor(address(chainlinkAdaptor));
-        priceRouter.addAssetPriceFeed(
+        oracleRouter.addApprovedAdaptor(address(chainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(
             _USDC_ADDRESS,
             address(chainlinkAdaptor)
         );
@@ -461,8 +468,8 @@ contract TestBaseMarket is TestBase {
     function _addDualPriceFeed() internal {
         _addSinglePriceFeed();
 
-        priceRouter.addApprovedAdaptor(address(dualChainlinkAdaptor));
-        priceRouter.addAssetPriceFeed(
+        oracleRouter.addApprovedAdaptor(address(dualChainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(
             _USDC_ADDRESS,
             address(dualChainlinkAdaptor)
         );
@@ -481,7 +488,7 @@ contract TestBaseMarket is TestBase {
     }
 
     function _setCbalRETHCollateralCaps(uint256 cap) internal {
-        lendtroller.updateCollateralToken(
+        marketManager.updateCollateralToken(
             IMToken(address(cBALRETH)),
             7000,
             4000,
@@ -495,6 +502,6 @@ contract TestBaseMarket is TestBase {
         tokens[0] = address(cBALRETH);
         uint256[] memory caps = new uint256[](1);
         caps[0] = cap;
-        lendtroller.setCTokenCollateralCaps(tokens, caps);
+        marketManager.setCTokenCollateralCaps(tokens, caps);
     }
 }

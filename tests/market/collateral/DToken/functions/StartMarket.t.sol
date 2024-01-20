@@ -6,7 +6,7 @@ import { SafeTransferLib } from "contracts/libraries/external/SafeTransferLib.so
 import { DToken } from "contracts/market/collateral/DToken.sol";
 
 contract DTokenStartMarketTest is TestBaseDToken {
-    function test_dTokenStartMarket_fail_whenCallerIsNotLendtroller() public {
+    function test_dTokenStartMarket_fail_whenCallerIsNotMarketManager() public {
         vm.expectRevert(DToken.DToken__Unauthorized.selector);
 
         dUSDC.startMarket(address(0));
@@ -17,7 +17,7 @@ contract DTokenStartMarketTest is TestBaseDToken {
     {
         vm.expectRevert(SafeTransferLib.TransferFromFailed.selector);
 
-        vm.prank(address(lendtroller));
+        vm.prank(address(marketManager));
         dUSDC.startMarket(address(0));
     }
 
@@ -27,7 +27,7 @@ contract DTokenStartMarketTest is TestBaseDToken {
 
         uint256 totalSupply = dUSDC.totalSupply();
 
-        vm.prank(address(lendtroller));
+        vm.prank(address(marketManager));
         dUSDC.startMarket(user1);
 
         assertEq(dUSDC.totalSupply(), totalSupply + 42069);

@@ -28,7 +28,8 @@ contract DeployGMXMarkets is GMXMarketDeployer {
 
         _deployGMXMarket(
             name,
-            _readConfigAddress(string.concat(".gmx.", name))
+            _readConfigAddress(string.concat(".gmx.", name)),
+            _readConfigAddress(string.concat(".gmx.", name, "AlteredToken"))
         );
 
         vm.stopBroadcast();

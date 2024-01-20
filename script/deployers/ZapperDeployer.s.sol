@@ -14,15 +14,15 @@ contract ZapperDeployer is DeployConfiguration {
 
     function _deployZapper(
         address centralRegistry,
-        address lendtroller,
+        address marketManager,
         address weth
     ) internal {
         require(centralRegistry != address(0), "Set the centralRegistry!");
-        require(lendtroller != address(0), "Set the lendtroller!");
+        require(marketManager != address(0), "Set the marketManager!");
         require(weth != address(0), "Set the weth!");
 
         zapper = address(
-            new Zapper(ICentralRegistry(centralRegistry), lendtroller, weth)
+            new Zapper(ICentralRegistry(centralRegistry), marketManager, weth)
         );
 
         console.log("zapper: ", zapper);

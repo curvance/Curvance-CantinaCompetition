@@ -29,7 +29,7 @@ contract WstETHAggregator is BaseWrappedAggregator {
     /// @notice Returns the current exchange rate between the wrapped asset
     ///         and the underlying aggregator, in `WAD`.
     function getWrappedAssetWeight() public view override returns (uint256) {
-        // get pricing in 1e18 format directly to minimize calculations.
+        // get pricing in `WAD` format directly to minimize calculations.
         return IWstETH(wstETH).getStETHByWstETH(1e18);
     }
 }

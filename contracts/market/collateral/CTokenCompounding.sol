@@ -82,8 +82,8 @@ abstract contract CTokenCompounding is CTokenBase {
     constructor(
         ICentralRegistry centralRegistry_,
         IERC20 asset_,
-        address lendtroller_
-    ) CTokenBase(centralRegistry_, asset_, lendtroller_) {}
+        address marketManager_
+    ) CTokenBase(centralRegistry_, asset_, marketManager_) {}
 
     /// EXTERNAL FUNCTIONS ///
 
@@ -96,7 +96,7 @@ abstract contract CTokenCompounding is CTokenBase {
         uint256 assets,
         bytes calldata params
     ) external nonReentrant {
-        if (msg.sender != lendtroller.positionFolding()) {
+        if (msg.sender != marketManager.positionFolding()) {
             _revert(_UNAUTHORIZED_SELECTOR);
         }
 
@@ -134,13 +134,13 @@ abstract contract CTokenCompounding is CTokenBase {
         );
 
         // Fail if redeem not allowed
-        lendtroller.reduceCollateralIfNecessary(
+        marketManager.reduceCollateralIfNecessary(
             owner,
             address(this),
             balancePrior,
             shares
         );
-        lendtroller.canRedeem(address(this), owner, 0);
+        marketManager.canRedeem(address(this), owner, 0);
     }
 
     /// @notice Returns current position vault yield information in the form:
@@ -176,7 +176,7 @@ abstract contract CTokenCompounding is CTokenBase {
 
     // PERMISSIONED FUNCTIONS
 
-    /// @notice Used to start a CToken market, executed via lendtroller
+    /// @notice Used to start a CToken market, executed via marketManager
     /// @dev This initial mint is a failsafe against rounding exploits,
     ///      although, we protect against them in many ways,
     ///      better safe than sorry
@@ -278,7 +278,7 @@ abstract contract CTokenCompounding is CTokenBase {
 
         // Fail if deposit not allowed, this stands in for a maxDeposit
         // check reviewing isListed and mintPaused != 2
-        lendtroller.canMint(address(this));
+        marketManager.canMint(address(this));
 
         // Save _totalAssets and pendingRewards to memory
         uint256 pending = _calculatePendingRewards();
@@ -308,7 +308,7 @@ abstract contract CTokenCompounding is CTokenBase {
 
         // Fail if mint not allowed, this stands in for a maxMint
         // check reviewing isListed and mintPaused != 2
-        lendtroller.canMint(address(this));
+        marketManager.canMint(address(this));
 
         // Save _totalAssets and pendingRewards to memory
         uint256 pending = _calculatePendingRewards();
@@ -346,7 +346,7 @@ abstract contract CTokenCompounding is CTokenBase {
 
         // No need to check for rounding error, previewWithdraw rounds up
         shares = _previewWithdraw(assets, ta);
-        lendtroller.canRedeemWithCollateralRemoval(
+        marketManager.canRedeemWithCollateralRemoval(
             address(this),
             owner,
             balanceOf(owner),
@@ -384,7 +384,7 @@ abstract contract CTokenCompounding is CTokenBase {
             _revert(0xcc3c42c0);
         }
 
-        lendtroller.canRedeemWithCollateralRemoval(
+        marketManager.canRedeemWithCollateralRemoval(
             address(this),
             owner,
             balanceOf(owner),

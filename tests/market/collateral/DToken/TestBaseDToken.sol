@@ -63,7 +63,7 @@ contract TestBaseDToken is TestBaseMarket {
             true
         );
 
-        gaugePool.start(address(lendtroller));
+        gaugePool.start(address(marketManager));
         vm.warp(gaugePool.startTime());
         vm.roll(block.number + 1000);
 
@@ -79,14 +79,14 @@ contract TestBaseDToken is TestBaseMarket {
         usdc.approve(address(dUSDC), _ONE);
 
         usdc.approve(address(dUSDC), _ONE);
-        lendtroller.listToken(address(dUSDC));
+        marketManager.listToken(address(dUSDC));
 
         dUSDC.depositReserves(1000e6);
         _prepareBALRETH(address(this), 10e18);
         balRETH.approve(address(cBALRETH), 10e18);
 
-        lendtroller.listToken(address(cBALRETH));
-        lendtroller.updateCollateralToken(
+        marketManager.listToken(address(cBALRETH));
+        marketManager.updateCollateralToken(
             IMToken(address(cBALRETH)),
             7000,
             4000, // liquidate at 71%

@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import {TestBaseVeCVE} from "../TestBaseVeCVE.sol";
-import {SafeTransferLib} from "contracts/libraries/external/SafeTransferLib.sol";
-import {VeCVE} from "contracts/token/VeCVE.sol";
-import {WAD} from "contracts/libraries/Constants.sol";
+import { TestBaseVeCVE } from "../TestBaseVeCVE.sol";
+import { SafeTransferLib } from "contracts/libraries/external/SafeTransferLib.sol";
+import { VeCVE } from "contracts/token/VeCVE.sol";
 
 contract LockTest is TestBaseVeCVE {
     event Locked(address indexed user, uint256 amount);
@@ -69,8 +68,10 @@ contract LockTest is TestBaseVeCVE {
         (, uint40 unlockTime) = veCVE.userLocks(address(this), 0);
 
         assertEq(veCVE.chainPoints(), amount * veCVE.CL_POINT_MULTIPLIER());
-
-        assertEq(veCVE.userPoints(address(this)), amount * veCVE.CL_POINT_MULTIPLIER());
+        assertEq(
+            veCVE.userPoints(address(this)),
+            amount * veCVE.CL_POINT_MULTIPLIER()
+        );
         assertEq(veCVE.chainUnlocksByEpoch(veCVE.currentEpoch(unlockTime)), 0);
 
         assertEq(veCVE.userUnlocksByEpoch(address(this), veCVE.currentEpoch(unlockTime)), 0);

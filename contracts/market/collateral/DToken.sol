@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { DynamicInterestRateModel } from "contracts/market/interestRates/DynamicInterestRateModel.sol";
+import { DynamicInterestRateModel } from "contracts/market/DynamicInterestRateModel.sol";
 import { GaugePool } from "contracts/gauge/GaugePool.sol";
 
 import { WAD } from "contracts/libraries/Constants.sol";
@@ -10,7 +10,7 @@ import { ERC165 } from "contracts/libraries/external/ERC165.sol";
 import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 import { ReentrancyGuard } from "contracts/libraries/external/ReentrancyGuard.sol";
 
-import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
+import { IMarketManager } from "contracts/interfaces/market/IMarketManager.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
@@ -43,8 +43,8 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @notice Curvance DAO hub.
     ICentralRegistry public immutable centralRegistry;
     /// @notice Lending Market controller.
-    ILendtroller public immutable lendtroller;
-    /// `bytes4(keccak256(bytes("DToken__Unauthorized()")))`.
+    IMarketManager public immutable marketManager;
+    /// @dev `bytes4(keccak256(bytes("DToken__Unauthorized()")))`.
     uint256 internal constant _UNAUTHORIZED_SELECTOR = 0xef419be2;
 
     /// STORAGE ///
@@ -125,18 +125,18 @@ contract DToken is ERC165, ReentrancyGuard {
     error DToken__ValidationFailed();
     error DToken__InvalidCentralRegistry();
     error DToken__UnderlyingAssetTotalSupplyExceedsMaximum();
-    error DToken__LendtrollerIsNotLendingMarket();
+    error DToken__MarketManagerIsNotLendingMarket();
 
     /// CONSTRUCTOR ///
 
     /// @param centralRegistry_ The address of Curvances Central Registry.
     /// @param underlying_ The address of the underlying asset.
-    /// @param lendtroller_ The address of the Lendtroller.
+    /// @param marketManager_ The address of the MarketManager.
     /// @param interestRateModel_ The address of the interest rate model.
     constructor(
         ICentralRegistry centralRegistry_,
         address underlying_,
-        address lendtroller_,
+        address marketManager_,
         address interestRateModel_
     ) {
         if (
@@ -150,14 +150,14 @@ contract DToken is ERC165, ReentrancyGuard {
 
         centralRegistry = centralRegistry_;
 
-        // Set the lendtroller after consulting Central Registry.
-        // Ensure that lendtroller parameter is a lendtroller.
-        if (!centralRegistry.isLendingMarket(lendtroller_)) {
-            revert DToken__LendtrollerIsNotLendingMarket();
+        // Set the marketManager after consulting Central Registry.
+        // Ensure that marketManager parameter is a marketManager.
+        if (!centralRegistry.isMarketManager(marketManager_)) {
+            revert DToken__MarketManagerIsNotLendingMarket();
         }
 
-        // Set new lendtroller.
-        lendtroller = ILendtroller(lendtroller_);
+        // Set new marketManager.
+        marketManager = IMarketManager(marketManager_);
 
         // Initialize timestamp and borrow index.
         marketData.lastTimestampUpdated = uint32(block.timestamp);
@@ -166,7 +166,7 @@ contract DToken is ERC165, ReentrancyGuard {
         _setInterestRateModel(DynamicInterestRateModel(interestRateModel_));
 
         uint256 newInterestFactor = centralRegistry.protocolInterestFactor(
-            lendtroller_
+            marketManager_
         );
         interestFactor = newInterestFactor;
 
@@ -188,13 +188,13 @@ contract DToken is ERC165, ReentrancyGuard {
 
     /// EXTERNAL FUNCTIONS ///
 
-    /// @notice Used to start a DToken market, executed via lendtroller.
+    /// @notice Used to start a DToken market, executed via marketManager.
     /// @dev This initial mint is a failsafe against rounding exploits,
     ///      although, we protect against them in many ways,
     ///      better safe than sorry.
     /// @param by The account initializing the market.
     function startMarket(address by) external nonReentrant returns (bool) {
-        if (msg.sender != address(lendtroller)) {
+        if (msg.sender != address(marketManager)) {
             _revert(_UNAUTHORIZED_SELECTOR);
         }
 
@@ -249,7 +249,7 @@ contract DToken is ERC165, ReentrancyGuard {
         accrueInterest();
 
         // Reverts if borrow not allowed.
-        lendtroller.canBorrowWithNotify(address(this), msg.sender, amount);
+        marketManager.canBorrowWithNotify(address(this), msg.sender, amount);
 
         _borrow(msg.sender, amount, msg.sender);
     }
@@ -275,7 +275,7 @@ contract DToken is ERC165, ReentrancyGuard {
         // Note: Be careful who you approve here!
         // Not only can they take borrowed funds,
         // but they can delay repayment through notify.
-        lendtroller.canBorrowWithNotify(address(this), account, amount);
+        marketManager.canBorrowWithNotify(address(this), account, amount);
 
         _borrow(account, amount, recipient);
     }
@@ -290,13 +290,13 @@ contract DToken is ERC165, ReentrancyGuard {
         uint256 amount,
         bytes calldata params
     ) external nonReentrant {
-        if (msg.sender != lendtroller.positionFolding()) {
+        if (msg.sender != marketManager.positionFolding()) {
             _revert(_UNAUTHORIZED_SELECTOR);
         }
 
         accrueInterest();
         // Record that the account borrowed before everything else is updated.
-        lendtroller.notifyBorrow(address(this), account);
+        marketManager.notifyBorrow(address(this), account);
 
         _borrow(account, amount, msg.sender);
 
@@ -309,7 +309,7 @@ contract DToken is ERC165, ReentrancyGuard {
 
         // Fail if position is not allowed,
         // after position folding has re-invested.
-        lendtroller.canBorrow(address(this), account, 0);
+        marketManager.canBorrow(address(this), account, 0);
     }
 
     /// @notice Caller repays their own debt.
@@ -336,12 +336,12 @@ contract DToken is ERC165, ReentrancyGuard {
         address account,
         uint256 repayRatio
     ) external nonReentrant {
-        // We check self liquidation in lendtroller before
+        // We check self liquidation in marketManager before
         // this call, so we do not need to check here.
 
-        // Make sure the lendtroller itself is calling since
+        // Make sure the marketManager itself is calling since
         // then we know all liquidity checks have passed.
-        if (msg.sender != address(lendtroller)) {
+        if (msg.sender != address(marketManager)) {
             _revert(_UNAUTHORIZED_SELECTOR);
         }
 
@@ -353,7 +353,7 @@ contract DToken is ERC165, ReentrancyGuard {
         uint256 repayAmount = (accountDebt * repayRatio) / WAD;
 
         // We do not need to check for listing here as we are
-        // coming directly from the lendtroller itself.
+        // coming directly from the marketManager itself.
 
         SafeTransferLib.safeTransferFrom(
             underlying,
@@ -410,7 +410,7 @@ contract DToken is ERC165, ReentrancyGuard {
     function redeem(uint256 amount) external nonReentrant {
         accrueInterest();
 
-        lendtroller.canRedeem(address(this), msg.sender, amount);
+        marketManager.canRedeem(address(this), msg.sender, amount);
 
         _redeem(
             msg.sender,
@@ -429,7 +429,7 @@ contract DToken is ERC165, ReentrancyGuard {
         uint256 underlyingAmount,
         bytes calldata params
     ) external nonReentrant {
-        if (msg.sender != lendtroller.positionFolding()) {
+        if (msg.sender != marketManager.positionFolding()) {
             _revert(_UNAUTHORIZED_SELECTOR);
         }
 
@@ -450,7 +450,7 @@ contract DToken is ERC165, ReentrancyGuard {
         );
 
         // Fail if redeem not allowed, position folding has re-invested.
-        lendtroller.canRedeem(address(this), account, 0);
+        marketManager.canRedeem(address(this), account, 0);
     }
 
     /// @notice Sender supplies assets into the market and receives dTokens.
@@ -479,7 +479,7 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @notice Adds reserves by transferring from Curvance DAO
     ///         to the market and depositing to the gauge.
     /// @dev    Updates interest before executing the reserve deposit.
-    /// @param amount The amount of underlying token to add as reserves, 
+    /// @param amount The amount of underlying token to add as reserves,
     ///               in assets.
     function depositReserves(uint256 amount) external nonReentrant {
         _checkDaoPermissions();
@@ -616,7 +616,7 @@ contract DToken is ERC165, ReentrancyGuard {
     }
 
     /// @notice Get a snapshot of the account's balances, and the cached exchange rate.
-    /// @dev This is used by lendtroller to more efficiently perform liquidity checks.
+    /// @dev This is used by marketManager to more efficiently perform liquidity checks.
     /// @param account Address of the account to snapshot.
     /// @return Account token balance.
     /// @return Account debt balance.
@@ -632,9 +632,9 @@ contract DToken is ERC165, ReentrancyGuard {
     }
 
     /// @notice Get a snapshot of the dToken and `account` data.
-    /// @dev This is used by lendtroller to more efficiently perform
+    /// @dev This is used by marketManager to more efficiently perform
     ///      liquidity checks.
-    ///      NOTE: Exchange Rate returns 0 to save gas in lendtroller
+    ///      NOTE: Exchange Rate returns 0 to save gas in marketManager
     ///            since its unused.
     /// @param account Address of the account to snapshot.
     function getSnapshotPacked(
@@ -646,7 +646,7 @@ contract DToken is ERC165, ReentrancyGuard {
                 isCToken: false,
                 decimals: decimals(),
                 debtBalance: debtBalanceCached(account),
-                exchangeRate: 0 // Unused in lendtroller.
+                exchangeRate: 0 // Unused in marketManager.
             })
         );
     }
@@ -734,7 +734,7 @@ contract DToken is ERC165, ReentrancyGuard {
     }
 
     /// @notice Gets balance of this contract in terms of the underlying.
-    /// @dev This excludes changes in underlying token balance by the 
+    /// @dev This excludes changes in underlying token balance by the
     ///      current transaction, if any.
     /// @return The quantity of underlying tokens owned by the market.
     function marketUnderlyingHeld() public view returns (uint256) {
@@ -801,9 +801,9 @@ contract DToken is ERC165, ReentrancyGuard {
             reservesPrior
         );
 
-        // Calculate the interest compounds to update, 
+        // Calculate the interest compounds to update,
         // in `interestCompoundRate`.
-        // Calculate the interest accumulated into borrows, reserves, 
+        // Calculate the interest accumulated into borrows, reserves,
         // and the new exchange rate.
         uint256 interestCompounds = (block.timestamp -
             cachedData.lastTimestampUpdated) / cachedData.compoundRate;
@@ -903,7 +903,7 @@ contract DToken is ERC165, ReentrancyGuard {
         }
 
         // Fails if transfer not allowed.
-        lendtroller.canTransfer(address(this), from, tokens);
+        marketManager.canTransfer(address(this), from, tokens);
 
         // Get the allowance, if the spender is not the `from` address.
         if (spender != from) {
@@ -914,7 +914,7 @@ contract DToken is ERC165, ReentrancyGuard {
 
         // Update token balances
         balanceOf[from] = balanceOf[from] - tokens;
-        // We know that from balance wont overflow 
+        // We know that from balance wont overflow
         // due to underflow check above.
         unchecked {
             balanceOf[to] = balanceOf[to] + tokens;
@@ -945,7 +945,7 @@ contract DToken is ERC165, ReentrancyGuard {
         accrueInterest();
 
         // Fail if mint not allowed.
-        lendtroller.canMint(address(this));
+        marketManager.canMint(address(this));
 
         // Get exchange rate before transfer.
         uint256 er = exchangeRateCached();
@@ -976,7 +976,7 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @notice User redeems dTokens in exchange for the underlying asset.
     /// @dev Assumes interest has already been accrued up to
     ///      the current timestamp.
-    /// @param redeemer The address of the account which is 
+    /// @param redeemer The address of the account which is
     ///                 redeeming the tokens.
     /// @param recipient The recipient address.
     /// @param tokens The number of dTokens to redeem into underlying.
@@ -1022,7 +1022,7 @@ contract DToken is ERC165, ReentrancyGuard {
             revert DToken__InsufficientUnderlyingHeld();
         }
 
-        // We calculate the new account and total borrow balances, 
+        // We calculate the new account and total borrow balances,
         // failing on overflow.
         _debtOf[account].principal = debtBalanceCached(account) + amount;
         _debtOf[account].accountExchangeRate = marketData.exchangeRate;
@@ -1033,14 +1033,14 @@ contract DToken is ERC165, ReentrancyGuard {
         emit Borrow(account, amount);
     }
 
-    /// @notice Allows a payer to repay a loan on behalf of the account, 
+    /// @notice Allows a payer to repay a loan on behalf of the account,
     ///         usually themselves.
-    /// @dev First validates that the payer is allowed to repay the loan, 
+    /// @dev First validates that the payer is allowed to repay the loan,
     ///      then repays. the loan by transferring in the repay amount.
     ///      Emits a repay event on successful repayment.
     /// @param payer The address paying off the borrow.
     /// @param account The account with the debt being paid off.
-    /// @param amount The amount the payer wishes to repay, 
+    /// @param amount The amount the payer wishes to repay,
     ///               or 0 for the full outstanding amount.
     /// @return The actual amount repaid.
     function _repay(
@@ -1049,7 +1049,7 @@ contract DToken is ERC165, ReentrancyGuard {
         uint256 amount
     ) internal returns (uint256) {
         // Validate that the payer is allowed to repay the loan.
-        lendtroller.canRepay(address(this), account);
+        marketManager.canRepay(address(this), account);
 
         // Cache how much the account has to save gas.
         uint256 accountDebt = debtBalanceCached(account);
@@ -1113,7 +1113,7 @@ contract DToken is ERC165, ReentrancyGuard {
 
         // Fail if liquidate not allowed,
         // trying to pay too much debt with excessive `amount` will revert.
-        (amount, liquidatedTokens, protocolTokens) = lendtroller
+        (amount, liquidatedTokens, protocolTokens) = marketManager
             .canLiquidateWithExecution(
                 address(this),
                 address(collateralToken),
@@ -1123,7 +1123,7 @@ contract DToken is ERC165, ReentrancyGuard {
             );
 
         // Validate that the token is listed inside the market.
-        if (!lendtroller.isListed(address(this))) {
+        if (!marketManager.isListed(address(this))) {
             revert DToken__ValidationFailed();
         }
 
@@ -1168,7 +1168,7 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @notice Returns gauge pool contract address.
     /// @return The gauge controller contract address.
     function _gaugePool() internal view returns (GaugePool) {
-        return lendtroller.gaugePool();
+        return marketManager.gaugePool();
     }
 
     /// @dev Internal helper for reverting efficiently.

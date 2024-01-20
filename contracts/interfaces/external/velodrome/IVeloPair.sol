@@ -41,7 +41,7 @@ interface IVeloPair {
             uint32 blockTimestampLast
         );
 
-    function price0CumulativeLast() external view returns (uint256);
+    function reserve0CumulativeLast() external view returns (uint256);
 
-    function price1CumulativeLast() external view returns (uint256);
+    function reserve1CumulativeLast() external view returns (uint256);
 }

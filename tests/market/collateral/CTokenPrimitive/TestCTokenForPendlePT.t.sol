@@ -73,8 +73,8 @@ contract TestCTokenForPendlePT is TestBaseMarket {
         chainlinkAdaptor.addAsset(_STETH, address(mockStethFeed), 0, true);
         dualChainlinkAdaptor.addAsset(_STETH, address(mockStethFeed), 0, true);
 
-        priceRouter.addAssetPriceFeed(_STETH, address(chainlinkAdaptor));
-        priceRouter.addAssetPriceFeed(_STETH, address(dualChainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(_STETH, address(chainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(_STETH, address(dualChainlinkAdaptor));
 
         adapter = new PendlePrincipalTokenAdaptor(
             ICentralRegistry(address(centralRegistry)),
@@ -87,11 +87,11 @@ contract TestCTokenForPendlePT is TestBaseMarket {
         adapterData.quoteAssetDecimals = 18;
         adapter.addAsset(_PT_STETH, adapterData);
 
-        priceRouter.addApprovedAdaptor(address(adapter));
-        priceRouter.addAssetPriceFeed(_PT_STETH, address(adapter));
+        oracleRouter.addApprovedAdaptor(address(adapter));
+        oracleRouter.addAssetPriceFeed(_PT_STETH, address(adapter));
 
         // start epoch
-        gaugePool.start(address(lendtroller));
+        gaugePool.start(address(marketManager));
         vm.warp(gaugePool.startTime());
         vm.roll(block.number + 1000);
 
@@ -105,15 +105,15 @@ contract TestCTokenForPendlePT is TestBaseMarket {
             // support market
             _prepareUSDC(owner, 200000e6);
             usdc.approve(address(dUSDC), 200000e6);
-            lendtroller.listToken(address(dUSDC));
+            marketManager.listToken(address(dUSDC));
             // add MToken support on price router
-            priceRouter.addMTokenSupport(address(dUSDC));
+            oracleRouter.addMTokenSupport(address(dUSDC));
             address[] memory markets = new address[](1);
             markets[0] = address(dUSDC);
             // vm.prank(user1);
-            // lendtroller.enterMarkets(markets);
+            // marketManager.enterMarkets(markets);
             // vm.prank(user2);
-            // lendtroller.enterMarkets(markets);
+            // marketManager.enterMarkets(markets);
         }
 
         // deploy cPendlePT
@@ -122,17 +122,17 @@ contract TestCTokenForPendlePT is TestBaseMarket {
             cPendlePT = new CTokenPrimitive(
                 ICentralRegistry(address(centralRegistry)),
                 pendlePT,
-                address(lendtroller)
+                address(marketManager)
             );
 
             // support market
             _preparePT(owner, 1 ether);
             pendlePT.approve(address(cPendlePT), 1 ether);
-            lendtroller.listToken(address(cPendlePT));
+            marketManager.listToken(address(cPendlePT));
             // add MToken support on price router
-            priceRouter.addMTokenSupport(address(cPendlePT));
+            oracleRouter.addMTokenSupport(address(cPendlePT));
             // set collateral token configuration
-            lendtroller.updateCollateralToken(
+            marketManager.updateCollateralToken(
                 IMToken(address(cPendlePT)),
                 7000,
                 4000, // liquidate at 71%
@@ -147,14 +147,14 @@ contract TestCTokenForPendlePT is TestBaseMarket {
             mTokens[0] = address(cPendlePT);
             uint256[] memory caps = new uint256[](1);
             caps[0] = 100 ether;
-            lendtroller.setCTokenCollateralCaps(mTokens, caps);
+            marketManager.setCTokenCollateralCaps(mTokens, caps);
 
             // address[] memory markets = new address[](1);
             // markets[0] = address(cPendlePT);
             // vm.prank(user1);
-            // lendtroller.enterMarkets(markets);
+            // marketManager.enterMarkets(markets);
             // vm.prank(user2);
-            // lendtroller.enterMarkets(markets);
+            // marketManager.enterMarkets(markets);
         }
 
         // provide enough liquidity
@@ -248,7 +248,7 @@ contract TestCTokenForPendlePT is TestBaseMarket {
         assertEq(snapshot.exchangeRate, 1 ether);
 
         vm.startPrank(user1);
-        lendtroller.postCollateral(user1, address(cPendlePT), 1 ether);
+        marketManager.postCollateral(user1, address(cPendlePT), 1 ether);
         vm.stopPrank();
 
         // try borrow()
@@ -308,7 +308,7 @@ contract TestCTokenForPendlePT is TestBaseMarket {
         vm.stopPrank();
 
         vm.startPrank(user1);
-        lendtroller.postCollateral(user1, address(cPendlePT), 1 ether);
+        marketManager.postCollateral(user1, address(cPendlePT), 1 ether);
         vm.stopPrank();
 
         // try borrow()
@@ -322,7 +322,7 @@ contract TestCTokenForPendlePT is TestBaseMarket {
         // can't redeem full
         vm.startPrank(user1);
         vm.expectRevert(
-            bytes4(keccak256("Lendtroller__InsufficientCollateral()"))
+            bytes4(keccak256("MarketManager__InsufficientCollateral()"))
         );
         cPendlePT.redeem(1 ether, user1, user1);
         vm.stopPrank();
@@ -344,7 +344,7 @@ contract TestCTokenForPendlePT is TestBaseMarket {
         vm.stopPrank();
 
         vm.startPrank(user1);
-        lendtroller.postCollateral(user1, address(cPendlePT), 1 ether);
+        marketManager.postCollateral(user1, address(cPendlePT), 1 ether);
         vm.stopPrank();
 
         // try mint()
@@ -385,7 +385,7 @@ contract TestCTokenForPendlePT is TestBaseMarket {
         vm.stopPrank();
 
         vm.startPrank(user1);
-        lendtroller.postCollateral(user1, address(cPendlePT), 1 ether);
+        marketManager.postCollateral(user1, address(cPendlePT), 1 ether);
         vm.stopPrank();
 
         // try borrow()
@@ -399,7 +399,7 @@ contract TestCTokenForPendlePT is TestBaseMarket {
         // can't transfer full
         vm.startPrank(user1);
         vm.expectRevert(
-            bytes4(keccak256("Lendtroller__InsufficientCollateral()"))
+            bytes4(keccak256("MarketManager__InsufficientCollateral()"))
         );
         cPendlePT.transfer(user2, 1 ether);
         vm.stopPrank();
@@ -423,7 +423,7 @@ contract TestCTokenForPendlePT is TestBaseMarket {
         vm.stopPrank();
 
         vm.startPrank(user1);
-        lendtroller.postCollateral(user1, address(cPendlePT), 1 ether);
+        marketManager.postCollateral(user1, address(cPendlePT), 1 ether);
         vm.stopPrank();
 
         // try mint()
@@ -467,7 +467,7 @@ contract TestCTokenForPendlePT is TestBaseMarket {
         vm.stopPrank();
 
         vm.startPrank(user1);
-        lendtroller.postCollateral(user1, address(cPendlePT), 1 ether);
+        marketManager.postCollateral(user1, address(cPendlePT), 1 ether);
         vm.stopPrank();
 
         // try borrow()
@@ -478,7 +478,7 @@ contract TestCTokenForPendlePT is TestBaseMarket {
         // skip min hold period
         skip(20 minutes);
 
-        (uint256 pendlePTPrice, ) = priceRouter.getPrice(
+        (uint256 pendlePTPrice, ) = oracleRouter.getPrice(
             address(pendlePT),
             true,
             true
@@ -516,7 +516,7 @@ contract TestCTokenForPendlePT is TestBaseMarket {
         vm.stopPrank();
 
         vm.startPrank(user1);
-        lendtroller.postCollateral(user1, address(cPendlePT), 1 ether);
+        marketManager.postCollateral(user1, address(cPendlePT), 1 ether);
         vm.stopPrank();
 
         // try borrow()
@@ -527,7 +527,7 @@ contract TestCTokenForPendlePT is TestBaseMarket {
         // skip min hold period
         skip(20 minutes);
 
-        (uint256 pendlePTPrice, ) = priceRouter.getPrice(
+        (uint256 pendlePTPrice, ) = oracleRouter.getPrice(
             address(pendlePT),
             true,
             true

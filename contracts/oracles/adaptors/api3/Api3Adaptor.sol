@@ -6,7 +6,7 @@ import { Bytes32Helper } from "contracts/libraries/Bytes32Helper.sol";
 import { WAD } from "contracts/libraries/Constants.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
+import { IOracleRouter } from "contracts/interfaces/IOracleRouter.sol";
 import { PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
 import { IProxy } from "contracts/interfaces/external/api3/IProxy.sol";
 
@@ -82,14 +82,14 @@ contract Api3Adaptor is BaseOracleAdaptor {
         }
 
         if (inUSD) {
-            return _getPriceinUSD(asset);
+            return _getPriceInUSD(asset);
         }
 
-        return _getPriceinETH(asset);
+        return _getPriceInETH(asset);
     }
 
     /// @notice Add a Api3 Price Feed as an asset.
-    /// @dev Should be called before `PriceRouter:addAssetPriceFeed` is called.
+    /// @dev Should be called before `OracleRouter:addAssetPriceFeed` is called.
     /// @param asset The address of the token to add pricing for.
     /// @param proxyFeed Api3 proxy feed to use for pricing `asset`.
     /// @param heartbeat Api3 heartbeat to use when validating prices
@@ -170,7 +170,7 @@ contract Api3Adaptor is BaseOracleAdaptor {
         delete adaptorDataNonUSD[asset];
 
         // Notify the price router that we are going to stop supporting the asset.
-        IPriceRouter(centralRegistry.priceRouter()).notifyFeedRemoval(asset);
+        IOracleRouter(centralRegistry.oracleRouter()).notifyFeedRemoval(asset);
         
         emit Api3AssetRemoved(asset);
     }
@@ -181,7 +181,7 @@ contract Api3Adaptor is BaseOracleAdaptor {
     /// @param asset The address of the asset for which the price is needed.
     /// @return A structure containing the price, error status,
     ///         and the quote format of the price (USD).
-    function _getPriceinUSD(
+    function _getPriceInUSD(
         address asset
     ) internal view returns (PriceReturnData memory) {
         if (adaptorDataUSD[asset].isConfigured) {
@@ -195,7 +195,7 @@ contract Api3Adaptor is BaseOracleAdaptor {
     /// @param asset The address of the asset for which the price is needed.
     /// @return A structure containing the price, error status,
     ///         and the quote format of the price (ETH).
-    function _getPriceinETH(
+    function _getPriceInETH(
         address asset
     ) internal view returns (PriceReturnData memory) {
         if (adaptorDataNonUSD[asset].isConfigured) {
@@ -210,28 +210,28 @@ contract Api3Adaptor is BaseOracleAdaptor {
     ///      for pricing and staleness.
     /// @param data Api3 feed details.
     /// @param inUSD A boolean to denote if the price is in USD.
-    /// @return A structure containing the price, error status,
-    ///         and the currency of the price.
+    /// @return pData A structure containing the price, error status,
+    ///               and the currency of the price.
     function _parseData(
         AdaptorData memory data,
         bool inUSD
-    ) internal view returns (PriceReturnData memory) {
+    ) internal view returns (PriceReturnData memory pData) {
         (int256 price, uint256 updatedAt) = data.proxyFeed.read();
 
-        // API3 always has decimals = 18 so we do not need to do
-        // any decimal adjustment here.
-        return (
-            PriceReturnData({
-                price: uint240(uint256(price)),
-                hadError: _verifyData(
-                    uint256(price),
-                    updatedAt,
-                    data.max,
-                    data.heartbeat
-                ),
-                inUSD: inUSD
-            })
-        );
+        // If we got a price of 0 or less, bubble up an error immediately.
+        if (price <= 0) {
+            pData.hadError = true;
+            return pData;
+        }
+
+        pData.price = uint240(uint256(price));
+        pData.hadError = _verifyData(
+                        uint256(price),
+                        updatedAt,
+                        data.max,
+                        data.heartbeat
+                    );
+        pData.inUSD = inUSD;
     }
 
     /// @notice Validates the feed data based on various constraints.
@@ -250,15 +250,6 @@ contract Api3Adaptor is BaseOracleAdaptor {
         uint256 max,
         uint256 heartbeat
     ) internal view returns (bool) {
-        // We expect to never get a negative price here, 
-        // and a value of 0 would generally indicate no data. 
-        // So, we set the minimum intentionally here to 1, 
-        // which is denominated in `WAD` form, 
-        // meaning a minimum price of 1 / 1e18 in real terms.
-        if (value < 1) {
-            return true;
-        }
-
         if (value > max) {
             return true;
         }

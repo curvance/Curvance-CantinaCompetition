@@ -7,10 +7,9 @@ import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 import { SafeTransferLib } from "contracts/libraries/external/SafeTransferLib.sol";
 import { ReentrancyGuard } from "contracts/libraries/external/ReentrancyGuard.sol";
 
-import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
+import { IOracleRouter } from "contracts/interfaces/IOracleRouter.sol";
 import { ICVELocker } from "contracts/interfaces/ICVELocker.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
-import { IGelatoOneBalance } from "contracts/interfaces/IGelatoOneBalance.sol";
 import { IVeCVE } from "contracts/interfaces/IVeCVE.sol";
 import { IProtocolMessagingHub } from "contracts/interfaces/IProtocolMessagingHub.sol";
 import { EpochRolloverData } from "contracts/interfaces/IFeeAccumulator.sol";
@@ -41,13 +40,14 @@ contract FeeAccumulator is ReentrancyGuard {
     address public immutable feeToken;
     /// @notice Curvance DAO hub.
     ICentralRegistry public immutable centralRegistry;
+
+    /// @notice Address of OneBalanceFeeManager contract
+    address public immutable oneBalanceFeeManager;
+
     /// @notice Fee token decimal unit.
     uint256 internal immutable _feeTokenUnit;
 
     /// STORAGE ///
-
-    /// @notice Address of Gelato OneBalance.
-    IGelatoOneBalance public gelatoOneBalance;
 
     address internal _messagingHubStored;
     uint256 internal _gasForCalldata;
@@ -68,7 +68,7 @@ contract FeeAccumulator is ReentrancyGuard {
     /// ERRORS ///
 
     error FeeAccumulator__Unauthorized();
-    error FeeAccumulator__FeeTokenIsZeroAddress();
+    error FeeAccumulator__OneBalanceFeeManagerIsZeroAddress();
     error FeeAccumulator__InvalidCentralRegistry();
     error FeeAccumulator__SwapDataAndTokenLengthMismatch(
         uint256 numSwapData,
@@ -109,11 +109,13 @@ contract FeeAccumulator is ReentrancyGuard {
     error FeeAccumulator__RemovalTokenDoesNotExist();
     error FeeAccumulator__MessagingHubHasNotChanged();
 
+    receive() external payable {}
+
     /// CONSTRUCTOR ///
 
     constructor(
         ICentralRegistry centralRegistry_,
-        address feeToken_,
+        address oneBalanceFeeManager_,
         uint256 gasForCalldata_,
         uint256 gasForCrosschain_
     ) {
@@ -125,31 +127,20 @@ contract FeeAccumulator is ReentrancyGuard {
         ) {
             revert FeeAccumulator__InvalidCentralRegistry();
         }
-        if (feeToken_ == address(0)) {
-            revert FeeAccumulator__FeeTokenIsZeroAddress();
+        if (oneBalanceFeeManager_ == address(0)) {
+            revert FeeAccumulator__OneBalanceFeeManagerIsZeroAddress();
         }
 
         centralRegistry = centralRegistry_;
-        feeToken = feeToken_;
-        _feeTokenUnit = 10 ** IERC20(feeToken_).decimals();
+        feeToken = centralRegistry.feeToken();
+        oneBalanceFeeManager = oneBalanceFeeManager_;
+        _feeTokenUnit = 10 ** IERC20(feeToken).decimals();
         _gasForCalldata = gasForCalldata_;
         _gasForCrosschain = gasForCrosschain_;
 
         // We document this incase we ever need to update messaging hub
         // and want to revoke.
         _messagingHubStored = centralRegistry.protocolMessagingHub();
-
-        // We set oneBalance address initially to DAO,
-        // incase direct deposits to Gelato Network are not supported.
-        gelatoOneBalance = IGelatoOneBalance(centralRegistry.daoAddress());
-
-        // We infinite approve fee token so that gelato one balance
-        // can drag funds to proper chain.
-        SafeTransferLib.safeApprove(
-            feeToken,
-            address(gelatoOneBalance),
-            type(uint256).max
-        );
 
         // We infinite approve fee token so that protocol messaging hub
         // can drag funds to proper chain.
@@ -231,10 +222,9 @@ contract FeeAccumulator is ReentrancyGuard {
             SwapperLib.swap(swapDataArray[i]);
         }
 
-        // Transfer fees to Gelato Network One Balance or equivalent.
-        gelatoOneBalance.depositToken(
-            address(this),
-            IERC20(feeToken),
+        SafeTransferLib.safeTransfer(
+            feeToken,
+            oneBalanceFeeManager,
             (IERC20(feeToken).balanceOf(address(this)) * vaultCompoundFee()) /
                 vaultYieldFee()
         );
@@ -259,14 +249,14 @@ contract FeeAccumulator is ReentrancyGuard {
         }
 
         // Cache router to save gas
-        IPriceRouter priceRouter = IPriceRouter(centralRegistry.priceRouter());
+        IOracleRouter oracleRouter = IOracleRouter(centralRegistry.oracleRouter());
 
-        (uint256 priceSwap, uint256 errorCodeSwap) = priceRouter.getPrice(
+        (uint256 priceSwap, uint256 errorCodeSwap) = oracleRouter.getPrice(
             tokenToOTC,
             true,
             true
         );
-        (uint256 priceFeeToken, uint256 errorCodeFeeToken) = priceRouter
+        (uint256 priceFeeToken, uint256 errorCodeFeeToken) = oracleRouter
             .getPrice(feeToken, true, true);
 
         // Validate we got prices back
@@ -288,10 +278,9 @@ contract FeeAccumulator is ReentrancyGuard {
             feeTokenRequiredForOTC
         );
 
-        // Transfer fees to Gelato Network One Balance or equivalent.
-        gelatoOneBalance.depositToken(
-            address(this),
-            IERC20(feeToken),
+        SafeTransferLib.safeTransfer(
+            feeToken,
+            oneBalanceFeeManager,
             (feeTokenRequiredForOTC * vaultCompoundFee()) / vaultYieldFee()
         );
 
@@ -428,7 +417,7 @@ contract FeeAccumulator is ReentrancyGuard {
 
         // If we have sufficient chains reported,
         // time to execute epoch fee routing.
-        if ((++numChainData) == centralRegistry.supportedChains()) {
+        if (numChainData == centralRegistry.supportedChains()) {
             // Execute Fee Routing to each chain.
             uint256 epochRewardsPerCVE = _executeEpochFeeRouter(
                 chainData,
@@ -516,25 +505,6 @@ contract FeeAccumulator is ReentrancyGuard {
                 tokenBalance
             );
         }
-    }
-
-    /// @notice Set Gelato Network one balance destination address to
-    ///         fund compounders.
-    function setOneBalanceAddress(address newGelatoOneBalance) external {
-        _checkDaoPermissions();
-
-        // Revoke previous approval.
-        SafeTransferLib.safeApprove(feeToken, address(gelatoOneBalance), 0);
-
-        gelatoOneBalance = IGelatoOneBalance(newGelatoOneBalance);
-
-        // We infinite approve fee token so that gelato one balance
-        // can drag funds to proper chain.
-        SafeTransferLib.safeApprove(
-            feeToken,
-            newGelatoOneBalance,
-            type(uint256).max
-        );
     }
 
     /// @notice Set status on whether a token should be earmarked to OTC.
@@ -687,9 +657,9 @@ contract FeeAccumulator is ReentrancyGuard {
     /// PUBLIC FUNCTIONS ///
 
     /// @notice Fetches the current price router from the central registry.
-    /// @return Current PriceRouter interface address.
-    function getPriceRouter() public view returns (IPriceRouter) {
-        return IPriceRouter(centralRegistry.priceRouter());
+    /// @return Current OracleRouter interface address.
+    function getOracleRouter() public view returns (IOracleRouter) {
+        return IOracleRouter(centralRegistry.oracleRouter());
     }
 
     /// @notice Vault compound fee is in basis point form.
@@ -699,8 +669,8 @@ contract FeeAccumulator is ReentrancyGuard {
         return centralRegistry.protocolCompoundFee();
     }
 
-    /// @notice Vault yield fee is in basis point form
-    /// @dev Returns the vaults current protocol fee for compounding rewards
+    /// @notice Vault yield fee is in basis point form.
+    /// @dev Returns the vaults current protocol fee for compounding rewards.
     function vaultYieldFee() public view returns (uint256) {
         return centralRegistry.protocolYieldFee();
     }
@@ -788,6 +758,18 @@ contract FeeAccumulator is ReentrancyGuard {
         }
 
         uint256 feeTokenBalance = IERC20(feeToken).balanceOf(address(this));
+
+        // In terms of funds inside fee accumulator, 1/16 or 6.25% of fee token
+        // should be sent and deposited to Gelato 1Balance on polygon.
+        SafeTransferLib.safeTransfer(
+            feeToken,
+            oneBalanceFeeManager,
+            (feeTokenBalance * vaultCompoundFee()) /
+                centralRegistry.protocolHarvestFee()
+        );
+
+        feeTokenBalance = IERC20(feeToken).balanceOf(address(this));
+
         uint256 chainId;
         uint16 messagingChainId;
         uint256 feeTokenBalanceForChain;

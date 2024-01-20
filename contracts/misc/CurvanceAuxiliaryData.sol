@@ -7,12 +7,12 @@ import { DToken } from "contracts/market/collateral/DToken.sol";
 import { WAD, DENOMINATOR } from "contracts/libraries/Constants.sol";
 import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 
-import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
+import { IMarketManager } from "contracts/interfaces/market/IMarketManager.sol";
 import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IGaugePool } from "contracts/interfaces/IGaugePool.sol";
 import { IFeeAccumulator } from "contracts/interfaces/IFeeAccumulator.sol";
-import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
+import { IOracleRouter } from "contracts/interfaces/IOracleRouter.sol";
 import { ICVELocker } from "contracts/interfaces/ICVELocker.sol";
 
 
@@ -53,7 +53,7 @@ contract CurvanceAuxiliaryData {
     /// @notice Returns the current TVL inside Curvance.
     /// @return result The current TVL inside Curvance, in `WAD`.
     function getTotalTVL() external view returns (uint256 result) {
-        address[] memory markets =  centralRegistry.supportedMarkets();
+        address[] memory markets =  centralRegistry.marketManagers();
         uint256 numMarkets = markets.length;
 
         for (uint256 i; i < numMarkets; ) {
@@ -64,7 +64,7 @@ contract CurvanceAuxiliaryData {
     /// @notice Returns the current collateral TVL inside Curvance.
     /// @return result The current collateral TVL inside Curvance, in `WAD`.
     function getTotalCollateralTVL() external view returns (uint256 result) {
-        address[] memory markets =  centralRegistry.supportedMarkets();
+        address[] memory markets =  centralRegistry.marketManagers();
         uint256 numMarkets = markets.length;
 
         for (uint256 i; i < numMarkets; ) {
@@ -75,7 +75,7 @@ contract CurvanceAuxiliaryData {
     /// @notice Returns the current lending TVL inside Curvance.
     /// @return result The current lending TVL inside Curvance, in `WAD`.
     function getTotalLendingTVL() external view returns (uint256 result) {
-        address[] memory markets =  centralRegistry.supportedMarkets();
+        address[] memory markets =  centralRegistry.marketManagers();
         uint256 numMarkets = markets.length;
 
         for (uint256 i; i < numMarkets; ) {
@@ -86,7 +86,7 @@ contract CurvanceAuxiliaryData {
     /// @notice Returns the current outstanding borrows inside Curvance.
     /// @return result The current outstanding borrows inside Curvance, in `WAD`.
     function getTotalBorrows() external view returns (uint256 result) {
-        address[] memory markets =  centralRegistry.supportedMarkets();
+        address[] memory markets =  centralRegistry.marketManagers();
         uint256 numMarkets = markets.length;
 
         for (uint256 i; i < numMarkets; ) {
@@ -107,7 +107,7 @@ contract CurvanceAuxiliaryData {
         bool[] calldata inUSD,
         bool[] calldata getLower
     ) external view returns (uint256[] memory, uint256[] memory) {
-        return _getPriceRouter().getPrices(assets, inUSD, getLower);
+        return _getOracleRouter().getPrices(assets, inUSD, getLower);
     }
 
     function hasRewards(address user) external view returns (bool) {
@@ -199,7 +199,7 @@ contract CurvanceAuxiliaryData {
     function getMarketAssets(
         address market
     ) public view returns (address[] memory) {
-        return ILendtroller(market).tokensListed();
+        return IMarketManager(market).tokensListed();
     }
 
     /// @notice Returns listed collateral assets inside `market`.
@@ -207,7 +207,7 @@ contract CurvanceAuxiliaryData {
     function getMarketCollateralAssets(
         address market
     ) public view returns (address[] memory) {
-        address[] memory assets = ILendtroller(market).tokensListed();
+        address[] memory assets = IMarketManager(market).tokensListed();
         uint256 numAssets = assets.length;
 
         address asset;
@@ -237,7 +237,7 @@ contract CurvanceAuxiliaryData {
     function getMarketDebtAssets(
         address market
     ) public view returns (address[] memory) {
-        address[] memory assets = ILendtroller(market).tokensListed();
+        address[] memory assets = IMarketManager(market).tokensListed();
         uint256 numAssets = assets.length;
 
         address asset;
@@ -268,8 +268,8 @@ contract CurvanceAuxiliaryData {
         return ICVELocker(centralRegistry.cveLocker());
     }
 
-    function _getPriceRouter() internal view returns (IPriceRouter) {
-        return IPriceRouter(centralRegistry.priceRouter());
+    function _getOracleRouter() internal view returns (IOracleRouter) {
+        return IOracleRouter(centralRegistry.oracleRouter());
     }
 
     function _getTokenPrice(
@@ -277,7 +277,7 @@ contract CurvanceAuxiliaryData {
         bool getLower
     ) internal view returns (uint256 price) {
         uint256 errorCode;
-        (price, errorCode) = _getPriceRouter().getPrice(mToken, true, getLower);
+        (price, errorCode) = _getOracleRouter().getPrice(mToken, true, getLower);
         // If we could not price the asset, bubble up a price of 0.
         if  (errorCode == 2) {
             price = 0;

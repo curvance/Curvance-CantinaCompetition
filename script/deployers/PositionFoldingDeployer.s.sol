@@ -14,13 +14,13 @@ contract PositionFoldingDeployer is DeployConfiguration {
 
     function _deployPositionFolding(
         address centralRegistry,
-        address lendtroller
+        address marketManager
     ) internal {
         require(centralRegistry != address(0), "Set the centralRegistry!");
-        require(lendtroller != address(0), "Set the lendtroller!");
+        require(marketManager != address(0), "Set the marketManager!");
 
         positionFolding = address(
-            new PositionFolding(ICentralRegistry(centralRegistry), lendtroller)
+            new PositionFolding(ICentralRegistry(centralRegistry), marketManager)
         );
 
         console.log("positionFolding: ", positionFolding);

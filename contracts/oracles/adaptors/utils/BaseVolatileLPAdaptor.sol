@@ -7,7 +7,7 @@ import { FixedPointMathLib } from "contracts/libraries/external/FixedPointMathLi
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
+import { IOracleRouter } from "contracts/interfaces/IOracleRouter.sol";
 import { IUniswapV2Pair } from "contracts/interfaces/external/uniswap/IUniswapV2Pair.sol";
 
 contract BaseVolatileLPAdaptor is BaseOracleAdaptor {
@@ -98,7 +98,7 @@ contract BaseVolatileLPAdaptor is BaseOracleAdaptor {
         delete adaptorData[asset];
 
         // Notify the price router that we are going to stop supporting the asset.
-        IPriceRouter(centralRegistry.priceRouter()).notifyFeedRemoval(asset);
+        IOracleRouter(centralRegistry.oracleRouter()).notifyFeedRemoval(asset);
     }
 
     /// @notice Called during pricing operations.
@@ -132,8 +132,8 @@ contract BaseVolatileLPAdaptor is BaseOracleAdaptor {
         uint256 price0;
         uint256 price1;
         uint256 errorCode;
-        IPriceRouter priceRouter = IPriceRouter(centralRegistry.priceRouter());
-        (price0, errorCode) = priceRouter.getPrice(
+        IOracleRouter oracleRouter = IOracleRouter(centralRegistry.oracleRouter());
+        (price0, errorCode) = oracleRouter.getPrice(
             data.token0,
             inUSD,
             getLower
@@ -142,7 +142,7 @@ contract BaseVolatileLPAdaptor is BaseOracleAdaptor {
             pData.hadError = true;
             return pData;
         }
-        (price1, errorCode) = priceRouter.getPrice(
+        (price1, errorCode) = oracleRouter.getPrice(
             data.token1,
             inUSD,
             getLower

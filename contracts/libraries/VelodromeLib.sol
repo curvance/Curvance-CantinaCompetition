@@ -180,6 +180,9 @@ library VelodromeLib {
             address(this),
             block.timestamp
         );
+
+        SwapperLib._removeApprovalIfNeeded(token0, router);
+        SwapperLib._removeApprovalIfNeeded(token1, router);
     }
 
     /// @notice Calculates the optimal amount of TokenA to swap to TokenB
