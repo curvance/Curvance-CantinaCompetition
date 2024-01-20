@@ -3,8 +3,9 @@ pragma solidity ^0.8.17;
 
 import { TestERC4626 } from "tests/market/collateral/4626/TestERC4626.t.sol";
 import { TestBaseMarket, ICentralRegistry } from "tests/market/TestBaseMarket.sol";
-import { MockERC20Token } from "tests/market/MockERC20Token.sol";
-import { MockCTokenPrimitive } from "tests/market/MockCTokenPrimitive.sol";
+
+import { MockERC20Token } from "contracts/mocks/MockERC20Token.sol";
+import { MockCTokenPrimitive } from "contracts/mocks/MockCTokenPrimitive.sol";
 
 contract TestERC4626CToken is TestERC4626, TestBaseMarket {
     // @todo check the failing tests: test_maxWithdraw! which reverts
