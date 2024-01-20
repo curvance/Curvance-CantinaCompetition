@@ -8,7 +8,7 @@ interface IMockERC20 is IERC20 {
     function burn(address from, uint value) external;
 }
 
-abstract contract ERC4626Test is ERC4626Prop {
+abstract contract TestERC4626 is ERC4626Prop {
     function setUp() public virtual;
 
     uint constant N = 4;
