@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.17;
 
-import "tests/market/collateral/4626/ERC4626.t.sol";
+import { ERC4626Test } from "tests/market/collateral/4626/ERC4626.t.sol";
 import { TestBaseMarket, ICentralRegistry } from "tests/market/TestBaseMarket.sol";
 import { MockERC20Token } from "./MockERC20Token.sol";
 import { MockCToken } from "./MockCToken.sol";

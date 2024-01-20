@@ -2,7 +2,7 @@
 pragma solidity ^0.8.17;
 
 import "forge-std/StdStorage.sol";
-import { TestBaseCTokenCompounding } from "../TestBaseCTokenCompoundingBase.sol";
+import { TestBaseCTokenCompounding } from "../TestBaseCTokenCompounding.sol";
 import { CTokenCompounding, CTokenBase } from "contracts/market/collateral/CTokenCompounding.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
