@@ -1,23 +1,25 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import "tests/market/TestBaseMarket.sol";
-import "./MockCToken.sol";
-import "./MockERC20Token.sol";
+import { TestBaseMarketManagerEntropy } from "../TestBaseMarketManagerEntropy.sol";
+import { MockCTokenPrimitive } from "contracts/mocks/MockCTokenPrimitive.sol";
+
+import { WAD } from "contracts/libraries/Constants.sol";
+import { PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
+
+//import "tests/market/TestBaseMarket.sol";
+
+//import "./MockERC20Token.sol";
 import "forge-std/console2.sol";
-import {WAD} from "contracts/libraries/Constants.sol";
-import {PriceReturnData} from "contracts/interfaces/IOracleAdaptor.sol";
 
-import {LendTrollerEntropy} from "./LendtrollerEntropy.sol";
-
-contract MockLendTrollerTest is LendTrollerEntropy {
+contract TestMarketManagerMultiMarkets is TestBaseMarketManagerEntropy {
     function setUp() public override {
         _deployCentralRegistry();
         _deployCVE();
         _deployCVELocker();
         _deployVeCVE();
         _deployGaugePool();
-        _deployLendtroller();
+        _deployMarketManager();
         _deployDynamicInterestRateModel();
         // eth/usd is needed in price router constructor
         chainlinkEthUsd = new MockV3Aggregator(8, 1500e8, 1e50, 1e6);
@@ -25,14 +27,14 @@ contract MockLendTrollerTest is LendTrollerEntropy {
         chainlinkAdaptor = new ChainlinkAdaptor(ICentralRegistry(address(centralRegistry)));
         priceRouter.addApprovedAdaptor(address(chainlinkAdaptor));
         // start gauge to enable deposits
-        gaugePool.start(address(lendtroller));
+        gaugePool.start(address(marketManager));
         vm.warp(veCVE.nextEpochStartTime() + 1000);
     }
 
     function setUpFuzzTest(uint16 _noOfCollateralTokens, uint16 _noOfDebtTokens, uint16 _noOfUsers, uint16 _entropy)
         internal
         returns (
-            MockCToken[] memory,
+            MockCTokenPrimitive[] memory,
             DToken[] memory,
             address[] memory,
             MockV3Aggregator[] memory,
@@ -48,7 +50,7 @@ contract MockLendTrollerTest is LendTrollerEntropy {
         noOfUsers = noOfUsersCollateral + noOfUsersDebt + noOfUsersMixed;
         entropy = uint256(_entropy) + 1;
 
-        MockCToken[] memory cTokens = new MockCToken[](noOfCollateralTokens);
+        MockCTokenPrimitive[] memory cTokens = new MockCTokenPrimitive[](noOfCollateralTokens);
         DToken[] memory dTokens = new DToken[](noOfDebtTokens);
         address[] memory users = new address[](noOfUsers);
 
@@ -69,7 +71,7 @@ contract MockLendTrollerTest is LendTrollerEntropy {
         uint256 collateralLimit,
         uint256 debtLimit,
         address[] memory users,
-        MockCToken[] memory cTokens,
+        MockCTokenPrimitive[] memory cTokens,
         DToken[] memory dTokens
     ) internal {
         uint256 runs;
@@ -104,7 +106,7 @@ contract MockLendTrollerTest is LendTrollerEntropy {
         noOfCollateralTokens = 2;
         noOfDebtTokens = 2;
 
-        MockCToken[] memory cTokens = new MockCToken[](noOfCollateralTokens);
+        MockCTokenPrimitive[] memory cTokens = new MockCTokenPrimitive[](noOfCollateralTokens);
         DToken[] memory dTokens = new DToken[](noOfDebtTokens);
         MockV3Aggregator[] memory cTokensAgg = new MockV3Aggregator[](noOfCollateralTokens);
         MockV3Aggregator[] memory cTokensUnderlyingAgg = new MockV3Aggregator[](noOfCollateralTokens);
@@ -147,7 +149,7 @@ contract MockLendTrollerTest is LendTrollerEntropy {
         uint16 _entropy
     ) public {
         (
-            MockCToken[] memory cTokens,
+            MockCTokenPrimitive[] memory cTokens,
             DToken[] memory dTokens,
             address[] memory users,
             MockV3Aggregator[] memory cTokensAgg,
@@ -171,7 +173,7 @@ contract MockLendTrollerTest is LendTrollerEntropy {
         uint16 _entropy
     ) public {
         (
-            MockCToken[] memory cTokens,
+            MockCTokenPrimitive[] memory cTokens,
             DToken[] memory dTokens,
             address[] memory users,
             MockV3Aggregator[] memory cTokensAgg,
@@ -195,7 +197,7 @@ contract MockLendTrollerTest is LendTrollerEntropy {
         uint16 _entropy
     ) public {
         (
-            MockCToken[] memory cTokens,
+            MockCTokenPrimitive[] memory cTokens,
             DToken[] memory dTokens,
             address[] memory users,
             MockV3Aggregator[] memory cTokensAgg,
@@ -211,7 +213,7 @@ contract MockLendTrollerTest is LendTrollerEntropy {
 
         _prepareLiquidationMultiple(liquidator, dTokens);
         for (uint256 i = 0; i < noOfUsersCollateral; i++) {
-            if (!lendtroller.flaggedForLiquidation(users[i])) {
+            if (!marketManager.flaggedForLiquidation(users[i])) {
                 continue;
             }
             _liquidateAccount(users[i], liquidator);

@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import "tests/market/TestBaseMarket.sol";
-import {MockCToken} from "./MockCToken.sol";
-import {MockERC20Token} from "./MockERC20Token.sol";
-import {WAD} from "contracts/libraries/Constants.sol";
-import {PriceReturnData} from "contracts/interfaces/IOracleAdaptor.sol";
+import { TestBaseMarket } from "tests/market/TestBaseMarket.sol";
+import { MockCTokenPrimitive } from "contracts/mocks/MockCTokenPrimitive.sol";
+import { MockERC20Token } from "contracts/mocks/MockERC20Token.sol";
+
+import { WAD } from "contracts/libraries/Constants.sol";
+import { PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
 
 import "forge-std/console2.sol";
 
-contract MockLendTrollerMultiMarket is TestBaseMarket {
+contract TestBaseMarketManagerMultiMarkets is TestBaseMarket {
     uint256 constant MAX_DEPOSIT = 1e26;
     uint256 constant MIN_WITHDRAW = 1e18;
     uint256 constant BP = 1e4;
@@ -44,21 +45,21 @@ contract MockLendTrollerMultiMarket is TestBaseMarket {
         return (dTokens, dTokensAgg);
     }
 
-    function _deployCollaterToken() internal returns (MockCToken) {
+    function _deployCollaterToken() internal returns (MockCTokenPrimitive) {
         // deploy collateral token and cToken
         MockERC20Token mockUnderlying = new MockERC20Token();
         vm.label(address(mockUnderlying), "tokenCollateral");
-        MockCToken mockCToken =
-            new MockCToken(ICentralRegistry(address(centralRegistry)), address(mockUnderlying), address(lendtroller));
-        vm.label(address(mockCToken), "cToken");
+        MockCTokenPrimitive MockCTokenPrimitive =
+            new MockCTokenPrimitive(ICentralRegistry(address(centralRegistry)), address(mockUnderlying), address(marketManager));
+        vm.label(address(MockCTokenPrimitive), "cToken");
 
         // start market for cToken
         uint256 startAmount = 42069;
         mockUnderlying.mint(address(this), startAmount);
-        mockUnderlying.approve(address(mockCToken), startAmount);
-        lendtroller.listToken(address(mockCToken));
-        vm.label(address(lendtroller), "lendtroller");
-        return mockCToken;
+        mockUnderlying.approve(address(MockCTokenPrimitive), startAmount);
+        marketManager.listToken(address(MockCTokenPrimitive));
+        vm.label(address(marketManager), "marketManager");
+        return MockCTokenPrimitive;
     }
 
     function _deployDebtToken() internal returns (DToken) {
@@ -70,7 +71,7 @@ contract MockLendTrollerMultiMarket is TestBaseMarket {
         uint256 startAmount = 42069;
         mockUnderlying.mint(address(this), startAmount);
         mockUnderlying.approve(address(debtToken), startAmount);
-        lendtroller.listToken(address(debtToken));
+        marketManager.listToken(address(debtToken));
         return debtToken;
     }
 
@@ -83,15 +84,15 @@ contract MockLendTrollerMultiMarket is TestBaseMarket {
 
     function _setCollateralData(address collateralToken) internal {
         // set collateral factor
-        lendtroller.updateCollateralToken(IMToken(collateralToken), 7000, 4000, 3000, 200, 400, 10, 1000);
+        marketManager.updateCollateralToken(IMToken(collateralToken), 7000, 4000, 3000, 200, 400, 10, 1000);
         address[] memory tokens = new address[](1);
         tokens[0] = address(collateralToken);
         uint256[] memory caps = new uint256[](1);
         caps[0] = 100_000e18;
-        lendtroller.setCTokenCollateralCaps(tokens, caps);
+        marketManager.setCTokenCollateralCaps(tokens, caps);
     }
 
-    function _genCollateral(address _user, MockCToken _cToken, uint256 _amount) internal {
+    function _genCollateral(address _user, MockCTokenPrimitive _cToken, uint256 _amount) internal {
         MockERC20Token tokenCollateral = MockERC20Token(_cToken.underlying());
         vm.startPrank(_user);
         tokenCollateral.mint(address(_user), _amount);
@@ -100,12 +101,12 @@ contract MockLendTrollerMultiMarket is TestBaseMarket {
         vm.stopPrank();
     }
 
-    function _postCollateral(address _user, MockCToken _cToken, uint256 _amount) internal {
+    function _postCollateral(address _user, MockCTokenPrimitive _cToken, uint256 _amount) internal {
         vm.prank(_user);
-        lendtroller.postCollateral(address(_user), address(_cToken), _amount);
+        marketManager.postCollateral(address(_user), address(_cToken), _amount);
     }
 
-    function _withdraw(address _user, MockCToken _cToken, uint256 _amount) internal {
+    function _withdraw(address _user, MockCTokenPrimitive _cToken, uint256 _amount) internal {
         vm.prank(_user);
         _cToken.withdraw(1e20, address(_user), address(_user));
     }
@@ -133,13 +134,13 @@ contract MockLendTrollerMultiMarket is TestBaseMarket {
         vm.stopPrank();
     }
 
-    function _checkLiquidation(address _user, DToken _dToken, MockCToken _cToken, uint256 _amount, bool _exact)
+    function _checkLiquidation(address _user, DToken _dToken, MockCTokenPrimitive _cToken, uint256 _amount, bool _exact)
         internal
         view
         returns (uint256 liqAmount, uint256 liquidatedTokens, uint256 protocolTokens)
     {
         (liqAmount, liquidatedTokens, protocolTokens) =
-            lendtroller.canLiquidate(address(_dToken), address(_cToken), _user, _amount, _exact);
+            marketManager.canLiquidate(address(_dToken), address(_cToken), _user, _amount, _exact);
 
         console2.log("liqAmount %s liquidatedTokens %s protocolTokens %s", liqAmount, liquidatedTokens, protocolTokens);
     }
@@ -165,12 +166,12 @@ contract MockLendTrollerMultiMarket is TestBaseMarket {
         vm.stopPrank();
     }
 
-    function _expectedLiquidation(uint256 _collateralAvailable, address _user, DToken _dToken, MockCToken _cToken)
+    function _expectedLiquidation(uint256 _collateralAvailable, address _user, DToken _dToken, MockCTokenPrimitive _cToken)
         internal
         view
         returns (uint256, uint256, uint256)
     {
-        (,,,,,,, uint256 baseCFactor, uint256 cFactorCurve) = lendtroller.tokenData(address(_cToken));
+        (,,,,,,, uint256 baseCFactor, uint256 cFactorCurve) = marketManager.tokenData(address(_cToken));
 
         uint256 cFactor = baseCFactor + ((cFactorCurve * 1e18) / WAD);
         uint256 debtAmount = (cFactor * _dToken.debtBalanceCached(_user)) / WAD;
@@ -182,13 +183,13 @@ contract MockLendTrollerMultiMarket is TestBaseMarket {
     function _calcExpected(
         uint256 _collateralAvailable,
         DToken _dToken,
-        MockCToken _cToken,
+        MockCTokenPrimitive _cToken,
         uint256 cFactor,
         uint256 debtAmount,
         uint256 price
     ) internal view returns (uint256 expectedLiqAmount, uint256 collateralAvailable, uint256 expectedProtocolTokens) {
         collateralAvailable = _collateralAvailable - 1;
-        (,,,, uint256 liqBaseIncentive, uint256 liqCurve,,,) = lendtroller.tokenData(address(_cToken));
+        (,,,, uint256 liqBaseIncentive, uint256 liqCurve,,,) = marketManager.tokenData(address(_cToken));
 
         PriceReturnData memory debtTokenData = chainlinkAdaptor.getPrice(_dToken.underlying(), true, true);
         uint256 debtTokenPrice = uint256(debtTokenData.price);
@@ -219,12 +220,12 @@ contract MockLendTrollerMultiMarket is TestBaseMarket {
         address userToLiquidate,
         address liquidator,
         DToken _dToken,
-        MockCToken _cToken,
+        MockCTokenPrimitive _cToken,
         uint256 _expectedLiqAmount
     ) internal {
         DToken[] memory _dTokens = new DToken[](1);
         _dTokens[0] = _dToken;
-        MockCToken[] memory _cTokens = new MockCToken[](1);
+        MockCTokenPrimitive[] memory _cTokens = new MockCTokenPrimitive[](1);
         _cTokens[0] = _cToken;
         address[] memory _users = new address[](2);
         _users[0] = userToLiquidate;
@@ -254,13 +255,13 @@ contract MockLendTrollerMultiMarket is TestBaseMarket {
         _checkAssets(_dTokens, _cTokens, _users);
     }
 
-    function _liquidateAllExact(DToken[] memory dTokens, MockCToken[] memory cTokens, address[] memory users)
+    function _liquidateAllExact(DToken[] memory dTokens, MockCTokenPrimitive[] memory cTokens, address[] memory users)
         internal
     {
         console2.log("_liquidateExact");
         for (uint256 i = 0; i < noOfUsersCollateral; i++) {
             for (uint256 j = 0; j < noOfCollateralTokens; j++) {
-                if (!lendtroller.flaggedForLiquidation(users[i])) {
+                if (!marketManager.flaggedForLiquidation(users[i])) {
                     console2.log("user %s not flagged for liquidation", users[i]);
                     continue;
                 }
@@ -279,13 +280,13 @@ contract MockLendTrollerMultiMarket is TestBaseMarket {
         }
     }
 
-    function _liquidateAllByDToken(DToken[] memory dTokens, MockCToken[] memory cTokens, address[] memory users)
+    function _liquidateAllByDToken(DToken[] memory dTokens, MockCTokenPrimitive[] memory cTokens, address[] memory users)
         internal
     {
         for (uint256 i = 0; i < noOfUsersCollateral; i++) {
             console2.log("user %s", users[i]);
             for (uint256 j = 0; j < noOfCollateralTokens; j++) {
-                if (!lendtroller.flaggedForLiquidation(users[i])) {
+                if (!marketManager.flaggedForLiquidation(users[i])) {
                     console2.log("user %s not flagged for liquidation", users[i]);
                     continue;
                 }
@@ -304,7 +305,7 @@ contract MockLendTrollerMultiMarket is TestBaseMarket {
         }
     }
 
-    function _liquidate(DToken _dToken, MockCToken _cToken, address _user, bool _exact) internal {
+    function _liquidate(DToken _dToken, MockCTokenPrimitive _cToken, address _user, bool _exact) internal {
         console2.log("\n expected liquidation");
         (uint256 expectedLiqAmount,,) = _expectedLiquidation(_cToken.balanceOf(_user), _user, _dToken, _cToken);
 
@@ -324,12 +325,12 @@ contract MockLendTrollerMultiMarket is TestBaseMarket {
 
     function _liquidateAccount(address _account, address _liquidator) internal {
         vm.prank(_liquidator);
-        lendtroller.liquidateAccount(_account);
+        marketManager.liquidateAccount(_account);
     }
 
     function _dTokenLiquidateExact(
         DToken _dtoken,
-        MockCToken _collateral,
+        MockCTokenPrimitive _collateral,
         uint256 _expectedLiqAmount,
         address _account,
         address _liquidator
@@ -338,7 +339,7 @@ contract MockLendTrollerMultiMarket is TestBaseMarket {
         _dtoken.liquidateExact(_account, _expectedLiqAmount, IMToken(address(_collateral)));
     }
 
-    function _dTokenLiquidate(DToken _dtoken, MockCToken _collateral, address _account, address _liquidator) internal {
+    function _dTokenLiquidate(DToken _dtoken, MockCTokenPrimitive _collateral, address _account, address _liquidator) internal {
         vm.prank(_liquidator);
         _dtoken.liquidate(_account, IMToken(address(_collateral)));
     }
@@ -349,9 +350,9 @@ contract MockLendTrollerMultiMarket is TestBaseMarket {
         uint256 redeemTokens, // in shares
         uint256 borrowAmount // in assets
     ) internal view returns (uint256 overR, uint256 underR, uint256 overB, uint256 underB) {
-        (overR, underR) = lendtroller.hypotheticalLiquidityOf(account, address(mTokenModified), redeemTokens, 0);
+        (overR, underR) = marketManager.hypotheticalLiquidityOf(account, address(mTokenModified), redeemTokens, 0);
 
-        (overB, underB) = lendtroller.hypotheticalLiquidityOf(account, address(mTokenModified), 0, borrowAmount);
+        (overB, underB) = marketManager.hypotheticalLiquidityOf(account, address(mTokenModified), 0, borrowAmount);
         console2.log("redeem: over %s under %s", overR, underR);
         console2.log("borrow: over %s under %s", overB, underB);
     }
@@ -371,7 +372,7 @@ contract MockLendTrollerMultiMarket is TestBaseMarket {
         }
     }
 
-    function _checkAssets(DToken[] memory _dTokens, MockCToken[] memory _cTokens, address[] memory _users)
+    function _checkAssets(DToken[] memory _dTokens, MockCTokenPrimitive[] memory _cTokens, address[] memory _users)
         internal
         view
         returns (bool)
@@ -409,7 +410,7 @@ contract MockLendTrollerMultiMarket is TestBaseMarket {
         return true;
     }
 
-    function _checkAssetCToken(MockCToken _cToken, address _user) internal view returns (bool) {
+    function _checkAssetCToken(MockCTokenPrimitive _cToken, address _user) internal view returns (bool) {
         console2.log("cToken %s balance %s", address(_cToken), _cToken.balanceOf(_user));
         console2.log(
             "underlying %s balance %s", address(_cToken.underlying()), IERC20(_cToken.underlying()).balanceOf(_user)
@@ -427,7 +428,7 @@ contract MockLendTrollerMultiMarket is TestBaseMarket {
             uint256[] memory underlyingBalances
         )
     {
-        userAssets = lendtroller.assetsOf(user);
+        userAssets = marketManager.assetsOf(user);
         cTokenBalances = new uint256[](noOfCollateralTokens);
         dTokenBalances = new uint256[](noOfDebtTokens);
         underlyingBalances = new uint256[](noOfDebtTokens);

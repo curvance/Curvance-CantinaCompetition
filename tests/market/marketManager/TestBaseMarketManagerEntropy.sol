@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import "./MockLendTrollerMultiMarket.sol";
+import "./TestBaseMarketManagerMultiMarkets.sol";
 
-contract LendTrollerEntropy is MockLendTrollerMultiMarket {
+contract TestBaseMarketManagerEntropy is TestBaseMarketManagerMultiMarkets {
     uint256 public entropy;
 
     function _genRandom(uint256 _value, uint256 _entropy, uint256 _lower, uint256 _upper)
@@ -53,16 +53,16 @@ contract LendTrollerEntropy is MockLendTrollerMultiMarket {
         colRatios[index] = collRatio;
 
         uint256 collReqB = _genRandom(entropy, index + 2, collReqA / 2, collReqA) - (collReqA / 4);
-        if (collReqB <= 400 + (lendtroller.MIN_EXCESS_COLLATERAL_REQUIREMENT() / 10 ** 14)) {
-            collReqB = 400 + (lendtroller.MIN_EXCESS_COLLATERAL_REQUIREMENT() / 10 ** 14) + 1;
+        if (collReqB <= 400 + (marketManager.MIN_EXCESS_COLLATERAL_REQUIREMENT() / 10 ** 14)) {
+            collReqB = 400 + (marketManager.MIN_EXCESS_COLLATERAL_REQUIREMENT() / 10 ** 14) + 1;
         }
 
-        lendtroller.updateCollateralToken(IMToken(collateralToken), collRatio, collReqA, collReqB, 200, 400, 10, 1000);
+        marketManager.updateCollateralToken(IMToken(collateralToken), collRatio, collReqA, collReqB, 200, 400, 10, 1000);
         address[] memory tokens = new address[](1);
         tokens[0] = address(collateralToken);
         uint256[] memory caps = new uint256[](1);
         caps[0] = 100_000e18;
-        lendtroller.setCTokenCollateralCaps(tokens, caps);
+        marketManager.setCTokenCollateralCaps(tokens, caps);
     }
 
     function _genColWithEntropy(address user, MockCToken cToken, uint256 amount) internal {
@@ -109,8 +109,8 @@ contract LendTrollerEntropy is MockLendTrollerMultiMarket {
         for (uint256 i = 0; i < noOfUsersCollateral; i++) {
             console2.log("user %s", i);
             while (true) {
-                (solvency, debt) = lendtroller.solvencyOf(users[i]);
-                (accCollateral, accMaxDebt, accDebt) = lendtroller.statusOf(users[i]);
+                (solvency, debt) = marketManager.solvencyOf(users[i]);
+                (accCollateral, accMaxDebt, accDebt) = marketManager.statusOf(users[i]);
                 amount = _genRandom(i, entropy, 0.2 ether, 1 ether);
                 console2.log("borrow amount %s", amount);
                 console2.log("solvency %s debt %s", solvency, debt);
