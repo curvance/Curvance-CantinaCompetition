@@ -40,7 +40,7 @@ contract TestBaseMarketManagerMultiMarkets is TestBaseMarket {
         for (uint256 i = 0; i < _noOfTokens; i++) {
             DToken dToken = _deployDebtToken();
             dTokens[i] = dToken;
-            dTokensAgg[i] = _deployPriceRouterForToken(dToken.underlying());
+            dTokensAgg[i] = _deployOracleRouterForToken(dToken.underlying());
         }
         return (dTokens, dTokensAgg);
     }
@@ -75,10 +75,10 @@ contract TestBaseMarketManagerMultiMarkets is TestBaseMarket {
         return debtToken;
     }
 
-    function _deployPriceRouterForToken(address token) internal returns (MockV3Aggregator) {
+    function _deployOracleRouterForToken(address token) internal returns (MockV3Aggregator) {
         MockV3Aggregator oneUsd = new MockV3Aggregator(8, 1e8, 1e10, 1e5);
         chainlinkAdaptor.addAsset(token, address(oneUsd), 0, true);
-        priceRouter.addAssetPriceFeed(token, address(chainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(token, address(chainlinkAdaptor));
         return oneUsd;
     }
 

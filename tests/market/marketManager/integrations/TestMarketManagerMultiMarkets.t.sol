@@ -23,9 +23,9 @@ contract TestMarketManagerMultiMarkets is TestBaseMarketManagerEntropy {
         _deployDynamicInterestRateModel();
         // eth/usd is needed in price router constructor
         chainlinkEthUsd = new MockV3Aggregator(8, 1500e8, 1e50, 1e6);
-        _deployPriceRouter();
+        _deployOracleRouter();
         chainlinkAdaptor = new ChainlinkAdaptor(ICentralRegistry(address(centralRegistry)));
-        priceRouter.addApprovedAdaptor(address(chainlinkAdaptor));
+        oracleRouter.addApprovedAdaptor(address(chainlinkAdaptor));
         // start gauge to enable deposits
         gaugePool.start(address(marketManager));
         vm.warp(veCVE.nextEpochStartTime() + 1000);

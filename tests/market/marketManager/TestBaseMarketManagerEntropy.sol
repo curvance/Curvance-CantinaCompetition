@@ -26,8 +26,8 @@ contract TestBaseMarketManagerEntropy is TestBaseMarketManagerMultiMarkets {
         for (uint256 i = 0; i < _noOfTokens; i++) {
             MockCToken cToken = _deployCollaterToken();
             cTokens[i] = cToken;
-            cTokensAgg[i] = _deployPriceRouterForToken(cToken.underlying());
-            cTokensUnderlyingAgg[i] = _deployPriceRouterForToken(address(cToken));
+            cTokensAgg[i] = _deployOracleRouterForToken(cToken.underlying());
+            cTokensUnderlyingAgg[i] = _deployOracleRouterForToken(address(cToken));
             if (_entropy > 0) {
                 console2.log("a %s", i);
                 _setCollateralDataWithEntropy(address(cToken), i, _entropy + i);
