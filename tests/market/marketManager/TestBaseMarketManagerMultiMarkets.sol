@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import { TestBaseMarket } from "tests/market/TestBaseMarket.sol";
+import "tests/market/TestBaseMarket.sol";
 import { MockCTokenPrimitive } from "contracts/mocks/MockCTokenPrimitive.sol";
 import { MockERC20Token } from "contracts/mocks/MockERC20Token.sol";
 
@@ -49,17 +49,17 @@ contract TestBaseMarketManagerMultiMarkets is TestBaseMarket {
         // deploy collateral token and cToken
         MockERC20Token mockUnderlying = new MockERC20Token();
         vm.label(address(mockUnderlying), "tokenCollateral");
-        MockCTokenPrimitive MockCTokenPrimitive =
+        MockCTokenPrimitive cTokenPrimitive =
             new MockCTokenPrimitive(ICentralRegistry(address(centralRegistry)), address(mockUnderlying), address(marketManager));
-        vm.label(address(MockCTokenPrimitive), "cToken");
+        vm.label(address(cTokenPrimitive), "cToken");
 
         // start market for cToken
         uint256 startAmount = 42069;
         mockUnderlying.mint(address(this), startAmount);
-        mockUnderlying.approve(address(MockCTokenPrimitive), startAmount);
-        marketManager.listToken(address(MockCTokenPrimitive));
+        mockUnderlying.approve(address(cTokenPrimitive), startAmount);
+        marketManager.listToken(address(cTokenPrimitive));
         vm.label(address(marketManager), "marketManager");
-        return MockCTokenPrimitive;
+        return cTokenPrimitive;
     }
 
     function _deployDebtToken() internal returns (DToken) {

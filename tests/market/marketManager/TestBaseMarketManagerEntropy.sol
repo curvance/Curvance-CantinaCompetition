@@ -40,10 +40,10 @@ contract TestBaseMarketManagerEntropy is TestBaseMarketManagerMultiMarkets {
         return (cTokens, cTokensAgg, cTokensUnderlyingAgg);
     }
 
-    function _setCollateralDataWithEntropy(address collateralToken, uint256 index, uint256 entropy) internal {
+    function _setCollateralDataWithEntropy(address collateralToken, uint256 index, uint256 randomEntropy) internal {
         // set collateral factor
-        uint256 collRatio = _genRandom(entropy, index, 3000, 9100);
-        uint256 collReqA = _genRandom(entropy, index + 1, 1000, 4000);
+        uint256 collRatio = _genRandom(randomEntropy, index, 3000, 9100);
+        uint256 collReqA = _genRandom(randomEntropy, index + 1, 1000, 4000);
         console2.log("collRatio %s collReqA %s", collRatio, collReqA);
         uint256 collReqALimit = (1e4 * 1e4) / collRatio - 1e4;
         console2.log("collReqALimit %s", collReqALimit);
@@ -52,7 +52,7 @@ contract TestBaseMarketManagerEntropy is TestBaseMarketManagerMultiMarkets {
         }
         colRatios[index] = collRatio;
 
-        uint256 collReqB = _genRandom(entropy, index + 2, collReqA / 2, collReqA) - (collReqA / 4);
+        uint256 collReqB = _genRandom(randomEntropy, index + 2, collReqA / 2, collReqA) - (collReqA / 4);
         if (collReqB <= 400 + (marketManager.MIN_EXCESS_COLLATERAL_REQUIREMENT() / 10 ** 14)) {
             collReqB = 400 + (marketManager.MIN_EXCESS_COLLATERAL_REQUIREMENT() / 10 ** 14) + 1;
         }
@@ -98,7 +98,7 @@ contract TestBaseMarketManagerEntropy is TestBaseMarketManagerMultiMarkets {
 
     function _executeBorrows(address[] memory users, DToken[] memory dTokens, MockCToken[] memory colToken) internal {
         uint256 amount;
-        uint256 borrowToken;
+        //uint256 borrowToken;
 
         for (uint256 i = 0; i < noOfCollateralTokens; i++) {
             console2.log("col token %s col ratio %s", i, colRatios[i]);
