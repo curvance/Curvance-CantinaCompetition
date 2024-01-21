@@ -211,12 +211,14 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
 
         uint256 quoteDecimals = data.decimals;
         if (quoteDecimals != 18) {
-            // Decimals are < 18 so we need to multiply up.
+            // Decimals are < 18 so we need to multiply up to coerce to
+            // 18 decimals.
             if (quoteDecimals < 18) {
-                price = price * (10 ** quoteDecimals);
+                price = price * (10 ** (18 - quoteDecimals));
             } else {
-                // Decimals are > 18 so we need to multiply down.
-                price = price / (10 ** quoteDecimals);
+                // Decimals are > 18 so we need to multiply down to coerce to
+                // 18 decimals.
+                price = price / (10 ** (quoteDecimals - 18));
             }
         }
 
