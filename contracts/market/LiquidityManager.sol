@@ -408,9 +408,9 @@ abstract contract LiquidityManager {
                 (accountCollateralHard - accountCollateralSoft);
             
             // Its theoretically possible for lFactor calculation to round
-            // down here. If the delta between the hard and soft collateral
+            // down here, if the delta between the hard and soft collateral
             // thresholds are significant (> WAD), with a minimal numerator
-            // (~WAD). For this case we round up on the side of the protocol.
+            // (~ WAD). For this case we round up on the side of the protocol.
             if (result.lFactor == 0) {
                 // Round to 1 wei to trigger a soft liquidation.
                 result.lFactor = 1;

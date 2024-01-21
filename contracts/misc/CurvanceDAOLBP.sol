@@ -26,13 +26,19 @@ contract CurvanceDAOLBP {
     /// @notice Public sale configurations
     uint256 public constant SALE_PERIOD = 3 days;
     uint256 public startTime;
-    uint256 public softPriceInpaymentToken; // price in WETH (18 decimals)
+    /// @notice The number of CVE tokens up for grabs from the DAO>
     uint256 public cveAmountForSale;
-    address public paymentToken; // ideally WETH
-    uint8 public paymentTokenDecimals; // ideally WETH
+    /// @notice Initial soft cap price, in `paymentToken`.
+    uint256 public softPriceInpaymentToken;
+    /// @notice Payment token can be any ERC20, but never gas tokens.
+    address public paymentToken;
+    /// @notice Decimals for `paymentToken`.
+    uint8 public paymentTokenDecimals;
+    /// @notice Cached price of paymentToken, locked in during start() call.
     uint256 public paymentTokenPrice;
+    /// @notice The amount of decimals to adjust between paymentToken and CVE.
     uint256 public saleDecimalAdjustment; 
-
+    /// @notice The number of `paymentToken` committed to the LBP.
     uint256 public saleCommitted;
     mapping(address => uint256) public userCommitted;
 
@@ -103,11 +109,7 @@ contract CurvanceDAOLBP {
         softPriceInpaymentToken = (_softPriceInUSD * WAD) / paymentTokenPrice;
         cveAmountForSale = _cveAmountForSale;
         paymentToken = _paymentToken;
-        if (_paymentToken == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE) {
-            paymentTokenDecimals = 18;
-        } else {
-            paymentTokenDecimals = IERC20(_paymentToken).decimals();
-        }
+        paymentTokenDecimals = IERC20(_paymentToken).decimals();
 
         emit LBPStarted(_startTime);
     }
