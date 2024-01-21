@@ -135,7 +135,9 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
     }
 
     /// @notice Removes a supported asset from the adaptor.
-    /// @dev Calls back into price router to notify it of its removal.
+    /// @dev Calls back into oracle router to notify it of its removal.
+    /// @param asset The address of the supported asset to remove from
+    ///              the adaptor.
     function removeAsset(address asset) external override {
         _checkElevatedPermissions();
 
@@ -150,7 +152,7 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
         delete adaptorDataUSD[asset];
         delete adaptorDataNonUSD[asset];
 
-        // Notify the price router that we are going to stop supporting
+        // Notify the oracle router that we are going to stop supporting
         // the asset.
         IOracleRouter(centralRegistry.oracleRouter()).notifyFeedRemoval(asset);
         

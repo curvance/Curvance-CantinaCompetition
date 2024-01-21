@@ -34,7 +34,7 @@ contract VelodromeVolatileLPAdaptor is BaseVolatileLPAdaptor {
     /// @notice Called during pricing operations.
     /// @param asset The bpt being priced
     /// @param inUSD Indicates whether we want the price in USD or ETH
-    /// @param getLower Since this adaptor calls back into the price router
+    /// @param getLower Since this adaptor calls back into the oracle router
     ///                 it needs to know if it should be working with the
     ///                 upper or lower prices of assets
     function getPrice(
@@ -69,7 +69,9 @@ contract VelodromeVolatileLPAdaptor is BaseVolatileLPAdaptor {
     }
 
     /// @notice Removes a supported asset from the adaptor.
-    /// @dev Calls back into price router to notify it of its removal
+    /// @dev Calls back into oracle router to notify it of its removal.
+    /// @param asset The address of the supported asset to remove from
+    ///              the adaptor.
     function removeAsset(
         address asset
     ) external virtual override {

@@ -109,7 +109,7 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
         if (success) {
             twapPrice = abi.decode(returnData, (uint256));
         } else {
-            // Uniswap TWAP check reverted, notify the price router
+            // Uniswap TWAP check reverted, notify the oracle router
             // that we had an error
             pData.hadError = true;
             return pData;
@@ -122,7 +122,7 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
         // so its in USD
         if (inUSD) {
             if (!OracleRouter.isSupportedAsset(data.quoteToken)) {
-                // Our price router does not know how to value this quote token
+                // Our oracle router does not know how to value this quote token
                 // so we cant use the TWAP data
                 pData.hadError = true;
                 return pData;
@@ -154,7 +154,7 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
 
         if (data.quoteToken != WETH) {
             if (!OracleRouter.isSupportedAsset(data.quoteToken)) {
-                // Our price router does not know how to value this quote
+                // Our oracle router does not know how to value this quote
                 // token so we cant use the TWAP data.
                 pData.hadError = true;
                 return pData;
@@ -219,8 +219,9 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
     }
 
     /// @notice Removes a supported asset from the adaptor.
-    /// @dev Calls back into price router to notify it of its removal
-    /// @param asset The address of the asset to be removed.
+    /// @dev Calls back into oracle router to notify it of its removal
+    /// @param asset The address of the supported asset to remove from
+    ///              the adaptor.
     function removeAsset(address asset) external override {
         _checkElevatedPermissions();
 
@@ -234,7 +235,7 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
         // Wipe config mapping entries for a gas refund
         delete adaptorData[asset];
 
-        // Notify the price router that we are going
+        // Notify the oracle router that we are going
         // to stop supporting the asset
         IOracleRouter(centralRegistry.oracleRouter()).notifyFeedRemoval(asset);
         emit UniswapV3AssetRemoved(asset);

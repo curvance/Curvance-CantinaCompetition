@@ -91,13 +91,15 @@ contract Api3Adaptor is BaseOracleAdaptor {
     /// @notice Add a Api3 Price Feed as an asset.
     /// @dev Should be called before `OracleRouter:addAssetPriceFeed` is called.
     /// @param asset The address of the token to add pricing for.
+    /// @param ticker The ticker of  the token to add pricing for.
     /// @param proxyFeed Api3 proxy feed to use for pricing `asset`.
     /// @param heartbeat Api3 heartbeat to use when validating prices
     ///                  for `asset`. 0 = `DEFAULT_HEART_BEAT`.
     /// @param inUSD Whether the price feed is in USD (inUSD = true)
     ///              or ETH (inUSD = false).
     function addAsset(
-        address asset, 
+        address asset,
+        string memory ticker, 
         address proxyFeed, 
         uint256 heartbeat, 
         bool inUSD
@@ -110,16 +112,7 @@ contract Api3Adaptor is BaseOracleAdaptor {
             }
         }
 
-        bytes32 dapiName;
-        if (inUSD) {
-            // API3 appends "/USD" at the end of USD denominated feeds,
-            // so we use toBytes32WithUSD here.
-            dapiName = Bytes32Helper._toBytes32WithUSD(asset);
-        } else {
-            // API3 appends "/ETH" at the end of ETH denominated feeds,
-            // so we use toBytes32WithETH here.
-            dapiName = Bytes32Helper._toBytes32WithETH(asset);
-        }
+        bytes32 dapiName = Bytes32Helper._stringToBytes32(ticker);
         bytes32 dapiNameHash = keccak256(abi.encodePacked(dapiName));
 
         // Validate that the dAPI name and corresponding hash generated off
@@ -154,7 +147,9 @@ contract Api3Adaptor is BaseOracleAdaptor {
     }
 
     /// @notice Removes a supported asset from the adaptor.
-    /// @dev Calls back into price router to notify it of its removal.
+    /// @dev Calls back into oracle router to notify it of its removal.
+    /// @param asset The address of the supported asset to remove from
+    ///              the adaptor.
     function removeAsset(address asset) external override {
         _checkElevatedPermissions();
 
@@ -169,7 +164,7 @@ contract Api3Adaptor is BaseOracleAdaptor {
         delete adaptorDataUSD[asset];
         delete adaptorDataNonUSD[asset];
 
-        // Notify the price router that we are going to stop supporting the asset.
+        // Notify the oracle router that we are going to stop supporting the asset.
         IOracleRouter(centralRegistry.oracleRouter()).notifyFeedRemoval(asset);
         
         emit Api3AssetRemoved(asset);

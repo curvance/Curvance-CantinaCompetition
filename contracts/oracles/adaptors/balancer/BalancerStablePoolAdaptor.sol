@@ -59,7 +59,7 @@ contract BalancerStablePoolAdaptor is BalancerBaseAdaptor {
     /// @notice Called during pricing operations.
     /// @param asset the bpt being priced
     /// @param inUSD indicates whether we want the price in USD or ETH
-    /// @param getLower Since this adaptor calls back into the price router
+    /// @param getLower Since this adaptor calls back into the oracle router
     ///                 it needs to know if it should be working with the
     ///                 upper or lower prices of assets
     function getPrice(
@@ -178,7 +178,9 @@ contract BalancerStablePoolAdaptor is BalancerBaseAdaptor {
     }
 
     /// @notice Removes a supported asset from the adaptor.
-    /// @dev Calls back into price router to notify it of its removal
+    /// @dev Calls back into oracle router to notify it of its removal.
+    /// @param asset The address of the supported asset to remove from
+    ///              the adaptor.
     function removeAsset(address asset) external override {
         _checkElevatedPermissions();
 
@@ -191,7 +193,7 @@ contract BalancerStablePoolAdaptor is BalancerBaseAdaptor {
         // Wipe config mapping entries for a gas refund
         delete adaptorData[asset];
 
-        // Notify the price router that we are going to stop supporting the asset
+        // Notify the oracle router that we are going to stop supporting the asset
         IOracleRouter(centralRegistry.oracleRouter()).notifyFeedRemoval(asset);
         emit BalancerStablePoolAssetRemoved(asset);
     }
