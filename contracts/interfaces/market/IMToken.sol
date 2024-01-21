@@ -49,6 +49,10 @@ interface IMToken {
         uint256 shares
     ) external;
 
+    /// @notice Reduces reserves as much as possible by withdrawing from
+    ///         the gauge and transferring to Curvance DAO.
+    function processWithdrawReserves() external;
+
     /// @notice Get a snapshot of the account's balances, 
     ///         and the cached exchange rate.
     function getSnapshot(

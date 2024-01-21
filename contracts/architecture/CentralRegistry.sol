@@ -12,6 +12,7 @@ import { IWormhole } from "contracts/interfaces/external/wormhole/IWormhole.sol"
 import { IWormholeRelayer } from "contracts/interfaces/external/wormhole/IWormholeRelayer.sol";
 import { ICircleRelayer } from "contracts/interfaces/external/wormhole/ICircleRelayer.sol";
 import { ITokenBridgeRelayer } from "contracts/interfaces/external/wormhole/ITokenBridgeRelayer.sol";
+import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 
 contract CentralRegistry is ERC165 {
     /// CONSTANTS ///
@@ -247,6 +248,28 @@ contract CentralRegistry is ERC165 {
     }
 
     /// EXTERNAL FUNCTIONS ///
+
+    function withdrawReservesMulti(address[] calldata dTokens) external {
+        // Match permissioning check to normal withdrawReserves().
+        _checkDaoPermissions();
+
+        uint256 dTokenLength = dTokens.length;
+        if (dTokenLength == 0) {
+           _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
+        }
+
+        IMToken dToken;
+
+        for(uint256 i; i < dTokenLength; ) {
+            dToken = IMToken(dTokens[i++]);
+            // Revert if somehow a misconfigured token made it in here.
+            if (dToken.isCToken()) {
+                _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
+            }
+
+            dToken.processWithdrawReserves();
+        }
+    }
 
     /// @notice Sets a new CVE contract address.
     /// @dev Only callable on a 7 day delay or by the Emergency Council.

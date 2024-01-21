@@ -523,6 +523,8 @@ contract DToken is ERC165, ReentrancyGuard {
             revert DToken__InsufficientUnderlyingHeld();
         }
 
+        // Convert `amount` assets to shares to match totalReserves
+        // denomination.
         uint256 tokens = (amount * WAD) / exchangeRateCached();
 
         // Update reserves with underflow check.
@@ -530,8 +532,40 @@ contract DToken is ERC165, ReentrancyGuard {
 
         // Query current DAO operating address.
         address daoAddress = centralRegistry.daoAddress();
-        // Withdraw reserves from gauge.
+
+        // Withdraw reserves from gauge, in shares.
         _gaugePool().withdraw(address(this), daoAddress, tokens);
+        // Transfer underlying to DAO, in assets.
+        SafeTransferLib.safeTransfer(underlying, daoAddress, amount);
+    }
+
+    /// @notice Withdraws all reserves from the gauge and transfers to
+    ///         Curvance DAO.
+    /// @dev If daoAddress is going to be moved all reserves should be
+    ///      withdrawn first, updates interest before executing the reserve
+    ///      withdrawal.
+    function processWithdrawReserves() external {
+        if (msg.sender != address(centralRegistry)) {
+            _revert(_UNAUTHORIZED_SELECTOR);
+        }
+
+        accrueInterest();
+
+        uint256 totalReservesCached = totalReserves;
+        uint256 amount = (totalReservesCached * exchangeRateCached()) / WAD;
+
+        // Make sure we have enough underlying held to cover withdrawal.
+        if (marketUnderlyingHeld() < amount) {
+            revert DToken__InsufficientUnderlyingHeld();
+        }
+
+        // Update reserves.
+        delete totalReserves;
+
+        // Query current DAO operating address.
+        address daoAddress = centralRegistry.daoAddress();
+        // Withdraw reserves from gauge.
+        _gaugePool().withdraw(address(this), daoAddress, totalReservesCached);
 
         // Transfer underlying to DAO measured in assets.
         SafeTransferLib.safeTransfer(underlying, daoAddress, amount);

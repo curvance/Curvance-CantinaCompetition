@@ -115,6 +115,14 @@ contract VeCVE is ERC20, ReentrancyGuard {
 
     /// EXTERNAL FUNCTIONS ///
 
+    /// @notice Used for fuzzing tests, shorthand for checking lock indices.
+    function lockIndexExists(
+        address user, 
+        uint256 lockIndex
+    ) external view returns (bool) {
+        return lockIndex >= userLocks[user].length;
+    }
+
     /// @notice Used for frontend, needed due to array of structs.
     function queryUserLocks(
         address user
