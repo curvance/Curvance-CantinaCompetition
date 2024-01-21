@@ -5,7 +5,7 @@ import "forge-std/Script.sol";
 
 import { OracleRouter } from "contracts/oracles/OracleRouter.sol";
 import { ChainlinkAdaptor } from "contracts/oracles/adaptors/chainlink/ChainlinkAdaptor.sol";
-import { CurveAdaptor } from "contracts/oracles/adaptors/curve/CurveAdaptor.sol";
+import { Curve2PoolLPAdaptor } from "contracts/oracles/adaptors/curve/Curve2PoolLPAdaptor.sol";
 import { Convex2PoolCToken } from "contracts/market/collateral/Convex2PoolCToken.sol";
 import { Convex3PoolCToken } from "contracts/market/collateral/Convex3PoolCToken.sol";
 import { Convex4PoolCToken } from "contracts/market/collateral/Convex4PoolCToken.sol";
@@ -55,13 +55,13 @@ contract ConvexMarketDeployer is DeployConfiguration {
         address curveAdaptor = _getDeployedContract("curveAdaptor");
         if (curveAdaptor == address(0)) {
             curveAdaptor = address(
-                new CurveAdaptor(ICentralRegistry(centralRegistry))
+                new Curve2PoolLPAdaptor(ICentralRegistry(centralRegistry))
             );
             console.log("curveAdaptor: ", curveAdaptor);
             _saveDeployedContracts("curveAdaptor", curveAdaptor);
-            CurveAdaptor(curveAdaptor).setReentrancyConfig(2, 50_000);
-            CurveAdaptor(curveAdaptor).setReentrancyConfig(3, 50_000);
-            CurveAdaptor(curveAdaptor).setReentrancyConfig(4, 50_000);
+            Curve2PoolLPAdaptor(curveAdaptor).setReentrancyConfig(2, 50_000);
+            Curve2PoolLPAdaptor(curveAdaptor).setReentrancyConfig(3, 50_000);
+            Curve2PoolLPAdaptor(curveAdaptor).setReentrancyConfig(4, 50_000);
         }
 
         // Setup underlying chainlink adapters
@@ -126,8 +126,8 @@ contract ConvexMarketDeployer is DeployConfiguration {
             OracleRouter(oracleRouter).addApprovedAdaptor(curveAdaptor);
             console.log("oracleRouter.addApprovedAdaptor: ", curveAdaptor);
         }
-        if (!CurveAdaptor(curveAdaptor).isSupportedAsset(param.asset)) {
-            CurveAdaptor(curveAdaptor).addAsset(param.asset, param.pool);
+        if (!Curve2PoolLPAdaptor(curveAdaptor).isSupportedAsset(param.asset)) {
+            Curve2PoolLPAdaptor(curveAdaptor).addAsset(param.asset, param.pool);
             console.log("curveAdaptor.addAsset");
         }
         try OracleRouter(oracleRouter).assetPriceFeeds(param.asset, 0) returns (

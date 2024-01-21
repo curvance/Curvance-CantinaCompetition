@@ -4,7 +4,7 @@ pragma solidity ^0.8.17;
 import { Convex2PoolCToken, IERC20 } from "contracts/market/collateral/Convex2PoolCToken.sol";
 import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.sol";
 import { SafeTransferLib } from "contracts/libraries/external/SafeTransferLib.sol";
-import { CurveAdaptor } from "contracts/oracles/adaptors/curve/CurveAdaptor.sol";
+import { Curve2PoolLPAdaptor } from "contracts/oracles/adaptors/curve/Curve2PoolLPAdaptor.sol";
 import { IBaseRewardPool } from "contracts/interfaces/external/convex/IBaseRewardPool.sol";
 import "tests/market/TestBaseMarket.sol";
 
@@ -61,7 +61,7 @@ contract ConvexLPCollateral is TestBaseMarket {
             _STETH_ADDRESS,
             address(chainlinkAdaptor)
         );
-        CurveAdaptor crvAdaptor = new CurveAdaptor(
+        Curve2PoolLPAdaptor crvAdaptor = new Curve2PoolLPAdaptor(
             ICentralRegistry(address(centralRegistry))
         );
         crvAdaptor.setReentrancyConfig(2, 50_000);
