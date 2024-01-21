@@ -203,12 +203,7 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
         pData.inUSD = inUSD;
         uint256 price = _extractPrice(data.symbolHash);
 
-        // If we got a price of 0, bubble up an error immediately.
-        if (price == 0) {
-            pData.hadError = true;
-            return pData;
-        }
-
+        // Load decimals into cache to minimize MLOADs/SLOADs.
         uint256 quoteDecimals = data.decimals;
         if (quoteDecimals != 18) {
             // Decimals are < 18 so we need to multiply up to coerce to
@@ -241,6 +236,11 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
         uint256 max
     ) internal pure returns (bool) {
         if (value > max) {
+            return true;
+        }
+
+        // If we got a price of 0, bubble up an error immediately.
+        if (value == 0) {
             return true;
         }
 
