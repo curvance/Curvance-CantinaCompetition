@@ -132,16 +132,15 @@ contract CurvanceDAOLBP {
         emit LBPStarted(startTimestamp);
     }
 
+    /// @notice Processes a LBP conmmitment, a caller can commit
+    ///         `paymentToken` for the caller to receive a proportional
+    ///         share of CVE from Curvance DAO.
+    /// @param amount The amount of `paymentToken` to commit.
     function commit(uint256 amount) external {
-        SaleStatus saleStatus = currentStatus();
-        if (saleStatus == SaleStatus.NotStarted) {
-            revert CurvanceDAOLBP__NotStarted();
-        }
+        // Validate that LBP is active.
+        _canCommit();
 
-        if (saleStatus == SaleStatus.Closed) {
-            revert CurvanceDAOLBP__Closed();
-        }
-
+        // Take commitment.
         SafeTransferLib.safeTransferFrom(
             paymentToken,
             msg.sender,
@@ -149,12 +148,34 @@ contract CurvanceDAOLBP {
             amount
         );
 
-        userCommitted[msg.sender] += amount;
-        saleCommitted += amount;
-
-        emit Committed(msg.sender, amount);
+        // Document commitment for caller.
+        _commit(amount, msg.sender);
     }
 
+    /// @notice Processes a LBP conmmitment, a caller can commit
+    ///         `paymentToken` for `recipient` to receive a proportional
+    ///         share of CVE from Curvance DAO.
+    /// @param amount The amount of `paymentToken` to commit.
+    /// @param receiver The address of the user who should benefit from
+    ///                 the commitment.
+    function commitFor(uint256 amount, address recipient) external {
+        // Validate that LBP is active.
+        _canCommit();
+
+        // Take commitment.
+        SafeTransferLib.safeTransferFrom(
+            paymentToken,
+            msg.sender,
+            address(this),
+            amount
+        );
+
+        // Document commitment for `recipient`.
+        _commit(amount, recipient);
+    }
+
+    /// @notice Distributes a callers CVE owed from prior commitments.
+    /// @dev Only callable after the conclusion of the LBP.
     function claim() external returns (uint256 amount) {
         SaleStatus saleStatus = currentStatus();
         if (saleStatus == SaleStatus.NotStarted) {
@@ -243,6 +264,29 @@ contract CurvanceDAOLBP {
     }
 
     /// INTERNAL FUNCTIONS ///
+
+    /// @notice Preconditional check to determine whether the LBP is active.
+    function _canCommit() internal {
+        SaleStatus saleStatus = currentStatus();
+        if (saleStatus == SaleStatus.NotStarted) {
+            revert CurvanceDAOLBP__NotStarted();
+        }
+
+        if (saleStatus == SaleStatus.Closed) {
+            revert CurvanceDAOLBP__Closed();
+        }
+    }
+
+    /// @notice Documents a commitment of `amount` for `recipient`.
+    /// @param amount The amount of `paymentToken` committed.
+    /// @param receiver The address of the user who should benefit from
+    ///                 the commitment.
+    function _commit(uint256 amount, address recipient) internal {
+        userCommitted[recipient] += amount;
+        saleCommitted += amount;
+
+        emit Committed(recipient, amount);
+    }
 
     /// @dev Converting `amount` into proper form between potentially two
     ///      different decimal forms.
