@@ -11,22 +11,32 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IOracleRouter } from "contracts/interfaces/IOracleRouter.sol";
 
 contract CurvanceDAOLBP {
+    /// TYPES ///
+
     enum SaleStatus {
         NotStarted,
         InSale,
         Closed
     }
 
-    /// @notice Curvance DAO hub
+    /// CONSTANTS ///
+
+    /// @notice Curvance DAO hub.
     ICentralRegistry public immutable centralRegistry;
 
-    /// @notice CVE contract address
+    /// @notice CVE contract address.
     address public immutable cve;
 
-    /// @notice Public sale configurations
+    /// PUBLIC SALE CONFIGURATIONS
+
+    /// @notice The duration of the LBP.
     uint256 public constant SALE_PERIOD = 3 days;
+
+    /// STORAGE ///
+
+    /// @notice The starting timestamp of the LBP, in unix time.
     uint256 public startTime;
-    /// @notice The number of CVE tokens up for grabs from the DAO>
+    /// @notice The number of CVE tokens up for grabs from the DAO.
     uint256 public cveAmountForSale;
     /// @notice Initial soft cap price, in `paymentToken`.
     uint256 public softPriceInpaymentToken;
@@ -40,9 +50,12 @@ contract CurvanceDAOLBP {
     uint256 public saleDecimalAdjustment; 
     /// @notice The number of `paymentToken` committed to the LBP.
     uint256 public saleCommitted;
+
+    /// @notice User => paymentTokens committed.
     mapping(address => uint256) public userCommitted;
 
-    /// Errors
+    /// ERRORS ///
+
     error CurvanceDAOLBP__InvalidCentralRegistry();
     error CurvanceDAOLBP__Unauthorized();
     error CurvanceDAOLBP__InvalidStartTime();
@@ -53,10 +66,13 @@ contract CurvanceDAOLBP {
     error CurvanceDAOLBP__InSale();
     error CurvanceDAOLBP__Closed();
 
-    /// Events
+    /// EVENTS ///
+
     event LBPStarted(uint256 startTime);
     event Committed(address user, uint256 payAmount);
     event Claimed(address user, uint256 cveAmount);
+
+    /// CONSTRUCTOR ///
 
     constructor(ICentralRegistry centralRegistry_) {
         if (
@@ -72,16 +88,18 @@ contract CurvanceDAOLBP {
         cve = centralRegistry.cve();
     }
 
-    /// @notice start public sale
-    /// @param _startTime public sale start timestamp (in seconds)
-    /// @param _softPriceInUSD public sale base token price (in USD)
-    /// @param _cveAmountForSale public sale CVE amount base cap
-    /// @param _paymentToken public sale pay token address
+    /// EXTERNAL FUNCTIONS ///
+
+    /// @notice Starts the configuration of the LBP.
+    /// @param startTimestamp LBP start timestamp, in unix time.
+    /// @param softPriceInUSD LBP base token price, in USD.
+    /// @param cveAmountInLBP CVE amount included in LBP.
+    /// @param paymentTokenAddress The address of the payment token.
     function start(
-        uint256 _startTime,
-        uint256 _softPriceInUSD,
-        uint256 _cveAmountForSale,
-        address _paymentToken
+        uint256 startTimestamp,
+        uint256 softPriceInUSD,
+        uint256 cveAmountInLBP,
+        address paymentTokenAddress
     ) external {
         if (!centralRegistry.hasDaoPermissions(msg.sender)) {
             revert CurvanceDAOLBP__Unauthorized();
@@ -91,27 +109,27 @@ contract CurvanceDAOLBP {
             revert CurvanceDAOLBP__AlreadyStarted();
         }
 
-        if (_startTime < block.timestamp) {
+        if (startTimestamp < block.timestamp) {
             revert CurvanceDAOLBP__InvalidStartTime();
         }
 
-        uint256 err;
-        (paymentTokenPrice, err) = IOracleRouter(centralRegistry.oracleRouter())
-            .getPrice(_paymentToken, true, true);
+        uint256 errorCode;
+        (paymentTokenPrice, errorCode) = IOracleRouter(centralRegistry.oracleRouter())
+            .getPrice(paymentTokenAddress, true, true);
 
         // Make sure that we didnt have a catastrophic error when pricing
-        // the payment token
-        if (err == 2) {
+        // the payment token.
+        if (errorCode == 2) {
             revert CurvanceDAOLBP__InvalidPriceSource();
         }
 
-        startTime = _startTime;
-        softPriceInpaymentToken = (_softPriceInUSD * WAD) / paymentTokenPrice;
-        cveAmountForSale = _cveAmountForSale;
-        paymentToken = _paymentToken;
-        paymentTokenDecimals = IERC20(_paymentToken).decimals();
+        startTime = startTimestamp;
+        softPriceInpaymentToken = (softPriceInUSD * WAD) / paymentTokenPrice;
+        cveAmountForSale = cveAmountInLBP;
+        paymentToken = paymentTokenAddress;
+        paymentTokenDecimals = IERC20(paymentTokenAddress).decimals();
 
-        emit LBPStarted(_startTime);
+        emit LBPStarted(startTimestamp);
     }
 
     function commit(uint256 amount) external {
@@ -157,49 +175,10 @@ contract CurvanceDAOLBP {
         emit Claimed(msg.sender, amount);
     }
 
-    /// @notice return sale soft cap
-    function softCap() public view returns (uint256) {
-        return (softPriceInpaymentToken * cveAmountForSale) / WAD;
-    }
+    /// PERMISSIONED EXTERNAL FUNCTIONS ///
 
-    /// @notice return sale price from sale committed
-    function priceAt(
-        uint256 amount
-    ) public view returns (uint256 price) {
-        uint256 _softCap = softCap();
-        if (amount < _softCap) {
-            return softPriceInpaymentToken;
-        }
-
-        // Adjust decimals between paymentTokenDecimals,
-        // and default 18 decimals of softCap(). 
-        amount = _adjustDecimals(amount, paymentTokenDecimals, 18);
-
-        // Equivalent to (amount * WAD) / cveAmountForSale rounded up.
-        return FixedPointMathLib.divWadUp(amount, cveAmountForSale);
-    }
-
-    /// @notice return current sale price
-    /// @dev current sale price is calculated based on sale committed
-    function currentPrice() public view returns (uint256) {
-        return priceAt(saleCommitted);
-    }
-
-    function currentStatus() public view returns (SaleStatus) {
-        if (startTime == 0 || block.timestamp < startTime) {
-            return SaleStatus.NotStarted;
-        }
-
-        if (block.timestamp < startTime + SALE_PERIOD) {
-            return SaleStatus.InSale;
-        }
-
-        return SaleStatus.Closed;
-    }
-
-    /// @notice withdraw funds
-    /// @dev (only dao permissions)
-    ///      this function is only available when the public sale is over
+    /// @notice Withdraws LBP funds to DAO address.
+    /// @dev Only callable on the conclusion of the LBP.
     function withdrawFunds() external {
         if (!centralRegistry.hasDaoPermissions(msg.sender)) {
             revert CurvanceDAOLBP__Unauthorized();
@@ -220,6 +199,50 @@ contract CurvanceDAOLBP {
             balance
         );
     }
+
+    /// PUBLIC FUNCTIONS ///
+
+    /// @notice Returns the current soft cap limit, in `paymentToken`.
+    function softCap() public view returns (uint256) {
+        return (softPriceInpaymentToken * cveAmountForSale) / WAD;
+    }
+
+    /// @notice Returns the current LBP price based on current commitments.
+    function priceAt(
+        uint256 amount
+    ) public view returns (uint256 price) {
+        uint256 _softCap = softCap();
+        if (amount < _softCap) {
+            return softPriceInpaymentToken;
+        }
+
+        // Adjust decimals between paymentTokenDecimals,
+        // and default 18 decimals of softCap(). 
+        amount = _adjustDecimals(amount, paymentTokenDecimals, 18);
+
+        // Equivalent to (amount * WAD) / cveAmountForSale rounded up.
+        return FixedPointMathLib.divWadUp(amount, cveAmountForSale);
+    }
+
+    /// @notice Returns the current price based on current commitments.
+    function currentPrice() public view returns (uint256) {
+        return priceAt(saleCommitted);
+    }
+
+    /// @notice Returns the current status of the Curvance DAO LBP.
+    function currentStatus() public view returns (SaleStatus) {
+        if (startTime == 0 || block.timestamp < startTime) {
+            return SaleStatus.NotStarted;
+        }
+
+        if (block.timestamp < startTime + SALE_PERIOD) {
+            return SaleStatus.InSale;
+        }
+
+        return SaleStatus.Closed;
+    }
+
+    /// INTERNAL FUNCTIONS ///
 
     /// @dev Converting `amount` into proper form between potentially two
     ///      different decimal forms.
